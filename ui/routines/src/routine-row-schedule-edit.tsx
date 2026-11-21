@@ -1,16 +1,3 @@
-/**
- * RoutineRowScheduleEdit — the row's schedule-summary line rendered as a subtle,
- * always-visible edit affordance (never hover-gated): the plain-language summary
- * as a ghost button with a small pencil glyph. Clicking opens a Popover holding
- * the full ScheduleBuilder (seeded with the routine's current cron) over a
- * compact Save / Cancel footer. Save commits the edited cron and closes; Cancel
- * discards the draft. With a `scheduleFloor` the builder emits "" for a pick
- * the floor's rule refuses, and Save stays disabled until the pick is allowed.
- *
- * It re-enables pointer events and sits above the row-click button, so editing
- * the schedule never opens the routine's chat. Split out of RoutineRow to keep
- * that file focused on layout and under the size cap.
- */
 import {
   Button,
   cn,
@@ -30,22 +17,13 @@ import type { ScheduleFloor } from "./schedule-floor";
 
 export interface RoutineRowScheduleEditProps {
   routineId: string;
-  /** The routine's current cron expression — seeds the builder on open. */
   cron: string;
-  /** Plain-language summary of `cron`, shown as the button's visible label. */
   summary: string;
   onScheduleChange: (routineId: string, cron: string) => void;
   labels: RoutineRowLabels;
-  /** Schedule-builder labels; English defaults keep standalone callers working. */
   scheduleLabels?: ScheduleLabels;
   locale?: string;
-  /**
-   * Trigger presentation: `row` (default) is the list row's quiet inline
-   * summary; `field` is the routine screen's obviously-editable control — a
-   * bordered field with the summary and a visible pencil (PRODUCT-1208).
-   */
   variant?: "row" | "field";
-  /** A plan's minimum interval and its rule (memoized). Absent = no limit. */
   scheduleFloor?: ScheduleFloor;
 }
 
@@ -62,13 +40,8 @@ export function RoutineRowScheduleEdit({
 }: RoutineRowScheduleEditProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(cron);
-  // The schedule the editor opened on. Save compares the draft against THIS,
-  // not the live prop: if the agent changes the schedule while the editor is
-  // open, Save without edits must not write the old value back over it.
   const [openedWith, setOpenedWith] = useState(cron);
 
-  // Reseed the draft from the live cron every time the popover opens, so a
-  // previously cancelled edit never leaks into the next one.
   const handleOpenChange = (next: boolean) => {
     if (next) {
       setDraft(cron);
@@ -77,10 +50,6 @@ export function RoutineRowScheduleEdit({
     setOpen(next);
   };
 
-  // The builder hands back "" for an invalid pick (a cleared or over-cap
-  // count, Weekly with no day, a pick under the floor), so Save stays
-  // disabled until it is valid. An untouched builder hands back nothing, so an
-  // existing schedule under the floor is judged here too.
   const valid = draft.trim() !== "" && (scheduleFloor?.allows(draft) ?? true);
   const save = () => {
     if (valid && draft !== openedWith) onScheduleChange(routineId, draft);

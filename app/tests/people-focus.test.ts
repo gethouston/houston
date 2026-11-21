@@ -1,8 +1,3 @@
-// The org chart's faces open Admin > People on THAT person: the store pins
-// the section and the person, People scrolls the row into view and keeps it
-// highlighted, and leaving People lets the focus go. The hook is mounted in
-// a real (jsdom) DOM; the row is rendered as markup.
-
 import { strict as assert } from "node:assert";
 import { beforeEach, describe, it } from "node:test";
 import "./support/dom-env.ts";

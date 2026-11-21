@@ -1,6 +1,3 @@
-// The turns module's public surface beyond `createTurnsModule`, re-exported
-// by `index.ts`.
-
 export { providerAccountBlockedRefusal } from "./account-blocked-refusal";
 export {
   type AttachmentRef,

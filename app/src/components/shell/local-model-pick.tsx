@@ -12,10 +12,6 @@ import { appDisplayName, type DetectedServer } from "../../lib/local-model";
 import { ManualLink, ReasoningToggle } from "./local-model-dialog-parts";
 import { ShareEndpointToggle } from "./local-model-share-toggle";
 
-/**
- * Pick a detected local server + one of its models, then Connect. Non-technical:
- * apps are named by brand, the model is a plain dropdown, no ports or URLs.
- */
 export function PickScreen({
   servers,
   selected,

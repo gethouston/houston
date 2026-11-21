@@ -7,9 +7,6 @@ import {
   type OnboardingSurveyPreference,
 } from "./onboarding-survey-record.ts";
 
-// This module is the survey's front door: the vocabulary (role ids, industry
-// ids, company sizes), the persisted record and what counts as answered live
-// in their own modules, consumers import everything from here.
 export {
   isOnboardingCompanySize,
   isOnboardingCompanySizeChoice,
@@ -63,8 +60,6 @@ export {
   serializeOnboardingSurveyPreference,
 } from "./onboarding-survey-record.ts";
 
-/** The answer fields (the gateway mirrors the ids, the company size and the
- *  goal; the two "other" labels live in the account preference — see onboarding-sync.ts). */
 type AnswerPatch = Partial<
   Pick<
     OnboardingSurveyPreference,
@@ -78,14 +73,10 @@ type AnswerPatch = Partial<
   >
 >;
 
-/** The fields that never leave this device — local UI state. */
 type LocalStatePatch = Partial<
   Pick<OnboardingSurveyPreference, "completionPromptDismissed">
 >;
 
-// A new ANSWER invalidates the gateway copy: the sync stamp is cleared so the
-// next flush knows this record is ahead of the server, and `updatedAt` moves
-// because the content did.
 function reviseAnswer(
   preference: OnboardingSurveyPreference,
   patch: AnswerPatch,
@@ -98,10 +89,6 @@ function reviseAnswer(
   };
 }
 
-// Local UI state is NOT content: it is never pushed, so touching the two sync
-// fields would only lie. Clearing `gatewaySyncedAt` would order a full
-// catch-up re-push on the next mount, and moving `updatedAt` would make an
-// in-flight flush discard its own success (it stamps only the record it sent).
 function reviseLocalState(
   preference: OnboardingSurveyPreference,
   patch: LocalStatePatch,
@@ -114,8 +101,6 @@ export function applyRole(
   role: OnboardingRoleChoice,
   other: string | null = null,
 ): OnboardingSurveyPreference {
-  // The free text belongs to "Something else" alone: a named pick clears it,
-  // so a back-and-forth re-pick can never strand a stale label.
   return reviseAnswer(preference, {
     role,
     roleOther: role === "something_else" ? (other?.trim() ?? null) : null,

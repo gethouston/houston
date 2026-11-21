@@ -13,15 +13,6 @@ import {
   runWithInteractionCapture,
 } from "./interaction";
 
-/**
- * The per-turn interaction holder: an AsyncLocalStorage store the ask_user /
- * request_connection tools write into while a turn's prompt runs. These pin the
- * merge semantics: ask_user REPLACES the question steps, request_connection
- * APPENDS a deduped connect step, the recorded sequence is questions-then-
- * connects, a fresh holder per turn IS the reset, and recording outside a turn
- * is a silent no-op.
- */
-
 const q = (id: string, question: string) =>
   ({ kind: "question", id, question }) as const;
 
@@ -39,7 +30,6 @@ test("request_connection appends a connect step after the questions", () => {
     recordQuestions([q("q1", "Which address?"), q("q2", "What content?")]);
     recordConnection({ toolkit: "gmail", reason: "to send it" });
   });
-  // Question steps first (in ask_user order), then the connect step.
   expect(holder.pending).toEqual({
     steps: [
       q("q1", "Which address?"),
@@ -63,7 +53,6 @@ test("connect steps dedupe by toolkit, keep call order, and take c1..cN ids", ()
   runWithInteractionCapture(holder, () => {
     recordConnection({ toolkit: "gmail" });
     recordConnection({ toolkit: "slack", reason: "to post" });
-    // A repeat of gmail keeps its id + position and updates its reason.
     recordConnection({ toolkit: "gmail", reason: "to send the email" });
   });
   expect(holder.pending).toEqual({
@@ -86,7 +75,6 @@ test("recordSignin orders the signin step between questions and connects", () =>
     recordSignin({ reason: "Sign in first." });
     recordQuestions([q("q1", "Which address?")]);
   });
-  // Regardless of call order: questions, then the signin step, then connects.
   expect(holder.pending).toEqual({
     steps: [
       q("q1", "Which address?"),
@@ -152,12 +140,9 @@ test("a fresh holder each turn is the reset — nothing leaks across turns", () 
     steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
   });
 
-  // A second turn starts with its own empty holder and never sees the first.
   const second = newInteractionHolder();
   expect(second.pending).toBeUndefined();
-  runWithInteractionCapture(second, () => {
-    // records nothing this turn
-  });
+  runWithInteractionCapture(second, () => {});
   expect(second.pending).toBeUndefined();
 });
 
@@ -178,7 +163,6 @@ test("recording outside a turn is a no-op (undefined store)", () => {
 test("pending order is questions -> signin -> connects", () => {
   const holder = newInteractionHolder();
   runWithInteractionCapture(holder, () => {
-    // Record out of order; `pending` normalizes the sequence.
     recordConnection({ toolkit: "gmail", reason: "to send it" });
     recordSignin({ reason: "Sign in first." });
     recordQuestions([q("q1", "Which address?")]);
@@ -207,8 +191,6 @@ test("recordPlanReady records the single plan-ready step (id p1, trimmed)", () =
 test("a plan-ready step OWNS the interaction exclusively (wins over queued steps)", () => {
   const holder = newInteractionHolder();
   runWithInteractionCapture(holder, () => {
-    // Even if the model somehow queued questions/signin/connects this turn, a
-    // plan_ready call collapses the interaction to the single plan card.
     recordQuestions([q("q1", "Which one?")]);
     recordSignin({ reason: "Sign in first." });
     recordConnection({ toolkit: "gmail", reason: "to send it" });
@@ -220,18 +202,13 @@ test("a plan-ready step OWNS the interaction exclusively (wins over queued steps
 });
 
 test("the protocol guard accepts a valid plan_ready step and rejects a bad summary", () => {
-  // Guard coverage lands here because @houston/protocol has no test runner of
-  // its own; the runtime suite imports the same guard the wire/persist seams use.
   expect(
     isInteractionStep({ kind: "plan_ready", id: "p1", summary: "The plan." }),
   ).toBe(true);
-  // A missing summary is invalid.
   expect(isInteractionStep({ kind: "plan_ready", id: "p1" })).toBe(false);
-  // A non-string summary is invalid.
   expect(isInteractionStep({ kind: "plan_ready", id: "p1", summary: 7 })).toBe(
     false,
   );
-  // No id is invalid (shared step rule).
   expect(isInteractionStep({ kind: "plan_ready", summary: "x" })).toBe(false);
 });
 
@@ -329,8 +306,6 @@ test("suggest-reusable is FALLBACK-ONLY: a question this same turn wins and drop
     });
     recordQuestions([q("q1", "Which week?")]);
   });
-  // The question means the mission is NOT done, so it takes priority and the
-  // suggestion is dropped from `pending` entirely — never surfaced alongside.
   expect(holder.pending).toEqual({ steps: [q("q1", "Which week?")] });
 });
 
@@ -427,12 +402,6 @@ test("the same call confirmed twice in a turn raises ONE card", () => {
   expect(holder.pending?.steps).toHaveLength(1);
 });
 
-/**
- * A2: two calls can read IDENTICALLY and still do different things (two writes
- * to the same file, differing only past the point any card could show). Cards
- * are therefore keyed by the host's request id and never by their text, or one
- * click would grant two grants.
- */
 test("two requests with the same wording still get their own card, in order", () => {
   const holder = newInteractionHolder();
   const options = [

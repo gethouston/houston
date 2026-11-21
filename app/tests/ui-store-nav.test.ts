@@ -3,10 +3,6 @@ import { afterEach, describe, it } from "node:test";
 import { navEntryOf } from "../src/lib/nav-stack.ts";
 import { useUIStore } from "../src/stores/ui.ts";
 
-// PRODUCT-1557: the ui store's nav-aware actions. Every navigation write folds
-// into the stack (push / replace / retreat), navBack walks it back the way a
-// browser back button would, and the panel level closes through its owner.
-
 afterEach(() => useUIStore.getState().reset());
 
 const views = () => {
@@ -30,8 +26,6 @@ describe("nav-aware actions", () => {
   });
 
   it("replaces on a redirect, keeping the transient view off the stack", () => {
-    // The boot rule: Inbox → first team's Mission Control is not a place the
-    // user chose, so browser back must not land on the boot Inbox.
     useUIStore
       .getState()
       .openAgentView("agent-a", "mission-control", { nav: "replace" });
@@ -71,7 +65,6 @@ describe("nav-aware actions", () => {
     s.setMissionPanelOwner("routines", true);
     assert.equal(useUIStore.getState().navIndex, 1);
     s.setMissionPanelOwner("routines", false);
-    // Still one owner left: the panel stays open, the stack stays put.
     const now = useUIStore.getState();
     assert.equal(now.navIndex, 1);
     assert.equal(now.missionPanelOpen, true);
@@ -97,7 +90,6 @@ describe("navBack / navApplyHistory", () => {
     assert.equal(now.viewMode, "agent");
     assert.equal(now.activeAgentId, "agent-a");
     assert.equal(now.navIndex, 0);
-    // The popped entry stays on the stack: forward can re-land on it.
     assert.equal(now.navStack.length, 2);
   });
 
@@ -124,7 +116,6 @@ describe("navBack / navApplyHistory", () => {
     const s = useUIStore.getState();
     s.openAgentView("agent-a", "mission-control", { nav: "replace" });
     s.setMissionPanelOwner("board", true);
-    // The board's closer deselects, which releases the claim — modeled here.
     let closed = 0;
     s.setOnPanelClose(() => {
       closed += 1;
@@ -136,8 +127,6 @@ describe("navBack / navApplyHistory", () => {
     const now = useUIStore.getState();
     assert.equal(closed, 1);
     assert.equal(now.missionPanelOpen, false);
-    // The closer's own release found the stack already at the panel-less
-    // entry, so it folded in as a no-op instead of double-popping.
     assert.equal(now.navIndex, 0);
   });
 
@@ -152,8 +141,6 @@ describe("navBack / navApplyHistory", () => {
   });
 
   it("a tab reset rebuilds the stack to the tapped root", () => {
-    // The mobile tab bar's semantics: switching tabs abandons the old tab's
-    // trail instead of stacking on top of it.
     const s = useUIStore.getState();
     s.openAgentView("agent-a", "mission-control", { nav: "replace" });
     s.openSettings("shortcuts");
@@ -179,8 +166,6 @@ describe("navBack / navApplyHistory", () => {
   });
 
   it("agents home drill-in pushes; the back bar's retreat pops it", () => {
-    // PRODUCT-1559: tapping an agent on the mobile Agents home pushes its
-    // missions screen as a real nav level, so hardware back pops the drill.
     const s = useUIStore.getState();
     s.openAgentsHome(null, { nav: "replace" });
     s.openAgentsHome("agent-1");
@@ -208,7 +193,6 @@ describe("navBack / navApplyHistory", () => {
   });
 
   it("openMissionChat pushes a chat level; closeMissionChat pops it", () => {
-    // PRODUCT-1560: the phone chat is a first-class nav level over any view.
     const s = useUIStore.getState();
     s.openAgentsHome(null, { nav: "replace" });
     s.openAgentsHome("agent-1");
@@ -217,8 +201,6 @@ describe("navBack / navApplyHistory", () => {
     assert.equal(now.navIndex, 2);
     assert.equal(now.chatAgentId, "agent-1");
     assert.equal(now.chatMissionId, "m-1");
-    // The chat pushed OVER the missions screen: the view fields underneath
-    // ride along, so back lands exactly where the user was.
     assert.equal(now.navStack[2].viewMode, "agents-home");
     assert.equal(now.navStack[2].agentsHomeAgentId, "agent-1");
 
@@ -241,7 +223,6 @@ describe("navBack / navApplyHistory", () => {
     assert.equal(now.navIndex, 1);
     assert.equal(now.navStack.length, 2);
     assert.equal(now.chatMissionId, "m-9");
-    // Back must land under the draft, never re-open the blank composer.
     assert.equal(now.navStack[0].chatAgentId, null);
   });
 
@@ -249,8 +230,6 @@ describe("navBack / navApplyHistory", () => {
     const s = useUIStore.getState();
     s.openAgentsHome(null, { nav: "replace" });
     s.openMissionChat("agent-1", "m-1");
-    // A tab reset while a chat is pushed: the chat must not survive onto the
-    // new tab's root.
     useUIStore.getState().openSettings(null, { nav: "reset" });
     const now = useUIStore.getState();
     assert.equal(now.chatAgentId, null);

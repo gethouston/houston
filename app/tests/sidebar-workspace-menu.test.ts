@@ -16,7 +16,6 @@ const SHELL = read("../src/components/shell/workspace-shell.tsx");
 const MORE_MENU = read("../src/components/shell/mobile-more-menu.tsx");
 const MORE_ROW = read("../src/components/shell/mobile-more-row.tsx");
 
-/** Where `needle` sits in `source`, asserting it is there at all. */
 function at(source: string, needle: string): number {
   const index = source.indexOf(needle);
   assert.ok(index >= 0, `renders ${needle}`);
@@ -46,7 +45,6 @@ describe("the rail, top to bottom", () => {
       "listFooter={",
       "footer={",
     ]);
-    // No heading over the team: it is the whole rail.
     assert.ok(!RAIL.includes("listHeading"));
     assert.ok(!RAIL.includes("topNav"));
   });
@@ -103,14 +101,11 @@ describe("the account menu", () => {
       'label: t("accountMenu.signOut")',
     ]);
     assert.equal(ACCOUNT_MENU.match(/<MenuItemRow/g)?.length, 3);
-    // The phone's account page lists the same three actions, in that order.
     inOrder(ACCOUNT_MENU, [
       "...(profileAvailable ? [profileAction] : [])",
       "aboutMeAction,",
       "...(profile ? [signOutAction] : [])",
     ]);
-    // Profile only where the deployment serves it; Sign out only with an
-    // identity to sign out of.
     assert.ok(
       ACCOUNT_MENU.includes(
         "{profileAvailable && <MenuItemRow {...profileAction} />}",
@@ -122,8 +117,6 @@ describe("the account menu", () => {
   });
 
   it("opens Profile and About me as screens of their own, not Settings", () => {
-    // The ONLY door onto them: Settings lists neither, so the menu lands on
-    // their own top-level views, pushed on the desktop and reset on the phone.
     assert.ok(ACCOUNT_MENU.includes("setViewMode(view, { nav: opts.nav });"));
     assert.ok(!ACCOUNT_MENU.includes("openSettings"));
   });
@@ -148,7 +141,6 @@ describe("the workspace switcher", () => {
     assert.ok(MORE_MENU.includes("useWorkspaceSwitcherFace()"));
     assert.ok(MORE_MENU.includes("<SidebarWorkspaceSwitcher"));
     assert.ok(MORE_MENU.includes("header={face.header}"));
-    // The rail names the workspace on its account row instead.
     assert.ok(!MENU.includes("SidebarWorkspaceSwitcher"));
     assert.ok(
       MORE_MENU.includes(
@@ -181,8 +173,6 @@ describe("the workspace switcher", () => {
   });
 
   it("runs every item one tick AFTER the menu closes", () => {
-    // Radix restores focus to the trigger when its content unmounts, which
-    // lands after a synchronous handler has already moved the view.
     assert.ok(ACCOUNT.includes("return () => setTimeout(run, 0);"));
     assert.ok(ACCOUNT.includes("onSelect={afterClose(props.onSelect)}"));
   });
@@ -228,9 +218,6 @@ describe("the phone's More card", () => {
   });
 
   it("draws every row as a sheet row: one left edge, one type size", () => {
-    // The switcher is a sheet row by construction, the plan row and the
-    // connect rows take the sheet surface, and the card's own rows wear the
-    // same class string.
     assert.equal(MORE_MENU.match(/surface="sheet"/g)?.length, 2);
     assert.match(MORE_MENU, /<PlanUpgradeRow[^>]*surface="sheet"/);
     assert.match(MORE_MENU, /<ConnectGroup[^>]*surface="sheet"/);

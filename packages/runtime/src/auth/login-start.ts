@@ -34,7 +34,6 @@ export async function startLogin(
     throw new Error(`${providerId} does not use OAuth sign-in`);
   const provider = providerId;
 
-  // Reuse before probing: an existing Codex login holds its own callback port.
   const key = activeKey(provider);
   const existing = active.get(key);
   if (
@@ -67,7 +66,6 @@ export async function startLogin(
     state.resolvePaste = resolve;
     state.rejectPaste = reject;
   });
-  // Device flows never consume this promise, but cancellation still rejects it.
   pastePromise.catch(() => {});
 
   const interaction = loginInteraction(
@@ -94,8 +92,6 @@ export async function startLogin(
     })
     .catch((e: unknown) => {
       clearLoginExpiry(state);
-      // Cancel removed the slot; expiry already recorded its error. An abort
-      // unwinds those paths and must not replace their outcomes with a failure.
       if (state.abort?.signal.aborted) {
         console.log(`[oauth:${provider}] login flow closed`);
         return;
@@ -103,8 +99,6 @@ export async function startLogin(
       state.status = "error";
       const raw = e instanceof Error ? e.message : String(e);
       state.error = loginFailureMessage(provider, raw);
-      // An account without Copilot is an expected refusal. Its raw 403 carries
-      // a GitHub handle, so only the fixed message may reach the crash feed.
       if (state.error === COPILOT_NO_ACCESS_ERROR) {
         console.warn(
           `[oauth:${provider}] login refused: 403 no_copilot_access — account has no Copilot subscription`,

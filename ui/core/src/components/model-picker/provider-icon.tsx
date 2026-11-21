@@ -1,11 +1,6 @@
 import type * as React from "react";
 import { cn } from "../../utils";
 
-/**
- * Provider badge. When the app supplies `render` (a branded logo) it wins;
- * otherwise a neutral rounded box with the provider's initial keeps the rail and
- * rows legible without hardcoding any brand color into the library.
- */
 export function ProviderIcon({
   providerId,
   name,

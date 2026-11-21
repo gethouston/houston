@@ -3,26 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-// HOUSTON-APP-51C: a gateway waking 502 ("engine proxy failed") rejecting from
-// a promise nobody catches — the mission-approve `tauriActivity.update` write
-// hitting a pod mid engine-roll. The engine-call layer classified it as a
-// waking state (PRODUCT-1403) and showed the deduped waking toast, but `call`
-// rethrows and card handlers don't catch, so the same failure landed in
-// `window.onunhandledrejection` — the last surface without the waking gate —
-// and was re-captured to Sentry as `unhandled_rejection: engine proxy failed
-// (engine error 502)`. Same layered-gate shape as the connectivity family
-// (PRODUCT-1383 / PRODUCT-1392, see error-report-connectivity.test.ts).
-//
-// PRODUCT-1640 flipped the Sentry half: the gate no longer DECLINES capture,
-// it routes the class to the low-noise fingerprinted capture
-// (`reportQuietError`), so the raw gateway body is findable in ONE
-// `engine_waking` issue while the red toast and per-event issues stay gone.
-//
-// Asserted against the source rather than by calling the functions: both
-// modules pull i18n / analytics / the tauri barrel, none of which load under
-// this suite's `--experimental-strip-types` runner (same constraint and same
-// pattern as error-report-connectivity.test.ts).
-
 const read = (rel: string): string =>
   readFileSync(join(import.meta.dirname, rel), "utf8");
 

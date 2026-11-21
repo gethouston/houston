@@ -4,12 +4,6 @@ import type { WorkspaceCredential } from "../ports";
 import { CLOUD_PROVIDERS, isApiKeyProvider, providerName } from "../providers";
 import { json, PROVIDER, readJson, readSettings, type TurnDeps } from "./deps";
 
-/**
- * The provider/settings/auth half of the cloudrun dispatch (see dispatch.ts):
- * providers + settings read/write against the workspace prefix in object
- * storage, auth status/login/logout against the central credential store.
- * Returns false when the route isn't one of these (the dispatcher 404s).
- */
 export async function dispatchProviderRoutes(
   deps: TurnDeps,
   ws: Workspace,
@@ -19,8 +13,6 @@ export async function dispatchProviderRoutes(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<boolean> {
-  // Which cloud providers this workspace has connected, and the active one (the
-  // saved active provider if still connected, else the first connected).
   const connectedCloud = async (): Promise<{
     creds: Map<string, WorkspaceCredential | null>;
     active: string | null;
@@ -82,8 +74,6 @@ export async function dispatchProviderRoutes(
 
   if (method === "GET" && rest === "auth/status") {
     const { creds, active } = await connectedCloud();
-    // Only the OAuth providers have an in-flight device-code login state; the
-    // api-key gateways have none (the user pastes a key via the host route).
     const login = await deps.connect.status(ws.id);
     json(res, 200, {
       providers: CLOUD_PROVIDERS.map((p) => ({
@@ -105,8 +95,6 @@ export async function dispatchProviderRoutes(
       json(res, 200, { ok: true });
       return true;
     }
-    // OAuth sign-in is Codex-only in cloud (Anthropic is ToS-off). The api-key
-    // gateways connect through POST /agents/:id/credential/api-key, not here.
     if (pid !== PROVIDER) {
       json(res, 400, {
         error: isApiKeyProvider(pid)

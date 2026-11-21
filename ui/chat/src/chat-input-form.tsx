@@ -1,11 +1,3 @@
-/**
- * The composer box itself: header slot, attach button, textarea (or the
- * dictation waveform that replaces it), and the trailing send/stop controls.
- *
- * Split out of `chat-input.tsx` so that file stays the composer's STATE — text,
- * attachments, mentions, dictation — and this one stays its layout.
- */
-
 import { useIsMobile } from "@houston-ai/core";
 import {
   type ChangeEventHandler,
@@ -41,7 +33,6 @@ export interface ChatInputFormProps {
   header?: ReactNode;
   attachMenu?: ChatInputProps["attachMenu"];
   dictation?: DictationControl;
-  /** The waveform replaces the textarea while dictation is live. */
   dictating: boolean;
   onSubmit: (message: PromptInputMessage) => void | Promise<void>;
   onOpenFilePicker: () => void;
@@ -49,18 +40,12 @@ export interface ChatInputFormProps {
   onTextChange: ChangeEventHandler<HTMLTextAreaElement>;
   onKeyDown: KeyboardEventHandler<HTMLTextAreaElement>;
   onPaste: ClipboardEventHandler<HTMLTextAreaElement>;
-  /** Caret moved (arrow keys, click): re-reads the active "@query". */
   onSelect: ReactEventHandler<HTMLTextAreaElement>;
   onStop?: () => void;
-  /** Combobox wiring for the @mention list (HOU-944). Focus never leaves the
-   *  textarea, so IT is the combobox and the list is what it controls; absent
-   *  while no list is open, which reverts the textarea to a plain one. */
   mentionCombobox?: MentionComboboxAria;
-  /** The composer's control names (send, stop, attach); English defaults. */
   labels?: ChatComposerLabels;
 }
 
-/** The ARIA a focused textarea needs to announce an open, navigable list. */
 export interface MentionComboboxAria {
   "aria-controls": string;
   "aria-activedescendant"?: string;
@@ -87,7 +72,6 @@ export function ChatInputForm({
   mentionCombobox,
   labels,
 }: ChatInputFormProps) {
-  // The dragged size lives as long as this composer; never persisted.
   const [manualHeight, setManualHeight] = useState<number | null>(null);
   const isMobile = useIsMobile();
   useEffect(() => {

@@ -2,27 +2,11 @@ import { FAKE_HOST_URL } from "@houston/fake-host";
 import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 
-/**
- * PRODUCT-1231: opening a markdown deliverable from chat.
- *
- * Agents end a turn by linking the file they just wrote. Markdown normalizes
- * every link destination through micromark's `normalizeUri`, so a name with a
- * space in it reaches the `a` handler as `Tropical%20Food%20-%20….md`. Handed
- * to the host's download route verbatim that names a file which does not
- * exist, so the preview opened straight into "Couldn't load the file"
- * and titled itself with the escaped text.
- *
- * Seeded through `/__test__/chat-history` + the files import route, so this
- * runs the REAL pipeline end to end: history → Streamdown → the `a` override
- * in `ui/chat` → `useOpenAgentHref` → the download route → the panel.
- */
-
 const MISSION_ID = "act-product-1231";
 const CONVERSATION_ID = `activity-${MISSION_ID}`;
 const FILE_NAME = "Tropical Food - Estrategia Integral 90 Dias.md";
 const LABEL = "Estrategia Integral de 90 Días";
 
-/** A deliverable with the shapes most likely to escape the modal's bounds. */
 const MARKDOWN = `# Estrategia Integral
 
 Un **plan** de 90 días con [un enlace](https://example.com/plan).
@@ -67,8 +51,6 @@ async function seedDeliverable(request: {
         { role: "user", content: "hazme la estrategia", ts: 1 },
         {
           role: "assistant",
-          // Angle-bracket destination: exactly how a link to a name with
-          // spaces is written, and exactly what micromark percent-encodes.
           content: `Documento listo: [${LABEL}](<${FILE_NAME}>)`,
           ts: 2,
         },
@@ -92,13 +74,10 @@ test("every file link renders as one file chip, whatever shape the agent wrote (
         {
           role: "assistant",
           content: [
-            // A LABELED file link and a BARE one: one action, so one look.
             "Listo: [Perfil](perfil.md)",
             "Y el [reporte](informes/Q3%20reporte.pdf).",
             "Referencia: [el informe](https://example.com/report)",
-            // Unescaped spaces: not a link per CommonMark, repaired from text.
             "Trimestre: [informe trimestral](informes/Q3 reporte.pdf)",
-            // Prose that merely LOOKS like a link must stay prose.
             "Prosa: [ver la nota](un aparte mas largo) intacta.",
           ].join("\n\n"),
           ts: 2,
@@ -112,41 +91,26 @@ test("every file link renders as one file chip, whatever shape the agent wrote (
   const perfil = page.getByRole("button", { name: "Perfil.md" });
   await expect(perfil).toBeVisible({ timeout: 15_000 });
 
-  // Every chip carries the file's full path as its title — the affordance
-  // follows the DESTINATION, not the label shape. And every chip shows an
-  // EXTENSION, so a reader can never mistake a .pdf for a .md: the agent's
-  // label gains the real one rather than hiding it.
   await expect(perfil).toHaveAttribute("title", "perfil.md");
   await expect(
     page.getByRole("button", { name: "reporte.pdf", exact: true }),
   ).toHaveAttribute("title", "informes/Q3 reporte.pdf");
 
-  // Repaired from plain text: CommonMark refuses a destination with unescaped
-  // spaces, so this used to reach the reader as literal `[…](…)` noise.
   await expect(
     page.getByRole("button", { name: "informe trimestral.pdf" }),
   ).toHaveAttribute("title", "informes/Q3 reporte.pdf");
 
-  // ...but the repair must never eat ordinary prose. No extension in the
-  // destination means it was never a file reference.
   await expect(
     page.getByText("[ver la nota](un aparte mas largo)"),
   ).toBeVisible();
 
-  // A file never wears the web link's clothes. Since HOU-1152 every URL is the
-  // same `Autolink` anchor on the reserved link tint, so the file chip must be
-  // neither an anchor nor blue — that contrast is what tells the reader whether
-  // a click leaves Houston.
   const fileChip = page.getByRole("button", { name: "Perfil.md" });
   await expect(fileChip).toHaveJSProperty("tagName", "BUTTON");
   const chipBackground = await fileChip.evaluate(
     (el) => getComputedStyle(el).backgroundColor,
   );
-  // bg-link/10 is the link tint's signature (Tailwind emits it via oklab, so
-  // assert on the alpha rather than a colour-space-dependent literal).
   expect(chipBackground).not.toMatch(/\/ 0\.1\)$/);
 
-  // The web link beside it IS the blue anchor chip, unchanged.
   const webLink = page.locator('a[href="https://example.com/report"]');
   await expect(webLink).toBeVisible();
   const linkBackground = await webLink.evaluate(
@@ -170,15 +134,11 @@ test("a markdown file whose name has spaces previews as rendered prose (PRODUCT-
   const dialog = page.getByRole("region", { name: `Preview of ${FILE_NAME}` });
   await expect(dialog).toBeVisible();
 
-  // The title is the DECODED name — the regression showed "%20" here.
   await expect(dialog.getByRole("heading", { name: FILE_NAME })).toBeVisible();
-  // And the bytes actually loaded: no error card, real rendered markdown.
   await expect(dialog.getByText("Couldn’t load the file")).toHaveCount(0);
   await expect(
     dialog.getByRole("heading", { name: "Estrategia Integral", exact: true }),
   ).toBeVisible();
-  // Rendered, not raw source: the heading is a real <h1> and the table is a
-  // real <table>, so no "# Estrategia Integral" literal survives.
   await expect(dialog.locator("table")).toBeVisible();
   await expect(dialog.getByText("# Estrategia Integral")).toHaveCount(0);
 });
@@ -196,15 +156,12 @@ test("previewed markdown never overflows the panel (PRODUCT-1231)", async ({
   await expect(dialog).toBeVisible();
   await expect(dialog.locator("table")).toBeVisible();
 
-  // Nothing inside the panel may paint past its own box: an unbreakable word
-  // or a nowrap title must not blow the column out onto the chat.
   const overflow = await dialog.evaluate((root) => {
     const box = root.getBoundingClientRect();
     const escapees: string[] = [];
     for (const el of root.querySelectorAll<HTMLElement>("*")) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 && r.height === 0) continue;
-      // 1px of tolerance for subpixel rounding of borders.
       if (r.right > box.right + 1 || r.left < box.left - 1) {
         escapees.push(`${el.tagName}:${el.className}`);
       }
@@ -237,13 +194,11 @@ test("the preview takes the whole row and gives the chat back (PRODUCT-1231)", a
   const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
   await expect(composer).toBeVisible();
 
-  // A long document wants the room: the chat steps out, then comes back.
   await panel.getByRole("button", { name: "Expand" }).click();
   await expect(composer).toBeHidden();
   await expect
     .poll(async () => (await panel.boundingBox())?.width ?? 0)
     .toBeGreaterThan(beside);
-  // Expanding must not clip what it was expanded to show: the body scrolls.
   const scrollable = await panel
     .locator("div.overflow-y-auto")
     .first()
@@ -253,7 +208,6 @@ test("the preview takes the whole row and gives the chat back (PRODUCT-1231)", a
   await panel.getByRole("button", { name: "Show the chat beside it" }).click();
   await expect(composer).toBeVisible();
 
-  // Esc closes the panel; the chat stays.
   await page.keyboard.press("Escape");
   await expect(panel).toBeHidden();
   await expect(composer).toBeVisible();

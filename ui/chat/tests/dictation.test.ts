@@ -93,8 +93,6 @@ describe("isDictationCapturing (Escape cancels)", () => {
   });
 });
 
-// Mirrors chat-input's document key listener while capturing: Escape discards,
-// Enter (no shift) accepts. During transcribing the listener is inactive.
 function dispatchCaptureKey(
   c: DictationControl,
   key: string,

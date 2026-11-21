@@ -7,7 +7,6 @@ import {
 } from "@houston/wire-types";
 import type { AccountLinkCodeError } from "./types";
 
-/** Every way an email-code request fails, refusals first. */
 export type EmailOtpFailure =
   | EmailOtpRefusal
   | "network"
@@ -25,23 +24,16 @@ export class EmailOtpError extends Error {
   }
 }
 
-/** How a failed email-code call reads at the code step: an answer the client
- *  cannot parse is as unexpected as any other failure. */
 export function codeErrorOf(error: unknown): AccountLinkCodeError {
   if (!(error instanceof EmailOtpError)) return "unknown";
   return error.code === "malformed_response" ? "unknown" : error.code;
 }
 
-/** The gateway the email-code pair is sent to, and a fetch with no bearer. */
 export interface EmailOtpTransport {
-  /** Resolved per request: a surface may learn its gateway only once it boots. */
   baseUrl: () => string;
   fetch: typeof fetch;
 }
 
-/** POST `body` and answer with the status and the body text. A connection that
- *  fails before the body is read through is `network`, even after the status
- *  arrived. */
 async function post(
   transport: EmailOtpTransport,
   path: string,
@@ -67,7 +59,6 @@ async function post(
   );
 }
 
-/** Ask the gateway to mail a 6-digit code to `email`. */
 export async function startEmailOtp(
   transport: EmailOtpTransport,
   email: string,
@@ -75,7 +66,6 @@ export async function startEmailOtp(
   await post(transport, "/v1/auth/email-otp/start", { email });
 }
 
-/** Trade the code for the gateway's Identity Platform custom token. */
 export async function verifyEmailOtp(
   transport: EmailOtpTransport,
   email: string,

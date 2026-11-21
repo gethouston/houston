@@ -1,13 +1,3 @@
-// Human-readable event dates for certificates, in the attendee's language.
-//
-//   en -> "August 1, 2026"
-//   es -> "1 de agosto de 2026"   (lowercase month, the "de" form)
-//
-// Locales are pinned explicitly (en-US / es-MX) so the output never depends on
-// the build machine's locale, and formatting runs in UTC over a manually parsed
-// Y/M/D triple: `new Date("2026-08-01")` is parsed as UTC midnight and would
-// render as July 31 for anyone building west of Greenwich.
-
 const DATE_PARTS = { year: "numeric", month: "long", day: "numeric" };
 
 const FORMATTERS = {

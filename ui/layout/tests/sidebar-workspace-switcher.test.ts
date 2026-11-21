@@ -1,7 +1,3 @@
-// Real-DOM mounts (jsdom globals BEFORE the dynamic react-dom import, as in
-// sidebar-rail-controls.test.ts), so the menu can be opened and its header
-// read.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";
@@ -18,8 +14,6 @@ Object.defineProperty(g, "navigator", {
   configurable: true,
   value: dom.window.navigator,
 });
-// Radix's menu measures, observes and focuses: every DOM global it reaches for
-// comes from the same jsdom window.
 for (const key of [
   "Element",
   "HTMLElement",
@@ -88,7 +82,6 @@ function switcher(props: { header?: ReactNode }) {
   );
 }
 
-/** Radix opens a dropdown on pointerdown (button 0), not on click. */
 function open(trigger: Element) {
   act(() => {
     trigger.dispatchEvent(

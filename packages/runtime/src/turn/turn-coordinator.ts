@@ -14,26 +14,15 @@ import {
 import type { TurnFilesystem } from "./turn-filesystem";
 import type { TurnRequest } from "./types";
 
-/**
- * Everything a pooled Houston turn has that a standing assistant pod's host
- * gives its runtime: the live-turn record the host's plan and grant gates
- * read, the approval records (answered by this turn's message before the
- * model runs), the operation and mission routes, and the host's own
- * re-rendering of approval cards on the frames leaving the turn.
- */
 export interface TurnCoordinatorSession {
-  /** Serves an assistant or mission route; null for any other path. */
   route(path: string, init?: RequestInit): Promise<Response> | null;
-  /** The frame as the host would show it: cards from their records. */
   present(frame: WireFrame): WireFrame;
-  /** Why the person's message may not start this turn, or null. */
   admission(): Promise<string | null>;
   dispose(): Promise<void>;
 }
 
 export interface TurnCoordinatorInput {
   turn: TurnRequest;
-  /** The person this Houston belongs to (the gateway bound the token to them). */
   ownerId: string;
   token: string;
   gatewayUrl: string;
@@ -91,8 +80,6 @@ export function startTurnCoordinator(
     return server;
   };
   const forward = async (path: string, init?: RequestInit) => {
-    // A message the host would have refused starts nothing: no operation and
-    // no mission, whatever route the call names.
     if ((await admitted).kind !== "admitted" || !opened) return unavailable();
     const records = opened;
     const { origin, token } = await listen();
@@ -107,19 +94,13 @@ export function startTurnCoordinator(
     if (!path.startsWith("/sandbox/assistant/")) return res;
     const body = await res.arrayBuffer();
     try {
-      // A card raised or answered is durable before the tool hears of it. A
-      // spent receipt already was, before its operation left (the host's
-      // `persistApprovals` seam).
       await records.save();
     } catch (error) {
       const detail =
         error instanceof Error ? `${error.name}: ${error.message}` : "error";
       console.error(`[turn-coordinator] approvals not saved (${detail})`);
-      // A card nobody can answer must not be shown; a call that already ran
-      // still reports what it did.
       if (path.endsWith("/pending")) return unavailable();
     }
-    // 204 and its kin carry no body, and a Response refuses one.
     return new Response(NULL_BODY.has(res.status) ? null : body, {
       status: res.status,
       headers: res.headers,
@@ -132,9 +113,7 @@ export function startTurnCoordinator(
         : null,
     present: (frame) =>
       opened && (frame.type === "done" || frame.type === "sync")
-        ? // SAFETY: substitution only rewrites question steps inside the
-          // frame; every other field and the frame's own shape pass through.
-          (substituteApprovals(
+        ? (substituteApprovals(
             frame,
             opened.approvals,
             agentId,

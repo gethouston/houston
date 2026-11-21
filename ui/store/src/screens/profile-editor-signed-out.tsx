@@ -3,7 +3,6 @@
 import { Button } from "@houston-ai/core";
 import { LogIn } from "lucide-react";
 
-/** The signed-out gate for the editor, shared so its copy cannot drift. */
 export function ProfileEditorSignedOut({
   title = "Your creator profile",
   body = "Sign in to claim your handle and set up your public profile.",

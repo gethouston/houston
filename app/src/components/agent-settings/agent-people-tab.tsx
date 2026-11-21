@@ -22,28 +22,6 @@ import {
 } from "./agent-people-model.ts";
 import { AgentPersonRow } from "./agent-person-row.tsx";
 
-/**
- * The per-person roster of the People section: WHO can use THIS agent. Every
- * org member is a row with a None / Can use / Manager control for this one
- * agent. Reads and writes reuse the Share dialog's `agent-access-model`
- * (`buildAgentPeople` wraps `buildSharePeople`; `writeAgentPerson` wraps
- * `applyShareAction`) over the optimistic set-replace `useShareAgent`, so an
- * everyone-agent materializes into an explicit roster on first edit exactly as
- * the dialog does, failures already surface as a toast, and a self-lockout is
- * confirm-gated identically.
- *
- * The `share` mutation is OWNED BY THE SECTION and passed in, so the team-wide
- * access choice above and these rows are one write channel: an in-flight
- * assignment write disables both, and two overlapping set-replaces can never
- * race each other into a lost update.
- *
- * `readOnly` renders the roster with static level labels and NO controls: the
- * face of "Everyone on your team" mode, where per-person levels are not the
- * agent's state to edit. The gateway only serves the roster to owner/admin, so
- * a manager who is a plain org member gets an empty `members`; there the roster
- * degrades to an honest viewer line (`viewerOnly`) rather than a misleading
- * empty state. The gateway is the real enforcer.
- */
 export function AgentPeopleTab({
   agent,
   members,
@@ -53,11 +31,8 @@ export function AgentPeopleTab({
 }: {
   agent: Agent;
   members: OrgMember[];
-  /** The section's single assignment mutation (see {@link ShareAgentMutation}). */
   share: ShareAgentMutation;
-  /** View-only ("Everyone" mode): static rows, no controls, viewer line. */
   readOnly?: boolean;
-  /** Muted line above the roster explaining why it is static, when it is. */
   note?: string;
 }) {
   const { t } = useTranslation("teams");
@@ -118,8 +93,6 @@ export function AgentPeopleTab({
     );
   }
 
-  // Width belongs to the mounting surface; the roster fills the page column so
-  // its rows align with the section above (never a second, narrower column).
   return (
     <div className="w-full">
       {note && <p className="mb-4 text-sm text-ink-muted">{note}</p>}

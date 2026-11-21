@@ -1,13 +1,3 @@
-/**
- * Model-download consent state for dictation: whether the pinned whisper
- * model needs downloading, its download progress, and the confirm/dismiss
- * actions `DictationSetupDialog` drives. Split out of `use-dictation.ts` so
- * that hook stays focused on the capture/transcribe state machine.
- *
- * Deliberately outside `dictation-reducer.ts`'s phase machine: per contract
- * `DictationControl.state` stays "idle" while this dialog is open — nothing
- * is being captured yet.
- */
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { showErrorToast, showExpectedStateToast } from "../error-toast";
@@ -18,8 +8,6 @@ import {
   dictationSizeMb as toMb,
 } from "./types";
 
-/** Matches `MODEL_SIZE_BYTES` in `app/src-tauri/src/dictation/model.rs`;
- *  used only as a size-hint fallback if a status probe fails. */
 const DEFAULT_MODEL_SIZE_MB = 181;
 
 export interface DictationModelSetup {
@@ -33,14 +21,8 @@ export interface DictationModelSetup {
 
 export interface UseDictationModelSetupResult {
   modelSetup: DictationModelSetup;
-  /** Probe status: ready -> call `onReady()`; not ready -> open the dialog
-   *  with a fresh size hint. Surfaces a probe failure itself (toast). */
   ensureReady: () => Promise<void>;
-  /** Re-probe + reopen after a downstream "model-not-ready" failure (the
-   *  model vanished after an earlier ready check). Best-effort size fetch —
-   *  the dialog opens either way. */
   reopen: () => Promise<void>;
-  /** Force-close, e.g. on disable/unmount. */
   reset: () => void;
 }
 
@@ -56,17 +38,13 @@ export function useDictationModelSetup(
   const reopen = useCallback(async () => {
     try {
       setSizeMb(toMb((await osDictationModelStatus()).sizeBytes));
-    } catch {
-      /* keep the last-known size hint */
-    }
+    } catch {}
     setOpen(true);
   }, []);
 
   const ensureReady = useCallback(async () => {
     try {
       const status = await osDictationModelStatus();
-      // Expected machine limit (pre-AVX2 CPU can't run the sidecar): explain
-      // BEFORE offering the 181 MB download that could never be used.
       if (!status.cpuSupported) {
         showExpectedStateToast(
           t("composer.dictation.unsupportedTitle"),

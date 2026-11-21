@@ -21,12 +21,6 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-/**
- * POST /op — a write for a sleeping agent, executed here instead of on its
- * pod: claim → hydrate → the real handler → scoped sync-back → doc republish.
- * Answers the handler's own status and body inside `{ok, status, body}` so
- * the gateway relays exactly what the pod would have said.
- */
 export async function executeOp(
   deps: TurnServerDeps,
   _req: IncomingMessage,
@@ -58,8 +52,6 @@ export async function executeOp(
       poolStoreUrl: deps.poolStoreUrl,
       fetchImpl: deps.fetchImpl,
     });
-    // A seed and a migrate never take the claimed hydrate below: it refuses
-    // the empty prefix a new agent has and the flat layout a migrate cures.
     const own = executeOwnTreeOp({
       deps,
       op,
@@ -103,9 +95,6 @@ export async function executeOp(
       deps.fetchImpl,
     );
     if (result.agentMissing || result.decline) {
-      // Not this worker's agent (legacy layout / stale envelope), or a case
-      // the worker cannot serve: decline so the gateway takes its fallback,
-      // never relay a spurious answer as the pod's.
       return json(res, 200, { ok: true, decline: true });
     }
     await heartbeat.checkpoint();

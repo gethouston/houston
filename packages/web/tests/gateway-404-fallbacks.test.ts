@@ -4,24 +4,6 @@ import {
 } from "@houston/engine-adapter/client";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * HOU-688: two desktop calls 404'd against the hosted gateway and red-toasted
- * "not found (engine error 404)".
- *
- * - `version()` rode the runtime-protocol client, whose path is `/version` —
- *   a route only the pi runtime serves. The host's and the gateway's meta
- *   surface is `/v1/version`, so the probe 404'd against EVERY host and the
- *   migration-reconnect signal was permanently "unknown".
- * - `/v1/agent-configs` has no gateway disposition (one pod per agent — no
- *   account-level config library), so the create-agent picker's library read
- *   404'd and toasted. Nothing installed is the honest answer there, exactly
- *   like standalone web.
- *
- * Later reads joined the same posture: `/v1/org/people` (the @mention roster)
- * and `/v1/me/profile` (the caller's own editable name + photo) both degrade
- * on a gateway that predates them rather than toast.
- */
-
 const originalFetch = globalThis.fetch;
 
 afterEach(() => {
@@ -36,7 +18,6 @@ function json(status: number, body: unknown = {}): Response {
   });
 }
 
-/** Stub fetch with a queue of responses; records every requested url. */
 function stubFetch(...responses: Response[]) {
   const calls: string[] = [];
   globalThis.fetch = vi.fn(async (input: unknown) => {
@@ -69,9 +50,6 @@ test("version() surfaces a real failure with the host's reason", async () => {
   await expect(client.version()).rejects.toThrow("boom (engine error 500)");
 });
 
-// The library read is the SDK's `GET /v1/agent-configs`; the degrade is the
-// adapter's, so both cases run through the client (a deployment that declares
-// no `agentConfigLibrary` flag reaches the route — see the probe tests below).
 test("a 404 on /v1/agent-configs reads as an empty library — no toast (HOU-688)", async () => {
   stubFetch(json(200, { profile: "cloud" }), json(404, { error: "not found" }));
   const client = new HoustonClient({ ...CFG, controlPlane: true });
@@ -94,14 +72,6 @@ test("every other agent-configs failure still propagates — never swallowed", a
     "library exploded (engine error 500)",
   );
 });
-
-/**
- * HOU-944: the @mention roster read has the same degrade posture as
- * `getOrgProfiles` — a gateway that predates `/v1/org/people` (and a
- * single-player deployment, which has no control plane at all) simply has
- * nobody to mention, so `@` types plainly and no popover ever opens. A real
- * failure still propagates; the roster is not important enough to lie about.
- */
 
 test("getOrgPeople reads the space roster from /v1/org/people", async () => {
   const calls = stubFetch(
@@ -129,7 +99,6 @@ test("a 404 on /v1/org/people reads as an empty roster — no toast", async () =
 });
 
 test("getOrgPeople is empty off-cloud, and propagates every other failure", async () => {
-  // No control plane: single-player, nobody to mention.
   const solo = new HoustonClient({ ...CFG });
   await expect(solo.getOrgPeople()).resolves.toEqual([]);
 
@@ -139,13 +108,6 @@ test("getOrgPeople is empty off-cloud, and propagates every other failure", asyn
     "roster exploded (engine error 500)",
   );
 });
-
-/**
- * The editable-profile read has the same degrade posture: a gateway predating
- * `/v1/me/profile` simply has no profile to edit, so the Settings profile
- * section hides instead of red-toasting. A real failure still propagates — the
- * section is not important enough to lie about.
- */
 
 test("a 404 on /v1/me/profile hides the profile section — no toast", async () => {
   const calls = stubFetch(json(404, { error: "not found" }));
@@ -165,9 +127,6 @@ test("every other /v1/me/profile failure still propagates — never swallowed", 
     "profile exploded (engine error 500)",
   );
 });
-
-// PRODUCT-1474: the deployment SAYS which of these routes it serves, so the
-// client stops discovering the gap by 404. Absent flag = legacy probe.
 
 test("agentConfigLibrary:false skips /v1/agent-configs entirely", async () => {
   const calls = stubFetch(

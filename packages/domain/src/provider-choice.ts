@@ -1,36 +1,10 @@
 import { canonicalModelId, canonicalProviderId } from "./provider-model";
 import { namedModelList, resolveSpokenModel } from "./provider-model-display";
 
-/**
- * The ONE ladder that turns whatever an agent wrote for a provider/model into a
- * real id — or into a refusal that names every value it could have used.
- *
- * The incident: an assistant asked to start a mission on "codex", then on
- * "openai", and both times got `unknown provider` and nothing else. The real id
- * is `openai-codex`; nothing in the tool, the schema or the error ever said so,
- * so the model guessed and gave up. Identifiers are never guessable: they are
- * either listed in the tool's own schema/description or spelled out by the
- * rejection.
- *
- * Pure and table-driven so the tool (which knows the runtime's live provider
- * status) and the host route (which validates the same call again at execution
- * time) share ONE resolution and ONE vocabulary — a value the tool accepts can
- * never be a value the host spells differently.
- */
-
-/** One provider an agent may pin, as the caller's registry sees it right now. */
 export interface ProviderOption {
-  /** The wire id (`openai-codex`) — what a pin must ultimately carry. */
   id: string;
-  /** The human name the app shows (`ChatGPT / Codex (Plus / Pro)`). */
   name: string;
-  /** Whether it can serve a turn here, from the caller's own status signal. */
   connected: boolean;
-  /**
-   * The model ids the registry enumerates for this provider. Absent/empty means
-   * an OPEN catalog (a gateway that forwards any id, a BYO endpoint): a model is
-   * then accepted as written and the provider's own error is what surfaces.
-   */
   models?: readonly string[];
 }
 
@@ -42,13 +16,8 @@ export type ChoiceResolution =
       message: string;
     };
 
-/** At most this many models in one rejection — a full gateway catalog is
- *  hundreds of ids and would drown the sentence the model has to act on. The
- *  rejection lists the NAMED rows first, so every id a user can ask for by name
- *  survives the cap. */
 const MAX_LISTED_MODELS = 25;
 
-/** `id (Display Name)` for every CONNECTED option, in registry order. */
 export function connectedProviderList(
   options: readonly ProviderOption[],
 ): string {
@@ -58,12 +27,6 @@ export function connectedProviderList(
     .join(", ");
 }
 
-/**
- * Resolve a written provider to a connected id. Accepts the id, the display
- * name, and the legacy/friendly aliases (`codex`, `chatgpt`, `claude`,
- * `gemini`…) — all case-insensitive — through the same alias ladder the routine
- * pins and the config migration use. Anything else is refused WITH the list.
- */
 export function resolveProviderChoice(
   raw: string,
   options: readonly ProviderOption[],
@@ -96,16 +59,6 @@ export function resolveProviderChoice(
   return { ok: true, id: match.id };
 }
 
-/**
- * Resolve a written model for an already-resolved provider: the id itself, then
- * the NAME the user says for it ("Luna", "Opus 4.6", "sonnet" → the newest
- * Sonnet the provider offers), then the legacy tier aliases. An open catalog
- * still resolves a name it has a table for, and takes anything else verbatim.
- *
- * The spoken step is the one that closes the gap: pins carry ids, users say
- * names, and a name that resolved to nothing used to leave the mission running
- * on the provider's DEFAULT instead of what was asked for.
- */
 export function resolveModelChoice(
   raw: string,
   provider: ProviderOption,
@@ -127,7 +80,6 @@ export function resolveModelChoice(
   };
 }
 
-/** The option a written provider names, by id, display name, or alias. */
 function matchProvider(
   raw: string,
   options: readonly ProviderOption[],

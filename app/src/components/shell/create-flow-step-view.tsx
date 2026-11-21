@@ -12,14 +12,6 @@ import { RoleStep } from "./role-step";
 import type { CreateAgentFlow } from "./use-create-agent-flow";
 import type { CreateTeamForm } from "./use-create-team-form";
 
-/**
- * The screen the create sheet is standing on.
- *
- * Only the screen: the surface, the way back, the progress and the one action
- * are the sheet's own (`add-to-workspace-sheet.tsx`). Split out so the sheet
- * file stays what it is about — which frame each step wears and how the flow
- * walks between them — rather than a switch with a component in every arm.
- */
 export function CreateFlowStepView({
   step,
   offersChoice,
@@ -29,7 +21,6 @@ export function CreateFlowStepView({
   onGoToStep,
 }: {
   step: CreateFlowStep;
-  /** Whether "Hire or copy?" exists on this run. */
   offersChoice: boolean;
   agent: CreateAgentFlow;
   copy: CopyAgentWizardState;

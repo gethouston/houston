@@ -8,7 +8,6 @@ import {
   formatPlanAmount,
 } from "./format";
 
-/** Intl separates a currency code from the number with a no-break space. */
 const plain = (value: string) => value.replace(/\u00a0/g, " ");
 
 const launch: PlanSummary = {

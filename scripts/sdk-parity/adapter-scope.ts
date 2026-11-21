@@ -2,16 +2,6 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import ts from "typescript";
 
-/**
- * Name resolution for the adapter graph: what a file's identifiers refer to.
- *
- * Kept apart from the graph itself because it is the half that can be wrong
- * quietly — a specifier resolved to the wrong file would attribute one
- * helper's behaviour to another's caller. Everything here is string + AST
- * work, with no type checker: the adapter's own imports are relative paths.
- */
-
-/** Where a relative specifier lands, when it lands on a real `.ts` file. */
 function resolveImport(from: string, spec: string): string | null {
   if (!spec.startsWith(".")) return null;
   const base = resolve(dirname(from), spec);
@@ -20,7 +10,6 @@ function resolveImport(from: string, spec: string): string | null {
   return null;
 }
 
-/** `local name -> declaring file`, for VALUE imports from adapter modules. */
 export function importedFrom(source: ts.SourceFile): Map<string, string> {
   const out = new Map<string, string>();
   for (const statement of source.statements) {
@@ -44,7 +33,6 @@ export function importedFrom(source: ts.SourceFile): Map<string, string> {
   return out;
 }
 
-/** Names a file declares at any depth, so a local call resolves to its file. */
 export function localNames(source: ts.SourceFile): Set<string> {
   const names = new Set<string>();
   const visit = (node: ts.Node): void => {

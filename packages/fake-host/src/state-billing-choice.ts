@@ -1,13 +1,3 @@
-/**
- * The free-org pick a spec arms (`/__test__/billing-choice`): the
- * `BillingChoice` the gateway would compute for the signed-in person.
- *
- * Disarmed (the seed) is a gateway that predates the change: every route
- * answers 404, so every spec that never arms it runs exactly as before. The
- * routes mutate the armed choice the way the gateway's store would, and every
- * call lands in a ledger a spec reads back.
- */
-
 import type { BillingChoice, BillingChoicePick } from "@houston/wire-types";
 
 export type BillingChoiceCallRoute = "get" | "set" | "dismiss";
@@ -28,30 +18,11 @@ export interface BillingQueuedRefusal {
   after?: BillingChoice | null;
 }
 
-/** What a spec arms beyond the choice itself. */
 export interface BillingChoiceArming {
-  /**
-   * Every pick answers this refusal, which the client never provokes on its
-   * own (it only offers orgs the person owns).
-   */
   refuse?: BillingPickRefusal | null;
-  /**
-   * The choice the gateway computes once a refusal lands: the person's orgs
-   * changed under the picker (a transfer, a deletion).
-   */
   afterRefusal?: BillingChoice | null;
-  /**
-   * Refusals the next picks answer, one each, in order, before `refuse`;
-   * each may swap the choice (`after`), as a refetch sees it. Once they run
-   * out a pick is checked as the gateway would.
-   */
   refusals?: BillingQueuedRefusal[];
-  /** Every dismissal answers 500 and stores nothing. */
   failDismiss?: boolean;
-  /**
-   * The gateway's clock, which decides whether an applied pick may still
-   * change. Unset: the real time.
-   */
   now?: string | null;
 }
 
@@ -65,7 +36,6 @@ export function resetBillingChoice(): void {
   calls = [];
 }
 
-/** Arm (or, with `null`, disarm) the choice; clears the ledger. */
 export function armBillingChoice(
   choice: BillingChoice | null,
   options: BillingChoiceArming = {},
@@ -75,7 +45,6 @@ export function armBillingChoice(
   calls = [];
 }
 
-/** Whether a dismissal should fail, as armed. */
 export function dismissFails(): boolean {
   return arming.failDismiss === true;
 }
@@ -95,7 +64,6 @@ export function billingChoiceCalls(): BillingChoiceCall[] {
   return calls;
 }
 
-/** The gateway's refusal for a pick, in the gateway's order, or null when it stores. */
 export function refuseBillingPick(
   choice: BillingChoice,
   pick: BillingChoicePick,
@@ -128,13 +96,6 @@ function gatewayNow(): number {
   return arming.now ? Date.parse(arming.now) : Date.now();
 }
 
-/**
- * Store the pick. Before the cutover it is only recorded. After it, the
- * gateway applies it at once, as C4 answers inside the change window: the
- * free and paid orgs unlock, every other owned org locks when the window
- * ends, and the pick is no longer the cutover's guess. Repeating the applied
- * pick changes nothing.
- */
 export function storeBillingPick(
   choice: BillingChoice,
   pick: BillingChoicePick,

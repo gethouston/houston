@@ -1,12 +1,3 @@
-/**
- * One open live view of a browser hand-off: the frame stream down (reconnected
- * on drops, given up as `lost` after its retries) and the input batches up.
- *
- * It receives the module's `watch` and `input` operations as functions rather
- * than a client: a handed-in function is not a route hop, so each live-view
- * route keeps exactly one SDK method (`browser.watch`, `browser.input`).
- */
-
 import type {
   BrowserLiveEvent,
   BrowserLiveInputAnswer,
@@ -58,11 +49,8 @@ export function openBrowserLiveConnection(
   let stopStream: (() => void) | null = null;
   let reconnectTimer: number | null = null;
   let healthyTimer: number | null = null;
-  /** The hand-off this view is on, from the first status; reconnects name it. */
   let handoff: string | undefined;
-  // A drifting stream says so on every reconnect: report it once.
   const malformed = reportOnce(handlers.onUnexpected);
-  // A refused stream, once per episode: a healthy stream or retry() re-arms.
   const refused = reportOnce(handlers.onUnexpected);
 
   const setState = (next: BrowserLiveConnectionState) => {
@@ -113,7 +101,6 @@ export function openBrowserLiveConnection(
     } else if (event.type === "page") {
       handlers.onPage({ url: event.url, title: event.title });
     } else {
-      // Another hand-off than the one this view is on: its own is over.
       if (handoff !== undefined && event.handoffId !== handoff)
         return end("none");
       handoff = event.handoffId;
@@ -128,7 +115,6 @@ export function openBrowserLiveConnection(
     if (gone()) return;
     dropStream();
     attempt += 1;
-    // Queued input stays through `lost`: `retry()` picks the same hand-off up.
     if (attempt > BROWSER_LIVE_MAX_ATTEMPTS) return setState({ kind: "lost" });
     setState({ kind: "reconnecting", attempt });
     reconnectTimer = clock.setTimeout(() => {
@@ -158,7 +144,6 @@ export function openBrowserLiveConnection(
           if (failure.kind === "ended") return end(failure.reason);
           if (failure.kind === "unexpected") refused.report(streamEnd.error);
         }
-        // A stream that closed without a terminal status was cut, not ended.
         scheduleReconnect();
       },
     });
@@ -173,7 +158,6 @@ export function openBrowserLiveConnection(
     setLayout(next) {
       if (next === layout) return;
       layout = next;
-      // Lost or waiting out a pause: the next connect already takes it.
       if (gone() || stopStream === null) return;
       dropStream();
       setState({ kind: "connecting" });

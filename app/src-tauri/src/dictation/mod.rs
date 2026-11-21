@@ -20,10 +20,5 @@ mod verify;
 mod wav;
 mod whisper;
 
-// Glob re-exports so `tauri::generate_handler!` in `lib.rs` can reach both each
-// command AND the hidden `__cmd__*` items the `#[tauri::command]` macro emits
-// alongside it (a named `pub use` would leave those behind). The wire types in
-// `types` are used by these commands' signatures and serialized to the frontend
-// as JSON, so they need no path-level re-export here.
 pub use model::*;
 pub use whisper::*;

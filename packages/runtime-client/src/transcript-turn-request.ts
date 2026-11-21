@@ -14,7 +14,6 @@ export type TranscriptTurnWrite =
       message: ChatMessage;
     };
 
-/** Build the strict user/assistant PUT shared by every transcript sender. */
 export function transcriptTurnRequest(
   conversationUrl: string,
   write: TranscriptTurnWrite,
@@ -29,7 +28,6 @@ export function transcriptTurnRequest(
         ts: write.message.ts,
         title: write.title,
         expectedCount: write.expectedCount,
-        // The strict route derives replay state itself and rejects extra keys.
       },
     };
   }

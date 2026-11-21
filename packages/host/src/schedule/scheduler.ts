@@ -13,60 +13,24 @@ export type { FireLock } from "./fire-lock";
 
 export type RoutineSchedulerMode = "local" | "external";
 
-/**
- * How long a local cron scan waits past a due instant before firing it, where
- * an external fire delivery also runs (managed cloud). The control plane's
- * delivery carries the routine creator's minted acting identity, so its turn
- * resolves the creator's own credentials; the pod-local path can only run on
- * the shared team scope (pods cannot mint identity — HOU-976 D10), where a
- * member's personally-connected provider reads as "not connected". Racing the
- * delivery at second granularity made WHICH credentials a run used depend on
- * scheduler load: at the top of the hour the delivery lags behind the herd of
- * due routines, the local scan won the per-instant dedup burn, and the run
- * failed no_provider (PRODUCT-1549). The grace keeps the local cron as a
- * genuine backstop: it fires only instants the external delivery has left
- * unclaimed for this long. Must stay well under the dedup TTL and above the
- * delivery's worst observed top-of-hour lag (~15s).
- */
 export const EXTERNAL_FIRE_GRACE_MS = 120_000;
 
 export interface SchedulerDeps {
   store: WorkspaceStore;
   vfs: Vfs;
   paths: WorkspacePaths;
-  /** Cross-replica dedup so a routine fires once per scheduled instant. */
   lock: FireLock;
   firer: RoutineFirer;
   events?: EventHub;
-  /** Scan cadence. Default 30s. */
   intervalMs?: number;
-  /** Dedup-lock TTL (s); must exceed the scan interval. Default 1h. */
   dedupTtlSec?: number;
-  /** `external` disables cron fires only. Default `local`. */
   mode?: RoutineSchedulerMode;
-  /** Backstop delay for cron fires (see EXTERNAL_FIRE_GRACE_MS). Default 0. */
   cronFireGraceMs?: number;
   now?: () => Date;
   newId?: () => string;
   replyReader?: ReconcileDeps["replyReader"];
 }
 
-/**
- * The host scheduler: every tick it scans all agents, finds routines that came
- * due since the previous tick, and fires each exactly once. Multi-replica safe
- * by construction — the due instant is the cron time (replica-independent), so
- * a per-(routine, instant) `setNx` lock lets only one replica fire. No leader
- * election; every replica scans, the lock arbitrates.
- *
- * Deployment-agnostic: cloud and local inject their own RoutineFirer + lock
- * (Redis vs in-process). lastTick resets to `now` on start, so a freshly
- * started replica never replays history.
- *
- * The sweep is fail-isolated at every level (HOU-953): a workspace or agent
- * that throws is logged and skipped, never allowed to abort the tick. `lastTick`
- * has already advanced by then, so an escaping throw would drop that window's
- * instants for every agent behind it — permanently, and silently.
- */
 export class Scheduler {
   private timer: ReturnType<typeof setInterval> | undefined;
   private lastTick: Date;
@@ -97,7 +61,6 @@ export class Scheduler {
         ),
       );
     }, this.intervalMs);
-    // The scheduler must not keep the process alive on its own.
     this.timer.unref?.();
   }
 
@@ -108,7 +71,6 @@ export class Scheduler {
     }
   }
 
-  /** One scan of every agent's routines for the window (lastTick, now]. Exposed for tests. */
   async tick(now: Date): Promise<void> {
     const since = this.lastTick;
     this.lastTick = now;
@@ -120,15 +82,6 @@ export class Scheduler {
       console.error("[scheduler] workspace listing failed:", reason(err));
       return;
     }
-    // The backstop grace shifts the WHOLE cron-eval window, not a threshold on
-    // each instant: consecutive ticks' shifted windows still tile exactly, so
-    // every instant is evaluated once, at the true cron time — the dedup key
-    // the fire burns matches the one the external delivery burned. The left
-    // edge clamps to scheduler start: without it the shift would reach up to
-    // one grace BEFORE this process existed, and a pod restarting right after
-    // a delivered fire would re-fire that instant (the fire lock is
-    // process-local) — "a freshly started replica never replays history"
-    // must survive the grace.
     const grace = this.deps.cronFireGraceMs ?? 0;
     const evalSince = grace
       ? new Date(Math.max(since.getTime() - grace, this.startedAt.getTime()))
@@ -139,20 +92,12 @@ export class Scheduler {
     }
   }
 
-  /**
-   * One workspace's scan. Its timezone read and agent listing are shared by
-   * every agent below it, so a failure here skips this workspace only — the
-   * others still fire.
-   */
   private async scanWorkspace(
     ws: Workspace,
     since: Date,
     now: Date,
   ): Promise<void> {
     try {
-      // One account-wide zone governs every routine in the workspace (HOU-470:
-      // no per-routine override). Re-read it each tick, so when the preference
-      // changes the next scan re-times every routine.
       const timezone = resolveTimezone(
         await getPreference(this.deps.vfs, ws.id, "timezone"),
       );

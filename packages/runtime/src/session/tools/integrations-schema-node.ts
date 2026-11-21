@@ -1,4 +1,3 @@
-/** Schemas are provider data; inspect only the fields needed for model hints. */
 export function schemaObject(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? Object.fromEntries(Object.entries(value))
@@ -7,7 +6,6 @@ export function schemaObject(value: unknown): Record<string, unknown> | null {
 
 const MAX_DEPTH = 8;
 
-/** Resolve against the original root; sibling references get separate paths. */
 export function schemaNode(
   value: unknown,
   root: unknown = value,

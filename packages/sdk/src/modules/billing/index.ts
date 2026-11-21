@@ -1,24 +1,3 @@
-/**
- * The billing module: an org's Stripe subscription (what it is today and the
- * two hosted pages that change it), the free-slot swap, a free org's routine
- * rules and presence, and the free-org pick. The orgs themselves, with the
- * billing state each carries, live in the spaces family.
- *
- * These are pure commands over hosted-gateway routes: the summary is read when
- * a billing screen opens and each hand-off is a button's one-shot, so there is
- * no reactive scope to publish and nothing here subscribes to an event. The
- * same handlers back both the typed facade and the `dispatch` path.
- *
- * SEAM — space-scoped, NOT per-agent. The gateway resolves the org from the
- * caller's session plus the active-space header its `fetch` stamps, so nothing
- * here names an agent and the module runs on its own {@link moduleScope}
- * rooted at the base URL, never
- * `clientFor(agentId)`. A 401 routes through the shared
- * {@link ModuleContext.authExpiry} notifier. The free-org pick (`choice.ts`)
- * is the exception: it is account-wide, so the gateway ignores the space and
- * the adapter's fetch never stamps one on it.
- */
-
 import type {
   BillingChoice,
   BillingChoicePick,
@@ -76,43 +55,24 @@ export {
 export type { BillingCheckout, BillingCommandType } from "./types";
 export { BillingCommand } from "./types";
 
-/** The typed facade for the billing family. Every call throws on a non-2xx. */
 export interface BillingModule {
-  /** The active org's C8 subscription summary. Throws a 404/403/503 like
-   *  any other status — the not-entitled reading is the surface's. */
   getBilling(): Promise<BillingSummary>;
-  /**
-   * Start a per-seat checkout for the active org, monthly unless `interval`
-   * says `year` (billing owner only). An interval refusal is an outcome.
-   */
   createCheckout(input?: {
     interval?: BillingInterval;
   }): Promise<SeatCheckoutOutcome>;
-  /** Open the Stripe customer portal for the active org (billing owner only). */
   createPortal(): Promise<BillingCheckout>;
-  /** Make the active org the free one; the caller's states are outcomes. */
   claimFreeSlot(): Promise<ClaimFreeSlotResult>;
-  /** The person's free-org pick, account-wide; null where the change is not run. */
   getChoice(): Promise<BillingChoice | null>;
-  /** Store the pick. The person's own states are outcomes, never throws. */
   setChoice(pick: BillingChoicePick): Promise<BillingChoiceSave>;
-  /** Hide the announcement on every device. */
   dismissChoiceNotice(): Promise<void>;
-  /** The active org's enabled routines. */
   listPlanRoutines(): Promise<{ routines: PlanRoutine[] }>;
-  /** Choose the one routine a free org keeps firing. */
   keepRoutine(key: PlanRoutineKey): Promise<void>;
-  /** Resume the active org's routines paused while nobody was around. */
   resumeRoutines(): Promise<void>;
-  /** Report that the active org is open in the foreground. */
   reportPresence(): Promise<void>;
-  /** Move the active org's monthly subscription to yearly; refusals are outcomes. */
   switchToYearly(): Promise<SwitchToYearlyResult>;
-  /** Hide the active org's promo-ended notice everywhere. */
   dismissPriceNotice(): Promise<void>;
 }
 
-/** A failed billing request. `status` is the upstream HTTP status. */
 export class BillingHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "BillingHttpError");

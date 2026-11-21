@@ -1,18 +1,10 @@
 import { wireTurnPin } from "@houston/engine-adapter/turn-pin";
 import { expect, test } from "vitest";
 
-/**
- * The send-time app→engine pin mapping (HOU-695): every send forwards the
- * chat's OWN provider/model so the runtime runs the turn on exactly that
- * pick instead of the agent-wide settings. The mapping must be fail-soft —
- * a stale/unknown UI id must degrade the pin, never hard-fail the turn.
- */
-
 test("maps the app dialect to engine ids (openai → openai-codex, legacy aliases)", () => {
   expect(
     wireTurnPin({ provider: "openai", model: "gpt-6-astra", effort: "high" }),
   ).toEqual({ provider: "openai-codex", model: "gpt-6-astra", effort: "high" });
-  // CLI-era bare tier aliases map at the same tier.
   expect(wireTurnPin({ provider: "claude", model: "opus" })).toEqual({
     provider: "anthropic",
     model: "claude-opus-5-5",
@@ -20,8 +12,6 @@ test("maps the app dialect to engine ids (openai → openai-codex, legacy aliase
 });
 
 test("a retired Claude id pins its own family's lineup model", () => {
-  // A chat or mission picked before the Claude lineup moved still carries the
-  // old id; the send must stay in its family (Opus never becomes Sonnet).
   expect(
     wireTurnPin({ provider: "anthropic", model: "claude-opus-4-8" }),
   ).toEqual({ provider: "anthropic", model: "claude-opus-5-5" });
@@ -51,10 +41,6 @@ test("open-catalog gateways keep the stored model verbatim", () => {
 });
 
 test("an unknown model pins verbatim — dropping it let the gateway substitute another provider (HOU-1103)", () => {
-  // Behind the hosted gateway a model-less pin reads as NO pin, and the
-  // gateway then injects the acting user's stored choice — provider included.
-  // A stale domain table must degrade to a visible runtime "model not
-  // available" on the CHOSEN provider, never a silent provider switch.
   expect(wireTurnPin({ provider: "anthropic", model: "claude-99" })).toEqual({
     provider: "anthropic",
     model: "claude-99",
@@ -62,9 +48,6 @@ test("an unknown model pins verbatim — dropping it let the gateway substitute 
 });
 
 test("the GPT-5.6 family and GPT-6 Astra ride the pin intact (HOU-1103 regression)", () => {
-  // These ids shipped in the picker while the domain catalog still ended at
-  // gpt-5.5, so every send dropped the model and the gateway swapped the turn
-  // onto the user's stored (e.g. Gemini) choice.
   for (const model of [
     "gpt-5.6-luna",
     "gpt-5.6-sol",
@@ -79,9 +62,6 @@ test("the GPT-5.6 family and GPT-6 Astra ride the pin intact (HOU-1103 regressio
 });
 
 test("a new pi-ai provider passes through — the open catalog means the adapter no longer gatekeeps provider ids", () => {
-  // Validity is enforced upstream (the frontend's effective-provider resolution
-  // against the live /v1/catalog) and by the runtime; the adapter can't know
-  // every pi-ai id, so a genuinely new provider must pin, not be dropped.
   expect(wireTurnPin({ provider: "groq", model: "llama-3.3-70b" })).toEqual({
     provider: "groq",
     model: "llama-3.3-70b",

@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
 
-/** The sign-in card's referral pitch is a purchase promotion in store apps. */
 export function ReferralPanel() {
   const { t } = useTranslation("auth");
   if (!canPurchaseInApp()) return null;

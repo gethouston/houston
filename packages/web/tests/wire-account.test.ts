@@ -9,19 +9,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The account family — the caller's own display profile and personal API keys
- * — rides `sdk.account`.
- *
- * What these tests pin is the wire: the mixin method must issue exactly the
- * request recorded here, down to the URL, the method, the
- * body bytes and the auth/active-space headers — one request, never two. The
- * degradations stay adapter-side, so they are pinned here too: the profile read
- * swallows a 404 (the Settings section hides on a gateway that predates the
- * route), and NOTHING else does — a write that reported success on a host that
- * never stored it is a silent failure.
- */
-
 const BASE = "http://host";
 
 const { calls, reset, restore, stubFetch } = createWireCapture();
@@ -36,7 +23,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** A hosted client with an active space pinned, as the app runs in cloud. */
 function client(): HoustonClient {
   const c = new HoustonClient({
     baseUrl: BASE,
@@ -47,7 +33,6 @@ function client(): HoustonClient {
   return c;
 }
 
-/** Every header `cpFetch` stamped on an account call, on the delegated one. */
 const PROFILE = {
   displayName: "Ada",
   photoUrl: "https://p/1",

@@ -11,9 +11,6 @@ const attribute = (html: string, name: string) =>
 
 describe("Progress", () => {
   it("tells assistive technology the value the bar draws", () => {
-    // Radix only announces a determinate bar when the root receives `value`;
-    // a fill drawn from the prop alone is a progressbar that reads as
-    // indeterminate and never says how far along it is.
     const html = renderToStaticMarkup(
       React.createElement(Progress, { value: 67, "aria-label": "Step 2 of 3" }),
     );

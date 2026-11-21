@@ -2,16 +2,6 @@ import type { ServerResponse } from "node:http";
 import type { CustomIntegrationManager } from "../integrations/custom/manager";
 import { defineRoute } from "./registry";
 
-/**
- * The PUBLIC OAuth callback for custom integrations (PRODUCT-1172):
- * `GET /v1/integrations/custom/oauth/callback?code&state`. The user's browser
- * lands here after the service's consent screen — there is no Houston bearer
- * token on that request, so the route mounts BEFORE `principal(...)` and the
- * single-use, expiring `state` minted by the start route is its whole
- * authentication. The response is a tiny self-contained page telling the user
- * to return to Houston; the app itself learns the outcome through the
- * `CustomIntegrationsChanged` event the completion emits.
- */
 export const CUSTOM_OAUTH_CALLBACK_PATH =
   "/v1/integrations/custom/oauth/callback";
 
@@ -69,7 +59,6 @@ export async function handleCustomOAuthCallback(
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   if (errorParam || !code || !state) {
-    // A denied consent screen or a malformed redirect: nothing was granted.
     page(
       res,
       false,

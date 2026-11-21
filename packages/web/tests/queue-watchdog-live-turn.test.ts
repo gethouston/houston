@@ -16,15 +16,6 @@ import { EngineError } from "@houston/runtime-client";
 import { conversationScope } from "@houston/sdk";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-/**
- * The cloud pool writes a turn's reply back to the store BEFORE it posts the
- * terminal frame (staging 2026-10-02: reply persisted ~55 s, `done` at
- * 21:33:56.58Z). So a held send's history probe sees a trailing reply while
- * the turn it waits on is still live. The watchdog must defer to that live
- * turn stream: healing there disposed the reply's stream before its `done`
- * and fired the follow-up into the still-held claim (`409 turn running`).
- */
-
 const AGENT = "Houston/Bo";
 const msg = (role: "user" | "assistant", content: string): ChatMessage =>
   ({ role, content }) as ChatMessage;
@@ -34,7 +25,6 @@ let key: string;
 let dispatched: SessionStartRequest[];
 const dispatch = (r: SessionStartRequest) => dispatched.push(r);
 
-/** A live turn: echo + reply text, then the stream stays open until `done()`. */
 function liveTurn() {
   let emit: (f: WireFrame) => void = () => {};
   let nonce: string | undefined;
@@ -96,7 +86,6 @@ it("never heals over a live turn stream: the follow-up waits for the terminal fr
   await vi.advanceTimersByTimeAsync(0);
   expect(running()).toBe(true);
 
-  // The reply is already persisted; the turn's `done` is not out yet.
   const probe = vi.fn(async () => [
     msg("user", "first"),
     msg("assistant", "Reply"),
@@ -141,8 +130,6 @@ it("still rescues the hold when the live turn never ends", async () => {
 });
 
 it("never flushes over a held send, even past the grace", async () => {
-  // The claim outlives the grace (a dead worker's claim waits for the 75 s
-  // reap): the held send must keep its place, and the queue waits behind it.
   const engine = {
     async streamEvents(_id: string, o: EventStreamOptions) {
       await new Promise<void>((resolve) => {
@@ -170,9 +157,6 @@ it("never flushes over a held send, even past the grace", async () => {
 });
 
 it("keeps a follow-up queued behind a handoff whose observed turn ends mid-POST", async () => {
-  // An observer watches the previous turn; the person's message hands off
-  // over it and waits in the gateway's queue, a follow-up queues behind it,
-  // the previous turn ends, and the message is refused for room, then lands.
   const emits: Array<(f: WireFrame) => void> = [];
   const nonces: Array<string | undefined> = [];
   let refuse: (e: unknown) => void = () => {};
@@ -232,7 +216,6 @@ it("keeps a follow-up queued behind a handoff whose observed turn ends mid-POST"
   emits[0]?.({ type: "done", data: null, turnId: "t-prev", seq: 4 });
   await vi.advanceTimersByTimeAsync(0);
   expect(dispatched).toHaveLength(0);
-  // The VM reads idle now, but a message typed meanwhile still queues.
   expect(running()).toBe(false);
   expect(
     maybeQueueSend(

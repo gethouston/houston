@@ -36,14 +36,6 @@ test("root employees align with folder headers", async ({ page }) => {
   expect(rootLead).toBe(folderLead);
 });
 
-/**
- * A row's label. Depth is padding INSIDE the full-width row button, so the
- * indent reads off where the label starts, never off the button's box.
- */
-/**
- * The x of a row's leading mark (avatar or group glyph): rows share one left
- * edge, while the label after it moves with the mark's width.
- */
 async function rowLead(row: Locator): Promise<number> {
   return row
     .getByRole("button")
@@ -62,14 +54,6 @@ async function addAgent(page: Page, name: string) {
   return agent.id;
 }
 
-/**
- * Press on `source`, travel to the middle of `target`, then `dx` px sideways
- * (positive = one level into a group per 20px, negative = out), and release.
- *
- * Both boxes are read only once the row is STABLE (a trial hover): rows glide
- * into their new slots for a moment after a drop, and a box read mid-glide
- * presses beside the row's real position, so the drop lands a slot away.
- */
 async function dragOnto(page: Page, source: Locator, target: Locator, dx = 0) {
   await source.hover({ trial: true });
   const start = await source.boundingBox();

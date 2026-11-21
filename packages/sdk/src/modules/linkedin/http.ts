@@ -1,9 +1,3 @@
-/**
- * The LinkedIn REST calls, over the injected `fetch`. Hosted-gateway routes:
- * the gateway holds the LinkedIn app key and the person's token, so no host
- * serves them. Literal paths keep them visible to the assistant's catalog.
- */
-
 import {
   type LinkedInConnection,
   type LinkedInConnectReturn,
@@ -63,7 +57,6 @@ export async function connectLinkedIn(
   try {
     res = await httpRequest(scope, "/v1/linkedin/connect", {
       method: "POST",
-      // Absent fields drop out: a web connect sends `{}`.
       body: JSON.stringify({
         return: returnTo?.kind,
         port: returnTo?.port,
@@ -73,7 +66,6 @@ export async function connectLinkedIn(
     });
   } catch (error) {
     if (!gatewayRefusedLoopback(returnTo, error, signal)) throw error;
-    // Exactly once: the retry names `app`, which never matches again.
     return connectLinkedIn(scope, { kind: "app" }, signal);
   }
   const { authorizeUrl } = linkedInConnectSchema.parse(await res.json());
@@ -157,14 +149,11 @@ export function postLinkedInImage(
   upload: FormData,
   signal?: AbortSignal,
 ): Promise<LinkedInPostResult> {
-  // A 401 is the gateway refusing the bearer before it posted anything.
   const once = {
     ...scope,
     ports: { ...scope.ports, fetch: fetchWithoutAuthReplay(scope.ports.fetch) },
   };
   return withPostDeadline(scope.ports.clock, signal, async (wait, answered) => {
-    // Its own controller, so a stalled body can be cut once the deadline
-    // stopped at the answer.
     const request = new AbortController();
     const follow = () => request.abort(wait.reason);
     if (wait.aborted) follow();

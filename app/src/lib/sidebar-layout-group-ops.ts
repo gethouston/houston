@@ -4,7 +4,6 @@ import type {
   SidebarRootEntry,
 } from "@houston/engine-adapter";
 
-/** Insert a new, empty group at a root position (the top by default). */
 export function createGroupOp(
   layout: SidebarLayout,
   id: string,
@@ -28,7 +27,6 @@ export function createGroupOp(
   };
 }
 
-/** Rename a group (no-op if the id is unknown). */
 export function renameGroupOp(
   layout: SidebarLayout,
   id: string,
@@ -40,7 +38,6 @@ export function renameGroupOp(
   };
 }
 
-/** Unset identity fields are omitted from the stored group. */
 function withIdentity(
   group: SidebarGroup,
   patch: { icon?: string | null; color?: string | null },
@@ -57,12 +54,6 @@ function withIdentity(
   };
 }
 
-/**
- * Set a group's glyph + color (no-op if the id is unknown, like
- * {@link renameGroupOp}).
- *
- * `null` clears a field, a string sets it, and an omitted field is untouched.
- */
 export function setGroupIdentityOp(
   layout: SidebarLayout,
   groupId: string,
@@ -76,7 +67,6 @@ export function setGroupIdentityOp(
   };
 }
 
-/** Delete a group and place its members at the group's root position. */
 export function deleteGroupOp(
   layout: SidebarLayout,
   id: string,
@@ -116,7 +106,6 @@ export function deleteGroupOp(
   };
 }
 
-/** Toggle a group's collapsed flag when it exists. */
 export function toggleGroupCollapsedOp(
   layout: SidebarLayout,
   id: string,

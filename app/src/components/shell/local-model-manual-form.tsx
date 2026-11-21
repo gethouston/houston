@@ -15,13 +15,6 @@ import {
   SecretField,
 } from "./openai-compatible-dialog-parts";
 
-/**
- * The advanced / manual path of the local-model connect flow (and the web
- * fallback where no native bridge exists): the user types the server address +
- * model directly, with no tunnel. Reuses the field parts and copy from the
- * original manual dialog; the guided screens link here via "Enter details
- * manually".
- */
 export function LocalModelManualForm({
   onConnected,
   onClose,
@@ -47,8 +40,6 @@ export function LocalModelManualForm({
   const [error, setError] = useState<string | null>(null);
   const { reasoning, setReasoning, applyModelDefault } = useReasoningToggle();
 
-  // Typing a model id re-applies the reasoning default until the user flips the
-  // toggle themselves (then their choice sticks).
   const handleModelChange = (next: string) => {
     setModel(next);
     applyModelDefault(next);
@@ -80,9 +71,6 @@ export function LocalModelManualForm({
       onConnected?.(trimmedModel);
       onClose();
     } catch (err) {
-      // The cloud host's deliberate "can't reach that address" 400 is an
-      // expected state with a user-side remedy: show the rule it broke, not
-      // the generic copy (which also filed a Sentry issue per attempt).
       const egress = classifyCloudEgressRejection(err);
       setError(
         egress

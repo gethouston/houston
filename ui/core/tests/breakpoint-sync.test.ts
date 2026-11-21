@@ -4,15 +4,6 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { breakpoint, breakpointPx } from "@houston/design-tokens";
 
-/**
- * The one responsive boundary must be the SAME edge in both delivery paths:
- * the breakpoint token (what useIsMobile() compares widths against) and the
- * `--breakpoint-md` declaration in globals.css (what every `md:` utility
- * compiles into its media query — a media query cannot read a var(), so the
- * CSS side has to spell the value and this test is what pins the two
- * together).
- */
-
 const globalsCss = readFileSync(
   join(import.meta.dirname, "../src/globals.css"),
   "utf8",

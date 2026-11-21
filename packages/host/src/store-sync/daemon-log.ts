@@ -14,16 +14,8 @@ export function logHydrated(
   );
 }
 
-/** Consecutive failed passes before a sync failure reports with its error.
- *  At the 5-min periodic interval this is ~15 min of sustained failure. */
 const REPORT_AFTER_FAILURES = 3;
 
-/**
- * One failed pass is a deploy-window blip the next pass absorbs (the gateway
- * restarts, the pod's network tears down): a breadcrumb, not a report
- * (HOUSTON-APP-58V). A streak means the store is actually unreachable — that
- * reports with the error attached.
- */
 export function logSyncFailed(
   opts: StoreSyncOptions,
   trigger: string,
@@ -42,12 +34,6 @@ export function logSyncFailed(
   );
 }
 
-/**
- * No error object: fencing loss is a DESIGNED lifecycle outcome (a newer boot
- * owns the prefix — setup pods are superseded routinely) and halting is the
- * correct response. Passing `err` made every takeover a Sentry error via the
- * severity log's failure channel.
- */
 export function logFenceLost(
   opts: StoreSyncOptions,
   err: { message: string },

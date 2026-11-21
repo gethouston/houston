@@ -6,8 +6,6 @@ import {
   effortFillCount,
 } from "../src/lib/effort-bars.ts";
 
-// The full spectrum is four tiers now (low→xhigh); a two-level model (e.g.
-// DeepSeek high/xhigh) still renders one bar per level it accepts.
 const FULL = ["low", "medium", "high", "xhigh"] as const;
 const TWO = ["high", "xhigh"] as const;
 
@@ -20,7 +18,7 @@ describe("effortFillCount", () => {
   });
 
   it("is 0 when the level is absent, unset, or the set is empty", () => {
-    strictEqual(effortFillCount(TWO, "low"), 0); // low isn't in this model's set
+    strictEqual(effortFillCount(TWO, "low"), 0);
     strictEqual(effortFillCount(FULL, undefined), 0);
     strictEqual(effortFillCount(FULL, null), 0);
     strictEqual(effortFillCount([], "low"), 0);

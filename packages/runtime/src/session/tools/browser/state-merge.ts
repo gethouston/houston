@@ -1,6 +1,5 @@
 import type { BrowserContext } from "playwright-core";
 
-/** Playwright's storageState: cookies plus per-origin storage. */
 export type StorageState = Awaited<ReturnType<BrowserContext["storageState"]>>;
 type Cookie = StorageState["cookies"][number];
 type OriginState = StorageState["origins"][number];
@@ -9,7 +8,6 @@ export const EMPTY_STATE: StorageState = { cookies: [], origins: [] };
 
 const cookieKey = (c: Cookie) => `${c.name}\0${c.domain}\0${c.path}`;
 
-/** Storage order is not meaningful, so it never counts as a change. */
 function canonicalOrigin(o: OriginState): string {
   const local = [...o.localStorage].sort((a, b) =>
     a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
@@ -35,15 +33,6 @@ function mergeKeyed<T>(
   return [...merged.values()];
 }
 
-/**
- * Three-way merge of one conversation's sign-ins into the saved file. Every
- * conversation in a workspace has its own context, loaded from the file when
- * it opened, so a plain overwrite would let a chat that opened earlier erase
- * a sign-in another chat made since. Only what THIS context changed since
- * `base` lands: a cookie or origin it set or changed is written, one it
- * removed (a sign-out) is deleted, and everything else keeps the file's value.
- * Cookies are keyed by name + domain + path, origins by origin.
- */
 export function mergeStorageState(
   base: StorageState,
   ours: StorageState,
@@ -67,7 +56,6 @@ export function mergeStorageState(
   };
 }
 
-/** A parsed file that has the two arrays a storageState needs. */
 export function isStorageState(value: unknown): value is StorageState {
   if (typeof value !== "object" || value === null) return false;
   const { cookies, origins } = value as Record<string, unknown>;

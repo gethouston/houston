@@ -1,6 +1,3 @@
-// Real-DOM mounts (jsdom globals BEFORE the dynamic react-dom import, as in
-// sidebar-pinned-items.test.ts), so a click reaches the real handler.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";
@@ -24,7 +21,6 @@ for (const key of ["Element", "HTMLElement", "Node", "Event", "MouseEvent"]) {
 g.IS_REACT_ACT_ENVIRONMENT = true;
 
 const React = await import("react");
-// ui/core's Radix wrappers are authored against the classic JSX runtime.
 g.React = React;
 const { act, createElement: h } = React;
 const { createRoot } = await import("react-dom/client");
@@ -35,7 +31,6 @@ const { SidebarConnectGroup } = await import(
   "../src/sidebar-connect-group.tsx"
 );
 
-/** Mounts `element`, hands its container to `inspect`, then unmounts. */
 function withMounted(
   element: ReactElement,
   inspect: (root: HTMLElement) => void,
@@ -78,18 +73,15 @@ describe("SidebarAddRow", () => {
         const button = root.querySelector('[data-testid="add"] > button');
         assert.equal(button?.textContent, "Add new AI Employee");
         const rootTokens = rowRoot?.className.split(" ") ?? [];
-        // Shorter than a 64px person, the pill spanning the row like one.
         assert.ok(rootTokens.includes("h-10"));
         assert.ok(!rootTokens.includes("h-16"));
         assert.ok(rootTokens.includes("before:inset-x-0"));
         const tokens = button?.className.split(" ") ?? [];
-        // Muted at rest, strengthening with its Plus; no hairline under it.
         assert.ok(tokens.includes("text-ink-muted"));
         assert.ok(tokens.includes("hover:text-ink"));
         assert.equal(root.querySelector("[data-person-text]"), null);
         const seat = root.querySelector("[data-sidebar-seat]");
         assert.ok(seat, "the empty seat");
-        // A bare Plus in the portraits' 40px column: no disc, no outline.
         assert.ok(!seat.className.includes("bg-"));
         assert.ok(!seat.className.includes("rounded"));
         assert.ok(!seat.className.includes("border"));
@@ -180,9 +172,6 @@ describe("SidebarConnectGroup", () => {
       );
       for (const mark of marks) {
         const classes = mark.className.split(" ");
-        // An opaque tile with an edge: the one on top covers the one
-        // behind cleanly, and no logo is ever cut. No shadow: the stack is
-        // as quiet as the rows around it.
         for (const token of [
           "size-5",
           "rounded-md",
@@ -206,7 +195,6 @@ describe("SidebarConnectGroup", () => {
         Number(slot.getAttribute("style")?.match(/z-index: (\d+)/)?.[1]),
       );
       assert.deepEqual(z, [3, 2, 1], "the first on top");
-      // The logos and the label, nothing after them.
       assert.equal(apps?.textContent, "Connect your apps");
     });
   });
@@ -251,8 +239,6 @@ describe("SidebarConnectGroup", () => {
       for (const token of ["text-[13px]", "font-weight-510"]) {
         assert.ok(label?.className.split(" ").includes(token), token);
       }
-      // Everything else in the button is aria-hidden: the logos and the
-      // count decorate the label, they never lengthen its name.
       const button = root.querySelector('[data-testid="apps"]');
       let named = button?.textContent ?? "";
       for (const hidden of button?.querySelectorAll('[aria-hidden="true"]') ??
@@ -298,7 +284,6 @@ describe("SidebarConnectGroup", () => {
           ["gmail", "slack", "notion"],
         );
         assert.ok(buttons[0]?.querySelector("[data-sidebar-connect-cluster]"));
-        // The icon rail's smaller tiles, so three fit its 36px square.
         for (const mark of buttons[0]?.querySelectorAll(
           "[data-sidebar-connect-logo]",
         ) ?? []) {

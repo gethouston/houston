@@ -8,20 +8,10 @@ import { Spinner } from "./spinner";
 type BaseButtonProps = React.ComponentProps<typeof Button>;
 
 export interface AsyncButtonProps extends Omit<BaseButtonProps, "onClick"> {
-  /**
-   * Click handler that may kick off async work. While the returned promise is
-   * in flight the button disables itself, so rapid ("rage") clicks can't fire
-   * the action more than once (HOU-465). Return the promise — don't `void` it —
-   * or the button can't tell when the work settles.
-   */
   onClick?: (
     event: React.MouseEvent<HTMLButtonElement>,
     // biome-ignore lint/suspicious/noConfusingVoidType: sync handlers return void, async ones return a Promise
   ) => void | Promise<unknown>;
-  /**
-   * Render a leading spinner while the action is pending. Defaults to `true`.
-   * Set `false` when the button already shows its own pending affordance.
-   */
   spinner?: boolean;
 }
 
@@ -39,10 +29,6 @@ function AsyncButton({
   ...props
 }: AsyncButtonProps) {
   const [pending, setPending] = React.useState(false);
-  // A ref flips the instant the handler runs — before React commits the
-  // re-render that applies `disabled` — so the burst of clicks that land in the
-  // same frame are dropped. That same-frame burst is exactly what a rage click
-  // is; relying on the `disabled` state alone leaves a one-frame window open.
   const inFlight = React.useRef(false);
   const mounted = React.useRef(true);
   React.useEffect(
@@ -59,9 +45,6 @@ function AsyncButton({
       if (!isThenable(result)) return;
       inFlight.current = true;
       setPending(true);
-      // `finally` resets the guard without swallowing a rejection: a failing
-      // handler still rejects up the chain (surfaced as an unhandled rejection
-      // / captured by Sentry) rather than being silently dropped.
       void result.finally(() => {
         inFlight.current = false;
         if (mounted.current) setPending(false);

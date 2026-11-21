@@ -18,12 +18,6 @@ import { MemoryVfs } from "../vfs";
 import { reconcileAgentRuns } from "./reconcile";
 import { Scheduler } from "./scheduler";
 
-/**
- * Snooze on the standing host: a run that fails on a plan usage limit snoozes
- * its routine until the provider's reset (enabled stays true), the row
- * carries the typed failure, and the scheduler fires nothing until the reset.
- */
-
 const EDITED = new Date("2026-10-08T10:00:00.000Z");
 const STARTED = new Date("2026-10-08T20:47:00.000Z");
 const NOW = new Date("2026-10-08T20:47:30.000Z");
@@ -138,11 +132,9 @@ test("a snoozed routine fires nothing until its snooze ends, then fires again", 
     now: () => NOW,
     newId: () => "run-2",
   });
-  // The whole window is before the reset: nothing fires.
   await scheduler.tick(new Date("2026-10-13T04:59:00.000Z"));
   await scheduler.tick(new Date("2026-10-13T04:59:59.000Z"));
   expect(fire).not.toHaveBeenCalled();
-  // The first instant after the reset fires; the skipped ones never do.
   await scheduler.tick(new Date("2026-10-13T05:05:30.000Z"));
   expect(fire).toHaveBeenCalledTimes(1);
 });

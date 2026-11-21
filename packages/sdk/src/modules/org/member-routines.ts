@@ -1,10 +1,3 @@
-/**
- * What removing a member would stop: the routines they created that run as
- * them. Apart from the roster calls in `http.ts` because it reads automations,
- * not membership; same transport, same gateway-only `/v1/org*` family, same
- * no-swallow rule (every non-2xx throws the module's {@link OrgHttpError}).
- */
-
 import { type MemberRoutines, memberRoutinesSchema } from "@houston/wire-types";
 import { type HttpScope, httpRequest } from "../http";
 

@@ -5,42 +5,13 @@ import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import type { UpdateStatus } from "../../lib/update-status";
 
-/** The pill's inputs: a downloaded release waiting for its restart, the
- *  restart in progress, or a failed install / relaunch to retry. */
 export type UpdatePillStatus = Extract<
   UpdateStatus,
   { state: "downloaded" } | { state: "installing" } | { state: "error" }
 >;
 
-/** Motion tokens: `easing.entrance` + `duration.fast` (200ms). One short
- *  ease-out as the pill lands, so the eye catches it; it never moves again. */
 const ENTRANCE: Transition = { duration: 0.2, ease: [0.16, 1, 0.3, 1] };
 
-/**
- * The "Restart to update" pill. A mid-session find downloads silently and
- * ends here: a small pill in the sidebar footer that names the
- * one action left, restarting into the new version, and does nothing until
- * the user clicks it. It never counts down, never blocks, never restarts on
- * its own. That is the whole point: a running turn, a draft in the composer
- * or a co-located engine mid-task is never interrupted by an update.
- *
- * It wears the solid `action` fill (dark ink on light, light ink on dark),
- * not a bordered dialog surface: the surface it holds is the sidebar,
- * and a gutter-coloured pill with a hairline was invisible in dark mode. It
- * is a plain button rather than the core `Button` primitive on purpose: the
- * canvas theme restyles the primitive's default variant into a translucent
- * frost pill in dark mode (`ui/core/src/canvas.css`), which on the sidebar is
- * exactly the low-contrast look this replaces. The launch overlay's button
- * takes the same solid fill, so the two update surfaces match.
- *
- * It lives in the sidebar footer above the Academy/Settings cluster, full
- * width on the expanded rail and an icon button with a tooltip on the
- * collapsed rail, so it never covers a control on the canvas. The hint
- * (which version, or what failed) is the button's description for assistive
- * tech; the visible pill stays short, as the footer has little room for a
- * sentence, but shows the version it will restart into so the label is not
- * the only thing that says "an update".
- */
 export function UpdatePill({
   status,
   collapsed = false,

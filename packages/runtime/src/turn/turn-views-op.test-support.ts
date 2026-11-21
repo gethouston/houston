@@ -17,15 +17,8 @@ import {
   PREFIX,
 } from "./turn-views.test-support";
 
-/**
- * A sleeping agent's ops over the store `turn-views.test-support.ts` builds:
- * the gateway envelope, applied the way executeOp applies it.
- */
-
 let claimOrigin: Promise<string> | undefined;
 
-/** The op claim's origin, which also serves the custom-integration secrets
- *  store: every request answers `200 {}` (no secret held). */
 function localClaimOrigin(): Promise<string> {
   claimOrigin ??= new Promise((resolve) => {
     const server = createServer((_req, res) => {
@@ -40,7 +33,6 @@ function localClaimOrigin(): Promise<string> {
   return claimOrigin;
 }
 
-/** One route op parsed from the gateway's envelope (`extra` rides on top). */
 async function routeOp(
   route: { method: string; rest: string; body?: unknown },
   extra: Record<string, unknown> = {},
@@ -68,7 +60,6 @@ async function routeOp(
   });
 }
 
-/** Apply a route op over a fresh hydration of `agent`, without syncing back. */
 export async function applyRoute(
   agent: AgentStore,
   route: { method: string; rest: string; body?: unknown },
@@ -85,14 +76,6 @@ export async function applyRoute(
   return applyOp(op, filesystem);
 }
 
-/**
- * A sleeping agent's op, run the way executeOp runs it (the real
- * handler over a lazy tree, the scoped sync-back), split before its doc
- * projection so a test can interleave a turn's publish. `beforeApply` runs
- * between the op's listing and its handler, `beforeSync` between the
- * handler's write and the sync-back: another writer landing in either makes
- * the op's upload lose its generation race.
- */
 export async function landOp(
   agent: AgentStore,
   docs: PodDocs,

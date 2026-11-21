@@ -16,13 +16,6 @@ import {
   ensureClaudeShellFence,
 } from "./claude-shell-fence";
 
-/**
- * The script the Claude CLI's Bash tool runs every command through
- * (`CLAUDE_CODE_SHELL_PREFIX`). It caps memory inside a memory-limited
- * container, and on a deployment with a tool shell it is also what drops the
- * command to the unprivileged tool user, so there it exists even with no cap.
- */
-
 const MiB = 1024 * 1024;
 const TOOL_SHELL = "/opt/worker/tool-shell";
 
@@ -91,8 +84,6 @@ describe("with a tool shell", () => {
     expect(script.endsWith(`exec '${TOOL_SHELL}' -c "$1"\n`)).toBe(true);
   });
 
-  // Runs the real script: the command must reach the tool shell as ONE
-  // argument after `-c`, however the tool shell's path is spelled.
   test.skipIf(process.platform === "win32")(
     "the command reaches the tool shell intact, even from an awkward path",
     () => {
@@ -234,9 +225,6 @@ describe("with a tool shell", () => {
   );
 });
 
-// Claude Code 2.1.293's own composition of CLAUDE_CODE_SHELL_PREFIX: split at
-// the LAST " -", shell-quote the part before it, pass the rest raw, then the
-// quoted command.
 function cliCommandLine(prefix: string, command: string): string {
   const at = prefix.lastIndexOf(" -");
   return at > 0

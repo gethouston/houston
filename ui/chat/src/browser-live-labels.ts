@@ -16,14 +16,10 @@ export interface BrowserLiveViewLabels {
   endedNone: string;
   notOwner: string;
   tapToType: string;
-  /** For assistive tech on the page itself: how to get back to the controls. */
   leavePage: string;
-  /** The page itself, for assistive tech. */
   website: string;
   timeLeft: (minutes: number) => string;
-  /** The countdown's last minute, shown in the attention colour. */
   timeLeftLastMinute: string;
-  /** Unfolds an instruction clamped on a phone, and folds it back. */
   showMore: string;
   showLess: string;
 }

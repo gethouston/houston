@@ -24,16 +24,6 @@ import { MemoryWorkspaceStore } from "./store/memory";
 import { startTestFetchServer } from "./testing/fetch-server";
 import { MemoryVfs } from "./vfs";
 
-/**
- * Personal-tier access boundary at the HTTP layer:
- *  - a user sees and controls ALL their OWN agents (no permission layer),
- *  - another user is fully walled off from them (403),
- *  - the per-agent transparent proxy (chat + provider connect) works for the owner.
- *
- * (Agent↔agent isolation — "an agent can't see another agent's files" — is the
- * sandbox's job and is covered in the runtime/sandbox tests, not here.)
- */
-
 const verifier: TokenVerifier = {
   async verify(bearer) {
     return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
@@ -51,8 +41,6 @@ const sandboxes: RuntimeLauncher = {
   },
 };
 
-// Records every forwarded request and answers like a sandbox runtime would:
-// an SSE stream for /events, JSON otherwise.
 const forwarded: { method: string; path: string; body?: string }[] = [];
 const router: RuntimeProxy = {
   async forward(_endpoint, request, res) {
@@ -73,8 +61,6 @@ const router: RuntimeProxy = {
 
 const store = new MemoryWorkspaceStore();
 const credentials = new MemoryCredentialStore();
-// Fake vault: a sandbox token is just "sbx:<workspaceId>", so a test can present
-// one for a known workspace.
 const vault: CredentialVault = {
   sandboxToken(workspaceId) {
     return `sbx:${workspaceId}`;
@@ -92,7 +78,6 @@ let aliceHrId = "";
 let bobAgentId = "";
 const auth = (who: string) => ({ Authorization: `Bearer tok:${who}` });
 
-// Standing-runtime channel over a given launcher — the gke wiring main.ts builds.
 const channelsWith = (launcher: RuntimeLauncher) => ({
   gke: new ProxyChannel({
     launcher,
@@ -121,7 +106,6 @@ beforeAll(async () => {
   const addr = server.address();
   base = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
 
-  // Alice owns two agents; Bob owns one — each in their own personal workspace.
   const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
   aliceSalesId = (
     await store.createAgent({ workspaceId: aliceWs.id, name: "SalesAgent" })
@@ -285,14 +269,11 @@ test("connect-once: a sandbox serves its workspace's central credential by sandb
   const c = (await r.json()) as Record<string, unknown>;
   expect(c.access).toBe("AT");
   expect(c.accountId).toBe("acct-1");
-  // Gate #2: the refresh token NEVER leaves the control plane.
   expect("refresh" in c).toBe(false);
   expect(JSON.stringify(c)).not.toContain("RT");
 });
 
 test("capture stores the credential centrally, then scrubs the sandbox's refresh token", async () => {
-  // A real fake runtime: serves /auth/export like a freshly-connected pod and
-  // records the scrub call that must follow.
   let scrubCalls = 0;
   const fakeRuntime = await startTestFetchServer((req) => {
     const u = new URL(req.url);
@@ -333,7 +314,7 @@ test("capture stores the credential centrally, then scrubs the sandbox's refresh
     expect(scrubCalls).toBe(1);
     const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
     const stored = await credentials.get(aliceWs.id, "openai-codex");
-    expect(stored?.refreshToken).toBe("RT-cap"); // central store holds it…
+    expect(stored?.refreshToken).toBe("RT-cap");
     expect(stored?.accessToken).toBe("AT-cap");
   } finally {
     await close();
@@ -342,11 +323,6 @@ test("capture stores the credential centrally, then scrubs the sandbox's refresh
 });
 
 test("a failed scrub settles the capture as success and logs PRODUCT-1318 (credential stored)", async () => {
-  // The central PUT landed, so the connect WORKED — failing the route here made
-  // the client replay the whole tombstone-clearing PUT while the leftover
-  // refresh token quietly kept the pod a second rotator. The runtime's serve
-  // sync self-heals the scrub; the route settles and the error log is the
-  // loud surface (PRODUCT-1318).
   const fakeRuntime = await startTestFetchServer((req) => {
     const u = new URL(req.url);
     if (u.pathname === "/auth/export") {
@@ -409,8 +385,6 @@ test("logout forgets the workspace credential so no turn can re-serve it", async
     body: JSON.stringify({ provider: "openai-codex" }),
   });
   expect(r.status).toBe(200);
-  // The connect-once store is now empty for that provider, so /sandbox/credential
-  // 404s and the runtime can't re-hydrate — logout actually sticks.
   expect(await credentials.get(aliceWs.id, "openai-codex")).toBeNull();
 });
 
@@ -429,17 +403,10 @@ test("a different user CANNOT forget someone else's credential → 403", async (
     body: JSON.stringify({ provider: "openai-codex" }),
   });
   expect(r.status).toBe(403);
-  expect(await credentials.get(aliceWs.id, "openai-codex")).not.toBeNull(); // untouched
+  expect(await credentials.get(aliceWs.id, "openai-codex")).not.toBeNull();
 });
 
-// The api-key connect gate is pi-DERIVED: any provider pi-ai can run with a
-// pasted key (not just the curated cloud set) connects, while OAuth providers and
-// ids pi-ai never heard of are still 400d. These exercise the real per-agent
-// route end to end (gate → channel → central store + runtime push).
-
 test("connect an ARBITRARY pi api-key provider (groq): gate opens, key stored + pushed", async () => {
-  // groq is a pi provider Houston never hand-listed. A fake runtime stands in for
-  // the standing pod the key is pushed into (like the capture test's runtime).
   let pushedTo: string | null = null;
   const fakeRuntime = await startTestFetchServer((req) => {
     const u = new URL(req.url);
@@ -478,8 +445,6 @@ test("connect an ARBITRARY pi api-key provider (groq): gate opens, key stored + 
 });
 
 test("connect an OAuth provider by the api-key route is rejected (400), never stored", async () => {
-  // anthropic authenticates via OAuth, so the key route must refuse it up front —
-  // before any channel/runtime call.
   const r = await fetch(`${base}/agents/${aliceSalesId}/credential/api-key`, {
     method: "POST",
     headers: { ...auth("alice"), "Content-Type": "application/json" },
@@ -508,13 +473,6 @@ test("connect an id pi-ai does not know is rejected (400), never stored", async 
   });
 });
 
-// The `mountAdmin` seam: an injected request hook for a private deployment's
-// admin surface. The closed operator dashboard that used to bind it was retired
-// with `@houston/host-cloud`, so the seam's behavior is proven here in the open
-// tests, both ways: unmounted → `/admin/*` 404s (the in-tree default), and a
-// mounted stub → runs behind auth, short-circuits routing when it handles the
-// request, and falls through when it declines.
-
 const baseDeps = () => ({
   verifier,
   store,
@@ -535,10 +493,6 @@ async function startServer(
 }
 
 test("create seeds CLAUDE.md + the seed-file map into the new agent's vfs root", async () => {
-  // The exact path a builtin template (bookkeeping, legal, …) takes: the client
-  // posts `claudeMd` + `seeds`, and the host must write them under the agent
-  // root so pi + the Skills tab read them back. A vfs is required — the module
-  // server has none, so boot a dedicated one.
   const vfs = new MemoryVfs();
   const { base: b, close } = await startServer({ ...baseDeps(), vfs });
   try {
@@ -564,9 +518,6 @@ test("create seeds CLAUDE.md + the seed-file map into the new agent's vfs root",
     expect(
       await vfs.readText(`${root}/.agents/skills/close-the-books/SKILL.md`),
     ).toContain("name: Close");
-    // And the host serves that seeded skill's content back — the exact path the
-    // Skills tab uses (list -> click -> loadSkill). Regression guard for the
-    // adapter that used to stub skill detail to [].
     const detail = await fetch(
       `${b}/agents/${encodeURIComponent(agent.id)}/skills/close-the-books`,
       { headers: auth("alice") },
@@ -598,8 +549,6 @@ test("create rejects a seed map with non-string values (400)", async () => {
 });
 
 test("/admin/* 404s when no admin surface is injected (the in-tree default)", async () => {
-  // The module-level server was built without `mountAdmin` — exactly how every
-  // profile in this repo runs since the closed admin surface was retired.
   const r = await fetch(`${base}/admin/overview`, { headers: auth("alice") });
   expect(r.status).toBe(404);
 });
@@ -622,13 +571,9 @@ test("an injected mountAdmin hook runs behind auth, serves /admin/*, and falls t
   };
   const { base: b, close } = await startServer({ ...baseDeps(), mountAdmin });
   try {
-    // The hook mounts AFTER auth: an anonymous /admin/* request is 401 and the
-    // hook never sees it (an unauthenticated caller can't probe the admin API).
     expect((await fetch(`${b}/admin/overview`)).status).toBe(401);
     expect(calls).toEqual([]);
 
-    // Mounted: the hook gets the VERIFIED user id and its response is final —
-    // the server must not keep routing (no trailing 404 clobbering the reply).
     const r = await fetch(`${b}/admin/overview`, { headers: auth("alice") });
     expect(r.status).toBe(200);
     expect(await r.json()).toEqual({ admin: true, userId: "alice" });
@@ -636,8 +581,6 @@ test("an injected mountAdmin hook runs behind auth, serves /admin/*, and falls t
       { userId: "alice", method: "GET", path: "/admin/overview" },
     ]);
 
-    // A non-admin route reaches the hook (it is a request hook, not a prefix
-    // mount) and falls through to normal routing when it returns false.
     const agents = await fetch(`${b}/agents`, { headers: auth("alice") });
     expect(agents.status).toBe(200);
     expect(calls).toHaveLength(2);
@@ -645,8 +588,6 @@ test("an injected mountAdmin hook runs behind auth, serves /admin/*, and falls t
     await close();
   }
 });
-
-// --- v3 meta surface + the local-profile identity adapter ---------------------
 
 test("/v1/version and /v1/capabilities are public and serve the v3 contract", async () => {
   const v = await fetch(`${base}/v1/version`);
@@ -679,7 +620,6 @@ test("/v1/catalog carries the pin facts the gateway resolves mission pins from",
 });
 
 test("/v1/version serves the package semver and the baked build SHA (null when unbaked)", async () => {
-  // Unset/empty BUILD_SHA both read as "not baked" → build is null, never "".
   vi.stubEnv("BUILD_SHA", "");
   try {
     const bare = (await (await fetch(`${base}/v1/version`)).json()) as {
@@ -689,8 +629,6 @@ test("/v1/version serves the package semver and the baked build SHA (null when u
     expect(bare.version).toBe(HOST_VERSION);
     expect(bare.build).toBeNull();
 
-    // The engine-pod image bakes the git sha (engine-pod-image.yml); the env
-    // is read per request, so the stub is visible without a server restart.
     vi.stubEnv("BUILD_SHA", "deadbeefcafe");
     const baked = (await (await fetch(`${base}/v1/version`)).json()) as {
       version: string;
@@ -709,13 +647,11 @@ test("SingleUserVerifier: the boot token resolves to the owner; anything else is
     verifier: new SingleUserVerifier({ token: "boot-secret" }),
   });
   try {
-    // The owner's token reaches the same authorize() seam as cloud users.
     const ok = await fetch(`${b}/agents`, {
       headers: { Authorization: "Bearer boot-secret" },
     });
     expect(ok.status).toBe(200);
 
-    // A wrong/missing token is rejected — loopback neighbors can't drive the agents.
     expect(
       (
         await fetch(`${b}/agents`, {
@@ -763,9 +699,6 @@ test("the credential endpoint rejects a bad sandbox token (401) and an unconnect
 });
 
 test("a serve miss while the agent is renamed answers 503 + Retry-After, never a marked 404 (PRODUCT-1804)", async () => {
-  // The slept runtime's serve sync arrives with the old id during the rename
-  // latch: same waking shape as a drain, so the runtime keeps its copy and
-  // re-syncs under the new id.
   const credentialHealer = new CredentialServeHealer(async ({ agentId }) => {
     throw new AgentRenamingError(agentId);
   });
@@ -787,10 +720,6 @@ test("a serve miss while the agent is renamed answers 503 + Retry-After, never a
 });
 
 test("a serve miss while the host drains answers 503 + Retry-After, never a marked 404 (PRODUCT-1672)", async () => {
-  // A roll kills the runtimes while their serve sync is in flight: the healer
-  // refuses (its runtime is gone) and the route must answer the waking shape
-  // the client retries against the replacement pod — not the store's
-  // authoritative "not connected", and not a 500.
   const credentialHealer = new CredentialServeHealer(
     async () => true,
     undefined,

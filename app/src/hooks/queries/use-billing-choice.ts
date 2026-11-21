@@ -15,10 +15,6 @@ import { tauriOrg } from "../../lib/tauri";
 import { useCapabilities } from "../use-capabilities";
 import { useChoiceNow } from "../use-choice-now";
 
-/**
- * True once the browser is idle after mount, so the announcement's one read
- * never competes with the board's first paint.
- */
 function useAfterFirstPaint(): boolean {
   const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -32,7 +28,6 @@ function useAfterFirstPaint(): boolean {
   return ready;
 }
 
-/** The account-wide free-org pick. Cloud only (`caps.spaces`). */
 export function useBillingChoice() {
   const { capabilities } = useCapabilities();
   const idle = useAfterFirstPaint();
@@ -45,7 +40,6 @@ export function useBillingChoice() {
   });
 }
 
-/** Whether the free-org pick can still change: Settings > Billing's one row. */
 export function useFreeOrgChoiceOpen(): boolean {
   const { data: choice } = useBillingChoice();
   const now = useChoiceNow(choice);
@@ -54,14 +48,6 @@ export function useFreeOrgChoiceOpen(): boolean {
 
 type Cached = BillingChoice | null | undefined;
 
-/**
- * Save the pick. A refusal the person can act on shows its own copy and
- * resolves with the outcome; anything else is reported by the engine call.
- * After the cutover a stored pick moves the subscription and the lock dates,
- * so every org's billing is read again, and it settles the notice
- * ({@link saveSettlesNotice}) from whichever screen saved it, even one closed
- * before the answer landed.
- */
 export function useSetBillingChoice() {
   const client = useQueryClient();
   const dismiss = useDismissBillingChoice();
@@ -72,7 +58,6 @@ export function useSetBillingChoice() {
       if (outcome.kind === "saved") {
         client.setQueryData(queryKeys.billingChoice(), outcome.choice);
         if (saveSettlesNotice(outcome)) dismiss.mutate();
-        // Not awaited: a slow reread must never hold the stored pick's success step.
         Promise.all([
           client.invalidateQueries({ queryKey: queryKeys.orgs() }),
           client.invalidateQueries({ queryKey: queryKeys.billingAll() }),
@@ -94,12 +79,6 @@ export function useSetBillingChoice() {
   });
 }
 
-/**
- * Record the dismissal; the gateway keeps the announcement hidden on every
- * device. The modal is already closed for the session either way. A failed
- * dismissal (reported by the engine call) restores the cached flag, so the
- * modal shows again on a later app open and closing it retries.
- */
 export function useDismissBillingChoice() {
   const client = useQueryClient();
   return useMutation({

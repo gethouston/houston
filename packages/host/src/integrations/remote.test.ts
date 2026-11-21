@@ -5,13 +5,6 @@ import {
   IntegrationUpstreamError,
 } from "./types";
 
-/**
- * The gateway adapter verified against an injected fetch: pins the upstream
- * paths/bodies, the Supabase bearer, and the signed-out behavior (not-ready +
- * typed signin-required error) — the desktop's custody guarantee that no
- * platform key exists on the machine.
- */
-
 type Reply = { status?: number; body?: unknown };
 interface Recorded {
   url: string;
@@ -63,7 +56,7 @@ test("signed out: not ready, and every call throws the typed signin error", asyn
   await expect(provider.execute("u", "X", {})).rejects.toThrow(
     IntegrationSigninRequiredError,
   );
-  expect(calls).toEqual([]); // nothing ever left the machine
+  expect(calls).toEqual([]);
 });
 
 test("signed in: forwards to the upstream /v1/integrations routes with the bearer", async () => {
@@ -93,7 +86,6 @@ test("signed in: forwards to the upstream /v1/integrations routes with the beare
   );
   expect(calls[0]?.headers.authorization).toBe("Bearer jwt-1");
 
-  // The userId params are ignored — the upstream derives identity from the JWT.
   await provider.listConnections("ignored");
   const start = await provider.connect("ignored", "gmail");
   expect(start).toEqual({ redirectUrl: "https://oauth", connectionId: "ca_1" });
@@ -140,11 +132,7 @@ test("non-401 upstream errors carry status and body for route relay", async () =
   );
 });
 
-// ── Acting-as (C2): the three per-call auth modes on search/execute ───────────
-
 test("acting mode a: an acting-as token authenticates AS that user (overrides the session)", async () => {
-  // A frontend session AND a pod token are present — the acting-as token still
-  // wins (precedence a), so a prompt-injected agent can only act as the driver.
   const { provider, calls } = harness(
     () => ({ body: { items: [], successful: true } }),
     "session-jwt",
@@ -160,7 +148,7 @@ test("acting mode a: an acting-as token authenticates AS that user (overrides th
 test("acting mode b: a routine actingUser + pod token → pod bearer + acting-user header", async () => {
   const { provider, calls } = harness(
     () => ({ body: { items: [], successful: true } }),
-    undefined, // signed out on the frontend session — irrelevant to the routine path
+    undefined,
     "pod-secret",
   );
   await provider.execute("owner", "X", {}, { actingUser: "sub-123" });
@@ -168,12 +156,7 @@ test("acting mode b: a routine actingUser + pod token → pod bearer + acting-us
   expect(calls[0]?.headers["x-houston-acting-user"]).toBe("sub-123");
 });
 
-// ── Search status: tolerant reading of the gateway's per-item status field ────
-
 test("search passes a valid upstream status through verbatim (incl. the future blocked)", async () => {
-  // A later gateway annotates items with a status (e.g. an admin-blocked app).
-  // The desktop must relay it untouched so the runtime can render the blocked
-  // speech act — no code change here when the gateway starts sending it.
   const { provider } = harness(
     () => ({
       body: {
@@ -213,10 +196,8 @@ test("search derives status from `connected` when absent, and repairs an invalid
     () => ({
       body: {
         items: [
-          // Today's gateway: no status field → derive from connected.
           { action: "A", toolkit: "gmail", description: "", connected: true },
           { action: "B", toolkit: "slack", description: "", connected: false },
-          // A garbage status must not leak through — derive instead.
           {
             action: "C",
             toolkit: "notion",
@@ -244,17 +225,12 @@ test("acting mode c: no acting context falls back to the session token (else sig
   expect(signedIn.calls[0]?.headers.authorization).toBe("Bearer session-jwt");
   expect(signedIn.calls[0]?.headers["x-houston-acting-user"]).toBeUndefined();
 
-  // actingUser present but NO pod token configured (the desktop): mode b can't
-  // apply, and with no session it falls through to the typed signin error —
-  // nothing ever leaves the machine unauthenticated.
   const noPod = harness(() => ({ body: {} }));
   await expect(
     noPod.provider.execute("owner", "X", {}, { actingUser: "sub-123" }),
   ).rejects.toThrow(IntegrationSigninRequiredError);
   expect(noPod.calls).toEqual([]);
 });
-
-// ── Multi-account pass-through (HOU-901) ─────────────────────────────────────
 
 test("disconnect forwards the narrowing connectionId; omits it when absent", async () => {
   const { provider, calls } = harness(() => ({ body: { ok: true } }), "tok");
@@ -273,12 +249,10 @@ test("search forwards the app scope; omits it when absent (PRODUCT-1274)", async
 });
 
 test("search maps the gateway's `scoped` echo onto the scope outcome", async () => {
-  // scoped:true → the items ARE hard-scoped to the named app.
   const yes = harness(() => ({ body: { items: [], scoped: true } }), "tok");
   expect(
     (await yes.provider.search("u", "q", undefined, "posthog")).scope,
   ).toBe("resolved");
-  // scoped:false → the gateway resolved nothing for the scope (strict-empty).
   const no = harness(() => ({ body: { items: [], scoped: false } }), "tok");
   expect((await no.provider.search("u", "q", undefined, "posthog")).scope).toBe(
     "unresolved",
@@ -286,15 +260,10 @@ test("search maps the gateway's `scoped` echo onto the scope outcome", async () 
 });
 
 test("an upstream that predates the scope contract reports scope IGNORED", async () => {
-  // Today's gateway drops `app` and serves the unscoped result with no echo:
-  // presenting that as scoped is the original PRODUCT-1274 misattribution, and
-  // reading its emptiness as "no such app" is a false not-found — "ignored"
-  // lets the sandbox proxy and the runtime tool say what is actually known.
   const { provider } = harness(() => ({ body: { items: [] } }), "tok");
   expect((await provider.search("u", "q", undefined, "posthog")).scope).toBe(
     "ignored",
   );
-  // No scope requested → no scope outcome, echo or not.
   expect((await provider.search("u", "q")).scope).toBeUndefined();
 });
 

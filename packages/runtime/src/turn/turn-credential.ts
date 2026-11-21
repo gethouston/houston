@@ -20,7 +20,6 @@ const defaultWriter: TurnCredentialWriter = (authPath, credential, dataDir) => {
   );
 };
 
-/** Write turn-local provider inputs and map filesystem failures to setup. */
 export function writeTurnCredential(
   authPath: string,
   credential: ServedCredential,

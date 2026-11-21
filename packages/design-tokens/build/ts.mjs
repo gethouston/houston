@@ -15,8 +15,6 @@ const HEADER = `/**
  * Rebuild: pnpm --filter @houston/design-tokens build
  */`;
 
-// A bare object literal (no `as const`), so it can be a top-level export value
-// or nested inside `color`. Indent controls nesting depth.
 const lit = (entries, indent = "  ") =>
   `{\n${entries.map(([k, v]) => `${indent}${JSON.stringify(k)}: ${v},`).join("\n")}\n${indent.slice(2)}}`;
 
@@ -26,7 +24,6 @@ const strLit = (entries, indent) =>
     indent,
   );
 
-/** One theme's elevation tiers, each as a single box-shadow string. */
 const boxShadows = (tokens, indent) =>
   strLit(
     shadows(tokens).map(({ name, layers }) => ({
@@ -36,10 +33,6 @@ const boxShadows = (tokens, indent) =>
     indent,
   );
 
-/**
- * The palette library as the picker reads it: ordered, named, and carrying four
- * resolved hexes per palette so a swatch needs no CSS-variable lookup.
- */
 const paletteList = (palettes) =>
   `[\n${palettes
     .map((p) =>

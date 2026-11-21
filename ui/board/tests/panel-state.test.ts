@@ -24,9 +24,6 @@ describe("resolvePanelState", () => {
   });
 
   it("keeps the panel open while the selected card is transiently absent", () => {
-    // The engine-cold-start window: the selection exists but the card hasn't
-    // landed in (or briefly dropped out of) `items`. The panel must not
-    // unmount — this was the open-chat close/reopen flicker.
     const state = resolvePanelState({
       selectedId: "a1",
       newPanelOpen: false,

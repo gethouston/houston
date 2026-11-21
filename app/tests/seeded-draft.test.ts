@@ -8,15 +8,9 @@ import {
   useDraftStore,
 } from "../src/stores/drafts.ts";
 
-// A New task composer opened with words already typed in (the Academy's email
-// lesson) shows them from a slot of their own. What the user had parked in the
-// composer, words and files, is never touched, sent or not, however the send
-// and the seed's end interleave.
-
 const KEY = "new-conversation:mission-control:t1";
 const file = new File(["x"], "brief.pdf");
 const store = () => useDraftStore.getState();
-/** The slot the composer at KEY reads and writes right now. */
 const shownKey = () => seededDraftKey(store().seed, KEY);
 const shown = () => store().drafts[shownKey()]?.text ?? "";
 
@@ -39,11 +33,9 @@ describe("seeded drafts", () => {
   it("keeps the parked draft when the seed ends during a send in flight", () => {
     park();
     const end = seedDraft(KEY, "Send me an email");
-    // Send pressed: the composer empties the slot it was pressed in once the
-    // send lands.
     const pressedIn = shownKey();
-    end(); // the lesson is left while the send is in flight
-    store().setDraftText(pressedIn, ""); // the send lands
+    end();
+    store().setDraftText(pressedIn, "");
     deepStrictEqual(parked(), { text: "my half-written brief", files: [file] });
     strictEqual(shown(), "my half-written brief");
   });
@@ -100,11 +92,9 @@ describe("seeded drafts", () => {
 
   it("keeps a newer run's words when an older run's send lands late", () => {
     const endFirst = seedDraft(KEY, "Send me an email");
-    // Send is pressed in the first run: the board captures the slot it shows.
     const pressedIn = shownKey();
     endFirst();
     seedDraft(KEY, "Send me an email");
-    // The first run's create resolves now and empties the slot it captured.
     store().setDraftText(pressedIn, "");
     strictEqual(shown(), "Send me an email");
   });

@@ -10,19 +10,6 @@ import type { CardWords } from "./org-chart-share-columns";
 import { shareCardLayout } from "./org-chart-share-layout";
 import type { OrgTree } from "./org-chart-tree";
 
-/**
- * The share image as a PNG. Drawn with the Canvas 2D API alone: no
- * html-to-image or SVG foreignObject, because WebKit (the desktop app's
- * WKWebView) taints any canvas that draws one and the PNG could never be
- * read back out.
- *
- * Person photos load with `crossOrigin="anonymous"`, so a host that does not
- * allow it fails the load instead of tainting the canvas. Each photo is
- * also read back on a scratch canvas before it is used: one bad photo
- * becomes initials, it never fails the whole image. A photo that is slow to
- * load is given up on after {@link PHOTO_TIMEOUT_MS}.
- */
-
 const PHOTO_TIMEOUT_MS = 4000;
 
 function loadImage(
@@ -39,7 +26,6 @@ function loadImage(
       clearTimeout(timer);
       resolve(image);
     };
-    // A photo that will not load is drawn as initials: expected, not a bug.
     image.onerror = () => {
       clearTimeout(timer);
       resolve(null);
@@ -48,7 +34,6 @@ function loadImage(
   });
 }
 
-/** Whether drawing `image` leaves a canvas readable. */
 function drawsClean(image: HTMLImageElement): boolean {
   const probe = document.createElement("canvas");
   probe.width = 1;
@@ -60,7 +45,6 @@ function drawsClean(image: HTMLImageElement): boolean {
     ctx.getImageData(0, 0, 1, 1);
     return true;
   } catch (error) {
-    // A tainting photo throws SecurityError here; any other error is a bug.
     if (error instanceof DOMException && error.name === "SecurityError")
       return false;
     throw error;
@@ -90,7 +74,6 @@ export class ShareCardError extends Error {
   override name = "ShareCardError";
 }
 
-/** Draw `tree` on the portrait share canvas. */
 export async function drawShareCanvas(
   tree: OrgTree,
   text: ShareCardText,
@@ -107,7 +90,6 @@ export async function drawShareCanvas(
   return canvas;
 }
 
-/** Draw `tree` as the 1200 x 1500 share PNG. */
 export async function renderShareCard(
   tree: OrgTree,
   text: ShareCardText,

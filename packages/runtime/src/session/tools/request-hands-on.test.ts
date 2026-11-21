@@ -20,7 +20,6 @@ const managerTool = makeRequestHandsOnTool({
   personalAssistant: true,
   apiServed: true,
 });
-/** The AI Manager on a deployment that does not serve the Houston API. */
 const desktopManagerTool = makeRequestHandsOnTool({
   personalAssistant: true,
   apiServed: false,
@@ -42,8 +41,6 @@ const execute = (surface: string, reason?: string) =>
   run(tool, surface, reason);
 const asManager = (surface: string, reason?: string) =>
   run(managerTool, surface, reason);
-/** The queued errands' screens. Read off `handsOn`, whose element type carries
- *  `surface`, rather than off the mixed-kind `pending.steps` union. */
 const screens = (holder: ReturnType<typeof newInteractionHolder>) =>
   holder.handsOn.map((step) => step.surface);
 
@@ -52,8 +49,6 @@ test("errands are deduped by screen, keeping the first position", async () => {
   await runWithInteractionCapture(holder, async () => {
     await execute(" apiKeys ", "  Copy the key Houston shows once  ");
     await execute("routineWebhook", "Copy the webhook");
-    // The same screen again is the SAME errand: the card's only job is to send
-    // the person there, so a second one would be the same trip twice.
     await execute("routineWebhook", "Updated webhook reason");
     await execute("apiKeys", "Updated reason");
   });
@@ -85,9 +80,6 @@ test("a screen Houston cannot open is refused where the model can correct it", a
 });
 
 test("only the AI Manager may send the person to their money or their space", async () => {
-  // The reason on the card is MODEL-authored text in Houston's own chrome, so
-  // an ordinary agent that read a hostile page could dress a trip to Billing
-  // as Houston's idea.
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, async () => {
     for (const surface of ["billing", "orgDanger"])
@@ -95,7 +87,6 @@ test("only the AI Manager may send the person to their money or their space", as
         "is the user's own to open, not yours to hand over",
       );
     expect(holder.pending).toBeUndefined();
-    // The screens that are plainly the work, not the account, stay broad.
     for (const surface of ["apiKeys", "files", "routineWebhook"])
       await execute(surface);
   });
@@ -130,8 +121,6 @@ test("live Plan prevents errands, while auto permits them", async () => {
 test("errands close the sequence and are turn scoped", () => {
   const holder = newInteractionHolder();
   runWithInteractionCapture(holder, () => {
-    // Queued FIRST, rendered LAST: a connection unblocks the agent's own work,
-    // an errand on a screen only the person can operate does not.
     recordHandsOn({ surface: "files" });
     recordProviderConnection({ provider: "openai" });
     recordQuestions([{ kind: "question", id: "q1", question: "Which deck?" }]);
@@ -168,11 +157,8 @@ test("wire parser validates the screen and the optional reason structurally", ()
 });
 
 test("an employee's API access names that employee, and only the AI Manager hands it over", async () => {
-  // The screen holds ONE employee's IDs and setup prompt: landing on the wrong
-  // employee hands the person IDs that call someone else from their code.
   expect(managerTool.description).toContain("agentApiAccess");
   expect(managerTool.description).toContain("id from listAgents as agent");
-  // Both API errands are done right in the chat, and the key stays unseen.
   expect(managerTool.description).toContain(
     "apiKeys lets them create and copy a key right in the chat, and you never see it",
   );
@@ -180,7 +166,6 @@ test("an employee's API access names that employee, and only the AI Manager hand
   expect(tool.description).not.toContain("agentApiAccess");
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, async () => {
-    // An ordinary agent cannot read the roster, so it could only guess the id.
     await expect(
       run(tool, "agentApiAccess", undefined, "agent-1"),
     ).rejects.toThrow("only the user's AI Manager can look up which");
@@ -191,9 +176,7 @@ test("an employee's API access names that employee, and only the AI Manager hand
     expect(holder.pending).toBeUndefined();
     await run(managerTool, "agentApiAccess", "First", " agent-1 ");
     await run(managerTool, "agentApiAccess", "Second employee", "agent-2");
-    // The same employee again is the same trip; another employee is another.
     await run(managerTool, "agentApiAccess", "Refreshed", "agent-1");
-    // Every other screen is no one's: an agent passed along is dropped.
     await run(managerTool, "apiKeys", undefined, "agent-1");
   });
   expect(holder.pending?.steps).toEqual([
@@ -216,8 +199,6 @@ test("an employee's API access names that employee, and only the AI Manager hand
 });
 
 test("without the Houston API there is no employee API access screen to hand over", async () => {
-  // A desktop serves no API: a card there would open a screen that is not
-  // drawn, so the screen is neither offered nor accepted.
   expect(desktopManagerTool.description).not.toContain("agentApiAccess");
   expect(desktopManagerTool.description).toContain("orgDanger");
   const holder = newInteractionHolder();

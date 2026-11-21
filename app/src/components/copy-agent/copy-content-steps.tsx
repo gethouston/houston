@@ -21,12 +21,6 @@ function usePickLabels() {
   };
 }
 
-/**
- * "What should the copy know?": the job description as one switch, the
- * learnings one by one (both ON to start), and the chats as one switch that
- * starts OFF: a conversation can hold personal details, so bringing them is a
- * deliberate choice.
- */
 export function InstructionsStep({
   sourceName,
   preview,
@@ -64,8 +58,6 @@ export function InstructionsStep({
               setSelection({ ...selection, claudeMd: !selection.claudeMd })
             }
             title={t("copyAgent.wizard.instructions.instructionsRow")}
-            // The file opens with a fenced block of facts; a person reading
-            // this row wants the job, not the fence.
             subtitle={jobDescriptionExcerpt(preview.claudeMd.excerpt)}
           />
         ) : (

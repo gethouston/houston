@@ -2,20 +2,6 @@ import { INK, INK_MUTED, rule, TRACK, text, WEIGHT } from "./chrome.mjs";
 import h from "./h.mjs";
 
 /**
- * The certificate's lower band: how anyone can check it is real.
- *
- * It lives apart from the layout in template-cert.mjs because it is the half of
- * the document that has nothing to do with the attendee — the verification
- * affordance is the same on every certificate Houston issues.
- *
- * The band opens with a hairline across the full measure. That line is doing
- * real work, not decoration: the panel tint is near-opaque now, so the glass
- * under the citation is flat, and without an edge the code and the QR read as
- * two objects abandoned in opposite corners with a hole between them. Ruled
- * off, they read as one foot — the same move the site makes at `.lfoot`.
- */
-
-/**
  * Code and verification URL on the left, QR on the right, under one rule.
  *
  * The two sides are CENTRED against each other rather than sat on a shared
@@ -40,7 +26,6 @@ export function verificationFoot(item, copy, qrSrc) {
         display: "flex",
         flexDirection: "column",
         width: "100%",
-        // Never squeezed by a citation that overran: see citation.mjs.
         flexShrink: 0,
       },
     },
@@ -66,7 +51,6 @@ export function verificationFoot(item, copy, qrSrc) {
           letterSpacing: 48 * TRACK.code,
           color: INK,
         }),
-        // The smallest type on the busiest ground: it gets the brighter ink.
         text(`${copy.verifyAt} gethouston.ai/certificates/verify`, {
           marginTop: 14,
           fontSize: 24,
@@ -74,11 +58,6 @@ export function verificationFoot(item, copy, qrSrc) {
           color: INK_MUTED,
         }),
       ),
-      // The QR keeps its white chip: it has to scan off a phone camera pointed
-      // at a photograph, and the quiet zone is not negotiable. A verification
-      // URL encodes as a version-3 symbol (29 modules), so 176px makes a module
-      // 6.1px and the spec's four-module margin 25px — hence the padding below,
-      // which is the quiet zone, not decoration.
       h(
         "div",
         {

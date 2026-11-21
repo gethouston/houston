@@ -19,11 +19,8 @@ import { normalizeCreatorUrl } from "@/lib/agents/creator-url";
 import { shareUrlForSlug } from "@/lib/site-config";
 import { listMyAgents, patchAgent } from "@/lib/store-client";
 
-/** Friendly message for a publish failure, keyed on the gateway error code. */
 function publishError(err: unknown): string {
   if (err instanceof StoreApiError) {
-    // The identity PATCH only sets the creator name and link, so the gateway's
-    // generic `invalid_input` here means one of those two fields was rejected.
     if (err.code === "invalid_input") {
       return "Please check your creator name and link, then try again.";
     }
@@ -34,18 +31,11 @@ function publishError(err: unknown): string {
 }
 
 export interface ClaimManageProps {
-  /** Mints a fresh bearer per operation (tokens expire between renders). */
   getToken: () => Promise<string | null>;
   agent: StoreAgentSummary;
   onPublished: (shareUrl: string) => void;
 }
 
-/**
- * The post-claim publish step: the new owner confirms their creator name (and an
- * optional link), then publishes. Publishing is two PATCHes — set the identity
- * creator, then finalize with `{publish:true}` — after which the freshly minted
- * slug is read back from `me/agents` to build the share URL.
- */
 export function ClaimManage({
   getToken,
   agent,

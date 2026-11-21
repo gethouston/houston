@@ -23,8 +23,6 @@ const routine = (over) => ({
 });
 
 test("triggerBoundRoutineIds picks only event routines, in list order", () => {
-  // This is the rule that decides whether an agent is asked about triggers at
-  // all, so an all-schedule list must come back empty: no ids, no request.
   assert.deepEqual(triggerBoundRoutineIds(undefined), []);
   assert.deepEqual(triggerBoundRoutineIds(null), []);
   assert.deepEqual(
@@ -45,8 +43,6 @@ test("triggerBoundRoutineIds picks only event routines, in list order", () => {
 });
 
 test("triggerBoundRoutineIds returns whatever id the rows carry", () => {
-  // A team's merged list namespaces its rows, and the same helper has to serve
-  // it — otherwise the two surfaces would disagree on which rows can time out.
   assert.deepEqual(
     triggerBoundRoutineIds([
       routine({
@@ -95,8 +91,6 @@ test("toTriggerSummaries summarizes app-event and webhook routines, skips schedu
 });
 
 test("toTriggerSummaries treats a kindless binding as a Composio app event", () => {
-  // On-disk routines saved before the union carry no `kind`; they must still
-  // resolve through the app-event branch, never the webhook one.
   const routines = [
     routine({
       id: "legacy",
@@ -115,9 +109,9 @@ test("toTriggerSummaries treats a kindless binding as a Composio app event", () 
 test("timedOutTriggerIds flags only long-absent statuses", () => {
   const now = 100_000;
   const firstSeen = {
-    fresh: now - 1_000, // seen 1s ago — still verifying
-    stale: now - TRIGGER_STATUS_TIMEOUT_MS - 1, // past the window
-    edge: now - TRIGGER_STATUS_TIMEOUT_MS, // exactly at the window
+    fresh: now - 1_000,
+    stale: now - TRIGGER_STATUS_TIMEOUT_MS - 1,
+    edge: now - TRIGGER_STATUS_TIMEOUT_MS,
   };
   const ids = ["fresh", "stale", "edge", "unseen", "hasStatus"];
   const items = [{ routine_id: "hasStatus", status: "pending" as const }];
@@ -129,7 +123,6 @@ test("timedOutTriggerIds flags only long-absent statuses", () => {
 
 test("timedOutTriggerIds never times out a routine that has a status", () => {
   const now = 100_000;
-  // Even long-seen, a real status item wins and is never synthesized over.
   const firstSeen = { r1: now - TRIGGER_STATUS_TIMEOUT_MS - 10_000 };
   const items = [{ routine_id: "r1", status: "active" as const }];
   assert.deepEqual(timedOutTriggerIds(["r1"], items, firstSeen, now), []);
@@ -137,7 +130,7 @@ test("timedOutTriggerIds never times out a routine that has a status", () => {
 
 test("withTriggerTimeouts overlays an error only for timed-out ids", () => {
   const base = { r1: { routine_id: "r1", status: "active" as const } };
-  assert.equal(withTriggerTimeouts(base, [], "gone"), base); // untouched
+  assert.equal(withTriggerTimeouts(base, [], "gone"), base);
   const merged = withTriggerTimeouts(base, ["r2"], "gone");
   assert.equal(merged.r1.status, "active");
   assert.deepEqual(merged.r2, {

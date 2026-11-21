@@ -80,7 +80,6 @@ fn report_engine_crash(exit: Option<std::process::ExitStatus>, backoff: Duration
             if let Some(c) = code {
                 scope.set_tag("engine.exit_code", c.to_string());
             }
-            // One issue for the whole crash-loop, not one per restart.
             scope.set_fingerprint(Some(&["engine-subprocess-exit"][..]));
         },
         || {
@@ -142,36 +141,10 @@ impl EngineSubprocess {
         env: &[(String, String)],
     ) -> Result<Self, String> {
         let mut cmd = Command::new(binary);
-        // Pipe stderr so we can forward it to both the parent's tracing
-        // sink AND an on-disk `engine.log` next to backend.log. On
-        // Windows GUI builds the parent has no console, so inherited
-        // stderr disappears into NUL and the engine's tracing output —
-        // including panic messages — is lost. The on-disk capture is
-        // what `Report bug` ships back to us when an engine subprocess
-        // crashes.
         cmd.stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            // Piped stdin we never write to: when this supervisor
-            // process exits (or crashes), the write-end drops and the
-            // child's `read(stdin)` returns EOF. The engine's
-            // `spawn_parent_watchdog` listens for that and exits,
-            // preventing orphan engines holding ports after the app
-            // force-quits.
             .stdin(Stdio::piped());
-        // The supervised marker, set right next to the pipe it describes so the
-        // two can never drift. It tells the Bun host's parent-watchdog that the
-        // stdin above is a real supervisor pipe to watch for EOF (app death), NOT
-        // a closed/`/dev/null` stdin. The watchdog arms ONLY on this marker;
-        // without it (self-host Docker/source-run Node, dev, tests) it stays inert, so a
-        // missing supervisor pipe never crash-loops the host at boot (HOU-582).
-        // The Rust engine ignores it — it watches stdin EOF directly.
         cmd.env("HOUSTON_SUPERVISED", "1");
-        // The engine's Sentry config is decided ENTIRELY by the desktop app
-        // (gated on `sentry_active` in lib.rs) and injected via `env` below.
-        // Strip any inherited SENTRY_* from our own environment first, so a
-        // shell-exported DSN can never make the engine self-report when the app
-        // chose to suppress it — keeping the "app injects NO DSN → engine
-        // dormant" contract airtight regardless of the launching shell (HOU-469).
         for key in [
             "SENTRY_DSN",
             "SENTRY_RELEASE",
@@ -180,16 +153,7 @@ impl EngineSubprocess {
         ] {
             cmd.env_remove(key);
         }
-        // Undo the AppImage runtime's env mutations (Linux, no-op elsewhere):
-        // the engine and everything it forks — the sibling `claude` binary,
-        // agent shell commands — live outside the bundle's library world, so
-        // the mount-scoped LD_LIBRARY_PATH / GTK / GIO exports must not leak
-        // into them (appimage_env.rs).
         crate::appimage_env::sanitize_std_command(&mut cmd);
-        // The runtime spawns the bundled Claude Code CLI for chat turns, and
-        // on Windows that CLI refuses to start without a resolvable shell.
-        // Repair the env BEFORE the caller-provided pairs so an explicit
-        // override still wins (see `shell_env`).
         crate::shell_env::apply_claude_shell_env(&mut cmd);
         for (k, v) in env {
             cmd.env(k, v);
@@ -199,7 +163,6 @@ impl EngineSubprocess {
         unsafe {
             use std::os::unix::process::CommandExt;
             cmd.pre_exec(|| {
-                // New process group — killing the parent won't orphan the child.
                 libc_setpgid()
             });
         }
@@ -207,26 +170,7 @@ impl EngineSubprocess {
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
-            // CREATE_NEW_PROCESS_GROUP (0x00000200) detaches the child
-            // from the parent's console process group. Without it,
-            // CTRL_C_EVENT and CTRL_CLOSE_EVENT delivered to the parent
-            // propagate to the engine and it dies with
-            // STATUS_CONTROL_C_EXIT (0xC000013A) — observed on Windows
-            // MSI builds. We never need to send Ctrl+C to the child
-            // ourselves; the stdin watchdog handles graceful shutdown.
             const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
-            // CREATE_NO_WINDOW (0x08000000) prevents Windows from
-            // allocating a fresh console for the engine child.
-            // `houston-app.exe` is a GUI Tauri process with no
-            // console attached, so without this flag the engine —
-            // which compiles with Rust's default `console` PE
-            // subsystem so its tracing output stays inspectable when
-            // launched from a terminal — pops a visible cmd window
-            // every time Houston launches. Tauri's own `Sidecar`
-            // helper sets this flag for us; we don't use it
-            // (engine_supervisor speaks raw std::process::Command
-            // for the stdin-watchdog trick), so we have to set it
-            // ourselves.
             const CREATE_NO_WINDOW: u32 = 0x0800_0000;
             cmd.creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW);
         }
@@ -235,15 +179,6 @@ impl EngineSubprocess {
             .spawn()
             .map_err(|e| format!("failed to spawn {}: {e}", binary.display()))?;
 
-        // Windows: bind the engine (and everything it spawns) to a
-        // kill-on-close Job Object so it dies with the app. The engine's
-        // stdin-EOF watchdog covers Unix but NOT Windows —
-        // `TerminateProcess` (force-quit / crash) never delivers EOF to a
-        // child's piped stdin, so the watchdog would block forever and the
-        // engine orphaned (gethouston/houston#306). Assigned immediately
-        // after spawn: the engine spawns no subprocess in the microseconds
-        // before assignment (its first child processes run on tokio
-        // blocking tasks, many ms later), so the whole subtree is covered.
         #[cfg(windows)]
         let _job = match win_job::assign(&child) {
             Ok(job) => job,
@@ -253,19 +188,11 @@ impl EngineSubprocess {
             }
         };
 
-        // Take stdin out of the Child BEFORE anything can call
-        // `Child::wait()` — wait() closes stdin, which would trip the
-        // engine's parent watchdog the moment we start reaping.
         let stdin = child.stdin.take();
         let stdout = child.stdout.take().ok_or("no stdout from engine")?;
         let stderr = child.stderr.take().ok_or("no stderr from engine")?;
         let mut reader = BufReader::new(stdout);
 
-        // Forward engine stderr (its tracing sink) to:
-        //   1. an on-disk `engine.log` daily-rolled file alongside
-        //      `backend.log`, so bug reports include engine traces, and
-        //   2. the supervisor's tracing sink as `[engine:stderr] ...`.
-        // Without (1), Windows GUI builds discard engine stderr to NUL.
         let stderr_reader = BufReader::new(stderr);
         thread::spawn(move || {
             let logs_dir = crate::houston_dir().join("logs");
@@ -321,10 +248,6 @@ impl EngineSubprocess {
             }
         };
 
-        // Keep draining stdout so the engine never blocks on a full pipe
-        // buffer or sees EPIPE from tracing. Tracing already goes to
-        // stderr, but this is defense-in-depth and forwards any stray
-        // println! from the engine to our tracing sink.
         thread::spawn(move || {
             let mut line = String::new();
             loop {
@@ -370,8 +293,6 @@ impl EngineSubprocess {
             if let Some(mut child) = guard.take() {
                 #[cfg(unix)]
                 unsafe {
-                    // Kill the whole process group so tokio workers + any
-                    // grandchildren die with the parent.
                     let pid = child.id() as i32;
                     libc::killpg(pid, libc_sigterm());
                 }
@@ -425,7 +346,6 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
         }
     };
 
-    // 1. Explicit env override.
     if let Ok(p) = std::env::var("HOUSTON_ENGINE_BIN") {
         let pb = PathBuf::from(p);
         if let Some(hit) = try_candidate(pb, &mut tried) {
@@ -433,8 +353,6 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
         }
     }
 
-    // 2. Sibling of the current executable — the bundled-sidecar location
-    //    Tauri actually uses on every shipping platform.
     if let Ok(exe) = std::env::current_exe() {
         if let Some(exe_dir) = exe.parent() {
             if let Some(hit) = try_candidate(exe_dir.join(bin_name_no_triple()), &mut tried) {
@@ -449,7 +367,6 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
         }
     }
 
-    // 3. Resources dir — legacy fallback.
     if let Some(resources) = resource_dir {
         if let Some(hit) = try_candidate(
             resources.join("binaries").join(bin_name_no_triple()),
@@ -488,7 +405,6 @@ fn bin_name_no_triple() -> &'static str {
 /// Host target triple — best-effort. Matches the suffix tauri `externalBin`
 /// uses when copying sidecars into the bundle.
 fn host_triple() -> &'static str {
-    // These match the triples tauri-cli emits. Extend as needed.
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     {
         "aarch64-apple-darwin"
@@ -543,21 +459,12 @@ pub fn spawn_supervisor<C: SupervisorCallbacks>(
     thread::spawn(move || {
         let mut backoff = Duration::from_secs(1);
         loop {
-            // Clone the current child handle under a BRIEF lock, then release
-            // the slot BEFORE blocking on exit. The Tauri `setup()` closure
-            // locks this same slot to read the handshake; holding it across the
-            // blocking `wait_on` deadlocked app launch — the window never
-            // showed and the dock icon went dead. Cloning the `Arc` is cheap and
-            // the slot lock is released the instant this guard drops.
             let child = slot_clone
                 .lock()
                 .ok()
                 .and_then(|g| g.as_ref().map(|s| Arc::clone(&s.child)));
             let exit = child.and_then(|c| EngineSubprocess::wait_on(&c));
 
-            // App tearing down → exit is deliberate. Stop the supervisor: don't
-            // report a crash and don't respawn an engine that would outlive the
-            // app for an instant holding a port.
             if ENGINE_SHUTTING_DOWN.load(Ordering::SeqCst) {
                 tracing::info!("[engine] supervisor stopping — app shutting down");
                 break;
@@ -565,16 +472,10 @@ pub fn spawn_supervisor<C: SupervisorCallbacks>(
 
             tracing::warn!("[engine] subprocess exited: {:?}", exit);
 
-            // A non-zero / signal exit while NOT shutting down is a genuine
-            // crash (panic-abort, OOM, segfault). Surface it as a Sentry event
-            // — the supervisor's INFO/WARN logs are only breadcrumbs, so a
-            // crash-looping engine would otherwise be invisible. Graceful
-            // stdin-EOF shutdown (exit 0) is filtered out here.
             if engine_exit_is_crash(exit.map(|s| s.success()), false) {
                 report_engine_crash(exit, backoff);
             }
 
-            // Drop the exited handle.
             if let Ok(mut guard) = slot_clone.lock() {
                 *guard = None;
             }
@@ -601,9 +502,6 @@ pub fn spawn_supervisor<C: SupervisorCallbacks>(
 }
 
 fn parse_banner(line: &str) -> Option<EngineHandshake> {
-    // The Houston host emits `HOUSTON_HOST_LISTENING port=<p> token=<t>`.
-    // (The Rust engine's `HOUSTON_ENGINE_LISTENING` prefix is gone with the
-    // engine — accepting it could only ever bless a stale wrong binary.)
     let rest = line.strip_prefix("HOUSTON_HOST_LISTENING ")?;
     let mut port: Option<u16> = None;
     let mut token: Option<String> = None;
@@ -672,15 +570,11 @@ mod win_job {
     /// job. Created non-inheritable so no child keeps it open.
     pub struct EngineJob(HANDLE);
 
-    // A Win32 job handle is a process-wide kernel handle; the supervisor's
-    // restart thread owns the `EngineSubprocess`, so this must cross threads.
     unsafe impl Send for EngineJob {}
     unsafe impl Sync for EngineJob {}
 
     impl Drop for EngineJob {
         fn drop(&mut self) {
-            // Best-effort: closing the last handle is what triggers the kill,
-            // and there is no UI thread to surface a CloseHandle failure to.
             unsafe { CloseHandle(self.0) };
         }
     }
@@ -781,7 +675,6 @@ mod tests {
 
     #[test]
     fn parses_host_banner() {
-        // The Houston host emits the HOUSTON_HOST_LISTENING banner.
         let h = parse_banner("HOUSTON_HOST_LISTENING port=4318 token=deadbeef").unwrap();
         assert_eq!(h.port, 4318);
         assert_eq!(h.token, "deadbeef");
@@ -794,25 +687,18 @@ mod tests {
 
     #[test]
     fn rejects_legacy_engine_banner() {
-        // The Rust engine is gone; its banner must no longer be blessed —
-        // a stale pre-cutover binary emitting it is the WRONG sidecar.
         assert!(parse_banner("HOUSTON_ENGINE_LISTENING port=12345 token=abc").is_none());
     }
 
     #[test]
     fn crash_only_on_nonzero_exit_while_running() {
-        // Non-zero exit while running = genuine crash → report.
         assert!(engine_exit_is_crash(Some(false), false));
-        // Graceful stdin-EOF shutdown exits 0 → not a crash.
         assert!(!engine_exit_is_crash(Some(true), false));
-        // Already reaped (deliberate kill) → not a crash.
         assert!(!engine_exit_is_crash(None, false));
     }
 
     #[test]
     fn never_crash_when_shutting_down() {
-        // The shutdown flag suppresses reporting even for a non-zero exit
-        // (Windows force-kill gives the engine a non-zero status on teardown).
         assert!(!engine_exit_is_crash(Some(false), true));
         assert!(!engine_exit_is_crash(Some(true), true));
         assert!(!engine_exit_is_crash(None, true));
@@ -820,26 +706,12 @@ mod tests {
 
     #[test]
     fn wait_on_returns_none_for_empty_handle() {
-        // An already-reaped / never-populated handle must not panic — it
-        // returns None so the supervisor falls through to its respawn path.
         let empty: Mutex<Option<Child>> = Mutex::new(None);
         assert!(EngineSubprocess::wait_on(&empty).is_none());
     }
 
     #[test]
     fn supervisor_releases_slot_before_blocking_wait() {
-        // Regression for the launch deadlock: the monitor must clone the child
-        // handle under a brief lock and release the slot BEFORE blocking in
-        // `wait_on`. Holding the slot across the blocking wait wedged the Tauri
-        // `setup()` closure (which locks the same slot to read the handshake),
-        // so the app launched with a live process but no window.
-        //
-        // Modeled with plain handles (a real `EngineSubprocess` needs a spawned
-        // binary): the inner `Arc<Mutex<()>>` stands in for the child handle the
-        // monitor blocks on; the outer `Mutex<Option<_>>` is the slot the setup
-        // closure must still be able to lock. Under the old code the assertion
-        // below would never even be reached — the monitor held the slot across
-        // the blocking wait.
         use std::sync::mpsc;
 
         let inner = Arc::new(Mutex::new(()));
@@ -849,22 +721,17 @@ mod tests {
 
         let slot_for_monitor = Arc::clone(&slot);
         let monitor = thread::spawn(move || {
-            // Brief lock: clone the handle out, then DROP the slot guard.
             let handle = slot_for_monitor
                 .lock()
                 .unwrap()
                 .as_ref()
                 .map(Arc::clone)
                 .expect("slot occupied");
-            // Now block "waiting on the child" while holding only the inner
-            // handle — never the slot.
             let _held = handle.lock().unwrap();
             blocked_tx.send(()).unwrap();
             release_rx.recv().unwrap();
         });
 
-        // Once the monitor is blocked in its wait, the setup closure must still
-        // be able to acquire the slot lock.
         blocked_rx.recv().unwrap();
         assert!(
             slot.try_lock().is_ok(),
@@ -888,7 +755,6 @@ mod tests {
         use std::time::{Duration, Instant};
 
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        // Would otherwise live ~30s; the job must cut it short.
         let mut child = Command::new("cmd")
             .args(["/c", "ping", "-n", "30", "127.0.0.1"])
             .stdout(Stdio::null())
@@ -898,7 +764,6 @@ mod tests {
             .expect("spawn test child");
 
         let job = win_job::assign(&child).expect("assign child to job");
-        // Dropping the only handle => JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE.
         drop(job);
 
         let deadline = Instant::now() + Duration::from_secs(5);

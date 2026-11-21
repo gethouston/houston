@@ -15,7 +15,6 @@ import {
 
 type Translate = ReturnType<typeof useTranslation<"teams">>["t"];
 
-/** The desktop's LinkedIn return pages, in the person's language. */
 function returnCopy(t: Translate, language: string | undefined) {
   return {
     lang: normalizeLocale(language) ?? "en",
@@ -31,11 +30,6 @@ function returnCopy(t: Translate, language: string | undefined) {
   } satisfies ChannelsLoopbackCopy;
 }
 
-/**
- * The effects `startLinkedInConnect` runs, bound here, built INSIDE the
- * click: the web claims LinkedIn's tab now (a browser grants it only there),
- * the desktop binds its return listener and opens the system browser.
- */
 export function linkedInConnectPorts(
   t: Translate,
   language: string | undefined,

@@ -1,12 +1,3 @@
-/**
- * Pure rules for the {@link SpaceInvaders} canvas easter egg — everything about
- * the game that can be reasoned about without a canvas: spawning, movement,
- * collisions, and a deterministic `step`. Geometry constants and state shapes
- * live in `space-invaders-defs.ts`; the React/canvas shell
- * (`space-invaders.tsx`) owns only rendering and input wiring, so this file is
- * unit-testable under `node --test` (see `app/tests/space-invaders-model.ts`).
- */
-
 import {
   BOMB_SPEED,
   BULLET_SPEED,
@@ -31,7 +22,6 @@ import {
 const clamp = (n: number, min: number, max: number) =>
   Math.min(max, Math.max(min, n));
 
-/** A fresh, centered 4×8 swarm. */
 export function spawnInvaders(): Invader[] {
   const list: Invader[] = [];
   const left = (W - (COLS * (INV_W + GAP_X) - GAP_X)) / 2;
@@ -60,27 +50,19 @@ export function createState(): GameState {
   };
 }
 
-/** Restart from scratch (score included) after a game over. */
 export function reset(s: GameState): void {
   Object.assign(s, createState());
 }
 
-/** Point the ship at a logical x (used by pointer steering), clamped in-bounds. */
 export function steer(s: GameState, x: number): void {
   s.shipX = clamp(x, SHIP_W / 2, W - SHIP_W / 2);
 }
 
-/** Fire a bullet, unless the game is over or the in-flight cap is reached. */
 export function shoot(s: GameState): void {
   if (!s.over && s.bullets.length < MAX_BULLETS)
     s.bullets.push({ x: s.shipX, y: SHIP_Y });
 }
 
-/**
- * Advance the simulation by one frame (mutates `s`). `rng` is injectable so the
- * enemy-bomb cadence is deterministic under test; it defaults to `Math.random`.
- * No-op once the game is over — the shell waits for input to {@link reset}.
- */
 export function step(
   s: GameState,
   input: StepInput,
@@ -98,12 +80,10 @@ export function step(
 
   let live = s.invaders.filter((i) => i.alive);
   if (live.length === 0) {
-    // Swarm cleared: respawn (faster, since it starts full again), keep score.
     s.invaders = spawnInvaders();
     s.dir = 1;
     live = s.invaders;
   }
-  // Speed scales up as the swarm thins (min 12, ramping toward ~90 px/s).
   const speed = 12 + (1 - live.length / (ROWS * COLS)) * 78;
   let hitEdge = false;
   for (const inv of live) {
@@ -116,7 +96,6 @@ export function step(
   }
   for (const inv of live) if (inv.y + INV_H >= SHIP_Y) endGame(s);
 
-  // Enemy bombs, dropped occasionally from a random front-line invader.
   s.bombTimer -= dt;
   if (s.bombTimer <= 0 && live.length) {
     s.bombTimer = 0.9 + rng();

@@ -238,8 +238,6 @@ test("a claimed turn hydrates live session tails and leaves skips untouched", as
   const claudeNewFile = seed(claudeNew, "new claude");
   seed(`${sessionRel}/claude/statsig/cache.json`, "cache");
   utimesSync(piReadableFile, new Date(1_000), new Date(1_000));
-  // The relocated stale session uploaded after the fresh retry. Its newer
-  // store timestamp must not outrank the sessions.json pointer.
   utimesSync(claudeOldFile, new Date(2_000), new Date(2_000));
   utimesSync(claudeNewFile, new Date(1_000), new Date(1_000));
 

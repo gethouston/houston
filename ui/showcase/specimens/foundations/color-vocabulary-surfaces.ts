@@ -1,13 +1,5 @@
 import type { ColorWord } from "./color-vocabulary";
 
-/**
- * The surface ladder, the ink on it, the interactive roles and the lines —
- * the vocabulary a designer uses to direct a change ("make the gutter a hair
- * darker", "that should be muted ink").
- *
- * The sentences are the design system's own, condensed from `/DESIGN.md`
- * (the surface ladder).
- */
 export const SURFACE_WORDS: Record<string, ColorWord> = {
   base: {
     label: "Gutter",

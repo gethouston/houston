@@ -50,7 +50,6 @@ describe("triggerRemedy", () => {
   });
 
   it("never reads a reason off a status it does not belong to", () => {
-    // trigger_type_gone only means "dead" on an error row.
     expect(triggerRemedy(item("active", "trigger_type_gone"))).toBe("none");
     expect(triggerRemedy(item("pending", "config_rejected"))).toBe("none");
   });

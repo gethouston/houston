@@ -18,14 +18,6 @@ import { MemoryVfs } from "../vfs";
 import { fireRoutineRun } from "./run";
 import type { RoutineFirer } from "./scheduler";
 
-/**
- * PRODUCT-1982: a routine created before per-routine models carries no
- * provider pin. When the runtime refuses its fire because nothing usable is
- * connected, every fire used to record an untyped error and the routine kept
- * firing forever. It now records `no_model` and pauses after the same streak
- * as a pinned routine; choosing a model and resuming starts it again.
- */
-
 const EDITED = Date.parse("2026-10-06T00:00:00.000Z");
 const FIFTEEN_MIN = 15 * 60_000;
 
@@ -49,7 +41,6 @@ async function setup(r: Routine) {
 
 type Env = Awaited<ReturnType<typeof setup>>;
 
-/** Fire the routine as stored, `n` fifteen-minute instants after the edit. */
 async function fireAt(env: Env, n: number, firer: RoutineFirer) {
   const [current] = (await loadRoutines(env.vfs, env.root)).items;
   if (!current) throw new Error("routine missing");
@@ -96,7 +87,6 @@ test("an unpinned routine refused for no provider pauses once, then resumes on a
       TurnFireError,
     );
     const [saved] = (await loadRoutines(env.vfs, env.root)).items;
-    // Still firing until the streak completes; paused by exactly the last one.
     expect(saved?.enabled).toBe(n < ROUTINE_AUTO_PAUSE_AFTER);
   }
 
@@ -120,8 +110,6 @@ test("an unpinned routine refused for no provider pauses once, then resumes on a
   });
   expect(routinesChanged(env)).toBe(1);
 
-  // The person picks a model (the routine screen's Model section), then
-  // resumes: the pause clears and the next fire runs on the chosen provider.
   if (!paused) throw new Error("routine missing");
   const resumeAt = new Date(EDITED + 20 * FIFTEEN_MIN).toISOString();
   const picked = applyRoutineUpdate(
@@ -178,8 +166,6 @@ test("an unpinned refusal that names the agent's saved provider blames that acco
       new Date(EDITED).toISOString(),
     ),
   );
-  // The runtime's 409 names the saved provider when one is saved but logged
-  // out (or its login expired): that is the account to reconnect, not "no model".
   const savedLoggedOut: RoutineFirer = {
     fire: async () =>
       Promise.reject(
@@ -215,7 +201,6 @@ test("a pause that fails after the errored row is written never replaces the fir
     await expect(fireAt(env, n, refusing)).rejects.toBeInstanceOf(
       TurnFireError,
     );
-  // The streak-completing fire's pause hits a rename hold on the routines doc.
   const save = env.vfs.writeText.bind(env.vfs);
   vi.spyOn(env.vfs, "writeText").mockImplementation(async (key, text) => {
     if (key.includes("routines.json") && !key.includes("routine_runs"))

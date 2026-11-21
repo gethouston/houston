@@ -144,7 +144,6 @@ describe("reconcilePick", () => {
 
   it("goes back to the paid step when the paid org is dropped", () => {
     const left = choice({ payer: "plus", orgs: [PERSONAL, INNOVA] });
-    // The free pick stays on the paid step; the free step settles the collision.
     expect(reconcilePick(left, freeStep)).toEqual({
       step: "paid",
       free: INNOVA.slug,
@@ -190,7 +189,6 @@ describe("reconcilePick", () => {
 
 describe("changing the paid pick after Back", () => {
   it("keeps the free pick while it is still owned", () => {
-    // Paid La Fila, free Innova, Back, Innova as paid, La Fila again, Next.
     let state = toFreeStep(payer, {
       step: "paid",
       free: null,
@@ -232,7 +230,6 @@ describe("pickRefused", () => {
       paid: null,
       paidRefused: true,
     });
-    // A refetch that lags or fails still names a payer: nothing is resent.
     expect(reconcilePick(payer, refused)).toEqual(refused);
     expect(pickerSubmission(reconcilePick(payer, refused))).toEqual({
       freeOrgSlug: INNOVA.slug,

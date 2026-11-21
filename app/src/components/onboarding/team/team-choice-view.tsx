@@ -3,18 +3,8 @@ import { BASIC_TEAM_ROLES } from "./basic-team-model";
 import { TeamAvatarStack } from "./team-avatar-stack";
 import { TeamChoiceCard } from "./team-choice-card";
 
-/** How many hires the "Hire your team" picture shows before its open seat. */
 const HIRED_FACES = 3;
 
-/**
- * The card's first screen: two ways to a first team, the ready-made one
- * first. "Start with a basic team" shows the three it brings, in the colors
- * they will wear; "Hire your team" shows an open seat, after the faces of
- * anyone already hired one by one. Pressing either IS the answer.
- *
- * The person comes back here from either path, so once someone is hired the
- * screen says how many are on the team, and the footer offers Done.
- */
 export function TeamChoiceView({
   basicColors,
   hiredColors,
@@ -22,8 +12,6 @@ export function TeamChoiceView({
   onHire,
 }: {
   basicColors: readonly string[];
-  /** Everyone on the team so far, oldest first: employees a resumed first
-   *  run hired before, then this roster, joining or hired. */
   hiredColors: readonly (string | undefined)[];
   onBasic: () => void;
   onHire: () => void;

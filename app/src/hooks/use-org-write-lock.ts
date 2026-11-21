@@ -3,11 +3,6 @@ import { useTranslation } from "react-i18next";
 import { canPurchaseInApp } from "../lib/purchase-policy.ts";
 import { useActiveOrgBilling } from "./queries/use-billing.ts";
 
-/**
- * Whether the active org refuses writes (it is locked, owner included), and
- * the sentence a disabled control shows for it. Reads stay open, so a
- * surface disables only what writes.
- */
 export function useOrgWriteLock(): { locked: boolean; reason: string } {
   const { t } = useTranslation("teams");
   const { billing, org } = useActiveOrgBilling();

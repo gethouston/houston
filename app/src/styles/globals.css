@@ -4,16 +4,10 @@
 @import "@houston-ai/chat/src/styles.css";
 @import "@houston-ai/routines/src/styles.css";
 @import "@houston-ai/pdf/src/styles.css";
-/* The shared Houston canvas (aurora + glass), imported LAST so its
-   token overrides win at use-time — the SAME plane the Agent Store
-   playground and the catalog site render on. Delete this line to fully
-   revert. `futuristic.css` follows it with the app-only chrome that
-   sits ON the canvas (the AI-Hub glow + modal motion). */
 @import "@houston-ai/core/src/canvas.css";
 @import "./futuristic.css";
 @import "./file-preview.css";
 
-/* Scan local source + @houston-ai packages for Tailwind classes */
 @source "../";
 @source "../../node_modules/@houston-ai/board/src";
 @source "../../node_modules/@houston-ai/chat/src";
@@ -25,10 +19,6 @@
 @source "../../node_modules/@houston-ai/routines/src";
 @source "../../node_modules/@houston-ai/skills/src";
 @source "../../node_modules/@houston-ai/agent/src";
-/* Streamdown (chat markdown renderer) emits Tailwind utilities of its own
-   (list-inside, list-disc, …). It lives under ui/chat's node_modules, so scan
-   it through the workspace symlink or its classes never get generated and
-   markdown lists render without bullets/numbers (#451). */
 @source "../../node_modules/@houston-ai/chat/node_modules/streamdown/dist";
 
 body {
@@ -38,8 +28,6 @@ body {
     Arial, sans-serif;
 }
 
-/* The :not() guards keep the dark logo swap out of light-pinned
-   (data-theme="light") subtrees — same rule as futuristic.css. */
 [data-theme="dark"]
   .houston-update-logo-light:not(
     :where([data-theme="light"], [data-theme="light"] *)
@@ -54,14 +42,6 @@ body {
   display: block;
 }
 
-/* Chat link presentation lives in ui/chat (`MessageResponse`'s `a` override:
-   inline underlined autolinks, `Button` pills for labeled links). A blanket
-   `.group.is-assistant a[href]` pill rule here used to re-skin every anchor
-   with a fixed height, clipping long URLs into unreadable bars (HOU-1152). */
-
-/* First-run setup: a gentle per-step entrance so stepping through the wizard
-   feels smooth (like joining a Discord server) instead of hard-cutting between
-   screens. Keyed by step in <SetupCard>, so it replays on each transition. */
 @keyframes setup-step-in {
   from {
     opacity: 0;
@@ -81,9 +61,6 @@ body {
   }
 }
 
-/* Celebration beat for the success screens (setup ready, all set): the check
-   pops in with a slight overshoot while a ring expands and fades behind it.
-   Monochrome — the "reward" is in the motion + scale, not a decorative color. */
 @keyframes success-pop {
   0% {
     opacity: 0;
@@ -121,11 +98,6 @@ body {
   }
 }
 
-/* A catalog row that OWNS a live connect hand-off becomes ONE card. The card's
-   border + fill live on their own layer BEHIND the row (always mounted,
-   transparent at rest), so the treatment cross-fades on opacity alone — the
-   flat transparent catalog row is untouched until the flow starts, and nothing
-   animates a colour or a shadow per frame. The exit is the faster one. */
 .connect-card-frame {
   opacity: 0;
   transition: opacity 0.15s ease-out;
@@ -136,9 +108,6 @@ body {
   transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* The flow content rises out of the row it belongs to. The card growing taller
-   is the accepted expansion (only what sits BELOW it moves); the content itself
-   animates on opacity + transform. */
 @keyframes connect-card-body-in {
   from {
     opacity: 0;
@@ -160,12 +129,6 @@ body {
   }
 }
 
-/* The guided create-agent setup moving between its three questions. The
-   incoming screen enters from the side the move travels, so Back visibly
-   rewinds instead of replaying the way in; transform + opacity only, 200ms on
-   the entrance curve, and no exit at all (exits faster than entrances, and the
-   outgoing screen is already gone). Reduced motion keeps the cross-fade and
-   drops the travel. */
 @keyframes create-step-in-forward {
   from {
     opacity: 0;
@@ -201,9 +164,6 @@ body {
   animation-name: create-step-in-back;
 }
 
-/* A typed answer ("Something else") or an empty search result appearing in
-   place, under the run it belongs to: the same curve, travelling down instead
-   of sideways because nothing moved between screens. */
 @keyframes create-inline-in {
   from {
     opacity: 0;
@@ -218,9 +178,6 @@ body {
   animation: create-inline-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* The search row and the typed answer trade places in the SAME slot, so the
-   change is a crossfade: nothing travels, which is also all reduced motion
-   would have allowed. */
 @keyframes create-swap-in {
   from {
     opacity: 0;

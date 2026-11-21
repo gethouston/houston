@@ -5,24 +5,9 @@ import { closeActivityPanel } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
 import { startMission } from "./support/mission";
 
-/**
- * The clean-finish offers a mission keeps after its last turn: the "what to do
- * next" bubbles (`suggest_actions`) and the save-as-reusable card
- * (`suggest_reusable`). Both are OPTIONAL — they sit ABOVE the live composer
- * rather than replacing it — and both survive the mission's move to Done.
- *
- * The board contract they ride on: a clean finish settles the card in **Needs
- * you**, never Done. `done` is the USER's word — a checkmark, a drag, or a bulk
- * move — so the engine can no longer retire a mission on the user's behalf. The
- * offers are the reason it must not: they are the mission asking for one more
- * decision, and a card auto-filed under Done buries them.
- */
-
-/** The board card for a mission, addressed by its title. */
 const missionCard = (page: Page, title: string) =>
   page.locator("[data-kanban-card]").filter({ hasText: title });
 
-/** The two clean-finish offers, armed together on the next turn's done frame. */
 const BOTH_OFFERS = {
   interaction: {
     steps: [
@@ -73,7 +58,6 @@ test("suggested actions keep the latest reply visible in every frame", async ({
   await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
     data: { interaction: { steps: [BOTH_OFFERS.interaction.steps[0]] } },
   });
-  // Let the content spring finish before measuring the viewport-only resize.
   const slotGate = await page.addStyleTag({
     content:
       '.shrink-0:has(> div [aria-label="Dismiss suggested actions"]) { display: none; }',
@@ -87,13 +71,10 @@ test("suggested actions keep the latest reply visible in every frame", async ({
     let frame = 0;
     let task = 0;
     let reportedHeight = 0;
-    // Created after the pin's observer, so a reported height has its correction.
     const observer = new ResizeObserver(() => {
       reportedHeight = element.clientHeight;
     });
     observer.observe(element);
-    // A task can force layout between a Playwright mutation and ResizeObserver.
-    // Skip that unpainted layout until the pin has corrected its new height.
     const sample = () => {
       if (document.querySelector('[aria-label="Dismiss suggested actions"]')) {
         if (
@@ -193,8 +174,6 @@ test("suggested action pills settle the card in Needs you, prefill the composer,
   await expect(
     page.getByRole("button", { name: "Draft an email" }),
   ).toBeVisible();
-  // A suggestions-only finish is still a clean finish, and a clean finish now
-  // parks the card in Needs you: only the user files a mission under Done.
   await expect(
     page
       .locator('[data-kanban-column="needs_you"]')
@@ -206,9 +185,6 @@ test("suggested action pills settle the card in Needs you, prefill the composer,
   ).toHaveCount(0);
   const followUp = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
   await expect(followUp).toBeVisible();
-  // HOU-1050: a pill click prefills the composer instead of sending, and the
-  // pills stay up so the user can still pick a different one (each click
-  // replaces the draft).
   await page.getByRole("button", { name: "Draft an email" }).click();
   await expect(followUp).toHaveValue("Draft the email.");
   await expect(
@@ -218,7 +194,6 @@ test("suggested action pills settle the card in Needs you, prefill the composer,
   await expect(followUp).toHaveValue("Share the update.");
   await page.getByRole("button", { name: "Draft an email" }).click();
   await expect(followUp).toHaveValue("Draft the email.");
-  // Confirming with Enter runs the normal composer send and retires the pills.
   await followUp.press("Enter");
   await expect(
     page.locator(".is-user").filter({ hasText: "Draft the email." }),
@@ -226,10 +201,6 @@ test("suggested action pills settle the card in Needs you, prefill the composer,
   await expect(
     page.getByRole("button", { name: "Share update", exact: true }),
   ).toHaveCount(0);
-  // Wait for the prefilled send's turn to fully settle BEFORE staging the next
-  // offer:
-  // staging while that turn is still open races it onto the wrong done frame,
-  // where the upcoming composer send would abandon it.
   await expect(
     page.getByText('Roger that. You said: "Draft the email."'),
   ).toBeVisible();
@@ -255,25 +226,11 @@ test("suggested action pills settle the card in Needs you, prefill the composer,
     page.getByRole("button", { name: "Dismiss suggested actions" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Dismiss suggested actions" }).click();
-  // exact: the board's "Move to done" button would otherwise substring-match.
   await expect(
     page.getByRole("button", { name: "One", exact: true }),
   ).toHaveCount(0);
 });
 
-/**
- * The user's own move to Done is what retires a finished mission — and it keeps
- * the offers. Moving to Done answers whatever the mission was BLOCKED on, so the
- * blocking steps go, but the optional clean-finish offers are not questions: the
- * Done card still lets the user pick a follow-up or save the work as a Skill.
- *
- * Asserted TWICE, and both halves matter. Live, the offers come from the
- * conversation VM, which a board write never touches — that path only agrees
- * with the persisted one because `deriveActiveInteraction` applies the same
- * strip. After a reload the VM is gone and what renders is purely the
- * interaction the move to Done rewrote on disk. Assert one and not the other
- * and half the contract can be deleted with the test still green.
- */
 test("the user's move to Done keeps the finished mission's offers", async ({
   page,
   request,
@@ -283,7 +240,6 @@ test("the user's move to Done keeps the finished mission's offers", async ({
   });
   await startMission(page, "prepare the update");
 
-  // Both offers render together above the live composer.
   await expect(
     page.getByRole("button", { name: "Draft an email" }),
   ).toBeVisible();
@@ -296,8 +252,6 @@ test("the user's move to Done keeps the finished mission's offers", async ({
       .first(),
   ).toBeVisible();
 
-  // The checkmark is the ONLY thing that files it under Done (card actions are
-  // hover-gated, so close the chat panel to reach the board first).
   await closeActivityPanel(page);
   const card = missionCard(page, "prepare the update");
   await card.hover();
@@ -309,17 +263,12 @@ test("the user's move to Done keeps the finished mission's offers", async ({
       .first(),
   ).toBeVisible();
 
-  // LIVE: reopening the Done card still offers both — the move stripped only
-  // what the mission was blocked on, and it was blocked on nothing.
   await card.click();
   await expect(
     page.getByRole("button", { name: "Draft an email" }),
   ).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("Save this for next time")).toBeVisible();
 
-  // AFTER A RELOAD: the conversation VM is gone, so this is the interaction the
-  // move to Done actually persisted. Without the retain rule the Done card
-  // would come back empty.
   await page.reload();
   await missionCard(page, "prepare the update").click();
   await expect(
@@ -328,17 +277,6 @@ test("the user's move to Done keeps the finished mission's offers", async ({
   await expect(page.getByText("Save this for next time")).toBeVisible();
 });
 
-/**
- * The other half of the Done contract: a mission the user moves to Done while
- * it is BLOCKED must not keep asking. Moving to Done answers the question, so
- * the stepper is gone and the plain composer is back.
- *
- * What this pins is the PERSISTED strip (the `retainSuggestionSteps` rule on the
- * write seams). The live-VM half of the same rule — `deriveActiveInteraction`
- * refusing to render a blocking interaction on a Done mission — is pinned by
- * `app/tests/active-interaction.test.ts`; this harness cannot distinguish it,
- * because reopening the card here already reads the stripped persisted value.
- */
 test("the user's move to Done retires a blocking question, live", async ({
   page,
   request,
@@ -353,13 +291,10 @@ test("the user's move to Done retires a blocking question, live", async ({
     },
   });
   await startMission(page, "send the deck");
-  // The stepper REPLACES the composer while the mission is blocked.
   await expect(page.getByPlaceholder("Type your answer...")).toBeVisible({
     timeout: 15_000,
   });
 
-  // Not closeActivityPanel: Escape on a live question step skips it, which
-  // would retire the question before the move to Done this test is about.
   await page.getByRole("button", { name: "Close panel" }).click();
   await expect(page.getByPlaceholder("Type your answer...")).toBeHidden();
   const card = missionCard(page, "send the deck");
@@ -372,9 +307,6 @@ test("the user's move to Done retires a blocking question, live", async ({
       .first(),
   ).toBeVisible();
 
-  // Reopening it: the move to Done answered the question, so the composer
-  // stands alone. No reload — this is exactly the case that used to keep the
-  // stepper until the app was restarted.
   await card.click();
   await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible({
     timeout: 10_000,
@@ -385,12 +317,6 @@ test("the user's move to Done retires a blocking question, live", async ({
   ).toHaveCount(0);
 });
 
-/**
- * Per-STEP dismissal: the two offers are independent, so dismissing the action
- * bubbles must drop ONLY their step from the persisted interaction. The
- * save-as-reusable card is still there after a full reload — the regression
- * where one dismiss wiped the whole pending interaction and took its sibling.
- */
 test("dismissing one offer keeps its sibling, through a reload", async ({
   page,
   request,
@@ -411,8 +337,6 @@ test("dismissing one offer keeps its sibling, through a reload", async ({
   ).toHaveCount(0);
   await expect(page.getByText("Save this for next time")).toBeVisible();
 
-  // Reload: local dismissal state is gone, so what renders now comes purely
-  // from the persisted interaction the dismiss rewrote.
   await page.reload();
   await missionCard(page, "prepare the update").click();
   await expect(page.getByText("Save this for next time")).toBeVisible({

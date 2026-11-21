@@ -38,8 +38,6 @@ test("a running row with no readable start never holds its routine", () => {
 });
 
 test("a resumed run holds its routine until the latest restart's timeout", () => {
-  // Reconcile's clock restarts at the interruption, which can come as late
-  // as RESUME_MAX_AGE_MS into the run.
   const resumed = { ...run("running"), resumed: true } as RoutineRun;
   expect(holdsRoutineBusy(resumed, START + ROUTINE_RUN_TIMEOUT_MS + 1)).toBe(
     true,

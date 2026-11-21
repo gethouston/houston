@@ -23,7 +23,6 @@ import type { OpResult } from "./op-result";
 import { conversationScope, engineAgentId } from "./op-scope";
 import type { TurnFilesystem } from "./turn-filesystem";
 
-/** The gateway holds this chat's claim through sync and transcript projection. */
 export async function applyConversationOp(
   op: ConversationOp,
   fs: TurnFilesystem,
@@ -50,9 +49,7 @@ export async function applyConversationOp(
   let body: Record<string, unknown> = {};
   try {
     body = JSON.parse(op.body || "{}");
-  } catch {
-    /* route validation below */
-  }
+  } catch {}
   const request =
     action === "import" ? parseConversationImportRequest(body) : null;
   if (action === "import" && !request)
@@ -79,7 +76,6 @@ export async function applyConversationOp(
   }
   try {
     if (exists) await fs.vfs.readBytes(file);
-    // Archive reads may restore a cut or find an import already applied there.
     for (const key of action === "rename" || op.transcript !== undefined
       ? []
       : await fs.vfs.list(
@@ -101,11 +97,6 @@ export async function applyConversationOp(
       decline: true,
     };
   }
-  // While a card is live, only the person it is for may answer, dismiss,
-  // import into, or truncate the conversation. Read from the rows when the
-  // gateway sent them (they win), and before the snapshot is written, so a
-  // refusal leaves the tree untouched. Delete (above) is not card-gated: it
-  // drops history and session, the way out of a card whose person is gone.
   if (
     (action === "dismiss-interaction" ||
       action === "import" ||
@@ -119,8 +110,6 @@ export async function applyConversationOp(
   )
     return answer(403, notInteractionOwnerBody);
   if (op.transcript !== undefined) {
-    // Rows win at database authority. Keep runtime-only fields from the file,
-    // but never carry a lagging archive index into the canonical row snapshot.
     const existing = loadConversation(dir, cid);
     await fs.vfs.deletePrefix(
       posix.join(rel, `${encodeURIComponent(cid)}.archive`),

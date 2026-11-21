@@ -20,12 +20,6 @@ import {
 } from "./support/pick-confirm";
 import { armPlan, billingScreen, freePlan, openBilling } from "./support/plan";
 
-/**
- * The pick after the cutover applied it. An owner the cutover picked for sees
- * what it chose over a working shell and confirms or changes it until the
- * change window ends; an owner who picked reads once that it applied.
- */
-
 test.beforeEach(async ({ page }) => {
   await installAfterCutoverClock(page);
   await armCapabilities(SPACES_OWNER_CAPS);
@@ -47,7 +41,6 @@ test("a provisional payer sees what the cutover picked over a working shell, and
   await expect(page.getByRole("dialog", { name: APPLIED })).toBeVisible({
     timeout: 15_000,
   });
-  // The shell renders behind it (the dialog hides it from the a11y tree).
   await expect(page.locator("main")).toBeAttached();
   await expect(modal).toContainText(
     "We went by where you're most active. You can change this until November 6.",
@@ -89,12 +82,10 @@ test("Change moves the subscription to a three-member team and shows each org's 
     timeout: 15_000,
   });
 
-  // The picker starts on what the cutover applied, the subscription first.
   await expect(modal.getByRole("radio", { name: /Acme/ })).toBeChecked();
   await modal.getByText("La Fila", { exact: true }).click();
   await modal.getByRole("button", { name: "Use it for La Fila" }).click();
   await expect(modal.getByRole("radio", { name: /Personal/ })).toBeChecked();
-  // The save moves the subscription and the locks: every org is read again.
   const orgsRead = page.waitForRequest(
     (req) =>
       req.method() === "GET" && new URL(req.url()).pathname === "/v1/orgs",
@@ -125,7 +116,6 @@ test("Change moves the subscription to a three-member team and shows each org's 
   await page.clock.runFor(3_000);
   await expect(modal).toBeVisible();
 
-  // The save itself settled the notice; closing sends no second dismissal.
   await expect.poll(routes).toContain("dismiss");
   await modal.getByRole("button", { name: "Done" }).click();
   await expect(modal).toBeHidden();
@@ -182,7 +172,6 @@ test("a closed window answers Confirm with its own copy and no error report", as
   page,
 }) => {
   const reports = collectErrorReports(page);
-  // The page still thinks the window is open; the gateway knows it closed.
   await armApplied(provisionalPayer(), WINDOW_CLOSED);
   await page.goto("/");
   const modal = choiceModal(page);
@@ -230,7 +219,6 @@ test("Billing offers the change until the window ends, on the same picker", asyn
   ).toBeVisible();
   await expect(row(picker, "La Fila")).toContainText("Locks November 6");
 
-  // Confirming from Settings settles the notice too: no modal next open.
   await expect.poll(routes).toContain("dismiss");
   await page.reload();
   await expect(page.locator("[data-sidebar-item]").first()).toBeVisible();

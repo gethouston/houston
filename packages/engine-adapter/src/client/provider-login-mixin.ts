@@ -14,7 +14,6 @@ import {
 } from "./provider-login-poll";
 import { requireProviderRouting } from "./provider-routing";
 
-/** A missing login already satisfies cancel's postcondition (HOU-676). */
 function benignCancelMiss(e: unknown): void {
   if (e instanceof EngineError && e.status === 404) return;
   throw e;
@@ -22,11 +21,6 @@ function benignCancelMiss(e: unknown): void {
 
 export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProviderLogin extends Base {
-    // `deviceAuth` is the client's "I can't catch a loopback callback" flag — the
-    // co-located desktop sends false (it CAN), remote webapps send true. It steers
-    // Codex's flow (false → browser/loopback, true → device code); Claude keys off
-    // the runtime's own headless mode regardless. Default true so a caller that
-    // omits it never asks a remote runtime for an unreachable loopback.
     async providerLogin(
       name: string,
       opts?: { deviceAuth?: boolean; enterpriseDomain?: string },
@@ -34,16 +28,9 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
       const pid = toNewProvider(name);
       if (!pid) throw new Error(`provider ${name} not supported`);
       const deviceAuth = opts?.deviceAuth ?? true;
-      // GitHub Copilot: the company GitHub domain when the user chose the Company
-      // plan in the connect dialog. Undefined => Personal/github.com (and every
-      // other provider). The runtime runs the device-code flow against that GitHub.
       const enterpriseDomain = opts?.enterpriseDomain;
 
       if (!this.ctx.cp) {
-        // Local single runtime. Drive the legacy login dialog: `device_code`
-        // carries the code to display; `url` (loopback) and `auth_code`
-        // (headless Claude) leave `user_code` null so the dialog shows a paste
-        // field. The runtime emits no completion event, so poll and synthesize.
         let info: Awaited<ReturnType<typeof this.ctx.engine.startLogin>>;
         try {
           info = await this.ctx.engine.startLogin(
@@ -58,17 +45,10 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
         const url =
           info.kind === "device_code" ? info.verificationUri : info.url;
         const userCode = info.kind === "device_code" ? info.userCode : null;
-        // The bus event is the ONE opening path: an app-side handler (a mounted
-        // login surface, else the shell's global fallback) opens the URL via the
-        // platform opener. A direct window.open here double-opened next to those
-        // handlers — and was a silent no-op inside the desktop's WKWebView.
         emitEvent("ProviderLoginUrl", {
           provider: name,
           url,
           user_code: userCode,
-          // `auth_code` (headless Claude setup-token): `url` is only docs, so the
-          // handler must show the paste dialog, never auto-open it. `instructions`
-          // is the runtime's paste-step copy the dialog renders above the field.
           auth_code: info.kind === "auth_code",
           instructions:
             info.kind === "auth_code" ? info.instructions : undefined,
@@ -77,20 +57,6 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
         return;
       }
 
-      // Control-plane path (cloud sandbox OR the desktop host sidecar). Start the
-      // login in THIS agent's runtime — or, before any agent exists (first-run
-      // onboarding connects the AI ahead of agent creation), in the host's hidden
-      // SETUP runtime — and surface it on the bus the picker/settings handler
-      // consumes. A remote runtime returns a device_code (we pass its
-      // `user_code`, which opens the code panel); a co-located desktop client gets
-      // a loopback `url` (user_code null) that the handler opens straight in the
-      // browser. `provider` MUST be the old/frontend id (the dialog's contract).
-      // Refuse before the space's agent list has settled (HOU-979): the only
-      // other candidate is the raw pref, which after a switch names the PREVIOUS
-      // space's agent — the login would run in that space's pod.
-      // The target can be an agent the gateway no longer has (a stale known
-      // list after a rename/delete, HOUSTON-APP-52F): a `404 agent not found`
-      // forgets it and the launch runs once more at the re-resolved runtime.
       requireProviderRouting(this.ctx);
       const cp = this.ctx.cp;
       const old = toOldProvider(pid);
@@ -119,9 +85,6 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
           provider: old,
           url: info.url,
           user_code: null,
-          // Setup-token paste flow (Claude): the url is docs-only, so the handler
-          // shows the paste dialog instead of opening it. `instructions` carries
-          // the runtime's paste-step copy; absent for the loopback `url` kind.
           auth_code: info.kind === "auth_code",
           instructions:
             info.kind === "auth_code" ? info.instructions : undefined,
@@ -137,13 +100,6 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
         await this.ctx.engine.completeLogin(pid, code);
         return;
       }
-      // The SAME runtime the login STARTED in, pinned by the connect poll's
-      // `activeLogins` entry — never re-derived here: `providerAgentId()`'s
-      // answer moves when the first agent materializes mid-login (onboarding
-      // tears the setup pod down at that moment), and the relayed OAuth code
-      // then landed on a pod that never saw the login — "no active login for
-      // openai-codex" (HOU-1113). Live derivation is only the fallback when no
-      // pin exists (the poll already ended, or a legacy paste dialog).
       const pinned = pinnedLoginAgentId(this.ctx, pid);
       const engine =
         pinned === undefined
@@ -157,22 +113,10 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
       const pid = name ? toNewProvider(name) : undefined;
       if (!name || !pid) return;
       if (this.ctx.cp) {
-        // The pinned key mirrors what pollProviderConnect registered at start:
-        // the agent's id, or the setup-runtime sentinel when the first-run
-        // login started before any agent existed. Pinned — NOT re-derived via
-        // providerAgentId(), whose answer moves once the first agent
-        // materializes mid-login: the delete would then miss the poll's real
-        // key (the poll keeps running) and the cancel would land on a runtime
-        // that never saw the login (HOU-1113).
         const pinned = pinnedLoginAgentId(this.ctx, pid);
         const agentId =
           pinned === undefined ? this.ctx.providerAgentId() : pinned;
-        this.ctx.activeLogins.delete(loginKey(agentId, pid)); // stop the poll
-        // Kill the runtime-side login too, in the same runtime the login started
-        // in (the agent's sandbox, or the hidden setup runtime pre-agent) —
-        // otherwise it keeps polling the provider until timeout and a retry
-        // collides with the stale flow ("sign-in already pending", HOU-664 /
-        // the HOU-438 failure class).
+        this.ctx.activeLogins.delete(loginKey(agentId, pid));
         const engine = agentId
           ? this.ctx.providerEngineFor(agentId)
           : controlPlane.setupRuntimeClientFor(this.ctx.cp);
@@ -180,11 +124,7 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
         return;
       }
       stopLoginWatch(this.ctx, name);
-      // Cancel the runtime's in-flight OAuth flow for real (frees the loopback
-      // port + login slot), not just the local watcher.
       await this.ctx.engine.cancelLogin(pid).catch(benignCancelMiss);
-      // Benign completion: clears the dialog + spinner without an error toast,
-      // matching the old engine's cancel semantics.
       emitEvent("ProviderLoginComplete", {
         provider: name,
         success: false,

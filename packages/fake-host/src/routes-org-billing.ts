@@ -1,12 +1,3 @@
-/**
- * The active org's billing writes (`/v1/org/billing/{checkout,portal,free}`)
- * and the lock: on a locked org the gateway refuses every write, owner
- * included, with `403 needs_upgrade`, while reads, paying and the swap stay
- * open. The refusals are the flat `{error, code}` the Go gateway writes, and
- * every billing call lands in the plan ledger (`/__test__/plan-calls`) so a
- * spec can prove a past-due owner reached the portal and never a checkout.
- */
-
 import {
   CLAIM_FREE_REFUSALS,
   seatCheckoutRequestSchema,
@@ -21,7 +12,6 @@ const refuse = (status: number, code: string, error: string): Response =>
 const notBillingOwner = () =>
   refuse(403, "not_billing_owner", "only the billing owner can do this");
 
-/** Route an org-billing call, or return `undefined` to fall through. */
 export function handleOrgBillingRoutes(
   method: string,
   segs: string[],
@@ -65,11 +55,6 @@ export function handleOrgBillingRoutes(
   }
 }
 
-/**
- * The gateway's refusal of a write on a locked org, or `undefined` to let it
- * through. Covers the writes the fake host serves: a send, a new agent, and
- * every files write.
- */
 export function lockedWriteRefusal(
   method: string,
   segs: string[],

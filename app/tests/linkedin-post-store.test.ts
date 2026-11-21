@@ -20,16 +20,12 @@ const claim = (uid = "uid-ada", space = "space-a"): LinkedInPostClaim => {
 
 afterEach(() => useLinkedInPosts.setState({ slots: {} }));
 
-// The org chart page unmounts and remounts around the store, which is all a
-// navigation away and back does to it: the slot is the only post state.
 describe("a person's LinkedIn post slot in a space", () => {
   it("refuses a second post while one from the slot is out", () => {
     const posts = useLinkedInPosts.getState();
     claim();
-    // The page came back while the gateway still works: still Posting.
     strictEqual(slot(ada).posting, true);
     strictEqual(posts.start("uid-ada", "space-a"), null);
-    // Another space posts its own chart.
     strictEqual(posts.start("uid-ada", "space-b") !== null, true);
   });
 
@@ -50,7 +46,6 @@ describe("a person's LinkedIn post slot in a space", () => {
     posts.ended(held);
     deepStrictEqual(slot(ada), { ...IDLE_LINKEDIN_POST, unconfirmed: true });
     strictEqual(isPostHeld(slot(ada)), true);
-    // Showing it in an opening is not checking LinkedIn.
     posts.shown(ada);
     strictEqual(isPostHeld(slot(ada)), true);
     strictEqual(posts.start("uid-ada", "space-a"), null);
@@ -66,7 +61,6 @@ describe("a person's LinkedIn post slot in a space", () => {
     strictEqual(posts.start("uid-ada", "space-a") !== null, true);
   });
 
-  // Every account's personal space is "default".
   it("keeps two people apart in a space with the same id", () => {
     const grace = linkedInPostKey("uid-grace", "default");
     claim("uid-ada", "default");
@@ -112,7 +106,6 @@ describe("an identity change", () => {
     const held = claim();
     posts.reset();
     deepStrictEqual(slot(ada), { ...IDLE_LINKEDIN_POST, posting: true });
-    // The same person signed back in: still Posting, no second Post.
     strictEqual(posts.start("uid-ada", "space-a"), null);
     strictEqual(posts.holds(held, "uid-ada"), true);
   });

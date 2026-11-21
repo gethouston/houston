@@ -13,7 +13,6 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(workspaceDir, { recursive: true, force: true }));
 
-// Wide signatures push the result past the 8K head both backends keep.
 const gmailItems: ToolMatch[] = Array.from({ length: 20 }, (_, i) => ({
   action: `GMAIL_ACTION_${i}`,
   toolkit: "gmail",
@@ -42,7 +41,6 @@ const mixedItems: ToolMatch[] = [
     status: "blocked",
   },
 ];
-// Thirty actions whose signatures alone run past the 24 KB search ceiling.
 const wideProperties = Object.fromEntries(
   Array.from({ length: 150 }, (_, i) => [`field_${i}`, { type: "string" }]),
 );
@@ -53,8 +51,6 @@ const overCeilingItems: ToolMatch[] = Array.from({ length: 30 }, (_, i) => ({
   status: "connected",
   inputParams: { type: "object", properties: wideProperties },
 }));
-// Past the detailed tier rows show signatures, and past MAX_ITEMS the rest are
-// counted: both notes must survive the 8k head too.
 const manyItems: ToolMatch[] = Array.from({ length: 35 }, (_, i) => ({
   ...gmailItems[0],
   action: `GMAIL_ACTION_${i}`,

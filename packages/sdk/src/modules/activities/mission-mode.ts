@@ -1,16 +1,3 @@
-/**
- * The mission's turn mode: how the agent works in that mission's chat (Ask
- * first, Planner or Autopilot), kept on the card so it survives leaving and
- * reopening the chat, and so a send that pins no mode still runs on it
- * (HOU-205).
- *
- * Like {@link renameMission}, a narrow write: the body carries the mode and
- * nothing else, so the in-app assistant gets the switch a person flips without
- * the lineage the wide `updateActivity` also carries. It issues the request
- * itself because the catalog reads the route off this function's own body
- * (`scripts/assistant-catalog/assistant-route.ts`).
- */
-
 import type { Activity, TurnMode } from "@houston/protocol";
 import { type HttpScope, httpRequest } from "../http";
 

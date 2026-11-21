@@ -7,8 +7,6 @@ test("production Claude SDK preloads share one process promise", () => {
 });
 
 test("an injected Claude SDK keeps the per-turn test seam", async () => {
-  // SAFETY: preload only preserves this object's identity; neither SDK
-  // function is invoked by this test.
   const sdk = {
     query: () => (async function* () {})(),
     createSdkMcpServer: () => ({}),

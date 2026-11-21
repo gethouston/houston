@@ -1,11 +1,3 @@
-// Real-DOM mount of a board's chat with the app's own draft wiring
-// (`useBoardDrafts` over the draft store), pinning that a keystroke
-// re-renders the composer and nothing else. When the board held the draft
-// text, every key re-rendered the board, its cards and the whole message
-// list, and typing in a long chat lagged behind the keys.
-//
-// The DOM-mounting pattern is ui/chat's (`tests/interaction-card-mount.test.ts`).
-
 import { strict as assert } from "node:assert";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import { JSDOM } from "jsdom";
@@ -29,8 +21,6 @@ const DOM_GLOBALS = [
   "getComputedStyle",
   "requestAnimationFrame",
 ];
-// The split view and the log observe their panes; jsdom has neither observer
-// and the geometry they would report is irrelevant here.
 class NoopObserver {
   observe() {}
   unobserve() {}
@@ -48,9 +38,6 @@ let TooltipProvider: typeof import("@houston-ai/core").TooltipProvider;
 let useBoardDrafts: typeof import("../src/components/board/use-board-drafts.ts").useBoardDrafts;
 let useDraftStore: typeof import("../src/stores/drafts.ts").useDraftStore;
 
-// Runs inside the describe's `before`: the file shares its process with every
-// other app test, so the DOM exists only while this file's tests run. React
-// DOM is imported after it because it probes `window` when the module loads.
 async function installDom() {
   restoreGlobals = snapshotGlobals([
     "window",
@@ -162,7 +149,6 @@ function mount(selectedId: string | null = "m0") {
   return { render, textarea };
 }
 
-/** Type `text` one key at a time, the way React's onChange sees keystrokes. */
 function type(textarea: HTMLTextAreaElement, text: string) {
   const setValue = Object.getOwnPropertyDescriptor(
     win.HTMLTextAreaElement.prototype,

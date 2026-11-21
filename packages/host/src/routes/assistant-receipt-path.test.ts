@@ -8,18 +8,6 @@ import { assistantApprovals } from "../assistant/approvals";
 import type { RuntimeSpawner } from "../launcher/process";
 import { buildLocalHost } from "../local/host";
 
-/**
- * A4 / A5 END TO END — the user's own message is the only thing that turns a
- * host-issued request id into a receipt, and this is the seam it passes through.
- *
- * Driven through the REAL route (`routes/agents.ts` -> the channel -> the
- * runtime), because the whole property is about where in the request path the
- * receipt is written: a runtime cannot author a user message, so a receipt
- * written here is one a person actually clicked for. A fake runtime stands in
- * for the pi process and records exactly what reached it, which is how "the
- * marker never travels further than the host" is provable rather than asserted.
- */
-
 function freePort(): Promise<number> {
   return new Promise((resolve) => {
     const s = createServer();
@@ -31,7 +19,6 @@ function freePort(): Promise<number> {
   });
 }
 
-/** A runtime that answers the readiness probe and records every turn body. */
 function fakeRuntime() {
   const bodies: string[] = [];
   const server = createHttpServer((req, res) => {

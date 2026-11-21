@@ -16,9 +16,6 @@ import {
 } from "../src/lib/providers.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
-// The Codex picker hides the GPT-5.6 rows, which the subscription still serves
-// (`CODEX_PICKER_HIDDEN_MODEL_IDS`). A chat, agent or routine already pinned to
-// one must keep running it rather than drop to the provider default.
 const HIDDEN = ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
 const NONE = { provider: null, model: null };
 
@@ -69,7 +66,6 @@ describe("Codex rows hidden from the picker", () => {
 
 describe("rows hidden because the provider no longer runs them", () => {
   it("still fall back to the provider default", () => {
-    // Codex refuses gpt-5.5 for a ChatGPT account, so it is not runnable.
     strictEqual(getModel("openai", "gpt-5.5"), undefined);
     strictEqual(validModelOrNull("openai", "gpt-5.5"), null);
     deepStrictEqual(
@@ -84,7 +80,6 @@ describe("rows hidden because the provider no longer runs them", () => {
         source: "deployment",
       },
     );
-    // google has no domain runnable set, so its curation stays a hard hide.
     strictEqual(getModel("google", "gemini-2.5-pro"), undefined);
   });
 });

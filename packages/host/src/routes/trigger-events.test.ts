@@ -12,13 +12,6 @@ import { MemoryTurnBus } from "../turn/bus";
 import { MemoryVfs } from "../vfs";
 import { workspaceRoot } from "./agent-data";
 
-/**
- * POST /agents/:id/trigger-events (C9 pod route). Asserts the discriminated
- * result (fired / no_routine / busy), that a fired run carries the event-framed
- * prompt, that a redelivery is deduped (acked, no second run), that a busy
- * routine releases the just-set lock so a retry can fire, and the auth wall.
- */
-
 const verifier: TokenVerifier = {
   async verify(bearer) {
     return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
@@ -32,7 +25,6 @@ class SpyChannel implements RuntimeChannel {
     actingUser?: string;
     actingAs?: string;
   }[] = [];
-  /** When set, every fire is refused with it (after counting the attempt). */
   refusal: Error | null = null;
   attempts = 0;
   async dispatch() {}
@@ -124,7 +116,6 @@ async function post(events: unknown, who = "alice", extra: object = {}) {
   });
 }
 
-/** A gateway-shaped C2 token; pods decode the payload and never verify. */
 function actingAs(sub: string): string {
   const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
   return `acting-v1.${payload}.signature`;
@@ -176,7 +167,7 @@ test("fires one run for the batch with the event-framed prompt", async () => {
   const text = channel.fired[0]?.text ?? "";
   expect(text).toContain("check the inbox");
   expect(text).toContain("<events>");
-  expect(text).toContain("hi"); // the payload rode along, framed as untrusted data
+  expect(text).toContain("hi");
 
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const agent = (await store.listAgents(ws.id))[0];
@@ -209,8 +200,6 @@ test("a redelivery of the same event is deduped: acked, no second run", async ()
     { id: "e1", routine_id: "r1", trigger_slug: "GMAIL_NEW", payload: {} },
   ];
   await post(ev);
-  // The first run is still "running" (SpyChannel never completes it). A redelivery
-  // of the SAME id must ack without firing again — even though the routine is busy.
   const res = await post(ev);
   expect(await res.json()).toEqual({ result: "fired", event_ids: ["e1"] });
   expect(channel.fired).toHaveLength(1);
@@ -236,7 +225,6 @@ test("a fire refused for no provider consumes its event: a redelivery adds no se
   const agent = (await store.listAgents(ws.id))[0];
   if (!agent) throw new Error("no agent");
   const { items } = await loadRoutineRuns(vfs, workspaceRoot(ws, agent));
-  // One event, one errored row toward the auto-pause streak (PRODUCT-1982).
   expect(items).toHaveLength(1);
   expect(items[0]).toMatchObject({
     status: "error",
@@ -254,7 +242,6 @@ test("a busy routine (new event, run in flight) → busy AND releases the lock",
   ]);
   expect(await res.json()).toEqual({ result: "busy" });
   expect(channel.fired).toHaveLength(1);
-  // The lock for the busy event was released so a later retry can fire it.
   expect(await bus.get("trigger-event:e2")).toBeNull();
 });
 
@@ -275,12 +262,6 @@ test("a malformed events array is a 400", async () => {
 });
 
 test("a gateway-proxied (acting-as) request is refused: 404, nothing fires", async () => {
-  // Trust boundary (C9): the control plane delivers over the bare host token,
-  // never through the user-facing gateway proxy — which stamps
-  // `x-houston-acting-as` on everything it forwards. That header on this route
-  // means a user request reached a pod-internal path; firing would run the
-  // routine as its creator with a caller-supplied, attacker-authored payload.
-  // The pod must refuse it even though the bearer principal owns the agent.
   await seedRoutine(routine());
   const payload = Buffer.from(JSON.stringify({ sub: "alice" })).toString(
     "base64url",
@@ -302,9 +283,6 @@ test("a gateway-proxied (acting-as) request is refused: 404, nothing fires", asy
 });
 
 test("the creator's minted acting-as token rides the turn (PRODUCT-1774)", async () => {
-  // The control plane mints the creator's C2 token and sends it in the body;
-  // the firer passes it through so the turn resolves the CREATOR's credential
-  // scope (the same identity a scheduled fire carries) instead of the team's.
   await seedRoutine(routine({ created_by: "creator-1" }));
   const token = actingAs("creator-1");
   const res = await post([EVENT], "alice", { actingAs: token });
@@ -316,7 +294,6 @@ test("the creator's minted acting-as token rides the turn (PRODUCT-1774)", async
 });
 
 test("without a token the bare creator sub rides, as before", async () => {
-  // Self-host in-process delivery and an older control plane send no token.
   await seedRoutine(routine({ created_by: "creator-1" }));
   await post([EVENT]);
   expect(channel.fired).toEqual([
@@ -335,7 +312,6 @@ test("a token for someone other than the creator is refused: 400, nothing fires,
     code: "routine_creator_mismatch",
   });
   expect(channel.fired).toHaveLength(0);
-  // Re-deliverable: the refusal happened before the event's dedup lock was set.
   expect(await bus.get("trigger-event:e1")).toBeNull();
 });
 
@@ -347,8 +323,6 @@ test("a token on a routine with no recorded creator is refused the same way", as
 });
 
 test("on an AI Manager pod its own person fires a routine stamped with anyone, and nobody else does", async () => {
-  // Only that person reaches the manager, so the control plane fires every
-  // manager routine as them, whatever created_by an earlier write recorded.
   vi.stubEnv("HOUSTON_MANAGED_CLOUD", "1");
   vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "member");
   try {

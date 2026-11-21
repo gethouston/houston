@@ -27,9 +27,6 @@ test("attaches file changes to the previous assistant message after final result
 });
 
 test("collapses duplicate provider-error cards to one per kind+provider", () => {
-  // codex surfaces a terminal auth failure on two channels: the transient
-  // stderr classifier and the persisted stdout parser. The chat must show a
-  // single reconnect card, not a stack.
   const auth = {
     feed_type: "provider_error",
     data: {
@@ -52,9 +49,6 @@ test("collapses duplicate provider-error cards to one per kind+provider", () => 
 });
 
 test("provider-error dedup resets at each user message (per turn)", () => {
-  // Re-failure in a LATER turn must show a fresh card: after a successful
-  // reconnect, the session can die again, and the new turn's error must not
-  // be swallowed by the previous turn's dedup entry.
   const auth = {
     feed_type: "provider_error",
     data: {
@@ -67,9 +61,9 @@ test("provider-error dedup resets at each user message (per turn)", () => {
   const messages = feedItemsToMessages([
     { feed_type: "user_message", data: "first" },
     auth,
-    auth, // same turn → deduped
+    auth,
     { feed_type: "user_message", data: "second" },
-    auth, // new turn → fresh card
+    auth,
   ]);
   assert.equal(messages.filter((m) => m.providerError).length, 2);
 });
@@ -116,7 +110,6 @@ test("context_compacted becomes a system divider carrying compaction info", () =
   assert.equal(divider.content, "");
   assert.equal(divider.compaction.trigger, "proactive");
   assert.equal(divider.compaction.preTokens, 185000);
-  // The surrounding turns are preserved (full history stays visible).
   assert.ok(
     messages.some((m) => m.from === "user" && m.content === "keep going"),
   );
@@ -153,9 +146,6 @@ const rateLimited = {
 };
 
 test("suppresses the 'Session error' echo when a provider-error card covered the turn", () => {
-  // The engine emits a typed card AND a SessionStatus::Error that ui/core
-  // echoes as a raw "Session error: …" system_message. The card is the real
-  // surface; the redundant echo must be dropped.
   const messages = feedItemsToMessages([
     { feed_type: "user_message", data: "hi" },
     rateLimited,
@@ -195,9 +185,9 @@ test("echo suppression is per turn — a later un-carded turn still shows it", (
   const messages = feedItemsToMessages([
     { feed_type: "user_message", data: "first" },
     rateLimited,
-    { feed_type: "system_message", data: "Session error: carded turn" }, // suppressed
+    { feed_type: "system_message", data: "Session error: carded turn" },
     { feed_type: "user_message", data: "second" },
-    { feed_type: "system_message", data: "Session error: uncarded turn" }, // kept
+    { feed_type: "system_message", data: "Session error: uncarded turn" },
   ]);
   const echoes = messages.filter((m) => m.content.startsWith("Session error:"));
   assert.equal(echoes.length, 1);

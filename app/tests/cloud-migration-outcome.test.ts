@@ -11,9 +11,6 @@ import {
   purgeAccountLocalState,
 } from "../src/lib/houston-local-state.ts";
 
-// The desktop-to-cloud wizard runs once per MACHINE: its outcome must survive
-// sign-out and hold for every account that signs in afterwards.
-
 function memoryStorage(entries: [string, string][] = []) {
   const store = new Map(entries);
   const storage: KeyedStorage & {

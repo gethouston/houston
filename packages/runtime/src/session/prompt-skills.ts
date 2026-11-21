@@ -5,15 +5,6 @@ import type { LoadSkillsResult, Skill } from "@earendil-works/pi-coding-agent";
 const byCodeUnit = (a: string, b: string): number =>
   a < b ? -1 : a > b ? 1 : 0;
 
-/**
- * Skills as the model's index reads them, each description cut to its
- * {@link indexLine}, in a stable order: by name, then SKILL.md path. The
- * loaders return directory-read order, which differs between filesystems
- * (hashed on ext4 and APFS, creation order on tmpfs) and so between workers,
- * while the skills index sits in the system prompt, where any reorder breaks
- * the cached prefix. Code-unit comparison, never localeCompare: collation
- * follows the process locale, which workers do not share either.
- */
 export function skillsForPrompt<
   T extends Pick<Skill, "name" | "filePath" | "description">,
 >(skills: readonly T[]): T[] {
@@ -25,28 +16,15 @@ export function skillsForPrompt<
     .map((skill) => ({ ...skill, description: indexLine(skill.description) }));
 }
 
-/** Longest description the index carries for one skill. */
 const INDEX_LINE_CHARS = 200;
 
 const SENTENCE_BREAK = /(?<=[.!?])\s+(?=[\p{Lu}¿¡])/u;
 
-/**
- * "Use when the user says 'X' / 'Y'" or "Triggers on 'X'": a list of
- * phrasings, not what the skill does. "Triggers a payroll run" is an outcome.
- */
 const TRIGGER_LEAD =
   /^(?:(?:use|usa|usar|úsala|úsalo|invoke)\b[^.!?]{0,20}?\b(?:when|whenever|if|cuando|quando)\b|triggers?(?:\s+(?:on|when|include|phrases?|words?)\b|\s*:))/iu;
 
-/** Where a leading trigger clause ends: a sentence break or a spaced dash. */
 const TRIGGER_END = /(?<=[.!?])\s+(?=[\p{Lu}¿¡])|\s+[-–—]\s+/u;
 
-/**
- * A skill's description as the index shows it: the first sentence of what the
- * skill does, capped. A description that opens with trigger phrases is indexed
- * from the clause after them, unless that clause is more trigger phrases. The
- * index rides on every model request while the model needs only enough to pick
- * a skill; the full SKILL.md is read once the skill is chosen.
- */
 export function indexLine(description: string): string {
   const flat = description.replace(/\s+/g, " ").trim();
   const end = TRIGGER_LEAD.test(flat) ? TRIGGER_END.exec(flat) : null;
@@ -62,13 +40,6 @@ function isWithin(path: string, root: string): boolean {
   return path === root || path.startsWith(root + sep);
 }
 
-/**
- * pi's `skillsOverride` for one agent: its own skills, plus a workspace-shared
- * skill only when the agent's manifest enables it and no local skill has its
- * name, in prompt order. `sharedSkillsDir` must already be a realpath (each
- * skill's dir is resolved before the comparison), and `enabledSharedSkills` is
- * read once, when the loader is built, not on every reload.
- */
 export function agentSkillsOverride(
   sharedSkillsDir: string | null,
   enabledSharedSkills: ReadonlySet<string>,

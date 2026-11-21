@@ -9,12 +9,6 @@ import { type TurnFilesystem, turnRoutineRunsKey } from "./turn-filesystem";
 import { poolIdentity } from "./turn-store";
 import type { TurnRequest } from "./types";
 
-/**
- * Project a routine turn's uploaded runs file into the routine_runs DB doc —
- * NORMALIZED, mirroring the standing DocShadowProjector, so the doc's shape
- * never depends on which execution path wrote it last. Overlapping runs of
- * one agent all publish here, so each merges its rows into the doc by run id.
- */
 export async function publishTurnRunsDoc(
   deps: TurnServerDeps,
   turn: TurnRequest & { turnId: string },

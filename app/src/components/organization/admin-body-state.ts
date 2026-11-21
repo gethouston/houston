@@ -1,6 +1,5 @@
 export type AdminBodyState = "pending" | "unavailable" | "ready";
 
-/** A disabled org query is pending without reporting `isLoading`. */
 export function adminBodyState(input: {
   gatesReady: boolean;
   showOrganization: boolean;

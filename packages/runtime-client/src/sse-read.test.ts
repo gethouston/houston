@@ -53,10 +53,6 @@ test("an async onEvent is awaited before the next frame is parsed (ordering)", a
 });
 
 test("a transport error rejects the read without leaking the reader's closed rejection", async () => {
-  // Simulates WebKit's behavior on a dropped connection: the pending read()
-  // rejects AND `reader.closed` rejects without the spec's handled flag. The
-  // read error must reach the caller exactly once — the closed rejection must
-  // never surface as an unhandled rejection.
   const transportErr = new TypeError("Load failed");
   let rejectClosed!: (e: unknown) => void;
   const reader = {

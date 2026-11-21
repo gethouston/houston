@@ -1,8 +1,6 @@
 import { type RefObject, useLayoutEffect, useState } from "react";
 import { flushSync } from "react-dom";
 
-/** One measuring step: move to the next shorter candidate while the current
- *  one clips, and stop at the last, which shows whatever its width. */
 export function nextFitIndex(
   index: number,
   clipping: boolean,
@@ -11,12 +9,6 @@ export function nextFitIndex(
   return clipping && index < count - 1 ? index + 1 : index;
 }
 
-/**
- * The longest of `candidates` (longest first) that the element shows without
- * clipping. The browser's own truncation is the measure, so any font and any
- * slot width work. A width change of the element's row starts over from the
- * longest, rendered synchronously so a clipped label never paints.
- */
 export function useFittingLabel(
   candidates: string[],
   ref: RefObject<HTMLElement | null>,
@@ -29,8 +21,6 @@ export function useFittingLabel(
   useLayoutEffect(() => {
     const el = ref.current;
     if (!measures || !el) return;
-    // The text's own width, not scrollWidth: that rounds to whole pixels and
-    // misses a label clipped by a fraction ("jan. de 2025" 66.2px in 66px).
     const text = document.createRange();
     text.selectNodeContents(el);
     const clipping =
@@ -42,7 +32,6 @@ export function useFittingLabel(
   useLayoutEffect(() => {
     const row = ref.current?.parentElement;
     if (!measures || !row) return;
-    // Fractional widths: clientWidth rounds, and a fraction is enough to clip.
     let width = row.getBoundingClientRect().width;
     const observer = new ResizeObserver(() => {
       const next = row.getBoundingClientRect().width;

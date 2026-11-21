@@ -1,37 +1,20 @@
 import { isIP } from "node:net";
 import { networkInterfaces } from "node:os";
 
-/** An address block: `bits` wide (32 or 128), the first `length` bits fixed. */
 export interface IpPrefix {
   bits: 32 | 128;
   base: bigint;
   length: number;
 }
 
-/**
- * Whether the browser may reach private networks. On Houston's managed cloud
- * (`HOUSTON_MANAGED_CLOUD=1`, set by the E2B template and engine pods) those
- * ranges are E2B's and GCP's own internal network, so they are blocked. On a
- * self-hosted or desktop install they are often the team's own intranet apps,
- * which the person may legitimately want the agent to open.
- */
 export type PrivateNetworks = "blocked" | "allowed";
 
 type Env = Record<string, string | undefined>;
 
-/** The one place the deployment decides {@link PrivateNetworks}. */
 export function privateNetworksFor(env: Env): PrivateNetworks {
   return env.HOUSTON_MANAGED_CLOUD === "1" ? "blocked" : "allowed";
 }
 
-/**
- * Never reachable, anywhere: this machine (0/8, 127/8, ::/8, which also holds
- * `::1`, `::` and the IPv4-mapped forms), link-local / cloud metadata
- * (169.254/16, fe80::/9, which takes in the old site-local fec0::/10 too),
- * and the metadata servers outside link-local: AWS's IPv6 one and Alibaba's.
- * This machine's own interface addresses join them per proxy
- * ({@link ownAddresses}).
- */
 export const ALWAYS_BLOCKED_PREFIXES: readonly string[] = [
   "0.0.0.0/8",
   "127.0.0.0/8",
@@ -42,11 +25,6 @@ export const ALWAYS_BLOCKED_PREFIXES: readonly string[] = [
   "100.100.100.200/32",
 ];
 
-/**
- * Private networks, blocked only on the managed cloud: RFC1918, carrier-grade
- * NAT (100.64/10, which E2B and most clouds use internally) and IPv6
- * unique-local (fc00::/7).
- */
 export const PRIVATE_NETWORK_PREFIXES: readonly string[] = [
   "10.0.0.0/8",
   "100.64.0.0/10",
@@ -55,7 +33,6 @@ export const PRIVATE_NETWORK_PREFIXES: readonly string[] = [
   "fc00::/7",
 ];
 
-/** The ones that are this machine itself, for a refusal that says so. */
 const THIS_MACHINE = ["0.0.0.0/8", "127.0.0.0/8", "::/8"];
 
 function v4(text: string): bigint {
@@ -65,7 +42,6 @@ function v4(text: string): bigint {
 }
 
 function v6(text: string): bigint {
-  // A dotted IPv4 tail ("::ffff:1.2.3.4") is two groups.
   const dotted = /(\d+\.\d+\.\d+\.\d+)$/.exec(text)?.[1];
   const hex = dotted
     ? text.slice(0, -dotted.length) +
@@ -86,14 +62,9 @@ function v6(text: string): bigint {
 
 const MAPPED_V4 = 0xffffn << 32n;
 
-/**
- * An IP literal as a number, or null for a name. IPv4-mapped IPv6 reads as
- * the IPv4 address it carries, the way the network treats it.
- */
 export function parseIp(
   host: string,
 ): { bits: 32 | 128; value: bigint } | null {
-  // A zone ("fe80::1%en0") names the interface, not the address.
   const bare = host.replace(/^\[|\]$/g, "").replace(/%.*$/, "");
   const family = isIP(bare);
   if (family === 4) return { bits: 32, value: v4(bare) };
@@ -125,17 +96,11 @@ const PRIVATE = PRIVATE_NETWORK_PREFIXES.map(parsePrefix);
 const LOCAL = THIS_MACHINE.map(parsePrefix);
 const V6_LINK_LOCAL = parsePrefix("fe80::/10");
 
-/**
- * IPv6 link-local (fe80::/10, zone or not). mDNS names (`nas.local`) answer
- * one beside their usable address, so the fence drops it from a name's
- * answers rather than refusing the name; it is still never dialed.
- */
 export function isIpv6LinkLocal(address: string): boolean {
   const ip = parseIp(address);
   return ip !== null && contains(V6_LINK_LOCAL, ip.bits, ip.value);
 }
 
-/** This machine's own addresses, as `parseIp` keys (`<bits>:<value>`). */
 export type OwnAddresses = ReadonlySet<string>;
 
 const NO_OWN_ADDRESSES: OwnAddresses = new Set();
@@ -144,12 +109,6 @@ function ipKey(ip: { bits: number; value: bigint }): string {
   return `${ip.bits}:${ip.value}`;
 }
 
-/**
- * Every address on this machine's interfaces, read on every fence check.
- * With private networks allowed (desktop, self-host) the machine's LAN or
- * public address would otherwise reach whatever listens on 0.0.0.0 here,
- * the host's own port included. `interfaces` is the tests' seam.
- */
 export function ownAddresses(
   interfaces: Record<
     string,
@@ -165,7 +124,6 @@ export function ownAddresses(
   return own;
 }
 
-/** Where an IP literal points, when the browser may not go there. */
 export function blockedAddress(
   host: string,
   privateNetworks: PrivateNetworks,

@@ -10,7 +10,6 @@ import { type ReconcileDeps, reconcileAgentRuns } from "./reconcile";
 import { fireRoutineRun, RoutineBusyError } from "./run";
 import { clearScanFailure, shouldLogScanFailure } from "./scan-failure-log";
 
-/** A due routine to run, with its resolved conversation + run id. */
 export interface FiringJob {
   workspace: Workspace;
   agent: Agent;
@@ -19,17 +18,10 @@ export interface FiringJob {
   runId: string;
 }
 
-/**
- * Runs a due routine's prompt as a turn. Deployment-specific (the firing path
- * differs cloud vs local), injected into the driver. `fire` resolves once the
- * turn is ACCEPTED, not when it completes — the run's running→surfaced/silent
- * transition is driven by turn completion.
- */
 export interface RoutineFirer {
   fire(job: FiringJob): Promise<void>;
 }
 
-/** What one agent's scan needs — SchedulerDeps minus the workspace listing. */
 export interface AgentScanDeps {
   vfs: Vfs;
   paths: WorkspacePaths;
@@ -38,9 +30,7 @@ export interface AgentScanDeps {
   events?: EventHub;
   now: () => Date;
   newId: () => string;
-  /** Dedup-lock TTL (s); must exceed the scan interval. */
   dedupTtlSec: number;
-  /** External mode skips only cron evaluation/firing; reconcile still runs. */
   cronFiresEnabled: boolean;
   replyReader?: ReconcileDeps["replyReader"];
 }
@@ -48,21 +38,6 @@ export interface AgentScanDeps {
 const reason = (err: unknown) =>
   err instanceof Error ? err.message : String(err);
 
-/**
- * One agent's slice of a tick: fire the routines that came due in
- * (`since`, `now`], then settle the runs whose turn has finished.
- *
- * The two halves are isolated from each other, and from the sweep that calls
- * this. Houston is files-first — agents write their own `.houston` docs — so ANY
- * of them can be unreadable at any moment, and an unreadable document must cost
- * exactly the reader that needs it. A single BOM-prefixed routines.json threw
- * out of the whole scan loop and stopped every routine on a pod for six days
- * (HOU-953); now a broken routines.json still lets that agent's runs settle, and
- * a broken agent still lets every other agent fire.
- *
- * This is the background scan with no UI thread to toast on, so a failure logs
- * (the sanctioned `console.error` boundary) and the sweep continues.
- */
 export async function scanAgent(
   deps: AgentScanDeps,
   ws: Workspace,
@@ -90,16 +65,12 @@ export async function scanAgent(
     }
     clearScanFailure(where);
   } catch (err) {
-    // Once per failure, not once per tick: a file that stays unreadable is
-    // one problem, not a new one every 30 seconds (scan-failure-log.ts).
     const why = reason(err);
     if (shouldLogScanFailure(where, why, Date.now())) {
       console.error(`[scheduler] ${where} routine scan failed:`, why);
     }
   }
 
-  // Complete runs whose turn has finished (silent/surfaced/timeout). Runs live
-  // in their own document, so they settle even when routines.json is unreadable.
   await reconcile(deps, ws, agent, where);
 }
 
@@ -128,13 +99,6 @@ async function reconcile(
   }
 }
 
-/**
- * Record + fire one due routine. Shares `fireRoutineRun` with the on-demand
- * "run now" route, so a scheduled run and a hand-pressed one are identical
- * (same record, same firer, same errored-on-fail bookkeeping). The helper
- * rethrows a fire failure; here we log it and let the scan continue to the
- * next routine.
- */
 async function fireRoutine(
   deps: AgentScanDeps,
   ws: Workspace,
@@ -156,13 +120,7 @@ async function fireRoutine(
       routine,
     );
   } catch (err) {
-    // Expected when the previous run is still in flight — the instant is
-    // skipped (its dedup lock is already burned), not an error.
     if (err instanceof RoutineBusyError) return;
-    // A routine firing while the workspace has no provider connected is an
-    // expected user state, not an engine fault (HOUSTON-APP-4XM): the run is
-    // already recorded errored with the real reason (user-visible in the
-    // routine's history), so a warning breadcrumb suffices here.
     if (err instanceof TurnFireError && err.code === "no_provider") {
       console.warn(`[scheduler] routine ${routine.id} skipped: ${err.message}`);
       return;

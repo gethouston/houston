@@ -1,9 +1,5 @@
 import type { WorkspaceCredential } from "../ports";
 
-/**
- * The wire shape the credential gateway serves per provider. No refresh token
- * ever crosses this wire on a GET — the gateway is the org's single refresher.
- */
 export interface GatewayCredential {
   provider: string;
   kind: "oauth" | "api_key";
@@ -14,11 +10,6 @@ export interface GatewayCredential {
   scope?: "personal" | "team";
 }
 
-/**
- * Validate + map a gateway body to the store's credential shape. Served
- * credentials are access-only: refreshToken is always "" so no downstream
- * consumer ever tries (or leaks) a refresh the pod doesn't own.
- */
 export function credentialFromGateway(
   provider: string,
   body: GatewayCredential,
@@ -47,13 +38,6 @@ export function credentialFromGateway(
   };
 }
 
-/**
- * True only for the gateway's own "not connected" 404 — a JSON body carrying an
- * `error` field (the /v1/pod/credentials contract). A route-level 404 (deploy
- * skew: a gateway build without the route, a mistyped HOUSTON_CREDENTIALS_URL)
- * must NOT read as "logged out": callers treat it as a transport error so the
- * runtime keeps its last hydrated token instead of wiping the org's credentials.
- */
 export async function isNotConnected404(res: Response): Promise<boolean> {
   if (res.status !== 404) return false;
   try {

@@ -111,7 +111,6 @@ describe("local clock", () => {
   });
 
   test("follows DST through the zone database", () => {
-    // Madrid is UTC+2 in summer and UTC+1 after the last Sunday of October.
     const summer = localClock(
       new Date("2026-10-24T06:00:00Z"),
       "Europe/Madrid",

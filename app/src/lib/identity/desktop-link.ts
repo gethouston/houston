@@ -1,7 +1,3 @@
-// The desktop half of the account-exists link. GCIP answered a provider
-// sign-in with `needConfirmation`, so its credential waits here, in memory
-// only, until the SDK's identity flow holds a session an email code minted.
-
 import {
   type LinkAttempt,
   newPendingLinkHandle,
@@ -31,12 +27,6 @@ const held = new Map<PendingLinkHandle, Held>();
 const emailOf = (idToken: string | null): string | null =>
   idToken ? (decodeIdTokenClaims(idToken)?.email ?? null) : null;
 
-/**
- * Hold the credential GCIP would not sign in, and name the address the
- * provider asserted. GCIP drops `email` under email enumeration protection,
- * so the provider's own ID token is read next. `googleIdToken` is the token
- * the desktop got from Google directly, the one provider it talks to itself.
- */
 export function holdNeedConfirmation(
   confirmation: IdpNeedConfirmation,
   googleIdToken?: string,
@@ -70,9 +60,6 @@ export function discardDesktopCredential(handle: PendingLinkHandle): void {
   held.delete(handle);
 }
 
-/** Link the held credential onto `session`, the one the email code minted.
- *  A provider that refuses the credential throws: that is a failure to
- *  report, not an expiry. */
 export async function desktopLinkPending(
   handle: PendingLinkHandle,
   session: Session,

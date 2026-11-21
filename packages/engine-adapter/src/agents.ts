@@ -3,16 +3,6 @@ import type { Agent, CreateAgent } from "@houston/wire-types";
 import { writeAgentFile } from "./agent-files";
 import { DEFAULT_AGENT_COLOR, syntheticAgent } from "./synthetic";
 
-/**
- * localStorage-backed agent registry.
- *
- * The new TS engine is single-user with no agent concept, so the desktop UI's
- * agents are persisted client-side (one bucket per synthetic workspace). One
- * default agent (`syntheticAgent`) is seeded on first access so the shell has a usable
- * agent immediately; the user can create / rename / recolor / delete more. Each
- * agent gets its own `folderPath`, which namespaces its board, config, and chats
- * (chat conversations key off the per-mission `session_key`).
- */
 const KEY = "houston.web.agents";
 
 type Store = Record<string, Agent[]>;
@@ -28,12 +18,9 @@ function load(): Store {
 function save(store: Store): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(store));
-  } catch {
-    /* storage disabled */
-  }
+  } catch {}
 }
 
-/** Agents for a workspace, seeding the default agent on first access. */
 function seeded(store: Store, workspaceId: string): Agent[] {
   let agents = store[workspaceId];
   if (!agents) {
@@ -48,7 +35,6 @@ export function listAgents(workspaceId: string): Agent[] {
   return seeded(load(), workspaceId);
 }
 
-/** Resolve an agent's display name from its `folderPath` (for conversation rows). */
 export function agentNameByPath(agentPath: string): string | undefined {
   for (const agents of Object.values(load())) {
     const found = agents.find((a) => a.folderPath === agentPath);
@@ -76,9 +62,6 @@ export function createAgent(
   const agents = seeded(store, workspaceId);
   agents.push(agent);
   save(store);
-  // Seed the agent's instructions + any template files, like the real engine
-  // does on create — otherwise AI-generated instructions (the AI-assist flow)
-  // would be silently dropped.
   if (req.claudeMd) writeAgentFile(agent.folderPath, "CLAUDE.md", req.claudeMd);
   const seeds = withInitialConfigSeed(req.seeds, req.config);
   for (const [relPath, content] of Object.entries(seeds ?? {})) {

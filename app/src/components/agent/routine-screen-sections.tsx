@@ -1,10 +1,3 @@
-/**
- * RoutineScreenSections — the routine screen's body (PRODUCT-1208): the
- * editable description (the routine's prompt in a plain textarea), the
- * editable run frequency (the rows' schedule builder as an obvious bordered
- * field, plus the next fire time), and the model pin.
- */
-
 import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import { Button, Textarea } from "@houston-ai/core";
 import {
@@ -23,9 +16,7 @@ import { RoutineModelRow } from "./routine-model-row";
 interface Props {
   agent: Agent;
   routine: Routine;
-  /** Humanized event summary for a trigger routine (useRoutineTriggers). */
   triggerSummary?: string;
-  /** The account-wide zone cron schedules fire in. */
   accountTimezone: string;
   onSave: (updates: RoutineUpdate) => void;
   saving: boolean;
@@ -54,8 +45,6 @@ export function RoutineScreenSections({
   const [shortInterval, setShortInterval] = useState(false);
   const labels = useRoutineLabels();
 
-  // The editable description IS the routine's prompt. The draft follows
-  // outside edits (the agent rewrote it in chat) only while untouched.
   const [draft, setDraft] = useState(routine.prompt);
   const dirty = draft !== routine.prompt;
   // biome-ignore lint/correctness/useExhaustiveDependencies: reseed only on the routine's own change
@@ -124,8 +113,6 @@ export function RoutineScreenSections({
                 labels.schedule.summary,
                 labels.locale,
               )}
-              // The editor never offers a pick under the plan's floor; the
-              // check below stays as the backstop for anything else.
               scheduleFloor={floor}
               onScheduleChange={(_routineId, cron) => {
                 const allowed = !floor || floor.allows(cron);
@@ -144,7 +131,6 @@ export function RoutineScreenSections({
           </div>
         )}
         {nextRunText && (
-          // data-relative-time: a live clock the visual suite masks.
           <p data-relative-time className="text-xs text-ink-muted">
             {nextRunText}
           </p>

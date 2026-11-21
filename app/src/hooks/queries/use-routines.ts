@@ -28,7 +28,6 @@ import {
 
 export type { RoutineWriteFor };
 
-/** Which edit a refused update undoes: it picks the refusal toast's title. */
 export type RoutineUpdateKind = "save" | "model";
 
 const UPDATE_FAILURE = {
@@ -36,13 +35,6 @@ const UPDATE_FAILURE = {
   model: { titleKey: "toasts.modelError", command: "set_routine_model" },
 } as const;
 
-/**
- * ONE agent's routines query, as options. Both the open routine's chat
- * (`useRoutines`) and the employee's Routines list build from this, so they
- * share the key, the cache entry and the queryFn: the routines event
- * invalidation (`use-agent-invalidation.ts` → `queryKeys.routines(path)`)
- * refreshes both, and neither can serve a different truth than the other.
- */
 export function routinesQueryOptions(agentPath: string) {
   return {
     queryKey: queryKeys.routines(agentPath),
@@ -51,8 +43,6 @@ export function routinesQueryOptions(agentPath: string) {
   };
 }
 
-/** One agent's routine RUNS, as options — the sibling of
- *  {@link routinesQueryOptions} for the same reason. */
 export function routineRunsQueryOptions(agentPath: string) {
   return {
     queryKey: queryKeys.routineRuns(agentPath),
@@ -68,12 +58,6 @@ export function useRoutines(agentPath: string | undefined) {
   });
 }
 
-/**
- * What a routine WRITE leaves behind: that agent's routines list refetched.
- * The host reschedules on the write itself. Shared by `useCreateRoutine` and
- * the any-agent update so the two can never drift apart on what a write
- * invalidates.
- */
 function afterRoutineWrite(qc: QueryClient, agentPath: string): void {
   qc.invalidateQueries({ queryKey: queryKeys.routines(agentPath) });
 }
@@ -86,28 +70,9 @@ export function useCreateRoutine(agentPath: string) {
   });
 }
 
-/**
- * The routine writes a routine ROW can trigger (edit, delete, run now, stop a
- * run), with the AGENT in the variables instead of in the hook argument, so
- * one binding serves whichever agent a call names (the routine screen, its
- * model selector and the Routines list). Every one paints before the host
- * answers; delete and the run controls live in `use-routine-row-writes.ts`.
- */
 export function useRoutineWritesForAnyAgent() {
   const qc = useQueryClient();
   const { t } = useTranslation("routines");
-  // Optimistic (PRODUCT-1706): the row and the screen paint the edit the
-  // instant it is sent. On the hosted profile a write can take seconds (the
-  // agent's pod may have to wake first), and painting the OLD schedule for
-  // that window made a saved time look ignored. The host's applied routine
-  // replaces the guess when it lands; a rejected write rolls the cache back
-  // and refetches. Kept on `useMutation` (not `optimisticWrite`) because the
-  // plan floor's refusal must stand down too (`toastRoutineWriteFailure`); the
-  // hold below is the same one `optimisticWrite` uses.
-  // The refusal toast lives HERE, never in a per-call `mutate(vars, { onError })`:
-  // TanStack fires per-call callbacks only for the observer's latest mutate
-  // while it is mounted, so a second edit (or leaving the screen) before the
-  // first one's refusal would roll it back in silence.
   const update = useMutation({
     mutationFn: ({
       agentPath,
@@ -119,8 +84,6 @@ export function useRoutineWritesForAnyAgent() {
     }) => tauriRoutines.update(agentPath, routineId, updates),
     onMutate: ({ agentPath, routineId, updates }) => {
       const queryKey = queryKeys.routines(agentPath);
-      // An in-flight refetch would overwrite the optimistic row with the
-      // pre-edit truth the moment it lands.
       void qc.cancelQueries({ queryKey });
       const previous = qc.getQueryData<Routine[]>(queryKey);
       const nowIso = new Date().toISOString();

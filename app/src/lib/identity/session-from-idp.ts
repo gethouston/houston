@@ -1,20 +1,8 @@
-// Pure mappers: assemble the app's identity `Session` from the two desktop REST
-// sign-in shapes.
-//
-//   • `sessionFromIdp` — a federated `IdpSignInResult` (Google / Microsoft),
-//     which already carries the full profile.
-//   • `sessionFromCustomToken` — the email-OTP path: `signInWithCustomToken`
-//     returns only tokens (no profile), so the profile is read from the decoded
-//     ID token claims (`decodeIdTokenClaims`).
-//
-// No I/O, no globals — unit-tested in app/tests/auth-session-map.test.ts.
-
 import type { IdpSignInResult } from "./firebase-idp.ts";
 import type { TokenSignInResult } from "./firebase-rest.ts";
 import type { IdTokenClaims } from "./id-token.ts";
 import type { AuthProvider, Session } from "./session.ts";
 
-/** Federated result → Session. `provider` records which button minted it. */
 export function sessionFromIdp(
   result: IdpSignInResult,
   provider: AuthProvider,
@@ -32,7 +20,6 @@ export function sessionFromIdp(
   };
 }
 
-/** Custom-token tokens + decoded claims → Session (provider "custom"). */
 export function sessionFromCustomToken(
   tokens: TokenSignInResult,
   claims: IdTokenClaims,

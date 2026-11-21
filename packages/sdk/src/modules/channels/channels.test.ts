@@ -26,11 +26,6 @@ const STATUS = {
   connections: [CONNECTION],
 };
 
-/**
- * A channels SDK over a mock `fetch` that records the whole wire. `reactivity`
- * is off, so every recorded call is one a channels operation made and nothing
- * else — which is what makes "exactly one request" an exact claim.
- */
 function makeSdk(answer: () => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(
@@ -153,9 +148,6 @@ describe("the channels requests", () => {
 });
 
 describe("what the module refuses to soften", () => {
-  // A deployment with no channels at all (404/501) and one whose Slack app is
-  // not configured (503) are states a SCREEN renders, not answers the SDK may
-  // invent: a surface that cannot tell them from "could not ask" shows a lie.
   for (const status of [404, 501, 503]) {
     it(`throws a ChannelsHttpError carrying the status — a ${status} never degrades`, async () => {
       const { sdk } = makeSdk(() =>
@@ -164,8 +156,6 @@ describe("what the module refuses to soften", () => {
       const err = await sdk.channels.getChannels().catch((e: unknown) => e);
       expect(err).toBeInstanceOf(ChannelsHttpError);
       expect((err as ChannelsHttpError).status).toBe(status);
-      // The body travels as the message, which is what the web adapter parses
-      // back into a HoustonEngineError.
       expect((err as ChannelsHttpError).message).toBe(
         JSON.stringify({ error: "no channels here" }),
       );
@@ -176,7 +166,6 @@ describe("what the module refuses to soften", () => {
     const { sdk, calls } = makeSdk(() => json({ error: "spent" }, 404));
     const err = await sdk.channels.completeSlack(TICKET).catch((e) => e);
     expect((err as ChannelsHttpError).status).toBe(404);
-    // A one-time ticket is never replayed: one refusal is one request.
     expect(calls).toHaveLength(1);
   });
 });

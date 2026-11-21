@@ -9,16 +9,8 @@ import type { TurnFilesystem } from "./turn-filesystem";
 import { resolveListedLayout } from "./turn-layout";
 import { assertMigratedLayout } from "./turn-layout-legacy";
 
-/**
- * A manifest-only tree: the store's listing, the agent's directory skeleton,
- * reads served by a store-backed vfs that materializes one object on first
- * touch. `admit` narrows the listing further than the excludes can (a
- * subtree kept inside an excluded one); a refused key is invisible to the
- * op, exactly like an excluded one.
- */
 export async function startLazyTurnFilesystem(opts: {
   store: ObjectStore;
-  /** The store's manifest under `prefix`, taken once per op. */
   listed: ObjectMetadata[];
   prefix: string;
   storeRoot: string;
@@ -26,7 +18,6 @@ export async function startLazyTurnFilesystem(opts: {
   excludes: string[];
   maxBytes: number;
   admit?: (relativePath: string) => boolean;
-  /** See prepareTurnFilesystem. */
   allowLegacyLayout?: boolean;
   timings?: Record<string, number>;
 }): Promise<TurnFilesystem> {

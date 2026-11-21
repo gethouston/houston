@@ -8,14 +8,8 @@ import { buildTs } from "./ts.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
-// Default output is the committed dist/. The sync test overrides OUT_DIR to a
-// temp dir so it can diff a fresh build against the committed one.
 const OUT = process.env.OUT_DIR ? process.env.OUT_DIR : join(ROOT, "dist");
 
-/**
- * CSS and TypeScript outputs, keyed by their path under the output dir, plus the
- * derivation notes (chip fallbacks and contrast nudges) the build prints.
- */
 export async function build() {
   const light = await collect("light");
   const dark = await collect("dark");
@@ -41,8 +35,6 @@ async function main() {
   process.stdout.write(`design tokens built -> ${OUT}\n`);
 }
 
-// Run only when invoked directly (pnpm build / the sync test's subprocess), so
-// importing `build` for in-process use has no side effects.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   main().catch((err) => {
     process.stderr.write(`${err.stack ?? err}\n`);

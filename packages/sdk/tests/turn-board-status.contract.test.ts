@@ -1,22 +1,3 @@
-/**
- * Turn → board-status contract (the SDK-only path).
- *
- * On web/desktop the engine-adapter attaches a bus FeedOutput that PATCHes the
- * persisted activity when a turn settles. The SDK turns module ships its OWN
- * default output that must do the same, so a binder that never calls
- * `addOutput` still sees a mission leave "running" when its turn finishes.
- *
- * These drive `sdk.turns.send` against an activity-keyed conversation and assert
- * the persisted `Activity` record (read straight off the host) transitions
- * running → needs_you — the write that keeps mission lists from sticking on
- * "running" forever.
- *
- * The terminal status is ALWAYS `needs_you` for a clean turn: the engine never
- * writes `done`. Each test therefore parks the card on `done` first (the user's
- * own move — the only way a card gets there) so the transition it asserts is a
- * real one, not the seed status echoed back.
- */
-
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Activity } from "@houston/protocol";
 import { activitiesScope, type SdkLogger } from "@houston/sdk";
@@ -59,7 +40,6 @@ afterEach(() => {
   h.sdk.dispose();
 });
 
-/** Read an activity's status straight off the host (independent of any VM). */
 async function hostStatus(id: string): Promise<string | undefined> {
   const res = await fetch(`${host.url}/agents/${SEED_AGENT_ID}/activities`);
   const { items } = (await res.json()) as { items: Activity[] };
@@ -68,9 +48,6 @@ async function hostStatus(id: string): Promise<string | undefined> {
 
 describe("SDK turn settle → activity board status", () => {
   it("PATCHes the activity to needs_you when a clean turn settles, never done", async () => {
-    // Park the card on `done` by hand (the user's move) so the settle has
-    // somewhere to move FROM. The canned reply carries no pending interaction,
-    // and the clean settle still lands `needs_you`.
     const cid = "activity-act-1";
     await h.sdk.activities.setStatus(SEED_AGENT_ID, "act-1", "done");
     expect(await hostStatus("act-1")).toBe("done");
@@ -82,7 +59,6 @@ describe("SDK turn settle → activity board status", () => {
     });
     await until(() => convVm(h.sdk, cid)?.running === false, "turn settled");
 
-    // The persisted record PATCHed to needs_you (the write the SDK path dropped).
     await untilAsync(
       async () => (await hostStatus("act-1")) === "needs_you",
       "activity persisted to needs_you",
@@ -101,7 +77,6 @@ describe("SDK turn settle → activity board status", () => {
       text: "Ping",
     });
 
-    // Start-of-turn persist flips a done/needs_you card back to running.
     await untilAsync(
       async () => (await hostStatus("act-1")) === "running",
       "activity running in flight",
@@ -151,13 +126,12 @@ describe("SDK turn settle → activity board status", () => {
     };
     const solo = makeSdk(host.url, logger);
     try {
-      const cid = "c-no-activity"; // a plain chat, not an activity session key
+      const cid = "c-no-activity";
       await solo.sdk.turns.send({
         agentId: SEED_AGENT_ID,
         conversationId: cid,
         text: "Ping",
       });
-      // The turn still settles cleanly — a missing board card never crashes it.
       await until(
         () => convVm(solo.sdk, cid)?.running === false,
         "turn settled despite no activity",

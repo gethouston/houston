@@ -19,18 +19,11 @@ import { useTranslation } from "react-i18next";
 export interface TeamFileActions {
   upload?: () => void;
   uploadFolder?: () => void;
-  /** Absent, like the uploads, while the org is locked. */
   newFolder?: () => void;
-  /** Desktop: the employee's folder in the OS file manager. */
   reveal?: () => void;
-  /** Browser builds: every file as one download. */
   downloadAll?: () => void;
 }
 
-/**
- * The whole-tree action the host offers, desktop's file manager first. Icon
- * only on the phone, where the search field needs the width.
- */
 function WholeTreeAction({ actions }: { actions: TeamFileActions }) {
   const { t } = useTranslation("agents");
   const action = actions.reveal
@@ -112,11 +105,6 @@ export function TeamFilesToolbar({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            // New-folder mounts an autofocused inline input; the menu's default
-            // close behavior then RESTORES focus to this trigger a beat later,
-            // blurring the input, whose blur-cancel kills the creation before
-            // the user ever sees it. The menu's actions all move focus onward
-            // (an input, a file picker), so the trigger never reclaims it.
             onCloseAutoFocus={(event) => event.preventDefault()}
           >
             <ActionItems actions={actions} />

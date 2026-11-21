@@ -1,15 +1,3 @@
-/**
- * The routine screen's Model section body (PRODUCT-1475): the resolved
- * provider + model as a picker, whether that account actually works, and — when
- * the routine carries no pin — the quiet line saying it follows the agent.
- *
- * The health claim is scoped: `/providers` answers for the VIEWER's credential
- * scope while a fired routine runs on its CREATOR's, so a teammate's routine
- * gets a plain sentence about whose account runs it instead of a badge derived
- * from the wrong one. Saving and enabling stay allowed either way — this row
- * informs, it never blocks.
- */
-
 import type { Routine } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import { useRoutineModelResolution } from "../../hooks/use-routine-model-resolution";

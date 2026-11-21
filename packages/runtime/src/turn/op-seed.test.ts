@@ -15,8 +15,6 @@ import type { OpRequest } from "./parse-op-request";
 
 const AGENT_OPS = "agent-ops";
 
-/** The runtime's provider baseline, stubbed: the real one reads the
- *  machine's own config dir. */
 const BASELINE = [{ id: "anthropic", configured: false }];
 const cleanViews = (
   dataDir = mkdtempSync(join(tmpdir(), "op-seed-data-")),
@@ -61,7 +59,6 @@ const familyDocs = (puts: { family: string; doc: unknown }[]) =>
       .map((put) => [put.family, put.doc]),
   );
 
-/** The relayed answer inside the worker's `{ok, status, body}` envelope. */
 function answer(reply: { status: number; body: unknown }) {
   expect(reply.status).toBe(200);
   const envelope = reply.body as { status: number; body: string };
@@ -175,7 +172,6 @@ test("CLAUDE.md and the seeds land, seeded routines stamped with the acting user
   expect(
     JSON.parse(fake.read(`${agent}/.houston/routines/routines.json`)),
   ).toEqual([{ ...routines[0], created_by: "user-7" }]);
-  // The routines doc projects the seeded routine, not an empty list.
   const routinesDoc = docs.puts.find((put) => put.family === "routines");
   expect(routinesDoc?.doc).toEqual([
     expect.objectContaining({ id: "r1", created_by: "user-7" }),
@@ -199,7 +195,6 @@ test("a seed that loses the race to another seeder adopts the winner's tree, nev
   expect(status).toBe(200);
   expect(body).toMatchObject({ id: "Personal/Ledger", adopted: true });
   expect(fake.read(winner)).toBe("# the winner\n");
-  // The adopted tree still holds every schema: none is left missing.
   expect(await fake.keys()).toEqual(
     expect.arrayContaining(schemaRels("workspaces/Personal/Ledger")),
   );
@@ -208,7 +203,6 @@ test("a seed that loses the race to another seeder adopts the winner's tree, nev
 test("an adopted tree with a payload gets only the files it lacks, create-only", async () => {
   const fake = generationStore();
   const agent = "workspaces/Personal/Ledger";
-  // A seed that crashed half-way: CLAUDE.md and one schema landed.
   const [firstSchema = ""] = schemaRels(agent);
   fake.put(`${agent}/CLAUDE.md`, "# edited since\n");
   fake.put(firstSchema, '{"kept":true}');
@@ -332,9 +326,6 @@ test("a payload file that collides with a path the tree holds is skipped, never 
   const fake = generationStore();
   const agent = "workspaces/Personal/Ledger";
   for (const rel of schemaRels(agent)) fake.put(rel, "{}");
-  // A user FILE where the payload wants a directory, and a user DIRECTORY
-  // where the payload wants a file: either pair in one prefix breaks every
-  // hydrate (EISDIR).
   fake.put(`${agent}/notes`, "a file\n");
   fake.put(`${agent}/docs/a.md`, "kept\n");
   const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -429,8 +420,6 @@ test("a projection that throws after a durable seed is logged, never a failed se
 test("an adopted flat-layout tree never gets a family file over its flat twin", async () => {
   const fake = generationStore();
   const agent = "workspaces/Personal/Ledger";
-  // A pre-v0.4 agent: its routines are still the flat file the migrate op
-  // copies into a MISSING family file.
   fake.put(`${agent}/CLAUDE.md`, "# Ledger\n");
   fake.put(`${agent}/.houston/routines.json`, '[{"id":"r1"}]');
   const { reply } = await runSeed(

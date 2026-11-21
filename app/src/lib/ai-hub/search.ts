@@ -1,18 +1,11 @@
 import type { CatalogModel, LabId } from "./catalog-types.ts";
 
-/** Filters applied to the model directory. */
 export interface ModelFilter {
   lab?: LabId;
   reasoning?: boolean;
   vision?: boolean;
 }
 
-/**
- * Search models by name, lab, or normalized key. Prefix matches on the name
- * rank first, then name substrings, then lab/key matches. Input order (the
- * catalog's newest-first sort) breaks ties, so it is preserved within a rank.
- * An empty query returns the list unchanged.
- */
 export function searchModels(
   models: CatalogModel[],
   query: string,
@@ -33,7 +26,6 @@ export function searchModels(
   return ranked.map((r) => r.model);
 }
 
-/** Narrow models to a lab and/or capability. Absent filters match everything. */
 export function filterModels(
   models: CatalogModel[],
   filter: ModelFilter,

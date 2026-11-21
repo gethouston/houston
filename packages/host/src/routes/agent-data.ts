@@ -13,12 +13,8 @@ import { agentRest } from "./agent-rest";
 import { json, methodNotAllowed } from "./http";
 import { defineRouteFamily } from "./registry";
 
-// The cloud-layout root, kept as a convenience for cloud tests + callers that
-// don't carry a WorkspacePaths instance. Production handlers use the injected
-// `paths` so the local profile gets its own layout. See paths.ts.
 export { workspaceRoot } from "../paths";
 
-/** Each typed family's reactivity event — emitted after a successful mutation. */
 const FAMILY_EVENT: Record<string, (agentPath: string) => HoustonEvent> = {
   activities: (agentPath) => ({ type: "ActivityChanged", agentPath }),
   routines: (agentPath) => ({ type: "RoutinesChanged", agentPath }),
@@ -27,16 +23,6 @@ const FAMILY_EVENT: Record<string, (agentPath: string) => HoustonEvent> = {
   learnings: (agentPath) => ({ type: "LearningsChanged", agentPath }),
 };
 
-/**
- * The typed `.houston` families (activities, routines + runs, config,
- * learnings) served straight off the workspace Vfs — the SAME domain code
- * over GCS in cloud and the real agent directory locally. Intercepted before
- * channel dispatch; the runtime never sees these. Returns true when handled.
- *
- * List GETs return `{ items, diagnostics }`: agents write these files with
- * file tools, so malformed entries are dropped AND reported (beta policy —
- * the UI can surface the noise instead of silently losing it).
- */
 export async function handleAgentData(
   vfs: Vfs | undefined,
   paths: WorkspacePaths,
@@ -62,11 +48,7 @@ export async function handleAgentData(
   }
   const root = paths.agentRoot(ctx.workspace, ctx.agent);
   const nowIso = new Date().toISOString();
-  // Fire this family's reactivity event AFTER a successful write. agentPath is
-  // the agent's opaque id (the UI scopes query invalidation by it).
   const fireChange = () => {
-    // Own keys only: the route regex already limits `family`, and this keeps a
-    // prototype name from ever reaching the call.
     const event = Object.hasOwn(FAMILY_EVENT, family)
       ? FAMILY_EVENT[family]?.(ctx.agent.id)
       : undefined;
@@ -136,13 +118,6 @@ export async function handleAgentData(
   return true;
 }
 
-/**
- * The five families as ROUTES. One handler owns all thirteen pairs because the
- * regex above owns both the "not mine" boundary and the family-wide 405: a
- * method this family does not serve is ITS answer to give, never the next
- * route's request to claim — expanding the members into separate routes would
- * proxy a `DELETE /config` to a runtime that has no such route instead.
- */
 defineRouteFamily({
   group: "agent-data",
   members: [
@@ -160,10 +135,6 @@ defineRouteFamily({
     { method: "GET", path: "/agents/:agentId/learnings" },
     { method: "PUT", path: "/agents/:agentId/learnings" },
   ],
-  // The item shapes the regex claims and the family does not serve: config and
-  // learnings are whole documents with no items, and routine runs are listed
-  // only as a whole. Each is this family's 405 to give — forwarding it would
-  // wake the agent's runtime for a route it has never had.
   owns: [
     "/agents/:agentId/config/:itemId",
     "/agents/:agentId/learnings/:itemId",

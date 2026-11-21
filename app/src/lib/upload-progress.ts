@@ -12,8 +12,6 @@ export function updateUploadProgress(
   file: File,
   progress: UploadProgress,
 ): UploadDisplayProgress {
-  // A finished file keeps a "done" entry until its whole batch settles, so it
-  // reads as finished beside files still on their way.
   const next = new Map(current);
   next.set(file, {
     fraction:
@@ -27,8 +25,6 @@ export function updateUploadProgress(
   return next;
 }
 
-// Every composer send shares this display, including sends from interaction
-// cards. File identity keeps equal names in separate conversations apart.
 export const attachmentUploadDisplay = createStore<UploadDisplayProgress>(
   () => new Map(),
 );

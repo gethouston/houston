@@ -73,11 +73,9 @@ mod tests {
 
     #[test]
     fn windowsapps_alias_is_wsl() {
-        // The exact shape from HOUSTON-APP-4ZP.
         assert!(is_wsl_bash_alias(
             "C:\\Users\\u\\AppData\\Local\\Microsoft\\WindowsApps\\bash.exe"
         ));
-        // Case and separator variants.
         assert!(is_wsl_bash_alias(
             "c:/users/u/appdata/local/microsoft/WINDOWSAPPS/BASH.EXE"
         ));
@@ -96,7 +94,6 @@ mod tests {
         assert!(!is_wsl_bash_alias(
             "C:\\Users\\u\\AppData\\Local\\Programs\\Git\\bin\\bash.exe"
         ));
-        // A portable MSYS2 bash is a real bash the CLI can run.
         assert!(!is_wsl_bash_alias("D:\\tools\\msys64\\usr\\bin\\bash.exe"));
     }
 
@@ -129,13 +126,9 @@ mod tests {
         let real = dir.join("bash.exe");
         std::fs::write(&real, b"#!/bin/sh\n").expect("write fake bash");
         assert!(is_usable_git_bash_override(real.to_str().expect("utf8 path")));
-        // A directory is not a bash binary.
         assert!(!is_usable_git_bash_override(dir.to_str().expect("utf8 path")));
         #[cfg(unix)]
         {
-            // A symlink resolves for `is_file` but is judged on its own
-            // (unfollowed) metadata here — the same posture that rejects a
-            // Windows reparse-point stub.
             let link = dir.join("link-bash.exe");
             std::os::unix::fs::symlink(&real, &link).expect("symlink");
             assert!(!is_usable_git_bash_override(link.to_str().expect("utf8 path")));

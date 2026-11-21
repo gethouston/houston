@@ -2,17 +2,6 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { test } from "node:test";
 import { reportRejection } from "../src/lib/report-rejection.ts";
 
-/**
- * A9: background work started by a component reports its failures.
- *
- * The failure mode is silence — a fire-and-forget write whose rejection reaches
- * nothing (or only a `console.error`, which no crash report ever sees). The
- * chat panel's four background writes (the agent-config read, the last-used
- * provider read, the conversation model pin, the last-model save) all run
- * through this one rule, so the rule is what is tested: reject, and the
- * reporter hears about it, named.
- */
-
 const reported: { command: string; err: unknown }[] = [];
 const report = (command: string, err: unknown) =>
   void reported.push({ command, err });

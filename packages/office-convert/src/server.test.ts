@@ -152,7 +152,6 @@ test("timeout terminates a real process group", async () => {
     await vi.advanceTimersByTimeAsync(30_000);
     await finished;
     vi.useRealTimers();
-    // The parent's exit event can precede the descendant's removal from the process table.
     const deadline = Date.now() + 1_000;
     for (;;) {
       try {

@@ -1,7 +1,3 @@
-// A question card mounted in a real ChatPanel's composer-replacing slot, plus
-// the user's gestures on it. Import BEFORE anything that loads react-dom (the
-// DOM stage installs the globals React reads at import time).
-
 import { strict as assert } from "node:assert";
 import type { ReactElement } from "react";
 import { win } from "./conversation-log-dom.ts";
@@ -40,7 +36,6 @@ export const OPEN: Step = {
 export const file = (name: string, type = "image/png") =>
   new win.File(["x"], name, { type }) as unknown as File;
 
-/** A completion the test settles by hand, like a send still uploading. */
 export function deferred() {
   let resolve: (accepted: boolean) => void = () => {};
   const promise = new Promise<boolean>((r) => {
@@ -110,7 +105,6 @@ export function sendButton(): HTMLButtonElement {
   return send as HTMLButtonElement;
 }
 
-/** Picks files through the attach control's hidden file input. */
 export function attach(files: File[]): void {
   const input = win.document.querySelector(
     'input[type="file"]:not([webkitdirectory])',
@@ -122,7 +116,6 @@ export function attach(files: File[]): void {
   });
 }
 
-/** Types into the card's free-text field through React's value setter. */
 export function type(text: string): void {
   const area = win.document.querySelector("textarea") as HTMLTextAreaElement;
   assert.ok(area, "no textarea");
@@ -146,7 +139,6 @@ export function pressEnter(): void {
   });
 }
 
-/** Lets a settled completion's continuation run. */
 export async function flush(): Promise<void> {
   await act(async () => {
     await Promise.resolve();

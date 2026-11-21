@@ -4,13 +4,6 @@ import { FirstRunConversation } from "./first-run-conversation";
 import type { ManagerOnboardingState } from "./manager-onboarding-context";
 import { ProfileConversation } from "./profile-conversation";
 
-/**
- * The onboarding the AI Manager runs in place of its chat. Every line is
- * authored copy and every answer is given on a step: no model is asked
- * anything, so it runs whether or not the manager itself can start. It opens
- * once the survey record has loaded, since the record is what the
- * conversation resumes from.
- */
 export function ManagerOnboarding({
   state,
 }: {

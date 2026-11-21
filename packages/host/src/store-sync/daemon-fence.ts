@@ -4,15 +4,6 @@ import { FENCE_RETIRED_MARKER, type RetireMarker } from "./daemon-hydrate";
 import type { StoreSyncOptions } from "./daemon-policy";
 import { WriteFence } from "./write-fence";
 
-/**
- * The daemon's write fence. Right before the pod retires (the holder is
- * stale) it leaves a marker in its local tree naming every path its sync had
- * seen in the store: the kubelet restarts the container in place on the same
- * emptyDir, and the next boot must not upload a file the store dropped since
- * (a conversation a pool op deleted, say) under its fresh lease. runHydrate
- * prunes exactly those; a file the store never had is this pod's own unsynced
- * write and is kept.
- */
 export function createDaemonFence(
   opts: StoreSyncOptions,
   halt: (err: { message: string }) => void,

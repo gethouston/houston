@@ -47,8 +47,6 @@ describe("team icon generation", () => {
   });
 
   it("reads a namespaced name whole, so it cannot pass as an allowed one", () => {
-    // `xlink:href` is how a drawing element loads and runs remote markup, and
-    // an attribute scanner that stops at the colon would judge "href" instead.
     assert.throws(
       () =>
         parseSymbols(
@@ -153,9 +151,6 @@ describe("team icon search", () => {
   });
 
   it("searches EVERY extra haystack, not just the first", () => {
-    // The picker passes two: the mark's localized name and its localized
-    // concepts (this package's English tags, translated app-side). A matcher
-    // that only read the first would silently drop the concept vocabulary.
     const label = "Cohete";
     const concepts = "espacio lanzamiento futuro";
     assert.equal(
@@ -170,30 +165,21 @@ describe("team icon search", () => {
   });
 
   it("offers a mark's concepts for translation, name words included", () => {
-    // The generator drops a word from a mark's tags when the NAME already
-    // carries it, so tags alone would leave a translator no way to say the one
-    // concept the mark is named after.
     assert.equal(
       SIDEBAR_GROUP_GLYPH_TAGS["money-stack"].includes("money"),
       false,
     );
     assert.ok(sidebarGroupGlyphConcepts("money-stack").includes("money"));
-    // "stack" is nobody's curated concept, so there is nothing to translate.
     assert.equal(
       sidebarGroupGlyphConcepts("money-stack").includes("stack"),
       false,
     );
-    // Never the same word twice: the consumer translates this list key by key,
-    // and a repeat would pay for the same lookup again.
     const home = sidebarGroupGlyphConcepts("home");
     assert.equal(home.length, new Set(home).size);
-    // "home" is the mark's name AND a tag other marks carry, so it is offered.
     assert.ok(home.includes("home"));
   });
 
   it("draws every concept from ONE closed vocabulary", () => {
-    // The app translates that vocabulary key by key: a concept outside it
-    // would search as an untranslated English word in a Spanish picker.
     for (const name of SIDEBAR_GROUP_GLYPH_NAMES) {
       for (const concept of sidebarGroupGlyphConcepts(name)) {
         assert.ok(
@@ -205,8 +191,6 @@ describe("team icon search", () => {
   });
 
   it("spends the whole vocabulary: no word waits for a translation nobody reads", () => {
-    // A word here but on no mark would still be a key the app must translate,
-    // in three locales, for a search that can never surface anything.
     const offered = new Set(
       SIDEBAR_GROUP_GLYPH_NAMES.flatMap((name) =>
         sidebarGroupGlyphConcepts(name),

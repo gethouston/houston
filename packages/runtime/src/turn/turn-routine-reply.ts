@@ -12,10 +12,8 @@ import type {
 } from "@houston/protocol";
 import { type ChatMessage, isCompactionSummary } from "@houston/protocol";
 
-/** What a routine turn left in its conversation. */
 export interface RoutineReply {
   content: string;
-  /** Set when the turn failed on a typed provider error (auth, quota…). */
   providerError?: ProviderError;
 }
 
@@ -26,14 +24,6 @@ interface StoredMessage {
   providerError?: ProviderError;
 }
 
-/**
- * The assistant message this run's turn persisted. A failed turn's is empty
- * and carries its typed providerError, which is what classifies the run
- * (reconcile reads the same message on a standing pod). A shared routine chat
- * holds earlier runs' replies: a latest message stamped with another turn is
- * not this run's answer, and reusing its providerError would count an old
- * failure again. Messages from before turn stamps are read as before.
- */
 export async function lastAssistantReply(
   workspaceDir: string,
   conversationId: string,
@@ -55,7 +45,6 @@ export async function lastAssistantReply(
       const message = messages[i];
       if (message?.role !== "assistant") continue;
       if (message.turnId !== undefined && message.turnId !== turnId) break;
-      // A summary is the model's memory, not what the run reported.
       if (
         isCompactionSummary(
           message as ChatMessage,
@@ -70,20 +59,10 @@ export async function lastAssistantReply(
           : {}),
       };
     }
-  } catch {
-    // A missing or unreadable conversation classifies as surfaced-with-empty
-    // summary rather than failing the settle: the turn's own outcome already
-    // told the user what happened.
-  }
+  } catch {}
   return { content: "" };
 }
 
-/**
- * The errored run row for a turn that failed, or null when it answered. A
- * typed failure (the caller's, or the one the provider error maps to) gets the
- * whose-account-is-it sentence; any other provider error keeps the provider's
- * own words; a plain turn error keeps its message.
- */
 export function routineRunError(
   row: RoutineRun,
   reply: RoutineReply,

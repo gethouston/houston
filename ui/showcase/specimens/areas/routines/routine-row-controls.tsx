@@ -11,7 +11,6 @@ import {
 } from "../../../src/specimen";
 import { inboxZero } from "./sample";
 
-/** The cluster as it ships: the switch commits immediately, the kebab confirms. */
 function LiveControls() {
   const [enabled, setEnabled] = useState(true);
   const [running, setRunning] = useState(false);
@@ -166,11 +165,6 @@ function RoutineRowControlsSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["RoutineRowControls"];
 
 export const specimen: Specimen = {

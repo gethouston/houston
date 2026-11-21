@@ -62,9 +62,7 @@ describe("onboarding survey ids", () => {
     strictEqual(isOnboardingIndustry("software_it"), true);
     strictEqual(isOnboardingIndustry(ONBOARDING_INDUSTRY_SOMETHING_ELSE), true);
     strictEqual(isOnboardingIndustry("crypto free text"), false);
-    // The survey's own legacy ids are read (normalized), never written.
     strictEqual(isOnboardingIndustry("government_nonprofit"), false);
-    // "skipped" is a persistable CHOICE, never one of the industry answers.
     strictEqual(isOnboardingIndustry(ONBOARDING_INDUSTRY_SKIPPED), false);
     strictEqual(isOnboardingIndustryChoice(ONBOARDING_INDUSTRY_SKIPPED), true);
     strictEqual(isOnboardingIndustryChoice("retail_ecommerce"), true);
@@ -94,7 +92,6 @@ describe("onboarding survey ids", () => {
     strictEqual(isOnboardingCompanySizeChoice("huge"), false);
     strictEqual(isOnboardingCompanySizeChoice(""), false);
     strictEqual(normalizeOnboardingCompanySizeChoice("11_50"), "11_50");
-    // A bucket this build cannot name is asked again: one tap, no guessing.
     strictEqual(normalizeOnboardingCompanySizeChoice("5000_plus"), null);
     strictEqual(normalizeOnboardingCompanySizeChoice(7), null);
   });
@@ -147,9 +144,6 @@ describe("onboarding survey goal validation", () => {
   });
 
   it("measures the limit in code points, like the server does", () => {
-    // The gateway counts runes; `.length` counts UTF-16 units, so an emoji
-    // answer well inside the server's limit used to be refused (and silently
-    // dropped from the sync patch) on the client.
     const emoji = "🙂";
     strictEqual(emoji.length, 2);
     strictEqual(
@@ -163,16 +157,9 @@ describe("onboarding survey goal validation", () => {
   });
 
   it("sees an over-cap emoji paste as over-cap, not as a full-length answer", () => {
-    // The exact paste a `maxLength` guard used to eat: 2500 emoji is 5000
-    // UTF-16 units, the browser cut it to 4000 = EXACTLY the 2000-code-point
-    // limit, so it validated clean and 500 of the user's characters vanished
-    // with no alert. Nothing clamps the input now, so the over-cap state is
-    // what the validator sees, and the screen says so.
     const paste = "🙂".repeat(ONBOARDING_GOAL_MAX_LENGTH + 500);
     strictEqual([...paste].length, ONBOARDING_GOAL_MAX_LENGTH + 500);
     strictEqual(isValidAutomationGoal(paste), false);
-    // The truncation a UTF-16 clamp would have produced is indistinguishable
-    // from a legitimate answer — which is exactly why it cannot be the guard.
     strictEqual(
       isValidAutomationGoal(paste.slice(0, ONBOARDING_GOAL_MAX_LENGTH * 2)),
       true,
@@ -257,7 +244,6 @@ describe("onboarding survey persistence", () => {
       parseOnboardingSurveyPreference(
         JSON.stringify({ ...answered(), ...overrides }),
       );
-    // Written before the role question existed: still a record.
     const before = parse({ role: undefined, roleOther: undefined });
     strictEqual(before?.role, null);
     strictEqual(before?.roleOther, null);
@@ -328,17 +314,12 @@ describe("onboarding survey updates", () => {
   });
 
   it("keeps a synced record synced when only local UI state changes", () => {
-    // Dismissing the completion prompt is this device's UI state, never an
-    // answer: clearing the stamp would order a pointless full re-push on the
-    // next mount, and restamping `updatedAt` would make an in-flight flush
-    // discard its own success. Both must hold.
     const synced = markGatewaySynced(answered(), "2026-08-08T10:00:00.000Z");
     const dismissed = applyCompletionDismissed(synced);
     strictEqual(dismissed.completionPromptDismissed, true);
     strictEqual(dismissed.gatewaySyncedAt, "2026-08-08T10:00:00.000Z");
     strictEqual(dismissed.updatedAt, synced.updatedAt);
     strictEqual(synced.completionPromptDismissed, false);
-    // An unsynced record stays unsynced — dismissal invents no sync either.
     strictEqual(applyCompletionDismissed(answered()).gatewaySyncedAt, null);
   });
 
@@ -462,13 +443,13 @@ describe("onboarding survey answered semantics", () => {
     strictEqual(needsCompletionPrompt(jobOnly), true);
     strictEqual(
       needsCompletionPrompt(applyIndustry(jobOnly, "education")),
-      true, // goal still missing
+      true,
     );
     strictEqual(
       needsCompletionPrompt(
         applyGoal(applyIndustry(jobOnly, "education"), "sort my inbox"),
       ),
-      true, // company size still missing
+      true,
     );
     strictEqual(
       needsCompletionPrompt(
@@ -479,8 +460,6 @@ describe("onboarding survey answered semantics", () => {
       ),
       false,
     );
-    // An account that finished the survey before the company size existed
-    // is asked it once, and never again after "Not now".
     const beforeSize = answered({ companySize: null });
     strictEqual(needsCompletionPrompt(beforeSize), true);
     strictEqual(
@@ -497,7 +476,6 @@ describe("onboarding survey answered semantics", () => {
       ),
       true,
     );
-    // Never prompt someone who has not answered the job question at all.
     strictEqual(
       needsCompletionPrompt(createOnboardingSurveyPreference()),
       false,

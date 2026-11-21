@@ -11,15 +11,6 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { backfillRoutineCreatedBy } from "./routine-created-by";
 
-/**
- * The managed-pod boot backfill that stamps the org owner as `created_by` on
- * routines recorded before gateway-fronted pods stamped acting identities.
- * What matters: an authorless entry gains the owner sub (the control-plane
- * planner refuses to fire without one), an authored entry keeps its author, a
- * doc with nothing to stamp is not rewritten, and one bad doc never stops the
- * sweep.
- */
-
 let root: string;
 
 const routinesPath = (agentRoot: string) =>
@@ -105,8 +96,6 @@ describe("backfillRoutineCreatedBy", () => {
     writeRoutines(broken, "{not json");
     const healthy = join(root, "Personal", "Healthy");
     writeRoutines(healthy, [{ id: "r1", name: "n", prompt: "p" }]);
-    // A non-array doc (agent-authored garbage) is the read path's diagnostic
-    // to report, not ours to rewrite.
     const object = join(root, "Personal", "ObjectDoc");
     writeRoutines(object, { items: [] });
 

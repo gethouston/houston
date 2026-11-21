@@ -7,13 +7,6 @@ import {
   neverAnswers,
 } from "./hedged-session.test-support";
 
-/**
- * The hedge end to end: a REAL pi AgentSession, built the way the pi backend
- * builds one (backends/pi/backend.ts wraps its model runtime the same way),
- * over the scripted faux provider. The provider's first request never
- * answers, the way 47 did on staging (RL2, 2026-10-03); its second answers.
- */
-
 const text = (events: WireEvent[]) =>
   events
     .filter((e): e is Extract<WireEvent, { type: "text" }> => e.type === "text")
@@ -37,13 +30,10 @@ test("a request the provider never answers is sent again and the turn ends clean
   const tookMs = performance.now() - started;
 
   expect(text(events)).toBe("Answered on the second try");
-  // No card, no retry message: the person sees an answer one deadline late.
   expect(cards(events)).toEqual([]);
   expect(faux.state.callCount).toBe(2);
   expect(answered[0]).toBeGreaterThanOrEqual(DEADLINE_MS);
   expect(tookMs).toBeLessThan(DEADLINE_MS + 1000);
-  // One line per duplicate request: the count of hedges, and of the input
-  // tokens they cost.
   const hedgeLines = warn.mock.calls
     .map(([line]) => String(line))
     .filter((line) => line.startsWith("[provider_hedge]"));

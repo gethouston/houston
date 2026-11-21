@@ -14,7 +14,6 @@ class TestHttpError extends SdkHttpError {
   }
 }
 
-/** A scope over scripted answers, with a clock that fires at once and records each pause. */
 function makeScope(answers: Array<() => Response>) {
   const bodies: Array<string | null> = [];
   const pauses: number[] = [];

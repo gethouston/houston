@@ -45,12 +45,12 @@ test("parses Houston's existing frontmatter, including YAML-1.1 'featured: yes' 
   const parsed = parseSkillMd("research-company", HOUSTON_SKILL);
   if ("error" in parsed) throw new Error(parsed.error);
   expect(parsed.summary.name).toBe("research-company");
-  expect(parsed.summary.title).toBeNull(); // no title: field → UI humanizes the slug
-  expect(parsed.summary.featured).toBe(true); // 'yes' is a STRING in YAML 1.2 — normalized
-  expect(parsed.summary.created).toContain("2026-04-25"); // YAML date scalar → string
+  expect(parsed.summary.title).toBeNull();
+  expect(parsed.summary.featured).toBe(true);
+  expect(parsed.summary.created).toContain("2026-04-25");
   expect(parsed.summary.integrations).toEqual(["tavily", "gmail"]);
   expect(parsed.summary.category).toBe("research");
-  expect(parsed.summary.setupActivityId).toBeNull(); // no setup chat link
+  expect(parsed.summary.setupActivityId).toBeNull();
   expect(parsed.body).toContain("## Procedure");
 });
 
@@ -132,8 +132,8 @@ Paso uno.
 `;
   const parsed = parseSkillMd("planear-una-campana", translated);
   if ("error" in parsed) throw new Error(parsed.error);
-  expect(parsed.summary.name).toBe("planear-una-campana"); // identity = dir slug (HOU-441)
-  expect(parsed.summary.title).toBe("Planear una campaña"); // accents live here, not in the slug
+  expect(parsed.summary.name).toBe("planear-una-campana");
+  expect(parsed.summary.title).toBe("Planear una campaña");
 
   const store = memStore();
   await store.writeText(skillKey(ROOT, "planear-una-campana"), translated);
@@ -149,7 +149,6 @@ test("loadSkills lists slugs, sorted; broken frontmatter surfaces as a diagnosti
   );
   await store.writeText(skillKey(ROOT, "research-company"), HOUSTON_SKILL);
   await store.writeText(skillKey(ROOT, "broken"), "no frontmatter at all");
-  // A nested helper file must not register as a skill of its own.
   await store.writeText(
     `${ROOT}/.agents/skills/research-company/helpers/notes.md`,
     "x",
@@ -167,10 +166,6 @@ test("loadSkills lists slugs, sorted; broken frontmatter surfaces as a diagnosti
 });
 
 test("list + load use the directory slug when frontmatter name: drifts (HOU-515)", async () => {
-  // An agent-authored SKILL.md can carry a display phrase in `name:` while
-  // living in a kebab-slug directory. loadSkills must report the DIRECTORY slug
-  // — the id loadSkillDetail / the host's GET-by-slug route resolve by — or the
-  // UI round-trip (list -> click -> load) hard-errors "skill not found".
   const store = memStore();
   const slug = "redactar-outreach-esg";
   await store.writeText(
@@ -178,17 +173,14 @@ test("list + load use the directory slug when frontmatter name: drifts (HOU-515)
     "---\nname: Redactar Outreach ESG\ndescription: Draft ESG outreach\n---\n\n## Procedure\nDraft it.\n",
   );
 
-  // list reports the directory slug, not the drifted frontmatter phrase.
   const { items } = await loadSkills(store, ROOT);
   expect(items.map((s) => s.name)).toEqual([slug]);
 
-  // The id list handed back round-trips cleanly through loadSkillDetail.
   const detail = await loadSkillDetail(store, ROOT, slug);
   if (!detail) throw new Error(`expected detail for '${slug}'`);
   expect(detail.name).toBe(slug);
   expect(detail.content).toContain("Draft it.");
 
-  // The drifted phrase never named a real directory — still null (-> host 404).
   expect(
     await loadSkillDetail(store, ROOT, "Redactar Outreach ESG"),
   ).toBeNull();

@@ -109,8 +109,6 @@ describe("the explained empty state (HOU-979)", () => {
   });
 
   it("never shows while statuses or the catalog are still resolving", () => {
-    // The whole point of the third state: a "checking" provider must read as
-    // loading, not as an honest "this space has no AI connection".
     assert.equal(
       providerListEmpty([provider("a", "checking")], "ready"),
       false,

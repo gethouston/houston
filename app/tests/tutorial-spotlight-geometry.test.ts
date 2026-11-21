@@ -2,10 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { blockerPanels } from "../src/components/tutorial/tutorial-spotlight-geometry.ts";
 
-// The four panels around the spotlight's hole own the pointer events. A
-// negative size is invalid CSS the browser silently drops, leaving the
-// previous step's panel in place, so every size must clamp at zero.
-
 const viewport = { w: 412, h: 839 };
 
 describe("blockerPanels", () => {
@@ -29,7 +25,6 @@ describe("blockerPanels", () => {
   });
 
   it("never emits a negative size for a hole that overhangs the viewport", () => {
-    // A full-bleed target padded past every edge: the phone's chat screen.
     const panels = blockerPanels(
       { top: -6, left: -6, width: 424, height: 851 },
       viewport,
@@ -38,7 +33,6 @@ describe("blockerPanels", () => {
       assert.ok(p.width >= 0, `width ${p.width}`);
       assert.ok(p.height >= 0, `height ${p.height}`);
     }
-    // Nothing is walled off: every panel is empty.
     assert.ok(panels.every((p) => p.width === 0 || p.height === 0));
   });
 });

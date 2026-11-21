@@ -6,31 +6,16 @@ import {
   type Viewport,
 } from "./tutorial-spotlight-geometry";
 
-/**
- * Everything a spotlight paints AROUND its target: the transparent panels that
- * swallow clicks outside the hole, the dark veil cut open over it, and the cues
- * that say "here, CLICK". Not a word of copy and no interaction of its own: the
- * lesson beat (`academy/lessons/lesson-spotlight.tsx`) composes it with the
- * sentence it whispers beside the target.
- */
 export function TutorialSpotlightVeil(props: {
   hole: Rect | null;
   dialogRect: Rect | null;
   viewport: Viewport;
   inDialog: boolean;
-  /** The click cues. Off for watch-only beats, where nothing is clicked. */
   showCues: boolean;
-  /** The band the whole step rides in, resolved by the caller. */
   z: string;
-  /** Fade the dark parts in on mount instead of cutting to them, so the
-   *  dimming enters at the same pace as the whisper beside it. The cues keep
-   *  their own looping animations either way. */
   fadeIn?: boolean;
 }) {
   const { hole, dialogRect, inDialog, showCues, z } = props;
-  // Applied to the veil elements themselves (each already `fixed` with inline
-  // coordinates), never to a wrapper: an ancestor mid-animation would become
-  // the containing block for every fixed child and move the hole off target.
   const enter = props.fadeIn
     ? "duration-200 animate-in fade-in-0 motion-reduce:animate-none"
     : null;
@@ -46,11 +31,6 @@ export function TutorialSpotlightVeil(props: {
             style={p}
           />
         ))}
-      {/* The visual veil: the tour's cutout (ring + giant shadow), or a plain
-          full scrim while the target is off screen. Never intercepts clicks —
-          the hole must stay truly open. In-dialog steps cut around the WHOLE
-          modal instead (rendered above the dialog layer), so the step reads
-          exactly like every other one: dark world, lit surface. */}
       {inDialog ? (
         dialogRect && (
           <div
@@ -80,8 +60,6 @@ export function TutorialSpotlightVeil(props: {
           )}
         />
       )}
-      {/* In-dialog, the steady ring marks the inner target (the veil above
-          rings nothing — it cuts around the modal). */}
       {inDialog && hole && (
         <div
           aria-hidden
@@ -92,8 +70,6 @@ export function TutorialSpotlightVeil(props: {
           style={hole}
         />
       )}
-      {/* The click cues: a sonar ping radiating off the ring, and a cursor
-          glyph tapping at the corner — "here, CLICK". Pure decoration. */}
       {hole && showCues && (
         <>
           <div

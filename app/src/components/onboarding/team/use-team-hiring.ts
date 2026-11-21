@@ -21,10 +21,7 @@ import type { RosterSettlement } from "./team-roster-model";
 import type { RosterSaveHost } from "./team-roster-save";
 
 export interface TeamHiring extends RosterSaveHost {
-  /** Every AI Employee name in the workspace, hires from this card included. */
   takenNames: string[];
-  /** The palette color no teammate wears yet, read at the moment of asking.
-   *  `alsoTaken` counts colors already promised to hires not made yet. */
   nextColor: (alsoTaken?: readonly string[]) => string;
   hire: (input: {
     name: string;
@@ -33,23 +30,12 @@ export interface TeamHiring extends RosterSaveHost {
   }) => Promise<RosterSettlement>;
 }
 
-/**
- * Hiring into the workspace the card was opened for. Each hire joins the
- * sidebar as a top-level AI Employee: "your team" is everyone hired, never a
- * group made on the person's behalf.
- *
- * Each employee's first day stays pending (`createEmployee`): the card only
- * builds the team, and each one starts when the person opens them. The store
- * adopts every hire as it lands, which is what keeps both the name check and
- * the next free color honest across a run of hires.
- */
 export function useTeamHiring(workspaceId: string): TeamHiring {
   const agents = useAgentStore((s) => s.agents);
   const resolvePin = useKickoffPinResolver();
   const { t } = useTranslation("agents");
   const queryClient = useQueryClient();
   const sidebar = useSidebarLayout(workspaceId);
-  // The same rename and recolor the agent's own "Color & name" settings use.
   const actions = useAgentActions({
     t,
     workspaceId,
@@ -78,8 +64,6 @@ export function useTeamHiring(workspaceId: string): TeamHiring {
         if (isAgentNameTaken(err)) {
           return { kind: "failed", reason: "nameTaken" };
         }
-        // The create call reports its own failures; this catches the ones
-        // around it (the pin lookup) and skips a repeat.
         logAndReportError("team_card_hire", err);
         return { kind: "failed", reason: "failed" };
       }
@@ -87,8 +71,6 @@ export function useTeamHiring(workspaceId: string): TeamHiring {
     whenReady: whenAgentTakesWrites,
     rename: async (id, name) => (await actions.rename(id, name)) ?? null,
     recolor: (id, color) => actions.changeColor(id, color),
-    // The Job description tab's own read and write of the file, so the tab,
-    // the first day's greeting and the agent all read the new brief.
     rebrief: async (id, brief) => {
       const agent = useAgentStore.getState().agents.find((a) => a.id === id);
       if (!agent) {
@@ -110,8 +92,6 @@ export function useTeamHiring(workspaceId: string): TeamHiring {
   };
 }
 
-/** Resolves once the employee's engine takes writes: a hosted employee warms
- *  up after its create, and the write guard refuses every write until then. */
 function whenAgentTakesWrites(id: string): Promise<void> {
   const ready = () => !useAgentProvisioningStore.getState().provisioning[id];
   if (ready()) return Promise.resolve();

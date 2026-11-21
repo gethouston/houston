@@ -26,7 +26,6 @@ export async function markBridgeRetiring(
 ): Promise<LocalBridgeJournal> {
   if (!sameBridgeIdentity(journal.identity, ports.management.identity))
     throw new Error("bridge identity mismatch");
-  // Explicit manual retirement must replace any durable endpoint-clear intent.
   if (journal.phase === phase) return journal;
   const retiring = { ...journal, phase };
   await ports.storage.save(journal.identity, retiring);
@@ -43,14 +42,11 @@ export async function retireBridge(
   if (!retiring.descriptor) {
     const device = await ports.native.device(retiring.identity);
     signal?.throwIfAborted();
-    // A lost registration response is recovered with its original key, never a new registration intent.
     let descriptor: Awaited<ReturnType<typeof registerBridge>>;
     try {
       descriptor = await registerBridge(ports, retiring, device, signal);
     } catch (error) {
       if (signal?.aborted || !isRegistrationRefusal(error)) throw error;
-      // Refused for good: nothing to revoke. A lost response that did register
-      // leaves a row the gateway will not name to us; it never got an endpoint.
       await forgetRetiring(ports, retiring, signal);
       return;
     }

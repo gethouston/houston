@@ -84,8 +84,6 @@ test("a houston tool this turn never offered is the model's mistake, not a lost 
     "mcp__houston__ask_user",
     "mcp__houston__integration_execute",
   ];
-  // Next-step suggestions were switched off, so suggest_actions was left out;
-  // a resumed session that used it on an earlier turn still calls it.
   expect(
     houstonToolServerLost(
       toolResult(

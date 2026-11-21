@@ -11,10 +11,6 @@ function includes(className: string, token: string): boolean {
 }
 
 describe("chat process scroll pane", () => {
-  // HOU-426: while the agent works, tool calls stream into one open accordion.
-  // These tokens are what stop that list from growing unbounded and taking the
-  // whole conversation. If a refactor drops one, the bug comes back — so guard
-  // them explicitly.
   it("caps the height so the open tool log cannot swallow the chat", () => {
     ok(includes(processScrollPaneClass, "max-h-80"));
   });

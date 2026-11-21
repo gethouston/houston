@@ -3,7 +3,6 @@ import { missionPath, remoteHeaders } from "./missions-remote-forward";
 
 export type RemoteMissionStatus = "running" | "settled" | "unknown";
 
-/** Read by id so a running mission beyond the compact board still counts. */
 export async function readRemoteMissionStatus(
   route: RemoteMissionRoute,
   missionId: string,

@@ -5,21 +5,11 @@ import {
 } from "./conversation-cache";
 import { conversationStore } from "./vm";
 
-/**
- * Persist the VM's folded feed to the local conversation cache when a turn
- * (or observed turn) settles, so the transcript a cold reopen paints includes
- * everything sent THIS session — not just the state at the last history read
- * (HOU-712). Frames were already folded by the VM (first in the multiplex);
- * this just snapshots them. Cloud-only by construction: the cache no-ops
- * without a gateway identity. Fire-and-forget — a cache write must never
- * delay a settle.
- */
 export function cachePersistOutput(): FeedOutput {
   return {
     pushFeedItem() {},
     sessionStatus() {},
     async persistBoardStatus(agentPath, sessionKey, status, _pi, opts) {
-      // The early hand-back is not the settle: the feed is still finishing.
       if (status === "running" || opts?.provisional) return;
       const snapshot = conversationStore.getSnapshot(
         conversationScope(agentPath, sessionKey),
@@ -33,13 +23,8 @@ export function cachePersistOutput(): FeedOutput {
           feed_type: f.feed_type,
           data: f.data,
           ...(f.ts !== undefined ? { ts: f.ts } : {}),
-          // Multiplayer attribution survives a cold reopen (HOU-943), and so do
-          // the message's @mention chips (HOU-944).
           ...(f.author !== undefined ? { author: f.author } : {}),
           ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
-          // Turn identity survives too (HOU-1214): a cache-painted feed must
-          // stay dedupable against a live replay, or the duplication returns
-          // on exactly the cold opens the cache exists for.
           ...(f.turnId !== undefined ? { turnId: f.turnId } : {}),
           ...(f.toolIndex !== undefined ? { toolIndex: f.toolIndex } : {}),
           ...(f.notice !== undefined ? { notice: f.notice } : {}),

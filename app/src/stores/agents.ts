@@ -26,9 +26,6 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   adopt: (agent) => {
-    // Hosted profile: the create answered but the agent's engine is still
-    // warming up (HOU-693). Track it so every surface can say so instead of
-    // hanging mutely; a readiness probe clears the mark. No-op co-located.
     useAgentProvisioningStore.getState().markProvisioning(agent);
     set((s) => ({
       agents: [...s.agents, agent],
@@ -61,8 +58,6 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     );
     analytics.track("agent_created", { config_id: configId });
     const { agent } = result;
-    // Before the agent shows anywhere: a new hire's first-day offer is on its
-    // board from the first frame, not after its engine warms up.
     seedBornConfig(queryClient, agent.folderPath, config);
     get().adopt(agent);
     return { agent };

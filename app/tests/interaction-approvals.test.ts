@@ -7,14 +7,6 @@ import {
   approvalsFromAnswers,
 } from "../src/lib/interaction-approvals.ts";
 
-/**
- * A3 / A4 from the app's side: a person's click on an approval CONTROL becomes a
- * receipt bound to the host's request id, and anything short of that click -
- * typed prose, an ordinary option that happens to be called "approve" - becomes
- * nothing at all. The control is structural (`kind: "approval"` + an id); its
- * wording is the app's own locale and carries no meaning here.
- */
-
 const options: ApprovalCardStep["options"] = [
   { id: "approve", kind: "approval" },
   { id: "decline", kind: "approval" },
@@ -26,7 +18,6 @@ const card = (id: string, requestId: string): ApprovalCardStep => ({
   options,
 });
 
-/** A control the person clicked, with the wording their locale showed them. */
 const clicked = (
   stepId: string,
   optionId: string,
@@ -39,7 +30,6 @@ const clicked = (
   optionId,
 });
 
-/** Words the person typed into the composer, whatever they happen to say. */
 const typed = (stepId: string, text: string): ChatInteractionAnswer => ({
   stepId,
   question: "Delete it?",
@@ -160,8 +150,6 @@ describe("a composed reply that answered an approval card", () => {
       ...base,
       answers: [clicked("x1", "approve", "Yes, go ahead")],
     });
-    // The person's words are the person's words. Nothing about an approval is
-    // hidden inside them - the host reads the receipts off the request itself.
     deepStrictEqual(text.endsWith("Delete it?: Yes, go ahead"), true);
     deepStrictEqual(text.includes("houston:approval"), false);
   });

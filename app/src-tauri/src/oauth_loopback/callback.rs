@@ -181,8 +181,6 @@ pub async fn serve_callback(
             continue;
         };
 
-        // Hand the query to the webview through the `auth://deep-link` event,
-        // the same channel an OS deep link of that shape arrives on.
         crate::auth::emit_deep_link(app, &link);
 
         respond(tag, &mut stream, "200 OK", &pages.success).await;
@@ -199,11 +197,9 @@ mod tests {
 
     #[tokio::test]
     async fn accept_any_takes_connections_from_either_stack() {
-        // A browser resolving `localhost` may arrive on `::1` while another
-        // arrives on `127.0.0.1` — both must reach the same attempt.
         use super::super::listener::{bind_exact, BindOutcome};
         let BindOutcome::Bound(sockets) = bind_exact(18975).await.expect("bind") else {
-            return; // port busy on this machine; nothing to prove
+            return;
         };
         let _v4 = tokio::net::TcpStream::connect(("127.0.0.1", 18975))
             .await
@@ -223,7 +219,6 @@ mod tests {
         assert_eq!(query_param("code=abc&state=xyz", "code"), Some("abc"));
         assert_eq!(query_param("code=abc", "state"), None);
         assert_eq!(query_param("", "state"), None);
-        // A bare flag with no `=` is not a value.
         assert_eq!(query_param("state", "state"), None);
     }
 
@@ -237,8 +232,6 @@ mod tests {
 
     #[test]
     fn a_mismatched_state_keeps_the_listener_alive() {
-        // The bug: a restored tab replaying an old redirect used to consume the
-        // one-shot listener, and the real redirect then found a dead port.
         assert_eq!(
             decide("code=abc123&state=someone-elses", "mine"),
             CallbackDecision::Stale
@@ -247,10 +240,6 @@ mod tests {
 
     #[test]
     fn a_callback_without_state_keeps_the_listener_alive() {
-        // No legitimate loopback callback is state-less (see `decide`), so a
-        // state-less request is either a probe or an attack. Completing on it
-        // let `curl 127.0.0.1:8975/auth/callback?code=x` kill the listener the
-        // user's real sign-in was waiting on.
         assert_eq!(decide("code=abc123", "mine"), CallbackDecision::Stale);
         assert_eq!(decide("", "mine"), CallbackDecision::Stale);
         assert_eq!(
@@ -261,8 +250,6 @@ mod tests {
 
     #[test]
     fn a_provider_error_on_our_state_completes_the_listener() {
-        // `error=access_denied` with OUR state is a real answer to this attempt:
-        // the TS side turns it into a typed failure, so we must not keep waiting.
         assert_eq!(
             decide("error=access_denied&state=mine", "mine"),
             CallbackDecision::Accept
@@ -271,7 +258,6 @@ mod tests {
 
     #[test]
     fn parses_callback_target_with_query() {
-        // Mirror what `serve_callback` does with a request line's target.
         let (path, query) = split_target("/auth/callback?code=abc123&state=xyz");
         assert_eq!(path, CALLBACK_PATH);
         assert_eq!(query, "code=abc123&state=xyz");
@@ -285,8 +271,6 @@ mod tests {
 
     #[test]
     fn callback_deep_link_forwards_query_verbatim() {
-        // The `auth://deep-link` payload keeps `code` + `state` intact for the
-        // TS parser — this is the query-forward contract the frontend depends on.
         assert_eq!(
             callback_deep_link("code=abc123&state=xyz"),
             "houston://auth-callback?code=abc123&state=xyz"

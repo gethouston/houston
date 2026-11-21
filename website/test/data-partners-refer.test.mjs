@@ -1,8 +1,3 @@
-// /data-partners and /data-partners/refer quote one program: the referral
-// amounts are the reference program's at the share the estimator pays, a
-// company qualifies at the same headcount on both pages, and the owner page's
-// sample of requests points at real requests.
-
 import assert from "node:assert/strict";
 import test from "node:test";
 import dataPartners from "../src/_data/dataPartners.js";

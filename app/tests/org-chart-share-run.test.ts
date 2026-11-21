@@ -27,7 +27,6 @@ describe("shareRoute", () => {
 
   it("keeps the share sheet on phones and iPads whose sheet takes the picture, even where Houston can post", () => {
     strictEqual(shareRoute(env).kind, "sheet");
-    // Before the picture is drawn, a sheet that exists is assumed to take it.
     strictEqual(shareRoute({ ...env, image: null }).kind, "sheet");
   });
 

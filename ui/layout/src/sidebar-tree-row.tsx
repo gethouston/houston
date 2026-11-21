@@ -19,12 +19,8 @@ export interface SidebarTreeRowViewProps {
   item?: SidebarItem;
   group?: SidebarGroupView;
   ctx: SidebarRowContext;
-  /** Set on the dragged row only: where it will land, drawn as the ghost. */
   ghost: SidebarTreeRow | null;
-  /** The rail cannot store a move: the row is not draggable. */
   disabled?: boolean;
-  /** Starts a block (a folder, or root employees after one): spaced off the
-   *  row above. */
   opensBlock?: boolean;
   onActivateGroup?: (groupId: string) => void;
   onKeyboardMove?: (
@@ -33,11 +29,6 @@ export interface SidebarTreeRowViewProps {
   ) => void;
 }
 
-/**
- * One sortable line of the rail. While it is the row being dragged it stays in
- * the list as a faded GHOST at its landing slot and depth, which is the whole
- * drop affordance: no lines, rings or highlighted targets.
- */
 export function SidebarTreeRowView({
   row,
   item,

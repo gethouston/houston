@@ -37,9 +37,6 @@ test("a question owns the key only with focus AND a clear top", () => {
 });
 
 test("a key the app dispatched at itself is never the question's", () => {
-  // Leaving a kept-alive screen fires a synthetic Escape at the document to
-  // dismiss a portalled modal (`keep-alive-views.tsx`). A synthetic event is
-  // untrusted; swallowing it leaves that modal open and the page inert.
   assert.equal(
     choiceOwnsKey({
       trusted: false,
@@ -52,8 +49,6 @@ test("a key the app dispatched at itself is never the question's", () => {
 });
 
 test("a question that is not on screen owns no key", () => {
-  // The step behind the AI Manager's typing and a kept-alive screen stay
-  // mounted while hidden; typing elsewhere must not land in their filter.
   assert.equal(
     choiceOwnsKey({
       trusted: true,
@@ -122,8 +117,6 @@ test("a layer opened after the question is above it", () => {
 });
 
 test("the dialog under a popover the question lives in is beneath it", () => {
-  // A card in the create sheet opens its role picker as a popover: portalled
-  // after the sheet, so the sheet does not wrap the question yet sits under it.
   assert.equal(countLayersAbove([beneath, wrapping]), 0);
 });
 
@@ -136,9 +129,6 @@ test("nothing open means nothing above", () => {
 });
 
 test("a confirm opened over the question is a layer that takes keys", () => {
-  // Radix's AlertDialog renders role="alertdialog": a confirm asked ON TOP of
-  // the question owns Escape, and a question that does not count it swallows
-  // the key that was meant to answer the confirm.
   assert.equal(isOpenLayerRole("alertdialog"), true);
 });
 

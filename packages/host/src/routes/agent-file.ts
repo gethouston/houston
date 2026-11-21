@@ -16,42 +16,14 @@ import { agentRest } from "./agent-rest";
 import { json, methodNotAllowed, readJson } from "./http";
 import { defineRoute } from "./registry";
 
-/**
- * Raw `.houston/**` file read/write — the host side of the app's files-first
- * data layer (`readAgentJson`/`writeAgentJson` → readAgentFile/writeAgentFile).
- * The desktop UI reads activity/config/learnings as whole JSON docs this way,
- * NOT through the typed CRUD routes, so this is what actually backs the board.
- * Served off the agent's workspace vfs, so the host and the agent's runtime
- * (shared storage locally / cloud) see one file. Returns true when handled.
- */
-
-/** The board document, the one file served here that can carry an approval card. */
 const ACTIVITY_DOCUMENT = ".houston/activity/activity.json";
 
-/**
- * The reactivity event a write to `rel` should fire, or null for paths not
- * worth an event. Classification comes from the ONE shared domain classifier
- * (`agentFileEventType`), so this route, the FS watcher, and the web adapter's
- * write-through echo can never drift into disagreeing about which file raises
- * which event — e.g. a PUT of `CLAUDE.md` must fire `ContextChanged`, not
- * `FilesChanged` (HOU-644).
- */
 function eventForPath(rel: string, agentPath: string): HoustonEvent | null {
   const type = agentFileEventType(rel);
   if (type === null) return null;
   return { type, agentPath };
 }
 
-/**
- * The board as the HOST tells it: an approval card stored on a mission row is
- * re-rendered from the host's own record and a card with no live record loses
- * its receipt (`activity-approval-cards.ts`). The board is read through THIS
- * route (`app/src/data/activity.ts`), not the typed activities route, so the
- * substitution has to happen here or the person would be clicking approve on
- * whatever prose the agent wrote into the file with its own tools.
- *
- * A document that is not JSON carries no card and is served unchanged.
- */
 function servedContent(rel: string, content: string, agentId: string): string {
   if (rel !== ACTIVITY_DOCUMENT || content === "") return content;
   let parsed: unknown;
@@ -63,13 +35,6 @@ function servedContent(rel: string, content: string, agentId: string): string {
   return JSON.stringify(hostOwnedApprovalCards(parsed, agentId));
 }
 
-/**
- * `*rest` because a document is addressed by its RELATIVE PATH, separators and
- * all (`.houston/activity/activity.json`), and the route serves every method
- * the app writes with. A method it does not serve is its own 405: the rest is
- * a document path, and forwarding it to the agent's runtime — which has no
- * agentfile route — would answer for something else entirely.
- */
 defineRoute({
   group: "agent-file",
   method: ["GET", "PUT", "POST"],
@@ -111,7 +76,6 @@ export async function handleAgentFile(
     json(res, 503, { error: "agent data not configured" });
     return true;
   }
-  // Clamp: a relative path inside the agent root, never an escape.
   if (
     rel.startsWith("/") ||
     rel.split("/").some((seg) => seg === "" || seg === "." || seg === "..")
@@ -129,8 +93,6 @@ export async function handleAgentFile(
   const key = `${paths.agentRoot(ctx.workspace, ctx.agent)}/${rel}`;
 
   if (method === "GET") {
-    // Empty (not 404) for a missing file: the app's readAgentJson treats falsy
-    // content as "use the fallback", which is the desired first-run behavior.
     const content = (await vfs.readText(key)) ?? "";
     json(res, 200, { content: servedContent(rel, content, ctx.agent.id) });
     return true;

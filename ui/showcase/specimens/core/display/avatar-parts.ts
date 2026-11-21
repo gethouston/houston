@@ -1,6 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/** The public API of the six `avatar.tsx` exports, read off their TS types. */
 export const AVATAR_PROPS: readonly SpecimenProp[] = [
   {
     name: "Avatar size",
@@ -44,7 +43,6 @@ export const AVATAR_PROPS: readonly SpecimenProp[] = [
   },
 ];
 
-/** The token utilities the six parts paint with. */
 export const AVATAR_TOKENS: readonly string[] = [
   "bg-chip-subtle",
   "text-ink-muted",

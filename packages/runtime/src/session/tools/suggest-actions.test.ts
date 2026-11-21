@@ -27,7 +27,6 @@ test("the description states the call is required on non-blocking finishes", () 
   const d = suggestActions.description ?? "";
   expect(d).toContain("Required on every turn you end without a blocking ask");
   expect(d).toContain("Skip it only when the turn ends blocked on the user");
-  // The retired opt-out ("skip it if you can't name one") must not linger.
   expect(d).not.toContain("genuinely cannot name");
 });
 
@@ -36,7 +35,6 @@ test("the description tells the model the call ends the turn, after the closing 
   expect(d).toContain("This call ENDS your turn");
   expect(d).toContain("write the whole closing message first");
   expect(d).toContain("in the same final message as suggest_reusable");
-  // The retired "then finish normally" contract must not linger.
   expect(d).not.toContain("then finish normally");
 });
 
@@ -67,7 +65,6 @@ test("before any visible text it records the steps but keeps the turn open and a
   expect(out.terminate).toBeUndefined();
   const text = (out.content[0] as { text: string }).text;
   expect(text).toMatch(/did NOT end your turn/i);
-  // Never "short": the deliverable may exist only in the model's reasoning.
   expect(text).not.toMatch(/short/i);
   expect(text).toMatch(/never sees your reasoning or tool results/i);
   expect(text).toMatch(/write it out in full in your closing message/i);
@@ -80,7 +77,6 @@ test("quotes back the only text the person read this turn, so a link found in a 
   holder.finish.noteAssistantMessageStart();
   holder.finish.noteAssistantText("Let me look through your saved work ");
   holder.finish.noteAssistantText("for that sheet.");
-  // Tool round-trips, then the message whose answer went into its reasoning.
   holder.finish.noteAssistantMessageStart();
   holder.finish.noteAssistantMessageStart();
   const out = await runWithInteractionCapture(holder, () => run({ actions }));

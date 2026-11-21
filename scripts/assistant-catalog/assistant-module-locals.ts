@@ -1,12 +1,6 @@
 import ts from "typescript";
 import { unwrap } from "./assistant-ast.ts";
 
-/**
- * Reading a factory closure's own body: what it hands back, what each name in
- * it stands for, and what a call filled its parameters with. The walk over the
- * SDK facade (./assistant-module-surface.ts) is built out of these three.
- */
-
 export type FunctionNode =
   | ts.FunctionDeclaration
   | ts.MethodDeclaration
@@ -22,8 +16,6 @@ export function isFunctionNode(node: ts.Node): node is FunctionNode {
   );
 }
 
-/** The object literal a function hands back, or null when it returns anything
- *  else. Answering with one is what makes a function a factory candidate. */
 export function returnedObject(
   factory: FunctionNode,
 ): ts.ObjectLiteralExpression | null {
@@ -37,22 +29,15 @@ export function returnedObject(
   return null;
 }
 
-/** What an identifier stands for inside a factory body. */
 export type Local =
   | { kind: "value"; value: ts.Node; docs?: ts.Node }
   | { kind: "member"; from: ts.Expression; name: string };
 
-/** The member name a destructured element reads, `{ a: b }` included. */
 function bindingKey(element: ts.BindingElement): string {
   const key = element.propertyName ?? element.name;
   return ts.isIdentifier(key) || ts.isStringLiteral(key) ? key.text : "";
 }
 
-/**
- * The binding a name has in `scope`'s body: a value, or one member of one. An
- * overloaded function binds to its IMPLEMENTATION — the signatures above it
- * have no body, and a body is what the request lives in.
- */
 export function localBinding(name: string, scope: FunctionNode): Local | null {
   const body = scope.body;
   if (!body || !ts.isBlock(body)) return null;
@@ -67,8 +52,6 @@ export function localBinding(name: string, scope: FunctionNode): Local | null {
     for (const declaration of statement.declarationList.declarations) {
       if (!declaration.initializer) continue;
       if (ts.isIdentifier(declaration.name) && declaration.name.text === name)
-        // The STATEMENT carries the JSDoc an author wrote above `const x = …`;
-        // the initializer itself starts after the `=`.
         return {
           kind: "value",
           value: declaration.initializer,
@@ -87,7 +70,6 @@ export function localBinding(name: string, scope: FunctionNode): Local | null {
   return overload;
 }
 
-/** What a factory call binds each of the factory's parameters to. */
 export function argumentsOf(
   factory: FunctionNode,
   call: ts.CallExpression,

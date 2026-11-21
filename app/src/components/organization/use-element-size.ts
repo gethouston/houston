@@ -5,11 +5,6 @@ export interface ElementSize {
   height: number;
 }
 
-/**
- * The content box of `ref`'s element, kept current as it resizes. Measured
- * in a layout effect, so the first real size lands before the first paint
- * and a drawing sized from it never flashes at the zero default.
- */
 export function useElementSize(
   ref: RefObject<HTMLElement | null>,
 ): ElementSize {

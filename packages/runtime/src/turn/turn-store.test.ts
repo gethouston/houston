@@ -28,7 +28,6 @@ test("a claimed pool turn gets an agent-scoped HTTP store and empty prefix", asy
   });
 
   expect(resolved.prefix).toBe("");
-  // The single-use worker hydrates cold every turn: it opts into batch reads.
   expect(resolved.store.downloadMany).toBeTypeOf("function");
   await resolved.store.manifest?.();
   expect(seen[0]?.url).toBe(

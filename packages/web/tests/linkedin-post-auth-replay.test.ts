@@ -8,13 +8,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The transport answers a 401 by refreshing the session and replaying with
- * the bearer current then. A LinkedIn post is replayed only for the same
- * person: by the time its 401 lands, someone else may be signed in, and a
- * replay as them would post the first person's picture on their LinkedIn.
- */
-
 const BASE = "http://host";
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
 const { calls, reset, restore, stubRouted } = createWireCapture();
@@ -28,7 +21,6 @@ beforeEach(() => {
     configurable: true,
     value: {
       __HOUSTON_ENGINE__: engine,
-      // Grace signed in meanwhile: the refresh answers her bearer.
       __HOUSTON_SESSION_REFRESH__: async () => engine.token,
       __HOUSTON_CP__: true,
     },
@@ -54,7 +46,6 @@ function client() {
   return c;
 }
 
-/** The first request is refused once the account switched; the rest land. */
 function refuseAcrossSwitch() {
   stubRouted(async () => {
     if (calls.length > 1) return json(200, { connected: false });
@@ -76,15 +67,12 @@ test("a post refused after an account switch is sent once, as its own person", a
   expect(bearers()).toEqual(["Bearer bearer-ada"]);
 });
 
-// The same 401 on any other request still heals by replaying.
 test("a read refused the same way is replayed with the refreshed bearer", async () => {
   refuseAcrossSwitch();
   await client().linkedInConnection();
   expect(bearers()).toEqual(["Bearer bearer-ada", "Bearer bearer-grace"]);
 });
 
-// With no bearer at send time the transport would wait for a refresh, and
-// whoever is signed in when it lands would own the post.
 test("a post with no bearer is refused without waiting for a refresh", async () => {
   engine.token = "";
   const refresh = vi.fn(async () => "bearer-grace");
@@ -105,8 +93,6 @@ test("a post with no bearer is refused without waiting for a refresh", async () 
 const jwtFor = (sub: string, n: number) =>
   `h.${btoa(JSON.stringify({ sub, n })).replace(/=+$/, "")}.s`;
 
-// A token gone stale while the laptop slept heals: the refreshed bearer names
-// the same person, so the post goes out once more, as them.
 test("a post refused for a stale token of the same person is replayed once", async () => {
   engine.token = jwtFor("ada", 1);
   stubRouted(async () => {

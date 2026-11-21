@@ -1,17 +1,3 @@
-/**
- * A weekly usage limit, reached: when it resets and what the reader can do
- * about it. A free org's pool (`scope` `org`, or none from an older gateway)
- * offers its billing owner the Upgrade that opens the org's Billing, and
- * tells everyone else to ask the owner. The store apps never send anyone to
- * upgrade: the owner reads that the plan is managed on the web, as plain text
- * in the body, and everyone else only when the pool resets. A paid seat's
- * own allowance (`seat`), and any org whose billing is not a free org's,
- * only says when it resets.
- *
- * Split from `limits.tsx` (the provider-account limits) so this card loads
- * without the provider-card helpers.
- */
-
 import { formatLocalDateTime } from "@houston/sdk";
 import type { ProviderError } from "@houston-ai/chat";
 import { TimerResetIcon } from "lucide-react";
@@ -22,7 +8,6 @@ import { canPurchaseInApp } from "../../../lib/purchase-policy";
 import { RowCard } from "../../cards/row-card";
 import { RowCardButton } from "../../cards/row-card-button";
 
-/** Whose words the card speaks: one per reader and surface. */
 type LimitVoice = "seat" | "upgrade" | "web" | "askOwner" | "member";
 
 const BODY = {
@@ -41,9 +26,6 @@ export function PlanMessageLimitCard({
   const { t, i18n } = useTranslation("plan");
   const { billing } = useActiveOrgBilling();
   const purchasable = canPurchaseInApp();
-  // Only a free org's pool has an upgrade to offer. A seat's allowance, a
-  // card kept in history after the org went paid, and an org whose billing is
-  // unknown (legacy, or the list unread) only say when the limit resets.
   const voice: LimitVoice =
     error.scope === "seat" || billing?.tier !== "free"
       ? "seat"

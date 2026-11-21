@@ -4,7 +4,6 @@ import { Input } from "@houston-ai/core";
 
 import type { CreatorLinkKey, CreatorLinkMap } from "./social-links";
 
-/** The fixed, ordered social keys with their labels and placeholders. */
 const SOCIAL_FIELDS: ReadonlyArray<{
   key: CreatorLinkKey;
   label: string;
@@ -49,10 +48,6 @@ export const PROFILE_SOCIALS_LABELS: ProfileSocialsLabels = {
   hint: "Optional. Each link must start with https://",
 };
 
-/**
- * The social/web links editor: one https input per known key. An emptied field
- * is removed so the saved profile carries only present links.
- */
 export function ProfileSocials({
   links,
   onChange,

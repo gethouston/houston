@@ -43,7 +43,6 @@ const AGENTS: Record<string, Agent[]> = {
   "ws-other": [agent("a-secret", "ws-other", "Secret")],
 };
 
-/** Only the two calls this helper makes; everything else is a wiring bug here. */
 const store = (workspaces: Workspace[]): WorkspaceStore =>
   ({
     listWorkspacesForUser: async (userId: string) =>

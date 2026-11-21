@@ -2,19 +2,6 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { beforeEach, expect, test, vi } from "vitest";
 
-/**
- * THE TWO REWINDS AND THE COMMAND GATE.
- *
- * `/truncate` (edit-and-resend) and `/dismiss-interaction` both rewrite what a
- * conversation's later turns read: one cuts the transcript and deletes both
- * backends' native sessions, the other appends a durable stop marker. Each used
- * to guard itself with a private copy of half the gate - the EXECUTING turn and
- * the queued one - which left the window a turn is accepted in but not yet
- * queued (credential sync, session build), and said nothing about a `/clear`
- * already working the conversation. These pin both refusals through the real
- * gate.
- */
-
 const store = vi.hoisted(() => ({
   truncateConversation: vi.fn(() => ({ removed: 2 }) as { removed: number }),
   markConversationStopped: vi.fn(),
@@ -94,9 +81,6 @@ test("a rewind is refused while a command is working the conversation", async ()
 });
 
 test("a rewind is refused behind a turn that is accepted but not yet running", async () => {
-  // The window a private isTurnRunning check could not see: the route said yes
-  // to a turn that is still building its session, and the cut below would
-  // delete the very session it is building.
   const turn = Promise.withResolvers<void>();
   holdConversationTurn("c2", turn.promise);
   const out = await post("/conversations/c2/truncate", { turnId: "t1" });

@@ -22,8 +22,6 @@ async function publishCustomDefinitions(
   return publishCustomDefinitionsView(target, source, views.customDefinitions);
 }
 
-/** Why a doc publish did not land, or null when it did. A doc the store
- *  would not take (`disabled`) is as stale as one that failed. */
 export const docNotLandedReason = (
   result: ActivityDocPublishResult,
 ): string | null =>
@@ -35,13 +33,6 @@ export const docNotLandedReason = (
         ? result.skipped
         : null;
 
-/**
- * Publish the views a claimed turn changed, so the gateway's asleep reads
- * show them: the custom-integration definitions its tools changed and the
- * skills list its SKILL.md writes changed (`landed` = the keys sync-back
- * uploaded or deleted). Answers the events whose view did not land: an event
- * promises the refetch can be served asleep, which a stale view breaks.
- */
 export async function publishTurnViews(input: {
   deps: TurnServerDeps;
   turn: TurnRequest;

@@ -2,13 +2,6 @@ import { expect, test } from "./support/fixtures";
 import { missionCard, screen } from "./support/team-nav";
 import { openNavRow } from "./support/workspace-menu";
 
-/**
- * The navigation stack's browser-history sync: the app
- * has no router, but every screen-level move mirrors into `history`, so the
- * browser's back/forward buttons (and Android's hardware back, covered by the
- * mobile project) walk the app instead of leaving it.
- */
-
 test("browser back and forward walk the app's screens", async ({ page }) => {
   await page.goto("/");
   await expect(screen(page)).toHaveAttribute("data-screen", "agent");
@@ -37,14 +30,12 @@ test("browser back closes the chat panel before leaving the board", async ({
     .getByRole("button")
     .first()
     .click();
-  // The kanban card belongs to the selected employee's Tasks screen.
   await missionCard(page, "Plan a trip to Tokyo").click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 
   await page.goBack();
   await expect(page.getByTestId("mission-panel")).toBeHidden();
   await expect(screen(page)).toHaveAttribute("data-screen", "agent");
-  // The board itself is still on the glass, not blanked by the pop.
   await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 });
 
@@ -59,7 +50,6 @@ test("browser back retreats a Settings drill-in to the index", async ({
   ).toBeVisible();
 
   await page.goBack();
-  // Back on the index: the drill-in rows are the screen again.
   await expect(screen(page).getByText("Keyboard shortcuts")).toBeVisible();
   await expect(screen(page)).toHaveAttribute("data-screen", "settings");
 
@@ -74,8 +64,6 @@ test("a reload re-boots to a single-entry stack and keeps navigating", async ({
   await openNavRow(page, "ai-hub");
   await expect(screen(page)).toHaveAttribute("data-screen", "ai-hub");
 
-  // viewMode is deliberately not persisted: a refresh lands back on home
-  // with a fresh one-entry stack — and navigation still works from there.
   await page.reload();
   await expect(screen(page)).toHaveAttribute("data-screen", "agent");
   await openNavRow(page, "settings");

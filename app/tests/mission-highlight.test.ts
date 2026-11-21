@@ -8,7 +8,6 @@ import {
   matchesPhrase,
 } from "../src/components/mission-highlight.ts";
 
-/** Slice each range out of the source text — asserts WHAT got highlighted. */
 function highlighted(
   text: string,
   ranges: { start: number; end: number }[],
@@ -18,9 +17,6 @@ function highlighted(
 
 const COMBINING_MARKS = /[̀-ͯ]/g;
 
-/** The per-CHARACTER fold `foldForSearch` used to be (HOU-941 replaced it with
- *  a single whole-string pass). Kept here as the reference implementation the
- *  fast fold must agree with. */
 function foldPerChar(text: string): string {
   let folded = "";
   for (let i = 0; i < text.length; i++) {
@@ -39,16 +35,16 @@ describe("foldForSearch", () => {
 
   it("keeps the semantics of the per-character fold it replaced", () => {
     const corpus = [
-      "São PAULO", // precomposed accents
-      "noël", // decomposed accent (base + combining mark)
+      "São PAULO",
+      "noël",
       "ÉLAN vital",
-      "Straße", // no case folding of ß, by design
-      "ﬁle ﬂow", // NFKD-expanded ligatures
-      "½ cup", // NFKD-expanded fraction
-      "ｈｅｌｌｏ", // NFKD-expanded fullwidth
-      "İstanbul", // uppercase dotted I: NFKD + lowercase
-      "Ǆungla", // a single char folding to more than one
-      "🙂 emoji", // surrogate pairs survive intact
+      "Straße",
+      "ﬁle ﬂow",
+      "½ cup",
+      "ｈｅｌｌｏ",
+      "İstanbul",
+      "Ǆungla",
+      "🙂 emoji",
       "",
     ];
     for (const value of corpus) {

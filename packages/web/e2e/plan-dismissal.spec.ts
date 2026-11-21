@@ -7,19 +7,10 @@ import {
   installPlanClock,
 } from "./support/plan";
 
-/**
- * The plan prompts belong to the whole shell and close on user intent only.
- * Leaving a kept-alive screen with a modal open makes the app dispatch a
- * synthetic Escape at itself (`app/src/components/shell/keep-alive-views.tsx`);
- * that housekeeping must never hide a routine prompt before the user has
- * seen it.
- */
-
 test.beforeEach(async ({ page }) => {
   await installPlanClock(page);
 });
 
-/** Exactly what `KeepAliveViews` sends when a screen hides under a modal. */
 async function appEscape(page: Page): Promise<void> {
   await page.evaluate(() =>
     document.dispatchEvent(

@@ -18,14 +18,6 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import type { AgentRouteDeps } from "./agent-authz";
 import { dispatchGroup } from "./registry/all";
 
-/**
- * The HOSTED Claude-subscription push route: `POST
- * /agents/:id/credential/claude-oauth`. Drives the route over real HTTP
- * through the real ProxyChannel + a fake standing runtime, asserting owner authz,
- * strict validation, the central+runtime DUAL WRITE, loud failure on a runtime
- * reject, and that the token is never logged.
- */
-
 const VALID = {
   claudeAiOauth: {
     accessToken: "sk-ant-oat-ACCESS-SECRET",
@@ -36,7 +28,6 @@ const VALID = {
   },
 };
 
-// A fake standing runtime capturing the pushed body; `accept` toggles its reply.
 let runtime: Server;
 let runtimeUrl = "";
 let lastPush: unknown = null;
@@ -78,14 +69,12 @@ interface Fixture {
   revocations: RevocationTombstones;
 }
 
-/** Boot a host over HTTP whose only principal is `owner`, with one agent. */
 async function boot(
   owner = "alice",
   opts: { gatewayFronted?: boolean } = {},
 ): Promise<Fixture> {
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const credentials = new MemoryCredentialStore();
-  // Per-fixture ledger so tests never share the process-wide singleton.
   const revocations = new RevocationTombstones();
   const workspace = await store.getOrCreatePersonalWorkspace(owner);
   const agent = await store.createAgent({
@@ -107,7 +96,6 @@ async function boot(
 
   const s = createServer((req, res) => {
     const url = new URL(req.url || "/", "http://x");
-    // Single-principal host: the bearer names the acting user.
     const userId = req.headers.authorization?.replace(/^Bearer /, "") || "";
     void dispatchGroup("agent-credentials", {
       deps,
@@ -170,7 +158,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ ok: true });
 
-      // Central store: an anthropic OAuth credential carrying the refresh token.
       const cred = await fx.credentials.get(fx.workspace.id, "anthropic");
       expect(cred).not.toBeNull();
       expect(cred?.kind).toBe("oauth");
@@ -178,7 +165,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
       expect(cred?.refreshToken).toBe("sk-ant-ort-REFRESH-SECRET");
       expect(cred?.expiresAt).toBe(1_800_000_000_000);
 
-      // Runtime received the CLI envelope verbatim.
       expect(lastPush).toEqual(VALID);
     } finally {
       fx.close();
@@ -186,13 +172,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
   });
 
   test("attributed connect (acting-as): 200, central store write, runtime NOT touched", async () => {
-    // The gateway mints acting-as on EVERY proxied dispatch (cloud #208,
-    // personal spaces included). The runtime's HOU-976 scope guard refuses to
-    // materialize an attributed credential into the pod-shared claude-login
-    // dir — correctly — so the channel must not even try: the central store
-    // put IS the connect (served access-only per turn). Treating the refusal
-    // as a push failure was the Aug-2026 reconnect loop (HOUSTON-APP-56F):
-    // the desktop saw a 502 for a connect that had SUCCEEDED centrally.
     const fx = await boot("alice", { gatewayFronted: true });
     try {
       const res = await push(fx.base, fx.agent.id, VALID, "alice", "", {
@@ -201,15 +180,12 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ ok: true });
 
-      // Central store got the full credential, on the ACTING scope's row (the
-      // real gateway maps whose row it is; the memory store keys verbatim)…
       const cred = await fx.credentials.get(fx.workspace.id, "anthropic", {
         actingAs: "acting-v1.payload.sig",
       });
       expect(cred?.accessToken).toBe("sk-ant-oat-ACCESS-SECRET");
       expect(cred?.refreshToken).toBe("sk-ant-ort-REFRESH-SECRET");
 
-      // …and the runtime's materialize endpoint was never called.
       expect(lastPush).toBeNull();
     } finally {
       fx.close();
@@ -217,8 +193,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
   });
 
   test("attributed connect succeeds even when the runtime would reject", async () => {
-    // Same arm, runtime broken: the skip means the connect no longer depends
-    // on the runtime accepting anything.
     accept = false;
     const fx = await boot("alice", { gatewayFronted: true });
     try {
@@ -280,8 +254,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
     try {
       const res = await push(fx.base, fx.agent.id, VALID);
       expect(res.status).toBe(502);
-      // The central store still holds it (durability); the failure surfaces so
-      // the desktop can retry / fall back to paste.
       expect(
         await fx.credentials.get(fx.workspace.id, "anthropic"),
       ).not.toBeNull();
@@ -315,10 +287,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
     }
   });
 
-  // The desktop RECONCILE re-pushes a CACHED snapshot whose refresh token the
-  // gateway may have rotated since; clobbering the live central credential
-  // with it revokes the whole token family (HOU-855). `?if_absent=1` makes the
-  // push fill-only.
   describe("?if_absent=1 (cached-snapshot reconcile)", () => {
     const STALE = {
       claudeAiOauth: {
@@ -331,7 +299,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
     test("central credential present → 200 no-op: store untouched, runtime NOT materialized", async () => {
       const fx = await boot();
       try {
-        // The live (rotated) central credential a fresh login stored earlier.
         await push(fx.base, fx.agent.id, VALID);
         lastPush = null;
 
@@ -385,10 +352,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
       }
     });
 
-    // HOUSTON-APP-530: the row being ABSENT is not proof it is fillable — a
-    // provider-revoked credential was just deleted by the runtime's report,
-    // and old pre-HOU-950 clients loop this fill-only push every 15-30s,
-    // resurrecting the dead family into another failed turn + revoked report.
     test("after a provider revocation the fill is refused with 409, nothing written", async () => {
       const fx = await boot();
       try {
@@ -416,14 +379,7 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
       }
     });
 
-    // The #1293 attributed early-return SKIPS the materialize hop — the clear
-    // must have already happened by then, or every CLOUD reconnect (all of
-    // them are attributed) would strand a live tombstone: automatic recovery
-    // blocked for a TTL and the "refilled AND revoked AGAIN" escalation primed
-    // to fire on the fresh credential. Two different acting tokens carry the
-    // same sub, proving the tombstone keys off the USER, not the token.
     test("an ATTRIBUTED overwrite clears personal+team tombstones without materializing", async () => {
-      // base64url({"sub":"alice-sub"})
       const payload = "eyJzdWIiOiJhbGljZS1zdWIifQ";
       const fx = await boot("alice", { gatewayFronted: true });
       try {
@@ -444,7 +400,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
         });
         expect(res.status).toBe(200);
 
-        // Cleared for the member AND the shared key…
         expect(
           fx.revocations.active({
             workspaceId: fx.workspace.id,
@@ -459,7 +414,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
           }),
         ).toBe(false);
 
-        // …and the attributed connect still never touched the runtime.
         expect(lastPush).toBeNull();
       } finally {
         fx.close();
@@ -475,8 +429,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
           scope: "team",
         });
 
-        // The user signs in again for real: never blocked, and it lifts the
-        // tombstone so automatic serving/fills resume.
         const fresh = await push(fx.base, fx.agent.id, VALID);
         expect(fresh.status).toBe(200);
         expect(
@@ -486,7 +438,6 @@ describe("POST /agents/:id/credential/claude-oauth", () => {
           }),
         ).toBe(false);
 
-        // With the row cleared (e.g. sign-out), a fill-only push works again.
         await fx.credentials.remove(fx.workspace.id, "anthropic");
         const refill = await push(
           fx.base,

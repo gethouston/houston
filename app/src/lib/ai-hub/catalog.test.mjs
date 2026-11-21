@@ -35,9 +35,6 @@ test("loadHubCatalog without a visibility set includes every runnable provider",
 });
 
 test("loadHubCatalog scopes to visibleProviderIds so it matches the picker's set", () => {
-  // The hub must show EXACTLY the providers getVisibleProviders shows. A provider
-  // absent from the visible set (gated / coming-soon) contributes no hub models,
-  // so the AI Models tab can never surface a model the picker won't offer.
   const hub = loadHubCatalog(CATALOG, {
     enrich: false,
     visibleProviderIds: new Set(["anthropic"]),

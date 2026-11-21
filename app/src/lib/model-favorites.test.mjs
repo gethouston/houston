@@ -68,15 +68,10 @@ test("parseIdList: non-string entries are dropped", () => {
 });
 
 test("concurrent toggles: threading each result forward keeps both (no lost update)", () => {
-  // The race fix makes `useModelFavorites` serialize its mutations and read each
-  // base from the live query cache, so a second toggle sees the first's result.
-  // Threaded like that, two rapid toggles stack:
   const base = [];
   const afterA = toggleInList(base, "a");
   const afterB = toggleInList(afterA, "b");
   assert.deepEqual(afterB, ["a", "b"]);
-  // Contrast — the pre-fix bug: two toggles that both read the SAME stale base
-  // (a preferences read-modify-write with no serialization) lose the first.
   const staleB = toggleInList(base, "b");
   assert.deepEqual(
     staleB,

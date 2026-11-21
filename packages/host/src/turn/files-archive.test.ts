@@ -4,12 +4,6 @@ import { MemoryVfs } from "../vfs";
 import { archiveWorkspace } from "./files-archive";
 import { FileOpError } from "./files-ops";
 
-/**
- * "Download all" — one zip of the agent's visible files. Must mirror the
- * listing's visibility rules exactly: what the Files tab shows is what the
- * archive holds, nothing more (no internal state) and nothing less.
- */
-
 const ROOT = "ws/w1/agent-1/workspace";
 
 test("zips the visible files round-trip, hiding internals and .keep markers", async () => {
@@ -29,7 +23,7 @@ test("zips the visible files round-trip, hiding internals and .keep markers", as
 
 test("an empty workspace answers 404, not an empty zip", async () => {
   const vfs = new MemoryVfs();
-  await vfs.writeText(`${ROOT}/.houston/config.json`, "{}"); // internals only
+  await vfs.writeText(`${ROOT}/.houston/config.json`, "{}");
   await expect(archiveWorkspace(vfs, ROOT)).rejects.toThrow(FileOpError);
   await expect(archiveWorkspace(vfs, ROOT)).rejects.toThrow(
     "no files to download",
@@ -49,7 +43,6 @@ test("a folder subtree zips with the folder as the archive root", async () => {
     "Decks/notes.md",
   ]);
 
-  // A nested folder becomes the root entry itself (parent prefix stripped).
   const nested = await archiveWorkspace(vfs, ROOT, "Decks/2025");
   const nestedEntries = unzipSync(new Uint8Array(nested));
   expect(Object.keys(nestedEntries)).toEqual(["2025/deck.md"]);
@@ -57,7 +50,7 @@ test("a folder subtree zips with the folder as the archive root", async () => {
 
 test("a missing or empty folder answers 404, and prefixes don't false-match", async () => {
   const vfs = new MemoryVfs();
-  await vfs.writeText(`${ROOT}/Decks2/other.md`, "x"); // sibling with the same prefix
+  await vfs.writeText(`${ROOT}/Decks2/other.md`, "x");
   await expect(archiveWorkspace(vfs, ROOT, "Decks")).rejects.toThrow(
     "no files to download",
   );

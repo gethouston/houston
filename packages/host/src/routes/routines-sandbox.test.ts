@@ -22,12 +22,6 @@ import { type LiveTurnPin, liveTurns } from "./live-turn";
 import { createRoutineChecked } from "./routine-write";
 import { handleSandboxRoutines } from "./routines-sandbox";
 
-/**
- * Chat-created routines inherit the authoring provider, with cheaper defaults
- * for unattended Anthropic and Codex runs. Explicit models and updates retain
- * the user's choice; unpinned chats fall back to the agent configuration.
- */
-
 const paths = new LocalPaths();
 
 let store: MemoryWorkspaceStore;
@@ -79,16 +73,13 @@ const BASE = {
 async function save(
   body: Record<string, unknown>,
   opts: {
-    /** The pair the send that started the authoring turn asked for. */
     pin?: LiveTurnPin;
-    /** Call as a runtime with no turn of the host's running behind it. */
     noLiveTurn?: boolean;
     conversationId?: string;
     actingAs?: string;
     spoofedActingAs?: string;
     gatewayFronted?: boolean;
     triggersEnabled?: boolean;
-    /** The plan limits the host recorded on the authoring turn. */
     limits?: TurnLimits;
   } = {},
 ) {
@@ -285,7 +276,6 @@ test("a new Anthropic routine uses Sonnet instead of its authoring Opus model", 
 });
 
 test("the stamped provider is stored in pi's canonical dialect", async () => {
-  // The composer speaks display ids: "openai" is Codex on the wire.
   await save(BASE, { pin: { provider: "openai", model: "gpt-5.5" } });
   expect((await onDisk())[0]).toMatchObject({
     provider: "openai-codex",
@@ -381,8 +371,6 @@ test("a turn with no recorded limits keeps any cadence", async () => {
 });
 
 test("limits the runtime puts in the save body itself are ignored", async () => {
-  // Only the host's record of the turn carries limits; the runtime's request
-  // could name any, so a floor there is neither honored nor saved.
   const r = await save(
     {
       ...BASE,

@@ -6,8 +6,6 @@ import {
   isBridgeCancellation,
 } from "./errors";
 
-// PRODUCT-1833: erasable class (explicit field, named) so `quiet.ts` and the
-// app's node:test runner can load it through a package subpath.
 test("a bridge state error is named and keeps its state", () => {
   const error = new BridgeStateError("model_unavailable");
   expect(error.name).toBe("BridgeStateError");
@@ -17,10 +15,6 @@ test("a bridge state error is named and keeps its state", () => {
   expect(isAuthorizationFailure(new BridgeStateError("revoked"))).toBe(true);
 });
 
-// HOUSTON-APP-5HX: a cancelled bridge operation is not a failure. The one
-// predicate every port consumer shares names exactly the two shapes: the
-// lifetime's abort (a DOMException or any AbortError-named error) and a
-// controller the binding already disposed. Everything else stays loud.
 test("a cancellation is an abort or a disposed controller, nothing else", () => {
   expect(
     isBridgeCancellation(

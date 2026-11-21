@@ -2,9 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { classifyAnalyticsError } from "../src/lib/analytics-error-kind.ts";
 
-// The taxonomy is read off the message text, so the cases below are the
-// messages the app actually surfaces, one per bucket, plus the WebKit
-// transport failure that names neither "network" nor "fetch".
 describe("classifyAnalyticsError", () => {
   const cases: Array<[string, string]> = [
     ["Token expired, please login again", "auth"],

@@ -10,31 +10,12 @@ import {
 } from "../../lib/workspace-skills";
 import { everyReadAnswered } from "./workspace-skill-acts";
 
-/**
- * The skill lists of the agents it is given, aggregated (HOU-792): one
- * employee's for its Skills section, every employee's for the editor menu's
- * acts that reach them all.
- *
- * One query PER agent on the same `queryKeys.skills(path)` keys the per-agent
- * tab uses, so `SkillsChanged` events and the existing mutations refresh this
- * page for free. Fetched once per mount and then event-driven only — in hosted
- * mode each fetch fans out to that agent's pod and resets its idle-sleep
- * clock, so focus/staleness sweeps are disabled exactly like
- * `useAllConversations`.
- */
 export function useWorkspaceSkills(agents: Agent[]): {
   rows: WorkspaceSkillRow[];
-  /** folderPath → that agent's current list (undefined while loading). */
   listsByPath: Map<string, SkillSummary[] | undefined>;
   loading: boolean;
-  /** Every agent's list answered. False after a settled read with no answer
-   *  too: a gone or unreadable agent is silenced, never `failed`. */
   complete: boolean;
-  /** At least one agent's list did not answer, so what is on screen is not the
-   *  workspace. The failure is already toasted and reported by the engine call
-   *  itself (`lib/tauri`), so the surface only has to SAY it. */
   failed: boolean;
-  /** Read every agent's list again — the user-initiated retry. */
   retry: () => void;
 } {
   const { lists, loading, complete, failed, retry } = useQueries({
@@ -48,9 +29,6 @@ export function useWorkspaceSkills(agents: Agent[]): {
       lists: results.map((r) => r.data),
       loading: results.some((r) => r.isLoading),
       complete: everyReadAnswered(results),
-      // A stale roster's gone agent is not a failure: it is silenced at the
-      // call and heals itself (HOUSTON-APP-544), and calling it one would put
-      // a red screen over a space switch.
       failed: results.some(
         (r) => r.isError && !isStaleRosterReadError(r.error),
       ),

@@ -13,27 +13,11 @@ import {
   IntegrationUpstreamError,
 } from "./types";
 
-/**
- * Turns the workspace paths an agent passes for an action's file arguments into
- * the `{ name, mimetype, s3key }` objects the provider executes with: read the
- * file, reserve an upload slot, PUT the bytes, swap the value. Runs on the
- * engine host because only it can read the agent's workspace; the provider
- * (or the cloud gateway behind it) only describes actions and mints slots.
- */
-
-/** Ceiling for the files of one execute, read whole into memory to hash and
- *  send. Composio documents none; Gmail itself refuses past 25 MB. */
 export const MAX_FILE_ARG_BYTES = 50 * 1024 * 1024;
 
-/** An action's schema rarely changes; looked up once per action per hour. */
 const SCHEMA_TTL_MS = 60 * 60 * 1000;
 const MAX_SCHEMA_ENTRIES = 500;
 
-/**
- * A file argument the agent got wrong (missing, a folder, outside its
- * workspace, too large). Its message is written for the model, which reads it
- * as the action's failure reason and corrects the call or tells the user.
- */
 export class FileArgumentError extends Error {
   constructor(message: string) {
     super(message);
@@ -41,7 +25,6 @@ export class FileArgumentError extends Error {
   }
 }
 
-/** A workspace file read for upload; null when nothing is at the path. */
 export interface WorkspaceFile {
   name: string;
   bytes: Buffer;
@@ -53,20 +36,12 @@ export interface StageFilesInput {
   action: string;
   params: Record<string, unknown>;
   acting?: ActingContext;
-  /** Reads one agent-supplied path; throws FileArgumentError when the path
-   *  can never be a workspace file, null when nothing is there. */
   readFile: (path: string) => Promise<WorkspaceFile | null>;
-  /** The PUT transport for this call (a turn binds its cancellation). */
   fetch?: typeof fetch;
 }
 
-/** A presigned PUT of at most MAX_FILE_ARG_BYTES; past this it is stuck. */
 const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 
-/** A describe failure that is the deployment refusing this user or action
- *  (signed out, app turned off, locked org): execute would refuse the same
- *  way, so it surfaces. Anything else (an upstream 5xx, a timeout) must not
- *  fail an execute that may not even carry a file. */
 function isRefusal(err: unknown): boolean {
   if (err instanceof IntegrationSigninRequiredError) return true;
   const status =
@@ -108,7 +83,6 @@ export function createFileStager(fetchImpl: typeof fetch = fetch) {
       );
       return null;
     }
-    // Only file-bearing schemas are kept whole; the rest cache as "none".
     const entry = {
       at: Date.now(),
       toolkit: described?.toolkit ?? "",
@@ -129,7 +103,6 @@ export function createFileStager(fetchImpl: typeof fetch = fetch) {
     const res = await put(slot.uploadUrl, {
       method: "PUT",
       headers: slot.headers,
-      // A file read allocates its own ArrayBuffer (never shared): no copy.
       body: bytes as Uint8Array<ArrayBuffer>,
       signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
     });
@@ -138,10 +111,6 @@ export function createFileStager(fetchImpl: typeof fetch = fetch) {
     }
   }
 
-  /** `params` with every file argument staged; untouched when the action
-   *  takes no file or the provider cannot stage one. Files go one at a time,
-   *  at most MAX_FILE_ARG_BYTES in all, so one execute holds one file's
-   *  bytes at a time. */
   return async function stageFiles(
     input: StageFilesInput,
   ): Promise<Record<string, unknown>> {

@@ -63,8 +63,6 @@ test("writeAgentSeeds stamps the creating actor on every seeded routine", async 
   const vfs = new MemoryVfs();
   const routines = [
     { id: "r1", name: "Brief", prompt: "p", schedule: "0 9 * * *" },
-    // A creator named by the client is never kept: the routine would fire as
-    // that person.
     { id: "r2", name: "Forged", prompt: "p", created_by: "someone-else" },
   ];
   await writeAgentSeeds(
@@ -127,9 +125,7 @@ test("writeAgentSeeds leaves non-routine seeds and malformed routine docs verbat
     "Work/A",
     {
       seeds: {
-        // Not the routines doc: never parsed, never stamped.
         "outputs.json": JSON.stringify([{ id: "x" }]),
-        // Malformed routines doc: stored verbatim so the read path reports it.
         ".houston/routines/routines.json": "{not json",
       },
     },

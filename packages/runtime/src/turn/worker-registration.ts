@@ -17,7 +17,6 @@ interface WorkerRegistrationOptions {
   log?: (message: string) => void;
 }
 
-/** Periodically publishes this process's live admission state. */
 export class WorkerRegistration {
   private readonly fetchImpl: typeof fetch;
   private readonly intervalMs: number;
@@ -42,12 +41,10 @@ export class WorkerRegistration {
     this.log = options.log ?? ((message) => console.warn(message));
   }
 
-  /** Whether SIGTERM has stopped this worker from accepting turns. */
   get draining(): boolean {
     return this.drainingState;
   }
 
-  /** Do not let the worker serve until the gateway has acknowledged it. */
   start(): Promise<void> {
     this.startup ??= this.startUntilRegistered();
     return this.startup;
@@ -70,13 +67,11 @@ export class WorkerRegistration {
     this.timer.unref?.();
   }
 
-  /** Stop admitting work and publish the transition immediately. */
   beginDraining(): Promise<void> {
     this.drainingState = true;
     return this.queueBeat();
   }
 
-  /** Stop scheduling and abort any request still inside its timeout. */
   async stop(): Promise<void> {
     this.stopped = true;
     if (this.timer) clearInterval(this.timer);
@@ -132,12 +127,6 @@ export class WorkerRegistration {
   }
 }
 
-/**
- * Apply the shutdown trigger to the pool lifecycle. SIGTERM (pod termination)
- * and "single-use" (the worker spent its one claimed turn) both drain: the
- * gateway must hear the draining beat before registration stops, or it keeps
- * routing to a worker that will never accept another turn.
- */
 export function beginWorkerShutdown(
   signal: string,
   registration: WorkerRegistration | null,

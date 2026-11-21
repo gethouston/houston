@@ -57,7 +57,6 @@ type PassResult =
   | { outcome: "text"; text: string }
   | { outcome: "failed"; error: unknown };
 
-/** The recovery request never sees the session's history, tools or product prompt. */
 export async function recoverFollowUpActions(
   input: FollowUpPassInput,
 ): Promise<void> {
@@ -100,7 +99,6 @@ export async function recoverFollowUpActions(
     );
   } catch (error) {
     if (input.isStopped()) return;
-    // The runtime's console capture forwards errors to Sentry (main.ts).
     console.error(
       `[follow-up-pass] turn ends without actions (${where}):`,
       error,
@@ -110,7 +108,6 @@ export async function recoverFollowUpActions(
   }
 }
 
-/** The actions in a reply, which models often wrap in a ```json fence. */
 function parseReply(text: string): ReturnType<typeof parseSuggestedActions> {
   const unfenced = text
     .trim()
@@ -119,7 +116,6 @@ function parseReply(text: string): ReturnType<typeof parseSuggestedActions> {
   try {
     return parseSuggestedActions(JSON.parse(unfenced));
   } catch {
-    // Not JSON: the caller reports it with every other unusable reply.
     return null;
   }
 }
@@ -128,11 +124,6 @@ const UNUSABLE_REPORT_WINDOW_MS = 10 * 60_000;
 let lastUnusableReport = Number.NEGATIVE_INFINITY;
 let unusableSinceReport = 0;
 
-/**
- * A reply the model did not shape as asked costs this turn its bubbles and
- * nothing else, and a weak model does it on every turn: one warning per
- * window, counting the ones it stands for, never an error per turn.
- */
 function reportUnusableReply(where: string, text: string): void {
   unusableSinceReport += 1;
   const now = Date.now();

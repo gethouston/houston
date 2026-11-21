@@ -67,7 +67,6 @@ describe("the picker's draft in the modal frame", () => {
       ...choiceFramePick(frame, payer),
       free: PERSONAL.slug,
     });
-    // Back from the free step stays in the picker, then leaves it.
     const back = pickerBack(choiceFramePick(frame, payer));
     expect(back).toEqual({
       step: "paid",

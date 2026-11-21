@@ -13,7 +13,6 @@ function json(res: ServerResponse, status: number, body: unknown) {
   res.end(buf);
 }
 
-/** Read a JSON body, rejecting anything over the configured cap (early-abort). */
 async function readJson(
   req: IncomingMessage,
   maxBytes: number,
@@ -30,32 +29,16 @@ async function readJson(
   return raw ? JSON.parse(raw) : {};
 }
 
-/**
- * Constant-time check of the app-layer token, which rides X-Sandbox-Token: the
- * Authorization header belongs to Cloud Run IAM (the service deploys with
- * --no-allow-unauthenticated, so Authorization carries the caller's
- * Google-signed ID token). Two independent gates need two headers — an app
- * token in Authorization would be consumed (and rejected) by IAM first.
- */
 export function checkSandboxToken(
   header: string | string[] | undefined,
   want: string,
 ): boolean {
   if (typeof header !== "string") return false;
-  // Constant-time compare so a wrong token can't be recovered byte-by-byte via
-  // response timing. (The length difference is not itself secret.)
   const got = Buffer.from(header);
   const expected = Buffer.from(want);
   return got.length === expected.length && timingSafeEqual(got, expected);
 }
 
-/**
- * The app-layer gate. An EMPTY token is not "open": this service now sits
- * behind the gateway's `/v1/code/run` relay, where anything that reaches it has
- * already been told it may run code, so a deploy that forgot SANDBOX_TOKEN must
- * refuse rather than execute for whoever arrives. Local dev opts out explicitly
- * with SANDBOX_ALLOW_UNAUTHENTICATED=1.
- */
 export function sandboxRequestAuthorized(
   header: string | string[] | undefined,
   gate: { token: string; allowUnauthenticated: boolean },
@@ -97,8 +80,6 @@ export async function handle(req: IncomingMessage, res: ServerResponse) {
       const result = await runInSandbox(request, DEFAULT_LIMITS);
       return json(res, 200, result);
     } catch (e) {
-      // Validation failures (bad language, path escape, oversize) are the caller's
-      // fault → 400 with the real reason. Never a silent default.
       return json(res, 400, {
         error: e instanceof Error ? e.message : String(e),
       });
@@ -112,8 +93,6 @@ export function startServer() {
   const server = createServer((req, res) => {
     handle(req, res).catch((e) => {
       console.error("[sandbox] unhandled:", e);
-      // Surface the real reason (the caller is trusted infra: the control plane /
-      // runtime, never the end user) so failures are debuggable, not swallowed.
       const details = e instanceof Error ? e.message : String(e);
       if (!res.headersSent)
         json(res, 500, { error: "internal error", details });

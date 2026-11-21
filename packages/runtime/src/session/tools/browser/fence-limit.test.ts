@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import { limiter, shareInFlight } from "./fence-limit";
 
-/** A task that runs until released; records that it started. */
 function held(started: string[], name: string) {
   let release: (value: string) => void = () => undefined;
   const done = new Promise<string>((resolve) => {
@@ -61,7 +60,6 @@ test("callers asking for the same key share one run, cleared once it settles", a
   expect(await a).toBe("a.test#2");
   expect(await b).toBe("a.test#2");
   expect(await other).toBe("b.test#2");
-  // Settled: the next ask runs again, nothing is cached.
   const again = lookup("a.test");
   expect(runs).toBe(3);
   releases[2]?.();
@@ -104,7 +102,6 @@ test("a held run stays joinable after every caller left, until it settles", asyn
   expect(runs).toBe(1);
   release?.();
   expect(await again).toBe("held.test#1");
-  // Settled: the hold is gone with it.
   void lookup("held.test");
   expect(runs).toBe(2);
 });
@@ -116,8 +113,6 @@ test("a caller that leaves after its turn came, before it ran, passes the slot o
   const gone = held(started, "gone");
   const next = held(started, "next");
   const leave = new AbortController();
-  // Abort the instant the limiter hands this caller its slot: the listener
-  // is already gone, so only a check after the hand-over can notice.
   const remove = leave.signal.removeEventListener.bind(leave.signal);
   leave.signal.removeEventListener = (
     ...args: Parameters<AbortSignal["removeEventListener"]>

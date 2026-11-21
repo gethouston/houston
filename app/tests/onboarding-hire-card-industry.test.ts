@@ -11,7 +11,6 @@ import { AGENT_CONTEXT_IDS } from "../src/lib/agent-role-catalog.ts";
 
 const [teamContext, otherContext] = AGENT_CONTEXT_IDS;
 
-/** The hire flow's shared answers, recording every write made into them. */
 function teamState(writes: string[]): AgentRoleState {
   const record =
     (name: string) =>
@@ -106,7 +105,6 @@ describe("a basic team draft answered on its card", () => {
       next.map((draft) => basicTeamBrief(draft, "Bakery").context),
       ["Bakery", "Retail", "Bakery"],
     );
-    // The others still follow the team: a new team industry reaches them.
     deepStrictEqual(
       next.map((draft) => basicTeamBrief(draft, "Freight").context),
       ["Freight", "Retail", "Freight"],

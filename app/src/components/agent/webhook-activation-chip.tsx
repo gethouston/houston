@@ -1,18 +1,3 @@
-/**
- * The webhook half of the routine activation header. Where a Composio trigger
- * shows checking -> activating -> active, an incoming-webhook routine needs the
- * user to mint its address before it can fire: `needs_key` renders a primary
- * "Create webhook address" action, `active` shows the live state plus an
- * always-visible "New key" (rotate) action. Both mint through the same reveal
- * dialog; rotating asks for confirmation first, since it invalidates the old
- * secret. A host too old to mint returns null — surfaced as an honest toast.
- *
- * Only the routine's creator may mint or rotate (the SDK's `webhookKeyAccess`,
- * the gateway's own rule; the space owner for a routine naming no creator):
- * everyone else still sees whether a webhook exists, with one line naming who
- * can change its address instead of the actions.
- */
-
 import type {
   TriggerStatusItem,
   WebhookKeyReveal,
@@ -31,7 +16,6 @@ import { WebhookKeyDialog } from "./webhook-key-dialog";
 interface Props {
   agentId: string;
   routineId: string;
-  /** The routine's `created_by`; absent when it names no creator. */
   createdBy: string | undefined;
   status: TriggerStatusItem | undefined;
 }
@@ -50,8 +34,6 @@ export function WebhookActivationChip({
   const mint = useCallback(async () => {
     try {
       const key = await tauriRoutines.mintWebhookKey(agentId, routineId);
-      // Null (not an error): the host predates webhook minting. `call()` already
-      // surfaces genuine failures, so we only handle the feature-gap here.
       if (!key) {
         showExpectedStateToast(
           t("webhook.unsupportedTitle"),
@@ -60,10 +42,7 @@ export function WebhookActivationChip({
         return;
       }
       setRevealed(key);
-    } catch {
-      // A real failure already surfaced (toast + report) via tauri `call()`;
-      // swallowing the rethrow only stops a duplicate unhandled rejection.
-    }
+    } catch {}
   }, [agentId, routineId, t]);
 
   const view = webhookChipView(webhookActivationState(status), access);
@@ -136,7 +115,6 @@ export function WebhookActivationChip({
     );
   }
 
-  // No key yet and nothing this viewer can do about it: say who can.
   if (notice) return notice;
 
   return (

@@ -5,9 +5,6 @@ import en from "../src/locales/en/chat.json" with { type: "json" };
 import es from "../src/locales/es/chat.json" with { type: "json" };
 import pt from "../src/locales/pt/chat.json" with { type: "json" };
 
-// Every typed system line renders authored copy by kind: each key the map
-// names must exist in every shipped language (the map itself is keyed on the
-// SDK's notice kinds, so a missing kind fails to compile).
 describe("chat notice copy", () => {
   it("resolves every notice in every shipped language", () => {
     for (const key of Object.values(NOTICE_COPY)) {

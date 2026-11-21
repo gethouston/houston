@@ -7,9 +7,6 @@ import {
   STARTER_CATEGORY_MAP,
 } from "./lib/starter-agent-ir.mjs";
 
-// The pinned identity of every real starter agent, derived from its
-// store/agents/<id>/houston.json. Locks the id → category remap and the
-// slugify(name) → slug derivation the publish pipeline relies on.
 const EXPECTED = {
   bookkeeping: { category: "finance", slug: "bookkeeper" },
   legal: { category: "other", slug: "general-counsel" },
@@ -76,11 +73,6 @@ describe("starter-agent-ir mapping", () => {
   });
 });
 
-// The idempotency guard must match an existing listing by slugify(name) — the
-// same value ir.identity.slug carries — NOT by the gateway's finalized share
-// slug, which is a global unique key (may be suffixed) and is null before
-// publish. Keying by the finalized slug would miss both cases and re-POST a
-// duplicate on the next run.
 describe("indexExistingBySlug idempotency match", () => {
   const ir = buildStarterAgentIr("bookkeeping");
 

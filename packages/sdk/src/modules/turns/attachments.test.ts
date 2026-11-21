@@ -7,19 +7,11 @@ import {
   createAttachmentsOperation,
 } from "./attachments";
 
-/**
- * The attachments save operation: it hands the files to the files module's
- * upload request — one wire body, one owner — so the POST lands on the agent's
- * `attachments` route with `relPath` intact, and surfaces a 413 as a typed
- * too-large error. No silent failures.
- */
-
 interface FetchCall {
   url: string;
   init: RequestInit | undefined;
 }
 
-/** A ModuleContext whose `ports.fetch` is a scripted stub recording each call. */
 function ctxWith(
   responder: (call: FetchCall) => Response,
   baseUrl = "http://host.test",
@@ -33,7 +25,6 @@ function ctxWith(
   const ctx = {
     config: {
       baseUrl,
-      // The upload times its request, so the stub carries the clock port.
       ports: { fetch: fetchImpl, clock: { now: () => 0 } },
     },
     authExpiry: { notifyExpired: () => {} },

@@ -8,12 +8,6 @@ import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
 import { ShareViaTeamFlow } from "../agent/share-via-team-flow";
 import { SettingsRow } from "../settings/settings-row";
 
-/**
- * "Move to another organization", with its flow. In the Personal space it
- * shares the AI Employee into a team; in a team space it moves it out to
- * another org the caller runs, Personal included, which stays open on a
- * locked org since that is how one empties.
- */
 export function AgentSettingsOrgMove({ agent }: { agent: Agent }) {
   const { t } = useTranslation("teams");
   const personalSpace = usePersonalSpace();

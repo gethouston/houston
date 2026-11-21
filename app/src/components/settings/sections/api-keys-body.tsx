@@ -24,10 +24,6 @@ import { formatRelativeTime } from "../../organization/org-time";
 import { OrgLockedNote } from "../../shell/org-locked-fieldset";
 import { ApiKeyCreateDialog } from "./api-key-create-dialog";
 
-/**
- * The list + create/revoke surface of Settings > API keys. A locked org
- * mints no key (the gateway refuses it) but still revokes one.
- */
 export function ApiKeysBody() {
   const { t, i18n } = useTranslation("settings");
   const { locked } = useOrgWriteLock();

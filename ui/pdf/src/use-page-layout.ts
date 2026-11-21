@@ -8,7 +8,6 @@ import {
 } from "react";
 import type { PdfPageSize } from "./types";
 
-/** Pages within this many viewport heights keep a rendered canvas. */
 const NEAR_VIEWPORTS = 1;
 
 export interface PageBox {
@@ -17,11 +16,6 @@ export interface PageBox {
   height: number;
 }
 
-/**
- * Lay the pages out in one column at `zoom` times the viewer's width, and
- * track which page the reader is on and which pages are near enough to
- * render. A zoom or a resize keeps the page under the reader in place.
- */
 export function usePageLayout(
   scroller: RefObject<HTMLDivElement | null>,
   sizes: readonly PdfPageSize[],
@@ -81,8 +75,6 @@ export function usePageLayout(
     );
   }, [scroller]);
 
-  // Hold the reader's place across zoom and resize: the same point of the
-  // same page stays at the top of the viewport.
   const anchor = useRef<{ page: number; offset: number } | null>(null);
   const lastWidth = useRef(pageWidth);
   useLayoutEffect(() => {

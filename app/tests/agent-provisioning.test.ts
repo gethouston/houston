@@ -18,7 +18,6 @@ import {
 const httpError = (status: number) => Object.assign(new Error("x"), { status });
 
 describe("detectEngineAsleep (HOU-730)", () => {
-  /** Fast-answering read + a timer that never fires (awake engines win). */
   const fastDeps = (read: Promise<unknown>) => ({
     readFile: () => read,
     sleep: () => new Promise<void>(() => {}),
@@ -210,9 +209,6 @@ describe("warmingFlushRefetchKeys (HOU-713)", () => {
     );
 
   it("refetches the cross-agent sweep the boards actually read", () => {
-    // PREFIX, not one roster variant: the aggregate's key embeds every agent
-    // path (`["all-conversations", ...paths]`), so only the prefix matches the
-    // variant the open board is mounted on.
     deepStrictEqual(warmingFlushRefetchKeys("/w/a1")[0], ["all-conversations"]);
   });
 
@@ -227,7 +223,6 @@ describe("warmingFlushRefetchKeys (HOU-713)", () => {
 
 describe("runProvisioningProbe", () => {
   const entry = { agentId: "a1", agentPath: "/w/a1", since: 0 };
-  /** Sentinel read result: the request stays held open forever. */
   const HELD = Symbol("held");
 
   function harness(readResults: Array<unknown | Error>) {
@@ -236,8 +231,6 @@ describe("runProvisioningProbe", () => {
     let goneError: unknown;
     let marked = true;
     let clock = 1;
-    // The whole-probe TTL deadline is the one sleep longer than a retry
-    // pause; hold it pending unless a test fires it explicitly.
     let fireDeadline: () => void = () => {
       throw new Error("deadline not armed");
     };
@@ -334,7 +327,6 @@ describe("runProvisioningProbe", () => {
     const err = httpError(404);
     const { deps, calls, goneError } = harness([err]);
     await runProvisioningProbe(entry, deps);
-    // Ready would flush the queued sends into the same 404.
     deepStrictEqual(calls, {
       ready: 0,
       gone: 1,
@@ -372,7 +364,6 @@ describe("runProvisioningProbe", () => {
   it("times out even while an attempt is held open server-side", async () => {
     const { deps, calls, timeoutError } = harness([HELD]);
     const probe = runProvisioningProbe(entry, deps);
-    // Let the probe issue the read (which never settles), then hit the TTL.
     await Promise.resolve();
     deps.fireDeadline();
     await probe;
@@ -383,9 +374,6 @@ describe("runProvisioningProbe", () => {
       sleeps: 0,
       reads: 1,
     });
-    // No attempt ever failed, so there is no "last error" — the timeout must
-    // still be a real, descriptive Error rather than a forwarded `undefined`
-    // (that bare value is what Sentry used to receive).
     const err = timeoutError();
     ok(err instanceof ProvisioningTimeoutError);
     strictEqual(err.heldOpen, true);

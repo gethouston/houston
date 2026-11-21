@@ -8,58 +8,22 @@ import { assertNotPlanMode } from "../live-mode-gate";
 
 export const REQUEST_HANDS_ON_TOOL_NAME = "request_hands_on";
 
-/**
- * The screens that are the person's OWN to open: what they pay and what they
- * can destroy. Every other errand is Houston asking for a hand with work the
- * agent was already given; these two are the person's standing over their
- * money and their space.
- *
- * The card carries a MODEL-AUTHORED reason rendered in Houston's own chrome, so
- * an ordinary mission agent — one that reads web pages, mail and documents all
- * turn — could be talked into dressing a trip to Billing or the Danger zone as
- * Houston's own idea. The AI Manager is the one runtime the HOST itself named
- * to operate the account, which is the same structural line `credentialTools`
- * draws, so it alone may hand these two over.
- */
 const ACCOUNT_OWNER_SURFACES: ReadonlySet<HandsOnSurface> = new Set([
   "billing",
   "orgDanger",
 ]);
 
-/**
- * The screens that belong to ONE AI Employee, named by the id `listAgents`
- * returns. Only the AI Manager reads the roster, so an ordinary agent asked for
- * one could only guess the id, and a card that lands on the wrong employee
- * hands the person the wrong IDs to paste into their code.
- */
 const AGENT_SURFACES: ReadonlySet<HandsOnSurface> = new Set(["agentApiAccess"]);
 
 export interface RequestHandsOnToolOptions {
-  /** True when this runtime IS the user's personal assistant (the AI Manager). */
   personalAssistant: boolean;
-  /** Whether this deployment serves the Houston API; read from the host's
-   *  unserved stamp when omitted. Without it there is no API access screen. */
   apiServed?: boolean;
 }
 
-/**
- * Hand a Houston screen to the person because the work there needs THEIR hands:
- * a card the model must never hold, a secret revealed once in a dialog the app
- * owns, files that exist only on their device, a space they alone may destroy.
- * One card covers all of them — each is the same interaction ("open this
- * screen, do the thing, come back"), and none can carry its result back through
- * the runtime, so four bespoke step kinds would buy nothing.
- *
- * KNOWN DEGRADATION: a build that predates this step kind drops it on the way in
- * (`parsePendingInteraction` keeps only the kinds it recognizes), so the turn
- * ends with nothing on screen. Accepted: the alternative is the model narrating
- * the clicks in chat, which is exactly what this tool exists to replace.
- */
 export function makeRequestHandsOnTool({
   personalAssistant,
   apiServed = houstonApiServedHere(),
 }: RequestHandsOnToolOptions) {
-  // An employee's own screen needs the roster (the Manager) AND the API.
   const agentScreens = personalAssistant && apiServed;
   const offered = HANDS_ON_SURFACES.filter((surface) =>
     AGENT_SURFACES.has(surface)
@@ -93,9 +57,6 @@ export function makeRequestHandsOnTool({
     ) {
       assertNotPlanMode("hand a screen to the user");
       const surface = params.surface.trim();
-      // Refused HERE, where the model can correct course: a screen the app
-      // cannot open renders a card with no way forward, blocking the composer
-      // until the user hits Skip (the same lesson as the hidden provider ids).
       if (!isHandsOnSurface(surface))
         throw new Error(
           `The app has no '${params.surface}' screen to hand over. Use one of: ${surfaceList}.`,

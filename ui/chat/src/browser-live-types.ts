@@ -1,10 +1,3 @@
-/**
- * The live browser view's props vocabulary. A structural copy of the wire
- * shapes (`@houston/wire-types` browser-live): ui/ stays free of the wire, and
- * the app hands its SDK values straight in because the shapes match.
- */
-
-/** Keys the page accepts by name; everything else goes in as typed text. */
 export const BROWSER_LIVE_VIEW_KEYS = [
   "Enter",
   "Tab",
@@ -22,7 +15,6 @@ export const BROWSER_LIVE_VIEW_KEYS = [
 ] as const;
 export type BrowserLiveViewKey = (typeof BROWSER_LIVE_VIEW_KEYS)[number];
 
-/** CDP modifier bits. */
 export const BROWSER_LIVE_VIEW_MODIFIER = {
   alt: 1,
   ctrl: 2,
@@ -30,7 +22,6 @@ export const BROWSER_LIVE_VIEW_MODIFIER = {
   shift: 8,
 } as const;
 
-/** x, y are 0..1 of the frame; wheel deltas are page pixels. */
 export type BrowserLiveViewInput =
   | {
       type: "mouse";
@@ -48,16 +39,11 @@ export type BrowserLiveViewInput =
 
 export interface BrowserLiveViewFrame {
   seq: number;
-  /** Base64 JPEG, no data-URL prefix. */
   jpeg: string;
   width: number;
   height: number;
 }
 
-/**
- * Frames bypass React state: the stage subscribes and paints straight onto a
- * canvas, so a 10 fps stream never re-renders the view.
- */
 export interface BrowserLiveFrames {
   subscribe(listener: (frame: BrowserLiveViewFrame) => void): () => void;
   latest(): BrowserLiveViewFrame | null;
@@ -74,7 +60,6 @@ export type BrowserLiveViewState =
   | "none"
   | "not_owner";
 
-/** The view's ended states: no input, only Close. */
 export function isBrowserLiveViewEnded(state: BrowserLiveViewState): boolean {
   return (
     state === "done" ||
@@ -85,7 +70,6 @@ export function isBrowserLiveViewEnded(state: BrowserLiveViewState): boolean {
   );
 }
 
-/** Mirrors the SDK's `BrowserHandoffCardState`. */
 export type BrowserHandoffCardState =
   | "waiting"
   | "done"

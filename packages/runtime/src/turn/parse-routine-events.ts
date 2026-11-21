@@ -1,10 +1,3 @@
-/**
- * Hard caps on the routine turn's trigger-event block, enforced at the wire
- * boundary. The control plane truncates payloads at ingress, but the worker
- * must not TRUST that: an oversized or absurdly deep payload would otherwise
- * inflate the pretty-printed prompt block (indentation grows with depth, so
- * expansion is quadratic) far past any model context.
- */
 export const MAX_ROUTINE_EVENTS = 32;
 export const MAX_EVENT_FIELD_CHARS = 256;
 export const MAX_EVENT_PAYLOAD_CHARS = 65_536;

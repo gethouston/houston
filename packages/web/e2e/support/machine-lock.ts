@@ -2,21 +2,6 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-/**
- * ONE Playwright suite per machine.
- *
- * A suite saturates the box by design (N workers × a full Chromium each), so
- * two running at once — trivially common with parallel agent worktrees — starve
- * each other into mass visibility timeouts that read as product failures.
- * Serializing at the machine level costs queue minutes in the review phase
- * (where wall time is cheap) and buys every other session a usable machine.
- *
- * Mechanics: an atomic `mkdir` in the OS tmpdir is the lock; the holder's pid
- * inside lets waiters steal from a dead process. Waiting is capped — on
- * timeout we RUN rather than deadlock, loudly, because a wedged-but-alive
- * holder must never brick every worktree's review gate.
- */
-
 const LOCK_DIR = path.join(os.tmpdir(), "houston-e2e-suite.lock");
 const PID_FILE = path.join(LOCK_DIR, "pid");
 const POLL_MS = 5_000;
@@ -39,7 +24,6 @@ function processAlive(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch (err) {
-    // EPERM = alive but not ours; anything else = gone.
     return (err as NodeJS.ErrnoException).code === "EPERM";
   }
 }
@@ -76,8 +60,6 @@ export async function acquireSuiteLock(): Promise<void> {
   }
 }
 
-/** Release only OUR lock: a timed-out waiter that ran unlocked must not free
- *  the legitimate holder's. */
 export function releaseSuiteLock(): void {
   if (holderPid() === process.pid)
     rmSync(LOCK_DIR, { recursive: true, force: true });

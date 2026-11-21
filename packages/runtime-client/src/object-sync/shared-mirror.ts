@@ -16,9 +16,7 @@ import {
 export type SharedMirrorFamily = "skills";
 
 export interface SharedMirrorState {
-  /** Opaque digest of the last per-file synchronization baseline. */
   fingerprint: string;
-  /** Bytes known to match locally and remotely after the last completed pass. */
   files: Record<string, SharedMirrorFileState>;
 }
 
@@ -35,12 +33,6 @@ export interface SyncSharedMirrorOptions {
   families?: readonly SharedMirrorFamily[];
   mode?: "push-pull" | "push-only";
   onConflict?: (key: string) => void;
-  /**
-   * The gateway's explicit generation-precondition capability (boot lease
-   * response). Overrides inference from the snapshot, which cannot see
-   * capability on an empty prefix — where concurrent first creates would
-   * otherwise be last-writer-wins. Absent on old gateways: infer.
-   */
   generations?: boolean;
 }
 
@@ -91,7 +83,6 @@ function stateFromFiles(
   return { fingerprint: hash.digest("hex"), files };
 }
 
-/** The cheap freshness probe: one manifest GET, scoped to shared families. */
 export async function probeSharedMirror(
   store: ManifestObjectStore,
   families: readonly SharedMirrorFamily[] = DEFAULT_FAMILIES,
@@ -100,11 +91,6 @@ export async function probeSharedMirror(
   return { state: stateFor(objects), objects };
 }
 
-/**
- * Pushes intentional local edits before pulling the shared store. The previous
- * completed state distinguishes edits from stale cache bytes. Local deletion is
- * never uploaded; the pull phase restores any remotely-present file.
- */
 export async function syncSharedMirror(
   options: SyncSharedMirrorOptions,
 ): Promise<SharedMirrorResult> {
@@ -130,8 +116,6 @@ export async function syncSharedMirror(
       const canonicalRemote = remoteMetadata
         ? canonicalMetadata(remoteMetadata)
         : undefined;
-      // A partial earlier pass may have changed bytes without advancing state.
-      // Equal remote bytes prove this is an echo, not a new intentional edit.
       if (sameMetadata(metadata, canonicalRemote)) continue;
       const ifGenerationMatch =
         remoteMetadata?.generation ?? (generationAware ? "0" : undefined);

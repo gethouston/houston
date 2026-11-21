@@ -10,7 +10,6 @@ const card = (id: string): Activity => ({
   status: "needs_you",
 });
 
-/** An agent's activity file whose reads and writes each take a tick, like the host. */
 function fakeFile(initial: Activity[]) {
   const files = new Map<string, Activity[]>([["/a", initial]]);
   const tick = () => new Promise((resolve) => setTimeout(resolve, 1));

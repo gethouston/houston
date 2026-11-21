@@ -9,11 +9,6 @@ interface Props {
   onReconnect: () => void;
 }
 
-/**
- * The routine screen's alert block for a trigger binding that needs attention:
- * the human reason, and a one-click Reconnect only when reconnecting is what
- * fixes it (`activationAlertView`).
- */
 export function RoutineActivationAlert({ status, onReconnect }: Props) {
   const { t } = useTranslation("routines");
   const view = activationAlertView(status);
@@ -33,8 +28,6 @@ export function RoutineActivationAlert({ status, onReconnect }: Props) {
         <p
           className={cn(
             "text-xs text-ink-muted text-right",
-            // Authored copy carries the remedy and must read whole; the
-            // host's own detail can run long.
             view.detail?.kind === "server" && "line-clamp-2",
           )}
         >

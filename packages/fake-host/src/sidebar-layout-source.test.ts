@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// The layout contract belongs to the protocol; the host's route module is one
-// consumer of it, not a place the fake host borrows it from.
 describe("fake host sidebar layout", () => {
   for (const [file, name] of [
     ["routes-integrations.ts", "parseSidebarLayout"],

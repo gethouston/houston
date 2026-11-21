@@ -2,7 +2,6 @@ import type { Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
-/** Every regular file under `dir`, as forward-slash paths relative to `base`. */
 export async function walkFiles(dir: string, base: string): Promise<string[]> {
   const out: string[] = [];
   let entries: Dirent[];

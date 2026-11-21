@@ -18,7 +18,6 @@ import {
 import { appendAssistantMessageAt } from "../store/conversation-file";
 import type { TurnOutcome, TurnSessionRequest } from "./turn-session-types";
 
-/** Capture the hydrated workspace before the provider can mutate it. */
 export function captureWorkspaceSnapshot(
   workspaceDir: string,
 ): FileSnapshot | null {
@@ -33,7 +32,6 @@ export function captureWorkspaceSnapshot(
   }
 }
 
-/** Persist the successful prompt result and emit its workspace diff. */
 export function finishSuccessfulTurn(input: {
   beforeFiles: FileSnapshot | null;
   providerError?: ProviderError;

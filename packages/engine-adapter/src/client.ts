@@ -1,19 +1,3 @@
-/**
- * The HoustonClient every frontend talks to, backed by the TS engine.
- * Boot/chat/auth map to the engine; a single synthetic workspace holds
- * localStorage-backed agents, their `.houston/**` files, and their boards.
- *
- * The ~100 methods are split into cohesive cluster **mixins** (under `client/`),
- * composed here over ONE shared {@link HoustonClientBase} → {@link AdapterContext}
- * (`client/context.ts`) so `cp`/`engine`/`sdk` and the active-org state have a
- * single source of truth. The public method surface (names + signatures) is
- * unchanged, so every caller is untouched.
- *
- * There is deliberately NO catch-all Proxy: the old adapter masked unknown
- * methods with `async () => []`, a silent-failure hazard. A method this client
- * does not define is `undefined`, so a stray call is a real TypeError the
- * caller can see and report instead of a silent `[]`.
- */
 export type { HoustonClientOptions } from "./client/context";
 export {
   HoustonEngineError,
@@ -65,15 +49,6 @@ import { SpacesMixin } from "./client/spaces-mixin";
 import { TeamsMixin } from "./client/teams-mixin";
 import { WorkspacesMixin } from "./client/workspaces-mixin";
 
-/**
- * Every cluster mixin, innermost first. The clusters are method-disjoint and
- * all state lives on the shared `ctx`, never on a mixin, so this is an
- * unordered SET that happens to be written as a list — adding one is a line
- * here and nothing else. Exported for `client-mixin-composition.test.ts`,
- * which pins the properties this relies on: no two mixins declare the same
- * method name (what makes the order irrelevant), every mixin module under
- * `client/` is listed, and the fold exposes each one's methods.
- */
 export const MIXINS = [
   PortableMixin,
   ApiKeysMixin,
@@ -115,7 +90,6 @@ export const MIXINS = [
   BootMixin,
 ] as const;
 
-/** The classic union→intersection fold. */
 type UnionToIntersection<U> = (
   U extends unknown
     ? (x: U) => void
@@ -124,16 +98,6 @@ type UnionToIntersection<U> = (
   ? I
   : never;
 
-/**
- * The composed client's instance type: every mixin's own methods, intersected.
- *
- * `reduce` cannot carry a type through a heterogeneous chain — its accumulator
- * would collapse to {@link HoustonClientBase} and the ~200 public methods would
- * vanish from the compiler's view — so the surface is stated here instead, from
- * the same {@link MIXINS} array the runtime folds. Each element's return type
- * is that one cluster over the base, and intersecting them is exact BECAUSE the
- * clusters are method-disjoint (the test that pins it is what keeps this sound).
- */
 type ComposedClient = UnionToIntersection<
   InstanceType<ReturnType<(typeof MIXINS)[number]>>
 >;

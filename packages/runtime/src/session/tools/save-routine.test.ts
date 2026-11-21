@@ -10,14 +10,6 @@ import {
   SAVE_ROUTINE_TOOL_NAME,
 } from "./save-routine";
 
-/**
- * save_routine is a thin proxy to the host's merge-safe /sandbox/routines/save
- * route under the per-sandbox token. These pin: the URL + Authorization header,
- * the params passed through as the body, the acting-as forwarding, and that a
- * host rejection surfaces as a tool error the agent can relay (never a silent
- * success — the whole point is replacing the wholesale file write).
- */
-
 const realFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = realFetch;
@@ -117,7 +109,6 @@ test("relays the mission-depth refusal as actionable text", async () => {
 });
 
 test("relays the plan-floor refusal whole, so the agent can offer a slower cadence", async () => {
-  // The host's own body, exactly as it answers: the relay keeps 300 chars.
   const body = planFloorRefusal("*/5 * * * *", 1440);
   if (!body) throw new Error("expected a refusal");
   mockFetch(() => ({ status: 400, body }));
@@ -132,13 +123,6 @@ test("tells the agent a save can be refused under the person's plan", () => {
   );
 });
 
-/**
- * A firing routine must never author routines (PRODUCT-1208): a prompt phrased
- * as a scheduling request ("Every hour, post two quotes…") pushed the agent
- * into creating a COPY of the routine that was running, and the run's actual
- * work never happened. Run conversations are `routine-<id>`; setup chats are
- * `activity-<id>` and keep full authoring rights.
- */
 test("refuses inside a firing routine's own run, without reaching the host", async () => {
   const calls = mockFetch(() => ({ body: { id: "r2", name: "Copy" } }));
   await expect(
@@ -162,9 +146,6 @@ test("still saves from a routine's setup chat (authoring is untouched)", async (
 });
 
 test("the turn's conversation rides the save, exactly as it rides a mission", () => {
-  // `created_by` must come from the identity the HOST recorded for the live
-  // turn, not from a header this runtime asserts about itself. The conversation
-  // id is the key it looks that turn up by.
   const calls = mockFetch(() => ({ body: { id: "r-1", name: "Digest" } }));
   return runWithConversationId("activity-42", () =>
     runWithActingContext({ actingAs: "u-1", actingUser: "u-1" }, async () => {

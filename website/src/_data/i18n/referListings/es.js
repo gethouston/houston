@@ -1,7 +1,3 @@
-// Copia en español de las solicitudes de /data-partners/refer. Espejo exacto de
-// en.js (scripts/check-locales.mjs lo verifica). Español neutro de LatAm, de tú.
-// Sin guiones largos. Un `size` o `location` vacío no se muestra en la página.
-
 export default {
   "law-firm": {
     title: "Despacho de abogados",

@@ -1,9 +1,5 @@
-/** The creator-profile editor's shared vocabulary: form shape, save-error
- *  copy, and label defaults. Split from the screen for the 200-line rule. */
-
 import type { CreatorLinkMap } from "../components/social-links";
 
-/** The editable fields, seeded from the loaded profile (or blank to claim). */
 export interface ProfileEditorForm {
   handle: string;
   displayName: string;
@@ -11,10 +7,8 @@ export interface ProfileEditorForm {
   links: CreatorLinkMap;
 }
 
-/** What the editor persists on save. */
 export interface ProfileEditorPatch extends ProfileEditorForm {}
 
-/** Reader-facing copy keyed by the gateway's PATCH /me/profile error code. */
 export const SAVE_ERROR: Record<string, string> = {
   invalid_handle:
     "That handle is not valid. Use 2 to 30 lowercase letters, numbers, or underscores.",

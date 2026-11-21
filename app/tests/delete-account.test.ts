@@ -7,8 +7,6 @@ import {
   requestAccountDeletion,
 } from "../src/lib/identity/delete-account.ts";
 
-// ── requestAccountDeletion ────────────────────────────────────────────
-
 interface Sent {
   url: string;
   bearer: string | null;
@@ -42,9 +40,6 @@ test("204 resolves and sends the live bearer to /v1/me", async () => {
 });
 
 test("carries no active-space pin, even with a team space selected", async () => {
-  // `/v1/me` is mounted behind RequireAuth ALONE (no org resolution), so the
-  // header is at best noise and at worst a 403 on a stale selector — on the one
-  // request whose entire point is leaving.
   const sent: Sent[] = [];
   await requestAccountDeletion({
     baseUrl: "https://gw.example",
@@ -136,8 +131,6 @@ test("a transport reject maps to network, preserving the cause", async () => {
   );
 });
 
-// ── accountDeletionAvailable ──────────────────────────────────────────
-
 test("availability: hosted desktop and web yes; sidecar desktop and signed-out no", () => {
   const base = {
     identityConfigured: true,
@@ -146,12 +139,10 @@ test("availability: hosted desktop and web yes; sidecar desktop and signed-out n
     hostedGateway: true,
   };
   assert.equal(accountDeletionAvailable(base), true);
-  // Web (managed cloud): no hosted-gateway env flag, but not Tauri either.
   assert.equal(
     accountDeletionAvailable({ ...base, isTauri: false, hostedGateway: false }),
     true,
   );
-  // Desktop against the local sidecar: the engine global is NOT the gateway.
   assert.equal(
     accountDeletionAvailable({ ...base, hostedGateway: false }),
     false,
@@ -162,8 +153,6 @@ test("availability: hosted desktop and web yes; sidecar desktop and signed-out n
     false,
   );
 });
-
-// ── purgeHoustonLocalState ────────────────────────────────────────────
 
 test("purge removes only houston.* keys, surviving index renumbering", () => {
   const store = new Map<string, string>([

@@ -1,14 +1,6 @@
 import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
 
-/**
- * The shared hero layout of the cloud-migration wizard (HOU-719): a centered
- * column on the calm grey {@link FirstRunScreen} background, no card (like the
- * onboarding celebration screens), so the move-to-cloud moment reads as the
- * same continuous flow as sign-in and onboarding. Hero copy is normal ink; any
- * card content nested inside is a plain white surface. Content scrolls inside
- * the frame; the page never scrolls.
- */
 export function WizardFrame({
   mark,
   badge,
@@ -19,18 +11,13 @@ export function WizardFrame({
   footer,
   wide,
 }: {
-  /** Centerpiece above everything (logo, loader, success mark). */
   mark?: ReactNode;
-  /** A pill/badge above the title (e.g. the beta early-access badge). */
   badge?: ReactNode;
-  /** Small sentence-case line above the title (e.g. "Step 1 of 2"). */
   eyebrow?: string;
   title: string;
   body?: string;
   children?: ReactNode;
-  /** Pinned under the scrollable content (primary/secondary actions). */
   footer?: ReactNode;
-  /** Widen the column for content-rich screens. */
   wide?: boolean;
 }) {
   return (

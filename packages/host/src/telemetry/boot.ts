@@ -1,11 +1,5 @@
 import { Gauge, Registry } from "prom-client";
 
-/**
- * The named phases of a host boot, in the order they run. `runtime_spawn` only
- * exists on managed pods (HOUSTON_EAGER_RUNTIME) — the desktop spawns runtimes
- * lazily, after boot. The wire names are shared with the gateway's
- * boot-report ingest; adding a step means whitelisting it there too.
- */
 export type BootStep =
   | "module_eval"
   | "hydrate"
@@ -13,13 +7,6 @@ export type BootStep =
   | "listen"
   | "runtime_spawn";
 
-/**
- * The boot-span ledger (HOU-1011): every boot phase's duration, recorded once
- * per process. Serves two consumers from one record:
- *  - `GET /metrics` on this host (Prometheus text exposition, via prom-client);
- *  - the one-shot boot report a managed pod pushes to the gateway right after
- *    it becomes ready (pods scale to zero, so a scraper would miss the boot).
- */
 export class BootTelemetry {
   private readonly registry = new Registry();
   private readonly stepSeconds: Gauge<"step">;
@@ -48,7 +35,6 @@ export class BootTelemetry {
     });
   }
 
-  /** Prometheus exposition content type (constant, but read from the lib). */
   get contentType(): string {
     return this.registry.contentType;
   }
@@ -58,7 +44,6 @@ export class BootTelemetry {
     this.stepSeconds.set({ step }, ms / 1000);
   }
 
-  /** Time an async boot phase and record it, passing the result through. */
   async time<T>(step: BootStep, fn: () => Promise<T>): Promise<T> {
     const t0 = Date.now();
     try {
@@ -73,7 +58,6 @@ export class BootTelemetry {
     this.hydratedObjectsGauge.set(count);
   }
 
-  /** Stamp total boot time = process start → now (call at the banner). */
   markReady(): void {
     this.totalMs = process.uptime() * 1000;
     this.totalSeconds.set(this.totalMs / 1000);
@@ -83,7 +67,6 @@ export class BootTelemetry {
     return this.registry.metrics();
   }
 
-  /** The gateway boot-report body (wire contract with the Go ingest). */
   reportPayload(): {
     steps: Array<{ step: BootStep; ms: number }>;
     hydratedObjects?: number;

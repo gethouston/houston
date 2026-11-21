@@ -25,16 +25,9 @@ import {
 } from "./report-dialog-parts";
 
 export interface CreatorReportDialogProps {
-  /** The creator's @handle (path segment for the report endpoint). */
   handle: string;
 }
 
-/**
- * The "Report this creator" affordance on a creator page: an always-visible ghost
- * button that opens a modal with a reason radio group, optional details, and an
- * optional contact. Submits to the gateway (`POST /creators/:handle/reports`) and
- * shows explicit success and error states. Fully keyboard-operable.
- */
 export function CreatorReportDialog({ handle }: CreatorReportDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [reason, setReason] = React.useState<ReasonValue | null>(null);

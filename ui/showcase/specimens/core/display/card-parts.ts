@@ -1,6 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/** The public API of the seven `card.tsx` exports, read off their TS types. */
 export const CARD_PROPS: readonly SpecimenProp[] = [
   {
     name: "Card ...props",

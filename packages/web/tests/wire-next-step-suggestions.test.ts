@@ -54,7 +54,6 @@ test("the account preference round-trips through the SDK, and a send never carri
   const { nonce } = JSON.parse(send.body ?? "{}");
   expect(typeof nonce).toBe("string");
   expect(send.body).toBe(JSON.stringify({ text: "hola", nonce }));
-  // Only the two explicit reads above: the send itself reads nothing.
   expect(
     calls.filter(
       (call) =>
@@ -65,7 +64,6 @@ test("the account preference round-trips through the SDK, and a send never carri
   const write = calls.find((call) => call.method === "PUT");
   expect(write?.url).toBe("http://host/v1/preferences/next_step_suggestions");
   expect(write?.body).toBe('{"value":"false"}');
-  // One setting per person across every space: the active space never rides.
   const preferenceCalls = calls.filter((call) =>
     call.url.endsWith("/v1/preferences/next_step_suggestions"),
   );
@@ -79,7 +77,6 @@ test("the account preference round-trips through the SDK, and a send never carri
 
 test("a second quick send queues behind the first instead of dispatching beside it", async () => {
   stubRouted((call) => {
-    // A preference read that never answers: no send may wait on one.
     if (call.url.includes("/v1/preferences/"))
       return new Promise<Response>(() => {});
     if (call.url.endsWith("/events"))

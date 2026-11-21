@@ -19,12 +19,6 @@ import {
   writeSkill,
 } from "./turn-views.test-support";
 
-/**
- * A seed op (here an adopt that republishes) projects the skills view from
- * its listing. A turn can land and publish a skill change after that
- * listing, so the seed's whole captured list must never be what lands.
- */
-
 const AGENT_OPS = "agent-ops";
 
 async function republishingSeed(agent: AgentStore, docs: PodDocs) {
@@ -58,8 +52,6 @@ async function republishingSeed(agent: AgentStore, docs: PodDocs) {
   });
 }
 
-/** The seed lists the agent and stalls at its skills GET while a turn lands
- *  `change` and publishes; then the seed publishes. */
 async function seedAroundTurn(
   change: (turn: Awaited<ReturnType<typeof claimedTurn>>) => Promise<void>,
 ) {
@@ -69,7 +61,6 @@ async function seedAroundTurn(
     { skills: await podSkillsAnswer(agent) },
     { hold: gate.hold },
   );
-  // The agent holds its own provider state: the seed says so and skips them.
   const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
   try {
     const seeded = republishingSeed(agent, docs);

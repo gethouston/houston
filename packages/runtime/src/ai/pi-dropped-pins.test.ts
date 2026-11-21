@@ -10,14 +10,8 @@ import {
 } from "./provider-error";
 import { safeGetModel, safeModelIds } from "./providers";
 
-/**
- * Stored pins on NVIDIA and Qwen Token Plan rows pi 1.6.0 dropped. The
- * OpenCode gateways' drops live in ./opencode-catalog.test.ts.
- */
-
 test("a stored pin on a dropped row with a successor runs on it", () => {
   for (const [provider, stale, successor] of [
-    // The old NVIDIA default, so it is what most stored NVIDIA pins hold.
     ["nvidia", "openai/gpt-oss-20b", "minimaxai/minimax-m3.1-flash"],
     ["qwen-token-plan", "deepseek-v4-flash", "deepseek-v4-flash-0731"],
     ["qwen-token-plan-cn", "deepseek-v4-flash", "deepseek-v4-flash-0731"],
@@ -71,8 +65,6 @@ test("every NVIDIA model Houston falls back to is in pi's NVIDIA catalog", () =>
 });
 
 test("the NVIDIA key check probes every fallback, none lost to catalog drift", async () => {
-  // A fallback pi no longer lists is skipped silently, so a stale id would
-  // quietly shrink the check to fewer model families than it claims.
   const probed: string[] = [];
   const failure = await retryNvidiaFallbacks(
     "nvidia",

@@ -1,5 +1,4 @@
 import posthog from "posthog-js";
-// Imported for its side effect too: PostHog is initialised at module load.
 import {
   ANALYTICS_KEY as KEY,
   ANALYTICS_SESSION_ID as SESSION_ID,
@@ -7,10 +6,6 @@ import {
 import { notifyAnalytics } from "./analytics-bus";
 import { analyticsIdentity } from "./analytics-identity";
 import { todayISODate } from "./analytics-install-vintage";
-// The vocabulary (both unions + the property allow-list) lives in its own file
-// so readers that must not drag PostHog in can have it; the two unions are
-// re-exported here because `lib/analytics` is the front door every call site
-// already imports.
 import {
   ALLOWED_PROPS,
   type AnalyticsEventName,
@@ -25,16 +20,8 @@ export type { AnalyticsEventName, AnalyticsProperty };
 
 const ACTIVE_DATE_KEY = "analytics:last_active_date";
 
-// Ceiling on the automation goal stored as a person property: enough to read
-// the intent, short enough that a pasted essay can't bloat every person record.
 const GOAL_PERSON_PROP_MAX = 500;
 
-/**
- * The launch's session id, for the OTHER pipe: the first-party product
- * analytics ingest stamps the same value on its own events
- * (`lib/product-analytics/`), so one sit-down reads as one session on both
- * sides without a join table.
- */
 export function analyticsSessionId(): string {
   return SESSION_ID;
 }
@@ -50,13 +37,6 @@ function cleanProps(props?: Props): Props | undefined {
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
-/**
- * Fire-and-forget analytics wrapper. Never throws, never blocks.
- * Empty POSTHOG_KEY → silent no-op (local dev without secrets).
- *
- * The identity half (init / identifyUser / reset) is `analytics-identity.ts`;
- * it is spread in here so this stays the one object every call site imports.
- */
 export const analytics = {
   ...analyticsIdentity,
 
@@ -70,25 +50,13 @@ export const analytics = {
   },
 
   track: (event: AnalyticsEventName, props?: Props) => {
-    // The app's own listeners hear EVERY tracked event, before and regardless
-    // of PostHog: a local dev build has no key and still earns Academy points.
     notifyAnalytics(event, props);
     if (!KEY) return;
     try {
       posthog.capture(event, cleanProps(props));
-      // Maintain the `is_activated` person property — flips to true on the
-      // user's first `chat_message_sent` (activation = the user sends a
-      // message) and stays true forever. Lets cohort filters say "activated
-      // users" without a complex insight.
       if (event === "chat_message_sent") {
         posthog.people.set({ is_activated: true });
       }
-      // Stamp the survey answers as person properties so every cohort,
-      // funnel, and breakdown can slice by industry, role and company size,
-      // and read what people actually want automated, without joining back to
-      // the one-off event. Set on the confirmed answer (Continue), not the exploratory
-      // clicks. Skippers get "skipped" so they form their own cohort instead
-      // of vanishing into "no property".
       if (
         event === "onboarding_industry_continued" &&
         typeof props?.selected_industry === "string"
@@ -118,27 +86,14 @@ export const analytics = {
               : null;
         if (goal) posthog.people.set({ onboarding_automation_goal: goal });
       }
-    } catch {
-      // Analytics unavailable
-    }
+    } catch {}
   },
 
-  /**
-   * PostHog LLM-observability event, one per finished model turn. Bypasses
-   * the AnalyticsEventName/ALLOWED_PROPS whitelist deliberately: `$ai_*`
-   * names are PostHog's canonical LLM schema (the AI Usage dashboard reads
-   * them), and the payload is built EXCLUSIVELY by `buildAiGenerationProps`
-   * (app/src/lib/ai-generation.ts), whose input type structurally excludes
-   * prompt/response content — only model, tokens, latency, and cost leave
-   * the app.
-   */
   trackAiGeneration: (props: Record<string, string | number | boolean>) => {
     if (!KEY) return;
     try {
       posthog.capture("$ai_generation", props);
-    } catch {
-      // Analytics unavailable
-    }
+    } catch {}
   },
 
   captureException: (error: unknown, props?: Props) => {
@@ -147,8 +102,6 @@ export const analytics = {
       const normalized =
         error instanceof Error ? error : new Error(String(error));
       posthog.captureException(normalized, cleanProps(props));
-    } catch {
-      // Analytics unavailable
-    }
+    } catch {}
   },
 };

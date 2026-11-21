@@ -11,15 +11,6 @@ import type {
   ResolvedModel,
 } from "../backends/types";
 
-/**
- * Stalled-provider resilience: a turn whose provider stream goes silent must (a) be
- * aborted and surfaced as a typed error rather than holding the workdir lock
- * forever, and (b) its user message must be durable + visible the instant the
- * turn is accepted, even while another conversation holds the lock.
- */
-
-// Point config at throwaway dirs + a short stall window BEFORE the module graph
-// loads (config reads env at import; conversation-cache wires backends at load).
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "houston-resilience-data-"),
 );
@@ -27,7 +18,6 @@ process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-resilience-ws-"),
 );
 process.env.HOUSTON_TURN_STALL_TIMEOUT_MS = "5000";
-// Unanswered cut = 3 deadlines and a third: 600 ms -> 2,000 ms.
 process.env.HOUSTON_TURN_FIRST_BYTE_DEADLINE_MS = "600";
 
 const STALL_MS = 5000;
@@ -47,7 +37,6 @@ vi.mock("../ai/providers", async (importOriginal) => {
   };
 });
 
-// Import AFTER the mocks + env so the backend graph + config use them.
 await import("./conversation-cache");
 const { execTurn } = await import("./exec-turn");
 const { runTurn } = await import("./chat");
@@ -66,8 +55,6 @@ const OPENAI: ResolvedModel = {
   contextWindow: 400_000,
 };
 
-/** A session whose prompt() hangs (a stalled provider stream) until abort() is
- *  called — pi's own behavior once its request signal fires. Emits nothing. */
 class StallSession implements HarnessSession {
   aborted = false;
   private listeners = new Set<(e: WireEvent) => void>();
@@ -98,10 +85,6 @@ class StallSession implements HarnessSession {
   }
 }
 
-/** pi's REAL shape for a watchdog abort that lands while the response is still
- *  pending: the request's AbortError comes back as an errored assistant turn,
- *  which the wire classifies as an `unknown` provider_error ("This operation
- *  was aborted") BEFORE prompt() resolves. Emits nothing until then. */
 class StallEchoSession implements HarnessSession {
   aborted = false;
   private listeners = new Set<(e: WireEvent) => void>();
@@ -141,9 +124,6 @@ class StallEchoSession implements HarnessSession {
   }
 }
 
-/** A session whose model spends longer than the stall window streaming a tool
- *  call's INPUT — pure toolcall_delta traffic, which maps to no WireEvent — and
- *  then answers. Only the liveness channel ticks during that stretch. */
 class ToolInputSession implements HarnessSession {
   aborted = false;
   private listeners = new Set<(e: WireEvent) => void>();
@@ -161,8 +141,6 @@ class ToolInputSession implements HarnessSession {
     };
   }
   async prompt(): Promise<void> {
-    // Three stall windows of tool-input deltas, each tick well inside the
-    // window: the wire stays silent the whole time.
     for (let i = 0; i < 6; i++) {
       await new Promise<void>((r) => setTimeout(r, STALL_MS / 2));
       for (const l of this.liveness) l();
@@ -186,8 +164,6 @@ class ToolInputSession implements HarnessSession {
   }
 }
 
-/** A StallSession that reports its request going out: the response never
- *  opens, so the unanswered cut applies, not the quiet-stream one. */
 class UnansweredSession extends StallSession {
   private phases = new Set<(p: ModelPhase) => void>();
   subscribeModelPhase(l: (p: ModelPhase) => void): () => void {
@@ -203,8 +179,6 @@ class UnansweredSession extends StallSession {
   }
 }
 
-/** A session whose reply loops ("SymbolSymbol…") until aborted, after a 429
- *  pi retried: pi flushes that held failure once the aborted prompt settles. */
 class LoopingSession extends StallSession {
   private wire = new Set<(e: WireEvent) => void>();
   override subscribe(l: (e: WireEvent) => void): () => void {
@@ -237,8 +211,6 @@ class LoopingSession extends StallSession {
   }
 }
 
-/** A trivial session that answers instantly — stands in for a healthy backend so
- *  runTurn can build a conversation without a network. */
 class QuietSession implements HarnessSession {
   private listeners = new Set<(e: WireEvent) => void>();
   subscribe(l: (e: WireEvent) => void): () => void {
@@ -299,11 +271,9 @@ test("a turn whose provider goes silent is aborted at the stall window and surfa
     priorAuthors: [],
   });
 
-  // Let execTurn reach prompt() and arm the watchdog; the stream stays silent.
   await vi.advanceTimersByTimeAsync(0);
   expect(session.aborted).toBe(false);
 
-  // Cross the stall window: the watchdog aborts, which unblocks prompt().
   await vi.advanceTimersByTimeAsync(STALL_MS);
   await done;
   unsub();
@@ -313,10 +283,7 @@ test("a turn whose provider goes silent is aborted at the stall window and surfa
     (e): e is Extract<WireEvent, { type: "provider_error" }> =>
       e.type === "provider_error",
   );
-  // A provider-side fault (the socket was live; it went silent), not the user's
-  // connectivity — see the card-copy rationale in exec-turn.ts.
   expect(pe?.data.kind).toBe("provider_internal");
-  // No false success: the empty turn must NOT settle as done.
   expect(events.some((e) => e.type === "done")).toBe(false);
 });
 
@@ -344,13 +311,9 @@ test("a stalled turn whose abort echoes back as an unclassifiable provider error
     (e): e is Extract<WireEvent, { type: "provider_error" }> =>
       e.type === "provider_error",
   );
-  // Exactly one card, and it is the honest one: "stopped responding", not
-  // "Houston could not classify this Azure OpenAI error / This operation was
-  // aborted" (the echo of our own abort).
   expect(errors).toHaveLength(1);
   expect(errors[0]?.data.kind).toBe("provider_internal");
   expect(events.some((e) => e.type === "done")).toBe(false);
-  // The persisted reply carries the same typed error, so a reload agrees.
   const messages = getHistory("conv-stall-echo")?.messages ?? [];
   expect(messages.at(-1)?.providerError?.kind).toBe("provider_internal");
 });
@@ -368,7 +331,6 @@ test("a turn streaming a long tool input (wire-silent, liveness ticking) is neve
     priorAuthors: [],
   });
 
-  // Well past the stall window — 3x — with only tool-input deltas flowing.
   await vi.advanceTimersByTimeAsync(STALL_MS * 3 + 1);
   await done;
   unsub();
@@ -384,8 +346,6 @@ test("a turn both stalled AND stopped settles as a user stop, never a synthesize
   state.model = OPENAI;
   const session = new StallSession();
   const conv = convWith(session);
-  // Seed the conversation file so execTurn's assistant-message persist lands
-  // (appendAssistantMessage no-ops on a conversation that was never created).
   appendUserMessage("conv-stall-stop", "hi", { turnId: "turn-stop" });
 
   const events: WireEvent[] = [];
@@ -396,22 +356,13 @@ test("a turn both stalled AND stopped settles as a user stop, never a synthesize
   });
 
   await vi.advanceTimersByTimeAsync(0);
-  // The user hit Stop on THIS turn mid-prompt: cancelTurn stamps the marker
-  // before aborting. Its abort resolves the stalled prompt() the same way the
-  // watchdog's does, so both signals land on the one turn — a user Stop must
-  // win over the watchdog.
   (conv as { stoppedTurnId?: string }).stoppedTurnId = "turn-stop";
-  // Cross the stall window: the watchdog fires (stalled) on a turn the user also
-  // stopped. The synthesized provider_internal must be suppressed.
   await vi.advanceTimersByTimeAsync(STALL_MS);
   await done;
   unsub();
 
-  // No synthesized provider error frame — the stop is the terminal surface.
   expect(events.some((e) => e.type === "provider_error")).toBe(false);
-  // No clean done either (a stopped turn never settles as a success).
   expect(events.some((e) => e.type === "done")).toBe(false);
-  // The persisted message records the stop and carries NO provider error.
   const messages = getHistory("conv-stall-stop")?.messages ?? [];
   const last = messages[messages.length - 1];
   expect(last?.stopped).toBe(true);
@@ -433,14 +384,11 @@ test("a user-stopped turn whose abort echoes back as an unclassifiable provider 
   });
 
   await vi.advanceTimersByTimeAsync(0);
-  // cancelTurn marks the turn, then its abort resolves the pending prompt()
-  // the same way; pi echoes the AbortError as an errored turn first.
   (conv as { stoppedTurnId?: string }).stoppedTurnId = "turn-stop-echo";
   await session.abort();
   await done;
   unsub();
 
-  // No red card over the stop: not the echo, not a synthesized stall error.
   expect(events.some((e) => e.type === "provider_error")).toBe(false);
   expect(events.some((e) => e.type === "done")).toBe(false);
   const last = (getHistory("conv-stop-echo")?.messages ?? []).at(-1);
@@ -453,8 +401,6 @@ test("a queued message is persisted + visible BEFORE the workdir lock frees — 
   state.provider = "openai-codex";
   setDefaultBackend(quietBackend());
 
-  // Occupy the shared per-workspace turn lock with a turn that never finishes —
-  // the production incident's stalled routine.
   let release: (() => void) | undefined;
   const held = withWorkdirLock(
     config.workspaceDir,
@@ -464,9 +410,6 @@ test("a queued message is persisted + visible BEFORE the workdir lock frees — 
       }),
   );
 
-  // Start a turn on a DIFFERENT, brand-new conversation. Its user message must
-  // land + become visible immediately, then it blocks on the lock — not the
-  // reverse (which is what made the message vanish for minutes before the fix).
   const turn = runTurn("conv-visible", "are you there?");
 
   await vi.waitFor(() => {
@@ -475,10 +418,8 @@ test("a queued message is persisted + visible BEFORE the workdir lock frees — 
       content: "are you there?",
     });
   });
-  // The turn itself is still parked on the lock: user message only, no reply yet.
   expect(getHistory("conv-visible")?.messages).toHaveLength(1);
 
-  // Release the lock and let the turn settle so nothing leaks into later tests.
   release?.();
   await held;
   await turn.catch(() => {});

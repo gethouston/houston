@@ -1,19 +1,3 @@
-/**
- * The spaces REST calls, over the injected `fetch`.
- *
- * These are HOSTED-GATEWAY routes: spaces, their invitations and pod migration
- * between namespaces exist because the gateway runs many tenants, so no host
- * serves them and the runtime client has no surface for them. They go straight
- * through {@link httpRequest} with literal paths, which is also what keeps them
- * visible to the assistant's operation catalog.
- *
- * Nothing here degrades. A non-2xx throws a `SpacesHttpError` (`scope.ts`)
- * carrying the HTTP `status`, and a surface that wants a softer answer (the web
- * switcher's empty list on a gateway that predates spaces) decides that for
- * itself on the status. A `401` additionally fires `onUnauthorized`, so a
- * lapsed session token becomes a visible `tokenExpired` signal.
- */
-
 import { readOrgSummary, readOrgsList } from "@houston/wire-types";
 import { type HttpScope, httpRequest } from "../http";
 import type {

@@ -51,7 +51,6 @@ describe("describeZone", () => {
 
   it("exposes the flattened id as a keyword so middle segments stay searchable", () => {
     const z = describeZone("America/Argentina/Buenos_Aires");
-    // The flattened id keeps "Argentina" (a hidden middle segment) findable.
     assert.ok(z.keywords.some((k) => k.includes("Argentina")));
     assert.ok(z.keywords.includes("Buenos Aires"));
     assert.ok(z.keywords.includes("America"));
@@ -65,7 +64,6 @@ describe("describeZone", () => {
 
 describe("zoneOffset", () => {
   it("formats a GMT offset for a known zone", () => {
-    // Jan 15 2024: New York is on EST (no DST), a stable -5.
     const offset = zoneOffset(
       "America/New_York",
       new Date("2024-01-15T12:00:00Z"),

@@ -24,10 +24,6 @@ import {
   generateState,
 } from "../src/lib/identity/pkce.ts";
 
-// The pure PKCE + callback-parsing logic is tested here directly; the loopback
-// listener + token exchange in desktop-oauth.ts are Tauri/network-bound and are
-// exercised end-to-end, not in the unit runner.
-
 test("generateCodeVerifier yields a 43-char base64url string in range", () => {
   const v = generateCodeVerifier();
   assert.match(v, /^[A-Za-z0-9_-]+$/);
@@ -37,7 +33,6 @@ test("generateCodeVerifier yields a 43-char base64url string in range", () => {
 test("computeCodeChallenge is base64url(SHA-256(verifier))", async () => {
   const verifier = generateCodeVerifier();
   const challenge = await computeCodeChallenge(verifier);
-  // Recompute independently to confirm S256 + base64url encoding.
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(verifier),
@@ -48,7 +43,6 @@ test("computeCodeChallenge is base64url(SHA-256(verifier))", async () => {
 });
 
 test("computeCodeChallenge matches the RFC 7636 test vector", async () => {
-  // RFC 7636 Appendix B.
   const verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
   assert.equal(
     await computeCodeChallenge(verifier),
@@ -103,14 +97,6 @@ test("parseCallbackUrl throws when the code is missing", () => {
   );
 });
 
-// ── awaitLoopbackCallback: supersession / cancel / timeout lifecycle ───────────
-//
-// The Tauri deep-link listener + system-browser open are injected, so the
-// attempt-registry logic (supersede a pending attempt, cancel on unmount,
-// benign timeout, typed reject on a genuine callback error, onBrowserOpened
-// after the browser opens) is exercised without any Tauri/network dependency.
-
-/** A fake deep-link listener the test drives to deliver (or withhold) a callback. */
 function makeListen(): {
   listen: DeepLinkListen;
   emit: (payload: string) => void;
@@ -134,7 +120,6 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 const openOk = () => Promise.resolve();
 
 afterEach(() => {
-  // Never leak a pending attempt into the next test.
   cancelPendingAuthorize("test teardown");
 });
 
@@ -160,7 +145,6 @@ test("a second awaitLoopbackCallback supersedes the first (first resolves null, 
     listen: first.listen,
     openUrl: openOk,
   });
-  // Start a second attempt: it must cancel the first as a benign null.
   const second = makeListen();
   const p2 = awaitLoopbackCallback({
     expectedState: "s2",
@@ -168,9 +152,8 @@ test("a second awaitLoopbackCallback supersedes the first (first resolves null, 
     listen: second.listen,
     openUrl: openOk,
   });
-  assert.equal(await p1, null); // benign cancel, not a rejection
-  assert.equal(first.unlistened(), true); // first listener torn down
-  // Drive the second to completion so nothing leaks.
+  assert.equal(await p1, null);
+  assert.equal(first.unlistened(), true);
   await tick();
   second.emit("houston://auth-callback?code=c2&state=s2");
   assert.equal(await p2, "c2");
@@ -204,9 +187,6 @@ test("the timeout resolves null (benign), never a rejection", async () => {
 });
 
 test("a mismatched-state callback is IGNORED (keeps waiting), not fatal", async () => {
-  // A stale/foreign callback (another tab's or a rebound-port delivery) carries
-  // a different `state`. It must NOT settle the legitimate attempt: the attempt
-  // stays pending and the later correct-state callback resolves the real code.
   const l = makeListen();
   let settled = false;
   const p = awaitLoopbackCallback({
@@ -219,10 +199,10 @@ test("a mismatched-state callback is IGNORED (keeps waiting), not fatal", async 
     return v;
   });
   await tick();
-  l.emit("houston://auth-callback?code=stale&state=forged"); // ignored
+  l.emit("houston://auth-callback?code=stale&state=forged");
   await tick();
-  assert.equal(settled, false); // still pending — the foreign callback was ignored
-  assert.equal(l.unlistened(), false); // listener still live, awaiting the real one
+  assert.equal(settled, false);
+  assert.equal(l.unlistened(), false);
   l.emit("houston://auth-callback?code=real-code&state=expected");
   assert.equal(await p, "real-code");
   assert.equal(l.unlistened(), true);
@@ -260,9 +240,9 @@ test("an external cancel (sign-in-screen unmount) frees the loopback port", asyn
     },
   });
   await tick();
-  cancelPendingAuthorize("user left the screen"); // freePort defaults to true
+  cancelPendingAuthorize("user left the screen");
   assert.equal(await p, null);
-  assert.equal(freed, 1); // the native port was freed immediately
+  assert.equal(freed, 1);
 });
 
 test("supersession does NOT free the previous port (Rust already superseded it)", async () => {
@@ -277,9 +257,6 @@ test("supersession does NOT free the previous port (Rust already superseded it)"
       firstFreed += 1;
     },
   });
-  // A second attempt supersedes the first. The first must resolve null WITHOUT
-  // its port being freed here — the new attempt's start_oauth_loopback already
-  // superseded the old listener, and a cancel here would race the new one.
   const second = makeListen();
   const p2 = awaitLoopbackCallback({
     expectedState: "s2",
@@ -329,13 +306,6 @@ test("onBrowserOpened fires after openUrl resolves", async () => {
   await p;
 });
 
-// ── The PRE-browser deadline ──────────────────────────────────────────────────
-//
-// Until `onBrowserOpened` fires the sign-in buttons are latched and the user
-// sees nothing at all, so a hang there (loopback bind, PKCE, the browser
-// hand-off) must FAIL loudly rather than sit out the 300s callback timeout —
-// that hang is what left the buttons dead until the app was quit.
-
 test("a browser that never opens rejects typed and frees the loopback port", async () => {
   const l = makeListen();
   let freed = 0;
@@ -343,7 +313,7 @@ test("a browser that never opens rejects typed and frees the loopback port", asy
     expectedState: "s1",
     authorizeUrl: "https://provider/a",
     listen: l.listen,
-    openUrl: () => new Promise<void>(() => {}), // hangs forever
+    openUrl: () => new Promise<void>(() => {}),
     browserOpenTimeoutMs: 5,
     abandonLoopback: () => {
       freed += 1;
@@ -361,8 +331,6 @@ test("a browser that never opens rejects typed and frees the loopback port", asy
 });
 
 test("the pre-browser deadline stops applying once the browser has opened", async () => {
-  // Past the hand-off the user may legitimately take minutes: only the benign
-  // callback timeout bounds the wait from then on.
   const l = makeListen();
   let settled = false;
   const p = awaitLoopbackCallback({
@@ -376,7 +344,7 @@ test("the pre-browser deadline stops applying once the browser has opened", asyn
     settled = true;
     return v;
   });
-  await new Promise((r) => setTimeout(r, 30)); // well past the open deadline
+  await new Promise((r) => setTimeout(r, 30));
   assert.equal(settled, false, "the open deadline fired after the hand-off");
   l.emit("houston://auth-callback?code=late-but-fine&state=s1");
   assert.equal(await p, "late-but-fine");
@@ -398,7 +366,6 @@ test("withBrowserOpenDeadline passes a fast result through and times a slow one 
       e.code === "browser_open_timeout" &&
       e.rawCode === "loopback_bind",
   );
-  // A rejection of the underlying work still propagates unchanged.
   await assert.rejects(
     withBrowserOpenDeadline(
       Promise.reject(new Error("all ports busy")),
@@ -410,10 +377,6 @@ test("withBrowserOpenDeadline passes a fast result through and times a slow one 
 });
 
 test("a pre-browser step resolving AFTER the deadline is released, not leaked", async () => {
-  // `start_oauth_loopback` cannot be cancelled while it runs: the attempt id it
-  // will return does not exist yet. If we simply walk away on the deadline, the
-  // listener it binds moments later holds its port for the full 300s and
-  // supersedes the retry the user is now watching.
   let released: number | null = null;
   let settle: (h: { attemptId: number }) => void = () => {};
   const work = new Promise<{ attemptId: number }>((r) => {
@@ -433,7 +396,6 @@ test("a pre-browser step resolving AFTER the deadline is released, not leaked", 
   );
   assert.equal(released, null, "nothing has been handed back yet");
 
-  // The native command finally answers, long after we gave up on it.
   settle({ attemptId: 42 });
   await tick();
   assert.equal(
@@ -473,7 +435,6 @@ test("appleReturnUrl joins the gateway base and the pinned bridge path", () => {
     appleReturnUrl("https://engine.gethouston.ai"),
     `https://engine.gethouston.ai${APPLE_RETURN_PATH}`,
   );
-  // Trailing slashes on the gateway base never double up.
   assert.equal(
     appleReturnUrl("https://engine.gethouston.ai//"),
     `https://engine.gethouston.ai${APPLE_RETURN_PATH}`,

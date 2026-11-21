@@ -13,13 +13,6 @@ import { LEGACY_SETUP_BEGIN, LEGACY_SETUP_END } from "@houston/domain";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { sweepLegacySetupDirectives } from "./legacy-setup-directive";
 
-/**
- * The boot sweep that removes the retired onboarding's "send ONE real email
- * now" section from every AI Employee's CLAUDE.md. What matters: only files
- * carrying the section are rewritten, the user's own text survives, a re-run
- * is a no-op, and a failure is reported rather than stopping the sweep.
- */
-
 let root: string;
 const noLog = () => {};
 
@@ -57,7 +50,6 @@ test("strips the section from every workspace's agents, leaving clean files alon
   expect(read(other)).toBe("# Ops\n");
   expect(read(clean)).toBe("# Clean\n");
   expect(mtime(clean)).toBe(cleanBefore);
-  // The atomic write leaves no scratch file behind.
   expect(readdirSync(dirty)).toEqual(["CLAUDE.md"]);
 });
 

@@ -1,15 +1,3 @@
-/**
- * The look of the "your plan skipped this routine's events" notice: why
- * (the SDK's `triggerPlanSkipNotice` decides the reason and the actions) and
- * one button per action. Props only, so the routine screen and the runs
- * dialog draw the same thing and a test can render it without a query.
- *
- * The store apps never sell (`canPurchaseInApp`): there Upgrade is dropped
- * and the copy that pointed to Plus says the plan is managed on the web. Where
- * Plus would not pay for the org (the SDK left no Upgrade), the copy names no
- * Plus at all.
- */
-
 import type {
   TriggerPlanSkipAction,
   TriggerPlanSkipNotice,
@@ -22,15 +10,9 @@ import { RoutineNoticeCard } from "./routine-notice-card";
 interface Props {
   notice: TriggerPlanSkipNotice;
   onAction: (action: TriggerPlanSkipAction) => void;
-  /** The action in flight (Resume), disabled until it settles. */
   pending?: TriggerPlanSkipAction | null;
-  /** `row` puts the actions beside the text from the desktop edge up (the
-   *  routine screen); `stacked` keeps them under it at every width (the
-   *  narrow runs dialog). */
   layout?: "row" | "stacked";
-  /** `inline` inside a dialog that already frames it (the runs dialog). */
   surface?: "card" | "inline";
-  /** Width and spacing from the mount. */
   className?: string;
 }
 
@@ -49,8 +31,6 @@ export function RoutinePlanSkipNoticeView({
     ? notice.actions
     : notice.actions.filter((action) => action !== "upgrade");
 
-  // Spelled out per reason rather than built from it: `t()` keys are typed,
-  // so a template-literal key would compile past a typo.
   const body = (): string => {
     switch (notice.reason) {
       case "min_interval":
@@ -103,8 +83,6 @@ export function RoutinePlanSkipNoticeView({
         actions.map((action) => (
           <Button
             key={action}
-            // The way out (Upgrade, Resume) is the filled pill, like the
-            // sidebar's Upgrade chip; choosing a routine is the quiet one.
             variant={action === "keep_routine" ? "secondary" : "default"}
             size="sm"
             className="active:scale-[0.96]"

@@ -1,21 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-/**
- * Workspace + user context folded into an agent's system prompt (HOU-711),
- * from ONE of two sources:
- *
- *  - LOCAL / self-host — two files at the agent's workspace root, `WORKSPACE.md`
- *    and `USER.md`, editable by the user (Settings) AND the agent (its file
- *    tool). Read here from `cwd`.
- *  - CLOUD — the gateway supplies both blobs on the turn body from Supabase (the
- *    single source of truth); nothing is on the volume and the agent can't
- *    self-edit them (the user maintains them in the app).
- */
 export const WORKSPACE_MD = "WORKSPACE.md";
 export const USER_MD = "USER.md";
 
-/** Gateway-provided context (cloud): the two blobs read from Supabase. */
 export interface ProvidedContext {
   workspace: string;
   user: string;
@@ -24,7 +12,6 @@ export interface ProvidedContext {
 const WORKSPACE_HEADING = "# Workspace Context";
 const USER_HEADING = "# User Context";
 
-// File-mode empty markers (local): the agent is told to write the files.
 const FILE_WORKSPACE_EMPTY =
   "(empty so far. When the user shares anything about the company, product, " +
   "customers, or workspace conventions, write it to the file path below.)";
@@ -32,15 +19,12 @@ const FILE_USER_EMPTY =
   "(empty so far. When the user tells you about their role, goals, or how they " +
   "like to work, write it to the file path below.)";
 
-// Cloud-mode marker: the user maintains these outside the chat.
 const MANAGED_EMPTY = "(none provided.)";
 
 function readOrEmpty(path: string): string {
   try {
     return existsSync(path) ? readFileSync(path, "utf8") : "";
   } catch {
-    // A context file we cannot read is treated as empty rather than failing the
-    // whole session start — the read is retried on the next chat.
     return "";
   }
 }
@@ -65,18 +49,6 @@ function section(
   ].join("\n");
 }
 
-/**
- * Build the "# Workspace Context" / "# User Context" section appended to an
- * agent's system prompt, or null when there is nothing to inject.
- *
- * When `provided` is set (CLOUD) the blobs come from the gateway (Supabase), the
- * user maintains them in the app, and the section is skipped entirely when both
- * are empty. When `provided` is omitted (LOCAL / self-host) the two files at the
- * workspace root are read instead; the section is always present for a real
- * agent workspace (one with a `.houston/` dir) so the agent knows the slots
- * exist and may write them, and is null for a dir that is not one (test/ad-hoc
- * working dirs are not polluted with stub paths).
- */
 export function buildWorkspaceContextSection(
   cwd: string,
   provided?: ProvidedContext,

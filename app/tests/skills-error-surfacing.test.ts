@@ -2,12 +2,6 @@ import { ok } from "node:assert";
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-/**
- * A failed skill write is silent to the USER — the engine call already toasted
- * its real reason — but it must never be silent to US. An empty catch is the
- * one shape that loses the failure entirely, so the whole surface is scanned
- * for it rather than the two handlers that carried it.
- */
 const dir = new URL("../src/components/skills-view/", import.meta.url);
 
 const sources = readdirSync(dir)
@@ -32,9 +26,6 @@ describe("the Skills surface swallows nothing", () => {
       actions.indexOf("const deleteShared = useCallback("),
       actions.indexOf("const promoteToShared = useCallback("),
     );
-    // A manifest write that failed leaves some employee loading a deleted
-    // skill: the act rethrows the refusal (reported once, unless `call()`
-    // already explained it) instead of toasting success.
     ok(body.includes("throwFirstRefusal(settled);"));
     ok(
       body.indexOf("throwFirstRefusal(settled);") <

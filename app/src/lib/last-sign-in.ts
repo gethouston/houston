@@ -1,17 +1,3 @@
-// Device-local memory of the most recent successful sign-in, so the sign-in
-// screen can suggest "Last time you signed in with Google" (and highlight that
-// provider) even AFTER the user signs out.
-//
-// It lives under its OWN device-global localStorage key, deliberately separate
-// from the identity session blob: `signOut()` clears the session + the persisted
-// per-user caches, but this hint must SURVIVE that so the next sign-in is still
-// guided. It is a UX convenience only — never a credential — so a masked email
-// is the most it ever exposes.
-//
-// Reads/writes are fully guarded: a disabled/full/corrupt storage returns "no
-// hint" and never throws into the sign-in flow. Every discard is logged through
-// the identity seam (visible in frontend.log), never silently swallowed.
-
 import type { Provider } from "../components/auth/provider-button-row";
 import { identityLog } from "./identity/log.ts";
 import type { AuthProvider } from "./identity/session";
@@ -27,14 +13,11 @@ const AUTH_PROVIDERS: readonly AuthProvider[] = [
   "custom",
 ];
 
-/** The remembered facts about the last successful sign-in. */
 export interface LastSignIn {
   provider: AuthProvider;
-  /** Account email, or "" when the provider withheld it. */
   email: string;
 }
 
-/** Versioned on-disk shape, so a future change discards old blobs cleanly. */
 interface StoredLastSignIn {
   v: number;
   provider: AuthProvider;
@@ -52,7 +35,6 @@ function isStored(value: unknown): value is StoredLastSignIn {
   );
 }
 
-/** Remember how this sign-in happened. Best-effort: never blocks sign-in. */
 export function writeLastSignIn(hint: LastSignIn): void {
   const record: StoredLastSignIn = {
     v: VERSION,
@@ -70,7 +52,6 @@ export function writeLastSignIn(hint: LastSignIn): void {
   }
 }
 
-/** Read the last sign-in hint, or null when absent / unreadable / stale. */
 export function readLastSignIn(): LastSignIn | null {
   let raw: string | null;
   try {
@@ -88,8 +69,6 @@ export function readLastSignIn(): LastSignIn | null {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    // Corrupt blob (or a superseded shape from a future version): treat as no
-    // hint. The next successful sign-in overwrites it.
     return null;
   }
   return isStored(parsed)
@@ -97,27 +76,16 @@ export function readLastSignIn(): LastSignIn | null {
     : null;
 }
 
-/**
- * The address shown on the continue button. The hint is device-local on the
- * user's own machine, so the FULL address renders (masking it read as
- * confusing, not private). A withheld or malformed address returns `""` so the
- * caller shows no caption.
- */
 function displayEmail(email: string): string {
   const at = email.indexOf("@");
   return at <= 0 || at === email.length - 1 ? "" : email;
 }
 
-/** Which affordance the sign-in screen highlights for the remembered provider. */
 export type SignInHighlight = Provider | "email";
 
-/** How to present the last-sign-in hint on the screen. */
 export interface LastSignInDisplay {
-  /** The provider pill to ring, or "email" for the email form. */
   highlight: SignInHighlight;
-  /** Brand name to interpolate into the copy, or null for the email path. */
   providerName: string | null;
-  /** Full address to caption the button with, or "" when none is known. */
   email: string;
 }
 
@@ -128,13 +96,10 @@ const PROVIDER_META: Record<
   "google.com": { highlight: "google", name: "Google" },
   "microsoft.com": { highlight: "azure", name: "Microsoft" },
   "apple.com": { highlight: "apple", name: "Apple" },
-  // Passwordless email OTP mints a "custom"-token session; "password" is the
-  // direct email/password shape. Both map back to the email form.
   password: { highlight: "email", name: null },
   custom: { highlight: "email", name: null },
 };
 
-/** Resolve a stored hint into everything the screen needs to render it. */
 export function describeLastSignIn(hint: LastSignIn): LastSignInDisplay {
   const meta = PROVIDER_META[hint.provider];
   return {

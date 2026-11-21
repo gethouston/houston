@@ -29,8 +29,6 @@ test("mark reports whether a tombstone was still active — the resurrection sig
 
   expect(t.mark({ ...SCOPE, scope: "team" })).toBe(false);
   now += 30_000;
-  // A second confirmed delete 30s later means something refilled the dead
-  // credential — the caller escalates this one.
   expect(t.mark({ ...SCOPE, scope: "team" })).toBe(true);
   now += TTL_MS + 1;
   expect(t.mark({ ...SCOPE, scope: "team" })).toBe(false);
@@ -40,9 +38,6 @@ test("a team mark also blocks an acting caller (row resolution is the gateway's)
   const t = new RevocationTombstones(() => 1_700_000_000_000);
   t.mark({ ...SCOPE, scope: "team" });
 
-  // A personal-space push carries an acting identity while its serve reports
-  // the team row; the pod cannot mirror the gateway's resolution, so the
-  // acting caller must be blocked by the team tombstone too.
   expect(t.active({ ...SCOPE, actingAs: actingAs("member-a") })).toBe(true);
 });
 
@@ -71,8 +66,6 @@ test("clear lifts the block for both the acting and the team key", () => {
   t.mark({ ...SCOPE, scope: "team" });
   t.mark({ ...SCOPE, scope: "personal", actingAs: member });
 
-  // The member's fresh sign-in clears their own key AND the shared one — a
-  // user-driven connect supersedes the revocation for the rows it can land on.
   t.clear({ ...SCOPE, actingAs: member });
 
   expect(t.active({ ...SCOPE, actingAs: member })).toBe(false);

@@ -1,8 +1,3 @@
-// A chart wider than its scroller opens on its left edge (the owners first)
-// and fades only the sides that hide more, so it reads as scrollable without
-// hovering. While Admin is hidden (kept alive, display: none) every measure
-// is 0 and nothing fades.
-
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import "./support/dom-env.ts";
@@ -98,7 +93,6 @@ describe("useScrollEdges", () => {
     await act(async () => root.render(h(Probe)));
     const el = node as unknown as HTMLDivElement;
     deepStrictEqual(seen, NO_EDGES);
-    // Admin becomes visible: a chart wider than its box, left edge first.
     sized(el, 400, 1000);
     await act(async () => observed?.());
     strictEqual(el.scrollLeft, 0);

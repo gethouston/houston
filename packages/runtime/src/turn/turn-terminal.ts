@@ -7,21 +7,12 @@ import type { MissionTitleReport } from "./turn-mission-title-outcome";
 import type { TurnOutcome } from "./turn-session";
 import type { TurnSyncReport } from "./turn-sync-report";
 
-/** Per-turn diagnostics that ride the terminal frame beside `changed`. */
 export interface TurnTerminalDiagnostics {
   missionTitle?: MissionTitleReport;
   sync?: TurnSyncReport;
   modelCalls?: ModelCallReport;
 }
 
-/**
- * Build the durable terminal frame after sync-back completes. `changed` lists
- * the domain events the landed writes imply; the gateway fans them out to
- * every member's /v1/events, the pod-event parity for a worker-run turn. It
- * rides the error frame too: a provider failure after a durable tool write
- * still changed what other tabs show.
- */
-/** performance.now() marks → whole-ms deltas from the earliest mark. */
 function timingDeltas(
   marks: Record<string, number> | undefined,
 ): Record<string, number> | undefined {
@@ -46,10 +37,7 @@ export function turnTerminalFrame(
 ): WireFrame {
   const timingsMs = timingDeltas(timings);
   const { missionTitle, sync, modelCalls } = extra;
-  // The worker's pre-prompt cost is its own request-to-prompt span: the
-  // earliest mark is the request's arrival.
   const prePrompt = timingsMs?.prompt_start;
-  // Its own field, not timingsMs: the gateway logs at most 32 timing keys.
   const claudeStartupMs = takeClaudeStartupProfile();
   const fields = {
     ...(timingsMs ? { timingsMs } : {}),
@@ -79,8 +67,6 @@ export function turnTerminalFrame(
     outcome.error &&
     (!outcome.stopReason || outcome.error === "claim_fenced")
   ) {
-    // SAFETY: pooled-turn diagnostics are an additive internal transport field;
-    // public WireFrame consumers still receive the required error message.
     return {
       type: "error",
       data: { message: outcome.error, ...diagnostic },
@@ -115,8 +101,6 @@ export function turnTerminalFrame(
       turnId,
     };
   }
-  // SAFETY: claimed-turn diagnostics intentionally widen this internal done
-  // frame while preserving null for every ordinary public-protocol turn.
   return {
     type: "done",
     data: diagnostic ?? null,
@@ -127,7 +111,6 @@ export function turnTerminalFrame(
   } as unknown as WireFrame;
 }
 
-/** The terminal frame of a turn whose durability pass ran. */
 export function durableTerminalFrame(
   durable: TurnDurabilityResult,
   turnId: string,
@@ -153,12 +136,6 @@ export function durableTerminalFrame(
   );
 }
 
-/**
- * The setup frame's `message`, per code. A client that knows no setup code
- * shows it verbatim, and cloud's mission watcher stores it as a mission's
- * error, so each line is accurate for its code and never the bare code
- * (H-003). Retry advice only where a retry can help.
- */
 export const TURN_SETUP_MESSAGES: Record<TurnSetupCode, string> = {
   hydrate_over_cap: "This agent has too much saved to start right now.",
   layout_unexpected:
@@ -171,14 +148,10 @@ export const TURN_SETUP_MESSAGES: Record<TurnSetupCode, string> = {
     "Your agent couldn't connect to its AI provider for this message. Send it again in a moment.",
 };
 
-/** Build the internal typed error frame for pre-provider setup failures. */
 export function turnSetupErrorFrame(
   error: TurnSetupError,
   turnId: string,
 ): WireFrame {
-  // SAFETY: setup error codes are internal to the pool dispatcher and retain
-  // the public error frame's required message field. The gateway's code
-  // readers and the SDK key on `code`; mission records keep the message.
   return {
     type: "error",
     data: {

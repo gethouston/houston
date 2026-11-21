@@ -13,8 +13,6 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { claudeProjectsDir, serverClaudeLayout } from "./paths";
 import { createSessionsStore } from "./sessions-store";
 
-// The transcript `projects` tree is SHARED (under CLAUDE_CONFIG_DIR =
-// HOUSTON_HOME/claude-login), so point HOUSTON_HOME at a temp dir per test.
 const savedHome = process.env.HOUSTON_HOME;
 
 beforeEach(() => {
@@ -27,7 +25,6 @@ afterEach(() => {
   else process.env.HOUSTON_HOME = savedHome;
 });
 
-/** A fresh per-agent data dir (holds only sessions.json). */
 function dataDir(): string {
   return mkdtempSync(join(tmpdir(), "claude-data-"));
 }
@@ -39,7 +36,6 @@ function sessionsStore(dataDir: string, cwd?: string) {
   });
 }
 
-/** Write a fake SDK transcript for `sessionId` under the SHARED projects dir. */
 function writeTranscript(sessionId: string): void {
   const projects = join(claudeProjectsDir(), "proj");
   mkdirSync(projects, { recursive: true });
@@ -84,10 +80,8 @@ test("a missing transcript warns, drops the mapping, and starts fresh", () => {
   const dir = dataDir();
   const store = sessionsStore(dir);
   store.setSessionId("c1", "sess-gone");
-  // No transcript on disk → resume is impossible.
   expect(store.resolveResume("c1")).toBeUndefined();
   expect(warn).toHaveBeenCalled();
-  // The dangling mapping is dropped so we don't warn on every subsequent turn.
   expect(store.getSessionId("c1")).toBeUndefined();
 });
 
@@ -107,7 +101,6 @@ test("purge drops the mapping AND deletes the transcript", () => {
 
 test("purge is a no-op for a conversation that never ran on this backend", () => {
   const dir = dataDir();
-  // No mapping, no transcript, no config dir at all → must not throw.
   expect(() => sessionsStore(dir).purge("never")).not.toThrow();
 });
 
@@ -119,14 +112,10 @@ test("a corrupt sessions.json degrades to empty rather than throwing", () => {
 });
 
 test("a transcript stranded under a stale cwd slug is relocated so the SDK can resume it (HOU-892)", () => {
-  // The agent was renamed: the workspace cwd changed, so the SDK's cwd-scoped
-  // resume lookup misses the transcript written under the OLD slug. resolveResume
-  // must move it into the CURRENT cwd's slug dir — preserving the conversation —
-  // rather than declaring it resumable and letting the SDK reject the id.
   const cwd = "/ws/Personal/new name";
   const store = sessionsStore(dataDir(), cwd);
   store.setSessionId("c1", "sess-1");
-  writeTranscript("sess-1"); // lands under the unrelated "proj" slug dir
+  writeTranscript("sess-1");
 
   expect(store.resolveResume("c1")?.sessionId).toBe("sess-1");
 
@@ -135,7 +124,6 @@ test("a transcript stranded under a stale cwd slug is relocated so the SDK can r
   expect(existsSync(join(claudeProjectsDir(), "proj", "sess-1.jsonl"))).toBe(
     false,
   );
-  // Mapping survives — the next turn resumes normally with zero moves.
   expect(store.getSessionId("c1")).toBe("sess-1");
   expect(store.resolveResume("c1")?.sessionId).toBe("sess-1");
 });
@@ -183,21 +171,17 @@ test("without a cwd (purge-only store) resolveResume never relocates", () => {
   store.setSessionId("c1", "sess-1");
   writeTranscript("sess-1");
   expect(store.resolveResume("c1")?.sessionId).toBe("sess-1");
-  // Untouched in place.
   expect(existsSync(join(claudeProjectsDir(), "proj", "sess-1.jsonl"))).toBe(
     true,
   );
 });
 
 test("two agents' transcripts under the shared projects dir don't collide", () => {
-  // Different per-agent data dirs, DIFFERENT session ids → each resolves only
-  // its own transcript even though the projects tree is shared.
   const a = sessionsStore(dataDir());
   const b = sessionsStore(dataDir());
   a.setSessionId("c", "sess-a");
   b.setSessionId("c", "sess-b");
   writeTranscript("sess-a");
   expect(a.resolveResume("c")?.sessionId).toBe("sess-a");
-  // b's transcript isn't on disk yet → b starts fresh, doesn't pick up sess-a.
   expect(b.resolveResume("c")).toBeUndefined();
 });

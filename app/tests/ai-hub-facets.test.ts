@@ -26,7 +26,6 @@ describe("costBucket", () => {
 
   it("buckets a genuinely free ($0) offer as free, above the meter tiers", () => {
     strictEqual(costBucket(withInput(0)), "free");
-    // Cheapest across offers wins: a $0 offer beside a paid one is still free.
     strictEqual(costBucket(withInput(5, 0)), "free");
   });
 

@@ -1,13 +1,3 @@
-/**
- * Visual baselines for the composer holding a message longer than its box: the
- * resize grip keeps its own row above the first line, and the text keeps a
- * gutter before the scrollbar (HOU-180). The caret sits at the end after
- * `fill`, so the box is scrolled to its bottom every run; `caret: "hide"`
- * (config-wide) removes the blinking cursor.
- *
- * Both themes; determinism rules in ../README.md.
- */
-
 import { FOLLOW_UP_PLACEHOLDER } from "../support/composer";
 import { expect, test } from "../support/fixtures";
 import { missionCard } from "../support/team-nav";

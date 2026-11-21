@@ -1,4 +1,3 @@
-/** Process-local admission guard for bounded pooled-turn concurrency. */
 export class AdmissionLimiter {
   private activeCount = 0;
 
@@ -8,17 +7,14 @@ export class AdmissionLimiter {
     }
   }
 
-  /** Maximum simultaneous turns this worker admits. */
   get capacity(): number {
     return this.capacityValue;
   }
 
-  /** Turns currently holding an admission slot. */
   get active(): number {
     return this.activeCount;
   }
 
-  /** Acquire a slot, returning an idempotent release function when available. */
   tryAcquire(): (() => void) | null {
     if (this.activeCount >= this.capacityValue) return null;
     this.activeCount += 1;
@@ -31,7 +27,6 @@ export class AdmissionLimiter {
   }
 }
 
-/** Parse the configured turn capacity, defaulting to one. */
 export function turnConcurrency(value = process.env.HOUSTON_TURN_CONCURRENCY) {
   if (value === undefined || value === "") return 1;
   const parsed = Number(value);

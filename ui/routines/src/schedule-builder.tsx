@@ -1,26 +1,3 @@
-/**
- * ScheduleBuilder — Visual schedule builder with preset buttons.
- * Presets (daily, weekly, …) cover the common cases; the Weekly preset reveals
- * an "On these days" weekday multi-select. The "Custom" tab offers a "Repeat
- * every N [minutes/hours/days/months]" picker — choosing months reveals a
- * day-of-month field. There is no raw-cron input: the picker is the only way to
- * build a custom schedule, and the generated cron is shown read-only.
- *
- * Conditional fields are wrapped in `Reveal` so they animate in/out (and the
- * card resizes) instead of snapping — switching units never makes the layout
- * jump. State and cron derivation live in useScheduleBuilder; this file is JSX.
- * All visible text arrives via `labels` (English defaults) so the package stays
- * i18n-agnostic; `locale` drives day names + time formatting in the summary.
- *
- * `floor` (a plan's minimum interval, with the plan's own rule as `allows`)
- * keeps every pick on what that rule accepts: the minutes stepper starts at
- * the lowest count it accepts (an uneven count saves as a true interval, so
- * every count above it is accepted too), a typed count below it snaps up on
- * blur, presets it refuses are hidden, and a pick it refuses emits "" so the
- * parent can't save. An existing short schedule still shows as it is until
- * edited.
- */
-
 import { cn } from "@houston-ai/core";
 import { AnimatePresence } from "framer-motion";
 import { DEFAULT_SCHEDULE_LABELS, interp, type ScheduleLabels } from "./labels";
@@ -37,12 +14,8 @@ export interface ScheduleBuilderProps {
   value: string;
   onChange: (cronExpression: string) => void;
   presets?: SchedulePreset[];
-  /** Localized labels. Defaults to English so standalone callers still work. */
   labels?: ScheduleLabels;
-  /** BCP-47 locale for day names + time formatting in the live summary. */
   locale?: string;
-  /** A plan's minimum interval and the rule that judges a cron against it.
-   *  Keep it stable across renders (memoized). Absent = no limit. */
   floor?: ScheduleFloor;
 }
 
@@ -93,10 +66,8 @@ export function ScheduleBuilder({
         onSelect={selectPreset}
       />
 
-      {/* Summary */}
       <p className="text-sm text-ink">{summary}</p>
 
-      {/* Preset-specific fields — animated so the card never snaps */}
       <div className="space-y-3">
         <AnimatePresence mode="popLayout" initial={false}>
           {showTime && (

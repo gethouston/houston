@@ -1,17 +1,5 @@
 import type { TSchema } from "typebox";
 
-/**
- * Turns a param's JSON Schema into a sentence the model can ACT on.
- *
- * The catalog's schema is the only place a param's accepted values live, so a
- * rejection that says "does not match" and nothing else leaves the model
- * guessing formats: asked for a blue agent it tried "blue", "#0000FF",
- * "0000FF", then deleted and recreated the agent rather than reading the
- * palette. An error that carries the accepted values ends that loop on the
- * first try.
- */
-
-/** The JSON Schema keywords read here — `TSchema` itself is an opaque `{}`. */
 interface SchemaFacets {
   const?: unknown;
   enum?: unknown[];
@@ -24,21 +12,12 @@ function facets(schema: TSchema): SchemaFacets {
   return schema as SchemaFacets;
 }
 
-/** A value's JSON type name, spelled as the schemas spell it. */
 export function jsonTypeOf(value: unknown): string {
   if (value === null) return "null";
   if (Array.isArray(value)) return "array";
   return typeof value;
 }
 
-/**
- * The exact values a schema accepts (`enum`, `const`, or an `anyOf`/`oneOf` of
- * those — the shape the generator emits for a union of string literals), or
- * null when the schema is not a closed set of choices.
- *
- * A `{ type: "null" }` branch is how an optional param is spelled; it offers no
- * value to choose from, so it is skipped instead of defeating the whole list.
- */
 export function acceptedValues(schema: TSchema): string[] | null {
   const facet = facets(schema);
   if (Array.isArray(facet.enum)) return renderChoices(facet.enum);
@@ -55,7 +34,6 @@ export function acceptedValues(schema: TSchema): string[] | null {
   return values.length ? values : null;
 }
 
-/** The JSON types a schema accepts, deduped and in declaration order. */
 export function expectedTypes(schema: TSchema): string[] {
   const facet = facets(schema);
   const types = new Set<string>();
@@ -71,11 +49,6 @@ export function expectedTypes(schema: TSchema): string[] {
   return [...types];
 }
 
-/**
- * The `invalid_param` message: what the operation would have accepted, what
- * arrived instead, and `houston_describe` only as the fallback for the schemas
- * that cannot be stated in one line.
- */
 export function invalidParamMessage(opts: {
   operation: string;
   param: string;
@@ -96,7 +69,6 @@ export function invalidParamMessage(opts: {
   return `${lead} You gave ${jsonTypeOf(opts.value)} (${given}), which does not fit its declared shape. ${hint}`;
 }
 
-/** Every choice rendered bare (`navy`, not `"navy"`), or null if any is a structure. */
 function renderChoices(values: unknown[]): string[] | null {
   const rendered: string[] = [];
   for (const value of values) {
@@ -119,7 +91,6 @@ function isNullBranch(schema: TSchema): boolean {
   );
 }
 
-/** The rejected value, as JSON, capped so a big blob cannot flood the transcript. */
 function renderValue(value: unknown): string {
   if (value === undefined) return "nothing";
   const json = JSON.stringify(value) ?? String(value);

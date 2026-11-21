@@ -3,24 +3,6 @@ import { loadStoreTemplate } from "../agents/builtin/store-template-loader";
 import { tauriAgent, tauriSkills } from "./tauri";
 import type { SkillSummary } from "./types";
 
-/**
- * Swap an agent's unedited English store skills for their translated
- * versions when the workspace language is es/pt.
- *
- * Store skills are seeded once at agent creation; agents created before the
- * translated templates shipped (or while the workspace was English) carry
- * the English files. A skill is only swapped when its on-disk content is
- * byte-identical to the packaged English version — anything the user or the
- * agent has touched is their artifact and is never modified. The swap is a
- * rename (the translated slug is a new directory), so cross-references in
- * the agent's CLAUDE.md and data-schema.md are token-rewritten to follow —
- * for the renamed slugs only.
- *
- * Idempotent and resumable: a matched skill disappears from the list once
- * swapped; a non-matching (edited) one is remembered in localStorage so it
- * isn't re-fetched on every mount.
- */
-/** One pass per agent+language at a time — panels can mount the same agent twice. */
 const inFlight = new Set<string>();
 
 export async function migrateStoreSkillsToLocale(
@@ -68,9 +50,6 @@ async function runMigration(
   const newlySkipped: string[] = [];
   for (const skill of candidates) {
     const detail = await tauriSkills.load(agentPath, skill.name);
-    // The slug alone can be ambiguous (two store agents ship a couple of the
-    // same slugs with different content) — the byte-exact content match picks
-    // the right source, and doubles as the "unedited" gate.
     const match = templates.find(
       ({ en }) =>
         en.seeds[`.agents/skills/${skill.name}/SKILL.md`] === detail.content,
@@ -111,11 +90,6 @@ async function runMigration(
   return Object.keys(renames).length;
 }
 
-/**
- * Rewrite English skill-slug tokens to their renamed slugs, kebab-boundary
- * matched, longest slug first (mirror of `rewriteSlugTokens` in
- * `scripts/gen-agent-templates.mjs`).
- */
 export function rewriteSkillSlugTokens(
   text: string,
   renames: Record<string, string>,
@@ -146,7 +120,5 @@ function readSkipped(agentId: string, lang: string): Set<string> {
 function writeSkipped(agentId: string, lang: string, slugs: Iterable<string>) {
   try {
     localStorage.setItem(skipKey(agentId, lang), JSON.stringify([...slugs]));
-  } catch {
-    // localStorage unavailable: the pass just re-checks next mount.
-  }
+  } catch {}
 }

@@ -9,23 +9,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * An agent's OWN skills and its skills manifest ride `sdk.skills.agent`.
- *
- * What these tests pin is the wire: the mixin method must issue exactly the
- * request recorded here, down to the URL, the method, the
- * body bytes and the auth/active-space headers — one request, never two. A slug
- * and an agent id are spliced into the path, so the percent-encoding is pinned
- * too: a slug with a slash must stay inside its own segment instead of forging
- * a route.
- *
- * Nothing here degrades a host failure. Skills are standing instructions and
- * the manifest is what the agent actually loads, so a create/save/delete that
- * did not happen must never be reported as one. The one adapter-side
- * degradation is the absence of a host at all (standalone web has no skill
- * backend), which is pinned at the bottom.
- */
-
 const BASE = "http://host";
 const AGENT = "a1";
 
@@ -41,7 +24,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** A hosted client with an active space pinned, as the app runs in cloud. */
 function client(): HoustonClient {
   const c = new HoustonClient({
     baseUrl: BASE,
@@ -52,8 +34,6 @@ function client(): HoustonClient {
   return c;
 }
 
-/** Every header `cpFetch` stamped on a skills call, on the delegated one. */
-/** A skill summary as the HOST sends it — without the two legacy fields. */
 const HOST_SUMMARY = {
   name: "triage",
   title: "Triage",
@@ -177,8 +157,6 @@ describe("the delegated skill writes", () => {
     expect(err).toBeInstanceOf(HoustonEngineError);
     expect(err.status).toBe(500);
     expect(err.body).toEqual({ error: "disk full" });
-    // The path names an agent, so the translated error carries it — that is
-    // what `provider-agent-gone.ts` and the stuck-wake tracker key on.
     expect(err.agentId).toBe(AGENT);
   });
 });
@@ -223,7 +201,6 @@ describe("the delegated manifest calls", () => {
     expect(calls[0].url).toBe(`${BASE}/agents/${AGENT}/skills-manifest`);
     expect(calls[1].method).toBe("PUT");
     expect(calls[1].url).toBe(`${BASE}/agents/${AGENT}/skills-manifest`);
-    // The read's list plus the one slug, sorted: nothing else moves.
     expect(calls[1].body).toBe(
       JSON.stringify({ version: 1, enabled: ["invoices", "triage"] }),
     );
@@ -257,12 +234,6 @@ describe("the delegated manifest calls", () => {
   });
 });
 
-/**
- * A workspace skill an agent keeps its own copy of takes TWO writes to move:
- * the manifest entry, and the copy that loads with or without it. The order is
- * the capability, so the wire proof is the SEQUENCE — the copy is deleted last,
- * after the entry the agent still needs has landed.
- */
 describe("the two composed acts on a workspace skill", () => {
   const trace = () =>
     calls.map((call) => `${call.method} ${new URL(call.url).pathname}`);

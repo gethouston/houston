@@ -12,7 +12,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** The empty state is a `flex-1` pane, so give it a bounded column to fill. */
 function Pane({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-72 w-full max-w-xl flex-col overflow-hidden rounded-xl border border-line bg-card/40">
@@ -95,11 +94,6 @@ function RoutinesGridEmptySpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["RoutinesGridEmpty"];
 
 export const specimen: Specimen = {

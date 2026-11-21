@@ -15,23 +15,10 @@ export interface CollectDeps {
   store: WorkspaceStore;
   vfs: Vfs;
   paths: WorkspacePaths;
-  /** Whose briefing: only their own workspaces are read, the turn runs in
-   *  their name, and their personal workspace holds the manager. */
   userId: UserId;
   log: (message: string, err?: unknown) => void;
 }
 
-/**
- * Load every agent's board, routines and runs across the person's own
- * workspaces (dot-named agents, the manager among them, are never listed),
- * and reduce them to the briefing snapshot. `listWorkspaces` is the operator's
- * every-tenant list and never the source here, even where the two agree.
- *
- * Fail-isolated per agent: one agent with a mangled document is logged and
- * left out, never allowed to cost the person the whole briefing. It, and an
- * agent any of whose documents read with diagnostics, is named unread so its
- * seen keys survive the next delivery.
- */
 export async function collectHeartbeatSnapshot(
   deps: CollectDeps,
   sinceMs: number,
@@ -55,8 +42,6 @@ export async function collectHeartbeatSnapshot(
           routines: routines.items,
           runs: runs.items,
         });
-        // A malformed doc reads as fewer items without throwing: the agent's
-        // items are not fully known, so its seen keys must survive too.
         const diagnostics = [
           ...activities.diagnostics,
           ...routines.diagnostics,

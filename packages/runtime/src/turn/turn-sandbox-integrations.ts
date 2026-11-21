@@ -23,10 +23,8 @@ import type { TurnCustomContext } from "./turn-custom-context";
 import type { TurnSandboxDeps } from "./turn-sandbox";
 import { fetchWithTurnSignal } from "./turn-sandbox-signal";
 
-/** The gateway no longer accepts this turn's short-lived authority. */
 export class TurnGrantExpiredError extends Error {}
 
-/** The grant ending reads as its own error, never as "sign in". */
 async function grantCall<T>(call: () => Promise<T>): Promise<T> {
   try {
     return await call();
@@ -38,7 +36,6 @@ async function grantCall<T>(call: () => Promise<T>): Promise<T> {
   }
 }
 
-/** One per runtime process, so its action-schema cache is shared by turns. */
 const stageFiles = createFileStager();
 
 class GrantRemoteProvider extends RemoteIntegrationProvider {
@@ -92,7 +89,6 @@ class GrantRemoteProvider extends RemoteIntegrationProvider {
   }
 }
 
-/** Build the Composio/custom integration routes used by the turn facade. */
 export function makeTurnIntegrationRoutes(
   deps: TurnSandboxDeps,
   fetchImpl: typeof fetch,
@@ -160,7 +156,6 @@ export function makeTurnIntegrationRoutes(
           ...(filesystem.workspaceReady
             ? { ready: filesystem.workspaceReady }
             : {}),
-          // A lazy tree holds on disk only what this turn touched.
           fallback: (rel, maxBytes) =>
             filesystem.vfs.readBytes(
               `${filesystem.workspaceRel}/${rel}`,
@@ -179,8 +174,6 @@ export function makeTurnIntegrationRoutes(
         }),
       );
     } catch (error) {
-      // A file argument the agent got wrong is the action's failure, phrased
-      // for the model: the same shape the host's sandbox route answers.
       if (error instanceof FileArgumentError) {
         return Response.json({ successful: false, error: error.message });
       }

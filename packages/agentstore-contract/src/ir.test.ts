@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { exampleAgentIr } from "./__fixtures__/example-ir";
 import { agentIrSchema, migrateAgentIr } from "./ir";
 
-/** Deep clone of the fixture as a plain record, for targeted mutation. */
 function draft(): Record<string, unknown> {
   return structuredClone(exampleAgentIr) as unknown as Record<string, unknown>;
 }

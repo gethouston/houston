@@ -14,90 +14,35 @@ import {
 import { Database } from "./sqlite";
 import type { ChatFeedRow, SessionPair, StoredConversation } from "./types";
 
-/**
- * One-time migration of the Rust-desktop era's chat history into the v3
- * (single-engine host) layout. The Rust app stored chat OUTSIDE the agent tree,
- * in `~/.houston/db/houston.db` (`chat_feed`); the host stores it INSIDE the
- * tree, per agent, under `.houston/runtime/`.
- *
- * Strictly additive + idempotent: we only WRITE new files under
- * `<agentRoot>/.houston/runtime/`. We NEVER modify, lock, or delete the source
- * db or any existing tree file. The db is opened READ-ONLY. A per-conversation
- * existence check makes re-runs no-ops — deliberately NO per-agent marker: a
- * wholesale skip once lost every chat written by a Rust-era build AFTER the
- * marker was stamped (old and new apps interleave on real machines, and the
- * migration wizard's own source-host boot stamps first).
- *
- * Linkage (verified, see linkage.ts): the `.sid`/`.history` tracker files per
- * agent map a `session_key` (= conversation id) to its `claude_session_id`s.
- * Reconstruction (see reconstruct.ts): the full feed → transcript, user/assistant
- * text → the synthesized pi session (the agent's memory).
- */
-
 const RUNTIME_REL = join(".houston", "runtime");
-
-// ---------------------------------------------------------------------------
-// Results + options.
-// ---------------------------------------------------------------------------
 
 export interface MigrateAgentResult {
   agentRoot: string;
-  /** Conversations newly written this run (existing ones are skipped). */
   migrated: number;
-  /** Conversations already present (idempotent skip). */
   skipped: number;
 }
 
 export interface MigrateResult {
   agents: MigrateAgentResult[];
-  /** Total conversations newly written across all agents. */
   totalMigrated: number;
-  /** Total conversations already present across all agents. */
   totalSkipped: number;
-  /**
-   * `chat_feed` conversations (distinct claude_session_ids) that no tracker file
-   * references — deleted activities whose rows persisted. Counted + logged, never
-   * migrated (there is no agent column to place them on) and never silently
-   * dropped.
-   */
   orphanSessionIds: number;
 }
 
 export interface MigrateChatHistoryOptions {
-  /** `~/.houston/workspaces` (or a copy) — the desktop tree root. */
   workspacesRoot: string;
-  /**
-   * Path to the Rust `chat_feed` db. The db is opened read-only and never
-   * written. For a test against live data, copy the file (and its `-wal`/`-shm`
-   * sidecars, since the live db is WAL-mode) to a scratch dir first.
-   */
   dbPath: string;
-  /** Optional log sink; defaults to console.log. Receives one line per call. */
   log?: (line: string) => void;
 }
-
-// ---------------------------------------------------------------------------
-// Transcript + session writers.
-// ---------------------------------------------------------------------------
 
 function writeTranscript(dir: string, conv: StoredConversation): void {
   mkdirSync(dir, { recursive: true });
   const f = join(dir, `${encodeURIComponent(conv.id)}.json`);
   const tmp = atomicTempPath(f);
   writeFileSync(tmp, JSON.stringify(conv));
-  renameSync(tmp, f); // atomic swap; never leaves a half-written file
+  renameSync(tmp, f);
 }
 
-/**
- * Append the user/assistant text pairs to a pi session via SessionManager, so a
- * later `continueRecent()` rehydrates them into the agent's context. We import
- * SessionManager DIRECTLY from @earendil-works/pi-coding-agent (already a
- * dependency of this host — the same package the runtime uses), so there is no
- * need to depend on @houston/runtime.
- *
- * pi persists a session only once it holds an assistant message, so we only
- * synthesize a session when at least one non-empty assistant turn exists.
- */
 function synthesizeSession(
   workspaceDir: string,
   sessionDir: string,
@@ -115,23 +60,9 @@ function synthesizeSession(
     mgr.appendMessage(messageFor(p));
     if (p.ts > lastTs) lastTs = p.ts;
   }
-  // Close the imported block so the next live turn treats it as a record, not
-  // as pending instructions (see IMPORTED_HISTORY_NOTE for the incident).
   mgr.appendMessage(importedHistoryNote(lastTs));
 }
 
-// ---------------------------------------------------------------------------
-// Per-agent migration.
-// ---------------------------------------------------------------------------
-
-/**
- * Migrate one agent's chat history. `agentRoot` is the agent's on-disk root; pi
- * sessions are anchored there so the rehydrated context has the right cwd.
- * Returns counts; pure of process state beyond file writes.
- *
- * `referenced` (optional) accumulates every claude_session_id this agent claims,
- * so the caller can compute the orphan set.
- */
 export function migrateAgentChatHistory(
   agentRoot: string,
   db: Database,
@@ -146,7 +77,6 @@ export function migrateAgentChatHistory(
   if (referenced)
     for (const set of groups.values()) for (const id of set) referenced.add(id);
 
-  // One reusable statement for all of this agent's ids.
   const stmt = db.query<ChatFeedRow, [string]>(
     "SELECT id, claude_session_id, feed_type, data_json, timestamp FROM chat_feed WHERE claude_session_id = ?",
   );
@@ -161,14 +91,12 @@ export function migrateAgentChatHistory(
     );
     if (existsSync(transcriptFile)) {
       skipped++;
-      continue; // idempotent: this conversation is already migrated
+      continue;
     }
 
-    // Pull + merge every row across the key's session ids, ordered by timestamp
-    // then id (a conversation can span several ids — e.g. anthropic + openai).
     const rows: ChatFeedRow[] = [];
     for (const id of ids) rows.push(...stmt.all(id));
-    if (rows.length === 0) continue; // a tracker file with no surviving rows
+    if (rows.length === 0) continue;
     rows.sort((a, b) => rowTs(a) - rowTs(b) || a.id - b.id);
 
     const { transcript, sessionPairs } = reconstruct(rows);
@@ -202,22 +130,10 @@ export function migrateAgentChatHistory(
   return { agentRoot, migrated, skipped };
 }
 
-// ---------------------------------------------------------------------------
-// Whole-tree migration.
-// ---------------------------------------------------------------------------
-
-/** Every agent dir under the tree: `<root>/<Workspace>/<Agent>`, exactly the
- * agents LocalWorkspaceStore lists (dot-dirs and the preferences namespace
- * skipped). Shared with the flat-layout migration (agent-layout.ts). */
 export function agentRoots(workspacesRoot: string): string[] {
   return listAgentDirs(workspacesRoot);
 }
 
-/**
- * Migrate the whole desktop tree. Guarded on the db existing (the caller skips
- * the call entirely otherwise). Opens the db READ-ONLY so we can never lock or
- * mutate it.
- */
 export function migrateChatHistory(
   opts: MigrateChatHistoryOptions,
 ): MigrateResult {
@@ -231,7 +147,6 @@ export function migrateChatHistory(
       agents.push(migrateAgentChatHistory(agentRoot, db, log, referenced));
     }
 
-    // Orphans: chat_feed conversations no tracker file references.
     const allIds = db
       .query<{ claude_session_id: string }, []>(
         "SELECT DISTINCT claude_session_id FROM chat_feed",

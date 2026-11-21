@@ -19,12 +19,6 @@ import { viaSdk } from "./sdk-error";
 
 export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
   class Portable extends Base {
-    // ---- portable agents (share with / from a friend) — host only ----
-    // The wizards' backend. Preview/export/install talk to the host's v3
-    // portable routes; the uploaded archive is unpacked in the
-    // browser, parked in memory until install, and the threat scan runs on it
-    // right there — the scan is the same pure `@houston/domain` heuristic the
-    // host uses (see ./portable.ts).
     async portablePreview(
       agentPath: string,
     ): Promise<PortableInventoryPreview> {
@@ -53,11 +47,6 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<PortableInstalledAgent> {
       if (!this.ctx.cp)
         throw new Error("Importing an agent needs a connected host.");
-      // The create is the adapter's own SDK-delegated one (byte-identical
-      // POST /agents with the seed body, no refetch); `portable.ts` holds no
-      // SDK handle, so it takes it as a parameter. The install carries the
-      // source agent's colour on the wire — there is no picker here to seed a
-      // client overlay from.
       return install(req, async (name, color, seed) => {
         const wire = await viaSdk("/agents", () =>
           this.ctx.sdk.agents.writes.create({ name, color, ...seed }),
@@ -65,14 +54,6 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
         return controlPlane.createdAgentToUi(wire, color);
       });
     }
-    // ---- agent data migration (agent-scoped export/import/marker) — host only ----
-    // Delegated to `sdk.migration` (`packages/sdk/src/modules/migration`).
-    // "Copy an agent" runs export and import against this engine; the
-    // desktop→cloud wizard (`app/src/lib/cloud-migration-transport.ts`) runs
-    // its export leg against a passive source host it spawned over the old
-    // tree — its own peer — and everything aimed at the live account through
-    // here. Nothing degrades: a status the pod could not answer is not a
-    // status that says "never imported", and the wizard decides which is which.
     async migrationExport(
       agentPath: string,
       paths: string[],

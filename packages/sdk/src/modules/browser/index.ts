@@ -1,14 +1,3 @@
-/**
- * The browser hand-off: while an agent's `browser` tool waits on a `handoff`,
- * the person drives the same page through a live view (frames down an SSE
- * stream, input up in POST batches). Both routes are runtime-proxy members
- * under `/agents/:agentId/conversations/:conversationId/browser/`.
- *
- * Which chat item is a hand-off, and how it ended, is `./handoff-card.ts`;
- * where its card sits, `./handoff-layout.ts`
- * (published as `@houston/sdk/browser-handoff`).
- */
-
 import {
   type BrowserLiveEvent,
   type BrowserLiveInputAnswer,
@@ -31,7 +20,6 @@ export interface BrowserWatchOptions {
   signal: AbortSignal;
   onEvent: (event: BrowserLiveEvent) => void;
   onActivity?: () => void;
-  /** A known message type with a broken shape; skipped. Absent: it rejects. */
   onMalformed?: (error: unknown) => void;
 }
 
@@ -88,7 +76,6 @@ export function createBrowserModule(ctx: ModuleContext) {
       await ctx.clientFor(agentId).browserInput(conversationId, request),
     );
 
-  /** Opens the reconnecting live view a surface binds. */
   const connect = (
     conversationId: string,
     agentId: string,

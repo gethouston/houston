@@ -13,7 +13,6 @@ import {
   headerSearchFieldClass,
 } from "../shell/page-header/header-tools-row";
 
-/** Search and creation move together between the fixed strip and body row. */
 export function SkillsControls({
   query,
   onQueryChange,
@@ -24,14 +23,9 @@ export function SkillsControls({
 }: {
   query: string;
   onQueryChange: (query: string) => void;
-  /** Build a skill together with the AI Employee — the primary path. */
   onCreateWithChat: () => void;
-  /** Put a skill the workspace already holds on THIS AI Employee. Absent
-   *  where there is no workspace store, and the control is a single button
-   *  again. */
   onAddExisting?: () => void;
   variant: "strip" | "row";
-  /** The org is locked: nothing new lands on the employee. */
   locked?: boolean;
 }) {
   const { t } = useTranslation("skills");

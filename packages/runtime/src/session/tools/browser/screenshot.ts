@@ -7,7 +7,6 @@ import { untrusted } from "./untrusted";
 
 const jpeg = (page: Page) => page.screenshot({ type: "jpeg", quality: 60 });
 
-/** The page as a picture; `labeled` draws each visible control's ref on it. */
 export async function screenshot(
   tab: BrowserTab,
   labeled: boolean,

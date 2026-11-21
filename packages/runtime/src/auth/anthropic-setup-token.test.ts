@@ -10,9 +10,9 @@ import {
 import { type PiCred, scrubRefreshTokenAt } from "./auth-file";
 
 test("isAnthropicToken accepts setup tokens and console keys, rejects junk", () => {
-  expect(isAnthropicToken("sk-ant-oat01-abc123")).toBe(true); // setup token
-  expect(isAnthropicToken("  sk-ant-api03-xyz  ")).toBe(true); // console API key
-  expect(isAnthropicToken("sk-ant-oatXX")).toBe(false); // wrong prefix
+  expect(isAnthropicToken("sk-ant-oat01-abc123")).toBe(true);
+  expect(isAnthropicToken("  sk-ant-api03-xyz  ")).toBe(true);
+  expect(isAnthropicToken("sk-ant-oatXX")).toBe(false);
   expect(isAnthropicToken("hello")).toBe(false);
   expect(isAnthropicToken("")).toBe(false);
 });
@@ -20,11 +20,11 @@ test("isAnthropicToken accepts setup tokens and console keys, rejects junk", () 
 test("storeAnthropicToken stores a valid token (trimmed) and rejects junk", () => {
   const oat: string[] = [];
   storeAnthropicToken("  sk-ant-oat01-good  ", (k) => oat.push(k));
-  expect(oat).toEqual(["sk-ant-oat01-good"]); // setup token, trimmed + persisted
+  expect(oat).toEqual(["sk-ant-oat01-good"]);
 
   const api: string[] = [];
   storeAnthropicToken("sk-ant-api03-key", (k) => api.push(k));
-  expect(api).toEqual(["sk-ant-api03-key"]); // console API key also accepted
+  expect(api).toEqual(["sk-ant-api03-key"]);
 
   expect(() => storeAnthropicToken("not-a-token", () => {})).toThrow(
     /doesn't look like a Claude token/,
@@ -44,18 +44,12 @@ test("PASTE flow surfaces the help URL, then stores the pasted token", async () 
     },
     { store: (k) => stored.push(k) },
   );
-  // Wire shape unchanged: a help URL + paste instructions (auth_code in login.ts).
-  // The URL is the Console's API-keys page — somewhere a non-technical user can
-  // actually mint a pasteable value without a terminal.
   expect(seen.info?.url).toContain("console.anthropic.com");
   expect(seen.info?.instructions).toMatch(/API key/);
   expect(stored).toEqual(["sk-ant-oat01-pasted"]);
 });
 
 test("PASTE flow copy never instructs running a CLI (2026-08-15 incident)", async () => {
-  // Older clients render this wire string verbatim, and Houston's audience is
-  // non-technical: an instruction like "run `claude setup-token` in your
-  // terminal" must never reach a user again.
   const seen: { info?: { url: string; instructions: string } } = {};
   await runAnthropicSetupTokenLogin(
     {
@@ -94,9 +88,6 @@ test("Gate #2 scrub leaves the anthropic api_key entry intact", () => {
     },
   };
   writeFileSync(path, JSON.stringify(auth));
-  // The codex connect's provider-scoped scrub (PRODUCT-1320) — and even a
-  // direct scrub aimed at anthropic — leaves the api_key entry intact: it
-  // carries no refresh token, so the stored setup token survives verbatim.
   expect(scrubRefreshTokenAt(path, "anthropic")).toBe(false);
   expect(scrubRefreshTokenAt(path, "openai-codex")).toBe(true);
   const after = JSON.parse(readFileSync(path, "utf8")) as Record<

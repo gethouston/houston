@@ -8,12 +8,6 @@ import { parseGrant } from "./parse-turn-fields";
 import { createTurnServer } from "./server";
 import { buildTurnBrowserTool } from "./turn-toolset";
 
-/**
- * A worker serves a hand-off's live view only to the gateway (X-Internal-Token,
- * like dispatched work), and only offers `handoff` when the turn's grant says
- * the gateway will carry that view here.
- */
-
 const server = createTurnServer({
   store: new LocalDirStore(mkdtempSync(join(tmpdir(), "turn-live-"))),
   token: "turn-secret",
@@ -49,7 +43,6 @@ test("the live view routes need the internal token, then reach the hand-off regi
     expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({ code: "no_handoff" });
   }
-  // Other GETs stay unknown to a worker.
   const other = await fetch(`${base}/conversations/c-none/messages`, {
     headers: { "x-internal-token": "turn-secret" },
   });

@@ -16,15 +16,6 @@ import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { CheckoutPriceLine } from "../organization/checkout-price-line";
 import { SeatIntervalChoice } from "../organization/seat-interval-choice";
 
-/**
- * Unlock or Upgrade from the status strip or a locked chat, where the gateway
- * sells a yearly seat: pick monthly or yearly, see what the org's members
- * bill, then continue to checkout. `onStart` opens it inside this click, so
- * the browser keeps the tab, and the dialog stays up until the gateway
- * answers: a refused yearly keeps it open on monthly, the refetched prices
- * offering monthly alone. Where only monthly is sold the buttons start the
- * checkout directly and this never opens.
- */
 export function TeamStatusCheckoutDialog({
   open,
   onOpenChange,

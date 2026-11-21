@@ -22,17 +22,11 @@ import { pageSnapshot } from "./snapshot";
 import type { SnapshotView } from "./snapshot-view";
 import { checkBrowserUrl } from "./url-policy";
 
-/**
- * A ref names an element the latest snapshot saw, so one that is not there now
- * is stale: say so fast instead of waiting out the 15 s default.
- */
 const REF_TIMEOUT_MS = 5_000;
 
 export interface ActionOutcome {
   content: (TextContent | ImageContent)[];
-  /** The action may have changed sign-ins, so the state is saved after it. */
   mutated: boolean;
-  /** The anti-bot wall an `open` landed on, when asked to look (`detect`). */
   blocked?: Block;
 }
 
@@ -53,7 +47,6 @@ async function isPasswordField(field: Locator): Promise<boolean> {
 
 const text = (value: string): TextContent => ({ type: "text", text: value });
 
-/** Settles with `work`, or rejects as soon as the turn is stopped. */
 function unlessAborted<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
   if (!signal) return work;
   signal.throwIfAborted();
@@ -66,11 +59,6 @@ function unlessAborted<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
   });
 }
 
-/**
- * Run one action on the conversation's current page and describe the result.
- * A page with a dialog open is frozen: only answering it, or a look that
- * reports it, runs; and a dialog opening mid-action ends the action there.
- */
 export async function runBrowserAction(
   tab: BrowserTab,
   action: PageAction,
@@ -111,14 +99,10 @@ async function perform(
     mutated = true,
     view?: SnapshotView,
   ) => {
-    // Interrupted by a dialog and resumed once it was answered: the answer's
-    // own look reads the page (and any fence refusal) instead.
     if (lookEpoch(tab) !== epoch) throw new SupersededError();
     await settle(tab.page);
     await guardLanding(tab);
     return {
-      // The action's epoch, not the look's: a dialog opening during
-      // settle must still keep this late look from retiring newer refs.
       content: [text(`${lead}\n\n${await pageSnapshot(tab, view, epoch)}`)],
       mutated,
     };
@@ -146,7 +130,6 @@ async function perform(
     case "fill": {
       const secret = await isPasswordField(target(action.ref));
       await target(action.ref).fill(action.text, { timeout: REF_TIMEOUT_MS });
-      // The model may know the password; the transcript must not repeat it.
       return withSnapshot(
         secret
           ? `Filled the password field ${action.ref}.`

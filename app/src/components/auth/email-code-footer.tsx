@@ -1,11 +1,5 @@
 import { useTranslation } from "react-i18next";
 
-/**
- * Helper copy + secondary actions under the 6-digit code entry: where the code
- * went, resend, and a way back (switch address, or leave the account link).
- * `pr-12` mirrors the send button + gap on the row above, so the centered copy
- * lines up with the pin boxes, not the full row.
- */
 export function EmailCodeFooter({
   email,
   pending,
@@ -17,7 +11,6 @@ export function EmailCodeFooter({
 }: {
   email: string;
   pending: boolean;
-  /** Whether Back waits too; a code still being sent can be left. */
   backPending?: boolean;
   error: string | null;
   onResend: () => void;

@@ -1,17 +1,6 @@
 import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * Shared-skills calls must never put the SYNTHETIC personal workspace id on
- * the wire. The UI holds "default" (workspaces-mixin replaces the served
- * personal row), but no server speaks that vocabulary: the local host's
- * personal workspace id is its folder name and the gateway's is its fixed
- * "Houston" — both answer 404 "workspace not found" for "default", which
- * broke Share-to-workspace end to end. These tests pin the translation seam:
- * "default" resolves (once, cached) to the server's own non-`org:` workspace
- * row; `org:<slug>` team ids pass through untouched.
- */
-
 const originalFetch = globalThis.fetch;
 
 let store: Map<string, string>;

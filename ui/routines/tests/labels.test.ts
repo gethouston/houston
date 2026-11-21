@@ -21,8 +21,6 @@ describe("chat-first label contract", () => {
   });
   it("drops the removed manual-authoring row labels", () => {
     const keys = Object.keys(DEFAULT_ROW_LABELS);
-    // `save`/`cancel` are back for the inline schedule editor's popover footer,
-    // so they are intentionally NOT in this removed set anymore.
     for (const gone of [
       "editManually",
       "editWithAi",
@@ -105,8 +103,6 @@ describe("interp", () => {
   });
 });
 
-// A Spanish-flavored label set proves the formatters localize purely through
-// the `labels` + `locale` arguments — no English leaks through.
 const ES_SUMMARY: ScheduleSummaryLabels = {
   noSchedule: "Sin horario definido",
   custom: "Horario personalizado",
@@ -142,12 +138,10 @@ describe("cronSummary localization", () => {
     assert.equal(cronSummary("", ES_SUMMARY), "Sin horario definido");
   });
   it("localizes the weekly-on-days list through Intl", () => {
-    // English joins with the locale's conjunction (Oxford comma in en-US).
     assert.equal(
       cronSummary("0 9 * * 1,3,5"),
       "Runs every week on Mon, Wed, and Fri at 9:00 AM",
     );
-    // Spanish: localized template + weekday names + "y" connector, no English leak.
     const es = cronSummary("0 9 * * 1,3,5", ES_SUMMARY, "es");
     assert.match(es, /^Se ejecuta cada semana los /);
     assert.match(es, / y /);
@@ -174,7 +168,6 @@ describe("cronSummary localization", () => {
 
 describe("presetSummary localization", () => {
   it("renders a single-day Weekly as the weekday name", () => {
-    // Wednesday (day 3) in the default English locale.
     assert.equal(
       presetSummary("weekly", {
         time: "09:00",
@@ -183,7 +176,6 @@ describe("presetSummary localization", () => {
       }),
       "Runs every Wednesday at 9:00 AM",
     );
-    // ...and in Spanish, both the template and the day name localize.
     assert.match(
       presetSummary(
         "weekly",
@@ -221,7 +213,6 @@ describe("presetSummary localization", () => {
       }),
       "Runs on the 15th of every month at 9:00 AM",
     );
-    // Spanish uses the plain day number, not an English ordinal.
     assert.match(
       presetSummary(
         "monthly",

@@ -7,18 +7,10 @@ import {
   withAlpha,
 } from "./color.mjs";
 
-// The contrast ladder every imported palette is measured against: the surfaces
-// Houston paints information on, and the nudge that walks a hue toward an extreme
-// until it clears a WCAG floor on all of them. An imported palette is tuned for a
-// terminal, where text sits on one flat background; Houston sets the same hue on
-// four rows and on chips washed with a hue behind it, so a role worn AS TEXT is
-// legible only once it clears the floor on every one of those composites.
-
 export const BODY_FLOOR = 4.5;
 const STEP = 0.02;
 const STEPS = 50;
 
-/** The surfaces Houston paints information on, flattened to opaque colours. */
 export function surfaceStack(surfaces) {
   const screen = composite(surfaces.background, surfaces.base);
   const all = [
@@ -29,11 +21,6 @@ export function surfaceStack(surfaces) {
   ];
   return {
     all,
-    /**
-     * A chip washes a hue behind its own text, which tints the backdrop TOWARDS
-     * that text — a role measured only against the plain rows is measured
-     * against the easiest case, so the wash is part of its floor.
-     */
     washes: (hue, alphas) =>
       alphas.flatMap((alpha) =>
         all.map((row) => composite(withAlpha(hue, alpha), row)),

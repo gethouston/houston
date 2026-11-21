@@ -65,7 +65,6 @@ test("a paid org and deployments without org billing have no upgrade entry", asy
   await expect(page.getByTestId("sidebar-footer")).toBeVisible();
   await expect(page.getByTestId("plan-upgrade")).toHaveCount(0);
   await armPlan({ summary: plusPlan(true) });
-  // The paid org's billing rides the orgs list: once it is read, no row.
   await Promise.all([
     page.waitForResponse(
       (res) => new URL(res.url()).pathname === "/v1/orgs" && res.ok(),

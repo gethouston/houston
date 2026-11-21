@@ -19,13 +19,6 @@ import type { useMissionControl } from "../use-mission-control";
 import type { NewConversationArgs, SendOverrides } from "./board-source";
 import { editMission, moveFailure } from "./mission-writes";
 
-/**
- * Mission Control's card/composer actions, routed to the right agent. Create
- * resolves the target agent via {@link planNewMission}; send delegates to
- * `mc.handleSendMessage` (which resolves provider/model from the cached
- * target activity, falling back to the composer's pick); stop resolves its
- * agent from the session metadata.
- */
 export function useMcActions({
   mc,
   activeAgent,
@@ -33,7 +26,6 @@ export function useMcActions({
 }: {
   mc: ReturnType<typeof useMissionControl>;
   activeAgent: Agent | null;
-  /** Every agent path on the view, for query invalidation after a drag-move. */
   paths: string[];
 }) {
   const { t } = useTranslation(["dashboard", "board"]);
@@ -75,10 +67,6 @@ export function useMcActions({
     [activeAgent, mc.handleCreateConversation, addToast, t],
   );
 
-  // Cross-agent: the composer's provider/model are the chat panel's pick for
-  // the OPEN mission (its row's pin once loaded, the agent default until
-  // then); useMissionControl prefers the cached row's own pin and otherwise
-  // sends what the picker shows — never a pod read before the bubble.
   const sendMessageNow = useCallback(
     (
       sessionKey: string,
@@ -93,9 +81,6 @@ export function useMcActions({
     (sessionKey: string) => {
       const agentPath = missionControlAgentPathForSession(mc.items, sessionKey);
       if (!agentPath) return;
-      // Refetch on success so a card the engine settled off "running" (an
-      // orphaned turn with no live turn to abort) actually leaves the spinner;
-      // a failed stop still surfaces as a toast.
       tauriChat
         .stop(agentPath, sessionKey)
         .then(() => {
@@ -114,15 +99,6 @@ export function useMcActions({
     [mc.items],
   );
 
-  // Drag a card onto another column to change its status. The dragged card
-  // stays with its own agent, only its status moves, and it lands in the
-  // target column in the same frame as the drop (`editMission`); the refresh
-  // after the write re-reads both the cross-agent board and that agent's own,
-  // as the bulk move does. The board only fires this for a column
-  // `canDropItem` accepted, so `toColumnId` doubles as the new status. The
-  // celebration fires with the drop, like the checkmark's (declining a
-  // dragged `error` card is filing, not a win). Full contract in
-  // armMissionDoneCelebration.
   const handleItemMove = useCallback(
     (item: KanbanItem, toColumnId: string) => {
       const agentPath = item.metadata?.agentPath as string | undefined;
@@ -146,8 +122,6 @@ export function useMcActions({
     },
     [qc, paths],
   );
-  // A card can be dropped on a column iff the shared mission rule allows it:
-  // only needs_you / done, and never its current section. Agent-agnostic.
   const canDropItem = useCallback(
     (item: KanbanItem, toColumnId: string) =>
       canDropMission(missionColumnIdForStatus(item.status), toColumnId),

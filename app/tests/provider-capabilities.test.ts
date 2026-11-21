@@ -7,11 +7,6 @@ import {
 } from "../src/lib/providers.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
-// `/v1/catalog` is the single visibility source: `PROVIDERS` is hydrated from it,
-// so it already IS the deployment's runnable set. Populate the cache first, then
-// assert the helpers no longer re-gate by `capabilities.providers` — only the
-// local OpenAI-compatible provider (via `openaiCompatible`) and coming-soon are
-// held back.
 before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
 const providerIds = (providers: readonly { id: string }[]): readonly string[] =>
@@ -19,8 +14,6 @@ const providerIds = (providers: readonly { id: string }[]): readonly string[] =>
 
 describe("provider capability gating", () => {
   it("shows every catalog provider regardless of capabilities.providers", () => {
-    // A narrow capabilities.providers list used to hide everything absent from
-    // it; now the hydrated catalog decides, so all first-class providers show.
     const visible = providerIds(
       getVisibleProviders({
         newEngine: true,
@@ -88,12 +81,10 @@ describe("provider capability gating", () => {
         },
       }),
     );
-    // Exactly one OpenCode card, standing for both gateways; opencode-go folded in.
     deepStrictEqual(
       connect.filter((id) => id === "opencode" || id === "opencode-go"),
       ["opencode"],
     );
-    // Other providers still show even though only `opencode` was advertised.
     ok(connect.includes("anthropic"));
     ok(connect.includes("openai"));
   });

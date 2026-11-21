@@ -1,6 +1,3 @@
-// The composer's Escape: the @mention list first, then an in-flight dictation
-// capture, then a running turn.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import * as React from "react";

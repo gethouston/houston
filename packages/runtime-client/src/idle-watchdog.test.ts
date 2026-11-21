@@ -1,14 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { startIdleWatchdog } from "./idle-watchdog";
 
-/**
- * The watchdog counts silence only while the page runs. `vi.setSystemTime`
- * moves the clock without firing timers, which is what a page the OS keeps
- * asleep sees: at the next wake its sweep fires long after the one before.
- * The production timeout is used so the sweep (5 s) and lateness (10 s) are
- * the real ones.
- */
-
 const IDLE = 45_000;
 
 beforeEach(() => {
@@ -30,7 +22,6 @@ function watch() {
   return { dog, stalls: () => stalls };
 }
 
-/** The page sleeps for `ms`, then its next sweep fires. */
 function sleepThenWake(ms: number) {
   vi.setSystemTime(Date.now() + ms);
   vi.advanceTimersByTime(5_000);
@@ -59,7 +50,6 @@ test("a page woken once a minute never stalls its stream", () => {
   const { dog, stalls } = watch();
   for (let i = 0; i < 10; i++) {
     sleepThenWake(60_000);
-    // The heartbeats queued during the sleep land after the sweep ran.
     dog.touch();
   }
   expect(stalls()).toBe(0);

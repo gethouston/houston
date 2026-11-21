@@ -11,48 +11,16 @@ import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import { RoutineSetupChatBoard } from "./routine-setup-chat-board";
 
 interface Props {
-  /** The agent that owns this setup chat. */
   agent: Agent;
-  /**
-   * The chat's activity — a skill's persistent chat or an unclaimed draft —
-   * or null while it is still being created / loading (renders a calm
-   * loading state, never a dead screen).
-   */
   activity: Activity | null;
-  /** Which chat this is: an installed skill's own chat, or a create draft.
-   *  Drives the header label and the Edit-manually affordance. */
   kind: "skill" | "draft";
-  /** The skill's display name, for the "Skill: {name}" header. Unused for
-   *  drafts (the header shows the create title). */
   skillName?: string;
-  /** The skill's directory slug — pins the per-turn model context to the
-   *  bound skill. Unused for drafts (nothing exists to pin yet). */
   skillSlug?: string;
-  /** Close the pane and clear the selection (the catalog stays put). Wired
-   *  to the panel chrome's close X and Escape. */
   onClose: () => void;
-  /** The manual escape hatch (HOU-791 keeps it): THIS skill's raw markdown —
-   *  the editor's Text view beside the chat in the employee's Skills section. Only offered on an installed skill's chat. */
   onEditManually?: () => void;
-  /** Throw this unfinished chat away and start over on a fresh one. Only
-   *  offered on a draft that exists (nothing to discard before it does). */
   onDiscardDraft?: () => void;
 }
 
-/**
- * A custom skill's setup chat, rendered in the SHELL'S right-hand detail
- * panel — the same split the Routines section and the mission board use: the
- * Skills catalog stays visible on the left while the conversation opens as
- * its own screen card on the right. Mounting this component IS what opens
- * the panel (and unmounting closes it), so its host — an employee's Skills
- * section in its settings — gets the split without extra wiring.
- *
- * The guided chat is a real mission under the hood, but every board filters
- * it out via the skill-setup sentinel — its only home is this panel. The
- * shared {@link RoutineSetupChatBoard} does the AIBoard mount + full
- * `useAgentChatPanel` wiring — crucially `composerOverride`, which renders
- * the ask_user question cards the create interview depends on.
- */
 export function SkillSetupChat({
   agent,
   activity,
@@ -66,20 +34,12 @@ export function SkillSetupChat({
   const { t } = useTranslation("skills");
   const { panelContainer, setPanelOpen } = useShellDetailPanel();
 
-  // Mount = panel open, unmount = panel closed — but only while this chat's
-  // HOST SCREEN is on the glass. Both hosts are kept-alive views, so an
-  // ungated claim outlives navigation and holds the shared panel open (and
-  // empty) over whatever screen the user went to; the Routines chat and the
-  // archive both gate exactly like this (HOU-1165's rule).
   const isActive = useIsActiveView();
   useEffect(() => {
     setPanelOpen(isActive);
     return () => setPanelOpen(false);
   }, [setPanelOpen, isActive]);
 
-  // Escape closes the panel (routines parity). Radix menus/dialogs mark their
-  // own Escape handled (`defaultPrevented`); a focused composer gets the FIRST
-  // Escape to blur (app convention), the pane only on the next one.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
@@ -104,10 +64,6 @@ export function SkillSetupChat({
       ? t("setupChat.missionTitle")
       : t("setupChat.skillLabel", { name: skillName ?? "" });
 
-  // Draft still being created, or a skill chat still loading: a slim header
-  // (same shape + close as the live panel's) keeps the panel dismissable
-  // while it settles — portaled into the shell panel like the live board, so
-  // the pre-model state shares the same surface.
   if (!activity) {
     const surface = (
       <div className="flex h-full min-h-0 flex-col">
@@ -139,9 +95,6 @@ export function SkillSetupChat({
 
   const sessionKey = activity.session_key ?? `activity-${activity.id}`;
 
-  // The manual editor and the way out of an unfinished chat stay one click
-  // away — always visible in the header, never behind a menu (no hover-only
-  // affordances).
   const headerActions =
     kind === "skill" && onEditManually ? (
       <Button variant="outline" size="sm" onClick={onEditManually}>
@@ -153,9 +106,6 @@ export function SkillSetupChat({
       </Button>
     ) : undefined;
 
-  // The board renders its detail panel straight into the shell panel via
-  // `panelContainer`; its own list never shows, so the board itself stays
-  // hidden (the portal escapes the `hidden` wrapper). One mount, one panel.
   return (
     <div className="hidden">
       <RoutineSetupChatBoard
@@ -166,11 +116,7 @@ export function SkillSetupChat({
         missionLabel={missionLabel}
         panelActions={headerActions}
         onPanelClose={onClose}
-        // Beside the editor the user may already be renaming or typing.
         disableComposerAutoFocus={kind === "skill"}
-        // Every send re-asserts which skill this chat manages — the model
-        // must never have to remember it from the kickoff alone (it was
-        // observed asking "which skill?" inside a skill's own chat).
         promptContext={
           kind === "skill" && skillSlug
             ? skillChatTurnContext({

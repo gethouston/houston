@@ -3,25 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, vi } from "vitest";
 
-// Keep every file these tests touch inside a throwaway dir (same discipline as
-// chat.test.ts): the compaction store binds to config.dataDir at module load.
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "houston-checkpoint-"),
 );
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-checkpoint-ws-"),
 );
-
-/**
- * THE CLAUDE BACKEND'S COMPACTION CHECKPOINT is a summary armed to be prepended
- * to the conversation's NEXT anthropic prompt, and while it is armed the
- * backend deliberately does not resume a session either (backends/claude/
- * session.ts). So it is session state, and every reset that drops session state
- * has to drop it too: a `/clear` that left it armed would answer the user's
- * fresh start from a summary of what they just cleared, and a conversation that
- * left anthropic would read the same stretch twice on its way back - once as
- * the transcript replay the switch carried over, once as this summary.
- */
 
 const backends = vi.hoisted(() => ({
   next: { id: "pi", createSession: vi.fn(async () => ({}) as never) },
@@ -90,8 +77,6 @@ test("a same-backend turn keeps the summary it is about to deliver", async () =>
 });
 
 test("dropping a conversation's sessions disarms the checkpoint", async () => {
-  // What `/clear` and the edit-and-resend rewind both run. Left armed, the next
-  // anthropic turn answers from a summary of the history just deleted.
   const id = armed("cleared");
   await disposeConversation(id, { deleteSessions: true });
   expect(conversationCompactions.read(id)).toBeUndefined();

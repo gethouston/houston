@@ -11,7 +11,6 @@ import { useSwapIn } from "./use-swap-in";
 
 type Share = ReturnType<typeof useOrgChartShare>;
 
-/** A pill that presses in. */
 export function ShareButton({
   icon,
   label,
@@ -30,10 +29,6 @@ export function ShareButton({
   );
 }
 
-/**
- * The primary pill. One element through every step, so a new step eases its
- * colors over the old ones and brings its label in (`useSwapIn`).
- */
 function StepButton({
   icon,
   label,
@@ -66,7 +61,6 @@ type StepProps = Pick<ComponentProps<typeof Button>, "disabled" | "onClick"> & {
   label: string;
 };
 
-/** The primary button's face and action for the step. */
 function stepProps(
   share: Share,
   words: LinkedInTextCheck,
@@ -109,13 +103,6 @@ function stepProps(
   }
 }
 
-/**
- * The dialog's primary button for where it stands (`shareStep`), with what
- * belongs right under it: whose LinkedIn a post goes to (and Disconnect), or
- * that a connect is waiting on the LinkedIn window (and Start over). The
- * post's words are checked as the gateway counts them (`checkLinkedInText`);
- * copy and paste only needs some.
- */
 export function SharePrimary({ share }: { share: Share }) {
   const { t } = useTranslation("teams");
   const { step } = share;

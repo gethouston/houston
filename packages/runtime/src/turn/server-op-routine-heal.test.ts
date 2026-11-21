@@ -11,14 +11,6 @@ import {
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/**
- * A routine write against a routine the store no longer holds (HOUSTON-APP-5JZ
- * / 5K0): the caller picked it from the gateway's stale asleep mirror of the
- * routines doc. The worker relays the host's 404 untouched and re-projects the
- * routines doc from the store, announcing `RoutinesChanged` once it landed so
- * every member's list drops the ghost.
- */
-
 const servers: Server[] = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();
@@ -35,7 +27,6 @@ const LIVE = {
   enabled: true,
 };
 
-/** The doc route never answers a PUT until the request is aborted. */
 function hangingPut(init?: RequestInit): Promise<Response> {
   return new Promise((_resolve, reject) => {
     const signal = init?.signal;
@@ -50,7 +41,6 @@ async function worker(
   const pool = fakePoolStore(PREFIX);
   pool.put("workspaces/Personal/Bob/CLAUDE.md", "# Bob\n");
   pool.put(ROUTINES_KEY, JSON.stringify([LIVE]));
-  // The gateway's asleep mirror still lists the deleted routine.
   pool.docs.set("routines", {
     doc: options.mirror ?? [LIVE, { ...LIVE, id: "r-ghost" }],
     revision: 1,
@@ -127,7 +117,6 @@ test.each([
   expect(puts[0]?.claim).toBe("agent-ops");
   expect(JSON.stringify(puts[0]?.doc)).toContain("r-live");
   expect(JSON.stringify(puts[0]?.doc)).not.toContain("r-ghost");
-  // Nothing was written: the store tree is untouched.
   expect(pool.writes).toEqual([]);
   expect(JSON.parse(pool.read(ROUTINES_KEY))).toEqual([LIVE]);
 });

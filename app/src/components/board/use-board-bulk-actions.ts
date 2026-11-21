@@ -9,12 +9,6 @@ import {
 } from "../../lib/mission-selection";
 import type { BoardSelectionModel } from "./board-selection-model";
 
-/**
- * The floating bulk-action-bar config for a {@link BoardSelectionModel}: move
- * targets for the locked section, move / archive / delete dispatch (each
- * paints now; a refusal toasts from the write itself), and the bar's labels.
- * `undefined` without a selection model.
- */
 export function useBoardBulkActions({
   selection,
   selectionLockColumnId,
@@ -30,10 +24,6 @@ export function useBoardBulkActions({
 }) {
   const { t } = useTranslation(["board", "dashboard"]);
 
-  // A removal takes its cards off the board in the same frame as the click,
-  // so the open chat's panel closes with them (membership is read before the
-  // op, which clears the selection set). A refusal brings the cards back
-  // with its own toast; the panel stays closed.
   const runRemoval = useCallback(
     (op: () => void) => {
       const closesOpenChat =
@@ -56,14 +46,6 @@ export function useBoardBulkActions({
               : t("dashboard:columns.needsYou"),
         }),
       ),
-      // One celebration for the whole batch, fired with the move it paints
-      // (the single-card checkmark's rule, `armMissionDoneCelebration`). The
-      // statuses are read BEFORE the move rewrites them and clears the
-      // selection: a Needs you selection can mix settled and failed missions,
-      // so the batch celebrates when at least one of them succeeded, and a
-      // batch of nothing but failures moves in silence. No card origin: a bulk
-      // move finishes many cards at once, so the burst keeps the default rise
-      // from the bottom of the board.
       onMove: (status: string) => {
         const fromStatuses = allItems
           .filter((a) => selection.selectedIds.has(a.id))

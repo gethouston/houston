@@ -4,12 +4,6 @@ import { join } from "node:path";
 import { expect, test, vi } from "vitest";
 import { runTurn } from "./turn-session";
 
-/**
- * The end of a pooled turn's prompt, clean or stopped, abandons its deferred
- * files before anything waits on them: a text-only turn's terminal frame
- * never waits for a folder download no tool asked for.
- */
-
 const prompt = vi.hoisted(() => ({ stop: false }));
 
 vi.mock("./turn-runtime", () => ({

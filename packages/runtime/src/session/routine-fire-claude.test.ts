@@ -6,16 +6,7 @@ import { routineRunPreamble } from "@houston/domain";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { ResolvedModel } from "../backends/types";
 
-/**
- * The routine context rule on the standing server's real turn path and the
- * real Claude Agent SDK backend: every fire of a shared routine chat starts on
- * a fresh SDK session carrying a short digest of the latest runs, and a
- * person's turn resumes the session the last fire opened. Only the Anthropic
- * API is simulated (simulated-api.test-support.ts).
- */
-
 process.env.HOUSTON_HOME = mkdtempSync(join(tmpdir(), "houston-rovf-home-"));
-// The standing layout: the runtime's data lives inside the agent's folder.
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-rovf-ws-"),
 );
@@ -25,8 +16,6 @@ process.env.HOUSTON_DATA_DIR = join(
   "runtime",
 );
 
-// claude-opus-5: 1M in pi's registry, 200k on the standard plan — Houston's
-// catalog (MODEL_WINDOW_OVERRIDES) sizes it at 200k, as the simulated API does.
 const target = vi.hoisted(() => ({
   model: {
     provider: "anthropic",
@@ -92,7 +81,6 @@ function useSimulatedApi() {
   return api;
 }
 
-/** A routine chat that ran `runs` times, the last run ending at `lastFill`. */
 function seedRoutineChat(id: string, runs: number, lastFill: number): void {
   for (let run = 0; run < runs; run++) {
     appendUserMessage(id, PROMPT, { turnId: `${id}-run-${run}` });
@@ -111,7 +99,6 @@ function seedRoutineChat(id: string, runs: number, lastFill: number): void {
   }
 }
 
-/** Map the conversation onto an SDK session holding `tokens` tokens. */
 function seedSdkSession(
   api: ReturnType<typeof simulatedClaudeApi>,
   id: string,
@@ -134,7 +121,6 @@ const lastAssistant = (id: string) =>
     ?.messages.filter((m) => m.role === "assistant")
     .at(-1);
 
-/** A routine fire, as the host's firer sends it (ROUTINE_FIRE_HEADER). */
 const fireRoutine = (id: string) =>
   runTurn(
     id,
@@ -156,7 +142,6 @@ beforeEach(() => {
 
 const DIGEST_HEAD = "[Earlier runs of this automation, newest first.";
 
-/** The workspace path the digest points the agent at, read from the prompt. */
 const pointerIn = (prompt: string) =>
   /in the file (\S+), newest first/.exec(prompt)?.[1];
 
@@ -173,7 +158,6 @@ test("a fire after forty runs starts a fresh session on the instructions and a s
   expect(call?.refused).toBe(false);
   const prompt = call?.prompt ?? "";
   expect(prompt.startsWith(DIGEST_HEAD)).toBe(true);
-  // The routine's own instructions ride every fire, once.
   expect(prompt.endsWith(PROMPT)).toBe(true);
   expect(prompt.split("Check the billing inbox")).toHaveLength(2);
   const digest = prompt.slice(0, -PROMPT.length);
@@ -182,7 +166,6 @@ test("a fire after forty runs starts a fresh session on the instructions and a s
   );
   expect(digest).not.toContain("INV-1034");
   expect(estimateTokens(digest)).toBeLessThanOrEqual(2_000);
-  // No divider: a fresh start is every fire's normal, not a compaction.
   expect(lastAssistant(id)?.compaction).toBeUndefined();
   expect(lastAssistant(id)?.providerError).toBeUndefined();
 });
@@ -212,7 +195,6 @@ test("every fire drops the session the previous fire opened; a person's turn res
 
   await fireRoutine(id);
   const first = api.calls.at(-1);
-  // A fresh process (idle eviction, pod restart) must not resume it either.
   await disposeConversation(id);
   await fireRoutine(id);
   const second = api.calls.at(-1);
@@ -221,7 +203,6 @@ test("every fire drops the session the previous fire opened; a person's turn res
 
   expect(first?.resume).toBeUndefined();
   expect(second?.resume).toBeUndefined();
-  // The second fire remembers the first through the digest alone.
   expect(second?.prompt).toContain(`run, finished: ${SIMULATED_REPLY}`);
   expect(chat?.resume).toBe("sim-2");
   expect(chat?.prompt).toBe("Draft the follow-up email.");

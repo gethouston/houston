@@ -10,13 +10,6 @@ import { CustomDetailDialog } from "./custom-detail-dialog";
 import { CustomEditDialog } from "./custom-edit-dialog";
 import { CustomKeyDialog } from "./custom-key-dialog";
 
-/**
- * The one selection state behind the custom-integration dialog trio (detail /
- * key / delete). Slug-keyed on purpose: the dialogs re-derive the FRESH view
- * from the live list on every render, so a key save flips the open detail
- * card to its active state, and a removal (here or from anywhere else) closes
- * whatever was open on the vanished slug instead of showing a ghost.
- */
 export interface CustomSelection {
   detailSlug: string | null;
   keySlug: string | null;
@@ -33,8 +26,6 @@ export function useCustomSelection(): CustomSelection {
   const [detailSlug, setDetailSlug] = useState<string | null>(null);
   const [keySlug, setKeySlug] = useState<string | null>(null);
   const [removeSlug, setRemoveSlug] = useState<string | null>(null);
-  // Stable identity per slug-state, so effects can depend on the selection
-  // without firing every render.
   return useMemo(
     () => ({
       detailSlug,
@@ -51,14 +42,6 @@ export function useCustomSelection(): CustomSelection {
   );
 }
 
-/**
- * The dialog trio for one surface, driven by {@link useCustomSelection}. With
- * an `agentId` every read/write rides the per-agent routes (HOU-823), so the
- * per-agent transport keeps working behind the hosted gateway (where
- * the top-level custom routes 404). The detail card's own Enter/Update key and
- * Remove buttons chain into the sibling dialogs, closing the detail first so
- * one modal is on stage at a time.
- */
 export function CustomIntegrationDialogs({
   selection,
   agentId,
@@ -74,9 +57,6 @@ export function CustomIntegrationDialogs({
   const bySlug = (slug: string | null) =>
     slug === null ? null : (items.find((i) => i.slug === slug) ?? null);
 
-  // A slug the RESOLVED list no longer carries is a finished selection, not a
-  // sleeper: without this, removing "acme" elsewhere (chat tool, another
-  // device) and re-adding it later would spontaneously reopen the old dialog.
   const resolved = Array.isArray(list.data);
   const editing = bySlug(editSlug);
   useEffect(() => {
@@ -103,8 +83,6 @@ export function CustomIntegrationDialogs({
           selection.openKey(integration.slug);
         }}
         onSignIn={(integration) => {
-          // The browser carries the rest of the flow; the card stays open
-          // and flips to active on the CustomIntegrationsChanged event.
           signIn.mutate({ slug: integration.slug, tab: claimSignInTab() });
         }}
         onRemove={(integration) => {

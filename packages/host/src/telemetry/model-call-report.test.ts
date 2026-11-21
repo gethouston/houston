@@ -38,7 +38,7 @@ function harness(status: number | Error) {
 test("posts the report once per turn with the pod bearer", async () => {
   const { sent, forward, warn, error } = harness(200);
   forward(report("t1"));
-  forward(report("t1")); // the settle's retry replays the same turn
+  forward(report("t1"));
   await vi.waitFor(() => expect(sent).toHaveLength(1));
   expect(sent[0]?.url).toBe(
     "http://gateway.test/v1/pod/model-calls/acme/0123456789abcdef",

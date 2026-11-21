@@ -10,13 +10,6 @@ import { draftChip, pageName } from "./citation-labels";
 import type { CitedText } from "./cited-submit";
 import { useDraftCitations } from "./use-draft-citations";
 
-/**
- * The composer's side of file comments for one chat: the chip row its header
- * shows, and the submit step that folds the comments into the message. Every
- * composer send runs through `prepare` (the board's submit interceptor), so no
- * send path can leave the comments behind. They leave the draft while the
- * send is out and come back unless the engine accepts it.
- */
 export function useCitationComposer(
   agentPath: string | null,
   draftKey: string,
@@ -95,8 +88,6 @@ export function useCitationComposer(
           onUnsent: () => citationsFacade.module().release(cited),
         };
       } catch (error) {
-        // The crops never reached the workspace: nothing was sent, and the
-        // comments are back in the draft for a retry.
         showSendFailedToast(error);
         throw error;
       }

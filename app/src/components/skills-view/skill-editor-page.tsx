@@ -27,37 +27,16 @@ import {
 } from "./workspace-skill-menu-items";
 
 export interface SkillEditorPageProps extends SkillEditorActions {
-  /** The skill as this employee's section lists it. */
   row: ManagedSkillRow;
-  /** Every AI Employee in the workspace, whom the menu's "for everyone" acts
-   *  read and reach. */
   workspaceAgents: Agent[];
-  /** The AI Employee whose Skills section this editor stands in. */
   agent: Agent;
   shared?: SharedDialogActions;
-  /** The view the host pinned (the chat's "Edit manually"), or null for the
-   *  skill's own default. */
   view: SkillEditorView | null;
   onViewChange: (view: SkillEditorView) => void;
-  /** Back to the list. */
   onBack: () => void;
-  /** Reopen the skill's chat; omitted while it is already on the glass. */
   onOpenChat?: () => void;
 }
 
-/**
- * One skill, full page: the workflow (or its markdown) on the left of the
- * shell's detail panel, which holds the skill's own chat. It takes the surface
- * in place of the list, header included: the editor's own back arrow is the
- * way back.
- *
- * Content and the pending rename commit in ONE save, to THIS employee's skill.
- * Its danger action is this employee's alone: on a workspace skill, "stop
- * loading it here" (a reversible manifest write); on a copy, deleting this
- * employee's copy. The acts that reach every employee (share, enable for all,
- * delete for all) sit in the header menu and run on the workspace row. A
- * locked org keeps the skill open to read and turns every write off.
- */
 export function SkillEditorPage({
   row,
   workspaceAgents,
@@ -80,8 +59,6 @@ export function SkillEditorPage({
     shared,
     onBack,
   });
-  // The act a confirmed "discard changes" runs. Every way OUT of a dirty
-  // editor goes through it, so none of them can drop typed work silently.
   const [pendingLeave, setPendingLeave] = useState<{ run: () => void } | null>(
     null,
   );

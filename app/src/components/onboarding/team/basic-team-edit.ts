@@ -1,20 +1,7 @@
-// `.ts` extensions so the node test runner can load this module on its own.
-
 import type { AgentRoleId } from "../../../lib/agent-role-catalog.ts";
 import { AGENT_COMMON_ROLES } from "../../../lib/agent-role-catalog-data.ts";
 import { type BasicTeamDraft, draftFor } from "./basic-team-model.ts";
 
-/**
- * The team with one more card, on TOP, where the person pressing "Hire one
- * more" sees it: the first shared job (`AGENT_COMMON_ROLES`, read right in any
- * industry) no card began as, or, once all of them are dealt, the first shared
- * job again under a fresh key. The person changes its job on the card like
- * any other's.
- *
- * A default color is dealt by place (`basicTeamColors`), so a card arriving
- * first would move every other card's color. The colors shown are pinned to
- * the cards that wear them, and the new card takes the next free one.
- */
 export function basicTeamAdd(
   drafts: readonly BasicTeamDraft[],
   roleLabel: (id: AgentRoleId) => string,
@@ -35,8 +22,6 @@ export function basicTeamAdd(
   return [added, ...pinColors(drafts, shownColors)];
 }
 
-/** Each draft wearing the color it shows, so no card changes color when
- *  another card arrives or leaves. */
 function pinColors(
   drafts: readonly BasicTeamDraft[],
   shownColors: readonly string[],
@@ -48,7 +33,6 @@ function pinColors(
   );
 }
 
-/** A picked swatch trades places with the card already wearing it. */
 export function basicTeamRecolor(
   drafts: readonly BasicTeamDraft[],
   index: number,
@@ -71,8 +55,6 @@ export function basicTeamRecolor(
   }));
 }
 
-/** Whether the card at `index` may be let go: a draft not yet hired, while
- *  another card would still stand. */
 export function basicTeamRemovable(
   drafts: readonly BasicTeamDraft[],
   index: number,
@@ -80,8 +62,6 @@ export function basicTeamRemovable(
   return drafts.length > 1 && drafts[index]?.rosterKey === null;
 }
 
-/** The team without the card at `index`, when it may be let go; the others
- *  keep the colors they show. */
 export function basicTeamRemove(
   drafts: readonly BasicTeamDraft[],
   index: number,

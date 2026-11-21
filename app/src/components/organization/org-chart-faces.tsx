@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { PersonFace } from "../mission-person-face";
 import type { ChartPerson, ChartRelation } from "./org-chart-people";
 
-/** The relation dot: solid for manages, outlined for uses. */
 function RelationDot({
   relation,
   className,
@@ -25,12 +24,6 @@ function RelationDot({
   );
 }
 
-/**
- * The face's drawn size. Every face sits in a 24px target whatever its size,
- * so neighbours touch rather than overlap (their rings part them) and no
- * face takes another's taps; the target reaches 44px tall, over the line's
- * own button, without moving anything.
- */
 const FACE = {
   line: "size-6",
   featured: "size-7",
@@ -41,12 +34,6 @@ export interface ChartFace {
   relation: ChartRelation;
 }
 
-/**
- * People as a row of faces, each wearing its relation dot and each a button
- * to that person in Admin > People. Past `max` the rest is a quiet "+N".
- * `cut` names the surface under the row so the rings that part the faces
- * match it.
- */
 export function OrgChartFaces({
   faces,
   size = "line",
@@ -101,7 +88,6 @@ export function OrgChartFaces({
   );
 }
 
-/** The key to the relation dots, in a word on the phone. */
 export function OrgChartRelationKey({ className }: { className?: string }) {
   const { t } = useTranslation("teams");
   return (

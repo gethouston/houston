@@ -11,9 +11,6 @@ describe("canShowAgentShareBlock", () => {
   const MEMBER: Capabilities = { multiplayer: true, role: "user" };
 
   it("single-player NEVER renders the share block, even though the caller manages everything", () => {
-    // Regression guard: canManageAssignments short-circuits to true in
-    // single-player (matrix v2), so gating on it alone would resurrect an
-    // empty, non-functional org-share block on every self-host agent.
     strictEqual(
       canShowAgentShareBlock(SINGLE_PLAYER, { access: undefined }),
       false,
@@ -51,10 +48,6 @@ describe("canShowAgentShareBlock", () => {
   });
 
   it("the client trusts the wire `access` field, which the gateway clamps by role", () => {
-    // A role-`user` never carries `access="manager"` on the wire (the gateway
-    // clamps stale rows away before they reach the client), so this pairing is
-    // an impossible state. The pure gate trusts the already-effective `access`
-    // rather than re-clamping by role, matching isAgentManager.
     strictEqual(canShowAgentShareBlock(MEMBER, { access: "manager" }), true);
   });
 });

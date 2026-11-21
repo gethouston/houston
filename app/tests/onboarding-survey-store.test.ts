@@ -17,7 +17,6 @@ import {
   type SurveyStorePorts,
 } from "../src/lib/onboarding-survey-store.ts";
 
-// The store logs the engine-write failures it deliberately swallows.
 console.error = () => {};
 
 const UID = "uid-1";
@@ -28,7 +27,6 @@ interface Harness {
   engine: Map<string, string>;
   local: Map<string, string>;
   writes: string[];
-  /** Flip the engine preference store between healthy and "pod is waking". */
   setEngineWrites: (ok: boolean) => void;
 }
 
@@ -74,8 +72,6 @@ const record = (
 
 describe("onboarding survey store durability", () => {
   it("keeps the answer on the device when the engine write fails", async () => {
-    // Deliberately non-blocking: a pod blip must
-    // not block the save or re-ask an answered question.
     const h = harness({ failEngineWrite: true });
     await persistSurveyPreference(UID, record(), h.ports);
     strictEqual(h.engine.size, 0);
@@ -86,8 +82,6 @@ describe("onboarding survey store durability", () => {
   });
 
   it("re-persists the mirror to an engine that lost the record", async () => {
-    // The durability half of that trade-off: the next load notices the engine
-    // has nothing and pushes the device's copy back up.
     const h = harness();
     h.local.set(MIRROR_KEY, serializeOnboardingSurveyPreference(record()));
 
@@ -113,8 +107,6 @@ describe("onboarding survey store durability", () => {
     );
     deepStrictEqual(corrupt.writes, [ONBOARDING_SURVEY_PREF_KEY]);
 
-    // A mirror strictly newer than the engine copy is an answer whose engine
-    // write failed after the last successful one: it wins, and heals.
     const stale = harness();
     const newer = record({
       industry: "healthcare",
@@ -138,7 +130,6 @@ describe("onboarding survey store durability", () => {
     h.local.set(MIRROR_KEY, serializeOnboardingSurveyPreference(record()));
     deepStrictEqual(await loadSurveyPreference(UID, false, h.ports), record());
     deepStrictEqual(h.writes, []);
-    // The mirror is refreshed from the engine copy either way.
     ok(h.local.get(MIRROR_KEY));
   });
 
@@ -150,18 +141,10 @@ describe("onboarding survey store durability", () => {
 });
 
 describe("reconciling the two copies of one record", () => {
-  // `updatedAt` moves with the ANSWERS only, so a tie proves nothing about the
-  // rest of the record — it has to be resolved field by field.
   const at = (updatedAt: string, patch: Partial<OnboardingSurveyPreference>) =>
     record({ updatedAt, ...patch });
 
   it("prefers the engine's ANSWERS on a tie, and voids the stale stamp", () => {
-    // TWO DEVICES. This one answered the role and pushed it (stamped), then
-    // device B answered the industry; the fold of B's answer into THIS record
-    // holds `updatedAt` (`mergeGatewayOnboarding`), so the engine copy ties
-    // with the mirror while holding strictly more. Handing the tie to the
-    // mirror wholesale deleted the industry AND kept the stamp that suppressed
-    // the catch-up: the answer was gone from this device forever.
     const mirror = at("2026-08-01T10:00:00.000Z", {
       gatewaySyncedAt: "2026-08-01T10:30:00.000Z",
       completionPromptDismissed: true,
@@ -171,10 +154,7 @@ describe("reconciling the two copies of one record", () => {
     const { record: won, healEngine } = reconcileSurveyCopies(mirror, engine);
     strictEqual(won.role, "paralegal");
     strictEqual(won.industry, "healthcare");
-    // The stamp described answers this record no longer matches: dropping it is
-    // what lets the (whole-record) catch-up flush repair the gateway.
     strictEqual(won.gatewaySyncedAt, null);
-    // …and the dismissal is monotone, so it survives the answers losing.
     strictEqual(won.completionPromptDismissed, true);
     strictEqual(healEngine, true);
   });
@@ -210,8 +190,6 @@ describe("reconciling the two copies of one record", () => {
   });
 
   it("never loses a dismissal to a newer copy that never saw it", () => {
-    // Monotone: nothing un-dismisses the prompt, so an OR is always right and
-    // a device that dismissed it is never interrupted again.
     const dismissed = at("2026-08-01T10:00:00.000Z", {
       completionPromptDismissed: true,
     });
@@ -235,11 +213,6 @@ describe("reconciling the two copies of one record", () => {
 
 describe("local state that never moves updatedAt", () => {
   it("keeps a dismissal whose engine write failed", async () => {
-    // `applyCompletionDismissed` deliberately leaves `updatedAt` (and the sync
-    // stamp) alone — it is not an answer. So a dismissal the pod refused ties
-    // with the engine's copy, and a strict `>` comparison handed the tie to
-    // the engine AND overwrote the mirror with it: the completion prompt came
-    // back on every launch, forever.
     const h = harness();
     const answered = applyRole(createOnboardingSurveyPreference(), "paralegal");
     await persistSurveyPreference(UID, answered, h.ports);
@@ -253,9 +226,7 @@ describe("local state that never moves updatedAt", () => {
     h.setEngineWrites(true);
     const loaded = await loadSurveyPreference(UID, false, h.ports);
     strictEqual(loaded?.completionPromptDismissed, true);
-    // …and the mirror was not rolled back to the engine's undismissed copy.
     ok(h.local.get(MIRROR_KEY)?.includes('"completionPromptDismissed":true'));
-    // The engine copy is healed on the way out, so the next device agrees.
     ok(
       h.engine
         .get(ONBOARDING_SURVEY_PREF_KEY)
@@ -264,10 +235,6 @@ describe("local state that never moves updatedAt", () => {
   });
 
   it("does not let a stale mirror stamp bury an answer merged into the engine", async () => {
-    // End to end through the store: the mirror carries a sync stamp, the engine
-    // copy carries an answer folded in from another device at the SAME
-    // `updatedAt`. The answer must survive the load, the stamp must not, and
-    // the mirror must be rewritten with the reconciled record.
     const h = harness();
     const mirror = markGatewaySynced(record(), "2026-08-01T10:30:00.000Z");
     const engine = record({ industry: "healthcare" });
@@ -282,14 +249,10 @@ describe("local state that never moves updatedAt", () => {
     strictEqual(loaded?.role, "paralegal");
     strictEqual(loaded?.gatewaySyncedAt, null);
     ok(h.local.get(MIRROR_KEY)?.includes('"industry":"healthcare"'));
-    // Nothing to heal — the engine already holds exactly this record.
     deepStrictEqual(h.writes, []);
   });
 
   it("keeps a mirror-only gateway stamp on a tie whose answers agree", async () => {
-    // `markGatewaySynced` holds `updatedAt` too. The stamp is harmless to lose
-    // today (a re-push is idempotent), but dropping it would order a needless
-    // catch-up PUT — so it survives when nothing about the answers is in doubt.
     const h = harness();
     const answered = record();
     h.engine.set(
@@ -307,8 +270,6 @@ describe("local state that never moves updatedAt", () => {
   });
 
   it("still lets a current engine copy win an ordinary tie", async () => {
-    // Nothing monotone differs, so the account store stays the source of
-    // truth and nothing is re-pushed.
     const h = harness();
     const both = record({ completionPromptDismissed: true });
     h.engine.set(
@@ -340,7 +301,6 @@ describe("an account that answered before the survey existed", () => {
 
   it("keeps a stored survey record's department as it reads it", async () => {
     const h = harness();
-    // A record from before the role question: no role fields at all.
     const {
       role: _role,
       roleOther: _other,

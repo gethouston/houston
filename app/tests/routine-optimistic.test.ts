@@ -8,11 +8,6 @@ import {
   replaceRoutineInList,
 } from "../src/lib/routine-optimistic.ts";
 
-/**
- * PRODUCT-1706 — a routine edit paints immediately. These pin that the interim
- * shape matches what the host will apply: the schedule moves at once, a wake
- * mechanism switch never leaves both set, and a null clears a pin.
- */
 const NOW = "2026-09-08T13:28:21.755Z";
 
 function routine(overrides: Partial<Routine> = {}): Routine {

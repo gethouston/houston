@@ -27,11 +27,6 @@ async function seed(root: string, rel: string, content: string) {
   await writeFile(path, content);
 }
 
-/**
- * The store as a burst of new missions on one agent sees it: before each of
- * this turn's first `races` board uploads, the gateway lands a sibling
- * mission's card, so the upload misses its generation.
- */
 function burstStore(storeRoot: string, races: number): ObjectStore {
   const inner = new LocalDirStore(storeRoot);
   const boardKey = `${PREFIX}/${boardRel}`;
@@ -65,9 +60,7 @@ function burstStore(storeRoot: string, races: number): ObjectStore {
   };
 }
 
-/** A claimed new-mission turn whose tree holds the titled card, then durability. */
 async function titledTurn(races: number) {
-  // Delays at half their ceiling: the rounds still wait, the suite stays fast.
   vi.spyOn(Math, "random").mockReturnValue(0);
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   const storeRoot = await mkdtemp(join(tmpdir(), "title-sync-"));

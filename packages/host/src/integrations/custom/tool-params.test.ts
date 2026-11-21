@@ -2,13 +2,6 @@ import { expect, test } from "vitest";
 import type { ToolMatch } from "../types";
 import { attachToolParams } from "./tool-params";
 
-/**
- * The executor's tool LISTING never carries an input schema (PRODUCT-1841):
- * a match built from it has no inputParams until `tools.schema(address)` is
- * consulted. These pin that every action row gets hydrated, and what is
- * left alone.
- */
-
 const ORDER: ToolMatch = {
   action: "tools.comfer.org.default.json.getSaleOrder",
   toolkit: "comfer",

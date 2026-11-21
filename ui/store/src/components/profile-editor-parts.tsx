@@ -10,7 +10,6 @@ import {
 import { ImageUp, Trash2 } from "lucide-react";
 import { type ChangeEvent, useRef, useState } from "react";
 
-/** The 2 MiB / png-jpeg-webp limits the gateway enforces, mirrored here. */
 const MAX_BYTES = 2 * 1024 * 1024;
 const ACCEPTED = ["image/png", "image/jpeg", "image/webp"];
 
@@ -39,7 +38,6 @@ export const PROFILE_AVATAR_LABELS: ProfileAvatarLabels = {
 export interface ProfileAvatarProps {
   avatarUrl: string | null;
   displayName: string;
-  /** Whether a profile row exists yet (avatar upload needs one first). */
   enabled: boolean;
   onChange: (avatarUrl: string | null) => void;
   uploadAvatar: (file: File) => Promise<{ avatarUrl: string }>;
@@ -47,10 +45,6 @@ export interface ProfileAvatarProps {
   labels?: Partial<ProfileAvatarLabels>;
 }
 
-/**
- * The avatar control: current image, validated upload, removal. Every failure
- * surfaces as a visible message; nothing fails silently.
- */
 export function ProfileAvatar({
   avatarUrl,
   displayName,

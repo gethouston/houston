@@ -237,7 +237,6 @@ describe("move rejection + retry", () => {
       team: TEAM,
       error: "timeout",
     });
-    // Closable (not moving/switching) and retryable (not unmovable_volume).
     strictEqual(isDismissable(timedOut), true);
     strictEqual(canRetryMove(timedOut), true);
   });
@@ -295,7 +294,6 @@ describe("switch then invite (pipeline order is law)", () => {
       step: "switchFailed",
       team: TEAM,
     });
-    // The failure is closable, and it is emphatically NOT the invite step.
     strictEqual(isDismissable(switchFailed(switching)), true);
     throws(() => assertInviteReady(switchFailed(switching)));
   });

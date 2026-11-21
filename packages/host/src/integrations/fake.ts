@@ -15,29 +15,16 @@ import {
   type ToolMatch,
 } from "./types";
 
-/**
- * An in-memory IntegrationProvider — the second implementation of the port (so
- * the contract test proves the interface isn't accidentally Composio-shaped),
- * and the double the host + the agent tool tests run against without touching
- * a real provider. Connections start pending (like a real OAuth hand-off) and
- * are completed by the test via `completeConnection`.
- */
 export class FakeIntegrationProvider implements IntegrationProvider {
   readonly id: IntegrationProviderId;
   private readonly toolkits: Toolkit[];
   private readonly actions: ToolMatch[];
-  /** userId → that user's connections. */
   private readonly connections = new Map<string, Connection[]>();
   private notReady = false;
-  /** Test helper: scoped calls throw like a signed-out gateway adapter. */
   throwSigninRequired = false;
-  /** Test helper: search/execute throw a caller-provided provider error. */
   throwSearchExecute?: Error;
-  /** Test helper: the acting context of the most recent search/execute call. */
   lastActing: ActingContext | undefined;
-  /** Test helper: the app scope of the most recent search call. */
   lastApp: string | undefined;
-  /** Test helper: the account targeted by the most recent execute call. */
   lastAccount: string | undefined;
   private seq = 0;
 
@@ -59,13 +46,10 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     ];
   }
 
-  /** Test helper: make readiness report signin-required (gateway signed out). */
   setNotReady(notReady = true): void {
     this.notReady = notReady;
   }
 
-  /** Test helper: finish a started connect so the connection turns active,
-   *  optionally stamping the account's human label (as a real OAuth would). */
   completeConnection(
     userId: string,
     connectionId: string,
@@ -152,9 +136,6 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     const textMatches = (a: ToolMatch) =>
       a.description.toLowerCase().includes(q) ||
       a.action.toLowerCase().includes(q);
-    // Same contract as the real adapters: resolve the scope via the shared
-    // rules, and a resolved scope yields at least the app's actions (listing
-    // fallback when the phrasing scores zero) — never a bare empty result.
     if (app) {
       const rows = [...new Set(this.actions.map((a) => a.toolkit))].map(
         (slug) => ({ slug, name: slug }),

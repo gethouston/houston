@@ -23,7 +23,6 @@ import {
   weeklyReport,
 } from "./sample";
 
-/** The list is a `flex-1` pane, so every example gets a bounded column to fill. */
 function Pane({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-96 w-full max-w-xl flex-col overflow-hidden rounded-xl border border-line bg-card/40">
@@ -39,7 +38,6 @@ const createButton = (
   </Button>
 );
 
-/** The pane as it ships: selection, the switch, the kebab and inline editing. */
 function LiveGrid() {
   const [list, setList] = useState<Routine[]>(fixtures);
   const [runs, setRuns] = useState<Record<string, RoutineRun>>({
@@ -167,11 +165,6 @@ function RoutinesGridSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["RoutinesGrid", "RoutinesGridList"];
 
 export const specimen: Specimen = {

@@ -10,9 +10,6 @@ import {
   turnErrorMessage,
 } from "./turn-errors";
 
-// HOU-721: raw transport/dev errors ("Load failed", "engine request failed
-// (409): {…}" with a non-JSON body, a thrown bug) must never become chat
-// copy. Only engine-authored verdicts pass through verbatim.
 describe("turnErrorMessage", () => {
   it("passes an engine-authored verdict through verbatim", () => {
     const e = new EngineError(
@@ -35,7 +32,6 @@ describe("turnErrorMessage", () => {
     expect(turnErrorMessage(new TypeError("Load failed"))).toBe(
       TURN_FAILED_MESSAGE,
     );
-    // The raw cause still reaches the log — friendliness never costs detail.
     expect(spy).toHaveBeenCalledWith(
       "[turn] failed without engine verdict:",
       expect.objectContaining({ message: "Load failed" }),
@@ -69,8 +65,6 @@ describe("engineVerdictMessage", () => {
   });
 });
 
-// The exact (status, reason) pairs the gateway and host mint for "not here,
-// not now". A bare 503 with another reason is a real failure.
 describe("isEngineWakingRejection", () => {
   const rejects = (status: number, body: unknown) =>
     isEngineWakingRejection(new EngineError(status, JSON.stringify(body)));
@@ -85,8 +79,6 @@ describe("isEngineWakingRejection", () => {
     expect(rejects(502, { error: "engine proxy failed" })).toBe(true);
   });
 
-  // PRODUCT-1777: a draining host (roll, eviction, app quit) refuses the send;
-  // the replacement pod takes it.
   it("reads a draining host as a wake, on both shapes it answers", () => {
     expect(
       rejects(503, { error: "the host is shutting down; retry shortly" }),
@@ -99,9 +91,6 @@ describe("isEngineWakingRejection", () => {
     ).toBe(true);
   });
 
-  // PRODUCT-1804: the host latches an agent id while a rename moves its
-  // directory; anything arriving with the old id in that window gets the same
-  // waking pair with the latch as detail, and the retry lands on the new id.
   it("reads a rename latch as a wake", () => {
     expect(
       rejects(503, {
@@ -120,11 +109,6 @@ describe("isEngineWakingRejection", () => {
   });
 });
 
-// The app renders these two lines translated, matching on the exact value
-// (`app/src/lib/engine-restart-line.ts`), and its locale suite
-// (`app/tests/engine-restart-copy.test.ts`) pins the same literals from the
-// other side — it cannot import this module. Changing the wording here alone
-// leaves the user reading English, so the literals are pinned.
 describe("engine-restart copy", () => {
   it("says what the user must do after a restart with no resume", () => {
     expect(ENGINE_RESTART_MESSAGE).toBe(
@@ -139,9 +123,6 @@ describe("engine-restart copy", () => {
   });
 });
 
-// H-005: the gateway refuses a send over a credential whose provider blocks
-// the ACCOUNT (GitHub Copilot, billing locked) with 409 + a typed code. Read
-// by code, never by the sentence, and never confused with "not connected".
 describe("providerAccountBlockedRefusal", () => {
   const blocked = {
     error:

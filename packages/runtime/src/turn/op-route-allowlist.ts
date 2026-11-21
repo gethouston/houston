@@ -1,30 +1,9 @@
-/**
- * The route-op allowlists (mirrors the Go classifier): which `rest` shapes a
- * pool worker will run at all, and which of those may run as a GET. Defense
- * in depth — the gateway classifier decides what is DISPATCHED; a
- * valid-token caller must still never reach a handler surface (e.g. POST
- * agentfile) the public path never exposes.
- */
-
-// The agent-data families, agentfile writes, skills, files/attachments,
-// portable preview + export, the desktop→cloud migration, and custom
-// integrations. OAuth start uses the dedicated custom-oauth op.
-// Never a runtime path.
 const OP_ROUTE =
   /^(activities|routines|routine_runs|learnings|config)(\/[^/]+)?$|^agentfile\/(?!\.houston\/runtime\/).+$|^skills(\/[^/]+)?$|^files(\/.+)?$|^attachments$|^skills-manifest$|^portable\/(preview|export)$|^migration\/(export|import|complete|status)$|^integrations\/custom\/(detect|definitions|definitions\/[^/]+|definitions\/[^/]+\/(credential|tools))$/;
 
-// Reads run as ops only where the gateway has no doc to serve them from:
-// the Files tab, arbitrary agent files, one skill's detail, the
-// export/migration inventories, and a custom integration's compiled tool
-// list. The family lists (routines, routine_runs, learnings, config, skills)
-// do have docs; the gateway sends them as ops only when its own store read
-// cannot reproduce the host's answer (a file the host reports a diagnostic
-// for, a SKILL.md its port cannot be sure of, a file past its read cap).
 const READ_ROUTE =
   /^(routines|routine_runs|learnings|config|skills)$|^files(\/.+)?$|^agentfile\/|^skills\/[^/]+$|^skills-manifest$|^portable\/preview$|^migration\/status$|^integrations\/custom\/definitions$|^integrations\/custom\/definitions\/[^/]+\/tools$/;
 
-// A routine run's stop: the gateway released the run's pool claim first, so
-// the worker settles the row only (host op/routine-run-cancel.ts).
 const RUN_CANCEL_ROUTE = /^routines\/[^/]+\/runs\/[^/]+\/cancel$/;
 
 export function isOpRoute(decodedRest: string): boolean {
@@ -35,13 +14,10 @@ export function isReadOpRoute(decodedRest: string): boolean {
   return READ_ROUTE.test(decodedRest);
 }
 
-/** Route ops whose request body is binary (a zip), riding `bodyBase64`. */
 export function isBinaryBodyOpRoute(decodedRest: string): boolean {
   return decodedRest === "migration/import";
 }
 
-/** Custom-integration route ops read/write the STORE-ROOT definitions file
- *  (`custom-integrations.json` beside `workspaces/`), not the agent tree. */
 export function isCustomIntegrationOpRoute(decodedRest: string): boolean {
   return decodedRest.startsWith("integrations/custom/");
 }

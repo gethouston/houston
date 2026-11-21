@@ -1,13 +1,3 @@
-/**
- * Provider + model defaulting for the import flow.
- *
- * The pair resolves twice: the sticky last-used pair lands first as a
- * non-blocking fallback while provider statuses are still unknown, then again
- * against confirmed connections once those statuses arrive. A model the user
- * picked by hand outranks both; which pair is worth PERSISTING onto the new
- * agent is decided in `import-kickoff-pin.ts`.
- */
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
 import {
@@ -25,7 +15,6 @@ export interface ImportProviderModel {
   provider: string;
   model: string;
   onProviderChange: (provider: string, model: string) => void;
-  /** Clear the sticky-preference bookkeeping; provider/model themselves stay. */
   resetPreference: () => void;
   resolveKickoffPin: () => KickoffPin;
 }
@@ -43,8 +32,6 @@ export function useImportProviderModel(open: boolean): ImportProviderModel {
     isLoading,
     isError,
   } = useProviderStatuses();
-  // What the selector SHOWS: a best-effort read of whatever the scan says so
-  // far, so the dialog never sits on a blank provider while statuses settle.
   const connectedProviders = useMemo(
     () =>
       Object.values(providerStatuses)
@@ -52,8 +39,6 @@ export function useImportProviderModel(open: boolean): ImportProviderModel {
         .map((status) => status.provider),
     [providerStatuses],
   );
-  // What gets WRITTEN: the same scan held to a stricter standard, so a probe
-  // that is loading, failed or still checking pins nothing instead of a guess.
   const confirmedConnected = useMemo(
     () =>
       connectedProviderIds(

@@ -9,18 +9,6 @@ import { ArrowUpDown, ChevronDown, Search } from "lucide-react";
 
 import type { Specimen } from "../../../src/specimen";
 
-/**
- * The store HOME, built from zero, one element at a time with the owner
- * reviewing each step live. Elements stabilize here first, then get promoted
- * into `@houston-ai/store` components.
- *
- * Step 1 — the title: the landing's `.sec-title` display recipe (very light
- * weight, large clamped size, 1.04 line-height, -0.02em tracking, balanced
- * wrap), system stack, ink token. Centered.
- *
- * Step 2 — the nav bar: the landing's `.lnav` shape (transparent bar, brand
- * wordmark left, centered links, pill CTA right), tokens only.
- */
 const navLink =
   "text-sm text-ink-muted transition-colors duration-150 hover:text-ink";
 
@@ -61,10 +49,6 @@ const CATEGORIES = [
   "Engineering",
 ];
 
-/**
- * Step 3 — the search row: one pill search field (bg-input, recessed on the
- * screen) with the category dropdown at its right edge.
- */
 function StoreHomeSearch() {
   return (
     <div className="mx-auto flex w-full max-w-[640px] items-center gap-3">
@@ -154,11 +138,6 @@ const AGENTS = [
   },
 ];
 
-/**
- * Step 4 — the catalog: agent cards under the search row. The sort control
- * lives in the search row, right of the category dropdown. Cards are the
- * store language: glass card, hairline, hover shifts colour only.
- */
 function StoreHomeCatalog() {
   return (
     <section className="flex w-full flex-col gap-4">
@@ -200,11 +179,6 @@ function StoreHomeSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["StorePage"];
 
 export const specimen: Specimen = {

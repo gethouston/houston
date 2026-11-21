@@ -10,16 +10,6 @@ import {
   type TurnStartFailure,
 } from "./turn-start-failure";
 
-/**
- * Run a turn's pre-run failure write (its message and an error reply) in the
- * conversation's turn order, after the card-owner re-check: while a card is
- * live, only the person it is for may answer it, and a reply written after a
- * running turn's card would retire that card. A refused send writes nothing.
- *
- * No cached conversation means no turn is running or queued on it here: a
- * queued turn holds its conversation in the cache (`pending`), so the write
- * runs now.
- */
 export function inTurnOrder(
   failure: TurnStartFailure,
   answer: CardAnswer | undefined,
@@ -38,10 +28,6 @@ export function inTurnOrder(
   return run;
 }
 
-/**
- * Refuse a turn pinned to a provider this workspace has no credential for
- * (serve mode), in turn order. Resolves true when the turn ended here.
- */
 export async function refusePinnedProvider(
   failure: TurnStartFailure,
   pin: TurnPin | undefined,

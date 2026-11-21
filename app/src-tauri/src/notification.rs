@@ -42,8 +42,6 @@ pub fn show_session_notification(
     }
     #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     {
-        // macOS / other: never called from the frontend. Keep the signature
-        // total so `generate_handler!` compiles on every target.
         let _ = (app, title, body);
         Ok(())
     }
@@ -72,10 +70,6 @@ fn activate_main_window(app: &AppHandle) {
         }
     }
     tracing::info!("[notification] click → emitting notification-clicked");
-    // The click callback runs on a platform notification thread (the WinRT toast
-    // callback / notify-rust's D-Bus loop). Marshal the emit onto the main
-    // thread so the event reliably reaches the webview regardless of that
-    // thread's context.
     let emitter = app.clone();
     if let Err(e) = app.run_on_main_thread(move || {
         if let Err(e) = emitter.emit("notification-clicked", ()) {
@@ -99,11 +93,6 @@ mod linux {
     use tauri::AppHandle;
 
     pub fn show(app: AppHandle, title: String, body: String) -> Result<(), String> {
-        // notify-rust's `wait_for_action` runs a blocking D-Bus loop until the
-        // notification is clicked or closed, so it gets its own thread. The
-        // `"default"` action makes the whole notification body clickable per
-        // the freedesktop spec (daemons that lack body-click render it as an
-        // "Open" button instead).
         std::thread::Builder::new()
             .name("houston-notification".into())
             .spawn(move || {
@@ -111,9 +100,6 @@ mod linux {
                     .summary(&title)
                     .body(&body)
                     .appname("Houston")
-                    // Match macOS's "Glass" ping: the freedesktop default
-                    // "message" sound so a finished mission is audible, not
-                    // silent. Daemons without the theme sound just stay quiet.
                     .sound_name("message-new-instant")
                     .action("default", "Open")
                     .show()
@@ -150,15 +136,12 @@ mod windows {
     }
 
     pub fn show(app: AppHandle, title: String, body: String) -> Result<(), String> {
-        // `on_activated` fires in-process when the toast is clicked.
         let app_id = resolve_toast_app_id(cfg!(debug_assertions), &app.config().identifier);
         tracing::info!("[notification] showing Windows toast (app_id={app_id})");
         let activate = app.clone();
         Toast::new(&app_id)
             .title(&title)
             .text1(&body)
-            // Match macOS's "Glass" ping: the platform default toast sound so a
-            // finished mission is audible, not silent.
             .sound(Some(Sound::Default))
             .on_activated(move |_arg| {
                 activate_main_window(&activate);
@@ -175,13 +158,10 @@ mod windows {
 
         #[test]
         fn release_uses_app_identifier_and_dev_uses_powershell() {
-            // Release: the toast must carry Houston's registered AUMID so the
-            // OS shows our icon/name and routes the click back to us.
             assert_eq!(
                 resolve_toast_app_id(false, "com.houston.app").as_str(),
                 "com.houston.app",
             );
-            // Dev: no AUMID is registered, so fall back to PowerShell's.
             assert_eq!(
                 resolve_toast_app_id(true, "com.houston.app").as_str(),
                 Toast::POWERSHELL_APP_ID,

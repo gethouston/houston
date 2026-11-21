@@ -3,14 +3,6 @@ import { conversationStore } from "@houston/engine-adapter/vm";
 import { conversationScope } from "@houston/sdk";
 import { expect, test } from "vitest";
 
-/**
- * The warming-engine send queue's optimistic bubble (HOU-693). The REAL send at
- * flush goes out with `suppressUserBubble`, so this push is the only chance the
- * row ever gets to name its sender: without the author it would sit permanently
- * unattributed in a shared conversation (HOU-943), while every other message in
- * the thread carries a name.
- */
-
 type FeedEntry = {
   feed_type: string;
   data: unknown;

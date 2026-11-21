@@ -1,13 +1,3 @@
-/**
- * GET /api/agents/:slug/ir — the canonical machine-readable AgentIR.
- *
- * A thin public proxy of the gateway's IR snapshot: the store frontend has no
- * database, but the install instructions and receiving assistants need a stable,
- * bare-IR JSON URL on the store origin (the gateway's agent endpoint returns a
- * wrapper object). Published + non-deleted only (unlisted IS served — the link is
- * the grant). Read-only.
- */
-
 import { artifactCors, corsPreflight } from "@/lib/proxy-headers";
 import { getAgentIr } from "@/lib/store-api";
 

@@ -9,18 +9,6 @@ import {
   proxied,
 } from "./assistant-parity-probes";
 
-/**
- * Every operation the local host answers, with the arguments to dispatch it.
- *
- * A probe asserts the ADDRESS resolves to a live handler that authored its own
- * answer — not that the call succeeds. So writes address things that do not
- * exist ("no-such-routine") or that the probes themselves own (the folder
- * below): the handler's own 404 or 400 proves the route as well as a 200 does,
- * and nothing the agent seeded is destroyed.
- *
- * ORDER MATTERS for the Files block: it creates one folder, renames it, moves
- * it and deletes it, in that sequence, so each route acts on something real.
- */
 const AGENT = { agentId: PROBE_AGENT };
 const AGENT_PATH = { agentPath: PROBE_AGENT };
 const WORKSPACE = { workspaceId: PROBE_WORKSPACE };
@@ -28,7 +16,6 @@ const NO_SKILL = "no-such-skill";
 const NO_ROUTINE = "no-such-routine";
 
 export const LOCAL_PROBES: readonly Probe[] = [
-  // Account and agents.
   probe("getCapabilities"),
   probe("listWorkspaces"),
   probe("getHostSidebarLayout", WORKSPACE),
@@ -65,7 +52,6 @@ export const LOCAL_PROBES: readonly Probe[] = [
     },
   ),
 
-  // Missions and routines.
   probe("listActivities", AGENT),
   probe("updateActivity", {
     ...AGENT,
@@ -93,10 +79,8 @@ export const LOCAL_PROBES: readonly Probe[] = [
     routineId: NO_ROUTINE,
     runId: "no-such-run",
   }),
-  // The probe agent has no first day waiting: the handler's own 409.
   probe("startFirstDay", { ...AGENT, input: {} }),
 
-  // Skills, per agent and shared across the workspace.
   probe("listSkills", AGENT),
   probe("loadSkill", { ...AGENT, slug: NO_SKILL }),
   probe("createSkill", { ...AGENT, body: {} }),
@@ -114,7 +98,6 @@ export const LOCAL_PROBES: readonly Probe[] = [
   probe("promoteSharedSkill", { ...WORKSPACE, slug: NO_SKILL, content: "x" }),
   probe("deleteSharedSkill", { ...WORKSPACE, slug: NO_SKILL }),
 
-  // The agent's own `.houston` documents.
   probe("readAgentFile", { ...AGENT, relPath: "config.json" }),
   probe("writeAgentFile", {
     ...AGENT,
@@ -122,7 +105,6 @@ export const LOCAL_PROBES: readonly Probe[] = [
     content: "{}",
   }),
 
-  // The Files tab, as one ordered sequence over a folder the probes own.
   probe("readProjectFile", { ...AGENT_PATH, relPath: "CLAUDE.md" }),
   probe("createFolder", { ...AGENT_PATH, folderName: PROBE_FOLDER }),
   probe("renameFile", {
@@ -140,8 +122,6 @@ export const LOCAL_PROBES: readonly Probe[] = [
 
   ...LOCAL_INTEGRATION_PROBES,
 
-  // The chats of one agent, and the transcript of one, which the agent's own
-  // engine holds.
   proxied(
     "conversations.list",
     AGENT,

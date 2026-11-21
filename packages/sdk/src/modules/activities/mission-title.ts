@@ -1,30 +1,10 @@
-/**
- * Who titles a new mission's card, and the client half when it is the client.
- *
- * A mission's card is born with a truncated `fallback` title. A deployment
- * that advertises `Capabilities.missionTitleOnSend` titles it on the server
- * from the first send's `missionTitle` field, after that turn's reply. Every
- * other deployment (the open host, a gateway that predates the flag, or a
- * capability snapshot not loaded yet) keeps the flow clients always ran: once
- * the card's row has landed, ask `POST /agents/:id/title` and PATCH the card if
- * the answer differs from the fallback.
- */
-
 import type { Capabilities, MissionTitle } from "@houston/wire-types";
 
-/** How one new mission gets its title, decided once per mission. */
 export interface MissionTitlePlan {
-  /** The first send's `missionTitle`: set only when the server titles it. */
   send: MissionTitle | undefined;
-  /** Set when the client titles the card itself after its row lands. */
   client: MissionTitle | undefined;
 }
 
-/**
- * Plan a new mission's title from the deployment's capability snapshot.
- * `null` (not loaded) and an absent flag both keep the client flow, which
- * every deployment still serves.
- */
 export function planMissionTitle(
   capabilities: Pick<Capabilities, "missionTitleOnSend"> | null | undefined,
   title: MissionTitle | undefined,
@@ -35,7 +15,6 @@ export function planMissionTitle(
     : { send: undefined, client: title };
 }
 
-/** Model output trimmed to a card title: at most 6 words and 64 characters. */
 export function cleanGeneratedTitle(value: string | undefined): string | null {
   if (!value) return null;
   const normalized = normalizeSpaces(value)
@@ -46,25 +25,12 @@ export function cleanGeneratedTitle(value: string | undefined): string | null {
   return takeChars(words.join(" "), 64);
 }
 
-/** What the client title flow needs from its binding. */
 export interface ClientMissionTitleOps {
-  /**
-   * The runtime's one-shot title for `text` (`conversations.suggestTitle`),
-   * or `undefined` when there is no runtime to ask (no agent scope).
-   */
   suggestTitle: ((text: string) => Promise<{ title: string }>) | undefined;
-  /** PATCH the card's title. */
   rename: (title: string) => Promise<unknown>;
-  /** Where a failed title pass is logged; the fallback title stays. */
   warn: (message: string, detail: string) => void;
 }
 
-/**
- * The client half of {@link planMissionTitle}: title the landed card from the
- * runtime's answer. Cosmetic, so it never throws. A runtime that answers
- * nothing or fails leaves a whitespace-collapsed 60-character truncation (or
- * "New chat"), which is PATCHed when it differs from the fallback.
- */
 export async function titleMissionFromClient(
   title: MissionTitle,
   ops: ClientMissionTitleOps,
@@ -92,8 +58,6 @@ async function suggestedTitle(
     const clean = (await suggest(text)).title.trim();
     return clean || truncated;
   } catch {
-    // A title the runtime cannot produce falls back to truncation: the title
-    // is cosmetic and never blocks the mission.
     return truncated;
   }
 }

@@ -8,12 +8,6 @@ import {
   personToneIndex,
 } from "../src/kanban-people-tone.ts";
 
-/**
- * The face-stack tone rule. The product promise these guard: the SAME teammate
- * wears the SAME colour on every card, in every column, on both boards and in
- * the expansion popover — so a face stack is scannable rather than a lottery.
- */
-
 describe("personToneIndex", () => {
   it("stays inside the palette", () => {
     for (const id of ["", "a", "u-alice", "u-bob", "🙂", "x".repeat(500)]) {
@@ -30,8 +24,6 @@ describe("personToneIndex", () => {
   });
 
   it("is case- and character-sensitive (distinct ids may differ)", () => {
-    // Not a guarantee of inequality for any given pair, but the hash must not
-    // collapse near-identical ids by construction (a char-sum hash would).
     const ids = ["u-alice", "u-alexis", "u-alicia", "u-alison"];
     const tones = new Set(ids.map(personToneIndex));
     assert.ok(tones.size > 1, "near-identical ids all landed on one tone");
@@ -65,11 +57,6 @@ describe("personToneClass", () => {
   });
 });
 
-/**
- * The name tone is the same identity as the fill, retuned for text contrast.
- * The guarantee under test: a teammate's avatar and their attributed name in a
- * chat bubble are never two different colours.
- */
 describe("personNameToneClass", () => {
   it("gives one person one tone across every render site", () => {
     const id = "u-bob";

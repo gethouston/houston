@@ -14,16 +14,6 @@ import { createConversationStore } from "../../store/conversations";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import type { SessionsStore } from "./sessions-store";
 
-/**
- * Compaction on the Claude Agent SDK backend: a summarization turn inside the
- * conversation's own session, then a restart on the summary (./compact).
- *
- * What these tests hold onto is the pair of promises the feature makes — a
- * compaction the caller records really happened, and a compaction that FAILS
- * costs the user nothing. Driven by a scripted `query`, so no binary and no
- * network, exactly like session.test.ts.
- */
-
 let directory: string;
 let checkpoints: ReturnType<typeof createCompactionCheckpoints>;
 beforeEach(() => {
@@ -59,7 +49,6 @@ function usageMsg(contextTokens: number, sessionId = "s"): SDKMessage {
   } as unknown as SDKMessage;
 }
 
-/** The SDK's shape for a turn the provider refused. */
 const errorMsg = {
   type: "assistant",
   error: "authentication_failed",
@@ -70,7 +59,6 @@ const errorMsg = {
 
 type Call = { prompt: string; options: Options };
 
-/** A store whose mapping is real, so a dropped session is observable. */
 function store(
   sessionId?: string,
 ): SessionsStore & { id: () => string | undefined; purged: string[] } {
@@ -86,8 +74,6 @@ function store(
     remove: () => {
       current = undefined;
     },
-    // The real store deletes the transcript JSONL as well; recorded here so a
-    // test can tell the two apart.
     purge: (id) => {
       purged.push(id);
       current = undefined;
@@ -140,17 +126,9 @@ test("compaction summarizes the live session and returns the summary", async () 
 
   const outcome = await session.compact();
 
-  // The summary is the whole point: it is what the fresh session is seeded
-  // with, and what the assistant's durable-fact harvest reads.
   expect(outcome?.summary).toContain("Lisbon");
-  // Summarized IN the conversation's own session — a summary of nothing would
-  // be worse than no compaction at all.
   expect(calls[0]?.options.resume).toBe("sdk-1");
-  // ...and the restart: the mapping is gone, so the next turn opens fresh.
   expect(sessions.id()).toBeUndefined();
-  // The abandoned transcript goes with it. Dropping the mapping alone left one
-  // unreachable JSONL per compaction in the SHARED config dir: the session id
-  // it is named after lived only in the mapping just deleted.
   expect(sessions.purged).toEqual(["c1"]);
 });
 
@@ -182,8 +160,6 @@ test("the summarizer keeps the turn's cached prefix and says nothing on the wire
   await session.compact();
 
   const [turn, summary] = calls.map((c) => c.options);
-  // Tools, system prompt, model and effort are the request's cached prefix:
-  // the same values on the summary request let it read the history from cache.
   for (const key of [
     "tools",
     "disallowedTools",
@@ -195,8 +171,6 @@ test("the summarizer keeps the turn's cached prefix and says nothing on the wire
   ] as const)
     expect(summary?.[key]).toEqual(turn?.[key]);
   expect(summary?.effort).toBe("high");
-  // Houston talking to the model about the chat is not a turn the user asked
-  // for: not one frame of it may reach their transcript.
   expect(seen).toEqual([]);
 });
 
@@ -224,12 +198,9 @@ test("the turn after a compaction opens a fresh session carrying the summary", a
   await session.prompt("what month again?");
 
   const turn = calls[1];
-  // No resume: the compacted session is gone. Without the summary in the
-  // prompt the model would start the next turn remembering nothing at all.
   expect(turn?.options.resume).toBeUndefined();
   expect(turn?.prompt).toContain("Lisbon");
   expect(turn?.prompt).toContain("what month again?");
-  // The prefix is consumed exactly once — a second turn must not re-send it.
   await session.prompt("and the flights?");
   expect(calls[2]?.prompt).not.toContain("Lisbon");
 });
@@ -240,7 +211,6 @@ test("a refused summarization costs the user nothing", async () => {
   const session = make(query, sessions);
 
   await expect(session.compact()).rejects.toThrow(/Summarization failed/i);
-  // The conversation still has every turn it had: the mapping survives.
   expect(sessions.id()).toBe("sdk-1");
 });
 
@@ -257,8 +227,6 @@ test("a conversation with no SDK session yet has nothing to compact", async () =
   const { query, calls } = scripted(() => []);
   const session = make(query, store(undefined));
 
-  // Matched by conversation-command-run.ts to log the ordinary "fresh chat"
-  // case at info instead of warning about it.
   await expect(session.compact()).rejects.toThrow(/nothing to compact/i);
   expect(calls).toEqual([]);
 });
@@ -274,8 +242,6 @@ test("the compacted context fill is unknown, so the next turn does not compact a
 
   await session.compact();
 
-  // A stale fill here is what would make the autocompact check (exec-turn.ts)
-  // compact on every following turn forever.
   expect(session.getContextUsage()).toBeUndefined();
 });
 
@@ -364,7 +330,6 @@ test("the summarizer may not run a tool, auto-approved or not", async () => {
   expect(
     await permission("Bash", {}, { signal, toolUseID: "t", requestId: "p" }),
   ).toMatchObject({ behavior: "deny" });
-  // Hooks run for the calls Claude Code approves without asking canUseTool.
   const hook = options?.hooks?.PreToolUse?.[0]?.hooks[0];
   if (!hook) throw new Error("missing deny-all hook");
   expect(

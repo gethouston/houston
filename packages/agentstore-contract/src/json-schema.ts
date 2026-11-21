@@ -1,27 +1,7 @@
-/**
- * AgentIR 2.0.0 as a public JSON Schema (Draft 2020-12).
- *
- * This is the STABLE, machine-readable contract any AI agent fetches at
- * GET /v1/agentstore/schema/agent to learn how to build an AgentIR and POST it
- * to /v1/agentstore/agents. It is HAND-MAINTAINED (NOT a runtime zod->json-schema
- * conversion) so the wire contract never shifts under a zod-internals upgrade.
- *
- * DRIFT WARNING: if you change `ir.ts` (the zod schema-of-record) you MUST update
- * this file in the SAME change. `json-schema.test.ts` fails on the common drifts
- * (a renamed/dropped top-level or identity key, a changed required set, a version
- * bump) so the two stay in lockstep.
- *
- * required-ness note: zod `.default([])` makes tags/skills/learnings/integrations
- * OPTIONAL on input, so they are NOT in the JSON Schema `required` arrays —
- * matching exactly what the ingest endpoint accepts.
- */
 import { AGENT_IR_VERSION } from "./ir";
 
 const SLUG_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$";
 const INTEGRATION_PATTERN = "^[A-Z0-9_]{1,64}$";
-// Mirrors `httpsUrl` in ir.ts (z.url({ protocol: /^https$/ })): zod rejects
-// http/ftp/etc, so the published schema must advertise https-only too or an
-// agent building strictly against it gets a surprise 422 at ingest.
 const HTTPS_URL_PATTERN = "^https://";
 
 const emojiIcon = {

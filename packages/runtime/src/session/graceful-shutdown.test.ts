@@ -102,8 +102,6 @@ test("the listener keeps answering while a turn drains (the host probes /busy th
     exit,
     log: { info: () => {}, warn: () => {} },
   });
-  // The pre-fix shape closed the listener at signal time; a probe here
-  // would have been refused.
   const response = await fetch(url);
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ busy: true });

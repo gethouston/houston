@@ -6,21 +6,10 @@ import { tellOptimisticRefusal } from "../../lib/optimistic-write";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriAgentSettings } from "../../lib/tauri";
 
-/**
- * Teams v2 only: this agent's settings — the allowed-toolkit ceiling (the whole
- * effective allowlist; policy is per agent only) plus the caller's effective
- * `access`. Gated on the `teams` capability
- * via `enabled`: a host that predates Teams has no settings route (or the
- * desktop/local engine throws), so the query stays idle there and the
- * Apps section renders exactly as it does today. On a Teams host the route
- * always answers for an assigned caller or owner, so no 404→null degradation is
- * needed here — feature detection is the `teams` flag, not a swallowed error.
- */
 export function useAgentSettings(agentId: string, enabled: boolean) {
   return useQuery(agentSettingsQueryOptions(agentId, enabled));
 }
 
-/** Shared cache contract for editors and roster-wide policy overviews. */
 export function agentSettingsQueryOptions(
   agentId: string,
   enabled: boolean,
@@ -37,12 +26,6 @@ export function agentSettingsQueryOptions(
   };
 }
 
-/**
- * Teams v2, agent-manager only: replace this agent's allowed-toolkit ceiling
- * (`null` = all allowed, `[]` = none). Optimistic — a single manager action, so
- * a whole-value swap with rollback on error is enough. The rollback tells the
- * user unless `call()` already explained the refusal (`tellOptimisticRefusal`).
- */
 export function useSetAgentSettings(agentId: string) {
   const qc = useQueryClient();
   const { t } = useTranslation("teams");
@@ -71,14 +54,6 @@ export function useSetAgentSettings(agentId: string) {
   });
 }
 
-/**
- * Teams v2, agent-manager only: replace this agent's AI-model ceiling
- * (`allowedModels`: `null` = every model allowed, `[]` = none) via the same
- * `setAgentSettings` PUT. Optimistic whole-value swap with rollback, mirroring
- * `useSetAgentSettings` — but models carry no server-side grant pruning, so this
- * only invalidates the agent's settings, not its grant set. A refusal rolls
- * back and is told, as above.
- */
 export function useSetAgentAllowedModels(agentId: string) {
   const qc = useQueryClient();
   const { t } = useTranslation("teams");

@@ -2,12 +2,6 @@ import { expect, test } from "vitest";
 import { FALLBACK_AUTH_SLUG, fallbackAuthTemplate } from "./fallback-auth";
 import type { CustomIntegrationDef } from "./types";
 
-/**
- * fallbackAuthTemplate derives the synthesized placement for a spec that
- * declares NO security scheme — the PriceLabs class of failure, where the
- * key's placement must come from the spec's own parameters or a safe default.
- */
-
 function openapiDef(spec: object | string): CustomIntegrationDef {
   return {
     kind: "openapi",

@@ -4,20 +4,11 @@ import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
 import type { HarnessSession } from "../backends/types";
 
-/**
- * Compact-time extraction, end to end through the seam: the assistant's
- * compaction asks for facts and saves them through the SAME merge-safe host
- * route the `save_learning` tool uses; every other conversation compacts with no
- * instructions and saves nothing; and no failure of any of it reaches the turn.
- */
-
 const WORKSPACE = mkdtempSync(join(tmpdir(), "houston-facts-ws-"));
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "houston-facts-data-"),
 );
 process.env.HOUSTON_WORKSPACE_DIR = WORKSPACE;
-// The pair that gives this runtime a host to write through (config.ts) — without
-// it the harvest has nowhere to save and silently does nothing.
 process.env.HOUSTON_CONTROL_PLANE_URL = "https://host.test";
 process.env.HOUSTON_SANDBOX_TOKEN = "sb-tok";
 
@@ -57,7 +48,6 @@ function mockFetch(reply: () => Response | Promise<Response>): Captured[] {
 const created = () =>
   new Response(JSON.stringify({ id: "l1" }), { status: 201 });
 
-/** Seed (or clear) the agent's saved memories, as the host would have left them. */
 function writeLearnings(texts: string[]): void {
   const dir = join(WORKSPACE, ".houston", "learnings");
   mkdirSync(dir, { recursive: true });
@@ -71,7 +61,6 @@ function writeLearnings(texts: string[]): void {
   );
 }
 
-/** A session whose compaction records its instructions and returns `summary`. */
 function fakeSession(summary?: string): {
   session: HarnessSession;
   instructions: () => string | undefined;
@@ -113,9 +102,6 @@ test("the assistant's compaction asks for facts and saves each one", async () =>
     "Runs a bakery in Porto.",
     "Closes on Mondays.",
   ]);
-  // Provenance the host derives: the sandbox token authenticates, the
-  // conversation id names the mission. No acting-as — compaction runs outside
-  // the turn's acting scope.
   expect(calls[0]?.headers.authorization).toBe("Bearer sb-tok");
   expect(calls[0]?.headers[CONVERSATION_ID_HEADER]).toBe(
     ASSISTANT_CONVERSATION_ID,
@@ -143,7 +129,6 @@ test("a summary with no usable block saves nothing", async () => {
 });
 
 test("a backend that returns no summary saves nothing", async () => {
-  // The Claude backend compacts inside the SDK and surfaces no summary.
   const calls = mockFetch(created);
   const { session } = fakeSession(undefined);
   await compactWithFactHarvest(session, ASSISTANT_CONVERSATION_ID);

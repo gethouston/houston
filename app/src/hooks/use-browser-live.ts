@@ -30,12 +30,6 @@ export interface BrowserLiveSession {
   onPaintError: (error: unknown) => void;
 }
 
-/**
- * Owns the SDK's live connection while the view is open: one connection per
- * open, closed on close or unmount (closing stops watching; the hand-off keeps
- * waiting). Connectivity and refusals are the connection's own states, shown
- * in the view and never reported; only `onUnexpected` reaches Sentry.
- */
 export function useBrowserLive({
   agentPath,
   conversationId,
@@ -45,7 +39,6 @@ export function useBrowserLive({
   agentPath: string;
   conversationId: string;
   open: boolean;
-  /** The person answered (I'm done / Cancel) and the hand-off took it. */
   onFinished: () => void;
 }): BrowserLiveSession {
   const layout: NonNullable<BrowserLiveConnectOptions["layout"]> = useIsMobile()
@@ -57,11 +50,8 @@ export function useBrowserLive({
   const [expiresAt, setExpiresAt] = useState(0);
   const [addressRefused, setAddressRefused] = useState(false);
   const connection = useRef<BrowserLiveConnection | null>(null);
-  // One undecodable frame says what the next ones will: report it once.
   const paintReported = useRef(false);
   const onFinishedRef = useRef(onFinished);
-  // The layout a connection opens with; a later change re-shapes the open
-  // connection instead of replacing it (queued input and a finish survive).
   const layoutRef = useRef(layout);
   useEffect(() => {
     onFinishedRef.current = onFinished;
@@ -116,8 +106,6 @@ export function useBrowserLive({
     if (!live) return;
     live
       .finish(outcome)
-      // Only an answered finish reached the agent; one the view's close cut
-      // off leaves the hand-off waiting, so the view must not act as if done.
       .then((result) => {
         if (result === "answered") onFinishedRef.current();
       })

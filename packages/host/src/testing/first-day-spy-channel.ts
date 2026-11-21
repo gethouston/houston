@@ -2,8 +2,6 @@ import type { TurnLimits } from "@houston/protocol";
 import type { FireTurnOptions } from "../fire-turn-options";
 import type { ChannelCtx, RuntimeChannel, TurnPin } from "../ports";
 
-/** A channel that records every first-day fire, for the first-day route's tests. */
-
 export interface Fired {
   conversationId: string;
   text: string;
@@ -14,9 +12,7 @@ export interface Fired {
 
 export class SpyChannel implements RuntimeChannel {
   fired: Fired[] = [];
-  /** What every fire throws, after recording it; a string becomes an Error. */
   failWith: string | Error | null = null;
-  /** Holds every fire until released, to overlap two starts deterministically. */
   gate: Promise<void> | null = null;
   async dispatch() {}
   async fireTurn(

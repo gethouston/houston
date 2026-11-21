@@ -9,7 +9,6 @@ import { PROPERTY_AND_BUILDING_WORLDS } from "./agent-role-catalog-property-and-
 import { SALES_AND_PEOPLE_WORLDS } from "./agent-role-catalog-sales-and-people.ts";
 import { TECHNOLOGY_WORLDS } from "./agent-role-catalog-technology.ts";
 
-/** Every world the create flow offers, and the jobs each one hires for. */
 export const AGENT_CONTEXT_ROLES = {
   ...MONEY_AND_LAW_WORLDS,
   ...PROPERTY_AND_BUILDING_WORLDS,
@@ -23,10 +22,6 @@ export const AGENT_CONTEXT_ROLES = {
   ...FIELD_SERVICES_WORLDS,
 } as const;
 
-/**
- * Roles that belong to no single world: every context offers them under the
- * catalog's own list, and a context the user typed offers only these.
- */
 export const AGENT_COMMON_ROLES = [
   "executive_assistant",
   "operations_coordinator",

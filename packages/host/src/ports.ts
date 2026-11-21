@@ -18,33 +18,12 @@ import type {
 } from "./domain/types";
 import type { FireTurnOptions } from "./fire-turn-options";
 
-/**
- * The control plane's outward dependencies, as interfaces ("ports"). Each has at
- * least an in-memory / fake implementation (tested, used in `dev` mode) and a live
- * implementation (Postgres / GKE / Supabase) behind the same shape. The core logic
- * never imports a concrete adapter — only these.
- */
-
-/**
- * Creating or renaming an agent onto a name another agent in the workspace
- * already holds, compared by `sameAgentName` (@houston/domain): trimmed,
- * NFC, case-insensitive, because an agent's name is its folder and macOS/Windows
- * folders are case-insensitive. Stores throw it before touching the existing
- * agent, and routes answer 409 with the `name_taken` code
- * (routes/agent-name-taken.ts).
- */
 export class AgentNameConflictError extends Error {
   constructor(readonly agentName: string) {
     super(`an agent named "${agentName}" already exists in this workspace`);
   }
 }
 
-/**
- * A name `validateAgentName` (@houston/domain) rejects — empty, over-long, or
- * carrying path separators / control characters. Stores throw it as a typed
- * backstop so a route that skipped pre-validation still answers 400, not a
- * raw 500 (HOU-1166).
- */
 export class InvalidAgentNameError extends Error {
   constructor(
     readonly agentName: string,
@@ -54,14 +33,6 @@ export class InvalidAgentNameError extends Error {
   }
 }
 
-/**
- * A pasted API key the runtime's live verification refused
- * (`saveApiKeyCredential`). `reason` is the runtime's typed verdict
- * (`ApiKeyVerifyReason`: invalid_key / key_restricted / provider_unavailable),
- * forwarded on the route's error body so the connect dialog can show
- * actionable copy instead of a generic failure; undefined when the runtime
- * predates typed reasons.
- */
 export class ApiKeyRejectedError extends Error {
   constructor(
     message: string,
@@ -72,13 +43,6 @@ export class ApiKeyRejectedError extends Error {
   }
 }
 
-/**
- * The launcher is shutting down (pod termination, app quit) and refuses to
- * spawn: a runtime born now would be orphaned by the exiting host and, on
- * a serve-mode pod, boot into a host whose listener is already closed
- * (PRODUCT-1399). Routes answer 503 so the client retries against the
- * replacement pod / the next app start.
- */
 export class LauncherClosedError extends Error {
   constructor() {
     super("the host is shutting down; retry shortly");
@@ -86,14 +50,6 @@ export class LauncherClosedError extends Error {
   }
 }
 
-/**
- * The launcher holds this agent id against respawn while a rename moves its
- * directory (`RuntimeLauncher.hold`, HOU-827). The runtime was just slept for
- * that move, so everything that arrives with the OLD id during the window
- * (the app's reconnect storm, the dying runtime's own serve sync) is expected
- * traffic, not a fault: routes answer the same 503 + Retry-After as a drain
- * and the caller re-sends once the rename has landed.
- */
 export class AgentRenamingError extends Error {
   constructor(readonly agentId: AgentId) {
     super(`agent '${agentId}' is being renamed - retry with its new id`);
@@ -101,141 +57,64 @@ export class AgentRenamingError extends Error {
   }
 }
 
-/** Persistence for workspaces + agents. Impls: MemoryWorkspaceStore, PgWorkspaceStore. */
 export interface WorkspaceStore {
-  /** The user's personal workspace, creating it on first access (lazy provisioning). */
   getOrCreatePersonalWorkspace(userId: UserId): Promise<Workspace>;
-  /** A workspace by id — the RuntimeLauncher needs its slug for the K8s namespace. */
   getWorkspace(id: WorkspaceId): Promise<Workspace | null>;
 
   getAgent(id: AgentId): Promise<Agent | null>;
-  /** All agents in a workspace (the owner sees every one). */
   listAgents(workspaceId: WorkspaceId): Promise<Agent[]>;
-  /** Every workspace (admin/operator only — the dashboard enumerates all tenants). */
   listWorkspaces(): Promise<Workspace[]>;
-  /** The caller's own workspaces — cloud personal-tier returns one, local many. */
   listWorkspacesForUser(userId: UserId): Promise<Workspace[]>;
-  /** Every agent across all workspaces (admin/operator only). */
   listAllAgents(): Promise<Agent[]>;
-  /**
-   * A NEW agent, or {@link AgentNameConflictError} when the name is taken.
-   * Never hands back an existing agent: callers write seeds into the result
-   * and roll it back on failure, which must only ever touch what they made.
-   */
   createAgent(input: {
     workspaceId: WorkspaceId;
     name: string;
   }): Promise<Agent>;
-  /** Refuses another agent's name with {@link AgentNameConflictError}; a new
-   *  spelling of the agent's own name ("mia" to "Mia") is allowed. */
   renameAgent(id: AgentId, name: string): Promise<Agent>;
   deleteAgent(id: AgentId): Promise<void>;
-  /** Flip a workspace between hosting runtimes (admin-driven migration control). */
   setWorkspaceRuntime(
     id: WorkspaceId,
     runtime: WorkspaceRuntime,
   ): Promise<Workspace>;
 }
 
-/** Verifies a caller's bearer token and resolves it to a principal. */
 export interface TokenVerifier {
-  /** Returns the principal's user id, or null if the token is invalid/expired. */
   verify(bearer: string): Promise<{ userId: UserId } | null>;
 }
 
-/** Where an agent's sandbox can be reached once it is awake. */
 export interface RuntimeEndpoint {
-  /** Base URL of the agent's runtime, e.g. http://10.0.3.4:4317 */
   baseUrl: string;
-  /** Bearer the runtime expects (per-sandbox, control-plane-issued). */
   token: string;
 }
 
-/**
- * One per-agent request to forward to the sandbox runtime, already stripped of
- * the `/agents/:agentId` prefix. The control plane relays method + sub-path +
- * query + raw body 1:1 under the sandbox Bearer (chat, SSE events, provider
- * device-code login, settings — every runtime route).
- */
 export interface ForwardRequest {
   method: string;
-  /** Runtime path with a leading slash, e.g. "/auth/openai-codex/login". */
   path: string;
-  /** Raw query string including the leading "?", or "" (caller auth params stripped). */
   search: string;
-  /** The caller's Content-Type, forwarded with a non-GET body. */
   contentType?: string | null;
-  /** Raw request body for non-GET methods. */
   body?: Buffer;
-  /**
-   * The gateway's per-turn acting-as token (C2), forwarded verbatim so the
-   * runtime can attach it on its integration calls. Absent locally / when the
-   * caller sent none — the runtime then acts as the workspace owner. Only this
-   * one header is relayed; nothing host-minted.
-   */
   actingAs?: string;
-  /**
-   * The caller's `Last-Event-ID` resume cursor, relayed so the runtime's
-   * resumable conversation events stream (`GET .../events`) can replay the
-   * frames an EventSource reconnect missed. Query cursors (`?after=`) ride
-   * `search` and need no special handling.
-   */
   lastEventId?: string;
 }
 
 export type RuntimeState = "running" | "asleep" | "absent";
 
-/**
- * Lifecycle of an agent's STANDING runtime instance. Impls: FakeLauncher,
- * GkeLauncher (one pod + PVC per agent); the local profile adds a subprocess
- * launcher (P4). Per-turn runtimes (cloudrun) have no launcher — nothing stands.
- */
 export interface RuntimeLauncher {
-  /** Ensure the agent's runtime is running (spawn or wake it). Returns where to reach it. */
   ensureAwake(agent: Agent): Promise<RuntimeEndpoint>;
-  /** Sleep the runtime (scale to zero / SIGTERM), persisting its state. */
   sleep(agentId: AgentId): Promise<void>;
-  /** Permanently delete the runtime. Keeps the volume unless dropVolume. */
   destroy(agentId: AgentId, opts?: { dropVolume?: boolean }): Promise<void>;
   status(agentId: AgentId): Promise<RuntimeState>;
-  /**
-   * Latch an agent id against ensureAwake for the duration of an operation
-   * that invalidates its id→storage mapping (rename). Returns the release.
-   * While held, ensureAwake throws instead of spawning: a runtime born in
-   * this window would point at the OLD storage and recreate it on its first
-   * write (HOU-827). Optional: launchers whose storage is keyed by a stable
-   * id (pods) need no latch.
-   */
   hold?(agentId: AgentId): () => void;
-  /**
-   * Whether shutdown has latched this launcher: it spawns nothing again and
-   * every runtime it held has been sent SIGTERM. Optional: a launcher with no
-   * shutdown latch is never closed.
-   */
   isClosed?(): boolean;
 }
 
-/** The (workspace, agent) pair every channel operation is scoped to. */
 export interface ChannelCtx {
   workspace: Workspace;
   agent: Agent;
-  /** Gateway-minted acting identity for per-user credential operations. */
   actingAs?: string;
-  /**
-   * The request body, already drained by the route. The turn path reads it
-   * before dispatch to stamp mission attribution (activity-attribution.ts);
-   * a channel MUST prefer this over reading the (now-exhausted) stream.
-   * Absent on every request the route did not peek.
-   */
   body?: Buffer;
 }
 
-/**
- * A routine's pinned provider/model/effort/mode, carried into the turn it fires.
- * Absent provider/model/effort fields mean "inherit the agent default", resolved
- * by the runtime. The pin is per-turn only — it never touches the agent's saved
- * settings, so a pinned routine and the chats around it can't clobber each other.
- */
 export interface TurnPin {
   provider?: string | null;
   model?: string | null;
@@ -247,14 +126,7 @@ export type CaptureResult =
   | { ok: true; provider: string }
   | { ok: false; status: number; error: string; detail?: string };
 
-/**
- * How the host reaches an agent's runtime surface. ONE interface, one adapter
- * per hosting model — ProxyChannel (standing runtime: GKE pod today, local
- * subprocess in P4) and TurnChannel (per-turn Cloud Run). The server picks the
- * channel by `workspace.runtime` and never branches on the hosting model again.
- */
 export interface RuntimeChannel {
-  /** Serve one runtime-surface request (chat, SSE events, providers, settings, files) 1:1. */
   dispatch(
     ctx: ChannelCtx,
     method: string,
@@ -263,15 +135,6 @@ export interface RuntimeChannel {
     req: IncomingMessage,
     res: ServerResponse,
   ): Promise<void>;
-  /**
-   * Programmatically start a turn (no HTTP request behind it) — the scheduler's
-   * path for firing a routine's prompt into a conversation. Resolves once the
-   * turn is ACCEPTED; throws when it can't be started (busy / quota / transport)
-   * so the caller records an errored run instead of a silent miss.
-   *
-   * `pin` carries the routine's provider/model/effort/mode overrides; `opts`
-   * who the turn acts as and its limits ({@link FireTurnOptions}).
-   */
   fireTurn(
     ctx: ChannelCtx,
     conversationId: string,
@@ -279,159 +142,47 @@ export interface RuntimeChannel {
     pin?: TurnPin,
     opts?: FireTurnOptions,
   ): Promise<void>;
-  /**
-   * Abort the in-flight turn on a conversation — the "stop this routine run"
-   * path (no HTTP request behind it). Resolves whether a live turn was
-   * actually aborted; `false` means nothing was running. The caller marks the
-   * run cancelled BEFORE calling this, so a transport failure here surfaces
-   * but never resurrects the run.
-   */
   cancelTurn(ctx: ChannelCtx, conversationId: string): Promise<boolean>;
-  /**
-   * Whether this agent has any in-flight turn in the runtime/channel layer.
-   * Unknown transport state must be treated as busy by implementations that
-   * can otherwise sleep live work.
-   */
   busy(ctx: ChannelCtx): Promise<boolean>;
-  /**
-   * Whether a provider sign-in still waits on its user in this agent's
-   * runtime. The flow lives only in that process, so the idle probe reports
-   * it. Optional: a channel without it reports none.
-   */
   loginPending?(ctx: ChannelCtx): Promise<boolean>;
-  /** Cheap runtime/channel state for diagnostics and idle-sleep callers. */
   runtimeStatus?(ctx: ChannelCtx): Promise<RuntimeState | "unknown">;
-  /**
-   * Run `fn` with the agent's STANDING runtime stopped (kill / scale to zero,
-   * persisting its state — destroying nothing; the runtime respawns on the
-   * next dispatch) AND the agent id latched against respawn until `fn`
-   * settles. For operations that move the agent's on-disk identity (rename):
-   * a live local runtime holds absolute paths into the old directory (cwd,
-   * data dir) and its next write would resurrect the old-named folder, which
-   * the directory-derived local store re-lists as an agent with the OLD name;
-   * on Windows the live child's cwd also locks the directory against the
-   * rename itself. The latch matters as much as the stop (HOU-827): the app
-   * reconnects its streams within ~500ms of the runtime dying, and a dispatch
-   * on the still-old id during the stop window would boot a FRESH runtime
-   * bound to the old path — resurrecting it with zero further user activity.
-   * Optional: channels with no standing runtime (per-turn) have nothing to
-   * quiesce and omit it.
-   */
   withQuiesced?<T>(ctx: ChannelCtx, fn: () => Promise<T>): Promise<T>;
-  /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
-  /**
-   * Connect-once: pull/confirm the workspace credential after the user connects.
-   * `provider` (the just-connected provider id) makes capture provider-specific —
-   * without it the runtime exports whichever OAuth credential comes first, which
-   * can store the wrong provider and leave the intended one un-served per turn.
-   */
   captureCredential(ctx: ChannelCtx, provider?: string): Promise<CaptureResult>;
-  /**
-   * Connect-once for an API-key provider (OpenCode Zen / Go): store the pasted
-   * key centrally for the workspace. No OAuth dance, nothing to refresh or scrub.
-   * A standing-runtime channel also pushes it to the live runtime so the provider
-   * reads as connected immediately; the per-turn channel just stores it centrally.
-   */
   saveApiKeyCredential(
     ctx: ChannelCtx,
     provider: string,
     apiKey: string,
     endpoint?: string,
   ): Promise<void>;
-  /**
-   * Connect-once for the Anthropic Claude subscription in HOSTED mode. The
-   * desktop mints the OAuth credential locally (`claude auth login`), extracts
-   * it, and pushes it here (the CLI's `{claudeAiOauth}` shape). A standing-runtime
-   * channel stores it centrally (access + refresh — the control plane is the
-   * SINGLE refresher, Gate #2 shape) and materializes it onto the pod as the
-   * SDK's own `<CLAUDE_CONFIG_DIR>/.credentials.json` for the immediate
-   * connect signal. From the next serve sync onward the managed pod rides
-   * pi's per-turn ACCESS-ONLY auth.json path like every provider
-   * (serve.ts + routes/credential.ts) — the pod never rotates the refresh
-   * token, and a recycled pod reconnects from the central store. On a
-   * desktop/self-host host the central entry is an inert durability marker
-   * (never served, never refreshed). The multi-tenant per-turn Cloud Run
-   * channel REFUSES this (Anthropic is off there).
-   */
   saveClaudeOAuthCredential(
     ctx: ChannelCtx,
     cred: ClaudeOAuthCredential,
     opts?: {
-      /**
-       * Fill-only push (the desktop RECONCILE of a cached snapshot): when the
-       * workspace already holds a live central credential — whose refresh
-       * token the gateway may have rotated since this snapshot was cached —
-       * the push is a no-op instead of a clobber (HOU-855). A fresh browser
-       * login omits it and overwrites.
-       */
       ifAbsent?: boolean;
     },
   ): Promise<void>;
-  /**
-   * Connect an OpenAI-compatible server: a base URL + model id. Desktop/self-host
-   * point it at the user's own machine (Ollama / vLLM / LM Studio); a cloud pod
-   * points it at a public HTTPS endpoint (validated at the save route). Unlike the
-   * credential providers the endpoint is NOT a central credential: a standing
-   * runtime (ProxyChannel) persists it in the runtime it supervises; the per-turn
-   * channel (TurnChannel) writes `custom-endpoint.json` into the agent's
-   * object-storage prefix, which the next turn's runtime hydrates.
-   */
   saveCustomEndpoint(ctx: ChannelCtx, endpoint: CustomEndpoint): Promise<void>;
-  /**
-   * Connect-once logout: forget the workspace's central credential for a provider
-   * so no future turn can re-serve it. The inverse of captureCredential — clearing
-   * only a runtime's local auth.json is undone by the next turn's re-serve.
-   */
   forgetCredential(ctx: ChannelCtx, provider: string): Promise<void>;
 }
 
-/**
- * The user's OWN AI credential for a workspace (connect-once), held centrally so
- * every agent in the workspace shares one connection and the control plane is the
- * single owner. Two kinds:
- *  - `oauth` (Claude / Codex subscriptions): an access token + refresh token the
- *    control plane rotates centrally.
- *  - `api_key` (OpenCode Zen / Go, OpenRouter, Gemini, Bedrock, MiniMax): a
- *    pasted, static key. It never expires and has no refresh token, so
- *    `refreshToken` is "" and `expiresAt` is 0 — the sentinel every serve/refresh
- *    path treats as "never refresh".
- */
 export interface WorkspaceCredential {
   workspaceId: WorkspaceId;
-  /** Provider id, e.g. "openai-codex", "anthropic", "opencode", "minimax". */
   provider: string;
-  /** OAuth access token, or — for an api_key credential — the API key itself. */
   accessToken: string;
-  /** OAuth refresh token; "" for an api_key credential. */
   refreshToken: string;
-  /** Unix epoch ms the access token expires; 0 for an api_key credential (never). */
   expiresAt: number;
-  /** The ChatGPT account id (codex) — the backend needs it; preserved across refreshes. */
   accountId?: string;
-  /** Credential kind. Absent is read as "oauth" (every legacy credential). */
   kind?: "oauth" | "api_key";
-  /**
-   * Non-secret provider base URL the credential was issued against, served
-   * back so every runtime can aim the token. Two providers use it: GitHub
-   * Copilot Enterprise stores the company GitHub domain (e.g. `acme.ghe.com`;
-   * the central refresh hits `api.<domain>/copilot_internal/v2/token`), and
-   * Azure OpenAI stores its per-resource endpoint (PRODUCT-1532 — the key is
-   * unusable without it). Absent = the provider's default base URL.
-   */
   enterpriseUrl?: string;
-  /** Scope selected by the gateway when this credential was served. */
   scope?: "personal" | "team";
 }
 
-/** A credential is an API key when explicitly tagged, or by the expiresAt=0 sentinel. */
 export function isApiKeyCredential(cred: WorkspaceCredential): boolean {
   return cred.kind === "api_key" || cred.expiresAt === 0;
 }
 
-/** Stores + serves the one connect-once credential per (workspace, provider). */
 export interface CredentialActing {
-  /** The gateway-minted acting-as token verbatim; undefined = team scope. */
   actingAs?: string;
 }
 
@@ -441,23 +192,7 @@ export interface CredentialStore {
     provider: string,
     acting?: CredentialActing,
   ): Promise<WorkspaceCredential | null>;
-  /**
-   * Drop any locally cached answer for this (identity, provider) row so the
-   * next `get` reads the backing store. Implemented only by stores that cache
-   * (the remote store's 15s window): a reconnect capture can land centrally
-   * WITHOUT passing through this process, so a serve that must see it — the
-   * retry right after a reconnect — has to shed the cached "not connected"
-   * first (PRODUCT-1515).
-   */
   invalidate?(provider: string, acting?: CredentialActing): void;
-  /**
-   * Upsert (overwrite in place on refresh). `ifAbsent` makes it a FILL, not a
-   * clobber: an existing entry is left untouched. Required for any push of a
-   * CACHED credential snapshot (the desktop reconcile) — the central copy may
-   * hold a rotated refresh token, and overwriting it with a stale snapshot
-   * makes the next central refresh trip the provider's refresh-token-reuse
-   * detection, revoking the whole family (HOU-855).
-   */
   put(
     cred: WorkspaceCredential,
     opts?: { ifAbsent?: boolean } & CredentialActing,
@@ -467,23 +202,6 @@ export interface CredentialStore {
     provider: string,
     acting?: CredentialActing,
   ): Promise<void>;
-  /**
-   * Compare-and-delete: drop the credential only while its access token still
-   * hashes to `accessSha256`. Resolves to whether anything was removed.
-   *
-   * This is the ONLY safe way to act on a runtime's report that a provider
-   * REVOKED a served token (HOU-952). A revoked token is not an expired one —
-   * no refresh ever fails, so the store would keep serving it — but the report
-   * arrives from a turn that may have started before the user reconnected, and
-   * an unconditional remove would then delete the credential they just
-   * created. A digest mismatch means the report is stale: no-op, not an error.
-   *
-   * `scope` says WHICH kind of row the reported token came from; for a personal
-   * one, `actingAs` says WHOSE (HOU-976). Personal credentials are keyed by
-   * (workspace, user, provider), so a remote store with no acting identity
-   * cannot address the row at all — the report would be rejected and the
-   * revoked token would keep 401ing that member's turns until it expires.
-   */
   removeIfAccess(
     workspaceId: WorkspaceId,
     provider: string,
@@ -492,11 +210,8 @@ export interface CredentialStore {
   ): Promise<boolean>;
 }
 
-/** Mints/validates the non-secret per-sandbox identity tokens (HMAC). */
 export interface CredentialVault {
-  /** Mint the non-secret token a sandbox carries to /sandbox/credential. */
   sandboxToken(workspaceId: WorkspaceId, agentId: AgentId): string;
-  /** Validate + decode a sandbox token. */
   validateSandboxToken(
     token: string,
   ): { workspaceId: WorkspaceId; agentId: AgentId } | null;

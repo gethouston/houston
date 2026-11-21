@@ -1,5 +1,3 @@
-/** Routine execution history with translated summaries for typed failures. */
-
 import {
   formatLocalDateTime,
   type RoutineReaderAccount,
@@ -21,17 +19,11 @@ import { providerName } from "../../lib/providers";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Drawn above the history: why runs may be missing (the Free plan's
-   *  skipped events). Mounts only while the dialog is open. */
   notice?: ReactNode;
-  /** Newest-first runs of ONE routine; undefined while loading. */
   runs: RoutineRun[] | undefined;
   runsLoading: boolean;
   locale: string;
-  /** Opens the clicked run's chat (the caller closes the modal first). */
   onOpenRun: (run: RoutineRun) => void;
-  /** The reader's own account for a provider (`useRoutineReader`); without
-   *  it every failure reads as the engine recorded it. */
   readerFor?: (provider: string) => RoutineReaderAccount;
 }
 
@@ -74,7 +66,6 @@ export function RoutineRunsDialog({
   );
 }
 
-/** The same history body is used in the modal on desktop and web. */
 export function RoutineRunsHistory({
   runs,
   locale,
@@ -83,16 +74,11 @@ export function RoutineRunsHistory({
 }: Pick<Props, "locale" | "onOpenRun" | "readerFor"> & { runs: RoutineRun[] }) {
   const { t } = useTranslation("routines");
 
-  // Spelled out per code rather than built from it: `t()` keys are typed, so a
-  // template-literal key would compile past a typo the locale validator can't
-  // see. `undefined` keeps the run's own summary.
   const failureSummary = (run: RoutineRun): string | undefined => {
     const provider =
       run.failure && "provider" in run.failure
         ? providerName(run.failure.provider)
         : "";
-    // An account the gateway signed out reads as "sign in again", not as
-    // never connected (the SDK's `routineFailureCode` with the reader).
     switch (routineFailureCode(run, readerFor)) {
       case "pool_delivery_expired":
         return t("details.failure.poolDeliveryExpired");

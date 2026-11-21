@@ -23,31 +23,12 @@ import {
   makeHoustonRecallTool,
 } from "./houston-recall";
 
-/**
- * The ASSISTANT tool family: search the catalogue of user-facing Houston
- * operations, read one operation's contract, perform it, and search the
- * assistant's own long-lived conversation with the user.
- *
- * Three tools rather than one-per-operation because the catalog has hundreds of
- * entries — a tool each would flood every request's tool list — and because the
- * catalog is generated, so the tools must not need editing when it grows.
- *
- * No tool in this family throws: every refusal comes back as a result carrying
- * a named code (see assistant-result.ts). A dispatcher's failures are mostly
- * addressing mistakes the model can correct on its own, and an exception gives
- * it nothing to correct from.
- */
-
 export const HOUSTON_CAPABILITIES_TOOL_NAME = "houston_capabilities";
 export const HOUSTON_DESCRIBE_TOOL_NAME = "houston_describe";
 export type { AssistantToolOptions } from "./assistant-call";
 export { HOUSTON_CALL_TOOL_NAME } from "./assistant-call";
 export { HOUSTON_RECALL_TOOL_NAME } from "./houston-recall";
 
-/**
- * The family, in the order it is offered to the model: find, read, do, then
- * remember — `houston_recall` searches the conversation the other three act in.
- */
 export const ASSISTANT_TOOL_NAMES: readonly string[] = [
   HOUSTON_CAPABILITIES_TOOL_NAME,
   HOUSTON_DESCRIBE_TOOL_NAME,
@@ -71,11 +52,6 @@ const CapabilitiesParams = Type.Object({
 });
 type CapabilitiesParams = Static<typeof CapabilitiesParams>;
 
-/**
- * What one `houston_capabilities` call did, for logs and the tool UI. The two
- * views answer different questions, so they carry different counts rather than
- * one blurred shape padded with zeroes.
- */
 export type AssistantCapabilitiesDetails =
   | { view: "groups"; groups: number; total: number }
   | { view: "search"; matched: number; returned: number; total: number };
@@ -167,13 +143,6 @@ export function makeAssistantDescribeTool(opts: AssistantToolOptions) {
   });
 }
 
-/**
- * The whole family, built together: the catalog tools share one catalog + host
- * token, and `houston_recall` needs neither (it reads this runtime's own
- * transcript store) but ships from here so the OBJECT list can never drift from
- * {@link ASSISTANT_TOOL_NAMES} — pi exposes only their intersection, and a name
- * with no object behind it is invisible to the model with no error anywhere.
- */
 export function makeAssistantTools(
   opts: AssistantToolOptions,
   readHistory?: HistoryReader,

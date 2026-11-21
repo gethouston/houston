@@ -4,17 +4,8 @@ import { reportAdapterError } from "../error-sink";
 import { isNetworkTransportError } from "../network-transport-error";
 import { isSignedOutEngineError } from "./errors";
 
-// Signatures already reported this session. A failure that persists is
-// re-probed every few seconds per window (the picker's self-heal timer plus
-// its query retry), so reporting each attempt turns one broken route into
-// about a thousand events an hour; the first event already says everything.
 const reported = new Set<string>();
 
-/**
- * Report a failed provider status probe, once per session per signature.
- * An unreachable engine (offline, pod waking, the probe timeout) and a
- * signed-out session are expected states, not bugs, and stay quiet.
- */
 export function reportProbeFailure(error: unknown): void {
   if (
     isNetworkTransportError(error) ||
@@ -30,8 +21,6 @@ export function reportProbeFailure(error: unknown): void {
   reportAdapterError("provider-status.probe", error);
 }
 
-/** The HTTP status plus the gateway's reason or code; for an error with no
- *  status (a thrown bug), its name and message. */
 function signatureOf(error: unknown): string {
   if (!(error instanceof Error)) return String(error);
   const { status, body } = error as { status?: unknown; body?: unknown };

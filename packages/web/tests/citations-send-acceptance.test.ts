@@ -10,13 +10,6 @@ import {
   json,
 } from "./support/wire-capture";
 
-/**
- * File comments folded into a send leave the composer while it is out, and
- * are dropped for good only once the engine accepts it. The host's verdict
- * lands after `startSession` returned, so each case holds the POST open and
- * answers it later.
- */
-
 const AGENT = "a1";
 const { stubRouted, restore, reset } = createWireCapture();
 
@@ -37,7 +30,6 @@ beforeEach(() => {
     if (call.url.endsWith("/attachments"))
       return json(200, { paths: ["uploads/deck-slide3-x.png"] });
     if (call.url.endsWith("/events"))
-      // Open until the client aborts it, as a real event stream is.
       return new Response(
         new ReadableStream({
           start(controller) {
@@ -79,7 +71,6 @@ function setup(draftKey: string) {
   });
   if (!added.ok) throw new Error("add refused");
   const comments = () => citations.list(draftKey).map((c) => c.comment);
-  /** Resolves on the draft's next published list. */
   const nextList = () =>
     new Promise<string[]>((resolve) => {
       const off = client.engineSdk.subscribe(citations.scope(draftKey), () => {
@@ -130,7 +121,6 @@ test("an accepted send drops the comments for good", async () => {
   await posted;
   answer(json(202, { ok: true }));
   await accepted;
-  // The turn then ends with no verdict (a teardown): nothing comes back.
   disposeAllStreams();
   await released;
   expect(comments()).toEqual([]);

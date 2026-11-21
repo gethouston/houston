@@ -5,7 +5,6 @@ import {
   computeOverallProgress,
 } from "../src/lib/cloud-migration-progress.ts";
 
-/** A progress entry with sensible defaults, overridable per case. */
 function prog(over: Partial<AgentMigrationProgress>): AgentMigrationProgress {
   return {
     step: "pending",
@@ -22,12 +21,10 @@ const task = (sourceId: string, totalBytes: number) => ({
   manifest: { totalBytes },
 });
 
-// ── empty plan ────────────────────────────────────────────────────────
 test("empty task list is 0", () => {
   assert.equal(computeOverallProgress([], {}), 0);
 });
 
-// ── single task through every phase ────────────────────────────────────
 test("single task advances monotonically through all phases", () => {
   const cases: Array<[Partial<AgentMigrationProgress>, number]> = [
     [{ step: "pending" }, 0],
@@ -48,7 +45,6 @@ test("single task advances monotonically through all phases", () => {
   }
 });
 
-// ── chunk fraction math ────────────────────────────────────────────────
 test("uploading scales 0.25→0.90 by chunkIndex/chunkCount", () => {
   const at = (i: number, n: number) =>
     computeOverallProgress([task("a", 1)], {
@@ -56,13 +52,10 @@ test("uploading scales 0.25→0.90 by chunkIndex/chunkCount", () => {
     });
   assert.ok(Math.abs(at(1, 2) - (0.25 + 0.65 * 0.5)) < 1e-9);
   assert.ok(Math.abs(at(3, 10) - (0.25 + 0.65 * 0.3)) < 1e-9);
-  // chunkCount 0 (not yet chunked) sits at the band start.
   assert.equal(at(0, 0), 0.25);
-  // chunkIndex is clamped to [0, chunkCount].
   assert.equal(at(9, 4), 0.9);
 });
 
-// ── error freezes at the failed step's last fraction ───────────────────
 test("error counts as the errorStep fraction", () => {
   const warmFail = computeOverallProgress([task("a", 1)], {
     a: prog({ step: "error", errorStep: "warming" }),
@@ -77,16 +70,13 @@ test("error counts as the errorStep fraction", () => {
     }),
   });
   assert.ok(Math.abs(uploadFail - 0.575) < 1e-9);
-  // Error without a recorded step degrades to 0, never NaN.
   assert.equal(
     computeOverallProgress([task("a", 1)], { a: prog({ step: "error" }) }),
     0,
   );
 });
 
-// ── multi-task byte weighting ──────────────────────────────────────────
 test("byte weighting favours the larger agent", () => {
-  // 300B done + 100B pending ⇒ 0.75 of the bytes are complete.
   const value = computeOverallProgress([task("big", 300), task("small", 100)], {
     big: prog({ step: "done" }),
     small: prog({ step: "pending" }),
@@ -101,7 +91,6 @@ test("a task missing from progress counts as pending", () => {
   assert.equal(value, 0.5);
 });
 
-// ── zero-byte fallback ─────────────────────────────────────────────────
 test("all-zero-byte plan falls back to equal weights", () => {
   const value = computeOverallProgress([task("a", 0), task("b", 0)], {
     a: prog({ step: "done" }),

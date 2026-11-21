@@ -18,31 +18,15 @@ import {
 import { assertApiKeyConnectable } from "../auth/login";
 import { ApiKeyVerifyError, verifyApiKey } from "../auth/verify-api-key";
 
-/**
- * An API-key connect for a SLEEPING agent, on a pool worker. The pod's path is
- * runtime-verify (a real completion against the provider) → push to the
- * gateway's credential store → the store is what every future turn is served
- * from. The worker does the same two steps with the same code: the verifier
- * is a pure probe, the push is the pod's own RemoteCredentialStore aimed at
- * the gateway with this agent's host token. Two providers persist a small
- * config file BESIDE the key — qwen's verified region and azure's resource
- * endpoint — written into the hydrated agent root (`dataDir`), where the op's
- * sync-back carries them like settings.json. Nothing else touches the
- * worker's disk (auth.json is never synced).
- */
 export interface ApiKeyConnect {
   provider: string;
   apiKey: string;
-  /** Azure OpenAI's per-resource endpoint, arriving with the key. */
   endpoint?: string;
-  /** The hydrated agent runtime dir (region/endpoint files land here). */
   dataDir: string;
-  /** The gateway's internal base URL (the pod's HOUSTON_CREDENTIALS_URL). */
   credentialsBaseUrl: string;
   orgSlug: string;
   agentSlug: string;
   hostToken: string;
-  /** The connecting member's acting-as token (their own row in a team space). */
   actingAs?: string;
   fetchImpl?: typeof fetch;
 }
@@ -66,9 +50,6 @@ export async function applyApiKeyConnect(
   }
   try {
     await verifyApiKey(opts.provider, key, {
-      // The probe aims at the NORMALIZED endpoint, exactly as the pod does
-      // (PRODUCT-1477: a pasted Foundry project URL must be stripped to the
-      // host root or the completion 404s and a good key reads as bad).
       ...(opts.provider === AZURE_OPENAI && opts.endpoint
         ? { azureBaseUrl: normalizeAzureEndpoint(opts.endpoint) }
         : {}),
@@ -86,9 +67,6 @@ export async function applyApiKeyConnect(
         : {}),
     });
   } catch (e) {
-    // `reason` rides to the connect dialog, which maps it to actionable copy.
-    // Nothing persisted: a rejected connect must never clobber the agent's
-    // stored (working) endpoint or region.
     return {
       status: 401,
       body: {
@@ -97,9 +75,6 @@ export async function applyApiKeyConnect(
       },
     };
   }
-  // Endpoint AFTER the verify, BEFORE the key (the pod's own order): only a
-  // proven connect persists, and a stored key never aims at nothing. The
-  // file rides the op's sync-back beside the region file.
   if (opts.provider === AZURE_OPENAI) {
     setAzureEndpointIn(opts.dataDir, opts.endpoint ?? "");
   }
@@ -110,8 +85,6 @@ export async function applyApiKeyConnect(
     hostToken: opts.hostToken,
     provider: opts.provider,
     apiKey: key,
-    // Azure's endpoint rides the central row (its enterpriseUrl slot) so
-    // every runtime this key is later served to can aim it (PRODUCT-1532).
     ...(opts.provider === AZURE_OPENAI && opts.endpoint
       ? { enterpriseUrl: normalizeAzureEndpoint(opts.endpoint) }
       : {}),
@@ -122,13 +95,6 @@ export async function applyApiKeyConnect(
   return { status: 200, body: { ok: true, provider: opts.provider } };
 }
 
-/**
- * Push one verified API key into the gateway's credential store — the store
- * is what every future turn is served from. Returns the pod's own 502 answer
- * on a store failure (no local residue exists on a worker, so nothing to
- * roll back), null on success. Shared by the api-key connect and the
- * openai-compatible endpoint connect (op-endpoint.ts).
- */
 export async function pushApiKeyCredential(opts: {
   credentialsBaseUrl: string;
   orgSlug: string;
@@ -136,7 +102,6 @@ export async function pushApiKeyCredential(opts: {
   hostToken: string;
   provider: string;
   apiKey: string;
-  /** Non-secret provider base URL stored beside the key (azure's endpoint). */
   enterpriseUrl?: string;
   actingAs?: string;
   fetchImpl?: typeof fetch;
@@ -151,8 +116,6 @@ export async function pushApiKeyCredential(opts: {
   try {
     await store.put(
       {
-        // Unused by the remote store (the URL names org + agent); the port's
-        // shape requires it.
         workspaceId: opts.orgSlug,
         provider: opts.provider,
         accessToken: opts.apiKey,
@@ -172,10 +135,6 @@ export async function pushApiKeyCredential(opts: {
   return null;
 }
 
-/** The runtime-dir files an api-key connect may write beside the key (its
- *  sync-back scope): qwen's verified region, azure's resource endpoint,
- *  xiaomi's verified endpoint. Derived from the writers' own path helpers so
- *  a rename cannot silently drop a file from the sync. */
 export function credentialOpFiles(dataRel: string): string[] {
   return [
     qwenRegionFileIn(dataRel),

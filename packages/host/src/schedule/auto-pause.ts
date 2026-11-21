@@ -14,16 +14,6 @@ import type { EventHub } from "../events/hub";
 import type { Vfs } from "../vfs";
 import { withRunsFile } from "./runs-lock";
 
-/**
- * Pause each of `routineIds` whose run history has earned it (domain
- * `routineAutoPause`): called right after a run of theirs failed on a typed
- * wall, from the reconcile sweep and from a fire the runtime refused. The
- * routines read → save pair runs under the same per-doc lock as every other
- * routine write (routes/routine-write.ts), so a concurrent edit is never lost
- * and an edit that landed first (a resume, a model change) moves the count's
- * start past the failures it would have counted. Callers must not hold the
- * runs queue (it is not reentrant).
- */
 export async function pauseFailingRoutines(
   deps: { vfs: Vfs; events?: EventHub; now: () => Date },
   ws: Workspace,
@@ -32,8 +22,6 @@ export async function pauseFailingRoutines(
   routineIds: string[],
 ): Promise<Routine[]> {
   if (routineIds.length === 0) return [];
-  // Runs queue first, then the routines doc (the one lock order): no run can
-  // settle between the streak read and the pause save.
   const paused = await withRunsFile(root, () =>
     withDocLock(`${root}#routines`, async () => {
       const { items: runs } = await loadRoutineRuns(deps.vfs, root);

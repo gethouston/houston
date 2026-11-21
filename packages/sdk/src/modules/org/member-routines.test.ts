@@ -6,7 +6,6 @@ import { OrgCommand, OrgHttpError } from "./index";
 
 const BASE = "http://127.0.0.1:4317";
 
-/** An inert SDK over a mock `fetch` that records each URL + method. */
 function makeSdk(respond: () => Response) {
   const calls: { method: string; url: string }[] = [];
   const fetchImpl = vi.fn(

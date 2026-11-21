@@ -1,11 +1,3 @@
-/*
- * /data-partners — the process photographs, the hairline columns (tiers,
- * business functions, privacy) and the questions.
- * Every section sits in the /enterprise tone flow, so each surface has both
- * dresses: light by default, .is-dark when the flow is dark.
- */
-
-/* ── How it works: four numbered photographs ───────────────────────────── */
 .dp-steps {
   display: grid;
   gap: 32px 12px;
@@ -51,7 +43,6 @@
   color: var(--on-ink-muted);
 }
 
-/* ── Hairline columns ──────────────────────────────────────────────────── */
 .dp-cols {
   display: grid;
   gap: 0 clamp(24px, 3.4vw, 48px);
@@ -98,7 +89,6 @@
   width: 28px;
   height: 28px;
 }
-/* Beside the why phrases the split already spaces the list from the title. */
 .dp-why-areas {
   margin-top: 0;
 }
@@ -113,7 +103,6 @@
   color: var(--on-ink-muted);
 }
 
-/* ── Tiers: the amount is the headline ─────────────────────────────────── */
 .dp-tier-amount {
   font-size: clamp(32px, 3.2vw, 46px);
   font-weight: 340;
@@ -143,7 +132,6 @@
   color: #fff;
 }
 
-/* ── Questions ─────────────────────────────────────────────────────────── */
 .dp-faq .sec-title {
   margin: 0 auto;
 }
@@ -205,14 +193,12 @@
   }
 }
 
-/* ── Requests: a sample of the refer board (refer-board.css cards) ─────── */
 .rf-listings.dp-requests-list {
   margin-top: clamp(40px, 6vw, 80px);
 }
 .dp-requests-all {
   margin-top: 24px;
 }
-/* The referral door under the sample: a line left, the ink pill right. */
 .dp-refer-band {
   display: flex;
   flex-wrap: wrap;

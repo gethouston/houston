@@ -13,12 +13,6 @@ import {
   titlePlan,
 } from "./summarize";
 
-/**
- * Title generation runs a real pi turn (faux provider: scripted, no network),
- * proving the throwaway-session path works end to end — same auth machinery as
- * chat, so whatever OAuth flavor chat works with, titles work with.
- */
-
 test("buildExcerpt trims to the first turns and caps lengths", () => {
   const long = "x".repeat(1000);
   const messages = Array.from({ length: 10 }, (_, i) => ({
@@ -29,17 +23,15 @@ test("buildExcerpt trims to the first turns and caps lengths", () => {
   const excerpt = buildExcerpt(messages);
   expect(excerpt.length).toBeLessThanOrEqual(2400);
   expect(excerpt).toContain("user: 0:");
-  expect(excerpt).not.toContain("6:"); // only the first 6 messages
+  expect(excerpt).not.toContain("6:");
 });
 
 test("titleFromText short-circuits empty input to '' without touching the model", async () => {
-  // No provider registered: if it tried to run a turn it would throw, not return "".
   expect(await titleFromText("")).toBe("");
   expect(await titleFromText("   \n\t  ")).toBe("");
 });
 
 test("dispatchTitle routes anthropic to the Claude SDK runner — pi is NOT invoked", async () => {
-  // The compliance gate: an anthropic title must NOT touch pi's createAgentSession.
   const claude = vi.fn(async () => "Claude Title");
   const pi = vi.fn(async () => "Pi Title");
   const title = await dispatchTitle("anthropic", "excerpt", { claude, pi });
@@ -62,9 +54,6 @@ test("dispatchTitle routes every other provider to the pi runner — Claude is N
 });
 
 test("titlePlan routes a live conversation to ITS provider, not the active one", () => {
-  // A local-model chat titles on the local model even when the agent's active
-  // provider is anthropic — dispatching on the active provider burned a full
-  // Claude one-shot to title a chat Claude never ran.
   const plan = titlePlan(
     { provider: "openai-compatible", model: "Jan-v3.5-4B-Q4_K_XL" },
     "anthropic",
@@ -109,9 +98,6 @@ test("generateTitle runs a faux turn and returns a single trimmed line", async (
     }),
   ]);
 
-  // Seed the credential through the store (NOT setRuntimeApiKey: its awaited
-  // refresh() hangs in pi 0.82 — and Houston's own connect flows write the
-  // store too, so this is also the more production-shaped path).
   const authStorage = new HoustonAuthStore(join(cwd, "auth.json"));
   authStorage.set("faux", { type: "api_key", key: "faux-key" });
   const modelRuntime = await ModelRuntime.create({

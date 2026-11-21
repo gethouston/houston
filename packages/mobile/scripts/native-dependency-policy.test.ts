@@ -53,8 +53,6 @@ describe("installed native plugins", () => {
     expect(bannedSwiftProducts(manifest, requestedTraits[plugin.id])).toEqual(
       [],
     );
-    // The generated manifest is what Xcode builds; a stale one means `sync`
-    // has not run since the traits changed.
     expect(generatedSwiftTraits(generated, swiftPackageName(manifest))).toEqual(
       requestedTraits[plugin.id] ?? [],
     );

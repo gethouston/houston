@@ -6,14 +6,12 @@ import type { TurnFilesystem } from "./turn-filesystem";
 
 const CUSTOM_DEFS_FILE = "custom-integrations.json";
 
-/** Per-turn custom-integration manager, provider, and owned resources. */
 export interface TurnCustomContext {
   manager: CustomIntegrationManager;
   provider: CustomIntegrationProvider;
   dispose: () => Promise<void>;
 }
 
-/** Build a custom-integration context over the hydrated definitions and remote secrets. */
 export async function createTurnCustomContext(opts: {
   filesystem: TurnFilesystem;
   grantUrl: string;
@@ -21,7 +19,6 @@ export async function createTurnCustomContext(opts: {
   orgSlug: string;
   agentSlug: string;
   fetchImpl?: typeof fetch;
-  /** Each definition a mutation changed, by slug. */
   onChanged?: (slug: string) => void;
 }): Promise<TurnCustomContext> {
   await opts.filesystem.vfs.readBytes(CUSTOM_DEFS_FILE);
@@ -57,5 +54,4 @@ export async function createTurnCustomContext(opts: {
   };
 }
 
-/** Store-relative custom-integration definitions document. */
 export const customDefinitionsFile = CUSTOM_DEFS_FILE;

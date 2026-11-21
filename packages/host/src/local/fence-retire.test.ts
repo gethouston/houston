@@ -33,16 +33,11 @@ test("with nobody holding the lease the pod stops on a short drain, reports, the
   await vi.waitFor(() => expect(events).toContain("exit 1"));
   expect(events).toEqual([`stop ${FENCE_RETIRE_DRAIN_MS}`, "flush", "exit 1"]);
   expect(error).toHaveBeenCalledOnce();
-  // One structured line per retire, keyed by agent, for a per-agent alert.
   expect(error.mock.calls[0]?.[0]).toContain(
     "[local-host] fence retire agent=acme/writer reason=stale_holder",
   );
 });
 
-// Exiting against a running engine would restart this pod into a fresh claim
-// that fences that engine, and the two would trade the lease through
-// restarts. The pod only stops its schedule and runtimes, then retires once
-// the holder is stale.
 test("a running engine holding the lease makes the pod stand down, not exit", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   const { respond, events } = harness(async () => {});

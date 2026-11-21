@@ -44,7 +44,6 @@ describe("isFencedWrite", () => {
     expect(
       isFencedWrite("DELETE", "/agents/a/routines/r1", "authenticated"),
     ).toBe(true);
-    // Agent data outside /agents/: colour, delegation, custom integrations.
     expect(isFencedWrite("PUT", "/v1/agents/a/color", "authenticated")).toBe(
       true,
     );
@@ -72,26 +71,22 @@ describe("isFencedWrite", () => {
     expect(isFencedWrite("POST", "/sandbox/missions/start", "sandbox")).toBe(
       true,
     );
-    // The agent's custom-integration definitions (custom-integrations.json).
     expect(
       isFencedWrite("POST", "/sandbox/integrations/custom/add", "sandbox"),
     ).toBe(true);
     expect(
       isFencedWrite("POST", "/sandbox/integrations/custom/remove", "sandbox"),
     ).toBe(true);
-    // Its reads go by POST too, and write nothing.
     expect(
       isFencedWrite("POST", "/sandbox/integrations/custom/status", "sandbox"),
     ).toBe(false);
     expect(
       isFencedWrite("POST", "/sandbox/integrations/custom/detect", "sandbox"),
     ).toBe(false);
-    // The credential serve and the integration proxy never touch the tree.
     expect(isFencedWrite("POST", "/sandbox/credential", "sandbox")).toBe(false);
     expect(
       isFencedWrite("POST", "/sandbox/integrations/execute", "sandbox"),
     ).toBe(false);
-    // The user-facing routes are not this scope's job (gated post-auth).
     expect(isFencedWrite("PATCH", "/agents/a/routines/r1", "sandbox")).toBe(
       false,
     );
@@ -145,8 +140,6 @@ describe("handleStoreFenceGate", () => {
       error: STORE_FENCED_ERROR,
       code: "store_fenced",
     });
-    // Not the gateway's waking shape: no Retry-After, so the client surfaces
-    // it as a real failure instead of a quiet wake.
     expect(first.headers["Retry-After"]).toBeUndefined();
 
     const second = fakeResponse();
@@ -162,7 +155,6 @@ describe("handleStoreFenceGate", () => {
     expect(error).toHaveBeenCalledTimes(1);
     expect(error.mock.calls[0]?.[0]).toContain("write fence was lost");
 
-    // Reads are untouched: the pod's copy is still the freshest answer.
     const read = fakeResponse();
     expect(
       await handleStoreFenceGate(
@@ -175,9 +167,6 @@ describe("handleStoreFenceGate", () => {
     ).toBe(false);
   });
 
-  // PRODUCT-1706: the sync had met no 409 (nothing to upload since the
-  // takeover), so only the lease check knows. The write is refused before it
-  // touches the disk, never acknowledged and lost at the next recycle.
   it("refuses a write the lease check says can no longer persist", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const asked: string[] = [];
@@ -201,7 +190,6 @@ describe("handleStoreFenceGate", () => {
     expect(res.status).toBe(503);
     expect(res.body).toMatchObject({ code: "store_fenced" });
 
-    // A read never costs a check.
     expect(
       await handleStoreFenceGate(
         deps,
@@ -214,9 +202,6 @@ describe("handleStoreFenceGate", () => {
     expect(asked).toEqual(["check"]);
   });
 
-  // The watcher skips the workspaces subtree and the periodic pass is five
-  // minutes out: an acknowledged write ships now, under the lease the check
-  // just saw, or a takeover in those minutes loses it.
   it("ships an acknowledged write to the store as soon as it is answered", async () => {
     const shipped: string[] = [];
     const deps = {
@@ -243,7 +228,6 @@ describe("handleStoreFenceGate", () => {
     ok.emit("finish");
     expect(shipped).toEqual(["ship"]);
 
-    // A refused or failed write changed nothing worth shipping.
     const failed = answered(400);
     await handleStoreFenceGate(
       deps,
@@ -253,7 +237,6 @@ describe("handleStoreFenceGate", () => {
       "sandbox",
     );
     failed.emit("finish");
-    // A read never ships.
     const read = answered(200);
     await handleStoreFenceGate(
       deps,

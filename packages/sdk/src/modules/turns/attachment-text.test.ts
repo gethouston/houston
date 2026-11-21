@@ -1,18 +1,6 @@
 import { expect, test } from "vitest";
 import { buildAttachmentText, decodeAttachmentText } from "./attachment-text";
 
-/**
- * The attachment marker is a CROSS-SURFACE wire format: desktop writes it, and
- * every surface must read the SAME bytes. This pins it byte-for-byte against
- * the desktop encoder (`app/src/lib/attachment-message.ts` — the
- * `buildAttachmentPrompt` shape) so the two copies cannot drift while the
- * duplication awaits consolidation.
- */
-
-// Copied verbatim from the desktop encoder's own test fixture
-// (`app/src/lib/attachment-message.test.mjs`): the hidden marker, then the
-// user text, then the visible model-facing path block. Note the file ref's key
-// order is (path, name) — that is what the desktop encoder serializes.
 const DESKTOP_FIXTURE =
   '<!--houston:attachments {"message":"Summarize this","files":[{"path":"/Users/ja/.houston/cache/attachments/brief.pdf","name":"brief.pdf"}]}-->\n\n' +
   "Summarize this\n\n" +
@@ -79,8 +67,6 @@ test("decodeAttachmentText round-trips a built marker", () => {
 });
 
 test("decodeAttachmentText reads the desktop fixture (name-first order too)", () => {
-  // The desktop decoder's own fixture serializes files name-first; decode is
-  // key-order independent (JSON.parse), so it must still resolve.
   const body =
     '<!--houston:attachments {"message":"Read this","files":[{"name":"brief.pdf","path":"/tmp/brief.pdf"}]}-->\n\nRead this\n\n[User attached these files. Read them with the Read tool if needed:\n- /tmp/brief.pdf]';
   expect(decodeAttachmentText(body)).toEqual({
@@ -96,7 +82,6 @@ test("decodeAttachmentText returns null when there is no marker or no files", ()
       '<!--houston:attachments {"message":"x","files":[]}-->',
     ),
   ).toBeNull();
-  // Malformed JSON never throws.
   expect(
     decodeAttachmentText("<!--houston:attachments {not json}-->\n\nhi"),
   ).toBeNull();

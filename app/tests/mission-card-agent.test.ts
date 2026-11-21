@@ -18,16 +18,6 @@ const ROSTER = [
   agent("a2", "Marisol", "houston:a2"),
 ];
 
-/**
- * Every card on the board said "Houston".
- *
- * The cause was a split identity: a card's COLOUR came from the workspace
- * roster while its NAME came off the swept row, and on the web build that name
- * is stamped by the engine adapter from its own localStorage registry — which
- * does not know the agents the HOST serves. Its fallback was the literal
- * "Houston", so every real agent's card wore the product's name.
- */
-
 describe("missionCardAgentName", () => {
   const byPath = agentsByPath(ROSTER);
 
@@ -40,8 +30,6 @@ describe("missionCardAgentName", () => {
   });
 
   it("beats the row's own name even when the row has one", () => {
-    // This IS the regression: a row confidently carrying the wrong name must
-    // not win over the roster, or the bug is only hidden where the row is blank.
     assert.equal(missionCardAgentName(byPath, "houston:a1", "Houston"), "Kai");
   });
 
@@ -54,8 +42,6 @@ describe("missionCardAgentName", () => {
   });
 
   it("falls back to the row's name for a path the roster does not hold", () => {
-    // An agent moved out of reach mid-sweep, or a row from a workspace the
-    // store has not loaded: a stale TRUE name beats a blank chip.
     assert.equal(missionCardAgentName(byPath, "houston:gone", "Ada"), "Ada");
   });
 
@@ -81,9 +67,6 @@ describe("agentsByPath", () => {
 
 describe("both board surfaces resolve identity the same way", () => {
   it("takes NAME and COLOUR from the one roster lookup", () => {
-    // Two halves of one identity: if they read different sources they can
-    // disagree, which is exactly how a card ended up with Kai's colour and
-    // Houston's name.
     for (const source of [
       read("../src/components/use-mission-control.ts"),
       read("../src/components/board/use-mission-control-archived.ts"),

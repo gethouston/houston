@@ -1,68 +1,12 @@
 #!/usr/bin/env bash
-# ============================================================================
-# Build the ggml-org/whisper.cpp `whisper-cli` binary for a target platform and
-# stage it where `app/src-tauri/build.rs` (`stage_whisper_sidecar`) picks it up
-# for Tauri's `externalBin` bundling as `binaries/whisper-cli-<triple>`.
-#
-# whisper-cli is the local-dictation sidecar the desktop spawns to transcribe
-# microphone audio for voice typing in the chat box (no cloud round-trip).
-# whisper.cpp is MIT.
-#
-# The pinned source tarball is SHA256-verified before building. The binary is
-# built fully static (`-DBUILD_SHARED_LIBS=OFF`) so it carries no whisper/ggml
-# shared-library dependency, and on macOS Metal is embedded into the binary
-# (`-DGGML_METAL_EMBED_LIBRARY=ON`) so there is no sibling `.metallib` to ship.
-# On Windows the MSVC CRT is statically linked too (no VC++ redistributable
-# needed on user machines). On macOS the result is verified dylib-free with
-# `otool -L`; on Windows it is verified free of VC++ runtime DLL imports.
-#
-# Output:
-#   target/whisper/whisper-cli-<rust-triple>          (macOS / Linux)
-#   target/whisper/whisper-cli-<rust-triple>.exe      (Windows)
-#
-# Usage:
-#   scripts/build-whisper.sh                    # current host triple
-#   scripts/build-whisper.sh <rust-triple>      # an explicit target (CI, per-arch)
-#
-# Supported <rust-triple>:
-#   aarch64-apple-darwin, x86_64-apple-darwin,
-#   x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu,
-#   x86_64-pc-windows-msvc, aarch64-pc-windows-msvc
-#
-# On macOS a non-host arch is cross-built via CMAKE_OSX_ARCHITECTURES (this is
-# how the release workflow produces both slices for the universal lipo). On
-# Linux/Windows the requested arch must match the host arch (each release runner
-# builds its own arch natively) — a mismatch is rejected.
-#
-# Override the whisper.cpp version with WHISPER_VERSION (default below); update
-# WHISPER_SHA256 to match when bumping.
-# ============================================================================
 set -euo pipefail
 
 WHISPER_VERSION="${WHISPER_VERSION:-1.9.1}"
-# SHA256 of https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v${WHISPER_VERSION}.tar.gz
 WHISPER_SHA256="${WHISPER_SHA256:-147267177eef7b22ec3d2476dd514d1b12e160e176230b740e3d1bd600118447}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="$REPO_ROOT/target/whisper"
-# macOS deployment target — kept in sync with tauri.conf.json minimumSystemVersion.
 MACOS_DEPLOYMENT_TARGET="10.15"
 
-# Rust-arch token ("aarch64"/"x86_64") of the current host, for the
-# same-OS/same-arch guard on Linux and Windows.
-#
-# On Windows, Git Bash / MSYS2 is an x86_64 build that runs under the Windows-on-
-# ARM x64 emulator on ARM64 runners, so `uname -m` reports "x86_64" even when the
-# CPU is ARM64 — which falsely tripped the native-arch guard on the
-# `windows-11-arm` runner (every other tool here — rustc, bun — detects aarch64
-# correctly). Resolve the REAL CPU arch from signals that survive the emulation,
-# in order of authority:
-#   1. RUNNER_ARCH — set by GitHub Actions to the runner's true arch (ARM64/X64),
-#      guaranteed present + correct in CI (where this guard misfired).
-#   2. PROCESSOR_ARCHITEW6432 — set by Windows only inside an emulated/WOW
-#      process, where it holds the native host arch (ARM64 for x64-on-ARM).
-#   3. PROCESSOR_ARCHITECTURE — the process-visible arch (AMD64 on a native x64
-#      host, or under emulation when #2 is absent).
-# Fall through to `uname -m` for non-Windows hosts and local shells that set none.
 host_arch() {
   case "${RUNNER_ARCH:-}" in
     ARM64 | arm64 | aarch64) echo "aarch64"; return ;;
@@ -83,9 +27,6 @@ host_arch() {
   esac
 }
 
-# Derive the Rust target triple for the current host (matches the suffix
-# tauri-cli appends to `externalBin` names). Reuses host_arch() so the Windows-on-
-# ARM detection fix applies to a no-arg local invocation too.
 host_triple() {
   local arch os
   arch="$(host_arch)"
@@ -100,8 +41,6 @@ host_triple() {
 
 TRIPLE="${1:-$(host_triple)}"
 
-# Map a Rust triple to the target OS, the Rust-arch token, the macOS Apple-arch
-# token (for CMAKE_OSX_ARCHITECTURES), and the staged binary's extension.
 case "$TRIPLE" in
   aarch64-apple-darwin)       OS="macos";   ARCH="aarch64"; OSX_ARCH="arm64";  BIN_EXT="" ;;
   x86_64-apple-darwin)        OS="macos";   ARCH="x86_64";  OSX_ARCH="x86_64"; BIN_EXT="" ;;
@@ -112,9 +51,6 @@ case "$TRIPLE" in
   *) echo "ERROR: unsupported triple '$TRIPLE'" >&2; exit 1 ;;
 esac
 
-# Linux/Windows build natively per-arch (no cross toolchain here); reject an
-# arch that doesn't match the host. macOS cross-builds any arch via
-# CMAKE_OSX_ARCHITECTURES, so it is exempt from this guard.
 if [ "$OS" != "macos" ] && [ "$ARCH" != "$(host_arch)" ]; then
   echo "ERROR: cannot build $TRIPLE on a $(host_arch) host — build each $OS arch on its native runner" >&2
   exit 1
@@ -137,7 +73,6 @@ trap 'rm -rf "$TMP"' EXIT
 echo "  downloading source tarball…"
 curl -fsSL "$TARBALL_URL" -o "$TMP/$ASSET"
 
-# Verify SHA256 against the pinned checksum.
 if command -v sha256sum >/dev/null 2>&1; then
   ACTUAL="$(sha256sum "$TMP/$ASSET" | awk '{print $1}')"
 else
@@ -156,8 +91,6 @@ tar -xzf "$TMP/$ASSET" -C "$TMP"
 SRC="$TMP/$INNER_DIR"
 BUILD="$TMP/build"
 
-# Common CMake flags: static libs (self-contained binary, no whisper/ggml
-# dylib), no OpenMP (avoids a libomp/libgomp shared dep), CLI only.
 CMAKE_FLAGS=(
   -DCMAKE_BUILD_TYPE=Release
   -DBUILD_SHARED_LIBS=OFF
@@ -168,18 +101,6 @@ CMAKE_FLAGS=(
 )
 case "$OS" in
   macos)
-    # Metal embedded into the binary → no sibling .metallib to ship.
-    # BLAS is disabled: whisper.cpp defaults GGML_BLAS=ON on Apple (Accelerate),
-    # but Accelerate's new cblas ILP64 entry points are weak-linked and marked
-    # available only on macOS 13.3+, which would crash on our 10.15 floor. Metal
-    # is the accelerator on Apple anyway; the CPU fallback uses ggml's own kernels.
-    # GGML_NATIVE=OFF is load-bearing twice over: (1) a SHIPPED binary must be
-    # portable across every user's Mac, never tuned to the CI host's CPU; and
-    # (2) native detection emits `-mcpu=apple-m<N>` for whatever silicon the
-    # runner has, which a same-image clang that predates that chip rejects
-    # ("unknown target CPU 'apple-m3'" — the v0.5.6 build break when GitHub
-    # rotated the macOS runners to M3). Metal is the accelerator on Apple
-    # anyway; the portable CPU kernels are only the fallback.
     CMAKE_FLAGS+=(
       -DGGML_NATIVE=OFF
       -DGGML_METAL=ON
@@ -190,17 +111,6 @@ case "$OS" in
     )
     ;;
   windows | linux)
-    # CPU-only, self-contained. GGML_NATIVE=OFF stops -march=native, but it
-    # does NOT make a native x86-64 configure portable: ggml then defaults the
-    # whole SSE4.2/AVX/AVX2/BMI2/FMA/F16C family ON (INS_ENB), so this binary
-    # REQUIRES a Haswell-era (2013+) CPU and dies with an illegal instruction
-    # (0xc000001d on Windows) on anything older. That baseline is deliberate —
-    # AVX2 is a large speedup for ggml's CPU kernels and, unlike macOS/Metal,
-    # the CPU path is the only path here — so pin the flags explicitly to keep
-    # a whisper.cpp bump from silently raising it (e.g. to AVX-512), and keep
-    # them in sync with the pre-flight gate in
-    # app/src-tauri/src/dictation/cpu.rs, which shows older CPUs honest
-    # "not available on this computer" copy instead of a crash.
     CMAKE_FLAGS+=(-DGGML_NATIVE=OFF)
     if [ "$ARCH" = "x86_64" ]; then
       CMAKE_FLAGS+=(
@@ -213,24 +123,12 @@ case "$OS" in
         -DGGML_AVX512=OFF
       )
     fi
-    # Statically link the MSVC C/C++ runtime. BUILD_SHARED_LIBS=OFF only
-    # covers whisper/ggml themselves — MSVC still defaults to /MD, leaving the
-    # shipped exe dependent on MSVCP140.dll/VCRUNTIME140.dll, which machines
-    # without the VC++ redistributable don't have (PRODUCT-1448: dictation
-    # died with a "MSVCP140.dll not found" system dialog). CMP0091 must be
-    # forced NEW because whisper.cpp's cmake_minimum_required predates 3.15,
-    # which would otherwise silently ignore CMAKE_MSVC_RUNTIME_LIBRARY.
     if [ "$OS" = "windows" ]; then
       CMAKE_FLAGS+=(
         -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
         -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
       )
     fi
-    # ggml hard-refuses plain MSVC for ARM64 ("MSVC is not supported for ARM,
-    # use clang" — ggml-cpu/CMakeLists.txt): its ARM kernels need clang's
-    # NEON/ACLE intrinsics. Visual Studio's bundled ClangCL toolset compiles
-    # arm64 natively on the windows-11-arm runners while keeping the MSVC
-    # ABI + linker, which satisfies ggml's compiler check.
     if [ "$OS" = "windows" ] && [ "$ARCH" = "aarch64" ]; then
       CMAKE_FLAGS+=(-T ClangCL -A ARM64)
     fi
@@ -243,8 +141,6 @@ cmake -S "$SRC" -B "$BUILD" "${CMAKE_FLAGS[@]}"
 echo "  building whisper-cli…"
 cmake --build "$BUILD" --config Release --target whisper-cli -j
 
-# Locate the built binary: single-config generators emit build/bin/whisper-cli;
-# multi-config (Visual Studio) emit build/bin/Release/whisper-cli.exe.
 BUILT=""
 for cand in \
   "$BUILD/bin/whisper-cli${BIN_EXT}" \
@@ -256,9 +152,6 @@ if [ -z "$BUILT" ]; then
   exit 1
 fi
 
-# On macOS, verify the binary is self-contained: no dependency outside the
-# always-present system paths (/usr/lib, /System/Library). A whisper/ggml or
-# @rpath dylib dependency means the static/embed flags regressed.
 if [ "$OS" = "macos" ] && command -v otool >/dev/null 2>&1; then
   BAD="$(otool -L "$BUILT" | tail -n +2 | awk '{print $1}' \
     | grep -vE '^(/usr/lib/|/System/Library/)' || true)"
@@ -270,12 +163,6 @@ if [ "$OS" = "macos" ] && command -v otool >/dev/null 2>&1; then
   echo "  dylib check OK (system-only dependencies)"
 fi
 
-# On Windows, verify the binary carries no VC++-redistributable dependency —
-# the Windows analogue of the macOS otool gate above. PE import-table DLL
-# names are plain ASCII inside the exe, so a grep is a toolchain-free check
-# (dumpbin needs a VS dev shell Git Bash doesn't have). A hit means the
-# static-CRT flags above regressed and the exe would fail to launch on
-# machines without the redistributable installed.
 if [ "$OS" = "windows" ]; then
   if grep -qai -e 'MSVCP140' -e 'VCRUNTIME140' -e 'CONCRT140' "$BUILT"; then
     echo "ERROR: whisper-cli imports the dynamic VC++ runtime (MSVCP140/VCRUNTIME140) — expected a statically linked CRT" >&2

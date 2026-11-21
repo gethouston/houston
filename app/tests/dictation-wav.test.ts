@@ -37,13 +37,12 @@ describe("resampleLinear", () => {
   });
 
   it("scales length from 48kHz down to 16kHz (3:1)", () => {
-    const input = new Float32Array(480); // 10ms @ 48kHz
+    const input = new Float32Array(480);
     const out = resampleLinear(input, 48000, 16000);
-    strictEqual(out.length, 160); // 10ms @ 16kHz
+    strictEqual(out.length, 160);
   });
 
   it("interpolates linearly between neighboring samples", () => {
-    // 2:1 downsample of a ramp: out[i] should land near input[2*i].
     const input = Float32Array.from({ length: 8 }, (_, i) => i);
     const out = resampleLinear(input, 2, 1);
     strictEqual(out.length, 4);
@@ -66,12 +65,12 @@ describe("encodeWav", () => {
     strictEqual(ascii(8, 4), "WAVE");
     strictEqual(ascii(12, 4), "fmt ");
     strictEqual(view.getUint32(16, true), 16);
-    strictEqual(view.getUint16(20, true), 1); // PCM
-    strictEqual(view.getUint16(22, true), 1); // mono
+    strictEqual(view.getUint16(20, true), 1);
+    strictEqual(view.getUint16(22, true), 1);
     strictEqual(view.getUint32(24, true), 16000);
-    strictEqual(view.getUint32(28, true), 32000); // byte rate
-    strictEqual(view.getUint16(32, true), 2); // block align
-    strictEqual(view.getUint16(34, true), 16); // bits per sample
+    strictEqual(view.getUint32(28, true), 32000);
+    strictEqual(view.getUint16(32, true), 2);
+    strictEqual(view.getUint16(34, true), 16);
     strictEqual(ascii(36, 4), "data");
     strictEqual(view.getUint32(40, true), samples.length * 2);
 

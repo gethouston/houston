@@ -1,14 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
 
-/**
- * The child-mission list above the composer (PRODUCT-1244): a chat that started
- * missions lists them with their live status, and opening one goes to that
- * mission's own chat. The list stands in for the generic follow-up bubbles,
- * because on a coordinating chat the real next step is reviewing what it
- * handed out.
- */
-
 const AGENT = "houston-assistant";
 const PARENT_ID = "parent-1";
 const PARENT_CONVERSATION = `activity-${PARENT_ID}`;
@@ -20,8 +12,6 @@ async function seedFanOut(request: {
   await request.post(activities, {
     data: { id: PARENT_ID, title: "Plan the launch", status: "needs_you" },
   });
-  // Two children the parent started, plus a mission the USER started (no
-  // origin marker) that must never appear in the list.
   await request.post(activities, {
     data: {
       id: "child-running",
@@ -66,8 +56,6 @@ test("a chat lists the missions it started, and opening one goes there (PRODUCT-
   await page.goto("/");
   await page.getByText("Plan the launch").first().click();
 
-  // Both children are listed with their board status — and the user's own
-  // unrelated mission is not, since the list is "what THIS chat started".
   const list = page.getByRole("list", { name: /missions started here/i });
   await expect(
     list.getByRole("button", { name: /Checking emails/ }),
@@ -78,12 +66,9 @@ test("a chat lists the missions it started, and opening one goes there (PRODUCT-
   await expect(
     list.getByRole("button", { name: /Unrelated errand/ }),
   ).toHaveCount(0);
-  // Running leads: a coordinator's question is what is still in flight.
   const titles = await list.getByRole("button").allInnerTexts();
   expect(titles[0]).toContain("Checking emails");
 
-  // The drawer is open by default; its title collapses it to just the title
-  // row (with the count), and expands it again.
   const toggle = page.getByRole("button", {
     name: /missions started here 2/i,
   });
@@ -96,13 +81,10 @@ test("a chat lists the missions it started, and opening one goes there (PRODUCT-
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
-  // A row is a control: it opens that mission's own chat.
   await list.getByRole("button", { name: /Checking emails/ }).click();
   await expect(page.getByText("Task: Checking emails")).toBeVisible();
   await expect(page.getByText("revisa el correo")).toBeVisible();
 
-  // The child chat carries the way back up: "Go to main mission" opens the
-  // parent — and the parent shows its drawer again, never a parent link.
   const backLink = page.getByRole("button", {
     name: /go to main mission Plan the launch/i,
   });

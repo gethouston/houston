@@ -6,12 +6,6 @@ import {
   WAKING_STUCK_THRESHOLD_MS,
 } from "../src/lib/waking-stuck-tracker.ts";
 
-// PRODUCT-1640: an agent answering nothing but waking past the gateway's own
-// 300s ensure-awake hold is a crashlooping or unscheduled pod — one
-// error-level Sentry event per episode, carrying the first and last raw
-// bodies. Everything short of that stays a warning in the fixed
-// `engine_waking` issue.
-
 const MIN = 60_000;
 const first = '{"error":"engine unavailable","detail":"agent is waking"}';
 const last =
@@ -67,7 +61,6 @@ describe("createWakingStuckTracker", () => {
     const t = createWakingStuckTracker();
     for (let at = 0; at <= 4 * MIN; at += MIN) t.noteWaking("a", first, at);
     t.noteSuccess("a");
-    // Answers resume right away: the count restarts from here.
     const restart = 4 * MIN + 1;
     for (
       let at = restart;

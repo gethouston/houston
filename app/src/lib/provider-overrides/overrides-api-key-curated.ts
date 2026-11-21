@@ -1,9 +1,5 @@
 import type { ProviderOverride } from "./types.ts";
 
-/**
- * The API-KEY cards that also curate their model rows: labs and clouds whose
- * picker entries carry a Houston-written one-line description.
- */
 export const CURATED_API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
   deepseek: {
     name: "DeepSeek",
@@ -28,9 +24,6 @@ export const CURATED_API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Free tier on your Google account",
     installUrl: "https://ai.google.dev",
     apiKeyUrl: "https://aistudio.google.com/apikey",
-    // Effort rows for 3.7/3.8 derive to low/medium/high, and Neon's to
-    // low/medium/high/xhigh; Google rejects `minimal` on all three (pi-ai's
-    // per-model thinking map drops it, so the no-effort path floors at LOW).
     models: {
       "gemini-4-neon": {
         description:
@@ -89,13 +82,10 @@ export const CURATED_API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     name: "MiniMax",
     subtitle: "Global API",
     description: "Fast, affordable models for agent work.",
-    // The M Plan key is separate from a pay-as-you-go key and they are NOT
-    // interchangeable (HOU-1160) — the card must say which one to paste.
     cost: "M Plan subscription (paste that plan's API key) or pay-as-you-go",
     installUrl: "https://platform.minimax.io",
     apiKeyUrl:
       "https://platform.minimax.io/user-center/basic-information/interface-key",
-    // The connect default: the one text model both key kinds run.
     models: {
       "MiniMax-M3.1-Flash": {
         description:

@@ -14,13 +14,6 @@ import { dispatchProviderRoutes } from "./dispatch-providers";
 import { serveConversationEvents } from "./events-route";
 import { startTurn } from "./start-turn";
 
-/**
- * The cloudrun dispatch: serves the SAME /agents/:id/* wire surface the GKE
- * proxy serves, but against per-turn Cloud Run + object storage — the web
- * client cannot tell the difference. Turns become one internal POST /turn to
- * the runtime, piped through the relay; reads come straight from object
- * storage; connect runs in the control plane (see connect.ts).
- */
 export async function dispatchCloudrun(
   deps: TurnDeps,
   ws: Workspace,
@@ -30,18 +23,9 @@ export async function dispatchCloudrun(
   url: URL,
   req: IncomingMessage,
   res: ServerResponse,
-  /**
-   * The request body when the route already drained it (the turn path peeks it
-   * to stamp mission attribution). The stream is exhausted by then, so this is
-   * parsed in place of re-reading the request.
-   */
   preReadBody?: Buffer,
 ): Promise<void> {
   const prefix = prefixFor(ws, agent);
-
-  // NB: `files*` never reaches here — the host intercepts it upstream in
-  // routes/agents.ts (handleFiles) for every profile, so cloud + local share
-  // one Files-tab implementation. See turn/files.ts.
 
   if (method === "GET" && rest === "conversations") {
     const out: ConversationSummary[] = [];
@@ -84,10 +68,6 @@ export async function dispatchCloudrun(
       return json(res, 200, { id: c.id, title: c.title, messages: c.messages });
     }
 
-    // Subscribe to this conversation's live events. Mirrors the runtime's SSE
-    // contract exactly: resumable, sequenced frames (see turn/events-route.ts).
-    // The agent id rides along so the route can run the dead-pump reaper
-    // against the agent's turn lease.
     if (method === "GET" && action === "events") {
       return serveConversationEvents(
         deps.relay,
@@ -100,23 +80,11 @@ export async function dispatchCloudrun(
     }
 
     if (method === "POST" && action === "cancel") {
-      // `relay.cancel` already knows whether a turn was in flight on any replica;
-      // surface that as `cancelled` so the client can settle a stuck "running"
-      // card when there was nothing to abort (orphaned after a restart / a turn
-      // that died without a terminal frame). Previously this boolean was dropped.
       const cancelled = await deps.relay.cancel(agent.id);
       return json(res, 200, { ok: true, cancelled });
     }
 
     if (method === "POST" && action === "messages") {
-      // A body that isn't JSON is a malformed REQUEST, so it gets the same 400
-      // shape as the missing-`text` check below. Unguarded, the parse threw all
-      // the way out to the server's top-level catch, which turned a client
-      // mistake into a 500 "Houston broke" — the exact silent-mislabel the beta
-      // policy forbids. An over-cap body is a different failure: readJson's
-      // BodyTooLargeError already carries the 413 that handler maps (and closes
-      // the socket for), so it must keep propagating, not be dressed as a 400.
-      // Same distinction the /feedback route draws (server.ts).
       let body: Record<string, unknown>;
       try {
         body = preReadBody
@@ -140,19 +108,13 @@ export async function dispatchCloudrun(
         body.text,
         typeof body.nonce === "string" ? body.nonce : undefined,
         res,
-        // Presentation-only bubble text; forwarded to the runtime, which
-        // persists it beside the user message. The model still runs on `text`.
         typeof body.displayText === "string" ? body.displayText : undefined,
-        // The @mention sidecar (HOU-944): structure only, the names are already
-        // plain text in `text`. Sanitized here with the same shared guard the
-        // runtime re-applies on receipt.
         parseMentions(body.mentions),
         parseMissionTitle(body.missionTitle),
       );
     }
   }
 
-  // Providers, settings, auth status/login/logout (see dispatch-providers.ts).
   if (await dispatchProviderRoutes(deps, ws, prefix, method, rest, req, res)) {
     return;
   }

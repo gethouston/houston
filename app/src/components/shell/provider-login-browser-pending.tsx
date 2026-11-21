@@ -14,24 +14,6 @@ import { genericErrorDescription } from "../../lib/error-report";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriSystem } from "../../lib/tauri";
 
-/**
- * Desktop Claude BROWSER login dialog. The happy path is fully seamless: the
- * native `claude auth login` opened the browser, the approval page hands its
- * authorization code straight back to the CLI, and this dialog is only a
- * spinner ("approve in your browser") with a "didn't open" fallback link —
- * no code UI anywhere.
- *
- * When the page-to-CLI hand-off is blocked (firewalls, strict browsers —
- * HOU-839) the approval page shows the user a code instead. That case is
- * recovered in stages, most seamless first:
- *   1. Auto-finish: the user copies the code and switches back to Houston;
- *      on refocus `onClipboardProbe` feeds a code-shaped clipboard string to
- *      the CLI silently. Zero typing, zero code UI.
- *   2. Only if the probe finds nothing does a small "Claude showed you a
- *      code?" link appear; clicking it reveals a paste field (`onSubmitCode`).
- * Completion always arrives via `claude-login://done`, which unmounts this
- * dialog from the parent. Closing cancels the sign-in.
- */
 interface Props {
   provider: ProviderInfo;
   url: string;
@@ -40,8 +22,6 @@ interface Props {
   onClose: () => void;
 }
 
-/** Backstop reveal for users who never blur the window (e.g. the browser did
- * not open): after this long the "Claude showed you a code?" link appears. */
 const REVEAL_FALLBACK_MS = 45_000;
 
 type Stage = "waiting" | "revealed" | "form" | "finishing";
@@ -61,9 +41,6 @@ export function ProviderLoginBrowserPending({
   const stageRef = useRef(stage);
   stageRef.current = stage;
 
-  // Refocus after being away is the stuck-hand-off signature (a completed
-  // hand-off closes this dialog before the user returns): silently try to
-  // finish from a copied code; only when that finds nothing, surface the link.
   useEffect(() => {
     const onBlur = () => {
       wasAway.current = true;
@@ -101,8 +78,6 @@ export function ProviderLoginBrowserPending({
     setStage("finishing");
     try {
       await onSubmitCode(trimmed);
-      // Stay open: the CLI finishes its own exchange and the parent closes on
-      // `claude-login://done`.
     } catch (err) {
       setError(genericErrorDescription("provider_login_submit_code", err));
       setStage("form");
@@ -135,8 +110,6 @@ export function ProviderLoginBrowserPending({
           </span>
         </div>
 
-        {/* Primes the copy-and-return motion that lets the clipboard
-            auto-finish recover a blocked hand-off with zero typing. */}
         {stage !== "finishing" && (
           <p className="text-[12px] text-ink-muted">
             {t("providerLogin.browserCodeCopyHint")}

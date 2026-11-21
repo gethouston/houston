@@ -2,16 +2,12 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 
 export interface TaskListGroupLabels {
-  /** Accessible name for the count, e.g. `(n) => \`${n} tasks\``. Without one
-   *  the bare number is read, which is enough beside a named heading. */
   count?: (count: number) => string;
 }
 
 export interface TaskListGroupProps {
   heading: string;
   count?: number;
-  /** A collapsible group's heading is a button; its rows render only when
-   *  `open`. The archive is the one group that opens closed. */
   collapsible?: boolean;
   open?: boolean;
   onToggle?: () => void;
@@ -20,14 +16,6 @@ export interface TaskListGroupProps {
   labels?: TaskListGroupLabels;
 }
 
-/**
- * One named band of {@link TaskRow}s: a muted heading with its count flush
- * right, and — for the archive — a chevron that folds the rows away.
- *
- * The heading is deliberately quieter than the rows it names: on a phone the
- * tasks are the content and the section words are structure, so the band reads
- * as a label rather than competing with the titles under it.
- */
 export function TaskListGroup({
   heading,
   count,
@@ -42,8 +30,6 @@ export function TaskListGroup({
   const countNode =
     count === undefined ? null : (
       <span className="shrink-0 text-xs text-ink-muted tabular-nums">
-        {/* The number is the visible form; a caller that supplies words gets
-            them read INSTEAD, so a screen reader never hears a bare digit. */}
         {spokenCount ? <span className="sr-only">{spokenCount}</span> : null}
         <span aria-hidden={spokenCount !== undefined}>{count}</span>
       </span>

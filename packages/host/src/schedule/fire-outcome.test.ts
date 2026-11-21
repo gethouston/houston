@@ -30,7 +30,6 @@ test("a fresh burn reads as in flight, never as an outcome", () => {
 });
 
 test("a burn with no recorded outcome replays nothing", () => {
-  // "1" is the local scan's burn or an older host's.
   for (const value of [null, "", "1", "not json", '{"result":"weird"}'])
     expect(decodeFireOutcome(value)).toBeNull();
 });
@@ -87,8 +86,6 @@ test("a runtime refusing new turns while it drains is retryable", () => {
 
 afterEach(() => vi.restoreAllMocks());
 
-// On the host only console.error reaches Sentry: a fault must go out there,
-// an expected state stays a warning breadcrumb.
 test.each([
   ["an unexpected throw", "error", new Error("boom"), false],
   [

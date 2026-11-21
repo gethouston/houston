@@ -8,11 +8,6 @@ import { tauriHeartbeat } from "../../lib/heartbeat-facade";
 import { tellOptimisticRefusal } from "../../lib/optimistic-write";
 import { queryKeys } from "../../lib/query-keys";
 
-/**
- * The AI Manager's morning-briefing settings + last run. Refreshed by the
- * host's `HeartbeatChanged` event (the daemon recording a run, the manager
- * changing the time for the person), never load-on-mount only.
- */
 export function useHeartbeat(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.heartbeat(),
@@ -23,10 +18,6 @@ export function useHeartbeat(enabled: boolean) {
   });
 }
 
-/**
- * Change the settings, painted now and rolled back (and told) on refusal: a
- * switch that snaps back with no word reads as a broken switch.
- */
 export function useSetHeartbeat() {
   const qc = useQueryClient();
   const { t } = useTranslation("settings");
@@ -52,7 +43,6 @@ export function useSetHeartbeat() {
   });
 }
 
-/** "Brief me now". The caller decides what each outcome tells the person. */
 export function useRunHeartbeatNow() {
   const qc = useQueryClient();
   return useMutation({

@@ -16,14 +16,6 @@ import {
   parseAgentColorMap,
 } from "./agent-color";
 
-/**
- * PUT /v1/agents/:id/color — the single-request color write the personal
- * assistant dispatches. The decisive property is WHERE it lands: the same
- * `agent_colors` account preference the app's color sync owns, read back here
- * through `/v1/preferences/agent_colors` exactly as the app reads it. A second
- * store would leave the app and the assistant painting different pictures.
- */
-
 const verifier: TokenVerifier = {
   async verify(b) {
     return b.startsWith("tok:") ? { userId: b.slice(4) } : null;
@@ -80,7 +72,6 @@ afterEach(async () => {
   await new Promise<void>((r) => server.close(() => r()));
 });
 
-/** Create an agent through the wire and return its id. */
 async function createAgent(
   body: Record<string, unknown>,
   who = "alice",
@@ -102,7 +93,6 @@ function putColor(agentId: string, body: unknown, who = "alice") {
   });
 }
 
-/** The color map exactly as the app reads it back. */
 async function storedColors(who = "alice"): Promise<Record<string, string>> {
   const r = await fetch(`${base}/v1/preferences/${AGENT_COLORS_PREF_KEY}`, {
     headers: auth(who),
@@ -130,7 +120,6 @@ test("a second agent's color merges into the map instead of replacing it", async
     [first]: "teal",
     [second]: "#ff8800",
   });
-  // Re-coloring one agent leaves the other alone.
   expect((await putColor(first, { color: "violet" })).status).toBe(200);
   expect(await storedColors()).toEqual({
     [first]: "violet",
@@ -204,7 +193,6 @@ test("POST /agents stores a create-time color in the same map", async () => {
 test("POST /agents without a usable color stores nothing", async () => {
   await createAgent({ name: "Sales" });
   expect(await storedColors()).toEqual({});
-  // A malformed color is cosmetic: the agent is still created, 201, uncolored.
   await createAgent({ name: "Support", color: 7 });
   await createAgent({ name: "Ops", color: "" });
   expect(await storedColors()).toEqual({});
@@ -246,11 +234,6 @@ test("agentColorOrNull accepts a trimmed non-empty short string only", () => {
   expect(agentColorOrNull(["teal"])).toBeNull();
 });
 
-/**
- * The id-lifecycle helpers, against a real preferences doc. A local agent's id
- * IS its workspace path, so a rename changes it and a deleted id can be reused
- * — the map has to follow both or an agent wears a color that is not its own.
- */
 async function mapAfter(
   seed: Record<string, string>,
   edit: (vfs: MemoryVfs) => Promise<unknown>,

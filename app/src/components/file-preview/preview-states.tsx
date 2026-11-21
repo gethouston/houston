@@ -3,16 +3,10 @@ import { Download, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { isPresentation } from "./citation-labels";
 
-/** Paged files get page-shaped skeletons; everything else one block. */
 export function isPagedFile(fileName: string, converts: boolean): boolean {
   return converts || /\.pdf$/i.test(fileName);
 }
 
-/**
- * The first open, while the file downloads (and, for an Office file, converts
- * on the host, 1-3 s): grey pages at the document's shape, never a spinner.
- * Decks are 16:9; anything else is a portrait page.
- */
 export function PreviewSkeleton({
   fileName,
   paged,
@@ -46,18 +40,8 @@ export function PreviewSkeleton({
   );
 }
 
-export type FallbackKind =
-  /** The host could not convert or read the file; the file itself is fine. */
-  | "failed"
-  /** No in-app preview for this type. */
-  | "unsupported"
-  /** The download failed: gone, or a fault (its message says which). */
-  | "error";
+export type FallbackKind = "failed" | "unsupported" | "error";
 
-/**
- * What the panel shows instead of the file: what happened, and Download, so
- * the person can always get their file out. Retry where trying again helps.
- */
 export function PreviewFallback({
   kind,
   fileName,

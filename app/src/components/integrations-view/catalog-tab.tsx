@@ -25,7 +25,6 @@ import { PageContainer } from "../shell/page-shell";
 import { IntegrationsReady } from "./integrations-ready";
 import { useCatalogSurface } from "./use-catalog-surface";
 
-/** The apps catalog: the Integrations screen's landing tab, identity included. */
 export function CatalogTab() {
   const { t } = useTranslation("integrations");
   const gate = useIntegrationsGate();
@@ -34,11 +33,6 @@ export function CatalogTab() {
     () => (Array.isArray(custom.items) ? custom.items : []),
     [custom.items],
   );
-  // Curated entries (Croma, HighLevel) join the browse catalog unless already
-  // added — then their row lives in the Installed strip via the custom list —
-  // or unless the provider catalog carries the slug itself (Composio's
-  // HighLevel app), in which case that toolkit is the card and leaves the
-  // catalog once the MCP definition is added, like any connected app would.
   const providerCatalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
   const curated = useMemo(
     () =>
@@ -71,10 +65,6 @@ export function CatalogTab() {
       className="flex-1 overflow-auto [scrollbar-gutter:stable]"
     >
       <PageContainer width="wide" className="pt-6 pb-10">
-        {/* The catalog column caps at its own natural width (two capped
-            cells) and centers in the wide page — headings and rows keep
-            one shared left edge, and the page's margin absorbs the rest,
-            split evenly, instead of piling up right of the grid. */}
         <div className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}>
           {gate.kind === "ready" ? (
             <IntegrationsReady
@@ -104,9 +94,6 @@ export function CatalogTab() {
                   signingIn={gate.signingIn}
                 />
               ) : Array.isArray(custom.items) ? (
-                // The catalog is off but custom integrations WORK right
-                // below — a flat "not available" over a working surface
-                // would be a lie (self-host without a Composio key).
                 <p className="text-sm text-ink-muted">
                   {t("custom.catalogUnavailable")}
                 </p>

@@ -27,8 +27,6 @@ export function createTurnEmitter(
   return (raw) => {
     const frame = sandbox ? sandbox.present(raw) : raw;
     send(log ? log.record(frame) : frame);
-    // The runtime persists the user message before this frame. Publish it now
-    // so a gateway restart can reconstruct the turn from its transcript.
     if (frame.type === "user") void transcript?.publishUser();
   };
 }

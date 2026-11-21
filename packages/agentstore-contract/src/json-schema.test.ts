@@ -72,8 +72,6 @@ describe("AgentIR JSON Schema", () => {
   });
 
   it("directs publishers to the gateway publish route and claim-code response", () => {
-    // The prose is the agent-facing contract; it must not point at the removed
-    // /api/agents path or promise a removed "manage token".
     expect(agentIrJsonSchema.description).toContain("/v1/agentstore/agents");
     expect(agentIrJsonSchema.description).toContain("claimCode");
     expect(agentIrJsonSchema.description).not.toContain("/api/agents");

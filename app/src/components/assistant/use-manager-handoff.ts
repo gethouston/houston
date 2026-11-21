@@ -4,12 +4,6 @@ import { logAndReportError } from "../../lib/error-report";
 import { sendManagerHandoff } from "../../lib/manager-onboarding/send-handoff";
 import { useManagerHandoffStore } from "../../stores/manager-handoff";
 
-/**
- * Sends the kickoff onboarding left for the manager as this chat's first
- * turn, through the chat's own send, so it runs on the model the composer
- * shows and lands as the next message under the imported onboarding, drawn
- * as the goal card.
- */
 export function useManagerHandoff(
   sessionKey: string,
   sendAuthored: (
@@ -18,7 +12,6 @@ export function useManagerHandoff(
     context: string,
     grants: ["createAgent"],
   ) => Promise<void>,
-  /** A turn is running: the kickoff waits for it to end. */
   busy: boolean,
 ): void {
   useEffect(() => {

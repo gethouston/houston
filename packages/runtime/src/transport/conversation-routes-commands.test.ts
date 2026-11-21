@@ -5,16 +5,6 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { afterAll, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * The turn route is where every channel's message enters the runtime, so it is
- * where a conversation command has to be caught: one interception serves the
- * desktop composer and every relay that will ever forward plain text.
- *
- * It is also where the two are held apart. A command rewrites the context a
- * turn runs in, so the route may never accept both onto one conversation —
- * these tests pin BOTH refusals, and that neither one loses the message.
- */
-
 const chat = vi.hoisted(() => ({
   runTurn: vi.fn(async () => {}),
   ensureProviderForTurn: vi.fn(async () => null as string | null),
@@ -101,8 +91,6 @@ test("a command runs as a command and never as a prompt", async () => {
 });
 
 test("a command works with no provider connected", async () => {
-  // `/clear` is how a user recovers a chat, so the provider gate that refuses
-  // ordinary turns must not stand between them and it.
   const out = await post({ text: "/clear" });
 
   expect(out.status).toBe(202);
@@ -120,19 +108,12 @@ test("a command racing a live turn is refused, not queued behind it", async () =
 });
 
 test("a turn racing a running command waits instead of running against a context being reset", async () => {
-  // The bug this pins: the turn used to be ACCEPTED here. `/clear` then
-  // disposed the session under it mid-flight and wrote its boundary marker
-  // above the user's message, so the message ran nowhere and was excluded from
-  // every later context — silently.
   chat.ensureProviderForTurn.mockResolvedValueOnce("openai");
   gate.commandRunning = true;
 
   const out = await post({ text: "what did we decide?", nonce: "n2" });
 
   expect(chat.runTurn).not.toHaveBeenCalled();
-  // The engine's "not here, not now" shape: every shipped client re-sends the
-  // SAME message (same nonce) on its wake ladder and shows the user nothing,
-  // so the message is delayed by the command, never lost to it.
   expect(out.status).toBe(503);
   expect(out.body).toMatchObject({ error: "engine unavailable" });
   expect(out.headers).toMatchObject({ "Retry-After": "1" });
@@ -144,8 +125,6 @@ test("an accepted turn holds the conversation for its whole life", async () => {
   const out = await post({ text: "hello" });
 
   expect(out.status).toBe(202);
-  // The hold is what refuses a `/clear` arriving while this turn runs — the
-  // turn's own queue entry comes too late to decide acceptance.
   expect(gate.holdConversationTurn).toHaveBeenCalledWith(
     "c1",
     expect.any(Promise),

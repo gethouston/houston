@@ -12,7 +12,6 @@ import type { StoreCreatorProfile, StoreLinkComponent } from "../types";
 
 const PlainLink: StoreLinkComponent = (props) => <a {...props} />;
 
-/** The hero's countable-noun labels, provided by the screen. */
 export interface CreatorProfileHeroLabels {
   agent: string;
   agentsNoun: string;
@@ -46,11 +45,6 @@ function Edit({
   );
 }
 
-/**
- * The profile page's hero: avatar, name, handle, stats, bio, socials. In
- * owner mode the SAME hero grows its edit pencils (avatar + profile) — no
- * separate owner layout exists.
- */
 export function CreatorProfileHero({
   profile,
   stats,

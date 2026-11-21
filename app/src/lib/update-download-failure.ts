@@ -1,16 +1,3 @@
-// The typed failure the shell's resumable release download rejects with
-// (app/src-tauri/src/commands/update_failure.rs), and the two classifiers the
-// updater's reporting paths need. Dependency-free so it is node-testable
-// directly (app/tests/update-download-failure.test.ts).
-
-/** `network` is the device's link; `upstream` is the release host answering
- *  a transient status (a 5xx / 429) for the whole retry budget (PRODUCT-1811).
- *  Both are expected states. `http` is any other status, final on first
- *  sight. `in_progress` is another download holding the same partial file
- *  in the shell: nothing happened. A remounted hook asking again does not
- *  get it; the shell joins it to the running download instead.
- *  `storage_full` is the disk refusing the bytes: quiet, and not retried for
- *  that release this session. */
 export type UpdateDownloadFailureKind =
   | "network"
   | "upstream"
@@ -20,9 +7,6 @@ export type UpdateDownloadFailureKind =
   | "storage_full"
   | "other";
 
-/** What the shell reports when a release download gives up: the class, the
- *  last attempt's message, where the stream stopped, and the status the
- *  release host answered (for the status-shaped classes). */
 export interface UpdateDownloadFailure {
   kind: UpdateDownloadFailureKind;
   message: string;
@@ -32,9 +16,6 @@ export interface UpdateDownloadFailure {
   status?: number | null;
 }
 
-/** The failure as an `Error`, so the reporting paths carry the byte position
- *  in the message and the class on the instance. `status` is read by
- *  `quietErrorDetails`, so a quiet event is tagged with it. */
 export class UpdateDownloadError extends Error {
   readonly kind: UpdateDownloadFailureKind;
   readonly received: number;
@@ -63,11 +44,6 @@ const KINDS: ReadonlySet<string> = new Set([
   "other",
 ]);
 
-/** What the machine does with a failed download: `skip` (another download
- *  of the release is running; nothing to report, nothing to change),
- *  `give_up` (the disk is full; no retry for this release this session, one
- *  quiet report), or `retry` (report once per release; the next poll resumes
- *  the persisted partial). */
 export type UpdateDownloadOutcome = "skip" | "give_up" | "retry";
 
 export function updateDownloadOutcome(err: unknown): UpdateDownloadOutcome {
@@ -77,11 +53,6 @@ export function updateDownloadOutcome(err: unknown): UpdateDownloadOutcome {
   return "retry";
 }
 
-/**
- * Read the shell's rejection into an `UpdateDownloadError`. Anything else
- * (a plain string from an older command, a thrown `Error`) is wrapped as
- * `other` so the caller never has to branch on the raw shape.
- */
 export function toUpdateDownloadError(err: unknown): UpdateDownloadError {
   if (err instanceof UpdateDownloadError) return err;
   if (err !== null && typeof err === "object" && "kind" in err) {
@@ -107,8 +78,6 @@ export function toUpdateDownloadError(err: unknown): UpdateDownloadError {
   });
 }
 
-/** "stopped at 123456789/315000000 bytes after 4 attempts: error decoding
- *  response body": the Sentry title says where a download died. */
 export function describeDownloadFailure(
   failure: UpdateDownloadFailure,
 ): string {
@@ -118,16 +87,6 @@ export function describeDownloadFailure(
   return `stopped at ${failure.received}/${total} bytes${attempts}: ${failure.message}`;
 }
 
-/**
- * The messages `reqwest` (the updater plugin's HTTP client) surfaces for a
- * transport-level failure of the release-feed check: the request never got a
- * response, or the body was cut mid-stream. These are the device offline or
- * a proxy/DNS between it and GitHub, the same class as `isNetworkTransportError`
- * on the browser side; they report as the quiet `offline` class, never as a
- * bug per event. A 404 or a malformed manifest ("Could not fetch a valid
- * release JSON") is NOT matched: that shape is how a leaked staging build
- * surfaces itself.
- */
 const NETWORK_SHAPED =
   /error sending request|error decoding response body|dns error|connection (reset|refused|closed|aborted)|operation timed out|timed out|network is unreachable|no route to host|tls handshake|certificate|broken pipe|unexpected eof|incomplete message/i;
 

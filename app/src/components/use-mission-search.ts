@@ -8,17 +8,11 @@ import { matchesPhrase } from "./mission-highlight";
 import { normalizeMissionSearchQuery, searchMissions } from "./mission-search";
 import { useMissionHistoryScan } from "./use-mission-history-scan";
 
-/**
- * How long typing must pause before the transcript scan fires. Matching what is
- * already loaded stays on the RAW query (it is a regex over pre-folded text, so
- * the board narrows on every keystroke); only the network wave waits (HOU-941).
- */
 const SCAN_DEBOUNCE_MS = 250;
 
 interface UseMissionSearchOptions {
   items: KanbanItem[];
   query: string;
-  /** Forwarded to {@link useMissionHistoryScan} — see its `loadHistory`. */
   loadHistory: (
     sessionKey: string,
     opts?: HistoryLoadOptions,
@@ -34,7 +28,6 @@ export function useMissionSearch({
 }: UseMissionSearchOptions) {
   const phrase = normalizeMissionSearchQuery(query);
   const debouncedPhrase = useDebouncedValue(phrase, SCAN_DEBOUNCE_MS);
-  // Clearing the box stops the scan at once — there is nothing to wait for.
   const scanPhrase = phrase ? debouncedPhrase : "";
 
   const { historyById, isScanning } = useMissionHistoryScan({
@@ -49,7 +42,6 @@ export function useMissionSearch({
     [items, query, historyById],
   );
 
-  // One event per search session (empty → non-empty), never per keystroke.
   const searchingRef = useRef(false);
   useEffect(() => {
     if (phrase && !searchingRef.current) {
@@ -60,9 +52,6 @@ export function useMissionSearch({
     }
   }, [phrase]);
 
-  // Between the last keystroke and the scan wave, the spinner has to stand for
-  // the missions nobody has looked inside yet — but only for those: with every
-  // transcript already scanned the results are final and the box must be calm.
   const scanPending =
     phrase !== scanPhrase &&
     items.some(
@@ -76,8 +65,6 @@ export function useMissionSearch({
     items: result.items,
     hasQuery: result.hasQuery,
     snippets: result.snippets,
-    // An emptied box is never "still searching", even while the loads the last
-    // phrase started drain.
     isSearchingText: phrase !== "" && (isScanning || scanPending),
   };
 }

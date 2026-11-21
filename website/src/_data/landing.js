@@ -1,20 +1,4 @@
-// Structure only. Text lives in _data/i18n/*. Arrays here zip by index with the
-// i18n arrays.
-//
-// Everything in this module is locale independent: avatar tone classes, face
-// rosters (person ids), logo path data, tile kinds and badges, and the
-// who-speaks-per-turn order of the scripted demos. Every array below has the
-// SAME length and the SAME order as the i18n array it pairs with, so a template
-// can walk them together with a shared index. Objects keyed by an id (agents,
-// scenarios) pair with the identically keyed object in _data/i18n/*; the array
-// order here is the DOM order.
-//
-// Person ids resolve through `people` below. Ids marked `anonymous` render as
-// initials only and have NO entry in i18n `js.people` (there is no name to
-// translate).
-
 export default {
-  // Avatar identities shared by every demo surface.
   people: {
     julian: { img: "julian", initials: null, tone: null, anonymous: false },
     felipe: { img: "felipe", initials: null, tone: null, anonymous: false },
@@ -25,8 +9,6 @@ export default {
     sb: { img: null, initials: "SB", tone: "hp-5", anonymous: true },
   },
 
-  // The fake app window in the hero. Sidebar rows pair with i18n hero.app.agents
-  // by id; the numeric badges live here because they are not translatable.
   hero: {
     app: {
       sidebar: [
@@ -42,8 +24,6 @@ export default {
     },
   },
 
-  // The JS-off multiplayer thread (#multiplayer). `msgs` zips by index with
-  // i18n multiplayer.msgs; "agent" means the tinted helmet avatar.
   multiplayer: {
     chat: {
       av: "av-c",
@@ -60,8 +40,6 @@ export default {
     },
   },
 
-  // Agent mission columns (#parallel). Array order is DOM order; each `id`
-  // keys into i18n parallel.agents, and `cards` zips by index with its `cards`.
   parallel: {
     agents: [
       {
@@ -111,8 +89,6 @@ export default {
     ],
   },
 
-  // The compounding-memory card (#compound). Each array zips by index with the
-  // matching i18n array under compound.{learnings,skills,context}.
   compound: {
     av: "av-c",
     count: "127",
@@ -138,7 +114,6 @@ export default {
       { kind: "page", badge: "DOC" },
       { kind: "page", badge: "DOC" },
     ],
-    // Brand marks used by the Skills rows. Colored, unlike the stack wall.
     skillLogos: {
       hubspot: {
         label: "HubSpot",
@@ -163,9 +138,6 @@ export default {
     },
   },
 
-  // Works-with-your-stack wall (#stack). `marks` is the ONE source of the brand
-  // path data; `tiles` zips by index with i18n stack.tiles. Brand names are not
-  // translatable, so they live here, never in i18n.
   stack: {
     marks: {
       slack: {
@@ -287,9 +259,6 @@ export default {
     ],
   },
 
-  // Scripted hero demo (assets/hero-demo*.js). `agents` pairs by id with i18n
-  // js.heroDemo.agents; `scripts` is the loop order and pairs by `agent` with
-  // i18n js.heroDemo.scripts.
   heroDemo: {
     agents: [
       { id: "houston", av: "av-p" },
@@ -321,9 +290,6 @@ export default {
     ],
   },
 
-  // Multiplayer chat replay (assets/chat.js). Array order is the pill order;
-  // each `id` keys into i18n js.chat.scenarios, and `turns` zips by index with
-  // that scenario's `turns` array ("agent" or a person id).
   chat: {
     scenarios: [
       {
@@ -353,8 +319,6 @@ export default {
     ],
   },
 
-  // The live-learnings ticker (#compound). Zips by index with i18n
-  // js.compound.pool; each entry names the teammate whose avatar rides the row.
   compoundLive: {
     pool: [
       { person: "felipe" },

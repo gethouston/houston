@@ -1,41 +1,13 @@
-/**
- * The activities reactivity subscription: a long-lived SSE read of the host's
- * `GET /v1/events`, built on the shared `streamGlobalEvents` loop
- * (`@houston/runtime-client`) — the SAME one client-side loop the agents module
- * and the web adapter consume. This module keeps only its own seams: header auth
- * via the injected `fetch`, the clock-driven reconnect wait, and `ActivityChanged`
- * translation (carrying the frame's `agentPath` so the module refetches just
- * that agent).
- *
- * TWO subscriptions per SDK, by design. The agents module opens its own
- * `/v1/events` read for `AgentsChanged`; this one reads `ActivityChanged`.
- * Sharing ONE read would mean folding both filters into a kernel-owned
- * fan-out and refactoring the agents module — out of scope here. The costly
- * piece (the reconnect/read loop) is REUSED via `streamGlobalEvents`; only a
- * second cheap SSE connection is added, mirroring how the web adapter already
- * runs its `subscribeEvents` read alongside the SDK's.
- *
- * On EVERY (re)connect the caller refetches ({@link onConnect}), so events
- * missed while the stream was down are caught up by the reload.
- */
-
 import { streamGlobalEvents } from "@houston/runtime-client";
 import { trimTrailingSlashes } from "@houston/runtime-client/trim-slashes";
 import type { Clock, SdkLogger } from "../../ports";
 import { ACTIVITY_CHANGED_EVENT } from "./types";
 
-/** Fixed short reconnect delay, mirroring the shared helper's default. */
 const RECONNECT_DELAY_MS = 1500;
 
 export interface ActivitiesStreamHandlers {
-  /** (Re)connected — refetch known agents' activities to catch up missed events. */
   onConnect(): void;
-  /**
-   * An `ActivityChanged` frame arrived. `agentPath` names the agent whose
-   * activities changed (absent on a malformed frame → refetch all known).
-   */
   onActivityChanged(agentPath: string | undefined): void;
-  /** A `401` proved the Houston session token lapsed. */
   onUnauthorized(): void;
 }
 
@@ -47,7 +19,6 @@ export interface ActivitiesStreamDeps {
   handlers: ActivitiesStreamHandlers;
 }
 
-/** Start the subscription. Returns a stop function that aborts it for good. */
 export function startActivitiesEventStream(
   deps: ActivitiesStreamDeps,
 ): () => void {
@@ -72,26 +43,16 @@ export function startActivitiesEventStream(
   return () => ac.abort();
 }
 
-/** What {@link attachActivitiesReactivity} needs from the module it drives. */
 export interface ActivitiesReactivityDeps {
   baseUrl: string;
   fetch: typeof fetch;
   clock: Clock;
   logger: SdkLogger;
-  /** Agents loaded at least once — the LIVE set a catch-up refetch covers. */
   known: ReadonlySet<string>;
-  /** The module's silent refetch for one agent. */
   refresh(agentId: string): Promise<void>;
   onUnauthorized(): void;
 }
 
-/**
- * Wire the stream to the module's refetch and return its stop function.
- *
- * A stream-driven refetch is not a user action: a transient failure just leaves
- * the snapshot stale until the next event. A 401 still surfaces (the http layer
- * fires `onUnauthorized`), so only the noise is logged, never swallowed.
- */
 export function attachActivitiesReactivity(
   deps: ActivitiesReactivityDeps,
 ): () => void {
@@ -112,8 +73,6 @@ export function attachActivitiesReactivity(
     logger: deps.logger,
     handlers: {
       onConnect: () => refreshAll("connect"),
-      // Targeted: only an agent we're showing. A frame with no agentPath can't
-      // be targeted, so refetch every known agent (catch-up, never a miss).
       onActivityChanged: (agentPath) => {
         if (agentPath === undefined) refreshAll("change");
         else if (deps.known.has(agentPath))
@@ -124,10 +83,6 @@ export function attachActivitiesReactivity(
   });
 }
 
-/**
- * The agent id off an `ActivityChanged` frame, `undefined` when the frame omits
- * it, or `null` when the frame is not an `ActivityChanged` (not our signal).
- */
 function activityChangedAgent(data: unknown): string | undefined | null {
   if (
     typeof data !== "object" ||
@@ -139,7 +94,6 @@ function activityChangedAgent(data: unknown): string | undefined | null {
   return typeof agentPath === "string" ? agentPath : undefined;
 }
 
-/** Backoff sleep on the injected clock, resolved early if the signal aborts. */
 function sleep(clock: Clock, ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
     if (signal.aborted) return resolve();

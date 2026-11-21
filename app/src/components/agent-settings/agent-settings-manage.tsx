@@ -30,7 +30,6 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
   const currentTeam = teamOfAgent(teams, agent.id);
   const agents = useAgentStore((state) => state.agents);
   const writes = useAgentManageWrites(agent);
-  // A locked org refuses these writes; moving the AI Employee stays open.
   const { locked } = useOrgWriteLock();
   const moveAgent = useMoveAgentTeam();
   const copyAgent = useCopyAgent();

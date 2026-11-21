@@ -7,12 +7,6 @@ import * as controlPlane from "../control-plane";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
-/**
- * An AI Employee's first day (`@houston/sdk`'s agents module): the one start
- * every surface binds. The host creates the setup task, fires its first turn
- * and records the start, so this only carries the request and echoes the two
- * documents the start wrote, ahead of the host's own events.
- */
 export function FirstDayMixin<TBase extends BaseCtor>(Base: TBase) {
   class FirstDay extends Base {
     async startFirstDay(

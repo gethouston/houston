@@ -1,20 +1,3 @@
-/**
- * The two ways bytes get INTO an agent's workspace: files dropped on a chat
- * message, and files added from the Files section.
- *
- * Both take one already-prepared batch of base64 or upload-ID entries and
- * post it. The adapter batches browser `File`s by size to keep small-file
- * requests inside the host's cap and to hold only one batch in memory at a
- * time. It preserves `webkitRelativePath` as `relPath` and passes named Blobs
- * to the SDK, which chooses base64 or resumable transfer without knowing DOM
- * `File` objects. The SDK's upload-batches module prepares those Blobs before
- * these literal requests, so the catalog can derive their route and body fields.
- *
- * Kept out of `index.ts` so the module factory there stays within the
- * file-size budget, and out of `http.ts` because these two are the family's
- * binary half, hidden from the assistant and prepared by the SDK.
- */
-
 import { isTransportFailure } from "../../transport-failure";
 import { type HttpScope, httpRequest } from "../http";
 import type { UploadBatchOptions, UploadEntry } from "./types";
@@ -22,20 +5,11 @@ import { uploadBytes } from "./upload-entries";
 import { uploadRefusal } from "./upload-errors";
 import { UploadInterruptedError, type UploadRoute } from "./upload-interrupted";
 
-/** A clock reading to time an upload by: monotonic when the host has one. */
 function uploadClock(scope: HttpScope): number {
   const clock = scope.ports.clock;
   return clock.monotonic?.() ?? clock.now();
 }
 
-/**
- * What a failed upload POST rethrows. A transport failure (`fetch` rejecting
- * with a browser's network `TypeError`: no answer at all) becomes an
- * {@link UploadInterruptedError} carrying the elapsed time and the batch's
- * size; an HTTP answer and an abort pass through untouched. Each call site
- * keeps its literal `httpRequest(…)`, which `check:sdk-parity` and the
- * assistant catalog read the route and body fields off.
- */
 function uploadFailure(
   err: unknown,
   scope: HttpScope,
@@ -43,9 +17,7 @@ function uploadFailure(
   startedAt: number,
   files: UploadEntry[],
 ): unknown {
-  // A coding-bug TypeError stays itself, so it still files as a bug.
   if (!isTransportFailure(err)) return err;
-  // Decoded size: base64 carries 3 bytes per 4 characters.
   const bytes = files.reduce((sum, f) => sum + uploadBytes(f), 0);
   const elapsed = Math.max(0, uploadClock(scope) - startedAt);
   return new UploadInterruptedError(route, bytes, elapsed, err.message);
@@ -127,9 +99,6 @@ export async function uploadProjectFiles(
     await httpRequest(
       scope,
       `/agents/${encodeURIComponent(agentPath)}/files/import`,
-      // The workspace root rides as an explicit `null` rather than an absent
-      // key: the host reads both the same way, and this is the shape every
-      // Files-section upload has sent.
       {
         method: "POST",
         body: JSON.stringify({ dir: targetDir ?? null, files }),

@@ -17,8 +17,6 @@ export function providerAvailability(
   return {
     google: firebase,
     apple: firebase && (platform === "ios" || !!config.appleServiceId),
-    // Capawesome's Firebase JS SDK guide explicitly excludes Microsoft with
-    // skipNativeAuth: https://github.com/capawesome-team/capacitor-firebase/blob/main/packages/authentication/docs/firebase-js-sdk.md#quirks
     azure: false,
   };
 }

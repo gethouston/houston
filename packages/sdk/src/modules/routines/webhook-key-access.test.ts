@@ -5,7 +5,6 @@ import {
   webhookKeyAccess,
 } from "./webhook-key-access";
 
-/** The adapter's error shape: status plus the parsed (or raw) body. */
 function engineError(status: number, payload: unknown): Error {
   return Object.assign(new Error("engine error"), { status, body: payload });
 }

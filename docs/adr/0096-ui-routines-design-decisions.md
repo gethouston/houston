@@ -1,0 +1,51 @@
+# ui/routines: design decisions
+
+Covers `ui/routines/` (`@houston-ai/routines`): the schedule builder, time and timezone pickers, plan floor and routine rows.
+
+## Timezone picker
+
+The account-wide timezone is a searchable combobox (a button trigger opening a Popover with a cmdk Command over about 400 zones), replacing the native `<select>` that filled the window height and had no search. cmdk normalizes case and whitespace but not diacritics, so the query and each item are accent-folded before cmdk's scorer ("são paulo" matches "Sao Paulo"). The account zone is always included even if the platform list omits it; a curated list is the fallback when `Intl.supportedValuesOf("timeZone")` is missing. The display keeps the full path with underscores spaced, and the flattened id is a keyword so "america new york" matches and middle segments stay searchable. The trigger's accessible name pairs the label with the value, since an `aria-label` of just the label would hide the chosen zone. `bare` pins the list to a fixed readable width. Lives in `ui/routines/src/timezone-picker.tsx` and `ui/routines/src/timezone-format.ts`.
+
+## Schedule builder
+
+Presets cover common cases; Weekly reveals a day multi-select; Custom offers "Repeat every N [minutes/hours/days/months]". There is no raw-cron input; the generated cron is shown read-only. Conditional fields animate through `Reveal` (framer `layout`) so the card resizes instead of snapping. The builder writes nothing until the person edits it, so opening the editor never rewrites a saved schedule it cannot represent or would spell differently (a legacy `*/16` is not rewritten to `@every 16m`); every real edit re-emits even if the string is unchanged, and setters mark the builder touched only on real changes. A builder seeded with no schedule emits its default pick at once. An invalid pick emits "" so the parent blocks saving; the summary still describes the pick. The interval count is held as a string so the field can be cleared while typing. The schedule is re-derived when `value` changes outside the builder (the setup chat's agent editing the open routine), skipping the builder's own echo; an external schedule the picker cannot represent leaves the state alone. Lives in `ui/routines/src/schedule-builder.tsx`, `ui/routines/src/use-schedule-builder.ts`, `ui/routines/src/schedule-builder-output.ts`, `ui/routines/src/use-schedule-builder-sync.ts`.
+
+## Plan floor
+
+A plan's minimum interval is passed with the plan's own rule as `allows`; the builder never judges cadence itself. The minutes stepper starts at the lowest count `allows` accepts (every higher count is offered too, since an uneven count saves as a true interval and its real gap equals the count), a typed count below it snaps up on blur, refused presets are hidden, and refused picks emit "". A floor that arrives after the editor opens moves the count only while it is still the builder's own default. The floor must be memoized by the caller. Under a floor, a stepper press must not blur the field first, or the blur snap would move the count before the step; keeping focus also works in WebKit, where clicked buttons never take focus. The inline editor's Save compares against the schedule it opened on, so an agent change made while it is open is not overwritten, and it judges an untouched schedule under the floor too. Lives in `ui/routines/src/schedule-floor.ts`, `ui/routines/src/schedule-interval-picker.tsx`, `ui/routines/src/routine-row-schedule-edit.tsx`.
+
+## Interval form and cron mapping
+
+`@every <N>m` / `@every <N>h` is a true interval on a UTC grid counted from the Unix epoch, so every 16 minutes after a :48 fire goes to :04 (cron's `*/16` restarts at :00) and the routine's timezone never moves it. Cron is still written when N divides its parent unit, because every older reader understands it; a minutes count that is whole hours dividing 24 becomes the hours cron. Intervals are capped at seven days; days and months cap at the largest cron step croner accepts (it refuses `*/32` days and `*/13` months). The module is a copy of `packages/domain/src/schedule-interval.ts` because ui/ cannot import domain, and `tests/schedule-interval.fixtures.json` pins both copies to one table. Parsing returns null for anything the picker cannot represent, so the raw schedule is kept rather than misrepresented. Lives in `ui/routines/src/schedule-interval-form.ts`, `ui/routines/src/schedule-interval-utils.ts`, `ui/routines/src/next-fire-interval.ts`.
+
+## Cron classification
+
+Classification is three-way: a preset slug, `"custom"` for a valid non-preset cron, or `null` for no schedule. Treating an unrecognized cron like empty once made the builder fall back to Daily and clobber every-N-minutes schedules on reopen. Weekly accepts a comma list or a legacy `a-b` day range saved by a removed "Weekdays only" preset, normalized to a list on re-save. When both day-of-month and day-of-week are restricted, either matches (standard cron). Lives in `ui/routines/src/schedule-cron-utils.ts` and `ui/routines/src/next-fire.ts`.
+
+## Next fire computation
+
+The next fire is computed without a cron-parser dependency, walking forward and skipping whole hours or days that cannot match, cheap enough for every row every minute. It rounds to the next whole minute, has a hard iteration cap, and returns null when nothing fires within 366 days. Skipping a day adds 24h, which is approximate near DST, but the next iteration re-examines parts and converges. The minute ticker lives in its own component so only the stamp re-renders. Lives in `ui/routines/src/next-fire.ts` and `ui/routines/src/routine-row-next-fire.tsx`.
+
+## Labels and localization
+
+Components take `labels` with English defaults (mirroring `app/src/locales/en/routines.json`) and a `locale`. Dynamic strings use single-brace `{token}` placeholders filled by `interp()`, because the app sources templates with `t(key, { returnObjects: true })` without values and i18next would eat double-brace tokens; the locale validator checks only `{{ }}`, so tokens must be kept identical across en, es and pt by hand. Day names, AM/PM, clock style and list conjunctions come from `Intl`. `ordinal` is English-only and used only by English templates. ICU's narrow no-break space before AM/PM is normalized to a plain space for stable output. Weekday names are derived from 7 January 2024 (a Sunday). Labels in run-history are flat strings, rendered straight into JSX. Lives in `ui/routines/src/labels.ts`, `ui/routines/src/schedule-format.ts`, `ui/routines/src/labels-details.ts`.
+
+## Time picker
+
+The native `<input type="time">` renders as a digit-only spinner in the macOS webview, so a clock-button popover with scrollable columns replaces it. The stored value is always 24-hour "HH:MM"; display follows the locale (12-hour detected by asking for an hour part without forcing `hourCycle`). Columns are end-padded so the first and last values can center, and centering sets `scrollTop` directly rather than `scrollIntoView`, so only the column scrolls. Lives in `ui/routines/src/time-picker.tsx`, `ui/routines/src/time-picker-columns.tsx`, `ui/routines/src/time-picker-utils.ts`.
+
+## Routine rows
+
+The routines surface is chat-first: routines are created and changed by asking the agent, and the list is the left pane of the split beside the selected routine's chat. The whole row is a `role="option"` click target inside a listbox. A click opens only when its DOM target is inside the row, because clicks from portaled children (menu items, the delete dialog) bubble through the React tree while their node sits under `document.body`; Enter and Space open only when the row itself is the target, so Space on the switch toggles it. Controls and the kebab menu stop propagation; the schedule editor sits above the row-click button. Exactly one run control is offered (Stop while running, else Run now). Rows sort enabled first, then alphabetically; drafts come first. The identity icon is the trigger app's logo (supplied by the app) or a clock or bell; a pulsing ring shows a running run, a danger ring a failed schedule run, and a usage-limit sleep shows no ring. Warning chips are the app's judgement, since ui/ owns no provider state; the name truncates but the chip never does. A draft row on a cross-agent list wears its agent's chip. Lives in `ui/routines/src/routine-row.tsx`, `ui/routines/src/routine-row-open-intent.ts`, `ui/routines/src/routine-row-menu.tsx`, `ui/routines/src/routine-row-status.tsx`, `ui/routines/src/routine-row-title.tsx`, `ui/routines/src/routine-draft-row.tsx`, `ui/routines/src/routines-grid.tsx`.
+
+## Trigger status
+
+A routine with a trigger binding always resolves to a status: with no status item yet it shows a muted, hollow, pulsing "unknown" chip that never reads as healthy or off, so a trigger that cannot fire never hides. An active trigger with no runs shows "Active. Waiting for the first event." The detail line shows always, never hover-gated. Status labels use `-ink` tones (fills fail 4.5:1 as text); dot fills use the fill tokens. Copy never says "webhook", "schema" or "instance". Lives in `ui/routines/src/trigger-status-view.ts`, `ui/routines/src/trigger-status-badge.tsx`, `ui/routines/src/trigger-status-badge-styles.ts`, `ui/routines/src/routine-trigger-status.tsx`, `ui/routines/src/labels-trigger.ts`.
+
+## Routine and trigger types
+
+Types mirror `@houston/wire-types` rather than importing them so ui/ stays free of app and engine imports. A trigger binding's `kind` is optional (absent means Composio, the original shape); a webhook binding's `kind` is required. Webhook URLs and secrets never live in routine data; `key_prefix` is a display label. Exactly one of `schedule` and `trigger` is set. A run's typed failure (`RunFailure`) means the AI account was unusable before the agent ran; naming the provider is the app's job, through `describeRun`. Lives in `ui/routines/src/types.ts` and `ui/routines/src/trigger-types.ts`.
+
+## Agent-edit flash
+
+The section the agent just changed flashes white and fades over about 1.1s, on an `::after` overlay so the card background never animates. The `--ht-flash` token carries a per-theme alpha, bright but never a whiteout, and re-resolves in pinned subtrees. Lives in `ui/routines/src/styles.css`.

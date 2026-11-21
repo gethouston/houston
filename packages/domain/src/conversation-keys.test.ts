@@ -55,9 +55,6 @@ test("a chat the person started belongs to no record", () => {
 });
 
 test("a differently-cased spelling is the same chat, so it reads as the same record", () => {
-  // The store addresses a conversation by its id as a file name, and macOS and
-  // Windows resolve `ACTIVITY-m1.json` to `activity-m1.json` — the same
-  // transcript. A case-sensitive read here would call it an ordinary chat.
   expect(recordConversationKind("ACTIVITY-m1")).toBe("mission");
   expect(recordConversationKind("Routine-r1-run-2")).toBe("routine");
   expect(addressesMission({ id: "m1" }, "Activity-M1")).toBe(true);

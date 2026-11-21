@@ -51,7 +51,6 @@ describe("C19 personal plan", () => {
 
   beforeEach(async () => {
     host = await startFakeHost(0);
-    // Host state is process-wide; start every case from the seed.
     await send("POST", "/__test__/reset");
   });
   afterEach(async () => {

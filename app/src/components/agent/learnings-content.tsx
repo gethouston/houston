@@ -15,11 +15,6 @@ export interface LearningEntry {
   index: number;
   text: string;
   id: string;
-  /**
-   * Resolved provenance line, joined on by the screen (raw `taught_by` /
-   * mission fields stay in `LearningSourceRow` — this view never reads them).
-   * Absent or null = no line.
-   */
   provenance?: LearningProvenanceView | null;
 }
 
@@ -32,19 +27,13 @@ export function LearningsContent({
   showHelper = true,
 }: {
   entries: LearningEntry[];
-  /** Each write paints before it lands and owns its own failure toast, so
-   *  none of them is awaited: the editor closes on the commit. An add or edit
-   *  resolving `false` was refused, and its editor reopens with the text. */
   onAdd: (text: string) => Promise<boolean>;
   onRemove: (id: string) => void;
   onUpdate: (id: string, text: string) => Promise<boolean>;
   layout?: "full" | "section";
-  /** False when the mounting page hero already carries this helper copy. */
   showHelper?: boolean;
 }) {
   const { t } = useTranslation("agents");
-  // A draft's `text` is empty for a new one, or what the user typed when the
-  // host refused that add (the card reopens holding it).
   const [drafts, setDrafts] = useState<{ id: string; text: string }[]>([]);
   const [pendingRemove, setPendingRemove] = useState<LearningEntry | null>(
     null,

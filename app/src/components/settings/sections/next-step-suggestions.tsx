@@ -6,11 +6,6 @@ import { queryKeys } from "../../../lib/query-keys";
 import { tauriPreferences } from "../../../lib/tauri";
 import { SettingsControlRow } from "../settings-row";
 
-/**
- * Refreshed by the host's `PreferencesChanged` event, so a change the AI
- * Manager makes shows here at once. A failed read (already reported) leaves
- * the switch usable at the default, since a write still lands.
- */
 export function NextStepSuggestionsSection() {
   const { t } = useTranslation("settings");
   const queries = useQueryClient();

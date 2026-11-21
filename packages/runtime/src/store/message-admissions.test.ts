@@ -47,14 +47,12 @@ const receipts = (now?: () => number) =>
       ) ?? false,
     now,
   );
-/** Backdate a file, the age prune reads, without waiting for the window. */
 const backdate = (file: string, ms: number) => {
   const when = (statSync(file).mtimeMs - ms) / 1000;
   utimesSync(file, when, when);
 };
 const age = (conversationId: string, nonce: string, ms: number) =>
   backdate(join(dataRoot, messageAdmissionFileName(conversationId, nonce)), ms);
-/** What a process killed mid-write leaves behind. */
 const abandonTemporary = (ms: number) => {
   const file = join(receiptsDirectory, `abandoned.json.${randomUUID()}.tmp`);
   writeFileSync(file, "{}");
@@ -151,8 +149,6 @@ test("a settled receipt still blocks re-execution until the retention window pas
     turnId: first.turnId,
   });
   store.settle("assistant", "nonce");
-  // Settling ends the turn, never the promise the receipt makes: a retry that
-  // arrives after the answer was written must still read as a duplicate.
   expect(store.accept("assistant", "nonce", fingerprint)).toEqual({
     kind: "duplicate",
     turnId: first.turnId,
@@ -175,8 +171,6 @@ test("settling prunes receipts past the retention window and keeps the rest", as
   await store.collected();
   expect(readdirSync(receiptsDirectory)).toHaveLength(2);
   expect(store.accept("assistant", "expired", fingerprint).kind).toBe("new");
-  // An in-flight turn's receipt is never collected, however old the file is:
-  // deleting it would admit a concurrent retry as brand-new work.
   expect(store.accept("assistant", "live", fingerprint)).toEqual({
     kind: "duplicate",
     turnId: live.turnId,
@@ -235,8 +229,6 @@ test("collection never runs on the turn that settled", async () => {
   age("assistant", "expired", MESSAGE_ADMISSION_RETENTION_MS + 60_000);
   clock.at += MESSAGE_ADMISSION_PRUNE_INTERVAL_MS;
   store.settle("assistant", "recent");
-  // Settling returned before the directory was even read: housekeeping is not
-  // the settling turn's work.
   expect(readdirSync(receiptsDirectory)).toHaveLength(2);
   await store.collected();
   expect(readdirSync(receiptsDirectory)).toHaveLength(1);

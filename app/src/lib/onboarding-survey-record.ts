@@ -13,40 +13,26 @@ import {
 
 export const ONBOARDING_SURVEY_PREF_KEY = "houston_onboarding_survey";
 export const ONBOARDING_SURVEY_VERSION = 2;
-/** Max length of the automation goal, in Unicode CODE POINTS — the unit the
- *  gateway counts (Go runes). Counting UTF-16 units instead would refuse an
- *  emoji answer the server accepts. */
 export const ONBOARDING_GOAL_MAX_LENGTH = 2000;
-/** Max length of a "Something else" free-text answer, in code points. */
 export const ONBOARDING_OTHER_MAX_LENGTH = 200;
 
 export interface OnboardingSurveyPreference {
   version: typeof ONBOARDING_SURVEY_VERSION;
-  /** The retired department question, kept from records answered before the
-   *  role question replaced it: it counts the role as answered. Never written
-   *  by this app, only carried. */
   segment: string | null;
   role: OnboardingRoleChoice | null;
-  /** What "Something else" stands for, in the user's words — captured with the
-   *  pick, null for every catalog role. */
   roleOther: string | null;
   industry: OnboardingIndustryChoice | null;
   industryOther: string | null;
-  /** Absent from records written before the question existed: it reads as
-   *  unanswered, so the profile-completion prompt asks it once. */
   companySize: OnboardingCompanySizeChoice | null;
   automationGoal: string | null;
   goalSkipped: boolean;
   completionPromptDismissed: boolean;
   updatedAt: string;
-  /** ISO of the last successful gateway PUT; null means the record is unsynced. */
   gatewaySyncedAt: string | null;
 }
 
 export function isValidAutomationGoal(value: unknown): value is string {
   if (typeof value !== "string") return false;
-  // Spread, not `.length`: an astral character (emoji) is ONE code point to the
-  // gateway and two UTF-16 units here, and the two counts must agree.
   const length = [...value.trim()].length;
   return length > 0 && length <= ONBOARDING_GOAL_MAX_LENGTH;
 }
@@ -57,9 +43,6 @@ export function isValidOtherText(value: unknown): value is string {
   return length > 0 && length <= ONBOARDING_OTHER_MAX_LENGTH;
 }
 
-/** The "other" fields parse LENIENTLY (absent or malformed → null): records
- *  written before the fields existed must keep parsing, and a mangled label
- *  is not worth re-asking three answered questions for. */
 function otherTextOrNull(value: unknown): string | null {
   return isValidOtherText(value) ? value.trim() : null;
 }
@@ -68,21 +51,10 @@ function isIsoTimestamp(value: unknown): value is string {
   return typeof value === "string" && !Number.isNaN(Date.parse(value));
 }
 
-/** The legacy department reads as any non-empty string: its vocabulary is
- *  retired, and an answer must never turn back into a question. */
 function legacySegmentOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value : null;
 }
 
-/**
- * All-or-nothing on the fields every record has always carried: a missing one
- * or an unknown goal means the stored blob is not ours, and re-asking the
- * survey beats rendering a half-trusted record. The role pair, the company
- * size and the legacy department read leniently (`version` 2 records were
- * written before the role and the company size existed, and after the
- * department was retired), and an unknown role still counts as answered
- * (`normalizeOnboardingRoleChoice`).
- */
 export function parseOnboardingSurveyPreference(
   raw: string | null,
 ): OnboardingSurveyPreference | null {
@@ -96,8 +68,6 @@ export function parseOnboardingSurveyPreference(
   if (!parsed || typeof parsed !== "object") return null;
   const record = parsed as Partial<OnboardingSurveyPreference>;
   if (record.version !== ONBOARDING_SURVEY_VERSION) return null;
-  // The industry alone reads leniently: legacy survey ids and contexts this
-  // build cannot name are still answers (`normalizeOnboardingIndustryChoice`).
   const industry =
     record.industry === null
       ? null
@@ -155,11 +125,6 @@ export function createOnboardingSurveyPreference(): OnboardingSurveyPreference {
   };
 }
 
-/**
- * Whether two copies of the record hold the same ANSWERS. Everything else (`updatedAt`, the sync stamp, the
- * dismissal) is metadata about them, so this is the predicate that decides
- * whether a stamp still describes what it was written for.
- */
 export function sameSurveyAnswers(
   a: OnboardingSurveyPreference,
   b: OnboardingSurveyPreference,
@@ -176,7 +141,6 @@ export function sameSurveyAnswers(
   );
 }
 
-/** Stamps a successful gateway PUT; not a content change, so `updatedAt` holds. */
 export function markGatewaySynced(
   preference: OnboardingSurveyPreference,
   syncedAt: string,
@@ -186,12 +150,6 @@ export function markGatewaySynced(
   return { ...preference, gatewaySyncedAt: syncedAt };
 }
 
-/**
- * Per-user localStorage key for the device-local mirror: the engine pref lives
- * on the user's pod in hosted mode, so a pod blip must not re-prompt an
- * answered survey, and keying by uid keeps two accounts on one machine
- * independent.
- */
 export function onboardingSurveyLocalKey(uid: string | null): string {
   return `houston.onboarding-survey.${uid ?? "local"}`;
 }

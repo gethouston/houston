@@ -1,9 +1,3 @@
-/**
- * A message's rendered body: the markdown/user content inside its bubble. Split
- * out of `chat-message-item.tsx` so that file stays a thin row composer (sender
- * line + body + turn summary) and each piece keeps its own docs.
- */
-
 import type { ReactNode } from "react";
 import type { RenderLinkProps } from "./ai-elements/message";
 import { MessageContent, MessageResponse } from "./ai-elements/message";
@@ -22,31 +16,12 @@ interface ChatMessageBodyProps {
   renderUserMessage?: (msg: ChatMessage) => ReactNode | undefined;
   onOpenLink?: (url: string) => void;
   renderLink?: (props: RenderLinkProps) => ReactNode;
-  /** The space roster an ASSISTANT message's "@Name" runs are matched against
-   *  (HOU-944). A user message uses its own recorded mentions instead. */
   mentionPeople?: readonly MentionPerson[];
-  /** The signed-in viewer, so a mention of them renders emphasized. */
   currentUserId?: string;
-  /**
-   * The sender's name line (HOU-960), rendered as the bubble's FIRST LINE for a
-   * teammate's — or, in a group chat, the agent's — message. Inside rather than
-   * above because a name floating over a left-aligned bubble reads as a heading
-   * for the whole thread; inside, it reads as part of what that person said.
-   * `null` on the viewer's own rows and on every message of a run after the
-   * first.
-   */
   nameSlot?: ReactNode;
-  /** Extra classes for the bubble container (e.g. the group-chat geometry the
-   *  viewer's own bubble adopts only when the thread is attributed). */
   bubbleClassName?: string;
 }
 
-/**
- * Who this message may chip. A USER turn carries its own structured mentions
- * (recorded at send time, so a later rename still chips the original text); an
- * ASSISTANT turn mentions people in plain prose, so it matches against the
- * roster the consumer supplied.
- */
 function mentionTargets({
   message,
   mentionPeople,
@@ -73,17 +48,6 @@ function mentionTargets({
   }));
 }
 
-/**
- * Chat retune of Streamdown's document-scale headings (HOU-1051). Stock
- * Streamdown sets `h1` to text-3xl (30px), which towers over the bubble's 16px
- * body. Only the AGENT's prose renders markdown (a user turn goes through
- * `PlainMessageText`), and its type scale is retuned: h1 20px stepping down
- * through 16px (never below the body, so a deep heading can't read inverted;
- * h5/h6 at 14px are the rare exception), all semibold (Streamdown's own
- * weight), with heading margins pulled in from mt-6 to fit a bubble.
- * Descendant selectors (specificity 0,1,1) reliably beat Streamdown's element
- * utilities (0,1,0).
- */
 const CHAT_MARKDOWN_SCALE = [
   "[&_h1]:text-xl [&_h2]:text-lg [&_:is(h3,h4)]:text-base [&_:is(h5,h6)]:text-sm",
   "[&_:is(h1,h2)]:mt-5 [&_:is(h3,h4,h5,h6)]:mt-4",
@@ -101,10 +65,6 @@ export function ChatMessageBody({
   nameSlot,
   bubbleClassName,
 }: ChatMessageBodyProps) {
-  // Nothing to say AND nobody to name → render nothing, as before. But an
-  // empty message from a TEAMMATE still has to print who it came from: the
-  // name line is that person's byline, and dropping it (the old header did
-  // not) would leave an anonymous bubble in a group chat.
   if (!message.content) {
     if (!nameSlot) return null;
     return (
@@ -113,9 +73,6 @@ export function ChatMessageBody({
   }
   if (message.from === "user" && renderUserMessage) {
     const custom = renderUserMessage(message);
-    // A custom renderer (skill card, attachment card) brings its own container,
-    // so the name cannot go inside it; it sits directly above instead, still
-    // within the row's bubble column.
     if (custom !== undefined)
       return nameSlot ? (
         <div className="flex min-w-0 flex-col gap-1">
@@ -133,13 +90,8 @@ export function ChatMessageBody({
 
   return (
     <MessageContent className={bubbleClassName}>
-      {/* The bubble stacks its children on `gap-2` (8px), which is a paragraph
-          break, not a name-to-first-line break. Pull the name back to 4px so it
-          reads as the speaker's byline rather than a separate line of talk. */}
       {nameSlot ? <div className="-mb-1">{nameSlot}</div> : null}
       {message.from === "user" ? (
-        // A person's words render verbatim (HOU-1051): no markdown, line
-        // breaks kept, mention chips preserved.
         <PlainMessageText
           text={message.content}
           mentions={mentionTargets({ message, mentionPeople, currentUserId })}

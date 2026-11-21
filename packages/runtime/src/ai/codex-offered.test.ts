@@ -10,11 +10,6 @@ import { piModelIds } from "./pi-catalog";
 import { ModelNotOfferedError } from "./provider-error";
 import { providerDefaultModel, safeGetModel, safeModelIds } from "./providers";
 
-/**
- * The rows OpenAI's Codex backend answered 200 for on 2026-09-23, 2026-10-22,
- * 2026-10-26 and 2026-11-17 (see codex-offered.ts for the full method) that
- * pi ships or the pi-ai patch backports.
- */
 const SERVED = [
   "gpt-6-luna",
   "gpt-6.1-terra",
@@ -27,22 +22,17 @@ const SERVED = [
   "gpt-5.6-terra",
   "gpt-5.6-luna",
 ];
-/** Refused by the probes; pi 1.4.0 no longer ships either. */
 const REFUSED = ["gpt-5.3-codex-spark", "gpt-5.5"];
 
 test("the Codex offer is pi's catalog minus the rows the subscription refuses", () => {
   const offered = safeModelIds(CODEX_PROVIDER_ID);
   for (const id of SERVED) expect(offered).toContain(id);
   for (const id of REFUSED) expect(offered).not.toContain(id);
-  // The filter still drops a refused id should a later pi carry it again.
   expect(codexOfferedModelIds([...SERVED, ...REFUSED])).toEqual(SERVED);
-  // Derived from pi, never hand-listed: a pi bump that adds a row surfaces it.
   expect(offered).toEqual(codexOfferedModelIds(piModelIds(CODEX_PROVIDER_ID)));
 });
 
 test("a turn pinned to openai-codex with NO model lands on a model Codex accepts", () => {
-  // The Dobby defect: the pin resolved to the catalog default, and the default
-  // was an id Codex answers `model_not_found` for — the mission died on arrival.
   const fallback = providerDefaultModel(CODEX_PROVIDER_ID);
   expect(fallback).toBe(CODEX_DEFAULT_MODEL);
   expect(safeModelIds(CODEX_PROVIDER_ID)).toContain(fallback);
@@ -52,9 +42,6 @@ test("a turn pinned to openai-codex with NO model lands on a model Codex accepts
 });
 
 test("a pin naming a refused id fails with a served model as the switch target", () => {
-  // pi's getModel still resolves gpt-5.3-codex-spark, so without the
-  // offered-set check the pin sails through and the failure only appears as
-  // the provider's own refusal.
   let thrown: unknown;
   try {
     safeGetModel(CODEX_PROVIDER_ID, "gpt-5.3-codex-spark", true);
@@ -64,7 +51,6 @@ test("a pin naming a refused id fails with a served model as the switch target",
   expect(thrown).toBeInstanceOf(ModelNotOfferedError);
   const { providerError } = thrown as ModelNotOfferedError;
   expect(providerError.kind).toBe("model_unavailable");
-  // The card names a model that actually runs, not another dead id.
   const suggested =
     providerError.kind === "model_unavailable"
       ? providerError.suggested_fallback
@@ -73,11 +59,6 @@ test("a pin naming a refused id fails with a served model as the switch target",
 });
 
 test("the cloud picker's Codex list is the served set minus the hidden rows, default first", () => {
-  // `config.codexModels` is the model list the cloud per-turn path hands
-  // `GET /providers` (turn/dispatch-providers.ts). It is hand-written, so
-  // nothing but this assertion stops it drifting from the probe's verdicts —
-  // and an id the backend refuses is a hosted turn that can only fail, while a
-  // served id missing from it is a model the hosted picker never offers.
   const served = codexOfferedModelIds(piModelIds(CODEX_PROVIDER_ID));
   for (const id of CODEX_PICKER_HIDDEN_MODEL_IDS) expect(served).toContain(id);
   expect(hostConfig.codexModels[0]).toBe(CODEX_DEFAULT_MODEL);

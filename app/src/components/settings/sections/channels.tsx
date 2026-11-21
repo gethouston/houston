@@ -46,8 +46,6 @@ function ChannelsBody({ spaceName }: { spaceName: string }) {
     Partial<Record<ChannelProviderId, HTMLHeadingElement | null>>
   >({});
   const title = useRef<HTMLHeadingElement>(null);
-  // A landed connection spends the hand-off that produced it: clear its code
-  // and its "finish in Slack" line so nothing invites a second, dead attempt.
   const { query, connections, watches, watch } = useWatchedChannels(
     (provider) => {
       switch (provider) {
@@ -81,7 +79,6 @@ function ChannelsBody({ spaceName }: { spaceName: string }) {
     ),
     whatsapp: channelUnavailableReason(linkWhatsApp.error) === "not-configured",
   };
-  /** One card per provider; a provider with no case here fails to compile. */
   const renderCard = ({ provider, connections: own }: ChannelProviderCard) => {
     const id = provider.id;
     const state = channelCardState(provider.configured && !refused[id], own);
@@ -105,7 +102,6 @@ function ChannelsBody({ spaceName }: { spaceName: string }) {
               connect.mutate();
             }}
             onOpen={(url) => reopen.mutate(url)}
-            // The code lives longer than the default window; watch it all.
             onLink={() =>
               link.mutate(undefined, {
                 onSuccess: (minted) => watch("slack", minted.expiresAt),
@@ -128,8 +124,6 @@ function ChannelsBody({ spaceName }: { spaceName: string }) {
               Date.now(),
             )}
             link={linkWhatsApp.data}
-            // The code is scanned on another device, so this window is
-            // watched for as long as the code lives, not the default window.
             onLink={() =>
               linkWhatsApp.mutate(undefined, {
                 onSuccess: (minted) => watch("whatsapp", minted.expiresAt),
@@ -185,7 +179,6 @@ function ChannelsBody({ spaceName }: { spaceName: string }) {
         providers={query.data?.providers ?? []}
         onClose={() => setTarget(null)}
         onConfirm={(connection) => disconnect(connection.id)}
-        // Removing a provider's last account can remove its card too.
         onFocusCard={(provider) =>
           (headings.current[provider] ?? title.current)?.focus()
         }

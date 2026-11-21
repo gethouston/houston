@@ -11,7 +11,6 @@ import {
 } from "../../../src/specimen";
 import { Viewport } from "./sample";
 
-/** One half of the split, filled the way an agent workspace fills it. */
 function Pane({ title, lines }: { title: string; lines: readonly string[] }) {
   return (
     <div className="flex h-full flex-col gap-2 overflow-hidden p-4">
@@ -165,11 +164,6 @@ function SplitViewSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["SplitView"];
 
 export const specimen: Specimen = {

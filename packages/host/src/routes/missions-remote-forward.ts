@@ -9,17 +9,6 @@ import type {
   RemoteMissionRoute,
 } from "./missions-remote";
 
-/**
- * The mission leg that leaves the pod: one call out to the gateway, the target
- * pod's own answer back. The gateway dispatches `/agents/{slug}/…` into that
- * agent's pod (waking it if it sleeps), so these calls are the local board
- * routes addressed to an agent that lives elsewhere.
- *
- * The answer is relayed unchanged, so the runtime tool reads the same body
- * whichever side of the wire ran the call — and a refusal keeps the pod's own
- * sentence, because the model has to be able to correct itself.
- */
-
 export const missionPath = (
   route: RemoteMissionRoute,
   suffix: string,
@@ -35,11 +24,6 @@ export function remoteHeaders(
   };
 }
 
-/**
- * Start a mission on an agent whose board lives in another pod. Answers the
- * status the caller ended up sending, so the caller can charge the start to its
- * own fan-out budget only when the target actually took it.
- */
 export async function forwardMissionStart(
   route: RemoteMissionRoute,
   input: MissionStartInput,
@@ -64,7 +48,6 @@ export async function forwardMissionStart(
   return { status, ...(missionId ? { missionId } : {}) };
 }
 
-/** That agent's board, as its own pod reports it. */
 export function forwardMissionList(
   route: RemoteMissionRoute,
   res: ServerResponse,
@@ -72,7 +55,6 @@ export function forwardMissionList(
   return forward(route, "GET", missionPath(route, ""), res);
 }
 
-/** One mission's transcript, read in the pod that runs it. */
 export function forwardMissionRead(
   route: RemoteMissionRoute,
   query: { id: string; limit?: string },
@@ -84,12 +66,6 @@ export function forwardMissionRead(
   return forward(route, "GET", url.toString(), res);
 }
 
-/**
- * Move a finished mission on a board that lives in another pod. The guards
- * that decide whether the move is allowed — still running, the caller's own
- * conversation, no such mission — belong to the pod that owns the board, and
- * its refusal comes back in its own words.
- */
 export function forwardMissionStatus(
   route: RemoteMissionRoute,
   input: MissionStatusInput,
@@ -98,15 +74,6 @@ export function forwardMissionStatus(
   return forward(route, "POST", missionPath(route, "/status"), res, input);
 }
 
-/**
- * One call out, the target pod's own answer back, and the status this side
- * ended up sending.
- *
- * A pod refusal keeps its status and its sentence: the cap, the unknown id and
- * the "no conversation yet" answers are written for the model to act on, and a
- * generic "gateway error" in their place would strand it. Anything that is not
- * the pod answering (unreachable, non-JSON) is a 502 that says so.
- */
 async function forward(
   route: RemoteMissionRoute,
   method: "GET" | "POST",
@@ -168,7 +135,6 @@ async function forward(
   return upstream.status;
 }
 
-/** The parsed body, or undefined when it is not JSON (an empty body is null). */
 function parseJson(text: string): unknown {
   if (text === "") return null;
   try {
@@ -178,7 +144,6 @@ function parseJson(text: string): unknown {
   }
 }
 
-/** The pod's own refusal sentence, when it wrote one. */
 function errorText(payload: unknown): string {
   const error = (payload as { error?: unknown } | null)?.error;
   return typeof error === "string" ? error.slice(0, 300) : "";

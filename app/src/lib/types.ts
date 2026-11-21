@@ -2,20 +2,14 @@ import type { SkillWorkflow } from "@houston/protocol";
 
 export type { SkillWorkflow, SkillWorkflowStep } from "@houston/protocol";
 
-/** A workspace (top-level container, formerly "Space") */
 export interface Workspace {
   id: string;
   name: string;
   isDefault: boolean;
   createdAt: string;
-  /**
-   * Optional per-workspace UI-locale override (BCP-47 base tag: `en`/`es`/`pt`).
-   * Absent/null means the workspace inherits the global `locale` preference.
-   */
   locale?: string | null;
 }
 
-/** Agent category for Houston Store filtering */
 export type AgentCategory =
   | "productivity"
   | "development"
@@ -23,105 +17,60 @@ export type AgentCategory =
   | "creative"
   | "business";
 
-/** The agent config (houston.json schema) */
 export interface AgentConfig {
   id: string;
   name: string;
   description: string;
   version?: string;
-  icon?: string; // Lucide icon name (fallback if no image)
-  image?: string; // Image URL for store card
-  color?: string; // Brand color override
+  icon?: string;
+  image?: string;
+  color?: string;
   category?: AgentCategory;
-  author?: string; // e.g. "Houston" for official, user name for community
-  tags?: string[]; // Searchable tags
-  integrations?: string[]; // Composio toolkit slugs, rendered as the connected-apps chips row
-  claudeMd?: string; // CLAUDE.md content template
-  systemPrompt?: string; // System prompt for the assistant
-  agentSeeds?: Record<string, string>; // Files to seed in new agents
-  features?: string[]; // Rust feature flags needed
+  author?: string;
+  tags?: string[];
+  integrations?: string[];
+  claudeMd?: string;
+  systemPrompt?: string;
+  agentSeeds?: Record<string, string>;
+  features?: string[];
 }
 
-/** A resolved agent definition (config + where it came from) */
 export interface AgentDefinition {
   config: AgentConfig;
   source: "builtin" | "installed";
-  path?: string; // For installed: ~/.houston/agents/{id}/
+  path?: string;
 }
 
-/** An agent instance (formerly "Workspace") */
 export interface Agent {
   id: string;
   name: string;
-  folderPath: string; // ~/.houston/workspaces/{WorkspaceName}/{AgentName}/
-  configId: string; // Points to an AgentConfig
-  color?: string; // User-chosen color for avatar
-  /** The role its job description names; the second line of its sidebar row. */
+  folderPath: string;
+  configId: string;
+  color?: string;
   role?: string;
   createdAt: string;
   lastOpenedAt?: string;
-  /**
-   * Absolute on-disk directory, present only when the engine is co-located
-   * with the files (TS host, local profile). What OS reveal/open needs — on
-   * the TS engine `folderPath` is a route key, not a path (HOU-677).
-   */
   localDir?: string;
-  /**
-   * Multiplayer only: whether the CURRENT user is assigned this agent (may use
-   * it). Absent in single-player mode. Kept in sync (by hand) with the
-   * `@houston/wire-types` `Agent` shape.
-   */
   assigned?: boolean;
-  /**
-   * Multiplayer only: the org-member user ids this agent is assigned to. Empty
-   * means "everyone in the org". Absent in single-player mode.
-   */
   assignedUserIds?: string[];
-  /**
-   * Teams v2: the CURRENT caller's effective access to this agent (`manager`
-   * may reconfigure it, `user` may only use it). Absent in single-player mode.
-   * Drives the client-side read-only gating (agent-access `isAgentManager`);
-   * the gateway is the sole enforcer. Kept in sync (by hand) with the
-   * `@houston/wire-types` `Agent` shape.
-   */
   access?: "manager" | "user";
-  /**
-   * Teams v2: the full assignee list with per-person access level. Populated
-   * only for callers who may manage assignments (owner or agent-manager);
-   * absent in single-player mode. `assignedUserIds` mirrors these user ids for
-   * back-compat.
-   */
   assignments?: { userId: string; access: "manager" | "user" }[];
 }
 
-/** Skill summary returned by list_skills */
 export interface SkillSummary {
   name: string;
-  /**
-   * Display title from frontmatter `title:` — accents/casing the directory
-   * slug can't carry (translated store skills). Null → humanize the slug.
-   */
   title: string | null;
   description: string;
   version: number;
   tags: string[];
   created: string | null;
   last_used: string | null;
-  /** Optional user-facing category (e.g. "Email"). Groups skills in the New Mission picker. */
   category: string | null;
-  /** Surface on the Featured tab of the New Mission picker. */
   featured: boolean;
-  /** Composio toolkit slugs from skill frontmatter, rendered as the connected-apps row. */
   integrations: string[];
-  /** Image URL or Microsoft Fluent Emoji slug (e.g. "rocket"). */
   image: string | null;
-  /** The setup chat this skill was built in (HOU-791). Forward link from the
-   *  frontmatter `setup_activity_id:`; the durable reverse link is the
-   *  activity's `skill_slug`. */
   setup_activity_id?: string | null;
-  /** Legacy structured inputs. Parsed for compatibility, ignored by composer UX. */
   inputs: SkillInputDef[];
-  /** Legacy prompt template. Parsed for compatibility, ignored by sends. */
   prompt_template: string | null;
 }
 
@@ -132,14 +81,11 @@ export interface SkillInputDef {
   type: "text" | "textarea" | "select";
   required: boolean;
   default?: string;
-  /** Options for `type: select`. Empty for text/textarea. */
   options?: string[];
 }
 
-/** Skill detail returned by load_skill */
 export interface SkillDetail {
   name: string;
-  /** Display title from frontmatter `title:`; null → humanize the slug. */
   title: string | null;
   description: string;
   version: number;
@@ -147,7 +93,6 @@ export interface SkillDetail {
   workflow?: SkillWorkflow | null;
 }
 
-/** File entry returned by list_project_files */
 export interface FileEntry {
   path: string;
   name: string;

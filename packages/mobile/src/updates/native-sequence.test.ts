@@ -54,7 +54,6 @@ test("the legacy per-channel sequence seeds the policy floor once", () => {
     required_native_build: 1,
   });
   expect(values.has("houston.ota.sequence.production")).toBe(false);
-  // A newer stored policy is never lowered by a leftover legacy value.
   values.set("houston.ota.sequence.production", "5");
   migrateLegacyOtaSequence("production", storage);
   expect(

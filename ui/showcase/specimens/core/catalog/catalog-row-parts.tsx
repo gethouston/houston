@@ -2,11 +2,6 @@ import type { ReactNode } from "react";
 
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * The pieces the {@link CatalogRow} specimen composes: the API table read off
- * the component's types, and the measure its examples sit in.
- */
-
 export const rowProps: readonly SpecimenProp[] = [
   {
     name: "icon",
@@ -51,7 +46,6 @@ export const rowProps: readonly SpecimenProp[] = [
   },
 ];
 
-/** Rows are full-width by nature; a measure keeps the examples readable. */
 export function Measure({ children }: { children: ReactNode }) {
   return <div className="w-full max-w-md">{children}</div>;
 }

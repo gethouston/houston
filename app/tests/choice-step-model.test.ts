@@ -39,9 +39,6 @@ test("a filter field appears once what it can REACH outgrows one glance", () => 
 });
 
 test("the filter is judged by its reach, never by what is on screen", () => {
-  // The role question shows a typed industry ten shared jobs and searches the
-  // whole catalog behind them: judging by the four options in SECTIONS would
-  // take the filter away and strand the user on that short run.
   const onScreen = SECTIONS.reduce(
     (count, section) => count + section.options.length,
     0,
@@ -73,8 +70,6 @@ test("Enter takes the first match the user is looking at", () => {
 });
 
 test("Enter reads the runs in display order, past any that came back empty", () => {
-  // A run can filter down to nothing while a later one still has matches, and
-  // the first chip on screen is the one Enter must take.
   const runs: ChoiceSection[] = [
     { id: "own", options: [] },
     { id: "common", label: "More roles", options: SECTIONS[1].options },
@@ -99,8 +94,6 @@ test("the tab stop is the picked chip while the query still shows it", () => {
 });
 
 test("a query that filters the pick away moves the tab stop to the first chip", () => {
-  // Otherwise the run keeps its only tab stop on a chip nobody can see, and
-  // the keyboard cannot get into the question at all.
   assert.equal(rovingChipId(SECTIONS, "falconer", null), "paralegal");
   assert.equal(rovingChipId(SECTIONS, null, null), "paralegal");
 });
@@ -111,8 +104,6 @@ test("a run that filtered down to nothing holds no tab stop", () => {
 });
 
 test("the chip the arrows moved to takes the tab stop with it", () => {
-  // Leaving and returning by Tab must land where the arrows left off; a stop
-  // pinned to the pick sends the user back to the start of the question.
   assert.equal(rovingChipId(SECTIONS, "writer", "researcher"), "researcher");
   assert.equal(
     rovingChipId(SECTIONS, null, "case_summarizer"),

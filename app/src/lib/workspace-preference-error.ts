@@ -7,7 +7,6 @@ import { isNeedsUpgradeError } from "./team-status-model";
 
 const reported = new Set<string>();
 
-/** Boot and deliberate switches report once; connectivity never files a Sentry issue. */
 export function reportWorkspacePreferenceError(
   operation: "read" | "write" | "device",
   error: unknown,

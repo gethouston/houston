@@ -1,17 +1,3 @@
-/**
- * Finder-style expandable folder row (list view): click to expand/collapse,
- * kebab or right-click for rename / download-as-zip / delete, drop target for
- * moves, inline rename like file rows. Same affordances as the grid's
- * FolderChip. The row carries role="row" (like the file rows) rather than
- * role="button": a button prunes its children, which would hide the row's own
- * kebab from assistive tech. Expansion is how the list browses (it renders the
- * whole workspace, not one folder), so a folder that expands onto nothing says
- * so on a quiet row instead of leaving an open chevron over blank space.
- *
- * A folder row states its SIZE the only honest way it can: the number of
- * things inside it. That count is what makes a folder read as a container in a
- * list of files rather than as one more row.
- */
 import { cn, FolderGlyph } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { INTERNAL_DRAG_TYPE, useFolderDropTarget } from "./drop-zone";
@@ -54,8 +40,6 @@ export function FolderSection({
     onDragActive?.(isOver ? node.path : null);
   }, [isOver, node.path, onDragActive]);
 
-  // The menu reuses FileMenu, which speaks FileEntry — implied parent folders
-  // have no listing entry, so synthesize one from the node.
   const folderEntry: FileEntry = node.entry ?? {
     path: node.path,
     name: node.name,
@@ -68,7 +52,6 @@ export function FolderSection({
     onRename ? (newName) => onRename(folderEntry, newName) : undefined,
   );
   const hasMenu = onDownloadFolder || onDelete || onRename;
-  // A folder's TRUE size: a search prunes children, it never shrinks a folder.
   const count = folderChildCount(node);
   const countLabel = rows.itemPlural
     ? `${count} ${count === 1 ? (rows.itemSingular ?? rows.itemPlural) : rows.itemPlural}`
@@ -120,10 +103,6 @@ export function FolderSection({
         {...folderHandlers}
       >
         <div className="flex h-full min-w-0 items-center">
-          {/* The chevron sits OUTSIDE the name wrapper on purpose: a file row
-              at this depth pads past exactly this chevron + gap to line its
-              mark up with this glyph. Inside the wrapper, folder rows would
-              start 20px left of every file's and the tree would staircase. */}
           <RowIndent depth={depth} />
           <DisclosureChevron open={open} className="mr-1" />
           <div className={NAME_CELL_INNER}>
@@ -138,11 +117,7 @@ export function FolderSection({
                   {node.name}
                 </span>
                 {countLabel && (
-                  <span
-                    className={cn("shrink-0 tabular-nums", META_TEXT)}
-                    // The count is a fact about the folder, not a column: it
-                    // rides beside the name so it moves with the indent.
-                  >
+                  <span className={cn("shrink-0 tabular-nums", META_TEXT)}>
                     {countLabel}
                   </span>
                 )}
@@ -163,7 +138,6 @@ export function FolderSection({
             )}
           </span>
         </span>
-        {/* A folder has no size of its own: a blank cell, never invented data. */}
         <span className={META_CELL} />
         <span className={ACTIONS_CELL}>
           {hasMenu && (

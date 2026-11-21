@@ -8,13 +8,6 @@ process.env.HOUSTON_DATA_DIR = mkdtempSync(
 );
 process.env.HOUSTON_WORKSPACE_DIR = process.env.HOUSTON_DATA_DIR;
 
-/**
- * A COLD shared-dir signal: nothing is stored in auth.json and the `claude auth
- * status` probe has not answered yet, so the SYNC read says "not connected"
- * while the settled read is still unknown. The runtime lives in this state for
- * as long as the first probe takes (up to the 10s execFile timeout) after every
- * start — a pod roll, a wake, a desktop launch.
- */
 const signal = vi.hoisted(() => ({
   settled: undefined as boolean | undefined,
 }));
@@ -26,9 +19,6 @@ vi.mock("../backends/claude/credential-status", async (importOriginal) => ({
   anthropicCredentialSettled: async () => signal.settled,
 }));
 
-// Everything else is real (notably `providerConfigured`, which is what the gate
-// asks): only the turn EXECUTION is short-circuited, so "the gate let it
-// through" has an unambiguous signature.
 vi.mock("../ai/providers", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../ai/providers")>()),
   resolveModel: () => {

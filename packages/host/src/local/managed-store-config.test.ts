@@ -5,8 +5,6 @@ import { afterEach, expect, test, vi } from "vitest";
 import { waitForPredecessorDrain } from "../store-sync/predecessor-drain";
 import { managedStoreConfig } from "./managed-store-config";
 
-// The predecessor wait has its own suite (predecessor-drain.test.ts); here it
-// is only an ordering point, so it does nothing unless a test says otherwise.
 vi.mock("../store-sync/predecessor-drain", () => ({
   waitForPredecessorDrain: vi.fn(async () => {}),
 }));
@@ -73,7 +71,6 @@ test("a standing pod's stores hydrate one object at a time, never batched", asyn
     throw new Error(m);
   });
 
-  // Batch reads are the per-turn worker's opt-in (runtime turn-store.ts).
   expect(config?.storeSync.store.downloadMany).toBeUndefined();
   expect(config?.sharedMirror.store.downloadMany).toBeUndefined();
 });
@@ -137,8 +134,6 @@ test("shared pod-store config uses the org route and binds requests to the agent
   vi.stubEnv("HOUSTON_AGENT_SLUG", "writer");
   const fetchSpy = vi
     .spyOn(globalThis, "fetch")
-    // Fresh Response per call: the boot-time lease claim reads its own body.
-    // 404 = old/unfenced gateway, the compatibility path this test rides.
     .mockImplementation(async (url) =>
       String(url).endsWith("/lease")
         ? Response.json({ error: "not found" }, { status: 404 })
@@ -259,7 +254,6 @@ test("boot claims the write lease before any other store traffic and seeds the f
   const body = JSON.parse(String(lease.init?.body)) as { bootId?: string };
   expect(body.bootId).toBeTruthy();
 
-  // The claimed token is echoed on the agent store's next write.
   const src = join(mkdtempSync(join(tmpdir(), "lease-test-")), "f.txt");
   writeFileSync(src, "x");
   await config.storeSync.store.upload(src, "workspaces/f.txt");
@@ -269,9 +263,6 @@ test("boot claims the write lease before any other store traffic and seeds the f
   expect(headers["X-Houston-Boot-Id"]).toBe(body.bootId);
 });
 
-// PRODUCT-1783 + PRODUCT-1706: an evicted pod drains its turn while this
-// replacement boots, and only its final sync lands that turn. Claiming first
-// would fence that sync, so the claim waits for the predecessor's window.
 test("claims the lease only after the predecessor's drain window closed", async () => {
   stubManagedStoreEnv();
   let drained!: () => void;
@@ -280,8 +271,6 @@ test("claims the lease only after the predecessor's drain window closed", async 
   });
   vi.mocked(waitForPredecessorDrain).mockImplementationOnce(
     async ({ store }) => {
-      // The stamp read rides the agent store and captures the PREDECESSOR's
-      // token off its response header.
       await store.manifest?.();
       await drainWindow;
     },
@@ -312,8 +301,6 @@ test("claims the lease only after the predecessor's drain window closed", async 
   expect(calls[1]).toBe(
     "POST https://store.test/v1/pod/store/acme/writer/lease",
   );
-  // An unfenced gateway grants no token, and the predecessor's captured one
-  // is not this boot's to present.
   expect(config?.podGateway.fence.token).toBeUndefined();
 });
 
@@ -345,8 +332,6 @@ test("the lease check rides the agent prefix with this boot's write headers", as
   );
 });
 
-// Prod with fencing off: the claim answers 404, the boot carries no token,
-// and nothing may wait on the lease check until a token is published.
 test("a boot whose claim found no fencing reports no lease until a token appears", async () => {
   stubManagedStoreEnv();
   const calls: string[] = [];
@@ -363,7 +348,6 @@ test("a boot whose claim found no fencing reports no lease until a token appears
   expect(
     calls.some((call) => call.startsWith("GET") && call.endsWith("/lease")),
   ).toBe(false);
-  // The flip: a read publishes the lease's token, and the check turns on.
   config.podGateway.fence.token = "3";
   expect(config.storeSync.leaseClaimed()).toBe(true);
 });

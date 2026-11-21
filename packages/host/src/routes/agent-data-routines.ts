@@ -18,13 +18,6 @@ const ROUTINE_GONE = {
   code: ROUTINE_NOT_FOUND,
 };
 
-/**
- * The `routines` typed-family CRUD for the authenticated agent-data route, split
- * out of agent-data.ts (mirrors agent-data-activities.ts). GET lists; POST/PATCH
- * go through the merge-safe write path shared with the runtime's save_routine
- * tool (routine-write.ts) so neither surface ever clobbers the file. Returns true
- * when it answered, false when the method is unsupported (caller responds 405).
- */
 export async function handleRoutinesData(
   vfs: Vfs,
   root: string,
@@ -34,8 +27,6 @@ export async function handleRoutinesData(
   req: IncomingMessage,
   res: ServerResponse,
   fireChange: () => void,
-  // `createdBy`: the verified acting identity recorded as a new routine's creator
-  // (re-stamped on PATCH), so a fired routine acts as whoever last shaped it.
   opts: RoutineWriteOptions & { createdBy?: string },
 ): Promise<boolean> {
   if (method === "GET" && !itemId) {
@@ -44,9 +35,6 @@ export async function handleRoutinesData(
   }
   if (method === "POST" && !itemId) {
     const body = await readJson(req);
-    // Merge-safe create: read-modify-write, never a wholesale replace. The gate
-    // (name/prompt, exactly-one-wake, trigger backend, cron, provider) is shared
-    // with the runtime's save_routine tool — see routine-write.ts.
     const result = await createRoutineChecked(
       vfs,
       root,
@@ -55,7 +43,6 @@ export async function handleRoutinesData(
       opts,
     );
     if ("error" in result) {
-      // A plan-floor refusal carries its code and minutes beside the reason.
       json(res, 400, result);
       return true;
     }
@@ -78,7 +65,6 @@ export async function handleRoutinesData(
       return true;
     }
     if ("error" in result) {
-      // A plan-floor refusal carries its code and minutes beside the reason.
       json(res, 400, result);
       return true;
     }
@@ -87,8 +73,6 @@ export async function handleRoutinesData(
     return true;
   }
   if (method === "DELETE" && itemId) {
-    // Same per-doc lock as the shared write path (routine-write.ts): a delete
-    // racing a create/update must not resurrect or drop the other's entry.
     const found = await withDocLock(`${root}#routines`, async () => {
       const { items } = await loadRoutines(vfs, root);
       if (!items.some((r) => r.id === itemId)) return false;

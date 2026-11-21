@@ -39,14 +39,12 @@ function browserPorts(show: ReturnPagePorts["show"]): ReturnPagePorts {
   };
 }
 
-/** Where the page sends the person: an org's Billing, else the Plus plan. */
 function links(org: OrgCheckoutReturn | null) {
   return org
     ? { app: desktopReturnLink(org), web: webReturnPath(org) }
     : { app: "houston://settings/plan", web: "/settings/plan" };
 }
 
-/** One handoff per page load; a remount must not ask the desktop app twice. */
 let handedOff = false;
 
 function CheckoutReturnContent({

@@ -7,17 +7,10 @@ import { showExpectedStateToast } from "../../lib/error-toast";
 import { citationContext } from "./citation-labels";
 import { useDraftCitations } from "./use-draft-citations";
 
-/** The comment editor's subject: a fresh selection, or a pinned comment. */
 type Editor =
   | { kind: "new"; selection: PdfSelection; rect: () => DOMRect }
   | { kind: "edit"; id: string; rect: () => DOMRect };
 
-/**
- * The previewed file's side of a chat's comments: the marks its pages draw
- * (numbered as the composer chips are, across every file in the draft), the
- * per-page counts its thumbnails show, and the editor a selection or a pin
- * opens. Without a chat (`draftKey` null) nothing is selectable.
- */
 export function usePreviewComments({
   draftKey,
   filePath,
@@ -30,7 +23,6 @@ export function usePreviewComments({
   const { t } = useTranslation("agents");
   const all = useDraftCitations(draftKey);
   const [editor, setEditorState] = useState<Editor | null>(null);
-  // Each opening is a fresh form; closing keeps the key so the exit plays.
   const [editorKey, setEditorKey] = useState(0);
   const setEditor = (next: Editor | null) => {
     if (next) setEditorKey((k) => k + 1);
@@ -82,9 +74,6 @@ export function usePreviewComments({
     if (editor.kind === "edit")
       return module.updateComment(draftKey, editor.id, comment.trim());
     const { selection } = editor;
-    // The comment lands now, with the on-screen crop. The sharp crop the agent
-    // reads renders behind it, and a send waits for it. A failed render keeps
-    // the on-screen one (say, the file was rewritten under the selection).
     const added = module.add(draftKey, {
       filePath,
       fileName,
@@ -131,7 +120,6 @@ export function usePreviewComments({
     touchText,
     setTouchText,
     select,
-    /** A pin was pressed: edit or delete its comment. */
     activateMark: (id: string, pin: HTMLElement) =>
       setEditor({ kind: "edit", id, rect: () => pin.getBoundingClientRect() }),
     editor: editor && {
@@ -144,7 +132,6 @@ export function usePreviewComments({
           : editing?.cropBase64,
       context: subject ? citationContext(t, { fileName, ...subject }) : "",
     },
-    /** The selection waiting for its comment, drawn dashed on its page. */
     pending:
       editor?.kind === "new"
         ? { page: editor.selection.page, anchor: editor.selection.anchor }

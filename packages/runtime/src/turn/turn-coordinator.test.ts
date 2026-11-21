@@ -11,12 +11,6 @@ import { startTurnCoordinator } from "./turn-coordinator";
 import type { TurnFilesystem } from "./turn-filesystem";
 import type { TurnRequest } from "./types";
 
-/**
- * A pooled Houston turn end to end, against a fake gateway: operations leave
- * with the turn's own credential, and an approval card raised in one
- * sandbox is answered and spent in the next, exactly once.
- */
-
 const TOKEN = "assistant-turn-v1.payload.sig";
 const ACTING = "acting-v1.payload.sig";
 const servers: Server[] = [];
@@ -65,7 +59,6 @@ async function fakeGateway() {
       return;
     }
     if (req.method === "DELETE" && req.url === "/agents/agent-dobby") {
-      // The gateway's delete answers 204 with no body.
       res.statusCode = 204;
       res.removeHeader("content-type");
       res.end();
@@ -80,7 +73,6 @@ async function fakeGateway() {
   return { url: `http://127.0.0.1:${port}`, seen };
 }
 
-/** One single-use sandbox: a fresh root over the shared store. */
 async function sandbox() {
   const storeRoot = await mkdtemp(join(tmpdir(), "coordinator-turn-"));
   const workspaceRel = "workspaces/Personal/Assistant";
@@ -205,7 +197,6 @@ test("the model cannot approve its own card by replaying its message", async () 
   const pending = await first.route("/sandbox/assistant/pending", post(call));
   const card = (await pending?.json()) as { requestId: string };
   await first.dispose();
-  // A next turn whose message carries no answer retires the card.
   const unanswered = await session(store, gateway.url, { nonce: "n2" });
   const res = await unanswered.route(
     "/sandbox/assistant/call",

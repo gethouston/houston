@@ -13,20 +13,12 @@ import { createPiBackend } from "../backends/pi/backend";
 import { createTurnBackend } from "./turn-backend";
 import { turnTitleRunner } from "./turn-mission-title";
 
-/**
- * What pi hands the provider on every request, observed on REAL pi sessions
- * over the scripted faux provider: its response factory receives the stream
- * options, `transport` included. openai-codex reads that option to pick SSE or
- * its WebSocket, so this is the value that decides the wire.
- */
 async function fauxWorld() {
   const turnRoot = mkdtempSync(join(tmpdir(), "turn-pi-transport-"));
   const workspaceDir = join(turnRoot, "workspace");
   const dataDir = join(turnRoot, "data");
   mkdirSync(workspaceDir, { recursive: true });
   mkdirSync(dataDir, { recursive: true });
-  // A setting the worker's settings.json carries: pinning the transport must
-  // not drop it (the pin rebuilds pi's settings, it does not replace them).
   writeFileSync(
     join(dataDir, "settings.json"),
     JSON.stringify({ retry: { provider: { maxRetries: 7 } } }),
@@ -88,7 +80,6 @@ test("a pooled turn's pi session and its title one-shot both request over SSE", 
     "sse",
     "sse",
   ]);
-  // The rest of the worker's pi settings still apply to the turn.
   expect(world.seen[0]?.maxRetries).toBe(7);
 });
 

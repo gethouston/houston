@@ -34,19 +34,10 @@ export interface PortableAccountDeps {
   store: WorkspaceStore;
   vfs?: Vfs;
   paths?: WorkspacePaths;
-  /** Trusted-gateway stance for the acting-as header (mirrors
-   *  ControlPlaneDeps.gatewayFronted). */
   gatewayFronted?: boolean;
-  /** Org-owner fallback creator when no acting header decodes (mirrors
-   *  ControlPlaneDeps.ownerSub). */
   ownerSub?: string;
 }
 
-/**
- * Account-level portable routes: POST /v1/portable/preview (zip bytes →
- * manifest + inventory) and POST /v1/portable/install (zip bytes + agentName →
- * a new agent with the selected content written in). Returns true when handled.
- */
 async function handlePortableAccount(
   deps: PortableAccountDeps,
   userId: UserId,
@@ -67,7 +58,6 @@ async function handlePortableAccount(
   }
   const paths = deps.paths ?? new CloudPaths();
 
-  // Install carries JSON ({ archive: base64, agentName }); preview is raw bytes.
   if (path === "/v1/portable/preview") {
     let pkg: PortablePackage;
     try {
@@ -85,7 +75,6 @@ async function handlePortableAccount(
     return true;
   }
 
-  // install
   const body = await readJson(req);
   if (
     !body.agentName ||
@@ -108,13 +97,9 @@ async function handlePortableAccount(
     json(res, 400, { error: err instanceof Error ? err.message : String(err) });
     return true;
   }
-  // Optional install-time subset: the importer unticked items in the wizard.
-  // Absent selection installs the whole package (the original contract).
   if (body.selection !== undefined) {
     pkg = filterPackage(pkg, body.selection as PortableSelection);
   }
-  // The installed agent is a NEW identity: its routines never keep the
-  // package's ids (see remintRoutineIds).
   const identity = remintRoutineIds(pkg, () => crypto.randomUUID());
   pkg = identity.pkg;
 
@@ -131,19 +116,11 @@ async function handlePortableAccount(
   }
   const root = paths.agentRoot(ws, agent);
   const vfs = deps.vfs;
-  // WHO installed the agent, recorded as `created_by` on seeded routines
-  // (packs strip the exporter's identity; an authorless routine is not
-  // fireable by the control-plane planner). Same actor policy as the routine
-  // write routes: gateway acting sub / org owner on a managed pod, the local
-  // user on the desktop.
   const routineCreatedBy = deps.gatewayFronted
     ? (actingSubFromHeader(req.headers[ACTING_AS_HEADER]) ?? deps.ownerSub)
     : userId;
   await seedOrRollBack({ store: deps.store, vfs }, agent, root, async () => {
     await seedSchemas(vfs, root);
-    // The SAME serialization the browser adapter sends through
-    // create-with-seeds on hosted cloud — one layout, wherever the install
-    // lands.
     await writeAgentSeeds(vfs, root, packageSeed(pkg), routineCreatedBy);
   });
 
@@ -155,10 +132,6 @@ async function handlePortableAccount(
   return true;
 }
 
-/**
- * A non-POST on either path falls through to the chain's 404: the check above
- * declines rather than refuses.
- */
 defineRouteFamily({
   group: "portable-account",
   members: [

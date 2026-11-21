@@ -7,11 +7,6 @@ import {
 } from "@houston-ai/core";
 import { ArrowRight, Loader2 } from "lucide-react";
 
-/**
- * The six-box code row: a pin input that auto-advances, accepts a pasted
- * code, and submits itself on the sixth digit, with the arrow button as the
- * retry affordance after a rejected code. The parent `<form>` owns submit.
- */
 export function EmailCodeEntry({
   code,
   onChange,
@@ -24,7 +19,6 @@ export function EmailCodeEntry({
   onChange: (code: string) => void;
   onComplete: (code: string) => void;
   pending: boolean;
-  /** Whether the arrow is the screen's single filled action. */
   filled: boolean;
   label: string;
 }) {

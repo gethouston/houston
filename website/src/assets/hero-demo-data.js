@@ -1,36 +1,8 @@
-/*
- * Data for the scripted hero demo (assets/hero-demo.js): the agent roster
- * (keys match the mockup sidebar's `data-agent` values in the hero window;
- * `av` is the avatar color class, which tints the Houston helmet glyph) and the
- * four missions the loop cycles through, one per agent, so the whole team is
- * visibly working on the true-to-app board.
- *
- * `people` on each mission are the HUMAN teammates collaborating on it, rendered
- * as an overlapping face stack on the card (the multiplayer signal, per
- * @houston-ai/board KanbanPeople). Each is EITHER a real teammate photo
- * (`{ img, label }`) or an initials avatar in a quiet tone (`{ initials, tone }`,
- * hp-1..hp-5 in landing-app-window.css) — always distinct from the vivid agent
- * helmet. Different missions carry different people, so the shared board visibly
- * belongs to a team.
- *
- * Text is translated: it comes from window.HOUSTON_I18N (js.heroDemo, emitted by
- * _includes/landing/i18n-data.njk before this asset), with the English copy
- * below as the fallback. The structure mirrors _data/landing.js heroDemo — agent
- * order, avatar classes and face rosters — which stays the source of truth; a
- * classic script cannot import it, so the small structure is copied here.
- *
- * Loaded before hero-demo.js (both `defer`, in order), which reads
- * `window.HERO_DEMO`.
- *
- * Copy rules: plain English, non-technical, no em dashes.
- */
 (() => {
   function t(path, fallback) {
     return window.houstonT ? window.houstonT(path, fallback) : fallback;
   }
 
-  // Face identities, keyed like _data/landing.js `people`. Anonymous teammates
-  // (initials only) carry no name to translate.
   var PEOPLE = {
     julian: { img: "/assets/img/julian-96.webp", name: "Julian" },
     felipe: { img: "/assets/img/felipe-96.webp", name: "Felipe" },
@@ -48,7 +20,6 @@
     });
   }
 
-  // Sidebar order.
   var AGENTS = [
     { id: "houston", av: "av-p", name: "Personal Assistant" },
     { id: "sales-rep", av: "av-c", name: "Sales Rep" },
@@ -56,7 +27,6 @@
     { id: "chief-of-staff", av: "av-b", name: "Chief of Staff" },
   ];
 
-  // Loop order, one mission per agent.
   var SCRIPTS = [
     {
       agent: "houston",

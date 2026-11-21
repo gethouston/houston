@@ -1,13 +1,3 @@
-/**
- * Resilience contract: what the resumable turn machinery guarantees across a
- * mid-turn network drop, a turn-boundary resync, an observer attach on a
- * running turn, and a dead-turn kill — all driven by the fake host's real
- * `POST /__test__/*` control plane against the shared streaming pieces.
- *
- * The load-bearing invariant: a transport blip NEVER truncates or duplicates a
- * turn, and a turn always settles exactly once with the RIGHT reply.
- */
-
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
 import { HoustonEngineClient } from "@houston/runtime-client";
 import {
@@ -56,7 +46,6 @@ afterEach(() => {
   h.sdk.dispose();
 });
 
-/** True once at least one streaming assistant delta has folded into the VM. */
 const streamingStarted = (cid: string): boolean =>
   convVm(h.sdk, cid)?.feed.some(
     (f) => f.feed_type === "assistant_text_streaming",
@@ -78,8 +67,6 @@ describe("reconnect mid-turn (network drop)", () => {
     });
     await until(() => streamingStarted(cid), "streaming began");
 
-    // Sever every open chat stream WITHOUT ending the turns: the turn keeps
-    // producing into the replay log; the SDK reconnects with ?after=<seq>.
     const dropped = (await control(host.url, "drop-chat-streams")) as {
       dropped: number;
     };
@@ -92,8 +79,6 @@ describe("reconnect mid-turn (network drop)", () => {
 
     const vm = convVm(h.sdk, cid);
     expect(vm?.sessionStatus).toBe("completed");
-    // Exactly ONE assistant bubble, carrying the FULL reply (no lost tail, no
-    // re-appended duplicate from replayed frames).
     expect(assistantEntries(cid)).toHaveLength(1);
     expect(assistantEntries(cid)[0].data).toBe(cannedReply("Ping"));
   });
@@ -108,13 +93,8 @@ describe("turn-boundary resync", () => {
       conversationId: cid,
       text: "Ping",
     });
-    // Wait for a streaming delta so OUR turnId is adopted (from the user echo)
-    // before the boundary lands.
     await until(() => streamingStarted(cid), "our turn adopted + streaming");
 
-    // End our turn while nobody watches, then start a DIFFERENT turn: the
-    // reconnecting cursor lands outside the cleared window and resyncs onto the
-    // new turnId — our turn must settle from persisted history, by our turnId.
     const advanced = (await control(host.url, "turn-boundary", {
       nextText: "A different turn",
     })) as { advanced: number };
@@ -127,8 +107,6 @@ describe("turn-boundary resync", () => {
 
     const vm = convVm(h.sdk, cid);
     expect(vm?.sessionStatus).toBe("completed");
-    // Settled from history, by our turnId — our full reply, exactly once, never
-    // the other turn's text.
     expect(assistantEntries(cid)).toHaveLength(1);
     expect(assistantEntries(cid)[0].data).toBe(cannedReply("Ping"));
   });
@@ -143,10 +121,7 @@ describe("observer attach on a running turn", () => {
       baseUrl: `${host.url}/agents/${SEED_AGENT_ID}`,
       fetch,
     });
-    // Another writer starts the turn (no SDK stream registered for it).
     await engine.sendMessage(cid, "Ping");
-    // The user message persists at turn START, so its presence proves the turn
-    // is now running before we attach the observer.
     let history = await engine.getHistory(cid);
     while (history.messages.length === 0) {
       await sleep(10);
@@ -168,13 +143,10 @@ describe("observer attach on a running turn", () => {
       "observed turn settled completed",
     );
 
-    // The observer surfaced the running turn, then settled it to completion.
     expect(out.statuses).toContain("running");
     expect(out.statuses).toContain("completed");
     const finalText = out.feed.find((f) => f.feed_type === "assistant_text");
     expect(finalText?.data).toBe(cannedReply("Ping"));
-    // A clean turn with no pending interaction still settles the board to
-    // needs_you — closing a mission is the user's move, never the engine's.
     expect(out.board).toContain("needs_you");
   });
 
@@ -182,7 +154,6 @@ describe("observer attach on a running turn", () => {
     const cid = "c-observe-facade";
     await control(host.url, "chat-config", { replyDelayMs: 120 });
 
-    // Another writer (a bare engine client) starts the turn — no SDK stream.
     const engine = new HoustonEngineClient({
       baseUrl: `${host.url}/agents/${SEED_AGENT_ID}`,
       fetch,
@@ -194,8 +165,6 @@ describe("observer attach on a running turn", () => {
       history = await engine.getHistory(cid);
     }
 
-    // The hole this closes: open the conversation through the SDK facade and
-    // see the in-flight turn.
     await h.sdk.turns.observe(cid, SEED_AGENT_ID);
     await until(
       () => convVm(h.sdk, cid)?.running === true,
@@ -207,8 +176,6 @@ describe("observer attach on a running turn", () => {
     );
 
     const vm = convVm(h.sdk, cid);
-    // No pending interaction on the observed turn — it settles needs_you all
-    // the same (the engine never writes `done`).
     expect(vm?.boardStatus).toBe("needs_you");
     expect(vm?.feed.some((f) => f.data === cannedReply("Ping"))).toBe(true);
   });
@@ -216,8 +183,6 @@ describe("observer attach on a running turn", () => {
   it("sdk.turns.observe on an idle conversation ends in a coherent idle VM", async () => {
     const cid = "c-observe-idle";
     await h.sdk.turns.observe(cid, SEED_AGENT_ID);
-    // The idle sync closes the observer with no push; the VM never flips to
-    // running (it either stays absent or idle — never a stuck spinner).
     await sleep(200);
     const vm = convVm(h.sdk, cid);
     expect(vm?.running ?? false).toBe(false);
@@ -238,7 +203,6 @@ describe("observer attach on a running turn", () => {
       0,
       new StreamRegistry(),
     );
-    // Nothing to render: the idle sync closes the stream with no push.
     await sleep(200);
     expect(out.statuses).toEqual([]);
     expect(out.feed).toEqual([]);

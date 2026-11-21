@@ -1,5 +1,3 @@
-/** Discovery metadata and display helpers for the local model picker. */
-
 import type { CustomEndpoint } from "@houston/engine-adapter";
 import type { LocalBridgeStatus } from "@houston/sdk";
 
@@ -20,7 +18,6 @@ export interface SavedBridgeTarget {
   appName?: string;
 }
 
-/** Brand display name for a detected app. Brand names never translate. */
 export function appDisplayName(kind: LocalModelKind): string {
   switch (kind) {
     case "lmstudio":
@@ -34,12 +31,10 @@ export function appDisplayName(kind: LocalModelKind): string {
   }
 }
 
-/** The model to preselect for a server: its first advertised model, else "". */
 export function defaultModelFor(server: DetectedServer): string {
   return server.models[0] ?? "";
 }
 
-/** A friendly default endpoint name, e.g. "LM Studio · llama3.1". No em dash. */
 export function defaultEndpointName(
   kind: LocalModelKind,
   model: string,
@@ -48,8 +43,6 @@ export function defaultEndpointName(
   return model ? `${app} · ${model}` : app;
 }
 
-/** Only the servers Houston can actually connect to (reachable + at least one
- *  model). A detected-but-unreachable server is shown as guidance, not a pick. */
 export function connectableServers(
   servers: readonly DetectedServer[],
 ): DetectedServer[] {
@@ -65,9 +58,7 @@ export function buildDirectEndpoint(opts: {
   server: DetectedServer;
   model: string;
   name: string;
-  /** Surface the model's chain-of-thought as thinking in Houston. */
   reasoning?: boolean;
-  /** Share the endpoint with teammates in the active team workspace. */
   shared?: boolean;
 }): CustomEndpoint {
   return {

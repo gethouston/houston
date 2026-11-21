@@ -9,7 +9,6 @@ import { expect, test } from "vitest";
 import type { RuntimeEndpoint } from "../ports";
 import { forward } from "./route";
 
-/** Spin up a node:http server on an ephemeral port and resolve its base URL. */
 function listen(
   handler: (req: IncomingMessage, res: ServerResponse) => void,
 ): Promise<{
@@ -37,8 +36,6 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-// The exact bytes a Houston runtime's SSE stream produces: a comment heartbeat,
-// a `sync` frame, and a `text` frame. The proxy must deliver these verbatim.
 const SSE_PAYLOAD =
   ": heartbeat\n\n" +
   'event: sync\ndata: {"turn":"idle"}\n\n' +
@@ -82,7 +79,7 @@ test("forward relays method + sub-path + query + body under the sandbox Bearer, 
 
   expect(seen.method).toBe("POST");
   expect(seen.path).toBe("/conversations/c1/messages?foo=bar");
-  expect(seen.auth).toBe("Bearer sbx-abc"); // the agent's token, never the caller's
+  expect(seen.auth).toBe("Bearer sbx-abc");
   expect(seen.contentType).toBe("application/json");
   if (seen.body === undefined)
     throw new Error("upstream did not receive a body");
@@ -199,7 +196,6 @@ test("forward aborts the upstream stream when the client disconnects (clean reso
     req.on("close", () => {
       upstreamClosed = true;
     });
-    // intentionally no res.end() — a long-lived stream
   });
 
   const endpoint: RuntimeEndpoint = { baseUrl, token: "t" };
@@ -233,7 +229,6 @@ test("forward aborts the upstream stream when the client disconnects (clean reso
 });
 
 test("forward surfaces an unreachable runtime as a 502 (no swallow)", async () => {
-  // Bind then immediately close so the port is guaranteed closed → ECONNREFUSED.
   const { server: dead, baseUrl: deadUrl } = await listen(() => {});
   await close(dead);
 

@@ -58,12 +58,6 @@ function openDriver(path: string, opts: DatabaseOptions): Driver {
   };
 }
 
-/**
- * Tiny compatibility wrapper over Bun's `bun:sqlite` and Node's `node:sqlite`.
- * The host runs under Node during dev/tests/default Docker, but the packaged
- * host-sidecar still runs inside Bun's compiled runtime. Keep this seam narrow:
- * the migration only needs `run`, `query().all`, `query().run`, and `close`.
- */
 export class Database {
   private readonly driver: Driver;
 

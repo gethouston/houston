@@ -1,23 +1,3 @@
-/**
- * The org module — the ACTIVE space's administration: who belongs to it, what
- * each of them may do, and what the space has been used for.
- *
- * These are pure commands: an admin screen opens them, reads once, and writes
- * from a form; no host event invalidates them and no surface renders them
- * continuously, so there is no reactive scope to publish. The same handlers back
- * both the typed facade and the `dispatch` path.
- *
- * SEAM — space-scoped, NOT per-agent. The gateway resolves the space from the
- * caller's session plus the active-space header its `fetch` stamps, so nothing
- * here names an agent and the module talks to the `/v1/org*` family through the
- * SDK's own HTTP seam, never `clientFor(agentId)`. A 401 routes through the
- * shared {@link ModuleContext.authExpiry} notifier, which the HTTP seam signals.
- *
- * Degradations are the CALLER's: every request here throws on a non-2xx, 404
- * included, so a surface that wants "no roster yet" instead of an error says so
- * itself and no surface is handed a silent empty answer it did not ask for.
- */
-
 import type { SeatQuote } from "@houston/wire-types";
 import type { ModuleContext } from "../../module-context";
 import { moduleScope } from "../http";
@@ -94,40 +74,23 @@ export type {
   UsageRow,
 } from "./usage";
 
-/** The typed facade for space administration. */
 export interface OrgModule {
-  /** The active space, with the caller's own role (roster + invites for admins). */
   getOrg(): Promise<OrgInfo>;
-  /** Display profiles for the given member ids; an empty list asks nothing. */
   getOrgProfiles(ids: string[]): Promise<UserProfilesResult>;
-  /** The sanitized co-member directory of the active space. */
   getOrgPeople(): Promise<OrgPerson[]>;
-  /** What adding one more person costs; ask before every add. */
   quoteSeat(): Promise<SeatQuote>;
-  /**
-   * Add someone by email, or create a pending invite when they are not a user
-   * yet. `prorationDate` and `quotedAmountCents` are the `charge` quote's,
-   * when the add pays a seat.
-   */
   addOrgMember(
     email: string,
     role: OrgRole,
     prorationDate?: number,
     quotedAmountCents?: number,
   ): Promise<AddOrgMemberOutcome>;
-  /** Cancel a pending invitation by id. */
   deleteOrgInvite(inviteId: string): Promise<void>;
-  /** Remove a member from the active space by user id. */
   removeOrgMember(userId: string): Promise<void>;
-  /** The routines a member created that removing them would stop (owner only). */
   listMemberRoutines(userId: string): Promise<MemberRoutines>;
-  /** Change what a member may do in the active space. */
   setOrgMemberRole(userId: string, role: OrgRole): Promise<void>;
-  /** The audit trail, newest first; both bounds optional. */
   orgAudit(before?: number, limit?: number): Promise<AuditEntry[]>;
-  /** Per (agent, user, day) message counts over the last `days` days. */
   orgUsage(days: number): Promise<UsageRow[]>;
-  /** Per (agent, day) engine running time over the last `days` days. */
   computeUsage(days: number): Promise<ComputeUsage>;
 }
 

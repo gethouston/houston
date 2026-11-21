@@ -16,28 +16,12 @@ import {
 } from "../organization/person-row.tsx";
 import type { AgentPersonRow as Row } from "./agent-people-model.ts";
 
-/** The translated label for a member's current level on this agent. */
 function levelLabel(level: Row["level"], t: (k: string) => string): string {
   if (level === "manager") return t("share.levels.manager");
   if (level === "user") return t("share.levels.user");
   return t("permissions.agentPeople.none");
 }
 
-/**
- * One member row in the Permissions agent People tab: the shared
- * {@link PersonRow} shell carrying the member's identity over their org role,
- * with a None / Can use / Manager control on the right.
- * The org owner renders as a static "Owner, always has access" (never editable);
- * everyone else gets a dropdown whose Manager option is disabled with an inline
- * reason for teammates without a Manager seat (`canBeManager` false). The trigger
- * shows the current level at rest (no hover gating); `onAction` fires the chosen
- * transition and the parent owns the write + self-lockout confirm.
- *
- * `readOnly` (the roster under "Everyone on your team", where per-person levels
- * are not the agent's state) renders the level as a static label with NO
- * control, so the row still says WHO can use the agent without a dead
- * affordance.
- */
 export function AgentPersonRow({
   row,
   avatarUrl,
@@ -46,11 +30,8 @@ export function AgentPersonRow({
   onAction,
 }: {
   row: Row;
-  /** Resolved avatar photo, or null for initials-only. */
   avatarUrl?: string | null;
-  /** Locks the control while a write is in flight. */
   disabled?: boolean;
-  /** View-only: show the level as static text, no dropdown. */
   readOnly?: boolean;
   onAction: (action: ShareAction) => void;
 }) {
@@ -59,8 +40,6 @@ export function AgentPersonRow({
   const label = levelLabel(row.level, t);
 
   return (
-    // Identity reads as two calm lines (name, org role) so the right edge
-    // carries exactly ONE element — the access control (or its static label).
     <PersonRow
       name={name}
       avatarUrl={avatarUrl}

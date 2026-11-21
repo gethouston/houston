@@ -47,9 +47,6 @@ export function createConversationStore(
     appendUserMessage(id: string, content: string, meta?: UserMessageMeta) {
       const result = appendUserMessageAt(dir, id, content, meta);
       notify(() => {
-        // Message-only: the wire needs just the delta. The full-conversation
-        // snapshot (an O(n) clone on the hot path) is gone — the queue reads
-        // the file itself on the rare repair path.
         const turnId = result.message.turnId;
         return turnId
           ? {
@@ -111,8 +108,6 @@ export function createConversationStore(
       request: ConversationImportRequest,
     ): number {
       const imported = importConversationMessagesAt(dir, id, request);
-      // A repair ships the whole document: imported entries carry no live
-      // turn for the per-message shadow ops to key on.
       if (imported > 0) notify(() => ({ kind: "repair", conversationId: id }));
       return imported;
     },
@@ -129,20 +124,11 @@ const shadow =
           config.controlPlaneUrl,
           config.sandboxToken,
         ),
-        // A repair replaces the remote document whole, so it must carry the
-        // archived segments too, not just the live tail.
         (conversationId) => loadFullConversation(dir, conversationId),
       )
     : undefined;
 const store = createConversationStore(dir, shadow);
 
-/**
- * Bounded, best-effort drain of the transcript shadow queue for process
- * shutdown: the queue's pending sends and dirty markers are in-memory only, so
- * a scale-to-zero right after a file mutation would otherwise strand the
- * remote shadow stale until the next mutation. No-op when the dual-write flag
- * is off; never rejects; never holds shutdown past `timeoutMs`.
- */
 export async function drainTranscriptShadowForShutdown(
   timeoutMs: number,
 ): Promise<void> {

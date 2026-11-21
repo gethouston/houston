@@ -15,15 +15,6 @@ import { SettingsCard, SettingsControlRow } from "../settings/settings-row";
 import { choiceIdForLabel, type JobBriefField } from "./job-brief-model";
 import { JobBriefPicker } from "./job-brief-picker";
 
-/**
- * The value seat of one fact: the answer as the file holds it, and the way to
- * change it. A pill in the row's right seat, which is where a settings row
- * keeps its current value; the chevron says a chooser opens on it.
- *
- * On a phone it takes its own full-width line under the label and stands 44px
- * tall — the height the create flow's chips stand at — so an answer the user
- * typed reads whole instead of truncating beside the label.
- */
 function JobBriefValue({
   value,
   placeholder,
@@ -32,7 +23,6 @@ function JobBriefValue({
 }: {
   value: string | null;
   placeholder: string;
-  /** The button's spoken name once it carries an answer. */
   changeLabel: (answer: string) => string;
   onOpen: () => void;
 }) {
@@ -67,22 +57,6 @@ interface BriefRow {
   changeLabel: (answer: string) => string;
 }
 
-/**
- * The two facts at the head of every job description — the industry the agent
- * works in and the job it fills — as the first card of the Job description
- * form: one settings row each, label on the left, the answer on the right.
- *
- * They are the answers the user gave at creation, and they live in the file
- * the agent reads, so this card is not a form beside the document: it IS the
- * top of the document, drawn as controls because two one-line facts read
- * better as two controls than as two lines of text to re-type. Each row opens
- * the very question it was answered with ({@link JobBriefPicker}), and the
- * answer is written the moment it is picked — there is no Save here, because
- * there is nothing else on the card to save with it.
- *
- * An agent with no facts yet (an imported or older one) shows the placeholders
- * and gains the block on the first pick.
- */
 export function JobBriefRows({
   industry,
   role,

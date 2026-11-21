@@ -1,7 +1,6 @@
 import type { ArchiveIndex } from "./conversation-archive";
 import type { HistoryWindow } from "./conversation-queries";
 
-/** The ABSOLUTE [start, end) a history window reads out of `total` messages. */
 export function historyBounds(
   total: number,
   window: HistoryWindow,
@@ -12,11 +11,6 @@ export function historyBounds(
   return { start, end };
 }
 
-/**
- * The segment numbers (1-based) a history window reaches into, oldest first:
- * what must be on disk before `getHistoryAt` reads that window. `total` is
- * the whole transcript (segments plus the live tail).
- */
 export function segmentsInWindow(
   archived: ArchiveIndex | undefined,
   total: number,

@@ -1,9 +1,3 @@
-// Real-DOM mount of the Memory list: a learning add or edit paints and closes
-// its editor at once, and a REFUSED one reopens holding what the user typed
-// (the rollback alone would throw their words away).
-//
-// The DOM-mounting pattern is `routine-plan-skip-notice-wiring.test.ts`'s.
-
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -33,7 +27,6 @@ const { LearningsContent } = await import(
   "../src/components/agent/learnings-content.tsx"
 );
 
-/** A write the test settles: `true` = landed, `false` = refused. */
 function pendingWrite() {
   let settle: (landed: boolean) => void = () => {};
   const promise = new Promise<boolean>((resolve) => {
@@ -135,7 +128,6 @@ describe("a refused Memory write keeps the typed text", () => {
     await type("New rule");
     await click(save);
     assert.equal(textarea(), null, "the editor closes on the commit");
-    // The optimistic paint, then the rollback to the old text.
     await act(async () =>
       root.render(
         h(LearningsContent, {
@@ -153,8 +145,6 @@ describe("a refused Memory write keeps the typed text", () => {
 
 describe("removing a learning that is already gone", () => {
   it("is a success, not a second failure", () => {
-    // `data/learnings.ts` loads the engine barrel, which this runner cannot
-    // import, so the seam is pinned on source (as `instructions-query.test.ts`).
     const src = readFileSync(
       join(import.meta.dirname, "../src/data/learnings.ts"),
       "utf8",

@@ -43,17 +43,9 @@ import { useScriptCopy } from "./use-script-copy";
 
 type FirstRun = Extract<ManagerOnboardingState, { mode: "first_run" }>;
 
-/**
- * The first-run conversation, derived from what is persisted (the connected
- * provider, the survey record, the AI Employees already hired) plus the team
- * answers of this session, so a reload resumes on the step it left with its
- * answers as history. It starts the person's goal in the real chat once the
- * closing has been said.
- */
 export function FirstRunConversation({ state }: { state: FirstRun }) {
   const copy = useScriptCopy();
   const { capabilities } = useCapabilities();
-  // Where discovery serves no manager, nobody acts on the closing goal.
   const { showAssistant } = useSurfaceGates();
   const reach = showAssistant ? managerReach(capabilities) : null;
   const { data: session } = useSession();
@@ -64,8 +56,6 @@ export function FirstRunConversation({ state }: { state: FirstRun }) {
   const [editing, setEditing] = useState<SurveyQuestion | null>(null);
   const [team, setTeam] = useState(TEAM_CONVERSATION_START);
   const [teamBusy, setTeamBusy] = useState(false);
-  // Taken when the team step opens on a loaded list: whoever exists then was
-  // hired by an earlier, interrupted run, and is already on the team.
   const [earlierIds, setEarlierIds] = useState<ReadonlySet<string> | null>(
     null,
   );
@@ -76,8 +66,6 @@ export function FirstRunConversation({ state }: { state: FirstRun }) {
   const earlier = earlierHires(agents, earlierIds);
 
   const record = state.survey.survey;
-  // The connect step never waits on the provider probe: its card shows at
-  // once and waits for the probe itself only if a Connect is pressed.
   const loading =
     state.stage === "team" && (workspaceId === null || earlierIds === null);
   const script = firstRunScript({
@@ -116,7 +104,6 @@ export function FirstRunConversation({ state }: { state: FirstRun }) {
   const missing = ONBOARDING_SURVEY_STEPS.filter(
     (question) => !surveyAnswered(record, question),
   );
-  // "Change answer" and a step's Back are one move: reopen the latest answer.
   const change = (line: ScriptReceipt) => {
     if (isSurveyQuestion(line.question)) setEditing(line.question);
     else setTeam(teamUndo);

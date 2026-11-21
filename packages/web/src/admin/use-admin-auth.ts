@@ -1,10 +1,3 @@
-// React glue for the operator dashboard auth (see `auth.ts` for the pure logic).
-//
-// Owns the live `AdminSession`, a proactive REST refresh loop (mirroring the
-// desktop `identity/refresh.ts`), and localStorage persistence so a reload keeps
-// the operator signed in. Exposes the live Firebase ID token the dashboard sends
-// as the control-plane bearer.
-
 import {
   IdentityError,
   identityConfig,
@@ -32,7 +25,6 @@ import {
 } from "./auth";
 
 export interface AdminAuth {
-  /** Live Firebase ID token for the control-plane bearer, or null when out. */
   token: string | null;
   email: string | null;
   ready: boolean;
@@ -54,8 +46,6 @@ export function useAdminAuth(): AdminAuth {
     setSession(next);
   }, []);
 
-  // Rehydrate a persisted session on mount, refreshing once so we never run on
-  // a stale ID token. Also init the web SDK for the (optional) Google popup.
   useEffect(() => {
     let cancelled = false;
     if (identityConfig.apiKey) initWebAuth(identityConfig);
@@ -83,7 +73,6 @@ export function useAdminAuth(): AdminAuth {
         }
       })
       .catch(() => {
-        // Stored refresh token no longer valid (or unreachable) → signed out.
         if (!cancelled) adopt(null);
       })
       .finally(() => {
@@ -94,8 +83,6 @@ export function useAdminAuth(): AdminAuth {
     };
   }, [adopt]);
 
-  // Proactive refresh: one timer per session; success re-runs this effect,
-  // a terminal failure signs out, a transient failure retries shortly.
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
@@ -117,7 +104,7 @@ export function useAdminAuth(): AdminAuth {
       } catch (e) {
         if (cancelled) return;
         if (isTerminalRefreshError(e)) {
-          adopt(null); // real sign-out
+          adopt(null);
         } else {
           console.warn("[admin] token refresh failed, retrying shortly:", e);
           retryId = setTimeout(() => void run(), REFRESH_RETRY_MS);
@@ -158,11 +145,10 @@ export function useAdminAuth(): AdminAuth {
     try {
       const s = await webSignInWithGoogle();
       if (s && "kind" in s) {
-        // The console never runs the link: nothing else would drop this.
         webDiscardPending(s.handle);
         throw new IdentityError("identity_already_linked");
       }
-      if (s) adopt(sessionFromIdentity(s.session)); // null = popup cancelled (benign)
+      if (s) adopt(sessionFromIdentity(s.session));
     } catch (e) {
       setError(adminAuthMessage(e));
     } finally {
@@ -171,9 +157,9 @@ export function useAdminAuth(): AdminAuth {
   }, [adopt]);
 
   const signOut = useCallback(async () => {
-    adopt(null); // operator sees signed-out immediately
+    adopt(null);
     try {
-      await webSignOut(); // clear any SDK (Google) persistence too
+      await webSignOut();
     } catch (e) {
       console.warn("[admin] SDK sign-out failed:", e);
     }

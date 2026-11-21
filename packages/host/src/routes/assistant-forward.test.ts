@@ -17,21 +17,11 @@ import {
   forwardAssistantCall,
 } from "./assistant-forward";
 
-/**
- * The gateway leg. `upstreamUrl` is where a built path becomes a real address,
- * so it is the last place a path that does not address its own route can be
- * stopped before the gateway credential performs it. `buildPath` refuses those
- * values first; this guard is independent of it on purpose, because the two
- * are reachable apart (the parity probes and any future caller build requests
- * without going through the dispatcher).
- */
-
 const gateway: AssistantGateway = {
   url: "https://gateway.test",
   token: "gateway-secret",
 };
 
-/** A fake ServerResponse capturing the status + body the forwarder writes. */
 function fakeRes() {
   const captured: { status: number; body: string } = { status: 0, body: "" };
   const res = {
@@ -51,7 +41,6 @@ interface Attempt {
   headers: Record<string, string>;
 }
 
-/** A fetch that records every call and answers an empty 200. */
 function recordingFetch(attempts: Attempt[]): typeof fetch {
   return (async (input: string | URL, init?: RequestInit) => {
     attempts.push({
@@ -199,7 +188,6 @@ describe("the manager proof (PRODUCT-1928)", () => {
   });
 });
 
-/** A real HTTP server on an ephemeral loopback port. */
 async function listen(
   handler: Parameters<typeof createServer>[1] & {},
 ): Promise<{ url: string; close: () => Promise<void> }> {

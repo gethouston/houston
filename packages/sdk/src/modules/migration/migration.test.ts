@@ -10,15 +10,9 @@ interface Recorded {
   method: string;
   url: string;
   contentType: string | null;
-  /** The body exactly as the module handed it to `fetch` — bytes stay bytes. */
   body: unknown;
 }
 
-/**
- * A migration SDK over a mock `fetch` that records the whole wire. `reactivity`
- * is off, so every recorded call is one a migration operation made and nothing
- * else — which is what makes "exactly one request" an exact claim.
- */
 function makeSdk(answer: () => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(
@@ -223,8 +217,6 @@ describe("migrationStatus", () => {
     expect(await sdk.migration.migrationStatus("a1")).toBeNull();
   });
 
-  // A deployment that cannot be asked is not a deployment that answered "never
-  // imported": the status does NOT soften here, and the surface decides.
   it.each([
     404, 500,
   ])("throws on %i rather than reading it as absent", async (status) => {

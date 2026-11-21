@@ -5,21 +5,6 @@ import { resolveCopilotDomain } from "../../lib/copilot-domain";
 import { stayOpen } from "../../lib/dialog-stay-open";
 import type { ProviderInfo } from "../../lib/providers";
 
-/**
- * GitHub Copilot connect dialog. ONE card, two sign-in homes:
- *  - **github.com** — personal Copilot AND company-paid Copilot Business (a
- *    Business seat has no domain of its own; entitlement follows the account).
- *  - **GitHub Enterprise domain** — only for companies that sign in at their
- *    own GitHub address (data residency, company.ghe.com). The device-code
- *    flow is domain-specific, so we collect that domain here before login.
- *
- * On submit: `onConnect(undefined)` for github.com, `onConnect(domain)` for an
- * enterprise domain — `resolveCopilotDomain` collapses a typed github.com back
- * to the no-domain path and rejects unusable input at the dialog (the Copilot
- * Business failure class: a company WEBSITE domain sent the device flow to a
- * non-GitHub host). The caller (picker / settings) owns the async login +
- * spinner.
- */
 type Plan = "personal" | "company";
 
 interface Props {
@@ -37,11 +22,8 @@ export function ProviderCopilotConnectDialog({
   const [plan, setPlan] = useState<Plan>("personal");
   const [domain, setDomain] = useState("");
   const [domainInvalid, setDomainInvalid] = useState(false);
-  // True once a plan has been picked: the close that follows is progress, not
-  // an abandon, and the caller must not hear it as a dismissal.
   const connected = useRef(false);
 
-  // Reset per-open so a stale plan/domain never leaks across opens.
   useEffect(() => {
     if (provider) {
       setPlan("personal");
@@ -55,29 +37,17 @@ export function ProviderCopilotConnectDialog({
 
   const canSubmit = plan === "personal" || domain.trim().length > 0;
 
-  // Resolving hands the dialog's close to the recipe; an unusable domain
-  // rejects, so the typed value stays on screen with its remedy instead of the
-  // dialog vanishing.
   const handleSubmit = () => {
     if (plan === "company") {
       const target = resolveCopilotDomain(domain);
       if (target.kind === "invalid") {
-        // Unusable input fails HERE with a remedy, not minutes later inside a
-        // device-code flow pointed at a non-GitHub host.
         setDomainInvalid(true);
         return stayOpen();
       }
-      // github.com typed into the company field IS the github.com path (a
-      // Copilot Business seat signs in there); never route it as "enterprise".
       onConnect(target.kind === "enterprise" ? target.domain : undefined);
     } else {
       onConnect(undefined);
     }
-    // `onConnect` is what closes this dialog (the caller drops the provider),
-    // and the recipe closes on a resolved primary too. Either way the close is
-    // PROGRESS: reporting it as a dismissal would cancel the connection
-    // observation behind the dialog — killing it at the exact moment the
-    // sign-in it just started begins.
     connected.current = true;
   };
 

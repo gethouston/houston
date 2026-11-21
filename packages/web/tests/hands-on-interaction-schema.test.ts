@@ -40,7 +40,6 @@ test("an errand on one employee's screen persists the employee it names", () => 
   };
   expect(validate(activity(step)), JSON.stringify(validate.errors)).toBe(true);
   expect(isInteractionStep(step)).toBe(true);
-  // An empty id names no one: both halves refuse it.
   expect(validate(activity({ ...step, agentId: "" }))).toBe(false);
   expect(isInteractionStep({ ...step, agentId: "" })).toBe(false);
 });
@@ -51,8 +50,6 @@ test.each([
   "settings",
   42,
 ])("an errand cannot be persisted naming a screen Houston has no map for (%s)", (surface) => {
-  // The schema is the strict half: it enumerates the closed vocabulary, so a
-  // stale pin can never reach a card that would offer a button to nowhere.
   const step = { kind: "hands_on", id: "h1", surface };
   expect(validate(activity(step))).toBe(false);
 });

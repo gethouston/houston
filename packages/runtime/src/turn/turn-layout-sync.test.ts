@@ -131,21 +131,13 @@ test.each([
       "utf8",
     ),
   ).toBe('[{"id":"a1","title":"Plan","status":"running"}]');
-  // Agent-owned files sync, including structured docs; only runtime state stays
-  // conversation-scoped.
   expect(keys).toContain(`ws/w1/agent-1/${workspaceRel}/result.txt`);
-  // The schema sidecar is .houston-internal and NOT turn-owned: the store's
-  // turn-claim scope rejects it, so the sync must not attempt it.
   expect(keys).not.toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/activity/activity.schema.json`,
   );
   expect(keys).toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/routines/routines.json`,
   );
-  // The landed writes name the events other tabs need: the conversation, the
-  // board doc, and the workspace file (result.txt at the workspace root now
-  // fires FilesChanged, not the old files/-subtree-only silence). Out-of-scope
-  // files and session state do not count.
   expect(emitted.at(-1)).toMatchObject({
     type: "done",
     data: {
@@ -157,8 +149,6 @@ test.each([
       ],
     },
   });
-  // The out-of-scope schema write is skipped AND logged — silent to the user,
-  // never to us.
   expect(log).toHaveBeenCalledWith(
     expect.stringContaining("pool_writes_out_of_scope=1"),
   );
@@ -186,16 +176,12 @@ test("an unclaimed turn retains full sync-back", async () => {
   expect(await readFile(join(prefixRoot, "workspace/result.txt"), "utf8")).toBe(
     "workspace",
   );
-  // Unclaimed turns sync the whole prefix and now classify every landed key
-  // through the canonical rule: the workspace file fires FilesChanged and the
-  // session write fires ConversationsChanged (deduped, sorted).
   const done = emitted.at(-1) as {
     type: string;
     data: Record<string, unknown>;
   };
   expect(done.type).toBe("done");
   expect(done.data.changed).toEqual(["ConversationsChanged", "FilesChanged"]);
-  // Every real turn now reports its phase marks as whole-ms deltas.
   expect(done.data.timingsMs).toMatchObject({
     tmpdir: expect.any(Number),
     listing: expect.any(Number),
@@ -242,8 +228,6 @@ test("a claimed turn on an EMPTY prefix is layout_unexpected, never a seeded clo
     data: { code: "layout_unexpected" },
   });
   expect(runTurn).not.toHaveBeenCalled();
-  // Nothing was written back: a blank hydrate must not seed `data/` beside a
-  // standing agent's real tree.
   expect(await new LocalDirStore(storeRoot).list("ws/w1/agent-1")).toEqual([]);
 });
 

@@ -6,12 +6,6 @@ import { safeSeedKey } from "./agent-seed";
 import { json } from "./http";
 import { classifyMigrationPath } from "./migration-scope";
 
-/**
- * The SOURCE half of the one-click desktop→cloud migration (HOU-719): the
- * wizard asks for one chunk of the manifest at a time and gets a zip back.
- * Every requested path is re-validated against the shared scope classifier, so
- * a client cannot widen what leaves the machine by editing its own manifest.
- */
 export async function exportMigrationChunk(
   vfs: Vfs,
   root: string,
@@ -28,12 +22,10 @@ export async function exportMigrationChunk(
         error: `path outside migration scope: ${requestedPath}`,
       });
     const buf = await vfs.readBytes(`${root}/${rel}`);
-    if (buf === null) continue; // deleted since the manifest — not an error
+    if (buf === null) continue;
     total += buf.length;
     if (total > MAX_ARCHIVE_BYTES)
       return json(res, 413, { error: "requested chunk too large" });
-    // Agent data (JSON/markdown) compresses well and is worth the CPU on a
-    // one-time upload; working files are often already-compressed binaries.
     entries[rel] = [new Uint8Array(buf), { level: kind === "core" ? 6 : 0 }];
   }
   res.writeHead(200, { "Content-Type": "application/zip" });

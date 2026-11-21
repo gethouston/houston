@@ -45,8 +45,6 @@ test("an errand blocks the composer and reads as its own completion body", () =>
     kind: "stepper",
     steps: interaction.steps,
   });
-  // Without its own body the notification reads "finished working", which is
-  // the one thing a mission waiting on the person is not.
   strictEqual(
     interactionNotificationBodyKey(interaction),
     "sessionComplete.handsOn",
@@ -113,8 +111,6 @@ const reply = (over: Partial<Parameters<typeof composeInteractionReply>[0]>) =>
   });
 
 test("an errand-only sequence resumes the agent hidden, with the fact stated", () => {
-  // Nothing observes the screen, so the reply IS the evidence: it must carry
-  // the person's own answer rather than ride a generic followup.
   const finished = reply({ finishedScreens: ["Billing"] });
   ok(finished.includes("Opened Billing and finished there."));
   ok(!finished.startsWith("Opened"), "an unasked bubble is never shown");
@@ -124,8 +120,6 @@ test("an errand-only sequence resumes the agent hidden, with the fact stated", (
 });
 
 test("a signed-in or credentialed sequence carrying an errand keeps its facts", () => {
-  // The two hidden shortcuts exist because there was nothing else to relay. An
-  // errand IS something else, so taking the shortcut would silently drop it.
   const signin = reply({ signedIn: true, skippedScreens: ["API keys"] });
   ok(signin.includes("Signed in to Houston."));
   ok(signin.includes("Skipped opening API keys."));
@@ -138,7 +132,6 @@ test("a signed-in or credentialed sequence carrying an errand keeps its facts", 
 });
 
 test("a typed instruction on a declined errand resumes the chat VISIBLY", () => {
-  // The user wrote something; hiding the bubble would hide their own words.
   const body = reply({
     handsOnRedirects: [{ name: "Billing", text: "Stay on the free tier" }],
   });
@@ -149,8 +142,6 @@ const readSrc = (path: string) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
 
 test("the card keeps no state across the navigation it triggers", () => {
-  // Opening the screen unmounts the chat panel, so a latched "opened" flag
-  // would be gone by the time the person came back to say Done.
   const card = readSrc("../src/components/chat-hands-on-interaction-card.tsx");
   ok(
     !card.includes("useState"),
@@ -176,9 +167,6 @@ const gates = (over: Partial<SurfaceGates> = {}): SurfaceGates => ({
 });
 
 test("an errand to a screen this person does not hold offers no way in", () => {
-  // The AI Manager speaks for the ACCOUNT, so it can queue Billing at a plain
-  // member who has no Billing section: an Open button there blocks the
-  // composer in front of a screen that will not be found.
   for (const [surface, denied] of [
     ["billing", { showBilling: false }],
     ["billing", { showOrganization: false }],
@@ -187,7 +175,6 @@ test("an errand to a screen this person does not hold offers no way in", () => {
     ["agentApiAccess", { showApiKeys: false }],
   ] as const satisfies [HandsOnSurface, Partial<SurfaceGates>][])
     strictEqual(handsOnSurfaceReachable(surface, gates(denied)), false);
-  // The rest is ordinary work anyone in the space can finish.
   for (const surface of ["apiKeys", "files", "routineWebhook"] as const)
     strictEqual(
       handsOnSurfaceReachable(
@@ -203,8 +190,6 @@ test("an errand to a screen this person does not hold offers no way in", () => {
 });
 
 test("an employee's API access needs the API and that employee's Settings", () => {
-  // Its Settings are drawn for the employee's managers alone: anyone else
-  // would be sent to a screen nothing draws.
   strictEqual(handsOnSurfaceReachable("agentApiAccess", gates(), true), true);
   strictEqual(handsOnSurfaceReachable("agentApiAccess", gates(), false), false);
   strictEqual(
@@ -215,9 +200,7 @@ test("an employee's API access needs the API and that employee's Settings", () =
     ),
     false,
   );
-  // Undecided (the roster still loading) never reads as missing.
   strictEqual(handsOnSurfaceReachable("agentApiAccess", gates()), true);
-  // Only that screen reads the employee: the rest stay as they were.
   strictEqual(handsOnSurfaceReachable("files", gates(), false), true);
 });
 
@@ -234,10 +217,7 @@ test("an employee's screen opens only for the employee the step names", () => {
     kind: "found",
     agent: ana,
   });
-  // No fallback to the employee on screen: that would hand the person some
-  // other employee's IDs to paste into their code.
   deepStrictEqual(resolveHandsOnAgent(undefined, settled), { kind: "absent" });
-  // Once the roster has settled, an id it lacks is gone, not loading.
   deepStrictEqual(resolveHandsOnAgent("gone", settled), { kind: "absent" });
   deepStrictEqual(resolveHandsOnAgent("gone", loadingRoster), {
     kind: "pending",
@@ -258,39 +238,32 @@ test("an employee's API access opens for its managers alone", () => {
       handsOnAgentSettings(resolveHandsOnAgent(agentId, roster), member),
     );
   strictEqual(open("a1"), true);
-  // Its Settings are drawn for its managers only.
   strictEqual(open("a2"), false);
   strictEqual(open(undefined), false);
   strictEqual(open("gone"), false);
-  // Only "still loading" reads as reachable.
   strictEqual(open("gone", loadingRoster), true);
 });
 
 test("an employee's screen is titled with that employee", () => {
   const names = (id: string) => settled.agents.find((a) => a.id === id)?.name;
-  // Two cards for two employees never read the same.
   deepStrictEqual(
     handsOnScreenLabel({ surface: "agentApiAccess", agentId: "a1" }, names),
     { key: "interaction.handsOnAgentApiAccessFor", name: "Ana" },
   );
-  // A name the roster cannot resolve yet keeps the plain screen name.
   deepStrictEqual(
     handsOnScreenLabel({ surface: "agentApiAccess", agentId: "x" }, names),
     { key: "interaction.handsOnScreens.agentApiAccess" },
   );
-  // Other screens are no one's, whatever the step carries.
   deepStrictEqual(
     handsOnScreenLabel({ surface: "files", agentId: "a1" }, names),
     { key: "interaction.handsOnScreens.files" },
   );
-  // A screen a newer engine named still gets a title, never a crash.
   deepStrictEqual(handsOnScreenLabel({ surface: "newScreen" }, names), {
     key: "interaction.handsOnUnknownScreen",
   });
 });
 
 test("a key minted beside an employee's API access defaults to that employee", () => {
-  // The key belongs to the person; the employee only suggests its name.
   strictEqual(
     apiKeyNameAgentId([
       { kind: "hands_on", id: "h1", surface: "apiKeys" },
@@ -302,7 +275,6 @@ test("a key minted beside an employee's API access defaults to that employee", (
     apiKeyNameAgentId([{ kind: "hands_on", id: "h1", surface: "apiKeys" }]),
     undefined,
   );
-  // Another screen carrying an id says nothing about the key.
   strictEqual(
     apiKeyNameAgentId([
       { kind: "hands_on", id: "h1", surface: "files", agentId: "a1" },
@@ -312,23 +284,17 @@ test("a key minted beside an employee's API access defaults to that employee", (
 });
 
 test("only the AI Manager's chat runs the API errands in place", () => {
-  // A mint form under a mission agent's own words, beside a box that talks to
-  // that agent, would be a phishing kit in Houston's chrome.
   strictEqual(inlineHandsOn("apiKeys", true), "apiKey");
   strictEqual(inlineHandsOn("agentApiAccess", true), "agentApi");
   strictEqual(inlineHandsOn("apiKeys", false), null);
   strictEqual(inlineHandsOn("agentApiAccess", false), null);
   for (const surface of ["files", "billing", "routineWebhook", "orgDanger"])
     strictEqual(inlineHandsOn(surface, true), null);
-  // The client agrees with the runtime: one employee's API access is the
-  // Manager's alone to hand over.
   strictEqual(handsOnManagerOnly("agentApiAccess"), true);
   strictEqual(handsOnManagerOnly("apiKeys"), false);
 });
 
 test("an unsettled gate never calls a screen missing", () => {
-  // Every flag is false while capabilities load; declaring the screen gone on
-  // that evidence would flash "unavailable" at the person who owns it.
   strictEqual(
     handsOnSurfaceReachable(
       "billing",
@@ -343,8 +309,6 @@ test("an unsettled gate never calls a screen missing", () => {
 });
 
 test("every hands-on screen maps to a real navigation", () => {
-  // The protocol vocabulary is closed precisely so this map can be total: an
-  // errand always has a screen behind its button.
   const nav = readSrc("../src/lib/hands-on-navigation.ts");
   for (const call of [
     'ui.openSettings("apiKeys")',

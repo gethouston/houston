@@ -10,7 +10,6 @@ import {
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** Normalize raw routine runs (written by the scheduler; read by the UI). */
 export function normalizeRoutineRuns(
   raw: unknown,
   key: string,

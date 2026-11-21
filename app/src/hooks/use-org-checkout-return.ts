@@ -18,16 +18,9 @@ import { queryKeys } from "../lib/query-keys";
 import { useWorkspaceStore } from "../stores/workspaces";
 
 const linkGate = createCheckoutLinkGate(() => Date.now());
-/** The address bar was read for the return the web app booted on. */
 let bootCaptured = false;
-/** A return that arrived before its org was in the workspace list. */
 let pending: OrgCheckoutReturn | null = null;
 
-/**
- * The org return the web app booted on, taken out of the address bar, handed
- * out once: replayed on a shell remount, a cancel would end a checkout the
- * person started since. A boot return still waiting for its org is `pending`.
- */
 function takeBootReturn(): OrgCheckoutReturn | null {
   if (bootCaptured) return null;
   bootCaptured = true;
@@ -41,7 +34,6 @@ function refetchBilling(): void {
   void queryClient.invalidateQueries({ queryKey: queryKeys.billingAll() });
 }
 
-/** Switch to the org and open its Billing; held until its space is listed. */
 function land(r: OrgCheckoutReturn): void {
   refetchBilling();
   const spaces = useWorkspaceStore.getState();
@@ -55,7 +47,6 @@ function land(r: OrgCheckoutReturn): void {
   openAdmin({ section: "billing" });
 }
 
-/** A fresh return: a cancel ends its checkout here, then it lands. */
 function take(r: OrgCheckoutReturn): void {
   billingCheckout.returned(r.org, r.outcome);
   land(r);
@@ -66,11 +57,6 @@ function landLink(link: string, via: "launch" | "live"): void {
   if (r && linkGate[via](link)) take(r);
 }
 
-/**
- * The web tab that started this org's checkout takes the return page's
- * message: it answers `taken` (so that page closes), focuses, and opens
- * Billing. Every other tab only refetches, so a stray tab never steals it.
- */
 function listenForReturnPage(): () => void {
   if (osIsTauri() || typeof BroadcastChannel === "undefined") return () => {};
   const channel = new BroadcastChannel(CHECKOUT_RETURN_CHANNEL);
@@ -86,13 +72,6 @@ function listenForReturnPage(): () => void {
   return () => channel.close();
 }
 
-/**
- * Land a returning org checkout on that org's Billing: the desktop deep link
- * (`houston://settings/plan?org=<slug>&checkout=<outcome>`), the web URL the
- * return page links to, and the return page's message to the tab that opened
- * checkout. `useOrgCheckoutWatcher` still focuses the desktop window once the
- * org is paid, in case the link never reaches the app.
- */
 export function useOrgCheckoutReturn(): void {
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   useEffect(() => {

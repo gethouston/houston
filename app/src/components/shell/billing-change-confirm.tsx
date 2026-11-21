@@ -7,13 +7,6 @@ import { ChoiceOrgList } from "./free-org-picker-list";
 import { useOrgName } from "./free-org-picker-rows";
 import { PlanBriefingCta, PlanBriefingQuietButton } from "./plan-briefing-cta";
 
-/**
- * What the cutover picked for an owner who never picked: the free org, the
- * org the subscription moved to, and every other org with its lock date.
- * Confirm stores the same pick; Change opens the picker on it. The save's
- * answer goes to `onAnswer`, whose SDK frame closes on a stored pick and
- * keeps this step on a refusal, which shows its own copy.
- */
 export function BillingChangeConfirm({
   choice,
   until,
@@ -21,7 +14,6 @@ export function BillingChangeConfirm({
   onChange,
 }: {
   choice: BillingChoice;
-  /** The change window's last day, formatted by the notice. */
   until: string;
   onAnswer: (outcome: BillingChoiceSave) => void;
   onChange: () => void;
@@ -54,7 +46,6 @@ export function BillingChangeConfirm({
         {done.orgs.some((org) => org.status === "locks") &&
           t("choice.applied.locks")}
       </p>
-      {/* The phone sheet seats the actions at the bottom, under the thumb. */}
       <div className="mt-auto flex flex-col md:mt-0">
         <PlanBriefingCta
           label={t("choice.applied.confirm.confirm")}

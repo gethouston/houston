@@ -1,7 +1,6 @@
 import { Skeleton } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 
-/** The Billing tab while the orgs list loads, shaped like its two cards. */
 export function BillingTabSkeleton() {
   const { t } = useTranslation("teams");
   return (

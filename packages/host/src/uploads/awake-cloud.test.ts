@@ -94,7 +94,6 @@ test("awake cloud hosts materialize a copied upload and sync never uploads it ag
       }),
     );
     await downloading.promise;
-    // A final sync joins the copy's transaction before walking the new file.
     const stopped = syncDaemon.stop();
     release.resolve();
     expect(await saving).toEqual(["uploads/report.txt"]);

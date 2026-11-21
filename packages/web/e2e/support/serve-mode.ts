@@ -1,28 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-/**
- * How the web app reaches the browser during a run.
- *
- * - `dev`: two `vite` dev servers transform modules on demand. No build step,
- *   HMR, the mode every local run uses.
- * - `bundle`: `vite build` once per server (see build-bundles.ts, which also
- *   says why the build is a development-mode one), then `vite preview` serves
- *   the static output. CI's default, three workers per shard.
- *
- * History, kept here once. The dev server is ONE single-threaded process
- * serving every worker's page boot, and on a 4-vCPU CI runner density cost
- * correctness: 4 workers starved renders past the 10s expect budget (run
- * 30596416439, 14 timing failures) and 2 left the heavy signed-in specs
- * flaking on animation transients (run 30597930896, stuck AnimatePresence
- * exit ghosts duplicating kanban cards), so CI ran one worker per shard and a
- * Playwright step took 9 to 13 min. A static file server costs the runner
- * nothing per request, so the cores go to the browsers: 2 to 4 min per shard
- * at three workers.
- *
- * `HOUSTON_E2E_SERVE=bundle` reproduces a CI run locally (build first:
- * `pnpm --filter houston-web e2e:build`).
- */
 export type ServeMode = "dev" | "bundle";
 
 export function resolveServeMode(
@@ -38,30 +16,17 @@ export function resolveServeMode(
   return env.CI ? "bundle" : "dev";
 }
 
-/**
- * One bundle per web server the suite boots. The two differ only in the baked
- * `__FIREBASE_API_KEY__` (a define, so a build-time fact): the identity-off
- * `shell` the whole suite runs on, and the identity-on `sign-in` server behind
- * the `auth` project and the signed-in specs.
- */
 export type BundleName = "shell" | "sign-in";
 export const BUNDLE_NAMES: readonly BundleName[] = ["shell", "sign-in"];
 
-/** Under the package's `dist/` (gitignored) so `pnpm build` and the e2e
- *  bundles share one ignore rule and one place to clean. */
 const BUNDLE_ROOT = path.resolve(import.meta.dirname, "../../dist/e2e");
 
 export function bundleDir(name: BundleName): string {
   return path.join(BUNDLE_ROOT, name);
 }
 
-/** Written into each bundle by build-bundles.ts: the git HEAD it was built
- *  at, so serve-bundle.ts can warn when a local run serves a stale build. */
 export const STAMP_FILE = ".git-head";
 
-/** Fail at server start (serve-bundle.ts), with the remedy, instead of
- *  letting `vite preview` report a missing directory. Not at config load:
- *  `playwright test --list` runs in CI with nothing built. */
 export function assertBundleBuilt(name: BundleName): string {
   const dir = bundleDir(name);
   if (!existsSync(path.join(dir, "index.html"))) {

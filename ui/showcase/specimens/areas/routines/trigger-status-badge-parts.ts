@@ -1,10 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * `TriggerStatusBadgeProps` and `RoutineTriggerStatusProps`, read off
- * `ui/routines/src/trigger-status-badge.tsx` and `routine-trigger-status.tsx`.
- * Data only — the page beside this file renders it.
- */
 export const badgeProps: readonly SpecimenProp[] = [
   {
     name: "status",

@@ -1,5 +1,3 @@
-/** The input POST body parser (`BrowserLiveInputRequest`). */
-
 import {
   BROWSER_LIVE_KEYS,
   BROWSER_LIVE_MAX_EVENTS,
@@ -26,7 +24,6 @@ const MOUSE_ACTIONS: readonly BrowserLiveMouseAction[] = [
   "up",
   "click",
 ];
-/** All four CDP modifier bits set. */
 const MODIFIER_MASK = 15;
 
 function parseMouse(body: Body): BrowserLiveInput {
@@ -95,7 +92,6 @@ function parseInput(value: unknown): BrowserLiveInput {
   }
 }
 
-/** The input POST body, or a throw (the runtime answers `400 invalid_input`). */
 export function parseBrowserLiveInputRequest(
   value: unknown,
 ): BrowserLiveInputRequest {
@@ -132,8 +128,6 @@ export function parseBrowserLiveInputRequest(
       throw new Error("Invalid browser input finish");
     request.finish = body.finish;
   }
-  // Anything that acts names its hand-off: unattributed, a late Done or batch
-  // from an earlier hand-off's view would land on the chat's next one.
   const acts = request.events || request.ack || request.finish;
   if (acts && request.handoff === undefined)
     throw new Error("Invalid browser input without handoff");

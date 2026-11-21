@@ -81,7 +81,6 @@ export function flatSidebarOrder(
   );
 }
 
-/** The employee the rail shows first: the desktop's landing. */
 export function firstSidebarAgentId(
   agents: Agent[],
   layout: SidebarLayout,

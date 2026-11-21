@@ -24,7 +24,6 @@ export async function installUpdates(): Promise<void> {
   await CapacitorUpdater.addListener("updateFailed", ({ bundle }) =>
     reportRollback(bundle.version),
   );
-  // Native persists the failed bundle when rollback precedes JS listener setup.
   const failed = await CapacitorUpdater.getFailedUpdate();
   if (failed) reportRollback(failed.bundle.version);
   const baseUrl = __HOUSTON_MOBILE_UPDATE_BASE_URL__;
@@ -92,8 +91,6 @@ export async function installUpdates(): Promise<void> {
   );
 }
 
-// GCS path-style object URLs use its XML API, which needs bucket CORS for WebView
-// fetch. CapacitorHttp uses native networking, so the pinned bucket needs no CORS.
 async function nativeManifestFetch(url: RequestInfo | URL): Promise<Response> {
   const result = await CapacitorHttp.get({
     url: String(url),

@@ -9,8 +9,6 @@ import {
   SHELL_SETTLE_MS,
 } from "./ready";
 
-// jsdom's localStorage is unavailable under this Node; an in-memory Storage
-// slice is all the readiness module touches.
 const values = new Map<string, string>();
 const storage = {
   getItem: (key: string) => values.get(key) ?? null,
@@ -87,7 +85,6 @@ test("an offline launch puts only an unconfirmed OTA bundle on trial", async () 
   await declareProvisionalReady(fresh);
   expect(fresh.notifyAppReady).toHaveBeenCalledOnce();
   expect(storage.getItem(PROVISIONAL_READY_KEY)).toBe("ota-7");
-  // Capgo says "success" after the provisional notify: still on trial.
   await declareProvisionalReady(ports("ota-7", "success"));
   expect(storage.getItem(PROVISIONAL_READY_KEY)).toBe("ota-7");
   values.clear();

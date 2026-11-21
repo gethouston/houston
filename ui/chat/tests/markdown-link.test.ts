@@ -30,8 +30,6 @@ describe("markdownLinkText", () => {
   });
 
   it("treats <br>/<wbr> break elements as whitespace, not non-text (HOU-1071)", () => {
-    // A hard break inside a link label renders as a childless <br> element;
-    // returning null here dropped wrapped-URL labels into the clipped pill.
     assert.equal(
       markdownLinkText(["https://a.com/x-", { type: "br", props: {} }, "\ny"]),
       "https://a.com/x-\n\ny",
@@ -55,9 +53,6 @@ describe("classifyMarkdownLink", () => {
   });
 
   it("URL text wrapped in an array or element is still an autolink (broken-pill bug)", () => {
-    // Streamdown hands children as ["url"] or animation-wrapped spans; the old
-    // strict children === href check dropped these into the labeled pill, which
-    // clipped the URL into a black bar.
     assert.equal(
       classifyMarkdownLink("https://example.com", ["https://example.com"]),
       "autolink",
@@ -71,8 +66,6 @@ describe("classifyMarkdownLink", () => {
   });
 
   it("URL-as-label is an autolink even when it differs from the href", () => {
-    // [https://drive.google.com/…/view](https://drive.google.com/…/view/) —
-    // a visible URL must render inline, never as a pill.
     assert.equal(
       classifyMarkdownLink(
         "https://drive.google.com/file/d/1Vz7t/view/",
@@ -90,9 +83,6 @@ describe("classifyMarkdownLink", () => {
   });
 
   it("URL label hard-wrapped across lines is an autolink (HOU-1071)", () => {
-    // Agents wrap long URLs inside [label](href); the softbreak flattens
-    // into the label as "\n". Pre-fix this fell into the pill branch and
-    // clipped the URL into an unreadable black bar.
     assert.equal(
       classifyMarkdownLink(
         "https://docs.google.com/spreadsheets/d/1JOOOml-rR9Hmali/edit?usp=sharing",
@@ -103,8 +93,6 @@ describe("classifyMarkdownLink", () => {
   });
 
   it("URL label hard-broken with <br> is an autolink (HOU-1071 live shape)", () => {
-    // Trailing-space / backslash hard breaks render the wrapped label as
-    // [text, <br>, text] — the exact shape from the issue screenshot.
     assert.equal(
       classifyMarkdownLink("https://docs.google.com/spreadsheets/d/1JO/edit", [
         "https://docs.google.com/spreadsheets/d/",
@@ -148,8 +136,6 @@ describe("classifyMarkdownLink", () => {
   });
 
   it("relative path the agent dropped (perfil.md) classifies as autolink when shown bare", () => {
-    // useOpenAgentHref resolves non-URL hrefs against the agent dir;
-    // classification only cares whether the visible text equals the href.
     assert.equal(classifyMarkdownLink("perfil.md", "perfil.md"), "autolink");
   });
 });
@@ -163,8 +149,6 @@ describe("autolinkDisplay", () => {
   });
 
   it("strips the scheme and caps a long URL with an ellipsis (HOU-1152)", () => {
-    // The live shape from the issue: a ~95-char Docs share link that used to
-    // wrap across three lines of noise (or, pre-HOU-1071, clip into a pill).
     const url =
       "https://docs.google.com/presentation/d/1qObQZ8EL3YcTan_dPkyZfoR_9cp4hiWoBMgic6y9ZoE/edit";
     const stripped = url.replace(/^https:\/\//, "");

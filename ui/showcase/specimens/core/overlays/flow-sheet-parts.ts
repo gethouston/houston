@@ -1,9 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * `FlowSheet`'s public API, read off `ui/core/src/components/flow-sheet.tsx`.
- * Split out only to keep the specimen file inside the 200-line rule.
- */
 export const flowSheetProps: SpecimenProp[] = [
   {
     name: "open",

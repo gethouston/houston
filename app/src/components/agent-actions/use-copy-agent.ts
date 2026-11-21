@@ -20,27 +20,6 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 import { useMoveAgentTeam } from "../team-view/use-move-agent-team";
 import { fullPortableSelection } from "./copy-agent-model";
 
-/**
- * Duplicate ONE agent inside the workspace, as a create. Every leg is an
- * existing surface, which is what makes this work on BOTH backends: the
- * agent-scoped portable routes package the source's content (the same set
- * "Export a copy" carries — conversations and files are not part of it), the
- * package installs as an ordinary create-with-seeds, and the one move action
- * files the copy in the chosen team.
- *
- * The copy is born on the source's provider/model, carried by the install
- * itself, so there is nothing to write once its engine wakes.
- *
- * `selection` narrows what the package carries (the create dialog's "Copy an
- * agent" wizard lets the user leave items behind); absent, the copy is
- * faithful. `color` defaults to the source's. `copyChats` moves the source's
- * tasks and conversations over afterwards through the agent-scoped migration
- * routes, in the background: on the hosted profile the copy's pod is still
- * cold-starting, and holding the dialog for that would freeze it.
- *
- * Resolves `true` when the copy exists (the dialog closes on it); failures
- * toast here and resolve `false` so the dialog stays open for a retry.
- */
 export function useCopyAgent(): (args: {
   agent: Agent;
   name: string;
@@ -48,7 +27,6 @@ export function useCopyAgent(): (args: {
   color?: string;
   selection?: PortableExportSelection;
   copyChats?: boolean;
-  /** Which door the copy came through, for analytics. */
   via?: "settings" | "create_dialog";
 }) => Promise<boolean> {
   const { t } = useTranslation("agents");
@@ -87,11 +65,8 @@ export function useCopyAgent(): (args: {
         agentName: name.trim(),
         agentColor: color ?? agent.color,
         selection: fullPortableSelection(uploaded.preview),
-        // The copy is born on the source's brain. It already knows its job,
-        // so it has no first day to run.
         config: { provider: source.provider, model: source.model },
       });
-      // File the copy in its chosen group before opening its Tasks screen.
       adoptAgent(toAgent(installed.agent));
       if (team) moveAgent(installed.agent.id, team);
       analytics.track("agent_copied", { agent_slug: agent.id, source: via });
@@ -106,9 +81,6 @@ export function useCopyAgent(): (args: {
       if (copyChats) {
         void (async () => {
           try {
-            // The copy's engine may still be waking (a cold pod on the hosted
-            // profile): a waking refusal on the import is waited out, not
-            // reported.
             const outcome = await copyAgentChats(
               engine,
               agent.folderPath,
@@ -117,9 +89,6 @@ export function useCopyAgent(): (args: {
               (err) => isEngineWakingError(err) || isAgentWarmingError(err),
               installed.routineIds,
             );
-            // A rejected file or a board the copy already had (a task was
-            // created in it before the chats arrived) is a partial copy, and
-            // says so; only a complete one gets the success toast.
             if (!chatCopyComplete(outcome)) {
               logger.error(
                 `[copy-agent] chats partial: board=${outcome.boardWritten} rejected=${JSON.stringify(outcome.rejected)}`,
@@ -150,7 +119,6 @@ export function useCopyAgent(): (args: {
       }
       return true;
     } catch (err) {
-      // The 409 race: a sibling took the name after the dialog's live check.
       if (isAgentNameTaken(err)) {
         showExpectedStateToast(
           t("toasts.nameConflict", { name: name.trim() }),

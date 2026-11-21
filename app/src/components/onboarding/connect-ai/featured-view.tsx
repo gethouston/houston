@@ -13,14 +13,9 @@ interface FeaturedViewProps {
   featured: readonly FeaturedProvider[];
   connections: ProviderConnections;
   onViewMore: () => void;
-  /** Focus "View more" on mount: the user just came back from the full list. */
   focusToggle: boolean;
 }
 
-/**
- * The card's opening view: the featured plan cards side by side, and a quiet
- * "View more" that swaps them for every provider in one list.
- */
 export function FeaturedView({
   featured,
   connections,
@@ -30,8 +25,6 @@ export function FeaturedView({
   const { t } = useTranslation("setup");
   const toggleRef = useRef<HTMLButtonElement>(null);
 
-  // Mount-only: the button that swapped the views is gone, so focus lands on
-  // the control that swaps them back instead of falling to the page body.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per view swap.
   useEffect(() => {
     if (focusToggle) toggleRef.current?.focus();

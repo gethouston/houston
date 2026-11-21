@@ -12,7 +12,6 @@ import {
   subscriberCount,
 } from "./bus";
 
-// Unique id per test so the module-level maps never bleed across cases.
 let counter = 0;
 const freshId = () => `test-conv-${counter++}`;
 
@@ -27,7 +26,7 @@ test("events reach only that conversation's subscribers, stamped with seq", () =
   publish(a, { type: "text", data: "hello from A" });
 
   expect(aEvents).toHaveLength(1);
-  expect(bEvents).toHaveLength(0); // the isolation guarantee
+  expect(bEvents).toHaveLength(0);
   expect(aEvents[0]).toEqual({ type: "text", data: "hello from A", seq: 1 });
 
   unsubA();
@@ -74,7 +73,7 @@ test("two concurrent conversations never cross, and each has its own seq counter
   publish(b, { type: "text", data: "b2" });
 
   expect(aTexts).toEqual(["a1", "a2"]);
-  expect(bSeqs).toEqual([1, 2]); // b's counter is untouched by a's publishes
+  expect(bSeqs).toEqual([1, 2]);
   expect(snapshot(a).seq).toBe(2);
 });
 
@@ -95,11 +94,9 @@ test("snapshot catches a late subscriber up to the in-flight turn (with the wate
   publish(id, { type: "text", data: "Hel" });
   publish(id, { type: "text", data: "lo" });
 
-  // A client connecting now is told the turn is running + handed the text so far.
   expect(snapshot(id)).toEqual({ running: true, partial: "Hello", seq: 3 });
 
   publish(id, { type: "done", data: null });
-  // Cleared after the turn — but the seq watermark survives (counter never resets).
   expect(snapshot(id)).toEqual({ running: false, partial: "", seq: 4 });
 });
 
@@ -119,7 +116,6 @@ test("reduceSnapshot keeps the turn running through tool/thinking frames", () =>
   );
   s = reduceSnapshot(s, { type: "text", data: "work" });
   s = reduceSnapshot(s, { type: "tool_start", data: { name: "ls", args: {} } });
-  // tool frame doesn't touch text — it lands in the tools list (HOU-717)
   expect(s).toEqual({
     running: true,
     partial: "work",
@@ -146,17 +142,13 @@ test("a callback that unsubscribes mid-fan-out does not break delivery", () => {
   const order: string[] = [];
   const unsubFirst = subscribe(id, () => {
     order.push("first");
-    unsubFirst(); // remove self while publish is iterating
+    unsubFirst();
   });
   subscribe(id, () => order.push("second"));
   publish(id, { type: "done", data: null });
   expect(order).toEqual(["first", "second"]);
   expect(subscriberCount(id)).toBe(1);
 });
-
-// ---------------------------------------------------------------------------
-// Sequencing + replay (the resume contract's fan-out half)
-// ---------------------------------------------------------------------------
 
 test("seq is strictly monotonic across turns — never reset by the terminal clear", () => {
   const id = freshId();
@@ -178,8 +170,8 @@ test("replayAfter serves the in-flight turn's window", () => {
     { type: "text", data: "Hel", seq: 2 },
     { type: "text", data: "lo", seq: 3 },
   ]);
-  expect(replayAfter(id, 3)).toEqual([]); // caught up
-  expect(replayAfter(id, 9)).toBeNull(); // ahead of the watermark → resync
+  expect(replayAfter(id, 3)).toEqual([]);
+  expect(replayAfter(id, 9)).toBeNull();
 });
 
 test("the terminal frame clears the replay window; the cursor then resyncs", () => {
@@ -187,14 +179,14 @@ test("the terminal frame clears the replay window; the cursor then resyncs", () 
   publish(id, { type: "user", data: { content: "hi", ts: 1 } });
   publish(id, { type: "text", data: "answer" });
   publish(id, { type: "done", data: null });
-  expect(replayAfter(id, 1)).toBeNull(); // inside the cleared turn → resync + history refetch
-  expect(replayAfter(id, 3)).toEqual([]); // exactly at the watermark → nothing missed
+  expect(replayAfter(id, 1)).toBeNull();
+  expect(replayAfter(id, 3)).toEqual([]);
 });
 
 test("a conversation never published in this process serves only cursor 0", () => {
   const id = freshId();
   expect(replayAfter(id, 0)).toEqual([]);
-  expect(replayAfter(id, 5)).toBeNull(); // pre-restart cursor → resync
+  expect(replayAfter(id, 5)).toBeNull();
 });
 
 test("turnId rides publish into the frames and the snapshot's sync read-out", () => {
@@ -214,25 +206,17 @@ test("turnId rides publish into the frames and the snapshot's sync read-out", ()
   expect(snapshot(id).turnId).toBeUndefined();
 });
 
-// ---------------------------------------------------------------------------
-// Eviction (conversation DELETE)
-// ---------------------------------------------------------------------------
-
 test("evict drops the whole channel: old cursors resync, the stream restarts at 1", () => {
   const id = freshId();
-  publish(id, { type: "user", data: { content: "hi", ts: 1 } }); // 1
-  publish(id, { type: "text", data: "answer" }); // 2
+  publish(id, { type: "user", data: { content: "hi", ts: 1 } });
+  publish(id, { type: "text", data: "answer" });
 
   evict(id);
 
-  // The deleted conversation's stream state is gone entirely.
   expect(snapshot(id)).toEqual({ running: false, partial: "", seq: 0 });
-  expect(replayAfter(id, 2)).toBeNull(); // any outstanding cursor → resync
+  expect(replayAfter(id, 2)).toBeNull();
   expect(replayAfter(id, 0)).toEqual([]);
 
-  // A re-created conversation starts a fresh stream — and a subscriber that
-  // stayed connected across the eviction still receives it (arrival order is
-  // authoritative; nothing filters on the old watermark).
   const seen: SequencedFrame[] = [];
   subscribe(id, (e) => seen.push(e));
   publish(id, { type: "user", data: { content: "second life", ts: 2 } });

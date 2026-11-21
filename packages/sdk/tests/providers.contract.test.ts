@@ -1,16 +1,3 @@
-/**
- * Providers contract: the `providers/<agentId>` view-model merges the runtime's
- * `GET /providers` + `GET /auth/status` reads coherently, and the per-agent
- * connect facade (login → LoginInfo kinds, api-key → configured flip, logout,
- * setModel → {activeProvider, model}) mutates then refetches so the snapshot
- * always reflects the pod.
- *
- * These drive a REAL fake host over HTTP (per-agent-pod provider state), so what
- * they pin is the wire contract, not a mock's guess. The `ProvidersViewModel` is
- * the snapshot every subscriber reads (the dispatch path, the adapter, a test),
- * so its shape is pinned here as API.
- */
-
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
 import {
   ProvidersCommand,
@@ -58,7 +45,6 @@ describe("providers VM — list + status merge", () => {
     expect(vm()?.loaded).toBe(true);
     expect(vm()?.activeProvider).toBe("anthropic");
 
-    // The connected+active provider: ProviderInfo fields + the auth overlay.
     expect(find("anthropic")).toEqual({
       id: "anthropic",
       name: "Anthropic (Claude)",
@@ -69,13 +55,11 @@ describe("providers VM — list + status merge", () => {
       login: null,
     });
 
-    // An unconnected OAuth provider: configured/isActive false, login idle.
     expect(find("openai-codex")).toMatchObject({
       configured: false,
       isActive: false,
       login: null,
     });
-    // Copilot carries the Enterprise-domain discriminator (null when individual).
     expect(find("github-copilot")).toMatchObject({ enterpriseUrl: null });
   });
 
@@ -99,7 +83,6 @@ describe("providers — login returns the LoginInfo kind verbatim", () => {
     expect(claude.kind).toBe("auth_code");
     if (claude.kind === "auth_code") expect(claude.url).toMatch(/^https?:/);
 
-    // login refreshes status, so the awaiting-user state is now on the VM.
     expect(find("openai-codex")?.login?.status).toBe("awaiting_user");
     expect(find("anthropic")?.login?.status).toBe("awaiting_user");
   });
@@ -118,11 +101,9 @@ describe("providers — login polling contract (surface polls; SDK imperative)",
     const info = await h.sdk.providers.login(SEED_AGENT_ID, "openai-codex");
     expect(info.kind).toBe("device_code");
 
-    // The surface polls refreshStatus while the user completes it out of band.
     await h.sdk.providers.refreshStatus(SEED_AGENT_ID);
     expect(find("openai-codex")?.configured).toBe(false);
     expect(find("openai-codex")?.login?.status).toBe("awaiting_user");
-    // The cheap poll preserves the model info from the prior full refresh.
     expect(find("openai-codex")?.models).toEqual(["gpt-5-codex", "o4-mini"]);
 
     await h.sdk.providers.completeLogin(
@@ -157,7 +138,6 @@ describe("providers — credential mutations refetch", () => {
 
     await h.sdk.providers.logout(SEED_AGENT_ID, "anthropic");
     expect(find("anthropic")?.configured).toBe(false);
-    // anthropic was the only connected provider → no active provider remains.
     expect(vm()?.activeProvider).toBeUndefined();
   });
 });
@@ -194,7 +174,6 @@ describe("providers — dispatch parity", () => {
     expect(refreshed).toMatchObject({ id: "c1", ok: true });
     expect(vm()?.loaded).toBe(true);
 
-    // login surfaces the LoginInfo as the command's `value`.
     const login = await h.sdk.dispatch({
       id: "c2",
       type: ProvidersCommand.Login,
@@ -206,7 +185,6 @@ describe("providers — dispatch parity", () => {
       value: { kind: "auth_code" },
     });
 
-    // A missing required field is a validation failure, not a throw.
     const bad = await h.sdk.dispatch({
       id: "c3",
       type: ProvidersCommand.SetApiKey,

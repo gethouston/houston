@@ -1,6 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/** `KanbanColumnProps`, read off the component's TypeScript types. */
 export const COLUMN_PROPS: SpecimenProp[] = [
   {
     name: "columnId",

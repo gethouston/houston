@@ -1,9 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * `Tooltip`'s public API, read off `ui/core/src/components/tooltip.tsx`. Split
- * out only to keep the specimen file inside the 200-line rule.
- */
 export const tooltipProps: SpecimenProp[] = [
   {
     name: "TooltipProvider.delayDuration",

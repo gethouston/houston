@@ -1,4 +1,3 @@
-/** Exact-generation operations on uploads outside the agent's object prefix. */
 export interface UploadStore {
   copyUpload(
     uploadId: string,

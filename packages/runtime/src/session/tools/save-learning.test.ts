@@ -9,15 +9,6 @@ import {
   SAVE_LEARNING_TOOL_NAME,
 } from "./save-learning";
 
-/**
- * save_learning is a thin proxy to the host's merge-safe + provenance-stamping
- * /sandbox/learnings/save route under the per-sandbox token. These pin: the URL
- * + Authorization header, that ONLY the text crosses the wire (provenance is
- * derived server-side, never claimed by the model), the acting-as + conversation
- * forwarding that makes that derivation possible, and that a host rejection
- * surfaces as a tool error the agent can relay.
- */
-
 const realFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = realFetch;
@@ -66,7 +57,6 @@ test("POSTs only the text to the merge-safe route with the sandbox token", async
   const out = await run({ text: "Exclude churned accounts" });
   expect(calls[0]?.url).toBe("https://host.test/sandbox/learnings/save");
   expect(calls[0]?.auth).toBe("Bearer sb-tok");
-  // Provenance is NOT a parameter: the model cannot claim who taught it.
   expect(calls[0]?.body).toEqual({ text: "Exclude churned accounts" });
   expect((out.details as { id: string }).id).toBe("l1");
 });
@@ -106,8 +96,6 @@ test("agent-facing learning instructions contain no em dashes", () => {
 });
 
 test("the host's turn-gate refusals keep their own codes", async () => {
-  // /sandbox/learnings/save answers 400 not_in_turn / 403 plan_mode. Both are
-  // states the model must act on differently from "the server refused".
   for (const [status, code] of [
     [400, "not_in_turn"],
     [403, "plan_mode"],

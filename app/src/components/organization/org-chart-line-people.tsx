@@ -5,11 +5,6 @@ import { LINE, type LineSize } from "./org-chart-line-sizes";
 import type { ChartPerson, ChartRelation } from "./org-chart-people";
 import type { LedgerLine } from "./org-chart-view-model";
 
-/**
- * One relation's column: its faces, or one quiet word where a row of faces
- * would say nothing: "Everyone" for an agent shared with the whole
- * organization, "None" for a relation nobody holds.
- */
 function Group({
   people,
   relation,
@@ -43,10 +38,6 @@ function Group({
   );
 }
 
-/**
- * The Manages and Uses columns, or one quiet "People hidden" across both
- * when the caller cannot see this AI Employee's assignments.
- */
 export function LinePeople({
   line,
   size,

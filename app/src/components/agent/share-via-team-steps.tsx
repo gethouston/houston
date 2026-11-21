@@ -6,14 +6,6 @@ import type { TeamRef } from "../../lib/share-via-team";
 import { MAX_TEAM_NAME_LENGTH } from "../shell/create-team-model";
 import type { PickStepCopy } from "./pick-step-copy";
 
-/**
- * Presentational steps for {@link ShareViaTeamFlow}. Each renders one state of
- * the pure `share-via-team` machine; all logic (transitions, wire calls) stays
- * in the container. App-internal, so they read `t()` directly (the library
- * boundary is for `ui/`, not app tabs).
- */
-
-/** Creating a team inline from the pick step. */
 export interface PickStepCreate {
   open: boolean;
   error: string | null;
@@ -22,10 +14,6 @@ export interface PickStepCreate {
   onCreate: (name: string) => void;
 }
 
-/**
- * Step 1: pick a destination the caller owns or runs, or (`create`) create
- * a team inline.
- */
 export function PickStep({
   copy,
   teams,
@@ -116,7 +104,6 @@ function PickCreate({
   );
 }
 
-/** Step 2 — honest confirmation of the move (destination + brief downtime). */
 export function ConfirmStep({
   agentName,
   team,
@@ -156,7 +143,6 @@ export function ConfirmStep({
   );
 }
 
-/** A centered spinner + caption, shared by the moving and switching steps. */
 export function BusyStep({
   heading,
   body,
@@ -173,7 +159,6 @@ export function BusyStep({
   );
 }
 
-/** The move into Personal is done: where the AI Employee is now. */
 export function MovedStep({
   agentName,
   team,

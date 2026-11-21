@@ -18,18 +18,6 @@ import {
 } from "./workspace-account";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
-/**
- * The rail's last row: who is signed in and where, drawn like an employee
- * (their portrait, their name, the workspace under it). Single-player desktop
- * has no identity, so there the workspace takes the name line alone, beside a
- * plain person glyph.
- *
- * Pressing it opens the ONE menu holding everything that is not an employee
- * or a connection, in runs: who is signed in; every workspace the person
- * belongs to and creating one (`useWorkspaceCreate` routes that on Spaces);
- * the person's Profile and About me (`useAccountMenu`); Admin behind the org
- * gate, the Academy and Settings (opened on its INDEX); and Sign out.
- */
 export function SidebarWorkspaceMenu(props: {
   collapsed: boolean;
   onCreateWorkspace: () => void;
@@ -43,9 +31,6 @@ export function SidebarWorkspaceMenu(props: {
   const openSettings = useUIStore((s) => s.openSettings);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
-  // Every rail navigation closes the phone's More menu, the rule the rest of
-  // the rail follows, so a window resized across the breakpoint never lands
-  // on a stale open menu.
   const closeMobileMenu = () => setMobileMoreOpen(false);
   const { switchWorkspace } = useSidebarNavigation({ closeMobileMenu });
   const account = useAccountMenu({ onNavigate: closeMobileMenu });

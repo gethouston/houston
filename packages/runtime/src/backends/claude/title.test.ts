@@ -5,8 +5,6 @@ import { claudeLoginConfigDir } from "./paths";
 import type { ClaudeQuery } from "./session";
 import { titleWithClaude } from "./title";
 
-// Same credential-var hygiene as backend.test.ts: the title path must scrub
-// identically, so plant/restore ambient credentials around each test.
 const CREDS = [
   "CLAUDE_CODE_OAUTH_TOKEN",
   "ANTHROPIC_API_KEY",
@@ -25,7 +23,6 @@ afterEach(() => {
   }
 });
 
-/** A query stub that captures the env it was handed and yields no messages. */
 function capturingQuery(): {
   query: ClaudeQuery;
   env: () => NodeJS.ProcessEnv;
@@ -39,10 +36,6 @@ function capturingQuery(): {
 }
 
 test("titleWithClaude carries the title instruction in the PROMPT itself", async () => {
-  // The CLI has been observed running its claude_code preset despite a custom
-  // string systemPrompt — the model then ANSWERED the excerpt and the first
-  // line of the answer became the board title. The instruction must ride the
-  // prompt so the reply is a title whichever system prompt the CLI honors.
   let prompt = "";
   const query: ClaudeQuery = (req) => {
     prompt = String(req.prompt);
@@ -88,9 +81,6 @@ function actingToken(sub: string): string {
 }
 
 test("a one-shot under a personal scope with no personal token refuses", async () => {
-  // The one-shot path pins the same POD-SHARED CLAUDE_CONFIG_DIR a turn does, so
-  // it needs the same read-side scope guard: a member's throwaway call must never
-  // authenticate as the team account and self-refresh its credential.
   const { query, env } = capturingQuery();
   await expect(
     runWithActingContext({ actingAs: actingToken("sub-alice") }, () =>

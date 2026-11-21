@@ -28,7 +28,6 @@ import {
 import { AgentPeopleTab } from "./agent-people-tab.tsx";
 import { AgentSettingsPeopleHero } from "./agent-settings-people-hero.tsx";
 
-/** Mirrors the final layout (control pill, its hint line, three rows) so the roster never jumps in. */
 function PeopleSkeleton() {
   return (
     <div aria-hidden>
@@ -43,34 +42,6 @@ function PeopleSkeleton() {
   );
 }
 
-/**
- * The People section of the agent settings page: the team-wide access question
- * on top, the per-person roster below.
- *
- * The choice is the same always-visible {@link AccessChoice} segmented control
- * the app + model ceilings use, wired to the real everyone-agent semantics via
- * `agent-people-choice` (empty assignee set = everyone; an explicit set = only
- * those people). BOTH directions are confirm-gated, because both replace the
- * whole roster in one write: switching to Everyone says what it discards
- * (and warns destructively when the viewer is discarding their OWN Manager
- * grant), switching to specific people says how many it is freezing and that
- * future teammates are no longer included. Writes go through ONE shared
- * optimistic {@link useShareAgent} — the same instance the roster rows use, so
- * one in-flight write disables every control here and two set-replaces can
- * never race.
- *
- * In "Everyone" mode the roster renders STATIC: per-person levels are not the
- * agent's state while the sentinel is set, and a live control there would
- * silently materialize the roster (the mirror of the confirm-gated switch).
- * This follows the `AllowlistEditor` idiom, which likewise stops offering
- * per-item controls in its "any" mode.
- *
- * The section owns the org query, so the roster refetches on mount when stale
- * and the body waits behind a skeleton until it lands. The choice itself hides
- * until the roster is readable ({@link canChooseAgentAccess}): with no members
- * to expand, "Only specific people" would write the empty set and mean the
- * opposite of its label.
- */
 export function AgentSettingsPeople({ agent }: { agent: Agent }) {
   const { t } = useTranslation("teams");
   const headingId = useId();
@@ -83,9 +54,6 @@ export function AgentSettingsPeople({ agent }: { agent: Agent }) {
   const { capabilities } = useCapabilities();
   const personalSpace = usePersonalSpace();
   const [shareOpen, setShareOpen] = useState(false);
-  // The agent's ONE Share affordance: it invites people, so it lives on the
-  // People section. "view" is deliberately not offered — this pane already
-  // lists who has access, so the read-only dialog would say it twice.
   const shareSurface = agentShareSurface(capabilities, agent, personalSpace);
   const personalSpacesHost = personalSpace && hasSpaces(capabilities);
   const showShare = shareSurface === "manage" && !personalSpacesHost;

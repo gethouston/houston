@@ -22,42 +22,18 @@ import type { ManagedSkillRow } from "./skill-editor-props";
 
 export interface SkillEditorHeaderProps {
   row: ManagedSkillRow;
-  /** The pending rename, or null when the name is the stored one. */
   rename: string | null;
-  /** Commit a rename into the draft. Omit while the skill is still loading. */
   onRename?: (title: string) => void;
   view: SkillEditorView;
   onViewChange: (view: SkillEditorView) => void;
   onBack: () => void;
-  /** Reopen the skill's chat; omitted when it is already on the glass. */
   onOpenChat?: () => void;
-  /** The menu's acts that reach every employee, mounted only while the menu
-   *  is open (`workspace-skill-menu-items.tsx`). */
   workspaceItems?: ReactNode;
   onDelete: () => void;
-  /** Overrides the danger item's label — an employee's own section stops
-   *  LOADING a workspace skill rather than deleting everyone's copy. */
   deleteLabel?: string;
-  /** Inert while the act the item starts is already writing. */
   deleteDisabled?: boolean;
 }
 
-/**
- * The skill editor's own page header, in place of the list's: back to the
- * list, the skill's identity (icon, renameable name, description), and the
- * controls that act on the whole skill — the Workflow / Text switch, the way
- * back into the chat once it has been closed, and the rarer whole-skill
- * actions behind one menu.
- *
- * It stands on the SAME strip geometry as the list's header — 48px
- * tall on the desktop, the same left edge at every width — because the editor
- * replaces the list in place: a taller header here would shove the body down
- * on every skill opened. That is also why the description rides beside the
- * name rather than under it.
- *
- * The phone stacks identity over controls and gives the switch the full width;
- * the desktop runs both on one line.
- */
 export function SkillEditorHeader({
   row,
   rename,
@@ -95,7 +71,6 @@ export function SkillEditorHeader({
             title={rename ?? skillDisplayTitle(row.summary)}
             onRename={onRename}
             renameLabel={t("skills:detail.rename")}
-            // The settings rail's section lozenge is already the screen's h1.
             level={2}
           />
           {row.summary.description && (

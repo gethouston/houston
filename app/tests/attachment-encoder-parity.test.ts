@@ -1,8 +1,3 @@
-// The app's composer encoder and the SDK's must emit the same bytes, or one
-// surface's attachment marker stops decoding on the other. The app keeps its
-// own copy because it groups folder uploads into one prompt line, which the
-// SDK's does not; for flat uploads they must match exactly.
-
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { buildAttachmentText } from "@houston/sdk";
@@ -26,7 +21,6 @@ describe("attachment marker encoders", () => {
       files.map((f) => f.name),
     );
     strictEqual(app, sdk);
-    // The marker closes once, at its own end, never inside the text.
     const marker = app.split("\n")[0];
     strictEqual(marker.indexOf("-->"), marker.length - 3);
     strictEqual(decodeAttachmentMessage(app)?.message, text);

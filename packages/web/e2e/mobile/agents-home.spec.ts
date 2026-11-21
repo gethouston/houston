@@ -35,10 +35,6 @@ test("an agent in no folder remains in the phone AI Employees list", async ({
 test("a fresh hire's own screen offers its first day, and starting it pushes the chat", async ({
   page,
 }) => {
-  // A new hire with no tasks, its first day waiting for the user
-  // (`lib/agent-first-day.ts`).
-  // The pending first day is born with the hire, in its create's seeds: a
-  // later config write can no longer set it (the host owns the field).
   await page.request.post(`${FAKE_HOST_URL}/agents`, {
     data: {
       name: "Scout",
@@ -51,15 +47,11 @@ test("a fresh hire's own screen offers its first day, and starting it pushes the
   await page.goto("/");
   await page.getByTestId("agents-home-row").filter({ hasText: "Scout" }).tap();
   const missions = page.getByTestId("agent-missions-screen");
-  // With no tasks, the start button IS the screen: no "No tasks" note and no
-  // status filter compete with it.
   await expect(missions.getByTestId("first-day-hero")).toBeVisible();
   await expect(page.getByTestId("agent-missions-filter")).toHaveCount(0);
 
   await missions.getByRole("button", { name: "Start Scout's first day" }).tap();
 
-  // The setup task's chat pushes, the way a row tap does, and the offer is
-  // gone for good once back on the list.
   const chat = page.getByTestId("mission-chat-screen");
   await expect(chat).toBeVisible({ timeout: 10_000 });
   await expect(chat.getByText("Task: Getting set up")).toBeVisible();
@@ -84,12 +76,10 @@ test("a task row says who started it, the same tag the board card wears", async 
     await expect(
       row(mission.title).getByTestId("agent-mission-origin"),
     ).toHaveText(mission.tag);
-  // The user's own task wears only its status.
   await expect(
     row("Plan a trip to Tokyo").getByTestId("agent-mission-origin"),
   ).toHaveCount(0);
 
-  // The archive's rows carry it too.
   await list.getByTestId("agent-missions-archived-toggle").tap();
   await expect(
     row(ARCHIVED_HOUSTON_MISSION.title).getByTestId("agent-mission-origin"),

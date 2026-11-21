@@ -5,15 +5,8 @@ import {
   listAllPublicSlugs,
 } from "@/lib/store-api";
 
-// Rendered dynamically so `next build` never calls the gateway; the underlying
-// catalog fetches carry their own 60s revalidate for runtime caching.
 export const dynamic = "force-dynamic";
 
-/**
- * The public sitemap: Home plus every public agent and creator page,
- * enumerated by walking the gateway catalog. A gateway failure surfaces as a real
- * error rather than a silently truncated sitemap.
- */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteBase();
   const now = new Date();

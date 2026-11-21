@@ -1,6 +1,5 @@
 import { beforeEach, expect, test, vi } from "vitest";
 
-/** What the OS resolver (hosts file, search domains, mDNS) knows. */
 const os: Record<string, { address: string; family: number }[]> = {
   wiki: [{ address: "10.1.2.3", family: 4 }],
   "printer.local": [
@@ -9,7 +8,6 @@ const os: Record<string, { address: string; family: number }[]> = {
   ],
   "loopy.lan": [{ address: "127.0.0.1", family: 4 }],
 };
-/** What public DNS (c-ares) knows. */
 const dnsZone: Record<string, string[]> = { "site.test": ["198.51.100.7"] };
 const miss = (host: string) =>
   Object.assign(new Error(`ENOTFOUND ${host}`), { code: "ENOTFOUND" });
@@ -57,7 +55,6 @@ test("where private networks are allowed, the OS resolver answers intranet names
 
 test("the OS resolver's answers still pass the address checks", async () => {
   const lookup = lookupFor("allowed");
-  // IPv4 first; the mDNS link-local answer is dropped, the LAN one dialed.
   expect(await lookup("printer.local")).toEqual([
     { address: "192.168.1.9", family: 4 },
     { address: "fe80::1", family: 6 },

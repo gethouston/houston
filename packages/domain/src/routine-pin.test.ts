@@ -3,14 +3,6 @@ import { expect, test } from "vitest";
 import { routinePin } from "./routine-pin";
 import { createRoutine } from "./routines";
 
-/**
- * routinePin is the read-time mapping between what a routine stored and the
- * provider/model pin its fired turn carries. Two invariants: a Rust-era id
- * maps to its pi id (so migrated routines keep working), and an UNKNOWN id
- * passes through verbatim (so the runtime rejects it visibly — never a silent
- * switch to a provider the user didn't choose).
- */
-
 function routine(over: Partial<Routine> = {}): Routine {
   return {
     ...createRoutine(
@@ -80,9 +72,6 @@ test("an open-catalog gateway keeps whatever model was stored", () => {
 });
 
 test("an open-catalog gateway's renamed row is pinned to its successor", () => {
-  // The stored id (`mimo-v2.5-free`, curated while pi 0.85.1 shipped it) has no
-  // model object left in pi 0.87.1, so passing it through verbatim fails the
-  // run on every fire; the same-tier successor keeps the routine alive.
   expect(
     routinePin(routine({ provider: "opencode", model: "mimo-v2.5-free" }))
       .model,
@@ -90,8 +79,6 @@ test("an open-catalog gateway's renamed row is pinned to its successor", () => {
 });
 
 test("a renamed deepseek row keeps its pin instead of dropping it", () => {
-  // An unmappable model drops to null (the agent's own model runs instead). A
-  // RENAME is mappable, so the model the user pinned must survive.
   expect(
     routinePin(routine({ provider: "deepseek", model: "deepseek-v4-flash" }))
       .model,
@@ -99,9 +86,6 @@ test("a renamed deepseek row keeps its pin instead of dropping it", () => {
 });
 
 test("an open-catalog gateway's dropped row is pinned to its successor", () => {
-  // The stored id (`glm-5.1`, OpenCode Go's default while pi 0.87.1 shipped it)
-  // has no model object left in pi 0.99.1, so passing it through verbatim
-  // fails the run on every fire; the same-tier successor keeps it alive.
   expect(
     routinePin(routine({ provider: "opencode-go", model: "glm-5.1" })).model,
   ).toBe("glm-5.3");

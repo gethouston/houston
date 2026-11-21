@@ -221,7 +221,6 @@ describe("one file, one row", () => {
       [{ path: "plan.md", status: "modified" }],
     );
     strictEqual(items.length, 1);
-    // The write is what created it, so the file belongs in "New files".
     deepStrictEqual(groupTurnSummaryItems(items).files, [
       { kind: "file", path: "plan.md", change: "created" },
     ]);

@@ -1,8 +1,3 @@
-// English copy for /data-partners. Joined onto the locale tree as
-// `t.dataPartners` by _data/eleventyComputed.js, so scripts/check-locales.mjs
-// holds es and pt to this exact tree. No em dashes; arrays zip by index with
-// _data/dataPartners.js.
-
 export default {
   meta: {
     title: "Houston Data Partners: earn from your company's operational data",
@@ -27,7 +22,6 @@ export default {
     ctaBook: "Book a call",
   },
 
-  // The statement band right under the fold.
   statement:
     "AI models are only as good as what they learn from. The public internet is no longer enough. AI models now need data on how real companies operate.",
 
@@ -226,8 +220,6 @@ export default {
     peopleLabel: "The team you will talk to",
   },
 
-  // The "Book a call" popup every booking button opens
-  // (data-partners/call-modal.njk).
   call: {
     title: "Book a call",
     lead: "Tell us a little about you and your company. It takes a minute.",

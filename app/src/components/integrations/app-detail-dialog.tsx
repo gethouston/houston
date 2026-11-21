@@ -15,27 +15,11 @@ interface AppDetailDialogProps {
   onReconnect: () => void;
   onDisconnect: () => void;
   description?: string;
-  /** Every ACTIVE account behind this app (primary first). More than one
-   *  renders the accounts list; each row can be disconnected on its own. */
   accounts?: IntegrationConnection[];
-  /** Start connecting ANOTHER account of the same app (a second Gmail). The
-   *  section renders only when this is provided. */
   onAddAccount?: () => void;
-  /** Confirm-gated disconnect of ONE account (rendered only with 2+). */
   onDisconnectAccount?: (account: IntegrationConnection) => void;
 }
 
-/**
- * The per-app detail MODAL for a connected app — the same {@link
- * CatalogDetailDialog} the browse rows open (one detail surface per catalog
- * family, never a slideover): status chip beside the art, the full
- * description, the app's connected ACCOUNTS (an app can hold several — two
- * Gmail logins — each named by the identity the provider knows and removable
- * on its own, plus the "add another account" affordance, HOU-901), and the
- * Reconnect / Disconnect actions. This is a personal connection surface only —
- * which agents may use an app is managed in one place, the Permissions view,
- * so the dialog carries no per-agent controls.
- */
 export function AppDetailDialog({
   open,
   onOpenChange,

@@ -1,11 +1,6 @@
 import { Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 
-/**
- * The Continue-setup banner: a draft custom-integration setup chat exists but
- * its panel is closed, so invite the user back into it (or let them finish /
- * discard it). Always-visible buttons, never a hover-only affordance.
- */
 export function CustomSetupBanner({
   onDiscard,
   onDone,

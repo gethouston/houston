@@ -1,19 +1,9 @@
-// Dependency-free on purpose: `app/tests` imports this under node:test, where
-// the Tauri/web import chains of the account-deletion flow cannot load.
-
-/** The narrow slice of the Web Storage API the purge walks. */
 export interface KeyedStorage {
   length: number;
   key(index: number): string | null;
   removeItem(key: string): void;
 }
 
-/** Remove every `houston.*` key (sidebar layout, read cursors, agent colors,
- *  migration outcome, onboarding mirrors — AND the device-level keys below)
- *  from the given storage. Used by the account-deletion teardown (HOU-991),
- *  which erases this device's whole Houston footprint. Plain sign-out uses the
- *  narrower `purgeAccountLocalState`. Snapshot the keys first: removal
- *  renumbers the indices mid-walk. */
 export function purgeHoustonLocalState(storage: KeyedStorage): void {
   const doomed: string[] = [];
   for (let i = 0; i < storage.length; i++) {
@@ -23,31 +13,6 @@ export function purgeHoustonLocalState(storage: KeyedStorage): void {
   for (const key of doomed) storage.removeItem(key);
 }
 
-/**
- * `houston.*` key prefixes that belong to the DEVICE (or to browser-local data
- * that is nobody's hosted account), not to the signed-in account, so sign-out
- * must keep them:
- *
- *  - `houston.web.engine` (+ its `.new` successor) — which host this browser
- *    connects to (self-host URL). Signing out of an account must not make the
- *    browser forget its engine.
- *  - `houston.web.agents` / `houston.web.agentfile:` — the standalone
- *    (no-host) adapter's local agent store: the browser analog of the
- *    `~/.houston` tree, which sign-out never wipes (HOU-991).
- *  - `houston.pendingAgentMoves` — the crash-recovery ticket for an in-flight
- *    C8 agent move (HOU-817). The gateway's move lock outlives the mover and
- *    ONLY a re-POST of the recorded move can free the agent; wiping the ticket
- *    at sign-out would leave the agent 503-locked forever. Tenancy is safe:
- *    the gateway refuses a wrong-account resume and `useMoveResume` keeps the
- *    record for the owning account's next sign-in.
- *  - `houston.cloudMigration.outcome` — this machine's desktop-to-cloud wizard
- *    outcome. The wizard moves THIS machine's `~/.houston` once; wiping it at
- *    sign-out re-offered the migration on every sign-in.
- *  - `houston.ota.` — the mobile app's OTA anti-rollback state (highest
- *    applied update and policy sequences, per-native-build baselines). It
- *    belongs to the installation: wiping it lets a replayed, older signed
- *    bundle install again and reseeds the floor from the wrong build.
- */
 const DEVICE_LOCAL_KEY_PREFIXES = [
   "houston.web.engine",
   "houston.web.agents",
@@ -59,14 +24,6 @@ const DEVICE_LOCAL_KEY_PREFIXES = [
   "houston.ota.",
 ] as const;
 
-/** Remove every ACCOUNT-scoped `houston.*` key — prefs mirrors, sidebar
- *  layouts, read cursors, agent colors, onboarding mirrors, provider-status
- *  caches, the last-sign-in hint — while keeping the device-level keys above.
- *  Runs on every sign-out (PRODUCT-1235): no trace of the outgoing account may
- *  survive into the next sign-in. Durable per-account state must therefore
- *  live server-side: `onboarding_completed` is an ACCOUNT preference behind
- *  `/v1/preferences/:key` (PRODUCT-1282) — wiping its device mirror here must
- *  never re-onboard a returning user. */
 export function purgeAccountLocalState(storage: KeyedStorage): void {
   const doomed: string[] = [];
   for (let i = 0; i < storage.length; i++) {

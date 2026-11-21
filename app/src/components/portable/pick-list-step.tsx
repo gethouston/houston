@@ -1,16 +1,9 @@
 import type { ReactNode } from "react";
 import { SwitchRow } from "./wizard-parts";
 
-/**
- * One "keep or leave behind" screen: a title, a sentence, select-all / clear,
- * and a switch per item. Shared by the import wizard ("From a friend") and the
- * create dialog's "Copy an agent" path, so both read as the same product.
- */
-
 export interface PickListLabels {
   selectAll: string;
   clearAll: string;
-  /** Shown under a row the threat scan flagged. */
   flagged: string;
 }
 
@@ -28,7 +21,6 @@ export interface PickListStepProps<T> {
     flagged?: boolean;
   };
   labels: PickListLabels;
-  /** Render as a section inside another screen (smaller heading), not a screen. */
   compact?: boolean;
 }
 

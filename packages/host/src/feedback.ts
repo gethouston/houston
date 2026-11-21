@@ -1,18 +1,6 @@
-/**
- * Feedback intake for the web build: `POST /feedback` → a Linear issue.
- *
- * The desktop app files feedback/bug reports straight to Linear through a Tauri
- * command (app/src-tauri/src/bug_report). A browser tab has no Tauri and must
- * not hold a Linear key, so the control plane fronts the same flow: the web
- * shim posts the identical payload here and this module formats + files it.
- * Title/description formatting mirrors bug_report/format.rs so web and desktop
- * reports read the same in the Linear queue; the sender is `feedback-linear.ts`.
- */
-
 const MAX_ERROR_CHARS = 6_000;
 const MAX_LOG_CHARS = 8_000;
 
-/** Mirrors the desktop BugReportPayload (camelCase wire shape). */
 export interface FeedbackPayload {
   command: string;
   error: string;
@@ -22,18 +10,12 @@ export interface FeedbackPayload {
   timestamp: string;
   appVersion: string;
   logs?: { backend?: string; frontend?: string };
-  /** Free-text the user typed (voluntary "Send feedback" only). */
   userMessage?: string;
 }
 
 export interface FeedbackSender {
-  /** Files the report; resolves to the issue identifier (e.g. "BUG-123") or null. */
   send(payload: FeedbackPayload, userId: string): Promise<string | null>;
 }
-
-// ---------------------------------------------------------------------------
-// Formatting (port of bug_report/format.rs)
-// ---------------------------------------------------------------------------
 
 const collapseWhitespace = (s: string): string =>
   s.split(/\s+/).filter(Boolean).join(" ");
@@ -95,13 +77,6 @@ export function formatIssueDescription(
   return d;
 }
 
-/**
- * The intake refusing a report, typed (H-009, HOUSTON-APP-5FT).
- * `intake_unavailable` is Linear refusing EVERY report on our side (the
- * workspace's plan issue cap, a rate limit, an outage): the route answers it
- * `503 {code: "intake_unavailable"}` and the app delivers the report through
- * its fallback. Anything else is `other`, a real failure.
- */
 export class FeedbackIntakeError extends Error {
   constructor(
     message: string,
@@ -112,9 +87,6 @@ export class FeedbackIntakeError extends Error {
   }
 }
 
-/** Linear's plan cap ("usage limit exceeded", "exceeded the free issue
- *  limit") and its rate limiter (code `RATELIMITED`), matched lowercase over
- *  an error's message and every string in its `extensions`. */
 const INTAKE_LIMIT = /usage[ _]limit|issue limit|ratelimited|rate limit/i;
 
 export function isIntakeLimitRefusal(error: {
@@ -127,8 +99,6 @@ export function isIntakeLimitRefusal(error: {
   return texts.some((t) => typeof t === "string" && INTAKE_LIMIT.test(t));
 }
 
-/** A non-2xx Linear answer: 429 and 5xx refuse everyone; a 400 body can
- *  still name the quota. */
 export function httpRefusalKind(
   status: number,
   body: string,
@@ -138,7 +108,6 @@ export function httpRefusalKind(
     : "other";
 }
 
-/** Parse + bound the untrusted request body into a FeedbackPayload, or throw. */
 export function parseFeedbackPayload(
   body: Record<string, unknown>,
 ): FeedbackPayload {

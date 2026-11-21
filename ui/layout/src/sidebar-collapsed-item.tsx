@@ -16,14 +16,6 @@ export interface SidebarCollapsedItemProps {
   onSelect: (id: string) => void;
 }
 
-/**
- * Collapsed-rail agent entry: an icon-only trigger (the agent avatar, at
- * {@link sidebarCollapsedItem}'s diameter so its running ring fits) that
- * reveals a flyout to the right on hover OR keyboard focus. The flyout reuses
- * the full {@link SidebarItemRow}, so the name and the row's one behaviour
- * (select) are exactly what expanded mode shows — no duplicated logic. There is
- * nothing else to show: an agent is edited on its focused agent screen.
- */
 export function SidebarCollapsedItem({
   item,
   isActive,
@@ -59,10 +51,6 @@ export function SidebarCollapsedItem({
         sideOffset={8}
         className="w-56 p-1"
       >
-        {/* The flyout is a transient hover surface: a menu anchored inside it
-            would close with it. The affordance stays on the expanded rail, and
-            the data attributes stay on the trigger, so an id matches once.
-            Nothing drags from it, so it wears no grab cursor. */}
         <SidebarItemRow
           item={{ ...item, affordance: undefined, dataAttrs: undefined }}
           isActive={isActive}

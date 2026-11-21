@@ -15,11 +15,6 @@ import {
 } from "../../../src/specimen";
 import { houstonWorkflowSteps as steps } from "./sample";
 
-/**
- * What `app/` passes for `renderIntegration`: the Composio toolkit slug
- * resolved to the app's real name and mark. An app the catalog doesn't know
- * still chips, on the slug alone.
- */
 const APPS: Record<string, { name: string; icon: LucideIcon }> = {
   gmail: { name: "Gmail", icon: Mail },
   googlesheets: { name: "Google Sheets", icon: Table },
@@ -170,11 +165,6 @@ function SkillWorkflowStepsSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = [
   "SkillWorkflowSteps",
   "humanizeIntegrationAction",

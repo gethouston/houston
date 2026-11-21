@@ -26,14 +26,6 @@ export interface EmployeeCardMessage {
   text: string | null;
 }
 
-/**
- * A horizontal ID badge: the engraved metal photo panel down its left edge,
- * growing with the badge, and beside it the name, then the job, the industry
- * and the color. A draft the person may let go carries a Remove beside its
- * name, always visible. The badge measures itself: narrow, those three stack; from
- * 672px wide (a badge alone in the chat) they sit side by side, and the panel
- * comes out close to square.
- */
 export function EmployeeCard({
   color,
   role,
@@ -53,7 +45,6 @@ export function EmployeeCard({
   message: EmployeeCardMessage;
   recovery?: EmployeeCardRecovery;
   onColorChange: (color: string) => void;
-  /** Lets this draft go, named for its accessible label. */
   remove?: { name: string; onRemove: () => void };
 }) {
   const { t } = useTranslation("shell");

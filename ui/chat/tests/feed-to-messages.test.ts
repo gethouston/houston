@@ -38,13 +38,6 @@ const toolResult = (content: string, id: string): FeedItem => ({
   id,
 });
 
-// HOU-1047: providers that narrate BEFORE running tools (OpenAI's style —
-// "Let me connect to anakin.io…" then the actual integration calls) keep the
-// text message open when the first tool_call arrives. The tools used to fuse
-// into that text message, so the grouping layer rendered the mission log
-// INACTIVE above the text and the chat bottom showed only the generic loading
-// indicator while the agent worked. A tool call after visible content must
-// start a fresh process-only message instead.
 describe("tool_call after streamed narration (HOU-1047)", () => {
   const feed = [
     user("connect to anakin"),
@@ -73,8 +66,6 @@ describe("tool_call after streamed narration (HOU-1047)", () => {
     const last = items[items.length - 1];
     strictEqual(last.kind, "process");
     strictEqual(last.kind === "process" && last.isActive, true);
-    // The active process block IS the progress surface — the standalone
-    // thinking indicator must not double up under it.
     strictEqual(shouldShowThinkingIndicator(items, status), false);
   });
 
@@ -91,12 +82,6 @@ describe("tool_call after streamed narration (HOU-1047)", () => {
   });
 
   it("keeps the same process key when the turn settles (no remount/jump)", () => {
-    // Production symptom #2: at settle the final assistant_text finalizes the
-    // text entry (positioned before the tools), which used to re-group the
-    // tools into their own message for the first time — the log teleported
-    // from above the text to a "new" block below it. With the split applied
-    // live, the trailing block exists during the run and must settle in place:
-    // same key, active -> inactive, no remount.
     const live = getChatDisplayItems(feedItemsToMessages(feed), "submitted");
     const settledFeed = [
       user("connect to anakin"),
@@ -127,10 +112,6 @@ describe("tool_call after streamed narration (HOU-1047)", () => {
   });
 
   it("splits a second tool phase off a tools-then-text message", () => {
-    // Claude-style opening (tools before any text) followed by narration and
-    // then ANOTHER round of tools: the first phase's log settles above the
-    // text, and the new phase must start a fresh LIVE trailing log below it —
-    // not silently grow the settled one above.
     const multiPhase = [
       user("top 5 hacker news"),
       toolCall("integration_search", "c1", {}),
@@ -149,7 +130,6 @@ describe("tool_call after streamed narration (HOU-1047)", () => {
     strictEqual(messages[2].tools.length, 1);
     const items = getChatDisplayItems(messages, "submitted");
     const kinds = items.map((i) => i.kind);
-    // settled phase-1 log, text bubble, live phase-2 log
     deepStrictEqual(kinds, ["message", "process", "message", "process"]);
     const first = items[1];
     const last = items[3];
@@ -215,11 +195,6 @@ describe("tool_call placeholder dedup across the narration flush", () => {
   });
 });
 
-// A turn runs on ONE provider, so provider-error cards dedup by KIND alone.
-// The same failure reaches the chat on two channels and one of them often
-// omits the provider name (`provider: ""`); keying the dedup on the provider
-// let the unlabeled and the labeled card both render as separate reconnect
-// cards for a single failure.
 describe("provider-error dedup keys on kind, not provider", () => {
   const authError = (provider: string, id: string): FeedItem => ({
     feed_type: "provider_error",
@@ -241,15 +216,9 @@ describe("provider-error dedup keys on kind, not provider", () => {
     const cards = messages.filter((m) => m.providerError);
     strictEqual(cards.length, 1);
     strictEqual(cards[0].providerError?.provider, "openai");
-    // Same key as the first card: the payload is upgraded in place, so React
-    // keeps the mounted card instead of remounting it.
     strictEqual(cards[0].key, "provider-error-e1-unauthenticated");
   });
 
-  // The upgrade adds a LABEL, it does not replace the payload. Only the first
-  // card carries the retry state (`undelivered_prompt` / `failed_prompt` /
-  // `credential` / `retry_after_seconds`), so overwriting the whole payload
-  // left auto-resume with nothing to re-send (HOU-718's failure mode).
   it("keeps the first card's retry state when upgrading its label", () => {
     const messages = feedItemsToMessages([
       user("hi"),
@@ -274,7 +243,6 @@ describe("provider-error dedup keys on kind, not provider", () => {
       card?.kind === "unauthenticated" ? card.undelivered_prompt : undefined,
       "original ask",
     );
-    // The more specific cause survives the generic duplicate too.
     strictEqual(
       card?.kind === "unauthenticated" ? card.cause : undefined,
       "no_credentials",
@@ -323,7 +291,6 @@ describe("context boundaries", () => {
     const divider = messages.find((m) => m.compaction);
     strictEqual(divider?.from, "system");
     strictEqual(divider?.compaction?.kind, "context_cleared");
-    // The chat above and below the boundary stays exactly where it was.
     strictEqual(messages.filter((m) => m.from === "user").length, 2);
   });
 
@@ -343,8 +310,6 @@ describe("context boundaries", () => {
   });
 
   it("carries the engine's typed notice onto the system message, and nothing else", () => {
-    // The host renders restart copy by kind (PRODUCT-1785); a plain system
-    // line has no notice at all rather than an empty one.
     const messages = feedItemsToMessages([
       {
         feed_type: "system_message",

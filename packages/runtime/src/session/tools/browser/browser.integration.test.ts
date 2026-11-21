@@ -41,8 +41,6 @@ afterAll(async () => {
 async function signIn(run: ReturnType<typeof tool>) {
   const login = await run({ action: "open", url: `${origin}/login` });
   expect(login.details.ok).toBe(true);
-  // Each action's snapshot retires the refs before it, so every ref comes
-  // from the latest one.
   const named = await run({
     action: "fill",
     ref: ref(login.text, "textbox", "Username"),
@@ -53,7 +51,6 @@ async function signIn(run: ReturnType<typeof tool>) {
     ref: ref(named.text, "textbox", "Password"),
     text: PASSWORD,
   });
-  // The password never comes back to the model, neither echoed nor in the tree.
   expect(filled.text).toContain("Filled the password field");
   expect(filled.text).not.toContain(PASSWORD);
   return run({ action: "click", ref: ref(filled.text, "button", "Sign in") });
@@ -61,7 +58,6 @@ async function signIn(run: ReturnType<typeof tool>) {
 
 describe.skipIf(!available)(
   "browser tool against a real Chromium (skips when no Chromium-family browser is installed)",
-  // A stalled page and a stale ref each wait out the tool's own 5 s limit.
   { timeout: 30_000 },
   () => {
     test("a sign-in survives closing the browser and a fresh process", async () => {
@@ -76,7 +72,6 @@ describe.skipIf(!available)(
       const secure = await second({ action: "open", url: `${origin}/secure` });
       expect(secure.text).toContain("Welcome back, student");
 
-      // Another agent's workspace has its own sign-ins, not this one's.
       const stranger = tool(workspace(), newPool());
       expect(
         (await stranger({ action: "open", url: `${origin}/secure` })).text,
@@ -89,12 +84,9 @@ describe.skipIf(!available)(
       const run = tool(ws, pool);
       const inChat = <T>(id: string, fn: () => Promise<T>) =>
         runWithConversationId(id, fn);
-      // B's context opens BEFORE A signs in, so it starts without the cookie.
       await inChat("b", () => run({ action: "open", url: `${origin}/login` }));
       await inChat("a", () => signIn(run));
-      // B acts (and saves) after A's sign-in landed in the file.
       await inChat("b", () => run({ action: "open", url: `${origin}/login` }));
-      // Read the file from another process's view while both chats stay open.
       const fresh = tool(ws, newPool());
       expect(
         (await fresh({ action: "open", url: `${origin}/secure` })).text,
@@ -116,11 +108,8 @@ describe.skipIf(!available)(
         ok: false,
         error: { code: "url_refused" },
       });
-      // This machine's own server is not called blocked on purpose: on
-      // desktop the agent may still reach the person's local server by shell.
       for (const refused of [bounced, direct])
         expect(refused.text).not.toContain("blocked on purpose");
-      // The page's own images, redirected images and fetches are fenced too.
       const sneaky = await run({ action: "open", url: `${origin}/sneaky` });
       expect(sneaky.text).toContain("Hello");
       await run({ action: "wait", ms: 500 });
@@ -153,7 +142,6 @@ describe.skipIf(!available)(
       expect(launched?.isConnected()).toBe(true);
       await new Promise((resolve) => setTimeout(resolve, 600));
       expect(launched?.isConnected()).toBe(false);
-      // The next call reopens transparently.
       const again = await run({ action: "open", url: `${origin}/secure` });
       expect(again.details.ok).toBe(true);
     });

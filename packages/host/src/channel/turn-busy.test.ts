@@ -11,12 +11,6 @@ import { MemoryVfs } from "../vfs";
 import { isTurnBusy, TurnFireError } from "./fire-error";
 import { TurnChannel } from "./turn";
 
-/**
- * A programmatic fire refused because the agent's one turn slot is taken
- * throws the TYPED busy refusal, so a caller (the first-day start) can tell a
- * turn that is already running from one that could not start at all.
- */
-
 const ws: Workspace = {
   id: "w1",
   ownerUserId: "alice",
@@ -36,7 +30,6 @@ const ctx: ChannelCtx = { workspace: ws, agent };
 
 let runtime: Server;
 let runtimeUrl = "";
-/** Every turn's stream stays open until the suite ends: the slot stays taken. */
 const open: (() => void)[] = [];
 
 beforeAll(async () => {
@@ -84,8 +77,6 @@ test("a fire while the agent's turn is running throws the typed busy refusal", a
   expect(isTurnBusy(new Error("runtime unavailable"))).toBe(false);
   expect(err.runningConversation).toBe("c1");
 
-  // The slot is agent-wide: a fire into another conversation is refused
-  // naming the conversation that actually holds it.
   const other = await channel.fireTurn(ctx, "c2", "hi").catch((e) => e);
   expect(isTurnBusy(other)).toBe(true);
   expect(other.runningConversation).toBe("c1");

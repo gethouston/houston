@@ -18,9 +18,7 @@ type TeamsModelT = TFunction<
 >;
 
 export interface SidebarTeamsModel extends TeamActivateHandlers {
-  /** Personal folders in sidebar order. */
   teams: TeamView[];
-  /** The agent row the rail draws as selected, or null for none. */
   selectedAgentId: string | null;
   items: SidebarItem[];
   groups: SidebarGroupView[];
@@ -28,7 +26,6 @@ export interface SidebarTeamsModel extends TeamActivateHandlers {
 
 export function useSidebarTeamsModel(args: {
   t: TeamsModelT;
-  /** Every agent in the workspace. */
   agents: Agent[];
   sidebar: UseSidebarLayout;
   summaries: AgentItemArgs["summaries"];

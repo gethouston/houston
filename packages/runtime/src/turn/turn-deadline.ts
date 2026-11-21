@@ -1,34 +1,14 @@
 import { BROWSER_HANDOFF_LIMIT_MS } from "@houston/wire-types";
 import type { HandoffBudget } from "../session/tools/browser/tool";
 
-/**
- * The gateway's turn token TTL (cloud `internal/turntoken`): a pooled turn's
- * host token, and the E2B sandbox it runs in, last 30 minutes from dispatch.
- */
 export const TURN_TOKEN_TTL_MS = 30 * 60_000;
 
-/**
- * Kept free at the end of a turn for what runs after the hand-off: the model
- * reading the page, and the final durability sync, which needs the token. A
- * sync past it fails, and the transcript and the saved sign-ins go with it.
- */
 export const TURN_END_RESERVE_MS = 3 * 60_000;
 
-/** Less than this is no time for a person to sign in to anything. */
 export const MIN_HANDOFF_MS = 60_000;
 
 const PREFIX = "turn-v1.";
 
-/**
- * When the turn's host token expires, in epoch ms. Read WITHOUT verifying:
- * the worker cannot (the key is the gateway's) and need not (the token only
- * shortens its own wait). Wire form `turn-v1.<base64url(json)>.<sig>` with
- * `exp` (and, when the gateway stamps it, `iat`) in Unix seconds. Anything
- * else (a standing host token, a malformed one) falls back to `arrivedAt` +
- * the TTL, which also caps the result. Both count from arrival, later than
- * the dispatch the token's clock started at, so they run a dispatch delay
- * late; the end reserve is what keeps that harmless.
- */
 export function turnTokenExpiry(
   hostToken: string | undefined,
   arrivedAt: number,
@@ -39,18 +19,11 @@ export function turnTokenExpiry(
   const exp = seconds(claims.exp);
   if (exp === undefined) return fallback;
   const iat = seconds(claims.iat);
-  // With `iat` the token's lifetime is clock-free: counted from arrival it
-  // never depends on this sandbox's clock agreeing with the gateway's (a
-  // snapshot-restored sandbox can run behind OR ahead). The token was minted
-  // at dispatch, before arrival, so this overstates the expiry by the
-  // dispatch delay (seconds); TURN_END_RESERVE_MS absorbs it. Without `iat`,
-  // `exp` is read on this clock, still never past arrival + TTL.
   if (iat !== undefined && iat <= exp)
     return Math.min(arrivedAt + (exp - iat) * 1000, fallback);
   return Math.min(exp * 1000, fallback);
 }
 
-/** The token's claims object, or undefined for anything not a turn token. */
 function readClaims(
   hostToken: string | undefined,
 ): Record<string, unknown> | undefined {
@@ -69,18 +42,12 @@ function readClaims(
     : undefined;
 }
 
-/** A positive, finite Unix-seconds claim, else undefined. */
 function seconds(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) && value > 0
     ? value
     : undefined;
 }
 
-/**
- * A pooled turn's hand-off budget: the full limit, cut to end
- * {@link TURN_END_RESERVE_MS} before the host token does, and `null` (refuse
- * to hand over) once less than {@link MIN_HANDOFF_MS} would be left.
- */
 export function turnHandoffBudget(
   expiresAt: number,
   now: () => number = Date.now,

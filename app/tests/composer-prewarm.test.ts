@@ -21,7 +21,6 @@ const TARGET: ComposerTarget = {
 };
 const ON: Capabilities = { conversationPrewarm: true } as Capabilities;
 
-/** The composer over the SDK's real typing policy and a recording prewarm. */
 function harness(capabilities: Capabilities | undefined, failWith?: Error) {
   const prewarmed: { conversationId: string; agentId: string }[] = [];
   const reported: [string, unknown][] = [];
@@ -43,7 +42,6 @@ function harness(capabilities: Capabilities | undefined, failWith?: Error) {
     capabilities: () => capabilities,
     report: (command, err) => reported.push([command, err]),
   });
-  /** Types on past the SDK's threshold, a keystroke every 250 ms. */
   const typeOn = async (key: string, text: string) => {
     for (let t = 0; t <= PREWARM_TYPING_MS; t += 250) {
       composer.draftChanged(key, text, TARGET);

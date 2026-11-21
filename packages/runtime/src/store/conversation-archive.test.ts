@@ -32,7 +32,6 @@ import { truncateConversationMutationAt } from "./conversation-truncate";
 const freshDir = () => mkdtempSync(join(tmpdir(), "houston-archive-"));
 const KB = 1024;
 
-/** A turn of one user message and one assistant reply of ~`replyKb` KB. */
 function appendTurn(dir: string, id: string, n: number, replyKb: number) {
   const turnId = `t${n}`;
   appendUserMessageAt(dir, id, `question ${n}`, { turnId });
@@ -41,7 +40,6 @@ function appendTurn(dir: string, id: string, n: number, replyKb: number) {
   });
 }
 
-/** Enough turns to push the live file past the rotation trigger. */
 function fillPastBudget(dir: string, id: string): void {
   const turns = Math.ceil(ARCHIVE_TRIGGER_BYTES / (100 * KB)) + 2;
   for (let n = 1; n <= turns; n++) appendTurn(dir, id, n, 100);
@@ -69,16 +67,11 @@ describe("tailCutIndex", () => {
       msg("user", 10),
       msg("assistant", 100),
     ];
-    // Serialized, the last turn is ~185 bytes and the one before ~585. An 800
-    // byte tail holds both and opens at the user message at index 2; a 700
-    // byte tail holds only the last turn, so the middle one is archived whole.
     expect(tailCutIndex(messages, 800)).toBe(2);
     expect(tailCutIndex(messages, 700)).toBe(4);
   });
 
   test("keeps the newest turn whole even when it alone exceeds the tail", () => {
-    // Nothing fits, so the newest turn stays and nothing moves: a turn is
-    // never split, and the live file is never left empty.
     const messages = [msg("user", 10), msg("assistant", 5000)];
     expect(tailCutIndex(messages, 100)).toBe(0);
     const two = [...messages, msg("user", 10), msg("assistant", 5000)];
@@ -96,15 +89,13 @@ describe("rotation", () => {
     fillPastBudget(dir, "r1");
 
     const live = liveFile(dir, "r1");
-    // The tail plus whatever was appended after the rotating append.
     expect(statSync(join(dir, "r1.json")).size).toBeLessThan(
       ARCHIVE_TAIL_BYTES + 6 * 101 * KB,
     );
     expect(live.archived?.segments).toEqual([live.archived?.messages]);
-    expect(live.messages[0]?.role).toBe("user"); // never split a turn
+    expect(live.messages[0]?.role).toBe("user");
     expect(readdirSync(archiveDirFor(dir, "r1"))).toEqual(["1.json"]);
 
-    // The transcript is intact: every message, in order, across both files.
     const full = loadFullConversation(dir, "r1");
     expect(full?.archived).toBeUndefined();
     const heads = full?.messages.map((m) =>
@@ -130,7 +121,6 @@ describe("rotation", () => {
     expect(all?.totalMessages).toBe(total);
     expect(all?.messages).toHaveLength(total);
 
-    // A page straddling the boundary: two from the segment, two from the tail.
     const page = getHistoryAt(dir, "r2", { before: boundary + 2, limit: 4 });
     expect(page?.offset).toBe(boundary - 2);
     expect(page?.messages.map((m) => m.content.slice(0, 10))).toEqual(
@@ -139,7 +129,6 @@ describe("rotation", () => {
         .map((m) => m.content.slice(0, 10)),
     );
 
-    // The oldest page comes entirely from the segment.
     const first = getHistoryAt(dir, "r2", { before: 3, limit: 3 });
     expect(first?.messages.map((m) => m.content.slice(0, 10))).toEqual([
       "question 1",
@@ -196,7 +185,6 @@ describe("edit-and-resend into a segment", () => {
       loadConversation(dir, "e1") as StoredConversation,
     );
 
-    // Turn 2 is deep in segment 1.
     const cut = truncateConversationMutationAt(dir, "e1", "t2");
     expect(cut?.removed).toBe(totalBefore - 2);
 

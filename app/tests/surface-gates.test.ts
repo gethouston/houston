@@ -10,7 +10,6 @@ const owner: Capabilities = {
   role: "owner",
 } as unknown as Capabilities;
 
-/** A free org's billing, paid for by the caller or by someone else. */
 const orgBilling = (isBillingOwner: boolean): OrgBilling => ({
   tier: "free",
   status: "active",
@@ -43,7 +42,6 @@ const settledAbsent: AssistantDiscovery = {
   unavailable: true,
   failure: null,
 };
-/** Discovery's ladder spent on a pod that never woke. */
 const settledFailed: AssistantDiscovery = {
   handle: null,
   isLoading: false,
@@ -71,9 +69,6 @@ describe("surfaceGatesFor", () => {
   });
 
   it("keeps the assistant row up when discovery keeps FAILING", () => {
-    // A manager that cannot start still exists. Dropping the row here left the
-    // user with no way back to it at all (PRODUCT-1795); the screen behind the
-    // row is what says what went wrong.
     strictEqual(
       surfaceGatesFor({
         capabilities: owner,
@@ -128,9 +123,6 @@ describe("surfaceGatesFor", () => {
   });
 
   it("requires the loading flag rather than defaulting it to settled", () => {
-    // `ready: !capabilitiesLoading` over an OPTIONAL field read every caller
-    // that forgot it as "the gates have settled" — the one answer that lets a
-    // guard drop an owner out of a screen they can reach.
     const src = readFileSync(
       new URL("../src/lib/surface-gates-model.ts", import.meta.url),
       "utf8",
@@ -139,8 +131,6 @@ describe("surfaceGatesFor", () => {
   });
 
   it("shows Billing wherever the org bills and the caller pays or administers", () => {
-    // A destination an agent's hands-on errand can send someone to, so a gate
-    // that said yes where Admin draws no Billing would hand them a dead button.
     const spaces = { ...owner, spaces: true, workspaceDelete: true } as never;
     const team = surfaceGatesFor({
       capabilities: spaces,
@@ -151,7 +141,6 @@ describe("surfaceGatesFor", () => {
     });
     strictEqual(team.showBilling, true);
     strictEqual(team.showWorkspaceDanger, true);
-    // The Personal row: no roster and no Danger zone, but it bills its owner.
     const personal = surfaceGatesFor({
       capabilities: { spaces: true } as never,
       isTeam: false,
@@ -161,7 +150,6 @@ describe("surfaceGatesFor", () => {
     });
     strictEqual(personal.showBilling, true);
     strictEqual(personal.showWorkspaceDanger, false);
-    // A plain member of the same team sees neither.
     const member = surfaceGatesFor({
       capabilities: {
         multiplayer: true,
@@ -179,9 +167,6 @@ describe("surfaceGatesFor", () => {
   });
 
   it("keeps Billing off an org without org billing", () => {
-    // A legacy org, or a deployment that bills no orgs, sends no billing: the
-    // tab and the hands-on billing errand stay shut while the Danger zone
-    // remains.
     const gates = surfaceGatesFor({
       capabilities: { ...owner, spaces: true, workspaceDelete: true } as never,
       isTeam: true,
@@ -213,7 +198,6 @@ describe("surfaceGatesFor", () => {
       assistant: present,
       capabilitiesLoading: false,
     });
-    // The org-level narrowing lives in the screen, not the menu.
     strictEqual(gates.showAiModels, true);
     strictEqual("showSkills" in gates, false, "no Skills screen to gate");
   });
@@ -232,8 +216,6 @@ describe("surfaceGatesFor", () => {
   });
 
   it("keeps the skill acts that reach every employee to the space owner", () => {
-    // Share to workspace, Enable for all and Delete for all edit every
-    // employee's skills at once: that is the owner's call, not a manager's.
     const as = (role: string) =>
       surfaceGatesFor({
         capabilities: { multiplayer: true, role } as never,
@@ -244,8 +226,6 @@ describe("surfaceGatesFor", () => {
     strictEqual(as("owner"), true);
     strictEqual(as("admin"), false);
     strictEqual(as("user"), false);
-    // Nothing before the deployment has described itself: unanswered
-    // capabilities read as single player, which would show anyone the acts.
     strictEqual(
       surfaceGatesFor({
         capabilities: null,
@@ -255,7 +235,6 @@ describe("surfaceGatesFor", () => {
       }).manageWorkspaceSkills,
       false,
     );
-    // Single player: one human, everything is theirs.
     strictEqual(
       surfaceGatesFor({
         capabilities: null,

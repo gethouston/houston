@@ -1,7 +1,6 @@
 import type { ProviderError } from "@houston/runtime-client";
 import type { StallReason } from "./stall-watchdog";
 
-/** What the watchdog saw, for the log line and the card's message. */
 export function describeStall(reason: StallReason, windowMs: number): string {
   const seconds = Math.round(windowMs / 1000);
   switch (reason) {
@@ -14,13 +13,6 @@ export function describeStall(reason: StallReason, windowMs: number): string {
   }
 }
 
-/**
- * The typed card a turn the watchdog ended settles on. A silent or
- * unanswered request is `provider_internal`: it reached the provider, which
- * then failed to deliver, a provider-side fault with no HTTP status. A loop is
- * `malformed_response`: the model's own output broke, and a retry usually
- * comes back clean.
- */
 export function stallFailure(
   reason: StallReason,
   windowMs: number,

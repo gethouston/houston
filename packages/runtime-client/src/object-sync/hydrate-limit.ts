@@ -1,4 +1,3 @@
-/** The hydrated prefix exceeded the caller's aggregate byte cap. */
 export class HydrateLimitError extends Error {
   constructor(
     readonly maxBytes: number,
@@ -11,8 +10,6 @@ export class HydrateLimitError extends Error {
   }
 }
 
-/** Listed bytes of `entries`; unsized entries count as zero (the
- *  download-time check still bounds them). */
 export function listedBytes(
   entries: readonly { rel: string }[],
   sizes: ReadonlyMap<string, number>,
@@ -22,12 +19,6 @@ export function listedBytes(
   return listed;
 }
 
-/**
- * A hydration that defers starts its caller's work before the deferred set
- * lands, so it refuses an over-cap critical set from the listed sizes before
- * anything downloads (so does one that asks for it, `capListed`). The
- * deferred set has its own budget and never counts here.
- */
 export function assertListedWithinCap(
   entries: readonly { rel: string }[],
   sizes: ReadonlyMap<string, number>,
@@ -37,13 +28,6 @@ export function assertListedWithinCap(
   if (listed > maxBytes) throw new HydrateLimitError(maxBytes, listed);
 }
 
-/**
- * Split the admitted non-priority objects into the set the caller waits on
- * (`now`) and the deferred set, and check both against the listing. An
- * over-cap critical set (priority + `now`) throws before anything downloads.
- * An over-budget deferred set comes back as `deferredRefusal` for `deferred`
- * to reject with, so the critical set and the caller's work go on.
- */
 export function splitDeferred<T extends { rel: string }>(opts: {
   critical: readonly T[];
   remaining: T[];

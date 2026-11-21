@@ -140,10 +140,6 @@ test("filesFromClipboardData tolerates null and undefined", () => {
 });
 
 test("dedupe keeps distinct unnamed images that share size and mtime", () => {
-  // Same byte length + same lastModified + empty name: only the MIME type
-  // tells them apart. The shared identity triple alone would over-merge.
-  // Both files arrive via items (the primary source) — realistic when a
-  // clipboard entry exposes multiple image formats simultaneously.
   const png = new File(["x"], "", { type: "image/png", lastModified: 7 });
   const jpg = new File(["x"], "", { type: "image/jpeg", lastModified: 7 });
 
@@ -178,7 +174,6 @@ test("ensureFileName strips MIME parameters and suffixes from the extension", ()
   assert.match(parametrized.name, /^pasted-\d+-0\.plain$/);
   assert.doesNotMatch(parametrized.name, /[;=+]/);
 
-  // Dotted vendor subtype is not a clean token -> fall back to bin.
   assert.match(
     ensureFileName(new File(["x"], "", { type: "application/vnd.api+json" }))
       .name,

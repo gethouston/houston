@@ -19,21 +19,6 @@ import { HoustonAuthStore } from "../../auth/credential-store";
 import { SentRequests } from "./model-phase";
 import { PiSession } from "./session";
 
-/**
- * Gemini ends a turn with finishReason MALFORMED_RESPONSE / MALFORMED_FUNCTION_CALL
- * when the MODEL's own generation broke (a garbled response, an unparseable tool
- * call). pi-ai flattens both to `Provider stopped with: <REASON>`, no status, no
- * body. Google's guidance is to retry the same request, and pi already owns a
- * retry loop for transient provider failures — but its retryable pattern did
- * not know these tokens, so every such turn died on the first attempt and the
- * user got the Retry card for a failure that a retry would have healed.
- *
- * The pi-ai pnpm patch (patches/@earendil-works__pi-ai) adds the two tokens
- * to that pattern. These tests are the patch guard: they drive a REAL pi
- * AgentSession over the scripted faux provider through Houston's PiSession
- * seam, so a pi bump that drops the hunk fails here, not in production.
- */
-
 const MALFORMED_RESPONSE = "Provider stopped with: MALFORMED_RESPONSE";
 
 function malformed(reason = "MALFORMED_RESPONSE"): AssistantMessage {
@@ -43,12 +28,6 @@ function malformed(reason = "MALFORMED_RESPONSE"): AssistantMessage {
   });
 }
 
-/**
- * A real pi AgentSession over the faux provider (scripted responses, no
- * network), built the way chat.ts builds one and wrapped in PiSession. Retry
- * backoff is zeroed so the exhausted-retries case runs in milliseconds; the
- * retry COUNT stays pi's default so the test pins the real policy.
- */
 async function fauxSession(responses: AssistantMessage[]) {
   const cwd = mkdtempSync(join(tmpdir(), "houston-malformed-retry-"));
   const faux = fauxProvider({
@@ -59,8 +38,6 @@ async function fauxSession(responses: AssistantMessage[]) {
     ],
   });
   faux.setResponses(responses);
-  // Seed the credential through the store, never setRuntimeApiKey (its awaited
-  // refresh() hangs in pi 0.82+).
   const authStorage = new HoustonAuthStore(join(cwd, "auth.json"));
   authStorage.set("faux", { type: "api_key", key: "faux-key" });
   const modelRuntime = await ModelRuntime.create({
@@ -94,7 +71,6 @@ test("pi-ai's retryable predicate covers Gemini's MALFORMED stops but not its po
   for (const reason of ["MALFORMED_RESPONSE", "MALFORMED_FUNCTION_CALL"]) {
     expect(isRetryableAssistantError(malformed(reason))).toBe(true);
   }
-  // Older pi phrasing of the same finish reason.
   expect(
     isRetryableAssistantError(
       fauxAssistantMessage("", {
@@ -103,7 +79,6 @@ test("pi-ai's retryable predicate covers Gemini's MALFORMED stops but not its po
       }),
     ),
   ).toBe(true);
-  // Refusals share the prefix; a retry cannot fix them and must not be spent.
   for (const reason of ["SAFETY", "RECITATION", "BLOCKLIST"]) {
     expect(isRetryableAssistantError(malformed(reason))).toBe(false);
   }
@@ -117,9 +92,7 @@ test("a MALFORMED_RESPONSE stop is retried inside the same prompt and the healed
       fauxAssistantMessage("Recovered answer", { stopReason: "stop" }),
     ]);
     await session.prompt("hello");
-    // Two provider requests: the broken generation and its retry.
     expect(faux.state.callCount).toBe(2);
-    // The held error was dropped by the clean turn: no card, just the answer.
     expect(providerErrors(events)).toEqual([]);
     expect(
       events
@@ -137,7 +110,6 @@ test("a MALFORMED_RESPONSE stop is retried inside the same prompt and the healed
 test("MALFORMED_RESPONSE on every attempt exhausts pi's retry budget and surfaces ONE provider_internal card", async () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   try {
-    // pi's default budget is 3 retries: the first attempt plus three more.
     const { faux, session, events } = await fauxSession([
       malformed(),
       malformed(),

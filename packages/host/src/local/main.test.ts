@@ -9,7 +9,6 @@ const harness = vi.hoisted(() => {
   };
 });
 
-/** The slice of LocalHostOptions these tests assert on. */
 interface BootedOptions {
   routineSchedulerMode?: string;
   durableTurns?: {

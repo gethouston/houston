@@ -18,7 +18,6 @@ async function seed(root: string, rel: string, content: string) {
 const dataRel = "workspaces/W/A/.houston/runtime";
 const workspaceRel = "workspaces/W/A";
 
-/** A claimed turn over a seeded standing layout, with the doc store stubbed. */
 async function claimedTurn(docPutStatus: number) {
   const storeRoot = await mkdtemp(join(tmpdir(), "turn-durability-"));
   const prefixRoot = join(storeRoot, "ws", "w1", "agent-1");
@@ -33,7 +32,6 @@ async function claimedTurn(docPutStatus: number) {
     root,
     claimed: true,
   });
-  // The turn rewrites its conversation and moves the board.
   await seed(filesystem.dataDir, "conversations/c1.json", '{"after":1}');
   await seed(
     filesystem.workspaceDir,
@@ -74,7 +72,6 @@ async function claimedTurn(docPutStatus: number) {
   };
 }
 
-/** A routines.json the turn wrote straight to the store (a CAS write). */
 async function routinesWrite({
   filesystem,
   prefixRoot,
@@ -126,8 +123,6 @@ test("a durable turn names the conversation and board as changed", async () => {
 });
 
 test("a family whose doc projection failed is not announced", async () => {
-  // The board file landed but its doc did not: other tabs refetching the
-  // board would fall to the pod. The conversation (transcript-served) stays.
   const { deps, turn, filesystem, resolved } = await claimedTurn(400);
   const result = await finishTurnDurability({
     deps,
@@ -145,7 +140,6 @@ test("a family whose doc projection failed is not announced", async () => {
 test("turn tool mutations publish the custom definition view", async () => {
   const turnState = await claimedTurn(200);
   const { deps, turn, filesystem, resolved, requests, prefixRoot } = turnState;
-  // The tool's CAS write landed the definition in the store.
   const def = {
     kind: "mcp" as const,
     slug: "example",
@@ -215,7 +209,6 @@ test("a routines write republishes the routines doc the asleep Routines tab read
   expect(puts[0]?.url).toBe(
     "https://store.example/v1/pod/docs/w1/agent-1/routines",
   );
-  // NORMALIZED like the standing projector, the engine's pause kept.
   expect(JSON.parse(puts[0]?.body ?? "{}").doc).toEqual([
     expect.objectContaining({
       id: "r1",

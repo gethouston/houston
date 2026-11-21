@@ -5,28 +5,11 @@ import { conversationScope } from "@houston/sdk";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { installLocalStorage, json } from "./support/wire-capture";
 
-/**
- * A chat's history read racing the first message sent into it. The AI
- * Manager's chat opens and sends the person's goal at once, so its open read
- * can go out before the send and be answered with the transcript from before
- * it, yet reach the client only after the turn settled. That fold shares no
- * prompt with a feed holding nothing but the turn, which reads as a newer
- * server tail: it replaced the turn, and the goal card the person just sent
- * vanished (CI, onboarding-team-roster.spec.ts).
- *
- * The app reaches this read once: the chat-history query's first fetch joins
- * every change event that lands while it is out. So each spec below makes
- * ONE `loadChatHistory` call, and that call must end with the whole
- * conversation seeded.
- */
-
 const BASE = "http://host";
 const AGENT = "a1";
 const GOAL = "<!--houston:onboarding-goal {}-->";
 const REPLY = "On it.";
 
-/** What the runtime persists on every reply; its fold replays it as the
- *  turn's `final_result`, as the live turn's settle pushes one. */
 const usage = { context_tokens: 1200, output_tokens: 80, cached_tokens: 0 };
 const earlier: ChatMessage[] = [
   { role: "user", content: "earlier question", ts: 1, turnId: "t0" },
@@ -41,13 +24,9 @@ const withTurn: ChatMessage[] = [
 let seq = 0;
 let sk: string;
 let historyReads: number;
-/** The first history read, answered only when a spec says so. */
 let answerFirstRead: (messages: ChatMessage[]) => void;
-/** Ends the turn: its stream sends `done`. */
 let finishTurn: () => void;
-/** Makes the host refuse every send, before it persists the prompt. */
 let refuseSends: () => void;
-/** Holds the host's answer to the next send until the returned call. */
 let holdSends: () => () => void;
 
 const chunk = (frames: object[]) =>
@@ -55,8 +34,6 @@ const chunk = (frames: object[]) =>
     frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join(""),
   );
 
-/** The turn's stream: `sync` at once, the prompt's echo and the reply once
- *  the send named its nonce, `done` once the spec ends the turn. */
 const sse = (sent: Promise<string>, done: Promise<void>) =>
   new Response(
     new ReadableStream({
@@ -177,15 +154,14 @@ test("an open read a send overtook reads again once the turn settles", async () 
   await send(c);
   await replied();
 
-  answerFirstRead(earlier); // the transcript from before the send
+  answerFirstRead(earlier);
   await new Promise((r) => setTimeout(r, 20));
-  expect(historyReads).toBe(1); // the turn still holds the chat
+  expect(historyReads).toBe(1);
   finishTurn();
   await open;
 
   expect(historyReads).toBe(2);
   expect(feed()).toEqual(whole);
-  // Stamped, so the chat knows where the server transcript starts.
   expect(vm()?.historyWindow).toEqual({ earliestLoaded: 0, total: 4 });
 });
 
@@ -205,8 +181,6 @@ test("an open read answered after the turn settled reads again at once", async (
 });
 
 test("a read sent before the host took the send waits the turn out", async () => {
-  // Out after the send started but before its 202: the answer may predate
-  // the prompt, so only a read after the turn is trusted.
   const accept = holdSends();
   const c = client();
   void send(c);
@@ -224,8 +198,6 @@ test("a read sent before the host took the send waits the turn out", async () =>
 });
 
 test("after a refused send, the next read is the server's transcript", async () => {
-  // The host never took the prompt, so it is in no read to come: holding the
-  // feed for it would keep the chat from its history for good.
   refuseSends();
   const c = client();
   await send(c);
@@ -244,9 +216,6 @@ test("after a refused send, the next read is the server's transcript", async () 
 });
 
 test("an import's reseed never waits out a send that starts during it", async () => {
-  // The onboarding save awaits the import: a reseed that waited a whole turn
-  // would hold the person on the closing. It reads once, and a send that
-  // started meanwhile makes its seed refuse the answer.
   const c = client();
   const imported = c.importConversationMessages(AGENT, sk, {
     importId: "onboarding:first_run",

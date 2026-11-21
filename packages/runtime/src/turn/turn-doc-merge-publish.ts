@@ -11,11 +11,6 @@ import {
   statusError,
 } from "./turn-activity-doc";
 
-/**
- * PUTs a merged doc gets before a still-contended doc is reported. Writers
- * racing in lockstep land one per round, so this bounds the overlap served
- * (ten runs of one agent finishing together), with jitter breaking lockstep.
- */
 export const DOC_MERGE_ROUNDS = 10;
 
 interface CurrentDoc {
@@ -23,7 +18,6 @@ interface CurrentDoc {
   doc?: unknown;
 }
 
-/** The revision and doc a pod-store answer carries (a GET, a 409). */
 async function readAnswer(
   response: Response,
 ): Promise<{ revision?: number; doc?: unknown; carriesDoc: boolean }> {
@@ -38,9 +32,7 @@ async function readAnswer(
     const parsed = JSON.parse(await response.text()) as unknown;
     if (typeof parsed === "object" && parsed !== null)
       body = parsed as typeof body;
-  } catch {
-    // No JSON body: only the ETag can name the revision.
-  }
+  } catch {}
   const revision =
     tagged ??
     (typeof body.revision === "number" && Number.isSafeInteger(body.revision)
@@ -62,17 +54,10 @@ async function readCurrent(
     return statusError("GET", response);
   }
   const answer = await readAnswer(response);
-  // Merging into nothing would PUT this writer's rows alone over the doc.
   if (!answer.carriesDoc) return { error: "GET answered without a doc" };
   return { revision: answer.revision ?? 0, doc: answer.doc };
 }
 
-/**
- * PUT `merge(current)` over the doc the store holds, never a blind copy: a
- * slower writer that read a fresh revision would otherwise overwrite a newer
- * doc without ever seeing a 409. A lost race merges again into the doc the
- * 409 names (or a re-read when it names none), for DOC_MERGE_ROUNDS PUTs.
- */
 export async function publishMerged(
   opts: ActivityDocOptions,
   merge: (current: unknown) => unknown,
@@ -98,17 +83,6 @@ export async function publishMerged(
   }
 }
 
-/**
- * PUT a doc `derive` builds from the durable object, read only AFTER the
- * revision it lands at: any writer that landed its object before this read
- * is in the doc, and one that lands after it either PUTs later from its own
- * fresh read or meets this PUT's revision as a 409. `derive` gets the doc
- * that revision holds (undefined when there is none) for what the object
- * alone cannot say. A lost race re-derives at the revision the 409 names, for
- * DOC_MERGE_ROUNDS PUTs. For docs where this writer's own copy is not what
- * landed: a learnings file that overlapping merges reordered, a skill another
- * turn edited again after this one.
- */
 export async function publishDerived(
   opts: ActivityDocOptions,
   derive: (current: unknown) => Promise<unknown>,

@@ -3,12 +3,6 @@ import { describe, it } from "node:test";
 import { paintedSessionKey } from "../src/lib/perf-span-marks.ts";
 import { type PerfSpanObservation, PerfSpans } from "../src/lib/perf-spans.ts";
 
-/**
- * `card_click_to_chat` completes when the opened conversation's messages are
- * on screen (the mission board's open-conversation hook keys an effect on
- * {@link paintedSessionKey}). It lost that caller once, when the per-agent
- * board it lived in was deleted, and read nothing for two months.
- */
 describe("paintedSessionKey", () => {
   it("is null while no chat is open or its messages have not loaded", () => {
     strictEqual(paintedSessionKey(null, 0), null);
@@ -36,7 +30,6 @@ describe("card click to chat", () => {
         sent.push(batch);
       },
     });
-    // Paints follow the painted key: first chat, then a second cached one.
     let lastKey: string | null = null;
     const render = (key: string | null, feedLength: number) => {
       const painted = paintedSessionKey(key, feedLength);
@@ -45,10 +38,10 @@ describe("card click to chat", () => {
     };
     spans.cardClicked();
     now += 200;
-    render("s-1", 0); // history still loading
+    render("s-1", 0);
     now += 150;
     render("s-1", 5);
-    render("s-1", 6); // a streamed item, same chat: no new paint
+    render("s-1", 6);
     spans.cardClicked();
     now += 40;
     render("s-2", 9);

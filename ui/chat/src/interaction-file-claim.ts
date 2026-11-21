@@ -1,28 +1,16 @@
-// Which question step each attached file answers. Pure, like interaction-card-logic.ts, which applies the
-// releases inside its transitions.
-
 import type { StepAnswer, StepperState } from "./interaction-card-logic.ts";
 
-/** The files one step's answer stands for, so they never also answer the
- *  questions after it. A claim lives only while every
- *  file it was made with is still attached and its answer still stands: a
- *  removed file or a changed answer hands the files back. */
 export interface FileClaim {
   files: readonly File[];
   answer: string;
 }
 
-/** Claims by step id. Live claims never share a file: a step only claims
- *  files no other step's live claim holds (`stepFiles`). */
 export type FileClaims = Readonly<Record<string, FileClaim>>;
 
 function isLive(claim: FileClaim, files: readonly File[]): boolean {
   return claim.files.every((f) => files.includes(f));
 }
 
-/** The attached files that answer `stepId`: its own claim's plus every file
- *  no other step's live claim holds. `exclusive` is true when no other step
- *  holds a live claim at all, the condition a plain question keeps. */
 export function stepFiles(
   claims: FileClaims | undefined,
   stepId: string,
@@ -39,7 +27,6 @@ export function stepFiles(
   };
 }
 
-/** Claim `files` for `stepId`, replacing whatever it claimed before. */
 export function claimFiles(
   state: StepperState,
   stepId: string,
@@ -55,8 +42,6 @@ export function claimFiles(
   };
 }
 
-/** Drop `stepId`'s claim when it is skipped (`committed` undefined) or
- *  re-answered with anything but its files answer. */
 export function releaseClaim(
   state: StepperState,
   stepId: string,

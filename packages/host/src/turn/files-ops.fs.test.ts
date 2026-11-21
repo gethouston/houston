@@ -13,17 +13,7 @@ import {
   renameWorkspaceFile,
 } from "./files-ops";
 
-/**
- * Files-tab deletes and renames against the REAL filesystem adapter. This pins
- * the desktop regression the Memory-backed suite could not see: `rm` without
- * `recursive` refuses directories, and walking a plain file as a prefix used to
- * throw ENOTDIR — so on the TS desktop, deleting anything from the Files tab
- * 500'd. A rename collision is here for the same reason: POSIX `rename(2)`
- * overwrites an existing destination file without a word, so on disk the
- * clobber is silent unless the op refuses it first.
- */
-
-const ROOT = "Houston/Bo"; // local layout: the agent dir IS the workspace root
+const ROOT = "Houston/Bo";
 
 function freshVfs(): FsVfs {
   return new FsVfs(mkdtempSync(join(tmpdir(), "houston-files-")));
@@ -70,13 +60,6 @@ test("refuses to rename onto an existing name on disk", async () => {
   });
 });
 
-/**
- * The case-fold cases below are TRUE on either kind of volume, because the
- * expectation is taken from the adapter's own probe rather than from
- * `process.platform`: a case-sensitive APFS volume on macOS and a case-folding
- * exFAT mount on Linux both exist, and the guard has to be right on the disk
- * it is actually running on.
- */
 test("a rename onto a name differing only in case never destroys the neighbour", async () => {
   const vfs = freshVfs();
   const folded = (await vfs.keyCase()).fold === "folded";
@@ -85,7 +68,6 @@ test("a rename onto a name differing only in case never destroys the neighbour",
 
   const rename = renameWorkspaceFile(vfs, ROOT, "notes.md", "README.md");
   if (folded) {
-    // `fs.rename` would have unlinked `readme.md` without a word.
     await expect(rename).rejects.toBeInstanceOf(FileOpError);
     await expect(rename).rejects.toMatchObject({
       status: 409,
@@ -96,7 +78,6 @@ test("a rename onto a name differing only in case never destroys the neighbour",
       base64: false,
     });
   } else {
-    // A case-SENSITIVE volume holds both names: nothing is at risk.
     expect(await rename).toBe("renamed");
     expect(await readWorkspaceFile(vfs, ROOT, "README.md")).toEqual({
       content: "moved",
@@ -140,8 +121,6 @@ test("an upload whose name differs only in case never replaces the file there", 
 });
 
 test("a new folder never takes a name something already has", async () => {
-  // `<name>/.keep` beneath a file is ENOTDIR on a real disk, which reached the
-  // user as a 500 naming a marker file they never heard of.
   const vfs = freshVfs();
   await vfs.writeText(`${ROOT}/report.pdf`, "kept");
   await vfs.writeText(`${ROOT}/Papers/a.txt`, "a");
@@ -164,8 +143,6 @@ test("a new folder never takes a name something already has", async () => {
 test("a new folder refuses a name the VOLUME resolves to an existing file", async () => {
   const vfs = freshVfs();
   await vfs.writeText(`${ROOT}/straße.txt`, "kept");
-  // The key set compares with `toLowerCase()`, which does not fold ß: only the
-  // volume's own answer stops this one.
   const foldsSharpS = await vfs.exists(`${ROOT}/STRASSE.txt`);
 
   const created = createWorkspaceFolder(vfs, ROOT, "STRASSE.txt");

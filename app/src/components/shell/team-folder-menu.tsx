@@ -32,9 +32,7 @@ export function TeamFolderMenu({
   triggerClassName,
 }: {
   team: TeamView;
-  /** Runs after the group is deleted, for a caller standing on it. */
   onDelete?: () => void;
-  /** Restyles the trigger for a host outside the rail. */
   triggerClassName?: string;
 }) {
   const { t } = useTranslation(["shell", "teams"]);

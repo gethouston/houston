@@ -45,7 +45,6 @@ test("create / list / rename / delete agents in a workspace", async () => {
   expect(sales.workspaceId).toBe(ws.id);
   expect(await s.getAgent(sales.id)).toMatchObject({ name: "SalesAgent" });
 
-  // The owner sees EVERY agent in the workspace (no grants, no filtering).
   const listed = await s.listAgents(ws.id);
   expect(listed.map((a) => a.name).sort()).toEqual(["HRAgent", "SalesAgent"]);
 
@@ -113,6 +112,5 @@ test("renameAgent onto an existing sibling name is a typed conflict (#172)", asy
   await expect(s.renameAgent(hr.id, "SalesAgent")).rejects.toBeInstanceOf(
     AgentNameConflictError,
   );
-  // Renaming to the CURRENT name stays a no-op success.
   expect((await s.renameAgent(hr.id, "HRAgent")).name).toBe("HRAgent");
 });

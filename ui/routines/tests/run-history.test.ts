@@ -48,7 +48,7 @@ describe("formatRunStart", () => {
   it("localizes the stamp", () => {
     const stamp = formatRunStart("2026-08-07T14:15:00Z", "en-US");
     assert.match(stamp, /Aug/);
-    assert.match(stamp, /15/); // minutes survive whatever the TZ shifts hours to
+    assert.match(stamp, /15/);
   });
   it("is empty on a bad date", () => {
     assert.equal(formatRunStart("garbage"), "");

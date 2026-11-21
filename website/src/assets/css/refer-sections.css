@@ -1,11 +1,3 @@
-/*
- * /data-partners/refer — the sections between the fold and the form: the
- * four steps, the open door under the request board, the key terms. Every
- * rule has its light dress and its .is-dark one, because the page's tone
- * flow (enterprise-flow.js) turns each section dark or light as you scroll.
- */
-
-/* ── How referrals work: four steps on one hairline ──────────────────────── */
 .rf-steps {
   list-style: none;
   display: grid;
@@ -16,7 +8,6 @@
 .rf-step {
   position: relative;
 }
-/* The hairline from this glyph to the next one. */
 .rf-step:not(:last-child)::after {
   content: "";
   position: absolute;
@@ -78,7 +69,6 @@
 .is-dark .rf-step-line {
   color: var(--on-ink-muted);
 }
-/* Phones and narrow tablets: a column, the hairline running down. */
 @media (max-width: 880px) {
   .rf-steps {
     grid-template-columns: 1fr;
@@ -105,7 +95,6 @@
   }
 }
 
-/* The open door under the grid: one line, one pill. */
 .rf-unlisted {
   display: flex;
   flex-wrap: wrap;
@@ -134,7 +123,6 @@
   }
 }
 
-/* ── Key terms: three columns under a hairline ─────────────────────────── */
 .rf-terms-title {
   max-width: 20ch;
 }
@@ -179,7 +167,6 @@
   }
 }
 
-/* ── FAQ: the landing's list, a little more air above ─────────────────── */
 .rf-faq .faq-head .sec-title {
   max-width: none;
 }

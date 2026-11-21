@@ -49,8 +49,6 @@ function errorText(err: unknown): string {
   return err instanceof Error ? err.message : "Something went wrong.";
 }
 
-/** The web owner view: THE SAME CreatorProfileScreen as the public page, in
- *  owner mode (pencils + per-card manage menus). */
 export function MeClient() {
   const { status: sessionStatus, signIn, getToken } = useSession();
   const [load, setLoad] = React.useState<Load>({ status: "loading" });

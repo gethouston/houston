@@ -12,7 +12,6 @@ import {
 } from "../src/components/agent/agent-admin/model-allowlist.ts";
 import type { CatalogModel } from "../src/lib/ai-hub/catalog-types.ts";
 
-/** A minimal `CatalogModel` fixture: only the fields the allowlist helpers read. */
 function model(
   key: string,
   offerIds: string[],
@@ -35,8 +34,6 @@ function model(
   };
 }
 
-// Two labs' worth of models, one single-offer and one multi-offer, so the
-// helpers exercise the "one model spans several ids" path.
 const OPUS = model("opus", ["anthropic/claude-opus", "bedrock/opus"]);
 const SONNET = model("sonnet", ["anthropic/claude-sonnet"]);
 const GPT = model("gpt", ["openai/gpt-5", "openrouter/gpt-5"]);
@@ -116,7 +113,6 @@ describe("toggleModel — flips ALL of a model's offer ids at once", () => {
 
   it("returns a de-duplicated, stable-sorted array", () => {
     const out = toggleModel(GPT, ["openai/gpt-5"]);
-    // GPT was partially on, so it clears; only the untouched entries remain.
     deepStrictEqual(out, []);
     const on = toggleModel(SONNET, ["z-id", "a-id"]);
     deepStrictEqual(on, ["a-id", "anthropic/claude-sonnet", "z-id"]);
@@ -129,7 +125,6 @@ describe("allowedListView — which empty-state variant the allowed list shows",
       allowedListView({ visibleCount: 2, hasPicked: true, labFiltered: false }),
       "list",
     );
-    // A visible list wins even while a lab filter is active.
     strictEqual(
       allowedListView({ visibleCount: 1, hasPicked: true, labFiltered: true }),
       "list",
@@ -145,7 +140,6 @@ describe("allowedListView — which empty-state variant the allowed list shows",
       }),
       "empty",
     );
-    // Even with a lab filter active, "nothing picked" stays the plain empty.
     strictEqual(
       allowedListView({ visibleCount: 0, hasPicked: false, labFiltered: true }),
       "empty",
@@ -160,7 +154,6 @@ describe("allowedListView — which empty-state variant the allowed list shows",
   });
 
   it("without a lab filter, an empty visible list means nothing is picked", () => {
-    // hasPicked cannot be true here (no filter to hide picks), but guard anyway:
     strictEqual(
       allowedListView({
         visibleCount: 0,

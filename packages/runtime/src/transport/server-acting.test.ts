@@ -6,13 +6,6 @@ import {
   currentCredentialScope,
 } from "../session/acting-context";
 
-/**
- * EVERY runtime request must run inside the acting identity its headers carry
- * (HOU-976 §2.6.2), not just the message route: `/providers`, `/auth/status`,
- * `/auth/:p/login` and `/auth/export` all read or write a credential, and the
- * serve sync they trigger writes a credential FILE. The provider route stands in
- * for all of them here — the wrap is in one place, `createRuntimeServer`.
- */
 const { seen } = vi.hoisted(() => ({
   seen: [] as unknown[],
 }));
@@ -22,8 +15,6 @@ vi.mock("./provider-routes", () => ({
     res: { writeHead: (s: number) => void; end: (b?: string) => void };
   }) => {
     if (ctx.path !== "/providers") return false;
-    // Captured from inside the request handler, where the credential store,
-    // serve sync and health marks all resolve their scope.
     seen.push(currentCredentialScope());
     ctx.res.writeHead(200);
     ctx.res.end("{}");
@@ -63,7 +54,6 @@ test("the request's acting identity is the ambient credential scope for every ro
       headers: { ...auth, "x-houston-acting-as": token },
     });
     expect(res.status).toBe(200);
-    // Same route, no header: the team scope, exactly as before HOU-976.
     res = await fetch(`${baseUrl}/providers`, { headers: auth });
     expect(res.status).toBe(200);
   } finally {

@@ -76,8 +76,6 @@ test("GET /busy answers from the turns in flight, without auth", async () => {
 });
 
 test("GET /busy ignores a stream left reading running with no turn behind it", async () => {
-  // The shape a stopped turn's late frames used to leave behind: a non-terminal
-  // frame after the terminal one, so the stream snapshot reads running forever.
   const server = createRuntimeServer();
   const baseUrl = await listen(server);
   const conversationId = "server-busy-stale-stream";

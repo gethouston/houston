@@ -71,8 +71,6 @@ describe("pickConnectLogoIds", () => {
   });
 
   it("never lists a logo that cannot be drawn yet", () => {
-    // The catalog has not resolved Notion's logo: it is skipped, not painted
-    // broken, and the row still fills to three.
     assert.deepEqual(
       pickConnectLogoIds({
         connected: ["notion", "hubspot"],

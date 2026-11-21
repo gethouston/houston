@@ -1,11 +1,8 @@
 import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { loadPdfJs } from "./pdfjs";
 
-/** WebKit refuses canvases past ~16.7M pixels; stay well under it. */
 const MAX_CANVAS_PIXELS = 12_000_000;
 
-/** Drop a canvas's pixels now. WebKit counts every live canvas against one
- *  memory budget until it is collected, so a removed one is emptied first. */
 export function releaseCanvas(el: Element): void {
   if (el.tagName !== "CANVAS") return;
   const canvas = el as HTMLCanvasElement;
@@ -13,10 +10,6 @@ export function releaseCanvas(el: Element): void {
   canvas.height = 0;
 }
 
-/**
- * Draw one page into a fresh canvas at `cssWidth` CSS pixels wide, at the
- * screen's pixel ratio. Resolves `null` when `signal` aborts first.
- */
 export async function renderPageCanvas(
   doc: PDFDocumentProxy,
   pageNumber: number,
@@ -52,12 +45,6 @@ export async function renderPageCanvas(
   return null;
 }
 
-/**
- * Lay the page's text out as transparent spans over the canvas, so a drag
- * makes a real selection. Built at scale 1; the container's
- * `--total-scale-factor` (set by the page) sizes it, so zooming never
- * rebuilds it.
- */
 export async function renderTextLayer(
   doc: PDFDocumentProxy,
   pageNumber: number,

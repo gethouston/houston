@@ -5,23 +5,11 @@ import { ChevronRight, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatRelativeTime } from "../organization/org-time";
 
-/**
- * The creation chats this AI Employee started and never finished: its own
- * band above the skills, in the same row grammar. A draft is not one of the
- * skills — it stands outside their heading and their count — and the chat is
- * the only thing that exists yet, so the row opens it rather than an editor
- * over a skill that is not there.
- *
- * Every unfinished chat is titled the same until the skill has a name, so the
- * row carries WHEN it was last worked on: that is the only thing that tells two
- * abandoned chats apart.
- */
 export function SkillDraftRows({
   drafts,
   onOpen,
 }: {
   drafts: Activity[];
-  /** Reopen this chat in the panel beside the list. */
   onOpen: (activityId: string) => void;
 }) {
   const { t, i18n } = useTranslation("skills");

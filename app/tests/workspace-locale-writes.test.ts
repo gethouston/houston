@@ -18,7 +18,6 @@ function deferred<T>() {
 const ws = (locale: string | null): Workspace =>
   ({ id: "w", name: "Team", locale }) as Workspace;
 
-/** A store row and a host whose answers the test releases one by one. */
 function harness(initial: string | null) {
   let row = ws(initial);
   const answers: Array<ReturnType<typeof deferred<Workspace>>> = [];

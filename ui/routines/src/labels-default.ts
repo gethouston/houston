@@ -1,11 +1,3 @@
-/**
- * English default values for every Routines label group. Kept separate from the
- * interface declarations in `./labels` so each file stays small. Re-exported
- * from `./labels`, so consumers import everything from one place.
- *
- * These mirror `app/src/locales/en/routines.json`; keep them in sync.
- */
-
 import type {
   NextFireLabels,
   RoutineRowLabels,

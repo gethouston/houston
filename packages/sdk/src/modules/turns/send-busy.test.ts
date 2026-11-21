@@ -59,8 +59,6 @@ async function waitFor(cond: () => boolean, ms = 3_000): Promise<void> {
   }
 }
 
-// ---- the refusal and the clock ----
-
 test("only the gateway's compute_busy 503 reads as busy", () => {
   expect(computeBusyRefusal(busy())?.detail).toBe("sandbox_queue_timeout");
   const waking = new EngineError(
@@ -90,13 +88,10 @@ test("the busy clock honors the server's hint inside its bounds and its budget",
   expect(clock.spent).toBe(false);
   expect(SEND_BUSY_WAIT_MS).toBe(600_000);
   expect(SEND_BUSY_NOTICE_MS).toBe(15_000);
-  // A spent budget leaves no pause to take.
   expect(
     new SendBusyClock({ sendBusyWaitMs: 0 }).pauseFor(refusal(3_000)),
   ).toBe(0);
 });
-
-// ---- sendHolding ----
 
 test("a busy send goes out again, the same request, until it is admitted", async () => {
   let calls = 0;
@@ -170,7 +165,6 @@ test("the busy line comes on time, while the re-send is still waiting", async ()
   await waitFor(() => busyAt > 0, 1_000);
   ac.abort();
   await sending;
-  // Well inside the 5 s pause the refusal asked for.
   expect(busyAt - started).toBeLessThan(1_000);
 });
 
@@ -187,11 +181,8 @@ test("a busy refusal never re-sends past the budget, even after a long hint", as
     { onHold: () => {} },
   ).catch((e: unknown) => e);
   expect(computeBusyRefusal(refusal)).not.toBeNull();
-  // The pause was cut to the 30 ms left, then the spent budget stood.
   expect(calls).toBe(1);
 });
-
-// ---- end to end through streamTurn and the conversation VM ----
 
 const registry = new StreamRegistry();
 afterEach(() => registry.disposeAll());
@@ -215,10 +206,6 @@ const untilAborted: Stream = (o) =>
     o.signal?.addEventListener("abort", () => resolve(), { once: true });
   });
 
-/**
- * An engine that refuses the first `refusals` sends as busy, then runs. Each
- * stream connection takes the next handler (the last repeats).
- */
 function busyEngine(refusals: number, ...streams: Stream[]) {
   const nonces: Array<string | undefined> = [];
   let connections = 0;
@@ -246,7 +233,6 @@ function vmOutput() {
   return { output, snapshot };
 }
 
-/** Echo our send, then reply and end the turn. */
 function reply(o: EventStreamOptions, nonce: string | undefined, seq: number) {
   o.onEvent({
     type: "user",
@@ -263,7 +249,6 @@ test("the VM shows a long busy wait, then clears it once the send lands", async 
   let sawBusy = false;
   const { engine, nonces } = busyEngine(2, async (o) => {
     o.onEvent(sync(false, 0));
-    // A teammate's turn ends while ours waits: never ours to settle on.
     o.onEvent({ type: "done", data: null, turnId: "t-other", seq: 1 });
     await waitFor(() => {
       if (snapshot("activity-busy")?.sendWaiting === "busy") sawBusy = true;
@@ -283,7 +268,7 @@ test("the VM shows a long busy wait, then clears it once the send lands", async 
   );
 
   expect(sawBusy).toBe(true);
-  expect(new Set(nonces).size).toBe(1); // one message, never doubled
+  expect(new Set(nonces).size).toBe(1);
   const vm = snapshot("activity-busy");
   expect(vm.sendWaiting).toBeUndefined();
   expect(vm.sessionStatus).toBe("completed");
@@ -311,7 +296,6 @@ test("a busy send past its budget settles with the typed notice, not an error me
   expect(vm.sendWaiting).toBeUndefined();
   const note = vm.feed.find((f) => f.feed_type === "system_message");
   expect(note?.data).toBe(COMPUTE_BUSY_MESSAGE);
-  // The VM carries the kind, so a surface renders its own copy for it.
   expect(note?.notice).toBe("compute_busy");
 });
 
@@ -320,12 +304,10 @@ test("a busy refusal on the observer handoff is re-sent, held, on the fresh path
   const key = "activity-busy-handoff";
   const { engine, nonces } = busyEngine(
     1,
-    // The observer of an idle conversation, until the turn takes over.
     async (o) => {
       o.onEvent(sync(false, 3));
       await untilAborted(o);
     },
-    // Our turn's own subscription.
     async (o) => {
       await waitFor(() => nonces.length === 2);
       reply(o, nonces[1], 4);
@@ -358,7 +340,6 @@ test("a handoff's busy refusal is waited out, held, before the first re-send", a
       await untilAborted(o);
     },
     async (o) => {
-      // An idle resync while the re-send waits: never this turn's settle.
       o.onEvent(sync(false, 3));
       await waitFor(() => nonces.length === 2);
       reply(o, nonces[1], 4);
@@ -379,7 +360,6 @@ test("a handoff's busy refusal is waited out, held, before the first re-send", a
   });
 
   expect(sentAt).toHaveLength(2);
-  // The refusal's hint (1 ms, floored to 1 s) is waited out, not skipped.
   expect(sentAt[1] - sentAt[0]).toBeGreaterThanOrEqual(900);
   expect(snapshot(key).sessionStatus).toBe("completed");
 });
@@ -399,16 +379,13 @@ test("Stop ends a message still waiting for room: no re-send after it", async ()
   const finish = registry.stopUnsent(streamKey("Houston/Bo", key));
   expect(finish).not.toBeNull();
   const sends = nonces.length;
-  // Nothing settles before the engine's cancel answered: a message queued
-  // behind this turn must not go out while that cancel could stop it.
   await new Promise((r) => setTimeout(r, 1_200));
   expect(snapshot(key).boardStatus).not.toBe("needs_you");
-  // Held meanwhile, so the queue watchdog flushes nothing into that cancel.
   expect(registry.get(streamKey("Houston/Bo", key))?.held).toBe(true);
   finish?.();
   await turn;
 
-  expect(nonces.length).toBe(sends); // nothing goes out after Stop
+  expect(nonces.length).toBe(sends);
   const vm = snapshot(key);
   expect(vm.sendWaiting).toBeUndefined();
   expect(vm.boardStatus).toBe("needs_you");
@@ -466,7 +443,6 @@ test("Stop reaches the observer handoff's send while it is still out", async () 
     o.onEvent(sync(false, 3));
     await untilAborted(o);
   });
-  // The handoff's POST waits in the gateway's queue until aborted.
   engine.sendMessage = ((
     _id: string,
     _text: string,
@@ -496,7 +472,7 @@ test("Stop reaches the observer handoff's send while it is still out", async () 
   await turn;
   await new Promise((r) => setTimeout(r, 1_200));
 
-  expect(posts).toBe(1); // never re-sent
+  expect(posts).toBe(1);
   const vm = snapshot(key);
   expect(vm.boardStatus).toBe("needs_you");
   expect(vm.feed.some((f) => f.data === STOPPED_BY_USER)).toBe(true);
@@ -516,8 +492,6 @@ test("a stream that keeps failing while the send waits for room never ends the t
     );
   };
   const { engine, nonces } = busyEngine(2, async (o) => {
-    // Every connection fails until the send lands, far past the stream's
-    // eight-attempt budget.
     if (!accepted) return refusedStream(o);
     o.onEvent(sync(false, 0));
     reply(o, nonceSeen(), 1);
@@ -531,8 +505,6 @@ test("a stream that keeps failing while the send waits for room never ends the t
   }) as typeof engine.sendMessage;
 
   await streamTurn(engine, "Houston/Bo", key, "hi", output, registry, {
-    // Real waits between attempts: a zero draw with a refusal that throws at
-    // once would retry on microtasks alone and starve the send's timers.
     tuning: {
       ...fast,
       backoff: { initialMs: 5, maxMs: 10, jitter: (cap) => cap },
@@ -549,7 +521,6 @@ const podWakeRefused = () =>
     JSON.stringify({ error: "engine unavailable", code: "pod_wake_refused" }),
   );
 
-/** Real waits between stream attempts (see the test above). */
 const paced: StreamTuning = {
   ...fast,
   backoff: { initialMs: 5, maxMs: 10, jitter: (cap) => cap },
@@ -569,7 +540,6 @@ test("a stream that fails while the first send is still out never ends the turn"
     reply(o, nonces[0], 1);
   });
   const send = engine.sendMessage.bind(engine);
-  // The first POST sits in the gateway's queue past the stream's budget.
   engine.sendMessage = (async (...args: Parameters<typeof send>) => {
     await waitFor(() => failures > 12);
     const answer = await send(...args);
@@ -616,8 +586,6 @@ test("once the send is taken, a frame gives the stream its own budget, no more",
   });
 
   expect(failedWaiting).toBeGreaterThan(8);
-  // Eight attempts after the frame, the stream's own budget: the failures
-  // during the wait are not added on top.
   expect(failedAfter).toBe(8);
 });
 
@@ -658,7 +626,6 @@ test("a send waiting for room reads as held, so the queue watchdog leaves it", a
         heldWhileWaiting = true;
       return nonces.length === 2;
     });
-    // Accepted: the send no longer waits.
     await waitFor(() => entry()?.held === false);
     reply(o, nonces[1], 1);
   });
@@ -676,7 +643,6 @@ test("a stopped handoff streams nothing and stays held until the cancel answered
   let connections = 0;
   const { engine } = busyEngine(
     0,
-    // The observer, mid-turn at seq 3.
     async (o) => {
       connections++;
       o.onEvent({
@@ -686,8 +652,6 @@ test("a stopped handoff streams nothing and stays held until the cancel answered
       });
       await untilAborted(o);
     },
-    // A subscription from the observer's cursor would open on an idle resync:
-    // "the turn ended unexpectedly", before the cancel answered.
     async (o) => {
       connections++;
       o.onEvent({
@@ -748,7 +712,6 @@ test("a Stop during the first send holds the turn until the cancel answered", as
     await untilAborted(o);
   });
   let posted = false;
-  // The first POST waits in the gateway's queue until aborted.
   engine.sendMessage = ((
     _id: string,
     _text: string,
@@ -785,8 +748,6 @@ test("a handoff's busy wait counts from when its send went out", async () => {
   let busyCalls = 0;
   let sends = 0;
   const started = Date.now();
-  // The handoff's POST sat 900 ms in the gateway's queue before its refusal:
-  // 100 ms of the 1 s budget is left, and the 50 ms notice is overdue.
   const refusal = await sendHolding(
     async () => {
       sends++;
@@ -828,7 +789,6 @@ test("a teardown aborts the busy re-send still out, and a late refusal settles n
   ) => {
     if (++calls === 1) throw busy();
     outSignal = o?.signal;
-    // A binding that ignores the abort: its refusal still lands, late.
     await new Promise((r) => setTimeout(r, 100));
     throw busy();
   }) as typeof engine.sendMessage;
@@ -857,8 +817,6 @@ test("the fresh path's busy budget includes the handoff send's queue wait", asyn
   });
   let sends = 0;
   engine.sendMessage = (async () => {
-    // The handoff's POST waits 1.1 s in the gateway's queue; every send is
-    // refused for room.
     if (++sends === 1) await new Promise((r) => setTimeout(r, 1_100));
     throw busy();
   }) as typeof engine.sendMessage;
@@ -871,7 +829,6 @@ test("the fresh path's busy budget includes the handoff send's queue wait", asyn
     tuning: { ...fast, sendBusyWaitMs: 1_200 },
   });
 
-  // 100 ms of budget was left after the handoff: no re-send fits.
   expect(sends).toBe(1);
   const note = snapshot(key).feed.find((f) => f.feed_type === "system_message");
   expect(note?.notice).toBe("compute_busy");
@@ -882,12 +839,10 @@ test("an idle resync while the first send is still out settles nothing", async (
   const key = "activity-first-send-resync";
   const { engine, nonces } = busyEngine(
     1,
-    // The first connection drops before the send lands.
     async (o) => {
       o.onEvent(sync(false, 0));
       throw new Error("Load failed");
     },
-    // The reconnect opens on the idle resync contract.
     async (o) => {
       o.onEvent({
         type: "sync",
@@ -901,7 +856,6 @@ test("an idle resync while the first send is still out settles nothing", async (
   const send = engine.sendMessage.bind(engine);
   let first = true;
   engine.sendMessage = (async (...args: Parameters<typeof send>) => {
-    // The first POST waits in the gateway's queue, then is refused for room.
     if (first) {
       first = false;
       await new Promise((r) => setTimeout(r, 300));
@@ -926,8 +880,6 @@ test("a Stop that races the engine's acceptance settles nothing before the cance
   let nonce: string | undefined;
   const { engine } = busyEngine(0, async (o) => {
     o.onEvent(sync(false, 0));
-    // The engine took the message before the Stop reached it: its own echo,
-    // reply and end arrive while the cancel is still out.
     await waitFor(() => stopped);
     reply(o, nonce, 1);
     await untilAborted(o);
@@ -971,7 +923,6 @@ test("a history settle a Stop overtook publishes nothing", async () => {
   let answerHistory: (messages: unknown[]) => void = () => {};
   const { engine } = busyEngine(
     0,
-    // The engine echoes the message, then the connection drops.
     async (o) => {
       o.onEvent(sync(false, 0));
       await waitFor(() => nonce !== undefined);
@@ -983,7 +934,6 @@ test("a history settle a Stop overtook publishes nothing", async () => {
       });
       throw new Error("Load failed");
     },
-    // The reconnect opens on an idle resync: settle from history.
     async (o) => {
       o.onEvent({
         type: "sync",
@@ -1034,7 +984,6 @@ test("a history settle a Stop overtook publishes nothing", async () => {
   expect(vm.feed.some((f) => f.data === STOPPED_BY_USER)).toBe(true);
 });
 
-/** Resolve with `turnId` and press Stop in the same tick, before any await resumes. */
 function acceptThenStop(
   key: string,
   onStop: (finish: (() => void) | null) => void,
@@ -1098,7 +1047,6 @@ test("a Stop in the same tick as the handoff's 202 still wins", async () => {
       o.onEvent(sync(false, 3));
       await untilAborted(o);
     },
-    // The turn's own subscription would see the engine finish the turn.
     async (o) => {
       connections++;
       reply(o, undefined, 4);
@@ -1136,7 +1084,6 @@ test("an observer's reload still out when a busy send takes over publishes nothi
   let reloads = 0;
   const { engine, nonces } = busyEngine(
     1,
-    // The observer watches a turn run, then its connection drops.
     async (o) => {
       o.onEvent({
         type: "sync",
@@ -1145,7 +1092,6 @@ test("an observer's reload still out when a busy send takes over publishes nothi
       });
       throw new Error("Load failed");
     },
-    // Its reconnect opens on an idle resync: the observer reloads history.
     async (o) => {
       o.onEvent({
         type: "sync",
@@ -1154,7 +1100,6 @@ test("an observer's reload still out when a busy send takes over publishes nothi
       });
       await untilAborted(o);
     },
-    // The busy send's own subscription.
     async (o) => {
       await waitFor(() => nonces.length === 2);
       reply(o, nonces[1], 5);
@@ -1182,7 +1127,6 @@ test("an observer's reload still out when a busy send takes over publishes nothi
     { role: "assistant", content: "Earlier reply", turnId: "t-prev" },
   ]);
   await new Promise((r) => setTimeout(r, 50));
-  // The busy send still waits for room: the conversation is not idle.
   expect(nonces).toHaveLength(1);
   expect(snapshot(key).sessionStatus).toBe("running");
   await turn;
@@ -1251,7 +1195,6 @@ test("a handoff Stop silences the observer before its rejection unwinds", async 
   });
   await waitFor(() => posted);
   const finish = registry.stopUnsent(streamKey("Houston/Bo", key));
-  // The observed turn's end, already in hand when the Stop lands.
   observerEmit?.({ type: "done", data: null, turnId: "t-prev", seq: 4 });
   await new Promise((r) => setTimeout(r, 50));
   expect(snapshot(key).running).toBe(true);
@@ -1272,7 +1215,6 @@ test("a teardown silences a history reload the turn still has out", async () => 
   let answerHistory: (messages: unknown[]) => void = () => {};
   const { engine, nonces } = busyEngine(
     1,
-    // The re-send echoes before its POST answers, then the connection drops.
     async (o) => {
       o.onEvent(sync(false, 0));
       await waitFor(() => nonces.length === 2);
@@ -1284,7 +1226,6 @@ test("a teardown silences a history reload the turn still has out", async () => 
       });
       throw new Error("Load failed");
     },
-    // The reconnect's idle resync starts a history settle.
     async (o) => {
       o.onEvent({
         type: "sync",
@@ -1300,9 +1241,8 @@ test("a teardown silences a history reload the turn still has out", async () => 
     text: string,
     o?: { nonce?: string; signal?: AbortSignal },
   ) => {
-    if (nonces.length === 0) return send(id, text, o); // refused for room
+    if (nonces.length === 0) return send(id, text, o);
     await send(id, text, o);
-    // The re-send's 202 never comes.
     return new Promise<never>((_resolve, reject) => {
       o?.signal?.addEventListener(
         "abort",
@@ -1353,7 +1293,6 @@ test("two Stops settle the waiting send only once both cancels answered", async 
   expect(second).not.toBeNull();
   first?.();
   await new Promise((r) => setTimeout(r, 50));
-  // The second cancel is still out: it could stop a queued message.
   expect(snapshot(key).boardStatus).not.toBe("needs_you");
   expect(registry.get(streamKey("Houston/Bo", key))?.held).toBe(true);
   second?.();
@@ -1384,7 +1323,6 @@ test("a busy takeover runs the conversation again after the observer settled", a
   );
   const send = engine.sendMessage.bind(engine);
   engine.sendMessage = (async (...args: Parameters<typeof send>) => {
-    // The previous turn ends while the handoff's POST waits in the queue.
     if (nonces.length === 0) {
       observerEmit?.({ type: "done", data: null, turnId: "t-prev", seq: 4 });
       await new Promise((r) => setTimeout(r, 20));
@@ -1400,7 +1338,6 @@ test("a busy takeover runs the conversation again after the observer settled", a
   await waitFor(
     () => registry.get(streamKey("Houston/Bo", key))?.kind === "turn",
   );
-  // The message waits for room: the conversation is running, not idle.
   expect(nonces).toHaveLength(1);
   expect(snapshot(key).running).toBe(true);
   await turn;
@@ -1423,8 +1360,6 @@ test("the last cancel's answer settles the stopped send in the same tick", async
   const finish = registry.stopUnsent(streamKey("Houston/Bo", key));
   await new Promise((r) => setTimeout(r, 20));
   finish?.();
-  // Settled already: a Stop now finds a finished turn, never an unsettled
-  // one that a cancel it sends could outlive.
   expect(snapshot(key).running).toBe(false);
   expect(registry.stopUnsent(streamKey("Houston/Bo", key))).toBeNull();
   await turn;
@@ -1434,7 +1369,6 @@ test("a Stop between the last answer and the settle still joins the wait", () =>
   const stop = new PersonStop();
   const first = stop.join();
   first?.();
-  // Nothing registered the settle yet: the barrier stays open.
   const second = stop.join();
   expect(second).not.toBeNull();
   let settled = false;
@@ -1451,7 +1385,6 @@ test("a send while another still hands off on the key, its observer gone, fails 
   const { output, snapshot } = vmOutput();
   const key = "activity-send-lock-no-observer";
   const { engine, nonces } = busyEngine(0, untilAborted);
-  // Another streamTurn holds the key's send lock; its observer has left.
   expect(registry.beginSend(streamKey("Houston/Bo", key))).toBe(true);
 
   await streamTurn(engine, "Houston/Bo", key, "hi", output, registry, {
@@ -1489,7 +1422,6 @@ test("the busy line goes once the re-send's own echo beats its 202", async () =>
   engine.sendMessage = (async (...args: Parameters<typeof send>) => {
     const answer = await send(...args);
     if (nonces.length === 2) {
-      // The 202 lags the echo.
       await waitFor(() => echoed);
       clearedBeforeAnswer = snapshot(key).sendWaiting === undefined;
       answered = true;

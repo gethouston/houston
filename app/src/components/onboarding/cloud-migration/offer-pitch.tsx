@@ -1,14 +1,6 @@
 import { Clock, RefreshCw, UploadCloud } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 
-/**
- * The "what you get" body of the migration offer: an elevated white panel
- * whose three benefits (always on / routines keep running / nothing left
- * behind) sit as icon tiles — a gradient-filled, hairline-ringed glyph box
- * beside a short line whose keyword is emphasized. Mirrors the announcement
- * modal's pitch pattern (PR-1003), translated to the first-run light tokens.
- * Split from {@link OfferScreen}, which owns the split-card chrome and CTA.
- */
 const BENEFITS = [
   [Clock, "benefit1"],
   [RefreshCw, "benefit2"],

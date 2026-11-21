@@ -8,12 +8,6 @@ import {
 } from "./employee-name-placeholder";
 import { useFittingPlaceholder } from "./use-fitting-placeholder";
 
-/**
- * The card's name, as a field that reads as one at a glance: field chrome with
- * its label inside it, over the name, and a pencil always showing. Reaching it
- * by a press anywhere on it (the pencil included) or by Tab selects the name
- * whole, so typing replaces it.
- */
 export function EmployeeNameField({
   value,
   label,
@@ -26,10 +20,7 @@ export function EmployeeNameField({
   onBlur,
 }: {
   value: string;
-  /** Includes the role to distinguish name fields in the team. */
   label: string;
-  /** The job the placeholder's examples lead with, when the card knows it
-   *  and the field has room for it whole. */
   role?: string;
   invalid: boolean;
   describedBy: string;
@@ -50,8 +41,6 @@ export function EmployeeNameField({
     measured.fit.textWidth,
     measured.fit.availableWidth,
   );
-  // The press that focuses the field selects the name on focus; its own
-  // mouseup would then collapse that selection to a caret, so it is dropped.
   const keepSelection = useRef(false);
 
   return (
@@ -61,8 +50,6 @@ export function EmployeeNameField({
         invalid ? "border-danger" : "border-line-input",
       )}
     >
-      {/* The label holds the field, so a press anywhere on it lands in the
-          name; the pencil is a second label for the same field. */}
       <label
         htmlFor={id}
         className="flex min-w-0 flex-1 cursor-text flex-col justify-center py-0.5 pl-3"

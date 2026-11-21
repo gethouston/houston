@@ -23,13 +23,6 @@ import {
   conversationScope,
 } from "./vm-output";
 
-/**
- * `reply_complete` hands the card back before `done`: an early provisional
- * `needs_you` persist (ordered behind the turn-start write), the VM's
- * `replyComplete` while the turn is still running, and the settle persist
- * still carrying the offers. Later work takes the card back.
- */
-
 const AGENT = "Houston/Bo";
 const registry = new StreamRegistry();
 afterEach(() => registry.disposeAll());
@@ -44,11 +37,8 @@ const offers: PendingInteraction = {
   ],
 } as unknown as PendingInteraction;
 
-/** A beat between frames: a live turn's frames are seconds apart, so each
- *  board write settles before the next frame arrives. */
 const beat = () => new Promise((r) => setTimeout(r, 2));
 
-/** One connection that replays `frames` with `turnId`, then closes. */
 function engineWith(frames: WireFrame[], turnId = "t1") {
   const engine = {
     async streamEvents(_id: string, o: EventStreamOptions) {
@@ -78,7 +68,6 @@ type Persist = {
   vm?: ConversationVM;
 };
 
-/** Board persists in order, each with the VM as it stood right after. */
 function recordingOutput(sessionKey: string) {
   const store = new ScopeStore();
   const vm = new ConversationVmOutput(store);
@@ -156,8 +145,6 @@ test("reply_complete persists needs_you early; done still carries the offers", a
     { status: "needs_you", interaction: null, provisional: true },
     { status: "needs_you", interaction: offers, provisional: false },
   ]);
-  // The early hand-back is not a settle: the VM keeps the turn running with
-  // its board still "running" (the notification gate), but flags the reply.
   const early = persists[1]?.vm;
   expect(early?.running).toBe(true);
   expect(early?.boardStatus).toBe("running");
@@ -174,7 +161,7 @@ test("work after reply_complete takes the card back to running", async () => {
     engineWith([
       text("Done."),
       replyComplete,
-      text("\n\n"), // a block separator is not more work
+      text("\n\n"),
       { type: "tool_start", data: { name: "Bash", args: {} } },
       text("Actually, one more thing."),
       done,
@@ -196,7 +183,6 @@ test("work after reply_complete takes the card back to running", async () => {
   expect(persists[2]?.vm?.running).toBe(true);
 });
 
-/** An observed turn `t9` replaying `frames`, `gap` (or nothing) between them. */
 function observedEngine(frames: WireFrame[], gap?: () => Promise<unknown>) {
   return {
     async streamEvents(_id: string, o: EventStreamOptions) {
@@ -229,8 +215,6 @@ test("an observed turn hands its card back early too", async () => {
 });
 
 test("an early hand-back the settle already overtook is never written", async () => {
-  // `done` lands in the same tick: the settle queued behind the forecast,
-  // which would only flicker the card (and drop its offers for a beat).
   const { output, persists } = recordingOutput("sk-overtaken");
   const engine = observedEngine([text("Hi."), replyComplete, done]);
 
@@ -277,17 +261,12 @@ test("a resumed turn takes its early hand-back back", () => {
   });
   setReplyPhase(s, true);
   finishResumed(s, "Houston restarted and is continuing.");
-  // The engine runs the work again by itself: the card must read running.
   expect(phases).toEqual([true, false]);
   expect(settles).toEqual([]);
   expect(s.terminal).toBeNull();
 });
 
 test("a turn its predecessor's settle starts writes its card after that settle", async () => {
-  // A send queued during the wrap-up flushes the moment the turn settles,
-  // synchronously, while the settle's own card write is still to come. The
-  // next turn's `running` must land after it, or the card reads "Needs you"
-  // (with the previous turn's offers) for the whole next turn.
   const sk = "sk-next";
   const store = new ScopeStore();
   const vm = new ConversationVmOutput(store);
@@ -309,7 +288,6 @@ test("a turn its predecessor's settle starts writes its card after that settle",
     persistBoardStatus: async (_a, _s, status, interaction, opts) => {
       const tag = `${status}${opts?.provisional ? "*" : ""}${interaction ? "+offers" : ""}`;
       writes.push(`start:${tag}`);
-      // The early hand-back is slow: still out when `done` arrives.
       await new Promise((r) => setTimeout(r, opts?.provisional ? 20 : 1));
       writes.push(`end:${tag}`);
     },
@@ -361,7 +339,6 @@ test("a board write waits for the one before it", async () => {
   void board.persist("running", null);
   board.replyPhase(true);
   await new Promise((r) => setTimeout(r, 5));
-  // The slow start write still holds the line: nothing overtook it.
   expect(order).toEqual(["start:running"]);
   releaseStart();
   await new Promise((r) => setTimeout(r, 5));

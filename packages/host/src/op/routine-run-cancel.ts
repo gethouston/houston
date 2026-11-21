@@ -15,12 +15,6 @@ function decoded(segment: string | undefined): string | null {
 
 type Stopped = { ok: true; stopped?: StoppedPooledRun } | { ok: false };
 
-/**
- * The gateway's `{stopped: {sessionKey, startedAt}}`, sent when it released
- * the run's claim for a user stop. The session key must be one of the two
- * conversations the routine's runs use, so the body can only ever describe
- * this run.
- */
 async function readStopped(
   req: IncomingMessage,
   routineId: string,
@@ -32,7 +26,6 @@ async function readStopped(
   } catch {
     return { ok: false };
   }
-  // `readJson` hands back whatever parsed, `null` and arrays included.
   if (typeof body !== "object" || body === null || Array.isArray(body))
     return { ok: false };
   const raw = (body as Record<string, unknown>).stopped;
@@ -50,17 +43,6 @@ async function readStopped(
   return { ok: true, stopped: { sessionKey, startedAt } };
 }
 
-/**
- * The routine-runs group as a pool worker serves it: the stop only. Firing a
- * run starts a turn, which the gateway's pooled run-now dispatches as a turn,
- * so `routines/:id/run` is left to the chain's 404.
- *
- * A worker has no runtime to abort: the gateway stopped the run's sandbox by
- * releasing its pool claim before this op ran, so the stop here is the row
- * alone (schedule/cancel.ts cancelRunRow), answered exactly as the pod
- * answers it. With `stopped` the gateway vouches the run was live, so a row
- * that never reached the store is recorded instead of answering 404.
- */
 export async function handleRoutineRunCancelOp(
   deps: AgentOpChainDeps,
   method: string,

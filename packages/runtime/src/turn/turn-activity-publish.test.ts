@@ -26,7 +26,6 @@ async function setup(stored: unknown[] | undefined) {
   const storeRoot = await mkdtemp(join(tmpdir(), "activity-store-"));
   if (stored) await write(join(storeRoot, "p", ...rel.split("/")), stored);
   const workspaceDir = await mkdtemp(join(tmpdir(), "activity-turn-"));
-  // The turn's merged, uploaded board.
   await write(join(workspaceDir, ".houston", "activity", "activity.json"), [
     card("a", "needs_you"),
   ]);
@@ -64,7 +63,6 @@ async function setup(stored: unknown[] | undefined) {
 }
 
 test("the doc is the stored board, never the turn's own copy", async () => {
-  // Another writer landed card g after this turn's upload.
   const { puts, publish } = await setup([card("a", "needs_you"), card("g")]);
   expect(await publish()).toEqual({ ok: true });
   expect(puts).toEqual([

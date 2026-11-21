@@ -14,11 +14,6 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { SpyChannel } from "./first-day-spy-channel";
 
-/**
- * A control-plane host serving `POST /agents/:agentId/first-day` over memory
- * stores and a spy channel, for the first-day route's tests.
- */
-
 const verifier: TokenVerifier = {
   async verify(bearer) {
     return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
@@ -45,7 +40,6 @@ const HEADERS = {
 const CONFIG_SEED = ".houston/config/config.json";
 const BRIEF = "---\nindustry: Finance\nrole: Financial analyst\n---\n";
 
-/** A new hire's config with its first day waiting, on a pinned brain. */
 export const PENDING = {
   provider: "anthropic",
   model: "claude-sonnet-4-5",
@@ -56,12 +50,10 @@ export const PENDING = {
 export interface FirstDayHost {
   vfs: MemoryVfs;
   channel: SpyChannel;
-  /** Hire an employee the way every surface does: its config rides the create. */
   hire(config?: Record<string, unknown>): Promise<string>;
   start(agentId: string, body?: unknown): Promise<Response>;
   setupTasks(): Promise<Activity[]>;
   firstDay(): Promise<AgentConfig["firstDay"]>;
-  /** A setup task left by a start that died before its first turn fired. */
   leaveUnfiredTask(): Promise<Activity>;
   close(): Promise<void>;
 }

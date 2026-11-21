@@ -42,7 +42,6 @@ const EMAIL_SESSION: Session = {
 const jwt = (claims: object) =>
   `e30.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.`;
 
-// firebase-js-sdk tags the refusal with GCIP's whole answer, `localId` included.
 const accountExists = (email?: string) =>
   new FirebaseError(
     "auth/account-exists-with-different-credential",

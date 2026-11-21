@@ -7,7 +7,6 @@ const CTX = {
   agent: { id: "Personal/Alfred" },
 } as unknown as ChannelCtx;
 
-/** Noon UTC on a fixed day — far from midnight unless a test wants it. */
 const NOON = Date.UTC(2026, 6, 15, 12, 0, 0);
 
 function build(overrides: Partial<UsageSamplerOptions> = {}) {
@@ -65,11 +64,10 @@ function lastDay(state: { requests: { body: unknown }[] }) {
 describe("UsageSampler", () => {
   it("accrues busy time and caps a late tick at twice the sample interval", async () => {
     const { sampler, state } = build();
-    await sampler.tick(); // establishes lastTickAt, idle
+    await sampler.tick();
     state.turnBusy = true;
     state.now += 5_000;
     await sampler.tick();
-    // A starved loop: 60s since the last tick must credit at most 10s.
     state.now += 60_000;
     await sampler.tick();
     await sampler.flush();
@@ -92,7 +90,7 @@ describe("UsageSampler", () => {
     state.now = Date.UTC(2026, 6, 15, 23, 59, 58);
     await sampler.tick();
     state.turnBusy = true;
-    state.now += 5_000; // 23:59:58 -> 00:00:03 next day
+    state.now += 5_000;
     await sampler.tick();
     await sampler.flush();
     expect(lastBody(state).days).toEqual([
@@ -109,7 +107,7 @@ describe("UsageSampler", () => {
     state.now += 5_000;
     await sampler.tick();
     state.now += 5_000;
-    await sampler.tick(); // same turn + run still going: no new counts
+    await sampler.tick();
     state.turnBusy = false;
     state.runIds = [];
     state.now += 5_000;
@@ -128,7 +126,7 @@ describe("UsageSampler", () => {
     await sampler.tick();
     state.turnBusy = true;
     state.now += 5_000;
-    await sampler.tick(); // rising edge: flushes immediately (request #1)
+    await sampler.tick();
     await sampler.flush();
     state.now += 5_000;
     await sampler.tick();
@@ -136,7 +134,6 @@ describe("UsageSampler", () => {
     expect(state.requests).toHaveLength(3);
     expect(body(state, 0).days[0]?.activeMs).toBe(5_000);
     expect(lastDay(state).activeMs).toBe(10_000);
-    // Same boot: the gateway GREATEST-upserts on (bootId, day).
     expect(body(state, 0).bootId).toBe(lastBody(state).bootId);
   });
 
@@ -145,18 +142,16 @@ describe("UsageSampler", () => {
     await sampler.tick();
     state.turnBusy = true;
     state.now += 5_000;
-    await sampler.tick(); // rising edge -> immediate report
+    await sampler.tick();
     expect(state.requests).toHaveLength(1);
     expect(lastDay(state).turns).toBe(1);
     state.now += 5_000;
-    await sampler.tick(); // still busy: no edge, no extra report
+    await sampler.tick();
     expect(state.requests).toHaveLength(1);
     state.turnBusy = false;
     state.now += 5_000;
-    await sampler.tick(); // falling edge -> the finished turn's time reports
+    await sampler.tick();
     expect(state.requests).toHaveLength(2);
-    // The idle tick's own stretch is never credited (the turn ended somewhere
-    // inside it — bounded undercount): 2 busy ticks x 5s.
     expect(lastDay(state).activeMs).toBe(10_000);
   });
 
@@ -165,14 +160,14 @@ describe("UsageSampler", () => {
     await sampler.tick();
     state.turnBusy = true;
     state.now += 5_000;
-    await sampler.tick(); // rising edge
+    await sampler.tick();
     expect(lastBody(state).busy).toBe(true);
     state.now += 5_000;
-    await sampler.flush(); // periodic flush while the turn runs
+    await sampler.flush();
     expect(lastBody(state).busy).toBe(true);
     state.turnBusy = false;
     state.now += 5_000;
-    await sampler.tick(); // falling edge
+    await sampler.tick();
     expect(lastBody(state).busy).toBe(false);
   });
 
@@ -181,14 +176,14 @@ describe("UsageSampler", () => {
     await sampler.tick();
     state.turnBusy = true;
     state.now += 5_000;
-    await sampler.tick(); // rising edge reports at once
+    await sampler.tick();
     state.turnBusy = false;
     state.now += 2_000;
-    await sampler.tick(); // falling edge inside the floor: held
+    await sampler.tick();
     expect(state.requests).toHaveLength(1);
     expect(lastBody(state).busy).toBe(true);
     state.now += 3_000;
-    await sampler.tick(); // floor elapsed: the held edge reports
+    await sampler.tick();
     expect(state.requests).toHaveLength(2);
     expect(lastBody(state).busy).toBe(false);
   });
@@ -219,9 +214,7 @@ describe("UsageSampler", () => {
     state.now += 5_000;
     await sampler.stop();
     expect(lastDay(state).activeMs).toBe(5_000);
-    await sampler.stop(); // idempotent
-    // stop() drains via one edge flush (the final sample sees the rising
-    // edge) plus the terminal flush; a second stop adds nothing.
+    await sampler.stop();
     expect(state.requests).toHaveLength(2);
   });
 

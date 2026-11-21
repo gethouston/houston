@@ -19,14 +19,6 @@ function roleKey(role: string): "owner" | "admin" | "user" {
   return role === "owner" || role === "admin" ? role : "user";
 }
 
-/**
- * Organization > Activity: a plain-language feed of the org audit log. Each
- * entry is mapped to a sentence by the pure {@link formatAuditEntry}; ids and
- * slugs resolve to member emails + agent names against the loaded roster and
- * agent list. Newest first, "Show more" pages backwards via the before-cursor.
- * Owner sees the whole org; an admin sees only their managed agents (the
- * gateway filters). Failures surface through the query's `call()` wrapper.
- */
 export default function ActivityTab({ ctx }: OrgTabProps) {
   const { t, i18n } = useTranslation("teams");
   const agents = useAgentStore((s) => s.agents);

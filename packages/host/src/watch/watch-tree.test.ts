@@ -10,12 +10,6 @@ import { join } from "node:path";
 import { expect, test, vi } from "vitest";
 import { type TreeWatch, type WatchDirFn, watchTree } from "./watch-tree";
 
-/**
- * The Linux directory-only strategy, exercised on any platform by forcing
- * `platform: "linux"` — per-directory `fs.watch` is portable even though the
- * strategy only ships on Linux (HOU-841).
- */
-
 function linuxWatch(
   root: string,
   events: Array<{ type: string; rel: string }>,
@@ -64,7 +58,6 @@ test("a directory created after start is watched too", async () => {
   try {
     await new Promise((r) => setTimeout(r, 100));
     mkdirSync(join(root, "late", "nested"), { recursive: true });
-    // Wait until the new dirs are armed, then write inside the deepest one.
     await waitFor(() => events.some((e) => e.rel === join("late", "nested")));
     await new Promise((r) => setTimeout(r, 100));
     writeFileSync(join(root, "late", "nested", "file.txt"), "x");
@@ -81,8 +74,6 @@ test("an exhausted watch budget degrades once and keeps existing coverage", asyn
   mkdirSync(join(root, "sub-a"));
   mkdirSync(join(root, "sub-b"));
   const onError = vi.fn();
-  // The root watch succeeds; every further add hits the ENOSPC the kernel
-  // throws when the inotify budget is spent.
   let calls = 0;
   const watchDir: WatchDirFn = (dir, cb) => {
     calls += 1;
@@ -97,7 +88,6 @@ test("an exhausted watch budget degrades once and keeps existing coverage", asyn
   const watcher = linuxWatch(root, events, onError, watchDir);
   try {
     expect(onError).toHaveBeenCalledTimes(1);
-    // Later renames re-attempt addDir; the degraded flag must not re-report.
     await new Promise((r) => setTimeout(r, 100));
     mkdirSync(join(root, "sub-c"));
     writeFileSync(join(root, "root-file.txt"), "x");
@@ -154,10 +144,6 @@ test(".git is never watched (HOU-1232)", async () => {
     await new Promise((r) => setTimeout(r, 100));
     writeFileSync(join(root, ".git", "objects", "pack"), "x");
     await new Promise((r) => setTimeout(r, 200));
-    // The one true guarantee: no watch handle ever opens under .git — a
-    // parent directory's own watch can still surface a shallow notification
-    // for its ".git" child changing (harmless; classify.ts nulls it anyway),
-    // but nothing should ever report from inside it.
     expect(watchedDirs).not.toContain(join(root, ".git"));
     expect(watchedDirs).not.toContain(join(root, ".git", "objects"));
     expect(events.some((e) => e.rel.startsWith(".git/"))).toBe(false);
@@ -199,7 +185,6 @@ test("a removed subtree releases its watchers", async () => {
   };
   const closeSpies = () =>
     [...opened.entries()].filter(([, w]) => {
-      // FSWatcher has no public "closed" flag; track via patched close.
       return (w as unknown as { __closed?: boolean }).__closed === true;
     });
   const events: Array<{ type: string; rel: string }> = [];

@@ -1,10 +1,3 @@
-/**
- * The Missions how-to section of the Houston product prompt (PRODUCT-1244):
- * teaches the agent to start new missions for itself, monitor them, and move
- * finished ones — the planning-agent loop. Split from houston-prompt.ts the
- * same way the routines guidance is. Keep in sync with the desktop twin in
- * app/src-tauri/src/houston_prompt/missions.rs.
- */
 export const missionsGuidance = `## How-To Guidance: Missions
 
 The user's board tracks missions; each mission is a separate chat with its own card. You can start new missions (\`start_mission\`), check on them (\`list_missions\`, \`read_mission\`), and move finished ones (\`update_mission_status\`): useful when the user wants parallel tracks, or wants you to hand out work and review the results.

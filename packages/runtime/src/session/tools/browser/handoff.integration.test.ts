@@ -43,10 +43,6 @@ async function until<T>(probe: () => T | undefined | false): Promise<T> {
   throw new Error("timed out waiting");
 }
 
-// A test that fails mid hand-off leaves its run waiting on the person, and
-// that run holds its pool's queue: shutdown() would wait behind it and turn
-// one failure into a hook timeout that hides it. Stopping the test's turn
-// ends the hand-off whether or not it has opened yet.
 let stopTurn = new AbortController();
 afterEach(() => {
   stopTurn.abort();
@@ -59,7 +55,6 @@ afterAll(async () => {
   server.close();
 });
 
-/** Where an element sits in the frame, 0..1 the way the live view sends it. */
 async function spot(session: HandoffSession, selector: string) {
   const page = session.tab.page;
   const box = await page.locator(selector).boundingBox();
@@ -238,7 +233,6 @@ describe.skipIf(!available)(
       const run = tool(workspace(), newPool());
       const opened = await run({ action: "open", url: `${origin}/popup` });
       const stay = ref(opened.text, "button", "Stay");
-      // The model's click is a real input event: popup blocking lets it open.
       await run({
         action: "click",
         ref: ref(opened.text, "button", "Open sign-in"),
@@ -274,7 +268,6 @@ describe.skipIf(!available)(
       await until(() => tab.context.pages().length <= 8);
       await sleep(200);
       expect(tab.context.pages()).toHaveLength(8);
-      // The opener's own opener is just the oldest page: it goes first.
       expect(first.isClosed()).toBe(true);
       expect(opener.isClosed()).toBe(false);
       expect(tab.page.isClosed()).toBe(false);

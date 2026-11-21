@@ -1,27 +1,10 @@
-/**
- * Agent-driven install instructions.
- *
- * Produces the copy-paste block served by GET /api/agents/:slug/install-instructions.
- * It is addressed to a RECEIVING assistant (Claude, ChatGPT, Gemini — framework
- * neutral) and tells it to FETCH the machine-readable AgentIR (and optional Skill
- * bundle) from our public URLs, then set the agent up locally.
- *
- * Everything the assistant fetches is UNTRUSTED: the block frames the fetched IR
- * as data that DESCRIBES an agent, never as commands to obey, and forbids adding
- * secrets. Integrations are shown as context only — no live-access / OAuth / MCP
- * claims. Pure and dependency-light: callers pass already-resolved absolute URLs
- * so the same builder works in a route handler or handed to a client component.
- */
 import type { AgentIR } from "@houston/agentstore-contract";
 import { renderCredit, singleLine } from "../export/shared";
 import { siteConfig } from "../site-config";
 
 export interface InstallInstructionUrls {
-  /** Absolute URL serving the canonical machine-readable AgentIR (JSON). */
   irUrl: string;
-  /** Absolute URL serving the ready-to-use Claude Skill .zip bundle. */
   bundleUrl: string;
-  /** Absolute URL of the public agent page (for the human credit link). */
   pageUrl: string;
 }
 

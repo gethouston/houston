@@ -2,13 +2,6 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { setAdapterErrorSink } from "../error-sink";
 import type { HoustonClientBase } from "./base";
 
-/**
- * A config-doc write is mirrored into the runtime's settings, the only place
- * the runtime reads a saved model or effort from. The mirror is best-effort
- * (the doc write already landed), but its failure must reach the app's error
- * path rather than a bare console line.
- */
-
 vi.mock("../agent-files", () => ({
   readAgentFile: vi.fn(),
   writeAgentFile: vi.fn(),

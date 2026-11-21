@@ -15,7 +15,6 @@ export function AiHubCatalogControls({
   query: string;
   onQueryChange: (value: string) => void;
   inStrip: boolean;
-  /** The active mode's filters (billing chips / model facets). */
   facets?: ReactNode;
 }) {
   const { t } = useTranslation("aiHub");

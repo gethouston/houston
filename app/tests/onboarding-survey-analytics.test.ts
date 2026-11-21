@@ -8,13 +8,6 @@ import {
   ANALYTICS_SOURCE as SOURCE,
 } from "./fixtures/analytics-source.ts";
 
-// `analytics.ts` can't be imported here (posthog-js + the engine adapter come
-// with it), so the survey's contract with PostHog is asserted against the
-// source. Two things must hold or the dashboards go quiet: every survey event
-// is in the AnalyticsEventName union (typos fail the build, absences don't),
-// and every survey prop is in BOTH the property union and ALLOWED_PROPS —
-// `cleanProps` drops anything missing from the Set, silently.
-
 describe("onboarding survey analytics", () => {
   it("declares every survey event", () => {
     for (const event of [
@@ -59,8 +52,6 @@ describe("onboarding survey analytics", () => {
   });
 
   it("keeps the goal text OUT of event payloads", () => {
-    // Free text the user wrote: it may only reach the person property, never an
-    // event. Leaving it out of ALLOWED_PROPS is what enforces that.
     ok(PROPERTY_UNION.has("goal_text"));
     strictEqual(ALLOWED_PROPS.has("goal_text"), false);
   });

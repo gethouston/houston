@@ -258,7 +258,6 @@ describe("an org avatar", () => {
   });
 });
 
-/** The success step's title, lines, org rows and button for a stored choice. */
 function doneText(stored: BillingChoice) {
   const step = choiceDone(stored);
   ok(step, "a stored pick has a success step");
@@ -335,7 +334,6 @@ describe("the success step", () => {
   });
 });
 
-/** The intro the modal opens on: its date chip, points and actions. */
 function introText(
   choice: BillingChoice,
   page: "notice" | "not_kept" = "notice",

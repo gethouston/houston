@@ -1,4 +1,3 @@
-/** State and behavior for the list-only Files browser. */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { filterFolder } from "./filter";
 import { buildTree } from "./tree";

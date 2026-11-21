@@ -1,10 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * `RoutinesGridProps`, read off `ui/routines/src/routines-grid.tsx`, plus the
- * token utilities the list surface paints with. Data only — the page beside
- * this file renders it.
- */
 export const gridProps: readonly SpecimenProp[] = [
   {
     name: "routines",
@@ -113,7 +108,6 @@ export const gridProps: readonly SpecimenProp[] = [
   },
 ];
 
-/** The token utilities the list surface and its rows paint with. */
 export const gridTokens: readonly string[] = [
   "bg-transparent",
   "bg-card",

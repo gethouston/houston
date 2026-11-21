@@ -100,7 +100,6 @@ describe("shouldOpenLoginUrlDirectly", () => {
   });
 
   it("keeps the dialog for the Claude/Anthropic setup-token paste flow (auth_code) — its url is docs, not a sign-in page", () => {
-    // Desktop must NOT auto-open the docs URL: the user needs the paste dialog.
     strictEqual(
       shouldOpenLoginUrlDirectly({
         isDesktop: true,
@@ -109,7 +108,6 @@ describe("shouldOpenLoginUrlDirectly", () => {
       }),
       false,
     );
-    // Web behaves the same (it always dialogs anyway).
     strictEqual(
       shouldOpenLoginUrlDirectly({
         isDesktop: false,
@@ -132,10 +130,6 @@ describe("shouldOpenLoginUrlDirectly", () => {
   });
 });
 
-// The Codex loopback relay drives ChatGPT sign-in for openai on a Tauri desktop
-// ONLY when the engine is remote (pi's 1455 is in the pod, so a local bind can't
-// collide). Co-located desktop, a pending device code, a non-openai provider,
-// and web clients all stay on their existing paths.
 describe("shouldUseCodexLoopback", () => {
   const hosted = { VITE_HOSTED_ENGINE_URL: "https://cloud.example" };
   const remoteHost = { VITE_NEW_ENGINE_URL: "https://houston.example.com" };
@@ -231,14 +225,8 @@ describe("shouldUseCodexLoopback", () => {
   });
 });
 
-// The zero-terminal Claude browser login runs for anthropic on a CO-LOCATED
-// Tauri desktop only: the credential `claude auth login` caches locally is the
-// same dir the local runtime reads. Remote-engine desktop keeps the setup-token
-// paste flow (the pod can't read this machine's Keychain — hosted follow-up).
 describe("shouldUseClaudeDesktopLogin", () => {
   it("runs for anthropic on ANY Tauri desktop — co-located AND remote", () => {
-    // Both topologies drive the same browser login on this machine; the remote
-    // case pushes the extracted credential to the pod afterwards.
     strictEqual(
       shouldUseClaudeDesktopLogin({ provider: "anthropic", isTauri: true }),
       true,

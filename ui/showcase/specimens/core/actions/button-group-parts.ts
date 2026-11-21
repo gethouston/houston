@@ -1,9 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * The button-group page's tables, split out so the page stays under the
- * 200-line rule. Read off `ui/core/src/components/button-group.tsx`.
- */
 export const buttonGroupProps: readonly SpecimenProp[] = [
   {
     name: "orientation",

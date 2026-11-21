@@ -45,8 +45,6 @@ export interface PageMarksProps {
   pinLabel: (mark: PdfMark) => string;
 }
 
-/** The comments drawn on one page: highlights or outlines, each with its
- *  numbered pin, plus the selection waiting for a comment. */
 export function PageMarks({
   marks,
   pending,

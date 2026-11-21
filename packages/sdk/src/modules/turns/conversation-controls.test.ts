@@ -27,7 +27,6 @@ function controls(cancelled: boolean) {
   };
 }
 
-/** A send in c1 still waiting to go out: Stop answers `finish`. */
 function waiting(registry: StreamRegistry) {
   const finish = vi.fn();
   const stopUnsent = vi.fn(() => finish);
@@ -45,7 +44,6 @@ test("cancel is the host's answer, verbatim, even with a send waiting", async ()
 
   expect(await c.cancel("c1", "a1")).toEqual({ ok: true, cancelled: false });
   expect(cancel).toHaveBeenCalledWith("c1");
-  // The local stop is its own seam: cancel alone never reaches it.
   expect(stopUnsent).not.toHaveBeenCalled();
 });
 

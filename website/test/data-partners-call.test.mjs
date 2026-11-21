@@ -1,9 +1,3 @@
-// The /data-partners "Book a call" popup: the rules its form follows
-// (assets/data-partners-call-model.js), the request it makes
-// (assets/data-partners-call-send.js), the table it lands in
-// (supabase/migrations/*_data_partner_calls.sql), and the page wiring that
-// makes every booking link open it.
-
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
@@ -175,8 +169,6 @@ test("the sheet's columns are the row's fields", () => {
   assert.deepEqual(keys.sort(), [...Object.keys(row), "submitted_at"].sort());
 });
 
-// Every booking link on the page opens the popup, and keeps the calendar as
-// its href so it still books a call without JS.
 test("every booking link on the page opens the popup", () => {
   const files = ["nav", "hero", "estimator", "contact"].map((name) =>
     read(`../src/_includes/data-partners/${name}.njk`),
@@ -195,7 +187,6 @@ test("the popup has a field for everything the form checks", () => {
   const page = read("../src/_includes/data-partners.njk");
   assert.match(page, /include "data-partners\/call-modal\.njk"/);
   assert.match(page, /src="\/assets\/data-partners-call\.js"/);
-  // A field is either written out or one call of the template's macro.
   for (const name of FIELDS) {
     const field = new RegExp(`id="dpc-f-${name}"|field\\("${name}"`);
     assert.match(modal, field, name);

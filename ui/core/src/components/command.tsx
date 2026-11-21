@@ -181,7 +181,5 @@ export {
   CommandList,
   CommandSeparator,
   CommandShortcut,
-  // cmdk's built-in fuzzy scorer, re-exported so consumers can wrap it (e.g. to
-  // fold diacritics before scoring) without taking a direct `cmdk` dependency.
   defaultFilter,
 };

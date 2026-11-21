@@ -10,7 +10,6 @@ import {
   type ToolMatch,
 } from "../integrations/types";
 
-/** Resolve the provider that owns an action when callers omit one. */
 export function providerForAction(
   registry: IntegrationRegistry,
   action: string,
@@ -22,7 +21,6 @@ export function providerForAction(
   return ids.find((id) => id !== "custom") ?? ids[0] ?? "custom";
 }
 
-/** Inputs for a provider-fan-out integration search. */
 export interface IntegrationSearchInput {
   registry: IntegrationRegistry;
   userId: string;
@@ -33,26 +31,12 @@ export interface IntegrationSearchInput {
   fatalFailure?: (error: unknown) => boolean;
 }
 
-/** Merged integration search results and scope-fallback signals. */
 export interface IntegrationSearchOutput {
   items: ToolMatch[];
   unscopedFallback?: true;
   scopeIgnored?: true;
 }
 
-/**
- * The providers an explicit `app` scope fans out to. A custom integration the
- * scope names EXACTLY (its slug or name, normalized) owns the scope alone:
- * the other providers resolve scopes by substring too, so "COMFER Odoo 19
- * JSON-2" also matched Composio's `odoo` toolkit and listed a dozen of its
- * (turned-off) actions AHEAD of the user's own integration, which the model
- * then read as "the catalog has no such action" (PRODUCT-1841). This is
- * deliberate even when another provider carries the same name exactly: the
- * user's own integration named that way is the one they mean. A scope no
- * custom integration names exactly fans out as before. A failed definitions
- * read is reported as a fan-out failure (surfaced when nothing else answers)
- * rather than taking every other provider's results down with it.
- */
 async function scopeProviders(
   input: IntegrationSearchInput,
   providerIds: IntegrationProviderId[],
@@ -70,22 +54,12 @@ async function scopeProviders(
   }
 }
 
-/** Search selected providers and preserve healthy results across partial failure. */
 export async function searchIntegrations(
   input: IntegrationSearchInput,
 ): Promise<IntegrationSearchOutput> {
   const allProviderIds = input.provider
     ? [input.provider]
     : input.registry.ids();
-  // A curated app that another provider also carries (HighLevel is in
-  // Composio's catalog too) is one app to the user — one connect card, with
-  // that provider's connect leading. The custom provider's bare "connect
-  // me" row for it (no action, not connected) is then a duplicate offer and
-  // is dropped; its compiled tools and every other provider's rows stay.
-  // A curated alias ("leadconnector") names a slug other providers may
-  // carry under the real name only; they get the canonical slug, while the
-  // custom provider keeps the raw scope and ranks its own exact matches
-  // first (custom/search.ts).
   const fanOut = async (scope: string | undefined) => {
     const owners = await scopeProviders(input, allProviderIds, scope);
     const providerIds = owners.ids;
@@ -168,7 +142,6 @@ export async function searchIntegrations(
   };
 }
 
-/** Inputs for one provider-selected integration action. */
 export interface IntegrationExecuteInput {
   registry: IntegrationRegistry;
   userId: string;
@@ -179,7 +152,6 @@ export interface IntegrationExecuteInput {
   provider?: IntegrationProviderId;
 }
 
-/** Execute an action once through its selected provider. */
 export async function executeIntegration(
   input: IntegrationExecuteInput,
 ): Promise<ActionResult> {

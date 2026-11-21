@@ -90,7 +90,6 @@ describe("legacy survey industries", () => {
     strictEqual(normalizeOnboardingIndustryChoice(7), null);
     strictEqual(normalizeOnboardingIndustryChoice(""), null);
     strictEqual(normalizeOnboardingIndustryChoice(undefined), null);
-    // An object key is not an id: `toString` must not read as a legacy entry.
     strictEqual(
       normalizeOnboardingIndustryChoice("toString"),
       ONBOARDING_INDUSTRY_SOMETHING_ELSE,

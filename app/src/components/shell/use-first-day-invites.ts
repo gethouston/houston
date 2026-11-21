@@ -7,12 +7,6 @@ import type { Agent } from "../../lib/types";
 import type { AgentActivitySummary } from "./agent-activity-summary-model";
 import { firstDayCandidates, firstDayInviteIds } from "./first-day-invites";
 
-/**
- * The employees whose rail rows invite the person to start their first day
- * (`first-day-invites.ts`). Only the confirmed-empty employees this caller may
- * start have their config read, on the same query the board uses, so the
- * invite and the board's start button can never disagree.
- */
 export function useFirstDayInvites(
   agents: Agent[],
   summaries: Record<string, AgentActivitySummary>,

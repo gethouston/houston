@@ -24,15 +24,12 @@ const single = choiceModal(choice({ needed: false, orgs: [LA_FILA] }), at());
 const closed = choiceModal(choice(), at({ otherDialogOpen: true }));
 const stored = choice({ freeOrgSlug: INNOVA.slug });
 const saved: BillingChoiceSave = { kind: "saved", choice: stored };
-/** The modal once the save's refetch shows the stored pick. */
 const picked = choiceModal(stored, at());
 const INTRO = { step: "intro", page: "notice" };
 const NOT_KEPT = { step: "intro", page: "not_kept" };
-/** Next through both of the pick's intro pages, onto the picker. */
 const toPicker = (frame: ChoiceModalFrame) =>
   nextChoicePage(nextChoicePage(frame));
 
-/** The frame after each modal in turn, from a closed one. */
 const run = (...modals: (typeof pick)[]): ChoiceModalFrame =>
   modals.reduce(nextChoiceModalFrame, CLOSED_CHOICE_FRAME);
 const savedFrame = () => finishPicking(toPicker(run(pick)), saved);
@@ -58,7 +55,6 @@ describe("nextChoiceModalFrame", () => {
   });
 
   it("drops the picker when the notice stops being a pick", () => {
-    // A refusal's refetch shows the person owns one org now: nothing to pick.
     expect(nextChoiceModalFrame(toPicker(run(pick)), single)).toEqual({
       open: true,
       shown: single,
@@ -89,8 +85,6 @@ describe("nextChoiceModalFrame", () => {
 });
 
 describe("a picker the modal closes under", () => {
-  // The save's cache write turns the notice into picked, which closes the
-  // modal, before or after the save's own answer reaches finishPicking.
   it("stays open until the save answers, then moves to the success step", () => {
     const held = nextChoiceModalFrame(toPicker(run(pick)), picked);
     expect(held).toMatchObject({ open: true, phase: { step: "picking" } });

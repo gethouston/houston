@@ -1,19 +1,7 @@
-/*
- * The free-org briefing's motion. Entrances fill `backwards` only, so once
- * they end nothing holds a transform and a press can still scale the element.
- */
-
-/* A changed step clears a short blur as it rises. */
 .plan-briefing-step {
   animation: briefing-step var(--briefing-duration) var(--briefing-easing) backwards;
 }
 
-/*
- * Points and rows rise in turn, a fifth of the step's duration apart. The
- * fourth and every later one start together, so the last starts by the
- * step's own duration however long the list is. They take clicks while
- * they rise.
- */
 .plan-briefing-stagger > * {
   --briefing-stagger: calc(var(--briefing-duration) / 5);
   animation: briefing-row calc(var(--briefing-duration) * 1.25) var(--briefing-easing) backwards;
@@ -47,7 +35,6 @@
   color: var(--ht-org-initials);
 }
 
-/* The success check pops, then draws its stroke. */
 .plan-briefing-badge {
   animation: briefing-badge calc(var(--briefing-duration) * 2) var(--briefing-easing) backwards;
 }
@@ -81,7 +68,6 @@
   from { opacity: 0; }
 }
 
-/* Reduced motion: every movement becomes a plain fade. */
 @media (prefers-reduced-motion: reduce) {
   .plan-briefing-step,
   .plan-briefing-stagger > *,

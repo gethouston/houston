@@ -1,13 +1,6 @@
 import { FENCE_HEADER } from "./fence-wire";
 import { launchBrowser } from "./launch";
 
-/**
- * `HOUSTON_SIDECAR_ROLE=browser-probe` (scripts/smoke-sidecar-browser.sh):
- * start the browser exactly as the tool does, fence proxy included, render a
- * page, and check the fence refuses this machine. A packaged build whose
- * bundled playwright-core cannot find its own files fails here, not on a
- * person's first browser call.
- */
 export async function runBrowserProbe(): Promise<void> {
   const browser = await launchBrowser();
   try {

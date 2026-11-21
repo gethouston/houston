@@ -9,16 +9,6 @@ import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { accessWidened } from "./agent-access-diff.ts";
 
-/**
- * Optimistic write for an agent's assignee roster (Teams v2). Sends the
- * explicit `{userId, access}[]` via `tauriAgents.setAssignments`, which routes
- * through `call()` (reporting, and the expected-state toasts). This hook adds
- * the OPTIMISTIC part: it patches the agent's `assignments` /
- * `assignedUserIds` in the Zustand agent store so the surface and the chat
- * "Shared agent" note update on click, rolls that patch back if the write
- * fails, and tells the user unless `call()` already did. `onSettled` reloads
- * the agent list so the server's authoritative shape wins.
- */
 function patchAgent(
   agent: Agent,
   agentId: string,
@@ -32,17 +22,11 @@ function patchAgent(
   };
 }
 
-/** Where the write came from, for the `agent_shared` event. */
 export type ShareSource = "share_dialog" | "agent_settings_people";
 
 export interface ShareAgentVariables {
   agentId: string;
-  /** The roster to write (set-replace). Empty = shared with everyone. */
   assignments: AgentAssignment[];
-  /**
-   * The org roster. Needed to tell a real widening from a no-op: the everyone
-   * sentinel only expands against the member list ({@link accessWidened}).
-   */
   members: readonly OrgMember[];
 }
 
@@ -63,8 +47,6 @@ export function useShareAgent(source: ShareSource) {
       return snapshot;
     },
     onSuccess: (_data, { agentId, assignments, members }, snapshot) => {
-      // Only an actual WIDENING is a share; narrowing is revocation, and
-      // making the everyone sentinel explicit changes nobody's access at all.
       const before = snapshot?.agents.find((a) => a.id === agentId);
       if (!before) return;
       const widened = accessWidened({
@@ -100,5 +82,4 @@ export function useShareAgent(source: ShareSource) {
   });
 }
 
-/** The mutation object surfaces pass down so one write channel serves them all. */
 export type ShareAgentMutation = ReturnType<typeof useShareAgent>;

@@ -39,7 +39,6 @@ test("a stuck action closes the slot's context and refuses with page_unresponsiv
   expect((error as BrowserToolError).code).toBe("page_unresponsive");
   expect(close).toHaveBeenCalledOnce();
   expect(slot.tab).toBeNull();
-  // The stuck call ends once its context is gone; that end is only logged.
   release(new Error("Target closed"));
   await Promise.resolve();
   await Promise.resolve();

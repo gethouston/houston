@@ -1,10 +1,3 @@
-/**
- * A free org's routine rules (`/v1/me/routines*`) and the presence that keeps
- * its routines from pausing (`/v1/me/presence`). Org-scoped: each request
- * rides the active org's `x-houston-org`, and the gateway applies the rules of
- * that org's tier.
- */
-
 import type { PlanRoutine, PlanRoutineKey } from "@houston/wire-types";
 import { type HttpScope, httpRequest } from "../http";
 

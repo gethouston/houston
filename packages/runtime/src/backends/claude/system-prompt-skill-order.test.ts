@@ -5,11 +5,6 @@ import type { LoadSkillsFromDirOptions } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test, vi } from "vitest";
 import { buildSystemPrompt } from "./system-prompt";
 
-/**
- * The skill loader lists skills in directory-read order, which differs between
- * filesystems and so between pool workers. This seam replays one real load in
- * a different order, the way another worker's disk would hand it back.
- */
 const readOrder = vi.hoisted(() => ({ reversed: false }));
 
 vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => {
@@ -33,7 +28,6 @@ afterEach(() => {
 function workspaceWithSkills(): string {
   const dir = mkdtempSync(join(tmpdir(), "houston-skill-order-"));
   mkdirSync(join(dir, ".houston"), { recursive: true });
-  // Folder names sort opposite to skill names, so neither order is an accident.
   for (const [slug, name] of [
     ["a-folder", "zeta-report"],
     ["m-folder", "mid-intake"],

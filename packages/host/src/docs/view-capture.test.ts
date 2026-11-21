@@ -39,7 +39,6 @@ async function serveOnce(
   const response = await fetch(`http://127.0.0.1:${port}/x`);
   const body = await response.text();
   await new Promise((r) => server.close(r));
-  // The finish event fires after the response is flushed; yield once.
   await new Promise((r) => setImmediate(r));
   return { captured, body, status: response.status };
 }

@@ -12,14 +12,6 @@ import {
   makeAssistantTools,
 } from "./assistant";
 
-/**
- * The catalog's READ tools. These pin what the agent is shown: the index
- * withholds schemas (they are `houston_describe`'s job and would flood the
- * context), withheld operations — hidden, or carrying no route this build can
- * dispatch — are absent from both, and a `confirm` operation announces itself
- * in both places so the model asks before it acts.
- */
-
 const CTX = {} as ExtensionToolContext;
 const call = (async () => new Response(null)) as never;
 
@@ -93,8 +85,6 @@ const catalog: AssistantCatalog = {
       returns: { type: "null" },
       route: null,
     },
-    // Visible in the generated catalog, but no route could be derived for it,
-    // so this build cannot perform it: withheld exactly like a hidden one.
     {
       name: "exportLedger",
       group: "billing",
@@ -143,8 +133,6 @@ test("houston_capabilities with no arguments lists the groups and their counts",
   const body = text(result);
   expect(body).toContain("routines");
   expect(body).toContain("org");
-  // A withheld operation's group must not even be named as a place to look —
-  // whether it is withheld by policy (hidden) or unroutable in this build.
   expect(body).not.toContain("internal");
   expect(body).not.toContain("billing");
 });
@@ -166,8 +154,6 @@ test("houston_capabilities searches names and descriptions without schemas", asy
   const body = text(result);
   expect(body).toContain("listRoutines");
   expect(body).toContain("deleteRoutine");
-  // Schemas belong to houston_describe; the index carrying them would spend the
-  // context the two-step lookup exists to save.
   expect(body).not.toContain("agentPath");
 });
 
@@ -206,8 +192,6 @@ test("houston_describe warns on a confirm operation before it is ever called", a
     CTX,
   );
   expect(text(result)).toContain("hard to undo");
-  // The gate is Houston's, not the model's: the guidance must not suggest the
-  // model has any way to declare an approval.
   expect(text(result)).toContain("needs_confirmation");
   expect(text(result)).not.toMatch(/confirmed true/i);
 });
@@ -235,12 +219,6 @@ test.each([
   expect(text(result)).toContain("ERROR unknown_operation");
 });
 
-/**
- * THE DEPLOYMENT GATE, on the two READ tools. An operation this Houston cannot
- * perform must not be findable or readable either: a model that describes one
- * has already decided to call it, and the map it was given is the promise it
- * makes to the user.
- */
 test("houston_capabilities omits what this Houston cannot perform", async () => {
   vi.stubEnv("HOUSTON_ASSISTANT_UNSERVED", "listRoutines");
   const result = await capabilities.execute(

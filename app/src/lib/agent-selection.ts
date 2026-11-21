@@ -1,10 +1,5 @@
 import type { Agent } from "./types";
 
-/**
- * Keep an existing selection only when it still belongs to the loaded agent
- * list. Otherwise pick the first available agent so the shell never renders the
- * no-agent empty state for a workspace that already has agents.
- */
 export function selectCurrentAgent(
   agents: Agent[],
   current: Agent | null,

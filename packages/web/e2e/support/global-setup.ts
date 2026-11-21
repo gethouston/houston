@@ -1,26 +1,3 @@
-/**
- * One-time warm-up for the UI suite.
- *
- * playwright.config starts vite as a `webServer`, but Playwright only waits for
- * the PORT to open — not for vite to compile anything. vite dev transforms
- * modules on demand, so the FIRST navigation that reaches the lazily-imported
- * desktop graph (`../app-tree`, behind the "Loading Houston…" Suspense boundary
- * in src/new-engine) pays the entire cold-compile cost in one shot. On a cold CI
- * runner that compile blew past the 10s assertion timeout, so the run's first
- * test failed waiting for the sidebar. It passed on retry (vite was
- * warm by then), which Playwright scores as "flaky" — exit 0, green CI — so the
- * failure was silent.
- *
- * Booting the shell once here moves that compile OUT of the timed window: every
- * test then runs against an already-warm dev server. globalSetup runs after the
- * webServer is up and before any worker starts, so the warm-up is complete before
- * the first assertion's clock begins.
- *
- * In `bundle` serve mode (CI; see ./serve-mode.ts) there is no compile to
- * absorb and the same boots take seconds. They stay: a bundle that does not
- * reach the shell, or a sign-in server that does not reach SignInScreen, fails
- * here with one clear error instead of as every spec on every worker.
- */
 import { chromium, type FullConfig } from "@playwright/test";
 import { AUTH_WEB_URL, WEB_URL } from "../config";
 import { signInAsViewer } from "./identity";
@@ -29,25 +6,13 @@ import { seedPage } from "./seed";
 export default async function globalSetup(_config: FullConfig): Promise<void> {
   const browser = await chromium.launch();
   try {
-    // Warm the default (identity-off) server: reach the shell.
     const page = await browser.newPage();
-    // Same boot seed the tests use, so we reach the shell instead of the Connect
-    // screen and warm the real app-tree chunk the suite exercises.
     await seedPage(page);
-    // goto's 30s default undermines the 120s warm-up budget below: on a cold
-    // machine vite's on-demand transform of the entry graph alone can hold the
-    // load event past 30s. Same generous ceiling for both.
     await page.goto(WEB_URL, { timeout: 120_000 });
-    // The sidebar proves the app-tree chunk finished compiling. Generous
-    // timeout: this is the one place that absorbs the cold compile.
     await page
       .locator('[data-tour-target="sidebar"]')
       .waitFor({ state: "visible", timeout: 120_000 });
 
-    // Warm the identity-on server (the `auth` project) the same way. It's a
-    // SEPARATE vite process with its own cold compile (dep-optimizer caches are
-    // scoped per port), so the sign-in spec would otherwise pay it inside its
-    // assertion budget. Here it reaches SignInScreen.
     const authPage = await browser.newPage();
     await seedPage(authPage);
     await authPage.goto(AUTH_WEB_URL, { timeout: 120_000 });
@@ -55,12 +20,6 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
       .getByRole("button", { name: "Continue with Google" })
       .waitFor({ state: "visible", timeout: 120_000 });
 
-    // Then all the way THROUGH sign-in to the shell: the signed-in specs
-    // (identity.ts) boot the full app tree on THIS server, and that graph is
-    // not part of the SignInScreen warm-up. Cold, its compile lands on the
-    // first signed-in spec of every worker — on a contended CI runner that
-    // blew 17–30s and flaked the signed-in specs (profile-settings, run
-    // 30597316258). Same generous ceiling as the rest of the warm-up.
     await signInAsViewer(authPage, { shellTimeout: 120_000 });
   } finally {
     await browser.close();

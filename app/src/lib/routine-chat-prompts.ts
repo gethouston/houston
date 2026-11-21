@@ -1,24 +1,9 @@
-/**
- * The Claude-facing kickoffs for a routine's setup chat (the Routines
- * section). English on purpose (all prompts are); the agent mirrors the user's
- * language when it answers. They ride the auto-continue marker
- * (`lib/auto-continue-message.ts`): the user never typed anything, so the
- * transcript hides the bubble and the conversation opens with the agent's
- * greeting.
- *
- * One prompt serves both wake mechanisms — a cron `schedule` or (where the
- * deployment supports event triggers, C9) an event in a connected app. The
- * caller passes `eventsAvailable`; when false the prompt never offers the
- * event option, so the agent can't promise something the deployment can't do.
- */
-
 import { encodeAutoContinueMessage } from "./auto-continue-message.ts";
 import {
   type ConnectedProviderRef,
   providerAwareness,
 } from "./setup-chat-prompt-shared.ts";
 
-/** How the create kickoff explains the wake choice, by deployment capability. */
 function wakeGuidance(eventsAvailable: boolean): string {
   if (!eventsAvailable) {
     return `2. When it should run (how often, and at what time).`;
@@ -28,7 +13,6 @@ function wakeGuidance(eventsAvailable: boolean): string {
    - The moment something happens in one of their connected apps (a new email arrives, a message is posted, a file changes). If they choose this, learn which connected app the event lives in and exactly which event should wake it — it MUST be an app the user has actually connected; if the app they want is not connected, help them connect it first. Also ask about any filters that narrow WHEN it fires (for example only emails from a certain sender, or a specific channel), if the user wants them.`;
 }
 
-/** The wake rule the agent must follow when it finally saves. */
 function wakeSaveRule(eventsAvailable: boolean): string {
   if (!eventsAvailable) {
     return `Save it as a routine with the agreed schedule.`;
@@ -36,11 +20,6 @@ function wakeSaveRule(eventsAvailable: boolean): string {
   return `Save it as a routine with exactly ONE wake mechanism, matching what the user chose: either the agreed schedule (and no trigger), or a trigger naming the chosen app, event, and any filters (and no schedule).`;
 }
 
-/**
- * The create kickoff. Takes the setup chat's own activity id so the agent can
- * link the automation back to it, the user's connected providers so it never
- * pins an unconnected one, and whether event triggers exist on this deployment.
- */
 export function routineSetupPrompt(
   activityId: string,
   connectedProviders: ConnectedProviderRef[] | null,
@@ -72,11 +51,6 @@ ${providerAwareness(connectedProviders)}
 When you have everything, summarize the routine in a few plain lines (what wakes it, and what it does) and ask for approval with ask_user (Yes / No). Only create it after a Yes. ${wakeSaveRule(eventsAvailable)} Set its "setup_activity_id" field to exactly "${activityId}" — that keeps this chat attached to it; never mention this field or any other technical detail to the user. Then confirm it is set up and remind them they can change it right here, in this same chat, any time.`;
 }
 
-/**
- * The kickoff for an automation that has no chat yet (created manually, or
- * from before chats were persisted). One calm greeting, no interview — it
- * already exists.
- */
 export function routineModifyPrompt(
   routine: { id: string; name: string },
   connectedProviders: ConnectedProviderRef[] | null,
@@ -90,10 +64,6 @@ Later in this conversation, when the user asks for changes: update THIS routine 
 ${providerAwareness(connectedProviders)}`;
 }
 
-/**
- * The full first-message body for a new-automation chat: marker (hides the
- * bubble) + create kickoff (what the model acts on).
- */
 export function encodeRoutineSetupMessage(
   activityId: string,
   connectedProviders: ConnectedProviderRef[] | null,
@@ -104,7 +74,6 @@ export function encodeRoutineSetupMessage(
   );
 }
 
-/** The full first-message body for an existing automation's first-ever chat. */
 export function encodeRoutineModifyMessage(
   routine: { id: string; name: string },
   connectedProviders: ConnectedProviderRef[] | null,

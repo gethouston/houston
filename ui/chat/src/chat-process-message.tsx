@@ -13,7 +13,6 @@ type ProcessItem = Extract<ChatDisplayItem, { kind: "process" }>;
 
 interface ChatProcessMessageProps {
   item: ProcessItem;
-  /** Merged onto the root Message (the offscreen render-skip classes). */
   className?: string;
   turnEndSummaries: Map<number, TurnEndSummary>;
   renderMessageAvatar?: (msg: ChatMessage) => ReactNode | undefined;
@@ -44,9 +43,6 @@ export function ChatProcessMessage({
   const trailer =
     summary && renderTurnSummary ? renderTurnSummary(summary) : null;
 
-  // An offers-only block (see `ChatDisplayItem.offersOnly`) draws no log: the
-  // bubbles it recorded render above the composer. Only the turn-end summary
-  // it anchors remains — and nothing at all when there is none.
   if (item.offersOnly && !trailer) return null;
 
   return (

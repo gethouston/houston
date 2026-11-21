@@ -19,15 +19,6 @@ import { SeatIntervalChoice } from "../organization/seat-interval-choice";
 import { CheckoutOpenNote } from "./checkout-open-note";
 import type { PaidOrgOffer } from "./create-org-offer";
 
-/**
- * The create dialog once the free slot is taken: create the org as a paid one,
- * monthly or yearly where the gateway sells both, and continue to its checkout.
- * A new org has one member, so the line under the choice is one seat's bill.
- * Where the prices are unknown it offers the paid create, monthly, without a
- * figure. The store apps never sell, so there it only says the slot is taken.
- * Another org's payment page still open holds the offer, and says so; the
- * page this offer's own submit opens is not another org's, so it never does.
- */
 export function PaidOrgOfferDialog({
   open,
   onOpenChange,
@@ -40,9 +31,7 @@ export function PaidOrgOfferDialog({
   onOpenChange: (open: boolean) => void;
   offer: PaidOrgOffer;
   checkout: ReturnType<typeof useOrgCheckout>;
-  /** The create is in flight: the choice holds still. */
   pending: boolean;
-  /** Resolves with the refused interval, if the gateway refused it. */
   onSubmit: (
     interval: BillingInterval,
   ) => Promise<SeatIntervalRefusal | undefined>;
@@ -51,7 +40,6 @@ export function PaidOrgOfferDialog({
   const [picked, setPicked] = useState<BillingInterval>(
     DEFAULT_CHECKOUT_INTERVAL,
   );
-  // This submit opens the new org's checkout while the dialog is still up.
   const [submitted, setSubmitted] = useState(false);
   const purchasable = canPurchaseInApp();
   const { outstanding } = checkout;

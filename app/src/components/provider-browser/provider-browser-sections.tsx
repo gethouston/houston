@@ -1,12 +1,3 @@
-/**
- * Presentational scaffolding for the {@link ProviderBrowser} grid: the titled
- * section wrapper, the empty-state placeholder, the loading skeleton, the
- * section-header row, and the shared per-provider card renderer. Kept in their
- * own file so `provider-browser.tsx` stays focused on the composition + display
- * decisions (and both stay under the 200-line limit). The sub-components are
- * props-only; labels arrive already translated.
- */
-
 import { Button } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import type { ProviderConnections } from "../../hooks/use-provider-connections";
@@ -19,14 +10,6 @@ import type { ProviderInfo } from "../../lib/providers";
 import { groupByAuthType, providerModels } from "./provider-grouping";
 import { ProviderRow } from "./provider-row";
 
-/**
- * Build the `(provider) => <ProviderRow>` closure both the curated Sections and
- * the Connected / Available lists render every card through, capturing the live
- * connect machinery + catalog once. Card secondary line: bold live model count,
- * then the friendly cost prose, falling back to the provider description for
- * uncurated providers with no cost. Extracted here so the browser stays under the
- * 200-line limit.
- */
 export function makeProviderRow({
   connections,
   catalog,
@@ -52,7 +35,6 @@ export function makeProviderRow({
   );
 }
 
-/** A section title row with a label and an optional mono count. */
 export function SectionHeader({
   label,
   count,
@@ -72,7 +54,6 @@ export function SectionHeader({
   );
 }
 
-/** A titled 2-column grid of cards. Hidden when it has no children. */
 export function Section({
   label,
   count,
@@ -91,14 +72,6 @@ export function Section({
   );
 }
 
-/**
- * The curated-mode body: two connect-type Sections (Subscription first, then
- * API key) built from {@link groupByAuthType}, plus a soft "see all" chip while
- * the list is collapsed and more providers remain hidden. Each provider still
- * renders through the browser's shared `row` closure, so its connected /
- * connecting / signing-out state shows on the card regardless of section — no
- * separate Connected group is needed here. Labels arrive already translated.
- */
 export function CuratedProviderSections({
   providers,
   row,
@@ -132,7 +105,6 @@ export function CuratedProviderSections({
   );
 }
 
-/** A calm placeholder when the search / quick filter matches no provider. */
 export function ProviderEmpty({
   title,
   description,
@@ -148,11 +120,6 @@ export function ProviderEmpty({
   );
 }
 
-/**
- * Placeholder grid shown while the first provider-status probe is in flight.
- * Muted, pulsing CARDS matching the real geometry — enough to hold the layout
- * without implying any connect state before we actually know it.
- */
 export function ProviderBrowserSkeleton({ count }: { count: number }) {
   return (
     <div aria-hidden="true" className="grid grid-cols-1 gap-2 sm:grid-cols-2">

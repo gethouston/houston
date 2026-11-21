@@ -12,32 +12,12 @@ import { UsersTable } from "./components-users";
 import { AdminSignIn } from "./sign-in";
 import { btn, C, ghostBtn, page, tint } from "./styles";
 import { useAdminAuth } from "./use-admin-auth";
-// /admin never mounts the app tree, so the token CSS must reach THIS chunk or
-// the --ht-* vars the palette reads do not exist. The app's globals.css is NOT
-// that stylesheet: it locks the body's scroll for the pane-scrolling shell.
 import "./admin.css";
 
-// The /admin entry (packages/web/src/main.tsx) renders this dashboard directly,
-// NOT through app-tree.tsx, so it must install the identity log sink + window
-// error logging itself — otherwise the admin sign-in's identity-module discards
-// (e.g. a malformed ID token) would only reach console. Idempotent + safe on web
-// (the underlying write is a no-op shim there).
 initFrontendLogging();
 
-// An operator tool, deliberately dark whatever the device prefers (DESIGN.md §3
-// rule 4). The pin sits on the DOCUMENT root as well as the dashboard's own root
-// so <body> resolves the dark ladder too — otherwise the frame behind the page
-// paints the light base for an operator whose app theme is light.
 document.documentElement.dataset.theme = "dark";
 
-/**
- * Houston Cloud operator dashboard (served at /admin). Self-contained, like the
- * cloud-login gate: signs the operator in with GCIP (Firebase Auth) — email +
- * password or Google — then reads the control plane's cross-tenant pod + spend
- * views with the operator's Firebase ID token. The control plane's
- * CP_ADMIN_USER_IDS allowlist is the real gate; the UI just shows the 403/404
- * reason if this account isn't an operator.
- */
 const REFRESH_MS = 15_000;
 
 export function AdminDashboard({
@@ -99,8 +79,6 @@ function Dashboard({
   }, [load]);
 
   return (
-    // An operator tool, deliberately dark regardless of the app theme
-    // (DESIGN.md §3 rule 4).
     <div style={page} data-theme="dark">
       <div
         style={{

@@ -22,34 +22,13 @@ import {
   treeEdges,
 } from "./org-chart-tree-paths.ts";
 
-/**
- * Where everything sits on the share image. Pure and DOM-free: the painter
- * only draws what this places, and the connectors come from the same path
- * module the on-screen chart uses.
- *
- * The image is 4:5 portrait (`PORTRAIT_FRAME`). The root card sits centred
- * under the header, the first row spreads across as equal columns
- * (`org-chart-share-columns.ts`), and each person's AI Employees stack under
- * them, then one "+N" for the rest. The caps (`SHARE_CARD_CAPS`,
- * `shareCardCaps`) keep the worst case inside the room at a zoom of at
- * least 1, so no name or role is ever drawn under `SHARE_MIN_TYPE`.
- */
-
 const TREE = {
   rootY: 252,
   rowY: 394,
-  /** Space between stacked cards, which the connector spans. */
   gap: 24,
   radius: 12,
 } as const;
 
-/**
- * Scale `boxes` (centred on the frame) into the frame's room, clear of the
- * count line above and the footer below. A small team grows to fill it (up
- * to the frame's `maxZoom`), so three cards never sit as a speck in an empty
- * frame. The sides keep the columns' own margin, so a full row is never
- * shrunk.
- */
 function zoomFor(boxes: Box[], frame: CardFrame): CardZoom {
   const top = Math.min(...boxes.map((b) => b.y));
   const bottom = Math.max(...boxes.map((b) => b.y + b.h));

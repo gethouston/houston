@@ -41,9 +41,6 @@ export function useCustomIntegrationsSurface() {
     if (target) void chatSetup.start(target);
     else setPickerOpen(true);
   };
-  // Per-agent scope (PRODUCT-1773): while the setup chat is open the list
-  // already follows its agent (`resolveCustomTransportAgent`); the pick keeps
-  // it there once the chat closes, so the finished row stays on screen.
   const startWith = (target: Agent) => {
     if (scope === "agent") pickAgent(target.id);
     void chatSetup.start(target);
@@ -67,9 +64,7 @@ export function useCustomIntegrationsSurface() {
     pickerOpen,
     setPickerOpen,
     surfaceActive,
-    /** Where custom integrations live for this deployment. */
     scope,
-    /** The agent whose list is shown (per-agent scope only). */
     scopeAgent,
     pickAgent,
   };
@@ -79,11 +74,6 @@ export type CustomIntegrationsSurface = ReturnType<
   typeof useCustomIntegrationsSurface
 >;
 
-/**
- * The agent pill beside the Add button, where the choice exists: a per-agent
- * deployment with more than one agent. Elsewhere it renders nothing — the
- * list is everyone's (shared host) or the only agent's.
- */
 export function CustomScopeControl({
   surface,
   compact,

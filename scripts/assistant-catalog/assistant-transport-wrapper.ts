@@ -2,32 +2,15 @@ import ts from "typescript";
 import { calleeName } from "./assistant-ast.ts";
 import type { PathHelper } from "./assistant-path-parts.ts";
 
-/**
- * The transport seam: the functions that put a request on the wire, and the
- * private helpers a module reaches them through.
- */
-
-/**
- * The functions that put a request on the wire. Both take `(scope, path,
- * init?)` — the web adapter's control-plane transport and the SDK's own REST
- * seam — so one set of rules reads both surfaces.
- */
 export const TRANSPORTS: ReadonlySet<string> = new Set([
   "cpFetch",
   "httpRequest",
 ]);
 
-/**
- * A private helper that wraps a transport: it builds the path from its
- * own parameters and forwards its caller's request options untouched, so a
- * method calling it makes exactly one request through it.
- */
 export interface TransportWrapper extends PathHelper {
-  /** The wrapper parameter carrying the caller's request options, if any. */
   initParameter: number | null;
 }
 
-/** Every direct transport call in a body, at any nesting. */
 function transportCalls(body: ts.Node): ts.CallExpression[] {
   const calls: ts.CallExpression[] = [];
   const visit = (node: ts.Node): void => {
@@ -52,12 +35,6 @@ function parameterNames(
   return names;
 }
 
-/**
- * The wrapper a declaration is, or `null`. It qualifies only when its single
- * transport call receives request options it did not build itself — a bare
- * parameter it passes straight through — so nothing about the caller's request
- * is lost.
- */
 export function asWrapper(
   node: ts.FunctionDeclaration | ts.MethodDeclaration,
   body: ts.Block,

@@ -63,8 +63,6 @@ describe("scanIrForSecrets", () => {
 
   it("scans identity.tags (v2 addition)", () => {
     const ir = clone();
-    // A raw secret can only reach a tag by bypassing validation; set one directly
-    // to prove tags are part of the scanned surface (a v2 addition).
     ir.identity.tags = [`ghp_${"a".repeat(36)}`];
     expect(scanIrForSecrets(ir).some((f) => f.pattern === "GitHub token")).toBe(
       true,

@@ -5,12 +5,6 @@ import {
   pickCeilingPin,
 } from "../src/lib/ceiling-pin.ts";
 
-/**
- * PRODUCT-1657 — a ceiling is the sorted union of every provider's id for each
- * allowed model, so its FIRST entry is usually OpenRouter's (`anthropic/…`
- * sorts before `claude-…`). The pick must land on a provider the user can run,
- * never on whichever provider happens to own the first entry.
- */
 const catalog: Record<string, string[]> = {
   anthropic: ["claude-opus-5", "claude-sonnet-5"],
   openai: ["gpt-6-astra"],
@@ -29,7 +23,6 @@ const resolver = (connected: string[]): CeilingResolver => ({
   connected,
 });
 
-// "Claude Opus 5" as the ceiling editor writes it: OpenRouter's id sorts first.
 const opusCeiling = ["anthropic/claude-opus-5", "claude-opus-5"];
 const fallback = {
   provider: "anthropic",
@@ -50,8 +43,6 @@ describe("pickCeilingPin", () => {
   });
 
   it("falls to a CONNECTED provider's offer when the fallback provider has none", () => {
-    // Only OpenAI is connected and the ceiling is "GPT-5.5" (OpenRouter's id
-    // first): run it on OpenAI, not on the OpenRouter account never connected.
     deepStrictEqual(
       pickCeilingPin(
         ["gpt-6-astra", "openai/gpt-6-astra"].sort(),
@@ -78,8 +69,6 @@ describe("pickCeilingPin", () => {
   });
 
   it("names the owning provider when nothing connected can run the ceiling", () => {
-    // OpenRouter's rolling alias alone: honest "connect OpenRouter", never a
-    // Claude pin that the runtime rejects as "not available".
     deepStrictEqual(
       pickCeilingPin(
         ["~anthropic/claude-opus-latest"],

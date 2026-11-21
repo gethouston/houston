@@ -4,17 +4,10 @@ import Link from "next/link";
 import { CreatorChip } from "./creator-chip";
 
 export interface AgentCreatorCreditProps {
-  /** The enriched creator projection from the listing (carries the handle). */
   creator: StoreCreator;
-  /** The IR-denormalized creator, used only when there is no claimed handle. */
   fallback: { displayName: string; url?: string };
 }
 
-/**
- * The "By …" credit on the agent detail page. A claimed creator (has a handle)
- * links to their `/@handle` page via the {@link CreatorChip}; an unclaimed one
- * falls back to the IR display name, linked to its optional creator URL.
- */
 export function AgentCreatorCredit({
   creator,
   fallback,

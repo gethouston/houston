@@ -55,8 +55,6 @@ function reporter({ deps, turn }: TurnPushContext, claimBound = false) {
   });
 }
 
-/** The mission row with this turn's contributor and mentions stamped; the
- *  SAME reference when the stamp changes nothing. */
 function stamped(current: Activity, turn: TurnRequest, mentioned: string[]) {
   return upsertMentions(
     upsertContributor(current, {
@@ -69,7 +67,6 @@ function stamped(current: Activity, turn: TurnRequest, mentioned: string[]) {
   );
 }
 
-/** Stamp the same contributor and mention aggregate as a standing pod. */
 export async function stampPooledTurn(input: TurnPushContext): Promise<{
   mentionReport?: Promise<void>;
 }> {
@@ -79,9 +76,6 @@ export async function stampPooledTurn(input: TurnPushContext): Promise<{
     ...new Set((turn.mentions ?? []).map((m) => m.userId)),
   ].slice(0, 32);
   try {
-    // This runs before the first token. A returning contributor with no
-    // mentions changes nothing (contributors are add-only), so the hydrated
-    // view settles it without a store refresh and generation-guarded upload.
     const hydrated = (
       await loadActivities(filesystem.vfs, filesystem.workspaceRel)
     ).items.find((item) => addressesMission(item, turn.conversationId));
@@ -135,7 +129,6 @@ export async function stampPooledTurn(input: TurnPushContext): Promise<{
   return {};
 }
 
-/** Called after durability, before the terminal frame closes the claim. */
 export async function reportPooledSettle(
   input: TurnPushContext,
   durable: TurnDurabilityResult,

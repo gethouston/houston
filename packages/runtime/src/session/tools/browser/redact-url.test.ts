@@ -147,7 +147,6 @@ test.each([
   "credential",
   "credentials",
   "code_verifier",
-  // Run-together names: a secret word anywhere in the name counts.
   "apikey",
   "sessionid",
   "accesstoken",
@@ -166,7 +165,6 @@ test.each([
   "secretkey",
   "privatekey",
   "PrivateKey",
-  // Fails closed: unsure names stay hidden.
   "bypass",
   "passport",
   "author",

@@ -4,18 +4,6 @@ import {
 } from "@houston/app/lib/provider-overrides.ts";
 import { expect, test } from "vitest";
 
-/**
- * The hosted Teams model-choice path crosses a provider-id DIALECT boundary in
- * `use-agent-model-choice` (read engine → display, write display → engine).
- * These are the pure helpers that seam uses. The picker offers Houston's DISPLAY
- * id `openai` (its rename of pi's `openai-codex`), but the gateway/runtime
- * resolve pi's `openai-codex`; writing the display id verbatim would land the
- * turn on pi's raw `openai` provider and miss the openai-codex credential ("No
- * credential found for openai"). Canonicalizing on write — mirror of the
- * direct-send `wireTurnPin` and the runtime backstop — prevents that; the read
- * mapping keeps every downstream comparison in the display dialect it assumes.
- */
-
 test("write canonicalizes the display id to the engine id (openai → openai-codex)", () => {
   expect(toCanonicalProviderId("openai")).toBe("openai-codex");
 });

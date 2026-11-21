@@ -4,13 +4,6 @@ import { expect, test } from "../support/fixtures";
 import { navBar, openMoreMenu } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
-/**
- * The assistant on the phone: a chat, so a PUSH like the mission chat rather
- * than a screen under the tab bar. The floating nav bar leaves while it is up
- * so the composer sits on the bottom edge and the header's own back chevron
- * is the way out.
- */
-
 async function openPhoneAssistant(page: Page): Promise<Locator> {
   await page.getByTestId("agents-home-manager").tap();
   const chat = page.getByTestId("assistant-chat");
@@ -30,7 +23,6 @@ test("opens from the Agents list as a full-height chat with no nav bar under it"
   ).toBeVisible();
   await expect(navBar(page)).toHaveCount(0);
 
-  // The composer is the last thing on the screen: nothing sits below it.
   const composer = chat.getByPlaceholder(ASSISTANT_COMPOSER);
   await expect(composer).toBeVisible();
   const composerBottom = await composer.evaluate((el) => {
@@ -44,8 +36,6 @@ test("opens from the Agents list as a full-height chat with no nav bar under it"
         .map((b) => b.getBoundingClientRect().bottom),
     ),
   );
-  // The composer's own toolbar row (mode, model) sits directly under the
-  // field, but no separate chrome does.
   expect(lowestControl - composerBottom).toBeLessThan(60);
 
   const overflow = await page.evaluate(
@@ -64,7 +54,6 @@ test("is first in Agents and absent from More", async ({ page }) => {
     "aria-hidden",
     "true",
   );
-  // Pinned above the roster, the team filter notwithstanding.
   const firstAgent = page.getByTestId("agents-home-row").first();
   await expect(firstAgent).toBeVisible();
   const managerBox = await manager.boundingBox();
@@ -72,7 +61,6 @@ test("is first in Agents and absent from More", async ({ page }) => {
   if (!managerBox || !agentBox) throw new Error("the list is not laid out");
   expect(managerBox.y + managerBox.height).toBeLessThanOrEqual(agentBox.y + 1);
 
-  // The More menu keeps its destinations and no longer lists the Manager.
   const menu = await openMoreMenu(page);
   await expect(
     menu.getByRole("button", { name: "Connect your apps" }),
@@ -88,7 +76,6 @@ test("the header's back chevron leaves for the Agents tab", async ({
   await page.goto("/");
   await openPhoneAssistant(page);
 
-  // The Manager is pushed from Agents, so back returns to that list.
   await page.getByTestId("assistant-back").tap();
   await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
   await expect(navBar(page)).toBeVisible();

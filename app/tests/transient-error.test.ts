@@ -3,12 +3,6 @@ import { describe, it } from "node:test";
 import { isTransientPushError } from "../src/lib/claude-push-retry.ts";
 import { isTransientEngineError } from "../src/lib/transient-error.ts";
 
-/**
- * The ONE retry classifier. Everything that retries an engine/gateway read
- * (the cross-agent mission sweep, the workspace list, the Claude credential
- * push) must agree on what "worth another attempt" means, or one surface
- * hammers a dead 404 while another gives up on a waking pod.
- */
 describe("isTransientEngineError", () => {
   it("retries a 5xx — a pod waking or a gateway rolling", () => {
     strictEqual(isTransientEngineError({ status: 500 }), true);

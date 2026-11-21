@@ -50,7 +50,6 @@ describe("routine run history merge", () => {
   test("a settled run beats the running copy on either side", () => {
     const done = settled("a", 1, "surfaced", 5);
     expect(merge([running("a", 1)], [done])).toEqual([done]);
-    // The turn's hydrated copy is stale: the remote already settled it.
     expect(merge([done], [running("a", 1)])).toEqual([done]);
   });
 
@@ -103,11 +102,9 @@ describe("routine run history merge", () => {
   });
 
   test("a status this build does not know is terminal, never reverted to running", () => {
-    // A newer build's settled run, merged by an older image's running copy.
     const future = settled("a", 1, "skipped", 2);
     expect(merge([future], [running("a", 1)])).toEqual([future]);
     expect(merge([running("a", 1)], [future])).toEqual([future]);
-    // Against a known terminal copy it is one more settle: the later wins.
     const error = settled("a", 1, "error", 3);
     expect(merge([future], [error])).toEqual([error]);
     expect(merge([error], [future])).toEqual([error]);

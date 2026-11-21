@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Install Tauri 2 Linux system dependencies for TS-engine desktop artifacts.
 set -euo pipefail
 
 sudo apt-get update

@@ -7,11 +7,6 @@ type McToolbarProps = Omit<
   "variant"
 >;
 
-/**
- * The board's toolbar in the page header. One row or two is the STRIP's call,
- * not the board's: it is the only thing that knows how much room the three
- * zones actually have.
- */
 export function McToolbarSlot(props: McToolbarProps) {
   return (
     <PageHeaderTools>

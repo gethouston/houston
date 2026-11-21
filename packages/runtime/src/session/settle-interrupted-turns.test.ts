@@ -40,9 +40,6 @@ function seed() {
 
 describe("settleInterruptedTurns", () => {
   it("reports what the dead turn had to load: the transcript and its pi session files", () => {
-    // A restart that recurs a few seconds into every turn with no tool
-    // running (HOUSTON-APP-5DX) is a load blow-up, not an eviction; the sizes
-    // tell the two apart without parsing anything.
     const { dataDir, write } = seed();
     write("big", [
       {
@@ -98,8 +95,6 @@ describe("settleInterruptedTurns", () => {
     });
 
     expect(settled.map((m) => m.turnId)).toEqual(["t-9"]);
-    // No `resume` payload on the marker: an older engine wrote it, so the turn
-    // settles exactly as it always did and is never run again.
     expect(resumable).toEqual([]);
     const last = read("chat").messages.at(-1);
     expect(last).toMatchObject({
@@ -120,7 +115,6 @@ describe("settleInterruptedTurns", () => {
     expect(error.message).toContain("tool=bash");
     expect(error.message).toContain("fenced=true");
     expect(error.message).toContain("memory fence");
-    // The transcript is a few hundred bytes and no pi session exists yet.
     expect(error.message).toContain("transcript=0.0MiB session=0.0MiB");
     expect(listInflightMarkers(dataDir)).toEqual([]);
   });
@@ -173,9 +167,6 @@ describe("settleInterruptedTurns", () => {
 
   it("a marker re-delivered for a turn already settled writes no second reply and reports nothing (PRODUCT-1778)", () => {
     const { dataDir, write, read } = seed();
-    // The replacement pod settled this turn on its first boot; the evicted pod,
-    // still draining the same turn, then re-shipped the marker through the
-    // store sync. The next boot finds the marker AND the reply it already wrote.
     write("moved", [
       { role: "user", content: "render it", ts: 1, turnId: "t-moved" },
       {
@@ -300,10 +291,7 @@ describe("settleInterruptedTurns resume decisions (PRODUCT-1785)", () => {
         pin: { provider: "anthropic", model: "opus" },
       },
     ]);
-    // The host applies at most one mission settle: reporting `error` now would
-    // be the card's last word, and the resumed turn's settle would be dropped.
     expect(settleMission).not.toHaveBeenCalled();
-    // The restart is still reported — the fleet count is the point.
     expect(report).toHaveBeenCalledTimes(1);
   });
 

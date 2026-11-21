@@ -92,7 +92,6 @@ impl Requests {
                 operation,
                 model,
             } => {
-                // Bound replay history for a ten-minute renewable session.
                 if self.seen.len() >= 65536 || !self.seen.insert(id) {
                     return Err(BridgeError::Protocol);
                 }

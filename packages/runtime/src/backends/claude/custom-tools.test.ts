@@ -33,11 +33,6 @@ const INTEGRATIONS = {
   call: httpSandboxFetch("http://host.local", "tok"),
 };
 
-/**
- * Build the MCP server with a fake `createSdkMcpServer` that captures the adapted
- * tool defs, so tests can inspect names/descriptions/schemas/handlers without the
- * real SDK (and without spawning any subprocess).
- */
 function build(
   integrations?: { call: ReturnType<typeof httpSandboxFetch> },
   mode?: "execute" | "plan" | "auto",
@@ -79,7 +74,6 @@ const byName = (tools: SdkMcpToolDefinition[], name: string) => {
   return t;
 };
 
-/** A tool's handler with the model-arg widened to `unknown` for direct calls. */
 type LooseHandler = (
   args: unknown,
   extra: unknown,
@@ -87,11 +81,7 @@ type LooseHandler = (
 const handlerOf = (t: SdkMcpToolDefinition): LooseHandler =>
   t.handler as unknown as LooseHandler;
 
-// --- gating ----------------------------------------------------------------
-
 test("exposes ask_user + suggest_reusable when integrations are absent", () => {
-  // execute (undefined mode) keeps the always-on non-blocking tools: ask_user
-  // and suggest_reusable (plan_ready is plan-only, so it is stripped here).
   const { mcp, tools, serverName } = build(undefined);
   expect(serverName).toBe(HOUSTON_MCP_SERVER_NAME);
   expect(new Set(tools.map((t) => t.name))).toEqual(
@@ -159,8 +149,6 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
 });
 
 test("plan mode keeps ask_user + plan_ready even with the integrations gate open", () => {
-  // Plan withholds every acting tool but keeps the blocking-question tool and
-  // adds the plan-only plan_ready presentation tool.
   const { tools, mcp } = build(INTEGRATIONS, "plan");
   expect(new Set(tools.map((t) => t.name))).toEqual(
     new Set(["ask_user", "plan_ready"]),
@@ -171,11 +159,9 @@ test("plan mode keeps ask_user + plan_ready even with the integrations gate open
 });
 
 test("plan_ready is exposed ONLY in plan mode", () => {
-  // Present in plan…
   expect(build(INTEGRATIONS, "plan").tools.map((t) => t.name)).toContain(
     "plan_ready",
   );
-  // …and stripped from execute and auto, even though it is in the built set.
   expect(build(INTEGRATIONS).tools.map((t) => t.name)).not.toContain(
     "plan_ready",
   );
@@ -188,8 +174,6 @@ test("plan_ready is exposed ONLY in plan mode", () => {
 });
 
 test("suggest_reusable is bridged for execute/auto but stripped from plan", () => {
-  // The inverse of plan_ready: kept in execute (undefined) and auto, filtered
-  // out of plan by `toolNamesForMode`, even though it is in the built set.
   expect(build(INTEGRATIONS).tools.map((t) => t.name)).toContain(
     "suggest_reusable",
   );
@@ -205,9 +189,6 @@ test("suggest_reusable is bridged for execute/auto but stripped from plan", () =
 });
 
 test("save_routine is bridged for execute/auto but stripped from plan", () => {
-  // save_routine reaches the host with the SAME sandbox token the integration
-  // tools use (built ⟺ integrations gate open). Same reach as suggest_reusable:
-  // execute + auto, never plan.
   expect(build(INTEGRATIONS).tools.map((t) => t.name)).toContain(
     "save_routine",
   );
@@ -220,16 +201,12 @@ test("save_routine is bridged for execute/auto but stripped from plan", () => {
   expect(build(INTEGRATIONS, "plan").tools.map((t) => t.name)).not.toContain(
     "save_routine",
   );
-  // Never built when the host is unreachable (integrations gate closed).
   expect(build(undefined).tools.map((t) => t.name)).not.toContain(
     "save_routine",
   );
 });
 
 test("save_learning is bridged for execute/auto but stripped from plan", () => {
-  // Same gate and same reach as save_routine: it proxies to the host under the
-  // sandbox token, so it exists only when the host is reachable, and saving a
-  // learning is a write — never in read-only plan mode.
   expect(build(INTEGRATIONS).tools.map((t) => t.name)).toContain(
     "save_learning",
   );
@@ -247,18 +224,12 @@ test("save_learning is bridged for execute/auto but stripped from plan", () => {
   );
 });
 
-/** The assistant family's own gate: a catalog + the host transport. */
 const ASSISTANT: AssistantToolOptions = {
   catalog: { version: 3, sourceHash: "fixture", operations: [] },
   call: httpSandboxFetch("http://host.local", "tok"),
 };
 
 test("the assistant family is bridged whole for execute/auto but stripped from plan", () => {
-  // Parity with the pi backend (conversation-cache-tools.test.ts): an
-  // anthropic-backed assistant must get the IDENTICAL set, or it silently
-  // cannot do what a pi-backed one can. houston_recall is named literally
-  // because it is the family's only in-process tool — it needs neither the
-  // catalog nor the host, so nothing else would fail if it went missing here.
   const names = (mode?: "execute" | "plan" | "auto") =>
     build(undefined, mode, undefined, ASSISTANT).tools.map((t) => t.name);
   for (const name of ASSISTANT_TOOL_NAMES) {
@@ -274,12 +245,6 @@ test("the assistant family is bridged whole for execute/auto but stripped from p
 
 test("auto mode keeps the integration + suggest_reusable tools but drops ask_user", () => {
   const { tools, mcp } = build(INTEGRATIONS, "auto");
-  // Autopilot never waits on the user's judgment: ask_user is gone (and
-  // plan_ready is plan-only). The acting integration tools stay,
-  // suggest_reusable stays (it never blocks the turn), and request_connection
-  // + request_credential stay (HOU-853) — a missing connection or API key is
-  // the one thing autonomy cannot produce, and the queued card ends the turn
-  // and auto-continues the run.
   expect(new Set(tools.map((t) => t.name))).toEqual(
     new Set([
       "suggest_reusable",
@@ -329,9 +294,6 @@ test("auto mode keeps the integration + suggest_reusable tools but drops ask_use
 });
 
 test("auto mode with no integrations gate exposes only suggest_reusable", () => {
-  // The always-on custom tools are ask_user (auto drops it), plan_ready
-  // (plan-only), and suggest_reusable (auto keeps it) — so with the integration
-  // gate closed the server exposes exactly suggest_reusable.
   const { tools, mcp } = build(undefined, "auto");
   expect(tools.map((t) => t.name)).toEqual([
     "suggest_reusable",
@@ -364,21 +326,14 @@ test("an explicit tool list replaces the server defaults and remains mode-filter
   ).toEqual(["ask_user", "plan_ready"]);
 });
 
-// --- naming ----------------------------------------------------------------
-
 test("each tool's description is the pi tool's own, with no per-tool preamble", () => {
   const { tools } = build(INTEGRATIONS);
-  // The mapping from bare to mcp__houston__ names is said once, in the system
-  // prompt (system-prompt.ts), not repeated in every advertised description.
   expect(byName(tools, "ask_user").description).toBe(
     makeAskUserTool().description,
   );
   for (const t of tools) expect(t.description).not.toContain("This is the `");
 });
 
-// --- schema fidelity -------------------------------------------------------
-
-/** The pi tools, to compare their typebox params against the bridged zod shapes. */
 function piParams() {
   const [search, execute, connect] = makeIntegrationTools(INTEGRATIONS);
   return {
@@ -414,8 +369,6 @@ test("bridged schemas expose the same property keys as the pi tool params", () =
 
 test("bridged schemas enforce the same required vs optional split as pi", () => {
   const { tools } = build(INTEGRATIONS);
-  // ask_user: a `questions` array is required; each question needs `question`,
-  // options optional.
   const ask = z.object(byName(tools, "ask_user").inputSchema);
   expect(ask.safeParse({ questions: [{ question: "Proceed?" }] }).success).toBe(
     true,
@@ -426,13 +379,11 @@ test("bridged schemas enforce the same required vs optional split as pi", () => 
       questions: [{ question: "Pick", options: [{ id: "y", label: "Yes" }] }],
     }).success,
   ).toBe(true);
-  // A malformed option (missing label) is rejected — nested object shape matched.
   expect(
     ask.safeParse({ questions: [{ question: "Pick", options: [{ id: "y" }] }] })
       .success,
   ).toBe(false);
 
-  // integration_execute: action required, params (a record) optional.
   const exec = z.object(byName(tools, "integration_execute").inputSchema);
   expect(exec.safeParse({ action: "GMAIL_SEND_EMAIL" }).success).toBe(true);
   expect(exec.safeParse({}).success).toBe(false);
@@ -440,32 +391,24 @@ test("bridged schemas enforce the same required vs optional split as pi", () => 
     exec.safeParse({ action: "X", params: { to: "a@b.c", n: 1 } }).success,
   ).toBe(true);
 
-  // request_connection: toolkit required, reason optional.
   const conn = z.object(byName(tools, "request_connection").inputSchema);
   expect(conn.safeParse({ toolkit: "gmail" }).success).toBe(true);
   expect(conn.safeParse({}).success).toBe(false);
 
-  // integration_search: query required.
   const search = z.object(byName(tools, "integration_search").inputSchema);
   expect(search.safeParse({ query: "send email" }).success).toBe(true);
   expect(search.safeParse({}).success).toBe(false);
 });
 
 test("toZodShape carries descriptions and maps typebox records to zod records", () => {
-  const shape = toZodShape(
-    makeIntegrationTools(INTEGRATIONS)[1].parameters, // integration_execute
-  );
+  const shape = toZodShape(makeIntegrationTools(INTEGRATIONS)[1].parameters);
   expect(shape.action.description).toContain("action slug");
-  // params is an optional record<string, unknown>: an object of arbitrary keys
-  // parses, a non-object is rejected.
   const params = z.object({ params: shape.params });
   expect(params.safeParse({ params: { any: "thing", n: 2 } }).success).toBe(
     true,
   );
   expect(params.safeParse({ params: "not-an-object" }).success).toBe(false);
 });
-
-// --- handler execution records the interaction ------------------------------
 
 test("the ask_user handler records a question interaction into the turn holder", async () => {
   const { tools } = build(INTEGRATIONS);
@@ -500,7 +443,6 @@ test("the request_connection handler records a connect interaction", async () =>
   await runWithInteractionCapture(holder, () =>
     handler({ toolkit: "Gmail", reason: "to send mail" }, {}),
   );
-  // toolkit is normalized (lowercased/trimmed) by the reused pi implementation.
   expect(holder.pending).toEqual({
     steps: [
       { kind: "connect", id: "c1", toolkit: "gmail", reason: "to send mail" },
@@ -517,8 +459,6 @@ test("a handler run outside any turn records nothing and still returns content",
   expect(result.content[0]).toMatchObject({ type: "text" });
 });
 
-// --- ALS propagation through a Claude-session turn (requirement 4) ----------
-
 function fakeStore(): SessionsStore {
   return {
     getSessionId: () => undefined,
@@ -533,20 +473,11 @@ test("an ask_user call dispatched during a Claude-session turn lands in the turn
   const { tools } = build(INTEGRATIONS);
   const handler = handlerOf(byName(tools, "ask_user"));
 
-  // Model the SDK's real dispatch: `query()` spawns a background reader task
-  // SYNCHRONOUSLY (here, an IIFE), which later invokes the tool handler across an
-  // async boundary. The task inherits whatever AsyncLocalStorage context was
-  // active when `query()` was called — i.e. the turn's interaction holder that
-  // exec-turn establishes around `session.prompt()`. If ALS did NOT propagate,
-  // the handler's `recordQuestions` call would be a no-op and this fails.
   const query: ClaudeQuery = () => {
     const dispatched = (async () => {
       await Promise.resolve();
       await handler({ questions: [{ question: "Ready to send?" }] }, {});
     })();
-    // A stream that yields nothing but only reports done once the background
-    // dispatch (the handler call) has run — mirrors a turn whose sole effect was
-    // an ask_user recorded off the subprocess control channel.
     return {
       [Symbol.asyncIterator]: () => ({
         next: async () => {
@@ -569,16 +500,11 @@ test("an ask_user call dispatched during a Claude-session turn lands in the turn
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, () => session.prompt("hi"));
 
-  // This is exactly the value exec-turn reads after prompt() resolves and
-  // attaches to the clean `done` frame as `pendingInteraction`.
   expect(holder.pending).toEqual({
     steps: [{ kind: "question", id: "q1", question: "Ready to send?" }],
   });
 });
 
-// --- the personal assistant (coordinator) ----------------------------------
-
-/** The provider status both backends build their mission schema from. */
 const MISSION_PROVIDERS: ProviderOption[] = [
   {
     id: "openai-codex",
@@ -589,7 +515,6 @@ const MISSION_PROVIDERS: ProviderOption[] = [
   { id: "anthropic", name: "Claude (Pro / Max)", connected: false },
 ];
 
-/** The mission tools' pi-side params, for the schema-parity comparison. */
 function missionPiParams(personalAssistant: boolean) {
   const opts = {
     ...INTEGRATIONS,
@@ -620,9 +545,6 @@ test("the assistant's bridged set is the coordinator surface, nothing that works
     ASSISTANT,
     true,
   );
-  // Parity with the pi backend's COORDINATOR_TOOL_NAMES clamp: the assistant
-  // must not be able to do MORE just because the user is on Anthropic. (The
-  // file tools + bash are SDK built-ins, clamped by tool-policy.ts, not here.)
   expect(new Set(tools.map((t) => t.name))).toEqual(
     new Set([
       "ask_user",
@@ -678,8 +600,6 @@ test("the mission tools bridge with the same keys and split as pi, both roles", 
       expect(new Set(Object.keys(shape))).toEqual(
         new Set(Object.keys(params.properties)),
       );
-      // The target agent is optional in the SCHEMA either way: a missing one is
-      // refused by the tool with an instruction, not by a validation error.
       expect(params.required ?? []).not.toContain("agent");
     }
     const start = z.object(byName(tools, "start_mission").inputSchema);
@@ -709,7 +629,6 @@ test("start_mission's provider enum survives the bridge with the same ids", () =
   >;
   const provider = z.object({ provider: shape.provider ?? z.never() });
   expect(provider.safeParse({ provider: "openai-codex" }).success).toBe(true);
-  // A disconnected provider is not a value on either backend.
   expect(provider.safeParse({ provider: "anthropic" }).success).toBe(false);
   expect(provider.safeParse({ provider: "codex" }).success).toBe(false);
   expect(provider.safeParse({}).success).toBe(true);
@@ -734,7 +653,6 @@ test("with no provider connected neither backend offers the param", () => {
   ).not.toContain("provider");
 });
 
-/** The pi-side start_mission schema for a given provider snapshot. */
 function missionPiParamsFor(providers: readonly ProviderOption[]) {
   const [start] = makeMissionTools({
     ...INTEGRATIONS,

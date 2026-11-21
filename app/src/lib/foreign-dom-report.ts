@@ -6,15 +6,6 @@ import {
 } from "./foreign-dom-guard";
 import { captureQuietEvent } from "./sentry-quiet";
 
-/**
- * The reporting half of the foreign-DOM guard: a rescue is invisible to the
- * user by design (the screen simply keeps working), so it must still reach
- * us. One line in the frontend log and ONE warning-level Sentry event per
- * burst, in a single fingerprinted issue: a translated page rescues on every
- * commit, and counting each would only inflate the issue against the quota.
- * No node content rides along, only tag names: the text under a rescued
- * wrapper is whatever the user was reading.
- */
 const rescueBurst = createBurstGate();
 
 function describeNode(node: NodeLike): string {
@@ -47,7 +38,6 @@ function reportForeignDomRescue(rescue: ForeignDomRescue): void {
   });
 }
 
-/** Install the guard on the live DOM with reporting wired. Call once at boot. */
 export function installForeignDomSafetyNet(): void {
   installForeignDomGuard(Node.prototype, reportForeignDomRescue);
 }

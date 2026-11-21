@@ -1,15 +1,5 @@
 import type { CSSProperties } from "react";
 
-/**
- * Inline styles for the new-engine surface. Like the Connect screen, this UI
- * renders in the entry chunk (before any Tailwind/app CSS loads), so it must
- * carry its own styles. The full-page gate surfaces (page/muted/error) follow
- * the cached theme index.html stamped on <html> before paint, so the boot
- * sequence holds one surface per theme instead of flashing dark at light
- * users; values mirror the sanctioned pre-boot frame colors (light screen
- * `#fcfcfc`, dark gutter `#141416`). The Connect card and the dev shell stay
- * deliberately dark, self-contained panels.
- */
 const isDark =
   typeof document !== "undefined" &&
   document.documentElement.getAttribute("data-theme") === "dark";
@@ -29,9 +19,6 @@ export const ui: Record<string, CSSProperties> = {
     background: isDark ? "#141416" : "#fcfcfc",
     color: isDark ? "#e5e5e5" : "#14161d",
   },
-  // The Connect screen: a deliberately dark, self-contained surface in BOTH
-  // themes (its card/inputs/labels are dark-designed) — the inline-style
-  // equivalent of DESIGN.md's pin-dark-subtree rule.
   pageDark: {
     ...pageBase,
     background: "#141416",
@@ -57,8 +44,6 @@ export const ui: Record<string, CSSProperties> = {
   },
   brand: { fontSize: 22, fontWeight: 600 },
   subtitle: { margin: "0 0 6px", fontSize: 14, color: "#9a9a9a" },
-  // Action button on a dark surface (the Connect card): mirrors the app's
-  // dark-theme `action` fill.
   button: {
     height: 44,
     borderRadius: 10,
@@ -69,7 +54,6 @@ export const ui: Record<string, CSSProperties> = {
     fontWeight: 600,
     cursor: "pointer",
   },
-  // Action button on the THEMED gate page: the app's `action` fill per theme.
   pageButton: {
     height: 42,
     borderRadius: 10,
@@ -97,11 +81,9 @@ export const ui: Record<string, CSSProperties> = {
     border: "1px solid rgba(255,255,255,0.12)",
     background: "#0d0d0d",
     color: "#f5f5f5",
-    // 16px keeps iOS Safari from zooming the page on focus (phone Connect).
     fontSize: 16,
     outline: "none",
   },
-  // Renders only inside the dark Connect card — dark-surface red, both themes.
   error: { margin: 0, fontSize: 13, color: "#ff6b6b" },
 
   shell: {

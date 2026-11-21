@@ -7,29 +7,6 @@ import { expect, test } from "vitest";
 import type { RuntimeSpawner } from "../launcher/process";
 import { buildLocalHost, type LocalHost } from "./host";
 
-/**
- * The LOCAL adapter profile's two assembled-over-HTTP claims that the
- * dual-profile parity gate cannot reach — both proven against a REAL filesystem
- * (FsVfs + FsWatcher), with the fake spawner, with NO real provider or runtime:
- *
- *   1. A skill created via the API lands at the EXACT on-disk path pi reads
- *      (`<W>/<A>/.agents/skills/<slug>/SKILL.md`). The dual-profile test pins the
- *      WIRE behavior, but normalizes ids and runs cloud against MemoryVfs; it
- *      never asserts the byte file exists where the next pi session loads it.
- *      "Created in the UI → the agent uses it next turn" is exactly that file
- *      being on disk, so this is the local analog of Layer-3 checklist row 4
- *      that DOESN'T need a turn.
- *
- *   2. A raw write under an agent's `.houston` surfaces the correct HoustonEvent
- *      on `/v1/events` — the FsWatcher → EventHub → SSE keystone, ASSEMBLED.
- *      The watcher unit test stops at the callback; the events-stream test
- *      drives only the cloud host-mutation path (MemoryVfs, no watcher). This is
- *      the local profile's whole reactivity story (the analog of cloud's
- *      post-turn synthetic sync — see the documented asymmetry) and the thing
- *      that makes "edit a file → the board updates with no refresh" true, so it
- *      must be machine-checked before engine/ (the watcher's parity oracle) goes.
- */
-
 const TOKEN = "boot-secret";
 const auth = {
   Authorization: `Bearer ${TOKEN}`,
@@ -47,17 +24,10 @@ function freePort(): Promise<number> {
   });
 }
 
-// Never invoked — no turn is dispatched in either test (skills + the watcher
-// are both intercepted by the host before the runtime channel).
 const fakeSpawner: RuntimeSpawner = {
   spawn: () => ({ port: 0, kill: () => {} }),
 };
 
-/**
- * Boot the desktop sidecar's exact assembly (buildLocalHost: LocalWorkspaceStore
- * + FsVfs + LocalPaths + FsWatcher + Scheduler) over a temp tree seeded with one
- * agent directory, so workspaces/agents resolve from disk.
- */
 async function bootLocal(): Promise<{
   host: LocalHost;
   base: string;
@@ -65,10 +35,6 @@ async function bootLocal(): Promise<{
   agentId: string;
 }> {
   const workspacesRoot = mkdtempSync(join(tmpdir(), "parity-react-"));
-  // Seed the agent tree incl. its `.houston/activity` dir BEFORE the watcher
-  // arms (mirrors a real install: schemas are seeded on agent create). The
-  // recursive fs.watch then reports the activity.json write at its full path —
-  // a dir created AFTER arming can surface as a coarse parent-dir event.
   for (const dir of ["activity", "runtime/conversations"]) {
     mkdirSync(join(workspacesRoot, "Work", "Sales", ".houston", dir), {
       recursive: true,
@@ -116,10 +82,6 @@ test("a skill created via the API lands at the exact on-disk path pi loads", asy
       "summarize-inbox",
     );
 
-    // The real bytes are at <workspacesRoot>/Work/Sales/.agents/skills/<slug>/
-    // SKILL.md — the directory a fresh pi session reads its skills from. THIS is
-    // the "no extra plumbing; the agent uses it next session" guarantee made
-    // concrete: the file the next runtime opens, on disk, right now.
     const onDisk = join(
       workspacesRoot,
       "Work",
@@ -137,14 +99,6 @@ test("a skill created via the API lands at the exact on-disk path pi loads", asy
   }
 });
 
-/**
- * Open the local host's SSE stream and resolve with the first matching
- * HoustonEvent after `onConnected` (the comment preamble) fires the FS write.
- * The watcher may legitimately emit a broad FilesChanged before the specific
- * ActivityChanged, so ignore non-matching events instead of racing event order.
- * Aborts on settle so the watcher + server unsubscribe; returns "timeout" past
- * budget.
- */
 async function waitForEvent(
   base: string,
   onConnected: () => void,
@@ -226,10 +180,6 @@ test("a runtime transcript write surfaces ConversationsChanged on /v1/events", a
 
 test("a direct .houston file write surfaces on /v1/events (FsWatcher → SSE)", async () => {
   const { host, base, workspacesRoot } = await bootLocal();
-  // The agent (or the user, or an external edit) writes activity.json directly —
-  // no host route involved. Reactivity must catch it. This is the local profile
-  // analog of cloud's post-turn synthetic FilesChanged: same HoustonEvent
-  // vocabulary, different detector (the documented asymmetry).
   const activityDir = join(
     workspacesRoot,
     "Work",
@@ -241,8 +191,6 @@ test("a direct .houston file write surfaces on /v1/events (FsWatcher → SSE)", 
     const event = await waitForEvent(
       base,
       () => {
-        // Give the recursive fs.watch a beat to arm after the SSE preamble, then
-        // write — the watcher debounces, so a single write is one event.
         setTimeout(() => {
           writeFileSync(
             join(activityDir, "activity.json"),

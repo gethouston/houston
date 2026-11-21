@@ -1,12 +1,3 @@
-/* ═══════════════════════════════════════════
-   Houston Guides — listing components (v4 bone)
-   The catalog cards for the Guides hub, in the landing design system:
-   warm bone ground, warm-ink type, Hanken. Page frame (body, nav, footer,
-   buttons) comes from site-tokens.css + landing.css + subpage.css; this file
-   carries ONLY the hub's own grids and cards.
-   ═══════════════════════════════════════════ */
-
-/* ── Layout + intro ───────────────────────────────────────────────────────── */
 .layout {
   max-width: 980px;
   margin: 0 auto;
@@ -61,7 +52,6 @@
   max-width: 660px;
 }
 
-/* ── Workshop guide cards (with thumbnail) ────────────────────────────────── */
 .guide-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -148,7 +138,6 @@
   color: var(--ink-strong);
 }
 
-/* ── Grouped guide (one guide, several chapters) ──────────────────────────── */
 .guide-group {
   display: grid;
   grid-template-columns: 5fr 4fr;
@@ -224,7 +213,6 @@
   color: var(--ink-subtle);
 }
 
-/* ── Link cards (changelog / external resources) ──────────────────────────── */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -263,7 +251,6 @@
   color: var(--ink-muted);
 }
 
-/* ── Coming soon cards ────────────────────────────────────────────────────── */
 .coming-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

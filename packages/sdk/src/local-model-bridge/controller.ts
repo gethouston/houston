@@ -21,7 +21,7 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
     return this.begin(undefined, false);
   }
   async wake(): Promise<void> {
-    if (this.disposed) return; // a superseded wake has nothing to report
+    if (this.disposed) return;
     const status = await bridgeNeedsWake(
       this.ports,
       this.snapshot,
@@ -134,14 +134,6 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
       renewalDelay(expiresAt, (this.ports.now ?? Date.now)()),
     );
   }
-  /**
-   * Renew the session that expires at `expected`. Two schedules ask for it:
-   * this timer, and the native side's `renewalDue` notice two minutes before
-   * expiry. The webview's timers are suspended while the app idles in the
-   * background (macOS App Nap), so the native notice is what keeps a session
-   * alive overnight; the `expected` fence keeps the two from renewing the
-   * same session twice.
-   */
   private renew(epoch: number, expected: string | undefined) {
     return this.lifetime.enqueue(async () => {
       if (

@@ -69,15 +69,7 @@ pub async fn start_codex_oauth_loopback(app: AppHandle) -> Result<(), String> {
     let handle = tokio::spawn(async move {
         match tokio::time::timeout(LISTEN_TIMEOUT, serve_callback(&listener, &app)).await {
             Ok(Ok(())) => {}
-            // The listener is a background task: the command already returned,
-            // so there's no Result left to bubble up to a toast. This is the
-            // documented event-callback exception to the no-silent-failure
-            // rule (no UI thread here). The frontend's retry is the safety net.
             Ok(Err(e)) => tracing::error!("[codex-oauth-loopback] listener error: {e}"),
-            // Expected: the user closed the consent tab or bailed on the
-            // login, so no callback ever arrives. Nothing in Houston broke —
-            // info keeps it out of Sentry (issue 7615221773), matching the
-            // GCIP loopback's timeout arm.
             Err(_) => tracing::info!(
                 "[codex-oauth-loopback] timed out after {}s with no callback; freeing port",
                 LISTEN_TIMEOUT.as_secs()
@@ -130,8 +122,6 @@ async fn bind_codex_port(port: u16) -> Result<TcpListener, String> {
                 );
                 return Ok(listener);
             }
-            // The v4 error stays the primary diagnostic: v4 is where foreign
-            // squatters live, and "no IPv6 loopback" would only mislead.
             Err(e) => {
                 tracing::debug!("[codex-oauth-loopback] [::1]:{port} bind also failed: {e}");
             }
@@ -170,9 +160,6 @@ async fn serve_callback(listener: &TcpListener, app: &AppHandle) -> Result<(), S
             continue;
         }
 
-        // Forward the raw query verbatim; the JS side owns parsing + the PKCE
-        // exchange. Emitting is fallible but there's no user action left to
-        // toast against here, so a failure is logged, not surfaced.
         if let Err(e) = app.emit(CALLBACK_EVENT, query.to_string()) {
             tracing::error!("[codex-oauth-loopback] failed to emit callback event: {e}");
         }
@@ -220,7 +207,6 @@ mod tests {
 
     #[test]
     fn callback_path_matches_and_query_is_extracted() {
-        // Mirror what `serve_callback` does with a request line's target.
         let target = "/auth/callback?code=abc123&state=xyz";
         let (path, query) = split_target(target);
         assert_eq!(path, CALLBACK_PATH);
@@ -229,16 +215,12 @@ mod tests {
 
     #[test]
     fn non_callback_path_is_a_404_and_keeps_listening() {
-        // `/favicon.ico` and friends must not be mistaken for the callback;
-        // `serve_callback` writes a 404 and continues the accept loop.
         let (path, _) = split_target("/favicon.ico");
         assert_ne!(path, CALLBACK_PATH);
     }
 
     #[test]
     fn callback_with_no_query_yields_empty_string() {
-        // A bare `/auth/callback` (no `?`) still matches the path; the query
-        // is empty rather than panicking, and the empty payload is emitted.
         let (path, query) = split_target("/auth/callback");
         assert_eq!(path, CALLBACK_PATH);
         assert_eq!(query, "");
@@ -246,17 +228,12 @@ mod tests {
 
     #[test]
     fn success_page_is_self_contained() {
-        // The loopback serves only this one page, so nothing may be fetched.
         assert!(!SUCCESS_PAGE.contains("<img"));
         assert!(!SUCCESS_PAGE.contains("src="));
     }
 
     #[tokio::test]
     async fn bind_fails_with_actionable_error_when_both_loopback_families_are_held() {
-        // A real squatter (e.g. an actual Codex CLI mid-login) never releases
-        // the port, so the retry loop must exhaust and surface the remedy.
-        // Both families squatted: the [::1] salvage below must not apply.
-        // Ephemeral port: tests must never touch the real 1455.
         let squatter_v4 = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
         let port = squatter_v4.local_addr().unwrap().port();
         let _squatter_v6 = TcpListener::bind(("::1", port)).await.unwrap();
@@ -268,10 +245,6 @@ mod tests {
 
     #[tokio::test]
     async fn bind_salvages_the_ipv6_loopback_when_only_ipv4_is_squatted() {
-        // The Sentry-7639120568 wild shape: a foreign process owns
-        // 127.0.0.1:<port> outright. OpenAI redirects to `localhost`, which
-        // browsers resolve to ::1 first, so binding [::1] keeps the one-click
-        // flow alive without the device-code fallback ever showing.
         let _squatter_v4 = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
         let port = _squatter_v4.local_addr().unwrap().port();
 
@@ -283,19 +256,12 @@ mod tests {
 
     #[tokio::test]
     async fn bind_succeeds_after_the_previous_listener_task_is_aborted() {
-        // The Sentry-7639120568 shape: a prior sign-in attempt's one-shot
-        // listener still owns the port when the user retries. Aborting the old
-        // task and rebinding must succeed within the retry window — the abort
-        // drops the socket asynchronously, which is exactly the latency the
-        // bind retries exist to absorb.
         let holder = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
         let port = holder.local_addr().unwrap().port();
         let task = tokio::spawn(async move {
-            // Hold the socket like an abandoned serve_callback would.
             let _ = holder.accept().await;
         });
 
-        // Sanity: while the task lives, the port really is taken.
         assert!(TcpListener::bind(("127.0.0.1", port)).await.is_err());
 
         task.abort();

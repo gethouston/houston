@@ -31,7 +31,7 @@ test("second acquire waits until the first holder releases", async () => {
   });
 
   await sleep(20);
-  expect(order).toEqual(["first-start"]); // second must not have run yet
+  expect(order).toEqual(["first-start"]);
 
   release();
   await Promise.all([first, second]);
@@ -51,7 +51,6 @@ test("different workdirs never contend", async () => {
       firstRunning = true;
       await gate;
     });
-    // The other folder acquires immediately even while `dir` is held.
     await withWorkdirLock(other, async () => {
       expect(firstRunning).toBe(true);
     });
@@ -89,6 +88,5 @@ test("a rejected turn releases the lock and surfaces its error", async () => {
     throw new Error("boom");
   });
   await expect(boom).rejects.toThrow("boom");
-  // The folder is not wedged: the next turn runs.
   await expect(withWorkdirLock(dir, async () => "ok")).resolves.toBe("ok");
 });

@@ -17,17 +17,6 @@ import {
   VfsReadLimitError,
 } from "./vfs";
 
-/**
- * A Vfs over an object store: listings/stats from the store manifest, an
- * object downloaded into the local overlay (`root`) the FIRST time a handler
- * reads it, writes and deletes in the overlay for the caller's sync-back.
- * The shared `manifest` is the sync-back ownership boundary (materialized
- * objects + UNREAD_HASH entries for keys written/deleted without a read);
- * untouched remote objects never enter it, so they are never re-uploaded
- * or deleted. Remote directories exist only as their descendants; writes
- * keep a real tree's file/directory exclusivity so the next eager hydrate
- * of the store cannot fail on a key that is both.
- */
 export class LazyStoreVfs implements Vfs {
   private readonly local: FsVfs;
   private readonly state: LazyOwnership;
@@ -59,7 +48,6 @@ export class LazyStoreVfs implements Vfs {
       storeKey,
       generation,
     );
-    // A store-side copy stays remote and outside sync-back ownership until read or changed.
     this.state.copied(key, {
       ...copied,
       md5: "",
@@ -67,30 +55,18 @@ export class LazyStoreVfs implements Vfs {
     });
   }
 
-  /** Whether the store mints generations (the sync-back CAS capability). */
   get generationAware(): boolean {
     return [...this.opts.objects, ...this.state.remote.values()].some(
       (o) => o.generation !== undefined,
     );
   }
 
-  /** Remote keys (store-relative) this vfs knows about, excludes applied. */
   get remoteKeys(): string[] {
     return [...this.state.remote.keys()];
   }
 
-  /**
-   * The OVERLAY decides: every write and move this vfs performs lands there,
-   * so its volume is what can silently replace a differently-cased neighbour.
-   * (The remote manifest is exact, but no write reaches it except through the
-   * overlay's sync-back.)
-   */
   keyCase = () => this.local.keyCase();
 
-  /**
-   * The overlay OR the store: a remote object nobody has materialized still
-   * occupies its key, and the overlay alone cannot see it.
-   */
   async exists(key: string): Promise<boolean> {
     assertSafeKey(key);
     return (
@@ -133,9 +109,6 @@ export class LazyStoreVfs implements Vfs {
       await this.downloads.fetch(key, meta);
     } catch (error) {
       if (!(error instanceof ObjectNotFoundError)) throw error;
-      // Vanished between the listing and this first read: another writer
-      // deleted it, so the key is absent — never a failed read
-      // (HOUSTON-APP-5AS). Dropped from the remote view so listings agree.
       this.state.remote.delete(key);
       return null;
     }
@@ -148,9 +121,6 @@ export class LazyStoreVfs implements Vfs {
   async writeBytes(key: string, content: Buffer): Promise<void> {
     assertSafeKey(key);
     this.state.assertWritable(key);
-    // A keyed document replaced unread (a whole-list save) still needs the
-    // bytes it replaces: they are the base a lost upload race merges against,
-    // without which an entry this write deleted comes back from the store.
     if (keepsMergeBase(key) && !(await this.local.exists(key)))
       await this.readBytes(key);
     await this.downloads.settle(key);

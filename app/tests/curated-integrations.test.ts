@@ -25,8 +25,6 @@ const addedCroma: CustomIntegrationView = {
 describe("curated catalog data", () => {
   it("every entry is slug-safe and fully addressed", () => {
     for (const c of CURATED_INTEGRATIONS) {
-      // The host's CUSTOM_SLUG grammar — a violating slug would be rejected
-      // at add time, turning the catalog card into a dead end.
       match(c.slug, /^[a-z0-9][a-z0-9_-]{0,63}$/);
       const endpoint =
         c.source.kind === "mcp" ? c.source.endpoint : c.source.baseUrl;
@@ -34,8 +32,6 @@ describe("curated catalog data", () => {
         match(url, /^https:\/\//);
       }
       ok(c.categories.length > 0);
-      // No server to sign in against: an OpenAPI source is key-only, and a
-      // static header is an MCP-transport concept.
       if (c.source.kind === "openapi") {
         deepStrictEqual(c.authModes, ["credential"]);
         strictEqual(c.extraHeader, undefined);
@@ -80,15 +76,10 @@ describe("curated catalog data", () => {
   it("points HighLevel at its MCP endpoint, token plus sub-account id", () => {
     const highlevel = curatedIntegrationOf("highlevel");
     ok(highlevel);
-    // The per-client `/mcp/<client>/v2` family refuses to register unknown
-    // OAuth clients; only the original endpoint signs Houston in. The
-    // trailing slash is the resource its OAuth metadata names.
     deepStrictEqual(highlevel.source, {
       kind: "mcp",
       endpoint: "https://services.leadconnectorhq.com/mcp/",
     });
-    // Token only, as HighLevel's help center documents; its sub-account id
-    // rides as a static header next to the token.
     deepStrictEqual(highlevel.authModes, ["credential"]);
     ok(highlevel.keyHelpKey);
     ok(highlevel.providerTitleKey);
@@ -121,16 +112,11 @@ describe("curated catalog data", () => {
     );
     ok(ops.length >= 30, `only ${ops.length} operations`);
     for (const op of ops) {
-      // ManyChat's published document names every operation by an MD5 hash
-      // with an empty summary; the committed copy exists so the agent sees
-      // `subscriber.findByName`, never `subscriber.e5c671d1…`.
       match(String(op.operationId), /^[a-z][A-Za-z]+$/, op.path);
       strictEqual(op.operationId, op.path.split("/").at(-1));
       ok(String(op.summary).length > 8, `no summary for ${op.path}`);
       deepStrictEqual(op.security, [{ Bearer: [] }]);
     }
-    // The message payload must accept real content (the upstream document
-    // declares it as an empty closed object).
     const send = doc.paths["/fb/sending/sendContent"]?.post as {
       requestBody: {
         content: {
@@ -175,7 +161,6 @@ describe("curatedToolkits", () => {
       toolkits.find((t) => t.slug === "croma"),
       undefined,
     );
-    // The other entries stay listed — exclusion is per slug, never global.
     strictEqual(
       toolkits.find((t) => t.slug === "highlevel")?.name,
       "HighLevel",
@@ -186,7 +171,6 @@ describe("curatedToolkits", () => {
 describe("curated entries next to a provider catalog", () => {
   const providerCatalog = [
     { slug: "gmail", name: "Gmail", description: "", logoUrl: "" },
-    // Composio lists HighLevel too — that toolkit IS the card.
     { slug: "highlevel", name: "Highlevel", description: "", logoUrl: "" },
   ];
 
@@ -208,7 +192,6 @@ describe("curated entries next to a provider catalog", () => {
       withoutAddedCurated(providerCatalog, [addedHighLevel]).map((t) => t.slug),
       ["gmail"],
     );
-    // A non-curated slug in the custom list never hides a provider app.
     deepStrictEqual(
       withoutAddedCurated(providerCatalog, [
         { ...addedCroma, slug: "gmail" },

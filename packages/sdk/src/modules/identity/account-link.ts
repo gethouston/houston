@@ -20,22 +20,14 @@ import type {
 
 export const ACCOUNT_LINK_SCOPE = "accountLink";
 
-/** A held provider sign-in older than this restarts instead of linking. */
 export const LINK_TTL_MS = 10 * 60_000;
 
 interface Flow {
   pending: PendingLink & { email: string };
   startedAt: number;
-  /** The uid of the session the email code signed in to, once it has. */
   minted?: string;
 }
 
-/**
- * The account-exists flow: a provider sign-in met an existing account, so the
- * person proves the inbox with an email code and the held credential is
- * linked onto the session that code minted. The flow never links any other
- * session, and the credential never leaves the platform port.
- */
 export function createAccountLink<S extends IdentitySession>(deps: {
   transport: EmailOtpTransport;
   port: AccountLinkPort<S>;
@@ -61,8 +53,6 @@ export function createAccountLink<S extends IdentitySession>(deps: {
     publish(next);
   }
 
-  /** A code that did not sign in. Offline counts quietly, the unexpected
-   *  reaches triage, and a refusal is the person's to act on. */
   function failCode(error: unknown): AccountLinkCodeError {
     const codeError = codeErrorOf(error);
     if (codeError === "network" || codeError === "unknown")
@@ -101,15 +91,11 @@ export function createAccountLink<S extends IdentitySession>(deps: {
     return { kind: "code_rejected", error: codeError };
   }
 
-  /** End the active flow, if any. Work in flight sees the flow gone and
-   *  establishes nothing, signs nothing out and publishes nothing. */
   function drop(): void {
     if (flow) port.discardPending(flow.pending.handle);
     flow = null;
   }
 
-  /** End an unfinished link. A finished link's notice stays, since the
-   *  flow's own cleanup signs out through here too. */
   function abandon(): void {
     if (!flow) return;
     drop();
@@ -117,8 +103,6 @@ export function createAccountLink<S extends IdentitySession>(deps: {
   }
 
   return {
-    /** Hold a provider sign-in that met an existing account and mail a code
-     *  to its address. A pending link that is not mid-verify is replaced. */
     async begin(pending: PendingLink): Promise<void> {
       if (busy()) {
         port.discardPending(pending.handle);
@@ -179,8 +163,6 @@ export function createAccountLink<S extends IdentitySession>(deps: {
       );
     },
 
-    /** Back to the sign-in screen, clearing the last link's notice. A code
-     *  already sent stays valid on the gateway. */
     cancel(): void {
       drop();
       publish({ status: "idle" });
@@ -188,8 +170,6 @@ export function createAccountLink<S extends IdentitySession>(deps: {
 
     abandon,
 
-    /** The platform's signed-in uid changed. Losing or replacing the session
-     *  the code minted is a sign-out this flow never saw (another tab). */
     sessionChanged(uid: string | null): void {
       if (flow?.minted !== undefined && uid !== flow.minted) abandon();
     },

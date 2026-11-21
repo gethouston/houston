@@ -14,28 +14,6 @@ import { resumeWasRecorded, revokeResume } from "./resume-revoke";
 import { actingFromPersisted } from "./turn-resume-info";
 import type { ProvidedContext } from "./workspace-context";
 
-/**
- * Running the turns the boot settle judged resumable (PRODUCT-1785).
- *
- * The settle (settle-interrupted-turns.ts) already wrote each interrupted
- * turn's reply and decided WHICH may run again — never a resume of a resume,
- * never a marker from an engine that could not record what a resume needs.
- * This module only re-sends the original prompt, framed so the model knows a
- * restart happened and what survived it (resume-prompt.ts).
- *
- * Fire-and-forget by design: it runs AFTER the server listens (a resume that
- * hung before `listen` would hold the whole engine down). A resume that never
- * starts is not silent, though: the settle already promised the user a
- * continuation, so every failure path here takes that promise back
- * (resume-revoke.ts).
- */
-
-/**
- * How long the resume waits before sending. The credential prime + the first
- * serve sync start at boot and the resumed turn needs them: a send that beat
- * them would fail the provider gate ("No provider connected") on an engine
- * that is perfectly fine seconds later.
- */
 export const RESUME_DELAY_MS = 2_000;
 
 export interface ResumeInterruptedTurnsDeps extends ResumeProviderProbes {
@@ -54,7 +32,6 @@ export interface ResumeInterruptedTurnsDeps extends ResumeProviderProbes {
   log?: (message: string, error: unknown) => void;
   delayMs?: number;
   sleep?: (ms: number) => Promise<void>;
-  /** Test seams; production wires the runtime's own gates, latch and sync. */
   holdTurn?: (id: string, turn: Promise<void>) => void;
   isDraining?: () => boolean;
   runWithActing?: <T>(acting: ActingContext | undefined, fn: () => T) => T;
@@ -63,19 +40,6 @@ export interface ResumeInterruptedTurnsDeps extends ResumeProviderProbes {
   recorded?: (conversationId: string, prompt: string) => boolean;
 }
 
-/**
- * Run every resumable turn once, in order. Never throws and never rejects: the
- * caller is a boot path with no user to answer to.
- *
- * Each turn passes the same gates the HTTP route applies to a client's send:
- * no new turn on a draining runtime (it would only be cut again), a connected
- * provider first (waited for, not refused), and the conversation-command hold
- * so a `/clear` arriving mid-resume is refused instead of disposing the
- * session under the running turn. Crucially it also runs inside the ORIGINAL
- * turn's acting context — the gates and the whole turn read it ambiently
- * (acting-context.ts), and a resume that skipped it would run, and bill, on
- * the team account.
- */
 export async function resumeInterruptedTurns(
   requests: readonly ResumeRequest[],
   deps: ResumeInterruptedTurnsDeps,
@@ -115,8 +79,6 @@ export async function resumeInterruptedTurns(
         `[turn] resume after restart skipped, runtime is draining ${where}`,
         undefined,
       );
-      // Nothing after this point starts either, so every turn still holding
-      // the settle's promise gives it back — not just this one.
       for (const pending of requests.slice(index)) giveUp(pending);
       return;
     }
@@ -139,8 +101,6 @@ export async function resumeInterruptedTurns(
       giveUp(request);
       continue;
     }
-    // `runTurn` refuses a turn it cannot start by resolving normally, so a
-    // resolved turn is not yet a started one: the recorded prompt is.
     if (!recorded(request.conversationId, prompt)) {
       log(
         `[turn] resume after restart recorded nothing, the turn was refused ${where}`,
@@ -157,10 +117,6 @@ interface ResumeRunners {
   sleep: (ms: number) => Promise<void>;
 }
 
-/**
- * Start one resume under the caller's acting context and wait it out. Returns
- * false when no provider ever became available — the one non-throwing refusal.
- */
 async function startResume(
   request: ResumeRequest,
   prompt: string,

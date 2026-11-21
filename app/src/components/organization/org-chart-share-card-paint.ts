@@ -25,15 +25,11 @@ import { FONT, fitText, wrapLines } from "./org-chart-share-card-text";
 
 export type { ShareCardText };
 
-/** Images already loaded and checked safe to draw. */
 export interface ShareCardAssets {
-  /** Person photos by userId; a person missing here wears initials. */
   photos: ReadonlyMap<string, CanvasImageSource>;
-  /** The dark Houston mark for the footer, or `null` when it did not load. */
   mark: CanvasImageSource | null;
 }
 
-/** The root: its tile (or face) and name, centred together in the card. */
 function paintRoot(
   ctx: CanvasRenderingContext2D,
   box: CardBox,
@@ -84,11 +80,6 @@ function paintRoot(
   track(ctx, 0);
 }
 
-/**
- * A stacked card: its mark, then the name (two lines when it needs them and
- * there is no role), then an AI Employee's role on one line, the whole block
- * centred in the card. A "+N" that has words is the words alone.
- */
 function paintStacked(
   ctx: CanvasRenderingContext2D,
   box: CardBox,
@@ -104,7 +95,6 @@ function paintStacked(
   const lines = box.label
     ? wrapLines(ctx, box.label, inner, role ? 1 : NAME_LINES)
     : [];
-  // A "+N" with words ("+4 people") says it once, centred, with no mark.
   if (node.kind === "more" && lines.length > 0) {
     let line = box.y + (box.h - lines.length * s.nameLine) / 2;
     ctx.textBaseline = "middle";
@@ -168,7 +158,6 @@ function paintBox(
   } else paintStacked(ctx, box, assets);
 }
 
-/** Paint the whole card onto a context the size of `frame`. */
 export function paintShareCard(
   ctx: CanvasRenderingContext2D,
   layout: CardLayout,

@@ -1,8 +1,3 @@
-/**
- * Forces group-chat sender presentation only when the transcript proves that
- * someone besides the viewer participated. `undefined` preserves ui/chat's
- * distinct-author fallback without ever suppressing it with `false`.
- */
 export function chatSenderMode(
   authorIds: string[],
   viewerUserId: string | undefined,

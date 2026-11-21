@@ -4,12 +4,6 @@ import { useCanAddAgentsHere } from "../../../../hooks/use-can-create-agents";
 import { useUIStore } from "../../../../stores/ui";
 import { LessonPanelFrame } from "../lesson-panel-frame";
 
-/**
- * A team with nobody on it cannot send anything, so the beat says so and
- * offers the real hiring flow, stacked over the lesson. The beat updates the
- * moment the new AI Employee joins, and the lesson carries on from there. A
- * member who may not hire is told who can.
- */
 export function EmailNoSender() {
   const { t } = useTranslation("academy");
   const canCreate = useCanAddAgentsHere();

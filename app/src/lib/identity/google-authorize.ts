@@ -1,11 +1,3 @@
-// Desktop Google sign-in: loopback+PKCE authorize → token exchange → id_token.
-//
-// Google "Desktop app" OAuth clients are non-confidential but STILL require the
-// installed-app `client_secret` at the token endpoint, so both the client id
-// and secret are baked as Vite defines (`__GOOGLE_DESKTOP_CLIENT_ID__` /
-// `__GOOGLE_DESKTOP_CLIENT_SECRET__`). auth.ts (Wave B) feeds the returned
-// id_token to `signInWithIdp({ providerId: "google.com" })`.
-
 import {
   type LoopbackAuthorizeOptions,
   postTokenForm,
@@ -28,10 +20,6 @@ function googleClientSecret(): string {
     : "";
 }
 
-/**
- * Drive the desktop Google flow and return the OIDC id_token, or `null` when the
- * authorize was benignly cancelled (superseded / unmount / timeout).
- */
 export async function authorizeGoogleDesktop(
   opts?: LoopbackAuthorizeOptions,
 ): Promise<string | null> {
@@ -47,12 +35,11 @@ export async function authorizeGoogleDesktop(
       authorizeBase: GOOGLE_AUTHORIZE,
       clientId,
       scope: "openid email profile",
-      // Google-specific: request a refresh token on the installed-app grant.
       extraParams: { access_type: "offline" },
     },
     opts,
   );
-  if (!authorized) return null; // benign cancel
+  if (!authorized) return null;
   const { code, redirectUri, codeVerifier } = authorized;
 
   const body = await postTokenForm(GOOGLE_TOKEN, {

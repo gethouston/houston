@@ -14,11 +14,6 @@ import {
 } from "../../../src/specimen";
 import { builderProps } from "./schedule-builder-parts";
 
-/**
- * A stand-in for the plan rule the app binds (the SDK's real-gap rule): a
- * minute step restarts at the top of the hour, so `*\/16` fires :48 then :00,
- * while `@every 16m` runs exactly 16 apart.
- */
 const FREE_FLOOR: ScheduleFloor = {
   minutes: 15,
   allows: (cron) => {
@@ -33,10 +28,6 @@ const FREE_FLOOR: ScheduleFloor = {
   },
 };
 
-/**
- * The builder is controlled, so every example owns the cron it edits — and
- * prints it, because the generated expression is the thing under review.
- */
 function Builder({
   cron,
   presets,
@@ -127,11 +118,6 @@ function ScheduleBuilderSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["ScheduleBuilder"];
 
 export const specimen: Specimen = {

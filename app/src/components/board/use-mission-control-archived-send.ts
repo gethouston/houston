@@ -10,13 +10,6 @@ import { tauriAttachments, tauriChat } from "../../lib/tauri";
 import type { TurnMode } from "../../lib/turn-mode";
 import type { Agent } from "../../lib/types";
 
-/**
- * Send-to-reactivate for the cross-agent Archived view — the analogue of the
- * per-agent `useArchivedSendMessage`. Sending in an archived chat re-activates
- * the mission (the engine flips `archived → running` on session start) and
- * hands off to that mission's agent board with the chat open. The target is
- * always the selected archived mission, whose agent is `activeAgent`.
- */
 export function useMissionControlArchivedSend({
   activeAgent,
   selectedItem,
@@ -26,12 +19,8 @@ export function useMissionControlArchivedSend({
 }: {
   activeAgent: Agent | null;
   selectedItem: KanbanItem | null;
-  /** The chat panel's settled pin (PRODUCT-1771), read at send time. */
   resolveSendPin: () => Promise<ModelPin>;
-  /** The chat panel's mode: the mission's kept one (HOU-205). */
   turnMode: TurnMode;
-  /** The archived → active handoff (`useArchivedHandoff`), run once the send
-   *  lands and the mission is no longer archived. */
   onHandoff: (missionId: string) => void;
 }) {
   return useCallback(
@@ -52,8 +41,6 @@ export function useMissionControlArchivedSend({
         );
         const prompt = buildAttachmentPrompt(text, files, paths);
         const pin = await resolveSendPin();
-        // The turn stream pushes the user bubble into the conversation VM
-        // itself — no app-side optimistic push.
         await tauriChat.send(agentPath, prompt, sessionKey, {
           providerOverride: pin.provider,
           modelOverride: pin.model,
@@ -67,11 +54,8 @@ export function useMissionControlArchivedSend({
         });
         for (const f of files)
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });
-        // Reactivated (archived → running): hand off to the agent's board.
         onHandoff(missionId);
       } catch (err) {
-        // The send failed BEFORE a turn stream existed — nothing wrote to the
-        // VM, so surface it as a toast (no-silent-failures rule).
         showSendFailedToast(err);
         throw err;
       }

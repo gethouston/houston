@@ -7,12 +7,6 @@ import type {
 import { getEngine } from "./engine";
 import { engineCall } from "./tauri";
 
-/**
- * The AI Manager's morning briefing (Settings > Notifications). The two
- * states of "brief me now" a person can act on (the manager mid-turn, a turn
- * that could not start for want of an AI account) are silenced here and told
- * by the caller with authored copy; anything else takes the default path.
- */
 const actionable = (err: unknown) => {
   const { kind } = classifyHeartbeatFailure(err);
   return kind === "turn_running" || kind === "failed";

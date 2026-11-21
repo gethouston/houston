@@ -2,7 +2,6 @@ import { ChevronLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useUIStore } from "../../stores/ui";
 
-/** The pushed chat's back chevron: pops the level, like hardware back. */
 export function MissionChatBack() {
   const { t } = useTranslation("shell");
   const closeMissionChat = useUIStore((s) => s.closeMissionChat);

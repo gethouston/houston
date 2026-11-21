@@ -16,14 +16,6 @@ import {
 import { expect, test } from "./support/fixtures";
 import { armPlan, billingScreen, freePlan, openBilling } from "./support/plan";
 
-/**
- * A payer's paid pick the gateway refuses (`not_payer`) once, while the
- * refetch still names them a payer: the refusal swaps no choice, so every GET
- * keeps answering the payer choice. The picker stays on the free step, sends
- * the free pick alone, which stores, and counts no paid step through the
- * success step.
- */
-
 const REFUSE_ONCE = { refusals: [{ refuse: "not_payer" as const }] };
 
 test.beforeEach(async ({ page }) => {
@@ -55,12 +47,10 @@ test("after a refused paid pick the modal drops the paid step from progress, Bac
     { freeOrgSlug: INNOVA.slug, paidOrgSlug: LA_FILA.slug },
   ]);
 
-  // The free step is now the picker's only step.
   await expect(modal).toContainText("Step 3 of 4");
   await expect(modal).not.toContainText("of 5");
   await expect(modal.getByRole("radio", { name: /La Fila/ })).toBeEnabled();
 
-  // Back leaves the picker for the intro, never the refused paid step.
   await modal.getByRole("button", { name: "Back" }).click();
   await expect(
     page.getByRole("dialog", { name: "Nothing gets deleted" }),
@@ -113,7 +103,6 @@ test("after a refused paid pick the Settings picker has one step, no Back, and r
   await expect(
     page.getByRole("dialog", { name: "Innova stays on the free tier" }),
   ).toBeVisible();
-  // One step and its success step: no progress there either.
   await expect(picker).not.toContainText(/Step \d+ of/);
   expect((await sets())[1]).toEqual({ freeOrgSlug: INNOVA.slug });
   await picker.getByRole("button", { name: "Done" }).click();
@@ -121,7 +110,6 @@ test("after a refused paid pick the Settings picker has one step, no Back, and r
   const change = billing.getByRole("button", { name: "Change" });
   await expect(change).toBeFocused();
 
-  // A fresh open forgets the refusal: the payer picks the paid org first.
   await change.click();
   await expect(picker).toContainText("Step 1 of 3");
   await expect(
@@ -135,7 +123,6 @@ test("the Settings picker reopens on the stored pick, not the last open's draft"
   await armCapabilities({ ...SPACES_OWNER_CAPS, plan: true });
   await armPlan({ summary: freePlan() });
   await armChoice(ownerChoice({ freeOrgSlug: INNOVA.slug }));
-  // A stored pick asks nothing on open: straight to Billing.
   await page.goto("/");
   await expect(page.getByRole("main")).toBeVisible();
   await openBilling(page);

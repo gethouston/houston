@@ -7,27 +7,6 @@ import { ComposioApiError, type ComposioHttp } from "./composio-http";
 import type { RawAuthConfig } from "./composio-wire";
 import { IntegrationUpstreamError } from "./types";
 
-/**
- * The project's auth config for a toolkit: reuse an enabled one, else create
- * one. Which kind depends on how the toolkit authenticates:
- *
- *  - Composio-managed OAuth available (gmail, slack…) → `use_composio_managed_auth`
- *    (their OAuth app; no Google registration on our side).
- *  - No managed auth (API-key/bearer toolkits like serpapi) → `use_custom_auth`
- *    with the toolkit's own scheme and EMPTY credentials: the auth config is
- *    just the container; the hosted connect link then asks the USER for their
- *    key (verified live — `connected_account_initiation.required` fields are
- *    collected on connect.composio.dev). Same Connect UX either way.
- *
- * The toolkit metadata is a CLAIM, not a guarantee: Composio can advertise
- * managed auth for a toolkit whose managed OAuth app is expired or withdrawn
- * (shopify, clockify — HOU-1020: creating the managed config 400s with
- * "Missing required field Client id"). So candidate specs are tried in order —
- * managed first, then the user-collectible scheme — and a 400 on the managed
- * create falls through instead of surfacing as an opaque 502.
- *
- * The caller caches per process; a restart just re-resolves the same config.
- */
 export async function resolveAuthConfig(
   http: ComposioHttp,
   cache: Map<string, string>,
@@ -55,11 +34,6 @@ export async function resolveAuthConfig(
       id = await createAuthConfig(http, toolkit, spec);
       break;
     } catch (err) {
-      // Only the MANAGED candidate's 400 is survivable — it means the
-      // advertised managed app does not actually exist. With a collectible
-      // scheme still on deck, fall through to it; without one the toolkit is
-      // OAuth-only, so name the operator remedy instead of relaying an opaque
-      // 400. Anything else — transient 5xx, a failed custom create — surfaces.
       const managedRejected =
         err instanceof ComposioApiError &&
         err.status === 400 &&
@@ -97,19 +71,8 @@ interface RawToolkitDetail {
   auth_config_details?: { mode?: string }[];
 }
 
-/** OAuth needs a REGISTERED developer app (client id/secret) behind the auth
- *  config — an empty custom OAuth config can never complete the dance, it just
- *  fails at connect time (metaads was the canonical case). Every other scheme
- *  (API_KEY, BEARER_TOKEN, BASIC…) is collectible from the USER on the hosted
- *  connect page, so only those are connectable fallbacks. */
 const OAUTH_MODES = new Set(["OAUTH1", "OAUTH1A", "OAUTH2"]);
 
-/** OAuth-only + unmanaged is a KNOWN deployment gap, not a server fault: typed
- *  as a 400 the route relays verbatim, so the frontend can key friendly copy on
- *  the code (HOU-1110: highlevel surfaced this as a raw 500 with the operator
- *  remedy shown to an end user). The `.message` keeps the remedy for logs and
- *  self-host operators; `body.error` is the fallback a generic surface shows.
- *  The codes are the wire's `IntegrationConnectRefusalCode`. */
 function oauthOnlyError(toolkit: string): Error {
   return new IntegrationUpstreamError(
     400,
@@ -121,12 +84,6 @@ function oauthOnlyError(toolkit: string): Error {
   );
 }
 
-/** The ordered auth-config specs worth attempting: managed auth when Composio
- *  advertises it, then the toolkit's first scheme the hosted connect page can
- *  collect from the user (never bare custom OAuth). NO_AUTH is not a scheme
- *  either: Composio rejects auth configs for no-auth toolkits
- *  (Auth_Config_NoAuthApp), so a connect attempt on one — a stale catalog, an
- *  agent suggesting it — fails as a clean 400 the UI can show, not a 502. */
 async function candidateSpecs(
   http: ComposioHttp,
   toolkit: string,
@@ -135,9 +92,6 @@ async function candidateSpecs(
     `/api/v3/toolkits/${encodeURIComponent(toolkit)}`,
     { nullStatuses: [404] },
   );
-  // Composio has no app by this slug: an agent-authored connect card named an
-  // app the catalog does not carry (HOUSTON-APP-5M0: "etsy"). Nothing to set
-  // up on either side, so a typed 400 the connect flow explains, not a 502.
   if (!detail) {
     throw new IntegrationUpstreamError(400, {
       error: `${toolkit} is not an app Houston can connect`,

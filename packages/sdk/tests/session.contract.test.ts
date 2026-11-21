@@ -1,11 +1,3 @@
-/**
- * Session / connection contract: attaching a token drives the `connection`
- * view-model, and the token then rides real requests to the host.
- *
- * The `ConnectionViewModel` is one of the snapshots every subscriber reads, so
- * its exact JSON shape is pinned here.
- */
-
 import { FAKE_TOKEN, type FakeHost } from "@houston/fake-host";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { type Harness, makeSdk, resetHost, startHost } from "./harness";
@@ -48,7 +40,6 @@ describe("session / connection VM", () => {
       baseUrl: host.url,
       hasToken: true,
     });
-    // The token reached the shared store the auth-fetch reads per request.
     expect(h.storage.get("houston.sdk.session.token")).toBe(FAKE_TOKEN);
   });
 
@@ -66,8 +57,6 @@ describe("session / connection VM", () => {
     h = makeSdk(host.url);
     await h.sdk.session.setToken(FAKE_TOKEN);
 
-    // A real authenticated round-trip to the host; no throw = the auth-fetch
-    // stamped the header and the request was served.
     await expect(h.sdk.agents.refresh()).resolves.toBeUndefined();
   });
 });

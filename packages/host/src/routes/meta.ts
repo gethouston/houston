@@ -1,13 +1,4 @@
-/**
- * The public meta surface: health plus the v3 descriptors the UI reads BEFORE
- * sign-in to shape itself. Capabilities are not secrets, so none of these sits
- * behind the bearer wall — which is exactly what makes them `infra` rather
- * than an SDK surface.
- */
 import { PROTOCOL_VERSION } from "@houston/protocol";
-// Build-time constant: esbuild inlines the JSON import into the bundle (and
-// vitest/tsx resolve it the same way), so the served version can never drift
-// from the package.json that shipped it.
 import { version as HOST_VERSION } from "../../package.json";
 import type { ControlPlaneDeps } from "../server";
 import { json } from "./http";
@@ -34,10 +25,6 @@ defineRoute({
   classification: "infra",
   reason: "Liveness probe: no user identity, no domain payload.",
   source: SOURCE,
-  // /health is the engine pod's readiness probe. A pod that lost its store
-  // lease answers 503 so it leaves the agent's Service and clients stop
-  // retrying against it: it retires, or stands down while a running engine
-  // holds the lease (local/fence-retire.ts).
   handler: ({ deps, res }) => {
     const body = healthBody(deps);
     json(res, body.status === "fenced" ? 503 : 200, body);
@@ -55,13 +42,8 @@ defineRoute({
   handler: ({ deps, res }) =>
     json(res, 200, {
       engine: "houston-host",
-      // The host package's semver — bumped when something meaningful ships,
-      // so the cloud update manager can compare pods against the current release.
       version: HOST_VERSION,
       protocol: PROTOCOL_VERSION,
-      // The exact git commit this image was built from (engine-pod-image.yml
-      // bakes BUILD_SHA into the engine-pod target); null on builds that don't
-      // set it (self-host, local dev).
       build: process.env.BUILD_SHA || null,
       chatHistoryMigrated: deps.chatHistoryMigrated ?? false,
     }),

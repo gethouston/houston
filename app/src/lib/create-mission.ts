@@ -1,9 +1,3 @@
-/**
- * createMission — single source of truth for creating a new activity and
- * kicking off its Claude session. Used by both the desktop board-tab UI
- * and the mobile sync responder so the flow stays identical.
- */
-
 import type { MessageMention } from "@houston/engine-adapter";
 import { isAgentProvisioning } from "../stores/agent-provisioning";
 import { activityRowPin, definedPins } from "./agent-model-overrides";
@@ -24,7 +18,6 @@ import {
 } from "./mission-title";
 import { tauriActivity, tauriChat } from "./tauri";
 
-/** Build a session key for a given activity id. */
 function sessionKeyForActivity(activityId: string): string {
   return `activity-${activityId}`;
 }
@@ -32,11 +25,6 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-/**
- * Minimal Conversation shape consumed by createMission. Loosely based on
- * the legacy `@houston-ai/sync-protocol` type; kept local so the desktop
- * compiles without the deleted package.
- */
 export interface Conversation {
   id: string;
   title: string;
@@ -48,12 +36,6 @@ export interface Conversation {
   agentPath: string;
 }
 
-/**
- * Derive an activity title from the user's message.
- * - Trims whitespace; empty input becomes "New mission".
- * - Truncates to ~40 chars on a word boundary and appends an ellipsis if
- *   the message was longer.
- */
 export function autoTitleFromText(text: string): string {
   return fallbackMissionTitle(text);
 }
@@ -66,67 +48,29 @@ export interface CreateMissionAgent {
 }
 
 export interface CreateMissionOptions extends MissionPromptOptions {
-  /** Sub-agent mode id to store with the activity row. */
   agentMode?: string;
-  /** Provider override forwarded to tauriChat.send. */
   providerOverride?: string;
-  /** Model override forwarded to tauriChat.send. */
   modelOverride?: string;
-  /** Reasoning-effort override forwarded to tauriChat.send. */
   effortOverride?: string;
-  /** Per-turn mode pin (composer "Mode" selector) forwarded to tauriChat.send. */
   modeOverride?: "execute" | "plan" | "auto";
-  /** Teammates the first message @mentions (HOU-944), forwarded to
-   *  tauriChat.send as a sidecar beside the prompt. */
   mentions?: MessageMention[];
-  /**
-   * Explicit activity title. Overrides the default `autoTitleFromText(text)`.
-   * Used by action invocations where `text` is a structured marker that
-   * should not bleed into the kanban card title.
-   */
   title?: string;
-  /** Source text used for async AI title generation. Defaults to `text`. */
   titleText?: string;
-  /**
-   * The id the new mission's conversation is born with: the one the
-   * composer's typing already prewarmed (`claimNewConversationId`), so the
-   * send lands in the sandbox readied for it. Only a create that mints the id
-   * on the client honors it: the optimistic one and the warming path. The
-   * plain create lets the server mint the id and ignores this.
-   */
   conversationId?: string;
-  /**
-   * A composer send (PRODUCT-1643): resolve the moment the turn is on screen —
-   * the board row lands in the background through an id-upsert, so nothing
-   * waits on the pod (asleep or not) before the user sees their message.
-   * Setup flows leave this unset: they patch the row right after create and
-   * need it landed first.
-   */
   optimistic?: boolean;
 }
 
 export interface CreateMissionResult {
-  /** Activity id returned by the backend. */
   conversationId: string;
-  /** Derived session key (`activity-{id}`). */
   sessionKey: string;
-  /** Wire-ready Conversation payload for the mobile list. */
   conversation: Conversation;
 }
 
-/**
- * Create an activity under the given agent and start its Claude session.
- * If prompt preparation or session start fails, remove the just-created
- * activity so the board never keeps a fake "running" mission.
- */
 export async function createMission(
   agent: CreateMissionAgent,
   text: string,
   opts: CreateMissionOptions = {},
 ): Promise<CreateMissionResult> {
-  // A warming engine holds the activity write for the whole cold start —
-  // awaiting it would freeze the composer with the user's text still in it
-  // (HOU-693). The warming path answers immediately instead.
   if (isAgentProvisioning(agent.id)) {
     return createMissionWhileWarming(agent, text, opts);
   }
@@ -135,9 +79,6 @@ export async function createMission(
   const title = opts.title ?? fallbackMissionTitle(titleText);
   const description = text;
 
-  // The row is stamped in pi's CANONICAL dialect (the one every send path reads
-  // it back in), and a model the catalog could not resolve is left OFF the row
-  // rather than written as an empty pin.
   const rowPin = activityRowPin(opts);
   const item = await tauriActivity.create(
     agent.folderPath,
@@ -158,13 +99,10 @@ export async function createMission(
     );
 
     await tauriChat.send(agent.folderPath, prompt, sessionKey, {
-      // Empty pins dropped: a turn naming a provider and an empty model is a
-      // half-pin the runtime rejects.
       ...definedPins(opts),
       modeOverride: opts.modeOverride,
       mentions: opts.mentions,
       displayText: hiddenPromptDisplayText(text, hasHiddenPrompt(opts)),
-      // Set only where the server titles the card after this first reply.
       missionTitle: titlePlan.send,
     });
 
@@ -174,7 +112,6 @@ export async function createMission(
       model: opts.modelOverride,
     });
 
-    // Everywhere else the client titles the landed card itself.
     titleLandedMission(agent.folderPath, conversationId, titlePlan);
   } catch (e) {
     try {

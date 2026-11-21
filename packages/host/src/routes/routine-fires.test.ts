@@ -45,7 +45,6 @@ class SpyChannel implements RuntimeChannel {
     actingUser?: string;
     actingAs?: string;
   }[] = [];
-  /** When set, every fire is refused with this error. */
   refusal: Error | null = null;
   async dispatch() {}
   async fireTurn(
@@ -225,9 +224,6 @@ test("busy burns the instant without creating another run", async () => {
   });
 });
 
-// The instant is burned before the fire, so any failure after it must be a
-// terminal 200: a 5xx makes the control plane retry into a deduped "fired"
-// for a routine that never ran.
 test.each([
   [
     "an unpinned routine with no provider",
@@ -243,7 +239,6 @@ test.each([
         'runtime 409: {"error":"No provider connected.","code":"no_provider"}',
     },
 
-    // Typed, so it counts toward the auto-pause (PRODUCT-1982).
     {
       summary:
         "This routine has no model chosen, and the AI account it would use isn't connected.",
@@ -293,14 +288,11 @@ test.each([
     ...(typedRun ?? { summary: refusal.message }),
   });
 
-  // The instant stays burned and a redelivery replays the recorded outcome.
   const replay = await postFire(body);
   expect(await replay.json()).toEqual({ ...expected, deduped: true });
   expect(await runs()).toHaveLength(1);
 });
 
-// Only console.error reaches Sentry on the host: an unexpected failure is
-// reported there, a creator with nothing connected stays a warning.
 test.each([
   ["an unexpected throw", "error", new Error("quota exceeded")],
   ["a runtime 5xx", "error", new TurnFireError("runtime 500: x", 500, null)],
@@ -334,10 +326,6 @@ test.each([
   }
 });
 
-// Where the fire ran, not what it is: the host drains or renames, or the
-// runtime is unreachable or refuses new turns while it drains. The instant is
-// unburned and answered 503, so the control plane redelivers it and the
-// replacement fires it.
 test.each([
   ["a draining host", new LauncherClosedError()],
   ["a renaming agent", new AgentRenamingError("a1")],
@@ -388,8 +376,6 @@ test.each([
   expect(channel.fired).toHaveLength(1);
 });
 
-// With no errored run the person has nothing to see: the instant must stay
-// deliverable rather than settle as a failure nobody can find.
 test.each([
   ["before the run is recorded", 1, 0],
   ["when the errored mark cannot be written", 2, 1],
@@ -462,8 +448,6 @@ test("a mismatched acting subject is a stable permanent refusal", async () => {
 });
 
 test("an AI Manager pod fires its routines as its own person", async () => {
-  // Only that person reaches the manager, so a routine an earlier write
-  // stamped with the org owner is theirs too: the control plane fires it so.
   vi.stubEnv("HOUSTON_MANAGED_CLOUD", "1");
   vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "member");
   try {
@@ -504,8 +488,6 @@ test("a duplicate instant is idempotently fired and deduped", async () => {
     actingAs: actingAs("creator-1"),
   };
   expect(await (await postFire(body)).json()).toEqual({ result: "fired" });
-  // The replay names when the original attempt started, so the control plane
-  // can time a fire whose answer it never got.
   const replay = (await (await postFire(body)).json()) as {
     startedAt: string;
   };
@@ -604,8 +586,6 @@ test("external mode leaves trigger delivery and run-now operational", async () =
   });
   expect(runNow.status).toBe(200);
   expect(channel.fired).toHaveLength(2);
-  // Only the hand-pressed row is marked manual: it ran as the presser, so it
-  // never moves the creator's snooze (domain snoozeAfterRun).
   const rows = await runs();
   expect(rows.filter((r) => r.manual === true)).toHaveLength(1);
   expect(
@@ -613,9 +593,6 @@ test("external mode leaves trigger delivery and run-now operational", async () =
   ).toBeUndefined();
 });
 
-// A redelivery while the first delivery is still firing (a cold boot slower
-// than the control plane's call, or a second replica) must not settle: the
-// first attempt may yet fail.
 test("a redelivery during the first fire waits instead of settling", async () => {
   await seedRoutines([routine()]);
   let release = () => {};

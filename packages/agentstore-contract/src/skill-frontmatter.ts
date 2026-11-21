@@ -1,15 +1,3 @@
-/**
- * Parse the YAML frontmatter of a SKILL.md body, with the SAME rules as
- * `parseSkillMd` in `@houston/domain` (packages/domain/src/skills.ts): the `FM`
- * regex, the `yaml` parser, and the `str()` coercion (string as-is; number/Date
- * stringified; everything else null).
- *
- * IDENTITY RULE: this parser reads only DISPLAY fields (`title:`, `description:`,
- * etc.) and NEVER reads the frontmatter `name:` — agent-authored SKILL.md files
- * sometimes drift a display phrase into `name:` and trusting it makes lookups 404
- * (HOU-515/HOU-441). A skill's identity is the caller's own slug, which the
- * caller pairs with these display fields; it is not derived here.
- */
 import { parse as parseYaml } from "yaml";
 
 export interface SkillFrontmatter {
@@ -37,9 +25,6 @@ const EMPTY: SkillFrontmatter = {
 };
 
 export function parseSkillFrontmatter(body: string): SkillFrontmatter {
-  // Reads DISPLAY fields only; the frontmatter `name:` is deliberately ignored
-  // (see IDENTITY RULE) so a drifting display phrase can never shadow the
-  // caller's slug.
   const m = body.match(FM);
   if (!m) return { ...EMPTY };
 

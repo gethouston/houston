@@ -202,7 +202,6 @@ describe("a refused listing edit undoes only its own entries", () => {
     const edit = replacementEdit("a.md", "dest/a.md");
     const back = edit.revert(edit.apply(before), before);
     assert.deepEqual(paths(back)?.sort(), ["a.md", "dest", "dest/a.md"]);
-    // The occupant's own entry, not the moved one renamed onto its path.
     assert.equal(
       back?.find((f) => f.path === "dest/a.md"),
       before[2],

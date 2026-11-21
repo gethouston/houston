@@ -8,193 +8,87 @@ import type { Agent } from "../../lib/types";
 import type { FirstDayPlacement } from "../first-day/first-day-model";
 import type { BoardSelectionModel } from "./board-selection-model";
 
-/**
- * Shared mission-board architecture.
- *
- * `<MissionBoard>` owns every piece of wiring a cross-agent board needs: the
- * AIBoard prop spread, the `useAgentChatPanel` integration, the message queue,
- * draft persistence, keyboard navigation, the bulk-action UI, columns, and all
- * i18n labels.
- *
- * The scope-dependent parts — where the data comes from, who the active agent
- * is, how a new mission is started, and how bulk mutations are routed to the
- * right agent — live behind this `BoardSource` interface, which
- * `useMissionControlSource` builds. This is the headless-logic pattern: one
- * presentational/wiring component, an injected data backend. Mission Control
- * and each employee board are the SAME source narrowed by a
- * `MissionControlScope`, so they never drift apart.
- */
-
-/** Everything a user-typed send carries beside its text and files: the
- *  provider/model/effort the composer picker is showing (so the wire mirrors
- *  it, never silently re-resolved by the engine), the turn-mode pin, and the
- *  teammates the message named. */
 export interface SendOverrides {
   providerOverride: string;
   modelOverride: string;
-  /** Reasoning effort the picker shows. A pooled (cloud) turn reads effort
-   *  from the send alone, so without it every turn ran the default. */
   effortOverride?: string;
-  /** Turn mode pin for user-typed sends; absent = execute. */
   modeOverride?: TurnMode;
-  /** Teammates this message @mentions (HOU-944). Per-send, not a composer
-   *  setting: it comes from the submit, not the toolbar. Absent on an
-   *  agent-initiated send (retry, auto-resume, routine). */
   mentions?: MessageMention[];
   grants?: GrantableOperation[];
-  /** Houston wrote this message for the person rather than them typing it
-   *  (`lib/sent-for-person.ts`). */
   sentForPerson?: true;
 }
 
-/** A new chat's first send. `conversationId` is the id the composer's typing
- *  already prewarmed (`claimNewConversationId`); absent, the create mints one. */
 export type NewConversationArgs = {
   text: string;
   files: File[];
   conversationId?: string;
 } & SendOverrides;
 
-/**
- * Everything the shared `<MissionBoard>` needs that depends on the board's
- * scope. Anything that can be derived from these fields (panel avatar,
- * columns, section lock, labels) is built by the component, not duplicated
- * here.
- */
 export interface BoardSource {
-  // ── Data ──────────────────────────────────────────────────────────────────
-  /** Already filtered + searched: exactly what renders on the board. */
   items: KanbanItem[];
-  /** In-scope active missions BEFORE search is applied. Drives the
-   *  multi-select section lock and the Done "archive all" / Needs-you
-   *  "select all" header actions, which act on the whole section regardless
-   *  of the current search. */
   allItems: KanbanItem[];
   feedItems: Record<string, FeedItem[]>;
   loading: Record<string, boolean>;
   isLoaded: boolean;
 
-  // ── Open-chat selection + keyboard highlight ──────────────────────────────
-  // Owned by the source, not the component: the open mission's session key
-  // and owning agent are resolved from the swept data, which only the source
-  // holds.
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
   highlightedId: string | null;
   setHighlightedId: (id: string | null) => void;
 
-  // ── Panel scope (the agent whose chat features the right panel shows) ─────
   activeAgent: Agent | null;
-  /**
-   * Scope for the new-conversation composer draft (HOU-730): a per-board
-   * constant (Mission Control, or one per employee board), so a parked first
-   * message survives switching the target agent but never surfaces in another
-   * board's composer.
-   */
   draftScope: string;
   selectedSessionKey: string | null;
   selectedAgentPath: string | null;
-  /** Called with a new conversation id after the panel creates one (Skill
-   *  start or a routed action). */
   onSelectSession: (id: string) => void;
 
-  // ── Session helpers ───────────────────────────────────────────────────────
   sessionKeyFor: (activityId: string) => string;
 
-  // ── Mutations (routed to the right agent inside the source) ───────────────
-  // Card writes paint now and write behind the click (`mission-writes.ts`).
   onDelete: (item: KanbanItem) => void;
   onApprove: (item: KanbanItem) => void;
-  /** The Done card's archive box: files a signed-off mission away. Removes the
-   *  card from the active board, so the source also drops it from the open
-   *  panel the way a delete / bulk archive does. */
   onArchive: (item: KanbanItem) => void;
   onRename: (item: KanbanItem, title: string) => void;
-  /**
-   * Persisted chat history for one conversation. Callers forward `opts`:
-   * mission search bulk-loads with `observe: false` (no per-conversation
-   * observer streams, bounded scan window); the board's open-a-chat hydration
-   * omits it (observes, tail window).
-   */
   loadHistory: (
     sessionKey: string,
     opts?: HistoryLoadOptions,
   ) => Promise<FeedItem[]>;
-  /** Scroll-up lazy-load for the OPEN chat (HOU-819): prepend the previous
-   *  transcript page of the active conversation. */
   onLoadOlderMessages?: () => Promise<unknown>;
-  /** Older messages exist beyond the open chat's loaded window. */
   hasOlderMessages?: boolean;
-  /** Raw send (no queue). `overrides` carry the composer's effective
-   *  provider/model; the per-agent source uses them, Mission Control resolves
-   *  its own from the target activity. */
   sendMessageNow: (
     sessionKey: string,
     text: string,
     files: File[],
     overrides: SendOverrides,
   ) => Promise<void>;
-  /** Create a new conversation for the active agent and return its id. */
   createConversation: (args: NewConversationArgs) => Promise<string>;
   stopSession: (sessionKey: string) => void;
 
-  // ── Drag & drop ───────────────────────────────────────────────────────────
   onItemMove?: (item: KanbanItem, toColumnId: string) => void;
   canDropItem?: (item: KanbanItem, toColumnId: string) => boolean;
 
-  // ── Multi-select + bulk (optional) ────────────────────────────────────────
   selection?: BoardSelectionModel;
 
-  // ── New mission ───────────────────────────────────────────────────────────
-  /** Receives AIBoard's "open the new-mission panel" function. */
   registerOpener: (opener: NewPanelOpener) => void;
-  /** True once `registerOpener` has run (gates the empty-board auto-open). */
   openerReady: boolean;
-  /** What the toolbar / empty-state "New mission" button triggers. */
   openNewMission: () => void;
-  /** Auto-open the new-mission panel when the in-scope board is empty. */
   onAutoOpenEmpty: () => void;
-  /** Identity of the current empty scope (agent path / filter) so the
-   *  auto-open fires once per scope. */
   autoOpenKey: string;
-  /** In-scope mission count ignoring search (drives the empty auto-open). */
   autoOpenItemCount: number;
-  /** Extra guard that suppresses the auto-open (e.g. a picker is open). */
   autoOpenBlocked: boolean;
 
-  // ── Search ────────────────────────────────────────────────────────────────
-  /** The board's text query, as a control. The desktop toolbar and the phone
-   *  list's inline field drive the SAME query, so a search is one act however
-   *  it was typed. */
   search: {
     query: string;
     setQuery: (query: string) => void;
-    /** A transcript scan is still running behind the current query. */
     isSearchingText: boolean;
   };
   hasSearchQuery: boolean;
-  /** Rendered as AIBoard's empty state when (and only when) a search returned
-   *  nothing. Built by the source because the label namespaces differ. */
   emptyState?: ReactNode;
 
-  // ── Presentation ──────────────────────────────────────────────────────────
-  /** Name shown beside the detail-panel avatar (the active agent's name). */
   panelAgentName?: string;
-  /** Whether the open mission is running (drives the panel avatar's status
-   *  dot). Resolved against the full in-scope set so a search that hides the
-   *  open card doesn't drop the indicator. */
   selectedRunning: boolean;
 
-  // ── First day ─────────────────────────────────────────────────────────────
-  /** Where the board offers to start a waiting employee's first day. */
   firstDay: FirstDayPlacement<Agent>;
 
-  // ── Slots rendered by the component ───────────────────────────────────────
-  /** Toolbar rendered above the board (filters, search, New mission).
-   *  Desktop-only: below md the board itself is replaced by the phone task
-   *  list, which carries its own chrome. */
   toolbar?: ReactNode;
-  /** Dialogs mounted alongside the board (agent picker, attachment rejection,
-   *  skill picker). */
   dialogs?: ReactNode;
 }

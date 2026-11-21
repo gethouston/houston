@@ -7,13 +7,6 @@ import type { FeedOutput } from "./feed-output";
 import { StreamRegistry } from "./stream-registry";
 import { streamTurn } from "./turn-stream";
 
-/**
- * `onAccepted` tells the sender the engine took the message (file comments
- * leave their draft for good on it). A fast turn can echo, reply and finish
- * before its POST answers: settling the stream aborts that POST, yet the
- * engine ran the turn.
- */
-
 const registry = new StreamRegistry();
 afterEach(() => registry.disposeAll());
 
@@ -50,7 +43,6 @@ test("a turn that finishes before its POST answers still counts as accepted", as
       o.onEvent({ type: "text", data: "Done", turnId: "t-mine", seq: 2 });
       o.onEvent({ type: "done", data: null, turnId: "t-mine", seq: 3 });
     },
-    // The 202 never comes before the turn settles: the settle aborts it.
     sendMessage(
       _id: string,
       _text: string,

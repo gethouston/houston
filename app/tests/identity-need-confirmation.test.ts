@@ -19,8 +19,6 @@ function answer(status: number, body: unknown): void {
     })) as typeof fetch;
 }
 
-// The Auth emulator's answer when an account with this verified email already
-// exists and the IdP's own email is unverified (/tmp/hou123-link-spike/run2.log).
 const NEED_CONFIRMATION = {
   kind: "identitytoolkit#VerifyAssertionResponse",
   context: "",

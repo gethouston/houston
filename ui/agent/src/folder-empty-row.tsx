@@ -1,10 +1,3 @@
-/**
- * The quiet row under a folder expanded onto nothing. Expansion is how the
- * list browses, so an open chevron over blank space would read as a listing
- * that failed to load; this says the folder is simply empty. It is a full row
- * of the column grid — same indent and columns — so nothing beneath it jogs
- * sideways. It is not hoverable: there is nothing here to act on.
- */
 import { cn } from "@houston-ai/core";
 import {
   ACTIONS_CELL,
@@ -24,7 +17,6 @@ export function FolderEmptyRow({
   onNewFolder,
   newFolderLabel,
 }: {
-  /** Depth of the CHILD level, i.e. where the missing rows would have sat. */
   depth: number;
   label?: string;
   onUpload?: () => void;

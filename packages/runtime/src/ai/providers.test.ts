@@ -26,14 +26,6 @@ import {
   safeModelIds,
 } from "./providers";
 
-/**
- * OpenCode Zen / Go, DeepSeek, Amazon Bedrock, and MiniMax are pi-native
- * providers authenticated by pasted keys (no OAuth). The registry must mark them
- * as such so the auth routes route a paste-a-key submission instead of an OAuth
- * login, and so the cloud per-turn fallback resolves the right default model per
- * provider.
- */
-
 test("api-key providers are registered as api-key providers", () => {
   const ids = PROVIDERS.map((p) => p.id);
   expect(ids).toContain("opencode");
@@ -49,27 +41,14 @@ test("api-key providers are registered as api-key providers", () => {
   expect(providerAuthMethod("minimax")).toBe("apiKey");
   expect(providerAuthMethod("anthropic")).toBe("oauth");
   expect(providerAuthMethod("openai-codex")).toBe("oauth");
-  // Unknown providers default to OAuth.
   expect(providerAuthMethod("nope")).toBe("oauth");
 });
 
-/**
- * pi-ai is the model-catalog source of truth. Any provider it knows (its live
- * ~35-provider catalog) must be connectable/resolvable from a pasted key WITHOUT
- * a curated entry — additively, and without changing the curated providers. groq
- * is an uncurated, api-key (non-OAuth) pi provider used as the representative.
- */
 test("an uncurated pi provider (groq) is accepted, api-key, and defaults to its first pi model", () => {
-  // Not hand-curated in PROVIDERS...
   expect(PROVIDERS.map((p) => p.id)).not.toContain("groq");
-  // ...but pi knows it, so the runtime accepts it (isProvider widen).
   expect(isProvider("groq")).toBe(true);
-  // pi lists it as an api-key (non-OAuth) provider, so a pasted key is accepted
-  // (login.ts's setApiKey gate) rather than routed to an OAuth flow.
   expect(providerAuthMethod("groq")).toBe("apiKey");
-  // No configured default → the first model pi lists for groq (never throws).
   expect(providerDefaultModel("groq")).toBe("llama-3.1-8b-instant");
-  // And that model actually resolves through the turn path (safeGetModel).
   const m = safeGetModel("groq", providerDefaultModel("groq"), false) as {
     provider?: string;
     id?: string;
@@ -79,11 +58,7 @@ test("an uncurated pi provider (groq) is accepted, api-key, and defaults to its 
 });
 
 test("an OAuth pi provider stays OAuth, and a non-pi id is rejected", () => {
-  // openai-codex is a curated OAuth provider AND pi lists it as OAuth: it must
-  // NOT be reclassified as api-key.
   expect(providerAuthMethod("openai-codex")).toBe("oauth");
-  // A truly unknown id (pi doesn't know it) is not a provider and defaults to
-  // OAuth, so setApiKey rejects it.
   expect(isProvider("not-a-real-provider")).toBe(false);
   expect(providerAuthMethod("not-a-real-provider")).toBe("oauth");
 });
@@ -99,25 +74,13 @@ test("providerDefaultModel returns each provider's catalog default", () => {
 });
 
 test("a provider with no catalog default resolves to NO model, never Codex's", () => {
-  // The cross-provider floor: an id neither curated nor known to pi answered
-  // with the Codex default, so an agent on any other provider would have run
-  // (and stored) an OpenAI model id. Empty means "no opinion" — the caller's
-  // own ladder decides, and `setSettings` skips a falsy model rather than
-  // persisting one this provider never offered.
   expect(providerDefaultModel("nope")).toBe("");
   expect(providerDefaultModel("nope")).not.toBe(config.codexModel);
   expect(providerDefaultModel("nope")).not.toBe(DEFAULT_MODEL["openai-codex"]);
-  // Never throws / undefined, exactly as before.
   expect(typeof providerDefaultModel("nope")).toBe("string");
 });
 
 test("uncurated providers with a hand-picked default skip pi's dead first row (PRODUCT-1411)", () => {
-  // Moonshot AI: pi's catalog still lists the kimi-k2 preview series (first
-  // row kimi-k2-0711-preview) that Moonshot retired on 2026-05-25 — every key
-  // probe / first chat on it answered `404 Not found the model`. The default
-  // is Moonshot's migration target, and it is ONE table for every read path
-  // (`modelFor` — the verifier probe — and `providerDefaultModel` — the turn
-  // path with no saved model — both derive from `uncuratedDefaultModel`).
   expect(providerDefaultModel("moonshotai")).toBe("kimi-k3");
   const m = safeGetModel(
     "moonshotai",
@@ -126,9 +89,6 @@ test("uncurated providers with a hand-picked default skip pi's dead first row (P
   ) as { provider?: string; id?: string };
   expect(m.provider).toBe("moonshotai");
   expect(m.id).toBe("kimi-k3");
-  // NVIDIA (HOU-890) rides the same table — the turn path used to ignore it
-  // and default to the per-account-gated first row. MiniMax M3.1 Flash since
-  // pi 1.6.0 retired gpt-oss-20b, the last gpt-oss row.
   expect(providerDefaultModel("nvidia")).toBe("minimaxai/minimax-m3.1-flash");
 });
 
@@ -147,9 +107,6 @@ test("MiniMax uses pi-ai's global minimax provider and model catalog", () => {
 });
 
 test("MiniMax runs only ids its API serves; a stored MiniMax-M3[1m] retargets to the default", () => {
-  // `[1m]` is a Claude Code client suffix, never a wire id: sent verbatim,
-  // MiniMax answers `unknown model 'MiniMax-M3[1m]' (2013)` for every key. The
-  // default must be pi's own row and the one model both key kinds run.
   expect(providerDefaultModel("minimax")).toBe("MiniMax-M3.1-Flash");
   for (const pinned of [false, true]) {
     const m = safeGetModel("minimax", "MiniMax-M3[1m]", pinned) as {
@@ -165,8 +122,6 @@ test("MiniMax runs only ids its API serves; a stored MiniMax-M3[1m] retargets to
 });
 
 test("a pinned or saved MiniMax-M2.7 runs on M3.1 Flash", () => {
-  // MiniMax retired the M2.7 line (pay-as-you-go ends 2026-11-18; plan keys
-  // already run M3.1 Flash), but pi still lists both rows.
   for (const retired of ["MiniMax-M2.7", "MiniMax-M2.7-highspeed"]) {
     for (const pinned of [false, true]) {
       const m = safeGetModel("minimax", retired, pinned) as { id?: string };
@@ -180,28 +135,15 @@ test("a pinned or saved MiniMax-M2.7 runs on M3.1 Flash", () => {
 });
 
 test("safeGetModel keeps a valid saved id but falls back on a stale one", () => {
-  // A valid id resolves to that exact model.
   expect(
     (safeGetModel("anthropic", "claude-opus-5-5", false) as { id?: string }).id,
   ).toBe("claude-opus-5-5");
-  // A stale/legacy id the provider no longer offers falls back to the default
-  // so the turn runs a REAL model. (pi-ai's getModel returns `undefined` for an
-  // unknown id — which would crash the turn downstream — so the guard catches
-  // it against the live catalog and substitutes the provider default.)
   expect(
     (safeGetModel("anthropic", "claude-2.1", false) as { id?: string }).id,
   ).toBe(providerDefaultModel("anthropic"));
-  // A PINNED id (a routine's model) is NOT auto-corrected, but it IS validated:
-  // a deliberately bad pin throws a clean "model not available" Error rather
-  // than being silently swapped OR returning undefined (which crashed the turn
-  // downstream with a raw `Cannot read properties of undefined` TypeError).
   expect(() => safeGetModel("anthropic", "claude-2.1", true)).toThrow(
     'anthropic model "claude-2.1" is not available',
   );
-  // …and the throw is TYPED: the chat renders a switch-model card with the
-  // provider's default as the one-click target, not the report-bug card
-  // (PRODUCT-1657: a managed-cloud ceiling forced OpenRouter's
-  // `anthropic/claude-opus-5` onto Anthropic for 15 users).
   let thrown: unknown;
   try {
     safeGetModel("anthropic", "anthropic/claude-opus-5", true);
@@ -220,10 +162,6 @@ test("safeGetModel keeps a valid saved id but falls back on a stale one", () => 
 });
 
 test("resolveModel honors a pinned provider regardless of the active one (never auth-gated)", () => {
-  // A routine's provider pin resolves ITS provider + model without consulting
-  // the saved active provider or connection state — parity with the Rust
-  // resolve_provider_with_overrides. This is what keeps a routine on the
-  // provider it was configured with while chats switch providers freely.
   const m = resolveModel("claude-opus-5-5", "anthropic") as {
     provider?: string;
     id?: string;
@@ -233,32 +171,18 @@ test("resolveModel honors a pinned provider regardless of the active one (never 
 });
 
 test("resolveModel canonicalizes a wire `openai` pin to the openai-codex product", () => {
-  // Houston's UI renames pi's openai-codex → `openai` and never offers pi's raw
-  // platform-key `openai` provider. So a wire pin/override of `openai` (the
-  // hosted Teams model-choice path, a routine pin, a hand-crafted body) must
-  // resolve to the Codex product — else the turn lands on pi's raw `openai`
-  // provider and misses the openai-codex credential ("No credential found for
-  // openai"). The backstop enforces the same mapping the frontend's wireTurnPin
-  // applies, so no caller can reproduce that class of bug.
   const m = resolveModel(undefined, "openai") as { provider?: string };
   expect(m.provider).toBe("openai-codex");
 });
 
 test("resolveModel throws a readable error for an unknown pinned provider", () => {
-  // A junk pin must fail the turn with the reason — never silently fall back
-  // to whatever provider happens to be active.
   expect(() => resolveModel(undefined, "gemini-cli")).toThrow(
     "unknown provider: gemini-cli",
   );
 });
 
 test("pickActiveProvider keeps a logged-out saved provider sticky (no silent switch)", () => {
-  // THE BUG: an OpenAI-configured agent whose OpenAI logged out must NOT fall
-  // through to a still-connected provider (OpenRouter) and answer there — it
-  // returns null so the turn fails with "No provider connected" (→ reconnect
-  // card) instead of silently billing/answering under a model never chosen.
   expect(pickActiveProvider("openai-codex", ["openrouter"])).toBeNull();
-  // Saved provider, nothing connected at all → also null.
   expect(pickActiveProvider("anthropic", [])).toBeNull();
 });
 
@@ -269,10 +193,6 @@ test("pickActiveProvider uses the saved provider when it is connected", () => {
 });
 
 test("pickClaimedProvider never moves a saved provider (HOU-695)", () => {
-  // THE BUG: chatting on Codex, the user pastes an OpenCode key (which lights
-  // BOTH gateways). The connect must NOT flip the agent's provider — the next
-  // turn in every open chat stays on Codex instead of answering (billing,
-  // quota-erroring) on OpenCode.
   expect(
     pickClaimedProvider(
       "openai-codex",
@@ -281,9 +201,6 @@ test("pickClaimedProvider never moves a saved provider (HOU-695)", () => {
       ["opencode", "opencode-go"],
     ),
   ).toBeNull();
-  // Even a LOGGED-OUT saved pick stays: the turn surfaces its reconnect card
-  // (pickActiveProvider's sticky rule) and the model picker is the explicit
-  // way onto the new provider — a connect is not a model pick.
   expect(
     pickClaimedProvider(
       "openai-codex",
@@ -295,9 +212,6 @@ test("pickClaimedProvider never moves a saved provider (HOU-695)", () => {
 });
 
 test("pickClaimedProvider pins the already-serving fallback, not the newcomer", () => {
-  // Nothing saved but another provider already serves turns via the
-  // first-connected fallback: the connect pins THAT provider, so registry
-  // order can't silently drift the fallback onto the new credential.
   expect(
     pickClaimedProvider(
       undefined,
@@ -306,9 +220,6 @@ test("pickClaimedProvider pins the already-serving fallback, not the newcomer", 
       ["opencode", "opencode-go"],
     ),
   ).toBe("anthropic");
-  // Same protection when the newcomer sorts FIRST in registry order: the
-  // agent was serving turns on OpenCode (the only connected provider before
-  // this anthropic connect), so OpenCode gets pinned — not anthropic.
   expect(
     pickClaimedProvider(
       undefined,
@@ -320,9 +231,6 @@ test("pickClaimedProvider pins the already-serving fallback, not the newcomer", 
 });
 
 test("pickClaimedProvider claims for a first connect on a fresh agent", () => {
-  // Nothing saved, nothing else connected (the just-connected credential and
-  // its shared-key sibling don't count) → claim, so the first chat works
-  // without a manual pick (#483).
   expect(
     pickClaimedProvider(undefined, ["opencode", "opencode-go"], "opencode", [
       "opencode",
@@ -335,8 +243,6 @@ test("pickClaimedProvider claims for a first connect on a fresh agent", () => {
 });
 
 test("pickActiveProvider falls back to the first connected ONLY when nothing is saved", () => {
-  // A fresh agent (no saved pick) may start its first chat on a connected
-  // provider; once a provider is saved, the case above keeps it sticky.
   expect(pickActiveProvider(undefined, ["openrouter", "google"])).toBe(
     "openrouter",
   );
@@ -346,20 +252,10 @@ test("pickActiveProvider falls back to the first connected ONLY when nothing is 
 test("github-copilot is a registered OAuth provider defaulting to a base model (HOU-578)", () => {
   const ids = PROVIDERS.map((p) => p.id);
   expect(ids).toContain("github-copilot");
-  // Subscription OAuth (GitHub device-code flow), not a pasted API key.
   expect(providerAuthMethod("github-copilot")).toBe("oauth");
-  // gpt-6-luna is the cheapest model every paid Copilot plan serves, so a fresh
-  // Copilot connect works out of the box; a plan-gated premium default answers
-  // model_not_supported. GitHub retired the earlier base models, gpt-4.1
-  // (2026-06-01) and gpt-5-mini (2026-10-19), and pi dropped both.
   expect(providerDefaultModel("github-copilot")).toBe("gpt-6-luna");
 });
 
-/**
- * The OpenAI-compatible provider connects to a user-run local server (Ollama /
- * vLLM / LM Studio) by base URL + model id — neither in any pi catalog — so it
- * uses its own `openaiCompatible` auth method and a hand-built pi-ai model.
- */
 test("openai-compatible is registered with the openaiCompatible auth method", () => {
   expect(PROVIDERS.map((p) => p.id)).toContain("openai-compatible");
   expect(providerAuthMethod("openai-compatible")).toBe("openaiCompatible");
@@ -373,12 +269,9 @@ test("buildOpenAiCompatibleModel maps an endpoint to a pi openai-completions mod
   expect(m.provider).toBe("openai-compatible");
   expect(m.api).toBe("openai-completions");
   expect(m.id).toBe("llama3.1");
-  // Name defaults to the model id when none is given.
   expect(m.name).toBe("llama3.1");
   expect(m.baseUrl).toBe("http://localhost:11434/v1");
-  // Local inference is free.
   expect(m.cost).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
-  // Reasoning + its compat flag are off by default (most local chat models).
   expect(m.reasoning).toBe(false);
   expect(m.compat?.supportsReasoningEffort).toBe(false);
   expect(m.compat?.supportsDeveloperRole).toBe(false);
@@ -395,18 +288,10 @@ test("buildOpenAiCompatibleModel honors name, contextWindow, and reasoning", () 
   expect(m.name).toBe("Qwen Coder");
   expect(m.contextWindow).toBe(65_536);
   expect(m.reasoning).toBe(true);
-  // A reasoning model opts back into reasoning_effort.
   expect(m.compat?.supportsReasoningEffort).toBe(true);
 });
 
 test("the built local model's provider matches the auth-store key, so pi resolves its key", async () => {
-  // The whole keyless-server design rests on a string match: setCustomEndpoint
-  // stores the key under OPENAI_COMPATIBLE, and the hand-built model carries
-  // provider=OPENAI_COMPATIBLE. pi resolves a request's key via
-  // ModelRuntime.getAuth(model) -> the credential stored under model.provider.
-  // Drive that exact path with an isolated store/runtime (no shared singleton,
-  // no real ~/.houston) to prove the placeholder key actually resolves — and
-  // that the registered custom provider is what makes the model dispatchable.
   const dir = mkdtempSync(join(tmpdir(), "houston-oac-"));
   const authStorage = new HoustonAuthStore(join(dir, "auth.json"));
   const runtime = await ModelRuntime.create({
@@ -432,8 +317,6 @@ test("the built local model's provider matches the auth-store key, so pi resolve
 });
 
 test("registerCustomProviderIfConfigured mirrors the endpoint config onto a runtime", () => {
-  // pi 0.82 streams strictly by registered provider id, so a configured
-  // endpoint must register the provider and a cleared one must drop it.
   const registered = new Map<string, unknown>();
   const runtime = {
     registerProvider: (id: string, cfg: unknown) => registered.set(id, cfg),
@@ -441,35 +324,28 @@ test("registerCustomProviderIfConfigured mirrors the endpoint config onto a runt
     getRegisteredProviderConfig: (id: string) => registered.get(id),
   };
   const dir = mkdtempSync(join(tmpdir(), "houston-oac-reg-"));
-  // Nothing configured in this dataDir: no registration appears.
   registerCustomProviderIfConfigured(runtime as never, dir);
   expect(registered.has(OPENAI_COMPATIBLE)).toBe(false);
 });
 
 test("localOverrideError refuses a foreign per-turn model on the local endpoint", () => {
-  // No override, or an override matching the configured local model → allowed.
   expect(localOverrideError("qwen2.5", undefined)).toBeNull();
   expect(localOverrideError("qwen2.5", "qwen2.5")).toBeNull();
-  // A different provider's model id (e.g. a routine pin) must NOT be built
-  // against the local base URL — surface it instead of mis-routing to localhost.
   expect(localOverrideError("qwen2.5", "claude-haiku-4.5")).toMatch(
     /local endpoint serves/,
   );
 });
 
 test("setCustomEndpointConfig rejects bad input before persisting", () => {
-  // Missing pieces throw before any file is written.
   expect(() => setCustomEndpointConfig({ baseUrl: "", model: "m" })).toThrow(
     /base URL/,
   );
   expect(() =>
     setCustomEndpointConfig({ baseUrl: "http://x/v1", model: "" }),
   ).toThrow(/model/);
-  // Not a URL.
   expect(() =>
     setCustomEndpointConfig({ baseUrl: "not a url", model: "m" }),
   ).toThrow(/valid URL/);
-  // Wrong scheme (must be http(s) so a typo doesn't reach the agent loop).
   expect(() =>
     setCustomEndpointConfig({ baseUrl: "ftp://localhost/v1", model: "m" }),
   ).toThrow(/http/);

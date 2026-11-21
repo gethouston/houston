@@ -2,7 +2,6 @@ import { Button } from "@houston-ai/core";
 import { AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-/** A failed team move; with no `onRetry`, a retry cannot help and none shows. */
 export function TeamMoveFailure({
   body,
   onRetry,

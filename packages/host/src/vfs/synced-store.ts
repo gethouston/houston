@@ -1,7 +1,6 @@
 import type { UploadStore } from "@houston/runtime-client/object-sync";
 import { FsVfs } from "./fs";
 
-/** Awake pods keep files on disk for the runtime and adopt store-side copies. */
 export class SyncedStoreVfs extends FsVfs {
   constructor(
     root: string,

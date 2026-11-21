@@ -5,14 +5,6 @@ import type { WireFrame } from "@houston/runtime-client";
 import { expect, test, vi } from "vitest";
 import type { HarnessSession } from "../backends/types";
 
-/**
- * A Stop that lands before the turn reaches the model ends the turn there.
- * The turn is already recorded (its message precedes the workdir lock), so
- * cancelTurn marks it, but aborting a session that is not prompting does
- * nothing: unless execTurn checks the mark, the prompt runs in full after the
- * user stopped it, tools and all, with every frame dropped from the stream.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-early-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-early-ws-"),
@@ -74,7 +66,6 @@ const { appendAssistantMessage, stampSessionReplay } = await import(
   "../store/conversations"
 );
 
-/** Cache a conversation whose prompt would run a tool; counts its prompts. */
 function cachedConv(id: string, backendId: string, fill = 0) {
   const tool = vi.fn();
   const session: HarnessSession = {
@@ -108,7 +99,6 @@ function collect(id: string) {
   return { frames, unsub };
 }
 
-/** Await macrotask hops until `ready` holds (the queue + workdir lock hops). */
 async function until(ready: () => boolean): Promise<void> {
   for (let i = 0; i < 50 && !ready(); i++)
     await new Promise((r) => setTimeout(r, 0));
@@ -173,7 +163,6 @@ test("a stopped turn that consumed a replay re-arms it for the next turn", async
   await runTurn(id, "go");
 
   expect(tool).not.toHaveBeenCalled();
-  // The replay rode a prompt that was never sent: the next turn carries it.
   expect(stampSessionReplay).toHaveBeenCalledWith(id);
   hooks.replayed = false;
   hooks.compactFill = null;

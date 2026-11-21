@@ -1,11 +1,3 @@
-/**
- * The linkedin contract: posting a picture to the person's own LinkedIn feed.
- *
- * Re-exported wholesale by the package barrel; import from `@houston/sdk`.
- * The surface rules ride their own subpaths (`@houston/sdk/linkedin/policy`,
- * `@houston/sdk/linkedin/connect-flow`) and are re-exported here too.
- */
-// ===== LinkedIn module contract ========================================
 export {
   checkLinkedInText,
   isPostableLinkedInText,

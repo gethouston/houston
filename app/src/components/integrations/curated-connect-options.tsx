@@ -3,15 +3,6 @@ import { useTranslation } from "react-i18next";
 import { ChoiceCard } from "./choice-card";
 import type { CuratedIntegration } from "./curated-integrations";
 
-/**
- * The curated connect dialog's choice step: the service's own paths first
- * (browser sign-in, then a key or token, whichever the service offers), then
- * the provider (Composio) connect when the deployment's catalog has this
- * app. Every offered option ALWAYS shows: the fork is the product promise. A
- * deployment that cannot run the browser sign-in rejects at the host
- * (`oauth_unsupported`) and the wrapper toasts the honest reason — better
- * than hiding a path behind a capability read that may still be resolving.
- */
 export function CuratedConnectOptions({
   curated,
   busy,
@@ -21,7 +12,6 @@ export function CuratedConnectOptions({
 }: {
   curated: CuratedIntegration;
   busy: boolean;
-  /** Present only when the provider catalog carries this slug. */
   providerConnect?: () => void;
   onSignIn: () => void;
   onKey: () => void;
@@ -34,8 +24,6 @@ export function CuratedConnectOptions({
   const offersKey =
     curated.authModes.includes("credential") &&
     curated.keyHelpKey !== undefined;
-  // The first option the service offers leads: its own sign-in when it has
-  // one, else its token (HighLevel), with the provider's app after either.
   const lead = offersSignIn ? "signIn" : offersKey ? "key" : "provider";
   const leadProps = (which: typeof lead) =>
     lead === which

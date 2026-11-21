@@ -3,13 +3,6 @@ import { describe, it } from "node:test";
 import type { FirstResponse, FirstResponseOutcome } from "@houston/sdk";
 import { type PerfSpanObservation, PerfSpans } from "../src/lib/perf-spans.ts";
 
-/**
- * `send_to_first_activity`: send to the turn's first visible item of any kind
- * (thinking, a tool call, or text), the "is it alive" time next to the
- * first-text one. And no span runs from app start to a reply any more: that
- * one measured the person's own time before their first message.
- */
-
 function harness() {
   const sent: PerfSpanObservation[][] = [];
   const mirrored: Array<{ span: string; ms: number; outcome?: string }> = [];
@@ -42,7 +35,6 @@ function response(
 describe("PerfSpans first activity", () => {
   it("ships and mirrors send to first activity next to send to first text", async () => {
     const { spans, sent, mirrored } = harness();
-    // Sent at 1 s, a tool call showed at 3 s, the text came at 21 s.
     spans.turnResponded(response(1_000, 21_000, "first_text", 3_000));
     await spans.flush();
     deepStrictEqual(sent.flat(), [
@@ -63,8 +55,6 @@ describe("PerfSpans first activity", () => {
     spans.turnResponded(response(0, 600_000, "timeout", 7_000));
     spans.turnResponded(response(0, 12_000, "first_text", 3_000));
     await spans.flush();
-    // Both gateway histograms hold the same turns (first_text + timeout): it
-    // has no outcome label, so a mixed population could not be compared.
     deepStrictEqual(sent.flat(), [
       { span: "send_to_first_response", ms: 600_000 },
       { span: "send_to_first_activity", ms: 7_000 },

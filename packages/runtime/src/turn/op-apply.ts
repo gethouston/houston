@@ -31,7 +31,6 @@ const json = (
   body: JSON.stringify(value),
 });
 
-/** A JSON answer whose sync-back scope is an exact file list (or nothing). */
 const answered = (
   answer: { status: number; body: unknown },
   files: string[] = [],
@@ -113,10 +112,6 @@ export async function applyOp(
         ...(op.actingToken ? { actingAs: op.actingToken } : {}),
         ...(fetchImpl ? { fetchImpl } : {}),
       });
-      // The connect may write the qwen region / azure endpoint file beside
-      // the key (the store is the key's only home — auth.json never syncs).
-      // Success-only: a 502 store push must not durably repoint the agent at
-      // an endpoint whose key never landed.
       return answered(
         answer,
         answer.status === 200 ? credentialOpFiles(filesystem.dataRel) : [],
@@ -131,9 +126,6 @@ export async function applyOp(
         };
       }
       if (op.credential.provider === "anthropic") {
-        // COMPLIANCE GATE: anthropic titles must go through the Claude SDK
-        // (never pi in-process); that path is pod-only, so a cold anthropic
-        // agent keeps the client's truncated-title fallback.
         return {
           ...json(503, { error: "anthropic titles run on the pod" }),
           events: [],
@@ -161,8 +153,6 @@ export async function applyOp(
       return prepareFirstDayOp(op, filesystem);
     case "seed":
     case "migrate":
-      // Both run their own hydrate and sync (op-seed.ts, op-migrate.ts);
-      // executeOp never hands them this filesystem.
       throw new Error(`a ${op.op.kind} op does not run over this tree`);
     case "reconcile":
       throw new Error("a reconcile op runs its own path (op-reconcile.ts)");

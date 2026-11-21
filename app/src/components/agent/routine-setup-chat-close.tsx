@@ -1,7 +1,6 @@
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-/** The routine chat panel's close X, shared by its slim pre-activity headers. */
 export function RoutineSetupChatClose({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation("routines");
   return (

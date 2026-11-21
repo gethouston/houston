@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-/** The routine planner's IANA zone, stamped by the deployment on a turn. */
 export const TurnTimezoneSchema = z
   .string({ error: "invalid timezone: expected an IANA name" })
   .min(1)

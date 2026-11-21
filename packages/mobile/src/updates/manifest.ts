@@ -92,7 +92,6 @@ export async function verifyManifest(
     false,
     ["verify"],
   );
-  // WebCrypto ECDSA expects IEEE P1363 r||s, not ASN.1 DER.
   const valid = await cryptoApi.verify(
     { name: "ECDSA", hash: "SHA-256" },
     key,

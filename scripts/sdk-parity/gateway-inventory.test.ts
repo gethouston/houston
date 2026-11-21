@@ -11,14 +11,8 @@ import {
 } from "./gateway-inventory.ts";
 import type { CloudCheckout, ContainsCommit } from "./gateway-sibling.ts";
 
-/**
- * The vendored copy is the verdict in every one of these states, because it is
- * the file CI judges. A cloud checkout only ever adds a line of output.
- */
-
 const SHA = "0".repeat(40);
 
-/** A sandbox with a cloud checkout that a human did NOT name. */
 const sandbox = (): InventorySources & { cloud: CloudCheckout } => {
   const dir = mkdtempSync(join(tmpdir(), "gateway-inventory-"));
   const sources = {
@@ -76,7 +70,6 @@ test("a cloud checkout ahead of the stamp warns, and judges nothing", () => {
   expect(inventory.sibling.status).toBe("ahead");
   expect(inventory.sibling.notice).toMatch(/^WARNING: /);
   expect(inventory.sibling.notice).toMatch(/pnpm vendor:gateway-routes/);
-  // The verdict is the vendored copy's single method, not the checkout's two.
   expect(inventory.routes[0]?.methods).toEqual(["GET"]);
 });
 
@@ -91,8 +84,6 @@ test("a cloud checkout on a feature branch is a note, and judges nothing", () =>
   expect(inventory.routes[0]?.methods).toEqual(["GET"]);
 });
 
-// CRLF and a missing final newline are how a Windows checkout or an editor
-// rewrites the file; neither changes a single route.
 test("line endings alone are not a disagreement", () => {
   const sources = sandbox();
   writeFileSync(sources.vendored, `${json(VENDORED)}\n`);

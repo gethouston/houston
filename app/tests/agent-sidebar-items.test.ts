@@ -31,8 +31,6 @@ describe("buildAgentSidebarItems", () => {
   });
 
   it("builds its second line from in-hand data, never a job description", () => {
-    // Reading every CLAUDE.md woke every hosted employee's pod on app open.
-    // What the line says is pinned by agent-row-line.test.ts.
     assert.match(
       source,
       /agentRowLine\(agent, summary, invitesFirstDay\(agent\)\)/,

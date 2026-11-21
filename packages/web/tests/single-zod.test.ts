@@ -2,14 +2,6 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-/**
- * vite's dep optimizer pre-bundles ONE copy per bare specifier for the whole
- * browser graph. If two workspace packages declare different zod majors, every
- * importer of `zod` gets whichever copy the optimizer met first — a zod 3
- * bundle handed to `@houston/protocol` (zod 4 API: `z.uuid()`) throws at module
- * evaluation and the app never mounts. Every workspace package must therefore
- * declare the identical zod specifier.
- */
 const repoRoot = path.resolve(__dirname, "../../..");
 const WORKSPACE_PARENTS = ["packages", "ui"];
 const WORKSPACE_SINGLES = ["app", "agentstore"];

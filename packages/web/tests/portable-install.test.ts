@@ -4,23 +4,12 @@ import { previewUpload } from "@houston/engine-adapter/portable";
 import { agentColorId } from "@houston-ai/core";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * The import wizard's confirm step: installing a parked `.houstonagent` is an
- * ordinary agent CREATE carrying the selected content as its seed payload —
- * never a POST to the account-level /v1/portable routes, which the hosted
- * cloud's gateway does not serve (HOU-707). One request shape for both
- * backends: the local host writes the seeds on create; the gateway persists
- * them and seeds the new agent's pod.
- */
-
 const originalFetch = globalThis.fetch;
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-// createAgent records the picked color in the localStorage overlay; the node
-// test env has no storage, so give it an inert one.
 (globalThis as { localStorage?: unknown }).localStorage = {
   getItem: () => null,
   setItem: () => {},
@@ -28,9 +17,6 @@ afterEach(() => {
 };
 
 const NOW = "2026-07-06T00:00:00.000Z";
-// Driven through the composed client: the create the install performs is the
-// adapter's SDK-delegated `POST /agents`, which `portable.ts` takes as a
-// parameter because it holds no SDK handle.
 const install = (req: Parameters<HoustonClient["importInstall"]>[0]) =>
   new HoustonClient({
     baseUrl: "https://gateway.example",
@@ -41,8 +27,6 @@ const install = (req: Parameters<HoustonClient["importInstall"]>[0]) =>
 const ROUTINE = {
   id: "r1",
   name: "Daily",
-  // Stray key from an older build's pack — HOU-725 removed `description`;
-  // unpack normalizes imported routines, so it must not reach the seed.
   description: "",
   prompt: "check the inbox",
   schedule: "0 9 * * *",
@@ -120,19 +104,13 @@ test("install creates the agent with the package as its seed payload", async () 
     seeds?: Record<string, string>;
   };
   expect(body.name).toBe("Sales");
-  // The source agent's colour rides the WIRE: an install has no picker to seed
-  // a client overlay from, so the host is what remembers it.
   expect(body.color).toBe(agentColorId("#ff0000"));
   expect(body.claudeMd).toContain("sales agent");
   expect(Object.keys(body.seeds ?? {}).sort()).toEqual([
     ".agents/skills/research/SKILL.md",
     ".houston/routines/routines.json",
   ]);
-  // The unticked learning stays out of the payload entirely.
   expect(JSON.stringify(body)).not.toContain("Prefers brevity");
-  // The seeded routine is the source's, under a NEW id: the hosted trigger
-  // tables key on routine id globally, so a copy must never share one with
-  // its source (PRODUCT-1808). The install reports which id became which.
   const seeded = JSON.parse(
     body.seeds?.[".houston/routines/routines.json"] ?? "",
   ) as { id: string }[];
@@ -146,8 +124,6 @@ test("install creates the agent with the package as its seed payload", async () 
     workspaceName: "Houston",
     requiredIntegrations: [],
     routineIds: { r1: copiedId },
-    // The created record rides along so the wizard can adopt it into the
-    // agent store optimistically — same reveal contract as create (HOU-710).
     agent: expect.objectContaining({
       id: "abcd1234abcd1234",
       folderPath: "abcd1234abcd1234",

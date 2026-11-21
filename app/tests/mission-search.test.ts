@@ -46,10 +46,8 @@ describe("mission search", () => {
   });
 
   it("returns BOTH title and body matches (no title-first suppression)", () => {
-    // "budget" is in one's title AND in two's description.
     const result = searchMissions(missions, "budget");
     deepStrictEqual(result.items.map((m) => m.id).sort(), ["one", "two"]);
-    // one matched by title -> no snippet; two matched by body -> snippet.
     strictEqual(result.snippets.one, undefined);
     strictEqual(result.snippets.two !== undefined, true);
     strictEqual(
@@ -59,10 +57,7 @@ describe("mission search", () => {
   });
 
   it("treats a multi-word query as an exact phrase, not scattered words", () => {
-    // "budget" and "transcript" both appear in two's description but not
-    // contiguously, so the phrase must NOT match anything.
     deepStrictEqual(searchMissions(missions, "budget transcript").items, []);
-    // The exact phrase that IS contiguous matches.
     deepStrictEqual(
       searchMissions(missions, "budget notes").items.map((m) => m.id),
       ["two"],
@@ -106,7 +101,6 @@ describe("mission search", () => {
     );
     const snippet = result.snippets.three;
     strictEqual(snippet.text.includes("São Paulo"), true);
-    // Cut from the matching message only, not the whole transcript.
     strictEqual(snippet.text.includes("staffing"), false);
     deepStrictEqual(
       snippet.ranges.map((r) => snippet.text.slice(r.start, r.end)),

@@ -30,7 +30,6 @@ export async function handleConversationRoute(
     json(res, 200, listConversations());
     return true;
   }
-  // Serves shipped clients that predate the send's `missionTitle` field.
   if (method === "POST" && path === "/title") {
     await handleTitleFromText(ctx);
     return true;
@@ -51,11 +50,6 @@ export async function handleConversationRoute(
   const action = convMatch[2];
 
   if (method === "GET" && action === "messages") {
-    // Optional transcript window (HOU-819): `limit` = tail size, `before` =
-    // the caller's current `offset` (fetch the previous page). Absent or
-    // malformed params fall back to the full history — the pre-windowing
-    // contract — so an old client (or a proxy that strips query strings)
-    // keeps working, just without the windowing win.
     const history = getHistory(id, {
       limit: positiveInt(ctx.url.searchParams.get("limit")),
       before: positiveInt(ctx.url.searchParams.get("before"), 0),
@@ -75,16 +69,6 @@ export async function handleConversationRoute(
     return true;
   }
   if (method === "POST" && action === "dismiss-interaction") {
-    // The card that triggers this is never shown mid-turn, so a busy
-    // conversation here means the user raced one — answer 409 and let them Stop
-    // (which retires the turn AND stamps the durable stop) instead of writing a
-    // second marker behind it. The same gate the commands use
-    // (conversation-command-gate.ts), so an ACCEPTED-but-not-yet-running turn
-    // and an in-flight `/clear` are refused too: this appends a durable marker
-    // that a `/clear` boundary written after it would strand. Nothing is
-    // awaited between the check and the write, so the check IS the whole hold.
-    // Idle: append the stop marker, retiring the pending interaction exactly as
-    // a real Stop does.
     if (conversationCommandBusy(id)) {
       json(res, 409, { error: "turn running" });
       return true;
@@ -95,10 +79,6 @@ export async function handleConversationRoute(
     return true;
   }
   if (method === "POST" && action === "mode") {
-    // The Mode pill switched WHILE the agent works: apply it to the executing
-    // turn's live-mode ref (Claude Code's shift+tab). `applied: false` is
-    // benign — no turn is running, and the next send pins the mode itself.
-    // Never trust the wire: unknown values normalize to "execute".
     const { mode } = await readJson(ctx.req);
     json(res, 200, {
       ok: true,
@@ -111,9 +91,6 @@ export async function handleConversationRoute(
     return true;
   }
   if (method === "POST" && action === "truncate") {
-    // Edit-and-resend (PRODUCT-1217): cut the transcript at the named user
-    // turn. The client follows up with a normal POST …/messages carrying the
-    // edited text, so this route only rewinds — it never starts a turn.
     const { turnId } = await readJson(ctx.req);
     if (!turnId || typeof turnId !== "string") {
       json(res, 400, { error: "missing 'turnId'" });
@@ -165,11 +142,7 @@ async function handleConversationRoot(ctx: RouteContext, id: string) {
     return;
   }
   if (ctx.method === "DELETE") {
-    // Not card-gated: delete is the way out of a card whose person is gone.
     await disposeConversation(id, { deleteSessions: true });
-    // Drop the event channel with the transcript: any outstanding resume
-    // cursor for a deleted conversation is unserviceable by definition, so a
-    // reconnect gets a resync against the (now empty) history — correct.
     evict(id);
     deleteConversation(id)
       ? json(ctx.res, 200, { ok: true })
@@ -188,7 +161,6 @@ async function handleConversationTitle(ctx: RouteContext, id: string) {
   }
 }
 
-/** Parse an integer query param ≥ `min` (default 1); anything else → undefined. */
 function positiveInt(raw: string | null, min = 1): number | undefined {
   if (raw === null) return undefined;
   const n = Number.parseInt(raw, 10);

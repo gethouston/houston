@@ -8,13 +8,6 @@ import type {
   ResolvedModel,
 } from "../backends/types";
 
-/**
- * A session the standing server builds for a conversation that already ran
- * (after a restart, or an eviction) is told the fill its last reply recorded:
- * the Claude backend only measures its own after a turn, and sizes its first
- * request's first-byte deadline from this.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-fill-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(join(tmpdir(), "houston-ws-"));
 

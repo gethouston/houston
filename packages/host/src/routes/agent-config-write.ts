@@ -8,10 +8,6 @@ import {
 } from "@houston/domain";
 import type { Vfs } from "../vfs";
 
-/**
- * The ONE lock every host-side config write takes, so the first-day start's
- * load → merge → save and a surface's whole-config write never interleave.
- */
 export function withConfigLock<T>(
   root: string,
   fn: () => Promise<T>,
@@ -22,12 +18,6 @@ export function withConfigLock<T>(
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-/**
- * Store a whole config a surface sent, keeping the host-owned first-day fields
- * as they stand (`keepHostOwnedConfig`). A body that is not a JSON object is
- * stored as sent: the read side already reports and tolerates it, and there
- * is nothing in it to keep.
- */
 export function writeSurfaceConfig(
   vfs: Vfs,
   root: string,
@@ -45,7 +35,6 @@ export function writeSurfaceConfig(
   });
 }
 
-/** The JSON object a document holds, or null when it holds anything else. */
 function objectIn(content: string): Record<string, unknown> | null {
   try {
     const parsed: unknown = JSON.parse(content);
@@ -55,11 +44,6 @@ function objectIn(content: string): Record<string, unknown> | null {
   }
 }
 
-/**
- * {@link writeSurfaceConfig} for the raw document route, which carries text:
- * a document that already agrees with the host-owned fields (or is not a JSON
- * object at all) is stored byte for byte, as sent.
- */
 export function writeSurfaceConfigText(
   vfs: Vfs,
   root: string,

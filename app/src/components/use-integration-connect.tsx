@@ -20,29 +20,6 @@ import {
 } from "./integrations";
 import { useIntegrationProviderReady } from "./integrations/use-toolkit-catalog";
 
-/**
- * The reactive connect logic behind BOTH in-chat connect surfaces — the inline
- * markdown-link {@link IntegrationConnectCard} (a passive badge in assistant
- * prose) and the stepper's connect step ({@link ChatConnectInteractionCard},
- * an identity row with a footer CTA). Extracted so the two render shapes never
- * duplicate the status subscription, the OAuth hand-off, or the already-
- * connected self-report; only their presentation differs.
- *
- * The returned `app` is display-ready: its `name` is always a human label (the
- * catalog name, or a prettified slug on a catalog miss — never the raw
- * "googlesheets" string), and its `logoUrl` stays EMPTY until the toolkits
- * catalog has settled. Both surfaces render it through the shared `AppLogo`
- * (the Integrations page's component), whose letter fallback covers the interim.
- * Racing an `<img>` against the still-loading catalog is exactly what ate the
- * production logos: the favicon-guess fallback 404'd first and its error state
- * shadowed the real Composio logo that resolved moments later.
- *
- * The card owns its own connection status (it subscribes to the shared
- * integration queries directly) so it stays reactive inside Streamdown's
- * memoized markdown blocks: a parent-computed prop would freeze at first
- * render and never reflect a connection that lands afterwards. TanStack
- * dedupes the fetches, so N cards still issue one request per tick.
- */
 export function useIntegrationConnect({
   toolkit,
   agentId,
@@ -54,23 +31,8 @@ export function useIntegrationConnect({
   toolkit: string;
   agentId: string;
   accountScope?: boolean;
-  /**
-   * Fired once when a connection the user started from THIS surface lands (or,
-   * in stepper mode, once an already-active toolkit resolves — see
-   * `autoContinueWhenConnected`). The chat panel uses it to nudge the agent so
-   * the task resumes without the user retyping.
-   */
   onConnected?: (toolkit: string, appName: string) => void;
-  /**
-   * Stepper mode (a `request_connection` step inside the interaction sequence):
-   * when the toolkit is ALREADY connected there is no Connect button to click,
-   * so fire `onConnected` once the status resolves to advance the sequence
-   * instead of soft-locking on a dead "Connected" badge. The inline
-   * markdown-link card leaves this off and stays a passive badge.
-   */
   autoContinueWhenConnected?: boolean;
-  /** A reconnect step's refusal time: only a connection created after it
-   *  counts as connected (the refused one still reads active). */
   connectedAfter?: string;
 }): {
   app: AppDisplay;
@@ -84,9 +46,6 @@ export function useIntegrationConnect({
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
 
   const slug = normalizeToolkitSlug(toolkit);
-  // The catalog entry rides along so a no-auth toolkit reads connected — it
-  // has no connection row to ever match, so without it the card offers a
-  // Connect that can only die on the host's `toolkit_no_auth` 400.
   const catalogEntry = findCatalogToolkit(catalog.data, toolkit);
   const isConnected = isToolkitConnected(
     connections.data,
@@ -97,41 +56,15 @@ export function useIntegrationConnect({
   const resolved = appDisplay(slug, catalogEntry);
   const app: AppDisplay = {
     ...resolved,
-    // The name needs no patching here: `appDisplay` prettifies a catalog miss
-    // itself ("googlesheets" never reaches a surface raw), for every consumer.
-    // Hold the logo until the catalog settles: the favicon-guess fallback is
-    // only for a REAL catalog miss, never an interim src while the real
-    // logoUrl is still in flight (AppLogo shows the letter meanwhile).
     logoUrl: catalog.isFetched ? resolved.logoUrl : "",
   };
 
-  // The agent is part of the flow's identity, not just of its minted link: an
-  // account-scoped connect (`accountScope`, the AI Manager's) skips the agent
-  // allowlist at the gateway, so it gets its own single-flight key and an
-  // agent's card can never JOIN it and inherit a link its allowlist never
-  // gated.
   const { states, connect } = useConnectFlow({
     agentId: accountScope ? undefined : agentId,
   });
-  // This surface is scoped to ONE toolkit, so it is "connecting" only while its
-  // own slug's flow runs — a concurrent connect for a different app, or for the
-  // same app under another scope, never lights this card.
   const connecting = slug in states;
-  // The nudge fires at most once per surface, and only for a connection the
-  // user drove from HERE — a connection landing via the Integrations page or
-  // another card must not make this one speak.
   const followupFired = useRef(false);
 
-  // The success toast is NOT fired here: the shared connect flow announces
-  // every outcome once, for every surface, so a connect started in chat and a
-  // connect started on the Integrations page read identically (and a card that
-  // JOINS a running flow never double-toasts it).
-  //
-  // `initiated` guards the rest the same way. Two cards for the same app (the
-  // agent asked twice, or a card and the stepper both render it) share ONE
-  // flow, and both `await` the same outcome — so without it a single landed
-  // connection tracked `integration_connected` twice and nudged the agent
-  // twice, making it answer a question it had already been told the answer to.
   const startConnect = async () => {
     const { outcome, initiated } = await connect(
       slug,
@@ -143,12 +76,6 @@ export function useIntegrationConnect({
     onConnected?.(slug, app.name);
   };
 
-  // Stepper mode: an already-connected toolkit shows only a badge, so nothing
-  // the user can click ever advances the sequence. Self-report once the status
-  // (and the catalog, for a real display name) resolves so the queued answers
-  // still get sent. Shares `followupFired` with `startConnect` so a surface can
-  // speak at most once. No analytics/toast here: the user connected earlier,
-  // this only unblocks the flow.
   const appName = app.name;
   useEffect(() => {
     if (

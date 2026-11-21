@@ -1,7 +1,5 @@
 import type { LocalModelBridgePorts } from "./types";
 
-// Native stop is identity-scoped and must interrupt an in-flight dial. Sending
-// it from the abort callback avoids queuing cancellation behind that same dial.
 export async function withNativeCancellation<T>(
   ports: LocalModelBridgePorts,
   signal: AbortSignal,

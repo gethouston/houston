@@ -1,13 +1,3 @@
-/**
- * Pure parse/validate half of `readAgentJson` — kept free of Tauri imports so
- * it can be unit-tested (see `tests/agent-json.test.ts`).
- *
- * Agents edit `.houston/<name>/<name>.json` files directly, so any shape can
- * land on disk. Item-level schema mismatches only warn (surface data bugs, not
- * block the UI), but a wrong top-level container (an object where an array
- * belongs) falls back: callers do `data.map(...)` and would crash the app.
- */
-
 import Ajv, { type Schema, type ValidateFunction } from "ajv";
 
 const ajv = new Ajv({ allErrors: true, strict: false });
@@ -22,7 +12,6 @@ export function getValidator(name: string, schema: Schema): ValidateFunction {
   return v;
 }
 
-/** True when `parsed` has the same top-level container kind as `fallback`. */
 function matchesContainerShape(parsed: unknown, fallback: unknown): boolean {
   if (Array.isArray(fallback)) return Array.isArray(parsed);
   if (fallback !== null && typeof fallback === "object")

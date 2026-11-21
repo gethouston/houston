@@ -1,6 +1,5 @@
 import { bridgeRetry } from "./retry";
 
-/** Retry only discovery/port construction. The factory must never start inference or a bridge. */
 export async function bootstrapLocalModelBridge<T>(
   factory: (signal: AbortSignal) => Promise<T | null>,
   signal: AbortSignal,

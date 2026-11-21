@@ -2,15 +2,6 @@ import type { ProviderOption } from "@houston/domain";
 import { expect, test } from "vitest";
 import { missionPin, missionRunsOn, resolveMissionPin } from "./mission-pin";
 
-/**
- * What a written provider/model becomes, and what the tool then claims the
- * mission runs on. A provider id is never something the model has to invent
- * (the `codex` → `openai-codex` incident), and the inheritance default is
- * load-bearing on managed cloud: an unpinned child turn is refused with "No
- * provider connected" because the runtime holds no standing provider — the
- * parent turn's resolved pair is the one known-good pin.
- */
-
 const OPTIONS: ProviderOption[] = [
   {
     id: "openai-codex",
@@ -22,7 +13,6 @@ const OPTIONS: ProviderOption[] = [
   { id: "openrouter", name: "OpenRouter", connected: true },
 ];
 
-/** The live catalog, as the runtime's registry reports it. */
 const NAMED: ProviderOption[] = [
   {
     id: "openai-codex",
@@ -102,8 +92,6 @@ test("a model named alone is validated against the inherited provider", () => {
   expect(
     resolveMissionPin({ model: "gpt-5.5" }, OPTIONS, "openai-codex"),
   ).toEqual({ ok: true, pin: { model: "gpt-5.5" } });
-  // Nothing to validate against: the model rides through and the provider's own
-  // error is what surfaces.
   expect(resolveMissionPin({ model: "whatever" }, OPTIONS)).toEqual({
     ok: true,
     pin: {
@@ -125,15 +113,12 @@ test("the name the user said pins the model, never the provider default", () => 
     ok: true,
     pin: { provider: "anthropic", model: "claude-opus-5-5" },
   });
-  // A name alone rides the provider the mission inherits.
   expect(
     resolveMissionPin({ model: "GPT-6 Astra" }, NAMED, "openai-codex"),
   ).toEqual({ ok: true, pin: { model: "gpt-6-astra" } });
 });
 
 test("a retired Claude id an agent writes pins its family's lineup model", () => {
-  // An agent that remembers an older id (from its own notes, a past mission)
-  // must land on the same family — an Opus request never becomes Sonnet.
   expect(
     resolveMissionPin(
       { provider: "anthropic", model: "claude-opus-4-8" },
@@ -153,8 +138,6 @@ test("a retired Claude id an agent writes pins its family's lineup model", () =>
     pin: { provider: "anthropic", model: "claude-sonnet-5-5" },
   });
 });
-
-// --- the pin the child mission actually carries ----------------------------
 
 test("no explicit choice inherits the parent turn's provider AND model", () => {
   expect(missionPin({}, PARENT)).toEqual(PARENT);

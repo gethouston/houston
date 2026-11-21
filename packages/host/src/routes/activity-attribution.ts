@@ -13,30 +13,12 @@ import type {
   HoustonEvent,
 } from "@houston/protocol";
 
-/**
- * Teams attribution: stamp the acting human as a contributor on the mission a
- * turn is driving, AND record the teammates that turn @mentioned (HOU-945).
- * Called only when a gateway-injected acting-as identity is present (hosted
- * Teams) — off the gateway `author` is null and nothing runs, so single-player
- * activity.json stays byte-identical.
- *
- * The mission is matched by the conversation id: a mission's `session_key` (the
- * turn's conversation), with `activity-<id>` as the fallback for missions whose
- * key was never persisted separately. Both upserts return the SAME reference
- * when they change nothing, so an unchanged mission skips the disk write — and
- * both run over ONE load→save→emit pass, never two writes and never two events.
- *
- * INVARIANT: attribution is metadata — a stamping failure must NEVER block or
- * fail the turn. Everything here is best-effort and swallowed with a log; the
- * turn's own dispatch owns the user-visible outcome.
- */
 export async function stampTurnAttribution(
   store: TextStore,
   root: string,
   agentId: string,
   cid: string,
   author: ActivityContributor,
-  /** Teammates named in this turn's body; `[]` when the message named nobody. */
   mentionedIds: string[],
   emit?: (event: HoustonEvent) => void,
 ): Promise<Activity | undefined> {
@@ -50,12 +32,11 @@ export async function stampTurnAttribution(
       new Date().toISOString(),
       author.user_id,
     );
-    if (next === activity) return activity; // nothing changed — no write, no event.
+    if (next === activity) return activity;
     await saveActivities(store, root, upsertById(items, next));
     emit?.({ type: "ActivityChanged", agentPath: agentId });
     return next;
   } catch (err) {
-    // Attribution is metadata; a stamping failure must not break the turn.
     console.error(`[attribution] stamp failed for ${agentId}/${cid}:`, err);
   }
 }

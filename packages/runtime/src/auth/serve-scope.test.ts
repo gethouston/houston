@@ -9,13 +9,6 @@ import { authPathIn } from "./auth-file";
 import { syncServedCredential } from "./serve";
 import { resetServedScopes, servedScopeFor } from "./served-scope";
 
-/**
- * Serve-mode hydration is PER ACTING IDENTITY (HOU-976 §2.6.4): a member's sync
- * forwards their acting-as token, writes only their own credential file, and
- * remembers WHOSE credential the gateway resolved so a turn's provider error can
- * offer "continue on the team account" honestly.
- */
-
 function actingToken(sub: string): string {
   const payload = Buffer.from(
     JSON.stringify({ sub, agent: "acme", exp: 9_000_000_000 }),
@@ -26,14 +19,12 @@ function actingToken(sub: string): string {
 const alice = { actingAs: actingToken("sub-alice") };
 const bob = { actingAs: actingToken("sub-bob") };
 
-/** The host's authoritative "not connected" 404 (see routes/credential.ts). */
 const notConnected404 = () =>
   new Response(null, {
     status: 404,
     headers: { "x-houston-not-connected": "1" },
   });
 
-/** Records the acting-as header each probe carried, and serves ONE provider. */
 function serveOnly(
   provider: string,
   body: Record<string, unknown>,
@@ -89,9 +80,7 @@ test("a member's serve sync writes ONLY that member's file and forwards their to
       syncServedCredential(),
     );
     expect(applied).toEqual(["openrouter"]);
-    // Every probe proved WHO it was for.
     expect([...actingSeen]).toEqual([alice.actingAs]);
-    // The credential landed in Alice's file, and NOT in the team's.
     const alicePath = authPathIn(config.dataDir, "u:sub-alice");
     expect(JSON.parse(readFileSync(alicePath, "utf8"))).toEqual({
       openrouter: { type: "api_key", key: "sk-alice-personal" },
@@ -100,7 +89,6 @@ test("a member's serve sync writes ONLY that member's file and forwards their to
     expect(existsSync(join(config.dataDir, "served-providers.json"))).toBe(
       false,
     );
-    // One member synced, so exactly one member's files exist.
     expect(readdirSync(join(config.dataDir, "auth-users")).sort()).toEqual(
       [
         alicePath.split("/").pop(),
@@ -127,11 +115,9 @@ test("the gateway's scope verdict is remembered per member, not process-wide", a
     expect(
       runWithActingContext(alice, () => servedScopeFor("openrouter")),
     ).toBe("personal");
-    // Bob never synced: nothing may be attributed to him…
     expect(
       runWithActingContext(bob, () => servedScopeFor("openrouter")),
     ).toBeUndefined();
-    // …nor to a turn with no acting identity at all.
     expect(servedScopeFor("openrouter")).toBeUndefined();
   });
 });
@@ -161,7 +147,6 @@ test("two members' concurrent syncs do not share one in-flight result", async ()
     const headers = new Headers(init?.headers);
     const acting = headers.get("x-houston-acting-as");
     const asked = new URL(String(input)).searchParams.get("provider");
-    // Alice has a personal openrouter key; Bob has nothing connected.
     if (acting !== alice.actingAs || asked !== "openrouter")
       return notConnected404();
     return new Response(
@@ -203,7 +188,6 @@ test("a turn's provider error carries the credential scope only for the member i
   };
   await withServeMode(fetchImpl, async () => {
     await runWithActingContext(alice, () => syncServedCredential());
-    // Alice's turn: the card can name the account that hit the limit.
     expect(
       runWithActingContext(alice, () => classifyProviderError(rateLimited)),
     ).toEqual({
@@ -214,8 +198,6 @@ test("a turn's provider error carries the credential scope only for the member i
       message: "429 rate limit exceeded",
       credential: { scope: "personal" },
     });
-    // Bob's turn, and a turn with no identity, are stamped with nothing —
-    // the desktop/self-host shape, unchanged.
     expect(
       runWithActingContext(bob, () => classifyProviderError(rateLimited))
         .credential,

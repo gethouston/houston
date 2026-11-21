@@ -13,7 +13,6 @@ export const documentReadOperations: ReadOperations = {
   detectImageMimeType: detectSupportedImageMimeTypeFromFile,
   async readFile(path) {
     const buffer = await readFile(path);
-    // PDF magic is distinctive; Word needs its extension because DOCX is a generic ZIP, like XLSX/PPTX.
     if (buffer.subarray(0, 5).toString("latin1") === "%PDF-") {
       try {
         const pdf = await getDocumentProxy(new Uint8Array(buffer), {
@@ -57,9 +56,6 @@ export const documentReadOperations: ReadOperations = {
   },
 };
 
-// pdf.js rethrows parser errors from its worker as UnknownErrorException and
-// keeps the original class only as the prefix of `details`. Anything else
-// wrapped that way (a TypeError, say) is a pdf.js bug and must still throw.
 const PDF_FORMAT_ERRORS = [
   "FormatError",
   "XRefEntryException",

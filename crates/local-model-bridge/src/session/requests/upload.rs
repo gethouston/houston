@@ -28,7 +28,6 @@ impl Requests {
         }
         body.extend_from_slice(&chunk);
         request.sequence += 1;
-        // Consumed into the capped validation body, never acknowledged merely on receipt.
         let update = serde_json::to_string(&Outgoing::Window {
             request_id: id,
             direction: "request",

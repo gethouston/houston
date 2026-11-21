@@ -14,18 +14,6 @@ import { getHistoryAt } from "../store/conversation-file";
 import type { ArchiveLoader } from "./turn-archive-fetch";
 import type { TurnSessionRequest } from "./turn-session";
 
-/**
- * The AI Manager's own tools on a pooled turn: the operation family and the
- * mission tools, both over THIS turn's sandbox facade, which is where the
- * turn's Houston credential lives (never in the tools).
- *
- * A long-lived coordinator builds the same set once per process
- * (session/assistant-family.ts, session/host-tools.ts). A pool worker cannot:
- * the turn, not the process, says whether it is the coordinator.
- */
-
-/** The family's catalog and transport, or undefined when this turn is not
- *  the coordinator, has no facade, or the build carries no readable catalog. */
 export function turnAssistantOptions(
   turn: TurnSessionRequest,
 ): AssistantToolOptions | undefined {
@@ -34,12 +22,6 @@ export function turnAssistantOptions(
   return catalog ? { catalog, call: turn.sandbox.call } : undefined;
 }
 
-/**
- * `dataDir` is the turn's own: houston_recall searches the transcript this
- * turn hydrated, not the process's (empty) store. The connection card and the
- * key-entry tool are here rather than behind the `integrations` scope: Houston
- * never runs an integration, so the gateway does not grant it one.
- */
 export function buildTurnCoordinatorTools(
   turn: TurnSessionRequest,
   dataDir: string,
@@ -48,8 +30,6 @@ export function buildTurnCoordinatorTools(
   const assistant = turnAssistantOptions(turn);
   if (!assistant) return [];
   const conversations = join(dataDir, "conversations");
-  // houston_recall searches the whole transcript: the archive segments the
-  // hot set left remote land first (turn-archive-fetch.ts).
   const readHistory = async (id: string) => {
     await loadArchive?.(id, {});
     return getHistoryAt(conversations, id);
@@ -68,21 +48,11 @@ export function buildTurnCoordinatorTools(
   ];
 }
 
-/**
- * The providers a mission may pin, by catalog. A worker's own credential
- * store holds nothing (the turn's credential lives in the turn's data dir),
- * so whether one is connected is for the agent the mission lands on to judge,
- * against its own credentials and endpoint settings, exactly as when Houston
- * runs on its pod.
- */
 function missionProviders(): ProviderOption[] {
   const curated = connectedProviderChoices().map((option) => ({
     ...option,
     connected: true,
   }));
-  // Every provider the engine knows, not only those this worker could run:
-  // an empty model list is the open-catalog signal, so the pin's model rides
-  // through as written for the target to judge.
   const known = new Set(curated.map((option) => option.id));
   const others = piProviderIds()
     .filter((id) => !known.has(id))

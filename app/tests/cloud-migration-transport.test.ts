@@ -11,14 +11,6 @@ import {
 } from "../src/lib/cloud-migration-errors.ts";
 import { taskFailureOutcome } from "../src/lib/cloud-migration-step.ts";
 
-/**
- * The wizard's gateway leg rides the bound client, and the per-agent row
- * renders the thrown message VERBATIM — so what is pinned here is the row's
- * text, character for character, plus the two failures that must NOT be
- * re-worded: a cut upload (the connectivity classifier keys on the browser's
- * own TypeError) and a status the pod never answered.
- */
-
 const COPY: MigrationErrorCopy = {
   notConnected: "We can't reach the cloud right now.",
   signedOut: "Sign in again to keep moving your data.",
@@ -30,7 +22,6 @@ const MARKER = {
   counts: { written: 9, skipped: 2, rejected: 0, sessionsRebuilt: true },
 };
 
-/** An engine whose every call fails the same way, or answers the same marker. */
 function engineThat(answer: () => Promise<unknown>): MigrationGatewayEngine {
   const call = answer as () => Promise<never>;
   return {
@@ -41,8 +32,6 @@ function engineThat(answer: () => Promise<unknown>): MigrationGatewayEngine {
 }
 
 const deps = (engine: () => MigrationGatewayEngine) => ({ engine, copy: COPY });
-
-// ── the row's text ─────────────────────────────────────────────────────
 
 test("a server-side refusal keeps the server's reason behind the label", async () => {
   const err = await migrationCall(
@@ -94,10 +83,6 @@ test("no bound engine reads as the authored not-connected copy", async () => {
   assert.equal(err.message, COPY.notConnected);
 });
 
-// ── what must not be re-worded ─────────────────────────────────────────
-
-// Rewriting it would show the user a raw browser string AND file every upload
-// the network cut as a bug: the classifier keys on the TypeError itself.
 test("a cut upload passes through untouched, so it still reads as connectivity", async () => {
   const cut = new TypeError("Failed to fetch");
   const err = await migrationCall(
@@ -118,8 +103,6 @@ test("toMigrationError leaves a failure with no HTTP status alone", () => {
   const bug = new Error("agents is not iterable");
   assert.equal(toMigrationError("migration status", bug, COPY), bug);
 });
-
-// ── the resume probe ───────────────────────────────────────────────────
 
 test("a pod with no status route reads as never imported", async () => {
   const marker = await nullOn404(async () => {

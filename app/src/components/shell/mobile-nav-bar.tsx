@@ -16,21 +16,6 @@ import { NeedsYouChip } from "./agent-sidebar-status";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { tourAnchor } from "./workspace-tour-steps";
 
-/**
- * The phone (<768px) nav bar: a floating pill of AI Employees · More with the
- * compose button beside it (`lib/mobile-tabs.ts` holds the rules).
- * CSS-hidden at md+, so it appears instantly on resize with no re-render
- * flicker.
- *
- * The Agents item wears the rail's own count badge (`NeedsYouChip`) with the
- * cross-agent needs-you sum — the user's review queue, the same number the
- * team headers roll up, never a second badge shape invented for the bar.
- *
- * More is a MENU, not a destination, so tapping it opens the card over the
- * shell instead of navigating; it lights while that card is up (announced as
- * expanded, so the screen behind the card stays the one current page) as well
- * as while the location behind it is not an AI Employees screen.
- */
 export function MobileNavBar() {
   const { t } = useTranslation("shell");
   const viewMode = useUIStore((s) => s.viewMode);
@@ -48,8 +33,6 @@ export function MobileNavBar() {
     {
       id: "agents",
       label: t("shell:tabBar.agents"),
-      // The helmet is what an agent looks like everywhere else in Houston;
-      // `currentColor` so it takes the item's ink like the Lucide glyphs.
       icon: <HoustonHelmet size={20} color="currentColor" />,
       active: active === "agents",
       badge:
@@ -82,12 +65,7 @@ export function MobileNavBar() {
       action={{
         label: t("shell:sidebar.newMission"),
         icon: <SquarePen className="size-5" />,
-        // The phone's ONE New task control, so it is also the lessons'
-        // anchor here: the desktop toolbar button that carries the anchor is
-        // hidden below md, and no screen owns a compose of its own any more.
         dataAttrs: tourAnchor("newMission"),
-        // The compose reads its subject off where the user is standing: a
-        // drilled agent, a team's roster, or the shared fallback.
         onSelect: () =>
           startNewMission(newMissionScopeFor(useUIStore.getState())),
       }}

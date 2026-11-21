@@ -21,11 +21,11 @@ test("defines the five example routines in order", () => {
 
 test("schedule templates carry their default cron; inbox triage carries none", () => {
   const byId = Object.fromEntries(INTAKE_TEMPLATES.map((t) => [t.id, t]));
-  assert.equal(byId.morningBriefing.cron, "0 7 * * 1-5"); // weekdays 7:00
-  assert.equal(byId.weeklyReview.cron, "0 16 * * 5"); // Friday 16:00
-  assert.equal(byId.deadlineReminders.cron, "0 9 * * *"); // daily 9:00
-  assert.equal(byId.newsDigest.cron, "0 8 * * *"); // daily 8:00
-  assert.equal(byId.inboxTriage.cron, undefined); // AI interviews for the wake
+  assert.equal(byId.morningBriefing.cron, "0 7 * * 1-5");
+  assert.equal(byId.weeklyReview.cron, "0 16 * * 5");
+  assert.equal(byId.deadlineReminders.cron, "0 9 * * *");
+  assert.equal(byId.newsDigest.cron, "0 8 * * *");
+  assert.equal(byId.inboxTriage.cron, undefined);
   assert.equal(byId.inboxTriage.requiresTriggers, true);
 });
 

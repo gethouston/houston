@@ -1,10 +1,3 @@
-/**
- * RoutinesGridEmpty — the list's first-run empty state: a short headline, a
- * one-line hint, and the app-supplied primary action (the "New routine" button
- * lives HERE when the list is empty, not in the list header). Renders only when
- * there are no routines and no draft chats.
- */
-
 import {
   Empty,
   EmptyContent,
@@ -17,7 +10,6 @@ import { DEFAULT_GRID_LABELS, type RoutinesGridLabels } from "./labels";
 
 export interface RoutinesGridEmptyProps {
   labels?: RoutinesGridLabels;
-  /** The primary create action, supplied by the app (ui/ stays app-agnostic). */
   action?: ReactNode;
 }
 

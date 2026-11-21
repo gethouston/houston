@@ -1,18 +1,3 @@
-/**
- * Contract-test harness: a real {@link HoustonSdk} wired to a real, in-memory
- * {@link startFakeHost} over real HTTP (ephemeral port, so parallel test files
- * never collide).
- *
- * These are NOT unit tests with a mocked `fetch` — they drive the SDK exactly
- * as a host would: `ports.fetch` is `createAuthFetch(globalThis.fetch, storage)`
- * (the documented host wiring, so `session/setToken` really stamps the bearer),
- * a REAL clock (the agents `/v1/events` reconnect loop needs real backoff), and
- * the fake host's `POST /__test__/*` control plane drives the drop / kill /
- * turn-boundary scenarios. The fake host shares the runtime's real streaming
- * pieces (`StreamChannel`, `serveResumableStream`, `formatSseFrame`), so what
- * these tests pin is the wire contract, not a mock's guess.
- */
-
 import {
   type FakeHost,
   SEED_AGENT_ID,
@@ -34,23 +19,15 @@ import { memoryKv } from "../src/test-ports";
 export const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Start a fake host on an ephemeral port (parallel-file safe). */
 export function startHost(): Promise<FakeHost> {
   return startFakeHost(0);
 }
 
-/** An in-memory {@link KeyValueStore} plus the ports built over it. */
 export interface Harness {
   sdk: HoustonSdk;
-  /** The token store the auth-fetch and session module share. */
   storage: Map<string, string>;
 }
 
-/**
- * Build an SDK pointed at `baseUrl`, wired like a real host. Pass `logger` to
- * capture the SDK's diagnostics (e.g. asserting a persist warning) — it
- * defaults to a silent no-op logger.
- */
 export function makeSdk(baseUrl: string, logger?: SdkLogger): Harness {
   const storage = new Map<string, string>();
   const kv = memoryKv(storage);
@@ -58,8 +35,6 @@ export function makeSdk(baseUrl: string, logger?: SdkLogger): Harness {
   const ports: SdkPorts = {
     fetch: createAuthFetch(baseFetch, kv),
     storage: kv,
-    // The device's own store: empty here, and read by no contract suite — the
-    // appearance module is unit-tested against it in `./appearance.test.ts`.
     devicePreferences: memoryKv(),
     clock: {
       now: () => Date.now(),
@@ -77,7 +52,6 @@ export function makeSdk(baseUrl: string, logger?: SdkLogger): Harness {
   return { sdk: new HoustonSdk({ baseUrl, ports }), storage };
 }
 
-/** POST a `/__test__/<name>` control route and return its JSON body. */
 export async function control(
   baseUrl: string,
   name: string,
@@ -92,16 +66,10 @@ export async function control(
   return (await res.json()) as Record<string, unknown>;
 }
 
-/** Restore the fake host's seed + clear every chat channel. */
 export function resetHost(baseUrl: string): Promise<Record<string, unknown>> {
   return control(baseUrl, "reset");
 }
 
-/**
- * Read the conversation VM snapshot for `conversationId`. Scopes are
- * agent-qualified (ADR-0001); every contract suite sends as the fake host's
- * seed agent, so that is the default.
- */
 export function convVm(
   sdk: HoustonSdk,
   conversationId: string,
@@ -112,7 +80,6 @@ export function convVm(
     | undefined;
 }
 
-/** Poll `predicate` on real timers until it holds, or throw after `timeoutMs`. */
 export async function until(
   predicate: () => boolean,
   label: string,
@@ -127,11 +94,6 @@ export async function until(
   }
 }
 
-/**
- * Async {@link until}: poll an async `predicate` on real timers until it
- * resolves truthy, or throw after `timeoutMs`. For assertions that read the
- * host over the wire (e.g. a persisted activity's status).
- */
 export async function untilAsync(
   predicate: () => Promise<boolean>,
   label: string,
@@ -146,12 +108,10 @@ export async function untilAsync(
   }
 }
 
-/** The canned assistant reply the fake host streams for `userText`. */
 export function cannedReply(userText: string): string {
   return `Roger that. You said: "${userText}"`;
 }
 
-/** A {@link FeedOutput} that records every push — for observer-mode assertions. */
 export class RecordingFeedOutput implements FeedOutput {
   readonly feed: { feed_type: string; data: unknown }[] = [];
   readonly statuses: SessionStatusValue[] = [];

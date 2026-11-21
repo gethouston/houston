@@ -3,12 +3,6 @@ import { describe, it } from "node:test";
 import { effectiveSkillsByPath } from "../src/components/skills-view/effective-skills.ts";
 import type { SkillSummary } from "../src/lib/types.ts";
 
-/**
- * What an AI Employee actually RUNS is its own copies plus the workspace
- * skills its manifest switches on. The setup chat is fed that list: given only
- * the copies, a workspace skill just added to an employee opens a chat that
- * never starts, because the chat cannot find the skill it was asked for.
- */
 const summary = (name: string): SkillSummary => ({
   name,
   title: null,

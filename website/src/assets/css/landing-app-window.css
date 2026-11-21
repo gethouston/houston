@@ -1,16 +1,9 @@
-/*
- * The .win app-window: a CSS-built Houston Mission Control in the app's REAL
- * light theme (staged in the #agents board zoom + reused by the chat window).
- * Every colour is a product token (site-tokens.css --app-* / --agent-*).
- */
 .win {
   border-radius: 16px;
   overflow: hidden;
   text-align: left;
   border: 1px solid var(--app-line);
   background: var(--app-gutter);
-  /* The app renders in the SYSTEM font stack (DESIGN.md §4) — never the site's
-     Hanken. Pin it here so the mock's chrome matches the product exactly. */
   font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
     Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -23,7 +16,6 @@
   background: var(--app-gutter);
 }
 
-/* ── Sidebar — transparent, melts into the gutter ────────────────────────── */
 .sb {
   width: 210px;
   flex-shrink: 0;
@@ -90,8 +82,6 @@
   height: 16px;
   stroke-width: 2;
   flex-shrink: 0;
-  /* Real SidebarNavItem: the Lucide icon inherits text-ink (currentColor) — the
-     top-level nav glyphs read dark, not muted. */
   color: var(--app-ink);
 }
 .sb-group {
@@ -122,7 +112,6 @@
 .agent-row.on {
   background: var(--app-active);
 }
-/* Agent avatar — core's HoustonAvatar: a faint tinted circle + helmet glyph. */
 .av {
   width: 20px;
   height: 20px;
@@ -140,19 +129,17 @@
   -webkit-mask: var(--helmet-mask) center / contain no-repeat;
   mask: var(--helmet-mask) center / contain no-repeat;
 }
-/* Single-color agent palette (the app's real light --ht-agent-* values). */
-.av-p { --ac: #5b21b6; } /* purple — Houston */
-.av-b { --ac: #1e4d8c; } /* navy — Chief of Staff */
-.av-g { --ac: #1b6b3a; } /* forest */
-.av-o { --ac: #b45309; } /* orange — Bookkeeper */
-.av-c { --ac: #a3261a; } /* crimson — Sales Rep */
+.av-p { --ac: #5b21b6; }
+.av-b { --ac: #1e4d8c; }
+.av-g { --ac: #1b6b3a; }
+.av-o { --ac: #b45309; }
+.av-c { --ac: #a3261a; }
 .agent-row .a-name {
   flex: 1;
   font-size: 13.5px;
   color: var(--app-ink);
   font-weight: 500;
 }
-/* Needs-you chip — a white outline Badge (core NeedsYouChip). */
 .agent-row .a-count {
   font-size: 11px;
   font-weight: 600;
@@ -168,7 +155,6 @@
   justify-content: center;
 }
 
-/* ── Screen — the floating white pane ────────────────────────────────────── */
 .screen {
   flex: 1;
   min-width: 0;
@@ -250,7 +236,6 @@
   mask: var(--helmet-mask) center / contain no-repeat;
 }
 
-/* Tabs */
 .tabs {
   display: flex;
   align-items: center;
@@ -296,7 +281,6 @@
   justify-content: center;
 }
 
-/* ── Board columns ───────────────────────────────────────────────────────── */
 .cols {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -340,7 +324,6 @@
   height: 16px;
 }
 
-/* Card containers — the demo appends into #hd-running/#hd-done (FLIP in landing-motion.css). */
 .col-body {
   display: flex;
   flex-direction: column;
@@ -367,7 +350,6 @@
   stroke-width: 2;
 }
 
-/* Task card */
 .tcard {
   position: relative;
   background: var(--app-input);
@@ -416,14 +398,9 @@
   font-size: 12px;
   color: var(--app-ink-muted);
   line-height: 1.4;
-  /* Leave room so the bottom-right face stack never overlaps the last line. */
   padding-right: 44px;
 }
 
-/* ── Human contributor face stack — the multiplayer signal ─────────────────
-   Mirrors @houston-ai/board KanbanPeople: overlapping human avatars bottom-right
-   (photos or quiet-tone initials) with a 2px ring and a "+N" overflow chip. The
-   helmet (top-left) is the agent; these faces are the teammates on the mission. */
 .faces {
   position: absolute;
   right: 10px;
@@ -447,18 +424,16 @@
 .face:first-child {
   margin-left: 0;
 }
-/* Quiet human tones (distinct from agent helmets); white initials clear AA. */
-.hp-1 { background: #5b6b7a; }  /* slate */
-.hp-2 { background: #5e7266; }  /* sage */
-.hp-3 { background: #84616b; }  /* mauve */
-.hp-4 { background: #736550; }  /* taupe */
-.hp-5 { background: #5b6488; }  /* indigo */
+.hp-1 { background: #5b6b7a; }
+.hp-2 { background: #5e7266; }
+.hp-3 { background: #84616b; }
+.hp-4 { background: #736550; }
+.hp-5 { background: #5b6488; }
 .face-more {
   background: #e6e8ec;
   color: #555b66;
   font-weight: 600;
 }
-/* A photo face (real teammate headshot) — image cropped to the circle. */
 .face-img {
   overflow: hidden;
 }
@@ -469,7 +444,6 @@
   display: block;
 }
 
-/* ── Graceful collapse (mirrors the app's narrow board) ──────────────────── */
 @media (max-width: 900px) {
   .win-body {
     height: auto;

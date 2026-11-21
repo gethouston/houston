@@ -6,10 +6,6 @@ import {
 } from "@houston/sdk/local-model-bridge/errors";
 import { planLocalBridgeReport } from "../src/lib/local-bridge-report-plan.ts";
 
-// HOUSTON-APP-5HX: a space or agent switch aborted the wake's status GET and
-// the funnel reported the AbortError as "Local model connection failed". A
-// cancellation is superseded work, not a failure: it is dropped before any
-// report, while the known quiet class and every real failure keep their path.
 describe("planLocalBridgeReport", () => {
   it("drops an aborted operation, keeping only its cause for the debug log", () => {
     deepStrictEqual(
@@ -39,9 +35,6 @@ describe("planLocalBridgeReport", () => {
     );
   });
 
-  // HOUSTON-APP-5E4 / 5DY / 5M1: the expected states report as their quiet
-  // class, and the cause still rides along (a native string rejection has no
-  // body for the quiet event to carry).
   it("reports the SDK's expected bridge states as their quiet class, with the cause", () => {
     deepStrictEqual(planLocalBridgeReport("Bridge connection failed"), {
       kind: "quiet",
@@ -87,8 +80,6 @@ describe("planLocalBridgeReport", () => {
       ),
       { kind: "failed", cause: "TypeError: Load failed" },
     );
-    // The relay answered the handshake with a status: our side refused, so
-    // it is never the quiet relay-unreachable class.
     deepStrictEqual(planLocalBridgeReport("Bridge connection refused (401)"), {
       kind: "failed",
       cause: "Bridge connection refused (401)",

@@ -15,7 +15,6 @@ import { PlanBriefingCta, PlanBriefingQuietButton } from "./plan-briefing-cta";
 const TITLE_CLASS =
   "pr-8 text-balance text-2xl font-semibold leading-tight tracking-tight text-ink outline-none md:text-3xl";
 
-/** The figures every step names, formatted in the reader's language. */
 export function usePromoFacts(view: PromoEndedView, org: string) {
   const { i18n } = useTranslation("plan");
   const money = (cents: number) =>
@@ -34,12 +33,6 @@ export function usePromoFacts(view: PromoEndedView, org: string) {
   };
 }
 
-/**
- * The offer: the promotional price ends at the next charge; switch to yearly
- * (preselected, where it is sold; charged today, less Stripe's credit for the
- * unused part of the month) or keep monthly at the new price. The action
- * follows the pick; "Maybe later" closes it for this session.
- */
 export function PromoOfferStep({
   view,
   org,

@@ -41,8 +41,6 @@ export function TeamMoveFlow({
   const invites = useTeamMoveInvites(flow.addMember);
   const openTeamMove = useUIStore((store) => store.openTeamMove);
   const addToast = useUIStore((store) => store.addToast);
-  // The failing agent's index is how many actually made it: the run stops
-  // there, so the copy must not imply the rest are already in the new team.
   const moveFailure =
     state.step === "moveFailed"
       ? teamMoveFailureCopy(
@@ -162,8 +160,6 @@ export function TeamMoveFlow({
         {state.step === "postscriptFailed" && (
           <TeamMoveFailure
             body={
-              // A team with no agents skips straight to the postscript, so
-              // there is no count to report: the whole move is the subject.
               movingSource.agents.length === 0
                 ? t("moveTeam.postscriptFailedEmpty")
                 : t("moveTeam.postscriptFailed", {

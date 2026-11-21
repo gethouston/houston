@@ -1,11 +1,3 @@
-/**
- * Visual-regression baselines for the pick after the cutover applied it: the
- * applied view a provisional payer confirms, the success step after a change,
- * and the note an owner who picked reads, at desktop and phone width. The
- * page clock sits inside the change window and every value on screen comes
- * from the fixture. The modal pins its own dark theme; the shell behind it is
- * shot light.
- */
 import type { BillingChoice } from "@houston/wire-types";
 import type { Locator, Page } from "@playwright/test";
 import {

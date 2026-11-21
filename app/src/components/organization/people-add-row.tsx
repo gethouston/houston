@@ -19,18 +19,6 @@ import { type AddOutcome, grantsOwner } from "./people-tab-model";
 import { SeatChargeDialog } from "./seat-charge-dialog";
 import { useSeatAdd } from "./use-seat-add";
 
-/**
- * The owner-only "Add someone" row on the People tab: email + role (Owner /
- * Manager / Member, each with a plain-language explanation) →
- * `POST /org/members`. A known user is added directly; an unknown email becomes
- * a pending invite (`202`), and we confirm which happened inline. Adding
- * someone as OWNER (full org authority, billing included) is confirm-gated
- * before the request fires. A note under the form says what a new seat costs
- * (`useSeatAdd`): on a yearly org with every paid seat in use, the payer
- * confirms the charge in a dialog first, and another owner cannot add at all.
- * Unexpected failures (already a member, another org) reach the reporting
- * paths through the `call()` wrapper, so no `onError` here.
- */
 export function PeopleAddRow() {
   const { t } = useTranslation("teams");
   const [email, setEmail] = useState("");

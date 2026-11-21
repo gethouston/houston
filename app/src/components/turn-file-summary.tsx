@@ -21,7 +21,6 @@ import { useActionBrandResolver } from "./use-action-brand-resolver";
 interface TurnFileSummaryProps {
   items: TurnSummaryItem[];
   agentPath: string;
-  /** The chat the summary sits in (its draft key). */
   draftKey?: string | null;
 }
 
@@ -39,8 +38,6 @@ export function TurnFileSummary({
     s.agents.find((candidate) => candidate.folderPath === agentPath),
   );
   const resolveBrand = useActionBrandResolver(agent?.id);
-  // The saved-skill row names the skill the way every other skill surface
-  // does: its own title. The list is the panel's own query, already in cache.
   const { data: skills } = useSkills(agentPath);
   const resolveSkillTitle = useCallback(
     (slug: string) => skillTitleOfSlug(slug, skills),

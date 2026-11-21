@@ -1,8 +1,6 @@
 import { expect, test } from "vitest";
 import { normalizeSource } from "./github-source";
 
-// Ported from the Rust oracle (HOU-440).
-
 test("normalizeSource accepts urls, ssh, and pasted commands", () => {
   expect(normalizeSource("owner/repo")).toBe("owner/repo");
   expect(normalizeSource("https://github.com/owner/repo")).toBe("owner/repo");

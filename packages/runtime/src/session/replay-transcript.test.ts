@@ -23,14 +23,12 @@ test("renders prior turns and excludes the current turn's user message", () => {
   expect(p).not.toBeNull();
   expect(p?.text).toContain("User: translate hello to French");
   expect(p?.text).toContain("Assistant: Bonjour");
-  // The current turn's message is delivered as the actual prompt — never doubled.
   expect(p?.text).not.toContain("and to Spanish?");
   expect(p?.truncated).toBe(false);
 });
 
 test("returns null for a conversation with nothing to carry", () => {
   expect(renderReplayPreamble([], "t1", 100_000)).toBeNull();
-  // Only THIS turn's message on disk (a brand-new conversation's first turn).
   expect(
     renderReplayPreamble([msg("user", "hi", { turnId: "t1" })], "t1", 100_000),
   ).toBeNull();
@@ -108,7 +106,6 @@ test("a rebuild after /clear carries only what was said since the clear", () => 
     "t4",
     100_000,
   );
-  // The cleared era is unreachable to the model, marker line included.
   expect(p?.text).not.toContain("passport");
   expect(p?.text).not.toContain("/clear");
   expect(p?.text).toContain("User: plan my week");

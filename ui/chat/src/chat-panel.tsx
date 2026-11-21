@@ -1,9 +1,3 @@
-/**
- * ChatPanel -- THE single chat experience component.
- * Follows the Vercel AI Elements chatbot example exactly.
- * Generic version: accepts feedItems/status as props, no store dependencies.
- */
-
 import { useEffect, useMemo, useRef } from "react";
 import { ChatDropOverlay } from "./chat-drop-overlay";
 import { feedItemsToMessages } from "./chat-helpers";
@@ -117,15 +111,9 @@ export function ChatPanel(props: ChatPanelProps) {
       )}
       <ChatPanelLog {...props} messages={messages} status={status} />
 
-      {/* Above-card offers keep the composer visible. Replacing interaction
-          cards own their input, so the composer is hidden while they are
-          present. The override block drops the input's own top padding for its
-          gap, avoiding doubled spacing between the two. */}
       {composerOverride && (
         <div className="shrink-0 px-4 pt-2 pb-3">
           <div className="max-w-3xl mx-auto">
-            {/* Only a REPLACING override takes the attachments over: above
-                the composer, the composer still shows and sends them. */}
             <PanelAttachmentsContext.Provider
               value={
                 composerOverrideMode === "replace" ? panelAttachments : null
@@ -162,10 +150,6 @@ export function ChatPanel(props: ChatPanelProps) {
           mentionPeople={mentionPeople}
           renderMentionAvatar={renderMentionAvatar}
           mentionLabels={mentionLabels}
-          // The conversation on screen IS the draft: its @mention picks are
-          // parked under this key, exactly like its text is in the app's
-          // draft store, so a switch never crosses one chat's picks with
-          // another's words.
           draftKey={sessionKey}
           draftStore={draftStore}
         />

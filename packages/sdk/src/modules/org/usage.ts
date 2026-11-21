@@ -1,21 +1,5 @@
-/**
- * What the space has been used FOR: the audit trail and the two usage counters
- * the admin screens render.
- *
- * They sit apart from the roster calls in `http.ts` because they read history
- * rather than membership, and their row shapes are read by nothing else — a
- * reader of the roster types never has to page past them. Same transport, same
- * gateway-only `/v1/org*` family, same no-swallow rule: every non-2xx throws
- * the module's {@link OrgHttpError}.
- */
-
 import { type HttpScope, httpRequest } from "../http";
 
-/**
- * One audit-log entry, newest-first from `GET /v1/org/audit`. `action` is a
- * stable slug (e.g. `agent.rename`, `member.add`, `agent.share`); `subject` is
- * action-specific JSON; `createdAt` is epoch milliseconds.
- */
 export interface AuditEntry {
   id: number;
   orgId: string;
@@ -26,10 +10,6 @@ export interface AuditEntry {
   createdAt: number;
 }
 
-/**
- * One usage-counter row from `GET /v1/org/usage`: message count for an (agent,
- * user, day) tuple. `day` is a `YYYY-MM-DD` UTC date.
- */
 export interface UsageRow {
   agentSlug: string;
   userId: string;
@@ -37,13 +17,6 @@ export interface UsageRow {
   messages: number;
 }
 
-/**
- * One compute-usage row: engine running time for an (agent, day) tuple. `day`
- * is a `YYYY-MM-DD` UTC date. `awakeMs` is the wall-clock the agent's engine was
- * up that day (today's row includes the currently-open stretch up to
- * {@link ComputeUsage.asOf}); `activeMs` is the subset spent actually executing
- * turns/routine runs — never sum it with `awakeMs`.
- */
 export interface ComputeUsageRow {
   agentSlug: string;
   day: string;
@@ -54,11 +27,8 @@ export interface ComputeUsageRow {
   routineRuns: number;
 }
 
-/** Response of `GET /v1/org/compute-usage`. Days with no data have no row. */
 export interface ComputeUsage {
-  /** Server clock when the snapshot was taken (RFC 3339). */
   asOf: string;
-  /** Slugs of agents whose engine is up right now — their "today" still grows. */
   awakeNow: string[];
   rows: ComputeUsageRow[];
 }

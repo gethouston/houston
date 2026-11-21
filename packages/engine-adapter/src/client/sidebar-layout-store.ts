@@ -15,14 +15,8 @@ const deviceKey = (workspaceId: string) =>
 const isEmpty = (layout: SidebarLayout) =>
   layout.groups.length === 0 && layout.order.length === 0;
 
-/**
- * Device storage can refuse every access (a SecurityError under blocked site
- * data): that is reported and read as "nothing stored", so the server layout
- * still answers.
- */
 function readDeviceRaw(workspaceId: string): string | null {
   try {
-    // Inside the try: a blocked page throws on the `localStorage` read itself.
     if (typeof localStorage === "undefined") return null;
     return localStorage.getItem(deviceKey(workspaceId));
   } catch (error) {
@@ -48,12 +42,10 @@ function clearDeviceLayout(workspaceId: string): void {
   }
 }
 
-/** The host or gateway owns each person's workspace sidebar layout. */
 export class SidebarLayoutStore {
   #localProfile: Promise<boolean> | undefined;
   constructor(private readonly ctx: AdapterContext) {}
 
-  /** Null when the probe failed: the caller skips the lift and asks again. */
   private async isLocal(): Promise<boolean | null> {
     this.#localProfile ??= getCapabilities(this.ctx).then(
       (caps) => caps.profile === "local",
@@ -93,8 +85,6 @@ export class SidebarLayoutStore {
       clearDeviceLayout(workspaceId);
       return seeded;
     } catch (error) {
-      // A refused device copy can never be lifted, so it is dropped rather
-      // than retried on every read; any other failure keeps it for next time.
       if (
         !(error instanceof HoustonEngineError) ||
         error.status < 400 ||

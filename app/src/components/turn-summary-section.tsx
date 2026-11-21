@@ -16,16 +16,8 @@ import type {
 import { getFileIcon } from "./file-card";
 import { IntegrationUpdateRow } from "./turn-summary-integration-row";
 
-/** Every row species but the integration one, which renders its own row. */
 type SummaryRowItem = Exclude<TurnSummaryItem, { kind: "integration" }>;
 
-/**
- * One collapsible group of the turn-end summary ("Updates made" / "N new
- * files"). Four row species: agent files (open in preview/OS), saved skills
- * (named after the skill whose SKILL.md the turn wrote), semantic updates
- * (jump to the matching tab), and external-artifact integration rows
- * (PRODUCT-1196). `done` renders the header's success checkmark.
- */
 export function TurnSummarySection({
   title,
   items,
@@ -48,7 +40,6 @@ export function TurnSummarySection({
   onOpenSemantic?: (kind: SemanticUpdateKind) => void;
   onOpenUrl: (url: string) => void;
   resolveBrand: (action: string) => ChatActionBrand | undefined;
-  /** The title a saved skill's slug reads as (`lib/humanize-skill-name.ts`). */
   resolveSkillTitle: (slug: string) => string;
   t: TFunction<"chat">;
 }) {
@@ -91,7 +82,6 @@ export function TurnSummarySection({
                 </span>
               </>
             );
-            // A settings target the user cannot reach is stated, not offered.
             if (item.kind !== "file" && !onOpenSemantic)
               return (
                 <div
@@ -133,8 +123,6 @@ function activate(
     onOpenFile(item.path);
     return;
   }
-  // A saved skill lands in the same place its generic row does: the agent's
-  // Skills section, which is where the saved skill can be read and edited.
   onOpenSemantic?.(item.kind === "skill" ? "skills" : item.update);
 }
 

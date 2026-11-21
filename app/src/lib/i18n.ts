@@ -1,13 +1,3 @@
-/**
- * i18next setup for the Houston desktop app.
- *
- * Source of truth for the user's locale = engine preference `locale`.
- * localStorage is only a boot-time cache so the first paint doesn't flash
- * English before the engine preference is read.
- *
- * Supported UI locales: en (filled), es (stub), pt (stub). Fallback = en.
- */
-
 import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
@@ -96,8 +86,6 @@ import {
 } from "./locale";
 
 export type { SupportedLocale };
-// Pure locale value-logic lives in ./locale (DOM/JSON-free, unit-tested).
-// Re-exported here so existing `from "../lib/i18n"` imports keep working.
 export {
   isSupported,
   LOCALE_PREF_KEY,
@@ -108,10 +96,6 @@ export {
   SUPPORTED_LOCALES,
 };
 
-/**
- * Boot-time cache key in localStorage. Used ONLY to avoid flash-of-wrong-
- * language before the engine preference loads. Never the source of truth.
- */
 const LOCALE_CACHE_KEY = "houston.locale.cache";
 
 export function getCachedLocale(): SupportedLocale | null {
@@ -126,9 +110,7 @@ export function getCachedLocale(): SupportedLocale | null {
 export function setCachedLocale(locale: SupportedLocale): void {
   try {
     localStorage.setItem(LOCALE_CACHE_KEY, locale);
-  } catch {
-    /* ignore quota / disabled storage */
-  }
+  } catch {}
 }
 
 const resources = {
@@ -212,7 +194,6 @@ const resources = {
   },
 } as const;
 
-// Pick an initial language: cached pref → navigator → 'en'.
 const initialLng =
   getCachedLocale() ??
   normalizeLocale(
@@ -230,7 +211,7 @@ void i18n
     lng: initialLng,
     fallbackLng: "en",
     supportedLngs: SUPPORTED_LOCALES as unknown as string[],
-    nonExplicitSupportedLngs: true, // map pt-BR → pt, es-ES → es, etc.
+    nonExplicitSupportedLngs: true,
     defaultNS: "common",
     ns: [
       "common",
@@ -258,10 +239,8 @@ void i18n
       "agentOnboarding",
       "academy",
     ],
-    interpolation: { escapeValue: false }, // react already escapes
+    interpolation: { escapeValue: false },
     detection: {
-      // Cache only — the engine preference is source of truth, applied by
-      // `applyEngineLocale` once the engine handshake + pref are available.
       order: ["localStorage", "navigator"],
       lookupLocalStorage: LOCALE_CACHE_KEY,
       caches: [],
@@ -269,12 +248,6 @@ void i18n
     react: { useSuspense: false },
   });
 
-/**
- * Apply the engine-resolved locale to the live i18n instance and refresh the
- * boot cache, making the engine the source of truth. Pass `null` if neither
- * the workspace override nor the global preference is set — the detector pick
- * then stands. No-ops when the target already matches the active language.
- */
 export async function applyEngineLocale(raw: string | null): Promise<void> {
   const target = localeToApply(raw, i18n.language);
   if (!target) return;
@@ -282,7 +255,6 @@ export async function applyEngineLocale(raw: string | null): Promise<void> {
   setCachedLocale(target);
 }
 
-/** Change the active locale AND remember it in the boot cache. */
 export async function changeLocale(locale: SupportedLocale): Promise<void> {
   await i18n.changeLanguage(locale);
   setCachedLocale(locale);

@@ -3,10 +3,6 @@ import { afterEach, beforeEach, test } from "node:test";
 import { resolveAuthStorageConfig } from "../src/lib/auth-storage.ts";
 import type { Session } from "../src/lib/identity/session.ts";
 
-// A hermetic in-memory `localStorage`. session-store resolves to BROWSER mode
-// under node:test (the storage-mode define is undefined), and its browser
-// adapter reads `globalThis.localStorage` lazily at call time — so installing a
-// fake here (before any store call) exercises the real load/save/clear path.
 class FakeLocalStorage {
   store = new Map<string, string>();
   getItem(key: string): string | null {
@@ -30,7 +26,6 @@ afterEach(() => {
   globalThis.localStorage = undefined;
 });
 
-// The blob key the browser-mode store derives (default scope → this key).
 const STORAGE_KEY = resolveAuthStorageConfig({
   storageMode: "browser",
   storageScope: "",
@@ -58,7 +53,6 @@ test("saveSession → loadSession round-trips the full session (incl. photoUrl)"
 
 test("loadSession discards a stale foreign (Supabase-shaped) blob", async () => {
   const { loadSession } = await import("../src/lib/identity/session-store.ts");
-  // A leftover Supabase session under the reused key — not a Firebase Session.
   fake.store.set(
     STORAGE_KEY,
     JSON.stringify({
@@ -85,7 +79,7 @@ test("subscribeSession is notified on save (session) and clear (null)", async ()
   await saveSession(SESSION);
   await clearSession();
   unsub();
-  await saveSession(SESSION); // after unsubscribe — must NOT be observed
+  await saveSession(SESSION);
   assert.deepEqual(seen, [SESSION, null]);
 });
 
@@ -93,8 +87,6 @@ test("loadSessionState maps a read fault to `unavailable` WITHOUT notifying", as
   const { loadSessionState, subscribeSession } = await import(
     "../src/lib/identity/session-store.ts"
   );
-  // A store whose read throws: the wiring must surface a FAULT, not a null that
-  // would flip every subscriber to signed-out (the spurious-logout bug).
   globalThis.localStorage = {
     getItem: () => {
       throw new Error("storage read blew up");
@@ -126,9 +118,6 @@ test("loadSessionState reports `none` for a corrupt blob", async () => {
 });
 
 test("clearSession retries a failed delete once and succeeds", async () => {
-  // A transient keychain fault (locked at that instant, a prompt the user then
-  // approves) must not leave the session blob behind: a surviving blob signs the
-  // user straight back into the account they just left on the next launch.
   const { clearSession } = await import("../src/lib/identity/session-store.ts");
   let attempts = 0;
   globalThis.localStorage = {
@@ -167,8 +156,6 @@ test("clearSession throws typed when both attempts fail, and still broadcasts si
   );
   unsub();
   assert.equal(attempts, 2);
-  // Locally the user IS signed out (the epoch bumped, the caches are wiped), so
-  // subscribers must still flip — the surviving blob is what gets surfaced.
   assert.deepEqual(seen, [null]);
 });
 

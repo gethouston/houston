@@ -3,7 +3,6 @@
 import { type FormEvent, useState } from "react";
 
 export interface BrowserLiveAddressProps {
-  /** The page's current address, as the browser reports it. */
   url: string;
   disabled: boolean;
   refused: boolean;
@@ -12,17 +11,12 @@ export interface BrowserLiveAddressProps {
   onNavigate: (url: string) => void;
 }
 
-/** A bare host ("bank.example.com") means its https page. */
 export function addressTarget(raw: string): string | null {
   const value = raw.trim();
   if (!value) return null;
   return /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
 }
 
-/**
- * The address field. It follows the page while the person is not editing it,
- * and never overwrites what they are typing (a guarded draft).
- */
 export function BrowserLiveAddress({
   url,
   disabled,

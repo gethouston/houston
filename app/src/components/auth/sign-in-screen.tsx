@@ -21,41 +21,22 @@ import { ReferralPanel } from "./referral-panel";
 import { Divider, LegalFooter } from "./sign-in-panels";
 import { useProviderSignIn } from "./use-provider-sign-in";
 
-/**
- * Shared sign-in screen for local and hosted sessions. A remembered provider
- * gets the filled continue button; native builds offer only configured native
- * providers and omit the referral promotion. Email code sign-in stays available.
- * The desktop loopback flow is cancelled on unmount so a late callback cannot
- * replace a session established through another method. A provider sign-in
- * that met an existing account swaps the options for the account link's code
- * step until it ends.
- */
 export function SignInScreen() {
   const showReferral = canPurchaseInApp();
   const { t: tAuth } = useTranslation("auth");
   const { pending, error, handleSignIn } = useProviderSignIn();
   const link = useAccountLink();
   const linkNotice = useAccountLinkNotice(link);
-  // The email code flow, once started from the continue button, collapses the
-  // returning-user chrome (continue button + "another way" options) down to the
-  // focused address/code entry. A rising token drives EmailSignIn's auto-send.
   const [emailAutoSubmit, setEmailAutoSubmit] = useState<{
     email: string;
     token: number;
   } | null>(null);
 
-  // Device-local memory of the previous sign-in, read once on mount. Survives
-  // sign-out (its own localStorage key), so returning users get a one-click path
-  // back to the account they used last. Keeps the raw address for the email
-  // auto-prefill; the button captions the (validated) full address.
   const lastSignIn = useMemo(() => {
     const hint = readLastSignIn();
     return hint ? { ...describeLastSignIn(hint), fullEmail: hint.email } : null;
   }, []);
 
-  // The one-click return path. For an OAuth provider it runs the very same
-  // sign-in the matching pill would; for the email path it hands the stored
-  // address to EmailSignIn's auto-send and collapses to the code entry.
   const onContinue = () => {
     if (!lastSignIn) return;
     if (lastSignIn.highlight === "email") {
@@ -65,8 +46,6 @@ export function SignInScreen() {
     void handleSignIn(lastSignIn.highlight)();
   };
 
-  // Once the email flow is running, the returning-user chrome collapses so the
-  // user sees only the code entry.
   const emailFlowActive = emailAutoSubmit !== null;
   const showContinue =
     lastSignIn !== null &&
@@ -89,9 +68,6 @@ export function SignInScreen() {
       </div>
 
       <div className="flex flex-1 items-center justify-center px-4 md:px-6">
-        {/* A plain white card, hairline + soft shadow, floating on the grey
-            first-run background. The FirstRunScreen wrapper pins light, so the
-            login reads the same bright way in both app themes. */}
         <div
           className={`grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line bg-card text-ink shadow-raised${showReferral ? " md:grid-cols-3" : ""}`}
         >

@@ -22,12 +22,6 @@ import {
   ROUTINE_SETUP_AGENT_MODE,
 } from "../src/lib/routine-chat-setup.ts";
 
-// The "Create it in chat" kickoff is Houston-sent, not user-typed: it must
-// ride the auto-continue marker so the transcript hides the bubble (live and
-// on reload) and the conversation opens with the AGENT's greeting. If the
-// marker drifts, non-technical users see raw interview instructions as their
-// own first message.
-
 describe("automation chat setup message", () => {
   it("is tagged as an auto-continue message and filtered from the feed", () => {
     for (const body of [
@@ -76,21 +70,14 @@ describe("automation chat setup message", () => {
     ok(isRoutineSetupMode(REACTION_SETUP_AGENT_MODE));
     ok(!isRoutineSetupMode("researcher"));
     ok(!isRoutineSetupMode(null));
-    // The ONE shared predicate every board filter uses covers this kind.
     ok(isSetupChatMode(ROUTINE_SETUP_AGENT_MODE));
-    // Both mission surfaces drop `isSetupChatMode` rows before splitting on
-    // ARCHIVED_STATUS (`components/use-mission-control.ts` for the active
-    // board, `components/board/use-mission-control-archived.ts` for the
-    // archived view), so a routine chat is invisible in EITHER status.
     const missions = [setup, archivedSetup, normal, archivedNormal].filter(
       (m) => !isSetupChatMode(m.agent),
     );
-    // Active board: only the normal mission survives.
     deepStrictEqual(
       missions.filter((m) => m.status !== ARCHIVED_STATUS).map((m) => m.id),
       ["n1"],
     );
-    // Archived view: closed setup chats stay invisible too.
     deepStrictEqual(
       missions.filter((m) => m.status === ARCHIVED_STATUS).map((m) => m.id),
       ["n2"],
@@ -127,13 +114,6 @@ describe("automation chat setup message", () => {
   });
 
   it("kickoff prompt covers the guided interview the issue asks for", () => {
-    // Load-bearing beats: the agent opens the conversation in a single
-    // ask_user call (no wasted greeting turn), asks exactly one question per
-    // ask_user call, covers the chat-mode and quiet-run choices, gates
-    // creation on approval, and never quizzes non-technical users about
-    // models or providers. HOU-725 adds the persistence beats: the framing
-    // says the chat stays available for later changes, and the routine is
-    // linked back to this chat via setup_activity_id.
     for (const eventsAvailable of [false, true]) {
       const prompt = routineSetupPrompt(
         "act-42",
@@ -162,15 +142,12 @@ describe("automation chat setup message", () => {
   });
 
   it("offers the event wake only where the deployment supports triggers", () => {
-    // Where the deployment has no event triggers, the kickoff must never let
-    // the agent promise "the moment something happens" — it can't deliver.
     const scheduleOnly = routineSetupPrompt("act-1", null, false);
     ok(!scheduleOnly.includes("moment something happens"));
     ok(!scheduleOnly.includes("trigger"));
     ok(scheduleOnly.includes("When it should run"));
     ok(scheduleOnly.includes("with the agreed schedule"));
 
-    // With triggers, both wakes are offered and the exactly-one rule is stated.
     const both = routineSetupPrompt("act-1", null, true);
     for (const needle of [
       "On a schedule",
@@ -184,18 +161,13 @@ describe("automation chat setup message", () => {
   });
 
   it("resolves a routine's chat by the durable reverse link first", () => {
-    // The forward link (routine.setup_activity_id) lives in routines.json,
-    // which the agent rewrites — an edit that drops it must NOT lose the
-    // chat, because the activity's routine_id stamp survives.
     const chat = {
       id: "a1",
       agent: ROUTINE_SETUP_AGENT_MODE,
       routine_id: "r1",
     };
     const other = { id: "a2", agent: "researcher" };
-    // Forward link dropped → reverse link still finds it.
     deepStrictEqual(findRoutineChatActivity([other, chat], { id: "r1" }), chat);
-    // Forward link only (agent-created routine, before the heal stamps back).
     const unstamped = { id: "a3", agent: ROUTINE_SETUP_AGENT_MODE };
     deepStrictEqual(
       findRoutineChatActivity([unstamped], {
@@ -204,14 +176,10 @@ describe("automation chat setup message", () => {
       }),
       unstamped,
     );
-    // No link at all → null (a modify chat gets started on open).
     deepStrictEqual(findRoutineChatActivity([other], { id: "r3" }), null);
   });
 
   it("returns ALL live setup chats no routine claims, in input order", () => {
-    // A person can have several automations-in-construction going at once;
-    // each is its own resumable/discardable item, so every unclaimed live
-    // setup chat comes back, in the order it appeared in the input.
     const draftA = {
       id: "d1",
       agent: ROUTINE_SETUP_AGENT_MODE,
@@ -222,26 +190,22 @@ describe("automation chat setup message", () => {
       agent: ROUTINE_SETUP_AGENT_MODE,
       status: "needs_you",
     };
-    // Claimed by a routine's forward link (setup_activity_id).
     const claimedForward = {
       id: "d2",
       agent: ROUTINE_SETUP_AGENT_MODE,
       status: "done",
     };
-    // Claimed by its own routine_id stamp (the durable reverse link).
     const claimedReverse = {
       id: "d3",
       agent: ROUTINE_SETUP_AGENT_MODE,
       status: "done",
       routine_id: "r9",
     };
-    // Closed setup chat — never a live draft.
     const archived = {
       id: "d4",
       agent: ROUTINE_SETUP_AGENT_MODE,
       status: "archived",
     };
-    // Not a setup chat at all.
     const normal = { id: "n1", agent: "researcher", status: "running" };
     const routines = [{ id: "r1", setup_activity_id: "d2" }];
     deepStrictEqual(
@@ -275,9 +239,6 @@ describe("automation chat setup message", () => {
   });
 
   it("keeps pre-merge reaction drafts resumable in the merged tab", () => {
-    // The old Reactions tab wrote its own sentinel; those chats are user data
-    // and must keep showing as drafts after the merge (recognized, never
-    // written anymore).
     const routineDraft = {
       id: "d1",
       agent: ROUTINE_SETUP_AGENT_MODE,
@@ -307,7 +268,6 @@ describe("automation chat setup message", () => {
   });
 
   it("link heal: stamps the activity, then restores an agent-dropped forward link", () => {
-    // Fresh claim: forward link exists, reverse stamp missing → stamp activity.
     deepStrictEqual(
       findRoutineChatHeal(
         [{ id: "a1", agent: ROUTINE_SETUP_AGENT_MODE }],
@@ -315,8 +275,6 @@ describe("automation chat setup message", () => {
       ),
       { kind: "stamp_activity", activityId: "a1", routineId: "r1" },
     );
-    // The reported bug (HOU-725 follow-up): the agent rewrote the routine and
-    // dropped setup_activity_id → restore it from the activity's stamp.
     deepStrictEqual(
       findRoutineChatHeal(
         [{ id: "a1", agent: ROUTINE_SETUP_AGENT_MODE, routine_id: "r1" }],
@@ -324,7 +282,6 @@ describe("automation chat setup message", () => {
       ),
       { kind: "stamp_routine", activityId: "a1", routineId: "r1" },
     );
-    // Consistent both ways → nothing to do (the effect loop terminates).
     deepStrictEqual(
       findRoutineChatHeal(
         [{ id: "a1", agent: ROUTINE_SETUP_AGENT_MODE, routine_id: "r1" }],
@@ -332,8 +289,6 @@ describe("automation chat setup message", () => {
       ),
       null,
     );
-    // A valid forward link to a DIFFERENT chat is never overwritten by a
-    // stale reverse stamp — no flip-flop between two claimants.
     deepStrictEqual(
       findRoutineChatHeal(
         [
@@ -347,8 +302,6 @@ describe("automation chat setup message", () => {
   });
 
   it("kickoffs name the connected providers so the agent never pins others", () => {
-    // The reported bug: "use deepseek" pinned a provider the user never
-    // connected, and the routine would only fail at fire time.
     const connected = [
       { id: "anthropic", name: "Claude" },
       { id: "openai", name: "ChatGPT" },
@@ -366,16 +319,12 @@ describe("automation chat setup message", () => {
       ok(prompt.includes("do NOT set it"));
       ok(prompt.includes("Never invent provider or model names"));
     }
-    // Statuses not loaded yet → generic caution, never a false "none".
     const unknown = routineSetupPrompt("act-1", null, false);
     ok(unknown.includes("cannot confirm it is connected"));
     ok(!unknown.includes("only providers connected"));
   });
 
   it("modify kickoff greets once, pins the routine, and keeps its wake", () => {
-    // The automation already exists: no interview, exactly one greeting line,
-    // every later edit targets THIS routine (never a duplicate), and its wake
-    // mechanism only changes when the user asks to change it.
     const prompt = routineModifyPrompt({ id: "r-7", name: "Morning brief" }, [
       { id: "anthropic", name: "Claude" },
     ]);

@@ -15,22 +15,12 @@ import { AgentsHomeTeamFilter } from "./agents-home-team-filter";
 const chipButtonClasses =
   "flex size-10 shrink-0 items-center justify-center rounded-full bg-chip text-ink transition-colors active:scale-[0.96] hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ht-hairline disabled:opacity-50";
 
-/**
- * The AI Employees list's title block: the title with its create controls,
- * and the group filter under it.
- *
- * The phone has no rail, so this block is where groups are managed there: New
- * group beside New AI Employee, and the picked group's own menu beside the
- * filter. Both are phone-only (`md:hidden`); the desktop manages groups from
- * the rail, and reaches this screen only as a boot landing.
- */
 export function AgentsHomeHeader({
   teams,
   selected,
   onSelect,
 }: {
   teams: readonly TeamView[];
-  /** The group the list is narrowed to, `null` for every group. */
   selected: TeamView | null;
   onSelect: (teamId: string | null) => void;
 }) {
@@ -76,7 +66,6 @@ export function AgentsHomeHeader({
   );
 }
 
-/** Opens the group create form in its small dialog; the list stays behind. */
 function NewGroupButton({
   label,
   disabled,
@@ -98,11 +87,6 @@ function NewGroupButton({
   );
 }
 
-/**
- * The phone's create-agent control. The desktop reaches the same dialog from
- * the rail's own `newAgent` anchor; the rail is not rendered below md, so this
- * carries the anchor there and the spotlight takes whichever is visible.
- */
 function NewAgentButton({ label }: { label: string }) {
   return (
     <button

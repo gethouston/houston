@@ -19,11 +19,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/**
- * The five toast types `Toaster` overrides an icon for, read straight off
- * `ui/core/src/components/sonner.tsx`. Nothing here is a mock toast: it is the
- * icon set the component injects, rendered at the size it injects it (`size-4`).
- */
 const icons: { type: string; Icon: ComponentType<{ className?: string }> }[] = [
   { type: "success", Icon: CircleCheckIcon },
   { type: "info", Icon: InfoIcon },
@@ -155,11 +150,6 @@ function SonnerSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["Toaster"];
 
 export const specimen: Specimen = {

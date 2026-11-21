@@ -40,7 +40,6 @@ function billing(patch: Partial<OrgBilling>): OrgBilling {
   };
 }
 
-/** The cutover's change window, still open, for an owner with a pick. */
 const OPEN_PICK = {
   needed: true,
   state: "applied",
@@ -82,7 +81,6 @@ const STATES: Record<string, OrgBilling> = {
   }),
 };
 
-/** Who reads the org: the owner who pays, and everyone who does not. */
 const READERS: Record<string, { role: OrgRole; payer: boolean }> = {
   "billing owner": { role: "owner", payer: true },
   "another owner": { role: "owner", payer: false },
@@ -109,7 +107,6 @@ function view(
   });
 }
 
-/** The strip a reader sees, minus the dates the state already pins. */
 function strip(v: TeamStatusView) {
   if (v.kind === "none") return "none";
   const { kind, payer, moveOut, tail, buttons, more, waiting } = v;
@@ -303,10 +300,6 @@ describe("isNeedsUpgradeError", () => {
     );
   });
 
-  // The SHIPPED gateway body: a flat `{error: "<sentence>", code}`. The
-  // `HoustonEngineError.code` getter only reads the NESTED `{error:{code}}`
-  // form, so without `shareErrorCode` reading `body.code` this rejection
-  // classified as its English sentence and fell through to the red bug toast.
   it("matches the flat {error, code} body the Go gateway sends", () => {
     strictEqual(
       isNeedsUpgradeError({

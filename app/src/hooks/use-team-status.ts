@@ -5,12 +5,6 @@ import { useOrgCheckout } from "./queries/use-org-checkout.ts";
 import { useChoiceNow } from "./use-choice-now.ts";
 import { useSurfaceGates } from "./use-surface-gates.ts";
 
-/**
- * The org-status strip's view for the ACTIVE org, the Personal row included,
- * from the memberships list every member reads. It clears only when that list
- * says the org is working again, never on a button press. `purchasable` is
- * the caller's `canPurchaseInApp()`: the store apps never sell.
- */
 export function useTeamStatus(purchasable: boolean) {
   const { billing, org, orgs } = useActiveOrgBilling();
   const { data: choice } = useBillingChoice();

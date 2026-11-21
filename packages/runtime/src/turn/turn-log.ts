@@ -15,9 +15,7 @@ interface TurnLogOptions {
   fetchImpl?: typeof fetch;
   batchMs?: number;
   batchSize?: number;
-  /** First seq to stamp (the conversation's stream continues, never restarts). */
   seqStart?: number;
-  /** Waits before each resend of a failed batch (default 500 ms, 2 s). */
   retryDelaysMs?: number[];
 }
 
@@ -26,11 +24,6 @@ const REQUEST_TIMEOUT_MS = 5_000;
 const terminal = (frame: WireFrame) =>
   frame.type === "done" || frame.type === "error";
 
-/**
- * Posts an idle turn's first frame immediately, then coalesces frames behind an
- * active POST until it settles or the batch timer expires. These POSTs feed the
- * gateway's SSE tail, so initial batching delay is user-visible.
- */
 export class TurnLog {
   private readonly fetchImpl: typeof fetch;
   private readonly batchMs: number;
@@ -51,10 +44,7 @@ export class TurnLog {
     this.seq = (opts.seqStart ?? 1) - 1;
   }
 
-  /** Sequence and enqueue one frame, posting immediately when the sender is idle. */
   record(frame: WireFrame): SequencedFrame {
-    // SAFETY: spreading a WireFrame preserves its discriminated shape while
-    // adding the sole field required by SequencedFrame.
     const sequenced = { ...frame, seq: ++this.seq } as SequencedFrame;
     if (this.disabled) return sequenced;
     if (this.pendingBatches === 0 && this.frames.length === 0) {
@@ -71,7 +61,6 @@ export class TurnLog {
     return sequenced;
   }
 
-  /** Flush queued frames after earlier batches, swallowing logged failures. */
   async flush(): Promise<void> {
     this.enqueueQueued();
     await this.tail;
@@ -116,14 +105,9 @@ export class TurnLog {
     const body = JSON.stringify(
       frames.map((frame) => ({ seq: frame.seq, frame })),
     );
-    // The first text reaches the user through this POST; its queue wait and
-    // round trip are the worker's half of the delivery time.
     const carriesText = frames.some((sequenced) => sequenced.type === "text");
     markTurnOnce("t_turnlog_first_post_start");
     if (carriesText) markTurnOnce("t_turnlog_text_post_start");
-    // A dropped batch is a permanent seq gap: the gateway then resyncs the
-    // conversation, so later frames (the terminal too) never reach the client
-    // in order. Resend like the standing pod's sender.
     for (let attempt = 0; ; attempt++) {
       const result = await postTurnLogBatch({
         fetchImpl: this.fetchImpl,
@@ -152,7 +136,6 @@ export class TurnLog {
   }
 }
 
-/** Create a claim-authorized sender when this non-shadow turn enables it. */
 export function createTurnLog(
   deps: TurnServerDeps,
   turn: TurnRequest,

@@ -37,13 +37,9 @@ test("a hands-on errand survives persistence and clears when its mission closes"
   await saveActivities(store, "workspace", [activity]);
   const { items, diagnostics } = await loadActivities(store, "workspace");
   expect(diagnostics).toEqual([]);
-  // Stored VERBATIM: the card the person comes back to is the one the agent
-  // queued, reason and all.
   expect(items[0]?.pending_interaction).toEqual(pending);
   const restored = items[0];
   if (!restored) throw new Error("Expected the saved mission to survive");
-  // An errand is BLOCKING, so closing the mission by hand voids it exactly as
-  // it voids a connect step: a Done card never shows a card asking for more.
   expect(
     applyActivityUpdate(restored, { status: "done" }, "2026-09-14")
       .pending_interaction,

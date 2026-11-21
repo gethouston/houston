@@ -20,30 +20,6 @@ import { useCapabilities } from "../use-capabilities";
 
 export { useRemoveCustomIntegration } from "./use-remove-custom-integration";
 
-/**
- * HOU-550 / HOU-980: the user's custom (API / MCP) integrations. User-level
- * data (one list, shared across agents), gated on the `integrations`
- * capability so an integrations-off deployment never fetches.
- *
- * Reads are `... | null`: `null` means the host answered 404 = the feature is
- * unsupported (an old build or a gateway-fronted pod on that surface), which
- * callers render as "hide the custom UI" rather than an empty list.
- *
- * The mutations carry no `onError`: every write routes through a
- * `tauriIntegrations.*` wrapper built on `call()`, which toasts the real error
- * AND captures it to Sentry exactly once before re-throwing. An `onError` here
- * would double-toast. Removing is optimistic and owns its refusal toast
- * (`use-remove-custom-integration.ts`).
- *
- * `agentId` on the mutations/reads switches to the per-agent surface
- * (HOU-823) — REQUIRED wherever a gateway may front the host (the in-chat
- * credential card, the automation intake's inline connect): the gateway proxies
- * ONLY per-agent routes to the pod, so the top-level form 404s there.
- */
-
-/** The SAME list through the per-agent surface (HOU-823). Same `staleTime`
- *  as the other observers of this key — mixed options on one cache entry
- *  would make refetch behavior depend on which surface mounted first. */
 export function useAgentCustomIntegrations(agentId: string) {
   const { capabilities } = useCapabilities();
   return useQuery<CustomIntegrationView[] | null>({
@@ -54,9 +30,6 @@ export function useAgentCustomIntegrations(agentId: string) {
   });
 }
 
-/** ONE list hook for surfaces that may or may not be per-agent: with an
- *  `agentId` it rides the per-agent form (the only one a gateway proxies),
- *  without it the top-level form. Same data either way (user-global). */
 export function useCustomIntegrationsFor(agentId?: string) {
   const { capabilities } = useCapabilities();
   return useQuery<CustomIntegrationView[] | null>({
@@ -72,8 +45,6 @@ export function useCustomIntegrationsFor(agentId?: string) {
   });
 }
 
-/** Both reads (top-level + every per-agent copy) share this prefix, and the
- *  merged connections view lists custom rows too — refresh both. */
 function invalidateCustom(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: queryKeys.customIntegrations() });
   qc.invalidateQueries({
@@ -81,11 +52,6 @@ function invalidateCustom(qc: ReturnType<typeof useQueryClient>) {
   });
 }
 
-/**
- * Provide the secret for a `pending` custom integration. Returns the refreshed
- * view so a caller can read the new `active` state and the advisory
- * `verified` verdict.
- */
 export function useSubmitCustomCredential(agentId?: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -103,32 +69,15 @@ export function useSubmitCustomCredential(agentId?: string) {
   });
 }
 
-/**
- * Claim the browser tab for a sign-in NOW, inside the click's user
- * activation: the authorize URL is minted over an async hop, and Safari,
- * Firefox, and Chrome's strict popup setting refuse a `window.open` issued
- * after it (PRODUCT-1625). Desktop opens URLs natively and never reserves.
- * Call from the click handler and pass the result to `useStartCustomOAuth`.
- */
 export function claimSignInTab(): ReservedTab | null {
   return osIsTauri() ? null : reserveBrowserTab();
 }
 
 export interface StartCustomOAuthVars {
   slug: string;
-  /** From `claimSignInTab()` in the click; omit outside a user gesture. */
   tab?: ReservedTab | null;
 }
 
-/**
- * Start the browser sign-in for an OAuth custom integration (PRODUCT-1172):
- * mint the authorize URL and open it. The outcome lands on the host's
- * callback and arrives here as a `CustomIntegrationsChanged` event, which
- * flips the row to active — no client-side poll. A refused browser open is a
- * RESULT (`opened: false`, the URL kept for a manual click), a waking pod is
- * retried, and the final failure surfaces once through `surfaceEngineError`
- * (the per-attempt wrapper stays silent) — see `startCustomOAuth`.
- */
 export function useStartCustomOAuth(agentId?: string) {
   return useMutation({
     mutationFn: ({ slug, tab }: StartCustomOAuthVars) =>
@@ -146,9 +95,6 @@ export function useStartCustomOAuth(agentId?: string) {
         throw err;
       }),
     onSuccess: (outcome, { slug }) => {
-      // Arm the return gate: the sign-in's `CustomIntegrationsChanged` landing
-      // may pull the app back over the browser (PRODUCT-1298). A refused open
-      // started nothing in the browser, so it arms nothing.
       if (!outcome.opened) {
         analytics.track("integration_connect_tab_blocked", {
           integration_slug: slug,
@@ -163,21 +109,12 @@ export function useStartCustomOAuth(agentId?: string) {
   });
 }
 
-/** Classify a pasted URL (OpenAPI / MCP / unknown) — the manual add form's
- *  pre-check. `unknown` is a normal result; only transport failures reject.
- *  `agentId` is the transport agent, so the probe rides the per-agent route
- *  the hosted gateway proxies. */
 export function useDetectCustomIntegration(agentId?: string) {
   return useMutation({
     mutationFn: (url: string) => tauriIntegrations.customDetect(url, agentId),
   });
 }
 
-/** Register a custom integration from the manual add form. The host compiles
- *  it first — a rejected add (bad URL, duplicate name) never persists. The
- *  returned view is SEEDED into both list caches before the invalidation, so
- *  the new row (and the key dialog a `pending` add chains into) appears
- *  immediately instead of waiting on the refetch round-trip. */
 export function useAddCustomIntegration(agentId?: string) {
   const qc = useQueryClient();
   return useMutation({

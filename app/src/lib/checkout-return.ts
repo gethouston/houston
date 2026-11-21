@@ -1,24 +1,5 @@
 import type { BillingCheckoutReturnOutcome } from "@houston/sdk";
 
-/**
- * The way back from an org seat checkout. Stripe returns the person to the web
- * app's shared page, `/checkout/complete?kind=org&org=<slug>` (or
- * `/checkout/cancel?...`), which hands them to that org's Billing:
- *
- *  - the web tab that opened checkout, told over a BroadcastChannel (the
- *    reserved tab's opener is severed, `browser-tab.ts`), answers `taken` and
- *    the return tab closes;
- *  - otherwise the page tries the desktop app once with
- *    `houston://settings/plan?org=<slug>&checkout=<outcome>`, and offers that
- *    link plus the web app's `/settings/billing?org=<slug>&checkout=<outcome>`.
- *
- * The desktop link reuses `settings/plan`, the one settings path the shell
- * already forwards, so a desktop build that predates the org parameter still
- * comes forward and opens Settings.
- *
- * DOM-free so the return page and the app share one grammar, node-testable.
- */
-
 export type CheckoutOutcome = BillingCheckoutReturnOutcome;
 
 export interface OrgCheckoutReturn {
@@ -26,7 +7,6 @@ export interface OrgCheckoutReturn {
   outcome: CheckoutOutcome;
 }
 
-/** Same grammar as a team workspace's slug (`space-id.ts`). */
 const ORG_SLUG = /^[a-f0-9]{16}$/;
 
 export const CHECKOUT_RETURN_CHANNEL = "houston.checkout-return";
@@ -46,7 +26,6 @@ function orgReturn(
   return org && outcome && ORG_SLUG.test(org) ? { org, outcome } : null;
 }
 
-/** The org return a `/checkout/complete|cancel` page carries, if any. */
 export function orgReturnFromCheckoutPage(
   search: string,
   complete: boolean,
@@ -64,7 +43,6 @@ export function webReturnPath(r: OrgCheckoutReturn): string {
   return `/settings/billing?org=${r.org}&checkout=${r.outcome}`;
 }
 
-/** `houston://settings/plan?org=<slug>&checkout=<outcome>`, else null. */
 export function orgReturnFromDeepLink(link: string): OrgCheckoutReturn | null {
   let url: URL;
   try {
@@ -80,7 +58,6 @@ export function orgReturnFromDeepLink(link: string): OrgCheckoutReturn | null {
   );
 }
 
-/** The web app opened on `/settings/billing?org=<slug>&checkout=<outcome>`. */
 export function orgReturnFromWebUrl(href: string): OrgCheckoutReturn | null {
   const url = new URL(href);
   if (!/^\/settings\/billing\/?$/.test(url.pathname)) return null;

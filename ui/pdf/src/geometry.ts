@@ -10,7 +10,6 @@ interface RectLike {
 const clamp = (n: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, n));
 
-/** Hundredths of a percent: finer than any screen, and short in a marker. */
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const rounded = (b: PdfBox): PdfBox => ({
   x: r2(b.x),
@@ -19,7 +18,6 @@ const rounded = (b: PdfBox): PdfBox => ({
   h: r2(b.h),
 });
 
-/** A client rect as percent of the page rect it sits on, clipped to it. */
 export function toBox(rect: RectLike, page: RectLike): PdfBox {
   const x0 = clamp((rect.left - page.left) / page.width, 0, 1);
   const y0 = clamp((rect.top - page.top) / page.height, 0, 1);
@@ -33,7 +31,6 @@ export function toBox(rect: RectLike, page: RectLike): PdfBox {
   });
 }
 
-/** The smallest box holding every box. */
 export function boundsOf(boxes: readonly PdfBox[]): PdfBox {
   const x = Math.min(...boxes.map((b) => b.x));
   const y = Math.min(...boxes.map((b) => b.y));
@@ -46,7 +43,6 @@ export function anchorBounds(anchor: PdfAnchor): PdfBox {
   return anchor.kind === "text" ? boundsOf(anchor.boxes) : anchor.box;
 }
 
-/** A text selection's per-span rects, joined into one box per line. */
 export function mergeLineBoxes(boxes: readonly PdfBox[]): PdfBox[] {
   const lines: PdfBox[] = [];
   const sorted = [...boxes].sort((a, b) => a.y - b.y || a.x - b.x);
@@ -64,10 +60,6 @@ export function mergeLineBoxes(boxes: readonly PdfBox[]): PdfBox[] {
   return lines;
 }
 
-/**
- * The region a crop shows: the selection with page around it, at least 30% of
- * the page wide and close to 16:10, so a one-line quote still reads in place.
- */
 export function contextBox(bounds: PdfBox, pageAspect: number): PdfBox {
   const pad = 3;
   let w = Math.max(bounds.w + pad * 2, 30);
@@ -84,7 +76,6 @@ export function contextBox(bounds: PdfBox, pageAspect: number): PdfBox {
   };
 }
 
-/** A crop's place in its page drawn at `scale`, in pixels of that drawing. */
 export interface CropFrame {
   scale: number;
   x: number;
@@ -93,10 +84,6 @@ export interface CropFrame {
   height: number;
 }
 
-/**
- * Where the crop of `bounds` lands when the page (`page` in its own units) is
- * drawn so the crop's long side is `maxSide` pixels, never past `maxScale`.
- */
 export function cropFrame(
   bounds: PdfBox,
   page: PdfPageSize,
@@ -128,14 +115,6 @@ interface Point {
 const overlaps = (a: PdfBox, b: PdfBox) =>
   a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
-/**
- * Where a mark's number pin sits, as its center in percent of the page.
- *
- * An area's pin straddles its top-left corner. A text pin never covers the
- * words it quotes: it tries beside the first line, then the page margins on
- * that line, then above and below the selection, preferring a spot that
- * covers no other text either (`obstacles`, the page's text boxes).
- */
 export function placePin(
   anchor: PdfAnchor,
   page: { width: number; height: number },

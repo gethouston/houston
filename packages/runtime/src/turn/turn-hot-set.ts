@@ -18,7 +18,6 @@ function runtimeIndex(segments: string[]): number {
   return -1;
 }
 
-/** A runtime `claude-flags/` object is admitted only as the member's own file. */
 function ownFlagsFile(
   segments: string[],
   runtimeAt: number,
@@ -29,10 +28,6 @@ function ownFlagsFile(
   );
 }
 
-/**
- * Every object except other members' Claude flag caches: the whole-tree
- * hydrate an unclaimed turn does still never lands another member's cache.
- */
 export function ownClaudeFlagsOnly(
   actingUserId?: string,
 ): (rel: string) => boolean {
@@ -66,8 +61,6 @@ function mappedClaudeTranscript(
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return null;
   }
-  // SAFETY: JSON.parse returned a non-null, non-array object; values remain
-  // unknown until the conversation's entry is refined below.
   const sessionId = (parsed as Record<string, unknown>)[conversationId];
   if (typeof sessionId !== "string" || !sessionId) return null;
   const file = `${sessionId}.jsonl`;
@@ -79,19 +72,6 @@ function mappedClaudeTranscript(
     : null;
 }
 
-/**
- * Hot-set admission for one conversation: its canonical conversation and the
- * newest of its own archive segments, harness markers, the newest Pi tail and
- * a size-capped predecessor for a torn newest header, the Claude
- * transcript named by sessions.json, and the acting member's Claude flag
- * cache. Other
- * conversations, older session files, and other members' caches stay remote.
- * Matches both layouts: `workspaces/<ws>/<agent>/.houston/runtime/…` and
- * the per-turn `data/…`.
- *
- * Claimed stores provide manifests. The only list-only claimed fallback is
- * poolOnlyFallbackStore, whose list call fails before this filter can run.
- */
 export function ownConversationOnly(
   conversationId: string,
   actingUserId?: string,
@@ -111,16 +91,11 @@ export function ownConversationOnly(
     if (runtimeAt === -1) return true;
     const kind = segments[runtimeAt];
     const own = segments[runtimeAt + 1];
-    // Another member's flag cache is theirs alone: never on this turn's disk.
     if (kind === CLAUDE_FLAGS_DIR)
       return ownFlagsFile(segments, runtimeAt, ownFlags);
     if (kind === "conversations" && segments.length === runtimeAt + 2) {
       return own === file;
     }
-    // Archive segments (store/conversation-archive.ts) ride with their own
-    // conversation only, and only the newest of them. A shared routine
-    // chat's archive grows by a segment every ~6 MiB of runs and never
-    // shrinks, so every run downloading all of them grew without bound.
     if (kind === "conversations") {
       if (segments.length !== runtimeAt + 3 || own !== archive) return false;
       const archiveRel = segments.slice(0, runtimeAt + 2).join("/");
@@ -136,9 +111,6 @@ export function ownConversationOnly(
       const sessionAt = runtimeAt + 2;
       const sessionRel = segments.slice(0, sessionAt).join("/");
       const tail = segments.slice(sessionAt);
-      // Houston's own per-conversation files: the harness that last ran it, a
-      // failed autocompact's cooldown (turn-autocompact.ts), and a routine
-      // chat's earlier replies its digest points at (store/routine-results.ts).
       if (
         tail.length === 1 &&
         (tail[0] === "harness.json" ||
@@ -183,9 +155,6 @@ export function ownConversationOnly(
           rel.endsWith(`/${claudeSelection.file}`)
         );
       }
-      // Pi's SessionManager writes and discovers only direct `*.jsonl` files;
-      // backend.ts enforces the same resume filter, and the files above are
-      // Houston's only other direct-file writers.
       return false;
     }
     return true;

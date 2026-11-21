@@ -32,13 +32,6 @@ import {
   type TurnDirectories,
 } from "./turn-session";
 
-/**
- * The routine context rule on a POOLED worker: every turn hydrates the
- * conversation and, unless it is a fire, resumes its native session (the
- * Claude SDK session named in `sessions.json`, or pi's newest tail). A fire
- * deletes that session and starts fresh on the digest.
- */
-
 const target = vi.hoisted(() => ({
   model: {
     provider: "anthropic",
@@ -63,7 +56,6 @@ beforeEach(() => {
   vi.spyOn(console, "info").mockImplementation(() => undefined);
 });
 
-/** The standing layout: the runtime's data inside the agent's folder. */
 async function directories(): Promise<TurnDirectories> {
   const turnRoot = await mkdtemp(join(tmpdir(), "routine-pooled-"));
   const workspaceDir = join(turnRoot, "store", "workspaces", "Personal", "Bob");
@@ -81,7 +73,6 @@ async function directories(): Promise<TurnDirectories> {
   return { turnRoot, workspaceDir, dataDir };
 }
 
-/** A routine chat that ran `runs` times, the last run ending at `lastFill`. */
 function seedRoutineChat(dataDir: string, runs: number, lastFill: number) {
   const dir = join(dataDir, "conversations");
   for (let run = 0; run < runs; run++) {
@@ -151,11 +142,6 @@ async function fire(
   );
 }
 
-/**
- * Five short reports, then a run whose tool output alone outgrows the live
- * file: saving it rotates the five reports into an archive segment and leaves
- * only that last run live.
- */
 function seedRotatedChat(dataDir: string): void {
   const conversationsDir = join(dataDir, "conversations");
   const messages: ChatMessage[] = [];
@@ -194,7 +180,6 @@ const lastAssistant = (dataDir: string) =>
     ?.messages.filter((m) => m.role === "assistant")
     .at(-1);
 
-/** A person's turn in the routine's chat: no `routineFire`. */
 async function chat(
   dirs: TurnDirectories,
   turnId: string,
@@ -231,7 +216,6 @@ const useClaude = () => {
   };
 };
 
-/** A pi backend that records each session it opens and the prompts it gets. */
 function fakePi(calls: { options: CreateSessionOptions; prompts: string[] }[]) {
   const pi: HarnessBackend = {
     id: "pi",
@@ -286,12 +270,9 @@ test("a pooled Claude fire drops the old session and starts on the digest and th
   expect(estimateTokens(prompt.slice(0, -PROMPT.length))).toBeLessThanOrEqual(
     2_000,
   );
-  // The overgrown session is deleted, so the sync-back deletes it remotely
-  // and no later worker hydrates it again.
   expect(existsSync(oldTranscript)).toBe(false);
   expect(frames.some((f) => f.type === "context_compacted")).toBe(false);
   expect(lastAssistant(dirs.dataDir)?.compaction).toBeUndefined();
-  // The pointer opens, from the agent's folder, the replies the digest cut.
   const pointer = /in the file (\S+), newest first/.exec(prompt)?.[1] ?? "";
   expect(pointer).toBe(`.houston/runtime/sessions/${ID}/routine-results.md`);
   expect(readFileSync(join(dirs.workspaceDir, pointer), "utf8")).toContain(
@@ -332,7 +313,6 @@ test("a pooled fire after a rotation remembers the runs the archive holds", asyn
   const prompt = api.calls.at(-1)?.prompt ?? "";
   expect(prompt).toContain("run, finished: Report r5: nothing new.");
   expect(prompt).toContain("run, finished: Report r3: INV-3 is overdue.");
-  // The 9 MB of tool output the last run read is not in it.
   expect(prompt.length).toBeLessThan(8_000);
 });
 
@@ -384,8 +364,6 @@ test("a person's turn whose Claude resume is refused retries on the digest from 
   const dirs = await directories();
   const api = simulated();
   seedRotatedChat(dirs.dataDir);
-  // The mapping names a transcript the API no longer knows: the resume is
-  // refused ("No conversation found") and the turn reruns fresh.
   await seedClaudeSession(dirs, api, 40_000);
   const unknown = simulated();
 

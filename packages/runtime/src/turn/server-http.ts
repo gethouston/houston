@@ -10,17 +10,6 @@ export function authorized(req: IncomingMessage, token: string): boolean {
   return got.length === want.length && timingSafeEqual(got, want);
 }
 
-/**
- * Bind a dispatched turn to THIS pod incarnation. The X-Internal-Token is stable
- * per ordinal, so a replacement pod reusing this ordinal+IP would otherwise
- * accept a turn the gateway minted for the PRIOR incarnation. The gateway sends
- * the trusted k8s UID (from the pod_workers stamp) as X-Pool-Pod-UID; a pod
- * refuses any UID that is not its own downward-API UID. This can only reject,
- * never admit, so a tenant that reads its own UID gains nothing. A single-use
- * pod fails closed — a missing header is refused, since the Critical-2 dispatcher
- * always sends it and the deploy gate guarantees it precedes single-use pods.
- * `podUid` empty (off-cluster / per-agent worker) disables the check.
- */
 export function incarnationOK(
   req: IncomingMessage,
   podUid: string | undefined,
@@ -50,8 +39,6 @@ export async function readJson(
   }
   const body = Buffer.concat(chunks);
   if (marks) marks.t_body_received = performance.now();
-  // A dispatcher far from this worker gzips a turn that carries prefetched
-  // files; the cap then bounds the inflated JSON too.
   const raw =
     req.headers["content-encoding"] === "gzip"
       ? gunzipSync(body, { maxOutputLength: maxBytes })
@@ -72,11 +59,6 @@ export function json(
   res.end(JSON.stringify(body));
 }
 
-/**
- * The text a caught failure may put in a response: an Error's message, never
- * the thrown value itself. A non-Error throw can carry anything (a stack, a
- * request body), so it goes to the log and the wire gets a fixed string.
- */
 export function wireErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   console.error("[turn] non-Error thrown:", error);

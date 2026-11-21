@@ -16,22 +16,11 @@ import { agentsByPath, missionCardAgentName } from "./mission-card-agent";
 import { deleteMission } from "./mission-writes";
 import { rowSessionKey } from "./session-loading";
 
-/**
- * Cross-agent archived data: every agent's *archived* missions on one list,
- * mirroring {@link useMissionControl} (feed flattening + agent maps) but
- * filtered to `status === "archived"`. Send/reactivation lives in the
- * component (it needs the chat panel's effective provider/model), so this hook
- * stays data-only: items, feed, history, delete, and the session→agent maps.
- */
 export function useMissionControlArchived(agents: Agent[]) {
   const agentPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const { data: convos } = useAllConversations(agentPaths);
   const queryClient = useQueryClient();
 
-  // ONE roster lookup behind both halves of a card's identity. The colour was
-  // always taken from here; the NAME used to come off the swept row, which the
-  // web adapter stamps from a registry that does not know the host's agents —
-  // so every card read "Houston". See `mission-card-agent.ts`.
   const agentsByFolderPath = useMemo(() => agentsByPath(agents), [agents]);
   const originTagOf = useMissionOriginTag(agents);
   const agentMap = useMemo(() => {
@@ -62,8 +51,6 @@ export function useMissionControlArchived(agents: Agent[]) {
       return {
         id: c.id,
         title: c.title,
-        // Decode a Skill / attachment first-message marker to the user's
-        // words; never echo the raw `<!--houston:...-->` on the card (HOU-425).
         description: messagePreviewText(c.description),
         group: missionCardAgentName(
           agentsByFolderPath,
@@ -93,8 +80,6 @@ export function useMissionControlArchived(agents: Agent[]) {
   const sessionKeyFor = useCallback(
     (activityId: string) => {
       const item = items.find((i) => i.id === activityId);
-      // One reading of a card's conversation key, shared with the draft seams:
-      // a card carrying none falls back to the `activity-<id>` stand-in.
       return rowSessionKey(
         item ? boardItemConversationRow(item) : { id: activityId },
       );
@@ -102,8 +87,6 @@ export function useMissionControlArchived(agents: Agent[]) {
     [items],
   );
 
-  // The open conversation's reactive feed, plus its scroll-up lazy-load — the
-  // same seam the active board uses.
   const activeSessionKey = selectedId ? sessionKeyFor(selectedId) : null;
   const activeAgentPath = activeSessionKey
     ? (sessionMapRef.current[activeSessionKey]?.agentPath ?? null)
@@ -127,8 +110,6 @@ export function useMissionControlArchived(agents: Agent[]) {
     [],
   );
 
-  // The card leaves the archive in the same frame as the click
-  // (`deleteMission`); a refusal brings it back with a toast.
   const handleDelete = useCallback(
     (item: KanbanItem) => {
       const agentPath = pathMapRef.current[item.id];
@@ -139,9 +120,6 @@ export function useMissionControlArchived(agents: Agent[]) {
     [queryClient, selectedId],
   );
 
-  // The open mission resolved all the way through to the agent that owns it:
-  // the chat panel, the send path and the archived → active handoff all need
-  // the same values, so they are derived ONCE here rather than in the view.
   const selectedItem = selectedId
     ? (items.find((i) => i.id === selectedId) ?? null)
     : null;
@@ -151,9 +129,6 @@ export function useMissionControlArchived(agents: Agent[]) {
 
   return {
     items,
-    /** The swept rows BEFORE the archived filter — the one view of the
-     *  workspace where active and archived missions coexist, and so the only
-     *  honest input to the surface decision (`lib/board-surface-nav.ts`). */
     rawConversations: convos,
     feedItems,
     selectedId,

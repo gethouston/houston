@@ -53,8 +53,6 @@ test("gateway directory reads every entity family with the acting identity", asy
   expect(await directory.sharedSkills("w")).toEqual([
     { slug: "ss", name: "Shared" },
   ]);
-  // A mission's chat address travels with it: an explicit `session_key` where
-  // the board has one, the convention address otherwise.
   expect(await directory.activities("dobby")).toEqual([
     { id: "a", name: "Research", sessionKey: "activity-a" },
     { id: "b", name: "Welcome", sessionKey: "welcome-xyz" },

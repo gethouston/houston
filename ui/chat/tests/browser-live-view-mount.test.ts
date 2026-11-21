@@ -1,6 +1,3 @@
-// Real-DOM mount of BrowserLiveView, following interaction-card-mount.test.ts:
-// jsdom globals BEFORE the dynamic `react-dom/client` import, native events.
-
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";

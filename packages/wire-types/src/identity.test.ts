@@ -3,8 +3,6 @@ import { emailOtpRefusalOf } from "./identity";
 
 const refusal = (code: string) => JSON.stringify({ error: code, code });
 
-// Every refusal the gateway's verify sends after a correct code, and nothing
-// else.
 const GATEWAY_REFUSALS = [
   [409, "password_account", "otp_password_account"],
   [409, "email_changed", "otp_email_changed"],

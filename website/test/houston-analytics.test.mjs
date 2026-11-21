@@ -1,8 +1,3 @@
-// First-party funnel capture (src/assets/houston-analytics.js). The asset is a
-// pair of browser IIFEs that hang their API off `window`, so they are read and
-// evaluated against a stub window rather than imported. Everything it touches
-// (navigator, document, localStorage, crypto, Blob, fetch) is reached through
-// that stub, which is what makes these paths testable in node.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -13,12 +8,9 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const asset = (name) =>
   readFileSync(join(here, "..", "src", "assets", name), "utf8");
-// The page loads the pair in this order (base.njk): the ids and the hashing
-// first, then the sink that sends them.
 const source = asset("houston-analytics.js");
 const identitySource = asset("houston-analytics-identity.js");
 
-/** Evaluates both assets against one stub window, the way the page does. */
 function evaluate(window) {
   new Function("window", identitySource)(window);
   new Function("window", source)(window);
@@ -45,7 +37,6 @@ function memoryStorage(entries = {}) {
   };
 }
 
-/** Evaluates the asset against a stub window and returns the seam. */
 function load(options = {}) {
   const requests = [];
   const storage = options.storage ?? memoryStorage(options.stored);
@@ -105,8 +96,6 @@ test("sends nothing when the visitor has Do Not Track enabled", async () => {
 });
 
 test("honours a Do Not Track signal the browser reports as a number", async () => {
-  // navigator.doNotTrack is `1` (a number) in some browsers; the site's own
-  // snippets compare loosely, so this asset must opt out on it too.
   const site = load({ doNotTrack: 1, landing: true });
   await site.api.track("download_started", { os: "mac" });
   assert.equal(site.requests.length, 0);
@@ -117,7 +106,6 @@ test("follows the site's one Do Not Track answer when the page set it", async ()
   await optedOut.api.track("download_started", { os: "mac" });
   assert.equal(optedOut.requests.length, 0);
 
-  // An explicit "not opted out" is honoured too, even against a stale signal.
   const optedIn = load({ dntGlobal: false, doNotTrack: "1" });
   await optedIn.api.track("download_started", { os: "mac" });
   assert.equal(optedIn.requests.length, 1);
@@ -139,7 +127,6 @@ test("mints the visitor id once and reuses it across events and loads", async ()
   assert.notEqual(a.id, b.id, "each event carries its own id");
   assert.equal(first.storage.map.get("houston_visitor_id"), a.visitor_id);
 
-  // A later page load reads the stored id rather than minting a second one.
   const second = load({ storage: first.storage });
   await second.api.track("landing_viewed");
   assert.equal(second.events()[0].visitor_id, a.visitor_id);
@@ -161,7 +148,6 @@ test("landing_viewed reports path, locale, utm terms and the referrer host", () 
   assert.equal(event.utm_source, "newsletter");
   assert.equal(event.utm_medium, "email");
   assert.equal(event.utm_campaign, "launch");
-  // Neither the full referring URL nor the rest of the query string travels.
   const wire = JSON.stringify(event);
   assert.ok(!wire.includes("secret"));
   assert.ok(!wire.includes("/deep/link"));
@@ -193,8 +179,6 @@ test("welcome_bridged keeps a canonical v4 install id and drops anything else", 
     install_id: "3F2504E0-4F89-41D3-9A0C-0305E82C3301",
   });
   await site.api.track("welcome_bridged", { install_id: "not-a-uuid" });
-  // A non-v4 uuid would cost the WHOLE event: the gateway requires canonical
-  // v4 and rejects the event rather than dropping the field.
   await site.api.track("welcome_bridged", {
     install_id: "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
   });
@@ -206,8 +190,6 @@ test("welcome_bridged keeps a canonical v4 install id and drops anything else", 
 
 test("carries each field only on the events allowed to have it", async () => {
   const site = load();
-  // The gateway gates these by name and REJECTS the whole event on a field
-  // that does not belong, so the browser must not send one.
   await site.api.track("landing_viewed", {
     os: "mac",
     install_id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
@@ -238,8 +220,6 @@ test("publishes the install-id shape the gateway accepts", () => {
 });
 
 test("prefers sendBeacon and falls back to fetch with keepalive", async () => {
-  // Both transports must stay a CORS simple request: a JSON content type would
-  // force an OPTIONS preflight, which sendBeacon cannot recover from.
   const beaconed = load();
   await beaconed.api.track("download_started", { os: "windows" });
   assert.equal(beaconed.requests[0].transport, "beacon");
@@ -276,7 +256,6 @@ test("a localStorage that throws never propagates into the page", async () => {
   const events = site.events();
   assert.equal(events.length, 2);
   assert.match(events[0].visitor_id, UUID_V4);
-  // One id for the page load even though nothing could be persisted.
   assert.equal(events[0].visitor_id, events[1].visitor_id);
 });
 
@@ -333,7 +312,6 @@ test("the page answers Do Not Track once, above every sink", () => {
     "one expression, so the sinks cannot disagree",
   );
 
-  // The ids must exist before the sink that sends them runs.
   const identity = base.indexOf("/assets/houston-analytics-identity.js");
   const sink = base.indexOf('src="/assets/houston-analytics.js"');
   assert.ok(identity > 0 && sink > identity, "the pair loads in order");
@@ -343,9 +321,6 @@ const VISITOR = "2b0f7a1c-9d3e-4f5a-8b6c-1d2e3f4a5b6c";
 
 test("hands the web app this browser's visitor id in the link", () => {
   const site = load({ stored: { houston_visitor_id: VISITOR } });
-  // The app is on another origin, so its localStorage is not this one's: the
-  // id can only travel in the link (app/src/lib/web-visitor-landing.ts reads
-  // it back out).
   assert.equal(
     site.api.appLink("https://app.gethouston.ai/"),
     `https://app.gethouston.ai/?hv=${VISITOR}`,
@@ -362,7 +337,6 @@ test("keeps the rest of the app link intact", () => {
 });
 
 test("links to the app unchanged when there is no id to carry", () => {
-  // Do Not Track: the link still works, only the attribution is dropped.
   const optedOut = load({
     doNotTrack: "1",
     stored: { houston_visitor_id: VISITOR },
@@ -373,7 +347,6 @@ test("links to the app unchanged when there is no id to carry", () => {
   );
   assert.equal(optedOut.storage.map.get("houston_visitor_id"), VISITOR);
 
-  // A browser with no usable randomness mints no id in the first place.
   const anonymous = load({ crypto: {} });
   assert.equal(
     anonymous.api.appLink("https://app.gethouston.ai/"),

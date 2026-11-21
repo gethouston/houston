@@ -17,14 +17,6 @@ import es from "../src/locales/es/routines.json" with { type: "json" };
 import pt from "../src/locales/pt/routines.json" with { type: "json" };
 import { useUIStore } from "../src/stores/ui.ts";
 
-/**
- * A routine write or run-now against a routine that no longer exists
- * (HOUSTON-APP-5JZ / 5K0: the list came from a stale mirror) is an expected
- * state: ONE info toast with authored copy, ONE fingerprinted quiet warning
- * (a burst means the mirror is stale, which is ours to fix), never the error
- * event, and the list it was picked from refetches.
- */
-
 const AGENT = "Personal/Bob";
 
 function gone(): Error {
@@ -43,7 +35,6 @@ function agentGone(): Error {
   });
 }
 
-/** A query client that records every key it is asked to refetch. */
 function recordingClient() {
   const qc = new QueryClient();
   const invalidated: unknown[] = [];
@@ -116,7 +107,6 @@ describe("routine_gone is a quiet class that still reports", () => {
 });
 
 describe("a run-now refused as routine_gone", () => {
-  /** The run-now write as the routine row composes it. */
   async function runNow(err: Error) {
     const { qc, invalidated } = recordingClient();
     qc.setQueryData<RoutineRun[]>(queryKeys.routineRuns(AGENT), []);

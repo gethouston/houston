@@ -3,19 +3,13 @@ import { expect, test } from "vitest";
 import { MemoryTurnBus } from "../turn/bus";
 import { BusEventHub } from "./hub";
 
-/**
- * The event hub fans domain changes to a user's subscribers and — the load-
- * bearing property — keeps one tenant's events away from another's, because the
- * channel is keyed by user id.
- */
-
 test("emit reaches the same user's subscriber", async () => {
   const hub = new BusEventHub(new MemoryTurnBus());
   const seen: HoustonEvent[] = [];
   hub.subscribe("alice", (e) => seen.push(e));
 
   hub.emit("alice", { type: "ActivityChanged", agentPath: "a1" });
-  await Promise.resolve(); // let the fire-and-forget publish settle
+  await Promise.resolve();
 
   expect(seen).toEqual([{ type: "ActivityChanged", agentPath: "a1" }]);
 });
@@ -52,7 +46,6 @@ test("a malformed frame on the bus is dropped, not thrown to the subscriber", as
   const seen: HoustonEvent[] = [];
   hub.subscribe("alice", (e) => seen.push(e));
 
-  // A non-JSON frame published directly to the user's channel must not throw.
   await bus.publish("events:alice", "not json{{{");
   hub.emit("alice", { type: "FilesChanged", agentPath: "a1" });
   await Promise.resolve();

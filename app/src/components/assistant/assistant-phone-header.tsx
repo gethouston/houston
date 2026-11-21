@@ -4,18 +4,6 @@ import { useTranslation } from "react-i18next";
 import { openAgentsTab } from "../../lib/open-mobile-tab";
 import { useUIStore } from "../../stores/ui";
 
-/**
- * The phone's header for the assistant chat: a back chevron, the AI
- * Manager's avatar, and the name. The desktop shows no header at all (the rail
- * row names the screen and wears the avatar), so the strip is CSS-hidden at
- * md+.
- *
- * On the phone the chat is a PUSH like the mission chat: the nav bar leaves
- * while it is up (`lib/mobile-tabs.ts` `phoneChromeHidden`), so this chevron
- * is the way out. It retreats to the Agents list the Manager's row pushed it
- * from; with nothing behind it (a reload landing here) it goes home to the
- * Agents tab rather than dead-ending.
- */
 export function AssistantPhoneHeader() {
   const { t } = useTranslation("assistant");
   const canGoBack = useUIStore((s) => s.navIndex > 0);

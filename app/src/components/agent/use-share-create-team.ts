@@ -10,12 +10,6 @@ import {
   type ShareViaTeamState,
 } from "../../lib/share-via-team";
 
-/**
- * Create a team from the share pipeline's pick step and pick it. A free slot
- * already taken says so inline. `POST /v1/orgs` is NOT idempotent: a lost
- * response may still have created the team, so a failure reconciles against
- * a fresh list before the person retries.
- */
 export function useShareCreateTeam(
   setState: Dispatch<SetStateAction<ShareViaTeamState>>,
   refetchOrgs: () => Promise<{ data?: OrgsList }>,

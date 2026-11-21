@@ -1,9 +1,3 @@
-// The request board on /data-partners/refer and each request's own page.
-// Structure (_data/referListings.js) and copy (_data/i18n/referListings,
-// _data/i18n/referBoard) meet only by slug and by placeholder, and Nunjucks
-// renders a miss as an empty string. These tests are the notice that the two
-// drifted, plus the money each card and page shows.
-
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -61,8 +55,6 @@ for (const code of ["en", "es", "pt"]) {
     assert.deepEqual(slugs.sort(), items.map((item) => item.slug).sort());
     for (const item of items) {
       const copy = tree.referListings[item.slug];
-      // The card and the page header need these; every other field may be
-      // empty, and the page drops its section and tab.
       for (const key of ["title", "summary", "about"]) {
         assert.ok(copy[key], `${item.slug}.${key}`);
       }

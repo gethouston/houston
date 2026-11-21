@@ -1,5 +1,3 @@
-/** Stable stringify (recursive key sort) so jsonb's key reordering never
- *  reads as a content change. */
 export function canonicalJSON(value: unknown): string {
   return JSON.stringify(sortKeys(value));
 }
@@ -7,9 +5,6 @@ export function canonicalJSON(value: unknown): string {
 function sortKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sortKeys);
   if (value !== null && typeof value === "object") {
-    // Null prototype: a parsed "__proto__" key must land as an own property,
-    // not vanish into the prototype setter (else two docs differing only in
-    // that key compare equal and a required PUT is skipped).
     const out: Record<string, unknown> = Object.create(null);
     for (const key of Object.keys(value as Record<string, unknown>).sort()) {
       out[key] = sortKeys((value as Record<string, unknown>)[key]);
@@ -27,9 +22,6 @@ export function etagRevision(response: Response): number | undefined {
   return etag && Number.isSafeInteger(Number(etag)) ? Number(etag) : undefined;
 }
 
-/** Parse a doc GET body. A non-empty body that is not JSON is a protocol
- *  fault and THROWS (fail the seed loudly) — treating it as revision 0 would
- *  mask gateway corruption and follow up with a blind PUT. */
 export function parseDocBody(text: string): {
   revision?: number;
   doc?: unknown;
@@ -69,9 +61,6 @@ export async function responseError(
   );
 }
 
-/** The gateway's typed rejection of a family its allow-list predates (an
- *  engine that ships a new family always deploys ahead of the gateway for a
- *  window). Other 400s stay loud — they are OUR wire bugs. */
 export function unknownFamilyRejection(
   status: number,
   detail: string,

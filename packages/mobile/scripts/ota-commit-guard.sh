@@ -1,14 +1,4 @@
 #!/usr/bin/env bash
-# Refuses an OTA publish of a commit that is not current main code.
-# Usage: ota-commit-guard.sh MAIN_REF CANDIDATE [LIVE_SHA]
-#
-# A cloud-v* release commit is never on main: the daily cut commits
-# `release: v<version>` on the main tip and pushes it only under its tag, and
-# hand cuts add release-notes commits, CI fixes or cherry-picked hotfixes on top.
-# So every commit is compared through its "main base": itself when on main, else
-# (only for a commit a cloud-v* tag points at; tags are pushed only by admins and
-# the release token) its merge base with main, at most MAX_RELEASE_COMMITS away.
-# The candidate's base must not be strictly older than the live bundle's base.
 set -euo pipefail
 main=$1
 candidate=$2
@@ -50,9 +40,6 @@ if [ -n "$live" ]; then
     echo "::error::$candidate is older than the live bundle's commit $live" >&2
     exit 1
   fi
-  # Neither base contains the other when a release-notes commit cut off main
-  # only reached main later (cloud-v1.0.0, one commit apart): that passes. A
-  # release branch merged back long after its cut is old code: refuse it.
   if ! git merge-base --is-ancestor "$live_base" "$candidate_base"; then
     missing=$(git rev-list --count "$candidate_base..$live_base")
     if [ "$missing" -gt "$MAX_RELEASE_COMMITS" ]; then

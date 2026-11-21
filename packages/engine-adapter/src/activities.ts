@@ -13,14 +13,6 @@ import type {
 } from "@houston/wire-types";
 import { readAgentFile, writeAgentFile } from "./agent-files";
 
-/**
- * Activities (the board) live in the agent's `.houston/activity/activity.json`,
- * the SAME file the desktop UI's `data/activity.ts` reads/writes through
- * `readAgentFile` / `writeAgentFile`. Backing these adapter methods by that file
- * (rather than a separate bucket) keeps the board, the conversation list, and
- * mission auto-titling (`getEngine().updateActivity`) on one source of truth.
- * Each activity's `session_key` is the new engine's conversation id.
- */
 const ACTIVITY_REL = ".houston/activity/activity.json";
 
 function read(agentPath: string): Activity[] {
@@ -42,11 +34,6 @@ export function listActivities(agentPath: string): Activity[] {
   return read(agentPath);
 }
 
-/**
- * Board card ← activity. Mission Control renders tags/attribution from
- * `agent` (mode) and `routine_id` (routine chat), so both must survive the
- * mapping — dropping them loses the card's routine/mode tags (HOU-665).
- */
 export function activityToConversation(
   a: Activity,
   agentPath: string,
@@ -65,18 +52,14 @@ export function activityToConversation(
     agent_name: agentName,
     agent: a.agent,
     routine_id: a.routine_id,
-    // The pin rides along so a placeholder seeded from this sweep keeps it.
     ...(a.provider !== undefined && { provider: a.provider }),
     ...(a.model !== undefined && { model: a.model }),
     ...(a.mode !== undefined && { mode: a.mode }),
-    // Agent-started marker (PRODUCT-1244): drives the card's tag.
     ...(a.origin_session_key !== undefined && {
       origin_session_key: a.origin_session_key,
     }),
     ...(a.origin_agent !== undefined && { origin_agent: a.origin_agent }),
     ...(a.started_by !== undefined && { started_by: a.started_by }),
-    // Teams attribution (server-stamped in multiplayer only). Spread
-    // conditionally so single-player entries don't carry undefined keys.
     ...(a.created_by !== undefined && { created_by: a.created_by }),
     ...(a.contributors !== undefined && { contributors: a.contributors }),
     ...(a.mentioned !== undefined && { mentioned: a.mentioned }),
@@ -112,9 +95,6 @@ export function updateActivity(
   const items = read(agentPath);
   const idx = items.findIndex((a) => a.id === id);
   if (idx < 0) throw new Error(`activity ${id} not found`);
-  // `pending_interaction: null` clears it, a value sets it, absent leaves it —
-  // the same contract as the domain's applyActivityUpdate (null is an
-  // update-only signal; the Activity itself never stores null).
   const { pending_interaction, provider, model, ...rest } = updates;
   const next: Activity = {
     ...items[idx],
@@ -139,11 +119,6 @@ export function deleteActivity(agentPath: string, id: string): void {
   );
 }
 
-/**
- * Set an activity's status from a turn's session key. The board creates missions
- * without an explicit `session_key`, so the chat keys off the `activity-<id>`
- * convention; match either form.
- */
 export function setStatusBySessionKey(
   agentPath: string,
   sessionKey: string,
@@ -154,8 +129,6 @@ export function setStatusBySessionKey(
   const items = read(agentPath);
   const idx = items.findIndex((a) => addressesMission(a, sessionKey));
   if (idx < 0) return;
-  // A settle records the interaction it ended on; `null` (turn start, or any
-  // settle with none) clears it so the card stops waiting on the user.
   const next: Activity = {
     ...items[idx],
     status,

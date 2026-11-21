@@ -21,11 +21,6 @@ export interface LoggerOptions {
   runId?: string;
   now?: () => Date;
   sinks?: LogSink[];
-  /**
-   * Forward each entry that passed the level filter, pre-formatting — the
-   * crash-reporting feed (ERROR → Sentry event, others → breadcrumb). Must
-   * never throw; the Sentry module's capture paths are self-guarded.
-   */
   capture?: (level: LogLevel, values: unknown[]) => void;
 }
 
@@ -79,18 +74,6 @@ export function runtimeLogFile(dataDir: string): string {
   return process.env.HOUSTON_RUNTIME_LOG_FILE || join(dataDir, "runtime.log");
 }
 
-/**
- * Where a runtime's log lines go, by mode. A long-lived server (desktop
- * sidecar, per-agent pod) appends to `<dataDir>/runtime.log`, the file the
- * host's log viewer and the desktop's diagnostics bundle read. A turn-mode
- * pool worker gets NO file: its data dir is a pod-scoped emptyDir that serves
- * metadata ops for one tenant after another and, on a single-use pod, the one
- * tenant whose turn then runs bash on that same disk. Every op cleans its own
- * temp root, so the runtime log was the last per-tenant residue (agent ids,
- * conversation ids, file paths) a later tenant's shell could have read. The
- * worker writes to stderr instead, which the container runtime captures into
- * the cluster's log pipeline and never onto the shared volume.
- */
 export function loggerOptionsForMode(
   mode: "server" | "turn",
   dataDir: string,

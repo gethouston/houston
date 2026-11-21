@@ -1,9 +1,3 @@
-/**
- * Visual-regression baselines for the org-status strip: a locked org read by
- * the owner who pays and by a member, a scheduled lock and a failed payment,
- * at desktop and phone width. The page clock is the plan clock and every
- * date on screen comes from the fixture (`support/org-lock.ts`).
- */
 import type { Page } from "@playwright/test";
 import { expect, test } from "../support/fixtures";
 import {

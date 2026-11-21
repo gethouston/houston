@@ -4,16 +4,6 @@ import { migrateStoreSkillsToLocale } from "../lib/store-skill-locale-migration"
 import type { Agent } from "../lib/types";
 import { useSkills } from "./queries";
 
-/**
- * Lazily swap this agent's unedited English store skills for their
- * translated versions whenever the UI language is es/pt (see
- * `lib/store-skill-locale-migration.ts` for the contract). Runs off the
- * skills list the panel already fetches; a successful swap fires
- * `SkillsChanged`, the list refetches, and the effect finds nothing left to
- * do. Engine-call failures surface through the standard `call()` toast path;
- * the catch here only stops an unhandled-rejection loop, and the next mount
- * retries.
- */
 export function useStoreSkillLocaleMigration(agent: Agent | null) {
   const { i18n } = useTranslation();
   const { data: skills } = useSkills(agent?.folderPath);

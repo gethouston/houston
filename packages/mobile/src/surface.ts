@@ -9,12 +9,6 @@ type SurfaceGlobals = Pick<
   | "__HOUSTON_ENGINE__"
 >;
 
-/**
- * Run before importing any app module. `app/src/lib/engine.ts` resolves the
- * gateway endpoint once, when it is evaluated, and the shell reaches app code
- * (updater and boot error reporting) before the web entry publishes the same
- * endpoint. Publishing it here keeps that import order harmless.
- */
 export function publishMobileSurface(
   target: SurfaceGlobals,
   surface: {

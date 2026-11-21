@@ -1,12 +1,3 @@
-/**
- * The promo-ended notice's two gateway answers, for the active org's billing
- * owner: `POST /v1/org/billing/switch-to-yearly` (the org's billing after the
- * switch, or 409 `interval_unavailable` / `already_yearly`, 402
- * `payment_failed`) and `POST /v1/org/billing/price-notice/dismiss` (204).
- * A spec makes the next switch decline with `/__test__/switch-yearly`. Every
- * call lands in the plan ledger.
- */
-
 import { json, noContent } from "./http";
 import * as state from "./state";
 
@@ -14,7 +5,6 @@ const YEAR_MS = 365 * 24 * 3_600_000;
 
 let declineNextSwitch = false;
 
-/** `{ decline: true }`: the next switch answers 402 `payment_failed`. */
 export function setSwitchDeclines(decline: boolean): void {
   declineNextSwitch = decline;
 }
@@ -22,7 +12,6 @@ export function setSwitchDeclines(decline: boolean): void {
 const refuse = (status: number, code: string, error: string): Response =>
   json({ error, code }, status);
 
-/** Route a price-notice call, or return `undefined` to fall through. */
 export function handlePriceNoticeRoutes(
   method: string,
   segs: string[],
@@ -60,7 +49,6 @@ export function handlePriceNoticeRoutes(
     seatPriceCents: annual,
     renewsAt: new Date(Date.now() + YEAR_MS).toISOString(),
     priceNotice: null,
-    // A yearly subscription pays for the seats in use on the day it starts.
     paidSeats: Math.max(1, billing.seats),
     seatsInUse: Math.max(1, billing.seats),
   };

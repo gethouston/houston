@@ -2,11 +2,6 @@ import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { INTERACTION_DETAIL_CLASS } from "../src/interaction-detail-model.ts";
 
-/**
- * The approval-card detail block's contract, locked here because breaking any
- * one of these silently changes what the user is agreeing to: a value they
- * cannot fully see is a value they did not approve.
- */
 describe("interaction detail block", () => {
   const classes = INTERACTION_DETAIL_CLASS.split(" ");
 

@@ -1,14 +1,5 @@
 const QUOTED_ITEM = /^(\s*- )'(.*)$/;
 
-/**
- * Playwright single-quotes an item's whole key when its name needs YAML
- * quoting (`- 'textbox "PIN #" [ref=e7]': 1234`, also for ": ", "{" or a
- * backtick). Every reader here (password masking, ref stamping, the
- * tree parser) expects `- role "name" [attr]`, so a quoted line slipped
- * past all of them: its value went out unmasked and its ref unstamped.
- * Unquoted once where the tree is read; a line that does not close its
- * quote is left as printed.
- */
 export function unquoteItemKeys(tree: string): string {
   return tree
     .split("\n")
@@ -22,7 +13,6 @@ export function unquoteItemKeys(tree: string): string {
     .join("\n");
 }
 
-/** YAML single-quoted scalar body: `''` is a literal quote, `'` ends it. */
 function closeSingleQuoted(
   body: string,
 ): { text: string; end: number } | undefined {

@@ -107,7 +107,6 @@ async fn serve(script: Arc<Mutex<Script>>) -> Url {
             };
             let etag = format!("\"{etag}\"");
             let full = body();
-            // (status, first byte served, cut, first byte CLAIMED in Content-Range)
             let (status, from, cut, claimed) = match step {
                 Step::Serve { cut } => {
                     let matches = if_range.as_deref().is_none_or(|v| v == etag);
@@ -331,8 +330,6 @@ async fn gives_up_after_the_attempt_budget_and_keeps_the_bytes() {
     );
 }
 
-// The launch-time install holds the user behind an overlay: it asks for a
-// short budget and leaves the rest to the next poll, which resumes.
 #[tokio::test(start_paused = true)]
 async fn a_short_budget_stops_early_and_still_keeps_the_bytes() {
     let harness = Harness::new(cut_every_attempt(1_000)).await;
@@ -351,8 +348,6 @@ fn the_attempt_budget_is_clamped_to_the_ladder() {
     assert_eq!(attempt_budget(Some(99)), DOWNLOAD_ATTEMPTS);
 }
 
-// The defect this guards against: 13 polls by one user each started a 329 MB
-// asset from byte 0 and each died before the end.
 #[tokio::test(start_paused = true)]
 async fn the_next_call_resumes_from_the_persisted_bytes() {
     let harness = Harness::new(exhausted_then(Step::Serve { cut: None })).await;
@@ -408,8 +403,6 @@ async fn a_republished_asset_restarts_the_file() {
     );
 }
 
-// GitHub's release CDN answers 206 to any `If-Range`: the condition proves
-// nothing, so a 206 under a validator the sidecar does not name restarts.
 #[tokio::test(start_paused = true)]
 async fn a_206_under_a_new_validator_restarts_the_file() {
     let harness = Harness::new(exhausted_then(Step::StaleResume("v2"))).await;
@@ -478,9 +471,6 @@ async fn a_completed_partial_needs_no_request() {
     assert_eq!(progressed(&events), body().len());
 }
 
-// The updater hook remounts across the mobile breakpoint, on identity change
-// and on reload while the shell's download keeps running: the second caller
-// is refused instead of appending to the same file.
 #[tokio::test(start_paused = true)]
 async fn a_concurrent_call_on_the_same_version_is_refused() {
     let harness = Harness::new(Vec::new()).await;
@@ -521,8 +511,6 @@ async fn a_final_status_on_the_resume_discards_the_partial() {
     assert!(!harness.sidecar_path().exists());
 }
 
-// PRODUCT-1811: a 504 from the release host mid-roll is retried like a
-// dropped stream, and a resume after one keeps the bytes already received.
 #[tokio::test(start_paused = true)]
 async fn a_transient_status_is_retried_and_the_resume_keeps_its_bytes() {
     let steps = vec![
@@ -566,8 +554,6 @@ async fn a_transient_status_that_never_clears_reports_as_upstream() {
     assert_eq!(harness.ranges().len() as u32, DOWNLOAD_ATTEMPTS);
 }
 
-// A full disk mid-body is final for the call, frees the bytes it could not
-// keep, and (through the frontend latch) is not asked for again this session.
 #[tokio::test(start_paused = true)]
 async fn a_full_disk_mid_body_discards_the_partial_and_is_final() {
     let harness = Harness::new(Vec::new()).await;

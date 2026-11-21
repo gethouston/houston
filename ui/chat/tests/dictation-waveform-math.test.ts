@@ -14,7 +14,6 @@ import {
 } from "../src/dictation-waveform-math.ts";
 
 const MARGIN = SLOT_PITCH_PX / 2;
-// A track wide enough to hold 20 slots exactly.
 const WIDTH = 20 * SLOT_PITCH_PX;
 
 describe("visibleSlotCount", () => {
@@ -53,8 +52,6 @@ describe("trackShiftPx", () => {
 
 describe("bucketScreenX (slot stability)", () => {
   it("gives a fixed slot independent of how many buckets exist (pre-scroll)", () => {
-    // shift is 0 pre-scroll, so bucket 7 sits at the same x whether there are
-    // 8 buckets or 15 — previously-drawn history never moves.
     const early = bucketScreenX(7, trackShiftPx(8, WIDTH));
     const later = bucketScreenX(7, trackShiftPx(15, WIDTH));
     equal(early, later);
@@ -74,9 +71,6 @@ describe("headScreenX", () => {
   });
 
   it("is independent of how many audio buckets have actually landed", () => {
-    // The jitter bug: head derived from bucket count jumped back a slot when
-    // the wall clock wrapped before the recorder appended the next bucket.
-    // Same elapsed time must give the same head regardless of bucket arrival.
     const elapsed = WAVEFORM_BUCKET_MS * 8 + 30;
     const a = computeWaveformLayout([0.5, 0.5, 0.5], WIDTH, elapsed);
     const b = computeWaveformLayout(new Array(9).fill(0.5), WIDTH, elapsed);
@@ -125,7 +119,6 @@ describe("computeWaveformLayout", () => {
       WIDTH,
       WAVEFORM_BUCKET_MS * 15,
     );
-    // bucket index 3 is present in both frames at the same slot.
     equal(before.points[3]?.x, after.points[3]?.x);
   });
 
@@ -142,7 +135,6 @@ describe("computeWaveformLayout", () => {
     const base = WAVEFORM_BUCKET_MS * n;
     const a = computeWaveformLayout(levels(n), WIDTH, base + 10);
     const b = computeWaveformLayout(levels(n), WIDTH, base + 60);
-    // A fixed bucket (index 45) shifts left as the sub-bucket offset advances.
     const xa = a.points.find((_, i) => a.points.length - i === 5)?.x ?? 0;
     const xb = b.points.find((_, i) => b.points.length - i === 5)?.x ?? 0;
     ok(xb < xa, "history scrolls left, never jitters right");
@@ -186,7 +178,7 @@ describe("catmullRomToBezier", () => {
       { x: 30, y: 30 },
     ];
     for (const s of catmullRomToBezier(pts)) {
-      equal(s.c1.x, s.c1.y); // y = x line
+      equal(s.c1.x, s.c1.y);
       equal(s.c2.x, s.c2.y);
     }
   });

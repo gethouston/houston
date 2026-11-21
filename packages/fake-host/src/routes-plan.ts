@@ -1,15 +1,3 @@
-/**
- * The C19 personal-plan surface (`/v1/me/plan*`, `/v1/me/plus/*`,
- * `/v1/me/routines*`, `/v1/me/presence`), the `/__test__/plan` control that
- * arms it, and the `429 message_limit` a chat send answers while the armed
- * person is at their weekly limit.
- *
- * Refusals are the flat `{error, code}` the Go gateway writes; the plan OFF
- * answers `503 not_configured` exactly as the gateway does, which is what every
- * spec that never arms the plan sees (and never asks for: the client gates on
- * the capability).
- */
-
 import type { PlanRoutineKey } from "@houston/wire-types";
 import { CORS, json, noContent } from "./http";
 import * as state from "./state";
@@ -17,16 +5,13 @@ import * as state from "./state";
 const refuse = (status: number, code: string, error: string): Response =>
   json({ error, code }, status);
 
-/** The status the gateway pairs with each armable checkout refusal. */
 const CHECKOUT_REFUSALS: Record<state.PlanCheckoutRefusal, number> = {
   account_deleted: 410,
   not_configured: 503,
 };
 
-/** True for a path the personal plan owns (the gateway's `/v1/me/*` set). */
 function isPlanPath(segs: string[]): boolean {
   if (segs[0] !== "v1") return false;
-  // The org's own checkout and portal, served from the same armed world.
   if (segs[1] === "org")
     return (
       segs[2] === "billing" &&
@@ -51,7 +36,6 @@ function routineKey(body: Record<string, unknown> | undefined) {
     : null;
 }
 
-/** Route a personal-plan request, or return `undefined` to fall through. */
 export function handlePlanRoutes(
   method: string,
   segs: string[],
@@ -117,12 +101,6 @@ export function handlePlanRoutes(
   }
 }
 
-/**
- * The gateway's refusal of a turn start by a Free person at the limit, or
- * `undefined` when no limit is armed. `Retry-After` is the seconds until
- * `resetsAt`, as the contract states; the ledger records the attempt so a spec
- * can prove the client never retried it.
- */
 export function planMessageRefusal(): Response | undefined {
   const limit = state.planSeed()?.messageLimit;
   if (!limit || state.getCapabilities().plan !== true) return undefined;
@@ -150,12 +128,6 @@ export function planMessageRefusal(): Response | undefined {
   );
 }
 
-/**
- * `POST /__test__/plan`: `{ summary, invoices?, routines?, checkoutUrl?,
- * portalUrl?, messageLimit?, checkoutRefusal? }` arms the plan AND advertises the `plan`
- * capability (the gateway's one switch drives both); `{ summary: null }`
- * turns both off. Returns the armed world.
- */
 export function handlePlanControl(
   body: Record<string, unknown> | undefined,
 ): Response {
@@ -169,7 +141,6 @@ export function handlePlanControl(
   return json({ plan: armed });
 }
 
-/** `GET /__test__/plan-calls`: every plan call (and refused send) since arming. */
 export function handlePlanCallsControl(): Response {
   return json({ calls: state.planCalls() });
 }

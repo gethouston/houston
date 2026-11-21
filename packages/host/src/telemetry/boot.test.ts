@@ -84,12 +84,10 @@ describe("sendBootReport", () => {
       retryDelayMs: 1,
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
-    // Attempt 1 is a breadcrumb (no error object), not a Sentry event.
     expect(log).toHaveBeenNthCalledWith(
       1,
       "[boot-report] send failed (fetch failed: connect ECONNREFUSED 10.0.0.1:80), retrying once",
     );
-    // Only the give-up carries an error, and it names the real cause.
     expect(log).toHaveBeenNthCalledWith(
       2,
       "[boot-report] giving up",

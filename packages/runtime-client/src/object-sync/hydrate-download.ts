@@ -11,19 +11,12 @@ export interface HydrateEntry {
   generation?: string;
   key: string;
   rel: string;
-  /** Not listed: read by key, and owned at the generation of that read. */
   fromRead?: true;
-  /** A point read in a store whose listing carries generations: owned only
-   *  when the read names one (hydrate-candidates.ts `unowned`). */
   requireGeneration?: true;
 }
 
 const DEFAULT_HYDRATE_CONCURRENCY = 16;
 
-/** Downloads in flight, guarding against a non-finite override: NaN sizes
- *  the worker array to ZERO, which would return a successful empty manifest
- *  for a non-empty store, the exact partial-manifest state the hydration
- *  latch exists to prevent. */
 export function hydrateConcurrency(requested?: number): number {
   const value = requested ?? DEFAULT_HYDRATE_CONCURRENCY;
   return Number.isFinite(value) && value >= 1
@@ -37,14 +30,11 @@ export interface HydrateDownloadState {
   fail: (error: unknown) => void;
 }
 
-/** Landed bytes counted against one cap. A deferring hydration keeps one for
- *  the critical set and one for the deferred files (hydrate.ts). */
 export interface HydrateBudget {
   landed: number;
   readonly maxBytes: number;
 }
 
-/** Download one hydration batch while sharing a budget and the failure latch. */
 export async function downloadHydrationEntries(opts: {
   store: Pick<ObjectStore, "download" | "downloadMany">;
   destDir: string;
@@ -53,15 +43,11 @@ export async function downloadHydrationEntries(opts: {
   budget: HydrateBudget;
   concurrency: number;
   state: HydrateDownloadState;
-  /** Keep the board's bytes as its merge base (worker stores only). */
   keepMergeBase?: boolean;
   signal: AbortSignal;
   limitError: (observedBytes: number) => Error;
-  /** Batched reads in flight at once (hydrate-batch.ts default otherwise). */
   batchParallel?: number;
 }): Promise<void> {
-  // A store that batches reads lands most of the batch in a few round trips;
-  // only what it will not inline (large objects) goes one by one below.
   const batched = opts.store.downloadMany?.bind(opts.store);
   const entries =
     batched && opts.entries.length > 1

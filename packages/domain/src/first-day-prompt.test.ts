@@ -44,12 +44,6 @@ test("the hello the user already read is quoted back, and never repeated", () =>
   }
 });
 
-/**
- * The prompt quotes the hello back to the model so it can see there is nothing
- * left to introduce, and that quote has to be the message the chat ACTUALLY
- * renders: `englishSetupGreeting`, which the app pins to its en
- * `chat:setupGreeting.*` copy word for word.
- */
 test("the quoted hello is the English greeting, word for word", () => {
   const cases: Array<[string, typeof BRIEF | undefined]> = [
     ["Jerry", BRIEF],

@@ -10,13 +10,11 @@ import {
 } from "../../../src/specimen";
 
 const MISSION = "Inbox Zero triaged 41 emails and drafted 6 replies";
-/** The two spans a search for the mission's agent and verb would return. */
 const MATCHES = [
   { start: 0, end: 10 },
   { start: 33, end: 40 },
 ];
 
-/** One line of sample text, rendered at body scale so the mark reads in context. */
 function Line({ children }: { children: ReactNode }) {
   return (
     <span className="text-[15px] leading-[1.55] text-ink">{children}</span>
@@ -155,11 +153,6 @@ function HighlightedTextSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["HighlightedText"];
 
 export const specimen: Specimen = {

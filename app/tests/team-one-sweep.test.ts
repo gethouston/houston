@@ -23,10 +23,8 @@ const agentView = read("../src/components/team-view/agent-view.tsx");
 const agentSettingsPane = read(
   "../src/components/team-view/agent-settings-pane.tsx",
 );
-// The archive is its OWN section now, not a mode of the Tasks one.
 const teamArchived = read("../src/components/team-view/team-archived.tsx");
 
-/** The JSX attributes of the `<MissionControlArchived …>` element. */
 const archivedCallSite = (source: string) => {
   const start = source.indexOf("<MissionControlArchived");
   assert.notEqual(start, -1, "no <MissionControlArchived> element");
@@ -42,18 +40,8 @@ const card = (id: string, agentPath: string): KanbanItem =>
     metadata: { agentPath },
   }) as KanbanItem;
 
-/**
- * A team's archive must read the SAME `all-conversations` query as every other
- * board. Handing it only the team's agents minted a second query key, which
- * cost a second cross-agent fan-out, cancelled the pending global re-sweep
- * (its roster string no longer matched), and let the team's narrow result seed
- * the global board as placeholder data.
- */
 describe("one sweep, whatever the scope", () => {
   it("gives the team archive the full roster plus the shared scope", () => {
-    // The element's FIRST prop is the sweep roster. Scanning the whole call
-    // site would catch `scopedAgents` (the "New task" menu's roster) and the
-    // filter capsule's own `agents`, which are the team's slice on purpose.
     assert.match(
       teamArchived,
       /<MissionControlArchived\s+agents=\{agents\}/,
@@ -70,17 +58,12 @@ describe("one sweep, whatever the scope", () => {
   });
 
   it("shares one scope object between the team's two board sections", () => {
-    // Two SECTIONS now rather than two modes of one, so the thing that keeps
-    // them on one sweep is that both build the scope from the same hook over
-    // the same full roster — not that they share a parent.
     assert.match(archivedCallSite(teamArchived), /scope=\{scope\}/);
     assert.match(
       teamMissionControl,
       /<TeamMissionBoard[\s\S]*?scope=\{scope\}/,
     );
-    // The BOARD is the one surface still keyed on the team-wide pin.
     assert.match(teamMissionControl, /useAgentBoardScope\(agent\)/);
-    // The scope now belongs to the hook, not to the active board alone.
     assert.ok(
       !teamMissionBoard.includes("scopePaths"),
       "team-mission-board must not rebuild a scope of its own",
@@ -104,15 +87,12 @@ describe("one sweep, whatever the scope", () => {
     const items = [card("1", "a"), card("2", "b"), card("3", "c")];
     const scopePaths = ["b"];
 
-    // What a team RENDERS is a strict subset...
     assert.deepEqual(agentsInScope(roster, scopePaths), [agent("b")]);
     assert.deepEqual(
       itemsInScope(items, scopePaths).map((i) => i.id),
       ["2"],
     );
 
-    // ...and the folder paths a scoped board would key a query on are NOT the
-    // roster's. That difference is exactly the second query key the bug minted.
     const scopedPaths = agentsInScope(roster, scopePaths).map(
       (a) => a.folderPath,
     );
@@ -122,11 +102,6 @@ describe("one sweep, whatever the scope", () => {
   });
 });
 
-/**
- * HOU-1165: there is ONE shell detail panel. Every surface that can portal a
- * chat into it must let go when its screen hides, or a team archive left with
- * a mission open keeps rendering over the next view.
- */
 describe("the archive releases the shell detail panel", () => {
   it("clears its selection and closes the panel when its screen hides", () => {
     assert.match(
@@ -146,7 +121,6 @@ describe("the archive releases the shell detail panel", () => {
 
 describe("the employee archive header", () => {
   it("hands the toolbar no title and no roster", () => {
-    // The employee header and Archived tab already name this section.
     assert.ok(
       !missionControlArchived.includes("title={scope?.title}"),
       "the team frame owns the team's name, not the board",
@@ -155,7 +129,6 @@ describe("the employee archive header", () => {
       !missionControlArchived.includes("agents={scopedAgents}"),
       "the agent scope is the strip's crumb, not the archive's toolbar",
     );
-    // It still NARROWS through the one shared scope — that never moved.
     assert.match(
       missionControlArchived,
       /useMcScope\(agents, data\.items, scope\)/,

@@ -11,7 +11,6 @@ import { judgeTarget } from "./fence-target";
 const fail = (code: string) =>
   Promise.reject(Object.assign(new Error(code), { code }));
 
-/** A resolver answering from `zone`; a missing family is ENODATA. */
 function resolverFor(
   zone: Record<string, { v4?: string[] | string; v6?: string[] | string }>,
 ): FenceResolver {
@@ -71,7 +70,6 @@ test("a server that never answers hits the deadline, and the slot frees", async 
   await expect(lookup("slow.test")).rejects.toMatchObject({
     code: "ETIMEOUT",
   });
-  // The one slot is free again: the next lookup runs (and times out too).
   await expect(lookup("slow2.test")).rejects.toMatchObject({
     code: "ETIMEOUT",
   });
@@ -114,7 +112,6 @@ test("an OS lookup past its deadline fails, but holds its slot until the OS answ
     1,
   );
   await expect(lookup("slow.lan")).rejects.toMatchObject({ code: "ETIMEOUT" });
-  // getaddrinfo still holds its thread: the next name waits for the slot.
   const next = lookup("next.lan");
   await new Promise((resolve) => setTimeout(resolve, 5));
   expect(asked).toEqual(["slow.lan"]);
@@ -140,7 +137,6 @@ test("a re-ask after the deadline joins the running OS lookup, not a second slot
   await expect(lookup("slow.lan", gone.signal)).rejects.toMatchObject({
     code: "ETIMEOUT",
   });
-  // The browser's connection closes after the refusal: the OS still runs.
   gone.abort();
   const retry = lookup("slow.lan");
   const other = lookup("other.lan");

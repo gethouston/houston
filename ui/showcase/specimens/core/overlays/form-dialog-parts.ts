@@ -1,9 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * `FormDialog`'s public API, read off `ui/core/src/components/form-dialog.tsx`.
- * Split out only to keep the specimen file inside the 200-line rule.
- */
 export const formDialogProps: SpecimenProp[] = [
   {
     name: "open",

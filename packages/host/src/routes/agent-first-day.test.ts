@@ -8,21 +8,6 @@ import {
   PENDING,
 } from "../testing/first-day-harness";
 
-/**
- * `POST /agents/:agentId/first-day` — the ONE way an AI Employee's first day
- * starts, for every surface and the AI Manager. The findings it closes:
- *
- * - C7 / codex 14: two starts (two tabs, two buttons) make ONE setup task.
- * - C8 / codex 8: "started" is recorded only once the task's first turn fired,
- *   and a failed first turn keeps the first day pending with no card left
- *   behind.
- * - R5 / T5 (a setup task left while the first day is still pending):
- *   `agent-first-day-left-task.test.ts`.
- * - C6: the first turn runs on the hire's pin, and the hello's role is read
- *   on the host.
- * - codex 6: the pending first day is born WITH the agent, in its create.
- */
-
 let host: FirstDayHost;
 beforeEach(async () => {
   host = await bootFirstDayHost();
@@ -59,13 +44,11 @@ test("starting creates the setup task, fires its first turn, then records the st
   expect(host.channel.fired).toHaveLength(1);
   const [fired] = host.channel.fired;
   expect(fired?.conversationId).toBe(body.mission.sessionKey);
-  // C6: the hire's pin, never the engine default; a quick first card.
   expect(fired?.pin).toMatchObject({
     provider: "anthropic",
     model: "claude-sonnet-4-5",
     effort: "low",
   });
-  // Hidden from the transcript, in the user's language, naming the job.
   expect(fired?.text.startsWith(AUTO_CONTINUE_MARKER)).toBe(true);
   expect(fired?.text).toContain("The user's app is set to Spanish");
   expect(fired?.text).toContain("- Role: Financial analyst");
@@ -111,7 +94,6 @@ test("a failed first turn keeps the first day pending and leaves no card (C8)", 
   const id = await host.hire(PENDING);
   host.channel.failWith = "runtime unavailable";
   const res = await host.start(id);
-  // A domain refusal, never a gateway status the transport would retry (T6).
   expect(res.status).toBe(409);
   expect(((await res.json()) as { code: string }).code).toBe(
     "first_day_not_started",
@@ -142,7 +124,6 @@ test("a first turn refused for no connected AI answers its own code and stays pe
   expect(await host.firstDay()).toBe("pending");
   expect(await host.setupTasks()).toHaveLength(0);
 
-  // A saved provider that is signed out is named, so the surface can say which.
   host.channel.failWith = new TurnFireError(
     "runtime 409",
     409,

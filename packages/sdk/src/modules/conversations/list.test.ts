@@ -13,17 +13,6 @@ import {
   createConversationsModule,
 } from "./index";
 
-/**
- * The PRIMITIVE read, separate from the reactive loader that wraps it.
- *
- * `list` is the one member whose own body issues `GET /agents/<id>/conversations`,
- * which is what makes the route dispatchable — so what is pinned here is that it
- * touches the wire ONCE, leaves the store alone (no VM is published by a bare
- * read), and hands back the engine's rows unmapped. The second case is the
- * regression the split could have caused: `refresh` still publishes its VM and
- * still reads exactly once, not twice.
- */
-
 const BASE = "http://engine.test";
 
 interface RecordedCall {
@@ -31,7 +20,6 @@ interface RecordedCall {
   method: string;
 }
 
-/** A `fetch` stub serving one route: the agent's conversation list. */
 function makeEngine(seed: Record<string, ConversationSummary[]>) {
   const db = new Map<string, ConversationSummary[]>(Object.entries(seed));
   const calls: RecordedCall[] = [];
@@ -71,7 +59,6 @@ function makeCtx(fetchImpl: typeof fetch) {
   const ctx: ModuleContext = {
     config,
     store,
-    // The kernel's per-agent resolver: `${BASE}/agents/<id>` (empty id → base).
     clientFor: (agentId) =>
       new HoustonEngineClient({
         baseUrl: agentId

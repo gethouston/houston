@@ -2,12 +2,6 @@ import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { type TaskRowStatus, taskRowGlyph } from "../src/task-row-styles.ts";
 
-/**
- * The task row's status mapping. The promise it guards: a task wears the SAME
- * glyph, tone and spoken name on every surface that lists it, and RUNNING is
- * the only state that moves.
- */
-
 const STATUSES: TaskRowStatus[] = ["needs_you", "running", "done", "archived"];
 
 describe("taskRowGlyph", () => {
@@ -16,7 +10,6 @@ describe("taskRowGlyph", () => {
       const glyph = taskRowGlyph(status);
       assert.ok(glyph.Icon, `${status} has no icon`);
       assert.ok(glyph.label.length > 0, `${status} has no label`);
-      // Tone is a token utility, never a literal colour.
       assert.match(glyph.tone, /^text-(warning|ink-muted)$/);
     }
   });
@@ -35,7 +28,6 @@ describe("taskRowGlyph", () => {
       "Necesita tu atención",
     );
     assert.equal(taskRowGlyph("done", labels).label, "Listo");
-    // Unnamed states keep the default rather than rendering blank.
     assert.equal(taskRowGlyph("running", labels).label, "Running");
     assert.equal(taskRowGlyph("archived", labels).label, "Archived");
   });

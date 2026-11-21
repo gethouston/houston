@@ -6,7 +6,6 @@ import {
   shouldFrame,
 } from "./attribution";
 
-/** Mint an `acting-v1.<payloadB64Url>.<sig>` token carrying `payload`. */
 function token(payload: Record<string, unknown>, sig = "sig"): string {
   const b64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `acting-v1.${b64}.${sig}`;
@@ -35,10 +34,10 @@ test("decodeActingAuthor omits name when the payload has none", () => {
 test("decodeActingAuthor returns undefined for absent / garbled / sub-less tokens", () => {
   expect(decodeActingAuthor(undefined)).toBeUndefined();
   expect(decodeActingAuthor("")).toBeUndefined();
-  expect(decodeActingAuthor("acting-v1")).toBeUndefined(); // no payload segment
-  expect(decodeActingAuthor("acting-v1.@@@.sig")).toBeUndefined(); // unparseable
-  expect(decodeActingAuthor(token({ name: "Ada" }))).toBeUndefined(); // no sub
-  expect(decodeActingAuthor(token({ sub: "" }))).toBeUndefined(); // empty sub
+  expect(decodeActingAuthor("acting-v1")).toBeUndefined();
+  expect(decodeActingAuthor("acting-v1.@@@.sig")).toBeUndefined();
+  expect(decodeActingAuthor(token({ name: "Ada" }))).toBeUndefined();
+  expect(decodeActingAuthor(token({ sub: "" }))).toBeUndefined();
 });
 
 const ada: MessageAuthor = { userId: "user_a", name: "Ada" };
@@ -49,9 +48,9 @@ test("shouldFrame: never for an authorless turn", () => {
 });
 
 test("shouldFrame: never in a single-author conversation", () => {
-  expect(shouldFrame(ada, [])).toBe(false); // first message
-  expect(shouldFrame(ada, [ada, ada])).toBe(false); // all Ada
-  expect(shouldFrame(ada, [undefined])).toBe(false); // prior authorless message
+  expect(shouldFrame(ada, [])).toBe(false);
+  expect(shouldFrame(ada, [ada, ada])).toBe(false);
+  expect(shouldFrame(ada, [undefined])).toBe(false);
 });
 
 test("shouldFrame: true once a DIFFERENT author has posted", () => {

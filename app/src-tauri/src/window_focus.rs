@@ -21,11 +21,6 @@ pub fn bring_to_front(app: &AppHandle) {
             let _ = window.show();
             let _ = window.set_focus();
         }
-        // macOS: makeKeyAndOrderFront (what set_focus calls) does NOT pull the
-        // app in front of the browser when activation is triggered
-        // programmatically — the user never clicked a Houston window. Activate
-        // the NSApplication so the window actually surfaces over the browser
-        // the user just finished signing in / connecting in.
         #[cfg(target_os = "macos")]
         {
             use objc2::MainThreadMarker;

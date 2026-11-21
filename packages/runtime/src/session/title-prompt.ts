@@ -1,4 +1,3 @@
-/** The product-neutral system prompt every title one-shot runs with. */
 export const TITLE_PROMPT = [
   "You generate conversation titles.",
   "Reply with ONLY a title of 3 to 6 plain words for the conversation excerpt the user sends.",

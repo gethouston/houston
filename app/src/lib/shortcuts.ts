@@ -13,9 +13,7 @@ export type ShortcutAction =
   | "cheatsheet";
 
 interface ShortcutDef {
-  /** Individual key chunks. One chunk per `<Kbd>` chip when rendered. */
   parts: string[];
-  /** Whether the binding fires when typing in inputs. Default: never. */
   match: (e: KeyboardEvent) => boolean;
 }
 
@@ -96,7 +94,6 @@ export function shortcutParts(action: ShortcutAction): string[] {
 
 export function shortcutLabel(action: ShortcutAction): string {
   const parts = shortcuts[action].parts;
-  // Mac uses glyph clusters with no separator (⌘K). Other platforms use "+".
   return isMac ? parts.join("") : parts.join("+");
 }
 
@@ -107,11 +104,6 @@ export function matchShortcut(
   return shortcuts[action].match(e);
 }
 
-/**
- * True if the keystroke originated from somewhere the user is typing
- * (input, textarea, contentEditable). Most shortcuts skip in that case so
- * we don't steal characters from the composer.
- */
 export function isTypingTarget(e: KeyboardEvent): boolean {
   const t = e.target as HTMLElement | null;
   if (!t) return false;
@@ -120,12 +112,9 @@ export function isTypingTarget(e: KeyboardEvent): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 }
 
-/** A layer drawn over the page: a dialog, or a popover / menu Radix places. */
 const OVERLAY_SELECTOR =
   '[role="dialog"], [role="alertdialog"], [data-radix-popper-content-wrapper]';
 
-/** True if the keystroke came from inside a dialog or popover, which owns
- *  every key it is sent over whatever sits behind it. */
 export function isOverlayTarget(e: KeyboardEvent): boolean {
   const t = e.target as Element | null;
   return (
@@ -133,12 +122,6 @@ export function isOverlayTarget(e: KeyboardEvent): boolean {
   );
 }
 
-/**
- * True when the typing target exists but holds no text yet. Used by
- * arrow-key shortcuts so an auto-focused, still-empty composer doesn't
- * swallow board navigation — there's no cursor motion to perform until
- * the user types something.
- */
 export function isEmptyEditable(e: KeyboardEvent): boolean {
   const t = e.target as HTMLElement | null;
   if (!t) return false;

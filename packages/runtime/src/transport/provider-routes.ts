@@ -22,11 +22,6 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
 
   if (method === "GET" && path === "/providers") {
     await syncServedCredentialSafe("providers");
-    // Warm the cached health signals listProviders() reads synchronously: the
-    // anthropic shared-dir credential probe (so a just-completed browser login
-    // flips `configured` on this poll — the card-status path goes through
-    // /providers, not /auth/status) and the local endpoint's reachability
-    // probe (so a stopped Ollama/LM Studio server stops offering its model).
     await Promise.all([
       refreshAnthropicCredential(),
       refreshEndpointReachability(),
@@ -34,13 +29,8 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
     json(res, 200, listProviders());
     return true;
   }
-  // Per-account usage (rate-limit windows / balances) for every CONNECTED
-  // provider, fetched live from each provider's own usage API. Registered
-  // before the generic /providers/* matchers as a literal path.
   if (method === "GET" && path === "/providers/usage") {
     await syncServedCredentialSafe("providers-usage");
-    // Warm the anthropic shared-dir probe so a just-connected Claude account
-    // counts as connected on this poll (same rationale as GET /providers).
     await refreshAnthropicCredential();
     json(res, 200, await listProviderUsage());
     return true;
@@ -54,11 +44,6 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
     }
     return true;
   }
-  // Connect-flow claim: make the just-connected provider active ONLY when the
-  // agent doesn't already resolve to one. A credential connect must never move
-  // an existing chat off its provider (HOU-695) — that's the model picker's
-  // job (PUT /settings). Served credentials are hydrated first so "already
-  // connected" includes the workspace's connect-once credentials.
   if (method === "POST" && path === "/settings/claim") {
     const body = await readJson(req);
     await syncServedCredentialSafe("settings-claim");
@@ -77,17 +62,11 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
   }
   if (method === "GET" && path === "/auth/export") {
     const provider = url.searchParams.get("provider") || undefined;
-    // The serve healer's local-origin contract (PRODUCT-1370): an AUTOMATIC
-    // capture must not export a serve-written api_key projection — re-pushing
-    // it would resurrect a credential the user disconnected centrally.
     const excludeServed = url.searchParams.get("excludeServed") === "1";
     json(res, 200, exportCredential(provider, { excludeServed }) ?? {});
     return true;
   }
   if (method === "POST" && path === "/auth/scrub-refresh") {
-    // Provider-scoped (PRODUCT-1320): a whole-file scrub let one provider's
-    // capture erase another's mid-capture refresh token. The host always knows
-    // which provider it just captured, so a scrub without one is a bug.
     const provider = url.searchParams.get("provider");
     if (!provider) {
       json(res, 400, {
@@ -116,8 +95,6 @@ export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
     await handleApiKey(ctx, apiKeyMatch[1]);
     return true;
   }
-  // The host's rollback when its central store rejected a key the POST above
-  // had already verified + persisted (PRODUCT-1321) — see api-key-rollback.ts.
   if (method === "DELETE" && apiKeyMatch) {
     await handleApiKeyRollback(ctx, apiKeyMatch[1]);
     return true;

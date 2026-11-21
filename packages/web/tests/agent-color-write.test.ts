@@ -1,13 +1,6 @@
 import { applyAgentColor } from "@houston/engine-adapter/control-plane";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * The app picker's color write: it sets the device overlay and answers with the
- * refreshed agent, so its only request is the list re-read. The single-request
- * host leaf the personal assistant dispatches is `updateAgentColor`, in the
- * SDK's agents module — pinned by `packages/sdk/src/modules/agents/library.test.ts`.
- */
-
 const originalFetch = globalThis.fetch;
 
 let store: Map<string, string>;

@@ -20,7 +20,6 @@ describe("panelTaskLabel", () => {
   });
 
   it("stays blank while a selected task's card has not resolved", () => {
-    // Calling an existing chat "New task" for a beat is worse than a gap.
     assert.equal(panelTaskLabel(labels, "a1", undefined), "");
     assert.equal(panelTaskLabel(labels, "a1", ""), "");
   });

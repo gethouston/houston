@@ -1,18 +1,8 @@
-/*
- * Multiplayer chat preview (#multiplayer). A real Houston shared chat in the
- * app's light theme: an agent header, a thread where MULTIPLE people (photo
- * avatars) and the agent (a tinted Houston helmet) talk, and a composer. Tabs
- * above switch the use case (assets/chat.js). App palette from site-tokens.css
- * (--app-* / --agent-*); the shared .win / .av / .face rules live in
- * landing-app-window.css.
- */
-
 .chat-demo {
   max-width: 780px;
   margin: clamp(28px, 3.4vw, 44px) auto 0;
 }
 
-/* ── Use-case tabs — ONE segmented pill (instrument-panel clean) ─────────── */
 .chat-tabs {
   display: flex;
   width: max-content;
@@ -47,7 +37,6 @@
   color: var(--action-text);
 }
 
-/* ── The chat window (reuses .win chrome: border, radius, system font) ─────── */
 .chat-win {
   background: var(--app-screen);
   display: flex;
@@ -99,14 +88,11 @@
   height: 26px;
 }
 
-/* ── Thread ───────────────────────────────────────────────────────────────── */
 .chat-thread {
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 20px;
-  /* Fixed window: the replay scrolls inside like a real chat instead of
-     growing the section (chat.js pins the scroll to the newest message). */
   height: clamp(320px, 46vh, 420px);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -140,8 +126,6 @@
   line-height: 1.5;
   color: var(--app-ink);
 }
-/* The agent's turn reads as AI output: a subtle tinted card with a squared
-   top-left corner pointing back at the helmet. Human turns stay plain thread. */
 .cmsg-agent .cmsg-text {
   display: inline-block;
   background: var(--app-chip);
@@ -150,8 +134,6 @@
   border-top-left-radius: 3px;
 }
 
-/* Typing indicator — three bouncing dots in the agent's tinted bubble, shown by
-   assets/chat.js just before each agent turn lands. */
 .cmsg-dots {
   display: inline-flex;
   align-items: center;
@@ -171,7 +153,6 @@
   }
   .cmsg-dots span:nth-child(2) { animation-delay: 0.15s; }
   .cmsg-dots span:nth-child(3) { animation-delay: 0.3s; }
-  /* Each replayed turn rises in (gated: the settled thread never animates). */
   .cmsg-in {
     animation: cmsg-in var(--dur-elegant) var(--ease-entrance);
   }
@@ -181,15 +162,12 @@
   to { opacity: 1; transform: none; }
 }
 
-/* Invisible in-page anchor alias (e.g. #features) — a zero-height scroll target
-   that keeps cross-site links resolving, clearing the sticky nav. */
 .anchor-alias {
   display: block;
   height: 0;
   scroll-margin-top: 84px;
 }
 
-/* ── Composer (mock) ──────────────────────────────────────────────────────── */
 .chat-composer {
   display: flex;
   align-items: center;
@@ -234,8 +212,6 @@
   }
 }
 
-/* @mentions — humans calling humans, and the agent calling a human in.
-   Mention blue, the one functional color in the thread. */
 .mention {
   font-weight: 600;
   color: #2563eb;

@@ -4,15 +4,6 @@ import { MemoryCredentialStore } from "../credentials/store";
 import type { CredentialVault } from "../ports";
 import { handleSandboxProviderUsage } from "./provider-usage";
 
-/**
- * The central Copilot quota probe: GitHub's quota endpoint authenticates with
- * the long-lived GitHub OAuth token, which only the host's central store holds
- * (the runtime's auth.json is scrubbed to access-only — Gate #2). The route
- * must relay the quota payload without ever leaking the token, answer the
- * marked 404 for a never-connected workspace, and map GitHub's auth rejection
- * to a 401 the runtime renders as "sign in again".
- */
-
 const vault: CredentialVault = {
   sandboxToken: () => "sbx",
   validateSandboxToken: (t) =>

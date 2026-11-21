@@ -65,7 +65,6 @@ pub(crate) async fn save_dialog(
         .await
         .map_err(|e| format!("Failed to open save dialog: {e}"))?;
     if !output.status.success() {
-        // User cancelled — osascript returns non-zero. Treat as None.
         return Ok(None);
     }
     let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
@@ -115,8 +114,6 @@ pub(crate) async fn open_dialog(
     prompt: &str,
     _win_filter: Option<&str>,
 ) -> Result<Option<String>, String> {
-    // `choose file` always returns a POSIX path. The user can pick any
-    // extension; callers validate the bytes.
     let script = format!(
         r#"POSIX path of (choose file with prompt "{}")"#,
         applescript_escape(prompt),
@@ -181,8 +178,6 @@ mod tests {
 
     #[test]
     fn decodes_accented_path() {
-        // The PRODUCT-1260 shape: an accented Windows user folder that the
-        // old raw-stdout decoding mangled into a nonexistent directory.
         let mut out = b64("C:\\Users\\Muñoz\\Descargas\\reporte.xlsx");
         out.extend_from_slice(b"\r\n");
         assert_eq!(

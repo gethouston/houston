@@ -1,32 +1,3 @@
-/* ============================================================
-   HOUSTON CANVAS — aurora glow + glass surfaces
-   ------------------------------------------------------------
-   Brings the landing page glow into every Houston surface: the
-   desktop/web app shell, the Agent Store playground, and the
-   catalog site. Whatever renders Houston UI renders it on THIS
-   canvas, so a component reviewed in the playground looks the
-   way it will look in the app.
-
-   Source of the recipe:
-     website/src/index.html
-       "Always on" card  — blue/orange radial layer (the designer
-                           "source of truth" spec, see handoff §7)
-     ui/core/src/globals.css
-       .card-running-glow — the blue -> indigo -> orange -> yellow
-                            brand gradient this palette is drawn from
-
-   Single source of truth for the look. IMPORT-ORDER CONTRACT:
-   every consumer imports this file AFTER @houston-ai/core's
-   globals.css, so its token overrides win at use-time. Delete the
-   import in a surface's globals.css to fully revert that surface.
-
-   Everything here targets a SHARED selector — the body, a token-level
-   surface class, or a `@houston-ai/*` component. The chrome that
-   targets app-only classes (the AI-Hub live glow and the AI-Hub modal
-   motion, both spelled only in app/src) stayed behind in
-   app/src/styles/futuristic.css, imported right after this file.
-   ============================================================ */
-
 /* ── 1. Aurora glow behind everything ──────────────────────────
    Fixed, full-bleed, painted on body::before so it sits behind
    the React tree (#root). Its z-index: -1 paints in the ROOT
@@ -44,14 +15,9 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  /* Light mode: NO aurora. The colour mesh read as "glitter" over the
-     clean solid light variants. Dark keeps its glow (overrides below). */
   background: none;
 }
 
-/* Dark: a brighter multi-tone glow with the slow drift. Both modes now
-   animate (light picked up the drift above) — the research direction is
-   "feel alive" + rich colour in both, no longer the static light spec. */
 [data-theme="dark"] body::before {
   background:
     radial-gradient(ellipse 80% 50% at 50% -8%, rgba(59, 130, 246, 0.22), transparent),
@@ -61,8 +27,6 @@ body::before {
   animation: aurora-drift 32s ease-in-out infinite alternate;
 }
 
-/* Slow, barely-there drift so the surface feels alive (design
-   principle: "always feel alive") without ever distracting. */
 @keyframes aurora-drift {
   from {
     transform: translate3d(0, 0, 0) scale(1);
@@ -110,9 +74,6 @@ body::before {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
-/* Popovers/menus are SOLID (the popover token is opaque): no blur —
-   WebView2 doesn't reliably composite backdrop-filter, and a solid fill
-   needs none. Only the 1px top sheen remains. */
 .bg-popover {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
@@ -127,20 +88,6 @@ body::before {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-/* Modal surface (`bg-dialog`). SOLID in both themes (the `dialog` token:
-   neutral.800 dark, white light) — no glass, no backdrop-filter. Modals sit
-   over arbitrary content and must never bleed it through; WebView2 in the
-   desktop shell doesn't reliably composite backdrop-filter anyway (the dark
-   "New agent" modal bled the Settings page through, and light washed out
-   too). Only the subtle top sheen remains.
-
-   Excludes `.ht-shadow-dialog` (the modal frame, section 8): box-shadow does
-   not accumulate across rules, and this descendant rule at (0,2,0) outranks
-   that class at (0,1,0): a framed dark dialog wore this sheen INSTEAD of
-   its elevation tier and floated on nothing. The framed surface gets the same
-   sheen as the tier's own first layer
-   (tokens/semantic/elevation.dark.json), which leaves this rule for the
-   unframed dialog surfaces. */
 [data-theme="dark"]
   .bg-dialog:not(:where(.ht-shadow-dialog)):not(
     :where([data-theme="light"], [data-theme="light"] *)
@@ -225,8 +172,6 @@ body::before {
   [data-variant="default"]:is(button, a):not(
     :where([data-theme="light"], [data-theme="light"] *)
   ) {
-  /* The frost itself: the blur is the effect, every colour above is the
-     token. A light-pinned subtree keeps the light button, unblurred. */
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
@@ -279,25 +224,16 @@ html {
   background-color: var(--ht-base);
 }
 
-/* Transparent so body::before (the aurora) is not painted over; the gutter
-   colour is html's, one layer below. */
 body {
   background-color: transparent;
 }
 
-/* The screen itself: translucent + frosted so the window background and
-   the aurora bleed THROUGH the content area (not just the gutter),
-   while still sitting a step above the recessed window bg. `bg-background`
-   stays on the element as an opaque fallback for when the theme is off;
-   this override (unlayered) wins while canvas.css is loaded.
-   Knob: the alphas — lower = more see-through, higher = more solid. */
 .canvas-screen {
   background-color: var(--ht-background);
 }
 
 [data-theme="dark"]
   .canvas-screen:not(:where([data-theme="light"], [data-theme="light"] *)) {
-  /* Dark keeps its frosted glass; the bg colour comes from the token. */
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
   backdrop-filter: blur(20px) saturate(1.4);
 }
@@ -329,22 +265,11 @@ body {
    reserved for floating chrome (modals/popovers). Components apply these
    classes so no component hardcodes a hex. */
 
-/* Hairline = a 1px inset ring in the --ht-line colour, drawn as an
-   `outline` (not box-shadow) so it composes with the glass sheen AND with
-   Tailwind ring/shadow utilities on the same element. outline-offset pulls
-   it inside; modern engines clip it to border-radius. Use on cards/rows
-   instead of `border` for the Linear hairline look. */
 .ht-hairline {
   outline: 1px solid var(--ht-line);
   outline-offset: -1px;
 }
 
-/* Modal / popover depth: two soft ambient layers + an inset hairline ring
-   + a top sheen, all in one box-shadow. Pair with `bg-popover` (surface +
-   blur). Dark needs a darker, deeper ambient to float over the near-black
-   canvas. The ambient rgba are effect values (the sanctioned effects layer,
-   like the glass sheen + active-tab shadow above); the ring references the
-   --ht-line token. */
 .ht-shadow-modal {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.5),
@@ -362,12 +287,6 @@ body {
     0 24px 64px rgba(0, 0, 0, 0.5);
 }
 
-/* The dialog's depth: the ONE modal frame (`dialog-frame.ts`), carried by the
-   `dialog` elevation tier. Light is the ambient pair plus a near-ink 1px seat,
-   so a white surface reads as lifted off a white screen; dark trades that seat
-   for a 10% white ring over a darker ambient. Both live in the token
-   (`tokens/semantic/elevation.{light,dark}.json`), which re-resolves inside a
-   [data-theme]-pinned subtree — one rule covers every theme. */
 .ht-shadow-dialog {
   box-shadow: var(--ht-shadow-dialog);
 }

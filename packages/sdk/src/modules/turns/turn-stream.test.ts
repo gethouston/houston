@@ -31,16 +31,8 @@ import {
   conversationScope,
 } from "./vm-output";
 
-/**
- * The resumable turn/observer runners against a scripted fake engine: one
- * handler per connection attempt (the last repeats), so tests can drop the
- * stream mid-turn, script the reconnect's replay or resync, and assert what
- * reaches the FeedOutput — the settle-on-close truncation regression above all.
- */
-
 type StreamHandler = (opts: EventStreamOptions) => void | Promise<void>;
 
-/** A connection that stays open until the client aborts it. */
 const hang: StreamHandler = (opts) =>
   new Promise<void>((resolve) => {
     if (opts.signal?.aborted) return resolve();
@@ -53,13 +45,9 @@ function fakeEngine(
   opts: { sendError?: unknown; sendErrors?: unknown[] } = {},
 ) {
   const afters: Array<number | undefined> = [];
-  /** The nonce each sendMessage carried — handlers echo it on `user` frames. */
   const nonces: Array<string | undefined> = [];
-  /** The full options each sendMessage carried (the wire pin assertions). */
   const sendOpts: Array<Record<string, unknown> | undefined> = [];
-  /** The `text` (real model prompt) each sendMessage carried. */
   const texts: string[] = [];
-  /** How many times history was refetched (the pre-settled poll's reload). */
   const historyCalls = { n: 0 };
   const engine = {
     async streamEvents(_id: string, streamOpts: EventStreamOptions) {
@@ -76,7 +64,6 @@ function fakeEngine(
       nonces.push(messageOpts?.nonce);
       sendOpts.push(messageOpts as Record<string, unknown> | undefined);
       if (opts.sendError !== undefined) throw opts.sendError;
-      // A queue of refusals: each send throws the next one, then sends land.
       if (opts.sendErrors?.length) throw opts.sendErrors.shift();
     },
     async getHistory() {
@@ -87,8 +74,6 @@ function fakeEngine(
   return { engine, afters, nonces, sendOpts, texts, historyCalls };
 }
 
-// Each test drives its own instance registry (no package global); a test that
-// leaves a stream live (hang) must not leak it into the next, so dispose all.
 const registry = new StreamRegistry();
 afterEach(() => registry.disposeAll());
 
@@ -102,15 +87,11 @@ type Item = {
   mentions?: { userId: string; name?: string }[];
 };
 
-/** A recording FeedOutput: the sink's FeedItems, session statuses, board persists. */
 function makeOutput() {
   const items: Item[] = [];
   const sessionStatuses: string[] = [];
   const board: string[] = [];
-  // The interaction each board persist carried (parallel to `board`): null on
-  // the "running" start-clear, the captured interaction (or null) on settle.
   const boardInteractions: Array<PendingInteraction | null | undefined> = [];
-  // Conversations the observer confirmed idle (the stale-running reconcile).
   const idleConfirms: string[] = [];
   const output: FeedOutput = {
     pushFeedItem: (_a, _s, item) => {
@@ -161,19 +142,14 @@ const sync = (
 });
 const finals = (items: Item[]) =>
   items.filter((i) => i.feed_type === "final_result");
-/** The runtime's and the gateway's one-turn-gate refusal. */
 const turnRunningRefusal = () =>
   new EngineError(409, JSON.stringify({ error: "turn running" }));
 
-// THE REGRESSION this rework exists for: a silently dropped stream used to
-// settle the turn from partial text (truncation). Now it reconnects with the
-// seq cursor, replays the gap, and settles only on the real `done`.
 test("a silent stream close mid-turn reconnects with the cursor and settles on the real done", async () => {
   const { engine, afters } = fakeEngine([
     (o) => {
       o.onEvent(sync(false, "", 0));
       o.onEvent({ type: "text", data: "Hel", seq: 1 });
-      // connection closes here — NOT a terminal frame
     },
     (o) => {
       o.onEvent({ type: "text", data: "lo", seq: 2 });
@@ -194,15 +170,13 @@ test("a silent stream close mid-turn reconnects with the cursor and settles on t
     },
   );
 
-  expect(afters).toEqual([undefined, 1]); // reconnect carried the last seen seq
+  expect(afters).toEqual([undefined, 1]);
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([{ feed_type: "assistant_text", data: "Hello" }]);
   expect(finals(items)).toHaveLength(1);
   expect(
     (finals(items)[0]?.data as { result?: string } | undefined)?.result,
   ).toBe("Hello");
-  // A clean `done` with NO interaction still settles the card to `needs_you`
-  // — the engine never writes `done`.
   expect(board).toEqual(["running", "needs_you"]);
 });
 
@@ -241,8 +215,6 @@ test("a clean done carrying a pending interaction settles needs_you and persists
     { tuning: fast },
   );
 
-  // Turn start clears (running + null); the settle lands needs_you and the
-  // interaction rides the terminal persist for the composer card to render.
   expect(board).toEqual(["running", "needs_you"]);
   expect(boardInteractions).toEqual([null, interaction]);
 });
@@ -264,7 +236,6 @@ test("a resync after the turn ended settles from refreshed history, not partial 
         o.onEvent({ type: "text", data: "Hel", seq: 1 });
       },
       (o) => {
-        // Cursor 1 is unserviceable (turn over, buffer cleared): resync.
         o.onEvent({
           type: "sync",
           data: { running: false, partial: "", seq: 9, resync: true },
@@ -290,7 +261,6 @@ test("a resync after the turn ended settles from refreshed history, not partial 
   );
 
   expect(afters.slice(0, 2)).toEqual([undefined, 1]);
-  // The FULL persisted reply settled the turn — never the truncated "Hel".
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([{ feed_type: "assistant_text", data: "Hello world" }]);
   const final = finals(items)[0]?.data as
@@ -298,12 +268,10 @@ test("a resync after the turn ended settles from refreshed history, not partial 
     | undefined;
   expect(final?.result).toBe("Hello world");
   expect(final?.usage?.context_tokens).toBe(42);
-  // Settled from refreshed history (clean, no interaction) → `needs_you`.
   expect(board).toEqual(["running", "needs_you"]);
 });
 
 test("a resync for a turn that died unpersisted settles from the streamed text", async () => {
-  // History ends on OUR user message: the turn never persisted a reply.
   const history: ChatMessage[] = [{ role: "user", content: "hi", ts: 1 }];
   const { engine } = fakeEngine(
     [
@@ -341,8 +309,6 @@ test("a resync for a turn that died unpersisted settles from the streamed text",
 });
 
 test("the history guard rejects a PREVIOUS turn's reply when ours never persisted", async () => {
-  // The trailing assistant reply answers "old", not our prompt "hi" — our user
-  // message never persisted, so adopting that reply would duplicate it.
   const history: ChatMessage[] = [
     { role: "user", content: "old", ts: 1 },
     { role: "assistant", content: "Old reply", ts: 2 },
@@ -406,7 +372,7 @@ test("exactly one user bubble: the optimistic push renders, the engine's echo ne
   );
 
   const bubbles = items.filter((i) => i.feed_type === "user_message");
-  expect(bubbles).toHaveLength(1); // ours — the echo never becomes a second one
+  expect(bubbles).toHaveLength(1);
   expect(bubbles[0]?.data).toBe("hi");
 });
 
@@ -430,7 +396,6 @@ test("the optimistic user bubble is pushed pending (unconfirmed until server evi
     { tuning: fast },
   );
 
-  // The ONE optimistic bubble enters pending — a surface renders a clock.
   const bubble = items.find((i) => i.feed_type === "user_message");
   expect(bubble?.pending).toBe(true);
 });
@@ -525,14 +490,6 @@ test("the optimistic bubble stays authorless when no sender is supplied (single-
   expect(bubble?.author).toBeUndefined();
 });
 
-/**
- * The @mention sidecar (HOU-944) rides the optimistic bubble the same way
- * `author` does: the model receives only the plain `@Name` text in the prompt,
- * while the VM entry carries the structure a surface chips from — and it must
- * land on the real `FeedItemVM`, not just the raw push, or the sent bubble
- * renders unchipped until history reloads.
- */
-
 test("StreamTurnOptions.mentions reaches the optimistic FeedItemVM.mentions", async () => {
   const { engine } = fakeEngine([
     (o) => {
@@ -580,7 +537,6 @@ test("mentions ride the send body so the runtime can persist them", async () => 
     { tuning: fast, mentions: [{ userId: "user_a", name: "Ada" }] },
   );
 
-  // The model still receives the plain text and nothing but it.
   expect(texts[0]).toBe("@Ada please confirm");
   expect(sendOpts[0]?.mentions).toEqual([{ userId: "user_a", name: "Ada" }]);
 });
@@ -601,8 +557,6 @@ test("a send that mentions nobody carries NO mentions key, on the bubble or the 
     "hi",
     output,
     registry,
-    // An EMPTY list means what absence means, and must normalize the same way:
-    // neither the bubble nor the wire ever carries `mentions: []`.
     { tuning: fast, mentions: [] },
   );
 
@@ -631,11 +585,9 @@ test("displayText renders as the bubble while the engine still receives the real
     { tuning: fast, displayText: "Let's set you up" },
   );
 
-  // The optimistic bubble shows the clean line, not the hidden directive.
   const bubbles = items.filter((i) => i.feed_type === "user_message");
   expect(bubbles).toHaveLength(1);
   expect(bubbles[0]?.data).toBe("Let's set you up");
-  // The engine still runs on the real prompt, and displayText rides for persistence.
   expect(texts).toEqual(["HIDDEN setup directive the user never sees"]);
   expect(sendOpts[0]?.displayText).toBe("Let's set you up");
 });
@@ -661,16 +613,13 @@ test("observer mode surfaces a running turn (spinner + partial) and settles on d
   );
   await waitFor(() => board.includes("needs_you"));
 
-  // The spinner flipped on for the observed turn, then completed.
   expect(sessionStatuses).toEqual(["running", "completed"]);
   const streaming = items.filter(
     (i) => i.feed_type === "assistant_text_streaming",
   );
-  expect(streaming[0]?.data).toBe("Hi the"); // the sync partial seeded the bubble
+  expect(streaming[0]?.data).toBe("Hi the");
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([{ feed_type: "assistant_text", data: "Hi there" }]);
-  // Clean observed done, no interaction → `needs_you`; an observer never
-  // writes "running".
   expect(board).toEqual(["needs_you"]);
 });
 
@@ -696,14 +645,10 @@ test("observer mode closes silently on an idle conversation", async () => {
   await waitFor(() => attempts === 1);
   await new Promise((r) => setTimeout(r, 50));
 
-  expect(attempts).toBe(1); // closed after the idle sync — no reconnect loop
+  expect(attempts).toBe(1);
   expect(items).toEqual([]);
   expect(sessionStatuses).toEqual([]);
-  expect(board).toEqual([]); // nothing persisted for an idle attach
-  // The server-confirmed idle reconciles any output whose state still says
-  // "running" — a stream torn down without a settle leaves the VM stale, and
-  // this attach is the only correction point (the reconnect auto-continue
-  // wedged behind exactly that stale flag).
+  expect(board).toEqual([]);
   expect(idleConfirms).toEqual(["activity-idle"]);
 });
 
@@ -711,7 +656,6 @@ test("a turn we send supersedes an active observer — no double subscription", 
   let observerAborted = false;
   const { engine, afters } = fakeEngine([
     (o) => {
-      // The observer's connection: a running turn, held open until disposed.
       o.onEvent(sync(true, "partial", 4));
       return new Promise<void>((resolve) => {
         o.signal?.addEventListener(
@@ -725,7 +669,6 @@ test("a turn we send supersedes an active observer — no double subscription", 
       });
     },
     (o) => {
-      // The turn's own connection.
       o.onEvent(sync(true, "partial", 4));
       o.onEvent({ type: "text", data: "!", seq: 5 });
       o.onEvent({ type: "done", data: null, seq: 6 });
@@ -756,11 +699,9 @@ test("a turn we send supersedes an active observer — no double subscription", 
   );
 
   expect(observerAborted).toBe(true);
-  expect(afters).toHaveLength(2); // observer + turn, never both live
-  expect(finals(items)).toHaveLength(1); // exactly one settle
+  expect(afters).toHaveLength(2);
+  expect(finals(items)).toHaveLength(1);
 });
-
-// ── Per-turn wire pin (HOU-695) ──────────────────────────────────────────────
 
 test("the wire pin rides sendMessage so the turn runs on the conversation's own provider", async () => {
   const { engine, sendOpts } = fakeEngine([
@@ -784,8 +725,6 @@ test("the wire pin rides sendMessage so the turn runs on the conversation's own 
     },
   );
 
-  // The pin reaches the wire exactly as given — this is what keeps a chat on
-  // ITS picked provider regardless of the agent-wide settings.
   expect(sendOpts[0]).toMatchObject({
     provider: "openai-codex",
     model: "gpt-5.5",
@@ -881,8 +820,6 @@ test("a pin-less turn sends no provider/model fields (runtime resolution untouch
   expect(opts.effort).toBeUndefined();
 });
 
-// ── Turn identity (turnId) ───────────────────────────────────────────────────
-
 test("frames from the NEXT turn are a boundary: our turn settles from history by turnId", async () => {
   const history: ChatMessage[] = [
     { role: "user", content: "hi", ts: 1, turnId: "t-1" },
@@ -892,7 +829,6 @@ test("frames from the NEXT turn are a boundary: our turn settles from history by
     [
       (o) =>
         new Promise<void>((resolve) => {
-          // Delayed so sendMessage has run and the nonce is known.
           setTimeout(() => {
             o.onEvent(sync(false, "", 0));
             o.onEvent({
@@ -902,7 +838,6 @@ test("frames from the NEXT turn are a boundary: our turn settles from history by
               seq: 1,
             });
             o.onEvent({ type: "text", data: "Hel", turnId: "t-1", seq: 2 });
-            // The next turn's frames: our terminal was lost — a boundary.
             o.onEvent({ type: "text", data: "FOREIGN", turnId: "t-2", seq: 3 });
             o.onEvent({ type: "done", data: null, turnId: "t-2", seq: 4 });
             resolve();
@@ -929,7 +864,6 @@ test("frames from the NEXT turn are a boundary: our turn settles from history by
   expect(texts).toEqual([
     { feed_type: "assistant_text", data: "Hello full", turnId: "t-1" },
   ]);
-  // The foreign turn's frames were never folded into ours.
   expect(items.some((i) => String(i.data ?? "").includes("FOREIGN"))).toBe(
     false,
   );
@@ -938,7 +872,6 @@ test("frames from the NEXT turn are a boundary: our turn settles from history by
 });
 
 test("a resync naming a DIFFERENT running turn settles ours; a dead turn settles as ERROR", async () => {
-  // History holds only OUR user message: the turn died before replying.
   const history: ChatMessage[] = [
     { role: "user", content: "hi", ts: 1, turnId: "t-1" },
   ];
@@ -955,11 +888,10 @@ test("a resync naming a DIFFERENT running turn settles ours; a dead turn settles
               seq: 1,
             });
             o.onEvent({ type: "text", data: "Hel", turnId: "t-1", seq: 2 });
-            resolve(); // connection drops
+            resolve();
           }, 10);
         }),
       (o) => {
-        // The reconnect resyncs onto a DIFFERENT running turn.
         o.onEvent(sync(true, "OTHER", 9, { turnId: "t-2", resync: true }));
         return hang(o);
       },
@@ -978,7 +910,6 @@ test("a resync naming a DIFFERENT running turn settles ours; a dead turn settles
     { tuning: fast },
   );
 
-  // The foreign turn's partial was never spliced into our bubble.
   expect(items.some((i) => String(i.data ?? "").includes("OTHER"))).toBe(false);
   expect(items).toContainEqual({
     feed_type: "system_message",
@@ -1005,7 +936,6 @@ test("a running resync for OUR turn replaces accumulated text — empty partial 
         }, 10);
       }),
     (o) => {
-      // Server restarted mid-turn: authoritative partial is EMPTY again.
       o.onEvent(sync(true, "", 9, { turnId: "t-1", resync: true }));
       o.onEvent({ type: "text", data: "Restarted", turnId: "t-1", seq: 10 });
       o.onEvent({ type: "done", data: null, turnId: "t-1", seq: 11 });
@@ -1026,16 +956,12 @@ test("a running resync for OUR turn replaces accumulated text — empty partial 
   const streaming = items
     .filter((i) => i.feed_type === "assistant_text_streaming")
     .map((i) => i.data);
-  // The stale accumulation was wiped by the empty authoritative partial...
   expect(streaming).toEqual(["Hello wor", "", "Restarted"]);
-  // ...so the settle carries only what the server actually produced.
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([
     { feed_type: "assistant_text", data: "Restarted", turnId: "t-1" },
   ]);
 });
-
-// ── Fatal classification + failure budget ────────────────────────────────────
 
 test("a fatal stream refusal (401) settles the turn with the engine's message", async () => {
   const { engine } = fakeEngine([
@@ -1065,10 +991,6 @@ test("a fatal stream refusal (401) settles the turn with the engine's message", 
   expect(board).toEqual(["running", "error"]);
 });
 
-/**
- * Marks when `engine`'s send landed: a stream's failures count against its
- * budget only from then on (while the send is out, they never end the turn).
- */
 function sendLanded(engine: HoustonEngineClient): () => boolean {
   let landed = false;
   const send = engine.sendMessage.bind(engine);
@@ -1081,8 +1003,6 @@ function sendLanded(engine: HoustonEngineClient): () => boolean {
 }
 
 test("the failure budget settles a dead-server turn instead of spinning forever", async () => {
-  // Once the send landed, every attempt connects and closes clean without a
-  // single frame.
   let landed = () => false;
   const { engine, afters } = fakeEngine([() => waitFor(landed)]);
   landed = sendLanded(engine);
@@ -1100,7 +1020,7 @@ test("the failure budget settles a dead-server turn instead of spinning forever"
     },
   );
 
-  expect(afters).toHaveLength(8); // exactly the budget, then settle + abort
+  expect(afters).toHaveLength(8);
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: STREAM_LOST_MESSAGE,
@@ -1108,15 +1028,12 @@ test("the failure budget settles a dead-server turn instead of spinning forever"
   expect(sessionStatuses).toEqual(["running", "error"]);
 });
 
-// HOU-705: a cold cloud wake holds the SSE connect with no bytes, the resume
-// loop's idle watchdog aborts each held attempt, and the budget settle used to
-// surface that abort's raw message — WebKit's "Fetch is aborted" — in the chat.
 test("budget exhaustion on aborted/hung attempts settles with product copy, never the raw transport error", async () => {
   let landed = () => false;
   const { engine, afters } = fakeEngine([
     async () => {
       await waitFor(landed);
-      const e = new Error("Fetch is aborted"); // WebKit's AbortError message
+      const e = new Error("Fetch is aborted");
       e.name = "AbortError";
       throw e;
     },
@@ -1147,8 +1064,6 @@ test("budget exhaustion on aborted/hung attempts settles with product copy, neve
 });
 
 test("budget exhaustion keeps the engine's own verdict when the attempts got one", async () => {
-  // The gateway answering 503 after a failed wake IS a verdict with product
-  // copy — that survives; only transport-level messages are replaced.
   const { engine } = fakeEngine([
     () => {
       throw new EngineError(
@@ -1208,7 +1123,6 @@ test("an observer mid-render settles visibly when the failure budget runs out", 
     (o) => {
       attempts++;
       if (attempts === 1) o.onEvent(sync(true, "half a", 3, { turnId: "t-9" }));
-      // then the connection closes; every reconnect dies frameless
     },
   ]);
   const { items, sessionStatuses, output } = makeOutput();
@@ -1232,8 +1146,6 @@ test("an observer mid-render settles visibly when the failure budget runs out", 
   expect(sessionStatuses).toEqual(["running", "error"]);
 });
 
-// ── Observer → turn handoff ──────────────────────────────────────────────────
-
 test("handoff on 202: the observer is disposed and the turn resumes from its cursor", async () => {
   let observerAborted = false;
   const { engine, afters, nonces } = fakeEngine([
@@ -1251,8 +1163,6 @@ test("handoff on 202: the observer is disposed and the turn resumes from its cur
       });
     },
     (o) => {
-      // The turn's own connection replays from the observer's cursor: our
-      // user echo (turnId source) rides the replay, then our frames.
       o.onEvent({
         type: "user",
         data: { content: "hi", ts: 1, nonce: nonces[0] },
@@ -1288,7 +1198,7 @@ test("handoff on 202: the observer is disposed and the turn resumes from its cur
   );
 
   expect(observerAborted).toBe(true);
-  expect(afters).toEqual([undefined, 4]); // resumed exactly from the observer's cursor
+  expect(afters).toEqual([undefined, 4]);
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([
     { feed_type: "assistant_text", data: "yo", turnId: "t-B" },
@@ -1346,16 +1256,14 @@ test("handoff refused: the observer keeps rendering; the refusal surfaces withou
     },
   );
 
-  expect(observerAborted).toBe(false); // the live observer survived the refusal
-  expect(afters).toHaveLength(1); // no second subscription was opened
+  expect(observerAborted).toBe(false);
+  expect(afters).toHaveLength(1);
   expect(items).toContainEqual({
-    // The refused resend never landed → fail its optimistic bubble.
     feed_type: "system_message",
     data: "No provider connected.",
     fails_pending: true,
   });
-  // No terminal settle while a turn demonstrably runs: no error status, no final.
-  expect(sessionStatuses).toEqual(["running", "running"]); // observer's + send attempt's
+  expect(sessionStatuses).toEqual(["running", "running"]);
   expect(finals(items)).toHaveLength(0);
 });
 
@@ -1365,7 +1273,6 @@ test("handoff meeting turn running holds until the observed turn settles, then s
   let nonceAt = (_i: number): string | undefined => undefined;
   const { engine, afters, nonces } = fakeEngine(
     [
-      // The observer: renders turn t-A until its terminal frame.
       (o) =>
         new Promise<void>((resolve) => {
           o.onEvent(sync(true, "their turn", 4, { turnId: "t-A" }));
@@ -1374,7 +1281,6 @@ test("handoff meeting turn running holds until the observed turn settles, then s
             resolve();
           };
         }),
-      // Our turn's own subscription, opened once the observer settled.
       async (o) => {
         await waitFor(() => sends() === 2);
         o.onEvent({
@@ -1414,14 +1320,13 @@ test("handoff meeting turn running holds until the observed turn settles, then s
     { tuning: fast },
   );
   await waitFor(() => sends() === 1);
-  // Held: nothing failed while the observed turn still runs.
   expect(items.some((i) => i.fails_pending)).toBe(false);
   observedDone();
   await turn;
 
   expect(nonces).toHaveLength(2);
   expect(new Set(nonces).size).toBe(1);
-  expect(afters).toEqual([undefined, 5]); // resumed from the observer's cursor
+  expect(afters).toEqual([undefined, 5]);
   expect(items.filter((i) => i.feed_type === "system_message")).toEqual([]);
   expect(sessionStatuses).not.toContain("error");
   expect(
@@ -1462,11 +1367,11 @@ test("a teardown during a held handoff never sends into the gone client", async 
   );
   await waitFor(() => nonces.length === 1);
 
-  registry.disposeAll(); // logout while the message is held
+  registry.disposeAll();
   await turn;
 
   expect(nonces).toHaveLength(1);
-  expect(afters).toHaveLength(1); // no new stream after the teardown
+  expect(afters).toHaveLength(1);
   expect(
     registry.get(streamKey("Houston/Bo", "activity-held-logout")),
   ).toBeUndefined();
@@ -1520,7 +1425,7 @@ test("a second turn disposes the previous turn's stream — never a silent overw
 
   expect(firstAborted).toBe(true);
   expect(afters).toHaveLength(2);
-  expect(finals(items)).toHaveLength(1); // only the second turn settled
+  expect(finals(items)).toHaveLength(1);
 });
 
 test("disposeAllStreams aborts live observers and empties the registry", async () => {
@@ -1555,7 +1460,6 @@ test("disposeAllStreams aborts live observers and empties the registry", async (
   registry.disposeAll();
   await waitFor(() => aborted);
 
-  // The registry no longer holds the disposed observer: a fresh attach works.
   observeConversation(
     engine,
     "Houston/Bo",
@@ -1598,12 +1502,9 @@ test("observeConversation is a no-op while the conversation is already streamed"
   );
   await new Promise((r) => setTimeout(r, 30));
 
-  expect(afters).toHaveLength(1); // the second observer never opened a stream
+  expect(afters).toHaveLength(1);
 });
 
-// ── Observer→turn handoff double-send race (finding 3) ───────────────────────
-
-/** A fake engine whose `sendMessage` blocks on a gate the test releases. */
 function deferredSendEngine(handlers: StreamHandler[], history: ChatMessage[]) {
   const afters: Array<number | undefined> = [];
   const nonces: Array<string | undefined> = [];
@@ -1619,7 +1520,7 @@ function deferredSendEngine(handlers: StreamHandler[], history: ChatMessage[]) {
     },
     async sendMessage(_id: string, _t: string, o?: { nonce?: string }) {
       nonces.push(o?.nonce);
-      await gate; // held until the test releases it
+      await gate;
     },
     async getHistory() {
       return { id: "c", title: "", messages: history };
@@ -1632,13 +1533,10 @@ test("a second concurrent send over an observer fails fast — one real send, no
   const { engine, afters, nonces, release } = deferredSendEngine(
     [
       (o) => {
-        // The observer's connection: a running turn, held open until disposed.
         o.onEvent(sync(true, "partial", 4, { turnId: "t-A" }));
         return hang(o);
       },
       (o) => {
-        // The winning turn's own connection, once the gate releases its send.
-        // Legacy (unstamped) frames so the fresh turn sink folds them as ours.
         o.onEvent({ type: "text", data: "!", seq: 5 });
         o.onEvent({ type: "done", data: null, seq: 6 });
       },
@@ -1658,8 +1556,6 @@ test("a second concurrent send over an observer fails fast — one real send, no
   );
   await waitFor(() => afters.length === 1);
 
-  // First send reaches the (blocked) sendMessage; second fires while it's in
-  // flight — both would have seen the observer as prior before this fix.
   const first = streamTurn(
     engine,
     "Houston/Bo",
@@ -1680,9 +1576,7 @@ test("a second concurrent send over an observer fails fast — one real send, no
     { tuning: fast },
   );
 
-  // The loser refused without sending a second real turn.
   expect(nonces).toHaveLength(1);
-  // The refused duplicate never reached the engine → fail its optimistic bubble.
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: SEND_IN_FLIGHT_MESSAGE,
@@ -1691,11 +1585,9 @@ test("a second concurrent send over an observer fails fast — one real send, no
 
   release();
   await first;
-  expect(nonces).toHaveLength(1); // still exactly one turn sent
-  expect(finals(items)).toHaveLength(1); // and exactly one settle
+  expect(nonces).toHaveLength(1);
+  expect(finals(items)).toHaveLength(1);
 });
-
-// ── Registry isolation (finding 4) ───────────────────────────────────────────
 
 test("two registries are isolated: same key coexists and dispose crosses no boundary", async () => {
   const abortFlags = { a: false, b: false };
@@ -1728,8 +1620,6 @@ test("two registries are isolated: same key coexists and dispose crosses no boun
   const regB = new StreamRegistry();
   const { output } = makeOutput();
 
-  // SAME (agentPath, sessionKey) in two registries: a package-global would have
-  // no-op'd the second attach; instance registries let both stream.
   observeConversation(
     a.engine,
     "Houston/Bo",
@@ -1750,29 +1640,22 @@ test("two registries are isolated: same key coexists and dispose crosses no boun
   );
   await waitFor(() => a.afters.length === 1 && b.afters.length === 1);
 
-  regA.disposeAll(); // aborts A's stream ONLY
+  regA.disposeAll();
   await waitFor(() => abortFlags.a);
   await new Promise((r) => setTimeout(r, 20));
-  expect(abortFlags.b).toBe(false); // B's stream survived A's teardown
+  expect(abortFlags.b).toBe(false);
 
   regB.disposeAll();
   await waitFor(() => abortFlags.b);
 });
-
-// ── Ambiguous send failure (HOU-683) ─────────────────────────────────────────
-// fetch can't distinguish "the POST never reached the engine" from "the engine
-// accepted it but the 202 was lost with the connection" — both throw a bare
-// TypeError (WebKit: "Load failed"). The stream is the arbiter.
 
 test("a transport-failed send whose turn actually started renders and settles normally", async () => {
   const { engine, nonces } = fakeEngine(
     [
       (o) =>
         new Promise<void>((resolve) => {
-          // Delayed so sendMessage has run (and thrown) and the nonce is known.
           setTimeout(() => {
             o.onEvent(sync(false, "", 0));
-            // The engine DID accept the send: our echo arrives with the nonce.
             o.onEvent({
               type: "user",
               data: { content: "Yes.", ts: 1, nonce: nonces[0] },
@@ -1800,17 +1683,14 @@ test("a transport-failed send whose turn actually started renders and settles no
     { tuning: fast },
   );
 
-  // The turn settled from the live frames — never as an error.
   expect(sessionStatuses).not.toContain("error");
   expect(finals(items)).toHaveLength(1);
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([
     { feed_type: "assistant_text", data: "Done", turnId: "t-1" },
   ]);
-  // No misleading transport-error line reached the feed.
   expect(items.map((i) => i.data)).not.toContain("Load failed");
   expect(items.map((i) => i.data)).not.toContain(SEND_LOST_MESSAGE);
-  // Clean `done`, no interaction → `needs_you`.
   expect(board).toEqual(["running", "needs_you"]);
 });
 
@@ -1818,7 +1698,6 @@ test("a transport-failed send with no evidence of the turn settles as lost after
   const { engine } = fakeEngine(
     [
       (o) => {
-        // The engine never saw the send: the conversation stays idle.
         o.onEvent(sync(false, "", 0));
         return hang(o);
       },
@@ -1839,8 +1718,6 @@ test("a transport-failed send with no evidence of the turn settles as lost after
   );
 
   expect(sessionStatuses).toContain("error");
-  // A lost send never landed: its notice must FAIL the optimistic bubble (an
-  // error tick), never let it flip to a "Sent" check.
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: SEND_LOST_MESSAGE,
@@ -1870,23 +1747,13 @@ test("a definitive send rejection (the engine answered) still fails the turn imm
 
   expect(sessionStatuses).toContain("error");
   expect(items).toContainEqual({
-    // A definitive rejection never reached the engine → fail the bubble.
     feed_type: "system_message",
     data: "A turn is already running",
     fails_pending: true,
   });
 });
 
-// ── Pre-settled turn poll (0407aaa0) ─────────────────────────────────────────
-// A turn that COMPLETES before our subscription's first sync leaves a fresh
-// idle sync and no frames ever replayed — the sink used to ignore it as "a turn
-// we're about to trigger" and hang forever. The conclusive-only history poll
-// settles it, without ever erroring a healthy slow turn.
-
 test("a turn that finished before the first sync settles from history via the poll — no hang, no TURN_DIED", async () => {
-  // The turn's frames were emitted before we attached and are never replayed;
-  // the stream only carries a FRESH idle sync, then goes quiet. History holds
-  // the finished reply.
   const history: ChatMessage[] = [
     { role: "user", content: "hi", ts: 1 },
     { role: "assistant", content: "Hello from history", ts: 2 },
@@ -1895,7 +1762,7 @@ test("a turn that finished before the first sync settles from history via the po
     [
       (o) => {
         o.onEvent(sync(false, "", 0));
-        return hang(o); // no user echo, no frames, no running sync ever arrive
+        return hang(o);
       },
     ],
     history,
@@ -1912,7 +1779,6 @@ test("a turn that finished before the first sync settles from history via the po
     { tuning: { ...fast, presettledPollMs: 20 } },
   );
 
-  // Settled conclusively from the persisted reply — never hung, never errored.
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([
     { feed_type: "assistant_text", data: "Hello from history" },
@@ -1923,14 +1789,10 @@ test("a turn that finished before the first sync settles from history via the po
     data: TURN_DIED_MESSAGE,
   });
   expect(sessionStatuses).toEqual(["running", "completed"]);
-  // The board leaves "running" — the card no longer eats Escape.
   expect(board).toEqual(["running", "needs_you"]);
 });
 
 test("a pre-settled ask_user turn recovers its persisted interaction onto the needs_you settle", async () => {
-  // The mid-interview shape under the race: the turn ended asking the user and
-  // completed before we attached. The runtime persists the interaction ON the
-  // reply, so the poll's history settle must carry it onto the terminal persist.
   const interaction: PendingInteraction = {
     steps: [
       {
@@ -1976,16 +1838,12 @@ test("a pre-settled ask_user turn recovers its persisted interaction onto the ne
 });
 
 test("the poll does NOT settle a healthy slow turn (trailing user in history), then frames settle it and cancel the poll", async () => {
-  // History ends on OUR user message the whole time the turn is slow: the reply
-  // hasn't persisted yet. Every poll reload is therefore INCONCLUSIVE — the poll
-  // must re-arm and settle nothing — until the live frames arrive.
   const history: ChatMessage[] = [{ role: "user", content: "hi", ts: 1 }];
   const { engine, historyCalls } = fakeEngine(
     [
       (o) =>
         new Promise<void>((resolve) => {
-          o.onEvent(sync(false, "", 0)); // fresh idle sync → arms the poll
-          // The turn is genuinely slow: its frames land well after a poll tick.
+          o.onEvent(sync(false, "", 0));
           setTimeout(() => {
             o.onEvent({ type: "text", data: "slow reply", seq: 1 });
             o.onEvent({ type: "done", data: null, seq: 2 });
@@ -2007,15 +1865,12 @@ test("the poll does NOT settle a healthy slow turn (trailing user in history), t
     { tuning: { ...fast, presettledPollMs: 25 } },
   );
 
-  // The poll fired at least once (reloaded history) but found it inconclusive —
-  // it never surfaced a premature error against the still-running turn.
   expect(historyCalls.n).toBeGreaterThanOrEqual(1);
   expect(sessionStatuses).not.toContain("error");
   expect(items).not.toContainEqual({
     feed_type: "system_message",
     data: TURN_DIED_MESSAGE,
   });
-  // The live frames settled it normally; the poll was cancelled by the evidence.
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([{ feed_type: "assistant_text", data: "slow reply" }]);
   expect(sessionStatuses).toEqual(["running", "completed"]);
@@ -2041,25 +1896,15 @@ test("dispose clears an armed pre-settled poll — teardown leaves nothing pendi
     presettledPollMs: 20,
   });
 
-  // Arm the poll: an accepted send is its trigger (a fresh idle sync only
-  // reinforces it).
   sink.sendAccepted();
   sink.onFrame(sync(false, "", 0));
-  // Tear down BEFORE the 20ms timer would fire.
   sink.dispose();
   await new Promise((r) => setTimeout(r, 60));
 
-  // The timer was cleared: history was never reloaded, nothing settled.
   expect(historyCalls).toBe(0);
   expect(sink.settled).toBe(false);
 });
 
-// THE STUCK-CHAT REGRESSION: a turn that fails instantly (fail-before-execute,
-// a disconnected local model) publishes its terminal error and clears the pod's
-// replay buffer before our subscription attaches; a flaky SSE hop can then
-// deliver NO frame at all. With the poll gated on a fresh idle sync this hung
-// until the ~6-minute reconnect budget. Now an accepted send alone arms the
-// conclusive poll, which settles from the persisted providerError reply.
 test("accepted send with ZERO frames delivered still settles from history (stuck-chat fix)", async () => {
   const { items, sessionStatuses, output } = makeOutput();
   const sink = new TurnSink({
@@ -2090,7 +1935,6 @@ test("accepted send with ZERO frames delivered still settles from history (stuck
   });
 
   sink.sendAccepted();
-  // No onFrame — the subscription delivered nothing at all.
   await waitFor(() => sink.settled);
 
   expect(sink.settled).toBe(true);
@@ -2098,8 +1942,6 @@ test("accepted send with ZERO frames delivered still settles from history (stuck
   expect(items.some((i) => i.feed_type === "provider_error")).toBe(true);
 });
 
-// The poll must NOT false-settle a turn that is genuinely still running: with
-// no reply persisted yet, the conclusive poll finds nothing and re-arms.
 test("accepted send that is still running does not false-settle from the poll", async () => {
   let historyCalls = 0;
   const { output } = makeOutput();
@@ -2113,7 +1955,6 @@ test("accepted send that is still running does not false-settle from the poll", 
     stop: () => {},
     reloadHistory: async (): Promise<ChatMessage[]> => {
       historyCalls++;
-      // History ends on the user prompt — no reply yet (the turn is running).
       return [{ role: "user", content: "slow one", ts: 1 }];
     },
     historyGuard: (messages) =>
@@ -2122,21 +1963,13 @@ test("accepted send that is still running does not false-settle from the poll", 
   });
 
   sink.sendAccepted();
-  // Let the poll fire a couple of times against a reply-less history.
   await new Promise((r) => setTimeout(r, 80));
 
   expect(sink.settled).toBe(false);
-  expect(historyCalls).toBeGreaterThan(0); // it polled, but never settled
+  expect(historyCalls).toBeGreaterThan(0);
   sink.dispose();
 });
 
-// A turn that fails BEFORE executing may reach us ERROR-FIRST: an older
-// runtime's pre-execution failure path (e.g. a pinned local model whose
-// endpoint was disconnected) published only the stamped `error` frame — no
-// nonce echo — so the sink had no adopted id, classified the error as foreign,
-// and dropped it: the spinner never settled, no error rendered, no reconnect
-// card. Once the send is ACCEPTED, a stamped terminal frame with no adopted id
-// is ours (the one-turn-per-conversation gate).
 test("an accepted send adopts a stamped error-first frame (failed turn settles, never spins)", () => {
   const { items, sessionStatuses, output } = makeOutput();
   const sink = new TurnSink({
@@ -2164,7 +1997,6 @@ test("an accepted send adopts a stamped error-first frame (failed turn settles, 
 
   expect(sink.settled).toBe(true);
   expect(sessionStatuses.at(-1)).toBe("error");
-  // The message reaches the feed — this is what the reconnect-card pattern scans.
   expect(
     items.some(
       (i) =>
@@ -2189,8 +2021,6 @@ test("a stamped error BEFORE the send is accepted stays foreign (replay tail is 
     presettledPollMs: 10_000,
   });
 
-  // No sendAccepted: a stamped error in the pre-send replay tail belongs to a
-  // PREVIOUS turn — adopting it would wrongly fail the turn we haven't sent.
   sink.onFrame({
     type: "error",
     data: { message: "stale failure from an earlier turn" },
@@ -2201,14 +2031,6 @@ test("a stamped error BEFORE the send is accepted stays foreign (replay tail is 
 
   expect(sink.settled).toBe(false);
 });
-
-// ── HOU-1214: a seeded feed meeting a replayed turn never duplicates content ──
-// The cloud race this reproduces: the runtime persists the reply BEFORE it
-// publishes the terminal frame, so a chat-open history read can seed the full
-// transcript while the conversation snapshot still says `running`. The observer
-// that attaches right after then receives a running sync replaying the whole
-// turn (partial text, thinking, tools) over a feed that already shows it — and
-// used to append every piece a second time, permanently ("Correo enviado" ×4).
 
 test("HOU-1214: observing a turn already seeded from history duplicates nothing", async () => {
   const reply = "Correo enviado";
@@ -2241,7 +2063,6 @@ test("HOU-1214: observing a turn already seeded from history duplicates nothing"
   const { engine } = fakeEngine(
     [
       (o) => {
-        // The stale-running snapshot replays the ENTIRE finished turn…
         o.onEvent({
           type: "sync",
           data: {
@@ -2261,7 +2082,6 @@ test("HOU-1214: observing a turn already seeded from history duplicates nothing"
           },
           seq: 5,
         });
-        // …then the terminal frame lands.
         o.onEvent({ type: "done", data: null, turnId: "t-1", seq: 6 });
       },
     ],
@@ -2296,7 +2116,6 @@ test("HOU-1214: observing a turn already seeded from history duplicates nothing"
     acc[f.feed_type] = (acc[f.feed_type] ?? 0) + 1;
     return acc;
   }, {});
-  // One of everything — the replay folded into the seeded entries in place.
   expect(counts).toEqual({
     user_message: 1,
     thinking: 1,
@@ -2307,7 +2126,6 @@ test("HOU-1214: observing a turn already seeded from history duplicates nothing"
   });
   const texts = feedOf().filter((f) => f.feed_type === "assistant_text");
   expect(texts.map((f) => f.data)).toEqual([reply]);
-  // The seeded final_result kept its persisted usage (the context indicator).
   const final = feedOf().find((f) => f.feed_type === "final_result");
   expect((final?.data as { usage: unknown }).usage).toEqual({
     context_tokens: 10,
@@ -2325,8 +2143,6 @@ test("HOU-1214: repeated seed+observe cycles stay duplicate-free (the ×4 accumu
   const store = new ScopeStore();
   const vm = new ConversationVmOutput(store);
 
-  // Every ConversationsChanged invalidation refires the windowed read → seed →
-  // observe. Each observer sees the stale-running snapshot replay the turn.
   for (let round = 0; round < 4; round++) {
     vm.seedHistory("Houston/Bo", "activity-1214b", historyToFeed(messages), {
       earliestLoaded: 0,
@@ -2376,18 +2192,9 @@ test("HOU-1214: repeated seed+observe cycles stay duplicate-free (the ×4 accumu
   ).toEqual([reply]);
 });
 
-// ── Edit-and-resend anchor: the missed-echo turnId stamp (PRODUCT-1217) ──────
-// The optimistic user bubble gets its turnId from the nonce-matched `user`
-// echo. A subscription that attaches a beat late misses that echo (a fresh
-// connect only gets the current sync — no replay without a cursor), and every
-// other adoption path used to leave the bubble id-less forever: the reply
-// rendered fine, but Edit (which anchors a rewind on `turnId`) never mounted
-// until a full reload. Both recovery paths must stamp the bubble.
-
 test("attach mid-turn with the echo missed: the sync adopt stamps the optimistic bubble's turnId", async () => {
   const { engine } = fakeEngine([
     (o) => {
-      // The attach sync names the running turn; the echo is gone for good.
       o.onEvent(sync(true, "Roger", 1, { turnId: "turn-2" }));
       o.onEvent({ type: "text", data: " that", seq: 2, turnId: "turn-2" });
       o.onEvent({ type: "done", data: null, seq: 3, turnId: "turn-2" });
@@ -2428,7 +2235,6 @@ test("attach after the turn finished: the poll's history settle stamps the bubbl
   const { engine } = fakeEngine(
     [
       (o) => {
-        // Idle sync, no frames ever: the turn completed before we attached.
         o.onEvent(sync(false, "", 0));
         return hang(o);
       },
@@ -2453,16 +2259,11 @@ test("attach after the turn finished: the poll's history settle stamps the bubbl
   ) as ConversationVM;
   const bubble = snap.feed.find((f) => f.feed_type === "user_message");
   expect(bubble?.turnId).toBe("turn-3");
-  // The settle's own pushes carry the same identity (HOU-1214 dedup).
   const reply = snap.feed.find((f) => f.feed_type === "assistant_text");
   expect(reply?.turnId).toBe("turn-3");
   expect(snap.sessionStatus).toBe("completed");
 });
 
-// A send that meets a pod mid-restart (the old pod draining, the replacement
-// booting) is refused with the gateway's waking 503. The message is not lost:
-// it is re-sent on the wake ladder with the SAME nonce while the bubble stays
-// pending, and the turn then runs as if the first send had landed.
 test("a waking refusal re-sends the same message until the pod is back", async () => {
   const waking = () =>
     new EngineError(
@@ -2476,8 +2277,6 @@ test("a waking refusal re-sends the same message until the pod is back", async (
   const { engine, nonces } = fakeEngine(
     [
       async (o) => {
-        // The pod is back only once the third send lands; frames before
-        // that would settle the turn under the re-send.
         o.onEvent(sync(false, "", 0));
         await waitFor(() => sends() === 3);
         o.onEvent({ type: "text", data: "Back", seq: 1 });
@@ -2503,7 +2302,7 @@ test("a waking refusal re-sends the same message until the pod is back", async (
   );
 
   expect(nonces).toHaveLength(3);
-  expect(new Set(nonces).size).toBe(1); // one message, never doubled
+  expect(new Set(nonces).size).toBe(1);
   expect(items.filter((i) => i.feed_type === "system_message")).toEqual([]);
   expect(finals(items)).toHaveLength(1);
   expect(board).toEqual(["running", "needs_you"]);
@@ -2535,7 +2334,7 @@ test("a waking refusal past the ladder settles like any rejected send", async ()
     },
   );
 
-  expect(nonces).toHaveLength(2); // the send, one re-send, then the verdict
+  expect(nonces).toHaveLength(2);
   expect(sessionStatuses.at(-1)).toBe("error");
   expect(items.map((i) => i.data)).toContain("engine unavailable");
 });
@@ -2561,11 +2360,6 @@ test("a non-waking refusal is never re-sent", async () => {
   expect(nonces).toHaveLength(1);
 });
 
-// The E2B tail (staging 2026-10-02): the previous turn's reply has streamed but
-// its sandbox still holds the conversation's claim while it writes back, so the
-// follow-up's send meets `409 turn running`. The message is held, never failed:
-// the bubble stays pending and the SAME message re-sends once the stream shows
-// the running turn ended.
 test("a send refused as turn running is held and re-sent when the running turn ends", async () => {
   let sends = () => 0;
   let nonceAt = (_i: number): string | undefined => undefined;
@@ -2574,7 +2368,6 @@ test("a send refused as turn running is held and re-sent when the running turn e
       async (o) => {
         o.onEvent(sync(true, "Earlier reply", 9, { turnId: "t-prev" }));
         await waitFor(() => sends() === 1);
-        // The previous turn's terminal frame: the claim is about to free.
         o.onEvent({ type: "done", data: null, turnId: "t-prev", seq: 10 });
         await waitFor(() => sends() === 2);
         o.onEvent({
@@ -2601,18 +2394,14 @@ test("a send refused as turn running is held and re-sent when the running turn e
     "follow-up",
     output,
     registry,
-    // A fallback far beyond the test's patience: the re-send must ride the
-    // stream's evidence, not the timer.
     { tuning: { ...fast, sendTurnRunningRetryDelaysMs: [60_000] } },
   );
 
   expect(nonces).toHaveLength(2);
-  expect(new Set(nonces).size).toBe(1); // one message, never doubled
-  // Never an error: no raw "turn running", no failed bubble, no error status.
+  expect(new Set(nonces).size).toBe(1);
   expect(items.filter((i) => i.feed_type === "system_message")).toEqual([]);
   expect(items.some((i) => i.fails_pending)).toBe(false);
   expect(sessionStatuses).not.toContain("error");
-  // The previous turn's frames were never folded into this one.
   expect(items.some((i) => String(i.data ?? "").includes("Earlier"))).toBe(
     false,
   );
@@ -2622,9 +2411,6 @@ test("a send refused as turn running is held and re-sent when the running turn e
   expect(board).toEqual(["running", "needs_you"]);
 });
 
-// The terminal frame lands before the sandbox releases the claim (done at
-// 21:33:56.58Z, claim freed at .77Z), so the evidence-driven re-send can meet
-// the same refusal once more. The fallback ladder carries it home.
 test("a re-send that still meets turn running retries on the fallback ladder", async () => {
   let sends = () => 0;
   let nonceAt = (_i: number): string | undefined => undefined;
@@ -2679,13 +2465,11 @@ test("a held re-send whose echo beats its own 202 still renders its reply", asyn
     async sendMessage(_id: string, _t: string, opts?: { nonce?: string }) {
       nonces.push(opts?.nonce);
       if (nonces.length === 1) {
-        // Refused, and the previous turn ends right after.
         setTimeout(() => {
           emit({ type: "done", data: null, turnId: "t-prev", seq: 10 });
         }, 1);
         throw turnRunningRefusal();
       }
-      // The runtime streams the echo and the reply before the 202 lands.
       emit({
         type: "user",
         data: { content: "hi", ts: 1, nonce: opts?.nonce },
@@ -2728,7 +2512,6 @@ test("a held re-send that fails in transport still adopts its running turn", asy
         await waitFor(() => sends() === 1);
         o.onEvent({ type: "done", data: null, turnId: "t-prev", seq: 10 });
         await waitFor(() => sends() === 2);
-        // The 202 and the echo were lost; a resync shows our turn running.
         o.onEvent(sync(true, "Hal", 12, { turnId: "t-new", resync: true }));
         o.onEvent({ type: "text", data: "lo", turnId: "t-new", seq: 13 });
         o.onEvent({ type: "done", data: null, turnId: "t-new", seq: 14 });
@@ -2759,15 +2542,12 @@ test("a held re-send that fails in transport still adopts its running turn", asy
   ).toBe("Hallo");
 });
 
-// After a hold, the stream carried the turn we waited on while ours had no
-// id. Its late terminal frame must never settle ours (review of #1689).
 test("a held re-send lost in transport never adopts the awaited turn's done", async () => {
   let sends = () => 0;
   const { engine, nonces } = fakeEngine(
     [
       async (o) => {
         o.onEvent(sync(true, "Earlier reply", 9, { turnId: "t-prev" }));
-        // The fallback re-send dies in transport BEFORE t-prev ends.
         await waitFor(() => sends() === 2);
         await new Promise((r) => setTimeout(r, 10));
         o.onEvent({ type: "done", data: null, turnId: "t-prev", seq: 10 });
@@ -2796,7 +2576,6 @@ test("a held re-send lost in transport never adopts the awaited turn's done", as
     },
   );
 
-  // Nothing landed: the message fails visibly, never a silent empty reply.
   expect(finals(items)).toHaveLength(0);
   expect(sessionStatuses.at(-1)).toBe("error");
   expect(items).toContainEqual(
@@ -2813,7 +2592,6 @@ test("a held re-send accepted before the awaited turn's done renders its own rep
         o.onEvent(sync(true, "Earlier reply", 9, { turnId: "t-prev" }));
         await waitFor(() => sends() === 2);
         await new Promise((r) => setTimeout(r, 10));
-        // The claim freed and the 202 landed; t-prev's done reaches us late.
         o.onEvent({ type: "done", data: null, turnId: "t-prev", seq: 10 });
         o.onEvent({
           type: "user",
@@ -2881,13 +2659,9 @@ test("a hold that outlives its budget settles with the typed send_busy notice", 
       fails_pending: true,
     }),
   );
-  // The wire's raw reason never reaches the chat.
   expect(items.some((i) => i.data === "turn running")).toBe(false);
 });
 
-// A pool turn accepted after a hold can fail before it ever echoes (the
-// gateway writes the terminal error the worker never logged). The held send
-// adopts no stray terminal frame, so the 202's turn id is what binds it.
 test("a held re-send whose turn fails before echoing settles on the 202's turn id", async () => {
   let emit: (f: WireFrame) => void = () => {};
   const nonces: Array<string | undefined> = [];

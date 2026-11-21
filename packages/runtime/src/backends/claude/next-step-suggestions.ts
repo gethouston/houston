@@ -17,7 +17,6 @@ const SuggestionCall = z.object({
   name: z.literal("mcp__houston__suggest_actions"),
 });
 
-/** Only native Claude history can make a resumed model call its former tool. */
 export function hasPreviousSuggestionCalls(
   layout: ClaudeLayout,
   conversationId: string,
@@ -33,8 +32,6 @@ export function hasPreviousSuggestionCalls(
   try {
     text = readFileSync(transcript, "utf8");
   } catch (error) {
-    // Removed mid-read or too large for one string: the turn still runs, with
-    // the tool absent as in a fresh chat.
     console.warn(
       "[claude] could not scan the transcript for suggestions:",
       error,
@@ -47,7 +44,6 @@ export function hasPreviousSuggestionCalls(
     try {
       parsed = JSON.parse(line);
     } catch {
-      // A line torn by a quit mid-append stays in the file; skip it.
       continue;
     }
     const entry = AssistantEntry.safeParse(parsed);
@@ -62,11 +58,6 @@ export function hasPreviousSuggestionCalls(
   return false;
 }
 
-/**
- * A resumed model sees success and no offers are recorded. After a closing
- * message it still ends the turn like the real tool, because the SDK would
- * otherwise call the model again and it repeats its reply.
- */
 export function makeSilentSuggestActionsTool() {
   return {
     ...makeSuggestActionsTool(),

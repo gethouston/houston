@@ -11,8 +11,6 @@ test("the runs doc publishes NORMALIZED items, matching the standing projector",
   const workspaceDir = await mkdtemp(join(tmpdir(), "turn-runs-doc-"));
   const runsDir = join(workspaceDir, ".houston", "routine_runs");
   await mkdir(runsDir, { recursive: true });
-  // One valid run missing its defaults, one malformed entry the pod read
-  // drops. The doc must match the pod-served answer, not the raw file.
   await writeFile(
     join(runsDir, "routine_runs.json"),
     JSON.stringify([

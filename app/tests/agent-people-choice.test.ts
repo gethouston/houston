@@ -39,7 +39,6 @@ const CARA = member({
 });
 const ROSTER = [SELF, BOB, CARA];
 
-/** The everyone sentinel: assignee fields present, but empty. */
 const EVERYONE = agent({ id: "e", assignments: [], assignedUserIds: [] });
 
 const PICKED = agent({
@@ -79,7 +78,6 @@ describe("everyoneAssignments", () => {
     const first = everyoneAssignments();
     const second = everyoneAssignments();
     deepStrictEqual(first, []);
-    // Never a shared mutable constant: one caller's write must not leak.
     ok(first !== second);
   });
 });
@@ -131,7 +129,6 @@ describe("materializeRoster — switching to only specific people", () => {
 
 describe("everyoneChangesAssignments — the confirm gate", () => {
   it("true when someone would gain access", () => {
-    // Cara is not on the roster today; the sentinel would let her in.
     strictEqual(everyoneChangesAssignments(input(PICKED)), true);
   });
 
@@ -183,7 +180,6 @@ describe("everyoneChangesAssignments — the confirm gate", () => {
 });
 
 describe("everyoneSwitchConfirm — which confirm the switch must show", () => {
-  /** Cara is an org admin, so she can hold a Manager seat without being owner. */
   const CARA_MANAGES = agent({
     id: "cm",
     assignments: [
@@ -194,8 +190,6 @@ describe("everyoneSwitchConfirm — which confirm the switch must show", () => {
   });
 
   it("warns about SELF-LOCKOUT when the viewer is a non-owner manager", () => {
-    // The empty sentinel cannot carry a Manager grant, so Cara demotes HERSELF
-    // and loses this very page. That is not a generic "everyone gets access".
     strictEqual(
       everyoneSwitchConfirm({
         agent: CARA_MANAGES,

@@ -6,7 +6,6 @@ import { tauriIntegrations, tauriOrg } from "../lib/tauri";
 import { useAgentStore } from "../stores/agents";
 import { useCapabilities } from "./use-capabilities";
 
-/** Warm screen-defining reads after the host and initial agent load settle. */
 export function useScreenPrefetch() {
   const { capabilities } = useCapabilities();
   const agentsLoaded = useAgentStore((state) => state.loaded);
@@ -30,9 +29,6 @@ export function useScreenPrefetch() {
           queryFn: () => tauriIntegrations.toolkits("composio"),
           staleTime: 60 * 60_000,
         });
-        // The same transport (and key) the Integrations page reads through:
-        // agent-less surfaces ride the first agent's per-agent route, the only
-        // custom form the hosted gateway proxies (HOU-823).
         const customAgentId = useAgentStore.getState().agents[0]?.id;
         void queryClient.prefetchQuery({
           queryKey: customAgentId

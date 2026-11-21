@@ -36,7 +36,6 @@ describe("providerDescription", () => {
   });
 
   it("resolves a regional *-cn variant to its parent's description", () => {
-    // Parent lives in the overrides (minimax) and in the map (moonshotai).
     strictEqual(
       providerDescription("minimax-cn"),
       PROVIDER_OVERRIDES.minimax.description,
@@ -89,13 +88,6 @@ describe("providerDescription", () => {
   });
 
   it("retired providers are dropped from the catalog, not merely uncurated", () => {
-    // 2026-07 provider QA: these cards are gone from every connect/pick
-    // surface. The drop is presentation-only (legacy conversations still run),
-    // so the ids must sit in DROP_PI_PROVIDERS and carry no override entry.
-    // The Cloudflare pair is dropped for a different reason — connecting needs
-    // the account/gateway id in the URL, which the single-key dialog can never
-    // collect — but the mechanics are identical (revisit with multi-field
-    // connect).
     for (const id of [
       "ant-ling",
       "kimi-coding",
@@ -116,9 +108,6 @@ describe("providerDescription", () => {
   });
 
   it("azure connects with an endpoint field, not a bare key (PRODUCT-1477)", () => {
-    // Azure's base URL is per-resource, so it must NOT sit in the drop list
-    // (that was the stopgap) and MUST be flagged for the endpoint-aware
-    // connect dialog.
     ok(!DROP_PI_PROVIDERS.has("azure-openai-responses"));
     ok(API_KEY_ENDPOINT_PROVIDERS.has("azure-openai-responses"));
     ok(PROVIDER_OVERRIDES["azure-openai-responses"]?.apiKeyUrl);
@@ -131,9 +120,6 @@ describe("providerDescription", () => {
 
 describe("api-key overrides", () => {
   it("every api-key override carries the key-dashboard URL", () => {
-    // An api-key connect dialog without `apiKeyUrl` strands the user with no
-    // "Get your API key" button (the Mistral/Z.ai reports): if we curate an
-    // api-key provider at all, we must curate where its key comes from.
     for (const [id, override] of Object.entries(PROVIDER_OVERRIDES)) {
       if (override.auth === "oauth" || override.auth === "openaiCompatible")
         continue;

@@ -1,6 +1,3 @@
-// An identical reload keeps the tree's identity, so the share image is not
-// drawn again for a chart that did not change. Hook mounted in jsdom.
-
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import "./support/dom-env.ts";

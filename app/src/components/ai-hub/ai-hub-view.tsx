@@ -37,7 +37,6 @@ import { useModelFacetState } from "./use-model-facet-state";
 
 const EMPTY_MODELS: CatalogModel[] = [];
 
-/** Two-mode AI provider and model catalog with one shared query. */
 export function AiHubView() {
   const { t } = useTranslation("aiHub");
   const { catalog, isLoading } = useHubCatalog();
@@ -53,18 +52,11 @@ export function AiHubView() {
   const { owned, connectedMatches, availableMatches, searching } =
     providerGroups;
   const modelState = useModelFacetState(catalog?.models ?? EMPTY_MODELS, query);
-  // Query narrowing came with `availableMatches`; the billing facet applies
-  // here so the Available heading count and the grid can never disagree.
   const shownProviders = useMemo(
     () => filterByQuickFilter(availableMatches, providerFilter),
     [availableMatches, providerFilter],
   );
 
-  // While a modal is up, freeze the page scroller behind it. Radix's scroll
-  // lock only locks <body>; this inner region kept its own live scrollbar,
-  // which sat next to the modal's as a second, draggable vertical scroll.
-  // Hidden boxes are still scroll containers, so `scrollbar-gutter: stable`
-  // keeps the gutter reserved and the scroll offset holds.
   const modalOpen = openProvider !== null || openModel !== null;
 
   const tabs: CatalogShellTab[] | null = catalog

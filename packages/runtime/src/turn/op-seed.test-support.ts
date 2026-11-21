@@ -16,8 +16,6 @@ import {
 import type { SeedOp } from "./op-grammar-seed";
 import type { OpRequest } from "./parse-op-request";
 
-/** Seed-op test doubles: a generation-aware store and the pod-store docs. */
-
 export const PREFIX = "ws/acme/ledger";
 
 export interface Upload {
@@ -25,11 +23,6 @@ export interface Upload {
   ifGenerationMatch?: string;
 }
 
-/**
- * LocalDirStore with the CAS a pool store enforces: a create-only upload
- * (`ifGenerationMatch: "0"`) over an existing object is a 412. `beforeUpload`
- * lets a test land a racing writer's object first.
- */
 export function generationStore() {
   const root = mkdtempSync(join(tmpdir(), "op-seed-store-"));
   const inner = new LocalDirStore(root);
@@ -37,8 +30,6 @@ export function generationStore() {
   const deletes: string[] = [];
   const downloads: string[] = [];
   const hooks: { beforeUpload?: (key: string) => void } = {};
-  // Generations as a pool store mints them: an object written outside the
-  // store's own writes (put, a racing writer) reads as generation "1".
   const generations = new Map<string, number>();
   const generationOf = (key: string) =>
     existsSync(join(root, key)) ? String(generations.get(key) ?? 1) : "0";
@@ -74,11 +65,9 @@ export function generationStore() {
       generations.delete(key);
     },
   };
-  /** Put an object in the store as some earlier writer left it. */
   const put = (rel: string, content: string) => {
     const file = join(root, PREFIX, ...rel.split("/"));
     const key = `${PREFIX}/${rel}`;
-    // Another writer's object: a new generation the op's reads never saw.
     const next = Number(generationOf(key)) + 1;
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, content);
@@ -97,8 +86,6 @@ export interface DocPut {
   headers: Headers;
 }
 
-/** The pod-store doc route: a GET finds only the `existing` families, every
- *  PUT answers `status`; `"throw"` makes every PUT a network failure. */
 export function docRoute(
   status: number | "throw" = 200,
   existing: string[] = [],

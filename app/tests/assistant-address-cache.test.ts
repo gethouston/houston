@@ -8,12 +8,6 @@ import {
   resetCacheForSpaceChange,
 } from "../src/lib/space-cache.ts";
 
-// The assistant's address (`GET /v1/assistant`) is fixed for a person in a
-// space: the gateway derives it from who they are, and the conversation id is a
-// constant. Asking again costs a gateway hold on the assistant's pod, which
-// wakes it. So the address is asked once per space per session, and only
-// identity or membership can make a cached one wrong.
-
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });

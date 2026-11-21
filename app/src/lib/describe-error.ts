@@ -1,22 +1,7 @@
-// One readable line for any rejection, for logs and Sentry titles.
-// Dependency-free so it is node-testable directly
-// (app/tests/error-report-describe.test.ts).
-
-// Short scalar fields safe to name in a report title. Anything else is only
-// listed by key: arbitrary payloads can carry personal data into Sentry.
 const SCALAR_FIELDS = ["kind", "code", "status", "name"] as const;
 const MAX_FIELD = 80;
 const MAX_KEYS = 12;
 
-/**
- * The diagnostic a rejection carries, whatever its shape. The shell's typed
- * rejections (`{kind, message}`: file ops, URL opens) are plain objects, and
- * `String(obj)` is "[object Object]": every report of one read exactly that
- * and lost the OS text (HOUSTON-APP-53A). An object with a string `message`
- * reads as `kind: message` when it also has a string `kind`; any other object
- * is summarized as a few whitelisted scalar fields plus its key names, never
- * serialized whole.
- */
 export function describeError(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === "string") return err;

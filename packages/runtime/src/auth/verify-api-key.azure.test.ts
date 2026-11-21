@@ -9,12 +9,6 @@ function restoreEnv(name: string, value: string | undefined): void {
 }
 
 test("azure verify aims the REAL request at the pasted endpoint (PRODUCT-1477)", async () => {
-  // Regression for the endpoint silently dropping before pi's azure client:
-  // pi's completeSimple path rebuilds options through an allowlist that
-  // forwards `env` but not `azureBaseUrl`, so passing only the option made
-  // every azure verify throw "base URL is required" before any HTTP. This
-  // test runs the UNMOCKED verify path with an injected transport and pins
-  // where the probe actually connects.
   const prevDataDir = process.env.HOUSTON_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), "houston-azure-verify-"));
   process.env.HOUSTON_DATA_DIR = dataDir;
@@ -34,8 +28,6 @@ test("azure verify aims the REAL request at the pasted endpoint (PRODUCT-1477)",
       );
     };
 
-    // A rejected key must reject the connect — but through a REAL request to
-    // the pasted endpoint, never through a pre-request "base URL" throw.
     await expect(
       verifyApiKey("azure-openai-responses", "bad-key", {
         azureBaseUrl: "https://acme.openai.azure.com",
@@ -45,7 +37,6 @@ test("azure verify aims the REAL request at the pasted endpoint (PRODUCT-1477)",
 
     expect(urls.length).toBeGreaterThan(0);
     for (const url of urls) {
-      // pi appends its /openai/v1 base path to the bare resource host.
       expect(url).toMatch(/^https:\/\/acme\.openai\.azure\.com\/openai\/v1\//);
     }
   } finally {

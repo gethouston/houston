@@ -10,13 +10,6 @@ import { afterEach, expect, test } from "vitest";
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/**
- * Tranche-2 pool ops (PRODUCT-1469): portable export/preview, the
- * desktop→cloud migration, custom integrations and the openai-compatible
- * endpoint connect — every remaining route a sleeping agent's pod used to
- * wake for.
- */
-
 const servers: Server[] = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();
@@ -212,7 +205,6 @@ test("a migration import without runtime entries applies on the worker (bodyBase
   expect(synced.some((k) => k.endsWith("/files/notes.txt"))).toBe(true);
 });
 
-/** The gateway double: heartbeat + credential PUT + shared-endpoint PUT/DELETE. */
 function fakeGateway(recorded: {
   credentials: { path: string; body: string }[];
   shared: { method: string; ownerOnly: string }[];
@@ -262,19 +254,16 @@ test("an endpoint connect writes custom-endpoint.json, pushes the key, and publi
   );
   expect(json.status, JSON.stringify(json)).toBe(200);
   expect(JSON.parse(json.body as string)).toEqual({ ok: true });
-  // The endpoint config synced back beside settings.json.
   const synced = await store.list(prefix);
   expect(
     synced.some((k) => k.endsWith("/.houston/runtime/custom-endpoint.json")),
   ).toBe(true);
-  // The key landed in the credential store under the provider id...
   expect(recorded.credentials).toHaveLength(1);
   expect(recorded.credentials[0]?.path).toContain("/openai-compatible");
   expect(JSON.parse(recorded.credentials[0]?.body ?? "{}")).toMatchObject({
     kind: "api_key",
     access: "sk-local",
   });
-  // ...and the org share was published.
   expect(recorded.shared).toEqual([{ method: "PUT", ownerOnly: "" }]);
 });
 
@@ -298,8 +287,6 @@ test("an unshared endpoint connect withdraws the owner's share; a private URL ne
   );
   expect(json.status).toBe(200);
   expect(recorded.shared).toEqual([{ method: "DELETE", ownerOnly: "1" }]);
-  // Managed-cloud egress guard: a localhost endpoint answers the pod's own
-  // 400 reason — nothing is written, nothing pushed.
   ({ json } = await postOp(
     base,
     opBody(`${gateway}/hb`, {
@@ -312,7 +299,7 @@ test("an unshared endpoint connect withdraws the owner's share; a private URL ne
   expect(String(JSON.parse(json.body as string).error)).toContain(
     "public HTTPS",
   );
-  expect(recorded.credentials).toHaveLength(1); // still only the first connect
+  expect(recorded.credentials).toHaveLength(1);
 });
 
 test("an azure api-key connect validates the endpoint on the worker (no more dropped-field 400s)", async () => {
@@ -324,8 +311,6 @@ test("an azure api-key connect validates the endpoint on the worker (no more dro
       runTurn: noopTurn,
     }),
   );
-  // A malformed endpoint fails the offline preconditions with azure's own
-  // reason — proving the endpoint field now rides the op at all.
   const { json } = await postOp(
     base,
     opBody(await heartbeatOK(), {
@@ -344,8 +329,6 @@ test("an azure api-key connect validates the endpoint on the worker (no more dro
 
 test("custom-integration definitions list runs on the worker over the store-root file", async () => {
   const { storeRoot } = await seedAgent();
-  // A pre-existing definitions file at the STORE ROOT (beside workspaces/):
-  // the op must read THIS file, not an empty default.
   writeFileSync(
     join(storeRoot, "ws/w1/agent-1", "custom-integrations.json"),
     JSON.stringify({
@@ -413,9 +396,6 @@ test.each([
   } else expect(json.decline).toBe(true);
 });
 
-// Minimal, valid OpenAPI 3.0 document — enough for the executor to compile
-// (title/servers/paths with operationIds). No security scheme, so
-// `auth: "none"` connects immediately, no network.
 const OPENAPI_SPEC = JSON.stringify({
   openapi: "3.0.0",
   info: { title: "Widgets", version: "1.0.0" },
@@ -458,12 +438,9 @@ test("adding a keyless custom integration compiles on the worker, syncs the stor
   };
   expect(view.slug).toBe("widgets");
   expect(view.state.status).toBe("active");
-  // The definitions file lives at the STORE-PREFIX ROOT (beside workspaces/),
-  // and the widened include carried it back.
   const synced = await store.list(prefix);
   expect(synced, synced.join("\n")).toContain(
     "ws/w1/agent-1/custom-integrations.json",
   );
-  // The mutation announces like the pod's own emit.
   expect(json.events).toContain("CustomIntegrationsChanged");
 });

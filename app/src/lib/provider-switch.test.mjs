@@ -6,7 +6,6 @@ import {
   REPLAY_FIT_FRACTION,
 } from "./provider-switch.ts";
 
-// With REPLAY_FIT_FRACTION = 0.8, a 258_400-token window has a 206_720 cutoff.
 const GPT_WINDOW = 258_400;
 const SONNET_WINDOW = 200_000;
 
@@ -33,7 +32,7 @@ test("decideHandoffMode: summarizes when the conversation exceeds the fit fracti
 });
 
 test("decideHandoffMode: respects the exact fit boundary", () => {
-  const cutoff = SONNET_WINDOW * REPLAY_FIT_FRACTION; // 160_000
+  const cutoff = SONNET_WINDOW * REPLAY_FIT_FRACTION;
   assert.equal(
     decideHandoffMode({
       currentContextTokens: cutoff,
@@ -53,7 +52,6 @@ test("decideHandoffMode: respects the exact fit boundary", () => {
 });
 
 test("decideHandoffMode: uses the larger of reported vs estimated size", () => {
-  // Reported usage is tiny but the text estimate proves it's big → summarize.
   assert.equal(
     decideHandoffMode({
       currentContextTokens: 1_000,
@@ -81,10 +79,9 @@ test("estimateConversationTokens: ~4 chars/token over user + assistant text only
   const items = [
     { feed_type: "user_message", data: "a".repeat(400) },
     { feed_type: "assistant_text", data: "b".repeat(400) },
-    // tool noise is excluded (the engine drops it from the replay too).
     { feed_type: "tool_call", data: { name: "x", input: {} } },
     { feed_type: "final_result", data: { result: "ok" } },
   ];
-  assert.equal(estimateConversationTokens(items), 200); // 800 chars / 4
+  assert.equal(estimateConversationTokens(items), 200);
   assert.equal(estimateConversationTokens(undefined), 0);
 });

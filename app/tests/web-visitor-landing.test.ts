@@ -1,7 +1,3 @@
-// The visitor id the marketing site hands the web app in the link it builds
-// (`website/src/assets/houston-analytics.js` → `appLink`). The browser halves —
-// `window.location`, `history.replaceState`, `sessionStorage` — are injected,
-// so the whole rule is driven here with no DOM.
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
@@ -58,9 +54,7 @@ describe("the visitor id a marketing link carries", () => {
     for (const value of [
       "",
       "not-an-id",
-      // v1: the gateway stores v4 and refuses the batch over anything else.
       "2b0f7a1c-9d3e-1f5a-8b6c-1d2e3f4a5b6c",
-      // Variant nibble outside 8-b.
       "2b0f7a1c-9d3e-4f5a-fb6c-1d2e3f4a5b6c",
       `${VISITOR}x`,
       `${VISITOR}&hv=${VISITOR}`,
@@ -73,8 +67,6 @@ describe("the visitor id a marketing link carries", () => {
   });
 
   it("carries no id for a visit that did not come from the site", () => {
-    // What a Do Not Track visitor's link looks like: `appLink` appends nothing
-    // when there is no id, so the app simply has none.
     const h = harness({ href: "https://app.test/home?utm_source=x" });
     strictEqual(h.captured, null);
     strictEqual(h.stored(), null);
@@ -97,7 +89,6 @@ describe("the visitor id a marketing link carries", () => {
   });
 
   it("ignores a stored value that is not an id", () => {
-    // Another tenant of the same origin, or a hand-edited entry.
     const h = harness({ href: "https://app.test/", stored: "tampered" });
     strictEqual(h.captured, null);
   });

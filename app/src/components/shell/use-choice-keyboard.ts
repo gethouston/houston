@@ -6,7 +6,6 @@ import {
 } from "./choice-grid-model";
 import { choiceOwnsKey, readChoiceKeyScope } from "./choice-key-scope";
 
-/** Marks a chip as a stop of the question's arrow grid. */
 export const CHIP_ATTR = "data-choice-chip";
 
 function isTypingSurface(node: EventTarget | null): boolean {
@@ -17,11 +16,6 @@ function isTypingSurface(node: EventTarget | null): boolean {
   );
 }
 
-/**
- * Arrow-key movement over every chip of a question, measured live: the rows
- * only exist once the run has wrapped, and they change with the dialog's
- * width, so they are read at the moment of the keypress rather than tracked.
- */
 export function useChipGrid() {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -47,17 +41,6 @@ export function useChipGrid() {
   return { ref, onKeyDown };
 }
 
-/**
- * Typing anywhere on a searchable question goes to the search field, carrying
- * the character that started it. Filtering a long list is the reflex a keyboard
- * user arrives with, and making them find the field first is the thing that
- * makes a picker feel slow.
- *
- * Listens on the document because the keystroke that matters most is the one
- * fired with nothing focused, which never reaches a React handler — and asks
- * `choice-key-scope.ts` whether the question owns that key, so a letter typed
- * into the command palette is not stolen into the filter behind it.
- */
 export function useTypeToSearch(
   step: RefObject<HTMLElement | null>,
   enabled: boolean,
@@ -70,7 +53,6 @@ export function useTypeToSearch(
     if (!enabled) return;
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      // Space activates the focused chip, and a lone modifier is not a letter.
       if (event.key.length !== 1 || event.key === " ") return;
       if (isTypingSurface(event.target)) return;
       if (!choiceOwnsKey(readChoiceKeyScope(step.current, event))) return;
@@ -82,20 +64,6 @@ export function useTypeToSearch(
   }, [enabled, step]);
 }
 
-/**
- * Escape belongs to the question before it belongs to the dialog around it:
- * clearing a query, or leaving a typed answer, must never also throw away the
- * questions behind it. The handler says whether it took the key; a step with
- * nothing left to undo hands it back, and the dialog closes as it always did.
- *
- * Listens on the WINDOW in the capture phase, which is the one place that runs
- * before Radix's dismissable layer — it reads Escape from a capture listener
- * on the document, so a handler on the field itself meets a dialog that is
- * already gone, and one registered later on the document loses the race by the
- * order it happened to mount in. Running that early is exactly why it must ask
- * `choice-key-scope.ts` first: whatever opened ON TOP of the question closes
- * on Escape before the question undoes anything of its own.
- */
 export function useEscapeWithin(
   step: RefObject<HTMLElement | null>,
   onEscape: () => boolean,
@@ -106,7 +74,6 @@ export function useEscapeWithin(
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      // An IME's Escape abandons the characters being composed, nothing more.
       if (event.isComposing) return;
       if (!choiceOwnsKey(readChoiceKeyScope(step.current, event))) return;
       if (!handler.current()) return;
@@ -118,11 +85,6 @@ export function useEscapeWithin(
   }, [step]);
 }
 
-/**
- * Leaving a state hands focus back to the control that opened it — and that
- * control often only exists again once the leaving has rendered, so the focus
- * waits for the commit rather than reaching for a button that is not there.
- */
 export function useLeaveWithFocus(
   active: boolean,
   returnTo: RefObject<HTMLElement | null>,

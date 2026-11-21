@@ -8,20 +8,12 @@ import { customKindBadgeKey } from "./custom-integrations-model";
 
 interface CustomIntegrationRowProps {
   integration: CustomIntegrationView;
-  /** Row-body click: open the integration's detail card (HOU-980). */
   onOpen: (integration: CustomIntegrationView) => void;
   onEnterKey: (integration: CustomIntegrationView) => void;
-  /** Pending OAuth integration (PRODUCT-1172): open the browser sign-in. */
   onSignIn: (integration: CustomIntegrationView) => void;
   onRemove: (integration: CustomIntegrationView) => void;
 }
 
-/** The status line under the name: "Connected" (active — the action COUNT is
- *  deliberately not shown here: discovery isn't deterministic enough yet for
- *  a number to read as a promise; the detail card still shows it), a
- *  needs-key prompt (pending), or the error message (error, tinted). Spans
- *  (not <p>) because the line renders inside the row-body <button>, phrasing
- *  content only. */
 function StatusLine({ integration }: { integration: CustomIntegrationView }) {
   const { t } = useTranslation("integrations");
   const state = integration.state;
@@ -51,17 +43,6 @@ function StatusLine({ integration }: { integration: CustomIntegrationView }) {
   );
 }
 
-/**
- * One custom integration on the Integrations page, in the flat "plane" row
- * language shared with the category catalog: a leading letter avatar for visual
- * rhythm, name + a connection-type badge ("API" / "MCP server") on the top line,
- * a status line under it, and always-visible trailing actions — an "Enter key"
- * button while it waits on a secret, plus a Remove button (no hover gating). The
- * row BODY is the open affordance (the same grammar as the catalog rows: click
- * for the detail card); the trailing buttons stay separate targets. The row is
- * transparent at rest with a full-row hover fill, no bordered card or chip.
- * Presentational; the parent owns the dialogs.
- */
 export function CustomIntegrationRow({
   integration,
   onOpen,
@@ -94,10 +75,6 @@ export function CustomIntegrationRow({
         />
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-ink">
-            {/* The same presence dot the catalog's installed rows wear —
-                connected state must read without opening the detail card. No
-                srLabel: the status line below already SAYS "Connected", and a
-                second (visually hidden) copy doubled the announcement. */}
             {integration.state.status === "active" && (
               <StatusDot status="active" />
             )}

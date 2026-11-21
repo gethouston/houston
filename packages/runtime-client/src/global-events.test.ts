@@ -4,13 +4,6 @@ import { afterEach, expect, test } from "vitest";
 import { streamGlobalEvents } from "./global-events";
 import { WAKE_SETTLE_MS } from "./global-events-contract";
 
-/**
- * The global-events loop against a REAL local SSE server: each test scripts the
- * server per connection (frames, drops, refusals) and asserts what the caller
- * observes (parsed frames, reconnect count, the auth/query each attempt carried,
- * and which hooks fired). Mirrors `resume.test.ts`'s harness.
- */
-
 type Conn = {
   res: ServerResponse;
   query: URLSearchParams;
@@ -64,7 +57,6 @@ async function startServer(
   return { baseUrl: `http://127.0.0.1:${port}`, connections };
 }
 
-/** A near-instant reconnect wait that still respects abort (no fixed 1500ms). */
 const instant = (_ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve) => {
     if (signal.aborted) return resolve();
@@ -82,7 +74,7 @@ const instant = (_ms: number, signal: AbortSignal) =>
 test("reconnects after each drop; onConnect fires per connect; onEvent gets parsed frames", async () => {
   const h = await startServer((conn, i) => {
     conn.send({ type: "AgentsChanged", n: i });
-    conn.res.end(); // server closes → drives a reconnect
+    conn.res.end();
   });
   const ac = new AbortController();
   const events: unknown[] = [];
@@ -118,7 +110,7 @@ test("url() is re-invoked per connect so a rotated query token stays current", a
     fetch,
     signal: ac.signal,
     sleep: (ms, signal) => {
-      token = "t1"; // a refresh lands between attempts
+      token = "t1";
       return instant(ms, signal);
     },
     onConnect: () => {
@@ -160,8 +152,8 @@ test("a 401 with onUnauthorized notifies, does NOT read/connect, then reconnects
   });
 
   expect(unauthorized).toBe(1);
-  expect(connects).toBe(1); // the refused attempt is not a connect
-  expect(errors).toEqual([]); // a handled 401 is not an error
+  expect(connects).toBe(1);
+  expect(errors).toEqual([]);
   expect(events).toEqual([{ type: "AgentsChanged" }]);
 });
 
@@ -215,7 +207,7 @@ test("a malformed frame is swallowed (tolerant read); later frames still arrive"
 test("a clean 200 close reconnects silently — no onError", async () => {
   const h = await startServer((conn, i) => {
     if (i === 0) {
-      conn.res.end(); // clean close, delivered no frame
+      conn.res.end();
     } else {
       conn.send({ type: "AgentsChanged" });
       conn.res.end();
@@ -243,9 +235,7 @@ test("a clean 200 close reconnects silently — no onError", async () => {
 });
 
 test("aborting the signal stops the loop after the current attempt", async () => {
-  const h = await startServer(() => {
-    /* stay open and silent */
-  });
+  const h = await startServer(() => {});
   const ac = new AbortController();
   let connects = 0;
 
@@ -265,15 +255,6 @@ test("aborting the signal stops the loop after the current attempt", async () =>
   expect(h.connections).toHaveLength(1);
 });
 
-/**
- * Liveness. The global feed is the app's ONLY reactivity channel, so the loop
- * has exactly one unacceptable outcome: a tab that holds a connection nothing
- * is coming through while the host is healthy. These pin the three ways that
- * used to happen — a wedged read, an outage outlasting a fixed retry cadence,
- * and a machine that slept through both.
- */
-
-/** A `sleep` that only ever ends when its signal aborts (never on time). */
 const untilPoked = (_ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve) => {
     if (signal.aborted) return resolve();
@@ -281,9 +262,6 @@ const untilPoked = (_ms: number, signal: AbortSignal) =>
   });
 
 test("a silent connection is force-reconnected by the idle watchdog", async () => {
-  // Connection 0 stays open and says nothing — the half-open socket a slept
-  // laptop or a moved network leaves behind. Without the watchdog `read()`
-  // never settles and the loop never iterates again.
   const h = await startServer((conn, i) => {
     if (i > 0) conn.send({ type: "AgentsChanged" });
   });
@@ -336,9 +314,6 @@ test("backoff grows per failed attempt, is capped, and resets once bytes flow", 
     },
   });
 
-  // 1500 → 3000 → 4000 (capped), then the 4th attempt delivers and the cap
-  // drops back to the initial delay: a healthy stream that drops again must
-  // not inherit the outage's backoff.
   expect(caps).toEqual([1500, 3000, 4000, 1500]);
 });
 
@@ -386,7 +361,7 @@ test("wake cuts a pending backoff short and is torn down with the loop", async (
     url: () => `${h.baseUrl}/v1/events`,
     fetch,
     signal: ac.signal,
-    sleep: untilPoked, // the wait ends ONLY if something wakes it
+    sleep: untilPoked,
     wake: (fn) => {
       retryNow = fn;
       return () => {
@@ -407,7 +382,7 @@ test("wake cuts a pending backoff short and is torn down with the loop", async (
 test("wake leaves a healthy connection alone", async () => {
   const h = await startServer((conn) => {
     conn.send({ type: "AgentsChanged" });
-  }); // stays open — a live stream, not a wedged one
+  });
   const ac = new AbortController();
   let retryNow: (() => void) | undefined;
 
@@ -421,7 +396,7 @@ test("wake leaves a healthy connection alone", async () => {
       return () => {};
     },
     onEvent: () => {
-      retryNow?.(); // bytes just arrived: nothing to recover
+      retryNow?.();
       ac.abort();
     },
   });
@@ -429,18 +404,6 @@ test("wake leaves a healthy connection alone", async () => {
   expect(h.connections).toHaveLength(1);
 });
 
-/**
- * A hidden page does not run on the wall clock. A backgrounded desktop window
- * or browser tab is woken once every minute or more, and at each wake its
- * timers can run BEFORE the heartbeat bytes the network queued meanwhile. A
- * watchdog that reads that wall-clock gap as silence tears down a healthy
- * stream at every wake, and every reconnect makes the app re-read everything
- * it shows. Staging logged exactly that: one client's stream lived 60 s, sat
- * closed for 60 s, and reopened, all day.
- */
-
-/** A clock that runs `rate` times faster than real time: every watchdog tick
- *  then lands long after the one before it, as in a page the OS keeps asleep. */
 function sleepingPageClock(rate: number): () => number {
   const start = Date.now();
   return () => start + (Date.now() - start) * rate;
@@ -474,7 +437,6 @@ test("a heartbeating stream survives a page whose timers only run after long sle
   expect(connects).toBe(1);
 });
 
-/** A clock the test can push forward, as if the page had slept that long. */
 function skewableClock() {
   let skew = 0;
   return {
@@ -489,9 +451,6 @@ test("a wake gives a just-woken page time to read the heartbeats it slept throug
   const clock = skewableClock();
   let retryNow: (() => void) | undefined;
   const h = await startServer((conn) => {
-    // The page reads `: connected`, sleeps 30 s with nothing read, then the
-    // window becomes visible: the wake arrives before the bytes queued
-    // meanwhile.
     setTimeout(() => {
       clock.sleep(30_000);
       retryNow?.();
@@ -530,7 +489,6 @@ test("a wake still replaces a socket that died while the page slept", async () =
       conn.send({ type: "AgentsChanged" });
       return;
     }
-    // Nothing ever arrives on this socket after `: connected`.
     setTimeout(() => {
       clock.sleep(30_000);
       retryNow?.();
@@ -561,8 +519,6 @@ test("a wake whose settle check the page slept through gives the backlog another
   const clock = skewableClock();
   let retryNow: (() => void) | undefined;
   const h = await startServer((conn) => {
-    // The window flashes visible and the page goes back to sleep before the
-    // settle check runs; the heartbeats it held land after that late check.
     setTimeout(() => {
       retryNow?.();
       clock.sleep(60_000);

@@ -8,14 +8,6 @@ import {
 } from "./turn-views.test-support";
 import { applyRoute } from "./turn-views-op.test-support";
 
-/**
- * The plan floor on a sleeping agent's routine writes, run on a pool worker:
- * a turn's own `save_routine` (TurnRequest.limits) and the person's edit that
- * the gateway routes as an op (the op envelope's `limits`). Both reach the
- * host's one routine-write gate, so both answer `400 plan_min_interval` and
- * leave a disabled routine alone.
- */
-
 const LIMITS = { routineMinIntervalMinutes: 15 };
 
 test("a pooled turn's update is held to the floor unless it leaves the routine disabled", async () => {
@@ -30,14 +22,12 @@ test("a pooled turn's update is held to the floor unless it leaves the routine d
     code: "plan_min_interval",
     minIntervalMinutes: 15,
   });
-  // A routine left disabled never fires: disabling a fast schedule passes.
   const disabled = await save({
     id: "r1",
     enabled: false,
     schedule: "*/5 * * * *",
   });
   expect(disabled?.status).toBe(200);
-  // Re-enabling it is judged, and says the schedule has to move first.
   const resumed = await save({ id: "r1", enabled: true });
   expect(resumed?.status).toBe(400);
   expect(await resumed?.json()).toMatchObject({
@@ -68,7 +58,6 @@ test("an op's routine edit is held to the floor the envelope carries", async () 
     { limits: LIMITS },
   );
   expect(created.status).toBe(400);
-  // No stamp, no floor: the same edit saves.
   const saved = await applyRoute(agent, {
     ...patch,
     body: { schedule: "*/5 * * * *" },

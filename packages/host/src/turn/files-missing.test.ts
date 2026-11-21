@@ -8,13 +8,6 @@ import {
   resetFilesChangedClock,
 } from "./files-missing";
 
-/**
- * PRODUCT-1780: a 404 on a workspace file is the user's state, so the host
- * log line is the only place that says WHY. It must name the parent folder's
- * state (absent vs. siblings present) and how long ago the agent's files last
- * changed, and it must never turn the 404 into a 500.
- */
-
 const ROOT = "ws/w1/agent-1/workspace";
 
 afterEach(() => resetFilesChangedClock());
@@ -50,7 +43,6 @@ test("absent parent folder vs. present siblings, and the FilesChanged clock", as
     "[files] not found: out/z.html (3 sibling(s): a.html, b.html, deep; last FilesChanged 4s ago)",
   );
 
-  // A root-level miss lists the workspace root; another agent's clock is not ours.
   const rootMiss = await describeMissingFile(vfs, ROOT, "game.html", "a2");
   expect(rootMiss.siblings).toEqual(["out"]);
   expect(rootMiss.filesChangedAgoS).toBeNull();

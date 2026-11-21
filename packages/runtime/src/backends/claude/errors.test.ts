@@ -2,7 +2,6 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { reportRevokedServedToken } from "../../auth/report-revoked";
 import { classifyText, mapSdkError } from "./errors";
 
-// vitest 4 hands back the existing spy when a method is spied again, so calls would pile up across tests.
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -71,11 +70,6 @@ test("authentication_failed → invalid_api_key / token_revoked / unknown causes
 });
 
 test("oauth_org_not_allowed → unauthenticated with the org_policy_blocked cause", () => {
-  // Not the shared authentication_failed handling (PRODUCT-1393): the org
-  // policy block is not a credential-lifecycle failure — reconnecting cannot
-  // heal it, and the text-derived cause read Anthropic's "…for Claude Code"
-  // remedy prose as an ordinary auth failure, merging a genuine org-policy
-  // family into the token_revoked bucket.
   expect(
     mapSdkError("oauth_org_not_allowed", {
       message: "Your organization has disabled Claude subscription access",
@@ -90,11 +84,6 @@ test("oauth_org_not_allowed → unauthenticated with the org_policy_blocked caus
 });
 
 test("org_policy_blocked logs a WARNING — the user's org policy, not broken custody", () => {
-  // The family was kept error-level to count it (PRODUCT-1393); counted, it
-  // proved to be pure user-org state — Anthropic authenticated the token and
-  // rejected the surface, the card already says "use an API key", and only
-  // the org admin can lift the block. Every retried turn re-fires, so an
-  // error-level event per turn is noise (PRODUCT-1553).
   mapSdkError("oauth_org_not_allowed", {
     message: "Your organization has disabled Claude subscription access",
     model: null,
@@ -181,7 +170,6 @@ test("model_not_found → model_unavailable when a model is named", () => {
 });
 
 test("model_not_found with no model falls through to the text classifier", () => {
-  // No model to name → cannot render the switch-model card; classify the text.
   expect(
     mapSdkError("model_not_found", {
       message: "does not exist or you do not have access",
@@ -211,15 +199,6 @@ test("classifyText passes provider + status through the shared classifier", () =
   });
 });
 
-/**
- * PRODUCT-1307: a revocation is only healed centrally if the seam that
- * classified it also reports it. The enum path always did; the text path —
- * result `subtype !== "success"` and thrown/iterator failures — classified,
- * logged, and stayed silent, so a revocation surfacing there kept the dead
- * credential served to the whole workspace (Sentry HOUSTON-APP-4YA storms).
- * The reporter's own gates (confirmed marker, serve mode, served manifest,
- * oauth) remain the safety; the seam's job is just to always speak up.
- */
 test("classifyText reports an unauthenticated failure like the enum path does", () => {
   const classified = classifyText(
     "Failed to authenticate. API Error: 401 OAuth access token has been revoked.",
@@ -231,9 +210,6 @@ test("classifyText reports an unauthenticated failure like the enum path does", 
     provider: "anthropic",
     cause: "token_revoked",
   });
-  // No spawn-token digest was captured → the reporter is told so (undefined)
-  // and its unknown-token gate skips, rather than digesting a re-read of
-  // auth.json that may already hold a healthy replacement (PRODUCT-1319).
   expect(reportRevokedServedToken).toHaveBeenCalledExactlyOnceWith(
     classified,
     undefined,
@@ -245,11 +221,6 @@ test("classifyText does not report non-auth failures", () => {
   expect(reportRevokedServedToken).not.toHaveBeenCalled();
 });
 
-/**
- * PRODUCT-1319: the report must name the token the failed turn RAN ON — the
- * digest captured at spawn preparation (the subprocess env token) — so both
- * seams thread it through to the reporter verbatim.
- */
 test("both seams hand the spawn-time token digest to the reporter", () => {
   const viaText = classifyText(
     "401 OAuth access token has been revoked",
@@ -275,26 +246,16 @@ test("both seams hand the spawn-time token digest to the reporter", () => {
 });
 
 test("the verbatim provider text is logged once it is reduced to a card", () => {
-  // An expected external kind (rate_limited) logs as a warning breadcrumb —
-  // the verbatim provider text must still be in the line.
   mapSdkError("rate_limit", { message: "429 slow down", model: "m" });
   expect(consoleWarn).toHaveBeenCalledWith(
     expect.stringContaining("429 slow down"),
   );
-  // A bug-signaling kind keeps the verbatim text on the error path.
   mapSdkError("authentication_failed", { message: "401 expired", model: "m" });
   expect(consoleError).toHaveBeenCalledWith(
     expect.stringContaining("401 expired"),
   );
 });
 
-/**
- * The enum-mapped cards bypass `classifyProviderError`, which is where every
- * other provider error gets its credential stamp — so they must stamp it
- * themselves. Without it, a member whose OWN Anthropic account is rate limited
- * reads a card that blames "Anthropic" in the abstract, on the provider whose
- * limits users hit most (HOU-976).
- */
 test("an enum-mapped card carries the acting identity's credential stamp", async () => {
   const { runWithActingContext } = await import("../../session/acting-context");
   const { recordServedScope, resetServedScopes } = await import(

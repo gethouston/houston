@@ -380,7 +380,6 @@ describe("orgChartRead", () => {
     strictEqual(read(false, true, false), "hidden");
     strictEqual(read(true, true, true), "ready");
     strictEqual(read(true, false, true), "error");
-    // A query parked off screen has neither data nor error: still loading.
     strictEqual(read(true, false, false), "loading");
   });
 });

@@ -1,7 +1,3 @@
-// The translation tree a page gets as `t`, built through the real
-// computed-data function from every locale file and every page tree in
-// lib/page-trees.js, so a test sees exactly what a template sees.
-
 import { PAGE_TREES } from "../../lib/page-trees.js";
 import computed from "../../src/_data/eleventyComputed.js";
 

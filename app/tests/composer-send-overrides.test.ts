@@ -7,8 +7,6 @@ import {
 
 describe("composerSendOverrides", () => {
   it("carries the effort the picker shows beside the provider and model", () => {
-    // Every typed send used to drop effort: a pooled turn then ran the
-    // default whatever the picker said, for every agent and the assistant.
     deepStrictEqual(
       composerSendOverrides(
         { provider: "openai", model: "gpt-6-astra", effort: "high" },

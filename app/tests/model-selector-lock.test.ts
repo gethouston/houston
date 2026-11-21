@@ -18,23 +18,16 @@ const caps = (over: Partial<Capabilities> = {}): Capabilities => ({
   ...over,
 });
 
-/** A multiplayer host with the Teams v2 surface (per-user model choice). */
 const teams = (role: OrgRole): Capabilities =>
   caps({ multiplayer: true, role, teams: true });
 
-/** A multiplayer host predating Teams (no per-user model-choice route). */
 const preTeams = (role: OrgRole): Capabilities =>
   caps({ multiplayer: true, role });
 
-// The wire type lives on `Agent.access` (`@houston/wire-types`); the helpers
-// only read
-// that field, so the fixtures pass a minimal `{ access }` shape.
 const agent = (access?: "manager" | "user") => ({ access });
 
 describe("modelSelectorDecision", () => {
   it("shows shared (never personal) when no agent scope is threaded", () => {
-    // A free-standing picker (routine editor with no agent, create wizard) is
-    // always shown and never wired to a per-user choice, even for a member.
     for (const c of [
       teams("user"),
       preTeams("user"),
@@ -76,7 +69,6 @@ describe("modelSelectorDecision", () => {
   });
 
   it("falls back to the E7 manager gate on a pre-Teams multiplayer host", () => {
-    // Owner + any manager see it (shared); a plain member is hidden.
     deepStrictEqual(modelSelectorDecision(preTeams("owner"), agent("user")), {
       show: true,
       personal: false,
@@ -100,7 +92,6 @@ describe("modelSelectorDecision", () => {
 
 describe("resolvePersonalModelPin", () => {
   const fallback = { provider: "anthropic", model: "claude", effort: "high" };
-  /** A resolver that knows nothing: no catalog, nothing connected. */
   const blind = {
     offers: () => false,
     providerFor: () => null,
@@ -122,9 +113,6 @@ describe("resolvePersonalModelPin", () => {
   });
 
   it("drops a stored choice the ceiling no longer allows, keeping its effort (PRODUCT-1734)", () => {
-    // A manager narrowed the ceiling after the choice was stored: the gateway
-    // hands the stale pick back unclamped. The composer must not show it (the
-    // next turn cannot run it) nor re-send it on an effort click.
     const resolver = {
       offers: (provider: string, model: string) =>
         provider === "anthropic" && model === "claude-opus-5",
@@ -205,8 +193,6 @@ describe("resolvePersonalModelPin", () => {
   });
 
   it("snaps to the ceiling id the fallback provider can run, not the first entry (PRODUCT-1657)", () => {
-    // "Claude Opus 5" as the ceiling editor writes it: OpenRouter's id sorts
-    // first. A Claude-connected user stays on Claude.
     deepStrictEqual(
       resolvePersonalModelPin(
         null,

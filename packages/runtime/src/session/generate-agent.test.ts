@@ -2,9 +2,6 @@ import { expect, test } from "vitest";
 import { generateThinkingLevel } from "./generate-agent";
 import { buildRoutine, parseGenerateResult } from "./generate-agent-parse";
 
-// --- generateThinkingLevel: the create dialog has no effort control, so a
-// reasoning model is pinned to "medium" and everything else omits the level. ---
-
 test("reasoning models generate at medium effort", () => {
   expect(generateThinkingLevel({ reasoning: true })).toBe("medium");
 });
@@ -15,9 +12,6 @@ test("non-reasoning models omit the thinking level", () => {
   expect(generateThinkingLevel(null)).toBeUndefined();
   expect(generateThinkingLevel(undefined)).toBeUndefined();
 });
-
-// Ported from the Rust engine's generate_instructions.rs + suggested_routine.rs
-// unit tests, so the TS parser accepts exactly what the Rust one did.
 
 test("parses a valid JSON response", () => {
   const raw = `{"name": "Email Manager", "instructions": "You are a helpful agent.", "suggestedIntegrations": ["GMAIL", "SLACK"]}`;
@@ -44,7 +38,6 @@ test("missing name defaults to empty string", () => {
 });
 
 test("null suggestedIntegrations becomes an empty array", () => {
-  // Models sometimes emit `null` instead of `[]`.
   const raw = `{"name": "Bot", "instructions": "Do things.", "suggestedIntegrations": null}`;
   expect(parseGenerateResult(raw).suggestedIntegrations).toEqual([]);
 });
@@ -78,9 +71,6 @@ test("parse wires the routine through", () => {
   const none = `{"name":"B","instructions":"D","suggestedRoutine":null}`;
   expect(parseGenerateResult(none).suggestedRoutine).toBeNull();
 });
-
-// --- buildRoutine: the cron is built here from a constrained set, never taken
-// raw from the model, so a hallucinated expression can't run every minute. ---
 
 test("daily builds a 5-field cron", () => {
   const r = buildRoutine({
@@ -125,7 +115,6 @@ test("weekly honors dayOfWeek and defaults to Monday", () => {
 test("null, missing, and malformed routines drop to null", () => {
   expect(buildRoutine(null)).toBeNull();
   expect(buildRoutine(undefined)).toBeNull();
-  // Unknown scheduleType.
   expect(
     buildRoutine({
       name: "R",
@@ -134,7 +123,6 @@ test("null, missing, and malformed routines drop to null", () => {
       timeOfDay: "08:00",
     }),
   ).toBeNull();
-  // Out-of-range time.
   expect(
     buildRoutine({
       name: "R",
@@ -143,7 +131,6 @@ test("null, missing, and malformed routines drop to null", () => {
       timeOfDay: "25:00",
     }),
   ).toBeNull();
-  // Empty name.
   expect(
     buildRoutine({
       name: "",
@@ -152,7 +139,6 @@ test("null, missing, and malformed routines drop to null", () => {
       timeOfDay: "08:00",
     }),
   ).toBeNull();
-  // Out-of-range dayOfWeek falls back to Monday rather than emitting bad cron.
   expect(
     buildRoutine({
       name: "R",

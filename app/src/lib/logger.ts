@@ -3,11 +3,8 @@ import { osWriteFrontendLog } from "./os-bridge";
 
 type LogLevel = "error" | "warn" | "info" | "debug";
 
-/** Write a log entry to ~/Library/Application Support/houston/logs/frontend.log */
 function writeLog(level: LogLevel, message: string, context?: string) {
-  osWriteFrontendLog(level, message, context).catch(() => {
-    // If logging itself fails, don't recurse — just drop it
-  });
+  osWriteFrontendLog(level, message, context).catch(() => {});
 }
 
 export const logger = {
@@ -21,14 +18,7 @@ export const logger = {
     writeLog("debug", message, context),
 };
 
-/**
- * Patch global error handlers to write to the log file.
- * Call once at app startup (main.tsx).
- */
 export function initFrontendLogging() {
-  // Route identity module logs (identity/log.ts seam) into frontend.log so the
-  // REST/loopback/refresh discards are visible; until this runs they fall back
-  // to console (never silent). Both app + web call initFrontendLogging.
   setIdentityLogSink((level, message, context) =>
     logger[level](message, context),
   );
@@ -53,7 +43,6 @@ export function initFrontendLogging() {
     }
   };
 
-  // Patch console.error and console.warn to also write to log file
   const origError = console.error;
   console.error = (...args: unknown[]) => {
     origError.apply(console, args);

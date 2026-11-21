@@ -2,13 +2,6 @@ import { deadGoogleApiKey } from "@houston/protocol/google-key";
 import type { CaptureResult, CredentialStore, RuntimeEndpoint } from "../ports";
 import { scrubRuntimeRefreshToken } from "./scrub-refresh";
 
-/**
- * Budget for reading the runtime's export. The serve healer's caller — the
- * runtime's own probe (auth/serve-probe.ts) — gives up at 10s, so an export
- * still pending past that answers nobody; without a budget a stalled runtime
- * held every provider's heal for undici's 300s headers timeout and logged one
- * Sentry error per provider when they finally died (PRODUCT-1687).
- */
 const RUNTIME_EXPORT_TIMEOUT_MS = 8_000;
 
 type ExportedCredential = {
@@ -22,64 +15,14 @@ type ExportedCredential = {
   enterpriseUrl?: string;
 };
 
-/**
- * Store a full runtime credential centrally, then remove its refresh token.
- *
- * Scoped by `actingAs` end to end (HOU-976): the runtime keeps one auth file per
- * member, so the export must be read AS that member, the central write must land
- * on that member's row, and the scrub must clear that member's file — mixing the
- * three would capture one member's credential into another's row. Undefined (the
- * desktop, self-host, every pre-HOU-976 caller) is the single shared scope,
- * byte-identical to before.
- *
- * Idempotent settlement (PRODUCT-1318): the two halves (central PUT, runtime
- * scrub) can each be replayed safely, so a retry of the WHOLE capture after an
- * ambiguous response converges instead of erroring or double-writing — a
- * post-scrub replay finds nothing exportable and settles against the central
- * store; a post-PUT/pre-scrub replay re-PUTs the same family and re-attempts
- * the scrub.
- */
 export async function captureRuntimeCredential(args: {
   endpoint: RuntimeEndpoint;
   credentials: CredentialStore;
   workspaceId: string;
   provider?: string;
-  /**
-   * The serve healer's contract (an AUTOMATIC capture with no user behind it):
-   * only accept credentials that provably originate from a local login, never a
-   * projection of a row the central store already owns/owned. For OAuth that
-   * proof is structural — the runtime only ever exports refresh-BEARING entries,
-   * and a serve-written projection is access-only (Gate #2). For an api_key —
-   * byte-identical whether pasted locally or serve-written — the runtime holds
-   * the proof (its served-providers manifest), so this flag rides to
-   * `/auth/export` as `excludeServed=1` and a returned api_key is attested
-   * local-origin (PRODUCT-1370: the pasted Anthropic setup token heals this
-   * way). Without the manifest gate, a healer re-push of a pod's leftover
-   * served api_key would resurrect a credential the user disconnected.
-   */
   localOriginOnly?: boolean;
   actingAs?: string;
-  /**
-   * Fill-only central write, for AUTOMATIC re-pushes (the serve healer). The
-   * gateway's credential PUT doubles as the user's "I reconnected" signal: a
-   * plain PUT clears the revocation tombstone guarding a provider-revoked
-   * family (cloud #230). An automatic re-push of a pod's leftover copy must
-   * never do that — `ifAbsent` rides to the store as the maintenance contract
-   * (`x-houston-if-absent`), which fills a missing row without clobbering a
-   * rotated refresh token or resurrecting a tombstoned one. A real
-   * user-initiated (re)connect omits it and overwrites.
-   */
   ifAbsent?: boolean;
-  /**
-   * Whether this host serves anthropic back to its runtimes (a gateway-fronted
-   * pod). Default true. On a desktop/self-host host (`routes/credential.ts`
-   * answers anthropic with the not-served-here 404) the runtime's SHARED
-   * login dir is anthropic's single holder and rotator, so an anthropic
-   * capture must neither store a row nothing serves nor scrub the runtime —
-   * that scrub left the connect reading connected for one poll and then
-   * disconnected for good (PRODUCT-1644). The runtime's own status settles
-   * such a capture instead.
-   */
   anthropicServedHere?: boolean;
 }): Promise<CaptureResult> {
   const {
@@ -114,11 +57,6 @@ export async function captureRuntimeCredential(args: {
   }
   const credential = (await exported.json()) as ExportedCredential;
   if (credential.kind === "api_key") {
-    // No post-PUT scrub for an api_key (unlike the OAuth path below): there is
-    // no refresh token to strip, and the entry deliberately STAYS in auth.json
-    // — on the desktop the serve path never re-supplies anthropic
-    // (routes/credential.ts refuses it there), so scrubbing/removing the pasted
-    // setup token would disconnect the provider the user just connected.
     if (!credential.provider || !credential.key)
       return { ok: false, status: 400, error: "agent is not connected yet" };
     if (
@@ -128,10 +66,6 @@ export async function captureRuntimeCredential(args: {
         access: credential.key,
       })
     ) {
-      // A legacy pre-verification runtime entry (HOU-1107). Capturing it would
-      // seed the central store with a key every serve immediately refuses
-      // (Sentry HOUSTON-APP-567) — reject it so the connect flow shows the
-      // paste-a-key card instead of a false "connected".
       return {
         ok: false,
         status: 400,
@@ -147,8 +81,6 @@ export async function captureRuntimeCredential(args: {
         accessToken: credential.key,
         refreshToken: "",
         expiresAt: Number.MAX_SAFE_INTEGER,
-        // Azure exports its per-resource endpoint beside the key — a central
-        // row without it serves a key aimed at nothing (PRODUCT-1532).
         ...(credential.enterpriseUrl
           ? { enterpriseUrl: credential.enterpriseUrl }
           : {}),
@@ -163,18 +95,9 @@ export async function captureRuntimeCredential(args: {
     !credential.refresh ||
     typeof credential.expires !== "number"
   ) {
-    // Nothing exportable — EITHER the runtime truly holds no credential, OR a
-    // previous capture already landed and scrubbed it (a scrubbed entry has
-    // refresh="" and exports as {}). A capture retried after an ambiguous
-    // response (the web client's provider-capture-retry) must settle as
-    // success here instead of failing a connect that actually worked; the
-    // central store is the arbiter.
     if (provider && (await settledCentrally(credentials, args))) {
       return { ok: true, provider };
     }
-    // Anthropic on a host that never serves it: the credential lives in the
-    // runtime's shared login dir, never in its auth.json, so there is nothing
-    // to export — the runtime's status (its login-dir probe) is the arbiter.
     if (localAnthropic(provider) && provider) {
       return (await runtimeReportsConnected(endpoint, provider, actingAs))
         ? { ok: true, provider }
@@ -183,10 +106,6 @@ export async function captureRuntimeCredential(args: {
     return { ok: false, status: 400, error: "agent is not connected yet" };
   }
   if (localAnthropic(credential.provider)) {
-    // A refresh-bearing anthropic entry on a host that never serves it (an
-    // older runtime's throwaway-dir login): leave it as the single rotator.
-    // Storing it centrally would seed a second refresh-token holder, and the
-    // scrub would strand the runtime with an access token nothing renews.
     return { ok: true, provider: credential.provider };
   }
   await credentials.put(
@@ -209,15 +128,6 @@ export async function captureRuntimeCredential(args: {
     actingAs,
   );
   if (!scrub.ok) {
-    // The central PUT landed — the connect SUCCEEDED. Failing the capture here
-    // (the old behavior) made the client replay the entire capture, whose
-    // fresh full PUT clears revocation tombstones, while the refresh-bearing
-    // runtime entry it never fixed silently kept the pod rotating the family
-    // alongside the gateway (two rotators → mutual invalid_grant → org-wide
-    // sign-out). Settle instead: the retries above are exhausted, the leftover
-    // entry itself is the durable memory, and the runtime's next serve sync
-    // finishes the scrub once central serves this same access token
-    // (runtime auth/capture-settlement.ts). Loud, not silent:
     console.error(
       `[capture] PRODUCT-1318: captured ${credential.provider} centrally but scrubbing the runtime's refresh token failed after retries — the serve-sync self-heal will finish it${scrub.detail ? ` (${scrub.detail})` : ""}`,
     );
@@ -225,13 +135,6 @@ export async function captureRuntimeCredential(args: {
   return { ok: true, provider: credential.provider };
 }
 
-/**
- * Whether the central store already holds a credential for the requested
- * provider on this caller's row — the settlement probe for a replayed capture
- * that finds nothing left to export. A probe failure is logged and read as
- * "not settled": the caller then reports the same honest "not connected yet"
- * it always did.
- */
 async function settledCentrally(
   credentials: CredentialStore,
   args: { workspaceId: string; provider?: string; actingAs?: string },
@@ -252,12 +155,6 @@ async function settledCentrally(
   }
 }
 
-/**
- * Whether the runtime itself reports `provider` connected (`/auth/status`):
- * the settlement probe for an anthropic capture on a host that never serves
- * anthropic, where the credential is in the runtime's login dir and not
- * exportable. A probe failure is logged and read as "not connected".
- */
 async function runtimeReportsConnected(
   endpoint: RuntimeEndpoint,
   provider: string,

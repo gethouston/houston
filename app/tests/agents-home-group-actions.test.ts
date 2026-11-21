@@ -2,10 +2,6 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-// The phone manages groups from the AI Employees list: the rail that carries
-// them on the desktop is not rendered below md. The app suite has no DOM, so
-// the wiring is pinned on the component sources.
-
 const source = (path: string) =>
   readFileSync(new URL(`../src/${path}`, import.meta.url), "utf8");
 
@@ -43,7 +39,6 @@ describe("AI Employees list group actions", () => {
     const home = header();
     assert.match(home, /onDelete=\{\(\) => onSelect\(null\)\}/);
     const menu = source("components/shell/team-folder-menu.tsx");
-    // The delete runs only from the confirm dialog, never off the menu item.
     assert.match(menu, /onSelect=\{\(\) => setConfirmDelete\(true\)\}/);
     assert.match(
       menu,

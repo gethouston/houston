@@ -5,13 +5,6 @@ import {
   type ToolMatch,
 } from "./integrations-render";
 
-/**
- * The Croma-incident guard: search results are a pick-list and must stay a
- * few KB — parameter details only for the top matches, signatures beyond, a hard
- * item cap, clipped descriptions. A ~100-tool MCP server must never again
- * produce a result that blows the backend's tool-result ceiling.
- */
-
 const schema = {
   type: "object",
   properties: {

@@ -8,12 +8,6 @@ import {
   builderSummary,
 } from "../src/schedule-builder-output.ts";
 
-/**
- * What the schedule picker writes and says. The rendered round trip (open the
- * editor on a legacy schedule, Save without edits) lives in
- * app/tests/routine-schedule-edit.test.ts.
- */
-
 const custom = (
   intervalEvery: string,
   intervalUnit: BuilderPick["intervalUnit"],

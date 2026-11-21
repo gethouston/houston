@@ -24,7 +24,6 @@ interface Props {
   onSkill: (skillName: string) => void;
 }
 
-/** The chat's installed-skill picker, using the same catalog rows as Skills. */
 export function NewMissionPickerDialog({
   open,
   onOpenChange,

@@ -6,17 +6,9 @@ import {
   isCloudEgressBlockedError,
 } from "../src/lib/cloud-egress-blocked-error.ts";
 
-// The surfacing-layer classifier that keeps the managed cloud host's
-// deliberate "can't reach that address" 400 out of the red bug-toast + Sentry
-// pipeline and lets the manual-connect form render rule-specific copy. It must
-// key on the host's typed `code`, fall back to the reason throughline for a
-// code-less older host, and NEVER match other 400s: a false positive here
-// silently drops a real bug report.
-
 const CLOUD_ONLY =
   "Cloud agents can only reach public HTTPS endpoints on port 443.";
 
-/** The shape the engine adapter's `HoustonEngineError` mints. */
 function engineError(status: number, body: unknown): Error {
   const reason = (body as { error?: unknown } | null)?.error;
   const err = new Error(

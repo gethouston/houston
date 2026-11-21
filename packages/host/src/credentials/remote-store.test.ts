@@ -113,9 +113,6 @@ test("404 means not connected and is cached as a negative result", async () => {
 });
 
 test("invalidate sheds a cached negative so the next get sees a reconnect (PRODUCT-1515)", async () => {
-  // A reconnect capture lands centrally without passing through this process,
-  // so only an explicit invalidate can make the post-reconnect retry see it
-  // inside the 15s cache window.
   const { calls, fetchImpl } = fakeFetch((_call, index) =>
     index === 0
       ? json({ error: "org not connected" }, 404)
@@ -139,7 +136,6 @@ test("invalidate is scoped to the acting identity", async () => {
 
   expect(await s.get("ws_1", "openai-codex")).toBeNull();
   expect(await s.get("ws_1", "openai-codex", acting)).toBeNull();
-  // Invalidating the member's row leaves the team's cached answer in place.
   s.invalidate("openai-codex", acting);
   expect(await s.get("ws_1", "openai-codex")).toBeNull();
   expect(await s.get("ws_1", "openai-codex", acting)).toBeNull();
@@ -209,8 +205,6 @@ test("404 never adopts the fallback while a revocation tombstone is active (HOUS
     json({ error: "org not connected" }, 404),
   );
   const revocations = new RevocationTombstones();
-  // The gateway row is absent BECAUSE the provider revoked the credential;
-  // the legacy file copy is the same dead family and must stay un-adopted.
   revocations.mark({
     workspaceId: "ws_1",
     provider: "openai-codex",
@@ -223,7 +217,6 @@ test("404 never adopts the fallback while a revocation tombstone is active (HOUS
   );
 
   expect(got).toBeNull();
-  // One GET, no insert-only PUT: the dead credential was not resurrected.
   expect(calls.map((c) => c.init?.method ?? "GET")).toEqual(["GET"]);
 });
 
@@ -390,9 +383,6 @@ test("put writes the gateway row and invalidates the provider cache", async () =
 });
 
 test("a 404 without the gateway error body is a transport error, not a logout", async () => {
-  // Deploy skew: a gateway build without the /v1/pod/credentials route (or a
-  // mistyped HOUSTON_CREDENTIALS_URL) answers a route-level 404 with no JSON
-  // error body. That must throw, not read as "org signed out".
   let skewed = true;
   const { calls, fetchImpl } = fakeFetch(() => {
     if (skewed)
@@ -403,7 +393,6 @@ test("a 404 without the gateway error body is a transport error, not a logout", 
 
   await expect(s.get("ws_1", "openai-codex")).rejects.toThrow("failed (404)");
   skewed = false;
-  // The skewed 404 was not negative-cached: the next get succeeds immediately.
   expect((await s.get("ws_1", "openai-codex"))?.accessToken).toBe(
     "AT-after-fix",
   );
@@ -441,10 +430,8 @@ test("remove treats the gateway's not-connected 404 as already signed out and cl
   );
   const s = store(fetchImpl, fallback);
 
-  // Idempotent: another pod already deleted the row; sign-out still succeeds.
   await s.remove("ws_1", "openai-codex");
   expect(fallbackCred).toBeNull();
-  // And the logout sticks: no gateway row, no fallback left to re-adopt.
   expect(await s.get("ws_1", "openai-codex")).toBeNull();
   expect(calls.map((c) => c.init?.method ?? "GET")).toEqual(["DELETE", "GET"]);
 });
@@ -475,7 +462,6 @@ test("logout cannot resurrect through the legacy fallback after remove", async (
   const s = store(fetchImpl, fallback);
 
   await s.remove("ws_1", "openai-codex");
-  // The next get must NOT re-adopt the removed credential into the gateway.
   expect(await s.get("ws_1", "openai-codex")).toBeNull();
   expect(calls.map((c) => c.init?.method ?? "GET")).toEqual(["DELETE", "GET"]);
 });
@@ -503,9 +489,6 @@ test("remove deletes remotely and invalidates the provider cache", async () => {
 });
 
 test("a personal revoked-token report says both WHICH row and WHOSE", async () => {
-  // The gateway keys personal credentials by (org, user, provider): the scope
-  // header alone leaves it unable to pick a row, so it refuses and the revoked
-  // token keeps 401ing that member's turns (HOU-952/HOU-976).
   const token = actingAs("member-1");
   const { calls, fetchImpl } = fakeFetch(() => json({ removed: true }));
 
@@ -544,9 +527,7 @@ test("a member's revoked-token report evicts only that member's cache entry", as
     ...alice,
   });
 
-  // Bob's credential is untouched by Alice's report: still cached, no refetch.
   expect((await s.get("ws_1", "openai-codex", bob))?.accessToken).toBe("AT-2");
-  // Alice's is gone, so hers is re-resolved from the gateway.
   expect((await s.get("ws_1", "openai-codex", alice))?.accessToken).toBe(
     "AT-3",
   );
@@ -559,8 +540,6 @@ test("a member's revoked-token report evicts only that member's cache entry", as
 });
 
 test("a cache key never embeds the acting token itself", async () => {
-  // The same rule as the runtime's credentialScopeKeyFor: these keys reach log
-  // lines and diagnostics, so an unreadable token is named by digest.
   const unreadable = [
     "no-payload-segment",
     `header.${Buffer.from(JSON.stringify({ sub: 7 })).toString("base64url")}.sig`,
@@ -572,17 +551,12 @@ test("a cache key never embeds the acting token itself", async () => {
   );
   for (const [i, key] of keys.entries())
     expect(key).not.toContain(unreadable[i]);
-  // Isolation is unchanged: distinct unreadable tokens keep distinct scopes.
   expect(new Set(keys).size).toBe(unreadable.length);
 });
-
-// --- Dead google "API keys" (HOU-1107 / Sentry HOUSTON-APP-567) ---
 
 const GOOGLE_PATH = `${BASE}/v1/pod/credentials/${ORG}/${AGENT}/google`;
 
 test("a legacy dead google key is never adopted — dropped from the fallback instead", async () => {
-  // The resurrection loop behind HOUSTON-APP-567: the serve guard deletes the
-  // central row, then the next 404-adoption re-seeds it from a pod's disk.
   const removed: string[] = [];
   const fallback: CredentialStore = {
     get: async () => ({
@@ -606,7 +580,6 @@ test("a legacy dead google key is never adopted — dropped from the fallback in
 
   expect(await store(fetchImpl, fallback).get("ws_1", "google")).toBeNull();
 
-  // One GET, no PUT: the dead row never reaches the gateway again.
   expect(calls.map((c) => c.init?.method ?? "GET")).toEqual(["GET"]);
   expect(removed).toEqual(["google"]);
 });
@@ -691,7 +664,6 @@ test("a gateway account-block 502 is typed apart from a dead credential (H-005)"
   expect(err).toBeInstanceOf(RemoteCredentialBlockedError);
   expect(err).not.toBeInstanceOf(RemoteCredentialDeadError);
   expect((err as RemoteCredentialBlockedError).detail).toMatch(/billing/);
-  // Not cached: the next get asks the gateway again (its memo paces upstream).
   await s.get("ws_1", "github-copilot").catch(() => null);
   expect(calls).toHaveLength(2);
 });

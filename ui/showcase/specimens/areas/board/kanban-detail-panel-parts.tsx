@@ -6,12 +6,6 @@ import type { ReactNode } from "react";
 import type { SpecimenProp } from "../../../src/specimen";
 import { NEEDS_YOU_MISSION, PEOPLE } from "./sample";
 
-/**
- * The panel's frame, its stock body, and its props table. Helper module: it
- * exports no `specimen`.
- */
-
-/** The panel is a full-height pane beside the board, so it is reviewed as one. */
 export function PanelFrame({ children }: { children: ReactNode }) {
   return (
     <div className="h-64 w-full max-w-xl overflow-hidden rounded-xl border border-line bg-background">
@@ -20,12 +14,10 @@ export function PanelFrame({ children }: { children: ReactNode }) {
   );
 }
 
-/** The header's avatar: the same agent helmet the board's cards wear, large. */
 export const PANEL_AVATAR = (
   <Bot className="size-8 shrink-0 rounded-full bg-chip p-1.5 text-ink-muted" />
 );
 
-/** Stand-in for the mission's chat, so the header is judged against a body. */
 export function PanelBody() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-3 text-[13px] text-ink-muted leading-relaxed">
@@ -36,7 +28,6 @@ export function PanelBody() {
   );
 }
 
-/** A panel with everything on: agent name, mission line, status, people. */
 export function FullPanel() {
   return (
     <PanelFrame>
@@ -60,7 +51,6 @@ export function FullPanel() {
   );
 }
 
-/** The full-page shape: a Back button leads, and nothing closes the panel. */
 export function LeadingPanel() {
   return (
     <PanelFrame>

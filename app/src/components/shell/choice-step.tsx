@@ -21,22 +21,6 @@ const SIZES = {
   compact: { frame: "gap-4", headline: "text-base font-medium" },
 };
 
-/**
- * One question of the guided create-agent setup: a headline, a filter paired
- * with the door out ("Something else"), and a wrapping run of suggestions.
- * Picking a suggestion answers the question outright (the caller advances); a
- * typed answer is confirmed with Continue, because there is no way to know the
- * user has finished typing.
- *
- * Taking the door swaps the row in place (`choice-row.tsx`): the field the
- * user was already looking at becomes the one they answer in, and the
- * suggestions stay behind it, dimmed, as the context the question was asked
- * in. An answer that opened somewhere else sent the eye hunting for it.
- *
- * Everything hangs off ONE left edge — headline, filter, chips, typed answer.
- * A hundred and eighty roles are read by scanning, and scanning needs an edge
- * to come back to; centred runs give a ragged one on every line.
- */
 export function ChoiceStep({
   headline,
   hint,
@@ -56,15 +40,11 @@ export function ChoiceStep({
   onContinue,
   compact = false,
 }: ChoiceStepProps & {
-  /** Translated arrow-key hint for the chip runs; this step stays i18n-free. */
   keyboardHint?: string;
-  /** Asked in a popover over the card it edits, not as a screen of its own:
-   *  the question reads at body size and the step fills the popover. */
   compact?: boolean;
 }) {
   const size = compact ? SIZES.compact : SIZES.page;
   const [query, setQuery] = useState("");
-  // The chip the keyboard is on, which owns the question's only tab stop.
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const stepRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -82,19 +62,13 @@ export function ChoiceStep({
 
   const rovingId = rovingChipId(runs, selectedId, focusedId);
 
-  // Opening the typed answer carries the words already in the filter: they ARE
-  // the answer the user is giving, and asking for them twice is the kind of
-  // small betrayal that makes a flow feel careless.
   const openCustom = () => {
     onSelectCustom();
     const seed = query.trim();
     if (seed) onCustomChange(seed);
   };
 
-  // Enter clicks whatever the query already put on screen: the first match in
-  // reading order, or the typed words themselves when nothing matched.
   const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    // An IME's Enter confirms the characters being composed; it answers nothing.
     if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
     if (!search) return;
     const action = enterAction(runs, query);
@@ -104,16 +78,12 @@ export function ChoiceStep({
     else search.onUseQuery(emptyState.query);
   };
 
-  // Leaving the typed answer hands focus back to the door it came from, once
-  // the row has swapped back and the door exists again.
   const leaveCustom = useLeaveWithFocus(
     custom.active,
     customRef,
     onCancelCustom,
   );
 
-  // One key, one owner: the typed answer first, then the query it was opened
-  // from. A step with neither left hands Escape back to the dialog.
   useEscapeWithin(stepRef, () => {
     if (custom.active) {
       leaveCustom();
@@ -155,9 +125,6 @@ export function ChoiceStep({
           />
         )}
 
-        {/* The suggestions stay on screen while the answer is typed — they are
-            the context the question was asked in — but nothing in them can be
-            reached, by thumb or by Tab, until the row hands the step back. */}
         <div
           inert={custom.active}
           className={cn(

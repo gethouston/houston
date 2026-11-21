@@ -1,7 +1,3 @@
-// Low-level HTTP core for the GCIP REST calls. Owns transport + the ONE place
-// GCIP error bodies become typed `IdentityError`s. Every non-2xx and every
-// transport failure throws typed — nothing is swallowed (no-silent-failures).
-
 import { IdentityError, mapGcipCode } from "./errors.ts";
 
 export const IDENTITY_TOOLKIT_BASE =
@@ -35,8 +31,6 @@ async function readJsonBody(res: Response): Promise<Record<string, unknown>> {
     if (typeof parsed !== "object" || parsed === null) {
       throw new IdentityError("malformed_response", { httpStatus: res.status });
     }
-    // `signInWithIdp` refuses a link with HTTP 200 and `errorMessage` instead
-    // of an error body (FEDERATED_USER_ID_ALREADY_LINKED), with no tokens.
     const { errorMessage } = parsed as Record<string, unknown>;
     if (typeof errorMessage === "string" && errorMessage.trim()) {
       const rawCode = errorMessage.trim();
@@ -55,7 +49,6 @@ async function readJsonBody(res: Response): Promise<Record<string, unknown>> {
   }
 }
 
-/** POST a JSON body to an identitytoolkit endpoint; return the parsed object. */
 export async function postGcipJson(
   url: string,
   body: unknown,
@@ -74,7 +67,6 @@ export async function postGcipJson(
   return readJsonBody(res);
 }
 
-/** POST a form-encoded body (securetoken refresh); return the parsed object. */
 export async function postGcipForm(
   url: string,
   form: Record<string, string>,

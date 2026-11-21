@@ -1,14 +1,6 @@
 import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
 
-/**
- * The briefing's one bright element: its primary action, a full-width pill.
- * Its label follows the pick instantly: arrowing through the radios would
- * replay any swap animation on every key. A label too long for a narrow
- * phone grows the pill a line rather than spilling out of it. Kept apart
- * from the frame so a step renders without the frame's stylesheet, which
- * styles the `plan-briefing-*` classes.
- */
 export function PlanBriefingCta({
   label,
   disabled = false,
@@ -30,7 +22,6 @@ export function PlanBriefingCta({
   );
 }
 
-/** The briefing's quiet way out ("Maybe later"), under its primary action. */
 export function PlanBriefingQuietButton({
   onClick,
   disabled = false,

@@ -144,9 +144,6 @@ describe("browser hand-off cards in the feed", () => {
   });
 
   it("keeps the reply finished once handed back, so the chat shows progress", () => {
-    // After Done the agent works on (here, a permission-gated browser step)
-    // while its reply sits under the card. Drawn as streaming, that reply
-    // would read as live text and hide the chat's thinking line.
     const items = [
       user("Go"),
       { feed_type: "assistant_text_streaming", data: "Please sign in." },
@@ -180,12 +177,10 @@ describe("browser hand-off cards in the feed", () => {
     const back = result("browser", "The person finished");
     const later = call("browser", { action: "snapshot" });
     const page = result("browser", "page");
-    // Live: the reply streams into one entry, placed where it started.
     const running = order(
       [user("Go"), text("assistant_text_streaming"), hand, back, later, page],
       true,
     );
-    // Settled: the transcript puts the reply after the tools.
     const settled = order(
       [user("Go"), hand, back, later, page, text("assistant_text")],
       false,

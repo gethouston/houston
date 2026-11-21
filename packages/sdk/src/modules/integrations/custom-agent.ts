@@ -1,18 +1,3 @@
-/**
- * The per-agent custom-integration routes (HOU-823), on
- * `/agents/{agentSlugOrId}/integrations/custom/*`.
- *
- * Same data set as `custom.ts`, reached through the agent's own pod: a hosted
- * deployment serves ONLY this form (the gateway proxies it to the pod), while a
- * direct host serves both. The definitions read answers 404 where the feature
- * is absent and the tools read answers `{code:"not_found"}` for an unknown
- * slug; both throw here and the surface decides, as everywhere else in this
- * module.
- *
- * Assistant catalog: this file is the single source of truth for these eight
- * operations, so each carries its own `@assistant` block.
- */
-
 import { type HttpScope, httpRequest } from "../http";
 import type {
   AddCustomIntegrationInput,
@@ -22,7 +7,6 @@ import type {
   CustomToolInfo,
 } from "./custom-types";
 
-/** The agent-scoped root every route below hangs off. */
 const customRoot = (agentSlugOrId: string) =>
   `/agents/${encodeURIComponent(agentSlugOrId)}/integrations/custom`;
 

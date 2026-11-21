@@ -1,11 +1,3 @@
-/*
- * Landing page — base, chrome (nav + footer), buttons, section primitives.
- * Warm editorial: warm ivory ground, warm ink type, one ink pill CTA.
- * Palette + type come from site-tokens.css. Hero / app-window / body-sections
- * / motion live in their own files.
- */
-
-/* ── Reset (landing page only loads this) ─────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -59,7 +51,6 @@ img {
   top: 12px;
 }
 
-/* ── Buttons ─────────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -91,7 +82,6 @@ img {
   padding: 0 16px;
   font-size: 14px;
 }
-/* Primary: the black pill (on light grounds) */
 .btn-ink {
   background: var(--action);
   color: var(--action-text);
@@ -99,7 +89,6 @@ img {
 .btn-ink:hover {
   background: var(--action-hover);
 }
-/* Secondary: quiet outline on light */
 .btn-outline {
   background: transparent;
   color: var(--ink);
@@ -108,7 +97,6 @@ img {
 .btn-outline:hover {
   border-color: var(--ink);
 }
-/* White pill — a light primary that reads on the dark ground (dark ink label) */
 .btn-white {
   background: #fff;
   color: var(--ink-strong);
@@ -116,7 +104,6 @@ img {
 .btn-white:hover {
   background: #ececec;
 }
-/* Ghost on dark — the quiet secondary on the dark ground */
 .btn-ghost {
   background: transparent;
   color: #fff;
@@ -127,24 +114,16 @@ img {
   background: rgba(255, 255, 255, 0.06);
 }
 
-/* ── Section primitives ──────────────────────────────────────────────────── */
 .section {
   max-width: var(--measure);
   margin: 0 auto;
   padding: var(--section-pad) var(--gutter);
 }
-/* A soft-rounded light-gray panel on the white page (the recurring editorial
-   surface, echoing the hero frame). Adds only the surface — width + interior
-   padding stay identical to a plain section so content aligns across bands. */
 .section.is-panel {
   background: var(--panel);
   border-radius: var(--panel-radius);
   margin-block: clamp(10px, 2vw, 24px);
 }
-/* The dark band — the page's mid-scroll black beat, echoing the hero. Full
-   bleed edge to edge; the content inside keeps the shared section measure so
-   everything stays aligned with the bands above and below. Type flips white,
-   the segmented pill and preview get their dark-ground treatments. */
 .section.is-dark {
   max-width: none;
   background: var(--band-black);
@@ -201,10 +180,8 @@ img {
   gap: 8px;
   margin-bottom: 22px;
 }
-/* The big statement — one enormous, light-weight display line per section.
-   Impact comes from scale + air + brevity, not weight (editorial voice). */
 .sec-title {
-  font-weight: 340;                  /* light, refined display */
+  font-weight: 340;
   font-size: clamp(32px, 5vw, 56px);
   line-height: 1.04;
   letter-spacing: -0.02em;
@@ -221,10 +198,6 @@ img {
   text-wrap: balance;
 }
 
-/* ── Nav — the startups-page component, verbatim values, all pages ────────
-   Fixed, transparent over the dark hero; dark glass once scrolled (and from
-   the start on light subpages via .lnav-solid). General Sans wordmark 22/500.
-   NOTE: backdrop-filter here matches the shipped startups nav exactly. */
 .lnav {
   position: fixed;
   top: 0;
@@ -238,15 +211,10 @@ img {
   background: transparent;
   transition: background 0.3s ease, backdrop-filter 0.3s ease;
 }
-/* Scrolled: the frosted BLACK bar (the startups recipe) — the base
-   white-on-dark chrome colors below apply unchanged. */
 .lnav.scrolled {
   background: rgba(13, 13, 13, 0.92);
   backdrop-filter: blur(20px);
 }
-/* The LIGHT bar: over the landing's light sections (scripts.njk sets
-   .on-light) and on every subpage (.lnav-solid — resources et al. live on
-   white pages). White glass, ink chrome, light dropdowns. */
 .lnav.scrolled.on-light,
 .lnav.lnav-solid {
   background: rgba(255, 255, 255, 0.9);
@@ -285,7 +253,6 @@ img {
 .lnav.lnav-solid .lnav-cta:hover {
   background: var(--action-hover);
 }
-/* The resources menu follows the bar: white panel, ink links. */
 .lnav.scrolled.on-light .lnav-res-menu,
 .lnav.lnav-solid .lnav-res-menu {
   background: rgba(255, 255, 255, 0.97);
@@ -301,8 +268,6 @@ img {
   background: rgba(13, 13, 13, 0.06);
   color: var(--ink-strong);
 }
-/* The mobile dropdown sheet follows the white bar too — no bottom hairline,
-   same as the bar itself. */
 .lnav.scrolled.on-light + .lnav-drop,
 .lnav.lnav-solid + .lnav-drop {
   background: rgba(255, 255, 255, 0.97);
@@ -384,7 +349,6 @@ img {
   -webkit-mask: var(--helmet-mask) center / contain no-repeat;
   mask: var(--helmet-mask) center / contain no-repeat;
 }
-/* Resources: same voice as the links. */
 .lnav-res {
   position: relative;
 }
@@ -487,15 +451,6 @@ img {
 .lnav-drop a:last-child {
   border-bottom: none;
 }
-/* ── Nav collapse (the missing breakpoints) ────────────────────────────────
-   The burger and the dropdown sheet always existed in markup and JS, but no
-   media query ever hid the centered links or showed the burger, so on
-   narrow screens the links overlapped the wordmark. Below 1200px the links
-   move into the sheet; below 560px the GitHub icon and the language menu
-   follow them (both have rows in the sheet), leaving brand + Download +
-   burger. */
-/* 1200, not less: with Enterprise in the row, Spanish needs about that much
-   before the centered links meet the GitHub icon (measured, es tightest). */
 @media (max-width: 1200px) {
   .lnav-links {
     display: none;
@@ -517,7 +472,6 @@ img {
   }
 }
 
-/* ── Footer (the deepest ground, a step below the page) ──────────────────── */
 .lfoot {
   background: var(--ground-deep);
   color: var(--on-ink-faint);
@@ -594,8 +548,6 @@ img {
     grid-template-columns: 1fr 1fr;
     gap: 28px;
   }
-  /* Give the bottom-row legal/credit links a comfortable tap height on phones
-     (they are single-line text links, ~19px tall otherwise). */
   .lfoot-bottom {
     row-gap: 6px;
   }
@@ -609,10 +561,6 @@ img {
   }
 }
 
-/* ── Explicit per-OS download triggers (HOU-919) ──────────────────────────
-   The gate script routes [data-dl-trigger] by data-dl-os (else detectOs),
-   but v3 dropped every pinned trigger — non-Windows visitors had no path to
-   the Windows installer. These quiet text links restore both directions. */
 .dl-os-links {
   margin-top: 10px;
   font-size: 12.5px;

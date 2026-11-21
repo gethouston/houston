@@ -1,5 +1,3 @@
-// Components
-
 export type { AgentCardLabels } from "./components/agent-card";
 export { AgentCard } from "./components/agent-card";
 export { AgentDetailLayout } from "./components/agent-detail-layout";
@@ -87,7 +85,6 @@ export {
   listStoreIntegrations,
   resolveIntegrationLabels,
 } from "./integrations";
-// Design language
 export {
   storeDensity,
   storeLayout,

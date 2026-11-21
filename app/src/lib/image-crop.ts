@@ -1,41 +1,11 @@
-/**
- * Client-side avatar preparation: take whatever image the user picked and turn
- * it into the square, downscaled WebP blob the gateway's `POST /me/avatar`
- * accepts (2 MiB max, png/jpeg/webp). Doing the crop and downscale in the
- * browser means a 4000px phone photo never travels the wire at full size, and
- * the stored avatar is always a clean centered square regardless of the source
- * aspect ratio.
- *
- * This module owns the two primitives every avatar path in the app shares:
- * {@link centerSquareCrop} (the geometry) and {@link decodeImage} (the
- * `createImageBitmap`-then-`<img>` decode ladder). `lib/avatar-image.ts` reuses
- * both for the Profile picture, which needs a size-capped data URI
- * instead of a blob — one crop, one decoder, two encoders.
- *
- * No new npm dependency: the crop runs on a plain `<canvas>`. The geometry is
- * split into pure functions ({@link centerSquareCrop}, {@link outputEdge}) so
- * the cropping math is unit-tested under `node --test` without a DOM.
- */
-
-/** The longest edge (px) an avatar is downscaled to. Never upscales past it. */
 export const AVATAR_MAX_DIMENSION = 512;
 
-/** A square crop rectangle in source-image pixels. */
 export interface SquareCrop {
-  /** Left edge of the crop within the source image. */
   sx: number;
-  /** Top edge of the crop within the source image. */
   sy: number;
-  /** Edge length of the (square) crop. */
   size: number;
 }
 
-/**
- * The largest centered square that fits inside a `width` x `height` image. The
- * crop keeps the middle of the image and trims the longer axis evenly on both
- * sides, so a portrait or landscape photo becomes a square avatar without
- * distortion. Offsets are floored to whole pixels.
- */
 export function centerSquareCrop(width: number, height: number): SquareCrop {
   const size = Math.min(width, height);
   return {
@@ -45,11 +15,6 @@ export function centerSquareCrop(width: number, height: number): SquareCrop {
   };
 }
 
-/**
- * The output square's edge length: the crop size clamped DOWN to `max` so a
- * small source is never upscaled (which would only add blur and bytes) but a
- * large one is downscaled to the avatar ceiling.
- */
 export function outputEdge(
   cropSize: number,
   max: number = AVATAR_MAX_DIMENSION,
@@ -57,7 +22,6 @@ export function outputEdge(
   return Math.min(cropSize, max);
 }
 
-/** A decoded image plus the natural dimensions and a cleanup callback. */
 export interface DecodedImage {
   image: CanvasImageSource;
   width: number;
@@ -65,13 +29,6 @@ export interface DecodedImage {
   release: () => void;
 }
 
-/**
- * Decode a blob into something `drawImage` accepts. Prefers `createImageBitmap`
- * (off-main-thread decode, releasable), falling back to an `<img>` + object URL
- * on engines without it. Rejects on an undecodable file so the caller surfaces
- * a real error rather than uploading garbage. Shared with `lib/avatar-image.ts`,
- * which re-throws the rejection as its own typed failure.
- */
 export async function decodeImage(source: Blob): Promise<DecodedImage> {
   if (typeof createImageBitmap === "function") {
     const bitmap = await createImageBitmap(source);
@@ -98,17 +55,10 @@ export async function decodeImage(source: Blob): Promise<DecodedImage> {
       release: () => {},
     };
   } finally {
-    // Safe to revoke immediately: on success the pixels are already decoded
-    // into memory; on failure the URL is no longer needed.
     URL.revokeObjectURL(url);
   }
 }
 
-/**
- * Encode a canvas to a blob, preferring WebP and falling back to PNG on engines
- * that cannot encode WebP (some webviews). Rejects only when BOTH encoders
- * return null, so a null is never silently swallowed.
- */
 function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob((webp) => {
@@ -124,12 +74,6 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-/**
- * Center-square-crop and downscale a user-picked image to the avatar blob the
- * gateway accepts (WebP, PNG fallback, at most {@link AVATAR_MAX_DIMENSION}px
- * per side). Throws on an undecodable source or a canvas without a 2D context
- * so the upload flow can toast a real failure.
- */
 export async function cropAvatarToBlob(source: Blob): Promise<Blob> {
   const decoded = await decodeImage(source);
   try {

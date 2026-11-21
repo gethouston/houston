@@ -5,10 +5,6 @@ import type { AcademyRecord } from "../src/lib/academy/academy-record.ts";
 import { emailSentVia } from "../src/lib/academy/email-lesson/email-sent.ts";
 import { firstEmailCounts } from "../src/lib/academy/email-lesson/first-email.ts";
 
-// The email lesson finishes itself only on the app's own proof that the
-// email went out: a Gmail or Outlook send action run through the integration
-// tool, answered with the app's own data rather than an error or guidance.
-
 const call = (action: unknown, name = "integration_execute"): FeedItem => ({
   feed_type: "tool_call",
   data: { name, input: action === null ? null : { action, params: {} } },
@@ -75,8 +71,6 @@ describe("emailSentVia", () => {
   });
 
   it("never counts guidance returned when nothing was sent", () => {
-    // The app turned off for this AI Employee, no access, a stale action:
-    // all answered without an error, none of them an email going out.
     for (const guidance of [
       "This action's app is turned off for this agent, so it can't run.",
       'The action slug "GMAIL_SEND_EMAIL" does not exist in the app catalog.',
@@ -88,7 +82,6 @@ describe("emailSentVia", () => {
   });
 
   it("pairs each result with its own call", () => {
-    // The profile read answered; the send is still out.
     strictEqual(
       emailSentVia([
         call("GMAIL_GET_PROFILE"),
@@ -97,7 +90,6 @@ describe("emailSentVia", () => {
       ]),
       null,
     );
-    // A failed send retried, then answered.
     strictEqual(
       emailSentVia([
         call("GMAIL_SEND_EMAIL"),
@@ -133,7 +125,6 @@ describe("the first-email event", () => {
   const read = (record: AcademyRecord | null) => ({ record, isError: false });
 
   it("counts only while the lesson is unfinished, never on a replay", () => {
-    // A null record read successfully is a user who has earned nothing yet.
     strictEqual(firstEmailCounts(read(null), "employee-email"), true);
     strictEqual(firstEmailCounts(read(record({})), "employee-email"), true);
     const done = record({
@@ -146,7 +137,6 @@ describe("the first-email event", () => {
   });
 
   it("never counts when the record could not be read", () => {
-    // Unread is not "nothing earned": a replay would count twice.
     strictEqual(
       firstEmailCounts({ record: null, isError: true }, "employee-email"),
       false,

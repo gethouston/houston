@@ -15,17 +15,6 @@ type TeamRoutinesData = ReturnType<typeof useTeamRoutinesData>;
 type TeamRoutineActions = ReturnType<typeof useTeamRoutineActions>;
 type TeamRoutineHost = ReturnType<typeof useTeamRoutineHost>;
 
-/**
- * The employee's routines list: the rows between `team-routines-header.tsx`
- * and `team-routines-footer.tsx`, and the third sibling of that trio.
- *
- * The wording of its empty state depends on whether the employee answered at
- * all.
- *
- * Everything it shows is decided above it: it takes the section's hooks whole,
- * typed off their return types, and owns no state. Only the labels are its own
- * (pure `t()` reads), so the section above carries none of the wording.
- */
 export function TeamRoutinesGrid({
   agent,
   data,
@@ -40,20 +29,14 @@ export function TeamRoutinesGrid({
   actions: TeamRoutineActions;
   host: TeamRoutineHost;
   accountTimezone: string;
-  /** Per-row identity glyph, built by the section so its toolkits fetch does
-   *  not come and go with this list. */
   leadingIcon: (routine: Routine) => ReactNode;
   createButton: ReactNode;
 }) {
-  // Nothing answered at all. An empty list is then not evidence of an empty
-  // routines list, so the grid must not claim one.
   const unreadable = allAgentReadsFailed(data.failures);
   const gridLabels = useTeamGridLabels({ unreadable });
   const labels = useRoutineLabels();
   const scheduleFloor = useRoutineScheduleFloor();
 
-  // "This one will fail": an unpinned routine runs on whatever the employee
-  // runs on. The chip renders itself away when the row is fine.
   const warningChipFor = (routine: Routine) => (
     <RoutineWarningChip agent={agent} routine={routine} />
   );
@@ -63,9 +46,6 @@ export function TeamRoutinesGrid({
       <RoutinesGrid
         routines={data.list.routines}
         lastRuns={data.list.lastRuns}
-        // Routines being built in chat are rows too: without them a routine
-        // half-started from here would vanish from the list the moment its
-        // chat lost focus.
         draftActivities={data.drafts}
         accountTimezone={accountTimezone}
         loading={data.loading}
@@ -80,8 +60,6 @@ export function TeamRoutinesGrid({
         onResumeDraft={host.resumeDraft}
         onDiscardDraft={actions.onDiscardDraft}
         leadingIcon={leadingIcon}
-        // Without them every event routine's chip would say "verifying"
-        // forever, a claim this surface could never settle.
         triggerStatuses={data.triggers.triggerStatuses}
         triggerSummaries={data.triggers.triggerSummaries}
         onReconnectTrigger={data.triggers.onReconnectTrigger}
@@ -89,7 +67,6 @@ export function TeamRoutinesGrid({
         labels={gridLabels}
         rowLabels={labels.rowLabels}
         scheduleLabels={labels.schedule}
-        // The row editor never offers a pick under the saver's plan floor.
         scheduleFloor={scheduleFloor}
         scheduleSummaryLabels={labels.schedule.summary}
         triggerLabels={labels.trigger}

@@ -8,20 +8,6 @@ import type { ChatMessage } from "@houston/runtime-client";
 import { conversationScope } from "@houston/sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-/**
- * The queue watchdog (HOU-849): the ground-truth flush trigger for a held send
- * whose settle-watcher chain silently died — a fatal or budget-exhausted
- * observer stream never healed the stale `running` flag, so the reconnect
- * auto-continue sat "Queued" forever. The watchdog probes persisted history: a
- * trailing assistant message (or an empty transcript) proves no turn is
- * half-open server-side, so it heals the flag and flushes; a trailing user
- * message means a turn IS half-open, so it keeps waiting; a failed probe
- * retries. An auto-resume hold probes IMMEDIATELY (a stale hold must clear
- * within one round-trip) and renders no queued bubble; user-typed holds start
- * on the 2s backoff. Driven through `maybeQueueSend`, the seam the adapter
- * uses.
- */
-
 const AGENT = "Houston/Bo";
 
 const msg = (role: "user" | "assistant", content: string): ChatMessage =>
@@ -66,9 +52,6 @@ const queueResume = (probe: () => Promise<ChatMessage[]>) =>
 
 describe("queue watchdog", () => {
   it("flushes a held resume IMMEDIATELY when the probe proves the server is idle", async () => {
-    // The observer heal never fires (its stream died silently); history shows
-    // the failed turn's persisted reply — no half-open turn server-side. The
-    // resume hold is invisible and clears within one probe round-trip.
     queueResume(async () => [msg("user", "hrey"), msg("assistant", "")]);
     expect(queuedOf(key) ?? []).toEqual([]);
     expect(dispatched).toHaveLength(0);
@@ -76,7 +59,6 @@ describe("queue watchdog", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(dispatched).toHaveLength(1);
     expect(dispatched[0]?.autoResume).toBe(true);
-    // The stale running flag was healed, not bypassed.
     expect(
       (
         conversationStore.getSnapshot(conversationScope(AGENT, key)) as {
@@ -126,8 +108,6 @@ describe("queue watchdog", () => {
     maybeQueueSend(AGENT, req(key, "my own message"), dispatch, probe);
     expect(queuedOf(key)).toHaveLength(1);
 
-    // No immediate probe for a user-typed hold — the observer heal owns the
-    // fast path; the watchdog is the backstop.
     await vi.advanceTimersByTimeAsync(0);
     expect(probe).not.toHaveBeenCalled();
 
@@ -150,7 +130,6 @@ describe("queue watchdog", () => {
   it("stands down when the settle watcher already flushed", async () => {
     const probe = vi.fn(async () => [msg("assistant", "")]);
     queueResume(probe);
-    // The normal trigger fires first (observer heal / turn settle).
     conversationVm.confirmIdle(AGENT, key);
     expect(dispatched).toHaveLength(1);
 

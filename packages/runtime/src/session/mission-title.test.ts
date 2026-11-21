@@ -71,7 +71,6 @@ describe("generateMissionTitle", () => {
     await vi.advanceTimersByTimeAsync(10_000);
     await expect(pending).resolves.toBeNull();
     expect(warn).toHaveBeenCalledOnce();
-    // The cap aborts the model call instead of letting it run on.
     expect(signal?.aborted).toBe(true);
     vi.useRealTimers();
   });
@@ -93,7 +92,6 @@ describe("runMissionTitle cancel", () => {
     cancel.abort();
     await expect(pending).resolves.toEqual({ miss: "cancelled" });
     expect(signal?.aborted).toBe(true);
-    // A dropped title is the turn's failure, not a title failure.
     expect(error).not.toHaveBeenCalled();
     expect(warn).not.toHaveBeenCalled();
   });
@@ -122,7 +120,6 @@ test("the cap counts from capStart, not from the call", async () => {
     startCap = resolve;
   });
   const pending = runMissionTitle("c1", REQ, run, 10_000, { capStart });
-  // A long reply: the title is queued well past the cap, but nothing counts.
   await vi.advanceTimersByTimeAsync(30_000);
   expect(signal?.aborted).toBe(false);
   startCap();

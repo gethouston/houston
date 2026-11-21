@@ -29,7 +29,6 @@ const hired = (members: readonly RosterMember[], key: string, name: string) =>
 const names = (members: readonly RosterMember[]) =>
   members.map((member) => member.name);
 
-/** The three starters, each on the roster under `keys[i]`. */
 const starters = (keys: readonly string[]): BasicTeamDraft[] =>
   basicTeamDefaults((id) => id).map((draft, at) => ({
     ...draft,

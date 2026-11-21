@@ -5,13 +5,6 @@ import { missionRowInput } from "../src/lib/mission-row.ts";
 import { hydrateProviderCatalog } from "../src/lib/providers.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
-/**
- * A mission's board row is the pin every later send reads back (the warming
- * queue's `preferRowPin`, the picker, `resolveActivityOverride`). A row written
- * in the picker's display dialect resolves to no provider at all downstream,
- * and a row written with `model: ""` reads as a mission pinned to nothing.
- */
-
 const MISSION = {
   conversationId: "m1",
   title: "Tidy the deck",
@@ -60,8 +53,6 @@ describe("both mission creation paths route their row through it", () => {
     readFileSync(new URL(`../src/lib/${file}`, import.meta.url), "utf8");
 
   it("the optimistic create posts the shared row payload", () => {
-    // The row write lives in its own module (PRODUCT-1736); the payload is
-    // built once and the SDK re-posts it on a busy or waking refusal.
     const landing = source("mission-row-landing.ts");
     strictEqual(
       /const input = missionRowInput\(mission, opts\)/.test(landing),

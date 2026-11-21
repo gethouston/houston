@@ -17,18 +17,6 @@ import { useState } from "react";
 
 import { Viewport } from "./sample";
 
-/**
- * The scenery around the rail in the `AppSidebar` specimen: the pane it sits
- * beside (so its 272/56px width reads true), the top line and foot the desktop
- * shell fills, and the empty-workspace rail. None of it is the component under
- * study; it is what makes the component readable on the page.
- */
-
-/**
- * What a FOLDED block says on behalf of the rows it is hiding. The library
- * counts nothing and draws nothing: `trailing` is a slot, and this is one
- * plausible thing to put in it.
- */
 export function BlockRollup({ count }: { count: number }) {
   if (count === 0) return null;
   return (
@@ -43,7 +31,6 @@ export function BlockRollup({ count }: { count: number }) {
   );
 }
 
-/** The rail beside the pane it sits next to, so its 272/56px width reads true. */
 export function SidebarStage({ children }: { children: ReactNode }) {
   return (
     <Viewport className="h-[520px] w-full max-w-2xl">
@@ -78,7 +65,6 @@ function HeaderControl(props: {
   );
 }
 
-/** The host's verbs on the rail's top line (`headerActions`). */
 export function RailActions({ collapsed }: { collapsed: boolean }) {
   return (
     <>
@@ -96,7 +82,6 @@ export function RailActions({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-/** A round portrait at the rail slot's diameter, as a host draws one. */
 export function Portrait({ initials }: { initials: string }) {
   const diameter = useSidebarAvatarDiameter();
   return (
@@ -108,7 +93,6 @@ export function Portrait({ initials }: { initials: string }) {
   );
 }
 
-/** The shortcut closing the list (`listFooter`), in both rail states. */
 export function AddEmployee({ collapsed }: { collapsed: boolean }) {
   return (
     <SidebarAddRow
@@ -119,7 +103,6 @@ export function AddEmployee({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-/** A brand-new workspace: the top line's verbs, and nothing under them. */
 export function EmptyRail() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   return (

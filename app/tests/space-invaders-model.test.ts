@@ -33,7 +33,7 @@ test("shoot adds a bullet, caps in-flight count, and is inert once over", () => 
   shoot(s);
   shoot(s);
   shoot(s);
-  shoot(s); // fourth is dropped by the cap
+  shoot(s);
   assert.equal(s.bullets.length, 3);
   const over = createState();
   over.over = true;
@@ -44,7 +44,6 @@ test("shoot adds a bullet, caps in-flight count, and is inert once over", () => 
 test("a bullet overlapping an invader kills it and scores", () => {
   const s = createState();
   const target = s.invaders[0];
-  // Park a bullet inside the invader's box so this step registers the hit.
   s.bullets.push({ x: target.x + INV_W / 2, y: target.y + INV_H / 2 });
   step(s, IDLE);
   assert.equal(target.alive, false);
@@ -86,7 +85,7 @@ test("an invader reaching the ship row ends the game", () => {
   const s = createState();
   for (const inv of s.invaders) inv.alive = false;
   s.invaders[0].alive = true;
-  s.invaders[0].y = SHIP_Y - INV_H + 1; // its bottom crosses the ship row
+  s.invaders[0].y = SHIP_Y - INV_H + 1;
   step(s, IDLE);
   assert.equal(s.over, true);
   assert.deepEqual(s.explosions, [{ x: s.shipX, y: SHIP_Y, age: 0 }]);
@@ -94,7 +93,7 @@ test("an invader reaching the ship row ends the game", () => {
 
 test("an enemy bomb striking the ship ends the game", () => {
   const s = createState();
-  s.bombs.push({ x: s.shipX, y: SHIP_Y }); // right on the ship
+  s.bombs.push({ x: s.shipX, y: SHIP_Y });
   step(s, IDLE);
   assert.equal(s.over, true);
   assert.deepEqual(s.explosions, [{ x: s.shipX, y: SHIP_Y, age: 0 }]);
@@ -111,8 +110,6 @@ test("step is a no-op once the game is over", () => {
 
 test("injected rng makes the bomb cadence deterministic", () => {
   const s = createState();
-  // bombTimer starts at 0, so the first step is due to drop a bomb; rng()=0
-  // resets the timer to 0.9 and selects the first live invader as the shooter.
   step(s, IDLE, () => 0);
   assert.equal(s.bombs.length, 1);
   assert.ok(Math.abs(s.bombTimer - 0.9) < 1e-9);

@@ -85,14 +85,10 @@ describe("bundle frame mapping", () => {
     const top = frames[frames.length - 1];
     expect(top?.filename).toBe(fixture.sitePath);
     expect(top?.lineno).toBe(THROW_LINE);
-    // V8 reports the `new`: 1-based column 9 in the generated
-    // `  throw new Error(`, 13 in the over-indented original. Anything else
-    // is a 0/1-based slip or a lost segment offset.
     expect(top?.colno).toBe(13);
     expect(top?.in_app).toBe(true);
     expect(top?.context_line).toContain('throw new Error("fixture boom")');
     expect(top?.pre_context?.length).toBeGreaterThan(0);
-    // No frame is left at the bundle path; the test's own frame is untouched.
     expect(frames.every((f) => f.filename !== fixture.bundlePath)).toBe(true);
     expect(
       frames.some((f) => /map-frames\.test\.ts$/.test(f.filename ?? "")),
@@ -100,9 +96,6 @@ describe("bundle frame mapping", () => {
   });
 
   it("a bare-string ERROR logged from the bundle trims the mapped reporter frame", async () => {
-    // Stack: client.ts (captureLog) ← logging.ts (bundle) ← site.ts (bundle).
-    // logging.ts only reads as a reporter frame AFTER mapping; without it the
-    // event's top frame would be the log helper instead of the log site.
     const { sentry, events } = testSentry(fixture.bundlePath);
     mod.logFromFixture(sentry);
     await sentry.flush();

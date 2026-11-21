@@ -7,22 +7,9 @@ import { CustomIntegrationProvider, describeExecuteError } from "./provider";
 import { MemoryCustomSecretStore } from "./secrets";
 import { MemoryCustomIntegrationStore } from "./store";
 
-/**
- * HOU-1052: a TRANSPORT-level failure (the server drops the socket — the
- * shape an edge that idle-closes keep-alive connections produces) REJECTS out
- * of `executor.execute` with the bare message "HTTP request failed", unlike
- * an HTTP-status failure which resolves `{ok:false}` with full detail. The
- * provider's catch used to surface only that top message, so every failing
- * POST to one API read as the same generic error with no way to diagnose it —
- * for the agent, the user, or us. These tests pin the whole story surviving.
- */
-
 let baseUrl = "";
 const server = createServer((req, res) => {
   if (req.method === "POST") {
-    // RST the request — GETs keep working, mirroring the reported "reads
-    // fine, every write fails" split (undici silently retries idempotent
-    // GETs on a fresh connection, never a POST).
     req.socket.destroy();
     return;
   }
@@ -80,7 +67,6 @@ test("a transport-failed POST surfaces the dropped-connection cause, not just 'H
   const get = tools.find((t) => t.address.includes("listThings"));
   if (!post || !get) throw new Error("compiled tools missing");
 
-  // The GET still works — the split the user actually experienced.
   const ok = await provider.execute("u", get.address, {});
   expect(ok.successful).toBe(true);
 
@@ -89,11 +75,8 @@ test("a transport-failed POST surfaces the dropped-connection cause, not just 'H
   });
   expect(failed.successful).toBe(false);
   if (failed.successful) throw new Error("unreachable");
-  // The generic top message is still there…
   expect(failed.error).toContain("HTTP request failed");
-  // …but the cause chain now rides along, naming the real failure…
   expect(failed.error).toMatch(/other side closed|ECONNRESET|socket/i);
-  // …with the honest transient-retry guidance for the model.
   expect(failed.error).toContain("safe to repeat");
 }, 60_000);
 
@@ -116,13 +99,10 @@ test("describeExecuteError composes the cause chain and dedupes codes", () => {
   expect(described).toContain("other side closed (UND_ERR_SOCKET)");
   expect(described).toContain("safe to repeat");
 
-  // A plain error (the execute timeout) passes through untouched.
   expect(describeExecuteError(new Error("the action did not respond"))).toBe(
     "the action did not respond",
   );
-  // Non-Error rejections never crash the description.
   expect(describeExecuteError("boom")).toBe("boom");
-  // Adjacent duplicate messages collapse.
   const dupe = new Error("same");
   (dupe as Error & { cause: unknown }).cause = new Error("same");
   expect(describeExecuteError(dupe)).toBe("same");

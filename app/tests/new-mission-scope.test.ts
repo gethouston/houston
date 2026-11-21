@@ -2,10 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { newMissionScopeFor } from "../src/lib/new-mission-scope.ts";
 
-// What "new task" means from where the user is standing: the phone's compose
-// button sits in one fixed place, so it has to read its subject off the
-// location. Pure; the compose itself is store-bound.
-
 const at = (
   viewMode: string,
   agentsHomeAgentId: string | null = null,

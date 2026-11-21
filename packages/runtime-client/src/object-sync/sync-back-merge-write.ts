@@ -4,21 +4,11 @@ import { atomicTempPath } from "@houston/protocol";
 import { mergeDocumentBodies, mergeOverDeleted } from "./sync-back-doc-merge";
 import type { RemoteDocument } from "./sync-back-remote-read";
 
-/** One merge round's bytes, and why they are the local ones unmerged. */
 export interface MergeOutcome {
   body: string;
   unmergeable?: string;
 }
 
-/**
- * Merge the turn's bytes into the remote document (a remote deleted outright
- * merges as an empty one when the base can tell the turn's own entries
- * apart). A side that will not parse
- * as the document (a byte-order mark, trailing bytes, a board that is not an
- * array) cannot be merged: the local bytes overwrite the remote, as every
- * conflict did before merges existed, and the reason rides the sync result to
- * the terminal frame instead of throwing out of the whole pass.
- */
 export function mergeOrOverwrite(
   relativePath: string,
   local: string,
@@ -42,11 +32,6 @@ export function mergeOrOverwrite(
   }
 }
 
-/**
- * Replace `abs` whole: a reader (the host's own doc cache, a watcher) never
- * sees a half-written merge. The temp name carries `ATOMIC_TMP_SUFFIX`, which
- * the store sync never uploads.
- */
 export async function writeAtomically(abs: string, body: string) {
   const staged = await stageReplacement(abs, body);
   try {
@@ -56,12 +41,6 @@ export async function writeAtomically(abs: string, body: string) {
   }
 }
 
-/**
- * `body` written beside `abs`, for `commit` to rename over it: a caller that
- * must compare before replacing holds its lock for the rename alone. Always
- * `discard` after: it removes an uncommitted temp and does nothing once the
- * rename landed.
- */
 export async function stageReplacement(abs: string, body: string) {
   const temp = atomicTempPath(abs, randomUUID());
   try {

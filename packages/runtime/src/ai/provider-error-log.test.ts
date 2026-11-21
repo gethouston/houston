@@ -7,9 +7,6 @@ describe("logProviderError", () => {
   });
 
   it("logs an unauthenticated failure at error level with its cause on the line", () => {
-    // The `cause=` field is what the Sentry capture regex turns into the
-    // `provider_error_cause` tag (PRODUCT-1302) — the line format is a
-    // contract with runtime-client sentry/client.ts PROVIDER_ERROR_LINE.
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     logProviderError(
       {
@@ -42,9 +39,6 @@ describe("logProviderError", () => {
   });
 
   it("puts the SDK error slug BEFORE kind, and cause right after it (the regex contract)", () => {
-    // `[provider_error] provider=X model=Y status=Z error=SLUG kind=K cause=C :: text`
-    // — the exact shape runtime-client sentry/client.ts PROVIDER_ERROR_LINE
-    // captures into the (provider, kind, cause, sdk-slug) fingerprint.
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     logProviderError(
       {
@@ -67,11 +61,6 @@ describe("logProviderError", () => {
   });
 
   it("keeps org_policy_blocked a warning — the user's org policy, not broken custody", () => {
-    // Anthropic authenticated the token and its org policy rejected the
-    // surface (PRODUCT-1553): the card already offers the API-key remedy,
-    // only the org admin can lift the block, and every retried turn
-    // re-fires. HOUSTON-APP-4XG-style custody breaks carry other causes and
-    // stay errors.
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     logProviderError({
@@ -89,9 +78,6 @@ describe("logProviderError", () => {
   });
 
   it("keeps a deactivated ChatGPT workspace a warning — user account state, not custody", () => {
-    // OpenAI authenticated the served token and rejected the WORKSPACE behind
-    // it (PRODUCT-1547): only the user can fix that, the reconnect card says
-    // so, and a Sentry error per retried turn adds no signal.
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     logProviderError(
@@ -110,9 +96,6 @@ describe("logProviderError", () => {
   });
 
   it("keeps a caller-cancelled abort a warning even as kind=unknown", () => {
-    // The AbortError a mid-request cancel raises ("This operation was
-    // aborted") classifies as unknown, but it is the user's Stop or a dropped
-    // client — never an engine incident (HOUSTON-APP-59E).
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     logProviderError(
@@ -161,10 +144,6 @@ describe("logProviderError", () => {
     );
   });
   it("keeps ChatGPT's reason-less refusal a warning even when nothing explains it (PRODUCT-1832)", () => {
-    // `{"detail":"Bad Request"}` / a bare `Not Found` is the Codex gateway
-    // dropping the explanation of a refusal it gave in full moments earlier
-    // (ai/codex-terse-refusal.ts). The card stays `unknown`; a Sentry error
-    // per turn only re-counts HOUSTON-APP-56R.
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     logProviderError(
@@ -182,7 +161,6 @@ describe("logProviderError", () => {
     });
     expect(error).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledTimes(2);
-    // The same body from any other provider is still unclassified territory.
     logProviderError({
       kind: "unknown",
       provider: "openrouter",

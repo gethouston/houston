@@ -6,22 +6,6 @@ import { paletteStatus } from "./palette-status.mjs";
 import { paletteSurfaces } from "./palette-surfaces.mjs";
 import { paletteText } from "./palette-text.mjs";
 
-// Mode and palette are two axes. `mode` (light | dark) decides which authored
-// Houston set a palette is derived FROM and which structure it wears; the palette
-// decides the hexes. Houston Light and Houston Dark are the authored sets
-// themselves, so they are derived from nothing and emit no CSS block: they ARE
-// the :root / [data-theme] blocks, which is how the zero-diff proof stays intact.
-
-/**
- * The families Houston AUTHORS rather than derives; an imported palette inherits
- * them from the Houston set of its own mode, unchanged. They are identity (agent
- * helmets and the employee badge metal they are mixed through, file-type
- * glyphs, human and organization avatars), the brand comet, one effect wash, and the QR pair
- * (a scanner reads dark modules on a light tile, whatever the scheme): none of them is a surface a terminal palette gets a say in, and each is
- * already contrast-tuned against the ladder every palette keeps. The status
- * family and the link are inherited for the same reason, but they are re-measured
- * on the palette's surfaces, so `palette-status.mjs` owns them.
- */
 const AUTHORED = [
   "glow-",
   "agent-",
@@ -36,25 +20,9 @@ const AUTHORED = [
 const isAuthored = (name) =>
   AUTHORED.some((family) => name === family || name.startsWith(family));
 
-/**
- * The colour Houston's own two sets show in a swatch. Their action is ink by
- * doctrine and their primary button is near-ink in light and white frost in dark,
- * so a tile painted from either would be a fourth gray beside three others. The
- * link is the one place these sets spend colour on content, which makes it the
- * honest fourth hex; the `hue` guard is what states that the action carries none.
- */
 const houstonChromatic = (byName) =>
   hue(byName.action) === null ? byName.link : byName.action;
 
-/**
- * The four hexes the picker paints a palette's swatch with. `accent` is the
- * colour a filled primary button actually wears, because the tile paints a pill
- * from it: for an import that is its accent, worn solid in light (`--ht-cta` IS
- * that accent) and as the frost tint and rim in dark. Reading it off the ACTION
- * role instead sent a monochrome import (the `white` theme, whose accent is a
- * gray) through the guard above and into Houston's blue link, so its tile showed
- * a blue pill over a gray button.
- */
 function swatch(byName, accent = houstonChromatic(byName)) {
   const base = byName.base;
   const screen = composite(byName.background, base);
@@ -81,8 +49,6 @@ export function derivePalette(base, p) {
   const surfaces = paletteSurfaces(p, notes);
   const text = paletteText(p, surfaces, notes);
   const status = paletteStatus(indexByName(base), p, surfaces, notes);
-  // The light primary button IS the accent fill, the same one `action-text` was
-  // measured on, so the button reuses that measurement rather than repeating it.
   const cta = paletteCta(p, surfaces, text["action-text"], notes);
   const derived = { ...surfaces, ...text, ...status, ...cta };
   for (const role of Object.keys(derived)) {

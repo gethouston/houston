@@ -25,26 +25,8 @@ import { useAssistantSend } from "./use-assistant-send";
 import { useContextCommandMenu } from "./use-context-command-menu";
 
 const noop = () => {};
-/** The assistant never lists missions: `panelOnly` renders the chat alone. */
 const NO_ITEMS: never[] = [];
 
-/**
- * The 1-on-1 assistant chat, filling its screen.
- *
- * The assistant is an ordinary agent conversation, so this is the app's own
- * chat: `useAgentChatPanel` supplies the same composer, model picker, skills,
- * interaction cards, tool rendering and attachments every mission chat gets,
- * and AIBoard's `panelOnly` mode renders the detail panel as the whole surface
- * — the same presentation the phone's pushed mission chat uses. Nothing here
- * re-implements chat behavior; the SDK conversation VM stays the one source of
- * turns (history seeded by `useAgentChatPanel`'s own `useChatHistory`, live
- * turns folded by the SDK, older pages fetched on scroll-up).
- *
- * It creates NO activity record, which is what keeps it out of every board,
- * unread count and mention sweep: those read activity rows, and the assistant
- * has none. The conversation is fixed and permanent (`handle.conversation`),
- * so there is no selection to make and no create path to reach.
- */
 export function AssistantChat({ handle }: { handle: AssistantHandle }) {
   const { t } = useTranslation("assistant");
   const sessionKey = handle.conversation;
@@ -92,9 +74,6 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
     running,
   });
 
-  // The composer "+" menu gains the two conversation commands. They travel as
-  // ordinary messages (the runtime reads them at the turn route), so the menu
-  // is a shortcut for typing them, never a second path.
   const attachMenu = useContextCommandMenu({
     base: panel.attachMenu,
     sessionKey,
@@ -109,9 +88,6 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
       (await tauriChat.loadHistory(path, key, opts)) as FeedItem[],
     [path],
   );
-  // Stable identity: AIBoard folds this into its `hydrateSession` callback and
-  // keys the composer-autofocus effect on it, so an inline arrow would re-focus
-  // the composer on every streamed token.
   const keyForSession = useCallback(() => sessionKey, [sessionKey]);
   const rootRef = useRef<HTMLDivElement>(null);
   const keyboardInset = useVisualViewportInset(rootRef);
@@ -121,9 +97,6 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
       ref={rootRef}
       data-testid="assistant-chat"
       className="flex h-full min-h-0 flex-col pb-safe"
-      // iOS does not shrink `dvh` when the keyboard opens, so the composer of a
-      // full-height chat would sit under the keys. Zero on desktop and whenever
-      // nothing occludes, so the one style serves both breakpoints.
       style={keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}
     >
       <AssistantPhoneHeader />

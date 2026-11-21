@@ -68,8 +68,6 @@ pub async fn bind_exact(port: u16) -> Result<BindOutcome, String> {
         Ok(l) => Some(l),
         Err(e) if is_busy(&e) => return Ok(BindOutcome::Busy),
         Err(e) => {
-            // No IPv6 loopback on this machine — v4-only is fine: a browser
-            // that can't connect `::1` falls back to `127.0.0.1`.
             tracing::info!("[oauth-loopback] no ::1 listener on port {port} ({e}); IPv4 only");
             None
         }
@@ -119,11 +117,6 @@ pub fn spawn_listener(task: ListenerTask) {
             ) => {
                 match result {
                     Ok(Ok(())) => {}
-                    // The listener is a background task: its start command
-                    // already returned, so there's no Result left to bubble up
-                    // to a toast. This is the documented event-callback
-                    // exception to the no-silent-failure rule. The user-visible
-                    // safety net is starting the attempt again.
                     Ok(Err(e)) => tracing::error!("[{tag}] listener error: {e}"),
                     Err(_) => tracing::info!(
                         "[{tag}] attempt {attempt_id} timed out after {}s on port {port} with no callback; freeing port",
@@ -132,12 +125,7 @@ pub fn spawn_listener(task: ListenerTask) {
                 }
             }
         }
-        // Release the port BEFORE announcing it: a superseding start is waiting
-        // on `freed` so it can rebind this very port.
         drop(sockets);
-        // Leave the registry pointing at nothing rather than at a task that has
-        // exited — but only if it still points at US (a newer generation may
-        // have taken the slot already).
         if let Err(e) = (route.release)(&app, attempt_id) {
             tracing::error!("[{tag}] could not clear the listener slot: {e}");
         }
@@ -184,11 +172,9 @@ mod tests {
 
     #[tokio::test]
     async fn bind_first_free_steps_past_a_squatted_port() {
-        // Another process holding 8975 must not fail the sign-in: we fall
-        // through to the next registered redirect URI.
         let squatter = TcpListener::bind(("127.0.0.1", CANDIDATE_PORTS[0])).await;
         let Ok(squatter) = squatter else {
-            return; // the port is already busy on this machine; nothing to prove
+            return;
         };
         let sockets = bind_first_free().await.expect("a candidate is free");
         assert_ne!(sockets.port, CANDIDATE_PORTS[0]);
@@ -199,9 +185,6 @@ mod tests {
 
     #[tokio::test]
     async fn bind_exact_reports_a_squatted_port_as_busy() {
-        // The brokered flow minted its authorize URL for ONE port, so a squat
-        // must come back as `Busy` (step + re-mint), never as a bind of some
-        // other port the provider would then refuse to redirect to.
         let squatter = TcpListener::bind(("127.0.0.1", CANDIDATE_PORTS[1])).await;
         let Ok(squatter) = squatter else {
             return;
@@ -215,11 +198,9 @@ mod tests {
 
     #[tokio::test]
     async fn bind_exact_reports_a_v6_only_squatter_as_busy() {
-        // A process holding only `[::1]:port` would receive the callbacks of
-        // browsers that resolve `localhost` to IPv6 — the port is NOT usable.
         let squatter = TcpListener::bind(("::1", CANDIDATE_PORTS[2])).await;
         let Ok(squatter) = squatter else {
-            return; // no IPv6 loopback on this machine; nothing to prove
+            return;
         };
         match bind_exact(CANDIDATE_PORTS[2]).await.expect("no bind error") {
             BindOutcome::Busy => {}
@@ -232,10 +213,9 @@ mod tests {
     async fn bind_exact_listens_on_both_stacks() {
         let BindOutcome::Bound(sockets) = bind_exact(CANDIDATE_PORTS[3]).await.expect("bind")
         else {
-            return; // the port is busy on this machine; nothing to prove
+            return;
         };
         assert_eq!(sockets.port, CANDIDATE_PORTS[3]);
-        // v4 is always required; v6 is best-effort but expected on CI machines.
         let v4 = tokio::net::TcpStream::connect(("127.0.0.1", sockets.port)).await;
         assert!(v4.is_ok(), "IPv4 loopback must accept");
         if sockets.v6.is_some() {
@@ -249,7 +229,6 @@ mod tests {
         let (cancel, cancel_rx) = tokio::sync::oneshot::channel::<()>();
         let (freed_tx, freed) = tokio::sync::oneshot::channel::<()>();
         tokio::spawn(async move {
-            // Stand in for the listener task: wake on cancel, then announce.
             let _ = cancel_rx.await;
             freed_tx.send(()).expect("supersede is waiting");
         });
@@ -265,7 +244,7 @@ mod tests {
     async fn supersede_returns_immediately_when_the_listener_already_ended() {
         let (cancel, cancel_rx) = tokio::sync::oneshot::channel::<()>();
         let (_freed_tx, freed) = tokio::sync::oneshot::channel::<()>();
-        drop(cancel_rx); // the task is gone; the cancel send fails
+        drop(cancel_rx);
         supersede(ActiveListener {
             id: 1,
             cancel,

@@ -14,7 +14,6 @@ import {
   STDERR_CLOSE_GRACE_MS,
 } from "./runtime-spawner";
 
-/** A stand-in ChildProcess: an emitter with the bits the spawner touches. */
 function fakeChild() {
   return Object.assign(new EventEmitter(), {
     stdout: null,
@@ -70,9 +69,6 @@ test("spawn omits the shared-skills env when no filesystem mirror is available",
 });
 
 test("only the coordinator's child carries the assistant role, and no credential", async () => {
-  // The whole point of deciding the role in the host: two agents, one spawner,
-  // and the role variable reaches exactly one child. A gateway token reaches
-  // neither — the credential stays in the host process.
   const launcher = new ProcessLauncher({
     spawner: new RuntimeProcessSpawner({
       command: ["runtime"],
@@ -114,9 +110,6 @@ test("only the coordinator's child carries the assistant role, and no credential
 });
 
 test("a child that fails to spawn ('error', never 'exit') still fires the exit callback, exactly once", () => {
-  // A missing/unstaged runtime binary emits 'error' + 'close' and NEVER 'exit'.
-  // Listening for 'exit' alone left the launcher's abort hook silent, so the
-  // boot polled a corpse for the whole 60s health budget.
   const child = fakeChild();
   spawnMock.mockReturnValue(child);
   const handle = new RuntimeProcessSpawner({ command: ["runtime"] }).spawn({
@@ -131,16 +124,12 @@ test("a child that fails to spawn ('error', never 'exit') still fires the exit c
   child.emit("error", new Error("spawn ENOENT"));
   expect(exits).toBe(1);
 
-  // The trailing events of the same death must not fire the callback again.
   child.emit("close", 1, null);
   child.emit("exit", 1, null);
   expect(exits).toBe(1);
 });
 
 test("the exit callback carries the code, the signal and the last stderr lines", () => {
-  // The host is the only process that ever sees how a runtime died: a V8
-  // heap-limit abort or a cgroup SIGKILL leaves nothing in Sentry from the
-  // child itself (HOUSTON-APP-5DX ran 348 blind restarts on that gap).
   const stderr = new EventEmitter();
   const child = Object.assign(new EventEmitter(), {
     stdout: null,
@@ -187,7 +176,7 @@ test("an 'exit' with no 'close' still fires after the stderr grace, once", () =>
   const exits: unknown[] = [];
   handle.onExit?.((exit) => exits.push(exit));
   child.emit("exit", 137, null);
-  expect(exits).toHaveLength(0); // waiting for the pipes to drain
+  expect(exits).toHaveLength(0);
   vi.advanceTimersByTime(STDERR_CLOSE_GRACE_MS);
   expect(exits).toEqual([{ code: 137, signal: null, stderrTail: [] }]);
   child.emit("close", 137, null);
@@ -195,8 +184,6 @@ test("an 'exit' with no 'close' still fires after the stderr grace, once", () =>
 });
 
 test("each onExit registration gets its own one-shot callback", () => {
-  // The launcher registers separately for the boot abort and for sleep's
-  // "wait until the child is actually gone" — both must be told.
   const child = fakeChild();
   spawnMock.mockReturnValue(child);
   const handle = new RuntimeProcessSpawner({ command: ["runtime"] }).spawn({
@@ -231,8 +218,6 @@ test("a runtime that fails to spawn aborts the boot instead of burning the healt
     dataDirFor: () => "/data/agent/data",
     mintToken: () => "secret",
     allocatePort: async () => 4317,
-    // Stands in for the production /health poll against a port nobody bound:
-    // it keeps trying until the 60s budget runs out.
     waitHealthy: () =>
       new Promise((_, reject) => {
         setTimeout(() => reject(new Error("never became healthy")), 60_000);
@@ -246,14 +231,14 @@ test("a runtime that fails to spawn aborts the boot instead of burning the healt
   });
 
   return (async () => {
-    await vi.advanceTimersByTimeAsync(0); // let the spawn actually happen
+    await vi.advanceTimersByTimeAsync(0);
     child.emit("error", new Error("spawn ENOENT"));
     await vi.advanceTimersByTimeAsync(0);
     await boot;
 
     expect(failure).toContain("runtime exited before becoming healthy");
     expect(failure).toContain("never spawned");
-    expect(Date.now() - started).toBeLessThan(1_000); // not the 60s budget
+    expect(Date.now() - started).toBeLessThan(1_000);
     expect(await launcher.status("sales")).toBe("asleep");
   })();
 });
@@ -294,12 +279,6 @@ test.each([
 });
 
 test("the unserved stamp is the HOST's answer, never the parent's", async () => {
-  // A managed pod's coordinator runs under a host whose own environment may
-  // already carry this name (the gateway stamped the pod, a supervisor re-
-  // exported it, a desktop host was restarted from a shell that had it). It is
-  // a PER-SPAWN stamp: inherited, a stale list silently narrows what the AI
-  // Manager will offer, and every ordinary agent — which has no tool to consult
-  // it — carries one too.
   vi.stubEnv("HOUSTON_ASSISTANT_UNSERVED", "createOrg,deleteOrg");
   const launcher = new ProcessLauncher({
     spawner: new RuntimeProcessSpawner({
@@ -337,9 +316,6 @@ test("the unserved stamp is the HOST's answer, never the parent's", async () => 
 });
 
 test("spawn still hands the runtime the shared Houston home it authenticates from", () => {
-  // HOUSTON_HOME is a path, not a credential: the runtime resolves the SHARED
-  // Claude login dir from it (`<HOUSTON_HOME>/claude-login`), so withholding it
-  // would send every agent to a home with no credential in it.
   vi.stubEnv("HOUSTON_HOME", "/houston-home");
   vi.stubEnv("HOUSTON_ASSISTANT_TOKEN", "host-only");
   new RuntimeProcessSpawner({ command: ["runtime"] }).spawn({

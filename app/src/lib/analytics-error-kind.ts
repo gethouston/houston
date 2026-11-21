@@ -1,13 +1,3 @@
-/**
- * The `error_kind` taxonomy: what a failure message is really about, read off
- * the message itself. It is what makes `app_error_shown` countable by cause —
- * a free-text message would give every error its own bucket.
- *
- * Its own module (and free of every browser dep) so the classifier can be
- * driven straight from a node test, and so the one place a new message
- * pattern is added is obvious.
- */
-
 export function classifyAnalyticsError(message: string): string {
   const lower = message.toLowerCase();
   if (
@@ -20,8 +10,6 @@ export function classifyAnalyticsError(message: string): string {
     lower.includes("network") ||
     lower.includes("fetch") ||
     lower.includes("timeout") ||
-    // WebKit's transport-failure message (HOU-1085) names neither "network"
-    // nor "fetch" — without this line an offline burst classifies as unknown.
     lower.includes("load failed")
   )
     return "network";

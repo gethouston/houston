@@ -16,7 +16,6 @@ import { channelWorkspaceScope } from "./channel-workspace-scope";
 import { assistantQueryOptions } from "./use-assistant";
 import { useSession } from "./use-session";
 
-/** Public channel links resolve a fresh membership before selecting any space. */
 export function useAssistantLanding() {
   const { t } = useTranslation("assistant");
   const landing = useRef(assistantLanding(window.location.search)).current;

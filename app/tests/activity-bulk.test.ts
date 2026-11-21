@@ -27,7 +27,6 @@ describe("activity bulk helpers", () => {
     );
     strictEqual(next[0].status, "archived");
     strictEqual(next[0].updated_at, "2026-01-01T00:00:00.000Z");
-    // Unselected row untouched — no status change, no timestamp stamp.
     strictEqual(next[1].status, "done");
     strictEqual(next[1].updated_at, undefined);
     strictEqual(next[2].status, "archived");
@@ -69,17 +68,10 @@ describe("activity bulk helpers", () => {
   });
 
   it("single remove treats unknown ids as an idempotent no-op", () => {
-    // Same-length list back with `removed: false` signals "already gone" so
-    // `remove()` skips the write and resolves instead of throwing — preserving
-    // the HOU-462 unhandled-rejection fix under the richer return shape.
     const items = [item("a", "done")];
     deepStrictEqual(applyRemove(items, "zzz"), { items, removed: false });
   });
 });
-
-// ── Moving a mission to Done ────────────────────────────────────────────────
-// The user's own move answers whatever the mission was waiting on: the blocking
-// steps go, the optional clean-finish offers keep rendering on the Done card.
 
 const QUESTION_STEP: InteractionStep = {
   kind: "question",
@@ -177,18 +169,11 @@ describe("activity patch: pending_interaction on a move to done", () => {
     );
     deepStrictEqual(next[0].pending_interaction, { steps: [ACTIONS_STEP] });
     strictEqual("pending_interaction" in next[1], false);
-    // Untouched row keeps everything, timestamp included.
     deepStrictEqual(next[2], items[2]);
   });
 });
 
-/**
- * The local write path mirrors the host's `applyActivityUpdate` field for
- * field. Two rules it used to break: it wrote an untrusted interaction with no
- * validation at all, and it spread `undefined` values over stored fields.
- */
 describe("activity patch: parity with the host merge rule", () => {
-  // A pre-step build's shape (no `steps`) — what a stale message can carry.
   const MALFORMED = {
     kind: "question",
     question: "Which deck?",
@@ -215,8 +200,6 @@ describe("activity patch: parity with the host merge rule", () => {
   });
 
   it("ignores undefined VALUES instead of blanking the stored field", () => {
-    // A caller spreading an optional into a patch must not wipe `status` — the
-    // schema requires it, and the host path has always ignored undefined.
     const next = applyActivityPatch(item("a", "needs_you"), {}, "t");
     strictEqual(next.status, "needs_you");
     strictEqual(

@@ -17,7 +17,6 @@ import {
 } from "../../../src/specimen";
 import { hoverCardProps } from "./hover-card-parts";
 
-/** The creator card, reused per row so only the placement/timing prop changes. */
 function CreatorCard({
   trigger,
   align,
@@ -44,7 +43,6 @@ function CreatorCard({
   );
 }
 
-/** Controlled: the parent owns `open`, so hover is not the only way in. */
 function ControlledHoverCard() {
   const [open, setOpen] = useState(false);
   return (
@@ -163,11 +161,6 @@ function HoverCardSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = [
   "HoverCard",
   "HoverCardContent",

@@ -1,10 +1,3 @@
-/**
- * Entry lifecycle behind the agent-provisioning store: mark an entry, run its
- * readiness probe, and rehydrate the mirror after a relaunch. Each probe holds
- * its own entry object and quits when the store no longer carries that exact
- * entry.
- */
-
 import type { ProvisioningEntry } from "../../lib/agent-provisioning/entry";
 import { handOffOnce } from "../../lib/agent-provisioning/handoff";
 import { parsePersistedProvisioning } from "../../lib/agent-provisioning/persist";
@@ -38,13 +31,6 @@ export function startEntry(
   startProbe(store, entry);
 }
 
-/**
- * The engine answered for this entry: hand it off, once, whoever noticed
- * first (the probe, or a write the engine answered). The flush-then-refetch-
- * then-clear order, and why reads open before the refetch, is
- * `completeWarmupHandoff`. New sends already steer to the normal wire path
- * once the flush started.
- */
 export function handOff(
   store: AgentProvisioningStore,
   entry: ProvisioningEntry,
@@ -67,17 +53,9 @@ function startProbe(
   void runProvisioningProbe(entry, {
     readFile: (agentPath, relPath) =>
       getEngine().readAgentFile(agentPath, relPath),
-    // Identity, not presence: a re-mark of the same id retires this probe.
     isMarked: (id) => store.getState().provisioning[id] === entry,
     onReady: () => handOff(store, entry),
     onGone: (id, err) => {
-      // The server no longer knows this agent (deleted/unshared elsewhere
-      // while the entry — possibly rehydrated from the localStorage mirror —
-      // still tracked it, HOUSTON-APP-4ZF). Flushing would only fan the same
-      // "agent not found" 404 into every queued write; the honest surface is
-      // the roster without the agent. Silent by the agent-gone contract
-      // (`lib/agent-gone.ts`): log, heal the roster so the ghost disappears,
-      // drop the entry and its queue.
       logger.warn(
         `[agent-provisioning] agent gone during warm-up, dropping entry: ${id}`,
       );
@@ -85,12 +63,7 @@ function startProbe(
       actions.clearProvisioning(id, entry);
     },
     onTimeout: (id, error) => {
-      // A newer mark (rename, or a fresh create reusing the id) already
-      // retired this exact entry — nothing to do.
       if (store.getState().provisioning[id] !== entry) return;
-      // Never make a visible mission disappear on its own: a cold start past
-      // the TTL flags the entry once (toast + sticky UI state) and keeps
-      // waiting. A pod that's merely slow to schedule still comes up.
       if (!entry.timedOut) {
         entry.timedOut = true;
         showErrorToast("agent_provisioning", error.message, error, {
@@ -109,12 +82,6 @@ function startProbe(
   });
 }
 
-/**
- * Pick the still-fresh mirrored entries back up after a relaunch and resume
- * their probes. Hosted profile only — on a co-located engine nothing is ever
- * marked, and stale hosted entries expire via the TTL inside
- * parsePersistedProvisioning.
- */
 export function rehydrateProvisioning(store: AgentProvisioningStore): void {
   if (isCoLocatedEngine()) return;
   const raw = storageRead();
@@ -124,13 +91,8 @@ export function rehydrateProvisioning(store: AgentProvisioningStore): void {
     return;
   }
   for (const entry of fresh) {
-    // A timed-out entry's `since` may be hours stale (kept regardless of age
-    // by the parse filter above) — re-anchor it so the resumed probe gets a
-    // fresh TTL window instead of immediately re-timing-out.
     if (entry.timedOut) entry.since = Date.now();
     startEntry(store, entry);
-    // The relaunch emptied the in-memory VM: re-render the queued bubbles so
-    // the sent-but-not-yet-delivered messages stay visible.
     restoreWarmingBubbles(entry);
   }
 }

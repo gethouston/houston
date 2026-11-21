@@ -92,7 +92,6 @@ async fn target_paths(suffix: &str, prefix: &str, host: &str) {
 
 #[tokio::test]
 async fn detection_and_legacy_origin_targets_use_v1() {
-    // Detection and saved legacy targetBaseUrl both use this origin-only shape.
     for host in ["127.0.0.1", "localhost"] {
         for suffix in ["", "/"] {
             target_paths(suffix, "/v1", host).await;
@@ -141,7 +140,6 @@ async fn parameterized_media_types_stream_and_reuse_connection() {
             let (mut stream, _) = http.accept().await.unwrap();
             read_request(&mut stream).await;
             stream.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: {header}\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n{:x}\r\n{body}\r\n", body.len()).as_bytes()).await.unwrap();
-            // The bridge must deliver the first chunk before the upstream finishes.
             finish_rx.recv().await.unwrap();
             stream.write_all(b"0\r\n\r\n").await.unwrap();
         }
@@ -153,7 +151,6 @@ async fn parameterized_media_types_stream_and_reuse_connection() {
         let id = request(&mut socket, "chat").await;
         let frame = receive(&mut socket).await;
         assert_eq!(frame["type"], "response_start");
-        // This is the Go session's allowlist; a parameter here closes the session.
         assert_eq!(frame["contentType"], media_type);
         assert_eq!(frame["requestId"], id.to_string());
         let frame = receive(&mut socket).await;

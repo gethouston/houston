@@ -4,16 +4,6 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import { FsVfs } from "./fs";
 
-/**
- * A filesystem reports its stamps as floats. Rounding one to whole
- * milliseconds must TRUNCATE: rounding up names an instant that has not
- * happened, so a file could report itself created after the moment it was
- * read - which is what made the Vfs contract's `createdMs` assertion fail on
- * roughly every other run.
- *
- * One file's fraction lands under .5 half the time, so the invariant is
- * checked over a batch: the odds of a false pass are 2^-32.
- */
 const FILES = 32;
 
 test("no reported stamp is later than the instant it names", async () => {

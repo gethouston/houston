@@ -20,17 +20,6 @@ import type {
 } from "./turn-session-types";
 import { recordPooledUserTurn } from "./turn-session-user";
 
-/**
- * One pi turn against resolved hydrated directories. Unlike chat.ts (one
- * long-lived process = one workspace, module
- * state), EVERYTHING here is per-request: auth storage, model registry,
- * session, tools. Nothing survives the request — that is the isolation story.
- *
- * Emits user/text/thinking/tool frames via `emit`; the TERMINAL frame is the
- * caller's job (it must sync the workspace back to object storage first, or a
- * client could see `done` before its files are durable).
- */
-
 export type { RunTurnDeps } from "./turn-session-startup";
 export type {
   TurnDirectories,
@@ -57,20 +46,7 @@ export async function runTurn(
   );
 
   const frames = newTurnFrames();
-  /**
-   * WHICH access token this turn ran on, for the revoked-token report
-   * (auth/used-token.ts, PRODUCT-1319). This path's `ModelRuntime` uses pi's
-   * OWN file-backed store (not `HoustonAuthStore`), so nothing records at
-   * request time — instead the capture is SEEDED from the hydrated per-request
-   * auth.json below. That read is exact here: the root is a throwaway copy
-   * exclusive to this request, and its served entries are access-only (Gate
-   * #2, no refresh token), so no re-serve or refresh can rotate the token
-   * between the seed and a failure. Held outside the try so the catch can
-   * still name the failed token.
-   */
   const usedTokens = newUsedTokenCapture();
-  // Set when the session autocompacted before the prompt: announced before
-  // the prompt and persisted on the reply, like the standing server's.
   let compaction: ChatMessage["compaction"];
   let title: PooledTurnTitle | null = null;
   try {
@@ -85,20 +61,12 @@ export async function runTurn(
     compaction = opened.compaction;
     if (compaction) emit({ type: "context_compacted", data: compaction });
 
-    // Snapshot the hydrated workspace so the turn's created/modified files can
-    // be surfaced as a `file_changes` frame. The per-turn root is exclusive to
-    // this request, so the diff is attributable by construction. Best-effort.
     const beforeFiles = snapshotWhenReady(
       workspaceDir,
       directories.workspaceReady,
     );
 
-    // A fresh per-turn holder for whatever the model ends up waiting on the user
-    // for (ask_user); established for the prompt's async subtree so the tool
-    // records into it. Read after prompt() resolves, returned on the outcome.
     const interaction = newInteractionHolder();
-    // A new mission's title starts when the model's response opens, so it
-    // runs beside the reply (turn-session-title.ts).
     title = armPooledTurnTitle({
       turn,
       deps,
@@ -110,7 +78,6 @@ export async function runTurn(
     const unsubTitle = startTitle
       ? session.subscribeAssistantMessageStart?.(() => startTitle())
       : undefined;
-    // The context a standing runtime holds around its prompt (exec-turn.ts).
     await runInTurnContext(
       {
         conversationId,
@@ -135,7 +102,6 @@ export async function runTurn(
         }),
     ).finally(() => {
       unsubTitle?.();
-      // Before the snapshot below waits on files no tool asked for.
       directories.abandonDeferred?.();
     });
     const outcome = finishSuccessfulTurn({
@@ -154,12 +120,8 @@ export async function runTurn(
       turnId,
       emit,
     });
-    // The spend a standing pod folds into its ledger after the same turn
-    // (exec-turn.ts); the caller writes it to the store (turn-ledger.ts).
     if (frames.usage)
       outcome.spend = { provider: model.provider, usage: frames.usage };
-    // The card write lands after the turn's own writes, as before; only the
-    // title call itself overlaps the reply.
     const missionTitle = await title?.settle(
       frames.providerError !== undefined,
     );

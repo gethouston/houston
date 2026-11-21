@@ -1,7 +1,3 @@
-// Real-DOM mount of the real AppSidebar (the ui/chat interaction-card-mount
-// pattern: jsdom globals BEFORE the dynamic react-dom import), since the
-// grouped rail portals its drag overlay into the document.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";
@@ -24,8 +20,6 @@ for (const key of ["Element", "HTMLElement", "Node", "Event"]) {
 g.IS_REACT_ACT_ENVIRONMENT = true;
 
 const React = await import("react");
-// ui/core's Radix wrappers are authored against the classic JSX runtime, which
-// resolves `React` off the global scope.
 g.React = React;
 const { act, createElement: h } = React;
 const { createRoot } = await import("react-dom/client");
@@ -34,7 +28,6 @@ const { useSidebarAvatarDiameter } = await import(
   "../src/sidebar-avatar-diameter.tsx"
 );
 
-/** Prints the diameter the rail hands the avatar where it is mounted. */
 function Portrait() {
   return h("i", { "data-diameter": useSidebarAvatarDiameter() });
 }
@@ -53,7 +46,6 @@ const agent = (id: string): SidebarItem => ({
   icon: h(Portrait),
 });
 
-/** Mounts the rail and returns its markup. */
 function render(props: Partial<SidebarProps>): string {
   const container = document.createElement("div");
   document.body.append(container);
@@ -74,8 +66,6 @@ function render(props: Partial<SidebarProps>): string {
   return html;
 }
 
-/** The markup of the element carrying `data-testid="pinned-manager"`, up to
- *  the end of its button. */
 const pinnedRow = (html: string) => {
   const start = html.indexOf('data-testid="pinned-manager"');
   assert.ok(start >= 0, "the pinned row renders with its data attributes");
@@ -108,7 +98,6 @@ describe("AppSidebar pinned items", () => {
     assert.ok(row.includes('data-diameter="40"'), "the portrait diameter");
     assert.ok(!row.includes("cursor-grab"), "no drag cursor");
     assert.ok(!row.includes("data-sidebar-item"));
-    // The employees keep theirs: they are still sortable rows.
     assert.equal(html.match(/data-sidebar-item=""/g)?.length, 2);
   });
 
@@ -133,9 +122,6 @@ describe("AppSidebar pinned items", () => {
   });
 
   it("hands the flat list the same hairline hooks as the grouped one", () => {
-    // The pinned run's rules find the list's rows through these, so a flat
-    // list without them would keep the Manager's line over a hovered or
-    // selected first employee, and hide it with employees below.
     const html = render({});
     assert.equal(html.match(/data-sidebar-root-list=""/g)?.length, 1);
     assert.equal(html.match(/data-sidebar-row=""/g)?.length, 3);
@@ -159,10 +145,6 @@ describe("AppSidebar pinned items", () => {
   });
 
   it("ends without a line when no employee row follows it", () => {
-    // The pinned run's last hairline separates it from the list's first row;
-    // with no such row (a workspace of just the AI Manager) it ends the rail
-    // the way the list's own last row does. Pinned by the rule the wrapper
-    // carries, since the compiled CSS never reaches jsdom.
     const html = render({ items: [] });
     assert.ok(
       html.includes(

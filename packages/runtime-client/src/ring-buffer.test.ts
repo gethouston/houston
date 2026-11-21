@@ -22,8 +22,8 @@ test("fills up to capacity in insertion order", () => {
 test("once full, push overwrites the oldest and keeps order", () => {
   const rb = new RingBuffer<number>(3);
   for (const n of [1, 2, 3, 4, 5]) rb.push(n);
-  expect(rb.length).toBe(3); // never exceeds capacity
-  expect(rb.sliceFrom(0)).toEqual([3, 4, 5]); // oldest two dropped
+  expect(rb.length).toBe(3);
+  expect(rb.sliceFrom(0)).toEqual([3, 4, 5]);
   rb.push(6);
   expect(rb.sliceFrom(0)).toEqual([4, 5, 6]);
 });
@@ -32,7 +32,7 @@ test("at() reads by logical index; out of range is undefined", () => {
   const rb = new RingBuffer<string>(2);
   rb.push("a");
   rb.push("b");
-  rb.push("c"); // wraps: window is now [b, c]
+  rb.push("c");
   expect(rb.at(0)).toBe("b");
   expect(rb.at(1)).toBe("c");
   expect(rb.at(-1)).toBeUndefined();
@@ -41,11 +41,10 @@ test("at() reads by logical index; out of range is undefined", () => {
 
 test("sliceFrom copies a suffix; a negative start clamps to 0", () => {
   const rb = new RingBuffer<number>(4);
-  for (const n of [10, 20, 30, 40, 50]) rb.push(n); // window [20,30,40,50]
+  for (const n of [10, 20, 30, 40, 50]) rb.push(n);
   expect(rb.sliceFrom(2)).toEqual([40, 50]);
-  expect(rb.sliceFrom(4)).toEqual([]); // at/after the end
+  expect(rb.sliceFrom(4)).toEqual([]);
   expect(rb.sliceFrom(-3)).toEqual([20, 30, 40, 50]);
-  // The returned array is a copy, not a live view.
   const copy = rb.sliceFrom(0);
   copy.push(999);
   expect(rb.sliceFrom(0)).toEqual([20, 30, 40, 50]);

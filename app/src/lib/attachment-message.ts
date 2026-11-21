@@ -13,14 +13,6 @@ export function withAttachmentPaths(text: string, paths: string[]): string {
   return text.length > 0 ? `${text}\n\n${block}` : block;
 }
 
-/**
- * Flat uploads land directly under `uploads/`, so any deeper RELATIVE
- * `uploads/…` path is a folder upload (HOU-808). Listing a 200-file folder
- * file-by-file would bloat the prompt, so each uploaded folder collapses to
- * ONE line naming its root and file count — the agent's file tools list the
- * contents on demand. Order follows first appearance. Anything else (legacy
- * absolute paths included) stays a plain per-file line.
- */
 function groupedAttachmentLines(paths: readonly string[]): string[] {
   const lines: string[] = [];
   const folders = new Map<string, { line: number; count: number }>();
@@ -37,7 +29,7 @@ function groupedAttachmentLines(paths: readonly string[]): string[] {
       continue;
     }
     folders.set(root, { line: lines.length, count: 1 });
-    lines.push(""); // placeholder, filled below once the count is final
+    lines.push("");
   }
   for (const [root, { line, count }] of folders) {
     lines[line] =
@@ -46,8 +38,6 @@ function groupedAttachmentLines(paths: readonly string[]): string[] {
   return lines;
 }
 
-/** Model-facing context from several sources as one block, in order, or
- *  nothing when none has any. */
 export function joinModelContext(
   ...parts: (string | undefined)[]
 ): string | undefined {
@@ -61,12 +51,6 @@ export function buildAttachmentPrompt(
   text: string,
   files: readonly File[],
   paths: readonly string[],
-  /**
-   * Model-facing context prepended to the prompt but NEVER shown to the user
-   * (the skill setup chat pins its bound skill this way). The bubble stays
-   * the plain `text`: the attachment marker's `message` carries it here, and
-   * a context-only send (no files) pairs with `displayText` at the call site.
-   */
   modelContext?: string,
 ): string {
   const base = modelContext ? `${modelContext}\n\n${text}` : text;
@@ -76,19 +60,11 @@ export function buildAttachmentPrompt(
   return encodeAttachmentMessage(text, attachments, prompt);
 }
 
-/** What a send carrying files puts on the wire, beside its overrides. */
 export interface AttachmentSend {
   prompt: string;
-  /** What the queued bubble shows if the conversation is mid-turn: the
-   *  user's words and file names, never the built prompt. */
   queuedPreview: { text: string; attachmentNames: string[] };
 }
 
-/**
- * Save `files` through `save` and build the prompt that names them: the ONE
- * way every send with attachments (the composer, an interaction card's
- * answer) reaches the wire.
- */
 export async function prepareAttachmentSend(
   text: string,
   files: readonly File[],
@@ -121,9 +97,6 @@ function encodeAttachmentMessage(
     message: userText.trim(),
     files: [...files],
   };
-  // No ">" may reach the marker: the text can itself carry a marker (an
-  // interaction card's answers sent with files), and its "-->" would close
-  // this comment early. JSON.parse reads the escape back as ">".
   const json = JSON.stringify(payload).replace(/>/g, "\\u003e");
   return `${MARKER_PREFIX}${json}${MARKER_SUFFIX}\n\n${claudePrompt}`;
 }

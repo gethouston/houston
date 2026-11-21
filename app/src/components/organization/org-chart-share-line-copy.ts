@@ -1,6 +1,5 @@
 import type { ShareLine } from "./org-chart-share-run.ts";
 
-/** The words of each line `blocked` does not build itself. */
 export const LINE_KEY = {
   copied: "orgChart.share.copied",
   saved: "orgChart.share.saved",

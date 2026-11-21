@@ -20,9 +20,6 @@ describe("provider connect probing", () => {
   });
 
   it("never spins again on a probe that failed", () => {
-    // The observer reports "checking" for a read that FAILED too. Spun off the
-    // state alone, a card whose status call keeps failing spun forever and said
-    // nothing; after the first answer the last known state simply stands.
     strictEqual(providerConnectProbing("checking", true), false);
   });
 });
@@ -44,13 +41,10 @@ describe("provider connect evidence", () => {
 
 describe("the provider connect card's feedback", () => {
   it("keeps the Connect pill's checking spinner, driven by the probe", () => {
-    // The card lost the spinner entirely in the step-shell unification: the
-    // user pressed nothing and saw nothing while the status call ran.
     const card = read(
       "../src/components/chat-provider-connect-interaction-card.tsx",
     );
     strictEqual(card.includes("{flow.probing && <Loader2"), true);
-    // Off the raw state it would spin forever on a failing probe.
     strictEqual(card.includes('flow.state === "checking"'), false);
   });
 });

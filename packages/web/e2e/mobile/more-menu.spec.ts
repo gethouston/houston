@@ -8,21 +8,6 @@ import {
 } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
-/**
- * The phone's More menu: the card the nav bar raises for everything outside the
- * AI Employees tree.
- *
- * It holds the desktop rail's foot: a workspace switcher heading it (the
- * choices the rail's account menu offers), the same connect group
- * (`ConnectGroup`), then the account menu's destinations as rows (the
- * account, Admin, the Academy, Settings), built by the same builders, so
- * this spec guards the things that
- * could drift — the list the seeded single-player deployment actually offers,
- * and the rail's tour anchors resolving to these controls — plus the rule that
- * picking one closes the menu instead of leaving it floating over the screen
- * it opened.
- */
-
 test("More opens the card and closes again without navigating", async ({
   page,
 }) => {
@@ -35,7 +20,6 @@ test("More opens the card and closes again without navigating", async ({
 
   await page.keyboard.press("Escape");
   await expect(moreMenu(page)).toBeHidden();
-  // Dismissing a menu is not a navigation: the screen behind it is untouched.
   await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
   await expect(navItem(page, "agents")).toHaveAttribute("aria-current", "page");
 });
@@ -53,11 +37,8 @@ test("the menu lists what this deployment offers, with the rail's anchors", asyn
     ).toBeVisible();
   }
 
-  // The single-player seed is below the org gate, so Admin has no row.
   await expect(menu.getByTestId("rail-admin")).toHaveCount(0);
 
-  // The connect rows and the other rows carry the RAIL's own attributes, so
-  // one anchor names the same destination on both breakpoints.
   for (const anchor of [
     "nav-integrations",
     "nav-ai-hub",
@@ -69,12 +50,10 @@ test("the menu lists what this deployment offers, with the rail's anchors", asyn
       `the menu should carry the "${anchor}" anchor`,
     ).toHaveCount(1);
   }
-  // Skills live in each employee's settings: no row for them here.
   await expect(
     menu.getByRole("button", { name: "Skills", exact: true }),
   ).toHaveCount(0);
 
-  // The footer cluster holds destinations only: no help group.
   await expect(
     menu.getByRole("button", { name: "Report a problem" }),
   ).toHaveCount(0);
@@ -95,9 +74,6 @@ test("Admin appears in More only for an admitted caller", async ({
   await expect(moreMenu(page)).toBeHidden();
   await expect(screen(page)).toHaveAttribute("data-screen", "admin");
 
-  // The phone keeps Admin's Company context pill too: the strip holds the
-  // section switcher, so the pill takes the row below it and opens its editor
-  // as a bottom sheet.
   await screen(page).locator("[data-company-context-trigger]").tap();
   await expect(
     page.getByRole("dialog", { name: "Company context" }),
@@ -122,13 +98,9 @@ test("the account's destinations follow the connect rows, in the rail's order", 
   }
   expect(ys).toEqual([...ys].sort((a, b) => a - b));
 
-  // The account row drills into the card's own account page: a back row,
-  // then the account's actions as rows. No menu pops over the card's other
-  // rows. The single-player seed has no identity, so it holds About me alone.
   await menu.getByTestId("more-account").tap();
   const account = menu.getByTestId("more-account-page");
   await expect(account).toBeVisible();
-  // Focus moves onto the page's back row, named from its visible text.
   const back = account.getByRole("button", {
     name: "Your account, back to More",
   });
@@ -142,14 +114,11 @@ test("the account's destinations follow the connect rows, in the rail's order", 
     0,
   );
 
-  // Back returns to the card's rows, still open.
   await back.tap();
   await expect(moreRow(page, "nav-settings")).toBeVisible();
   await expect(menu.getByTestId("more-account")).toBeFocused();
   await menu.getByTestId("more-account").tap();
 
-  // About me is a screen of its own: the card steps aside and the screen
-  // takes the glass, headed by its own title.
   await account.getByRole("button", { name: "About me", exact: true }).tap();
   await expect(moreMenu(page)).toBeHidden();
   await expect(screen(page)).toHaveAttribute("data-screen", "about-me");
@@ -165,7 +134,6 @@ test("the Settings row opens the settings index", async ({ page }) => {
   await moreRow(page, "nav-settings").tap();
   await expect(moreMenu(page)).toBeHidden();
   await expect(screen(page)).toHaveAttribute("data-screen", "settings");
-  // The INDEX, never a leftover section: its own groups are on the glass.
   await expect(
     screen(page).getByRole("heading", { name: "Settings", exact: true }),
   ).toBeVisible();
@@ -195,13 +163,11 @@ test("the workspace switcher heads the card and switches workspace from its menu
   const switcher = menu.getByTestId("more-workspace-switcher");
   await expect(switcher).toHaveAttribute("aria-haspopup", "menu");
   await expect(switcher).toBeVisible();
-  // It heads the card: nothing in the card sits above it.
   const switcherBox = await switcher.boundingBox();
   const firstRow = await moreRow(page, "nav-integrations").boundingBox();
   if (!switcherBox || !firstRow) throw new Error("the card is not laid out");
   expect(switcherBox.y + switcherBox.height).toBeLessThanOrEqual(firstRow.y);
 
-  // Its menu is the workspace run: the current one checked, then create.
   await switcher.tap();
   await expect(
     page.getByRole("menuitemcheckbox", { checked: true }),

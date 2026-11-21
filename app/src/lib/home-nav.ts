@@ -11,10 +11,6 @@ import type { NavMode } from "./nav-stack.ts";
 import { AGENTS_HOME_VIEW_ID } from "./top-level-views.ts";
 import { isMobileViewport } from "./viewport.ts";
 
-/**
- * Go home ({@link homeDestination}): where the app opens and where every
- * fallback lands, read from the stores for store-free callers.
- */
 export function openHome(opts?: { nav?: NavMode }): void {
   const workspaceId = useWorkspaceStore.getState().current?.id;
   const { agents, loading, loadedWorkspaceId } = useAgentStore.getState();

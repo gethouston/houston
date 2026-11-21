@@ -1,7 +1,3 @@
-// Searchable listbox shared by the download gate's country-code and country
-// menus. The menu is fixed-positioned so it escapes the modal card's scroll
-// clipping, and carries data-lenis-prevent so wheel events over it never reach
-// the landing's smooth-scroll instance.
 (() => {
   var DIACRITICS = /[\u0300-\u036f]/g;
   var UNSAFE_ID = /[^A-Za-z0-9_-]/g;
@@ -19,8 +15,6 @@
       .replace(/./g, (ch) => String.fromCodePoint(127397 + ch.charCodeAt(0)));
   }
 
-  // Enriches the shared country table ([english, iso, dial]) with a
-  // locale-aware display name so both gate menus render the same rows.
   function countryRows(entries, locale) {
     var tag = locale || "en";
     var names = null;
@@ -115,7 +109,6 @@
         node.dataset.id = String(item.id);
         node.setAttribute("role", "option");
         node.innerHTML = item.html;
-        // Keep the search input focused when a row is picked with the mouse.
         node.addEventListener("mousedown", (event) => event.preventDefault());
         node.addEventListener("click", () => apply(item, true));
         list.appendChild(node);
@@ -126,7 +119,6 @@
       setActive(shown.length ? 0 : -1, false);
     }
 
-    // Follows the toggle instead of closing when the viewport moves.
     var anchor = window.HoustonDropdownAnchor.create({
       toggle: toggle,
       menu: menu,
@@ -150,12 +142,9 @@
       }
       render();
       anchor.position();
-      // preventScroll keeps iOS from scrolling the document to reveal the
-      // search box, which would immediately drag the anchor out from under us.
       focusTarget().focus({ preventScroll: true });
       document.addEventListener("click", onDocumentClick);
       anchor.bind(true);
-      // The keyboard animates in after focus; re-place once it has settled.
       anchor.sync();
     }
 
@@ -171,8 +160,6 @@
       anchor.bind(false);
     }
 
-    // fromUi selections dismiss the menu and hand focus back to the toggle;
-    // a programmatic select() only records the choice.
     function apply(item, fromUi) {
       selectedId = item.id;
       markSelected();
@@ -236,7 +223,6 @@
       if (!opened) return;
       var key = event.key;
       if (key === "Escape") {
-        // Escape belongs to the menu, not the modal that hosts it.
         event.preventDefault();
         event.stopPropagation();
         close();

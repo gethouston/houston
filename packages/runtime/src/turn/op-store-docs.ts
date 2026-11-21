@@ -10,14 +10,6 @@ import {
 } from "./turn-skills-doc";
 import { docNotLandedReason } from "./turn-view-publish";
 
-/**
- * The docs an op projects from what the STORE holds after its write landed,
- * the same way pooled turns publish them: the skills its landed SKILL.md
- * writes and deletes changed (`landed`), and the learnings when it wrote
- * them. An op's own tree is a snapshot from its listing, so projecting it
- * whole would drop a skill or memory a turn landed since. Answers the
- * diagnostics (empty = every doc landed).
- */
 export async function publishOpStoreDocs(input: {
   common: Omit<ActivityDocOptions, "family">;
   source: ActivityDocSource;

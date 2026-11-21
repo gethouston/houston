@@ -1,10 +1,3 @@
-/**
- * The org create call (`POST /v1/orgs`), over the injected `fetch`. Its own
- * file because a create answers more than an org: the free slot already taken
- * and a paid org awaiting checkout are outcomes the caller renders, never
- * failures.
- */
-
 import { FREE_ORG_TAKEN, readCreatedOrg } from "@houston/wire-types";
 import { seatIntervalRefusal } from "../billing/seat-refusal";
 import { type HttpScope, httpRequest } from "../http";

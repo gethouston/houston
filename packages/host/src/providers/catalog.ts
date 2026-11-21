@@ -1,19 +1,6 @@
 import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 import type { HostProvider } from "./types";
 
-/**
- * Host-side provider catalog. The runtime (packages/runtime) owns the full model
- * lists; the host only needs to know which providers exist, how they authenticate,
- * and which ones the cloud per-turn runtime offers — for the api-key submit route
- * and the cloudrun providers/auth-status listing. The standing-runtime (proxy)
- * path doesn't use this: it relays the runtime's own /providers + /auth/* surface.
- *
- * Each `defaultModel` READS the domain table (`DEFAULT_MODEL`) rather than
- * restating its string: this catalog is consulted live on the cloud per-turn
- * path (`turn/dispatch-providers.ts` `activeModel`), so a value that drifted
- * from the domain's would start a hosted turn on a model the picker never
- * offered. `catalog.test.ts` holds the two together.
- */
 export const PROVIDERS: readonly HostProvider[] = [
   { id: "anthropic", name: "Claude (Pro / Max)", auth: "oauth", cloud: false },
   {
@@ -22,11 +9,6 @@ export const PROVIDERS: readonly HostProvider[] = [
     auth: "oauth",
     cloud: true,
   },
-  // GitHub Copilot subscription (OAuth, GitHub device-code flow). `cloud: false`
-  // = not wired into the legacy cloudrun per-turn path; it is served everywhere
-  // else (desktop AND the managed pod, via the full pi-ai catalog). The runtime
-  // serves Copilot's full model list via the standing-runtime /providers relay,
-  // so no curated `models` here (same as the other OAuth providers).
   { id: "github-copilot", name: "GitHub Copilot", auth: "oauth", cloud: false },
   {
     id: "opencode",
@@ -38,7 +20,6 @@ export const PROVIDERS: readonly HostProvider[] = [
       "claude-opus-4-8",
       "gpt-5.5",
       "gemini-3.5-flash",
-      // Free trial models — test the provider without spending credits.
       "mimo-v2.6-flash-free",
       "nemotron-3.5-super-vl-free",
     ],
@@ -62,8 +43,6 @@ export const PROVIDERS: readonly HostProvider[] = [
     id: "openrouter",
     name: "OpenRouter",
     auth: "apiKey",
-    // `cloud: false` = off the legacy cloudrun per-turn listing only; served
-    // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
     models: [
       "anthropic/claude-sonnet-4.6",
@@ -77,8 +56,6 @@ export const PROVIDERS: readonly HostProvider[] = [
     id: "deepseek",
     name: "DeepSeek",
     auth: "apiKey",
-    // `cloud: false` = off the legacy cloudrun per-turn listing only; served
-    // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
     models: ["deepseek-flash", "deepseek-v4-pro"],
     defaultModel: DEFAULT_MODEL.deepseek,
@@ -87,8 +64,6 @@ export const PROVIDERS: readonly HostProvider[] = [
     id: "google",
     name: "Google Gemini",
     auth: "apiKey",
-    // `cloud: false` = off the legacy cloudrun per-turn listing only; served
-    // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
     models: [
       "gemini-3.8-flash",
@@ -105,12 +80,7 @@ export const PROVIDERS: readonly HostProvider[] = [
     id: "amazon-bedrock",
     name: "Amazon Bedrock",
     auth: "apiKey",
-    // `cloud: false` = off the legacy cloudrun per-turn listing only; served
-    // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
-    // Claude ids are `global.` inference-profile ids — Bedrock serves Claude
-    // 4.x only through inference profiles; bare foundation ids fail every
-    // on-demand invocation (PRODUCT-1477).
     models: [
       "global.anthropic.claude-sonnet-4-6",
       "global.anthropic.claude-opus-4-8",
@@ -123,11 +93,7 @@ export const PROVIDERS: readonly HostProvider[] = [
     id: "minimax",
     name: "MiniMax",
     auth: "apiKey",
-    // `cloud: false` = off the legacy cloudrun per-turn listing only; served
-    // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
-    // M3.1 Flash leads because it is the connect default, the one model both
-    // key kinds (pay-as-you-go and M Plan / Token Plan) run.
     models: ["MiniMax-M3.1-Flash", "MiniMax-M3"],
     defaultModel: DEFAULT_MODEL.minimax,
   },
@@ -135,10 +101,6 @@ export const PROVIDERS: readonly HostProvider[] = [
     id: "openai-compatible",
     name: "Local model (OpenAI-compatible)",
     auth: "openaiCompatible",
-    // LOCAL profile ONLY: the base URL is the user's own machine (Ollama / vLLM
-    // / LM Studio), unreachable from a cloud runtime or pod. The host route gates
-    // it on the deployment's `openaiCompatible` capability. The runtime owns the
-    // full endpoint config (base URL + model); nothing is curated here.
     cloud: false,
   },
 ];

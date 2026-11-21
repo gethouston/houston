@@ -1,25 +1,15 @@
-// `.ts` extensions so the node test runner can import this pure module
-// directly (Node ESM requires them for runtime-value imports).
 import type { OnboardingStep } from "../../lib/onboarding-route.ts";
 import {
   type ProviderConnectionStatus,
   providerIsConnected,
 } from "../../lib/provider-connection.ts";
 
-/** The provider scan as `useProviderStatuses` returns it. */
 export interface ProviderStatusScan {
   statuses: Readonly<Record<string, ProviderConnectionStatus>>;
   isLoading: boolean;
   isError: boolean;
 }
 
-/**
- * The first CONFIRMED connected provider's id, or null. The same rule every
- * "Connected" surface reads (HOU-979, `confirmedConnectedProviders`): an
- * `unknown` probe is not a connection, and neither is a scan still loading or
- * one whose re-probe failed, whose retained statuses may predate a
- * disconnect.
- */
 export function connectedProviderId(scan: ProviderStatusScan): string | null {
   if (scan.isLoading || scan.isError) return null;
   for (const [id, status] of Object.entries(scan.statuses)) {
@@ -28,18 +18,10 @@ export function connectedProviderId(scan: ProviderStatusScan): string | null {
   return null;
 }
 
-/** An onboarding funnel beat the first-run flow reports. */
 export type OnboardingBeat =
   | { event: "onboarding_step_viewed"; step: "connectAi" | "team" }
   | { event: "ai_provider_connected"; provider: string };
 
-/**
- * The funnel beats one route change earns. Only the connect and team steps
- * report a step view here (the survey and the team's own sub-steps fire
- * their own), once per run. Leaving the connect step means it saw the
- * connection land, which is the `ai_provider_connected` beat; a run that
- * never stood on the connect step (a provider already connected) reports none.
- */
 export function onboardingBeats(args: {
   previous: OnboardingStep | null;
   current: OnboardingStep;
@@ -63,13 +45,6 @@ export function onboardingBeats(args: {
   return beats;
 }
 
-/**
- * The onboarding screen to put on display for the route's `step`, or null
- * while that screen's inputs still load. The connect card waits for the first
- * provider probe: until it lands the route reads "not connected", and a user
- * who already connected must not flash through the card. The team card waits
- * for the workspace it hires into.
- */
 export function shownOnboardingStep(args: {
   step: OnboardingStep;
   surveyLoading: boolean;

@@ -12,7 +12,6 @@ import {
 } from "./turn-claude-startup";
 import { turnTerminalFrame } from "./turn-terminal";
 
-// The shape Claude Code 2.1.310 writes to startup-perf/<session>.json.
 const REPORT = {
   metadata: { init_network_ms: 40, import_time_ms: 105, late: false },
   marks: [
@@ -45,7 +44,6 @@ test("samples about one turn in twenty", () => {
   });
   armClaudeStartupProfile(true, () => 0.05);
   expect(claudeStartupProfileEnv()).toEqual({});
-  // A multi-turn worker shares this module state between turns: never armed.
   armClaudeStartupProfile(false, () => 0);
   expect(claudeStartupProfileEnv()).toEqual({});
 });

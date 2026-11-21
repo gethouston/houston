@@ -9,7 +9,6 @@ import { publishDerived } from "./turn-doc-merge-publish";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { readStoreText } from "./turn-store-read";
 
-/** The host's `GET skills` answer: summaries and diagnostics, slug order. */
 export interface SkillsView {
   items: Array<{ name: string }>;
   diagnostics: Array<{ key: string; message?: unknown }>;
@@ -40,17 +39,12 @@ export function isSkillsView(value: unknown): value is SkillsView {
   );
 }
 
-/** Every slug a captured view lists, as an item or a diagnostic. */
 export const viewSlugs = (view: SkillsView): Set<string> =>
   new Set([
     ...view.items.map((item) => item.name),
     ...view.diagnostics.map(diagnosticSlug),
   ]);
 
-/**
- * Slugs whose top-level SKILL.md the landed keys wrote or deleted. Only that
- * file feeds the list (`loadSkillsFromDir`); a skill's other files never do.
- */
 export function landedSkillSlugs(
   workspaceRel: string,
   keys: Iterable<string>,
@@ -65,11 +59,6 @@ export function landedSkillSlugs(
   return slugs;
 }
 
-/**
- * `slugs`' entries as the host's list would show them from what the store
- * holds now: `loadSkillsFromDir`'s per-slug step, keyed under the agent root
- * the host's handlers use (its id), as the captured answer is.
- */
 async function storeEntries(
   source: ActivityDocSource,
   filesystem: Pick<TurnFilesystem, "workspaceRel">,
@@ -101,7 +90,6 @@ const bySlug =
     return left < right ? -1 : left > right ? 1 : 0;
   };
 
-/** `standing` with `slugs` swapped for `fresh`'s entries, in slug order. */
 function swapSlugs<T>(
   standing: T[],
   fresh: T[],
@@ -114,15 +102,6 @@ function swapSlugs<T>(
   ].sort(bySlug(slugOf));
 }
 
-/**
- * Republish the skills view after a pooled write landed `slugs`' SKILL.md.
- * Never a whole-list copy of the writer's tree, which is a snapshot from its
- * hydration: only `slugs` move, each read from the STORE after the doc
- * revision is (publishDerived), so a skill another writer landed since, or
- * edited again since, is never dropped or rolled back. With no readable doc
- * there is nothing to merge into: `base` is the writer's whole captured list,
- * what an awake pod would publish.
- */
 export async function publishSkillsView(input: {
   target: ActivityDocOptions;
   source: ActivityDocSource;

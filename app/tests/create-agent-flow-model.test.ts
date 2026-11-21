@@ -7,8 +7,6 @@ import {
 
 describe("createFlowIdentity", () => {
   const before = { takenNames: ["Pax"], color: "blue" };
-  // The store adopts the new employee before the create settles: its name
-  // joins the taken list and its color stops being free.
   const adopted = { takenNames: ["Pax", "Ava"], color: "green" };
 
   it("holds the identity the hire was submitted with while it is creating", () => {

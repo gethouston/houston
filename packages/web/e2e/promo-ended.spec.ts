@@ -7,13 +7,6 @@ import {
   promoModal,
 } from "./support/promo-ended";
 
-/**
- * The promo-ended notice: the billing owner of a team still on the $15
- * promotional monthly seat price hears it moves to $20 at the next charge,
- * and switches to yearly (preselected) or keeps monthly. A declined card
- * keeps the offer up with a toast; "Maybe later" closes it for the session.
- */
-
 const routes = async () => (await planCalls()).map((call) => call.route);
 
 test.beforeEach(async ({ page }) => {
@@ -45,7 +38,6 @@ test("switching to yearly shows what the org pays now, and the notice is gone", 
   await modal.getByRole("button", { name: "Done" }).click();
   await expect(modal).toBeHidden();
 
-  // The switch cleared the notice on the gateway: a new app open shows none.
   await page.reload();
   await expect(page.getByTestId("sidebar-footer")).toBeVisible();
   await expect(promoModal(page)).toHaveCount(0);

@@ -35,19 +35,10 @@ export interface SidebarGroupedListProps {
   order?: SidebarRootEntry[];
   rowCtx: SidebarBaseRowContext;
   onActivateGroup?: (groupId: string) => void;
-  /** A drop landed: the whole arrangement the rail now shows. Answers whether
-   *  it was stored; absent, nothing can be dragged. */
   onArrange?: (arrangement: SidebarArrangement) => boolean;
   labels?: SidebarLabels;
 }
 
-/**
- * The grouped rail: top-level agents and groups interleaved, each open group's
- * members under its header, and one drag model for all of it (a sortable tree
- * over the flat row list, `sidebar-tree.ts`). The pointer stays free on both
- * axes while the overlay follows it vertically: the sideways offset is what
- * moves the ghost in or out of a group.
- */
 export function SidebarGroupedList({
   items,
   groups,
@@ -60,9 +51,6 @@ export function SidebarGroupedList({
   const drag = useSidebarTreeDrag({ items, groups, order, onArrange });
   const [announcement, setAnnouncement] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
-  // A row moved into a collapsed group leaves the screen and takes the focus
-  // with it: the group's header takes it over. A row that stays mounted keeps
-  // its focus on its own (React restores it after the commit).
   const [focusGroup, setFocusGroup] = useState<{ id: string } | null>(null);
   useLayoutEffect(() => {
     if (!focusGroup) return;
@@ -76,7 +64,6 @@ export function SidebarGroupedList({
   const itemById = new Map(items.map((item) => [item.id, item]));
   const groupById = new Map(groups.map((group) => [group.id, group]));
   const active = drag.ghost;
-  // Drag hint, so only where a drag can land.
   const emptyGroups = drag.disabled
     ? new Set<string>()
     : emptyOpenGroupIds(drag.rows);

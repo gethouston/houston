@@ -1,20 +1,3 @@
-/**
- * Houston backend adapter — the error-surfacing policy layer, not a transport.
- *
- * Every domain call (workspaces, agents, chat, skills, store, …) flows through
- * `@houston/engine-adapter` to the Houston host: the sidecar the Tauri shell
- * spawns on `127.0.0.1` (see `engine_supervisor.rs`), an external host, or the
- * hosted gateway. Each one is wrapped in {@link call}, which pairs it with an
- * authored label (the Sentry grouping key) and the per-call
- * {@link EngineCallOptions}, then runs the expected-state ladder in
- * {@link surfaceError} before anything reaches the user.
- *
- * OS-native calls (`reveal_file`, `open_url`, terminal
- * launching, local CLI probes, frontend log writes) do NOT flow through the
- * engine — they live in `./os-bridge` because the engine may run on a remote
- * VPS where those APIs would be meaningless.
- */
-
 import type {
   AddCustomIntegrationInput,
   BillingChoicePick,
@@ -110,39 +93,14 @@ import { markToldUser } from "./user-told-mark";
 export { withAttachmentPaths } from "./attachment-message";
 
 export interface EngineCallOptions {
-  /** Show a red error toast on failure. Default true. Set false when the
-   *  caller renders the failure with its own inline UI. */
   toast?: boolean;
-  /** Capture the failure to Sentry even when `toast` is false. Default true so
-   *  user-initiated failures always reach crash reporting; set false only for
-   *  genuinely fire-and-forget calls or ones with their own report path. */
   capture?: boolean;
-  /** Classifier for errors that are expected + explainable (not Houston bugs).
-   *  A matching error is logged but gets NO red bug toast and NO Sentry report;
-   *  the caller surfaces it inline. Use sparingly, only for failures a user can
-   *  understand and act on (e.g. a skill that was renamed or removed). The TS
-   *  host emits bare-string / status-only errors with no typed `kind`, so this
-   *  predicate keys on the thrown error rather than a kind string. */
   silence?: (err: unknown) => boolean;
-  /**
-   * Suppress ALL user-facing surfacing for this attempt — toast, Sentry, and
-   * the expected-state toasts alike. The failure is still logged.
-   *
-   * Only for a caller that will retry and surface the FINAL error itself (via
-   * {@link surfaceEngineError}); anything else would be a silent failure. One
-   * user-visible surface per user-visible action, no more and no less.
-   */
   surface?: boolean;
 }
 
-/**
- * Who surfaces a `setCustomEndpoint` failure: the wrapper's toast (the guided
- * connect, whose dialog only shows a calm retry state) or the caller inline
- * (the manual form, which renders the reason next to the fields).
- */
 export type CustomEndpointSurface = "toast" | "inline";
 
-/** Wrap an engine call and surface errors as toasts unless caller handles them inline. */
 async function call<T>(
   label: string,
   fn: () => Promise<T>,
@@ -157,28 +115,8 @@ async function call<T>(
   }
 }
 
-/**
- * The same wrapper for the namespaces of this layer that live in files of
- * their own (the `*-facade.ts` modules, split out because this module is
- * already the app's whole engine surface). It is this policy layer's own seam,
- * not a licence to reach the engine elsewhere: a namespace belongs here or in a
- * file `scripts/check-boundaries.mjs` names, and nowhere else.
- */
 export { call as engineCall };
 
-/**
- * A passive agent-scoped READ — fired by roster-driven queries and event
- * refetches, never by a user action. When the local roster is stale (the
- * agent was deleted/unshared on another device, or a space switch refired
- * queries built from the previous space's roster), the gateway/host answers
- * `404 { error: "agent not found" }`, and every such read fanned that into a
- * red bug toast + Sentry report for a state the user can't act on
- * (HOUSTON-APP-4W3 and family). Same contract as the skills-manifest queries
- * (HOUSTON-APP-544): the agent-gone 404 is silenced (`call` still logs it)
- * and the roster silently reloads so the ghost agent disappears on its own —
- * the honest surface. Every other failure keeps the default loud path, and
- * writes never route through here.
- */
 export function passiveAgentRead<T>(
   label: string,
   fn: () => Promise<T>,
@@ -191,14 +129,6 @@ export function passiveAgentRead<T>(
   });
 }
 
-/**
- * Surface an engine failure the way `call` would, for the one caller that has
- * to defer it: a bounded retry loop runs its attempts with `toast`/`capture`
- * off (four rejections must not become four Sentry issues and a stack of
- * toasts) and then hands the FINAL error here, so exactly one surface happens
- * and the no-silent-failures invariant holds. See
- * `hooks/queries/use-conversations.ts`.
- */
 export async function surfaceEngineError(
   label: string,
   err: unknown,
@@ -208,7 +138,6 @@ export async function surfaceEngineError(
   if (await surfaceError(label, err, context, options)) markToldUser(err);
 }
 
-/** Resolves `true` when the user was shown copy of its own for `err`. */
 async function surfaceError(
   label: string,
   err: unknown,
@@ -221,32 +150,15 @@ async function surfaceError(
     context ? JSON.stringify(context) : undefined,
   );
 
-  // An attempt whose caller owns the surface (a retry loop). The log tail above
-  // still records every attempt; nothing below this line runs, so a failure
-  // that is about to be retried costs the user neither a toast nor a Sentry
-  // issue. The caller MUST surface the final error — see `surfaceEngineError`.
   if (options?.surface === false) return false;
 
-  // Expected, explainable engine errors the caller surfaces inline. Logged
-  // above for the local log tail, but no red bug toast and no Sentry report.
-  // The host emits bare-string / status-only errors, so the matcher is a
-  // predicate over the whole error (e.g. `isMissingSkillError`, which reads the
-  // `HoustonEngineError` `.status`) rather than a tagged error kind.
   if (options?.silence?.(err)) return false;
 
   if (await surfacePlanMessageLimit(err)) return true;
   if (surfacePlanMinInterval(err)) return true;
 
-  // Expected business state, not a bug: a write into a team whose trial expired
-  // (C8 `needs_upgrade`). Surface the real reason as a plain info toast — never
-  // the red "report a bug" pair — so a member/admin learns to ask their owner
-  // instead of filing a bug. Logged above; no Sentry. The share flow silences
-  // its own `needs_upgrade` inline before reaching here, so this covers every
-  // OTHER write (member-add, agent config, etc.).
   if (isNeedsUpgradeError(err)) {
     const { showExpectedStateToast } = await import("./error-toast");
-    // The store apps never sell, so there the toast states the limit
-    // without sending anyone to ask for an upgrade.
     const purchasable = canPurchaseInApp();
     showExpectedStateToast(
       purchasable
@@ -259,10 +171,6 @@ async function surfaceError(
     return true;
   }
 
-  // Expected business state, not a bug: a member-add attempted on the caller's
-  // personal space (C8 `personal_space`), which is non-invitable by design —
-  // sharing goes through creating a team. Surface the real reason as a plain
-  // info toast, never the red bug pair, so the user learns to create a team.
   if (isPersonalSpaceError(err)) {
     const { showExpectedStateToast } = await import("./error-toast");
     showExpectedStateToast(
@@ -272,9 +180,6 @@ async function surfaceError(
     return true;
   }
 
-  // Expected business state, not a bug: removing or demoting an org's only
-  // owner (C3 `last_owner` 409). The org must keep at least one owner; tell
-  // the caller to hand ownership to someone else first, never the red bug pair.
   if (isLastOwnerError(err)) {
     const { showExpectedStateToast } = await import("./error-toast");
     showExpectedStateToast(
@@ -284,10 +189,6 @@ async function surfaceError(
     return true;
   }
 
-  // Expected business state, not a bug: a provider write that only an agent's
-  // runtime can hold (a local model endpoint) in a space with no agent yet
-  // (PRODUCT-1662). The remedy is the user's: create an agent, then connect.
-  // Plain guidance, never the red bug pair.
   if (isNoAgentForProviderWriteError(err)) {
     const { showExpectedStateToast } = await import("./error-toast");
     showExpectedStateToast(
@@ -297,15 +198,6 @@ async function surfaceError(
     return true;
   }
 
-  // Expected business state, not a bug: a plain member tried the org-level
-  // (pre-agent, setup-runtime) provider connect, which the gateway reserves for
-  // owners and admins (403 "only an org owner or admin can connect…"). The
-  // member has no agent of their own to connect through, so tell them to ask
-  // an admin — never the red bug pair, and no Sentry (HOUSTON-APP-597 / -55X).
-  // Runs ahead of the `toast: false` gate on purpose: the OAuth launch callers
-  // that own their own failure toast skip it for this class, so this info
-  // toast is the one surface. The api-key dialog silences it instead and
-  // renders the same copy inline.
   if (isOrgAdminRequiredError(err)) {
     const { showExpectedStateToast } = await import("./error-toast");
     showExpectedStateToast(
@@ -315,13 +207,6 @@ async function surfaceError(
     return true;
   }
 
-  // Expected business state, not a bug: the managed cloud host refusing a
-  // local-model address its pods can never reach (plain http, a custom port,
-  // localhost / a private network). The remedy is the user's (a public https
-  // address or a tunnel), so surface the rule as plain guidance, never the red
-  // bug pair, and never Sentry (HOUSTON-APP-56A filed one issue per attempt).
-  // The manual-connect form silences this class and renders the same copy
-  // inline; this toast covers every other caller (the guided connect).
   const egress = classifyCloudEgressRejection(err);
   if (egress) {
     const { showExpectedStateToast } = await import("./error-toast");
@@ -332,38 +217,18 @@ async function surfaceError(
     return true;
   }
 
-  // Aborted requests are expected; `toast: false` callers render their own
-  // failure UI but the error is still captured. See `engineCallSurface`.
   const { toast: shouldToast, capture: shouldCapture } = engineCallSurface(
     err instanceof Error ? err.name : undefined,
     options,
   );
   if (!shouldToast && !shouldCapture) return false;
 
-  // Expected environment state, not a bug: a transport-level network failure
-  // (device offline / host unreachable — HOU-1085). A sleep-wake or network
-  // drop fails EVERY live gateway query at once with WebKit's "Load failed";
-  // that burst must read as one connectivity notice, not a storm of red bug
-  // toasts and a pile of un-actionable Sentry issues. The toast dedupes on its
-  // constant body; Sentry gets one burst-collapsed warning in the fixed
-  // `offline` issue (PRODUCT-1640) — nothing in Houston broke, but the raw
-  // diagnostic must stay findable beyond the log tail above.
   if (isNetworkTransportError(err)) {
     const { showConnectivityErrorToast } = await import("./error-toast");
     showConnectivityErrorToast(label, message, err);
     return true;
   }
 
-  // Expected environment state, not a bug: the gateway's "engine unavailable"
-  // 503 — the agent's engine pod is provisioning or cold-starting (HOU-1114: a
-  // just-installed store agent's background writes hit this and showed the red
-  // bug pair while the agent was in fact starting fine) — or its "engine proxy
-  // failed" 502, the pod restarting under an engine roll (PRODUCT-1403). The
-  // request succeeds once the pod listens again; surface it as one deduped
-  // "waking up" notice. Sentry gets one burst-collapsed warning in the fixed
-  // `engine_waking` issue carrying the raw gateway body, and the answer feeds
-  // the per-agent stuck-wake escalation (PRODUCT-1640) — `context` supplies
-  // the agent for the `call()` sites that pass one.
   if (isEngineWakingError(err)) {
     const { showEngineWakingToast } = await import("./error-toast");
     showEngineWakingToast(label, message, err, context);
@@ -375,13 +240,8 @@ async function surfaceError(
     import("./error-report"),
   ]);
   if (shouldToast) {
-    // Pass the real error so Sentry records the true failure stack (the
-    // engine adapter frame), not a synthetic one — this also fixes Sentry
-    // grouping (engine errors used to collapse into a single issue). True
-    // when it surfaced (or deliberately withheld) a state of its own.
     return showErrorToast(label, message, err);
   }
-  // toast suppressed but capture wanted: report to Sentry without a toast.
   reportError(label, message, err);
   return false;
 }
@@ -391,9 +251,6 @@ async function surfaceError(
 export const tauriWorkspaces = {
   list: () =>
     call<Workspace[]>("list_workspaces", () => getEngine().listWorkspaces()),
-  /** Background space-list sync (the live-spaces refresher): failures are
-   *  logged only — the next tick retries, and a red toast per poll would turn
-   *  an offline hour into a toast storm. User-initiated loads use `list`. */
   listQuiet: () =>
     call<Workspace[]>(
       "list_workspaces",
@@ -418,17 +275,6 @@ export const tauriWorkspaces = {
     ),
 };
 
-// ─── Agents ───────────────────────────────────────────────────────────
-// Agent CRUD (`tauriAgents`, `toAgent`) lives in `./agents-facade`.
-
-/**
- * Teams v2: an agent's allowed-toolkit ceiling. `get` reads the agent + org
- * ceilings plus the caller's effective access; `set` (agent-manager only)
- * replaces the agent ceiling (`null` = all allowed, `[]` = none). Both route
- * through `call()` so failures surface as toasts with a Report-bug affordance.
- * Roster fan-outs use `getQuiet`: each failed card has its own neutral face,
- * and a toast per agent would turn one gateway fault into a storm.
- */
 export const tauriAgentSettings = {
   get: (agentSlugOrId: string) =>
     call("get_agent_settings", () =>
@@ -453,15 +299,6 @@ export const tauriAgentSettings = {
     ),
 };
 
-/**
- * Teams v2: the ACTING user's per-agent model choice + the agent's effective
- * `allowedModels` ceiling. `get` degrades to `null` on a non-Teams host (the
- * engine adapter swallows the 404); `set` 400s `model_not_allowed` outside the
- * ceiling. Both route through `call()` so failures surface as a toast + Report
- * bug, same as the wrappers above — except `model_not_allowed`, an expected
- * state (the ceiling moved under the user, PRODUCT-1734) that is logged here
- * and surfaced by `useSetAgentModelChoice` as a plain informational toast.
- */
 export const tauriAgentModelChoice = {
   get: (agentSlugOrId: string) =>
     call("get_agent_model_choice", () =>
@@ -479,16 +316,6 @@ export const tauriAgentModelChoice = {
     ),
 };
 
-// ─── Chat sessions ────────────────────────────────────────────────────
-
-/**
- * How a chat history load behaves. `observe: false` marks a BULK read
- * (mission search, board scans over N conversations). The new-engine adapter
- * then (a) skips attaching its passive in-flight-turn observer stream, which
- * only a real conversation open should do, (b) reads the wider but still
- * BOUNDED scan window instead of a full transcript, and (c) leaves the local
- * conversation cache alone. See `engine-adapter/history-window.ts`.
- */
 export interface HistoryLoadOptions {
   observe?: boolean;
 }
@@ -503,55 +330,18 @@ export const tauriChat = {
       providerOverride?: string;
       modelOverride?: string;
       effortOverride?: string;
-      /**
-       * Per-turn mode pin (composer "Mode" selector). `"plan"` pins a read-only
-       * planning turn; `"auto"` (Autopilot) drops the blocking tools so the turn
-       * runs fire-and-forget; `"execute"` is a normal turn. Omitted, the turn
-       * runs on the mode its conversation keeps (HOU-205), else `"execute"`.
-       */
       modeOverride?: "execute" | "plan" | "auto";
-      /** Resend of a prompt whose bubble is already in the feed (see SessionStartRequest). */
       suppressUserBubble?: boolean;
-      /** Queue display (user's words + attachment names) if the send is held (see SessionStartRequest). */
       queuedPreview?: { text: string; attachmentNames?: string[] };
-      /** Houston resuming after an out-of-band completion, not user-typed —
-       *  deduped/droppable in the send queue (see SessionStartRequest). */
       autoResume?: boolean;
-      /**
-       * What the user's bubble renders when it must differ from `prompt` — a
-       * hidden setup-mission directive or appended attachment paths. The engine
-       * still receives `prompt`; this only changes the live + replayed bubble
-       * (see SessionStartRequest).
-       */
       displayText?: string;
-      /**
-       * Teammates this message @mentions (HOU-944), a structured sidecar
-       * ALONGSIDE the prompt — the model only ever sees the plain "@Name" text.
-       * User-typed sends only; an agent/system-initiated send (retry prompt,
-       * auto-resume, routine) carries none (see SessionStartRequest).
-       */
       mentions?: MessageMention[];
-      /**
-       * Receipts for the approval cards this message answers. Only a USER
-       * message can turn a host-issued request id into a usable approval, so
-       * these ride the send as their own field; the HOST records them and drops
-       * the field before the runtime sees the turn (see SessionStartRequest).
-       */
       approvals?: MessageApproval[];
-      /**
-       * A new mission's first message: the runtime titles the card after this
-       * turn's reply (see SessionStartRequest). Omitted on every other send.
-       */
       missionTitle?: MissionTitle;
-      /** Operations the person approved for this message alone. */
       grants?: GrantableOperation[];
     },
   ) =>
     call<string>("send_message", async () => {
-      // Send-time policy lives BELOW this call now: the engine adapter queues
-      // a send whose conversation is still running (flushed at settle), and
-      // the runtime itself owns provider-switch handoffs and context-full
-      // autocompaction — this is a pure pass-through of named inputs.
       const res = await getEngine().startSession(agentPath, {
         sessionKey,
         prompt,
@@ -565,47 +355,29 @@ export const tauriChat = {
         queuedPreview: opts?.queuedPreview,
         displayText: opts?.displayText,
         autoResume: opts?.autoResume,
-        // Who is sending: stamps the optimistic bubble so a shared conversation
-        // attributes it immediately (HOU-943). Undefined signed out / local.
         author: actingUser(),
-        // Who this message names (HOU-944). An empty list means what absence
-        // means, so never put `[]` on the wire.
         mentions: opts?.mentions?.length ? opts.mentions : undefined,
-        // Which approval cards this message answers. Absence and an empty list
-        // are the same answer, so never put `[]` on the wire.
         approvals: opts?.approvals?.length ? opts.approvals : undefined,
         missionTitle: opts?.missionTitle,
         grants: opts?.grants?.length ? opts.grants : undefined,
       });
       return res.sessionKey;
     }),
-  /** Drop one queued (not yet sent) message from a conversation's send queue. */
   removeQueued: (agentPath: string, sessionKey: string, id: string) =>
     getEngine().removeQueuedMessage(agentPath, sessionKey, id),
   stop: (agentPath: string, sessionKey: string) =>
     call<void>("stop_session", async () => {
       await getEngine().cancelSession(agentPath, sessionKey);
     }),
-  /** Apply a Mode-pill switch to the conversation's EXECUTING turn (Claude
-   *  Code's shift+tab): the running turn adopts the new mode at its next tool
-   *  decision. `applied: false` = no turn was running (benign — the next send
-   *  pins the mode itself). */
   setLiveTurnMode: (
     agentPath: string,
     sessionKey: string,
     mode: "execute" | "plan" | "auto",
   ) => getEngine().setLiveTurnMode(agentPath, sessionKey, mode),
-  /** Retire a conversation's pending interaction (stepper X / abandon): appends
-   *  a durable stop marker, like a real Stop — the model learns nothing. The
-   *  SDK answers a turn racing the dismiss as a typed `turn_running` outcome
-   *  (HOUSTON-APP-5EY), so only a real failure reaches the toast here. */
   dismissInteraction: (agentPath: string, conversationId: string) =>
     call<DismissInteractionOutcome>("dismiss_interaction", () =>
       getEngine().dismissInteraction(agentPath, conversationId),
     ),
-  /** Edit-and-resend rewind (PRODUCT-1217): drop the transcript tail from the
-   *  edited user turn onward; the caller follows with a normal send carrying
-   *  the edited text. Throws on 409 (a turn raced the edit) — nothing was cut. */
   truncate: (agentPath: string, conversationId: string, turnId: string) =>
     call<void>("truncate_conversation", () =>
       getEngine().truncateConversation(agentPath, conversationId, turnId),
@@ -615,27 +387,17 @@ export const tauriChat = {
     sessionKey: string,
     opts?: HistoryLoadOptions,
   ) =>
-    // JUST-CREATED agent: nothing is persisted yet and the read (plus the
-    // observer stream it attaches) would be held for the whole warm-up. The
-    // open conversation renders from the local VM (queued bubbles) meanwhile.
-    // An EXISTING asleep agent (HOU-730) passes through: the engine adapter's
-    // transcript cache (HOU-712) paints the chat instantly and the held read
-    // revalidates on pod wake — answering [] here would blank a cached chat.
     isAgentPathCreating(agentPath)
       ? Promise.resolve<Array<{ feed_type: string; data: unknown }>>([])
       : call<Array<{ feed_type: string; data: unknown }>>(
           "load_chat_history",
           () => getEngine().loadChatHistory(agentPath, sessionKey, opts),
         ),
-  /** Prepend the previous transcript page before the loaded window (HOU-819):
-   *  the scroll-up lazy-load. Resolves whether even older messages remain. */
   loadOlderHistory: (agentPath: string, sessionKey: string) =>
     call<{ hasOlder: boolean }>("load_older_chat_history", () =>
       getEngine().loadOlderChatHistory(agentPath, sessionKey),
     ),
 };
-
-// ─── Composer attachments ─────────────────────────────────────────────
 
 export const tauriAttachments = {
   save: async (
@@ -645,10 +407,6 @@ export const tauriAttachments = {
     opts?: FileUploadOptions,
   ): Promise<string[]> => {
     if (files.length === 0) return [];
-    // A stale composer attachment (the backing file changed on disk before
-    // send) is the user's environment, not a Houston bug: logged, but no
-    // Sentry report. The send's catch surfaces the authored remedy via
-    // `showSendFailedToast`.
     return trackAttachmentUpload(files, (onProgress) =>
       call<string[]>(
         "save_attachments",
@@ -667,17 +425,7 @@ export const tauriAttachments = {
   },
 };
 
-// ─── Agent-data files (`.houston/**`) ─────────────────────────────────
-
 export const tauriAgent = {
-  // JUST-CREATED agent (HOU-693): every per-agent request is held until its
-  // engine wakes. Reads answer instantly with "nothing yet" (a fresh agent
-  // has no data; the ready-time events refetch the real state); writes open
-  // the "almost ready" dialog and reject typed (never toasted). An EXISTING
-  // asleep agent (HOU-730) does NOT short-circuit reads: it has data, and an
-  // instant "" resolves the board/list queries as successful-empty — wiping
-  // the restored mission cards AND persisting [] over the on-disk cache.
-  // Its reads ride the gateway hold instead.
   readFile: (agentPath: string, relPath: string) =>
     isAgentPathCreating(agentPath)
       ? Promise.resolve("")
@@ -690,18 +438,12 @@ export const tauriAgent = {
     content: string,
     opts?: WarmingWriteOptions,
   ) => {
-    // `allowWhileWarming` marks the app's OWN post-create setup writes
-    // (provider/model config, the AI-routine seed): they intentionally ride
-    // as held requests that land when the engine wakes (HOU-649). Only
-    // user-initiated writes get the "almost ready" dialog.
     if (!opts?.allowWhileWarming) blockWriteWhileWarming(agentPath);
     return call<void>("write_agent_file", () =>
       getEngine().writeAgentFile(agentPath, relPath, content),
     );
   },
 };
-
-// ─── Skills ───────────────────────────────────────────────────────────
 
 export const tauriSkills = {
   list: (agentPath: string) =>
@@ -738,11 +480,6 @@ export const tauriSkills = {
       "load_skill",
       () => getEngine().loadSkill(agentPath, name),
       undefined,
-      // The skill the user opened may have been renamed, deleted, or never
-      // installed (the host answers 404). That's expected — the Skills view
-      // surfaces it inline and refreshes the list — so don't fire the red bug
-      // toast or report it. Predicate form: the TS host's 404 carries no typed
-      // `kind`, so `isMissingSkillError` reads the HoustonEngineError `.status`.
       { silence: isMissingSkillError },
     ),
   create: (
@@ -770,23 +507,6 @@ export const tauriSkills = {
 };
 
 export const tauriSharedSkills = {
-  /**
-   * The workspace skill store, or the typed "this deployment has no store"
-   * answer.
-   *
-   * A deployment with no blob store bound answers every shared-skills route
-   * `503 {"error":"shared skills not configured"}` — feature ABSENCE, not a
-   * failure. Left as a rejection it re-fired the red bug toast (and a Sentry
-   * issue) every time a Skills surface mounted, and kept the query in an error
-   * state that refetched forever (HOU-1153). Resolving it to
-   * `configured: false` lets the surfaces render their empty state once and
-   * stop asking.
-   *
-   * This is NOT a silent fallback: `call` still logs the failure to the
-   * frontend log tail, the predicate is typed on the wire body rather than a
-   * message string, and every OTHER failure is rethrown to toast and report
-   * exactly as before.
-   */
   list: async (workspaceId: string) => {
     try {
       const result = await call(
@@ -839,10 +559,6 @@ export const tauriSharedSkills = {
         content,
       }),
     ),
-  /** "Share to workspace": full SKILL.md verbatim, at the exact slug. The
-   *  org-share default (HOU-1192) passes a `silence` classifier for the
-   *  expected declines (collision / role / no store) it degrades on inline;
-   *  the explicit Skills-page action passes none and toasts as before. */
   promote: (
     workspaceId: string,
     slug: string,
@@ -862,11 +578,6 @@ export const tauriSharedSkills = {
 };
 
 export const tauriSkillsManifest = {
-  /** Passive roster-driven queries pass `{ silence: isAgentGoneError }`: a 404
-   *  here means the roster is stale (agent deleted/unshared elsewhere, or a
-   *  space-switch refetch raced `loadAgents`) — an expected state the surfaces
-   *  handle by hiding + healing the roster, not a Houston bug (HOUSTON-APP-544).
-   *  User-initiated reads keep the default loud surfacing. */
   get: (agentPath: string, options?: EngineCallOptions) =>
     call<SkillsManifest>(
       "get_skills_manifest",
@@ -880,23 +591,18 @@ export const tauriSkillsManifest = {
       getEngine().putSkillsManifest(agentPath, manifest),
     );
   },
-  /** One skill on or off. The read-modify-write lives in the SDK, serialized
-   *  per agent, so two adds in the same sitting never drop each other. */
   setEnabled: (agentPath: string, slug: string, enabled: boolean) => {
     blockWriteWhileWarming(agentPath);
     return call<SkillsManifest>("set_skill_enabled", () =>
       getEngine().setSkillEnabled(agentPath, slug, enabled),
     );
   },
-  /** Back onto the workspace version of a skill this agent shadowed with its
-   *  own copy. The entry and the copy move together, in the SDK's order. */
   revertOverride: (agentPath: string, slug: string) => {
     blockWriteWhileWarming(agentPath);
     return call<void>("revert_skill_override", () =>
       getEngine().revertSkillOverride(agentPath, slug),
     );
   },
-  /** Stop this agent loading a workspace skill, copy and entry together. */
   disableForAgent: (agentPath: string, slug: string) => {
     blockWriteWhileWarming(agentPath);
     return call<void>("disable_skill_for_agent", () =>
@@ -905,10 +611,7 @@ export const tauriSkillsManifest = {
   },
 };
 
-/** An unfinished skill-creation chat, from the surfaces that list them. */
 export const tauriSkillDrafts = {
-  /** Throw the chat away: it stops being offered to resume. The archive is the
-   *  SDK's own composed write, so every client retires a draft the same way. */
   discard: (agentPath: string, activityId: string) => {
     blockWriteWhileWarming(agentPath);
     return call<void>("discard_skill_draft", () =>
@@ -916,8 +619,6 @@ export const tauriSkillDrafts = {
     );
   },
 };
-
-// ─── Project files (browser) ──────────────────────────────────────────
 
 import {
   FilePreviewError,
@@ -949,13 +650,6 @@ export const tauriFiles = {
     osOpenFile(agentPath, relativePath),
   reveal: (agentPath: string, relativePath: string) =>
     osRevealFile(agentPath, relativePath),
-  /** Raw bytes over HTTP — powers in-browser preview + download (web build).
-   *  Pass `{ toast: false }` when the caller renders the failure inline.
-   *
-   *  A 404 is the user's state, not a bug (PRODUCT-1780): the agent linked a
-   *  file that is not there (never written, renamed, deleted). It is silenced
-   *  for Sentry and, when this call owns the surface, shown as an authored
-   *  expected-state toast; inline callers read `isFileGoneError` themselves. */
   download: (
     agentPath: string,
     relativePath: string,
@@ -998,8 +692,6 @@ export const tauriFiles = {
   },
   rename: (agentPath: string, relativePath: string, newName: string) => {
     blockWriteWhileWarming(agentPath);
-    // A taken name is an expected state: `useFileWrites` shows the calm toast,
-    // so the 409 is logged but never filed as a bug.
     return call<void>(
       "rename_file",
       () => getEngine().renameFile(agentPath, relativePath, newName),
@@ -1009,9 +701,6 @@ export const tauriFiles = {
   },
   createFolder: (agentPath: string, name: string) => {
     blockWriteWhileWarming(agentPath);
-    // A file or folder already carrying that name is an expected state:
-    // `useFileWrites` shows the calm toast, so the 409 is logged but never
-    // filed as a bug.
     return call<void>(
       "create_agent_folder",
       async () => {
@@ -1021,13 +710,6 @@ export const tauriFiles = {
       { silence: isNameTakenError },
     );
   },
-  /** Upload browser Files into the workspace (drag-drop / Browse), optionally
-   * into a subfolder.
-   *
-   * The host's 413 (request over `MAX_UPLOAD_BYTES`) is silenced here because
-   * it is an EXPECTED, explainable state, not a Houston bug: `useUploadFiles`
-   * surfaces it as calm, translated copy about the size limit. Every other
-   * failure keeps the standard red toast + Sentry report. */
   upload: (
     agentPath: string,
     files: File[],
@@ -1042,11 +724,8 @@ export const tauriFiles = {
       { silence: isUploadTooLargeError },
     );
   },
-  /** Move a file/folder into another folder (null = workspace root). */
   move: (agentPath: string, relPath: string, toDir: string | null) => {
     blockWriteWhileWarming(agentPath);
-    // Same expected state as a rename: the destination folder already holds
-    // that name. `useFileWrites` says so in product copy; no bug report.
     return call<void>(
       "move_project_file",
       () => getEngine().moveProjectFile(agentPath, relPath, toDir),
@@ -1054,9 +733,6 @@ export const tauriFiles = {
       { silence: isNameTakenError },
     );
   },
-  /** One zip of the whole workspace ("Download all") or, with `relPath`, of a
-   * single folder — where there is no local file manager to reveal in (cloud
-   * pods, web builds). */
   downloadArchive: (agentPath: string, relPath?: string) =>
     call<{ blob: Blob; contentType: string }>(
       "download_project_archive",
@@ -1065,12 +741,6 @@ export const tauriFiles = {
     ),
   revealAgent: (agentPath: string) => osRevealAgent(agentPath),
 };
-
-// ─── Conversations ────────────────────────────────────────────────────
-// The conversation reads (`tauriConversations`, `RawConversation`) live in
-// `./conversations-facade`.
-
-// ─── Routines (engine-backed) ─────────────────────────────────────────
 
 import type {
   NewActivity as EngineNewActivity,
@@ -1132,12 +802,6 @@ export const tauriRoutines = {
       getEngine().cancelRoutineRun(agentPath, routineId, runId),
     );
   },
-  /**
-   * Mint (or rotate) a routine's incoming-webhook key: the one-time reveal
-   * (`url` + `secret` + `key_prefix`), or `null` where webhook keys are
-   * unsupported (desktop/self-host — only the hosted gateway serves them).
-   * Calling again ROTATES: the old secret stops working.
-   */
   mintWebhookKey: (agentPath: string, routineId: string) =>
     call("mint_routine_webhook_key", () =>
       getEngine().mintRoutineWebhookKey(agentPath, routineId),
@@ -1164,36 +828,16 @@ export const tauriActivity = {
       model,
       mode,
     ),
-  /**
-   * Create the row through the host's single POST (which honors a
-   * client-generated id) instead of the data layer's read-modify-write pair.
-   * Used by the warming-engine mission flow (HOU-693): one request, queued
-   * ahead of the turn start, so the row exists before the turn's first
-   * board-status write once the engine wakes. `toast:false` — the caller
-   * surfaces the failure in its own flow.
-   */
   createWithId: (agentPath: string, input: EngineNewActivity) =>
     call(
       "create_activity",
       () => getEngine().createActivity(agentPath, input),
       undefined,
-      // Agent-gone silenced (HOUSTON-APP-4ZF): a warming flush or mission
-      // create can race an agent deleted/unshared elsewhere — an expected
-      // roster-stale state, not a Houston bug. Both callers catch it: the
-      // flush heals + aborts, the mission path keeps its own toast.
       { toast: false, silence: isAgentGoneError },
     ),
-  /**
-   * `createWithId` with the engine-call surface deferred: the log tail records
-   * the call, nothing else surfaces. The caller hands the error (the SDK's
-   * last refusal after its busy/waking retries) to `surfaceEngineError`
-   * (`mission-row-landing.ts`, PRODUCT-1736).
-   */
   createWithIdAttempt: (agentPath: string, input: EngineNewActivity) =>
     call(
       "create_activity",
-      // The optimistic row rides out a pod wake on the SDK's mission-row
-      // ladder (PRODUCT-1736).
       () =>
         getEngine().createActivity(agentPath, input, {
           retryWhileWaking: true,
@@ -1206,16 +850,10 @@ export const tauriActivity = {
     activityId: string,
     update: activityData.ActivityUpdate,
   ) => activityData.update(agentPath, activityId, update).then(() => undefined),
-  /**
-   * Keep a mission's turn mode (the Mode pill) on its card, through the SDK's
-   * board PATCH, so it survives leaving the chat and reaches every surface
-   * and every send that pins no mode (HOU-205).
-   */
   setMode: (agentPath: string, activityId: string, mode: TurnMode) =>
     getEngine()
       .updateActivity(agentPath, activityId, { mode })
       .then(() => undefined),
-  /** The SDK's client mission-title pass (`mission-title.ts`); never rejects. */
   titleFromClient: (
     agentPath: string,
     activityId: string,
@@ -1231,7 +869,6 @@ export const tauriActivity = {
   bulkDelete: (agentPath: string, ids: string[]) =>
     activityData.bulkRemove(agentPath, ids),
 };
-// ─── Agent config (per-agent JSON on disk) ────────────────────────────
 
 export const tauriConfig = {
   read: (agentPath: string) => configData.read(agentPath),
@@ -1241,8 +878,6 @@ export const tauriConfig = {
     opts?: WarmingWriteOptions,
   ) => configData.write(agentPath, config, opts),
 };
-
-// ─── Preferences ──────────────────────────────────────────────────────
 
 export const tauriPreferences = {
   getNextStepSuggestions: () =>
@@ -1267,14 +902,11 @@ export const tauriPreferences = {
       undefined,
       key === "last_workspace_id" ? { surface: false } : undefined,
     ),
-  /** The SDK's create-only seed, pinned to one workspace's space. */
   seedTimezone: (workspaceId: string, detected: string) =>
     call<TimezoneSeedResult>("seed_timezone", () =>
       getEngine().seedTimezone(workspaceId, detected),
     ),
 };
-
-// ─── Sidebar layout ───────────────────────────────────────────────────
 
 export const tauriSidebar = {
   getLayout: (workspaceId: string) =>
@@ -1292,48 +924,18 @@ export const tauriSidebar = {
     ),
 };
 
-// ─── Providers ────────────────────────────────────────────────────────
-
 export interface ProviderStatus {
   provider: string;
   cli_installed: boolean;
   auth_state: ProviderAuthState;
   authenticated: boolean;
   cli_name: string;
-  /**
-   * The provider's configured model id, when the engine reports one — carries
-   * the OpenAI-compatible (local) provider's dynamic, catalog-less model so the
-   * chat model picker can show + select it. Absent for catalog-backed providers.
-   */
   active_model?: string;
-  /**
-   * WHOSE credential produced this probe (HOU-976). Absent on desktop,
-   * self-host, and any deployment with no acting identity — there is exactly one
-   * credential there and nothing to disambiguate, so every pre-HOU-976 surface
-   * reads the shape it always read.
-   */
   credentialScope?: CredentialScope;
-  /**
-   * Why the provider is (un)usable for this identity (PRODUCT-1475). Richer
-   * than `authenticated`: `out_of_credits` is a VALID credential with no quota,
-   * so it stays authenticated. Absent from engines that predate it.
-   */
   health?: ProviderHealth;
-  /**
-   * Epoch ms by which the person must sign in again: a hosted Claude
-   * subscription login ends about 28 days after it. Absent = no known
-   * deadline. The SDK's `providerReconnectNotice` says when to warn.
-   */
   reconnectBy?: number;
 }
 
-/**
- * Pick the connected gateway for a card that spans several engine gateway ids —
- * OpenCode's Zen + Go share one key, so the merged "OpenCode" account reads as
- * connected when EITHER gateway is. Returns the first authenticated probe, else
- * the first probe present. `byId` is a `checkAllStatuses` result; `[p.id]` for a
- * normal single-gateway provider just returns its own probe.
- */
 export function mergeGatewayStatus(
   gatewayIds: readonly string[],
   byId: Record<string, ProviderStatus>,
@@ -1346,17 +948,6 @@ export function mergeGatewayStatus(
 
 const DEFAULT_PROVIDER_PREF_KEY = "default_provider";
 
-/**
- * The stored `default_provider` preference, in the DISPLAY dialect every
- * catalog lookup downstream is keyed by.
- *
- * The ONE read of this key. It can hold either dialect — an install that last
- * picked Codex stored pi's canonical `openai-codex`, the picker writes
- * Houston's `openai` — and while only one accessor normalized it, the same
- * stored value meant two different providers depending on which one asked: the
- * chat panel's initial pick and the boot connection probe both read the raw id
- * and missed the catalog entirely.
- */
 async function storedDefaultProvider(): Promise<string | null> {
   return toDisplayProviderIdOrNull(
     await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY),
@@ -1376,26 +967,11 @@ export const tauriProvider = {
         authenticated: p.authState === "authenticated",
         cli_name: p.cliName,
         active_model: p.activeModel,
-        // Copy the credential attribution THROUGH (HOU-976). This mapping only
-        // keeps fields it names explicitly, so omitting it would silently
-        // swallow which account answered. Absent stays absent.
         credentialScope: p.credentialScope,
         health: p.health,
         reconnectBy: p.reconnectBy,
       };
     }),
-  /**
-   * Connect status for many provider / gateway ids in ONE engine round-trip.
-   *
-   * The new TS engine's adapter exposes a batched `providerStatuses()` that
-   * resolves every card from a single `listProviders()` call (HOU-650). The
-   * legacy Rust client has no such method — and won't get one, it's being
-   * retired — so we feature-detect it and fall back to per-provider probes there
-   * (that path keeps its old N-round-trip behavior; no Rust-side change). Returns
-   * a map keyed by the ids passed. Screens that show several provider cards
-   * (settings, onboarding picker, chat model picker) call this once instead of
-   * probing each card separately.
-   */
   checkAllStatuses: (ids: readonly string[]) =>
     call<Record<string, ProviderStatus>>(
       "check_provider_statuses",
@@ -1420,9 +996,6 @@ export const tauriProvider = {
             authenticated: p.authState === "authenticated",
             cli_name: p.cliName,
             active_model: p.activeModel,
-            // Same explicit copy-through as checkStatus (HOU-976): the batched
-            // path feeds the chat model picker, which is where the account label
-            // is actually rendered.
             credentialScope: p.credentialScope,
             health: p.health,
             reconnectBy: p.reconnectBy,
@@ -1454,41 +1027,15 @@ export const tauriProvider = {
         return out;
       },
     ),
-  /**
-   * The provider the next chat opens on, in the DISPLAY dialect — the same
-   * value `getLastUsed` answers with, read the same way (see
-   * {@link storedDefaultProvider}). `""` when nothing is stored.
-   */
   getDefault: () =>
     call<string>(
       "get_default_provider",
       async () => (await storedDefaultProvider()) ?? "",
     ),
-  /**
-   * Last (provider, model) pair the user picked anywhere — agent creation
-   * dialog, AI-assist step, or chat-tab model picker. Used as the default
-   * for the next new agent. Returns `(null, null)` on a fresh install.
-   *
-   * Provider is stored under the existing `default_provider` key so an
-   * already-onboarded install carries its old preference forward without a
-   * migration step. The companion model key is new (no upgrade path needed
-   * because a missing value just falls back to the provider's
-   * `defaultModel`).
-   *
-   * The stored model is normalized through `normalizeLegacyModel` on the way
-   * out: an install that last picked a model before the catalog pinned
-   * versions has a bare `"opus"`/`"sonnet"` in this preference, and creation
-   * dialogs seed a new agent's config from this value. Normalizing here means
-   * they never write a retired alias into a fresh config.
-   */
   getLastUsed: () =>
     call<{ provider: string | null; model: string | null }>(
       "get_last_used_provider",
       async () => {
-        // Both halves are normalized on the way out: the provider through the
-        // id dialect (`storedDefaultProvider`), the model through the
-        // legacy-alias table, so a value stored by any older build seeds a
-        // creation dialog as the pair the catalog is keyed by.
         const [provider, model] = await Promise.all([
           storedDefaultProvider(),
           getEngine().getPreference(DEFAULT_MODEL_PREF_KEY),
@@ -1496,21 +1043,6 @@ export const tauriProvider = {
         return { provider, model: normalizeLegacyModel(model, provider) };
       },
     ),
-  /**
-   * Live per-account usage for every connected provider (rate-limit windows +
-   * prepaid balances) — the meters on the AI Models hub's Connected rows. One
-   * engine round-trip.
-   *
-   * A periodic BACKGROUND read of a browse surface, not a user-initiated
-   * action, and the rows already render the failure inline. `toast: false`
-   * because a red "Report bug" toast every poll interval would bury a degraded
-   * engine's real signal in noise the user cannot act on; `capture: false` for
-   * the same reason the other meta probes here set it (`chat_history_migrated`,
-   * `watch_composio_connection`) — retries times poll interval times open tabs
-   * would report one transient outage hundreds of times, and the condition that
-   * causes it (an unreachable engine) is already captured on the paths a user
-   * actually initiated.
-   */
   usage: () =>
     call<ProviderUsage[]>(
       "provider_usage",
@@ -1528,26 +1060,9 @@ export const tauriProvider = {
     provider: string,
     opts?: { deviceAuth?: boolean; toast?: boolean; enterpriseDomain?: string },
   ) =>
-    // `deviceAuth` declares whether the client can catch a loopback OAuth
-    // callback. Default it from connection topology: a co-located desktop can
-    // catch the runtime's loopback callback (false → Codex browser login), but
-    // any browser client OR desktop pointed at a remote host cannot (true →
-    // device code). Callers may still override. Centralized here so every entry
-    // point (picker, settings, reconnect card, banner) agrees.
-    // `enterpriseDomain` (GitHub Copilot Enterprise) carries the company GitHub
-    // domain the user typed on the Enterprise card; absent for every other login.
     call<void>(
       "launch_provider_login",
       () => {
-        // Anthropic on a co-located desktop runs the zero-terminal browser login
-        // FOR the user (native `claude auth login`), never the runtime's
-        // setup-token paste flow. This is the single choke point every connect
-        // surface funnels through, so the intercept lives here (not per-surface).
-        // beginClaudeBrowserLogin drives the whole flow and reports the outcome
-        // as a synthetic ProviderLoginComplete, so `call` resolves and never
-        // double-toasts. On a REMOTE-engine desktop it also extracts + pushes the
-        // credential to the pod (and degrades to the paste flow on any failure).
-        // Web (non-Tauri) falls through to providerLogin.
         if (
           shouldUseClaudeDesktopLogin({
             provider,
@@ -1559,14 +1074,6 @@ export const tauriProvider = {
         return getEngine().providerLogin(provider, {
           deviceAuth:
             opts?.deviceAuth ??
-            // Codex/OpenAI on a Tauri desktop against a REMOTE engine uses the
-            // zero-code loopback relay (`codexUsesLoopbackRelay`): the desktop
-            // binds its OWN local 127.0.0.1:1455 and relays the callback code,
-            // so it wants an authorize URL (deviceAuth:false), never a device
-            // code. pi's own 1455 is in the pod, so no collision. Co-located
-            // desktop (local sidecar / loopback dev URL) is NOT a relay case —
-            // pi owns 1455 there and its own browser flow already resolves to
-            // deviceAuth:false via the topology default below.
             (provider === "openai" &&
             codexUsesLoopbackRelay(
               (import.meta.env ?? {}) as {
@@ -1576,18 +1083,7 @@ export const tauriProvider = {
               { isTauri: osIsTauri() },
             )
               ? false
-              : // The browser/loopback flow needs the runtime CO-LOCATED with
-                // the user's browser: pi binds the provider's fixed localhost
-                // callback port in-process and completes the exchange itself, so
-                // the client only opens the URL. A truly remote engine (hosted
-                // cloud, a VPS, or the HOU-621 runtime `remote` choice with no
-                // baked env — hence the isRemoteEngine() OR) must use device
-                // code instead. A LOOPBACK engine URL is co-located despite
-                // being URL-configured — `VITE_NEW_ENGINE_URL` (the dev
-                // two-terminal setup) and `VITE_HOSTED_ENGINE_URL` (the dev
-                // cloud profile's local gateway) alike — so it keeps the
-                // browser flow like the packaged host-sidecar build.
-                (isRemoteEngine() &&
+              : (isRemoteEngine() &&
                   !isLoopbackHostUrl(
                     import.meta.env?.VITE_NEW_ENGINE_URL as string | undefined,
                   ) &&
@@ -1607,106 +1103,43 @@ export const tauriProvider = {
         });
       },
       undefined,
-      // Callers that render their OWN failure toast (the picker, settings) pass
-      // `toast: false` so `call`'s generic toast does not fire on top of theirs
-      // — the engine error message showed twice otherwise. Sentry capture still
-      // happens. Callers that surface the failure inline (reconnect cards /
-      // banner) omit it and keep this toast.
       opts?.toast === false ? { toast: false } : undefined,
     ),
   launchLogout: (provider: string) =>
     call<void>("launch_provider_logout", () =>
       getEngine().providerLogout(provider),
     ),
-  /**
-   * Submit the OAuth verification code the user pasted from their
-   * browser. Only meaningful for remote/headless engines (container,
-   * Always-On VPS) where the CLI can't open the user's browser
-   * directly — the engine surfaces the sign-in URL via the
-   * `ProviderLoginUrl` WS event, the UI shows the dialog, and this
-   * call relays the code back to the CLI's stdin.
-   */
   submitLoginCode: (
     provider: string,
     code: string,
-    // `surface: false` is the codex loopback relay's contract: a lost-login
-    // failure is recoverable (auto-restarted sign-in), so the relay owns the
-    // FINAL surface itself — see codex-relay-recovery.ts. Every other caller
-    // keeps the default toast + capture.
     opts?: Pick<EngineCallOptions, "surface">,
   ) =>
     call<void>(
       "submit_provider_login_code",
       () => getEngine().submitProviderLoginCode(provider, code),
       undefined,
-      // A code submitted after the runtime dropped the login (the paste
-      // dialog outlived the abandoned-login timer, the app was restarted
-      // mid-sign-in) is user timing, not a bug: the dialog shows authored
-      // "link expired" copy inline, so no red toast and no Sentry here.
       { silence: isProviderLoginSessionLostError, ...opts },
     ),
-  /**
-   * Abort an in-flight sign-in the user gave up on (closed the OAuth
-   * tab, stuck spinner). Kills the CLI subprocess on the engine and
-   * frees the slot so the next `launchLogin` isn't rejected as
-   * "already pending" — the user can retry immediately instead of
-   * restarting Houston (#237). Idempotent and benign: the engine emits
-   * a `ProviderLoginComplete` with `success: false` and no `error`, so
-   * pending spinners clear without an error toast.
-   */
   cancelLogin: (provider: string) =>
     call<void>("cancel_provider_login", () => {
-      // A Codex loopback relay may be armed for this provider: tear down its
-      // callback listener too, so approving the abandoned browser tab later
-      // can't relay a code into the login this cancel just killed ("no active
-      // login" + a spurious toast). No-op for every other flow.
       cancelCodexLoopback(provider);
-      // Anthropic on the desktop ran the native browser login (not the runtime),
-      // so its cancel must kill THAT child — the runtime's cancelProviderLogin
-      // would be a no-op and leave the `claude` helper running. Mirror the
-      // launchLogin intercept.
       if (shouldUseClaudeDesktopLogin({ provider, isTauri: osIsTauri() })) {
         cancelClaudeBrowserLogin(provider);
         return Promise.resolve();
       }
       return getEngine().cancelProviderLogin(provider);
     }),
-  /**
-   * Connect an API-key provider (OpenRouter, Google Gemini, Amazon Bedrock,
-   * OpenCode Zen / Go):
-   * submit the pasted key. The new engine stores it for the workspace and the
-   * provider reads as connected (the adapter fires `ProviderLoginComplete`).
-   * New-engine only — the connect UI shows these providers only when
-   * `newEngineActive()`.
-   */
   setApiKey: (provider: string, apiKey: string, endpoint?: string) =>
     call<void>(
       "set_provider_api_key",
       () => getEngine().setProviderApiKey(provider, apiKey, endpoint),
       undefined,
-      // The connect dialog surfaces the failure inline with the engine's typed
-      // reason (bad key / restricted key / provider outage) — a red bug toast
-      // on top double-surfaces a user-fixable state. A bad or under-scoped
-      // key is the USER's state, not a Houston bug: those verdicts are
-      // silenced (the dialog tracks them as `provider_key_rejected` instead,
-      // PRODUCT-1730). A no-verdict outage and a reason-less failure keep
-      // capturing so real provider / host faults still reach Sentry. The
-      // gateway's owner/admin refusal of a member's org-level connect is an
-      // expected state the dialog explains inline too, so it is silenced
-      // here (no toast, no Sentry) rather than routed to the surfacing
-      // layer's info toast.
       {
         toast: false,
         silence: (err) =>
           isOrgAdminRequiredError(err) || isApiKeyUserRejection(err),
       },
     ),
-  /**
-   * Connect an OpenAI-compatible (local / BYO model) server: a base URL + model
-   * id the user runs themselves (Ollama / vLLM / LM Studio). New-engine only and
-   * gated by the host's `openaiCompatible` capability — the connect UI shows it
-   * only then (see `getVisibleProviders`).
-   */
   setCustomEndpoint: (
     endpoint: CustomEndpoint,
     surface: CustomEndpointSurface = "toast",
@@ -1715,45 +1148,15 @@ export const tauriProvider = {
       "set_provider_custom_endpoint",
       () => getEngine().setProviderCustomEndpoint(endpoint),
       undefined,
-      // The manual-connect form owns its failure surface: it renders the
-      // failure inline (generic copy for a real bug, which the wrapper still
-      // captures; rule-specific guidance for the cloud egress rejection, which
-      // is silenced here so the inline copy is the ONE surface, no Sentry).
       surface === "inline"
         ? { toast: false, silence: isCloudEgressBlockedError }
         : undefined,
     ),
 };
 
-// ─── Personal assistant ───────────────────────────────────────────────
-
-/** Mirror of the engine `AssistantHandle` — re-exported so callers can import
- *  it from `lib/tauri.ts` like the other engine DTOs. */
 export type AssistantHandle = import("@houston/engine-adapter").AssistantHandle;
 
-/**
- * Where the user's personal assistant lives. The assistant is an ordinary
- * agent conversation — this is only its address, so every other call it needs
- * (send, history, events) is the existing per-agent surface above. Both fields
- * are OPAQUE: the deployment decides what an assistant is, and parsing them
- * here would bake one deployment's shape into the app.
- */
 export const tauriAssistant = {
-  /**
-   * Silenced for everything `classifyAssistantDiscoveryFailure` does not call
-   * `unexpected` (`lib/assistant-availability.ts`): a deployment that serves no
-   * assistant (a 501, a gateway older than the route answering 404, or a 503
-   * naming its absence with a code) AND a pod that is simply not awake yet (an
-   * uncoded 503, which the caller retries on the server's own `Retry-After`
-   * hint). Neither is a Houston bug — one has no screen to show, the other
-   * answers moments later — so both are logged and never toasted. Every other
-   * failure stays loud.
-   *
-   * `surface: false` is how `hooks/use-assistant.ts` runs its retry ladder:
-   * every attempt is logged and none is reported, and the hook surfaces the
-   * final error itself through {@link surfaceEngineError}. One user-visible
-   * surface per user-visible action.
-   */
   discover: (options?: Pick<EngineCallOptions, "surface">) =>
     call<AssistantHandle>(
       "get_assistant",
@@ -1763,36 +1166,18 @@ export const tauriAssistant = {
     ),
 };
 
-// ─── System (OS-native helpers, preserved for back-compat) ────────────
-
 import { openExternalUrl } from "./open-external-url";
 export const tauriSystem = {
-  /** Never rejects; a failed open is surfaced once inside (`open-external-url.ts`). */
   openUrl: openExternalUrl,
-  /**
-   * Whether THIS install carried over a legacy Rust-desktop chat-history db —
-   * the signal that the user is migrating from the old desktop build (agents +
-   * history came across, provider credentials did NOT). Read from the host's
-   * `/v1/version`; the legacy Rust engine and older hosts omit the field, so a
-   * missing value reads as `false` (never show the reconnect moment there).
-   */
   chatHistoryMigrated: () =>
     call<boolean>(
       "chat_history_migrated",
       async () => (await getEngine().version()).chatHistoryMigrated ?? false,
       undefined,
-      // A meta probe, not a user-initiated action: a transient failure should
-      // not toast. The hook treats a throw as "unknown → don't show".
       { toast: false, capture: false },
     ),
 };
 
-/**
- * Integrations (Composio, platform mode). The user never creates a provider
- * account — they only OAuth apps (Gmail, Slack…); Houston's platform key lives
- * server-side. Host-only — these reach the v3 host's /v1/integrations routes.
- * Types flow by inference.
- */
 export const tauriIntegrations = {
   status: () =>
     call("integration_status", () => getEngine().integrationStatus()),
@@ -1806,14 +1191,6 @@ export const tauriIntegrations = {
     call("integration_connections", () =>
       getEngine().integrationConnections(provider),
     ),
-  /** Begin an app connection. `agent` (the agent slug) scopes the connect to a
-   *  per-agent surface so the gateway applies the agent's allowlist + auto-grant
-   *  (Teams v2); omit it for the account-level Integrations page. The host's
-   *  typed connect refusals — OAuth unavailable (a Houston-side setup gap,
-   *  HOU-1110), no-auth (nothing to connect, its tools already work) and
-   *  not-found (no app by that slug, HOUSTON-APP-5M0) — are
-   *  expected + explainable: the connect flow surfaces its own copy, so no raw
-   *  toast and no bug report. */
   connect: (provider: IntegrationProviderId, toolkit: string, agent?: string) =>
     call(
       "integration_connect",
@@ -1823,10 +1200,6 @@ export const tauriIntegrations = {
         silence: (err) => integrationConnectRefusal(err) !== null,
       },
     ),
-  /** The connect poll's status read. A 404 means the pending connection is
-   *  gone (the user disconnected the app mid-OAuth, or the provider expired
-   *  it) — the poll settles as `gone` (PRODUCT-1733), so it is silenced here
-   *  rather than reported as a bug. */
   connection: (provider: IntegrationProviderId, connectionId: string) =>
     call(
       "integration_connection",
@@ -1834,8 +1207,6 @@ export const tauriIntegrations = {
       { provider, connectionId },
       { silence: isIntegrationConnectionGoneError },
     ),
-  /** `connectionId` narrows the removal to ONE account of the toolkit (a
-   *  toolkit can hold several — two Gmail logins); omitted removes them all. */
   disconnect: (
     provider: IntegrationProviderId,
     toolkit: string,
@@ -1844,15 +1215,10 @@ export const tauriIntegrations = {
     call("integration_disconnect", () =>
       getEngine().disconnectIntegration(provider, toolkit, connectionId),
     ),
-  /** Dismiss the reconnect notice (deletes the legacy credentials server-side). */
   dismissReconnectNotice: () =>
     call("integration_dismiss_reconnect_notice", () =>
       getEngine().dismissIntegrationsReconnectNotice(),
     ),
-  // ── custom integrations (HOU-550) ──────────────────────────────────────────
-  // The list is a plain read (a React Query hook owns its error surface and
-  // `null` = unsupported host); the two mutations go through `call()` so a
-  // failure toasts + reports exactly once.
   customList: () => getEngine().customIntegrations(),
   customUpdateDetails: (
     slug: string,
@@ -1870,10 +1236,6 @@ export const tauriIntegrations = {
     call("custom_integration_credential", () =>
       getEngine().submitCustomIntegrationCredential(slug, values),
     ),
-  // The per-agent forms (HOU-823): same user-global data, addressed through
-  // the ONE per-agent surface a gateway-fronted deployment proxies to the
-  // agent's pod — the in-chat credential card uses these so a save works on
-  // managed cloud (the top-level form 404s at the gateway there).
   customListForAgent: (agentId: string) =>
     getEngine().agentCustomIntegrations(agentId),
   customCredentialForAgent: (
@@ -1888,11 +1250,6 @@ export const tauriIntegrations = {
     call("custom_integration_remove", () =>
       getEngine().removeAgentCustomIntegration(agentId, slug),
     ),
-  // Manual add form (HOU-980): pre-check a pasted URL, then register. Both are
-  // user-initiated writes → `call()` toasts + reports a failure exactly once.
-  // `agentId` is the TRANSPORT agent, so both ride the per-agent routes
-  // wherever one exists; the top-level fallback covers a direct host with no
-  // agents yet.
   customDetect: (url: string, agentId?: string) =>
     call("custom_integration_detect", () =>
       agentId
@@ -1905,10 +1262,6 @@ export const tauriIntegrations = {
         ? getEngine().addAgentCustomIntegration(agentId, input)
         : getEngine().addCustomIntegration(input),
     ),
-  // OAuth sign-in start (PRODUCT-1172): mint the authorize URL for a custom
-  // MCP integration's browser sign-in. Same transport-agent rule as add.
-  // `options.surface: false` for the waking-retry caller
-  // (`startCustomOAuth`), which surfaces the FINAL error itself.
   customOAuthStart: (
     slug: string,
     agentId?: string,
@@ -1925,38 +1278,19 @@ export const tauriIntegrations = {
     ),
 };
 
-/**
- * Multiplayer org management. Hosted-gateway only: the desktop/local engine has
- * no /v1/org routes, so `getEngine()` throws "multiplayer requires the hosted
- * gateway" there — callers gate the UI on the `multiplayer` capability. Same
- * `call()` surfacing as every other wrapper; types flow by inference.
- */
 export const tauriOrg = {
   get: () => call("get_org", () => getEngine().getOrg()),
-  /** Teammate display profiles (name + photo) for member ids. A cosmetic,
-   *  non-user-initiated read: it degrades to an empty map off-gateway/on hosts
-   *  without the route, so a rare hard failure stays silent (no toast, no
-   *  Sentry) and consumers fall back to initials via React Query's `isError`. */
   profiles: (ids: string[]) =>
     call("get_org_profiles", () => getEngine().getOrgProfiles(ids), undefined, {
       toast: false,
       capture: false,
     }),
-  /** The active space's sanitized co-member directory (HOU-944), the roster
-   *  the chat composer's @mention autocomplete offers. Same cosmetic,
-   *  non-user-initiated posture as `profiles`: it degrades to an empty list
-   *  off-gateway / on a gateway predating the route, so a rare hard failure
-   *  stays silent (no toast, no Sentry) and `@` simply types plainly. */
   people: () =>
     call("get_org_people", () => getEngine().getOrgPeople(), undefined, {
       toast: false,
       capture: false,
     }),
-  /** What adding one more person costs (owner); the seat flow asks before
-   *  every add. A gateway without the route answers `no_charge`. */
   quoteSeat: () => call("quote_org_seat", () => getEngine().quoteSeat()),
-  /** Add or invite someone. `charge` is the `charge` quote's date and amount
-   *  when the add pays a seat; the seat refusals come back as outcomes. */
   addMember: (
     email: string,
     role: import("@houston/engine-adapter").OrgRole,
@@ -1975,14 +1309,10 @@ export const tauriOrg = {
       undefined,
       options,
     ),
-  /** Revoke a pending invite by id (owner only). */
   deleteInvite: (inviteId: string) =>
     call<void>("delete_org_invite", () =>
       getEngine().deleteOrgInvite(inviteId),
     ),
-  /** C8: accept an invite addressed to the caller, joining that team. Distinct
-   *  from `deleteInvite` (the owner's revoke). Callers pass `silence` for the
-   *  expected gateway states they explain themselves (see `invite-model.ts`). */
   acceptInvite: (inviteId: string, options?: EngineCallOptions) =>
     call(
       "accept_org_invite",
@@ -1990,7 +1320,6 @@ export const tauriOrg = {
       undefined,
       options,
     ),
-  /** C8: decline an invite addressed to the caller. */
   declineInvite: (inviteId: string, options?: EngineCallOptions) =>
     call<void>(
       "decline_org_invite",
@@ -2000,7 +1329,6 @@ export const tauriOrg = {
     ),
   removeMember: (userId: string) =>
     call("remove_org_member", () => getEngine().removeOrgMember(userId)),
-  /** The routines removing this member would stop (owner only). */
   memberRoutines: (userId: string) =>
     call(
       "list_member_routines",
@@ -2015,32 +1343,17 @@ export const tauriOrg = {
     call("set_org_member_role", () =>
       getEngine().setOrgMemberRole(userId, role),
     ),
-  /** Org audit log, newest first, paged by `before` cursor (owner org-wide;
-   *  admin their managed agents; plain members 403). */
   audit: (opts: { before?: number; limit?: number } = {}) =>
     call("org_audit", () => getEngine().orgAudit(opts)),
-  /** Per-agent/user usage counters over the last `days` (owner org-wide; admin
-   *  their managed agents; plain members 403). */
   usage: (days: number) => call("org_usage", () => getEngine().orgUsage(days)),
-  /** Per-agent compute usage (engine running time) over the last `days`,
-   *  scoped server-side to the agents the caller can access. Cloud-only:
-   *  callers gate on `capabilities.computeUsage`. */
   computeUsage: (days: number) =>
     call("org_compute_usage", () => getEngine().computeUsage(days)),
-  /** C8 spaces: the caller's spaces + pending invites. Degrades to an empty
-   *  result off-spaces (the switcher then shows only the personal workspace). */
   listOrgs: () => call("list_orgs", () => getEngine().listOrgs()),
-  /** Create an org, free unless `plan` is `paid` (billed per `interval`,
-   *  monthly by default); a taken free slot is an outcome, not a failure. NOT
-   *  idempotent — on a lost response the caller reconciles via `listOrgs` and
-   *  reuses the slug, never blind-retries. */
   createOrg: (input: {
     name: string;
     plan?: import("@houston/engine-adapter").OrgPlan;
     interval?: import("@houston/engine-adapter").BillingInterval;
   }) => call("create_org", () => getEngine().createOrg(input)),
-  /** C8 spaces: start an agent move into a team; poll `moveStatus` to terminal
-   *  `done` before inviting (share pipeline order is a contract rule). */
   moveAgent: (
     agentSlugOrId: string,
     toSlug: string,
@@ -2052,7 +1365,6 @@ export const tauriOrg = {
       undefined,
       options,
     ),
-  /** C8 spaces: poll one agent-move's progress. */
   moveStatus: (
     agentSlugOrId: string,
     moveId: string,
@@ -2064,32 +1376,19 @@ export const tauriOrg = {
       undefined,
       options,
     ),
-  /** C8 billing: the active org's billing summary (owner/admin).
-   *  Degrades to null off-entitlement so the billing UI renders nothing. */
   getBilling: () => call("get_billing", () => getEngine().getBilling()),
-  /** Start a per-seat Stripe Checkout for the active org, monthly or yearly
-   *  (billing owner only); answers the page to open externally, or the
-   *  interval refused as an outcome. A failure surfaces via `call`. */
   createCheckout: (
     interval: import("@houston/engine-adapter").BillingInterval,
   ) => call("create_checkout", () => getEngine().createCheckout({ interval })),
-  /** Move the active org's monthly subscription to yearly (billing owner);
-   *  the owner's states (declined card, already yearly, no yearly price)
-   *  come back as outcomes. */
   switchToYearly: () =>
     call("switch_to_yearly", () => getEngine().switchToYearly()),
-  /** Hide the active org's promo-ended notice on every device. */
   dismissPriceNotice: () =>
     call("dismiss_price_notice", () => getEngine().dismissPriceNotice()),
-  /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
   createPortal: () => call("create_portal", () => getEngine().createPortal()),
-  /** Make the active org the free one; the refusals come back as outcomes. */
   claimFreeSlot: () =>
     call("claim_free_slot", () => getEngine().claimFreeSlot()),
-  /** The account-wide free-org pick; null off cloud or before the change. */
   getBillingChoice: () =>
     call("get_billing_choice", () => getEngine().getBillingChoice()),
-  /** Store the pick. `not_owner`/`not_payer`/`same_org` come back as outcomes. */
   setBillingChoice: (pick: BillingChoicePick) =>
     call("set_billing_choice", () => getEngine().setBillingChoice(pick)),
   dismissBillingChoiceNotice: () =>
@@ -2102,46 +1401,22 @@ export const tauriOrg = {
     call("keep_plan_routine", () => getEngine().keepRoutine(key)),
   resumeRoutines: () =>
     call("resume_plan_routines", () => getEngine().resumeRoutines()),
-  /** C19 presence heartbeat: a passive background call, never a toast. A
-   *  failure is still logged and reported once here. */
   reportPresence: () =>
     call("report_presence", () => getEngine().reportPresence(), undefined, {
       toast: false,
     }),
 };
 
-/**
- * The signed-in user's OWN display profile (name + photo). Hosted-gateway only,
- * but unlike `tauriOrg` this is NOT multiplayer-gated: every signed-in user may
- * name themselves and pick a picture, alone or in a team.
- */
 export const tauriProfile = {
-  /** Background read: it degrades to null off-gateway and on a gateway that
-   *  predates the route, which HIDES the account menu's Profile entirely. A
-   *  failure there is indistinguishable from "the host has no such feature",
-   *  so it must neither red-toast nor page Sentry. */
   get: () =>
     call("get_my_profile", () => getEngine().getMyProfile(), undefined, {
       toast: false,
       capture: false,
     }),
-  /** User-initiated write: keeps `call()`'s default red toast + Sentry report,
-   *  the no-silent-failures path. The host's 400 for a name over 60 chars or an
-   *  oversized/malformed picture reaches the user through that same surface. */
   set: (update: EditableProfileUpdate) =>
     call("set_my_profile", () => getEngine().setMyProfile(update)),
 };
 
-/**
- * Personal API keys (C9). Hosted-gateway only: `getEngine()` throws off-cloud, so
- * callers gate the UI on the `apiKeys` capability. Every call routes through
- * `call()` so a failure toasts + reports exactly once (the no-silent-failures
- * path) — the section then reflects the query's error state instead of a
- * misleading empty list. Two expected states are silenced from the red bug toast:
- * `create` silences the `key_limit` 400 (surfaced inline), and `revoke` silences
- * the `404` of an already-gone key (stale 30s list / double revoke) and resolves
- * it as success so the row still disappears.
- */
 export const tauriApiKeys = {
   list: () => call("list_api_keys", () => getEngine().listApiKeys()),
   create: (name: string) =>
@@ -2157,24 +1432,11 @@ export const tauriApiKeys = {
         silence: isKeyGoneError,
       },
     ).catch((err) => {
-      // A 404 means the key was already revoked (the list is 30s-stale, or a
-      // second revoke landed in the same window). That is idempotent success,
-      // not a failure: swallow it so the mutation resolves and its onSuccess
-      // still invalidates the list, dropping the row. `call()` already silenced
-      // the toast + Sentry report above; every other error rethrows and surfaces.
       if (isKeyGoneError(err)) return;
       throw err;
     }),
 };
 
-/**
- * The messaging accounts the personal assistant answers in (Settings >
- * Channels). Every call names itself for the report and classifies its own
- * expected states (`lib/channel-silence.ts`): a deployment that serves no
- * channels, a ticket the gateway refused, and the abort a space switch fires
- * are states the section renders, never bug reports. The caller keeps the
- * space scope and the signal (`hooks/channel-workspace-scope.ts`).
- */
 const channelCall = <T>(label: ChannelCall, fn: () => Promise<T>) =>
   call<T>(label, fn, undefined, {
     silence: (err) => silenceChannelCall(label, err),
@@ -2202,12 +1464,10 @@ export const tauriChannels = {
     channelCall<void>("disconnect_channel", () =>
       getEngine().disconnectChannel(id, signal),
     ),
-  /** Open the authorization page; a popup blocker's refusal is the answer. */
   openSlack: (url: string) =>
     channelCall("open_slack", () => tauriSystem.openUrl(url)),
 };
 
-/** Device-scoped C23 push operations. Background failures are reported without a toast. */
 export const tauriPush = {
   deviceId: () =>
     call("push_device_id", () => getEngine().pushDeviceId(), undefined, {

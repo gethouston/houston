@@ -31,7 +31,6 @@ export function subscribeLocalBridge(listener: () => void): () => void {
   };
 }
 
-/** Scope changes invalidate callbacks synchronously, before any async teardown. */
 export function invalidateLocalBridgeBinding(): void {
   epoch++;
   selectedKey = undefined;
@@ -62,7 +61,6 @@ export function localBridgeController(
       try {
         await stopped;
       } catch {
-        // The initial failure was reported. Retry teardown before any new scope starts.
         await retired.dispose();
       }
       disposals.delete(retired);

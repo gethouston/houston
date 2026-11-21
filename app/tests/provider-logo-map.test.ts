@@ -10,12 +10,6 @@ import {
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
-/**
- * Every provider id pi-ai exposes today (from `@earendil-works/pi-ai`'s catalog),
- * plus Houston's appended local provider. The frontend renames `openai-codex`
- * -> `openai` and drops pi's colliding api-key `openai` before these reach the
- * logo dispatcher, but the resolver stays tolerant of both spellings.
- */
 const PI_PROVIDER_IDS = [
   "amazon-bedrock",
   "ant-ling",
@@ -59,8 +53,6 @@ describe("providerBrandKey", () => {
   it("resolves every provider id to a brand mark OR the monogram (never throws)", () => {
     for (const id of PI_PROVIDER_IDS) {
       const key = providerBrandKey(id);
-      // Either a known brand key, or null (the caller draws a monogram). The
-      // monogram itself always yields a non-empty mark.
       if (key !== null) {
         strictEqual(BRAND_KEYS.has(key), true, `unknown key for ${id}: ${key}`);
       }
@@ -81,8 +73,6 @@ describe("providerBrandKey", () => {
   });
 
   it("keeps ids with their OWN models.dev logo as distinct marks", () => {
-    // These have a distinct real logo on models.dev, so they are NOT aliased to
-    // a parent (Vertex AI != Gemini, OpenCode Go != OpenCode Zen).
     strictEqual(providerBrandKey("google-vertex"), "google-vertex");
     strictEqual(providerBrandKey("opencode-go"), "opencode-go");
     strictEqual(
@@ -143,8 +133,6 @@ describe("providerBrandKey", () => {
   });
 
   it("resolves an unknown id to null (the monogram tile)", () => {
-    // `ant-ling` was retired in the 2026-07 provider QA sweep, so its bespoke
-    // mark is gone and it falls to the monogram like any unknown id.
     strictEqual(providerBrandKey("ant-ling"), null);
     strictEqual(providerBrandKey("some-future-provider"), null);
   });
@@ -190,13 +178,8 @@ describe("monogramText", () => {
   });
 });
 
-// A sanity net: the brand-key set the resolver validates against must match the
-// keys the registry binds. (Registry lives in the .tsx; this asserts the count
-// the map file publishes so a stray key addition is caught here too.)
 describe("BRAND_KEYS", () => {
   it("has the expected 30 real brand marks", () => {
-    // 27 straight from models.dev's per-provider endpoint, plus meta (its
-    // `llama` art), qwen (its `alibaba` art), and cohere.
     strictEqual(BRAND_KEYS.size, 30);
   });
 

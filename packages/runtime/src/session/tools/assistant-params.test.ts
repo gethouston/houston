@@ -2,14 +2,6 @@ import type { AssistantOperation } from "@houston/host/src/assistant/catalog";
 import { expect, test } from "vitest";
 import { checkCallParams } from "./assistant-params";
 
-/**
- * Argument validation for `houston_call`, and above all what it SAYS when it
- * refuses. The rejection is the model's only chance to fix the call in place:
- * told just "does not match", it guessed "blue", "#0000FF", "0000FF" and then
- * deleted the agent to recreate it in the colour it wanted. The accepted values
- * belong in the message.
- */
-
 const COLOR_SCHEMA = {
   anyOf: [
     { type: "null" },
@@ -89,8 +81,6 @@ test("a type mismatch names the expected type and the type that arrived", () => 
 test("a shape mismatch reports the value's type rather than a bare refusal", () => {
   const message = errorFor({ name: "Dobby", seed: "just text" }).message;
 
-  // The union carries no listable values, so the types it does declare are the
-  // answer: null or object, and a string is neither.
   expect(message).toContain('"seed" must be of type null or object');
   expect(message).toContain("you gave string");
 });

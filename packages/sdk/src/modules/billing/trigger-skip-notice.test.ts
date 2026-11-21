@@ -89,7 +89,6 @@ describe("triggerPlanSkipNotice for the routine's creator", () => {
 
   it("matches the kept routine by its agent and id", () => {
     const limit = item("plan_routine_limit");
-    // Same routine id under another agent, or another routine: still refused.
     for (const stale of [kept("agent-b"), kept("agent-a", "r9")])
       expect(triggerPlanSkipNotice(limit, stale, creator)?.reason).toBe(
         "routine_limit",
@@ -162,8 +161,6 @@ describe("triggerPlanSkipNotice for the routine's creator", () => {
 });
 
 describe("triggerPlanSkipNotice for a routine naming no creator", () => {
-  // An Agent Store install or an import strips `created_by`: it is the
-  // viewer's own routine, judged like the creator's.
   const owner = { ...creator, createdBy: undefined };
 
   it("offers the viewer in a free org what fixes it", () => {

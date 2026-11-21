@@ -15,7 +15,6 @@ import { useUIStore } from "../../stores/ui";
 import { UserSkillMessage } from "../user-skill-message";
 import { pageName, sentPillGroups } from "./citation-labels";
 
-/** The crops a sent message points at, as object URLs, from the workspace. */
 function useCropUrls(
   agentPath: string,
   paths: readonly (string | undefined)[],
@@ -32,8 +31,6 @@ function useCropUrls(
           .blob,
     })),
   });
-  // A crop the person deleted from Files just shows no thumbnail; anything
-  // else is a fault worth hearing about.
   const failures = results.map((r) => r.error);
   useEffect(() => {
     for (const error of failures)
@@ -56,12 +53,6 @@ function useCropUrls(
   return urls;
 }
 
-/**
- * A sent message that carried file comments: the Skill it ran, if any, then
- * pills (grouped by file) above what the person typed, and the attachment
- * badge if files rode along. A pill opens the file at its page in the
- * preview panel.
- */
 export function CitedUserMessage({
   cited,
   attachmentLabels,

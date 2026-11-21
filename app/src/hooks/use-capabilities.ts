@@ -5,19 +5,9 @@ import i18n from "../lib/i18n";
 import { queryKeys } from "../lib/query-keys";
 import { useQueryErrorToast } from "./use-query-error-toast.ts";
 
-/**
- * Returns host-advertised deployment capabilities for new-engine builds.
- *
- * Provider UIs gate on these flags, so a failed fetch would otherwise leave the
- * model picker silently empty (the placeholder denies every provider until the
- * real set loads). We surface the failure as a toast + Sentry report instead of
- * swallowing it — a noisy beta is a productive beta (see the no-silent-failures
- * rule). The query retries a few times first so a transient blip stays quiet.
- */
 export function useCapabilities(): {
   capabilities: Capabilities | null;
   isLoading: boolean;
-  /** True once the fetch failed for real (retries exhausted, no data). */
   isError: boolean;
 } {
   const enabled = newEngineActive();
@@ -29,7 +19,6 @@ export function useCapabilities(): {
     retry: 3,
   });
 
-  // Toast once per distinct error so a background refetch loop can't spam.
   useQueryErrorToast(
     query.isError,
     query.error,

@@ -1,13 +1,9 @@
 import type { TurnGrant, TurnGrantScope } from "./types";
 
-/** Shape checks every envelope block shares (parse-turn-request.ts). */
-
 export function record(value: unknown, field: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`invalid '${field}'`);
   }
-  // SAFETY: the object/array check establishes the string-keyed JSON record
-  // shape; every consumed property is parsed again below.
   return value as Record<string, unknown>;
 }
 

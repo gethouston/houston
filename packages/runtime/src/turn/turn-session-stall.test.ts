@@ -8,13 +8,6 @@ import type { HarnessBackend, HarnessSession } from "../backends/types";
 import { loadConversation } from "../store/conversation-file";
 import { runTurn, type TurnDirectories } from "./turn-session";
 
-/**
- * The model-stream stall watchdog on a POOLED turn: the same guard the
- * standing server arms around every prompt (session/stall-watchdog.ts). A
- * provider stream that goes silent must end the turn with the typed "stopped
- * responding" card instead of holding the sandbox until its lifetime runs out.
- */
-
 vi.mock("./turn-runtime", () => ({
   createTurnModelRuntime: async () => ({
     modelRuntime: {},
@@ -38,12 +31,6 @@ async function directories(): Promise<TurnDirectories> {
   return { turnRoot, workspaceDir, dataDir };
 }
 
-/**
- * A session whose provider never answers: `prompt` hangs until aborted, then
- * pi's abort echo arrives as an unclassifiable provider_error and the prompt
- * resolves (pi resolves an aborted turn rather than throwing). `liveFor`
- * ticks the liveness feed that many times before going silent.
- */
 function silentBackend(opts: { liveFor?: number; tickMs?: number } = {}) {
   const listeners = new Set<(e: WireEvent) => void>();
   const liveness = new Set<() => void>();
@@ -95,11 +82,6 @@ function silentBackend(opts: { liveFor?: number; tickMs?: number } = {}) {
   return backend;
 }
 
-/**
- * A session that reports its round-trips: the request goes out and, with
- * `loop`, the response opens and streams that unit over and over; without
- * it the response never opens. Either way it hangs until aborted.
- */
 function phasedBackend(opts: { loop?: string; staleError?: boolean } = {}) {
   const listeners = new Set<(e: WireEvent) => void>();
   const phases = new Set<(p: ModelPhase) => void>();
@@ -128,8 +110,6 @@ function phasedBackend(opts: { loop?: string; staleError?: boolean } = {}) {
     },
     async abort() {
       aborted = true;
-      // pi flushes a failure it held from an attempt it had since retried
-      // (a 429 before the looping reply) once the aborted prompt settles.
       if (opts.staleError)
         for (const l of listeners)
           l({
@@ -195,7 +175,6 @@ test("a silent provider stream ends the pooled turn with the stopped-responding 
   const outcome = await run(dirs, silentBackend(), frames);
 
   const errors = frames.filter((frame) => frame.type === "provider_error");
-  // pi's echo of our own abort is never surfaced; the synthesized card is.
   expect(errors).toHaveLength(1);
   expect(errors[0]?.data).toMatchObject({
     kind: "provider_internal",
@@ -215,8 +194,6 @@ test("backend liveness keeps a long silent generation alive", async () => {
   const dirs = await directories();
   const frames: WireFrame[] = [];
 
-  // Ten 10 ms ticks span 100 ms, well past the 40 ms window, but each one is
-  // proof of life (a tool call's input streaming), so nothing is cut.
   await run(dirs, silentBackend({ liveFor: 10, tickMs: 10 }), frames);
 
   expect(frames.filter((frame) => frame.type === "provider_error")).toEqual([]);
@@ -226,7 +203,6 @@ test("a request the provider never answers ends the pooled turn once its retries
   const dirs = await directories();
   const frames: WireFrame[] = [];
 
-  // The quiet-stream window is long; the unanswered one is what ends it.
   await run(dirs, phasedBackend(), frames, {
     stallTimeoutMs: 60_000,
     firstByteDeadlineMs: 15,

@@ -3,7 +3,6 @@ import type { TurnFilesystem } from "./turn-filesystem";
 import { createTurnModelRuntime } from "./turn-runtime";
 import type { TurnRequest } from "./types";
 
-/** Resolve a shadow turn's model without creating a provider session. */
 export async function executeShadowTurn(input: {
   turn: TurnRequest;
   turnId: string;

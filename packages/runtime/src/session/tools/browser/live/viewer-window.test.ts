@@ -31,7 +31,6 @@ describe("a viewer's frame window", () => {
     for (let seq = 1; seq <= count + 2; seq++) window.frame(frame(seq));
     expect(sent).toHaveLength(count);
     window.ack(count);
-    // The held frame is the newest one; the one it replaced never goes.
     expect(sent.at(-1)).toBe(count + 2);
     expect(sent).not.toContain(count + 1);
   });
@@ -56,8 +55,6 @@ describe("a viewer's frame window", () => {
   });
 
   it("a replayed latest frame never holds back the next one", () => {
-    // A reconnecting viewer already has the replayed seq and never acks it
-    // again; frames this big would otherwise freeze the picture for good.
     const { window, sent } = viewer();
     const big = Math.floor(BROWSER_LIVE_FRAME_WINDOW_BYTES * 0.6);
     window.replay(frame(7, big));

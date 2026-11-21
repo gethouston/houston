@@ -31,14 +31,6 @@ import {
   scrollLogToStart,
 } from "../support/onboarding-scroll";
 
-/**
- * First run on a phone, end to end: the AI Manager's conversation full-screen
- * (its own back header, no nav bar under it), connecting an AI, the survey,
- * the starter team, and then the app. This is the tier-1 gate that keeps the phone
- * from dead-ending a new user in a mandatory onboarding they cannot finish.
- */
-
-/** Zero horizontal overflow: the phone layout's standing rule. */
 async function expectNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(
     () =>
@@ -48,7 +40,6 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(overflow).toBeLessThanOrEqual(0);
 }
 
-/** A control sized for the thumb: most of the phone's width. */
 async function expectFullWidth(page: Page, control: Locator) {
   const box = await control.boundingBox();
   const viewport = page.viewportSize();
@@ -56,7 +47,6 @@ async function expectFullWidth(page: Page, control: Locator) {
   expect(box.width).toBeGreaterThan(viewport.width * 0.7);
 }
 
-/** A field a phone does not zoom into on focus: 16px text or more. */
 async function expectNoZoomOnFocus(field: Locator) {
   const size = await field.evaluate((node) =>
     Number.parseFloat(getComputedStyle(node).fontSize),
@@ -72,7 +62,6 @@ test("first run completes on a phone: connect, survey, first hire, the app", asy
   await resetToFirstRun(request);
   await openManagerOnboarding(page);
 
-  // The conversation is a pushed chat: its own way back, no nav bar.
   await expect(
     managerOnboarding(page).getByTestId("assistant-back"),
   ).toBeVisible();
@@ -81,8 +70,6 @@ test("first run completes on a phone: connect, survey, first hire, the app", asy
   await expectNoHorizontalOverflow(page);
   await connectAi(page, "tap");
 
-  // The industry: the create sheet's step, its filter and "Something else"
-  // stacked full width for the thumb, the filter never zooming the page.
   const industry = managerStep(page, "survey-industry");
   const search = industry.getByPlaceholder("Search industries");
   await expectFullWidth(page, search);
@@ -92,17 +79,13 @@ test("first run completes on a phone: connect, survey, first hire, the app", asy
     industry.getByRole("button", { name: "Something else" }),
   );
   await expectNoHorizontalOverflow(page);
-  // The step fills most of the phone, and the manager's line stays above it.
   await expectLatestLinesClearOfStep(page);
   await pickChip(page, "survey-industry", INDUSTRY_ANSWER, "tap");
   await expectLatestLinesClearOfStep(page);
-  // A reader scrolled back through the history still sees their answer land,
-  // the way a sent message brings the real chat down.
   await scrollLogToStart(page);
   await pickChip(page, "survey-role", ROLE_ANSWER, "tap");
   await expectLatestLinesClearOfStep(page);
 
-  // The company size: thumb-sized chips wrapping in a row, one tap to answer.
   const [small, next] = await Promise.all([
     companySizeButton(page, "Just me").boundingBox(),
     companySizeButton(page, "2–10").boundingBox(),
@@ -115,8 +98,6 @@ test("first run completes on a phone: connect, survey, first hire, the app", asy
   await answerCompanySize(page, "tap");
   await expectLatestLinesClearOfStep(page);
 
-  // The goal: a field that never zooms, with a thumb-sized Continue and no
-  // way to skip it.
   await expectNoZoomOnFocus(goalField(page));
   const goal = managerStep(page, "survey-goal");
   await expectFullWidth(page, goal.getByRole("button", { name: "Continue" }));
@@ -127,12 +108,10 @@ test("first run completes on a phone: connect, survey, first hire, the app", asy
   await expectNoHorizontalOverflow(page);
   await expectLatestLinesClearOfStep(page);
 
-  // The starter team, renamed and hired in one tap.
   await hireStarterTeam(page, ["Avery", "Felix", "Nora"], "tap", STARTER_ROLES);
   await expectNoHorizontalOverflow(page);
   await finishOnboarding(page);
 
-  // The real chat's back chevron leaves for the Agents home, with the hires.
   await page.getByTestId("assistant-back").tap();
   await expect(navBar(page)).toBeVisible();
   const row = await awaitAgentsHome(page);
@@ -161,7 +140,6 @@ test("the starter team's buttons are sized for the thumb", async ({
   });
   expect((await remove.boundingBox())?.height).toBeGreaterThanOrEqual(44);
   await expectNoHorizontalOverflow(page);
-  // The manager's latest line stays in view above the team.
   await expectLatestLinesClearOfStep(page);
 });
 
@@ -169,11 +147,6 @@ test("a tab evicted mid-onboarding resumes on the step the user left", async ({
   page,
   request,
 }) => {
-  // Phones evict a background tab: leaving to fetch a sign-in code and coming
-  // back reopens the app from nothing. The run must re-enter on the step it
-  // stood on, never at the start with the work so far forgotten, and never in
-  // the app early. (A plain reload on the connect step is also covered: no
-  // save is in flight there.)
   test.setTimeout(90_000);
   await resetToFirstRun(request);
   await openManagerOnboarding(page);
@@ -182,11 +155,8 @@ test("a tab evicted mid-onboarding resumes on the step the user left", async ({
   await page.reload();
   await expect(connectAiStep(page)).toBeVisible();
 
-  // Hiring flips the zero-agent first-run signal; the pending stage still
-  // holds the person on the team step across a reload.
   await connectAi(page, "tap");
   await answerSurvey(page, "tap");
-  // Held so the eviction lands on the closing, before onboarding finishes.
   const release = await holdClosingSave(request);
   await hireStarterTeam(page, null, "tap", STARTER_ROLES);
   const resumed = await evictMidClosing(page);

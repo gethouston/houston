@@ -1,13 +1,3 @@
-/**
- * User-scoped gateway routes for the fake host: Composio integrations,
- * key/value preferences, and the workspace-locale override.
- *
- * These mirror the cloud gateway (`user-routes.ts` + `integrations-routes.ts`)
- * and the host `account.ts`, keyed by "the acting user" — there is one user in
- * the fake host, so no per-user keying is modeled. Returns a `Response` when a
- * route matched, or `undefined` to let the router fall through.
- */
-
 import { parseSidebarLayout } from "@houston/protocol";
 import { SEED_WORKSPACE_ID } from "./config";
 import { json } from "./http";
@@ -15,9 +5,6 @@ import { handleCustom } from "./routes-custom-integrations";
 import { handlePreference } from "./routes-preferences";
 import * as state from "./state";
 
-/** The personal workspace wire shape the gateway/host return (account.ts
- *  `toWire`). `kind:"personal"` marks the C8 Spaces bridge row — the opaque,
- *  never-`org:`-prefixed personal space. */
 function workspaceWire() {
   return {
     id: SEED_WORKSPACE_ID,
@@ -29,7 +16,6 @@ function workspaceWire() {
   };
 }
 
-/** An armed team-space bridge row (C8): `{ id:"org:<slug>", kind:"org" }`. */
 function teamWorkspaceWire(row: { id: string; name: string }) {
   return {
     id: row.id,
@@ -41,13 +27,10 @@ function teamWorkspaceWire(row: { id: string; name: string }) {
   };
 }
 
-/** The full `GET /v1/workspaces` list: the personal seed row plus any armed
- *  team-space rows (C8 Spaces bridge). Personal-only when none are armed. */
 function workspacesList() {
   return [workspaceWire(), ...state.getTeamWorkspaces().map(teamWorkspaceWire)];
 }
 
-/** Every integrations + grants route 503s when no Composio key is configured. */
 function unavailable(): Response {
   return json({ error: "integrations not configured" }, 503);
 }
@@ -57,27 +40,21 @@ function handleComposio(
   tail: string[],
   body: Record<string, unknown> | undefined,
 ): Response {
-  // GET /v1/integrations/composio/toolkits
   if (tail.length === 1 && tail[0] === "toolkits" && method === "GET") {
     return json({ items: state.listToolkits() });
   }
-  // GET /v1/integrations/composio/connections
   if (tail.length === 1 && tail[0] === "connections" && method === "GET") {
     return json({ items: state.listConnections() });
   }
-  // GET /v1/integrations/composio/connections/:id
   if (tail.length === 2 && tail[0] === "connections" && method === "GET") {
     const conn = state.getConnection(tail[1]);
     return conn ? json(conn) : json({ error: "connection not found" }, 404);
   }
-  // POST /v1/integrations/composio/connect { toolkit }
   if (tail.length === 1 && tail[0] === "connect" && method === "POST") {
     const toolkit = String(body?.toolkit ?? "");
     if (!toolkit) return json({ error: "missing toolkit" }, 400);
     return json(state.connect(toolkit));
   }
-  // POST /v1/integrations/composio/disconnect { toolkit, connectionId? } —
-  // `connectionId` narrows the removal to ONE account of the toolkit.
   if (tail.length === 1 && tail[0] === "disconnect" && method === "POST") {
     const toolkit = String(body?.toolkit ?? "");
     if (!toolkit) return json({ error: "missing toolkit" }, 400);
@@ -91,42 +68,29 @@ function handleComposio(
   return json({ error: "not found" }, 404);
 }
 
-// Custom integrations (HOU-550 / HOU-980) live in
-// routes-custom-integrations.ts; both the top-level and per-agent forms below
-// route into its one handler.
-
 function handleIntegrations(
   method: string,
   segs: string[],
   body: Record<string, unknown> | undefined,
 ): Response {
   if (state.integrationsMode() === "unavailable") return unavailable();
-  const rest = segs.slice(2); // after ["v1","integrations"]
-  // GET /v1/integrations — readiness list
+  const rest = segs.slice(2);
   if (rest.length === 0) {
     if (method !== "GET") return json({ error: "not found" }, 404);
     return json({ items: state.integrationStatus() });
   }
   if (rest[0] === "custom") return handleCustom(method, rest.slice(1), body);
-  // Mode `absent` = Composio not registered at all → its subroutes 404, the
-  // same answer the real registry gives for an unknown provider id.
   if (rest[0] !== "composio" || state.integrationsMode() === "absent") {
     return json({ error: "not found" }, 404);
   }
   return handleComposio(method, rest.slice(1), body);
 }
 
-/** Route a user-scoped gateway request, or return `undefined` to fall through. */
 export function handleUserRoutes(
   method: string,
   segs: string[],
   body: Record<string, unknown> | undefined,
 ): Response | undefined {
-  // Per-agent custom-integration surface (HOU-823), BOTH forms:
-  // `/v1/agents/:id/integrations/custom/*` and the dispatch
-  // `/agents/:id/integrations/custom/*` — the one form the hosted gateway
-  // proxies to a pod, so the shipped in-chat credential card calls it. Same
-  // user-global data as the top-level routes; the agent id only routes.
   const rel = segs[0] === "v1" ? segs.slice(1) : segs;
   if (
     rel[0] === "agents" &&
@@ -137,20 +101,15 @@ export function handleUserRoutes(
     if (state.integrationsMode() === "unavailable") return unavailable();
     return handleCustom(method, rel.slice(4), body);
   }
-  // /v1/integrations[/composio/...]
   if (segs[0] === "v1" && segs[1] === "integrations") {
     return handleIntegrations(method, segs, body);
   }
-  // /v1/preferences/:key
   if (segs[0] === "v1" && segs[1] === "preferences" && segs.length === 3) {
     return handlePreference(method, segs[2], body);
   }
-  // GET /v1/workspaces · PATCH /v1/workspaces/:id (locale)
   if (segs[0] === "v1" && segs[1] === "workspaces") {
     if (segs.length === 2 && method === "GET") return json(workspacesList());
     if (segs.length === 3 && method === "PATCH") {
-      // Tolerate an armed team id too (a team-space locale write must not 4xx);
-      // locale state is single-tenant, so a team PATCH echoes its own row.
       if (!state.isKnownWorkspace(segs[2], SEED_WORKSPACE_ID)) {
         return json({ error: "workspace not found" }, 404);
       }
@@ -163,7 +122,6 @@ export function handleUserRoutes(
       const team = state.getTeamWorkspaces().find((w) => w.id === segs[2]);
       return json(team ? teamWorkspaceWire(team) : workspaceWire());
     }
-    // GET/PUT /v1/workspaces/:id/sidebar-layout — the sidebar's order + grouping.
     if (
       segs.length === 4 &&
       segs[3] === "sidebar-layout" &&
@@ -173,8 +131,6 @@ export function handleUserRoutes(
         return json({ error: "workspace not found" }, 404);
       }
       if (method === "GET") return json(state.getSidebarLayout(segs[2]));
-      // PUT: validate strictly with the real host's guard before persisting —
-      // a bad body is a clean 400, never a swallowed accept that writes garbage.
       const layout = parseSidebarLayout(body);
       if (!layout) return json({ error: "invalid sidebar layout" }, 400);
       state.setSidebarLayout(segs[2], layout);

@@ -4,13 +4,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 
-/**
- * selfhost/Dockerfile swaps the headless shell Playwright installs for a newer
- * Chrome for Testing build, inside the revision directory Playwright expects.
- * These checks fail on a playwright-core bump, in CI rather than at image
- * build time, so the swap is updated or dropped on purpose.
- */
-
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "../../../../../..");
 const dockerfile = readFileSync(join(REPO, "selfhost/Dockerfile"), "utf8");
 const engineImageWorkflow = readFileSync(
@@ -59,7 +52,6 @@ test("the pinned Chrome for Testing build is newer than playwright-core's", () =
 });
 
 test("the engine image smoke launch expects the pinned build", () => {
-  // The workflow only runs after merge, so a mismatch has to fail here.
   expect(engineImageWorkflow.match(/if\(v!==\\"([\d.]+)\\"\)/)?.[1]).toBe(
     pinnedVersion,
   );

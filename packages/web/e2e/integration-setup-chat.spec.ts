@@ -4,16 +4,6 @@ import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { openNavRow } from "./support/workspace-menu";
 
-/**
- * The custom-integration setup chat is embedded INSIDE the Integrations page
- * (not a board mission): "Add custom integration" opens a guided setup chat
- * right there — no chooser dialog, and with the workspace's single seeded
- * agent no picker either — the agent speaks first (the app-sent kickoff
- * bubble never renders), the chat never appears as a board card, and the page
- * never navigates away. The load-bearing case is the COMPOSIO-ABSENT host (no
- * key, no gateway): the chat must work there too.
- */
-
 async function armCapabilities(
   request: APIRequestContext,
   caps: Record<string, unknown>,
@@ -39,10 +29,6 @@ async function armCustomIntegrations(
   });
 }
 
-/**
- * Navigate to the unified Integrations page. The catalog can be absent while
- * the custom provider and its header action remain available.
- */
 async function openCustomIntegrations(page: Page): Promise<void> {
   await page.goto("/");
   await openNavRow(page, "integrations");
@@ -52,8 +38,6 @@ async function openCustomIntegrations(page: Page): Promise<void> {
 }
 
 async function startSetupChat(page: Page): Promise<void> {
-  // Straight to the chat: no fork dialog, and the single seeded agent means
-  // no agent picker either — the click itself starts the setup mission.
   await page.getByRole("button", { name: "Add custom integration" }).click();
 }
 
@@ -68,17 +52,11 @@ test("composio-absent: Add custom integration opens the embedded chat, agent spe
 
   await startSetupChat(page);
 
-  // The embedded setup-chat panel opens with the integration mission title…
   await expect(page.getByText("Task: Set up a custom integration")).toBeVisible(
     { timeout: 10_000 },
   );
-  // …and the agent's reply is the FIRST message — the user typed nothing (the
-  // fake host's canned reply echoes the kickoff, so "no kickoff bubble" is
-  // covered by the unit test on filterAutoContinueFeedItems, not by text here).
   await expect(page.getByText(/Roger that\./)).toBeVisible({ timeout: 15_000 });
 
-  // No board navigation: still on the Integrations page next to the chat —
-  // the identity lozenge still announces the current page.
   await expect(
     page.getByRole("heading", { name: "Integrations", exact: true }),
   ).toBeVisible();
@@ -91,7 +69,6 @@ test("a multi-agent workspace interposes ONLY the agent picker before the chat",
   await armCapabilities(request, { integrations: ["custom"] });
   await armIntegrationsMode(request, "absent");
   await armCustomIntegrations(request, []);
-  // A second agent makes the target ambiguous — the one question left.
   await request.post(`${FAKE_HOST_URL}/agents`, { data: { name: "Atlas" } });
   await openCustomIntegrations(page);
 
@@ -120,15 +97,12 @@ test("a draft chat survives a reload as a Continue banner that resumes the same 
   await startSetupChat(page);
   await expect(page.getByText(/Roger that\./)).toBeVisible({ timeout: 15_000 });
 
-  // Come back later: the ephemeral open flag is gone, but the draft on the
-  // host is not — the cross-agent scan finds it and offers to continue.
   await page.reload();
   await openNavRow(page, "integrations");
   await expect(
     page.getByText("You are setting up a custom integration in chat"),
   ).toBeVisible({ timeout: 10_000 });
 
-  // Continue reopens the SAME chat (no duplicate mission), with its history.
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText("Task: Set up a custom integration")).toBeVisible(
     { timeout: 10_000 },
@@ -142,9 +116,7 @@ test("the interview surface renders: an ask_user question card replaces the comp
   page,
   request,
 }) => {
-  // Settle-dependent (rides the DONE frame): triple the budget for a CI drop.
   test.slow();
-  // Arm the turn to settle on an ask_user interaction — the interview state.
   await fetch(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -176,10 +148,6 @@ test("the interview surface renders: an ask_user question card replaces the comp
   );
   await expect(page.getByText(/Roger that\./)).toBeVisible({ timeout: 15_000 });
 
-  // The ask_user card shows once the turn settles — proof the setup panel
-  // forwards composerOverride (the same channel the request_credential card
-  // uses). The card REPLACES the composer (HOU-870): its own free-text row is
-  // the one input on screen while the step is pending.
   await expect(
     page.getByText("Which service do you want to connect?"),
   ).toBeVisible({ timeout: 45_000 });
@@ -200,7 +168,6 @@ test("Done retires the chat: no banner, and the next Add starts a FRESH chat", a
   await startSetupChat(page);
   await expect(page.getByText(/Roger that\./)).toBeVisible({ timeout: 15_000 });
 
-  // The user says the integration works: Done retires the draft on the spot.
   await page.getByRole("button", { name: "Done" }).click();
   await expect(
     page.getByText("Task: Set up a custom integration"),
@@ -209,10 +176,6 @@ test("Done retires the chat: no banner, and the next Add starts a FRESH chat", a
     page.getByText("You are setting up a custom integration in chat"),
   ).not.toBeVisible();
 
-  // A finished setup never resumes: the next Add opens a brand-new chat. The
-  // fake host answers every kickoff with the same canned reply, so freshness
-  // is asserted on the HOST's state: two distinct setup missions now exist,
-  // and only the first is archived.
   await startSetupChat(page);
   await expect(page.getByText("Task: Set up a custom integration")).toBeVisible(
     { timeout: 10_000 },

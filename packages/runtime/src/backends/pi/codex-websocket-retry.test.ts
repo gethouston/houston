@@ -19,26 +19,6 @@ import { HoustonAuthStore } from "../../auth/credential-store";
 import { SentRequests } from "./model-phase";
 import { PiSession } from "./session";
 
-/**
- * Codex (ChatGPT OAuth) streams over a WebSocket. When that socket dies
- * mid-turn with no close frame — an abnormal 1006 during a long reasoning
- * stretch — pi-ai's transport rethrows it (it only falls back to SSE when the
- * failure lands BEFORE the first event) and the turn ends as an assistant
- * message with errorMessage `WebSocket closed 1006`. Nothing about that
- * response can be resumed (the Codex backend rejects `store: true`, so there
- * is no server-side response to pick back up), which is why the official
- * Codex CLI answers a mid-stream drop the same way pi does: re-issue the whole
- * request with the conversation intact, a bounded number of times, and only
- * then fail the turn.
- *
- * pi owns that retry (`websocket.?closed` is in its retryable pattern), and
- * Houston's wire translator holds the errored turn_end until `agent_settled`
- * so a healed retry never paints a card. These tests pin the whole chain on a
- * REAL pi AgentSession over the scripted faux provider: a pi bump that drops
- * the pattern, or a translator change that flushes the held error early,
- * fails here rather than as a red card in production.
- */
-
 const WEBSOCKET_CLOSED_1006 = "WebSocket closed 1006";
 
 function socketClosed(code = 1006): AssistantMessage {
@@ -48,12 +28,6 @@ function socketClosed(code = 1006): AssistantMessage {
   });
 }
 
-/**
- * A real pi AgentSession over the faux provider (scripted responses, no
- * network), built the way chat.ts builds one and wrapped in PiSession. Retry
- * backoff is zeroed so the exhausted-retries case runs in milliseconds; the
- * retry COUNT stays pi's default so the test pins the real policy.
- */
 async function fauxSession(responses: AssistantMessage[]) {
   const cwd = mkdtempSync(join(tmpdir(), "houston-codex-ws-retry-"));
   const faux = fauxProvider({
@@ -94,11 +68,9 @@ const providerErrors = (events: WireEvent[]) =>
   );
 
 test("pi-ai's retryable predicate covers every Codex WebSocket close code seen in the wild", () => {
-  // 1006 abnormal closure, 1000 server closed mid-turn, 1012 service restart.
   for (const code of [1006, 1000, 1012]) {
     expect(isRetryableAssistantError(socketClosed(code))).toBe(true);
   }
-  // The connect-phase failure text and the idle watchdog's text as well.
   for (const message of [
     "WebSocket error",
     "WebSocket connect timeout after 15000ms",
@@ -123,9 +95,7 @@ test("a mid-turn 'WebSocket closed 1006' is retried inside the same prompt and t
       fauxAssistantMessage("Recovered answer", { stopReason: "stop" }),
     ]);
     await session.prompt("hello");
-    // Two provider requests: the dropped stream and its re-issue.
     expect(faux.state.callCount).toBe(2);
-    // No card: the held error was dropped by the clean turn.
     expect(providerErrors(events)).toEqual([]);
     expect(
       events
@@ -135,7 +105,6 @@ test("a mid-turn 'WebSocket closed 1006' is retried inside the same prompt and t
         .map((e) => e.data)
         .join(""),
     ).toBe("Recovered answer");
-    // The dropped attempt and its re-issue are both visible in runtime.log.
     const lines = warn.mock.calls.map((c) => String(c[0]));
     expect(lines).toContainEqual(
       expect.stringMatching(
@@ -153,7 +122,6 @@ test("a mid-turn 'WebSocket closed 1006' is retried inside the same prompt and t
 test("a 1006 on every attempt exhausts pi's retry budget and surfaces ONE provider_internal card", async () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   try {
-    // pi's default budget is 3 retries: the first attempt plus three more.
     const { faux, session, events } = await fauxSession([
       socketClosed(),
       socketClosed(),

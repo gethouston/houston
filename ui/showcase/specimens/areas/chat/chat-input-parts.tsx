@@ -9,20 +9,12 @@ import { useState } from "react";
 
 import type { SpecimenProp } from "../../../src/specimen";
 
-/** The teammates the composer offers after an "@". */
 export const MENTION_PEOPLE: readonly MentionPerson[] = [
   { userId: "u-julian", name: "julian" },
   { userId: "u-felipe", name: "Felipe" },
   { userId: "u-mara", name: "Mara" },
 ];
 
-/**
- * A real, sending composer.
- *
- * The specimen never fakes a send with an alert: the composer keeps its own
- * text, the send resolves, and the last message it accepted is echoed under
- * the box — which is exactly how a caller sees `onSend` behave.
- */
 export function LiveComposer(props: Omit<ChatInputProps, "onSend">) {
   const [sent, setSent] = useState<string | null>(null);
   return (
@@ -41,7 +33,6 @@ export function LiveComposer(props: Omit<ChatInputProps, "onSend">) {
   );
 }
 
-/** A frozen composer — the states that only make sense mid-turn. */
 export function StaticComposer(props: ChatInputProps) {
   return (
     <div className="w-full max-w-lg">
@@ -50,7 +41,6 @@ export function StaticComposer(props: ChatInputProps) {
   );
 }
 
-/** `ChatInputProps`, read off `ui/chat/src/chat-input-types.ts`. */
 export const chatInputProps: readonly SpecimenProp[] = [
   {
     name: "onSend",

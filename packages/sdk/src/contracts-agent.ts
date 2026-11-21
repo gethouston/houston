@@ -1,11 +1,3 @@
-/**
- * One agent's contract: its list entry and library, its mission board, its
- * files and routines, its skills (its own and the workspace library), and the
- * AI providers and outside apps it reaches.
- *
- * Re-exported wholesale by the package barrel; import from `@houston/sdk`.
- */
-// ===== Activities module contract ======================================
 export {
   ACTIVITY_CHANGED_EVENT,
   ACTIVITY_STATUSES,
@@ -32,7 +24,6 @@ export {
   type MissionStartFacts,
   missionStartedBy,
 } from "./modules/activities/started-by";
-// ===== Agents module contract ==========================================
 export {
   AGENTS_CHANGED_EVENT,
   AGENTS_SCOPE,
@@ -56,7 +47,6 @@ export {
   isFirstDayNotPending,
   type WireAgent,
 } from "./modules/agents";
-// ===== Files module contract ===========================================
 export {
   type BlobUpload,
   FilesCommand,
@@ -78,7 +68,6 @@ export {
   UploadSessionsUnavailableError,
   UploadTransferError,
 } from "./modules/files";
-// ===== Integrations module contract ====================================
 export {
   type ConnectResult,
   INTEGRATIONS_SCOPE,
@@ -108,14 +97,12 @@ export type {
 } from "./modules/integrations/custom-types";
 export type { TriggerType } from "./modules/integrations/reads";
 export { IntegrationsHttpError } from "./modules/integrations/types";
-// ===== Migration module contract =======================================
 export {
   MigrationHttpError,
   type MigrationImportOptions,
   type MigrationImportResult,
   type MigrationModule,
 } from "./modules/migration";
-// ===== Providers module contract =======================================
 export {
   type AuthStatus,
   type CustomEndpoint,
@@ -142,7 +129,6 @@ export {
   RECONNECT_NOTICE_DAYS,
   type SetModelOptions,
 } from "./modules/providers";
-// ===== Routines module contract ========================================
 export {
   isPlanMinIntervalRefusal,
   isRoutineGone,
@@ -172,7 +158,6 @@ export {
   type WebhookKeyViewer,
   webhookKeyAccess,
 } from "./modules/routines";
-// ===== Skills module contract ==========================================
 export {
   AgentSkillsCommand,
   type AgentSkillsCommandType,
@@ -186,7 +171,6 @@ export {
   type SkillsManifest,
   type SkillsModule,
 } from "./modules/skills";
-// ===== Shared skills contract ==========================================
 export {
   type NewSharedSkill,
   type SharedSkillDiagnostic,

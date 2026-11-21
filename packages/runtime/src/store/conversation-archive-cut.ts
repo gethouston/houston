@@ -8,18 +8,6 @@ import {
 } from "./conversation-archive";
 import type { StoredConversation } from "./conversation-file";
 
-/**
- * The destructive side of the archive (conversation-archive.ts): cutting a
- * transcript back into a segment for edit-and-resend, and deleting the
- * segments with their conversation.
- */
-
-/**
- * Edit-and-resend at a turn that lives in a segment: the segment's messages
- * before that turn become the live tail, every segment from there on is
- * deleted, and the index shrinks to what is left. Returns how many messages
- * the cut removed, or null when no segment holds the turn.
- */
 export function restoreArchivedTurn(
   dir: string,
   conv: StoredConversation,
@@ -46,10 +34,6 @@ export function restoreArchivedTurn(
   return null;
 }
 
-/**
- * Drop every segment (the conversation is being deleted). The segment cache
- * is small, so it is simply cleared rather than searched by prefix.
- */
 export function removeArchive(dir: string, id: string): void {
   segments.clear();
   rmSync(archiveDirFor(dir, id), { recursive: true, force: true });

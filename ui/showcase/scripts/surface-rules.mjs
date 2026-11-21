@@ -1,30 +1,4 @@
-/**
- * Where a file lives → what the user calls that place.
- *
- * The navigation labels are the product's own words: they come from
- * `app/src/locales/en/shell.json` → `sidebar` (Houston, Connect your apps,
- * Connect your AI, Academy, Settings), built by
- * `app/src/components/shell/connect-group.tsx` and
- * `app/src/components/shell/sidebar-nav-rows.tsx`.
- *
- * The remaining per-area labels below (Activity, Chat, Routines, Skills,
- * Integrations, Files, Archived, Permissions, Agent Settings) are HISTORICAL
- * names: they were the per-agent tab strip, which was deleted along with
- * `agents:tabLabels.*` and `app/src/agents/standard-tabs.ts`. Those surfaces
- * live on as employee sections (Mission Control / Routines / Files) and as
- * sections of the agent settings page (job description, memory, people, apps,
- * AI models, skills). The names are kept because they are still how the team talks about
- * these component families, and a "Used in" chip is a wayfinding hint, not a
- * route. Rename a group only if the product's own word for it changes.
- *
- * Keys are repo-relative path prefixes and the **longest** match wins, so a
- * broad folder rule and the narrow exceptions inside it sit side by side in any
- * order. Folder keys end in `/`; a few keys are file-name prefixes, because
- * `app/src/components/` and `app/src/components/{shell,agent}/` each hold
- * several product areas at once.
- */
 export const SURFACE_RULES = {
-  // ── Agent surfaces (historical tab names, now sections) ────────────────
   "app/src/components/board/": "Activity",
   "app/src/components/cards/": "Activity",
   "app/src/components/mission-": "Activity",
@@ -66,8 +40,6 @@ export const SURFACE_RULES = {
   "app/src/components/use-integration-connect": "Integrations",
   "app/src/components/use-action-brand-resolver": "Integrations",
   "app/src/components/use-toolkit-brand-resolver": "Integrations",
-  // The per-agent Integrations tab is gone; only the shared allowlist editor
-  // remains under this path, and it is the settings page's Apps section.
   "app/src/components/agent/agent-integrations/": "Agent Settings",
 
   "app/src/components/file-preview/": "Files",
@@ -75,7 +47,6 @@ export const SURFACE_RULES = {
   "app/src/components/agent/files-": "Files",
   "app/src/components/agent/agent-files/": "Files",
 
-  // The archive is cross-agent now, but its empty state still lives here.
   "app/src/components/agent/archived": "Archived",
 
   "app/src/components/permissions/": "Permissions",
@@ -86,13 +57,8 @@ export const SURFACE_RULES = {
 
   "app/src/components/agent/agent-admin/": "Agent Settings",
   "app/src/components/agent/job-description": "Agent Settings",
-  // Everything else under `components/agent/` — the per-agent component
-  // family (renamed from `tabs/` when the tab strip went away). It holds the
-  // shared surfaces the team sections and the agent settings page mount.
-  // Anything landing here has no clearer home yet.
   "app/src/components/agent/": "Agent surfaces",
 
-  // ── Sidebar rail + top-level views (shell:sidebar.*) ────────────────────
   "app/src/components/shell/": "App shell",
   "app/src/components/shell/agent-card-avatar": "Your Agents",
   "app/src/components/shell/agent-panel-avatar": "Your Agents",
@@ -102,8 +68,6 @@ export const SURFACE_RULES = {
   "app/src/components/shell/add-choice-step": "Your Agents",
   "app/src/components/shell/workspace-dialog": "Your Agents",
   "app/src/components/agent-picker-dialog": "Your Agents",
-  // The AI Employee ID badge: the hire sheet's naming step, and the
-  // onboarding team card's roster.
   "app/src/components/employee-card/": "Your Agents",
   "app/src/components/shell/create-team-": "Organization",
   "app/src/components/shell/team-status-banner": "Organization",
@@ -116,12 +80,7 @@ export const SURFACE_RULES = {
   "app/src/components/shell/naming-step": "Onboarding",
   "app/src/components/shell/workspace-setup-flow": "Onboarding",
 
-  // The employee screen behind every rail row: its board, its archive and its
-  // settings. Named for the rail section that opens it
-  // (shell:sidebar.yourTeams).
   "app/src/components/team-view/": "Your AI Employees",
-  // An employee's sections keep the section's own name rather than the rail
-  // band's.
   "app/src/components/team-view/team-routines/": "Routines",
   "app/src/components/team-view/team-files/": "Files",
 
@@ -130,8 +89,6 @@ export const SURFACE_RULES = {
   "app/src/components/provider-switch-dialog": "AI Models",
   "app/src/components/organization/": "Organization",
   "app/src/components/settings/": "Settings",
-  // Profile and About me: the person's own screens, opened from the account
-  // menu ("Your account" on the phone's More card).
   "app/src/components/account/": "Your account",
   "app/src/components/dictation-setup-dialog": "Settings",
   "app/src/components/onboarding/": "Onboarding",
@@ -145,21 +102,12 @@ export const SURFACE_RULES = {
   "app/src/identity-keyed-app.tsx": "App shell",
   "app/src/main.tsx": "App shell",
 
-  // ── The other frontends ────────────────────────────────────────────────
   "packages/web/src/": "Web app",
   "packages/web/src/admin/": "Web app (admin)",
   "agentstore/src/": "Store website",
   "agentstore/src/app/admin/": "Store website (admin)",
 };
 
-/**
- * The surface label for a repo-relative path.
- *
- * A `ui/<pkg>/src/**` file is labelled as the library it is, and anything no
- * rule claims falls back to its top-level folder rather than being dropped: an
- * unlabelled hit still tells the truth about where a component is used, and it
- * is exactly how a missing rule makes itself visible.
- */
 export function surfaceOf(path) {
   let label;
   let longest = -1;

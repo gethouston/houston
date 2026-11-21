@@ -18,7 +18,6 @@ import type { TurnRequest } from "./types";
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const PREFIX = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
 
-/** Validate an untyped body into a TurnRequest. Throws with the real reason. */
 export function parseTurnRequest(body: unknown): TurnRequest {
   const b = body as Record<string, unknown>;
   if (!b || typeof b !== "object")
@@ -28,8 +27,6 @@ export function parseTurnRequest(body: unknown): TurnRequest {
       throw new Error(`invalid '${field}'`);
     }
   }
-  // Routine turns carry no text on the wire: the worker derives the prompt
-  // from the hydrated routine file (the envelope's routine.id is the payload).
   if (typeof b.text !== "string" || (!b.text.length && b.routine === undefined))
     throw new Error("missing 'text'");
   const prefix = b.gcsPrefix;
@@ -162,17 +159,11 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     provider: nonEmpty(b.provider) ? b.provider : undefined,
     model: typeof b.model === "string" ? b.model : undefined,
     effort: typeof b.effort === "string" ? b.effort : undefined,
-    // Never trust the wire: only the known mode literals pass, and garbage
-    // normalizes to "execute". Absent stays absent: the worker reads the
-    // conversation's own mode once its tree is hydrated (execute-turn.ts).
     mode: parseTurnModePin(b.mode),
     nextStepSuggestions: NextStepSuggestionsSchema.parse(b.nextStepSuggestions),
     timezone: TurnTimezoneSchema.parse(b.timezone),
     displayText: typeof b.displayText === "string" ? b.displayText : undefined,
-    // Same "never trust the wire" posture: junk entries are dropped and an
-    // empty list becomes nothing, so a bad sidecar never costs the user a turn.
     mentions: parseMentions(b.mentions),
-    // The gateway's plan stamp, same posture: a garbled one is no limit.
     limits: parseTurnLimits(b.limits),
     missionTitle: parseMissionTitle(b.missionTitle),
     turnId: typeof b.turnId === "string" ? b.turnId : undefined,

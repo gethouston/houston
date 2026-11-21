@@ -19,7 +19,7 @@ test("ticks every interval until stopped, and logs a failed tick", async () => {
     1_000,
   );
   daemon.start();
-  daemon.start(); // idempotent: still one timer
+  daemon.start();
   await vi.advanceTimersByTimeAsync(2_000);
   expect(tick).toHaveBeenCalledTimes(2);
   expect(log).toHaveBeenCalledWith(

@@ -10,14 +10,8 @@ import {
 } from "./assistant-render.ts";
 import { renderCoverage, renderOperations } from "./assistant-render-docs.ts";
 
-/** The generated file names, so a missing body is a compile error. */
 type AssistantOutputFile = (typeof assistantOutputs)[number]["file"];
 
-/**
- * Run one generated body through the repo's own formatter, so a committed
- * output is byte-identical to what `pnpm check` would rewrite it to — without
- * this the drift check and the formatter disagree forever.
- */
 function format(file: AssistantOutputFile, body: string): string {
   return execFileSync(
     assistantPaths.biome,
@@ -30,11 +24,6 @@ function format(file: AssistantOutputFile, body: string): string {
   );
 }
 
-/**
- * Write every generated output. Each file goes to its committed home; passing
- * `outputDirectory` collapses them into one directory, which is how the drift
- * check regenerates into a temporary tree and compares.
- */
 export function generateAssistantCatalog(outputDirectory?: string): void {
   const result = extractCatalog({
     operationSources: assistantPaths.operationSources,

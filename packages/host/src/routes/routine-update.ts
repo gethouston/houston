@@ -18,14 +18,6 @@ import {
   wakeMechanismError,
 } from "./routine-write-gates";
 
-/**
- * Update a routine by id merge-safely. Reads the file, applies the partial update
- * to the matching entry, re-checks the exactly-one-wake invariant on the APPLIED
- * result (e.g. `{trigger: null}` on a trigger routine clears its only wake), the
- * trigger-backend gate, the schedule, and the provider pin, then writes the
- * whole set back. `{ notFound: true }` when no routine has that id; else the
- * updated routine or a plain-language error.
- */
 export async function updateRoutineChecked(
   vfs: Vfs,
   root: string,
@@ -38,8 +30,6 @@ export async function updateRoutineChecked(
     const { items } = await loadRoutines(vfs, root);
     const current = items.find((r) => r.id === itemId);
     if (!current) return { notFound: true };
-    // An update may switch a routine to an event trigger; reject a malformed
-    // binding before it is persisted (normalizeRoutines would drop it).
     if (update.trigger != null && !isValidTriggerBinding(update.trigger)) {
       return { error: "invalid 'trigger' binding" };
     }
@@ -49,14 +39,10 @@ export async function updateRoutineChecked(
       opts.nowIso,
       opts.actorSub,
     );
-    // The APPLIED result must still hold the exactly-one-wake invariant — persisting
-    // a wake-less routine loses it silently (normalizeRoutines drops it on read).
     const nextWakeErr = wakeMechanismError(
       next as unknown as Record<string, unknown>,
     );
     if (nextWakeErr) return { error: nextWakeErr };
-    // The APPLIED result carries a trigger, but this deployment cannot fire one →
-    // refuse. Converting the routine to a schedule (trigger cleared) passes.
     if (
       (next as { trigger?: unknown }).trigger != null &&
       !opts.triggersEnabled
@@ -73,12 +59,7 @@ export async function updateRoutineChecked(
       if ("error" in checked) return checked;
       next = { ...next, schedule: checked.schedule };
     }
-    // Every update re-stamps `created_by` to the editor (applyRoutineUpdate),
-    // whose plan then judges the fires, so even a prompt-only edit is checked.
-    // A routine left disabled never fires, so it is exempt; re-enabling is not.
     if (next.enabled !== false) {
-      // "Kept": the schedule is the one already stored, so the refusal says
-      // the schedule itself has to move first.
       const refusal = planFloorRefusal(
         next.schedule,
         opts.minIntervalMinutes,

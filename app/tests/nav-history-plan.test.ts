@@ -3,9 +3,6 @@ import { describe, it } from "node:test";
 import { readNavIndex, syncPlan } from "../src/lib/nav-history.ts";
 import { navEntryOf } from "../src/lib/nav-stack.ts";
 
-// PRODUCT-1557: the store→history echo, decided by a pure plan so the mirror's
-// three verbs (pushState / replaceState / go) are testable without a browser.
-
 const entry = (viewMode: string) =>
   navEntryOf({
     viewMode,
@@ -48,8 +45,6 @@ describe("syncPlan", () => {
   });
 
   it("echoes a rebuild (reset: cursor back, NEW array) as replaceState", () => {
-    // The browser's deeper entries can't be deleted, so a rebuild re-brands
-    // the current one and lets the stale entries decay via the clamp.
     const prev = [entry("agents-home"), entry("settings")];
     const next = [entry("agents-home")];
     assert.deepEqual(

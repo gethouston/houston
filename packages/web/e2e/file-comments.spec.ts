@@ -10,14 +10,6 @@ import {
 import { seedSidebarLayout } from "./support/sidebar-layout";
 import { openTeamSection } from "./support/team-nav";
 
-/**
- * HOU-192: a file opened from a chat takes comments for the agent. Drawing an
- * area on a page asks what should change; the answer becomes a chip in that
- * chat's composer and rides the next send, with the region's crop uploaded
- * where the agent can open it. The sent bubble shows it as a pill.
- */
-
-/** Drag across the lower, empty half of the first page: an area, not text. */
 async function drawArea(page: Page) {
   const sheet = page.locator(".pdf-page").first();
   await expect(sheet.locator("canvas")).toBeVisible();
@@ -51,7 +43,6 @@ test("a comment on a page rides the next send with its crop (HOU-192)", async ({
   await editor.fill("Make the chart bigger");
   await page.getByRole("button", { name: "Add", exact: true }).click();
 
-  // The chip lands in this chat's composer, numbered like its mark.
   const chips = page.getByRole("region", { name: "Comments for the agent" });
   await expect(
     chips.getByRole("button", {
@@ -62,12 +53,9 @@ test("a comment on a page rides the next send with its crop (HOU-192)", async ({
     panel.getByRole("button", { name: /^Comment 1:/ }),
   ).toBeVisible();
 
-  // A message can be only comments: send with an empty composer.
   await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
   await page.getByRole("button", { name: "Submit", exact: true }).click();
 
-  // The sent bubble decodes the comment back into a pill, and the composer
-  // and the page let go of it.
   await expect(
     page.getByRole("button", { name: "Open Page 1: Make the chart bigger" }),
   ).toBeVisible();
@@ -76,7 +64,6 @@ test("a comment on a page rides the next send with its crop (HOU-192)", async ({
     0,
   );
 
-  // The crop is a real file in the agent's uploads, where its Read tool looks.
   const listing = await request.get(
     `${FAKE_HOST_URL}/agents/houston-assistant/files`,
   );

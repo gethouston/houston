@@ -1,8 +1,3 @@
-// Link previews (Slack, WhatsApp, LinkedIn, X, iMessage) and search read a
-// page's head tags, and a missing or stale one fails silently: the preview
-// just shows less, or an old card. These tests build the site and read every
-// page the way a crawler does.
-
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -183,8 +178,6 @@ test("the sitemap lists only built, indexable pages", () => {
     assert.ok(indexable.has(loc), `${loc} is missing or noindex`);
 });
 
-// The sitemap lists each translation group by hand, apart from the page
-// front matter, so a page that loses its hreflang links fails here.
 test("each page carries the language links its sitemap entry lists", () => {
   const sitemap = readFileSync(join(out, "sitemap.xml"), "utf8");
   const entries = [...sitemap.matchAll(/<url>([\s\S]*?)<\/url>/g)].map(

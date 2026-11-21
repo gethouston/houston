@@ -7,7 +7,6 @@ export const EMPTY_SKILLS_MANIFEST: SkillsManifest = {
   enabled: [],
 };
 
-/** Normalize the user-editable manifest without rejecting per-field garbage. */
 export function normalizeSkillsManifest(value: unknown): SkillsManifest {
   if (typeof value !== "object" || value === null) {
     return EMPTY_SKILLS_MANIFEST;

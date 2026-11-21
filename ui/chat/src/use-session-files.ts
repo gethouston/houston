@@ -3,29 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export interface SessionFiles {
   files: File[];
   setFiles: (files: File[]) => void;
-  /** Drop exactly these File objects from whichever list still holds them,
-   *  read at call time: a send that settles after the user switched
-   *  conversations, or added a file meanwhile, removes only what it sent. */
   releaseFiles: (sent: readonly File[]) => void;
-  /** Merge files into `sessionKey`'s list as of the call, not of the render
-   *  that made the callback: a dropped folder resolves after its read, when
-   *  the user may have attached more or moved to another conversation. */
   ingestInto: (
     sessionKey: string,
     ingest: (files: File[], setFiles: (next: File[]) => void) => void,
   ) => void;
 }
 
-/**
- * The panel's attachment list, one per conversation. A board reuses ONE panel
- * across conversations, so an unscoped list would follow the user from one
- * conversation to the next and leave with the wrong one's message. Switching
- * parks the list under its `sessionKey` and hands it back on return.
- *
- * Controlled (`attachments` given): the parent owns the list and its scoping,
- * and this only forwards. `releaseFiles` is then a no-op: like the composer's
- * controlled send, the parent clears what it accepted.
- */
 export function useSessionFiles(
   sessionKey: string,
   attachments: File[] | undefined,

@@ -1,7 +1,6 @@
 import { clipSchemaText, schemaType } from "./integrations-schema";
 import { schemaNode, schemaParameters } from "./integrations-schema-node";
 
-/** Spend on complete parameter types and enum values before descriptions. */
 export function parameterDetails(schema: unknown, budget: number): string {
   const parameters = schemaParameters(schemaNode(schema));
   for (const enumLimit of [Infinity, 12]) {
@@ -22,7 +21,6 @@ export function parameterDetails(schema: unknown, budget: number): string {
       if (text.length <= budget) return text;
     }
   }
-  // Pathological schemas still expose as many complete parameter lines as fit.
   let text = "";
   for (const { name, spec, required } of parameters) {
     const line = `\n    ${name}${required ? "" : "?"}: ${schemaType(spec)}`;

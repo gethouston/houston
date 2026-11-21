@@ -1,15 +1,3 @@
-/**
- * The typed integrations facade: the module's public shape, and the thin
- * namespaces that bind the request functions in `reads.ts`, `custom.ts` and
- * `custom-agent.ts` to one {@link HttpScope}.
- *
- * Every member here is a one-line delegation on purpose. The assistant catalog
- * derives an operation's route from the transport call in the declaration's OWN
- * body, so a facade member that forwards to an exported request function is not
- * an operation at all — the request function is, under its own name, which is
- * how one implementation serves both the typed surface and the catalog.
- */
-
 import type { IntegrationProviderId } from "@houston/protocol";
 import type { IntegrationConnection } from "@houston/runtime-client";
 import type { HttpScope } from "../http";
@@ -43,13 +31,11 @@ import {
 import type { IntegrationsViewModel } from "./types";
 import type { IntegrationsWrites } from "./writes";
 
-/** The result of a connect: the URL the surface opens, plus the id to poll. */
 export interface ConnectResult {
   redirectUrl: string;
   connectionId: string;
 }
 
-/** The provider-scoped reads, bound to one scope. */
 export function createIntegrationsReads(scope: HttpScope) {
   return {
     status: () => integrationStatus(scope),
@@ -63,7 +49,6 @@ export function createIntegrationsReads(scope: HttpScope) {
   };
 }
 
-/** The user-scoped custom-connector surface, bound to one scope. */
 export function createCustomIntegrations(scope: HttpScope) {
   return {
     list: () => customIntegrations(scope),
@@ -82,7 +67,6 @@ export function createCustomIntegrations(scope: HttpScope) {
   };
 }
 
-/** The per-agent custom-connector surface, bound to one scope. */
 export function createAgentCustomIntegrations(scope: HttpScope) {
   return {
     list: (agentSlugOrId: string) =>
@@ -119,36 +103,20 @@ export function createAgentCustomIntegrations(scope: HttpScope) {
   };
 }
 
-/** The typed facade for integration reads + writes. */
 export interface IntegrationsModule {
-  /** Scope string for `sdk.subscribe(...)` / `sdk.getSnapshot(...)`. */
   readonly scope: string;
-  /** Refetch readiness + catalog + connections and republish the VM. */
   refresh(): Promise<IntegrationsViewModel>;
-  /** Start an OAuth connect against one provider; the surface opens
-   *  `redirectUrl`, then polls. `agent` scopes it to one agent slug. */
   connect(
     provider: IntegrationProviderId,
     toolkit: string,
     agent?: string,
   ): Promise<ConnectResult>;
-  /** Poll one connection until its OAuth finishes (status flips to active). */
   pollConnection(connectionId: string): Promise<IntegrationConnection>;
-  /** Disconnect a toolkit everywhere, then refetch the VM. */
   disconnect(toolkit: string): Promise<IntegrationsViewModel>;
-  /** Push the caller's Supabase token to the gateway adapter (`null` on sign-out). */
   setSession(token: string | null): Promise<void>;
-  /** Dismiss the one-time "reconnect your integrations" notice (idempotent). */
   dismissReconnectNotice(): Promise<void>;
-  /** No-refetch write variants for a host that owns its own reads (web under
-   *  `reactivity:false`). The refetching methods above stay the default for a
-   *  host with no read model of its own. */
   writes: IntegrationsWrites;
-  /** The provider-scoped gateway reads (`/v1/integrations/{provider}/…`). */
   reads: ReturnType<typeof createIntegrationsReads>;
-  /** The user's own added connectors (`/v1/integrations/custom/…`). */
   custom: ReturnType<typeof createCustomIntegrations>;
-  /** The same connectors through one agent's pod — the form a hosted
-   *  deployment serves (`/agents/{agentSlugOrId}/integrations/custom/…`). */
   agentCustom: ReturnType<typeof createAgentCustomIntegrations>;
 }

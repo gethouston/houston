@@ -2,23 +2,9 @@ import { durationMs, easing } from "@houston/design-tokens";
 import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 
-/** The gap between two cards arriving. */
 const STAGGER_S = 0.08;
-/** Past the fifth card the rest arrive together, so a long roster never
- *  keeps the person waiting on its last row. */
 const STAGGER_CAP = 5;
 
-/**
- * A team of employee cards, sized by the room the deck has rather than the
- * window: three across once it is 1024px wide (the new-workspace dialog on a
- * desktop), more wrapping into rows of three; below that, one badge per row at
- * the full width, which is a phone and the AI Manager's chat. A row of three
- * keeps every card as tall as the tallest.
- *
- * The cards arrive in order like new hires walking in: the welcome is a
- * designated moment, so each rises over `duration.elegant` on the entrance
- * curve. With reduced motion they only fade.
- */
 export function EmployeeCardDeck({
   items,
 }: {
@@ -52,11 +38,6 @@ export function EmployeeCardDeck({
   );
 }
 
-/**
- * Takes the person to the name field of the `index`-th card under `root`: its
- * badge glides into view (at once under reduced motion), then the field takes
- * focus.
- */
 export function focusEmployeeName(
   root: HTMLElement | null,
   index: number,

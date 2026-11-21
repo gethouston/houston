@@ -10,14 +10,6 @@ import type { ResolvedModel } from "../types";
 import { createClaudeBackend } from "./backend";
 import { serverClaudeLayout } from "./paths";
 
-/**
- * Verify the Claude backend WIRES the in-process MCP server into the SDK options:
- * the `mcpServers` map carries the `houston` server and `allowedTools` auto-allows
- * every `mcp__houston__*` tool. The SDK module is mocked so `query()` captures the
- * per-turn `Options` and `createSdkMcpServer` records the tool defs it was handed —
- * no subprocess, no binary.
- */
-
 const h = vi.hoisted(() => ({
   capturedOptions: undefined as Options | undefined,
   capturedMcp: undefined as
@@ -135,9 +127,6 @@ test("AskUserQuestion stays disabled — Houston ships its own ask_user", async 
 });
 
 test("plan mode builds the MCP server WITHOUT integrations — ask_user + plan_ready", async () => {
-  // Even with the integrations gate present, plan mode withholds the integration
-  // tools (they act on the user's connected apps), leaving ask_user plus the
-  // plan-only plan_ready presentation tool.
   const options = await runTurn(
     { call: httpSandboxFetch("http://host.local", "tok") },
     "plan",
@@ -149,17 +138,10 @@ test("plan mode builds the MCP server WITHOUT integrations — ask_user + plan_r
   expect(new Set(h.capturedMcp?.tools.map((t) => t.name))).toEqual(
     new Set(["ask_user", "plan_ready"]),
   );
-  // And the built-ins are the read-only plan subset.
   expect(options.tools).toEqual(["Read", "Glob", "Grep"]);
 });
 
 test("auto mode builds the MCP with integrations ON and ask_user OFF", async () => {
-  // Autopilot is the inverse of plan: it KEEPS the acting integration tools
-  // (and the non-blocking suggest_reusable, save_routine and save_learning,
-  // and the
-  // request_connection / request_credential hand-offs autonomy cannot avoid —
-  // HOU-853) but drops ask_user so the agent never waits on the user's
-  // judgment.
   const options = await runTurn(
     { call: httpSandboxFetch("http://host.local", "tok") },
     "auto",
@@ -213,7 +195,6 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
       "mcp__houston__request_hands_on",
     ]),
   );
-  // Built-ins keep the full execute policy — auto acts with everything else.
   expect(options.tools).toEqual(["Read", "Edit", "Write", "Glob", "Grep"]);
 });
 

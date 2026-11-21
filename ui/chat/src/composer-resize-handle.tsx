@@ -16,14 +16,6 @@ import {
 
 export const DEFAULT_COMPOSER_RESIZE_LABEL = "Resize message box";
 
-/**
- * The grabber on the composer's top edge (desktop only): drag it up to make the
- * message box taller, down to shrink it back; a double-click returns it to
- * auto-grow. Focused, the arrow keys do the same in steps. It sits absolutely
- * in the surface's top padding, so the composer's grid never makes room for
- * it; the expanded surface pads its top deeper on desktop, so a scrolled
- * message's first line clears it. `height` is the manual size (null = auto); the caller owns it.
- */
 export function ComposerResizeHandle({
   height,
   onResize,
@@ -50,7 +42,6 @@ export function ComposerResizeHandle({
     return () => observer.disconnect();
   }, []);
 
-  // Starts from the box as drawn, so a drag from auto-grow does not jump.
   const currentHeight = (): number => {
     const textarea = ref.current
       ?.closest("[data-composer-surface]")
@@ -86,8 +77,6 @@ export function ComposerResizeHandle({
           ? -COMPOSER_RESIZE_STEP_PX
           : 0;
     if (step === 0) return;
-    // The surface turns Enter/Space into "focus the textarea"; arrows must
-    // not leak to it either.
     e.preventDefault();
     e.stopPropagation();
     const start =

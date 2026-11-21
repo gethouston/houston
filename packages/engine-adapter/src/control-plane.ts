@@ -1,19 +1,3 @@
-/**
- * Control-plane surface for the web adapter — the barrel over the cohesive
- * modules under `cp/`. In cloud, the web app talks to the Houston control plane
- * (not a single local runtime): agents are REAL and a conversation is proxied to
- * the agent's sandbox, so chat reuses the exact same `HoustonEngineClient` +
- * `streamTurn` path pointed at `${baseUrl}/agents/${agentId}`.
- *
- * This file is the ONE import site every caller and the test suite uses
- * (`import … from "./control-plane"`) — the mixins import it as a namespace and
- * the web tests `vi.mock("…/control-plane")` it — so the split into `cp/*`
- * modules is invisible to consumers. `ControlPlaneConfig` and the shared
- * transport live in `cp/fetch.ts`.
- */
-
-// The type surface callers reference (some as `controlPlane.<Type>`). Re-exported
-// once here so importing from the adapter keeps a single import site.
 export type {
   AddCustomIntegrationInput,
   AddOrgMemberResult,

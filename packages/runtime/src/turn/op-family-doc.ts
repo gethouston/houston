@@ -7,15 +7,8 @@ import {
   parseJsonDoc,
 } from "@houston/domain";
 
-/** Leaf module: a family file's doc, shared by op republish and the migrate
- *  op's projection. */
-
 const emptyDoc = (family: HoustonFamily) => (family === "config" ? {} : []);
 
-/** A family file's doc as the pod's projector derives it (the same tolerant
- *  parse as its reads): an absent file projects the empty doc, a file no
- *  salvage can read projects nothing (undefined), never an empty doc over
- *  the one it had. */
 export function familyDoc(
   family: HoustonFamily,
   raw: string | null,

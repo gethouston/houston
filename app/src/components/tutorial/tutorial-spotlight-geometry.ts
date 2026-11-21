@@ -1,13 +1,3 @@
-/**
- * The spotlight's placement math, apart from its rendering
- * ({@link import("./tutorial-spotlight-veil")}) and its measuring
- * ({@link import("./use-spotlight-rects")}).
- *
- * Everything here is viewport arithmetic: where the lesson's card fits beside
- * the target, and which rectangles have to swallow pointer events so only the
- * hole stays clickable.
- */
-
 export interface Rect {
   top: number;
   left: number;
@@ -31,13 +21,11 @@ const MARGIN = 16;
 const clamp = (min: number, v: number, max: number) =>
   Math.max(min, Math.min(v, max));
 
-/** The box being placed. */
 export interface CardSize {
   w: number;
   h: number;
 }
 
-/** Beside the rect when a side fits (right → left → below → above), else null. */
 function placeBeside(
   rect: Rect,
   vw: number,
@@ -59,18 +47,11 @@ function placeBeside(
   return null;
 }
 
-/**
- * Where the card goes: beside the whole modal (in-dialog), then beside
- * the target itself — for a large modal that IS the modal's own side
- * whitespace — and only then centered. Never parked on the content the user
- * must read or use.
- */
 export function placeCard(args: {
   hole: Rect | null;
   dialogRect: Rect | null;
   viewport: Viewport;
   inDialog: boolean;
-  /** The box to place. */
   size: CardSize;
 }): Placement {
   const { hole, dialogRect, viewport, inDialog, size } = args;
@@ -85,19 +66,9 @@ export function placeCard(args: {
   );
 }
 
-/**
- * The transparent panels that own the pointer events AROUND the hole (a
- * box-shadow is not hit-testable, so the visual veil alone blocks nothing).
- * With no hole yet, one panel covers the whole viewport.
- */
 export function blockerPanels(hole: Rect | null, viewport: Viewport): Rect[] {
   if (!hole)
     return [{ top: 0, left: 0, width: viewport.w, height: viewport.h }];
-  // Every size clamped at zero. A target flush with the viewport edge (the
-  // phone's full-bleed chat screen) puts the padded hole at a NEGATIVE
-  // offset, and a negative width or height is invalid CSS: the browser drops
-  // the declaration and the panel silently keeps the size it had on the
-  // previous step, walling off the very control the step asks for.
   return [
     { top: 0, left: 0, width: viewport.w, height: Math.max(0, hole.top) },
     {

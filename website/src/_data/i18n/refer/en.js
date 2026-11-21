@@ -1,8 +1,3 @@
-// English copy for /data-partners/refer. Joined onto the locale tree as
-// `t.refer` by _data/eleventyComputed.js, so scripts/check-locales.mjs holds
-// es and pt to this exact tree. No em dashes; arrays zip by index with
-// _data/refer.js. {amount} and {inbox} are filled in by the templates.
-
 export default {
   meta: {
     title: "Refer a company to Houston Data Partners and earn up to {amount}",

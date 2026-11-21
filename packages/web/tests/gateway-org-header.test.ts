@@ -3,11 +3,6 @@ import type { ControlPlaneConfig } from "@houston/engine-adapter/control-plane";
 import { exportPreview } from "@houston/engine-adapter/portable";
 import { afterEach, expect, test, vi } from "vitest";
 
-// C8 §Active space: with a team space pinned, EVERY gateway call must carry
-// `x-houston-org: <slug>`, else the gateway resolves the caller's PERSONAL org
-// and a team agent's routes 404/403. These guard the two standalone cp fetch
-// helpers (cpFilesFetch, portable hostFetch) that the E3 threading missed.
-
 const BASE = "https://gateway.example";
 const ORG = "abcdef0123456789";
 

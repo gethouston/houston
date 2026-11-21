@@ -1,28 +1,15 @@
-/**
- * Pure selectors for the model picker. No React, no DOM: this module decides
- * which providers and models are visible per level, while cmdk's built-in filter
- * owns in-list searching (the picker runs with the default `shouldFilter`). Kept
- * side-effect-free so it can be unit-tested directly.
- *
- * The one hard rule everything here enforces: only CONNECTED providers and their
- * models are ever visible. Disconnected providers simply do not appear — the only
- * path to them is the picker's "Connect another AI…" footer.
- */
-
 import type {
   ModelPickerCatalogState,
   ModelPickerModel,
   ModelPickerProvider,
 } from "./types";
 
-/** The connected providers, in input order. */
 export function connectedProviders(
   providers: readonly ModelPickerProvider[],
 ): ModelPickerProvider[] {
   return providers.filter((p) => p.connection === "connected");
 }
 
-/** Ids of the connected providers, for cheap membership checks. */
 export function connectedProviderIds(
   providers: readonly ModelPickerProvider[],
 ): Set<string> {
@@ -31,12 +18,6 @@ export function connectedProviderIds(
   return ids;
 }
 
-/**
- * Whether the level-1 list should show a neutral loading state rather than an
- * empty "no providers" one. Regression guard for issue #342: while statuses (or
- * the catalog) are still resolving we must never flash "no providers". Once any
- * provider is connected there is real content, so loading is over.
- */
 export function providerListLoading(
   providers: readonly ModelPickerProvider[],
   catalogState: ModelPickerCatalogState,
@@ -48,12 +29,6 @@ export function providerListLoading(
   );
 }
 
-/**
- * Whether level 1 has SETTLED on "nothing is connected here" — the state that
- * earns the explained empty state (title, hint, primary action) instead of a
- * bare list. Strictly the complement of {@link providerListLoading} over an
- * empty connected set, so the two can never both be true.
- */
 export function providerListEmpty(
   providers: readonly ModelPickerProvider[],
   catalogState: ModelPickerCatalogState,
@@ -62,11 +37,6 @@ export function providerListEmpty(
   return connectedProviders(providers).length === 0;
 }
 
-/**
- * The models to show at level 2 for a provider: that provider's rows in input
- * order, but only when the provider is actually connected (a stale/disconnected
- * id yields nothing).
- */
 export function modelsForProvider(
   models: readonly ModelPickerModel[],
   connectedIds: ReadonlySet<string>,
@@ -76,11 +46,6 @@ export function modelsForProvider(
   return models.filter((m) => m.providerId === providerId);
 }
 
-/**
- * The empty state's action: an explicit override wins (`null` = no action),
- * otherwise the connect affordance. Lets a consumer whose list is empty for a
- * reason other than "nothing is connected" withhold or retarget the button.
- */
 export function emptyStateAction(
   override: (() => void) | null | undefined,
   onConnectMore: (() => void) | undefined,

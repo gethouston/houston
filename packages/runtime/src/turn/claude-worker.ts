@@ -6,7 +6,6 @@ import { resolveClaudeCliBinary } from "../auth/anthropic-cli-binary";
 import { buildClaudeEnv } from "../backends/claude/claude-env";
 import { preloadTurnModules } from "./turn-module-preload";
 
-/** Replaceable filesystem seams for the worker binary probe. */
 export interface ClaudeWorkerProbeDeps {
   resolveBinary?: () => string | null;
   stat?: (path: string) => { isFile(): boolean };
@@ -14,7 +13,6 @@ export interface ClaudeWorkerProbeDeps {
 
 export type ClaudeWorkerProfile = "single-use" | "multi-turn" | "server";
 
-/** Boot-only seams that keep the worker profile policy unit-testable. */
 export interface ClaudeWorkerBootDeps {
   profile: ClaudeWorkerProfile;
   root: string;
@@ -24,15 +22,9 @@ export interface ClaudeWorkerBootDeps {
   report: (error: unknown) => void;
 }
 
-/** Resolve and stat the SDK platform binary used by pooled workers. */
 export function probeClaudeWorkerBinary(
   deps: ClaudeWorkerProbeDeps = {},
 ): string {
-  // Without HOUSTON_CLAUDE_BIN, resolveClaudeCliBinary starts resolution from
-  // the SDK module and selects the same platform package the SDK self-resolves
-  // at query time. On Node WITH that explicit override, probe/warm intentionally
-  // use the override while the SDK still self-resolves because its executable
-  // option is Bun-only; that is the sole known resolution skew.
   const binary = (deps.resolveBinary ?? resolveClaudeCliBinary)();
   if (!binary) throw new Error("Claude Agent SDK binary is unavailable");
   const stats = (deps.stat ?? statSync)(binary);
@@ -41,13 +33,6 @@ export function probeClaudeWorkerBinary(
   return binary;
 }
 
-/**
- * Start a pool worker's turn-module preload and Claude binary warmup without
- * blocking boot. Both pooled profiles warm: a single-use worker pays the cold
- * work before its one turn, and a multi-turn worker pays it once for every turn
- * it will serve. The server profile is the per-agent pod, whose host owns its
- * own runtime lifecycle and never boots through this path.
- */
 export function startClaudeWorkerBoot(deps: ClaudeWorkerBootDeps): void {
   if (deps.profile === "server") return;
   void (deps.preload ?? preloadTurnModules)().catch(deps.report);
@@ -67,7 +52,6 @@ export function startClaudeWorkerBoot(deps: ClaudeWorkerBootDeps): void {
 
 let warmup: Promise<void> | undefined;
 
-/** Page the Claude binary into the worker cache once, with no credential. */
 export function warmClaudeWorker(root: string, binary?: string): Promise<void> {
   warmup ??= runWarmup(root, binary).catch((error) => {
     warmup = undefined;

@@ -5,12 +5,6 @@ import type { WireEvent } from "@houston/runtime-client";
 import { expect, test, vi } from "vitest";
 import type { HarnessSession } from "../backends/types";
 
-/**
- * The standing server decides to compact on the fill the next request sends.
- * On Claude that is the fill after the transcript's stale tool results are
- * cleared, which happens between turns, so the clearing runs first.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-clr-data-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-clr-ws-"),

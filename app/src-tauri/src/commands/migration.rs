@@ -216,7 +216,6 @@ pub async fn backup_houston_data() -> Result<BackupResult, String> {
             .ok_or_else(|| "houston dir has no name".to_string())?;
         let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
 
-        // Avoid clobbering an existing sibling (same-second re-run).
         let base = parent.join(format!("{dirname}-{stamp}-backup"));
         let mut dest = base.clone();
         let mut n = 1u32;
@@ -335,7 +334,6 @@ mod tests {
         let mut stats = CopyStats::default();
         copy_dir_all(&src, &dst, &mut stats).unwrap();
 
-        // 3 files: CLAUDE.md (5) + notes.txt (13) + top.json (2) = 20 bytes.
         assert_eq!(
             stats,
             CopyStats {
@@ -345,7 +343,6 @@ mod tests {
             }
         );
 
-        // Faithful reproduction: same relative paths + contents.
         assert_eq!(
             std::fs::read(dst.join("workspaces/Work/Sales/CLAUDE.md")).unwrap(),
             b"hello"
@@ -382,7 +379,6 @@ mod tests {
             src.join("workspaces/Work/linked-file.js"),
         )
         .unwrap();
-        // A leftover unix socket/FIFO from some agent process.
         let mkfifo = std::process::Command::new("mkfifo")
             .arg(src.join("workspaces/Work/agent.pipe"))
             .status()
@@ -401,7 +397,6 @@ mod tests {
                 skipped: 3,
             }
         );
-        // The real file arrived; links and the FIFO were left behind.
         assert!(dst
             .join("workspaces/Work/node_modules/.pnpm/pkg/index.js")
             .is_file());

@@ -1,15 +1,6 @@
 import type { ProviderOverride } from "./types.ts";
 
-/**
- * The API-KEY cards carrying provider-level metadata only — name, cost line and
- * the page to grab a key. Their picker rows take pi-ai's model names as-is and
- * their list-row copy comes from `DESCRIPTION_BY_ID` (`./descriptions.ts`).
- */
 export const API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
-  // Free-tier curation: these entries exist so the card's cost line can tell
-  // users they can start at no cost. Row descriptions still come from
-  // `DESCRIPTION_BY_ID` (no `description` here); names are set because every
-  // override entry seeds a pre-hydration card.
   groq: {
     name: "Groq",
     subtitle: "Fast inference",
@@ -62,18 +53,8 @@ export const API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     subtitle: "NIM inference",
     cost: "Free credits, then pay as you go",
     installUrl: "https://build.nvidia.com",
-    // The NGC Personal Key page, NOT build.nvidia.com's quick key flow: only
-    // NGC offers the "Public API Endpoints" service picker a working key
-    // needs (HOU-890) — the connect dialog walks the user through it
-    // (`provider-api-key-guide.tsx`).
     apiKeyUrl: "https://org.ngc.nvidia.com/setup/api-keys",
   },
-  // Houston's qwen extension provider (not a pi builtin — the host appends it
-  // to /v1/catalog, see packages/host/src/providers/qwen-dashscope.ts): Qwen
-  // on Alibaba Model Studio's INTERNATIONAL pay-as-you-go endpoint, the home
-  // for regular (free-quota) Model Studio keys the Token Plan card rejects.
-  // The three Qwen cards differ ONLY in which Alibaba key they accept, so
-  // every user-facing string below leads with the KEY, not the product.
   qwen: {
     name: "Qwen",
     subtitle: "Standard Model Studio API key",
@@ -83,11 +64,6 @@ export const API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     apiKeyUrl:
       "https://modelstudio.console.alibabacloud.com/?tab=playground#/api-key",
   },
-  // Alibaba's prepaid token bundles for Qwen (+ hosted open models). The
-  // endpoint only accepts the DEDICATED Token Plan API key minted after
-  // purchasing a plan and assigning its seat — a regular Model Studio key gets
-  // a 401 "Invalid API-key provided" (HOU-1077), so the connect guidance must
-  // send users to the Token Plan setup guide, not a generic key console.
   "qwen-token-plan": {
     name: "Qwen Token Plan (Team)",
     subtitle: "Team token plan subscription",
@@ -99,8 +75,6 @@ export const API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     apiKeyUrl:
       "https://www.alibabacloud.com/help/en/model-studio/token-plan-team-quickstart",
   },
-  // pi 0.84's individual (personal) tier of the same product — same endpoint,
-  // its own dedicated-key + seat purchase flow, so the same guidance applies.
   "qwen-token-plan-individual": {
     name: "Qwen Token Plan (Individual)",
     subtitle: "Personal token plan subscription",
@@ -160,7 +134,6 @@ export const API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Pay-as-you-go on your Azure account",
     installUrl:
       "https://azure.microsoft.com/products/ai-services/openai-service",
-    // Azure keys live per-resource in the portal; there is no global key page.
     apiKeyUrl: "https://portal.azure.com",
   },
   "vercel-ai-gateway": {
@@ -168,8 +141,6 @@ export const API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     subtitle: "Many models, one key",
     cost: "Pay-as-you-go on your Vercel account",
     installUrl: "https://vercel.com/ai-gateway",
-    // The exact deep link Vercel's own 401 remedy points at: resolves to the
-    // signed-in team's AI Gateway → API keys page with the create-key modal.
     apiKeyUrl:
       "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai-gateway%2Fapi-keys%3FshowCreateKeyModal",
   },

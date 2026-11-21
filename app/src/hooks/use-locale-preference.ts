@@ -16,49 +16,17 @@ import { useWorkspaceStore } from "../stores/workspaces";
 const globalKey = ["locale-preference"] as const;
 
 export interface LocalePreferenceState {
-  /**
-   * The GLOBAL default locale the user explicitly chose, or null if they never
-   * picked. The first-run language gate keys off this (null → show the
-   * picker). Per-workspace overrides do NOT affect first-run.
-   */
   locale: SupportedLocale | null;
-  /**
-   * True until the GLOBAL preference has resolved AND been applied. The
-   * per-workspace override is applied on arrival and NEVER holds the first
-   * paint — blocking on it hung the app on launch (gethouston/houston#439).
-   */
   isLoading: boolean;
-  /**
-   * First-run picker write: persist the GLOBAL default (no workspace exists
-   * yet) and swap the live i18n language. Later, per-workspace changes go
-   * through the workspace store's `setLocale`, not this.
-   */
   setLocale: (locale: SupportedLocale) => Promise<void>;
-  /**
-   * Clear the GLOBAL preference so the first-run language picker shows again.
-   * Used by the agreement's "Back" to return to the picker. Leaves the live
-   * i18n language untouched (the user re-picks from there).
-   */
   clearLocale: () => Promise<void>;
 }
 
-/**
- * Owns the full locale story for boot: it resolves the user's effective UI
- * locale from the engine — the active workspace's `locale` override winning
- * over the global `locale` preference — and applies it to the live i18n
- * instance. The engine, NOT the browser's localStorage cache, is the source of
- * truth, so a fresh browser pointed at a headless engine still shows the
- * stored language. localStorage stays a boot-time flash cache only.
- *
- * Consumed by the first-run `LanguageGate`; because that gate wraps the whole
- * app it also keeps the live language in sync as the active workspace changes.
- */
 export function useLocalePreference(): LocalePreferenceState {
   const qc = useQueryClient();
   const storeCurrent = useWorkspaceStore((s) => s.current);
   const [applied, setApplied] = useState(false);
 
-  // Global default locale preference (engine-owned).
   const globalQuery = useQuery({
     queryKey: globalKey,
     queryFn: async (): Promise<SupportedLocale | null> => {
@@ -66,9 +34,6 @@ export function useLocalePreference(): LocalePreferenceState {
         const raw = await tauriPreferences.get(LOCALE_PREF_KEY);
         return isSupported(raw) ? raw : null;
       } catch {
-        // Not authenticated yet (401) or engine unavailable — skip the gate
-        // rather than blocking for 3 retries. The sign-in screen handles auth;
-        // locale is re-fetched once a session is established.
         return null;
       }
     },
@@ -77,20 +42,9 @@ export function useLocalePreference(): LocalePreferenceState {
   });
 
   const globalLocale = globalQuery.data ?? null;
-  // The workspace store owns boot selection. Its override applies on arrival
-  // without another preference read or a competing legacy lift.
   const workspaceLocale = storeCurrent?.locale ?? null;
   const effective = resolveEffectiveLocale(workspaceLocale, globalLocale);
 
-  // Apply the engine-resolved locale to the live i18n instance once the GLOBAL
-  // preference has resolved, and re-apply whenever `effective` changes — which
-  // includes the boot workspace override landing LATER (apply-on-arrival) and
-  // the user switching into a workspace that pins a different language. We do
-  // NOT wait on the workspace load here: gating the first paint on it hung
-  // the app when GET /workspaces never settled (gethouston/houston#439).
-  // Applying is best-effort — the i18next detector already picked a valid
-  // language — so a failure must NOT hold the gate: always un-gate in
-  // `finally`, and log (never silently swallow) on error.
   useEffect(() => {
     if (globalQuery.isLoading) return;
     let cancelled = false;
@@ -113,17 +67,7 @@ export function useLocalePreference(): LocalePreferenceState {
 
   const mutation = useMutation({
     mutationFn: async (locale: SupportedLocale) => {
-      // Apply the language locally FIRST — the i18n swap + boot cache is the
-      // authoritative, always-available result of the pick, so the picker can
-      // advance on it. A failure here is genuinely unexpected (in-memory i18next
-      // swap) and rejects, so the picker surfaces it instead of stranding.
       await changeLocale(locale);
-      // Persist the account preference best-effort. On the FIRST-RUN language
-      // gate this write runs before the user is fully signed in, so a hosted
-      // gateway can reject it (no bearer yet); the choice is already applied and
-      // cached locally and re-syncs once authed, so a persist failure must NOT
-      // block the pick (that dead-ended "Continue does nothing"). Log it — never
-      // silently swallow — matching this file's apply-effect policy.
       try {
         await tauriPreferences.set(LOCALE_PREF_KEY, locale);
       } catch (err) {
@@ -148,9 +92,6 @@ export function useLocalePreference(): LocalePreferenceState {
 
   const clearMutation = useMutation({
     mutationFn: async () => {
-      // Empty string isn't a SupportedLocale, so the query resolves to null and
-      // the picker re-shows. Don't touch i18n — keep showing the current
-      // language until the user re-picks.
       await tauriPreferences.set(LOCALE_PREF_KEY, "");
     },
     onSuccess: () => {

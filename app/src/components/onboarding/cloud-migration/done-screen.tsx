@@ -10,19 +10,6 @@ import { DoneCongrats, DoneStepAi, DoneStepApps } from "./done-followups";
 
 type Step = "ai" | "apps" | "congrats";
 
-/**
- * The wizard's post-migration setup (HOU-719 redesign): two setup steps,
- * "Connect your AI" then "Reconnect your apps", each a floating `SetupCard`
- * on the shared space backdrop (the same card onboarding uses, so the two
- * flows read as one voice), then a brief congrats beat (confetti payoff)
- * before closing into the app. Also surfaces anything that didn't make the
- * move (failed agents, excluded files, rejected items) so nothing is silently
- * dropped. Stamps the persisted outcome on mount (`applyNow: false`, so a
- * relaunch skips the wizard without ripping this screen away); the congrats
- * step's button applies it in-session. A run with failed agents stamps
- * "skipped", not "done", so Settings' "Continue migration" keeps the retry
- * available (`doneScreenOutcome`).
- */
 export function DoneScreen({
   persistOutcome,
 }: {
@@ -42,7 +29,6 @@ export function DoneScreen({
     (x) => progress[x.sourceId]?.step !== "done",
   );
 
-  // "skipped" when agents were left behind, so Settings keeps the retry alive.
   const outcome = doneScreenOutcome(failedTasks.length);
   useEffect(() => {
     persistOutcome(outcome, { applyNow: false });
@@ -54,9 +40,6 @@ export function DoneScreen({
     (x) => progress[x.sourceId]?.rejected ?? [],
   );
 
-  // Modern legacy installs (v0.4.2x platform-mode integrations) have no
-  // per-agent integration record on disk, so the apps step would be an empty
-  // shell — skip straight to congrats unless it has apps or leftovers to show.
   const showAppsStep = hasReconnectAppsStep({
     integrations: integrations.length,
     failedAgents: failedTasks.length,

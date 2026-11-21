@@ -9,7 +9,6 @@ import type { LinkedInConnectReturn } from "./types";
 const URL_ = "https://www.linkedin.com/oauth/v2/authorization?state=s";
 const STATE = "q9X-_3abcDEF4567";
 
-/** Ports that record every effect; web-shaped (no listener, no tab). */
 function harness(overrides: Partial<LinkedInConnectPorts> = {}) {
   const log: string[] = [];
   const asked: (LinkedInConnectReturn | undefined)[] = [];

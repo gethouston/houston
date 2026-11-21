@@ -2,11 +2,6 @@ import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { createUserDismissal } from "../src/components/shell/user-dismissal.ts";
 
-// The plan prompts belong to the whole shell. The app's own synthetic Escape
-// (sent when leaving a kept-alive screen with a modal open) is not cancelable,
-// so Radix still asks to close; the gate must drop that request, or the launch
-// announcement is dismissed for good without the user ever seeing it.
-
 const noop = { preventDefault: () => {} };
 const escapeKey = (isTrusted: boolean) => ({ ...noop, isTrusted });
 const pointerDown = (isTrusted: boolean) => ({

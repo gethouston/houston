@@ -22,7 +22,6 @@ test("an agent whose doc reads with diagnostics is unread, and logged", async ()
   await saveActivities(vfs, ANA.id, [
     { id: "m1", title: "Invoice", description: "", status: "needs_you" },
   ]);
-  // Bob's board is temporarily `{}`: no throw, empty items plus a diagnostic.
   await vfs.writeText(docKey(paths.agentRoot(WS, BOB), "activity"), "{}");
   const log = vi.fn();
   const store = {

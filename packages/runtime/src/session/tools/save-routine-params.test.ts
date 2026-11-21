@@ -2,15 +2,7 @@ import { expect, test } from "vitest";
 import { makeSaveRoutineTool } from "./save-routine";
 import { SaveRoutineParams } from "./save-routine-params";
 
-/**
- * The model reads these words to write a routine's `schedule`: they must offer
- * the `@every` interval for uneven cadences, keep cron for even ones, and forbid
- * the mixed-unit spelling the host refuses.
- */
-
 test("the schedule param teaches cron plus the @every interval form", () => {
-  // The serialized schema is what the model reads (TOptional hides the
-  // description from the static type).
   const description = JSON.stringify(SaveRoutineParams.properties.schedule);
   expect(description).toContain("cron expression");
   expect(description).toContain("'@every <N>m' / '@every <N>h'");

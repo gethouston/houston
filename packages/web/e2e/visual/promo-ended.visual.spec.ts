@@ -1,11 +1,3 @@
-/**
- * Visual-regression baselines for the promo-ended modal: the offer (yearly
- * preselected, and monthly picked), the switched-to-yearly step and the
- * stayed-monthly step, at desktop and phone width, with the Spanish and
- * Portuguese steps the design shows. The modal pins its own dark theme; the
- * shell behind it is shot light. Every value on screen comes from the
- * fixture.
- */
 import type { Locator, Page } from "@playwright/test";
 import { seedLocale } from "../support/billing-choice";
 import { expect, test } from "../support/fixtures";
@@ -24,7 +16,6 @@ type Width = "desktop" | "phone";
 
 async function boot(page: Page, width: Width): Promise<Locator> {
   await installPlanClock(page);
-  // The team is picked from the desktop sidebar; the phone narrows after.
   await enterPromoTeam(page, promoBilling());
   const modal = await promoOpen(page);
   if (width === "phone") await page.setViewportSize(PHONE);

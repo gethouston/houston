@@ -1,19 +1,5 @@
 import { expect, test, vi } from "vitest";
 
-/**
- * HOU-981, the lost-events half.
- *
- * `streamGlobalEvents` has always exposed an `onConnect` seam — documented as
- * the reconnect catch-up hook — and the adapter never passed it. The `/v1/events`
- * feed carries no replay cursor, so everything emitted while the stream was
- * down (a routine finishing overnight, a teammate's mission) was lost for good,
- * and nothing re-read the cross-agent aggregate afterwards.
- *
- * The adapter now publishes a transport event on RE-connect and lets the app's
- * invalidation plan decide what to re-read. The first connect is deliberately
- * silent: its read is already in flight.
- */
-
 const { streamGlobalEvents } = vi.hoisted(() => ({
   streamGlobalEvents: vi.fn(),
 }));
@@ -24,19 +10,12 @@ vi.mock("@houston/engine-adapter/session-refresh", () => ({
 
 import { subscribeEvents } from "@houston/engine-adapter/cp/events";
 
-/**
- * "Has this feed ever streamed?" is remembered per GATEWAY for the page's
- * lifetime, so every test that wants to act like a fresh boot must name its own
- * gateway. Two subscriptions to the SAME gateway are what a token refresh or a
- * `setEndpoint` does, and that is the case the second half of this file pins.
- */
 let gateways = 0;
 function freshGateway() {
   gateways += 1;
   return { baseUrl: `https://gateway-${gateways}.example`, token: "t" };
 }
 
-/** Subscribe and hand back the loop options the adapter passed in. */
 function subscribe(cfg: { baseUrl: string; token: string } = freshGateway()) {
   const events: unknown[] = [];
   streamGlobalEvents.mockClear();
@@ -59,9 +38,9 @@ test("the first connect publishes nothing — the initial read is already runnin
 test("every RE-connect publishes the catch-up event", () => {
   const { events, opts, stop } = subscribe();
 
-  opts.onConnect?.(); // initial
-  opts.onConnect?.(); // recovered from a drop
-  opts.onConnect?.(); // and another
+  opts.onConnect?.();
+  opts.onConnect?.();
+  opts.onConnect?.();
 
   expect(events).toEqual([
     { type: "EventStreamReconnected" },
@@ -70,22 +49,11 @@ test("every RE-connect publishes the catch-up event", () => {
   stop();
 });
 
-/**
- * The laptop-asleep case, and the one that loses the MOST events.
- *
- * A 401 on the stream refreshes the session, and `setHostedEngineSessionToken`
- * tears the whole client down and rebuilds it (`_ws.disconnect()` then
- * `_ws.connect()`) — a brand-new `subscribeEvents` call. When the "have we
- * connected before" flag lived in that call's closure it restarted at zero, so
- * the reconnect that follows the longest gap was the one reconnect that stayed
- * silent and nothing re-read the board.
- */
 test("a RE-subscription to the same gateway publishes the catch-up event", () => {
   const first = subscribe();
   first.opts.onConnect?.();
   first.stop();
 
-  // Same gateway, new subscription: the token was refreshed under us.
   const second = subscribe(first.cfg);
   second.opts.onConnect?.();
 
@@ -112,13 +80,6 @@ test("the catch-up seam is wired at all — the regression that started this", (
   stop();
 });
 
-/**
- * The wake seam. A machine that slept through a host restart holds a socket
- * that is open on paper and dead in fact, and the loop would otherwise learn
- * that only from its deliberately slow idle watchdog. The adapter hands it the
- * platform's own recovery moments, so the user's first glance at the window is
- * already the trigger.
- */
 type Listener = (ev: unknown) => void;
 
 function fakeDomTarget(log: { added: string[]; removed: string[] }) {
@@ -150,7 +111,6 @@ test("the loop is given the platform's wake signals, and drops them on stop", ()
   vi.unstubAllGlobals();
 });
 
-/** A host with no DOM (tests, a Node-side adapter) simply gets no wake. */
 test("a DOM-less host registers nothing instead of crashing", () => {
   const { opts, stop } = subscribe();
   const wake = (opts as { wake?: (retry: () => void) => () => void }).wake;

@@ -1,12 +1,6 @@
 import { expect, test } from "vitest";
 import { EMPTY_SNAPSHOT, reduceSnapshot } from "./snapshot";
 
-/**
- * The snapshot's seq is the stream watermark: it advances with every folded
- * frame — through tool/thinking noise, provider switches, AND the terminal
- * frames — so a `sync` built from it always names the stream's true position.
- */
-
 test("seq follows the folded frames' seq, including through the terminal frame", () => {
   let s = reduceSnapshot(EMPTY_SNAPSHOT, {
     type: "user",
@@ -29,7 +23,6 @@ test("seq follows the folded frames' seq, including through the terminal frame",
     tools: [{ name: "ls", input: {} }],
   });
   s = reduceSnapshot(s, { type: "done", data: null, seq: 5 });
-  // Turn over, watermark kept — the counter outlives the turn.
   expect(s).toEqual({ running: false, partial: "", seq: 5 });
 });
 
@@ -46,7 +39,6 @@ test("thinking + tools accumulate for the running turn and reset on the next (HO
     data: { name: "bash", args: { cmd: "ls" } },
     seq: 4,
   });
-  // The started tool is tracked WITHOUT isError — it is still running.
   expect(s).toEqual({
     running: true,
     partial: "",
@@ -60,8 +52,6 @@ test("thinking + tools accumulate for the running turn and reset on the next (HO
     seq: 5,
   });
   s = reduceSnapshot(s, { type: "text", data: "done", seq: 6 });
-  // text carries the activity through; tool_end stamps the ended flag and
-  // the output preview.
   expect(s).toEqual({
     running: true,
     partial: "done",
@@ -76,8 +66,6 @@ test("thinking + tools accumulate for the running turn and reset on the next (HO
       },
     ],
   });
-  // A NEW turn starts clean: no inherited thinking/tools (and the omitted
-  // fields must not serialize).
   s = reduceSnapshot(s, {
     type: "user",
     data: { content: "next", ts: 2 },
@@ -143,7 +131,6 @@ test("turnId: adopted from the user frame, carried while running, dropped at ter
     turnId: "t-1",
   });
   expect(s.turnId).toBe("t-1");
-  // Carried through frames even when they don't repeat it (legacy-safe).
   s = reduceSnapshot(s, { type: "text", data: "x", seq: 2 });
   expect(s.turnId).toBe("t-1");
   s = reduceSnapshot(s, {
@@ -154,7 +141,6 @@ test("turnId: adopted from the user frame, carried while running, dropped at ter
   });
   expect(s.turnId).toBe("t-1");
   s = reduceSnapshot(s, { type: "done", data: null, seq: 4, turnId: "t-1" });
-  // Idle again: no running turn, no turnId (and it must not serialize).
   expect(s).toEqual({ running: false, partial: "", seq: 4 });
   expect("turnId" in s).toBe(false);
 });
@@ -166,8 +152,6 @@ test("turnId: a new user frame REPLACES the previous turn's id, never inherits i
     data: { content: "next", ts: 2 },
     seq: 6,
   });
-  // The new turn's frame carried no id (legacy writer) → the snapshot must not
-  // claim the OLD turn is the running one.
   expect(s).toEqual({ running: true, partial: "", seq: 6 });
 });
 

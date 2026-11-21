@@ -8,36 +8,21 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface CustomCredentialFormProps {
-  /** The declared auth method whose fields to collect, or `null` before the
-   *  integration lookup resolves — then a single "API key" (`token`) field is
-   *  shown so the user is never blocked waiting on the list. */
   authMethod: CustomAuthMethod | null;
   submitting: boolean;
-  /** The parent wires this to the credential mutation; keys are field variables.
-   *  Secrets cross ONLY here (HTTPS body), never the chat transcript. */
   onSubmit: (values: Record<string, string>) => void;
   submitLabel: string;
   submittingLabel: string;
   autoFocus?: boolean;
-  /** DOM id on the `<form>`, so an EXTERNAL submit button (`type="submit"
-   *  form={formId}`) can drive it — the in-chat card puts Save in the shared
-   *  modal footer instead of inside the field block. */
   formId?: string;
-  /** Hide the form's own trailing Save button (the dialog keeps it; the in-chat
-   *  card supplies its own footer CTA). Enter in a field still submits. */
   hideSubmit?: boolean;
-  /** Reports whether every field is filled, so an external footer button can
-   *  gate its own disabled state (mirrors the internal Save button's gating). */
   onReadyChange?: (ready: boolean) => void;
 }
 
-/** The fallback single-field method used until the integration's real auth
- *  method is known (its one field keyed `token`, matching the backend's default). */
 function fallbackFields(label: string): CustomAuthField[] {
   return [{ variable: "token", label }];
 }
 
-/** Every field has a non-empty trimmed value. */
 function allFilled(
   fields: CustomAuthField[],
   values: Record<string, string>,
@@ -45,13 +30,6 @@ function allFilled(
   return fields.every((f) => (values[f.variable] ?? "").trim().length > 0);
 }
 
-/**
- * The secure key-entry form shared by the in-chat credential card and the
- * Integrations-page "Enter key" dialog: one password input per declared field
- * (revealable), and a Save button gated until every field is filled. It holds no
- * mutation of its own — the parent owns submission (and thus the `call()` toast
- * on failure), so this stays a controlled, presentational form.
- */
 export function CustomCredentialForm({
   authMethod,
   submitting,
@@ -73,7 +51,6 @@ export function CustomCredentialForm({
       : fallbackFields(t("custom.credential.apiKeyLabel"));
   const ready = allFilled(fields, values);
 
-  // Let an external footer button mirror the internal Save button's gating.
   useEffect(() => {
     onReadyChange?.(ready);
   }, [ready, onReadyChange]);
@@ -100,9 +77,6 @@ export function CustomCredentialForm({
               {field.label}
             </label>
             <div className="relative">
-              {/* The design-system Input (quiet focus:border-focus) — the old
-                  hand-rolled input stacked a 2px ring-focus ON TOP of its
-                  border, which read as a harsh black double border. */}
               <Input
                 id={`ci-${field.variable}`}
                 type={show ? "text" : "password"}

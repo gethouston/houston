@@ -9,17 +9,8 @@ import {
 } from "../interaction";
 import { ASK_USER_TOOL_NAME, makeAskUserTool } from "./ask-user";
 
-/**
- * The always-available blocking-question tool. These pin: the tool assigns
- * `q1`..`qN` ids and records the question STEPS of the turn's interaction
- * sequence (with per-question options when offered), tells the model to end its
- * turn, rejects a batch over 3, and REPLACES the questions when asked twice.
- */
-
 const askUser = makeAskUserTool();
 
-// pi's tool.execute takes (id, params, signal, onUpdate, ctx); the last three
-// are irrelevant here, so one helper supplies them.
 const ctx = {} as unknown as ExtensionToolContext;
 const run = (params: unknown) =>
   askUser.execute("id", params as never, undefined, undefined, ctx);
@@ -190,7 +181,6 @@ test("throws with merge/trim guidance when asked more than three questions", asy
       }),
     ),
   ).rejects.toThrow(/1 to 3 questions/i);
-  // Nothing recorded on the rejected call.
   expect(holder.pending).toBeUndefined();
 });
 
@@ -219,7 +209,6 @@ test("threads wantsFiles onto a question answered with a file", async () => {
       ],
     }),
   );
-  // Only `true` is recorded: a plain question carries no key.
   expect(holder.pending).toEqual({
     steps: [
       {
@@ -233,9 +222,6 @@ test("threads wantsFiles onto a question answered with a file", async () => {
   });
 });
 
-// `execute` above takes the params as given; a model's call reaches it only
-// after its backend validates the arguments against the tool's schema: pi's
-// TypeBox validation, or the Claude backend's zod shape converted from it.
 const call = (wantsFiles?: unknown) => ({
   questions: [
     {

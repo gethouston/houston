@@ -12,20 +12,12 @@ import {
 interface Props extends StepChrome, StepDraftApi {
   stepId: string;
   reason?: string;
-  /** "API access for {name}": the title, and what the reply reports. */
   name: string;
-  /** The employee, once the roster holds it; `null` while it loads. */
   agent: Pick<Agent, "id" | "name"> | null;
   onFinished: (name: string) => void;
   onSkip: (name: string, message?: string) => void;
 }
 
-/**
- * The AI Manager's API access errand, done right in the chat: the employee's
- * Agent ID, the Organization ID and the ready setup prompt, the same block its
- * API access screen shows ({@link AgentApiDetails}). Nothing to navigate to;
- * Done and Skip are the answers, as on every errand.
- */
 export function ChatHandsOnAgentApiCard({
   stepId,
   reason,

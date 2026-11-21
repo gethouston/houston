@@ -31,7 +31,6 @@ import { durableTerminalFrame } from "./turn-terminal";
 import type { createTurnTranscript } from "./turn-transcript";
 import type { TurnRequest } from "./types";
 
-/** Run a fully hydrated non-shadow turn, then make its writes durable. */
 export async function executeReadyTurn(input: {
   deps: TurnServerDeps;
   turn: TurnRequest;
@@ -93,8 +92,6 @@ export async function executeReadyTurn(input: {
               input.startup,
             );
             request.stopReason = () => input.heartbeat?.stopReason;
-            // The card may postdate hydration: its title rebases the tree's
-            // board onto a fresh store read (turn-mission-title-remote.ts).
             if (request.missionTitle)
               request.readRemoteActivity = remoteActivityReader(
                 input.resolved.store,
@@ -114,7 +111,6 @@ export async function executeReadyTurn(input: {
     }
   }
 
-  // Any path that never prompted (unconnected, a setup failure) is over too.
   input.filesystem.abandonDeferred?.();
   let afterSync: Awaited<ReturnType<typeof finishRoutineTurn>>["afterSync"];
   if (routinePhase) {

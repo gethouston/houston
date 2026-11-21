@@ -27,24 +27,12 @@ import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
 
-/** The workspace a destination org opens as: Personal's, or its `org:` row. */
 function workspaceIdMatches(id: string, team: TeamRef): boolean {
   return team.personal
     ? id === PERSONAL_WORKSPACE_ID
     : orgSlugFromWorkspaceId(id) === team.slug;
 }
 
-/**
- * The move half of the {@link ShareViaTeamState} pipeline, shared by every
- * flow that moves one AI Employee into another org: start the move, poll it
- * to `done` (with a wall-clock ceiling), then SWITCH the active space to the
- * destination and load its agents. What follows the switch is the flow's:
- * sharing invites teammates, a move into Personal just ends.
- *
- * The move-completion signal is the poll route only, never the event stream.
- * An accepted move is recorded before polling, so a closed dialog or an app
- * quit leaves it for the boot-time resume (`useMoveResume`).
- */
 export function useAgentOrgMove(agent: Agent, open: boolean) {
   const [state, setState] = useState<ShareViaTeamState>(initialState);
   const orgs = useOrgs(open);
@@ -60,8 +48,6 @@ export function useAgentOrgMove(agent: Agent, open: boolean) {
     state.step === "moving",
   ).data;
 
-  // A reopen always starts clean. The pending-move record stays until the
-  // move reaches `done`, so only the in-session claim is released here.
   useEffect(() => {
     if (!open) {
       setState(initialState());
@@ -75,8 +61,6 @@ export function useAgentOrgMove(agent: Agent, open: boolean) {
     setState((s) => applyMovePoll(s, polled));
   }, [polled]);
 
-  // The `moving` step cannot be dismissed, so a move that never answers
-  // becomes a closable, retryable `moveFailed`. Re-arms per moveId.
   useEffect(() => {
     if (moveId === null) return;
     const timer = setTimeout(
@@ -86,8 +70,6 @@ export function useAgentOrgMove(agent: Agent, open: boolean) {
     return () => clearTimeout(timer);
   }, [moveId]);
 
-  // A destination missing from the reloaded list (or a reload that throws)
-  // never advances: what follows the switch acts on the active space.
   useEffect(() => {
     if (state.step !== "switching") return;
     clearPendingMove(agent.id);
@@ -105,8 +87,6 @@ export function useAgentOrgMove(agent: Agent, open: boolean) {
           return;
         }
         setCurrentWorkspace(ws);
-        // Every switch settles the agent store before it is done, or what
-        // reads it fires against the old space's agent under the new header.
         await loadAgents(ws.id);
         if (cancelled) return;
         setState((s) => switchDone(s));
@@ -127,7 +107,6 @@ export function useAgentOrgMove(agent: Agent, open: boolean) {
         agentSlugOrId: agent.id,
         toSlug,
       });
-      // From here the gateway holds a lock only a completed move releases.
       recordPendingMove({
         agentId: agent.id,
         agentName: agent.name,

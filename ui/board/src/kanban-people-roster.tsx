@@ -2,9 +2,6 @@ import { PopoverContent } from "@houston-ai/core";
 import { FACE_SIZE, Face, TEXT_SIZE } from "./kanban-people-face";
 import type { KanbanPerson } from "./types";
 
-/** The popover body listing EVERY person on a face stack (face + label), so
- *  nobody behind a "+N" chip or a hover-only tooltip is unreachable. Shared by
- *  the chip trigger and the whole-stack trigger so both open the same list. */
 export function KanbanPeopleRoster({ people }: { people: KanbanPerson[] }) {
   return (
     <PopoverContent

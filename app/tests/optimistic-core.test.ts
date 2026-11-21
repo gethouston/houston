@@ -113,8 +113,6 @@ describe("optimisticWrite", () => {
       write: () => host.promise,
       failure,
     });
-    // How an agent's event refreshes the aggregate (`patchAgentSlice`): a
-    // manual write carrying the host's pre-delete rows.
     qc.setQueryData<Row[]>(KEY, [{ id: "m1" }, { id: "m2" }, { id: "m3" }]);
     deepStrictEqual(qc.getQueryData(KEY), [{ id: "m2" }, { id: "m3" }]);
     host.resolve();
@@ -148,7 +146,6 @@ describe("optimisticWrite", () => {
     deepStrictEqual(qc.getQueryData(KEY), []);
     first.reject(new Error("boom"));
     await a;
-    // m1 is back; m2's delete is still pending, so it stays gone.
     deepStrictEqual(qc.getQueryData(KEY), [{ id: "m1" }]);
     second.resolve();
     await b;
@@ -222,7 +219,6 @@ describe("optimisticWrite", () => {
     });
     land([{ id: "m1" }, { id: "m4" }]);
     deepStrictEqual(await loading, [{ id: "m1" }, { id: "m4" }]);
-    // Landed, with the in-flight delete held over it.
     deepStrictEqual(qc.getQueryData(VARIANT), [{ id: "m4" }]);
     host.resolve();
     await done;

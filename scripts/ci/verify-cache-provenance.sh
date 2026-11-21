@@ -1,17 +1,4 @@
 #!/usr/bin/env bash
-# Verify that each file carries a build-provenance attestation signed by
-# release-cache-warm.yml running on main (or on CACHE_PROVENANCE_SOURCE_REF).
-#
-# The release legs restore whisper-cli (a shipped, Authenticode-signed binary)
-# and artifact-signing-cli (which receives the Azure signing credentials) from
-# caches written on main. Anything that runs on main can write such a cache,
-# including npm lifecycle scripts of CI's `pnpm install`, so a restored file
-# is only trusted once its attestation names the warm workflow and the main
-# ref. A leg that gets a non-zero exit here discards the restored files and
-# builds from source.
-#
-# Usage: scripts/ci/verify-cache-provenance.sh <file>...
-# Needs GH_TOKEN (contents: read) and GITHUB_REPOSITORY.
 set -euo pipefail
 
 REPO="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is not set}"

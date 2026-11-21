@@ -47,8 +47,6 @@ test("quotes values a plain scalar would not survive", () => {
       role: null,
       body: "Body.",
     });
-    // Whatever the quoting, the block stays ONE line per key and reads back
-    // byte-identical - that is the contract the app's writer shares.
     const lines = text.split("\n");
     expect(lines[0]).toBe("---");
     expect(lines[2]).toBe("---");
@@ -65,9 +63,6 @@ test("a job description with no frontmatter is all body", () => {
 });
 
 test("writes a plain value plain and quotes one that carries structure", () => {
-  // The exact bytes a newly created agent's file is made of: the block reads
-  // like two facts, not like config, and a value a bare scalar could not
-  // survive is written JSON-style so it reads back byte-identical.
   expect(
     composeJobDescription({ industry: "Healthcare", role: null, body: "" }),
   ).toBe("---\nindustry: Healthcare\n---\n");
@@ -87,7 +82,6 @@ test("a rule in the middle of a document is a rule, not a block", () => {
 });
 
 test("an opening fence that never closes leaves the whole file as the body", () => {
-  // A job description caught mid-edit, or an excerpt cut by a length cap.
   const text = "---\nindustry: Healthcare\nstill typing";
 
   expect(parseJobDescription(text)).toEqual({
@@ -114,7 +108,6 @@ test("one fact alone still earns the block, and none earns nothing", () => {
 });
 
 test("a body that merely opens with a rule is not frontmatter", () => {
-  // `---` then prose then `---` parses as YAML, but not as a map: keep the text.
   const text = "---\njust a rule, then words\n---\n\nThe rest.";
 
   expect(parseJobDescription(text)).toEqual({

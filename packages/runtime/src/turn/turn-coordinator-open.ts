@@ -3,12 +3,6 @@ import { openTurnApprovals, type TurnApprovals } from "./turn-approvals";
 import type { TurnCoordinatorInput } from "./turn-coordinator";
 import { receiveTurnMessage } from "./turn-coordinator-message";
 
-/**
- * How Houston's turn was admitted: its approval records open with the
- * message's answers applied, the message refused (a nonce reused for other
- * words, which a standing host answers 409 before any turn starts), or the
- * records unreadable. Only the first lets anything that needs the host run.
- */
 export type CoordinatorAdmission =
   | { kind: "admitted"; approvals: TurnApprovals }
   | { kind: "refused"; code: ApprovalMessageRefusal["code"] }

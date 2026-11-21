@@ -1,7 +1,3 @@
-// The share dialog's primary button through each state the person can meet:
-// no LinkedIn on the deployment, connect then post, a post made, LinkedIn
-// dropping the connection, and the phone's share sheet.
-
 import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
@@ -38,7 +34,6 @@ const ready = (connected: boolean): ConnectionRead => ({
     : { connected: false },
 });
 
-/** As `useLinkedInPost` reads the attempt. */
 const phaseOf = (state: ShareDialogState): ConnectPhase =>
   !state.connect ? "idle" : state.connect.minting ? "minting" : "waiting";
 
@@ -107,7 +102,6 @@ describe("the share dialog's primary button", () => {
       ...tag,
       watch,
     });
-    // Busy from the click on: a second click cannot mint a second state.
     deepStrictEqual(step(true, minting, ready(false)), {
       kind: "connect",
       phase: "minting",
@@ -124,7 +118,6 @@ describe("the share dialog's primary button", () => {
       linkedInConnectPollMs(watch, { connected: false }, 1),
       2_000,
     );
-    // The poll reads connected: it stops, and the button becomes Post.
     const landed = ready(true);
     deepStrictEqual(
       linkedInConnectPollMs(
@@ -143,7 +136,6 @@ describe("the share dialog's primary button", () => {
       name: "Ada",
       posting: false,
     });
-    // The space's post slot says a post is out.
     const posting = shareDialogReducer(ended, { type: "posting" });
     deepStrictEqual(step(true, posting, landed, desktop, true), {
       kind: "post",
@@ -175,7 +167,6 @@ describe("the share dialog's primary button", () => {
       type: "postRefused",
       line: { kind: "reconnect" },
     });
-    // The surface marks the cached connection disconnected.
     deepStrictEqual(step(true, refused, ready(false)), {
       kind: "connect",
       phase: "idle",

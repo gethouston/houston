@@ -10,13 +10,6 @@ import {
   handleAssistant,
 } from "./assistant";
 
-/**
- * Personal-assistant discovery. What these pin: the answer is an ADDRESS on the
- * existing per-agent surface (no new chat wire), the hidden agent is created on
- * the first ask and the second ask changes nothing, and a gateway-fronted pod
- * refuses rather than inventing a second discovery.
- */
-
 const WORKSPACE: Workspace = {
   id: "Personal",
   ownerUserId: "local-owner",
@@ -69,8 +62,6 @@ test("discovery names the hidden agent and the conversation to open", async () =
     agent: `Personal/${ASSISTANT_AGENT_NAME}`,
     conversation: ASSISTANT_CONVERSATION_ID,
   });
-  // A dot-named agent: list-hidden by construction, and no user action can
-  // create or rename onto it.
   expect(ASSISTANT_AGENT_NAME.startsWith(".")).toBe(true);
   expect(d.ensureSyntheticAgentDir).toHaveBeenCalledWith(
     `Personal/${ASSISTANT_AGENT_NAME}` satisfies AgentId,
@@ -83,7 +74,6 @@ test("a second call is idempotent — same address, no second agent", async () =
   const second = await get(d);
   expect(second.status).toBe(200);
   expect(second.body).toEqual(first.body);
-  // The create is a mkdir -p, so asking again converges instead of failing.
   expect(d.ensureSyntheticAgentDir).toHaveBeenCalledTimes(2);
 });
 
@@ -95,10 +85,6 @@ test("a gateway-fronted pod refuses: the gateway owns discovery there", async ()
 
 test("a host with no agent tree says so instead of handing out a dead address", async () => {
   const res = await get(deps({ ensureSyntheticAgentDir: undefined }));
-  // 501, not 503: a host with no agent tree will NEVER grow one mid-session, so
-  // this is "not implemented here", the same answer the gateway-fronted branch
-  // gives. As a 503 it was retried eight times over ten seconds by the desktop
-  // transport before the client's classifier ever saw it.
   expect(res.status).toBe(501);
   expect(res.body).toMatchObject({ code: "assistant_unavailable" });
 });

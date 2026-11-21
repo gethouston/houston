@@ -10,15 +10,8 @@ import { defineRouteFamily } from "./registry";
 
 const ROOT = /^\/sandbox\/transcripts\/conversations\/([^/]+)(?:\/(.*))?$/;
 
-/** The conversation this family addresses; every command hangs off it. */
 const CONVERSATION = "/sandbox/transcripts/conversations/:conversationId";
 
-/**
- * The six shadow commands, plus the prefix they are the whole of: anything
- * else under a conversation is a MALFORMED command (400), not somebody else's
- * route, and saying so is what tells a runtime its shadow write was wrong
- * rather than unauthenticated.
- */
 defineRouteFamily({
   group: "sandbox-transcripts",
   members: [
@@ -29,10 +22,6 @@ defineRouteFamily({
     { method: "POST", path: `${CONVERSATION}/truncate` },
     { method: "POST", path: `${CONVERSATION}/repair` },
   ],
-  // The last pattern claims the prefix WITHOUT decoding the conversation id:
-  // an id `decodeURIComponent` throws on would otherwise match nothing here
-  // and meet the 401 wall, telling a runtime whose sandbox token is perfectly
-  // valid that it is unauthenticated.
   owns: [
     CONVERSATION,
     `${CONVERSATION}/`,

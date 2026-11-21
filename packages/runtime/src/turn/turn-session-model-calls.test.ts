@@ -11,11 +11,6 @@ import type {
 } from "../backends/types";
 import { runTurn, type TurnDirectories } from "./turn-session";
 
-/**
- * A pooled turn returns its model-call report on the outcome, the terminal
- * frame's source (turn-terminal.ts), whether the prompt succeeded or threw.
- */
-
 vi.mock("./turn-runtime", () => ({
   createTurnModelRuntime: async () => ({
     modelRuntime: {},
@@ -104,7 +99,6 @@ test("a clean pooled turn returns its calls on the outcome", async () => {
 });
 
 test("a pooled turn that threw keeps what it measured", async () => {
-  // The failure path settles on its typed provider_error frame.
   const outcome = await run(true);
   expect(outcome.modelCalls?.calls).toEqual([CALL]);
 });

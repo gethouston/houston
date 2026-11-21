@@ -41,8 +41,6 @@ export function startedMissionFromMcpText(
   try {
     payload = JSON.parse(text);
   } catch {
-    // Text that only starts like a receipt (a tool's prose, a clipped
-    // result) is a result without one: the mission card is simply not drawn.
     return;
   }
   return startedMissionFromPayload(payload);

@@ -1,8 +1,3 @@
-// Real-DOM mount of the conversation log, pinning what ConversationViewportPin
-// adds to use-stick-to-bottom: a log held at its latest message stays there
-// when its VIEWPORT resizes (a composer-slot card appearing or leaving), and a
-// log the person scrolled up in is never moved.
-
 import { strict as assert } from "node:assert";
 import { beforeEach, describe, it } from "node:test";
 import {
@@ -94,7 +89,6 @@ describe("ConversationViewportPin", () => {
     const pane = log();
     scrollTo(pane, maxScroll());
     await settle();
-    // The browser clamps scrollTop down and reports it as a scroll.
     resizeViewport(pane, 550);
     scrollTo(pane, layout.scrollTop);
     await settle();

@@ -1,30 +1,5 @@
 import { build } from "esbuild";
 
-// Externalize ONLY what genuinely cannot live inside the bundle. Everything
-// else is inlined: a worker VM boot used to spend 7-10s of its ~15s start in
-// Node module RESOLUTION (getPackageScopeConfig/internalModuleStat walks over
-// the Kata guest filesystem, profiled 2026-08-27) because every npm import
-// stayed external. The same code as one self-contained file evaluates in
-// ~0.3s.
-//  - @anthropic-ai/claude-agent-sdk: lazily imported, and it spawns the
-//    `claude` subprocess from its own package directory — bundling would
-//    break that file layout. Cloud never reaches it (Anthropic is OFF there);
-//    selfhost resolves it from node_modules as before.
-//  - @silvia-odwyer/photon-node: pi's image-resize wasm host locates
-//    photon_rs_bg.wasm with __dirname — bundled, that resolves nowhere and
-//    every image an agent reads silently degrades to "[Image omitted…]".
-//    Lazily imported; resolves from the image's node_modules.
-//  - @earendil-works/pi-coding-agent: its provider registry lazy-loads
-//    per-provider auth/stream chunks with a RUNTIME-COMPUTED relative
-//    import specifier esbuild cannot rewrite. Inlined, that import resolves
-//    beside the bundle ("/app/dist/runtime/openai-codex.js") and every pi
-//    OAuth derivation for a chunked provider dies at turn time. External,
-//    pi resolves its own chunks from its package directory as designed.
-//  - playwright-core: reads its own package.json through __dirname (absent
-//    in this ESM bundle), requires optional chromium-bidi modules esbuild
-//    cannot resolve, and locates its browsers relative to its package.
-//    Lazily imported by the browser tool on first use only.
-//  - *.node native addons load via the filesystem by design.
 const externalImport =
   /^@anthropic-ai\/claude-agent-sdk(?:\/|$)|^@silvia-odwyer\/photon-node(?:\/|$)|^@earendil-works\/pi-coding-agent(?:\/|$)|^playwright-core(?:\/|$)|\.node$/;
 
@@ -51,18 +26,7 @@ const shared = {
   banner,
   plugins: [externalNodeModules],
   logLevel: "info",
-  // External .map next to each bundle. Node does NOT load it (no
-  // --enable-source-maps, see the Dockerfile); the Sentry reporter reads it
-  // on demand so events point at the original TS files instead of bundle
-  // offsets.
   sourcemap: true,
-  // Mappings only, no inlined sources: node parses the whole .map at module
-  // load and keeps it for the life of the process, and `sourcesContent` was
-  // 21-26 MB of the 28-35 MB maps — about 100 MB of resident memory per
-  // engine process (host and runtime each) on the production Node 22 image.
-  // Nothing reads it: the images COPY `packages/*` beside the bundles, and the
-  // Sentry reporter (runtime-client/src/sentry/frames.ts) reads source context
-  // from those files on disk.
   sourcesContent: false,
 };
 
@@ -79,17 +43,9 @@ await Promise.all([
   }),
 ]);
 
-// Self-check: the deliberate externals must survive as import specifiers in
-// the emitted runtime bundle. If a refactor inlines one, image reads (photon
-// wasm) or the Anthropic backend (SDK subprocess layout) break SILENTLY at
-// turn time — nothing a boot probe can see — so fail the build instead.
 {
   const { readFileSync } = await import("node:fs");
   const emitted = readFileSync("dist/runtime/main.mjs", "utf8");
-  // photon-node is no longer asserted here: it is imported only from within
-  // pi, which is itself external — its specifier lives in pi's package files,
-  // not this bundle. The resolve filter above still forces it external if any
-  // bundled module ever imports it directly.
   for (const specifier of [
     "@anthropic-ai/claude-agent-sdk",
     "@earendil-works/pi-coding-agent",
@@ -101,8 +57,6 @@ await Promise.all([
       );
     }
   }
-  // The maps must stay mappings-only (see `sourcesContent` above): an inlined
-  // source tree would silently put the memory back on every engine process.
   for (const map of ["dist/host/main.mjs.map", "dist/runtime/main.mjs.map"]) {
     const parsed = JSON.parse(readFileSync(map, "utf8"));
     if (Array.isArray(parsed.sourcesContent)) {

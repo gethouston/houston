@@ -67,7 +67,6 @@ describe("browser hand-off card", () => {
     const done = render({ state: "done" });
     strictEqual(done.includes("browser-handoff-live-dot"), false);
     match(done, /text-success-ink/);
-    // A card that mounts already settled does not animate in.
     strictEqual(done.includes("browser-handoff-swap-in"), false);
   });
 });

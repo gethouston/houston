@@ -1,16 +1,5 @@
-/**
- * The org chart's number and chart geometry. Pure and DOM-free.
- */
-
-/** U+202F, the narrow no-break space SI digit grouping uses. */
 const THIN_GROUP = String.fromCharCode(0x202f);
 
-/**
- * A number with its digits grouped by a thin space (12 140), the SI way: it
- * reads the same in every language the app ships, where a comma or a period
- * would mean a thousands mark in one and a decimal point in another. The
- * decimal mark stays the locale's own.
- */
 export function formatCount(
   value: number,
   locale: string,
@@ -28,18 +17,11 @@ const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
 
 export interface WorkFigure {
-  /** The formatted number, locale decimal mark included. */
   value: string;
-  /** The numeric value the unit's plural agrees with. */
   count: number;
   unit: "hours" | "minutes";
 }
 
-/**
- * Time worked as one figure with its unit. Under an hour it counts minutes
- * (a few minutes of work is not "0 hours"); under ten hours it keeps one
- * decimal; above that whole hours, the way a month of work is read.
- */
 export function formatWork(ms: number, locale: string): WorkFigure {
   if (ms > 0 && ms < HOUR_MS) {
     const minutes = Math.max(1, Math.round(ms / MINUTE_MS));
@@ -56,23 +38,14 @@ export function formatWork(ms: number, locale: string): WorkFigure {
 }
 
 export interface AreaChartGeometry {
-  /** `points` for the polyline. */
   line: string;
-  /** `points` for the area polygon under it, closed along the baseline. */
   area: string;
-  /** The baseline's y. */
   base: number;
   end: { x: number; y: number };
 }
 
 const fixed = (n: number) => Number(n.toFixed(1));
 
-/**
- * The hero's area chart inside a `width` x `height` box: 3px in from either
- * side so the end dot is never clipped, the peak at 8% under the top and the
- * baseline on the floor. The scale starts at zero, so a quiet day sits on
- * the baseline and a silent month lies flat along it rather than floating.
- */
 export function areaChart(
   values: readonly number[],
   width: number,
@@ -96,11 +69,6 @@ export function areaChart(
   };
 }
 
-/**
- * A calendar label for a UTC day (`YYYY-MM-DD`). Pinned to UTC because usage
- * is bucketed by UTC day: the viewer's own zone would name every day one
- * off west of Greenwich.
- */
 export function dayLabel(
   language: string,
   day: string,

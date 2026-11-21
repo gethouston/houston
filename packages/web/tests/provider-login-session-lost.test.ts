@@ -2,12 +2,6 @@ import { isProviderLoginSessionLostError } from "@houston/engine-adapter/provide
 import { EngineError } from "@houston/runtime-client";
 import { expect, test } from "vitest";
 
-// HOUSTON-APP-56B: a relayed Codex code (or a pasted setup token) submitted
-// after the runtime dropped the login answers `400 {"error":"no active login
-// for <provider>"}`. That exact (status, reason) pair is an expected state the
-// surfaces handle with authored copy; every other shape must keep surfacing
-// as a real error, so the classifier is pinned on both sides.
-
 test("matches the runtime's no-active-login 400 on the runtime client shape", () => {
   const err = new EngineError(
     400,

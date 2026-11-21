@@ -4,15 +4,6 @@ import { dirname, resolve } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-/**
- * `lib/engine.ts` boots the adapter, and stores read it while they load
- * (`stores/agent-provisioning` calls `whenEngineReady()` at module scope). If
- * the engine's own imports reach a store, the store evaluates first, finds the
- * engine half-initialized and throws `Cannot access '_ready' before
- * initialization`: vite dev's native ESM never paints the shell (the bundle
- * reorders modules and hides it). Guarded on source, the way the node runner
- * reads `.tsx` modules elsewhere.
- */
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../src");
 const IMPORT = /^\s*(?:import|export)\s+(?!type\b)[^;]*?from\s+"(\.[^"]+)"/gms;
 const SIDE_EFFECT = /^\s*import\s+"(\.[^"]+)"/gm;

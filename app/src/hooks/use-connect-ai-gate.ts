@@ -1,13 +1,3 @@
-/**
- * Feeds the live signals to the ONE connect-AI decision
- * (`lib/connect-ai-gate.ts`), for the chat composer and the first-day start
- * button and banner alike, and supplies the connect target, the AI Hub.
- *
- * Reactivity is free: the provider-status query is invalidated on
- * `ProviderLoginComplete`, so connecting an AI flips the gate back with no
- * manual wiring.
- */
-
 import { useCallback } from "react";
 import {
   type ConnectAiGateState,
@@ -23,18 +13,15 @@ import { useProviderCatalog } from "./use-provider-catalog";
 import { useProviderStatuses } from "./use-provider-statuses";
 
 export interface ConnectAiGate extends ConnectAiGateState {
-  /** Opens the AI Hub. */
   connect: () => void;
 }
 
-/** A provider scan as `useProviderStatuses` returns it. */
 export interface ConnectAiScan {
   statuses: Record<string, ProviderConnectionStatus>;
   isLoading: boolean;
   isError: boolean;
 }
 
-/** The gate over a scan the caller already holds (the chat panel's). */
 export function useConnectAiDecision(scan: ConnectAiScan): ConnectAiGate {
   const { capabilities, isLoading: capabilitiesLoading } = useCapabilities();
   const { isReady: catalogReady } = useProviderCatalog();
@@ -53,7 +40,6 @@ export function useConnectAiDecision(scan: ConnectAiScan): ConnectAiGate {
   return { ...state, connect };
 }
 
-/** The gate off the shared provider-status query, for a standalone surface. */
 export function useConnectAiGate(): ConnectAiGate {
   return useConnectAiDecision(useProviderStatuses());
 }

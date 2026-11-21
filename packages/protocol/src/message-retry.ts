@@ -8,7 +8,6 @@ export type GrantableOperation = z.infer<typeof GrantableOperationSchema>;
 
 export const MESSAGE_ADMISSIONS_DIRECTORY = "message-admissions";
 
-/** Shared by the runtime writer and the host's pre-approval read. */
 export interface MessageAdmissionReceipt {
   version: 1;
   fingerprint: string;
@@ -35,7 +34,6 @@ export function isMessageFingerprint(value: unknown): value is string {
   return typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 }
 
-/** Hash this identity for a filesystem-safe receipt basename. */
 export function messageAdmissionIdentity(
   conversationId: string,
   nonce: string,
@@ -43,7 +41,6 @@ export function messageAdmissionIdentity(
   return JSON.stringify([conversationId, nonce]);
 }
 
-/** Absent is an ordinary send; malformed is a refusal before any receipt mutation. */
 export function parseMessageNonce(value: unknown): string | undefined | false {
   if (value === undefined) return undefined;
   return typeof value === "string" && value.length > 0 && value.length <= 256
@@ -51,7 +48,6 @@ export function parseMessageNonce(value: unknown): string | undefined | false {
     : false;
 }
 
-/** Stable sender intent, excluding refreshed gateway context and token bytes. */
 export function messageRetryContent(
   body: Record<string, unknown>,
   actor: string,

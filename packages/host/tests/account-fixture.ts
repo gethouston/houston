@@ -80,12 +80,6 @@ export async function startAccountServer(
   };
 }
 
-/**
- * A vfs whose reads answer with the state they saw when they started and only
- * then return. It widens the preference document's load, merge, save window so
- * a second, unserialized writer of a DIFFERENT key would save over the first
- * one's base.
- */
 export function slowReadVfs(): Vfs {
   const inner = new MemoryVfs();
   return {

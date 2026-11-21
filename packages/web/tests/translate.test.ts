@@ -13,11 +13,6 @@ type FinalResult = {
   data?: { usage?: { context_tokens: number } | null };
 };
 
-/**
- * A fake runtime client whose `streamEvents` replays a fixed list of wire events
- * synchronously, then closes. `sendMessage` is a no-op. Enough to drive one turn
- * through `streamTurn` without a real engine.
- */
 function fakeEngine(events: WireEvent[]): HoustonEngineClient {
   return {
     async streamEvents(_id: string, opts: { onEvent: (e: WireEvent) => void }) {
@@ -27,7 +22,6 @@ function fakeEngine(events: WireEvent[]): HoustonEngineClient {
   } as unknown as HoustonEngineClient;
 }
 
-/** Collect every feed item the turn emits on the in-process bus. */
 function collectFeed(): { items: unknown[]; stop: () => void } {
   const items: unknown[] = [];
   const off = bus.on((e) => {
@@ -37,12 +31,6 @@ function collectFeed(): { items: unknown[]; stop: () => void } {
   return { items, stop: off };
 }
 
-// THE REGRESSION: a completed turn's board status must reach the injected
-// (cloud-aware) setter — NOT a localStorage write the board never reads. Before
-// the fix, the terminal status flipped the card in localStorage while the board
-// read the host, so the card hung in "running" forever. Every clean finish now
-// settles `needs_you` (the engine never writes `done`; that move belongs to the
-// user alone).
 test("a completed turn drives the activity setter running -> needs_you", async () => {
   const statuses: string[] = [];
   const setStatus = async (s: string) => {
@@ -63,7 +51,6 @@ test("a completed turn drives the activity setter running -> needs_you", async (
   feed.stop();
 
   expect(statuses).toEqual(["running", "needs_you"]);
-  // The agent's text reached the feed as a final result (the turn really ran).
   expect(
     feed.items.some(
       (i) => (i as { feed_type?: string })?.feed_type === "final_result",
@@ -88,9 +75,6 @@ test("an errored turn drives the activity setter running -> error", async () => 
   expect(statuses).toEqual(["running", "error"]);
 });
 
-// The context-usage indicator's data path: a `usage` frame (emitted before
-// `done`) must ride along on the turn's `final_result`. Before this, the new
-// engine dropped usage entirely and the indicator was permanently empty.
 test("a turn's usage frame is attached to the final_result", async () => {
   const feed = collectFeed();
 
@@ -154,7 +138,6 @@ test("historyToFeed replays persisted usage as a final_result, once, with no ext
     | FinalResult
     | undefined;
   expect(final?.data?.usage?.context_tokens).toBe(999);
-  // The assistant text still renders exactly once; final_result only flushes.
   expect(out.filter((i) => i.feed_type === "assistant_text")).toHaveLength(1);
 });
 
@@ -163,8 +146,6 @@ test("historyToFeed emits no final_result when the message has no usage", () => 
   expect(out.some((i) => i.feed_type === "final_result")).toBe(false);
 });
 
-// A failing persist must surface (a feed system_message), never be swallowed —
-// the beta no-silent-failure rule.
 test("a failing status persist surfaces in the feed, not silently", async () => {
   const setStatus = async (s: string) => {
     if (s === "needs_you") throw new Error("host unreachable");
@@ -191,12 +172,6 @@ test("a failing status persist surfaces in the feed, not silently", async () => 
   expect(surfaced).toBe(true);
 });
 
-// HOU-676: a logged-out send is refused by the runtime (409) BEFORE the
-// message reaches the engine. That must settle as the typed unauthenticated
-// card — stamped with the chat's provider and carrying the refused prompt so
-// "Send again" can resend it — never as the raw system message that only fed
-// the auto-dismissing store-driven reconnect card (which vanished on
-// reconnect and dead-ended the undelivered message).
 test("a refused not-connected send surfaces the typed reconnect card with provider + prompt", async () => {
   const statuses: string[] = [];
   const feed = collectFeed();
@@ -235,21 +210,14 @@ test("a refused not-connected send surfaces the typed reconnect card with provid
     message: "No provider connected. Connect an AI provider first.",
     failed_prompt: "hey",
   });
-  // No raw system_message duplicate — the card is the whole surface.
   expect(
     feed.items.some(
       (i) => (i as { feed_type?: string })?.feed_type === "system_message",
     ),
   ).toBe(false);
-  // A handled state: the board card lands on needs_you, never the red error.
   expect(statuses).toEqual(["running", "needs_you"]);
 });
 
-// HOU-666: loadChatHistory must only treat "conversation not found" (404 — a
-// fresh chat whose first turn hasn't persisted yet) as an empty conversation.
-// Every other failure (network drop, auth, 5xx) must propagate to the app's
-// `call()` wrapper so the user gets a toast + Report-bug, never a fake empty
-// chat. The classifier is the seam that decides which is which.
 test("isConversationNotFound: only an engine 404 reads as no-history-yet", async () => {
   const { isConversationNotFound } = await import(
     "@houston/engine-adapter/translate"
@@ -261,8 +229,6 @@ test("isConversationNotFound: only an engine 404 reads as no-history-yet", async
       new EngineError(404, '{"error":"conversation not found"}'),
     ),
   ).toBe(true);
-  // Real failures keep throwing: server error, auth, and transport drops
-  // (fetch rejects with a plain TypeError, not an EngineError).
   expect(isConversationNotFound(new EngineError(500, "boom"))).toBe(false);
   expect(isConversationNotFound(new EngineError(401, "unauthorized"))).toBe(
     false,

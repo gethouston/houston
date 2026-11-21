@@ -3,16 +3,6 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-// Pins the translated store-skill trees (store/agents-i18n/<lang>/<id>/) to
-// the English source (store/agents/<id>/) via the slug/title map
-// (store/skills-i18n.json). A store skill that is added, renamed, or
-// re-described fails here until its es/pt translations exist and the
-// template payloads are regenerated (`node scripts/gen-agent-templates.mjs`).
-//
-// Frontmatter is field-extracted by regex, not a YAML parser: the `yaml`
-// package isn't resolvable from app tests, and these files are generated
-// under our own conventions (single-line quoted scalars).
-
 const ROOT = join(import.meta.dirname, "..", "..");
 const STORE = join(ROOT, "store", "agents");
 const STORE_I18N = join(ROOT, "store", "agents-i18n");
@@ -127,7 +117,6 @@ describe("translated store skill trees stay in sync with store/agents", () => {
             `${id}.${lang}.json misses seed for ${entry[lang].slug}`,
           );
         }
-        // Token rewrite left no English slug references behind anywhere.
         for (const [rel, content] of Object.entries(payload.seeds)) {
           for (const enSlug of Object.keys(payload.skillRenames)) {
             ok(

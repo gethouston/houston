@@ -3,19 +3,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 
-/**
- * Contract test for the per-agent pi-runtime container image
- * (packages/runtime/Dockerfile + Dockerfile.dockerignore + docker-compose.yml).
- *
- * We cannot run `docker build` here (no daemon), so instead we assert the
- * Dockerfile encodes the SAME contract the runtime source actually depends on:
- * the port it binds, the env vars config.ts reads, the entrypoint, the health
- * route the server serves, and the sibling workspace dependency. If the engine
- * drifts (e.g. someone renames HOUSTON_WORKSPACE_DIR or moves /health), these
- * assertions fail instead of the breakage surfacing only at deploy time.
- */
-
-// This test lives at packages/runtime/, so the engine dir is its own directory.
 const ENGINE = dirname(fileURLToPath(import.meta.url));
 
 const dockerfile = readFileSync(join(ENGINE, "Dockerfile"), "utf8");
@@ -39,7 +26,6 @@ test("uses the pinned Node Debian base image", () => {
 });
 
 test("binds 0.0.0.0 on the engine port 4317", () => {
-  // The default port the engine listens on, straight from config.ts.
   const portDefault = engineConfig.match(/HOUSTON_PORT \|\| (\d+)/);
   expect(portDefault?.[1]).toBe("4317");
 
@@ -49,7 +35,6 @@ test("binds 0.0.0.0 on the engine port 4317", () => {
 });
 
 test("sets the data + workspace mount env vars config.ts reads", () => {
-  // Whatever env names config.ts consumes, the Dockerfile must set the same.
   expect(engineConfig).toContain("HOUSTON_DATA_DIR");
   expect(engineConfig).toContain("HOUSTON_WORKSPACE_DIR");
 
@@ -64,15 +49,12 @@ test("installs common shell tools for the agent", () => {
 
 test("installs deps from the frozen pnpm lockfile", () => {
   expect(dockerfile).toContain("pnpm install --frozen-lockfile");
-  // The lockfile referenced must exist for that command to be reproducible.
   expect(() =>
     readFileSync(join(ENGINE, "..", "..", "pnpm-lock.yaml")),
   ).not.toThrow();
 });
 
 test("vendors the workspace sibling dep the engine declares", () => {
-  // The engine depends on @houston/runtime-client via a workspace path; the image
-  // must copy that sibling in or the frozen install can't resolve it.
   expect(enginePkg.dependencies?.["@houston/runtime-client"]).toBe(
     "workspace:*",
   );
@@ -100,14 +82,12 @@ test("does not keep alternate runtime Docker images", () => {
 });
 
 test("HEALTHCHECK targets the /health route the server serves", () => {
-  // The server only treats /health as a public, unauthenticated liveness route.
   expect(engineServer).toContain('path === "/health"');
   expect(dockerfile).toContain("HEALTHCHECK");
   expect(dockerfile).toMatch(/\/health/);
 });
 
 test("runs as a non-root user", () => {
-  // Last USER directive before CMD must not be root.
   const userDirectives = [...dockerfile.matchAll(/^USER\s+(\S+)/gm)].map(
     (m) => m[1],
   );

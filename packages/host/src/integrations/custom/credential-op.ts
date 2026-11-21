@@ -15,10 +15,6 @@ export async function setCustomCredential(
 ): Promise<CustomIntegrationView> {
   const slug = def.slug;
   const { executor, states } = await deps.host.ensure();
-  // Providing a key IS declaring the service needs one: heal an OpenAPI def
-  // with no collectible method (spec without a security scheme) instead of
-  // dead-ending the save — covers defs added as `auth: "none"` too, which
-  // compileDef's own ensure call never sees.
   await deps.host.ensureCollectibleAuth(executor, def);
   const methods = await deps.host.authMethods(executor, slug);
   const method = methods[0];
@@ -38,13 +34,6 @@ export async function setCustomCredential(
       "the credential value is empty",
     );
   }
-  // Key-first validation is ADVISORY, never a gate: the declared placement
-  // is a per-service guess (an MCP server may want a different header than
-  // the standard Bearer), so a failed probe with a REAL key would otherwise
-  // hard-block saving with no path forward. The verdict rides the returned
-  // view as `verified` so the UI picks confirmation vs warning copy; a
-  // genuinely bad key still surfaces on first use, where the execute
-  // failure carries the request_credential recovery hint.
   const verdict = await executor.connections
     .validate({
       owner: "org",

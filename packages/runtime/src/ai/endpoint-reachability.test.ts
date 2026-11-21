@@ -3,9 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, expect, test } from "vitest";
 
-// config reads HOUSTON_DATA_DIR at import time, and vitest gives each test
-// file its own module registry — so point the data dir at a tmpdir BEFORE the
-// dynamic import to keep the endpoint writes out of the real ~/.houston-ts.
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-reach-"));
 const { clearCustomEndpointConfig, setCustomEndpointConfig } = await import(
   "./openai-compatible"
@@ -28,8 +25,6 @@ test("no endpoint configured → nothing to probe, not reachable", async () => {
 
 test("optimistic before the first probe: a configured endpoint reads reachable until a probe says otherwise", () => {
   setCustomEndpointConfig({ baseUrl: "http://127.0.0.1:1337/v1", model: "m" });
-  // The status routes warm the cache before building rows; an unwarmed read
-  // (boot, config just changed) must not flash a working server as down.
   expect(endpointReachableCached()).toBe(true);
 });
 
@@ -37,7 +32,7 @@ test("a failed probe flips the endpoint to unreachable; a later success flips it
   setCustomEndpointConfig({ baseUrl: "http://127.0.0.1:1337/v1", model: "m" });
   expect(await refreshEndpointReachability(async () => false)).toBe(false);
   expect(endpointReachableCached()).toBe(false);
-  resetEndpointReachability(); // step past the TTL
+  resetEndpointReachability();
   expect(await refreshEndpointReachability(async () => true)).toBe(true);
   expect(endpointReachableCached()).toBe(true);
 });
@@ -74,7 +69,7 @@ test("a base-URL change invalidates the cached verdict (the old server's answer 
   await refreshEndpointReachability(async () => false);
   expect(endpointReachableCached()).toBe(false);
   setCustomEndpointConfig({ baseUrl: "http://127.0.0.1:8080/v1", model: "m" });
-  expect(endpointReachableCached()).toBe(true); // optimistic until probed
+  expect(endpointReachableCached()).toBe(true);
   expect(await refreshEndpointReachability(async () => false)).toBe(false);
   expect(endpointReachableCached()).toBe(false);
 });
@@ -89,23 +84,22 @@ test("a reconfiguration mid-probe does NOT adopt the old URL's in-flight answer"
   const slowProbe = async (baseUrl: string) => {
     probed.push(baseUrl);
     await gate;
-    return false; // the OLD server is down
+    return false;
   };
   const oldRefresh = refreshEndpointReachability(slowProbe);
-  // Mid-probe the user points the config at a NEW server that is up.
   setCustomEndpointConfig({ baseUrl: "http://127.0.0.1:8080/v1", model: "m" });
   const newRefresh = refreshEndpointReachability(async (baseUrl) => {
     probed.push(baseUrl);
     return true;
   });
   (release as () => void)();
-  expect(await newRefresh).toBe(true); // fresh probe of the NEW URL, not the old promise
+  expect(await newRefresh).toBe(true);
   await oldRefresh;
   expect(probed).toEqual([
     "http://127.0.0.1:1337/v1",
     "http://127.0.0.1:8080/v1",
   ]);
-  expect(endpointReachableCached()).toBe(true); // verdict keyed to the new URL
+  expect(endpointReachableCached()).toBe(true);
 });
 
 test("probes are keyed to the configured URL", async () => {

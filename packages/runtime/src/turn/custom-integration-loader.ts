@@ -8,7 +8,6 @@ type CustomIntegrationModules = [
 
 let processModules: Promise<CustomIntegrationModules> | undefined;
 
-/** Load the custom-integration engine once, retrying after a boot-time miss. */
 export function preloadCustomIntegrationModules(): Promise<CustomIntegrationModules> {
   if (processModules) return processModules;
   const load = Promise.all([

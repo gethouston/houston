@@ -22,7 +22,6 @@ test("replaces an existing title line in place", () => {
   const out = withSkillTitle(input, "Create an LOI");
   assert.match(out, /^title: "Create an LOI"$/m);
   assert.doesNotMatch(out, /Old name/);
-  // Everything else survives byte-for-byte.
   assert.match(out, /^name: create-an-loi$/m);
   assert.match(out, /^featured: yes$/m);
   assert.ok(out.endsWith("## Procedure\nDo the thing.\n"));

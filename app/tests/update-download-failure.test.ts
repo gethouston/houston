@@ -8,9 +8,6 @@ import {
   updateDownloadOutcome,
 } from "../src/lib/update-download-failure.ts";
 
-// PRODUCT-1727: the shell's resumable download rejects with a typed failure;
-// the frontend routes `network` to the quiet offline class and everything
-// else to a real report, with the byte position in the message either way.
 describe("toUpdateDownloadError", () => {
   it("reads the shell's typed rejection", () => {
     const error = toUpdateDownloadError({
@@ -99,9 +96,6 @@ describe("describeDownloadFailure", () => {
   });
 });
 
-// The release-feed check's reqwest messages: transport failures are the
-// device's link, a 404 / bad manifest is a leaked staging build and must
-// keep filing as a bug.
 describe("isUpdateNetworkFailure", () => {
   it("matches reqwest's transport shapes", () => {
     for (const message of [
@@ -127,10 +121,6 @@ describe("isUpdateNetworkFailure", () => {
   });
 });
 
-// Two callers of one release (the hook remounts across the mobile
-// breakpoint, on identity change and on reload while the shell keeps
-// downloading) must not both report, and a full disk must not be retried
-// every poll.
 describe("updateDownloadOutcome", () => {
   it("skips a download the shell is already running", () => {
     const outcome = updateDownloadOutcome({

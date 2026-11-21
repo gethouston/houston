@@ -5,9 +5,6 @@ import { pathToFileURL } from "node:url";
 import type { LinkAttempt, PendingLinkHandle } from "@houston/sdk/identity";
 import type { Session } from "../src/lib/identity/session.ts";
 
-// Firebase shares one session across a browser's tabs: another tab's sign-out
-// reaches this one only through Firebase's observers, never through this
-// tab's sign-out. The real binding and SDK run against a fake Firebase.
 const world = {
   uid: null as string | null,
   observers: [] as ((session: Session | null) => void)[],
@@ -83,7 +80,6 @@ before(async () => {
 });
 const realFetch = globalThis.fetch;
 
-/** Begin a Microsoft link and hold its request in flight. */
 async function linkInFlight() {
   const started = new Promise<void>((resolve) => {
     world.linkStarted = resolve;

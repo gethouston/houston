@@ -7,11 +7,6 @@ import {
   readRemoteMissionStatus,
 } from "./mission-fanout";
 
-/**
- * The caller-side budget: what ONE agent has out across every board. A per-board
- * cap cannot see it, which is the whole reason this ledger exists.
- */
-
 const CALLER = "ws/Helper";
 const ROOT = "workspaces/ws/Dobby";
 
@@ -33,7 +28,6 @@ test("a local start stops counting once its row is no longer running", async () 
   await saveActivities(vfs, ROOT, [row("m-1", "running"), row("m-2", "done")]);
   missionFanout.record(CALLER, { missionId: "m-1", boardRoot: ROOT });
   missionFanout.record(CALLER, { missionId: "m-2", boardRoot: ROOT });
-  // m-3 was deleted from the board entirely.
   missionFanout.record(CALLER, { missionId: "m-3", boardRoot: ROOT });
   expect(await missionFanout.running(CALLER, vfs)).toBe(1);
 });
@@ -395,7 +389,6 @@ test("the budget counts starts spread over MANY boards", async () => {
     await saveActivities(vfs, root, [row(`m-${i}`, "running")]);
     missionFanout.record(CALLER, { missionId: `m-${i}`, boardRoot: root });
   }
-  // Not one board holds more than a single mission, and the caller is full.
   expect(await missionFanout.running(CALLER, vfs)).toBe(
     MAX_AGENT_STARTED_MISSIONS,
   );

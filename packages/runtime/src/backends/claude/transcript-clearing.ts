@@ -20,20 +20,6 @@ import {
   spillToolResultParts,
 } from "../../session/tool-results/spill";
 
-/**
- * Stale tool-result clearing on the Claude backend
- * (session/tool-results/clearing.ts), applied to the CLI's own transcript.
- *
- * Each turn resumes the CLI from its transcript JSONL, and the request it
- * sends is rebuilt from that file, so a result replaced there is a result the
- * model is no longer sent (checked against the CLI: the resumed request
- * carries the stub). The CLI only clears old results itself behind a
- * server-side flag, after an hour idle. Rewritten between turns, while no CLI
- * runs on it; a result cleared once stays a stub, which is what keeps the
- * prompt cache warm until the next batch.
- */
-
-/** Houston's MCP tools reach the model as `mcp__houston__<tool>`. */
 const MCP_PREFIX = /^mcp__houston__/;
 
 interface Block {
@@ -52,11 +38,6 @@ interface Entry {
   message?: { id?: unknown; content?: unknown };
 }
 
-/**
- * Returns the tokens the next request no longer carries, counted at four
- * characters a token: an undercount for dense payloads, so a fill reduced by
- * it errs toward compacting, never toward overflowing.
- */
 export function clearStaleTranscriptResults(
   transcript: string,
   spill: SpillTarget,
@@ -83,7 +64,6 @@ export function clearStaleTranscriptResults(
       : [];
     for (const block of blocks) {
       if (entry.type === "assistant" && block.type === "tool_use") {
-        // The CLI writes one entry per content block, so a round is a message id.
         const key = entry.message?.id ?? line;
         if (!rounds.has(key)) rounds.set(key, rounds.size);
         const name = String(block.name).replace(MCP_PREFIX, "");
@@ -97,9 +77,6 @@ export function clearStaleTranscriptResults(
           stubbed ??
           (cappedSource(text)?.chars ?? text.length) +
             images.length * IMAGE_CHARS;
-        // What the model carries. A stub records the full size, so a capped
-        // tool's stub counts as its head: replaying the policy may count a
-        // little less than was cleared, which only delays the next batch.
         const chars =
           stubbed === undefined
             ? text.length + images.length * IMAGE_CHARS
@@ -127,10 +104,6 @@ export function clearStaleTranscriptResults(
     const { text, images } = contentOf(block.content);
     if (stubbedChars(text) !== undefined) continue;
     const name = calls.get(ref.id)?.name ?? "tool";
-    // A capped result already names its full text's file; saving the head
-    // would point the model at a copy that only points on. Retention may have
-    // pruned that file, and the transcript holds only the head, so then the
-    // head is what gets saved.
     const source = cappedSource(text);
     const capped =
       source && existsSync(join(spill.workspaceDir, source.savedAt))
@@ -155,7 +128,6 @@ export function clearStaleTranscriptResults(
   return Math.floor(freedChars / 4);
 }
 
-/** A tool_result's content: a string, or text and (base64) image blocks. */
 function contentOf(content: unknown): { text: string; images: SpillImage[] } {
   if (typeof content === "string") return { text: content, images: [] };
   if (!Array.isArray(content)) return { text: "", images: [] };

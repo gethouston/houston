@@ -30,16 +30,8 @@ const httpMethods: readonly HttpMethod[] = [
   "DELETE",
 ];
 
-/** `key={param}` and nothing else — a query value must be one whole parameter.
- *  A key the source sends CONDITIONALLY never reaches this pattern; it arrives
- *  as a `query` path part (./assistant-query-params.ts). */
 const QUERY_PAIR = /^([^=&{}]+)=\{([^{}]+)\}$/;
 
-/**
- * Fold resolved parts into the catalog's route shape: a `{param}` template,
- * the path parameters in the order they appear, and the query keys the source
- * spelled into the template.
- */
 export function toPathTemplate(parts: PathPart[]): PathTemplate | string {
   const encodings = new Map<string, PathEncoding>();
   const query: Record<string, string> = {};
@@ -50,8 +42,6 @@ export function toPathTemplate(parts: PathPart[]): PathTemplate | string {
       rendered += part.text;
       continue;
     }
-    // An optional key contributes no text: the dispatcher adds it only when
-    // the parameter behind it arrives.
     if (part.kind === "query") {
       query[part.key] = part.name;
       continue;
@@ -80,12 +70,6 @@ export function toPathTemplate(parts: PathPart[]): PathTemplate | string {
   return { path, pathParams, query };
 }
 
-/**
- * The verb and body of a request's init object. Only `method`, `body`,
- * `signal` and a JSON-content-type `headers` may appear — the last two never
- * reach the wire shape, and any other key (or a spread) means the request is
- * assembled conditionally, which no static route can honestly describe.
- */
 export function extractInit(
   expression: ts.Expression | undefined,
   scope: ValueScope,
@@ -98,8 +82,6 @@ export function extractInit(
   let method: HttpMethod = "GET";
   let body: BodyParts = { body: null, bodyFields: null };
   for (const property of node.properties) {
-    // `signal` is forwarded plumbing — usually as shorthand — and never
-    // reaches the wire shape, so it is skipped before anything else.
     if (
       ts.isShorthandPropertyAssignment(property) &&
       property.name.text === "signal"

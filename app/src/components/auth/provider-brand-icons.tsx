@@ -1,11 +1,3 @@
-/**
- * Official sign-in provider marks (Google, Microsoft, Apple) for the sign-in
- * buttons. Brand colours are mandated by the providers' brand guidelines —
- * these are the one sanctioned exception to the no-hex rule, and the buttons'
- * only accent. (Apple's mark is monochrome by guideline: `currentColor`, so it
- * matches the button label in either palette.)
- */
-
 export function GoogleIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
@@ -30,8 +22,6 @@ export function GoogleIcon() {
 }
 
 export function AppleIcon() {
-  // The official Apple logo glyph, single-colour per Apple's sign-in button
-  // guidelines; nudged up 1px optically so it sits on the label's baseline.
   return (
     <svg
       width="16"
@@ -47,7 +37,6 @@ export function AppleIcon() {
 }
 
 export function MicrosoftIcon() {
-  // The official four-square mark.
   return (
     <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true">
       <rect x="1" y="1" width="9" height="9" fill="#F25022" />

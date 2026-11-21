@@ -11,10 +11,6 @@ import {
 import type { TeamView } from "../src/lib/teams-model.ts";
 import type { Agent } from "../src/lib/types.ts";
 
-// The mobile Agents home's pure rules: the attention sort, what a row says
-// about its agent (preview, count, time) and the team filter. Counts come
-// from the shared summaries (never recomputed).
-
 const agent = (id: string, name = id) => ({
   id,
   name,

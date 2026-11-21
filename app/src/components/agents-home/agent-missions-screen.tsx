@@ -35,11 +35,6 @@ import type { AgentHomeConversation } from "./agents-home-model";
 import { useAgentMissionsSettings } from "./use-agent-missions-settings";
 import { useDrillInMissionTarget } from "./use-drill-in-mission-target";
 
-/**
- * The phone's ONE task list for an employee: every task, archived ones
- * included, opens as the pushed chat above it, and so does a published target.
- * A new hire with no tasks yet shows its first-day start instead.
- */
 export function AgentMissionsScreen({ agent }: { agent: Agent }) {
   const { t } = useTranslation(["shell", "dashboard"]);
   const openAgentsHome = useUIStore((s) => s.openAgentsHome);
@@ -71,9 +66,6 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
     pinnedAgent: agent,
     pinnedTaskCount: missionCount,
   });
-  // With no tasks, the hero IS the screen, and while the config still loads
-  // the screen holds rather than flash "No tasks" before the button: blank for
-  // the beat a read takes, "getting ready" for a warm-up that takes minutes.
   const showsTasks = missionCount > 0 || !firstDay.holdsAutoOpen;
   const warmup = useAgentWarmup(agent.folderPath);
   const gettingReady =
@@ -82,8 +74,6 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
   const openMission = (mission: AgentHomeConversation) => {
     openMissionChat(agent, mission.id);
   };
-  // Settings opens in place, like any settings deep link into this list, so
-  // its back chip returns here; Routines and Files are the employee screen's.
   const openSection = (section: AgentMissionsMenuSection) => {
     if (section !== "settings") return openAgentSection(agent.id, section);
     settings.openIndex();
@@ -92,8 +82,6 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
     setSearchOpen(false);
     setQuery("");
   };
-  // Archived lives at the bottom of the UNFILTERED list, so reaching it from
-  // the menu has to undo a narrowing segment as well as open the band.
   const revealArchived = () => {
     setFilter("all");
     setArchivedOpen(true);

@@ -12,8 +12,6 @@ import {
 
 describe("isAgentGoneError", () => {
   it("matches the engine adapter's 404 for a vanished agent", () => {
-    // Structural shape of HoustonEngineError(404, {error: "agent not found"})
-    // as the engine adapter throws it.
     const err = Object.assign(new Error("agent not found (engine error 404)"), {
       status: 404,
       body: { error: "agent not found" },
@@ -43,8 +41,6 @@ describe("isAgentGoneError", () => {
 
 describe("isAgentUnreadableError", () => {
   it("matches the gateway proxy's not-assigned 403", () => {
-    // Structural shape of HoustonEngineError(403, {error, code}) — the
-    // gateway's `code` sits at the top level of the body, not under `error`.
     const err = Object.assign(new Error("not allowed (engine error 403)"), {
       status: 403,
       body: { error: "not allowed", code: "not_assigned" },
@@ -82,8 +78,6 @@ describe("agentRosterSettled", () => {
   });
 
   it("closes during a space switch's re-load — the HOU-979 window", () => {
-    // `loaded` stays true across a switch while loadAgents re-runs; that is
-    // exactly when queries built from the previous space's roster would fire.
     assert.equal(agentRosterSettled({ loaded: true, loading: true }), false);
   });
 });
@@ -119,8 +113,6 @@ describe("makeRosterHealer", () => {
       await gate;
     });
     const first = heal("ws-1", true);
-    // A Skills page with several stale agents observes one agent-gone error
-    // per manifest query in the same beat — only the first may reload.
     const second = heal("ws-1", true);
     assert.equal(await second, false);
     release();
@@ -145,7 +137,6 @@ describe("makeRosterHealer", () => {
       if (attempts === 1) throw new Error("network down");
     });
     await assert.rejects(() => heal("ws-1", true));
-    // The failed reload must not wedge the healer shut forever.
     assert.equal(await heal("ws-1", true), true);
     assert.equal(attempts, 2);
   });
@@ -254,10 +245,6 @@ describe("partitionStaleRosterReads", () => {
   });
 
   it("keeps an unassigned agent's 403 out of the partial-sweep surface", () => {
-    // HOUSTON-APP-5AV / 5AT: one agent the viewer may not read, among 200
-    // siblings that answered. The sweep's failed list holds only the 403 —
-    // it is stale-roster, so `failed` is empty and the recovery layer sees a
-    // COMPLETE sweep: no toast, no Sentry report, no re-sweep escalation.
     const { stale: g, failed } = partitionStaleRosterReads([unreadable("z")]);
     assert.deepEqual(
       g.map((r) => r.agentPath),
@@ -290,8 +277,6 @@ describe("partitionStaleRosterReads", () => {
   });
 
   it("classifies an all-gone sweep as nothing to re-sweep", () => {
-    // The space-switch shape (HOUSTON-APP-4WR): every agent of the previous
-    // space's roster answers 404 under the new org.
     const { stale: g, failed } = partitionStaleRosterReads([
       gone("a"),
       gone("b"),

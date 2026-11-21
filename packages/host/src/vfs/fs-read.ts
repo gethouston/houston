@@ -11,8 +11,6 @@ export async function readBytes(
     try {
       const { size } = await file.stat();
       if (size > maxBytes) throw new VfsReadLimitError();
-      // The cap is a limit, not an allocation: size the first read from stat,
-      // then keep reading (a file growing after stat) until EOF or past the cap.
       const chunks: Buffer[] = [];
       let length = 0;
       let next = size + 1;

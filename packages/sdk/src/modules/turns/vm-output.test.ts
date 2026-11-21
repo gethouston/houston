@@ -6,13 +6,6 @@ import {
   conversationScope,
 } from "./vm-output";
 
-/**
- * The built-in conversation VM fold: streaming text updates one entry in place,
- * its final flush finalizes the SAME entry (one bubble, not a duplicate), and
- * session status drives `running`/`sessionStatus` on the `conversation/<id>`
- * scope.
- */
-
 function harness() {
   const store = new ScopeStore();
   const vm = new ConversationVmOutput(store);
@@ -34,7 +27,7 @@ test("streaming text updates one feed entry in place, keeping a stable id", () =
   });
 
   expect(snap().feed).toHaveLength(1);
-  expect(snap().feed[0]?.id).toBe(firstId); // same entry, updated in place
+  expect(snap().feed[0]?.id).toBe(firstId);
   expect(snap().feed[0]?.data).toBe("Hello");
 });
 
@@ -64,7 +57,7 @@ test("non-streaming items append with fresh stable ids", () => {
 
   expect(snap().feed).toHaveLength(2);
   const ids = snap().feed.map((f) => f.id);
-  expect(new Set(ids).size).toBe(2); // distinct, stable ids
+  expect(new Set(ids).size).toBe(2);
 });
 
 test("session status drives running + sessionStatus and publishes reactively", () => {
@@ -93,7 +86,7 @@ test("a terminal status closes the streaming run so the next turn opens a fresh 
     data: "two",
   });
 
-  expect(snap().feed).toHaveLength(2); // not merged into the first turn's bubble
+  expect(snap().feed).toHaveLength(2);
   expect(snap().feed[0]?.data).toBe("one");
   expect(snap().feed[1]?.data).toBe("two");
 });
@@ -101,16 +94,13 @@ test("a terminal status closes the streaming run so the next turn opens a fresh 
 test("persistBoardStatus folds boardStatus into the VM (handled-vs-error signal)", async () => {
   const { snap, vm } = harness();
   await vm.persistBoardStatus("a", "c1", "needs_you");
-  expect(snap().boardStatus).toBe("needs_you"); // published, not a no-op
+  expect(snap().boardStatus).toBe("needs_you");
 
   await vm.persistBoardStatus("a", "c1", "error");
   expect(snap().boardStatus).toBe("error");
 });
 
 test("a user Stop settles boardStatus needs_you while sessionStatus is error", async () => {
-  // The turn machinery's handled-error settle: an `error` sessionStatus (clears
-  // the loading flag) paired with a `needs_you` board persist. A surface must
-  // read boardStatus to avoid rendering a normal Stop red.
   const { snap, vm } = harness();
   vm.pushFeedItem("a", "c1", {
     feed_type: "system_message",
@@ -120,7 +110,7 @@ test("a user Stop settles boardStatus needs_you while sessionStatus is error", a
   await vm.persistBoardStatus("a", "c1", "needs_you");
 
   expect(snap().sessionStatus).toBe("error");
-  expect(snap().boardStatus).toBe("needs_you"); // handled, not a real failure
+  expect(snap().boardStatus).toBe("needs_you");
   expect(snap().running).toBe(false);
 });
 
@@ -128,8 +118,8 @@ test("running is derived from sessionStatus, and boardStatus defaults to null", 
   const { snap, vm } = harness();
   vm.pushFeedItem("a", "c1", { feed_type: "system_message", data: "hi" });
   expect(snap().running).toBe(false);
-  expect(snap().boardStatus).toBe(null); // no board persist yet
-  expect(snap().pendingInteraction).toBe(null); // no interaction yet
+  expect(snap().boardStatus).toBe(null);
+  expect(snap().pendingInteraction).toBe(null);
   vm.sessionStatus("a", "c1", "running");
   expect(snap().running).toBe(true);
 });
@@ -146,12 +136,10 @@ test("a clean settle folds the pending interaction into the VM; turn start clear
       },
     ],
   };
-  // Settle carrying the interaction: needs_you + the interaction on the VM.
   await vm.persistBoardStatus("a", "c1", "needs_you", interaction);
   expect(snap().boardStatus).toBe("needs_you");
   expect(snap().pendingInteraction).toEqual(interaction);
 
-  // Turn start re-runs the card: running + null clears the stored interaction.
   await vm.persistBoardStatus("a", "c1", "running", null);
   expect(snap().boardStatus).toBe("running");
   expect(snap().pendingInteraction).toBe(null);
@@ -159,8 +147,6 @@ test("a clean settle folds the pending interaction into the VM; turn start clear
 
 test("a clean settle with no interaction lands boardStatus needs_you and no interaction", async () => {
   const { snap, vm } = harness();
-  // The engine never writes `done` — a finished turn parks the card on
-  // needs_you and the user decides when the mission is closed.
   await vm.persistBoardStatus("a", "c1", "needs_you", null);
   expect(snap().boardStatus).toBe("needs_you");
   expect(snap().pendingInteraction).toBe(null);
@@ -187,7 +173,7 @@ test("a live push carrying a ts keeps it (not re-stamped)", () => {
     data: "hi",
     ts: 42,
   });
-  expect(snap().feed[0]?.ts).toBe(42); // the supplied ts wins over the clock
+  expect(snap().feed[0]?.ts).toBe(42);
 });
 
 test("a streaming update keeps the entry's original ts through finalization", () => {
@@ -199,10 +185,8 @@ test("a streaming update keeps the entry's original ts through finalization", ()
     data: "He",
   });
   const openedTs = snap().feed[0]?.ts;
-  expect(openedTs).toBe(1000); // stamped when the stream opened
+  expect(openedTs).toBe(1000);
 
-  // Later deltas (and the final flush) arrive with the wall clock advanced —
-  // the entry keeps the ts it opened with, never re-stamps per delta.
   vi.setSystemTime(9999);
   vm.pushFeedItem("a", "c1", {
     feed_type: "assistant_text_streaming",
@@ -213,7 +197,7 @@ test("a streaming update keeps the entry's original ts through finalization", ()
   vm.pushFeedItem("a", "c1", { feed_type: "assistant_text", data: "Hello!" });
   expect(snap().feed).toHaveLength(1);
   expect(snap().feed[0]?.feed_type).toBe("assistant_text");
-  expect(snap().feed[0]?.ts).toBe(openedTs); // finalization preserves it
+  expect(snap().feed[0]?.ts).toBe(openedTs);
 });
 
 test("seedHistory carries a frame's ts through and stamps nothing when absent", () => {
@@ -222,13 +206,11 @@ test("seedHistory carries a frame's ts through and stamps nothing when absent", 
   const { vm, snap } = harness();
   vm.seedHistory("a", "c1", [
     { feed_type: "user_message", data: "hi", ts: 111 },
-    { feed_type: "assistant_text", data: "yo" }, // pre-ts transcript: no ts
+    { feed_type: "assistant_text", data: "yo" },
   ]);
-  expect(snap().feed[0]?.ts).toBe(111); // historical ts preserved
-  expect(snap().feed[1]?.ts).toBeUndefined(); // NOT stamped with the wall clock
+  expect(snap().feed[0]?.ts).toBe(111);
+  expect(snap().feed[1]?.ts).toBeUndefined();
 });
-
-// ── Optimistic pending flag (WhatsApp clock -> check) ────────────────────────
 
 test("an optimistic push carries pending; the first later push clears it (same id)", () => {
   const { vm, snap } = harness();
@@ -238,15 +220,14 @@ test("an optimistic push carries pending; the first later push clears it (same i
     pending: true,
   });
   const bubbleId = snap().feed[0]?.id;
-  expect(snap().feed[0]?.pending).toBe(true); // unconfirmed until server evidence
+  expect(snap().feed[0]?.pending).toBe(true);
 
-  // The FIRST subsequent push is that evidence: the bubble is confirmed in place.
   vm.pushFeedItem("a", "c1", {
     feed_type: "assistant_text_streaming",
     data: "y",
   });
-  expect(snap().feed[0]?.id).toBe(bubbleId); // same entry, stripped in place
-  expect("pending" in (snap().feed[0] ?? {})).toBe(false); // flag gone, not undefined
+  expect(snap().feed[0]?.id).toBe(bubbleId);
+  expect("pending" in (snap().feed[0] ?? {})).toBe(false);
 });
 
 test("a settle (completed/error) clears pending with no intervening feed push", () => {
@@ -259,7 +240,6 @@ test("a settle (completed/error) clears pending with no intervening feed push", 
   vm.sessionStatus("a", "c1", "completed");
   expect(snap().feed[0]?.pending).toBeUndefined();
 
-  // Same for the error settle (a rejected/lost send).
   const { vm: vm2, snap: snap2 } = harness();
   vm2.pushFeedItem("a", "c1", {
     feed_type: "user_message",
@@ -278,7 +258,7 @@ test("a running status does NOT clear pending (only a terminal status does)", ()
     pending: true,
   });
   vm.sessionStatus("a", "c1", "running");
-  expect(snap().feed[0]?.pending).toBe(true); // still unconfirmed
+  expect(snap().feed[0]?.pending).toBe(true);
 });
 
 test("a second optimistic push keeps its sibling pending; server evidence clears ALL", () => {
@@ -293,14 +273,13 @@ test("a second optimistic push keeps its sibling pending; server evidence clears
     data: "two",
     pending: true,
   });
-  // Both queued prompts keep their clock — an optimistic push is not evidence.
   expect(snap().feed.map((f) => f.pending)).toEqual([true, true]);
 
   vm.pushFeedItem("a", "c1", {
     feed_type: "assistant_text_streaming",
     data: "y",
   });
-  expect(snap().feed.filter((f) => f.pending)).toHaveLength(0); // all confirmed at once
+  expect(snap().feed.filter((f) => f.pending)).toHaveLength(0);
 });
 
 test("seedHistory frames never carry pending (a resumed/observed chat shows no clock)", () => {
@@ -312,8 +291,6 @@ test("seedHistory frames never carry pending (a resumed/observed chat shows no c
   expect(snap().feed.some((f) => f.pending)).toBe(false);
 });
 
-// ── Failed delivery (a send that never landed must NOT read "Sent") ──────────
-
 test("a fails_pending push marks a still-pending bubble failed, never confirmed", () => {
   const { vm, snap } = harness();
   vm.pushFeedItem("a", "c1", {
@@ -322,17 +299,14 @@ test("a fails_pending push marks a still-pending bubble failed, never confirmed"
     pending: true,
   });
   const bubbleId = snap().feed[0]?.id;
-  // A client-generated send-failure notice (lost/rejected send): it is NOT
-  // server evidence, so it must fail the clock, not flip it to a "Sent" check.
   vm.pushFeedItem("a", "c1", {
     feed_type: "system_message",
     data: "lost",
     fails_pending: true,
   });
-  expect(snap().feed[0]?.id).toBe(bubbleId); // same entry, updated in place
-  expect(snap().feed[0]?.pending).toBeUndefined(); // no longer in flight
-  expect(snap().feed[0]?.failed).toBe(true); // undelivered → an error tick
-  // The control flag never leaks onto the stored notice entry.
+  expect(snap().feed[0]?.id).toBe(bubbleId);
+  expect(snap().feed[0]?.pending).toBeUndefined();
+  expect(snap().feed[0]?.failed).toBe(true);
   expect("fails_pending" in (snap().feed[1] ?? {})).toBe(false);
   expect(snap().feed[1]?.failed).toBeUndefined();
 });
@@ -366,8 +340,6 @@ test("distinct conversations get distinct scopes", () => {
 });
 
 test("the same session key on two agents never collides (agent-qualified scope)", () => {
-  // Session keys are unique only WITHIN one agent (e.g. two agents each with
-  // an `activity-1` conversation) — the scope must keep them apart (ADR-0001).
   const { store, vm } = harness();
   vm.pushFeedItem("Houston/Bo", "activity-1", {
     feed_type: "system_message",
@@ -395,8 +367,6 @@ test("confirmIdle clears a STALE running flag (stream died without a settle)", (
   vm.sessionStatus("a", "c1", "running");
   expect(snap().running).toBe(true);
 
-  // The stream was torn down externally (client teardown settles nothing);
-  // an observer later attaches and the server confirms the conversation idle.
   vm.confirmIdle("a", "c1");
   expect(snap().running).toBe(false);
   expect(snap().sessionStatus).toBe("idle");
@@ -408,11 +378,8 @@ test("confirmIdle leaves a settled conversation untouched", () => {
   vm.sessionStatus("a", "c1", "error");
 
   vm.confirmIdle("a", "c1");
-  // The terminal truth stays — only a stale "running" is reconciled.
   expect(snap().sessionStatus).toBe("error");
 });
-
-// ── Transcript windowing (HOU-819) ──────────────────────────────────────────
 
 test("seedHistory with a window stamps historyWindow on the snapshot", () => {
   const { vm, snap } = harness();
@@ -613,7 +580,6 @@ test("seedHistory and prependHistory carry a frame's @mentions onto its entry", 
     [{ userId: "user_a", name: "Ada" }],
     undefined,
   ]);
-  // Assistant prose is unstructured: no key at all, not an empty list.
   expect(snap().feed[2]).not.toHaveProperty("mentions");
 });
 
@@ -631,15 +597,12 @@ test("a pushed item carries its mentions; an unmentioning push carries no key", 
   expect(snap().feed[1]).not.toHaveProperty("mentions");
 });
 
-// ── HOU-1214: turn-identity dedup — re-delivered content updates, never appends ──
-
 test("a streaming push for a turn whose reply is already seeded adopts that bubble (HOU-1214)", () => {
   const { vm, snap } = harness();
   vm.seedHistory("a", "c1", [
     { feed_type: "user_message", data: "hi", turnId: "t-1" },
     { feed_type: "assistant_text", data: "Correo enviado", turnId: "t-1" },
   ]);
-  // The stale-running replay: same turn, cumulative partial.
   vm.pushFeedItem("a", "c1", {
     feed_type: "assistant_text_streaming",
     data: "Correo enviado",
@@ -653,7 +616,7 @@ test("a streaming push for a turn whose reply is already seeded adopts that bubb
 
   const texts = snap().feed.filter((f) => f.feed_type === "assistant_text");
   expect(texts).toHaveLength(1);
-  expect(snap().feed).toHaveLength(2); // user + the ONE reply
+  expect(snap().feed).toHaveLength(2);
 });
 
 test("a settle re-push (assistant_text, no open stream) folds into the seeded entry", () => {
@@ -685,7 +648,6 @@ test("tool rows dedupe by (turnId, toolIndex); a NEW index still appends", () =>
       toolIndex: 0,
     },
   ]);
-  // Replayed rows — same identity, no growth.
   vm.pushFeedItem("a", "c1", {
     feed_type: "tool_call",
     data: { name: "ls", input: {} },
@@ -699,7 +661,6 @@ test("tool rows dedupe by (turnId, toolIndex); a NEW index still appends", () =>
     toolIndex: 0,
   });
   expect(snap().feed).toHaveLength(2);
-  // A genuinely new call of the same turn appends.
   vm.pushFeedItem("a", "c1", {
     feed_type: "tool_call",
     data: { name: "read", input: {} },
@@ -732,7 +693,7 @@ test("pushes without a turnId keep the append-only fold (legacy servers)", () =>
   const { vm, snap } = harness();
   vm.seedHistory("a", "c1", [{ feed_type: "assistant_text", data: "done" }]);
   vm.pushFeedItem("a", "c1", { feed_type: "assistant_text", data: "done" });
-  expect(snap().feed).toHaveLength(2); // no identity — cannot dedup safely
+  expect(snap().feed).toHaveLength(2);
 });
 
 test("identical text from a DIFFERENT turn still appends (dedup is by identity, not content)", () => {
@@ -750,22 +711,19 @@ test("identical text from a DIFFERENT turn still appends (dedup is by identity, 
 
 test("a NEW turn's streaming push never reuses a stale open bubble from a prior turn", () => {
   const { vm, snap } = harness();
-  // Turn A streams, then its sink dies with NO terminal status (external
-  // teardown keeps live state) — the streaming registration stays open.
   vm.pushFeedItem("a", "c1", {
     feed_type: "assistant_text_streaming",
     data: "turn A partial",
     turnId: "t-A",
   });
-  // Turn B's stream arrives on the same conversation.
   vm.pushFeedItem("a", "c1", {
     feed_type: "assistant_text_streaming",
     data: "turn B",
     turnId: "t-B",
   });
 
-  expect(snap().feed).toHaveLength(2); // B opened its own bubble
-  expect(snap().feed[0]?.data).toBe("turn A partial"); // A's content survives
+  expect(snap().feed).toHaveLength(2);
+  expect(snap().feed[0]?.data).toBe("turn A partial");
   expect(snap().feed[1]?.data).toBe("turn B");
   expect(snap().feed[1]?.turnId).toBe("t-B");
 });

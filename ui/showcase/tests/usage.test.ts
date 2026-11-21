@@ -6,8 +6,6 @@ import { dirname, join } from "node:path";
 import { after, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-// The generator is plain `.mjs` on purpose — no loader, no dependencies, it
-// reads source as text — so the test can both run its CLI and import its parts.
 import { SCAN_ROOTS } from "../scripts/gen-usage.mjs";
 import { readSpecimens } from "../scripts/read-specimens.mjs";
 import {
@@ -142,10 +140,6 @@ describe("intra-package composition", () => {
   const usage: Record<string, { surfaces: string[]; fileCount: number }> =
     JSON.parse(readFileSync(COMMITTED, "utf8"));
 
-  // The bug this closed: `KanbanBoard` is rendered by `AIBoard`, its own
-  // package's assembled screen, through a relative import — so a scanner that
-  // only reads `@houston-ai/*` imports concluded that nothing uses the mission
-  // board. It is what Mission Control renders.
   it("credits a component composed inside its own package", () => {
     assert.deepEqual(usage["board-kanban-board"]?.surfaces, [
       "ui/board (internal)",
@@ -171,8 +165,6 @@ describe("intra-package composition", () => {
   });
 
   it("still shows a component used both internally and by a surface", () => {
-    // Nothing is special-cased downstream: `UsedIn` renders whatever chips the
-    // map holds, so a component with both kinds of usage lists both.
     const both = Object.values(usage).filter(
       (entry) =>
         entry.surfaces.some((surface) => surface.endsWith("(internal)")) &&

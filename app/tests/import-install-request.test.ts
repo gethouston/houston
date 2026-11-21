@@ -8,11 +8,6 @@ import {
   lastUsedFromPin,
 } from "../src/components/portable/import-install-request.ts";
 
-/**
- * What the "From a friend" install actually decides, pinned away from the
- * engine round-trip that carries it out.
- */
-
 const SRC = fileURLToPath(new URL("../src", import.meta.url));
 
 function sourceFiles(dir: string): string[] {

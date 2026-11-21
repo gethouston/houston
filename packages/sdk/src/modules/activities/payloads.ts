@@ -1,14 +1,5 @@
-/**
- * Untrusted command-payload parsers for the activities module. The dispatch
- * path hands these raw JSON; each parser throws on a bad shape
- * (`CommandRegistry.dispatch` turns the throw into an `ok: false` result).
- */
-
 import { requireString } from "../payload";
 
-/** Pull a required non-empty string off an untrusted command payload. */
-
-/** Pull an optional string off an untrusted command payload. */
 function optionalString(payload: unknown, key: string): string | undefined {
   const value =
     typeof payload === "object" && payload !== null

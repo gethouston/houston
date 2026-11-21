@@ -8,7 +8,6 @@ import {
 
 const bytes = (n: number) => new Uint8Array(n);
 
-/** Rewrite the central directory's declared uncompressed size of every entry. */
 function declareSize(zip: Uint8Array, size: number): Uint8Array {
   const out = zip.slice();
   const view = new DataView(out.buffer);

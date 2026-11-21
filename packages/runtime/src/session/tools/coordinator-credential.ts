@@ -4,7 +4,6 @@ import {
 } from "./assistant-call";
 import { makeRequestCredentialTool } from "./request-credential";
 
-/** Uses the coordinator's catalogued read, preserving its existing host scope. */
 export function makeCoordinatorCredentialTool(options: AssistantToolOptions) {
   const read = makeAssistantCallTool(options);
   return makeRequestCredentialTool({

@@ -1,18 +1,3 @@
-/**
- * The channels REST calls, over the injected `fetch`.
- *
- * These are HOSTED-GATEWAY routes: a messaging connection belongs to the
- * managed cloud (it is the gateway that holds provider credentials and
- * receives its events), so no host serves them and the runtime client has no
- * surface for them. They go straight through {@link httpRequest} with literal
- * paths, which is also what keeps them visible to the assistant's catalog.
- *
- * Nothing here degrades. A non-2xx throws a `ChannelsHttpError` (`index.ts`)
- * carrying the HTTP `status`, and the surface decides what a 404/501/503 means
- * for its screen — a deployment with no messaging provider is a state to render, not an
- * error to report.
- */
-
 import type { SlackConnectReturn } from "@houston/wire-types";
 import { type HttpScope, httpRequest } from "../http";
 import { gatewayRefusedLoopback } from "./connect-return";
@@ -67,8 +52,6 @@ export async function connectSlack(
   try {
     res = await httpRequest(scope, "/v1/channels/slack/connect", {
       method: "POST",
-      // Absent fields drop out of the JSON: a web connect sends `{}`, an app
-      // one `{"return":"app"}`, in the key order the wire tests pin.
       body: JSON.stringify({
         return: returnTo?.kind,
         port: returnTo?.port,
@@ -78,7 +61,6 @@ export async function connectSlack(
     });
   } catch (error) {
     if (!gatewayRefusedLoopback(returnTo, error, signal)) throw error;
-    // Exactly once: the retry names `app`, which never matches again.
     return connectSlack(scope, { kind: "app" }, signal);
   }
   const { url } = (await res.json()) as SlackAuthorization;

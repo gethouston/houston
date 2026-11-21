@@ -1,7 +1,3 @@
-// PRODUCT-2132: a question card that replaces the composer carries the
-// ChatPanel's ONE attachment list. Mounted inside a real ChatPanel (the seam
-// under test is the panel handing its list to its composer-replacing slot).
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
@@ -47,7 +43,6 @@ describe("question card attachments", () => {
       ["The fox"],
     );
     assert.deepEqual(done[0].files, [photo]);
-    // Controlled, like the composer: the parent clears what it accepted.
     assert.deepEqual(changes, []);
   });
 
@@ -89,7 +84,6 @@ describe("question card attachments", () => {
         attachments: [photo],
       }),
     );
-    // One "+" and one chip: the composer's. The card offers neither.
     assert.equal(byLabel("Attach files").length, 1);
     assert.equal(chips("photo.png"), 1);
     assert.ok(win.document.querySelector('textarea[name="message"]'));

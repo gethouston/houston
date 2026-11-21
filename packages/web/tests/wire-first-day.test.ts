@@ -9,19 +9,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * An AI Employee's FIRST DAY as it crosses the wire, delegated to
- * `@houston/sdk`'s agents module.
- *
- * - A new hire's config (its brain and its pending first day) rides the
- *   create itself, as the config document in `seeds`: no second write, so it
- *   can neither fail after the hire nor race a later one.
- * - The start is ONE `POST /agents/:id/first-day`. The host makes it
- *   idempotent, which is why the SDK re-issues it on a waking answer
- *   (`agents/first-day.ts`): a start pressed while a new hire's pod is still
- *   coming up waits it out, and a repeat can only hand back the same task.
- */
-
 const BASE = "http://host";
 const CONFIG = ".houston/config/config.json";
 
@@ -164,8 +151,6 @@ test("a start with no AI connected (409 first_day_no_provider) is the typed refu
       (err: unknown) => err,
     );
   expect(failure).toMatchObject({ name: "HoustonEngineError", status: 409 });
-  // The SDK names it: an expected state the surface turns into its connect
-  // prompt, never a report. The provider it names rides along.
   expect(isFirstDayNoProvider(failure)).toBe(true);
   expect(firstDayRefusal(failure)).toEqual({
     code: "first_day_no_provider",
@@ -173,7 +158,6 @@ test("a start with no AI connected (409 first_day_no_provider) is the typed refu
     provider: "anthropic",
   });
   expect(calls).toHaveLength(1);
-  // Any other refused start stays an ordinary failure.
   stubResponses(json(409, { error: "refused", code: "first_day_not_started" }));
   const other = await client()
     .startFirstDay("a1", {})

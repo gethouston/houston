@@ -9,10 +9,6 @@ describe("activityUpdateSchema", () => {
   });
 
   test("a title that is only spaces is not a rename", () => {
-    // A mission's card shows its title and nothing else, so an empty one leaves
-    // a blank card with no way back to what it was called. The app trims before
-    // it sends; this is the same rule for every other writer, the agent's own
-    // tools included.
     expect(activityUpdateSchema.safeParse({ title: "   " }).success).toBe(
       false,
     );
@@ -26,7 +22,6 @@ describe("activityUpdateSchema", () => {
     expect(activityUpdateSchema.parse({ mode: "auto" })).toEqual({
       mode: "auto",
     });
-    // "execute" is the default a card falls back to, so there is no clear.
     expect(activityUpdateSchema.safeParse({ mode: null }).success).toBe(false);
     expect(activityUpdateSchema.safeParse({ mode: "autopilot" }).success).toBe(
       false,

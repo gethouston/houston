@@ -10,13 +10,6 @@ import { isRetryableFireError } from "../schedule/fire-outcome";
 import { isDialFailure, TurnDeliveryUncertainError } from "./fire-error";
 import { ProxyChannel } from "./proxy";
 
-/**
- * A routine's turn POST that fails is redelivered only when the request
- * provably never left (a dial failure). A connection that dies mid-exchange
- * may follow a message the runtime accepted: a redelivery would start a
- * second, concurrent run.
- */
-
 const ws: Workspace = {
   id: "w1",
   ownerUserId: "alice",
@@ -29,11 +22,8 @@ const ws: Workspace = {
 const agent: Agent = { id: "a1", workspaceId: "w1", name: "Sol", createdAt: 1 };
 const ctx: ChannelCtx = { workspace: ws, agent };
 
-// Reads the message, then drops the socket without answering: the runtime
-// got the request, the caller never hears back.
 let resetting: Server;
 let resettingUrl = "";
-// A port nothing listens on: the dial is refused.
 let closedUrl = "";
 
 beforeAll(async () => {
@@ -51,7 +41,6 @@ beforeAll(async () => {
 
 afterAll(() => resetting.close());
 
-/** A launcher whose shutdown latch is set: the host is draining. */
 class ClosedLauncher extends FakeLauncher {
   isClosed(): boolean {
     return true;
@@ -90,8 +79,6 @@ test("a connection lost after the request is never redelivered", async () => {
   expect((err as Error).message).toContain("the turn may have started");
 });
 
-// The drain had already sent the runtime SIGTERM: it refuses new turns, so a
-// POST that never got its 202 never started one.
 test("a connection lost while the host drains is redelivered", async () => {
   const err = await fireError(resettingUrl, true);
   expect(err).toBeInstanceOf(TurnDeliveryUncertainError);

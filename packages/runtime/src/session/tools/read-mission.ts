@@ -13,39 +13,24 @@ import {
 import type { SandboxFetch } from "./sandbox-fetch";
 import { type SessionToolErrorDetails, toolErrorResult } from "./tool-error";
 
-/**
- * Read another mission's recent conversation (PRODUCT-1244) — the review half
- * of the planning-agent loop. The agent's OWN missions are read IN-PROCESS:
- * their transcripts live in this runtime's store, so there is nothing to proxy
- * and no secret involved. A mission on ANOTHER agent runs in another runtime,
- * so naming an agent reads it through the host instead. Output is bounded
- * either way so a long mission can never flood the calling turn's context (the
- * same concern that capped integration_execute results, HOU-893).
- */
 export const READ_MISSION_TOOL_NAME = "read_mission";
 
-/** Most messages one read returns (the tail), and per-message/total caps. */
 const DEFAULT_TAIL = 20;
 const MAX_MESSAGE_CHARS = 1_500;
 const MAX_TOTAL_CHARS = 24_000;
 
 export interface ReadMissionToolOptions {
   call: SandboxFetch;
-  /** True when this runtime is the user's personal assistant — see missions.ts. */
   personalAssistant: boolean;
 }
 
-/** What one read did: the mission it read, or the named reason it could not. */
 export type ReadMissionDetails =
   | { ok: true; id: string; totalMessages: number; agent?: string }
   | SessionToolErrorDetails;
 
-/** The bounded, chronological render of a transcript. */
 function render(transcript: MissionTranscript): string {
   if (transcript.totalMessages === 0 && transcript.status === "running")
     return `Mission "${transcript.title}". This mission hasn't started talking yet (status: running). Check again later.`;
-  // Fill newest-first so the total cap drops the OLDEST lines — the recent
-  // outcome is what a review needs — then restore chronological order.
   const lines: string[] = [];
   let budget = MAX_TOTAL_CHARS;
   for (let i = transcript.messages.length - 1; i >= 0; i--) {

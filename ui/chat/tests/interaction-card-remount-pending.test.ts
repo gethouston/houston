@@ -1,8 +1,3 @@
-// A completion still uploading when the user
-// leaves the conversation stays pending for the card that returns. The
-// remounted card's restored connect step completes again on mount; that must
-// not send the same answer and files a second time.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
@@ -24,8 +19,6 @@ type ConnectApi = Parameters<CardProps["renderConnect"]>[1];
 
 const CONNECT: Step = { kind: "connect", id: "c-gmail", toolkit: "gmail" };
 
-/** Reports an already-connected app once, on mount, like the app's connect
- *  card, and records whether the card handed it a disabled chrome. */
 function AlreadyConnected({ api, seen }: { api: ConnectApi; seen: boolean[] }) {
   seen.push(api.disabled);
   useEffect(() => api.onConnected(), []);
@@ -56,14 +49,12 @@ describe("question card completion across a remount", () => {
     assert.equal(done.length, 1);
     assert.deepEqual(done[0].files, [photo]);
 
-    // Away to another conversation and back before the upload settles.
     render(panel(null, { sessionKey: "b", attachments: [] }));
     seen.length = 0;
     render(panel(restored(), { sessionKey: "a", attachments: [photo] }));
     assert.equal(done.length, 1, "the returning card sent the reply again");
     assert.equal(seen.at(-1), true, "the returning card is not disabled");
 
-    // A refused send frees the card for a retry.
     pending.resolve(false);
     await flush();
     assert.equal(seen.at(-1), false);

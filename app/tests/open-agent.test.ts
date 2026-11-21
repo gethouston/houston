@@ -10,19 +10,11 @@ import {
   type RosterLoadState,
 } from "../src/lib/roster-settled.ts";
 
-/**
- * `open-agent.ts` cannot be imported here: its store chain reaches
- * `lib/tauri.ts` → `@houston/engine-adapter` and `lib/i18n.ts`, which are
- * Vite's job, not Node's. So the roster wait it leans on is executed for real,
- * its wiring is pinned against the source, and the copy against the locales.
- */
-
 const OPEN_AGENT = readFileSync(
   new URL("../src/lib/open-agent.ts", import.meta.url),
   "utf8",
 );
 
-/** One exported function, up to the next export. */
 function fnSource(name: string): string {
   const decl = OPEN_AGENT.indexOf(`export function ${name}(`);
   ok(decl !== -1, `${name} must exist in lib/open-agent.ts`);
@@ -62,8 +54,6 @@ describe("openAgentSettings for an agent the settled roster lacks", () => {
 
 describe("openAgentApiAccess", () => {
   it("arms the API access screen only once Settings actually opens", () => {
-    // Armed before the roster check, an employee the roster lacks would leave
-    // it set, drilling a later Settings visit into a screen nobody asked for.
     const body = fnSource("openAgentApiAccess");
     const armed = body.indexOf("setApiAccessFor(agentId)");
     ok(armed !== -1);

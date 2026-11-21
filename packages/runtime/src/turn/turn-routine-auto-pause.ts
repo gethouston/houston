@@ -35,24 +35,10 @@ interface RoutineMutationOpts {
   nowIso: string;
 }
 
-/**
- * The pooled twin of the standing host's pauseFailingRoutines: after a routine
- * run settled as a typed failure, pause the routine when its run history has
- * earned it (domain `routineAutoPause`). The upload is what stops the
- * schedule: the store projects `enabled` from every routines.json write.
- *
- * The mutation is rebased on the STORE's routines doc, not the tree's copy:
- * the CAS refresh merges local entries over remote ones by id, so a routine
- * the person renamed, re-pinned, resumed or deleted while this turn ran would
- * come back as the stale hydrated entry. Reading the remote doc inside the
- * CAS attempt keeps every other routine and every field of this one as it is
- * now; a routine gone from the store is never paused back into existence.
- */
 export async function autoPauseRoutineTurn(
   opts: RoutineMutationOpts,
 ): Promise<Routine | null> {
   return mutateRoutine(opts, async (routine) => {
-    // The runs file exactly as settleRoutineTurn just wrote it on disk.
     const { items: runs } = await loadRoutineRuns(
       fsTextStore(),
       opts.filesystem.workspaceDir,
@@ -62,15 +48,6 @@ export async function autoPauseRoutineTurn(
   });
 }
 
-/**
- * The pooled twin of the standing host's settleRoutineRuns snooze half: hold
- * the routine's fires until the plan usage limit `run` hit resets (domain
- * `snoozeAfterRun`), or lift a hold after a run that answered
- * (`unsnoozeAfterRun`). `actingSub` is the claim's acting user: only a run on
- * the creator's own account moves the schedule. The store projects
- * `snoozed.until` from the upload the same way it projects `enabled`, so the
- * cloud planner honours it too.
- */
 export async function snoozeRoutineTurn(
   opts: RoutineMutationOpts & { run: RoutineRun; actingSub?: string | null },
 ): Promise<Routine | null> {
@@ -86,8 +63,6 @@ export async function snoozeRoutineTurn(
   });
 }
 
-/** One CAS write of the store's routines doc with `routine` replaced by what
- *  `change` returns; null from `change` (or a routine gone) commits nothing. */
 async function mutateRoutine(
   opts: RoutineMutationOpts,
   change: (routine: Routine) => Promise<Routine | null>,
@@ -113,7 +88,6 @@ async function mutateRoutine(
   });
 }
 
-/** The store's current routines, or null when the doc does not exist. */
 async function remoteRoutines(
   opts: { store: ObjectStore; prefix: string; filesystem: TurnFilesystem },
   relativePath: string,

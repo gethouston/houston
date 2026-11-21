@@ -75,19 +75,12 @@ fn read_credential<F>(config_dir: &Path, keychain: F) -> Result<String, String>
 where
     F: FnOnce(&str) -> Result<Option<String>, String>,
 {
-    // 1. File first (Linux/Windows/some macOS). A file that exists but is
-    // empty, token-less (a logout husk), or malformed falls through to the
-    // Keychain — on macOS the Keychain is the CLI's source of truth and the
-    // login may have cached a fresh credential there. The file's concrete
-    // problem is kept for the final error so a Linux user (no Keychain) still
-    // sees WHY their file was rejected.
     let mut file_problem: Option<String> = None;
     let file = config_dir.join(".credentials.json");
     match std::fs::read_to_string(&file) {
         Ok(contents) => {
             let trimmed = contents.trim();
             if trimmed.is_empty() {
-                // Treat like an absent file.
             } else {
                 match validate_credential(trimmed) {
                     Ok(()) => return Ok(trimmed.to_string()),
@@ -96,7 +89,6 @@ where
             }
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            // No file on this platform/setup — fall through to the Keychain.
         }
         Err(e) => {
             return Err(format!(
@@ -106,7 +98,6 @@ where
         }
     }
 
-    // 2. macOS Keychain, dir-scoped service only (no-op off macOS).
     let service = keychain_service_for(config_dir);
     match keychain(&service)? {
         Some(json) => {
@@ -182,7 +173,6 @@ fn keychain_credential(service: &str) -> Result<Option<String>, String> {
                 if validate_credential(json.trim()).is_ok() {
                     return Ok(Some(json));
                 }
-                // Husk (empty tokens) — try the next candidate.
             }
             Ok(None) => {}
             Err(e) => last_err = Some(e),
@@ -223,9 +213,6 @@ mod tests {
 
     #[test]
     fn keychain_service_is_scoped_by_config_dir_hash() {
-        // Known vector: the CLI stores the credential for
-        // /Users/daniel/.dev-houston/claude-login under
-        // "Claude Code-credentials-3d1329c5" (sha256 of the path, first 8 hex).
         let service =
             keychain_service_for(Path::new("/Users/daniel/.dev-houston/claude-login"));
         assert_eq!(service, "Claude Code-credentials-3d1329c5");
@@ -243,7 +230,6 @@ mod tests {
     fn reads_the_credentials_file_when_present() {
         let dir = unique_tmp_dir("file");
         std::fs::write(dir.join(".credentials.json"), VALID).expect("write cred");
-        // Keychain must NOT be consulted once the file resolves.
         let got = read_credential(&dir, |_| panic!("keychain should not be read"));
         assert_eq!(got.as_deref(), Ok(VALID));
         std::fs::remove_dir_all(&dir).expect("cleanup");
@@ -260,8 +246,6 @@ mod tests {
 
     #[test]
     fn falls_through_husk_file_to_keychain() {
-        // A logout leaves `{accessToken:""}` behind; the fresh login credential
-        // in the Keychain must still be found.
         let dir = unique_tmp_dir("huskfile");
         std::fs::write(dir.join(".credentials.json"), HUSK).expect("write husk");
         let got = read_credential(&dir, |_| Ok(Some(VALID.to_string())));
@@ -272,7 +256,6 @@ mod tests {
     #[test]
     fn reads_keychain_when_no_file() {
         let dir = unique_tmp_dir("keychain");
-        // No .credentials.json written.
         let got = read_credential(&dir, |_| Ok(Some(VALID.to_string())));
         assert_eq!(got.as_deref(), Ok(VALID));
         std::fs::remove_dir_all(&dir).expect("cleanup");
@@ -304,9 +287,6 @@ mod tests {
 
     #[test]
     fn malformed_file_json_falls_through_to_keychain() {
-        // A corrupt file must not dead-end the flow when the Keychain holds the
-        // real credential (the CLI treats the Keychain as its source of truth
-        // on macOS).
         let dir = unique_tmp_dir("garbage");
         std::fs::write(dir.join(".credentials.json"), "not json{").expect("write garbage");
         let got = read_credential(&dir, |_| Ok(Some(VALID.to_string())));
@@ -316,8 +296,6 @@ mod tests {
 
     #[test]
     fn missing_token_everywhere_reports_the_file_problem() {
-        // With nothing in the Keychain, the file's concrete rejection reason is
-        // what the Linux/self-host user needs to see.
         let dir = unique_tmp_dir("notoken");
         std::fs::write(dir.join(".credentials.json"), r#"{"claudeAiOauth":{}}"#).expect("write");
         let got = read_credential(&dir, |_| Ok(None));
@@ -331,9 +309,6 @@ mod tests {
 
     #[test]
     fn keychain_husk_from_injected_reader_errors_as_invalid() {
-        // The injected reader models `keychain_credential` AFTER its own
-        // husk-skipping: if it still returns a husk, validation rejects it
-        // loudly rather than pushing an empty token to a pod.
         let dir = unique_tmp_dir("huskkc");
         let got = read_credential(&dir, |_| Ok(Some(HUSK.to_string())));
         let err = got.expect_err("must reject the husk");

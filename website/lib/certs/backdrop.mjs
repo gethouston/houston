@@ -2,35 +2,19 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import h from "./h.mjs";
 
-/**
- * The photograph both certificate images are built on, and the maths that puts
- * it on an off-ratio canvas without stretching or losing the sunrise.
- *
- * Kept apart from chrome.mjs (palette, type, lockup) because this half is about
- * pixels of art, not about the brand's ink.
- */
-
 const BG_FILE = fileURLToPath(
   new URL("./assets/space-bg.jpg", import.meta.url),
 );
 const BG_BYTES = readFileSync(BG_FILE);
 
-/**
- * Pixel size of a baseline JPEG, from its first frame header.
- *
- * The crop maths below is expressed against the photograph's true aspect ratio
- * rather than a hardcoded pair of numbers, so replacing the art with a
- * differently proportioned shot re-crops correctly instead of stretching it.
- */
 function jpegSize(buf) {
-  let at = 2; // past the SOI marker
+  let at = 2;
   while (at + 9 < buf.length) {
     if (buf[at] !== 0xff) {
       at += 1;
       continue;
     }
     const marker = buf[at + 1];
-    // SOF0..SOF15 carry the frame header; DHT/JPGA/DAC share the range.
     const isFrame =
       marker >= 0xc0 &&
       marker <= 0xcf &&
@@ -50,10 +34,8 @@ function jpegSize(buf) {
 
 const BG_SIZE = jpegSize(BG_BYTES);
 
-/** Width / height of the backdrop photograph. */
 const BG_RATIO = BG_SIZE.width / BG_SIZE.height;
 
-/** The photograph as a data URL — read and encoded once for the whole build. */
 const BG_SRC = `data:image/jpeg;base64,${BG_BYTES.toString("base64")}`;
 
 /**

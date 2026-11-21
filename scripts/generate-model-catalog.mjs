@@ -1,14 +1,4 @@
 #!/usr/bin/env node
-// Generate app/src/lib/ai-hub/model-catalog.json from https://models.dev/api.json.
-//
-// A trimmed, deterministic snapshot of the model universe the AI Hub markets.
-// Only the providers Houston can actually route to are kept, and only the fields
-// the hub renders. Every model gets a baked `key`: a cross-provider normalized
-// identity so the same underlying model (e.g. "Claude Opus 4.8" via Anthropic,
-// Bedrock, Copilot, OpenCode, OpenRouter) folds into one directory entry.
-//
-// Re-runnable and deterministic: `node scripts/generate-model-catalog.mjs`.
-// Set MODELS_DEV_JSON to a local api.json path for an offline/pinned run.
 import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -25,8 +15,6 @@ const OUT_PATH = join(
   "model-catalog.json",
 );
 
-// Providers Houston connects to. OpenCode Go folds into `opencode` (one key
-// serves both gateways), so its models are merged into the opencode bucket.
 const KEEP_PROVIDERS = [
   "anthropic",
   "openai",
@@ -40,9 +28,6 @@ const KEEP_PROVIDERS = [
 ];
 const FOLD_INTO = { "opencode-go": "opencode" };
 
-// Leading tokens stripped from a name before it becomes a key: deployment
-// regions (Bedrock) and vendor echoes (OpenRouter "Anthropic Claude ...",
-// Bedrock "AU Anthropic Claude ..."). Never the trailing model words.
 const LEAD_NOISE = new Set(
   (
     "au eu us apac global anthropic openai google meta metallama mistral " +
@@ -51,14 +36,6 @@ const LEAD_NOISE = new Set(
   ).split(" "),
 );
 
-/**
- * The cross-provider identity key for a model, derived from its display name.
- * RUNTIME twin: `app/src/lib/ai-hub/catalog-key.ts` `normalizeKey` (live
- * OpenRouter models derive their key there). Keep the two in sync.
- * Drops parenthetical/bracketed suffixes ("(latest)", "(EU)", "(Fast)"),
- * collapses punctuation to single spaces (dots kept as version separators),
- * strips leading region/vendor echoes, and drops a trailing "latest" word.
- */
 export function normalizeKey(name) {
   let s = String(name || "").toLowerCase();
   s = s.replace(/[([{][^)\]}]*[)\]}]/g, " ");
@@ -75,7 +52,6 @@ function trimText(text) {
   if (typeof text !== "string") return undefined;
   const clean = text.replace(/\s+/g, " ").trim();
   if (!clean) return undefined;
-  // Keep the file small: descriptions are one-liners in the UI.
   return clean.length > 180 ? `${clean.slice(0, 177).trimEnd()}...` : clean;
 }
 
@@ -103,10 +79,6 @@ function normalizeModel(raw) {
   return model;
 }
 
-/**
- * Serialize the catalog with one compact model object per line: near-minified
- * size with readable, line-oriented diffs when the snapshot is regenerated.
- */
 function serialize(generatedAt, providers) {
   const lines = [
     "{",
@@ -142,7 +114,6 @@ async function loadSource() {
 async function main() {
   const source = await loadSource();
 
-  // Bucket raw models per kept provider (folding opencode-go into opencode).
   const buckets = new Map(KEEP_PROVIDERS.map((id) => [id, new Map()]));
   for (const [providerId, target] of Object.entries(FOLD_INTO)) {
     const provider = source[providerId];
@@ -170,8 +141,6 @@ async function main() {
     modelCount += models.length;
   }
 
-  // Deterministic timestamp: a content hash, not wall-clock, so re-running on
-  // the same source produces byte-identical output (clean diffs, no churn).
   const fingerprint = createHash("sha256")
     .update(JSON.stringify(providers))
     .digest("hex")

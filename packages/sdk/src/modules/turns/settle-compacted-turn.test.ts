@@ -4,16 +4,6 @@ import type { FeedOutput } from "./feed-output";
 import { presettleFromHistory, reloadAndSettle } from "./settle-from-history";
 import { newTurnState, type TurnState } from "./turn-settle";
 
-/**
- * A turn that compacted before its prompt persists TWO assistant records under
- * its id: the summary marker the compaction wrote (claimed by the turn so the
- * divider sits where the context restarted) and, after it, the turn's own
- * reply or failure card. When the live terminal frame is lost (a reconnect),
- * the settle from history must adopt the turn's CONCLUSIVE record, the last
- * one, never the summary: adopting the summary turned a rate-limited turn into
- * a clean success and showed the summary as the agent's answer.
- */
-
 type Item = { feed_type?: string; data?: unknown };
 
 function state(): {
@@ -109,7 +99,6 @@ test("the pre-settled poll adopts the same conclusive record", async () => {
 });
 
 test("a reconnect after /compact settles on the divider, not the summary", async () => {
-  // `/compact` folds into the summary it wrote, so that record concludes it.
   const { s, items } = state();
   await reloadAndSettle(
     s,

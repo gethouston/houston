@@ -1,8 +1,3 @@
-/**
- * Merge primitives for the catalog build: fold the pi-ai catalog's per-provider
- * model entries by their cross-provider key into unique `CatalogModel`s, then
- * enrich them from the models.dev snapshot. Internal to `catalog.ts`.
- */
 import { HOME_PROVIDER } from "./catalog-lab.ts";
 import type { RawModel } from "./catalog-snapshot.ts";
 import type { CatalogModel, CatalogOffer, LabId } from "./catalog-types.ts";
@@ -14,11 +9,6 @@ export interface Candidate {
   lab: LabId;
 }
 
-/**
- * The snapshot-derived metadata pi-ai can't supply, folded onto a draft that
- * already exists from the pi-ai catalog. Never creates existence, an offer, or
- * economics — only fills these gaps.
- */
 export interface Enrichment {
   description?: string;
   toolCall?: boolean;
@@ -32,15 +22,6 @@ export interface Draft {
   enrich?: Enrichment;
 }
 
-/**
- * Keep one candidate per provider for a model. pi-ai lists some models more than
- * once under the SAME provider (e.g. Bedrock's regional Opus 4.8 variants); those
- * collapse to a single offer. The identity/economics base is the cleanest
- * (shortest, then lexically-first) id, so a dropped variant never silently takes
- * data down with it: every capability flag (reasoning, vision/image input,
- * toolCall, attachment, imageGen) is OR-ed across the merge, and the base's
- * context/pricing win with the other's as a fallback.
- */
 export function addCandidate(
   drafts: Map<string, Draft>,
   cand: Candidate,
@@ -78,15 +59,6 @@ export function addCandidate(
   draft.byProvider.set(cand.providerId, base);
 }
 
-/**
- * Fold ONE models.dev snapshot model into the catalog as OPTIONAL enrichment.
- * Matched by `key`, it fills the metadata pi-ai's runnable catalog lacks
- * (description / toolCall / imageGen / knowledge / releaseDate) on a model that
- * ALREADY exists from pi-ai. It no-ops when no pi-ai draft carries the key, so a
- * snapshot-only model NEVER appears and the runnable set stays pi-ai's. It never
- * touches existence, offers, pricing, context, reasoning, or vision — those are
- * pi-ai's authority.
- */
 export function foldEnrichment(
   drafts: Map<string, Draft>,
   raw: RawModel,
@@ -103,7 +75,6 @@ export function foldEnrichment(
   draft.enrich = e;
 }
 
-/** The lab most candidates agree on, ignoring `other` unless it is all there is. */
 function pickLab(candidates: Candidate[]): LabId {
   const counts = new Map<LabId, number>();
   for (const c of candidates) counts.set(c.lab, (counts.get(c.lab) ?? 0) + 1);
@@ -134,7 +105,6 @@ function buildOffer(cand: Candidate): CatalogOffer {
   return offer;
 }
 
-/** Collapse a draft's per-provider candidates into one merged model. */
 export function finalize(key: string, draft: Draft): CatalogModel {
   const candidates = [...draft.byProvider.values()];
   const enrich = draft.enrich;
@@ -185,7 +155,6 @@ export function finalize(key: string, draft: Draft): CatalogModel {
   };
 }
 
-/** Sort newest-first; models without a release date sort last, then by name. */
 export function compareModels(a: CatalogModel, b: CatalogModel): number {
   const ra = a.releaseDate ?? "";
   const rb = b.releaseDate ?? "";

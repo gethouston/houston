@@ -167,9 +167,6 @@ export function PlanLifecycle() {
         otherDialogOpen={planBlocked}
         onShownChange={setChoiceShown}
       />
-      {/* One modal at a time: the promo-ended notice waits for the
-          pricing-change modal (the pick or its confirm) and every plan
-          dialog. */}
       <PromoEndedModal otherDialogOpen={planBlocked || choiceShown} />
     </>
   );

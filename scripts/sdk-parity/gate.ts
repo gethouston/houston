@@ -1,6 +1,5 @@
 import { RULES, type Rule, type Violation } from "./rules.ts";
 
-/** One written excuse. `key` is the violation identity `rule + " " + key`. */
 export interface Exception {
   rule: Rule;
   key: string;
@@ -13,20 +12,12 @@ export interface Exceptions {
 }
 
 export interface Verdict {
-  /** The whole report, as the gate prints it. */
   report: string;
-  /** Why the process must exit non-zero; empty means parity holds. */
   failures: string[];
 }
 
 const isRule = (value: unknown): value is Rule => RULES.includes(value as Rule);
 
-/**
- * The exceptions file's own shape, checked rather than trusted: a typo'd
- * `rule` would otherwise excuse nothing while reading like an accepted debt,
- * and `baseline` is the only number this gate cannot recompute — a file that
- * disagrees with itself stops the process before any rule is judged.
- */
 export function parseExceptions(parsed: unknown, at: string): Exceptions {
   const problems: string[] = [];
   const file = parsed as Partial<Exceptions>;
@@ -63,13 +54,6 @@ export function parseExceptions(parsed: unknown, at: string): Exceptions {
 const identity = (entry: { rule: Rule; key: string }): string =>
   `${entry.rule} ${entry.key}`;
 
-/**
- * Judge one run: the report a reader gets, and every reason the process must
- * fail. Parity is a GATE, so an unexcused violation fails — and so does an
- * exception that no longer reproduces, because the wave that fixed the
- * violation is the one that has to delete its excuse. Leaving it behind would
- * let the next real violation of the same identity pass unseen.
- */
 export function judge(
   violations: Violation[],
   exceptions: Exceptions,

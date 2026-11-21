@@ -10,7 +10,6 @@ import {
   recordInstall,
 } from "./store-api";
 
-/** A JSON `Response` factory. */
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -31,7 +30,6 @@ afterEach(() => {
   delete process.env.AGENTSTORE_GATEWAY_URL;
 });
 
-/** The absolute URL string of the Nth fetch call. */
 function calledUrl(n = 0): string {
   const input = fetchMock.mock.calls[n]?.[0];
   return typeof input === "string" ? input : String(input);

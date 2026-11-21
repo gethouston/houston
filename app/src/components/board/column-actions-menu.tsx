@@ -8,22 +8,13 @@ import {
 import { ListChecks, MoreHorizontal } from "lucide-react";
 
 export interface ColumnActionsMenuProps {
-  /** Add every card in this column to the multi-select set. */
   onSelectAll: () => void;
   labels: {
-    /** Accessible label for the kebab trigger. */
     menu: string;
-    /** "Select all in column". */
     selectAll: string;
   };
 }
 
-/**
- * Kebab (three-dot) menu rendered in a board column header. Offers "Select all
- * in column", which seeds a section-locked multi-selection so the floating bulk
- * bar takes over for archive / move / delete. Same affordance on every column
- * that supports multi-select.
- */
 export function ColumnActionsMenu({
   onSelectAll,
   labels,

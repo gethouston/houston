@@ -8,14 +8,6 @@ import {
 } from "./curated";
 import { searchCustomTools } from "./search";
 
-/**
- * Curated entries (Croma…) must be AGENT-discoverable before the user adds
- * them: search surfaces each as a connectable app row (the same speech act as
- * an unconnected Composio app), and an explicit `app` scope naming one
- * resolves instead of falling to the unscoped retry. Once added, the curated
- * layer bows out — the compiled definition speaks for itself.
- */
-
 const entries: readonly CuratedEntry[] = [
   {
     slug: "croma",
@@ -106,12 +98,10 @@ test("an alias keeps resolving after the app is added — to the definition, not
     expect(result.items.map((m) => m.toolkit)).toEqual(["highlevel"]);
     expect(result.items[0]?.action).not.toBe("");
   }
-  // Before the add, the same aliases yield the connectable row.
   const before = searchCustomTools("create a contact", [], [], "ghl");
   expect(before.items).toMatchObject([
     { toolkit: "highlevel", status: "connectable" },
   ]);
-  // A user's own integration named like an alias keeps its scope.
   const own = searchCustomTools(
     "create a contact",
     [{ ...tool, integration: "ghl", address: "ghl.contacts" }],
@@ -119,7 +109,6 @@ test("an alias keeps resolving after the app is added — to the definition, not
     "ghl",
   );
   expect(own.items.map((m) => m.toolkit)).toEqual(["ghl"]);
-  // An alias is never stolen by an unrelated installed substring neighbour.
   const neighbour = searchCustomTools(
     "create a contact",
     [tool, { ...tool, integration: "lead", address: "lead.contacts" }],
@@ -127,7 +116,6 @@ test("an alias keeps resolving after the app is added — to the definition, not
     "leadconnector",
   );
   expect(neighbour.items.map((m) => m.toolkit)).toEqual(["highlevel"]);
-  // Nor by a loose substring of the CANONICAL slug ("Level" ⊂ highlevel).
   const level = searchCustomTools(
     "create a contact",
     [{ ...tool, integration: "level", address: "level.contacts" }],
@@ -137,7 +125,6 @@ test("an alias keeps resolving after the app is added — to the definition, not
   expect(level.items).toMatchObject([
     { toolkit: "highlevel", status: "connectable" },
   ]);
-  // A non-alias scope passes through untouched.
   expect(curatedCanonicalScope("notion")).toBe("notion");
   expect(curatedCanonicalScope("")).toBe("");
 });
@@ -178,8 +165,6 @@ test("ManyChat is discoverable by channel keywords and by Composio's own slug", 
     const rows = curatedMatches(tokens, none, entries);
     expect(rows.map((row) => row.toolkit)).toContain("manychat");
   }
-  // The model may have learned Composio's `many_chat` slug from its own
-  // catalog (an empty toolkit there); the scope still lands on the curated app.
   for (const app of ["many_chat", "Many Chat", "manychat"]) {
     const rows = curatedScoped(app, none, entries);
     expect(rows).toHaveLength(1);

@@ -8,12 +8,6 @@ import {
 } from "./card-actions";
 import { ManagerStepFrame } from "./manager-step-frame";
 
-/**
- * One of the create sheet's two questions (the industry, the job) in the step
- * slot. A catalog pick answers it at once, as in the sheet; an answer already
- * held (one being changed, or one onboarding picked in advance) goes on with
- * Continue, and "Not now" puts the questions off where they can be.
- */
 export function ManagerQuestionStep({
   id,
   busy = false,
@@ -26,10 +20,8 @@ export function ManagerQuestionStep({
   id: string;
   busy?: boolean;
   error?: string | null;
-  /** Answers again with the pick held, or null while none is. */
   onContinue: (() => void) | null;
   onDecline?: () => void;
-  /** Reopens the answer before this question, where it can still change. */
   onBack?: (() => void) | null;
   children: ReactNode;
 }) {

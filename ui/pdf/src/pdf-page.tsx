@@ -16,20 +16,12 @@ interface PdfPageProps extends Omit<PageMarksProps, "size" | "obstacles"> {
   page: number;
   width: number;
   height: number;
-  /** Close enough to the viewport to hold a rendered canvas. */
   near: boolean;
   label: string;
-  /** The page's current canvas, for crops; null when it is released. */
   onCanvas: (page: number, canvas: HTMLCanvasElement | null) => void;
   onError: (error: unknown) => void;
 }
 
-/**
- * One page: a skeleton at the page's aspect ratio until it renders, then the
- * canvas, the text layer and the marks. Off-screen pages release their
- * canvas. A new document version renders behind the old canvas and fades in
- * over it, so a rewrite never blanks the page.
- */
 export const PdfPage = memo(function PdfPage({
   handle,
   page,
@@ -76,7 +68,6 @@ export const PdfPage = memo(function PdfPage({
     return () => abort.abort();
   }, [handle.doc, page, renderWidth, near]);
 
-  // Out of the render window: drop the pixels and the text, rebuilt on return.
   useEffect(() => {
     const el = host.current;
     if (near || !el) return;

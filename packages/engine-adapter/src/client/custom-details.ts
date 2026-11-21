@@ -1,12 +1,6 @@
 import type { AdapterContext } from "./context";
 import { viaSdk } from "./sdk-error";
 
-/**
- * The detail card's cosmetic edit (name + website), in whichever route family
- * the deployment serves: the user-scoped one on a direct host, the per-agent
- * dispatch form when the caller names an agent (a hosted gateway proxies it to
- * that agent's pod). Both are `sdk.integrations.*` twins of the same PATCH.
- */
 export function updateDetails(
   ctx: AdapterContext,
   slug: string,

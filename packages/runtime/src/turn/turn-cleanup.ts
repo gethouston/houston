@@ -20,8 +20,6 @@ async function hydrationIsQuiet(
   hydration: CleanedHydration,
   timeoutMs: number,
 ): Promise<boolean> {
-  // A turn that never prompted (refused, failed setup, shadow) still has its
-  // deferred files downloading: stopping them is not a failure to report.
   hydration.filesystem?.abandonDeferred?.();
   hydration.abortHydration();
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -37,13 +35,6 @@ async function hydrationIsQuiet(
   return quiet;
 }
 
-/**
- * Close the browser contexts this turn opened in its workspace, saving their
- * sign-ins first, before the root is removed: the browser process is shared,
- * so a context left open would outlive the turn and its idle sweep would
- * write into a deleted workspace. A hand-off still waiting would hold the
- * context's queue for minutes, so it ends first. Never throws (the pool logs).
- */
 async function closeTurnBrowser(
   root: string,
   conversationId: string,
@@ -52,7 +43,6 @@ async function closeTurnBrowser(
   await sharedBrowserPool.closeUnder(root);
 }
 
-/** Release every per-turn resource even when an earlier cleanup step fails. */
 export async function cleanupTurn(input: {
   root: string;
   scope: string;

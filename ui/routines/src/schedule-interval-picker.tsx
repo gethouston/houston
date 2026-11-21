@@ -1,13 +1,3 @@
-/**
- * "Repeat every [N] [unit]" — the non-technical custom-interval picker, styled
- * after the chosen prototype (Variant A): a number stepper plus a row of unit
- * pills (minute / hour / day / month). Every unit takes a count.
- *
- * All visible text arrives via props so the package stays i18n-agnostic; the
- * pills show the singular or plural unit name depending on the count. A
- * `stepper` (a plan's floor, minutes unit only) keeps the buttons at or above
- * the floor's lowest count and lifts a typed count below it on blur.
- */
 import { cn } from "@houston-ai/core";
 import { Minus, Plus } from "lucide-react";
 import type { MouseEvent } from "react";
@@ -29,7 +19,6 @@ function NumberStepper({
 }: {
   id: string;
   value: string;
-  /** The largest count the unit takes; `+` stops there. */
   max: number;
   onChange: (value: string) => void;
   invalid?: boolean;
@@ -38,9 +27,6 @@ function NumberStepper({
   stepper?: FloorStepper;
 }) {
   const n = Number(value) || 1;
-  // Under a floor a button press must not blur the field first: the blur snap
-  // would move the count and the press would then step from the snapped one.
-  // Keeping focus works in WebKit too, where a clicked button never takes it.
   const keepFocus = stepper ? (e: MouseEvent) => e.preventDefault() : undefined;
   return (
     <div
@@ -68,8 +54,6 @@ function NumberStepper({
         type="text"
         inputMode="numeric"
         value={value}
-        // Keep digits only; an empty string is allowed (and flagged invalid) so
-        // it can be cleared while typing.
         onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ""))}
         onBlur={stepper?.commit}
         className="w-10 bg-transparent text-center text-sm tabular-nums outline-none disabled:cursor-not-allowed"
@@ -111,10 +95,8 @@ export function IntervalPicker({
   increaseLabel: string;
   every: string;
   unit: IntervalUnit;
-  /** The largest count `unit` takes (see intervalCountMax). */
   max: number;
   invalid?: boolean;
-  /** Floor stepping for the minutes count; absent = step by one from 1. */
   stepper?: FloorStepper;
   onEveryChange: (every: string) => void;
   onUnitChange: (unit: IntervalUnit) => void;

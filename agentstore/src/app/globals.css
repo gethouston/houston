@@ -1,27 +1,10 @@
-/* THE Tailwind bridge lives in @houston-ai/core and is imported, never copied:
-   it pulls in Tailwind, the generated @houston/design-tokens variables (--ht-*
-   on :root / [data-theme]), the data-theme dark variant, and the `@theme
-   inline` block that re-exports every token as a --color-* utility. Copying it
-   is what broke this file before — the copy still mapped --ht-foreground /
-   -primary / -border / -ring, renamed away with the July 2026 token
-   vocabulary, so every utility here resolved to nothing and the core
-   components (ink / action / chip / line / focus) had no bridge at all.
-
-   It already does `@import "tailwindcss"` — importing Tailwind again here
-   would emit the whole framework twice. */
 @import "@houston-ai/core/src/globals.css";
 @import "@houston-ai/core/src/canvas.css";
 
-/* Tailwind resolves `@source` relative to the file that declares it, and the
-   `@import "tailwindcss"` that seeds automatic detection now sits inside
-   ui/core — so both trees are registered here explicitly: this app's own
-   source, and @houston-ai/core's components (they ship TypeScript source, and
-   Tailwind skips node_modules unless a source says otherwise). */
 @source "../../src";
 @source "../../node_modules/@houston-ai/core/src";
 @source "../../node_modules/@houston-ai/store/src";
 
-/* The store uses the same system stack for body and display typography. */
 @theme {
   --font-sans:
     ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial,
@@ -31,11 +14,6 @@
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
-/* Unlayered, exactly like core's own body rule — an `@layer base` copy would
-   lose to it (unlayered CSS outranks every layer). The website remains
-   scrollable while using the shared canvas background.
-   Everything else — colour, smoothing, cursors, scrollbars, the
-   `* { border-color }` base rule — comes from core. */
 body {
   overflow: visible;
   font-family: var(--font-sans);

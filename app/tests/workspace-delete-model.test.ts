@@ -9,11 +9,6 @@ import {
   restoreSpaceRow,
 } from "../src/lib/workspace-delete-model.ts";
 
-/**
- * PRODUCT-1410: the Danger Zone's error taxonomy for `DELETE /v1/orgs/:slug`,
- * written against the gateway's flat `{error, code}` body thrown as a
- * `HoustonEngineError`-shaped object — the only shape production produces.
- */
 function gatewayError(status: number, error: string, code?: string) {
   return { status, body: code === undefined ? { error } : { error, code } };
 }
@@ -56,12 +51,6 @@ describe("classifyWorkspaceDeleteError", () => {
   });
 });
 
-// PRODUCT-1426: the pre-check that picks the UX shape — optimistic only for a
-// space the gateway will provably accept deleting, over the same reads the
-// admin screens use (`GET /v1/org` roster + `GET /v1/org/billing`). Mirrors
-// the gateway's two 409s: any OTHER member row, and a live Stripe object
-// (`interval` is set exactly when one exists; `active`/`past_due` always mean
-// one). Everything unverifiable stays server-first.
 const member = (userId: string, role: OrgMember["role"]): OrgMember => ({
   userId,
   role,
@@ -108,8 +97,6 @@ describe("canDeleteOptimistically", () => {
       canDeleteOptimistically(soloOwner, billing({ status: "past_due" })),
       false,
     );
-    // A Stripe object can hide behind a free/trialing/expired effective
-    // status; its `interval` is the tell.
     strictEqual(
       canDeleteOptimistically(
         soloOwner,
@@ -128,8 +115,6 @@ describe("canDeleteOptimistically", () => {
   });
 });
 
-// PRODUCT-1426: the optimistic delete's rollback puts the row back where the
-// user last saw it when the gateway rejects the delete.
 const ws = (id: string, name: string, isDefault = false): Workspace => ({
   id,
   name,

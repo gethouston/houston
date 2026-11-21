@@ -15,23 +15,12 @@ export function LearningCard({
   isDraft,
 }: {
   initialText: string;
-  /**
-   * Where this memory came from. Shown under the text in the preview state and
-   * hidden while editing (the editor is about the text, and the provenance is
-   * not the editor's to change).
-   */
   provenance?: LearningProvenanceView | null;
-  /**
-   * Sent without waiting: the editor closes on the commit (the list already
-   * shows the change). A promise resolving `false` means the write was
-   * refused, and the editor reopens holding what the user typed.
-   */
   onSave: (text: string) => Promise<boolean> | undefined;
   onDelete?: () => void;
   onCancel?: () => void;
   isDraft?: boolean;
 }) {
-  // Only read while editing; entering the editor loads the current text.
   const [value, setValue] = useState(initialText);
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(Boolean(isDraft));
@@ -61,7 +50,6 @@ export function LearningCard({
     setExpanded(false);
     if (!isDraft && trimmed === initialText) return;
     void onSave(trimmed)?.then((landed) => {
-      // Already editing again: what they are typing now wins.
       if (landed || editingRef.current) return;
       setValue(trimmed);
       setExpanded(true);

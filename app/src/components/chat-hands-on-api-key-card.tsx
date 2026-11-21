@@ -16,32 +16,13 @@ import {
 interface Props extends StepChrome, StepDraftApi {
   stepId: string;
   reason?: string;
-  /** The screen's display name; what the reply tells the agent was finished. */
   name: string;
-  /** Suggested key name (the employee this key is for), `""` for none. */
   keyName: string;
-  /** False while capabilities load: nothing is minted against a deployment
-   *  that may not serve the API. */
   ready: boolean;
   onFinished: (name: string) => void;
   onSkip: (name: string, message?: string) => void;
 }
 
-/**
- * The AI Manager's API-key errand, done right in the chat: name a key, create
- * it, copy the secret from the one-time reveal. Same flow as Settings > API
- * keys (`api-key-create-flow.tsx`). Rendered in the Manager's chat ONLY: in a
- * mission chat a model-authored reason above a mint form, beside a box that
- * talks to that same agent, would be a phishing kit in Houston's chrome.
- *
- * The secret never leaves this card. The flow keeps it in local state, and
- * Done and Skip report only the screen's NAME. Once it is shown the card is
- * LOCKED: Done is the only way out (no Skip, no "do this instead" row the key
- * could be pasted into, Esc swallowed), and Done waits out an in-flight mint
- * so no key is created after the card is gone. The safety line is fixed copy,
- * never the model's reason. The person may say Done without creating one (they
- * already hold a key), so Done stands beside Create from the start.
- */
 export function ChatHandsOnApiKeyCard({
   stepId,
   reason,
@@ -121,7 +102,6 @@ export function ChatHandsOnApiKeyCard({
           >
             <ApiKeyNameField flow={flow} />
           </form>
-          {/* A side door, never the way through: the key is made right here. */}
           <Button
             className="self-start px-0"
             onClick={() => useUIStore.getState().openSettings("apiKeys")}

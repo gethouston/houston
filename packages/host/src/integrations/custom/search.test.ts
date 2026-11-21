@@ -5,15 +5,6 @@ import {
   searchCustomTools,
 } from "./search";
 
-/**
- * searchCustomTools scores custom tools against a plain-language query the
- * same way the agent's integration_search tool sees Composio results: token
- * hits on the tool weigh 1, a hit on the OWNING APP's slug/name weighs 2 (the
- * user usually names the app: "acme create ticket"), and every result carries
- * connected:true/status:"connected" because a custom tool that compiled at
- * all IS the connection (unlike Composio's connect-then-use split).
- */
-
 const defs: CustomDefRow[] = [
   { slug: "acme", name: "Acme", active: true },
   { slug: "beta", name: "Beta", active: true },
@@ -40,16 +31,12 @@ test("token match on tool name/description", () => {
     ["tools.acme.org.default.ping", "tools.beta.org.default.ping"].sort(),
   );
 
-  // A token with no hit anywhere yields nothing.
   expect(searchCustomTools("nonexistent-term", pingTools, defs).items).toEqual(
     [],
   );
 });
 
 test("app-name tokens weigh double: naming the app ranks its tool first", () => {
-  // Both tools score identically on "ping" (+1 each); "acme" only lands on
-  // the acme tool's app text (+2), so acme's tool must sort ahead of beta's
-  // otherwise-identical tool.
   const { items } = searchCustomTools("acme ping", pingTools, defs);
   expect(items.map((m) => m.toolkit)).toEqual(["acme", "beta"]);
 });
@@ -60,8 +47,6 @@ test("a zero-token query (empty or symbols-only) returns no matches", () => {
   expect(searchCustomTools("!!!", pingTools, defs).items).toEqual([]);
 });
 
-// ── Explicit app scope (PRODUCT-1274) ────────────────────────────────────────
-
 test("an app scope is a hard filter: only that integration's tools come back", () => {
   const out = searchCustomTools("ping", pingTools, defs, "Acme");
   expect(out.scope).toBe("resolved");
@@ -71,8 +56,6 @@ test("an app scope is a hard filter: only that integration's tools come back", (
 });
 
 test("a scoped zero-score query degrades to listing the app's tools", () => {
-  // "nonexistent-term" scores nothing, but the user named the app — its tools
-  // must surface (the deterministic fallback), never an empty result.
   const out = searchCustomTools("nonexistent-term", pingTools, defs, "acme");
   expect(out.scope).toBe("resolved");
   expect(out.items.map((m) => m.action)).toEqual([
@@ -103,7 +86,6 @@ test("an EXACT scope match excludes loose substring siblings (Acme vs Acme Stagi
   ];
   const results = searchCustomTools("ping", twinTools, twinDefs, "Acme");
   expect(results.items.map((m) => m.toolkit)).toEqual(["acme"]);
-  // No exact match → the loose both-way substring resolution still applies.
   expect(
     searchCustomTools("ping", twinTools, twinDefs, "staging").items.map(
       (m) => m.toolkit,
@@ -112,8 +94,6 @@ test("an EXACT scope match excludes loose substring siblings (Acme vs Acme Stagi
 });
 
 test("an EXACT scope match resolves even a 1-2 char integration name", () => {
-  // The length guard exists for the loose tier only — a user's own "HR"
-  // integration must resolve when named exactly, never false-not-found.
   const hrDefs: CustomDefRow[] = [
     { slug: "hr", name: "HR", active: true },
     ...defs,
@@ -134,8 +114,6 @@ test("an EXACT scope match resolves even a 1-2 char integration name", () => {
 });
 
 test("a loose scope matching SEVERAL integrations resolves only the closest one", () => {
-  // Same rule as the Composio resolver (shared scope-resolve.ts): "hub" must
-  // never hard-scope to two unrelated integrations at once.
   const hubDefs: CustomDefRow[] = [
     { slug: "acme_hub", name: "Acme Hub", active: true },
     { slug: "hubspot_clone", name: "HubSpot Clone", active: true },
@@ -173,10 +151,6 @@ test("results are capped at 20 even when every tool scores", () => {
 });
 
 test('a toolkit-level entry (action: "") is emitted for a def the query names but that has no scored tool', () => {
-  // "emptyapp" only matches the def slug/name of `empty`, which contributes no
-  // CustomToolRow at all (e.g. a freshly added spec with zero operations, or
-  // simply an integration whose tools didn't match this query on their own
-  // merits) — the model must still learn the slug exists.
   const tools: CustomToolRow[] = [
     {
       address: "tools.acme.org.default.ping",

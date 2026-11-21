@@ -3,13 +3,6 @@ import { expect, test } from "vitest";
 import { makeReadMissionTool } from "./read-mission";
 import type { SandboxFetch } from "./sandbox-fetch";
 
-/**
- * Reviewing a mission that runs on ANOTHER agent. An agent's own missions live
- * in its runtime's transcript store and are read in-process; another agent's
- * live in another runtime, so those go through the host. The personal
- * assistant only ever reviews other agents' missions — it has none of its own.
- */
-
 const NOOP = {} as ExtensionToolContext;
 
 function tool(personalAssistant: boolean, transcript?: unknown) {
@@ -96,8 +89,6 @@ test("the assistant cannot read a mission without naming an agent", async () => 
   });
   const first = out.content[0];
   expect(first?.type === "text" && first.text).toMatch(/agent/i);
-  // No mission was read: the only call made is the one that fetches the agents
-  // the refusal offers instead.
   expect(paths.filter((p) => p.startsWith("/sandbox/missions"))).toEqual([]);
 });
 

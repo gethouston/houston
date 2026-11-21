@@ -7,18 +7,11 @@ import {
 } from "../store/conversation-file";
 import type { TurnSessionRequest } from "./turn-session-types";
 
-/** What the pooled turn read before recording its own user row. */
 export interface RecordedPooledUser {
-  /** The hydrated live transcript as it stood before this turn. */
   canonicalMessages: ChatMessage[];
-  /** Earlier user authors, for the multiplayer prompt framing. */
   priorAuthors: ReadonlyArray<MessageAuthor | undefined>;
 }
 
-/**
- * Persist this turn's user row and announce it. The transcript is read first:
- * the backend's replay and the prompt framing need it as it stood before.
- */
 export function recordPooledUserTurn(
   dataDir: string,
   turn: TurnSessionRequest,

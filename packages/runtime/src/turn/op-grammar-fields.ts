@@ -1,5 +1,3 @@
-/** Field checks shared by the op grammar's parsers (a leaf: no ./op-* import). */
-
 export const ID = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
 
 export function str(v: unknown, field: string): string {

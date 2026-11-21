@@ -29,8 +29,6 @@ export {
 
 function save(e: StoredEndpoint): void {
   writeEndpointFileIn(config.dataDir, e);
-  // Every endpoint write re-syncs the live runtime's provider registration —
-  // no caller can configure an endpoint the runtime then can't dispatch to.
   if (liveRegistrar) registerCustomProviderIfConfigured(liveRegistrar);
 }
 

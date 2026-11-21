@@ -15,14 +15,12 @@ export type BrowserAction =
   | { action: "back" }
   | { action: "screenshot"; labels: boolean }
   | { action: "close" }
-  /** Answer the dialog the page holds open; `text` answers a prompt. */
   | { action: "dialog"; accept: boolean; text?: string }
   | { action: "click"; ref: string }
   | { action: "fill"; ref: string; text: string }
   | { action: "select"; ref: string; value: string }
   | { action: "press"; key: string }
   | { action: "wait"; text?: string; ms?: number }
-  /** The person drives the page until they finish; `text` is what they need to do. */
   | { action: "handoff"; text: string; url?: string };
 
 export const MAX_WAIT_MS = 10_000;
@@ -36,7 +34,6 @@ function required(params: BrowserParams, field: keyof BrowserParams): string {
   );
 }
 
-/** A ref the model copied with its brackets ("[ref=s2e3]") still names s2e3. */
 function refOf(params: BrowserParams): string {
   return required(params, "ref")
     .replace(/^\[?(?:ref=)?|\]$/g, "")
@@ -52,7 +49,6 @@ function viewOf(params: BrowserParams): SnapshotView {
   };
 }
 
-/** Narrow the flat parameters to the one action asked for, or refuse it. */
 export function parseBrowserAction(params: BrowserParams): BrowserAction {
   switch (params.action) {
     case "open":
@@ -64,7 +60,6 @@ export function parseBrowserAction(params: BrowserParams): BrowserAction {
     case "click":
       return { action: "click", ref: refOf(params) };
     case "fill":
-      // Empty text is a real fill (clearing a field), so only absence refuses.
       if (typeof params.text !== "string")
         throw new BrowserToolError(
           "invalid_action",

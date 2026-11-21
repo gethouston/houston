@@ -2,13 +2,6 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { beforeEach, expect, test, vi } from "vitest";
 
-/**
- * `POST /conversations/:id/import` through the real route table and the real
- * conversation-command gate: a malformed body is refused before anything is
- * written, a busy conversation is refused whole, and an import that wrote
- * lines tears the model's session down so the next turn replays them.
- */
-
 const store = vi.hoisted(() => ({
   importConversationMessages: vi.fn(() => 2),
 }));

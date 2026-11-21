@@ -4,13 +4,6 @@ import { MemoryTurnBus } from "./bus";
 import { RelayChannels } from "./relay-channel";
 import { parseSnapshot } from "./relay-dialect";
 
-/**
- * The relay's stream-state layer in isolation: the v2 bus dialect (versioned
- * names so a mixed-version fleet never cross-feeds payload shapes), the
- * defensive snapshot decoder, and the defensive publish path (a publish on an
- * unopened channel must continue the persisted stream, not clobber it).
- */
-
 test("bus names are dialect-versioned: v2 keys/channels, never the v1 names", async () => {
   const bus = new MemoryTurnBus();
   const channels = new RelayChannels(bus);
@@ -23,7 +16,7 @@ test("bus names are dialect-versioned: v2 keys/channels, never the v1 names", as
   await channels.publish("a1/c1", { type: "text", data: "x" });
 
   expect(v2Frames).toHaveLength(1);
-  expect(v1Frames).toHaveLength(0); // old replicas keep v1 to themselves
+  expect(v1Frames).toHaveLength(0);
   expect(await bus.get("turn:snap2:a1/c1")).not.toBeNull();
   expect(await bus.get("turn:snap:a1/c1")).toBeNull();
 });
@@ -43,7 +36,6 @@ test("parseSnapshot accepts only a well-formed snapshot; everything else is EMPT
   expect(parseSnapshot("not json {")).toEqual(empty);
   expect(parseSnapshot(JSON.stringify(null))).toEqual(empty);
   expect(parseSnapshot(JSON.stringify("string"))).toEqual(empty);
-  // The v1 dialect's shape ({turnId,seq,snapshot}) must not be mistaken for v2.
   expect(
     parseSnapshot(
       JSON.stringify({ turnId: "t", seq: 2, snapshot: { running: true } }),
@@ -74,7 +66,7 @@ test("a corrupt persisted snapshot degrades to EMPTY (resync), never a poisoned 
     partial: "",
     seq: 0,
   });
-  expect(await channels.replayAfter("a1/c1", 3)).toBeNull(); // → resync
+  expect(await channels.replayAfter("a1/c1", 3)).toBeNull();
 });
 
 test("publish on an unopened channel seeds from the persisted snapshot — the watermark is never clobbered", async () => {
@@ -88,12 +80,11 @@ test("publish on an unopened channel seeds from the persisted snapshot — the w
   const seen: SequencedFrame[] = [];
   channels.subscribe("a1/c1", (f) => seen.push(f));
 
-  // Defensive branch: no open() ran (publish outside a started turn).
   await channels.publish("a1/c1", {
     type: "error",
     data: { message: "stray" },
   });
 
-  expect(seen.map((f) => f.seq)).toEqual([42]); // continues, not a restart at 1
-  expect((await channels.snapshot("a1/c1")).seq).toBe(42); // persisted watermark intact
+  expect(seen.map((f) => f.seq)).toEqual([42]);
+  expect((await channels.snapshot("a1/c1")).seq).toBe(42);
 });

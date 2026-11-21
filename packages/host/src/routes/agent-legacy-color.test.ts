@@ -2,13 +2,6 @@ import { expect, test, vi } from "vitest";
 import { MemoryVfs } from "../vfs";
 import { legacyAgentColor } from "./agent-legacy-color";
 
-/**
- * The Rust-era engine persisted each agent's color in
- * `<agentRoot>/.houston/agent.json` (AgentMeta.color). The v3 host serves it
- * as a read-only legacy passthrough; every failure mode must read as "no
- * color" (the client falls back to its default), never as an error.
- */
-
 const ROOT = "Personal/Sales";
 
 async function withMeta(meta: unknown): Promise<string | undefined> {

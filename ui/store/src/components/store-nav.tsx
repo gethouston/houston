@@ -7,7 +7,6 @@ import type { StoreLinkComponent } from "../types";
 
 const PlainLink: StoreLinkComponent = (props) => <a {...props} />;
 
-/** The signed-in identity the account control renders. */
 export interface StoreNavUser {
   avatarUrl?: string;
   initial: string;
@@ -16,20 +15,12 @@ export interface StoreNavUser {
 export interface StoreNavProps {
   homeHref?: string;
   brandLabel?: string;
-  /** Theme control: the surface owns application + persistence. Omit it on a
-   *  surface whose chrome already owns theming (the desktop app). */
   theme?: { isDark: boolean; onToggle: (next: "light" | "dark") => void };
-  /** Account control: avatar (or sign-in icon) leading to the owner surface.
-   *  `href` renders a link (web), `onOpen` a button (app pane). */
   account?: {
     user: StoreNavUser | null;
     href?: string;
     onOpen?: () => void;
   };
-  /** Surface-owned account control rendered IN PLACE of `account` — the web
-   *  injects its avatar dropdown (sign in / your agents / sign out) here so
-   *  the nav carries exactly ONE identity control. Behavior-only injection:
-   *  the slot must still read as the account face (nav content stays fixed). */
   accountSlot?: ReactNode;
   labels?: Partial<{
     toLight: string;
@@ -59,10 +50,6 @@ function AccountFace({ user }: { user: StoreNavUser | null }) {
   );
 }
 
-/**
- * THE store nav — content is fixed here on purpose (brand · theme · account)
- * so web and app cannot drift; surfaces inject only behavior.
- */
 export function StoreNav({
   homeHref = "/",
   brandLabel = "Agent Store",
@@ -79,13 +66,6 @@ export function StoreNav({
     ? (labels.account ?? "Your profile")
     : (labels.signIn ?? "Sign in");
   const accountBody = account ? <AccountFace user={account.user} /> : null;
-  // Scrolled detection via a zero-height sentinel above the sticky bar: while
-  // the sentinel is visible the nav paints NOTHING (so it is pixel-identical
-  // to the surface by construction — no second glass layer in dark); once
-  // scrolled it frosts for legibility, the landing page's nav recipe. The
-  // IntersectionObserver works for both window scrolling (web) and an inner
-  // pane scroller (app), since a clipped sentinel stops intersecting either
-  // way.
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {

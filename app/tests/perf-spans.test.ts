@@ -31,10 +31,6 @@ function harness(startMs = 100_000) {
   };
 }
 
-/**
- * The first response the SDK reports for a turn sent at `sentAt` that resolved
- * (`outcome`) at `at` — the only input the send spans pair on.
- */
 function response(
   sentAt: number,
   at: number,
@@ -49,18 +45,18 @@ describe("PerfSpans", () => {
     tick(1500);
     spans.boardRendered();
     tick(50);
-    spans.boardRendered(); // agent switch — must not double-report
+    spans.boardRendered();
     await spans.flush();
     deepStrictEqual(sent.flat(), [{ span: "app_to_board", ms: 1500 }]);
   });
 
   it("pairs card click with the next chat paint", async () => {
     const { spans, sent, tick } = harness();
-    spans.chatRendered(); // paint with no armed click — ignored
+    spans.chatRendered();
     spans.cardClicked();
     tick(320);
     spans.chatRendered();
-    spans.chatRendered(); // second paint — mark already consumed
+    spans.chatRendered();
     await spans.flush();
     deepStrictEqual(sent.flat(), [{ span: "card_click_to_chat", ms: 320 }]);
   });
@@ -104,14 +100,12 @@ describe("PerfSpans", () => {
     });
     now = 10;
     spans.boardRendered();
-    await spans.flush(); // fails → re-queued
-    await spans.flush(); // succeeds
+    await spans.flush();
+    await spans.flush();
     deepStrictEqual(sent.flat(), [{ span: "app_to_board", ms: 10 }]);
   });
 
   it("holds a batch across repeated failures until the transport recovers", async () => {
-    // The session-not-ready case: send() throws until the token loads, and
-    // the earliest spans (app_to_board) must survive to the eventual flush.
     let now = 0;
     let ready = false;
     const sent: PerfSpanObservation[][] = [];
@@ -135,8 +129,8 @@ describe("PerfSpans", () => {
 
   it("only moves T0 earlier", async () => {
     const { spans, sent, tick } = harness(100_000);
-    spans.setLaunchT0(150_000); // late bogus stamp — ignored
-    spans.setLaunchT0(99_000); // shell start before webview — accepted
+    spans.setLaunchT0(150_000);
+    spans.setLaunchT0(99_000);
     tick(1000);
     spans.boardRendered();
     await spans.flush();
@@ -154,7 +148,6 @@ describe("PerfSpans", () => {
 describe("PerfSpans first response", () => {
   it("two concurrent conversations: each turn's span runs from its own send to its own answer", async () => {
     const { spans, sent } = harness(0);
-    // A sent at 1s and answered at 9s; B sent at 2s and answered first, at 3s.
     spans.turnResponded(response(2_000, 3_000));
     spans.turnResponded(response(1_000, 9_000));
     await spans.flush();
@@ -185,7 +178,6 @@ describe("PerfSpans first response", () => {
     spans.turnResponded(response(0, 30_000, "no_text"));
     spans.turnResponded(response(0, 7_000, "interrupted"));
     await spans.flush();
-    // A failure is not a time to first text: the TTFT histogram never sees it.
     deepStrictEqual(sent.flat(), []);
     deepStrictEqual(mirrored, [
       { span: "send_to_first_response", ms: 4_000 },
@@ -203,7 +195,6 @@ describe("PerfSpans first response", () => {
     const { spans, sent, mirroredOutcomes } = harness(0);
     spans.turnResponded(response(0, 600_000, "timeout"));
     await spans.flush();
-    // A silent timeout censors first activity too (perf-spans-first-activity).
     deepStrictEqual(sent.flat(), [
       { span: "send_to_first_response", ms: 600_000 },
       { span: "send_to_first_activity", ms: 600_000 },
@@ -229,14 +220,12 @@ describe("PerfSpans org slug", () => {
   });
 
   it("keeps the org a turn was sent in when the space switches before it answers", () => {
-    // Paired to its own turn, the reply that lands after the switch IS the
-    // reply to the send made in the old space: the old space ran it.
     const { spans, mirroredOrgs, tick, now } = harness();
     spans.setOrgSlug("5f2b225f316c6079");
     tick(10);
     const sentInOld = now();
     tick(100);
-    spans.setOrgSlug(null); // capabilities refetch mid-switch
+    spans.setOrgSlug(null);
     spans.setOrgSlug("383369a239383fee");
     tick(10);
     const sentInNew = now();
@@ -255,7 +244,7 @@ describe("PerfSpans org slug", () => {
     const { spans, mirroredOrgs, tick, now } = harness();
     const sentAt = now();
     tick(50);
-    spans.setOrgSlug("383369a239383fee"); // memberships read after the send
+    spans.setOrgSlug("383369a239383fee");
     tick(500);
     spans.turnResponded(response(sentAt, now()));
     deepStrictEqual(
@@ -270,9 +259,9 @@ describe("PerfSpans org slug", () => {
     tick(10);
     const sentAt = now();
     tick(10);
-    spans.setOrgSlug(null); // signed out
+    spans.setOrgSlug(null);
     tick(10);
-    spans.setOrgSlug("383369a239383fee"); // another account signed in
+    spans.setOrgSlug("383369a239383fee");
     tick(700);
     spans.turnResponded(response(sentAt, now()));
     ok(mirroredOrgs.every((m) => m.orgSlug !== "383369a239383fee"));
@@ -286,7 +275,6 @@ describe("PerfSpans org slug", () => {
     tick(700);
     spans.turnResponded(response(sentAt, now()));
     await spans.flush();
-    // The ingest decodes with DisallowUnknownFields: an extra key 400s the batch.
     deepStrictEqual(sent.flat(), [{ span: "send_to_first_response", ms: 700 }]);
   });
 

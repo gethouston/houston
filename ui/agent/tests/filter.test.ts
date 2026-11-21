@@ -83,15 +83,12 @@ test("no match anywhere yields an empty folder, never null", () => {
 });
 
 test("a pruned folder still reports its TRUE child count", () => {
-  // "2025" survives only because W2.pdf is buried in it; the card must state
-  // the folder's real size (taxes + notes.txt), not the one surviving branch.
   const filtered = filterFolder(tree, "w2");
   const y2025 = filtered.children[0];
   assert.equal(y2025.kind, "folder");
   assert.equal(y2025.children.length, 1);
   assert.equal(folderChildCount(y2025), 2);
 
-  // The same one level down: taxes really holds W2.pdf AND receipts.
   const taxes = y2025.children[0];
   assert.equal(taxes.kind, "folder");
   assert.equal(folderChildCount(taxes), 2);
@@ -99,7 +96,6 @@ test("a pruned folder still reports its TRUE child count", () => {
 
 test("an unpruned folder's count is simply its children", () => {
   assert.equal(folderChildCount(folder("2025")), 2);
-  // A folder kept by its OWN name brings its whole subtree, so nothing to fix.
   const filtered = filterFolder(folder("2025"), "taxes");
   const taxes = filtered.children[0];
   assert.equal(taxes.kind, "folder");

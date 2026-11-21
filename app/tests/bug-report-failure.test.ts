@@ -7,8 +7,6 @@ import {
 } from "../src/lib/bug-report-failure.ts";
 import { classifyQuietError } from "../src/lib/quiet-error-class.ts";
 
-// H-009 / HOUSTON-APP-5FT: the bug-report intake rejects typed, so Linear's
-// plan cap reads as "deliver through the fallback", never as a per-user bug.
 describe("toBugReportFailure", () => {
   it("reads the shell's typed rejection", () => {
     deepStrictEqual(

@@ -4,11 +4,6 @@ import { useTranslation } from "react-i18next";
 import type { BrowserHandoffCardPayload } from "../../lib/browser-handoff-feed";
 import { BrowserLiveDialog } from "./browser-live-dialog";
 
-/**
- * A hand-off card in the chat and the live browser it opens. The card is
- * the only way in; once the hand-off stops waiting, Open goes away, and a
- * view still open shows how it ended until the person closes it.
- */
 export function BrowserHandoffCardHost({
   card,
   agentPath,

@@ -1,12 +1,3 @@
-/**
- * The refusals a workspace path guard can produce. They are separate
- * types because callers distinguish them: an escape is a path that never
- * belonged here, a not-allowed is a path this role has no business with, and a
- * denial is a path inside an allowed root that holds credential material.
- * Every message reaches the model verbatim in a tool result, so each stays
- * plain-language and echoes nothing but the path the model itself supplied.
- */
-
 export class PathEscapeError extends Error {
   constructor(raw: string, root: string) {
     super(
@@ -16,12 +7,6 @@ export class PathEscapeError extends Error {
   }
 }
 
-/**
- * A path outside the exact set of documents this runtime may touch. Distinct
- * from an escape: the path may sit inside the workspace and still be none of
- * this role's business. The message reaches the model verbatim, so it says what
- * IS allowed rather than only what is not.
- */
 export class PathNotAllowedError extends Error {
   constructor(raw: string, allowed: string[], readable: string[] = []) {
     const attachments = readable.length
@@ -34,11 +19,6 @@ export class PathNotAllowedError extends Error {
   }
 }
 
-/**
- * A path inside an allowed root that holds sign-in credentials. The message is
- * shown verbatim in a tool result, so it stays plain-language and never echoes
- * anything but the path the model itself supplied.
- */
 export class PathDeniedError extends Error {
   constructor(raw: string) {
     super(
@@ -66,11 +46,6 @@ export class RoutineWriteDeniedError extends ProtectedWriteDeniedError {
   }
 }
 
-/**
- * A write into a READ-ONLY root: the org-shared skills a pooled turn reads
- * from a throwaway snapshot. An edit there would vanish with the turn, so the
- * model is told the skill is used as it is.
- */
 export class SharedSkillReadOnlyError extends ProtectedWriteDeniedError {
   constructor() {
     super(
@@ -80,12 +55,6 @@ export class SharedSkillReadOnlyError extends ProtectedWriteDeniedError {
   }
 }
 
-/**
- * A write into a folder the runtime may only read: the attachments people send
- * the coordinator, and the full text of its own oversized tool results. Both
- * are kept as they arrived, and a prompt injection riding one file must not be
- * able to rewrite the next, so the model is told to use them as they are.
- */
 export class ReadOnlyFolderError extends ProtectedWriteDeniedError {
   constructor() {
     super(

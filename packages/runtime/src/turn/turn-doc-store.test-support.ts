@@ -1,8 +1,3 @@
-/**
- * The pod-store doc route for doc-publish tests: revisioned CAS, where a 409
- * names the current revision and doc (or only the revision, `bareConflict`).
- */
-
 export type Row = { id: string; status: string; started_at: string } & Record<
   string,
   unknown
@@ -54,7 +49,6 @@ export function docStore(
     fetchImpl,
     puts,
     doc: () => doc ?? [],
-    /** Another publisher lands right before our next PUT. */
     raceNextPut: (rows: Row[]) => {
       beforePut = () => {
         doc = rows;

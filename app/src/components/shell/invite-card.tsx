@@ -11,29 +11,6 @@ import {
   inviterDisplayName,
 } from "../../lib/invite-model";
 
-/**
- * One pending team invitation, offered at the top of the rail, directly under
- * its top line, ALWAYS visible (never behind a hover or a menu — the account
- * menu would hide the whole thing behind a click, and an invitation nobody
- * sees is an invitation nobody accepts).
- *
- * The inviter is named only when the gateway sends something human; today
- * `invitedBy` is the inviter's user id, which no invitee-side read can resolve
- * (they are not in that org yet), so the card names the TEAM instead of putting
- * a database id in front of the user — see `inviterDisplayName`.
- *
- * Both actions route through hooks that own the whole surfacing story (list
- * refresh, workspace reload, expected-state toasts), so the row here has no
- * `catch` of its own: a decline drops the card on the click, an accept when
- * the refreshed list drops the invite.
- *
- * Accept and Decline EXCLUDE each other through the shared {@link
- * InviteActionLock}, claimed synchronously before either mutation starts.
- * `AsyncButton`'s own rage-click guard is per button and `busy` only lands on
- * the next commit, so without the lock an Accept immediately followed by a
- * Decline fired both calls and the loser toasted a confusing
- * `already_member` / `invite_not_found` at a user who did nothing wrong.
- */
 export function InviteCard({
   invite,
   lock,
@@ -47,14 +24,11 @@ export function InviteCard({
   const inviter = inviterDisplayName(invite.invitedBy);
   const busy = accept.isPending;
 
-  /** Run one invite action under the lock; a second click is dropped. */
   const runExclusive = async (act: () => Promise<unknown>) => {
     if (!lock.claim(invite.id)) return;
     try {
       await act();
     } catch {
-      // Already surfaced once: an expected gateway state by the hook's
-      // informational toast, anything else by `call()`'s bug toast.
     } finally {
       lock.release(invite.id);
     }
@@ -67,15 +41,7 @@ export function InviteCard({
           aria-hidden="true"
           className="mt-0.5 size-4 shrink-0 text-ink-muted"
         />
-        {/* `min-w-0` + `break-words`: a team name is up to 200 gateway-allowed
-            characters and can be one unbroken token, which would otherwise push
-            the card past the rail's width. */}
         <div className="min-w-0 flex-1">
-          {/* `line-clamp-3`: the gateway allows a 200-character team name, and
-              one unbroken token of those wraps to a dozen lines that push
-              Accept / Decline out of the bounded list — a lone invitation whose
-              buttons are below the fold. Three lines keep the actions in view;
-              the full name stays in the DOM for screen readers and `title`. */}
           <p
             className="line-clamp-3 text-sm text-ink text-balance break-words"
             title={invite.orgName}

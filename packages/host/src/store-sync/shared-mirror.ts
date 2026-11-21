@@ -17,16 +17,10 @@ export interface SharedMirrorControllerOptions {
   debounceMs?: number;
   watchDebounceMs?: number;
   now?: () => number;
-  /** Gateway's explicit generation-precondition capability (boot lease). */
   generations?: boolean;
   log: (message: string, error?: unknown) => void;
 }
 
-/**
- * Owns the two deliberately soft shared-cache refresh points. A single-flight
- * probe updates its baseline only after complete reconciliation, so a failed
- * partial pass is retried safely on a later probe.
- */
 export class SharedMirrorController {
   private state: SharedMirrorState | undefined;
   private lastProbeAt: number | undefined;
@@ -40,13 +34,11 @@ export class SharedMirrorController {
 
   constructor(private readonly options: SharedMirrorControllerOptions) {}
 
-  /** Begin wake hydration without making host readiness wait on remote storage. */
   wake(): void {
     this.ensureWatcher();
     void this.requestSync("wake sync", "push-pull");
   }
 
-  /** Refresh before a turn, joining wake work and debouncing remote probes. */
   beforeTurn(): Promise<void> {
     this.ensureWatcher();
     if (this.inFlight) {

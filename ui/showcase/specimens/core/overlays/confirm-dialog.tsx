@@ -11,11 +11,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/**
- * `ConfirmDialog` is controlled-only — it has no trigger of its own. Every row
- * therefore pairs one button with one instance, which is exactly how the app
- * uses it.
- */
 function Confirm({
   label,
   title,
@@ -164,11 +159,6 @@ function ConfirmDialogSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["ConfirmDialog"];
 
 export const specimen: Specimen = {

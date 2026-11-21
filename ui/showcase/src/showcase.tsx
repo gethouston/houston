@@ -13,22 +13,12 @@ import { ShowcaseNav } from "./showcase-nav";
 import { useShowcaseTheme, useSpecimenRoute } from "./use-showcase-state";
 import { SpecimenIdProvider } from "./used-in";
 
-/**
- * The review surface for every `@houston-ai/*` package: a fixed bar with the
- * theme switch, a grouped and filterable rail of specimens, and the selected
- * specimen beside it.
- *
- * The chrome follows the same design language as the components it presents —
- * flat surfaces, hairlines, colour-only motion, both themes, tokens only.
- */
 export function Showcase() {
   const { theme, toggleTheme } = useShowcaseTheme();
   const { id, select } = useSpecimenRoute(specimenIds, DEFAULT_SPECIMEN_ID);
   const active = specimens.find((one) => one.id === id);
 
   return (
-    // Transparent, like the app shell root: the page plane is the shared
-    // canvas painted on the body (aurora in dark, clean gutter in light).
     <div className="min-h-full text-ink">
       <header className="fixed inset-x-0 top-0 z-20 border-line border-b bg-gutter/85 backdrop-blur-md">
         <div className="flex h-14 items-center gap-6 px-6">
@@ -74,14 +64,8 @@ export function Showcase() {
 
       <main className="pt-14 pl-64">
         {active ? (
-          // The provider is what lets `SpecimenPage` render the "Used in" row
-          // without every page having to pass its own id back down.
           <SpecimenIdProvider id={active.id}>
             {active.group === "Agent Store" ? (
-              // Store screens live INSIDE the app's screen pane (and the
-              // website's equivalent), never on the bare gutter — preview
-              // them on the real surface so what's approved here is what
-              // ships (user decision 2026-07-29).
               <div className="canvas-screen min-h-full bg-background">
                 {active.render()}
               </div>

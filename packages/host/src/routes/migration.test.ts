@@ -21,15 +21,6 @@ import {
 } from "./migration-scope";
 import { buildMigrationManifest } from "./migration-source";
 
-/**
- * The one-click desktop→cloud migration surface (HOU-719). Load-bearing
- * behaviors: the shared scope classifier (what leaves the machine — and what
- * must NEVER, like `.houston/integrations.json` or pi session `.jsonl`s), the
- * import allowlist (a hostile zip can't write engine internals), skip-existing
- * idempotency (a re-POST after a dropped connection is a safe resume), and
- * session re-synthesis from imported transcripts.
- */
-
 const ws: Workspace = {
   id: "Personal",
   ownerUserId: "local-owner",
@@ -104,7 +95,7 @@ async function call(
   try {
     parsed = text ? JSON.parse(text) : null;
   } catch {
-    parsed = null; // binary (zip) response
+    parsed = null;
   }
   return {
     handled,
@@ -115,8 +106,6 @@ async function call(
   };
 }
 
-// ── scope classifier ────────────────────────────────────────────────────────
-
 test("classifier: core data in, engine internals and secrets out", () => {
   expect(classifyMigrationPath("CLAUDE.md")).toBe("core");
   expect(classifyMigrationPath(".houston/agent.json")).toBe("core");
@@ -126,7 +115,6 @@ test("classifier: core data in, engine internals and secrets out", () => {
     "core",
   );
   expect(classifyMigrationPath("report/q3.pdf")).toBe("file");
-  // Never migrated:
   expect(classifyMigrationPath(".houston/integrations.json")).toBeNull();
   expect(classifyMigrationPath(".houston/sessions/anthropic/x.sid")).toBeNull();
   expect(
@@ -154,8 +142,6 @@ test("toolkits parse: Rust array shape and map shape, garbage reads empty", () =
   expect(toolkitsFromIntegrationsJson("not json")).toEqual([]);
 });
 
-// ── manifest ────────────────────────────────────────────────────────────────
-
 test("manifest lists in-scope entries, reports oversize, reads toolkits", async () => {
   const vfs = new MemoryVfs();
   await vfs.writeText(`${ROOT}/CLAUDE.md`, "# hi");
@@ -177,8 +163,6 @@ test("manifest lists in-scope entries, reports oversize, reads toolkits", async 
   expect(m.integrations).toEqual(["gmail"]);
   expect(m.totalBytes).toBe(5);
 });
-
-// ── export ──────────────────────────────────────────────────────────────────
 
 test("export zips exactly the requested in-scope paths", async () => {
   const vfs = new MemoryVfs();
@@ -206,8 +190,6 @@ test("export refuses an out-of-scope or escaping path with a loud 400", async ()
   });
   expect(secret.status).toBe(400);
 });
-
-// ── import ──────────────────────────────────────────────────────────────────
 
 function zipOf(entries: Record<string, string>): Buffer {
   const z: Record<string, Uint8Array> = {};
@@ -295,7 +277,6 @@ test("imported routines are stamped with the importer, never the archive's creat
     "importer-sub",
   ]);
 
-  // No verified actor: the archive's creator is dropped, not kept.
   const bare = new MemoryVfs();
   await call(
     bare,
@@ -320,8 +301,6 @@ test("import rejects a non-zip body with 400", async () => {
   expect(r.status).toBe(400);
 });
 
-// ── complete / status ───────────────────────────────────────────────────────
-
 test("complete writes the marker; status round-trips it", async () => {
   const vfs = new MemoryVfs();
   const before = await call(vfs, "GET", "migration/status", Buffer.alloc(0));
@@ -338,8 +317,6 @@ test("complete writes the marker; status round-trips it", async () => {
   expect(imported.source).toEqual({ workspace: "Personal", agent: "Helper" });
   expect(imported.counts).toEqual({ written: 3 });
 });
-
-// ── session re-synthesis (real FS: SessionManager writes .jsonl on disk) ────
 
 const tmp = mkdtempSync(join(tmpdir(), "houston-migration-"));
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
@@ -376,12 +353,9 @@ test("imported transcripts re-synthesize pi sessions anchored at agentDir", asyn
   expect(existsSync(sessionDir)).toBe(true);
   const sessionFiles = readdirSync(sessionDir);
   expect(sessionFiles.length).toBeGreaterThan(0);
-  // The imported block is closed by the boundary note so a stale imperative in
-  // old history can never read as pending work on the first post-import turn.
   const jsonl = readFileSync(join(sessionDir, sessionFiles[0] ?? ""), "utf8");
   const lines = jsonl.trim().split("\n");
   expect(lines[lines.length - 1]).toContain("[Imported history]");
-  // Re-import: transcript skip-existing AND the session dir left untouched.
   const again = await call(
     vfs,
     "POST",
@@ -391,8 +365,6 @@ test("imported transcripts re-synthesize pi sessions anchored at agentDir", asyn
   );
   expect((again.body as { skipped: number }).skipped).toBe(1);
 });
-
-// ── agent-to-agent copy ("Copy an agent" with chats) ────────────────────────
 
 test("export from one agent imports into another on the same host, sessions rebuilt", async () => {
   const vfs = new FsVfs(tmp);
@@ -420,8 +392,6 @@ test("export from one agent imports into another on the same host, sessions rebu
     `${ROOT}/.houston/runtime/conversations/s-9.json`,
     transcript,
   );
-  // The paths the app plans: the board file plus one transcript per
-  // conversation, encoded the way the runtime names them.
   const exported = await call(vfs, "POST", "migration/export", {
     paths: [
       ".houston/activity/activity.json",
@@ -456,7 +426,6 @@ test("export from one agent imports into another on the same host, sessions rebu
   expect(
     existsSync(join(copyDir, ".houston", "runtime", "sessions", "s-9")),
   ).toBe(true);
-  // The source is untouched.
   expect(await vfs.readText(`${ROOT}/.houston/activity/activity.json`)).toBe(
     board,
   );
@@ -489,7 +458,6 @@ test("import with sessions=0 writes the transcript but rebuilds no pi session", 
   expect(
     existsSync(join(agentDir, ".houston", "runtime", "sessions", "activity-9")),
   ).toBe(false);
-  // The marker rides through verbatim for the runtime's first turn to consume.
   expect(
     await vfs.readText(
       `${ROOT}/.houston/runtime/conversations/activity-9.json`,
@@ -498,7 +466,6 @@ test("import with sessions=0 writes the transcript but rebuilds no pi session", 
 });
 
 test("a session the vfs lists but the disk lacks (a lazy pool tree) is not synthesized again", async () => {
-  // The worker's lazy tree: the store lists the session, nothing on disk.
   const vfs = new MemoryVfs();
   await vfs.writeText(
     `${ROOT}/.houston/runtime/sessions/listed-1/s.jsonl`,
@@ -533,9 +500,6 @@ test("a session the vfs lists but the disk lacks (a lazy pool tree) is not synth
 });
 
 test("a skipped transcript whose session never landed gets its session on the retry", async () => {
-  // A worker that died between uploading the transcript and its session: the
-  // store holds the transcript, no session. The retry skips the transcript
-  // and must still rebuild the session, or that chat's memory is gone.
   const vfs = new MemoryVfs();
   const transcript = JSON.stringify({
     id: "half-1",

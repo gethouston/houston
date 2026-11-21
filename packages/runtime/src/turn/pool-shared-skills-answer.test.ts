@@ -8,13 +8,6 @@ import {
 } from "@houston/runtime-client/object-sync";
 import { afterAll, expect, test } from "vitest";
 
-/**
- * The worker answers a pooled turn (the gateway's 202 waits for its response
- * headers) before the org's shared skills snapshot lands, and the prompt
- * still waits for that snapshot: a slow shared-skills read delays the model,
- * never the answer, and never yields a prompt without the enabled skill.
- */
-
 const scratch = mkdtempSync(join(tmpdir(), "houston-pool-skills-answer-"));
 process.env.HOUSTON_MODE = "turn";
 process.env.HOUSTON_DATA_DIR = join(scratch, "process-data");
@@ -135,7 +128,6 @@ test("the worker answers before the shared skills land; the prompt waits", async
       },
     }),
   });
-  // Headers arrived while the snapshot is still held.
   expect(response.status).toBe(200);
   expect(response.headers.get("content-type")).toContain("text/event-stream");
   await new Promise((resolve) => setTimeout(resolve, 50));

@@ -3,10 +3,6 @@ import { describe, it } from "node:test";
 import type { TFunction } from "i18next";
 import { localizeCatalogCopy } from "../src/agents/catalog-labels.ts";
 
-/**
- * Minimal i18next stub: returns the value in `table` for a known key,
- * otherwise the `defaultValue` (mirrors i18next's fallback contract).
- */
 function fakeT(table: Record<string, string>): TFunction {
   const t = (key: string, opts?: { defaultValue?: string }) =>
     table[key] ?? opts?.defaultValue ?? key;
@@ -66,8 +62,6 @@ describe("localizeCatalogCopy", () => {
   });
 
   it("keeps a third-party agent in its author's language, ignoring catalog keys", () => {
-    // Even if a catalog key collides by id, a non-Houston agent must never be
-    // relabeled: author's language wins (App Store model).
     const t = fakeT({
       "agents:catalog.bookkeeping.name": "SHOULD NOT APPLY",
     });

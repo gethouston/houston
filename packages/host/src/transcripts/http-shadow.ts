@@ -34,7 +34,6 @@ export type TranscriptShadowCommand =
 
 export interface TranscriptShadow {
   apply(command: TranscriptShadowCommand): Promise<void>;
-  /** undefined means the route is unavailable and the file reader must be used. */
   replyAfter(
     conversationId: string,
     sinceMs: number,

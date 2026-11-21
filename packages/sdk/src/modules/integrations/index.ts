@@ -1,28 +1,3 @@
-/**
- * The integrations module — the SDK-canonical Composio surface.
- *
- * Reads: publishes the {@link INTEGRATIONS_SCOPE} view-model — readiness plus
- * the toolkit catalog and the user's connections — republished whole on every
- * refresh. Writes: connect / disconnect / poll flow as commands; the same
- * handlers back both the typed facade and the `dispatch` path.
- *
- * SEAM — user-scoped, NOT per-agent. Integrations are gateway-owned and keyed by
- * the caller's session `sub`, so this module talks to the flat
- * {@link IntegrationsClient} (rooted at the base URL), never `clientFor(agentId)`.
- *
- * Degradation is explicit and end-to-end:
- *  - 503 (no key) → VM `{ready:false, reason:"unavailable"}` — the tab never crashes.
- *  - provider `ready:false, reason:"signin"` → VM `{ready:false, reason:"signin"}`.
- *  - a 401 routes through the shared {@link ModuleContext.authExpiry} notifier.
- *
- * `refresh` and `pollConnection` read through {@link IntegrationsClient} rather
- * than the provider-scoped twins in `reads.ts`: the assistant catalog derives an
- * operation's route from the transport call in the declaration's own body, so
- * forwarding them would erase both from it. The provider-parameterised reads,
- * the custom connectors and their per-agent form live in `reads.ts`,
- * `custom.ts` and `custom-agent.ts`, bound here through `facade.ts`.
- */
-
 import type { IntegrationProviderId } from "@houston/protocol";
 import {
   EngineError,
@@ -68,7 +43,6 @@ export function createIntegrationsModule(
   const emitTokenExpired = () => authExpiry.notifyExpired();
   const scope = moduleScope(ctx, "integrations", IntegrationsHttpError);
 
-  /** Run a client call, surfacing a 401 as the shared token-expiry signal. */
   async function run<T>(fn: () => Promise<T>): Promise<T> {
     try {
       return await fn();
@@ -94,8 +68,6 @@ export function createIntegrationsModule(
     try {
       statuses = await run(() => client.listIntegrations());
     } catch (err) {
-      // A missing gateway key (503) is a first-class state, not a failure: the
-      // tab shows "not available" instead of red-toasting.
       if (err instanceof EngineError && err.status === 503) {
         return publish(unavailableVm("unavailable", true));
       }
@@ -158,8 +130,6 @@ export function createIntegrationsModule(
     disconnect(requireString(p, "toolkit")),
   );
 
-  // Publish a defined "loading" snapshot asynchronously, so a subscriber reads
-  // `undefined` until the first real load lands (mirrors the agents module).
   void Promise.resolve().then(() => {
     if (store.getSnapshot(INTEGRATIONS_SCOPE) === undefined) {
       store.publish(INTEGRATIONS_SCOPE, unavailableVm(undefined, false));

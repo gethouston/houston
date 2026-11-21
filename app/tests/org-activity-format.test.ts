@@ -6,7 +6,6 @@ import {
   formatAuditEntry,
 } from "../src/components/organization/org-activity-format.ts";
 
-/** Deterministic fake resolvers so the mapping is asserted in isolation. */
 const R: AuditResolvers = {
   actor: "Maria",
   agent: "Sales Agent",

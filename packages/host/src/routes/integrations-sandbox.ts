@@ -17,14 +17,6 @@ import { defineRouteFamily } from "./registry";
 
 export { providerForAction } from "./integrations-fanout";
 
-/**
- * The RUNTIME-facing integrations proxy (`/sandbox/integrations/*`, authed by
- * the per-sandbox HMAC token): the agent's `integration_search` /
- * `integration_execute` tools call THIS, never the provider directly — no
- * integration secret ever sits in the agent runtime. The host resolves the
- * sandbox → its workspace owner → that user's id with the provider. The
- * user-facing routes live in integrations.ts.
- */
 defineRouteFamily({
   group: "sandbox-integrations",
   members: [
@@ -55,7 +47,6 @@ async function handleSandboxIntegrations(
   const m = path.match(/^\/sandbox\/integrations\/(search|execute)$/);
   if (!m || method !== "POST") return false;
 
-  // Authenticate the sandbox (NOT a user JWT) — same gate as /sandbox/credential.
   const sbToken = bearer(req, url);
   const claim = sbToken ? deps.vault.validateSandboxToken(sbToken) : null;
   if (!claim) {
@@ -63,11 +54,6 @@ async function handleSandboxIntegrations(
     return true;
   }
   if (!deps.integrations) {
-    // A stable `code` marks THIS as the host's own not-configured signal (no
-    // key in this install) — distinct from a transient upstream 503 the proxy
-    // relays verbatim during an outage. The runtime tool classifies on the
-    // code, never the bare status, so it never misdirects the user to set
-    // COMPOSIO_API_KEY during a temporary gateway/provider failure.
     json(res, 503, {
       error: "integrations not configured",
       code: "integrations_not_configured",
@@ -77,9 +63,6 @@ async function handleSandboxIntegrations(
   const { registry } = deps.integrations;
 
   const body = await readJson(req);
-  // An explicit provider narrows the call; omitted (the runtime tools always
-  // omit it) means ALL providers: search fans out and merges, execute resolves
-  // the owning provider from the action's shape (see providersFor/executorOf).
   const explicit =
     typeof body.provider === "string" && registry.has(body.provider)
       ? body.provider
@@ -91,16 +74,12 @@ async function handleSandboxIntegrations(
     return true;
   }
 
-  // The sandbox proves its workspace; the provider acts as the workspace owner.
   const ws = await deps.store.getWorkspace(claim.workspaceId);
   if (!ws) {
     json(res, 404, { error: "workspace not found" });
     return true;
   }
 
-  // WHO the runtime is acting as this turn (C2): the gateway-minted acting-as
-  // token for a live user, OR the routine creator's sub for a fired routine.
-  // Both absent locally (single-user) → the provider falls back to the owner.
   const actingAs = header(req, "x-houston-acting-as");
   const actingUser = header(req, "x-houston-acting-user");
   const acting = actingAs || actingUser ? { actingAs, actingUser } : undefined;
@@ -112,8 +91,6 @@ async function handleSandboxIntegrations(
         json(res, 400, { error: "missing 'query'" });
         return true;
       }
-      // Optional `app`: the agent's HARD scope when the task names an app —
-      // each provider returns only that app's actions (PRODUCT-1274).
       const app = optionalTrimmed(body.app);
       json(
         res,
@@ -130,7 +107,6 @@ async function handleSandboxIntegrations(
       return true;
     }
 
-    // execute
     const action = body.action;
     if (typeof action !== "string") {
       json(res, 400, { error: "missing 'action'" });
@@ -140,17 +116,11 @@ async function handleSandboxIntegrations(
       body.params && typeof body.params === "object"
         ? (body.params as Record<string, unknown>)
         : {};
-    // Optional `account`: the runtime tool targets ONE of the user's connected
-    // accounts when the action's toolkit holds several (two Gmail logins).
     const account =
       typeof body.account === "string" && body.account
         ? body.account
         : undefined;
 
-    // The host executes every authenticated execute directly. Integration
-    // confirmations are model-driven `ask_user` questions raised BEFORE the
-    // call (Ask first mode); there is no host-side approval gate. Planner
-    // blocking and the cloud gateway's toolkit allowlist live elsewhere.
     const provider = explicit ?? undefined;
     const target = { registry, userId: ws.ownerUserId, action, acting };
     const staged = await stageSandboxFiles(deps, {
@@ -172,8 +142,6 @@ async function handleSandboxIntegrations(
     );
     return true;
   } catch (err) {
-    // A file argument the agent got wrong is the action's failure, phrased for
-    // the model to correct its call: the same shape a refused execute has.
     if (err instanceof FileArgumentError) {
       json(res, 200, { successful: false, error: err.message });
       return true;

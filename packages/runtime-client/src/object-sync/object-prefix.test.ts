@@ -6,12 +6,6 @@ import {
   underObjectPrefix,
 } from "./object-prefix";
 
-/**
- * pod-store's manifest takes `?prefix=` as an object key naming a directory
- * and answers 400 "invalid object prefix" for anything else. A trailing slash
- * was that 400 on every pooled turn, so the client now holds the same rule.
- */
-
 test.each([
   "",
   "skills",
@@ -60,8 +54,6 @@ function podStore(keys: string[]) {
     if (!isObjectPrefix(prefix)) {
       return Response.json({ error: "invalid object prefix" }, { status: 400 });
     }
-    // A pod-store from before it scoped the listing to the directory: a raw
-    // string prefix, siblings included.
     return Response.json({
       objects: keys
         .filter((key) => key.startsWith(prefix))

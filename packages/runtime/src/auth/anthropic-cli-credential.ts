@@ -9,19 +9,7 @@ import {
   readMintedFile,
 } from "./anthropic-cli-output";
 
-/**
- * Where the CLI login left its minted credential, and how to destroy every
- * copy afterwards (anthropic-cli-login.ts's post-exit half).
- *
- * Read order, scoped to the throwaway login dir: the credential file first
- * (Linux pods, Docker self-host, Windows, some macOS setups), then the macOS
- * Keychain item the CLI writes on darwin instead. A file that exists but holds
- * no usable credential (a logout husk) falls through to the Keychain; its
- * concrete problem is what surfaces when the Keychain is empty too.
- */
-
 export type MintedCredentialDeps = {
-  // Test seams; production reads the real dir / Keychain.
   readCredentialFile?: (dir: string) => string | null;
   readKeychain?: (dir: string) => Promise<string | null>;
   cleanupDir?: (dir: string) => void;
@@ -51,11 +39,6 @@ export async function readMintedCredential(
   );
 }
 
-/**
- * Remove the login dir and the Keychain item. Both copies carry the refresh
- * token; a leftover would be a second-rotator seed, so a failure is loud —
- * but never fatal to a login that already stored its credential.
- */
 export async function discardMintedCredential(
   dir: string,
   deps: MintedCredentialDeps,

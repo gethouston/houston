@@ -1,19 +1,7 @@
-/*
- * /data-partners — the estimator section. The fold, statement band and
- * the why split are /enterprise's own
- * (enterprise*.css); the other sections live in data-partners-sections.css.
- *
- * Same system as /enterprise: the --panel surface, hairlines, the ink pill,
- * light 340-weight figures. Both dresses: light by default, .is-dark when the
- * page's tone flow turns dark.
- */
-
-/* The statement band holds a sentence, not a number: a wider measure. */
 .dp-statement .ent-proof-head {
   max-width: 820px;
 }
 
-/* ── The panel: controls left, the range right ───────────────────────── */
 .dp-est {
   display: grid;
   gap: clamp(28px, 4vw, 56px);
@@ -34,7 +22,6 @@
   gap: 32px;
 }
 
-/* ── Sliders ─────────────────────────────────────────────────────────── */
 .dp-slider-head {
   display: flex;
   align-items: baseline;
@@ -67,8 +54,6 @@
   justify-content: space-between;
   font-variant-numeric: tabular-nums;
 }
-/* The track: a hairline that fills in ink up to the thumb (--fill is set by
-   the script; without it the track stays one tone). */
 .dp-slider input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -128,7 +113,6 @@
   outline-offset: 3px;
 }
 
-/* ── Region pills ───────────────────────────────────────────────────── */
 .dp-regions {
   border: 0;
 }
@@ -178,7 +162,6 @@
   outline-offset: 2px;
 }
 
-/* ── The range ──────────────────────────────────────────────────────── */
 .dp-est-result {
   display: flex;
   flex-direction: column;
@@ -225,7 +208,6 @@
   height: 15px;
 }
 
-/* ── Dark dress (the tone flow) ─────────────────────────────────────── */
 .section.is-dark .dp-est {
   background: rgba(255, 255, 255, 0.05);
 }

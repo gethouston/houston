@@ -1,9 +1,3 @@
-/**
- * The two list edits optimistic writes paint. Both return the SAME array when
- * nothing matches, so a patch re-run over a refetch that already carries the
- * change leaves the cache untouched, and a list that never loaded stays
- * `undefined` (or the host's `null` = unsupported).
- */
 type Absent = null | undefined;
 
 export function withoutItems<T>(list: T[], drop: (item: T) => boolean): T[];

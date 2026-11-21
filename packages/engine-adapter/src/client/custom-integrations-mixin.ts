@@ -9,16 +9,6 @@ import {
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
-/**
- * Custom integrations (HOU-550 / HOU-980): user-added API / MCP servers the
- * Composio catalog does not offer. Two route families, one data set:
- *
- * Direct hosts use the cp-gated top-level routes. Hosted deployments require
- * the per-agent dispatch form, which the gateway proxies to the agent's pod.
- * Both delegate to `sdk.integrations.{custom,agentCustom}.*`; the SDK throws on
- * every non-2xx, and `custom-routes.ts` holds what web makes of a 404.
- */
-
 export function CustomIntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
   class CustomIntegrations extends Base {
     updateCustomIntegrationDetails(
@@ -28,7 +18,6 @@ export function CustomIntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<void> {
       return updateDetails(this.ctx, slug, details, agentId);
     }
-    // ---- top-level form (direct host) ----
     async customIntegrations(): Promise<
       controlPlane.CustomIntegrationView[] | null
     > {
@@ -89,12 +78,9 @@ export function CustomIntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       );
     }
 
-    // ---- per-agent dispatch form (works in BOTH deployments, HOU-823) ----
     agentCustomIntegrations(
       agentSlugOrId: string,
     ): Promise<controlPlane.CustomIntegrationView[] | null> {
-      // 404 = the host does not serve the feature → the custom UI hides
-      // (mirrors `customIntegrations`' null degrade).
       return whenServed(() =>
         viaSdk(agentCustomPath(agentSlugOrId, "definitions"), () =>
           this.ctx.sdk.integrations.agentCustom.list(agentSlugOrId),

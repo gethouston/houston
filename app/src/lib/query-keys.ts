@@ -1,22 +1,12 @@
 import { orgQueryKeys } from "./query-keys-org";
 
-/**
- * Centralized query key factory for TanStack Query.
- *
- * Every agent-scoped query is keyed by [resource, agentPath].
- * This makes invalidation trivial: on an "ActivityChanged" event for path X,
- * invalidate queryKeys.activity(X).
- */
 export const queryKeys = {
-  // Agent-scoped (reactive via file watcher + Tauri events)
   activity: (agentPath: string) => ["activity", agentPath] as const,
   skills: (agentPath: string) => ["skills", agentPath] as const,
   skillsManifest: (agentPath: string) =>
     ["skills-manifest", agentPath] as const,
   sharedSkills: (workspaceId: string) =>
     ["shared-skills", workspaceId] as const,
-  /** One store skill's full SKILL.md — rides the "shared-skills" prefix so
-   *  `SharedSkillsChanged` invalidates it with the list. */
   sharedSkillDetail: (workspaceId: string, slug: string) =>
     ["shared-skills", workspaceId, "detail", slug] as const,
   skillDetail: (agentPath: string, name: string) =>
@@ -42,120 +32,46 @@ export const queryKeys = {
     ["all-conversations", ...agentPaths] as const,
   chatHistory: (agentPath: string, sessionKey: string) =>
     ["chat-history", agentPath, sessionKey] as const,
-  /**
-   * Prefix key covering EVERY session's chat history for an agent. Used for
-   * coarse invalidation on `ConversationsChanged` (the event carries no
-   * session key): a teammate's message must appear live in an open
-   * conversation, not on the next remount/focus. Correctness over precision.
-   */
   chatHistoryForAgent: (agentPath: string) =>
     ["chat-history", agentPath] as const,
 
-  // App-scoped (less reactive, loaded on init)
-  /**
-   * Provider connection statuses for the chat model picker. Invalidated on
-   * `ProviderLoginComplete` so a fresh sign-in flips the picker live instead
-   * of waiting for the next mount (issue #342).
-   */
   providerStatuses: (providers?: readonly string[] | null) =>
     providers
       ? (["provider-statuses", ...providers] as const)
       : (["provider-statuses"] as const),
   capabilities: () => ["capabilities"] as const,
-  /**
-   * The personal assistant's address (`GET /v1/assistant`) in one space. The
-   * space id is in the key because each space answers its own assistant, and
-   * keeping one entry per space is what lets a switch back skip the ask
-   * (`lib/assistant-address-cache.ts`).
-   */
   assistant: (spaceId: string | null) => ["assistant", spaceId] as const,
-  /** The AI Manager's morning-briefing settings + last run (one per person),
-   *  refreshed on the host's `HeartbeatChanged` event. */
   heartbeat: () => ["heartbeat"] as const,
-  /** The person's preferences, refreshed as a family on the host's
-   *  `PreferencesChanged` event. */
   preferences: () => ["preferences"] as const,
   nextStepSuggestions: () => ["preferences", "next_step_suggestions"] as const,
 
-  /**
-   * Durable onboarding flags — USER-scoped and space-INVARIANT (engine prefs on
-   * the user's own store, mirrored per uid). Centralized here so the space-cache
-   * purge (`resetCacheForSpaceChange`) can preserve them by their root segment
-   * without importing the hooks. `onboarding-pending` is the interrupted-flow
-   * resume bit; `onboarding-completed` is the "already onboarded" bit, keyed by
-   * uid so a user switch can't inherit a stale value.
-   */
   onboardingPending: () => ["onboarding-pending"] as const,
   onboardingCompleted: (uid: string | null) =>
     ["onboarding-completed", uid] as const,
 
-  /**
-   * The identity `Session | null` cache key, shared by `useSession` on both
-   * surfaces. Defined here (the pure key module) as the single source of truth
-   * and re-exported as `SESSION_QUERY_KEY` from `identity/session-store`, so the
-   * space-cache purge can preserve it without importing the identity chain.
-   */
   session: () => ["session"] as const,
 
-  /**
-   * Live per-account provider usage (the meters on the AI Models hub's
-   * Connected rows): rate-limit windows + prepaid balances from each provider's
-   * own usage API. App-scoped (credentials are workspace-central); refreshed on
-   * an interval while the strip is mounted, and invalidated alongside provider
-   * statuses on a connect so a fresh account shows without a manual refresh.
-   */
   providerUsage: () => ["provider-usage"] as const,
 
-  /**
-   * C9 personal API keys (`GET /v1/keys`). App-scoped (one set per user, not
-   * agent-scoped) and hosted-gateway only — the create/revoke mutations
-   * self-invalidate this key. The full secret from a mint is NEVER cached here;
-   * it lives only in the create dialog's local state for its one-time reveal.
-   */
   apiKeys: () => ["api-keys"] as const,
 
-  /**
-   * Messaging channels connected to the personal assistant (`GET /v1/channels`).
-   * Space-scoped: the gateway answers for the caller's CURRENT space, so the id
-   * is in the key and a space switch reads its own connections rather than the
-   * previous one's. Connect, complete and disconnect self-invalidate it.
-   */
   channels: (spaceId?: string) => ["channels", spaceId] as const,
-  /** The person's own LinkedIn connection: theirs, not a space's. */
   linkedInConnection: () => ["linkedin-connection"] as const,
 
-  /**
-   * Per-workspace sidebar arrangement (sort mode + named groups + drag order).
-   * Optimistically updated by the layout mutation; also invalidated on the
-   * `SidebarLayoutChanged` event for best-effort cross-surface/tab sync.
-   */
   sidebarLayout: (workspaceId: string) =>
     ["sidebar-layout", workspaceId] as const,
 
-  /**
-   * The one-time post-migration "reconnect your AI" gate. `migrationReconnect`
-   * holds the host's `chatHistoryMigrated` flag (does this install come from the
-   * legacy desktop build); `migrationReconnectDismissed` holds the persisted
-   * "already seen" flag. Both rarely change, so they are app-scoped.
-   */
   migrationReconnect: () => ["migration-reconnect"] as const,
   migrationReconnectDismissed: () => ["migration-reconnect-dismissed"] as const,
 
-  /** First-run cloud-migration wizard (HOU-719): the `detect_legacy_houston`
-   *  scan for old desktop data on this machine. Stable for the app's life. */
   cloudMigrationDetect: () => ["cloud-migration-detect"] as const,
 
-  // Integrations are user-level (shared across the user's agents), so they are
-  // NOT keyed by agentPath even though they surface on per-agent surfaces.
   integrationStatus: () => ["integration-status"] as const,
   integrationConnections: (provider: string) =>
     ["integration-connections", provider] as const,
   integrationToolkits: (provider: string) =>
     ["integration-toolkits", provider] as const,
-  /** HOU-550: the user's custom (API / MCP) integrations. User-level, one list. */
   customIntegrations: () => ["custom-integrations"] as const,
-  /** The per-agent read of the same list (HOU-823) — shares the
-   *  "custom-integrations" prefix so one invalidation refreshes both. */
   agentCustomIntegrations: (agentId: string) =>
     ["custom-integrations", agentId] as const,
 

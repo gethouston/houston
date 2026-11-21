@@ -6,14 +6,6 @@ import { CustomExecutorHost } from "./executor-host";
 import { MemoryCustomSecretStore } from "./secrets";
 import type { CustomIntegrationDef } from "./types";
 
-/**
- * What the curated ManyChat entry actually puts on the wire, against a
- * stand-in for api.manychat.com: the bearer key on every call, query
- * parameters on the GET lookups, JSON bodies on the POST writes, and the
- * upstream reply handed back to the agent. Nobody on the team holds a
- * ManyChat account, so this is the request-shaping contract a real key
- * would exercise.
- */
 interface Seen {
   method: string;
   url: string;
@@ -32,8 +24,6 @@ const readBody = (req: IncomingMessage): Promise<string> =>
   });
 
 const server = createServer(async (req, res) => {
-  // The executor's OAuth discovery probes at compile time; ManyChat answers
-  // them 404 (it has no OAuth), and so does this stand-in.
   if (req.url?.startsWith("/.well-known/")) {
     res.statusCode = 404;
     res.end();
@@ -80,8 +70,6 @@ test("lookups go out as GETs with query params, writes as JSON POSTs, all bearer
     slug: "manychat",
     name: "ManyChat",
     spec: { kind: "blob", value: readFileSync(SPEC, "utf8") },
-    // The committed document names api.manychat.com; the definition's base
-    // url must win so a self-host can point elsewhere (and so this test can).
     baseUrl,
     auth: "credential",
     addedAtMs: 1,
@@ -105,8 +93,6 @@ test("lookups go out as GETs with query params, writes as JSON POSTs, all bearer
   const found = (await executor.execute(address("subscriber.findByName"), {
     name: "Ana Pérez",
   })) as { ok?: boolean; data?: unknown };
-  // POST operations take their JSON payload under `body` (the executor's
-  // OpenAPI argument convention, which is also what the agent's schema shows).
   await executor.execute(address("subscriber.addTagByName"), {
     body: { subscriber_id: 1001, tag_name: "vip" },
   });
@@ -142,6 +128,5 @@ test("lookups go out as GETs with query params, writes as JSON POSTs, all bearer
     },
     message_tag: "ACCOUNT_UPDATE",
   });
-  // The upstream reply reaches the caller intact.
   expect(JSON.stringify(found)).toContain("ana@example.com");
 });

@@ -7,22 +7,11 @@ import { useTranslation } from "react-i18next";
 import type { WebhookPick } from "./types";
 
 interface IntakeWebhookCardProps {
-  /** The stepper chrome (pager + dismiss X) the intake hands this re-hosted
-   *  step so it renders the SAME shell as a real ask_user card. */
   chrome: StepChrome;
-  /** Back to the wake question (this card is only reachable via that choice). */
   onBack: () => void;
-  /** Commit the incoming-webhook wake and complete the intake. */
   onComplete: (pick: WebhookPick) => void;
 }
 
-/**
- * The incoming-webhook wake card, re-hosted from the old wizard step into the
- * in-chat {@link InteractionModal} shell: a short, plain-words explainer of what
- * the user is choosing. Nothing is collected here — the unique web address and
- * secret key are minted (and revealed once) later, from the setup chat header —
- * so this card only frames the choice and commits it.
- */
 export function IntakeWebhookCard({
   chrome,
   onBack,

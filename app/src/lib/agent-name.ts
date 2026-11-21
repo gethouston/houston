@@ -8,21 +8,8 @@ import {
 
 export { AGENT_NAME_MAX_LENGTH };
 
-/**
- * What's wrong with a typed agent name, pre-submit (HOU-1166). `null` means
- * submittable; an empty name also returns `null`: each caller decides what a
- * blank name means (the employee card's `employeeNameIssue` makes it
- * "required", the copy wizard disables its submit).
- */
 export type AgentNameIssue = "invalidChars" | "tooLong" | "reserved" | "taken";
 
-/**
- * Validate a name BEFORE it goes to the host: shape via the shared SDK rule,
- * the AI Manager's own name (`takesReservedAgentName`), and duplicates
- * against the already-loaded agent list, compared exactly as the host's store
- * refuses them (`sameAgentName`). `currentName` is the agent's name before a
- * rename, so an employee that already holds the reserved name keeps it.
- */
 export function agentNameIssue(
   raw: string,
   existingNames: string[],
@@ -37,13 +24,6 @@ export function agentNameIssue(
   return existingNames.some((n) => sameAgentName(n, v.name)) ? "taken" : null;
 }
 
-/**
- * `base`, or the first of "base 2", "base 3"... nobody holds yet and that is
- * not the AI Manager's own name. Compared the way the host compares names
- * (`sameAgentName`), and a numbered
- * variant shortens `base` to leave room for its suffix within
- * {@link AGENT_NAME_MAX_LENGTH}, so the variant is one the create accepts.
- */
 export function uniqueAgentName(
   base: string,
   taken: readonly string[],
@@ -63,10 +43,6 @@ export function uniqueAgentName(
   return numbered(suffix);
 }
 
-/**
- * The longest prefix of `text` within `maxUnits` UTF-16 units (the unit the
- * host's length rule counts) that never splits a surrogate pair.
- */
 export function truncateCodePoints(text: string, maxUnits: number): string {
   let head = "";
   for (const codePoint of text) {

@@ -17,10 +17,6 @@ describe("worktreePortOffset", () => {
   });
 
   it("distinguishes sibling worktrees", () => {
-    // Each worktree root carries its own pnpm-workspace.yaml, so parallel
-    // checkouts hash their own roots. With 100 buckets a single pair may
-    // collide by honest chance; five siblings all landing in one bucket
-    // would mean the hash is broken, so that is what the test rules out.
     const base = mkdtempSync(path.join(os.tmpdir(), "houston-offset-"));
     const offsets = new Set(
       ["a", "b", "c", "d", "e"].map((name) => {
@@ -61,9 +57,6 @@ describe("resolveFakeHostPort", () => {
   });
 
   it("stays below the Linux ephemeral-port floor in the worst bucket", () => {
-    // A derived port at or above 32768 (net.ipv4.ip_local_port_range floor)
-    // collides with kernel-assigned ephemeral sockets on CI runners and fails
-    // Playwright's webServer pre-launch check before any test runs.
     const worstBase = 28100 + 99 * WORKTREE_PORT_STRIDE;
     const worstSlot = worstBase + WORKTREE_PORT_STRIDE - 1;
     expect(worstSlot).toBeLessThan(32768);

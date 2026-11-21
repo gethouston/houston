@@ -2,18 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { formatModified, formatModifiedFull } from "../src/format-modified.ts";
 
-/**
- * "Now" is a Thursday at midday, so the six-day weekday window and the
- * calendar-year boundary are both reachable from it without ambiguity.
- */
-const NOW = new Date(2026, 6, 23, 12, 0, 0).getTime(); // Thu 23 Jul 2026
+const NOW = new Date(2026, 6, 23, 12, 0, 0).getTime();
 const DAY = 86_400_000;
 const at = (daysAgo: number, hour = 9) =>
   new Date(2026, 6, 23 - daysAgo, hour, 30, 0).getTime();
 
 test("the current calendar day gets the caller's Today word", () => {
   assert.equal(formatModified(NOW, NOW, "en-US", "Today"), "Today");
-  // Same day, hours earlier: still today, not "23 hours ago".
   assert.equal(formatModified(at(0, 0), NOW, "en-US", "Today"), "Today");
 });
 
@@ -42,7 +37,6 @@ test("a previous year carries its year", () => {
 test("the wording follows the locale", () => {
   assert.equal(formatModified(at(1), NOW, "es", "Hoy"), "miércoles");
   assert.equal(formatModified(NOW, NOW, "es", "Hoy"), "Hoy");
-  // A Portuguese month, not an English one, once it is past the weekday window.
   assert.match(formatModified(at(30), NOW, "pt-BR", "Hoje"), /jun/i);
 });
 

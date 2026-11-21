@@ -11,20 +11,15 @@ import { ATOMIC_TMP_SUFFIX } from "@houston/protocol";
 import { installRuntimeLogging } from "../../observability/logging";
 import { sessionLogLines } from "./session-log-lines";
 
-/** Reclaim summarized history only when it saves a material store transfer. */
 export const SESSION_LOG_ROTATION_BYTES = 8 * 1024 * 1024;
 
-/** Leave the archived file untouched, including pi's newline/version repairs. */
 export function rotateSessionLog(file: string, workspaceDir: string): string {
   const size = statSync(file).size;
   if (size <= SESSION_LOG_ROTATION_BYTES) return file;
-  // Only rule out certain no-ops; the full branch traversal decides rotation.
   const earlyIds = new Set<string>();
   let couldRotate = false;
   for (const { line, offset } of sessionLogLines(file)) {
     if (offset <= SESSION_LOG_ROTATION_BYTES) {
-      // Canonical pi envelopes put id immediately after type. Unrecognized
-      // envelopes stay uncertain and go through the full parse.
       const id =
         /^\s*\{\s*"type"\s*:\s*"[^"]+"\s*,\s*"id"\s*:\s*"([A-Za-z0-9_-]+)"/.exec(
           line,
@@ -60,8 +55,6 @@ export function rotateSessionLog(file: string, workspaceDir: string): string {
   const live = entries.slice(start);
   const keep = new Set<string>();
 
-  // Context settings use the last assistant's model. Virtual selection also
-  // consults the last physical response and the preceding model_change.
   const assistantById = new Map<string, string | undefined>();
   const physicalById = new Map<string, string | undefined>();
   for (const entry of entries) {
@@ -85,7 +78,6 @@ export function rotateSessionLog(file: string, workspaceDir: string): string {
         break;
       default: {
         const _exhaustive: never = entry;
-        // The installed runtime logger sends ERROR to its log and Sentry feed.
         installRuntimeLogging().logger.error(
           new Error(
             `Session log rotation skipped: unknown pi entry type ${entryType}`,
@@ -117,7 +109,6 @@ export function rotateSessionLog(file: string, workspaceDir: string): string {
     }
   }
 
-  // Resolve omitted ancestry without changing live IDs or internal edges.
   const parentById = new Map<string, string | null>();
   const retained: SessionEntry[] = [];
   for (const [index, entry] of entries.entries()) {
@@ -138,12 +129,9 @@ export function rotateSessionLog(file: string, workspaceDir: string): string {
     );
   }
   const content = `${[header, ...retained].map((entry) => JSON.stringify(entry)).join("\n")}\n`;
-  // Count only bytes actually omitted, so even large carried state is idempotent.
   if (size - Buffer.byteLength(content) <= SESSION_LOG_ROTATION_BYTES)
     return file;
 
-  // A hydrated filename can be ahead of this worker's clock. Advance it too,
-  // so filename-based resume always chooses the successor, even in that case.
   const newest =
     readdirSync(dirname(file))
       .filter((name) => name.endsWith(".jsonl"))

@@ -3,19 +3,6 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, it } from "node:test";
 
-// A toast is authored product copy, never a raw diagnostic. Before this guard,
-// six locale keys carried `{{error}}` and their catch blocks filled it with
-// `String(err)`, so a Stop on a cold pod read "Couldn't stop the task:
-// EngineError: engine request failed (502): {"detail":"Post \"http://agent-…
-// .svc.cluster.local:4318/…\": dial tcp: lookup … no such host"}": class
-// names, HTTP statuses, JSON, and cluster hostnames in a red box for a
-// non-technical user. The raw error belongs to the reporting paths
-// (`logAndReportError` / `showErrorToast`), which every rewritten catch still
-// calls. Two source-level checks keep the shape from coming back:
-//  - no locale string interpolates `{{error}}` (in any language, so a
-//    translation can't reintroduce it either);
-//  - no `t(...)` / `i18n.t(...)` call in app/src passes an `error:` variable.
-
 const SRC = join(import.meta.dirname, "..", "src");
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -54,8 +41,6 @@ describe("toast copy never interpolates a raw error", () => {
   });
 
   it("no t() call in app/src passes an `error:` variable", () => {
-    // Matches `t("ns:key", { error: ... })` and `i18n.t("key", {\n error: ...`
-    // across lines; `[^}]*` keeps the scan inside the options object.
     const interpolatedError =
       /\bt\(\s*["'`][^"'`]*["'`]\s*,\s*\{[^}]*\berror\s*:/g;
     const offenders: string[] = [];

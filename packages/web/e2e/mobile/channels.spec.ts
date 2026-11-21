@@ -7,14 +7,6 @@ import {
 import { expect, test } from "../support/fixtures";
 import { AUTH_WEB_URL } from "../support/identity";
 
-/**
- * The phone twin of channels-settings.spec.ts: on a phone the person is
- * already holding WhatsApp, so the code arrives as one full-width "Open
- * WhatsApp" link with the message prefilled, and the number and command hide
- * behind a disclosure for typing it by hand. No QR code: there is no second
- * device to scan with.
- */
-
 test.use({ baseURL: AUTH_WEB_URL });
 
 test("a connected card stacks its status, its accounts, and the way to add one", async ({
@@ -29,7 +21,6 @@ test("a connected card stacks its status, its accounts, and the way to add one",
     name: "Disconnect Ada · Houston team",
   });
   await expect(add).toBeVisible();
-  // Thumb-sized on a phone: the row's own disconnect is no hover affordance.
   const [addBox, disconnectBox] = await Promise.all([
     add.boundingBox(),
     disconnect.boundingBox(),
@@ -55,7 +46,6 @@ test("Open WhatsApp spans the phone and the command waits behind a disclosure", 
   await expect(open).toBeVisible();
   await expect(open).toHaveAttribute("href", WHATSAPP_CODES[0].url);
   await expect(open).toHaveAttribute("target", "_blank");
-  // Full width: the link spans the column it sits in.
   const [link, column] = await Promise.all([
     open.boundingBox(),
     open.locator("..").boundingBox(),

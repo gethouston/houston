@@ -37,7 +37,6 @@ export const typeRoles: readonly TypeRole[] = [
 ];
 
 export interface SpacingStep {
-  /** The Tailwind utility the store spells this step with. */
   utility: string;
   px: number;
   use: string;
@@ -61,7 +60,6 @@ export const spacingSteps: readonly SpacingStep[] = [
 ];
 
 export interface ColorRole {
-  /** The `--ht-*` custom property this role resolves to at runtime. */
   token: string;
   utility: string;
   use: string;
@@ -103,11 +101,6 @@ export const inkRoles: readonly ColorRole[] = [
   },
 ];
 
-/**
- * Paints a swatch with the LIVE token rather than a copy of its value, so the
- * sheet can never drift from `packages/design-tokens` and re-themes instantly
- * when the toggle flips `data-theme`.
- */
 export function colorSwatchStyle(token: string): CSSProperties {
   return { backgroundColor: `var(${token})` };
 }

@@ -8,18 +8,6 @@ import { StoreSyncDaemon } from "../store-sync";
 import { FsVfs } from "../vfs";
 import { applyMigrationArchive } from "./migration-import";
 
-/**
- * External-store (GCS) compatibility guard for the desktop→cloud migration
- * (HOU-719). Managed pods run with `HOUSTON_STORE_URL` set: `/data` is an
- * ephemeral emptyDir the engine hydrates from the object store on boot and
- * syncs back on write — there is NO PersistentVolume. This test proves the
- * migration import route is durable under that model: everything it writes
- * (imported files, the re-synthesized pi session, the completion marker) lands
- * under the store-sync root, survives the flush to the store, and is recovered
- * by a fresh pod that only hydrates from the store. A regression here would
- * silently lose migrated data the first time a pod recycles.
- */
-
 const cleanups: string[] = [];
 function scratch(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
@@ -67,7 +55,6 @@ async function importInto(localRoot: string): Promise<void> {
   });
   expect(result.written).toBe(3);
   expect(result.sessionsRebuilt).toBe(true);
-  // The completion marker the wizard writes via `migration/complete`.
   await vfs.writeText(
     `${ROOT}/.houston/migration/imported.json`,
     JSON.stringify({
@@ -81,7 +68,6 @@ test("migrated data flushes to the object store and a fresh pod recovers it", as
   const store = new LocalDirStore(scratch("mig-store-"));
   const podLocal = scratch("mig-pod-a-");
 
-  // Boot a pod: hydrate an empty new agent, then start observing writes.
   const daemon = new StoreSyncDaemon({
     store,
     rootDir: podLocal,
@@ -94,7 +80,6 @@ test("migrated data flushes to the object store and a fresh pod recovers it", as
 
   await importInto(podLocal);
 
-  // A re-synthesized pi session exists on the pod's local disk.
   const sessionDir = join(
     podLocal,
     ...ROOT.split("/"),
@@ -106,8 +91,6 @@ test("migrated data flushes to the object store and a fresh pod recovers it", as
   expect(existsSync(sessionDir)).toBe(true);
   expect(readdirSync(sessionDir).length).toBeGreaterThan(0);
 
-  // Pod drains (SIGTERM → host.stop → syncDaemon.stop): the FINAL sync must
-  // push everything the import wrote to the object store.
   await daemon.stop();
 
   const remote = JSON.stringify(await store.list(""));
@@ -117,11 +100,8 @@ test("migrated data flushes to the object store and a fresh pod recovers it", as
   );
   expect(remote).toContain(`${ROOT}/notes/todo.txt`);
   expect(remote).toContain(`${ROOT}/.houston/migration/imported.json`);
-  // The re-synthesized session round-trips too, so agent memory survives.
   expect(remote).toContain(`${ROOT}/.houston/runtime/sessions/conv-1/`);
 
-  // A recycled pod starts from a blank emptyDir and only hydrates from the
-  // store — the migrated agent must come back intact.
   const podLocalB = scratch("mig-pod-b-");
   const daemonB = new StoreSyncDaemon({
     store,
@@ -155,8 +135,6 @@ test("migrated data flushes to the object store and a fresh pod recovers it", as
   await daemonB.stop();
 });
 
-// Guard the assumption the whole design rests on: nothing the migration writes
-// is in the store-sync exclude set (credentials.json, claude-login creds, db/).
 test("migration import writes nothing the store-sync excludes would drop", () => {
   const excluded = [
     "credentials.json",

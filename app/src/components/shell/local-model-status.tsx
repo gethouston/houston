@@ -2,7 +2,6 @@ import { Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type { BridgeStatusKind } from "../../lib/local-model";
 
-/** Dot color per bridge state. Token-backed (no hardcoded hex). */
 const DOT_CLASS: Record<BridgeStatusKind, string> = {
   online: "bg-success",
   connecting: "bg-warning animate-pulse",
@@ -16,12 +15,6 @@ const DOT_CLASS: Record<BridgeStatusKind, string> = {
   reconnect_required: "bg-warning",
 };
 
-/**
- * A compact online/offline pill for a connected local model, shown ONLY when
- * this session owns/owned the bridge. When the bridge is down it is honest and
- * kind: it names the app that must be open on this computer and offers a
- * Reconnect action restores the authenticated connection.
- */
 export function LocalModelStatusPill({
   status,
   appName,
@@ -29,11 +22,8 @@ export function LocalModelStatusPill({
   retrying,
 }: {
   status: BridgeStatusKind;
-  /** The local app's name (e.g. "LM Studio") for the offline hint. */
   appName?: string;
-  /** Restore the authenticated connection. */
   onRetry?: () => void;
-  /** A reconnect is in flight. */
   retrying?: boolean;
 }) {
   const { t } = useTranslation("providers");

@@ -18,10 +18,6 @@ const request = (over: Partial<ResumeRequest> = {}): ResumeRequest => ({
 
 const noSleep = () => Promise.resolve();
 
-/**
- * The runtime gates, all open: nothing draining, a provider connected, and the
- * resumed turn recorded (the transcript seams are exercised in their own test).
- */
 const gates = {
   isDraining: () => false,
   holdTurn: () => {},

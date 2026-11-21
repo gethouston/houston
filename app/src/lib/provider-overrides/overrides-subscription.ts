@@ -1,8 +1,5 @@
 import type { ProviderOverride } from "./types.ts";
 
-/**
- * The SUBSCRIPTION cards: a plan the user already pays for, connected by OAuth.
- */
 export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
   openai: {
     name: "OpenAI",
@@ -55,7 +52,6 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Your Claude subscription",
     installUrl: "https://docs.anthropic.com/en/docs/claude-code/overview",
     auth: "oauth",
-    // Rows in picker order: the picker ranks curated rows by this key order.
     models: {
       "claude-sonnet-5-5": {
         description: "Fast and capable. Best for everyday work.",
@@ -73,9 +69,6 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
     },
   },
   "github-copilot": {
-    // ONE Copilot card; connecting opens the Personal-vs-Enterprise dialog. Both
-    // drive the single `github-copilot` engine provider. pi-ai `github-copilot`
-    // ids use the DOTTED form (claude-sonnet-4.6).
     name: "GitHub Copilot",
     subtitle: "Personal or your company's plan",
     description: "Claude, GPT, and Gemini on one Copilot plan.",
@@ -88,8 +81,6 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
         description:
           "Fast and lightweight. Cheapest on every paid Copilot plan.",
       },
-      // Sonnet 4.6 retired on Copilot 2026-09-01 (all but annual individual
-      // plans); Sonnet 5 is GitHub's named replacement.
       "claude-sonnet-5": {
         description: "Best balance of speed and quality. Needs Copilot Pro.",
       },

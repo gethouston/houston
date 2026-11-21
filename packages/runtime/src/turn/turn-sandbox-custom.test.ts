@@ -3,7 +3,6 @@ import type { TurnCustomContext } from "./turn-custom-context";
 import type { TurnSandboxDeps } from "./turn-sandbox";
 import { makeTurnCustomRoutes } from "./turn-sandbox-custom";
 
-// SAFETY: these tests exercise only the detect and pre-mutation add branches.
 const context = {
   manager: {
     detect: async () => ({
@@ -17,7 +16,6 @@ const context = {
 } as unknown as TurnCustomContext;
 
 const route = makeTurnCustomRoutes(
-  // SAFETY: OAuth declines return before any sandbox dependency is read.
   {} as TurnSandboxDeps,
   async () => context,
   async () => undefined,

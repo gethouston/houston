@@ -20,26 +20,8 @@ import { liveTurns } from "./live-turn";
 import { missionFanout } from "./mission-fanout";
 import { handleSandboxMissions } from "./missions-sandbox";
 
-/**
- * Cross-agent missions: a caller names another agent and the mission lands on
- * THAT agent's board, started exactly like a UI-created one. This is what the
- * personal assistant needs — it keeps no board of its own, so work it starts
- * must live where the user can see it.
- *
- * Invariants pinned here:
- *  - the row is created on the TARGET, evented for the TARGET, and its first
- *    turn fires on the TARGET's channel context;
- *  - resolution is fail-closed (unknown name → 404, another user's agent →
- *    404, a hidden dot-agent → 404) and never leaks a name the caller can't see;
- *  - the depth guard reads the CALLER's board (that is where the parent chat
- *    lives) while the running cap counts the TARGET's board;
- *  - list / status / read all accept the same target and act on it, wherever
- *    that agent's board lives.
- */
-
 const paths = new LocalPaths();
 
-/** Undoes the managed-pod stub after a test that installed one. */
 let restoreGateway: (() => void) | null = null;
 
 let store: MemoryWorkspaceStore;
@@ -112,11 +94,6 @@ function fakeRes() {
   return { res, captured };
 }
 
-/**
- * A store where alice reaches a SECOND workspace holding another "Dobby" —
- * the shape a bare name cannot resolve on its own. The delegate keeps the
- * real store's behavior for everything else.
- */
 function withSecondDobby(): { store: WorkspaceStore; agent: Agent } {
   const teamWs: Workspace = {
     id: "ws-team",
@@ -145,10 +122,6 @@ function withSecondDobby(): { store: WorkspaceStore; agent: Agent } {
   return { store: delegate, agent: teamDobby };
 }
 
-/**
- * A managed pod's world: the assistant gateway env pair the pod is stamped
- * with, and a fetch that answers the gateway's routes. Undone after the test.
- */
 function stubGateway(
   calls: { url: string; init: RequestInit | undefined }[],
   routes: Record<string, unknown>,
@@ -179,7 +152,6 @@ function stubGateway(
     calls.push({ url, init });
     const path = new URL(url).pathname;
     const payload = routes[path];
-    // The target pod answers a start with the same 201 a local start writes.
     const status =
       payload === undefined ? 404 : path.endsWith("/start") ? 201 : 200;
     return new Response(JSON.stringify(payload ?? { error: "not found" }), {
@@ -195,7 +167,6 @@ async function call(
   body: unknown,
   opts: {
     conversationId?: string;
-    /** A conversation the RUNTIME claims and the host never recorded (S7). */
     forgedConversationId?: string;
     search?: string;
     store?: WorkspaceStore;
@@ -204,9 +175,6 @@ async function call(
   } = {},
 ) {
   const headers: Record<string, string> = { authorization: "Bearer sb-good" };
-  // The runtime NAMES the conversation on every mission call and the host
-  // matches it against its own record of the turn (routes/live-turn.ts), which
-  // production writes when the turn starts.
   const claimed = opts.forgedConversationId ?? opts.conversationId;
   if (claimed) headers[CONVERSATION_ID_HEADER] = claimed;
   if (opts.conversationId)
@@ -410,17 +378,13 @@ test("a named agent gets the mission on ITS board, started like a UI mission", a
   );
   expect(r.status).toBe(201);
 
-  // The row lives on the target, with the UI-created shape plus the
-  // server-stamped agent-started marker.
   const created = (await boardOf(targetRoot))[0];
   expect(created?.title).toBe("Roast the website");
   expect(created?.status).toBe("running");
   expect(created?.description).toBe("Review houston.ai and roast the copy.");
   expect(created?.origin_session_key).toBe("conv-parent");
-  // The caller's own board is untouched — no hidden second copy.
   expect(await boardOf(callerRoot)).toEqual([PARENT]);
 
-  // The first turn fires on the TARGET's runtime, in the mission's own chat.
   expect(fired).toEqual([
     {
       agentId: target.id,
@@ -429,7 +393,6 @@ test("a named agent gets the mission on ITS board, started like a UI mission", a
       pin: { mode: "auto" },
     },
   ]);
-  // Reactivity names the target, so the target's board refreshes.
   expect(events).toContainEqual({
     type: "ActivityChanged",
     agentPath: target.id,
@@ -441,8 +404,6 @@ test("a named agent gets the mission on ITS board, started like a UI mission", a
 });
 
 test("a cross-agent pin reaches the TARGET's first turn, not just its board row", async () => {
-  // The incident: provider + model landed on Dobby's row while Dobby's first
-  // turn ran on Dobby's default provider, with no error anywhere.
   const r = await call(
     "POST",
     "/sandbox/missions/start",
@@ -474,8 +435,6 @@ test("resolution is fail-closed: unknown, hidden and other users' agents", async
     { conversationId: "conv-parent" },
   );
   expect(unknown.status).toBe(404);
-  // The message names the agents the caller CAN reach, so the model corrects
-  // itself instead of guessing again.
   expect(String((unknown.body as { error: string }).error)).toContain("Dobby");
 
   const hidden = await call(
@@ -508,8 +467,6 @@ test("an agent id resolves as well as a name", async () => {
 });
 
 test("the depth guard reads the caller's board, the cap counts the target's", async () => {
-  // The calling chat is itself an agent-started mission: depth 1 refuses,
-  // even though the target's board is empty.
   await saveActivities(vfs, callerRoot, [
     { ...PARENT, origin_session_key: "conv-grandparent" },
   ]);
@@ -522,7 +479,6 @@ test("the depth guard reads the caller's board, the cap counts the target's", as
   expect(depth.status).toBe(409);
   expect(await boardOf(targetRoot)).toEqual([]);
 
-  // A flooded TARGET board refuses too, even though the caller's is empty.
   await saveActivities(vfs, callerRoot, [PARENT]);
   await saveActivities(
     vfs,
@@ -565,7 +521,6 @@ test("list, status and read all act on the named agent's board", async () => {
   expect((listed.body as { missions: { id: string }[] }).missions).toHaveLength(
     1,
   );
-  // The caller's own board is a different list.
   const own = await call("GET", "/sandbox/missions", undefined, {
     conversationId: "conv-parent",
   });
@@ -573,7 +528,6 @@ test("list, status and read all act on the named agent's board", async () => {
     "parent-1",
   );
 
-  // The mission's transcript is read from the TARGET's data root.
   await vfs.writeText(
     conversationKey(paths, ws, target, "activity-m-1"),
     JSON.stringify({
@@ -731,9 +685,6 @@ test("a delegated live turn cannot start another agent's mission locally or remo
 });
 
 test("in managed cloud the gateway's agents are reachable targets", async () => {
-  // M1: the assistant pod holds only its own agent, so every agent the user
-  // owns lives behind the gateway. A coordinator that cannot address them
-  // cannot do its one job.
   const calls: { url: string; init: RequestInit | undefined }[] = [];
   stubGateway(calls, {
     "/agents": [
@@ -763,8 +714,6 @@ test("in managed cloud the gateway's agents are reachable targets", async () => 
     title: "Roast the website",
     status: "running",
   });
-  // The start went to the TARGET's pod through the gateway, carrying the
-  // provenance the target needs to stamp the agent-started marker.
   const started = calls.find((c) => c.url.includes("/missions/start"));
   expect(started?.url).toBe(
     "https://gw.test/agents/slug-kreacher/missions/start",
@@ -779,7 +728,6 @@ test("in managed cloud the gateway's agents are reachable targets", async () => 
     mode: "auto",
     origin: { session_key: "conv-parent", agent: caller.id, depth: 1 },
   });
-  // Nothing landed locally: the mission lives in the target's pod.
   expect(await boardOf(targetRoot)).toEqual([]);
   expect(fired).toEqual([]);
 });
@@ -831,8 +779,6 @@ test("checking on a mission follows it into the agent's own pod", async () => {
 });
 
 test("a gateway that cannot answer is an error, never a missing agent", async () => {
-  // The lie to avoid: "there is no agent called Kreacher" when the truth is
-  // that the list could not be read.
   stubGateway([], {});
   const r = await call(
     "POST",
@@ -864,8 +810,6 @@ test("moving a mission on an agent in its own pod follows it there", async () =>
   expect(moved?.url).toBe(
     "https://gw.test/agents/slug-kreacher/missions/status",
   );
-  // The target is named in the ADDRESS, never again in the body: a second
-  // `agent` there would let one move fan out through the pod it reaches.
   expect(JSON.parse(String(moved?.init?.body))).toEqual({
     id: "m-9",
     status: "done",
@@ -884,13 +828,7 @@ test("a move with no mission id is refused before any agent is resolved", async 
   expect((r.body as { code: string }).code).toBe("invalid_mission");
 });
 
-/**
- * S7 — the fan-out budget belongs to the CALLER. Every board refuses its own
- * 21st running mission; only the caller's own ledger sees a caller spreading
- * twenty starts over twenty agents, which no single board can.
- */
 test("the caller's budget is spent across every board, not per board", async () => {
-  // Twenty starts already out in other pods, none of them on any board here.
   for (let i = 0; i < 20; i++)
     missionFanout.record(caller.id, {
       missionId: `remote-${i}`,
@@ -989,8 +927,6 @@ test("a refused remote start returns its caller reservation", async () => {
 });
 
 test("a cross-pod start carries the depth it was counted at", async () => {
-  // The calling chat is itself a mission, one level down. The forwarded origin
-  // has to say so: the target's pod cannot read this board to find out.
   await saveActivities(vfs, callerRoot, [
     { ...PARENT, origin_session_key: "conv-grandparent", origin_depth: 1 },
   ]);
@@ -1006,7 +942,6 @@ test("a cross-pod start carries the depth it was counted at", async () => {
     { agent: "Kreacher", title: "t", prompt: "p" },
     { conversationId: "conv-parent", gatewayFronted: true },
   );
-  // Depth 2 is past the ceiling, so nothing leaves this pod at all.
   expect(r.status).toBe(409);
   expect(r.body).toMatchObject({
     code: "mission_depth",

@@ -377,8 +377,6 @@ describe("normalizeSidebarLayout carries a group's identity", () => {
       groups: [{ ...group("grp_1", ["a"]), icon: 7, color: "#5E6AD2" }],
       order: [{ kind: "agent", id: "b" }],
     });
-    // Lenient, not strict: the group survives with the icon simply absent —
-    // never `""`, which would be an identity the user never chose.
     strictEqual("icon" in (result.groups[0] as object), false);
     strictEqual(result.groups[0]?.color, "#5E6AD2");
     deepStrictEqual(result.groups[0]?.agentIds, ["a"]);

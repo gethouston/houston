@@ -55,8 +55,6 @@ test("an ordinary option named approve cannot mint a receipt", () => {
   deepStrictEqual(approvalsFromAnswers([ordinary], completed), []);
 });
 
-/** The two interactions of the replay scenario: same step ids and same wording,
- *  a DIFFERENT host request and a different operation underneath it. */
 const approvalCard = (requestId: string, detail: string) => ({
   kind: "question" as const,
   id: "a1",

@@ -1,10 +1,5 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-// The npm undici the production host actually runs (pi installs 8.5's fetch
-// over Node's bundled copy). The hostile-pipeline harness rides it directly so
-// the duplicate-content-length rejection is IMPLEMENTATION-pinned — Node 22's
-// bundled undici 6.x silently strips the header and would make these tests
-// vacuously green (the exact CI failure this comment guards against).
 import { fetch as undiciFetch } from "undici";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { CustomExecutorHost } from "./executor-host";
@@ -57,12 +52,6 @@ describe("sanitizeFetchInit", () => {
   });
 });
 
-/**
- * The production failure (HOU-1083): the process' fetch pipeline adds its own
- * content-length next to one already present in the request headers, and the
- * duplicated value ("38, 38") is rejected client-side as UND_ERR_INVALID_ARG.
- * This harness recreates that hostile pipeline; the guard must neutralize it.
- */
 describe("guardedFetch under a duplicating fetch pipeline", () => {
   let server: Server;
   let base: string;
@@ -81,9 +70,6 @@ describe("guardedFetch under a duplicating fetch pipeline", () => {
     });
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
     base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-    // A pi-style pipeline: any explicit content-length is joined by a second
-    // copy (Effect sets one, the fetch layer computes another), and the
-    // request dispatches through npm undici 8.5 exactly like a pod.
     globalThis.fetch = ((input, init) => {
       const headers = new Headers(init?.headers);
       const explicit = headers.get("content-length");
@@ -135,11 +121,6 @@ describe("guardedFetch under a duplicating fetch pipeline", () => {
   });
 });
 
-/**
- * The guard's `Request`-object branch: today's callers all pass `(url, init)`,
- * but headers carried ON the input must not slip past the strip either — and
- * the clone (a Request with an unread body) must arrive intact.
- */
 describe("guardedFetch with a Request-object input", () => {
   let server: Server;
   let base: string;
@@ -191,11 +172,6 @@ describe("guardedFetch with a Request-object input", () => {
   });
 });
 
-/**
- * End to end through the REAL executor: an agent-authored OpenAPI blob with a
- * JSON POST must execute — Effect's explicit content-length crosses our guard,
- * so this exact test failed on every run before the httpClientLayer wiring.
- */
 describe("executor POST actions (HOU-1083 regression)", () => {
   let server: Server;
   let defs: CustomIntegrationDef[] = [];
@@ -207,10 +183,6 @@ describe("executor POST actions (HOU-1083 regression)", () => {
   const realFetch = globalThis.fetch;
 
   beforeAll(async () => {
-    // The executor must survive the SAME hostile pipeline: without the
-    // guarded httpClientLayer, Effect's explicit content-length duplicates
-    // here and every POST fails exactly like production (undici 8.5 direct,
-    // so the rejection does not depend on the running Node's bundled copy).
     globalThis.fetch = ((input, init) => {
       const headers = new Headers(init?.headers);
       const explicit = headers.get("content-length");

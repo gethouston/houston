@@ -9,14 +9,9 @@ interface CodeExampleProps {
   title: string;
   hint: string;
   code: string;
-  /** The code embeds a secret: kept out of every session recording. */
   secret?: boolean;
 }
 
-/**
- * A copyable command a person can run as-is (a `curl` against the Houston
- * API): a title, one line on what it does, the command and a Copy button.
- */
 export function CodeExample({ title, hint, code, secret }: CodeExampleProps) {
   const { t } = useTranslation("settings");
   const addToast = useUIStore((s) => s.addToast);

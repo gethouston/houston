@@ -3,11 +3,6 @@ import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createWireCapture, json } from "./support/wire-capture";
 
-/**
- * The AI Manager's morning briefing, as the open host (desktop, self-host)
- * receives it: `sdk.heartbeat` bound through the adapter's `viaSdk` seam.
- */
-
 const BASE = "http://127.0.0.1:4318";
 const { calls, reset, restore, stubFetch } = createWireCapture();
 const state = { enabled: true, time: "07:30", last: null };

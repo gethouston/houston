@@ -16,8 +16,6 @@ test("a folder header only folds its employee rows", async ({ page }) => {
   });
   await page.goto("/");
   const folder = page.locator('[data-sidebar-group-header="design"]');
-  // By title, not by name: folded, the header carries its hidden members'
-  // needs-you chip, and the chip joins the accessible name.
   const header = folder.locator('button[title="Design"]');
   const row = page.locator(
     `[data-sidebar-item][data-item-id="${SEED_AGENT_ID}"]`,

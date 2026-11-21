@@ -8,12 +8,6 @@ import { useIsActiveView } from "../shell/keep-alive-views";
 import { drillInMissionTarget } from "./agent-missions-target";
 import type { AgentHomeConversation } from "./agents-home-model";
 
-/**
- * The phone's consumer of a published task target: the employee's task list
- * opens it as the pushed chat above itself ({@link drillInMissionTarget}).
- * The desktop boards consume the same target themselves, so this listens only
- * below the breakpoint and only while its screen is on the glass.
- */
 export function useDrillInMissionTarget(
   agent: Agent,
   rows: readonly AgentHomeConversation[] | undefined,

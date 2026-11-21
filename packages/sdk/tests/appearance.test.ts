@@ -11,21 +11,10 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import { memoryKv } from "../src/test-ports";
 
-/**
- * The appearance module against a real device store.
- *
- * It reaches no network — the appearance is this device's own — so the `fetch`
- * port throws: a request from here would be a bug, and the suite would say so
- * instead of hanging on a stub. What is pinned is the vocabulary's edges (an
- * unknown value, a palette of the wrong mode), the diff-only write, and the
- * previous-versus-painted rule a debounced picker depends on.
- */
-
 const REFUSE_FETCH = (() => {
   throw new Error("the appearance module must not reach the network");
 }) as unknown as typeof fetch;
 
-/** A preference with a non-default palette per mode, so a field's origin shows. */
 const PICKED: ThemePreference = {
   mode: "dark",
   light: "catppuccin-latte",
@@ -94,8 +83,6 @@ describe("appearance.getTheme", () => {
     expect(reading.pref).toEqual(DEFAULT_THEME_PREFERENCE);
     expect(reading.unusable).toEqual([
       { key: THEME_KEYS.mode, raw: "sepia" },
-      // A dark palette under `theme.light` would paint dark colours in light
-      // mode, so it is unusable rather than merely unexpected.
       { key: THEME_KEYS.light, raw: "nord" },
     ]);
     expect(logger.warn).toHaveBeenCalledTimes(2);
@@ -146,8 +133,6 @@ describe("appearance.setTheme", () => {
   });
 
   it("diffs against the SAVED preference, not the one on screen", async () => {
-    // The debounced picker's case: the palette is already PAINTED as everforest
-    // and the store still holds nord, so the write has to happen.
     const { appearance, device } = makeSdk({
       [THEME_KEYS.mode]: "dark",
       [THEME_KEYS.light]: "catppuccin-latte",
@@ -176,11 +161,9 @@ describe("appearance.setTheme", () => {
   it("refuses a palette of the other mode, and stores nothing", async () => {
     const { appearance, device } = makeSdk();
 
-    await expect(
-      // `nord` is a dark palette: as the LIGHT pick it would paint dark colours
-      // in light mode.
-      appearance.setTheme({ light: "nord" }),
-    ).rejects.toThrow(InvalidThemeError);
+    await expect(appearance.setTheme({ light: "nord" })).rejects.toThrow(
+      InvalidThemeError,
+    );
     expect(device.size).toBe(0);
   });
 
@@ -194,16 +177,6 @@ describe("appearance.setTheme", () => {
   });
 });
 
-/**
- * A write that moves two keys and fails on the second.
- *
- * The device holds one key per field, so a two-key pick is two writes, and a
- * store that takes the first and refuses the second would leave the device
- * holding half a preference: the next boot paints a mode with the palette of the
- * choice before it. The module keeps the pair all-or-nothing, which is also the
- * invariant a debounced picker's diff depends on: a rejected write means the
- * SAVED preference is still the one the caller passed as `previous`.
- */
 describe("appearance.setTheme when the store fails part way", () => {
   const SAVED: ThemePreference = {
     mode: "light",
@@ -211,7 +184,6 @@ describe("appearance.setTheme when the store fails part way", () => {
     dark: "nord",
   };
 
-  /** A store that refuses `set` for one key and records every write in order. */
   function brittleKv(
     map: Map<string, string>,
     refuse: (key: string) => Error | null,
@@ -316,8 +288,6 @@ describe("appearance.setTheme when the store fails part way", () => {
     );
     const { appearance, logger } = makeSdk({}, brittle.store);
 
-    // The original refusal is what the caller hears: the rollback is a repair
-    // attempt, and its own failure must not mask the reason the pick was lost.
     await expect(
       appearance.setTheme({ mode: "dark", dark: "gruvbox" }, SAVED),
     ).rejects.toBe(refused);

@@ -1,17 +1,3 @@
-/*
- * Certificates — the three attendee-facing page types, in the site's
- * black-and-white editorial voice:
- *   1. the share page   (/c/<CODE>)               .cert-share
- *   2. the claim pages  (/certificates/, /certificates/<event>/)
- *   3. the verify page  (/certificates/verify/)
- *
- * Palette, type, buttons (.btn/.btn-ink/.btn-outline) and the page frame come
- * from site-tokens.css + landing.css + subpage.css. This file adds ONLY the
- * certificate-specific objects and consumes custom properties exclusively —
- * no literal colours, so the whole surface follows a token change.
- */
-
-/* ── Shared page frame (narrower than prose: the artefact is the hero) ────── */
 .cert-wrap {
   width: min(720px, 100%);
   margin: 0 auto;
@@ -46,10 +32,6 @@
   text-wrap: pretty;
 }
 
-/* ── 1. Share page ────────────────────────────────────────────────────────── */
-
-/* The certificate itself, matted like a framed print. The mat is the panel
-   tone so the white artwork reads as an object on the page. */
 .cert-frame {
   margin-top: clamp(28px, 4vw, 40px);
   padding: clamp(10px, 1.6vw, 18px);
@@ -67,7 +49,6 @@
   border-radius: 10px;
 }
 
-/* Identity block under the frame. */
 .cert-meta {
   margin-top: clamp(26px, 4vw, 36px);
   text-align: center;
@@ -108,7 +89,6 @@
   font-size: 11px;
 }
 
-/* Action stack: one loud primary, then the quiet row. */
 .cert-actions {
   margin-top: clamp(26px, 4vw, 34px);
   display: flex;
@@ -125,7 +105,6 @@
 .cert-row .btn {
   flex: 0 1 auto;
 }
-/* Icon-led quiet buttons never shrink their glyph on a 360px phone. */
 .cert-row .btn svg {
   width: 16px;
   height: 16px;
@@ -139,7 +118,6 @@
   text-transform: uppercase;
   color: var(--ink-subtle);
 }
-/* Copy-link confirmation: the button states it, no toast infrastructure here. */
 .cert-copy.is-copied {
   border-color: var(--ink-strong);
   color: var(--ink-strong);
@@ -174,7 +152,6 @@
   text-decoration-color: var(--ink-strong);
 }
 
-/* ── 2 + 3. Form card (claim + verify share one object) ───────────────────── */
 .cert-card {
   margin-top: clamp(28px, 4vw, 40px);
   background: var(--card);
@@ -207,7 +184,7 @@
   height: 50px;
   padding: 0 15px;
   font-family: var(--sans);
-  font-size: 16px; /* 16px keeps iOS Safari from zooming on focus */
+  font-size: 16px;
   color: var(--ink);
   background: var(--card);
   border: 1px solid var(--line-strong);
@@ -230,8 +207,6 @@
   padding-right: 40px;
   cursor: pointer;
 }
-/* The caret is a rotated border on the wrapper, not a background image: it
-   inherits a token colour, so no hex ever enters this file. */
 .cert-select-wrap {
   display: block;
   position: relative;
@@ -249,7 +224,6 @@
   transform: rotate(45deg);
   pointer-events: none;
 }
-/* The mono code field on /certificates/verify/ — a code is read, not prose. */
 .cert-input-code {
   font-family: var(--mono);
   letter-spacing: 0.09em;
@@ -282,7 +256,6 @@
   }
 }
 
-/* Messages. Never silent: every failure lands in one of these. */
 .cert-msg {
   margin-top: 18px;
   padding: 14px 16px;
@@ -318,7 +291,6 @@
   margin-top: 14px;
 }
 
-/* Verify result: the green check is the whole answer, read at a glance. */
 .cert-result {
   display: flex;
   gap: 16px;
@@ -364,16 +336,9 @@
   overflow-wrap: anywhere;
 }
 
-/* ── 2b. Claim wizard (email → name → done, inside the one card) ──────────── */
-
-/* Steps swap in place: the card never changes size abruptly enough to lose the
-   reader, and the page never reloads. Step 1 is the markup default, so with no
-   JS the card stays the plain email form. */
 .cert-step[hidden] {
   display: none;
 }
-/* The step heading is the answer to "did it work?", so it carries the weight of
-   a section title without competing with the page h1. */
 .cert-step-title {
   font-weight: 500;
   font-size: clamp(20px, 2.4vw, 25px);
@@ -382,8 +347,6 @@
   color: var(--ink-strong);
   text-wrap: balance;
 }
-/* Focus is moved here programmatically on every step change and the heading is
-   outside the tab order, so there is no ring to draw. */
 .cert-step-title:focus {
   outline: none;
 }
@@ -396,8 +359,6 @@
   text-wrap: pretty;
   overflow-wrap: anywhere;
 }
-/* The way back. A second pill would argue with the primary, so this is a text
-   control: underlined at rest, never revealed by hover. */
 .cert-back {
   display: block;
   width: 100%;
@@ -424,8 +385,6 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
-/* The code sits between the confirmation and the way out, so it is read before
-   anything navigates. */
 .cert-done-code {
   margin-top: 6px;
   margin-bottom: 22px;
@@ -437,8 +396,6 @@
   line-height: 1;
 }
 
-/* A quiet second-language line (the verify page is English-first with a short
-   Spanish echo, so a Spanish speaker is never stuck). */
 .cert-alt-lang {
   display: block;
   margin-top: 6px;
@@ -447,7 +404,6 @@
   color: var(--ink-subtle);
 }
 
-/* ── Phones (360px is the floor we hold) ──────────────────────────────────── */
 @media (max-width: 520px) {
   .cert-row {
     width: 100%;

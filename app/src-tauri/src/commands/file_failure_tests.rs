@@ -25,7 +25,6 @@ fn free_sibling_counts_up_past_taken_names() {
     assert_eq!(free_sibling(&target), dir.join("report (2).xlsx"));
     std::fs::write(dir.join("report (2).xlsx"), b"x").unwrap();
     assert_eq!(free_sibling(&target), dir.join("report (3).xlsx"));
-    // A dotfile has no stem to split; the counter goes after the whole name.
     let dotfile = dir.join(".env");
     std::fs::write(&dotfile, b"x").unwrap();
     assert_eq!(free_sibling(&dotfile), dir.join(".env (2)"));
@@ -38,7 +37,6 @@ fn permission_and_disk_full_classify_by_kind() {
     assert_eq!(classify(&denied), FileOpFailureKind::Permission);
     let full = io::Error::new(io::ErrorKind::StorageFull, "no space left on device");
     assert_eq!(classify(&full), FileOpFailureKind::DiskFull);
-    // NotFound alone never proves the folder is gone (see parent_is_gone).
     let gone = io::Error::new(io::ErrorKind::NotFound, "gone");
     assert_eq!(classify(&gone), FileOpFailureKind::Other);
     let other = io::Error::new(io::ErrorKind::InvalidInput, "bad name");
@@ -48,7 +46,6 @@ fn permission_and_disk_full_classify_by_kind() {
 #[cfg(windows)]
 #[test]
 fn sharing_violation_is_locked() {
-    // The HOUSTON-APP-53A shape: the destination is open in Excel.
     assert_eq!(
         classify(&io::Error::from_raw_os_error(32)),
         FileOpFailureKind::Locked
@@ -89,7 +86,7 @@ async fn refused_existing_file_lands_beside_it() {
     std::fs::write(&target, b"old").unwrap();
     std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o444)).unwrap();
     if std::fs::write(&target, b"old").is_ok() {
-        return; // root ignores file modes; the refusal can't be staged
+        return;
     }
     let written = write_with_fallback(&target, b"new").await.unwrap();
     assert_eq!(written.file_name, "report (2).xlsx");
@@ -107,7 +104,7 @@ async fn protected_folder_fails_typed_instead_of_renaming() {
     let dir = tmp_dir("folder");
     std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o555)).unwrap();
     if std::fs::write(dir.join("probe"), b"x").is_ok() {
-        return; // root ignores directory modes
+        return;
     }
     let err = write_with_fallback(&dir.join("report.xlsx"), b"new")
         .await
@@ -124,8 +121,6 @@ async fn protected_folder_fails_typed_instead_of_renaming() {
 
 #[tokio::test]
 async fn vanished_folder_fails_typed_not_found() {
-    // HOUSTON-APP-53A after PR #1555: the folder picked in the dialog is on a
-    // drive that went away before the write.
     let dir = tmp_dir("vanished");
     let target = dir.join("gone").join("report.xlsx");
     let err = write_with_fallback(&target, b"new").await.unwrap_err();
@@ -136,7 +131,6 @@ async fn vanished_folder_fails_typed_not_found() {
 
 #[test]
 fn not_found_crosses_the_wire_snake_case() {
-    // `app/src/lib/file-op-failure.ts` KINDS reads exactly this string.
     let json = serde_json::to_string(&FileOpFailureKind::NotFound).unwrap();
     assert_eq!(json, "\"not_found\"");
 }
@@ -144,8 +138,6 @@ fn not_found_crosses_the_wire_snake_case() {
 #[cfg(unix)]
 #[tokio::test]
 async fn not_found_with_the_folder_present_still_reports() {
-    // A dangling symlink: the create fails ENOENT though the chosen folder
-    // exists, the shape a filter driver or placeholder refusal takes.
     let dir = tmp_dir("present");
     let target = dir.join("report.xlsx");
     std::os::unix::fs::symlink(dir.join("missing").join("x"), &target).unwrap();
@@ -167,7 +159,6 @@ async fn dialogless_save_creates_a_missing_download_folder() {
 
 #[tokio::test]
 async fn uncreatable_download_folder_is_other_not_not_found() {
-    // A FILE where the download folder should be: create_dir_all fails.
     let root = tmp_dir("blocked");
     let dir = root.join("Downloads");
     std::fs::write(&dir, b"x").unwrap();

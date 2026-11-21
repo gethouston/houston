@@ -79,7 +79,6 @@ describe("middleware matcher", () => {
   const matches = (url: string) =>
     unstable_doesMiddlewareMatch({ config, url });
 
-  // The guard only protects what the matcher sends it.
   it("runs on pages, unknown paths and the API", () => {
     for (const url of ["/", "/explore", "/a/x", "/no/such/page", "/@maria_1"]) {
       expect(matches(url)).toBe(true);

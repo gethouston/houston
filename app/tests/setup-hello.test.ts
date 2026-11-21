@@ -79,8 +79,6 @@ describe("deriveSetupHello", () => {
   });
 
   it("hands over to the job description with the SAME sentence at the TTL", () => {
-    // The record expires with the chat open. Its read was enabled all along
-    // (`setupInstructionsTarget`), so the hello never blinks out.
     const before = deriveSetupHello({
       entry: ENTRY,
       activityAgentMode: AGENT_SETUP_AGENT_MODE,
@@ -113,11 +111,6 @@ describe("deriveSetupHello", () => {
   });
 
   it("treats an EMPTY job description as unread, record or no record", () => {
-    // A just-created hosted agent's file read answers `""` while its pod is
-    // still being provisioned (`lib/tauri.ts` isAgentPathCreating), and a read
-    // that failed is swallowed into `""` by the same hook — so a fetched-but-
-    // empty description says nothing about the job. Latching on it dropped the
-    // role clause the moment the creation record expired.
     strictEqual(
       deriveSetupHello({
         entry: null,

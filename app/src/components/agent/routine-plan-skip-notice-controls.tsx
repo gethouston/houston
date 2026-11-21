@@ -1,11 +1,3 @@
-/**
- * The plan-skip notice's actions wired to what they do, with the effects
- * passed in: `RoutinePlanSkipNotice` hands over the store and the resume
- * mutation, a test hands over fakes. An action that leaves (Billing, the keep
- * chooser) runs `onLeave` FIRST, so a hosting dialog closes before another
- * screen or dialog opens over it.
- */
-
 import type {
   TriggerPlanSkipAction,
   TriggerPlanSkipNotice,
@@ -16,7 +8,6 @@ export interface PlanSkipEffects {
   openBilling: () => void;
   openKeepChooser: () => void;
   resume: () => void;
-  /** Resume is in flight; its button stays disabled until it settles. */
   resuming: boolean;
 }
 

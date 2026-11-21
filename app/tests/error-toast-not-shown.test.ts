@@ -3,22 +3,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-// HOU-1245: `showErrorToast` reports an unexpected error but shows the user
-// NOTHING — the red "Houston, we have a problem!" box and the green "report
-// sent / Copy code" follow-up are both gone. Every reporting path stays.
-//
-// Asserted against the source rather than by calling the function: `error-toast`
-// pulls the `@houston/engine-adapter` barrel and the Zustand store, neither of
-// which loads under this suite's `--experimental-strip-types` runner. The
-// invariant is worth a structural guard anyway — re-adding an `addToast` here is
-// a one-line change that no other test in the repo would catch.
-
 const SOURCE = readFileSync(
   join(import.meta.dirname, "../src/lib/error-toast.ts"),
   "utf8",
 );
 
-/** The text of one exported function, from its signature to the next export. */
 function bodyOf(name: string): string {
   const start = SOURCE.indexOf(`export function ${name}(`);
   ok(start !== -1, `${name} not found in error-toast.ts`);
@@ -56,8 +45,6 @@ describe("showErrorToast shows the user nothing", () => {
 });
 
 describe("the informational toasts are untouched", () => {
-  // These are expected, explainable states with authored copy — NOT the generic
-  // bug pair — and they must keep reaching the user.
   for (const name of [
     "showExpectedStateToast",
     "showConnectivityErrorToast",

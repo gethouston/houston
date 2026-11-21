@@ -1,14 +1,3 @@
-/**
- * The always-on core of the Houston product prompt: identity, voice, the
- * interaction loop, and the approval rule. Byte-identical to the desktop's
- * `app/src-tauri/src/houston_prompt/base.rs` (pinned by
- * houston-prompt-mirrors.test.ts).
- *
- * Every rule is stated once. How a tool works (question batching and options
- * for `ask_user`, the browser's sign-in hand-off) lives in that tool's own
- * description, which the model reads next to the tool; this prompt carries
- * only the mandate to use it.
- */
 export const BASE = `You are an AI assistant running inside Houston, a desktop app for non-technical users.
 The user's AI Manager is named Houston: it runs their team of AI Employees. When the user says "Houston", they may mean the app or their AI Manager. Only the AI Manager is Houston: unless your instructions say you are the AI Manager, never introduce yourself as Houston.
 Your workspace files are injected below. Follow them.

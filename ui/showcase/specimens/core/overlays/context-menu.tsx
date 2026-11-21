@@ -1,6 +1,3 @@
-// `context-menu` is the one overlay `ui/core/src/index.ts` does not re-export,
-// so it is reached by package path — the same way `globals.css` reaches into
-// `@houston-ai/core/src`. Add the barrel line and this becomes a plain import.
 import {
   ContextMenu,
   ContextMenuContent,
@@ -21,10 +18,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/**
- * The right-click surface. A context menu is never the only path to an action,
- * so every item here also exists in the agent's DropdownMenu.
- */
 function AgentCard({
   name,
   meta,
@@ -168,11 +161,6 @@ function ContextMenuSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = [
   "ContextMenu",
   "ContextMenuContent",

@@ -5,15 +5,8 @@ import type { CatalogModel } from "../src/lib/ai-hub/catalog-types.ts";
 import { filterModels, searchModels } from "../src/lib/ai-hub/search.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
-// The hub catalog is now DERIVED FROM the pi-ai `ProviderCatalog` (the runnable
-// set), enriched by the baked models.dev snapshot. `loadHubCatalog` takes the
-// catalog directly (no visibility array, no live OpenRouter fetch) and is
-// synchronous. Every hub model exists because pi-ai can run it.
 const all = loadHubCatalog(SAMPLE_CATALOG);
 
-// The Houston provider ids the sample pi catalog resolves to: `openai-codex` is
-// renamed to `openai`, pi's colliding DIRECT api-key `openai` is dropped, and
-// every other provider passes through. No offer may carry any other id.
 const HOUSTON_PROVIDERS = new Set([
   "openai",
   "anthropic",
@@ -38,14 +31,10 @@ describe("offers carry Houston provider ids + pi model ids", () => {
     ok(astra, "expected a 'gpt 6 astra' model");
     deepStrictEqual(offerProviders(astra), ["openai"]);
     const openai = astra?.offers.find((o) => o.providerId === "openai");
-    // The pi model id is preserved verbatim so the picker's
-    // `${providerId}::${modelId}` lookup matches PROVIDERS.
     strictEqual(openai?.modelId, "gpt-6-astra");
   });
 
   it("folds one model id served by several gateways into one row", () => {
-    // gpt-6.1-sol runs on the ChatGPT subscription, on GitHub's Copilot
-    // gateway and on OpenCode Zen, so the three offers fold into a single row.
     const gpt = all.byKey.get("gpt 6.1 sol");
     ok(gpt, "expected a merged 'gpt 6.1 sol' model");
     deepStrictEqual(offerProviders(gpt), [
@@ -90,7 +79,6 @@ describe("pricing and subscription flags come from pi", () => {
   it("marks OAuth (subscription) offers with no per-token price", () => {
     const gpt = all.byKey.get("gpt 6.1 sol");
     const oauth = gpt?.offers.filter((o) => o.subscription) ?? [];
-    // Copilot and the ChatGPT subscription are OAuth; OpenCode is api-key.
     deepStrictEqual(oauth.map((o) => o.providerId).sort(), [
       "github-copilot",
       "openai",
@@ -110,11 +98,6 @@ describe("pricing and subscription flags come from pi", () => {
   });
 
   it("offers a curated provider EXACTLY its VISIBLE_MODELS set", () => {
-    // The hub must mirror the chat model picker: both apply the shared
-    // `isModelVisible` gate. The fixture's `anthropic` provider also carries
-    // pi's older Claude rows (Opus 4.8, Sonnet 4.6, Haiku 4.5, …), none in
-    // VISIBLE_MODELS.anthropic — they must never surface, while the four
-    // lineup ids all do.
     const ids = new Set<string>();
     for (const model of all.models)
       for (const offer of model.offers)
@@ -128,13 +111,9 @@ describe("pricing and subscription flags come from pi", () => {
   });
 
   it("hides a curated google model from google while other providers still offer it", () => {
-    // `gemini-3-flash-preview` is in the fixture's google list but NOT in
-    // VISIBLE_MODELS.google — the model survives in the hub only through the
-    // uncurated Copilot / OpenRouter offers.
     const gemini = all.byKey.get("gemini 3 flash preview");
     ok(gemini, "expected 'gemini 3 flash preview' via copilot/openrouter");
     ok(!gemini?.offers.some((o) => o.providerId === "google"));
-    // google's own visible set is exactly the curated one.
     const ids = new Set<string>();
     for (const model of all.models)
       for (const offer of model.offers)
@@ -150,8 +129,6 @@ describe("pricing and subscription flags come from pi", () => {
   });
 
   it("keeps an API-key gateway's full list", () => {
-    // groq has no PROVIDER_OVERRIDES entry at all, and opencode is api-key —
-    // both must expose every pi model they run.
     ok(all.byKey.get("llama 4 scout"));
     ok(all.byKey.get("llama 3.3 70b"));
   });

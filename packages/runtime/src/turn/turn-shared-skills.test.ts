@@ -20,16 +20,9 @@ import {
   turnSharedSkillsStore,
 } from "./turn-shared-skills";
 
-// vitest 4 hands back the existing spy when a method is spied again, so calls would pile up across tests.
 afterEach(() => {
   vi.restoreAllMocks();
 });
-
-/**
- * A pooled turn's org-shared skills: read from the org's shared store prefix
- * (never a pod's disk), only the ones this agent enabled, into a snapshot
- * under the turn's own root that dies with the turn.
- */
 
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -39,8 +32,6 @@ function sharedStore(files: Record<string, string>) {
   const downloads: string[] = [];
   const store: ObjectStore = {
     list: async () => Object.keys(files),
-    // Every store reads a prefix as a directory, and pod-store refuses one
-    // that is not a clean key (`skills/` included).
     manifest: async (prefix = "") => {
       if (!isObjectPrefix(prefix)) throw new InvalidObjectPrefixError(prefix);
       return Object.keys(files)
@@ -156,8 +147,6 @@ test("a claimed turn reads its OWN org's shared skills through pod-store's manif
     "skills/invoices/SKILL.md": "---\nname: invoices\n---\n",
     "skills-old/invoices/SKILL.md": "stale",
   };
-  // pod-store's contract: `?prefix=` must be a clean key (400 otherwise), and
-  // an older pod-store matches it as a raw string, siblings included.
   const fetchImpl = (async (
     url: string | URL | Request,
     init?: RequestInit,
@@ -237,7 +226,6 @@ test("a failed download stops the rest before the turn goes on", async () => {
   store.download = async (key, dest, opts) => {
     inFlight++;
     try {
-      // Every read is under way before the first one fails.
       const failing = key.endsWith("SKILL.md");
       await new Promise((resolve) => setTimeout(resolve, failing ? 5 : 30));
       if (failing) throw new Error("GET failed (500)");
@@ -251,8 +239,6 @@ test("a failed download stops the rest before the turn goes on", async () => {
   const dest = snapshotDir();
   await snapshotTurnSharedSkills(store, dest, workspaceEnabling("invoices"));
 
-  // Nothing is left writing into a root the turn is about to remove, and no
-  // half-fetched skill is offered.
   expect(inFlight).toBe(0);
   expect(readdirSync(dest)).toEqual([]);
 });

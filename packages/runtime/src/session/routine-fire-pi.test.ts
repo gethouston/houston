@@ -6,14 +6,6 @@ import { join } from "node:path";
 import { routineRunPreamble } from "@houston/domain";
 import { afterAll, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * The pi half of the routine context rule, through the standing server's real
- * turn path and the REAL pi session store: every fire opens a new pi session
- * carrying the digest, and a person's turn resumes the last one. Only the
- * provider is simulated, an OpenAI-compatible endpoint that records every
- * request (4 characters ≈ 1 token).
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "houston-rovp-data-"),
 );
@@ -31,7 +23,6 @@ const { config } = await import("../config");
 const WINDOW = 48_000;
 const PROMPT = `${routineRunPreamble("Stock report")}Export today's stock levels and note anything below its reorder point.`;
 
-/** The endpoint's view of each request: its size and whether it was refused. */
 const endpoint = {
   replyChars: 400,
   requests: [] as { tokens: number; refused: boolean; body: string }[],
@@ -66,8 +57,6 @@ const server = createServer((req, res) => {
       );
       return;
     }
-    // Varied rows, 19 characters each: one identical row repeated would read
-    // as a repetition loop and be cut (session/runaway-output.ts).
     const rows = Array.from(
       { length: Math.ceil(endpoint.replyChars / 19) },
       (_, i) =>
@@ -117,7 +106,6 @@ beforeEach(() => {
 
 const assistants = (id: string) =>
   getHistory(id)?.messages.filter((m) => m.role === "assistant") ?? [];
-/** A routine fire, as the host's firer sends it (ROUTINE_FIRE_HEADER). */
 const fireRoutine = (id: string) =>
   runTurn(
     id,
@@ -138,8 +126,6 @@ const piSessionFiles = (id: string) =>
 
 test("every pi fire opens a new session on the digest; a person's turn resumes it", async () => {
   const id = "routine-stock-report";
-  // One run exported ~36k tokens into the chat, which a resumed session
-  // would re-send on every later call.
   endpoint.replyChars = 144_000;
   await fireRoutine(id);
   const first = piSessionFiles(id);
@@ -160,7 +146,6 @@ test("every pi fire opens a new session on the digest; a person's turn resumes i
     undefined,
     undefined,
   ]);
-  // One live session at a time, a new one per fire.
   expect([first, second, third].map((files) => files.length)).toEqual([
     1, 1, 1,
   ]);
@@ -170,10 +155,8 @@ test("every pi fire opens a new session on the digest; a person's turn resumes i
   for (const fire of [fire2, fire3]) {
     expect(fire?.body).toContain("[Earlier runs of this automation");
     expect(fire?.body).toContain("Export today's stock levels");
-    // The 36k-token export never rides along again: only its excerpt does.
     expect(fire?.tokens).toBeLessThan(15_000);
   }
-  // The person's turn carries the last fire's session, digest included.
   expect(chat?.body).toContain("Which SKUs were low yesterday?");
   expect(chat?.body).toContain("[Earlier runs of this automation");
   expect(endpoint.requests).toHaveLength(3);

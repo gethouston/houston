@@ -17,8 +17,6 @@ function item(
   return { id, title: id, status, lastMessageAt };
 }
 
-// Sort within a column is lastMessageAt-desc, so newer items come first.
-// Encode that in the ISO timestamps to keep tests legible.
 const r1 = item("r1", "running", "2025-01-03T00:00:00Z");
 const r2 = item("r2", "running", "2025-01-02T00:00:00Z");
 const n1 = item("n1", "needs_you", "2025-01-03T00:00:00Z");
@@ -79,7 +77,6 @@ describe("navigateBoard", () => {
         { items: ITEMS, columns: COLUMNS, selectedId: "n2" },
         "right",
       ),
-      // Done has only d1 → clamp from row 1 to row 0
       "d1",
     );
   });
@@ -90,7 +87,6 @@ describe("navigateBoard", () => {
         { items: ITEMS, columns: COLUMNS, selectedId: "n2" },
         "left",
       ),
-      // Running has r1, r2 → row 1 lands on r2
       "r2",
     );
   });
@@ -116,7 +112,7 @@ describe("navigateBoard", () => {
   });
 
   it("skips empty columns when moving sideways", () => {
-    const items = [r1, d1]; // needs_you column is empty
+    const items = [r1, d1];
     strictEqual(
       navigateBoard({ items, columns: COLUMNS, selectedId: "r1" }, "right"),
       "d1",

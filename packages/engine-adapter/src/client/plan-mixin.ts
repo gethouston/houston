@@ -6,7 +6,6 @@ import type {
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
-/** C19 personal plan. Account-wide: the adapter's fetch never stamps an org. */
 export function PlanMixin<TBase extends BaseCtor>(Base: TBase) {
   class Plan extends Base {
     getPlan(): Promise<PlanSummary> {

@@ -1,9 +1,6 @@
 import type { AssistantUpstreamRequest } from "./assistant-dispatch";
 import { safeSegment } from "./assistant-path-segments";
 
-/** Applied only after catalog authorization and approval. Custom definitions
- * live on the owning pod; the gateway's root integrations surface is Composio.
- * The scoped mount uses the same user-global manager as the UI's secure card. */
 export function assistantDeploymentRoute(
   request: AssistantUpstreamRequest,
   deployment: { gatewayFronted?: boolean; gatewayAgentId?: string },

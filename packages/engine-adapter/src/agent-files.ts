@@ -1,19 +1,5 @@
 import { emitEvent } from "./bus";
 
-/**
- * localStorage-backed agent-file store.
- *
- * The new TS engine has no concept of per-agent `.houston/**` files, but the
- * desktop UI reads/writes typed JSON (config, activity, learnings) and CLAUDE.md
- * through `readAgentFile` / `writeAgentFile`. We persist each file under a
- * per-(agent, path) key so the board, per-agent provider/model config,
- * learnings, and instructions all work and survive reloads, exactly like the
- * real engine's files, just client-side.
- *
- * On write we emit the same `*Changed` event the desktop file-watcher would, so
- * surfaces that didn't originate the write (the conversation list, the file
- * tree) still react, matching the engine's AI-native reactivity contract.
- */
 const PREFIX = "houston.web.agentfile:";
 
 function storageKey(agentPath: string, relPath: string): string {
@@ -35,13 +21,10 @@ export function writeAgentFile(
 ): void {
   try {
     localStorage.setItem(storageKey(agentPath, relPath), content);
-  } catch {
-    /* storage disabled / quota exceeded */
-  }
+  } catch {}
   emitFileEvent(agentPath, relPath);
 }
 
-/** Map a written path to the same invalidation event the desktop watcher emits. */
 function emitFileEvent(agentPath: string, relPath: string): void {
   const type = relPath.match(/\.houston\/([^/]+)\//)?.[1];
   switch (type) {

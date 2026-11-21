@@ -11,13 +11,11 @@ import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { BILLING_CURRENCY } from "../organization/billing-tab-model";
 import { OrgAvatar } from "./org-avatar";
 
-/** The name an owned org shows: the personal org keeps today's label. */
 export function useOrgName(): (org: BillingChoiceOrg) => string {
   const { t } = useTranslation("plan");
   return (org) => (org.personal ? t("choice.picker.personal") : org.name);
 }
 
-/** An org's members and its last 30 days of messages, as the picker lists them. */
 export function useOrgMeta(): (org: BillingChoiceOrg) => string {
   const { t } = useTranslation("plan");
   return (org) =>
@@ -30,12 +28,6 @@ export function useOrgMeta(): (org: BillingChoiceOrg) => string {
     });
 }
 
-/**
- * An org's members and what each costs the payer today ("3 members · $15
- * each"), the price off the pick's own monthly totals: a payer keeps the
- * price they signed up at. Members alone when the wire sent no total, and
- * inside the store apps, which never name a price.
- */
 export function usePayerMeta(
   choice: BillingChoice,
 ): (org: BillingChoiceOrg) => string {
@@ -54,22 +46,15 @@ export function usePayerMeta(
 
 export interface OrgRadioProps {
   group: string;
-  /** The org's slug. */
   value: string;
   name: string;
   checked: boolean;
-  /** Listed for context, never pickable: the payer step's free org. */
   disabled?: boolean;
   onSelect: (value: string) => void;
   tag?: string;
   meta: string;
 }
 
-/**
- * One org in a radio group. The whole row is the hit target (a native radio
- * inside the label, so the arrow keys move the pick), and the selected row
- * wears an ink ring and a filled check, so the choice reads without hovering.
- */
 export function OrgRadio(props: OrgRadioProps) {
   return (
     <label
@@ -122,10 +107,6 @@ export function RowTag({ label }: { label: string }) {
   );
 }
 
-/**
- * Where a page sits in its flow, one dot per page: the current one wider and
- * in ink.
- */
 export function PickerProgress({
   progress,
 }: {

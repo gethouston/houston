@@ -7,7 +7,6 @@ export type ConversationOp = {
   conversationId: string;
   title?: string;
   body?: string;
-  /** Absent for file authority; null means database authority has no chat. */
   transcript?: StoredConversation | null;
 };
 

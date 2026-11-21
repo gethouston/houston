@@ -4,12 +4,6 @@ import type { FeedOutput } from "./feed-output";
 import { MAX_FAILURES, PreAcceptTurn } from "./pre-accept-turn";
 import { TurnSink } from "./turn-sink";
 
-/**
- * A turn stream that attaches after the engine already took our message gets
- * a running `sync` with our echo folded in, and that sync can beat the send's
- * 202. The 202 names the turn: the sink then renders what it held back.
- */
-
 type Item = { feed_type?: string; data?: unknown };
 
 function makeSink() {
@@ -68,7 +62,6 @@ test("a running sync that beat the 202 renders once the 202 names its turn", () 
   const { sink, items } = makeSink();
   sink.onFrame(runningSync("t1", "Roger that. "));
   sink.onFrame(text("t1", "You said", 3));
-  // Nothing renders while the turn could still be another writer's.
   expect(streamed(items)).toEqual([]);
 
   sink.sendAccepted("t1");
@@ -78,7 +71,6 @@ test("a running sync that beat the 202 renders once the 202 names its turn", () 
     "Roger that. ",
     "Roger that. You said",
   ]);
-  // Bound to t1: its live frames fold, its terminal settles the turn.
   sink.onFrame(text("t1", ": hi", 4));
   sink.onFrame({ type: "done", data: null, turnId: "t1", seq: 5 });
   expect(sink.settled).toBe(true);
@@ -236,7 +228,6 @@ test("only the last MAX_FAILURES failures stay claimable", () => {
     turnId,
   });
   for (let i = 0; i <= MAX_FAILURES; i++) kept.keep(fail(`t${i}`));
-  // t0 was the oldest, evicted by the ninth.
   expect(kept.claim("t0")).toEqual([]);
   for (let i = 1; i <= MAX_FAILURES; i++) kept.keep(fail(`t${i}`));
   expect(kept.claim(`t${MAX_FAILURES}`)).toEqual([fail(`t${MAX_FAILURES}`)]);

@@ -11,13 +11,6 @@ import {
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/**
- * The desktop→cloud migration's transcript chunks import on the pool worker
- * under their own claim (`agent-import`): the transcripts and the pi sessions
- * synthesized from them sync back, and each imported conversation is
- * repaired into the transcript store so asleep reads see it at once.
- */
-
 const servers: Server[] = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();
@@ -130,7 +123,6 @@ test("a transcript chunk imports on the worker under the agent-import claim, ses
     expect(write.claim, write.key).toBe("agent-import");
     expect(write.ifGenerationMatch, write.key).toBe("0");
   }
-  // The rest of the runtime tree was never the import's to touch.
   expect(pool.read(`${RUNTIME}/settings.json`)).toContain("anthropic");
 });
 
@@ -170,13 +162,9 @@ test("skip-existing sees a conversation and a session that exist only in the sto
     skipped: 1,
   });
   expect(pool.read(`${RUNTIME}/conversations/old.json`)).toContain("Kept");
-  // c7's session already existed remotely: no second session synthesized.
   expect(sessionKeys(await pool.keys(), "c7")).toEqual([
     `${RUNTIME}/sessions/c7/s.jsonl`,
   ]);
-  // The skipped chat is repaired too: a retry after a crash between the sync
-  // and the repair finds its file already there, and would otherwise leave
-  // it out of the transcript store for good.
   const repaired = pool.transcripts.map((t) => t.path).sort();
   expect(repaired).toEqual([
     "/v1/pod/transcripts/acme/bob/conversations/c7/repair",

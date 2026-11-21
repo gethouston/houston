@@ -13,16 +13,8 @@ export interface InputOutcome {
   refused?: "url_refused";
 }
 
-/** Input arriving after the hand-off ended: the page is the agent's again. */
 class InputClosedError extends Error {}
 
-/**
- * Applies the person's input to the tab's CURRENT page over its own CDP
- * session, never through the pool's queue: the hand-off holds that queue for
- * as long as the person is driving. Typed text and addresses are never logged.
- * Every CDP step is bounded ({@link within}), and once closed nothing more
- * reaches the page, not even the rest of a batch already running.
- */
 export class LiveInput {
   private bound: { page: Page; session: Promise<CDPSession> } | null = null;
   private closed = false;
@@ -48,13 +40,10 @@ export class LiveInput {
           outcome = { refused: "url_refused" };
       } catch (error) {
         if (error instanceof InputClosedError) break;
-        // The page closed under the person's click (a popup finishing its
-        // sign-in): the tab already moved on, so the rest of the batch goes there.
         if (!isClosedError(error)) throw error;
         this.bound = null;
       }
     }
-    // Counted, never the addresses: they may carry what the person typed.
     if (skipped > 0)
       console.warn(
         `[browser] live view batch ran out of navigation time: skipped ${skipped} navigation(s)`,
@@ -62,7 +51,6 @@ export class LiveInput {
     return outcome;
   }
 
-  /** One bounded CDP call on the current page's session. */
   private async send(
     ...[method, params]: Parameters<CDPSession["send"]>
   ): Promise<void> {
@@ -116,20 +104,12 @@ export class LiveInput {
       if (error instanceof BrowserToolError) return "url_refused";
       throw error;
     }
-    // "commit", not "load": input applies in order, so waiting for a slow page
-    // would freeze every click and keystroke queued behind it. A page that
-    // fails to load shows its own error in the picture.
     await this.tab.page
       .goto(href, { waitUntil: "commit", timeout: this.budget.timeout() })
       .catch(warnUnlessClosed("live view navigation"));
     return undefined;
   }
 
-  /**
-   * A popup or new tab has no history: Back closes it, showing the one below.
-   * The browser's own record of the page's history, never the page's word
-   * for it: a page script can fake `history.length` or stall `evaluate`.
-   */
   private async back(): Promise<void> {
     const page = this.tab.page;
     const cdp = await this.session();
@@ -148,7 +128,6 @@ export class LiveInput {
       .catch(warnUnlessClosed("live view back"));
   }
 
-  /** 0..1 of the frame, scaled by the shown page's own viewport. */
   private px(point: { x: number; y: number }): { x: number; y: number } {
     const size = this.tab.page.viewportSize() ?? DESKTOP_VIEWPORT;
     const clamp = (v: number) => Math.min(1, Math.max(0, v));
@@ -171,7 +150,6 @@ export class LiveInput {
     return this.bound.session;
   }
 
-  /** Refuse all further input and drop the CDP session (the hand-off ended). */
   async close(): Promise<void> {
     this.closed = true;
     const bound = this.bound;

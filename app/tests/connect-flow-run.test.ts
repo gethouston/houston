@@ -18,8 +18,6 @@ const conn = (
   status,
 });
 
-/** A recorder for everything the runner publishes, in the order it happens, so
- *  a test can assert the PHASE ORDER and not just the end state. */
 function harness(
   overrides: Partial<ConnectRunDeps> & {
     statuses?: IntegrationConnection["status"][];
@@ -77,8 +75,6 @@ describe("runConnectFlow — phase order", () => {
   it("stays on 'starting' until the browser is actually opened", async () => {
     const { deps, events } = harness();
     await runConnectFlow("slack", deps);
-    // The gate that matters: `waiting` (whose copy claims the app was opened in
-    // the browser) may only be published AFTER openUrl resolves.
     const opening = events.indexOf("step:slack=starting");
     const opened = events.indexOf("open");
     const waiting = events.indexOf("step:slack=waiting");
@@ -104,10 +100,6 @@ describe("runConnectFlow — outcomes", () => {
   });
 
   it("a connection removed under the poll settles as 'cancelled' on the row, with no toast copy of its own", async () => {
-    // PRODUCT-1733: the user disconnected the app while its OAuth was still
-    // pending (or the provider expired it), so the status read 404s. That is
-    // the connect ending, not an engine failure: no `null` return (which would
-    // paint the row "failed" and means "call() already toasted a bug").
     const { deps, events } = harness({
       readConnection: () =>
         Promise.reject(
@@ -131,20 +123,14 @@ describe("runConnectFlow — outcomes", () => {
   it("a landed OAuth confirms on the row, toasts, dwells, THEN refreshes", async () => {
     const { deps, events } = harness();
     strictEqual(await runConnectFlow("slack", deps), "active");
-    // The dwell sits between the confirmation and the refresh: without it the
-    // app teleports out of Available into Installed in the same frame.
     deepStrictEqual(events, [
       "notice:slack=null",
       "step:slack=starting",
       "mint",
       "open",
       "step:slack=waiting",
-      // The notice is published BEFORE the step clears: the store reads a flow
-      // that ended carrying no outcome as a cancel and retires its origin.
       "notice:slack=connected",
       "step:slack=null",
-      // The snap-back (PRODUCT-1298): the user just finished the OAuth in the
-      // browser, so the app surfaces itself the moment the connection lands.
       "focus",
       "toast:slack=active",
       `sleep:${CONNECT_SUCCESS_DWELL_MS}`,
@@ -159,7 +145,6 @@ describe("runConnectFlow — outcomes", () => {
     strictEqual(await runConnectFlow("slack", deps), "error");
     strictEqual(events.includes("notice:slack=failed"), true);
     strictEqual(events.includes("toast:slack=error"), true);
-    // No dwell: nothing lands, so nothing needs holding before the refresh.
     strictEqual(
       events.includes(`sleep:${CONNECT_SUCCESS_DWELL_MS}`),
       false,
@@ -168,9 +153,6 @@ describe("runConnectFlow — outcomes", () => {
   });
 
   it("an abandoned OAuth is surfaced as 'stopped', never as a failure", async () => {
-    // The user walked away: the connection stays pending until the attempt
-    // budget runs out. Both waits resolve instantly here, so the real
-    // POLL_MAX_ATTEMPTS budget costs nothing to exhaust.
     const { deps, events } = harness({
       readConnection: () => Promise.resolve(conn("pending")),
     });
@@ -185,9 +167,6 @@ describe("runConnectFlow — outcomes", () => {
   });
 
   it("the snap-back is success-only: no focus on failure, timeout, or cancel", async () => {
-    // A failure leaves the user reading the provider's error page and a
-    // timeout means they walked away — pulling the window to the front in
-    // either case would be focus-stealing, not a hand-back.
     for (const status of ["error", "pending"] as const) {
       const { deps, events } = harness({ statuses: [status] });
       await runConnectFlow("slack", deps);
@@ -236,7 +215,6 @@ describe("runConnectFlow — outcomes", () => {
     const original = deps.mintLink;
     deps.mintLink = async (toolkit) => {
       const link = await original(toolkit);
-      // The user hit Cancel while the hosted link was still being minted.
       entry.cancelled = true;
       return link;
     };
@@ -248,9 +226,6 @@ describe("runConnectFlow — outcomes", () => {
 
 describe("runConnectFlow — a blocked browser tab", () => {
   it("publishes 'blocked' instead of 'waiting' and still polls to the outcome", async () => {
-    // The web build's popup blocker refused the open after the async mint
-    // hop (PRODUCT-1625). The row must NOT claim the page is open; the poll
-    // still runs, because the user can open the page from the row itself.
     const { deps, events } = harness();
     deps.openUrl = () => {
       events.push("open:refused");
@@ -283,8 +258,6 @@ describe("runConnectFlow — engine failures", () => {
   });
 
   it("leaves a 'failed' notice on the row so the death is explained, not blank", async () => {
-    // call() toasts the engine failure, but the row the user pressed must not
-    // simply empty out: it says the same thing a provider rejection says.
     const { deps, events } = harness({
       mintLink: () => Promise.reject(new Error("boom")),
     });
@@ -293,9 +266,6 @@ describe("runConnectFlow — engine failures", () => {
   });
 
   it("a broken refresh is REPORTED, never mistaken for a failed connect", async () => {
-    // The OAuth landed. An invalidate() rejection is our bug, not the user's
-    // outcome — widening the try over settle() used to swallow "active" into
-    // null and tell the user the connect had failed.
     const { deps, events } = harness({
       invalidate: () => Promise.reject(new Error("cache exploded")),
     });

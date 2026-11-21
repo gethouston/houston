@@ -1,11 +1,6 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
-// `getModel` is pi-ai's legacy static-catalog read, preserved on `/compat`
-// (the new `Models`/`Provider` collection API needs an instantiated registry
-// we don't otherwise carry here). `BuiltinProvider` is the id union that read
-// accepts — narrower than `KnownProvider`, which since pi 0.82 also names
-// purely dynamic providers (radius) with no static catalog entry.
 import { type BuiltinProvider, getModel } from "@earendil-works/pi-ai/compat";
 import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 import { toCanonicalProviderId } from "@houston/domain/provider-dialect";
@@ -52,15 +47,6 @@ import {
   xiaomiOfferedModelIds,
 } from "./xiaomi-endpoint";
 
-/**
- * Supported providers. The provider id is the SAME string pi-ai uses for its
- * model provider, so a stored credential under `id` authenticates
- * `getModel(id, ...)` directly — whether that credential is an OAuth token
- * (Claude / Codex subscriptions) or a pasted API key (OpenCode Zen / Go,
- * OpenRouter, DeepSeek, Gemini, Amazon Bedrock, MiniMax global). The OpenAI-compatible
- * (local) provider is the exception — its model is hand-built (see
- * `./openai-compatible`), not fetched from a pi catalog.
- */
 export type ProviderId =
   | "anthropic"
   | "openai-codex"
@@ -73,19 +59,8 @@ export type ProviderId =
   | "amazon-bedrock"
   | "minimax"
   | "openai-compatible"
-  // Any other pi-ai provider id (the catalog is ~35 providers and drifts). The
-  // `(string & {})` widening accepts any provider id while keeping literal
-  // autocomplete for the named ids above.
   | (string & {});
 
-/**
- * How a provider authenticates:
- * - `oauth` — subscription sign-in (Claude / Codex / Copilot).
- * - `apiKey` — a pasted key for a built-in pi provider (OpenCode / OpenRouter / DeepSeek / Gemini / Bedrock / MiniMax).
- * - `openaiCompatible` — a user-supplied base URL + model id (+ optional key) for a
- *   local OpenAI-compatible server (Ollama / vLLM / LM Studio). LOCAL profile only:
- *   the URL is the user's own machine, unreachable from a cloud runtime.
- */
 export type ProviderAuthMethod = "oauth" | "apiKey" | "openaiCompatible";
 
 export const PROVIDERS: {
@@ -157,21 +132,11 @@ export const PROVIDERS: {
   {
     id: "openai-compatible",
     name: "Local model (OpenAI-compatible)",
-    // No catalog default — the model id is whatever the user's server serves,
-    // stored on the endpoint config (settings.customModel), read by modelFor().
     defaultModel: "",
     auth: "openaiCompatible",
   },
 ];
 
-/**
- * A provider's auth method. A curated entry keeps its declared method verbatim.
- * An UNCURATED but pi-known provider is inferred from pi's registry: OAuth when
- * pi lists it as an OAuth provider, otherwise a pasted API key — so a pasted key
- * for e.g. `groq` is accepted (login.ts's setApiKey gate) instead of being sent
- * down an OAuth flow pi has no login for. A truly unknown id still defaults to
- * OAuth, so setApiKey rejects it.
- */
 export function providerAuthMethod(id: string): ProviderAuthMethod {
   const curated = PROVIDERS.find((p) => p.id === id);
   if (curated) return curated.auth;
@@ -179,39 +144,22 @@ export function providerAuthMethod(id: string): ProviderAuthMethod {
   return "oauth";
 }
 
-/**
- * A provider's default model id: a curated entry's configured default, else —
- * for an uncurated pi provider — the domain table's hand-picked entry or the
- * first model pi lists, else `""`.
- *
- * NEVER another provider's default. Answering an unknown id with the Codex
- * model handed a turn (and the settings writer) an OpenAI id for a provider
- * that does not serve it; `""` is the honest "no opinion", and `setSettings`
- * skips a falsy model rather than storing one. Never throws / undefined.
- */
 export function providerDefaultModel(id: string): string {
   const curated = PROVIDERS.find((p) => p.id === id);
   if (curated) return curated.defaultModel;
   return uncuratedDefaultModel(id) ?? "";
 }
 
-/** The first model id pi lists for a provider, or undefined when it has none. */
 function firstCatalogModel(id: string): string | undefined {
   return piModelIds(id)[0];
 }
 
-/**
- * A provider Houston will accept: a curated id OR any provider pi-ai knows (its
- * live ~35-provider catalog). Widened additively so a pasted key for an
- * uncurated pi provider is selectable/resolvable; curated ids are unaffected.
- */
 export const isProvider = (s: string): s is ProviderId =>
   PROVIDERS.some((p) => p.id === s) || isPiProvider(s);
 
 type Settings = {
   activeProvider?: ProviderId;
   models?: Partial<Record<ProviderId, string>>;
-  /** Reasoning effort applied to each turn (mapped to pi's thinking level). */
   effort?: string;
 };
 
@@ -232,16 +180,6 @@ function saveSettings(s: Settings) {
   renameSync(tmp, settingsFile);
 }
 
-/**
- * The default model for an uncurated pi provider: the domain table's
- * hand-picked entry when it has one (and pi still lists it), else the first
- * model pi lists; undefined when pi has no catalog for it.
- *
- * The table is consulted rather than restated because this id is what the key
- * VERIFIER probes and what the first chat runs on, so a dead pick breaks connect
- * itself — and the app's picker pre-selects from that same table. Two copies
- * meant the screen offering a model and the turn running one could disagree.
- */
 function uncuratedDefaultModel(provider: string): string | undefined {
   const preferred = DEFAULT_MODEL[provider];
   if (preferred && piModelIds(provider).includes(preferred)) return preferred;
@@ -251,8 +189,6 @@ function uncuratedDefaultModel(provider: string): string | undefined {
 function defaultModel(provider: ProviderId): string {
   const found = PROVIDERS.find((p) => p.id === provider);
   if (found) return found.defaultModel;
-  // Uncurated pi provider: no configured default, so start on the hand-picked
-  // override / first pi model rather than hard-failing the picker/turn.
   const preferred = uncuratedDefaultModel(provider);
   if (preferred) return preferred;
   throw new Error(`unknown provider: ${provider}`);
@@ -263,55 +199,21 @@ export function modelFor(provider: ProviderId): string {
   return loadSettings().models?.[provider] ?? defaultModel(provider);
 }
 
-/**
- * Whether a provider is connected. For the OpenAI-compatible provider that means
- * the endpoint (base URL + model) is configured — NOT merely that a key exists,
- * since keyless local servers store only a placeholder key. Every other provider
- * is "connected" iff it has a STORED credential (`providerConnected`, the HOU-557
- * stored-only rule — env vars / overrides don't count and aren't logout-clearable).
- */
 export function providerConfigured(id: ProviderId): boolean {
   if (id === OPENAI_COMPATIBLE) return customEndpointConfigured();
   return providerConnected(authStorage, id);
 }
 
-/**
- * The STATUS-surface truth: configured AND currently able to serve a turn.
- * Two health signals layer on top of `providerConfigured`:
- * - `authFailureActive` — a turn already failed `unauthenticated` on this
- *   exact credential (auth/credential-health.ts), so "Connected" would be a
- *   lie until the credential changes or a turn succeeds;
- * - the local endpoint's reachability probe — a configured but stopped/
- *   unreachable OpenAI-compatible server must not offer its model.
- * Deliberately NOT used by the turn path (`activeProvider`): a turn on a
- * suspect provider should run and surface its REAL typed error (network card,
- * reconnect card) — and a clean turn is what heals a stale failure mark.
- */
 function providerUsable(id: ProviderId): boolean {
   if (!providerConfigured(id)) return false;
   if (authFailureActive(id)) return false;
   return id === OPENAI_COMPATIBLE ? endpointReachableCached() : true;
 }
 
-/** The agent's saved reasoning effort for new turns, or null (model default). */
 export function activeEffort(): string | null {
   return loadSettings().effort ?? null;
 }
 
-/**
- * Pure provider-selection policy (the IO wrapper is `activeProvider`).
- *
- * A SAVED provider is sticky: use it when connected, and return `null` when it
- * is logged out — NEVER another connected provider. Silently switching an agent
- * that is configured for one provider onto a different connected one (e.g.
- * answering an OpenAI chat with OpenRouter after the OpenAI logout) bills and
- * answers under a model the user never chose; the logged-out provider must
- * instead surface the reconnect card. The "first connected" fallback applies
- * ONLY when nothing is saved yet (a fresh agent's very first chat) so an initial
- * turn can start without a manual pick (#483).
- *
- * @param authedIds connected providers, in registry order.
- */
 export function pickActiveProvider(
   saved: ProviderId | undefined,
   authedIds: ProviderId[],
@@ -320,14 +222,6 @@ export function pickActiveProvider(
   return authedIds[0] ?? null;
 }
 
-/**
- * Every provider that could be connected, in selection-precedence order: the
- * curated registry FIRST (unchanged order, so the first-connected fallback and
- * claim precedence for curated providers are identical to before), then any
- * other pi-known provider so a pasted key for an uncurated provider (e.g. groq)
- * becomes selectable. Extras are appended, never interleaved, so they can only
- * ever be the fallback when NO curated provider is connected.
- */
 function candidateProviderIds(): ProviderId[] {
   const curated = PROVIDERS.map((p) => p.id);
   const seen = new Set(curated);
@@ -335,24 +229,10 @@ function candidateProviderIds(): ProviderId[] {
   return [...curated, ...extras];
 }
 
-/** Connected providers in precedence order (curated first, then pi extras). */
 function connectedProviderIds(): ProviderId[] {
-  // `providerConfigured` over `providerConnected` so the OpenAI-compatible
-  // provider counts when its endpoint is set (it has only a placeholder key).
   return candidateProviderIds().filter((id) => providerConfigured(id));
 }
 
-/**
- * The provider this agent's turns run on: the saved pick when connected, else —
- * only when nothing is saved — the first connected provider. `null` => no
- * provider connected for the saved pick, so the turn must surface the reconnect
- * card rather than silently switching.
- */
-/**
- * The agent's saved provider whether or not it is connected; null when nothing
- * is saved. `activeProvider` answers null for a logged-out saved provider too,
- * and a refusal must tell that apart from an agent that never picked one.
- */
 export function savedActiveProvider(): ProviderId | null {
   return loadSettings().activeProvider ?? null;
 }
@@ -364,40 +244,12 @@ export function activeProvider(): ProviderId | null {
   );
 }
 
-/**
- * OpenCode's two gateways — `opencode` (Zen) and `opencode-go` (Go) — share ONE
- * opencode.ai key: a connect stores the credential under both ids (the client
- * fans the write out). The claim policy must treat them as a single connect —
- * after an OpenCode connect the freshly-lit sibling gateway is NOT an "already
- * connected" provider. Keep in sync with the frontend's `credentialSiblings`
- * (packages/web engine-adapter/synthetic.ts).
- */
 const OPENCODE_GATEWAYS: readonly ProviderId[] = ["opencode", "opencode-go"];
 
 export function credentialSiblingIds(pid: ProviderId): ProviderId[] {
   return OPENCODE_GATEWAYS.includes(pid) ? [...OPENCODE_GATEWAYS] : [pid];
 }
 
-/**
- * Pure claim policy for a JUST-CONNECTED credential (IO wrapper:
- * `claimActiveProvider`). Connecting a provider is NOT a model pick (HOU-695):
- * an agent that already resolves to a provider — a saved pick, or the
- * first-connected fallback serving a fresh agent — must keep it, or every open
- * chat silently switches onto the new credential (and its quota errors: an
- * OpenCode key pasted mid-Codex-chat used to answer — and bill — the next turn
- * on OpenCode). Switching providers is exclusively the model picker's job.
- *
- * Returns the provider to SAVE, or `null` to leave settings untouched:
- * - something saved → `null`. Even a logged-out saved pick stays: the turn
- *   surfaces its reconnect card (`pickActiveProvider`), and the picker — which
- *   only offers connected providers — is the explicit way onto the new one.
- * - nothing saved, another provider (outside the connect's shared-key gateway
- *   siblings) already connected → THAT provider, now pinned. It was already
- *   serving turns via the first-connected fallback; writing it down keeps
- *   registry order from drifting the fallback onto the newcomer.
- * - nothing saved, nothing else connected → the just-connected provider (the
- *   fresh-agent first connect, #483's "first turn works without a pick").
- */
 export function pickClaimedProvider(
   saved: ProviderId | undefined,
   authedIds: ProviderId[],
@@ -409,15 +261,6 @@ export function pickClaimedProvider(
   return others[0] ?? connected;
 }
 
-/**
- * Claim the active provider for a just-connected credential — the connect-flow
- * counterpart of `setSettings({activeProvider})`, gated by `pickClaimedProvider`
- * so a connect can never move an agent that already has a provider (HOU-695).
- * The route hydrates centrally-served credentials first (`/settings/claim` →
- * `syncServedCredentialSafe`, kept there to avoid an ai↔auth import cycle) so
- * "already connected" sees the workspace's connect-once credentials, not just
- * this runtime's local file.
- */
 export function claimActiveProvider(pid: string): Settings {
   if (!isProvider(pid)) throw new Error(`unknown provider: ${pid}`);
   const s = loadSettings();
@@ -446,9 +289,6 @@ export function setSettings(input: {
   if (input.model) {
     const prov = (input.activeProvider as ProviderId) ?? s.activeProvider;
     if (!prov) throw new Error("set a provider before choosing a model");
-    // The OpenAI-compatible model id lives on the endpoint config, not the
-    // per-provider model map — keep one source of truth so modelFor + the
-    // built model agree.
     if (prov === OPENAI_COMPATIBLE) setCustomModelId(input.model);
     else s.models = { ...s.models, [prov]: input.model };
   }
@@ -457,29 +297,11 @@ export function setSettings(input: {
   return s;
 }
 
-/**
- * getModel for a provider+model, but read-time-safe against a LEGACY/stale id.
- *
- * A bare `getModel(provider, id)` THROWS for an id the provider doesn't offer.
- * The desktop's stored config could carry a legacy id (the migration runs on
- * the write/seed path — see packages/domain migrateProviderModel — but a
- * settings.json written before that fix, or hand-edited, can still hold one).
- * Rather than hard-fail the turn, fall back to the provider's catalog default
- * and emit a diagnostic (beta no-silent-failure: the user still gets a turn AND
- * the swap is logged for the bug tail). A pinned `override` (routine model) is
- * the one exception NOT auto-corrected, but it IS validated: an unavailable pin
- * throws a clean "model not available" Error (pi-ai's getModel returns
- * `undefined` rather than throwing) so the turn fails with a readable reason
- * instead of a downstream TypeError.
- */
 export function safeGetModel(
   provider: string,
   requestedId: string,
   pinned: boolean,
 ) {
-  // A retired Claude id runs on its own family's lineup model, pinned or saved
-  // alike (./anthropic-lineup): it is the SAME choice, not a stale one. A
-  // MiniMax id its API no longer serves runs on the MiniMax default (./minimax).
   const modelId = minimaxServedModelId(
     provider,
     lineupModelId(provider, requestedId),
@@ -488,45 +310,18 @@ export function safeGetModel(
 
   const pp = provider as BuiltinProvider;
   const mp = modelId as Parameters<typeof getModel>[1];
-  // Houston's qwen extension provider resolves from its own catalog — pi's
-  // getModel doesn't know the id (see ./qwen-dashscope). Typed to getModel's
-  // own contract (its declared return is non-optional; the runtime-undefined
-  // case is what the pinned guard below checks) so callers keep the exact
-  // pre-extension signature.
   const lookup = (id: string): Model<Api> => {
     const m = (
       provider === QWEN_PROVIDER_ID
         ? qwenModel(id)
         : getModel(pp, id as Parameters<typeof getModel>[1])
     ) as Model<Api>;
-    // Azure's catalog ships no base URL (the endpoint is per-resource) —
-    // overlay the connect-time endpoint or every request throws before HTTP.
     if (m && provider === AZURE_OPENAI) return withAzureBaseUrl(m);
-    // Xiaomi's catalog bakes the general endpoint, but a Token Plan key
-    // authenticates only on its plan's gateway — overlay the endpoint the
-    // stored key verified against (./xiaomi-endpoint).
     if (m && provider === XIAOMI_PROVIDER_ID) return withXiaomiBaseUrl(m);
     return m;
   };
   const offered = safeModelIds(provider as ProviderId);
   if (pinned) {
-    // pi-ai's getModel returns `undefined` (it never throws) for an id the
-    // provider doesn't offer. A pinned id is NOT auto-corrected, but it must
-    // still be validated here: returning undefined would crash the turn
-    // downstream with a raw `Cannot read properties of undefined` TypeError.
-    //
-    // Validated against what Houston OFFERS, not pi's raw catalog: where the
-    // two differ (a Codex row OpenAI retired, a Xiaomi model the plan gateway
-    // 404s) pi still resolves the id and the turn dies at the provider with the
-    // provider's own wording. Failing here instead gives the typed
-    // switch-model card, whose `suggested_fallback` names a model that runs.
-    // The `offered.length` test is what carries a provider pi has no catalog
-    // for at all (an uncurated id, where `piModelIds` answers []) past the
-    // check; every provider WITH a catalog — the opencode gateways included,
-    // where pi bakes 73 and 30 rows — is validated against it. A stale gateway
-    // id is kept runnable by the domain's read-time rename map
-    // (`canonicalModelId`), not by skipping this guard: pi's `getModel` has no
-    // model object to build for an id it dropped either.
     const m =
       offered.length > 0 && !offered.includes(modelId) ? undefined : lookup(mp);
     if (!m)
@@ -537,9 +332,6 @@ export function safeGetModel(
       );
     return m;
   }
-  // A provider pi has no catalog for answers [] here, and there is nothing to
-  // check a saved id against — its model resolves or the turn surfaces the
-  // provider's own error. Every provider WITH a catalog gets the guard.
   if (offered.length > 0 && !offered.includes(modelId)) {
     const fallback = providerDefaultModel(provider);
     console.warn(
@@ -551,38 +343,10 @@ export function safeGetModel(
   return lookup(mp);
 }
 
-/**
- * Canonicalize a wire provider id arriving on a turn PIN / provider override.
- *
- * Houston's UI RENAMES pi's `openai-codex` subscription to the display id
- * `openai` and never offers pi's raw platform-key `openai` provider, so on the
- * wire a bare `openai` ALWAYS means the Codex product. The rename map itself is
- * the domain's (`@houston/domain/provider-dialect`, the same module the
- * frontend's `wireTurnPin` applies before send); this function is the runtime's
- * single pin-entry seam — every turn's provider override flows through it
- * (exec-turn, conversation-cache, generate-agent) — so NO caller (the hosted
- * Teams model-choice path, a routine pin, a hand-crafted request body) can land
- * a turn on pi's raw `openai` provider and miss the `openai-codex` credential.
- */
 export function canonicalPinProvider(id: string): string {
   return toCanonicalProviderId(id);
 }
 
-/**
- * Resolve the pi-ai model for the active provider (used when starting a turn).
- * An optional `override` (a routine's pinned model) wins over the saved model;
- * a bad pin surfaces as the turn's error, while a stale SAVED id falls back to
- * the provider default (see safeGetModel) rather than hard-failing the turn. The
- * OpenAI-compatible provider isn't a pi KnownProvider, so it builds its model by
- * hand instead.
- *
- * `providerOverride` (a routine's pinned provider) wins over the saved active
- * provider and is never auth-gated — parity with the Rust engine's
- * resolve_provider_with_overrides: a disconnected pin surfaces as this turn's
- * provider error, never a silent switch to whatever provider happens to be
- * active. It is per-turn only: nothing here writes settings.json, so a routine
- * firing on its pinned provider never moves the agent's saved pick.
- */
 export function resolveModel(
   override?: string | null,
   providerOverride?: string | null,
@@ -598,47 +362,27 @@ export function resolveModel(
   }
   if (!provider)
     throw new Error("No provider connected. Connect an AI provider first.");
-  // The OpenAI-compatible (local) provider isn't a pi KnownProvider, so its
-  // model is hand-built rather than fetched from a catalog. Every other provider
-  // goes through safeGetModel, which validates a pinned id (a bad pin throws a
-  // clean "model not available" error) but falls a stale SAVED id back to the
-  // provider default rather than hard-failing the turn.
   if (provider === OPENAI_COMPATIBLE)
     return buildActiveCustomModel(override || undefined);
   return safeGetModel(provider, override || modelFor(provider), !!override);
 }
 
 export function safeModelIds(provider: ProviderId): string[] {
-  // The OpenAI-compatible provider has no pi catalog; its only "model" is the
-  // single one the user configured on the endpoint.
   if (provider === OPENAI_COMPATIBLE) {
     const m = customModelId();
     return m ? [m] : [];
   }
-  // Xiaomi's Token Plan gateways serve a subset of the general catalog — a
-  // key verified against one must not be offered a model it 404s.
   if (provider === XIAOMI_PROVIDER_ID)
     return xiaomiOfferedModelIds(piModelIds(provider));
-  // pi's Codex catalog outlives what a ChatGPT subscription can run: the rows
-  // OpenAI stopped serving answer `model_not_found` on the first turn
-  // (./codex-offered.ts carries the probe and its verdicts).
   if (provider === CODEX_PROVIDER_ID)
     return codexOfferedModelIds(piModelIds(provider));
   if (provider === ANTHROPIC_PROVIDER_ID)
     return anthropicOfferedModelIds(piModelIds(provider));
-  // pi still lists MiniMax's retired M2.7 rows; a turn on one runs the default.
   if (provider === MINIMAX_PROVIDER)
     return minimaxOfferedModelIds(piModelIds(provider));
   return piModelIds(provider);
 }
 
-/**
- * The model a SAVED (unpinned) turn on this provider runs — the same ladder
- * `safeGetModel` applies: a retired Claude id runs its family's lineup model,
- * and an id the provider does not offer falls back to the provider default.
- * The status row reports this, so no choice list ever offers a model a pinned
- * turn would refuse.
- */
 function savedModelRuns(id: ProviderId): string {
   const modelId = lineupModelId(id, modelFor(id));
   const offered = safeModelIds(id);
@@ -647,20 +391,6 @@ function savedModelRuns(id: ProviderId): string {
     : modelId;
 }
 
-/** One /providers status row for a provider id. `configured` reports the
- *  status-surface truth (`providerUsable`): the frontend maps it straight to
- *  authenticated/unauthenticated for the AI Models page and the chat model
- *  picker, so it must mean "this provider's models can actually answer",
- *  not merely "some credential/config artifact exists".
- *
- *  `credentialScope` names WHOSE credential produced `configured` (HOU-976), so
- *  the picker can label a row "your account". Absent unless the request carries
- *  an acting identity — desktop, self-host and every pre-HOU-976 caller see the
- *  exact shape they saw before.
- *
- *  `health` says WHY (PRODUCT-1475), for the same acting identity: a routine
- *  that fails "no provider connected" while the screen says Connected is the
- *  bug this row has to make impossible. */
 function providerRow(id: ProviderId, name: string, active: ProviderId | null) {
   const servedScope = servedScopeFor(id);
   return {
@@ -675,17 +405,6 @@ function providerRow(id: ProviderId, name: string, active: ProviderId | null) {
   };
 }
 
-/**
- * WHY a provider is (un)usable for the acting identity — the reason behind
- * `configured`, in the order the user must act on: no credential at all, a
- * credential the provider rejected, a valid credential with no quota left, a
- * local endpoint that is not answering.
- *
- * `out_of_credits` deliberately does NOT flip `configured` to false: the
- * credential is valid and the turn should still run and surface its own typed
- * card, so the row stays connected and only `health` tells the honest story
- * (which is what a routine's failure summary reads).
- */
 function providerHealth(id: ProviderId): ProviderHealth {
   if (!providerConfigured(id)) return "not_connected";
   if (authFailureActive(id)) return "needs_reconnect";
@@ -695,13 +414,6 @@ function providerHealth(id: ProviderId): ProviderHealth {
   return "connected";
 }
 
-/**
- * The /providers status batch. Curated providers ALWAYS appear (unchanged). An
- * uncurated pi provider appears once it has a stored credential, so a pasted key
- * for e.g. groq is reflected — with its runnable pi model ids — while the common
- * case (nothing uncurated connected) keeps the exact shape it had before. Its
- * `name` is the raw pi id; the frontend catalog supplies display names/logos.
- */
 export function listProviders() {
   const active = activeProvider();
   const curated = new Set(PROVIDERS.map((p) => p.id));

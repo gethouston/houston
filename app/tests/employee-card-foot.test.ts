@@ -3,12 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-/**
- * The card foot's announcement seam. The component loads React, framer-motion
- * and i18n, which this suite's runner cannot render, so the seam is pinned on
- * source: the status line changes inside ONE polite live region that stays
- * mounted across statuses, so a hire that joins or fails is announced.
- */
 const foot = readFileSync(
   join(
     import.meta.dirname,

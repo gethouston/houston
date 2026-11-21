@@ -8,7 +8,6 @@ import { buildBridgedToolSet } from "./mcp-tool-set";
 const browser = { workspaceDir: "/ws/Agent", liveView: true };
 const names = (tools: BridgedPiTool[]) => tools.map((t) => t.name);
 
-/** The action names the bridged browser tool's schema offers the model. */
 function bridgedActions(liveView: boolean): unknown[] {
   const tool = buildBridgedToolSet({
     browser: { workspaceDir: "/ws/Agent", liveView },
@@ -47,8 +46,6 @@ test("the bridged schema offers handoff only where the live view is served", () 
 });
 
 test("nothing cuts a hand-off's 10-minute tool call short on the Claude path", () => {
-  // The MCP bridge is unbounded unless a server timeout or MCP_TOOL_TIMEOUT
-  // says otherwise; either one under 11 minutes would kill a waiting hand-off.
   let options: Record<string, unknown> = {};
   const fakeCreate = ((opts: Record<string, unknown>) => {
     options = opts;

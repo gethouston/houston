@@ -1,12 +1,3 @@
-/*
- * Shared section head + the board section (#board): the relocated product window
- * on the centered content grid, plus the three-up feature grid (Share any agent,
- * One shared board, Safe by role). Also serves the chat section's head
- * (#multiplayer). Palette/type from site-tokens.css; the window chrome lives in
- * landing-app-window.css.
- */
-
-/* ── Section head (chat + board) ──────────────────────────────────────────── */
 .mp-head {
   text-align: center;
   max-width: 760px;

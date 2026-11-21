@@ -11,18 +11,6 @@ import { specimen as select } from "./select";
 import { specimen as switchSpecimen } from "./switch";
 import { specimen as textarea } from "./textarea";
 
-/**
- * The "Actions & inputs" family: buttons, inputs, selects, toggles, sliders —
- * anything the user acts through.
- *
- * One file per component in this folder (`<component>.tsx`, each exporting
- * `export const specimen: Specimen` with `group: "Actions & inputs"`), imported
- * here and listed below in nav order. The layout helpers live in
- * `../../../src/specimen`.
- *
- * Nav order runs buttons, then fields, then the choices and surfaces built out
- * of them, so a page never depends on one further down the list.
- */
 export const specimens: readonly Specimen[] = [
   button,
   asyncButton,

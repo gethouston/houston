@@ -1,29 +1,13 @@
-/** `.houston/config/config.json` — per-agent provider/model config. */
-
 import type { AgentFirstDay } from "@houston/protocol";
 import schema from "@houston-ai/agent-schemas/config.schema.json";
 import { readAgentJson, writeAgentJson } from "./agent-file";
 
 export interface Config {
   name?: string;
-  // pi's CANONICAL provider id (`anthropic`, `openai-codex`, `opencode`, …),
-  // never Houston's display id (`openai`): every writer canonicalizes through
-  // `toCanonicalProviderId` and every reader maps back with
-  // `toDisplayProviderIdOrNull`. Open string, because the catalog is ~35
-  // providers and drifts (see protocol `ProviderId`).
   provider?: string;
   model?: string;
-  // The active vocabulary is `low|medium|high|xhigh`; a legacy `"max"` may still
-  // sit in older on-disk configs. It is tolerated on read and normalized to
-  // `xhigh` at the UI boundary (see `normalizeEffort`), so it stays here.
   effort?: "low" | "medium" | "high" | "xhigh" | "max";
-  /**
-   * Legacy/portable config field retained for on-disk compatibility. The app
-   * does not read or write it; the session-local composer mode rides each send
-   * as `modeOverride` and defaults to `execute` for a new mission.
-   */
   mode?: "execute" | "plan" | "auto";
-  /** See `AgentConfig.firstDay` in `@houston/protocol`. */
   firstDay?: AgentFirstDay;
   [extra: string]: unknown;
 }

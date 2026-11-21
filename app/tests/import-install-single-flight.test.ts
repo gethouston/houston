@@ -9,14 +9,6 @@ import {
 import type { InstallImportedAgentArgs } from "../src/components/portable/import-install-request.ts";
 import { createSingleFlight } from "../src/components/portable/single-flight.ts";
 
-/**
- * Rage-clicking "Install" on the last step of "From a friend" created TWO
- * agents: `setInstalling(true)` is a React state update, so the button's
- * `disabled` only lands on the NEXT render and both clicks of a same-tick burst
- * passed the check. The latch below flips synchronously, which is what actually
- * closes that window; `AsyncButton` is what holds the press visually.
- */
-
 describe("createSingleFlight", () => {
   it("drops a second call made in the SAME tick as the first", async () => {
     const runOnce = createSingleFlight();
@@ -61,13 +53,6 @@ describe("createSingleFlight", () => {
   });
 });
 
-/**
- * The press itself. The node runner has no DOM, so the hook's composition —
- * `installOnce.current(() => runImportInstall(…))`, the latch held in a ref
- * across renders — is rebuilt here over the same two modules and driven for
- * real: the engine port counts its calls, so "one install per burst" is a
- * measured fact rather than a shape the source happens to have.
- */
 const ARGS: InstallImportedAgentArgs = {
   packageId: "pkg_1",
   workspaceName: "Personal",
@@ -82,11 +67,8 @@ const INSTALLED = {
 } as PortableInstalledAgent;
 
 interface Press {
-  /** What the button's onClick does, latch included. */
   press: () => Promise<void>;
-  /** Every engine round-trip that actually left. */
   installs: InstallImportedAgentArgs[];
-  /** The steps the user sees, in the order they happened. */
   steps: string[];
 }
 
@@ -140,8 +122,6 @@ describe("the import wizard's install action", () => {
         new Promise<PortableInstalledAgent>((resolve) => (finish = resolve)),
     );
 
-    // AsyncButton holds the button pending for exactly as long as this promise
-    // is unsettled, so the handler must RETURN it rather than fire and forget.
     const pressed = harness.press();
     ok(pressed instanceof Promise);
     deepStrictEqual(harness.steps, ["installing:true"], "still in flight");

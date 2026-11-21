@@ -2,8 +2,6 @@ import { activityToConversation } from "@houston/engine-adapter/activities";
 import { expect, test } from "vitest";
 
 test("conversation mapping keeps the mission-card metadata (agent mode + routine)", () => {
-  // Mission Control derives card tags from `agent` and `routine_id`; the
-  // adapter dropping them left new-engine cards untagged (HOU-665).
   const entry = activityToConversation(
     {
       id: "act-1",
@@ -47,16 +45,12 @@ test("conversation mapping falls back to the activity-<id> session key", () => {
   expect(entry.session_key).toBe("activity-act-2");
   expect(entry.agent).toBeUndefined();
   expect(entry.routine_id).toBeUndefined();
-  // A person's mission names no starter.
   expect("started_by" in entry).toBe(false);
-  // No attribution on single-player activities.
   expect("created_by" in entry).toBe(false);
   expect("contributors" in entry).toBe(false);
 });
 
 test("conversation mapping threads Teams attribution (created_by + contributors)", () => {
-  // Server-stamped in hosted Teams; the adapter must carry both onto the card
-  // so face stacks and the person filter can render.
   const entry = activityToConversation(
     {
       id: "act-3",

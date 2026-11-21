@@ -62,14 +62,10 @@ export interface OwnedAgentCardProps {
   agent: OwnedAgentRow;
   href: string;
   busy: boolean;
-  /** Drive-style visibility change from the Share dialog. */
   onShareSelect: (visibility: ShareVisibility) => void;
   onDelete: () => void;
-  /** Persist the Edit-listing dialog's identity patch; absent hides the item. */
   onEditSave?: (identity: OwnedAgentIdentity) => Promise<void>;
-  /** The store's category vocabulary for the Edit-listing dialog. */
   categories?: StoreCategoryRow[];
-  /** The agent's public link, for the Share dialog's copy affordance. */
   shareHref?: string | null;
   labels?: Partial<OwnedAgentCardLabels>;
   shareLabels?: Partial<ShareAgentDialogLabels>;
@@ -78,13 +74,6 @@ export interface OwnedAgentCardProps {
   LinkComponent?: StoreLinkComponent;
 }
 
-/**
- * THE owner's agent card: the PUBLIC AgentCard verbatim, with the pencil
- * menu — Edit listing… · Share… · Delete — as ITS corner affordance (the
- * card's `action` slot, so it sits exactly where a visitor's `+` would, never
- * stacked on top of one) and a state badge beside it while the listing is
- * not publicly visible. Visibility lives in the Share dialog.
- */
 export function OwnedAgentCard({
   agent,
   href,

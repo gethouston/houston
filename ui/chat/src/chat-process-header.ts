@@ -1,59 +1,20 @@
-/**
- * Pure logic for the chat "process" block's single header line — extracted from
- * `chat-process-block.tsx` (which is JSX) so it can be unit-tested under
- * `node:test` without a DOM, the way `chat-process-classes.ts` is.
- *
- * The header is the whole story while the log stays collapsed (HOU-448): it
- * surfaces only the one action in progress, never a count of how many tool
- * calls ran. The only number it shows is the repeat counter — "x3" when the
- * SAME activity just ran three times in a row (PRODUCT-1226), so a collapsed
- * log doing 27 identical steps doesn't read as one stuck step.
- */
-
 import type { ChatProcessSegment } from "./chat-process-groups";
 import type { CommandActivity } from "./command-activity.ts";
 import { commandActivityOf } from "./command-activity.ts";
 import type { ToolEntry } from "./feed-to-messages";
 import { getToolActionLabel, toolShortName } from "./tool-labels.ts";
 
-/**
- * A resolved integration action for the header's branded row: the app's display
- * NAME, its LOGO (when the catalog carried one), and the humanized action in
- * present tense ("Sending email"). Resolved by the app — `ui/chat` stays
- * Composio-unaware — and rendered as the logo (in the helmet's icon slot)
- * followed by `{name} · {actionLabel}`. A missing `logoUrl` falls back to the
- * Houston helmet, never a broken image.
- */
 export interface ChatActionBrand {
   name: string;
   logoUrl?: string;
-  /** A glyph standing in for a brand logo when the integration has none:
-   *  `"tool"` renders a wrench (custom API/MCP integrations, HOU-1049).
-   *  Takes precedence over `logoUrl`; absent → logo, else the helmet. */
   icon?: "tool";
   actionLabel: string;
-  /** The past-tense counterpart of `actionLabel` ("Sent email"), for surfaces
-   *  that report a COMPLETED action — the turn-end "Updates made" rows
-   *  (PRODUCT-1196). Optional and additive; absent falls back to
-   *  `actionLabel`. */
   doneLabel?: string;
 }
 
 export interface ChatProcessLabels {
-  /**
-   * Shimmer label while the mission runs but hasn't reached its first tool yet
-   * (the opening planning / reasoning). e.g. "Thinking..."
-   */
   active?: string;
-  /** Settled label once the mission ends and the log collapses. e.g. "Mission log". */
   complete?: string;
-  /**
-   * Resolves a Composio action slug (e.g. `GMAIL_SEND_EMAIL`) to the app's
-   * presentational brand for the branded header row. App-supplied (the catalog
-   * lives app-side); returns `undefined` when the current tool isn't a
-   * resolvable integration action, and the header falls back to the plain tool
-   * verb. Read-only — no connect side effects.
-   */
   resolveActionBrand?: (action: string) => ChatActionBrand | undefined;
 }
 
@@ -62,18 +23,6 @@ const DEFAULTS = {
   complete: "Mission log",
 };
 
-/**
- * Name of the tool that names the current step of an active process: the most
- * recently invoked tool, i.e. the last tool of the last segment that has any.
- *
- * It is deliberately "most recent" rather than "still running": local tools
- * (Read/Edit/Grep) finish in well under a second, but the agent spends most of
- * the turn reasoning between them. Keying off the running window alone left the
- * header on the bare "Thinking..." fallback almost the whole time
- * (HOU-448 follow-up). Holding the latest tool's label for the life of the
- * active turn keeps the concrete step visible; it updates the moment a new tool
- * starts and clears when the turn settles.
- */
 export function getCurrentActionTool(
   segments: ChatProcessSegment[],
 ): ToolEntry | undefined {
@@ -84,20 +33,12 @@ export function getCurrentActionTool(
   return undefined;
 }
 
-/** The name of {@link getCurrentActionTool}, or undefined when no tool has run. */
 export function getCurrentActionToolName(
   segments: ChatProcessSegment[],
 ): string | undefined {
   return getCurrentActionTool(segments)?.name;
 }
 
-/**
- * The Composio action slug of an `integration_execute` tool call, or undefined
- * for any other tool. The action lives in `input.action` (the entry may arrive
- * MCP-prefixed — `toolShortName` strips that). Tolerates a malformed input
- * (null, non-object, missing / non-string / empty `action`) by returning
- * undefined, so a half-streamed call never drives a branded row.
- */
 export function integrationActionOf(tool: ToolEntry): string | undefined {
   if (toolShortName(tool.name) !== "integration_execute") return undefined;
   const input = tool.input;
@@ -106,12 +47,6 @@ export function integrationActionOf(tool: ToolEntry): string | undefined {
   return typeof action === "string" && action.length > 0 ? action : undefined;
 }
 
-/**
- * The single status line's text. While active it names the current tool in
- * present tense ("Reading file"); before the first tool runs it reads the
- * active "Thinking..." label; once settled it reads the complete label. It
- * never mentions how many tools ran.
- */
 export function buildProcessHeaderLabel(opts: {
   isActive: boolean;
   segments: ChatProcessSegment[];
@@ -125,10 +60,6 @@ export function buildProcessHeaderLabel(opts: {
   return getToolActionLabel(name, false, toolLabels);
 }
 
-/**
- * Header text for a classified command activity, mirroring the branded row's
- * `{name} · {action}` shape (HOU-1048). English-only like the tool verbs.
- */
 export function activityLabel(activity: CommandActivity): string {
   if (activity.kind === "python") return "Python · Running code";
   return activity.host
@@ -136,13 +67,6 @@ export function activityLabel(activity: CommandActivity): string {
     : "Browsing the web";
 }
 
-/**
- * Identity used to fold consecutive identical steps into one "xN" header row
- * (PRODUCT-1226): two tools are "the same activity" when they would render the
- * same header line — the same integration action, the same classified command
- * activity, or the same tool verb. Coarser than input equality on purpose:
- * creating 27 different Linear issues is one repeated activity.
- */
 function toolRepeatKey(tool: ToolEntry): string {
   const action = integrationActionOf(tool);
   if (action) return `integration:${action}`;
@@ -153,12 +77,6 @@ function toolRepeatKey(tool: ToolEntry): string {
   return `tool:${toolShortName(tool.name).toLowerCase()}`;
 }
 
-/**
- * How many trailing consecutive tools (across segment boundaries) share the
- * current tool's activity identity. 0 when no tool has run; a different
- * activity in between resets the run — the counter narrates "the SAME step,
- * again", never a total.
- */
 export function countTrailingRepeats(segments: ChatProcessSegment[]): number {
   const tools = segments.flatMap((segment) => segment.tools);
   if (tools.length === 0) return 0;
@@ -171,40 +89,16 @@ export function countTrailingRepeats(segments: ChatProcessSegment[]): number {
   return count;
 }
 
-/** The " x3" suffix for a repeated activity; empty until the second repeat. */
 function repeatSuffix(count: number): string {
   return count > 1 ? ` x${count}` : "";
 }
 
-/**
- * The header content and its left-icon intent, picked purely so the component
- * only reads the `kind`:
- * - `brand` — the current tool is a resolvable `integration_execute`: the app
- *   logo replaces the helmet + `{name} · {actionLabel}`, plus " x{count}" when
- *   the same action just ran `count` ≥ 2 times in a row (PRODUCT-1226).
- * - `activity` — a `bash`/`run_code` call classified as web or Python
- *   (HOU-1048): globe / Python glyph + "Browsing the web · {host}" /
- *   "Python · Running code". `label` already carries the repeat suffix.
- * - `tool` — any other running tool: `toolName` lets the component reuse the
- *   mission-log per-tool icon (helmet when the name isn't mapped) + the verb,
- *   with the repeat suffix baked into `label`.
- * - `text` — helmet + label: the active "Thinking..." gap and the settled
- *   "Mission log".
- */
 export type ProcessHeader =
   | { kind: "brand"; brand: ChatActionBrand; count: number }
   | { kind: "activity"; activity: CommandActivity; label: string }
   | { kind: "tool"; label: string; toolName: string }
   | { kind: "text"; label: string };
 
-/**
- * PRODUCT-1226: while the turn is active and ANY tool has run, the header
- * always names that latest task (sticky across the reasoning gaps, HOU-448) —
- * the playful astronaut phrases never play here. They belong to the standalone
- * connecting indicator alone, which is suppressed the whole time an active log
- * trails (HOU-471), so the user watching a working agent always sees the task,
- * not a joke.
- */
 export function buildProcessHeader(opts: {
   isActive: boolean;
   segments: ChatProcessSegment[];

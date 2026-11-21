@@ -1,21 +1,4 @@
 import { SEED_AGENT_NAME } from "@houston/fake-host";
-/**
- * Visual-regression baselines for the main shell (sidebar + mission board).
- *
- * The board belongs to one AI Employee, with the sidebar, titlebar, and seeded
- * missions. It is fully deterministic under the fake
- * host: two seeded missions with FIXED timestamps (state-store.ts `EPOCH`),
- * and the cards format those fixed historic dates, so the whole screen
- * is stable. We capture it in both themes at a fixed desktop viewport,
- * plus one narrow-width run (the most important screen gets responsive
- * coverage).
- *
- * Determinism rules for this suite live in ../README.md. In short: fixed
- * viewport, `animations: "disabled"` (config-wide), a small
- * `maxDiffPixelRatio`. The board dates are fixed, so they need no masks;
- * the phone screens (Agents home, the per-agent missions drill) render
- * relative times against the wall clock and mask those spans.
- */
 
 import { FOLLOW_UP_PLACEHOLDER } from "../support/composer";
 import { expect, test } from "../support/fixtures";
@@ -40,7 +23,6 @@ for (const theme of THEMES) {
       .first()
       .click();
 
-    // Anchor on the shell being fully painted before pinning theme + comparing.
     await expect(workspaceMenuTrigger(page)).toBeVisible();
     await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
     await expect(missionCard(page, "Draft the launch email")).toBeVisible();
@@ -52,20 +34,10 @@ for (const theme of THEMES) {
   });
 }
 
-/**
- * Narrow-width run for the board's screen — the responsive layout is the one
- * most worth guarding against drift. At 640px this is already the phone side
- * of the one breakpoint, so what it guards is an employee's task list at a
- * width the phone baselines below do not cover. Light only: the theme axis is
- * already covered full-width above, and one narrow baseline keeps the matrix
- * lean. The rows carry a live relative time, so those spans are masked.
- */
 test("board home — narrow", async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 900 });
   await page.goto("/");
 
-  // Below the breakpoint boot lands on the AI Employees list; the task list
-  // is one tap into its first employee.
   await openPhoneTeamSection(page, "mission-control", "click");
   await expect(
     page.getByTestId("agent-missions-screen").getByText("Plan a trip to Tokyo"),
@@ -78,13 +50,6 @@ test("board home — narrow", async ({ page }) => {
   });
 });
 
-/**
- * Phone-width shell, both themes: the floating nav pill (Agents, Teams, More
- * plus the new-task control, with the needs-you badge) around the Agents home
- * — the phone's landing screen, one line per agent under its team. Nothing on
- * it carries a live clock any more, but the mask stays cheap and guards the
- * screens that do.
- */
 for (const theme of THEMES) {
   test(`mobile shell — ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -101,13 +66,6 @@ for (const theme of THEMES) {
   });
 }
 
-/**
- * The pushed mission-chat screen (PR 5): a board card's chat as a full-screen
- * nav level — back chevron header, message log, composer — with both mobile
- * bars hidden. Nothing on the screen carries a live clock, and the screens
- * kept alive BEHIND the opaque overlay don't paint, so no masks (a page-wide
- * relative-time mask would stamp boxes over the covered screens' rows).
- */
 for (const theme of THEMES) {
   test(`mobile mission chat — ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -130,13 +88,6 @@ for (const theme of THEMES) {
   });
 }
 
-/**
- * The per-agent task list: the drill one tap below the Agents home — the
- * drilled header (back chip, agent, task count, the "…" menu), the status
- * segments, and the board's sections as bands of shared task rows. The rows
- * carry a live relative time (the seed's timestamps are fixed but the wall
- * clock is not), so those spans are masked rather than left to drift.
- */
 for (const theme of THEMES) {
   test(`mobile agent missions — ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -145,8 +96,6 @@ for (const theme of THEMES) {
     await (await awaitAgentsHome(page)).click();
     const missions = page.getByTestId("agent-missions-screen");
     await expect(missions.getByText("Plan a trip to Tokyo")).toBeVisible();
-    // Park the pointer: the drill click leaves it hovering a mission row, and
-    // a hover fill does not belong in the resting baseline.
     await page.mouse.move(0, 0);
     await pinTheme(page, theme);
 
@@ -157,12 +106,6 @@ for (const theme of THEMES) {
   });
 }
 
-/**
- * The phone's More menu: the floating card the nav bar raises, over the Agents
- * home. The screen BEHIND it stays visible through the scrim, so the boot
- * anchor is that screen's own row; the relative-time mask is kept for whatever
- * else the scrim leaves showing.
- */
 for (const theme of THEMES) {
   test(`mobile more menu — ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });

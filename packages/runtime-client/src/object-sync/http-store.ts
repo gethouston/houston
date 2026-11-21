@@ -32,7 +32,6 @@ export class HttpObjectStore implements ObjectStore {
   private readonly opts: HttpObjectStoreOptions;
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
-  /** Present only with `batchReads`: hydration batches iff the store has it. */
   readonly downloadMany?: ObjectStore["downloadMany"];
 
   readonly copyUpload: UploadStore["copyUpload"];
@@ -92,7 +91,6 @@ export class HttpObjectStore implements ObjectStore {
     return this.downloadVersioned(key, destFile, opts);
   }
 
-  /** Download one object and preserve the generation from its GET response. */
   async downloadVersioned(
     key: string,
     destFile: string,
@@ -119,9 +117,6 @@ export class HttpObjectStore implements ObjectStore {
   ): Promise<WriteResult | void> {
     const url = this.objectUrl(key);
     const headers = this.writeHeaders(opts);
-    // Fenced unconditional writes are idempotent and retry-safe: a superseded
-    // writer is rejected by its token. Generation-guarded writes cannot retry
-    // because a lost success is indistinguishable from a failed attempt.
     const retryable = opts?.ifGenerationMatch === undefined;
     return uploadHttpObject({
       fetchRequest: this.fetch.bind(this),
@@ -146,11 +141,6 @@ export class HttpObjectStore implements ObjectStore {
     });
   }
 
-  /**
-   * GETs and fenced-but-unconditional writes are safe to re-issue. Writes with
-   * generation preconditions disable retries because a lost success cannot be
-   * distinguished from a failed attempt without violating the precondition.
-   */
   private fetch(
     url: string,
     init?: RequestInit,

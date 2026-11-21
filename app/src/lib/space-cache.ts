@@ -3,81 +3,22 @@ import { cancelAllConnectFlows } from "../stores/connect-flow.ts";
 import { isSettledAssistantAddress } from "./assistant-address-cache.ts";
 import { queryKeys } from "./query-keys.ts";
 
-/**
- * Query-key roots that OUTLIVE a space switch: they hold USER-scoped,
- * space-INVARIANT state, not tenant data, so they must NOT be purged on a
- * switch.
- *
- *  - `session` — the identity `Session`. Purging it re-triggers `useSession`'s
- *    fetch, whose `isLoading` re-arms App.tsx's auth-gate splash (a full-screen
- *    unmount), the very blank the in-place switch (HOU-907) exists to remove.
- *  - `onboarding-pending` / `onboarding-completed` — the durable first-run
- *    flags. They gate the onboarding-vs-shell route in App.tsx; flashing them to
- *    loading on a switch flaps that gate (and, on a switch INTO an empty team
- *    space, would momentarily route a completed user back toward onboarding
- *    before the flag refetches). They are the same across every space, so there
- *    is nothing tenant-specific to reset.
- *
- * Capabilities (role) is deliberately NOT here — it is PER-SPACE, so it must
- * refetch under the new space.
- */
 const SPACE_INVARIANT_KEY_ROOTS: ReadonlySet<string> = new Set([
   String(queryKeys.session()[0]),
   String(queryKeys.onboardingPending()[0]),
   String(queryKeys.onboardingCompleted(null)[0]),
 ]);
 
-/**
- * Whether a query key holds user-scoped, space-invariant state — the keys no
- * SERVER event can ever be about. Shared with the event-stream catch-up sweep
- * (`use-agent-invalidation.ts`), which re-reads the world after a transport gap
- * and must leave identity and the first-run flags out of it: churning them
- * flaps App.tsx's auth and onboarding gates for a stream drop that says nothing
- * about either.
- */
 export function isSpaceInvariantQueryKey(key: readonly unknown[]): boolean {
   return SPACE_INVARIANT_KEY_ROOTS.has(String(key[0]));
 }
 
-/**
- * Whether the event stream's catch-up sweep must leave this query alone: the
- * space-invariant keys above, and an assistant address already in hand. No
- * server event is about either, so a gap in the stream cannot have hidden a
- * change to them, and re-asking for the address holds the gateway on the
- * assistant's pod, which wakes it on every reconnect.
- */
 export function heldOutOfCatchUpSweep(query: Query): boolean {
   return (
     isSpaceInvariantQueryKey(query.queryKey) || isSettledAssistantAddress(query)
   );
 }
 
-/**
- * Drop the query cache on a real active-space change (C8 §Active space), EXCEPT
- * the user-scoped, space-invariant keys above and each space's settled
- * assistant address, whose key names its space (`assistant-address-cache.ts`).
- *
- * Tenant query keys are NOT org-scoped: the active space is only an
- * `x-houston-org` request header, so team A and team B collide on the same key.
- * `removeQueries` (not `invalidateQueries`) is required — `invalidateQueries`
- * only marks queries stale and refetches ACTIVE observers, leaving every
- * INACTIVE query's data in cache for `gcTime`. A not-currently-mounted view
- * (e.g. an agent board loaded under the prior space) would then serve that prior
- * space's data via stale-while-revalidate on navigation before the refetch
- * resolves — a cross-tenant data flash. The predicate discards inactive-query
- * data too, so every tenant query refetches clean under the new space while the
- * space-invariant user keys are left intact (HOU-907).
- *
- * In-flight connect hand-offs are stopped alongside the wipe. A connect poll
- * deliberately outlives the surface that started it, but it must NOT outlive
- * the IDENTITY it started under: its next tick would carry the new
- * `x-houston-org` and read a connection id that belongs to the previous space —
- * a red failure toast for an app the new space never touched, or a success
- * toast plus an invalidation landing in the cache we are wiping right here.
- *
- * A no-op when the space did not change (same-space reselect, or every switch on
- * a personal-only host where every id maps to null).
- */
 export function resetCacheForSpaceChange(
   queryClient: QueryClient,
   orgChanged: boolean,

@@ -7,16 +7,8 @@ import {
   pooledTurn,
 } from "./turn-interaction-owner.test-support";
 
-/**
- * What judging a card costs a send before its 202. The conversation is read
- * again under the claim only when the bytes the worker hydrated predate it
- * (inlined by the gateway), and that read runs beside hydration instead of
- * after it.
- */
-
 afterEach(closeTurnServers);
 
-/** The terminal frame's per-turn marks, in ms from the request's arrival. */
 function terminalTimings(text: string): Record<string, number> {
   for (const line of text.split("\n")) {
     if (!line.startsWith("data:")) continue;
@@ -24,15 +16,12 @@ function terminalTimings(text: string): Record<string, number> {
       type?: string;
       data?: { timingsMs?: Record<string, number> } | null;
     };
-    // The stub runner persists no user message, so the turn ends on an error
-    // frame; it carries the same marks as a done frame.
     if (frame.data?.timingsMs) return frame.data.timingsMs;
   }
   throw new Error(`no terminal frame with timings in: ${text}`);
 }
 
 test("a conversation hydrated from the store under the claim is not read again", async () => {
-  // Over the gateway's inline cap: listed in the prefetch, read live.
   const out = await pooledTurn(
     "c1",
     { actingAs: { userId: OWNER } },
@@ -66,7 +55,6 @@ test("another member is still refused when the live-read conversation carries a 
 });
 
 test("a conversation missing from the prefetched listing is still read under the claim", async () => {
-  // The listing predates the claim: the card's turn may have created it since.
   const out = await pooledTurn(
     "fresh",
     { actingAs: { userId: OTHER } },
@@ -132,7 +120,6 @@ test("a turn with no card to judge still reports the step", async () => {
 });
 
 test("a stale inlined listing with live-read bytes still refuses another member", async () => {
-  // The listing predates the card, but the bytes were read under the claim.
   const out = await pooledTurn(
     "c1",
     { actingAs: { userId: OTHER } },
@@ -145,8 +132,6 @@ test("a stale inlined listing with live-read bytes still refuses another member"
 });
 
 test("the read is conditioned on the inlined bytes' own generation", async () => {
-  // A write landed between the gateway's listing (generation 1) and its read
-  // of the bytes (generation 2): the store is still at the bytes' generation.
   const out = await pooledTurn(
     "c1",
     { actingAs: { userId: OWNER } },

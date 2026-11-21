@@ -1,16 +1,3 @@
-/**
- * Teams v2 state helpers: the advertised capabilities and the per-agent
- * integration/model ceilings the gateway serves. These back the Teams-mode arming
- * controls (`/__test__/capabilities`, `/__test__/agent-settings`) and the
- * `/v1/agents/:slug/settings` gateway route, so a spec can put the app into a
- * Teams-shaped state (multiplayer + a restrictive allowlist) that single-player
- * alone can't reach — the fixture arming the locked browse rows and the per-agent
- * policy pages.
- *
- * The fields live on `HostState` (state-store.ts); this module is the read/write
- * surface, mirroring how `state-integrations.ts` operates on the shared `state`.
- */
-
 import type {
   ComputeUsageSeed,
   FakeCapabilities,
@@ -22,16 +9,10 @@ import type {
 } from "./state-store";
 import { SELF_USER_ID, state } from "./state-store";
 
-/** The capabilities served at `GET /v1/capabilities`. */
 export function getCapabilities(): FakeCapabilities {
   return state.capabilities;
 }
 
-/**
- * Merge a partial capabilities patch into the advertised set (the
- * `/__test__/capabilities` control). Arm integrations + `multiplayer`/`teams`/
- * `role` for Teams e2e, or just `integrations` for a single-player-with-apps run.
- */
 export function setCapabilities(
   patch: Partial<FakeCapabilities>,
 ): FakeCapabilities {
@@ -39,42 +20,19 @@ export function setCapabilities(
   return state.capabilities;
 }
 
-/** The Teams settings behind the agent/org settings routes. */
 export function getTeamsSettings(): TeamsSettings {
   return state.teamsSettings;
 }
 
-/**
- * Merge a partial into the Teams settings (the `/__test__/agent-settings`
- * control and the `PUT` settings routes). Only the fields present are changed,
- * so a caller can set the agent ceiling without touching the org one.
- */
 export function setTeamsSettings(patch: Partial<TeamsSettings>): TeamsSettings {
   state.teamsSettings = { ...state.teamsSettings, ...patch };
   return state.teamsSettings;
 }
 
-/**
- * The armed org roster, or `null` (the default) — in which case `GET /v1/org`
- * synthesizes the single-self roster from the advertised role, preserving the
- * pre-feature shape. Armed by `/__test__/org` for the per-member access lens.
- */
 export function getOrgMembers(): FakeMember[] | null {
   return state.orgMembers;
 }
 
-/**
- * Replace (or disarm with `null`) the org roster `GET /v1/org` serves, and
- * re-capture the identity-provider profile behind `/v1/me/profile` from its
- * `SELF_USER_ID` row.
- *
- * The armed row IS the gateway's stored Google/GCIP profile for the caller, so
- * capturing it here is what gives a CLEARED custom name/photo something honest
- * to fall back to — otherwise "reset to my Google photo" would resolve to
- * nothing. A disarm (`null`), or a roster carrying no self row, leaves no
- * fallback at all (`{}`), which is exactly what the gateway serves for a user
- * whose provider handed it neither field.
- */
 export function setOrgMembers(
   members: FakeMember[] | null,
 ): FakeMember[] | null {
@@ -89,22 +47,15 @@ export function setOrgMembers(
   return state.orgMembers;
 }
 
-/** The pending org invites `GET /v1/org` surfaces (owner/admin only). */
 export function getOrgInvites(): FakeInvite[] {
   return state.orgInvites;
 }
 
-/** Replace the pending invites (used to revoke one via delete-invite). */
 export function setOrgInvites(invites: FakeInvite[]): FakeInvite[] {
   state.orgInvites = invites;
   return state.orgInvites;
 }
 
-/**
- * Append a pending invite for an unknown email (the `POST /v1/org/members`
- * invite path) and return it. Mints a stable, monotonic id so the surfaced
- * row is addressable (delete-invite) and deterministic across a test.
- */
 export function addOrgInvite(email: string, role: OrgRole): FakeInvite {
   const invite: FakeInvite = {
     id: `invite-${++state.inviteSeq}`,
@@ -117,15 +68,10 @@ export function addOrgInvite(email: string, role: OrgRole): FakeInvite {
   return invite;
 }
 
-/**
- * The team-space rows `GET /v1/workspaces` bridges in (C8 Spaces), armed by
- * `/__test__/workspaces`. Empty (the default) = personal-only.
- */
 export function getTeamWorkspaces(): FakeTeamWorkspace[] {
   return state.teamWorkspaces;
 }
 
-/** Replace (or clear, with `[]`) the armed team-space rows. */
 export function setTeamWorkspaces(
   rows: FakeTeamWorkspace[],
 ): FakeTeamWorkspace[] {
@@ -133,21 +79,14 @@ export function setTeamWorkspaces(
   return state.teamWorkspaces;
 }
 
-/** True when `id` addresses a known workspace: the personal seed or an armed team. */
 export function isKnownWorkspace(id: string, seedId: string): boolean {
   return id === seedId || state.teamWorkspaces.some((w) => w.id === id);
 }
 
-/** The armed compute-usage dataset; `null` = the route 404s (feature off). */
 export function getComputeUsage(): ComputeUsageSeed | null {
   return state.computeUsage;
 }
 
-/**
- * Arm (or disarm with `null`) the compute-usage dataset the gateway serves at
- * `GET /v1/org/compute-usage` (the `/__test__/compute-usage` control). Specs
- * usually pair it with `/__test__/capabilities` `{ computeUsage: true }`.
- */
 export function setComputeUsage(
   seed: ComputeUsageSeed | null,
 ): ComputeUsageSeed | null {

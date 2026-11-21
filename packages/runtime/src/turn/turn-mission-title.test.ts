@@ -62,7 +62,6 @@ const card = (id: string, title: string): Activity => ({
   status: "running",
 });
 
-/** A pi backend whose reply streams `reply`, or fails with a provider error. */
 function backend(order: string[], fail = false): HarnessBackend {
   return {
     id: "pi",
@@ -236,7 +235,6 @@ test("anthropic titles through the Claude SDK on the turn's own token and model"
 });
 
 test("a card hydration missed is titled from the fresh stored board", async () => {
-  // Hydrated before the card landed: the local board has only an older card.
   const dirs = await directories([card("old", "Older mission")]);
   const stored = [
     card("old", "Older mission"),
@@ -254,8 +252,6 @@ test("a card hydration missed is titled from the fresh stored board", async () =
     ),
   ).toBe("written");
   expect(readRemote).toHaveBeenCalledOnce();
-  // Local = the rebased stored board with only that card retitled, adopted
-  // as what sync-back merges against.
   expect(await cardTitle(dirs, "m1")).toBe("Weekly sales report");
   expect(await cardTitle(dirs, "old")).toBe("Older mission");
   expect(adopt).toHaveBeenCalledOnce();
@@ -277,7 +273,6 @@ test("a stored card the user renamed keeps its name", async () => {
       readRemote,
     ),
   ).toBe("renamed");
-  // Nothing written, so the tree's board still descends from its hydration.
   expect(adopt).not.toHaveBeenCalled();
 });
 

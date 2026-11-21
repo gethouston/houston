@@ -61,7 +61,6 @@ export function parseCustomOAuthAttempt(value: unknown): CustomOAuthAttempt {
   ) {
     throw new Error("invalid 'op.attempt'");
   }
-  // SDK schemas validate nested client/metadata fields during discovery and exchange.
   return value as unknown as CustomOAuthAttempt;
 }
 

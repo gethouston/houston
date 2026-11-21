@@ -22,7 +22,6 @@ const found = (origin: UpdateInfo["origin"]): UpdateInfo => ({
   origin,
 });
 
-/** Every status after `available` for one origin, keyed by state. */
 function statuses(
   origin: UpdateInfo["origin"],
 ): Record<string, Exclude<UpdateStatus, { state: "idle" }>> {
@@ -38,10 +37,6 @@ function statuses(
   };
 }
 
-// The presentation follows the find, not the release: a launch-check find
-// installs behind the upgrading overlay (nothing is running yet); a poll's
-// find downloads silently and waits for the user's own restart, so a working
-// user is never yanked out of a task.
 describe("updatePresentation", () => {
   it("keeps a launch-check find behind the overlay in every state", () => {
     for (const status of Object.values(statuses("launch"))) {
@@ -55,9 +50,6 @@ describe("updatePresentation", () => {
     }
   });
 
-  // A return's install runs behind the overlay like a launch, but the
-  // overlay cannot be dismissed and the app under it works, so its error
-  // goes to the pill instead of trapping the person.
   it("covers a return's install, but sends its error to the pill", () => {
     const byState = statuses("return");
     strictEqual(updatePresentation(byState.installing), "launch");
@@ -96,9 +88,6 @@ describe("cadence", () => {
   });
 });
 
-// A client that can never reach the release feed is invisible unless the
-// failures are counted: the streak trips exactly once per run, and any check
-// that completes (found or none) resets it.
 describe("nextCheckFailureStreak", () => {
   it("extends the streak on a failure", () => {
     strictEqual(nextCheckFailureStreak(2, "failed"), 3);
@@ -122,7 +111,6 @@ describe("updateCheckJustStuck", () => {
   });
 });
 
-// A failed background download retries every poll; the report must not.
 describe("shouldReportDownloadFailure", () => {
   it("reports the first failure for a release", () => {
     strictEqual(shouldReportDownloadFailure(null, "0.6.17"), true);
@@ -137,9 +125,6 @@ describe("shouldReportDownloadFailure", () => {
   });
 });
 
-// The launch-time install holds the user behind an overlay, so it spends a
-// short budget and leaves the rest to the next poll; the shell's partial
-// survives either way, so nothing is lost by stopping early.
 describe("downloadAttemptBudget", () => {
   it("gives a launch find the first request and one resume", () => {
     strictEqual(downloadAttemptBudget("launch"), LAUNCH_DOWNLOAD_ATTEMPTS);
@@ -152,16 +137,12 @@ describe("downloadAttemptBudget", () => {
   });
 });
 
-// A download the disk refused must not be retried every poll: each retry
-// would fill the disk again and free it again, all session long.
 describe("shouldSkipDownload", () => {
   it("skips the release the disk refused for the automatic triggers", () => {
     strictEqual(shouldSkipDownload("1.0.6", "1.0.6", "poll"), true);
     strictEqual(shouldSkipDownload("1.0.6", "1.0.6", "launch"), true);
   });
 
-  // The launch overlay cannot be dismissed and its only way out is Retry:
-  // a person who freed space and clicked it must get a download, not nothing.
   it("never skips the person's own retry", () => {
     strictEqual(shouldSkipDownload("1.0.6", "1.0.6", "user"), false);
   });

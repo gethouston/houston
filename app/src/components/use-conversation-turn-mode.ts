@@ -15,19 +15,11 @@ import { useUIStore } from "../stores/ui";
 interface ConversationTurnModeInput {
   path: string | null;
   sessionKey: string | null;
-  /** The mission card backing the open conversation, when one does. */
   card: { id: string; mode?: unknown } | null;
-  /** The mode a fresh composer (and a card with none) opens on. */
   initialTurnMode?: TurnMode;
   turnRunning: boolean;
 }
 
-/**
- * The composer's Mode pill for one conversation (HOU-205). A mission keeps its
- * mode on its card, so leaving the chat, a restart or another surface all read
- * the mode the person picked; a fresh composer, or a chat no card backs, holds
- * the pick in session and starts over on Ask first.
- */
 export function useConversationTurnMode({
   path,
   sessionKey,
@@ -44,14 +36,12 @@ export function useConversationTurnMode({
   useEffect(() => {
     if (!path) setLocalMode(fallback);
   }, [path, fallback]);
-  // Leaving a chat for a fresh composer starts the next mission on Ask first.
   const previousSessionKey = useRef(sessionKey);
   useEffect(() => {
     const previous = previousSessionKey.current;
     previousSessionKey.current = sessionKey;
     if (previous && !sessionKey) setLocalMode(fallback);
   }, [sessionKey, fallback]);
-  // The pick stops being echoed once the card reads back any write.
   useEffect(() => {
     if (picked && pickSettled(picked, card)) setPicked(null);
   }, [card, picked]);
@@ -67,8 +57,6 @@ export function useConversationTurnMode({
     (mode: TurnMode) => {
       if (card && path) {
         setPicked({ cardId: card.id, mode, from: card.mode });
-        // A failed write keeps the pick for this session: every send still
-        // pins it, only the next visit would not see it.
         reportRejection(
           tauriActivity.setMode(path, card.id, mode),
           "chat.keep-conversation-mode",
@@ -77,11 +65,6 @@ export function useConversationTurnMode({
       } else {
         setLocalMode(mode);
       }
-      // A pick while a turn is STREAMING also applies to that turn (Claude
-      // Code's shift+tab): the runtime mutates the executing turn's live-mode
-      // ref, so the agent adopts the new mode at its next tool decision.
-      // `applied: false` (the turn settled while the request flew) is benign,
-      // the next send pins the mode anyway.
       if (!turnRunning || !path || !sessionKey || mode === turnMode) return;
       const labels: Record<TurnMode, string> = {
         execute: t("modeSelector.askFirst"),

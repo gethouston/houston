@@ -18,7 +18,6 @@ import {
   PanelFrame,
 } from "./kanban-detail-panel-parts";
 
-/** The statuses the header words, in the order the board's sections run. */
 const STATUSES = ["running", "needs_you", "done", "error"];
 
 function KanbanDetailPanelSpecimen() {

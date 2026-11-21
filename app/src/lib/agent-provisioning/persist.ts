@@ -4,7 +4,6 @@ import {
   type ProvisioningEntry,
 } from "./entry.ts";
 
-/** Parse the persisted map, dropping expired and malformed entries. */
 export function parsePersistedProvisioning(
   raw: string | null,
   now: number,
@@ -26,10 +25,6 @@ export function parsePersistedProvisioning(
         typeof agentId === "string" &&
         typeof agentPath === "string" &&
         typeof since === "number" &&
-        // A timed-out entry is kept regardless of age: it's still visibly
-        // parked (its board row / chat bubble persists) and re-arms its own
-        // probe on rehydrate rather than expiring off the TTL clock a second
-        // time, which would silently drop it right back.
         (timedOut === true || now - since < PROVISIONING_TTL_MS)
       );
     })
@@ -44,8 +39,6 @@ export function parsePersistedProvisioning(
                 typeof (s as PendingWarmingSend).id === "string" &&
                 typeof (s as PendingWarmingSend).sessionKey === "string" &&
                 typeof (s as PendingWarmingSend).text === "string" &&
-                // A non-string prompt would reach the wire as one: a send is
-                // only kept when BOTH of its candidate prompts are sound.
                 ["string", "undefined"].includes(
                   typeof (s as PendingWarmingSend).prompt,
                 ),

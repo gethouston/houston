@@ -25,7 +25,6 @@ describe("roundedPath", () => {
       ),
       "M0 0 L0 12 Q0 20 8 20 L50 20",
     );
-    // A 6px leg can only take a 3px corner.
     strictEqual(
       roundedPath(
         [
@@ -56,7 +55,6 @@ describe("connectorPath", () => {
       boxes,
       opts,
     );
-    // Halfway between the root's bottom (40) and the children's top (100).
     strictEqual(
       d,
       "M150 40 L150 62 Q150 70 142 70 L58 70 Q50 70 50 78 L50 100 M150 40 L150 62 Q150 70 158 70 L242 70 Q250 70 250 78 L250 100",

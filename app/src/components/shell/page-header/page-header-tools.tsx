@@ -35,7 +35,6 @@ const RegisterContext = createContext<
   (name: SlotName, element: HTMLElement | null) => void
 >(() => {});
 
-/** Wraps the header and body, so body-owned tools can reach the strip. */
 export function PageHeaderToolsProvider({
   thresholds,
   children,
@@ -54,8 +53,6 @@ export function PageHeaderToolsProvider({
   );
 
   const strip = slots.strip;
-  // A layout effect lands the first measurement before paint, avoiding a wide
-  // header painting stacked and then snapping into one row.
   useLayoutEffect(() => {
     if (!strip) {
       setWidth(null);
@@ -96,23 +93,12 @@ export function usePageHeaderMode(): HeaderMode {
   return useContext(ToolsContext).mode;
 }
 
-/**
- * "Tabs or switcher", answered ONCE for every header that carries a cluster.
- *
- * The rule crosses the strip's measured mode with the phone fork
- * ({@link headerCollapsesTabs}), so no screen can decide for itself that its
- * sections should become a menu: a header reads this, never the rule directly.
- */
 export function usePageHeaderTabsCollapsed(): boolean {
   const mode = usePageHeaderMode();
   const isMobile = useIsMobile();
   return headerCollapsesTabs(mode, isMobile);
 }
 
-/**
- * Crossing the strip threshold switches between portal and inline ownership,
- * which remounts this subtree. Controlled field values survive; focus does not.
- */
 export function PageHeaderTools({
   children,
 }: {

@@ -2,9 +2,6 @@ import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { boardItemConversationRow } from "../src/components/board/board-item-row.ts";
 
-// A mission card is the only place a single-mission delete seam can read the
-// deleted conversation's key from, and `metadata` is an open bag.
-
 describe("boardItemConversationRow", () => {
   const card = { title: "t", status: "todo", lastMessageAt: "2026-09-23" };
 

@@ -1,9 +1,6 @@
-/* @houston-ai/chat — Tell Tailwind to scan this package's components */
 @source "./ai-elements";
 @source ".";
 
-/* ChatInteractionCard step swap: content fades, the card frame + input stay put.
-   Gated at the call site by the `motion-safe:` variant (prefers-reduced-motion). */
 @keyframes interaction-step-in {
   from {
     opacity: 0;
@@ -13,13 +10,6 @@
   }
 }
 
-/* ── Browser hand-off (card + live view) ─────────────────────────
-   Transform + opacity only, entrance curve (motion.easing.entrance) for
-   reveals, exits shorter than entrances, nothing under reduced motion beyond
-   an opacity fade. */
-
-/* The waiting card's live dot: a soft ring breathing out of a still dot, so
-   the card reads as "open, waiting for you" without moving its content. */
 @keyframes browser-handoff-live-ring {
   from {
     opacity: 0.55;
@@ -39,8 +29,6 @@
   animation: browser-handoff-live-ring 2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
-/* A state change on the card (Open giving way to how it ended, the live
-   view's status pill): the new content settles in instead of jumping. */
 @keyframes browser-handoff-swap-in {
   from {
     opacity: 0;
@@ -55,13 +43,6 @@
   animation: browser-handoff-swap-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* The live view's frames. Core's Sheet and Dialog name tw-animate classes
-   no stylesheet defines, so the browser view carries its own: the phone
-   sheet rises on the iOS drawer curve, the desktop dialog scales from 0.96
-   (centered, it has no trigger to grow from). Tailwind's translate-x/y
-   utilities use the `translate` property, so `transform` here composes with
-   the dialog's centering instead of replacing it. Radix keeps the frame
-   mounted until the closing animation ends. */
 @keyframes browser-live-sheet-in {
   from {
     transform: translateY(100%);
@@ -122,8 +103,6 @@
   }
 }
 
-/* File comments waiting in the composer, and their pills in a sent bubble.
-   A chip slides up and fades in; keyboard-free pointer feedback only. */
 .citation-row {
   scrollbar-width: none;
 }

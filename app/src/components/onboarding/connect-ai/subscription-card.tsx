@@ -18,13 +18,6 @@ interface SubscriptionCardProps {
   onCancel: (provider: ProviderInfo) => Promise<void>;
 }
 
-/**
- * One "Your Claude subscription" / "Your ChatGPT subscription" card on the
- * "Connect your AI" screen: a compact tile with the logo, title, subtitle and
- * action stacked on one centered axis. While it can start a sign-in the whole
- * card is one button; while a sign-in runs it becomes a plain panel so its
- * Cancel button is not nested inside another button.
- */
 export function SubscriptionCard({
   subscription,
   provider,
@@ -117,11 +110,6 @@ export function SubscriptionCard({
   );
 }
 
-/**
- * The card's action, centered under the text. `mt-auto` pins it to the
- * tile's foot so the two cards' actions line up when their text wraps to
- * different heights.
- */
 function Action({ children }: { children: ReactNode }) {
   return (
     <span className="mt-auto flex items-center justify-center pt-4">

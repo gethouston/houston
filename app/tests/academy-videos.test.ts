@@ -24,14 +24,11 @@ describe("academyVideo", () => {
   });
 
   it("does not resolve prototype keys as if they were lessons", () => {
-    // `MANIFEST["toString"]` is a function; a lesson id must never reach it.
     for (const id of ["toString", "constructor", "__proto__", "hasOwnProperty"])
       strictEqual(academyVideo(id).src, null, id);
   });
 
   it("resolves every published row against the base URL", () => {
-    // Vacuous while nothing is published, and the guard that catches a bad row
-    // the day the founder's recordings land in the manifest.
     for (const [id, asset] of Object.entries(ACADEMY_VIDEO_MANIFEST)) {
       const video = academyVideo(id);
       strictEqual(video.src, academyAssetUrl(asset.src), id);

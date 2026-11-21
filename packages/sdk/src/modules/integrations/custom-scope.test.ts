@@ -51,8 +51,6 @@ describe("resolveCustomTransportAgent (PRODUCT-1773)", () => {
   });
 
   it("per-agent: the open setup chat's agent beats a prior pick", () => {
-    // The Continue-setup banner reopens the chat on whichever agent owns
-    // the draft; the chat registers there, so the list must read there.
     expect(choose({ setupAgentId: "a2", pickedAgentId: "a3" })).toBe("a2");
   });
 
@@ -69,7 +67,6 @@ describe("resolveCustomTransportAgent (PRODUCT-1773)", () => {
   });
 
   it("an id naming a vanished agent falls through like no choice", () => {
-    // A deleted agent or a space switch leaves stale ids behind.
     expect(
       choose({
         setupAgentId: "gone",

@@ -13,7 +13,6 @@ import type { OnboardingSurveyPreference } from "../src/lib/onboarding-survey.ts
 
 type Options = UseQueryOptions<OnboardingSurveyPreference | null>;
 
-/** The console errors one render of a reader with `options` logs. */
 function errorsOf(options: Options): string[] {
   const logged: string[] = [];
   const original = console.error;

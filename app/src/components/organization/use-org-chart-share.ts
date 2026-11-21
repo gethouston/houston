@@ -26,19 +26,8 @@ import { useLinkedInPost } from "./use-linkedin-post";
 import { useShareCardImage } from "./use-share-card-image";
 import { useShareRoute } from "./use-share-route";
 
-/** How long Copy image reads "Copied". */
 const COPIED_MS = 2000;
 
-/**
- * The share dialog's state and actions over the image drawn ahead
- * (`useShareCardImage`): the editable post, the one primary button
- * (`shareStep`: share sheet, copy and paste, or Connect then Post to
- * LinkedIn through `useLinkedInPost`), Download image and Copy image. The
- * share sheet and copy and paste do their work inside the click (a browser
- * grants the clipboard and LinkedIn's tab only there); copy and paste is
- * gated, since a double click would open LinkedIn twice. Unexpected failures
- * report and show nothing.
- */
 export function useOrgChartShare(tree: OrgTree) {
   const { t } = useTranslation("teams");
   const { preview, file, retry, current } = useShareCardImage(tree);
@@ -63,8 +52,6 @@ export function useOrgChartShare(tree: OrgTree) {
     };
   }, [clearTimer]);
 
-  // Only replacing a picture that was on screen resets: the first image
-  // arriving must not wipe the line of a share started while it drew.
   const drawnUrl = preview.status === "ready" ? preview.url : null;
   const shownUrl = useRef<string | null>(null);
   useEffect(() => {
@@ -100,15 +87,12 @@ export function useOrgChartShare(tree: OrgTree) {
     dispatch({ type: next ? "open" : "close" });
   };
 
-  /** Lands a click made in `started`: tracked always, said only there. */
   const land = (landing: ShareLanding, started: number) => {
     if (landing.channel) track(landing.channel, tree);
     if (live.current)
       dispatch({ type: "landed", session: started, line: landing.line });
   };
 
-  // Nothing is awaited before the share starts: the clipboard write and the
-  // open must stay inside the click.
   const share = () => {
     const started = session.current;
     const fail = (error: unknown) =>
@@ -131,7 +115,6 @@ export function useOrgChartShare(tree: OrgTree) {
     }
   };
 
-  // The write takes the image as a promise and starts in the click's tick.
   const copyImage = () => {
     copyImageToClipboard(current().png)
       .then((copied) => {

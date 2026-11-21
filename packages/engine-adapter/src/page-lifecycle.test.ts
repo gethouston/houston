@@ -34,7 +34,6 @@ function fakeWindow() {
       visible = v;
       handlers.get("visibilitychange")?.();
     },
-    /** Run every live timer, as if its delay elapsed. */
     elapse: () => {
       for (const t of timers.splice(0)) if (t.live) t.fn();
     },
@@ -56,7 +55,6 @@ describe("createPageLifecycle", () => {
     const w = fakeWindow();
     w.fire("beforeunload");
     expect(w.lifecycle.isUnloading()).toBe(true);
-    // The commit follows: the flag stays, and the cancel timer is dropped.
     w.fire("pagehide");
     w.elapse();
     expect(w.lifecycle.isUnloading()).toBe(true);
@@ -150,7 +148,6 @@ describe("pageTargetOf", () => {
     });
     target?.addEventListener("pagehide", () => {});
     expect(seen).toEqual(["pagehide"]);
-    // No `document` under vitest's node environment: visible by default.
     expect(target?.isVisible()).toBe(true);
   });
 });

@@ -5,15 +5,6 @@ import type { WireEvent } from "@houston/runtime-client";
 import { afterAll, afterEach, expect, test, vi } from "vitest";
 import type { HarnessSession } from "../backends/types";
 
-/**
- * execTurn's terminal-frame contract for pending interactions: the clean `done`
- * carries whatever the model recorded via ask_user / request_connection this
- * turn, and NO error path (provider_error or a thrown turn) ever carries it.
- * It also PERSISTS the same interaction on the assistant message under the same
- * clean-only condition, so a client that missed the live `done` recovers it
- * from history (see conversation-file.test.ts + settle-from-history).
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "houston-exec-data-"),
 );
@@ -21,10 +12,6 @@ process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-exec-ws-"),
 );
 
-// Pin a fixed, connected model so the turn runs without touching real auth, and
-// keep every other providers export intact for the import graph. `resolveModel`
-// reads a hoisted ref so a test can make the RESOLUTION itself fail (the one
-// case where a turn genuinely has no provider to name).
 const DEFAULT_MODEL = {
   provider: "openai",
   id: "gpt-x",
@@ -53,9 +40,6 @@ vi.mock("../ai/providers", async (importOriginal) => {
   };
 });
 
-// The credential status surface + the control-plane revocation report are both
-// driven from execTurn's catch; spy on them to prove a mis-resolved turn never
-// marks (or signs out) a provider it never ran on.
 vi.mock("../auth/credential-health", async (importOriginal) => {
   const real =
     await importOriginal<typeof import("../auth/credential-health")>();
@@ -70,21 +54,15 @@ vi.mock("../auth/report-revoked", () => ({
   reportRevokedServedToken: vi.fn(),
 }));
 
-// Stub the backend seam (no rebuild) — and, crucially, avoid conversation-cache's
-// module-load side effects (which build the real pi + Claude backends).
 vi.mock("./conversation-cache", () => ({
   switchBackendIfNeeded: vi.fn(async () => ({
     rebuilt: false,
     preTokens: null,
   })),
   switchModeIfNeeded: vi.fn(async () => ({ rebuilt: false })),
-  // The revoked-token eviction (PRODUCT-1355) peeks the live cache in the
-  // turn's finally; these frame-contract tests run on non-Claude convs, so a
-  // minimal empty stand-in is enough.
   conversations: { peek: () => undefined, delete: () => false },
 }));
 
-// The durable store is irrelevant to the frame contract under test.
 vi.mock("../store/conversations", () => ({
   appendUserMessage: vi.fn(),
   appendAssistantMessage: vi.fn(),
@@ -111,7 +89,6 @@ afterEach(() => {
 });
 afterAll(() => vi.restoreAllMocks());
 
-/** The pendingInteraction persisted on `id`'s assistant message, or undefined. */
 function persistedInteraction(id: string): unknown {
   const call = vi
     .mocked(appendAssistantMessage)
@@ -122,13 +99,6 @@ function persistedInteraction(id: string): unknown {
 
 type Conv = Parameters<typeof execTurn>[0];
 
-/**
- * A minimal Conversation whose session runs `script` when prompted.
- * `opts.provider` seeds the CACHED session's last provider (the stale value the
- * error path must never attribute a failure to) and `opts.setModel` lets a test
- * fail the turn at the mid-turn re-point, i.e. BEFORE `conv.provider` is
- * rewritten.
- */
 function fakeConv(
   script: (emit: (e: WireEvent) => void) => Promise<void> | void,
   opts: {
@@ -197,7 +167,6 @@ test("the clean done frame carries the turn's recorded pending interaction", asy
   expect(done?.pendingInteraction).toEqual({
     steps: [{ kind: "question", id: "q1", question: "Which date?" }],
   });
-  // ...and it is persisted on the assistant message for a missed-`done` reload.
   expect(persistedInteraction(id)).toEqual({
     steps: [{ kind: "question", id: "q1", question: "Which date?" }],
   });
@@ -276,9 +245,7 @@ test("a plan turn with a recorded question keeps that interaction instead of fal
 test("a tool-only plan turn (no assistant text) never receives the plan fallback", async () => {
   const id = "exec-plan-tool-only-no-fallback";
   const { events, unsub } = collect(id);
-  const conv = fakeConv(() => {
-    // No text frames at all: the model only ran tools and went silent.
-  });
+  const conv = fakeConv(() => {});
 
   await execTurn(
     conv,
@@ -300,8 +267,6 @@ test("a tool-only plan turn (no assistant text) never receives the plan fallback
 test("a mid-turn execute-to-plan flip still receives the plan fallback", async () => {
   const id = "exec-flip-plan-fallback";
   const { events, unsub } = collect(id);
-  // The Mode-pill flip lands on conv.liveMode while the turn runs; the
-  // execute-built toolset has no plan_ready, so the backstop must fire.
   const conv = fakeConv((emit) => {
     emit({ type: "text", data: "Here is the plan you asked for." });
     if (conv.liveMode) conv.liveMode.current = "plan";
@@ -343,7 +308,6 @@ test("a provider_error turn emits no done — the pending interaction never ride
   const id = "exec-pending-provider-error";
   const { events, unsub } = collect(id);
   const conv = fakeConv((emit) => {
-    // Even if a tool recorded something before the failure, it must not leak.
     recordConnection({ toolkit: "gmail" });
     emit({
       type: "provider_error",
@@ -359,7 +323,6 @@ test("a provider_error turn emits no done — the pending interaction never ride
 
   expect(events.some((e) => e.type === "done")).toBe(false);
   expect(events.some((e) => e.type === "provider_error")).toBe(true);
-  // The recorded interaction must NOT be persisted on a failed turn either.
   expect(persistedInteraction(id)).toBeUndefined();
 });
 
@@ -449,7 +412,6 @@ test("a started mission receipt reaches the persisted assistant tool record", as
   });
 });
 
-/** The providerError persisted on `id`'s assistant message, or undefined. */
 function persistedProviderError(id: string): unknown {
   const call = vi
     .mocked(appendAssistantMessage)
@@ -458,10 +420,6 @@ function persistedProviderError(id: string): unknown {
 }
 
 test("a prompt-time credential throw becomes a typed provider_error frame, not raw error text (HOU-718)", async () => {
-  // pi RAISES a missing credential at prompt time (the user logged out of a
-  // provider that stayed active) — no stream ever exists, so the catch must
-  // classify the throw. Before this, the chat showed pi's raw message
-  // (node_modules doc paths included) and no reconnect card ever appeared.
   const id = "exec-throw-no-credentials";
   const { events, unsub } = collect(id);
   const conv = fakeConv(() => {
@@ -483,15 +441,10 @@ test("a prompt-time credential throw becomes a typed provider_error frame, not r
   expect(providerError?.data).toMatchObject({
     kind: "unauthenticated",
     cause: "no_credentials",
-    // pi threw BEFORE recording the message in its session store, so the card
-    // carries the text for the reconnect retry to re-deliver — a bare
-    // "continue" would meet a model that never saw the message.
     undelivered_prompt: "hey",
   });
-  // The typed frame IS the terminal: no generic error, no clean done.
   expect(events.some((e) => e.type === "error")).toBe(false);
   expect(events.some((e) => e.type === "done")).toBe(false);
-  // Persisted too, so the reconnect card survives a reload.
   expect(persistedProviderError(id)).toMatchObject({
     kind: "unauthenticated",
     cause: "no_credentials",
@@ -520,20 +473,10 @@ test("an unrecognized throw keeps the generic error frame and the unknown card",
   expect(persistedProviderError(id)).toMatchObject({ kind: "unknown" });
 });
 
-/**
- * WHO a thrown turn is blamed on. The turn re-resolves its model every time, so
- * a failure between that resolution and the `conv.provider` write belongs to the
- * RESOLVED provider — `conv.provider` still holds whatever the cached session
- * last ran on, which for a fresh conversation is the registry-order fallback.
- * Blaming it put "Connect Gemini" cards in front of GPT-5.6 users and, on an
- * auth throw, marked the innocent provider unusable workspace-wide.
- */
 test("a throw before the provider write is attributed to the RESOLVED provider, never the cached one", async () => {
   resolution.run = () => ({ ...DEFAULT_MODEL, provider: "openai-codex" });
   const id = "exec-throw-attribution";
   const { events, unsub } = collect(id);
-  // The session was built on google; this turn resolved onto openai-codex and
-  // dies at the mid-turn re-point — before `conv.provider` is rewritten.
   const conv = fakeConv(() => {}, {
     provider: "google",
     setModel: () => {
@@ -552,7 +495,6 @@ test("a throw before the provider write is attributed to the RESOLVED provider, 
     provider: "openai-codex",
     raw_excerpt: "the flux capacitor came loose",
   });
-  // The stale cached provider never reaches the card.
   expect(conv.provider).toBe("google");
   expect(events.some((e) => e.type === "done")).toBe(false);
 });
@@ -574,31 +516,18 @@ test("an auth throw marks the RESOLVED provider unusable and reports it revoked"
     priorAuthors: [],
   });
 
-  // Symmetry with the clean path's clearAuthFailure(model.provider).
   expect(noteAuthFailure).toHaveBeenCalledWith("openai-codex");
-  // The throw happened BEFORE any request read a credential, so the used
-  // token is unknown — passed as such, and the reporter's unknown-token gate
-  // skips rather than deleting an unverified target (PRODUCT-1319).
   expect(reportRevokedServedToken).toHaveBeenCalledWith(
     expect.objectContaining({ provider: "openai-codex" }),
     undefined,
   );
 });
 
-/**
- * PRODUCT-1319: a throw AFTER the turn's requests ran (e.g. pi rejecting the
- * prompt once the provider confirmed a revocation) must report the token those
- * requests actually used — recorded into the turn's capture by the credential
- * store at request time, and still readable from the catch after the prompt's
- * async subtree unwound.
- */
 test("an auth throw after a request reports the digest of the token the turn ran on", async () => {
   const { recordUsedToken } = await import("../auth/used-token");
   const { accessDigest } = await import("@houston/protocol/access-digest");
   const id = "exec-throw-used-token";
   const conv = fakeConv(() => {
-    // Stands in for the credential store's request-time read, which runs
-    // inside prompt() — i.e. inside the turn's used-token capture.
     recordUsedToken("openai", "the-token-that-401d");
     throw new Error("401 OAuth access token has been revoked");
   });
@@ -614,14 +543,6 @@ test("an auth throw after a request reports the digest of the token the turn ran
   );
 });
 
-/**
- * The one turn with no honest provider to name: `resolveModel` itself failed, so
- * the turn ran on NOTHING. It reports the empty id (chat.ts's pre-session
- * failure emits the same shape, and the client renders the generic "connect an
- * AI provider" card) and must touch neither the credential status surface nor
- * the control plane — marking "" unusable, or POSTing a revocation for it, is
- * the corruption this guard exists to prevent.
- */
 test("a resolveModel failure names no provider and never marks or reports one", async () => {
   resolution.run = () => {
     throw new Error("No provider connected. Connect an AI provider first.");
@@ -653,14 +574,6 @@ test("a resolveModel failure names no provider and never marks or reports one", 
   expect(reportRevokedServedToken).not.toHaveBeenCalled();
 });
 
-/**
- * A throw AFTER resolution is classified against the model the turn resolved
- * onto, not the pin's (which an unpinned chat never has). pi's manual
- * `compact()` rejects with the summarizer's provider text; NVIDIA's body-less
- * 410 model gate needs a model to name on the switch-model card, and with
- * `model: null` it fell through to `unknown` — a Sentry error per compaction
- * attempt instead of the card (PRODUCT-1636).
- */
 test("a thrown summarization failure classifies on the RESOLVED model when the turn is unpinned (PRODUCT-1636)", async () => {
   resolution.run = () => ({
     provider: "nvidia",
@@ -699,13 +612,6 @@ test("a thrown summarization failure classifies on the RESOLVED model when the t
   });
 });
 
-/**
- * ...but a turn that CARRIED a pin is not provider-less: the pin is the user's
- * own statement of what to run on, honest evidence even when the resolution
- * failed (a routine pinned to a provider whose saved model id went stale). The
- * canonical id is what every consumer keys on, so the pin is canonicalized the
- * same way `resolveModel` would have.
- */
 test("a resolveModel failure with a PINNED provider names that provider (canonicalized)", async () => {
   resolution.run = () => {
     throw new Error(
@@ -730,8 +636,6 @@ test("a resolveModel failure with a PINNED provider names that provider (canonic
     (e): e is Extract<WireEvent, { type: "provider_error" }> =>
       e.type === "provider_error",
   );
-  // "openai" is the pin's alias for the Codex row — canonical, as resolveModel
-  // would have resolved it.
   expect(frame?.data).toMatchObject({
     kind: "unauthenticated",
     provider: "openai-codex",
@@ -739,8 +643,6 @@ test("a resolveModel failure with a PINNED provider names that provider (canonic
   expect(persistedProviderError(id)).toMatchObject({
     provider: "openai-codex",
   });
-  // A NAMED provider unlocks the status surface too: the pinned credential is
-  // the one that is missing, so "Connected" would be a lie for it.
   expect(noteAuthFailure).toHaveBeenCalledWith("openai-codex");
 });
 
@@ -760,19 +662,11 @@ test("an unclassifiable resolveModel failure with a pin still names the pinned p
     { provider: "openai", model: "gpt-1999" },
   );
 
-  // An empty provider on the unknown card renders "is not available on your
-  //  account" (double space) — the pin is the honest label.
   expect(persistedProviderError(id)).toMatchObject({
     provider: "openai-codex",
   });
 });
 
-/**
- * With NO pin and nothing to classify, the unknown card still needs a word to
- * interpolate: `""` renders "could not classify this  error" and a
- * `provider_error:unknown:` report id. `"unknown"` is the same choice chat.ts
- * makes for its pre-session unknown failure.
- */
 test("an unclassifiable, unpinned resolveModel failure persists the provider as 'unknown'", async () => {
   resolution.run = () => {
     throw new Error("the flux capacitor came loose");
@@ -790,7 +684,6 @@ test("an unclassifiable, unpinned resolveModel failure persists the provider as 
     provider: "unknown",
     raw_excerpt: "the flux capacitor came loose",
   });
-  // Still nothing to mark or sign out: the turn ran on no credential.
   expect(noteAuthFailure).not.toHaveBeenCalled();
   expect(reportRevokedServedToken).not.toHaveBeenCalled();
 });
@@ -810,7 +703,6 @@ test("pin.mode is threaded into switchModeIfNeeded for the turn", async () => {
   );
 
   expect(switchModeIfNeeded).toHaveBeenCalledTimes(1);
-  // (conv, id, model, mode) — the pin's "plan" reaches the mode arg.
   expect(vi.mocked(switchModeIfNeeded).mock.calls[0][3]).toBe("plan");
 });
 
@@ -827,7 +719,6 @@ test("an absent pin defaults the turn to execute mode", async () => {
   expect(vi.mocked(switchModeIfNeeded).mock.calls[0][3]).toBe("execute");
 });
 
-/** The meta persisted on `id`'s assistant message, or undefined. */
 function persistedMeta(id: string) {
   const call = vi
     .mocked(appendAssistantMessage)
@@ -840,14 +731,9 @@ function persistedMeta(id: string) {
 test("a user stop mid-prompt persists stopped:true, drops the pending interaction, and emits no done", async () => {
   const id = "exec-stopped";
   const { events, unsub } = collect(id);
-  // `conv` is referenced inside the prompt script, which only runs once execTurn
-  // calls prompt() — by then conv is assigned, so a const closure is safe.
   const conv: Conv = fakeConv((emit) => {
     emit({ type: "text", data: "partial answer" });
-    // The model queued a question, but the user hit Stop mid-turn.
     recordQuestions([{ kind: "question", id: "q1", question: "still there?" }]);
-    // cancelTurn stamps this on the conversation before aborting; pi resolves
-    // the aborted prompt() clean, so this marker is the only trace of the stop.
     (conv as { stoppedTurnId?: string }).stoppedTurnId = "turn-stop";
   });
 
@@ -857,16 +743,10 @@ test("a user stop mid-prompt persists stopped:true, drops the pending interactio
   });
   unsub();
 
-  // No clean done — cancelTurn's live "Stopped by user" frame is the terminal
-  // surface; a done on top would race the client's settle.
   expect(events.some((e) => e.type === "done")).toBe(false);
   const meta = persistedMeta(id);
-  // The durable stop marker survives so a reload renders the standard line...
   expect(meta?.stopped).toBe(true);
-  // ...and a stopped turn never carries a pending interaction (the user walked
-  // away mid-ask; nothing should re-render a card).
   expect(meta?.pendingInteraction).toBeUndefined();
-  // The marker is cleared so it never bleeds into the next turn.
   expect((conv as { stoppedTurnId?: string }).stoppedTurnId).toBeUndefined();
 });
 
@@ -921,11 +801,9 @@ test("a thrown turn emits an error frame and no done", async () => {
     (e): e is Extract<WireEvent, { type: "error" }> => e.type === "error",
   );
   expect(err?.data.message).toContain("kaboom");
-  // A thrown turn settles via the catch path, which never carries the interaction.
   expect(persistedInteraction(id)).toBeUndefined();
 });
 
-/** The meta persisted on `id`'s USER message, or undefined. */
 function persistedUserMeta(id: string) {
   const call = vi.mocked(appendUserMessage).mock.calls.find((c) => c[0] === id);
   return call?.[2] as { mentions?: unknown } | undefined;
@@ -948,14 +826,11 @@ test("recordUserTurn persists the @mentions sidecar AND publishes it on the user
   );
   unsub();
 
-  // Durable: a reader that refetches history maps "@Ada" back to a person.
   expect(persistedUserMeta(id)?.mentions).toEqual(mentions);
-  // Live: a client watching the stream chips them without refetching.
   const frame = events.find(
     (e): e is Extract<WireEvent, { type: "user" }> => e.type === "user",
   );
   expect(frame?.data.mentions).toEqual(mentions);
-  // The model input is untouched — the names were always plain text.
   expect(frame?.data.content).toBe("@Ada can you confirm?");
 });
 
@@ -988,8 +863,6 @@ test("a truncation's replay marker prepends the kept transcript to the prompt (P
         ts: 2,
         turnId: "t1",
       },
-      // The current turn's own (edited) user message is already recorded when
-      // execTurn runs — the replay must NOT double it into the preamble.
       {
         role: "user",
         content: "tell me about trains",
@@ -1012,15 +885,11 @@ test("a truncation's replay marker prepends the kept transcript to the prompt (P
 
   expect(prompts).toHaveLength(1);
   const prompt = prompts[0] ?? "";
-  // The kept turns ride the prompt as the replay preamble...
   expect(prompt).toContain("User: Hi");
   expect(prompt).toContain("Assistant: Hi, how can I help?");
-  // ...with the RESET header, never the provider-switch framing...
   expect(prompt).not.toContain("different AI model");
-  // ...the edited message itself appears exactly once (it IS the prompt)...
   expect(prompt.match(/tell me about trains/g)).toHaveLength(1);
   expect(prompt.endsWith("tell me about trains")).toBe(true);
-  // ...and no provider_switched divider is drawn for a same-backend rewind.
   expect(events.find((e) => e.type === "provider_switched")).toBeUndefined();
 });
 
@@ -1039,14 +908,6 @@ test("without the replay marker the prompt is the bare text (no preamble on norm
   expect(prompts).toEqual(["hello there"]);
 });
 
-/**
- * The safety binding the RUNTIME still owns: an approval card raised during a
- * turn reaches the user on that turn's done frame, carrying the host-issued
- * request id verbatim and the real target in words. Nothing in the runtime
- * decides the approval itself — the host mints the receipt off the user's own
- * next message (`packages/host/src/assistant/receipts.ts`), so there is no
- * store here for a model to talk its way past.
- */
 test("an approval card reaches the user carrying the host's request id", async () => {
   const id = "exec-confirm";
   const { events, unsub } = collect(id);
@@ -1079,11 +940,6 @@ test("an approval card reaches the user carrying the host's request id", async (
   expect(step.options?.find((o) => o.id === "approve")).toBeDefined();
 });
 
-/**
- * A2: two calls that differ only past the point an old card truncated at are
- * TWO cards, because cards are keyed by the host's request id and never by the
- * question text. One click can therefore never grant two things.
- */
 test("two different requests raise two cards even when they read alike", async () => {
   const id = "exec-confirm-two";
   const { events, unsub } = collect(id);
@@ -1109,11 +965,6 @@ test("two different requests raise two cards even when they read alike", async (
     steps.map((s) => (s.kind === "question" ? s.requestId : null)),
   ).toEqual(["req-a", "req-b"]);
 });
-
-// ── The in-flight marker (turn-inflight-marker.ts) ──────────────────────────
-// Written with the user message, named after the running tool, gone on every
-// in-process end — so a marker found at boot is unambiguously a turn the
-// previous process died on (settle-interrupted-turns.ts).
 
 const { readInflightMarker } = await import("./turn-inflight-marker");
 const { config } = await import("../config");

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseRetryAfterMs, retryAfterMsOf } from "../src/retry-after.ts";
 
-// A fixed "now" so the HTTP-date cases assert exact durations.
 const NOW = Date.parse("Wed, 21 Oct 2026 07:28:00 GMT");
 
 describe("parseRetryAfterMs", () => {
@@ -26,8 +25,6 @@ describe("parseRetryAfterMs", () => {
   });
 
   it("ignores garbage rather than sleeping on a guess", () => {
-    // A caller with no hint falls back to its own backoff, which is always
-    // safe; a caller that trusted "-5" or "soon" would not be.
     for (const bad of [
       undefined,
       null,
@@ -51,8 +48,6 @@ describe("retryAfterMsOf", () => {
   });
 
   it("answers undefined when the responder did not expose the header", () => {
-    // The cross-origin case: without `Access-Control-Expose-Headers` the
-    // browser hands JS a bag that simply has no Retry-After in it.
     expect(retryAfterMsOf(new Headers(), NOW)).toBeUndefined();
   });
 });

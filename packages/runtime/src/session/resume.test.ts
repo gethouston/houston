@@ -4,19 +4,6 @@ import { join } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
 
-/**
- * De-risks cloud sleep/wake (Phase 9): when a sandbox is killed on idle and a
- * fresh process answers the next message, the conversation MUST come back.
- *
- * This pins the exact behavior `chat.ts:getConversation` depends on, at the exact
- * API surface `createAgentSession` consumes (`buildSessionContext().messages`,
- * which the SDK assigns to `agent.state.messages` when `hasExistingSession`).
- *
- * Note pi only persists a session once it holds an assistant message (it won't
- * litter disk with unanswered prompts), so each "turn" here is a user + assistant
- * pair — exactly what `session.prompt()` produces in real use.
- */
-
 const WORKSPACE = mkdtempSync(join(tmpdir(), "houston-ws-"));
 const SECRET = "the magic launch code is 4242";
 
@@ -44,7 +31,6 @@ function assistantMsg(text: string) {
   };
 }
 
-/** A fresh per-conversation session dir, mirroring `dataDir/sessions/<id>`. */
 function freshSessionDir() {
   return join(
     mkdtempSync(join(tmpdir(), "houston-data-")),
@@ -53,7 +39,6 @@ function freshSessionDir() {
   );
 }
 
-/** Drive one real turn (user prompt + assistant reply) through a manager. */
 function turn(mgr: SessionManager, prompt: string, reply: string) {
   mgr.appendMessage(userMsg(prompt));
   mgr.appendMessage(assistantMsg(reply));
@@ -62,18 +47,15 @@ function turn(mgr: SessionManager, prompt: string, reply: string) {
 test("a fresh process resumes the conversation from disk (the fix)", () => {
   const sessionDir = freshSessionDir();
 
-  // Process #1: one real turn, persisted to disk.
   const first = SessionManager.create(WORKSPACE, sessionDir);
   turn(first, SECRET, "Noted.");
   expect(first.buildSessionContext().messages).toHaveLength(2);
 
-  // Process #2 (runtime restart / sandbox woken from sleep): NOTHING in memory.
-  // continueRecent() reopens the most recent session in this conversation's dir.
   const woken = SessionManager.continueRecent(WORKSPACE, sessionDir);
   const restored = woken.buildSessionContext().messages;
 
   expect(restored).toHaveLength(2);
-  expect(JSON.stringify(restored)).toContain("4242"); // the model would see the prior turn
+  expect(JSON.stringify(restored)).toContain("4242");
 });
 
 test("the old create()-on-restart path silently loses history (the bug it replaces)", () => {
@@ -83,8 +65,6 @@ test("the old create()-on-restart path silently loses history (the bug it replac
   turn(first, SECRET, "Noted.");
   expect(first.buildSessionContext().messages).toHaveLength(2);
 
-  // What chat.ts did before: create() again on the same dir mints a NEW empty
-  // session — the prior turn is on disk but invisible to the agent.
   const reCreated = SessionManager.create(WORKSPACE, sessionDir);
   expect(reCreated.buildSessionContext().messages).toHaveLength(0);
 });

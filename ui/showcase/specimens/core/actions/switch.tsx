@@ -11,7 +11,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** A switch as it actually ships: a label you can click, and live state. */
 function SettingRow({
   id,
   label,
@@ -159,11 +158,6 @@ function SwitchSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["Switch"];
 
 export const specimen: Specimen = {

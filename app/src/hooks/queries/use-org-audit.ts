@@ -7,20 +7,6 @@ import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
 import { useAdminScreenActive } from "../use-admin-screen-active";
 
-/**
- * The org audit feed (Teams v2), newest first, paged by a before-cursor.
- *
- * Multiplayer-only and owner/admin-only: on a plain-member or single-player
- * host the gateway 403s (or `getOrg`'s absence means the Organization view is
- * never rendered), so the caller gates `enabled` on `capabilities.multiplayer`
- * + role. Each page is an `AuditEntry[]`; the next page starts before the last
- * entry's id, and paging stops once a short page proves the tail was reached.
- *
- * No `HoustonEvent` maps to audit writes (they're fire-and-forget server-side),
- * so there's nothing to invalidate on — a window-focus refetch keeps the feed
- * reasonably fresh without a firehose subscription. Failures surface via the
- * `tauriOrg.audit` → `call()` path (toast + Report bug), no `onError` needed.
- */
 export function useOrgAudit(enabled: boolean) {
   const active = useAdminScreenActive();
   return useInfiniteQuery({
@@ -29,8 +15,6 @@ export function useOrgAudit(enabled: boolean) {
       tauriOrg.audit({ before: pageParam, limit: AUDIT_PAGE_SIZE }),
     initialPageParam: undefined as number | undefined,
     getNextPageParam: nextAuditCursor,
-    // Admin is a kept-alive screen. Its focus refresh is
-    // valuable only while the audit feed is actually visible.
     enabled: enabled && active,
     staleTime: 30_000,
     refetchOnWindowFocus: true,

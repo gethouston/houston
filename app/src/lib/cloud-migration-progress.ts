@@ -1,12 +1,3 @@
-/**
- * Per-agent progress state machine for the cloud-migration wizard (HOU-719):
- *
- *   pending → creating → warming → uploading (i of n) → finalizing → done
- *
- * Any step may fail into `error` (carrying the failed step); Retry re-runs the
- * task from its first incomplete step. Dependency-free, `node --test`-able.
- */
-
 import type { UploadProgress } from "@houston/engine-adapter";
 import type { MigrationTask } from "./cloud-migration";
 
@@ -19,28 +10,22 @@ export type MigrationStep =
   | "done"
   | "error";
 
-/** Import counters accumulated across an agent's chunks. */
 export interface MigrationCounts {
   written: number;
   skipped: number;
   rejected: number;
-  /** Whether the pod could anchor re-synthesized chat sessions (host-reported). */
   sessionsRebuilt: boolean;
 }
 
 export interface AgentMigrationProgress {
   step: MigrationStep;
-  /** 1-based chunk being uploaded, meaningful while `step === "uploading"`. */
   chunkIndex: number;
   chunkCount: number;
   uploadProgress?: UploadProgress;
-  /** Set once the cloud agent exists — Retry must not create a duplicate. */
   createdAgentId?: string;
   createdAgentPath?: string;
-  /** The step that failed, when `step === "error"`. */
   errorStep?: Exclude<MigrationStep, "error">;
   errorMessage?: string;
-  /** Import-rejected files (surfaced on the done summary, never swallowed). */
   rejected: Array<{ path: string; reason: string }>;
   counts: MigrationCounts;
 }
@@ -55,25 +40,6 @@ export function initialProgress(task: MigrationTask): AgentMigrationProgress {
   };
 }
 
-/**
- * Fixed phase weights for a single agent's 0..1 completion, chosen so the
- * fraction is monotonic non-decreasing along the state machine
- * (`pending → creating → warming → uploading → finalizing → done`):
- *
- * | step         | fraction                                        |
- * | ------------ | ----------------------------------------------- |
- * | pending      | 0                                               |
- * | creating     | 0.10                                            |
- * | warming      | 0.25                                            |
- * | uploading    | 0.25 → 0.90, scaled by `chunkIndex / chunkCount` |
- * | finalizing   | 0.95                                            |
- * | done         | 1                                               |
- * | error        | the fraction of `errorStep` (its last reached)  |
- *
- * `uploading` spans the widest band because it is the bulk of the work; the
- * 1-based `chunkIndex` fills it (chunk `i` of `n` done ⇒ `0.25 + 0.65·i/n`).
- * A zero `chunkCount` (upload not yet chunked) sits at the band's start, 0.25.
- */
 const UPLOAD_START = 0.25;
 const UPLOAD_END = 0.9;
 
@@ -100,18 +66,10 @@ function stepFraction(p: AgentMigrationProgress): number {
     case "done":
       return 1;
     case "error":
-      // Error freezes at the last fraction the failed step had reached.
       return p.errorStep ? stepFraction({ ...p, step: p.errorStep }) : 0;
   }
 }
 
-/**
- * Overall 0..1 progress across every migration task, byte-weighted by each
- * agent's `manifest.totalBytes` (bigger agents move the bar more). When the
- * whole plan reports zero bytes, weights fall back to equal per task. Tasks
- * missing from `progress` count as `pending` (0). Monotonic non-decreasing for
- * a fixed task set, since each task's {@link stepFraction} only ever advances.
- */
 export function computeOverallProgress(
   tasks: ReadonlyArray<{ sourceId: string; manifest: { totalBytes: number } }>,
   progress: Readonly<Record<string, AgentMigrationProgress>>,

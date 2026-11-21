@@ -123,7 +123,6 @@ describe("historyToFeed", () => {
       data: null,
       ts: 3,
     });
-    // A reload shows the user everything they said, on both sides of the line.
     expect(feed.filter((f) => f.feed_type === "user_message")).toHaveLength(3);
   });
 
@@ -167,7 +166,6 @@ describe("historyToFeed", () => {
     });
 
     it("hides a summary stored before summaries were flagged", () => {
-      // Cloud chats keep these on disk and no boot migration reaches them.
       const feed = historyToFeed([
         {
           role: "assistant",
@@ -203,8 +201,6 @@ describe("historyToFeed", () => {
     });
 
     it("still shows a stopped cloud reply that carries the turn's compaction", () => {
-      // The sandbox path stores a stopped Claude reply with the claimed
-      // compaction and no usage; it is the turn's last record, so it shows.
       const feed = historyToFeed([
         {
           role: "assistant",
@@ -240,7 +236,6 @@ describe("historyToFeed", () => {
     });
 
     it("still shows a reply that compacted before it answered", () => {
-      // pi records a proactive compaction on the turn's own reply.
       const feed = historyToFeed([
         {
           role: "assistant",
@@ -336,8 +331,6 @@ describe("historyToFeed", () => {
       },
     ]);
     const types = feed.map((f) => f.feed_type);
-    // The card is the turn's LAST frame — a reload must show the failure at
-    // the bottom of the turn, never above its mission log and streamed text.
     expect(types).toEqual([
       "user_message",
       "thinking",
@@ -399,7 +392,6 @@ describe("historyToFeed", () => {
       mentions: [{ userId: "u2", name: "Ada Lovelace" }],
       ts: 1,
     });
-    // Assistant prose is never structured: its @Names stay plain text.
     expect(feed[1]).not.toHaveProperty("mentions");
   });
 
@@ -431,7 +423,7 @@ describe("historyToFeed", () => {
     expect(feed[thinkingIdx]).toEqual({
       feed_type: "thinking",
       data: "first list the files, then decide",
-      ts: 2, // additive: every frame carries its source message's epoch-ms ts
+      ts: 2,
     });
     expect(thinkingIdx).toBeLessThan(toolIdx);
     expect(feed[toolIdx]).toEqual({
@@ -439,7 +431,6 @@ describe("historyToFeed", () => {
       data: { name: "bash", input: { cmd: "ls" } },
       ts: 2,
     });
-    // The persisted output preview replays as the tool's result.
     expect(feed[toolIdx + 1]).toEqual({
       feed_type: "tool_result",
       data: { name: "bash", content: "file-a\nfile-b", is_error: false },
@@ -473,7 +464,6 @@ describe("historyToFeed", () => {
     ]);
     const textIdx = feed.findIndex((f) => f.feed_type === "assistant_text");
     const stopIdx = feed.findIndex((f) => f.feed_type === "system_message");
-    // Same copy + position the live stop settle produces (after the text/tools).
     expect(stopIdx).toBeGreaterThan(textIdx);
     expect(feed[stopIdx]).toEqual({
       feed_type: "system_message",
@@ -551,10 +541,7 @@ describe("historyToFeed", () => {
         usage: { context_tokens: 5, output_tokens: 1, cached_tokens: 0 },
       },
     ]);
-    // The user frame carries the user message's ts.
     expect(feed.find((f) => f.feed_type === "user_message")?.ts).toBe(1000);
-    // Every frame folded from the assistant message carries ITS ts — including
-    // the tool, file-change, and final_result frames, not just the text bubble.
     for (const type of [
       "tool_call",
       "tool_result",

@@ -1,13 +1,3 @@
-/**
- * Export orchestration for the Agent Store.
- *
- * Maps an export target id -> adapter and provides `runExport`, which runs a
- * blocking secret scan over the IR (via the contract's `scanIrForSecrets`) BEFORE
- * any payload is produced. A finding aborts the export with a typed
- * `ExportSecretLeakError` so a leaking bundle never leaves the platform.
- *
- * v1 targets EXACTLY: "claude-skill-zip" (default) + "copy-paste".
- */
 import type { AgentIR, SecretFinding } from "@houston/agentstore-contract";
 import { scanIrForSecrets } from "@houston/agentstore-contract";
 import { buildClaudeSkillZip } from "./claude-skill-zip";
@@ -19,20 +9,15 @@ export {
 } from "./claude-skill-zip";
 export { buildCopyPaste } from "./copy-paste";
 
-/** The export target ids the store serves (also the `?target=` query values). */
 export const EXPORT_TARGET_IDS = ["claude-skill-zip", "copy-paste"] as const;
 export type ExportTargetId = (typeof EXPORT_TARGET_IDS)[number];
 
-/** The default export target id. */
 export const defaultExportTarget: ExportTargetId = "claude-skill-zip";
 
-/** Type guard for an arbitrary string against the allowed target ids. */
 export function isExportTargetId(id: string): id is ExportTargetId {
   return (EXPORT_TARGET_IDS as readonly string[]).includes(id);
 }
 
-/** A finished export payload. ZIP exports carry bytes; text exports carry a
- *  string. `contentType`/`filename` drive the download response. */
 export type ExportResult =
   | {
       kind: "zip";
@@ -71,7 +56,6 @@ const exportAdapters: Record<ExportTargetId, Adapter> = {
   }),
 };
 
-/** Raised when an export is blocked because the IR appears to contain secrets. */
 export class ExportSecretLeakError extends Error {
   readonly findings: SecretFinding[];
   constructor(findings: SecretFinding[]) {
@@ -84,11 +68,6 @@ export class ExportSecretLeakError extends Error {
   }
 }
 
-/**
- * Run an export for a target. Scans the IR's user-authored text first; if secrets
- * are found (and `block` is not disabled) it throws `ExportSecretLeakError` so the
- * caller never ships a leaking payload.
- */
 export async function runExport(
   target: ExportTargetId,
   ir: AgentIR,

@@ -9,18 +9,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The workspaces family rides `sdk.workspaces`, and the wire is pinned here.
- *
- * There is no second copy of these calls to diff against, so each request is
- * recorded whole: the URL, the verb, the body bytes, and the three headers the
- * gateway acts on (`Content-Type` from the transport, `Authorization` +
- * `x-houston-org` from the shared auth fetch).
- *
- * Percent-encoding is pinned wherever an id or a document path is spliced into
- * the address — an agent named `a/b` must not reach a different agent's file.
- */
-
 const BASE = "http://host";
 
 const { calls, reset, restore, stubRouted } = createWireCapture();
@@ -36,11 +24,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/**
- * Record every request and answer it from `route`. A path the test did not
- * arrange throws the transport-shaped failure a dead endpoint would, so an
- * unexpected call cannot pass as a silent success.
- */
 function stubFetch(route: (path: string) => Response | undefined) {
   stubRouted((call) => {
     const res = route(new URL(call.url).pathname);
@@ -59,7 +42,6 @@ const client = () => {
   return c;
 };
 
-/** The one request under test, with its auth + content headers spelled out. */
 function only(): Call {
   expect(calls).toHaveLength(1);
   const [call] = calls;
@@ -71,9 +53,6 @@ function only(): Call {
 
 describe("the delegated workspace list", () => {
   test("is one GET /v1/workspaces and nothing else", async () => {
-    // The space list is polled while the app is open (the live-spaces
-    // refresh), so it must never read through an agent: a per-agent read
-    // keeps that agent's pod awake for as long as the window stays open.
     stubFetch((path) =>
       path === "/v1/workspaces" ? json(200, [{ id: "ws" }]) : json(404, {}),
     );
@@ -169,7 +148,6 @@ describe("the delegated sidebar layout", () => {
       { kind: "group", id: "g" },
     ],
   } satisfies SidebarLayout;
-  /** The personal workspace answers to the server id. */
   const openHost = (layout: () => Response) =>
     stubFetch((path) => {
       if (path === "/v1/capabilities") return json(200, { profile: "local" });

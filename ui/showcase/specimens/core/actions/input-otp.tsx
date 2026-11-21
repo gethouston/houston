@@ -16,10 +16,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/**
- * Every example is live: type into one, paste a code into it, backspace back
- * out of it. `layout` is how many slots sit in each group.
- */
 function Otp({
   initial = "",
   layout = [6],
@@ -179,11 +175,6 @@ function InputOTPSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = [
   "InputOTP",
   "InputOTPGroup",

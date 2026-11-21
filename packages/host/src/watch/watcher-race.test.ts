@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isBenignRecursiveWatchRace } from "./watcher-race";
 
-/** An ENOENT shaped exactly like the production events (issue 7614029702). */
 function recursiveWatchEnoent(): Error {
   const err = new Error(
     "ENOENT: no such file or directory, scandir '/data/workspaces/Personal/Personal Assistant/.houston/runtime/auth.json.lock'",
@@ -28,7 +27,6 @@ describe("isBenignRecursiveWatchRace", () => {
       "ENOENT: no such file or directory",
     ) as NodeJS.ErrnoException;
     err.code = "ENOENT";
-    // A normal stack — no recursive_watch frames.
     expect(isBenignRecursiveWatchRace(err)).toBe(false);
   });
 

@@ -3,13 +3,6 @@ import { adoptApprovals, carryApprovals } from "./approval-carry";
 import { APPROVAL_TTL_MS } from "./approval-record";
 import { ApprovalStore } from "./approvals";
 
-/**
- * A pool worker runs one turn and dies. Houston's approval card is raised in
- * one turn and answered by the message that starts the next, so the card's
- * record and the message reservations travel between the two workers. What
- * travels must behave exactly as if one host had kept it.
- */
-
 const AGENT = "Personal/Assistant";
 const CONV = "assistant";
 const SCOPE = { agentId: AGENT, conversationId: CONV };
@@ -24,7 +17,6 @@ function raise(store: ApprovalStore, conversationId = CONV) {
   });
 }
 
-/** What a worker writes and the next one reads: JSON, nothing else. */
 const travel = (store: ApprovalStore) =>
   JSON.parse(JSON.stringify(carryApprovals(store, AGENT, CONV)));
 
@@ -52,7 +44,6 @@ test("a card raised in one worker is answered and spent in the next", () => {
     conversationId: CONV,
   };
   expect(next.consume(call)).toBe("approved");
-  // Spent means gone, in the carry too.
   const after = new ApprovalStore();
   adoptApprovals(after, travel(next), SCOPE);
   expect(after.consume(call)).toBe("none");

@@ -10,15 +10,6 @@ import {
   REQUEST_CREDENTIAL_TOOL_NAME,
 } from "./request-credential";
 
-/**
- * The secure key-entry hand-off tool, with its PRODUCT-1292 pre-flight: a
- * credential step is recorded ONLY for a slug the host actually has a
- * definition for. Before the check, a model-invented slug (or one whose add
- * failed) queued a card that rendered fine while every save 404ed — a
- * user-facing dead end the agent never heard about ("Save key" looked like it
- * did nothing).
- */
-
 const ctx = {} as unknown as ExtensionToolContext;
 
 function toolWith(
@@ -62,8 +53,6 @@ test("records the credential step for a slug the host knows (normalized to lower
   });
   const text = (out.content[0] as { text: string }).text;
   expect(text).toMatch(/end your turn/i);
-  // The check that closes the setup rides on this result, because the turn
-  // that starts when the key arrives has no other copy of it.
   expect(text).toContain(
     "verify it with one harmless read-only action (find one with integration_search, run it with integration_execute",
   );

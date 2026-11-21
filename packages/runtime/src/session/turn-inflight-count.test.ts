@@ -5,20 +5,12 @@ import type { WireEvent } from "@houston/runtime-client";
 import { expect, test, vi } from "vitest";
 import type { HarnessSession } from "../backends/types";
 
-/**
- * The runtime's busy count follows each turn's lifecycle: counted from the
- * moment runTurn accepts it until it settles, however it ends. It is what
- * `GET /busy` and the shutdown drain read, so a turn waiting on the workdir
- * lock must count, and a stopped turn must stop counting once it unwinds.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-count-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-count-ws-"),
 );
 
 const cache = vi.hoisted(() => new Map<string, unknown>());
-// A pending session build per conversation (absent = builds at once).
 const builds = vi.hoisted(() => new Map<string, Promise<void>>());
 vi.mock("../ai/providers", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../ai/providers")>()),
@@ -60,11 +52,6 @@ const { snapshot } = await import("./bus");
 const { withWorkdirLock } = await import("./workdir-lock");
 const { config } = await import("../config");
 
-/**
- * Cache a conversation whose prompt streams one text frame, then (with
- * `stoppable`) waits for the user's Stop and streams the aborted turn's usage
- * while it unwinds — pi's shape.
- */
 function cachedConv(id: string, stoppable: boolean) {
   const listeners = new Set<(e: WireEvent) => void>();
   const emit = (e: WireEvent) => {
@@ -107,7 +94,6 @@ function cachedConv(id: string, stoppable: boolean) {
   return { prompted: prompted.promise, prompts: () => prompts };
 }
 
-/** Await macrotask hops until `ready` holds (the queue + workdir lock hops). */
 async function until(ready: () => boolean): Promise<void> {
   for (let i = 0; i < 50 && !ready(); i++)
     await new Promise((r) => setTimeout(r, 0));
@@ -123,7 +109,6 @@ test("turns waiting on the workdir lock or on their conversation's queue count a
   const second = runTurn(id, "second");
   await until(() => turnsInFlight() === 2);
 
-  // Neither has reached the model: one waits on the lock, one on the queue.
   expect(turnsInFlight()).toBe(2);
   expect(conv.prompts()).toBe(0);
 
@@ -156,7 +141,6 @@ test("an accepted turn counts while its session is still being built", async () 
   const build = Promise.withResolvers<void>();
   builds.set(id, build.promise);
 
-  // The route answered 202; nothing is queued or persisted yet.
   const turn = runTurn(id, "go");
   expect(turnsInFlight()).toBe(1);
 

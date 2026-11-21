@@ -1,8 +1,3 @@
-/**
- * Background right-click menu (New Folder), shared by both views. Closes on
- * outside click or Escape (the latter on the document — the portal never
- * holds focus).
- */
 import { createPortal } from "react-dom";
 import { useEscapeDismiss } from "./use-escape-dismiss";
 

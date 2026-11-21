@@ -4,40 +4,21 @@ import type {
   UsageRow,
 } from "@houston/engine-adapter";
 
-/**
- * Pure usage maths for the org chart: the flat `(agent, user, day)` message
- * counters and the `(agent, day)` time-worked rows rolled up into one total
- * and one daily series for the whole org, and one figure for every AI
- * Employee. Every figure counts the same 30 UTC days its series draws, so a
- * total and its chart never disagree. Node:test-safe (no React, no DOM).
- */
-
-/** The window every number on the chart counts, in UTC days. */
 export const USAGE_WINDOW_DAYS = 30;
 
 const DAY_MS = 86_400_000;
 
 interface ChartAgentKey {
   id: string;
-  /** The engine route key, which is the slug usage rows carry. */
   folderPath: string;
 }
 
-/**
- * Time worked exists only where the gateway advertises the endpoint, so the
- * chart gates its query on this and never fires it off the hosted cloud.
- */
 export function hoursAvailable(
   capabilities: Capabilities | null | undefined,
 ): boolean {
   return capabilities?.computeUsage === true;
 }
 
-/**
- * The `YYYY-MM-DD` UTC day keys of the window ending on `now`'s UTC day,
- * oldest first. Usage rows are keyed by UTC day, so a local-time window would
- * shift every bucket by one around midnight.
- */
 export function usageWindow(
   now: Date,
   days: number = USAGE_WINDOW_DAYS,
@@ -52,11 +33,6 @@ export function usageWindow(
   );
 }
 
-/**
- * The window's day positions, and each wire slug's agent id. Rows resolve by
- * agent id OR route key; a slug no listed agent answers to (a deleted agent,
- * a system pod) resolves to nothing and is never counted.
- */
 function windowFrame(agents: readonly ChartAgentKey[], now: Date) {
   const days = usageWindow(now);
   const index = new Map(days.map((day, position) => [day, position]));
@@ -70,7 +46,6 @@ function windowFrame(agents: readonly ChartAgentKey[], now: Date) {
     from: days[0] ?? "",
     length: days.length,
     ids,
-    /** A row dated past today (a gateway clock ahead of ours) is today's. */
     position: (day: string) => (day > last ? days.length - 1 : index.get(day)),
   };
 }
@@ -82,24 +57,16 @@ export interface UsageTalker {
 
 export interface AgentUsage {
   total: number;
-  /** Everyone who talked to it, busiest first. */
   talkers: UsageTalker[];
 }
 
 export interface OrgChartUsage {
   byAgent: ReadonlyMap<string, AgentUsage>;
-  /** One count per UTC day of the window, oldest first, zero-filled. */
   series: number[];
   total: number;
-  /** The window's first UTC day, `YYYY-MM-DD`. */
   from: string;
 }
 
-/**
- * Message counts per agent and per day. Every listed agent gets an entry,
- * silent ones included, so a line never has to tell "no traffic" from "not
- * counted".
- */
 export function orgChartUsage(
   agents: readonly ChartAgentKey[],
   rows: readonly UsageRow[],
@@ -140,21 +107,12 @@ export function orgChartUsage(
 }
 
 export interface OrgChartWork {
-  /** Time worked per agent id over the window, in ms; silent agents at 0. */
   byAgent: ReadonlyMap<string, number>;
-  /** One total per UTC day of the window, oldest first, zero-filled. */
   series: number[];
   total: number;
-  /** The window's first UTC day, `YYYY-MM-DD`. */
   from: string;
 }
 
-/**
- * Time worked (`activeMs`, the time an agent spent running turns and
- * routines) over the same days the message counts cover. `awakeMs`, the
- * engine's whole up-time idle tail included, rides the wire and is never
- * counted.
- */
 export function orgChartWork(
   agents: readonly ChartAgentKey[],
   rows: readonly ComputeUsageRow[],

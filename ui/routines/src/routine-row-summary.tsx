@@ -1,17 +1,3 @@
-/**
- * RoutineRowSummary — the row's ONE muted summary line, in three shapes so the
- * row never grows a second content line:
- *
- * - a trigger routine → its live status chip (with the inline Reconnect) plus
- *   the humanized event, on one line; the status *detail* lives in the chat
- *   header, not here;
- * - a schedule routine with inline editing → the plain-language schedule as an
- *   always-visible edit affordance (the pencil rides this line);
- * - otherwise → the plain-language schedule summary.
- *
- * Split out of RoutineRow to keep that file focused on the row grid + selection
- * and under the size cap.
- */
 import {
   DEFAULT_ROW_LABELS,
   DEFAULT_SCHEDULE_LABELS,

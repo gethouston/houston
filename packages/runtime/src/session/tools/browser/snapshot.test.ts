@@ -12,7 +12,6 @@ test("a long snapshot is cut on a line boundary, counting what was cut", () => {
   const huge = line.repeat(10_000);
   const { kept, omitted } = capText(huge);
   expect(kept.length).toBeLessThanOrEqual(SNAPSHOT_MAX_CHARS);
-  // Every kept line is whole, so no ref is half-cut.
   expect(kept.endsWith("[ref=e1]")).toBe(true);
   expect(omitted).toBe(huge.length - kept.length);
 });

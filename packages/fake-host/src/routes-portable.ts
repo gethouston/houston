@@ -1,17 +1,3 @@
-/**
- * The agent-scoped portable routes (`/agents/:id/portable/*`): the export
- * inventory the share and copy wizards read, and the `.houstonagent` package
- * they build. Backed by the SAME per-agent state the Skills, Routines and
- * Memory surfaces serve.
- *
- * The archive is packed here with fflate in the domain's own layout
- * (`packages/domain/src/portable.ts`: manifest.json, CLAUDE.md,
- * skills/<slug>/SKILL.md, routines.json, learnings.json) rather than through
- * `@houston/domain`, whose module graph reaches JSON schema imports Node's ESM
- * loader refuses without import attributes. The browser unpacks the result
- * with the REAL `unpackAgent`, so any drift here fails the copy spec loudly.
- */
-
 import { type Learning, PORTABLE_FORMAT_VERSION } from "@houston/protocol";
 import { strToU8, zipSync } from "fflate";
 import { CORS, json, noContent } from "./http";
@@ -20,7 +6,6 @@ import { fileKey, ISO, LEARNINGS_PATH } from "./state-store";
 
 const CLAUDE_MD = "CLAUDE.md";
 
-/** The wire selection the web adapter posts (`portable-map.ts toWireSelection`). */
 export interface WirePortableSelection {
   includeClaudeMd: boolean;
   skillSlugs: string[];
@@ -28,7 +13,6 @@ export interface WirePortableSelection {
   learningIds: string[];
 }
 
-/** The last export's selection, for a spec to assert what the copy carried. */
 let lastExportSelection: WirePortableSelection | null = null;
 export function lastPortableExport(): WirePortableSelection | null {
   return lastExportSelection;
@@ -133,15 +117,12 @@ function exportPackage(
   if (learnings.length)
     files["learnings.json"] = strToU8(JSON.stringify(learnings));
   const bytes = zipSync(files);
-  // Copy into a fresh ArrayBuffer-backed view: `BodyInit` rejects a view over a
-  // possibly-shared buffer.
   return new Response(new Uint8Array(bytes).buffer as ArrayBuffer, {
     status: 200,
     headers: { ...CORS, "Content-Type": "application/zip" },
   });
 }
 
-/** Dispatch `/agents/:id/portable/<action>`. */
 export function handlePortableRoutes(
   method: string,
   agentId: string,

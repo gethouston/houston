@@ -4,21 +4,10 @@ import { UpdateLaunchOverlay } from "./update-launch-overlay";
 import { UpdatePill } from "./update-pill";
 import { useUpdatePreview } from "./update-preview";
 
-/**
- * Mounts the update policy and renders its one surface, chosen by where the
- * release was found: the launch overlay for a launch-check find (install
- * already running), the restart pill for a mid-session find once the
- * download has landed. A background download in flight, or one that failed
- * and will retry on the next check, shows nothing at all.
- *
- * Mounted above the sidebar footer destinations. The overlay is fixed and
- * covers the window from here; the pill follows the rail’s collapsed state.
- */
 export function UpdateChecker({ collapsed = false }: { collapsed?: boolean }) {
   const { status, installAndRelaunch, relaunchInstalledApp } =
     useUpdateChecker();
 
-  // Dev-only console harness (`__HOUSTON_UPDATE_PREVIEW__`); null in prod.
   const preview = useUpdatePreview(collapsed);
   if (preview) return preview;
 

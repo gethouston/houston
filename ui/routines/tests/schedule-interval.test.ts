@@ -15,13 +15,6 @@ import {
 } from "../src/schedule-interval-utils.ts";
 import { cronSummary } from "../src/schedule-summary.ts";
 
-/**
- * The `@every` interval form in the picker, the summary and the next-fire
- * preview. The fixture table is byte-identical to
- * packages/domain/src/schedule-interval.fixtures.json (the domain suite asserts
- * that), so this copy of the parser and canonicalizer cannot drift.
- */
-
 interface Fixtures {
   canonical: { every: number; unit: EveryUnit; schedule: string }[];
   parse: {
@@ -132,7 +125,6 @@ describe("the picker writes and reads the interval form", () => {
     assert.equal(intervalCountAllowed(10081, "minutes"), false);
     assert.equal(intervalCountAllowed(168, "hours"), true);
     assert.equal(intervalCountAllowed(169, "hours"), false);
-    // croner refuses a step above the field's range (*/32 days, */13 months).
     assert.equal(intervalCountAllowed(31, "days"), true);
     assert.equal(intervalCountAllowed(32, "days"), false);
     assert.equal(intervalCountAllowed(400, "days"), false);
@@ -162,14 +154,12 @@ describe("cronSummary of an interval", () => {
 });
 
 describe("nextFire of an interval", () => {
-  // A UTC day is 90 steps of 16 minutes, so 12:48 UTC is on the grid.
   it("keeps the cadence across the hour: :48 -> :04", () => {
     const from = new Date("2026-06-12T12:48:00.000Z");
     assert.equal(
       nextFire("@every 16m", "UTC", from)?.toISOString(),
       "2026-06-12T13:04:00.000Z",
     );
-    // The cron twin restarts the hour instead.
     assert.equal(
       nextFire("*/16 * * * *", "UTC", from)?.toISOString(),
       "2026-06-12T13:00:00.000Z",

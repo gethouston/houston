@@ -33,7 +33,6 @@ describe("needsAutocompact", () => {
   });
 
   it("compacts a 1.05M GPT-6 window at 93% of its 922k input cap, not of the window", () => {
-    // 93% of 1,050,000 is 976,500: past the 922,000 OpenAI accepts as input.
     expect(needsAutocompact(857_459, 1_050_000, undefined, 922_000)).toBe(
       false,
     );

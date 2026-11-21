@@ -43,9 +43,7 @@ const run = (over: Partial<RoutineRun> = {}): RoutineRun => ({
 
 test("a scheduled routine's usage-limit run on the creator's account snoozes it", () => {
   expect(snoozeAfterRun(routine(), run(), NOW, "felipe")?.until).toBe(RESET);
-  // A path that always runs as the creator passes no actor.
   expect(snoozeAfterRun(routine(), run(), NOW)?.until).toBe(RESET);
-  // Pinned to the very model and provider the limit names: still snoozed.
   expect(
     snoozeAfterRun(
       routine({ provider: "anthropic", model: "claude-fable-5" }),
@@ -139,7 +137,6 @@ test("a run that answered on the creator's account lifts the snooze", () => {
 
 test("a legacy pin is read through the same mapping its fires get", () => {
   const fable = run({ failure: { ...LIMIT, model: "claude-fable-5-2" } });
-  // A Rust-era "claude" pin with a bare "fable" alias runs anthropic's Fable.
   expect(
     snoozeAfterRun(
       routine({ provider: "claude", model: "fable" }),
@@ -148,7 +145,6 @@ test("a legacy pin is read through the same mapping its fires get", () => {
       "felipe",
     ),
   ).not.toBeNull();
-  // The same legacy pin on another model is no longer behind the limit.
   expect(
     snoozeAfterRun(
       routine({ provider: "claude", model: "sonnet" }),
@@ -160,7 +156,6 @@ test("a legacy pin is read through the same mapping its fires get", () => {
 });
 
 test("without an acting user, only a scheduled row counts as the creator's", () => {
-  // The standing host: a "Run now" row ran as whoever pressed it.
   expect(snoozeAfterRun(routine(), run({ manual: true }), NOW)).toBeNull();
   const snooze = routineSnooze(LIMIT, NOW);
   if (!snooze) throw new Error("expected a snooze");

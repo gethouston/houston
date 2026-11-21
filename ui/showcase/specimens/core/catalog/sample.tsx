@@ -9,15 +9,6 @@ import {
   Receipt,
 } from "lucide-react";
 
-/**
- * The catalog family's shared sample content. Every component in the family is
- * domain-blind — it takes an `icon` node, strings, and trailing nodes from its
- * consumer — so the specimens need one honest stand-in for what Houston
- * actually puts in those slots: agents and the apps they connect to.
- */
-
-/** The ~40px art a real catalog row leads with (brand logo, letter avatar or
- *  glyph tile). Token fills only, so it reads in both themes. */
 export function SampleIcon({ icon: Icon }: { icon: LucideIcon }) {
   return (
     <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-chip-subtle text-ink-muted">
@@ -32,7 +23,6 @@ export interface SampleItem {
   description: string;
 }
 
-/** Agents a user already has — what the shell's installed strip holds. */
 export const installedAgents: readonly SampleItem[] = [
   {
     icon: Inbox,
@@ -46,7 +36,6 @@ export const installedAgents: readonly SampleItem[] = [
   },
 ];
 
-/** Agents on offer — the discovery half of a catalog surface. */
 export const availableAgents: readonly SampleItem[] = [
   {
     icon: Receipt,
@@ -70,7 +59,6 @@ export const availableAgents: readonly SampleItem[] = [
   },
 ];
 
-/** An app a catalog row can connect — the integrations flavour of a row. */
 export const sampleApp: SampleItem = {
   icon: Mail,
   title: "Gmail",

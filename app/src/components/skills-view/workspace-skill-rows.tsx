@@ -19,19 +19,11 @@ import { SkillIcon } from "../skill-icon";
 import { resolveSkillsListState } from "./skills-list-model";
 import { SkillsListEmpty } from "./skills-list-states";
 
-/** Rows carry the store fields when the deployment shares (ADR 0003). */
 type PageSkillRow = WorkspaceSkillRow & {
   origin?: "shared" | "local";
   overriddenBy?: WorkspaceSkillAgent[];
 };
 
-/**
- * The **Your skills** strip of an employee's Skills section: one row per
- * slug, opening that skill's full-page editor in place of the list.
- * Preview-capped behind "Show all" at rest; an active query drops the cap.
- * With nothing to list it renders the empty state, so the section never
- * collapses to a bare search field.
- */
 export function useWorkspaceSkillRows({
   rows,
   query,
@@ -39,7 +31,6 @@ export function useWorkspaceSkillRows({
 }: {
   rows: PageSkillRow[];
   query: string;
-  /** Open the skill's editor (the list steps aside for it). */
   onOpenEditor: (row: PageSkillRow) => void;
 }): { installedCount: number; installed: ReactNode } {
   const { t } = useTranslation("skills");

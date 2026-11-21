@@ -15,8 +15,6 @@ const mock = vi.hoisted(() => ({
 vi.mock("../../../app/src/lib/delegation-facade", () => ({
   tauriAgentDelegation: { set: mock.set, get: mock.get },
 }));
-// A superseded refusal reports through `reportError`; the latest one through
-// the optimistic refusal surface's `logAndReportError`.
 vi.mock("../../../app/src/lib/error-report", () => ({
   reportError: mock.report,
   logAndReportError: mock.report,

@@ -32,7 +32,6 @@ test("the stamp round-trips through the sync root", async () => {
     since: 1_000,
     until: 6_000,
   });
-  // Expiring keeps `since` and closes the window at `now`.
   await expireDrainStamp(rootDir, 9_000);
   expect(await readDrainStampFile(drainStampPath(rootDir))).toEqual({
     since: 1_000,
@@ -60,8 +59,6 @@ test("a stamp that is not two finite numbers is not a stamp", async () => {
   expect(await readDrainStampFile(drainStampPath(rootDir))).toBeUndefined();
 });
 
-// The handshake only works if the object actually syncs: an excluded name
-// would be written locally and never reach (or leave) the store.
 test("the stamp name survives both exclude lists", () => {
   expect(excluded(DRAIN_STAMP_FILE, STORE_SYNC_EXCLUDES)).toBe(false);
   expect(excluded(DRAIN_STAMP_FILE, DEFAULT_EXCLUDES)).toBe(false);

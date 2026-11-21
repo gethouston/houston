@@ -2,10 +2,6 @@ import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { resolveReconnectCardPresentation } from "../src/components/shell/provider-reconnect-presentation.ts";
 
-// The store-driven reconnect card has two states keyed on loginLaunched. The
-// launched button used to borrow common:actions.tryAgain ("Try again"), which
-// read as a message-retry; it now names its real action, "Sign in again".
-
 describe("resolveReconnectCardPresentation", () => {
   it("resting state: sign-in prompt, default button", () => {
     deepStrictEqual(

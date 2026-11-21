@@ -6,12 +6,6 @@ import {
   jsonTypeOf,
 } from "./assistant-schema-hint";
 
-/**
- * The schema explainer. Everything it answers ends up inside an `invalid_param`
- * message, so a wrong "accepted values" list is worse than none: it would send
- * the model confidently at a value the operation refuses.
- */
-
 const enumOf = (...values: string[]) => ({
   anyOf: values.map((value) => ({ const: value, type: "string" })),
 });

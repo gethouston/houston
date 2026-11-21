@@ -22,12 +22,6 @@ import { OnboardingTeamCard } from "./onboarding-team-card";
 type MapFeed = NonNullable<AIBoardProps["mapFeedItems"]>;
 type RenderSystem = NonNullable<AIBoardProps["renderSystemMessage"]>;
 
-/**
- * The AI Manager's chat drawing onboarding as cards: the team card where
- * first run closed, and the goal card for the turn that starts the person's
- * goal. Wraps the chat panel's own feed mapping and system rows, which keep
- * doing everything else.
- */
 export function useOnboardingChatCards({
   mapFeedItems,
   renderSystemMessage,
@@ -41,14 +35,11 @@ export function useOnboardingChatCards({
     context: string,
     grants: ["createAgent"],
   ) => Promise<void>;
-  /** A turn is in flight: Try again would queue behind it. */
   running: boolean;
 }): { mapFeedItems: MapFeed; renderSystemMessage: RenderSystem } {
   const { i18n } = useTranslation();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
-  // One Try again at a time: the send only marks the chat busy once it is
-  // on its way, and a second press must not carry a second grant.
   const retrying = useRef(false);
   const [retryInFlight, setRetryInFlight] = useState(false);
 

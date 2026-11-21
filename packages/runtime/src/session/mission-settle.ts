@@ -4,33 +4,11 @@ import { config } from "../config";
 
 const REQUEST_TIMEOUT_MS = 5_000;
 
-/** Injectable seams for tests: fake fetch, no real timer waits. */
 export interface MissionSettleOptions {
   fetchImpl?: typeof fetch;
   retryDelaysMs?: number[];
 }
 
-/**
- * Report a turn's terminal board state to the host (PRODUCT-1244). Board settle
- * is normally CLIENT-side (the SDK folds the terminal frame and PATCHes the
- * activity) — but a mission an AGENT or an API caller started may never have a
- * client observing its conversation, so its card would sit on Running forever.
- * The runtime reports every turn end here. The host changes status only for
- * agent- or API-started missions still on `running`, but stamps every
- * successful reply's message
- * time regardless of the card's origin or status (routes/missions-manage.ts).
- *
- * Fire-and-forget, never turn-fatal: this runs after the turn's terminal frame
- * is already published, with no UI thread to toast on. Network drops retry
- * with a fresh timeout per attempt; a settle that still fails logs a WARN
- * breadcrumb, never a console.error — the pod↔control-plane socket dropping
- * is connectivity, not a Houston fault, and it self-heals when the user opens
- * the mission (settle-from-history).
- *
- * `modelCalls` rides along because this is the one report every turn end
- * sends: a managed host forwards it to the gateway's per-call latency
- * metrics (protocol model-call-report.ts).
- */
 export function reportMissionSettle(
   conversationId: string,
   status: "needs_you" | "error",

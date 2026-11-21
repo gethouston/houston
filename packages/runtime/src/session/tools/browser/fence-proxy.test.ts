@@ -5,9 +5,7 @@ import { type FenceNet, type FenceProxy, startFenceProxy } from "./fence-proxy";
 import { ownAddresses } from "./ip-ranges";
 
 const PUBLIC = "198.51.100.7";
-/** Refuses every connection (a closed port). */
 const DEAD = "198.51.100.8";
-/** Never answers a connect. */
 const HANG = "198.51.100.9";
 let deadPort = 0;
 const DNS: Record<string, string[]> = {
@@ -49,7 +47,6 @@ const lookup = vi.fn(async (host: string) => {
   if (!answers) throw Object.assign(new Error("no"), { code: "ENOTFOUND" });
   return answers.map((address) => ({ address, family: 4 }));
 });
-/** The checked address and port of every outbound connect. */
 const dialed: string[] = [];
 const net: FenceNet = {
   lookup,
@@ -98,7 +95,6 @@ afterAll(() => {
   echo.close();
 });
 
-/** Send raw bytes to the proxy; resolve with everything it sent back. */
 function exchange(
   port: number,
   request: string,
@@ -135,7 +131,6 @@ test("a plain-http request is forwarded in origin form to the address the proxy 
     "proxy-connection",
   );
   expect(dialed).toEqual([`${PUBLIC}:${httpPort}`]);
-  // Resolved once: the connect never asks DNS again.
   expect(lookup).toHaveBeenCalledTimes(1);
 });
 
@@ -184,7 +179,6 @@ test("CONNECT to a refused name, a private answer, or a mixed answer gets the 40
 
 test("off the managed cloud a private answer is allowed through", async () => {
   const { port } = await proxy("allowed");
-  // The fixture's connect is real: 10.0.0.7 is just a dial attempt we record.
   const socket = connect({ host: "127.0.0.1", port });
   socket.on("error", () => undefined);
   socket.write("CONNECT lan.test:443 HTTP/1.1\r\n\r\n");

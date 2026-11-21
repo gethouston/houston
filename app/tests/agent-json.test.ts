@@ -29,8 +29,6 @@ describe("parseAgentJson", () => {
     deepStrictEqual(warnings, []);
   });
 
-  // Regression: an agent wrote `{"learnings": [...]}` instead of a bare array;
-  // `(q.data ?? []).map` then crashed the whole app on every render.
   it("falls back when an object lands where an array belongs", () => {
     const { warnings, warn } = collect();
     const out = parseAgentJson(
@@ -72,7 +70,7 @@ describe("parseAgentJson", () => {
 
   it("keeps schema-invalid items but warns (data bugs surface, UI survives)", () => {
     const { warnings, warn } = collect();
-    const items = [{ id: "a", text: "hi" }]; // missing created_at
+    const items = [{ id: "a", text: "hi" }];
     const out = parseAgentJson(
       "learnings",
       JSON.stringify(items),

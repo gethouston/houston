@@ -6,11 +6,6 @@ import {
   isDictationSidecarFailure,
 } from "../src/lib/dictation/sidecar-failure.ts";
 
-// PRODUCT-1731: `transcribe_audio` rejects with either the plain strings the
-// composer already matches on, or a `DictationSidecarFailure` object that
-// carries whisper-cli's stderr tail. The message text must stay the string
-// Sentry has always seen (issue continuity), the tail rides as `extra`.
-
 const crash = {
   kind: "sidecar-failure",
   message: "dictation: whisper exited with exit code: 0xc0000409",

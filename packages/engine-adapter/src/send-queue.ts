@@ -11,39 +11,12 @@ import { mergeSendFields } from "./send-queue-merge";
 import { armSettleWatcher, disarmSettleWatcher } from "./settle-watcher";
 import { conversationVm } from "./vm";
 
-/**
- * Queue-while-running: a send that arrives while the conversation's turn is
- * still streaming is HELD (rendered as a removable queued bubble via the VM's
- * `queued` list) and flushed as ONE combined send when the turn settles —
- * several quick follow-ups become a single coherent turn instead of a pile of
- * back-to-back turns.
- *
- * Owned by the adapter (behind the client's `startSession`) so EVERY send path
- * — chat panel, mission control, skills, onboarding — inherits it without each
- * call site re-deriving "is a turn active". The queue holds fully BUILT
- * requests (attachments already saved, prompt final); `queuedPreview` carries
- * the user's words + attachment names for the composer's queued-bubble UI.
- *
- * Flushing follows the dispatched turn, a settle watcher, or a history probe
- * when an observer stream dies with a stale running flag.
- *
- * `autoResume` sends (Houston resuming after a provider reconnect — not
- * user-typed) get special handling: one resume per conversation at a time —
- * a duplicate is swallowed while another is queued OR dispatched-and-running
- * (several reconnect surfaces fire the same resume off one login event) — a
- * held one is dropped at flush when the user queued their own follow-up
- * (their message resumes the conversation by itself), it never renders a
- * queued bubble (a hidden system message stays hidden while held), and its
- * watchdog probes immediately so a stale hold clears within one round-trip.
- */
-
 interface QueuedSend {
   vm: QueuedMessageVM;
   req: SessionStartRequest;
 }
 
 const queues = new Map<string, QueuedSend[]>();
-/** Conversations with a DISPATCHED auto-resume turn still in flight. */
 const resumesInFlight = new Set<string>();
 
 const queueKey = (agentPath: string, sessionKey: string) =>
@@ -54,22 +27,12 @@ function publishQueued(agentPath: string, sessionKey: string): void {
   conversationVm.setQueued(
     agentPath,
     sessionKey,
-    // A held auto-resume stays INVISIBLE: it is a hidden system message (the
-    // transcript filters its bubble too), and surfacing it as a queued row
-    // read as a stuck send when a stale hold made it wait (HOU-849). The
-    // reconnected card's "continuing where you left off" is its only surface.
     entries
       .filter((e) => !e.req.autoResume && !isAutoContinue(e.req.prompt))
       .map((e) => e.vm),
   );
 }
 
-/**
- * Bracket a DISPATCHED auto-resume turn's lifetime: while one is in flight, a
- * duplicate resume (another mounted reconnect card firing off the same login
- * event) is swallowed instead of queued — queueing it would re-send the same
- * "please continue" the moment the first one settles.
- */
 export function noteAutoResumeStarted(
   agentPath: string,
   sessionKey: string,
@@ -83,16 +46,6 @@ export function noteAutoResumeEnded(
   resumesInFlight.delete(queueKey(agentPath, sessionKey));
 }
 
-/**
- * Hold `req` when its conversation has a turn in flight. Returns true when the
- * send was queued (the caller returns without dispatching); false means the
- * conversation is idle and the caller dispatches normally. An `autoResume`
- * send is held at most once per conversation — a duplicate (one already queued
- * or dispatched-and-running) is swallowed, reported as handled.
- *
- * `probe` (the conversation's history read) arms the queue watchdog alongside
- * the settle watcher, so the hold survives a silently-dead observer stream.
- */
 export function maybeQueueSend(
   agentPath: string,
   req: SessionStartRequest,
@@ -110,9 +63,6 @@ export function maybeQueueSend(
   entries.push({
     vm: {
       id: crypto.randomUUID(),
-      // Prefer an explicit queued preview, then the display bubble text (a
-      // hidden-directive / attachment-path send shows the clean line, never the
-      // real prompt), falling back to the prompt when the two are the same.
       text: queuedText(
         req.queuedPreview?.text ?? req.displayText ?? req.prompt,
       ),
@@ -132,16 +82,11 @@ export function maybeQueueSend(
       probe,
       () => queues.has(k),
       flush,
-      // An auto-resume probes IMMEDIATELY: the reconnect promised "Houston is
-      // continuing where you left off", so a stale hold must clear within one
-      // round-trip, not after a visible pause.
       req.autoResume === true,
     );
   return true;
 }
 
-/** Drop one queued send (the composer's remove affordance). Returns the
- *  dropped request, so what it carried can go back to its draft. */
 export function removeQueuedSend(
   agentPath: string,
   sessionKey: string,
@@ -160,26 +105,11 @@ export function removeQueuedSend(
   return removed;
 }
 
-/**
- * Flush the conversation's queue as ONE combined send once its turn settled.
- * Called from the settle path of every dispatched turn AND from the settle
- * watcher; a no-op when nothing is queued or another turn already took the
- * conversation over. Prompts are trimmed and joined blank-line-separated (the
- * shape the old app-side queue produced); the LAST entry's overrides win (the
- * most recent picker state), except the fields `mergeSendFields` derives from
- * the whole queue — see send-queue-merge.ts.
- *
- * A held `autoResume` entry is dropped (not sent) when user-typed entries are
- * queued alongside it: their message resumes the conversation by itself, and
- * combining the marker-tagged resume prompt into their bubble would corrupt it.
- */
 export function flushQueuedSends(
   agentPath: string,
   sessionKey: string,
   dispatch: (req: SessionStartRequest) => void,
 ): void {
-  // A send still waiting to go out keeps its place: the queue goes after it,
-  // from its own settle or the watchdog's next probe.
   if (conversationBusy(agentPath, sessionKey)) return;
   const k = queueKey(agentPath, sessionKey);
   const all = queues.get(k);
@@ -198,8 +128,6 @@ export function flushQueuedSends(
   });
 }
 
-/** A held send's line: the person's words without the comments envelope, or
- *  the comments themselves when they sent nothing else. */
 function queuedText(shown: string): string {
   const cited = decodeCitationsEnvelopes(shown);
   if (!cited) return shown;

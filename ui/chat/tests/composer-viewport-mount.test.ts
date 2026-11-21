@@ -116,7 +116,6 @@ function grow(handle: HTMLElement, times: number) {
 
 it("phone width ignores a desktop manual height and desktop can resume it", () => {
   const { handle, textarea } = mount();
-  // The existing empty-box keyboard bug is tested separately.
   textarea.style.height = "100px";
   grow(handle, 5);
   const desktopHeight = textarea.style.height;

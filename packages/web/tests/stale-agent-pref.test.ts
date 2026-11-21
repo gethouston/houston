@@ -1,24 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * Credentials are workspace-central (connect-once), so provider connects don't
- * need an agent — but cp-mode `providerEngine()` routes them through the agent
- * remembered in `houston.pref.last_agent_id` whenever that pref is set. A STALE
- * pref (deleted last agent, wiped user data, account switch on the same
- * browser) sent first-run onboarding logins to `/agents/<dead>/auth/:pid/login`
- * → 404 "agent not found" instead of the pre-agent `/setup-runtime` surface.
- *
- * The invariant under test: the pref never outlives its agent. `listAgents`
- * (which boot runs before any connect surface mounts) prunes a pref naming an
- * agent the control plane doesn't have, and `deleteAgent` clears the pref when
- * the deleted agent was the remembered one.
- */
-
-// Both agent calls under test reach the wire through `@houston/sdk` (`GET
-// /agents`, `DELETE /agents/:id`) over the shared gateway fetch, stubbed
-// per-test; only the ADAPTER-side pref bookkeeping around them —
-// `dropLastAgentPref`, `noteAgentGone` — is what these tests pin. The
-// login-runtime routing stays on the control plane, so those two are mocked.
 const { runtimeClientFor, setupRuntimeClientFor } = vi.hoisted(() => ({
   runtimeClientFor: vi.fn(),
   setupRuntimeClientFor: vi.fn(),
@@ -41,7 +22,6 @@ const originalFetch = globalThis.fetch;
 let store: Map<string, string>;
 
 beforeEach(() => {
-  // Freeze timers so pollProviderConnect's 4s poll loop never fires mid-test.
   vi.useFakeTimers();
   store = new Map();
   (globalThis as { localStorage?: unknown }).localStorage = {
@@ -51,13 +31,9 @@ beforeEach(() => {
   };
   runtimeClientFor.mockReset();
   setupRuntimeClientFor.mockReset();
-  // The delegated agent DELETE lands on the shared gateway fetch — stub a 200 so
-  // the write succeeds and control returns to `dropLastAgentPref`.
   listReturns();
 });
 
-/** Answer the delegated `GET /agents` with `agents`, and every other request
- *  (the DELETE, the colour-preference reconcile) with a bare 200. */
 function listReturns(...agents: { id: string }[]) {
   globalThis.fetch = vi.fn(async (input: unknown) =>
     String(input).endsWith("/agents")
@@ -138,7 +114,7 @@ test("deleteAgent keeps the pref when another agent was deleted", async () => {
 
 test("regression: after boot prunes a stale pref, first-run login runs on the SETUP runtime, not the dead agent's", async () => {
   store.set(PREF, "ws/Deleted Agent");
-  listReturns(); // fresh install: zero agents → onboarding
+  listReturns();
   const startLogin = vi.fn().mockResolvedValue({
     kind: "device_code",
     verificationUri: "https://auth.example/device",
@@ -150,7 +126,7 @@ test("regression: after boot prunes a stale pref, first-run login runs on the SE
   });
 
   const c = client();
-  await c.listAgents("ws"); // boot's load pass
+  await c.listAgents("ws");
   await c.providerLogin("openai");
 
   expect(setupRuntimeClientFor).toHaveBeenCalled();
@@ -159,9 +135,6 @@ test("regression: after boot prunes a stale pref, first-run login runs on the SE
 });
 
 test("provider login targets the FIRST live agent when none is selected but agents exist (never the setup runtime)", async () => {
-  // No selection at all (e.g. the migration wizard's connect step) — but the
-  // org HAS agents, so the login must run on a real pod: the setup pod was
-  // torn down at the org's first agent and re-materializing it is churn.
   listReturns(agent("ws/First"), agent("ws/Second"));
   const startLogin = vi.fn().mockResolvedValue({
     kind: "device_code",
@@ -196,7 +169,7 @@ test("provider login falls back to a live agent when the selected pref is stale 
   });
 
   const c = client();
-  await c.listAgents("ws"); // prunes the pref + notes the live id set
+  await c.listAgents("ws");
   await c.providerLogin("openai");
 
   expect(runtimeClientFor).toHaveBeenCalledWith(expect.anything(), "ws/Alive");
@@ -204,13 +177,6 @@ test("provider login falls back to a live agent when the selected pref is stale 
 });
 
 test("before any agent list resolves, a connect REFUSES instead of trusting the pref", async () => {
-  // Reversed by HOU-979. The pref used to be trusted as-is here, on the theory
-  // that boot prunes a stale one the moment the list lands. That holds for a
-  // DELETED agent but not for a SPACE SWITCH: the pref is not space-aware, so
-  // between the switch and the new `listAgents` it names an agent that belongs
-  // to the space the user just left. Starting a login there would run the OAuth
-  // flow in another space's pod under this space's `x-houston-org` header.
-  // Refusing for the moment the list takes to resolve is the honest trade.
   store.set(PREF, "ws/Selected");
   const startLogin = vi.fn();
   runtimeClientFor.mockReturnValue({ startLogin });

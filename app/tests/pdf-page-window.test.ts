@@ -3,10 +3,6 @@ import { describe, it, mock } from "node:test";
 import "./support/dom-env.ts";
 import { onePagePdf, workerThread } from "./fixtures/pdf-worker.ts";
 
-// A page that leaves the viewer's render window gives back its canvas pixels
-// (WebKit budgets live canvases) and its text layer, and rebuilds both when it
-// comes back.
-
 const React = await import("react");
 Object.assign(globalThis, { React });
 const { act, createElement: h, useEffect } = React;
@@ -113,16 +109,8 @@ describe("pdf page render window", () => {
   });
 });
 
-// Clicking another PDF in the file list unmounts the open viewer and mounts
-// the next one in the same commit (the panel keys the preview by file). The
-// old document's close needs an answer from the pdf.js worker, and the worker
-// is one thread shared by every document, so the next document routinely
-// opens while that close is still in flight. It must open all the same.
-
 type DocumentState = ReturnType<typeof usePdfDocument>;
 
-/** A PDF file whose `read` settles once the viewer has taken its bytes and
- *  handed them to pdf.js (the task after the read's own microtasks). */
 class PdfFile extends Blob {
   #read = Promise.withResolvers<void>();
   read = this.#read.promise;
@@ -150,8 +138,6 @@ function Viewer(props: {
 
 describe("pdf document switch", () => {
   it("opens the next document while the previous one is still closing", async (t) => {
-    // The viewer's state arrives on its own schedule; the test awaits it
-    // rather than driving it through `act`.
     const env = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
     env.IS_REACT_ACT_ENVIRONMENT = false;
     t.after(() => {
@@ -161,7 +147,6 @@ describe("pdf document switch", () => {
     document.body.append(container);
     const root = createRoot(container);
     const errors: string[] = [];
-    /** Show `file` in a viewer of its own; resolves with where it lands. */
     const show = (name: string, file: Blob) => {
       const landed = Promise.withResolvers<DocumentState>();
       const onState = (state: DocumentState) => {

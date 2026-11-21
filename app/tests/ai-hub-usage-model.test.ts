@@ -42,10 +42,6 @@ describe("hasConfirmedAccount", () => {
       map[p.id] ?? "disconnected";
 
   it("is false when every account on the strip is still unconfirmed", () => {
-    // The state a waking pod / unreachable engine produces: every probe comes
-    // back `unknown`, so the strip is full and there is nothing to read. The
-    // engine call THROWS in exactly this state, so asking would be a failure
-    // on a loop.
     strictEqual(
       hasConfirmedAccount(
         [card("anthropic"), card("openai")],
@@ -75,10 +71,6 @@ describe("hasConfirmedAccount", () => {
 
 describe("usageSlot", () => {
   it("makes NO metering claim about an account it could not confirm", () => {
-    // The bug this guards: a `checking` row falling through to "No usage yet.
-    // Houston will start measuring with your next message." — a promise about
-    // an account Houston cannot even read. Nothing renders instead, in every
-    // fetch state, whatever the engine happened to report.
     for (const fetchState of ALL_FETCH_STATES) {
       deepStrictEqual(usageSlot("checking", fetchState, null), {
         kind: "hidden",
@@ -125,7 +117,6 @@ describe("usageSlot", () => {
         note: "error",
       },
     );
-    // `ok` with nothing in it is its own honest note, not an empty meter.
     deepStrictEqual(usageSlot("connected", "ready", row("anthropic")), {
       kind: "note",
       note: "noData",
@@ -147,8 +138,6 @@ describe("usageSlot", () => {
 
 describe("matchUsageToProviders", () => {
   it("pairs display cards with engine rows across the id rename", () => {
-    // The Codex card is the DISPLAY id `openai`; the engine row speaks
-    // `openai-codex`. The pairing must bridge the rename.
     const accounts = matchUsageToProviders(
       [card("openai"), card("anthropic")],
       [row("anthropic"), row("openai-codex")],
@@ -210,8 +199,6 @@ describe("formatTokensAmount", () => {
 
 describe("formatMeteredSince", () => {
   it("renders a short localized date and null for junk", () => {
-    // Midday UTC so the short date is stable across test-machine timezones
-    // (a midnight instant renders as the previous day west of UTC).
     strictEqual(formatMeteredSince("2026-07-01T12:00:00.000Z", "en"), "Jul 1");
     strictEqual(formatMeteredSince("", "en"), null);
     strictEqual(formatMeteredSince("garbage", "en"), null);

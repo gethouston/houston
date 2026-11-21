@@ -22,18 +22,15 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
     }),
   ).toBe(true);
 
-  // A signin step needs only kind + id; reason is optional.
   expect(isPendingInteraction({ steps: [{ kind: "signin", id: "s1" }] })).toBe(
     true,
   );
 
-  // A plan_ready step needs kind + id + a string summary.
   expect(
     isPendingInteraction({
       steps: [{ kind: "plan_ready", id: "p1", summary: "The plan." }],
     }),
   ).toBe(true);
-  // A plan_ready step with a missing / non-string summary is invalid.
   expect(
     isPendingInteraction({ steps: [{ kind: "plan_ready", id: "p1" }] }),
   ).toBe(false);
@@ -43,7 +40,6 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
     }),
   ).toBe(false);
 
-  // A suggest_reusable step needs kind + id + reusableKind + title + rationale.
   expect(
     isPendingInteraction({
       steps: [
@@ -57,7 +53,6 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
       ],
     }),
   ).toBe(true);
-  // A learning suggestion (the reflection step's third kind) is valid.
   expect(
     isPendingInteraction({
       steps: [
@@ -71,7 +66,6 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
       ],
     }),
   ).toBe(true);
-  // An invalid reusableKind is invalid.
   expect(
     isPendingInteraction({
       steps: [
@@ -85,7 +79,6 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
       ],
     }),
   ).toBe(false);
-  // A missing title/rationale is invalid.
   expect(
     isPendingInteraction({
       steps: [{ kind: "suggest_reusable", id: "r1", reusableKind: "routine" }],
@@ -141,14 +134,11 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
     }),
   ).toBe(false);
 
-  // A signin step with a non-string reason is invalid.
   expect(
     isPendingInteraction({ steps: [{ kind: "signin", id: "s1", reason: 7 }] }),
   ).toBe(false);
-  // A signin step without an id is invalid.
   expect(isPendingInteraction({ steps: [{ kind: "signin" }] })).toBe(false);
 
-  // Pre-step shapes persisted by older builds: no `steps`.
   expect(
     isPendingInteraction({ kind: "question", question: "Which deck?" }),
   ).toBe(false);
@@ -162,7 +152,6 @@ test("isPendingInteraction accepts the step-sequence shape and rejects legacy sh
     false,
   );
 
-  // Structural junk.
   expect(isPendingInteraction(null)).toBe(false);
   expect(isPendingInteraction(undefined)).toBe(false);
   expect(isPendingInteraction({ steps: [] })).toBe(false);
@@ -185,8 +174,6 @@ test("a whole interaction mixing question → signin → connect is accepted", (
 });
 
 test("a question step carries an optional toolkit slug", () => {
-  // The card brands itself with the app's logo when the question confirms an
-  // app action: a string toolkit is accepted.
   expect(
     isPendingInteraction({
       steps: [
@@ -204,7 +191,6 @@ test("a question step carries an optional toolkit slug", () => {
     }),
   ).toBe(true);
 
-  // A non-string toolkit is invalid.
   expect(
     isPendingInteraction({
       steps: [
@@ -213,7 +199,6 @@ test("a question step carries an optional toolkit slug", () => {
     }),
   ).toBe(false);
 
-  // Omitting toolkit is fine — most questions concern no app.
   expect(
     isPendingInteraction({
       steps: [{ kind: "question", id: "q1", question: "Which week?" }],
@@ -222,9 +207,6 @@ test("a question step carries an optional toolkit slug", () => {
 });
 
 test("an unrecognized step kind is DROPPED, not fatal (mixed-version peer)", () => {
-  // A peer on an older build carries a step kind this build no longer knows
-  // (e.g. the retired `approval` step). The parse keeps the valid steps and
-  // drops the unknown one — the card still renders — never throwing.
   const withUnknown = {
     steps: [
       { kind: "question", id: "q1", question: "Which draft?" },
@@ -244,10 +226,8 @@ test("an unrecognized step kind is DROPPED, not fatal (mixed-version peer)", () 
       { kind: "connect", id: "c1", toolkit: "gmail" },
     ],
   });
-  // The boolean guard stays tolerant: valid steps survive → not absent.
   expect(isPendingInteraction(withUnknown)).toBe(true);
 
-  // An interaction of ONLY unknown steps drops to undefined (nothing to render).
   expect(
     parsePendingInteraction({
       steps: [{ kind: "approval", id: "a1", toolkit: "gmail" }],
@@ -259,13 +239,11 @@ test("an unrecognized step kind is DROPPED, not fatal (mixed-version peer)", () 
     }),
   ).toBe(false);
 
-  // No `steps` array at all → undefined, never a throw.
   expect(parsePendingInteraction({ kind: "question" })).toBeUndefined();
   expect(parsePendingInteraction(null)).toBeUndefined();
 });
 
 test("question options tolerate the optional description/recommended fields", () => {
-  // Options carrying the new optional fields still pass the guard.
   expect(
     isPendingInteraction({
       steps: [
@@ -287,7 +265,6 @@ test("question options tolerate the optional description/recommended fields", ()
     }),
   ).toBe(true);
 
-  // Plain {id,label} options (no new fields) still pass unchanged.
   expect(
     isPendingInteraction({
       steps: [
@@ -304,8 +281,6 @@ test("question options tolerate the optional description/recommended fields", ()
     }),
   ).toBe(true);
 
-  // The guard does not REQUIRE the new fields: a question step with no
-  // options at all remains valid.
   expect(
     isPendingInteraction({
       steps: [{ kind: "question", id: "q1", question: "Open question?" }],
@@ -333,10 +308,6 @@ test("the protocol index re-exports PendingInteraction", () => {
   const bad: PendingInteraction = { steps: [{ kind: "unknown" }] };
   void bad;
 });
-
-// ── The offers-only predicate ───────────────────────────────────────────────
-// One spelling for "nothing blocking here", so the surfaces that gate on it
-// (the chat panel's override, the two offer resolvers) can never disagree.
 
 const ACTIONS_STEP = {
   kind: "suggest_actions" as const,
@@ -367,13 +338,8 @@ test("hasOnlySuggestionSteps is true only for a non-empty, blocking-free sequenc
   expect(
     hasOnlySuggestionSteps([{ kind: "connect", id: "c1", toolkit: "gmail" }]),
   ).toBe(false);
-  // An empty sequence offers nothing — `every` alone would call it true.
   expect(hasOnlySuggestionSteps([])).toBe(false);
 });
-
-// ── The shared PATCH rule ───────────────────────────────────────────────────
-// The host, the app's local write path and the fake host all resolve through
-// this, so the three can never drift.
 
 test("resolveInteractionPatch: null clears, a valid object replaces verbatim", () => {
   expect(
@@ -391,7 +357,6 @@ test("resolveInteractionPatch: null clears, a valid object replaces verbatim", (
     status: "done",
   });
   expect(outcome).toEqual({ kind: "set", interaction: patched });
-  // Verbatim: a step kind only a newer peer knows survives the round-trip.
   if (outcome.kind === "set") expect(outcome.interaction).toBe(patched);
 });
 
@@ -420,8 +385,6 @@ test("resolveInteractionPatch: an absent field keeps, except on a move to done",
 });
 
 test("resolveInteractionPatch: a MALFORMED payload is absent, never 'keep what's stored'", () => {
-  // A pre-step build's shape: no `steps` at all. Left as "keep", a done patch
-  // carrying it would skip the strip and leave a question stepper on a Done card.
   const malformed = { kind: "question", question: "Which deck?" };
   expect(
     resolveInteractionPatch({
@@ -430,7 +393,6 @@ test("resolveInteractionPatch: a MALFORMED payload is absent, never 'keep what's
       status: "done",
     }),
   ).toEqual({ kind: "set", interaction: { steps: [ACTIONS_STEP] } });
-  // Off a done patch it still says nothing: the stored value stands.
   expect(
     resolveInteractionPatch({
       patched: malformed,
@@ -448,8 +410,6 @@ test("a hands-on errand survives the wire guard and keeps its optional reason", 
     reason: "Copy the key Houston shows you once.",
   };
   expect(isPendingInteraction({ steps: [step] })).toBe(true);
-  // Stored VERBATIM: the reason is the model's own words to the person, so a
-  // round trip through the wire must not reword or drop it.
   expect(parsePendingInteraction({ steps: [step] })).toEqual({ steps: [step] });
   expect(
     isPendingInteraction({
@@ -474,8 +434,6 @@ test("an errand on ONE employee's screen carries that employee, additively", () 
     reason: "Copy the setup prompt for your coding tool.",
   };
   expect(parsePendingInteraction({ steps: [step] })).toEqual({ steps: [step] });
-  // Optional: the other screens are no one's. A step that lacks it still
-  // parses; the app then offers no way in rather than guessing an employee.
   const { agentId: _omitted, ...withoutAgent } = step;
   expect(isInteractionStep(withoutAgent)).toBe(true);
   for (const agentId of ["", 7, null])
@@ -483,8 +441,6 @@ test("an errand on ONE employee's screen carries that employee, additively", () 
 });
 
 test("the hands-on vocabulary is closed and its guard agrees with the union", () => {
-  // The app navigates by these names; a screen it cannot open must never reach
-  // a card, so the tool refuses anything outside the list at the source.
   expect([...HANDS_ON_SURFACES]).toEqual([
     "apiKeys",
     "billing",
@@ -516,12 +472,10 @@ test("a hands-on errand is a BLOCKING step, void once the user closes the missio
 
 test("a question step's wantsFiles flag is optional and must be a boolean", () => {
   const question = { kind: "question", id: "q1", question: "Send the logo?" };
-  // Persisted before the flag existed: still a valid question.
   expect(isInteractionStep(question)).toBe(true);
   expect(isInteractionStep({ ...question, wantsFiles: true })).toBe(true);
   expect(isInteractionStep({ ...question, wantsFiles: false })).toBe(true);
   expect(isInteractionStep({ ...question, wantsFiles: "yes" })).toBe(false);
-  // Kept verbatim through the parse, so the card can read it.
   expect(
     parsePendingInteraction({ steps: [{ ...question, wantsFiles: true }] }),
   ).toEqual({ steps: [{ ...question, wantsFiles: true }] });

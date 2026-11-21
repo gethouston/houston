@@ -7,9 +7,6 @@ import { mobileBuildEnv } from "./src/build-env";
 
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, __dirname, ""), ...process.env };
-  // Local shell builds can reuse only the public Firebase identity values from
-  // the repo's .env.local. Loading that file as Vite's envDir would also bake
-  // unrelated VITE_* development tokens into the shipped mobile bundle.
   const firebaseDefaults = loadEnv(
     mode,
     path.resolve(__dirname, "../.."),

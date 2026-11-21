@@ -10,7 +10,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** What the user typed while Inbox Zero was still working. */
 const QUEUED: QueuedChatMessage[] = [
   { id: "q-1", text: "Also archive anything older than a year." },
   {
@@ -21,14 +20,12 @@ const QUEUED: QueuedChatMessage[] = [
   { id: "q-3", text: "", attachmentNames: ["receipts.csv", "vendors.csv"] },
 ];
 
-/** Spanish labels, to show the list carries no English of its own. */
 const SPANISH_LABELS = {
   title: "En cola",
   remove: "Quitar mensaje en cola",
   attachmentsOnly: "Archivos",
 };
 
-/** A list whose remove control really removes. */
 function LiveQueue() {
   const [messages, setMessages] = useState(QUEUED);
   return (
@@ -136,7 +133,6 @@ function ChatQueuedMessagesSpecimen() {
   );
 }
 
-/** The `@houston-ai/*` symbols this page documents. */
 export const sources: string[] = ["QueuedMessageList"];
 
 export const specimen: Specimen = {

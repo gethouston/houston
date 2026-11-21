@@ -5,38 +5,6 @@ import {
 import { assistantCapabilityMap } from "./assistant-capability-map";
 import { houstonApiServedHere } from "./houston-api-served";
 
-/**
- * The personal assistant's always-on context, folded into its system prompt
- * right after its memory: the MAP of everything it can do in Houston, then the
- * LOOP every request runs through.
- *
- * Three failures shaped it. It acts ON Houston (`houston_capabilities` /
- * `houston_describe` / `houston_call`), and asked to recolour an agent it
- * guessed three colour formats against a closed palette, then deleted and
- * recreated the agent rather than looking for the operation that changes the
- * colour. Asked for work, it started missions on itself - a board nobody can
- * see - while telling the user the chat was running as one of their agents.
- * And asked to delete a mission it answered that Houston cannot delete
- * missions, with `deleteActivity` sitting in the catalog the whole time: a
- * search it never ran, answered from memory instead.
- *
- * That last one is why the map is here at all. Search alone is opt-in, and a
- * model only searches for what it already believes exists; the map removes the
- * belief from the loop by naming the whole surface up front. It is generated
- * from the catalog (`pnpm gen:assistant-catalog`), so a new operation reaches
- * this prompt the day it is annotated, with nothing to remember here — narrowed
- * to what THIS deployment serves (`./assistant-capability-map.ts`), because a
- * map is only useful while everything on it is somewhere the model can go.
- *
- * The rules are written for the model, not the user: they name tools, and their
- * first line is that the user must never hear any of that vocabulary back.
- *
- * The gate is the same one the memory section uses: the ROLE the host gave this
- * process. A managed assistant pod runs under `/workspace` with an
- * ordinarily-named agent, so keying off the directory would leave the pod
- * holding the coordinator's toolset with none of the rails that govern it.
- */
-/** Opens the rules; tests locate the section by it. */
 export const RULES_HEADING = "# How you operate";
 
 const RULES = `${RULES_HEADING}
@@ -57,23 +25,8 @@ Connection setup is yours. Discover available apps and custom integration setup 
 
 Work itself is never yours: research, writing, code, analysis and browsing all belong to one of the user's agents. Read what each agent is for, name the one you chose and why, start the work as a mission on that agent's board, and tell the user where it lives. If none fits, propose creating one (a name and a one-line role) and ask before you create it. Work you start runs on the agent you named; never claim work ran somewhere it did not. When the user names a model or provider, pin it exactly - resolve the friendly name ("Luna", "Sonnet", "Opus 4.6") to the value the tool lists and pass it, never drop it; if you cannot resolve it, ask which one they mean and never start the mission on a default.`;
 
-/**
- * The Houston API, told only where this deployment serves it
- * ({@link houstonApiServedHere}): a manager on a desktop would otherwise pitch
- * an API its people cannot reach and queue cards for a screen that is not
- * there. It is also the one place the rules let identifiers and protocols into
- * the conversation, so it says so itself rather than loosening the
- * non-technical line for everyone.
- */
 const API_RULES = `Their own code, an automation, or another AI agent or assistant can start tasks with one of their AI Employees and get the results back through the Houston API; say that in plain words when they want to use an employee that way. Only an employee's managers can connect it: when listAgents gives their access to that employee as anything but manager, tell them to ask that employee's manager instead. Otherwise, unless they say they already have an API key, call request_hands_on with apiKeys first - that card lets them create and copy a key right in this chat, and you never see it - then with agentApiAccess and that employee's id from listAgents as agent - that card shows the employee's Agent ID, Organization ID and a ready prompt for their AI agent, right in this chat. Never write that prompt yourself: only the card knows the address it needs. Never create, show, ask for or relay an API key in chat. You may share https://gethouston.ai/developers. This is the one exception to keeping things non-technical: when they ask for the IDs, you may state them (the Agent ID is the id listAgents returns, the Organization ID is the slug getOrg returns for the space you are working in), and when a technical person asks how the API works, you may explain it - a personal key in the Authorization header, the x-houston-org header naming their organization, missions over REST, MCP, A2A - and point to that link.`;
 
-/**
- * The coordinator's always-on section - the capability map followed by the
- * rules - or null for every other agent. The role defaults to this process's
- * own (what the host told it); tests and other callers pass it explicitly. It
- * takes no directory: the coordinator is a role this process was given, not a
- * place it happens to run in. `env` carries the host's unserved stamp.
- */
 export function buildAssistantRulesSection(
   role: AssistantRuntimeRole | null = readAssistantRole(),
   env: NodeJS.ProcessEnv = process.env,

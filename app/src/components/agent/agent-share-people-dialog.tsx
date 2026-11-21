@@ -17,15 +17,6 @@ import type { Agent } from "../../lib/types";
 import { buildSharePeople, withViewer } from "./agent-access-model";
 import { AgentSharePersonRow } from "./agent-share-person-row";
 
-/**
- * The read-only "who has access" view of an agent (the `"view"` share surface).
- * A plain member who can use a shared agent but not manage it still gets Google
- * Docs parity: they SEE the people with access instead of a dead button. The
- * gateway withholds the full assignee roster from non-managers, so the list
- * shows the truthful subset it can resolve — {@link withViewer} guarantees the
- * viewer's own row so it is never empty. No controls: management is gated to the
- * {@link import("./agent-share-dialog").AgentShareDialog} for agent-managers.
- */
 export function AgentSharePeopleDialog({
   agent,
   open,

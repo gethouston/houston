@@ -1,6 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/** The sidebar's public API, read off `ui/core/src/components/sidebar.tsx`. */
 export const sidebarProps: SpecimenProp[] = [
   {
     name: "SidebarProvider.defaultOpen / open / onOpenChange",
@@ -64,7 +63,6 @@ export const sidebarProps: SpecimenProp[] = [
   },
 ];
 
-/** Every colour utility the sidebar parts paint with. */
 export const sidebarTokens = [
   "bg-sidebar",
   "text-sidebar-text",

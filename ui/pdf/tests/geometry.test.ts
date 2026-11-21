@@ -12,7 +12,6 @@ import type { PdfBox } from "../src/types.ts";
 
 const PAGE = { width: 1000, height: 562.5 };
 
-/** The pin's own box in page pixels, from its center in percent. */
 const pinBox = (p: { x: number; y: number }) => ({
   left: (p.x / 100) * PAGE.width - PIN_SIZE / 2,
   top: (p.y / 100) * PAGE.height - PIN_SIZE / 2,

@@ -58,8 +58,6 @@ test("first-day uses the host input validation", async () => {
   expect(pool.writes).toEqual([]);
 });
 
-// A worker 500 is the one failure that fast-fails every op of the agent for
-// a window on the gateway; a body the pod's parser throws on answers 400.
 test.each([
   "{",
   "null",

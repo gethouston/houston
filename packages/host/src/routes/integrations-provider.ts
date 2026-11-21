@@ -6,14 +6,6 @@ import { IntegrationSigninRequiredError } from "../integrations/types";
 import { json, optionalTrimmed, readJson } from "./http";
 import { relayIntegrationUpstreamError, signinRequired } from "./integrations";
 
-/**
- * The per-provider half of the user integrations surface:
- * `/v1/integrations/:provider/*` — the toolkit catalog, the user's
- * connections, connect (a real OAuth redirect), a connection poll, disconnect,
- * plus search/execute for the desktop gateway.
- */
-
-/** Resolve the provider from the URL segment, or 404. */
 function providerOr404(
   registry: IntegrationRegistry,
   id: string | undefined,
@@ -24,8 +16,6 @@ function providerOr404(
   return null;
 }
 
-/** Answer one `/v1/integrations/:provider/<sub>` request. Always answers: a
- *  sub this family does not know is a 404 from here, not a fall-through. */
 export async function handleProviderRequest(
   registry: IntegrationRegistry,
   userId: UserId,
@@ -69,9 +59,6 @@ export async function handleProviderRequest(
         json(res, 400, { error: "missing 'toolkit'" });
         return;
       }
-      // Optional `connectionId` narrows the removal to ONE account of the
-      // toolkit (a toolkit can hold several — two Gmail logins); absent, every
-      // account for the toolkit goes.
       await provider.disconnect(
         userId,
         toolkit,
@@ -88,13 +75,6 @@ export async function handleProviderRequest(
         json(res, 400, { error: "missing 'query'" });
         return;
       }
-      // Optional `app` hard-scopes discovery to one named app (PRODUCT-1274);
-      // the desktop gateway adapter forwards it here verbatim. STRICTLY
-      // scoped — no unscoped fallback here: the sandbox proxy at the top of
-      // the chain owns that retry, so a scoped call through this route never
-      // smuggles other apps' actions into a caller's merge. The `scoped` echo
-      // tells a downstream remote adapter what became of the scope (absent =
-      // the provider ignored it, which the adapter must surface, not trust).
       const result = await provider.search(
         userId,
         query,
@@ -118,8 +98,6 @@ export async function handleProviderRequest(
         body.params && typeof body.params === "object"
           ? (body.params as Record<string, unknown>)
           : {};
-      // Optional `account` targets one of the user's connected accounts for
-      // the action's toolkit (see IntegrationProvider.execute).
       const account =
         typeof body.account === "string" && body.account
           ? body.account

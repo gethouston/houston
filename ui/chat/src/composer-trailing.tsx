@@ -1,8 +1,3 @@
-/**
- * The composer's trailing controls: the dictate mic and the send/stop button,
- * or the dictation actions while a capture runs. Internal to ChatInput.
- */
-
 import { MicIcon } from "lucide-react";
 import { PromptInputSubmit } from "./ai-elements/prompt-input";
 import { DictationActions, DictationTranscribing } from "./dictation-controls";
@@ -13,20 +8,11 @@ export interface ComposerTrailingProps {
   status: "ready" | "streaming" | "submitted";
   hasContent: boolean;
   onStop?: () => void;
-  /** When absent (e.g. the web build) no mic affordance renders at all. */
   dictation?: DictationControl;
-  /** Locks the composer: submit goes inert and the mic is hidden. */
   disabled?: boolean;
-  /** The send button's names; English defaults. */
   submitLabels?: { submit?: string; stop?: string };
 }
 
-/**
- * Trailing button row. Idle/absent: an optional mic button (idle) + the
- * always-visible submit. While a capture is in flight the composer's input row
- * is taken over by the waveform, so this slot swaps to the dictation actions
- * (✕ cancel + ✓ accept, or a transcribing spinner) and hides submit entirely.
- */
 export function ComposerTrailing({
   status,
   hasContent,
@@ -51,7 +37,6 @@ export function ComposerTrailing({
 
   const submitDisabled = disabled || (status === "ready" && !hasContent);
   return (
-    // Phone gap 8px: the mic's and send's 4px hit-slops meet without overlap.
     <div className="flex items-center gap-2 [grid-area:trailing] md:gap-1.5">
       {view.kind === "idle" && status === "ready" && !disabled && dictation && (
         <button

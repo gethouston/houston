@@ -7,15 +7,6 @@ import type { TurnFilesystem } from "./turn-filesystem";
 import { publishStoreDoc } from "./turn-store-doc";
 import type { TurnRequest } from "./types";
 
-/**
- * Project a claimed turn's routines write (the auto-pause, the agent's
- * save_routine) into the routines DB doc, NORMALIZED like the standing
- * projector. The gateway answers a sleeping agent's Routines tab from that
- * doc, so without this a routine the worker paused still reads as running
- * until the pod next boots. Derived from the store object, never the turn's
- * copy: a user's edit can land and project between this turn's upload and
- * its publish.
- */
 export async function publishTurnRoutinesDoc(
   deps: TurnServerDeps,
   turn: TurnRequest,

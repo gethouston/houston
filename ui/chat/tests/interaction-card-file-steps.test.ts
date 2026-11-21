@@ -1,8 +1,3 @@
-// PRODUCT-2132: every question that wants files is answered by its own files.
-// A file a step already claimed stays with that step; the files attached on a
-// later `wantsFiles` question are that question's answer, and only those show
-// under its upload area. Every attached file still rides the final answer.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
@@ -44,8 +39,6 @@ describe("a question that wants files", () => {
     attach([logo]);
     click(sendButton());
 
-    // The logo answered the first question, so it neither shows here nor
-    // answers this one.
     assert.equal(chips("logo.png"), 0);
     assert.equal(sendButton().disabled, true);
     attach([photo]);
@@ -90,7 +83,6 @@ describe("a question that wants files", () => {
     type("here is my logo");
     click(sendButton());
 
-    // The logo answered the first question, so it can't answer this one.
     assert.equal(chips("logo.png"), 0);
     assert.equal(sendButton().disabled, true);
     attach([photo]);

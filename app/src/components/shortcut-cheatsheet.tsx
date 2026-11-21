@@ -10,8 +10,6 @@ import { shortcutLabel } from "../lib/shortcuts";
 import { useUIStore } from "../stores/ui";
 
 interface Row {
-  /** Either a single action (label = its glyph) or an array of glyphs
-   *  rendered together (e.g. all four arrow keys for board nav). */
   glyphs: string;
   labelKey: string;
 }

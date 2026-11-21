@@ -11,17 +11,8 @@ import {
   SUGGEST_REUSABLE_TOOL_NAME,
 } from "./suggest-reusable";
 
-/**
- * The execute/auto reusable-suggestion tool. These pin: the tool records the
- * single suggest-reusable step (id `r1`), trims title/rationale, rejects an
- * empty title or rationale, returns the do-not-repeat-and-finish-normally
- * instruction (NOT an end-your-turn block), and is a no-op outside a turn.
- */
-
 const suggestReusable = makeSuggestReusableTool();
 
-// pi's tool.execute takes (id, params, signal, onUpdate, ctx); the last three
-// are irrelevant here, so one helper supplies them.
 const ctx = {} as unknown as ExtensionToolContext;
 const run = (params: unknown) =>
   suggestReusable.execute("id", params as never, undefined, undefined, ctx);

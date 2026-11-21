@@ -1,16 +1,3 @@
-/**
- * The prompt a person pastes into their AI agent or AI assistant to wire one
- * AI Employee into their own code through the Houston API. One builder for
- * every surface: the employee's API access screen copies it, and the AI
- * Manager points people at that screen instead of writing its own.
- *
- * It NEVER carries a key. A copied prompt lands in chat histories and repos, so
- * it names the `HOUSTON_API_KEY` environment variable instead and tells the
- * agent to ask for the key, never to print, hardcode or commit it.
- * Copying the prompt mints nothing.
- */
-
-/** The public developer docs (`website/src/developers/*`), one page per face. */
 export const HOUSTON_API_DOCS = {
   overview: "https://gethouston.ai/developers",
   missions: "https://gethouston.ai/developers/missions",
@@ -18,16 +5,12 @@ export const HOUSTON_API_DOCS = {
   a2a: "https://gethouston.ai/developers/a2a",
 } as const;
 
-/** The environment variable the prompt tells the agent to read. */
 export const HOUSTON_API_KEY_ENV = "HOUSTON_API_KEY";
 
 export interface ApiSetupPromptInput {
-  /** The gateway origin the person's code calls, e.g. `https://gateway.gethouston.ai`. */
   baseUrl: string;
-  /** The employee's public slug (its client-side id on the hosted gateway). */
   agentId: string;
   agentName: string;
-  /** The organization the employee lives in, sent as `x-houston-org`. */
   orgId: string;
 }
 

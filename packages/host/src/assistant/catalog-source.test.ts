@@ -2,14 +2,6 @@ import { describe, expect, test } from "vitest";
 import { ASSISTANT_CATALOG_VERSION, findVisibleOperation } from "./catalog";
 import { processAssistantCatalog, readEmbeddedCatalog } from "./catalog-source";
 
-/**
- * The catalog is EMBEDDED: what this file proves is that the document compiled
- * into the build is the real one and that it survives the envelope guard, which
- * is the whole difference between a shipped assistant and one that reports
- * "catalog unavailable" on an installed machine.
- */
-
-/** A minimal well-formed document, for the guard cases. */
 const fixture = {
   version: ASSISTANT_CATALOG_VERSION,
   sourceHash: "fixture",
@@ -35,7 +27,6 @@ const fixture = {
 };
 
 describe("the embedded catalog", () => {
-  // Counts are floors, not equalities — the catalog grows with the client.
   test("carries the generated operation set", () => {
     const catalog = readEmbeddedCatalog();
     if (!catalog) throw new Error("the embedded catalog must load");
@@ -47,8 +38,6 @@ describe("the embedded catalog", () => {
     ).toBeGreaterThanOrEqual(90);
   });
 
-  // The dispatcher resolves by name, so a document that parsed but carried
-  // shapes nothing can address would still be a dead assistant.
   test("resolves a routable operation the dispatcher can address", () => {
     const catalog = readEmbeddedCatalog();
     if (!catalog) throw new Error("the embedded catalog must load");
@@ -69,9 +58,6 @@ describe("the envelope guard", () => {
     expect(readEmbeddedCatalog(fixture)?.operations).toHaveLength(1);
   });
 
-  // Fail CLOSED: a build whose embedded document is unreadable performs nothing,
-  // and says so once, rather than dispatching against a half-read catalog or
-  // crashing the boot.
   test.each([
     ["a version this build does not read", { ...fixture, version: 4 }],
     ["a missing field", { version: ASSISTANT_CATALOG_VERSION }],

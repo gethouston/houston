@@ -1,7 +1,6 @@
 import { Switch } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 
-/** Team-only opt-in for publishing the endpoint through the managed gateway. */
 export function ShareEndpointToggle({
   id = "lm-share",
   checked,

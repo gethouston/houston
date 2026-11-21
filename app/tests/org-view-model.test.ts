@@ -14,10 +14,7 @@ const SINGLE_PLAYER_EXPLICIT: Capabilities = { multiplayer: false };
 const OWNER: Capabilities = { multiplayer: true, role: "owner" };
 const ADMIN: Capabilities = { multiplayer: true, role: "admin" };
 const MEMBER: Capabilities = { multiplayer: true, role: "user" };
-// A multiplayer host that (invalidly) omits the role → clamp to least-privileged.
 const NO_ROLE: Capabilities = { multiplayer: true };
-// C8 Spaces hosts: the personal/team split is live, so the gate keys on the
-// active-space boolean too.
 const SPACES_OWNER: Capabilities = {
   multiplayer: true,
   spaces: true,
@@ -36,7 +33,6 @@ const SPACES_MEMBER: Capabilities = {
 
 describe("canSeeOrganization", () => {
   it("shows the Organization view to a multiplayer owner and admin", () => {
-    // Non-spaces (legacy Teams v2): the active-space boolean is irrelevant.
     strictEqual(canSeeOrganization(OWNER, false), true);
     strictEqual(canSeeOrganization(OWNER, true), true);
     strictEqual(canSeeOrganization(ADMIN, false), true);
@@ -72,8 +68,6 @@ describe("canSeeOrganization", () => {
 
 describe("ORG_TAB_IDS", () => {
   it("is a team space's always-present sections in display order", () => {
-    // The Org chart leads because it is the header's identity lozenge (the
-    // landing section). Company context is a header tool, never a section.
     strictEqual(ORG_TAB_IDS.join(","), "orgChart,people,activity");
   });
 });
@@ -93,7 +87,6 @@ describe("orgTabIds", () => {
 
 describe("personal workspace sections", () => {
   it("keeps the Org chart and its Billing, with no roster to administer", () => {
-    // The Personal row is an org that bills its sole owner, so Billing stays.
     strictEqual(
       orgTabIds({ personal: true, billing: true }).join(","),
       "orgChart,billing",
@@ -106,7 +99,6 @@ describe("personal workspace sections", () => {
 });
 
 function makePage(count: number): AuditEntry[] {
-  // Newest-first: ids descend, so the last (oldest) is the smallest id.
   return Array.from({ length: count }, (_, i) => ({
     id: 1000 - i,
     orgId: "org",

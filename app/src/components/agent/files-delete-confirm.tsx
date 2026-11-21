@@ -8,26 +8,10 @@ import {
   targetFiles,
 } from "./files-delete-copy";
 
-/**
- * "Move to Trash" confirmation for the Files section. Deleting used to fire
- * straight off the context menu with no undo anywhere in the product, so a
- * mis-click on the wrong row silently destroyed the agent's work (HOU-970).
- *
- * One dialog, two copies (which words go with which target is decided by
- * `deleteCopy` in files-delete-copy.ts). The dialog owns only the target and
- * its own visibility; the caller owns the delete.
- *
- * Visibility and copy are deliberately separate state: the dialog keeps
- * rendering through its exit animation, so `target` outlives the close and the
- * copy holds its name or count all the way out instead of flipping to the
- * empty variant for the length of the fade.
- */
 export function useFilesDeleteConfirm(
   onConfirm: (files: FileEntry[]) => void,
 ): {
-  /** Kebab / context-menu delete: the dialog NAMES the file or folder. */
   requestDelete: (file: FileEntry) => void;
-  /** Selection-bar delete: the dialog COUNTS the items. */
   requestDeleteMany: (files: FileEntry[]) => void;
   dialog: ReactNode;
 } {
@@ -39,8 +23,6 @@ export function useFilesDeleteConfirm(
     setOpen(true);
   }, []);
   const requestDeleteMany = useCallback((files: FileEntry[]) => {
-    // An empty selection has nothing to confirm, and "Move 0 items to Trash?"
-    // is not a question worth asking.
     if (files.length === 0) return;
     setTarget({ kind: "batch", files });
     setOpen(true);

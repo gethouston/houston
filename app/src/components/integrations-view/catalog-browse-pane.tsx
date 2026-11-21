@@ -7,7 +7,6 @@ import type { ConnectFlow } from "../integrations";
 import { matchesQuery } from "../integrations/browse-model";
 import { CatalogPane } from "./catalog-pane";
 
-/** The Composio browse pane, including its late-connect query guard. */
 export function CatalogBrowsePane({
   catalog,
   connections,
@@ -30,7 +29,6 @@ export function CatalogBrowsePane({
   isLoading: boolean;
   connectFlow: ConnectFlow;
   onRemove: (toolkit: string, connectionId?: string) => void;
-  /** Curated entry pressed — the surface opens its dedicated connect dialog. */
   onCuratedConnect?: (slug: string, providerConnect: () => void) => void;
   children?: ReactNode;
 }) {

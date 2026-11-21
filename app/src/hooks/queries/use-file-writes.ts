@@ -19,25 +19,16 @@ import { queryKeys } from "../../lib/query-keys";
 import { showReadOnlyToast } from "../../lib/read-only-toast";
 import { tauriFiles } from "../../lib/tauri";
 
-/**
- * An agent's file writes, painted into its listing the moment the person acts
- * and sent in the background. Every method resolves once the host answered
- * and never rejects: a refusal rolls the listing back and gets exactly one
- * surface (`classifyFileWriteRefusal`). The host's `FilesChanged` event and
- * the settle-time refetch then replace the guess with the real listing.
- */
 export interface FileWrites {
   remove: (paths: readonly string[]) => Promise<void>;
   rename: (path: string, newName: string) => Promise<void>;
   createFolder: (path: string) => Promise<void>;
   move: (path: string, toDir: string | null) => Promise<void>;
-  /** Move onto an occupied name: the occupant goes first, then the move. */
   replace: (
     occupant: string,
     path: string,
     toDir: string | null,
   ) => Promise<void>;
-  /** Move under a free name: renamed in place first, then moved. */
   keepBoth: (
     path: string,
     newName: string,
@@ -59,11 +50,8 @@ export function useFileWrites(agentPath: string | undefined): FileWrites {
   return useMemo(() => {
     const run = (step: {
       command: string;
-      /** The entry the copy names: the name the write was aiming at. */
       name: string;
       edit: FileListEdit;
-      // Async so a synchronous refusal (the warming guard throws before any
-      // request) still rolls back instead of escaping past the paint.
       write: (path: string) => Promise<unknown>;
       failure: () => OptimisticFailureCopy;
     }): Promise<void> => {
@@ -74,8 +62,6 @@ export function useFileWrites(agentPath: string | undefined): FileWrites {
           command: step.command,
           patches: [{ queryKey: queryKeys.files(agentPath), ...step.edit }],
           write: () => step.write(agentPath),
-          // Resolved at refusal time instead (`step.failure`): the copy names
-          // what actually failed, which a batch only knows once it settles.
           failure: { title: "", description: "" },
         },
         (command, err) => {
@@ -100,8 +86,6 @@ export function useFileWrites(agentPath: string | undefined): FileWrites {
         command: "delete_file",
         name: lastSegment(paths[0] ?? ""),
         edit: removalEdit(paths),
-        // One request per entry, so one refused file never takes its siblings
-        // with it; the first refusal speaks for the batch.
         write: async (root) => {
           const results = await Promise.allSettled(
             paths.map((p) => tauriFiles.delete(root, p)),

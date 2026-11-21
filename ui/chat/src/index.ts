@@ -1,13 +1,3 @@
-export type {
-  AttachmentProgressLabels,
-  AttachmentUploadProgress,
-} from "./attachment-progress";
-export {
-  AttachmentProgress,
-  AttachmentProgressProvider,
-} from "./attachment-progress";
-// === Types ===
-
 export {
   attachmentFolderRoot,
   attachmentRelativePath,
@@ -21,7 +11,6 @@ export type {
   ConversationProps,
   ConversationScrollButtonProps,
 } from "./ai-elements/conversation";
-// === AI Elements: Conversation ===
 export {
   Conversation,
   ConversationContent,
@@ -47,7 +36,6 @@ export type {
   MessageResponseProps,
   MessageToolbarProps,
 } from "./ai-elements/message";
-// === AI Elements: Message ===
 export {
   Message,
   MessageAction,
@@ -105,7 +93,6 @@ export type {
   ReferencedSourcesContext,
   TextInputContext,
 } from "./ai-elements/prompt-input";
-// === AI Elements: Prompt Input ===
 export {
   PromptInput,
   PromptInputActionAddAttachments,
@@ -152,7 +139,6 @@ export type {
   ReasoningProps,
   ReasoningTriggerProps,
 } from "./ai-elements/reasoning";
-// === AI Elements: Reasoning ===
 export {
   Reasoning,
   ReasoningContent,
@@ -160,13 +146,11 @@ export {
   useReasoning,
 } from "./ai-elements/reasoning";
 export type { TextShimmerProps } from "./ai-elements/shimmer";
-// === AI Elements: Shimmer ===
 export { Shimmer } from "./ai-elements/shimmer";
 export type {
   SuggestionProps,
   SuggestionsProps,
 } from "./ai-elements/suggestion";
-// === AI Elements: Suggestion ===
 export { Suggestion, Suggestions } from "./ai-elements/suggestion";
 export type {
   AttachmentInvocation,
@@ -176,15 +160,16 @@ export {
   decodeAttachmentMessage,
   normalizeAttachmentReferences,
 } from "./attachment-message";
+export type {
+  AttachmentProgressLabels,
+  AttachmentUploadProgress,
+} from "./attachment-progress";
+export {
+  AttachmentProgress,
+  AttachmentProgressProvider,
+} from "./attachment-progress";
 export type { AutolinkProps } from "./autolink";
-// The inline link chip, shared with surfaces that render markdown as a
-// DOCUMENT rather than a chat turn (the file preview): mid-sentence, a link
-// has to read as a link, not as the chat bubble's labeled button pill.
 export { AUTOLINK_CLASS, Autolink } from "./autolink";
-// === Browser hand-off ===
-// The agent hands its own browser page to the person (sign in, a code, a
-// captcha): the in-chat card, and the live view the app frames in a dialog or
-// sheet. Props-only; frames bypass React state through `BrowserLiveFrames`.
 export type {
   BrowserHandoffCardLabels,
   BrowserHandoffCardProps,
@@ -224,10 +209,6 @@ export { ChatInput } from "./chat-input";
 export type { AttachMenuItem } from "./chat-input-parts";
 export type { ChatAuthorLabels } from "./chat-messages";
 export { isOwnMessage, senderNameFor } from "./chat-messages";
-// === Child-mission list ===
-// The missions THIS chat started (PRODUCT-1244), listed above the composer so a
-// coordinating mission is also its own monitor. Props-only: the app resolves
-// which missions are children, localizes their status word, and wires opening.
 export type {
   ChatMissionListItem,
   ChatMissionListLabels,
@@ -238,7 +219,6 @@ export {
   ChatMissionList,
   DEFAULT_CHAT_MISSION_LIST_LABELS,
 } from "./chat-mission-list";
-// === Chat Components ===
 export { ChatPanel } from "./chat-panel";
 export type {
   AttachmentRejection,
@@ -254,11 +234,6 @@ export {
   ChatParentMissionLink,
   DEFAULT_CHAT_PARENT_MISSION_LINK_LABELS,
 } from "./chat-parent-mission-link";
-// === Plan-ready card ===
-// The composer-replacing surface shown when the agent finishes planning
-// (plan_ready): a compact plan lede + Start working / Run on Autopilot / Keep
-// planning. The full plan remains in the assistant message. Props-only; the app
-// supplies localized labels and wires the sends.
 export type { ChatPlanReadyCardProps } from "./chat-plan-ready-card";
 export { ChatPlanReadyCard } from "./chat-plan-ready-card";
 export type {
@@ -287,11 +262,6 @@ export {
   ChatSuggestActions,
   DEFAULT_SUGGEST_ACTIONS_LABELS,
 } from "./chat-suggest-actions";
-// === Suggest-reusable card ===
-// The composer-replacing surface shown when the agent finishes cleanly and calls
-// `suggest_reusable`: an optional, dismissible offer to save the just-completed
-// work as a Skill or a scheduled Routine (Save / Not now). Props-only; the app
-// supplies localized labels and wires the send.
 export type { ChatSuggestReusableCardProps } from "./chat-suggest-reusable-card";
 export { ChatSuggestReusableCard } from "./chat-suggest-reusable-card";
 export type { ChatSuggestReusableLabels } from "./chat-suggest-reusable-card-model";
@@ -299,9 +269,6 @@ export {
   DEFAULT_SUGGEST_REUSABLE_LABELS,
   resolveSuggestReusableSaveLabel,
 } from "./chat-suggest-reusable-card-model";
-// === Thinking indicator (HOU-910) ===
-// The pre-reply loading state: a pulsing helmet + rotating astronaut one-liners.
-// i18n-agnostic — the app passes its localized `phrases`; defaults stand alone.
 export {
   ChatThinkingIndicator,
   type ChatThinkingIndicatorProps,
@@ -312,19 +279,6 @@ export {
   type CitationChipRowLabels,
   CitationNumber,
 } from "./citation-chips";
-// === @mentions (HOU-944) ===
-// A teammate named in a chat message. The composer offers `mentionPeople` and
-// ships the structured `mentions[]` sidecar; the renderer turns each surviving
-// "@Name" run into a chip. All props-only and i18n-agnostic.
-//
-// The only surface a consumer needs is the two data shapes, `MentionPerson`
-// and `MessageMention` (exported with the rest of the types below) plus the
-// `ChatPanel` props that take them. The matcher, the composer state, the mask
-// and the chip are INTERNAL: they are one feature's moving parts, and the
-// tests reach them by module path rather than through the package door.
-//
-// Clean, human-readable preview of a persisted user-message body: decodes the
-// Skill / attachment markers so cards and lists never show the raw marker.
 export { type CitedMessage, decodeCitedMessage } from "./cited-message";
 export { ConversationActionsMenu } from "./conversation-actions-menu";
 export type {
@@ -343,7 +297,6 @@ export {
   deriveConversationMoments,
   hasConversationMoments,
 } from "./conversation-map-model";
-// === Dictation ===
 export type {
   DictationControl,
   DictationLabels,
@@ -371,22 +324,12 @@ export type {
 } from "./feed-to-messages";
 export { distinctAuthorCount } from "./feed-to-messages";
 export type { FileChipProps } from "./file-chip";
-// The inline affordance for a workspace file named in agent prose — the file
-// vocabulary (type glyph + tint), never the web link's blue chip or ↗ pill.
 export { FileChip } from "./file-chip";
 export type {
   InteractionAnswerLine,
   InteractionAnswersPayload,
 } from "./interaction-answers-message";
-// === Interaction-answers Messages ===
-// Encoded user-message marker that signals "this message is the answers the
-// user gave to an ask_user interaction sequence". Decoded into a structured
-// payload so consumers (desktop, mobile) can render the same Q&A card.
 export { decodeInteractionAnswersMessage } from "./interaction-answers-message";
-// === Interaction Card ===
-// The in-chat surface shown when the agent pauses to gather what it needs before
-// continuing; a stepper (one question or connect step at a time) that replaces
-// the composer while a pending interaction is awaiting the user.
 export type {
   ChatInteractionAnswer,
   ChatInteractionBrand,
@@ -397,16 +340,9 @@ export type {
   StepFooterApi,
 } from "./interaction-card";
 export { ChatInteractionCard } from "./interaction-card";
-// The stepper state the card can be driven with (`state` / `onStateChange`),
-// so a caller can park it per conversation and hand it back after a remount.
 export type { StepperState } from "./interaction-card-logic";
 export { prettifyToolkit } from "./interaction-card-model";
-// The always-visible single-line free-text row every non-question step carries
-// (connect / sign-in / credential decline-with-instruction).
 export { InlineTextRow } from "./interaction-decline-row";
-// The shared modal shell every interaction step composes (a signin/connect body
-// renders its own, wired with the StepChrome the stepper hands it) so the whole
-// family shares one surface, header row, and footer row.
 export {
   InteractionModal,
   type InteractionModalPager,
@@ -423,10 +359,6 @@ export type {
 } from "./queued-message-list";
 export { QueuedMessageList } from "./queued-message-list";
 export type { SkillInvocation, SkillInvocationField } from "./skill-message";
-// === Skill Messages ===
-// Encoded user-message marker that signals "this message is the user
-// running a Skill". Decoded into a structured payload so consumers
-// (desktop, mobile) can render the same card.
 export { decodeSkillMessage, resolveSkillImage } from "./skill-message";
 export { DEFAULT_THINKING_PHRASES } from "./thinking-phrases";
 export { toolShortName } from "./tool-labels";
@@ -445,11 +377,9 @@ export type {
   SystemNoticeKind,
   TokenUsage,
 } from "./types";
-// === Utilities ===
 export { Typewriter } from "./typewriter";
 export type { ComposerDraftStore } from "./use-composer-draft";
 export type { ProgressStep, StepStatus } from "./use-progress-steps";
-// === Progress ===
 export { useProgressSteps } from "./use-progress-steps";
 export type { UserAttachmentMessageLabels } from "./user-attachment-message";
 export {

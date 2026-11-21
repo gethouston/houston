@@ -11,7 +11,6 @@ import { poolIdentity } from "./turn-store";
 import { publishStoreDoc } from "./turn-store-doc";
 import { docNotLandedReason } from "./turn-view-publish";
 
-/** The claim an op publishes under (its store writes use the same one). */
 export interface OpClaimTurn {
   gcsPrefix: string;
   hostToken: string;
@@ -19,7 +18,6 @@ export interface OpClaimTurn {
   conversationId: string;
 }
 
-/** The five agent-data families the gateway serves asleep reads from. */
 export const AGENT_DOC_FAMILIES: readonly HoustonFamily[] = [
   "activity",
   "routines",
@@ -41,8 +39,6 @@ export type DocDeps = Pick<
   "poolStoreUrl" | "fetchImpl" | "activityDocRetryDelaysMs"
 >;
 
-/** Where an op's docs go (`publish` options minus the family); null when
- *  no pool store is configured. */
 export function docTarget(deps: DocDeps, turn: OpClaimTurn) {
   const baseUrl = deps.poolStoreUrl ?? process.env.HOUSTON_POOL_STORE_URL;
   if (!baseUrl) return null;
@@ -61,14 +57,6 @@ export function docTarget(deps: DocDeps, turn: OpClaimTurn) {
   };
 }
 
-/**
- * Project each family's file into its doc, derived from what the STORE holds
- * once the doc revision is read (publishStoreDoc): the writer's own tree is a
- * snapshot from its listing, and a turn may have landed and published the
- * same family since, so projecting the snapshot would roll that back. Parsed
- * like every other reader (BOM strip, salvage). Answers the diagnostics
- * (empty = every doc landed).
- */
 export async function publishFamilyDocs(
   deps: DocDeps,
   turn: OpClaimTurn,
@@ -87,17 +75,12 @@ export async function publishFamilyDocs(
       key,
       (raw) => projectFamily(family, raw, key),
     );
-    // A doc the store refused is as stale as one that failed: its event
-    // must not promise an asleep refetch.
     const failure = docNotLandedReason(outcome);
     if (failure) diagnostics.push(`${family}: ${failure}`);
   }
   return diagnostics;
 }
 
-/** Re-project every family the op changed, the skills its landed SKILL.md
- *  writes and deletes changed (`landed`), and the custom definitions view it
- *  re-captured. Skills and learnings are read back through `source`. */
 export async function republish(
   deps: DocDeps,
   turn: OpClaimTurn,
@@ -132,8 +115,6 @@ export async function republish(
     })),
   );
   if (result.customDefinitions !== undefined) {
-    // The definitions list is a view doc (docs/view-capture.ts family), so
-    // the gateway's asleep reads show the mutation immediately.
     const outcome = await publishCustomDefinitionsView(
       { ...common, family: "custom_definitions" },
       source,
@@ -145,8 +126,6 @@ export async function republish(
   return diagnostics;
 }
 
-/** Unreadable past salvage throws: a diagnostic, never an empty doc over
- *  real data (familyDoc projects absent as the empty doc). */
 function projectFamily(
   family: HoustonFamily,
   raw: string | null,

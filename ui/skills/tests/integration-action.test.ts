@@ -23,8 +23,6 @@ describe("humanizeIntegrationAction", () => {
       humanizeIntegrationAction("google_maps", "GOOGLE_MAPS_GET_ROUTE"),
       "Get route",
     );
-    // A multi-word toolkit: both this humanizer and the chat's spend the
-    // shared `actionWordsWithoutToolkit`, so the prefix strips the same way.
     assert.equal(
       humanizeIntegrationAction("googlemaps", "GOOGLE_MAPS_SEARCH"),
       "Search",

@@ -17,10 +17,8 @@ export function LearningPreview({
   text: string;
   expanded: boolean;
   canExpand: boolean;
-  /** Where this memory came from (person and/or mission). Absent = no line. */
   provenance?: LearningProvenanceView | null;
   onToggle: () => void;
-  /** Omitted in read-only mode: no edit affordance is rendered. */
   onEdit?: () => void;
   onDelete?: () => void;
 }) {

@@ -12,23 +12,6 @@ import {
 } from "./template-cert.mjs";
 import { OG_HEIGHT, OG_WIDTH, ogCardElement } from "./template-og.mjs";
 
-// Rasterisation: satori (element tree -> SVG) then resvg (SVG -> PNG).
-//
-// General Sans is the site's own typeface — the wordmark's face, loaded from
-// Fontshare by `src/_includes/base.njk` — so it is the certificate's face too.
-// satori reads TTF/OTF/WOFF and not the woff2 the browser gets, so the four
-// weights ship here as the `.ttf` sources the same Fontshare stylesheet lists
-// (LICENCE-GeneralSans.txt records the exact URLs).
-//
-// Hanken Grotesk stays registered behind it as a FALLBACK family, not as a
-// role: General Sans is Latin-only and Hanken's cuts carry ~190 code points it
-// does not (Vietnamese, mostly). satori falls through the `fonts` array for a
-// glyph the first family cannot draw, so an accented name that would otherwise
-// be empty boxes still renders — see `loadFontCoverage`.
-//
-// satori embeds the glyphs as paths, so resvg needs no system fonts — the
-// output is identical on macOS and on the ubuntu-latest CI runner.
-
 const FONT_DIR = new URL("./fonts/", import.meta.url);
 
 const FONT_FILES = [
@@ -40,7 +23,6 @@ const FONT_FILES = [
   { file: "HankenGrotesk-SemiBold.ttf", name: FALLBACK_FONT, weight: 600 },
 ];
 
-/** Memoized so a whole build reads the font files exactly once. */
 let fontsPending = null;
 
 export function loadFonts() {
@@ -55,7 +37,6 @@ export function loadFonts() {
   return fontsPending;
 }
 
-/** Memoized union of what the loaded fonts can draw. */
 let coveragePending = null;
 
 /**

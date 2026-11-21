@@ -1,11 +1,5 @@
 import { Eye, EyeOff } from "lucide-react";
 
-/**
- * Presentational field rows for {@link OpenAiCompatibleDialog}. Split out so the
- * dialog stays under the file-size budget; dumb, props-driven render helpers.
- */
-
-/** A labeled text input with help text. */
 export function LabeledTextField({
   id,
   label,
@@ -48,7 +42,6 @@ export function LabeledTextField({
   );
 }
 
-/** A password input with a reveal toggle and help text. */
 export function SecretField({
   id,
   label,

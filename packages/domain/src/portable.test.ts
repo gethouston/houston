@@ -9,11 +9,6 @@ import {
 import { filterPackage, packageSeed } from "./portable-edit";
 import { createRoutine } from "./routines";
 
-/**
- * The `.houstonagent` round-trip: what you pack is what you unpack, and the
- * preview reflects it. The format is the share contract — local↔cloud identical.
- */
-
 const NOW = "2026-06-13T00:00:00.000Z";
 
 const skillBody = (slug: string, desc: string) =>
@@ -132,7 +127,6 @@ test("unpacking junk bytes throws a clear error", () => {
 });
 
 test("a future format version is rejected with an upgrade hint", () => {
-  // Hand-build a zip whose manifest claims a newer format.
   const { zipSync, strToU8 } = require("fflate");
   const bytes = zipSync({
     "manifest.json": strToU8(
@@ -159,9 +153,6 @@ test("malformed routine/learning entries are dropped on unpack", () => {
       }),
     ),
     "routines.json": strToU8(
-      // Unpack applies the SAME normalization as the store's read path, so a
-      // "valid" entry here is one normalizeRoutines keeps: identity (id, name,
-      // prompt) plus exactly one wake mechanism.
       JSON.stringify([
         { id: "ok", name: "R", prompt: "p", schedule: "* * * * *" },
         { junk: true },
@@ -190,7 +181,6 @@ test("a shared learning carries its text, never its provenance", () => {
     ],
   };
   const pkg = unpackAgent(packAgent(shared, meta, NOW));
-  // The learning itself travels; the exporter's person + mission do not.
   expect(pkg.learnings).toEqual([
     {
       id: "l1",
@@ -274,7 +264,6 @@ test("packageSeed lays content out exactly like a direct install", () => {
   expect(seed.seeds[".agents/skills/research/SKILL.md"]).toBe(
     c.skills[0]?.body,
   );
-  // The JSON docs are the canonical on-disk form and parse back to the items.
   expect(
     JSON.parse(seed.seeds[".houston/routines/routines.json"] ?? ""),
   ).toEqual(c.routines);
@@ -293,9 +282,6 @@ test("packageSeed omits what the package lacks (no empty docs, no CLAUDE.md key)
 });
 
 test("unpack drops an invalid imported routine instead of letting it install-then-vanish", () => {
-  // An entry the store's read path would drop (here: no wake mechanism at all)
-  // must not survive unpack — otherwise it shows in the install preview, gets
-  // seeded to disk, and silently disappears on the first read after install.
   const wakeLess = {
     ...createRoutine(
       { name: "Broken", prompt: "p", schedule: "0 9 * * *" },
@@ -326,9 +312,6 @@ test("unpack drops an invalid imported routine instead of letting it install-the
 });
 
 test("machine/account-local routine keys never cross the share boundary", () => {
-  // `setup_activity_id` points at an activity that only exists on the exporter's
-  // machine; `created_by` is the exporter's account sub (who a fired routine
-  // acts as). Both are stripped at pack AND at unpack (older packs carry them).
   const local = createRoutine(
     {
       name: "Daily",

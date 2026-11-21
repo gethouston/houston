@@ -1,11 +1,3 @@
-/**
- * Visual baselines for the file preview (HOU-192): the desktop panel beside
- * the chat holding one comment (its chip in the composer, its mark and the
- * rail's count on the page), and the phone's full-screen sheet with the
- * one-time hint. Pages render through pdf.js from a hand-built PDF, so the
- * frame is the same on every run of a platform.
- */
-
 import { expect, test } from "../support/fixtures";
 import {
   PDF_FILE,

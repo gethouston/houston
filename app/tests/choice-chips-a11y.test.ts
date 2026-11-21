@@ -3,12 +3,6 @@ import test from "node:test";
 import { choiceQuestionAria } from "../src/components/shell/choice-chips-model.ts";
 import type { ChoiceSection } from "../src/components/shell/choice-step-model.ts";
 
-/**
- * One question has ONE answer, so it is announced as ONE radio group however
- * many labelled runs it is drawn in. `choice-runs.tsx` renders exactly what
- * this model returns — the group's attributes once, and a role per run
- * heading — so counting the roles here counts what reaches the screen reader.
- */
 const RUNS: ChoiceSection[] = [
   {
     id: "own",

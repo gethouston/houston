@@ -77,9 +77,7 @@ test("this machine's own interface addresses count as this machine", () => {
     "this_machine",
   );
   expect(blockedAddress("2001:db8::20", "allowed", own)).toBe("this_machine");
-  // Its neighbours on the LAN stay reachable off the managed cloud.
   expect(blockedAddress("192.168.1.21", "allowed", own)).toBeNull();
-  // The real machine's interfaces always include loopback.
   expect(ownAddresses().size).toBeGreaterThan(0);
 });
 

@@ -14,10 +14,8 @@ export function answerOpFailure(
     res.end(JSON.stringify(body));
   };
   if (op.op.kind === "custom-oauth") {
-    // No message: an OAuth library error can echo the code or the verifier.
     console.error(`[op] custom OAuth failed action=${op.op.action}`);
     if (res.headersSent) return;
-    // A completion that threw may already hold the token in remote custody.
     if (op.op.action === "complete")
       json(res, 200, { ok: true, ambiguous: true });
     else
@@ -35,9 +33,6 @@ export function answerOpFailure(
   }
   const message = error instanceof Error ? error.message : String(error);
   if (error instanceof TurnSetupError && error.code === "agent_not_migrated") {
-    // Nothing was written: the gateway runs the agent's `migrate` op (an
-    // older gateway proxies to the pod, whose boot migrates), never a
-    // write that would hide the flat files from that migration.
     console.warn(`[op] declined kind=${op.op.kind}: ${message}`);
     if (!res.headersSent)
       json(res, 200, { ok: true, decline: true, reason: error.code });
@@ -48,7 +43,6 @@ export function answerOpFailure(
     if (!res.headersSent) json(res, 200, { ok: true, decline: true });
     return;
   }
-  // Loud: a 500 here is the gateway's "worker_500" with no other trace.
   console.error(
     `[op] failed kind=${op.op.kind} ${op.op.kind === "route" ? `${op.op.method} ${op.op.rest}` : ""}: ${message}`,
   );

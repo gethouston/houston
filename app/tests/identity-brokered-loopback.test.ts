@@ -7,13 +7,8 @@ import {
 import { IdentityError } from "../src/lib/identity/errors.ts";
 import { cancelPendingAuthorize } from "../src/lib/identity/oauth-attempt.ts";
 
-// The GCIP-brokered loopback driver is pure (every effect injected), so the
-// port-stepping, supersession, and requestUri-assembly contracts are unit-
-// tested here; the real mint/bind/listen wiring is microsoft-authorize.ts.
-
 afterEach(() => cancelPendingAuthorize("test cleanup"));
 
-/** A deps bundle whose flow succeeds on the first port with `query`. */
 function happyDeps(query: string): BrokeredLoopbackDeps & {
   minted: string[];
   released: Array<{ attemptId: number; why: string }>;
@@ -38,7 +33,6 @@ function happyDeps(query: string): BrokeredLoopbackDeps & {
     }),
     releaseLoopback: (attemptId, why) => released.push({ attemptId, why }),
     listen: async (onPayload) => {
-      // Deliver the provider callback as soon as the attempt subscribes.
       queueMicrotask(() => onPayload(`houston://auth-callback?${query}`));
       return () => {};
     },
@@ -54,8 +48,6 @@ test("assembles requestUri from the minted continueUri and the callback query", 
       "http://localhost:8975/auth/callback?code=abc123&state=gcip-state-1",
     sessionId: "session-1",
   });
-  // The continueUri is the localhost spelling (Azure Web platform), port first
-  // candidate, minted exactly once.
   assert.deepEqual(deps.minted, ["http://localhost:8975/auth/callback"]);
 });
 
@@ -75,8 +67,6 @@ test("steps to the next candidate port and re-mints when a port is busy", async 
     };
   };
   const result = await runBrokeredLoopbackAuthorize(deps);
-  // A fresh authorize URL (and GCIP session) is minted for the SECOND port —
-  // the first mint is tied to the busy port and must not be reused.
   assert.deepEqual(deps.minted, [
     "http://localhost:8975/auth/callback",
     "http://localhost:8976/auth/callback",
@@ -99,7 +89,6 @@ test("every candidate port busy is a typed failure, not a silent hang", async ()
       e.code === "unknown" &&
       e.rawCode === "loopback_ports_exhausted",
   );
-  // One mint per candidate: 8975..8978.
   assert.equal(deps.minted.length, 4);
 });
 
@@ -142,9 +131,8 @@ test("a provider error on the callback rejects typed", async () => {
 
 test("an external cancel resolves null and frees the bound port", async () => {
   const deps = happyDeps("unused");
-  deps.listen = async () => () => {}; // never delivers a callback
+  deps.listen = async () => () => {};
   const pending = runBrokeredLoopbackAuthorize(deps);
-  // Let the attempt subscribe + open the browser before cancelling.
   await new Promise((r) => setTimeout(r, 10));
   cancelPendingAuthorize("sign-in screen unmounted");
   assert.equal(await pending, null);

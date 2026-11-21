@@ -19,19 +19,12 @@ export function SkillsReady({
   query: string;
   onQueryChange: (query: string) => void;
   onCreateWithChat: () => void;
-  /** Scoped surfaces only — see {@link SkillsControls}. */
   onAddExisting?: () => void;
-  /** The unfinished creation chats, standing above the skills: they are not
-   *  skills yet, so they belong outside the titled and counted section. */
   drafts?: ReactNode;
-  /** The rows, or the empty state standing in for them. */
   installed: ReactNode;
-  /** How many rows the query keeps — the strip's count, and the one fact that
-   *  says whether there are rows to title at all. */
   installedCount: number;
 }) {
   const { t } = useTranslation("skills");
-  // A locked org still opens and reads every skill; it only adds none.
   const { locked } = useOrgWriteLock();
 
   return (
@@ -50,8 +43,6 @@ export function SkillsReady({
       </PageHeaderTools>
       <OrgLockedNote />
       {drafts}
-      {/* The empty states stand alone: the shell's heading and count title the
-          rows, and there are none to name. */}
       {skillsListShowsRows(installedCount) ? (
         <CatalogShell
           installedTitle={t("grid.yourSkillsHeading")}

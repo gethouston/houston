@@ -21,8 +21,6 @@ export type TeamMoveState =
       target: TeamRef;
       index: number;
       error: MoveErrorKind;
-      /** Reopened from a move parked on a taken name: the person may have
-       *  renamed the agent since, so its retry shows. */
       parked?: true;
     }
   | { step: TeamMoveStage; target: TeamRef }
@@ -74,7 +72,6 @@ export function teamAgentMoveFailed(
   };
 }
 
-/** Whether the failed move's retry can succeed. */
 export function canRetryTeamMove(
   state: Extract<TeamMoveState, { step: "moveFailed" }>,
 ): boolean {
@@ -96,8 +93,6 @@ export function teamMoveFailureCopy(
       total: number;
       name: string;
     } {
-  // A taken name is the one failure the person fixes themselves: name the
-  // agent, so they know which one to rename.
   if (error === "name_taken")
     return moved <= 0
       ? { key: "moveFailedNameTaken", name }

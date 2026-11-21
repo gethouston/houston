@@ -1,7 +1,3 @@
-/**
- * Translated label bundles for the FilesBrowser chrome and context menu
- * (ui/ components are i18n-agnostic and take labels as props).
- */
 import type { FileMenuLabels, FilesBrowserLabels } from "@houston-ai/agent";
 import type { TFunction } from "i18next";
 
@@ -21,8 +17,6 @@ export function buildBrowserLabels(t: TFunction<"agents">): FilesBrowserLabels {
     uploadFiles: t("files.uploadFiles"),
     uploadFolder: t("files.uploadFolder"),
     uploadingBusy: t("files.uploadingBusy"),
-    // The empty-folder CTAs say exactly what the header actions say; one
-    // string per phrase keeps them from drifting apart in translation.
     emptyFolderUploadCta: t("files.uploadFiles"),
     emptyFolderNewFolderCta: t("files.newFolder"),
     searchPlaceholder: t("files.searchPlaceholder"),
@@ -30,9 +24,6 @@ export function buildBrowserLabels(t: TFunction<"agents">): FilesBrowserLabels {
     searchNoResults: t("files.searchNoResults"),
     selectRow: t("files.selectRow"),
     selectAll: t("files.selectAll"),
-    // A function, not a string: the count is only known inside the list view,
-    // so the library calls back for the copy and pluralization stays app-side
-    // (same contract as `BulkActionBarLabels.selected` on the board).
     selectedCount: (count: number) => t("files.selectedCount", { count }),
     deleteSelected: t("files.deleteSelected"),
     clearSelection: t("files.clearSelection"),

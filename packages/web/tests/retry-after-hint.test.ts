@@ -2,19 +2,6 @@ import { HoustonEngineError } from "@houston/engine-adapter/client";
 import { cpFetch } from "@houston/engine-adapter/control-plane";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * The producer half of the `Retry-After` contract.
- *
- * `lib/assistant-availability.ts` has always scheduled discovery's retry off
- * `err.retryAfterMs` — the server's own estimate of when its pod will be ready
- * beats any client-side curve. This is where that field comes from: every
- * gateway/host failure thrown by `cpFetch` carries the response's parsed
- * `Retry-After`, or nothing at all when there is no trustworthy hint.
- *
- * 429 is used throughout because it is NOT one of the transient statuses
- * `cpFetch` retries, so each case throws on the first attempt.
- */
-
 const CFG = { baseUrl: "https://host.example", token: "t" };
 
 const originalFetch = globalThis.fetch;
@@ -24,7 +11,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** Stub fetch to answer once with `status` and the given response headers. */
 function stubFetch(status: number, headers: Record<string, string>): void {
   globalThis.fetch = vi.fn(
     async () =>
@@ -62,9 +48,6 @@ test("an HTTP-date Retry-After lands as the distance from now", async () => {
 });
 
 test("no Retry-After header leaves the hint absent", async () => {
-  // The cross-origin case too: a responder that does not list the header in
-  // `Access-Control-Expose-Headers` reads exactly like one that never sent it,
-  // and every scheduler falls back to its own backoff.
   stubFetch(429, {});
   expect((await thrownBy()).retryAfterMs).toBeUndefined();
 });

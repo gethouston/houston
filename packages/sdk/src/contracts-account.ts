@@ -1,13 +1,3 @@
-/**
- * The account's contract: who the caller is (session, profile, API keys), the
- * space they work in (org roster, spaces, teams, workspaces), and the
- * appearance of the device they are working on (which does not follow them).
- * Their preferences: contracts-preferences.ts. What an org pays and may use:
- * contracts-billing.ts.
- *
- * Re-exported wholesale by the package barrel; import from `@houston/sdk`.
- */
-// ===== Account module contract =========================================
 export {
   AccountCommand,
   type AccountCommandType,
@@ -29,9 +19,6 @@ export {
   HOUSTON_API_DOCS,
   HOUSTON_API_KEY_ENV,
 } from "./modules/account/api-setup-prompt";
-// ===== Appearance module contract ======================================
-// The vocabulary and its rules are also published as `@houston/sdk/appearance`,
-// for a surface's pre-paint path: it resolves a theme before any kernel exists.
 export {
   AppearanceCommand,
   type AppearanceCommandType,
@@ -62,7 +49,6 @@ export {
   type ThemePreference,
 } from "./modules/appearance/model";
 export { InvalidThemeError } from "./modules/appearance/validate";
-// ===== Channels module contract ========================================
 export {
   CHANNEL_PROVIDER_IDS,
   type ChannelConnection,
@@ -79,7 +65,6 @@ export {
   type SlackConnectAnswer,
   type SlackConnectReturn,
 } from "./modules/channels";
-// ===== Org module contract =============================================
 export {
   type AddOrgMemberOutcome,
   type AddOrgMemberResult,
@@ -125,9 +110,6 @@ export {
   type WorkspacePreferenceReporter,
   WorkspaceSelectionState,
 } from "./modules/preferences/workspace-selection-state";
-// ===== Session module contract =========================================
-// `createAuthFetch` + `SESSION_TOKEN_KEY` are host-facing: the host composes the
-// auth-fetch into `ports.fetch` before constructing the SDK (see the module).
 export {
   CONNECTION_SCOPE,
   type ConnectionStatus,
@@ -138,7 +120,6 @@ export {
   type SessionModule,
   type SetTokenPayload,
 } from "./modules/session";
-// ===== Spaces module contract ==========================================
 export {
   type AgentMoveStart,
   type AgentMoveStatus,
@@ -163,9 +144,6 @@ export {
 export { freeOrgTakenSlug } from "./modules/spaces/create-refusals";
 export * from "./modules/spaces/move-out";
 export * from "./modules/spaces/move-refusals";
-// ===== Teams module contract ===========================================
-// `AgentAccess`/`AgentAssignment` are the agents module's; a team assignment
-// carries the same value, so they are exported once, under Agents.
 export {
   type AgentEffortLevel,
   type AgentModelChoice,
@@ -179,7 +157,6 @@ export {
   type TriggerStatusItem,
   type TriggerStatusState,
 } from "./modules/teams";
-// ===== Workspaces module contract ======================================
 export {
   type SidebarGroup,
   type SidebarLayout,

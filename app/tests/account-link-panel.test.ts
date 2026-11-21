@@ -7,8 +7,6 @@ import type { ReactElement } from "react";
 import auth from "../src/locales/en/auth.json" with { type: "json" };
 import errors from "../src/locales/en/errors.json" with { type: "json" };
 
-// lib/auth and its neighbours read `import.meta.env` (Vite-only) when they
-// load, so the node runner stubs them; these specs only render.
 const STUBS: Record<string, string> = {
   "../../lib/auth":
     "export const confirmAccountLink = async () => ({ kind: 'linked' }); export const identityClient = {};",

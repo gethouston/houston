@@ -1,8 +1,3 @@
-// The native apps link no Facebook SDK and no analytics or ad-measurement SDK.
-// App Store privacy labels, App Tracking Transparency and Play data-safety
-// answers depend on their absence. FirebaseCore and Firebase Messaging still
-// carry Google's analytics interop interfaces (FIRAnalyticsInterop on iOS,
-// firebase-measurement-connector on Android); those are not measurement SDKs.
 const BANNED_SWIFT_PRODUCT =
   /^(Facebook|FBSDK|FBAEM)|Analytics|AppMeasurement|OnDeviceConversion|MobileAds/;
 const BANNED_SWIFT_PACKAGE = /facebook/i;
@@ -13,7 +8,6 @@ const DEFAULT_TRAITS = /^\.?defaults?$/i;
 export type SwiftProduct = {
   name: string;
   package: string;
-  /** Traits that include the product; null when it is unconditional. */
   traits: string[] | null;
 };
 
@@ -37,7 +31,6 @@ export function swiftProducts(manifest: string): SwiftProduct[] {
   }));
 }
 
-/** Traits SwiftPM enables for a package, given the app's requested traits. */
 export function enabledSwiftTraits(
   manifest: string,
   requested: readonly string[] | undefined,
@@ -64,7 +57,6 @@ export function enabledSwiftTraits(
   return enabled;
 }
 
-/** Banned products a plugin's Package.swift links under the requested traits. */
 export function bannedSwiftProducts(
   manifest: string,
   requested: readonly string[] | undefined,
@@ -84,7 +76,6 @@ export function bannedSwiftProducts(
     .map((product) => `${product.package}/${product.name}`);
 }
 
-/** The traits the generated CapApp-SPM manifest passes to one plugin package. */
 export function generatedSwiftTraits(
   generated: string,
   packageName: string,
@@ -105,7 +96,6 @@ export function swiftToolsVersion(manifest: string): string | null {
   return /^\/\/ swift-tools-version:\s*(\S+)/.exec(manifest)?.[1] ?? null;
 }
 
-/** Package products the Xcode project links into its targets directly. */
 export function xcodePackageProducts(pbxproj: string): string[] {
   const product =
     /isa = XCSwiftPackageProductDependency;[\s\S]*?productName = "?([^";]+)"?;/g;
@@ -124,11 +114,6 @@ export function gradleVariables(variablesGradle: string): Map<string, string> {
 
 type GradleBlock = { variable: string; expected: boolean } | null;
 
-/**
- * Banned artifacts a plugin's build.gradle packages into the app. A
- * dependency inside `if (flag)` counts unless the app's variables.gradle sets
- * that flag explicitly; a flag left to the plugin's default fails closed.
- */
 export function bannedGradleDependencies(
   buildGradle: string,
   variables: ReadonlyMap<string, string>,

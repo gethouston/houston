@@ -12,15 +12,6 @@ import {
 } from "./card-actions";
 import { ManagerStepBody, ManagerStepFrame } from "./manager-step-frame";
 
-/**
- * The task the person would love to hand off to an AI Employee, in their own
- * words, laid out as the create sheet's questions are: a few lines of text
- * and Continue once there is something to send. It cannot be skipped: the
- * Manager starts the person's first work from it. Enter sends and
- * Shift+Enter breaks the line, as in the chat composer; an IME's Enter only
- * confirms what it is composing. The field is 16px on a phone, so focusing
- * it never zooms the page.
- */
 export function ManagerGoalCard({
   title,
   initial,
@@ -31,27 +22,22 @@ export function ManagerGoalCard({
   onBack = null,
 }: {
   title: string;
-  /** The goal already given, when it is being changed. */
   initial: string;
   busy: boolean;
   error: string | null;
   onAnswer: (goal: string) => void;
-  /** "Not now", where the questions can be put off. */
   onDecline?: () => void;
   onBack?: (() => void) | null;
 }) {
   const { t } = useTranslation(["assistant", "common", "setup"]);
   const [goal, setGoal] = useState(initial);
   const ready = isValidAutomationGoal(goal);
-  // Code points, the unit the gateway counts. Nothing clamps the field: a
-  // paste cut short without a word would lose the person's own words.
   const tooLong = [...goal.trim()].length > ONBOARDING_GOAL_MAX_LENGTH;
   const send = () => {
     if (ready && !busy) onAnswer(goal.trim());
   };
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== "Enter" || event.shiftKey) return;
-    // Safari clears `isComposing` before this keydown and leaves only 229.
     if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     event.preventDefault();
     send();

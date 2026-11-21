@@ -42,9 +42,6 @@ describe("isUnreadForMe", () => {
   });
 
   it("keeps an outstanding mention unread even when it predates `since`", () => {
-    // The second-device case: I install Houston today, and a mention from last
-    // month is still addressed to me. `since` exists to suppress ambient
-    // backlog, never a message that names me.
     strictEqual(
       isUnreadForMe(
         conv({ updated_at: OLDER, mentioned: [{ user_id: ME, at: OLDER }] }),
@@ -68,7 +65,6 @@ describe("isUnreadForMe", () => {
   });
 
   it("keeps a mention unread when the mission moved on without me", () => {
-    // Read at NEWER, but the mention landed after that: still my problem.
     const cursors = { "/w/alpha::m1": { readAt: Date.parse(NEWER) } };
     strictEqual(
       isUnreadForMe(
@@ -84,9 +80,6 @@ describe("isUnreadForMe", () => {
   });
 
   it("does not treat a mention I wrote about MYSELF as a claim on me", () => {
-    // Otherwise the badge outlives every read: the mention clause has no
-    // `since` floor, so a self-mention on a mission I never reopen would stay
-    // lit forever. The OS ping already ignores self-authored mentions.
     strictEqual(
       isUnreadForMe(
         conv({

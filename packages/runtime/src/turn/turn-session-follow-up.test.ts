@@ -7,13 +7,6 @@ import type { HarnessBackend, HarnessSession } from "../backends/types";
 import { recordSuggestActions } from "../session/interaction";
 import { runTurn, type TurnDirectories } from "./turn-session";
 
-/**
- * The per-turn worker runs the follow-up safety net between the prompt and
- * the outcome: a GPT reply that skipped `suggest_actions` still returns the
- * bubbles on the outcome the terminal `done` is built from, and the pass
- * itself puts nothing on the wire.
- */
-
 vi.mock("./turn-runtime", () => ({
   createTurnModelRuntime: async () => ({
     modelRuntime: {},

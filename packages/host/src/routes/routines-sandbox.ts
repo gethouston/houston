@@ -18,22 +18,6 @@ import { defineRoute } from "./registry";
 import { routineAuthoringPin } from "./routine-creation-pin";
 import { createRoutineChecked, updateRoutineChecked } from "./routine-write";
 
-/**
- * The RUNTIME-facing scheduled-task write route (`POST /sandbox/routines/save`,
- * authed by the per-sandbox HMAC token). The agent's `save_routine` tool calls
- * THIS instead of writing `.houston/routines/routines.json` with file tools.
- *
- * WHY it exists: each setup chat is isolated and only knows its own routine, so a
- * wholesale file write (the old prompt) made creating task #2 overwrite task #1.
- * This route merge-saves through the SAME read-modify-write the authenticated
- * agent-data route uses (loadRoutines -> create/apply -> upsertById ->
- * saveRoutines), so a second write never clobbers a first. The gate + write live
- * in routine-write.ts; this handler only resolves the sandbox to its workspace
- * and relays validation errors as tool-actionable JSON.
- *
- * A body with an `id` updates that routine in place; without one it creates a new
- * routine alongside the existing set.
- */
 defineRoute({
   group: "sandbox-routines",
   method: "POST",
@@ -54,21 +38,8 @@ export async function handleSandboxRoutines(
     vfs?: Vfs;
     paths?: WorkspacePaths;
     events?: EventHub;
-    /**
-     * Whether this deployment can fire event-driven routines (a trigger backend
-     * exists — Houston Cloud only). When false, a save carrying a `trigger`
-     * binding is rejected: it could never wake here. Mirrors the agent-data gate.
-     */
     triggersEnabled?: boolean;
-    /**
-     * True only when a trusted gateway fronts every request (the managed pod).
-     * Then the acting-as header sub is recorded as the routine's `created_by`;
-     * on the desktop the header is untrusted client input and the workspace
-     * owner is recorded instead. Mirrors routes/agents.ts routineActor.
-     */
     gatewayFronted?: boolean;
-    /** Org-owner fallback creator when no acting header decodes (mirrors
-     *  ControlPlaneDeps.ownerSub). */
     ownerSub?: string;
   },
   method: string,
@@ -79,7 +50,6 @@ export async function handleSandboxRoutines(
 ): Promise<boolean> {
   if (path !== "/sandbox/routines/save" || method !== "POST") return false;
 
-  // Authenticate the sandbox (NOT a user JWT) — same gate as /sandbox/credential.
   const sbToken = bearer(req, url);
   const claim = sbToken ? deps.vault.validateSandboxToken(sbToken) : null;
   if (!claim) {
@@ -87,8 +57,6 @@ export async function handleSandboxRoutines(
     return true;
   }
   if (!deps.vfs) {
-    // Same stable code the generic sandbox proxies use, so the runtime tool
-    // renders the honest "not available in this install" speech act.
     json(res, 503, {
       error: "agent data not configured",
       code: "agent_data_not_configured",
@@ -106,13 +74,6 @@ export async function handleSandboxRoutines(
   const root = paths.agentRoot(ws, agent);
   const nowIso = new Date().toISOString();
   const triggersEnabled = deps.triggersEnabled ?? false;
-  // WHO the routine records as its creator (C2): on a managed pod, the person
-  // the HOST recorded when it started the turn this call speaks in
-  // (routes/live-turn.ts, matched by the conversation the runtime names). A
-  // loopback /sandbox call is not gateway-fronted, so an acting-as header on
-  // THIS request is the runtime's own word and is never read. No recorded
-  // turn falls back to the org owner (an authorless routine is not fireable
-  // by the control-plane planner); off the gateway the workspace owner.
   const claimedConversationId = header(req, CONVERSATION_ID_HEADER);
   const turn = claimedConversationId
     ? liveTurns.get(claim.agentId, claimedConversationId)
@@ -137,12 +98,9 @@ export async function handleSandboxRoutines(
   const createdBy = deps.gatewayFronted
     ? (actingSubFromHeader(turn?.actingAs) ?? deps.ownerSub)
     : ws.ownerUserId;
-  // A successful write reacts on the SAME channel a UI or file-watcher write does
-  // (saveRoutines writes the file the host watches); scope to the workspace owner.
   const emit = (event: HoustonEvent) =>
     deps.events?.emit(ws.ownerUserId, event);
 
-  // `id` selects update-in-place; it is never a routine field itself.
   const { id, ...fields } = body;
   const creating = typeof id !== "string" || id === "";
   const authoringPin = creating
@@ -153,8 +111,6 @@ export async function handleSandboxRoutines(
         turnPin: turn?.pin,
       })
     : undefined;
-  // The person's plan floor rides the turn the host recorded (gateway-stamped
-  // `limits`), never this request: the runtime could name any limit here.
   const minIntervalMinutes = turn?.limits?.routineMinIntervalMinutes;
   const floor = minIntervalMinutes ? { minIntervalMinutes } : {};
   const result = !creating
@@ -177,7 +133,6 @@ export async function handleSandboxRoutines(
     return true;
   }
   if ("error" in result) {
-    // A plan-floor refusal carries its code and minutes beside the reason.
     json(res, 400, result);
     return true;
   }

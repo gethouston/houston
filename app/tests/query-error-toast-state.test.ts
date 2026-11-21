@@ -6,10 +6,6 @@ import {
   nextErrorToastState,
 } from "../src/hooks/query-error-toast-state.ts";
 
-// The pure decision logic shared by `useQueryErrorToast` (capabilities +
-// provider-catalog). Kept framework-free so these semantics are testable
-// without a React renderer or the error-toast import chain.
-
 describe("nextErrorToastState: once per distinct failure, reset on recovery", () => {
   it("does not toast while the query is not failing, and clears the ref", () => {
     deepStrictEqual(nextErrorToastState("something", false, undefined), {
@@ -45,13 +41,10 @@ describe("nextErrorToastState: once per distinct failure, reset on recovery", ()
 
   it("re-toasts an identical identity after a recovery cleared the ref", () => {
     const err = new Error("flaky");
-    // Fail → toast, remember `err`.
     const failed = nextErrorToastState(null, true, err);
     strictEqual(failed.shouldToast, true);
-    // Recover → ref cleared to null.
     const recovered = nextErrorToastState(failed.reported, false, undefined);
     strictEqual(recovered.reported, null);
-    // Fail again with the same identity → toasts, because the ref was reset.
     deepStrictEqual(nextErrorToastState(recovered.reported, true, err), {
       shouldToast: true,
       reported: err,
@@ -91,9 +84,7 @@ describe("deriveCatalogFailure: empty 200 surfaces as a failure", () => {
   it("gives the empty-catalog failure a STABLE identity across occurrences", () => {
     const a = deriveCatalogFailure({ ...ok, count: 0 });
     const b = deriveCatalogFailure({ ...ok, count: 0 });
-    // Same reference → the dedupe hook toasts it once, not on every re-render.
     strictEqual(a.identity, b.identity);
-    // And it flows through the toast reducer exactly once.
     const first = nextErrorToastState(null, a.isFailure, a.identity);
     strictEqual(first.shouldToast, true);
     strictEqual(

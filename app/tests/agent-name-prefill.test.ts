@@ -34,7 +34,6 @@ describe("prefilledAgentName", () => {
   });
 
   it("never splits a character when it cuts", () => {
-    // Each face is two UTF-16 units: 32 of them fill the 64 whole.
     strictEqual(prefilledAgentName("😀".repeat(40), []), "😀".repeat(32));
     strictEqual(
       prefilledAgentName(`a${"😀".repeat(40)}`, []),

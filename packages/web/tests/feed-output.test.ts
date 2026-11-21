@@ -3,13 +3,6 @@ import { bus } from "@houston/engine-adapter/bus";
 import { createBusFeedOutput } from "@houston/engine-adapter/feed-output";
 import { expect, test } from "vitest";
 
-/**
- * The web adapter's bus-backed FeedOutput: it emits the exact FeedItem /
- * SessionStatus HoustonEvents app/src consumes, maps engine provider ids on the
- * two provider frames to the desktop's legacy names, and surfaces a board-status
- * persist failure in the feed (never a silent hang in "running").
- */
-
 type BusEvent = {
   type: string;
   data?: {
@@ -48,7 +41,7 @@ test("pushFeedItem emits a FeedItem and maps the provider id on a provider frame
     .map((e) => e.data?.item);
   expect(items[0]).toEqual({
     feed_type: "provider_switched",
-    data: { provider: "openai", summarized: true, pre_tokens: 5 }, // codex → openai
+    data: { provider: "openai", summarized: true, pre_tokens: 5 },
   });
   expect(items[1]).toEqual({ feed_type: "assistant_text", data: "hello" });
 });
@@ -57,9 +50,6 @@ test("pushFeedItem also maps the provider id on a provider_error frame", () => {
   const { events, stop } = collect();
   const out = createBusFeedOutput(async () => {});
 
-  // provider_error carries the ENGINE id too; the desktop's provider-error card
-  // resolves names against the OLD ids, so it must be remapped like the switch
-  // frame — a non-identity id (openai-codex → openai) proves a real mapping.
   out.pushFeedItem("Houston/Bo", "c1", {
     feed_type: "provider_error",
     data: { provider: "openai-codex", kind: "rate_limited" },
@@ -69,7 +59,7 @@ test("pushFeedItem also maps the provider id on a provider_error frame", () => {
   const item = events.find((e) => e.type === "FeedItem")?.data?.item;
   expect(item).toEqual({
     feed_type: "provider_error",
-    data: { provider: "openai", kind: "rate_limited" }, // codex → openai
+    data: { provider: "openai", kind: "rate_limited" },
   });
 });
 
@@ -88,9 +78,6 @@ test("sessionStatus emits a SessionStatus event", () => {
   });
 });
 
-// The SDK's typed cause and origin ride the event additively (`error_class`,
-// `origin`): present exactly when the SDK stamped them, absent otherwise, so
-// the analytics subscriber reads the cause instead of guessing it off copy.
 test("sessionStatus carries the SDK's error class and origin when stamped", () => {
   const { events, stop } = collect();
   const out = createBusFeedOutput(async () => {});
@@ -142,9 +129,7 @@ test("persistBoardStatus forwards status + interaction to the injected setter", 
       },
     ],
   };
-  // A settle carrying an interaction forwards it verbatim...
   await out.persistBoardStatus("Houston/Bo", "c1", "needs_you", interaction);
-  // ...and one with no interaction (omitted) forwards `null` (the clear).
   await out.persistBoardStatus("Houston/Bo", "c1", "done");
   expect(seen).toEqual([
     ["Houston/Bo", "c1", "needs_you", interaction],
@@ -172,8 +157,6 @@ test("a failing board persist surfaces in the feed, not silently", async () => {
   expect(surfaced).toBe(true);
 });
 
-/** The shape `HoustonEngineError` mints for a gateway answer (structural
- *  stand-in, matching app/tests/engine-waking-error.test.ts). */
 function engineError(status: number, reason: string): Error {
   const err = new Error(`${reason} (engine error ${status})`) as Error & {
     status: number;
@@ -192,10 +175,6 @@ function systemMessages(events: BusEvent[]): unknown[] {
     .map((e) => e.data?.item?.data);
 }
 
-// PRODUCT-1638: the turn-start persist on an asleep pod answers the gateway's
-// waking 502/503. That is not a failure the user can act on — the waking
-// notice already covers it and the settle re-persists — so it must not push
-// "Couldn't update the board status" into the transcript.
 test("a waking 502/503 on the board persist stays out of the feed", async () => {
   const { events, stop } = collect();
   const out = createBusFeedOutput(async (_a, _s, status) => {
@@ -209,8 +188,6 @@ test("a waking 502/503 on the board persist stays out of the feed", async () => 
   expect(systemMessages(events)).toEqual([]);
 });
 
-// A plain connectivity drop (device offline / host unreachable) is the same
-// quiet class: the connectivity surface already owns it.
 test("a transport failure on the board persist stays out of the feed", async () => {
   const { events, stop } = collect();
   const out = createBusFeedOutput(async () => {
@@ -222,8 +199,6 @@ test("a transport failure on the board persist stays out of the feed", async () 
   expect(systemMessages(events)).toEqual([]);
 });
 
-// Other gateway answers on the same statuses are real failures and keep the
-// existing system message — a false quiet here silently drops a report.
 test("a non-waking 502 on the board persist still surfaces in the feed", async () => {
   const { events, stop } = collect();
   const out = createBusFeedOutput(async () => {
@@ -268,7 +243,6 @@ test("a turn that failed before it could start is reported by cause, its line st
     "turn_gone_after_accept",
   ]);
   expect(String(reports[0].error)).toContain("layout_unexpected");
-  // The message stays per cause (reports group by it); ids ride as fields.
   expect(reports[0].error).toMatchObject({ turnId: "t1", sessionKey: "c1" });
   expect(reports[1].error).toMatchObject({ turnId: "t2", sessionKey: "c1" });
   expect(events.filter((e) => e.type === "FeedItem")).toHaveLength(3);

@@ -8,18 +8,8 @@ import {
 import { HOST_SERVED_RESTS, PROXY_MEMBERS } from "./agents-proxy-members";
 import { listRoutes } from "./registry/all";
 
-/**
- * THE DRIFT GUARD on the one list the registry cannot derive.
- *
- * Every other route declares itself beside its handler. The proxy family's
- * members are implemented in ANOTHER PACKAGE (packages/runtime's transport),
- * so the declaration here can only be checked against that source — which this
- * reads, in the grammar the transport is written in
- * (testing/runtime-transport-routes.ts).
- */
 const TRANSPORT = new URL("../../../runtime/src/transport/", import.meta.url);
 
-/** Captures are compared by shape: `:provider` and `([^/]+)` are the same slot. */
 const shapeOf = (rest: string): string =>
   rest
     .split("/")
@@ -27,9 +17,6 @@ const shapeOf = (rest: string): string =>
     .join("/");
 
 test("the scan reads every source file of the transport", () => {
-  // The guard below is only as wide as the files it reads, so this pins that
-  // set to the directory itself: a transport file added tomorrow is scanned,
-  // never silently skipped.
   const onDisk = readdirSync(TRANSPORT)
     .filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"))
     .sort();
@@ -62,10 +49,6 @@ test("every member is annotated with an engine that serves it", () => {
 const AGENT_PREFIX = "/agents/:agentId/";
 
 test("every captured view rest is a declared per-agent route", () => {
-  // docs/view-capture.ts publishes an answer to the managed doc store so the
-  // gateway can serve it while the pod SLEEPS. Two of the four are proxied and
-  // two the host serves itself, so the guard is that each is a route SOMEONE
-  // declared: a captured rest nothing answers would publish a 404 as a view.
   const declared = new Set(
     listRoutes()
       .filter(

@@ -92,12 +92,9 @@ pub fn spawn_repair(version: String) {
         match run_repair() {
             Ok(()) => {
                 tracing::info!("[icon-repair] shortcut icons repaired for v{version}");
-                // houston_dir() may not exist yet on a fresh install (the
-                // host creates it on boot, possibly after this thread runs).
                 let write = std::fs::create_dir_all(marker_path.parent().unwrap_or(&marker_path))
                     .and_then(|()| std::fs::write(&marker_path, &version));
                 if let Err(e) = write {
-                    // Next launch retries the (idempotent) pass.
                     tracing::warn!("[icon-repair] marker write failed: {e}");
                 }
             }
@@ -113,18 +110,14 @@ fn run_repair() -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     use std::path::Path;
 
-    // Keep the spawned consoles invisible (PROCESS_CREATION_FLAGS value).
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
     let exe = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
-    // System32-as-cwd breaks PowerShell child spawns (see shell_env notes);
-    // anchor both children at the install dir instead.
     let cwd = exe
         .parent()
         .map(Path::to_path_buf)
         .ok_or_else(|| "exe has no parent dir".to_string())?;
 
-    // -EncodedCommand (base64 UTF-16LE) dodges Windows argv re-quoting.
     let script = repair_script(&exe.to_string_lossy());
     let utf16: Vec<u8> = script
         .encode_utf16()
@@ -146,8 +139,6 @@ fn run_repair() -> Result<(), String> {
         ));
     }
 
-    // `-show` re-resolves cached shell icons in place (the same refresh
-    // Squirrel/Electron run after their updates).
     let refresh = std::process::Command::new("ie4uinit.exe")
         .arg("-show")
         .current_dir(&cwd)
@@ -174,7 +165,6 @@ mod tests {
     #[test]
     fn skips_when_marker_matches_current_version() {
         assert!(!should_run(Some("0.6.0"), "0.6.0"));
-        // Tolerates the trailing newline an edited marker might carry.
         assert!(!should_run(Some("0.6.0\n"), "0.6.0"));
     }
 
@@ -192,15 +182,10 @@ mod tests {
         let script = repair_script(r"C:\Program Files\Houston\Houston.exe");
         assert!(script.contains(r"$exe = 'C:\Program Files\Houston\Houston.exe'"));
         assert!(script.contains(r"User Pinned\TaskBar"));
-        // Both desktops: the per-machine MSI writes its shortcut to the
-        // PUBLIC desktop; user-copied shortcuts live on the user's.
         assert!(script.contains("GetFolderPath('Desktop')"));
         assert!(script.contains("GetFolderPath('CommonDesktopDirectory')"));
-        // Icon path parsed from the LAST comma (paths may contain commas).
         assert!(script.contains("LastIndexOf(',')"));
-        // Only rewrites icons that are dead or in the installer icon cache.
         assert!(script.contains("$dead -or $cached"));
-        // Never retargets the shortcut itself, only its icon.
         assert!(script.contains(r#"$lnk.IconLocation = "$exe,0""#));
         assert!(!script.contains("TargetPath ="));
     }

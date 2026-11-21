@@ -1,56 +1,21 @@
-// Chat-related types extracted from Houston's type system.
-// Only the types needed by chat components are included here.
-
-/**
- * Who wrote a user message in a multiplayer conversation (C5). Mirrors the
- * protocol `ChatMessage.author`. `name` is a best-effort display name; when
- * absent the consumer falls back to the userId. Props-only — no store or
- * i18n imports (library boundary).
- */
 export interface MessageAuthor {
   userId: string;
   name?: string;
 }
 
-/**
- * One @mention of a human inside a chat message (HOU-944). Mirrors the
- * protocol `ChatMessage.mentions[]` entry. Recorded on USER turns only — an
- * agent addresses someone in plain prose, never as structured data. `name` is
- * the display name as it appeared after the "@" when the message was sent, so
- * the renderer can still find the run after the person was renamed.
- */
 export interface MessageMention {
   userId: string;
   name?: string;
 }
 
-/**
- * A person the composer can @mention and the renderer can chip. Supplied by
- * the consumer (the app resolves the space roster); `ui/` never fetches.
- */
 export interface MentionPerson {
   userId: string;
-  /**
-   * Display name, as it appears after the "@". Required: a person with no
-   * known name is never offered, because an "@a1b2c3d4" chip is nonsense to a
-   * non-technical reader.
-   */
   name: string;
   imageUrl?: string;
 }
 
-/**
- * Optional stable identity for a feed item, carried from the conversation
- * view-model's feed entries. When present it keys the rendered message, so
- * PREPENDING older items (scroll-up lazy-load, HOU-819) never re-keys the
- * items below — positional keys would hand every existing Streamdown
- * instance a different message's content (the #364 stale-render class).
- * Absent on id-less feeds (tests, standalone consumers): keys fall back to
- * positional and behave exactly as before.
- */
 type FeedItemIdentity = { id?: string };
 
-/** The engine-authored system lines a host may localize by kind. */
 export type SystemNoticeKind =
   | "engine_restart"
   | "engine_resumed"
@@ -62,17 +27,9 @@ export type SystemNoticeKind =
   | "agent_setup_failed"
   | "turn_unconfirmed";
 
-/**
- * A row the host draws itself, placed in the log like any message. `kind`
- * names it and `payload` carries what the host needs to draw it; the chat
- * never reads either, and hands the row to `renderSystemMessage`. Never on
- * the wire: a host adds it when it maps its feed.
- */
 export interface HostCard {
   kind: string;
   payload: unknown;
-  /** The card shows its own progress while a turn runs, so the log draws no
-   *  thinking line under it. */
   ownsProgress?: boolean;
 }
 
@@ -86,23 +43,8 @@ type FeedItemVariant =
   | {
       feed_type: "user_message";
       data: string;
-      /**
-       * Multiplayer only: who wrote this message (C5). Set only in shared
-       * conversations so the renderer can label a teammate's bubble. Absent in
-       * single-player mode — the bubble renders exactly as before.
-       */
       author?: MessageAuthor;
-      /**
-       * The teammates this message @mentioned (HOU-944). Drives the chips in
-       * the sent bubble; absent when the message mentioned nobody.
-       */
       mentions?: MessageMention[];
-      /**
-       * The wire id of the turn this message started (PRODUCT-1217). Present
-       * on server-persisted and settled live messages; absent on a still-
-       * optimistic send and on pre-turn-id transcripts. The edit-and-resend
-       * affordance anchors on it — no id, no edit.
-       */
       turnId?: string;
     }
   | { feed_type: "provider_error"; data: ProviderError }
@@ -120,22 +62,9 @@ type FeedItemVariant =
   | {
       feed_type: "system_message";
       data: string;
-      /**
-       * Why the engine authored this line, when it did. `data` is the English
-       * default; a host renders its own copy by kind through
-       * `renderSystemMessage` instead of matching the text.
-       */
       notice?: SystemNoticeKind;
     }
   | {
-      /**
-       * A context-compaction boundary. Earlier turns were summarized to free
-       * context: by the provider CLI itself (`native`), by Houston's proactive
-       * reseed (`proactive`), or because the user asked for it (`manual`).
-       * Rendered as a subtle divider; the full chat above and below stays
-       * visible. `pre_tokens` is how full the context was just before
-       * compaction, when reported.
-       */
       feed_type: "context_compacted";
       data: {
         trigger: "native" | "proactive" | "manual";
@@ -143,24 +72,10 @@ type FeedItemVariant =
       };
     }
   | {
-      /**
-       * A cleared-context boundary. The user asked the conversation to start
-       * fresh: from here on the agent remembers nothing said above, while the
-       * chat above stays visible and searchable. Rendered as a subtle divider.
-       */
       feed_type: "context_cleared";
       data: null;
     }
   | {
-      /**
-       * A provider-switch boundary. The conversation was handed to a different
-       * provider mid-session; the new provider ran a fresh session seeded with
-       * prior context — the full transcript (`summarized: false`) or an AI
-       * summary (`summarized: true`). Rendered as a subtle divider; the full
-       * chat above and below stays visible. `provider` is the provider switched
-       * TO. `pre_tokens` is how full the leaving provider's context was, when
-       * reported.
-       */
       feed_type: "provider_switched";
       data: {
         provider: string;
@@ -178,40 +93,22 @@ type FeedItemVariant =
         result: string;
         cost_usd: number | null;
         duration_ms: number | null;
-        /**
-         * Normalized token usage for the turn. Present for providers that
-         * report it (Anthropic, Codex); `null`/absent otherwise. Drives the
-         * composer context-usage indicator.
-         */
         usage?: TokenUsage | null;
       };
     };
 
-/**
- * Provider-agnostic token usage for one turn. Mirrors the Rust `TokenUsage`
- * in `houston-terminal-manager`. `context_tokens` is the prompt size of the
- * most recent model request, i.e. how much of the context window is in use;
- * `cached_tokens` (a subset) and `output_tokens` are informational detail.
- */
 export interface TokenUsage {
   context_tokens: number;
   output_tokens: number;
   cached_tokens: number;
 }
 
-/**
- * Typed provider failure surfaced by the engine. Mirrors the Rust
- * `ProviderError` enum in `houston-terminal-manager`. The frontend
- * renders one card per `kind` with variant-appropriate CTAs; new
- * variants must be added here AND in the engine's enum simultaneously.
- */
 export type ProviderError =
   | {
       kind: "plan_message_limit";
       provider: string;
       resets_at: string;
       message: string;
-      /** Whose allowance ran out: a free org's pool or one paid seat's. */
       scope?: "org" | "seat";
       credential?: ProviderErrorCredential;
     }
@@ -228,7 +125,6 @@ export type ProviderError =
       provider: string;
       model: string | null;
       scope: QuotaScope;
-      /** Human-readable reset hint (e.g. "Jul 1st, 2026 1:16 PM"); null when open-ended. */
       resets_at: string | null;
       message: string;
       credential?: ProviderErrorCredential;
@@ -236,7 +132,6 @@ export type ProviderError =
   | {
       kind: "usage_limit_paused";
       provider: string;
-      /** ISO 8601 reset instant (the card formats it in the viewer's zone); null if unknown. */
       resets_at: string | null;
       message: string;
       credential?: ProviderErrorCredential;
@@ -255,32 +150,11 @@ export type ProviderError =
       provider: string;
       cause: AuthFailureCause;
       message: string;
-      /**
-       * Client-synthesized only (never on the wire): the prompt whose SEND the
-       * engine refused because no provider was connected. The message never
-       * reached the engine, so the card's "Send again" must resend THIS text —
-       * a generic "try again" prompt would arrive with no context to retry.
-       */
       failed_prompt?: string;
-      /**
-       * Wire-carried (HOU-718): the turn's user text when the engine PERSISTED
-       * it but the model never received it — pi raises a missing credential at
-       * prompt time, before recording the message in its session store. The
-       * reconnect retry re-delivers this text hidden under the auto-continue
-       * marker: the transcript already shows the original bubble, so unlike
-       * `failed_prompt` the re-send must never render a second one.
-       */
       undelivered_prompt?: string;
       credential?: ProviderErrorCredential;
     }
   | {
-      /**
-       * The conversation no longer fits the model's context window — the
-       * provider rejected the request outright. Not a credential/quota/server
-       * fault: the recovery is a larger-window model or a fresh conversation,
-       * so the card's CTA opens the model picker. Token counts are the
-       * provider's own numbers when it named them.
-       */
       kind: "context_overflow";
       provider: string;
       model: string | null;
@@ -329,16 +203,6 @@ export type ProviderError =
       credential?: ProviderErrorCredential;
     };
 
-/**
- * WHICH credential ran the failed turn. Mirrors `@houston/protocol`'s
- * `ProviderErrorCredential`.
- *
- * Present only on a managed-cloud turn that carried an acting identity — absent
- * on desktop, self-host and any turn with no acting identity, where there is one
- * credential and nothing to name. It lets a failure card say whose account hit
- * the wall (in a team space, always the acting member's own); it unlocks no
- * action, because a team space has no shared AI credential to fall back on.
- */
 export interface ProviderErrorCredential {
   scope: "personal" | "team";
 }
@@ -349,9 +213,6 @@ export type ModelUnavailableReason =
   | "preview_gated"
   | "deprecated"
   | "region_restricted"
-  // Azure OpenAI's DeploymentNotFound: the resource has no deployment named
-  // after the model, so only deploying it (or picking an already-deployed
-  // model) helps.
   | "not_deployed"
   | "unknown";
 
@@ -360,13 +221,7 @@ export type AuthFailureCause =
   | "token_expired"
   | "token_revoked"
   | "invalid_api_key"
-  // The provider's organization/policy blocked subscription access for this
-  // environment (Anthropic's `oauth_org_not_allowed`). Reconnecting does NOT
-  // heal it; the card's action points at using an API key instead.
   | "org_policy_blocked"
-  // The provider blocks the account behind an intact credential (GitHub
-  // Copilot with billing locked). Reconnecting does NOT heal it; the card's
-  // action points at the AI Models page to pick another AI.
   | "billing_locked"
   | "unknown";
 

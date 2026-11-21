@@ -1,9 +1,3 @@
-// Real-DOM mount of the plan-skip notice's action wiring: an action that
-// leaves (Billing, the keep chooser) closes the hosting runs dialog BEFORE it
-// opens anything, and Resume stays disabled while it is in flight.
-//
-// The DOM-mounting pattern is `chat-connect-step-shell.test.ts`'s.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import type { TriggerPlanSkipNotice } from "@houston/sdk";

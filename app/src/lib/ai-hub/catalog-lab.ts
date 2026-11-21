@@ -1,12 +1,6 @@
-/**
- * Deriving the making lab of a model from the snapshot. Uses OpenRouter
- * `vendor/model` id prefixes first, then models.dev `family` fields, then name
- * heuristics. Internal to the catalog build.
- */
 import type { RawModel } from "./catalog-snapshot.ts";
 import type { LabId } from "./catalog-types.ts";
 
-/** The provider that IS the lab, used to pick a merged model's canonical name. */
 export const HOME_PROVIDER: Partial<Record<LabId, string>> = {
   anthropic: "anthropic",
   openai: "openai",
@@ -38,7 +32,6 @@ const VENDOR_LAB: Record<string, LabId> = {
   nvidia: "nvidia",
 };
 
-/** Map a family/name string to a lab, most specific rules first. */
 function heuristicLab(text: string): LabId | undefined {
   if (text.includes("claude")) return "anthropic";
   if (/\bgpt\b|gpt-|codex|(^| )o\d|(^| )o-mini|(^| )o-pro/.test(text))

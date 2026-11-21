@@ -1,12 +1,10 @@
 import { type Ref, useCallback, useLayoutEffect, useState } from "react";
 
-/** How wide a placeholder's text runs, and how much room its input has. */
 export interface PlaceholderFit {
   textWidth: number;
   availableWidth: number;
 }
 
-/** Unmeasured, nothing fits: the field starts on its shortest placeholder. */
 const UNMEASURED: PlaceholderFit = {
   textWidth: Number.POSITIVE_INFINITY,
   availableWidth: 0,
@@ -39,11 +37,6 @@ function assignRef<T>(ref: Ref<T> | undefined, node: T | null) {
   else if (ref) ref.current = node;
 }
 
-/**
- * Measures `text` in the input's own font against the input's content width,
- * before paint and again whenever the input resizes. `forwarded` receives the
- * input too, so the owner keeps its handle on it.
- */
 export function useFittingPlaceholder(
   text: string,
   forwarded?: Ref<HTMLInputElement>,

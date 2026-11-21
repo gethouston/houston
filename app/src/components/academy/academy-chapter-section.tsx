@@ -10,14 +10,6 @@ import type {
 import { lessonPathAction } from "./academy-path-state";
 import { lessonText } from "./lessons/lesson-copy";
 
-/**
- * One chapter on the path: its name, how much of it is done, and its lessons,
- * each with the one thing to do about it (Start, Continue or Replay).
- *
- * Starting and continuing are the same act, arming the lesson: the runner
- * reads where the user left it (`lessonStartIndex`), so the path never has to
- * say which beat to open on and can never say a different one.
- */
 export function AcademyChapterSection(props: { chapter: ChapterPath }) {
   const { t } = useTranslation("academy");
   const { chapter } = props;
@@ -76,7 +68,6 @@ function LessonNode(props: { entry: LessonPathEntry; last: boolean }) {
   );
 }
 
-/** Experience banked on a finished lesson; the beat a started one resumes on. */
 function lessonChip(
   t: TFunction<"academy">,
   state: LessonPathState,

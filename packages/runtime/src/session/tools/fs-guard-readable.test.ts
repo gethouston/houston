@@ -18,15 +18,6 @@ import {
   WorkspaceGuard,
 } from "./fs-guard";
 
-/**
- * The coordinator's read-only attachments folder (H-044). Its wall is one
- * writable document (its memory); what people send it — a photo in the
- * composer, a PDF over Slack — lands in `uploads/`, and it must be able to READ
- * that or it cannot help with it. Everything the narrowed wall refuses must stay
- * refused, every write into the folder must be refused, and no link or `..`
- * detour may use the folder as a door to the rest of the workspace.
- */
-
 interface Fixture {
   base: string;
   workspace: string;
@@ -35,7 +26,6 @@ interface Fixture {
   guard: WorkspaceGuard;
 }
 
-/** A coordinator directory, guarded by the REAL policy the runtime builds. */
 function coordinator(options: { uploads?: boolean } = {}): Fixture {
   const base = realpathSync(mkdtempSync(join(tmpdir(), "houston-uploads-")));
   const workspace = join(base, ".assistant");
@@ -76,8 +66,6 @@ test("attachments are readable, flat and nested, by relative or absolute path", 
 });
 
 test("a folder that appears after the guard was built is readable", () => {
-  // The guard is built once at module load; the folder arrives with the first
-  // upload, so it must be found when asked about, not when built.
   const { uploads, guard } = coordinator({ uploads: false });
   mkdirSync(uploads);
   writeFileSync(join(uploads, "late.png"), "png");
@@ -91,7 +79,6 @@ test("nothing in the folder can be written, edited or created", () => {
   expect(() => guard.assertWritable(join(uploads, "image.png"))).toThrow(
     ReadOnlyFolderError,
   );
-  // Before the folder exists too: creating it is a write like any other.
   const fresh = coordinator({ uploads: false });
   expect(() => fresh.guard.clampWrite("uploads/a.png")).toThrow(
     ReadOnlyFolderError,
@@ -141,7 +128,6 @@ test("a link in the folder cannot reach the rest of the workspace or beyond", ()
     "uploads/outside.png",
   ])
     expect(() => guard.clamp(path), path).toThrow(PathNotAllowedError);
-  // ...while a link that stays in the folder resolves to what it proved.
   symlinkSync(join(uploads, "image.png"), join(uploads, "alias.png"));
   expect(guard.clamp("uploads/alias.png")).toBe(join(uploads, "image.png"));
 });
@@ -173,10 +159,8 @@ test("credential material in the folder stays denied", () => {
     "uploads/claude-login/.credentials.json",
   ])
     expect(() => guard.clamp(path), path).toThrow(PathDeniedError);
-  // A credential NAME is denied even when it points at an ordinary file...
   symlinkSync(join(uploads, "image.png"), join(uploads, "auth.json"));
   expect(() => guard.clamp("uploads/auth.json")).toThrow(PathDeniedError);
-  // ...and an ordinary name cannot launder the runtime's real credentials.
   symlinkSync(
     join(workspace, ".houston", "runtime", "auth.json"),
     join(uploads, "photo.png"),
@@ -222,8 +206,6 @@ test("a readable folder must be a narrowed wall's, and sit in the workspace", ()
 });
 
 test("a workspace named through a symlinked path still finds its folder", () => {
-  // macOS tmpdir is /var -> /private/var: the policy is built from the name the
-  // host passed, the guard judges canonical paths.
   const lexicalBase = mkdtempSync(join(tmpdir(), "houston-uploads-lex-"));
   const workspace = join(lexicalBase, ".assistant");
   mkdirSync(join(workspace, "uploads"), { recursive: true });

@@ -22,17 +22,6 @@ const defaults: AgentCardLabels = {
   tryNow: "Try it now",
 };
 
-/**
- * THE agent card. A div with a full-card link OVERLAY (never a button nested
- * in an anchor), so the visible corner affordance can sit above it validly.
- * Hover shifts colour and reveals the hairline — never position.
- *
- * Deliberately quiet: the tile and ONE bordered corner affordance up top —
- * the install `+`, or whatever the surface passes as `action` (the owner grid
- * puts its pencil menu there; two circles in one corner is how the pencil
- * ends up painted over the plus). Then air, name, two lines of description,
- * the integrations it uses, and a creator-plus-installs baseline.
- */
 export function AgentCard({
   agent,
   href,
@@ -44,9 +33,7 @@ export function AgentCard({
   agent: StoreAgentRow;
   href: string;
   LinkComponent?: StoreLinkComponent;
-  /** The surface's install action for the visible `+` affordance. */
   onTry?: (agent: StoreAgentRow) => void;
-  /** Replaces the `+` in the corner — the card has ONE corner affordance. */
   action?: React.ReactNode;
   labels?: Partial<AgentCardLabels>;
 }) {
@@ -97,13 +84,9 @@ export function AgentCard({
   );
 }
 
-/** The one corner affordance's dress, shared so an owner pencil sits exactly
- *  where the public `+` does. */
 export const cornerActionClasses =
   "pointer-events-auto relative z-10 grid size-8 shrink-0 place-items-center rounded-full border border-line text-ink-muted transition-colors duration-150 hover:bg-hover hover:text-ink";
 
-/** The quiet install tally every card baseline shares: a sparkle and the
- *  compact count, or the new-agent word while there is nothing to count. */
 export function AgentInstalls({
   count,
   newAgent,
@@ -124,9 +107,6 @@ export function AgentInstalls({
   );
 }
 
-/** Up to four integration marks and a truthful overflow count — what the
- *  agent works WITH, said in logos, never in words. Renders nothing for an
- *  agent that uses none. */
 export function IntegrationLogos({
   slugs,
   className,

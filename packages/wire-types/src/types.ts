@@ -1,13 +1,3 @@
-/**
- * The request/response shapes of protocol v3, as the client sees them.
- *
- * Hand-maintained, and a projection of `packages/protocol` (`src/wire.ts`,
- * which carries the zod schemas the host validates against) widened with the
- * shapes only a gateway deployment serves: billing, orgs, teams. The host is
- * the source of truth — when a route's payload changes there, change it here in
- * the same PR or the app compiles against a contract nothing serves.
- */
-
 import type {
   AgentInitialConfig,
   GrantableOperation,
@@ -87,37 +77,18 @@ export interface VersionResponse {
   engine: string;
   protocol: number;
   build: string | null;
-  /**
-   * True when this install carried over a legacy Rust-desktop chat-history db,
-   * i.e. the user is migrating from the old desktop build. The desktop UI uses
-   * this to show its one-time "reconnect your AI" moment, because the migrated
-   * provider credentials are not portable. Absent on engines that predate the
-   * field (treat as `false`).
-   */
   chatHistoryMigrated?: boolean;
 }
 
-/**
- * Where the user's personal assistant lives. The assistant is an ordinary
- * agent conversation as far as this client is concerned — this handle is the
- * address to open it at, and both fields are OPAQUE: never parse them, never
- * assume a shape. The deployment decides (a hidden local agent on the desktop,
- * a dedicated pod on the hosted cloud).
- */
 export interface AssistantHandle {
-  /** The agent id to pass to every per-agent call (chat, events, files). */
   agent: string;
-  /** The conversation id to open on that agent. */
   conversation: string;
 }
 
-/** See `Capabilities.customIntegrationScope`. */
 export type CustomIntegrationScope = "host" | "agent";
 
 export interface Capabilities {
-  /** Office-to-PDF previews are configured. Absent means false. */
   officePreview?: boolean;
-  /** Gateway remote push routes and delivery are configured. */
   push?: boolean;
   localModelBridge?: { versions: number[] };
   profile: "local" | "cloud";
@@ -128,263 +99,86 @@ export interface Capabilities {
   providers: string[];
   openaiCompatible: boolean;
   integrations: string[];
-  /** Workspace-shared skills store served by this deployment (ADR 0003). */
   sharedSkills: boolean;
-  /** This deployment serves agent-to-agent mission policy and delegation. */
   agentDelegation?: boolean;
-  /**
-   * Whether a custom integration can sign in through its own OAuth flow
-   * (PRODUCT-1172): the host serves a browser-reachable callback. Absent/false
-   * = the UI keeps the honest "can't connect yet" verdict instead of offering
-   * a sign-in that can only fail.
-   */
   customIntegrationOAuth?: boolean;
-  /**
-   * Where custom integrations live: `host` (one list shared by every agent
-   * on this host; absent = host) or `agent` (one pod per agent on the hosted
-   * gateway, each with its own list). See the protocol's `Capabilities`.
-   */
   customIntegrationScope?: CustomIntegrationScope;
-  /**
-   * Whether this deployment runs in multiplayer (paid org) mode: members,
-   * roles, per-agent assignment. Absent/false = single personal workspace.
-   * Optional so every existing single-player host/profile stays valid.
-   */
   multiplayer?: boolean;
-  /** The current user's role in the org, when `multiplayer` is on. */
   role?: OrgRole;
-  /**
-   * Whether this deployment serves the Teams v2 surface (per-agent access
-   * levels, share dialog, org dashboard). A feature-detect flag the frontend
-   * reads to enable the v2 UI; absent/false on hosts that predate Teams so
-   * every existing single-player/self-host profile stays valid.
-   */
   teams?: boolean;
-  /**
-   * Whether this deployment serves C8 Spaces: self-serve team creation, agent
-   * moves between spaces, and the multi-membership space switcher. A feature-
-   * detect flag the frontend reads to route the switcher's create action to the
-   * Create-team dialog; absent/false on desktop/self-host (the create action
-   * stays "create a local workspace"). The gateway is the sole enforcer.
-   */
   spaces?: boolean;
-  /**
-   * Whether this deployment can wake routines on external Composio events (C9
-   * event-driven routines). Requires a Composio project key AND a public webhook
-   * URL, so it is on for managed cloud + self-host and OFF on desktop (no public
-   * URL to deliver to). The UI reads it to show/hide the routine's "wake on an
-   * event" option; absent/false on hosts that predate triggers. Feature-detect
-   * flag only — the gateway/host is the sole enforcer.
-   */
   triggers?: boolean;
-  /**
-   * Whether this deployment serves the C9 public API, so the user can mint and
-   * revoke personal API keys (`GET/POST/DELETE /v1/keys`) to drive their agents
-   * from their own tools. A feature-detect flag the frontend reads to show the
-   * API-keys settings section; absent/false on desktop/self-host and on gateways
-   * that predate the public API. The gateway is the sole enforcer.
-   */
   apiKeys?: boolean;
-  /**
-   * Whether this deployment serves per-agent compute analytics — how long each
-   * agent's engine was running (`GET /v1/org/compute-usage`). Gateway-injected,
-   * hosted-cloud only; absent/false on desktop/self-host and on gateways that
-   * predate it. Feature-detect flag only — the gateway is the sole enforcer.
-   */
   computeUsage?: boolean;
-  /** C19 personal plan is configured on this deployment. */
   plan?: boolean;
-  /** C8 team seat billing is configured; absent, `/v1/org/billing*` only 503s. */
   teamBilling?: boolean;
-  /**
-   * Whether this deployment can delete a team space (`DELETE /v1/orgs/:slug`,
-   * PRODUCT-1410). A feature-detect flag the frontend reads to show the
-   * Settings Danger Zone at all: absent/false on desktop/self-host (one
-   * personal workspace, nothing to delete) and on gateways that predate the
-   * route, where the affordance would only pretend. The gateway is the sole
-   * enforcer (owner of a solo team with no live subscription).
-   */
   workspaceDelete?: boolean;
-  /**
-   * Whether this deployment keeps an account-level agent-config library
-   * (`GET /v1/agent-configs`, PRODUCT-1474). The hosted gateway says `false`
-   * (one pod per agent, no shared disk) so the client skips the read instead
-   * of discovering the missing route by 404; absent on deployments that
-   * predate the flag, where the client keeps the legacy probe.
-   */
   agentConfigLibrary?: boolean;
-  /**
-   * Whether this deployment accepts the caller's session token at
-   * `PUT /v1/integrations/session` (PRODUCT-1474). `false` on the hosted
-   * gateway, which verifies JWTs itself; `true` on a self-host engine that
-   * forwards integration calls with the pushed session. Absent → legacy probe.
-   */
   integrationSessionSink?: boolean;
-  /**
-   * The server titles a new mission from the send's `missionTitle` field after
-   * its first turn. Absent/false = the client asks `POST /agents/:id/title`
-   * and PATCHes the card itself. Only a deployment that runs turns in per-turn
-   * workers advertises it; the open host (desktop, self-host) never does.
-   */
   missionTitleOnSend?: boolean;
-  /**
-   * The gateway readies the sandbox a person's next send will run in while
-   * they type (`POST /v1/agents/:slug/conversations/:cid/prewarm`). Present
-   * only where the active space's sends run in per-turn sandboxes; the open
-   * host (desktop, self-host) never sets it.
-   */
   conversationPrewarm?: boolean;
-  /**
-   * The AI Manager's daily morning briefing (`/v1/heartbeat`) is served here.
-   * Set by the open host (desktop, self-host); absent on the hosted gateway
-   * until it serves one, so the settings row stays hidden there.
-   */
   heartbeat?: boolean;
-  /**
-   * The person can post an image to their own LinkedIn from here
-   * (`/v1/linkedin/*`). Present only where the hosted gateway holds a LinkedIn
-   * app key; absent everywhere else, where sharing falls back to copy and paste.
-   */
   linkedinShare?: boolean;
 }
 
-// ---------- Org / roles (multiplayer) ----------
-
-/**
- * A member's authority inside a multiplayer org. `owner` is the billing/root
- * seat, `admin` manages members + agents, `user` is a plain seat that can only
- * use the agents assigned to them. Kept in sync (by hand) with the protocol
- * `OrgRole` — the engine side is the source of truth.
- */
 export type OrgRole = "owner" | "admin" | "user";
 
-/** One member of the current user's org. */
 export interface OrgMember {
   userId: string;
-  /** The member's email, when the host exposes it to the caller. */
   email?: string;
   role: OrgRole;
-  /** The member's GCIP display name, when the gateway has one stored. */
   displayName?: string;
-  /** The member's GCIP profile photo URL, when the gateway has one stored. */
   photoUrl?: string;
 }
 
-/**
- * The public display fields of one human user (Teams), from
- * `GET /v1/org/profiles`. Both are optional — a user who never set a name or
- * photo resolves to a bare `{}`, so a consumer falls back to initials / a short
- * id rather than render an empty face. Sourced from the gateway's stored GCIP
- * `name`/`picture`; kept in sync by hand with the gateway (server is the source
- * of truth).
- */
 export interface UserProfile {
   displayName?: string;
   photoUrl?: string;
 }
 
-/**
- * Response of `GET /v1/org/profiles?ids=<csv>` (Teams): display profiles for the
- * requested member ids, keyed by user id. Ids that are NOT co-members of the
- * caller's active space are omitted (the personal space resolves only the
- * caller). Degrades to `{ profiles: {} }` on a host without the route.
- */
 export interface UserProfilesResult {
   profiles: Record<string, UserProfile>;
 }
 
-/**
- * Which fields of {@link EditableProfile} the user has overridden by hand. The
- * gateway resolves each field independently: `true` means the value below is
- * the user's own, `false` means it fell through to the identity provider's
- * (Google's) value. This is what drives the "Remove picture" / "Reset name"
- * affordances — there is nothing to remove when the value is Google's to begin
- * with.
- */
 export interface EditableProfileCustom {
   displayName: boolean;
   photoUrl: boolean;
 }
 
-/**
- * The caller's own display profile, from `GET /v1/me/profile`. Both fields are
- * the EFFECTIVE values the rest of the product renders: the user's override
- * when {@link EditableProfileCustom} says so, otherwise the identity provider's
- * value. Either can be absent — a user with no Google picture and no upload
- * resolves to a bare `{ custom: … }`, so a consumer falls back to initials
- * rather than render an empty face. Degrades to `null` on a gateway that
- * predates the route (404), which hides the account menu's Profile entirely.
- */
 export interface EditableProfile {
   displayName?: string;
   photoUrl?: string;
   custom: EditableProfileCustom;
 }
 
-/**
- * Body of `PUT /v1/me/profile`. The three states of each key are distinct and
- * load-bearing: a string SETS the override, `null` CLEARS it back to the
- * identity provider's (Google's) value, and an OMITTED key leaves that field
- * untouched. So a form that only edits the name must send only `displayName` —
- * sending `photoUrl: null` alongside it would silently wipe the picture. The
- * host validates (name 1..60 chars after trimming; photo an `https://` URL or a
- * small `data:image/*;base64,` URI) and answers 400 on a violation.
- */
 export interface EditableProfileUpdate {
   displayName?: string | null;
   photoUrl?: string | null;
 }
 
-/**
- * One co-member of the active space, from `GET /v1/org/people` (Teams). The
- * sanitized directory: no email, no role. `displayName`/`photoUrl` come from
- * the gateway's stored GCIP profile and are both optional.
- */
 export interface OrgPerson {
   userId: string;
   displayName?: string;
   photoUrl?: string;
 }
 
-/**
- * One @mention of a human in a chat message. Mirrors the protocol
- * `ChatMessage.mentions[]` entry.
- */
 export interface MessageMention {
   userId: string;
   name?: string;
 }
 
-/**
- * One approval card's outcome, carried on the message that answers it. Mirrors
- * the protocol `MessageApproval` (`@houston/protocol/approval`), which is where
- * the receipt rule lives: only a USER message can mint one, so the host reads
- * these off the request and never lets a model author them.
- */
 export interface MessageApproval {
   requestId: string;
   decision: "approve" | "deny";
 }
 
-/**
- * A per-agent access level (Teams v2). `manager` may reconfigure the agent
- * (instructions, skills, model, allowed toolkits, assignments); `user` may only
- * use it. Kept in sync (by hand) with the gateway — the server is the source of
- * truth and clamps a stale `manager` row for a plain `user` member at read time.
- */
 export type AgentAccess = "manager" | "user";
 
-/** One member's access level for a shared agent. */
 export interface AgentAssignment {
   userId: string;
   access: AgentAccess;
 }
 
-/**
- * A pending invite to the org, surfaced to owner/admin on `GET /org`. `email`
- * is the invited address; the invite is consumed on that user's first sign-in.
- * `createdAt` is epoch milliseconds.
- */
 export interface OrgInvite {
   id: string;
   email: string;
@@ -393,106 +187,46 @@ export interface OrgInvite {
   createdAt: number;
 }
 
-/**
- * The current user's org, with the caller's own role. `members` is populated
- * only for callers allowed to see the roster (owner/admin); a plain `user`
- * gets just the identity fields. `invites` (pending, un-consumed) is likewise
- * owner/admin only.
- */
 export interface OrgInfo {
   id: string;
   slug: string;
   name: string;
   role: OrgRole;
   members?: OrgMember[];
-  /** Pending invites, for owner/admin callers only. */
   invites?: OrgInvite[];
 }
 
-/**
- * Result of `POST /org/members` (Teams v2). A known Houston user is added
- * directly (`userId` set); an unknown email creates a pending invite instead
- * and the host answers `202` with `invited: true`. `role` echoes the requested
- * role in both cases.
- */
 export interface AddOrgMemberResult {
-  /** Set when an existing user was added directly (not invited). */
   userId?: string;
   role: OrgRole;
-  /** True when an invite was created because the email is not yet a user. */
   invited?: boolean;
-  /** The invited email, echoed on the invite path. */
   email?: string;
 }
 
-// ---------- Spaces / teams (C8) ----------
-
-/**
- * Billing status of a team space (C8 §Billing wire surface). Attached to an
- * `OrgSummary` only for teams and only for owner/admin callers; the DERIVED
- * effective `status` (never a stored column) drives every UI billing state.
- * `seats` is the live `count(org_members)` at read time. Kept in sync by hand
- * with the gateway — the server is the source of truth.
- */
 export interface BillingSummary {
   plan: "team" | "enterprise";
   status: "free" | "trialing" | "active" | "past_due" | "expired";
-  /** ISO-8601; present once the trial clock exists. */
   trialEndsAt?: string;
   seats: number;
-  /** Present once subscribed. */
   interval?: "monthly" | "annual";
 }
 
-/**
- * A Stripe-hosted URL to redirect the owner to (C8 §Billing wire surface).
- * Returned by `POST /v1/org/billing/checkout` (contextual card capture) and
- * `POST /v1/org/billing/portal` (card, invoices, interval switch, cancel). The
- * client opens it via the OS external-open path — never inline.
- */
 export interface BillingCheckout {
   url: string;
 }
 
-/**
- * One active personal API key (C9 §Credential), from `GET /v1/keys` and (minus
- * the secret) the mint response. `prefix` is the display-safe head of the key
- * (`hst_` + first 8 hex) shown so the user can tell keys apart; the full secret
- * is NEVER carried here. `lastUsedAt` is absent until the key first authenticates
- * a request.
- */
 export interface ApiKey {
   id: string;
   name: string;
   prefix: string;
-  /** ISO-8601 creation instant. */
   createdAt: string;
-  /** ISO-8601 instant the key last authenticated a request; absent if never used. */
   lastUsedAt?: string;
 }
 
-/**
- * The mint response of `POST /v1/keys` (C9): a fresh key plus its FULL secret.
- * `key` (`hst_` + 64 hex) appears ONLY in this response and can never be
- * retrieved again, so the UI holds it in local state for the one-time reveal and
- * MUST keep it out of any query cache.
- */
 export interface ApiKeyCreated extends ApiKey {
   key: string;
 }
 
-/**
- * One space (org) the caller belongs to (C8 §Wire surface — spaces), from
- * `GET /v1/orgs` and `POST /v1/orgs`. `kind` is derived server-side from
- * `personal_of`. `role` is the caller's role IN THIS space. `degraded` is
- * `true` when writes would `403 needs_upgrade` (visible to every member).
- * `billing` is the org's billing state, readable by every member; `null` for a
- * legacy org and for an older gateway's team summary (`readOrgSummary`).
- *
- * The space's `slug` is what pins the active space: a team's switcher workspace
- * id is `"org:" + slug` (C8 §Workspaces bridge), and that slug rides
- * `x-houston-org` / `?org=` (see `HoustonClient.setActiveOrg`).
- */
 export interface OrgSummary {
   id: string;
   slug: string;
@@ -504,11 +238,6 @@ export interface OrgSummary {
   billing: OrgBilling | null;
 }
 
-/**
- * A pending invite addressed to the caller's email (C8 §Wire surface), from
- * `GET /v1/orgs` (`invites`). Accepted via `POST /v1/org-invites/:id/accept` or
- * declined via `DELETE /v1/org-invites/:id`.
- */
 export interface OrgInviteSummary {
   id: string;
   orgName: string;
@@ -516,98 +245,40 @@ export interface OrgInviteSummary {
   invitedBy?: string;
 }
 
-/**
- * Response of `GET /v1/orgs` (C8): every membership plus every pending invite
- * addressed to the caller. Degrades to an empty result on a host that predates
- * spaces (404) so the switcher shows only the personal workspace.
- */
 export interface OrgsList {
   orgs: OrgSummary[];
   invites: OrgInviteSummary[];
-  /** The caller's free slot; null from a gateway without org billing. */
   freeOrg: FreeOrg | null;
 }
 
-/**
- * Response of `POST /v1/agents/:slug/move` (C8 §Agent move): the id to poll for
- * move progress. The move route is async — `202 {moveId}` — because a move stops
- * and restarts the agent's pod; completion is read from `getMoveStatus`, NEVER
- * inferred from the agent event stream (which only relays pod-scoped events).
- */
 export interface AgentMoveStart {
   moveId: string;
 }
 
-/**
- * Progress of one agent move (C8), polled from
- * `GET /v1/agents/:slug/move/:moveId`. `done`/`failed` are terminal; `error` is
- * a human-readable reason present on `failed`. The share pipeline MUST poll this
- * to terminal `done` before inviting (C8 §Share-triggers-team) — inviting before
- * the move completes is forbidden by the client contract.
- */
 export interface AgentMoveStatus {
   status: "moving" | "done" | "failed";
   error?: string;
 }
 
-/**
- * Per-agent settings (Teams v2), from `GET /agents/:slug/settings`.
- * `allowedToolkits` is the agent-level integration ceiling (`null` =
- * unrestricted, `[]` = none) and is the WHOLE effective allowlist — policy is
- * per agent only (org-wide ceilings were removed as overengineering). `access`
- * is the caller's effective access. `allowedModels` is the manager-set AI-model
- * ceiling: which models a member may pick for this agent (`null` = every model
- * allowed, `[]` = none). Each member's own per-agent pick lives in the separate
- * model-choice surface below; the gateway clamps that pick to this ceiling on
- * every turn.
- */
 export interface AgentSettings {
   allowedToolkits: string[] | null;
   access: AgentAccess;
   allowedModels: string[] | null;
 }
 
-// ---------- Per-user model choice (multiplayer) ----------
-
-/**
- * How hard a reasoning-capable model thinks, ascending. A CLOSED set: the
- * composer offers exactly these four, and a value outside them is dropped on
- * the way to the model rather than clamped, so a caller that invents one gets
- * the provider default with no sign anything was ignored. Mirrors
- * `EffortLevel` (app/src/lib/providers.ts) and the levels
- * `packages/runtime/src/ai/effort.ts` maps onto pi's thinking levels; a
- * persisted legacy `"max"` is normalized to `"xhigh"` on read.
- */
 export type AgentEffortLevel = "low" | "medium" | "high" | "xhigh";
 
-/**
- * A member's chosen AI model for one shared agent (Teams v2). The agent runs on
- * the ACTING user's choice per turn; the gateway clamps it to the agent's
- * `allowedModels` ceiling. `effort` is the
- * optional reasoning-effort the composer surfaces alongside the model.
- */
 export interface AgentModelChoice {
   provider: string;
   model: string;
   effort?: AgentEffortLevel;
 }
 
-/**
- * Response of `GET /agents/:slug/model-choice` (any assigned caller / owner):
- * the caller's own `choice` (or `null` when they have not picked one) plus the
- * agent's effective `allowedModels` ceiling (`null` = every model allowed) so
- * the composer can offer exactly the pickable set.
- */
 export interface AgentModelChoiceInfo {
   choice: AgentModelChoice | null;
   allowedModels: string[] | null;
 }
 
-/**
- * One audit-log entry (Teams v2), newest-first from `GET /org/audit`.
- * `action` is a stable slug (e.g. `agent.rename`, `member.add`, `agent.share`);
- * `subject` is action-specific JSON; `createdAt` is epoch milliseconds.
- */
 export interface AuditEntry {
   id: number;
   orgId: string;
@@ -618,10 +289,6 @@ export interface AuditEntry {
   createdAt: number;
 }
 
-/**
- * One usage-counter row (Teams v2) from `GET /org/usage`: message count for a
- * (agent, user, day) tuple. `day` is a `YYYY-MM-DD` UTC date.
- */
 export interface UsageRow {
   agentSlug: string;
   userId: string;
@@ -629,14 +296,6 @@ export interface UsageRow {
   messages: number;
 }
 
-/**
- * One compute-usage row from `GET /org/compute-usage`: engine running time for
- * an (agent, day) tuple. `day` is a `YYYY-MM-DD` UTC date. `awakeMs` is the
- * wall-clock the agent's engine was up that day (today's row includes the
- * currently-open stretch up to `ComputeUsage.asOf`); `activeMs` is the subset
- * spent actually executing turns/routine runs (recorded for later use, not
- * rendered yet — never sum it with `awakeMs`).
- */
 export interface ComputeUsageRow {
   agentSlug: string;
   day: string;
@@ -647,49 +306,20 @@ export interface ComputeUsageRow {
   routineRuns: number;
 }
 
-/** Response of `GET /org/compute-usage`. Days with no data have no row. */
 export interface ComputeUsage {
-  /** Server clock when the snapshot was taken (RFC 3339). */
   asOf: string;
-  /** Slugs of agents whose engine is up right now — their "today" still grows. */
   awakeNow: string[];
   rows: ComputeUsageRow[];
 }
 
-// ---------- Workspaces ----------
-
-/**
- * Which kind of space a workspace bridges (C8 §Workspaces bridge). Mirrors the
- * host domain `WorkspaceKind` (`packages/host/src/domain/types.ts`). `personal`
- * ⟺ OrgSummary `personal`, `org` ⟺ OrgSummary `team`.
- */
 export type WorkspaceKind = "personal" | "org";
 
 export interface Workspace {
-  /**
-   * Stable id. A hosted **personal** space keeps its existing auto-provisioned
-   * id — opaque, NEVER `org:`-prefixed. A hosted **team** space (`kind: "org"`)
-   * has the server-defined id grammar `"org:" + slug`, where `slug` is
-   * `[a-f0-9]{16}`. The `org:` prefix is a wire convention: strip it to recover
-   * the slug for `setActiveOrg` / `?org=`, but never synthesize or parse the
-   * slug beyond that (C8).
-   */
   id: string;
   name: string;
   isDefault: boolean;
   createdAt: string;
-  /**
-   * Which kind of space this row bridges (C8 §Workspaces bridge). Present on
-   * hosts that serve spaces; ABSENT on single-player/self-host hosts (treat as
-   * `"personal"`), so every pre-C8 profile stays valid. Selecting a `personal`
-   * workspace sends NO active-space header; selecting an `org` workspace pins
-   * `x-houston-org` (and `?org=` on the SSE routes) to its slug.
-   */
   kind?: WorkspaceKind;
-  /**
-   * Optional per-workspace UI-locale override (BCP-47 base tag: `en`/`es`/`pt`).
-   * Absent/null means the workspace inherits the global `locale` preference.
-   */
   locale?: string | null;
   provider?: string;
   model?: string;
@@ -721,8 +351,6 @@ export type {
   SidebarRootEntry,
 } from "@houston/protocol";
 
-// ---------- Agents / agent-data files ----------
-
 export * from "./routine-runs";
 export * from "./routines";
 
@@ -740,11 +368,7 @@ export interface ProjectFile {
   extension: string;
   size: number;
   is_directory: boolean;
-  /** Last modification time in milliseconds since the UNIX epoch. Omitted
-   * when the filesystem doesn't expose mtime for the entry. */
   date_modified?: number;
-  /** Creation time in milliseconds since the UNIX epoch. Omitted when the
-   * storage backend doesn't report one (e.g. Linux without birthtime). */
   date_created?: number;
 }
 
@@ -753,35 +377,20 @@ export interface InstalledConfig {
   path: string;
 }
 
-// ---------- Skills ----------
-
 export interface SkillSummary {
   name: string;
-  /**
-   * Display title from frontmatter `title:` — accents/casing the directory
-   * slug can't carry (translated store skills). Null → humanize the slug.
-   */
   title: string | null;
   description: string;
   version: number;
   tags: string[];
   created: string | null;
   lastUsed: string | null;
-  /** Optional user-facing category. Drives grouping in the "New mission" picker. */
   category: string | null;
-  /** Surface this skill on the Featured tab of the "New mission" picker. */
   featured: boolean;
-  /** Composio toolkit slugs this skill touches (e.g. ["gmail", "slack"]). */
   integrations: string[];
-  /** Image URL or Microsoft Fluent Emoji slug (e.g. "rocket"). */
   image: string | null;
-  /** Frontmatter `setup_activity_id:` — the setup chat this skill was built
-   *  in (HOU-791). Forward link; the durable reverse link is the activity's
-   *  `skill_slug`. */
   setupActivityId?: string | null;
-  /** Legacy structured inputs. Parsed for compatibility, ignored by composer UX. */
   inputs: SkillInputDef[];
-  /** Legacy prompt template. Parsed for compatibility, ignored by sends. */
   promptTemplate: string | null;
 }
 
@@ -792,13 +401,11 @@ export interface SkillInputDef {
   type: "text" | "textarea" | "select";
   required: boolean;
   default?: string;
-  /** Options for `type: select`. Empty for text/textarea. */
   options?: string[];
 }
 
 export interface SkillDetail {
   name: string;
-  /** Display title from frontmatter `title:`; null → humanize the slug. */
   title: string | null;
   description: string;
   version: number;
@@ -818,49 +425,16 @@ export interface SaveSkillRequest {
   content: string;
 }
 
-/**
- * Per-agent enablement of workspace-shared skills (ADR 0003). A shared skill
- * remains disabled until its slug appears here; agent-local skills always load
- * and shadow shared skills with the same slug.
- */
 export interface SkillsManifest {
   version: 1;
   enabled: string[];
 }
 
-// ---------- Providers / preferences ----------
-
-/**
- * Where Houston found the CLI binary backing a provider. Surfaced so
- * the UI can label whether the user is talking to a copy Houston shipped
- * (`bundled`), one Houston downloaded for them (`managed`), one already
- * on their PATH (`path`), or nothing at all (`missing`).
- *
- * Mirrors the Rust `houston_engine_core::provider::InstallSource` enum
- * with `#[serde(rename_all = "lowercase")]`.
- */
 export type CliInstallSource = "bundled" | "managed" | "path" | "missing";
 export type ProviderAuthState = "authenticated" | "unauthenticated" | "unknown";
 
-/**
- * WHOSE AI-provider account ANSWERED a probe or ran a turn (HOU-976). A READ,
- * never an address: the server decides whose credential a call resolves to from
- * the space it is made in, so no client request carries a scope.
- *
- * `"personal"` is the acting member's own account, which is the only account a
- * TEAM space has. `"team"` is the single workspace-level credential of a
- * personal space / self-host / desktop, reported for the surfaces that predate
- * the distinction. Absent means the deployment never said, which is the same
- * "one account, nothing to disambiguate" world.
- */
 export type CredentialScope = "personal" | "team";
 
-/**
- * How usable a provider credential is RIGHT NOW for whoever asked. Mirrors
- * `ProviderHealth` in `@houston/protocol` (ui/ mirrors wire unions rather than
- * importing them, same as `CredentialScope` above). Richer than `authState`: a
- * credential can be authenticated and valid yet unusable (`out_of_credits`).
- */
 export type ProviderHealth =
   | "connected"
   | "not_connected"
@@ -874,43 +448,13 @@ export interface ProviderStatus {
   authState: ProviderAuthState;
   cliName: string;
   installSource: CliInstallSource;
-  /** Absolute path to the CLI binary that will be spawned, or `null`
-   *  when `installSource === "missing"`. Useful for diagnostics UI. */
   cliPath: string | null;
-  /**
-   * The provider's currently-configured model id, when the engine reports one.
-   * Carries the OpenAI-compatible (local) provider's user-supplied model — which
-   * is dynamic and absent from the static frontend catalog — so the model picker
-   * can show + select it. Absent for providers whose models live in the catalog.
-   */
   activeModel?: string;
-  /**
-   * WHOSE credential produced this probe's answer (HOU-976). Absent on desktop,
-   * self-host, and any deployment/turn with no acting identity — there is
-   * exactly one credential there and nothing to disambiguate, so every
-   * pre-HOU-976 surface reads the shape it always read.
-   */
   credentialScope?: CredentialScope;
-  /**
-   * Why the provider is (un)usable for the acting identity. Absent from engines
-   * that predate it, so treat absence as "read `authState` as before".
-   */
   health?: ProviderHealth;
-  /**
-   * Epoch ms by which the person must sign in again (`ProviderInfo.reconnectBy`
-   * in `@houston/protocol`): a hosted Claude subscription login ends about 28
-   * days after it. Absent means no known deadline.
-   */
   reconnectBy?: number;
 }
 
-/**
- * Stable rate-limit window identifiers on a provider account, mapped to
- * translated labels by the frontend: `session` = the short rolling window
- * (Claude 5h, Codex primary), `week`/`week_opus` = 7-day windows, `month` =
- * monthly, `premium`/`chat`/`completions` = Copilot's quota lanes.
- * Mirrors `@houston/protocol`.
- */
 export type ProviderUsageWindowId =
   | "session"
   | "week"
@@ -920,63 +464,40 @@ export type ProviderUsageWindowId =
   | "chat"
   | "completions";
 
-/** One rolling rate-limit window on a connected provider account. */
 export interface ProviderUsageWindow {
   id: ProviderUsageWindowId;
-  /** 0–100, clamped engine-side; never NaN. */
   usedPercent: number;
-  /** ISO 8601 instant the window resets, when the provider reports one. */
   resetsAt: string | null;
-  /** Window length in minutes, when the provider reports one (300 = 5h). */
   windowMinutes?: number;
 }
 
-/** Prepaid balance for API-key providers that expose one. */
 export interface ProviderUsageCredits {
   remaining: number;
-  /** Total granted, when reported. */
   granted?: number;
   unit: "USD" | "credits";
 }
 
-/**
- * Cumulative token spend metered locally by Houston, for API-key providers
- * with no account-usage API to probe (Gemini, Bedrock, OpenCode, MiniMax,
- * custom endpoints). Mirrors `@houston/protocol`.
- */
 export interface ProviderUsageTokens {
   inputTokens: number;
   outputTokens: number;
-  /** Turns metered into this row. */
   turns: number;
-  /** ISO 8601 instant metering started (the first recorded turn). */
   since: string;
 }
 
 export type ProviderUsageStatus =
   | "ok"
-  | "unsupported" // the provider has no usage surface Houston can read
-  | "unauthenticated" // no readable credential for the usage probe
-  | "error"; // the probe failed (network, provider outage, bad payload)
+  | "unsupported"
+  | "unauthenticated"
+  | "error";
 
-/**
- * One connected provider account's live usage — rate-limit windows for
- * subscription providers, a credit balance for prepaid API keys. One row per
- * CONNECTED provider (`providerUsage()`); unreadable providers report an
- * honest non-`ok` status instead of being omitted.
- */
 export interface ProviderUsage {
   provider: string;
   status: ProviderUsageStatus;
   windows: ProviderUsageWindow[];
   credits?: ProviderUsageCredits;
-  /** Locally metered token spend, for providers with no usage API to probe. */
   tokens?: ProviderUsageTokens;
-  /** Plan/tier name when the provider reports one (e.g. Codex "pro"). */
   plan?: string;
-  /** ISO 8601 instant the row was fetched (`ok` rows only). */
   fetchedAt?: string;
-  /** Human-readable failure detail (`error` rows only; never a secret). */
   message?: string;
 }
 
@@ -984,23 +505,11 @@ export interface PreferenceValue {
   value: string | null;
 }
 
-/**
- * Known preference keys. Free-form strings are still allowed — this alias
- * just documents the well-known keys and gives consumers completion.
- *
- * Keep in sync with `houston-engine-core::preferences` constants.
- */
 export type KnownPreferenceKey =
   | "timezone"
   | "locale"
   | "migration_reconnect_dismissed";
 
-/**
- * Preference key marking that the user has seen (and dismissed/completed) the
- * one-time "reconnect your AI" moment shown after migrating from the legacy
- * desktop build. Value is the literal `"1"` once set; absent means not yet
- * shown. Lives in engine preferences so it survives reinstall-in-place.
- */
 export const MIGRATION_RECONNECT_DISMISSED_KEY =
   "migration_reconnect_dismissed";
 
@@ -1013,8 +522,6 @@ export interface ImportedWorkspace {
   workspaceName: string;
   agentIds: string[];
 }
-
-// ---------- Worktree / shell ----------
 
 export interface WorktreeInfo {
   path: string;
@@ -1042,105 +549,27 @@ export interface RunShellRequest {
   command: string;
 }
 
-// ---------- Sessions ----------
-
 export interface SessionStartRequest {
   sessionKey: string;
   prompt: string;
-  /**
-   * What renders as the user's chat bubble, when it must differ from `prompt`.
-   * The engine still receives `prompt` (the real text the model runs on);
-   * `displayText` is presentation-only — the optimistic live bubble and the
-   * replayed history bubble both render `displayText ?? prompt`. Set it when the
-   * prompt carries text the user should never see: a hidden setup-mission
-   * directive, or absolute attachment paths appended to the message.
-   */
   displayText?: string;
   systemPrompt?: string;
   source?: string;
   workingDir?: string;
   provider?: string;
   model?: string;
-  /**
-   * Reasoning-effort override. Forwarded to the CLI as `--effort` (Claude) or
-   * `-c model_reasoning_effort=<value>` (Codex). The tutorial uses this to
-   * force `"medium"` so a stale global `~/.codex/config.toml` value can't
-   * blow up the session.
-   */
   effort?: string;
-  /**
-   * Per-turn agent mode. `"plan"` runs the turn read-only (no file writes or
-   * side effects); `"auto"` (Autopilot) removes the blocking tools (ask_user,
-   * request_connection) so the turn runs fire-and-forget; `"execute"` (the
-   * default when omitted) runs it normally. Forwarded verbatim to the runtime,
-   * which enforces it.
-   */
   mode?: "execute" | "plan" | "auto";
-  /**
-   * Skip the turn stream's optimistic user bubble — for resends of a prompt
-   * whose bubble is already in the conversation VM (a refused not-connected
-   * send being retried verbatim).
-   */
   suppressUserBubble?: boolean;
-  /**
-   * Composer preview for a send that lands in the adapter's queue while a turn
-   * is running: the user's words + attachment names, rendered as a removable
-   * queued bubble. Ignored when the conversation is idle. (Context-full
-   * compaction and provider-switch handoffs are the RUNTIME's job now — there
-   * are no per-send fields for them.)
-   */
   queuedPreview?: { text: string; attachmentNames?: string[] };
-  /**
-   * This send is Houston resuming the conversation on the user's behalf after
-   * an out-of-band completion (a provider reconnect) — not something the user
-   * typed. The adapter's send queue treats it specially: at most ONE is held
-   * per conversation (several reconnect surfaces can fire the same resume),
-   * and a held one is dropped rather than flushed when it would be redundant —
-   * the user queued their own follow-up, or the turn that just settled was
-   * itself a resume.
-   */
   autoResume?: boolean;
-  /**
-   * Who is sending, in a MULTIPLAYER deployment: stamps the optimistic user
-   * bubble so a shared conversation attributes the message from the instant it
-   * appears — matching the `author` the gateway persists and history replays
-   * (HOU-943). Presentation-only, like `displayText`: the wire send is
-   * unchanged, and the gateway remains the authority on who acted. Omitted
-   * single-player / signed out, leaving the bubble authorless.
-   */
   author?: { userId: string; name?: string };
-  /**
-   * The teammates this message @mentions, as a structured sidecar ALONGSIDE the
-   * prompt (HOU-944). The model only ever sees the plain `@Name` text the user
-   * typed; this list carries the identities the composer resolved, so the sent
-   * bubble can chip them and a later notifications feature can scan a
-   * conversation for `mentions[].userId === me`. Omitted when the message
-   * mentions nobody, and in single-player deployments (no roster to mention).
-   */
   mentions?: MessageMention[];
-  /**
-   * The approval cards this message answers: for each, the host-issued request
-   * id and what the person said (`{requestId, decision}`). It rides as its own
-   * field rather than inside the prompt because the prompt is the person's
-   * words; the HOST reads these off the request, records the receipts — the
-   * only thing that turns a request id into a usable approval, and something no
-   * model can author — and drops the field before the runtime sees the turn.
-   * Omitted when the message answers no card; never an empty list.
-   */
   approvals?: MessageApproval[];
-  /**
-   * A new mission's FIRST message only: title the mission's card after this
-   * turn's reply, in the same runtime that ran it (no second request, no second
-   * sandbox). `fallback` is the title the card was created with (the runtime
-   * writes the AI title only while the card still shows it, so a rename wins);
-   * `text` is the user's own words to title. Omitted on every other send.
-   */
   missionTitle?: MissionTitle;
-  /** One-use approvals proposed by the person sending this message. */
   grants?: GrantableOperation[];
 }
 
-/** See {@link SessionStartRequest.missionTitle}. */
 export interface MissionTitle {
   fallback: string;
   text: string;
@@ -1157,18 +586,7 @@ export interface SessionCancelResponse {
 export interface ChatHistoryEntry {
   feed_type: string;
   data: unknown;
-  /**
-   * Multiplayer only (C5): who wrote a `user_message` entry, carried through to
-   * the ui/chat feed so a shared conversation attributes each teammate's bubble.
-   * Absent on every other feed type and in single-player mode.
-   */
   author?: { userId: string; name?: string };
-  /**
-   * The teammates a `user_message` entry @mentions (HOU-944), carried through
-   * to the ui/chat feed so a reloaded transcript chips the same names the sent
-   * bubble did. Absent on every other feed type and whenever the message
-   * mentioned nobody.
-   */
   mentions?: MessageMention[];
 }
 
@@ -1200,8 +618,6 @@ export interface GenerateInstructionsResult {
   suggestedIntegrations: SuggestedIntegration[];
   suggestedRoutine?: SuggestedRoutine | null;
 }
-
-// ---------- Attachments ----------
 
 export interface AttachmentUploadRequest {
   name: string;
@@ -1242,15 +658,6 @@ export interface AttachmentManifest extends AttachmentUploadResult {
   createdAt: string;
 }
 
-// ---------- Claude Code installer ----------
-
-/**
- * Stable failure `kind` for a Claude Code install attempt. Mirror of the
- * Rust `ClaudeInstallError` enum in
- * `engine/houston-ui-events/src/lib.rs` (serde `tag = "kind"`,
- * snake_case). The engine is i18n-agnostic, so it emits the slug and the
- * frontend localizes it. The two MUST stay in sync.
- */
 export type ClaudeInstallErrorKind =
   | "timeout"
   | "network_unreachable"
@@ -1263,31 +670,13 @@ export type ClaudeInstallErrorKind =
   | "manifest_entry_missing"
   | "unknown";
 
-/**
- * Typed install failure. `kind` is localized by the frontend; the
- * optional fields carry per-kind data. `detail` is technical text for
- * the bug report — never shown to a user verbatim.
- */
 export interface ClaudeInstallError {
   kind: ClaudeInstallErrorKind;
-  /** Present on `http_error`. */
   status?: number;
-  /** Present on `platform_unsupported`. */
   platform?: string;
-  /** Present on `checksum_mismatch` / `write_failed` / `unknown`. */
   detail?: string;
 }
 
-/**
- * Snapshot of the runtime Claude Code install. Returned by
- * `GET /v1/claude/status`.
- *
- * `lastInstallError` is the field the onboarding "Sign in with
- * Anthropic" card reads when `installed` is `false` — it disambiguates
- * "Houston tried to download Claude Code and failed (likely no
- * internet)" from "Houston hasn't tried yet". See issue #231 for the
- * UX bug this addresses.
- */
 export interface ClaudeStatus {
   installed: boolean;
   installPath: string;
@@ -1295,8 +684,6 @@ export interface ClaudeStatus {
   installedVersion: string | null;
   lastInstallError: ClaudeInstallError | null;
 }
-
-// ---------- Composio ----------
 
 export type ComposioStatus =
   | { status: "not_installed" }
@@ -1324,16 +711,8 @@ export interface ComposioStartLinkResponse {
 }
 
 export interface ComposioReconnectResponse {
-  /**
-   * Browser URL the user must open to finish OAuth re-consent, or `null`
-   * when the auth scheme refreshed silently (e.g. API-key connections).
-   */
   redirectUrl: string | null;
 }
-
-// ────────────────────────────────────────────────────────────────────────
-// Portable agent (share / import "from a friend")
-// ────────────────────────────────────────────────────────────────────────
 
 export interface PortableClaudeMdPreview {
   byteCount: number;
@@ -1353,8 +732,6 @@ export interface PortableRoutinePreview {
   id: string;
   name: string;
   promptExcerpt: string;
-  /** Cron expression or `@every` interval; absent for an event-driven
-   *  (trigger) routine (C9). */
   schedule?: string;
   enabled: boolean;
   integrations: string[];
@@ -1405,24 +782,17 @@ export interface PortableManifestSummary {
 }
 
 export interface MigrationImportOptions {
-  /** Replace files the target already has (a retry over a partial first try). */
   overwrite?: boolean;
-  /** `false`: write the transcripts but rebuild no pi session from them; the
-   *  caller stamps `needsSessionReplay` on the transcripts instead so the
-   *  next turn replays the history into whichever backend runs it. */
   sessions?: boolean;
 }
 
-/** One import request's outcome on the agent-scoped migration route. */
 export interface MigrationImportResult {
   written: number;
   skipped: number;
   rejected: { path: string; reason: string }[];
-  /** False when the deployment has no on-disk agent dir to anchor chat sessions. */
   sessionsRebuilt: boolean;
 }
 
-/** The counters one agent's chunks accumulated, as the marker records them. */
 export interface MigrationCounts {
   written: number;
   skipped: number;
@@ -1430,19 +800,11 @@ export interface MigrationCounts {
   sessionsRebuilt: boolean;
 }
 
-/** Which agent on which deployment this agent's data came from. */
 export interface MigrationSource {
   workspace: string;
   agent: string;
 }
 
-/**
- * The server-authoritative "this agent was imported" marker.
- *
- * `source` and `counts` are nullable because the route writes what the caller
- * sent through verbatim: a marker stamped by a caller that sent neither still
- * says WHEN the import completed.
- */
 export interface MigrationMarker {
   completedAt: string;
   source: MigrationSource | null;
@@ -1499,7 +861,6 @@ export interface PortableInstallRequest {
   agentName: string;
   agentColor?: string | null;
   selection: PortableInstallSelection;
-  /** The config the installed agent is born with, as on any create. */
   config?: AgentInitialConfig;
 }
 
@@ -1508,31 +869,14 @@ export interface PortableInstalledAgent {
   agentName: string;
   workspaceName: string;
   requiredIntegrations: string[];
-  /** Source routine id → the installed routine's id. An install never reuses
-   *  the package's routine ids (the hosted trigger tables key on them
-   *  globally); a copy that also carries the source's chats follows this map
-   *  so `routine-<id>` conversations stay linked (PRODUCT-1808). */
   routineIds: Record<string, string>;
-  /** The created agent record, so the wizard can reveal it optimistically
-   *  (same contract as agent create) instead of re-listing behind a warming
-   *  pod (HOU-710). */
   agent: Agent;
 }
 
-// ── integrations (Composio, platform mode) ───────────────────────────────────
-// User-level: no provider account — the user only connects apps (Gmail, Slack…)
-// via OAuth; Houston's platform key lives server-side, keyed by the user's id.
-
 export interface IntegrationProviderStatus {
   provider: string;
-  /** False on desktop until the user signs in to Houston (gateway needs it). */
   ready: boolean;
   reason?: "signin";
-  /**
-   * Legacy "Composio for you" connections were found for this install: the
-   * user reconnects their apps once (framed as the security improvement it is
-   * — their personal long-lived key is no longer used anywhere).
-   */
   reconnect?: boolean;
 }
 export interface IntegrationToolkit {
@@ -1541,78 +885,47 @@ export interface IntegrationToolkit {
   description?: string;
   logoUrl?: string;
   categories?: string[];
-  /** No-auth app (web search, weather…): nothing to connect, its tools work
-   *  as-is — the UI renders it "ready to use", never a Connect button. */
   noAuth?: boolean;
 }
 export interface IntegrationConnection {
   toolkit: string;
   connectionId: string;
   status: "active" | "pending" | "error";
-  /** Human identity of the account behind this connection ("dan@gmail.com",
-   *  "Acme workspace") — what tells two logins to one app apart. Absent when
-   *  the provider exposes no usable identity. */
   accountLabel?: string;
-  /** ISO timestamp the connection was created — the UI's fallback for telling
-   *  unlabeled accounts apart. */
   createdAt?: string;
 }
 
-// ── Custom integrations (HOU-550) ────────────────────────────────────────────
-// User-added API / MCP servers that Composio does not offer. The host owns
-// persistence and compiles them to agent tools; the frontend only lists them,
-// removes them, and provides a secret for the ones waiting on a credential. The
-// secret crosses ONLY on the credential POST body, never the chat transcript.
-
-/** One credential input to collect, keyed by `variable` in the submit body. */
 export interface CustomAuthField {
   variable: string;
   label: string;
 }
 
-/** An auth method the integration declares; one password field per `fields`. */
 export interface CustomAuthMethod {
   template: string;
   label: string;
   fields: CustomAuthField[];
 }
 
-/** Live status of a custom integration inside the running host. */
 export type CustomIntegrationState =
   | { status: "active"; toolCount: number }
   | { status: "pending"; authMethods: CustomAuthMethod[] }
   | { status: "error"; message: string };
 
-/** One compiled tool behind a custom integration, as the detail card lists
- *  it (name + blurb; addresses/schemas stay host-internal). */
 export interface CustomToolInfo {
   name: string;
   description?: string;
 }
 
-/** What a pasted URL turned out to be — the manual add form's pre-check.
- *  `unknown` is a RESULT (not a recognizable service URL), never an error. */
 export interface CustomDetectResult {
   kind: "openapi" | "mcp" | "unknown";
   name?: string;
   suggestedSlug?: string;
-  /** MCP probe: does the server demand auth before listing tools? */
   requiresAuthentication?: boolean;
-  /** MCP probe: the auth is the server's OWN sign-in flow (OAuth) — a pasted
-   *  API key will never work; the browser sign-in is the path (when
-   *  `oauthSupported`). */
   requiresOAuth?: boolean;
-  /** Present with `requiresOAuth`: whether THIS deployment can run the
-   *  browser sign-in (PRODUCT-1172). */
   oauthSupported?: boolean;
   toolCount?: number;
 }
 
-/**
- * The manual add form's submit body (HOU-980) — the SAME grammar the agent's
- * sandbox add tool sends, validated by the one host-side parser. `openapi`
- * needs `url` OR `spec` (an inline OpenAPI document); `mcp` needs `endpoint`.
- */
 export type AddCustomIntegrationInput =
   | {
       kind: "openapi";
@@ -1620,15 +933,9 @@ export type AddCustomIntegrationInput =
       url?: string;
       spec?: string;
       baseUrl?: string;
-      /** The service's main website — the brand domain the card icon
-       *  derives from (the endpoint often lives elsewhere). */
       website?: string;
       auth: "none" | "credential";
       slug?: string;
-      /** Same-slug, same-kind adds become an in-place replace instead of a
-       *  409 — the idempotent "ensure this definition exists" form (the
-       *  curated catalog's connect). A stored credential survives only when
-       *  the host proves the service origin is unchanged. */
       replace?: boolean;
     }
   | {
@@ -1636,56 +943,26 @@ export type AddCustomIntegrationInput =
       name: string;
       endpoint: string;
       website?: string;
-      /** Static, NON-secret request headers the server needs on every call
-       *  (HighLevel's `locationId`). Secrets go through the credential save. */
       headers?: Record<string, string>;
-      /** `oauth` (PRODUCT-1172): the server signs in with its own browser
-       *  flow — the add lands `pending` until the user presses Sign in. */
       auth: "none" | "credential" | "oauth";
       slug?: string;
-      /** See the openapi arm — the idempotent ensure-exists form. */
       replace?: boolean;
     };
 
-/** What the host lists: the definition plus its live compiled state. */
 export interface CustomIntegrationView {
   slug: string;
   name: string;
   website?: string;
   kind: "openapi" | "mcp";
-  /** How this integration authenticates — `oauth` turns the pending state's
-   *  affordance into Sign in (browser flow) instead of Enter key. Optional:
-   *  an older host omits it (treat as key-based). */
   auth?: "none" | "credential" | "oauth";
-  /** The service URL shown to the user (spec url / MCP endpoint). */
   displayUrl?: string;
-  /** Favicon of the service the definition talks to; absent when none can
-   *  exist (IP/localhost endpoints, unparseable blob specs). */
   iconUrl?: string;
   addedAtMs: number;
   state: CustomIntegrationState;
-  /** Present when a credential can be (re)provided — the fields to collect. */
   authMethods?: CustomAuthMethod[];
-  /** Only on the credential POST's response: the advisory health-check verdict
-   *  for the just-saved key (true = confirmed, false = probe rejected but the
-   *  key SAVED, absent = the service declares no probe). */
   verified?: boolean;
 }
 
-// ── Triggers (C9 event-driven routines) ──────────────────────────────────────
-// The event-wake surface: the catalog the routine editor's trigger picker reads,
-// and the per-routine provisioning status the editor renders as a badge. Mirrors
-// the host `IntegrationProvider` port types (`packages/host/src/integrations/`).
-
-/**
- * One entry in a toolkit's trigger catalog (C9), from
- * `GET /v1/integrations/composio/trigger-types?toolkit=<slug>`: an event a
- * routine can wake on. `type` splits latency classes — `webhook` is
- * near-realtime, `poll` carries minutes of inherent delay (surfaced in UI copy).
- * `config` is the JSON schema for the instance filters the user fills in (e.g.
- * GitHub's owner/repo); `payload` (when present) is the JSON schema of the event
- * body Composio delivers. Both are opaque schemas the client never interprets.
- */
 export interface TriggerType {
   slug: string;
   name: string;
@@ -1695,26 +972,12 @@ export interface TriggerType {
   payload?: Record<string, unknown>;
 }
 
-// `TriggerStatusState` / `TriggerStatusItem` live in `./trigger-status`.
-
-/**
- * The one-time reveal from minting (or rotating) a routine's incoming-webhook
- * key: `POST /v1/agents/:slug/routines/:id/webhook-key`. `url` is the public
- * ingress the external system POSTs to; `secret` is shown to the user EXACTLY
- * once and never stored in routine data; `key_prefix` is the display-only
- * "wh_xxxxxxxx" label the UI persists onto the routine's webhook binding.
- * Calling again rotates: the old secret is invalidated.
- */
 export interface WebhookKeyReveal {
   url: string;
   secret: string;
   key_prefix: string;
 }
 
-// ── OpenAI-compatible (local) provider ───────────────────────────────────────
-// A local LLM server the user runs (Ollama / vLLM / LM Studio), connected by
-// base URL + model id. New-engine + desktop only (the URL is the user's own
-// machine). The key is optional — keyless local servers ignore it.
 export interface CustomEndpoint {
   bridge?: import("@houston/protocol").ManagedBridgeEndpoint;
   baseUrl: string;
@@ -1722,10 +985,6 @@ export interface CustomEndpoint {
   name?: string;
   contextWindow?: number;
   reasoning?: boolean;
-  /**
-   * Share this endpoint with the active organization. Only meaningful when
-   * saving in managed cloud; ignored elsewhere.
-   */
   shared?: boolean;
   apiKey?: string;
 }

@@ -23,8 +23,6 @@ describe("user-told mark", () => {
   });
 
   it("call() stamps it only when its ladder told the user", () => {
-    // Source text: tauri.ts pulls the engine and the i18n barrel, which this
-    // runner cannot load.
     const src = readFileSync(
       join(import.meta.dirname, "../src/lib/tauri.ts"),
       "utf8",
@@ -55,7 +53,6 @@ describe("user-told mark", () => {
     const toast = read("error-toast.ts");
     const body = toast.slice(toast.indexOf("export function showErrorToast("));
     ok(body.includes("): boolean {"));
-    // Signed out, warming, offline, waking and a surfaced quiet state.
     for (const line of [
       "suppressed: signed-out engine call`);\n    return true;",
       "while the agent warms up`);\n    return true;",
@@ -65,7 +62,6 @@ describe("user-told mark", () => {
     ]) {
       ok(body.includes(line), line);
     }
-    // The report-only path leaves the caller's copy as the user's surface.
     ok(body.trimEnd().endsWith("return false;\n}"));
   });
 });

@@ -7,10 +7,6 @@ import {
   conversationDraftKeysOf,
 } from "../src/lib/conversation-drafts.ts";
 
-// A mission's chat is keyed `session_key ?? activity-<id>` (`rowSessionKey`),
-// so a delete seam that only forgets `activity-<id>` leaves the unsent work of
-// every mission that carries a session key parked forever.
-
 describe("conversationDraftKeysOf", () => {
   it("forgets a mission's own conversation key, not just the id stand-in", () => {
     deepStrictEqual(
@@ -75,8 +71,6 @@ describe("agentConversationDraftKeys", () => {
 
 describe("agentConversationDraftKeys", () => {
   it("names each key once when the same mission is cached twice", () => {
-    // The rows come from a UNION of two caches (the per-agent activity query
-    // and the all-conversations aggregate), so the same mission arrives twice.
     deepStrictEqual(
       agentConversationDraftKeys("a1", [
         { id: "m1", session_key: "sess-1" },
@@ -104,9 +98,6 @@ describe("captureAgentDraftKeys", () => {
   });
 
   it("holds the keys a roster change later makes unresolvable", () => {
-    // The host emits `AgentsChanged` before the delete answers, so the roster
-    // can lose the agent mid-delete; keys captured beforehand still name every
-    // mission it owned.
     const captured = captureAgentDraftKeys("a1", roster, rowsOf);
     const afterReload = captureAgentDraftKeys(
       "a1",

@@ -18,8 +18,6 @@ const { createElement } = React;
 
 describe("FormDialog sizes", () => {
   it("caps both widths at sm:, so a phone keeps the dialog's gutter", () => {
-    // An unprefixed max-w- is tailwind-merged over DialogContent's
-    // max-w-[calc(100%-2rem)] base and the dialog goes edge-to-edge.
     for (const size of ["sm", "md"] as const) {
       assert.match(FORM_DIALOG_SIZE_CLASS[size], /^sm:max-w-/);
     }
@@ -52,8 +50,6 @@ describe("the secondary action", () => {
   });
 
   it("hands an action with its own onClick the wheel, closing nothing", () => {
-    // A "Back" that walks the caller's own steps must not dismiss the surface
-    // the user is still inside.
     let closed = 0;
     let backed = 0;
     const cancel = resolveSecondary(
@@ -117,8 +113,6 @@ describe("the primary's promise", () => {
   });
 
   it("refuses re-entry while the work is in flight", () => {
-    // The guard is a ref, not state: a same-frame rage click lands before
-    // React commits the disabled button.
     let runs = 0;
     const inFlight = { current: false };
     const handlers = {
@@ -158,7 +152,6 @@ describe("the primary's promise", () => {
 });
 
 describe("Enter inside the form", () => {
-  /** Never-settling work: the primary is left in flight for the whole test. */
   const inFlightPrimary = (count: { runs: number }) => {
     const inFlight = { current: false };
     return () =>
@@ -227,8 +220,6 @@ describe("Enter inside the form", () => {
       isCompositionEnter({ key: "Enter", isComposing: true, keyCode: 229 }),
       true,
     );
-    // Safari fires compositionend first and clears isComposing, leaving only
-    // the legacy code behind.
     assert.equal(
       isCompositionEnter({ key: "Enter", isComposing: false, keyCode: 229 }),
       true,
@@ -240,8 +231,6 @@ describe("Enter inside the form", () => {
   });
 
   it("leaves a plain Enter to the browser, so a textarea keeps its newline", () => {
-    // The recipe cancels nothing on a real Enter: implicit submission is the
-    // browser's, and the browser never submits from a <textarea>.
     assert.equal(
       isCompositionEnter({ key: "Enter", isComposing: false, keyCode: 13 }),
       false,
@@ -303,10 +292,6 @@ describe("the submittable frame", () => {
 
 describe("FormDialog renders", () => {
   it("mounts on its props and keeps everything inside the portal", () => {
-    // Radix portals mount in an effect, which server rendering never runs, so
-    // an open dialog renders nothing HERE. What this asserts is that the
-    // recipe itself renders — no throw, no React warning — on the props an app
-    // passes it.
     const complaints: string[] = [];
     const consoleError = console.error;
     console.error = (...args: unknown[]) =>
@@ -333,13 +318,6 @@ describe("FormDialog renders", () => {
 });
 
 describe("a primary that resolves false", () => {
-  /**
-   * A submit can SUCCEED and still have something left to say: minting an API
-   * key reveals its secret exactly once, and a dialog that closed on success
-   * would take the secret with it. Rejecting is the wrong signal for that —
-   * a rejection is the failure posture (the input survives for a correction).
-   * So `false` means "the work landed; the dialog has more to show".
-   */
   it("keeps the dialog open, and still ends the pending state", async () => {
     const events: string[] = [];
     const inFlight = { current: false };
@@ -379,8 +357,6 @@ function inFlightRef() {
 
 describe("dismissing a form dialog", () => {
   it("is refused while the primary's promise is in flight", () => {
-    // Escape, the overlay and the X all arrive as one `onOpenChange(false)`.
-    // A half-saved form must not vanish under the user.
     assert.equal(refusesDismiss({ current: true }, false), true);
   });
 
@@ -396,8 +372,6 @@ describe("dismissing a form dialog", () => {
 
 describe("a dialog with no second button", () => {
   it("resolves to null when the caller passes null", () => {
-    // The reveal posture: the secret is already minted, so "Cancel" would be a
-    // lie — there is one way out and it is the primary.
     assert.equal(
       resolveSecondary(null, "Cancel", () => undefined),
       null,

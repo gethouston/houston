@@ -1,20 +1,3 @@
-/**
- * Boot seed for the UI tests.
- *
- * A browser tab has no Tauri supervisor and no Connect screen interaction, so we
- * prime `localStorage` + `window.__HOUSTON_CP__` BEFORE any app script runs
- * (Playwright `addInitScript` runs before page scripts on every navigation).
- * That makes the app:
- *   - skip the engine Connect screen (engine config is already stored),
- *   - run the adapter in host mode (`__HOUSTON_CP__`), matching the
- *     real cloud/desktop-host deployment,
- *   - skip the first-run language picker (locale pref set to `en` → stable,
- *     English text in assertions).
- *
- * The keys mirror the adapter's localStorage layout
- * (packages/engine-adapter/src/client.ts `getPreference` → `houston.pref.*`,
- * packages/web/src/engine-config.ts `NEW_ENGINE_STORAGE_KEY`).
- */
 import {
   FAKE_HOST_URL,
   FAKE_TOKEN,
@@ -41,14 +24,11 @@ function buildSeed(overrides?: { agentId?: string }): Seed {
       [pref("locale")]: "en",
       [pref("last_workspace_id")]: SEED_WORKSPACE_ID,
       [pref("last_agent_id")]: agentId,
-      // i18next's own language-detector cache — pin it so the very first paint is
-      // English instead of the browser's locale.
       i18nextLng: "en",
     },
   };
 }
 
-/** Install the boot seed on a page (call once, before `goto`). */
 export async function seedPage(
   page: Page,
   overrides?: { agentId?: string },
@@ -57,9 +37,7 @@ export async function seedPage(
     try {
       for (const [k, v] of Object.entries(seed.storage))
         localStorage.setItem(k, v);
-    } catch {
-      /* storage disabled — the app would fail anyway; let the assertion report it */
-    }
+    } catch {}
     (window as unknown as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__ = true;
   }, buildSeed(overrides));
 }

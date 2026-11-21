@@ -75,8 +75,6 @@ where
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
 
-    // Drain stderr concurrently so a chatty failure can't fill the pipe and
-    // wedge the child before it exits. The tail is only read on a non-zero exit.
     let stderr_task = stderr.map(|s| {
         tokio::spawn(async move {
             let mut buf = String::new();
@@ -101,8 +99,6 @@ where
         }
         Ok(LoginOutcome::Exited(Ok(status))) => {
             let tail = collect_stderr(stderr_task).await;
-            // Flavor decides the log level and the flags the frontend degrades
-            // on (unrunnable helper, shell gate, offline); see `exit_report`.
             let report = ExitReport::classify(&status, &tail);
             report.log();
             emit(EVENT_DONE, report.payload());
@@ -113,8 +109,6 @@ where
             emit(EVENT_DONE, json!({ "success": false, "error": error }));
         }
         Ok(LoginOutcome::Cancelled) => {
-            // Benign user cancel: kill the child, report a null error so the
-            // frontend dismisses silently.
             if let Err(e) = child.kill().await {
                 tracing::error!("[claude-login] failed to kill helper after cancel: {e}");
             }
@@ -127,12 +121,6 @@ where
             if let Err(e) = child.kill().await {
                 tracing::error!("[claude-login] failed to kill helper after timeout: {e}");
             }
-            // INFO, not error: an abandoned login (user closed the consent
-            // tab or walked away) is expected behavior and this expiry IS the
-            // designed teardown — same reasoning as the oauth-loopback
-            // listener timeout and the runtime's abandoned-login expiry.
-            // Nothing in Houston broke, so don't mint a Sentry event per
-            // abandonment; the frontend toasts its own retryable copy.
             tracing::info!(
                 "[claude-login] timed out after {}s with no result",
                 LOGIN_TIMEOUT.as_secs()
@@ -164,7 +152,6 @@ where
     let mut exited: Option<std::io::Result<ExitStatus>> = None;
 
     loop {
-        // Done only once the child has exited AND stdout is fully drained.
         if !reading {
             if let Some(status) = exited.take() {
                 return LoginOutcome::Exited(status);
@@ -172,13 +159,11 @@ where
         }
 
         tokio::select! {
-            // Cancel poll — active only while the child is still running.
             _ = tokio::time::sleep(CANCEL_POLL), if exited.is_none() => {
                 if cancel.load(Ordering::SeqCst) {
                     return LoginOutcome::Cancelled;
                 }
             }
-            // Next stdout line — active only while there is a pipe to read.
             next = read_next_line(lines.as_mut()), if reading => {
                 match next {
                     Ok(Some(line)) => {
@@ -196,7 +181,6 @@ where
                     }
                 }
             }
-            // Child exit — active only until observed once.
             status = child.wait(), if exited.is_none() => {
                 exited = Some(status);
             }
@@ -314,10 +298,6 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn run_login_flags_a_signal_killed_helper_as_unavailable() {
-        // A helper that dies from a signal (the shape of a Bun binary
-        // SIGILL-ing on a pre-AVX2 CPU, HOUSTON-APP-543) must carry the
-        // `helperUnavailable` flag so the frontend can degrade to the
-        // runtime's paste flow instead of a dead retry loop.
         let dir = unique_tmp_dir("sigill");
         let script = write_fake_claude(&dir, "claude", "#!/bin/sh\nkill -ILL $$\n");
         let config_dir = dir.join("config");
@@ -331,8 +311,6 @@ mod tests {
         assert_eq!(done.1["success"], json!(false));
         assert_eq!(done.1["helperUnavailable"], json!(true));
         let error = done.1["error"].as_str().expect("error string");
-        // The message names the concrete signal (SIGILL = 4) so triage can
-        // tell an illegal instruction from an OOM kill without the machine.
         assert!(error.contains("exit signal 4"), "error was: {error}");
 
         std::fs::remove_dir_all(&dir).expect("cleanup");
@@ -355,20 +333,16 @@ mod tests {
         run_login(&script, &config_dir, Arc::new(AtomicBool::new(false)), emit).await;
 
         let got = events.lock().expect("events lock");
-        // No URL was printed, so no url event.
         assert!(got.iter().all(|(name, _)| name != EVENT_URL));
         let done = got.last().expect("done event");
         assert_eq!(done.0, EVENT_DONE);
         assert_eq!(done.1["success"], json!(false));
-        // A non-null error carries the reason (incl. the stderr tail).
         let error = done.1["error"].as_str().expect("error string");
         assert!(error.contains("exit 1"), "error was: {error}");
         assert!(
             error.contains("authentication was declined"),
             "error was: {error}"
         );
-        // A plain non-zero exit (e.g. a declined authorization) is NOT a
-        // helper-can't-run condition — it must never reroute to the paste flow.
         assert_eq!(done.1["helperUnavailable"], json!(false));
         assert_eq!(done.1["shellUnavailable"], json!(false));
         assert_eq!(done.1["networkUnavailable"], json!(false));
@@ -379,10 +353,6 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn run_login_flags_an_offline_exit_as_network_unavailable() {
-        // HOUSTON-APP-5E9: with no DNS the CLI exits 1 printing Node's raw
-        // socket error. The payload must carry the flag so the frontend shows
-        // its connectivity toast instead of the raw text, and the helper and
-        // shell verdicts stay clear (a retry once online just works).
         let dir = unique_tmp_dir("offline");
         let script = write_fake_claude(
             &dir,
@@ -412,11 +382,6 @@ mod tests {
     #[cfg(unix)]
     #[tokio::test]
     async fn run_login_flags_the_cli_shell_gate_as_shell_unavailable() {
-        // The CLI's Windows shell-gate refusal (HOUSTON-APP-4ZP) is a missing
-        // prerequisite, not a login failure: the payload must carry the flag
-        // so the frontend shows install-Git copy (or the paste flow on a
-        // remote engine) instead of the raw CLI text, while the helper itself
-        // stays "runnable".
         let dir = unique_tmp_dir("shell-gate");
         let script = write_fake_claude(
             &dir,

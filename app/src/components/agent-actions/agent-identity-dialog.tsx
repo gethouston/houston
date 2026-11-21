@@ -22,7 +22,6 @@ export function AgentIdentityDialog({
   onSave,
 }: {
   agent: Agent;
-  /** Every other agent's name in the workspace: the live duplicate check. */
   otherNames: readonly string[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,16 +32,11 @@ export function AgentIdentityDialog({
   const errorId = useId();
   const [name, setName] = useState(agent.name);
   const [colorId, setColorId] = useState(() => agentColorId(agent.color));
-  // Checked live, like every other name field, and only once the name moves:
-  // an unchanged name is never sent, and the agent's own name is passed so an
-  // employee already called Houston can take a new spelling of it.
   const issueText =
     name.trim() === agent.name
       ? null
       : issueCopy(agentNameIssue(name, [...otherNames], agent.name), name);
 
-  // Saves what MOVED, so an untouched field is never written back over a
-  // change someone else made meanwhile. The recipe closes on the resolve.
   const save = () => {
     const nextName = name.trim();
     const patch = {

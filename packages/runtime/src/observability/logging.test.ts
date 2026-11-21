@@ -178,8 +178,6 @@ test("a turn-mode worker never opens a log file on its data dir", async () => {
     expect(server).toEqual({ dataDir: dir });
     expect(runtimeLogFile(dir)).toBe(join(dir, "runtime.log"));
 
-    // Bound end to end: with the turn options installed, a logged line reaches
-    // stderr and nothing is created under the data dir.
     const written: string[] = [];
     const stderr = process.stderr.write.bind(process.stderr);
     process.stderr.write = ((chunk: string | Uint8Array) => {

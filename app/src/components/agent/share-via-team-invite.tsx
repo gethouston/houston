@@ -8,13 +8,6 @@ import {
 } from "../../lib/invite-seat-refusal";
 import type { EmailInvite, TeamRef } from "../../lib/share-via-team";
 
-/**
- * The invite step of {@link ShareViaTeamFlow}: an email roster targeting the
- * now-active team space (the flow switched into it after the move completed).
- * Presentational only — the container owns the `addOrgMember` calls and the
- * per-email status transitions; this just reads the roster and reports back
- * emails to add / a send request / a done request.
- */
 export function InviteStep({
   agentName,
   team,

@@ -10,7 +10,6 @@ import type { OpResult } from "./op-apply";
 import type { OpRequest } from "./parse-op-request";
 import type { TurnFilesystem } from "./turn-filesystem";
 
-/** Prepare only. The gateway writes the board and starts the claimed turn. */
 export async function prepareFirstDayOp(
   op: OpRequest,
   fs: TurnFilesystem,
@@ -23,10 +22,6 @@ export async function prepareFirstDayOp(
     events: [],
     include: () => false,
   });
-  // The pod's readJson throws on these and answers nothing useful; here a
-  // throw would be a worker 500, which fast-fails every op of the agent
-  // for a window on the gateway. Any other JSON value reads as the pod
-  // reads it: no input.
   let body: unknown;
   try {
     body = JSON.parse(op.op.body || "{}");

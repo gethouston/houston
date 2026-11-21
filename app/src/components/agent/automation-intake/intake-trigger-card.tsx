@@ -14,25 +14,12 @@ import type { TriggerPick } from "./types";
 import { useTriggerStep } from "./use-trigger-step";
 
 interface IntakeTriggerCardProps {
-  /** The agent the trigger is scoped to (its connections + allowlist). */
   agent: Agent;
-  /** The stepper chrome (pager + dismiss X) the intake hands this re-hosted
-   *  step so it renders the SAME shell as a real ask_user card. */
   chrome: StepChrome;
-  /** Back to the wake question (this card is only reachable via that choice). */
   onBack: () => void;
-  /** Commit the assembled trigger and complete the intake. */
   onComplete: (pick: TriggerPick) => void;
 }
 
-/**
- * The app-event wake card, re-hosted from the old wizard step into the in-chat
- * {@link InteractionModal} shell. The body walks pick an app → connect it if
- * needed → the app is selected. The user only PICKS THE APP here (and pins the
- * account when it has more than one); WHAT should happen in it is decided later,
- * in plain words, in the AI setup chat. Once the app is selected and its event
- * catalog has loaded in the background, the "Create it" CTA commits the pick.
- */
 export function IntakeTriggerCard({
   agent,
   chrome,

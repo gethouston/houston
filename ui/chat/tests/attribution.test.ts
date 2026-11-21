@@ -17,7 +17,6 @@ import {
   distinctAuthorCount,
 } from "../src/feed-to-messages.ts";
 
-/** A minimal user ChatMessage carrying an optional author. */
 const userMsg = (author?: ChatMessage["author"], key = "u"): ChatMessage => ({
   key,
   from: "user",
@@ -46,7 +45,6 @@ const systemMsg = (key = "s"): ChatMessage => ({
   fileChanges: [],
 });
 
-/** Wrap messages as the rendered display items `senderRunStarts` consumes. */
 const rows = (...messages: ChatMessage[]): ChatDisplayItem[] =>
   messages.map((message, sourceIndex) => ({
     kind: "message",
@@ -54,7 +52,6 @@ const rows = (...messages: ChatMessage[]): ChatDisplayItem[] =>
     sourceIndex,
   }));
 
-/** An agent's tool/reasoning block, which renders no sender line of its own. */
 const processRow = (key: string, sourceIndex: number): ChatDisplayItem => ({
   kind: "process",
   key,
@@ -95,8 +92,6 @@ describe("isOwnMessage", () => {
   });
 
   it("treats every message as own while the viewer is unknown", () => {
-    // Guessing "teammate" here would left-align the viewer's own bubbles and
-    // snap them right the moment the session resolves.
     assert.equal(isOwnMessage(ada, undefined), true);
   });
 
@@ -133,12 +128,6 @@ describe("isPeerRow", () => {
   });
 
   it("mirrors a lone teammate's thread even though nothing is labelled", () => {
-    // The regression: `showSenders` is undefined (capabilities still loading,
-    // or the legacy heuristic), and the thread holds ONE author who is not the
-    // viewer — so `distinctAuthorCount` is 1 and no name is printed. The side
-    // must still follow the writer, or a teammate's words render inside the
-    // viewer's own bubble and then jump left when pagination reveals a second
-    // author.
     const thread = [userMsg(ada, "m1"), userMsg(ada, "m2")];
     const showSenders = undefined;
     const showAuthorLabels = showSenders ?? distinctAuthorCount(thread) >= 2;
@@ -157,9 +146,6 @@ describe("announcesSelfAuthorship", () => {
   });
 
   it("stays silent on an AUTHORLESS turn — there is no authorship to claim", () => {
-    // It lays out as "own" (nobody else could have written it), but a screen
-    // reader must not be told the viewer wrote something the transcript does
-    // not attribute to anyone.
     assert.equal(
       announcesSelfAuthorship(userMsg(undefined), "user_a", true),
       false,
@@ -167,8 +153,6 @@ describe("announcesSelfAuthorship", () => {
   });
 
   it("stays silent while the viewer is unknown", () => {
-    // Layout treats an unresolved viewer as "own" defensively; an
-    // announcement cannot be guessed the same way.
     assert.equal(announcesSelfAuthorship(userMsg(ada), undefined, true), false);
   });
 
@@ -193,7 +177,6 @@ describe("senderNameFor", () => {
   });
 
   it("NEVER names the viewer's own message", () => {
-    // The self line is gone: a group chat labels who you talk to, not you.
     assert.equal(senderNameFor(ada, "user_a"), null);
   });
 
@@ -290,8 +273,6 @@ describe("senderRunStarts", () => {
   });
 
   it("lets the agent introduce itself after its own tool work", () => {
-    // ask -> [tools] -> reply: the process block renders no sender line, so it
-    // must not swallow the agent's introduction on the reply.
     const items: ChatDisplayItem[] = [
       ...rows(userMsg(ada, "m1")),
       processRow("p1", 1),

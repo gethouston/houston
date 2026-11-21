@@ -47,7 +47,6 @@ function harness() {
     },
   });
 
-  /** Let every pending microtask (an in-flight flush) settle. */
   const settle = () => new Promise<void>((done) => setImmediate(done));
 
   return {
@@ -68,7 +67,6 @@ function harness() {
     setStalled: (next: boolean) => {
       stalled = next;
     },
-    /** Answer the attempt that is still in flight, then let the queue react. */
     answer: async (next: ProductAnalyticsSendResult) => {
       answerStalled?.(next);
       answerStalled = null;
@@ -142,7 +140,6 @@ describe("ProductAnalyticsQueue", () => {
     strictEqual(h.sent.length, 1);
     strictEqual(h.queue.size, 1, "signed out is not a delivery failure");
 
-    // Two more held attempts must not exhaust the (untouched) retry budget.
     await h.queue.flush();
     await h.queue.flush();
     h.setResult({ status: "ok" });
@@ -156,8 +153,6 @@ describe("ProductAnalyticsQueue", () => {
     h.setResult({ status: "no-session" });
     h.queue.enqueue("session_started");
     await h.runTimers();
-    // Nobody else will wake this batch: the sink only re-flushes on a token
-    // change, and a session can arrive without one (a refresh mid-attempt).
     strictEqual(h.timers.length, 1, "a held batch re-polls on its own");
     strictEqual(h.timers[0]?.ms, 3_000);
     await h.runTimers();
@@ -180,8 +175,6 @@ describe("ProductAnalyticsQueue", () => {
     await h.runTimers();
     strictEqual(h.sent.length, 1, "the first attempt is in flight");
 
-    // The bearer lands while that attempt is still open: the sink flushes, and
-    // the batch that is about to come back must not wait for another token.
     await h.queue.flush();
     strictEqual(h.sent.length, 1, "no second batch overlaps the first");
     h.setStalled(false);
@@ -197,8 +190,6 @@ describe("ProductAnalyticsQueue", () => {
     h.queue.enqueue("session_started");
     await h.runTimers();
     strictEqual(h.sent.length, 1);
-    // Each attempt costs a bearer refresh, so a growing held backlog must not
-    // buy one per event.
     for (let i = 0; i < 60; i += 1) h.queue.enqueue("command_palette_opened");
     await h.settle();
     strictEqual(h.sent.length, 1, "the backlog waits for the re-poll");
@@ -223,8 +214,6 @@ describe("ProductAnalyticsQueue", () => {
     h.queue.enqueue("search_performed", { surface: "missions" });
     await h.runTimers();
     strictEqual(h.queue.size, 1);
-    // The transport answers with a result for every expected outcome, offline
-    // included, so a throw is a bug — it must reach the reporting path.
     strictEqual(h.lost[0]?.reason, "unexpected");
     h.setThrowing(false);
     await h.runTimers();
@@ -243,9 +232,6 @@ describe("ProductAnalyticsQueue", () => {
 
     h.setResult({ status: "ok" });
     await h.queue.flush();
-    // The route refuses a batch above 100, so the backlog ships in slices —
-    // oldest first. The launch beats a held batch is holding are exactly what
-    // the funnel is read from, so the cap throws away the NEWEST instead.
     strictEqual(h.sent.at(-1)?.length, 100);
     strictEqual(h.sent.at(-1)?.[0]?.id, "id-1");
     strictEqual(h.queue.size, 100);

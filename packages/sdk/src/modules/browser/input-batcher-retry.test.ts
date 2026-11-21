@@ -66,7 +66,6 @@ describe("the browser live input's retries", () => {
     await h.advance(1);
     await h.advance(500);
     expect(h.posts[1].request).toMatchObject({ batch: { seq: 1 } });
-    // The stuck POST answering late changes nothing.
     h.posts[0].resolve({ state: "done" });
     await flush();
     expect(h.states.at(-1)).toEqual({ kind: "live" });
@@ -156,7 +155,6 @@ describe("the browser live input's retries", () => {
     h.posts[2].reject(refusal);
     await flush();
     expect(h.handlers.onUnexpected).toHaveBeenCalledTimes(1);
-    // The event lane's own success starts a new episode.
     h.connection.send({ type: "back" });
     await h.advance(1000);
     h.posts[3].resolve({ state: "waiting" });

@@ -24,13 +24,6 @@ import {
 
 export type { FenceConnect } from "./fence-dial";
 
-/**
- * The proxy's network, for tests: name resolution, outbound connects, how
- * long one connect attempt may take, this machine's own addresses, how long
- * a request head may take to arrive, and judging plus connecting at most.
- * `own` is read on every check: interfaces come and go while the browser
- * stays open (a Wi-Fi change), and reading them is a cheap local call.
- */
 export interface FenceNet {
   lookup?: FenceLookup;
   connect?: FenceConnect;
@@ -41,11 +34,8 @@ export interface FenceNet {
 }
 
 export interface FenceProxy {
-  /** Listening on 127.0.0.1 at this port. */
   readonly port: number;
-  /** Whether the proxy refused `host` within the last minute. */
   refused(host: string): boolean;
-  /** Stop listening and cut every open connection. Safe to call twice. */
   close(): Promise<void>;
 }
 
@@ -53,16 +43,6 @@ const HEAD_TIMEOUT_MS = 15_000;
 const REFUSAL_MEMORY_MS = 60_000;
 const REFUSAL_MEMORY_SIZE = 64;
 
-/**
- * The browser's network fence: a forward proxy Chromium sends EVERY request
- * through (network-fence.ts), subresources, scripts' fetches, workers and
- * each redirect hop included. It resolves the host itself, refuses when any
- * answer is non-public or this machine's own (fence-target.ts), and connects
- * only to addresses it checked. Every connection carries ONE judged request:
- * a CONNECT tunnel, or one plain-http request and its response
- * (fence-forward.ts). One per browser, on 127.0.0.1, closed with it. It logs
- * nothing about where pages go: no hosts, no URLs.
- */
 export async function startFenceProxy(
   privateNetworks: PrivateNetworks,
   net: FenceNet = {},
@@ -87,7 +67,6 @@ export async function startFenceProxy(
         own(),
       );
     } catch (error) {
-      // The browser left, or the connect bound ran out: nothing failed.
       if (signal.aborted) return { kind: "unreachable" };
       console.warn(
         "[browser] fence: resolving a host failed",
@@ -145,10 +124,8 @@ export async function startFenceProxy(
   };
 }
 
-/** Read one request head off `client`, then refuse it or relay it. */
 function serve(client: Socket, judge: Judge, open: Open, net: FenceNet): void {
   let buffered = Buffer.alloc(0);
-  // Connection resets are the browser hanging up: nothing to report.
   client.on("error", () => client.destroy());
   client.setTimeout(net.headMs ?? HEAD_TIMEOUT_MS, () => client.destroy());
   const onData = (chunk: Buffer) => {
@@ -163,7 +140,6 @@ function serve(client: Socket, judge: Judge, open: Open, net: FenceNet): void {
     }
     client.off("data", onData);
     client.pause();
-    // The head is in: from here connectJudged's own bound applies.
     client.setTimeout(0);
     const request = parseProxyRequest(buffered.subarray(0, end));
     const rest = buffered.subarray(end);

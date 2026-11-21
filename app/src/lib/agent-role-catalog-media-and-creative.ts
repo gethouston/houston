@@ -1,4 +1,3 @@
-/** The media and creative worlds and the jobs each one hires for (ids only; labels live in `agentOnboarding:roleSetup`). */
 export const MEDIA_AND_CREATIVE_WORLDS = {
   media_publishing: [
     "managing_editor",

@@ -10,10 +10,6 @@ import { SpaceInvaders } from "./space-invaders";
 import { MigrationStatusCycle } from "./status-cycle";
 import { WizardFrame } from "./wizard-frame";
 
-/** The quiet "Migrate later" escape hatch — the same `onDefer` everywhere:
- *  while the run is still going AND on every error state, so a user stuck on
- *  a failing backup/prepare/agent is never trapped with only Retry (the
- *  Settings "Continue migration" row keeps the re-run available). */
 function DeferButton({ onDefer }: { onDefer: () => void }) {
   const { t } = useTranslation("migration");
   return (
@@ -27,12 +23,6 @@ function DeferButton({ onDefer }: { onDefer: () => void }) {
   );
 }
 
-/**
- * Live migration wait screen (HOU-719 redesign): a spinner over a status line
- * that cycles through the real phases, so the wait feels alive without exposing
- * per-agent plumbing. Falls back to a per-agent list panel only when something
- * needs the user's attention (a failed agent).
- */
 export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
   const { t } = useTranslation("migration");
   const reduce = useReducedMotion() ?? false;
@@ -61,11 +51,6 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
   ];
 
   const waiting = !startError && !anyError;
-  // Backup and prepare have no measurable fraction (prepare stays true through
-  // the backup; branch on backingUp first for its copy). The progress bar runs
-  // in indeterminate mode until the real per-agent upload begins, then flips to
-  // the true fraction — one persistent bar instance across all three so it
-  // continues smoothly and never jumps backward.
   const indeterminate = backingUp || preparing;
   const statusPhrases = backingUp
     ? [t("progress.backingUp")]
@@ -79,8 +64,6 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
       title={t("progress.title")}
       footer={
         startError ? (
-          // Backup/prepare failed: Retry lives in the card; the footer offers
-          // the way out so the error never traps the user in the wizard.
           onDefer && <DeferButton onDefer={onDefer} />
         ) : anyError && !anyRunning ? (
           <div className="flex flex-col items-center gap-2">
@@ -94,8 +77,6 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
             {onDefer && <DeferButton onDefer={onDefer} />}
           </div>
         ) : onDefer ? (
-          // The migration is still running (backup / prepare / uploading): let
-          // the user leave and finish later from Settings if it's slow.
           <DeferButton onDefer={onDefer} />
         ) : undefined
       }
@@ -129,11 +110,6 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
             </div>
           </div>
         ) : (
-          // One shared block for backup → prepare → upload: the status line and
-          // the progress bar keep a single instance across all three phases, so
-          // the indeterminate creep hands off to the real fraction without a
-          // remount (and never a jump backward). The game stays out of the
-          // backup/prepare wait — it only joins once real upload is underway.
           <div className="flex w-full flex-col items-center gap-5">
             <div className="flex w-full max-w-xs flex-col items-center gap-3">
               <MigrationStatusCycle phrases={statusPhrases} />
@@ -169,9 +145,6 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
                 </div>
               )}
             </div>
-            {/* The roomy wait is a chance to play: a tiny Space Invaders under
-                the bar (subtle, card-width). It self-nulls under reduced motion,
-                so the invitation is gated on the same signal to never orphan. */}
             {!indeterminate && !reduce && (
               <div className="mt-2 flex w-full max-w-xs flex-col items-center gap-2 rounded-2xl border border-line bg-card/60 p-4">
                 <p className="text-xs text-ink-muted">

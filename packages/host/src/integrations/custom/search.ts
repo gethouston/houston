@@ -7,7 +7,6 @@ import {
   curatedScoped,
 } from "./curated";
 
-/** The subset of an executor tool row that scoring needs. */
 export interface CustomToolRow {
   address: string;
   integration: string;
@@ -19,9 +18,6 @@ export interface CustomToolRow {
 export interface CustomDefRow {
   slug: string;
   name: string;
-  /** Compiled and connected. A pending/errored def still surfaces (the model
-   *  learns the slug) but as NOT CONNECTED, so the model offers the connect
-   *  hand-off instead of trying to run tools that do not exist. */
   active: boolean;
 }
 
@@ -33,8 +29,6 @@ const tokenize = (q: string): string[] =>
     .split(/[^a-z0-9]+/)
     .filter((t) => t.length > 1);
 
-/** An integration surfaced at app level (no action): the model still learns
- *  the slug. One shape for the scoped and unscoped paths. */
 const appRow = (d: CustomDefRow): ToolMatch => ({
   action: "",
   toolkit: d.slug,
@@ -43,9 +37,6 @@ const appRow = (d: CustomDefRow): ToolMatch => ({
   status: d.active ? "connected" : "connectable",
 });
 
-/** Score tools against a plain-language query: token hits on the tool
- *  name/description weigh 1, hits on the integration's slug/name weigh 2 (the
- *  user usually names the app: "acme create ticket"). Zero-hit tools drop. */
 function scoreTools(
   query: string,
   tools: CustomToolRow[],
@@ -70,15 +61,6 @@ function scoreTools(
     .map(({ tool }) => toMatch(tool, nameOf));
 }
 
-/**
- * Search custom tools. `app` (optional) is the agent's HARD scope
- * (PRODUCT-1274), resolved via the shared provider-neutral rules
- * (scope-resolve.ts): only the resolved integration is searched, and a
- * zero-score scoped search degrades to LISTING its tools (the deterministic
- * fallback — a named app must surface its actions, not an empty result, when
- * the phrasing scores zero). An unresolvable scope returns EMPTY items with
- * scope "unresolved"; the sandbox proxy owns the one unscoped retry.
- */
 export function searchCustomTools(
   query: string,
   tools: CustomToolRow[],
@@ -87,12 +69,6 @@ export function searchCustomTools(
 ): ProviderSearchResult {
   const added = new Set(defs.map((d) => d.slug));
   if (app) {
-    // Precedence: an installed definition the scope names EXACTLY, then a
-    // curated alias ("ghl", "leadconnector") naming the curated slug whether
-    // or not it is added yet, then the loose substring rules — so a user's
-    // own integration literally named like an alias keeps its scope, while
-    // an alias never falls through to a substring neighbour ("lead",
-    // "Level"): once it names the curated slug, only that slug can answer.
     const scope =
       exactScopeRows(defs, app).length > 0 ? app : curatedCanonicalScope(app);
     const scopedDefs =
@@ -100,9 +76,6 @@ export function searchCustomTools(
         ? resolveScopeRows(defs, scope)
         : exactScopeRows(defs, scope);
     if (scopedDefs.length === 0) {
-      // A scope naming a curated, not-yet-added app resolves to its
-      // connectable row — "unresolved" would trigger the unscoped retry and
-      // bury the one app the model asked about under other apps' matches.
       const curated = curatedScoped(scope, added);
       if (curated.length > 0) return { items: curated, scope: "resolved" };
       return { items: [], scope: "unresolved" };
@@ -117,8 +90,6 @@ export function searchCustomTools(
     const listed = scopedTools
       .slice(0, MAX_MATCHES)
       .map((t) => toMatch(t, nameOf));
-    // An integration with no compiled tool still surfaces as an app row —
-    // a resolved scope always yields at least one row.
     return {
       items: listed.length > 0 ? listed : scopedDefs.map(appRow),
       scope: "resolved",
@@ -127,8 +98,6 @@ export function searchCustomTools(
   const nameOf = new Map(defs.map((d) => [d.slug, d.name.toLowerCase()]));
   const matches = scoreTools(query, tools, nameOf);
 
-  // Toolkit-level entries for queried apps with no scored tool (mirrors the
-  // Composio catalog-resolution step): the model still learns the slug.
   const tokens = tokenize(query);
   const seen = new Set(matches.map((m) => m.toolkit));
   for (const def of defs) {
@@ -138,8 +107,6 @@ export function searchCustomTools(
       matches.push(appRow(def));
     }
   }
-  // Curated, not-yet-added entries surface as CONNECTABLE app rows, so the
-  // model offers request_connection for them like any unconnected app.
   matches.push(...curatedMatches(tokens, added));
   return { items: matches };
 }

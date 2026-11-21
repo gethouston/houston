@@ -7,23 +7,10 @@ import { useState } from "react";
 import type { SpecimenProp } from "../../../src/specimen";
 import { AGENT_ICON, DONE_MISSION, NEEDS_YOU_MISSION } from "./sample";
 
-/**
- * The card's live demos and the slot they sit in. Helper module: it exports no
- * `specimen`, so the page beside it pulls these in.
- */
-
-/** A card never floats — it sits in a column, on the column's own tone, at the
- *  column's width. Reviewing one outside that slot judges the wrong contrast. */
 export function CardSlot({ children }: { children: ReactNode }) {
   return <div className="w-64 rounded-xl bg-chip p-1.5">{children}</div>;
 }
 
-/**
- * Rename and delete, wired for real: the title the input commits is the title
- * the card then shows, and confirming the delete dialog removes the card. Both
- * are the component's own state machines (an inline input; `ConfirmDialog`) —
- * there is nothing to stub and never a browser dialog.
- */
 export function EditableCard() {
   const [title, setTitle] = useState(NEEDS_YOU_MISSION.title);
   const [deleted, setDeleted] = useState(false);
@@ -53,11 +40,6 @@ export function EditableCard() {
   );
 }
 
-/**
- * The multi-select set, held where a board would hold it. Checking one card
- * flips `anySelected`, which is what keeps EVERY checkbox visible — the
- * affordance is never hover-gated once a selection exists.
- */
 export function SelectableCards() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(
     () => new Set([NEEDS_YOU_MISSION.id]),
@@ -91,7 +73,6 @@ export function SelectableCards() {
   );
 }
 
-/** `KanbanCardProps`, read off the component's TypeScript types. */
 export const CARD_PROPS: SpecimenProp[] = [
   {
     name: "item",

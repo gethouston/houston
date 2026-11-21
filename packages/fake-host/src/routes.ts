@@ -1,19 +1,3 @@
-/**
- * Per-agent route dispatch for the fake host: everything under `/agents/:id/*`.
- *
- * Two contracts share this namespace (mirroring the real deployment):
- *  - control-plane host data — activities, routines, skills, agent files
- *    (packages/engine-adapter/src/control-plane.ts; routes-agent-data.ts), and
- *  - the per-agent runtime proxy — providers, auth, settings, and the
- *    conversation stream (packages/runtime-client/src/client.ts), reached at
- *    `/agents/:id/conversations/:cid/*` (routes-agent-runtime.ts).
- *
- * The chat turn is the interesting one: the client subscribes to the
- * conversation's SSE stream FIRST, then POSTs the message (fire-and-forget 202).
- * We register the open stream, then push a canned reply (`text` deltas → `usage`
- * → `done`) when the message lands. See translate.ts `streamTurn`.
- */
-
 import type { ProviderId } from "@houston/runtime-client";
 import { nameTaken, reservedNameRefusal } from "./agent-name-refusals";
 import { json, noContent } from "./http";
@@ -36,7 +20,6 @@ import { handleMigrationRoutes } from "./routes-migration";
 import { handlePortableRoutes } from "./routes-portable";
 import * as state from "./state";
 
-/** A create's `seeds` map, when it is one. */
 function stringRecord(value: unknown): Record<string, string> | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value))
     return undefined;
@@ -53,22 +36,16 @@ function makeTitle(text: string): string {
   );
 }
 
-/**
- * Dispatch `/agents/:id/...`. `rest` is the path split AFTER the `agents`
- * segment, already URL-decoded. `body` is the parsed JSON body (or undefined).
- */
 export function handleAgents(
   method: string,
   rest: string[],
   req: Request,
   body: Record<string, unknown> | undefined,
 ): Response | Promise<Response> {
-  // /agents
   if (rest.length === 0) {
     if (method === "GET")
       return json(state.listAgents(state.requestOrgSlug(req)));
     if (method === "POST") {
-      // Trimmed like the real host's `validateAgentName` before it is stored.
       const name = String(body?.name ?? "Agent").trim();
       const reserved = reservedNameRefusal(name, {
         migration: body?.migration,
@@ -86,7 +63,6 @@ export function handleAgents(
 
   const id = rest[0];
 
-  // /agents/:id
   if (rest.length === 1) {
     if (method === "PATCH") {
       const name = String(body?.name ?? "").trim();
@@ -124,14 +100,12 @@ export function handleAgents(
 
     case "routine_runs":
       if (method === "GET") return json({ items: [] });
-      return noContent(); // create/update/delete/run — accepted no-ops
+      return noContent();
 
     case "credential":
       return handleCredential(method, id, rest, body);
 
     case "providers":
-      // `/providers/usage` is the live per-account usage the AI Models hub's
-      // Connected rows meter with; anything else under the segment is the list.
       if (rest[2] === "usage") return json(state.providerUsageList());
       return json(state.providerList(id));
 
@@ -157,25 +131,19 @@ export function handleAgents(
       return handleAgentFile(method, id, rest, body);
 
     case "first-day":
-      // An AI Employee's first day: the host-side start (routes-first-day.ts).
       if (method !== "POST" || rest.length !== 2) return noContent(405);
       return startFirstDay(id, body ?? {});
 
     case "files":
-      // The Files tab's workspace surface (list/upload/move/…): routes-files.ts.
       return handleWorkspaceFiles(method, id, rest, req, body);
 
     case "attachments":
       return handleAttachments(method, id, body);
 
     case "portable":
-      // Share / copy: the export inventory and the packaged `.houstonagent`,
-      // both from this agent's own state (routes-portable.ts).
       return handlePortableRoutes(method, id, rest[2], body);
 
     case "migration":
-      // The chats leg of "Copy an agent": zip the board + transcripts out of
-      // one agent, unpack them into another (routes-migration.ts).
       return handleMigrationRoutes(method, id, rest[2], req, body);
 
     default:

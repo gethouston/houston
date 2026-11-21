@@ -44,9 +44,7 @@ describe("migrateAgentLayouts", () => {
     expect(
       readFileSync(join(agent, ".houston/routines/routines.json"), "utf8"),
     ).toBe("[]");
-    // Rollback net: originals stay.
     expect(existsSync(join(agent, ".houston/activity.json"))).toBe(true);
-    // Families that never existed are not created.
     expect(existsSync(join(agent, ".houston/config"))).toBe(false);
   });
 
@@ -99,7 +97,6 @@ describe("migrateAgentLayouts", () => {
   it("skips dirs without a .houston and dot-dirs, and survives a broken agent", () => {
     mkdirSync(join(root, "Personal", "no-houston-here"), { recursive: true });
     mkdirSync(join(root, ".hidden", "Agent", ".houston"), { recursive: true });
-    // A .houston that is a FILE, not a dir → per-agent failure must not throw.
     const broken = join(root, "Personal", "Broken");
     mkdirSync(broken, { recursive: true });
     writeFileSync(join(broken, ".houston"), "not a dir", "utf8");

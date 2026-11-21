@@ -20,12 +20,6 @@ import {
   type WizardSelection,
 } from "./copy-agent-wizard-model";
 
-/**
- * The copy wizard's state: which source, what it carries, what stays switched
- * on, and the name and color the copy is born with. `pick` reads the source's
- * shareable content and advances; `submit` runs the same portable copy the
- * Settings "Copy agent" row runs, fed this selection.
- */
 export function useCopyAgentWizard(args: {
   onBack: () => void;
   onDone: () => void;
@@ -47,13 +41,9 @@ export function useCopyAgentWizard(args: {
   const [name, setName] = useState("");
   const [color, setColor] = useState<string | undefined>(undefined);
   const [creating, setCreating] = useState(false);
-  // Chats are opt-IN: a conversation can hold personal details the new agent
-  // has no business knowing, so unlike every other item they start off.
   const [copyChats, setCopyChats] = useState(false);
   const [chatCount, setChatCount] = useState(0);
 
-  // Only agents whose content the caller may read: a "user"-access agent's
-  // portable preview is refused by the gateway, so it never appears here.
   const sources = agents.filter((agent) => isAgentManager(capabilities, agent));
   const steps = copyWizardSteps(preview);
   const step: CopyWizardStep = steps[stepIndex] ?? "source";
@@ -64,8 +54,6 @@ export function useCopyAgentWizard(args: {
   const pick = async (agent: Agent) => {
     setLoadingId(agent.id);
     try {
-      // The chats count rides along so the know screen can say how many
-      // conversations the switch would bring (and hide it when there are none).
       const [next, conversations] = await Promise.all([
         getEngine().portablePreview(agent.folderPath),
         getEngine().listConversations(agent.folderPath),
@@ -100,13 +88,6 @@ export function useCopyAgentWizard(args: {
     stepIndex > 0 ? setStepIndex(stepIndex - 1) : args.onBack();
   const next = () => setStepIndex(stepIndex + 1);
 
-  /**
-   * Forget the whole wizard. The sheet that hosts it keeps this state alive
-   * across its other screens (its header reads the wizard's own steps), so
-   * leaving the copy path has to say so out loud: without this, coming back
-   * would land on a source list under a progress bar counting the LAST
-   * source's screens.
-   */
   const reset = () => {
     setSource(null);
     setPreview(null);
@@ -162,5 +143,4 @@ export function useCopyAgentWizard(args: {
   };
 }
 
-/** The wizard's whole state, as the sheet that frames it reads it. */
 export type CopyAgentWizardState = ReturnType<typeof useCopyAgentWizard>;

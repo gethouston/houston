@@ -24,9 +24,6 @@ test("fileCategory classifies common extensions", () => {
   assert.equal(fileCategory(""), "other");
 });
 
-// Both spellings of TIFF are in the wild (macOS screenshots write .tiff, plenty
-// of scanners write .tif). The glyph is this classification, so a missed
-// spelling paints a scan with the generic file mark.
 test("fileCategory reads both TIFF spellings as images", () => {
   assert.equal(fileCategory("tiff"), "image");
   assert.equal(fileCategory("tif"), "image");

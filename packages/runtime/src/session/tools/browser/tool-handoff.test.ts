@@ -8,7 +8,6 @@ import { HandoffRegistry } from "./live/registry";
 import { BrowserPool } from "./pool";
 import { type HandoffBudget, makeBrowserTool } from "./tool";
 
-/** A pool that fails the test if anything reaches the browser. */
 const noBrowser = () =>
   new BrowserPool({
     launch: () => Promise.reject(new Error("no browser should launch")),
@@ -22,7 +21,6 @@ function handOver(liveView: boolean, handoffBudget?: HandoffBudget) {
     handoffs: new HandoffRegistry(),
     ...(handoffBudget ? { handoffBudget } : {}),
   });
-  // SAFETY: the browser tool never reads its ExtensionContext.
   return tool.execute(
     "t",
     { action: "handoff", text: "Sign in" },
@@ -92,7 +90,6 @@ test("a hand-off belongs to the signed acting-as, else a pooled turn's verified 
 
 test("an unsigned acting-user header never owns a hand-off (the desktop's first-day turn)", () => {
   expect(handoffOwner({ actingUser: "desktop-user" })).toBeUndefined();
-  // A standing runtime's request headers can never name a verified owner.
   const standing = actingFromHeaders({
     "x-houston-acting-user": "desktop-user",
     "x-houston-verified-owner": "desktop-user",

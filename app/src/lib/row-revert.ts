@@ -1,29 +1,11 @@
-/**
- * Undo one optimistic write over a list of keyed rows WITHOUT touching rows it
- * never painted. A whole-list snapshot restore would also wipe rows that
- * landed while the write was in flight (another agent's slice of the
- * aggregate, a neighbour's paint), so a refusal reverts only its own rows.
- *
- * Pure and idempotent: a second run over its own output changes nothing.
- */
 export interface RowRevert<R> {
   keyOf: (row: R) => string;
-  /** Paint-time rows this write removed or edited: put back as they were. */
   touched: (row: R) => boolean;
-  /** Rows this write created: dropped unless the paint-time list had them. */
   added?: (row: R) => boolean;
-  /** How a touched row still listed comes back; defaults to its paint-time self. */
   restore?: (current: R, before: R) => R;
-  /** `false` for edits: a touched row gone from `current` was removed by
-   *  someone else mid-write, not by this write, so it stays gone. */
   reinsert?: boolean;
 }
 
-/**
- * Where paint-time row `from` goes back: after its nearest predecessor still
- * listed, else before its nearest successor (a neighbour's own revert may
- * not have put the predecessor back yet).
- */
 function anchorIndex<R>(
   next: R[],
   before: R[],
@@ -83,7 +65,6 @@ export function revertRows<R>(
   return changed ? next : current;
 }
 
-/** `current` with `keys` set back to `before`'s values (absent stays absent). */
 export function restoreFields<R extends object>(
   current: R,
   before: R,

@@ -26,11 +26,6 @@ import { tauriChannels } from "../../lib/tauri";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { inChannelWorkspace } from "../channel-workspace-scope";
 
-/**
- * The endpoint describes availability; absent deployments expose no nav row.
- * `watches` are the hand-offs the Channels section has outstanding, one per
- * provider at most; the nav row reads availability only and never polls.
- */
 export function useChannels(watches: ChannelWatches = {}) {
   const spaceId = useWorkspaceStore((s) => s.current?.id);
   return useQuery({
@@ -43,8 +38,6 @@ export function useChannels(watches: ChannelWatches = {}) {
     staleTime: 15_000,
     retry: false,
     refetchOnWindowFocus: "always",
-    // A connection is made on the gateway, never in this tab, so nothing here
-    // is told when it lands: the SDK's watch policy says when to poll.
     refetchInterval: (query) =>
       channelWatchPollMs(
         watches,
@@ -63,7 +56,6 @@ export function useChannelActions() {
       return refetchAfterWrite(qc, queryKeys.channels(spaceId));
     }
   };
-  // The desktop's Slack return page, rendered by the shell in this language.
   const returnCopy = () => ({
     lang: normalizeLocale(i18n.resolvedLanguage) ?? "en",
     success: {
@@ -77,9 +69,6 @@ export function useChannelActions() {
     openButton: t("channels.slack.returnPage.openHouston"),
   });
   const connect = useMutation({
-    // The browser can REFUSE the open (a popup blocker on web). The section
-    // must not claim a tab the user never saw, so the answer is carried back
-    // and it offers the page behind a click instead.
     mutationFn: (): Promise<SlackAuthorization> =>
       inChannelWorkspace(spaceId, (assertCurrent, signal) =>
         startSlackConnect({
@@ -101,7 +90,6 @@ export function useChannelActions() {
         }),
       ),
   });
-  /** Open the same page from a real click, which a popup blocker honors. */
   const reopen = useMutation({
     mutationFn: (url: string) => tauriChannels.openSlack(url),
   });
@@ -119,11 +107,6 @@ export function useChannelActions() {
       ),
     gcTime: 0,
   });
-  /**
-   * Redeem the callback ticket. This is what BINDS the Slack account to the
-   * signed-in user, so it runs from the app with its own credential rather than
-   * off Slack's redirect, whose completer is nobody in particular.
-   */
   const complete = useMutation({
     mutationFn: (ticket: string) =>
       inChannelWorkspace(spaceId, (_assert, signal) =>
@@ -132,13 +115,6 @@ export function useChannelActions() {
     onSuccess: invalidateHere,
   });
   const [disconnecting, setDisconnecting] = useState(0);
-  /**
-   * Optimistic: the account leaves the card on the click. A refusal the
-   * section answers itself (no channels here, the user moved away) only
-   * rolls back; the refetch shows the truth. `disconnecting` stays up until
-   * the write settles: a hand-off started meanwhile would record the ids
-   * without the removed account, and a rollback would then read as a landing.
-   */
   const disconnect = useCallback(
     (id: string) => {
       setDisconnecting((n) => n + 1);

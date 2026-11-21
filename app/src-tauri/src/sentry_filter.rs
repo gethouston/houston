@@ -22,8 +22,6 @@ pub fn map_event<S>(event: &Event<'_>, _ctx: Context<'_, S>) -> EventMapping
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    // Span attributes are not enabled on the layer, so no span context is
-    // attached — identical to the layer's default path.
     let no_span: Option<&Context<'_, S>> = None;
     let filter = filter_for(event);
     let mut items = Vec::with_capacity(2);

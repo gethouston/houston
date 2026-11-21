@@ -2,12 +2,6 @@ import { type Activity, isMissionStarter } from "@houston/protocol";
 import { sanitizeContributors } from "./contributors";
 import { sanitizeMentions } from "./mentions";
 
-/**
- * Drop malformed server-stamped fields from one activity read off disk. Only
- * the host writes these, but agents edit activity.json with file tools, so a
- * hand-typed value must never reach a reader as if the host had stamped it.
- * `activity` is the entry's own copy and is edited in place.
- */
 export function sanitizeActivityStamps(
   activity: Activity,
   entry: Record<string, unknown>,

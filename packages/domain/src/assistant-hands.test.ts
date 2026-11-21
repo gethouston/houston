@@ -6,13 +6,6 @@ import {
   parseAssistantHands,
 } from "./assistant-hands";
 
-/**
- * The tag is the only place a hidden operation says how the person still gets
- * it done, so every spelling the gate accepts is pinned here — and so is every
- * one it must refuse, because a card the app cannot open reaches the model as
- * an instruction to offer the user a dead end.
- */
-
 const problem = (text: string): string => {
   const parsed = parseAssistantHands(text);
   if (parsed.kind !== "invalid")

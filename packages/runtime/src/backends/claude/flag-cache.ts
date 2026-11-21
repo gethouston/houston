@@ -8,19 +8,6 @@ import {
 import { join } from "node:path";
 import { atomicTempPath } from "@houston/protocol";
 
-/**
- * The Claude Code CLI's feature-flag (GrowthBook) cache, as it keeps it in
- * `<CLAUDE_CONFIG_DIR>/.claude.json`.
- *
- * With that cache empty the CLI blocks startup on a GrowthBook fetch before it
- * can run anything; with it present the CLI starts on the cached values and
- * refreshes them in the background, which is what happens on a laptop after
- * the first run. A turn whose config dir is new every time pays that fetch on
- * every turn, so the turn carries the cache in and out (turn/turn-claude-flags).
- *
- * The values are evaluated for the signed-in account, so a cache belongs to
- * exactly one person and is never handed to anyone else.
- */
 export interface ClaudeFlagCache {
   cachedGrowthBookFeatures: Record<string, unknown>;
   cachedGrowthBookFeaturesAt?: number;
@@ -28,17 +15,11 @@ export interface ClaudeFlagCache {
   cachedExperimentData?: Record<string, unknown>;
 }
 
-/** The CLI's global config file inside its config dir (prod OAuth: no suffix). */
 export const CLAUDE_GLOBAL_CONFIG = ".claude.json";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-/**
- * The cache in a parsed `.claude.json` (or a stored copy of one), or
- * undefined when there is none or any part of it is malformed. An empty
- * feature map is no cache at all: seeding it would not spare the fetch.
- */
 export function parseClaudeFlagCache(
   value: unknown,
 ): ClaudeFlagCache | undefined {
@@ -74,7 +55,6 @@ export function parseClaudeFlagCache(
 const reason = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
-/** A JSON file's value; absent is undefined, unreadable/invalid is reported. */
 function readJson(
   path: string,
   onCorrupt: (reason: string) => void,
@@ -95,11 +75,6 @@ function readJson(
   }
 }
 
-/**
- * A stored flag cache. Absent reads as undefined; anything else that is not a
- * cache does too, with `onCorrupt` told why: a corrupt cache only ever costs
- * the one blocking fetch it was meant to spare.
- */
 export function readClaudeFlagCacheFile(
   path: string,
   onCorrupt: (reason: string) => void,
@@ -111,10 +86,6 @@ export function readClaudeFlagCacheFile(
   return cache;
 }
 
-/**
- * The cache the CLI left in a config dir. A config without one is normal (the
- * CLI had not fetched its flags yet), so only an unreadable file is reported.
- */
 export function readClaudeConfigFlags(
   configDir: string,
   onCorrupt: (reason: string) => void,
@@ -124,7 +95,6 @@ export function readClaudeConfigFlags(
   );
 }
 
-/** Atomically write a flag cache as a JSON file (the CLI's own key names). */
 export function writeClaudeFlagCacheFile(
   path: string,
   cache: ClaudeFlagCache,
@@ -134,11 +104,6 @@ export function writeClaudeFlagCacheFile(
   renameSync(tmp, path);
 }
 
-/**
- * Give a config dir the cache before the CLI starts. Only a config dir with
- * no `.claude.json` yet: an existing one is the CLI's own state, and it may
- * already hold a newer cache than the one offered.
- */
 export function seedClaudeConfigFlags(
   configDir: string,
   cache: ClaudeFlagCache,
@@ -150,7 +115,6 @@ export function seedClaudeConfigFlags(
   return true;
 }
 
-/** JSON with object keys sorted, so equal values compare equal. */
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (isRecord(value))
@@ -161,7 +125,6 @@ function canonical(value: unknown): string {
   return JSON.stringify(value) ?? "null";
 }
 
-/** Whether two caches carry the same flag values (the fetch time aside). */
 export function sameClaudeFlags(a: ClaudeFlagCache, b: ClaudeFlagCache) {
   return (
     canonical([

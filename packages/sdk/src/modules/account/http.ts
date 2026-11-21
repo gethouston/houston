@@ -1,21 +1,3 @@
-/**
- * The account REST calls — the caller's own display profile and personal API
- * keys — over the injected `fetch`.
- *
- * These are gateway-only routes (`/v1/me/profile`, `/v1/keys`): the runtime
- * client is scoped to one agent's sandbox and serves none of them, so the
- * module talks to them through {@link httpRequest} with literal paths, which is
- * also what keeps them visible to the assistant's operation catalog.
- *
- * Nothing is swallowed here: a non-2xx always throws an
- * {@link AccountHttpError} carrying the HTTP `status`, so a `404` from a
- * gateway that predates `/v1/me/profile` reaches the caller and it — not this
- * layer — decides whether that hides a section or is a failure. The `key_limit`
- * 400 of a 20th API key likewise arrives intact for its inline treatment. A
- * `401` additionally fires {@link HttpScope.onUnauthorized}, so a lapsed
- * session token becomes a visible `tokenExpired` signal.
- */
-
 import {
   type HttpScope,
   httpRequest,
@@ -30,14 +12,12 @@ import type {
   EditableProfileUpdate,
 } from "./types";
 
-/** A failed account request. `status` is the upstream HTTP status. */
 export class AccountHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "AccountHttpError");
   }
 }
 
-/** The five account operations the module needs. */
 export interface AccountHttp {
   getMyProfile(): Promise<EditableProfile>;
   setMyProfile(update: EditableProfileUpdate): Promise<EditableProfile>;

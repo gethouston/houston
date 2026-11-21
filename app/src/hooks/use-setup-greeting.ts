@@ -1,17 +1,3 @@
-/**
- * The app's one `SetupGreetingRegistry` plus the hook the chat panel reads.
- *
- * `lib/agent-first-day.ts` records a self-setup mission here the instant the
- * host starts one, and `hooks/use-setup-hello.ts` reads the record back while it
- * lasts (see `lib/setup-mission-greeting.ts` for why the record exists and what
- * takes over afterwards).
- *
- * The localStorage mirror is what carries the record through a reload during
- * the agent's pod cold start. Losing it only costs the record — the hello still
- * derives from the agent's job description — so a broken mirror reports and the
- * flow continues.
- */
-
 import { useSyncExternalStore } from "react";
 import { reportError } from "../lib/error-report";
 import {
@@ -47,10 +33,6 @@ export function registerSetupGreeting(
   registry.register(entry);
 }
 
-/**
- * The creation-time record for this conversation, or null when there is none
- * (any other chat, another device, or a record past its TTL).
- */
 export function useSetupGreeting(
   agentPath: string | null | undefined,
   sessionKey: string | null | undefined,

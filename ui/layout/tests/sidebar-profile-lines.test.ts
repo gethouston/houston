@@ -31,8 +31,6 @@ describe("a person row's two lines", () => {
   );
 
   it("sit each in its own line box, in the account row as in an employee's", () => {
-    // Set straight into the column, a line's `flex-1` splits the row's height
-    // and pulls the name and the line apart.
     for (const markup of [profile, agent]) {
       const lineBox = `<span class="${c.personLine}"><span class="${c.personName}">`;
       assert.ok(markup.includes(lineBox), "the name is in a line box");

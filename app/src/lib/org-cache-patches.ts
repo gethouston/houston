@@ -1,12 +1,6 @@
 import type { OrgInfo, OrgRole, OrgsList } from "@houston/wire-types";
 import { mapItem, withoutItems } from "./list-patch.ts";
 
-/**
- * Optimistic edits of the People screen's `GET /org` cache (roster + pending
- * invites ride on it) and the invite inbox's `GET /v1/orgs`. Pure, idempotent,
- * and the same object back when there is nothing to change.
- */
-
 export function orgWithoutMember(
   org: OrgInfo | undefined,
   userId: string,
@@ -39,7 +33,6 @@ export function orgWithoutInvite(
   return invites === org.invites ? org : { ...org, invites };
 }
 
-/** The invitee's side: an answered invite leaves the inbox. */
 export function orgsWithoutInvite(
   list: OrgsList | undefined,
   inviteId: string,

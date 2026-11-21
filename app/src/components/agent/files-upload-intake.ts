@@ -1,16 +1,3 @@
-/**
- * Intake for Files-section uploads (file picker, folder picker, drag-drop),
- * mirroring the chat composer's folder intake (HOU-808) for the Files section
- * (HOU-889): hidden files a folder pick sweeps in (.DS_Store, .git/**) are
- * dropped, batches with too many files are refused loudly — uploading a silent
- * subset would misrepresent what got uploaded — and dropped-folder expansion
- * failures surface as toasts (the async walk has no caller to throw to).
- *
- * A file over the host's size cap is different: it is a per-file problem, so
- * the batch is NOT refused. The valid files upload and a toast names the ones
- * left behind (HOU-970) — refusing the whole drop would punish the user for
- * one stray video in a folder of documents.
- */
 import {
   MAX_ATTACHMENT_FILES,
   TooManyAttachmentFilesError,

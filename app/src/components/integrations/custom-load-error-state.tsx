@@ -1,7 +1,6 @@
 import { Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 
-/** A failed custom-list read stays loud and retryable when no cached rows exist. */
 export function CustomLoadErrorState({ onRetry }: { onRetry: () => void }) {
   const { t } = useTranslation("integrations");
   return (

@@ -1,8 +1,6 @@
 import { expect, test } from "vitest";
 import { StreamRegistry } from "./stream-registry";
 
-// The desktop updater asks "is any turn of mine still out?" before an install
-// at a return; an observer someone else's turn runs under is not one.
 test("ownsAnyTurn answers for turns this owner sent, not its observers", () => {
   const registry = new StreamRegistry();
   expect(registry.ownsAnyTurn()).toBe(false);

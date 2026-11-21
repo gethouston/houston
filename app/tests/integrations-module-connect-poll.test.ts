@@ -18,7 +18,6 @@ const conn = (
   status,
 });
 
-/** A timer that never auto-fires: only an explicit `wake()` settles the wait. */
 function manualTimer() {
   let scheduled: (() => void) | null = null;
   return {
@@ -82,9 +81,6 @@ describe("pollConnectionUntilActive (new module)", () => {
   });
 
   it("returns 'gone' when the connection read answers 404 (PRODUCT-1733)", async () => {
-    // The user disconnected the app mid-OAuth, or the provider expired the
-    // pending connection: the id the poll reads no longer exists. Expected,
-    // so the loop settles instead of rejecting into the bug surface.
     let calls = 0;
     const outcome = await pollConnectionUntilActive({
       poll: () => {
@@ -106,8 +102,6 @@ describe("pollConnectionUntilActive (new module)", () => {
   });
 
   it("a 404 landing on an already-cancelled poll is the cancel, not a second outcome", async () => {
-    // The Sentry shape (HOUSTON-APP-52Q): the disconnect that cancelled the
-    // flow raced a read already in flight, which then 404s.
     let cancelled = false;
     const outcome = await pollConnectionUntilActive({
       poll: () => {
@@ -194,11 +188,11 @@ describe("poll loop driven by a Waker (checkNow / cancel)", () => {
       maxAttempts: 10,
     });
 
-    await tick(); // loop reaches the first wait
-    strictEqual(pending(), true);
-    waker.wake(); // "I have finished" → poll #1 (pending)
     await tick();
-    waker.wake(); // second wake → poll #2 (active)
+    strictEqual(pending(), true);
+    waker.wake();
+    await tick();
+    waker.wake();
     strictEqual(await p, "active");
     strictEqual(polls, 2);
   });
@@ -218,20 +212,14 @@ describe("poll loop driven by a Waker (checkNow / cancel)", () => {
       maxAttempts: 10,
     });
 
-    await tick(); // loop reaches the first wait
+    await tick();
     cancelled = true;
-    waker.wake(); // cancel() → loop checks isCancelled after the wait
+    waker.wake();
     strictEqual(await p, "cancelled");
     strictEqual(polls, 0);
   });
 });
 
-/**
- * The catalog surfaces' connect UX (HOU-847). These read the sources rather
- * than render them, so the rules that make the flow calm cannot silently
- * regress: state belongs to the ROW the user clicked, no surface is disabled
- * because a different app is connecting, and the flow state is app-wide.
- */
 describe("connect surfaces", () => {
   const read = (rel: string) =>
     readFileSync(new URL(rel, import.meta.url), "utf8");

@@ -13,40 +13,10 @@ import {
   settleWindow,
 } from "./types";
 
-/**
- * Claude (Pro / Max) account usage via Anthropic's OAuth usage API — the same
- * surface Claude Code's own `/usage` reads:
- *
- *   GET https://api.anthropic.com/api/oauth/usage
- *   Authorization: Bearer <oauth access token>
- *   anthropic-beta: oauth-2025-04-20
- *
- * Response: `five_hour` / `seven_day` / `seven_day_opus` blocks, each
- * `{utilization: 0-100, resets_at: ISO8601}` (nullable per block).
- */
-
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
-/** UA the endpoint expects (a Claude Code client). Static fallback version. */
 const USER_AGENT = "claude-code/2.1.0";
-/** Keychain service the `claude` CLI stores its credential under (macOS). */
 const KEYCHAIN_SERVICE = "Claude Code-credentials";
 
-/**
- * Resolve the Claude OAuth access token, mirroring the desktop shell's
- * credential extraction (`app/src-tauri/src/claude_login/credential.rs`):
- *
- *   1. `<claudeLoginConfigDir>/.credentials.json` — Linux/Windows, hosted pods
- *      (materialized by the desktop push), and some macOS setups;
- *   2. the macOS Keychain (`security find-generic-password`);
- *   3. auth.json — a cloud-served OAuth credential's access token, or the
- *      degraded setup-token fallback (`sk-ant-oat01…`, itself an OAuth token).
- *
- * Sources 1 and 2 are POD-WIDE team material, so a personal scope skips them
- * (HOU-976): a member's usage row must be read with the member's own credential,
- * never the team's. Their own auth.json entry is source 3.
- *
- * Returns null when nothing is readable — the row reports `unauthenticated`.
- */
 export async function resolveAnthropicToken(
   keychain: () => Promise<string | null> = readKeychainCredential,
 ): Promise<string | null> {
@@ -66,11 +36,10 @@ function readCredentialFile(): string | null {
   try {
     return readFileSync(claudeCredentialsFile(), "utf8");
   } catch {
-    return null; // absent on this platform/setup — fall through
+    return null;
   }
 }
 
-/** `{claudeAiOauth:{accessToken}}` → the token, or null on any mismatch. */
 function tokenFromCredentialJson(raw: string | null): string | null {
   if (!raw?.trim()) return null;
   try {
@@ -84,7 +53,6 @@ function tokenFromCredentialJson(raw: string | null): string | null {
   }
 }
 
-/** macOS Keychain read; resolves null off macOS or when the item is absent. */
 function readKeychainCredential(): Promise<string | null> {
   if (process.platform !== "darwin") return Promise.resolve(null);
   return new Promise((resolve) => {
@@ -93,10 +61,6 @@ function readKeychainCredential(): Promise<string | null> {
       ["find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"],
       { timeout: 10_000 },
       (err, stdout) => {
-        // A non-zero exit (item absent, `security` exits 44) or a spawn
-        // failure both mean "no keychain credential" — the caller falls
-        // through to auth.json, and a truly-disconnected account surfaces
-        // as the row's `unauthenticated` status, never a throw.
         resolve(err ? null : stdout);
       },
     );
@@ -119,10 +83,6 @@ function toWindow(
   };
 }
 
-/**
- * Fetch the connected Claude account's usage windows. A window the API still
- * reports past its own reset is settled to empty (`settleWindow`).
- */
 export async function fetchAnthropicUsage(
   fetchImpl: typeof fetch = fetch,
   resolveToken: () => Promise<string | null> = resolveAnthropicToken,

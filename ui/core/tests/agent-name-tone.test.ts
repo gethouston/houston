@@ -15,13 +15,6 @@ import {
   relativeLuminance,
 } from "../src/color-contrast.ts";
 
-/**
- * The promise under test: an agent's name in a chat bubble is rendered in that
- * agent's own colour ONLY where that colour is actually readable. Legibility is
- * measured from the design tokens, so a palette edit that breaks a name breaks
- * this test instead of shipping.
- */
-
 describe("color-contrast", () => {
   it("matches the WCAG anchors", () => {
     assert.equal(contrastRatio("#ffffff", "#000000"), 21);
@@ -65,13 +58,11 @@ describe("color-contrast", () => {
   });
 
   it("composites a known alpha case", () => {
-    // 50% black over white lands exactly halfway.
     const half = flattenColor(
       parseColor("rgba(0, 0, 0, 0.5)"),
       parseColor("#ffffff"),
     );
     assert.deepEqual(half, { r: 127.5, g: 127.5, b: 127.5, a: 1 });
-    // A fully opaque foreground erases the backdrop.
     assert.deepEqual(
       flattenColor(parseColor("#ff0000"), parseColor("#00ff00")),
       {
@@ -81,7 +72,6 @@ describe("color-contrast", () => {
         a: 1,
       },
     );
-    // A fully transparent foreground leaves the backdrop untouched.
     assert.deepEqual(
       flattenColor(parseColor("rgba(255, 0, 0, 0)"), parseColor("#00ff00")),
       { r: 0, g: 255, b: 0, a: 1 },
@@ -118,8 +108,6 @@ describe("agent name contrast", () => {
 
   it("pins the measured worst case in each theme", () => {
     const measured = agentNameContrast();
-    // Rose on the light screen and crimson on the dark glass are the two
-    // tightest pairs; if a token edit moves them, these numbers move with it.
     assert.equal(measured.rose.light.toFixed(2), "4.60");
     assert.equal(measured.crimson.dark.toFixed(2), "6.02");
     const worstLight = Math.min(...Object.values(measured).map((r) => r.light));

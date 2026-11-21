@@ -10,10 +10,6 @@ import {
   viewFieldsOf,
 } from "../src/lib/nav-stack.ts";
 
-// PRODUCT-1557: the nav stack's pure semantics. The store folds every
-// navigation write through `navigated`; these tests pin how each NavMode
-// lands on the stack without involving zustand or the browser.
-
 const at = (viewMode: string, panelOpen = false): NavSourceFields => ({
   viewMode,
   settingsSection: null,
@@ -26,7 +22,6 @@ const at = (viewMode: string, panelOpen = false): NavSourceFields => ({
   filePreview: null,
 });
 
-/** A source state sitting on `stack[index]`, ready for `navigated`. */
 const state = (
   fields: NavSourceFields,
   nav: NavState,
@@ -79,15 +74,10 @@ describe("navigated retreat", () => {
     const out = navigated(s, { missionPanelOpen: false }, "retreat");
     assert.ok("navStack" in out);
     assert.equal(out.navIndex, 0);
-    // Identity preserved on a pop: the history mirror relies on it to tell a
-    // retreat (echo with history.go) from a rebuild (echo with replaceState).
     assert.equal(out.navStack, stack);
   });
 
   it("replaces when the previous entry is somewhere else", () => {
-    // Deep link straight into a Settings section from an employee board: the
-    // in-UI back to the index retreats WITHIN the surface, so browser back
-    // still leaves it for the board.
     const stack = [
       navEntryOf(at("agent")),
       navEntryOf({ ...at("settings"), settingsSection: "shortcuts" }),
@@ -132,13 +122,10 @@ describe("navigated reset", () => {
     assert.equal(out.navIndex, 0);
     assert.equal(out.navStack.length, 1);
     assert.equal(out.navStack[0].viewMode, "settings");
-    // A NEW array, never the popped-in-place identity: the history mirror
-    // echoes a rebuild as replaceState, not history.go.
     assert.notEqual(out.navStack, stack);
   });
 
   it("still rebuilds when the destination IS the current location", () => {
-    // Re-tapping the active tab at a drilled depth must abandon the trail.
     const stack = [navEntryOf(at("agent")), navEntryOf(at("agent", true))];
     const s = state(at("agent", true), { navStack: stack, navIndex: 1 });
     const out = navigated(s, { missionPanelOpen: true }, "reset");
@@ -215,7 +202,6 @@ describe("mission-chat entries (PRODUCT-1560)", () => {
     assert.equal(out.navIndex, 1);
     assert.equal(out.navStack.length, 2);
     assert.equal(out.navStack[1].chatMissionId, "m-9");
-    // Back from the named chat lands under the draft, never on it.
     assert.equal(out.navStack[0].chatAgentId, null);
   });
 });

@@ -4,15 +4,6 @@ import {
 } from "@houston/engine-adapter/client";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * `getCatalog()` must NOT silently degrade a 404 to `[]`. That degrade is what
- * shipped the packaged app with providers but ZERO models: a host that predates
- * the `GET /v1/catalog` route 404s, and swallowing it left the picker on the
- * empty seed with no signal. Every current host AND the e2e/standalone fake host
- * serve the route, so a 404 is a real failure that must throw like any other
- * route — the caller keeps the seed for the UI but surfaces the error loudly.
- */
-
 const originalFetch = globalThis.fetch;
 
 afterEach(() => {
@@ -27,7 +18,6 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-/** Stub fetch with a single response and record the requested url. */
 function stubFetch(response: Response): string[] {
   const calls: string[] = [];
   globalThis.fetch = vi.fn(async (input: unknown) => {

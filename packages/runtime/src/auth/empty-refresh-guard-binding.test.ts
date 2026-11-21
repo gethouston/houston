@@ -4,22 +4,8 @@ import { join } from "node:path";
 import { expect, test, vi } from "vitest";
 import { config } from "../config";
 
-/**
- * PRODUCT-1317's guard re-serves an expiring access-only entry through
- * serve.ts's sync. serve.ts binds that sync when it loads, and every runtime
- * loads it at boot (the turn start and the provider routes import it). pi's
- * boot credential pass reads the store BEFORE that binding can exist
- * (storage.ts's top-level await runs first, and serve.ts depends on it), so an
- * unbound read is not a wiring fault by itself (PRODUCT-1743). This suite pins
- * the states: no-op off serve mode, bound once serve.ts loaded, a report
- * deferred past the bind grace when nothing ever binds, and a bind within the
- * grace cancelling it.
- */
-
 config.dataDir = mkdtempSync(join(tmpdir(), "houston-erg-data-"));
 
-// The sweep behind the sync is exercised end to end in serve.test.ts; here it
-// only has to be observable.
 vi.mock("./serve-sync-run", () => ({ runServedSync: vi.fn(async () => []) }));
 
 const { runServedSync } = await import("./serve-sync-run");
@@ -46,15 +32,12 @@ test("in serve mode an unbound read reports only once nothing has bound within t
   vi.useFakeTimers();
   const report = vi.spyOn(console, "error").mockImplementation(() => {});
   try {
-    // pi's boot pass: one read per provider, then availability checks, all
-    // before serve.ts could have bound. None of them reports on its own.
     await runEmptyRefreshServeSync();
     await runEmptyRefreshServeSync();
     await runEmptyRefreshServeSync();
     expect(report).not.toHaveBeenCalled();
     expect(runServedSync).not.toHaveBeenCalled();
 
-    // A runtime that never loads serve.ts is the wiring fault: one report.
     vi.advanceTimersByTime(BIND_GRACE_MS);
     expect(report).toHaveBeenCalledTimes(1);
     expect(report).toHaveBeenCalledWith(
@@ -91,8 +74,6 @@ test("loading serve.ts binds the guard, and a store read re-serves through it", 
   vi.mocked(runServedSync).mockClear();
   const { HoustonAuthStore } = await import("./credential-store");
   const store = new HoustonAuthStore(join(config.dataDir, "auth.json"));
-  // A served entry inside pi's five-minute validity floor: the exact state
-  // that must re-sync centrally before pi's expiry check runs.
   store.set("openai-codex", {
     type: "oauth",
     access: "served-at",

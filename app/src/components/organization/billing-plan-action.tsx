@@ -24,7 +24,6 @@ const BENEFITS = [
   "billing.benefitAway",
 ] as const;
 
-/** The foot of the plan card: the one thing the caller can do about billing. */
 export function BillingPlanAction({
   action,
   orgSlug,
@@ -81,7 +80,6 @@ export function BillingPlanAction({
               className="self-start md:self-auto"
               disabled={checkout.outstanding}
               onClick={() => {
-                // Never rejects; a refused interval leaves monthly picked.
                 void checkout.start(orgSlug, interval).then((refusal) => {
                   if (refusal) setPicked("month");
                 });

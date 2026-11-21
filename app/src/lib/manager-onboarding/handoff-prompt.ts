@@ -1,31 +1,23 @@
-// `.ts` extensions so the node test runner can import this module directly.
 import type { AgentColorId } from "@houston-ai/core";
 import type { SupportedLocale } from "../locale.ts";
 import type { OnboardingCompanySize } from "../onboarding-company-size.ts";
 
-/** One AI Employee as the manager is told about it. */
 export interface HandoffEmployee {
   name: string;
-  /** The job its description names, when it has one. */
   role?: string;
 }
 
-/** What the person told the survey about themselves; null where they did
- *  not say. */
 export interface HandoffAbout {
   industry: string | null;
-  /** Their role as they read it: a position or job label, or their words. */
   role: string | null;
   companySize: OnboardingCompanySize | null;
 }
 
 export interface HandoffInput {
-  /** The automation goal, in the person's own words. */
   goal: string;
   about: HandoffAbout;
   team: readonly HandoffEmployee[];
   freeColor: AgentColorId;
-  /** The app's language, which the manager replies in. */
   locale: SupportedLocale;
 }
 
@@ -44,7 +36,6 @@ const COMPANY_SIZE: Record<OnboardingCompanySize, string> = {
   "1000_plus": "more than 1,000 people",
 };
 
-/** The person as the survey knows them, or null when it knows nothing. */
 function aboutSection({
   industry,
   role,
@@ -64,18 +55,9 @@ function rosterLine({ name, role }: HandoffEmployee): string {
   return role ? `- ${name} (${role})` : `- ${name}`;
 }
 
-/** How the manager behaves while the goal card shows its work. */
 const WORK_SILENTLY =
   "Work silently: the app shows the person each step as a card, so write no messages while you work and none after the mission starts. No narration, chatter or questions. Do not ask for confirmation. If hiring or starting the mission fails and you cannot fix it, say so plainly in one sentence and stop. Never quote a raw error or mention files, JSON, or configuration to the person.";
 
-/**
- * The instruction behind the goal: the first real turn of the AI
- * Manager's conversation, sent right after the onboarding transcript it
- * reads as history. The kickoff is hidden from the transcript, and the chat
- * draws the turn as the goal card.
- *
- * It asks only for what every first run can do: a mission and a hire.
- */
 export function handoffPrompt({
   goal,
   about,
@@ -104,11 +86,6 @@ export function handoffPrompt({
   ].join("\n\n");
 }
 
-/**
- * The instruction behind the goal card's Try again: the goal did not get
- * started, and the person asks for it again. The manager reads the earlier
- * attempt in its history, so it reuses an employee it already hired.
- */
 export function goalRetryPrompt({
   goal,
   locale,

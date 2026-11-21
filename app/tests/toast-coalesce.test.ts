@@ -2,10 +2,6 @@ import { strictEqual } from "node:assert";
 import { afterEach, describe, it } from "node:test";
 import { useUIStore } from "../src/stores/ui.ts";
 
-// Repeated identical toasts must COALESCE (one box, a ×N tally, refreshed
-// countdown) instead of stacking — a repeatedly failing provider connect used
-// to wall the screen with identical error boxes (the Anthropic connect 503).
-
 const drain = () => {
   for (const t of useUIStore.getState().toasts) {
     useUIStore.getState().dismissToast(t.id);

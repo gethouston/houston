@@ -1,7 +1,3 @@
-/* @houston-ai/pdf: the page column, pdf.js's text layer, comment marks and
-   the comment editor's motion. Pages pin data-theme="light" (paper is light
-   in every app theme), so the tokens below resolve to their light values. */
-
 .pdf-page {
   position: relative;
   overflow: hidden;
@@ -42,9 +38,6 @@
   opacity: 0;
 }
 
-/* pdf.js 6 text layer (pdf_viewer.css), trimmed to what selection needs. The
-   width and height are forced to the page box: pdf.js sizes it with CSS
-   round(), which older Android WebViews do not parse. */
 .pdf-page .textLayer {
   position: absolute;
   inset: 0;
@@ -108,8 +101,6 @@
   top: 0;
 }
 
-/* Marks: a highlighter wash over quoted text, an outline round an area, and
-   the numbered pin. Only the pins take pointer events. */
 .pdf-marks {
   position: absolute;
   inset: 0;
@@ -197,7 +188,6 @@
   }
 }
 
-/* Thumbnails */
 .pdf-thumb-canvas {
   display: block;
   width: 100%;
@@ -206,8 +196,6 @@
 .pdf-thumb-frame {
   box-shadow: 0 0 0 1px var(--ht-line);
 }
-/* The frame pins the light theme (it holds paper), so the ring's colour is
-   resolved on the button, in the rail's own theme, and inherited resolved. */
 .pdf-thumb {
   --pdf-thumb-ring: var(--ht-ink);
 }
@@ -230,7 +218,6 @@
   box-shadow: 0 0 0 2px var(--ht-background);
 }
 
-/* Press feedback on everything pressable here. */
 .pdf-press,
 .pdf-thumb {
   transition: transform var(--ht-duration-press) var(--ht-easing-entrance);
@@ -245,8 +232,6 @@
   }
 }
 
-/* The comment popover scales from the selection's edge; a keyboard close
-   skips the exit entirely. */
 .pdf-pop[data-state="open"] {
   animation: pdf-pop-in 180ms var(--ht-easing-entrance);
 }

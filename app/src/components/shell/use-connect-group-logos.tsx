@@ -24,24 +24,7 @@ import { providerBrandColor } from "./provider-brand-colors";
 import { providerBrandKey } from "./provider-logo-map";
 import { ProviderGlyph } from "./provider-logos";
 
-/**
- * The logos on the connect group's two rows (`connect-group.tsx`), read from
- * the queries the Integrations page and the model picker already hold:
- * nothing here fetches or caches on its own, so the rows and those screens
- * always agree. Which ids are drawn is `connect-group-logos.ts`. The tile
- * sizes every element the same, so both rows' logos match.
- */
-
-/**
- * The person's connected apps, filled to three with Gmail, Outlook and
- * Slack. Those three draw their bundled marks, always, so the row shows
- * three logos before the catalog lands (or with no catalog at all) and never
- * swaps an image when it does. A connected app draws once its logo is known:
- * a bundled curated mark, or the catalog's own logo.
- */
 export function useConnectAppsLogos(): SidebarConnectLogo[] {
-  // The rail is always mounted: read connections only once the provider is
-  // ready, as the catalog beside them does.
   const ready = useIntegrationProviderReady();
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, ready);
   const bySlug = useToolkitBySlug();
@@ -57,8 +40,6 @@ export function useConnectAppsLogos(): SidebarConnectLogo[] {
       max: SIDEBAR_CONNECT_LOGO_MAX,
     }).map((slug) => ({
       id: slug,
-      // Square corners: the brand's own art carries its shape, and a radius
-      // would clip it at this size.
       element: (
         <AppLogo
           display={{
@@ -73,10 +54,6 @@ export function useConnectAppsLogos(): SidebarConnectLogo[] {
   }, [connections.data, bySlug]);
 }
 
-/**
- * A provider's brand mark on its tile. A mark with no brand colour
- * draws in the current theme's ink, so it reads in both themes.
- */
 function ProviderMark({ providerId }: { providerId: string }) {
   const color = providerBrandColor(providerId);
   return (
@@ -86,12 +63,6 @@ function ProviderMark({ providerId }: { providerId: string }) {
   );
 }
 
-/**
- * The person's connected AI providers, filled to three with Anthropic, OpenAI
- * and Google.
- * Every provider mark ships in the bundle, so each is drawable; two ids that
- * share a brand's art are drawn once.
- */
 export function useConnectAiLogos(): SidebarConnectLogo[] {
   const connected = connectedProviderIds(useConnectedProviders());
   return pickConnectLogoIds({

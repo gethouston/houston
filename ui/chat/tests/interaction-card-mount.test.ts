@@ -1,17 +1,3 @@
-// Real-DOM mount of ChatInteractionCard, driving it with native DOM events to
-// pin the load-bearing invariant of the controlled `state` / `onStateChange`
-// pair: EVERY transition reports, the internal state tracks the controlled one
-// (so dropping back to uncontrolled continues seamlessly), and two transitions
-// landing in one React batch COMPOSE instead of overwriting each other. The
-// pure-logic suite lives in interaction-card.test.ts; the SSR one in
-// interaction-card-controlled.test.ts.
-//
-// This is the DOM-mounting pattern for ui/ packages — reuse it rather than
-// inventing a second one: install the jsdom globals (plus the ResizeObserver
-// stub and IS_REACT_ACT_ENVIRONMENT) BEFORE the dynamic `react-dom/client`
-// import, and drive fields through the native value setter + an `input` event
-// so React's value tracker fires onChange.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";
@@ -50,8 +36,6 @@ for (const key of [
 ]) {
   g[key] = (win as unknown as Record<string, unknown>)[key];
 }
-// Radix's scroll area observes its viewport; jsdom ships no ResizeObserver and
-// the layout it would report is irrelevant to these assertions.
 g.ResizeObserver = class {
   observe() {}
   unobserve() {}
@@ -61,8 +45,6 @@ g.IS_REACT_ACT_ENVIRONMENT = true;
 
 const React = await import("react");
 const { act, createElement: h, Fragment } = React;
-// ui/core's Radix wrappers are authored against the classic JSX runtime, which
-// resolves `React` off the global scope.
 g.React = React;
 const { createRoot } = await import("react-dom/client");
 const { ChatInteractionCard } = await import("../src/interaction-card.tsx");
@@ -77,31 +59,24 @@ const Q1: ChatInteractionCardProps["steps"][number] = {
     { id: "work", label: "Work" },
   ],
 };
-/** Two question steps, so the header pager (Back/Forward) is the card's own. */
 const QUESTIONS: ChatInteractionCardProps["steps"] = [
   Q1,
   { kind: "question", id: "q2", question: "How often?" },
 ];
-/** A question followed by a connect step, whose body the test renderer owns. */
 const CONNECT_FLOW: ChatInteractionCardProps["steps"] = [
   Q1,
   { kind: "connect", id: "c1", toolkit: "gmail" },
 ];
-/** A connect step ahead of two questions: the shape where an OAuth hand-off
- *  captured on the connect step can resolve after the user has paged on. */
 const LATE_CONNECT_FLOW: ChatInteractionCardProps["steps"] = [
   { kind: "connect", id: "c1", toolkit: "gmail" },
   Q1,
   { kind: "question", id: "q2", question: "How often?" },
 ];
-/** A custom step first, so its renderer can fire a draft and a transition from
- *  one handler while a later step still exists to advance to. */
 const CUSTOM_FLOW: ChatInteractionCardProps["steps"] = [
   { kind: "custom", id: "x1", title: "Review" },
   Q1,
 ];
 
-/** The step-scoped api a connect renderer receives. */
 type ConnectApi = Parameters<ChatInteractionCardProps["renderConnect"]>[1];
 
 interface Mounted {
@@ -137,8 +112,6 @@ function mount(props: Partial<ChatInteractionCardProps>): Mounted {
   };
 }
 
-/** Set a field's value the way a user's keystroke does, so React's onChange
- *  sees it (assigning `.value` alone bypasses React's value tracker). */
 function typeInto(field: Element, value: string): void {
   const proto =
     field.tagName === "TEXTAREA"
@@ -152,8 +125,6 @@ function typeInto(field: Element, value: string): void {
   });
 }
 
-/** Fire an app-held callback outside any DOM event, the way a settled OAuth
- *  promise does. */
 function run(fn: () => void): void {
   act(() => {
     fn();
@@ -249,8 +220,6 @@ describe("ChatInteractionCard mounted", () => {
         latest = s;
       },
     });
-    // A controlled phase: the caller parks every reported state and hands it
-    // straight back, exactly as the app does per conversation.
     card.render({ state: latest, onStateChange: (s) => (latest = s) });
     typeInto(textarea(card.container), "hola");
     card.render({ state: latest, onStateChange: (s) => (latest = s) });
@@ -262,8 +231,6 @@ describe("ChatInteractionCard mounted", () => {
   });
 
   it("keeps a restored position and draft when the controlled prop is dropped before any transition", () => {
-    // The app hands a parked state back after a remount and then stops
-    // controlling; nothing has moved yet, so only the ref carries the position.
     const restored: StepperState = {
       current: 1,
       reached: 1,
@@ -393,13 +360,10 @@ describe("ChatInteractionCard mounted", () => {
       },
     });
 
-    // Skip the connect step and answer q1, landing on the final question.
     run(() => first?.onSkip());
     click(option(card.container, "Personal"));
     assert.equal(seen.at(-1)?.current, 2);
 
-    // Walk back onto the connect step, then forward again to the final
-    // question while the hand-off captured on the first render is pending.
     click(chevron(card.container, "Back"));
     click(chevron(card.container, "Back"));
     assert.equal(seen.at(-1)?.current, 0);
@@ -430,7 +394,6 @@ describe("ChatInteractionCard mounted", () => {
       "the stale onConnected touched the committed answers",
     );
 
-    // The live callback on the step it belongs to still advances.
     click(chevron(card.container, "Back"));
     click(chevron(card.container, "Back"));
     run(() => live?.onConnected());

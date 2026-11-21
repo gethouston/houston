@@ -17,15 +17,12 @@ import { type PageHit, useSelectionGestures } from "./use-selection-gestures";
 
 export interface PdfPagesHandle {
   scrollToPage: (page: number, opts?: { smooth?: boolean }) => void;
-  /** Bring a mark into view (a third of the way down) and flash it. */
   revealMark: (id: string) => void;
   focus: () => void;
 }
 
-/** A selection the viewer hands up, with a live rect to anchor UI to. */
 export interface PdfSelectEvent {
   selection: PdfSelection;
-  /** The selection's bounds on screen right now (it moves with scroll). */
   rect: () => DOMRect;
 }
 
@@ -33,16 +30,13 @@ export interface PdfPagesProps {
   handle: PdfDocumentHandle;
   zoom: number;
   marks: readonly PdfMark[];
-  /** The selection waiting for its comment, drawn dashed. */
   pending: { page: number; anchor: PdfAnchor } | null;
   selectable: boolean;
   hotMarkId: string | null;
   onHotMark: (id: string | null) => void;
   onMarkActivate: (id: string, pin: HTMLElement) => void;
   onSelect: (event: PdfSelectEvent) => void;
-  /** Touch: the native text selection under the handles, or null. */
   onTouchText: (event: PdfSelectEvent | null) => void;
-  /** A gesture started on the pages: drop any pending selection. */
   onGestureStart: () => void;
   onActivePage: (page: number) => void;
   onError: (error: unknown) => void;
@@ -51,8 +45,6 @@ export interface PdfPagesProps {
   className?: string;
 }
 
-/** The continuous column of pages: layout, rendering near the viewport,
- *  selection, and the marks drawn on each page. */
 export const PdfPages = forwardRef<PdfPagesHandle, PdfPagesProps>(
   function PdfPages(props, ref) {
     const { handle, marks, pending, selectable } = props;
@@ -72,7 +64,6 @@ export const PdfPages = forwardRef<PdfPagesHandle, PdfPagesProps>(
       (hit: PageHit): PdfSelectEvent => {
         const canvas = canvases.current.get(hit.page);
         const bounds = anchorBounds(hit.anchor);
-        // Read now: the page may scroll out and unmount before the crop.
         const ink = inkOf(hit.el);
         return {
           selection: {

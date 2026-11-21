@@ -18,7 +18,6 @@ import {
   runExport,
 } from "./index";
 
-/** Extract non-directory entry paths (sorted) from raw ZIP bytes. */
 async function zipEntries(bytes: Uint8Array): Promise<string[]> {
   const zip = await JSZip.loadAsync(bytes);
   return Object.keys(zip.files)
@@ -80,14 +79,10 @@ describe("claude-skill-zip", () => {
   });
 
   it("pins every entry timestamp, folders included", async () => {
-    // The byte-comparison above only flakes when two builds straddle a
-    // 2-second zip-time boundary; this catches the bug deterministically.
-    // JSZip auto-creates folder entries whose date defaults to NOW — every
-    // entry must carry the fixed reproducible date instead.
     const { bytes } = await buildClaudeSkillZip(exampleAgentIr);
     const zip = await JSZip.loadAsync(bytes);
     const entries = Object.values(zip.files);
-    expect(entries.length).toBeGreaterThan(1); // files AND folder entries
+    expect(entries.length).toBeGreaterThan(1);
     for (const entry of entries) {
       expect
         .soft(entry.date.toISOString(), entry.name)

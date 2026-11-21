@@ -4,12 +4,6 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-/**
- * A Free user can't pick a schedule under the plan's minimum interval: every
- * app mount of a schedule editor hands it the SDK's floor. The node runner has
- * no DOM, so (per the repo's React-test idiom) this asserts on source.
- */
-
 const SRC = fileURLToPath(new URL("../src", import.meta.url));
 const EDITOR_TAG =
   /<(ScheduleBuilder|RoutinesGrid|RoutineRowScheduleEdit)[\s/>]/;
@@ -46,7 +40,6 @@ describe("schedule editors get the saver's own floor", () => {
     ]) {
       const src = readFileSync(join(SRC, rel), "utf8");
       ok(src.includes("useRoutineScheduleFloor()"), `${rel} reads the floor`);
-      // The backstop asks the very rule the editor was handed.
       ok(src.includes("floor.allows(cron)"), `${rel} backstops with it`);
       ok(
         !src.includes("freeScheduleAllowed") &&
@@ -92,7 +85,6 @@ describe("schedule editors get the saver's own floor", () => {
         json.schedule.minIntervalHint?.includes("{minutes}"),
         `${lang} schedule.minIntervalHint carries {minutes}`,
       );
-      // "At most once every N minutes", never "at most every N minutes".
       ok(
         !/(at most every|como máximo cada|no máximo a cada)/.test(
           json.schedule.minIntervalHint ?? "",

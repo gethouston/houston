@@ -2,12 +2,6 @@ import type { InteractionStep } from "@houston/protocol";
 import type { HeartbeatSection } from "./heartbeat-sections";
 import type { HeartbeatSnapshot } from "./heartbeat-snapshot";
 
-/**
- * The hidden prompt of the AI Manager's morning briefing turn. Nobody typed
- * it (the host wraps it in the auto-continue marker, so the chat never shows
- * it as the person's bubble), and the runtime has no idea what day it is
- * where the person lives, so the local date rides in it.
- */
 export interface HeartbeatPromptInput {
   localDate: string;
   localTime: string;
@@ -39,7 +33,6 @@ function lines<T>(
   return [...out, ""];
 }
 
-/** The snapshot as plain lines, one section per heading, empty ones left out. */
 export function renderHeartbeatSnapshot(snapshot: HeartbeatSnapshot): string {
   return [
     ...lines("Waiting on the person", snapshot.needsYou, (item) =>

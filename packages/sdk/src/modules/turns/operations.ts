@@ -10,33 +10,21 @@ import type { TurnSendInput } from "./turn-inputs";
 import { streamTurn, type TurnWirePin } from "./turn-stream";
 import { type ConversationVmOutput, conversationScope } from "./vm-output";
 
-/** The always-on state the four turn operations drive and share. */
 export interface TurnOperationsDeps {
   readonly vm: ConversationVmOutput;
-  /** The always-on outputs every turn folds into (VM + board persister). */
   readonly defaults: readonly FeedOutput[];
-  /** Extra host-attached outputs (see the module's `addOutput`). */
   readonly external: Set<FeedOutput>;
-  /** This SDK's own stream set — never a package-global. */
   readonly registry: StreamRegistry;
 }
 
-/** The typed turn facade: the SAME functions back the `turns/*` commands. */
 export interface TurnOperations {
   send(input: TurnSendInput): Promise<void>;
   observe(conversationId: string, agentId: string): Promise<void>;
   history(conversationId: string, agentId: string): Promise<FeedFrame[]>;
-  /** Refresh actively subscribed conversations after a global change event. */
   refreshObserved(agentId?: string): void;
-  /** Remove one conversation from the global-refresh registry. */
   forgetObserved(conversationId: string, agentId?: string): void;
 }
 
-/**
- * Build the four turn operations over the module's shared machinery. Kept out of
- * the module file so the write half of a conversation reads as one unit, JSDoc
- * with the code it documents.
- */
 export function createTurnOperations(
   ctx: ModuleContext,
   { vm, defaults, external, registry }: TurnOperationsDeps,
@@ -46,22 +34,8 @@ export function createTurnOperations(
     { agentId: string; conversationId: string }
   >();
   const observing = new Map<string, Flight<void>>();
-  /**
-   * Start a turn against the agent's sandbox client (`clientFor(agentId)` — the
-   * host nests turn/settings routes under `/agents/<id>`). A model/effort pick
-   * rides the send as a PER-TURN pin — the model paired with its owning
-   * provider (see {@link resolveModelSettings}; the runtime hard-fails a model
-   * under the wrong provider). Deliberately NOT a `setSettings` write: a pick
-   * for one conversation must never move the agent-wide active provider that
-   * every other conversation falls back to (HOU-695). Fires the resumable
-   * stream into the composed output; fire-and-forget like the desktop send —
-   * progress and settlement flow reactively through the VM.
-   */
   const send = async (input: TurnSendInput): Promise<void> => {
     const client = ctx.clientFor(input.agentId ?? "");
-    // Resolve the pick's owning provider: it rides the wire pin AND labels the
-    // typed reconnect card when the runtime refuses the send as not-connected
-    // (the refusal itself can't name a provider — nothing is connected).
     let pin: TurnWirePin | undefined;
     if (
       input.model !== undefined ||
@@ -93,9 +67,7 @@ export function createTurnOperations(
         nonce: input.nonce,
         provider: pin?.provider,
         pin,
-        // Multiplayer: the caller's identity stamps the optimistic bubble.
         author: input.author,
-        // Multiplayer: the teammates the message @mentions chip that bubble.
         mentions: input.mentions,
         grants: input.grants,
       },
@@ -124,14 +96,11 @@ export function createTurnOperations(
     const client = ctx.clientFor(agentId);
     const key = streamKey(agentId, conversationId);
     observed.set(key, { agentId, conversationId });
-    // One per chat at a time: change events landing while its read is out
-    // join it and ask for one more read, instead of each queueing their own.
     return joinInFlight(observing, key, async () => {
-      // A send that overtook the read must not have its turn replaced by it.
       const { value, mark } = await readPastOwnTurns(registry, key, () =>
         client.getHistory(conversationId),
       );
-      if (mark === null) return; // torn down while it waited
+      if (mark === null) return;
       const { messages } = value;
       const output = new MultiplexFeedOutput([...defaults, ...external]);
       if (!registry.get(key) && registry.turnsStarted(key) === mark)

@@ -1,9 +1,3 @@
-// Color is a client-side cosmetic the control plane's agent model does not
-// store (its model is id/name only). This overlay is the DEVICE copy — the
-// synchronous source every render reads — while the durable copy is the
-// `agent_colors` ACCOUNT preference (`./agent-color-sync`, PRODUCT-1344):
-// sign-out purges every account-scoped localStorage key, so a device-only
-// color died with the session and every agent came back default-purple.
 const COLOR_KEY = "houston.web.cp.agentColors";
 export function colorOverlay(): Record<string, string> {
   try {
@@ -18,21 +12,14 @@ export function colorOverlay(): Record<string, string> {
 function writeOverlay(overlay: Record<string, string>): void {
   try {
     localStorage.setItem(COLOR_KEY, JSON.stringify(overlay));
-  } catch {
-    /* storage disabled — color just falls back to the default */
-  }
+  } catch {}
 }
 
-/** Fires after every USER-driven overlay write (set/move/clear), so the sync
- *  layer can mirror the new map up to the account preference. Hydration writes
- *  go through {@link overwriteColorOverlay} instead, which stays silent — a
- *  server read must never echo itself straight back as a server write. */
 let onOverlayWrite: (() => void) | null = null;
 export function setOverlayWriteListener(listener: (() => void) | null): void {
   onOverlayWrite = listener;
 }
 
-/** Replace the whole overlay with the account-merged map (hydration only). */
 export function overwriteColorOverlay(next: Record<string, string>): void {
   writeOverlay(next);
 }
@@ -50,14 +37,6 @@ export function clearColor(agentId: string): void {
   onOverlayWrite?.();
 }
 
-/**
- * Carry an agent's overlay color from its old id to its new one. The local store
- * derives an agent's id from its on-disk path (`<Workspace>/<Name>`), so renaming
- * an agent changes its id; without this the renamed agent's avatar silently
- * reverts to the default color. No-op when the id is unchanged (stable-id
- * servers) or the agent had no color. Pure so it can be unit-tested without
- * localStorage.
- */
 export function renameColorOverlay(
   overlay: Record<string, string>,
   fromId: string,
@@ -74,10 +53,6 @@ export function renameColorOverlay(
   return next;
 }
 
-/**
- * Drop an agent's overlay entry on delete, so a future agent that reuses the same
- * path-derived id can't inherit a dead color. No-op when absent. Pure.
- */
 export function removeColorOverlay(
   overlay: Record<string, string>,
   id: string,

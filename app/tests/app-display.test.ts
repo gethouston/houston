@@ -45,7 +45,6 @@ describe("appDisplay logo resolution", () => {
 
   it("falls back to a HUMAN name + favicon guess when the toolkit is absent", () => {
     const app = appDisplay("quickbooks", undefined);
-    // Never the raw machine slug: a catalog miss must still read as a product.
     strictEqual(app.name, "Quickbooks");
     strictEqual(app.logoUrl, fallbackLogo("quickbooks"));
   });
@@ -74,9 +73,6 @@ describe("prettifyToolkit", () => {
   });
 });
 
-// An action slug carries no toolkit, so the header re-derives it: the longest
-// catalog slug the action starts with, so a multi-word app wins over its first
-// segment; a first-segment fallback when the catalog can't place it.
 describe("toolkitOfActionSlug", () => {
   const catalog = [
     "gmail",
@@ -117,7 +113,6 @@ describe("customActionOf (HOU-1049)", () => {
       slug: "anakin",
       tool: "listJobs",
     });
-    // No namespace segment: the tool is still the last segment.
     deepStrictEqual(customActionOf("tools.acme-crm.org.default.search"), {
       slug: "acme-crm",
       tool: "search",
@@ -152,7 +147,6 @@ describe("fallbackLogo", () => {
   });
 
   it("resolves a curated slug's real brand domain, never <slug>.com", () => {
-    // croma.com is an unrelated retailer; the curated entry knows the brand.
     strictEqual(fallbackLogo("croma").includes("domain=usecroma.com"), true);
   });
 });

@@ -26,8 +26,6 @@ describe("messagePreviewText", () => {
   });
 
   it("falls back to the Skill description when sent on its own", () => {
-    // The exact regression from HOU-425: a Skill sent without composer text
-    // must never surface the raw `<!--houston:skill ...-->` marker.
     const body = skillBody(
       {
         skill: "set-up-my-books",

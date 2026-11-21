@@ -6,10 +6,6 @@ import {
   startTreeWatch,
 } from "./daemon-policy";
 
-/**
- * When the daemon syncs on its own: a debounce after the tree watcher sees a
- * change, and a periodic pass that covers what the watcher skips.
- */
 export class SyncSchedule {
   private watcher: TreeWatch | undefined;
   private quietTimer: ReturnType<typeof setTimeout> | undefined;
@@ -26,7 +22,6 @@ export class SyncSchedule {
     this.intervalTimer.unref?.();
   }
 
-  /** Run `pass` once the tree has been quiet for the debounce window. */
   debounce(pass: () => void): void {
     if (this.quietTimer) clearTimeout(this.quietTimer);
     this.quietTimer = setTimeout(pass, this.opts.quietMs ?? DEFAULT_QUIET_MS);

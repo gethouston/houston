@@ -1,23 +1,3 @@
-/**
- * The agent-list REST calls, over the injected `fetch`.
- *
- * The runtime client (`@houston/runtime-client`) is scoped to ONE conversation
- * and exposes no agent-list surface, so this module talks to the host's
- * `/agents` routes directly through `ports.fetch` — the same routes
- * `control-plane.ts` uses. Auth rides the injected `fetch` (the host wires a
- * `fetch` that attaches the bearer), exactly as the kernel constructs the
- * runtime client without a token.
- *
- * Errors never get swallowed: a non-2xx throws an {@link AgentsHttpError}
- * carrying the HTTP `status`, which `CommandRegistry.dispatch` surfaces as an
- * `ok: false` result. A `401` additionally fires {@link onUnauthorized} so a
- * lapsed session token becomes a visible `tokenExpired` signal.
- *
- * Assistant catalog: these functions are its single source of truth for
- * the `/agents` routes, so each carries its own `@assistant` block and the
- * generator reads the route straight off the call it makes here.
- */
-
 import { type AgentColorId, withInitialConfigSeed } from "@houston/domain";
 import { WireAgentSchema } from "@houston/wire-types";
 import {
@@ -29,14 +9,12 @@ import {
 } from "../http";
 import type { AgentCreateInput, WireAgent } from "./types";
 
-/** A failed `/agents` request. `status` is the upstream HTTP status. */
 export class AgentsHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "AgentsHttpError");
   }
 }
 
-/** The four agent-list operations the module needs. */
 export interface AgentsHttp {
   list(): Promise<WireAgent[]>;
   create(input: AgentCreateInput): Promise<WireAgent>;
@@ -172,11 +150,6 @@ export async function deleteAgent(scope: HttpScope, id: string): Promise<void> {
   });
 }
 
-/**
- * The transport scope every agents request runs on. Shared with `library.ts`
- * and mission search so the account-scoped agent routes fail with the same
- * {@link AgentsHttpError} and route the same 401 into the auth-expiry signal.
- */
 export function agentsScope(ctx: ScopeContext): HttpScope {
   return moduleScope(ctx, "agents", AgentsHttpError);
 }
@@ -184,8 +157,6 @@ export function agentsScope(ctx: ScopeContext): HttpScope {
 export function createAgentsHttp(scope: HttpScope): AgentsHttp {
   return {
     list: () => listAgents(scope),
-    // The initial config becomes the config document among the seeds, so the
-    // wire stays the create every host and gateway already honors.
     create: ({ name, color, claudeMd, seeds, config, migration }) =>
       (migration ? createMigratedAgent : createAgent)(scope, name, color, {
         claudeMd,

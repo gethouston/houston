@@ -15,8 +15,6 @@ vi.mock("../session/chat", () => ({
   setLiveTurnMode: vi.fn(),
 }));
 
-// The agent's saved provider, as settings.json would hold it (never the real
-// data dir of the machine running the tests).
 const settings = vi.hoisted(() => ({ saved: null as string | null }));
 vi.mock("../ai/providers", async (original) => ({
   ...(await original<typeof import("../ai/providers")>()),

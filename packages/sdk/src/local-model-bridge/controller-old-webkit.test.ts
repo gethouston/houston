@@ -1,6 +1,3 @@
-// macOS 10.15 and 11 are supported desktops whose system WebKit has no
-// `AbortSignal.any` (Safari 17.4+): a connect with a caller signal must still
-// compose that signal with the controller's lifetime instead of throwing.
 import { afterEach, expect, test, vi } from "vitest";
 import { LocalModelBridgeController } from "./controller";
 import type {

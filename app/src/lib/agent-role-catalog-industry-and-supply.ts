@@ -1,4 +1,3 @@
-/** The industry and supply worlds and the jobs each one hires for (ids only; labels live in `agentOnboarding:roleSetup`). */
 export const INDUSTRY_AND_SUPPLY_WORLDS = {
   manufacturing: [
     "production_planner",

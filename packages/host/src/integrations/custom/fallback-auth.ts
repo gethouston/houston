@@ -2,23 +2,8 @@ import type { ApiKeyAuthTemplate } from "@executor-js/plugin-openapi/core";
 import { variable } from "@executor-js/plugin-openapi/core";
 import type { CustomIntegrationDef } from "./types";
 
-/**
- * Synthesized auth method for credential-mode OpenAPI defs whose spec declares
- * NO collectible security scheme. Real-world specs frequently model the API
- * key as a plain header parameter (or omit auth entirely — agent-authored
- * minimal specs), which used to dead-end the secure credential save with
- * `credential_invalid` while pasting the key in chat worked. The fallback
- * gives the key a placement: the spec's own api-key-shaped parameter when one
- * exists, else the `Authorization: Bearer` default (the same default the MCP
- * path already uses).
- */
-
-/** Stable method slug — persisted as `def.credential.template`, so every
- *  executor rebuild must re-inject the SAME slug before reconnecting. */
 export const FALLBACK_AUTH_SLUG = "houston_fallback";
 
-/** Api-key-shaped parameter names, compared with separators stripped and an
- *  optional leading `x` removed (`X-API-Key` → `apikey`). */
 const KEY_NAMES = new Set([
   "apikey",
   "apitoken",
@@ -42,8 +27,6 @@ interface ParamHint {
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** Read one OpenAPI parameter object (or a `#/components/parameters/…` ref,
- *  resolved against the doc) down to the `{in, name}` pair we care about. */
 function paramOf(
   entry: unknown,
   componentParams: Record<string, unknown>,
@@ -73,8 +56,6 @@ const HTTP_METHODS = [
   "trace",
 ];
 
-/** Every header/query parameter the document declares, in document order:
- *  component-level, then per-path shared, then per-operation. */
 function collectParams(doc: Record<string, unknown>): ParamHint[] {
   const components = isRecord(doc.components) ? doc.components : {};
   const componentParams = isRecord(components.parameters)
@@ -101,9 +82,6 @@ function collectParams(doc: Record<string, unknown>): ParamHint[] {
   return out;
 }
 
-/** The best placement hint an inline JSON spec offers, or null. Priority: a
- *  specific api-key header, then an `Authorization` header, then an api-key
- *  query param. YAML blobs and url-sourced specs offer none (null). */
 function specKeyHint(def: CustomIntegrationDef): ParamHint | null {
   if (def.kind !== "openapi" || def.spec.kind !== "blob") return null;
   let doc: unknown;
@@ -123,12 +101,6 @@ function specKeyHint(def: CustomIntegrationDef): ParamHint | null {
   return params.find((p) => p.in === "query" && isKeyName(p.name)) ?? null;
 }
 
-/**
- * The fallback method in the plugin's request-shaped authoring dialect, ready
- * for `executor.openapi.configure(slug, {authenticationTemplate: [...]})`.
- * Renders the single `token` variable into the derived placement; an
- * `Authorization` header (hinted or default) gets the `Bearer ` prefix.
- */
 export function fallbackAuthTemplate(
   def: CustomIntegrationDef,
 ): ApiKeyAuthTemplate {

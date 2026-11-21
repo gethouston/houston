@@ -12,7 +12,6 @@ import {
   uploadRefusal,
 } from "./upload-errors";
 
-// Ports identify one SDK lifetime; each host/agent has its own availability.
 const unavailable = new WeakMap<SdkPorts, Set<string>>();
 
 /** Opens a resumable upload session.

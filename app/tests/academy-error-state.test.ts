@@ -10,19 +10,6 @@ import {
   loadAcademyRecord,
 } from "../src/lib/academy/academy-store.ts";
 
-/**
- * A failed read of the Academy record is NOT an empty one.
- *
- * The record answers "what has this user finished". A read that reached no
- * engine and found nothing on the device looks exactly like a fresh account, so
- * the page would hand a Mission Director the rank of a cadet and offer "Start"
- * on a chapter they finished months ago. This is the scenario the Academy's
- * failure screen exists for: a hosted user whose pod is cold, on a device whose
- * mirror is empty.
- *
- * Driven through the store's ports, so it is the real load path that answers.
- */
-
 const record = (patch: Partial<AcademyRecord> = {}): AcademyRecord => ({
   version: 1,
   chapters: {
@@ -66,8 +53,6 @@ describe("a read the engine refused", () => {
   });
 
   it("renders what the device holds rather than a failure", async () => {
-    // A local record is a real answer about this user; refusing to draw it
-    // because the pod was slow would hide progress the device can prove.
     const earned = record();
     const result = await loadAcademyRecord(
       ports({ engineDown: true, mirror: earned }),
@@ -80,8 +65,6 @@ describe("a read the engine refused", () => {
 
 describe("a read the engine answered", () => {
   it("reads an empty account as empty, never as a failure", async () => {
-    // "This user has earned nothing yet" is the answer a fresh account gets,
-    // and the path must offer Start on it.
     const result = await loadAcademyRecord(ports({}));
     strictEqual(result.record, null);
     strictEqual(result.engineRead, true);

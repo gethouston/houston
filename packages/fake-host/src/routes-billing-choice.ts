@@ -1,9 +1,3 @@
-/**
- * The free-org pick (`/v1/me/billing-choice*`), the `/__test__/billing-choice`
- * control that arms it, and the ledger a spec reads back. Refusals are the
- * flat `{error, code}` the Go gateway writes, with its statuses.
- */
-
 import type { BillingChoice, BillingChoicePick } from "@houston/wire-types";
 import { json, noContent } from "./http";
 import * as state from "./state-billing-choice";
@@ -16,7 +10,6 @@ const STATUS = {
 } as const;
 const PICK_KEYS = new Set(["freeOrgSlug", "paidOrgSlug"]);
 
-/** The pick, validated the way the gateway does, or null for `invalid_request`. */
 function pickOf(body: Record<string, unknown> | undefined) {
   if (!body || Object.keys(body).some((k) => !PICK_KEYS.has(k))) return null;
   const { freeOrgSlug, paidOrgSlug } = body;
@@ -27,7 +20,6 @@ function pickOf(body: Record<string, unknown> | undefined) {
   return { freeOrgSlug, paidOrgSlug } satisfies BillingChoicePick;
 }
 
-/** Route a billing-choice request, or return `undefined` to fall through. */
 export function handleBillingChoiceRoutes(
   method: string,
   segs: string[],
@@ -66,11 +58,6 @@ export function handleBillingChoiceRoutes(
   }
 }
 
-/**
- * `POST /__test__/billing-choice`: `{ choice, refuse?, afterRefusal?,
- * refusals?, failDismiss?, now? }` arms it ({@link state.BillingChoiceArming}),
- * `{ choice: null }` disarms.
- */
 export function handleBillingChoiceControl(
   body: Record<string, unknown> | undefined,
 ): Response {
@@ -104,7 +91,6 @@ export function handleBillingChoiceControl(
   return json({ choice: state.billingChoice() });
 }
 
-/** `GET /__test__/billing-choice-calls`: every call since arming. */
 export function handleBillingChoiceCallsControl(): Response {
   return json({ calls: state.billingChoiceCalls() });
 }

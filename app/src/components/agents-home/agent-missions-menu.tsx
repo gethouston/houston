@@ -21,11 +21,6 @@ const SECTION_ROWS = {
   { label: string; icon: LucideIcon }
 >;
 
-/**
- * The per-agent task list's overflow menu: the shared "…" chip
- * ({@link TaskListMenu}) holding what a phone list needs but cannot afford a
- * permanent row for, and the doors to the employee's other sections.
- */
 export function AgentMissionsMenu({
   onSearch,
   onArchived,

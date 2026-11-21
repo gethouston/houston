@@ -3,18 +3,14 @@ import { excluded } from "./hydrate-excludes";
 import type { ObjectMetadata } from "./object-manifest";
 import type { ObjectStore } from "./object-store";
 
-/** A listed (or point-read) object hydration may land. */
 export type HydrateCandidate = HydrateEntry & { updated?: string };
 
-/** The candidates of one listing, after the caller's excludes. */
 export interface ListedCandidates {
   candidates: HydrateCandidate[];
-  /** Listed sizes by relative path (point reads have none). */
   sizes: Map<string, number>;
   generationAware: boolean;
 }
 
-/** List `prefix` whole: the store's manifest, or its key listing. */
 export async function listWhole(
   store: ObjectStore,
   prefix: string,
@@ -28,7 +24,6 @@ export async function listWhole(
   );
 }
 
-/** Turn listed objects and point-read keys into hydration candidates. */
 export function hydrateCandidates(opts: {
   objects: readonly (ObjectMetadata | { key: string; generation: undefined })[];
   reads?: readonly string[];
@@ -70,14 +65,6 @@ export function hydrateCandidates(opts: {
   return { candidates, sizes, generationAware };
 }
 
-/**
- * A point read that came back without a generation from a store whose
- * listing carries them lands on disk but stays out of the manifest: owned
- * with no generation, its next write would go out unconditionally and could
- * overwrite a concurrent writer. Unowned, that write goes out create-only and
- * meets the ordinary conflict rule. In a store without generations every
- * write is unconditional anyway, so the read stays owned there.
- */
 export function unowned(entry: HydrateEntry, generation?: string): boolean {
   return entry.requireGeneration === true && generation === undefined;
 }

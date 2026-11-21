@@ -10,28 +10,14 @@ import { type TreeHandlers, useTreeParts } from "./org-chart-tree-levels";
 import { type PathOptions, treeEdges } from "./org-chart-tree-paths";
 import { useScrollEdges } from "./use-scroll-edges";
 
-/**
- * Lines meet a card's avatar on the phone: the card's `px-3` plus half its
- * `size-8` avatar. Corners round at 8, like the cards they join.
- */
 const PATHS: PathOptions = { radius: 8, spineInset: 28 };
 
 interface TreeViewProps extends TreeHandlers {
   tree: OrgTree;
-  /** The phone's outline instead of the desktop's top-down chart. */
   phone: boolean;
   onShare: () => void;
 }
 
-/**
- * The org chart drawn as one: the space at the top, its people under it,
- * each person's AI Employees under them, joined by lines measured from where
- * the cards landed. Desktop reads top-down and scrolls sideways when wide
- * (centred when it fits, opening on its left edge with the hidden sides
- * faded when it does not); the phone reads it as an indented outline. The
- * cards fade up once when the chart first mounts. Share is one click (the
- * caller's `onShare`).
- */
 export function OrgChartTreeView({
   tree,
   phone,
@@ -40,9 +26,6 @@ export function OrgChartTreeView({
 }: TreeViewProps) {
   const { t } = useTranslation("teams");
   const { root, columns } = useTreeParts(tree, handlers);
-  // A chart wider than the screen opens on its left edge (the owners
-  // first) and fades the sides that hide more, so it reads as scrollable
-  // without hovering.
   const scroller = useScrollEdges<HTMLDivElement>();
   const mask = edgeMask(scroller.edges);
   const edges = useMemo(

@@ -12,12 +12,6 @@ import {
 } from "../support/billing-choice";
 import { expect, test } from "../support/fixtures";
 
-/**
- * On a phone the pricing-change modal is a full-height sheet, like the launch
- * announcement: the actions sit at the bottom, and the picker and its
- * success step open in the same sheet without a horizontal scroll.
- */
-
 test("the modal fills the phone, and the picker and its success step open in the same sheet", async ({
   page,
 }) => {
@@ -46,7 +40,6 @@ test("the modal fills the phone, and the picker and its success step open in the
   ).toBeLessThanOrEqual(0);
 
   await next.tap();
-  // Page two seats its actions at the bottom too.
   const choose = modal.getByRole("button", { name: CHOOSE });
   await expect(choose).toBeVisible();
   const chooseBox = await choose.boundingBox();
@@ -100,7 +93,6 @@ test("a long org name truncates inside the action, which stays one line and name
     exact: true,
   });
   await expect(keep).toBeVisible();
-  // Each piece of the label, or the box that clips it, against the pill.
   const fit = await keep.evaluate((button) => {
     const box = button.getBoundingClientRect();
     const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);

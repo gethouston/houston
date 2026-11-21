@@ -41,7 +41,6 @@ describe("pending-move persistence", () => {
     deepStrictEqual(readPendingMoves(s), [move()]);
     clearPendingMove("7af3d710003ad396", s);
     deepStrictEqual(readPendingMoves(s), []);
-    // Emptying removes the key entirely rather than storing "[]".
     strictEqual(s.dump(), null);
   });
 

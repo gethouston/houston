@@ -1,12 +1,3 @@
-/**
- * GET /api/agents/:slug/bundle?target=claude-skill-zip|copy-paste
- *
- * Streams a published agent's export payload, built from the IR snapshot fetched
- * from the gateway. Records an anonymous install against the gateway (which owns
- * the counter + rate limit); the client's IP is forwarded so the limit is
- * attributed to the real downloader. Published + non-deleted only.
- */
-
 import type { StoreInstallTarget } from "@houston/agentstore-client";
 import {
   defaultExportTarget,
@@ -29,7 +20,6 @@ export function OPTIONS(): Response {
   return corsPreflight();
 }
 
-/** JSON error response carrying the wildcard CORS headers. */
 function jsonError(error: string, status: number): Response {
   return new Response(JSON.stringify({ error }), {
     status,
@@ -40,7 +30,6 @@ function jsonError(error: string, status: number): Response {
   });
 }
 
-/** Map an export-target id (hyphenated) to the gateway install target. */
 const INSTALL_TARGET_BY_EXPORT: Record<ExportTargetId, StoreInstallTarget> = {
   "claude-skill-zip": "claude_skill_zip",
   "copy-paste": "copy_paste",
@@ -78,8 +67,6 @@ export async function GET(
     throw err;
   }
 
-  // Record the anonymous install (best-effort). The gateway owns the counter; a
-  // telemetry failure must never fail the download, but it is logged, not hidden.
   try {
     await recordInstall(slug, INSTALL_TARGET_BY_EXPORT[target], {
       clientIp: clientIpFromHeaders(request.headers),

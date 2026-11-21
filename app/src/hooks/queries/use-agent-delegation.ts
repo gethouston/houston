@@ -41,8 +41,6 @@ export function useAgentDelegation(agentId: string, enabled: boolean) {
       const pendingAtStart = (statesFor(qc).get(agentId)?.pending ?? 0) > 0;
       try {
         const stored = await tauriAgentDelegation.get(agentId);
-        // AgentsChanged can refetch between queued PUTs; that GET cannot become
-        // the base of the next optimistic pick while any write remains pending.
         if (pendingAtStart || (statesFor(qc).get(agentId)?.pending ?? 0) > 0) {
           return qc.getQueryData<AgentDelegation>(key) ?? stored;
         }
@@ -74,8 +72,6 @@ export function useSetAgentDelegation(agentId: string) {
     },
     onError: (error, { id }) => {
       const state = states.get(agentId);
-      // Each PUT carries the whole policy, so a later pick that lands carries
-      // this one too: only a refused LATEST pick is visibly undone and told.
       if (state?.latest !== id) {
         reportError("set_agent_delegation", describeError(error), error);
         return;

@@ -3,12 +3,6 @@ import { describe, it } from "node:test";
 import { resolveKickoffPin } from "../src/components/portable/import-kickoff-pin.ts";
 import { getDefaultModel } from "../src/lib/providers.ts";
 
-/**
- * What gets PERSISTED onto a freshly imported agent. An unconfirmed guess must
- * never be written, so the pin stays empty unless the user picked the pair by
- * hand or the resolved provider is a confirmed connection.
- */
-
 describe("resolveKickoffPin", () => {
   it("pins the pair the user picked by hand, confirmed or not", () => {
     deepStrictEqual(
@@ -81,9 +75,6 @@ describe("resolveKickoffPin", () => {
   });
 
   it("pins nothing when the scan could not answer", () => {
-    // `null` is a scan still loading, failed, or carrying a provider that is
-    // still checking. The install is already running, so there is nowhere to
-    // wait: a pair that MIGHT be disconnected must not be written.
     deepStrictEqual(
       resolveKickoffPin({
         userPickedModel: false,

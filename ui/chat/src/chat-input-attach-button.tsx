@@ -1,8 +1,3 @@
-/**
- * The composer's "+" button: opens the file picker, or a small menu (files,
- * folder, and whatever the caller adds) when the caller supplies one.
- */
-
 import { Popover, PopoverContent, PopoverTrigger } from "@houston-ai/core";
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
@@ -17,14 +12,8 @@ type AttachMenuApi = {
 interface ChatInputAttachButtonProps {
   onOpenFilePicker: () => void;
   onOpenFolderPicker: () => void;
-  /** Optional popover menu. When provided, clicking the paperclip opens a
-   *  popover instead of invoking `onOpenFilePicker` directly. The render-prop
-   *  form receives an API the caller uses to trigger the file or folder
-   *  picker from inside the menu and close the popover. */
   attachMenu?: ReactNode | ((api: AttachMenuApi) => ReactNode);
   ariaLabel?: string;
-  /** Locks the button inert (keyboard focus survives the composer's
-   *  pointer-events lock, so the button must opt out on its own). */
   disabled?: boolean;
 }
 

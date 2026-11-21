@@ -103,7 +103,6 @@ describe("agent activity summary model", () => {
           agent_path: "/workspace/a",
           type: "activity",
           title: "Newest",
-          // Millis on one stamp and not the other: compared as instants.
           updated_at: "2026-09-26T09:00:00.500Z",
         },
         {
@@ -247,7 +246,6 @@ describe("work history", () => {
   });
 
   it("stays unknown while the slice is unread, however empty it looks", () => {
-    // Cold boot or a waking pod: an empty list is no proof of a first day.
     strictEqual(
       buildAgentActivitySummaries(ONE, [], () => false).a?.history,
       "unknown",
@@ -280,9 +278,6 @@ describe("work history", () => {
 });
 
 describe("teamActivityRollup", () => {
-  // What a FOLDED team's header says on behalf of the agent rows it is hiding.
-  // It reads the SAME per-agent summaries the rows do, so a header can never
-  // disagree with the rows behind it.
   const summaries = {
     "agent-a": {
       needsYouCount: 2,
@@ -326,8 +321,6 @@ describe("teamActivityRollup", () => {
   });
 
   it("contributes nothing for an agent with no summary yet", () => {
-    // Cold boot, pods still waking: a zero-shaped guess would put a badge on a
-    // header the rows behind it are not showing.
     deepStrictEqual(teamActivityRollup(["agent-a", "ghost"], summaries), {
       needsYouCount: 2,
       runningCount: 1,
@@ -351,8 +344,6 @@ describe("the summaries hook", () => {
       ),
       true,
     );
-    // The fallback's per-agent caches can be restored from disk, and a push
-    // marks a slice read without touching them: never a confirmed "none".
     strictEqual(src.includes("summarizeActivities(activities, false)"), true);
     strictEqual(src.includes("sliceCoverage.wasRead(agent.folderPath)"), false);
   });

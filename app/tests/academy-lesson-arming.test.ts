@@ -15,10 +15,6 @@ import {
 } from "../src/lib/academy/lesson-signals.ts";
 import type { LessonStepSpec } from "../src/lib/academy/lesson-spec.ts";
 
-// Arming: WHEN a beat may expose the real control it points
-// at. A beat that compares the world against a snapshot is blind until that
-// snapshot exists, so opening its target first is how a lesson gets stranded.
-
 function world(over: Partial<LessonSignals> = {}): LessonSignals {
   return {
     viewMode: "team",
@@ -40,9 +36,6 @@ const newTask: LessonStepSpec = {
 
 describe("a beat that waits for a conversation", () => {
   it("can never fire once the baseline lands after the user has acted", () => {
-    // The stranding itself: the sweep that finally settles already contains
-    // the conversation the user just made, so the snapshot taken from it and
-    // the live count agree forever and the beat waits for nothing.
     const baselineTakenTooLate = world({
       conversationCount: 3,
       conversationBaseline: 3,
@@ -55,8 +48,6 @@ describe("a beat that waits for a conversation", () => {
 
   it("keeps its target shut while the baseline is missing", () => {
     strictEqual(lessonBeatArmed(newTask, world()), false);
-    // Even a known live count is not enough: without the snapshot there is
-    // nothing to have grown past.
     strictEqual(
       lessonBeatArmed(newTask, world({ conversationCount: 2 })),
       false,
@@ -66,7 +57,6 @@ describe("a beat that waits for a conversation", () => {
   it("opens its target the moment the baseline is taken", () => {
     const armed = world({ conversationCount: 2, conversationBaseline: 2 });
     strictEqual(lessonBeatArmed(newTask, armed), true);
-    // An empty workspace is a real baseline, not a missing one.
     strictEqual(
       lessonBeatArmed(
         newTask,
@@ -92,8 +82,6 @@ describe("a beat that snapshots nothing", () => {
   });
 
   it("arms a tour stop and a connection wait at once", () => {
-    // Neither compares against a snapshot: a Next waits on nothing, and a
-    // connection made before the list answers is simply in the list.
     const tourStop: LessonStepSpec = {
       ...newTask,
       advanceOn: { type: "acknowledged" },
@@ -107,8 +95,6 @@ describe("a beat that snapshots nothing", () => {
   });
 
   it("holds the email lesson's Send shut until its companion has noted the sender's tasks", () => {
-    // The user presses the real composer's Send: a press before the note
-    // would make the new task one the lesson already knew, stranding it.
     const ask = ACADEMY_LESSONS[EMPLOYEE_EMAIL_LESSON_ID].steps.find(
       (step) => step.id === "ask",
     );
@@ -122,9 +108,6 @@ describe("a beat that snapshots nothing", () => {
   });
 
   it("never moves the email lesson's ask on someone else's conversation", () => {
-    // Only the companion, which knows the sender, ends the ask: a routine
-    // firing elsewhere, or old tasks a partial sweep fills in later, grow the
-    // count without the user pressing Send.
     const ask = ACADEMY_LESSONS[EMPLOYEE_EMAIL_LESSON_ID].steps.find(
       (step) => step.id === "ask",
     );
@@ -138,7 +121,6 @@ describe("a beat that snapshots nothing", () => {
   });
 
   it("waits on the user's own press to leave the email lesson's watch", () => {
-    // Its companion may finish it early; the world alone never does.
     const watch = ACADEMY_LESSONS[EMPLOYEE_EMAIL_LESSON_ID].steps.find(
       (step) => step.id === "watch",
     );
@@ -170,10 +152,6 @@ describe("a beat that snapshots nothing", () => {
   });
 });
 
-/**
- * The lesson takes Escape from the whole window while it runs, so it has to be
- * sure the key came from a person.
- */
 describe("the key that ends a lesson", () => {
   const key = (patch: Partial<Parameters<typeof lessonExitKey>[0]> = {}) => ({
     key: "Escape",
@@ -192,9 +170,6 @@ describe("the key that ends a lesson", () => {
   });
 
   it("is never one the app dispatched at itself", () => {
-    // Leaving a kept-alive screen with a modal open fires a synthetic Escape
-    // to close it (`components/shell/keep-alive-views.tsx`). Read as the
-    // user's, it would drop the run the user is in the middle of, silently.
     strictEqual(lessonExitKey(key({ isTrusted: false })), false);
   });
 });

@@ -23,7 +23,6 @@ function claim(): LinkedInPostClaim {
   return held;
 }
 
-/** A post whose steps settle when the test says, signed in as `who.uid`. */
 function steps(result: LinkedInPostResult = POSTED) {
   const who = { uid: "uid-ada" as string | null };
   const sent: Blob[] = [];
@@ -74,7 +73,6 @@ describe("a LinkedIn post across identities", () => {
     const post = steps({ kind: "unknown" });
     const outcome = runLinkedInPost(claim(), post.run);
     await post.encode();
-    // Signed out and back in while the gateway still works.
     post.who.uid = null;
     useLinkedInPosts.getState().reset();
     post.who.uid = "uid-ada";
@@ -108,7 +106,6 @@ describe("a LinkedIn post across identities", () => {
     await post.answer();
     strictEqual(await outcome, null);
     deepStrictEqual(slot(), { ...IDLE_LINKEDIN_POST, unconfirmed: true });
-    // Back in: still held until they say they checked.
     useLinkedInPosts.getState().reset();
     strictEqual(useLinkedInPosts.getState().start("uid-ada", "space-a"), null);
   });

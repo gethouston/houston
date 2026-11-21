@@ -12,20 +12,11 @@ export const DEFAULT_CHAT_PARENT_MISSION_LINK_LABELS: ChatParentMissionLinkLabel
   };
 
 export interface ChatParentMissionLinkProps {
-  /** The parent mission's title, shown beside the label when present. */
   title?: string;
   labels?: ChatParentMissionLinkLabels;
-  /** Opens the parent mission's own chat. */
   onOpen: () => void;
 }
 
-/**
- * The way back UP the fan-out (PRODUCT-1244): a mission the agent started
- * links to the chat that started it, as one bar above the composer — the
- * child-side twin of the child-mission drawer (a chat shows one or the other,
- * never both: spawned missions can't spawn). Same bordered-card clothes, so
- * the two read as one navigation family.
- */
 export function ChatParentMissionLink({
   title,
   labels = DEFAULT_CHAT_PARENT_MISSION_LINK_LABELS,

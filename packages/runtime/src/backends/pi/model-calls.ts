@@ -1,16 +1,6 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import type { ModelCallTiming } from "@houston/protocol";
 
-/**
- * Turn pi's event stream into one `ModelCallTiming` per answered request.
- * `turn_start` precedes each request (the auth refresh and context transform
- * before the fetch count as request time); an auto-retry's request goes out
- * after its backoff. The assistant `message_start` fires when the provider's
- * response opens, the first `thinking_start` / `text_start` /
- * `toolcall_start` is the first block, and the first `text_start` /
- * `toolcall_start` is the first answer token. A call that errored or was aborted reports nothing: its
- * timings describe a failure, not the provider's latency.
- */
 export function createPiCallTimer(
   now: () => number = () => performance.now(),
 ): (event: AgentSessionEvent) => ModelCallTiming | null {

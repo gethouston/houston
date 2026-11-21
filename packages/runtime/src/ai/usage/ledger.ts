@@ -4,24 +4,6 @@ import { atomicTempPath } from "@houston/protocol";
 import type { ProviderUsageTokens, TokenUsage } from "@houston/runtime-client";
 import { config } from "../../config";
 
-/**
- * Local token-spend ledger — the usage surface for API-key providers with no
- * account-usage API to probe (Gemini, Bedrock, OpenCode, MiniMax, custom
- * endpoints). The long-lived runtime records every turn's `TokenUsage` here
- * keyed by provider id; `GET /providers/usage` serves the accumulated totals
- * where it would otherwise report `unsupported`.
- *
- * Semantics: `inputTokens` sums each request's FULL prompt (`context_tokens`,
- * cache-inclusive) — that is what the provider processes and bills as input on
- * every request — and `outputTokens` sums generated tokens. So the totals are
- * "tokens the provider was sent/produced", not "distinct conversation tokens".
- *
- * One JSON file under the runtime's data dir, rewritten atomically
- * (tmp + rename) on each turn — the same durability story as the settings
- * store. The per-turn cloud runtime never records here: its data dir is a
- * per-request throwaway, so a ledger there would evaporate with the turn.
- */
-
 const LEDGER_FILE = "token-usage.json";
 
 interface Ledger {
@@ -29,8 +11,6 @@ interface Ledger {
   providers: Record<string, ProviderUsageTokens>;
 }
 
-// Always a FRESH object: callers mutate the returned ledger in place, so a
-// shared constant here would leak spend across reads (and across tests).
 const empty = (): Ledger => ({ version: 1, providers: {} });
 
 function ledgerPath(dataDir: string): string {
@@ -42,26 +22,19 @@ function readLedger(dataDir: string): Ledger {
   try {
     raw = readFileSync(ledgerPath(dataDir), "utf8");
   } catch {
-    return empty(); // no ledger yet — nothing metered on this install
+    return empty();
   }
   let parsed: Ledger | null;
   try {
     parsed = JSON.parse(raw) as Ledger | null;
   } catch {
-    return empty(); // corrupt ledger — start fresh rather than wedge accounting
+    return empty();
   }
   if (parsed?.version !== 1 || typeof parsed.providers !== "object")
     return empty();
   return parsed;
 }
 
-/**
- * Fold one finished turn's usage into the provider's running totals. Called
- * after every turn (all providers — recording is cheap and uniform; the read
- * side decides which providers surface it). A ledger failure must never fail
- * the turn it accounts for, and there is no UI thread here to toast on, so a
- * broken write logs and moves on (the sanctioned event-callback exception).
- */
 export function recordTokenSpend(
   provider: string,
   usage: TokenUsage,
@@ -90,12 +63,6 @@ export function recordTokenSpend(
   }
 }
 
-/**
- * The provider's accumulated totals, or null when nothing was ever metered
- * (the usage row then stays honestly `unsupported`). A corrupt ledger reads
- * as null rather than throwing — the usage probe must never 500 over a bad
- * accounting file.
- */
 export function readTokenSpend(
   provider: string,
   dataDir: string = config.dataDir,

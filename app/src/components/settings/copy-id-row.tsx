@@ -7,20 +7,12 @@ import { useUIStore } from "../../stores/ui";
 
 interface CopyIdRowProps {
   label: string;
-  /** `null` while the value is still loading. */
   value: string | null;
   icon?: LucideIcon;
-  /** Toast title when the clipboard refuses the write. */
   copyFailedTitle: string;
-  /** The `genericErrorDescription` key the failure reports under. */
   reportKey: string;
 }
 
-/**
- * One identifier a developer pastes into their own code (an agent's slug, a
- * organization's ID): the label, the value in mono, and a Copy button. "Copied"
- * belongs to the value it copied, so a different value reads fresh.
- */
 export function CopyIdRow({
   label,
   value,

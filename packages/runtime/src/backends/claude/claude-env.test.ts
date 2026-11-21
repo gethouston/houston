@@ -55,7 +55,6 @@ test("the shell fence rides CLAUDE_CODE_SHELL_PREFIX, and only the fence does", 
       "/data/bin/claude-shell-fence",
     );
 
-    // No container limit → no wrapper; the ambient one never passes through.
     const open = buildClaudeEnv(undefined, {
       configDir: "/config",
       shellFencePath: null,
@@ -127,9 +126,6 @@ test("off Linux every env asks the CLI to scrub credentials from the model's com
   }
 });
 
-// The CLI's Linux build exits 1 at startup ("bubblewrap is required for
-// subprocess env scrubbing") when scrub is on and bwrap is missing, which
-// failed every Claude turn on E2B.
 test("on Linux the env never turns on the CLI's scrub", () => {
   const env = buildClaudeEnv(
     { kind: "api-key", value: "sk-ant-api03-x" },

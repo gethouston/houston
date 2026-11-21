@@ -1,24 +1,4 @@
 #!/usr/bin/env bash
-# ============================================================================
-# Prove the COMPILED sidecar's browser tool works on a machine without this
-# repo: copy the binary to a temp dir outside the checkout and start the
-# browser through it (HOUSTON_SIDECAR_ROLE=browser-probe, see
-# packages/runtime/src/session/tools/browser/probe.ts).
-#
-# Why: `bun build --compile` bakes the BUILD machine's paths into any dynamic
-# require. playwright-core loads its package.json and browsers.json that way
-# upstream, so a packaged desktop app failed on every user's first browser
-# call while working on the machine that built it. patches/playwright-core@*
-# turns those into static requires bun embeds; this script is the check.
-#
-# Needs a Chromium-family browser where Playwright looks: the Playwright
-# headless shell (`pnpm --filter @houston/runtime exec playwright-core install
-# chromium-headless-shell`) or an installed Google Chrome / Microsoft Edge.
-#
-# Usage:
-#   scripts/build-host-sidecar.sh [<rust-triple>]
-#   scripts/smoke-sidecar-browser.sh [<path-to-compiled-sidecar>]
-# ============================================================================
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

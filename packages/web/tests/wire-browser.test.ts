@@ -9,13 +9,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The browser hand-off live view on the wire, byte for byte: the frame stream
- * the person watches and the input batches they drive it with. Both ride the
- * agent's own runtime under `/agents/<id>/conversations/<sessionKey>/browser/`,
- * which the gateway proxies to that agent's pod.
- */
-
 const BASE = "http://host";
 const AGENT = "a1";
 const SK = "sk-1";
@@ -43,7 +36,6 @@ const client = () => {
   return c;
 };
 
-/** A body the spec writes into (and closes) by hand. */
 function openBody() {
   let controller!: ReadableStreamDefaultController<Uint8Array>;
   const body = new ReadableStream<Uint8Array>({
@@ -100,7 +92,6 @@ test("openBrowserLive streams GET …/browser/live and posts byte-identical inpu
   expect(get.headers.get("Authorization")).toBe("Bearer t");
   expect(get.headers.get("x-houston-org")).toBe(ORG);
 
-  // Nothing goes up before the first status names the hand-off.
   live.send({ type: "text", text: "hi" });
   await new Promise((r) => setTimeout(r, 20));
   expect(posts()).toHaveLength(0);
@@ -108,8 +99,6 @@ test("openBrowserLive streams GET …/browser/live and posts byte-identical inpu
     `event: status\ndata: ${JSON.stringify({ type: "status", handoffId: HANDOFF, state: "waiting", text: "Sign in", expiresAt: 1 })}\n\n`,
   );
 
-  // One event batch on the wire; a frame's ack does not wait behind it, a
-  // key queues behind it.
   await vi.waitFor(() => expect(posts()).toHaveLength(1));
   stream.write(
     `event: frame\ndata: ${JSON.stringify({ type: "frame", seq: 3, jpeg: "AAA", width: 412, height: 860 })}\n\n`,

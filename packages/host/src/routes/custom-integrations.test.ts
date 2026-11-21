@@ -13,15 +13,6 @@ import {
 import { handleCustomIntegrations } from "./custom-integrations-user";
 import { json } from "./http";
 
-/**
- * The custom-integration routes (HOU-550) driven over real HTTP, the same way
- * the other routes/*.test.ts files drive their handlers. These routes only
- * need the MANAGER's method surface (list/detect/add/setCredential/remove), so
- * a hand-rolled `vi.fn()` fake stands in for a real CustomIntegrationManager —
- * there is no need to spin up the real executor engine here (manager.test.ts
- * already covers that).
- */
-
 const VIEW: CustomIntegrationView = {
   slug: "acme",
   name: "Acme",
@@ -52,9 +43,6 @@ function fakeManager(
 
 type Deps = CustomIntegrationDeps & { vault: EnvCredentialVault };
 
-/** The mini harness mounts the top-level `/v1` form only; the per-agent
- *  dispatch surface is covered by custom-integrations-user.test.ts against
- *  the FULL server (real mounting order + ownership checks). */
 async function startServer(
   deps: Deps,
 ): Promise<{ server: Server; base: string }> {
@@ -83,8 +71,6 @@ async function startServer(
 }
 
 const vault = new EnvCredentialVault({ secret: "test-secret" });
-
-// ── USER routes ──────────────────────────────────────────────────────────
 
 test("GET definitions returns manager.list(); 404 when no manager is wired", async () => {
   const manager = fakeManager();
@@ -170,10 +156,10 @@ test("POST .../credential validates the body shape (400) before relaying manager
         body: JSON.stringify(body),
       });
 
-    expect((await post({})).status).toBe(400); // missing 'values'
-    expect((await post({ values: "nope" })).status).toBe(400); // not an object
-    expect((await post({ values: [1, 2] })).status).toBe(400); // an array
-    expect((await post({ values: { token: 1 } })).status).toBe(400); // non-string value
+    expect((await post({})).status).toBe(400);
+    expect((await post({ values: "nope" })).status).toBe(400);
+    expect((await post({ values: [1, 2] })).status).toBe(400);
+    expect((await post({ values: { token: 1 } })).status).toBe(400);
     expect(setCredential).not.toHaveBeenCalled();
 
     const ok = await post({ values: { token: "secret" } });
@@ -216,8 +202,6 @@ test("POST .../credential relays credential_invalid as 400 + code", async () => 
     server.close();
   }
 });
-
-// ── SANDBOX routes ───────────────────────────────────────────────────────
 
 test("sandbox detect: 401 with no bearer; 503 integrations_not_configured with no manager; else manager.detect() is called", async () => {
   const { server: noManagerServer, base: noManagerBase } = await startServer({
@@ -294,7 +278,6 @@ test("sandbox detect: 401 with no bearer; 503 integrations_not_configured with n
 test("sandbox add: kind 'openapi' with no url is 400; unknown kind is 400; a valid mcp add reaches manager.add with the right input shape", async () => {
   const add = vi.fn(async (input: unknown) => ({
     ...VIEW,
-    // reflect kind back so the assertion can see what the route parsed
     kind: (input as { kind: "openapi" | "mcp" }).kind,
   }));
   const manager = fakeManager({ add: add as CustomIntegrationManager["add"] });
@@ -395,9 +378,6 @@ test("sandbox status: the request_credential pre-flight (PRODUCT-1292) — view 
     expect(known.status).toBe(200);
     expect(await known.json()).toEqual(VIEW);
 
-    // The exact family the users hit: a slug the agent invented (or whose add
-    // failed) has NO definition — the tool must hear a clean not_found instead
-    // of queueing a card whose every save dead-ends.
     const unknown = await post({ slug: "typeform" });
     expect(unknown.status).toBe(404);
     expect(await unknown.json()).toEqual({

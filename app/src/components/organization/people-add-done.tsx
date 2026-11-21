@@ -2,10 +2,6 @@ import { formatLocalDate, formatPlanAmount } from "@houston/sdk";
 import { useTranslation } from "react-i18next";
 import type { AddOutcome } from "./people-tab-model";
 
-/**
- * The line after an add: who was added or invited, then what their seat
- * cost (charged now, a free paid seat, or the next monthly bill).
- */
 export function PeopleAddDone({ outcome }: { outcome: AddOutcome | null }) {
   const { t, i18n } = useTranslation("teams");
   const seat = outcome?.seat ?? null;

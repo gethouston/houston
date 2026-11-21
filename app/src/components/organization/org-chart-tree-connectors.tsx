@@ -8,15 +8,6 @@ import {
 } from "./org-chart-tree-paths";
 import { useRevealOnce } from "./use-reveal-once";
 
-/**
- * The chart's frame: its nodes, and its lines drawn under them from where
- * the nodes actually landed, measured after layout and again whenever the
- * frame resizes (a name that wraps, a window that narrows), so a line always
- * meets its node. The frame owns the element it measures: a child's layout
- * effect runs before its parent's ref is attached, so the lines cannot be
- * measured from a ref the parent holds. The cards' one-time reveal runs
- * here too, for the same reason.
- */
 export function OrgChartTreeFrame({
   edges,
   options,
@@ -64,11 +55,6 @@ export function OrgChartTreeFrame({
   );
 }
 
-/**
- * Boxes without the reveal's in-flight transform: `offsetLeft`/`offsetTop`
- * ignore transforms, so lines measured mid-reveal still land where the
- * nodes come to rest.
- */
 function layoutBoxes(root: HTMLElement): Map<string, Box> {
   const boxes = new Map<string, Box>();
   for (const node of root.querySelectorAll<HTMLElement>("[data-tree-node]")) {

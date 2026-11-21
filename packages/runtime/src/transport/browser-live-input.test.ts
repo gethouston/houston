@@ -57,7 +57,6 @@ test("a hand-off started for nobody in particular refuses a signed person", asyn
     { headers: acting("member-x") },
   );
   expect(live.status).toBe(403);
-  // The desktop: nobody named on either side.
   expect(await (await input(conversationId, {})).json()).toEqual({
     state: "waiting",
   });
@@ -83,7 +82,6 @@ test("a retried batch answers the current state without typing twice", async () 
     batch: { viewer, seq: 2 },
   });
   expect(cdp.sent).toEqual(["Input.insertText:a", "Input.insertText:b"]);
-  // A repeat still carries its finish.
   const last = await input(conversationId, {
     handoff: session.handoffId,
     events: typed("b"),

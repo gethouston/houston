@@ -3,9 +3,6 @@ import type { JsonSchema } from "./assistant-catalog-types.ts";
 
 const primitiveFlags: Array<[ts.TypeFlags, string]> = [
   [ts.TypeFlags.String, "string"],
-  // A template-literal type (`sk-${string}`) and a mapped one
-  // (`Uppercase<string>`) ARE strings: they carry no properties of their own,
-  // so walking them emits the String prototype as a ~50-property object.
   [ts.TypeFlags.TemplateLiteral, "string"],
   [ts.TypeFlags.StringMapping, "string"],
   [ts.TypeFlags.Number, "number"],
@@ -36,23 +33,10 @@ function isSchemaValueFallback(value: unknown): boolean {
   );
 }
 
-/**
- * A member keyed by a well-known symbol (`Symbol.iterator` on a `Response`,
- * `Symbol.asyncIterator` on a stream). It can never be a JSON property, and its
- * escaped name embeds a per-checker id (`__@iterator@2256`) that changes
- * between runs — emitting it would make the generated catalog differ on every
- * regeneration and leave the drift check flip-flopping.
- */
 function isSymbolNamed(property: ts.Symbol): boolean {
   return property.escapedName.toString().startsWith("__@");
 }
 
-/**
- * The schema a type carries ON ITS OWN, without reading any property off it, or
- * `null` when it is not a scalar. A type PARAMETER answers through its
- * constraint (`T extends string` is a string to every caller), which is the
- * only thing a caller can rely on.
- */
 function scalarSchema(
   checker: ts.TypeChecker,
   type: ts.Type,
@@ -104,10 +88,6 @@ export function schemaForType(
       ),
     };
   }
-  // `"a" | "b" | (string & {})` — the widening that keeps literal autocomplete
-  // while accepting any string (ProviderId). The intersection IS its scalar
-  // constituent; walking its properties would emit the whole String prototype
-  // as an object.
   if (type.isIntersection()) {
     for (const part of type.types) {
       const scalarPart = scalarSchema(checker, part, node);
@@ -164,12 +144,6 @@ export function schemaForType(
   };
 }
 
-/**
- * A union's literal branches in alphabetical order, each in a slot a literal
- * held. The checker lists a union's members by when each type was first
- * created anywhere in the program, so an unrelated file that happens to use
- * one of the words first would reorder the catalog without changing it.
- */
 export function literalsInOrder(branches: JsonSchema[]): JsonSchema[] {
   const literals = branches
     .filter((branch) => branch.const !== undefined)

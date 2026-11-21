@@ -19,16 +19,6 @@ import { useBoardSendQueue } from "./use-board-send-queue";
 import { useComposerPrewarm } from "./use-composer-prewarm";
 import { useComposerSendOverrides } from "./use-composer-send-overrides";
 
-/**
- * Everything the CHAT half of a mission surface wires up, extracted from
- * `<MissionBoard>` so the phone's pushed mission-chat screen and the desktop
- * board render the SAME chat with one wiring: the `useAgentChatPanel`
- * integration, the send queue, draft persistence, attachment validation, and
- * the full ChatPanel prop block AIBoard forwards. The board keeps only what
- * is board-shaped (columns, selection, keyboard, drag, toolbar, portal).
- *
- * `chatProps` spreads straight into `<AIBoard>`; `dialogs` mounts beside it.
- */
 export function useBoardChatWiring(source: BoardSource) {
   const { t } = useTranslation(["dashboard", "board"]);
   const addToast = useUIStore((s) => s.addToast);
@@ -37,8 +27,6 @@ export function useBoardChatWiring(source: BoardSource) {
   const { labels, cardLabels, composerLabels } = useBoardLabels();
   const { draftStore, newConversationKey } = useBoardDrafts(source.draftScope);
 
-  // The panel's own task line, composed here rather than left to `ui/`'s
-  // i18n-agnostic English fallback (`panelTaskLabel`).
   const panelLabel = useMemo(
     () =>
       panelTaskLabel(
@@ -52,9 +40,6 @@ export function useBoardChatWiring(source: BoardSource) {
     [t, source.selectedId, source.allItems],
   );
 
-  // The missions the OPEN chat started (PRODUCT-1244), read off the surface's
-  // own items so they stay live through the same invalidation the cards use;
-  // and the inverse, the parent mission an agent-started chat came from.
   const childMissions = useMemo(
     () =>
       childMissionsOf(source.allItems, source.selectedSessionKey, {
@@ -76,8 +61,6 @@ export function useBoardChatWiring(source: BoardSource) {
     draftScope: source.draftScope,
     childMissions,
     parentMission,
-    // Opening a child (or the parent) is the surface's ordinary selection:
-    // the chat swaps to that mission, exactly as clicking its card would.
     onOpenChildMission: source.setSelectedId,
   });
   const overrides = useComposerSendOverrides(panel);
@@ -96,11 +79,8 @@ export function useBoardChatWiring(source: BoardSource) {
     sendMessageNow: source.sendMessageNow,
   });
 
-  // The first message of a NEW conversation stamps its row with the pin it
-  // ran on, so it waits for the settled pin like a follow-up (PRODUCT-1771).
   const handleCreateConversation = useCallback(
     async (text: string, files: File[], mentions?: MessageMention[]) => {
-      // Same exemption as the follow-up queue: a warming pod parks the send.
       const agentPath = source.activeAgent?.folderPath;
       const pinned =
         agentPath && isAgentPathWarming(agentPath)

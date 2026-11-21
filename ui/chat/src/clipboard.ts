@@ -6,9 +6,7 @@ export async function copyTextToClipboard(text: string): Promise<void> {
     try {
       await clipboard.writeText(text);
       return;
-    } catch {
-      // Fall through for WebViews where the async Clipboard API exists but is denied.
-    }
+    } catch {}
   }
 
   if (typeof document === "undefined") {

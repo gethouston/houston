@@ -250,7 +250,6 @@ describe("a checkout the person walked away from ends", () => {
     expect(tracker.getSnapshot().phase).toBe("idle");
     expect(await tracker.start(ORG, p)).toBe("started");
     expect(p.create).toHaveBeenCalledTimes(2);
-    // The abandoned checkout's window must not cut the new one short.
     advance(300_000);
     expect(tracker.getSnapshot().phase).toBe("open");
   });
@@ -258,7 +257,6 @@ describe("a checkout the person walked away from ends", () => {
   it("never lets a started-over page's failed open mark the next one", async () => {
     const { tracker } = harness();
     let settleOpen: (opened: boolean) => void = () => {};
-    // The gateway answers the same session URL within the hour.
     const abandoned = {
       create: vi.fn(async () => checkout("https://checkout.stripe.test/s")),
       open: vi.fn(() => new Promise<boolean>((r) => (settleOpen = r))),

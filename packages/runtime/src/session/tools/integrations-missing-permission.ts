@@ -6,24 +6,10 @@ import {
   rememberReconnectOffered,
 } from "./integrations-reconnect-once";
 
-/**
- * App refusals for a permission the connection lacks: Google's
- * ACCESS_TOKEN_SCOPE_INSUFFICIENT ("insufficient authentication scopes") or
- * Slack's missing_scope. What helps depends on why the permission is missing.
- */
-
 const GOOGLE_SCOPE =
   /ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficient authentication scopes/i;
 const SLACK_SCOPE = /\bmissing_scope\b/;
 
-/**
- * Gmail actions whose Gmail API method accepts ONLY gmail.settings.basic (or
- * gmail.settings.sharing). Composio's managed Gmail app never requests those
- * Restricted scopes, so no reconnect can grant them. Settings READS
- * (GMAIL_LIST_FILTERS, GMAIL_GET_VACATION_SETTINGS...) and GMAIL_FORWARD_MESSAGE
- * also accept https://mail.google.com/, which the app does request, so a
- * refusal there is an unticked box like any other and they stay out.
- */
 const NEVER_GRANTED_ACTIONS = new Set([
   "GMAIL_CREATE_FILTER",
   "GMAIL_DELETE_FILTER",
@@ -41,21 +27,8 @@ const NO_TECH =
 const MANUAL_STEPS =
   "Tell the user plainly that this step can't be done in their app from here, and offer to walk them through doing it themselves in the app";
 
-/**
- * How a Google missing-permission refusal can be fixed this time:
- * - "card": a reconnect card is queued for the app (now or earlier this turn).
- * - "integrations_page": no card can be offered (integration_search never
- *   named the toolkit), so the person reconnects from Integrations.
- * - "offered_before": this conversation already got its one reconnect card for
- *   the app and the refusal came back, so the reconnect did not help.
- */
 export type ScopeReconnect = "card" | "integrations_page" | "offered_before";
 
-/**
- * Queues the reconnect card for a missing-permission refusal under the same
- * once-per-app-per-conversation guard as a dead login (reconnect-once.ts):
- * only for a toolkit integration_search named, never twice for one app.
- */
 export function offerScopeReconnect(
   toolkit: string,
   known: boolean,
@@ -69,19 +42,6 @@ export function offerScopeReconnect(
   return "card";
 }
 
-/**
- * The guidance appended to a missing-permission refusal, or "" when the
- * refusal is something else.
- *
- * - A never-grantable Gmail settings write: no reconnect, manual steps.
- * - Any other Google refusal: Google lets the person untick permission boxes at
- *   sign-in, so ONE reconnect usually fixes it (`offerReconnect`). Only this
- *   action is blocked meanwhile. A refusal that survives the reconnect falls
- *   back to manual steps.
- * - Slack: consent is all-or-nothing, so a connection made before the app
- *   requested a scope lacks it and a fresh connection carries it. The person
- *   reconnects from Integrations, and a repeat refusal falls back to manual.
- */
 export function missingPermissionHint(
   reason: string,
   action: string,

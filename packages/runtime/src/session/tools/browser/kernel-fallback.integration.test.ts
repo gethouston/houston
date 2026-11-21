@@ -17,14 +17,8 @@ import type { BrowserPool } from "./pool";
 
 const available = await browserAvailable();
 
-/**
- * A Cloudflare-style wall for this browser, which also marks it with a wall
- * cookie; the "backup" gets the page. `/signin` is open to both.
- */
 const site = createServer((req, res) => {
   const cookies = req.headers.cookie ?? "";
-  // Full Chrome (CI's) fetches the favicon after /signin: walled, it would
-  // mark this browser before the test's own blocked visit.
   if (req.url === "/favicon.ico") {
     res.writeHead(404);
     res.end();
@@ -59,7 +53,6 @@ const origin = available ? `http://${SITE_HOST}:${await listen(site)}` : "";
 const browsers: Browser[] = [];
 const pools: BrowserPool[] = [];
 
-/** A second local Chromium standing in for Kernel; it counts opens and closes. */
 function fakeKernel(refuse = false) {
   const opened: string[] = [];
   const disposed = vi.fn();
@@ -120,9 +113,7 @@ describe.skipIf(!available)(
       const page = await run({ action: "open", url: `${origin}/item` });
       expect(kernel.opened).toEqual([SITE_HOST]);
       expect(page.text.startsWith(BACKUP_NOTE)).toBe(true);
-      // The sign-in carries over; the wall's mark on this browser does not.
       expect(page.text).toContain("signed in, unmarked");
-      // The next look is on the backup's page, not this browser's wall.
       const look = await run({ action: "snapshot" });
       expect(look.text).toContain("Products");
       expect(kernel.disposed).not.toHaveBeenCalled();

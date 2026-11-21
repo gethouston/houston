@@ -1,17 +1,3 @@
-/**
- * Desktop dictation audio capture.
- *
- * WKWebView's `MediaRecorder` only emits AAC (no PCM/Opus container we could
- * feed whisper), so capture instead goes: `getUserMedia` -> an `AudioContext`
- * pinned to 16 kHz -> an `AudioWorklet` that posts raw Float32 frames back to
- * the main thread -> accumulate -> on stop, resample (if the platform ignored
- * the requested rate) -> encode as WAV (`wav.ts`).
- *
- * Auto-stops at 120s via `onAutoStop`; the caller (the dictation state
- * machine in `use-dictation.ts`) treats that identically to a user-initiated
- * stop — it still has to call `.stop()` to get the encoded bytes.
- */
-
 import { LevelAccumulator } from "./levels";
 import { DICTATION_WORKLET_SOURCE } from "./recorder-worklet";
 import {
@@ -25,20 +11,11 @@ const MAX_RECORDING_MS = 120_000;
 const WORKLET_NAME = "dictation-capture";
 
 export interface DictationRecording {
-  /** Stop capture, tear down all audio resources, and return the encoded WAV. */
   stop(): Promise<Uint8Array>;
-  /** Discard capture and tear down all audio resources. */
   cancel(): void;
-  /**
-   * Live amplitude history, one normalized 0..1 level per 100ms of captured
-   * audio. Cheap and allocation-free — the composer polls it with rAF to draw
-   * the recording waveform. Returns the accumulator's own array (do not mutate).
-   */
   getLevels(): readonly number[];
 }
 
-/** True when this webview can capture microphone audio at all. Mirrors the
- *  feature-detect `captureScreenshot` does in ui/chat/prompt-input.tsx. */
 export function isDictationCaptureSupported(): boolean {
   return (
     typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia
@@ -56,11 +33,6 @@ function stopTracks(stream: MediaStream): void {
   for (const track of stream.getTracks()) track.stop();
 }
 
-/**
- * Start capturing microphone audio. Rejects with the raw `getUserMedia`
- * error (`NotAllowedError` / `NotFoundError` / ...) so the caller can map it
- * to specific copy.
- */
 export async function startDictationRecording(
   onAutoStop: () => void,
 ): Promise<DictationRecording> {
@@ -99,8 +71,6 @@ export async function startDictationRecording(
   };
   const source = audioContext.createMediaStreamSource(stream);
   source.connect(node);
-  // Deliberately no `.connect(audioContext.destination)` — the user must
-  // never hear their own mic looped back through the app.
 
   let tornDown = false;
   function teardown(): void {

@@ -1,6 +1,5 @@
 import { formatMessageTime } from "@houston-ai/board";
 
-/** App language and translated words bind the board's i18n-agnostic formatter. */
 export function formatLastMessageTime(
   iso: string,
   language: string,

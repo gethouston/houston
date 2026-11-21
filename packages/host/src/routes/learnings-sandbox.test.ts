@@ -13,24 +13,6 @@ import {
 } from "./learnings-sandbox";
 import { liveTurns } from "./live-turn";
 
-/**
- * The runtime-facing memory save route: merge-safe, and the ONLY writer that
- * records a learning's provenance.
- *
- * The invariants under test:
- *  - Gateway-fronted: the acting-as header names the person (`taught_by`), and
- *    with no acting-as token (a fired routine) the creator's `acting-user` sub
- *    does — the same ladder the integrations sandbox route walks.
- *  - Off the gateway: NO identity key at all, even with a header present — an
- *    inbound acting header is untrusted client input on the desktop, and a
- *    single-player learnings.json must stay free of identity keys.
- *  - The mission is matched by the SAME convention per-mission attribution
- *    uses: `session_key === cid`, with `activity-<id>` as the fallback. It is
- *    stamped on every deployment (a mission is not an identity).
- *  - The write MERGES: existing learnings survive, even when two saves run
- *    concurrently (the load→append→save runs under the per-doc lock).
- */
-
 const paths = new LocalPaths();
 const OWNER = "alice";
 
@@ -47,7 +29,6 @@ const vault: CredentialVault = {
     token === "sb-good" ? { workspaceId: ws.id, agentId: agent.id } : null,
 };
 
-/** `acting-v1.<payloadB64Url>.<sig>` — what the gateway stamps on a proxied request. */
 function actingHeader(sub: string, name?: string): string {
   const payload = Buffer.from(JSON.stringify({ sub, name })).toString(
     "base64url",
@@ -55,7 +36,6 @@ function actingHeader(sub: string, name?: string): string {
   return `acting-v1.${payload}.sig`;
 }
 
-/** A fake IncomingMessage: an async byte stream carrying the JSON body. */
 function fakeReq(
   body: unknown,
   headers: Record<string, string>,
@@ -69,7 +49,6 @@ function fakeReq(
   } as unknown as IncomingMessage;
 }
 
-/** A fake ServerResponse capturing the status + JSON body `json()` writes. */
 function fakeRes() {
   const captured: { status: number; body: unknown } = { status: 0, body: null };
   const res = {
@@ -88,16 +67,11 @@ async function save(
   text: string,
   opts: {
     gatewayFronted?: boolean;
-    /** What the GATEWAY stamped on the send that started this turn. */
     acting?: string;
-    /** The routine creator's sub, as the fire that started the turn knew it. */
     actingUser?: string;
-    /** An identity the RUNTIME puts on its own loopback call (S16). */
     spoofedActing?: string;
     spoofedActingUser?: string;
-    /** `null` names no conversation at all; omitted names one with no mission. */
     conversationId?: string | null;
-    /** Call as a runtime with no turn of the host's running behind it. */
     noLiveTurn?: boolean;
     mode?: "plan" | "execute" | "auto";
     token?: string;
@@ -114,8 +88,6 @@ async function save(
       ? undefined
       : (opts.conversationId ?? "conv-none");
   if (conversationId) headers[CONVERSATION_ID_HEADER] = conversationId;
-  // The turn the host recorded when it began (routes/live-turn.ts): which chat
-  // it runs in, and whose name it acts in.
   liveTurns.forget(agent.id);
   if (conversationId && !opts.noLiveTurn)
     liveTurns.start(agent.id, conversationId, opts.mode ?? "execute", {
@@ -143,7 +115,6 @@ async function save(
   return { handled, ...captured };
 }
 
-/** The learnings file as it is on disk after a save. */
 async function onDisk(): Promise<Learning[]> {
   return JSON.parse(
     (await vfs.readText(docKey(root, "learnings"))) ?? "[]",
@@ -199,9 +170,6 @@ test("gateway-fronted: stamps the person AND the mission", async () => {
 });
 
 test("gateway-fronted fired routine: the creator's acting-user sub is the author", async () => {
-  // A FIRED ROUTINE has no driving human, so there is no acting-as token — the
-  // runtime forwards the routine creator's sub instead. Without this rung a
-  // routine-taught learning would be anonymous in hosted Teams.
   const r = await save("Renewal emails go out on Mondays", {
     gatewayFronted: true,
     actingUser: "sub-alice",
@@ -231,8 +199,6 @@ test("off the gateway: no identity key even when the header is present", async (
 
   const [learning] = await onDisk();
   expect(learning).not.toHaveProperty("taught_by");
-  // The mission IS stamped off the gateway: it is not an identity, and it is
-  // the useful half of provenance for a single-player user.
   expect(learning?.mission_id).toBe("act-1");
   expect(learning?.mission_title).toBe("Q3 pipeline");
 });
@@ -270,7 +236,6 @@ test("the save merges: existing learnings survive", async () => {
 
   const items = await onDisk();
   expect(items.map((l) => l.text)).toEqual(["first", "second", "third"]);
-  // The pre-existing entry is untouched, keys and all.
   expect(items[0]).toEqual({
     id: "old-1",
     text: "first",
@@ -282,8 +247,6 @@ test("two CONCURRENT saves both survive (the per-doc lock)", async () => {
   await saveLearnings(vfs, root, [
     { id: "old-1", text: "first", created_at: "2020-01-01T00:00:00.000Z" },
   ]);
-  // Two conversations on the same pod saving at once. Without the lock both
-  // load the same base list and the second write drops the first's entry.
   const [a, b] = await Promise.all([save("from chat A"), save("from chat B")]);
   expect([a.status, b.status]).toEqual([201, 201]);
 
@@ -308,12 +271,6 @@ test("a non-matching path or method is not handled", async () => {
   expect(handled).toBe(false);
 });
 
-/**
- * S4 / S9 / S16 (round 2) — a memory write happens inside a turn the HOST
- * started, in the chat that turn runs in, and in the name the gateway vouched
- * for there. None of the three may come from the call itself: the runtime is
- * the least-trusted process in the system and it writes every one of them.
- */
 test("a save with no turn behind it is refused", async () => {
   const r = await save("nothing is running", { noLiveTurn: true });
   expect(r.status).toBe(400);
@@ -353,7 +310,6 @@ test("the learning is taught by the person the GATEWAY vouched for", async () =>
   const r = await save("Renewals are quarterly", {
     gatewayFronted: true,
     acting: actingHeader("u-felipe", "Felipe"),
-    // The runtime's own loopback call claims somebody else entirely.
     spoofedActing: actingHeader("u-mallory", "Mallory"),
     spoofedActingUser: "sub-mallory",
     conversationId: "conv-42",

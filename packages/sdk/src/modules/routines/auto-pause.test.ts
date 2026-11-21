@@ -34,7 +34,6 @@ test("every pause reason maps to one fix, naming whose account when it matters",
 test("a running routine, a hand pause, or a resumed routine carries no notice", () => {
   expect(routinePauseNotice({ enabled: true })).toBeNull();
   expect(routinePauseNotice({ enabled: false })).toBeNull();
-  // A stale reason on an enabled routine never reads as paused.
   expect(
     routinePauseNotice({ ...paused("out_of_credits"), enabled: true }),
   ).toBeNull();

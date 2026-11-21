@@ -9,30 +9,13 @@ import { useMissionControlArchivedSend } from "./use-mission-control-archived-se
 
 type ArchivedData = ReturnType<typeof useMissionControlArchived>;
 
-/**
- * The chat half of the cross-agent Archived view: the panel for the selected
- * archived mission, the send that RE-ACTIVATES it, and the handoff that then
- * carries the user back to this screen's ACTIVE board so the conversation stays
- * in view. One unit because they are one story, and every piece of it needs the
- * panel's effective provider/model (which is why the data hook stays data-only).
- *
- * Independent of how the list is scoped or searched: this hook only ever sees
- * the ONE selected mission.
- */
 export function useMissionControlArchivedPanel(
   data: ArchivedData,
-  /** Swap the archive out for the board it belongs to — the global one, or the
-   *  team's. The re-activated mission lands there, and only the active board
-   *  consumes the published target. */
   onShowActive: () => void,
 ) {
   const { selectedItem, activeAgent } = data;
 
   const clearSelection = useCallback(() => data.setSelectedId(null), [data]);
-  // The mission's agent, captured while it is still LISTED: the handoff fires
-  // after a send that re-activates the mission, by which point this list has
-  // refetched without it (see `useLatchedMissionAgent`). It only makes the
-  // agent CURRENT — the destination is this screen's own board.
   const focusMissionAgent = useLatchedMissionAgent(
     data.selectedId,
     activeAgent,

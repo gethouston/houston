@@ -1,8 +1,3 @@
-/**
- * The agent-phase half of the golden probe set (see routes.golden-probes.ts) —
- * every pair reached through a per-agent ownership check, the terminal runtime
- * proxy's forwarded surface included.
- */
 export const AGENT_PROBES: string[] = [
   "POST /agents/:agentId/trigger-events",
   "POST /agents/:agentId/routine-fires",

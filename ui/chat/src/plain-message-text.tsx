@@ -1,23 +1,3 @@
-/**
- * A HUMAN message's rendered body: plain text, never markdown (HOU-1051). What
- * the person typed is what the bubble shows — `# hello` stays `# hello` — with
- * line breaks preserved. Only the AGENT's prose goes through the markdown
- * renderer (`MessageResponse`).
- *
- * Two pieces of structure survive, messenger-style:
- * - Mention chips (HOU-944): "@Name" runs still chip, found by the same pure
- *   matcher the markdown path uses (`findMentionSpans`), so a shared
- *   conversation reads identically on both render paths. Offsets index into
- *   the NFC-normalized text, so this component slices its own normalized copy.
- * - Bare URLs (HOU-960 / #358): a pasted link stays a clickable link chip
- *   inside the bubble — the same anatomy as the markdown autolink, including
- *   its scheme-stripped, length-capped display text (HOU-1152), so a link the
- *   person pasted and a link the agent replied with read identically. Verbatim
- *   is about the person's PROSE; the chip is presentation and the full
- *   destination stays in the href. Without a handler it degrades to plain text
- *   rather than a dead-looking link.
- */
-
 import { Fragment, type ReactNode } from "react";
 import { Autolink } from "./autolink";
 import { autolinkDisplay } from "./markdown-link";
@@ -27,14 +7,10 @@ import { normalizeMentionText } from "./mention-text.ts";
 
 export interface PlainMessageTextProps {
   text: string;
-  /** The message's recorded mentions; omit to skip chipping. */
   mentions?: readonly MentionTarget[];
-  /** Opens a pasted URL (system browser on desktop); absent → plain text. */
   onOpenLink?: (url: string) => void;
 }
 
-/** A pasted URL, conservatively: scheme to the next whitespace, minus the
- *  trailing punctuation a sentence hangs on it ("see https://a.com/b."). */
 const URL_RUN = /https?:\/\/[^\s<>]+/g;
 const TRAILING_PUNCTUATION = /[.,;:!?'")\]]+$/;
 

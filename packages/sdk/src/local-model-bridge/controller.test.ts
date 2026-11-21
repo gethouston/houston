@@ -114,16 +114,11 @@ test("connect commits a secret-free journal and explicit bridge descriptor", asy
   expect(h.controller.getSnapshot()).toBe(h.controller.getSnapshot());
   await h.controller.dispose();
 });
-// The desktop webview's timers sleep while the app idles in the background
-// (macOS App Nap): overnight, every session lapsed at the 10-minute mark and
-// the late timer met a 409. The native side now says when a renewal is due.
 test("a native renewal-due notice renews without the timer, once per session", async () => {
   vi.useFakeTimers();
   const h = harness();
   await h.controller.connect(input);
   const online = h.controller.getSnapshot();
-  // A renewed session carries a later expiry; the fixture's expiry is minted
-  // from the fake clock, so let it move before any renewal is issued.
   await vi.advanceTimersByTimeAsync(1_000);
   const renewals = () =>
     (h.ports.management.session as ReturnType<typeof vi.fn>).mock.calls.filter(
@@ -142,11 +137,9 @@ test("a native renewal-due notice renews without the timer, once per session", a
   expect(renewals()).toBe(1);
   expect(h.ports.native.renew).toHaveBeenCalledTimes(1);
   expect(h.controller.getSnapshot().status).toBe("online");
-  // The same notice again names the session already renewed: nothing happens.
   h.event(notice);
   await vi.advanceTimersByTimeAsync(0);
   expect(renewals()).toBe(1);
-  // The timer for the renewed session still fires on its own schedule.
   await vi.advanceTimersByTimeAsync(480_000);
   expect(renewals()).toBe(2);
   expect(h.ports.report).not.toHaveBeenCalled();
@@ -178,10 +171,6 @@ test("disposed controller cannot revive a previous identity", async () => {
   ])
     await expect(op).rejects.toBeInstanceOf(BridgeDisposedError);
 });
-// HOUSTON-APP-5HX: `app-activated` / `online` / `visibilitychange` wake the
-// bridge, and a space or agent switch invalidates the binding. The two race on
-// every switch while a bridge is open; the losing wake is superseded, not
-// failed, so it resolves and reports nothing.
 test("a wake after disposal resolves quietly and does nothing", async () => {
   const h = harness();
   await h.controller.connect(input);
@@ -483,19 +472,12 @@ test.each([
   await h.controller.dispose();
 });
 
-// The gateway's error body as `HoustonEngineError` carries it: the top-level
-// `code` sits on `body`, and the error's own `code` getter reads only the
-// nested host shape, so it is absent here too.
 function gatewayError(status: number, code: string) {
   return Object.assign(new Error(`${code} (engine error ${status})`), {
     status,
     body: { code, error: code.replace(/_/g, " ") },
   });
 }
-// HOUSTON-APP-5DY: a renewal for a generation the relay no longer holds (a
-// relay restart, or a late timer after the session lapsed) answers 409
-// `stale_session`. The bridge used to settle `reconnect_required` and ask the
-// person to reconnect by hand; a fresh session is all it needs.
 test("a renewal the gateway calls stale opens a fresh session, quietly", async () => {
   vi.useFakeTimers();
   const h = harness();
@@ -514,9 +496,6 @@ test("a renewal the gateway calls stale opens a fresh session, quietly", async (
   expect(bridgeQuietClass(stale)).toBe("bridge_state");
   await h.controller.dispose();
 });
-// HOUSTON-APP-5M1: the gateway could not match the old tunnel's proof, so the
-// migration can never complete on its own. The person reconnects through the
-// guided dialog (a fresh connect needs no proof); the state is expected.
 test("a migration the gateway refuses asks for a reconnect, quietly, without retrying", async () => {
   vi.useFakeTimers();
   const h = harness();

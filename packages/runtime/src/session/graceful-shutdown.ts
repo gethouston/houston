@@ -1,30 +1,11 @@
-/**
- * Server-mode shutdown: hold the process alive until every in-flight turn has
- * ended (or the drain budget is spent), THEN close the listener and exit —
- * exactly once, from here.
- *
- * The listener stays up for the whole drain on purpose. Turns are
- * fire-and-forget (the start route answers 202 and the turn runs on the bus),
- * so nothing holds an HTTP connection open while a turn runs and a
- * `server.close(cb)` at signal time completes at once. Exiting from that
- * callback — the pre-drain shape — killed a pod's running turns within
- * seconds of SIGTERM while 589 s of termination grace went unused
- * (PRODUCT-1758). Keeping the listener open is also what lets the drain latch
- * (drain.ts) answer: new turns get 503 + Retry-After and `/busy` reads true,
- * so the host's activity probe keeps reporting the pod busy until it is gone.
- */
-
 export interface DrainableServer {
   close(callback?: (error?: Error) => void): unknown;
 }
 
 export interface GracefulShutdownDeps {
   server: DrainableServer;
-  /** How long a still-running turn may hold the process (HOUSTON_RUNTIME_DRAIN_MS). */
   drainMs: number;
-  /** Turns the runtime still holds (session/turn-inflight-count.ts). */
   turnsInFlight: () => number;
-  /** Final exit: flushes and calls process.exit. Invoked exactly once. */
   exit: () => void | Promise<void>;
   log: {
     info: (...values: unknown[]) => void;
@@ -33,12 +14,7 @@ export interface GracefulShutdownDeps {
   now?: () => number;
 }
 
-/** How often the drain re-checks for a still-running turn. */
 export const DRAIN_POLL_MS = 250;
-/**
- * The beat after the last turn ends before the listener goes away, so the
- * turn's terminal frame reaches the host's capture first.
- */
 export const DRAIN_SETTLE_MS = 500;
 
 export function drainTurnsThenExit(deps: GracefulShutdownDeps): void {
@@ -50,9 +26,6 @@ export function drainTurnsThenExit(deps: GracefulShutdownDeps): void {
       drainMs: deps.drainMs,
     });
   }
-  // Timers stay ref'd: the drain is the one thing keeping this process alive
-  // once the host has dropped its connections, and an unref'd settle timer
-  // would let Node exit naturally before `exit` flushed the logs.
   const tick = () => {
     if (turnRunning() && now() < deadline) {
       setTimeout(tick, DRAIN_POLL_MS);

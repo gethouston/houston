@@ -4,25 +4,17 @@ import type { ReactNode } from "react";
 import { type CitationChipData, CitationNumber } from "./citation-chips";
 
 export interface UserCitationMessageProps {
-  /** The comments per file, each file named once above its own. */
   groups: readonly {
     filePath: string;
     fileName: string;
     citations: readonly CitationChipData[];
   }[];
-  /** The typed words (and anything else the message carried) below them. */
   children?: ReactNode;
-  /** Opens the file at a comment's page. */
   onOpen?: (id: string) => void;
   noCommentLabel?: string;
   openLabel?: (chip: CitationChipData) => string;
 }
 
-/**
- * A sent message that carried file comments: the user's own bubble, with a
- * compact pill per comment above the typed words. The model-facing list the
- * agent read never shows.
- */
 export function UserCitationMessage({
   groups,
   children,

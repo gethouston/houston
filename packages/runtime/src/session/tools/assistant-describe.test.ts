@@ -167,8 +167,6 @@ describe("identifiers inside a body object", () => {
   ]);
 
   test("the contract names each field and where its values come from", () => {
-    // A model reading only the top level sees `manifest: object` and invents
-    // both. The fields are what it builds the object from.
     const answer = describeOperation(withFields);
     expect(answer).toContain('"name":"enabled"');
     expect(answer).toContain('"valuesFrom":"listSkills"');
@@ -181,7 +179,6 @@ describe("identifiers inside a body object", () => {
     expect(sourceGuidance(withFields)).toContain(
       '"manifest.provider" from listAgentProviders',
     );
-    // A resolved field is not ALSO told to look itself up first.
     expect(sourceGuidance(withFields)).not.toContain("manifest.enabled");
   });
 });

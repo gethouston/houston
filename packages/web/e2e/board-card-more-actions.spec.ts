@@ -1,9 +1,3 @@
-/**
- * A narrow card (a 180px column: 1280 window with the chat open) folds rename
- * and delete into one always-visible "More actions" button so its time label
- * keeps room (HOU-165). Both actions must still work from that menu, without
- * opening the mission behind it, and the status action stays one click.
- */
 import type { Page } from "@playwright/test";
 import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
@@ -37,7 +31,6 @@ test("a narrow card renames its mission from the more menu", async ({
   await input.press("Enter");
 
   await expect(card.getByText("Launch note")).toBeVisible();
-  // The rename never opened this mission over the one already in the panel.
   await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
 });
 
@@ -80,14 +73,6 @@ test("closing the more menu returns focus to its button", async ({ page }) => {
   await expect(more).toBeFocused();
 });
 
-/**
- * The board answers bare Enter (open the highlighted mission) and the arrows
- * (move the highlight) on window while the chat is closed. A key that presses
- * or opens a card control must stay with that control. With three columns the
- * actions only fold while the chat is open; a board with more columns folds
- * them with it closed, which a style stands in for here by holding every
- * column at its 180px minimum.
- */
 test.describe("keys on a card's controls", () => {
   async function highlightFirstCard(page: Page) {
     await page.goto("/");
@@ -135,7 +120,6 @@ test.describe("keys on a card's controls", () => {
       .locator('[data-kanban-card="act-1"]')
       .getByRole("button", { name: "Move to done" })
       .press("Enter");
-    // Moved to Done, where the card's status action is archive.
     await expect(
       page
         .locator('[data-kanban-card="act-1"]')

@@ -3,13 +3,6 @@ import { after, before, describe, it } from "node:test";
 import * as Sentry from "@sentry/browser";
 import { captureQuietEvent } from "../src/lib/sentry-quiet.ts";
 
-/**
- * Whole-SDK check that a quiet-class capture leaves the client with its
- * FIXED fingerprint on the wire. Sentry groups by the event's `fingerprint`
- * unless a server-side fingerprinting rule matches first, so this pins the
- * client half of the contract: the outgoing envelope item carries the class
- * constant, the warning level, the class tag and the raw body as extra.
- */
 type SentEvent = {
   fingerprint?: string[];
   level?: string;

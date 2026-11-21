@@ -28,28 +28,14 @@ function readOutcome(userId: string | null): CloudMigrationOutcome | null {
 }
 
 export interface CloudMigrationTrigger {
-  /** `show` renders the wizard, `loading` a splash, `pass` the app. */
   status: CloudMigrationGateState;
-  /** What `detect_legacy_houston` found (for the offer copy). */
   detection: LegacyDetection | null;
-  /**
-   * Persist the outcome. `applyNow: false` writes the flag (a relaunch skips
-   * the wizard) WITHOUT flipping the in-session gate — the done screen stamps
-   * itself this way so it isn't ripped out from under the user; its final
-   * button re-calls with `applyNow: true`.
-   */
   persistOutcome: (
     outcome: CloudMigrationOutcome,
     opts?: { applyNow?: boolean },
   ) => void;
 }
 
-/**
- * Gathers the signals for the first-run cloud-migration wizard (HOU-719) and
- * delegates the decision to the pure `cloudMigrationGateState`. Gates: remote
- * gateway build (hosted-oauth / hosted-static), Tauri shell, signed-in
- * identity, legacy data on disk, no persisted outcome.
- */
 export function useCloudMigration(): CloudMigrationTrigger {
   const { data: session } = useSession();
   const userId = session?.uid ?? null;
@@ -64,9 +50,6 @@ export function useCloudMigration(): CloudMigrationTrigger {
   const gatesOpen = remoteGateway && isTauri && Boolean(userId) && !outcome;
   const detectQuery = useQuery({
     queryKey: queryKeys.cloudMigrationDetect(),
-    // Read-only filesystem scan; stable for the app's lifetime. An automatic
-    // probe, not a user action: a failure means "can't detect", so the gate
-    // fails CLOSED into the normal app — but it reaches Sentry, never vanishes.
     queryFn: async () => {
       try {
         return await osDetectLegacyHouston();
@@ -89,23 +72,14 @@ export function useCloudMigration(): CloudMigrationTrigger {
       try {
         writeCloudMigrationOutcome(localStorage, value);
       } catch (e) {
-        // Worst case the wizard offers again next launch; still report it.
         reportError("cloud_migration_storage", "writing the outcome failed", e);
       }
-      // A completed migration IS onboarding: the user just moved their agents
-      // into the cloud, so they must land in the shell, never the create flow.
-      // Only "done" — a user who DECLINES with no agents still needs onboarding.
-      // Fires on both the stamp (applyNow:false) and the final apply; markCompleted
-      // is idempotent.
       if (value === "done") void markCompleted();
       if (opts?.applyNow !== false) setOutcome(value);
     },
     [markCompleted],
   );
 
-  // Dev-only: force the wizard open with stub data so it can be tested in
-  // `pnpm dev` (no gateway, no source host). Dead-stripped from prod builds.
-  // Placed after every hook so hook order stays stable.
   if (isMigrationDemo()) {
     return {
       status: outcome ? "pass" : "show",

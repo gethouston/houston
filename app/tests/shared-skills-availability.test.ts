@@ -10,12 +10,6 @@ import {
 const read = (relativePath: string) =>
   readFileSync(new URL(relativePath, import.meta.url), "utf8");
 
-// HOU-1153: the classifier that tells "this deployment has no workspace skill
-// store" (feature absence — render the empty state, stop asking) apart from a
-// shared-skills call that genuinely FAILED (toast + report, unchanged). A false
-// positive here silently drops a real bug report, so it must be exact.
-
-/** The shape `HoustonEngineError` carries: the status plus the parsed body. */
 const engineError = (status: number, body: unknown) => ({
   status,
   body,
@@ -33,7 +27,6 @@ describe("isSharedSkillsUnconfiguredError", () => {
   });
 
   it("uses the gateway's exact wire string", () => {
-    // Mirrors cloud/internal/edge/shared_skills_routes.go.
     strictEqual(SHARED_SKILLS_UNCONFIGURED, "shared skills not configured");
   });
 
@@ -50,7 +43,6 @@ describe("isSharedSkillsUnconfiguredError", () => {
   });
 
   it("does NOT match other shared-skills failures", () => {
-    // A real outage, an auth rejection, a missing workspace: all still toast.
     strictEqual(
       isSharedSkillsUnconfiguredError(engineError(503, { error: "down" })),
       false,
@@ -72,7 +64,6 @@ describe("isSharedSkillsUnconfiguredError", () => {
   });
 
   it("never matches the same status carried on a different body shape", () => {
-    // A 503 alone must not silence the surface — the reason has to be there.
     strictEqual(isSharedSkillsUnconfiguredError(engineError(503, null)), false);
     strictEqual(isSharedSkillsUnconfiguredError(engineError(503, {})), false);
     strictEqual(
@@ -99,7 +90,6 @@ describe("isSharedSkillsUnconfiguredError", () => {
 
 describe("sharedSkillsAvailable", () => {
   it("hides the surface when the deployment has no store", () => {
-    // The gateway said `capabilities.sharedSkills: true` and the store said no.
     strictEqual(sharedSkillsAvailable(true, { configured: false }), false);
   });
 
@@ -108,7 +98,6 @@ describe("sharedSkillsAvailable", () => {
   });
 
   it("stays optimistic while the store list is still loading", () => {
-    // No flicker out-and-back on deployments that DO serve the store.
     strictEqual(sharedSkillsAvailable(true, undefined), true);
   });
 
@@ -122,8 +111,6 @@ describe("the list_shared_skills surfacing policy", () => {
   const tauri = read("../src/lib/tauri.ts");
 
   it("silences ONLY the unconfigured case at the call site", () => {
-    // No red bug toast and no Sentry issue for feature absence; `call` still
-    // logs it, and every other failure surfaces exactly as before.
     match(
       tauri,
       /"list_shared_skills",[\s\S]{0,240}silence: isSharedSkillsUnconfiguredError/,
@@ -131,8 +118,6 @@ describe("the list_shared_skills surfacing policy", () => {
   });
 
   it("converts only the typed error into the feature-absent value", () => {
-    // The rethrow is the no-silent-failures guarantee: anything that is not
-    // the gateway's "not configured" 503 keeps propagating.
     match(tauri, /if \(!isSharedSkillsUnconfiguredError\(err\)\) throw err;/);
     match(
       tauri,

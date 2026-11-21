@@ -4,8 +4,6 @@ const MAX_ERROR_CHARS: usize = 6_000;
 const MAX_LOG_CHARS: usize = 8_000;
 
 pub(super) fn format_issue_title(payload: &BugReportPayload) -> String {
-    // When the user wrote their own feedback, lead the title with that — it's
-    // the part the engineer's eye lands on in the Linear queue.
     if let Some(message) = payload
         .user_message
         .as_deref()
@@ -27,9 +25,6 @@ pub(super) fn format_issue_title(payload: &BugReportPayload) -> String {
 pub(super) fn format_issue_description(payload: &BugReportPayload) -> String {
     let mut description = String::new();
 
-    // User's own words first, when present — these came from the "Send
-    // feedback" menu (voluntary submission), so the engineer should read
-    // them before machine-generated context.
     if let Some(message) = payload
         .user_message
         .as_deref()
@@ -199,8 +194,6 @@ mod tests {
         let mut payload = sample_payload();
         payload.user_message = Some("   ".to_string());
         let title = format_issue_title(&payload);
-        // Whitespace-only message is treated as absent; we use the
-        // command + error summary path instead.
         assert!(title.starts_with("Houston bug:"));
     }
 }

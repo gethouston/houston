@@ -21,7 +21,6 @@ import {
 const AUTHORIZE_URL =
   "https://claude.com/cai/oauth/authorize?code=true&client_id=abc&state=xyz";
 
-/** A minted-credential file body shaped like the CLI writes it. */
 const MINTED = JSON.stringify({
   claudeAiOauth: {
     accessToken: "sk-ant-oat01-access",
@@ -31,7 +30,6 @@ const MINTED = JSON.stringify({
   },
 });
 
-/** The spawned-child seam: scripted stdout/stderr, captured stdin, exit/error. */
 class FakeChild {
   stdout = new PassThrough();
   stderr = new PassThrough();
@@ -53,7 +51,6 @@ class FakeChild {
   }
 }
 
-/** Let stream data / promise races settle between scripted steps. */
 const tick = () => new Promise((r) => setImmediate(r));
 
 type Harness = {
@@ -62,13 +59,11 @@ type Harness = {
   stored: { tokens: string[]; oauth: Array<Record<string, unknown>> };
   cleaned: string[];
   keychainDiscarded: string[];
-  /** The CLAUDE_CONFIG_DIR each spawn was pointed at. */
   spawnDirs: string[];
   login: Promise<void>;
   paste: (value: string) => void;
 };
 
-/** Drive runAnthropicLogin against a FakeChild with injected fs/Keychain seams. */
 function harness(opts?: {
   binary?: string | null;
   credentialFile?: string | null;
@@ -121,13 +116,12 @@ function harness(opts?: {
 
 test("CLI login: URL surfaced, code relayed to stdin, minted oauth stored", async () => {
   const h = harness();
-  // Real CLI shape: the URL is OSC-8 hyperlink-wrapped even on a pipe.
   h.child.stdout.write("Opening browser to sign in…\n");
   h.child.stdout.write(
     `If the browser didn't open, visit: \u001b]8;;${AUTHORIZE_URL}\u0007${AUTHORIZE_URL}\u001b]8;;\u0007\n`,
   );
   await tick();
-  expect(h.authInfos).toEqual([{ url: AUTHORIZE_URL }]); // no instructions → open-URL + paste-code rendering
+  expect(h.authInfos).toEqual([{ url: AUTHORIZE_URL }]);
   h.paste("the-verification-code");
   await tick();
   expect(h.child.stdinWrites).toEqual(["the-verification-code\n"]);
@@ -141,7 +135,7 @@ test("CLI login: URL surfaced, code relayed to stdin, minted oauth stored", asyn
     },
   ]);
   expect(h.stored.tokens).toEqual([]);
-  expect(h.cleaned).toEqual(["/tmp/fake-login-dir"]); // the refresh-bearing dir never lingers
+  expect(h.cleaned).toEqual(["/tmp/fake-login-dir"]);
   expect(h.keychainDiscarded).toEqual(["/tmp/fake-login-dir"]);
   expect(h.child.killed).toBe(true);
 });
@@ -155,9 +149,6 @@ test("CLI login in the shared dir (a host that never serves anthropic): the dir 
   await tick();
   h.child.exit(0);
   await h.login;
-  // The credential stays where the CLI cached it — every agent runtime's
-  // status probe and the Claude SDK read that dir — so auth.json gets no
-  // entry to capture, and neither the dir nor its Keychain item is destroyed.
   expect(h.stored.oauth).toEqual([]);
   expect(h.stored.tokens).toEqual([]);
   expect(h.cleaned).toEqual([]);
@@ -194,7 +185,6 @@ test("CLI login: no credential file but a Keychain item (macOS host) stores oaut
       expires: 1755555555555,
     },
   ]);
-  // The Keychain copy is a second refresh-token holder — destroyed after the store.
   expect(h.keychainDiscarded).toEqual(["/tmp/fake-login-dir"]);
 });
 
@@ -258,7 +248,6 @@ test("CLI death before the URL falls back to the token paste flow", async () => 
   h.child.stderr.write("SIGILL: illegal instruction\n");
   h.child.exit(132);
   await tick();
-  // The fallback re-runs onAuth as the paste flow (help url + instructions).
   h.paste("sk-ant-api03-fallback-key");
   await h.login;
   expect(h.authInfos).toHaveLength(1);
@@ -286,13 +275,6 @@ test("no binary goes straight to the token paste flow", async () => {
 });
 
 test("resolveClaudeCliBinary finds the SDK's real platform binary with no seams", () => {
-  // ENVIRONMENT TRUTH, deliberately un-mocked: this is the exact resolution a
-  // pod / self-host runs. The per-platform package is a dependency of the SDK,
-  // not of the runtime, so a runtime-anchored require can't see it under pnpm
-  // — the original resolver returned null on EVERY Node deployment and every
-  // web login silently fell back to the paste flow. Any dev/CI host has the
-  // SDK installed (turns run through it), so null here means the resolution
-  // chain regressed, not that the binary is absent.
   const override = process.env.HOUSTON_CLAUDE_BIN;
   delete process.env.HOUSTON_CLAUDE_BIN;
   try {
@@ -314,7 +296,6 @@ test("extractVisitUrl parses plain, punctuated, and OSC-8 wrapped lines", () => 
   expect(extractVisitUrl(bel)).toBe(AUTHORIZE_URL);
   const st = `visit: \u001b]8;;${AUTHORIZE_URL}\u001b\\${AUTHORIZE_URL}\u001b]8;;\u001b\\`;
   expect(extractVisitUrl(st)).toBe(AUTHORIZE_URL);
-  // Unterminated OSC-8 tail: never surface raw escape bytes.
   expect(extractVisitUrl(`visit: \u001b]8;;${AUTHORIZE_URL}`)).toBeNull();
   expect(extractVisitUrl("Opening browser to sign in")).toBeNull();
   expect(extractVisitUrl("please visit: the docs")).toBeNull();

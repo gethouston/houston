@@ -15,19 +15,6 @@ import type { SandboxFetch } from "./sandbox-fetch";
 
 export { REQUEST_CREDENTIAL_TOOL_NAME };
 
-/**
- * The agent's setup tools for CUSTOM integrations (HOU-550): connect an API or
- * MCP server that the app catalog doesn't offer. The agent interviews the user
- * (which service? its docs/spec URL? does it need a key?), then drives these
- * tools; the user never handles the machinery.
- *
- * Same trust posture as the generic integration tools: no credential is ever
- * held here — detect/add proxy to the host's /sandbox/integrations/custom/*
- * under the per-sandbox HMAC token, and the SECRET travels only through the
- * secure card `request_credential` queues (the user types it into Houston's
- * UI, which posts it straight to the host — it never enters the transcript).
- */
-
 const DetectParams = Type.Object({
   url: Type.String({
     description:
@@ -91,8 +78,6 @@ interface DetectResponse {
   suggestedSlug?: string;
   requiresAuthentication?: boolean;
   requiresOAuth?: boolean;
-  /** Present with `requiresOAuth`: whether THIS deployment can run the
-   *  browser sign-in (PRODUCT-1172). */
   oauthSupported?: boolean;
   toolCount?: number;
 }
@@ -123,8 +108,6 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      // The host's error bodies are already agent-actionable (invalid URL,
-      // duplicate name, spec failed to compile) — relay them for self-repair.
       throw new Error(
         `custom integration ${path} failed (${res.status}): ${detail.slice(0, 300)}`,
       );
@@ -189,8 +172,6 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
       params: AddParams,
       signal: AbortSignal | undefined,
     ) {
-      // Live gate for the mid-turn Mode-pill switch: adding an integration
-      // changes the user's setup — off-limits once they switched to Plan.
       assertNotPlanMode("add or change the user's integrations");
       const r = await post<AddResponse>(
         "add",
@@ -264,10 +245,6 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
     add,
     remove,
     makeRequestCredentialTool({
-      // The pre-flight lookup (PRODUCT-1292): resolve the slug on the host
-      // before a secure card is queued. 404 = no such definition (`null`, the
-      // tool refuses with guidance); any other failure relays like the
-      // sibling calls so the model hears the real reason.
       async status(slug, signal) {
         const res = await opts.call("/sandbox/integrations/custom/status", {
           method: "POST",
@@ -290,7 +267,6 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
   ];
 }
 
-/** The tool names — pi's allowlist needs the names alongside the objects. */
 export const CUSTOM_INTEGRATION_TOOL_NAMES = [
   "custom_integration_detect",
   "custom_integration_add",

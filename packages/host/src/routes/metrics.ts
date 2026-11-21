@@ -1,12 +1,6 @@
 import { json } from "./http";
 import { defineRoute } from "./registry";
 
-/**
- * Prometheus text exposition of the boot-span ledger (HOU-1011). Pods are never
- * scraped in production (they push boot reports to the gateway); this route is
- * the local/debug window onto the same numbers. A host without telemetry wired
- * answers 404 rather than an empty exposition — a test server stays honest.
- */
 defineRoute({
   group: "metrics",
   method: "GET",

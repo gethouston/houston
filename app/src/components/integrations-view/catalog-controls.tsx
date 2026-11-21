@@ -16,15 +16,6 @@ import {
   headerSearchFieldClass,
 } from "../shell/page-header/header-tools-row";
 
-/**
- * The catalog surface's ONE controls row — the shared search field + the house
- * searchable category combobox (options A-Z, the uncategorized bucket labeled
- * "Other"). It sits ABOVE both sections of the {@link CatalogShell}; the surface
- * owns the `query` + `category` state and threads it through here, into the
- * installed-section filter, and into the discovery {@link CatalogPane}, so ONE
- * query narrows everything. Owned by the global Integrations page; the controls
- * live here so both of its catalog sections read from one row.
- */
 export function CatalogControls({
   catalog,
   connections,
@@ -40,11 +31,9 @@ export function CatalogControls({
   connections: IntegrationConnection[];
   query: string;
   onQueryChange: (value: string) => void;
-  /** A primary-category slug, the `UNCATEGORIZED` bucket, or the "all" sentinel. */
   category: string;
   onCategoryChange: (value: string) => void;
   variant: "strip" | "row";
-  /** Whether the host serves custom integrations (gates the pinned entry). */
   customAvailable: boolean;
   addCustom?: ReactNode;
 }) {
@@ -52,14 +41,10 @@ export function CatalogControls({
   const categoryOptions = useMemo(() => {
     const connected = new Set(connections.map((c) => c.toolkit));
     return [
-      // Pinned only where the host serves custom integrations — offering the
-      // slice on a host that cannot hold custom rows is a guaranteed dead end.
       ...(customAvailable
         ? [{ value: "custom", label: t("home.customCategory") }]
         : []),
       ...catalogCategorySlugs({ catalog, connected })
-        // A remote catalog category slugged "custom" would duplicate the
-        // pinned entry and hijack its filter branch; the sentinel owns the id.
         .filter((slug) => slug !== "custom")
         .map((slug) => ({
           value: slug,

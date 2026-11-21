@@ -23,7 +23,6 @@ function seedSkill(skillsDir: string, slug: string, name: string): void {
   );
 }
 
-/** Folder names sort opposite to skill names, so neither order is an accident. */
 function seedSkills(skillsDir: string): void {
   seedSkill(skillsDir, "a-folder", "zeta-report");
   seedSkill(skillsDir, "m-folder", "mid-intake");
@@ -44,7 +43,6 @@ test("two directory read orders give pi a byte-identical skills section", () => 
   const asRead = override(loaded);
   const otherOrder = override(reversed(loaded));
 
-  // pi renders its <available_skills> section with exactly this formatter.
   expect(formatSkillsForPrompt(otherOrder.skills)).toBe(
     formatSkillsForPrompt(asRead.skills),
   );
@@ -71,15 +69,12 @@ test("the shared-skill filter still applies before the sort", () => {
     ],
     diagnostics: [],
   };
-  // The loader hands the override a realpath, as buildAgentLoader does.
   const override = agentSkillsOverride(
     realpathSync(sharedDir),
     new Set(["alpha-shared", "dup-name"]),
   );
 
   const kept = override(reversed(loaded)).skills;
-  // Enabled shared skills load; a disabled one and one a local skill shadows
-  // do not.
   expect(kept.map((skill) => [skill.name, skill.filePath])).toEqual([
     ["alpha-shared", join(sharedDir, "shared-on", "SKILL.md")],
     ["dup-name", join(localDir, "local-two", "SKILL.md")],
@@ -97,7 +92,6 @@ test("skills that share a name are ordered by path", () => {
     "/a/SKILL.md",
     "/b/SKILL.md",
   ]);
-  // The input is left as the loader returned it.
   expect(skills[0]?.filePath).toBe("/b/SKILL.md");
 });
 

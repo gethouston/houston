@@ -5,11 +5,6 @@ import type { DocShadowProjector } from "../docs/projector";
 import { createRolePublisher } from "./role-publisher";
 import { RolePublishDeferredError } from "./role-tracker";
 
-/**
- * A gateway-fronted pod publishes its agent's role to the doc store the
- * gateway lists from, under the same one-agent rule as every other doc.
- */
-
 function shadow(result: ShadowPutResult = "landed") {
   const puts: Array<[ShadowFamily, unknown]> = [];
   const docShadow: DocPublisher = {

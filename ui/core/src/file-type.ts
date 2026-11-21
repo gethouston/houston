@@ -1,8 +1,3 @@
-/**
- * Pure file-type classification shared by the grid cards, the legacy list
- * icons and the app-side preview loader. No React here — unit-testable.
- */
-
 export type FileCategory =
   | "pdf"
   | "image"
@@ -75,7 +70,6 @@ export const DOC_EXT = new Set(["md", "txt", "rtf", "doc", "docx", "pages"]);
 
 export const DATA_EXT = new Set(["json", "yaml", "yml", "toml", "xml", "log"]);
 
-/** Classify an extension (without dot) into a coarse category. */
 export function fileCategory(extension: string): FileCategory {
   const ext = extension.toLowerCase();
   if (ext === "pdf") return "pdf";
@@ -91,14 +85,10 @@ export function fileCategory(extension: string): FileCategory {
   return "other";
 }
 
-/** Don't fetch card thumbnails for images larger than this. */
 export const IMAGE_PREVIEW_MAX_BYTES = 10_000_000;
-/** Don't fetch text minipreviews for files larger than this. */
 export const TEXT_PREVIEW_MAX_BYTES = 512_000;
-/** How much text a card minipreview needs — the first page's worth. */
 export const TEXT_PREVIEW_SLICE_BYTES = 4_096;
 
-/** Extensions whose bytes render as a miniature text page on the card. */
 const TEXT_PREVIEW_EXT = new Set([
   ...CODE_EXT,
   ...DATA_EXT,
@@ -107,11 +97,6 @@ const TEXT_PREVIEW_EXT = new Set([
   "csv",
 ]);
 
-/**
- * Which card preview a file can get: an image thumbnail, a miniature text
- * page, or none (type icon only). Size-capped so the grid never pulls huge
- * blobs just to paint a thumbnail.
- */
 export function previewKind(file: {
   extension: string;
   size: number;

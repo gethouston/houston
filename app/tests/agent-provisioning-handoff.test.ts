@@ -13,11 +13,6 @@ import {
 
 const REAL_CONFIG = '{"firstDay":"pending"}';
 
-/**
- * A just-created agent mid-handoff, wired the way the app wires it: the entry
- * lives in a store until `clear`, and a read answers the `""` placeholder
- * while a stored entry says reads answer empty (`lib/tauri.ts` readFile).
- */
 function harness() {
   const entry: ProvisioningEntry = {
     agentId: "a1",
@@ -102,7 +97,6 @@ describe("openWarmingReads", () => {
     };
     openWarmingReads(entry);
     strictEqual(warmingReadsAnswerEmpty(entry), false);
-    // The first-day placement keeps holding until the entry clears.
     strictEqual(warmingIsCreation(entry), true);
   });
 
@@ -121,7 +115,6 @@ describe("handOffOnce", () => {
   it("runs the handoff once when the probe and an answered write both report", async () => {
     const { entry, log, deps } = harness();
     const first = handOffOnce(entry, deps);
-    // A first-day start the engine answered, reporting the same warm-up.
     strictEqual(handOffOnce(entry, deps), null);
     await first;
     strictEqual(handOffOnce(entry, deps), null);

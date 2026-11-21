@@ -7,25 +7,6 @@ import {
   VISIBLE_MODELS,
 } from "../src/lib/provider-overrides.ts";
 
-/**
- * Codex (pi `openai-codex`, Houston `openai`) may offer ONLY what OpenAI's
- * Codex backend serves a ChatGPT subscription. pi-ai's baked catalog is a
- * SUPERSET of that: it lists gpt-5.3-codex-spark, which the backend answers
- * `400 not supported when using Codex with a ChatGPT account`, so picking it
- * can only produce a dead turn. The app's Codex default is the model every
- * fresh Codex chat starts on, so an unserved id there is a dead first turn for
- * every one of those chats.
- *
- * `packages/runtime/src/ai/codex-offered.ts` is the documented source (it holds
- * the live probe, the verdicts and the re-verify recipe). This pins BOTH app
- * Codex surfaces to it — the curated visible set and the auto-selected default
- * — so the app can never drift from the runtime's table, and a pi catalog bump
- * that adds a Codex row fails here until someone curates it deliberately.
- *
- * Both modules are read through relative URLs (neither is an app dependency),
- * exactly like `provider-overrides-drift.test.ts` reads the shipped pi-ai
- * catalog through the host's node_modules.
- */
 const codex = (await import(
   new URL("../../packages/runtime/src/ai/codex-offered.ts", import.meta.url)
     .href
@@ -42,16 +23,10 @@ const pi = (await import(
   ).href
 )) as { getModels(provider: string): { id: string }[] };
 
-/** The ids the subscription actually runs: pi's Codex catalog minus the refusals. */
 const served = codex
   .codexOfferedModelIds(pi.getModels("openai-codex").map((m) => m.id))
   .sort();
 
-/**
- * The probed refusals pi-ai still ships (gpt-5.4 and gpt-5.4-mini were refused
- * too, and pi 0.87.1 dropped both from the Codex catalog). None may ever reach
- * a Codex picker or default.
- */
 const REFUSED = ["gpt-5.3-codex-spark"];
 
 const HIDDEN_SERVED = codex.CODEX_PICKER_HIDDEN_MODEL_IDS;
@@ -93,10 +68,6 @@ describe("the Codex default is the runtime's default", () => {
 
 describe("Azure OpenAI keeps the rows Codex refuses", () => {
   it("still offers gpt-5.3-codex-spark, gpt-5.4 and gpt-5.4-mini", () => {
-    // The refusals are a property of the CHATGPT SUBSCRIPTION, not of the
-    // models: an Azure request hits the user's own resource and runs whatever
-    // they deployed there. Pinned so the Codex curation is never mirrored onto
-    // Azure by a future sweep.
     for (const modelId of [...REFUSED, "gpt-5.4", "gpt-5.4-mini"])
       ok(VISIBLE_MODELS["azure-openai-responses"].has(modelId));
   });

@@ -29,7 +29,6 @@ function deferred() {
 }
 
 function fakeTool(run: () => void): TurnTool {
-  // SAFETY: only `execute` is exercised; the wrapper spreads the rest.
   return {
     name: "write",
     execute: async () => {
@@ -40,7 +39,6 @@ function fakeTool(run: () => void): TurnTool {
 }
 
 function callTool(tool: TurnTool, signal?: AbortSignal) {
-  // SAFETY: the gate forwards these arguments untouched.
   return tool.execute("call-1", {} as never, signal, undefined, {} as never);
 }
 
@@ -53,7 +51,6 @@ test("files in the agent's folders other than the startup ones are deferred", ()
   expect(f("workspaces/Personal/Bob/skills/a/SKILL.md")).toBe(true);
   expect(f("workspaces/Personal/Bob/reports/.x.md")).toBe(true);
   expect(f("workspaces/Personal/Bob/Contratación/oferta.pdf")).toBe(true);
-  // Hidden folders no runtime input lives in: git clones, toolchains, caches.
   expect(f("workspaces/Personal/Bob/.repo-web/.git/objects/ab/cd")).toBe(true);
   expect(f("workspaces/Personal/Bob/.git/HEAD")).toBe(true);
   expect(f("workspaces/Personal/Bob/.venv/bin/python")).toBe(true);
@@ -62,17 +59,14 @@ test("files in the agent's folders other than the startup ones are deferred", ()
 
 test("runtime inputs stay on the prompt's critical path", () => {
   const f = deferredWorkspaceFile;
-  // Root files: the context files the prompt reads, and the person's own.
   expect(f("workspaces/Personal/Bob/CLAUDE.md")).toBe(false);
   expect(f("workspaces/Personal/Bob/AGENTS.md")).toBe(false);
   expect(f("workspaces/Personal/Bob/notes.md")).toBe(false);
-  // Hidden folders: Houston state, skills, harness settings.
   expect(f("workspaces/Personal/Bob/.houston/runtime/a")).toBe(false);
   expect(f("workspaces/Personal/Bob/.houston/state/seen.json")).toBe(false);
   expect(f("workspaces/Personal/Bob/.agents/skills/a/SKILL.md")).toBe(false);
   expect(f("workspaces/Personal/Bob/.claude/settings.json")).toBe(false);
   expect(f("workspaces/Personal/Bob/.pi/settings.json")).toBe(false);
-  // Workspace-level files, the legacy data layout, and malformed paths.
   expect(f("workspaces/Personal/GROUP.md")).toBe(false);
   expect(f("workspaces/Personal/Bob/uploads")).toBe(false);
   expect(f("workspaces/Personal/Bob//a.md")).toBe(false);
@@ -265,7 +259,6 @@ test("a failed deferral syncs no upload that landed outside the manifest", async
   });
   const fs = await preparation.hydrated;
   await expect(fs.workspaceReady).rejects.toThrow(/store unreachable/);
-  // As if the landed file finished its rename after the failure latch.
   writeFileSync(join(fs.workspaceDir, "uploads", "landed.png"), "png");
   fs.manifest.delete("workspaces/Personal/Bob/uploads/landed.png");
   const synced = await syncTurnFilesystem({

@@ -1,14 +1,3 @@
-// The download gate's registration step and the lead delivery behind it
-// (src/assets/download-gate-form.js + download-gate-lead.js). Both are browser
-// IIFEs that hang their API off `window`, so they are read and evaluated
-// against one stub page — the way the document loads the pair — rather than
-// imported.
-//
-// What these pin is the gate's promise to the visitor and to us during the
-// dual-write window: the lead goes to the Houston gateway AND to the legacy
-// mirrors at once, the download unlocks as soon as any of them stored it, and
-// it stays locked only when every sink failed or the gateway called the
-// details themselves invalid.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -32,7 +21,6 @@ const UUID_V4 =
 const GENERIC_ERROR = "Something went wrong. Please try again.";
 const BUSY_ERROR = "Too many attempts. Please wait a moment and try again.";
 
-// The rows download-gate-dropdown.js builds from the country data.
 const ROWS = [
   {
     iso: "US",
@@ -109,13 +97,11 @@ function memoryStorage(entries = {}) {
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
-/** 202 from the gateway, a written row from either mirror. */
 const accepting = (call) =>
   Promise.resolve(
     call.url === LEADS ? { status: 202, ok: true } : { status: 201, ok: true },
   );
 
-/** Answers each sink with the status named for it; `null` never answers. */
 const answering =
   ({ gateway, mirror }) =>
   (call) => {
@@ -125,8 +111,6 @@ const answering =
         status: value,
         ok: value >= 200 && value < 300,
       });
-    // A real fetch rejects when its abort signal fires, which is how a sink
-    // that never answers is given up on.
     return new Promise((_resolve, reject) => {
       call.init.signal?.addEventListener("abort", () =>
         reject(new Error("aborted")),
@@ -134,10 +118,6 @@ const answering =
     });
   };
 
-/**
- * Evaluates both assets against one stub page and initialises the form the way
- * download-gate.js does. `respond` decides what each fetch answers.
- */
 function openGate({
   respond = accepting,
   storage = memoryStorage(),
@@ -245,7 +225,6 @@ function openGate({
   };
 }
 
-/** Fills every field the way a visitor would, firing the events the page does. */
 function fill(gate, values = {}) {
   const entered = {
     name: "Ada Lovelace",
@@ -259,7 +238,6 @@ function fill(gate, values = {}) {
     input.value = value;
     input.fire("input");
   }
-  // The country menu is the only way the hidden country input is filled.
   if (values.country !== null) gate.menus[1].select(values.country ?? "MX");
 }
 
@@ -281,8 +259,6 @@ test("posts the lead to the gateway in the shape the route accepts", async () =>
   assert.equal(lead.url, LEADS);
   assert.equal(lead.init.method, "POST");
   assert.equal(lead.init.headers["Content-Type"], "application/json");
-  // The page stays open until the answer arrives, so this is not a keepalive
-  // send and must not inherit its body cap.
   assert.equal(lead.init.keepalive, false);
   assert.deepEqual(lead.body, {
     email: "ada@example.com",
@@ -298,8 +274,6 @@ test("posts the lead to the gateway in the shape the route accepts", async () =>
 });
 
 test("writes every sink at once, without waiting on any answer", async () => {
-  // Nothing answers: the three requests are still out, which is what makes the
-  // mirrors able to catch a lead the gateway drops.
   const gate = openGate({ respond: () => new Promise(() => {}) });
   fill(gate);
   gate.el("dl-form").fire("submit", { preventDefault: () => {} });
@@ -337,7 +311,6 @@ test("a gateway that never answers still unlocks once the mirror stored the lead
     "not before the gateway is given up on",
   );
 
-  // The gateway's own abort is what ends the wait; the row is already written.
   for (const timer of gate.timers) timer.fn();
   await settle();
   assert.equal(gate.submitted.length, 1, "the download unlocked");
@@ -345,8 +318,6 @@ test("a gateway that never answers still unlocks once the mirror stored the lead
 });
 
 test("a repeated address in the mirror unlocks the download the same as a new one", async () => {
-  // Supabase answers 409 for an address it already holds, which is not a
-  // failure: the visitor is registered.
   const gate = openGate({
     respond: answering({ gateway: 503, mirror: 409 }),
   });
@@ -356,8 +327,6 @@ test("a repeated address in the mirror unlocks the download the same as a new on
 });
 
 test("a rate-limited gateway never costs a visitor the download the mirror paid for", async () => {
-  // Everyone behind one shared address hits the gateway's limit together; the
-  // Supabase row still holds the lead, so the download opens.
   const gate = openGate({
     respond: answering({ gateway: 429, mirror: 201 }),
   });
@@ -367,8 +336,6 @@ test("a rate-limited gateway never costs a visitor the download the mirror paid 
 });
 
 test("invalid details are shown to the visitor even when a mirror took the row", async () => {
-  // 400 is the one refusal about the details themselves, which the visitor can
-  // fix. A mirror that accepts anything must not hide it.
   const gate = openGate({
     respond: answering({ gateway: 400, mirror: 201 }),
   });
@@ -404,15 +371,12 @@ test("the busy message is the answer only when nothing stored the lead and the g
   assert.equal(gate.submitted.length, 0);
   assert.equal(gate.error().textContent, "Demasiados intentos.");
 
-  // Without the page's i18n block the English literal is the answer.
   const plain = openGate({ respond: answering({ gateway: 429, mirror: 500 }) });
   await submitGate(plain);
   assert.equal(plain.error().textContent, BUSY_ERROR);
 });
 
 test("both failure messages come from the page's own translations", async () => {
-  // One mechanism for both: the generic message is a translation too, not the
-  // text the markup happened to be rendered with.
   const gate = openGate({
     respond: answering({ gateway: 503, mirror: 500 }),
     translations: { "gate.formError": "Algo salió mal." },
@@ -463,8 +427,6 @@ test("gives up on a sink that never answers, after ten seconds", async () => {
   });
   await submitGate(gate);
 
-  // Both gating sinks are on the same clock; the sheet is opaque and gates
-  // nothing, so it runs without one.
   assert.equal(gate.timers.length, 2);
   assert.deepEqual(
     gate.timers.map((timer) => timer.ms),
@@ -480,11 +442,7 @@ test("gives up on a sink that never answers, after ten seconds", async () => {
 });
 
 test("gives up on a hung sink even where the browser cannot abort it", async () => {
-  // A browser without AbortController cannot cancel the request, but the wait
-  // still ends: the attempt is given up on as a failure so the visitor is not
-  // left watching "Preparing your download…" forever.
   const gate = openGate({
-    // A browser that has no AbortController at all.
     abortController: null,
     respond: () => new Promise(() => {}),
   });
@@ -502,9 +460,6 @@ test("gives up on a hung sink even where the browser cannot abort it", async () 
 });
 
 test("a step that throws after the lead is stored never reads as a failure", async () => {
-  // Everything after delivery — analytics, showing the download — runs on a
-  // lead the gateway already accepted. A throw there is ours to log, not a
-  // reason to tell the visitor their registration went wrong.
   const gate = openGate({
     onSubmitted: () => {
       throw new Error("analytics blew up");
@@ -515,8 +470,6 @@ test("a step that throws after the lead is stored never reads as a failure", asy
   assert.equal(gate.submitted.length, 1, "the lead was delivered");
   assert.equal(gate.error().hidden, true, "and no failure was shown");
   assert.equal(gate.error().textContent, GENERIC_ERROR, "message untouched");
-  // The unlock stands: the button is not returned to its ready state behind
-  // the download step the visitor is now looking at.
   assert.equal(gate.submitButton().disabled, true);
   assert.equal(gate.submitButton().textContent, "Preparing your download…");
   assert.equal(gate.submitButton().classList.contains("btn-disabled"), true);
@@ -546,8 +499,6 @@ test("a mirror that fails never costs the visitor the download", async () => {
 });
 
 test("a repeated address is accepted, same as a first-time one", async () => {
-  // The gateway answers 202 for an address it already holds; the visitor must
-  // not be told to try again.
   const gate = openGate();
   await submitGate(gate);
   assert.equal(gate.submitted.length, 1);
@@ -567,8 +518,6 @@ test("reads the visitor id, never mints one, and drops what it cannot vouch for"
   await submitGate(junk);
   assert.equal(junk.calls[0].body.visitor_id, undefined);
 
-  // A blocked analytics asset takes the id with it: the shape it vouches for is
-  // the only one the gateway accepts, and a bad one would cost the whole lead.
   const blocked = openGate({
     identity: false,
     storage: memoryStorage({ houston_visitor_id: VISITOR }),
@@ -595,7 +544,6 @@ test("a visitor who opted out of tracking sends no id, and still gets the app", 
 });
 
 test("reports the entry point in the shape the gateway accepts", async () => {
-  // The buttons name their entry points for people, not for a regex.
   const cased = openGate({ source: "Hero" });
   await submitGate(cased);
   assert.equal(cased.calls[0].body.source, "hero");
@@ -650,9 +598,6 @@ test("a localStorage that throws never propagates into the page", async () => {
 });
 
 test("holds the download when the lead transport asset never loaded", async () => {
-  // download-gate-lead.js is where a lead is registered. Without it there is
-  // nowhere to store the visitor, so the gate fails closed rather than handing
-  // out a download it can never follow up on.
   const elements = new Map();
   const byId = (id) => {
     if (!elements.has(id)) elements.set(id, element(id));
@@ -699,8 +644,6 @@ test("the page loads the transport before the form that uses it", () => {
     join(here, "..", "src", "_includes", "landing", "scripts-download.njk"),
     "utf8",
   );
-  // One gateway origin for the whole site: the same `api.gatewayUrl` the
-  // analytics beacon and the developer docs render.
   assert.match(include, /gatewayUrl: "\{\{ api\.gatewayUrl \}\}"/);
   const lead = include.indexOf("/assets/download-gate-lead.js");
   const form = include.indexOf("/assets/download-gate-form.js");

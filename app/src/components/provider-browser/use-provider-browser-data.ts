@@ -15,26 +15,12 @@ import {
   type ProviderInfo,
 } from "../../lib/providers";
 
-/** The three inputs `<ProviderBrowser>` needs, resolved from live hooks. */
 export interface ProviderBrowserData {
   providers: readonly ProviderInfo[];
   connections: ProviderConnections;
   catalog: HubCatalog | undefined;
 }
 
-/**
- * Wires up everything `<ProviderBrowser>` consumes so the connect-focused
- * surfaces (onboarding, migration reconnect, workspace setup) mount the SAME
- * marketplace the AI Hub shows with one call. Builds the pre-gated connect list
- * (`getConnectProviders`, engine + capability gated), the connection machinery
- * (`useProviderConnections`), and the enriched model catalog (`useHubCatalog`).
- *
- * The pi-ai catalog hydrates `PROVIDERS` IN PLACE with no React signal, so the
- * `getConnectProviders` memo re-keys on `useProviderCatalog().updatedAt` —
- * without it the list stays pinned to the override-only seed captured on first
- * render, the moment `/v1/catalog` resolves after mount. Same reactivity the
- * hub catalog and model picker use.
- */
 export function useProviderBrowserData(): ProviderBrowserData {
   const connections = useProviderConnections({ alwaysActive: true });
   const { catalog } = useHubCatalog();

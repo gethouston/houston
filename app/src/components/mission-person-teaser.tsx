@@ -15,14 +15,6 @@ import {
 } from "./mission-person-face";
 import { CreateOrganizationDialog } from "./shell/create-organization-dialog";
 
-/**
- * The personal-space growth teaser for the person filter (C8 §Client UX). The
- * control is visible even though a solo personal space has nobody to filter to:
- * it offers Everyone plus an "invite your team" row that opens the
- * create-organization dialog, so people discover that sharing turns the board
- * multiplayer. There is
- * deliberately NO "My missions" option here (it would filter to zero).
- */
 export function MissionPersonTeaser({
   selfFace,
   collapsed,

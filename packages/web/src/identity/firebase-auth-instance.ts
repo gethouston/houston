@@ -1,5 +1,3 @@
-// The Firebase Auth singleton behind the web sign-in surface (firebase-popup.ts).
-
 import { IdentityError } from "@houston/app/lib/identity";
 import { osIsNativeMobile } from "@houston/app/lib/os-bridge/platform";
 import { type FirebaseApp, initializeApp } from "firebase/app";
@@ -12,11 +10,8 @@ import {
 } from "firebase/auth";
 
 let authInstance: Auth | null = null;
-// Resolves once `setPersistence` settles; sign-in awaits it so the session is
-// stored under browserLocalPersistence before the popup opens.
 let persistenceReady: Promise<unknown> | null = null;
 
-/** Idempotent singleton init: `initializeApp` + Auth + local persistence. */
 export function initWebAuth(config: {
   apiKey: string;
   authDomain: string;
@@ -32,10 +27,6 @@ export function initWebAuth(config: {
   persistenceReady = setPersistence(authInstance, browserLocalPersistence);
 }
 
-// `getAuth` installs the popup/redirect resolver, which on iOS loads Google's
-// gapi iframe script at startup. gapi refuses the native shell's `capacitor:`
-// origin and throws from its cross-origin script, so every app launch reported
-// two opaque "Script error." events. The native shell gets no resolver.
 function createAuth(app: FirebaseApp): Auth {
   if (!osIsNativeMobile()) return getAuth(app);
   return initializeAuth(app, { persistence: browserLocalPersistence });
@@ -43,7 +34,6 @@ function createAuth(app: FirebaseApp): Auth {
 
 export function requireAuth(): Auth {
   if (!authInstance) {
-    // Sign-in before `initWebAuth` is a wiring bug; surface it, don't swallow.
     throw new IdentityError("operation_not_allowed");
   }
   return authInstance;

@@ -4,36 +4,15 @@ import type { RuntimeExit } from "./process-types";
 import { runtimeParentEnv } from "./runtime-parent-env";
 
 export interface RuntimeSpawnerOptions {
-  /**
-   * argv that launches ONE pi-runtime in server mode — e.g.
-   * `["node", "--import", "tsx", "<repo>/packages/runtime/src/main.ts"]`
-   * in dev, or `["<resourceDir>/houston-runtime"]` for the compiled sidecar
-   * in the .app.
-   */
   command: string[];
-  /**
-   * Extra env for the runtime being spawned, built from its spec (the host's
-   * `runtimeSpawnEnv`). A FUNCTION, not a fixed record: what a child is told
-   * differs per agent — only the assistant's coordinator carries a role — so a
-   * host-wide record would hand every agent the same answer.
-   */
   env?: (spec: SpawnSpec) => Record<string, string>;
-  /** Where child stdio goes. Default: inherit (visible in the app's logs). */
   onLog?: (line: string) => void;
 }
 
-/**
- * How many stderr lines a handle remembers for its exit report. Enough for a
- * V8 fatal block (the "Reached heap limit" header plus its native frames) or
- * the runtime's own `runtime uncaughtException:` stack; small enough that a
- * chatty child costs nothing.
- */
 export const STDERR_TAIL_LINES = 24;
 
-/** How long after 'exit' the handle waits for 'close' (the drained pipes). */
 export const STDERR_CLOSE_GRACE_MS = 100;
 
-/** Keeps the last {@link STDERR_TAIL_LINES} complete stderr lines. */
 export class StderrTail {
   private readonly lines: string[] = [];
   private partial = "";
@@ -48,18 +27,12 @@ export class StderrTail {
     }
   }
 
-  /** The remembered lines, the unfinished last line included. */
   snapshot(): string[] {
     const tail = this.partial.trim() === "" ? [] : [this.partial];
     return [...this.lines, ...tail].slice(-STDERR_TAIL_LINES);
   }
 }
 
-/**
- * Spawns a pi-runtime as a child process — the production local launcher. Each
- * agent gets its own process bound to its own workspace dir + loopback port,
- * carrying the per-process bearer the host presents back when proxying.
- */
 export class RuntimeProcessSpawner implements RuntimeSpawner {
   constructor(private readonly opts: RuntimeSpawnerOptions) {
     if (opts.command.length === 0)
@@ -82,7 +55,6 @@ export class RuntimeProcessSpawner implements RuntimeSpawner {
           ? { HOUSTON_SHARED_SKILLS_DIR: spec.sharedSkillsDir }
           : {}),
         HOUSTON_RUNTIME_TOKEN: spec.token,
-        // Connect-once: keyless runtime fetches its token from the host.
         ...(spec.sandboxToken
           ? { HOUSTON_SANDBOX_TOKEN: spec.sandboxToken }
           : {}),
@@ -90,8 +62,6 @@ export class RuntimeProcessSpawner implements RuntimeSpawner {
           ? { HOUSTON_CONTROL_PLANE_URL: spec.controlPlaneUrl }
           : {}),
       },
-      // stderr is always piped: the exit report needs its tail even where the
-      // host has no log sink of its own (desktop, stdio otherwise inherited).
       stdio: this.opts.onLog
         ? ["ignore", "pipe", "pipe"]
         : ["ignore", "inherit", "pipe"],
@@ -107,46 +77,19 @@ export class RuntimeProcessSpawner implements RuntimeSpawner {
       if (this.opts.onLog) log(text);
       else process.stderr.write(text);
     });
-    // CRITICAL: an unhandled ChildProcess 'error' (spawn failure, EPIPE, …)
-    // throws and would take the whole host down. The launcher's health probe
-    // already surfaces a runtime that never comes up; here we just keep the
-    // supervisor alive.
     child.on("error", (err) => log(`[runtime spawn error] ${err.message}\n`));
     return {
       port: spec.port,
       kill: () => {
-        // SIGTERM lets the runtime drain; it exits on its own.
         try {
           child.kill("SIGTERM");
-        } catch {
-          /* already gone */
-        }
+        } catch {}
       },
       forceKill: () => {
-        // Escalation for a child that ignored the SIGTERM (wedged drain,
-        // blocked event loop). The launcher only reports the runtime asleep
-        // once it has ACTUALLY exited — a rename must never run over a live
-        // child (HOU-827) — so a hung process is ended here, not left for the
-        // supervisor's app-quit teardown.
         try {
           child.kill("SIGKILL");
-        } catch {
-          /* already gone */
-        }
+        } catch {}
       },
-      // Fires once when the child is gone — whether we killed it, it crashed on
-      // its own, or it never started at all. The launcher uses this to drop a
-      // dead runtime from its live-set (no phantom "running" entry) and to
-      // abort a boot in flight.
-      //
-      // All THREE events matter, and which one lands depends on how the child
-      // died: a normal death emits 'exit' then 'close'; a child that never
-      // spawned (missing/unstaged runtime binary → ENOENT) emits 'error' and
-      // 'close' and NEVER 'exit'. Listening for 'exit' alone made that failure
-      // invisible, so the launcher polled a corpse's port for the whole 60s
-      // health budget before failing the user's first message. Whichever fires
-      // first wins and the others are unsubscribed, so each registration's
-      // callback runs exactly once (and no listener outlives the child).
       onExit: (cb) => {
         let fired = false;
         let graceTimer: ReturnType<typeof setTimeout> | undefined;
@@ -170,11 +113,6 @@ export class RuntimeProcessSpawner implements RuntimeSpawner {
               : { code, signal, stderrTail: stderrTail.snapshot() };
           cb(exit);
         };
-        // 'exit' can land before the last stderr chunk is read (a V8 fatal
-        // block is written microseconds before the abort); 'close' follows
-        // once the pipes are drained. Give it a beat, but never wait on it
-        // outright: a tool grandchild holding the inherited pipe would delay
-        // 'close' until IT exits, and the drain must not hang on that.
         const onExited = (
           code: number | null,
           signal: NodeJS.Signals | null,

@@ -8,7 +8,7 @@ import {
   usageWindow,
 } from "../src/components/organization/org-chart-model.ts";
 
-const NOW = new Date("2026-09-26T23:30:00-05:00"); // 2026-09-27 04:30 UTC
+const NOW = new Date("2026-09-26T23:30:00-05:00");
 const agents = [
   { id: "writer", folderPath: "workspace/writer" },
   { id: "researcher", folderPath: "workspace/researcher" },
@@ -74,8 +74,6 @@ describe("orgChartUsage", () => {
   });
 
   it("counts only the window the series draws, so total and chart agree", () => {
-    // The gateway answers whole days back from ITS clock, so a row may fall
-    // a day before the window the chart draws.
     const usage = orgChartUsage(
       agents,
       [

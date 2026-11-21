@@ -67,9 +67,6 @@ describe("searchProvidersWithOffers", () => {
   });
 
   it("resolves a merged provider through its gateway ids", () => {
-    // The merged OpenCode card fronts several gateway providers; a model
-    // offered under any of those ids must surface the card even though the
-    // card's own id appears in no offer.
     const merged = {
       ...provider("opencode", "OpenCode"),
       gatewayIds: ["opencode-openrouter", "opencode-direct"],

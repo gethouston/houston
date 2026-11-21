@@ -4,11 +4,6 @@ import { type FakeHost, startFakeHost } from "./server";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
-/**
- * The mid-turn specs (drop, turn boundary, kill) need the turn still running
- * when they act, however slowly the client renders its first delta. With the
- * hold armed, a turn paced far faster than the wait below is still running.
- */
 describe("chat-config holdAfterFirstDelta", () => {
   let host: FakeHost;
   const post = (path: string, body?: unknown) =>
@@ -26,7 +21,6 @@ describe("chat-config holdAfterFirstDelta", () => {
       }
     ).messages;
   const settle = (ms: number) => new Promise((r) => setTimeout(r, ms));
-  /** The first frame a FRESH subscriber gets: the `sync` snapshot. */
   const firstSync = async (cid: string) => {
     const abort = new AbortController();
     try {
@@ -82,7 +76,6 @@ describe("chat-config holdAfterFirstDelta", () => {
     const sent = await post(`${convo("hold-late")}/messages`, {
       text: "hold me",
     });
-    // The runtime's 202 body: it names the accepted turn.
     const accepted = (await sent.json()) as { ok: boolean; turnId?: string };
     expect(sent.status).toBe(202);
     expect(accepted.turnId).toEqual(expect.any(String));

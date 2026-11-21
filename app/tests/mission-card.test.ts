@@ -47,7 +47,6 @@ describe("missionOriginLabel", () => {
     strictEqual(tagOf({ started_by: "api" }), "Started through the API");
     strictEqual(tagOf({ routine_id: "r1" }), "Routine");
     strictEqual(tagOf({ agent: AGENT_SETUP_AGENT_MODE }), "Set up");
-    // A row older than `started_by` keeps today's label: never relabeled.
     strictEqual(
       tagOf({ origin_session_key: "conv-parent" }),
       "Started by AI Employee",

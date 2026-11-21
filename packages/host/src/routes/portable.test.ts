@@ -11,13 +11,6 @@ import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 
-/**
- * The `.houstonagent` share flow end to end through the host: export an agent's
- * selected content → preview the archive → install it as a brand-new agent with
- * that content written in. This is the format that lets an agent move between a
- * desktop and the cloud unchanged.
- */
-
 const verifier: TokenVerifier = {
   async verify(b) {
     return b.startsWith("tok:") ? { userId: b.slice(4) } : null;
@@ -79,7 +72,6 @@ beforeAll(async () => {
   const addr = server.address();
   base = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
 
-  // Seed an agent with a CLAUDE.md, a skill, and a routine.
   agentId = (
     (await (
       await fetch(`${base}/agents`, {
@@ -119,7 +111,6 @@ afterAll(async () => {
 });
 
 test("export → preview → install round-trips the agent's content into a new agent", async () => {
-  // Find the routine id to select it.
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const agent = (await store.listAgents(ws.id)).find((a) => a.id === agentId);
   if (!agent)
@@ -132,7 +123,6 @@ test("export → preview → install round-trips the agent's content into a new 
   if (!routine) throw new Error("Expected at least one routine to exist");
   const routineId = routine.id;
 
-  // Export.
   const exp = await fetch(`${base}/agents/${agentId}/portable/export`, {
     method: "POST",
     headers: auth("alice"),
@@ -148,7 +138,6 @@ test("export → preview → install round-trips the agent's content into a new 
   const archive = Buffer.from(await exp.arrayBuffer());
   expect(archive.length).toBeGreaterThan(0);
 
-  // Preview.
   const prev = await fetch(`${base}/v1/portable/preview`, {
     method: "POST",
     headers: {
@@ -167,7 +156,6 @@ test("export → preview → install round-trips the agent's content into a new 
   expect(preview.inventory.skills).toHaveLength(1);
   expect(preview.inventory.routines).toHaveLength(1);
 
-  // Install for a DIFFERENT user — a fresh agent with the content.
   const inst = await fetch(`${base}/v1/portable/install`, {
     method: "POST",
     headers: auth("bob"),
@@ -183,14 +171,11 @@ test("export → preview → install round-trips the agent's content into a new 
     routineIds: Record<string, string>;
   };
   expect(installed.installed.skills).toHaveLength(1);
-  // The copy's routine is a NEW identity (PRODUCT-1808): the hosted trigger
-  // tables key on routine id globally, so two agents must never share one.
   const copiedId = installed.installed.routines[0]?.id;
   expect(copiedId).toBeDefined();
   expect(copiedId).not.toBe(routineId);
   expect(installed.routineIds).toEqual({ [routineId]: copiedId });
 
-  // The new agent really has the skill + routine on disk.
   const bobWs = await store.getOrCreatePersonalWorkspace("bob");
   const bobAgent = (await store.listAgents(bobWs.id)).find(
     (a) => a.name === "SalesCopy",

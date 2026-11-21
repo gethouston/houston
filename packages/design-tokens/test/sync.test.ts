@@ -5,12 +5,6 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 
-/**
- * Guards that the committed dist/ is exactly what the current tokens + build
- * produce. Rebuilds to a temp dir and diffs every output file. Runs inside the
- * workspace `pnpm test` with no CI wiring.
- */
-
 const root = fileURLToPath(new URL("..", import.meta.url));
 const outputs = ["css/tokens.css", "ts/tokens.ts"];
 

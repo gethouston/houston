@@ -10,9 +10,6 @@ describe("assistantAgent", () => {
 
   it("routes every per-agent call at the discovered address", () => {
     const agent = assistantAgent(handle, "Assistant");
-    // Both are the SAME opaque route key on the TS engine, and discovery is the
-    // only place it comes from — parsing or rewriting it here would bake one
-    // deployment's shape into the app.
     assert.equal(agent.id, "default/.assistant");
     assert.equal(agent.folderPath, "default/.assistant");
   });
@@ -25,7 +22,6 @@ describe("assistantAgent", () => {
   });
 
   it("treats an opaque handle as opaque", () => {
-    // A hosted deployment may hand back an address with no path shape at all.
     const agent = assistantAgent(
       { agent: "pod-7f3a", conversation: "c-1" },
       "Assistant",

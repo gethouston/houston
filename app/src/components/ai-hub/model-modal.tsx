@@ -1,12 +1,3 @@
-/**
- * The model modal: replaces the old model-detail PAGE. A blocking, centered
- * modal (via `ModalShell`) that shows a model's identity, its spec chips
- * (context / max output / knowledge / release + capability chips), and the
- * "Get it through" section — every provider that offers the model, connect
- * pill and all. Offers resolve to their connect card (the two OpenCode gateways
- * collapse into one) and sort connected-first via `sortOffers`.
- */
-
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
@@ -46,8 +37,6 @@ export function ModelModal({
     if (open) analytics.track("model_viewed", { model: model.key });
   }, [open, model.key]);
 
-  // An offer's gateway id resolves to the card that connects it (the merged
-  // OpenCode account stands in for both its gateways) via the shared reverse map.
   const cardByGateway = useMemo(connectCardByGatewayId, []);
   const providerByOffer = useMemo(
     () =>
@@ -61,9 +50,6 @@ export function ModelModal({
       ),
     [model.offers, cardByGateway],
   );
-  // Offers the user can already run sort first. `checking` ranks with them
-  // rather than with the connect-me offers (HOU-979): it is the "yours" side,
-  // and its row renders its own neutral treatment, never a Connect CTA.
   const offers = sortOffers([...providerByOffer.keys()], (offer) => {
     const provider = providerByOffer.get(offer);
     return provider
@@ -132,7 +118,6 @@ export function ModelModal({
   );
 }
 
-/** A single spec chip: a muted label with a mono, tabular value beside it. */
 function SpecValueChip({ label, value }: { label: string; value: string }) {
   return (
     <SpecChip>
@@ -142,7 +127,6 @@ function SpecValueChip({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** The spec chips to show, in order, skipping anything the model lacks. */
 function buildSpecs(
   model: CatalogModel,
   locale: string,

@@ -11,22 +11,6 @@ import {
 } from "./open-conversation-identity";
 import { useJustCreatedMission } from "./use-just-created-mission";
 
-/**
- * WHICH conversation the cross-agent board has open, and its live feed.
- *
- * Two facts name it — the session key and the agent path — and on a
- * cross-agent board neither is implicit: the selected CARD carries both in its
- * metadata. Two cases have no card to read. A mission created on this board,
- * whose row the sweep has not returned: `useJustCreatedMission` holds its
- * identity for exactly that beat, so the panel that just opened never loses
- * the user's first message. And a card TRANSIENTLY absent from the list (a
- * sweep settling with an older snapshot): the identity the same selection
- * last resolved to keeps the chat painted instead of blanking it
- * (`resolveOpenConversation`).
- *
- * `AIBoard` only ever reads `feedItems[activeSessionKey]`, so the single-entry
- * map is the whole contract.
- */
 export function useMcOpenConversation(
   items: KanbanItem[],
   selectedId: string | null,
@@ -38,8 +22,6 @@ export function useMcOpenConversation(
   const justCreated = useJustCreatedMission(items);
   const created = justCreated.fallbackFor(selectedId);
 
-  // Render-time write, idempotent per (selectedId, items): only a REAL card
-  // refreshes the remembered identity, so it never carries a fallback forward.
   const lastResolvedRef = useRef<OpenConversationIdentity | null>(null);
   const identity = resolveOpenConversation({
     selectedId,
@@ -58,10 +40,6 @@ export function useMcOpenConversation(
       activeSessionKey ? { [activeSessionKey]: activeVm?.feed ?? [] } : {},
     [activeSessionKey, activeVm],
   );
-  // Card-click → chat perf mark (HOU-1011): the opened conversation's
-  // messages are in the feed; the rAF waits for the paint. A no-op unless a
-  // card click armed it (mission-board). Keyed on the painted conversation, so
-  // switching between two cached chats re-fires it for the new one.
   const painted = paintedSessionKey(
     activeSessionKey,
     activeVm?.feed.length ?? 0,
@@ -72,8 +50,6 @@ export function useMcOpenConversation(
       requestAnimationFrame(() => perfSpans.chatRendered());
     else perfSpans.chatRendered();
   }, [painted]);
-  // Scroll-up lazy-load (HOU-819): the open chat renders the transcript's tail
-  // window; older pages prepend on scroll.
   const hasOlderMessages = (activeVm?.historyWindow?.earliestLoaded ?? 0) > 0;
   const onLoadOlderMessages = useCallback(async () => {
     if (!activeAgentPath || !activeSessionKey) return;
@@ -88,7 +64,6 @@ export function useMcOpenConversation(
     feedItems,
     hasOlderMessages,
     onLoadOlderMessages,
-    /** Hold a just-created mission's identity until its row lands. */
     rememberCreated: justCreated.remember,
   };
 }

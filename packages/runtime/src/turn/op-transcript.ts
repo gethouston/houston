@@ -3,13 +3,6 @@ import type { AgentOp } from "./parse-op-request";
 import type { TurnServerDeps } from "./server-types";
 import { poolIdentity } from "./turn-store";
 
-/**
- * Mirror a conversation rename/delete into the durable transcript store —
- * the same PUT/DELETE the pod's transcript shadow issues — so the gateway's
- * Postgres-served conversation list reflects the op immediately. The claim
- * is conversation-scoped (the op claimed this conversation), so the store's
- * claim authorization admits it.
- */
 export async function opTranscriptMirror(
   deps: TurnServerDeps,
   turn: {
@@ -47,8 +40,6 @@ export async function opTranscriptMirror(
     },
   );
   await response.body?.cancel();
-  // 404 on a conversation the transcript store never held is not a failure
-  // (file-era conversation, or already gone).
   if (response.ok || response.status === 404) return [];
   return [`transcript ${op.action} rejected (${response.status})`];
 }

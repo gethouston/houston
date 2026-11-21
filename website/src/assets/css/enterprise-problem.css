@@ -1,10 +1,3 @@
-/*
- * /enterprise — the problem: four short reasons, each a photograph from the
- * industries' overhead series, on the black band. The tiles themselves are
- * .ent-tile (enterprise-hero.css); this file only lays them out.
- */
-
-/* The left column of the landing's split: two across, two down, square. */
 .ent-cards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -19,7 +12,6 @@
   }
 }
 
-/* The landing's two phrases, in their dark-band dress. */
 .is-dark .mp-phrase {
   color: rgba(255, 255, 255, 0.5);
 }

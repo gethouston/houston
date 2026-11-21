@@ -6,15 +6,6 @@ import { useEffect, useState } from "react";
 import { SearchForm } from "./search-form";
 import { UserMenu } from "./user-menu";
 
-/**
- * Store-first top bar (the mature-marketplace pattern: the store is a
- * destination, not a chapter of the marketing site). Lockup → store home,
- * persistent catalog search in the middle, store actions + the Download
- * funnel on the right. gethouston.ai remains one hop away via the Download
- * pill and the footer. Same space chrome as the landing nav: transparent
- * over the top of the page, near-opaque once scrolled, never blurred.
- */
-
 const STORE_LINKS = [
   { label: "Explore", href: "/" },
   { label: "Publish", href: "https://gethouston.ai" },
@@ -120,8 +111,6 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          {/* External links: no close handler needed — navigation replaces
-              the document (and Biome's useValidAnchor flags onClick on <a>). */}
           <a
             href="https://gethouston.ai/#download"
             className="border-b border-line px-1 py-2.5 text-[15px] font-medium text-ink"

@@ -21,14 +21,6 @@ export interface LocalDirectoryInput {
   agentId: string;
 }
 
-/**
- * A collection this deployment does not have at all - teams, the people in
- * them, their invitations - as opposed to one that happens to be empty. Thrown
- * rather than answered with `[]` because the two lead the model to opposite
- * sentences: an empty list invites "you have no teams yet, want one?", and the
- * truth is that this Houston has one person and their own agents. The route
- * turns it into the refusal the model reads (`routes/assistant-operate.ts`).
- */
 export class UnsupportedEntityCollectionError extends Error {
   constructor(readonly collection: string) {
     super(`${collection} are not supported on this Houston`);
@@ -36,7 +28,6 @@ export class UnsupportedEntityCollectionError extends Error {
   }
 }
 
-/** Local hosts have personal workspaces; org teams, people and invites are gateway-owned. */
 export function localEntityDirectory(
   input: LocalDirectoryInput,
 ): EntityDirectory {

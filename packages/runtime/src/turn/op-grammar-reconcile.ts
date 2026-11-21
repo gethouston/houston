@@ -1,29 +1,16 @@
 import type { ChatMessage } from "@houston/protocol";
 import { ID, str } from "./op-grammar-fields";
 
-/**
- * Settle what a pooled turn left behind when it died without settling itself
- * (its claim expired or its follower gave up): the run row of a routine fire
- * and the conversation's missing reply. The control plane sends it; nothing
- * else does. Leaf module: op-grammar imports it, so it may not import
- * op-grammar back.
- */
 export interface ReconcileOp {
   kind: "reconcile";
-  /** The conversation the op claims, and the only one it settles. */
   conversationId: string;
-  /** Absent: settle the conversation's stale running rows only. */
   abandoned?: AbandonedTurn;
 }
 
 export interface AbandonedTurn {
   turnId: string;
-  /** When the turn's first claim was granted: a lost run's start. */
   startedAt: string;
-  /** The claim ran a routine fire (a chat turn in a routine's chat is not one). */
   routine: boolean;
-  /** The transcript store's copy of the turn's user message, sent only when
-   *  it is the conversation's last message and nothing answered it. */
   userMessage?: ChatMessage;
 }
 

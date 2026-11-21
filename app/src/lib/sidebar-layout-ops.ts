@@ -21,7 +21,6 @@ export interface ItemDest {
   beforeItemId: string | null;
 }
 
-/** Keep stored items absent from a rendered drop beside their old successor. */
 function retainUnrendered<T>(
   stored: T[],
   rendered: T[],
@@ -154,7 +153,6 @@ export function moveItemOp(
   return { groups, order };
 }
 
-/** Store a drop while retaining items absent from the rendered arrangement. */
 export function arrangeOp(
   layout: SidebarLayout,
   arrangement: {
@@ -162,8 +160,6 @@ export function arrangeOp(
     members: Record<string, string[]>;
   },
 ): SidebarLayout {
-  // Members of a group the fresh layout lost are placed nowhere, so they must
-  // not count as mentioned: their stored slot is all they have.
   const mentionedAgents = new Set([
     ...arrangement.order.flatMap((entry) =>
       entry.kind === "agent" ? [entry.id] : [],

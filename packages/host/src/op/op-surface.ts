@@ -1,11 +1,5 @@
 import { AGENT_GROUPS, type GroupsIn } from "../routes/registry/groups";
 
-/**
- * The per-agent groups a pool worker does NOT answer, each with why it cannot.
- * Everything else in the registry's agent segment is served here — the Record
- * below has no key to hold a new group's handler until one is written, so the
- * pod and the worker cannot drift apart silently.
- */
 export const OP_EXCLUSIONS = {
   uploads:
     "the gateway opens upload sessions before dispatch; workers only commit staged uploads",
@@ -27,10 +21,8 @@ export const OP_EXCLUSIONS = {
     "the forward to the agent's own engine is what an op REPLACES; a worker that proxied would wake the pod it exists to spare",
 } as const satisfies Partial<Record<GroupsIn<"agent">, string>>;
 
-/** A per-agent group a pool worker serves — every one the table does not excuse. */
 export type OpGroup = Exclude<GroupsIn<"agent">, keyof typeof OP_EXCLUSIONS>;
 
-/** The served groups in the registry's own chain order. */
 export const OP_CHAIN = AGENT_GROUPS.filter(
   (group): group is OpGroup => !(group in OP_EXCLUSIONS),
 );

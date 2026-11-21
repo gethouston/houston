@@ -3,48 +3,17 @@ import type {
   WriteLeaseVerdict,
 } from "@houston/runtime-client/object-sync";
 
-/** How often an awake pod re-asks whether it still holds the write lease. */
 export const DEFAULT_LEASE_HEARTBEAT_MS = 60_000;
 
 export interface WriteFenceOptions {
-  /** The pod-store's lease check; absent where no store fences (tests, PVC). */
   probe?: () => Promise<WriteLeaseVerdict>;
-  /**
-   * Whether this boot carries a lease token. False while the boot's claim
-   * answered 404 (fencing off): nothing can fence it, so no write waits on
-   * the store and no heartbeat asks. A token captured later (the flag flip)
-   * turns the check on. Absent = always claimed.
-   */
   claimed?: () => boolean;
   heartbeatMs?: number;
-  /** Runs once, the moment this boot first learns it lost the lease. */
   onLost: (err: { message: string }) => void;
-  /**
-   * Who holds the lease now: `live` (a running engine; stand down) at most
-   * once, then `stale` (nobody; retire) at most once. Never `live` after
-   * `stale`.
-   */
   onHolder: (holder: LeaseHolderState) => void;
   log: (message: string, err?: unknown) => void;
 }
 
-/**
- * This boot's hold on the agent's store write lease, as far as the pod knows.
- *
- * A pod learns of a takeover two ways: its sync meets a 409, or the lease
- * check says so. The sync alone is not enough: it only writes when something
- * changed, so a pod superseded while idle answered the next user write 200,
- * kept it on its own disk and lost it at the next recycle (PRODUCT-1706: a
- * routine edited to 7:00 fired at 7:00 for days, then reverted to 11:30). The
- * check runs before an agent-data write is acknowledged and on a heartbeat.
- *
- * The loss latches: nothing this boot writes can land again. Who holds the
- * lease decides what the owner does next. A live holder is a running engine,
- * and claiming the lease back would make the two trade it through restarts,
- * so the pod stands down and the heartbeat keeps watching; once the holder
- * stops renewing (or never was an engine) the pod retires and its restart
- * claims the lease.
- */
 export class WriteFence {
   private lostLatch = false;
   private holder: LeaseHolderState | undefined;
@@ -63,26 +32,15 @@ export class WriteFence {
     return this.lostLatch;
   }
 
-  /**
-   * Latch the loss. `holder` comes with a lease-check verdict; a sync 409
-   * carries none, so the check is asked (once now, then on the heartbeat).
-   */
   lose(err: { message: string }, holder?: LeaseHolderState): void {
     if (this.lostLatch) return;
     this.lostLatch = true;
     this.opts.onLost(err);
     if (holder) this.settle(holder);
     else if (!this.opts.probe) this.settle("stale");
-    // The heartbeat timer only calls watch(), which never rejects.
     else void this.watch();
   }
 
-  /**
-   * Whether a write acknowledged now can still persist. Concurrent callers
-   * share one check. An unreachable store, or one without the check, answers
-   * true: the write lands locally like any write during a store outage, and
-   * the sync that ships it still carries the lease.
-   */
   async writable(): Promise<boolean> {
     if (this.lostLatch) return false;
     if (!this.claimed) return true;
@@ -96,14 +54,6 @@ export class WriteFence {
     return !this.lostLatch;
   }
 
-  /**
-   * Re-check on a timer, so an idle superseded pod acts on its own. A held
-   * check renews the lease, so starting this right after the boot's claim
-   * keeps a hydrating boot live to a rival standing down. The timer runs from
-   * here even with no token (fencing off), where a tick does no I/O at all:
-   * writable() answers at once until a read publishes a token (the flag
-   * flip), and from then on the same tick checks, idle pod included.
-   */
   startHeartbeat(): void {
     this.heartbeatWanted = true;
     this.armHeartbeat();
@@ -125,20 +75,12 @@ export class WriteFence {
     this.heartbeat = undefined;
   }
 
-  /** After the loss: classify the holder until it is stale. */
   private async watch(): Promise<void> {
     if (this.holder === "stale") return;
-    // A check already in flight may have been answered before the loss
-    // ("held"); only one sent after it can classify the holder.
     if (this.inFlight) await this.inFlight;
     const verdict = await this.ask();
     if (verdict?.state === "fenced") this.settle(verdict.holder);
-    // A check this boot now passes (it captured a pre-mint its next write
-    // would adopt) still finds a boot whose sync has halted: retire it.
     else if (verdict?.state === "held") this.settle("stale");
-    // "unsupported" decides nothing: during a pod-store roll it is an old
-    // replica, and retiring on it could re-claim over a running engine. The
-    // heartbeat asks again until a replica names the holder.
   }
 
   private settle(holder: LeaseHolderState): void {
@@ -148,7 +90,6 @@ export class WriteFence {
     this.opts.onHolder(holder);
   }
 
-  /** One shared check; undefined when it could not be answered. */
   private ask(): Promise<WriteLeaseVerdict | undefined> {
     const probe = this.opts.probe;
     if (!probe) return Promise.resolve({ state: "held" });

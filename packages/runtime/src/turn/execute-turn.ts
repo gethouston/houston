@@ -33,7 +33,6 @@ import { createTurnEmitter, prepareTurnStreams } from "./turn-sse-emitter";
 import { poolIdentity, resolveTurnStore } from "./turn-store";
 import type { TurnRequest } from "./types";
 
-/** Execute one admitted turn inside an isolated, disposable filesystem root. */
 export async function executeTurn(
   deps: TurnServerDeps,
   turn: TurnRequest,
@@ -47,10 +46,6 @@ export async function executeTurn(
   armClaudeStartupProfile(deps.singleUse !== undefined);
   const scope = `${turn.workspaceId}/${turn.agentId}`;
   const abort = new AbortController();
-  // A CLAIMED turn's lifetime is the claim, not the HTTP connection: the
-  // gateway may lose its stream and re-attach through the turnlog, so a
-  // dropped socket must not abort the work; a fenced heartbeat (the claim was
-  // released or adopted) must. Unclaimed turns keep the connection contract.
   if (!turn.claim) req.on("close", () => abort.abort());
   turn.liveMode = { current: turn.mode ?? "execute" };
   const turnId = turn.turnId ?? crypto.randomUUID();
@@ -126,9 +121,7 @@ export async function executeTurn(
       res,
     });
     if (refused) return;
-    // Hydrated: a send that names no mode adopts its conversation's (HOU-205).
     await adoptKeptMode(turn, filesystem.workspaceDir);
-    // Setup can no longer refuse the turn: answer (the gateway's 202) now.
     const sse = openSSE(res);
     closeSse = sse.close;
     timings.t_sse_open = performance.now();

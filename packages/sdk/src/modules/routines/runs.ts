@@ -1,19 +1,3 @@
-/**
- * The RUNS of an agent's routines: the record of the times they fired, firing
- * one now instead of waiting for its schedule, stopping one under way, and the
- * incoming-webhook key an outside service starts one with. The routines
- * themselves — what an agent repeats, and when — live in `http.ts`.
- *
- * One route here is NOT an agent-proxy path: the webhook-key mint is a gateway
- * CONTROL route (`/v1/agents/…`), and the difference is load-bearing (see
- * {@link mintRoutineWebhookKey}).
- *
- * Nothing is swallowed here either: every non-2xx throws a
- * {@link RoutinesHttpError} carrying the HTTP `status`, so the `404` of a
- * gateway that does not serve webhook keys reaches the caller and it decides
- * what that means.
- */
-
 import { type HttpScope, httpRequest } from "../http";
 import type { RoutineRun, WebhookKeyReveal } from "./types";
 
@@ -119,10 +103,6 @@ export async function mintRoutineWebhookKey(
   agentId: string,
   routineId: string,
 ): Promise<WebhookKeyReveal> {
-  // The mint is a GATEWAY control route (`/v1/agents/…`, like trigger-status)
-  // — NOT an agent-proxy path: the `/agents/:id` prefix would forward it to the
-  // engine pod, which never serves webhook keys, and its 404 would read as
-  // "this host can't mint" on a gateway that can (HOU-807).
   const res = await httpRequest(
     scope,
     `/v1/agents/${encodeURIComponent(agentId)}/routines/${encodeURIComponent(routineId)}/webhook-key`,

@@ -31,8 +31,6 @@ export function useAttachmentRejectionDialog(
   const open = rejections.length > 0;
   const close = useCallback(() => setRejections([]), []);
 
-  // Keyed on the policy VALUE (not the object identity) so callers may build
-  // the policy inline without re-creating prepareAttachments every render.
   const modelAcceptsImages = policy?.modelAcceptsImages;
   const prepareAttachments = useCallback<PrepareAttachments>(
     (incoming) => {

@@ -1,14 +1,6 @@
 import { afterEach, expect, test } from "vitest";
 import { liveTurnPin, liveTurns } from "./live-turn";
 
-/**
- * The host's own answer to "what is this agent working on, in which mode, and
- * in whose name". Three decisions read it and none may be answered by the
- * runtime they are about: the mission depth chain (missions-start.ts), the plan
- * gate (plan-gate.ts) and the acting identity a mission or a learning is
- * written under (missions-sandbox.ts, learnings-sandbox.ts).
- */
-
 const AGENT = "ws/Dobby";
 
 afterEach(() => {
@@ -87,9 +79,6 @@ test("forget drops every conversation of that agent", () => {
 });
 
 test("a follow-up send keeps the chat live when the first turn reports its end", () => {
-  // The person sent again while the agent was still working: the runtime queues
-  // the second message behind the first, so the first turn's end report must
-  // not retire the record the second one is running under.
   liveTurns.start(AGENT, "conv-1", "execute", { actingAs: "first" });
   liveTurns.start(AGENT, "conv-1", "plan", { actingAs: "second" });
   liveTurns.end(AGENT, "conv-1");

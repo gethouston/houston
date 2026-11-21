@@ -1,13 +1,3 @@
-/**
- * Recursive rows for one filesystem section. The team-level frame owns the
- * single shared column band; folders expand in place beneath their agent.
- *
- * The list draws no rules at all — not under the column headers and not between
- * the rows. Vertical rhythm is spacing, and the only thing that ever paints is
- * the row under the pointer. While files are checked the header slot hands
- * itself to the selection bar, same height and same padding, so nothing below
- * moves.
- */
 import { cn } from "@houston-ai/core";
 import { LIST_INSET, type ListRowCallbacks } from "./files-list-chrome";
 import { FilesSelectionBar } from "./files-selection-bar";

@@ -9,23 +9,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The agent's WORKSPACE FILES, delegated to `sdk.files`: the listing, the
- * read, every rearrangement, and the two uploads.
- *
- * These assertions ARE the record of what those requests put on the wire: same
- * method, whole URL (the `?path=` query included, escaped character
- * by character — a path escaped one way deletes a different file than the
- * other), body bytes, and headers over the ONE shared gateway fetch. Each call
- * is exactly one request: these publish no SDK scope and never refetch.
- *
- * Two things deliberately did NOT move, and are pinned here too: the binary
- * reads still ride `cpFetch` (a `Blob` cannot cross the SDK's JSON boundary),
- * and the multi-batch upload loop still runs in the adapter (batching reads a
- * browser `File`'s size and frames one batch at a time, so a folder drop never
- * holds every file's base64 in memory at once).
- */
-
 const BASE = "http://host";
 
 const { calls, reset, restore, stubFetch } = createWireCapture();
@@ -43,7 +26,6 @@ afterEach(() => {
 const client = () =>
   new HoustonClient({ baseUrl: BASE, token: "t", controlPlane: true });
 
-/** A cloud client whose selected agent can differ from the upload target. */
 const clientWithAgent = (agentId: string) => {
   const c = client();
   localStorage.setItem(LAST_AGENT_PREF, agentId);
@@ -64,9 +46,6 @@ const ENTRY = {
   size: 12,
   is_directory: false,
 };
-
-/** The four headers every delegated call must still carry. */
-// ---- reads ----
 
 test("listProjectFiles delegates a byte-identical single GET /agents/:id/files", async () => {
   stubFetch(() => json(200, [ENTRY]));
@@ -108,8 +87,6 @@ test("readProjectFile still decodes a base64-framed file to its bytes", async ()
   );
 });
 
-// ---- writes ----
-
 test("deleteFile delegates one DELETE carrying the path as a query", async () => {
   stubFetch(() => json(200));
   const c = client();
@@ -148,8 +125,6 @@ test("renameFile, createFolder and moveProjectFile keep their body bytes", async
   ]);
   for (const call of calls) expectGatewayHeaders(call);
 });
-
-// ---- uploads: the adapter frames and batches, the SDK sends ----
 
 test("uploadProjectFiles posts one framed batch per request, folder paths intact", async () => {
   stubFetch(() => json(200));
@@ -280,8 +255,6 @@ test("composeCitations sends nothing for a draft without comments", async () => 
   expect(calls).toEqual([]);
 });
 
-// ---- what stayed in the adapter ----
-
 test("the binary reads still ride cpFetch and answer a Blob", async () => {
   stubFetch(
     () =>
@@ -303,8 +276,6 @@ test("the binary reads still ride cpFetch and answer a Blob", async () => {
   ]);
   for (const call of calls) expectGatewayHeaders(call);
 });
-
-// ---- degradations stay in the adapter, not in the SDK ----
 
 test("off-cloud the workspace reads stay inert and ask nothing", async () => {
   stubFetch(() => json(200, []));

@@ -1,39 +1,15 @@
-/**
- * The bound on roster-wide reads. The cross-agent missions sweep reads every
- * agent's board on each app load; unbounded, a 105-agent space put 105
- * requests on the gateway in the same instant, each resolving the caller's
- * memberships, and a reload cancelled all of them together.
- *
- * Through the gate at most {@link AGENT_FAN_OUT_LIMIT} reads start per slot
- * turnover. A read the gateway holds open (an asleep agent waiting on its
- * engine can be held for most of a minute) gives its slot up after
- * {@link FAN_OUT_SLOT_LEASE_MS} and keeps running, so a few held reads never
- * serialize the rest of the roster behind them.
- *
- * Reads for the one agent the person is looking at never go through here.
- */
-
 import type { Clock } from "./ports";
 
-/** Roster-wide reads started at once, per gate. */
 export const AGENT_FAN_OUT_LIMIT = 8;
 
-/** How long a read holds its slot before the next queued read may start. */
 export const FAN_OUT_SLOT_LEASE_MS = 2_000;
 
 export interface FanOutSettleOptions {
-  /** Aborting drops every read still queued (it rejects with the signal's
-   *  reason, unrun). Reads already started run to completion. */
   signal?: AbortSignal;
 }
 
 export interface FanOutGate {
-  /** Run one read once a slot is free. Resolves or rejects as the read does. */
   run<T>(read: () => Promise<T>, opts?: FanOutSettleOptions): Promise<T>;
-  /**
-   * Read every item through the gate. Never rejects: each outcome is settled
-   * in input order, like `Promise.allSettled`.
-   */
   settle<I, T>(
     items: readonly I[],
     read: (item: I) => Promise<T>,
@@ -54,8 +30,6 @@ export function createFanOutGate({
   let active = 0;
   const waiting: Array<() => void> = [];
 
-  // A freed slot passes straight to the next waiter, so `active` only drops
-  // when nobody is queued.
   const release = () => {
     const next = waiting.shift();
     if (next) next();
@@ -110,8 +84,6 @@ export function createFanOutGate({
   };
 }
 
-// Read at call time, so a test's fake timers apply to a gate built before
-// they were installed.
 const globalTimers: Pick<Clock, "setTimeout" | "clearTimeout"> = {
   setTimeout: (fn, ms) => setTimeout(fn, ms) as unknown as number,
   clearTimeout: (id) => clearTimeout(id),

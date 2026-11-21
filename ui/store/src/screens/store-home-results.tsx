@@ -20,7 +20,6 @@ export function StoreHomeResults({
 }: {
   rows: StoreHomeRows;
   state: StoreHomeState;
-  /** Host opt-in for the featured pair — see StoreHomeScreenProps.featured. */
   featured?: boolean;
   agentHref: (agent: StoreHomeRows["agents"][number]) => string;
   creatorHref: (creator: StoreHomeRows["creators"][number]) => string;
@@ -102,8 +101,6 @@ export function StoreHomeResults({
           />
         </section>
       ) : null}
-      {/* Outside the grid section: a page whose every agent went featured
-          still has more catalog behind it. */}
       {!state.query ? pagination : null}
       {state.query && creators.length ? (
         <section className="flex flex-col gap-5">

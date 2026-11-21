@@ -32,13 +32,6 @@ function abilities(reach: ManagerReach): Ability[] {
   ];
 }
 
-/**
- * The close of first run, drawn as one card: the team, each AI Employee a row
- * that opens them (so it is plain the person can give them work directly),
- * then what the manager does, as chips. The roster is live: someone hired
- * later joins it. Without `onOpen` (the scripted conversation, about to hand
- * over to the real chat) the rows are only shown.
- */
 export function OnboardingTeamCard({
   reach,
   onOpen,
@@ -99,8 +92,6 @@ export function OnboardingTeamCard({
   );
 }
 
-/** One AI Employee. `beckon`: the first face pulses once, so the rows read
- *  as something to open. */
 function TeamRow({
   agent,
   beckon,

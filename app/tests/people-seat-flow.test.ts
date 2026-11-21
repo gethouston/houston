@@ -97,7 +97,6 @@ describe("people seat flow — after an add", () => {
       afterAdd({ ...base, outcome: { kind: "quote_changed", quote: free } }),
       { kind: "resend", quote: free },
     );
-    // With no dialog, nobody agreed to anything: the note re-reads instead.
     deepStrictEqual(
       afterAdd({
         ...base,

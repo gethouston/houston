@@ -1,12 +1,3 @@
-/**
- * "Your agent is still being created" notice (HOU-693). Opens when the user
- * triggers a write (save, create, update…) on an agent whose engine is still
- * warming up — every screen stays explorable, this dialog is the only blocker.
- * Mirrors the boot splash's helmet-in-motion so the wait reads as the same
- * continuous "getting ready" state. Closes itself if the agent turns ready
- * while it is open.
- */
-
 import {
   Button,
   Dialog,
@@ -27,15 +18,10 @@ export function AgentWarmingDialog() {
   const anyWarming = useAgentProvisioningStore(
     (s) => Object.keys(s.provisioning).length > 0,
   );
-  // Any entry past its normal TTL (HOU-693 regression: this used to clear
-  // silently instead of surfacing here). Still warming, just slower than
-  // usual — the copy below says so instead of implying failure.
   const anyStalled = useAgentProvisioningStore((s) =>
     Object.values(s.provisioning).some((entry) => entry.timedOut),
   );
 
-  // The agent finished while the notice was up: the blocked action is
-  // available again, so the notice has nothing left to say.
   useEffect(() => {
     if (open && !anyWarming) setOpen(false);
   }, [open, anyWarming, setOpen]);

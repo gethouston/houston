@@ -25,8 +25,6 @@ export function agentTone(
   return `var(--ht-agent-${TONES[Math.abs(hash) % TONES.length]})`;
 }
 
-/** The ONE tone field: every surface that paints an agent's colour (tile,
- *  featured hero) uses this gradient, so the dress cannot drift. */
 export function agentToneBackground(tone: string) {
   return `linear-gradient(145deg, color-mix(in oklab, ${tone} 88%, white 12%), ${tone} 55%, color-mix(in oklab, ${tone} 82%, black 18%))`;
 }

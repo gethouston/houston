@@ -3,8 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 
-// The persisted quota mark (auth/provider-marks.ts) lives under
-// config.dataDir, which reads HOUSTON_DATA_DIR at import time — pin it first.
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-terse-"));
 
 const { noteQuotaExhausted, resetAuthFailures } = await import(
@@ -30,8 +28,6 @@ const USAGE_LIMIT =
   "You have hit your ChatGPT usage limit (plus plan). Try again in ~7524 min.";
 
 test("recognises every terse shape ChatGPT's gateway answers with", () => {
-  // Verbatim fleet bodies (HOUSTON-APP-56R): FastAPI's default 400 detail,
-  // pi's statusText fallback for an empty 404, and a whole HTML error page.
   expect(isCodexTerseRefusal("openai-codex", BAD_REQUEST)).toBe(true);
   expect(
     isCodexTerseRefusal("openai-codex", '{ "detail" : "Not Found" }'),
@@ -70,8 +66,6 @@ test("nothing remembered → no reading (the turn stays unknown)", () => {
 });
 
 test("this turn's retry attempt explained the refusal (the usage-limit flavor)", () => {
-  // pi retried the 429 three times with the friendly usage-limit text and the
-  // final attempt got the bare 400 — the same account, the same request.
   const resolved = resolveCodexTerseRefusal({
     provider: "openai-codex",
     model: "gpt-6-astra",
@@ -126,7 +120,6 @@ test("a remembered plan gate on the SAME model reads a later terse refusal (the 
     model: "gpt-5.4-mini",
     suggested_fallback: "gpt-6-astra",
   });
-  // A different model carries no gate memory: OpenAI may well serve it.
   expect(
     resolveCodexTerseRefusal({
       provider: "openai-codex",
@@ -189,8 +182,6 @@ test("a plan-gate memory lapses after its TTL", () => {
 });
 
 test("the persisted out-of-quota mark outlives the in-memory reading (pod restart)", () => {
-  // No fingerprint injected on purpose: the mark check reads the (absent)
-  // credential store the same way, so the two fingerprints agree.
   noteQuotaExhausted("openai-codex", null);
   const resolved = resolveCodexTerseRefusal({
     provider: "openai-codex",

@@ -1,12 +1,3 @@
-/**
- * Rename-with-conflict flow for the Files section: a rename onto a name a
- * sibling already carries is answered from the listing the UI already has,
- * with authored copy, instead of being sent to the host only to come back as a
- * 409. The write keeps its own 409 surface for the race (another writer takes
- * the name between the listing and the request): the optimistic rename rolls
- * back with the same sentence. This is the instant answer for the case the
- * listing can already see.
- */
 import type { FileEntry } from "@houston-ai/agent";
 import { useCallback } from "react";
 import { detectRenameConflict } from "../lib/file-conflicts";

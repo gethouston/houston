@@ -14,11 +14,6 @@ describe("bakedUrl", () => {
     strictEqual(bakedUrl(undefined), undefined);
   });
 
-  // The regression this helper exists for. GitHub Actions cannot omit a
-  // job-level env key, so a flavor-split expression sets it to "" on the legs
-  // that shouldn't carry it. `??` would have let that empty string read as
-  // "configured" and produced a relative fetch (dead under tauri://localhost)
-  // or a store publish aimed at the local sidecar.
   it("treats an empty bake as absent, never as an empty URL", () => {
     strictEqual(bakedUrl(""), undefined);
     strictEqual(bakedUrl("   "), undefined);

@@ -4,18 +4,6 @@ import { HoustonSdk } from "../../sdk";
 import { memoryKv } from "../../test-ports";
 import { TeamsCommand, TeamsHttpError } from "./index";
 
-/**
- * The per-agent policy calls, as the wire sees them. Every one of the six calls
- * is asserted WHOLE — method, url and body — because the gateway routes on the
- * exact path and a drift (a query param, a pluralized segment, a PUT become
- * PATCH) is the kind of break no type check and no unit test of the caller
- * would catch.
- *
- * Nothing here degrades. The `404` cases assert the throw, because the surfaces
- * that soften one (model choice, trigger status) do it themselves — the SDK
- * stays honest so every surface reads the same statuses.
- */
-
 const BASE = "http://127.0.0.1:4317";
 
 interface Recorded {
@@ -24,11 +12,6 @@ interface Recorded {
   body: string | null;
 }
 
-/**
- * A teams SDK over a mock `fetch` that records the whole wire. `reactivity` is
- * off, so every recorded call is one a teams operation made and nothing else —
- * which is what makes "exactly one request" an exact claim.
- */
 function makeSdk(answer: () => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(
@@ -77,10 +60,6 @@ describe("per-agent policy", () => {
   });
 
   it("sends every row's own access, and an empty roster as an empty list", async () => {
-    // No id-only shorthand exists: a shorthand could only guess ONE level, and
-    // the level it would guess ("user") silently demotes every manager it is
-    // handed. An empty list is a real roster — the gateway reads it as
-    // "everyone" — never a skipped write.
     const { sdk, calls } = ok();
     await sdk.teams.setAgentAssignments("a1", [
       { userId: "u1", access: "manager" },
@@ -188,8 +167,6 @@ describe("what the module refuses to soften", () => {
     const err = await sdk.teams.getAgentSettings("a1").catch((e: unknown) => e);
     expect(err).toBeInstanceOf(TeamsHttpError);
     expect((err as TeamsHttpError).status).toBe(404);
-    // The body travels as the message, which is what the web adapter parses
-    // back into a HoustonEngineError.
     expect((err as TeamsHttpError).message).toBe(
       JSON.stringify({ error: "no teams here" }),
     );

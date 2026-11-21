@@ -12,22 +12,6 @@ import { ArchivedMissionChat } from "./archived-mission-chat";
 import { MissionChatBack } from "./mission-chat-back";
 import { useMissionChatSource } from "./use-mission-chat-source";
 
-/**
- * The phone's pushed mission-chat screen: chat as a PLACE, a first-class nav
- * level over whatever view pushed it (a task list row, a published task
- * target, the compose flow), popped by its back chevron or hardware back. The
- * shell mounts it full-screen while the nav entry names it and hides the tab
- * bars — a push, not a tab.
- *
- * An active task's chat is the boards' own wiring (`useBoardChatWiring`) over
- * the chat-only source; an archived one's is the archive's
- * ({@link ArchivedMissionChat}). Which one is decided from the raw sweep rows
- * (`pendingMissionSurface`), the one place both statuses coexist. Both render
- * through AIBoard's panel-only presentation, so this screen can never drift
- * from the desktop panel. The composer stays above the on-screen keyboard by
- * padding the screen with the visual viewport's occluded bottom
- * (`useVisualViewportInset`).
- */
 export function MissionChatScreen() {
   const chatAgentId = useUIStore((s) => s.chatAgentId);
   const closeMissionChat = useUIStore((s) => s.closeMissionChat);
@@ -37,8 +21,6 @@ export function MissionChatScreen() {
       : (s.agents.find((a) => a.id === chatAgentId) ?? null),
   );
 
-  // A ghost guard, not a render fork: an agent deleted (or a roster reload
-  // landing mid-chat) pops the screen instead of stranding a dead chat.
   useEffect(() => {
     if (chatAgentId !== null && agent === null) closeMissionChat();
   }, [chatAgentId, agent, closeMissionChat]);

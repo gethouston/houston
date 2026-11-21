@@ -11,7 +11,6 @@ import { reportError } from "../../../lib/error-report";
 import { osDetectLegacyHouston, osIsTauri } from "../../../lib/os-bridge";
 import { queryKeys } from "../../../lib/query-keys";
 
-/** This machine's wizard outcome (the key the wizard gate writes), or `null`. */
 function readOutcome(userId: string | null): "done" | "skipped" | null {
   try {
     return readCloudMigrationOutcome(localStorage, userId);
@@ -21,14 +20,6 @@ function readOutcome(userId: string | null): "done" | "skipped" | null {
   }
 }
 
-/**
- * The "Continue migration" section shows only when a re-run makes sense: a
- * hosted desktop build, legacy data still on THIS machine, and this machine's
- * migration not already completed ("done"). A hook the settings view calls to
- * gate the row. The detect query shares its key with the wizard gate's, so
- * React Query dedupes the filesystem scan. The completed state is the
- * device-level localStorage outcome (`lib/cloud-migration-outcome.ts`).
- */
 export function useMigrationAvailable(): boolean {
   const { data: session } = useSession();
   const userId = session?.uid ?? null;
@@ -55,11 +46,6 @@ export function useMigrationAvailable(): boolean {
   return gates && (detect.data?.hasWorkspaces ?? false);
 }
 
-/**
- * Lets a user re-run the cloud migration if a prior run was skipped or failed.
- * Clears the machine's outcome flag and reloads: on reboot the wizard gate
- * re-evaluates (no outcome, not completed, legacy data present) and reopens.
- */
 export function MigrationSection() {
   const { t } = useTranslation("settings");
   const { data: session } = useSession();

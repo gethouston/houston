@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { Leading, RowText } from "./settings-row-parts";
 
 interface SettingsCardProps {
-  /** Group heading shown above the card. Omit for the lead group. */
   title?: string;
   children: ReactNode;
 }
@@ -14,7 +13,6 @@ interface SettingsGroupTitleProps {
   className?: string;
 }
 
-/** The heading grammar shared by every settings-style card group. */
 export function SettingsGroupTitle({
   children,
   className = "",
@@ -26,7 +24,6 @@ export function SettingsGroupTitle({
   );
 }
 
-/** A titled group of settings rows, rendered as one hairline-divided card. */
 export function SettingsCard({ title, children }: SettingsCardProps) {
   return (
     <section>
@@ -41,23 +38,17 @@ export function SettingsCard({ title, children }: SettingsCardProps) {
 interface SettingsRowProps {
   icon: LucideIcon;
   title: string;
-  /** A short tag beside the title, e.g. "Advanced" for developer settings. */
   badge?: string;
   description?: string;
   ariaLabel?: string;
-  /** Right-aligned current value, e.g. "2 members". */
   value?: string;
   destructive?: boolean;
   disabled?: boolean;
-  /** Stable `data-testid` for rows the UI tests navigate by (label-independent). */
   testId?: string;
-  /** Set false for ACTION rows that resolve in place instead of drilling into
-   *  a sub-screen — the chevron promises navigation. Defaults to true. */
   chevron?: boolean;
   onClick: () => void;
 }
 
-/** A navigable settings entry: bare icon, title, description, value, chevron. */
 export function SettingsRow({
   icon,
   title,
@@ -101,24 +92,14 @@ export function SettingsRow({
 
 interface SettingsControlRowProps {
   icon?: LucideIcon;
-  /** Replaces the icon (e.g. an avatar). */
   leading?: ReactNode;
   title: string;
   description?: string;
   destructive?: boolean;
-  /**
-   * Give the control its OWN full-width line under the label on phones (it
-   * keeps the right seat from `md:` up). For a control whose value is a phrase
-   * the user wrote — an industry, a job title — which would otherwise be
-   * squeezed into whatever the label leaves of a 360px row. A toggle or a
-   * short menu stays beside its label and leaves this off.
-   */
   stack?: boolean;
-  /** The inline control rendered on the right (input, toggle, select, button). */
   children: ReactNode;
 }
 
-/** A settings entry resolved in place: bare icon, title, and a right-side control. */
 export function SettingsControlRow({
   icon,
   leading,
@@ -137,8 +118,6 @@ export function SettingsControlRow({
           : "items-center gap-3",
       )}
     >
-      {/* The mark and the words are ONE line whichever way the row runs, so a
-          stacked row never drops its icon onto a line of its own. */}
       <span className="flex min-w-0 flex-1 items-center gap-3">
         <Leading icon={icon} leading={leading} destructive={destructive} />
         <RowText

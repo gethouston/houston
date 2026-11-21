@@ -1,11 +1,3 @@
-/**
- * Convert FeedItem[] to ChatMessage[] for rendering.
- *
- * Groups consecutive feed items into logical messages, same as how
- * AI Elements structures its message list. Pairs tool_call items with
- * their corresponding tool_result items.
- */
-
 import { attachToolResult } from "./feed-tool-result";
 import type {
   FeedItem,
@@ -31,17 +23,10 @@ export interface FileChangeEntry {
   status: "created" | "modified";
 }
 
-/** Marks a `from: "system"` message as a boundary divider — a context
- *  compaction, a mid-session provider switch, or a cleared context. */
 export interface ChatCompactionInfo {
-  /** What produced this divider. */
   kind: "compacted" | "provider_switch" | "context_cleared";
-  /** Compaction trigger. Set only when `kind === "compacted"`. */
   trigger?: "native" | "proactive" | "manual";
-  /** Provider switched TO. Set only when `kind === "provider_switch"`. */
   provider?: string;
-  /** Whether a switch summarized prior context (`true`) or carried the full
-   *  conversation verbatim (`false`). Set only when `kind === "provider_switch"`. */
   summarized?: boolean;
   preTokens?: number;
 }
@@ -53,73 +38,21 @@ export interface ChatMessage {
   isStreaming: boolean;
   reasoning?: { content: string; isStreaming: boolean };
   tools: ToolEntry[];
-  /**
-   * Typed provider failure (rate-limited, auth-expired, quota-exhausted,
-   * etc). When set, the consumer should render a variant-specific card
-   * instead of plain text.
-   */
   providerError?: ProviderError;
   fileChanges: FileChangeEntry[];
-  /** Source channel if the message came from an external channel. */
   source?: string;
-  /**
-   * Multiplayer only: who wrote this user message (C5). Present on
-   * `from: "user"` messages in a shared conversation; absent in single-player
-   * mode. The renderer shows a label only when the thread has ≥2 distinct
-   * authors — see `distinctAuthorCount`.
-   */
   author?: MessageAuthor;
-  /**
-   * Multiplayer only (HOU-944): the teammates this USER message @mentioned.
-   * The renderer chips each "@Name" run it still finds in `content`; absent
-   * when the message mentioned nobody.
-   */
   mentions?: MessageMention[];
-  /**
-   * Set on `from: "system"` messages that mark a context-compaction boundary.
-   * The renderer shows a subtle divider instead of plain system text.
-   */
   compaction?: ChatCompactionInfo;
-  /**
-   * Set on `from: "system"` messages the engine authored for a known reason
-   * (a restart, a resume). The renderer picks copy by kind; `content` is the
-   * English default.
-   */
   notice?: SystemNoticeKind;
-  /** Set on `from: "system"` rows the host draws itself. */
   hostCard?: HostCard;
-  /**
-   * The wire id of the turn a `from: "user"` message started (PRODUCT-1217).
-   * The edit-and-resend affordance anchors on it; absent on a still-optimistic
-   * send and on pre-turn-id transcripts, which are not editable.
-   */
   turnId?: string;
 }
 
 export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
   const messages: ChatMessage[] = [];
   let cur: ChatMessage | null = null;
-  // One provider-error card per KIND per turn, mapped to the index of the
-  // card already pushed. The engine can surface the same failure on two
-  // channels — e.g. codex auth lands on both the stdout parser (persisted) and
-  // the transient stderr classifier — and a backoff loop should never stack
-  // identical reconnect cards. Keep the first. A turn runs on ONE provider, so
-  // `provider` is deliberately NOT part of the key: the same failure often
-  // arrives unlabeled (`provider: ""`) on one channel and labeled ("openai") on
-  // the other, and keying on it rendered both. The map resets at every
-  // user_message: a NEW turn that fails the same way (e.g. the session dies
-  // again after a successful reconnect) must show a fresh card, not be
-  // swallowed by the previous turn's. Accepted edge: if the backend is switched
-  // mid-turn and BOTH providers fail unauthenticated, the two failures collapse
-  // into one card — rare, and a turn ultimately resolves onto one provider.
   let seenProviderErrors = new Map<ProviderError["kind"], number>();
-  // A failed turn surfaces BOTH a typed error card (provider_error) and the
-  // engine's session-status echo, which ui/core
-  // (`use-session-events`) materializes as a raw `"Session error: …"`
-  // system_message. The typed card is the real, localized surface; the echo is
-  // a redundant English duplicate. Suppress the echo ONLY when a card already
-  // covered this turn — with no card it still shows, so no failure goes silent.
-  // Resets per turn alongside the dedup set.
   let turnHadErrorCard = false;
 
   function getCur(): ChatMessage | null {
@@ -133,12 +66,6 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
     }
   };
 
-  // Message keys prefer the feed item's stable VM id (`kind-fA7`) over the
-  // positional fallback (`kind-3`): prepending older history (HOU-819) shifts
-  // every position, and positional keys would remount the whole list below —
-  // reusing Streamdown instances against different messages' content (#364's
-  // failure class). The id of the item that STARTS a message keys it; a
-  // streaming entry keeps its id across deltas, so live keys are stable too.
   const keyFor = (kind: string, item: { id?: string }): string =>
     `${kind}-${item.id ?? messages.length}`;
 
@@ -176,7 +103,6 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
     switch (item.feed_type) {
       case "user_message": {
         flush();
-        // New turn — provider-error dedup + error-echo suppression are per turn.
         seenProviderErrors = new Map<ProviderError["kind"], number>();
         turnHadErrorCard = false;
         const { source, text } = extractSource(item.data);
@@ -229,21 +155,11 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
       }
 
       case "tool_call": {
-        // HOU-1047: some providers (OpenAI's style especially) narrate BEFORE
-        // running tools, so streamed text keeps the current message open when
-        // the first tool_call arrives. Without a flush the tool fused into the
-        // text message, the grouping layer rendered its mission log INACTIVE
-        // above the text, and the chat bottom showed only the generic loading
-        // indicator while the agent worked. Mirror the thinking case: a tool
-        // call after visible content starts a fresh process-only message, so
-        // the trailing mission log stays live at the bottom of the chat.
         const prev = getCur();
         if (prev && prev.from === "assistant" && prev.content) {
           flush();
         }
         const msg = ensureAssistant(item);
-        // Deduplicate: the parser emits two tool_calls per tool (null input
-        // on block start, real input on block stop). Replace the placeholder.
         const lastTool = msg.tools[msg.tools.length - 1];
         if (
           lastTool &&
@@ -264,27 +180,12 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
       }
 
       case "provider_error": {
-        // Cancellation has no UI surface — the runner already signalled
-        // SessionStatus::Cancelled via a separate channel, and a card
-        // here would feel like a real error. Drop it.
         if (item.data.kind === "cancelled") break;
-        // A real error card covered this turn (even if a duplicate is collapsed
-        // below) — lets the trailing session-status echo be suppressed.
         turnHadErrorCard = true;
-        // Collapse duplicates of the same kind to a single card. When the card
-        // already shown is the unlabeled one and this duplicate names the
-        // provider, upgrade the payload in place — same message key, so the
-        // card gains its provider label without React remounting it.
         const seenIndex = seenProviderErrors.get(item.data.kind);
         if (seenIndex !== undefined) {
           const seen = messages[seenIndex];
           if (seen.providerError && !seen.providerError.provider) {
-            // Merge ONLY the label. The duplicate is the same failure seen on
-            // a thinner channel: the first card is the one that carried the
-            // retry state (`undelivered_prompt` / `failed_prompt` /
-            // `credential` / `retry_after_seconds` / `raw_excerpt`, and often a
-            // more specific `cause`), so replacing the payload wholesale left
-            // auto-resume with nothing to re-send (HOU-718).
             if (item.data.provider) {
               seen.providerError = {
                 ...seen.providerError,
@@ -299,9 +200,6 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         messages.push({
           key: `${keyFor("provider-error", item)}-${item.data.kind}`,
           from: "system",
-          // Empty content so the rendered message body collapses to the
-          // typed card. The consumer (renderSystemMessage in the app)
-          // detects providerError and routes to ProviderErrorCard.
           content: "",
           isStreaming: false,
           providerError: item.data,
@@ -326,9 +224,6 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
       }
 
       case "system_message": {
-        // Drop the redundant session-status echo when a typed error card
-        // already surfaced this turn. Without a card it still renders, so a
-        // failure on an un-carded path is never silent.
         if (turnHadErrorCard && isSessionErrorEcho(item.data)) break;
         flush();
         messages.push({
@@ -348,8 +243,6 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         messages.push({
           key: keyFor("context-compacted", item),
           from: "system",
-          // Empty content — the renderer shows a localized divider keyed off
-          // `compaction`, not this string.
           content: "",
           isStreaming: false,
           tools: [],
@@ -368,8 +261,6 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         messages.push({
           key: keyFor("context-cleared", item),
           from: "system",
-          // Empty content — the renderer shows a localized divider keyed off
-          // `compaction`, not this string.
           content: "",
           isStreaming: false,
           tools: [],
@@ -384,8 +275,6 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         messages.push({
           key: keyFor("provider-switched", item),
           from: "system",
-          // Empty content — the renderer shows a localized divider keyed off
-          // `compaction`, not this string.
           content: "",
           isStreaming: false,
           tools: [],
@@ -424,12 +313,6 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
   return messages;
 }
 
-/**
- * How many DISTINCT authors (by userId) wrote user messages in this thread.
- * The renderer shows author labels only when this is ≥2 — a single-author
- * conversation stays label-free (C5). Authorless user messages don't count.
- * Pure, so the threshold is unit-tested without rendering.
- */
 export function distinctAuthorCount(messages: ChatMessage[]): number {
   const ids = new Set<string>();
   for (const m of messages) {
@@ -438,17 +321,10 @@ export function distinctAuthorCount(messages: ChatMessage[]): number {
   return ids.size;
 }
 
-/**
- * The session-status error echo synthesized in ui/core's `use-session-events`
- * (`Session error: <detail>`). Matched here so a typed error card can suppress
- * this redundant raw duplicate. The prefix is a hardcoded (un-localized) string
- * on that side, so this stays a stable contract — keep the two in sync.
- */
 function isSessionErrorEcho(text: string): boolean {
   return text.startsWith("Session error:");
 }
 
-/** Extract a `[ChannelName]` prefix from a user message, if present. */
 function extractSource(text: string): { source?: string; text: string } {
   const match = text.match(/^\[(\w+)\]\s*/);
   if (match) {

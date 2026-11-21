@@ -17,8 +17,6 @@
 //! A machine where neither names our desktop file is reported, so it stays
 //! countable.
 
-// The runtime entry point is Linux-only; the decision logic stays compiled
-// everywhere so its unit tests run on every CI platform.
 #![cfg_attr(not(target_os = "linux"), allow(dead_code))]
 
 use std::io::ErrorKind;
@@ -147,7 +145,6 @@ mod tests {
 
     #[test]
     fn a_command_that_is_not_installed_reads_as_xdg_mime_missing() {
-        // Pins std's spawn-error kind, which the whole fallback keys on.
         let status = std::process::Command::new("houston-definitely-missing").status();
         assert_eq!(
             after_xdg_mime(&status.map(|s| s.success())),
@@ -169,7 +166,6 @@ mod tests {
             query("houston-app-handler.desktop\n"),
             AfterXdgMime::Registered
         );
-        // A stale handler from another build, another app, or none at all.
         assert_eq!(
             query("houston-app-old-handler.desktop\n"),
             AfterXdgMime::Failed
@@ -182,7 +178,6 @@ mod tests {
 
     #[test]
     fn mimeapps_list_confirms_what_the_query_misses() {
-        // xdg-utils 1.1.3 without desktop-file-utils: empty query, file set.
         let ours = "houston-app-handler.desktop";
         let empty = Ok(String::new());
         assert_eq!(

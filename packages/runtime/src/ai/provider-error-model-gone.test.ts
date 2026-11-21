@@ -1,10 +1,6 @@
 import { expect, test } from "vitest";
 import { classifyProviderError } from "./provider-error";
 
-// Gateways that reject the MODEL id itself (retired, renamed or never served)
-// with wording none of the older patterns read. Each must land on the
-// switch-model card, never `unknown` (report-bug card + a Sentry error per turn).
-
 test("MiniMax 400 'invalid params, unknown model' → model_unavailable", () => {
   const message =
     '400 {"type":"error","error":{"type":"bad_request_error","message":"invalid params, unknown model \'minimax-m2.7-highspeed\' (2013)","http_code":"400"}}';
@@ -45,8 +41,6 @@ test("OpenRouter 400 'is not a valid model ID' → model_unavailable", () => {
   expect(err.kind).toBe("model_unavailable");
 });
 
-// Near-misses that must stay `unknown`: OpenRouter's capability and data-policy
-// misses name no model, and a bad request field is not a dead model.
 test.each([
   [
     "openrouter",

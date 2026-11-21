@@ -7,11 +7,6 @@ import {
   resolveCapturedEventId,
 } from "../src/lib/sentry-transport.ts";
 
-// These pure helpers back Houston's "report sent" guarantee: the green toast +
-// event id appear ONLY when Sentry actually accepted the event over direct
-// HTTP. Pin that logic down so a regression can't reintroduce the old
-// dishonest toast (which fired on a queue-drain, not real delivery).
-
 describe("isAcceptedStatus", () => {
   it("accepts 2xx", () => {
     assert.equal(isAcceptedStatus(200), true);
@@ -20,8 +15,6 @@ describe("isAcceptedStatus", () => {
   });
 
   it("rejects an absent status: the rate-limited / queue-overflow `{}`", () => {
-    // createTransport.send resolves `{}` without sending anything when the
-    // category is rate-limited or the buffer is full (H-009 review).
     const dropped: { statusCode?: number } = {};
     assert.equal(isAcceptedStatus(dropped.statusCode), false);
     assert.equal(isAcceptedStatus(undefined), false);

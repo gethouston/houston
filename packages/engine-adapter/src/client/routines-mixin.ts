@@ -11,16 +11,6 @@ import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
-/**
- * Scheduled work: a routine's definition, its run history, and the incoming
- * webhook key that lets an outside system fire one (`@houston/sdk`'s routines
- * module).
- *
- * Routine mutations route to the host (cloud); standalone web has no routine
- * backend, so they no-op there (the UI still navigates). Every delegated call
- * is exactly one request: the SDK publishes no routines scope and never
- * refetches after a write, so the local echo below stays the only invalidation.
- */
 export function RoutinesMixin<TBase extends BaseCtor>(Base: TBase) {
   class Routines extends Base {
     async listRoutines(agentPath: string) {
@@ -70,7 +60,6 @@ export function RoutinesMixin<TBase extends BaseCtor>(Base: TBase) {
       );
       emitLocalEcho("RoutinesChanged", { agentPath });
     }
-    /** Fire a routine on demand: the host records a routine_run and starts the turn now. */
     async runRoutineNow(agentPath: string, routineId: string): Promise<void> {
       if (!this.ctx.cp)
         throw new Error("Running a routine needs a cloud workspace.");
@@ -80,7 +69,6 @@ export function RoutinesMixin<TBase extends BaseCtor>(Base: TBase) {
       );
       emitLocalEcho("RoutineRunsChanged", { agentPath });
     }
-    /** Stop an in-flight routine run: the host flips the row terminal, then aborts the turn. */
     async cancelRoutineRun(
       agentPath: string,
       routineId: string,
@@ -96,14 +84,6 @@ export function RoutinesMixin<TBase extends BaseCtor>(Base: TBase) {
       emitLocalEcho("RoutineRunsChanged", { agentPath });
       return run;
     }
-    /**
-     * Mint (or rotate) a routine's incoming-webhook key. Degrades to `null` when
-     * webhook keys are unsupported here: no gateway (standalone web/desktop) or a
-     * gateway that 404s the route. Calling again ROTATES the old secret away.
-     *
-     * The SDK throws every non-2xx, so the 404 is swallowed HERE — mirroring
-     * `agentTriggerStatus`'s degrade — and every other error still surfaces.
-     */
     async mintRoutineWebhookKey(
       agentPath: string,
       routineId: string,

@@ -56,7 +56,6 @@ export function EventFeed({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, []);
 
-  // Track scroll position
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -69,7 +68,6 @@ export function EventFeed({
     return () => el.removeEventListener("scroll", handleScroll);
   }, [checkIsAtBottom]);
 
-  // Auto-scroll when new events arrive (only if already at bottom)
   // biome-ignore lint/correctness/useExhaustiveDependencies: events.length is the intentional trigger; the effect body uses scrollToBottom (stable ref) and isAtBottomRef (stable ref) — not events.length directly, but the dep drives re-run on new arrivals
   useEffect(() => {
     if (isAtBottomRef.current) {
@@ -88,7 +86,6 @@ export function EventFeed({
 
   return (
     <div className="flex flex-col flex-1" style={{ maxHeight }}>
-      {/* Filter bar */}
       {onFilterChange && (
         <div className="shrink-0 border-b border-line">
           <EventFilter
@@ -99,7 +96,6 @@ export function EventFeed({
         </div>
       )}
 
-      {/* Event list */}
       <div
         ref={scrollRef}
         className="flex-1 flex flex-col overflow-y-auto min-h-0"

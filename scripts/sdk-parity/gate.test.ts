@@ -81,7 +81,6 @@ test("the same violation cannot be excused twice", () => {
   ).toThrow(/a second time/);
 });
 
-/** One classified adapter method, as `desktopCalls()` reports it. */
 const method = (name: string, bound: boolean) => ({
   name,
   source: resolve(
@@ -136,11 +135,6 @@ test("an excuse for an adapter method that now delegates fails as stale", () => 
   expect(verdict.failures[0]).toContain("no longer reproduces");
 });
 
-/**
- * The edges one adapter function publishes, read off a throwaway module —
- * `buildGraph` parses files, so the fixture is written to disk. `helpers.ts`
- * has to exist for the import to resolve; only `mixin.ts` is parsed.
- */
 function edgesOf(body: string): {
   edges: string[];
   helperKey: (name: string) => string;
@@ -195,12 +189,6 @@ test("a callee reached through await is still an edge", () => {
   expect(edges).toContain(helperKey("refresh"));
 });
 
-/**
- * The join across a path parameter a server spells out member by member.
- *
- * `schema` is the provider parameter's: closed to two spellings as the
- * extractor writes a string-literal union, or open when it is a plain string.
- */
 const connections = (schema: Record<string, unknown>): SdkMethod =>
   sdkMethodOf(
     "integrationConnections",
@@ -271,10 +259,6 @@ test("an open path parameter binds no literal route", () => {
   ]);
 });
 
-/**
- * Expanding a closed parameter must not invent work for the client: the method
- * issues one call per call site, so a server answering ONE member answers it.
- */
 test("one member served is enough to serve the method", () => {
   const violations = checkRules(
     [],
@@ -309,12 +293,6 @@ test("the committed exceptions file is well formed", () => {
   expect(file.entries.length).toBe(file.baseline);
 });
 
-/**
- * The gate is only a gate if the PROCESS fails, so this runs the real script
- * against the real tree with one entry removed from the exceptions file.
- * Slow (it reads both route sources and the whole SDK) and worth it: every
- * other test here judges a fixture the script itself might never reach.
- */
 test("the checker exits non-zero when a violation is not excused", () => {
   const file = parseExceptions(
     JSON.parse(readFileSync(EXCEPTIONS, "utf8")),
@@ -345,11 +323,6 @@ test("the checker exits non-zero when a violation is not excused", () => {
   expect(run()).toContain(dropped.key);
 }, 120_000);
 
-/**
- * Neither server is ever optional: the gateway's inventory is vendored into
- * this repo, so a method no server serves is a violation on every run — there
- * is no configuration in which it goes unjudged.
- */
 test("a method neither server serves is a violation", () => {
   const hostless = [
     { name: "orgGet", key: "GET /v1/org", keys: ["GET /v1/org"] },

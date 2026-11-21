@@ -1,4 +1,3 @@
-/** A team agent rendered as the root folder of its workspace. */
 import { cn, FolderGlyph } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import {
@@ -50,10 +49,6 @@ export function FilesAgentRow({
           onToggle();
         }
       }}
-      // No w-full here: the row's width must come from the -mx-2 inset margins
-      // (auto width absorbs them), exactly like the rows container — an
-      // explicit 100% width would land the actions column 16px left of the
-      // file rows' kebabs.
       className={cn(ROW_CLASS, LIST_INSET, "text-left")}
       style={{ display: "grid", gridTemplateColumns: colGrid() }}
     >
@@ -66,9 +61,6 @@ export function FilesAgentRow({
               small
               className={cn(ROW_TILE_GLYPH, folderClassName)}
             />
-            {/* The disc hugs the avatar exactly: an opaque backdrop so the
-                folder's lines never bleed through the translucent avatar fill,
-                without a ring protruding past it. */}
             <span className="absolute -right-0.5 -bottom-0.5 flex rounded-full bg-background transition-colors group-hover/row:bg-hover">
               {avatar}
             </span>
@@ -83,8 +75,6 @@ export function FilesAgentRow({
       </div>
       <span className={META_CELL} />
       <span className={META_CELL} />
-      {/* The action cell intercepts bubbled menu gestures so they never fold
-          the owning folder row. Its child remains the semantic control. */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: propagation boundary around the nested action control */}
       <span
         className={ACTIONS_CELL}

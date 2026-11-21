@@ -1,11 +1,3 @@
-/**
- * The interaction half of `ChatModelSelector`: owns the popover open state and
- * the select handler, wires the "Connect another AI…" footer to the AI Hub,
- * and wraps the derived view-models (`usePickerViewModels`) into the single
- * object the container's JSX renders. Split from both the component and the
- * derivation hook so each stays under the file-size budget.
- */
-
 import {
   cn,
   type ModelPickerLabels,
@@ -26,7 +18,6 @@ import { useWorkspaceStore } from "../stores/workspaces";
 import { useCapabilities } from "./use-capabilities";
 import { usePickerViewModels } from "./use-picker-view-models";
 
-/** Everything `ChatModelSelector`'s JSX needs to render the picker. */
 export interface ChatModelPicker {
   isOpen: boolean;
   setOpen: (next: boolean) => void;
@@ -37,21 +28,10 @@ export interface ChatModelPicker {
   catalogState: ReturnType<typeof usePickerViewModels>["catalogState"];
   labels: Partial<ModelPickerLabels>;
   onSelect: (id: string) => void;
-  /**
-   * Opens the AI Hub, the app's provider-connection surface. Undefined for a
-   * viewer who cannot open it (a plain team member: provider connections are
-   * org-level, so the hub is owner/admin-only), which drops both the footer row
-   * and the empty state's button rather than offering a dead end.
-   */
   onConnectMore?: () => void;
   renderProviderIcon: (providerId: string, className?: string) => ReactNode;
 }
 
-/**
- * Render a provider's colorful brand mark, the same treatment as
- * `FilterCombobox`'s option marks. `text-current!` re-inherits the brand color,
- * which the Command item's default `svg` rule would otherwise flatten to gray.
- */
 function renderProviderIcon(providerId: string, className?: string): ReactNode {
   return (
     <BrandMark
@@ -62,11 +42,6 @@ function renderProviderIcon(providerId: string, className?: string): ReactNode {
   );
 }
 
-/**
- * Drive the chat model picker. `provider`/`model` are the current selection;
- * `open`/`onOpenChange` optionally control the popover (omit both to leave it
- * uncontrolled, matching the old dropdown's auto-close on pick).
- */
 export function useChatModelPicker(opts: {
   provider: string;
   model: string;
@@ -79,11 +54,6 @@ export function useChatModelPicker(opts: {
   const setViewMode = useUIStore((s) => s.setViewMode);
   const { capabilities, isLoading: capabilitiesLoading } = useCapabilities();
   const workspaceId = useWorkspaceStore((s) => s.current?.id ?? null);
-  // Provider connections are ORG-level in a team space, so only the roles that
-  // can open the AI Models hub can act on an empty picker; everyone else is told
-  // who can. The decision (including the capabilities-loaded gate that keeps a
-  // plain member from being shown a Connect action we then withdraw) is pure —
-  // see `pickerEmptyState`.
   const { variant: emptyState, canConnect: canConnectProviders } =
     pickerEmptyState({
       teamSpace: workspaceId ? isTeamWorkspace(workspaceId) : false,
@@ -91,8 +61,6 @@ export function useChatModelPicker(opts: {
       capabilitiesLoaded: !capabilitiesLoading,
     });
 
-  // Merge controlled + uncontrolled open so selecting a row closes the picker
-  // even when no parent owns the state (the old dropdown auto-closed on pick).
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isOpen = open ?? uncontrolledOpen;
   const view = usePickerViewModels({ provider, model, isOpen });
@@ -114,10 +82,6 @@ export function useChatModelPicker(opts: {
     [onSelect, setOpen],
   );
 
-  // "Connect another AI…" leaves chat for the AI Hub — the one surface that
-  // lists every provider and owns the full connect flow (OAuth / api-key /
-  // local). The per-provider inline connect cards are gone: disconnected
-  // providers never appear in the picker anymore.
   const goToAiHub = useCallback(() => {
     setOpen(false);
     setViewMode("ai-hub");

@@ -7,61 +7,32 @@ import type { TurnRunner } from "./turn-session";
 import type { RunTurnDeps } from "./turn-session-startup";
 import type { turnSharedSkillsStore } from "./turn-shared-skills";
 
-/** Injectable dependencies and pool controls for the per-turn HTTP server. */
 export interface TurnServerDeps {
   store: ObjectStore;
   loginRunner?: import("./login-runner").LoginRunner;
-  /** App-layer token; empty means open local development. */
   token: string;
   runTurn?: TurnRunner;
-  /** Test seams and optional preloaded SDK input for pooled-turn setup. */
   turnSessionDeps?: RunTurnDeps;
-  /** Test seam for a synchronous credential filesystem failure. */
   writeTurnCredential?: TurnCredentialWriter;
-  /** Test seam for ordering root removal after hydration settlement. */
   removeTurnRoot?: (root: string) => Promise<void>;
   hydrationSettleTimeoutMs?: number;
-  /** Test seam: the provider connection a prewarm keeps open (default: one
-   *  per server, stopped by the first turn). */
   providerWarmer?: ProviderWarmer;
-  /** Test seam for the worker op executor. */
   runOp?: typeof applyOp;
   concurrency?: number;
   admission?: AdmissionLimiter;
   isDraining?: () => boolean;
-  /**
-   * This pod's OWN downward-API Kubernetes UID (config.podUid). When set, a
-   * dispatched /turn or /op whose X-Pool-Pod-UID header does not match is
-   * rejected (409) — binding the turn to this exact incarnation so a replacement
-   * pod at a reused ordinal+IP refuses a turn meant for the prior pod. A
-   * single-use worker fails closed (a missing header is rejected too); empty
-   * disables the check (off-cluster / per-agent workers).
-   */
   podUid?: string;
-  /**
-   * Single-use pool lifecycle. `begin` latches the worker spent BEFORE its
-   * one claimed turn executes (fail-closed against a mid-turn crash);
-   * `settled` fires after that turn's response has ended so the process can
-   * shut down and let the orchestrator replace the pod. Only claimed /turn
-   * requests and the first /login/* request spend the worker. A login keeps
-   * custody until the gateway kills its runner. /op is a host-side write that
-   * runs no model-directed code.
-   */
   singleUse?: {
     begin: () => Promise<void>;
     settled: () => void;
   };
   poolStoreUrl?: string;
-  /** Test seam: the org-shared store a turn reads its shared skills from. */
   sharedSkillsStore?: typeof turnSharedSkillsStore;
   turnLogUrl?: string;
   fetchImpl?: typeof fetch;
   heartbeatIntervalMs?: number;
   maxHydrateBytes?: number;
-  /** Test seam: transient-status retry delays for transcript publication. */
   transcriptRetryDelaysMs?: number[];
-  /** Test seam: transient-status retry delays for activity doc publication. */
   activityDocRetryDelaysMs?: number[];
-  /** Test seam: the wind-down marker correction's budget (default 5 s). */
   stopMarkerTimeoutMs?: number;
 }

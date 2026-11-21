@@ -1,12 +1,3 @@
-/**
- * Tool calls a scripted turn makes before it replies, armed by
- * `/__test__/chat-tools` — how a spec makes "the agent hired someone and
- * started a mission" happen. Each call streams as the real runtime's
- * `tool_start` / `tool_end` pair and persists on the assistant reply as its
- * tool record, so a reload replays the same rows. One-shot: consumed by the
- * next turn.
- */
-
 import type { ToolCallRecord } from "@houston/protocol";
 import { type ChatChannel, publish } from "./chat-channel";
 
@@ -24,15 +15,12 @@ export function setNextToolCalls(calls: ScriptedToolCall[]): void {
   nextToolCalls = calls;
 }
 
-/** The armed calls, disarmed as they are taken. */
 export function takeToolCalls(): ScriptedToolCall[] {
   const calls = nextToolCalls;
   nextToolCalls = [];
   return calls;
 }
 
-/** Stream each call as its start and end frames, `pause` between frames,
- *  for as long as the turn is `live` (a cancel or kill ends it). */
 export async function streamToolCalls(
   ch: ChatChannel,
   turnId: string,
@@ -63,7 +51,6 @@ export async function streamToolCalls(
   }
 }
 
-/** The calls as the assistant reply persists them. */
 export function toolRecords(
   calls: readonly ScriptedToolCall[],
 ): ToolCallRecord[] {

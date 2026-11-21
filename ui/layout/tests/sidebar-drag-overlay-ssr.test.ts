@@ -7,8 +7,6 @@ import { SidebarDragOverlay } from "../src/sidebar-drag-overlay";
 Object.assign(globalThis, { React });
 
 it("renders nothing, and does not throw, where there is no document", () => {
-  // The showcase renders every page on the server; a portal to a body that
-  // does not exist there took the whole AppSidebar page down.
   assert.equal(typeof document, "undefined");
   const markup = renderToStaticMarkup(
     React.createElement(SidebarDragOverlay, {

@@ -5,12 +5,6 @@ import { describe, it } from "node:test";
 import { quietErrorDetails } from "../src/lib/quiet-error-class.ts";
 import { UpdateDownloadError } from "../src/lib/update-download-failure.ts";
 
-// PRODUCT-1811 (HOUSTON-APP-5EQ): a 504 from the release host was final on
-// first sight and filed as a per-user bug. The shell now retries it and
-// rejects with `upstream`; the report path routes that class to its own
-// quiet capture, tagged with the status. Asserted against the source: the
-// report module pulls error-report (i18n / analytics / the tauri barrel),
-// which does not load under this suite's runner.
 const source = readFileSync(
   join(import.meta.dirname, "../src/lib/update-download-report.ts"),
   "utf8",
@@ -23,8 +17,6 @@ const body = source.slice(
   source.indexOf("export function reportUpdateDownloadFailure("),
 );
 
-/** Where `reportQuietError("<kind>", command, message, error, undefined,
- *  progress)` is called, whatever the formatter did to its line breaks. */
 function quietCall(kind: string): number {
   const pattern = new RegExp(
     `reportQuietError\\(\\s*"${kind}",\\s*command,\\s*message,\\s*error,\\s*undefined,\\s*progress,?\\s*\\)`,
@@ -49,14 +41,12 @@ describe("reportUpdateDownloadFailure", () => {
     ok(quietCall("offline") !== -1);
   });
 
-  // A full disk is the device's state: its own quiet class, never a bug.
   it("routes a full disk to the storage_full class", () => {
     const quiet = quietCall("storage_full");
     ok(quiet !== -1);
     ok(quiet < body.indexOf("reportError(command, message, error)"));
   });
 
-  // A remounted hook asking while the shell still downloads is nothing.
   it("reports nothing for a download already in progress", () => {
     const skip = body.indexOf('if (error.kind === "in_progress") return;');
     ok(skip !== -1);
@@ -64,9 +54,6 @@ describe("reportUpdateDownloadFailure", () => {
     ok(skip < body.indexOf("reportError("));
   });
 
-  // One person whose link drops every poll used to read as a stack of
-  // unrelated failures in the offline bucket; the byte position on each
-  // event shows one download inching forward.
   it("stamps the bytes on disk against the total on every quiet class", () => {
     const progress = body.indexOf("const progress = {");
     ok(progress !== -1, "the progress extras must be built");
@@ -87,9 +74,6 @@ describe("reportUpdateDownloadFailure", () => {
     }
   });
 
-  // The extras travel through reportQuietError's dedicated `extra` parameter,
-  // never through `context` (which carries call-site agent keys and must not
-  // reach Sentry), and the event's own fields win over them.
   it("reaches the event through the extra parameter, under the event's fields", () => {
     const signature = quietSource.slice(
       quietSource.indexOf("export function reportQuietError("),

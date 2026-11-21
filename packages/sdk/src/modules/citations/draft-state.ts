@@ -9,7 +9,6 @@ import type { DraftCitation, NewCitation } from "./types";
 export const capComment = (comment: string) =>
   comment.trim().slice(0, CITATION_COMMENT_MAX);
 
-/** A new comment as its draft keeps it: anchor checked, text capped. */
 export function draftCitation(
   input: Omit<NewCitation, "sharpCrop">,
   id: string,
@@ -29,27 +28,16 @@ export function draftCitation(
 
 const EMPTY: readonly DraftCitation[] = [];
 
-/** Comments a composed message carries, out of their draft until the engine
- *  accepts that message or it is dropped. */
 interface Claim {
   envelope: string;
   draftKey: string;
   citations: readonly DraftCitation[];
 }
 
-/**
- * Every draft's comments. The visible list of each draft is published at its
- * store scope; a composed message takes its comments out of it (so the next
- * send cannot carry them twice) and holds them as a claim keyed by the
- * envelope its text carries. Whatever send path that text then takes, the
- * envelope inside its prompt finds the claim again: an accepted send drops
- * the comments for good, a refused or removed one puts them back.
- */
 export class DraftCitations {
   private readonly drafts = new Set<string>();
   private claims: Claim[] = [];
   private readonly crops = new Map<string, Promise<void>>();
-  /** Bumped by `clearAll`: work started before it lands nowhere. */
   private generation = 0;
 
   constructor(private readonly store: ScopeStore) {}
@@ -80,7 +68,6 @@ export class DraftCitations {
     );
   }
 
-  /** Swap the sharp crop in once it renders. `compose` waits for it. */
   trackCrop(
     draftKey: string,
     id: string,
@@ -103,9 +90,6 @@ export class DraftCitations {
     this.crops.set(id, settled);
   }
 
-  /** Wait for the sharp crops of `draftKey`'s comments, then take them out of
-   *  the draft. `null` when the draft holds none, or when an identity change
-   *  dropped them meanwhile. */
   async take(draftKey: string): Promise<{
     citations: readonly DraftCitation[];
     restore: () => void;
@@ -133,7 +117,6 @@ export class DraftCitations {
     this.claims.push(claim);
   }
 
-  /** The claims whose envelope `prompt` carries, removed from the held set. */
   private release(prompt: string): Claim[] {
     const found = this.claims.filter((c) => prompt.includes(c.envelope));
     if (found.length)

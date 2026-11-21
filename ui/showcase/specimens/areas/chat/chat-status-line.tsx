@@ -140,9 +140,6 @@ function ChatStatusLineSpecimen() {
         ]}
       />
 
-      {/* The shimmer sweep is a gradient, not a utility: it reads the two
-          tokens by name inside an arbitrary `--bg` property, so they are
-          listed as tokens rather than as classes. */}
       <SpecimenTokens
         classes={["text-ink", "text-ink-muted", "--ht-input", "--ht-ink-muted"]}
       />
@@ -150,7 +147,6 @@ function ChatStatusLineSpecimen() {
   );
 }
 
-/** The `@houston-ai/*` symbols this page documents. */
 export const sources: string[] = ["ChatStatusLine", "Shimmer"];
 
 export const specimen: Specimen = {

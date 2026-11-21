@@ -2,37 +2,14 @@ import { Button, cn } from "@houston-ai/core";
 import { Check, Lock, Play, StepForward } from "lucide-react";
 import { SpecChip } from "../spec-chip";
 
-/** What a node on the path is doing right now. `started` is a lesson the user
- *  began and left: it resumes rather than starts. */
 export type AcademyNodeState = "completed" | "started" | "available" | "locked";
 
-/**
- * One stop on the Academy path: a marker, what the lesson is, and the one
- * thing to do about it.
- *
- * Props-only and state-driven rather than three near-copies of a row, so the
- * marker, the tone and the affordance can never disagree about the same
- * chapter. A locked node carries no button at all — a disabled control invites
- * a click that answers nothing.
- *
- * Rows are transparent planes joined by a hairline rail, not a grid of bordered
- * cards: a path reads as one line the eye can follow. A row you can act on
- * paints the app's own row fill under the pointer, exactly as the flat page
- * language does everywhere else; a LOCKED row stays flat and quiet, because
- * painting a row that answers nothing is a promise the path cannot keep. The
- * focus ring belongs to the button inside the row and to nothing else — a
- * second ring around the whole row would draw two rectangles for one target.
- */
 export function AcademyPathNode(props: {
   state: AcademyNodeState;
   title: string;
   description: string;
-  /** The count the node carries: experience banked on a completed lesson,
-   *  the beat it resumes on for a started one. */
   chip?: string;
-  /** The node's single action. Omitted on a locked node. */
   action?: { label: string; onClick: () => void };
-  /** Draws no rail below, so the path ends cleanly. */
   last?: boolean;
 }) {
   const locked = props.state === "locked";
@@ -64,9 +41,6 @@ export function AcademyPathNode(props: {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {props.chip ? (
-            // The same quiet chip the status header wears for usage points:
-            // one shape for "a count you already banked", so the page never
-            // asks which of two pills means what.
             <SpecChip className="tabular-nums">{props.chip}</SpecChip>
           ) : null}
           {props.action ? (

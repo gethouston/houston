@@ -5,19 +5,6 @@ import {
 import { exactKeys, nonEmpty, record } from "./parse-turn-fields";
 import type { TurnCoordinator, TurnRequest } from "./types";
 
-/**
- * The gateway marks Houston's own turn, and only it, with `coordinator`: the
- * turn's Houston credential, bound by the gateway to the owner and to this
- * turn's claim. The person's message may carry the answers to approval cards
- * (`approvals`) and one-use grants (`grants`); both are host-owned fields a
- * standing pod's host reads off the message route, so on a pooled turn they
- * ride the envelope and are meaningless anywhere but a coordinator turn.
- *
- * A coordinator turn must be a claimed, granted, attributed and real turn:
- * the credential dies with the claim, the facade it lives in exists only with
- * a grant, approvals need the person they belong to, and a shadow turn never
- * acts.
- */
 export function parseTurnCoordinator(
   b: Record<string, unknown>,
   turn: Pick<TurnRequest, "claim" | "grant" | "actingAs"> & {
@@ -46,8 +33,6 @@ export function parseTurnCoordinator(
   }
   return {
     ...(coordinator ? { coordinator } : {}),
-    // Answers stay raw: the receipt seam parses them exactly as the host's
-    // message route does, dropping anything that is not an answer.
     ...(b.approvals !== undefined ? { approvals: b.approvals } : {}),
     ...(grants ? { grants } : {}),
   };

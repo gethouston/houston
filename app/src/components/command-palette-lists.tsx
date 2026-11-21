@@ -1,12 +1,3 @@
-/**
- * The command palette's "jump to a thing" groups: agents and recent
- * missions. Split out of `command-palette.tsx`, which keeps the dialog, the
- * data it reads and the actions; these are pure lists over what it hands them.
- *
- * Each group renders NOTHING when it is empty (its separator included), so the
- * palette never shows a heading over no rows.
- */
-
 import {
   CommandGroup,
   CommandItem,
@@ -19,9 +10,6 @@ import type { RawConversation } from "../lib/conversations-facade";
 import type { Agent } from "../lib/types";
 import { missionCardAgentName } from "./board/mission-card-agent";
 
-// 28px outer circle so the inner helmet (forced to 20px by cmdk's
-// `[&_[cmdk-item]_svg]:h-5` rule) sits at roughly its native 65%
-// proportion instead of overflowing the badge.
 const AVATAR_PX = 28;
 
 function PaletteAvatar({ color }: { color?: string }) {
@@ -30,9 +18,6 @@ function PaletteAvatar({ color }: { color?: string }) {
   );
 }
 
-/**
- * Agents in sidebar order, each opening its own Tasks screen.
- */
 export function PaletteAgents({
   agents,
   onSelect,

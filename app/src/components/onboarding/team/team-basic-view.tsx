@@ -12,20 +12,6 @@ import { TeamBasicAttention } from "./team-basic-attention";
 import type { RosterPatch } from "./team-roster-edit";
 import type { BasicTeam } from "./use-basic-team";
 
-/**
- * The starter team, welcomed as new hires: each one an employee card named
- * for its job, with the name, the job, the industry and the color all open to
- * change, then hired together by the footer's primary. Before hiring, the
- * footer's "Hire one more" adds a card on top, scrolled into view, and a
- * draft's Remove lets it go. Once hired, a card shows its
- * status and stays editable through the roster. A hire made one by one that
- * failed is named above them (`TeamBasicAttention`), since it holds the team
- * back from finishing.
- *
- * The cards are one form so Enter in any name hires the team, the same as the
- * primary in the footer, which submits it by `formId`. A name that holds the
- * team back takes the person to that card's field.
- */
 export function TeamBasicView({
   team,
   takenNames,
@@ -36,21 +22,16 @@ export function TeamBasicView({
   onRemove,
 }: {
   team: BasicTeam;
-  /** Every name taken in the workspace and on the roster. */
   takenNames: readonly string[];
   formId: string;
   onSubmit: () => BasicTeamSubmit;
-  /** Edits a hire on the roster, by its roster key. */
   onEdit: (key: string, patch: RosterPatch) => void;
-  /** Tries a failed create again, by its roster key. */
   onRetry: (key: string) => void;
-  /** Lets a failed hire made one by one go, by its roster key. */
   onRemove: (key: string) => void;
 }) {
   const { t } = useTranslation("setup");
   const reduce = useReducedMotion() ?? false;
   const form = useRef<HTMLFormElement>(null);
-  // A card added on top is brought into view, wherever the person scrolled.
   const firstKey = team.rows[0]?.key;
   const shownFirst = useRef(firstKey);
   useEffect(() => {

@@ -4,16 +4,6 @@ import { expect, test } from "./support/fixtures";
 import { AUTH_WEB_URL, E2E_VIEWER, signInAsViewer } from "./support/identity";
 import { missionCard, openTeamSection } from "./support/team-nav";
 
-/**
- * The open chat's header people stack: who ELSE is on this task. It sits on
- * the left beside the agent's name, apart from the panel controls, and is a
- * button that opens the roster (a hover tooltip was its only affordance, so
- * it was dead on touch). A task nobody but the viewer is on shows no stack
- * at all: your own face as a dead control was the complaint.
- *
- * Signed in (identity-ON server) because "nobody but me" needs a viewer id.
- */
-
 test.use({ baseURL: AUTH_WEB_URL, teamBoard: true });
 
 const PEOPLE_LABEL = "People on this task";
@@ -50,7 +40,6 @@ test("a task with only the viewer on it shows no people stack in the chat header
   await expect(
     panel(page).locator(`[role="group"][aria-label="${PEOPLE_LABEL}"]`),
   ).toHaveCount(0);
-  // The panel controls are still all there.
   await expect(
     panel(page).getByRole("button", { name: "Chat actions" }),
   ).toBeVisible();
@@ -74,8 +63,6 @@ test("a team task's stack sits left of the controls and opens the roster on clic
   await expect(stack).toBeVisible();
   await expect(stack.locator('[data-slot="avatar"]')).toHaveCount(2);
 
-  // Left of the menu: the stack belongs with the task, the controls with
-  // the panel.
   const stackBox = await stack.boundingBox();
   const menuBox = await panel(page)
     .getByRole("button", { name: "Chat actions" })

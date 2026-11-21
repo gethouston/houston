@@ -1,33 +1,11 @@
 import type { ReadOperation } from "./assistant-collect.ts";
 import { routeKey } from "./assistant-collect.ts";
 
-/**
- * Which SDK operation PUBLISHES a route when several resolve to the same one.
- *
- * An SDK module reaches one host route from two names on purpose: a no-refetch
- * write primitive and the refetching facade op that delegates to it both end at
- * `GET /agents/{agentId}/auth/status`. Only one of them can be the catalog's
- * entry for that route, and leaving the choice to whichever name the facade
- * walk happens to reach first means a reordered `return {}` block silently
- * swaps a callable operation for its hidden twin, with a green build.
- *
- * So visibility decides, never order: the operation the assistant is allowed to
- * dispatch is the one that survives. Two claimants of the SAME visibility is
- * not a tie this generator may break on its own, so both are handed to the
- * coverage gate instead.
- */
-
 export interface ClaimOutcome {
-  /** The reads whose operation belongs in the catalog. */
   published: ReadOperation[];
-  /**
-   * Reads a canonical claimant already covers. Dropped from the CATALOG only:
-   * they are still functions on the SDK surface, so the gate still judges them.
-   */
   shadowed: ReadOperation[];
 }
 
-/** The same read with the conflict its annotation must carry to the gate. */
 function withConflict(
   read: ReadOperation,
   route: string,
@@ -47,7 +25,6 @@ function withConflict(
 
 export function claimRoutes(
   reads: readonly ReadOperation[],
-  /** Routes the canonical adapter copy already publishes. */
   claimedElsewhere: ReadonlySet<string>,
 ): ClaimOutcome {
   const outcome: ClaimOutcome = { published: [], shadowed: [] };

@@ -17,15 +17,6 @@ import type { SidebarBaseRowContext } from "./sidebar-row-context";
 export type { SidebarLabels } from "./sidebar-labels";
 export type { SidebarItem, SidebarProps } from "./sidebar-props";
 
-/**
- * The rail: a top line (the collapse toggle and the host's verbs), an optional
- * full-width notice under it, the list of people, and the host's footer.
- *
- * The list is the rail's only content: pinned rows first, outside the scroll
- * box so scrolling never takes them away, then the grouped (or flat) list,
- * closed by the host's `listFooter` (the add shortcut). Everything that is
- * not a person lives in the host's footer.
- */
 export function AppSidebar({
   headerActions,
   headerBelow,
@@ -49,7 +40,6 @@ export function AppSidebar({
   const grouped = !collapsed && groups !== undefined;
   const baseRowCtx: SidebarBaseRowContext = { selectedId, onSelect };
 
-  // Pinned rows sit on the list's inset but outside its scroll box.
   const pinned = !collapsed && pinnedItems.length > 0 && (
     <div className={cn("shrink-0", sidebarRailInset, sidebarPinnedNeighbour)}>
       <SidebarPinnedList items={pinnedItems} ctx={baseRowCtx} />
@@ -81,7 +71,6 @@ export function AppSidebar({
 
         {headerBelow}
 
-        {/* Wrapped so the tour can spotlight just the list. */}
         <div data-tour-target="agents" className="flex min-h-0 flex-1 flex-col">
           {pinned}
           <ScrollArea
@@ -117,8 +106,6 @@ export function AppSidebar({
           </ScrollArea>
         </div>
 
-        {/* shrink-0 so a short window squeezes the scrollable list, never the
-            footer. */}
         {footer && <div className="shrink-0">{footer}</div>}
       </aside>
 

@@ -1,15 +1,3 @@
-/**
- * The PER-AGENT policy calls (Teams v2): who may drive one shared agent, the
- * toolkit and model ceilings a manager sets on it, the acting user's own model
- * pick underneath that ceiling, and whether its routine triggers are live.
- *
- * Gateway-only: assignments and ceilings are multiplayer concepts a
- * single-user host has nothing to resolve them against. Nothing here degrades — a non-2xx always throws a `TeamsHttpError`
- * carrying the HTTP `status`, so the two surfaces a pre-Teams gateway answers
- * `404` for (model choice, trigger status) reach their caller, which decides
- * for itself whether that hides a control or is a failure.
- */
-
 import {
   parseTriggerPlanSkipped,
   parseTriggerStatusReason,
@@ -174,10 +162,6 @@ export async function agentTriggerStatus(
   return items.map(withParsedFields);
 }
 
-/**
- * Drops a `plan_skipped` or a `reason` this client cannot explain (a newer
- * gateway's code); the rest passes as is.
- */
 function withParsedFields(item: TriggerStatusItem): TriggerStatusItem {
   const { plan_skipped, reason, ...rest } = item;
   const skipped =

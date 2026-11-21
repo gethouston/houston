@@ -1,7 +1,3 @@
-// The request board on /data-partners/refer: the industry tabs and the search
-// narrow the cards already in the page, and the count says how many are left.
-// Nothing is fetched or rendered here; without JS every card stands.
-
 (() => {
   const board = document.querySelector("[data-board]");
   if (!board) return;

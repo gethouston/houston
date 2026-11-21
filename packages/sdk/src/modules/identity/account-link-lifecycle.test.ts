@@ -53,8 +53,6 @@ describe("signing out while a link is in flight", () => {
 
   it("keeps the refusal notice when the flow's own sign-out passes through sign-out", async () => {
     const kit = identityKit({ sessionEmail: "other@example.com" });
-    // The web port signs the provisional session out through the app's
-    // sign-out, which abandons whatever link is running.
     kit.whenSignedOut(() => kit.identity.abandonAccountLink());
     await kit.identity.beginAccountLink(
       kit.pending("google.com", "p@example.com"),

@@ -2,7 +2,6 @@ import { describe, expect, test, vi } from "vitest";
 import type { HoustonClientBase } from "./base";
 import { BrowserLiveMixin } from "./browser-live-mixin";
 
-/** The adapter binds the SDK's live view to the agent's runtime scope, nothing more. */
 function client(cp: object | null) {
   const connection = {
     send: vi.fn(),

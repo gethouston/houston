@@ -1,11 +1,3 @@
-/**
- * The shared `.houstonagent` file itself: its preview, the optional threat
- * scan, and which of its skills / routines / learnings come along.
- *
- * Everything downstream (the name suggestion, the picker steps, the install)
- * reads the preview, so nothing else in the flow parses the package.
- */
-
 import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
@@ -45,7 +37,6 @@ export function useImportPackage(options: {
       const u8 = new Uint8Array(bytes);
       const result = await getEngine().importPreview(u8.buffer);
       setUploaded(result);
-      // Everything arrives selected: the user unchecks what they don't want.
       setSelection({
         skillSlugs: new Set(result.preview.skills.map((s) => s.slug)),
         routineIds: new Set(result.preview.routines.map((r) => r.id)),

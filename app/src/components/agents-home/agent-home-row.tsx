@@ -5,20 +5,6 @@ import { NeedsYouChip } from "../shell/agent-sidebar-status";
 import { AgentAvatarStack } from "./agent-avatar-stack";
 import { type AgentHomeRow, agentHomePreview } from "./agents-home-model";
 
-/**
- * One agent in the phone's Agents home, in the grammar of a messaging app's
- * chat list: a large avatar on the left (fanned into a stack when the agent
- * holds several conversations), the agent's name beside it with the time of
- * its latest movement trailing, and under the name the preview line — the
- * title of the agent's most recently moved task, "Typing" while the agent has
- * a task running, or "No tasks yet" — with the needs-you count as the row's
- * badge.
- *
- * The preview is the latest TASK, not a message: an agent is a thread of
- * many conversations, and the one line a row has room for is the thing that
- * moved last. The divider between rows is the LIST's (one hairline per row,
- * inset the same distance from both screen edges), so this cell draws none.
- */
 export function AgentHomeRowCell({
   row,
   onOpen,
@@ -45,7 +31,6 @@ export function AgentHomeRowCell({
             {row.agent.name}
           </span>
           {row.lastAt !== null && (
-            // data-relative-time: a live clock the visual suite masks.
             <span
               data-relative-time
               className="shrink-0 text-xs text-ink-muted tabular-nums"
@@ -66,9 +51,6 @@ export function AgentHomeRowCell({
   );
 }
 
-/** The preview line, by {@link agentHomePreview}. "Typing" wears the success
- *  tone: it is the one live state the row has, and the ring on the avatar
- *  already says the same thing in colour. */
 function PreviewLine({ row }: { row: AgentHomeRow }) {
   const { t } = useTranslation("shell");
   const preview = agentHomePreview(row);

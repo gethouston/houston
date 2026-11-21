@@ -27,9 +27,6 @@ describe("settleUsageWindow", () => {
   });
 
   it("draws a window whose reset has passed as empty, not as its last percent", () => {
-    // The stuck strip: "49% used" with no reset note, hours after the 5h window
-    // reset. The reset note was already omitted for a past instant; the bar and
-    // percent must roll over with it.
     deepStrictEqual(
       settleUsageWindow({ ...live, resetsAt: "2026-09-10T07:00:00Z" }, now),
       { id: "session", usedPercent: 0, resetsAt: null, windowMinutes: 300 },

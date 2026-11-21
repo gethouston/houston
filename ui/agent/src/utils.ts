@@ -1,10 +1,5 @@
-/**
- * Finder-style formatting and sorting utilities. The Modified column's own
- * friendly date lives in format-modified.ts.
- */
 import type { FileNode, FolderNode } from "./tree";
 
-/** Format bytes like Finder (SI units: 1000, not 1024). */
 export function formatSize(bytes: number): string {
   if (bytes === 0) return "Zero bytes";
   if (bytes < 1000) return `${bytes} bytes`;
@@ -13,13 +8,9 @@ export function formatSize(bytes: number): string {
   return `${(bytes / 1000000000).toFixed(1)} GB`;
 }
 
-// --- Sort ---
-
-/** The three sortable columns — the same three the list view shows. */
 export type SortKey = "name" | "dateModified" | "size";
 export type SortDirection = "asc" | "desc";
 
-/** Recursively sort a tree (folders first, then by selected column). */
 export function sortTree(
   node: FolderNode,
   key: SortKey,
@@ -38,8 +29,6 @@ export function sortTree(
       case "name":
         cmp = fa.name.localeCompare(fb.name);
         break;
-      // Order comes from the RAW timestamp, never the friendly wording: two
-      // files both showing "Monday" still sort by the minute they landed.
       case "dateModified":
         cmp = (fa.dateModified ?? 0) - (fb.dateModified ?? 0);
         break;

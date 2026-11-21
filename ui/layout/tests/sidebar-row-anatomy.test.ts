@@ -36,23 +36,10 @@ function source(file: string): string {
   return readFileSync(join(SRC, file), "utf8");
 }
 
-/**
- * Every module that draws an interactive line in the rail. The anatomy is only
- * defined once if all of them go THROUGH the one row component rather than
- * reproducing its geometry, so this list is the contract and the assertion
- * below is what keeps a new row kind from quietly forking it.
- */
-const ROW_CONSUMERS = [
-  "sidebar-group-header.tsx", // a folder's header
-  "sidebar-item-row.tsx", // an agent row
-];
+const ROW_CONSUMERS = ["sidebar-group-header.tsx", "sidebar-item-row.tsx"];
 
 describe("sidebar row anatomy", () => {
   it("draws EVERY rail row through the one row component", () => {
-    // The whole design: a team header and an agent are one object wearing
-    // different options. A module that
-    // hand-rolls a row is how the rail went back to reading as several stacked
-    // lists.
     for (const file of ROW_CONSUMERS) {
       const src = source(file);
       ok(src.includes("<SidebarRowButton"), file);
@@ -60,8 +47,6 @@ describe("sidebar row anatomy", () => {
   });
 
   it("puts the pinned rows, the list and the account row on ONE left edge", () => {
-    // The inset is one export, spent once per run of rows: a second pad
-    // anywhere hangs that run off the column the others sit on.
     ok(includes(sidebarRailInset, "px-2"));
     const rail = source("sidebar.tsx");
     const wrapper = /data-tour-target="agents"[^>]*className="([^"]*)"/.exec(
@@ -78,8 +63,6 @@ describe("sidebar row anatomy", () => {
   });
 
   it("keeps the row geometry OUT of its consumers", () => {
-    // No consumer may restate the height, the indent, the glyph box or the
-    // type: those are the values that drift, and they only exist in one module.
     for (const file of ROW_CONSUMERS) {
       const src = source(file);
       for (const literal of [
@@ -97,8 +80,6 @@ describe("sidebar row anatomy", () => {
   });
 
   it("gives every row the SAME fixed height, in one place", () => {
-    // A rail that reflows under the cursor is the most obvious tell of a
-    // hand-built list, so height is pinned and no state may change it.
     ok(includes(sidebarRowButtonClasses.root, "h-7"));
     ok(includes(sidebarRowButtonClasses.button, "h-7"));
     for (const paint of Object.values(sidebarRowState)) {
@@ -109,12 +90,8 @@ describe("sidebar row anatomy", () => {
   });
 
   it("indents CHILD rows one step past the block rows they hang under", () => {
-    // Two indents and only two: a block head sits at the rail's edge, and
-    // everything it contains shares one column 20px to its right.
     ok(includes(sidebarRowButtonClasses.depthBlock, "pl-3"));
     ok(includes(sidebarRowButtonClasses.depthChild, "pl-8"));
-    // The pill spans the row either way — hierarchy is inside it, never a
-    // ragged left edge.
     ok(includes(sidebarRowButtonClasses.root, "w-full"));
     strictEqual(includes(sidebarRowButtonClasses.root, "pl-2"), false);
     strictEqual(includes(sidebarRowButtonClasses.root, "pl-5"), false);
@@ -124,35 +101,23 @@ describe("sidebar row anatomy", () => {
     ok(sidebarRowButtonClasses.icon.startsWith(sidebarIconBox));
     ok(includes(sidebarIconBox, "size-5"));
     ok(includes(sidebarIconBox, "shrink-0"));
-    // The box sizes the bare mark it holds, so one icon node can serve the
-    // rail and the phone's More menu at their own sizes.
     ok(sidebarIconBox.endsWith(sidebarMarkSize.slot));
     ok(includes(sidebarMarkSize.slot, "[&>svg]:size-4"));
     ok(includes(sidebarMarkSize.slot, "[&>img]:size-4"));
     strictEqual(sidebarMarkSize.glyph, "size-3.5");
-    // A mark sized off the column fills it exactly.
     strictEqual(sidebarGlyphDiameter, 20);
-    // The box itself carries no gap: the gap is the ROW's, spent beside it, so
-    // a consumer mounting the box elsewhere does not inherit rail spacing.
     strictEqual(/\bm[rlxe]-/.test(sidebarIconBox), false, sidebarIconBox);
   });
 
   it("runs every row at ONE type size", () => {
-    // One size, so the rail reads as one list. A second size anywhere is how a
-    // rail starts looking like a settings form.
     ok(includes(sidebarRowType.item, "text-[13px]"));
     deepStrictEqual(Object.keys(sidebarRowType), ["item"]);
-    // The size lives on the type ramp, never on the geometry class, or the two
-    // would have to be kept in step by hand.
     for (const token of tokens(sidebarRowButtonClasses.button)) {
       strictEqual(/^text-(\[|sm$|xs$|base$)/.test(token), false, token);
     }
   });
 
   it("gives both type steps a line-height shorter than the row", () => {
-    // 28px box, flex-centred: an explicit leading keeps the label optically
-    // centred, and one taller than the box would push it off-centre while a
-    // `leading-none` clips descenders against the label's truncation overflow.
     for (const step of Object.values(sidebarRowType)) {
       ok(
         [...tokens(step)].some((t) => t.startsWith("leading-")),
@@ -163,19 +128,12 @@ describe("sidebar row anatomy", () => {
   });
 
   it("sets the WHOLE rail at one weight, 510", () => {
-    // Linear's rails sit at 510, the notch past medium, and every line of ours
-    // wears it: rows, team headers and the band alike. One weight means weight
-    // can never track depth OR state, so a click cannot re-measure a label and
-    // move the truncation point of a long agent name.
     for (const step of Object.values(sidebarRowType)) {
       ok(includes(step, "font-weight-510"), step);
     }
   });
 
   it("keeps weight OFF the geometry, the paint and the depths", () => {
-    // Weight belongs to the type ramp and nowhere else. A second class that
-    // also spoke about weight is exactly how the band drifted away from the
-    // rows it heads.
     for (const cls of [
       sidebarRowButtonClasses.depthBlock,
       sidebarRowButtonClasses.depthChild,
@@ -191,8 +149,6 @@ describe("sidebar row anatomy", () => {
         );
       }
     }
-    // The depth prop carries the indent and NOTHING else now that weight is
-    // uniform — no consumer may reintroduce a per-depth weight.
     strictEqual(
       "weightBlock" in sidebarRowButtonClasses,
       false,
@@ -201,8 +157,6 @@ describe("sidebar row anatomy", () => {
   });
 
   it("never goes bold anywhere in the rail", () => {
-    // "Your AI Employees" reading as semibold grey was the tell that the rail had been
-    // built as a heading with a list under it.
     for (const cls of [
       ...Object.values(sidebarRowType),
       ...Object.values(sidebarRowState),
@@ -211,7 +165,6 @@ describe("sidebar row anatomy", () => {
       strictEqual(includes(cls, "font-semibold"), false, cls);
       strictEqual(includes(cls, "font-bold"), false, cls);
     }
-    // And no consumer may hand-roll one back onto a row.
     for (const file of ROW_CONSUMERS) {
       const src = source(file);
       for (const literal of ["font-medium", "font-semibold", "font-bold"]) {
@@ -221,7 +174,6 @@ describe("sidebar row anatomy", () => {
   });
 
   it("never pins a colour on the glyph box", () => {
-    // A selected row's glyph must brighten WITH its label, as one object.
     for (const token of tokens(sidebarIconBox)) {
       strictEqual(token.startsWith("text-"), false, token);
     }
@@ -240,10 +192,6 @@ describe("sidebar row anatomy", () => {
   });
 
   it("keeps every affordance visible, quiet, and never hover-GATED", () => {
-    // Houston's rule: hover may enhance, never gate. A "..." that only exists
-    // under the cursor is unreachable by touch and invisible to a scan. ONE
-    // class now, so the team menu, the agent menu and the band's "+" cannot
-    // diverge — they are literally the same string.
     const cls = sidebarRowAffordanceClasses;
     strictEqual(includes(cls, "opacity-0"), false);
     strictEqual(includes(cls, "hidden"), false);
@@ -254,10 +202,6 @@ describe("sidebar row anatomy", () => {
   });
 
   it("lets the HOST fill an agent row's affordance slot, and owns none itself", () => {
-    // The row's "..." is DATA: the host builds the trigger and the menu it
-    // opens (`item.affordance`); the library only places it beside the button.
-    // The library itself still knows nothing about renaming, copying or
-    // deleting an agent — no menu component, no action callbacks.
     const row = source("sidebar-item-row.tsx");
     ok(/affordance=\{item\.affordance\}/.test(row), "slot is item-driven");
     strictEqual(row.includes("sidebarRowAffordanceGutter"), false, "no gutter");
@@ -266,7 +210,6 @@ describe("sidebar row anatomy", () => {
       source("sidebar-props.ts").includes("affordance?: ReactNode"),
       "SidebarItem offers the affordance for a host to fill",
     );
-    // The collapsed rail's hover flyout is too transient to anchor a menu to.
     ok(
       source("sidebar-collapsed-item.tsx").includes("affordance: undefined"),
       "flyout strips the affordance",
@@ -282,9 +225,6 @@ describe("sidebar row anatomy", () => {
   });
 
   it("gives the row a visible focus ring, ON the pill it is outlining", () => {
-    // The ring rides the SAME inset layer as the fill, scoped to the row's own
-    // button. Left on the full-width button it drew a rectangle 12px wider than
-    // the pill it was meant to be tracing.
     ok(includes(sidebarRowButtonClasses.button, "focus-visible:outline-none"));
     strictEqual(
       /focus-visible:ring/.test(sidebarRowButtonClasses.button),
@@ -294,21 +234,14 @@ describe("sidebar row anatomy", () => {
     ok(sidebarRowFill.includes("button:first-child:focus-visible"));
     ok(sidebarRowFill.includes("before:ring-2"));
     ok(sidebarRowFill.includes("before:ring-focus"));
-    // The affordance is a separate control and keeps its own ring.
     ok(includes(sidebarRowAffordanceClasses, "focus-visible:ring-focus"));
     ok(includes(sidebarRowAffordanceClasses, "focus-visible:outline-none"));
   });
 
   it("paints an INSET, rounded pill — radius and inset in ONE family", () => {
-    // A fill spanning the rail edge to edge is a bar: at 28px tall an 8px
-    // corner is invisible and the rail reads as stacked rectangles. Pulling the
-    // paint 6px in from each side is what makes the corner legible, on the same
-    // `rounded-lg` an employee screen's section lozenges wear.
     ok(sidebarRowFill.includes("before:left-1.5"));
     ok(sidebarRowFill.includes("before:right-1.5"));
     ok(sidebarRowFill.includes("before:rounded-lg"));
-    // And nothing else in the rail restates either value, so the pill cannot
-    // drift per row kind.
     for (const cls of [
       sidebarRowButtonClasses.root.replace(sidebarRowFill, ""),
       sidebarRowButtonClasses.button,
@@ -317,38 +250,27 @@ describe("sidebar row anatomy", () => {
       strictEqual(/rounded-/.test(cls), false, cls);
       strictEqual(/-?[lmr][xrl]?-1\.5/.test(cls), false, cls);
     }
-    // No consumer restates the INSET either.
     for (const file of ROW_CONSUMERS) {
       strictEqual(/-1\.5\b/.test(source(file)), false, file);
     }
   });
 
   it("keeps the paint OFF the element that carries the geometry", () => {
-    // Invariant 2. Inset the row itself and the glyph column moves 6px with it;
-    // a pseudo-element paints, spans nothing and pushes nothing.
     ok(includes(sidebarRowButtonClasses.root, "relative"));
     for (const paint of Object.values(sidebarRowState)) {
       strictEqual(/(^| )bg-/.test(paint), false, paint);
       strictEqual(/(^| )hover:bg-/.test(paint), false, paint);
     }
-    // The button and the affordance are positioned ONLY so they paint above the
-    // pill; a static sibling would sit underneath it.
     ok(includes(sidebarRowButtonClasses.button, "relative"));
     ok(includes(sidebarRowAffordanceClasses, "relative"));
   });
 
   it("gives the row TWO independent gaps: tight icon, comfortable trailing", () => {
-    // One `gap` on the row set both at once, so tightening the icon side
-    // dragged the trailing side in with it and the badge and the "..." ended up
-    // crowding the row's right edge. They are separate margins now.
     strictEqual(
       /\bgap-/.test(sidebarRowButtonClasses.button),
       false,
       "a row-level gap would couple the two sides again",
     );
-    // Glyph EDGE to first letter is this margin plus the slack the mark leaves
-    // in the 20px box: 0 for a mark that fills it, 2px for a 16px Lucide mark,
-    // and 3px for a 14px team mark. Every glyph kind must land in 6-9px, Linear's range.
     ok(includes(sidebarRowButtonClasses.icon, "mr-1.5"));
     const px = (token: string) => Number(token.split("-").pop()) * 4;
     const box = px("size-5");
@@ -361,10 +283,7 @@ describe("sidebar row anatomy", () => {
       );
       strictEqual(Number.isInteger((box - glyph) / 2), true, `${glyph}px`);
     }
-    // A badge is a separate object from the name, not part of the phrase, so it
-    // gets more air than the icon does — strictly more.
     ok(includes(sidebarRowButtonClasses.trailing, "ml-2"));
-    // One family, so every row kind moves together.
     for (const file of ROW_CONSUMERS) {
       strictEqual(/"[^"]*\bgap-\d/.test(source(file)), false, file);
       strictEqual(/"[^"]*\bm[rl]-\d/.test(source(file)), false, file);
@@ -372,16 +291,11 @@ describe("sidebar row anatomy", () => {
   });
 
   it("stops the row's last thing INSIDE the pill, on one number", () => {
-    // The pill insets its paint 6px. At 4px the trailing badge and the "..."
-    // both overhung it, which is what made the "..." look jammed against the
-    // rail's edge. 8px on both — the button pads, the affordance (a SIBLING)
-    // margins — puts them 2px inside it.
     ok(includes(sidebarRowButtonClasses.button, "pr-2"));
     ok(includes(sidebarRowAffordanceClasses, "mr-2"));
   });
 
   it("rotates the disclosure mark on a transform-only transition", () => {
-    // DESIGN.md allows transform + opacity per frame and nothing else.
     const cls = sidebarRowButtonClasses.caret;
     ok(includes(cls, "transition-transform"));
     ok(includes(cls, "duration-150"));
@@ -389,9 +303,6 @@ describe("sidebar row anatomy", () => {
   });
 
   it("draws the disclosure as a FILLED triangle, right after the words", () => {
-    // A filled triangle says "this is closed"; an outline chevron says "there
-    // is more over there". Local SVG, because no icon set ships this shape at
-    // this weight and a dependency for one path would be absurd.
     const src = source("sidebar-row-button.tsx");
     const mark = source("sidebar-row-caret.tsx");
     strictEqual(mark.includes("lucide-react"), false, "no icon-set chevron");
@@ -399,28 +310,18 @@ describe("sidebar row anatomy", () => {
     ok(mark.includes('viewBox="0 0 16 16"'));
     ok(mark.includes("<path"));
     ok(includes(sidebarRowButtonClasses.caret, "fill-current"));
-    // Linear's own 16px box. At 12px the same 5x7 mark was a speck.
     ok(includes(sidebarRowButtonClasses.caret, "size-4"));
-    // One step short of the label's own `hover-text`, and a full step past the
-    // `ink-muted/60` wash it used to wear: visible at rest without competing
-    // with the words. Hover takes it the rest of the way to ink.
     ok(includes(sidebarRowButtonClasses.caret, "text-ink-muted"));
     strictEqual(sidebarRowButtonClasses.caret.includes("/60"), false);
     ok(includes(sidebarRowButtonClasses.caret, "group-hover/row:text-ink"));
-    // Immediately after the label, inside the phrase it belongs to — never
-    // pinned to the row's right edge, and never a second placement option.
     ok(src.includes("c.labelGroup"));
     strictEqual(src.includes('"trailing"'), false, "no trailing caret side");
     strictEqual(source("sidebar-group-header.tsx").includes("caret:"), false);
   });
 
   it("states the selected row once, and shares it across every row kind", () => {
-    // Both fills are spent on the pill layer, never on the row itself.
     ok(includes(sidebarRowState.active, "before:bg-sidebar-active"));
     ok(includes(sidebarRowState.active, "text-ink"));
-    // The hover wash is its OWN token at 6%, against the pill's 10%: visible
-    // on both canvases, never mistakable for the selected row. The old
-    // `bg-hover/50` resolved to ~3-4% and was invisible in practice.
     ok(includes(sidebarRowState.hover, "hover:before:bg-sidebar-hover"));
     strictEqual(sidebarRowState.hover.includes("/50"), false);
     strictEqual(
@@ -430,10 +331,6 @@ describe("sidebar row anatomy", () => {
   });
 
   it("keeps NO inline edit in the rail: identity is edited in ONE dialog", () => {
-    // A block's name, mark and colour are one identity, changed together in
-    // the host's "change icon & name" dialog (the menu's one entry). An inline
-    // rename beside that dialog would be the same question answered two ways,
-    // so no rail row swaps into a text field.
     strictEqual(
       source("sidebar-group-header.tsx").includes("<input"),
       false,
@@ -447,9 +344,6 @@ describe("sidebar row anatomy", () => {
   });
 
   it("stacks teams on the list's OWN rhythm, with no gap between blocks", () => {
-    // One rhythm from the band to the last row: a block adds no vertical space
-    // of its own, so two teams sit exactly as far apart as two agents do. The
-    // 10px it used to insert read as a hole in the rail — Linear's does not.
     const src = source("sidebar-tree-row.tsx");
     for (const gap of ["pt-2.5", "first:pt-0", "mt-"])
       strictEqual(src.includes(gap), false, `block spacing: ${gap}`);
@@ -457,14 +351,8 @@ describe("sidebar row anatomy", () => {
   });
 
   it("leaves the COLLAPSED rail its own anatomy", () => {
-    // A 36px glyph with a corner badge and a flyout is a different object, not
-    // a narrower row, which is why the primitive does not try to be it — and
-    // why the inset pill and the 6px row gap do not reach it: it has no label
-    // to sit beside and no width to be inset from.
     ok(includes(sidebarCollapsedItemClasses.trailing, "absolute"));
     ok(includes(sidebarCollapsedItemClasses.trailing, "pointer-events-none"));
-    // Where it perches is `sidebar-collapsed-item.test.ts`'s: on the avatar's
-    // shoulder.
     strictEqual("root" in sidebarCollapsedItemClasses, false);
   });
 });
@@ -488,7 +376,6 @@ describe("sidebar person row", () => {
     ok(includes(sidebarPersonRow.name, "font-semibold"));
     ok(includes(sidebarPersonRow.role, "text-xs"));
     ok(includes(sidebarPersonRow.role, "text-ink-muted"));
-    // The name and a two-line line fit with room to spare: 20 + 2 x 16 < 64.
     ok(px("leading-5") + 2 * px("leading-4") < px("h-16"));
     ok(includes(sidebarRowButtonClasses.personName, "truncate"));
     ok(includes(sidebarRowButtonClasses.personRole, "line-clamp-2"));
@@ -498,21 +385,15 @@ describe("sidebar person row", () => {
     const row = source("sidebar-item-row.tsx");
     ok(row.includes('anatomy="person"'));
     ok(row.includes("subtitle={item.subtitle}"));
-    // A row with neither a line nor a badge drops the second line, never the
-    // row's height.
     const button = source("sidebar-row-button.tsx");
     ok(button.includes("{(subtitle || trailing) && ("));
     ok(button.includes("person && c.personHeight"));
-    // The line clamps; the badge at its end never shrinks.
     ok(includes(sidebarRowButtonClasses.personBadge, "shrink-0"));
   });
 });
 
 describe("sidebar person row, message-list details", () => {
   it("gives the name and the line their own weights", () => {
-    // The row's `font-weight-510` sets `font-variation-settings`, which is
-    // inherited and beats `font-weight`: without the reset both lines render
-    // at 510 and the name stops standing out.
     ok(
       includes(
         sidebarRowButtonClasses.personText,
@@ -534,7 +415,6 @@ describe("sidebar person row, message-list details", () => {
   });
 
   it("drops the hairlines around a hovered or selected row, never under a pill", () => {
-    // The pill is translucent: a line it cannot cover must not be drawn.
     ok(
       includes(
         sidebarRowButtonClasses.personText,
@@ -542,8 +422,6 @@ describe("sidebar person row, message-list details", () => {
       ),
     );
     ok(source("sidebar-row-button.tsx").includes('data-person-text=""'));
-    // The row ABOVE hides its line too, whether the next row is a sibling in
-    // the tree or the scrolling list's first row under the pinned run.
     ok(
       sidebarRowNeighbour.includes(
         "[&:has(+*:hover)_[data-person-text]]:border-transparent",
@@ -572,7 +450,6 @@ describe("sidebar person row, message-list details", () => {
 
   it("spans the pill across the row and pads the portrait evenly inside it", () => {
     ok(includes(sidebarRowButtonClasses.personFill, "before:inset-x-0"));
-    // 12px from the pill's side, the same 12px it keeps top and bottom.
     ok(includes(sidebarPersonRow.padBlock, "pl-3"));
     ok(includes(sidebarPersonRow.padBlock, "pr-3"));
     ok(includes(sidebarPersonRow.padChild, "pl-8"));
@@ -583,8 +460,6 @@ describe("sidebar person row, message-list details", () => {
 
 describe("employee depth", () => {
   it("keeps root employees on the folder header edge and indents only members", () => {
-    // The glyph rows' indents are the person rows' own, so a folder header's
-    // glyph and a root employee's portrait start on one edge.
     strictEqual(
       sidebarRowButtonClasses.depthBlock,
       sidebarPersonRow.padBlock.split(" ")[0],

@@ -8,7 +8,6 @@ import {
 } from "../src/lib/providers.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
-// Models come from the hydrated pi catalog now, so populate the cache first.
 before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
 describe("isOpenCatalogProvider", () => {
@@ -26,9 +25,6 @@ describe("isOpenCatalogProvider", () => {
 
 describe("validModelOrNull", () => {
   it("keeps ANY live model id for an open-catalog provider", () => {
-    // The bug: a live OpenRouter model that isn't one of the ~5 curated seeds
-    // used to null out here, so the effective-model chain reverted the pick to
-    // the provider default. It must now pass through verbatim.
     strictEqual(
       validModelOrNull("openrouter", "moonshotai/kimi-k2"),
       "moonshotai/kimi-k2",
@@ -41,8 +37,6 @@ describe("validModelOrNull", () => {
   });
 
   it("still rejects unknown ids for a curated provider", () => {
-    // Retired / phantom SKUs on a curated provider stay nulled so the chain
-    // falls through to a model the server will actually accept.
     strictEqual(validModelOrNull("anthropic", "gpt-5.5-codex"), null);
     strictEqual(validModelOrNull("openai", "not-a-real-model"), null);
   });

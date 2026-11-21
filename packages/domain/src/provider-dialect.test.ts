@@ -53,8 +53,6 @@ test("an absent value stays absent (a read off disk, never a pick)", () => {
 });
 
 test("the spoken-alias ladder inherits the dialect instead of restating it", () => {
-  // `openai` resolves because the DIALECT says so, not because someone typed it
-  // into the alias table a second time — the two copies are how they drifted.
   for (const [display, canonical] of Object.entries(
     PROVIDER_CANONICAL_RENAME,
   )) {

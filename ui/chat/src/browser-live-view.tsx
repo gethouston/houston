@@ -20,35 +20,23 @@ import {
 
 export interface BrowserLiveViewProps {
   state: BrowserLiveViewState;
-  /** What the agent asked the person to do. */
   task: string;
   url: string;
   title: string;
   frames: BrowserLiveFrames;
-  /** Epoch ms the hand-off expires at; 0 while unknown. */
   expiresAt: number;
   onInput: (events: BrowserLiveViewInput[]) => void;
   onDone: () => void;
   onCancel: () => void;
-  /** Hides the view; the hand-off keeps waiting. */
   onClose: () => void;
   onRetry: () => void;
-  /** A frame that could not be drawn: not the person's problem, report it. */
   onPaintError?: (error: unknown) => void;
-  /** The last address typed was not a website. */
   addressRefused?: boolean;
   labels?: Partial<BrowserLiveViewLabels>;
 }
 
-/** Every answer and control presses in a touch, so the view feels it heard. */
 const PRESS = "active:scale-[0.97]";
 
-/**
- * The body of the live browser: the person drives the agent's own browser page
- * (sign in, a code, a captcha) and hands it back. Phone first: one column of
- * header, address bar, page, and the two answers at the bottom where a thumb
- * reaches them. The frame around it (dialog or sheet) belongs to the caller.
- */
 export function BrowserLiveView({
   state,
   task,
@@ -90,8 +78,6 @@ export function BrowserLiveView({
             {labels.privacy}
           </p>
         </div>
-        {/* The dialog frame's own X (rounded-lg, 16px glyph), with its hit
-            area grown to 44px for a thumb. */}
         <button
           aria-label={labels.close}
           className={`relative -mr-1 shrink-0 rounded-lg p-1.5 text-ink-muted outline-none transition-transform duration-150 ease-out after:absolute after:-inset-2 hover:bg-hover hover:text-ink focus-visible:ring-[3px] focus-visible:ring-focus/50 ${PRESS}`}

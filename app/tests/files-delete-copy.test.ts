@@ -8,11 +8,6 @@ import {
   targetFiles,
 } from "../src/components/agent/files-delete-copy.ts";
 
-/**
- * A stub `t` that echoes the key and whatever it was interpolated with, so the
- * assertions read as "which key, with which variables" rather than as English.
- * Real translations are the locale files' job (pnpm check-locales).
- */
 const t = ((key: string, vars?: Record<string, unknown>) =>
   vars
     ? `${key}(${JSON.stringify(vars)})`

@@ -1,9 +1,3 @@
-/**
- * The Linear sender behind `POST /feedback` (port of bug_report/linear.rs).
- * Every refusal is a typed `FeedbackIntakeError`, classified the way the
- * desktop shell's `bug_report/failure.rs` does.
- */
-
 import {
   FeedbackIntakeError,
   type FeedbackPayload,

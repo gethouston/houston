@@ -7,31 +7,12 @@ import { Button } from "./button";
 import { DialogTitle } from "./dialog";
 
 export interface FlowSheetCompactHeaderProps {
-  /** The step's own question. It IS the dialog's title here, not a label. */
   title: string;
   back?: { label: string; onClick: () => void };
   progress?: ReactNode;
   headerAside?: ReactNode;
 }
 
-/**
- * The COMPACT frame's header, read as a confirm dialog rather than a wizard:
- * the question top-left in the dialog's own type, the way back as an icon chip
- * inline before it, and the close X left to DialogContent's own, top-right.
- *
- * A step that asks one short thing should look like something the product
- * asked, not like a flow that shrank — so there is no three-slot row and no
- * second, smaller title floating above the content. `pr-8` is what keeps a
- * long question clear of the absolutely positioned X.
- *
- * The back chip is the app's `BackControl size="compact"` shape — a 32px
- * icon-only target — because that is the way back everywhere else a header
- * already carries a dense cluster beside it.
- *
- * Progress, when the step reports any, sits UNDER the title: the compact frame
- * has no centre slot to hold it, and a bar drawn over the question would read
- * as chrome bolted onto a dialog.
- */
 export function FlowSheetCompactHeader({
   title,
   back,

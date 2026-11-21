@@ -16,7 +16,6 @@ function isPath(relativePath: string, documentPath: string): boolean {
   );
 }
 
-/** Documents sync-back merges on a generation conflict instead of overwriting. */
 export function isMergedDocument(relativePath: string): boolean {
   return (
     arrayIdentity(relativePath) !== undefined ||
@@ -26,21 +25,14 @@ export function isMergedDocument(relativePath: string): boolean {
   );
 }
 
-/** Refresh+merge+upload rounds a merged document gets after its first 412. */
 export const MERGE_UPLOAD_ATTEMPTS = 6;
 
-/** The merge rounds `relativePath` gets: its own budget, else the default. */
 export function mergeUploadRounds(relativePath: string): number {
   return isPath(relativePath, ROUTINE_RUNS_DOC)
     ? ROUTINE_RUNS_MERGE_ROUNDS
     : MERGE_UPLOAD_ATTEMPTS;
 }
 
-/**
- * Documents the standing store sync merges once on a generation conflict:
- * never the board, which a standing pod re-uploads over the refreshed
- * generation. The run history merges so a run a sandbox landed survives.
- */
 export function mergesOnceOnConflict(relativePath: string): boolean {
   return (
     arrayIdentity(relativePath) !== undefined ||
@@ -49,11 +41,6 @@ export function mergesOnceOnConflict(relativePath: string): boolean {
   );
 }
 
-/**
- * Documents whose hydrated bytes are kept as the base of a three-way merge:
- * the board, and the keyed documents a stale local copy would otherwise
- * revert (an edit) or resurrect (a deletion) in.
- */
 export function keepsMergeBase(relativePath: string): boolean {
   return (
     isPath(relativePath, ACTIVITY_DOC) ||
@@ -67,15 +54,12 @@ function parseBase(baseBody: string | undefined): unknown {
   try {
     return JSON.parse(baseBody) as unknown;
   } catch {
-    // An unparseable base only costs the three-way precision: the two-way
-    // merge still keeps every entry either side holds.
     return undefined;
   }
 }
 
 const arrayBase = (base: unknown) => (Array.isArray(base) ? base : undefined);
 
-/** A definitions file's entries, only from the one version this merges. */
 function definitionsBase(base: unknown): unknown[] | undefined {
   return isRecord(base) && base.version === 1 && Array.isArray(base.items)
     ? base.items
@@ -105,11 +89,6 @@ function objectDocument(value: unknown, relativePath: string) {
   return value;
 }
 
-/**
- * Merge local document entries into a refreshed remote document. `baseBody`
- * (the bytes this writer started from) makes the board and the keyed
- * documents merge three-way.
- */
 export function mergeDocumentBodies(
   relativePath: string,
   localBody: string,
@@ -167,13 +146,6 @@ export function mergeDocumentBodies(
   return `${JSON.stringify(merged, null, 2)}\n`;
 }
 
-/**
- * A keyed document's local copy merged over a remote another writer deleted
- * outright: every entry of `base` (the bytes this writer started from) is
- * gone with it, and only the writer's own additions and edits stay.
- * Undefined when there is no base to tell those apart, or for any other
- * document: the local bytes then recreate it, as before.
- */
 export function mergeOverDeleted(
   relativePath: string,
   localBody: string,

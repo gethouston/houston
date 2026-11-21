@@ -163,9 +163,6 @@ describe("advertisesOAuth", () => {
     expect(await advertisesOAuth(ENDPOINT, fetchFn)).toBe(true);
   });
 
-  // The SDK's legacy fallback GUESSES `/authorize` at the origin for a wall
-  // with no metadata anywhere: that is a plain bearer wall (an API key), and
-  // calling it OAuth would send the user into a sign-in that cannot exist.
   it("is false for a bearer wall with no metadata anywhere (legacy guess)", async () => {
     const { fetchFn } = server("legacy");
     expect(await advertisesOAuth(ENDPOINT, fetchFn)).toBe(false);

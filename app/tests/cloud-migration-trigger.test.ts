@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { cloudMigrationGateState } from "../src/hooks/cloud-migration-trigger.ts";
 
-// The "show" case: a signed-in user on the remote-gateway desktop build, with
-// legacy data on disk, no persisted outcome, every signal resolved.
 const SHOW = {
   remoteGateway: true,
   isTauri: true,
@@ -56,8 +54,6 @@ test("holds a splash while the detection probe is in flight", () => {
 });
 
 test("loading never blocks builds the gate can't apply to", () => {
-  // The splash is only reachable once the cheap gates hold — a web build or
-  // local sidecar must render instantly, whatever the probe state.
   assert.equal(
     cloudMigrationGateState({ ...SHOW, remoteGateway: false, loading: true }),
     "pass",

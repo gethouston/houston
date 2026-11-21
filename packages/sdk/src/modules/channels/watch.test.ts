@@ -42,7 +42,6 @@ describe("watching for a connection made outside this tab", () => {
 
   it("counts only its own provider's connections", () => {
     const watch = startChannelWatch("whatsapp", [slack("a")], now);
-    // A Slack connection landing is not the WhatsApp hand-off landing.
     const others = [slack("a"), slack("b")];
     expect(channelWatchActive(watch, others, now)).toBe(true);
     expect(channelWatchLanded(watch, others)).toBe(false);
@@ -52,7 +51,6 @@ describe("watching for a connection made outside this tab", () => {
   });
 
   it("lands on a NEW connection even after an old one was disconnected", () => {
-    // Counting would miss this: one gone and one new leaves the count as it was.
     const watch = startChannelWatch("whatsapp", [whatsapp("old")], now);
     expect(channelWatchLanded(watch, [])).toBe(false);
     expect(channelWatchActive(watch, [], now)).toBe(true);
@@ -60,8 +58,6 @@ describe("watching for a connection made outside this tab", () => {
   });
 
   it("keeps watching until a code that outlives the default window expires", () => {
-    // A WhatsApp code lives ten minutes and is scanned on ANOTHER device, so
-    // this window never regains focus: the watch has to cover the whole code.
     const expiresAt = new Date(now + 10 * 60_000).toISOString();
     const watch = startChannelWatch("whatsapp", [], now, expiresAt);
     expect(channelWatchActive(watch, [], now + 9 * 60_000)).toBe(true);

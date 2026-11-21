@@ -7,7 +7,6 @@ import type { EngineClientConfig, PreferenceValue, Workspace } from "./types";
 
 const JSON_HEADERS = { "Content-Type": "application/json" } as const;
 
-/** Per-user preferences + the workspace-locale override (the boot/settings path). */
 export class PreferencesClient {
   private readonly r: Requester;
 
@@ -15,7 +14,6 @@ export class PreferencesClient {
     this.r = createRequester(config);
   }
 
-  /** Read a preference value, or `null` when unset. */
   async getPreference(key: string): Promise<string | null> {
     return (
       await this.r.json<PreferenceValue>(
@@ -24,7 +22,6 @@ export class PreferencesClient {
     ).value;
   }
 
-  /** Write (or, with `null`, clear) a preference; echoes the stored value. */
   async setPreference(
     key: string,
     value: string | null,
@@ -41,11 +38,6 @@ export class PreferencesClient {
     ).value;
   }
 
-  /**
-   * Write `value` only when the key holds none (`onlyIfAbsent: true`,
-   * @houston/protocol preference-create). `created: false` carries the value
-   * already stored, which the write left untouched.
-   */
   async createPreference(
     key: string,
     value: string,
@@ -74,7 +66,6 @@ export class PreferencesClient {
     }
   }
 
-  /** Set (or clear, with `null`) the workspace's UI-locale override. */
   setWorkspaceLocale(
     workspaceId: string,
     locale: string | null,

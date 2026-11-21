@@ -8,22 +8,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * Org administration rides `sdk.org.*`.
- *
- * There is no second copy of these calls to diff against, so what the family
- * puts on the wire is pinned here literally — the whole
- * URL, the method, the body BYTES, and the three headers the gateway routes on
- * (`Content-Type`, `Authorization`, `x-houston-org`). A delegated call that
- * changes any of them changes what the hosted gateway does, and nothing else in
- * the suite would notice.
- *
- * The two degradations this family has stay in the MIXIN: the SDK throws on a
- * 404 (so no surface is handed an empty roster it cannot tell from a real one)
- * and `getOrgProfiles`/`getOrgPeople` translate that status into the same empty
- * answers the cp copy returned.
- */
-
 const BASE = "http://host";
 
 const { calls, reset, restore, stubFetch, stubRouted } = createWireCapture();
@@ -38,10 +22,8 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** What the gateway answers a successful member/invite mutation with. */
 const noContent = (): Response => new Response(null, { status: 204 });
 
-/** A hosted client with a team space pinned — every org call carries both. */
 function client() {
   const c = new HoustonClient({
     baseUrl: BASE,
@@ -52,7 +34,6 @@ function client() {
   return c;
 }
 
-/** The one request the call issued, with the headers the gateway routes on. */
 function onlyCall(): Call & { auth: string | null; org: string | null } {
   expect(calls).toHaveLength(1);
   const [call] = calls;

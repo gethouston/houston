@@ -7,12 +7,6 @@ import { type ObjectStore, StoreConflictError } from "./object-store";
 import { ROUTINE_RUNS_MERGE_ROUNDS } from "./routine-runs-merge";
 import { syncBack } from "./sync-back";
 
-/**
- * Routine runs of one agent overlap in separate sandboxes: each hydrates the
- * same run history, adds its own row, settles it, and syncs back. Staging lost
- * 4 of 8 rows this way: a lost generation race overwrote the winner's rows.
- */
-
 const RUNS = "workspaces/P/Bob/.houston/routine_runs/routine_runs.json";
 type Row = Record<string, unknown>;
 
@@ -30,7 +24,6 @@ const run = (n: number, fields: Row = {}): Row => ({
   ...fields,
 });
 
-/** A generation-guarded store holding one runs object. */
 function versionedStore(initial: Row[]) {
   let remote = body(initial);
   let generation = 1;
@@ -50,14 +43,12 @@ function versionedStore(initial: Row[]) {
       await writeFile(dest, remote);
     },
     downloadVersioned: async (_key, dest) => {
-      // A versioned read pairs the bytes with their generation.
       const [bytes, read] = [remote, generation];
       await mkdir(dirname(dest), { recursive: true });
       await writeFile(dest, bytes);
       return { generation: String(read) };
     },
     upload: async (source, key, options) => {
-      // Read first: the precondition check and the write stay one step.
       const bytes = await readFile(source, "utf8");
       if (options?.ifGenerationMatch !== String(generation))
         throw new StoreConflictError(key, `412 at ${generation}`);
@@ -74,7 +65,6 @@ function versionedStore(initial: Row[]) {
   };
 }
 
-/** One sandbox: the hydrated history at generation 1 plus this run's row. */
 async function sandbox(hydrated: Row[], mine: Row) {
   const root = await mkdtemp(join(tmpdir(), "runs-overlap-"));
   const abs = join(root, ...RUNS.split("/"));
@@ -114,8 +104,6 @@ test("eight overlapping runs of one agent all keep their row", async () => {
     "run-1",
     "run-0",
   ]);
-  // The last sandbox's tree holds exactly what landed: its settle-time
-  // readers (the auto-pause) see every overlapping run.
   expect(JSON.parse(await sandboxes[7].local())).toEqual(remote());
 });
 
@@ -142,7 +130,6 @@ test("ten runs finishing in lockstep all land their row", async () => {
   );
 });
 
-/** Another writer lands a row right before each of our first `raced` uploads. */
 function racedStore(raced: number) {
   const { store, remote, generation } = versionedStore([run(0)]);
   let uploads = 0;
@@ -176,7 +163,6 @@ async function contendedSync(raced: number) {
 
 test("the run history gets ten merge rounds: it lands after nine lost ones", async () => {
   expect(ROUTINE_RUNS_MERGE_ROUNDS).toBe(10);
-  // The first upload and every round but the last lose.
   const { result, remote } = await contendedSync(ROUTINE_RUNS_MERGE_ROUNDS);
 
   expect(result.conflicts).toEqual([]);

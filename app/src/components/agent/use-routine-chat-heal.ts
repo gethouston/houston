@@ -8,7 +8,6 @@ import {
 } from "../../lib/routine-chat-setup";
 import { tauriActivity, tauriRoutines } from "../../lib/tauri";
 
-/** Enough of an activity/routine for the heal resolver — it reads only ids/links. */
 interface HealActivity {
   id: string;
   agent?: string | null;
@@ -19,14 +18,6 @@ interface HealRoutine {
   setup_activity_id?: string | null;
 }
 
-/**
- * Background link reconciliation: keep the chat↔routine link intact in BOTH
- * stores. The agent rewriting routines.json can drop `setup_activity_id` (this
- * made the open chat vanish the moment an agent-made edit landed); the durable
- * `routine_id` stamp on the activity lets us restore it. One repair per pass;
- * the invalidation refetch re-runs the effect until consistent. Failures only
- * log: there is no user action to toast on, and the next refetch retries anyway.
- */
 export function useRoutineChatHeal(
   rawItems: HealActivity[] | undefined,
   routines: HealRoutine[] | undefined,

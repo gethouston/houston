@@ -5,13 +5,6 @@ import { parseAddInput } from "./custom-integrations-input";
 import { bearer, json, readJson } from "./http";
 import { defineRouteFamily } from "./registry";
 
-/**
- * Custom-integration SANDBOX routes (HOU-550) — `/sandbox/integrations/custom/*`
- * (per-sandbox HMAC): what the agent's setup tools call — detect a pasted URL,
- * add an integration. The USER routes (list / remove / provide-credential,
- * including the per-agent dispatch the hosted gateway proxies) live in
- * custom-integrations-user.ts.
- */
 export interface CustomIntegrationDeps {
   customIntegrations?: CustomIntegrationManager;
 }
@@ -20,8 +13,6 @@ export { relayCustomError } from "./custom-integrations-error";
 
 import { relayCustomError } from "./custom-integrations-error";
 
-/** A malformed client body must never 500: parse failures (and non-object
- *  JSON like `null`) answer 400 and report "already responded" via `null`. */
 export async function bodyOr400(
   req: IncomingMessage,
   res: ServerResponse,
@@ -31,17 +22,11 @@ export async function bodyOr400(
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       return parsed;
     }
-  } catch {
-    // fall through to the 400 below
-  }
+  } catch {}
   json(res, 400, { error: "invalid JSON body" });
   return null;
 }
 
-/** The route grammar under `custom/`, shared by every user surface
- *  (custom-integrations-user.ts serves it on three mounts). Anything else
- *  (e.g. `custom/connections`, the generic provider family) is NOT this
- *  family's — `null` falls through to the next handler like a non-match. */
 export type CustomTarget =
   | { kind: "detect" }
   | { kind: "definitions" }
@@ -62,8 +47,6 @@ export function customTargetOf(rest: string): CustomTarget | null {
   try {
     slug = decodeURIComponent(m[1]);
   } catch {
-    // A malformed escape (`%zz`) is not a route of ours — fall through like
-    // any non-match instead of letting the URIError become a raw 500.
     return null;
   }
   if (m[2] === "credential") return { kind: "credential", slug };
@@ -71,8 +54,6 @@ export function customTargetOf(rest: string): CustomTarget | null {
   if (m[2] === "oauth/start") return { kind: "oauthStart", slug };
   return { kind: "definition", slug };
 }
-
-// ── Sandbox (agent-initiated) routes ─────────────────────────────────────────
 
 defineRouteFamily({
   group: "sandbox-custom-integrations",
@@ -114,8 +95,6 @@ export async function handleSandboxCustomIntegrations(
   }
   const manager = deps.customIntegrations;
   if (!manager) {
-    // Same stable code the generic sandbox proxy uses, so the runtime tool
-    // renders the honest "not available in this install" speech act.
     json(res, 503, {
       error: "custom integrations not configured",
       code: "integrations_not_configured",
@@ -133,10 +112,6 @@ export async function handleSandboxCustomIntegrations(
       json(res, 200, await manager.detect(body.url.trim()));
       return true;
     }
-    // The pre-flight behind `request_credential` (PRODUCT-1292): the runtime
-    // refuses to queue a secure key card for a slug with no definition — the
-    // card used to render anyway and every save 404ed at this host, a
-    // user-facing dead end the agent never heard about.
     if (m[1] === "status") {
       if (typeof body.slug !== "string" || !body.slug.trim()) {
         json(res, 400, { error: "missing 'slug'" });
@@ -154,10 +129,6 @@ export async function handleSandboxCustomIntegrations(
       json(res, 200, view);
       return true;
     }
-    // The agent's cleanup path (PRODUCT-1172 follow-up): switching a service
-    // between connection methods can need a cross-kind re-add, which
-    // `replace` refuses by design — the abandoned definition is removed
-    // instead of lingering as a dead card.
     if (m[1] === "remove") {
       if (typeof body.slug !== "string" || !body.slug.trim()) {
         json(res, 400, { error: "missing 'slug'" });

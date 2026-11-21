@@ -5,7 +5,6 @@ import { refetchAfterWrite } from "../src/lib/refetch-after-write.ts";
 
 const KEY = ["channels", "personal"];
 
-/** An observed list whose first read is held open until the test releases it. */
 function heldFirstRead() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   let releaseFirst: (value: string) => void = () => {};
@@ -60,9 +59,6 @@ describe("refetchAfterWrite", () => {
     list.unsubscribe();
   });
 
-  // Why the helper exists: with no data yet, TanStack folds an invalidation
-  // into the read already in flight, so a write that lands during the first
-  // read never shows.
   it("plain invalidation keeps the first read's stale answer", async () => {
     const list = heldFirstRead();
     await settle();

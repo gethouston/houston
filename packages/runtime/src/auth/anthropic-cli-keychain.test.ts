@@ -7,7 +7,6 @@ import {
 } from "./anthropic-cli-keychain";
 
 const DIR = "/Users/daniel/.dev-houston/claude-login";
-/** Known vector shared with the desktop shell's `credential.rs` test. */
 const SERVICE = "Claude Code-credentials-3d1329c5";
 const VALID = JSON.stringify({
   claudeAiOauth: {
@@ -20,7 +19,6 @@ const HUSK = JSON.stringify({
   claudeAiOauth: { accessToken: "", refreshToken: "", expiresAt: 0 },
 });
 
-/** Script `security` by argv; records every invocation. */
 function fakeSecurity(
   script: (args: string[]) => { code: number; stdout?: string },
 ): { run: SecurityRun; calls: string[][] } {

@@ -27,13 +27,6 @@ import { useState } from "react";
 import { Portrait } from "./app-sidebar-stage";
 import { workspaces } from "./sample";
 
-/**
- * The foot the desktop shell fills under the team, and the pieces the
- * phone's workspace switcher page reuses: who is signed in, and the two
- * connect rows with sample marks.
- */
-
-/** Who is signed in, as a host heads the account and workspace menus. */
 export function Who() {
   return (
     <span className="flex min-w-0 flex-col">
@@ -45,7 +38,6 @@ export function Who() {
   );
 }
 
-/** The two rows a host hands `SidebarConnectGroup`, with sample marks. */
 export const connectRows: SidebarConnectRow[] = [
   {
     id: "apps",
@@ -69,11 +61,6 @@ export const connectRows: SidebarConnectRow[] = [
   },
 ];
 
-/**
- * The foot, under a hairline: the connect rows, then the person over their
- * workspace, whose one menu holds who is signed in, the workspaces, Profile
- * and About me, the Academy and Settings, and Sign out.
- */
 export function RailFoot({ collapsed }: { collapsed: boolean }) {
   const [workspaceId, setWorkspaceId] = useState("personal");
   const current =

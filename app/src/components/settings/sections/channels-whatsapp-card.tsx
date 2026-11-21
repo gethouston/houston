@@ -5,11 +5,6 @@ import type { ChannelCardState } from "./channel-provider-cards";
 import { ChannelProviderPanel } from "./channel-provider-panel";
 import { WhatsAppLinkDetails } from "./channels-whatsapp-link";
 
-/**
- * The WhatsApp card's connect flow: a connection code to send from the
- * person's own WhatsApp. "Waiting for your message" holds until that
- * connection lands or the code expires.
- */
 export function ChannelsWhatsAppCard({
   name,
   state,

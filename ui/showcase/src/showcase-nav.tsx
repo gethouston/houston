@@ -6,14 +6,6 @@ import { countSpecimens, filterTiers } from "./nav-filter";
 import { NavGroup } from "./nav-group";
 import type { SpecimenTier } from "./registry";
 
-/**
- * The showcase's rail: a text filter over every specimen, then the two tiers —
- * `Primitives` (the inventory by kind) and `Product areas` (the same inventory
- * by where the user meets it) — with their collapsible subgroups.
- *
- * Grouped rather than flat because the rail carries the whole `@houston-ai/*`
- * inventory: a single alphabetical list of that length is a lookup, not a nav.
- */
 export function ShowcaseNav({
   tiers,
   activeId,
@@ -24,9 +16,6 @@ export function ShowcaseNav({
   onSelect: (id: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  // Collapsed by exception: every subgroup starts open, and only the ones the
-  // reader shut are remembered. A filter overrides the set entirely — a hit
-  // hidden inside a collapsed group would read as no hit at all.
   const [collapsed, setCollapsed] = useState<readonly string[]>([]);
 
   const filtering = query.trim() !== "";
@@ -45,8 +34,6 @@ export function ShowcaseNav({
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Filter components"
           aria-label="Filter components"
-          // Component names are not prose: the UA spell-check underlines every
-          // one of them in red, and autocomplete has nothing useful to offer.
           spellCheck={false}
           autoComplete="off"
           className={cn(
@@ -56,10 +43,6 @@ export function ShowcaseNav({
           )}
         />
         {query ? (
-          // Our own clear control: the browser's native one is a UA-coloured
-          // glyph (blue in Chrome) that ignores the token palette, so
-          // globals.css hides it. Always visible while there is a query —
-          // never a hover-only affordance.
           <button
             type="button"
             onClick={() => setQuery("")}

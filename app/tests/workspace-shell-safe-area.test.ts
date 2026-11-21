@@ -5,13 +5,6 @@ import { describe, it } from "node:test";
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
-/**
- * The native apps draw the WebView under the status bar, so the signed-in
- * frame owns the top inset once, for every screen inside it. The node runner
- * has no DOM, so the wiring is guarded on source (the repo's React-test idiom).
- * The bug this stands for: the phone's top bar rendered under the clock and
- * the Dynamic Island in the iOS app.
- */
 describe("workspace shell top safe area", () => {
   const shell = read("../src/components/shell/workspace-shell.tsx");
 

@@ -185,10 +185,6 @@ mod windows {
         let current = match std::env::var("PATH") {
             Ok(path) => path,
             Err(std::env::VarError::NotPresent) => String::new(),
-            // A non-Unicode PATH must be left alone: emitting a repaired
-            // value here would REPLACE the inherited PATH with only what we
-            // could parse, dropping every real entry — strictly worse than
-            // not repairing. The Git Bash override above still applies.
             Err(std::env::VarError::NotUnicode(_)) => return None,
         };
         append_missing_dirs(&current, &required)
@@ -248,8 +244,6 @@ mod tests {
 
     #[test]
     fn claude_spawn_cwd_is_an_existing_home_dir() {
-        // Every CI/dev host has a resolvable home; the contract is "an
-        // existing directory the CLI's cwd-filter can't collide with".
         let cwd = claude_spawn_cwd().expect("home dir resolves");
         assert!(cwd.is_dir());
     }

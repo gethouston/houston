@@ -48,8 +48,6 @@ describe("blockStartKeys", () => {
   });
 });
 
-// The report behind this: a group holding nobody, with three top-level agents
-// right under it, folded and unfolded with nothing on screen changing.
 const items = ["a", "b", "c"].map((id) => ({ id, name: id }));
 const order: SidebarRootEntry[] = [
   { kind: "group", id: "Logistics" },
@@ -98,7 +96,6 @@ describe("SidebarGroupedList empty group", () => {
 });
 
 describe("SidebarGroupedList folder edges", () => {
-  // The reported rail: a folder with members, then root employees below it.
   const rows = (markup: string) =>
     [...markup.matchAll(/<div[^>]*data-sidebar-row=""[^>]*>/g)].map(
       (m) => m[0],
@@ -112,8 +109,6 @@ describe("SidebarGroupedList folder edges", () => {
     return found;
   };
 
-  // The hairline under a row's text, read off the markup from the row's
-  // wrapper to the next row.
   const hairline = (id: string) => {
     const tag = row(id);
     const start = markup.indexOf(tag);

@@ -11,18 +11,11 @@ import {
   surveyStepViewedEvent,
 } from "./survey-steps";
 
-/**
- * The survey's PostHog vocabulary, bound once to the screen it is mounted on.
- * Every event carries the same `source_screen`, so the first-run funnel and
- * the in-app prompt stay separable without the screen repeating itself at
- * every call site.
- */
 export function createSurveyAnalytics(mode: OnboardingSurveyMode) {
   const source_screen = surveySourceScreen(mode);
   return {
     stepViewed: (step: OnboardingSurveyStep) =>
       analytics.track(surveyStepViewedEvent(step), { source_screen }),
-    /** The in-app prompt opened, naming the gaps it opened for. */
     prompted: (missing: readonly OnboardingSurveyStep[]) =>
       analytics.track("onboarding_survey_prompted", {
         missing_steps: missing.join(","),
@@ -38,9 +31,6 @@ export function createSurveyAnalytics(mode: OnboardingSurveyMode) {
         selected_role,
         source_screen,
       }),
-    // The `*_continued` events are the CONFIRMED answers (they carry the person
-    // properties), fired only once the save has landed, never on the
-    // exploratory clicks above.
     industryContinued: (selected_industry: OnboardingIndustry) =>
       analytics.track("onboarding_industry_continued", {
         selected_industry,
@@ -56,9 +46,6 @@ export function createSurveyAnalytics(mode: OnboardingSurveyMode) {
         selected_company_size,
         source_screen,
       }),
-    // `goal_text` is the answer in the user's own words. `track` reads it only
-    // to stamp the person property and strips it from the event itself, so the
-    // free text never rides the wire as event content.
     goalContinued: (goal: string) =>
       analytics.track("onboarding_goal_continued", {
         goal_provided: true,

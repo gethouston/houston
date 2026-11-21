@@ -4,23 +4,6 @@ import { CustomIntegrationManager } from "./manager";
 import { MemoryCustomSecretStore } from "./secrets";
 import { MemoryCustomIntegrationStore } from "./store";
 
-/**
- * CustomIntegrationManager end-to-end over the REAL @executor-js engine (no
- * network — every OpenAPI source is an inline `{kind:"blob"}` doc, and the one
- * MCP case is deliberately unreachable to exercise the failure path). Memory
- * stores stand in for the file-backed ones (store.test.ts / secrets.test.ts
- * cover persistence on its own).
- *
- * The executor takes a couple of seconds to spin up per host instance, so this
- * file stays in ONE describe-free module with a shared `setup()` helper rather
- * than a nested describe/beforeEach — each test still gets its own isolated
- * store+host (definitions are user-created state; sharing one host across
- * assertions would let an earlier test's slug leak into a later one).
- */
-
-// Minimal, valid OpenAPI 3.0 document — enough for the executor to extract
-// tools from (title/version/servers/paths with operationIds). No security
-// scheme, so `auth: "none"` connects immediately.
 const OPENAPI_SPEC = JSON.stringify({
   openapi: "3.0.0",
   info: { title: "Widgets", version: "1.0.0" },
@@ -49,9 +32,6 @@ const OPENAPI_SPEC = JSON.stringify({
   },
 });
 
-// Same shape but declares an apiKey security scheme, so the executor derives
-// a non-oauth auth method — the credential-mode add/setCredential path needs
-// at least one such method to exist.
 const AUTH_SPEC = JSON.stringify({
   openapi: "3.0.0",
   info: { title: "Vault", version: "1.0.0" },
@@ -72,10 +52,6 @@ const AUTH_SPEC = JSON.stringify({
   },
 });
 
-// The reported PriceLabs shape: NO securitySchemes at all — the key exists
-// only as a header parameter the docs describe per operation. The secure save
-// used to dead-end on this (`credential_invalid: declares no credential-based
-// auth method`) while pasting the key in chat worked.
 const HEADER_PARAM_SPEC = JSON.stringify({
   openapi: "3.0.0",
   info: { title: "PriceLabs", version: "1.0.0" },
@@ -164,23 +140,10 @@ test("add() of an MCP source the executor can't use throws compile_failed and pe
     manager.add({
       kind: "mcp",
       name: "Ghost Server",
-      // NOTE: a well-formed-but-unreachable endpoint (e.g. http://127.0.0.1:1/mcp,
-      // connection refused) was tried here first and does NOT reproduce
-      // compile_failed — @executor-js/plugin-mcp's addServer does not eagerly
-      // probe the connection, so CustomExecutorHost.compileDef currently
-      // resolves that case to `{status:"active", toolCount:0}` instead of
-      // `error` (verified live, three runs, no flake). That is a real gap
-      // worth fixing upstream of this test (a broken MCP server should not
-      // silently show as a healthy zero-tool integration) — flagged, not
-      // fixed here. A malformed endpoint DOES fail deterministically inside
-      // addServer's own URL parsing, so it's what exercises this manager's
-      // compile_failed contract today.
       endpoint: "not a valid url",
       auth: "none",
     }),
   ).rejects.toMatchObject({ code: "compile_failed" });
-  // The add FAILED — a definition that can never compile must never persist,
-  // or the integrations list would show a permanently broken entry forever.
   expect(await store.list()).toEqual([]);
 });
 
@@ -214,8 +177,6 @@ test("a spec with NO security scheme still takes a key: the fallback method plac
     spec: { kind: "blob", value: HEADER_PARAM_SPEC },
     auth: "credential",
   });
-  // The pending card must offer a REAL field (the synthesized method naming
-  // the spec's own X-API-Key header), never an empty method list.
   expect(added.state.status).toBe("pending");
   if (added.state.status === "pending") {
     expect(added.state.authMethods).toHaveLength(1);
@@ -236,7 +197,6 @@ test("a spec with NO security scheme still takes a key: the fallback method plac
 
 test("a spec with no auth hints at all falls back to Bearer and still saves", async () => {
   const { manager } = setup();
-  // OPENAPI_SPEC declares neither securitySchemes nor key-shaped parameters.
   const added = await manager.add({
     kind: "openapi",
     name: "Widgets",
@@ -286,9 +246,6 @@ test("a fallback-credential def survives a restart: fresh host reconnects throug
   });
   await manager1.setCredential(added.slug, { token: "plk_live_123" });
 
-  // The executor is in-memory: a fresh host must re-inject `houston_fallback`
-  // BEFORE re-creating the stored connection that renders through it, or every
-  // restart would break the integration.
   const host2 = new CustomExecutorHost(secrets, () => store.list());
   const manager2 = new CustomIntegrationManager(
     store,
@@ -357,10 +314,6 @@ test("list() after a FRESH CustomExecutorHost over the same stores rehydrates th
     added.state.status === "active" ? added.state.toolCount : -1;
   expect(toolCount).toBeGreaterThanOrEqual(1);
 
-  // A fresh host + manager over the SAME durable stores simulates a host
-  // restart: the executor is in-memory and gone, but the definition survives
-  // on disk (here: in the shared MemoryCustomIntegrationStore) and must
-  // recompile to the same shape without any user action.
   const host2 = new CustomExecutorHost(secrets, () => store.list());
   const manager2 = new CustomIntegrationManager(
     store,
@@ -386,9 +339,6 @@ test("tools() lists exactly the active state's toolCount, names filled", async (
   const toolCount =
     added.state.status === "active" ? added.state.toolCount : -1;
 
-  // The list backs the detail card's "N actions" — it must agree with the
-  // count the row shows, and nothing from the executor's own internal
-  // toolbox (integration "executor") may leak in.
   const tools = await manager.tools(added.slug);
   expect(tools).toHaveLength(toolCount);
   for (const tool of tools) {
@@ -425,13 +375,9 @@ test("tools() on a pending credential-mode def resolves (no throw)", async () =>
     auth: "credential",
   });
   expect(added.state.status).toBe("pending");
-  // The detail card may ask for the list before the key is saved; the
-  // contract is "an array, possibly empty", never an error.
   expect(Array.isArray(await manager.tools(added.slug))).toBe(true);
 });
 
-// A "grown" Vault spec: the same service, now covering a second operation —
-// what the agent authors after noticing the first spec missed endpoints.
 const AUTH_SPEC_V2 = JSON.stringify({
   openapi: "3.0.0",
   info: { title: "Vault", version: "1.1.0" },
@@ -486,7 +432,6 @@ test("add(replace:true) swaps the spec in place: more tools, credential kept, no
     replace: true,
   });
   expect(replaced.slug).toBe(added.slug);
-  // Active immediately — the stored credential carried over, no new pending.
   expect(replaced.state).toEqual({ status: "active", toolCount: 2 });
   expect(await secrets.get(`ci_${added.slug}_token`)).toBe("k");
   const defsAfter = await store.list();
@@ -515,7 +460,6 @@ test("add(replace:true) with a broken spec keeps the WORKING integration and fai
       replace: true,
     }),
   ).rejects.toMatchObject({ code: "compile_failed" });
-  // The previous definition is untouched and still compiled.
   const defs = await store.list();
   expect(defs).toHaveLength(1);
   expect(
@@ -555,8 +499,6 @@ test("add(replace:true) across kinds refuses; plain duplicate add still 409s", a
   ).rejects.toMatchObject({ code: "duplicate_slug" });
 });
 
-// Vault moved: same operations, but servers now point somewhere else — the
-// credential-exfiltration shape the origin guard exists for.
 const AUTH_SPEC_MOVED = JSON.stringify({
   ...JSON.parse(AUTH_SPEC),
   servers: [{ url: "https://evil.example.com" }],
@@ -579,7 +521,6 @@ test("replace with a MOVED server origin refuses the credential carry and delete
     auth: "credential",
     replace: true,
   });
-  // The key must NOT ride to the new origin: the def waits on a fresh one.
   expect(replaced.state.status).toBe("pending");
   expect((await store.list())[0]?.credential).toBeUndefined();
   expect(await secrets.get(`ci_${added.slug}_token`)).toBeNull();
@@ -595,8 +536,6 @@ test("a same-service replace replaying auth:'none' KEEPS the working credential 
   });
   await manager.setCredential(added.slug, { token: "k" });
 
-  // The caller is a model re-deriving `auth` on every call: a sloppy "none"
-  // replay on an unchanged service must not silently discard a working key.
   const replaced = await manager.add({
     kind: "openapi",
     name: "Vault",
@@ -624,7 +563,6 @@ test("concurrent replace + remove serialize: the store, secrets, and executor ag
   });
   await manager.setCredential(added.slug, { token: "k" });
 
-  // Queued in call order: the replace lands first, then the remove wins.
   const [replaceResult] = await Promise.allSettled([
     manager.add({
       kind: "openapi",
@@ -644,10 +582,6 @@ test("concurrent replace + remove serialize: the store, secrets, and executor ag
   expect(tools.filter((t) => t.integration === added.slug)).toEqual([]);
 });
 
-// Same server, but the security scheme was RENAMED — the stored credential's
-// template no longer exists in the replacement, so the compile fails at the
-// connection step, AFTER the new spec already registered (the partial-compile
-// shape the restore path must clean up).
 const AUTH_SPEC_RENAMED_SCHEME = JSON.stringify({
   ...JSON.parse(AUTH_SPEC),
   components: {
@@ -692,8 +626,6 @@ test("a replace that fails mid-compile restores the previous working view (no ha
   const tools = await executor.tools.list();
   const mine = tools.filter((t) => t.integration === added.slug);
   if (result.kind === "rejected") {
-    // The carried template failed to connect: the OLD spec must be back —
-    // stored, compiled, and connected under the same slug.
     expect(result.err).toMatchObject({ code: "compile_failed" });
     expect(
       JSON.parse((defs[0] as { spec: { value: string } }).spec.value).components
@@ -702,8 +634,6 @@ test("a replace that fails mid-compile restores the previous working view (no ha
     expect(states.get(added.slug)?.status).toBe("active");
     expect(mine.length).toBeGreaterThanOrEqual(1);
   } else {
-    // The engine tolerated the rename (re-derived the template): then the
-    // replacement must be fully consistent — persisted AND compiled.
     expect(defs).toHaveLength(1);
     expect(states.get(added.slug)?.status).toBe(result.view.state.status);
     expect(mine.length).toBeGreaterThanOrEqual(

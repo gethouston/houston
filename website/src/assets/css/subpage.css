@@ -1,14 +1,3 @@
-/*
- * Subpage shell — shared content typography for every Resources + legal page
- * (guides, vision, changelog, privacy, terms), in the v4 landing voice:
- * warm bone ground, warm-ink type ladder, Hanken Grotesk, one ink pill CTA.
- * Palette + type + chrome (nav/footer/buttons) come from site-tokens.css +
- * landing.css; this file adds only the page frame and the prose system.
- * Page-specific layout (essay width, legal TOC, changelog timeline) lives in
- * each page's own block; this stays the shared spine.
- */
-
-/* ── Navbar: solid from the start (subpages have no hero to float over) ────── */
 .lnav-solid {
   background: var(--ground);
   border-bottom: 1px solid var(--line);
@@ -17,8 +6,6 @@
   display: none;
 }
 
-/* ── Page frame ───────────────────────────────────────────────────────────
-   The fixed navbar is ~68px tall; clear it, then breathe. */
 .subpage {
   padding-top: clamp(92px, 12vh, 128px);
   padding-bottom: clamp(72px, 10vw, 112px);
@@ -32,7 +19,6 @@
   max-width: var(--measure);
 }
 
-/* ── Page header (eyebrow + display title + lead) ─────────────────────────── */
 .subpage-header {
   max-width: 760px;
   margin: 0 auto clamp(36px, 5vw, 56px);
@@ -76,7 +62,6 @@
   color: var(--ink-subtle);
 }
 
-/* ── The bone content card the prose sits in ──────────────────────────────── */
 .subpage-card {
   background: var(--card);
   border: 1px solid var(--line);
@@ -89,7 +74,6 @@
   margin-top: 0;
 }
 
-/* ── Prose — the shared reading voice (legal, essay, changelog bodies) ─────── */
 .prose {
   color: var(--ink);
   font-size: 16px;
@@ -149,8 +133,6 @@
 .prose em {
   font-style: italic;
 }
-/* Link styling skips button-like anchors (.btn pills, the X pill) so their
-   own label colour/decoration isn't clobbered by the prose link rule. */
 .prose a:not(.btn):not(.x-btn) {
   color: var(--link);
   text-decoration: underline;
@@ -218,7 +200,6 @@
   border-bottom-color: var(--line-strong);
 }
 
-/* ── Inline table of contents / index card (legal + essay) ────────────────── */
 .subpage-toc {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -264,7 +245,6 @@
   text-underline-offset: 3px;
 }
 
-/* ── A quiet framed note inside prose (legal callouts) ─────────────────────── */
 .subpage-callout {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -279,7 +259,6 @@
   color: var(--ink-strong);
 }
 
-/* ── Language toggle (guides EN/ES) — a quiet pill pair ───────────────────── */
 .lang-toggle {
   display: inline-flex;
   gap: 6px;
@@ -305,8 +284,6 @@
   border-color: var(--action);
 }
 
-/* ── Guide detail toolbar (language switch + PDF), in-content so the shared
-   navbar stays identical everywhere ───────────────────────────────────────── */
 .guide-toolbar {
   display: flex;
   align-items: center;
@@ -342,7 +319,6 @@
   height: 15px;
 }
 
-/* ── Guide closing CTA card (former in-page foot-card) ────────────────────── */
 .guide-cta {
   background: var(--ground-deep);
   color: var(--on-ink);
@@ -366,8 +342,6 @@
 .guide-cta .btn {
   margin-top: 20px;
 }
-/* On the dark closing card a white pill needs a dark label — landing.css's
-   .btn-white uses the light --ground, which would be white-on-white here. */
 .guide-cta .btn-white {
   color: var(--ground-deep);
 }
@@ -375,7 +349,6 @@
   background: #ececec;
 }
 
-/* ── Closing links row under content (former page footers) ────────────────── */
 .subpage-endlinks {
   max-width: 760px;
   margin: clamp(40px, 6vw, 64px) auto 0;

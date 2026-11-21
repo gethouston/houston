@@ -35,7 +35,6 @@ test("production OTA publishing permits absent store URLs", () => {
 test("store uploads name their version after the cloud-v release tag", () => {
   const source = workflow("mobile-release");
   expect(source.match(/version=\$\{tag#cloud-v\}/g)).toHaveLength(2);
-  // Release commits are off main: describe would find an old tag.
   expect(source).not.toContain("git describe");
   expect(source.match(/\| sort -V \| tail -1\)/g)).toHaveLength(2);
   expect(source).toContain('MARKETING_VERSION="$MARKETING_VERSION"');

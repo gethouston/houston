@@ -6,14 +6,6 @@ import { screen } from "./support/nav-common";
 import { openAdmin, openAdminSection } from "./support/settings-nav";
 import { workspaceMenuTrigger } from "./support/workspace-menu";
 
-/**
- * Yearly seats on the People tab: the payer of a yearly org sees the price
- * of a new seat before adding someone and pays it in a dialog; a declined
- * card adds nobody; a free paid seat is taken at no charge; another owner
- * cannot buy a seat; removing someone keeps the seat paid until renewal; and
- * the billing card counts the paid seats against the seats in use.
- */
-
 const TEAM = { slug: "00000000000000ab", name: "Acme Team" };
 const RENEWS = "2027-03-26T12:00:00.000Z";
 

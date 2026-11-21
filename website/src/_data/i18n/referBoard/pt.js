@@ -1,7 +1,3 @@
-// Cópia em português do quadro de solicitações de /data-partners/refer e da
-// página de cada solicitação. Espelho exato de en.js
-// (scripts/check-locales.mjs verifica). Português do Brasil, com você.
-
 export default {
   board: {
     all: "Todas",

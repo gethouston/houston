@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
 
-/** The pick step's copy: each flow names its destinations in its own words. */
 export interface PickStepCopy {
   subtitle: string;
   empty: string;
@@ -11,7 +10,6 @@ export interface PickStepCopy {
   creating: string;
 }
 
-/** Sharing one AI Employee: the destinations are teams. */
 export function useSharePickCopy(): PickStepCopy {
   const { t } = useTranslation("teams");
   return {
@@ -25,7 +23,6 @@ export function useSharePickCopy(): PickStepCopy {
   };
 }
 
-/** Moving a sidebar group: the destinations are spaces. */
 export function useMovePickCopy(): PickStepCopy {
   const { t } = useTranslation("teams");
   return {

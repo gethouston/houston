@@ -30,7 +30,6 @@ function harness(options: { visitorId?: string } = {}) {
     readVisitorId: () => options.visitorId ?? null,
   });
 
-  /** Let the resolved read's continuation run before the next assertion. */
   const settle = () => new Promise<void>((done) => setImmediate(done));
 
   return {
@@ -99,8 +98,6 @@ describe("the install id the batches carry", () => {
   it("never reads the store before the engine is ready", async () => {
     let reads = 0;
     const readInstallId = createInstallIdReader({
-      // An engine that never bootstraps: offline before sign-in, with the sink
-      // already listening above <EngineGate>.
       whenEngineReady: () => new Promise<void>(() => {}),
       readStoredId: () => {
         reads += 1;
@@ -117,9 +114,6 @@ describe("the install id the batches carry", () => {
 
     context();
     await new Promise<void>((done) => setImmediate(done));
-    // Reading early MINTS one (`lib/install-id.ts` swallows the store failure),
-    // and a fabricated id would re-fire install_created and re-open the welcome
-    // bridge for a device that was never new.
     strictEqual(reads, 0, "a flush before the engine must mint nothing");
     ok(
       !Object.hasOwn(context(), "install_id"),
@@ -144,9 +138,6 @@ describe("the install id the batches carry", () => {
 
 describe("the visitor id the batches carry", () => {
   it("rides the very first batch", () => {
-    // Unlike the install id: it comes out of the boot URL, so it is known
-    // before any event exists — and the first batch is the one an acquisition
-    // funnel is counting.
     const h = harness({ visitorId: VISITOR_ID });
     deepStrictEqual(h.context(), {
       session_id: "session-1",
@@ -157,14 +148,11 @@ describe("the visitor id the batches carry", () => {
   });
 
   it("is absent, never null, on a visit that brought none", () => {
-    // Desktop, and any web visit that did not arrive through a site link.
     const h = harness();
     ok(!Object.hasOwn(h.context(), "visitor_id"));
   });
 
   it("is read on every batch, not captured once here", () => {
-    // The capture (and the one-time URL strip) belongs to
-    // `web-visitor-landing.ts`; this only asks it.
     let visitor: string | null = null;
     const context = createProductAnalyticsContext({
       sessionId: () => "session-1",
@@ -180,7 +168,6 @@ describe("the visitor id the batches carry", () => {
 });
 
 describe("what the gateway receives", () => {
-  /** The real posting shape: one context, built when the batch leaves. */
   function batching(context: () => ProductAnalyticsContext) {
     const bodies: Array<{ context: ProductAnalyticsContext; names: string[] }> =
       [];
@@ -222,8 +209,6 @@ describe("what the gateway receives", () => {
     queue.enqueue("session_started");
     await queue.flush();
 
-    // The install id is still a hop away; the visitor id is already there, so
-    // a visit that signs in and does nothing else still joins the funnel.
     strictEqual(bodies[0]?.context.install_id, undefined);
     strictEqual(bodies[0]?.context.visitor_id, VISITOR_ID);
   });

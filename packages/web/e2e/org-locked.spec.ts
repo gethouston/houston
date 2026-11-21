@@ -25,14 +25,6 @@ import { openAdminSection } from "./support/settings-nav";
 import { seedAgentSkills } from "./support/skills-nav";
 import { openTeamSection, teamTab } from "./support/team-nav";
 
-/**
- * A locked org (H4): the strip says why and offers the way out the SDK allows
- * the reader (`orgRecovery`), every write is turned off with the same reason,
- * and reading, moving agents out and removing people stay open. Driven
- * against the fake gateway's armed team (`support/org-lock.ts`), which also
- * refuses a locked org's writes with `403 needs_upgrade`.
- */
-
 const OWNER_REASON =
   "Acme is locked. Unlock it to send messages and make changes.";
 
@@ -72,14 +64,11 @@ test("locked, the owner who pays: the strip, writes off with the reason, reads o
     banner.getByRole("button", { name: "Move to free tier" }),
   ).toBeEnabled();
 
-  // No new AI Employee and no new task in a locked org.
   await expect(page.getByTestId("rail-add-employee")).toHaveCount(0);
-  // Kept-alive boards each draw the button: every one is off.
   const newTask = page.getByRole("button", { name: "New task" });
   await expect(newTask.first()).toBeDisabled();
   for (const button of await newTask.all()) await expect(button).toBeDisabled();
 
-  // The conversation reads; its composer is the locked card.
   await missionCard(page, "Plan a trip to Tokyo").click();
   const card = page.getByTestId("org-locked-card");
   await expect(card).toContainText(OWNER_REASON);
@@ -87,7 +76,6 @@ test("locked, the owner who pays: the strip, writes off with the reason, reads o
   await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
   await page.keyboard.press("Escape");
 
-  // Files read and download; nothing creates or uploads.
   await openTeamSection(page, "Files");
   await expect(page.getByText("Q3 report.pdf")).toBeVisible();
   await expect(
@@ -97,7 +85,6 @@ test("locked, the owner who pays: the strip, writes off with the reason, reads o
     page.getByRole("button", { name: "New", exact: true }),
   ).toHaveCount(0);
 
-  // The employee's own settings: renaming is off, with the reason.
   await openTeamSection(page, "Settings");
   await expect(screen(page).getByTestId("org-locked-note")).toHaveText(
     OWNER_REASON,
@@ -106,7 +93,6 @@ test("locked, the owner who pays: the strip, writes off with the reason, reads o
     page.getByRole("button", { name: "Change color & name" }),
   ).toBeDisabled();
 
-  // People: nobody new comes in, removing someone stays open.
   await openAdminSection(page, "People");
   await expect(screen(page).getByTestId("org-locked-note")).toHaveText(
     OWNER_REASON,
@@ -231,7 +217,6 @@ test("locked: the owner moves an AI Employee out to Personal, where it then list
   );
   await dialog.getByRole("button", { name: "Move AI Employee" }).click();
 
-  // The app switched to Personal, which works, and the employee is there.
   await expect(statusBanner(page)).toHaveCount(0);
   await expect(
     page.locator("[data-sidebar-item]").filter({ hasText: SEED_AGENT_NAME }),
@@ -330,12 +315,9 @@ test("past due: Fix payment opens the portal for the owner who pays, never a che
   await expect(
     banner.getByRole("button", { name: "Fix payment" }),
   ).toBeDisabled();
-  // The fixed payment's webhook lands late: the app's own poll clears the
-  // strip, with no focus or reload.
   await setTeamBilling(orgBilling({ tier: "paid" }));
   await page.clock.runFor(5_000);
   await expect(banner).toHaveCount(0);
-  // Past due still works: the composer stays.
   await missionCard(page, "Plan a trip to Tokyo").click();
   await expect(page.getByTestId("org-locked-card")).toHaveCount(0);
 });

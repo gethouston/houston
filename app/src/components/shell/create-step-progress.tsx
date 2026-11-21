@@ -5,21 +5,6 @@ import {
   guidedStepIndex,
 } from "./create-agent-steps-model";
 
-/**
- * Where the user stands in the guided setup, in the sheet's centre header
- * slot: three named segments, the current one emphasized, every walked one
- * filled.
- *
- * Segments rather than numbered dots. The flow has three questions, not three
- * milestones, and a filled bar over a label says "this much of it is behind
- * you" without the decorative 01/02/03 numbering.
- *
- * In the wide frame's centre slot it holds a FIXED width rather than filling
- * the row: the side tracks grow with the way back and the way out, so a
- * progress bar that stretched would re-centre itself the moment Back appeared,
- * and a header that shifts between steps is exactly what the one sheet exists
- * to stop. On a phone it narrows rather than wrapping.
- */
 export function CreateStepProgress({
   step,
   labels,

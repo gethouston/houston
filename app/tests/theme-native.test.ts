@@ -5,19 +5,7 @@ import {
   serializeNativeTheme,
 } from "../src/lib/theme-native.ts";
 
-/**
- * The native window is ONE resource, and two `setTheme` calls in flight can land
- * in either order: picking System and then Dark could leave the window following
- * the OS (the System release, landing last) while the preference and the DOM both
- * read Dark — and a window that follows the OS is exactly what makes `system`
- * resolvable, so the app would answer the OS appearance for the rest of the
- * session. These tests drive the queue with a window that settles its calls by
- * hand, which is what makes an out-of-order completion expressible at all.
- */
-
-/** A window whose `setTheme` only finishes when the test says so. */
 class FakeWindow {
-  /** The intents the window actually received, in the order it received them. */
   readonly received: NativeTheme[] = [];
   private readonly settlers: ((err?: Error) => void)[] = [];
 
@@ -28,7 +16,6 @@ class FakeWindow {
     });
   };
 
-  /** Finish the nth call the window received, then let the queue run on. */
   async finish(index: number, err?: Error): Promise<void> {
     const settle = this.settlers[index];
     assert.ok(settle, `call ${index} never reached the window`);
@@ -37,7 +24,6 @@ class FakeWindow {
   }
 }
 
-/** Let every queued continuation run. */
 function drain(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
@@ -47,11 +33,11 @@ describe("serializing the native window theme", () => {
     const win = new FakeWindow();
     const native = serializeNativeTheme(win.setTheme);
 
-    const release = native(null); // System: hand the window back to the OS
+    const release = native(null);
     await drain();
     assert.deepEqual(win.received, [null], "the release is under way");
 
-    const pin = native("dark"); // ...and Dark while it is still in flight
+    const pin = native("dark");
     await drain();
     assert.deepEqual(
       win.received,
@@ -83,7 +69,6 @@ describe("serializing the native window theme", () => {
       ["dark"],
       "the release never happens: only the newest intent is worth a call",
     );
-    // Nothing failed for the dropped intent — the newer one owns the outcome.
     await release;
     await win.finish(0);
     await pin;

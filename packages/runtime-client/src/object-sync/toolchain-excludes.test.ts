@@ -34,7 +34,6 @@ test("a toolchain below the agent root is still excluded", () => {
     "workspaces/Personal/Bob/node_modules/a.js",
     "workspaces/Personal/Bob/profile/Default/Cache/data_0",
     "workspaces/Personal/Bob/web/.pnpm-store/v3/files/00/a",
-    // Outside workspaces/, every directory segment counts.
     "node_modules/a.js",
     ".pnpm-store/v3/files/00/a",
   ]) {

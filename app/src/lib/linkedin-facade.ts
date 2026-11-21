@@ -10,13 +10,6 @@ import { isLinkedInUnavailableError } from "@houston/sdk/linkedin/policy";
 import { getEngine } from "./engine";
 import { engineCall } from "./tauri";
 
-/**
- * Posting the org chart to the person's own LinkedIn. A deployment with no
- * LinkedIn (no key, a host that does not serve the routes) is expected and
- * silenced here: the share dialog falls back to copy and paste. A post's
- * refusals arrive typed and the dialog decides on them; only a failure that
- * is not a refusal takes the default path.
- */
 const options = { silence: isLinkedInUnavailableError };
 
 export const tauriLinkedIn = {
@@ -34,7 +27,6 @@ export const tauriLinkedIn = {
       undefined,
       options,
     ),
-  /** A refused ticket answers `invalid`, typed; only a failure throws. */
   complete: (ticket: string) =>
     engineCall<LinkedInCompletion>(
       "linkedin_complete",

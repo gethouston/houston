@@ -15,13 +15,6 @@ import { TurnQuota } from "./quota";
 import { TurnRelay } from "./relay";
 import { dispatchTurn } from "./start-turn";
 
-/**
- * End-to-end cloudrun dispatch against a FAKE turn runtime speaking the real
- * SSE contract: a turn POST claims quota + relay, carries the refreshed
- * access credential (never the refresh token), pumps frames to a subscriber,
- * and the read endpoints serve straight from object storage.
- */
-
 const ws: Workspace = {
   id: "w1",
   ownerUserId: "alice",
@@ -38,7 +31,6 @@ const agent: Agent = {
   createdAt: 1,
 };
 
-// Fake turn runtime: records the request body, streams user→text→done.
 let turnBodies: Record<string, unknown>[] = [];
 let fakeRuntime: Server;
 let runtimeUrl = "";
@@ -93,11 +85,6 @@ function makeDeps(): {
   return { deps, objects, credentials };
 }
 
-/**
- * Drive dispatchCloudrun through a real HTTP server (it needs req/res).
- * `preReadBody` stands in for the route that already drained the body to stamp
- * @mention attribution (routes/agents.ts) and hands the buffer down.
- */
 function serve(
   deps: TurnDeps,
   preReadBody?: Buffer,
@@ -116,10 +103,6 @@ function serve(
       res,
       preReadBody,
     ).catch((err) => {
-      // Mirrors the real host's top-level mapping (server.ts): an over-cap body
-      // is a 413, everything else a 500. Without it a BodyTooLargeError that
-      // correctly escaped the route would be indistinguishable here from the
-      // 500 this change exists to stop returning.
       res.writeHead(err instanceof BodyTooLargeError ? 413 : 500);
       res.end(String(err));
     });
@@ -142,7 +125,7 @@ test("a turn: refreshes the expiring credential, sends access-only, pumps frames
     accessToken: "AT-stale",
     refreshToken: "RT-central",
     accountId: "acct-9",
-    expiresAt: Date.now() - 1000, // expiring → must refresh first
+    expiresAt: Date.now() - 1000,
   });
   turnBodies = [];
   const { base, close } = await serve(deps);
@@ -172,11 +155,10 @@ test("a turn: refreshes the expiring credential, sends access-only, pumps frames
     expect(sent.gcsPrefix).toBe("ws/w1/agent-1");
     expect(sent.nonce).toBe("n-1");
     const cred = sent.credential as Record<string, unknown>;
-    expect(cred.access).toBe("AT-refreshed"); // refreshed centrally before the turn
+    expect(cred.access).toBe("AT-refreshed");
     expect(cred.accountId).toBe("acct-9");
-    expect("refresh" in cred).toBe(false); // the refresh token NEVER rides a turn
+    expect("refresh" in cred).toBe(false);
     expect(JSON.stringify(sent)).not.toContain("RT-central");
-    // The refreshed credential was persisted back centrally.
     expect((await credentials.get("w1", "openai-codex"))?.accessToken).toBe(
       "AT-refreshed",
     );
@@ -237,7 +219,6 @@ test("a malformed turn body answers a clean 400 — both the streamed and the pr
   const { deps } = makeDeps();
   const bad = "{not json";
 
-  // The plain path: the dispatch reads and parses the request stream itself.
   const streamed = await serve(deps);
   try {
     const res = await fetch(`${streamed.base}/conversations/c-bad/messages`, {
@@ -245,16 +226,12 @@ test("a malformed turn body answers a clean 400 — both the streamed and the pr
       headers: { "content-type": "application/json" },
       body: bad,
     });
-    // Not a 500: the client sent junk, and it must be told so — an unguarded
-    // parse used to escape into the host's top-level catch as an opaque 500.
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "invalid JSON body" });
   } finally {
     streamed.close();
   }
 
-  // The attribution path: the route already drained the body, so the buffer is
-  // parsed in place of the (now exhausted) stream — same guard required.
   const preread = await serve(deps, Buffer.from(bad));
   try {
     const res = await fetch(`${preread.base}/conversations/c-bad/messages`, {
@@ -273,9 +250,6 @@ test("an over-cap turn body still propagates as a 413, not mislabelled a 400", a
   const { deps } = makeDeps();
   const { base, close } = await serve(deps);
   try {
-    // node:http rather than fetch: the host answers before the oversized body
-    // finishes uploading, so the write side may error after the response has
-    // already arrived — that is the intended behavior, not a test failure.
     const { port } = new URL(base);
     const status = await new Promise<number>((resolve, reject) => {
       let responded = false;
@@ -375,7 +349,6 @@ test("providers + auth/status reflect the central credential; settings persist t
   }
 });
 
-/** Parse the SSE stream into `{type,data,seq,id}` frames until `count` arrive. */
 async function collectFrames(
   res: Response,
   count: number,
@@ -396,7 +369,7 @@ async function collectFrames(
       buf = buf.slice(sep + 2);
       sep = buf.indexOf("\n\n");
       const dataLine = block.split("\n").find((l) => l.startsWith("data: "));
-      if (!dataLine) continue; // ": connected" / ": hb"
+      if (!dataLine) continue;
       const idLine = block.split("\n").find((l) => l.startsWith("id: "));
       frames.push({
         ...JSON.parse(dataLine.slice(6)),
@@ -439,13 +412,13 @@ test("?after= resumes the in-flight turn: no sync, replayed + live frames, no ga
       publishFrame = publish;
       await new Promise<void>((r) => (finish = r));
     });
-    await publishFrame({ type: "text", data: "a" }); // 1
-    await publishFrame({ type: "text", data: "b" }); // 2
-    await publishFrame({ type: "text", data: "c" }); // 3
+    await publishFrame({ type: "text", data: "a" });
+    await publishFrame({ type: "text", data: "b" });
+    await publishFrame({ type: "text", data: "c" });
 
     const res = await fetch(`${base}/conversations/c10/events?after=1`);
     const pending = collectFrames(res, 3);
-    await publishFrame({ type: "text", data: "d" }); // 4 — concurrent with the replay flush
+    await publishFrame({ type: "text", data: "d" });
     const frames = await pending;
     expect(frames.some((f) => f.type === "sync")).toBe(false);
     expect(frames.map((f) => [f.seq, f.data])).toEqual([
@@ -463,11 +436,10 @@ test("an unserviceable cursor degrades to a resync sync carrying the current wat
   const { deps } = makeDeps();
   const { base, close } = await serve(deps);
   try {
-    // Finished turn: the replay window is cleared, only the watermark survives.
     await deps.relay.start("agent-1", "agent-1/c11", async (publish) => {
-      await publish({ type: "user", data: { content: "q", ts: 1 } }); // 1
-      await publish({ type: "text", data: "answer" }); // 2
-      await publish({ type: "done", data: null }); // 3
+      await publish({ type: "user", data: { content: "q", ts: 1 } });
+      await publish({ type: "text", data: "answer" });
+      await publish({ type: "done", data: null });
     });
     await new Promise((r) => setTimeout(r, 0));
 
@@ -494,9 +466,9 @@ test("Last-Event-ID resumes like ?after=, and the header wins when both are sent
       publishFrame = publish;
       await new Promise<void>((r) => (finish = r));
     });
-    await publishFrame({ type: "text", data: "a" }); // 1
-    await publishFrame({ type: "text", data: "b" }); // 2
-    await publishFrame({ type: "text", data: "c" }); // 3
+    await publishFrame({ type: "text", data: "a" });
+    await publishFrame({ type: "text", data: "b" });
+    await publishFrame({ type: "text", data: "c" });
 
     const viaHeader = await fetch(`${base}/conversations/c12/events`, {
       headers: { "Last-Event-ID": "1" },
@@ -505,9 +477,6 @@ test("Last-Event-ID resumes like ?after=, and the header wins when both are sent
       2, 3,
     ]);
 
-    // The gateway advances Last-Event-ID past its Redis replay while the
-    // original ?after= stays in the query string: the header must win, or
-    // every frame the gateway just replayed is served a second time.
     const both = await fetch(`${base}/conversations/c12/events?after=0`, {
       headers: { "Last-Event-ID": "2" },
     });
@@ -523,17 +492,12 @@ test("cancel reports whether a turn was actually in flight (so the client can se
   const { deps } = makeDeps();
   const { base, close } = await serve(deps);
   try {
-    // No turn in flight → nothing to abort. `cancelled:false` is the signal the
-    // client uses to settle a card stuck "running" after the turn died (e.g. an
-    // app restart dropped the in-memory turn). Previously this was always {ok:true}.
     const orphan = await fetch(`${base}/conversations/c-orphan/cancel`, {
       method: "POST",
     });
     expect(orphan.status).toBe(200);
     expect(await orphan.json()).toEqual({ ok: true, cancelled: false });
 
-    // A live turn IS in flight → cancel aborts it and reports cancelled:true, so
-    // the client leaves the status to the turn's own terminal frame (no race).
     let release: (() => void) | undefined;
     const claimed = await deps.relay.start(
       "agent-1",

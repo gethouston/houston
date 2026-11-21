@@ -2,7 +2,6 @@ import type { Activity } from "./activity";
 
 export type MissionAudience = { everyone: true } | { user_ids: string[] };
 
-/** A mission with no attribution belongs to everyone who can use its agent. */
 export function missionAudience(
   activity:
     | Pick<Activity, "created_by" | "contributors" | "mentioned">

@@ -1,13 +1,3 @@
-/**
- * The models the follow-up pass (session/follow-up-pass.ts) asks for next-step
- * suggestions. The pass holds the turn's `done` for up to its timeout, so it
- * runs only on hosted APIs that answer a small request quickly. A local model,
- * the desktop's bridge or a custom OpenAI-compatible endpoint (provider
- * `openai-compatible`) is not on the list: there the person would wait seconds
- * after every reply for bubbles a slow model rarely gets right.
- */
-
-/** Chat Completions hosts known to serve small requests fast. */
 const FAST_COMPLETIONS_PROVIDERS: ReadonlySet<string> = new Set([
   "openrouter",
   "groq",

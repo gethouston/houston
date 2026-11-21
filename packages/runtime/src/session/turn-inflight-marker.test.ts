@@ -34,7 +34,6 @@ describe("turn in-flight marker", () => {
       startedAt: 1_000,
       fenced: true,
     });
-    // The id is encoded into the file name (a slash must not nest a dir).
     expect(readdirSync(inflightDir(dataDir))).toEqual(["chat%2Fone.json"]);
     clearInflightMarker(dataDir, "chat/one");
     expect(readInflightMarker(dataDir, "chat/one")).toBeNull();
@@ -57,8 +56,6 @@ describe("turn in-flight marker", () => {
     });
     noteInflightTool(dataDir, "c", "bash");
     expect(readInflightMarker(dataDir, "c")?.tool).toBe("bash");
-    // A tool_end frame racing the turn's end: the marker is already gone, and
-    // the late tool note must not bring the turn back as in-flight.
     clearInflightMarker(dataDir, "c");
     noteInflightTool(dataDir, "c", "bash");
     expect(readInflightMarker(dataDir, "c")).toBeNull();

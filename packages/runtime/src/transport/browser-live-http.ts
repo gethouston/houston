@@ -31,14 +31,6 @@ function refuse(
   });
 }
 
-/**
- * The hand-off a request may touch: the one it names (`handoff`), else the
- * chat's latest; and only for the person it was handed to (the
- * gateway-signed acting-as names them). Fails closed: a hand-off started with
- * no person named (desktop) is open to a request that names nobody either,
- * never to one signed as someone. A named hand-off that is forgotten while
- * the chat has a newer one is over (`409`, no state to tell).
- */
 function sessionFor(
   req: IncomingMessage,
   res: ServerResponse,
@@ -61,7 +53,6 @@ function sessionFor(
   return session;
 }
 
-/** GET `/conversations/:cid/browser/live`: the live view's SSE stream. */
 export function serveBrowserLive(
   req: IncomingMessage,
   res: ServerResponse,
@@ -80,8 +71,6 @@ export function serveBrowserLive(
     refuse(res, 400, "invalid_input");
     return;
   }
-  // An ended hand-off (the one named, or the chat's latest) answers with its
-  // terminal status and closes: attachViewer sends it and attaches nothing.
   const session = sessionFor(req, res, conversationId, registry, handoff);
   if (!session) return;
   res.writeHead(200, {
@@ -97,7 +86,6 @@ export function serveBrowserLive(
   const write = (event: BrowserLiveEvent): boolean => {
     if (res.writableEnded) return false;
     res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
-    // An ended hand-off says how it ended, once, and the stream is over.
     if (event.type === "status" && event.state !== "waiting") res.end();
     return true;
   };
@@ -122,7 +110,6 @@ async function readCapped(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-/** POST `/conversations/:cid/browser/input`: one batch of the person's input. */
 export async function serveBrowserInput(
   req: IncomingMessage,
   res: ServerResponse,
@@ -133,8 +120,6 @@ export async function serveBrowserInput(
   try {
     request = parseBrowserLiveInputRequest(JSON.parse(await readCapped(req)));
   } catch {
-    // Too large, not JSON, or off the contract: the client's bug, answered as
-    // one. The body (typed text) is never logged.
     refuse(res, 400, "invalid_input");
     return;
   }
@@ -146,16 +131,11 @@ export async function serveBrowserInput(
     request.handoff,
   );
   if (!session) return;
-  // Ended, or an earlier hand-off than the chat's waiting one (only ended
-  // hand-offs are retained by id): nothing of it, not its batch, its ack nor
-  // its finish, reaches the waiting one.
   if (session.state !== "waiting") {
     refuse(res, 409, "handoff_ended", session);
     return;
   }
   if (request.ack) session.ack(request.ack.viewer, request.ack.seq);
-  // A batch queued behind one that finished the hand-off applies nothing
-  // (session.ts); its answer then carries the ended state.
   const outcome = request.events?.length
     ? await session.apply(request.events, request.batch)
     : {};

@@ -60,11 +60,6 @@ describe("removeInteractionStep", () => {
   });
 });
 
-/**
- * The panel dismisses against the LIVE (settle-time) interaction, which a
- * persist never rewrites. Dismissing both offers one after the other therefore
- * has to chain — or the second write resurrects the first offer on reload.
- */
 describe("foldDismissal", () => {
   const both: PendingInteraction = { steps: [ACTIONS_STEP, REUSABLE_STEP] };
 
@@ -72,8 +67,6 @@ describe("foldDismissal", () => {
     const first = foldDismissal(null, both, "a1");
     deepStrictEqual(first, { base: both, written: { steps: [REUSABLE_STEP] } });
 
-    // The SAME live interaction is passed again — the panel re-renders from the
-    // settle-time sequence, not from what was just persisted.
     const second = foldDismissal(first, both, "r1");
     deepStrictEqual(second, { base: both, written: null });
   });
@@ -81,8 +74,6 @@ describe("foldDismissal", () => {
   it("does not resurrect the first offer when the second is dismissed", () => {
     const first = foldDismissal(null, both, "r1");
     const second = foldDismissal(first, both, "a1");
-    // The regression this guards: {a1,r1} - a1 = {r1}, bringing back the
-    // save-as-reusable card the user had already skipped.
     strictEqual(second?.written, null);
   });
 
@@ -101,9 +92,6 @@ describe("foldDismissal", () => {
   });
 
   it("starts a fresh chain when a later turn re-arms the SAME step ids", () => {
-    // `a1` / `r1` are tool-assigned and repeat every turn, so the chain is keyed
-    // on the interaction's identity: a new turn's object must not inherit the
-    // previous turn's remainder (which would wipe the sibling offer).
     const previousTurn = foldDismissal(null, both, "a1");
     const nextTurn: PendingInteraction = {
       steps: [ACTIONS_STEP, REUSABLE_STEP],
@@ -115,8 +103,6 @@ describe("foldDismissal", () => {
   });
 
   it("chains from the persisted remainder after a reload (no prior write)", () => {
-    // A reload renders the persisted remainder itself, so the first dismissal
-    // after it starts from `{r1}` and clears the interaction outright.
     const remainder: PendingInteraction = { steps: [REUSABLE_STEP] };
     deepStrictEqual(foldDismissal(null, remainder, "r1"), {
       base: remainder,

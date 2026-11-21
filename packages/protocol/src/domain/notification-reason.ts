@@ -10,7 +10,6 @@ export type NotificationReason =
   | "hands_on"
   | "error";
 
-/** The first unmet need determines the notification copy. */
 export function notificationReason(
   status: "needs_you" | "error",
   interaction: PendingInteraction | null | undefined,

@@ -77,7 +77,6 @@ test.each([
       ),
   ).toBe(true);
 
-  // Unmodified pi can open it directly: no Houston-specific format or migration.
   expect(SessionManager.open(file).buildSessionContext()).toEqual(context);
   expect(resumeSessionManager(resumedCwd, dir, false).getSessionFile()).toBe(
     file,

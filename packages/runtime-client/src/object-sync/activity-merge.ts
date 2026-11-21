@@ -1,6 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
 
-/** The board document; the gateway rewrites it (if-generation-match) mid-turn. */
 export const ACTIVITY_DOC = ".houston/activity/activity.json";
 
 type Card = Record<string, unknown>;
@@ -28,7 +27,6 @@ function updatedAt(card: Card): number {
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
 }
 
-/** Field-level merge of one card both sides kept: remote wins a field both changed. */
 function mergeCardFields(base: Card, local: Card, remote: Card): Card {
   const merged: Card = {};
   const keys = new Set([
@@ -45,16 +43,10 @@ function mergeCardFields(base: Card, local: Card, remote: Card): Card {
   return merged;
 }
 
-/**
- * Without a base the change author is unknowable, so the newer `updated_at`
- * wins and a tie (or no stamp) goes to the remote: the gateway's writes are a
- * person's edits, and the turn's untouched copy of a card must never revert one.
- */
 function pickNewer(local: Card, remote: Card): Card {
   return updatedAt(local) > updatedAt(remote) ? local : remote;
 }
 
-/** Resolve one card id; undefined means the card is gone from the merge. */
 function resolveCard(
   base: Card | undefined,
   local: Card | undefined,
@@ -65,26 +57,15 @@ function resolveCard(
     return pickNewer(local, remote);
   }
   if (local) {
-    // In the base but not remote = deleted remotely: never resurrected.
     return base ? undefined : local;
   }
   if (remote) {
-    // The turn deleted it: stays deleted unless the remote changed it since.
     if (base && isDeepStrictEqual(base, remote)) return undefined;
     return remote;
   }
   return undefined;
 }
 
-/**
- * Merge the turn's activity array into a refreshed remote one by card `id`.
- *
- * With `base` (the bytes the turn hydrated) this is a three-way merge per card
- * and per field. Without it, the union of both sides survives (a remote delete
- * made mid-turn can come back, the only loss-free choice) and a card both
- * sides hold resolves by `updated_at`. Entries without an id keep the remote's
- * copies plus any local one the remote does not already hold.
- */
 export function mergeActivityArrays(
   remote: readonly unknown[],
   local: readonly unknown[],
@@ -126,10 +107,6 @@ function cardIds(body: string): string[] {
   }
 }
 
-/**
- * Board card ids `remoteBody` holds that `mergedBody` does not: what a merge
- * removed from the board it landed over. Empty for every other document.
- */
 export function removedCardIds(
   relativePath: string,
   remoteBody: string,

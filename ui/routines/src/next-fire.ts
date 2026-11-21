@@ -1,13 +1,3 @@
-/**
- * Compute the next time a schedule will fire, in a given IANA timezone. A
- * 5-field cron walks forward but skips whole hours/days when fields obviously
- * don't match — fast enough that we can call this on every routine row every
- * minute without burning CPU. Avoids a cron-parser dependency. An `@every`
- * interval is plain grid math (`./next-fire-interval`).
- *
- * Returns `null` when the schedule never fires within 366 days (typically a
- * malformed cron).
- */
 import { nextEveryFire } from "./next-fire-interval.ts";
 import { isEveryForm } from "./schedule-interval-form.ts";
 
@@ -123,17 +113,12 @@ const DAY = 24 * HOUR;
 const HORIZON_DAYS = 366;
 
 function matchDay(fields: CronFields, dom: number, dow: number): boolean {
-  // Standard cron: when both DoM and DoW are restricted, EITHER matches.
   if (fields.domStar && fields.dowStar) return true;
   if (fields.domStar) return fields.dow.has(dow);
   if (fields.dowStar) return fields.dom.has(dom);
   return fields.dom.has(dom) || fields.dow.has(dow);
 }
 
-/**
- * Next time the schedule (cron or `@every` interval) fires after `from`
- * (defaults to now).
- */
 export function nextFire(
   cron: string,
   timeZone: string,
@@ -143,11 +128,9 @@ export function nextFire(
   const fields = parseCron(cron);
   if (!fields) return null;
 
-  // Round forward to the next whole minute so we don't return "now".
   let cursor = Math.ceil((from.getTime() + 1) / MINUTE) * MINUTE;
   const horizon = cursor + HORIZON_DAYS * DAY;
 
-  // Hard iteration cap so a degenerate cron never spins forever.
   for (let iter = 0; iter < 200_000 && cursor <= horizon; iter++) {
     const p = partsInZone(cursor, timeZone);
     if (!p) return null;
@@ -157,8 +140,6 @@ export function nextFire(
       continue;
     }
     if (!matchDay(fields, p.dom, p.dow)) {
-      // Skip rest of this day. +24h is approximate near DST but the next
-      // iteration re-examines parts so we always converge.
       cursor += DAY - p.hour * HOUR - p.minute * MINUTE;
       continue;
     }

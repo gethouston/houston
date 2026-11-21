@@ -5,8 +5,6 @@ import { readMessageAdmission } from "./message-admission-read";
 
 const root = "Personal/Assistant/.houston/runtime";
 const body = { text: "hello", nonce: "n" };
-// The runtime writer's own path helper: a drift between the two sides would
-// make every retry read as new work, so the test addresses what it addresses.
 const key = `${root}/${messageAdmissionFileName("assistant", "n")}`;
 
 test("missing durable receipt is distinct from an unavailable or corrupt read", async () => {

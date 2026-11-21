@@ -16,11 +16,6 @@ import {
   updateUploadProgress,
 } from "../../lib/upload-progress";
 
-/**
- * An agent's file listing. Deletes, renames, moves and new folders live in
- * `use-file-writes.ts` (optimistic); uploads stay here, where their progress
- * is the honest UI.
- */
 export function useFiles(agentPath: string | undefined, enabled = true) {
   return useQuery({
     queryKey: queryKeys.files(agentPath ?? ""),
@@ -70,18 +65,7 @@ export function useUploadFiles(agentPath: string | undefined) {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
     },
-    // Defense in depth, and today only that: the intake rejects any single file
-    // at or over the cap, and the client splits a batch into requests far below
-    // it, so nothing should reach the host's 413. It stays because the two caps
-    // can drift (the host lowers `MAX_UPLOAD_BYTES`, the client raises its batch
-    // budget) and a drift that failed silently would be worse than a toast that
-    // never fires. `tauriFiles.upload` silences the 413 (expected state, not a
-    // bug) precisely so this handler can explain it in product copy; every other
-    // failure already went through `call`'s red toast + Sentry report on the way
-    // here, so re-toasting it would double up on the user.
     onError: (err: unknown) => {
-      // A workspace that refuses every write refuses the upload too, and says
-      // so in its own words — the size limit has nothing to do with it.
       if (isReadOnlyError(err)) {
         showReadOnlyToast();
         return;

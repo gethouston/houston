@@ -3,7 +3,6 @@ import { anchorBounds, type CropFrame, cropFrame } from "./geometry";
 import { releaseCanvas } from "./page-render";
 import type { PdfAnchor, PdfBox, PdfPageSize } from "./types";
 
-/** The crop's long side: enough for the agent to read body text. */
 const MAX_SIDE = 1024;
 
 export interface Ink {
@@ -11,8 +10,6 @@ export interface Ink {
   outline: string;
 }
 
-/** Colours come from the page element, which pins the light theme: the paper
- *  is light whatever the app's theme is. */
 export function inkOf(page: HTMLElement): Ink {
   const style = getComputedStyle(page);
   return {
@@ -21,8 +18,6 @@ export function inkOf(page: HTMLElement): Ink {
   };
 }
 
-/** Draw the selection on the crop (a highlighter wash over quoted text, an
- *  outline round an area) and encode it as base64 PNG without `data:`. */
 function finish(
   out: HTMLCanvasElement,
   anchor: PdfAnchor,
@@ -63,10 +58,6 @@ function blank(frame: CropFrame): HTMLCanvasElement {
   return out;
 }
 
-/**
- * A quick crop of the selection, with page around it, copied from the page
- * already drawn on screen. Sized by the screen, so only fit for a thumbnail.
- */
 export function previewCrop(
   canvas: HTMLCanvasElement,
   anchor: PdfAnchor,
@@ -91,10 +82,6 @@ export function previewCrop(
   return finish(out, anchor, size, frame, inkOf(page));
 }
 
-/**
- * The crop the agent reads: the same region drawn by pdf.js at MAX_SIDE
- * pixels on its long side, however small the page shows on screen.
- */
 export async function renderCrop(
   doc: PDFDocumentProxy,
   pageNumber: number,

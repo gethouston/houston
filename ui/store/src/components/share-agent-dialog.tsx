@@ -13,7 +13,6 @@ import { useState } from "react";
 
 import type { OwnedAgentRow } from "../types";
 
-/** The Drive-style visibility levels the share dialog offers. */
 export type ShareVisibility = "public" | "hidden" | "private";
 
 export interface ShareAgentDialogLabels {
@@ -42,7 +41,6 @@ export const SHARE_AGENT_DIALOG_LABELS: ShareAgentDialogLabels = {
   copied: "Copied",
 };
 
-/** The agent's current level in share terms. */
 export function shareVisibilityOf(agent: OwnedAgentRow): ShareVisibility {
   if (agent.state !== "published") return "private";
   return agent.visibility === "public" ? "public" : "hidden";
@@ -61,20 +59,13 @@ export interface ShareAgentDialogProps {
   agent: OwnedAgentRow;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** True once a public-listing request was sent this session. */
   publicRequested?: boolean;
   onSelect: (visibility: ShareVisibility) => void;
-  /** The agent's link, shown with a copy affordance unless private. */
   shareHref?: string | null;
   busy?: boolean;
   labels?: Partial<ShareAgentDialogLabels>;
 }
 
-/**
- * THE share dialog — Google-Drive-style visibility for a listing: public
- * (store-findable, review-gated), hidden (link only), private (only you).
- * One shared composition so web and app cannot drift.
- */
 export function ShareAgentDialog({
   agent,
   open,

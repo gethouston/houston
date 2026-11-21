@@ -10,19 +10,6 @@ import {
 } from "./conversation-file";
 import { loadFullConversation } from "./conversation-queries";
 
-/**
- * Write an import's messages at the end of the transcript (or at its start,
- * stamped just before its first line, for `at: "start"`), creating the
- * conversation when it has none, and stamp `needsSessionReplay`: the model's
- * context lives in the backend-native session, which never saw these lines, so
- * the NEXT turn rebuilds its session and carries the whole transcript in as a
- * replay preamble (HOU-951), imported lines included. Pure dir-parameterized
- * file logic like conversation-truncate.ts; the session teardown that must
- * accompany it lives in session/import-conversation.ts.
- *
- * Returns 0 when the transcript already holds this import (its archived
- * segments included), writing nothing.
- */
 export function importConversationMessagesAt(
   dir: string,
   id: string,
@@ -69,7 +56,6 @@ function alreadyImported(
 ): boolean {
   if (holdsImport(conv.messages, importId)) return true;
   if (!conv.archived) return false;
-  // Only a lookup: a lost segment (reported) must not block every import.
   const full = loadFullConversation(dir, conv.id, "report");
   return full !== null && holdsImport(full.messages, importId);
 }

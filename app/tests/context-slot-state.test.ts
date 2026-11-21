@@ -23,8 +23,6 @@ describe("contextSlotState", () => {
   });
 
   it("says there is no AI Employee to keep it with, instead of spinning forever", () => {
-    // Zero agents: the store settles with no current agent, so the read
-    // never starts and `hasData` never turns true.
     strictEqual(
       contextSlotState({
         agentsLoaded: true,

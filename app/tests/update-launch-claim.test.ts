@@ -5,8 +5,6 @@ import {
   resetLaunchCheckClaimForTests,
 } from "../src/lib/update-launch-claim.ts";
 
-/** A `sessionStorage` stand-in: the node runner has none, and the claim must
- *  behave the same with and without one. */
 function installSessionStorage(): Map<string, string> {
   const backing = new Map<string, string>();
   const fake = {
@@ -30,9 +28,6 @@ function uninstallSessionStorage(): void {
   Reflect.deleteProperty(globalThis, "sessionStorage");
 }
 
-// The launch check is the first check of the PROCESS. The hook that runs it
-// is remounted with <App/> on every identity change, so "first check since
-// mount" would turn a mid-session find into a launch-time install.
 describe("claimLaunchCheck", () => {
   beforeEach(() => {
     uninstallSessionStorage();
@@ -49,7 +44,6 @@ describe("claimLaunchCheck", () => {
 
   it("calls every later check mid-session, a remount of the hook included", () => {
     strictEqual(claimLaunchCheck(), "launch");
-    // The hook's own state is gone after a remount; the claim is not.
     strictEqual(claimLaunchCheck(), "poll");
     strictEqual(claimLaunchCheck(), "poll");
   });
@@ -62,7 +56,6 @@ describe("claimLaunchCheck", () => {
 
   it("honours a claim left by the previous page of the same session", () => {
     const backing = installSessionStorage();
-    // A reload drops module state but keeps the session; the claim must hold.
     backing.set("houston.updater.launch-check-claimed", "1");
     strictEqual(claimLaunchCheck(), "poll");
   });

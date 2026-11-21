@@ -9,7 +9,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** A page whose Back never commits: it fails once its timeout passes. */
 function hungPage() {
   const timeouts: number[] = [];
   const page = {
@@ -23,7 +22,6 @@ function hungPage() {
       );
     },
   };
-  // SAFETY: the live view calls goBack with options; the rest is fakePage's.
   return { page: page as unknown as ReturnType<typeof fakePage>, timeouts };
 }
 
@@ -43,7 +41,6 @@ test("a batch's navigations share one budget: Backs on a hung site never hold it
   expect(Date.now() - started).toBeLessThan(200);
   expect(timeouts).toHaveLength(1);
   expect(timeouts[0]).toBeLessThanOrEqual(100);
-  // Input that is not a navigation still reaches the page.
   expect(cdp.sent).toEqual([
     "Page.getNavigationHistory",
     "Input.insertText:after",
@@ -51,7 +48,6 @@ test("a batch's navigations share one budget: Backs on a hung site never hold it
   const skipped = warn.mock.calls.map((call) => call.join(" ")).join("\n");
   expect(skipped).toContain("skipped 2 navigation(s)");
   expect(skipped).not.toMatch(/elsewhere|hung\.test|token/);
-  // The next batch starts with the whole budget again.
   await input.apply([{ type: "back" }]);
   expect(timeouts).toHaveLength(2);
 });
@@ -64,7 +60,6 @@ test("a navigation's timeout is what the batch has left, never 0 (Playwright's '
   now = 14_000;
   expect(budget.timeout()).toBe(1_000);
   expect(budget.spent()).toBe(false);
-  // A millisecond left (a timer that fired early) can't commit a navigation.
   now = 14_999;
   expect(budget.spent()).toBe(true);
   now = 15_000;

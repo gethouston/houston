@@ -5,11 +5,6 @@ import {
 } from "@houston/engine-adapter/portable-map";
 import { expect, test } from "vitest";
 
-/**
- * The v1-wizard ↔ v3-wire mappings for portable agents. The wizards keep the
- * old client's field names; the host speaks the protocol's PortableSelection.
- */
-
 const NOW = "2026-07-04T00:00:00.000Z";
 
 function pkg() {

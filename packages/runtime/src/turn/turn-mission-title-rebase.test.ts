@@ -28,7 +28,6 @@ const other: Card = {
   status: "running",
   updated_at: "2026-09-28T09:00:00.000Z",
 };
-// Created by the gateway in-process AFTER the worker hydrated its snapshot.
 const mine: Card = {
   id: "mine",
   title: FALLBACK,
@@ -46,7 +45,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** A generation-guarded store whose board the gateway writes in-process. */
 function gatewayStore(root: string) {
   const inner = new LocalDirStore(root);
   const path = (key: string) => join(root, ...key.split("/"));
@@ -100,8 +98,6 @@ function gatewayStore(root: string) {
       return { generation: generation(key) };
     },
     delete: (key) => inner.delete(key),
-    // Batched like the worker's HTTP store (`batchReads`), so hydration takes
-    // the path production does.
     downloadMany: async (entries) => {
       const outcomes = new Map<string, { status: "ok"; generation: string }>();
       for (const { key, destFile } of entries) {
@@ -114,7 +110,6 @@ function gatewayStore(root: string) {
   const armAfterNextBoardRead = (hook: () => Promise<void>) => {
     afterRead = hook;
   };
-  /** The source file changing between sync-back's hash and its upload. */
   const armDuringNextBoardUpload = (
     hook: (source: string) => Promise<void>,
   ) => {
@@ -135,11 +130,6 @@ async function seed(root: string, rel: string, content: string) {
   await writeFile(join(root, rel), content);
 }
 
-/**
- * A claimed new-mission turn: hydrate a board WITHOUT the mission's card, let
- * the gateway create it, run the turn (its own board edit, then the title),
- * and make it durable. `afterTitleRead` is the gateway writing in between.
- */
 async function titledTurn(opts: {
   afterTitleRead?: (gateway: ReturnType<typeof gatewayStore>) => Promise<void>;
   ownEdit?: (cards: Card[]) => Card[];
@@ -323,7 +313,6 @@ test("a board rewritten while it uploads cannot vouch for the title", async () =
     },
   });
 
-  // Other bytes landed than the pass hashed, so it cannot read them back.
   expect(card("mine")?.title).toBe("Changed mid-upload");
   expect(frame.data.missionTitle).toEqual({
     outcome: "unverified",

@@ -34,7 +34,6 @@ function classify(err: unknown): Load {
   };
 }
 
-/** The creator abuse-report feed: filter by status, resolve or dismiss inline. */
 export function CreatorReportsTab({
   getToken,
 }: {

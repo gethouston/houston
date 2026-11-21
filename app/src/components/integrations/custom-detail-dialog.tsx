@@ -16,16 +16,6 @@ import {
 } from "./custom-integrations-model";
 import { MetaRow } from "./custom-meta-row";
 
-/**
- * The custom integration's "more info" modal (HOU-980) — what a custom row or
- * Installed-strip tile opens: letter avatar + name, kind + live-status chips,
- * a situation line, and the metadata the user gave it (URL, added date, the
- * action COUNT — the per-action list was cut on review: raw tool names +
- * model-facing blurbs read as noise to the non-technical audience). Footer:
- * Enter/Update key (when the integration can take one) beside Remove.
- * Presentational: the parent owns the key dialog, the delete confirm, and
- * the selection state.
- */
 export function CustomDetailDialog({
   integration,
   onClose,
@@ -37,8 +27,6 @@ export function CustomDetailDialog({
   integration: CustomIntegrationView | null;
   onClose: () => void;
   onEnterKey: (integration: CustomIntegrationView) => void;
-  /** OAuth integration (PRODUCT-1172): open the browser sign-in — the
-   *  pending CTA, and the re-auth affordance once active. */
   onSignIn: (integration: CustomIntegrationView) => void;
   onRemove: (integration: CustomIntegrationView) => void;
   onEdit: (integration: CustomIntegrationView) => void;
@@ -52,8 +40,6 @@ export function CustomDetailDialog({
   const body =
     state.status === "active"
       ? t(
-          // One pod per agent (PRODUCT-1773): only the agent it was set up
-          // with can use it — "your agents" would promise the others.
           scope === "agent"
             ? "custom.details.activeBodyAgent"
             : "custom.details.activeBody",
@@ -156,10 +142,6 @@ export function CustomDetailDialog({
         </div>
       }
     >
-      {/* min-w-0: DialogContent is a GRID, and a grid item's default
-          min-width:auto lets one unbreakable URL widen the implicit track
-          past the card — spilling the text AND shoving the footer's
-          justify-end buttons outside the dialog. */}
       <dl className="min-w-0 space-y-1.5">
         {integration.displayUrl && (
           <MetaRow

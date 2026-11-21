@@ -4,12 +4,6 @@ import { Plus, Unplug } from "lucide-react";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-/**
- * The accounts one provider holds, in the integrations accounts-list frame:
- * each row names its account and carries its own disconnect, and the foot row
- * connects another. A row whose id the card has never shown fades in, so a
- * connection finished in Slack or on a phone is noticed.
- */
 export function ChannelAccountList({
   title,
   connections,
@@ -21,10 +15,8 @@ export function ChannelAccountList({
 }: {
   title: string;
   connections: ChannelConnection[];
-  /** Every id the card has shown before this render. */
   seenIds: ReadonlySet<string>;
   busy: boolean;
-  /** Absent: the provider cannot connect more, so the list has no foot row. */
   addLabel?: string;
   onAdd: () => void;
   onDisconnect: (connection: ChannelConnection) => void;
@@ -78,8 +70,6 @@ function ChannelAccountRow({
   onDisconnect: (connection: ChannelConnection) => void;
 }) {
   const { t } = useTranslation("settings");
-  // Decided once per mount: a re-render mid-entrance keeps the class, and a
-  // row restored after a refused disconnect was already seen, so stays still.
   const [landing] = useState(() => !seenIds.has(connection.id));
   return (
     <li

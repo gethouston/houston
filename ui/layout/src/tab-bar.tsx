@@ -7,9 +7,7 @@ export interface TabBarProps {
     id: string;
     label: string;
     badge?: number;
-    /** Disable the tab (non-clickable, muted). */
     disabled?: boolean;
-    /** Optional text chip shown next to the label (e.g. "Soon"). */
     chip?: string;
   }[];
   activeTab: string;
@@ -28,7 +26,6 @@ export function TabBar({
 }: TabBarProps) {
   return (
     <div className="shrink-0 px-5 pt-4">
-      {/* Title row + menu + actions */}
       {(title || menu || actions) && (
         <div className="flex items-center gap-2 mb-3">
           {title && (
@@ -43,8 +40,6 @@ export function TabBar({
         </div>
       )}
 
-      {/* Tab strip — scrolls horizontally when the viewport is narrower than
-          the tab row (phone widths) instead of wrapping or clipping. */}
       <div className="flex items-center gap-5 overflow-x-auto">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;

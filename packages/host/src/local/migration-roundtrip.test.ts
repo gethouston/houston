@@ -7,18 +7,6 @@ import type { RuntimeSpawner } from "../launcher/process";
 import { Database } from "../migrate/sqlite";
 import { buildLocalHost } from "./host";
 
-/**
- * The one-click desktop→cloud migration, end to end over real HTTP (HOU-719):
- * a SOURCE host boots passively against a Rust-era tree (flat `.houston`
- * layout, markdown learnings, a `chat_feed` sqlite + `.sid` tracker) — its
- * boot migrations convert everything in place — then the wizard's exact call
- * sequence runs: source listing → export → create on the TARGET host → import
- * → complete. The target ends up with the agent's instructions, converted
- * learnings, the chat transcript, a re-synthesized pi session, and the marker;
- * the toolkit list rides the manifest while `.houston/integrations.json`
- * itself never crosses.
- */
-
 const fakeSpawner: RuntimeSpawner = {
   spawn: () => ({ port: 0, kill: () => {} }),
 };
@@ -60,14 +48,12 @@ async function bootHost(opts: {
 const auth = { Authorization: "Bearer boot-secret" };
 const jsonAuth = { ...auth, "Content-Type": "application/json" };
 
-/** A Rust-era source tree: flat layout + md learnings + chat db + tracker. */
 function buildSourceTree() {
   const root = mkdtempSync(join(tmpdir(), "houston-mig-src-"));
   const workspacesRoot = join(root, "workspaces");
   const agentRoot = join(workspacesRoot, "Work", "Sales");
   mkdirSync(join(agentRoot, ".houston"), { recursive: true });
   writeFileSync(join(agentRoot, "CLAUDE.md"), "# Sales agent");
-  // Rust-era per-agent metadata: the engine stored the picked COLOR here.
   writeFileSync(
     join(agentRoot, ".houston", "agent.json"),
     JSON.stringify({
@@ -82,7 +68,7 @@ function buildSourceTree() {
     join(agentRoot, ".agents", "skills", "crm", "SKILL.md"),
     "---\nname: crm\n---\n",
   );
-  writeFileSync(join(agentRoot, ".houston", "activity.json"), "[]"); // flat era
+  writeFileSync(join(agentRoot, ".houston", "activity.json"), "[]");
   mkdirSync(join(agentRoot, ".houston", "memory"), { recursive: true });
   writeFileSync(
     join(agentRoot, ".houston", "memory", "learnings.md"),
@@ -128,7 +114,6 @@ test("source→target round trip: convert on boot, export, import, resume marker
   const targetRoot = mkdtempSync(join(tmpdir(), "houston-mig-dst-"));
   const target = await bootHost({ workspacesRoot: targetRoot });
   try {
-    // Source listing: boot migrations already converted the tree.
     const listing = (await (
       await fetch(`${source.base}/v1/migration/source`, { headers: auth })
     ).json()) as {
@@ -139,20 +124,17 @@ test("source→target round trip: convert on boot, export, import, resume marker
       }[];
     };
     expect(listing.agents.map((a) => a.id)).toEqual(["Work/Sales"]);
-    // The Rust-era color rides the scan so the wizard can seed it on the
-    // created cloud agent (the everything-turned-purple bug).
     expect(listing.agents[0]?.color).toBe("crimson");
     const manifest = listing.agents[0]?.manifest;
     const paths = manifest?.entries.map((e) => e.path) ?? [];
     expect(paths).toContain("CLAUDE.md");
-    expect(paths).toContain(".houston/agent.json"); // legacy color survives the move
-    expect(paths).toContain(".houston/learnings/learnings.json"); // md → json on boot
-    expect(paths).toContain(".houston/runtime/conversations/activity-1.json"); // db → transcript on boot
+    expect(paths).toContain(".houston/agent.json");
+    expect(paths).toContain(".houston/learnings/learnings.json");
+    expect(paths).toContain(".houston/runtime/conversations/activity-1.json");
     expect(paths.some((p) => p.startsWith(".houston/sessions/"))).toBe(false);
     expect(paths).not.toContain(".houston/integrations.json");
     expect(manifest?.integrations).toEqual(["gmail"]);
 
-    // Export the whole manifest as one chunk.
     const exported = await fetch(
       `${source.base}/agents/${encodeURIComponent("Work/Sales")}/migration/export`,
       { method: "POST", headers: jsonAuth, body: JSON.stringify({ paths }) },
@@ -160,7 +142,6 @@ test("source→target round trip: convert on boot, export, import, resume marker
     expect(exported.status).toBe(200);
     const zip = Buffer.from(await exported.arrayBuffer());
 
-    // Create the target agent, import, complete.
     const created = (await (
       await fetch(`${target.base}/agents`, {
         method: "POST",
@@ -202,15 +183,11 @@ test("source→target round trip: convert on boot, export, import, resume marker
         ),
       ),
     ).toBe(true);
-    // The pi session was re-synthesized on the TARGET (not copied).
     expect(
       existsSync(
         join(targetAgentDir, ".houston", "runtime", "sessions", "activity-1"),
       ),
     ).toBe(true);
-    // The imported legacy metadata is on the target AND its color is served on
-    // the agent list — this is what heals already-migrated installs on their
-    // next list, no re-migration needed.
     expect(existsSync(join(targetAgentDir, ".houston", "agent.json"))).toBe(
       true,
     );
@@ -221,7 +198,6 @@ test("source→target round trip: convert on boot, export, import, resume marker
       "crimson",
     );
 
-    // Completion marker round-trips for resume.
     await fetch(`${agentUrl}/migration/complete`, {
       method: "POST",
       headers: jsonAuth,

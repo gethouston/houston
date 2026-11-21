@@ -13,12 +13,6 @@ import type { HarnessBackend } from "../backends/types";
 import { loadConversation } from "../store/conversation-file";
 import { runTurn, type TurnDirectories } from "./turn-session";
 
-/**
- * A pooled turn whose provider never answers its first request: the hedge
- * sends it again at the deadline, the stall watchdog stays armed around the
- * prompt the whole time, and the turn completes with no card.
- */
-
 vi.mock("./turn-runtime", () => ({
   createTurnModelRuntime: async () => ({
     modelRuntime: {},
@@ -68,7 +62,6 @@ test("a pooled turn whose first request is never answered completes with no card
     {
       createBackend: () => backend,
       stallTimeoutMs: 60_000,
-      // The watchdog's unanswered cut follows the same deadline (3 and a third).
       firstByteDeadlineMs: DEADLINE_MS,
     },
   );

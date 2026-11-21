@@ -5,18 +5,11 @@ import { describe, it } from "node:test";
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
-/**
- * Skills have no screen of their own: a skill-setup chat's notification opens
- * the employee's own Skills section, where the chat reopens, unless the person
- * is already in that employee's settings.
- */
 describe("the skill-setup notification", () => {
   const src = read("../src/hooks/session-notification-navigate.ts");
 
   it("lands on the employee's Skills section, arming the chat once there", () => {
     ok(src.includes('openAgentSettings(agent.id, "skills", {'), "opens it");
-    // Armed on arrival, like the routine chat: a deferred navigation must not
-    // leave the id for another employee's section to spend.
     ok(src.includes("onOpened: () =>"));
     ok(src.includes("setPendingSkillChatActivityId(target.activityId)"));
     ok(
@@ -33,10 +26,6 @@ describe("the skill-setup notification", () => {
   });
 });
 
-/**
- * The Integrations screen is the apps catalog and nothing else: no tab
- * cluster, no tab store, no gate.
- */
 describe("the Integrations screen", () => {
   const view = read(
     "../src/components/integrations-view/integrations-view.tsx",

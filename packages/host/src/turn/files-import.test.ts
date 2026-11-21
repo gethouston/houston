@@ -8,12 +8,6 @@ import {
 import { moveWorkspaceEntry } from "./files-move";
 import { FileOpError, FilePathError, listWorkspace } from "./files-ops";
 
-/**
- * The write half of the Files tab: uploads (drag-drop / Browse) and drag-moves.
- * Uploads must never clobber, never escape the root, never touch internal
- * dot-dirs; moves must keep names, refuse conflicts, and take folders whole.
- */
-
 const ROOT = "ws/w1/agent-1/workspace";
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
@@ -71,7 +65,6 @@ test("upload names are single segments: traversal, separators, dot-files refused
       ]),
     ).rejects.toThrow(FilePathError);
   }
-  // Target dir goes through the same wall as every other path op.
   await expect(
     importWorkspaceFiles(vfs, ROOT, ".houston", [
       { name: "ok.txt", contentBase64: b64("x") },
@@ -113,13 +106,13 @@ test("re-uploading a folder merges directories but never overwrites files", asyn
 test("relPaths are validated per segment; one bad path fails the whole batch unwritten", async () => {
   const vfs = new MemoryVfs();
   for (const relPath of [
-    "../evil.txt", // 2 segments but traversal
+    "../evil.txt",
     "docs/../evil.txt",
-    "docs/.env", // hidden segment
-    "docs//a.txt", // empty segment
-    "docs\\a.txt", // backslash (single segment → plain-name rules)
-    "plain.txt", // 1 segment must arrive as `name`
-    `${"d/".repeat(33)}a.txt`, // too deep
+    "docs/.env",
+    "docs//a.txt",
+    "docs\\a.txt",
+    "plain.txt",
+    `${"d/".repeat(33)}a.txt`,
   ]) {
     await expect(
       importWorkspaceFiles(vfs, ROOT, null, [
@@ -128,7 +121,6 @@ test("relPaths are validated per segment; one bad path fails the whole batch unw
       ]),
     ).rejects.toThrow(FilePathError);
   }
-  // Batch-level atomicity: the valid sibling was never written.
   expect(await vfs.readBytes(`${ROOT}/good.txt`)).toBeNull();
 });
 

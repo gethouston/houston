@@ -1,26 +1,9 @@
 import type { HttpMethod } from "./registry";
 
-/**
- * WHAT THE AGENT'S ENGINE SERVES, enumerated rather than waved at.
- *
- * The per-agent catch-all (routes/agents.ts) matches `*rest` and forwards
- * whatever it is handed, so this list never decides a match. It is the
- * published surface: the SDK parity gate reads it, and
- * routes/agents-proxy-members.test.ts proves it against packages/runtime's own
- * transport tables, which are the only place these pairs are implemented.
- *
- * Two engines answer them. The STANDING runtime (channel/proxy.ts → the pi
- * runtime's transport server) serves all of them; the CLOUDRUN dispatch
- * (turn/dispatch.ts + turn/dispatch-providers.ts), which reconstructs the same
- * wire surface from object storage and per-turn Cloud Run, serves the subset a
- * web client needs. Annotating each pair is what makes "the web client asked
- * for X and a cloudrun agent 404ed" a readable fact rather than a bug report.
- */
 export type ProxyEngine = "standing" | "cloudrun";
 
 export interface ProxyMember {
   method: HttpMethod;
-  /** The path after `/agents/:agentId/`, forwarded to the engine verbatim. */
   rest: string;
   engines: ProxyEngine[];
 }
@@ -29,11 +12,9 @@ const STANDING: ProxyEngine[] = ["standing"];
 const BOTH: ProxyEngine[] = ["standing", "cloudrun"];
 
 export const PROXY_MEMBERS: ProxyMember[] = [
-  // Liveness, served ahead of the runtime's own bearer wall.
   { method: "GET", rest: "health", engines: STANDING },
   { method: "GET", rest: "busy", engines: STANDING },
   { method: "GET", rest: "version", engines: STANDING },
-  // Providers, settings and the auth surface (provider-routes.ts).
   { method: "GET", rest: "providers", engines: BOTH },
   { method: "GET", rest: "providers/usage", engines: STANDING },
   { method: "PUT", rest: "settings", engines: BOTH },
@@ -54,7 +35,6 @@ export const PROXY_MEMBERS: ProxyMember[] = [
   { method: "POST", rest: "auth/:provider/login/complete", engines: STANDING },
   { method: "POST", rest: "auth/:provider/login/cancel", engines: STANDING },
   { method: "POST", rest: "auth/:provider/logout", engines: BOTH },
-  // Conversations: the transcript, the live stream and the turn (conversation-routes.ts).
   { method: "GET", rest: "conversations", engines: BOTH },
   { method: "POST", rest: "title", engines: STANDING },
   { method: "PATCH", rest: "conversations/:conversationId", engines: STANDING },
@@ -108,10 +88,6 @@ export const PROXY_MEMBERS: ProxyMember[] = [
     rest: "conversations/:conversationId/messages",
     engines: BOTH,
   },
-  // The browser hand-off live view (transport/browser-live-route.ts): frames
-  // down an SSE stream, the person's input up. The Go gateway serves these to
-  // E2B turns itself (it proxies to the turn's sandbox), so this host's own
-  // Cloud Run dispatch never sees them: STANDING describes that dispatch.
   {
     method: "GET",
     rest: "conversations/:conversationId/browser/live",
@@ -122,13 +98,7 @@ export const PROXY_MEMBERS: ProxyMember[] = [
     rest: "conversations/:conversationId/browser/input",
     engines: STANDING,
   },
-  // Create-with-AI's one-shot (generate-route.ts).
   { method: "POST", rest: "generate-agent", engines: STANDING },
 ];
 
-/**
- * Pairs the standing engine implements that the host answers itself, from a
- * slot ahead of this family. Declared so the drift test can still assert that
- * this list and the engine's transport tables are the same set.
- */
 export const HOST_SERVED_RESTS: string[] = [];

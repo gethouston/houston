@@ -1,6 +1,5 @@
 import { cn } from "@houston-ai/core";
 
-/** The social/link keys a creator profile may carry. */
 export type CreatorLinkKey =
   | "x"
   | "youtube"
@@ -12,7 +11,6 @@ export type CreatorLinkKey =
 
 export type CreatorLinkMap = Partial<Record<CreatorLinkKey, string>>;
 
-/** The fixed, ordered set of social keys with their brand domain + label. */
 const LINKS: ReadonlyArray<{
   key: CreatorLinkKey;
   domain: string;
@@ -27,8 +25,6 @@ const LINKS: ReadonlyArray<{
   { key: "website", domain: "", label: "Website" },
 ];
 
-/** Favicon URL for a link: the brand's domain, or the site's own host for the
- *  personal website entry — the same recipe as the integration logos. */
 function logoUrl(domain: string, href: string): string {
   let resolved = domain;
   if (!resolved) {
@@ -46,12 +42,6 @@ export interface SocialLinksProps {
   className?: string;
 }
 
-/**
- * A creator's social/web links as a row of real brand logos (favicon service,
- * matching the integration logos), in a fixed order. Every link opens in a new
- * tab with `rel="noopener"`; each has a visible focus ring and an accessible
- * name. Renders nothing when the creator has no links.
- */
 export function SocialLinks({ links, className }: SocialLinksProps) {
   const present = LINKS.filter((entry) => links[entry.key]);
   if (present.length === 0) return null;

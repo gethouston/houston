@@ -41,17 +41,11 @@ function DialogClose({
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
 
-/**
- * The close X, in the frame's one shape. `DialogContent` floats it in its
- * corner; a recipe with a header row of its own (the wide FlowSheet) places
- * it in that row instead, and passes nothing else.
- */
 function DialogCloseButton({
   label,
   className,
   ...props
 }: Omit<React.ComponentProps<typeof DialogPrimitive.Close>, "children"> & {
-  /** Screen-reader label. Override when localizing. */
   label: string;
 }) {
   return (
@@ -87,7 +81,6 @@ function DialogContent({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
-  /** Screen-reader label for the close button. Override when localizing. */
   closeLabel?: string;
 }) {
   return (
@@ -95,14 +88,7 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
-        className={cn(
-          DIALOG_CONTENT_CLASS,
-          // The default width. A caller sizes its own dialog with another
-          // `sm:max-w-*`; `sm:` because the frame's unprefixed cap is the
-          // phone gutter.
-          "sm:max-w-lg",
-          className,
-        )}
+        className={cn(DIALOG_CONTENT_CLASS, "sm:max-w-lg", className)}
         {...props}
       >
         {children}
@@ -135,7 +121,6 @@ function DialogFooter({
   ...props
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean;
-  /** Label for the visible Close button (shown only when `showCloseButton`). */
   closeLabel?: string;
 }) {
   return (

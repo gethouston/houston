@@ -15,14 +15,6 @@ function openCall(
   );
 }
 
-/**
- * Pair a result with the call it answers. Results may arrive after several
- * calls and after a thinking block flush, so the current turn (everything
- * since the last user row) is searched in call order first. A user row can
- * also land mid-turn (a teammate writing while the agent works), so a result
- * with no open call in that stretch falls back to the calls before it, the
- * most recent first.
- */
 export function attachToolResult(
   item: ToolResultItem,
   messages: ChatMessage[],

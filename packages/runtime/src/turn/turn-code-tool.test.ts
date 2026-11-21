@@ -12,17 +12,6 @@ import type { TurnBackendDeps } from "./turn-backend";
 import type { TurnSessionRequest } from "./turn-session";
 import type { TurnGrantScope } from "./types";
 
-/**
- * The end of the `run_code` wiring in turn mode: a worker configured for remote
- * code execution only gets the tool when the TURN's grant carries `code-run`,
- * and when it does, the tool is bound to the turn's own sandbox facade — never
- * to a sandbox URL or token this process holds (it holds none).
- *
- * The backend is stubbed so the assertions are about the selection handed to
- * it, on BOTH provider branches; turn-backend.ts is what puts `codeSandbox`
- * into each branch's tool list, and its own test covers that.
- */
-
 const OWNED = [
   "HOUSTON_MODE",
   "HOUSTON_CODE_EXECUTION",
@@ -60,7 +49,6 @@ function turn(
   };
 }
 
-/** Load turn-session-startup fresh against one deployment's environment. */
 async function loadStartup(
   codeExecution: string,
   env: Record<string, string> = {},
@@ -76,7 +64,6 @@ async function loadStartup(
   return import("./turn-session-startup");
 }
 
-/** Start one turn on a loaded worker and capture the backend deps it built. */
 async function startTurnOn(
   startup: Awaited<ReturnType<typeof loadStartup>>,
   input: {
@@ -91,7 +78,6 @@ async function startTurnOn(
   type RunTurnDeps = NonNullable<Parameters<typeof startTurnSession>[2]>;
   let captured: TurnBackendDeps | null = null;
   const deps: RunTurnDeps = {
-    // A stub SDK keeps the anthropic branch from importing the real one.
     claudeSdk: {
       query: async function* () {},
       createSdkMcpServer: (() => ({})) as unknown as typeof createSdkMcpServer,
@@ -129,7 +115,6 @@ async function startTurnOn(
   return captured;
 }
 
-/** The common case: one worker, one turn. */
 async function startupDeps(input: {
   codeExecution: string;
   provider: string;
@@ -149,10 +134,7 @@ test.each([
   });
   expect(deps.toolSelection.toolNames).toContain("run_code");
   expect(deps.codeSandbox?.name).toBe("run_code");
-  // The prompt must agree with the allowlist, or the model claims an ability
-  // it does not have.
   expect(deps.systemPrompt).toContain("run commands");
-  // ...and it is the product prompt, not the engine's bare fallback.
   expect(deps.systemPrompt).toContain("# Houston Context");
 });
 
@@ -191,9 +173,6 @@ test("a turn with no grant at all never gets the tool", async () => {
 });
 
 test("HOUSTON_CODE_EXECUTION=remote needs no sandbox URL in turn mode", async () => {
-  // The gateway serves the route under the grant, so the worker is deliberately
-  // given no sandbox address — requiring one would be requiring a secret it
-  // must not hold. Server mode still requires it (config.test.ts).
   const deps = await startupDeps({
     codeExecution: "remote",
     provider: "openai-codex",
@@ -203,9 +182,6 @@ test("HOUSTON_CODE_EXECUTION=remote needs no sandbox URL in turn mode", async ()
 });
 
 test("the run_code budget belongs to the WORKER, not to one turn", async () => {
-  // makeRunCodeTool is called per turn here, so a limiter built beside the tool
-  // would reset every turn and cap nothing on a worker serving turns back to
-  // back. One module-level limiter is what makes the env vars a real budget.
   const startup = await loadStartup("remote", {
     HOUSTON_RUN_CODE_MAX_CONCURRENT: "1",
   });

@@ -8,12 +8,6 @@ import {
   TRACKED_EVENTS as EVENTS,
 } from "./fixtures/analytics-source.ts";
 
-// The connect dialog's verdict → copy map. Providers with a KNOWN remedy must
-// name it: the generic "check the key" sent Hugging Face users (a token
-// missing the Inference Providers permission) and Google users (a key with
-// its own restrictions) in circles (PRODUCT-1730). Every key it returns must
-// exist in the en source of truth, and the remedy sentences must name the
-// thing to change.
 const EN = JSON.parse(
   readFileSync(
     join(import.meta.dirname, "../src/locales/en/providers.json"),
@@ -82,10 +76,6 @@ describe("apiKeyReasonCopyKey", () => {
   });
 });
 
-// The vocabulary can't be imported here (posthog-js comes with its front
-// door), so the rejection counter's contract is pinned against the source: the
-// event must be in the name union and both its props in ALLOWED_PROPS, or
-// `cleanProps` silently drops them and the dashboard goes quiet.
 const TAURI = readFileSync(
   join(import.meta.dirname, "../src/lib/tauri.ts"),
   "utf8",

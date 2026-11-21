@@ -7,16 +7,6 @@ import {
   ConnectionStatusBadge,
 } from "./connection-status-badge";
 
-/**
- * The generic integrations list row shared by both surfaces: logo + name (+ a
- * live status dot + label, right of the name) + description, a trailing
- * action slot, and an optional `children` block that renders under the main
- * line. Renders as a button
- * when `onClick` is given, otherwise a plain row. Actions live in `trailing`,
- * never hover-gated. The card itself stays the plain neutral surface — status
- * reads from the dot + label, not a tinted background (that read as loud/
- * cheap in review; a colored label next to the name is the sober version).
- */
 export function AppRow({
   display,
   description,

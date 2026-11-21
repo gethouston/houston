@@ -9,8 +9,6 @@ import { authErrorKey } from "./auth-errors";
 import { EmailCodeEntry } from "./email-code-entry";
 import { EmailCodeFooter } from "./email-code-footer";
 
-/** The steps the panel replaces the sign-in options for. A `linked` flow has
- *  already handed the app its session, so the screen is on its way out. */
 type ActiveLink = AccountLinkView & {
   status: "sending_code" | "needs_code" | "verifying" | "linking";
 };
@@ -23,11 +21,6 @@ export function isLinkActive(view: AccountLinkView): view is ActiveLink {
   );
 }
 
-/**
- * The account-exists step: a Google, Microsoft or Apple sign-in met an
- * existing account, so the person enters the code mailed to that address and
- * the provider is added to it. The SDK owns every step; this renders them.
- */
 export function AccountLinkPanel({ view }: { view: ActiveLink }) {
   const { t } = useTranslation("auth");
   const { t: tErrors } = useTranslation("errors");
@@ -99,8 +92,6 @@ const REFUSAL_KEY = {
   link_expired: "link.refused.expired",
 } as const;
 
-/** Why the last link stopped, for the sign-in screen's error line. A taken
- *  identity signed the person in by email, so its notice is a toast. */
 export function useAccountLinkNotice(view: AccountLinkView): string | null {
   const { t } = useTranslation("auth");
   if (view.status !== "refused" || view.refusal === "link_identity_taken")

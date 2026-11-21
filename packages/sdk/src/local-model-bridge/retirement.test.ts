@@ -220,7 +220,6 @@ test.each([
   }
   h.replace();
   vi.mocked(h.ports.management.revoke).mockRejectedValueOnce(offline);
-  // The surface uses the snapshot journal to decide whether manual save needs retirement.
   if (replacing.getSnapshot().journal)
     await expect(replacing.retire()).rejects.toBe(offline);
   await replacing.dispose();

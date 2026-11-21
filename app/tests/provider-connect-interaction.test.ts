@@ -74,9 +74,6 @@ const readSrc = (path: string) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
 
 test("the card keys its memory by the whole request, never the bare step id", () => {
-  // The engine numbers steps per TURN, so "p1" names the first provider request
-  // of every turn of every conversation: keyed on it alone, one connect
-  // answered for every later request in the app run and the chat hung.
   const card = readSrc(
     "../src/components/chat-provider-connect-interaction-card.tsx",
   );
@@ -101,8 +98,6 @@ test("the card keys its memory by the whole request, never the bare step id", ()
 });
 
 test("a requested provider is named through the gated connect list", () => {
-  // The card resolves through `getConnectProviders`; a title resolved off the
-  // raw catalog named a provider the card itself reports as unavailable.
   const steps = readSrc("../src/components/chat-interaction-steps.ts");
   ok(
     steps.includes("title: resolveProviderName(step.provider)"),

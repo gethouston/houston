@@ -16,25 +16,14 @@ import type { ScriptCopy } from "./use-script-copy";
 export interface TeamPromptProps {
   workspaceId: string;
   conversation: TeamConversation;
-  /** The AI Employees an interrupted run already hired. */
   earlierHires: readonly Agent[];
   copy: ScriptCopy;
   onAnswer: (answer: TeamAnswer, next: TeamView) => void;
-  /** Reopens the latest answer, for the step's own Back, or null when it is
-   *  for good. */
   onBack: (() => void) | null;
-  /** Work is landing (the finish): no answer may change while it does. */
   onBusy: (busy: boolean) => void;
   onFinished: (closing: TeamClosingAnswer | null) => void;
 }
 
-/**
- * The team step of the conversation: the starter team, straight away, to
- * edit, grow ("Hire one more"), trim and hire. Its industry is asked first
- * only when the survey left none. A run resumed with AI Employees already
- * hired first asks whether to hire more or call it done. It waits for the
- * survey record, since the team takes its industry from it once.
- */
 export function ManagerTeamPrompt(props: TeamPromptProps) {
   const survey = useSurveyRoleStart();
   if (survey.loading) return null;
@@ -69,7 +58,5 @@ function TeamSession({
     ) : (
       <BasicTeamCard {...card} />
     );
-  // The rest of the walk (the choice, one hire at a time) belongs to the
-  // "Build your team" card; the conversation never reaches it.
   return null;
 }

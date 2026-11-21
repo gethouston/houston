@@ -14,7 +14,6 @@ describe("custom OAuth return gate", () => {
   it("a fresh start claims exactly ONE change event", () => {
     markCustomOAuthStarted(1_000);
     strictEqual(consumeCustomOAuthReturn(2_000), true);
-    // One-shot: the same start never claims a second event.
     strictEqual(consumeCustomOAuthReturn(3_000), false);
   });
 

@@ -11,14 +11,6 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { FileCustomIntegrationStore } from "./store";
 import type { CustomIntegrationDef } from "./types";
 
-/**
- * FileCustomIntegrationStore persists user-created definitions to disk. The
- * load-bearing property under test: a missing file reads as empty (first
- * run), but a CORRUPT file THROWS rather than silently reading as empty — a
- * parse failure that read as "no integrations" would make every custom
- * integration vanish from the UI without a trace.
- */
-
 let dir: string;
 let path: string;
 
@@ -54,7 +46,6 @@ test("put/list/remove roundtrip", async () => {
   await store.remove("acme");
   expect(await store.list()).toEqual([]);
 
-  // Removing an absent slug is a no-op, not an error.
   await store.remove("never-existed");
   expect(await store.list()).toEqual([]);
 });
@@ -91,7 +82,6 @@ test("writes are atomic: the .tmp file never lingers after put()/remove()", asyn
   const store = new FileCustomIntegrationStore(path);
   await store.put(openapiDef("acme", "Acme"));
   expect(existsSync(`${path}.tmp`)).toBe(false);
-  // The final file is valid, complete JSON — never a half-written tmp artifact.
   expect(() => JSON.parse(readFileSync(path, "utf8"))).not.toThrow();
 
   await store.remove("acme");

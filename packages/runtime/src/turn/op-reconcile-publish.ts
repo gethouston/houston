@@ -13,31 +13,18 @@ import { poolIdentity } from "./turn-store";
 import { putTranscriptRow } from "./turn-transcript-http";
 import { docNotLandedReason } from "./turn-view-publish";
 
-/**
- * A reconcile op's projections. The settlement's own two (the reply into the
- * transcript store, the run history doc merged by run id) re-run on every
- * attempt, whether or not this one changed a file: an attempt whose files
- * landed but whose settlement projection failed declines, and the retry owes
- * them still. The board and routines docs follow only what this attempt
- * changed, through the ops' own republish, and a lag there is the ops'
- * usual one: the next writer re-projects. Every step is idempotent.
- */
 export async function publishReconcile(input: {
   deps: TurnServerDeps;
   turn: OpClaimTurn;
   filesystem: TurnFilesystem;
   source: ActivityDocSource;
-  /** What this attempt changed (the board and the routines follow it). */
   events: readonly HoustonEvent[];
-  /** The chat's interruption reply for the dead turn. */
   line?: ChatMessage;
   landed: readonly string[];
 }): Promise<{ settle: string[]; lag: string[] }> {
   const { deps, turn, filesystem } = input;
   const settle: string[] = [];
   const lag: string[] = [];
-  // The file landed first, as a turn's does: the store's file-to-database
-  // repair then keeps the line too.
   if (input.line) settle.push(...(await mirrorReply(input, input.line)));
   const target = docTarget(deps, turn);
   if (!target) return { settle, lag };
@@ -66,8 +53,6 @@ export async function publishReconcile(input: {
   return { settle, lag };
 }
 
-/** The run history as the sync-back merge left it, merged into the doc by
- *  run id: overlapping fires of the agent publish there too. */
 async function publishRunsDoc(
   target: NonNullable<ReturnType<typeof docTarget>>,
   filesystem: TurnFilesystem,
@@ -93,8 +78,6 @@ async function publishRunsDoc(
   return failed ? [`routine_runs: ${failed}`] : [];
 }
 
-/** PUT the reply under its turn. Idempotent per turn: a reply that already
- *  landed for the turn stays as it is. */
 async function mirrorReply(
   input: {
     deps: TurnServerDeps;

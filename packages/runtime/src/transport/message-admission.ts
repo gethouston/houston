@@ -30,7 +30,6 @@ export interface MessageAdmissionInput {
   hostFingerprint?: string;
 }
 
-/** Ignore gateway-enriched context and rotating token bytes when matching retries. */
 export function admissionInput(
   ctx: RouteContext,
   body: Record<string, unknown>,
@@ -76,7 +75,6 @@ export function replyExistingAdmission(
   return true;
 }
 
-/** Synchronous reservation after every rejection gate; concurrent retries converge here. */
 export function acceptAdmission(
   ctx: RouteContext,
   id: string,
@@ -102,7 +100,6 @@ export function trackAdmission(
   return input ? turn.finally(() => admissions.settle(id, input.nonce)) : turn;
 }
 
-/** Release a reservation whose turn was refused before recording anything. */
 export function releaseAdmission(
   id: string,
   input: MessageAdmissionInput | undefined,

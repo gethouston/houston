@@ -17,10 +17,6 @@ import { UploadTransferError } from "./upload-errors";
 export type ResumableUploadOptions = UploadOptions &
   Pick<OpenUploadRequest, "name" | "purpose">;
 
-/**
- * A host or dev gateway answers its own sink as a path, which is appended to
- * the base URL as-is so a base with a path prefix (or a relative base) keeps it.
- */
 function sinkUrl(uploadUrl: string, baseUrl: string): string {
   return /^[a-z][a-z0-9+.-]*:/i.test(uploadUrl)
     ? uploadUrl

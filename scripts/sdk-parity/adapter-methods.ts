@@ -7,24 +7,6 @@ import {
   reachableFrom,
 } from "./adapter-graph.ts";
 
-/**
- * Which adapter methods reach the wire through `@houston/sdk`, and which reach
- * it on their own.
- *
- * The adapter's mixin classes are the surface `app/src` calls — on desktop and
- * on web alike, because both surfaces depend on `@houston/engine-adapter` and
- * `packages/web` composes `app/src` verbatim. Classifying a mixin method IS
- * therefore classifying a desktop request site.
- *
- * `AdapterContext` is the transport: `cp`, `engine`, `baseUrl`, `token` and the
- * per-agent runtime clients are how a method reaches a server; `sdk` and
- * `sdkForSpace` (the same SDK pinned to one space) are how it delegates
- * instead. So a method is read off which context members it touches,
- * over everything it runs. {@link BOOKKEEPING} is the short list of context
- * members that carry no request — a member added to `AdapterContext` and not
- * listed there reads as transport, which over-reports rather than letting an
- * unbound request through unseen.
- */
 const SDK_MEMBERS = new Set(["sdk", "sdkForSpace"]);
 
 const BOOKKEEPING = new Set([
@@ -45,31 +27,16 @@ const BOOKKEEPING = new Set([
   "setEndpoint",
 ]);
 
-/** The adapter's own transports, for a helper handed `cp` rather than `ctx`. */
 const TRANSPORT_CALL = /\b(?:cpFetch|httpRequest|gatewayAuthFetch)\s*\(/;
 const CTX_MEMBER = /\bctx\.(\w+)/g;
 
-/** One classified adapter method. */
 export interface AdapterMethod {
-  /** The method name. Unique: the mixin chain composes into ONE class. */
   name: string;
-  /** Absolute path of the mixin file declaring it. */
   source: string;
-  /** It reaches `this.ctx.sdk` somewhere in what it runs. */
   bound: boolean;
-  /**
-   * It reaches the transport and never the SDK — a request the shipped app
-   * issues with no `@houston/sdk` method behind it.
-   *
-   * A method that reaches BOTH (an SDK write plus a raw probe of its own) is
-   * not reported: the rule asks whether a method delegates to the SDK, and
-   * that one does. Tightening it to per-request attribution needs dataflow
-   * this graph deliberately does not do.
-   */
   unbound: boolean;
 }
 
-/** Every public method of every mixin class in `files`, classified. */
 export function classifyAdapter(files: string[]): AdapterMethod[] {
   const graph = buildGraph(files);
   const methods: AdapterMethod[] = [];

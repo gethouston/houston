@@ -5,19 +5,12 @@ import { useTranslation } from "react-i18next";
 import { ENTRANCE_CURVE, PRESS_CLASS, PRESS_STYLE } from "./org-chart-motion";
 import type { SharePreview } from "./use-share-card-image";
 
-/** Opacity and a 2px blur, over `fast` on the entrance curve. */
 const CROSSFADE: CSSProperties = {
   transitionProperty: "opacity, filter",
   transitionDuration: duration.fast,
   transitionTimingFunction: ENTRANCE_CURVE,
 };
 
-/**
- * The share image as it will be posted, the dialog's hero. The skeleton and
- * the image share one 4:5 frame, so the PNG arriving is a soft crossfade
- * (the image sharpening out of a 2px blur as the skeleton fades) instead of
- * a hard swap. A failed draw says so in one line with Try again.
- */
 export function OrgChartSharePreview({
   preview,
   onRetry,
@@ -27,7 +20,6 @@ export function OrgChartSharePreview({
 }) {
   const { t } = useTranslation("teams");
   const url = preview.status === "ready" ? preview.url : null;
-  // Keyed to the URL it was set for, so a redraw starts blurred again.
   const [loaded, setLoaded] = useState<string | null>(null);
   const shown = url !== null && loaded === url;
 

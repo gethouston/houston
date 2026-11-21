@@ -1,13 +1,3 @@
-/**
- * Pure logic for the provider marketplace: grouping providers into
- * Connected / Available sections, resolving a card's model count and model
- * list across its gateway ids (the merged OpenCode account spans two), how a
- * card is billed, and the i18n key each card's description maps to.
- *
- * Kept separate from the React components so it can be unit-tested with
- * `node --test` (see `app/tests/provider-grouping.test.ts`).
- */
-
 import type {
   CatalogModel,
   CatalogOffer,
@@ -21,30 +11,12 @@ import {
   providerGatewayIds,
 } from "../../lib/providers.ts";
 
-/**
- * Active providers split by connection state, catalog order preserved within
- * each bucket. One bucket per state of the ONE derivation (HOU-979) — no
- * surface has to collapse the tri-state on its own and get it wrong.
- */
 export interface ProviderGroups {
-  /** CONFIRMED connected. The only bucket that may claim "Connected". */
   connected: ProviderInfo[];
-  /**
-   * Not confirmable right now (unreachable engine, waking pod, a space whose
-   * agent list is still settling). Renders on the CONNECTED side of every
-   * browse surface — never under a heading that says it is available to
-   * connect, and never with a Connect CTA: offering one for an account that
-   * may well be signed in is the guess the tri-state exists to prevent.
-   */
   checking: ProviderInfo[];
-  /** CONFIRMED not connected. The only bucket that gets a Connect CTA. */
   available: ProviderInfo[];
 }
 
-/**
- * Split active providers by connection state, preserving the incoming (catalog)
- * order within each group.
- */
 export function groupProviders(
   providers: readonly ProviderInfo[],
   connectionState: (p: ProviderInfo) => ProviderConnectionState,
@@ -63,25 +35,12 @@ export function groupProviders(
   return groups;
 }
 
-/**
- * The providers a browse surface shows on the "yours" side: confirmed connected
- * first, then the ones still resolving. Both are rendered by row components that
- * read the state themselves, so a `checking` row shows its own treatment rather
- * than borrowing the connected one.
- */
 export function providerOwnedSide(groups: ProviderGroups): ProviderInfo[] {
   return [...groups.connected, ...groups.checking];
 }
 
-/** The `card.*` i18n key describing how a provider connects. */
 export type AuthChipKey = "subscription" | "apiKey" | "gateway" | "local";
 
-/**
- * Which auth chip a provider shows. OAuth / Copilot plans read as
- * "Subscription"; the local server as "Runs on your computer"; multi-lab
- * key gateways (OpenRouter, the merged OpenCode account) as "Multi-model
- * gateway"; every other pasted key as "Your API key".
- */
 export function authChipKey(provider: ProviderInfo): AuthChipKey {
   if (provider.auth === "openaiCompatible") return "local";
   if (provider.auth !== "apiKey") return "subscription";
@@ -89,21 +48,11 @@ export function authChipKey(provider: ProviderInfo): AuthChipKey {
   return "apiKey";
 }
 
-/** Providers split by how they connect: subscription vs. your own API key. */
 export interface AuthTypeGroups {
   subscription: ProviderInfo[];
   apiKey: ProviderInfo[];
 }
 
-/**
- * Partition providers into the BINARY connect-type split the curated onboarding
- * view uses (unlike the hub's richer subscription/free/payg/local facets): the
- * "subscription" auth chip (OAuth / plan providers) goes to `subscription`;
- * everything else — a pasted "apiKey", a multi-lab "gateway", and the "local"
- * OpenAI-compatible server — goes to `apiKey`, since all three are "you
- * configure a key or endpoint" rather than "you log into a plan". Preserves the
- * incoming order within each bucket. Pure, so it unit-tests with `node --test`.
- */
 export function groupByAuthType(
   providers: readonly ProviderInfo[],
   authType: (p: ProviderInfo) => AuthChipKey = authChipKey,
@@ -117,11 +66,6 @@ export function groupByAuthType(
   return { subscription, apiKey };
 }
 
-/**
- * The unique models a card offers, unioned across its gateway ids (the merged
- * OpenCode account maps to `opencode` + `opencode-go`) and de-duplicated by the
- * cross-provider model key. Order follows the catalog's newest-first sort.
- */
 export function providerModels(
   catalog: HubCatalog,
   provider: ProviderInfo,
@@ -137,14 +81,6 @@ export function providerModels(
   return out;
 }
 
-/**
- * A reverse lookup from an offer's engine gateway id to the connect card that
- * runs it. The merged OpenCode account (id `opencode`) owns both `opencode` and
- * `opencode-go`, so an offer under either resolves to the one card. Built from
- * the full connect-card set (engine/capability gating is irrelevant to the
- * reverse map — catalog visibility already decides which offers reach the UI).
- * Shared so the marketplace and the model detail resolve offers identically.
- */
 export function connectCardByGatewayId(): Map<string, ProviderInfo> {
   const map = new Map<string, ProviderInfo>();
   for (const card of getConnectProviders({ newEngine: true, desktop: true }))
@@ -152,7 +88,6 @@ export function connectCardByGatewayId(): Map<string, ProviderInfo> {
   return map;
 }
 
-/** The offer a given card contributes for a model, if any. */
 export function offerForProvider(
   model: CatalogModel,
   provider: ProviderInfo,
@@ -161,21 +96,8 @@ export function offerForProvider(
   return model.offers.find((offer) => gateways.has(offer.providerId));
 }
 
-/** How a provider is billed: a flat plan with usage included, or metered per token. */
 export type ProviderBilling = "subscription" | "payg";
 
-/**
- * How a provider is BILLED — as opposed to `provider.auth`, how you CONNECT.
- * They usually coincide (the three OAuth sign-in providers are flat
- * subscriptions; every pasted-key provider is pay-as-you-go) but not always:
- * OpenCode Go is a flat $10/month subscription unlocked with a pasted key
- * (`PROVIDER_OVERRIDES["opencode-go"].billing` overrides the apiKey default).
- * A card spanning gateway ids with DIFFERENT billing (the merged OpenCode
- * account: Zen is payg, Go is a subscription, one shared key) returns BOTH —
- * it genuinely belongs under either filter, not just one. The local
- * (`openaiCompatible`) provider has no billing relationship at all and
- * returns an empty set.
- */
 export function providerBilling(
   provider: ProviderInfo,
 ): ReadonlySet<ProviderBilling> {
@@ -190,7 +112,6 @@ export function providerBilling(
   return kinds;
 }
 
-/** The `aiHub:providers.*` description key for a card. */
 export type ProviderDescriptionKey =
   | "openai"
   | "anthropic"
@@ -205,14 +126,6 @@ export type ProviderDescriptionKey =
   | "openai-compatible"
   | "xiaomi";
 
-/**
- * Every connect-card id and the `aiHub:providers.*` key its copy lives under.
- * The merged OpenCode account has id `opencode` but reads from `opencode-account`;
- * every other card matches its own id. Typed `satisfies Record<…,
- * ProviderDescriptionKey>` so a new description key must be wired here (or fail
- * typecheck), and lookups fall back to the raw id — which renders the visibly
- * missing key rather than silently borrowing another provider's copy.
- */
 const DESCRIPTION_KEY_BY_ID = {
   openai: "openai",
   anthropic: "anthropic",
@@ -226,17 +139,9 @@ const DESCRIPTION_KEY_BY_ID = {
   minimax: "minimax",
   nvidia: "nvidia",
   "openai-compatible": "openai-compatible",
-  // Not a connect card, but its hub modal rendered the raw fallback key
-  // ("providers.xiaomi.description") once the provider shipped (PRODUCT-1517).
   xiaomi: "xiaomi",
 } satisfies Record<string, ProviderDescriptionKey>;
 
-/**
- * Map a card id to its description key. Unknown ids fall back to the id itself
- * so a lookup never borrows another provider's copy; the modal catches the
- * resulting missing key with the provider-list one-liner (`providerDescription`)
- * rather than rendering it raw (PRODUCT-1517).
- */
 export function providerDescriptionKey(
   providerId: string,
 ): ProviderDescriptionKey | (string & {}) {

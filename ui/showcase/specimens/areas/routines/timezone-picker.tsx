@@ -18,7 +18,6 @@ const copy = {
   noResults: DEFAULT_GRID_LABELS.timezoneNoResults,
 };
 
-/** Open it and type: "tokyo", "new york", "sao paulo", "gmt+5" all narrow. */
 function LivePicker({ variant }: { variant?: "card" | "bare" }) {
   const [tz, setTz] = useState(TIMEZONE);
   return (
@@ -159,11 +158,6 @@ function TimezonePickerSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["TimezonePicker"];
 
 export const specimen: Specimen = {

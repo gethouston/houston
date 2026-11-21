@@ -1,7 +1,6 @@
 import { closeSync, openSync, readSync } from "node:fs";
 import { StringDecoder } from "node:string_decoder";
 
-/** Read like pi, without its newline repair of the archived file. */
 export function* sessionLogLines(file: string) {
   const descriptor = openSync(file, "r");
   try {

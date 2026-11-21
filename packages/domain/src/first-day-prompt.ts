@@ -1,36 +1,6 @@
-/**
- * The hidden first-day prompt: what an AI Employee is told when its setup task
- * starts (`POST /agents/:agentId/first-day`, built on the host so every surface
- * that starts a first day sends the same words).
- *
- * The language directive must be explicit: the whole first message is hidden
- * from the transcript, so on a brand-new agent there is no chat to "detect" the
- * user's language from — the model would only see English instructions and
- * introduce itself in English (PRODUCT-1257). The surface's app locale is the
- * ground truth, so the prompt states it outright.
- *
- * The user has already READ the agent's hello when this prompt runs: the chat
- * derives it from the agent's name and job and renders it as the mission's
- * first item, permanently (`first-day-greeting.ts`). So the prompt's job is
- * the opposite of an introduction — it quotes that message back to the model
- * and forbids greeting again, and the first reply continues from it.
- *
- * The whole conversation aims at ONE outcome: one real job done together and
- * then saved as a Skill. Doing it first is what makes the Skill real: a
- * procedure written before it ever ran is a guess, and the user has seen
- * nothing work.
- * Nothing happens before the first reply, no tool call, no self-writing: the
- * name and the job are enough to start talking, and every second before the
- * first word is the user staring at a card.
- */
-
-// Package subpaths rather than relative imports: the e2e fake host loads this
-// module under Node's own loader, where the barrel's JSON schema imports and
-// extensionless relative imports do not resolve.
 import { englishSetupGreeting } from "@houston/domain/first-day-greeting";
 import { parseJobDescription } from "@houston/domain/job-description";
 
-/** The industry and job an employee was hired for. */
 export interface FirstDayBrief {
   context: string;
   role: string;
@@ -42,11 +12,6 @@ const clean = (value: string | null): string =>
     .replace(/\s+/gu, " ")
     .trim();
 
-/**
- * The brief an employee's job description (`CLAUDE.md`) carries. Both facts or
- * neither: the role sentence names the job in the industry it is done in, and
- * half a brief is not one.
- */
 export function firstDayBrief(
   instructions: string | null | undefined,
 ): FirstDayBrief | undefined {
@@ -63,11 +28,6 @@ const LANGUAGE_NAMES: Record<string, string> = {
   pt: "Portuguese",
 };
 
-/**
- * The human-readable language name for a locale code (`"es-419"` → `"Spanish"`),
- * used to tell an AI Employee which language to write its user-facing output
- * in. Falls back to English for anything unmapped.
- */
 export function outputLanguageName(locale: string): string {
   const base = locale.split("-")[0]?.toLowerCase() ?? "en";
   return LANGUAGE_NAMES[base] ?? "English";
@@ -80,9 +40,6 @@ function languageNote(languageName: string): string {
 const NEVER_FROM_NAME =
   "Do not use your name to infer your role, industry, responsibilities, tools, or goals.";
 
-/** The brief the agent was hired with, when its job description names one
- *  (`firstDayBrief`). The whole point of holding it is that the agent starts
- *  specific instead of guessing. */
 function jobNote(brief: FirstDayBrief | undefined): string {
   if (!brief) return NEVER_FROM_NAME;
   return `The user already told you the job they hired you for:
@@ -92,9 +49,6 @@ function jobNote(brief: FirstDayBrief | undefined): string {
 That brief is your starting point: every idea you offer must be specific to it. ${NEVER_FROM_NAME}`;
 }
 
-/** Word for word what the chat already shows above your first reply, built by
- *  the same function that pins the en `chat:setupGreeting.*` copy, so the
- *  model can see there is nothing left to introduce. */
 function alreadySaidNote(
   agentName: string,
   brief: FirstDayBrief | undefined,
@@ -107,10 +61,6 @@ function alreadySaidNote(
 Do NOT greet the user, do NOT introduce yourself, and do NOT say any of that again in any words. Your first reply continues straight on from it.`;
 }
 
-/** The ideas lead with REPEATABLE work, because a process the agent can own is
- *  what turns this conversation into a saved Skill rather than a one-off
- *  favour. They are offered as tappable options rather than prose: a
- *  non-technical user picks far more readily than they compose an answer. */
 function ideasStep(brief: FirstDayBrief | undefined): string {
   const ideas = brief
     ? `3 concrete, specific jobs in ${brief.context} that this ${brief.role} repeats the same way every time`
@@ -124,13 +74,6 @@ const SKILL_STEP = `As soon as the result is right, save the way you did it as a
 
 const CAPTURE_STEP = `Along the way, save what they tell you the moment they say it, never later: a lasting preference or fact about how you should work goes into your instructions; anything they want on a schedule becomes a Routine, after you confirm the time with them.`;
 
-/**
- * Build the hidden first-day prompt for the named agent: same non-technical
- * voice as every Houston agent (never mention files, folders, configs, or
- * internals), framed as a short conversation that ends with a saved Skill.
- * `locale` is the user's app language (e.g. `"es"`), which pins the language of
- * the whole first conversation.
- */
 export function buildFirstDayPrompt(
   agentName: string,
   locale: string,

@@ -4,12 +4,6 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { isFileGoneError } from "../src/lib/file-gone.ts";
 
-/**
- * PRODUCT-1780 (HOUSTON-APP-53E): a workspace-file download that answers
- * `404 file not found` is the user's state (the agent linked a file that is
- * not there), never a Houston bug. The classifier keys on the structural
- * status both engine adapters carry; every other status stays loud.
- */
 describe("isFileGoneError", () => {
   it("matches the engine adapter's 404 for a missing workspace file", () => {
     const err = Object.assign(new Error("file not found (engine error 404)"), {

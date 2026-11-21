@@ -1,6 +1,3 @@
-// Usage: node scripts/ci/verify-updater-signature.mjs <file> <file.sig> <tauri.conf.json>
-// Exits non-zero unless <file.sig> is a valid updater signature of <file> from
-// the pubkey the shipped app trusts (plugins.updater.pubkey).
 import { readFile } from "node:fs/promises";
 import { verifyUpdaterSignature } from "./updater-signature.mjs";
 

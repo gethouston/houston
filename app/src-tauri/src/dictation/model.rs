@@ -69,7 +69,6 @@ pub async fn dictation_model_status(app: AppHandle) -> Result<DictationModelStat
 #[tauri::command]
 pub async fn download_dictation_model(app: AppHandle) -> Result<(), String> {
     let final_path = model_path(&app)?;
-    // Idempotent: a ready model resolves immediately with a terminal Done tick.
     if is_ready(&final_path) {
         emit(
             &app,
@@ -82,8 +81,6 @@ pub async fn download_dictation_model(app: AppHandle) -> Result<(), String> {
     match download_inner(&app, &final_path).await {
         Ok(()) => Ok(()),
         Err(e) => {
-            // No-silent-failure: surface an Error tick AND propagate the Err so
-            // the frontend can toast the real reason with a Report-bug button.
             emit(&app, 0, MODEL_SIZE_BYTES, ModelProgressPhase::Error);
             Err(e)
         }
@@ -99,7 +96,6 @@ async fn download_inner(app: &AppHandle, final_path: &Path) -> Result<(), String
         .map_err(|e| format!("dictation: create model dir: {e}"))?;
 
     let part = final_path.with_extension("part");
-    // Removes the partial file on any early return unless we disarm it on success.
     let guard = PartGuard::new(part.clone());
 
     let resp = reqwest::get(MODEL_URL)
@@ -126,7 +122,6 @@ async fn download_inner(app: &AppHandle, final_path: &Path) -> Result<(), String
             .map_err(|e| format!("dictation: write {}: {e}", part.display()))?;
         hasher.update(&chunk);
         received += chunk.len() as u64;
-        // Throttle to ~4 ticks/second so a 181 MB stream can't flood the webview.
         if last_emit.elapsed().as_millis() >= 250 {
             emit(app, received, total, ModelProgressPhase::Downloading);
             last_emit = std::time::Instant::now();
@@ -152,8 +147,6 @@ fn emit(app: &AppHandle, received: u64, total: u64, phase: ModelProgressPhase) {
         total,
         phase,
     };
-    // Event-emit callback: no UI thread to toast on here, so a failed emit is
-    // logged (the documented exception to the no-silent-failure rule).
     if let Err(e) = app.emit(PROGRESS_EVENT, payload) {
         tracing::error!("[dictation] failed to emit progress event: {e}");
     }

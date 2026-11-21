@@ -9,13 +9,6 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { workspaceRoot } from "./agent-data";
 
-/**
- * POST /agents/:id/routines/:rid/runs/:runId/cancel — stop an in-flight run.
- * Asserts the Rust cancel_run contract: the row goes terminal FIRST ("Stopped
- * by user"), the live turn is aborted through the channel, a repeat answers
- * 409, an unknown run 404s, and the route is ownership-walled.
- */
-
 const verifier: TokenVerifier = {
   async verify(bearer) {
     return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
@@ -98,7 +91,6 @@ beforeEach(async () => {
   agentId = ((await created.json()) as { id: string }).id;
 });
 
-/** Create a routine, fire it, and return { routine, runId } (run is `running`). */
 async function startRun(): Promise<{ routine: Routine; runId: string }> {
   const created = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
@@ -135,7 +127,7 @@ test("cancel flips the run terminal and aborts the live turn through the channel
   const body = (await res.json()) as RoutineRun & { abort_failed?: boolean };
   expect(body.status).toBe("cancelled");
   expect(body.summary).toBe("Stopped by user");
-  expect(body.abort_failed).toBeUndefined(); // clean abort → no failure flag
+  expect(body.abort_failed).toBeUndefined();
 
   const rows = await runRows();
   expect(rows[0]).toMatchObject({
@@ -144,7 +136,6 @@ test("cancel flips the run terminal and aborts the live turn through the channel
     summary: "Stopped by user",
   });
   expect((rows[0] as RoutineRun).completed_at).toBeTruthy();
-  // The turn abort reached the runtime, on the run's own conversation.
   expect(channel.cancelled).toEqual([`routine-${routine.id}`]);
 });
 
@@ -178,8 +169,6 @@ test("a turn-abort failure still leaves the run cancelled AND surfaces abort_fai
     { method: "POST", headers: auth("alice") },
   );
   expect(res.status).toBe(200);
-  // The abort failure is reported, not swallowed: the runtime may still be
-  // burning the turn, and the client gets to say so.
   const body = (await res.json()) as RoutineRun & { abort_failed?: boolean };
   expect(body.abort_failed).toBe(true);
   const rows = await runRows();

@@ -1,12 +1,3 @@
-/**
- * The 16px team-icon set, generated from Julian's source SVG by
- * `scripts/generate-team-icons.mjs`.
- *
- * Stored-key compatibility: keys shared by both sets resolve directly. Clear
- * renamed equivalents resolve through `LEGACY_SIDEBAR_GROUP_GLYPH_ALIASES`
- * below. Retired keys without an honest equivalent resolve to no mark, which
- * preserves the neutral team fallback instead of silently changing meaning.
- */
 import { SIDEBAR_GROUP_GLYPHS_1 } from "./sidebar-group-glyph-data-1";
 import { SIDEBAR_GROUP_GLYPHS_2 } from "./sidebar-group-glyph-data-2";
 import { SIDEBAR_GROUP_GLYPHS_3 } from "./sidebar-group-glyph-data-3";

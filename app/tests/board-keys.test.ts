@@ -4,13 +4,6 @@ import { handleBoardKeys } from "../src/hooks/board-keys.ts";
 import { AGENT_VIEW_ID } from "../src/lib/teams-model.ts";
 import { useUIStore } from "../src/stores/ui.ts";
 
-// The board owns BARE keys (Enter opens the highlighted card, arrows move the
-// highlight), even with focus left on the rail row or tab that led there. A
-// dialog or popover open over the board answers every key it is sent, so the
-// board hands those keys back.
-
-/** A DOM node reduced to what the router reads: its tag and the simple
- *  selectors it and each ancestor match, innermost first. */
 function node(chain: string[][], tagName = "DIV") {
   return {
     tagName,

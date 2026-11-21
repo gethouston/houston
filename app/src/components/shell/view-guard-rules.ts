@@ -7,7 +7,6 @@ import {
 } from "../../lib/top-level-views.ts";
 import type { Agent } from "../../lib/types.ts";
 
-/** Where the user stood when the space changed: still there = not a choice. */
 export interface OutgoingView {
   viewMode: string;
   activeAgentId: string | null;
@@ -40,7 +39,6 @@ export interface BootGuardInput {
   firstAgentId: string | null;
 }
 
-/** A space change arms first; its outgoing view must not disarm the new space. */
 export function bootGuardStep(
   state: BootGuardState,
   input: BootGuardInput,
@@ -79,8 +77,6 @@ export function bootGuardStep(
   }
   if (!input.agentsReady || (input.firstAgentId !== null && !input.layoutReady))
     return {
-      // The same object while nothing changed: the caller holds it as React
-      // state, and a fresh one per render would never settle.
       state:
         state.kind === "resolving"
           ? state
@@ -103,7 +99,6 @@ export function bootGuardStep(
 
 export type DeadViewAction = "keep" | "wait" | "go-home";
 
-/** A closed, settled organization gate cannot honor a pending Admin tab. */
 export function shouldDropAdminPin(gates: {
   ready: boolean;
   showOrganization: boolean;
@@ -111,36 +106,12 @@ export function shouldDropAdminPin(gates: {
   return gates.ready && !gates.showOrganization;
 }
 
-/**
- * Whether the open view still exists — and, when it does not, whether that is
- * genuinely stale or merely in flight.
- *
- * A `viewMode` no screen answers to, a view this caller's gates hide (Admin
- * below its organization gate, the assistant on a deployment that serves none once no
- * onboarding runs in it), or an employee that stopped existing under an
- * open employee view all fall through every render branch and strand the user on a
- * blank card. Those go home.
- *
- * A GATED view whose gates have not resolved yet WAITS. The gates are computed
- * from `capabilities` and from assistant discovery, both null until their
- * fetches land, so every one of them reads false in that window: acting on it would bounce a user off the very
- * screen they persisted, on every boot and every space switch — and a team-space
- * switch drops the capabilities query outright, so the window is deterministic
- * rather than theoretical.
- *
- * A missing employee view waits for this workspace's roster read before
- * deciding whether the employee still exists. An unknown view mode has no
- * such dependency.
- */
 export function deadViewStep(input: {
   viewMode: string;
   showAiModels: boolean;
   showAssistant: boolean;
-  /** The manager is running onboarding, which keeps its view reachable
-   *  whatever discovery says (`managerReachable`). */
   onboardingActive: boolean;
   showOrganization: boolean;
-  /** False while the capabilities behind the gates are still loading. */
   gatesReady: boolean;
   agentsReady: boolean;
   activeAgentId: string | null;

@@ -2,23 +2,6 @@ import { bus } from "@houston/engine-adapter/bus";
 import { isNoAgentForProviderWriteError } from "@houston/engine-adapter/no-agent-provider-write-error";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * PRODUCT-1662 — provider writes in a space whose agent list is settled and
- * EMPTY (first-run before the assistant exists, a failed first create, a
- * deleted last agent).
- *
- * `requireProviderAgentId` used to refuse every zero-agent write with "Open an
- * agent first", the copy written for the STILL-LOADING state — a dead end for
- * users that also filed as an unexpected error. The rules now:
- *   1. sign-out routes through the hidden SETUP runtime (the mirror of how the
- *      credential was connected): forget the central credential, clear the
- *      setup runtime's own auth copy, and never touch a per-agent route;
- *   2. a custom endpoint has no pre-agent home (it is per-runtime state and
- *      the setup runtime dies with the first agent), so it refuses with the
- *      TYPED expected-state error the app turns into "create an agent first";
- *   3. the "still loading" refusal stays exactly what it was for `pending`.
- */
-
 const {
   forgetCredential,
   forgetSetupCredential,
@@ -58,7 +41,6 @@ import {
 } from "./support/agent-list";
 
 const PREF = "houston.pref.last_agent_id";
-/** A selection left over from before the last agent was deleted. */
 const STALE_PREF_AGENT = "agent-that-no-longer-exists";
 
 beforeEach(() => {
@@ -78,7 +60,6 @@ beforeEach(() => {
   ]) {
     fn.mockReset().mockResolvedValue(undefined);
   }
-  // The space's list is KNOWN and EMPTY.
   stubAgentListFetch([]);
 });
 
@@ -87,11 +68,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/**
- * A hosted client with the three central-credential writes recorded. They are
- * `sdk.providers.credentials`', so the client's own SDK is the seam; the
- * per-agent pair takes the agent id first, the agentless one the provider.
- */
 async function zeroAgentClient() {
   const c = new HoustonClient({
     baseUrl: "http://gateway",
@@ -120,9 +96,6 @@ test("sign-out with no agent routes through the setup runtime, never a per-agent
   await c.providerLogout("anthropic");
   unsubscribe();
 
-  // The agentless path clears a real credential, so it announces the change
-  // like every other one — the cached statuses behind the picker and the
-  // create-agent dialog are stale the moment it returns.
   expect(events).toContainEqual({
     type: "ProviderLoginComplete",
     data: { provider: "anthropic", success: false, error: null },
@@ -130,7 +103,6 @@ test("sign-out with no agent routes through the setup runtime, never a per-agent
   expect(forgetSetupCredential).toHaveBeenCalledTimes(1);
   expect(forgetSetupCredential.mock.calls[0]?.[0]).toBe("anthropic");
   expect(setupLogout).toHaveBeenCalledWith("anthropic");
-  // The stale pref must not turn into `/agents/<dead>/credential/forget`.
   expect(forgetCredential).not.toHaveBeenCalled();
   expect(runtimeLogout).not.toHaveBeenCalled();
 });

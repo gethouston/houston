@@ -1,21 +1,8 @@
-/**
- * RoutineDraftRow — a routine still being set up in chat, not created yet.
- * A person can have several going at once, so each shows as its own compact
- * row (never a single global banner), in the same selectable list language as
- * the created rows: clicking the row resumes its setup chat (opening it in the
- * right pane), and a trailing button discards it.
- *
- * On a CROSS-AGENT list (a team's Routines) it wears the owning agent's chip
- * for the same reason a created row does: a half-built routine belongs to one
- * agent, and the list would otherwise show several identical "being created"
- * rows with no way to tell whose is whose.
- */
 import { cn, Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
 import { MessageCircle, X } from "lucide-react";
 import { DEFAULT_GRID_LABELS, type RoutinesGridLabels } from "./labels";
 
 export interface RoutineDraftRowProps {
-  /** Marks the draft whose chat is open in the right pane (selected state). */
   selected?: boolean;
   onResume: () => void;
   onDiscard: () => void;

@@ -8,20 +8,6 @@ import type {
 import { canManageAssignments } from "../../lib/agent-access.ts";
 import { hasSpaces, isMultiplayer } from "../../lib/org-roles.ts";
 
-/**
- * Pure, DOM-free logic behind the Drive-style Share dialog for an agent. Kept
- * out of the `.tsx` so the "who may change whom / which option is offered /
- * self-lockout" rules unit-test under bare Node. The GATEWAY is the real
- * enforcer (contract §1/§5) — these helpers only shape the affordances.
- */
-
-/**
- * Should the "Share" affordance render at all? Requires BOTH multiplayer (single
- * player / self-host has no org, so it must degrade to nothing) AND agent-manager
- * authority. `canManageAssignments` alone is not enough: under matrix v2 it
- * short-circuits to `true` in single-player, resurrecting an empty share surface
- * on every self-host agent. Pure so the gate is unit-tested in isolation.
- */
 export function canShowAgentShareBlock(
   caps: Capabilities | null | undefined,
   agent: Pick<Agent, "access">,
@@ -29,29 +15,6 @@ export function canShowAgentShareBlock(
   return isMultiplayer(caps) && canManageAssignments(caps, agent);
 }
 
-/**
- * How an agent's Share affordance should render, per C8 Spaces
- * (`cloud/docs/contracts/C8-spaces-billing.md` §Share-triggers-team). Powers
- * both the prominent header Share button and the buried Agent-settings block, so
- * the two entry points never drift on which surface a context opens:
- *
- * - `"manage"` — the Drive-style {@link canShowAgentShareBlock} block + share
- *   dialog: a multiplayer TEAM space where the caller manages this agent.
- * - `"inviteTeam"` — a PERSONAL space on a spaces-capable host: personal spaces
- *   are non-invitable (sharing always goes through a team), so instead of
- *   hiding, the Share affordance offers to move the agent into a team. Opens
- *   the ShareViaTeamFlow.
- * - `"view"` — a multiplayer caller who can SEE the agent but can't manage it (a
- *   plain member / an admin who only uses it). Google-Docs parity: they still
- *   open a read-only people list rather than a dead button. The gateway withholds
- *   the full assignee roster from non-managers, so the list shows the truthful
- *   subset it can resolve (always at least the viewer) — never a management UI.
- * - `"none"` — desktop / self-host (no multiplayer): render nothing.
- *
- * Personal-space precedence is deliberate: a personal space must NEVER show the
- * team share dialog (its `addOrgMember` 403s `personal_space`), so `inviteTeam`
- * wins over `manage` whenever the caller is in a personal space on a spaces host.
- */
 export type AgentShareSurface = "manage" | "inviteTeam" | "view" | "none";
 
 export function agentShareSurface(
@@ -65,41 +28,20 @@ export function agentShareSurface(
   return "none";
 }
 
-/** A per-agent access level. `manager` may reconfigure; `user` may only use. */
 export type AccessLevel = "manager" | "user";
 
-/** The per-person menu choices in the share dialog. */
 export type ShareAction = "manager" | "user" | "remove";
 
-/**
- * One person shown in the share dialog's people list — a member who currently
- * has access to the agent, resolved against the org roster for their name/email
- * and org role.
- */
 export interface SharePerson {
   userId: string;
   email?: string;
-  /** The person's ORG role (owner/admin/user), for eligibility + owner display. */
   orgRole: OrgRole;
-  /** Their current per-agent access level. */
   access: AccessLevel;
-  /** True when this is the signed-in viewer (guarded against self-lockout). */
   isSelf: boolean;
-  /** Org owner: always has access, row is non-editable. */
   isOwner: boolean;
-  /**
-   * May this person be made an agent Manager? Only teammates holding a Manager
-   * seat (org role owner/admin) can (`manager_requires_admin` on the wire).
-   */
   canBeManager: boolean;
 }
 
-/**
- * The agent's current assignee list. Prefers the rich v2 `assignments`; falls
- * back to `assignedUserIds` (mapped to `user`) when only that is populated.
- * An EMPTY result is ambiguous (single-player vs. org-wide); to tell them apart
- * use {@link isSharedWithEveryone} rather than reading "empty" as "owner only".
- */
 export function currentAssignments(
   agent: Pick<Agent, "assignments" | "assignedUserIds">,
 ): AgentAssignment[] {
@@ -112,17 +54,6 @@ export function currentAssignments(
   }));
 }
 
-/**
- * Is this agent shared org-wide? A present-but-empty assignee set is the
- * "everyone in the org" sentinel (`Agent.assignedUserIds`), which is also what
- * `tauriAgents.setAssignments` writes for "Everyone on your team". Every reader
- * of the sentinel comes through here: {@link buildSharePeople} expands it into
- * the roster, the People choice maps it to "any" (`agent-people-choice.ts`) and
- * the settings chips render it as the team (`agent-policy-chips-model.ts`).
- * Single-player agents (no assignee fields) are NOT org-wide. Ignoring this
- * sentinel makes an org-wide agent read as owner-only and silently narrows the
- * team's access on the first edit.
- */
 export function isSharedWithEveryone(
   agent: Pick<Agent, "assignments" | "assignedUserIds">,
 ): boolean {
@@ -135,14 +66,6 @@ function canBeManagerRole(role: OrgRole): boolean {
   return role === "owner" || role === "admin";
 }
 
-/**
- * The people who currently have access, as dialog rows. Org owners are always
- * included (every owner can use every org agent and can never be removed; an
- * org may hold several). An org-wide agent ("everyone" sentinel) expands to
- * every current member so the count is truthful and editing operates on the
- * real roster instead of silently dropping the team. Sorted owners, then
- * managers, then members, then by email/id.
- */
 export function buildSharePeople(opts: {
   agent: Pick<Agent, "assignments" | "assignedUserIds">;
   members: readonly OrgMember[];
@@ -191,16 +114,6 @@ function sortSharePeople(people: SharePerson[]): SharePerson[] {
   });
 }
 
-/**
- * Ensure the signed-in viewer appears in a people list, for the read-only
- * `"view"` surface a plain member sees. The gateway withholds the full assignee
- * roster from non-managers, so {@link buildSharePeople} may resolve only the org
- * owner (or nobody) for a member — yet a member is looking at an agent that was
- * shared TO them, so they always have access. Append a self row when absent so
- * the list is never empty and never omits the one person it can state for
- * certain. A no-op once the viewer already resolved (manager/owner callers), or
- * when there is no signed-in user id.
- */
 export function withViewer(
   people: readonly SharePerson[],
   viewer: { userId: string | null; email?: string },
@@ -223,7 +136,6 @@ export function withViewer(
   ];
 }
 
-/** Org members who do NOT yet have access — the add-people picker universe. */
 export function addableMembers(
   members: readonly OrgMember[],
   people: readonly SharePerson[],
@@ -234,17 +146,12 @@ export function addableMembers(
     .sort((a, b) => (a.email ?? a.userId).localeCompare(b.email ?? b.userId));
 }
 
-/**
- * The next assignment set to WRITE after a per-person action. The org owner is
- * never removed. Returns the `{userId, access}[]` the dialog PUTs.
- */
 export function applyShareAction(
   people: readonly SharePerson[],
   userId: string,
   action: ShareAction,
 ): AgentAssignment[] {
   const target = people.find((p) => p.userId === userId);
-  // Defensive: never strip the owner's implicit access.
   if (action === "remove" && target?.isOwner) {
     return people.map((p) => ({ userId: p.userId, access: p.access }));
   }
@@ -256,7 +163,6 @@ export function applyShareAction(
     }));
 }
 
-/** Assignment set after adding a member (defaults to `user`). No-op if present. */
 export function addPerson(
   people: readonly SharePerson[],
   member: OrgMember,
@@ -266,12 +172,6 @@ export function addPerson(
   return [...base, { userId: member.userId, access: "user" }];
 }
 
-/**
- * Would this action lock the signed-in viewer out of managing the agent? Only
- * for their OWN row, and not the org owner (who always keeps authority):
- * removing themselves loses access; demoting to `user` loses manage ability.
- * Both must be confirm-gated so one click never silently strips own authority.
- */
 export function needsSelfLockoutConfirm(
   person: SharePerson,
   action: ShareAction,
@@ -280,18 +180,6 @@ export function needsSelfLockoutConfirm(
   return action === "remove" || action === "user";
 }
 
-/**
- * Is the agent shared with more than one person? Drives the chat "Shared agent"
- * note (contract §6), whose target audience is the replying teammate.
- *
- * A plain member (`access === "user"`) is exactly that audience, yet the gateway
- * withholds `assignments`/`assignedUserIds` from non-managers (contract §5), so
- * the assignee count would read 0 and the note would never reach them. But an
- * agent a member can see at all was shared TO them — at minimum the owner also
- * has access — so it is inherently a shared agent: return true. For a
- * manager/owner caller (`access` absent or `"manager"`) the real assignee list
- * is present, so fall back to the count (their own unshared agent stays quiet).
- */
 export function isSharedWithOthers(
   agent: Pick<Agent, "assignments" | "assignedUserIds" | "access">,
 ): boolean {

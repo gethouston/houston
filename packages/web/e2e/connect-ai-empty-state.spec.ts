@@ -2,12 +2,6 @@ import { NEW_TASK_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { openNewMission } from "./support/mission";
 
-/**
- * With zero providers connected, the whole composer (textarea + footer with
- * the model picker) is replaced by the connect-AI empty state, so the user is
- * never shown a phantom model chip or a dead-end input. The CTA routes to the
- * AI Hub. With a provider connected, the composer renders exactly as before.
- */
 test("composer is replaced by the connect-AI empty state when no provider is connected", async ({
   page,
   request,

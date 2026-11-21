@@ -11,18 +11,6 @@ import { PeopleRosterRow } from "./people-roster-row";
 import { canEditMember, grantsOwner } from "./people-tab-model";
 import { usePersonFocus } from "./use-person-focus";
 
-/**
- * The People roster: one row per member with an avatar, name/email, and a role.
- * Owners get a role dropdown and a confirm-gated Remove for everyone but
- * themselves; admins see those read-only. Other OWNER rows are editable too
- * (multi-owner orgs), with two confirm gates: removing anyone, and granting
- * owner (full org authority). Demoting/removing a sole owner is refused by the
- * gateway's `last_owner` 409, surfaced as a plain informational toast. Both
- * writes are optimistic: the row changes on the click. This is
- * membership only: a person's per-agent access is read on that agent's own
- * settings screen, so a row's identity is not a drill-in here. A face on the
- * org chart opens this roster on that person (`usePersonFocus`).
- */
 export function PeopleRoster({
   members,
   selfId,
@@ -64,8 +52,6 @@ export function PeopleRoster({
               key={member.userId}
               member={member}
               isSelf={isSelf}
-              // Billing names only whether the caller pays, so only their
-              // own row can carry the mark.
               pays={isSelf && selfPays}
               editable={canEditMember({
                 canManage,

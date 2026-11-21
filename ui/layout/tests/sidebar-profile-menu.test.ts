@@ -9,7 +9,6 @@ import { SidebarProfileMenu } from "../src/sidebar-profile-menu";
 Object.assign(globalThis, { React });
 const h = React.createElement;
 
-/** Prints the diameter the rail hands it, so a test can read the slot size. */
 function Portrait() {
   return h("span", { "data-diameter": useSidebarAvatarDiameter() });
 }
@@ -48,7 +47,6 @@ describe("SidebarProfileMenu", () => {
   it("ends on an up-down chevron saying it opens a menu, and no letter tile", () => {
     const markup = render(false, "Acme");
     assert.equal(markup.match(/lucide-chevrons-up-down/g)?.length, 1);
-    // After the name and the workspace, at the row's end.
     assert.ok(markup.indexOf(">Acme<") < markup.indexOf("lucide-chevrons"));
     assert.match(
       markup,

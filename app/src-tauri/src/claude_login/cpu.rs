@@ -31,11 +31,6 @@ mod tests {
 
     #[test]
     fn unsupported_reason_is_none_on_supported_hardware() {
-        // Every CI/dev host (Apple Silicon, AVX2-era x86-64) can run the
-        // helper; the interesting arm — a pre-AVX2 x86-64 — has no CI
-        // representation, so this pins the common-path contract instead:
-        // no false positives that would dump capable machines into the
-        // paste flow.
         assert_eq!(unsupported_reason(), None);
     }
 }

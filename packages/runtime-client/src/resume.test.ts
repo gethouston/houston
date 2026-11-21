@@ -7,16 +7,8 @@ import { streamEventsResumable } from "./resume";
 import { FatalResumeError, type ResumeRetryInfo } from "./resume-contract";
 import type { WireFrame } from "./types";
 
-/**
- * The resumable wrapper against a REAL local SSE server: each test scripts the
- * server's behavior per connection (frames, drops, silence) and asserts what
- * the client sends back on reconnect (`?after=` cursor) and what the caller
- * observes (frames in order, resync, state changes).
- */
-
 type Conn = {
   res: ServerResponse;
-  /** The `?after=` resume cursor this connection arrived with (null = none). */
   after: string | null;
   lastEventId: string | undefined;
   send(type: string, data: unknown, seq?: number): void;
@@ -33,11 +25,6 @@ afterEach(async () => {
   while (cleanups.length > 0) await cleanups.pop()?.();
 });
 
-/**
- * Start an SSE server that hands each incoming events connection to `script`.
- * `statusFor` (per connection index) can refuse a connection with an HTTP
- * error instead — the fatal-classification tests use it.
- */
 async function startServer(
   script: (conn: Conn, index: number) => void,
   statusFor?: (index: number) => number,
@@ -84,7 +71,6 @@ function clientFor(h: Harness): HoustonEngineClient {
   return new HoustonEngineClient({ baseUrl: h.baseUrl });
 }
 
-/** Collect frames; abort the subscription when a `done` frame arrives. */
 function collectUntilDone(ac: AbortController) {
   const frames: WireFrame[] = [];
   return {
@@ -104,7 +90,7 @@ test("a dropped connection reconnects with after=<last seq> and replays gap/dupe
       conn.send("sync", { running: true, partial: "", seq: 0 }, 0);
       conn.send("text", "a", 1);
       conn.send("text", "b", 2);
-      conn.res.end(); // server closes mid-turn — NOT a terminal frame
+      conn.res.end();
     } else {
       conn.send("text", "c", 3);
       conn.send("done", null, 4);
@@ -122,7 +108,7 @@ test("a dropped connection reconnects with after=<last seq> and replays gap/dupe
 
   expect(h.connections).toHaveLength(2);
   expect(h.connections[0]?.after).toBeNull();
-  expect(h.connections[1]?.after).toBe("2"); // exactly the last seen seq
+  expect(h.connections[1]?.after).toBe("2");
   expect(frames.map((f) => [f.type, f.seq])).toEqual([
     ["sync", 0],
     ["text", 1],
@@ -139,7 +125,6 @@ test("an unserviceable cursor resyncs: the resync sync is delivered and its seq 
       conn.send("text", "a", 1);
       conn.res.end();
     } else if (i === 1) {
-      // Cursor 1 is too old (buffer cleared): resync with the current watermark.
       conn.send(
         "sync",
         { running: false, partial: "", seq: 9, resync: true },
@@ -161,8 +146,7 @@ test("an unserviceable cursor resyncs: the resync sync is delivered and its seq 
   });
 
   expect(h.connections[1]?.after).toBe("1");
-  expect(h.connections[2]?.after).toBe("9"); // adopted from the resync sync
-  // The resync sync frame itself reaches the caller (it reads `data.resync`).
+  expect(h.connections[2]?.after).toBe("9");
   expect(frames.map((f) => f.type)).toEqual(["sync", "text", "sync", "done"]);
   expect(
     frames.filter((f) => f.type === "sync" && f.data.resync === true),
@@ -174,7 +158,6 @@ test("the idle watchdog force-closes a silent connection and resumes with the cu
     if (i === 0) {
       conn.send("sync", { running: true, partial: "", seq: 0 }, 0);
       conn.send("text", "a", 1);
-      // then: total silence — no heartbeat, no close.
     } else {
       conn.send("done", null, 2);
     }
@@ -211,7 +194,7 @@ test("heartbeat comments hold the watchdog off — no spurious reconnect", async
   await streamEventsResumable(clientFor(h), "c1", {
     signal: ac.signal,
     onEvent,
-    idleTimeoutMs: 120, // > heartbeat interval, < the 400ms to `done`
+    idleTimeoutMs: 120,
     backoff: instant,
   });
 
@@ -222,7 +205,7 @@ test("heartbeat comments hold the watchdog off — no spurious reconnect", async
 test("a legacy server (frames without seq) reconnects with NO cursor", async () => {
   const h = await startServer((conn, i) => {
     if (i === 0) {
-      conn.send("sync", { running: true, partial: "" }); // no seq anywhere
+      conn.send("sync", { running: true, partial: "" });
       conn.send("text", "a");
       conn.res.end();
     } else {
@@ -253,7 +236,7 @@ test("backoff doubles per silent failure and resets after a delivered frame", as
     } else if (i === 4) {
       conn.send("done", null, 2);
     } else {
-      conn.res.end(); // connect "succeeds" but delivers no frame
+      conn.res.end();
     }
   });
   const ac = new AbortController();
@@ -275,7 +258,6 @@ test("backoff doubles per silent failure and resets after a delivered frame", as
   });
 
   expect(h.connections).toHaveLength(5);
-  // 10 → 20 (two frameless attempts), reset to 10 by conn 2's frame, → 20.
   expect(caps).toEqual([10, 20, 10, 20]);
 });
 
@@ -320,8 +302,8 @@ test("a 401 is fatal: the loop stops and rejects with FatalResumeError", async (
   await expect(run).rejects.toBeInstanceOf(FatalResumeError);
   await expect(run).rejects.toMatchObject({ status: 401 });
 
-  expect(h.connections).toHaveLength(2); // no third attempt after the refusal
-  expect(retries).toEqual([]); // fatal is not "retrying" — it stops
+  expect(h.connections).toHaveLength(2);
+  expect(retries).toEqual([]);
   ac.abort();
 });
 
@@ -329,10 +311,10 @@ test("a transient 500 keeps retrying and reports each frameless attempt via onRe
   const h = await startServer(
     (conn, i) => {
       if (i === 2) {
-        conn.send("text", "a", 1); // a delivered frame resets the failure count
+        conn.send("text", "a", 1);
         conn.res.end();
       } else if (i === 3) {
-        conn.res.end(); // frameless again: the count restarts at 1
+        conn.res.end();
       } else {
         conn.send("done", null, 2);
       }
@@ -353,7 +335,6 @@ test("a transient 500 keeps retrying and reports each frameless attempt via onRe
 
   expect(h.connections).toHaveLength(5);
   expect(retries.map((r) => r.consecutiveFailures)).toEqual([1, 2, 1]);
-  // The 500s surfaced their EngineError; the clean frameless close had none.
   expect(retries[0]?.error).toMatchObject({ status: 500 });
   expect(retries[2]?.error).toBeUndefined();
 });

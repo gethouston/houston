@@ -19,8 +19,6 @@ test("the tab's two rows and its editor all come from the one file", () => {
   const view = parseJobDescription(FILE);
   assert.equal(view.fields.industry, "Healthcare");
   assert.equal(view.fields.role, "Medical coder");
-  // The editor binds to the description ALONE: the block is drawn as controls
-  // above it, and showing it twice would let the user edit it two ways.
   assert.equal(view.body, "I chase the claims that come back rejected.");
 });
 
@@ -61,7 +59,6 @@ test("an agent with no block gains one on the first pick, prose untouched", () =
 test("a typed answer lands in the file the way the create dialog would write it", () => {
   const next = withJobField(FILE, "role", "  Billing   specialist ​ ");
   assert.equal(parseJobDescription(next).fields.role, "Billing specialist");
-  // And it is capped, so a pasted page never becomes a frontmatter value.
   const pasted = withJobField(FILE, "industry", "a".repeat(5_000));
   assert.equal(parseJobDescription(pasted).fields.industry?.length, 64);
 });
@@ -88,7 +85,6 @@ test("finds the chip a stored answer was picked from, whatever its casing", () =
     id === "healthcare" ? "Salud" : "Logística";
   assert.equal(choiceIdForLabel(ids, label, "Logistica"), "freight");
   assert.equal(choiceIdForLabel(ids, label, "  salud "), "healthcare");
-  // Words of the user's own match no chip: the picker opens on the typed field.
   assert.equal(choiceIdForLabel(ids, label, "Cetrería"), null);
   assert.equal(choiceIdForLabel(ids, label, null), null);
 });

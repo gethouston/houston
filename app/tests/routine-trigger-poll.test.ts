@@ -20,12 +20,10 @@ describe("triggerStatusPollInterval", () => {
   });
 
   it("polls while a routine has no status yet (host still resolving)", () => {
-    // null: an older host feature-detected as no trigger backend.
     strictEqual(
       triggerStatusPollInterval(["r1"], null),
       TRIGGER_STATUS_POLL_MS,
     );
-    // present list but this routine is missing from it.
     strictEqual(
       triggerStatusPollInterval(["r1"], [item("other", "active")]),
       TRIGGER_STATUS_POLL_MS,

@@ -4,12 +4,6 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import { HttpObjectStore } from "./http-store";
 
-/**
- * A read that names the generation the caller already holds asks the store to
- * skip the body when nothing changed. A store that does not answer that way
- * sends the object, and the read is an ordinary one.
- */
-
 function store(answer: (headers: Headers) => Response) {
   const seen: Headers[] = [];
   const http = new HttpObjectStore({

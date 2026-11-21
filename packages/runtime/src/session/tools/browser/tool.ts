@@ -27,20 +27,10 @@ import { browserStatePath, saveState } from "./state-store";
 import { untrusted } from "./untrusted";
 
 export interface BrowserToolOptions {
-  /** The agent's workspace; its sign-ins live under `.houston/browser/`. */
   workspaceDir: string;
-  /**
-   * Whether this runtime can show the browser to the person (it serves the
-   * live view routes): only then is `handoff` offered.
-   */
   liveView: boolean;
   pool?: BrowserPool;
   handoffs?: HandoffRegistry;
-  /**
-   * How long the person gets, asked at each hand-off: 10 minutes by default; a
-   * pooled turn caps it at its token's deadline (turn/turn-deadline.ts), and
-   * tests shorten it. `null` means too little time is left to hand over.
-   */
   handoffBudget?: HandoffBudget;
 }
 
@@ -70,13 +60,6 @@ const CLOSED_UNSAVED =
 const NO_LIVE_VIEW =
   "There is no way to show this browser to the person here. Tell them what to sign in to.";
 
-/**
- * The `browser` tool: a native Playwright-driven Chromium, not a CLI, so the
- * person's passwords never pass through a shell command and the call shows in
- * the tool-call log like every other tool. Built per workspace; the browser
- * process is shared ({@link sharedBrowserPool}) and each conversation gets
- * its own context.
- */
 export function makeBrowserTool({
   workspaceDir,
   liveView,
@@ -94,10 +77,8 @@ export function makeBrowserTool({
     const conversationId = currentConversationId();
     if (!liveView || !conversationId)
       return browserFailure("handoff_unavailable", NO_LIVE_VIEW);
-    // Asked now to refuse fast, and again once the page is up (handoff.ts).
     if (handoffBudget() === null)
       return browserFailure("handoff_unavailable", NO_TIME_LEFT);
-    // Taken now: the request that started the turn named who it is for.
     const owner = handoffOwner(currentActingContext());
     return pool.run(
       key,
@@ -148,7 +129,6 @@ export function makeBrowserTool({
           key,
           statePath,
           async (opened, swap) => {
-            // An `open` a site blocked may end on the backup browser's tab.
             const { tab, outcome } = await actOn(opened, action, swap, signal);
             if (outcome.mutated) await saveState(tab);
             return {
@@ -173,7 +153,6 @@ export function makeBrowserTool({
   });
 }
 
-/** Playwright's own refusals: the model can recover by re-reading the page. */
 function isPageFailure(error: Error): boolean {
   return (
     error.name === "TimeoutError" ||
@@ -184,11 +163,6 @@ function isPageFailure(error: Error): boolean {
   );
 }
 
-/**
- * Playwright's message can quote the page: an evaluate error carries the
- * text the page threw, a blocked click the HTML of what covers it. Fenced
- * like any other page content so a hostile page cannot speak as the tool.
- */
 function pageFailure(message: string): string {
   const line = message.split("\n")[0] ?? message;
   return `The browser refused the action:\n${untrusted(line)}\nTake a snapshot to see the page as it is now.`;

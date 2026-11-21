@@ -1,10 +1,5 @@
 import type { ColorWord } from "./color-vocabulary";
 
-/**
- * Status, chips and the sidebar — the families where a token's whole job is a
- * state. Every status fill ships with the ink that reads on it, so the two are
- * documented as a pair rather than as one colour and a guess.
- */
 export const STATE_WORDS: Record<string, ColorWord> = {
   danger: {
     label: "Danger",

@@ -6,16 +6,6 @@ import type { TimezoneState } from "../../../hooks/use-timezone-preference";
 import { genericErrorDescription } from "../../../lib/error-report";
 import { useUIStore } from "../../../stores/ui";
 
-/**
- * The Routines list's quiet footer: WHICH TIMEZONE every schedule on this list
- * is read and written in, and the one place to change it.
- *
- * It is not decoration. Schedule rows render their next-fire line against the
- * account zone, so a list that shows the zone without offering to fix it states
- * a fact the user cannot act on — and this is the only surface that ever
- * offered the control. It followed the routines list from the per-agent tab to
- * the team section for exactly that reason.
- */
 export function TeamRoutinesFooter({ tz }: { tz: TimezoneState }) {
   const { t } = useTranslation("routines");
   const labels = useRoutineLabels();

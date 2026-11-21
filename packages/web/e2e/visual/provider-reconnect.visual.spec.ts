@@ -3,15 +3,7 @@ import { expect, test } from "../support/fixtures";
 import { installPlanClock, PLAN_NOW } from "../support/plan";
 import { pinTheme, THEMES } from "./support";
 
-/**
- * The shell's "your Anthropic session ends soon" strip
- * (`provider-reconnect-notice.tsx`), desktop and phone. The fake host has no
- * gateway, so the provider list is answered as the hosted gateway would: Claude
- * connected, with a `reconnectBy` deadline a fixed time after the pinned clock.
- */
-
 const DAY = 24 * 60 * 60 * 1000;
-/** Three and a half days out: the strip reads "3 days". */
 const DEADLINE = Date.parse(PLAN_NOW) + 3.5 * DAY;
 
 async function withClaudeDeadline(page: Page): Promise<void> {

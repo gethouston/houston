@@ -4,21 +4,8 @@ import {
 } from "@houston/engine-adapter/client";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * `getBilling` on the HOSTED path (C8 §Billing) is what every cloud build
- * actually runs, so the not-entitled degrade has to land HERE, in the mixin
- * that reads the status `sdk.billing` throws: a gateway that
- * predates billing (404), a caller it refuses billing detail (403), and — the
- * HOU-904 regression — a billing-OFF deployment (503 `billing not configured`,
- * every prod gateway with no `GW_STRIPE_*`) all resolve to `null` so the billing
- * UI renders nothing, instead of throwing and firing the red "Houston, we have a
- * problem" bug toast on every team entry. Any other status is a real failure and
- * must throw. Mirrors `catalog-404.test.ts`.
- */
-
 const CFG = { baseUrl: "https://host.example", token: "t" };
 
-/** The read as the app makes it: the composed cloud client's own method. */
 const getBilling = (cfg: { baseUrl: string; token: string }) =>
   new HoustonClient({ ...cfg, controlPlane: true }).getBilling();
 
@@ -37,7 +24,6 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-/** Stub fetch to answer every call at `status`/`body`, recording the urls hit. */
 function stubFetch(status: number, body: unknown): string[] {
   const calls: string[] = [];
   globalThis.fetch = vi.fn(async (input: unknown) => {
@@ -66,14 +52,12 @@ test("getBilling() degrades a 403 (personal space / plain member) to null", asyn
 });
 
 test("getBilling() degrades a 503 (billing not configured) to null — HOU-904", async () => {
-  // 503 is transient for reads, so cpFetch blind-retries twice before the error
-  // surfaces to the degrade; fake timers fast-forward those waits.
   vi.useFakeTimers();
   const calls = stubFetch(503, { error: "billing not configured" });
   const p = getBilling(CFG);
   await vi.runAllTimersAsync();
   await expect(p).resolves.toBeNull();
-  expect(calls.length).toBe(3); // initial + two transient retries, then degrade
+  expect(calls.length).toBe(3);
 });
 
 test("getBilling() does NOT degrade a non-404/403/503 error (throws)", async () => {

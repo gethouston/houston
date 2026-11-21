@@ -15,14 +15,6 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { providerForAction } from "./integrations-sandbox";
 import { GROUP_ORDER } from "./registry";
 
-/**
- * The host integration surface end-to-end over real HTTP: the user routes
- * (`/v1/integrations/*`) and the runtime-facing HMAC proxy
- * (`/sandbox/integrations/*`), driven against an in-memory fake provider so the
- * routing/auth logic is verified without a live Composio. Platform model: no
- * provider login — users only connect toolkits, keyed by their Houston userId.
- */
-
 const USER = "alice";
 const CAPS: Capabilities = {
   profile: "cloud",
@@ -107,9 +99,6 @@ test("status reports readiness (no login concept, no account, no secret)", async
 });
 
 test("a legacy for-you credentials file surfaces the one-time reconnect notice, and dismiss deletes it", async () => {
-  // A real legacy file on disk (the local profile's wiring shape: active() is
-  // a live existsSync, dismiss() an idempotent rm) — so the test proves the
-  // retired plaintext-key file is actually deleted and the flag clears live.
   const dir = mkdtempSync(join(tmpdir(), "houston-legacy-integrations-"));
   const legacyPath = join(dir, "integrations.json");
   writeFileSync(legacyPath, JSON.stringify({ apiKey: "legacy-plaintext-key" }));
@@ -133,13 +122,11 @@ test("a legacy for-you credentials file surfaces the one-time reconnect notice, 
     expect(await dismiss.json()).toEqual({ ok: true });
     expect(existsSync(legacyPath)).toBe(false);
 
-    // The flag reflects reality immediately — no host restart.
     status = await (
       await fetch(`${base}/v1/integrations`, { headers: auth })
     ).json();
     expect(status.items[0].reconnect).toBeUndefined();
 
-    // Idempotent: dismissing an already-gone file is still a 200.
     const again = await fetch(
       `${base}/v1/integrations/reconnect-notice/dismiss`,
       { method: "POST", headers: auth },
@@ -165,7 +152,6 @@ test("dismiss with no legacy path wired (cloud) is a no-op success; a deletion f
     cloud.stop();
   }
 
-  // A real failure (e.g. EACCES) must NOT be swallowed behind {ok:true}.
   const failing = await setup({
     reconnectNotice: {
       active: () => true,
@@ -256,7 +242,6 @@ test("toolkits/connect/poll/disconnect — the full OAuth hand-off, no provider 
     ).json()) as { redirectUrl: string; connectionId: string };
     expect(connect.redirectUrl).toContain("gmail");
 
-    // Pending until the user finishes the OAuth in the browser…
     let conn = await (
       await fetch(
         `${base}/v1/integrations/composio/connections/${connect.connectionId}`,
@@ -265,7 +250,6 @@ test("toolkits/connect/poll/disconnect — the full OAuth hand-off, no provider 
     ).json();
     expect(conn.status).toBe("pending");
 
-    // …then the poll sees it active.
     fake.completeConnection(USER, connect.connectionId);
     conn = await (
       await fetch(
@@ -299,7 +283,6 @@ test("toolkits/connect/poll/disconnect — the full OAuth hand-off, no provider 
       ).items,
     ).toEqual([]);
 
-    // Polling a vanished connection 404s.
     expect(
       (
         await fetch(`${base}/v1/integrations/composio/connections/nope`, {
@@ -393,7 +376,6 @@ test("sandbox proxy: HMAC token → workspace owner's userId → execute/search"
 test("search's app scope reaches the provider on BOTH routes (PRODUCT-1274)", async () => {
   const { base, ws, vault, fake, stop } = await setup();
   try {
-    // Sandbox proxy (the agent's integration_search).
     const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
     await fetch(`${base}/sandbox/integrations/search`, {
       method: "POST",
@@ -405,7 +387,6 @@ test("search's app scope reaches the provider on BOTH routes (PRODUCT-1274)", as
     });
     expect(fake.lastApp).toBe("gmail");
 
-    // User-facing route (what the desktop gateway adapter forwards to).
     fake.lastApp = undefined;
     await fetch(`${base}/v1/integrations/composio/search`, {
       method: "POST",
@@ -414,8 +395,6 @@ test("search's app scope reaches the provider on BOTH routes (PRODUCT-1274)", as
     });
     expect(fake.lastApp).toBe("gmail");
 
-    // Omitted, empty, or whitespace-only → undefined at the port, never an
-    // empty-string scope (which would false-not-found a valid query).
     await fetch(`${base}/sandbox/integrations/search`, {
       method: "POST",
       headers: {
@@ -440,8 +419,6 @@ test("a scope NO provider resolves retries unscoped ONCE and flags the fallback"
         Authorization: `Bearer ${sb}`,
         "Content-Type": "application/json",
       },
-      // The fake scopes by exact toolkit — "acne" (a typo) matches nothing,
-      // so the route must retry unscoped and say so via the flag.
       body: JSON.stringify({ query: "send an email", app: "acne" }),
     });
     const body = await res.json();
@@ -451,7 +428,6 @@ test("a scope NO provider resolves retries unscoped ONCE and flags the fallback"
     );
     expect(fake.lastApp).toBeUndefined();
 
-    // A RESOLVED scope never sets the flag.
     const scoped = await fetch(`${base}/sandbox/integrations/search`, {
       method: "POST",
       headers: {
@@ -477,15 +453,12 @@ test("the user route echoes what became of the scope (the gateway handshake)", a
           body: JSON.stringify(body),
         })
       ).json();
-    // Resolved scope → scoped:true (items are hard-scoped).
     expect((await post({ query: "send an email", app: "gmail" })).scoped).toBe(
       true,
     );
-    // Unresolvable scope → scoped:false with strict-empty items.
     const missed = await post({ query: "send an email", app: "acne" });
     expect(missed.scoped).toBe(false);
     expect(missed.items).toEqual([]);
-    // No scope requested → no echo at all.
     expect((await post({ query: "send an email" })).scoped).toBeUndefined();
   } finally {
     stop();
@@ -493,9 +466,6 @@ test("the user route echoes what became of the scope (the gateway handshake)", a
 });
 
 test("a provider that IGNORED the scope suppresses the retry and flags scopeIgnored", async () => {
-  // The remote adapter against a gateway predating the scope contract: it
-  // serves UNSCOPED items. The proxy must not present them as scoped (flag),
-  // and must not read the merge as a resolved scope (no unscopedFallback).
   const ignoring = new FakeIntegrationProvider({ id: "composio" });
   ignoring.search = async (_u, _q, _a, app) => ({
     items: [
@@ -561,7 +531,6 @@ test("an EMPTY merge under an ignored scope still flags it — never a confident
     const body = await res.json();
     expect(body.items).toEqual([]);
     expect(body.scopeIgnored).toBe(true);
-    // No unscoped retry ran: it would just repeat the same unscoped search.
     expect(body.unscopedFallback).toBeUndefined();
   } finally {
     stop();
@@ -569,9 +538,6 @@ test("an EMPTY merge under an ignored scope still flags it — never a confident
 });
 
 test("sandbox proxy: a write action executes directly (no host approval gate)", async () => {
-  // The host executes every authenticated execute directly — integration
-  // confirmations are model-driven ask_user questions, not a host-side gate. A
-  // write slug (GMAIL_SEND_EMAIL) runs 200 with no grant, no 409.
   const { base, ws, vault, stop } = await setup();
   try {
     const sb = vault.sandboxToken(ws.id, `${ws.id}/Assistant`);
@@ -605,21 +571,18 @@ test("sandbox proxy: forwards the C2 acting headers into the provider (absent �
         body: JSON.stringify({ action: "GMAIL_SEND_EMAIL", params: {} }),
       });
 
-    // An acting-as token rides through verbatim.
     await call({ "x-houston-acting-as": "acting-v1.tok" });
     expect(fake.lastActing).toEqual({
       actingAs: "acting-v1.tok",
       actingUser: undefined,
     });
 
-    // A routine's acting-user rides through.
     await call({ "x-houston-acting-user": "sub-123" });
     expect(fake.lastActing).toEqual({
       actingAs: undefined,
       actingUser: "sub-123",
     });
 
-    // Neither header (today's desktop path) → no acting context at all.
     await call({});
     expect(fake.lastActing).toBeUndefined();
   } finally {
@@ -701,15 +664,6 @@ test("integration routes 503 when integrations are not configured", async () => 
   }
 });
 
-// ── Multi-provider fan-out (custom + Composio registered together) ─────────
-
-/**
- * The custom-integrations feature registers a SECOND IntegrationProvider
- * ("custom") beside Composio. The sandbox proxy's search/execute must treat
- * "no explicit provider" as "every registered provider", merging search
- * results and routing execute by the action's own shape (see
- * `providerForAction` in integrations-sandbox.ts) — not just always Composio.
- */
 async function setupMulti(providers: FakeIntegrationProvider[]) {
   const verifier: TokenVerifier = {
     async verify(b) {
@@ -820,7 +774,7 @@ test("one provider rejecting must not hide another provider's search results", a
 });
 
 test("an ALL-empty merge still surfaces a signin_required underneath it (409), not an empty success", async () => {
-  const custom = new FakeIntegrationProvider({ id: "custom" }); // default gmail action won't match
+  const custom = new FakeIntegrationProvider({ id: "custom" });
   const composio = new FakeIntegrationProvider({ id: "composio" });
   composio.throwSigninRequired = true;
   const { base, ws, vault, stop } = await setupMulti([custom, composio]);
@@ -902,8 +856,6 @@ test("providerForAction: tools.* goes to 'custom' when registered, else the firs
   );
   expect(providerForAction(withCustom, "GMAIL_SEND_EMAIL")).toBe("composio");
 
-  // No "custom" provider registered at all: a tools.* action still resolves to
-  // whatever non-custom provider IS registered rather than throwing.
   const noCustom = new IntegrationRegistry([
     new FakeIntegrationProvider({ id: "composio" }),
   ]);
@@ -911,8 +863,6 @@ test("providerForAction: tools.* goes to 'custom' when registered, else the firs
     "composio",
   );
 
-  // "custom" is the only provider registered: even a Composio-shaped action
-  // falls back to it (there is nothing else to route to).
   const onlyCustom = new IntegrationRegistry([
     new FakeIntegrationProvider({ id: "custom" }),
   ]);
@@ -951,9 +901,6 @@ test("merged multi-provider search is NOT filtered per agent (grants removed)", 
     }
 
     const sb = vault.sandboxToken(ws.id, agent.id);
-    // Usability is connection ∩ allowlist (enforced by the cloud gateway, not
-    // this host) — the pod no longer filters search by any per-agent record, so
-    // BOTH connected toolkits' actions surface.
     const searchRes = await fetch(`${base}/sandbox/integrations/search`, {
       method: "POST",
       headers: {
@@ -968,8 +915,6 @@ test("merged multi-provider search is NOT filtered per agent (grants removed)", 
       "tools.acme.org.default.doThing",
     ]);
 
-    // ...and execute of a toolkit that the old grant record would have excluded
-    // is NOT 403'd — the pod runs it (no local grant gate anymore).
     const execRes = await fetch(`${base}/sandbox/integrations/execute`, {
       method: "POST",
       headers: {
@@ -986,8 +931,6 @@ test("merged multi-provider search is NOT filtered per agent (grants removed)", 
     stop();
   }
 });
-
-// ── Multi-account plumbing (HOU-901) ─────────────────────────────────────────
 
 test("sandbox execute forwards the target account to the provider", async () => {
   const { base, ws, vault, fake, stop } = await setup();
@@ -1015,7 +958,6 @@ test("sandbox execute forwards the target account to the provider", async () => 
 test("disconnect with a connectionId removes only that account of the toolkit", async () => {
   const { base, fake, stop } = await setup();
   try {
-    // Two Gmail accounts, both active.
     const first = await fake.connect(USER, "gmail");
     fake.completeConnection(USER, first.connectionId, "dan@gmail.com");
     const second = await fake.connect(USER, "gmail");
@@ -1033,7 +975,6 @@ test("disconnect with a connectionId removes only that account of the toolkit", 
     const left = await fake.listConnections(USER);
     expect(left.map((c) => c.connectionId)).toEqual([second.connectionId]);
 
-    // Without a connectionId the whole toolkit still goes (legacy behavior).
     await fetch(`${base}/v1/integrations/composio/disconnect`, {
       method: "POST",
       headers: auth,
@@ -1060,12 +1001,6 @@ test("connections carry the account label the provider derived", async () => {
   }
 });
 
-/**
- * The generic provider family claims the WHOLE `/v1/integrations` subtree, so
- * the custom-integration definitions are reachable only because their group
- * runs first. Nothing in the two modules enforces that — the chain order does,
- * and it is one appended line away from being lost.
- */
 test("custom-integration definitions are matched before the provider family", () => {
   const custom = GROUP_ORDER.indexOf("custom-integrations");
   const generic = GROUP_ORDER.indexOf("integrations");

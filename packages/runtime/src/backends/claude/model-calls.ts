@@ -2,7 +2,6 @@ import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { ModelCallTiming } from "@houston/protocol";
 import type { HarnessTimingEvent } from "../types";
 
-/** The Messages API stream events this timer reads (main thread only). */
 interface StreamEventLike {
   type?: string;
   message?: { model?: string; usage?: UsageLike };
@@ -17,7 +16,6 @@ interface UsageLike {
   output_tokens?: number | null;
 }
 
-/** Block types that are the reply's first answer token (not thinking). */
 const ANSWER_BLOCKS = new Set(["text", "tool_use", "server_tool_use"]);
 
 type OpenCall = Omit<
@@ -28,31 +26,12 @@ type OpenCall = Omit<
   openedAt: number;
   firstBlockAt?: number;
   firstTokenAt?: number;
-  /** The CLI's own request-to-`message_start` time, when it stamps one. */
   cliTtfbMs?: number;
 };
 
 const count = (v: number | null | undefined, fallback: number) =>
   typeof v === "number" && Number.isFinite(v) ? v : fallback;
 
-/**
- * Turn one `query()`'s SDK messages into harness timings. Built right before
- * the query is spawned, so the init message measures the CLI's spawn-to-init
- * cost.
- *
- * `ttfbMs` prefers the CLI's own `ttft_ms`, which it stamps on each
- * `message_start` stream event: request sent to `message_start`, timed inside
- * the CLI. Without it (an older CLI) the request start is inferred from here:
- * the init message for the first call, then the main thread's tool-result
- * message (or the previous response's end) for each next one. The inferred
- * span also holds the CLI's prompt assembly and our pipe; side by side the
- * two differ by 7 to 22 ms. A request the CLI retried internally reports its
- * backoff inside the inferred span. Subagent streams (a parent tool id) are
- * another context and are skipped.
- *
- * Never throws: a stream shape this reader does not expect stops the timings
- * for the query (one warn line), never the user's turn.
- */
 export function createClaudeCallTimer(
   now: () => number = () => performance.now(),
 ): (msg: SDKMessage) => HarnessTimingEvent[] {
@@ -114,8 +93,6 @@ function claudeCallSteps(
       if (ANSWER_BLOCKS.has(ev.content_block?.type ?? ""))
         open.firstTokenAt ??= at;
     } else if (ev.type === "message_delta" && open && ev.usage) {
-      // The delta's usage is cumulative for the response and may restate the
-      // input split; a field it omits keeps the message_start value.
       open.inputTokens = count(ev.usage.input_tokens, open.inputTokens);
       open.cacheReadTokens = count(
         ev.usage.cache_read_input_tokens,

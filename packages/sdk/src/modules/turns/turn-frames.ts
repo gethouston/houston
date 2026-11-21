@@ -9,15 +9,6 @@ import {
   type TurnState,
 } from "./turn-settle";
 
-/**
- * Fold ONE of our turn's wire frames into the turn state + feed — content
- * accumulation and the terminal settles. Identity is already decided: the
- * sink calls this only for frames classified as OURS (`turn-identity.ts`);
- * `sync` and `user` never reach here.
- *
- * Provider ids are emitted as the engine's own ids (e.g. `openai-codex`); a
- * host that speaks a legacy provider dialect maps them in its FeedOutput.
- */
 export function applyTurnFrame(
   s: TurnState,
   ev: WireFrame,
@@ -34,8 +25,6 @@ export function applyTurnFrame(
       push(s, { feed_type: "thinking_streaming", data: s.thinking });
       break;
     case "tool_start":
-      // `toolIndex` = position among the turn's tool calls — with the turn id
-      // the identity a replayed row dedupes on in the VM fold (HOU-1214).
       push(s, {
         feed_type: "tool_call",
         data: { name: ev.data.name, input: ev.data.args },
@@ -57,12 +46,9 @@ export function applyTurnFrame(
       s.toolResultsSeen++;
       break;
     case "usage":
-      // Stash the turn's usage; finishOk attaches it to the final_result.
       s.usage = ev.data;
       break;
     case "provider_switched":
-      // Mid-turn provider switch: draw the boundary divider + reset the
-      // context-usage window.
       push(s, {
         feed_type: "provider_switched",
         data: {
@@ -73,19 +59,12 @@ export function applyTurnFrame(
       });
       break;
     case "context_compacted":
-      // Context compaction (the runtime's own, or the user's `/compact`): draw
-      // the boundary divider + reset the context-usage window (the same
-      // divider a reload replays from history).
       push(s, { feed_type: "context_compacted", data: ev.data });
       break;
     case "context_cleared":
-      // The user's `/clear`: the transcript above stays, but the model starts
-      // the next turn remembering none of it. Same divider treatment.
       push(s, { feed_type: "context_cleared", data: null });
       break;
     case "file_changes":
-      // Files this turn created/modified — the chat attaches them to the
-      // current assistant message ("files this mission touched" summary).
       push(s, { feed_type: "file_changes", data: ev.data });
       break;
     case "provider_error":
@@ -100,19 +79,14 @@ export function applyTurnFrame(
       break;
     }
     case "done":
-      // A clean terminal frame carries whatever the turn ended on: a blocking
-      // ask_user / request_connection / plan_ready, or a pure suggest_actions /
-      // suggest_reusable offer. Capture it so it rides the board persist and the
-      // settled card can render it. It does NOT pick the status — finishOk
-      // always settles `needs_you` (the engine never writes `done`).
       if (ev.pendingInteraction) s.pendingInteraction = ev.pendingInteraction;
       finishOk(s);
       stop();
       break;
     case "reply_complete":
-      break; // the reply phase above is all it changes
+      break;
     case "sync":
     case "user":
-      break; // handled by the sink before identity classification
+      break;
   }
 }

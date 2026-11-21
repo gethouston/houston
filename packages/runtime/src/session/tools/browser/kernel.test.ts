@@ -25,7 +25,6 @@ interface Call {
   body: unknown;
 }
 
-/** Kernel's REST API: POST /browsers answers `create`, DELETE answers 204. */
 function fakeApi(create: () => Response = () => created("k-1")) {
   const calls: Call[] = [];
   const fetch = vi.fn(async (url: string | URL, init?: RequestInit) => {
@@ -69,7 +68,6 @@ test("the key is the switch; without it the fallback is off, said once with the 
   expect(warn.mock.calls[0]?.[0]).toContain(
     "[browser] Kernel fallback off: KERNEL_API_KEY is not set",
   );
-  // An ERROR line is a Sentry event; a desktop without the key broke nothing.
   expect(error).not.toHaveBeenCalled();
 });
 
@@ -245,7 +243,6 @@ test("the saved sign-ins load into the Kernel tab, the wall's cookies left out",
     ],
   };
   await saveState({
-    // SAFETY: saveState reads only storageState from the context.
     context: { storageState: async () => ours } as unknown as BrowserContext,
     statePath,
     base: EMPTY_STATE,
@@ -325,7 +322,6 @@ test("saving from the Kernel tab never overwrites another site's sign-in", async
   const statePath = browserStatePath(agentWorkspace("kernel-save-"));
   const other = { origin: "https://other.example", localStorage: [] };
   await saveState({
-    // SAFETY: saveState reads only storageState from the context.
     context: {
       storageState: async () => ({
         cookies: [cookie("sid"), cookie("mail", "mail.other.example")],
@@ -342,7 +338,6 @@ test("saving from the Kernel tab never overwrites another site's sign-in", async
     3,
     "www.shop.example",
   );
-  // The Kernel tab wandered onto the other site, signed out there.
   Object.assign(remote.context, {
     storageState: async () => ({
       cookies: [

@@ -3,12 +3,6 @@ import { ImageResponse } from "next/og";
 import { OG_SIZE, OgCard } from "@/lib/og-card";
 import { getCreator } from "@/lib/store-api";
 
-/**
- * Per-creator share card: the face of a `/@handle` link. Falls back to the
- * store's default card when the handle is unknown (the page 404s; a crawler that
- * still fetches the image gets something branded).
- */
-
 export const alt = "Creator on the Houston Agent Store";
 export const size = OG_SIZE;
 export const contentType = "image/png";

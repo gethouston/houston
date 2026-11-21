@@ -12,22 +12,6 @@ import {
 import type { RunCodeLimiter } from "./run-code-limiter";
 import type { RunCodeTransport } from "./run-code-transport";
 
-/**
- * The `run_code` tool — the load-bearing piece of the cheap-agent /
- * rented-sandbox architecture: instead of a local `bash` tool (which would
- * force the whole agent process into an always-on sandbox), the agent ships
- * code to a disposable Cloud Run box and gets output + files back.
- *
- * HOW it reaches that box is the transport's business (`run-code-transport.ts`):
- * a long-lived server-mode runtime calls the sandbox directly with its own
- * credentials; a pooled turn worker relays through the gateway under the turn
- * grant and holds no sandbox identity at all. Everything below — the budget,
- * the input-file gathering, the artifact write-back — is identical on both.
- */
-
-// Keep this language set in sync with the sandbox's authoritative list in
-// packages/code-sandbox/src/types.ts (LANGUAGES). The two packages are
-// intentionally independent services, so the list is duplicated by design.
 const Params = Type.Object({
   language: Type.Union(
     [Type.Literal("python"), Type.Literal("bash"), Type.Literal("node")],
@@ -53,27 +37,20 @@ const Params = Type.Object({
 
 type RunCodeParams = Static<typeof Params>;
 
-/** The sandbox's own ceiling (code-sandbox DEFAULT_LIMITS.maxTimeoutMs). */
 const MAX_TIMEOUT_MS = 120_000;
 
-/** Clamp rather than reject: an out-of-range ask still runs, at the ceiling. */
 function clampTimeout(raw: number | undefined): number | undefined {
   if (raw === undefined || !Number.isFinite(raw)) return undefined;
   return Math.min(MAX_TIMEOUT_MS, Math.max(1, Math.round(raw)));
 }
 
-/** The named failure behind a non-2xx, so nothing surfaces as a bare status. */
 function transportError(status: number, body: string): Error {
   let code = "";
   try {
     const parsed = JSON.parse(body) as { code?: unknown };
     if (typeof parsed.code === "string") code = parsed.code;
-  } catch {
-    // Not JSON (a proxy's HTML error page); fall through to the status map.
-  }
+  } catch {}
   if (status === 401) {
-    // Two different 401s share the status: the direct transport's app token is
-    // wrong, or this turn's grant is no longer accepted by the gateway.
     return new Error(
       code === "grant_expired" || code === "unauthenticated"
         ? "code execution rejected this turn's authority (401): the turn grant is no longer valid"
@@ -97,16 +74,8 @@ function transportError(status: number, body: string): Error {
 }
 
 export interface RunCodeOptions {
-  /** How this deployment reaches the sandbox (direct HTTP, or the turn grant). */
   transport: RunCodeTransport;
   workspaceDir: string;
-  /**
-   * The run budget (Gate #5). Injected, not built here, because WHAT it bounds
-   * differs: a long-lived runtime builds one per process (= per workspace),
-   * while turn mode shares one across every turn the worker serves (= per
-   * worker) — one tool instance is built per turn there, so a limiter created
-   * in here would be a per-turn budget and bound nothing.
-   */
   limiter: RunCodeLimiter;
 }
 
@@ -128,12 +97,7 @@ export function makeRunCodeTool(opts: RunCodeOptions) {
       params: RunCodeParams,
       signal: AbortSignal | undefined,
     ) {
-      // Live gate for the mid-turn Mode-pill switch: an execute/auto-built turn
-      // may now be running in Plan — no code runs, no files get produced.
       assertNotPlanMode("run code or produce files");
-      // 1. Gather requested input files (missing/escaping paths throw → surfaced
-      //    as a tool error, never silently skipped). Declared inputs may be
-      //    overwritten by artifacts of the same path (see step 3).
       const files: SandboxArtifact[] = [];
       const declared = new Set<string>();
       for (const rel of params.input_files ?? []) {
@@ -143,9 +107,6 @@ export function makeRunCodeTool(opts: RunCodeOptions) {
         declared.add(abs);
       }
 
-      // 2. Run it in the remote sandbox, inside this runtime's run budget. The
-      //    signal aborts the call on a cancelled turn; the sandbox reaps its own
-      //    process by timeout server-side.
       const timeoutMs = clampTimeout(params.timeout_ms);
       const release = opts.limiter.acquire();
       let res: Response;
@@ -162,13 +123,11 @@ export function makeRunCodeTool(opts: RunCodeOptions) {
       } finally {
         release();
       }
-      // pi convention + Houston no-silent-failure: throw on a non-2xx.
       if (!res.ok) {
         throw transportError(res.status, await res.text().catch(() => ""));
       }
       const result = (await res.json()) as SandboxResult;
 
-      // 3. Persist artifacts, then summarize for the model.
       const saved = await saveArtifacts(
         opts.workspaceDir,
         result.artifacts ?? [],

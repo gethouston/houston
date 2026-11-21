@@ -21,11 +21,6 @@ import { sharedHandoffs } from "../session/tools/browser/live/registry";
 import { browserStatePath } from "../session/tools/browser/state-store";
 import { createRuntimeServer } from "./server";
 
-// The whole hand-off across its real seams: the browser tool waiting in a
-// real Chromium, the runtime's HTTP routes, and the engine client the SDK
-// drives them with. Each layer has its own tests; this one pins the contract
-// between them.
-
 const available = await browserAvailable();
 const fixture = site(() => "http://127.0.0.1:9");
 const origin = available ? `http://${SITE_HOST}:${await listen(fixture)}` : "";
@@ -120,7 +115,6 @@ describe.skipIf(!available)(
       await until(() =>
         events.some((e) => e.type === "page" && e.url.endsWith("/secure")),
       );
-      // Acked frames keep the picture moving after the sign-in repaints.
       const last = await until(() => {
         const all = frames();
         return all.length > seen ? all[all.length - 1] : undefined;

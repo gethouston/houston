@@ -11,11 +11,6 @@ import { BookOpen } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-/**
- * The Admin header's Company context pill. It lives in the header's tools
- * slot, which remounts it whenever the strip crosses its threshold, so it
- * holds no state: the open state is its `Sheet` root's, above the slot.
- */
 export function CompanyContextTrigger() {
   const { t } = useTranslation("teams");
   return (
@@ -28,13 +23,6 @@ export function CompanyContextTrigger() {
   );
 }
 
-/**
- * The sheet the pill opens: from the right on the desktop, from the bottom on
- * the phone, where a side panel would leave no room to write. Its body
- * mounts only while it is open, so the editor's read waits for someone to
- * ask, and closing it unmounts the editor, which flushes a pending save
- * (`use-context-editor-save` saves on unmount).
- */
 export function CompanyContextSheetContent({
   children,
 }: {

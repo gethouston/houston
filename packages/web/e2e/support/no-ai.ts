@@ -1,10 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext } from "@playwright/test";
 
-/**
- * Hire `name` with its first day pending and sign every agent's Claude out,
- * so the provider probe confirms nothing is connected wherever it routes.
- */
 export async function hireWithNoAiConnected(
   request: APIRequestContext,
   name: string,

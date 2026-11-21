@@ -4,19 +4,11 @@ import type { CustomAddForm } from "./custom-add-model";
 
 const KINDS = ["openapi", "mcp"] as const;
 
-/**
- * The manual add form's API-vs-MCP picker. Toggle BUTTONS, not ARIA radios:
- * the radio pattern demands roving tabindex + arrow keys, which two plain tab
- * stops cannot honor — `aria-pressed` states the selection honestly instead.
- * Both options are always visible (nothing gated on hover), and the selected
- * one carries the filled variant so the choice reads without colour.
- */
 export function CustomAddKindToggle({
   value,
   onChange,
 }: {
   value: CustomAddForm["kind"];
-  /** Changing the kind invalidates any detect verdict — the parent clears it. */
   onChange: (kind: CustomAddForm["kind"]) => void;
 }) {
   const { t } = useTranslation("integrations");

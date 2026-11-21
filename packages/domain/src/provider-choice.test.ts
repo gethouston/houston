@@ -6,13 +6,6 @@ import {
   resolveProviderChoice,
 } from "./provider-choice";
 
-/**
- * The closed provider/model set every agent-facing pin resolves through. The
- * incident: an assistant asked for a mission on "codex", then "openai" — both
- * refused with a bare "unknown provider", nothing naming the real id
- * (`openai-codex`) or the connected set, so it guessed twice and gave up.
- */
-
 const OPTIONS: ProviderOption[] = [
   {
     id: "openai-codex",
@@ -78,7 +71,6 @@ test("an unknown provider names every connected option, id and display name", ()
   expect(out.message).toContain('"gemini-cli"');
   expect(out.message).toContain("openai-codex (ChatGPT / Codex (Plus / Pro))");
   expect(out.message).toContain("openrouter (OpenRouter)");
-  // A disconnected provider is not an option to steer the model toward.
   expect(out.message).not.toContain("anthropic");
 });
 
@@ -121,8 +113,6 @@ test("a model is checked only where the registry enumerates the provider's model
   if (bad.ok) throw new Error("expected a refusal");
   expect(bad.message).toContain("gpt-5.5-codex");
   expect(bad.message).toContain("openai-codex");
-  // An open-catalog provider (no enumerated models) accepts the id and lets the
-  // provider's own error surface.
   expect(resolveModelChoice("anything/at-all", openrouter, OP)).toEqual({
     ok: true,
     id: "anything/at-all",
@@ -172,7 +162,6 @@ test("the name a user says for a model resolves to the id, per provider", () => 
     ok: true,
     id: "claude-opus-5-5",
   });
-  // A bare family name lands on that family's lineup model.
   expect(resolveModelChoice("sonnet", ANTHROPIC_LINEUP_OPTION, OP)).toEqual({
     ok: true,
     id: "claude-sonnet-5-5",
@@ -187,7 +176,6 @@ test("a name belonging to another provider is refused, never cross-pinned", () =
   const out = resolveModelChoice("Luna", ANTHROPIC_LINEUP_OPTION, OP);
   expect(out.ok).toBe(false);
   if (out.ok) throw new Error("expected a refusal");
-  // The refusal names the ids AND the names, so the next call can be right.
   expect(out.message).toContain("claude-sonnet-5-5 = Sonnet 5.5");
   expect(out.message).toContain("claude-opus-5-5 = Opus 5.5");
   expect(out.message).toContain("claude-fable-5-2 = Fable 5.2");
@@ -199,12 +187,10 @@ test("an open-catalog provider still resolves a name it has a table for", () => 
     name: "ChatGPT / Codex (Plus / Pro)",
     connected: true,
   };
-  // A bare codename lands on the newest row of that name.
   expect(resolveModelChoice("Astra", codex, OP)).toEqual({
     ok: true,
     id: "gpt-6.2-astra",
   });
-  // Anything the table does not know still rides through untouched.
   expect(resolveModelChoice("some-new-id", codex, OP)).toEqual({
     ok: true,
     id: "some-new-id",

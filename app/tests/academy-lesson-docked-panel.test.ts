@@ -18,9 +18,6 @@ describe("Academy docked lesson dialog", () => {
     match(panel, /<Dialog\s+open\s/);
     match(panel, /onOpenChange=\{\(\) => undefined\}/);
     doesNotMatch(panel, /modal=\{false\}/);
-    // No Radix path ends the lesson: the runner owns Escape (a synthetic
-    // Escape from the app's own housekeeping must not exit a run), and a
-    // stray click beside a playing video must not abandon the beat.
     match(panel, /onEscapeKeyDown=\{\(event\) => event\.preventDefault\(\)\}/);
     match(
       panel,

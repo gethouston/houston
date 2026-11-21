@@ -14,7 +14,6 @@ import { assertSafeKey } from "../vfs/vfs";
 import { runHydrate } from "./daemon-hydrate";
 import { runSyncBack, type StoreSyncOptions } from "./daemon-policy";
 
-/** The baseline and its copied files change in the same queue as sync-back. */
 export class SyncedUploadFiles {
   manifest: HydrateManifest = new Map();
   private pending: Promise<unknown> = Promise.resolve();
@@ -53,7 +52,6 @@ export class SyncedUploadFiles {
           },
         );
         if (localExists) throw error;
-        // A local deletion may still be waiting for the next sync-back pass.
         await this.opts.store.delete(key);
         copied = await this.uploadStore.copyUpload(uploadId, key, generation);
       }
@@ -66,7 +64,6 @@ export class SyncedUploadFiles {
         if (size !== copied.size)
           throw new Error("copied upload size differs from its metadata");
         const hash = await fileSha256(temp, size);
-        // Hash before publishing, so an agent's subsequent edit stays a local change.
         await rename(temp, destination);
         this.manifest.set(key, { hash, generation: copied.generation });
       } catch (error) {

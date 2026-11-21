@@ -7,7 +7,6 @@ import { emitLocalEcho } from "../bus";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
-/** The path `sdk.skills.shared` builds, which {@link viaSdk} is told about. */
 function sharedSkillsPath(wireWorkspaceId: string, slug?: string): string {
   const library = `/v1/workspaces/${encodeURIComponent(wireWorkspaceId)}/shared-skills`;
   return slug === undefined
@@ -15,18 +14,8 @@ function sharedSkillsPath(wireWorkspaceId: string, slug?: string): string {
     : `${library}/${encodeURIComponent(slug)}`;
 }
 
-/**
- * The workspace-shared skill library, delegated to `sdk.skills.shared`. Nothing
- * here degrades: the host answers every one of these routes, so a 404 is a real
- * failure (an unknown workspace, an unknown slug) and reaches the caller.
- */
 export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
   class SharedSkills extends Base {
-    /**
-     * The server's own id for this workspace — the synthetic "default" personal
-     * id no server speaks is translated (once per client) by the shared
-     * {@link AdapterContext} resolver. See `wire-workspace-id.ts`.
-     */
     private wireWorkspaceId(workspaceId: string): Promise<string> {
       return this.ctx.workspaceIds.resolve(workspaceId);
     }
@@ -63,8 +52,6 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
           content: req.content,
         }),
       );
-      // Local echoes keep the CLIENT's id vocabulary — query keys are built
-      // from the same workspaceId the caller holds.
       emitLocalEcho("SharedSkillsChanged", { workspaceId });
       return detail;
     }

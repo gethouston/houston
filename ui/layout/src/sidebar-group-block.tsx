@@ -3,11 +3,6 @@ import { sidebarRowHeight } from "./sidebar-geometry";
 import { sidebarRowButtonClasses as c } from "./sidebar-paint";
 import { type SidebarTreeRow, treeRowKey } from "./sidebar-tree";
 
-/**
- * Open groups with no member rows. Read off the AT-REST rows, never the drag
- * projection: the hint is not sortable, so adding or removing it mid-drag
- * would move every row below it under the pointer.
- */
 export function emptyOpenGroupIds(rows: SidebarTreeRow[]): Set<string> {
   const empty = new Set<string>();
   rows.forEach((row, index) => {
@@ -19,11 +14,6 @@ export function emptyOpenGroupIds(rows: SidebarTreeRow[]): Set<string> {
   return empty;
 }
 
-/**
- * Keys of the rows that open a block, which take the block gap: every group
- * header but the first row, and a root agent right after a group's block.
- * Root agents in a run stay one list.
- */
 export function blockStartKeys(rows: SidebarTreeRow[]): Set<string> {
   const starts = new Set<string>();
   rows.forEach((row, index) => {
@@ -36,11 +26,6 @@ export function blockStartKeys(rows: SidebarTreeRow[]): Set<string> {
   return starts;
 }
 
-/**
- * The line under an open group that holds nobody. Without it an empty group's
- * header folds and unfolds with nothing visibly changing, and the top-level
- * rows drawn right below it read as its members.
- */
 export function SidebarEmptyGroupHint({
   groupId,
   label,

@@ -6,11 +6,6 @@ import type {
 import { type RefObject, useEffect, useRef } from "react";
 import { useCitationFocus } from "../../stores/citation-focus";
 
-/**
- * Where the pages land: on the page a sent comment's pill named, once per
- * opening, and on a mark whenever its composer chip is pressed (a request
- * made while the document was still loading lands once it is ready).
- */
 export function usePdfLanding(
   pages: RefObject<PdfPagesHandle | null>,
   handle: PdfDocumentHandle | null,

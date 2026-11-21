@@ -1,13 +1,5 @@
 import { useTranslation } from "react-i18next";
 
-/**
- * The assistant's opening beat: what it is, what it can reach, and the promise
- * that keeps a "can do anything" agent trustworthy — it asks first.
- *
- * Three short lines and no cards: a 1-on-1 chat opens on the composer, so the
- * empty state introduces the person on the other side rather than handing the
- * user a menu of things to click.
- */
 export function AssistantEmptyState() {
   const { t } = useTranslation("assistant");
   return (

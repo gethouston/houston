@@ -14,26 +14,10 @@ import {
   refuse,
 } from "./assistant-request-parts";
 
-/**
- * Catalog -> one outbound host request. The generated catalog carries the route
- * each adapter operation takes, so this builds the call instead of a
- * hand-written table restating it: annotate an operation, regenerate, done.
- *
- * Catalog paths are full direct-host paths. After authorization and approval,
- * assistant-deployment-route.ts adapts the custom-integration family to the
- * gateway's existing per-agent mount using the trusted owning pod identity.
- *
- * Fail closed at every step — an operation that is absent, hidden, or carries
- * no derivable route is refused here, so a sandbox token can never reach a
- * surface the generator did not deliberately publish.
- */
-
 export interface AssistantUpstreamRequest {
   method: AssistantHttpMethod;
-  /** The host path: placeholders substituted and escaped. */
   path: string;
   query: Record<string, string>;
-  /** Absent when the operation sends no JSON body. */
   body?: unknown;
 }
 
@@ -43,12 +27,6 @@ export type AssistantDispatch =
   | { ok: true; request: AssistantUpstreamRequest }
   | AssistantRefusal;
 
-/**
- * Build the gateway request for one named operation, or the refusal that
- * replaces it. `params` are the catalog's named arguments as the caller sent
- * them; the runtime already schema-checks them, so the checks here exist for
- * anything that reaches the route directly.
- */
 export function dispatchAssistantOperation(
   catalog: AssistantCatalog,
   operation: string,
@@ -67,9 +45,6 @@ export function dispatchAssistantOperation(
   if (missing) {
     return refuse("invalid_params", `"${missing.name}" is required`);
   }
-  // The runtime checks arguments against these same schemas before calling, so
-  // reaching this means a direct caller: a second, independent gate rather than
-  // trust that the least-trusted process validated its own request.
   const mistyped = op.params.find((param) => {
     const value = arg(params, param.name);
     return value !== undefined && !Value.Check(param.schema, value);

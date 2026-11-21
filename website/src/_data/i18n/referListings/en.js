@@ -1,9 +1,3 @@
-// English copy for the requests on /data-partners/refer: one entry per
-// request, keyed by its slug in _data/referListings.js. Joined onto the locale
-// tree as `t.referListings` by _data/eleventyComputed.js, so
-// scripts/check-locales.mjs holds es and pt to this exact tree. No em dashes.
-// An empty `size` or `location` is left out of the page.
-
 export default {
   "law-firm": {
     title: "Law Firm",

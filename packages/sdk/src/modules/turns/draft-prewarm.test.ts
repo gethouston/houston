@@ -9,7 +9,6 @@ import { PREWARM_TYPING_GAP_MS, PREWARM_TYPING_MS } from "./draft-typing";
 
 const ON = { conversationPrewarm: true };
 const HOLD_MS = 20_000;
-/** Keystrokes this far apart are typing on. */
 const KEY_MS = 250;
 
 interface Request {
@@ -19,8 +18,6 @@ interface Request {
   settle: (error?: Error) => void;
 }
 
-/** A policy over a manual clock and a prewarm that settles when told to.
- *  `autoSettle` answers every request at once, holding for `holdMs`. */
 function harness(autoSettle = true, holdMs = HOLD_MS) {
   let now = 1_000;
   let minted = 0;
@@ -45,15 +42,12 @@ function harness(autoSettle = true, holdMs = HOLD_MS) {
   const advance = (ms: number) => {
     now += ms;
   };
-  /** Types on for just under the threshold: the next keystroke is the one
-   *  that reaches it. */
   const typeUpTo = async (draft: Draft) => {
     for (let t = 0; t < PREWARM_TYPING_MS; t += KEY_MS) {
       await type(draft);
       advance(KEY_MS);
     }
   };
-  /** Types on until the threshold, its last keystroke included. */
   const typeOn = async (draft: Draft) => {
     await typeUpTo(draft);
     await type(draft);
@@ -78,7 +72,6 @@ describe("rule 1: only a deployment that serves prewarm is asked", () => {
       ),
     ).resolves.toBeUndefined();
     expect(requests).toEqual([]);
-    // Nothing was minted either: the claim is a fresh id.
     expect(policy.claimNewConversationId("new")).toBe("id-1");
   });
 });
@@ -95,7 +88,6 @@ describe("rule 2: only typing on starts a prewarm", () => {
   it("typing that stops short of the threshold readies nothing", async () => {
     const { requests, type, typeUpTo, advance } = harness();
     await typeUpTo({ text: "he" });
-    // A pause past the gap: the next keystroke starts the count over.
     advance(PREWARM_TYPING_GAP_MS + 1);
     await type({ text: "hel" });
     expect(requests).toEqual([]);
@@ -149,7 +141,6 @@ describe("rule 5: a held prewarm refreshes at most every interval, while it hold
     advance(PREWARM_REFRESH_MS - 1);
     await type({ conversationId: "activity-c1", text: "he" });
     expect(requests).toHaveLength(1);
-    // A pause past the gap, but the hold still runs: one keystroke refreshes.
     advance(1);
     await type({ conversationId: "activity-c1", text: "hel" });
     expect(requests).toHaveLength(2);
@@ -180,7 +171,6 @@ describe("rule 5: a held prewarm refreshes at most every interval, while it hold
     const { requests, type, typeUpTo, advance } = harness(false);
     await typeUpTo({ conversationId: "activity-c1", text: "h" });
     const first = type({ conversationId: "activity-c1", text: "h" });
-    // Past the interval, inside the hold: only the request in flight stops it.
     advance(PREWARM_REFRESH_MS);
     await type({ conversationId: "activity-c1", text: "he" });
     expect(requests).toHaveLength(1);
@@ -241,7 +231,6 @@ describe("rule 7: a new chat prewarms the id its first send claims", () => {
       "activity-id-2",
     ]);
     expect(policy.claimNewConversationId("new:board")).toBe("id-1");
-    // Claimed means forgotten: the next new chat in the slot is its own.
     expect(policy.claimNewConversationId("new:board")).toBe("id-3");
     await typeOn({ draftKey: "new:board", text: "next" });
     expect(requests.at(-1)?.conversationId).toBe("activity-id-4");
@@ -306,7 +295,6 @@ describe("a clock that goes back restarts the run", () => {
     await type({ text: "h" });
     advance(PREWARM_TYPING_GAP_MS);
     await type({ text: "he" });
-    // The clock is corrected back; the next keystrokes are a second apart.
     advance(-500);
     await type({ text: "hel" });
     advance(PREWARM_TYPING_GAP_MS);
@@ -341,7 +329,6 @@ describe("state belongs to one policy", () => {
     two.policy.adopt(one.policy.state());
     one.requests[1].settle();
     await refresh;
-    // Inside the refreshed hold, past the interval: one keystroke refreshes.
     two.advance(PREWARM_REFRESH_MS);
     await two.type({ conversationId: "activity-c1", text: "hel" });
     expect(two.requests).toHaveLength(1);
@@ -353,7 +340,6 @@ describe("state belongs to one policy", () => {
     const two = harness();
     two.advance(PREWARM_TYPING_MS);
     two.policy.adopt(one.policy.state());
-    // The run carried over: the next keystroke reaches the threshold.
     await two.type({ draftKey: "new", text: "he" });
     expect(two.requests).toHaveLength(1);
     expect(two.policy.claimNewConversationId("new")).toBe("id-1");

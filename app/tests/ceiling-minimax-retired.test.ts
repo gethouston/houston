@@ -5,12 +5,6 @@ import { isModelAllowed } from "../src/lib/ceiling-match.ts";
 import { isModelVisible } from "../src/lib/provider-overrides.ts";
 import { catalogRunsAs, indexRunsAs } from "../src/lib/providers/runs-as.ts";
 
-/**
- * A team ceiling written before MiniMax moved to M3.1 Flash names a retired id
- * (`MiniMax-M3[1m]`, `MiniMax-M2.7`). The host keeps each as a hidden row whose
- * `runsAs` is M3.1 Flash, so the ceiling still admits MiniMax in the picker.
- * Reads the catalog the host actually serves.
- */
 const { buildProviderCatalog } = (await import(
   new URL("../../packages/host/src/providers/pi-catalog.ts", import.meta.url)
     .href

@@ -26,9 +26,6 @@ export * from "./components/dialog";
 export * from "./components/dropdown-menu";
 export * from "./components/empty";
 export * from "./components/error-boundary";
-// File-type classification + iconography. In core rather than `ui/agent`
-// because BOTH the Files surfaces and chat prose name files, and a file has to
-// look like the same file in both (PRODUCT-1231).
 export * from "./components/file-type-icons";
 export * from "./components/floating-nav-bar";
 export * from "./components/floating-nav-bar-styles";

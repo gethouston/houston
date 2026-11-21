@@ -56,7 +56,6 @@ describe("OpenInHouston focus-listener hygiene", () => {
     act(() => root.render(<InstallPanel {...props} />));
     clickOpenInHouston();
 
-    // Unmount before the fallback timer fires and before any blur/visibilitychange.
     act(() => root.unmount());
 
     expect(removeWin).toHaveBeenCalledWith("blur", expect.any(Function));

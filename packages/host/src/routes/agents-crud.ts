@@ -11,11 +11,6 @@ import { agentPayload } from "./agents-payload";
 import { json, readJson } from "./http";
 import { defineRoute } from "./registry";
 
-/**
- * The user's own agents: list and create. Their personal workspace is
- * auto-provisioned on the first hit, so a fresh account lists before it has
- * ever written anything.
- */
 const HERE = "packages/host/src/routes/agents-crud.ts";
 
 defineRoute({
@@ -48,26 +43,16 @@ defineRoute({
     const { name } = body;
     if (!name || typeof name !== "string")
       return json(res, 400, { error: "missing 'name'" });
-    // Surfaces validate before submitting (HOU-1166); this is the wire-level
-    // backstop, answering a clean 400 instead of a store-level 500.
     const nameCheck = validateAgentName(name);
     if (!nameCheck.ok)
       return json(res, 400, {
         error: invalidAgentNameMessage(nameCheck.reason),
       });
-    // `migration: true` is the desktop-to-cloud move re-creating an agent the
-    // person already had, which keeps its name even when it is the reserved
-    // one; the taken check below still applies.
     if (
       body.migration !== true &&
       refuseReservedAgentName(deps, res, nameCheck.name)
     )
       return;
-    // Optional create-time content: CLAUDE.md instructions + a flat seed-file
-    // map (skills, seeded .houston data, working files). Builtin templates and
-    // portable installs supply these; the Rust engine wrote them on install, so
-    // the host must too or the agent is created empty. Both are untrusted input
-    // — validate before writing.
     const claudeMd =
       typeof body.claudeMd === "string" ? body.claudeMd : undefined;
     let seeds: Record<string, string> | undefined;
@@ -90,28 +75,15 @@ defineRoute({
       if (answerAgentNameTaken(res, err)) return;
       throw err;
     }
-    // Skipped only when no vfs is wired (legacy gke-only deploys); the
-    // typed-data routes 503 there anyway.
     if (deps.vfs) {
       await seedAgentTree(
         { store: deps.store, vfs: deps.vfs },
         agent,
         (deps.paths ?? DEFAULT_PATHS).agentRoot(ws, agent),
         { claudeMd, seeds },
-        // Seeded routines bypass createRoutine, so stamp the creating user as
-        // their `created_by` (same actor policy as the routine write routes):
-        // the gateway-minted acting sub on a managed pod (org owner when the
-        // header is absent), the local user on the desktop. Without it a
-        // template/portable install births authorless routines the
-        // control-plane planner refuses to fire.
         routineActorFor(deps, req, userId),
       );
     }
-    // Optional create-time color, into the SAME `agent_colors` preference the
-    // app's color sync reads (routes/agent-color.ts) — a template, a portable
-    // install or the assistant can birth an agent already colored. Cosmetic, so
-    // an absent or malformed value is simply not stored rather than failing the
-    // create; a real write failure still propagates.
     const createColor = agentColorOrNull(body.color);
     if (createColor && deps.vfs)
       await storeAgentColor(deps.vfs, ws.id, agent.id, createColor);

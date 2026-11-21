@@ -10,16 +10,6 @@ import { forward } from "../proxy/route";
 import { liveTurns } from "../routes/live-turn";
 import { ProxyChannel } from "./proxy";
 
-/**
- * The acting-as trust seam (C2): the `x-houston-acting-as` header is relayed
- * to the runtime ONLY behind a trusted gateway (`forwardActingHeader: true`,
- * the cloud wiring). The local profile sets false — clients reach the host
- * directly there, so an inbound header is untrusted input and forwarding it
- * would let any client forge message attribution. The routine path
- * (server-minted `x-houston-acting-user` on fireTurn) is independent of the
- * flag and must flow in both configurations.
- */
-
 const ws: Workspace = {
   id: "w1",
   ownerUserId: "alice",
@@ -32,7 +22,6 @@ const ws: Workspace = {
 const agent: Agent = { id: "a1", workspaceId: "w1", name: "Sol", createdAt: 1 };
 const ctx: ChannelCtx = { workspace: ws, agent };
 
-// A fake runtime that records the headers of every request it receives.
 let runtime: Server;
 let runtimeUrl = "";
 let seenHeaders: Record<string, string | string[] | undefined>[] = [];
@@ -70,7 +59,6 @@ function makeChannel(
   });
 }
 
-/** Serve dispatch over real HTTP so a CLIENT-supplied header rides req.headers. */
 function serve(
   channel: ProxyChannel,
 ): Promise<{ base: string; close(): void }> {
@@ -115,7 +103,6 @@ async function dispatchWithHeader(channel: ProxyChannel) {
 test("local profile (forwardActingHeader: false): a client-supplied acting-as header is DROPPED", async () => {
   const headers = await dispatchWithHeader(makeChannel(false));
   expect(headers["x-houston-acting-as"]).toBeUndefined();
-  // The relay itself still worked (the sandbox bearer reached the runtime).
   expect(headers.authorization).toBe("Bearer sbx");
 });
 
@@ -131,7 +118,6 @@ test("routine creator identity (server-minted acting-user) flows regardless of t
       actingUser: "sub-123",
     });
     expect(seenHeaders[0]?.["x-houston-acting-user"]).toBe("sub-123");
-    // fireTurn never sends the acting-as header — it is not the routine path.
     expect(seenHeaders[0]?.["x-houston-acting-as"]).toBeUndefined();
   }
 });

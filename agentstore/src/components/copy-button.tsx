@@ -8,22 +8,12 @@ type ButtonProps = React.ComponentProps<typeof Button>;
 
 export interface CopyButtonProps
   extends Omit<ButtonProps, "onClick" | "children"> {
-  /** The text placed on the clipboard. */
   value: string;
-  /** Label shown in the idle state. */
   label: React.ReactNode;
-  /** Label shown for ~2s after a successful copy. */
   copiedLabel?: React.ReactNode;
-  /** Accessible name for the control (defaults to the idle label if a string). */
   "aria-label"?: string;
 }
 
-/**
- * A copy-to-clipboard button that reflects success inline and announces it to
- * assistive tech. Falls back to a hidden textarea + execCommand where the async
- * clipboard API is unavailable; copy failures never throw (the surrounding UI
- * always offers another path to the same content).
- */
 export function CopyButton({
   value,
   label,

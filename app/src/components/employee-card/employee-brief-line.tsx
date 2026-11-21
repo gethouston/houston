@@ -13,9 +13,6 @@ import {
 } from "../context/job-brief-model";
 import { JobBriefQuestion } from "../context/job-brief-question";
 
-/** The question stops at its own frame: an answer confirmed with Enter must
- *  never also submit the card's form, which React bubbles it into through the
- *  portal. */
 const keepSubmitInside = (event: FormEvent) => event.stopPropagation();
 
 export function EmployeeBriefLine({
@@ -25,9 +22,7 @@ export function EmployeeBriefLine({
   onAnswer,
 }: {
   field: JobBriefField;
-  /** The answer on the card, as the person reads it. */
   value: string;
-  /** The card's industry, which leads the job question's runs. */
   industry: string;
   onAnswer: (answer: string) => void;
 }) {

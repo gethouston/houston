@@ -10,13 +10,6 @@ import type {
   ResolvedModel,
 } from "../backends/types";
 
-/**
- * A standing engine's turn hands its model-call report to the settle report,
- * the one message every turn end sends its host (mission-settle.ts): the
- * harness's per-call timings plus the turn's own startup costs, on the clean
- * path and the thrown one alike.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-mc-data-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-mc-ws-"),
@@ -61,7 +54,6 @@ const CALL: ModelCallTiming = {
   outputTokens: 150,
 };
 
-/** A Claude-backend session that spawns, answers in one call, or throws. */
 class TimedSession implements HarnessSession {
   private wire = new Set<(e: WireEvent) => void>();
   private timings = new Set<(e: HarnessTimingEvent) => void>();
@@ -116,7 +108,6 @@ const SONNET: ResolvedModel = {
 
 test("a clean turn settles with its calls, the CLI spawn and the engine's startup, queue wait apart", async () => {
   state.model = SONNET;
-  // The turn waited 250 ms for the workspace lock after its session built.
   const startup = { sessionBuildMs: 31.4, queuedAt: performance.now() - 250 };
   await execTurn(
     convWith(new TimedSession()),

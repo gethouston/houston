@@ -13,8 +13,6 @@ const entry = (over: Partial<ProvisioningEntry> = {}): ProvisioningEntry => ({
   ...over,
 });
 
-// A phone opening a fresh hire's task list must say it is getting ready, not
-// sit blank for the seconds a hosted warm-up takes.
 describe("agentWarmup", () => {
   it("is ready with no warming entry for the AI Employee", () => {
     strictEqual(agentWarmup([], "/ws/ada", 0), "ready");
@@ -32,8 +30,6 @@ describe("agentWarmup", () => {
     );
   });
 
-  // Past the usual start time "a few seconds" is no longer true, long before
-  // the probe's ten-minute TTL gives up.
   it("is stalled once a start takes longer than usual", () => {
     strictEqual(agentWarmup([entry()], "/ws/ada", SLOW_START_MS), "stalled");
     strictEqual(
@@ -42,7 +38,6 @@ describe("agentWarmup", () => {
     );
   });
 
-  // The probe re-anchors `since` on every TTL lap; the flag keeps it stalled.
   it("stays stalled after the probe timed out", () => {
     strictEqual(
       agentWarmup([entry({ since: 5_000, timedOut: true })], "/ws/ada", 5_000),

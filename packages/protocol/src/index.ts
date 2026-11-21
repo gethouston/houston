@@ -12,9 +12,6 @@ export * from "./domain/file-refusal";
 export * from "./domain/first-day";
 export * from "./domain/heartbeat";
 export * from "./domain/interaction";
-// The closed hands-on vocabulary is a VALUE, and `./domain/interaction` may
-// only re-export types from its neighbour (see the note there), so the two
-// runtime exports come straight from the type module.
 export {
   HANDS_ON_SURFACES,
   isHandsOnSurface,

@@ -38,12 +38,6 @@ function daemon(
   });
 }
 
-// A retire restarts the container on the same emptyDir. Hydrate only
-// overwrites what the store lists, so a conversation a pool op deleted while
-// this pod was fenced would come back with the first sync under the fresh
-// lease. The retire marker names what the old boot had seen in the store;
-// the next boot prunes those the store dropped, and keeps the old boot's own
-// never-synced writes (a stale holder means nobody else had a copy).
 test("after a fence retire the next boot prunes what the store dropped and keeps its own unsynced writes", async () => {
   const { remote, local } = roots();
   const session = "workspaces/Work/Sales/.houston/runtime/sessions/s1.json";
@@ -81,7 +75,6 @@ test("after a fence retire the next boot prunes what the store dropped and keeps
   expect(existsSync(join(remote, "workspace", "deleted-by-pool-op.json"))).toBe(
     false,
   );
-  // The pod's own write ships under the fresh lease.
   expect(existsSync(join(remote, session))).toBe(true);
 });
 
@@ -120,7 +113,6 @@ test("retiring on a stale holder leaves the marker, which never syncs", async ()
   fenced.start();
   expect(await fenced.writable()).toBe(false);
   expect(holders).toEqual(["stale"]);
-  // The marker names what this boot's sync had seen in the store.
   expect(
     JSON.parse(readFileSync(join(local, FENCE_RETIRED_MARKER), "utf8")),
   ).toMatchObject({ synced: ["workspace/seen.json"] });
@@ -128,9 +120,6 @@ test("retiring on a stale holder leaves the marker, which never syncs", async ()
   expect(existsSync(join(remote, FENCE_RETIRED_MARKER))).toBe(false);
 });
 
-// The watcher skips the workspaces subtree and the periodic pass is minutes
-// out: the gate ships an acknowledged write at once while this boot holds a
-// lease, and leaves an unfenced deployment's sync exactly as it was.
 test("syncAfterWrite uploads now only while the boot carries a lease token", async () => {
   const leased = roots();
   const withLease = daemon(leased.remote, leased.local, {
@@ -159,7 +148,6 @@ test("syncAfterWrite uploads now only while the boot carries a lease token", asy
   expect(existsSync(join(unfenced.remote, "workspace", "routines.json"))).toBe(
     false,
   );
-  // The final sync still ships it, exactly as before.
   await noLease.stop();
   expect(existsSync(join(unfenced.remote, "workspace", "routines.json"))).toBe(
     true,

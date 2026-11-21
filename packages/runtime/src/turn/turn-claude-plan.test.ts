@@ -34,7 +34,6 @@ const served = (subscriptionType?: ClaudeSubscriptionType): TurnCredential => ({
   ...(subscriptionType ? { subscriptionType } : {}),
 });
 
-/** The CLI env of a Claude turn whose auth.json holds `onDisk`. */
 async function turnEnv(
   credential: TurnCredential,
   onDisk: TurnCredential = credential,

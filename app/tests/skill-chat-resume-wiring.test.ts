@@ -19,11 +19,6 @@ const models = read("../src/components/skills-view/use-skills-models.ts");
 const chatSetup = read("../src/components/agent/use-skill-chat-setup.ts");
 const chatWrites = read("../src/components/agent/use-skill-chat-writes.ts");
 
-/**
- * The node runner has no DOM, so the wiring these rules ride on is guarded at
- * the source (the repo's React-test idiom). Each pin names a decision helper
- * the surface must go through, so the decision cannot be re-made inline.
- */
 describe("the create chat's resume decision", () => {
   it("is taken on real data, never on a cached placeholder", () => {
     ok(chatSetup.includes("activitiesSettled:"), "settledness is published");
@@ -47,8 +42,6 @@ describe("the create chat's resume decision", () => {
   });
 
   it("stands on the opening surface while the decision is outstanding", () => {
-    // `view.deselect` clears a selection that is not there yet, so the pane
-    // dismisses ITSELF while nothing is selected.
     ok(chatPane.includes("useSkillChatOpen({"));
     ok(chatPane.includes("selected === null && deciding"));
   });
@@ -90,8 +83,6 @@ describe("the unfinished-chat rows", () => {
 
 describe("retrying a failed skills read", () => {
   it("asks the workspace store only where the deployment serves one", () => {
-    // An explicit refetch runs a disabled query too, so an ungated retry hits
-    // the unsupported route and reports a second failure.
     ok(models.includes("if (sharedMode) sharedModel.retry();"));
   });
 });

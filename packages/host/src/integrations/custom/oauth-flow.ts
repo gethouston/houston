@@ -14,19 +14,8 @@ import { discoverCustomOAuth } from "./oauth-discovery";
 import type { CustomIntegrationDef } from "./types";
 import { CustomIntegrationError } from "./types";
 
-/**
- * The browser half of custom-integration OAuth (PRODUCT-1172): Houston is the
- * OAuth client — RFC 9728/8414 discovery, RFC 7591 dynamic registration, and
- * the PKCE authorization-code dance — and the executor only ever sees the
- * resulting access token as a Bearer credential. One pending attempt per
- * integration; the browser-carried `state` is the callback's whole identity,
- * so it is random, single-use, and expiring.
- */
 export interface CustomOAuthAttempt {
   slug: string;
-  /** The MCP endpoint the attempt was started FOR. The completion re-checks
-   *  it against the then-current definition: a replace that moved the slug to
-   *  a different service mid-flow must not receive the old service's tokens. */
   endpoint: string;
   codeVerifier: string;
   redirectUri: string;
@@ -45,15 +34,6 @@ const oauthFailed = (context: string, err: unknown): CustomIntegrationError =>
     `${context}: ${err instanceof Error ? err.message : String(err)}`,
   );
 
-/**
- * Discover + register + build the authorize URL for one MCP definition.
- * `existingClient` (from a previous grant's bundle) is reused when it still
- * names this redirect URI, so re-authenticating does not re-register.
- * `statePrefix` (managed pods: `<orgSlug>.<agentSlug>`) rides INSIDE the
- * state so the gateway's public callback can route the returning browser to
- * the right pod statelessly — the random tail keeps the whole value
- * single-use and unguessable.
- */
 export async function beginCustomOAuth(
   def: CustomIntegrationDef & { kind: "mcp" },
   redirectUri: string,
@@ -64,12 +44,6 @@ export async function beginCustomOAuth(
   authorizeUrl: string;
   attempt: CustomOAuthAttempt;
 }> {
-  // The OAuth flow owns its HTTP seam like the executor does (HOU-1083):
-  // this host process runs with pi's patched global fetch/dispatcher, which
-  // once broke every executor POST through altered message framing.
-  // guardedFetch strips the framing headers and lets the current fetch
-  // compute them itself, deterministically — hardening against that class
-  // for discovery/registration/exchange/refresh alike.
   const fetchFn = opts.fetchFn ?? guardedFetch;
   const { statePrefix } = opts;
   let info: Awaited<ReturnType<typeof discoverCustomOAuth>>;
@@ -118,10 +92,6 @@ export async function beginCustomOAuth(
         ...(resource ? { resource: new URL(resource) } : {}),
       },
     );
-    // The URL ships to the OS opener verbatim, and the server's discovered
-    // `authorization_endpoint` is UNTRUSTED input: a `file:`/custom-scheme
-    // value would launch an arbitrary protocol handler on the user's machine
-    // the moment they press Sign in. Browsers only.
     if (!isBrowserSafe(authorizationUrl)) {
       throw new Error(
         `refused the non-https sign-in address ${authorizationUrl.protocol}//…`,
@@ -150,18 +120,15 @@ export async function beginCustomOAuth(
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
-/** https everywhere; http only for a loopback dev authorization server. */
 const isBrowserSafe = (url: URL): boolean =>
   url.protocol === "https:" ||
   (url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname));
 
-/** Exchange the callback's code for tokens (PKCE-verified). */
 export async function settleCustomOAuth(
   attempt: CustomOAuthAttempt,
   code: string,
   fetchOverride?: typeof fetch,
 ): Promise<CustomOAuthBundle> {
-  // Same guarded HTTP seam as the start half (see beginCustomOAuth).
   const fetchFn = fetchOverride ?? guardedFetch;
   try {
     const tokens = await exchangeAuthorization(attempt.authorizationServerUrl, {

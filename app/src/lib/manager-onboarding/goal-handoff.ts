@@ -18,7 +18,6 @@ export interface GoalHandoffInput {
   locale: SupportedLocale;
 }
 
-/** Transcript import completes before the real chat takes its first turn. */
 export function queueGoalHandoff(
   latch: { current: boolean },
   input: GoalHandoffInput,
@@ -47,12 +46,6 @@ export function queueGoalHandoff(
   );
 }
 
-/**
- * Whether a goal card may start its goal again with the hire grant: only for
- * the goal the person set in their own survey, which the manager cannot
- * write. A card whose goal came from anywhere else (history the manager
- * imported) must never turn the person's click into an approval.
- */
 export function mayRetryGoal(
   goal: string,
   ownGoal: string | null | undefined,

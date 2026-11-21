@@ -31,13 +31,6 @@ import {
 import { TurnSink } from "./turn-sink";
 import { turnErrorClass } from "./turn-state";
 
-/**
- * Every settle stamps WHY the turn ended on its session status, from the
- * typed input it was given, so analytics never reads a cause off the chat
- * copy (which hides it by design, HOU-705): before this, 85% of the fleet's
- * session failures classified as `unknown`.
- */
-
 type Status = [string, string | undefined, SessionStatusDetail | undefined];
 
 function recorder() {
@@ -78,7 +71,6 @@ test.each([
   const [status, error, detail] = errored(msg, notice);
   expect(status).toBe("error");
   expect(detail).toEqual({ origin: "sent", errorClass });
-  // The copy is untouched: a Stop still carries no text, a failure its line.
   expect(error).toBe(errorClass === "stopped" ? undefined : msg);
 });
 
@@ -180,9 +172,6 @@ test("the multiplexer forwards the detail to every output", () => {
 });
 
 test("a notice kind the error settle never carries falls through to the copy", () => {
-  // `engine_resumed` settles as completed (finishResumed); if it ever reached
-  // finishErr, the exhaustive notice table classes it as nothing and the
-  // copy decides.
   expect(turnErrorClass("Model refused the request.", "engine_resumed")).toBe(
     "engine_verdict",
   );

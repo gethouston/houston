@@ -8,19 +8,6 @@ import { logMissingFile } from "./files-missing";
 import { type OfficePreview, serveOfficePreview } from "./files-office";
 import { fileKey, safeRel, workspaceRel } from "./files-path";
 
-/**
- * The two workspace reads that answer BYTES rather than JSON — one file, or a
- * zip of a folder. They write their own head and body instead of going through
- * `json`, which is why they live apart from the route surface in `files.ts`.
- * Both read the source on every request. Office previews cache only converted
- * bytes, keyed by the source content so a rewrite cannot serve a stale PDF.
- */
-
-/**
- * Serve one workspace file for download (or inline preview). Chat-driven (file
- * cards, prose links), so `workspaceRel`: agents link files by the absolute
- * path of their own working directory.
- */
 export async function serveFileDownload(
   vfs: Vfs,
   root: string,
@@ -70,10 +57,6 @@ export async function serveFileDownload(
   res.end(buf);
 }
 
-/**
- * Serve a zip of the workspace. No `path` → the whole thing ("Download all");
- * with `path` → just that folder's subtree (the folder row's Download).
- */
 export async function serveArchive(
   vfs: Vfs,
   root: string,

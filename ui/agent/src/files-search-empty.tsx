@@ -1,8 +1,3 @@
-/**
- * Search-with-no-results state, shown by both views in place of the listing.
- * It names the query back to the user and offers the one way out of it, so a
- * dead search is never a dead end.
- */
 import {
   Button,
   Empty,
@@ -21,7 +16,6 @@ export function FilesSearchEmpty({
   onClear,
 }: {
   message: string;
-  /** What the user typed, echoed back so the miss is explicable. */
   query: string;
   clearLabel: string;
   onClear: () => void;

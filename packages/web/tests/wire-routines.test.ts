@@ -8,24 +8,6 @@ import {
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createWireCapture, json, ORG } from "./support/wire-capture";
 
-/**
- * The ROUTINES family delegated to `@houston/sdk`: the definitions, the run
- * history, firing and stopping a run, and the incoming-webhook key.
- *
- * These assertions ARE the record of what those calls put on the wire: same
- * method, whole URL, body bytes,
- * and headers (`Content-Type`, the `Authorization` bearer, the live
- * `x-houston-org`) over the ONE shared gateway fetch. The routines module
- * publishes no scope and never refetches after a write, so each call is exactly
- * one request — the adapter's own `RoutinesChanged` echo stays the only
- * invalidation.
- *
- * Two dispositions are pinned because getting either wrong is silent: the mint
- * goes to the GATEWAY control route (`/v1/agents/…`, never the agent proxy) and
- * is the ONLY operation here that degrades — its 404 reads as "webhook keys
- * unsupported", every other failure and every other operation throws.
- */
-
 const BASE = "http://host";
 
 const { calls, reset, restore, stubResponses: stubFetch } = createWireCapture();
@@ -63,21 +45,18 @@ const run = {
   started_at: "2026-01-01T09:00:00.000Z",
 };
 
-// ---- listRoutines / listRoutineRuns ----
-
 test("listRoutines delegates a byte-identical single GET /agents/:id/routines", async () => {
   stubFetch(json(200, { items: [routine] }));
 
   const rows = await client().listRoutines("a1");
 
-  expect(calls).toHaveLength(1); // the read publishes no scope: one request
+  expect(calls).toHaveLength(1);
   const [get] = calls;
   expect(get.method).toBe("GET");
   expect(get.url).toBe(`${BASE}/agents/a1/routines`);
   expect(get.body).toBeNull();
   expect(get.headers.get("Content-Type")).toBe("application/json");
   expect(get.headers.get("Authorization")).toBe("Bearer t");
-  // The `{ items }` envelope is unwrapped exactly as the cp copy unwrapped it.
   expect(rows).toEqual([routine]);
 });
 
@@ -138,16 +117,12 @@ test("the routine reads percent-encode the agent id they splice", async () => {
 });
 
 test("a failed routine read propagates as the adapter's engine error", async () => {
-  // 404, not a 5xx: the SDK's fetch port carries `cpFetch`'s transient ladder,
-  // so a 503 GET would be retried rather than surfaced — as it was before.
   stubFetch(json(404, { error: "no such agent" }));
   await expect(client().listRoutines("a1")).rejects.toMatchObject({
     name: "HoustonEngineError",
     status: 404,
   });
 });
-
-// ---- createRoutine / updateRoutine / deleteRoutine ----
 
 test("createRoutine delegates a byte-identical single POST of the whole input", async () => {
   stubFetch(json(200, routine));
@@ -159,7 +134,7 @@ test("createRoutine delegates a byte-identical single POST of the whole input", 
 
   const created = await client().createRoutine("a1", input);
 
-  expect(calls).toHaveLength(1); // no post-write refetch
+  expect(calls).toHaveLength(1);
   const [post] = calls;
   expect(post.method).toBe("POST");
   expect(post.url).toBe(`${BASE}/agents/a1/routines`);
@@ -267,8 +242,6 @@ test("the routine writes percent-encode both spliced ids", async () => {
 });
 
 test("a routine write the shared compute had no room for goes out again, byte-identical", async () => {
-  // The gateway answers compute_busy only when nothing ran: the SDK sends the
-  // SAME request again after its hint, so a write is never lost or doubled.
   stubFetch(
     json(503, {
       error: "agent busy; retry in a moment",
@@ -318,13 +291,11 @@ test("a plan-floor refusal reaches the caller whole, classified as an expected s
       () => null,
       (e: unknown) => e,
     );
-    expect(calls).toHaveLength(1); // a refusal is final: never resent
+    expect(calls).toHaveLength(1);
     expect(err).toMatchObject({ name: "HoustonEngineError", status: 400 });
     expect(planMinIntervalRefusal(err)).toEqual(refusal);
   }
 });
-
-// ---- runRoutineNow / cancelRoutineRun ----
 
 test("runRoutineNow POSTs the routine's /run sub-path with no body", async () => {
   stubFetch(new Response(null, { status: 202 }));
@@ -367,8 +338,6 @@ test("a failed cancel propagates — a run stuck 'running' must be visible", asy
   ).rejects.toMatchObject({ name: "HoustonEngineError", status: 409 });
 });
 
-// ---- mintRoutineWebhookKey ----
-
 test("mintRoutineWebhookKey POSTs the GATEWAY control route, not the agent proxy", async () => {
   const reveal = {
     url: "https://gw/hook/x",
@@ -382,8 +351,6 @@ test("mintRoutineWebhookKey POSTs the GATEWAY control route, not the agent proxy
   expect(calls).toHaveLength(1);
   const [post] = calls;
   expect(post.method).toBe("POST");
-  // `/v1/agents/…`: the agent-proxy prefix would forward the mint to a pod that
-  // never serves webhook keys, whose 404 would read as "this host can't mint".
   expect(post.url).toBe(`${BASE}/v1/agents/a1/routines/r1/webhook-key`);
   expect(post.body).toBeNull();
   expect(post.headers.get("Authorization")).toBe("Bearer t");
@@ -418,9 +385,7 @@ test("a mint by someone other than the creator (403 not_creator) is the typed re
       (err: unknown) => err,
     );
   expect(failure).toMatchObject({ name: "HoustonEngineError", status: 403 });
-  // The SDK names it: an expected state with its own copy, never a report.
   expect(isWebhookKeyNotCreatorRefusal(failure)).toBe(true);
-  // Any other 403 (a foreign agent, say) stays an ordinary failure.
   stubFetch(json(403, { error: "not assigned", code: "not_assigned" }));
   const other = await client()
     .mintRoutineWebhookKey("a1", "r1")

@@ -9,27 +9,13 @@ import {
 export interface TaskRowProps {
   status: TaskRowStatus;
   title: string;
-  /** A second, muted line — the task's own description. Omitted when empty:
-   *  a one-line row is the honest shape, never a blank second line. */
   preview?: string;
-  /** Right-hand slot, typically the movement's relative time. */
   trailing?: ReactNode;
   onSelect: () => void;
   dataAttrs?: Record<string, string>;
   labels?: TaskRowLabels;
 }
 
-/**
- * ONE task, as a phone row: a status glyph, the title over an optional
- * preview, and a trailing slot. The shared shape behind every task list on the
- * phone (an agent's list, a team's list), so a task can never look like two
- * different things depending on which screen found it.
- *
- * The whole row is a single button — a phone row has no room for a second
- * target, and nothing here waits for a hover. The hairline is the row's own
- * bottom border and drops on the last row of a stack, so a group ends on the
- * screen surface rather than on a line pointing at nothing.
- */
 export function TaskRow({
   status,
   title,

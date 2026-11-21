@@ -15,8 +15,6 @@ describe("query persist policy", () => {
   });
 
   it("never persists transcripts, auth, or gateway-served surfaces", () => {
-    // chat-history is covered by the transcript cache (HOU-712, PR #748) —
-    // persisting the dead query too would store every transcript twice.
     equal(isPersistedQueryKey(["chat-history", "Ws/Agent", "sess"]), false);
     equal(isPersistedQueryKey(["session"]), false);
     equal(isPersistedQueryKey(["provider-statuses"]), false);
@@ -27,10 +25,6 @@ describe("query persist policy", () => {
   });
 
   it("keeps restorable age and in-memory gc in lockstep", () => {
-    // The persister mirrors the in-memory cache: a restored query must stay
-    // in memory (gcTime) for as long as it is restorable (maxAge), or the
-    // next persist sweep drops it from disk. queryPersistenceOptions uses this
-    // ONE constant for both, the invariant this test pins.
     ok(PERSIST_MAX_AGE_MS >= 24 * 60 * 60 * 1_000);
     equal(PERSISTED_QUERY_PREFIXES.length, 2);
   });
@@ -40,9 +34,6 @@ describe("markRestoredListsStale", () => {
   const TEN_MINUTES = 10 * 60_000;
 
   it("revalidates a restored list younger than its staleTime (HOU-198)", async () => {
-    // A relaunch a few minutes after the last sweep restores a board the
-    // staleTime still calls fresh, but it missed every change made while the
-    // app was closed: the card a public API mission put on the board.
     const qc = new QueryClient({
       defaultOptions: { queries: { staleTime: TEN_MINUTES } },
     });
@@ -66,7 +57,6 @@ describe("markRestoredListsStale", () => {
       },
       staleTime: TEN_MINUTES,
     });
-    // The restored rows still paint while the read is in flight.
     equal(observer.getCurrentResult().data?.length, 1);
     const unsubscribe = observer.subscribe(() => {});
     await qc.getQueryCache().find({ queryKey: board })?.promise;
@@ -77,7 +67,6 @@ describe("markRestoredListsStale", () => {
   });
 
   it("fetches nothing by itself, even for a subscribed list", async () => {
-    // Reads wait for the observers that subscribe once the restore settles.
     let reads = 0;
     const qc = new QueryClient({
       defaultOptions: { queries: { staleTime: TEN_MINUTES } },

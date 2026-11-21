@@ -52,18 +52,14 @@ export class StoreSyncDaemon {
     return this.fence.lost;
   }
 
-  /** Whether a write acknowledged now can still persist (write-fence.ts). */
   writable(): Promise<boolean> {
     return this.fence.writable();
   }
 
-  /** The synced tree's root. Owned here so the drain handshake (which writes
-   *  and reads ONE object outside the daemon's passes) never recomputes it. */
   get rootDir(): string {
     return this.opts.rootDir;
   }
 
-  /** Returns the number of objects restored (the boot telemetry records it). */
   async hydrate(): Promise<number> {
     this.hydrated = false;
     this.fence.startHeartbeat();
@@ -115,24 +111,10 @@ export class StoreSyncDaemon {
     this.schedule.debounce(() => this.runInBackground("debounced"));
   }
 
-  /**
-   * Sync the tree NOW and resolve once it landed. For writes another party
-   * reads back from object storage right away — the gateway's bridge binding
-   * check reads the runtime's `custom-endpoint.json` the moment the desktop
-   * probes a freshly connected local model, while the watcher skips the
-   * workspaces subtree (HOU-1237) and the periodic pass is 5 minutes out
-   * (PRODUCT-1807). A no-op before start, after stop, or once fenced.
-   */
   async flush(): Promise<void> {
     if (this.markForSync()) await this.syncs.request();
   }
 
-  /**
-   * Ship an acknowledged write now, under the lease the gate just checked:
-   * the watcher skips the workspaces subtree, and a write left for the
-   * 5-minute pass is lost if a takeover lands first. Only while this boot
-   * carries a lease token, so an unfenced deployment syncs exactly as before.
-   */
   syncAfterWrite(): void {
     if ((this.opts.leaseClaimed?.() ?? true) && this.markForSync()) {
       this.runInBackground("write");
@@ -176,7 +158,6 @@ export class StoreSyncDaemon {
     logSyncResult(result, this.opts);
   }
 
-  /** The sync halts for good; the fence's heartbeat keeps watching the holder. */
   private haltFenced(err: { message: string }): void {
     this.dirty = false;
     this.syncs.cancelRerun();

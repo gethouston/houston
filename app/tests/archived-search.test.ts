@@ -27,9 +27,6 @@ const missions = [
   },
 ];
 
-/** The archived view's own filter (`components/board/use-mission-control-archived.ts`
- *  narrows the cross-agent sweep to `status === ARCHIVED_STATUS` before the
- *  toolbar's search ever runs). */
 const selectArchived = <T extends { status: string }>(items: T[]): T[] =>
   items.filter((m) => m.status === ARCHIVED_STATUS);
 

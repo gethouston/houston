@@ -46,7 +46,6 @@ function seeded(extra: string[] = []) {
   return { root, rels, local: new LocalDirStore(root) };
 }
 
-/** The store, recording every listing call it answers. */
 function recorded(inner: LocalDirStore) {
   const calls: string[] = [];
   const store: ObjectStore = {
@@ -86,7 +85,6 @@ test("the walk lists exactly the critical scope, and the agent's folders later",
       ?.map(({ key }) => rel(key))
       .sort(),
   ).toEqual(rels.filter(scope.later).sort());
-  // Never the whole store, never the folders of every conversation.
   for (const unlisted of [
     "",
     "workspaces",

@@ -41,15 +41,11 @@ describe("HoustonSdk reactivity flag", () => {
   it("with reactivity:false, construction opens no stream (no fetch fires)", async () => {
     const fetch = vi.fn(async () => new Response("[]", { status: 200 }));
     const sdk = makeSdk({ reactivity: false, ports: fakePorts({ fetch }) });
-    // Flush the microtask queue + one macrotask: a deferred stream connect would
-    // have fired by now. Nothing does — the write-only SDK is inert.
     await Promise.resolve();
     await new Promise((r) => setTimeout(r, 0));
     expect(fetch).not.toHaveBeenCalled();
-    // The write facades are still fully present for a host to delegate to.
     expect(sdk.agents.create).toBeTypeOf("function");
     expect(sdk.activities.create).toBeTypeOf("function");
-    // dispose is a no-op when no stream was started; it must not throw.
     sdk.dispose();
   });
 
@@ -66,7 +62,6 @@ describe("HoustonSdk reactive surface", () => {
     expect(sdk.getSnapshot("agents")).toBeUndefined();
     const cb = vi.fn();
     const off = sdk.subscribe("agents", cb);
-    // Nothing published yet; subscribe alone does not deliver.
     expect(cb).not.toHaveBeenCalled();
     off();
   });
@@ -74,9 +69,6 @@ describe("HoustonSdk reactive surface", () => {
   it("delivers global events through on()", () => {
     const sdk = makeSdk();
     const seen: unknown[] = [];
-    // No public emit on the SDK surface; drive via dispatch of an unknown
-    // command to confirm on() at least wires up without error, then assert the
-    // unsubscribe contract.
     const off = sdk.on((e) => seen.push(e));
     expect(typeof off).toBe("function");
     off();

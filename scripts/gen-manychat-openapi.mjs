@@ -1,23 +1,4 @@
 #!/usr/bin/env node
-// Bake the curated ManyChat integration's OpenAPI document from ManyChat's
-// published Page API spec (the Swagger UI at https://api.manychat.com/swagger
-// loads it from /swagger/compileJson?type=Page_API).
-//
-// Why a committed copy instead of the live URL: ManyChat's document names
-// every operation by an MD5 hash (`operationId: "ae51a27b…"`) with an empty
-// summary, so compiled straight from the URL the agent sees 34 tools called
-// `subscriber.4d01076149…` described only by a rate limit. This script keeps
-// ManyChat's schemas verbatim and rewrites what the agent reads: the
-// operation id becomes the path's last segment (`getInfo`, `findByName`),
-// every operation gets an authored summary, the empty `servers` entry becomes
-// the real host, and `sendContent.data` (declared as an empty closed object,
-// which would reject every message) is opened up and documented.
-//
-// Output (regenerate with `node scripts/gen-manychat-openapi.mjs`):
-//   app/src/components/integrations/manychat-openapi.json
-//
-// Re-run when ManyChat adds an endpoint; an operation without an authored
-// summary fails the run on purpose so the wording is never left to chance.
 
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -31,7 +12,6 @@ const OUTPUT = join(
   "../app/src/components/integrations/manychat-openapi.json",
 );
 
-/** Authored, agent-facing summaries keyed by `METHOD path`. */
 export const SUMMARIES = {
   "GET /fb/page/getInfo":
     "Get the connected ManyChat account (page): name, username, timezone and plan",
@@ -87,8 +67,6 @@ export const SUMMARIES = {
     "Update a contact's name, phone, email, gender or messaging consent",
 };
 
-/** Operations the agent has no use for: a deprecated alias and a Messenger
- *  webview handshake that needs a signed_request only a browser produces. */
 export const DROPPED = new Set([
   "GET /fb/page/getWidgets",
   "POST /fb/subscriber/verifyBySignedRequest",
@@ -96,8 +74,6 @@ export const DROPPED = new Set([
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 
-/** ManyChat writes descriptions as HTML-ish markdown; the agent reads plain
- *  text: `<br>` becomes a space, other tags go, whitespace collapses. */
 export function cleanText(text) {
   return text
     .replace(/<br\s*\/?>/gi, " ")
@@ -106,8 +82,6 @@ export function cleanText(text) {
     .trim();
 }
 
-/** Idempotent over the script's own output: a description this script
- *  already led with the authored summary is not prefixed twice. */
 function withoutLeadingSummary(detail, summary) {
   if (detail === summary) return "";
   const lead = `${summary}. `;
@@ -117,9 +91,6 @@ function withoutLeadingSummary(detail, summary) {
 const SEND_CONTENT_DATA_DESCRIPTION =
   'The message in ManyChat dynamic-block format: {"version":"v2","content":{"messages":[{"type":"text","text":"Hello!"}]}}. Messages may also be cards, images, files or buttons; see https://manychat.github.io/dynamic_block_docs/';
 
-/** The committed document from ManyChat's raw one: same schemas, readable
- *  operation ids, authored summaries, a real server URL. Throws on an
- *  operation this script has no summary for. */
 export function cleanManyChatSpec(raw) {
   const paths = {};
   for (const [path, item] of Object.entries(raw.paths)) {
@@ -131,8 +102,6 @@ export function cleanManyChatSpec(raw) {
       if (DROPPED.has(key)) continue;
       const summary = SUMMARIES[key];
       if (!summary) throw new Error(`no authored summary for ${key}`);
-      // Idempotent over its own output: a description already led by the
-      // authored summary is not prefixed twice.
       const detail = withoutLeadingSummary(
         cleanText(op.description ?? ""),
         summary,

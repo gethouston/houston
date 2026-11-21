@@ -2,7 +2,6 @@ import { type ProviderInfo, providerGatewayIds } from "../providers.ts";
 import type { CatalogModel } from "./catalog-types.ts";
 import { searchModels } from "./search.ts";
 
-/** Provider name/id/subtitle matching shared by provider-only and grouped search. */
 export function searchProviderNames(
   providers: readonly ProviderInfo[],
   query: string,
@@ -17,9 +16,6 @@ export function searchProviderNames(
   );
 }
 
-/**
- * Search providers directly or through any matching model offer.
- */
 export function searchProvidersWithOffers(
   providers: readonly ProviderInfo[],
   models: CatalogModel[],

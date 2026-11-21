@@ -35,23 +35,11 @@ import { DoneStep } from "./free-org-picker-done";
 import { PlanBriefingFrame } from "./plan-briefing-frame";
 import { BriefingStep } from "./plan-briefing-swap";
 
-/**
- * The pricing-change announcement, shown when the app opens. Cloud only.
- * Every rule about whether it shows, what closing it does, which page it is on
- * and when the picker replaces the intro lives in the SDK ({@link choiceModal},
- * {@link nextChoiceModalFrame}, {@link nextChoicePage}); this holds the
- * session's close and the frame, and renders. An owner who has to pick moves
- * through the intro's pages to the picker, then to the success step, in the
- * same frame. After the cutover an owner
- * the cutover picked for confirms its pick or changes it the same way, and an
- * owner who picked reads that the pick applied.
- */
 export function BillingChangeModal({
   otherDialogOpen,
   onShownChange,
 }: {
   otherDialogOpen: boolean;
-  /** Whether it is up, so the next plan modal waits its turn. */
   onShownChange?: (shown: boolean) => void;
 }) {
   const { data: choice } = useBillingChoice();
@@ -67,7 +55,6 @@ export function BillingChangeModal({
     closedThisSession: closed,
     otherDialogOpen,
   });
-  // Derived from the last render's frame; React re-renders before painting.
   const moved = nextChoiceModalFrame(stored, modal);
   const frame = choice ? settleChoicePick(moved, choice) : moved;
   if (frame !== stored) setFrame(frame);

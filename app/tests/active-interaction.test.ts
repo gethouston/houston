@@ -143,13 +143,6 @@ describe("deriveActiveInteraction", () => {
   });
 });
 
-/**
- * The user's move to Done answers whatever the mission was blocked on. Only the
- * PERSISTED interaction is rewritten by that move — the VM's live one is
- * written at turn start/settle and a board write never touches it — so the
- * derivation has to apply the same strip, or the Done card keeps showing the
- * blocking stepper until an app reload. Live and reload must agree.
- */
 describe("deriveActiveInteraction on a mission the user moved to done", () => {
   it("drops the LIVE blocking interaction (the regression: reopening a Done card re-asked the question)", () => {
     strictEqual(
@@ -176,8 +169,6 @@ describe("deriveActiveInteraction on a mission the user moved to done", () => {
   });
 
   it("returns the SAME reference when there is nothing to strip", () => {
-    // Callers memoize on this identity, so an offers-only interaction must not
-    // be re-minted on every render.
     strictEqual(
       deriveActiveInteraction({
         running: false,
@@ -190,10 +181,6 @@ describe("deriveActiveInteraction on a mission the user moved to done", () => {
   });
 
   it("returns the SAME stripped object for the same source interaction", () => {
-    // Identity is a contract, not an optimization: the panel memoizes on it and
-    // the per-step dismissal chains its writes on it. Re-minting the strip when
-    // the PERSISTED side changes (which is exactly what a dismissal does) would
-    // restart that chain and resurrect the offer the user just dismissed.
     const args = {
       running: false,
       live: questionPlusOffers,
@@ -241,9 +228,6 @@ describe("deriveActiveInteraction on a mission the user moved to done", () => {
   });
 });
 
-// Interactions persisted by OLDER builds (pre-step shapes without `steps`)
-// outlive the code that wrote them. They must read as "nothing pending",
-// never crash (`undefined is not an object (evaluating 'steps.some')`).
 const legacyQuestion = {
   kind: "question",
   question: "Which account?",
@@ -324,8 +308,6 @@ describe("interactionNotificationBodyKey", () => {
     );
   });
 
-  // Steps are ordered questions -> sign-in -> connections, so a signin+connect
-  // sequence's FIRST unmet need is the sign-in.
   it("maps a signin+connect sequence to the signin body (sign-in first)", () => {
     strictEqual(
       interactionNotificationBodyKey(signinConnect),
@@ -333,8 +315,6 @@ describe("interactionNotificationBodyKey", () => {
     );
   });
 
-  // Questions still win: a sequence that also has questions reads as the
-  // question body even when a sign-in is queued after them.
   it("maps a question+signin sequence to the question body", () => {
     strictEqual(
       interactionNotificationBodyKey(questionSignin),
@@ -356,8 +336,6 @@ describe("interactionNotificationBodyKey", () => {
     );
   });
 
-  // Questions outrank the other kinds in the body precedence, so a mixed
-  // connect+question sequence reads as a question.
   it("maps a connect+question sequence to the question body", () => {
     strictEqual(
       interactionNotificationBodyKey(connectQuestion),

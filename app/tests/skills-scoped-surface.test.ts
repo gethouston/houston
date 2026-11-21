@@ -29,11 +29,6 @@ const confirms = read(
   "../src/components/skills-view/skill-editor-confirms.tsx",
 );
 
-/**
- * The node runner has no DOM, so the wiring these rules ride on is guarded at
- * the source (the repo's React-test idiom). Each pin names the pure decision
- * the surface must go through, so the decision cannot be re-made inline.
- */
 describe("an AI Employee's own Skills section", () => {
   it("edits the copy that employee runs, not the workspace original", () => {
     ok(
@@ -51,16 +46,11 @@ describe("an AI Employee's own Skills section", () => {
   });
 
   it("says so too when the open skill IS the workspace version", () => {
-    // Saving there rewrites the skill for every employee, which the screen has
-    // to state before the user types, not after.
     ok(scopedActions.includes('notice: override ? "override" : "workspace"'));
     ok(editorPage.includes("kind={scoped.notice}"));
   });
 
   it("disables a workspace skill by dropping the copy with the entry", () => {
-    // Clearing the manifest alone is a no-op: a local copy loads whether or
-    // not the manifest names it. The two writes and the order they happen in
-    // are ONE capability, so the hook delegates rather than sequencing them.
     ok(sharedActions.includes("...useSharedSkillAssignments(workspaceId)"));
     ok(assignments.includes("const disableForAgent = useCallback("));
     ok(
@@ -78,9 +68,6 @@ describe("an AI Employee's own Skills section", () => {
   });
 
   it("refreshes what the act moved even when the act failed partway", () => {
-    // The manifest entry can land and the copy delete fail after it, so a
-    // refresh that only follows success leaves every cache one write behind.
-    // `optimisticWrite` refreshes its `invalidate` keys on BOTH outcomes.
     ok(assignments.includes("optimisticWrite({"));
     ok(
       assignments.includes(
@@ -90,9 +77,6 @@ describe("an AI Employee's own Skills section", () => {
   });
 
   it("reads every employee only for the menu's acts that reach them all", () => {
-    // The section reads its own employee; the "for everyone" acts need every
-    // holder, so they read the whole workspace, and only while the menu is
-    // open (Radix mounts a menu's content only then).
     ok(view.includes("const agents = useMemo(() => [agent], [agent]);"));
     ok(view.includes("useSkillsModels(agents)"));
     ok(editorPage.includes("workspaceItems={"));
@@ -170,9 +154,6 @@ describe("the skill editor's dirty draft", () => {
   });
 
   it("takes every scoped act out of the editor through one runner", () => {
-    // BOTH acts change which copy the editor writes to: left on screen, the
-    // typed draft would be saved into the OTHER copy. One runner is what makes
-    // "ask, then act, then leave" true of all of them at once.
     ok(scopedActs.includes("scopedSkillActions("), "the rules are read once");
     ok(scopedActs.includes("runScopedAct("), "and every act runs through it");
     ok(scopedActs.includes("guard("), "the draft confirm is still in the way");
@@ -183,9 +164,6 @@ describe("the skill editor's dirty draft", () => {
   });
 
   it("asks before an act deletes this employee's own version", () => {
-    // The draft confirm speaks of unsaved text, and "Disable for this AI
-    // Employee" reads as reversible: neither says the employee's own version
-    // of the skill is what goes.
     ok(scopedActs.includes("if (act.destroysOwnVersion) setConfirming(act);"));
     ok(scopedActions.includes("destroysOwnVersion: override"));
     ok(editorPage.includes("scopedAct={scoped.confirming}"));
@@ -194,8 +172,6 @@ describe("the skill editor's dirty draft", () => {
   });
 
   it("binds each act's completion to the editor that started it", () => {
-    // A finished act calls the SHARED way out: taken after the user opened
-    // another skill, it discards that skill's draft.
     ok(scopedActs.includes("isLive: () => live.current"));
     ok(scopedActs.includes("isPending: () => pendingRef.current"));
   });

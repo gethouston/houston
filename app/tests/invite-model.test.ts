@@ -11,13 +11,6 @@ import {
   visibleInvites,
 } from "../src/lib/invite-model.ts";
 
-/**
- * The invitee side of C8 invites. The error cases are written against the
- * SHIPPED gateway body — a flat `{error: "<sentence>", code: "<code>"}` thrown
- * as a `HoustonEngineError`-shaped object — because that is the only shape
- * production ever produces; classifying on the English sentence would silently
- * send every expected state to the red "report a bug" toast.
- */
 function gatewayError(status: number, error: string, code?: string) {
   return { status, body: code === undefined ? { error } : { error, code } };
 }
@@ -127,12 +120,6 @@ describe("sortInvites", () => {
 });
 
 describe("createInviteActionLock", () => {
-  // Accept and Decline are separate mutations behind separate AsyncButtons, and
-  // AsyncButton's rage-click guard is PER BUTTON. A rapid Accept -> Decline in
-  // the same frame therefore fired BOTH requests, and whichever lost the race
-  // came back `already_member` / `invite_not_found` and toasted nonsense at a
-  // user who had done nothing wrong. The lock is claimed SYNCHRONOUSLY, before
-  // either mutation starts, so the second click can never open a second call.
   it("lets only the first claim through for one invite", () => {
     const lock = createInviteActionLock();
     strictEqual(lock.claim("inv-1"), true);
@@ -171,18 +158,10 @@ describe("visibleInvites", () => {
     role: "user",
   });
 
-  // Disabling a React Query does NOT clear its cached data. A session that
-  // loses the Spaces capability (sign-out into a non-spaces deployment, a
-  // capability refetch that drops `spaces`) kept rendering the invites from the
-  // last fetch, and acting on one hit an off-cloud mutator that throws
-  // "Joining a team needs the hosted gateway" as a red bug toast. The RENDER is
-  // gated on the capability, not just the fetch.
   it("renders nothing when the host does not serve spaces", () => {
     deepStrictEqual(visibleInvites(false, [invite("a", "Acme")]), []);
   });
 
-  // `hasSpaces(null)` is false while capabilities are in flight, so the same
-  // gate also means "no flash before the deployment describes itself".
   it("renders nothing before capabilities resolve", () => {
     deepStrictEqual(visibleInvites(false, []), []);
   });
@@ -198,11 +177,6 @@ describe("visibleInvites", () => {
 });
 
 describe("teamIsInSwitcher", () => {
-  // `loadWorkspaces()` swallows its own failure (it only records `loadError`),
-  // so awaiting it proves NOTHING about the switcher. The joined-team toast
-  // used to promise "switch to it any time from the space menu" off that bare
-  // await, which lies whenever the refresh failed. The promise is now made only
-  // when the team is actually IN the reloaded list.
   const ws = (id: string) => ({ id, name: "n" });
 
   it("is true once the team bridged in as its org:<slug> row", () => {

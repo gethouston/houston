@@ -13,8 +13,6 @@ import {
 import { HandoffRegistry } from "./live/registry";
 import type { BrowserPool } from "./pool";
 
-// The review findings on the live hand-off, each against a real Chromium.
-
 const available = await browserAvailable();
 const server = site(() => "http://127.0.0.1:9");
 const origin = available ? `http://${SITE_HOST}:${await listen(server)}` : "";
@@ -93,8 +91,6 @@ describe.skipIf(!available)(
       const popup = await until(
         () => session.tab.page !== opener && session.tab.page,
       );
-      // The shown page goes phone-sized; whether the opener was still the
-      // shown page when the viewer attached depends on timing.
       await until(() => popup.viewportSize()?.width === 412);
       session.attachViewer("viewer-desk-1", "desktop", () => true);
       await until(() => popup.viewportSize()?.width === 1280);

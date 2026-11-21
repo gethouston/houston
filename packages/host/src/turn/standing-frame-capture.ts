@@ -4,7 +4,6 @@ import type { TurnBus } from "./bus";
 import type { FrameForwarder } from "./frame-forwarder";
 import { eventChannel } from "./relay-dialect";
 
-/** Pumps a standing runtime's SSE into ev2 without relying on a client listener. */
 export class StandingFrameCapture {
   private readonly pumps = new Map<
     string,
@@ -88,11 +87,7 @@ export class StandingFrameCapture {
       throw new Error(`runtime events failed (${response.status})`);
     }
     const reading = readEventStream(response.body, async (frame) => {
-      // A fresh runtime subscription begins with a snapshot sync. Turnlog is
-      // the turn's event log, so only frames published by the turn enter ev2.
       if (frame.type === "sync") return;
-      // The standing runtime's ReplayLog already assigned the authoritative
-      // seq. Publish that exact envelope; never introduce a second counter.
       await this.bus.publish(eventChannel(key), JSON.stringify(frame));
       if (isTerminalFrame(frame.type)) controller.abort();
     });

@@ -48,7 +48,6 @@
   pointer-events: none;
 }
 
-/* The one bright element: the offer's action. */
 .plan-briefing-cta {
   box-shadow: 0 0 var(--briefing-space-32) color-mix(in srgb, var(--ht-ink) 22%, transparent);
 }

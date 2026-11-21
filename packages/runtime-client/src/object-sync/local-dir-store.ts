@@ -13,7 +13,6 @@ import type {
 } from "./object-store";
 import { ObjectNotFoundError } from "./object-store-errors";
 
-/** A directory as the object store: keeps the sync contract testable. */
 export class LocalDirStore implements ObjectStore {
   private readonly resolvedRoot: string;
 
@@ -47,15 +46,12 @@ export class LocalDirStore implements ObjectStore {
     return out.sort();
   }
 
-  /** Size + mtime + md5 per key, the same shape the HTTP store serves; no
-   *  generations (the local store has none), so readers stay unconditional. */
   async manifest(prefix = ""): Promise<ObjectMetadata[]> {
     const out: ObjectMetadata[] = [];
     for (const key of await this.list(prefix)) out.push(await this.stat(key));
     return out;
   }
 
-  /** One level of `prefix`, as pod-store answers `?delimiter=/`. */
   async manifestDir(prefix = ""): Promise<DirListing> {
     const base = this.fileFor(prefix);
     const entries = existsSync(base)
@@ -100,8 +96,6 @@ export class LocalDirStore implements ObjectStore {
       );
       return landed ? {} : { refused: true };
     } catch (error) {
-      // Same taxonomy as the HTTP store's 404: a listed file deleted before
-      // the read is a vanished object, not an adapter failure.
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       throw new ObjectNotFoundError(
         key,
@@ -115,8 +109,6 @@ export class LocalDirStore implements ObjectStore {
     key: string,
     _opts?: WriteOptions,
   ): Promise<void> {
-    // The local development store has no generations; conditional options are
-    // intentionally ignored so its existing filesystem behavior stays exact.
     const dest = this.fileFor(key);
     await mkdir(dirname(dest), { recursive: true });
     await pipeline(createReadStream(srcFile), createWriteStream(dest));

@@ -17,8 +17,6 @@ import {
 import { IntegrationUpstreamError } from "./types";
 import { agentFileReader } from "./workspace-file";
 
-// The live shapes (Composio GET /api/v3/tools, 2026-11-18): Gmail takes one
-// file or a list, Drive exactly one.
 const FILE_UPLOADABLE = {
   type: "object",
   title: "FileUploadable",

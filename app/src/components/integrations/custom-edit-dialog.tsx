@@ -19,8 +19,6 @@ export function CustomEditDialog({
   const id = useId();
   const save = useEditCustomIntegration(agentId);
 
-  // Closes on Save: the lists already show the edit, and a refusal puts the
-  // old details back with a toast (`useEditCustomIntegration`).
   const submit = () =>
     save({
       slug: integration.slug,

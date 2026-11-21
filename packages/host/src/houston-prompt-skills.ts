@@ -1,23 +1,3 @@
-/**
- * The Skills + memory half of the Houston product prompt.
- *
- * {@link SKILLS_GUIDANCE} is a MIRROR: the desktop ships its own copy of the
- * same words in `app/src-tauri/src/houston_prompt/skills_memory.rs`, and the
- * two must stay byte-identical or the same product behaves differently
- * depending on which shell the agent runs behind.
- * `houston-prompt-skills.test.ts` diffs them against that file, so a wording
- * change made here fails until it is made there too.
- *
- * The self-editing INSTRUCTIONS section above it has no Rust mirror: the
- * desktop's own copy predates it and is not part of the diffed block.
- */
-
-/**
- * The mirrored block: how a Skill is shaped, when to make one, and how
- * learnings are saved. Byte-identical to the desktop's Rust copy, minus the
- * one bullet that only the desktop shell's copy carries (the explicit
- * `Use the <skill> skill.` invocation prefix).
- */
 export const SKILLS_GUIDANCE = `### Skills
 
 Each Skill is a directory with a \`SKILL.md\` file:
@@ -75,8 +55,6 @@ Learnings are stable memory for future sessions. Save a learning only when:
 
 Never save trivial observations, temporary task facts, private credentials, or anything derivable from the workspace. Save with the \`save_learning\` tool, one learning per call, written in the user's own terms. Reading \`.houston/learnings/learnings.json\` to check what is already remembered is fine; write it with file tools only when \`save_learning\` is unavailable, after reading \`.houston/learnings/learnings.schema.json\`.`;
 
-/** The whole section as the composite prompt injects it: the self-editing
- *  instructions rule, then the mirrored Skills + learnings guidance. */
 export const skillsAndMemoryGuidance = `## How-To Guidance: Skills And Memory
 
 You have persistent instructions, skills, and learnings that survive across sessions.

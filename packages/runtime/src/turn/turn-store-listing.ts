@@ -11,16 +11,8 @@ import {
   storeLister,
 } from "./turn-store-walk";
 
-/** A claimed turn's listing (turn-store-scope.ts). */
 export type ClaimedTurnListing = HydrateListing;
 
-/**
- * List only what a claimed turn needs (turn-store-scope.ts) by walking the
- * store a level at a time. Undefined: hydrate takes its listing from the
- * store's manifest, as before. That is a gateway prefetch (its manifest is
- * the listing, see PrefetchedObjects), a store or pod-store that cannot list
- * one level, and any tree that is not exactly one standing agent.
- */
 export async function listClaimedTurnStore(opts: {
   store: ObjectStore;
   prefix: string;
@@ -47,9 +39,6 @@ function claimedListing(
   return {
     objects,
     reads: [lister.keyOf(scope.conversation)],
-    // Hydration starts it once the critical listing is in, so the agent's
-    // own folders never slow the listing the prompt waits on, and its signal
-    // stops it when the turn abandons those folders.
     later: listLater,
   };
 }

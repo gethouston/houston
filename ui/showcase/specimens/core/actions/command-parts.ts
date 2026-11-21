@@ -1,10 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * The command page's tables, split out so the page stays under the 200-line
- * rule. Read off `ui/core/src/components/command.tsx`; the behavioural props
- * belong to cmdk, the surface is ours.
- */
 export const commandProps: readonly SpecimenProp[] = [
   {
     name: "Command.filter",

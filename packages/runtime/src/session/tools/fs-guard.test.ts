@@ -17,13 +17,6 @@ import {
   WorkspaceGuard,
 } from "./fs-guard";
 
-/**
- * Gate #1 unit wall: every path shape a prompt-injected model could supply to
- * a file tool must either resolve inside the workspace or throw. These mirror
- * the exact resolution pi's resolveToCwd applies (absolute, ~, @-prefix,
- * file:// URL, unicode spaces) — each one is a real bypass if unguarded.
- */
-
 function freshRoot(): string {
   const root = mkdtempSync(join(tmpdir(), "houston-guard-"));
   writeFileSync(join(root, "notes.txt"), "in-workspace");
@@ -64,8 +57,6 @@ test("~ and ~/ expand to the home dir and throw", () => {
 });
 
 test("@-prefixed absolute path (pi strips the @) throws", () => {
-  // pi's normalizePath strips a leading @, turning "@/etc/passwd" into
-  // "/etc/passwd" — a guard that misses this rule would let it through.
   expect(() => guard.clamp("@/etc/passwd")).toThrow(PathEscapeError);
 });
 
@@ -95,13 +86,10 @@ test("symlinked DIRECTORY pointing outside the workspace throws", () => {
   writeFileSync(join(outside, "secret.txt"), "secret");
   symlinkSync(outside, join(r, "evil-dir"));
   expect(() => g.clamp("evil-dir/secret.txt")).toThrow(PathEscapeError);
-  // Even a file that does not exist yet under the symlinked dir must throw,
-  // or `write` could drop files outside the workspace.
   expect(() => g.clamp("evil-dir/new-file.txt")).toThrow(PathEscapeError);
 });
 
 test("a sibling data dir (auth.json) is unreachable from the workspace", () => {
-  // Layout mirrors the cloud sandbox: <base>/workspace + <base>/auth.json.
   const base = mkdtempSync(join(tmpdir(), "houston-data-"));
   const ws = join(base, "workspace");
   mkdirSync(ws);
@@ -122,22 +110,10 @@ test("assertInside guards pi-resolved absolute paths (inner wall)", () => {
 });
 
 test("guard root is canonical even when the configured root holds symlinks (macOS /tmp)", () => {
-  // mkdtempSync under /tmp returns a path whose realpath is /private/tmp/... on
-  // macOS; the guard must compare against the canonical form or every
-  // in-workspace path would be rejected.
   expect(guard.clamp("notes.txt").startsWith(guard.root)).toBe(true);
 });
 
-/**
- * The runtime's own dataDir is a CHILD of the workspace root on every profile
- * (`<agentDir>/.houston/runtime`, see host.ts), so containment alone leaves
- * every team member's live provider tokens readable by the agent's file tools.
- * These cover the deny wall: the credential FAMILY is refused at any depth, by
- * both walls, for reads and writes — while ordinary `.houston` data stays open.
- */
 function credentialRoot(): { root: string; guard: WorkspaceGuard } {
-  // Canonical from the start: on macOS /tmp is itself a symlink, and an absolute
-  // path through it would be rejected as an escape before the deny even runs.
   const root = realpathSync(mkdtempSync(join(tmpdir(), "houston-cred-")));
   const runtime = join(root, ".houston", "runtime");
   mkdirSync(join(runtime, "auth-users"), { recursive: true });
@@ -191,8 +167,6 @@ test("assertInside denies credential paths pi already resolved (inner wall)", ()
 
 test("the credential deny is depth-independent and case-insensitive", () => {
   const { guard } = credentialRoot();
-  // A deeper (or shallower) layout must not become readable, and a
-  // case-insensitive filesystem would otherwise serve auth.json for AUTH.JSON.
   expect(() => guard.clamp("auth.json")).toThrow(PathDeniedError);
   expect(() => guard.clamp("a/b/c/auth-users/x.json")).toThrow(PathDeniedError);
   expect(() => guard.clamp(".houston/runtime/AUTH.json")).toThrow(
@@ -228,7 +202,6 @@ test("ordinary .houston data and workspace files stay allowed", () => {
   const { guard } = credentialRoot();
   for (const p of [
     ".houston/activity.json",
-    // The TEAM served-providers manifest is a provider-name list, not a secret.
     ".houston/runtime/served-providers.json",
     ".houston/conversations/c1.json",
     "CLAUDE.md",
@@ -242,7 +215,6 @@ test("ordinary .houston data and workspace files stay allowed", () => {
 });
 
 test("prefix-sibling directory does not pass the containment check", () => {
-  // /tmp/ws-evil must not be treated as inside /tmp/ws.
   const r = mkdtempSync(join(tmpdir(), "houston-pfx-"));
   const ws = join(r, "ws");
   mkdirSync(ws);
@@ -253,10 +225,6 @@ test("prefix-sibling directory does not pass the containment check", () => {
 });
 
 test("a shared root is fully usable: reads AND writes clamp inside it", () => {
-  // Agents edit the org original directly (the no-fork decision) — the shared
-  // mirror is a writable root, with the same containment walls as the
-  // workspace. Deletion is not a file-tool operation, so removing a shared
-  // skill stays a UI/admin act.
   const ws = freshRoot();
   const shared = mkdtempSync(join(tmpdir(), "houston-shared-"));
   const skillFile = join(shared, "research-company", "SKILL.md");
@@ -285,8 +253,6 @@ test("a symlink inside a shared root cannot escape that root", () => {
 });
 
 test("a read-only root can be read and never written", () => {
-  // A pooled turn's org-shared skills snapshot: the model reads its skills,
-  // but an edit would land in a throwaway copy the turn never syncs back.
   const ws = freshRoot();
   const snapshot = mkdtempSync(join(tmpdir(), "houston-shared-snapshot-"));
   mkdirSync(join(snapshot, "invoices"));
@@ -301,7 +267,6 @@ test("a read-only root can be read and never written", () => {
   expect(() =>
     g.clampWrite(join(realpathSync(snapshot), "invoices", "new.md")),
   ).toThrow(SharedSkillReadOnlyError);
-  // The workspace itself stays writable.
   expect(g.clampWrite("notes.txt")).toBe(join(g.root, "notes.txt"));
 });
 
@@ -316,13 +281,6 @@ test("without an existing shared root, everything stays workspace-only", () => {
   expect(() => g.clamp("/etc/passwd")).toThrow(PathEscapeError);
 });
 
-/**
- * The exact-file allowlist: the wall for a runtime whose whole file surface is
- * one document. The coordinator (the user's personal assistant) reads and
- * rewrites its memory and nothing else, so a prompt injection there must not be
- * able to reach a shared skill every agent runs, the workspace's own config, or
- * the session records under `.houston`.
- */
 function coordinatorFixture(): {
   workspace: string;
   shared: string;
@@ -390,18 +348,12 @@ test("a symlink cannot stand in for a path outside the allowlist", () => {
   const link = join(workspace, ".houston", "learnings", "link.json");
   symlinkSync(join(shared, "deploy", "SKILL.md"), link);
   expect(() => guard.clamp(link)).toThrow(PathNotAllowedError);
-  // ...and the real document still resolves through its own symlink - to the
-  // PROVEN path, so the tool opens what the guard judged rather than the name,
-  // which a repointed link could resolve elsewhere a moment later.
   const alias = join(workspace, "memory-alias.json");
   symlinkSync(memory, alias);
   expect(guard.clamp(alias)).toBe(memory);
 });
 
 test("an allowlisted path that IS a symlink out of the workspace is refused", () => {
-  // The allowlist narrows the wall; it does not replace it. A listed document
-  // that points outside the agent's own directory would otherwise hand the one
-  // runtime with a single-file surface an unbounded read and write.
   const base = realpathSync(mkdtempSync(join(tmpdir(), "houston-coord-link-")));
   const workspace = join(base, ".assistant");
   const outside = join(base, "outside");
@@ -419,9 +371,6 @@ test("an allowlisted path that IS a symlink out of the workspace is refused", ()
 });
 
 test("an allowlisted credential file is denied, list or no list", () => {
-  // The deny list STACKS on the allowlist: listing `auth.json` (a bad policy, a
-  // future refactor, a path built from a moved data dir) must not open the very
-  // file the wall exists for.
   const workspace = realpathSync(
     mkdtempSync(join(tmpdir(), "houston-coord-cred-")),
   );
@@ -449,10 +398,6 @@ test("a symlink to an allowlisted credential file is denied too", () => {
 });
 
 test("the guard answers with the path it proved, not the name it was given", () => {
-  // Returning the requested name leaves the tool to resolve it a SECOND time,
-  // and a link repointed between the two resolutions opens a file nothing
-  // checked. The same reason a hardlinked credential must not be reachable
-  // under a laundered name.
   const base = realpathSync(mkdtempSync(join(tmpdir(), "houston-real-")));
   const workspace = join(base, "ws");
   mkdirSync(join(workspace, "docs"), { recursive: true });
@@ -486,8 +431,6 @@ test("routines stay readable but every write path refuses the routines store", (
     file,
     alias,
     ".houston/routines/new.json",
-    // The flat pre-v0.4 file: the boot layout migration moves it into the
-    // store when the store holds no document yet.
     ".houston/routines.json",
   ]) {
     expect(() => guard.clampWrite(path), path).toThrow(refusal);
@@ -507,8 +450,6 @@ test("routines stay readable but every write path refuses the routines store", (
 });
 
 test("an NTFS data-stream suffix cannot launder a denied name", () => {
-  // `auth.json::$DATA` opens `auth.json` on Windows while reading, segment by
-  // segment, as a different file entirely.
   const workspace = realpathSync(mkdtempSync(join(tmpdir(), "houston-ads-")));
   mkdirSync(join(workspace, ".houston", "runtime"), { recursive: true });
   const guard = new WorkspaceGuard(workspace);
@@ -537,7 +478,6 @@ test("a name a case-insensitive volume folds onto a protected one is refused", (
   mkdirSync(runtime, { recursive: true });
   writeFileSync(join(runtime, "auth.json"), "{}");
   const guard = new WorkspaceGuard(workspace);
-  // U+017F (long s) opens `auth.json` on APFS, existing file or not.
   for (const lookalike of [
     ".houston/runtime/auth.j\u017Fon",
     ".houston/runtime/auth-u\u017Fers/abc.json",

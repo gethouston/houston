@@ -30,8 +30,6 @@ describe("matchesSearchable", () => {
       ),
     );
     strictEqual(matchesSearchable(source, "invoice sent"), true);
-    // Messages are newline-joined, and a phrase's flexible whitespace spans
-    // that boundary — but scattered words still never match.
     strictEqual(matchesSearchable(source, "invoice grep"), true);
     strictEqual(matchesSearchable(source, "send invoice"), false);
   });
@@ -49,7 +47,6 @@ describe("snippetFor", () => {
     strictEqual(snippet !== null, true);
     if (!snippet) return;
     strictEqual(snippet.text.includes("São Paulo"), true);
-    // Only the matching line, never the neighbouring messages.
     strictEqual(snippet.text.includes("retro"), false);
     strictEqual(snippet.text.includes("checklist"), false);
     deepStrictEqual(
@@ -77,7 +74,6 @@ describe("snippetFor", () => {
       "The vendor contract is attached here.",
     ].join("\n");
     const source = toSearchableText(long);
-    // Fold happened once, up front: matching only reads the cached fold.
     strictEqual(source.folded, foldForSearch(long));
     const snippet = snippetFor(source, "vendor contract");
     strictEqual(snippet !== null, true);

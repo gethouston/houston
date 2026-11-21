@@ -113,10 +113,10 @@ mod tests {
     #[test]
     fn mid_codepoint_cut_never_fails() {
         let mut tail = TailBuffer::new(3);
-        tail.push("ñx".as_bytes()); // ñ is 2 bytes; cap 3 keeps all
+        tail.push("ñx".as_bytes());
         assert_eq!(tail.into_string(), "ñx");
         let mut cut = TailBuffer::new(2);
-        cut.push("ñx".as_bytes()); // keeps the 2nd byte of ñ + 'x'
+        cut.push("ñx".as_bytes());
         assert_eq!(cut.into_string(), "\u{FFFD}x");
     }
 }

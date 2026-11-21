@@ -3,20 +3,6 @@ import { config } from "../config";
 import type { AgentId, WorkspaceId } from "../domain/types";
 import type { CredentialVault } from "../ports";
 
-/**
- * EnvCredentialVault — mints and validates the NON-SECRET sandbox identity
- * tokens. A sandbox carries one as proof of "I am workspace W's agent A" when
- * calling /sandbox/credential. It is an HMAC over {workspaceId, agentId} keyed
- * by `config.sandboxTokenSecret`, so a sandbox cannot forge a token for a
- * different workspace/agent, but the token reveals nothing and grants nothing
- * beyond that one serve endpoint. (Real LLM credentials are the users' own
- * subscriptions in the CredentialStore — there are no org provider keys.)
- *
- * Token wire format: `base64url(payload).base64url(sig)` where
- *   payload = JSON.stringify({ workspaceId, agentId })
- *   sig     = HMAC-SHA256(payload, sandboxTokenSecret)
- */
-
 interface SandboxTokenPayload {
   workspaceId: WorkspaceId;
   agentId: AgentId;
@@ -55,7 +41,6 @@ export class EnvCredentialVault implements CredentialVault {
     const presentedSig = token.slice(dot + 1);
 
     const expectedSig = this.sign(payloadB64);
-    // Constant-time compare; reject length-mismatch before timingSafeEqual (which throws).
     const a = Buffer.from(presentedSig);
     const b = Buffer.from(expectedSig);
     if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
@@ -73,7 +58,6 @@ export class EnvCredentialVault implements CredentialVault {
       : null;
   }
 
-  /** HMAC-SHA256 over the base64url payload, hex-encoded. */
   private sign(payloadB64: string): string {
     return createHmac("sha256", this.secret)
       .update(payloadB64)

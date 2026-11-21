@@ -2,10 +2,6 @@ import { Check } from "lucide-react";
 import { CommandItem } from "../command";
 import type { ModelPickerModel } from "./types";
 
-/** A single selectable model row in the shared dropdown idiom: name, an optional
- *  one-line description, and a check on the selected model. The cmdk `value` is
- *  the model id (unique — display names may collide); the name rides along in
- *  `keywords` so the in-dropdown search matches it. */
 export function ModelRow({
   model,
   selected,

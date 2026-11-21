@@ -71,7 +71,6 @@ describe("personal plan wire", () => {
   }
 });
 
-/** A free org's routines and presence: the same routes, now org-scoped. */
 const orgCases = [
   ["listPlanRoutines", "GET", "/v1/me/routines", null, { routines: [] }],
   ["keepRoutine", "PUT", "/v1/me/routines/keep", JSON.stringify(key), null],

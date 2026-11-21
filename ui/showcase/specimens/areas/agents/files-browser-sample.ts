@@ -2,11 +2,6 @@ import type { FileEntry } from "@houston-ai/agent";
 
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * One agent's workspace on disk: two folders, a handful of files the agent
- * produced, and a couple it was given. Timestamps are fixed rather than
- * relative to now, so a screenshot of this page says the same thing tomorrow.
- */
 const JULY_20 = Date.UTC(2026, 6, 20, 9, 14);
 const JULY_24 = Date.UTC(2026, 6, 24, 16, 2);
 const JULY_27 = Date.UTC(2026, 6, 27, 8, 41);
@@ -72,7 +67,6 @@ export const agentFiles: FileEntry[] = [
   },
 ];
 
-/** `FilesBrowserProps`, read off `ui/agent/src/files-browser.tsx`. */
 export const FILES_BROWSER_PROPS: readonly SpecimenProp[] = [
   {
     name: "files",

@@ -32,8 +32,6 @@ test("a family watcher event shadows the file's current whole document", async (
   projector.onEvent({ type: "LearningsChanged", agentPath: agent.id });
   await projector.flush();
 
-  // Without a boot seed, the first projection lazily binds and back-fills
-  // every family; the event's own family carries the file content.
   expect(
     puts.find((p) => (p as { family: string }).family === "learnings"),
   ).toEqual({
@@ -60,10 +58,6 @@ test("the activity family projects the NORMALIZED items, not the raw file", asyn
     },
   };
   const projector = new DocShadowProjector({ store, vfs, paths, shadow });
-  // A hand-edited file: one valid entry missing its description (the reader
-  // defaults it) and one malformed entry (no title) the reader drops. The
-  // gateway serves the doc as the board, so the doc must match what the pod's
-  // own read would return.
   await vfs.writeText(
     docKey(root, "activity"),
     JSON.stringify([
@@ -98,8 +92,6 @@ test("boot seed projects every family once; missing files converge to empty docs
       puts.push({ family, doc });
     },
   };
-  // Two families exist on disk (one of them an activity needing
-  // normalization); the rest are absent and project their empty docs.
   await vfs.writeText(
     docKey(root, "routines"),
     JSON.stringify([
@@ -121,9 +113,6 @@ test("boot seed projects every family once; missing files converge to empty docs
   projector.seed();
   await projector.flush();
 
-  // Families with files project their content; absent families project the
-  // empty doc (the pod's own read of a missing file answers empty, so the
-  // doc-served answer must too).
   const families = puts.map((p) => p.family).sort();
   expect(families).toEqual([
     "activity",
@@ -145,8 +134,6 @@ test("a multi-agent host defers binding until the gateway addresses an agent", a
   const vfs = new MemoryVfs();
   const paths = new LocalPaths();
   const workspace = await store.getOrCreatePersonalWorkspace("alice");
-  // A rename leftover beside the live agent — the shape seen on prod pod
-  // volumes ("Personal/MARKETING SHALOM" beside "Personal/SHALOM MARKETING").
   const stale = await store.createAgent({
     workspaceId: workspace.id,
     name: "Old Name",
@@ -174,14 +161,11 @@ test("a multi-agent host defers binding until the gateway addresses an agent", a
   const projector = new DocShadowProjector({ store, vfs, paths, shadow });
   projector.seed();
   await projector.flush();
-  // Ambiguous: nothing projects yet — not the stale dir, not the live one.
   projector.onEvent({ type: "LearningsChanged", agentPath: stale.id });
   projector.onEvent({ type: "LearningsChanged", agentPath: live.id });
   await projector.flush();
   expect(puts).toEqual([]);
 
-  // The gateway addresses the live agent (its registry engine id): that IS
-  // the binding. The boot seed back-fills from the live agent's files only.
   projector.bindAddressed(live.id);
   await projector.flush();
   expect(puts.find((p) => p.family === "learnings")?.doc).toEqual([
@@ -195,7 +179,6 @@ test("a multi-agent host defers binding until the gateway addresses an agent", a
     "routines",
   ]);
 
-  // The leftover's events stay refused forever after.
   const seeded = puts.length;
   projector.onEvent({ type: "LearningsChanged", agentPath: stale.id });
   await projector.flush();
@@ -247,8 +230,6 @@ test("a post-seed event for a foreign agent id never reaches the bound doc", asy
   await projector.flush();
   const seeded = puts.length;
 
-  // An agent directory appearing AFTER boot (leftover dir, unexpected
-  // migration residue) fires watcher events; they must be refused.
   const stray = await store.createAgent({
     workspaceId: workspace.id,
     name: "B",
@@ -261,7 +242,6 @@ test("a post-seed event for a foreign agent id never reaches the bound doc", asy
   await projector.flush();
 
   expect(puts.length).toBe(seeded);
-  // The bound agent still projects.
   await vfs.writeText(
     docKey(paths.agentRoot(workspace, bound), "learnings"),
     JSON.stringify([{ id: "l1", text: "mine", created_at: "now" }]),
@@ -306,8 +286,6 @@ test("a vanished family file converges the doc back to empty", async () => {
   );
   projector.onEvent({ type: "RoutinesChanged", agentPath: agent.id });
   await projector.flush();
-  // The first projection also back-fills the other families; only the
-  // routines doc carries the file.
   expect(
     (puts.find((p) => p.family === "routines")?.doc as unknown[]).length,
   ).toBe(1);
@@ -329,15 +307,11 @@ test("a pod that boots before its agent hydrates binds on first projection", asy
       puts.push({ family, doc });
     },
   };
-  // Boot with ZERO agents (cloud pods can reach the seed before the
-  // workspace tree hydrates) — must not poison, must not project.
   const projector = new DocShadowProjector({ store, vfs, paths, shadow });
   projector.seed();
   await projector.flush();
   expect(puts).toEqual([]);
 
-  // The agent hydrates after boot; its first watcher event binds the
-  // projector and back-fills the boot seed for every family.
   const workspace = await store.getOrCreatePersonalWorkspace("alice");
   const agent = await store.createAgent({
     workspaceId: workspace.id,
@@ -370,7 +344,6 @@ test("a pod that boots before its agent hydrates binds on first projection", asy
     (puts.find((p) => p.family === "routines")?.doc as unknown[]).length,
   ).toBe(1);
 
-  // Still refuses a foreign agent after the late bind.
   const stray = await store.createAgent({
     workspaceId: workspace.id,
     name: "B",
@@ -419,9 +392,6 @@ test("a family file with trailing junk projects its salvaged leading value", asy
     },
   };
   const projector = new DocShadowProjector({ store, vfs, paths, shadow });
-  // An outside writer appended a partial second copy after the value — the
-  // exact file the pod's own read (loadJson) salvages. The projection must
-  // serve the same salvaged answer, not crash (HOUSTON-APP-5A9).
   const value = [{ id: "l1", text: "kept", created_at: "now" }];
   await vfs.writeText(
     docKey(root, "learnings"),
@@ -465,7 +435,6 @@ test("an unparseable family file fails only its family and names the doc key", a
     projector.seed();
     await projector.flush();
 
-    // Every OTHER family still seeded; the mangled one reported its key.
     expect(puts.map((p) => p.family)).not.toContain("learnings");
     expect(puts.find((p) => p.family === "activity")).toBeTruthy();
     const reported = errors.mock.calls.some((call) =>
@@ -508,7 +477,6 @@ test("cross-agent refusals are a latched warn, never repeated per family", async
       String(call[0]).includes("refusing cross-agent projection"),
     );
     expect(refusals).toHaveLength(1);
-    // The designed outcome never reaches the error (Sentry) channel.
     expect(
       errors.mock.calls.some((call) =>
         String(call[0]).includes("refusing cross-agent projection"),
@@ -520,11 +488,6 @@ test("cross-agent refusals are a latched warn, never repeated per family", async
   }
 });
 
-// A rename moves the agent's directory, and the rename request is often the
-// wake that booted this pod: the seed bound the OLD name. Every projection
-// for the new name was refused as cross-agent until the next pod restart, so
-// asleep readers kept the pre-rename docs (HOUSTON-APP-5AP). The binding
-// must follow the move.
 test("the binding follows a rename: the moved directory re-binds and re-seeds", async () => {
   const store = new MemoryWorkspaceStore();
   const vfs = new MemoryVfs();
@@ -550,8 +513,6 @@ test("the binding follows a rename: the moved directory re-binds and re-seeds", 
     expect(await projector.boundAgent()).toBe(old.id);
     puts.length = 0;
 
-    // The rename (memory store ids are stable, so delete + create models the
-    // directory move) and the renamed agent's first file change.
     await store.deleteAgent(old.id);
     const renamed = await store.createAgent({
       workspaceId: workspace.id,
@@ -567,7 +528,6 @@ test("the binding follows a rename: the moved directory re-binds and re-seeds", 
     expect(puts.find((p) => p.family === "learnings")?.doc).toEqual([
       { id: "l1", text: "after rename", created_at: "now" },
     ]);
-    // The whole seed re-runs under the new name, each family once.
     expect(puts.map((p) => p.family).sort()).toEqual([
       "activity",
       "config",
@@ -588,8 +548,6 @@ test("the binding follows a rename: the moved directory re-binds and re-seeds", 
   }
 });
 
-// The view sink asks boundAgent() before every publish; a view captured for
-// the renamed agent must land, not be refused against the stale binding.
 test("boundAgent follows a rename before the first projection", async () => {
   const store = new MemoryWorkspaceStore();
   const vfs = new MemoryVfs();
@@ -617,8 +575,6 @@ test("boundAgent follows a rename before the first projection", async () => {
   }
 });
 
-// A delete leaves no agent, and a leftover directory beside the live one
-// leaves several: neither is a move the projector can follow on its own.
 test("the binding stays put when the bound agent vanishes without a single successor", async () => {
   const store = new MemoryWorkspaceStore();
   const vfs = new MemoryVfs();

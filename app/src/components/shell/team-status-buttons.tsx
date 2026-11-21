@@ -23,7 +23,6 @@ type LabelKey =
   | "claimFree"
   | "delete";
 
-/** The label key for a button: paying reads by state, the rest are fixed. */
 function labelKey(action: TeamStatusAction, view: Shown): LabelKey {
   switch (action) {
     case "checkout":
@@ -42,10 +41,6 @@ function labelKey(action: TeamStatusAction, view: Shown): LabelKey {
 const isPay = (action: TeamStatusAction) =>
   action === "checkout" || action === "portal";
 
-/**
- * At most two buttons, the first filled, and the rest behind an always
- * visible More. Paying is disabled while a payment is in flight.
- */
 export function TeamStatusButtons({
   view,
   onAction,

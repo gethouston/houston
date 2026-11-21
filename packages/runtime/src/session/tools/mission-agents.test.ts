@@ -3,13 +3,6 @@ import { agentSummaryList, reachableAgentSummaries } from "./mission-agents";
 import { resolveTargetAgent } from "./mission-params";
 import type { SandboxFetch } from "./sandbox-fetch";
 
-/**
- * The list a mission refusal offers instead of leaving the model to invent an
- * agent name. It is read through the host's assistant surface, which is
- * authorized for the personal assistant alone — the only runtime that can
- * reach the refusal.
- */
-
 const reply = (status: number, body: unknown): Response =>
   new Response(JSON.stringify(body), {
     status,

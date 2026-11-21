@@ -13,62 +13,17 @@ import { RoutineSetupChatBoard } from "./routine-setup-chat-board";
 import { RoutineSetupChatClose } from "./routine-setup-chat-close";
 
 interface Props {
-  /** The agent that owns this routine — its chat runs against that agent's
-   *  engine, and the panel shows its avatar and name. */
   agent: Agent;
-  /** The routine's chat activity, or the draft create-chat for a brand-new
-   *  one. Null while it's still being created, or during the pre-model intake
-   *  (renders the calm empty chat surface instead of the live board). */
   activity: Activity | null;
-  /** Which chat this is — a routine's own chat, an unclaimed draft, or the
-   *  pre-model create intake. Drives the header label and the pre-activity
-   *  surface without any string-equality guessing. */
   kind: "routine" | "draft" | "intake";
-  /** The routine's own name, for the "Routine: {name}" header. Unused when
-   *  `kind` is "draft"/"intake". */
   routineName?: string;
-  /** The open routine itself (absent for a draft). When it carries a trigger
-   *  binding, the header shows its live activation health right here. */
   routine?: Routine;
-  /** Close the panel. Wired to the chat chrome's close X, Escape, and the
-   *  intake cards' own dismiss. For a routine's chat (setup or a run's) the
-   *  parent passes "back to the routine's screen" here (PRODUCT-1208); drafts
-   *  and intake clear the selection outright. */
   onClose: () => void;
-  /** The shell-level panel node this chat portals into (workspace-shell's
-   *  sibling panel, the SAME one the mission board opens). Null until the
-   *  panel mounts — the surface renders nothing until it exists. */
   panelContainer: HTMLElement | null;
-  /** Intake only: the locally-driven question cards, floated over the composer
-   *  exactly where the agent's real ask_user cards float. */
   intakeOverlay?: ReactNode;
-  /** Intake only: sending a composer message is the escape hatch — it abandons
-   *  the cards and hands the typed text to the agent as the intent. Omit to
-   *  leave the composer busy (a draft that is still being created). */
   onIntakeSend?: (text: string) => void;
 }
 
-/**
- * The selected routine's chat — rendered into the big shell-level panel
- * (`panelContainer`), the EXACT panel the mission board opens. Each routine IS
- * a chat: this is the one surface for setting up a routine, changing it, and
- * finding out what it did. No side-by-side editor, no run-history list.
- *
- * There is exactly ONE header, owned by the inner AIBoard detail panel (never a
- * second one stacked on top of it): its close X deselects (closes the panel, the
- * list never disappears), and the auto "Mission: {title}" line is overridden to
- * read "Routine: {name}". Pre-activity states (intake, a creating draft, a
- * loading routine) render a matching slim header with the same close X, portaled
- * into that same panel.
- *
- * The chat is a real mission under the hood (every board filters it out via the
- * routine-setup sentinel); it joins the app's shared shell panel just like the
- * mission board, so both surfaces are one UI path.
- *
- * The chat is permanent (HOU-725): once a routine claims it via
- * `setup_activity_id`, reopening that routine resumes this same conversation, so
- * a finished chat is never auto-archived.
- */
 export function RoutineSetupChat({
   agent,
   activity,
@@ -84,9 +39,6 @@ export function RoutineSetupChat({
   const lock = useOrgWriteLock();
   const { composerLabels } = useBoardLabels();
 
-  // Escape closes the panel. Radix menus/dialogs mark their own Escape handled
-  // (`defaultPrevented`) — leave those alone. A focused composer gets the FIRST
-  // Escape to blur (app convention), the pane only on the next one.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
@@ -108,9 +60,6 @@ export function RoutineSetupChat({
 
   const closeButton = <RoutineSetupChatClose onClose={onClose} />;
 
-  // No activity yet. A slim header (same shape + close as the panel's) keeps the
-  // panel dismissable while it settles. Portaled into the shell panel like the
-  // live board below, so the pre-model states share the same surface.
   if (!activity) {
     const slimHeader = (title?: string) => (
       <div className="shrink-0 bg-pane px-4 py-3">
@@ -126,7 +75,6 @@ export function RoutineSetupChat({
       </div>
     );
 
-    // Opening an EXISTING routine's chat is a real load, so a calm spinner.
     const surface =
       kind === "routine" ? (
         <div className="flex h-full min-h-0 flex-col">
@@ -137,11 +85,6 @@ export function RoutineSetupChat({
           </div>
         </div>
       ) : (
-        // Intake, or a draft still being created: a calm empty chat surface, no
-        // shimmer. Intake floats its question cards over the composer (the
-        // escape hatch); a creating draft leaves the composer busy, matching the
-        // agent's imminent first turn, so the surface never changes shape at
-        // handoff.
         <div className="flex h-full min-h-0 flex-col">
           {slimHeader(t("chat.newRoutineTitle"))}
           <div className="min-h-0 flex-1" />
@@ -174,16 +117,11 @@ export function RoutineSetupChat({
       ? t("chat.newRoutineTitle")
       : t("chat.routineLabel", { name: routineName ?? "" });
 
-  // A trigger-bound routine shows its live activation right in the one header:
-  // checking -> activating -> active, or an alert with the reason + Reconnect.
   const panelActions =
     kind === "routine" && routine?.trigger ? (
       <RoutineActivationChip agentId={agent.id} routine={routine} />
     ) : undefined;
 
-  // The board renders its detail panel straight into the shell panel via
-  // `panelContainer`; its own list never shows, so the board itself stays
-  // hidden (the portal escapes the `hidden` wrapper). One mount, one panel.
   return (
     <div className="hidden">
       <RoutineSetupChatBoard

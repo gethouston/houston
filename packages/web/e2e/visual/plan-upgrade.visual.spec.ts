@@ -4,11 +4,6 @@ import { openMoreMenu } from "../support/mobile-nav";
 import { armPlan, freePlan, installPlanClock } from "../support/plan";
 import { pinTheme, THEMES } from "./support";
 
-/**
- * The Free plan upgrade entry (`plan-upgrade-row.tsx`) in each of its usage
- * states, on the rail's foot, the icon rail and the phone's More card.
- */
-
 type Width = "desktop" | "collapsed" | "phone";
 
 async function boot(page: Page, width: Width, percent: number) {
@@ -24,8 +19,6 @@ async function boot(page: Page, width: Width, percent: number) {
 async function area(page: Page, width: Width): Promise<Locator> {
   if (width === "phone") return openMoreMenu(page, "click");
   const footer = page.getByTestId("sidebar-footer");
-  // Two CI workers can boot past the default 10s window; match the phone
-  // shell's boot budget before asserting the settled screenshot.
   await expect(footer.getByTestId("plan-upgrade")).toBeVisible({
     timeout: 20_000,
   });

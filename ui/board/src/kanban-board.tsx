@@ -26,22 +26,11 @@ export interface KanbanBoardProps {
   avatar?: React.ReactNode;
   cardLabels?: KanbanCardLabels;
   formatTime?: MessageTimeFormatter;
-  /** Enable per-card multi-select checkboxes. */
   selectable?: boolean;
-  /** Ids currently in the multi-select set. */
   selectedIds?: ReadonlySet<string>;
-  /** Toggle a card's membership in the multi-select set. */
   onToggleSelect?: (item: KanbanItem) => void;
-  /** When set, only this column's cards stay selectable — others hide their
-   *  checkbox so a multi-selection can't span sections. */
   selectionLockColumnId?: string | null;
-  /** Called when a card is dropped onto a different column. Receives the
-   *  dragged item and the target column id. Providing this enables drag-and-
-   *  drop on the board. */
   onItemMove?: (item: KanbanItem, toColumnId: string) => void;
-  /** Override which columns accept a given dragged item. Defaults to "any
-   *  column whose statuses don't already include the item's status". Return
-   *  false to reject the column (it won't highlight or accept a drop). */
   canDropItem?: (item: KanbanItem, toColumnId: string) => boolean;
 }
 
@@ -82,10 +71,6 @@ export function KanbanBoard({
     [canDropItem, columns],
   );
 
-  // Custom pointer-events drag (no native HTML5 DnD) so the cursor is the same
-  // on every OS. Suppressed while a multi-select is active — the bulk action
-  // bar owns moves then. The card currently being dragged is `draggingId`;
-  // every column derives its drop affordance from it via `columnDragRole`.
   const { draggingId, hoverColumnId, dragHandlers } = useBoardDrag({
     items,
     columns,
@@ -119,18 +104,12 @@ export function KanbanBoard({
   }
 
   return (
-    // The drag is delegated: handlers live on the container and resolve the
-    // dragged card / target column from the DOM (data attributes). The cursor
-    // itself is driven by `body` classes (see use-board-drag), not here.
     <div
       {...dragHandlers}
       data-testid="board-columns"
       className="flex-1 flex gap-3 p-3 min-h-0 overflow-x-auto overflow-y-hidden"
     >
       {columnData.map((col) => {
-        // `idle | origin | drop-target | forbidden` — see `columnDragRole`. A
-        // drop target shows the faint "drop here" ring; the column under the
-        // pointer (`hoverColumnId`) gets the stronger highlight.
         const role = draggingItem
           ? columnDragRole(
               draggingItem,

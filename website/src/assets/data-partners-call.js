@@ -1,15 +1,3 @@
-// The /data-partners "Book a call" popup (data-partners/call-modal.njk): every
-// [data-call-trigger] link opens it instead of the calendar. The form is
-// checked with data-partners-call-model.js and stored through
-// data-partners-call-send.js. Once stored, a company at the program's bar is
-// taken straight to the calendar, in this tab, with its name and email filled
-// in; anyone else is thanked, and the team follows up. Same tab on purpose: a
-// new tab opened after the wait for the database is blocked as a popup.
-//
-// The links keep their calendar href, and are only taken over once the popup
-// is fully set up, so a page where this or the shared menus failed to load
-// still books calls.
-
 import { createMenus } from "./data-partners-call-menus.js";
 import {
   bookingUrl,
@@ -29,8 +17,6 @@ function track(name, props) {
   if (typeof window.track === "function") window.track(name, props);
 }
 
-// The download popup's scroll lock (download-gate.js): the same class, and
-// Lenis stopped so a wheel over the card never scrolls the page.
 let savedY = 0;
 function lockScroll() {
   const root = document.documentElement;
@@ -69,7 +55,6 @@ function setUp(config, menus) {
   });
   const wrap = (name) => byId(`dpc-f-${name}`);
 
-  // A field shows its error once the visitor has left it, or tried to send.
   function paint(force) {
     const errors = validate(values());
     for (const name of FIELDS) {
@@ -99,8 +84,6 @@ function setUp(config, menus) {
     if (name !== "form") steps[name].focus();
   };
 
-  // Opening again after sending shows the thanks already given: the request
-  // is stored.
   function open(from, trigger) {
     source = from || "unknown";
     opener = trigger;
@@ -132,12 +115,10 @@ function setUp(config, menus) {
       return;
     }
     const qualified = qualifies(input.employees);
-    // The button keeps saying "Sending" while the calendar loads.
     const done = () => {
       if (qualified) window.location.assign(bookingUrl(config.booking, input));
       else show("thanks");
     };
-    // A filled trap is a bot: it sees success, nothing is stored.
     if (form.elements.trap.value) return done();
     sending = true;
     paint(false);
@@ -163,8 +144,6 @@ function setUp(config, menus) {
     submit.textContent = submitLabel;
     paint(false);
   }
-  // Back from the calendar, the browser may restore this page as it was left:
-  // mid-send. The request is stored; the form is usable again.
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) reset();
   });
@@ -172,8 +151,6 @@ function setUp(config, menus) {
   for (const node of overlay.querySelectorAll("[data-dpc-close]")) {
     node.addEventListener("click", close);
   }
-  // With a country menu open, the backdrop and Escape close only the menu (the
-  // menu handles both), so a near miss never throws the filled form away.
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay && !menus.anyOpen()) close();
   });

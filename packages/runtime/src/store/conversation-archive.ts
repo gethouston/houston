@@ -9,44 +9,14 @@ import {
 } from "./conversation-archive-missing";
 import type { StoredConversation } from "./conversation-file";
 
-/**
- * Transcript archiving: a conversation that never ends (a `shared` routine
- * chat runs for months) keeps ONE live file that is re-parsed and re-written
- * whole on every append. At 165 MB that cost the runtime over a gigabyte of
- * resident memory per turn and OOM-killed its pod 87 times in a day.
- *
- * Past a size budget the live file keeps only the recent tail; everything
- * older moves into immutable, numbered segment files beside it:
- *
- *   <dir>/<id>.json             the tail + `archived` (what the segments hold)
- *   <dir>/<id>.archive/1.json   the oldest messages
- *   <dir>/<id>.archive/2.json   ...
- *
- * Message indexes stay ABSOLUTE across the whole transcript (segments first,
- * then the tail), so history paging, `totalMessages`, and edit-and-resend see
- * the same conversation as before — a reader that only knows the live file
- * (an older runtime, the parse cache) sees a valid, shorter one. Autocompact
- * bounds the model's context, never storage; this bounds storage.
- */
-
 const MiB = 1024 * 1024;
 
-/** Live file size past which an append rotates the older messages out. */
 export const ARCHIVE_TRIGGER_BYTES = 8 * MiB;
 
-/**
- * What the live file keeps after a rotation. Comfortably above the replay
- * preamble's budget (replay-transcript.ts, ~0.8 × a 200k window ≈ 640 KB of
- * text), so a backend switch still carries the same recent history it would
- * have carried from an un-rotated file.
- */
 export const ARCHIVE_TAIL_BYTES = 2 * MiB;
 
-/** What the live file records about its segments (additive, optional). */
 export interface ArchiveIndex {
-  /** Messages held by every segment together — the tail's absolute offset. */
   messages: number;
-  /** Message count per segment, in segment order (segment n = index n-1). */
   segments: number[];
 }
 
@@ -71,13 +41,6 @@ export function totalMessageCount(conv: StoredConversation): number {
   return archivedMessageCount(conv) + conv.messages.length;
 }
 
-/**
- * The index of the first message that STAYS in the live file when the tail
- * must fit `tailBytes`: the newest messages that fit, opened at the user
- * message of a turn so a turn is never split across files (a turn that only
- * partly fits is archived whole). The newest turn always stays, even when it
- * alone exceeds the budget. 0 means nothing would move.
- */
 export function tailCutIndex(
   messages: ChatMessage[],
   tailBytes: number,
@@ -90,24 +53,15 @@ export function tailCutIndex(
     fits = i;
   }
   if (fits === messages.length) {
-    // Nothing fits: keep the newest turn regardless.
     const lastUser = messages.findLastIndex((m) => m.role === "user");
     fits = lastUser === -1 ? Math.max(0, messages.length - 1) : lastUser;
   }
-  // Open the tail at a turn boundary: the nearest user message at or after
-  // the byte cut. None at all means the fit index itself is the boundary.
   for (let i = fits; i < messages.length; i++) {
     if (messages[i]?.role === "user") return i;
   }
   return fits;
 }
 
-/**
- * Move the messages before the tail into the next segment file and rewrite
- * `conv` in place (the caller persists it). Returns whether anything moved.
- * Segment first, live file second: a crash in between leaves a duplicate the
- * next rotation overwrites (same segment number), never a hole.
- */
 export function archiveOlderMessages(
   dir: string,
   conv: StoredConversation,
@@ -133,7 +87,6 @@ export function archiveOlderMessages(
   return true;
 }
 
-/** Segments are immutable, so a parsed one is valid until it is deleted. */
 export const segments = new LruCache<string, ChatMessage[]>({ capacity: 8 });
 
 export function readSegment(
@@ -150,7 +103,6 @@ export function readSegment(
     raw = readFileSync(file, "utf8");
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
-    // Never cached: a segment fetched later (a pool turn) must read.
     const error = reportMissingSegment(file);
     if (missing === "throw") throw error;
     return [];
@@ -159,8 +111,6 @@ export function readSegment(
   try {
     messages = (JSON.parse(raw) as SegmentFile).messages;
   } catch (err) {
-    // A corrupt segment (written atomically, so never by Houston) shows as a
-    // gap in old history; the live conversation is unaffected.
     console.error(`[conversations] archive segment unreadable: ${file}`, err);
     messages = [];
   }
@@ -168,7 +118,6 @@ export function readSegment(
   return messages;
 }
 
-/** Messages [start, end) by ABSOLUTE index across segments and the tail. */
 export function sliceTranscript(
   dir: string,
   conv: StoredConversation,

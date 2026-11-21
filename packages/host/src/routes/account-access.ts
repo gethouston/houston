@@ -7,18 +7,10 @@ import { json } from "./http";
 
 export interface AccountDeps {
   store: WorkspaceStore;
-  /** Backs the per-workspace preferences doc; absent → preference routes 503. */
   vfs?: Vfs;
-  /** Global reactivity fan-out; sidebar-layout and preference writes emit on it. Absent → skipped. */
   events?: EventHub;
 }
 
-/**
- * The named workspace when the caller owns it and this deployment can persist
- * preferences for it, else null once the refusal is on the wire. Ownership is
- * checked BEFORE the vfs so a stranger learns nothing about how the host is
- * wired, and a missing workspace reads as 404 rather than 403.
- */
 export async function ownedWorkspace(
   deps: AccountDeps,
   userId: UserId,

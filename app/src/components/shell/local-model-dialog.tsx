@@ -22,27 +22,9 @@ import { PickScreen } from "./local-model-pick";
 interface Props {
   provider: ProviderInfo | null;
   onClose: () => void;
-  /** Called with the connected model id on success (before `onClose`) so the
-   *  onboarding picker can select the real model the local server serves. */
   onConnected?: (model: string) => void;
 }
 
-/**
- * The guided "connect a local model" dialog: the world-class, non-technical
- * sibling of the manual OpenAI-compatible form. On desktop it detects LM Studio
- * / Jan / Ollama, then tunnels the chosen model up to the user's CLOUD agent
- * (mint credentials -> start bridge -> register endpoint) with a calm progress
- * state. No servers found -> a friendly, jargon-free empty state. In the browser
- * (no native bridge) it opens straight to the manual endpoint form.
- *
- * On success the engine fires `ProviderLoginComplete` (via setCustomEndpoint),
- * the same signal the OAuth / api-key paths emit, so the parent flips the card
- * and toasts. Failures surface as toasts (Report-bug) plus a calm retry state.
- *
- * Detection + connect run with a timeout, a Cancel affordance, and an
- * AbortController (see `useLocalModelConnect`): closing the dialog mid-flight
- * aborts the work and rolls back any half-open bridge.
- */
 export function LocalModelDialog({ provider, onClose, onConnected }: Props) {
   const { t } = useTranslation("providers");
   const desktop = osIsTauri();

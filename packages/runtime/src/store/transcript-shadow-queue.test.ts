@@ -32,7 +32,6 @@ function conversation(messages: ChatMessage[]): StoredConversation {
   return { id: "c1", title: "chat", createdAt: 0, updatedAt: 0, messages };
 }
 
-/** Transport whose sends resolve/reject only when the test releases them. */
 function manualTransport() {
   const sent: TranscriptShadowSend[] = [];
   const gates: Array<{ resolve: () => void; reject: (e: Error) => void }> = [];
@@ -55,7 +54,7 @@ test("per-conversation ordering survives a slow transport", async () => {
   queue.enqueue(userOp("c1", 2));
   queue.enqueue(userOp("c1", 3));
   await tick();
-  expect(sent).toHaveLength(1); // serialized: one in flight at a time
+  expect(sent).toHaveLength(1);
   while (gates.length) {
     gates.shift()?.resolve();
     await tick();
@@ -70,7 +69,7 @@ test("pending ops past the cap collapse into a single repair", async () => {
   const { transport, sent, gates } = manualTransport();
   const queue = new TranscriptShadowQueue(transport, () => source);
 
-  queue.enqueue(userOp("c1", 1)); // goes in flight, held by the gate
+  queue.enqueue(userOp("c1", 1));
   await tick();
   for (let n = 2; n <= MAX_PENDING_OPERATIONS + 3; n += 1) {
     source.messages.push(message(n));
@@ -83,8 +82,6 @@ test("pending ops past the cap collapse into a single repair", async () => {
   expect(sent.map((op) => op.kind)).toEqual(["user", "repair"]);
   const repair = sent[1];
   if (repair?.kind !== "repair") throw new Error("expected a repair");
-  // The snapshot is read from the file at send time and covers every
-  // collapsed op — and it is a clone, not the live mutable object.
   expect(repair.conversation.messages).toHaveLength(MAX_PENDING_OPERATIONS + 3);
   expect(repair.conversation).not.toBe(source);
   expect(queue.isDirty("c1")).toBe(false);
@@ -103,11 +100,9 @@ test("repair snapshots stay drain-aware while appends continue", async () => {
   await tick();
   expect(queue.isDirty("c1")).toBe(true);
 
-  // Next mutation collapses to a repair; its snapshot is taken at send time.
   file.current?.messages.push(message(2));
   queue.enqueue(userOp("c1", 2));
   await tick();
-  // While that repair is in flight, the file keeps moving.
   file.current?.messages.push(message(3));
   queue.enqueue(userOp("c1", 3));
   while (gates.length) {
@@ -120,9 +115,6 @@ test("repair snapshots stay drain-aware while appends continue", async () => {
   if (repair1?.kind !== "repair" || repair2?.kind !== "repair") {
     throw new Error("expected repairs");
   }
-  // The first snapshot froze BEFORE the concurrent append: m3 rides the
-  // second repair exactly once — never replayed on top of a snapshot that
-  // already contains it.
   expect(repair1.conversation.messages.map((m) => m.content)).toEqual([
     "m1",
     "m2",
@@ -150,7 +142,7 @@ test("a delete supersedes everything queued behind it", async () => {
   const { transport, sent, gates } = manualTransport();
   const queue = new TranscriptShadowQueue(transport, () => conversation([]));
 
-  queue.enqueue(userOp("c1", 1)); // in flight
+  queue.enqueue(userOp("c1", 1));
   await tick();
   queue.enqueue(userOp("c1", 2));
   queue.enqueue({ kind: "rename", conversationId: "c1", title: "renamed" });
@@ -163,7 +155,7 @@ test("a delete supersedes everything queued behind it", async () => {
 });
 
 test("drainForShutdown resolves within its cap while the gateway hangs", async () => {
-  const { transport } = manualTransport(); // gates never released
+  const { transport } = manualTransport();
   const queue = new TranscriptShadowQueue(transport, () => conversation([]));
 
   queue.enqueue(userOp("c1", 1));

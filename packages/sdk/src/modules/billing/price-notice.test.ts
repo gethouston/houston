@@ -14,11 +14,6 @@ interface Recorded {
   body: string | null;
 }
 
-/**
- * A billing SDK over a mock `fetch` that records the whole wire. `reactivity` is
- * off, so every recorded call is one a billing operation made and nothing else —
- * which is what makes "exactly one request" an exact claim.
- */
 function makeSdk(answer: () => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(

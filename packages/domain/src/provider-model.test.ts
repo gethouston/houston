@@ -20,23 +20,13 @@ const VALID_PROVIDERS = [
   "openai-compatible",
 ];
 
-// pi's OAuth-provider catalogs (the ones getModel throws on for an unknown id),
-// mirrored here so the tests assert the OUTPUT is a model pi actually offers —
-// independent of the table the implementation happens to use.
 const PI_MODELS: Record<string, Set<string>> = {
-  // The Claude lineup Houston runs (pi's catalog narrowed to one model per
-  // family): a migration that lands anywhere else stores a model no picker
-  // offers.
   anthropic: new Set([
     "claude-fable-5-2",
     "claude-haiku-5-5",
     "claude-opus-5-5",
     "claude-sonnet-5-5",
   ]),
-  // pi's Codex catalog MINUS the rows OpenAI refuses a ChatGPT subscription
-  // (gpt-5.3-codex-spark, gpt-5.5 — probed live, see the runtime's
-  // ai/codex-offered.ts): a migration that lands on one produces a first turn
-  // that can only fail.
   "openai-codex": new Set([
     "gpt-5.6-luna",
     "gpt-5.6-sol",
@@ -58,8 +48,6 @@ const PI_MODELS: Record<string, Set<string>> = {
   deepseek: new Set(["deepseek-flash", "deepseek-v4-pro"]),
 };
 
-/** Every migration result must name a real provider, and (for the OAuth
- * providers) a model pi actually offers. */
 function assertValid(r: ReturnType<typeof migrateProviderModel>, msg: string) {
   expect(VALID_PROVIDERS, msg).toContain(r.provider);
   const catalog = PI_MODELS[r.provider];
@@ -68,17 +56,12 @@ function assertValid(r: ReturnType<typeof migrateProviderModel>, msg: string) {
 }
 
 test("the real legacy desktop inputs map to valid pi ids with no diagnostic", () => {
-  // From the user's actual ~/.houston data: {"provider":"openai","model":"gpt-5.5"}.
-  // The ChatGPT subscription refuses gpt-5.5 since 2026-10-22, so the pin
-  // lands on the latest Sol, which costs less, rather than on a dead turn.
   const codex = migrateProviderModel("openai", "gpt-5.5");
   expect(codex.provider).toBe("openai-codex");
   expect(codex.model).toBe("gpt-6.1-sol");
   expect(codex.diagnostics).toEqual([]);
   assertValid(codex, "openai/gpt-5.5");
 
-  // {"provider":"anthropic","model":"claude-opus-4-8"} — Opus 4.8 left the
-  // Claude lineup, so it lands on the lineup's Opus: never a Sonnet downgrade.
   const claude = migrateProviderModel("anthropic", "claude-opus-4-8");
   expect(claude.provider).toBe("anthropic");
   expect(claude.model).toBe("claude-opus-5-5");
@@ -107,8 +90,6 @@ test("bare tier aliases resolve to their family's lineup model", () => {
   expect(opus.diagnostics).toEqual([]);
   assertValid(opus, "anthropic/opus");
 
-  // Sonnet's lineup model IS the provider's default: "sonnet" and "no model"
-  // must resolve to the same thing.
   const sonnet = migrateProviderModel("anthropic", "sonnet");
   expect(sonnet.model).toBe(DEFAULT_MODEL.anthropic);
   expect(sonnet.diagnostics).toEqual([]);
@@ -178,7 +159,6 @@ test("CLI-era codex model ids map to the closest current tier", () => {
   expect(mini.diagnostics).toEqual([]);
   assertValid(mini, "codex/gpt-5-mini");
 
-  // A small-tier row an older picker offered and pi no longer ships.
   const dropped = migrateProviderModel("openai-codex", "gpt-5.4-mini");
   expect(dropped.model).toBe("gpt-6-luna");
   expect(dropped.diagnostics).toEqual([]);
@@ -195,9 +175,6 @@ test("an already-valid pi provider+model passes through unchanged", () => {
 test("an unknown model id falls soft to the provider default WITH a diagnostic", () => {
   const r = migrateProviderModel("anthropic", "totally-made-up-9000");
   expect(r.provider).toBe("anthropic");
-  // The provider's own default, read from the table that owns it rather than
-  // restated here — restating it is how the app, the runtime and this table
-  // came to name three different Anthropic defaults.
   expect(r.model).toBe(DEFAULT_MODEL.anthropic);
   expect(r.diagnostics).toHaveLength(1);
   expect(r.diagnostics[0]?.message).toContain("totally-made-up-9000");
@@ -205,11 +182,6 @@ test("an unknown model id falls soft to the provider default WITH a diagnostic",
 });
 
 test("a genuinely new pi-ai provider id passes through UNCHANGED (not → Codex)", () => {
-  // The pi-ai catalog is open (~35 providers, and it drifts). A provider id we
-  // don't enumerate ("groq", "mistral") is a REAL provider, not a legacy typo —
-  // it must pass through verbatim, never get silently rewritten to the cloud
-  // default. Its model (open catalog for an unknown provider) passes through
-  // too, with no diagnostic. This is the "unknown → Codex" trap we removed.
   const groq = migrateProviderModel("groq", "llama-3.3-70b");
   expect(groq.provider).toBe("groq");
   expect(groq.model).toBe("llama-3.3-70b");
@@ -222,17 +194,10 @@ test("a genuinely new pi-ai provider id passes through UNCHANGED (not → Codex)
 });
 
 test("a stored id naming an Object prototype member is a table MISS, not an entry", () => {
-  // Every table here is an object literal, so a plain `table[stored]` reads its
-  // prototype: a stored provider of "constructor" answered the Object
-  // CONSTRUCTOR where an id belongs, and a stored model of "toString" answered
-  // a function the same way. Both then travel as the migrated value.
   expect(canonicalProviderId("constructor")).toBe("constructor");
   expect(canonicalProviderId("toString")).toBe("toString");
   expect(canonicalModelId("opencode", "constructor")).toBe("constructor");
   expect(canonicalModelId("anthropic", "toString")).toBe(null);
-  // The whole migration answers strings, and never throws on the way (a
-  // prototype read landed a function where `VALID_MODELS[provider]` is checked
-  // for a `.has`).
   const r = migrateProviderModel("constructor", "toString");
   expect(r).toMatchObject({ provider: "constructor", model: "toString" });
   expect(typeof r.provider).toBe("string");
@@ -243,16 +208,12 @@ test("missing provider/model fall soft to the defaults with provider diagnostic"
   const r = migrateProviderModel(undefined, undefined);
   expect(r.provider).toBe(DEFAULT_PROVIDER);
   expect(r.model).toBe(DEFAULT_MODEL[DEFAULT_PROVIDER]);
-  // Both substitutions are reported: the config gained a provider AND a model
-  // it never carried, and either can surprise the person reading it back.
   expect(r.diagnostics.some((d) => d.message.includes("provider"))).toBe(true);
   expect(r.diagnostics.some((d) => d.message.includes("model"))).toBe(true);
   assertValid(r, "all missing");
 });
 
 test("api-key gateway models pass through (open catalog, no throw on getModel)", () => {
-  // opencode / opencode-go forward arbitrary model ids to the gateway, so a
-  // model pi doesn't enumerate must NOT be rewritten or diagnosed.
   const r = migrateProviderModel("opencode-go", "deepseek-v4-pro");
   expect(r).toMatchObject({
     provider: "opencode-go",
@@ -262,11 +223,6 @@ test("api-key gateway models pass through (open catalog, no throw on getModel)",
 });
 
 test("an open-catalog gateway's curated rename is applied, with no diagnostic", () => {
-  // A gateway has no VALID_MODELS set, so every stored id passes through — but
-  // a row pi RENAMED has no model object left to build a turn on, and the only
-  // thing standing between the stored id and a dead pin is this table. opencode
-  // 0.85.1's `mimo-v2.5-free` is 0.87.1's `mimo-v2.6-flash-free`: same free
-  // tier (zero cost, text+image, 200k window), so the swap is not an upgrade.
   const r = migrateProviderModel("opencode", "mimo-v2.5-free");
   expect(r).toMatchObject({
     provider: "opencode",
@@ -291,10 +247,6 @@ test("an OpenCode Go row pi 0.99.1 dropped maps to its same-tier successor", () 
 });
 
 test("a deepseek id the catalog renamed maps at the same tier", () => {
-  // pi 0.87.1 renamed `deepseek-v4-flash` to `deepseek-flash` (DeepSeek V4.1
-  // Flash) and folded the separate vision row into it. Without a row here the
-  // stored ids read as unknown: the migration rewrites them to the provider
-  // default and a routine pin on one is dropped entirely.
   for (const stale of ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp"]) {
     const r = migrateProviderModel("deepseek", stale);
     expect(r.provider, stale).toBe("deepseek");
@@ -302,7 +254,6 @@ test("a deepseek id the catalog renamed maps at the same tier", () => {
     expect(r.diagnostics, stale).toEqual([]);
     assertValid(r, `deepseek/${stale}`);
   }
-  // The Pro tier stays Pro — a rename never moves a pin across tiers.
   expect(migrateProviderModel("deepseek", "deepseek-v4-pro").model).toBe(
     "deepseek-v4-pro",
   );
@@ -322,9 +273,6 @@ test("MiniMax global provider uses the pi-ai catalog, not minimax-cn", () => {
 });
 
 test("a saved retired MiniMax id migrates to the MiniMax default", () => {
-  // `[1m]` is a Claude Code client suffix MiniMax's API rejects as an unknown
-  // model, and MiniMax retired the M2.7 line; a config still naming one must
-  // land on a model the key can run.
   for (const retired of [
     "MiniMax-M3[1m]",
     "MiniMax-M2.7",
@@ -359,8 +307,6 @@ test("deepseek provider models migrate against its finite pi catalog", () => {
 });
 
 test("the diagnostic key defaults to the config doc path and is overridable", () => {
-  // Any input that produces a diagnostic (here: an unknown anthropic model on a
-  // finite-catalog provider) — the key names the source doc.
   expect(
     migrateProviderModel("anthropic", "totally-made-up").diagnostics[0]?.key,
   ).toBe(".houston/config/config.json");
@@ -371,22 +317,16 @@ test("the diagnostic key defaults to the config doc path and is overridable", ()
 });
 
 test("a stored Codex model the subscription no longer serves migrates to one it does", () => {
-  // The retired full-tier rows. A migration that kept them verbatim handed the
-  // runtime an id whose only outcome is a refusal on the first turn.
   for (const stale of ["gpt-5.4", "gpt-5.5-codex"]) {
     const r = migrateProviderModel("openai-codex", stale);
     expect(r.model, stale).toBe("gpt-6-astra");
     expect(r.diagnostics, stale).toEqual([]);
     assertValid(r, `openai-codex/${stale}`);
   }
-  // Spark was a small/fast row, so it lands on the small/fast tier, not the
-  // full one — a migration never upgrades what the user chose.
   const spark = migrateProviderModel("openai-codex", "gpt-5.3-codex-spark");
   expect(spark.model).toBe("gpt-6-luna");
   expect(spark.diagnostics).toEqual([]);
   assertValid(spark, "openai-codex/gpt-5.3-codex-spark");
-  // The provider's own default is a model it serves — this is what a pin
-  // naming a provider and NO model lands on.
   expect(DEFAULT_MODEL["openai-codex"]).toBe("gpt-6-luna");
   expect(VALID_MODELS["openai-codex"]?.has("gpt-6-luna")).toBe(true);
   for (const gone of ["gpt-5.3-codex-spark", "gpt-5.4"])
@@ -394,10 +334,6 @@ test("a stored Codex model the subscription no longer serves migrates to one it 
 });
 
 test("a provider with no catalog default never inherits another provider's model", () => {
-  // DEFAULT_MODEL is Partial over an OPEN ProviderId: many shipped providers
-  // (groq, cerebras, together, xai, …) have no entry. A universal floor keyed on
-  // DEFAULT_PROVIDER rewrote every one of them to Codex's id and PERSISTED it —
-  // a Groq agent whose stored model became an OpenAI one.
   expect(DEFAULT_MODEL.groq).toBeUndefined();
   for (const provider of ["groq", "cerebras", "together", "xai", "fireworks"]) {
     const r = migrateProviderModel(provider, undefined);
@@ -409,9 +345,6 @@ test("a provider with no catalog default never inherits another provider's model
 });
 
 test("an absent model that GAINS the provider's default says so", () => {
-  // The migration writes the result back to the agent's config, so a config
-  // that silently gained a model it never had must be visible — the same rule
-  // an unknown model already followed.
   const r = migrateProviderModel("anthropic", undefined);
   expect(r.model).toBe(DEFAULT_MODEL.anthropic);
   expect(r.diagnostics).toHaveLength(1);
@@ -430,15 +363,10 @@ test("nothing is gained, so nothing is reported, when the provider has no defaul
 });
 
 test("a provider with no catalog default is ABSENT, never an empty string", () => {
-  // Readers fall through with `DEFAULT_MODEL[id] ?? <next candidate>` (the app
-  // catalog's `catalogDefaultModel(id) ?? models[0]?.id`). An "" entry is
-  // non-nullish, so it stopped that fallback dead and the picker offered no
-  // model at all for a local OpenAI-compatible server.
   expect(DEFAULT_MODEL["openai-compatible"]).toBeUndefined();
   expect("openai-compatible" in DEFAULT_MODEL).toBe(false);
   expect(DEFAULT_MODEL["openai-compatible"] ?? "first-served-model").toBe(
     "first-served-model",
   );
-  // ...and the migration's own floor still answers "no opinion", not a guess.
   expect(migrateProviderModel("openai-compatible", undefined).model).toBe("");
 });

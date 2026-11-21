@@ -2,13 +2,6 @@ import { expect, test, vi } from "vitest";
 import { ComposioProvider } from "./composio";
 import { IntegrationUpstreamError } from "./types";
 
-/**
- * The Composio adapter verified against an injected fetch — no network. These
- * pin the REQUEST shaping (path, the x-api-key platform header, query/body) and
- * the wire→port MAPPING, so swapping the live transport later can't silently
- * change what the host sends or how it reads the reply.
- */
-
 type Reply = { status?: number; body?: unknown };
 interface Recorded {
   path: string;
@@ -62,8 +55,6 @@ test("listToolkits maps the catalog and sends the platform key", async () => {
             {
               slug: "gmail",
               name: "Gmail",
-              // Composio's real shape: categories live under meta as {id,name},
-              // the top-level `categories` is null. We key off the id.
               meta: {
                 description: "Email",
                 logo: "https://l/g.png",
@@ -94,8 +85,6 @@ test("listToolkits maps the catalog and sends the platform key", async () => {
 });
 
 test("listToolkits walks every catalog page: Composio caps a page at 1000 and the catalog is bigger", async () => {
-  // Prod 2026-09: 1502 toolkits, `limit=1000` still returns 1000 + next_cursor.
-  // Reading page 1 alone silently dropped telegram, odoo, quickbooks, typeform.
   const { provider, calls } = harness((url) => {
     if (url.pathname !== "/api/v3/toolkits") return { status: 404 };
     const cursor = url.searchParams.get("cursor");
@@ -131,10 +120,6 @@ test("listToolkits stops on a cursor it has already followed instead of looping 
 });
 
 test("listToolkits keeps no_auth toolkits, flagged — ready to use, never connectable", async () => {
-  // Composio's catalog includes toolkits with no auth at all (web search,
-  // hackernews…). A Connect button on those can only produce the
-  // Auth_Config_NoAuthApp 400 seen in prod — so they stay in the catalog but
-  // carry noAuth, and the UI renders them "ready to use" instead.
   const { provider } = harness((url) => {
     if (url.pathname === "/api/v3/toolkits") {
       return {
@@ -215,7 +200,6 @@ test("connect reuses the project's enabled auth config and mints a link session"
     callback_url: "https://gethouston.ai/connected",
   });
 
-  // The auth config is cached — a second connect goes straight to the link.
   await provider.connect(USER, "gmail");
   expect(calls[2]?.path).toBe("/api/v3.1/connected_accounts/link");
 });
@@ -233,8 +217,6 @@ test("connect pre-answers highlevel's user_type via the direct initiate", async 
     return { status: 404 };
   });
 
-  // The redirect points at the provider's OAuth page, never Composio's
-  // hosted form — there is no field left for a user to overwrite.
   const start = await provider.connect(USER, "highlevel");
   expect(start).toEqual({
     redirectUrl: "https://provider/oauth",
@@ -256,7 +238,6 @@ test("connect falls back to the hosted link when the prefilled initiate is rejec
       return { body: { items: [{ id: "ac_hl", status: "ENABLED" }] } };
     }
     if (url.pathname === "/api/v3/connected_accounts" && method === "POST") {
-      // The retired-for-this-org shape.
       return { status: 400, body: { error: "initiate is retired" } };
     }
     if (url.pathname === "/api/v3.1/connected_accounts/link") {
@@ -272,7 +253,6 @@ test("connect falls back to the hosted link when the prefilled initiate is rejec
 
   const start = await provider.connect(USER, "highlevel");
   expect(start.connectionId).toBe("ca_hl");
-  // The hosted link still carries the prefill as the field's value.
   const link = calls.find((c) =>
     c.path.startsWith("/api/v3.1/connected_accounts/link"),
   );
@@ -315,10 +295,6 @@ test("connect creates a Composio-managed auth config when the toolkit has one", 
 });
 
 test("connect falls back to the toolkit's own scheme when Composio has no managed auth", async () => {
-  // API-key toolkits (serpapi, exa, firecrawl…): the auth config is created on
-  // the toolkit's scheme with EMPTY credentials — the hosted connect link asks
-  // the USER for their key. Verified live: use_composio_managed_auth 400s for
-  // these, and this shape mints a working link session.
   const { provider, calls } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
       return { body: { items: [] } };
@@ -355,10 +331,6 @@ test("connect falls back to the toolkit's own scheme when Composio has no manage
 });
 
 test("connect skips bare custom OAuth and picks a user-collectible scheme (metaads)", async () => {
-  // Meta Ads: no Composio-managed app, schemes [OAUTH2, API_KEY]. A custom
-  // OAUTH2 config with empty credentials can never complete the dance (this
-  // was the "can't connect Meta Ads" bug), so the fallback must skip OAuth
-  // modes and land on API_KEY — the hosted connect page collects the token.
   const { provider, calls } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
       return { body: { items: [] } };
@@ -395,10 +367,6 @@ test("connect skips bare custom OAuth and picks a user-collectible scheme (metaa
 });
 
 test("connect falls back to a collectible scheme when the advertised managed app is gone (shopify)", async () => {
-  // HOU-1020: Composio's toolkit metadata still advertises managed OAuth for
-  // shopify/clockify, but the managed app is expired — the managed create
-  // 400s "Missing required field Client id". The connect must fall through to
-  // the toolkit's user-collectible scheme instead of dying as an opaque 502.
   let authConfigPosts = 0;
   const { provider, calls } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
@@ -458,9 +426,6 @@ test("connect falls back to a collectible scheme when the advertised managed app
 });
 
 test("a gone managed app with no collectible fallback names the remedy, not the raw 400", async () => {
-  // Same lie in the metadata, but the toolkit is OAuth-only: nothing the user
-  // can self-serve, so the operator remedy surfaces instead of Composio's
-  // "Missing required field Client id" relayed as a 502.
   const { provider } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
       return { body: { items: [] } };
@@ -489,9 +454,6 @@ test("a gone managed app with no collectible fallback names the remedy, not the 
 });
 
 test("a managed create that fails for a non-400 reason surfaces raw, no fallback", async () => {
-  // A transient 500 on the managed create is NOT evidence the managed app is
-  // gone — falling back would silently downgrade gmail-class toolkits to
-  // API-key entry on a Composio blip.
   const { provider, calls } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
       return { body: { items: [] } };
@@ -518,9 +480,6 @@ test("a managed create that fails for a non-400 reason surfaces raw, no fallback
 });
 
 test("connect refuses an OAuth-only toolkit with no managed app, naming the remedy", async () => {
-  // OAuth-only + unmanaged: nothing the user can self-serve. The error names
-  // the operator remedy (register a dev OAuth app in the Composio dashboard —
-  // resolveAuthConfig then reuses that config on the next connect).
   const { provider } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
       return { body: { items: [] } };
@@ -543,8 +502,6 @@ test("connect refuses an OAuth-only toolkit with no managed app, naming the reme
 });
 
 test("connect on a toolkit Composio does not carry is a typed 400, not a 502", async () => {
-  // HOUSTON-APP-5M0: an agent-authored card offered "etsy"; Composio answers
-  // its detail read with 404 Toolkit_ToolkitNotFound.
   const { provider, calls } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
       return { body: { items: [] } };
@@ -562,10 +519,6 @@ test("connect on a toolkit Composio does not carry is a typed 400, not a 502", a
 });
 
 test("connect on a NO_AUTH toolkit is a clean 400, not a doomed Composio POST", async () => {
-  // Prod repro (Sentry): connecting the "composio" meta-toolkit forwarded a
-  // create-auth-config POST that Composio 400s (Auth_Config_NoAuthApp) and
-  // the user saw an opaque 502. NO_AUTH must short-circuit before that POST
-  // with a user-actionable error.
   const { provider, calls } = harness((url, method) => {
     if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
       return { body: { items: [] } };
@@ -589,7 +542,6 @@ test("connect on a NO_AUTH toolkit is a clean 400, not a doomed Composio POST", 
   expect((failure as IntegrationUpstreamError).body).toMatchObject({
     code: "toolkit_no_auth",
   });
-  // The doomed create POST was never sent.
   expect(
     calls.some(
       (c) => c.method === "POST" && c.path.startsWith("/api/v3/auth_configs"),
@@ -645,14 +597,11 @@ test("connection polls one account; 404 → null; another user's account → nul
 test("connection FAILS CLOSED when Composio omits user_id — ownership unproven → null", async () => {
   const { provider } = harness((url) => {
     if (url.pathname === "/api/v3/connected_accounts/ca_anon") {
-      // No top-level user_id at all: nothing proves this account is the
-      // caller's, so the guard must not surface it.
       return {
         body: { id: "ca_anon", toolkit: { slug: "gmail" }, status: "ACTIVE" },
       };
     }
     if (url.pathname === "/api/v3/connected_accounts/ca_weird") {
-      // A non-string user_id is equally unproven.
       return { body: { id: "ca_weird", user_id: 42, status: "ACTIVE" } };
     }
     return { status: 404 };
@@ -681,11 +630,6 @@ test("disconnect deletes every connected account for the toolkit", async () => {
 });
 
 test("disconnect succeeds when an account is already gone upstream (DELETE → 404)", async () => {
-  // Composio can expire/remove a connected account on its own (HOU-892: a
-  // Gmail login vanished server-side overnight). The list can then still
-  // return the account, or a retry can race a prior disconnect — either way
-  // the DELETE 404s and the disconnect must land as success, not wedge the
-  // user's only cleanup path with an error.
   const deleted: string[] = [];
   const { provider } = harness((url, method) => {
     if (url.pathname === "/api/v3/connected_accounts" && method === "GET") {
@@ -715,8 +659,6 @@ test("search runs BOTH the scoped and global query, merges (scoped first, dedupe
         },
       };
     if (url.pathname === "/api/v3/toolkits") return { body: { items: [] } };
-    // Scoped (toolkit_slug=gmail) → the connected app's action; global (no
-    // toolkit_slug) → a NEW app plus a DUPLICATE of the connected one.
     if (url.searchParams.has("toolkit_slug"))
       return {
         body: {
@@ -747,8 +689,6 @@ test("search runs BOTH the scoped and global query, merges (scoped first, dedupe
     };
   });
   const found = await provider.search(USER, "send an email");
-  // Scoped connected match first, then the global new app; the duplicate is
-  // dropped, and every entry carries its status.
   expect(
     found.items.map((t) => [t.action, t.toolkit, t.connected, t.status]),
   ).toEqual([
@@ -758,9 +698,6 @@ test("search runs BOTH the scoped and global query, merges (scoped first, dedupe
 });
 
 test("a connected toolkit no longer short-circuits global discovery (the bug)", async () => {
-  // A connected-Gmail user asks for Google Sheets. The scoped query returns a
-  // (loose) Gmail match — the OLD code returned there and never ran global
-  // discovery, so Sheets was undiscoverable. It must surface now.
   const { provider } = harness((url) => {
     if (url.pathname === "/api/v3/connected_accounts")
       return {
@@ -802,9 +739,6 @@ test("a connected toolkit no longer short-circuits global discovery (the bug)", 
 });
 
 test("catalog resolution surfaces a connectable toolkit entry when no action scored", async () => {
-  // Composio's action full-text search scores ~zero for a plain app name, so
-  // the toolkits catalog resolves the name to a real slug the model can pass to
-  // request_connection — as a toolkit-level entry (empty action).
   const { provider } = harness((url) => {
     if (url.pathname === "/api/v3/connected_accounts")
       return { body: { items: [] } };
@@ -821,7 +755,7 @@ test("catalog resolution surfaces a connectable toolkit entry when no action sco
           ],
         },
       };
-    return { body: { items: [] } }; // no action scored
+    return { body: { items: [] } };
   });
   const found = await provider.search(USER, "connect to google sheets");
   expect(found.items).toEqual([
@@ -849,7 +783,7 @@ test("a resolved app the user already connected is a connected toolkit entry", a
       return {
         body: { items: [{ slug: "googlesheets", name: "Google Sheets" }] },
       };
-    return { body: { items: [] } }; // no action scored, only the catalog entry
+    return { body: { items: [] } };
   });
   const found = await provider.search(USER, "google sheets");
   expect(found.items).toEqual([
@@ -890,15 +824,12 @@ test("a query naming no app and matching no action returns empty (genuinely unkn
 });
 
 test("a zero-hit scoped query degrades to listing the connected toolkits' actions", async () => {
-  // "read my latest 5 emails" scores zero against GMAIL_FETCH_EMAILS, so the
-  // scoped retry (no query) surfaces the toolkit's real actions.
   const { provider } = harness((url) => {
     if (url.pathname === "/api/v3/connected_accounts")
       return {
         body: { items: [{ toolkit: { slug: "gmail" }, status: "ACTIVE" }] },
       };
     if (url.pathname === "/api/v3/toolkits") return { body: { items: [] } };
-    // Every query-bearing call misses; only the no-query listing returns actions.
     if (url.searchParams.has("query")) return { body: { items: [] } };
     return {
       body: {
@@ -938,18 +869,13 @@ test("with nothing connected, global discovery marks matches connectable (HOU-67
     };
   });
   const found = await provider.search(USER, "send an email");
-  // Discoverable but connectable → the agent offers the card.
   expect(found.items.map((t) => [t.action, t.connected, t.status])).toEqual([
     ["GMAIL_SEND_EMAIL", false, "connectable"],
   ]);
-  // No scoped query when nothing is connected — just the global one.
   expect(calls.some((c) => c.path.includes("toolkit_slug"))).toBe(false);
 });
 
 test("search stamps no-auth toolkit matches connected — usable now, never a connect offer", async () => {
-  // A no-auth app (web search, weather…) needs no connection: its tools work
-  // as-is, and a request_connection can only end in the toolkit_no_auth 400.
-  // Both its action matches AND its catalog toolkit-entry must read connected.
   const { provider } = harness((url) => {
     if (url.pathname === "/api/v3/connected_accounts")
       return { body: { items: [] } };
@@ -976,7 +902,6 @@ test("search stamps no-auth toolkit matches connected — usable now, never a co
       };
     return { body: { items: [] } };
   });
-  // An action match on a no-auth toolkit → connected.
   expect(
     (await provider.search(USER, "weathermap forecast")).items.map((t) => [
       t.action,
@@ -984,8 +909,6 @@ test("search stamps no-auth toolkit matches connected — usable now, never a co
       t.status,
     ]),
   ).toEqual([["WEATHERMAP_WEATHER", true, "connected"]]);
-  // A catalog-resolved toolkit entry (no action scored) → also connected,
-  // while a normal unconnected app stays connectable.
   expect(
     (await provider.search(USER, "use weathermap and gmail")).items.map((t) => [
       t.toolkit,
@@ -1028,13 +951,6 @@ test("execute posts user_id + arguments and maps success and failure", async () 
 });
 
 test("every tools read + execute pins version 'latest', never the frozen base snapshot", async () => {
-  // Composio's v3 endpoints default to the base snapshot (00000000_00) when no
-  // version is sent. That snapshot's connectors age until the third-party API
-  // retires what they depend on — prod: LINKEDIN_CREATE_LINKED_IN_POST kept
-  // sending the retired `Linkedin-Version: 20241101` header, so every post
-  // failed 426 NONEXISTENT_VERSION while auth still worked. Pinning `latest`
-  // on search AND execute keeps the schema the model read and the connector
-  // that runs the same, current version.
   const { provider, calls } = harness((url) => {
     if (url.pathname === "/api/v3/connected_accounts")
       return {
@@ -1045,8 +961,6 @@ test("every tools read + execute pins version 'latest', never the frozen base sn
         },
       };
     if (url.pathname === "/api/v3/toolkits") return { body: { items: [] } };
-    // Zero-hit query-bearing calls force the scoped LISTING fallback too, so
-    // all three /tools request shapes (scoped, global, listing) are exercised.
     if (url.searchParams.has("query")) return { body: { items: [] } };
     return {
       body: {
@@ -1083,9 +997,6 @@ test("a non-2xx response surfaces as an error with the status + detail", async (
   await expect(provider.listToolkits()).rejects.toThrow(/→ 500.*boom/);
 });
 
-// ── Multi-account (HOU-901): labels, targeted execute, per-account disconnect ─
-
-/** A display-only OIDC id_token: header.payload.sig with a real claims payload. */
 function fakeIdToken(claims: Record<string, unknown>): string {
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
   return `eyJhbGciOiJSUzI1NiJ9.${payload}.sig`;
@@ -1117,7 +1028,6 @@ test("listConnections derives the account label + createdAt from the auth payloa
             toolkit: { slug: "telegram" },
             status: "ACTIVE",
             user_id: USER,
-            // Tokens are NOT identity: no label may be derived from them.
             data: { generic_api_key: "8777-secret" },
           },
         ],
@@ -1171,7 +1081,6 @@ test("disconnect with a connectionId removes exactly that account, after proving
       deletes.push(url.pathname);
       return { body: {} };
     }
-    // The ownership probe: GET the single account.
     expect(url.pathname).toBe("/api/v3/connected_accounts/ca_mine");
     return {
       body: {
@@ -1203,7 +1112,6 @@ test("disconnect with a foreign or wrong-toolkit connectionId deletes nothing", 
     };
   });
   await provider.disconnect(USER, "gmail", "ca_theirs");
-  // Wrong toolkit for an owned account also deletes nothing.
   const { provider: p2 } = harness((url, method) => {
     if (method === "DELETE") {
       deletes.push(url.pathname);
@@ -1221,11 +1129,6 @@ test("disconnect with a foreign or wrong-toolkit connectionId deletes nothing", 
   await p2.disconnect(USER, "gmail", "ca_mine");
   expect(deletes).toEqual([]);
 });
-
-// ── Identity probes: the label comes from the app itself (HOU-901) ───────────
-// Composio MASKS the auth payload (id_token arrives as the literal string
-// "REDACTED"), so a Gmail account's email is resolved by executing the
-// toolkit's read-only profile action, targeted at that account, once.
 
 function probeHarness() {
   let profileCalls = 0;
@@ -1273,14 +1176,12 @@ test("masked-payload gmail accounts get their email via a targeted profile probe
     "probed-1@x.test",
     "probed-2@x.test",
   ]);
-  // Each probe targeted ITS account.
   const executes = calls.filter((c) => c.path.includes("/tools/execute/"));
   expect(
     executes.map(
       (c) => (c.body as Record<string, unknown>).connected_account_id,
     ),
   ).toEqual(["ca_1", "ca_2"]);
-  // A second list serves the labels from the cache — no further probes.
   await provider.listConnections(USER);
   expect(profileCalls()).toBe(2);
 });

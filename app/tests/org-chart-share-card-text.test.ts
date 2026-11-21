@@ -7,7 +7,6 @@ import {
   wrapLines,
 } from "../src/components/organization/org-chart-share-card-text.ts";
 
-/** Ten units per user-perceived character, so the widths are exact. */
 const ctx: Measurer = {
   font: "",
   measureText: (text) => ({ width: graphemes(text).length * 10 }),
@@ -34,7 +33,6 @@ describe("fitText", () => {
       ok(cut.endsWith("…"), cut);
       ok(!cut.includes("‍…"), cut);
     }
-    // e + combining acute is one character.
     strictEqual(fitText(ctx, "José Maria", 50), "José…");
   });
 });

@@ -9,7 +9,6 @@ import {
 
 const IsActiveViewContext = createContext(true);
 
-/** Whether the surrounding kept-alive top-level view is currently visible. */
 export function useIsActiveView(): boolean {
   return useContext(IsActiveViewContext);
 }
@@ -20,7 +19,6 @@ export interface KeepAliveView {
   content: ReactNode;
 }
 
-/** Lazily mounts a view once, then preserves its local state while hidden. */
 export function KeepAliveViews({
   activeId,
   views,
@@ -46,14 +44,6 @@ export function KeepAliveViews({
   const previousActiveId = useRef(activeId);
   useLayoutEffect(() => {
     if (previousActiveId.current !== activeId) {
-      // Radix dialogs portal to document.body, outside their kept-alive screen,
-      // so hiding the screen would leave an open modal floating over the next
-      // view with the page inert beneath it. Escape is Radix's public close
-      // contract — but a synthetic Escape also dismisses pills, popovers, and
-      // inline edits, so only fire it when we are actually leaving a kept-alive
-      // screen while a modal overlay holds the page (Radix marks that state by
-      // disabling pointer events on <body>). Shell-level dialogs that must
-      // outlive navigation ignore it (`user-dismissal.ts`).
       const leftKeptAliveScreen = enabled.has(previousActiveId.current);
       const modalOpen = document.body.style.pointerEvents === "none";
       if (leftKeptAliveScreen && modalOpen) {
@@ -81,10 +71,6 @@ export function KeepAliveViews({
       visible.has(view.id) && (
         <div
           key={view.id}
-          // The screen's identity and whether it is the one ON THE GLASS.
-          // Kept-alive screens stay in the DOM while hidden, so anything
-          // reading the app from outside (the e2e suite) needs a way to ask
-          // for the visible one rather than the first one that matches.
           data-screen={view.id}
           data-screen-active={view.id === activeId ? "true" : undefined}
           className={

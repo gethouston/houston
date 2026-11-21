@@ -6,12 +6,6 @@ import { tauriActivity } from "./tauri";
 
 export { fallbackMissionTitle } from "./mission-title-text";
 
-/**
- * Decide once, per new mission, who titles its card (the SDK's
- * `planMissionTitle`) against the capability snapshot the app already holds.
- * A snapshot not loaded yet keeps the client title flow every deployment
- * serves.
- */
 export function missionTitlePlan(
   title: MissionTitle | undefined,
 ): MissionTitlePlan {
@@ -21,10 +15,6 @@ export function missionTitlePlan(
   return planMissionTitle(capabilities ?? null, title);
 }
 
-/**
- * The card's row has landed: run the plan's client title pass (a no-op when
- * the server titles from the send). Never rejects, so it runs detached.
- */
 export function titleLandedMission(
   agentPath: string,
   activityId: string,

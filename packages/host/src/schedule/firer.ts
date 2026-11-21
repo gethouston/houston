@@ -4,12 +4,6 @@ import type { RuntimeChannel } from "../ports";
 import { isKnownProvider, routineProviderUnavailable } from "../providers";
 import type { FiringJob, RoutineFirer } from "./scheduler";
 
-/**
- * Fires a routine through the SAME per-workspace channel a user message uses —
- * so a scheduled run and a hand-typed message reach the runtime identically.
- * A missing channel (hosting model not wired) or a busy/quota/transport failure
- * throws, and the scheduler records an errored run (never a silent miss).
- */
 export class ChannelRoutineFirer implements RoutineFirer {
   constructor(
     private readonly channels: Partial<
@@ -22,26 +16,8 @@ export class ChannelRoutineFirer implements RoutineFirer {
     const channel = this.channels[job.workspace.runtime];
     if (!channel)
       throw new Error(`${job.workspace.runtime} runtime not configured`);
-    // The suppression instruction (when opted in) rides on the prompt so the
-    // agent knows to emit ROUTINE_OK for a silent run — reconcile reads it back.
-    // The routine's provider/model/effort pins ride alongside (absent =
-    // inherit), with routinePin applying the read-time legacy id mapping —
-    // the pin is what makes a routine's provider stick regardless of what
-    // other chats or routines have picked since. Routine fires also pin
-    // Autopilot mode so they never block on an ask_user question (a missing
-    // app connection still queues a connect card the user finds in the chat —
-    // the turn ends rather than blocking).
-    // Local fires thread the creator's bare sub. Control-plane scheduled fires
-    // instead inject a minted acting-as token, which replaces the bare header.
     const createdBy = job.routine.created_by;
     const pin = { ...routinePin(job.routine), mode: "auto" as const };
-    // A pin that resolves to no known provider (junk or a legacy id no alias
-    // maps — routinePin passes those through verbatim) fails the run RIGHT
-    // HERE with the real reason: fireRoutineRun marks the run errored with
-    // this message, and the person reading the run history is the audience for
-    // it. Firing it anyway would die inside the runtime as an ephemeral stream
-    // error nobody persists, and the run would wait out the 15-minute timeout
-    // with a vague message.
     if (pin.provider && !isKnownProvider(pin.provider))
       throw new Error(routineProviderUnavailable(pin.provider));
     await channel.fireTurn(

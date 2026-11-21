@@ -4,14 +4,6 @@ import { LOOP_WINDOW_CHARS } from "./runaway-output";
 import { stallFailure } from "./stall-failure";
 import { createStallWatchdog, type StallReason } from "./stall-watchdog";
 
-/**
- * The watchdog's two newer trips: a request whose response never opens
- * (`unanswered`, bounded far tighter than a quiet stream) and a reply stuck
- * in a repetition loop (`degenerate`). Both hold an E2B sandbox, and with it
- * a slot of the environment's cap, for minutes otherwise (staging RL2,
- * 2026-10-03).
- */
-
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -48,7 +40,6 @@ test("once the response opens, only the quiet-stream window applies", () => {
   wd.arm();
   wd.onPhase(requesting());
   vi.advanceTimersByTime(200);
-  // A reasoning model may then think silently far past the first window.
   wd.onPhase({ phase: "responding" });
   vi.advanceTimersByTime(999);
   expect(trips).toEqual([]);
@@ -71,7 +62,6 @@ test("a custom endpoint keeps only the quiet-stream window", () => {
   vi.useFakeTimers();
   const { wd, trips } = watch();
   wd.arm();
-  // The user's own server may load a model for minutes before its first byte.
   wd.onPhase(requesting("openai-compatible"));
   vi.advanceTimersByTime(999);
   expect(trips).toEqual([]);
@@ -102,7 +92,6 @@ test("a looping reply trips at once, and only while armed", () => {
   vi.useFakeTimers();
   const { wd, trips } = watch();
   const loop = "Symbol".repeat(LOOP_WINDOW_CHARS / 4);
-  // Not armed yet (or disarmed): a loop is not this turn's model round-trip.
   for (let i = 0; i < loop.length; i += 64)
     wd.onEvent(text(loop.slice(i, i + 64)));
   expect(trips).toEqual([]);
@@ -118,14 +107,11 @@ test("a new assistant message forgets the last one's text", () => {
   vi.useFakeTimers();
   const { wd, trips } = watch();
   wd.arm();
-  // Many short replies that each say the same thing (a backend with no
-  // phases, like Claude's, still marks each message start).
   for (let i = 0; i < 200; i++) {
     wd.onResponseStart();
     wd.onEvent(text("Processing the next batch of records. "));
   }
   expect(trips).toEqual([]);
-  // The same text in ONE message is a loop.
   wd.onResponseStart();
   for (let i = 0; i < 200 && trips.length === 0; i++)
     wd.onEvent(text("Processing the next batch of records. "));
@@ -138,7 +124,6 @@ test("the watchdog trips at most once", () => {
   wd.arm();
   wd.onPhase(requesting());
   vi.advanceTimersByTime(300);
-  // pi's abort echo and late events must not start another clock.
   wd.onEvent(text("late"));
   wd.onPhase(requesting());
   vi.advanceTimersByTime(10_000);

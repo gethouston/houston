@@ -7,13 +7,6 @@ import {
   missionProviderParam,
 } from "./mission-providers";
 
-/**
- * The mission pin's closed set: what the SCHEMA offers the model and what the
- * DESCRIPTION spells out. Every id and every model name a user can ask for is
- * written down here, so the model picks one instead of inventing it (the
- * `codex` → `openai-codex` incident).
- */
-
 const OPTIONS: ProviderOption[] = [
   {
     id: "openai-codex",
@@ -25,7 +18,6 @@ const OPTIONS: ProviderOption[] = [
   { id: "openrouter", name: "OpenRouter", connected: true },
 ];
 
-/** The live catalog, as the runtime's registry reports it. */
 const NAMED: ProviderOption[] = [
   {
     id: "openai-codex",
@@ -60,7 +52,6 @@ test("with nothing connected there is no provider param at all", () => {
       { id: "anthropic", name: "Claude (Pro / Max)", connected: false },
     ]),
   ).toBeUndefined();
-  // The model must still be told why the choice is missing.
   expect(missionModelDescription([])).toMatch(/no ai provider is connected/i);
 });
 
@@ -75,8 +66,6 @@ test("only the assistant, which can call it, is pointed at the listing op", () =
   expect(missionProviderDescription(OPTIONS, true)).toContain(
     "listAgentProviders",
   );
-  // Every other agent has no way to perform Houston operations; naming one
-  // would be another identifier it cannot look up.
   expect(missionProviderDescription(OPTIONS)).not.toContain(
     "listAgentProviders",
   );
@@ -87,7 +76,6 @@ test("the description carries the per-provider model ids the registry knows", ()
   expect(text).toContain(
     "openai-codex: gpt-6.1-sol = GPT-6.1 Sol, gpt-5.5-codex",
   );
-  // An open-catalog provider has no list to state.
   expect(text).not.toContain("openrouter:");
 });
 

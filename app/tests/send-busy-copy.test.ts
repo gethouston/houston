@@ -4,8 +4,6 @@ import en from "../src/locales/en/chat.json" with { type: "json" };
 import es from "../src/locales/es/chat.json" with { type: "json" };
 import pt from "../src/locales/pt/chat.json" with { type: "json" };
 
-// A send held behind a running turn past its whole budget settles with the
-// typed `notice: "send_busy"`, and the app renders `chat:sendBusy` by kind.
 describe("send-busy chat copy", () => {
   it("is authored in every shipped language", () => {
     strictEqual(typeof en.sendBusy, "string");
@@ -16,10 +14,6 @@ describe("send-busy chat copy", () => {
     }
   });
 
-  // A send the cloud's shared compute had no room for: `chat:sendWaitingBusy`
-  // replaces the thinking line while the SDK re-sends it
-  // (`ConversationVM.sendWaiting`), and `chat:computeBusy` renders the
-  // `compute_busy` notice once it runs out of time.
   it("authors the busy-compute lines in every shipped language", () => {
     for (const key of ["computeBusy", "sendWaitingBusy"] as const) {
       strictEqual(typeof en[key], "string");
@@ -32,8 +26,6 @@ describe("send-busy chat copy", () => {
     }
   });
 
-  // A turn that failed before it could start settles with the typed
-  // `agent_too_large` / `agent_setup_failed` notice (H-003), rendered by kind.
   it("authors the setup-failure lines in every shipped language", () => {
     for (const key of ["tooLarge", "failed", "unconfirmed"] as const) {
       strictEqual(typeof en.agentSetup[key], "string");

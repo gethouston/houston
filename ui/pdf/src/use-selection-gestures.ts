@@ -16,13 +16,9 @@ export interface PageHit {
 
 interface Options {
   enabled: boolean;
-  /** A finished text selection or drawn area. */
   onSelect: (hit: PageHit) => void;
-  /** The area being drawn, live, or null when the drag ends. */
   onDraft: (draft: { page: number; box: PdfBox } | null) => void;
-  /** Touch only: the native text selection the handles currently hold. */
   onTouchText: (hit: PageHit | null) => void;
-  /** A new gesture started: drop whatever selection was pending. */
   onStart: () => void;
 }
 
@@ -30,13 +26,6 @@ const MIN_DRAG = 12;
 const LONG_PRESS_MS = 380;
 const TOUCH_SLOP = 8;
 
-/**
- * Selection with no mode switch. With a mouse or pen, a drag that starts on
- * a word selects text (the browser's own selection over the text layer) and
- * one that starts anywhere else draws an area. On touch, text keeps the
- * native long-press handles, and a long press elsewhere then a drag draws an
- * area; a long press with no drag marks a default box around the finger.
- */
 export function useSelectionGestures(
   container: RefObject<HTMLElement | null>,
   options: Options,
@@ -116,7 +105,6 @@ export function useSelectionGestures(
     const onPointerUp = (e: PointerEvent) => {
       if (!textDrag || e.pointerType === "touch") return;
       textDrag = false;
-      // After the browser commits the selection the drag made.
       setTimeout(() => {
         const hit = readTextSelection(root);
         if (!hit) return;

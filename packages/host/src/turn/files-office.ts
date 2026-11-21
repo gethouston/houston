@@ -16,8 +16,6 @@ import { contentDisposition } from "./files-mime";
 import { pruneOfficeCache } from "./office-cache";
 import type { OfficeConverter, OfficePdf } from "./office-converter";
 
-// The response names the refusal with a fixed sentence per code. The thrown
-// message can carry converter or filesystem detail meant for logs only.
 const REFUSAL_MESSAGE = {
   unsupported_type: "This file type has no PDF preview",
   too_large: "The file is too large to preview",
@@ -72,7 +70,6 @@ export function createOfficePreview(
           throw error;
       }
       const converted = await converter.convert(source, extension.data, lang);
-      // A deployment may change revisions between the health probe and conversion.
       const actualKey = keyFor(source, converted.version, lang);
       await mkdir(cacheDir, { recursive: true });
       for (const [suffix, bytes] of [

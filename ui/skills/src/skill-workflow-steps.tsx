@@ -4,31 +4,16 @@ import { humanizeIntegrationAction } from "./integration-action";
 import type { SkillStepIntegration, SkillWorkflowStepItem } from "./types";
 
 export interface SkillWorkflowStepsLabels {
-  /** Heading above the list. */
   heading?: string;
 }
 
 export interface SkillWorkflowStepsProps {
   steps: SkillWorkflowStepItem[];
-  /**
-   * Draws the app a step acts on, as a chip beside the step's title. Optional
-   * because resolving a toolkit slug to a real app name + logo is a Composio
-   * catalog concern owned by `app/`; without it the step shows the slug and
-   * the action's plain name.
-   */
   renderIntegration?: (integration: SkillStepIntegration) => ReactNode;
   labels?: SkillWorkflowStepsLabels;
   className?: string;
 }
 
-/**
- * SkillWorkflowSteps — a Houston-authored skill read as the numbered procedure
- * it is, instead of as the SKILL.md markdown it is stored as. Each step is an
- * index chip, a short action, the app that action runs on, and the detail
- * underneath; the detail keeps its own line breaks so a step's nested lines
- * stay a list. Nothing renders for a skill Houston didn't write (an imported
- * skill has no parsed steps, and its raw instructions stay the primary body).
- */
 export function SkillWorkflowSteps({
   steps,
   renderIntegration,
@@ -47,8 +32,6 @@ export function SkillWorkflowSteps({
               {index + 1}
             </span>
             <div className="min-w-0 flex-1">
-              {/* The app chip sits on the title's own line and wraps under it
-                  when the title fills the width — never a sideways scroll. */}
               <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                 <p className="min-w-0 break-words font-medium text-ink text-sm">
                   {step.title}
@@ -73,10 +56,6 @@ export function SkillWorkflowSteps({
   );
 }
 
-/**
- * The app chip with nothing resolved: the toolkit slug as authored, plus the
- * action's plain name when the step named one.
- */
 function IntegrationChip({
   integration,
 }: {
@@ -93,11 +72,6 @@ function IntegrationChip({
   );
 }
 
-/**
- * Stable list keys. A skill can repeat a step verbatim ("Atomic writes" twice
- * in one procedure), so the text alone is not unique — each repeat carries the
- * count of how many times it has appeared.
- */
 function keyedSteps(
   steps: SkillWorkflowStepItem[],
 ): { step: SkillWorkflowStepItem; key: string }[] {

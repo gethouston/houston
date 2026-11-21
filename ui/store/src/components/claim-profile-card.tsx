@@ -14,10 +14,6 @@ export const CLAIM_PROFILE_CARD_LABELS: ClaimProfileCardLabels = {
   cta: "Claim your handle",
 };
 
-/**
- * The owner's no-profile state: one card inviting the handle claim. Shared so
- * its copy cannot drift between the website and the app.
- */
 export function ClaimProfileCard({
   editHref,
   labels: overrides,

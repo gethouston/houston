@@ -9,9 +9,6 @@ import {
 } from "./routine-auto-pause";
 import { createRoutine } from "./routines";
 
-// PRODUCT-1982: an unpinned routine refused for "nothing connected" has no
-// provider to blame, and still has to stop at the same pause as a pinned one.
-
 const EDITED = "2026-09-01T00:00:00.000Z";
 const NOW = "2026-09-29T12:00:00.000Z";
 const N = ROUTINE_AUTO_PAUSE_AFTER;
@@ -25,7 +22,6 @@ const routine = (over: Partial<Routine> = {}): Routine => ({
   ...over,
 });
 
-/** `failures` newest first, one minute apart after the routine's edit. */
 const runs = (failures: RoutineRun["failure"][]): RoutineRun[] =>
   failures
     .map(
@@ -58,7 +54,6 @@ test("N no-model refusals in a row pause the routine with no provider named", ()
     routineAutoPause(routine(), runs(Array(N - 1).fill(noModel)), NOW),
   ).toBeNull();
   const pause = routineAutoPause(routine(), runs(Array(N).fill(noModel)), NOW);
-  // An account reason old clients can render, with the real cause beside it.
   expect(pause).toEqual({
     reason: "model_unavailable",
     provider: "",

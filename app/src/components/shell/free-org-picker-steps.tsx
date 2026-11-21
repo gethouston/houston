@@ -16,19 +16,12 @@ interface StepProps {
   selected: string;
   onSelect: (slug: string) => void;
   busy: boolean;
-  /** Renders the frame's title; the id names an inner span for aria-labelledby. */
   title: (text: string, id: string) => ReactNode;
   progress: FlowProgress | null;
   onConfirm: () => void;
-  /** Absent on the first page of a flow. */
   onBack?: () => void;
 }
 
-/**
- * An action that names an org ("Keep La Fila free"). Only the name truncates,
- * so the pill stays one line as the pick moves between short and long names,
- * and the button's text, its accessible name, stays whole.
- */
 function NamedLabel({
   i18nKey,
   name,
@@ -48,7 +41,6 @@ function NamedLabel({
   );
 }
 
-/** The phone sheet seats the actions at the bottom, under the thumb. */
 function Actions({
   label,
   disabled,
@@ -75,10 +67,6 @@ function Actions({
   );
 }
 
-/**
- * The org that stays free, for everyone in it. A payer's subscription org
- * stays listed where it is, disabled, so the two steps read as one list.
- */
 export function FreeStep(props: StepProps & { paidSlug: string | null }) {
   const { t } = useTranslation("plan");
   const titleId = useId();
@@ -140,7 +128,6 @@ export function FreeStep(props: StepProps & { paidSlug: string | null }) {
   );
 }
 
-/** The org a payer's subscription covers, priced per member. Comes first. */
 export function PaidStep(props: StepProps) {
   const { t } = useTranslation("plan");
   const titleId = useId();

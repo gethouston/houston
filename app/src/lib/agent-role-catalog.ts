@@ -3,10 +3,8 @@ import {
   AGENT_CONTEXT_ROLES,
 } from "./agent-role-catalog-data.ts";
 
-/** A curated industry an agent can be created for. */
 export type AgentContextId = keyof typeof AGENT_CONTEXT_ROLES;
 
-/** A concrete job an agent can be hired for. */
 export type AgentRoleId =
   | (typeof AGENT_CONTEXT_ROLES)[AgentContextId][number]
   | (typeof AGENT_COMMON_ROLES)[number];
@@ -15,7 +13,6 @@ export const AGENT_CONTEXT_IDS = Object.keys(
   AGENT_CONTEXT_ROLES,
 ) as readonly AgentContextId[];
 
-/** Every role the catalog knows, each one exactly once. */
 export const AGENT_ROLE_IDS: readonly AgentRoleId[] = [
   ...new Set<AgentRoleId>([
     ...Object.values(AGENT_CONTEXT_ROLES).flat(),
@@ -37,14 +34,6 @@ export function isAgentRoleId(value: unknown): value is AgentRoleId {
   );
 }
 
-/**
- * The roles offered for a context: the industry's own jobs first, then the ones
- * every industry shares. A context the user typed themselves has no catalog of
- * its own, so it is offered the shared list alone.
- *
- * The shared list drops anything the context already offers — the same job
- * twice in one screen reads as two different jobs.
- */
 export function rolesForContext(contextId: AgentContextId | null): {
   own: readonly AgentRoleId[];
   common: readonly AgentRoleId[];

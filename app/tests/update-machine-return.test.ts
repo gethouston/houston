@@ -1,11 +1,3 @@
-// The last look before a return's install: a draft that appears after the
-// return's gate but before the shell's install must hold the install back.
-// The REAL machine hook runs in jsdom. The shell is the fake
-// `window.__TAURI_INTERNALS__.invoke` every `os-bridge` call reaches, so the
-// assertions are on the commands the shell saw. Analytics and the error
-// report are module-mocked: both read `import.meta.env` at load, which this
-// runner has no value for.
-
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { beforeEach, describe, it, mock } from "node:test";
 import "./support/dom-env.ts";
@@ -36,7 +28,6 @@ let draftDuringBundlePath = false;
       case "download_update":
         return 9;
       case "current_app_bundle_path":
-        // The keystroke lands while this await is out.
         if (draftDuringBundlePath) draft = true;
         return "/Applications/Houston.app";
       default:
@@ -69,12 +60,10 @@ const { createRoot } = await import("react-dom/client");
 const { useUpdateMachine } = await import("../src/hooks/use-update-machine.ts");
 type Machine = ReturnType<typeof useUpdateMachine>;
 
-// The process's launch check is spent by the time a poll finds a release.
 claimLaunchCheck();
 
 const pollInfo = { currentVersion: "0.6.23", version: "1.0.8", origin: "poll" };
 
-/** Mount the machine and walk it to the release a poll staged. */
 async function stagedMachine() {
   let api: Machine | null = null;
   const statuses: Machine["status"][] = [];

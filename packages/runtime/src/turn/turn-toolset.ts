@@ -37,14 +37,6 @@ function capabilities(turn: TurnSessionRequest) {
   };
 }
 
-/**
- * What this turn may actually run, after the grant has its say. A worker
- * configured for `remote` still has no way to reach the sandbox without the
- * `code-run` scope — the gateway relays that route and nothing else does — so
- * the turn runs with code execution DISABLED rather than with a tool that
- * would 404 on every call. The caller also builds the system prompt from this
- * answer, so the prompt never promises an ability the allowlist withheld.
- */
 export function turnCodeExecution(
   turn: TurnSessionRequest,
   codeExecution: CodeExecutionMode,
@@ -53,15 +45,11 @@ export function turnCodeExecution(
   return capabilities(turn).codeRun ? "remote" : "disabled";
 }
 
-/** Build the turn's name allowlist from non-secret grant scopes. */
 export function buildTurnToolSelection(
   turn: TurnSessionRequest,
   codeExecution: CodeExecutionMode,
 ): ToolSelection {
   const enabled = capabilities(turn);
-  // The clamp follows the ROLE alone, so a coordinator turn that somehow came
-  // without a facade still gets the coordinator's narrow surface, not an
-  // ordinary agent's shell. The family needs the facade as well.
   const coordinator = turnAssistantOptions(turn) !== undefined;
   return buildToolSelection({
     codeExecution: turnCodeExecution(turn, codeExecution),
@@ -75,7 +63,6 @@ export function buildTurnToolSelection(
   });
 }
 
-/** Register only the host-proxying tool objects admitted by grant scopes. */
 export function buildTurnHostTools(
   turn: TurnSessionRequest,
 ): PiBackendDeps["customTools"] {
@@ -83,20 +70,15 @@ export function buildTurnHostTools(
   const enabled = capabilities(turn);
   const personalAssistant = turn.role === "coordinator";
   return [
-    // Houston's request cards ride its own surface, whatever its grant says.
     ...(enabled.providerConnections || turnAssistantOptions(turn)
       ? [
           makeRequestProviderConnectionTool(),
           makeRequestHandsOnTool({ personalAssistant }),
         ]
       : []),
-    // Houston never runs an integration; its own card and key-entry tool
-    // come with the rest of its surface (turn-coordinator-tools.ts).
     ...(enabled.integrations && !personalAssistant
       ? [
           ...makeIntegrationTools({ call: turn.sandbox.call }),
-          // The secure key-entry surface is `credentialTools`' call on every
-          // backend, over THIS turn's sandbox.
           ...credentialTools({
             personalAssistant: false,
             integrations: { call: turn.sandbox.call },
@@ -112,13 +94,6 @@ export function buildTurnHostTools(
   ];
 }
 
-/**
- * The tool objects BOTH provider branches carry, the same set a long-lived
- * runtime registers (session/session-tools.ts) minus the file and shell tools
- * the pi branch adds itself. The follow-up offers are here because the product
- * prompt orders them on every clean finish, and a name in the allowlist with
- * no object behind it is invisible to the model.
- */
 export function buildTurnCommonTools(
   turn: TurnSessionRequest,
   codeSandbox: PiBackendDeps["customTools"][number] | null,
@@ -139,14 +114,6 @@ export function buildTurnCommonTools(
   );
 }
 
-/**
- * The `browser` tool for this turn's workspace, when the selection admits it
- * (never a coordinator). Built per turn because the workspace is; the browser
- * process itself is shared across turns. `liveView` is the turn grant's
- * `browser-live` scope: `handoff` is offered only when the gateway will carry
- * the person's live view to this worker. A hand-off ends before the turn's
- * host token does (turn-deadline.ts); with no expiry known, the TTL from now.
- */
 export function buildTurnBrowserTool(
   selection: ToolSelection,
   workspaceDir: string,

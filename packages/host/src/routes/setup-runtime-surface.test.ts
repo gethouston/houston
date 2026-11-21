@@ -2,15 +2,6 @@ import { expect, test } from "vitest";
 import { listRoutes } from "./registry/all";
 import { matchPath } from "./registry/match";
 
-/**
- * The pre-agent connect surface is an ALLOWLIST, and the hosted gateway mirrors
- * it verbatim in front of the org's setup pod (cloud
- * `internal/edge/setupruntime/routes.go`). So the enumeration is pinned from
- * both directions: the declared family is exactly this list, and a sub-path
- * that is not on it reaches no pattern — the runtime's chat, settings and
- * above all `auth/export` (a refresh token) stay unreachable before an agent
- * exists.
- */
 const SURFACE = [
   "POST /setup-runtime/credential/capture",
   "POST /setup-runtime/credential/forget",
@@ -33,7 +24,6 @@ test("the declared family is exactly the connect surface", () => {
   );
 });
 
-/** What a pre-agent client must never reach, with the method it would use. */
 const REFUSED: [string, string][] = [
   ["GET", "/setup-runtime/auth/export"],
   ["POST", "/setup-runtime/auth/export"],
@@ -47,8 +37,6 @@ const REFUSED: [string, string][] = [
   ["POST", "/setup-runtime/credential/capture/extra"],
   ["GET", "/setup-runtime/"],
   ["GET", "/setup-runtime"],
-  // A declared path with an undeclared method is off the surface too: a GET
-  // never captures a credential, and a POST never lists providers.
   ["GET", "/setup-runtime/credential/capture"],
   ["POST", "/setup-runtime/providers"],
 ];

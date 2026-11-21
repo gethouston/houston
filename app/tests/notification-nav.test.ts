@@ -30,9 +30,6 @@ describe("resolveNotificationTarget", () => {
     );
   });
 
-  // Regression for the cross-agent bug: user is on "Researcher" (the fallback)
-  // when "Writer" finishes in the background. The click target must still point
-  // at Writer + its chat, not stay on the open agent / go nowhere.
   it("targets the finished agent even when a different agent is open", () => {
     deepStrictEqual(
       resolveNotificationTarget(
@@ -60,10 +57,6 @@ describe("resolveNotificationTarget", () => {
     );
   });
 
-  // Regression for #401: a routine that finishes with a chat result must arm a
-  // click target so the notification opens the routine's chat (it used to be
-  // excluded, so the click stayed on the last non-routine chat). The routine's
-  // stable key is carried through and resolved to its activity id at click time.
   it("arms the routine chat's session key for navigation", () => {
     deepStrictEqual(
       resolveNotificationTarget(
@@ -86,8 +79,6 @@ describe("resolveNotificationTarget", () => {
 
 describe("activityIdForSessionKey", () => {
   it("resolves a routine key to the activity id stored on the row", () => {
-    // The routine chat's activity id is unrelated to its `routine-{id}` key —
-    // only the stored `session_key` links them (#381/#401).
     const activities = [
       { id: "act-1", session_key: "activity-act-1" },
       { id: "act-routine", session_key: "routine-r1" },
@@ -99,8 +90,6 @@ describe("activityIdForSessionKey", () => {
   });
 
   it("resolves a standard mission key whose row has no explicit session_key", () => {
-    // Normal activities omit `session_key`; the board derives `activity-{id}`,
-    // and so must this lookup.
     const activities = [{ id: "act99" }];
     strictEqual(activityIdForSessionKey(activities, "activity-act99"), "act99");
   });
@@ -176,7 +165,7 @@ describe("resolvePendingActivitySelection", () => {
     strictEqual(
       resolvePendingActivitySelection({
         pendingActivityId: "act-A",
-        selectedId: null, // composer open: no card selected
+        selectedId: null,
         missionPanelOpen: true,
       }),
       null,
@@ -200,15 +189,10 @@ describe("shouldArmNotificationNav", () => {
     strictEqual(shouldArmNotificationNav(false, false), true);
   });
 
-  // Regression for focused Windows/Linux: user can be in another Houston chat,
-  // click the toast, and still navigate because the native click event is the
-  // consume signal.
   it("arms while focused when a native click event exists", () => {
     strictEqual(shouldArmNotificationNav(true, true), true);
   });
 
-  // macOS has no desktop click event from the JS plugin, so focus is the click
-  // proxy there. Don't arm while already focused or a later refocus could yank.
   it("does not arm while focused when focus is the only click signal", () => {
     strictEqual(shouldArmNotificationNav(true, false), false);
   });
@@ -219,10 +203,6 @@ describe("shouldNavigateOnAppActivation", () => {
     strictEqual(shouldNavigateOnAppActivation(true), true);
   });
 
-  // Regression for the refocus-yank: on Linux/Windows a plain foregrounding
-  // (alt-tab, taskbar, resume) must NOT navigate — only the distinct
-  // notification-clicked event does. Otherwise returning to Houston after a
-  // mission finished in the background throws the user into that mission.
   it("does not navigate on app activation on Linux/Windows", () => {
     strictEqual(shouldNavigateOnAppActivation(false), false);
   });

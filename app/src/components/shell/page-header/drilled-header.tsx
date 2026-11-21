@@ -13,13 +13,6 @@ interface DrilledHeaderItem<Id extends string> {
   dataAttrs?: Record<string, string>;
 }
 
-/**
- * Shared second-level chrome: identity back chip plus section lozenges.
- *
- * The phone folds those lozenges into the chip's menu — the strip there is one
- * row wide and the back chip is already standing in it. The desktop keeps them
- * drawn whatever the strip's width ({@link usePageHeaderTabsCollapsed}).
- */
 export function DrilledHeader<Id extends string>(props: {
   backLabel: string;
   backIcon: ReactNode;

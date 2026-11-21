@@ -22,19 +22,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The account-preference READ, and the transport property that lets a READ be
- * delegated at all: the SDK's fetch port wraps GETs in the same reason-aware
- * read retry `cpFetch` does (`sdk-client.ts`).
- *
- * `getPreference` pins both halves — the request the delegated read issues, and
- * the attempts a transient 503 earns it — against the control-plane helper, in
- * the same file, on the same stub.
- *
- * `client/sdk-error.ts` is the other half: the SDK's transports throw their own
- * error classes carrying a TEXT body, and the app catches `HoustonEngineError`.
- */
-
 const BASE = "http://host";
 
 const { calls, reset, restore, stubFetch } = createWireCapture();
@@ -75,10 +62,6 @@ describe("the delegated account-preference read", () => {
     expect(delegated.body).toBe(helper.body);
     expect(delegated.headers.get("Authorization")).toBe("Bearer t");
     expect(delegated.headers.get("x-houston-org")).toBe(ORG);
-    // The ONE header that differs, and the whole of the difference: `cpFetch`
-    // stamps a JSON content type on every request including this bodyless GET,
-    // where the runtime client sends one only with a body. Spelling it out
-    // means a change to either transport has to come back and edit this line.
     expect([...helper.headers.keys()].sort()).toEqual(
       [...delegated.headers.keys(), "content-type"].sort(),
     );
@@ -117,17 +100,10 @@ describe("the delegated account-preference read", () => {
   });
 
   test("a transient 503 earns the same attempts cpFetch would", async () => {
-    // A 5xx body the gateway vocabulary does not recognise reads as the
-    // `handoff` reason: two brief blind retries, three attempts in all. The
-    // ladder runs on fake timers — what is pinned is the COUNT of attempts,
-    // and sleeping the real delays buys nothing but four seconds.
     vi.useFakeTimers();
     try {
       stubFetch(() => json(503, { error: "gateway rolling" }));
 
-      // The rejection handler is attached BEFORE the timers run: a ladder that
-      // settles inside `runAllTimersAsync` with nobody listening surfaces as an
-      // unhandled rejection and fails the whole file.
       const delegated = expect(
         client().getPreference("timezone"),
       ).rejects.toThrow();
@@ -160,7 +136,6 @@ describe("the delegated account-preference read", () => {
 });
 
 describe("translating an SDK transport failure", () => {
-  /** What `modules/http.ts` throws: an Error stamped with the HTTP status. */
   class HttpError extends Error {
     constructor(
       message: string,
@@ -169,7 +144,6 @@ describe("translating an SDK transport failure", () => {
       super(message);
     }
   }
-  /** What a runtime-client sub-client throws: the body kept on `.body`. */
   class EngineError extends Error {
     constructor(
       readonly status: number,
@@ -237,7 +211,6 @@ describe("translating an SDK transport failure", () => {
 });
 
 describe("stuck-wake parity", () => {
-  /** Waking answers spaced inside the gap, reaching the escalation threshold. */
   const timeline = (): number[] => {
     const points: number[] = [];
     for (
@@ -249,7 +222,6 @@ describe("stuck-wake parity", () => {
     return [...points, WAKING_STUCK_THRESHOLD_MS];
   };
 
-  /** Walk one agent's episode, optionally landing a success partway through. */
   const walk = async (key: string, succeedAt?: number): Promise<boolean> => {
     let escalated = false;
     for (const at of timeline()) {
@@ -280,7 +252,6 @@ describe("the delegated timezone seed", () => {
       json(200, { value: calls.length === 1 ? null : "America/Bogota" }),
     );
     const c = client();
-    // The person stands in another space: the seed still targets its own.
     c.setActiveOrg("ffffffffffffffff");
 
     const result = await c.seedTimezone(`org:${ORG}`, "America/Bogota");
@@ -299,7 +270,6 @@ describe("the delegated timezone seed", () => {
     ]);
     for (const call of calls) {
       expect(call.headers.get("x-houston-org")).toBe(ORG);
-      // A body flag, never a header the gateway's CORS allow-list lacks.
       expect(call.headers.get("If-None-Match")).toBeNull();
     }
   });

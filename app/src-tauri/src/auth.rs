@@ -163,9 +163,6 @@ mod storage {
     pub fn set(key: &str, value: &str) -> Result<(), String> {
         let path = file_for(key)?;
         let ciphertext = encrypt(value.as_bytes())?;
-        // Write to a temp file and atomic-rename into place so a crash
-        // mid-write never leaves a half-encrypted blob that future
-        // decrypt calls would barf on.
         let tmp = path.with_extension("dpapi.tmp");
         std::fs::write(&tmp, &ciphertext).map_err(|e| format!("write {}: {e}", tmp.display()))?;
         std::fs::rename(&tmp, &path)
@@ -253,9 +250,6 @@ mod file_store {
     pub fn set(dir: &Path, key: &str, value: &str) -> Result<(), String> {
         std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
         let path = file_for(dir, key);
-        // Write 0600 to a temp file and atomic-rename into place, so a crash
-        // mid-write never leaves a truncated blob and the file is never
-        // readable by other users, even transiently.
         let tmp = path.with_extension("auth.tmp");
         let mut f = std::fs::OpenOptions::new()
             .write(true)
@@ -317,8 +311,6 @@ mod storage {
     pub fn set(key: &str, value: &str) -> Result<(), String> {
         match keyring_store::set(key, value) {
             Ok(()) => {
-                // The keyring copy is now canonical; drop any stale fallback
-                // file. Cleanup only — the write itself already succeeded.
                 if let Err(e) = auth_dir().and_then(|d| file_store::remove(&d, key)) {
                     tracing::warn!("[auth] fallback file cleanup after keyring set failed: {e}");
                 }
@@ -335,8 +327,6 @@ mod storage {
         let keyring_result = keyring_store::remove(key);
         file_store::remove(&auth_dir()?, key)?;
         if let Err(e) = keyring_result {
-            // No reachable daemon ⇒ nothing persisted there anyway; a real
-            // daemon error is worth the log line but must not wedge sign-out.
             tracing::warn!("[auth] secret service delete failed (file store cleared): {e}");
         }
         Ok(())
@@ -526,7 +516,6 @@ mod tests {
 
         file_store::remove(&dir, "houston-auth").unwrap();
         assert_eq!(file_store::get(&dir, "houston-auth").unwrap(), None);
-        // Idempotent on missing.
         file_store::remove(&dir, "houston-auth").unwrap();
 
         let _ = std::fs::remove_dir_all(&dir);

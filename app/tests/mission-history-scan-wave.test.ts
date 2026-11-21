@@ -7,8 +7,6 @@ import {
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-/** Missions whose title/description contain no "b", so every phrase in these
- *  tests can only be answered by loading the transcript. */
 function missions(count: number): ScanItem[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `m${i}`,
@@ -22,15 +20,11 @@ interface Gate {
   reject: (err: Error) => void;
 }
 
-/** Drives the scanner with fully controlled loads: a transcript settles only
- *  when the test says so, which is what makes the superseded-wave interleaving
- *  reproducible instead of timing-dependent. */
 function harness(options: { concurrency?: number; failing?: string[] } = {}) {
   const failing = new Set(options.failing ?? []);
   const started: string[] = [];
   const gates = new Map<string, Gate>();
   const committed = new Map<string, string>();
-  /** Every spinner transition, in order — the flag must not blink off mid-scan. */
   const flips: boolean[] = [];
   let errors = 0;
 
@@ -53,8 +47,6 @@ function harness(options: { concurrency?: number; failing?: string[] } = {}) {
     },
   });
 
-  /** Settle every open load, and keep settling whatever that starts, until the
-   *  scanner stops opening new ones. */
   const settleAll = async (): Promise<void> => {
     for (let round = 0; round < 50 && gates.size > 0; round++) {
       const open = [...gates.entries()];
@@ -78,7 +70,6 @@ function harness(options: { concurrency?: number; failing?: string[] } = {}) {
   };
 }
 
-/** Silences (and records) the load-failure diagnostic for one test. */
 async function withSilencedConsoleError(
   body: (logged: unknown[][]) => Promise<void>,
 ): Promise<void> {
@@ -96,11 +87,6 @@ async function withSilencedConsoleError(
 
 describe("mission history scan wave", () => {
   it("scans every mission a superseded wave never started", async () => {
-    // The regression: 20 missions, 5 in flight. Typing "b" claims all 20 and
-    // starts 5; "budget" lands while the other 15 are still claimed, so the new
-    // wave sees nothing missing and returns. When wave one settles it releases
-    // those 15 — and nothing was left to pick them up, so 15 of 20 transcripts
-    // were never read and the board said "search complete".
     const h = harness({ concurrency: 5 });
     const items = missions(20);
 
@@ -187,8 +173,6 @@ describe("mission history scan wave", () => {
       strictEqual(logged.length, 2);
       strictEqual(logged[0][0], "[mission-search] history load failed");
 
-      // A failure is remembered as an empty transcript, so the next phrase does
-      // not retry it on every keystroke.
       h.scanner.scan(items, "budget");
       await h.settleAll();
       strictEqual(h.started.length, 4);

@@ -18,8 +18,6 @@ test("publish sequences, reduces, and fans out frame + snapshot in order", () =>
   ch.publish(text("lo"), (frame, snap) => seen.push({ frame, snap }));
 
   expect(seen.map((s) => s.frame.seq)).toEqual([1, 2, 3]);
-  // The snapshot handed to the fan-out already includes the frame being
-  // fanned out — that is what the relay persists alongside the broadcast.
   expect(seen[2].snap).toEqual({ running: true, partial: "Hello", seq: 3 });
   expect(ch.snapshot).toEqual({ running: true, partial: "Hello", seq: 3 });
   expect(ch.replayAfter(1)).toHaveLength(2);
@@ -30,13 +28,11 @@ test("a terminal frame clears the replay window AFTER fan-out; the counter survi
   ch.publish(user("hi"), () => {});
   let windowAtFanout: SequencedFrame[] | null = null;
   ch.publish({ type: "done", data: null }, (frame) => {
-    // At fan-out time the terminal frame is still replayable (a concurrent
-    // resume stitch may need it); the clear happens after.
     windowAtFanout = ch.replayAfter(frame.seq - 1);
   });
   expect(windowAtFanout).toHaveLength(1);
-  expect(ch.replayAfter(1)).toBeNull(); // cleared → resync
-  expect(ch.replayAfter(2)).toEqual([]); // at the watermark
+  expect(ch.replayAfter(1)).toBeNull();
+  expect(ch.replayAfter(2)).toEqual([]);
   expect(ch.publish(user("next"), () => {}).seq).toBe(3);
 });
 
@@ -79,13 +75,12 @@ test("publishAsync keeps the same ordering with an async fan-out", async () => {
   });
   const done = ch.publishAsync({ type: "done", data: null }, async (frame) => {
     order.push(`fanout:${frame.seq}`);
-    // Mid-fan-out the terminal frame must still be in the window.
     expect(ch.replayAfter(1)).toHaveLength(1);
   });
   await done;
   order.push("settled");
   expect(order).toEqual(["fanout:1:true", "fanout:2", "settled"]);
-  expect(ch.replayAfter(1)).toBeNull(); // cleared after the fan-out settled
+  expect(ch.replayAfter(1)).toBeNull();
 });
 
 test("turnId rides publish end to end (frame and snapshot)", () => {

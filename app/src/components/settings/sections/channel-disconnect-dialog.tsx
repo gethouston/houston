@@ -7,11 +7,6 @@ import { ConfirmDialog } from "@houston-ai/core";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-/**
- * Confirm removing one connection, naming the provider it belongs to. A
- * confirmed removal takes the row's button with it, so focus goes to the
- * provider's card instead of falling to the page.
- */
 export function ChannelDisconnectDialog({
   target,
   providers,

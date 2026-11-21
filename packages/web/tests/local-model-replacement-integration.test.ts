@@ -161,7 +161,6 @@ test.each([
     const register = h.ports.management.register;
     vi.mocked(h.ports.management.register).mockImplementationOnce(
       async (...args) => {
-        // Preserve the remote registration while losing its response.
         const result = await register(...args);
         expect(result).toBeDefined();
         throw new Error("offline");

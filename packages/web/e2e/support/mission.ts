@@ -3,13 +3,6 @@ import type { Page } from "@playwright/test";
 import { NEW_TASK_PLACEHOLDER } from "./composer";
 import { expect } from "./fixtures";
 
-/**
- * Open the empty new-mission composer from the board's "New mission" control.
- *
- * A multi-agent board asks which agent should own the task. A board with only
- * one eligible agent skips that redundant question and opens the composer
- * directly.
- */
 export async function openNewMission(
   page: Page,
   agentName = SEED_AGENT_NAME,
@@ -25,8 +18,6 @@ export async function openNewMission(
     .getByRole("dialog")
     .getByRole("button", { name: agentName, exact: true });
   const connectAi = page.getByRole("button", { name: "Connect AI" });
-  // `.first()`: two of these can be visible at once (a composer behind an
-  // agent-picker dialog), and a bare or-chain trips strict mode exactly then.
   await composer
     .or(agentChoice)
     .or(connectAi)
@@ -35,7 +26,6 @@ export async function openNewMission(
   if (await agentChoice.isVisible()) await agentChoice.click();
 }
 
-/** Start a fresh mission and wait until its seeded first reply has settled. */
 export async function startMission(page: Page, text: string): Promise<void> {
   await page.goto("/");
   await openNewMission(page);

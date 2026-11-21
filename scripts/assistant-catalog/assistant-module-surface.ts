@@ -8,55 +8,24 @@ import {
   returnedObject,
 } from "./assistant-module-locals.ts";
 
-/**
- * The SDK's published surface, read the way a caller reaches it.
- *
- * An SDK module is a factory closure: `createIntegrationsModule(ctx)` returns
- * the object mounted at `sdk.integrations`, and its methods are plain closures
- * with no exported name of their own. So the operations are found by walking
- * the facade — `packages/sdk/src/sdk.ts` says which factory each property
- * holds — and then the object each factory returns, following a nested object
- * (`writes`), a sub-factory call (`createProviderWrites(ctx)`) and a
- * destructured member (`const { send } = operations`) alike. An operation is
- * named by the path a caller types: `integrations.writes.disconnect`,
- * `preferences.setLocale`.
- *
- * A factory reached this way is WIRING, never an operation: attributing the
- * requests of everything it assembles to the one name that assembles them
- * would describe a call nobody can make. Which functions those are falls out
- * of the walk itself ({@link Surface.wiring}), so nothing has to be listed.
- */
-
-/** A function the walk may descend into, with the file it was read from. */
 export interface Candidate {
   node: FunctionNode;
   source: ts.SourceFile;
 }
 
 export interface PublishedMember extends Candidate {
-  /** The dotted path a caller reaches it by, e.g. `integrations.writes.disconnect`. */
   path: string;
-  /** Nodes whose leading JSDoc may document the member, nearest first. */
   docs: ts.Node[];
-  /**
-   * What the factory enclosing this member was CALLED with, by parameter name.
-   * A sub-factory takes the collaborators the module built — the engine client
-   * among them — so a member of it reads them as its own parameters, and only
-   * the call site says what they hold.
-   */
   substitutions: Map<string, ts.Expression>;
 }
 
-/** The walk crosses a module, its sub-factories and one destructure; bound it. */
 const MAX_DEPTH = 8;
 
 export interface Walk {
-  /** Every factory candidate across the SDK sources, by exported name. */
   factories: Map<string, Candidate>;
   wiring: Set<ts.Node>;
 }
 
-/** The member values an object literal publishes, in source order. */
 export function objectMembers(
   object: ts.ObjectLiteralExpression,
   scope: Candidate,
@@ -94,12 +63,6 @@ export function objectMembers(
   return found;
 }
 
-/**
- * Every function a value publishes, by its dotted path beneath it. A function
- * publishes itself (path `""`); an object publishes its members; a factory
- * call publishes what the factory returns; an identifier publishes whatever it
- * is bound to in the enclosing factory.
- */
 function publishedBy(
   value: ts.Node,
   scope: Candidate,

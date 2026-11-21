@@ -10,12 +10,6 @@ import { afterEach, expect, test } from "vitest";
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/**
- * The family list reads the gateway falls back to when its own store read
- * cannot reproduce the host's answer: the worker answers each with the host
- * handler's exact status and body, and writes nothing back.
- */
-
 const servers: Server[] = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();
@@ -29,7 +23,6 @@ async function listen(server: Server): Promise<string> {
 
 const noopTurn: TurnRunner = async () => ({});
 
-/** A store that records every write the worker sends it. */
 class WriteLog extends LocalDirStore {
   readonly writes: string[] = [];
   override upload(
@@ -46,8 +39,6 @@ class WriteLog extends LocalDirStore {
   }
 }
 
-/** One file per family, each with an entry the host reports a diagnostic
- *  for, and two skills: one well-formed, one without frontmatter. */
 async function seedAgent() {
   const storeRoot = mkdtempSync(join(tmpdir(), "op-list-reads-"));
   const prefix = "ws/w1/agent-1";
@@ -112,8 +103,6 @@ function opBody(heartbeatUrl: string, rest: string) {
     },
     actingAs: { userId: "user-1" },
     triggersEnabled: false,
-    // The gateway's envelope: an empty body and a content type ride along
-    // on every route op, GET included.
     op: {
       kind: "route",
       method: "GET",
@@ -156,8 +145,6 @@ test("each family list runs as a read op with the host handler's answer, syncing
   const hb = await heartbeatOK();
 
   for (const [rest, diagnostic] of Object.entries(DIAGNOSTIC)) {
-    // The pod's answer: the same handler chain over the agent's real
-    // directory instead of the worker's lazily hydrated copy.
     const host = await dispatchAgentOp({
       workspacesRoot,
       agentId,

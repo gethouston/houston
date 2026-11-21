@@ -1,6 +1,3 @@
-// Copia en español para /data-partners/refer. Espejo exacto de en.js
-// (scripts/check-locales.mjs lo verifica). Español neutro de LatAm, de tú.
-
 export default {
   meta: {
     title:

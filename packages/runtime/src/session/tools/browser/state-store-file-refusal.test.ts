@@ -10,11 +10,8 @@ import { dirname, join } from "node:path";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { browserStatePath, readState } from "./state-store";
 
-/** Runs right after the directory check said yes: the tool user's window. */
 const afterDirCheck = vi.hoisted(() => ({ hook: async () => {} }));
 
-// The directory check is the cheap first one; these tests let it pass and
-// then swap or plant under it, so only the per-file check guards the read.
 vi.mock("@houston/runtime-client/object-sync", async (original) => {
   const real =
     await original<typeof import("@houston/runtime-client/object-sync")>();
@@ -31,7 +28,6 @@ vi.mock("@houston/runtime-client/object-sync", async (original) => {
 const posixOnly = process.platform === "win32" ? describe.skip : describe;
 const SAVED = { cookies: [], origins: [] };
 
-/** A workspace whose state file holds `SAVED`, in a dir it owns. */
 function savedState(): string {
   const path = browserStatePath(
     mkdtempSync(join(tmpdir(), "browser-file-refusal-")),

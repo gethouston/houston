@@ -3,23 +3,17 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-// Tests the real shipped artifact (public/compat-gate.js) rather than a copy,
-// so the gate can't drift from what runs in the browser.
 const gateSource = readFileSync(
   fileURLToPath(new URL("../../public/compat-gate.js", import.meta.url)),
   "utf8",
 );
 
-// The IIFE exports its pure helpers when a `module` object is present (Node),
-// and returns before touching any browser global.
 function loadHelpers() {
   const fakeModule = { exports: {} };
   new Function("module", gateSource)(fakeModule);
   return fakeModule.exports;
 }
 
-// Runs the gate's browser side effect with injected globals. `module` is
-// undefined here, so the IIFE skips the export branch and executes the gate.
 function runGate({ navigatorLanguage, lookbehindThrows, hasWindow = false }) {
   const root = {
     innerHTML: "",
@@ -35,9 +29,6 @@ function runGate({ navigatorLanguage, lookbehindThrows, hasWindow = false }) {
         throw new SyntaxError("invalid group specifier name");
       }
     : RegExp;
-  // For tests of the Monterey path we deliberately leave `window`/`setTimeout`
-  // undefined: the gate's modern-engine branch guards on `typeof window` and
-  // bails, so we exercise the lookbehind branch in isolation.
   const fakeWindow = hasWindow ? undefined : undefined;
   new Function(
     "module",
@@ -147,11 +138,6 @@ test("an old engine renders a localized message into the root", () => {
   );
 });
 
-// Guards the load order, which runGate can't model: the gate paints into #root,
-// so it must run AFTER #root is parsed. `defer` guarantees that while still
-// running before the deferred app bundle. A parser-blocking <head> script (no
-// defer) runs before <body>, finds no #root, and silently paints nothing — the
-// white screen this whole gate exists to prevent.
 test("index.html loads the gate as a deferred (not parser-blocking) script", () => {
   const indexHtml = readFileSync(
     fileURLToPath(new URL("../../index.html", import.meta.url)),
@@ -172,8 +158,6 @@ test("index.html loads the gate as a deferred (not parser-blocking) script", () 
     "gate must stay a classic script so it parses on the engines it detects",
   );
 });
-
-// ---- Generic crash safety net (watchdog + error handlers) -------------------
 
 test("rootHasMounted is true exactly when #root has child elements", () => {
   const empty = { getElementById: () => ({ childElementCount: 0 }) };
@@ -245,8 +229,6 @@ test("errorFromRejectionEvent unwraps Error reasons and stringifies plain values
 });
 
 test("renderCrashScreen embeds title, body, buttons, diagnostics, and wires Reload/Copy", () => {
-  // Minimal fake root that records the painted HTML and captures the click
-  // handlers the gate attaches.
   const handlers = { reload: null, copy: null };
   const reloadBtn = {
     addEventListener: (type, fn) => {
@@ -293,10 +275,6 @@ test("renderCrashScreen embeds title, body, buttons, diagnostics, and wires Relo
     "function",
     "Copy button must have a click handler",
   );
-  // The copy click swallows any clipboard / selection error so it never
-  // throws past the user. We can't mutate globalThis.navigator under Node 20+
-  // (it's read-only), so just assert that invoking the handler in a hostile
-  // environment doesn't escape.
   assert.doesNotThrow(() => handlers.copy());
 });
 
@@ -313,10 +291,6 @@ test("renderCrashScreen escapes HTML in the diagnostics so an error message can'
   assert.ok(root.innerHTML.includes("&lt;script&gt;"));
 });
 
-// Watchdog integration: run the gate in a minimal browser harness, force the
-// 'modern engine' branch, and fast-forward setTimeout. With #root empty when
-// the watchdog fires, the crash screen must be painted; with #root populated
-// (React mounted in real life), the watchdog must leave the page alone.
 function runGateWithWatchdog({ rootChildren, fireError, navigatorLanguage }) {
   const eventListeners = {};
   const root = {

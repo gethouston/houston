@@ -25,7 +25,6 @@ describe("agentShareSurface", () => {
     ({ ...over }) as Capabilities;
 
   it("is 'manage' for a manager in a team space", () => {
-    // Owner manages any org agent; a team space is not a personal space.
     strictEqual(
       agentShareSurface(caps({ multiplayer: true, role: "owner" }), {}, false),
       "manage",
@@ -41,8 +40,6 @@ describe("agentShareSurface", () => {
   });
 
   it("is 'view' for a plain member of a team space (read-only, never dead)", () => {
-    // A member can see the agent but not manage it; Google Docs parity opens a
-    // read-only who-has-access list rather than nothing.
     strictEqual(
       agentShareSurface(
         caps({ multiplayer: true, role: "user" }),
@@ -72,8 +69,6 @@ describe("agentShareSurface", () => {
   });
 
   it("prefers 'inviteTeam' over 'manage' in a personal space (never the team dialog)", () => {
-    // Even if the host still reports multiplayer/owner, a personal space is
-    // non-invitable: the team dialog's addOrgMember would 403 personal_space.
     strictEqual(
       agentShareSurface(
         caps({ spaces: true, multiplayer: true, role: "owner" }),
@@ -90,7 +85,6 @@ describe("agentShareSurface", () => {
   });
 
   it("is 'none' in a personal space when the host lacks the spaces surface", () => {
-    // A non-spaces, single-player host never offers any share affordance.
     strictEqual(
       agentShareSurface(caps({ multiplayer: false }), {}, true),
       "none",
@@ -111,7 +105,6 @@ describe("withViewer", () => {
   });
 
   it("appends the viewer when the withheld roster omits them", () => {
-    // A member's list may resolve only the owner; the viewer still has access.
     const owner = self({ userId: "own", email: "owner@x.co", isSelf: false });
     const result = withViewer([owner], { userId: "mem", email: "member@x.co" });
     deepStrictEqual(
@@ -172,7 +165,6 @@ describe("buildSharePeople", () => {
     strictEqual(owner?.isOwner, true);
     strictEqual(owner?.access, "manager");
     strictEqual(owner?.canBeManager, true);
-    // Owner sorts first.
     strictEqual(people[0].userId, "own");
   });
 
@@ -226,8 +218,6 @@ describe("buildSharePeople", () => {
       strictEqual(owner?.isOwner, true);
       strictEqual(owner?.access, "manager");
     }
-    // Both owners sort ahead of everyone else (alphabetical within the tier),
-    // and neither can be stripped.
     deepStrictEqual(
       people.slice(0, 2).map((p) => p.userId),
       ["own2", "own"],
@@ -259,7 +249,6 @@ describe("buildSharePeople org-wide", () => {
       members: ROSTER,
       selfId: null,
     });
-    // Only the always-present org owner.
     deepStrictEqual(
       people.map((p) => p.userId),
       ["own"],
@@ -297,7 +286,6 @@ describe("addableMembers", () => {
       members: ROSTER,
       selfId: null,
     });
-    // own (owner, always) + mem have access → adm + oth are addable.
     deepStrictEqual(
       addableMembers(ROSTER, people).map((m) => m.userId),
       ["adm", "oth"],
@@ -437,9 +425,6 @@ describe("isSharedWithOthers", () => {
   });
 
   it("is true for a plain member (access=user), who has no assignee list", () => {
-    // The gateway withholds assignments/assignedUserIds from non-managers, so a
-    // member sees neither field. But an agent they can see at all was shared TO
-    // them — the owner (at least) also has access. The note must still render.
     strictEqual(isSharedWithOthers({ access: "user" }), true);
   });
 

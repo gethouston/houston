@@ -67,7 +67,6 @@ describe("choiceDone", () => {
   });
 
   it("never names a paid org for someone with no subscription to move", () => {
-    // A paid org left on the record from an earlier subscription.
     const stored = choice({
       payer: null,
       freeOrgSlug: LA_FILA.slug,
@@ -116,7 +115,6 @@ describe("the picker opened from Settings", () => {
       open: true,
       done: { free: INNOVA },
     });
-    // Closing keeps the step for the close animation; reopening drops it.
     expect(closeChoicePicker(frame)).toEqual({ ...frame, open: false });
     expect(openChoicePicker()).toEqual({ open: true, done: null, pick: null });
   });
@@ -135,7 +133,6 @@ describe("the picker opened from Settings", () => {
       free: PERSONAL.slug,
     });
     expect(choicePickerPick(changed, owner).free).toBe(PERSONAL.slug);
-    // Closing keeps the draft through the animation; opening drops it.
     const closed = closeChoicePicker(changed);
     expect(closed).toEqual({ ...changed, open: false });
     expect(openChoicePicker().pick).toBeNull();
@@ -170,7 +167,6 @@ describe("the picker opened from Settings", () => {
 });
 
 describe("the Settings entry", () => {
-  // A save just before the window closes: the stored pick, and a later now.
   const stored = choice({
     freeOrgSlug: INNOVA.slug,
     changeableUntil: "2026-10-21T00:00:00.000Z",

@@ -11,45 +11,6 @@ import {
 } from "./resume-contract";
 import { readEventStream } from "./sse-read";
 
-/**
- * The workspace-global reactivity subscription: a long-lived SSE read of the
- * host's `GET /v1/events`, kept alive across drops for the whole life of the
- * page. THE one client-side implementation of that loop — both the SDK's
- * agents/activities modules and the web control-plane adapter consume it, each
- * keeping its own auth scheme, payload translation, and reconnect hooks.
- *
- * fetch + `readEventStream` (NOT `EventSource`): a cross-origin `EventSource`
- * silently never connects inside the Tauri desktop webview, so the desktop
- * would get zero reactivity. fetch streaming works in both webview and browser.
- *
- * Unlike the per-conversation `streamEventsResumable`, this feed has no seq
- * cursor and no replay: a drop just reconnects and the caller catches up its
- * own way ({@link GlobalEventsOptions.onConnect}). One garbled frame must not
- * tear the feed down, so the read runs in tolerant mode.
- *
- * Liveness policy — the same one `streamEventsResumable` runs, because the
- * failure modes are the same:
- * - It NEVER gives up. Only `signal` ends it, so a host restart window of any
- *   length is survivable and a dead stream is never a permanent state.
- * - Reconnects use full-jitter capped backoff, so an outage costs a bounded
- *   request rate (and a bounded number of log lines) instead of two attempts a
- *   second for as long as the app is open.
- * - An idle watchdog force-reconnects a silent connection. The host heartbeats
- *   every 15s (`packages/host/src/sse.ts`), so silence means a half-open socket
- *   (laptop slept, Wi-Fi switched, NAT dropped the flow) — which otherwise
- *   leaves `reader.read()` pending FOREVER: the tab holds a dead stream, logs
- *   nothing, and reactivity stops against a perfectly healthy host. Silence
- *   counts only while the page runs (`idle-watchdog.ts`), so a hidden page
- *   the OS wakes once a minute keeps its healthy stream.
- * - {@link GlobalEventsOptions.wake} lets a surface push "the network is back"
- *   / "the window is visible again" in for instant recovery.
- */
-
-/**
- * Run the global-events loop until `signal` aborts: connect → read → back off →
- * reconnect, forever. Malformed data frames are swallowed (tolerant read).
- * Resolves only when the caller aborts.
- */
 export async function streamGlobalEvents(
   opts: GlobalEventsOptions,
 ): Promise<void> {
@@ -62,9 +23,7 @@ export async function streamGlobalEvents(
   const now = opts.now ?? Date.now;
 
   let capMs = initialMs;
-  /** Live while an attempt is open: a wake asks it to give up on a dead socket. */
   let pokeAttempt: (() => void) | undefined;
-  /** Live while backing off: a wake cuts the remaining wait short. */
   let pokeWait: (() => void) | undefined;
   const offWake = opts.wake?.(() => {
     pokeAttempt?.();
@@ -88,8 +47,6 @@ export async function streamGlobalEvents(
         onStall: giveUp,
       });
       let settle: ReturnType<typeof setTimeout> | undefined;
-      // A check that fired well past its delay was held by another sleep, and
-      // the bytes that sleep queued may not be read yet: wait again.
       const settleThenJudge = () => {
         clearTimeout(settle);
         const armedAt = now();
@@ -116,17 +73,14 @@ export async function streamGlobalEvents(
             (frame) => opts.onEvent(frame as unknown),
             () => {
               watchdog.touch();
-              // Bytes prove the route works: a stream that drops again after
-              // real traffic reconnects fast instead of inheriting the grown
-              // backoff of the outage that came before it.
               delivered = true;
               capMs = initialMs;
             },
-            { onParseError: () => {} }, // a garbled frame is dropped, not fatal
+            { onParseError: () => {} },
           );
         }
       } catch (err) {
-        if (signal.aborted) return; // our own teardown — expected
+        if (signal.aborted) return;
         opts.onError?.(stalled ? stallError(idleTimeoutMs) : err);
       } finally {
         watchdog.stop();
@@ -148,17 +102,10 @@ export async function streamGlobalEvents(
   }
 }
 
-/** A stalled read fails with no thrown cause of its own — name it for the log. */
 function stallError(idleTimeoutMs: number): Error {
   return new Error(`/v1/events stalled (no data for ${idleTimeoutMs}ms)`);
 }
 
-/**
- * Await the backoff, ending it early when the caller's `wake` fires. The
- * injected `sleep` only knows how to resolve on an AbortSignal, so a local
- * controller bridges the two: it aborts when the subscription aborts OR when
- * poked, and the poke is published for the loop's wake handler to call.
- */
 async function waitForRetry(
   sleep: (ms: number, signal: AbortSignal) => Promise<void>,
   ms: number,
@@ -176,7 +123,6 @@ async function waitForRetry(
   }
 }
 
-/** Default reconnect wait: a `setTimeout` resolved early on abort. */
 function defaultSleep(ms: number, signal: AbortSignal): Promise<void> {
   if (signal.aborted) return Promise.resolve();
   return new Promise((resolve) => {

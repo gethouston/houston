@@ -17,25 +17,12 @@ import {
   spillToolResultParts,
 } from "../../session/tool-results/spill";
 
-/**
- * pi's `transformContext`: what the model is sent of each tool result, before
- * every request. The session file keeps every result whole; only the outgoing
- * context shrinks. An oversized result from a capped tool is cut to its head
- * (session/tool-results/cap.ts), and stale results are cleared in batches
- * (session/tool-results/clearing.ts). Both point at the full result saved in
- * the agent folder, and both are the same on every request for the same
- * history, so the prompt cache only misses when a new batch is cleared.
- */
-
 type AgentMessage = AgentSession["messages"][number];
 type ToolResult = Extract<AgentMessage, { role: "toolResult" }>;
 
 export function makeToolResultContext(
   target: SpillTarget,
 ): (messages: AgentMessage[]) => Promise<AgentMessage[]> {
-  // Saving is keyed by content, so this spares re-hashing on every request,
-  // and keeps a failed save (null) from being retried and reported again. A
-  // capped result saves its text; a cleared one saves every part.
   const saved = new Map<string, string[] | null>();
   const save = (
     result: ToolResult,
@@ -49,7 +36,6 @@ export function makeToolResultContext(
     try {
       paths = write();
     } catch (err) {
-      // Unsaved, the result goes out whole: a bigger request, never a lost one.
       console.error(
         `[tool-results] could not save the ${result.toolName} result; sending it whole:`,
         err,
@@ -75,7 +61,6 @@ export function makeToolResultContext(
         refs.push({
           id: message.toolCallId,
           round,
-          // What the model carries of it, which for a capped tool is the head.
           chars:
             Math.min(
               text.length,

@@ -1,24 +1,8 @@
-/*
- * Language chrome — the nav switcher, the footer row, and the first-visit
- * nudge card. Black and white only, tokens from site-tokens.css.
- *
- * The nav switcher REUSES the Resources menu (.lnav-res / .lnav-res-btn /
- * .lnav-res-menu in landing.css), so every bar state it already handles
- * (transparent over the hero, frosted black when scrolled, white on light
- * sections and subpages) applies for free. Only what a language menu needs
- * differently lives here: it hangs off the right edge instead of the center,
- * it is narrower, and it marks the current locale.
- */
-
-/* ── Nav switcher ─────────────────────────────────────────────────────────── */
 .lnav-lang .lnav-res-btn {
   gap: 4px;
   font-weight: 500;
   letter-spacing: 0.04em;
 }
-/* The menu sits at the right edge of the bar, not centered under its button:
-   the switcher is the last item before the CTA, so a centered panel would
-   hang off the viewport on narrow screens. */
 .lnav-res.lnav-lang .lnav-res-menu {
   left: auto;
   right: 0;
@@ -28,8 +12,6 @@
 .lnav-res.lnav-lang.open .lnav-res-menu {
   transform: translateY(0);
 }
-/* Current locale: weight carries it, so the menu's own hover/color rules for
-   each bar state stay in charge of everything else. */
 .lnav-lang .lnav-res-menu a.is-active {
   color: #fff;
   font-weight: 600;
@@ -39,7 +21,6 @@
   color: var(--ink-strong);
 }
 
-/* ── Mobile sheet: the same three languages, flattened ────────────────────── */
 .lnav-drop-lang {
   font-weight: 500;
 }
@@ -52,7 +33,6 @@
   color: var(--ink-strong);
 }
 
-/* ── Footer row ───────────────────────────────────────────────────────────── */
 .lfoot-lang {
   display: flex;
   gap: 14px;
@@ -71,9 +51,6 @@
   font-weight: 600;
 }
 
-/* ── First-visit nudge (English landing only) ─────────────────────────────
-   A bottom-left card, deliberately out of the fixed nav's way: nothing above
-   the fold shifts when it appears. White card, ink type, one ink pill. */
 .lang-nudge {
   position: fixed;
   left: 20px;
@@ -154,16 +131,12 @@
   }
 }
 
-/* The nav row has no mobile layout yet (pre-existing: .lnav-burger is dead and
-   .lnav-links never collapses), so the switcher yields the crowded space on
-   phones. The footer language row and the first-visit nudge stay available. */
 @media (max-width: 880px) {
   .lnav-lang {
     display: none;
   }
 }
 
-/* ── Focus: the shared ink ring, on every language control ────────────────── */
 .lnav-lang .lnav-res-btn:focus-visible,
 .lnav-lang .lnav-res-menu a:focus-visible,
 .lnav-drop-lang:focus-visible,

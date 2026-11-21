@@ -1,11 +1,3 @@
-// The published price and the copy around it (src/_data/pricing.js, the
-// landing translations, and the partials that render them). A Team seat is
-// one price billed monthly, or a lower one billed yearly, with no free trial,
-// so a trial may never come back through the data or a translation, and the
-// free allowance is never given a number.
-//
-// The partials render through Nunjucks directly rather than a full Eleventy
-// build, which would fetch GitHub releases for the changelog.
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
@@ -22,7 +14,6 @@ const translations = { en, es, pt };
 const includes = fileURLToPath(new URL("../src/_includes", import.meta.url));
 const env = new nunjucks.Environment(new nunjucks.FileSystemLoader(includes));
 
-// Every string leaf of a tree, with its path.
 const leaves = (value, path = "") => {
   if (typeof value === "string") return [[path, value]];
   if (Array.isArray(value)) {
@@ -44,8 +35,6 @@ const render = (code, file) =>
 
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// A bare "free" reads as unlimited forever. The plan is always the free tier,
-// worded as the app words it (app/tests/free-tier-copy.test.ts).
 const BARE_FREE = {
   en: /\bfree\b(?! tier)/i,
   es: /\bgratis\b|\bgratuit[oa]s?\b(?<!nivel gratuito)/i,
@@ -58,7 +47,6 @@ test("a team seat is 20 a month, or 180 a year (15 a month) billed yearly", () =
   assert.equal(data.teamYearly, 180);
   assert.equal(data.teamYearlyPerMonth, 15);
   assert.equal(data.teamYearlyPerMonth * 12, data.teamYearly);
-  // Computed from the two prices, never typed: 1 - 15 / 20.
   assert.equal(data.teamYearlySavePercent, 25);
   assert.equal(
     data.teamYearlySavePercent,
@@ -107,14 +95,12 @@ for (const code of locales.order) {
       for (const [path, line] of leaves(t[section], section)) {
         assert.doesNotMatch(line, /\{days\}/, path);
         assert.doesNotMatch(line, /trial|prueba|teste/i, path);
-        // Prices come from _data/pricing.js through placeholders.
         assert.doesNotMatch(line, /\$\s*\d/, path);
         assert.doesNotMatch(
           line,
           /personal space|espacio personal|espaço pessoal/i,
           path,
         );
-        // The free pool size is the server's to set, never the site's.
         assert.doesNotMatch(line, /\d+\s*(messages|mensajes|mensagens)/i, path);
       }
     }
@@ -144,7 +130,6 @@ for (const code of locales.order) {
     assert.match(t.pricing.team.noteYearly, /\{yearlyTotal\}/);
     assert.match(t.pricing.period.save, /\{save\}%/);
     assert.match(t.pricing.period.yearName, /\{save\}%/);
-    // The percent is data, never copy.
     for (const [path, line] of leaves(t.pricing, "pricing")) {
       assert.doesNotMatch(line, /\d+\s*%/, path);
     }
@@ -152,8 +137,6 @@ for (const code of locales.order) {
 
   test(`${code}: the Team card carries both prices, yearly showing by default`, () => {
     const html = render(code, "landing/pricing.njk");
-    // Yearly until the switch says otherwise. The switch is hidden without
-    // JS, so the server-rendered attribute is also the no-JS view.
     assert.match(
       html,
       /<section id="pricing" class="section" data-period="year">/,
@@ -190,8 +173,6 @@ for (const code of locales.order) {
       label,
       badge,
     }));
-    // Yearly is pressed by default and carries the save badge, which its
-    // accessible name reads as one phrase.
     assert.deepEqual(buttons, [
       {
         period: "month",
@@ -212,7 +193,6 @@ for (const code of locales.order) {
       buttons[1].name.startsWith(t.pricing.period.year),
       "label in name",
     );
-    // The script flips data-period on the section and aria-pressed on both.
     assert.match(html, /setAttribute\("data-period"/);
     assert.match(html, /setAttribute\("aria-pressed"/);
   });

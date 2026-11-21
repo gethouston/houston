@@ -12,16 +12,10 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** Stands in for the network round trip the real handlers await. */
 function settleIn(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * The whole point of the component, live: hold the click down and mash it,
- * the counter still moves one at a time, because the in-flight guard flips on
- * the first click rather than waiting for `disabled` to commit.
- */
 function RageClickDemo({ spinner }: { spinner?: boolean }) {
   const [runs, setRuns] = useState(0);
   const publish = useCallback(async () => {
@@ -42,7 +36,6 @@ function RageClickDemo({ spinner }: { spinner?: boolean }) {
   );
 }
 
-/** A handler that returns nothing never enters the pending state. */
 function SyncHandlerDemo() {
   const [renames, setRenames] = useState(0);
   return (
@@ -62,7 +55,6 @@ function SyncHandlerDemo() {
   );
 }
 
-/** Button's six, all of them: AsyncButton forwards `variant` untouched. */
 const VARIANTS = [
   "default",
   "destructive",
@@ -180,11 +172,6 @@ function AsyncButtonSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["AsyncButton"];
 
 export const specimen: Specimen = {

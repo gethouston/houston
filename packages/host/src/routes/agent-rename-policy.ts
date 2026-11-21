@@ -28,8 +28,6 @@ export function renameWithDelegation({
   const copyPolicy = Boolean(
     deps.vfs && nextId !== agent.id && name !== agent.name,
   );
-  // A separate key spans the directory move and policy writes; the policy
-  // helpers take the document key themselves and cannot reenter that lock.
   return withAgentPolicyLock(workspace.id, async () => {
     if (name !== agent.name) {
       const siblings = await deps.store.listAgents(workspace.id);
@@ -94,7 +92,6 @@ export function renameWithDelegation({
   });
 }
 
-/** Serializes agent identity changes with policy writes for one workspace. */
 export function withAgentPolicyLock<T>(
   workspaceId: string,
   run: () => Promise<T>,

@@ -11,15 +11,6 @@ import {
 } from "node:path";
 import { ProtectedWriteDeniedError, WorkspaceGuard } from "./fs-guard";
 
-/**
- * Artifact write-back for `run_code`, kept apart from the tool itself.
- *
- * Collision-safe by construction: an artifact may only OVERWRITE a workspace
- * file the model explicitly declared via input_files (it asked to transform
- * that file); any other collision is saved under a new name and reported.
- * Untrusted sandbox code must never silently destroy user files.
- */
-
 export interface SandboxArtifact {
   path: string;
   contentBase64: string;
@@ -43,7 +34,6 @@ export interface SavedArtifacts {
   refused: string[];
 }
 
-/** Resolve a workspace-relative path strictly inside the workspace; reject escapes. */
 export function safeJoin(root: string, rel: string): string {
   const abs = resolve(root, rel);
   if (abs !== root && !abs.startsWith(root + sep)) {
@@ -52,7 +42,6 @@ export function safeJoin(root: string, rel: string): string {
   return abs;
 }
 
-/** First "name (2).ext"-style path that does not exist yet. */
 function nonColliding(abs: string): string {
   const dir = dirname(abs);
   const ext = extname(abs);
@@ -64,11 +53,6 @@ function nonColliding(abs: string): string {
   throw new Error(`too many name collisions for ${abs}`);
 }
 
-/**
- * Persist every artifact. One bad path must not discard the others; a collision
- * with an UNDECLARED workspace file is renamed, not overwritten. Everything is
- * reported back to the model — nothing is dropped silently.
- */
 export async function saveArtifacts(
   workspaceDir: string,
   artifacts: SandboxArtifact[],
@@ -105,7 +89,6 @@ export async function saveArtifacts(
   return out;
 }
 
-/** The model-facing summary of one run: output, then everything that happened to files. */
 export function summarizeRun(
   result: SandboxResult,
   files: SavedArtifacts,
@@ -113,7 +96,6 @@ export function summarizeRun(
   const parts: string[] = [];
   if (result.stdout?.trim()) parts.push(result.stdout.trimEnd());
   if (result.stderr?.trim()) {
-    // A clean exit that still wrote to stderr is warnings, not errors.
     parts.push(
       `${result.exitCode === 0 ? "[warnings]" : "[errors]"}\n${result.stderr.trimEnd()}`,
     );

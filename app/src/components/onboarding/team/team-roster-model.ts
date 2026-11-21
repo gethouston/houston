@@ -1,19 +1,7 @@
-// `.ts` extensions so the node test runner can load this module on its own.
 import { uniqueAgentName } from "../../../lib/agent-name.ts";
 import type { AgentRoleContext } from "../../../lib/agent-role-context.ts";
 import { rosterUnsaved } from "./team-roster-edit.ts";
 
-/**
- * Everyone the "Build your team" card has hired in this run, as plain data so
- * the optimistic hire is testable without rendering.
- *
- * A hire joins the roster the moment it is asked for (`joining`) and the
- * person moves on at once; the create runs behind them and settles the member
- * as `hired`, or as `failed` with a Retry on its badge.
- */
-
-/** Why a create did not land: a name another hire took first, which a retry
- *  fixes with a free variant, or anything else, which a retry repeats. */
 export type HireFailure = "nameTaken" | "failed";
 
 export type RosterStatus =
@@ -21,7 +9,6 @@ export type RosterStatus =
   | { kind: "hired"; id: string }
   | { kind: "failed"; reason: HireFailure };
 
-/** The name and color an AI Employee wears, and the brief it works to. */
 export interface RosterIdentity {
   name: string;
   color: string | undefined;
@@ -31,15 +18,10 @@ export interface RosterIdentity {
 export interface RosterMember extends RosterIdentity {
   key: string;
   status: RosterStatus;
-  /** What the host holds, or is being asked to create: an edit made on the
-   *  card differs from it until it is saved (`team-roster-edit.ts`). */
   saved: RosterIdentity;
-  /** Saving an edit failed: the card keeps the edit and says so, and the
-   *  next Done tries it again (`rosterRetrySaves`). */
   saveFailed: boolean;
 }
 
-/** How one create ended, as the roster records it. */
 export type RosterSettlement =
   | { kind: "hired"; id: string; name: string }
   | { kind: "failed"; reason: HireFailure };
@@ -53,11 +35,6 @@ export function rosterJoin(
   return [...members, { ...entry, saved, saveFailed: false, status }];
 }
 
-/**
- * Records how a create ended. A member removed while its create was running
- * stays removed, and only a `joining` member settles: a late answer never
- * overwrites a retry that is already on its way.
- */
 export function rosterSettle(
   members: readonly RosterMember[],
   key: string,
@@ -68,8 +45,6 @@ export function rosterSettle(
     if (settlement.kind === "failed") {
       return { ...member, status: settlement };
     }
-    // The host may tidy the name; the roster shows the one that was created,
-    // unless the person renamed the member while it was joining.
     const renamed = member.name !== member.saved.name;
     return {
       ...member,
@@ -80,11 +55,6 @@ export function rosterSettle(
   });
 }
 
-/**
- * A failed member back to `joining`, or null when `key` is not a failed
- * member. A name someone else took is swapped for the first free variant, so
- * the retry is not refused for the same reason again.
- */
 export function rosterRetry(
   members: readonly RosterMember[],
   key: string,
@@ -111,7 +81,6 @@ export function rosterRetry(
   };
 }
 
-/** Drops a member that failed; one that is joining or hired stays. */
 export function rosterRemove(
   members: readonly RosterMember[],
   key: string,
@@ -121,9 +90,6 @@ export function rosterRemove(
   );
 }
 
-/** Where finishing the card stands: nobody to finish with, creates or edits
- *  still saving, a create that failed and needs a Retry (or removing), an
- *  edit that did not save and the next Done tries again, or ready. */
 export type TeamFinishState =
   | "empty"
   | "waiting"
@@ -131,11 +97,6 @@ export type TeamFinishState =
   | "unsaved"
   | "ready";
 
-/**
- * `earlierHires` counts the AI Employees an interrupted first run hired
- * before the card mounted again: they are on the team without being on this
- * mount's roster, so a resumed run finishes without hiring anyone twice.
- */
 export function teamFinishState(
   members: readonly RosterMember[],
   earlierHires = 0,
@@ -154,18 +115,10 @@ export function teamFinishState(
   return members.length + earlierHires > 0 ? "ready" : "empty";
 }
 
-/** Done is offered once someone is on the team and no create needs fixing;
- *  saves still running only make it wait, and one that failed is what the
- *  press tries again. */
 export function finishPressable(state: TeamFinishState): boolean {
   return state === "waiting" || state === "unsaved" || state === "ready";
 }
 
-/**
- * What a pressed Done (or "Hire my team") does next: keep waiting while
- * creates and saves run, give up the press when one failed (its card says
- * why), or finish.
- */
 export function finishStep(
   state: TeamFinishState,
 ): "wait" | "cancel" | "finish" {

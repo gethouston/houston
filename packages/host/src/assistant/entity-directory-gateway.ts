@@ -13,13 +13,11 @@ import {
 export interface GatewayDirectoryInput {
   gateway: AssistantGateway;
   agentId: string;
-  /** Gateway identity can differ from the pod's directory-derived id. */
   gatewayAgentId?: string;
   actingAs?: string;
   fetchImpl?: typeof fetch;
 }
 
-/** The gateway authorizes every list with the host credential and acting identity. */
 export function gatewayEntityDirectory(
   input: GatewayDirectoryInput,
 ): EntityDirectory {
@@ -41,7 +39,6 @@ export function gatewayEntityDirectory(
         `entity directory request failed (${response.status}): ${path}`,
       );
     const payload: unknown = await response.json();
-    // Agent-data routes serve document envelopes; gateway collection routes serve arrays.
     const list: unknown = envelope ? record(payload).items : payload;
     if (!Array.isArray(list))
       throw new Error(`entity directory returned an invalid list: ${path}`);

@@ -10,8 +10,6 @@ import en from "../src/locales/en/agent-onboarding.json" with { type: "json" };
 const CONTEXTS: Record<string, string> = en.roleSetup.contexts;
 const english = (id: AgentContextId) => CONTEXTS[id];
 
-/** Labels the test owns, so matching is checked without pinning the catalog's
- *  copy: the first two industries get names worth searching for. */
 const staged = (id: AgentContextId) => {
   const index = AGENT_CONTEXT_IDS.indexOf(id);
   if (index === 0) return "Logística";

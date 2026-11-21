@@ -9,9 +9,6 @@ import {
 } from "../src/lib/purchase-policy.ts";
 import { enterNativeApp } from "./support/native-surface.ts";
 
-// Store-safe payments: the iOS/Android apps never sell (no price, no
-// checkout, no portal, no upsell); desktop and every browser tab do.
-
 let leave: (() => void) | null = null;
 afterEach(() => {
   leave?.();

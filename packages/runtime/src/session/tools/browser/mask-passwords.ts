@@ -1,26 +1,12 @@
 import { unquoted } from "./snapshot-tree";
 
-/**
- * A textbox line's head (role, quoted name, `[attr]` marks) and its value.
- * Anchored on the head, not the last "]: ": a password "ab]: cd" contains
- * one, and matching there masked only its tail.
- */
 const TEXTBOX_VALUE =
   /^(\s*- textbox(?: "(?:[^"\\]|\\.)*")?(?: \[[^\]]*\])*: )(.*)$/;
 
-/**
- * A textbox printed with children: one with a placeholder that differs from
- * its name prints `- /placeholder:` and then its value as a `- text:` child.
- */
 const TEXTBOX_PARENT =
   /^(\s*)- textbox(?: "(?:[^"\\]|\\.)*")?(?: \[[^\]]*\])*:$/;
 const CHILD_TEXT = /^(\s*- text: )(.*)$/;
 
-/**
- * The accessibility tree prints a textbox's value, password fields included.
- * Masked by value on textbox lines (and a textbox's own text children) only,
- * so a short password never blanks ordinary page text that contains it.
- */
 export function maskPasswords(
   tree: string,
   secrets: readonly string[],
@@ -51,10 +37,6 @@ export function maskPasswords(
     .join("\n");
 }
 
-/**
- * Playwright's own whitespace normalization of a printed value: a password
- * "correct  horse" prints as "correct horse" and must still match.
- */
 function asPrinted(value: string): string {
   return value
     .replace(/[\u200b\u00ad]/g, "")

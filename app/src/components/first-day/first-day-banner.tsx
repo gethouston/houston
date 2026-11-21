@@ -12,14 +12,6 @@ import type { FirstDayPlacement } from "./first-day-model";
 import { startFirstDay } from "./start-first-day";
 import { useTrackFirstDayNeedsAi } from "./use-track-needs-ai";
 
-/**
- * The team board's calm note while employees wait for their first day. Each
- * employee is a chip that starts that first day in one tap: the note already
- * says what the tap does, and the setup chat opens right here beside the
- * board, so a detour through the employee's own board would only add a step.
- * With no AI connected no first day could run, so the chips give way to one
- * button into the AI Hub (the composer's own gate).
- */
 export function FirstDayBanner({ agents }: { agents: Agent[] }) {
   const { t } = useTranslation("board");
   const gate = useConnectAiGate();
@@ -53,7 +45,6 @@ export function FirstDayBanner({ agents }: { agents: Agent[] }) {
   );
 }
 
-/** One chip per waiting employee; a tap starts that employee's first day. */
 function FirstDayChips({ agents }: { agents: Agent[] }) {
   const { t } = useTranslation("board");
   return (
@@ -79,11 +70,6 @@ function FirstDayChips({ agents }: { agents: Agent[] }) {
   );
 }
 
-/**
- * What a board shows ABOVE its tasks for the first day: the compact offer on
- * one employee's board, the banner on the team's. The hero is not here: it
- * replaces the empty board rather than leading it.
- */
 export function FirstDayLead({
   placement,
 }: {

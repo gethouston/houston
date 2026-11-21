@@ -2,7 +2,6 @@ import { strictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
 import { decodeIdTokenClaims } from "../src/lib/identity/id-token.ts";
 
-/** Build a fake unsigned JWT with the given claims payload. */
 function fakeJwt(claims: unknown): string {
   const b64url = (obj: unknown) =>
     Buffer.from(JSON.stringify(obj))

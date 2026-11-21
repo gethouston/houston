@@ -9,12 +9,6 @@ import {
   isFirstDayNotPending,
 } from "./index";
 
-/**
- * The first-day lifecycle as the SDK owns it: a new hire is born pending in
- * its own create (its config rides the seeds), and the start is ONE request
- * whose answer every surface reads the same way.
- */
-
 const BASE = "http://127.0.0.1:4317";
 
 interface Call {
@@ -196,7 +190,6 @@ describe("the first-day refusal classifiers", () => {
     };
     expect(isFirstDayNoProvider(notStarted)).toBe(false);
     expect(isFirstDayNotPending(notStarted)).toBe(false);
-    // The send path's own code on a first-day route is not this refusal.
     expect(
       isFirstDayNoProvider({ status: 409, body: { code: "no_provider" } }),
     ).toBe(false);

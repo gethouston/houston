@@ -1,6 +1,5 @@
 import type { ApiKeyConnectReason } from "./api-key-connect-error";
 
-/** Verification verdicts (from the engine's typed `reason`) → inline copy. */
 const REASON_COPY = {
   invalid_key: "apiKey.errorInvalidKey",
   key_restricted: "apiKey.errorKeyRestricted",
@@ -14,22 +13,6 @@ export type ApiKeyReasonCopyKey =
   | "apiKey.errorHuggingfaceInferenceGated"
   | "apiKey.errorGoogleKeyRestricted";
 
-/**
- * The `providers` namespace key the connect dialog renders for a verdict.
- * Providers whose rejection has a KNOWN remedy get their own sentence; the
- * generic "check the key" / "create a key without restrictions" copy sent
- * those users in circles:
- *  - NVIDIA `key_restricted` is an ACCOUNT gate: NVIDIA has to enable
- *    "Public API Endpoints" on the account's org (HOU-890).
- *  - Bedrock's console lists keys by NAME and shows the VALUE once, so a
- *    rejected key is usually the name pasted in place of the value
- *    (PRODUCT-1477).
- *  - Hugging Face `key_restricted` is a fine-grained token missing the
- *    "Make calls to Inference Providers" permission (PRODUCT-1730).
- *  - Google `key_restricted` is the key's own restrictions in AI Studio /
- *    Cloud Console, or the Gemini API not enabled on its project
- *    (PRODUCT-1730).
- */
 export function apiKeyReasonCopyKey(
   providerId: string,
   reason: ApiKeyConnectReason,

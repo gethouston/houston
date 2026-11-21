@@ -24,9 +24,6 @@ describe("the launch-time update dialog uses the shared frame", () => {
       source,
       /shadow-\[|bg-black\/|role="alertdialog"|rounded-2xl|border-line/,
     );
-    // The one layering rule the gate keeps: above the tutorial band
-    // (`z-[60]`, tutorial-spotlight-veil.tsx), which would otherwise paint
-    // its cutout veil over the install's recovery controls.
     match(source, /className="[^"]*\bz-\[70\]/);
     doesNotMatch(source, /z-\[(?![67]0\])/);
   });
@@ -47,8 +44,6 @@ describe("the launch-time update dialog uses the shared frame", () => {
     match(source, /<AlertDialog\s+open\s/);
     match(source, /onOpenChange=\{\(\) => undefined\}/);
     match(source, /onEscapeKeyDown=\{\(event\) => event\.preventDefault\(\)\}/);
-    // An alert dialog with no Cancel gets no focus from Radix; the content
-    // takes it, or the user's focus is stranded on the inert app behind.
     match(source, /onOpenAutoFocus=/);
     match(source, /tabIndex=\{-1\}/);
     doesNotMatch(source, /<AlertDialog(?:Cancel|Action)\b/);

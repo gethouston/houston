@@ -16,19 +16,6 @@ import {
 } from "./assistant-sandbox";
 import { liveTurns } from "./live-turn";
 
-/**
- * The runtime-facing operation dispatcher. What these pin: only a valid sandbox
- * token gets in, an unconfigured deployment says so instead of pretending, an
- * operation the catalog does not publish as callable is refused (fail closed)
- * rather than forwarded, a published one becomes exactly the request the
- * catalog's route describes, and it reaches the gateway carrying the GATEWAY's
- * credential plus the caller's verified acting identity — never the sandbox
- * token.
- *
- * The catalog here is a FIXTURE, never the generated one: these pin the
- * dispatcher, which must not move when the real catalog's operations do.
- */
-
 const CATALOG: AssistantCatalog = {
   version: 3,
   sourceHash: "fixture",
@@ -222,8 +209,6 @@ const CATALOG: AssistantCatalog = {
         { name: "role", required: false, schema: { type: "string" } },
       ],
       returns: { type: "object" },
-      // The client assembles this body from an inline object literal, so the
-      // catalog names each key's parameter instead of one whole-body parameter.
       route: {
         method: "POST",
         path: "/v1/org/members",
@@ -249,8 +234,6 @@ const CATALOG: AssistantCatalog = {
         { name: "relPath", required: true, schema: { type: "string" } },
       ],
       returns: { type: "object" },
-      // `relPath` is a relative PATH, not a segment: its separators address
-      // folders, so they must survive while each segment is escaped on its own.
       route: {
         method: "GET",
         path: "/agents/{agentId}/agentfile/{relPath}",
@@ -318,8 +301,6 @@ const CATALOG: AssistantCatalog = {
           resolver: "agents",
           source: "listAgents",
         },
-        // `source` is how a parameter says it names a chat — the declaration
-        // the protected-chat guard reads (assistant-protected-chat.ts).
         {
           name: "id",
           required: true,
@@ -456,16 +437,8 @@ const CATALOG: AssistantCatalog = {
   ],
 };
 
-/** The assistant's own sandbox, plus an ordinary agent's — every agent on a
- *  desktop holds one of these, which is exactly why the claim is scoped. */
 const ASSISTANT_AGENT = "w1/.assistant";
 
-/**
- * The agents this caller can address. Identifiers are never guessed: every
- * agent-naming parameter is resolved against THIS set before a request is
- * built, so the route's tests need a real one. Ids are written out (rather than
- * generated) so the expected gateway URLs below can name them.
- */
 const WORKSPACE: Workspace = {
   id: "w1",
   ownerUserId: "u1",
@@ -478,7 +451,6 @@ const WORKSPACE: Workspace = {
 const AGENTS: Agent[] = [
   { id: "Work/Ada", workspaceId: WORKSPACE.id, name: "Ada", createdAt: 0 },
   { id: "Work/Dobby", workspaceId: WORKSPACE.id, name: "Dobby", createdAt: 0 },
-  // Dot-named: Houston's own, never addressable and never a match.
   {
     id: ASSISTANT_AGENT,
     workspaceId: WORKSPACE.id,
@@ -572,7 +544,6 @@ function fetchStub(
   return { calls, impl };
 }
 
-/** The single request that reached the gateway, or a failure naming its absence. */
 function sent(calls: Captured[]): Captured {
   const [first] = calls;
   if (!first) throw new Error("no request reached the gateway");
@@ -590,18 +561,12 @@ interface CallOpts {
   path?: string;
   gatewayFronted?: boolean;
   approvals?: ApprovalStore;
-  /** Call as a runtime with no turn of the host's running behind it (S9). */
   noLiveTurn?: boolean;
-  /** Operations THIS deployment cannot perform (local/host-base.ts). */
   unserved?: string[];
-  /** Missions on every agent's board, for the guards that read it. */
   activities?: Activity[];
 }
 
 async function call(body: unknown, opts: CallOpts = {}) {
-  // Production records the turn when the user's send arrives
-  // (routes/agents.ts), and every write is refused without one. Tests that pin
-  // the gate itself start their own record (or ask for none at all).
   const claimed =
     opts.conversationId === null
       ? undefined
@@ -653,11 +618,6 @@ async function call(body: unknown, opts: CallOpts = {}) {
   return { handled, ...out.out };
 }
 
-/**
- * A `confirm: true` call the user already approved: the store issues the
- * request the card carried, the user's reply decides it, and the call presents
- * the id back — the whole three-step contract, from the outside.
- */
 async function approvedCall(
   operation: string,
   params: Record<string, unknown>,
@@ -711,8 +671,6 @@ test("a bad sandbox token is rejected before anything else happens", async () =>
   expect(calls).toHaveLength(0);
 });
 
-// The credential IS the switch: with no gateway configured the route must name
-// that state, not fall through to some default destination.
 test("an unconfigured deployment answers 501 with a named code", async () => {
   const { calls, impl } = fetchStub(() => ({ body: {} }));
   const out = await call(
@@ -738,8 +696,6 @@ test("an operation this host does not route is refused, never forwarded", async 
   expect(calls).toHaveLength(0);
 });
 
-// A body with no operation at all must land in the same fail-closed branch as a
-// bogus name — never in a lookup that could resolve to an inherited property.
 test.each([
   ["an absent operation", {}],
   ["a non-string operation", { operation: 42 }],
@@ -765,7 +721,6 @@ test("a routed read reaches the gateway under the GATEWAY's bearer token", async
   expect(calls).toHaveLength(1);
   expect(sent(calls).url).toBe("https://gateway.test/v1/orgs");
   expect(sent(calls).method).toBe("GET");
-  // The runtime's sandbox token must never travel upstream.
   expect(sent(calls).headers.Authorization).toBe("Bearer gw-token");
   expect(out.status).toBe(200);
   expect(out.body).toEqual({ orgs: [] });
@@ -802,7 +757,6 @@ test("named arguments become the gateway's path, query and body", async () => {
     },
     { fetchImpl: impl },
   );
-  // The id is percent-escaped exactly as HoustonClient.seg escapes it.
   expect(sent(calls).url).toBe(
     "https://gateway.test/v1/routines/r%201-x?agentPath=Work%2FAda",
   );
@@ -860,8 +814,6 @@ test("a whole-parameter body is forwarded as the gateway's JSON body", async () 
   expect(sent(calls).headers["Content-Type"]).toBe("application/json");
 });
 
-// The client builds these bodies from an inline object literal; a dispatcher
-// that read only the whole-parameter form would send them with NO body at all.
 test("a field-mapped body is assembled from its named parameters", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { invited: true } }));
   await approvedCall(
@@ -876,8 +828,6 @@ test("a field-mapped body is assembled from its named parameters", async () => {
   });
 });
 
-// `JSON.stringify` drops the undefined properties of the client's own literal,
-// so an omitted optional field must be absent here too — never an explicit null.
 test("an omitted optional body field is left out of the body", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { invited: true } }));
   await approvedCall(
@@ -901,9 +851,6 @@ test("a path placeholder is substituted and percent-escaped", async () => {
   );
 });
 
-// A `path`-encoded parameter carries a relative path: collapsing it into one
-// segment would address a file literally named `board/activity one.json`
-// instead of that file inside `board`.
 test("a path-encoded parameter keeps its separators while escaping each segment", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { content: "{}" } }));
   await call(
@@ -929,8 +876,6 @@ test("a missing path parameter is a 400, never a request to a mangled URL", asyn
   expect(calls).toHaveLength(0);
 });
 
-// Hidden must be indistinguishable from absent: the same refusal as a name that
-// was never catalogued, so the hidden set is not a list of things to go find.
 test("a hidden operation is refused exactly like an unknown one", async () => {
   const { calls, impl } = fetchStub(() => ({ body: {} }));
   const out = await call(
@@ -953,8 +898,6 @@ test("a catalogued operation with no derivable route is refused", async () => {
   expect(calls).toHaveLength(0);
 });
 
-// A configured gateway with no catalog is a BROKEN image, not an off one: the
-// deployment promised operations and packaged nothing to perform them with.
 test("a configured host with no catalog answers 503, not a forwarded guess", async () => {
   const err = vi.spyOn(console, "error").mockImplementation(() => {});
   const { calls, impl } = fetchStub(() => ({ body: {} }));
@@ -1000,8 +943,6 @@ test("an unreachable gateway is a 502 that says so", async () => {
   err.mockRestore();
 });
 
-// A 2xx that is not JSON means something other than the gateway answered; it
-// must not reach the agent as a successful operation.
 test("a non-JSON 2xx becomes a 502 rather than a success", async () => {
   const err = vi.spyOn(console, "error").mockImplementation(() => {});
   const { impl } = fetchStub(() => ({ raw: "<html>proxy</html>" }));
@@ -1021,17 +962,6 @@ test("a non-POST on the route is rejected", async () => {
   expect(out.status).toBe(405);
 });
 
-// Where the gateway pair comes from (env / this host / nowhere) is the
-// wiring resolver's contract — see assistant-wiring.test.ts.
-
-/**
- * A1 — the claim is AUTHORIZATION, not just authentication.
- *
- * Every agent on a desktop carries a valid sandbox token. Before this, the
- * route only checked that the token verified and then forwarded the operation
- * with the gateway credential, so any agent could post `deleteRoutine` and
- * Houston would perform it, with no card and no trace of who asked.
- */
 test("another agent's sandbox token is refused, even though it is valid", async () => {
   const { calls, impl } = fetchStub(() => ({ body: {} }));
   const out = await call(
@@ -1050,8 +980,6 @@ test("another agent cannot raise an approval request either", async () => {
   expect(out.status).toBe(401);
 });
 
-// On a managed pod the gateway hands ONE pod's operation credential to ONE
-// agent, so the only claim this host can decode already is that agent's.
 test("on a gateway-fronted pod the pod's own agent is the assistant", async () => {
   vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "owner");
   const { calls, impl } = fetchStub(() => ({ body: [] }));
@@ -1063,11 +991,6 @@ test("on a gateway-fronted pod the pod's own agent is the assistant", async () =
   expect(calls).toHaveLength(1);
 });
 
-/**
- * A1 (second half) — the confirmation lock lives HERE, not in the runtime. A
- * runtime that never showed a card, or a caller addressing the route directly
- * with the sandbox token it already holds, performs nothing.
- */
 test("a confirm operation with no receipt is refused, and nothing is forwarded", async () => {
   const { calls, impl } = fetchStub(() => ({ body: {} }));
   const out = await call(
@@ -1105,7 +1028,6 @@ test("an approved receipt lets the call through and answers the gateway's reply"
   expect(calls).toHaveLength(1);
 });
 
-/** A4 — single use. One click performs one action, never a second. */
 test("a receipt is spent once: the identical call after it is refused", async () => {
   const approvals = new ApprovalStore();
   const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
@@ -1135,7 +1057,6 @@ test("a receipt is spent once: the identical call after it is refused", async ()
   expect(calls).toHaveLength(1);
 });
 
-/** A2 — the receipt is bound to the exact bytes, not to a card's wording. */
 test("a receipt minted for other params does not authorize these", async () => {
   const approvals = new ApprovalStore();
   const { calls, impl } = fetchStub(() => ({ body: {} }));
@@ -1243,7 +1164,6 @@ test("a denial is reported as a denial, and performs nothing", async () => {
   expect(calls).toHaveLength(0);
 });
 
-/** The `/pending` half: what the card is made of, and what it refuses to raise. */
 test("a pending request returns an id and the wording the card will show", async () => {
   const approvals = new ApprovalStore();
   const out = await call(
@@ -1274,7 +1194,6 @@ test("one constrained hire spends a grant and its receipt in the call gate", asy
   );
   expect(pending.body).toMatchObject({ preApproved: true });
   const requestId = (pending.body as { requestId: string }).requestId;
-  // Pre-approved: no card is put in front of the person.
   expect(
     approvals.pending(requestId, ASSISTANT_AGENT, "conv-1"),
   ).toBeUndefined();
@@ -1385,10 +1304,6 @@ test("a pending request with arguments the operation refuses is a 400", async ()
   expect(out.body).toMatchObject({ code: "invalid_params" });
 });
 
-// An unattended turn (a routine) has nobody to ask, so there is nowhere for an
-// answer to arrive and nothing may be raised in the first place. A call that
-// names no conversation at all names no turn either, which is the earlier and
-// stricter of the two refusals (routes/plan-gate.ts).
 test("a pending request with no conversation is refused", async () => {
   const out = await call(
     { operation: "deleteRoutine", params: { agentPath: "Work/Ada", id: "r1" } },
@@ -1407,15 +1322,6 @@ test("a hidden operation cannot be raised for approval either", async () => {
   expect(out.body).toMatchObject({ code: "operation_not_supported" });
 });
 
-/**
- * IDENTIFIERS ARE NEVER GUESSED (the incident this closes: a model asked to act
- * on "Dobby" sent the word "Dobby" into a route that wants an id, got a 404
- * with nothing in it to correct from, and invented another spelling).
- *
- * The route resolves every agent-naming parameter against the agents that
- * actually exist for this caller BEFORE building the request, and a reference
- * that resolves to nothing comes back naming the ones that would have.
- */
 test("an agent named by the word the user said reaches the gateway as its id", async () => {
   const { calls, impl } = fetchStub(() => ({ body: null }));
   const out = await call(
@@ -1453,16 +1359,10 @@ test("a name nothing matches is refused with the agents that would have, and not
   const { error } = out.body as { error: string };
   expect(error).toContain("Dobby (id Work/Dobby, in Work)");
   expect(error).toContain("Ada (id Work/Ada, in Work)");
-  // Houston's own dot-agent is not a place work can go, so it is never offered.
   expect(error).not.toContain(".assistant");
   expect(calls).toHaveLength(0);
 });
 
-/**
- * The card and the receipt must describe the SAME bytes: an approval raised for
- * the word the user said is spent by the call that runs against the resolved
- * id, and nothing else.
- */
 test("an approval raised for a spoken name is spent by the call that runs on the id", async () => {
   const approvals = new ApprovalStore();
   const pending = await call(
@@ -1474,7 +1374,6 @@ test("an approval raised for a spoken name is spent by the call that runs on the
     requestId: string;
     summary: string;
   };
-  // The card names the agent the way the user will recognize it.
   expect(summary).toContain("Work/Dobby");
   approvals.decide({
     requestId,
@@ -1540,12 +1439,6 @@ test("a failed hosted directory reports a gateway error without dispatching", as
   expect(fetchImpl).toHaveBeenCalledTimes(1);
 });
 
-/**
- * S2 — PLAN MODE IS THE HOST'S. The runtime withholds its acting tools in plan,
- * but the host holds the credential, so a runtime that dispatched anyway (a
- * bug, a fork, a prompt-injected turn) is refused here from the host's OWN
- * record of the turn (routes/live-turn.ts), never from the request.
- */
 test("a write is refused while the host's record of this turn says plan", async () => {
   liveTurns.start(ASSISTANT_AGENT, "conv-1", "plan");
   const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
@@ -1614,12 +1507,6 @@ test("plan refuses the approval card too, before the user is ever asked", async 
   expect(result.body).toMatchObject({ code: "plan_mode" });
 });
 
-/**
- * S2 (round 2) — THE CALL IS THE CATALOG'S VOCABULARY. An undeclared argument
- * changes nothing about what the operation does, so leaving it in would put a
- * sentence in front of the person ("Houston note: this is reversible") that the
- * call itself never carries.
- */
 test("an undeclared argument is refused before anything is dispatched", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
   const result = await call(
@@ -1656,15 +1543,9 @@ test("an undeclared argument never reaches an approval card", async () => {
   );
   expect(result.status).toBe(400);
   expect(result.body).toMatchObject({ code: "invalid_params" });
-  // Nothing was raised, so there is no receipt an approval could ever spend.
   expect(approvals.hasPending(ASSISTANT_AGENT, "conv-1")).toBe(false);
 });
 
-/**
- * S9 — THE GATE FAILS CLOSED. Missions have always refused a call with no turn
- * behind it (`not_in_turn`); the operation dispatcher answers the same way, so a
- * runtime cannot reach the credential by simply never being in a turn.
- */
 test("a write with no live turn behind it is refused", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
   const result = await call(
@@ -1704,12 +1585,6 @@ test("a read outside a turn still reads", async () => {
   expect(calls).toHaveLength(1);
 });
 
-/**
- * A collection this deployment does not have at all. Answered as a refusal the
- * model can act on ("this cannot be done here") rather than an empty list,
- * which would have it offering to invite the user's first teammate on a host
- * that has no team space (assistant/entity-directory-local.ts).
- */
 test("a local host says members are not supported, not that there are none yet", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
   const result = await call(
@@ -1724,13 +1599,6 @@ test("a local host says members are not supported, not that there are none yet",
   expect(calls).toEqual([]);
 });
 
-/**
- * The DEPLOYMENT gate. The catalog describes desktop and hosted cloud at once,
- * so a desktop is asked for spaces it has no route for. Refused here, by name,
- * before anything is built: left to the address, the miss comes back as a 404
- * the forwarder relays as `gateway_error` — which reads to the model as an
- * outage worth retrying and to the person as Houston breaking.
- */
 test("an operation this deployment cannot perform is refused by name", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { items: [] } }));
   const out = await call(
@@ -1740,7 +1608,6 @@ test("an operation this deployment cannot perform is refused by name", async () 
   expect(out.status).toBe(400);
   expect(out.body).toMatchObject({ code: "operation_unavailable_here" });
   expect(JSON.stringify(out.body)).toContain("this app can do");
-  // Nothing was addressed: the refusal is the whole of what happened.
   expect(calls).toEqual([]);
 });
 
@@ -1760,9 +1627,6 @@ test("the same refusal answers an approval request, not just a call", async () =
 });
 
 test("a withheld operation still reads as one that does not exist", async () => {
-  // `rotateEngineSecret` is hidden. Naming it in the unserved set must not give
-  // it a different answer from any other unknown name: the hidden set is not a
-  // hint list, and "unavailable here" would confirm it exists.
   const out = await call(
     { operation: "rotateEngineSecret", params: {} },
     {
@@ -1783,11 +1647,6 @@ test("an empty unserved set withholds nothing", async () => {
   expect(calls).toHaveLength(1);
 });
 
-/**
- * THE CHATS THAT ARE NOT THE ASSISTANT'S TO RENAME OR DELETE: the one this turn
- * is running in, and the ones a mission card or a routine owns
- * (assistant-protected-chat.ts).
- */
 test("the chat this turn is running in cannot be renamed from inside itself", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
   const out = await call(
@@ -1835,8 +1694,6 @@ test("any other chat is renamed exactly as before", async () => {
 });
 
 test("a mission's transcript belongs to its card, and the refusal says so", async () => {
-  // Deleting it would leave the card on the board pointing at a chat that is
-  // gone, with no screen anywhere that would put it back.
   const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
   const out = await approvedCall(
     "conversations.delete",
@@ -1867,9 +1724,6 @@ test("a routine's chat belongs to the routine, and the refusal says so", async (
   expect(calls).toEqual([]);
 });
 
-/** A mission whose chat is NOT at the convention address — the shape live
- *  boards carry (a welcome chat, a card whose key was patched after it was
- *  created). Only the board itself says that this id is a mission's. */
 const WELCOME: Activity = {
   id: "m9",
   title: "Welcome",
@@ -1907,8 +1761,6 @@ test("a chat no card on the board claims is still the assistant's to delete", as
 });
 
 test("a differently-cased spelling reaches the same chat, so it is refused too", async () => {
-  // macOS and Windows resolve `ACTIVITY-m1.json` to `activity-m1.json`: the
-  // case is not a different chat, it is the same one asked for differently.
   const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
   for (const id of ["ACTIVITY-m1", "Routine-r1-run-2"]) {
     const out = await call(
@@ -1947,8 +1799,6 @@ test("the chat this turn runs in is itself, whatever case it is asked for in", a
 });
 
 test("stopping a mission's turn is still the assistant's to do", async () => {
-  // The guard claims the chat's own address, never what happens inside it: a
-  // mission the user wants stopped is cancelled exactly as before.
   const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
   const out = await call(
     {
@@ -2025,7 +1875,6 @@ test("only the pre-approved call itself can hand its grant back", async () => {
     { approvals, path: ASSISTANT_PENDING_PATH },
   );
   const requestId = (pending.body as { requestId: string }).requestId;
-  // A read the app refuses, presenting the hire's request id.
   const { impl } = fetchStub(() => ({ status: 404, body: { error: "no" } }));
   await call(
     { operation: "listOrgs", params: {}, requestId },

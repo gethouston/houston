@@ -147,8 +147,6 @@ mod tests {
 
     #[test]
     fn success_page_is_self_contained() {
-        // The helmet is inlined SVG and there's no raster `<img>`, so nothing
-        // gets fetched from the loopback (which serves only these pages).
         let page = success_page();
         assert!(page.contains("<svg"));
         assert!(!page.contains("<img"));
@@ -156,15 +154,11 @@ mod tests {
 
     #[test]
     fn success_page_has_open_houston_deep_link() {
-        // The "Open Houston" button focuses the app via the `houston://`
-        // scheme (handled in lib.rs), not an http URL.
         assert!(success_page().contains(r#"href="houston://open""#));
     }
 
     #[test]
     fn stale_page_explains_itself_and_offers_no_action() {
-        // The stale tab must not invite the user back into the app as if it had
-        // signed them in — the real attempt is still waiting in the Houston window.
         let page = stale_page();
         assert!(page.contains("expired"));
         assert!(!page.contains("houston://open"));

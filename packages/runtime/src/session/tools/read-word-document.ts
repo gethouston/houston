@@ -66,11 +66,6 @@ function docxText(xml: string): string {
   return parts.join("");
 }
 
-/**
- * Text of a .docx/.doc, a note when it can't be read, or undefined for content
- * that isn't a Word container at all: RTF or HTML saved as .doc is already
- * text, so pi's plain read handles it.
- */
 export function readWordDocument(buffer: Buffer): string | undefined {
   if (buffer.subarray(0, 8).equals(CFB_MAGIC)) return LOCKED_OR_LEGACY_WORD;
   if (buffer.subarray(0, 2).toString("latin1") !== "PK") return undefined;

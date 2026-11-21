@@ -5,11 +5,6 @@ import {
   refusesInteractionAnswer,
 } from "./interaction-owner";
 
-/**
- * Only the person a card is for can answer it: the card belongs to whoever
- * sent the message that started the turn that raised it.
- */
-
 const question = {
   steps: [{ kind: "question" as const, id: "q1", question: "Send it?" }],
 };
@@ -86,7 +81,6 @@ describe("interactionOwner", () => {
   });
 
   test("turnId picks the turn's own message, not the nearest one", () => {
-    // A's message landed after B's turn started; B's turn still raised the card.
     expect(
       interactionOwner([
         user("b", "t2"),
@@ -114,7 +108,6 @@ describe("interactionOwner", () => {
         reply({ pendingInteraction: question }, "t1"),
       ]),
     ).toBe(undefined);
-    // The card's turn has an id no stored message carries.
     expect(
       interactionOwner([
         user("a", "t0"),

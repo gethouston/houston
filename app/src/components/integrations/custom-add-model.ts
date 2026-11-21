@@ -3,8 +3,6 @@ import type {
   CustomDetectResult,
 } from "@houston/engine-adapter";
 
-/** The manual add form's state (HOU-980). `url` doubles as the OpenAPI
- *  document URL and the MCP endpoint, whichever `kind` says. */
 export interface CustomAddForm {
   kind: "openapi" | "mcp";
   url: string;
@@ -19,19 +17,10 @@ export const EMPTY_CUSTOM_ADD_FORM: CustomAddForm = {
   needsKey: false,
 };
 
-/** Only http(s) URLs make sense for a remote spec / MCP endpoint. */
 export function isServiceUrl(url: string): boolean {
   return /^https?:\/\/\S+$/i.test(url.trim());
 }
 
-/**
- * Fold a detect result into the form: adopt the detected kind, fill a name
- * the user has not typed yet, and flip "needs a key" on when the probe hit an
- * auth wall — but NOT an OAuth wall: that server wants its own sign-in flow,
- * which a pasted key can never satisfy (the verdict line says so instead).
- * Never overwrites what the user already wrote, and an `unknown` result
- * changes nothing (the caller shows the "couldn't recognize it" line).
- */
 export function applyDetect(
   form: CustomAddForm,
   result: CustomDetectResult,
@@ -48,10 +37,6 @@ export function applyDetect(
   };
 }
 
-/** The i18n key for the one-line detect verdict under the URL field. An
- *  OAuth-walled MCP server splits on the host-reported `oauthSupported`
- *  (PRODUCT-1172): supported reads as good news (you'll sign in after
- *  adding), unsupported keeps the honest refusal. */
 export function detectSummaryKey(
   result: CustomDetectResult,
 ):
@@ -70,13 +55,6 @@ export function detectSummaryKey(
   return "custom.add.detected.unknown";
 }
 
-/** An MCP verdict that says the server only signs in with its own account
- *  flow BLOCKS submission ONLY where this deployment cannot run that sign-in
- *  (the host says so via `oauthSupported`, PRODUCT-1172): there a pasted key
- *  can never satisfy OAuth and adding would land a permanently broken
- *  "0 actions" integration. Where sign-in IS supported the add proceeds with
- *  auth `oauth` and chains into the browser. The verdict line above the
- *  button explains either way (always visible, never hover-gated). */
 export function oauthBlocked(
   form: CustomAddForm,
   result: CustomDetectResult | null,
@@ -88,10 +66,6 @@ export function oauthBlocked(
   );
 }
 
-/** The wire input for a complete form, or `null` while a required field is
- *  missing/invalid (the Add button stays disabled — nothing to submit yet).
- *  `detect` (the shown verdict) upgrades a supported OAuth-walled MCP add to
- *  auth `oauth`. */
 export function addInputFrom(
   form: CustomAddForm,
   detect?: CustomDetectResult | null,

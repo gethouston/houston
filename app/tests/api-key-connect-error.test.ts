@@ -5,11 +5,6 @@ import {
   isApiKeyUserRejection,
 } from "../src/lib/api-key-connect-error.ts";
 
-// The two adapter error shapes the connect dialog can catch: the cloud control
-// plane throws with a PARSED JSON body (HoustonEngineError), the local
-// runtime-client with the RAW response text (EngineError). Both must yield the
-// engine's typed reason; anything else must yield null (generic copy).
-
 const cloudError = (body: unknown) => Object.assign(new Error("x"), { body });
 const localError = (text: string) =>
   Object.assign(new Error("x"), { body: text });
@@ -56,9 +51,6 @@ describe("apiKeyConnectReason", () => {
   });
 });
 
-// A user-fixable verdict is silenced by `tauriProvider.setApiKey` (no toast, no
-// Sentry) and rendered inline; a no-verdict outage and a reason-less failure
-// stay loud (PRODUCT-1730). A false positive here drops a real bug report.
 describe("isApiKeyUserRejection", () => {
   it("matches the two verdicts the user fixes, on both error shapes", () => {
     strictEqual(

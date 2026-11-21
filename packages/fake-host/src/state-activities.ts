@@ -1,8 +1,3 @@
-/**
- * Board activities — backed by the SAME `.houston/activity/activity.json` the
- * board reads, so a chat turn flipping a card's status shows up on the board.
- */
-
 import { addressesMission } from "@houston/domain/conversation-keys";
 import {
   type Activity,
@@ -32,40 +27,25 @@ export function createActivity(
   input: Partial<Activity>,
 ): Activity {
   const activity: Activity = {
-    // The real host honors a client-generated id (HOU-693) — mirror it so
-    // optimistic flows (warming missions, the welcome mission) round-trip.
     id: input.id ?? `act-${++state.activitySeq}`,
     title: input.title ?? "Untitled",
     description: input.description ?? "",
     status: input.status ?? "running",
     session_key: input.session_key,
     updated_at: ISO,
-    // Teams attribution (created_by / contributors) and the @mention aggregate
-    // are server-stamped in the real host; accept them off the POST body so an
-    // e2e spec can seed an attributed or mentioned mission. Explicit keys only
-    // — an unknown field is still dropped.
     ...(input.created_by !== undefined && { created_by: input.created_by }),
     ...(input.contributors !== undefined && {
       contributors: input.contributors,
     }),
     ...(input.mentioned !== undefined && { mentioned: input.mentioned }),
-    // The mode sentinel a setup task carries (the first-day route stamps it).
     ...(input.agent !== undefined && { agent: input.agent }),
-    // The conversation's turn mode, as the real host's createActivity keeps it.
     ...(input.mode !== undefined && { mode: normalizeTurnMode(input.mode) }),
-    // The agent-started marker (PRODUCT-1244) is stamped by the real host's
-    // missions route, never by a client POST — accept it here for the same
-    // reason as the attribution keys: an e2e needs to seed a child mission.
     ...(input.origin_session_key !== undefined && {
       origin_session_key: input.origin_session_key,
     }),
-    // The last message time is stamped by the real host when a message lands;
-    // accepted here so an e2e can seed a card in any time-label bucket.
     ...(input.last_message_at !== undefined && {
       last_message_at: input.last_message_at,
     }),
-    // Which AI started it (PRODUCT-1928): the real host stamps it from the
-    // verified caller; accepted here so an e2e can seed a Houston-started card.
     ...(isMissionStarter(input.started_by) && {
       started_by: input.started_by,
     }),
@@ -86,11 +66,6 @@ export function updateActivity(
   activity.last_message_at ??= activity.updated_at ?? ISO;
   Object.assign(activity, rest, { updated_at: ISO });
   if (stamp === "last_message") activity.last_message_at = ISO;
-  // Same rule as the real host (`applyActivityUpdate` in @houston/domain),
-  // resolved through the one shared helper: `null` DELETES the key (never store
-  // null, or a later read fails the shape guard), a valid object records it, and
-  // an absent or malformed one leaves it alone EXCEPT on a move to Done, which
-  // strips the blocking steps and keeps the clean-finish offers.
   const outcome = resolveInteractionPatch({
     patched: pending_interaction,
     stored: activity.pending_interaction,
@@ -102,12 +77,6 @@ export function updateActivity(
   setActivities(agentId, items);
   return activity;
 }
-/**
- * Clear the pending interaction of the activity bound to this conversation —
- * matched by the domain's own rule (`addressesMission`), the same one the app's
- * activity-status writer uses — mirroring the runtime dismiss passthrough.
- * No-op when no activity matches or it had none.
- */
 export function clearActivityInteraction(
   agentId: string,
   sessionKey: string,

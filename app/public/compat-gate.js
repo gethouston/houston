@@ -1,45 +1,6 @@
-// Compatibility gate — runs BEFORE the app bundle.
-//
-// index.html loads this as a classic (non-module) <script defer> in <head>.
-// `defer` scripts and module scripts execute in document order after the
-// document is parsed, so this runs ahead of the deferred app bundle (it comes
-// first in the document) AND after #root exists. It must NOT be parser-blocking:
-// a parser-blocking <head> script runs before <body> is parsed, so
-// getElementById("root") would return null and nothing would paint. It lives in
-// public/ so Vite copies it verbatim and never bundles it — keeping it free of
-// the modern syntax that the app bundle ships.
-//
-// Two jobs:
-//
-// 1. Old-WebKit detection. macOS Monterey commonly ships WebKit < 16.4, which
-//    predates regex lookbehind. Our markdown stack contains a top-level
-//    lookbehind regex *literal*, so the engine throws "SyntaxError: invalid
-//    group specifier name" while *evaluating* the app bundle, before React
-//    mounts. Nothing renders and no error boundary can run, so the user just
-//    sees a white screen (issue #102). We feature-test lookbehind via the
-//    RegExp constructor and paint a localized "update macOS" message.
-//
-// 2. Generic crash safety net for modern engines. The Monterey gate only
-//    catches one specific cause of white screen. Anything else (a Tahoe-only
-//    WebKit regression, a CSP block, a third-party script failing to load, a
-//    synchronous throw inside React.render) still produced a silent blank
-//    screen with nothing in the user-visible UI. Install a window error and
-//    unhandledrejection listener up front, plus a watchdog timer: if #root
-//    is still empty after MOUNT_TIMEOUT_MS, paint a localized "couldn't start"
-//    message with the captured error + diagnostics and a Copy button so the
-//    user has something to send to support@gethouston.ai instead of a blank.
-//
-// Written in conservative ES2015 (no optional chaining / nullish coalescing)
-// because this file is shipped as-authored, never run through esbuild.
 (() => {
-  // How long to wait for React to mount into #root before declaring a silent
-  // crash. Cold start with HMR off is typically well under 2s; 8s leaves slack
-  // for slow disks without making the user stare at white for a minute.
   var MOUNT_TIMEOUT_MS = 8000;
 
-  // Mirrors the app's shipped locales (en / es / pt). This runs before
-  // react-i18next exists, so the strings live here. Keep them in the product
-  // voice: no mention of WebKit/Safari, no em dashes.
   var MESSAGES = {
     en: {
       title: "Houston needs a newer version of macOS",
@@ -55,7 +16,6 @@
     },
   };
 
-  // Used when the watchdog or an early error fires. Same language matrix.
   var CRASH_MESSAGES = {
     en: {
       title: "Houston couldn't start",
@@ -87,11 +47,6 @@
     return "en";
   }
 
-  // Probes the one feature whose absence blanks the screen: regex lookbehind
-  // (WebKit 16.4+). Built with the RegExp *constructor* so this file itself
-  // parses on every engine — a regex literal here would fail to parse on
-  // exactly the engines we are detecting. The catch is feature detection, not a
-  // swallowed failure.
   function isModernEngineSupported(RegExpCtor) {
     try {
       new RegExpCtor("(?<=a)b");
@@ -102,8 +57,6 @@
   }
 
   function renderUnsupportedScreen(root, message) {
-    // Inline styles only — the app stylesheet may not parse on the unsupported
-    // engine, and explicit colors cover the viewport regardless.
     root.innerHTML =
       '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:#0d0d0f;color:#e8e8ea;font-family:system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;">' +
       '<div style="max-width:30rem;text-align:center;">' +
@@ -120,9 +73,6 @@
     return !!root && root.childElementCount > 0;
   }
 
-  // Builds a plain-text diagnostics blob the user can copy. No structured
-  // payload — the goal is something a non-technical user can paste into an
-  // email. Stays robust when `error` is null (silent stall) or partial.
   function captureDiagnostics(error, info) {
     var lines = [];
     lines.push(`Time: ${new Date().toISOString()}`);
@@ -184,9 +134,7 @@
       reloadBtn.addEventListener("click", () => {
         try {
           window.location.reload();
-        } catch (_e) {
-          /* nothing better we can do from inside the crash screen */
-        }
+        } catch (_e) {}
       });
     }
     if (copyBtn) {
@@ -202,9 +150,7 @@
             navigator.clipboard.writeText(diagnostics).then(done, done);
             return;
           }
-        } catch (_e) {
-          /* fall through to selection fallback */
-        }
+        } catch (_e) {}
         pre = root.querySelector("#houston-gate-diagnostics");
         if (
           pre &&
@@ -221,9 +167,6 @@
     }
   }
 
-  // Normalizes the two browser error shapes (`ErrorEvent`, `PromiseRejectionEvent`)
-  // into a flat record the diagnostics formatter consumes. Returns null when the
-  // event carries nothing useful so callers can ignore it.
   function errorFromErrorEvent(event) {
     if (!event) return null;
     var nested = event.error;
@@ -259,9 +202,6 @@
     return { message: "Unhandled promise rejection" };
   }
 
-  // Expose the pure helpers when loaded by the unit test (Node passes a
-  // `module` object). In the browser `module` is undefined, so we skip this and
-  // run the gate.
   if (typeof module !== "undefined" && module.exports) {
     module.exports = {
       MOUNT_TIMEOUT_MS: MOUNT_TIMEOUT_MS,
@@ -281,9 +221,6 @@
 
   if (typeof document === "undefined") return;
 
-  // 1) Monterey path — paint and stop. Skips the crash watchdog because #root
-  //    is already painted (rootHasMounted would short-circuit anyway, but this
-  //    also saves the listeners and timer).
   var unsupportedRoot;
   if (!isModernEngineSupported(RegExp)) {
     unsupportedRoot = document.getElementById("root");
@@ -296,8 +233,6 @@
     return;
   }
 
-  // 2) Modern engine — install the crash safety net. window/setTimeout may not
-  //    exist in non-browser hosts (Node SSR test harness); degrade silently.
   if (typeof window === "undefined" || typeof setTimeout === "undefined")
     return;
 
@@ -311,7 +246,7 @@
     (event) => {
       rememberError(errorFromErrorEvent(event));
     },
-    true, // capture, so we see errors from inline scripts even if they stopPropagation
+    true,
   );
   window.addEventListener("unhandledrejection", (event) => {
     rememberError(errorFromRejectionEvent(event));

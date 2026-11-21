@@ -8,14 +8,6 @@ import { currentTurnMode } from "../session/turn-mode-context";
 import { currentTurnModel } from "../session/turn-model-context";
 import { runTurn } from "./turn-session";
 
-/**
- * A pooled prompt runs inside the same per-turn context a standing runtime
- * establishes (session/exec-turn.ts): the conversation, the live mode and the
- * resolved model. Houston's tools read all three: an approval card needs the
- * conversation its answer arrives in, the host's live-turn gate reads the
- * mode, and a mission inherits the parent's model.
- */
-
 vi.mock("./turn-runtime", () => ({
   createTurnModelRuntime: async () => ({
     modelRuntime: {},

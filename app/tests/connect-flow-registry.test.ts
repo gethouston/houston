@@ -17,8 +17,6 @@ import {
 } from "../src/components/integrations/connect-flow-scope.ts";
 import type { Waker } from "../src/components/integrations/model.ts";
 
-/** A `Waker` that counts wakes and never really sleeps — enough to prove which
- *  flow got woken without any timers. */
 function countingWaker(): Waker & { wakes: number } {
   const w = {
     wakes: 0,
@@ -35,7 +33,6 @@ describe("connect-flow registry — per-slug single flight", () => {
     const reg = createRegistry();
     const first = beginFlow(reg, "gmail", countingWaker());
     strictEqual(first !== null, true);
-    // Same slug already in flight → null (the single-flight guard).
     strictEqual(beginFlow(reg, "gmail", countingWaker()), null);
   });
 
@@ -53,7 +50,6 @@ describe("connect-flow registry — per-slug single flight", () => {
     endFlow(reg, "gmail");
     strictEqual(reg.has("gmail"), false);
     strictEqual(reg.has("slack"), true);
-    // Freed slug can start a fresh flow.
     strictEqual(beginFlow(reg, "gmail", countingWaker()) !== null, true);
   });
 });
@@ -69,7 +65,6 @@ describe("connect-flow registry — cancel isolation", () => {
 
     strictEqual(a.cancelled, true);
     strictEqual((a.waker as ReturnType<typeof countingWaker>).wakes, 1);
-    // B must keep running — cancelling one app never stops the other.
     strictEqual(b.cancelled, false);
     strictEqual((b.waker as ReturnType<typeof countingWaker>).wakes, 0);
   });
@@ -85,11 +80,6 @@ describe("connect-flow registry — cancel isolation", () => {
 
 describe("connect-flow registry — only a user Cancel stops a flow", () => {
   it("exposes no bulk cancel: leaving a surface must not kill live polls", () => {
-    // The registry is ONE app-wide map now (`stores/connect-flow.ts`), shared by
-    // every surface. A "cancel everything on unmount" helper would mean walking
-    // from the Integrations tab to chat silently killed the OAuth the user is
-    // still finishing in their browser, so no such helper exists, and no hook
-    // may reintroduce one.
     const registry = readFileSync(
       new URL(
         "../src/components/integrations/connect-flow-registry.ts",
@@ -106,7 +96,6 @@ describe("connect-flow registry — only a user Cancel stops a flow", () => {
     );
     strictEqual(registry.includes("cancelAllFlows"), false);
     strictEqual(hook.includes("cancelAllFlows"), false);
-    // ...and the hook keeps no unmount teardown of its own.
     strictEqual(hook.includes("useEffect"), false);
   });
 
@@ -130,8 +119,6 @@ describe("connect-flow registry — cross-surface single flight", () => {
     const run = Promise.resolve("active" as const);
     entry.promise = run;
 
-    // The chat card asking for gmail while the Integrations tab is mid-OAuth
-    // must observe THAT flow's outcome, not start a rival hand-off.
     strictEqual(flowPromise(reg, "gmail"), run);
     strictEqual(await flowPromise(reg, "gmail"), "active");
     strictEqual(beginFlow(reg, "gmail", countingWaker()), null);
@@ -142,7 +129,6 @@ describe("connect-flow registry — cross-surface single flight", () => {
     strictEqual(flowPromise(reg, "slack"), null);
     const entry = beginFlow(reg, "slack", countingWaker());
     if (!entry) throw new Error("entry expected");
-    // Freshly claimed, before its run is attached.
     strictEqual(flowPromise(reg, "slack"), null);
     endFlow(reg, "slack");
     strictEqual(flowPromise(reg, "slack"), null);
@@ -167,14 +153,11 @@ describe("connect-flow registry — wake + redirect are per slug", () => {
     strictEqual(flowRedirectUrl(reg, "gmail"), null);
     a.redirectUrl = "https://oauth.example/gmail";
     strictEqual(flowRedirectUrl(reg, "gmail"), "https://oauth.example/gmail");
-    // A slug with no live flow reads null (reopen after end is a no-op).
     strictEqual(flowRedirectUrl(reg, "slack"), null);
   });
 });
 
 describe("connect-flow registry — cancel on disconnect (PRODUCT-1733)", () => {
-  // Entries are keyed scope+slug (`connect-flow-scope.ts`), but a disconnect
-  // names the bare app: the user removed Gmail, not "the agent's Gmail".
   const personal = connectFlowKey(connectFlowScope("Personal/Writer"), "gmail");
   const account = connectFlowKey(connectFlowScope(undefined), "gmail");
 
@@ -206,8 +189,6 @@ describe("connect-flow registry — cancel on disconnect (PRODUCT-1733)", () => 
   });
 
   it("removing ANOTHER account of the app leaves the pending poll running", () => {
-    // Two Gmail logins: the user drops the old one while the new one's OAuth is
-    // still open in the browser. That OAuth is still theirs to finish.
     const reg = createRegistry();
     const waker = countingWaker();
     const entry = beginFlow(reg, personal, waker);
@@ -239,8 +220,6 @@ describe("connect-flow registry — cancel on disconnect (PRODUCT-1733)", () => 
   });
 
   it("never matches an app whose slug merely ENDS with the disconnected one", () => {
-    // `google-drive` must not be stopped by a disconnect of `drive`: the scope
-    // separator is what bounds the slug, so the match is on the whole segment.
     const reg = createRegistry();
     const drive = beginFlow(
       reg,

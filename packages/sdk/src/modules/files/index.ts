@@ -1,23 +1,3 @@
-/**
- * The files module — an agent's REAL workspace: what is in it, what one file
- * says, and every rearrangement of it, plus the two upload routes that put new
- * bytes there.
- *
- * These are pure commands: the Files section opens them, reads once, and writes
- * from a menu; no host event invalidates the listing and nothing renders it
- * continuously, so there is no reactive scope to publish. The same handlers
- * back both the typed facade and the `dispatch` path.
- *
- * SEAM — per-agent, but NOT through `clientFor(agentId)`. The runtime client is
- * scoped to one conversation and serves none of the `/agents/:id/files*`
- * family, so the module talks to those host routes through the SDK's own HTTP
- * seam. A 401 routes through the shared {@link ModuleContext.authExpiry}
- * notifier, which that seam signals.
- *
- * Binary preview policy belongs to this facade; transport returns the bytes
- * through the adapter while surfaces render the chosen fallback.
- */
-
 import { openUploadRequestSchema } from "@houston/wire-types";
 import type { ModuleContext } from "../../module-context";
 import { moduleScope } from "../http";

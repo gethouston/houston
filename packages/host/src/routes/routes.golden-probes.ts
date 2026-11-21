@@ -1,14 +1,3 @@
-/**
- * The host's enumerable `METHOD path` surface, as it stood when the route
- * registry was built — the probe set routes-golden.test.ts replays.
- *
- * Grouped by the pipeline phase each pair is answered in, because the phase is
- * what decides which derived probes it gets: only a user- or agent-phase path
- * has an unauthenticated and a wrong-user answer worth pinning. Every entry is
- * a PATTERN; testing/route-replay.ts substitutes real ids for the `:name`
- * segments and keys the recording by the pattern, so the baseline survives a
- * store that mints different ids on every run.
- */
 import { AGENT_PROBES } from "./routes.golden-probes-agent";
 
 export const PUBLIC_PROBES: string[] = [
@@ -112,7 +101,6 @@ export const USER_PROBES: string[] = [
 
 export { AGENT_PROBES };
 
-/** Every probe with the phase it is answered in, grouped by phase. */
 export const GOLDEN_PROBES: { probe: string; phase: string }[] = [
   ...PUBLIC_PROBES.map((probe) => ({ probe, phase: "public" })),
   ...SANDBOX_PROBES.map((probe) => ({ probe, phase: "sandbox" })),

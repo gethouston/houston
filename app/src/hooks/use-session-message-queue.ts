@@ -9,13 +9,6 @@ interface UseSessionMessageQueueArgs {
   sendNow: (text: string, files: File[]) => Promise<void> | void;
 }
 
-/**
- * The composer's view of a conversation's send queue. Queueing itself lives in
- * the engine adapter (a send into a running conversation is held and flushed
- * as one combined send at settle — see `engine-adapter/send-queue.ts`), so
- * every send path inherits it; this hook only renders the queued bubbles from
- * the conversation VM and forwards the remove affordance.
- */
 export function useSessionMessageQueue({
   agentPath,
   sessionKey,
@@ -41,7 +34,6 @@ export function useSessionMessageQueue({
     [agentPath, sessionKey],
   );
 
-  // The adapter decides queue-vs-dispatch; callers just send.
   const sendOrQueue = useCallback(
     async (text: string, files: File[]) => {
       await sendNow(text, files);

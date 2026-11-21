@@ -7,7 +7,6 @@ import type { Routine } from "@houston/protocol";
 import { buildProviderCatalog } from "../providers/pi-catalog";
 import type { Vfs } from "../vfs";
 
-/** Use the picker's catalog and the shared model resolver for both routine writers. */
 export async function checkedRoutineModel(
   vfs: Vfs,
   root: string,
@@ -20,7 +19,6 @@ export async function checkedRoutineModel(
   if (!rawProvider) return { model: pin.model };
   const provider = canonicalProviderId(rawProvider) ?? rawProvider;
   const catalog = buildProviderCatalog().find((entry) => entry.id === provider);
-  // These gateways and BYO endpoints serve live ids beyond the picker's baked catalog.
   const open = [
     "openrouter",
     "opencode",

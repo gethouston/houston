@@ -143,8 +143,6 @@ mod tests {
 
     #[test]
     fn install_returns_the_superseded_listener() {
-        // A new attempt hands back the previous one so `start_oauth_loopback`
-        // can cancel it and reclaim its port.
         let state = OauthLoopbackState::default();
         let (first, _rx1) = listener(1);
         assert!(matches!(state.install(first).unwrap(), Installed::Ok(None)));
@@ -157,8 +155,6 @@ mod tests {
 
     #[test]
     fn a_stale_id_cancel_is_a_no_op() {
-        // THE regression this id exists for: attempt 1's abandoned cancel must
-        // not free attempt 2's port.
         let state = OauthLoopbackState::default();
         let (second, mut cancel_rx) = listener(2);
         state.install(second).unwrap();
@@ -169,7 +165,6 @@ mod tests {
         );
         assert!(cancel_rx.try_recv().is_err(), "listener 2 was cancelled");
 
-        // The right id still cancels, and the slot empties.
         let taken = state
             .take_matching(2)
             .unwrap()
@@ -181,8 +176,6 @@ mod tests {
 
     #[test]
     fn a_claim_from_an_older_generation_is_stale() {
-        // Two rapid clicks: B (newer) claims first because A's coroutine was
-        // descheduled. A must NOT then take the loopback back off B.
         let state = OauthLoopbackState::default();
         let older = state.mint_id();
         let newer = state.mint_id();
@@ -195,9 +188,6 @@ mod tests {
 
     #[test]
     fn install_from_an_older_generation_loses_to_a_newer_claim() {
-        // Ordering must follow USER INITIATION, not whichever invocation
-        // happens to reach `install` last: A clicked first, B clicked second,
-        // and B installs while A is still binding its socket. A must lose.
         let state = OauthLoopbackState::default();
         let older = state.mint_id();
         let newer = state.mint_id();
@@ -212,7 +202,6 @@ mod tests {
             Installed::Stale { newest } => assert_eq!(newest, newer),
             Installed::Ok(_) => panic!("the older click superseded the newer one"),
         }
-        // B still owns the loopback, and A was told to free its own port.
         assert!(state.take_matching(newer).unwrap().is_some());
         assert!(a_rx.try_recv().is_err(), "A's listener was left installed");
     }
@@ -225,7 +214,6 @@ mod tests {
         let (l, _rx) = listener(first);
         assert!(matches!(state.install(l).unwrap(), Installed::Ok(None)));
 
-        // The next click reclaims and gets the previous listener to supersede.
         let second = state.mint_id();
         match state.claim(second).unwrap() {
             Claim::Won(Some(prev)) => assert_eq!(prev.id, first),
@@ -238,7 +226,6 @@ mod tests {
         let state = OauthLoopbackState::default();
         let (second, _rx) = listener(2);
         state.install(second).unwrap();
-        // A listener that ended long ago must not clear the current one.
         state.clear_if(1).unwrap();
         assert!(state.take_matching(2).unwrap().is_some());
     }

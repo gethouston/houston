@@ -1,9 +1,3 @@
-/**
- * Lazy file-preview machinery shared by the grid's hero card thumbnail and the
- * list row's 32px icon. One place fetches preview bytes, so the two views can
- * never drift on when they load, how they key the cache, or what they do when
- * a load fails. No markup here — each view renders the state its own way.
- */
 import { useEffect, useRef, useState } from "react";
 import type { FileEntry, LoadFilePreview } from "./types";
 
@@ -13,7 +7,6 @@ export type PreviewState =
   | { kind: "image"; url: string }
   | { kind: "text"; text: string };
 
-/** Observe once: flips to true the first time the element is visible. */
 export function useVisibleOnce(): [
   React.RefObject<HTMLDivElement | null>,
   boolean,
@@ -35,11 +28,6 @@ export function useVisibleOnce(): [
   return [ref, visible];
 }
 
-/**
- * Fetch one file's preview once it is visible. The object URL an image lands
- * on is revoked when the file changes or the component goes away, so scrolling
- * a long listing never leaks blobs.
- */
 export function useFilePreview(
   file: FileEntry,
   loadPreview: LoadFilePreview | undefined,
@@ -71,8 +59,6 @@ export function useFilePreview(
           setState({ kind: "text", text: data.text });
         }
       })
-      // Designed fallback, not a swallowed error: a file with no thumbnail
-      // shows its type glyph. Load failures surface when the user opens it.
       .catch(() => {
         if (!cancelled) setState({ kind: "none" });
       });

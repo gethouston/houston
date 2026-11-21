@@ -22,7 +22,6 @@ const usage = {
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 };
 
-/** One tool round: the assistant's call, then its result. */
 function round(id: string, toolName: string, text: string): AgentMessage[] {
   return [
     {
@@ -49,7 +48,6 @@ function round(id: string, toolName: string, text: string): AgentMessage[] {
 const user = (text: string) =>
   ({ role: "user", content: text, timestamp: 0 }) as AgentMessage;
 
-/** Text a reader can tell apart from any other result of the same size. */
 const payload = (tag: string, chars: number) =>
   `${tag}:`.padEnd(chars, `${tag} `);
 
@@ -63,7 +61,6 @@ function resultText(messages: AgentMessage[], id: string): string {
 
 const savedAt = (text: string) => /saved at (\S+) \(/.exec(text)?.[1];
 
-/** A chat whose rounds each printed ~19k characters, under no cap. */
 function history(rounds: number): AgentMessage[] {
   const out: AgentMessage[] = [user("Summarize my inbox")];
   for (let i = 0; i < rounds; i++)
@@ -108,13 +105,10 @@ test("stale results stay until they add up to a batch, then all go at once", asy
     conversationId: "c1",
   });
 
-  // Nine rounds: rounds 0-5 are stale (older than the last three), 6 x 19k
-  // = 114k characters, under the 120k batch. Nothing changes yet.
   const before = await transform(history(9));
   for (let i = 0; i < 9; i++)
     expect(resultText(before, `call-${i}`)).toBe(payload(`mail${i}`, 19_000));
 
-  // Round 6 goes stale with the tenth round: 133k, one batch.
   const after = await transform(history(10));
   for (let i = 0; i <= 6; i++) {
     const stub = resultText(after, `call-${i}`);
@@ -123,11 +117,9 @@ test("stale results stay until they add up to a batch, then all go at once", asy
       payload(`mail${i}`, 19_000),
     );
   }
-  // The three newest rounds, the one about to be read included, are whole.
   for (let i = 7; i < 10; i++)
     expect(resultText(after, `call-${i}`)).toBe(payload(`mail${i}`, 19_000));
 
-  // Every call keeps its result: providers refuse an unpaired tool call.
   const calls = after.flatMap((m) =>
     m.role === "assistant"
       ? m.content.filter((c) => c.type === "toolCall").map((c) => c.id)
@@ -146,8 +138,6 @@ test("a cleared prefix is sent the same on every later request until the next ba
   });
   const at10 = await transform(history(10));
   const at12 = await transform(history(12));
-  // Rounds 7 and 8 went stale since, 38k characters, short of a new batch:
-  // the first ten rounds read exactly as they did, so the cache still holds.
   expect(at12.slice(0, at10.length)).toEqual(at10);
   expect(resultText(at12, "call-7")).toBe(payload("mail7", 19_000));
 });

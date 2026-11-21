@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Usage: assert-gatekeeper-notarized.sh <spctl assess args...> <path>
-# Runs `spctl -a <args>` and fails unless Gatekeeper accepts the item AS
-# NOTARIZED. The exit code alone is not enough: with assessments disabled
-# (some CI images) spctl accepts everything with `override=security disabled`.
 set -euo pipefail
 
 if [ $# -lt 1 ]; then

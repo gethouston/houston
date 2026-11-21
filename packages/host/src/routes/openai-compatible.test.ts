@@ -11,15 +11,6 @@ import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 
-/**
- * POST /agents/:id/provider/openai-compatible — connect a local OpenAI-compatible
- * server (Ollama / vLLM / LM Studio). Pins the route's guarantees: it is the hard
- * cloud gate (refuses unless the deployment's `openaiCompatible` capability is on,
- * before reaching the channel), validates the base URL at the boundary, forwards
- * a valid endpoint to the channel, surfaces a channel failure as 502, and is
- * ownership-walled.
- */
-
 const verifier: TokenVerifier = {
   async verify(bearer) {
     return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
@@ -28,7 +19,6 @@ const verifier: TokenVerifier = {
 
 class SpyChannel implements RuntimeChannel {
   saved: CustomEndpoint[] = [];
-  /** The acting identity each save carried (undefined = none). */
   actingAs: (string | undefined)[] = [];
   throwMessage: string | null = null;
   async dispatch() {}
@@ -92,8 +82,6 @@ const CLOUD_CAPS: Capabilities = {
   profile: "cloud",
   openaiCompatible: false,
 };
-// The managed cloud pod: the provider is available, but the base URL is
-// validated against the pod's public-:443-only egress (gatewayFronted).
 const MANAGED_CLOUD_CAPS: Capabilities = {
   ...baseCaps,
   profile: "cloud",
@@ -116,7 +104,6 @@ async function setup(
   agentId: string;
   channel: SpyChannel;
   sharedEndpoints: SpySharedEndpointStore;
-  /** Every store-sync flush, recorded with how many saves preceded it. */
   flushes: number[];
 }> {
   const store = new MemoryWorkspaceStore();
@@ -186,7 +173,6 @@ test("cloud deployment refuses (400) before reaching the channel — the hard ga
     model: "llama3.1",
   });
   expect(res.status).toBe(400);
-  // Never forwarded: a cloud runtime/pod can't reach the user's localhost.
   expect(channel.saved).toHaveLength(0);
 });
 
@@ -240,8 +226,6 @@ test("another user cannot connect the agent's local model (403)", async () => {
   expect(channel.saved).toHaveLength(0);
 });
 
-// ── Managed cloud (gatewayFronted): public-:443-HTTPS-only base-URL validation ──
-
 test("managed cloud forwards a valid public HTTPS endpoint to the channel", async () => {
   const { base, agentId, channel } = await setup(MANAGED_CLOUD_CAPS, true);
   const res = await connect(base, agentId, {
@@ -274,9 +258,6 @@ test("managed cloud saves under the gateway-minted acting identity and flushes t
   );
   expect(res.status).toBe(200);
   expect(channel.actingAs).toEqual(["acting-v1.p.s"]);
-  // The gateway's bridge binding check reads the endpoint file from object
-  // storage the moment the desktop probes the model: one flush, after the
-  // runtime save, before the 200.
   expect(flushes).toEqual([1]);
 });
 
@@ -295,9 +276,6 @@ test("desktop/self-host ignores a client-supplied acting header and never flushe
   );
   expect(res.status).toBe(200);
   expect(channel.actingAs).toEqual([undefined]);
-  // A local host syncs nothing; the flush hook is wired only on managed pods.
-  // (setup wires one here purely to prove the route still calls it: the
-  // route cannot tell the deployments apart and must not need to.)
   expect(flushes).toEqual([1]);
 });
 
@@ -395,9 +373,6 @@ test("managed cloud rejects localhost with an actionable 400, never forwarded", 
     code: string;
   };
   expect(error).toMatch(/public HTTPS endpoints on port 443/);
-  // The typed code is what the client keys its translated copy on; without
-  // it the manual-connect form falls back to generic "something went wrong".
-  // localhost breaks every rule; the private host is the one worth reporting.
   expect(code).toBe("endpoint_private_host");
   expect(channel.saved).toHaveLength(0);
 });
@@ -431,8 +406,6 @@ test("dev launcher (gatewayFronted + loopbackEgress) accepts localhost — its p
 });
 
 test("localhost IS accepted when NOT managed cloud (desktop/self-host)", async () => {
-  // Same LOCAL profile, gatewayFronted defaulting to false: no egress limits, so
-  // the localhost endpoint is forwarded exactly as before.
   const { base, agentId, channel } = await setup(LOCAL_CAPS);
   const res = await connect(base, agentId, {
     baseUrl: "http://localhost:11434/v1",

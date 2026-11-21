@@ -5,18 +5,11 @@ import { executeSeedOp } from "./op-seed";
 import type { OpRequest } from "./parse-op-request";
 import type { TurnServerDeps } from "./server-types";
 
-/** The worker's HTTP answer to `/op` for an op that owns its tree. */
 export interface OwnTreeReply {
   status: number;
   body: unknown;
 }
 
-/**
- * The ops that read and write the store themselves instead of through the
- * shared claimed hydrate: a seed (decided from the listing before any tree
- * exists) and a migrate (the one op allowed over a tree the shared hydrate
- * refuses, turn-layout-legacy.ts). null for every other kind.
- */
 export function executeOwnTreeOp(input: {
   deps: TurnServerDeps;
   op: OpRequest;

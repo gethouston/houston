@@ -17,8 +17,6 @@ export function bridgeRetry(
   if (isBridgeUnsupported(error)) return { status: "disabled", delay: null };
   if (error instanceof BridgeRegistrationRefusedError)
     return { status: "disabled", delay: null };
-  // A stale renewal is a 409 like the permanent refusals, but a fresh session
-  // recovers it, so it must be checked first.
   const status = isStaleBridgeSession(error)
     ? "reconnecting"
     : isMigrationReconnect(error) || isPermanentBridgeFailure(error)

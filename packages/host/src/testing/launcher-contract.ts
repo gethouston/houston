@@ -2,20 +2,6 @@ import { describe, expect, test } from "vitest";
 import type { Agent } from "../domain/types";
 import type { RuntimeLauncher } from "../ports";
 
-/**
- * The RuntimeLauncher CONTRACT, run verbatim against every adapter — the
- * anti-drift net for the standing-runtime lifecycle port. Every impl must agree
- * on the lifecycle the ProxyChannel drives: ensureAwake returns a reachable
- * endpoint and marks the agent running, ensureAwake is idempotent (a warm runtime
- * is reused, not respawned), sleep then ensureAwake re-wakes, and independent
- * agents track state separately.
- *
- * Exported from `@houston/host` (OPEN) and run by the open adapter suite
- * (launcher/contract.test.ts: Fake/Process via injected doubles). The closed
- * GkeLauncher suite that also consumed it was retired with
- * `@houston/host-cloud` (git history); the contract stays exported as the
- * behavioral bar for any out-of-repo adapter.
- */
 export const launcherAgent = (id: string): Agent => ({
   id,
   workspaceId: "w1",

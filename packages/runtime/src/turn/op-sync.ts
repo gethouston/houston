@@ -28,13 +28,6 @@ export async function syncOp(input: {
       result.privateRefused ||
       (treeOp && result.status >= 500)
     ) {
-      // A tree-mutating handler failed part-way (a refused lazy read, a
-      // 5xx): the overlay may hold HALF a multi-key mutation. Nothing has
-      // reached the store yet, so declining is exact — the pod re-runs
-      // the write from an unchanged tree instead of the user seeing a
-      // split folder. Credential/settings ops have no overlay to leave
-      // half-written; their own status (a 502 from the credential store)
-      // is the pod's answer too.
       console.error(
         `[op] handler failed before sync: status=${result.status} tooLarge=${result.tooLarge === true} privateRefused=${result.privateRefused === true} prefix=${resolved.prefix} kind=${op.op.kind}`,
       );
@@ -48,9 +41,6 @@ export async function syncOp(input: {
       {
         include: result.include,
         holdDeletesOnFailure: true,
-        // A lazy tree's manifest may be EMPTY for a pure create; the
-        // listing still told us whether the store mints generations, so a
-        // first create stays create-only (CAS "0") instead of blind.
         generations: filesystem.generationAware,
         workerMerge: true,
       },

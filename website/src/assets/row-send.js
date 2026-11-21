@@ -1,17 +1,3 @@
-// Stores one row from a public form: an insert into a Supabase table, the
-// source of truth, and a copy to a Google Sheet tab, both at once. The
-// referral form (refer-send.js) and the /data-partners call form
-// (data-partners-call-send.js) each name their own sink.
-//
-// Only Supabase decides the answer: 201 means stored. The sheet is written
-// `no-cors`, so its answer is opaque and it decides nothing. Anything short of
-// a 201 (no key in this build, a refusal, no answer within the timeout) comes
-// back as "failed".
-//
-// Each sink is switched by its own setting: no Supabase key or no sheet
-// endpoint means that sink is off, said once in the console by name.
-// `fetchImpl` is injectable so the tests can pin the exact request.
-
 const TIMEOUT_MS = 10000;
 
 const warn = (...args) => globalThis.console?.warn(...args);
@@ -68,11 +54,6 @@ function sheetWrite(sink, row, config, fetchImpl) {
     .catch((error) => warn(`${sink.label} sheet write failed:`, error));
 }
 
-/**
- * Resolves "stored" once Supabase has the row, otherwise "failed".
- * `sink` is { table, label, sheetSetting }: the table, the name the console
- * warnings use, and the setting that switches the sheet copy on.
- */
 export async function sendRow(
   sink,
   row,

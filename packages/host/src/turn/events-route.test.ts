@@ -5,13 +5,6 @@ import { MemoryTurnBus } from "./bus";
 import { serveConversationEvents } from "./events-route";
 import { TurnRelay } from "./relay";
 
-/**
- * The host's conversation events route over real HTTP: the same resume
- * contract as the runtime's route (shared stitch), plus the host-only
- * behavior — the dead-pump reaper runs at subscribe time, so a conversation
- * whose pump crashed is healed before the request is served.
- */
-
 interface Frame {
   type: string;
   data: unknown;
@@ -63,7 +56,6 @@ async function collectFrames(res: Response, count: number): Promise<Frame[]> {
   return frames;
 }
 
-/** Persist the crash-sim state: a running snapshot, no inflight lease. */
 async function crashSim(bus: MemoryTurnBus, key: string) {
   await bus.set(
     `turn:snap2:${key}`,
@@ -116,9 +108,9 @@ test("resume replays the missed frames — no sync, no gap, no duplicate", async
     publishFrame = publish;
     await new Promise<void>((r) => (finish = r));
   });
-  await publishFrame({ type: "user", data: { content: "q", ts: 1 } }); // 1
-  await publishFrame({ type: "text", data: "a" }); // 2
-  await publishFrame({ type: "text", data: "b" }); // 3
+  await publishFrame({ type: "user", data: { content: "q", ts: 1 } });
+  await publishFrame({ type: "text", data: "a" });
+  await publishFrame({ type: "text", data: "b" });
 
   await withRoute(relay, "a1", "a1/c1", async (base) => {
     const res = await fetch(`${base}/events?after=1`);
@@ -139,8 +131,6 @@ test("crash-sim: a fresh connect is served against the healed state (sync runnin
   await withRoute(relay, "a1", "a1/c1", async (base) => {
     const res = await fetch(`${base}/events`);
     const frames = await collectFrames(res, 1);
-    // The reaper terminated the dead turn BEFORE the sync was built: no
-    // stuck-forever spinner, the watermark advanced past the synthesized error.
     expect(frames[0]).toEqual({
       type: "sync",
       data: { running: false, partial: "", seq: 6 },

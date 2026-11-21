@@ -10,9 +10,6 @@ import { parseOpRequest } from "./parse-op-request";
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/** The gateway's display name rides every op envelope (`agentName`): the
- *  handlers print it while the folder, and so the id, stays put. */
-
 const servers: Server[] = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();
@@ -47,7 +44,6 @@ async function workerWithAgent() {
     }),
   );
   return async (op: unknown, agentName?: unknown) => {
-    // A finished op frees its worker slot just after answering.
     for (let attempt = 0; ; attempt++) {
       const response = await fetch(`${base}/op`, {
         method: "POST",

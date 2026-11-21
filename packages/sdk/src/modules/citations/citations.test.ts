@@ -179,7 +179,6 @@ describe("citations", () => {
     expect(sdk.citations.list("chat-a")).toEqual([]);
     const late = sdk.citations.add("chat-a", areaOnSlide5);
     if (!late.ok) throw new Error("add refused");
-    // A wrapper around the text (a Skill, attachments) still finds them.
     sdk.citations.release(`<!--houston:skill {}-->\n\nUse it.\n\n${sent}`);
     expect(sdk.citations.list("chat-a").map((c) => c.comment)).toEqual([
       "Shorter title",

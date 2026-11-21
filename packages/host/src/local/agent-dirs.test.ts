@@ -37,7 +37,6 @@ describe("liveAgentDirFor", () => {
     const dir = liveAgentDirFor(root, "Personal/.setup/connect");
     expect(dir).toBe(join(root, "Personal", ".setup", "connect"));
     expect(existsSync(dir)).toBe(true);
-    // Idempotent on the next spawn.
     expect(liveAgentDirFor(root, "Personal/.setup/connect")).toBe(dir);
   });
 
@@ -45,7 +44,6 @@ describe("liveAgentDirFor", () => {
     const dir = liveAgentDirFor(root, "Personal/.assistant");
     expect(dir).toBe(join(root, "Personal", ".assistant"));
     expect(existsSync(dir)).toBe(true);
-    // Idempotent: discovery is called on every app boot.
     expect(liveAgentDirFor(root, "Personal/.assistant")).toBe(dir);
   });
 

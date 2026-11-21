@@ -108,7 +108,6 @@ describe("buildToolSelection", () => {
       integrations: false,
       saveRoutine: true,
     });
-    // Reachability, NOT a Composio key: on even with integrations off.
     expect(on.toolNames).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
@@ -144,7 +143,6 @@ describe("buildToolSelection", () => {
       integrations: false,
       saveLearning: true,
     });
-    // Same reachability gate as save_routine, independent of Composio.
     expect(on.toolNames).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
       "ask_user",
@@ -171,13 +169,6 @@ describe("buildToolSelection", () => {
   });
 });
 
-/**
- * The assistant family is gated on more than reachability: a catalog has to
- * have loaded (so `buildToolSelection` takes that DECISION as one flag rather
- * than re-deriving it) AND this runtime has to BE the coordinator. The catalog
- * reaches the user's whole account, so an ordinary agent — a third-party Agent
- * Store install included — never gets it, whatever else is in its environment.
- */
 describe("assistant family gating", () => {
   const base = {
     codeExecution: "disabled",
@@ -206,7 +197,6 @@ describe("assistant family gating", () => {
       for (const name of ASSISTANT_TOOL_NAMES) {
         expect(agent.toolNames).not.toContain(name);
       }
-      // ...while everything an agent is supposed to have is untouched.
       expect(agent.toolNames).toContain("bash");
       expect(agent.toolNames).toContain("integration_execute");
     }
@@ -226,9 +216,6 @@ describe("assistant family gating", () => {
       "request_connection",
       "request_credential",
     ]);
-    // `houston_recall` (searching the assistant's own conversation) reaches the
-    // model on this flag alone — it is named literally so it cannot fall out of
-    // the family unnoticed by an assertion that spreads the family.
     expect(on.toolNames).toContain("houston_recall");
   });
 
@@ -238,7 +225,6 @@ describe("assistant family gating", () => {
       expect(toolNamesForMode("execute", on.toolNames)).toContain(name);
       expect(toolNamesForMode(undefined, on.toolNames)).toContain(name);
       expect(toolNamesForMode("auto", on.toolNames)).toContain(name);
-      // A plan turn that could list operations it cannot perform dead-ends.
       expect(toolNamesForMode("plan", on.toolNames)).not.toContain(name);
     }
   });
@@ -252,8 +238,6 @@ describe("planToolNames", () => {
       codeExecution: "local",
       integrations: true,
     });
-    // Local selection has edit/write/bash + all integration tools; plan strips
-    // every writer/actor and keeps only read/ls/grep/find/ask_user.
     expect(planToolNames(local.toolNames)).toEqual(EXPECTED);
     for (const dropped of [
       "edit",
@@ -295,12 +279,6 @@ describe("autoToolNames", () => {
       codeExecution: "local",
       integrations: true,
     });
-    // Auto keeps every read/write/exec/integration tool; it only removes
-    // ask_user (the one tool that waits on the user's judgment).
-    // request_connection and request_credential survive (HOU-853): a missing
-    // connection — like an API key — is the one thing autonomy cannot produce,
-    // and the queued card ends the turn instead of holding it open, then
-    // auto-continues the run. Order is preserved (filter, not reorder).
     expect(autoToolNames(local.toolNames)).toEqual([
       ...CLAMPED_FILE_TOOL_NAMES,
       "suggest_reusable",
@@ -318,7 +296,6 @@ describe("autoToolNames", () => {
       "request_credential",
     ]);
     expect(autoToolNames(local.toolNames)).not.toContain("ask_user");
-    // …and it keeps the file WRITE tools + bash, unlike plan.
     for (const kept of ["edit", "write", "bash"])
       expect(autoToolNames(local.toolNames)).toContain(kept);
   });
@@ -381,9 +358,6 @@ describe("toolNamesForMode dispatcher", () => {
     );
   });
 
-  // plan_ready is plan-mode-only: present iff plan, and stripped from
-  // execute/auto EVEN WHEN the incoming set already carries it (the Claude
-  // backend hands `toolNamesForMode` a built list that includes plan_ready).
   describe("plan_ready gating (strip-then-reinject)", () => {
     test("plan_ready is present iff the mode is plan", () => {
       expect(toolNamesForMode("plan", local.toolNames)).toContain(
@@ -401,7 +375,6 @@ describe("toolNamesForMode dispatcher", () => {
     });
 
     test("plan_ready in the incoming set never survives execute/auto", () => {
-      // The Claude case: `all` already includes plan_ready.
       const withPlanReady = [...local.toolNames, PLAN_READY_TOOL_NAME];
       expect(toolNamesForMode("execute", withPlanReady)).not.toContain(
         PLAN_READY_TOOL_NAME,
@@ -412,7 +385,6 @@ describe("toolNamesForMode dispatcher", () => {
       expect(toolNamesForMode("auto", withPlanReady)).not.toContain(
         PLAN_READY_TOOL_NAME,
       );
-      // …and plan does not duplicate it (stripped first, re-added once).
       const plan = toolNamesForMode("plan", withPlanReady);
       expect(plan.filter((n) => n === PLAN_READY_TOOL_NAME)).toEqual([
         PLAN_READY_TOOL_NAME,
@@ -427,11 +399,6 @@ describe("toolNamesForMode dispatcher", () => {
     });
   });
 
-  // suggest_reusable is the inverse of plan_ready: it must reach execute AND
-  // auto (it never blocks the turn) but NEVER plan (plan is read-only planning,
-  // not a finished task). It stays out of plan automatically — it is not in
-  // PLAN_MODE_TOOL_NAMES — and stays in auto because it is not in
-  // AUTO_MODE_EXCLUDED_TOOL_NAMES.
   describe("suggest_reusable gating", () => {
     const withSuggest = [...local.toolNames, SUGGEST_REUSABLE_TOOL_NAME];
 
@@ -469,14 +436,6 @@ describe("turnCodeExecutionMode", () => {
   });
 });
 
-/**
- * The personal assistant is a COORDINATOR: it operates Houston and hands work
- * to the user's agents. It never produces work itself, so the tools that could
- * do the work are not on its list at all — a rule enforced by the tool set, not
- * only by the prompt. The one file pair it keeps is what memory consolidation
- * needs: the host answers a full memory with "read that file, write the trimmed
- * list back", and both halves are clamped to its own directory.
- */
 describe("the personal assistant's tool set", () => {
   const coordinator = () =>
     buildToolSelection({

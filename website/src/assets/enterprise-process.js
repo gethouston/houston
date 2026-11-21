@@ -1,11 +1,3 @@
-// The /enterprise process slider: one slide at a time, centered.
-//
-// Markup (enterprise/solution.njk): [data-slider] holds the [data-slide]
-// slides, the [data-prev] / [data-next] buttons and the position marks. The
-// next button, a swipe or the arrow keys (once the slider has focus) move
-// forward. On the last slide the slider wears .is-last, which hides the next
-// chevron. Nothing moves on its own.
-
 (() => {
   const root = document.querySelector("[data-slider]");
   if (!root) return;
@@ -42,8 +34,6 @@
     event.preventDefault();
   });
 
-  // A horizontal swipe, on touch screens. A mostly vertical drag is the page
-  // scrolling and is left alone.
   let startX = 0;
   let startY = 0;
   root.addEventListener(

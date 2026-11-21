@@ -118,8 +118,6 @@ test("a running row inside the run timeout still blocks the routine", async () =
 
 test("a running row past the run timeout no longer blocks, and stays as it is", async () => {
   await seedRoutines([routineFixture]);
-  // A settle that failed in another sandbox: nothing settles it while the
-  // agent sleeps, so it must not refuse every later fire.
   await seedRuns([seededRun("stranded", "running", 16)]);
   await prepareRoutineTurn(workspaceDir, routineTurn(), "turn-1", NOW);
   const runs = await runsFile();

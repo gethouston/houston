@@ -22,7 +22,6 @@ function harness(hosted: boolean) {
     },
     now: () => Date.parse("2026-09-12T10:00:00.000Z"),
     uuid: () => `id-${++seq}`,
-    // Nothing must ship on a timer in these tests: only an explicit flush.
     schedule: () => () => {},
   });
 
@@ -104,8 +103,6 @@ describe("product analytics sink", () => {
     h.goodbye();
     await new Promise<void>((done) => setImmediate(done));
     deepStrictEqual(h.sent, [["command_palette_opened"]]);
-    // The window is going away: this batch's POST must outlive the page, which
-    // is the one thing keepalive buys and the only flush worth its body cap.
     deepStrictEqual(h.finals, [true]);
     h.stop();
     deepStrictEqual(h.counts(), {
@@ -126,12 +123,10 @@ describe("the deployments the sink runs on", () => {
   ) => resolveClientDeployment({ engine, override });
 
   it("is on for the managed cloud, on desktop AND in the browser", () => {
-    // Desktop cloud build: the baked gateway URL.
     strictEqual(
       deployment({ kind: "hosted-oauth", url: "https://gw.example" }),
       "managed-cloud",
     );
-    // Cloud web build: bakes no gateway, announces itself on the override.
     strictEqual(
       deployment({ kind: "sidecar" }, "managed-cloud"),
       "managed-cloud",

@@ -23,8 +23,6 @@ export interface ModelsAllowlistEditorProps {
   saving: boolean;
   onSave: (next: string[] | null) => void;
   copy: ModelsAllowlistEditorCopy;
-  /** Visible heading id supplied by a mounting page hero. */
   labelledBy?: string;
-  /** Keep false when the mounting page hero carries the question and helper. */
   showIntro?: boolean;
 }

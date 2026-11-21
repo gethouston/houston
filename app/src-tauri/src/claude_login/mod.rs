@@ -49,10 +49,6 @@
 //!   * [`network_gate`] — classify an offline / unreachable-host failure.
 //!   * [`credential`] — extract the cached credential to PUSH to a remote pod.
 
-// `pub(crate)` so `generate_handler!` in `lib.rs` can name the command at its
-// defining path (`claude_login::credential::read_claude_credential`) — the macro
-// resolves the sibling `__cmd__*` items in the module where the command lives, so
-// a re-export of just the fn would not carry them.
 pub(crate) mod code_input;
 mod cpu;
 pub(crate) mod credential;
@@ -139,17 +135,8 @@ pub async fn start_claude_login(
     state: State<'_, ClaudeLoginState>,
     handoff: bool,
 ) -> Result<(), String> {
-    // Don't spawn a binary that dies instantly with SIGILL: Bun-compiled
-    // helpers need AVX2 on x86-64, and a pre-2013 CPU produced only an
-    // inscrutable "exit signal" toast users retried in vain
-    // (HOUSTON-APP-543). Report through the `done` event — not `Err` — so
-    // the frontend's one failure router can degrade a remote-engine login
-    // to the runtime's paste flow.
     if let Some(reason) = cpu::unsupported_reason() {
         let error = format!("Claude sign-in helper cannot run: {reason}");
-        // WARN, not error: an unsupported CPU is an environmental fact with a
-        // designed degrade path (paste flow), not something in Houston
-        // breaking — same reasoning as the signal-death arm in `runner`.
         tracing::warn!("[claude-login] {error}");
         app.emit(
             EVENT_DONE,
@@ -160,7 +147,6 @@ pub async fn start_claude_login(
     }
 
     let config_dir = config_dir_for(handoff);
-    // The CLI writes the cached credential here; it must exist first.
     std::fs::create_dir_all(&config_dir).map_err(|e| {
         format!(
             "Could not prepare the Claude sign-in directory ({}): {e}",
@@ -168,11 +154,6 @@ pub async fn start_claude_login(
         )
     })?;
 
-    // Cancel any still-running login before starting a fresh one: flipping the
-    // previous attempt's flag makes its background task kill that child. Without
-    // this, a retry (or a Connect click after a card-level Cancel) would leave two
-    // `claude auth login` children racing their loopbacks and two live done
-    // listeners firing conflicting completions.
     {
         let guard = state.0.lock().await;
         if let Some(prev) = guard.as_ref() {
@@ -181,8 +162,6 @@ pub async fn start_claude_login(
     }
 
     let bin = resolve_claude_binary();
-    // Spawn synchronously so a launch failure surfaces as a toast (Err) rather
-    // than an async `done` event.
     let mut child = build_login_command(&bin, &config_dir)
         .spawn()
         .map_err(|e| format!("Could not start the Claude sign-in helper: {e}"))?;
@@ -192,8 +171,6 @@ pub async fn start_claude_login(
         config_dir.display()
     );
 
-    // Publish the cancel flag + stdin slot before the task starts so a Cancel
-    // or a pasted code racing the spawn is honored.
     let cancel = Arc::new(AtomicBool::new(false));
     let stdin: code_input::StdinSlot = Arc::new(tokio::sync::Mutex::new(child.stdin.take()));
     {
@@ -207,15 +184,9 @@ pub async fn start_claude_login(
     let app_for_task = app.clone();
     tokio::spawn(async move {
         run_login_child(child, cancel, move |name, payload| {
-            // Resurface the app when the browser approve lands (mirrors the
-            // OAuth loopback's snap-back).
             if name == EVENT_DONE && payload.get("success").and_then(Value::as_bool) == Some(true) {
                 crate::window_focus::bring_to_front(&app_for_task);
             }
-            // Emitting is fallible, but this task already outlived the command
-            // that returned to the UI — there is no Result left to toast. This
-            // is the documented event-callback exception to the
-            // no-silent-failure rule; the frontend's retry is the safety net.
             if let Err(e) = app_for_task.emit(name, payload) {
                 tracing::error!("[claude-login] failed to emit {name}: {e}");
             }
@@ -245,14 +216,11 @@ mod tests {
 
     #[test]
     fn config_dir_lives_under_houston_home() {
-        // The shared login dir hangs off the Houston data root.
         assert!(claude_login_config_dir().ends_with("claude-login"));
     }
 
     #[test]
     fn handoff_dir_is_distinct_from_the_engine_shared_dir() {
-        // The whole point: a remote-engine mint must never be visible to a
-        // co-located engine, or two rotators share one refresh-token family.
         assert!(claude_handoff_config_dir().ends_with("claude-login-handoff"));
         assert_ne!(claude_handoff_config_dir(), claude_login_config_dir());
         assert_eq!(config_dir_for(true), claude_handoff_config_dir());

@@ -1,23 +1,3 @@
-// English copy for the landing page. Source of truth for the key tree: es.js
-// and pt.js mirror it exactly (same paths, same array lengths), and
-// scripts/check-locales.mjs enforces that.
-//
-// Rules:
-// - Keys ending in `Html` may contain markup and are rendered with `| safe`.
-//   Everything else is plain text and must be escaped by the template.
-// - No em dashes anywhere. Use a comma, a colon, or a sentence break.
-// - `{price}` (the monthly seat price), `{yearlyPrice}` (the yearly seat price
-//   as a monthly rate) and `{yearlyTotal}` (the yearly seat price) are the only
-//   placeholders. Templates substitute them from _data/pricing.js, so a price
-//   never gets hardcoded into a translation.
-// - Structure (avatar tones, face rosters, logo paths, badges) lives in
-//   _data/landing.js. Arrays here zip by index with the arrays there.
-// - The `js` subtree is serialized into the page as window.HOUSTON_I18N by
-//   _includes/landing/i18n-data.njk. Only put runtime strings there.
-
-// The download gate's generic failure. It is rendered into the markup as the
-// form's error line and re-applied at runtime by download-gate-form.js, so it
-// lives in one place and is used in both.
 const GATE_FORM_ERROR = "Something went wrong. Please try again.";
 
 export default {
@@ -60,8 +40,6 @@ export default {
     sub: "Houston gives your team one place to run AI agents, on any model, connected to the tools you already use, so every agent and everything it learns belongs to the company instead of one person's account.",
     ctaDownload: "Download the app",
     ctaSeeHow: "See how it works",
-    // The quiet route for a company buyer who arrives ready: under the
-    // buttons, to /enterprise.
     ctaCompanies: "Bringing it to your whole company? Talk to our team",
     windowAlt:
       "Houston, the desktop app: a team's shared mission board where agents move tasks across Running, Needs you, and Done, with the teammates on each mission shown as face stacks",
@@ -372,13 +350,10 @@ export default {
       ],
       cta: "Download the app",
     },
-    // The Monthly / Yearly switch above the cards.
     period: {
       label: "Billing period",
       month: "Monthly",
       year: "Yearly",
-      // The badge on the Yearly option and that button's spoken name; {save}
-      // is the yearly discount, computed in _data/pricing.js.
       save: "Save {save}%",
       yearName: "Yearly, save {save}%",
     },
@@ -386,7 +361,6 @@ export default {
       chip: "Most popular",
       name: "Team",
       per: "/seat/mo",
-      // Structured-data unit for the price, read by search engines.
       unit: "per seat per month",
       unitYearly: "per seat per year",
       note: "billed monthly to the owner",
@@ -408,8 +382,6 @@ export default {
     },
   },
 
-  // The band after pricing that hands a team that already uses Houston to
-  // /enterprise: the company step of the ladder (Free, Team, Enterprise).
   companies: {
     title: "Your team already uses it? Roll it out across the company.",
     lead: "Our engineers do it with you, from the first call to every team, in about a month.",
@@ -632,15 +604,12 @@ export default {
     switchArch: "Wrong one? Switch to the other version →",
   },
 
-  // Shown to a visitor whose browser prefers another language. The English
-  // copy is the key-parity anchor: es.js and pt.js invite in their own tongue.
   langBanner: {
     text: "This page is available in English.",
     cta: "Read in English",
     dismiss: "Dismiss",
   },
 
-  // Everything below ships to the browser as window.HOUSTON_I18N.
   js: {
     people: {
       julian: "Julian",

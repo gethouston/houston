@@ -13,7 +13,6 @@ const STATE = "workspaces/P/Bob/.houston/browser/state.json";
 
 test("a refused private directory is a typed refusal, never a measured file", async () => {
   const root = mkdtempSync(join(tmpdir(), "lazy-fetch-"));
-  // Whatever sits at the destination was not landed by this read.
   const dest = join(root, ...STATE.split("/"));
   mkdirSync(join(dest, ".."), { recursive: true });
   writeFileSync(dest, '{"cookies":["planted"]}');

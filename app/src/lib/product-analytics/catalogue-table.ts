@@ -1,21 +1,10 @@
-/**
- * The table itself: every product beat the client may send, what each one
- * means, and the only properties that ride it.
- *
- * Keyed by `AnalyticsEventName` on purpose: a name that is not a real tracked
- * event, or a property key that is not a real tracked property, fails the
- * build rather than going quiet in production.
- */
-
 import type {
   AnalyticsEventName,
   AnalyticsProperty,
 } from "../analytics-vocabulary.ts";
 
 export interface ProductEventSpec {
-  /** One sentence: what this event means, for whoever reads the table. */
   readonly definition: string;
-  /** The only property keys that ride this event. Everything else is dropped. */
   readonly props: readonly AnalyticsProperty[];
 }
 
@@ -25,10 +14,6 @@ const CATALOGUE = {
       "The app launched (or reloaded) and reached a signed-in hosted session.",
     props: [],
   },
-  // First run, in funnel order: the flow starting, each screen it reached,
-  // then the four survey questions (asked at first
-  // run or later from the profile-completion prompt — `source_screen` says
-  // which) with the answer each one confirmed.
   onboarding_started: {
     definition: "The first-run onboarding flow started.",
     props: ["source"],
@@ -138,7 +123,6 @@ const CATALOGUE = {
 
 export type ProductEventName = keyof typeof CATALOGUE;
 
-/** The one table. */
 export const PRODUCT_EVENTS: Readonly<
   Record<ProductEventName, ProductEventSpec>
 > = CATALOGUE;

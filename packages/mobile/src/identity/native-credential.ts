@@ -24,8 +24,6 @@ export function nativeCredential(
       requireField(result.credential?.idToken, "Google ID token"),
     );
 
-  // Apple requires skipNativeAuth and the original (unhashed) nonce that
-  // Capawesome returns: https://github.com/capawesome-team/capacitor-firebase/blob/main/packages/authentication/docs/firebase-js-sdk.md#usage
   return new OAuthProvider("apple.com").credential({
     idToken: requireField(result.credential?.idToken, "Apple ID token"),
     rawNonce: requireField(result.credential?.nonce, "Apple nonce"),

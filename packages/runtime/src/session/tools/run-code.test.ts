@@ -48,8 +48,6 @@ interface RunCodeDetails {
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 const fromB64 = (s: string) => Buffer.from(s, "base64").toString("utf8");
 
-// A fake sandbox: records the last request (+headers) and replies with a
-// scripted result, optionally after a delay (for the concurrency-budget test).
 let server: Server;
 let base: string;
 let lastBody: SandboxRequestBody | null = null;
@@ -388,7 +386,7 @@ describe("run_code tool", () => {
       undefined,
       {} as unknown as ExtensionToolContext,
     );
-    await new Promise((r) => setTimeout(r, 10)); // let the first call claim the slot
+    await new Promise((r) => setTimeout(r, 10));
     await expect(
       t.execute(
         "t13",
@@ -418,10 +416,7 @@ describe("run_code tool", () => {
   });
 });
 
-// --- Turn mode: the same tool over the turn's sandbox facade ------------------
-
 describe("run_code over the sandbox-fetch transport (turn mode)", () => {
-  /** A facade stand-in: records what the tool asked for, answers as the relay would. */
   function facade(reply: () => Response) {
     const seen: { path: string; body: SandboxRequestBody }[] = [];
     const call = async (path: string, init?: RequestInit) => {
@@ -541,8 +536,6 @@ describe("run_code over the sandbox-fetch transport (turn mode)", () => {
         truncated: false,
         artifacts: [],
       });
-    // The first turn's call is still in flight; the SECOND tool (the next turn
-    // on this worker) must see the budget the first one is already spending.
     const held: { release: (() => void) | null } = { release: null };
     const first = makeRunCodeTool({
       transport: () =>
@@ -562,8 +555,6 @@ describe("run_code over the sandbox-fetch transport (turn mode)", () => {
     await inFlight;
   });
 });
-
-// --- timeout_ms ---------------------------------------------------------------
 
 describe("run_code timeout_ms", () => {
   const withTimeout = async (timeout_ms: number | undefined) => {

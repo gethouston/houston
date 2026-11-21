@@ -2,12 +2,6 @@ import { ok } from "node:assert";
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-/**
- * Copy for a surface that no longer exists is worse than no copy: it is three
- * translations kept in step for a string nothing can render. These keys named
- * the instructions disclosure and the "Works with" strip the skill editor
- * replaced, and every language drops them together.
- */
 const RETIRED = [
   "showInstructions",
   "hideInstructions",

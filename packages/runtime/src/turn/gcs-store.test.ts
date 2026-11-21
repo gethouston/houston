@@ -41,8 +41,6 @@ test("GCS manifests propagate update timestamps without breaking pagination", as
       },
     ],
   ]);
-  // SAFETY: this manifest test exercises only Storage.bucket().getFiles(),
-  // and the fixture supplies that exact external-client seam.
   const storage = {
     bucket: () => ({ getFiles }),
   } as unknown as Storage;
@@ -76,7 +74,6 @@ describe.skipIf(process.platform === "win32")("GCS sign-in state", () => {
       queueMicrotask(() => failing.destroy(body));
       return failing;
     });
-    // SAFETY: download() touches only Storage.bucket().file()'s two readers.
     const storage = {
       bucket: () => ({ file: () => ({ download, createReadStream }) }),
     } as unknown as Storage;

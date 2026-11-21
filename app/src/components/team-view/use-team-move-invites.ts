@@ -7,7 +7,6 @@ import {
   sendableInvites,
 } from "../../lib/share-via-team";
 
-/** The folder move's closing invite step: who to invite and each send. */
 export function useTeamMoveInvites(addMember: ReturnType<typeof useAddMember>) {
   const [invites, setInvites] = useState<EmailInvite[]>([]);
   const [sending, setSending] = useState(false);
@@ -25,8 +24,6 @@ export function useTeamMoveInvites(addMember: ReturnType<typeof useAddMember>) {
           role: "user",
           options: { silence: isExpectedShareError },
         });
-        // A seat this flow cannot pay for (it shows no price) fails the row;
-        // the People tab is where a seat is bought.
         mark(
           invite.email,
           outcome.kind === "added"

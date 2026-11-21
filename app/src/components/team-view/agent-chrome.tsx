@@ -18,12 +18,6 @@ const LABEL_KEYS = {
   settings: "teamView.agentTabs.settings",
 } as const;
 
-/**
- * The board has no lozenge label in the strip (the identity stands for it) but
- * a phone title needs the word. Exhaustive over `TeamSectionId` so a new
- * section is a compile error rather than a blank subtitle, even though a
- * focused agent only ever stands on four of them.
- */
 const MOBILE_TITLE_KEYS = {
   "mission-control": "teamView.tabs.missionControl",
   routines: "teamView.tabs.routines",
@@ -44,9 +38,6 @@ export function AgentChrome({
   const openAgentView = useUIStore((state) => state.openAgentView);
   const isMobile = useIsMobile();
   if (isMobile) {
-    // The phone has ONE task list per employee, the AI Employees drill-in, so
-    // Tasks and back both return there. Tabs replace rather than push: back
-    // leaves the employee's screen instead of replaying every tab tapped.
     const openTaskList = () => openPhoneTaskList(agent.id);
     const selectPhone = (next: TeamSectionId) =>
       next === "mission-control"

@@ -1,9 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * `HoverCard`'s public API, read off `ui/core/src/components/hover-card.tsx`. Split
- * out only to keep the specimen file inside the 200-line rule.
- */
 export const hoverCardProps: SpecimenProp[] = [
   { name: "HoverCard.open", type: "boolean", note: "Controlled open state." },
   {

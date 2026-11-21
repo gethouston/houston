@@ -3,35 +3,13 @@ import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { queryKeys } from "../lib/query-keys";
 import { normalizeSidebarLayout } from "../lib/sidebar-layout-ops";
 
-/**
- * Concurrent optimistic writes to ONE document, the pattern TanStack Query
- * documents for it. Every layout change writes the whole document, so a drag
- * followed quickly by another produces overlapping PUTs and refetches. Three
- * rules keep the screen on the person's latest arrangement:
- *
- * 1. Writes share a mutation `scope`, so they reach the server one at a time
- *    and in order: an older document can never land after a newer one.
- * 2. A refetch in flight is cancelled at the optimistic write, and no refetch
- *    (settled write or `SidebarLayoutChanged` event) starts while a write is
- *    still pending: its answer predates the pending document and would paint
- *    the previous arrangement back.
- * 3. Only the LAST pending write re-reads the server, once every write landed.
- * 4. A failed write rolls back only when it is the last one pending, and then to
- *    the state before the OLDEST write that failed since the last success: each
- *    later write was computed on top of the earlier failures. That rollback is
- *    the one moment the person sees their arrangement undone, so it alone
- *    calls `rolledBack` (the caller's authored "did not save" surface).
- */
-
 export const sidebarLayoutWriteKey = (workspaceId: string) =>
   ["sidebar-layout-write", workspaceId] as const;
 
-/** Reports a failure that has no user-facing consequence (`logAndReportError`). */
 export type ReportLayoutError = (command: string, err: unknown) => void;
 
 const reportedUnreadLayouts = new WeakMap<QueryClient, Set<string>>();
 
-/** Per workspace: the layout before the oldest write failed since a success. */
 const rollbackBases = new WeakMap<
   QueryClient,
   Map<string, SidebarLayout | undefined>
@@ -54,7 +32,6 @@ interface LayoutWrite {
 const pendingWrites = (qc: QueryClient, workspaceId: string) =>
   qc.isMutating({ mutationKey: sidebarLayoutWriteKey(workspaceId) });
 
-/** The mutation options for one workspace's layout writes. */
 export function sidebarLayoutWriteOptions(
   qc: QueryClient,
   workspaceId: string,
@@ -91,13 +68,6 @@ export function sidebarLayoutWriteOptions(
   };
 }
 
-/**
- * Apply a pure op to the freshest cached layout and write the result into the
- * cache in the same tick, so a second op issued back to back composes on this
- * one. Returns the write to persist, or null when there is nothing to write:
- * the layout is not loaded yet, or the op changed nothing (it returned the
- * layout it was given).
- */
 export function applySidebarLayoutOp(
   qc: QueryClient,
   workspaceId: string,
@@ -132,10 +102,6 @@ export function applySidebarLayoutOp(
   return { next, prev };
 }
 
-/**
- * Whether an invalidation of `queryKey` must wait: it is a sidebar layout with
- * a write still pending, whose own settle re-reads the server afterwards.
- */
 export function sidebarLayoutRefetchDeferred(
   qc: QueryClient,
   queryKey: QueryKey,

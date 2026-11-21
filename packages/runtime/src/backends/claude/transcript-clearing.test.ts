@@ -13,13 +13,6 @@ import { cappedResultText } from "../../session/tool-results/cap";
 import { spillToolResult } from "../../session/tool-results/spill";
 import { createSessionsStore } from "./sessions-store";
 
-/**
- * The CLI's transcript, in the shape SDK 0.3.310 writes it: one entry per
- * assistant content block (sharing the message id), each tool result in its
- * own user entry beside the CLI's `toolUseResult` copy, and bookkeeping lines
- * that never mention a tool.
- */
-
 let root: string;
 let workspaceDir: string;
 let transcript: string;
@@ -144,7 +137,6 @@ test("a batch of stale results becomes stubs pointing at their saved copies", ()
       payload(`mail${i}`, 19_000),
     );
   }
-  // The newest rounds and every line that is not a cleared result are untouched.
   for (let i = 7; i < 10; i++)
     expect(resultSent(lines, `toolu_${i}`)).toBe(payload(`mail${i}`, 19_000));
   const changed = lines.filter((line, i) => line !== original[i]);
@@ -158,7 +150,6 @@ test("a cleared transcript is not rewritten again until the next batch", () => {
   resume();
   expect(readFileSync(transcript, "utf8")).toBe(cleared);
 
-  // Two more rounds: 38k characters newly stale, short of a batch.
   const grown = [...cleared.split("\n"), ...chat(12).slice(-6)];
   writeFileSync(transcript, grown.join("\n"));
   resume();
@@ -217,7 +208,6 @@ test("a cleared capped result points at the full result it was cut from", () => 
   const target = { workspaceDir, conversationId: "c1" };
   const full = (i: number) => payload(`mail${i}`, 42_000);
   const saved = new Map<string, string>();
-  // Fifteen stale 8k heads make the batch.
   const lines = chat(18).map((line) => {
     const entry = JSON.parse(line);
     const block = entry.message?.content?.[0];
@@ -237,7 +227,6 @@ test("a cleared capped result points at the full result it was cut from", () => 
       `[Cleared tool result: integration_execute, 42,000 characters. It was removed from the conversation to save space. The full result is saved at ${saved.get(`toolu_${i}`)} (relative to your working directory); read that file if you need it again.]`,
     );
   }
-  // No second copy of the head beside the full results.
   expect(readdirSync(join(workspaceDir, ".tool-results", "c1"))).toHaveLength(
     18,
   );

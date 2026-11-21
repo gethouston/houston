@@ -1,7 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { type APIRequestContext, expect } from "@playwright/test";
 
-/** Complete a fake-host OAuth hand-off once its pending connection exists. */
 export async function activatePendingConnection(
   request: APIRequestContext,
   toolkit: string,

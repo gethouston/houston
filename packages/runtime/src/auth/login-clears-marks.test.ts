@@ -3,17 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, vi } from "vitest";
 
-// The data dir is pinned BEFORE the dynamic imports: the marks are persisted
-// there and auth.json is written by the completed login.
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-login-"));
 
-// Never spawn the real Claude CLI from a test.
 vi.mock("./anthropic-cli-binary", () => ({
   resolveClaudeCliBinary: () => null,
 }));
-// A fingerprint that CANNOT see the new credential — the macOS Keychain case,
-// where the Claude CLI writes nothing the fingerprint reads. Without this the
-// fingerprint change would heal the mark on its own and prove nothing.
 vi.mock("./credential-fingerprint", () => ({
   credentialFingerprint: () => "absent|absent",
 }));

@@ -7,29 +7,22 @@ export interface CommentFormLabels {
   add: string;
   save: string;
   remove: string;
-  /** The submit shortcut, as the platform writes it ("⌘↵", "Ctrl+↵"). */
   shortcut: string;
-  /** Shown once the comment reaches `maxLength`. */
   tooLong?: string;
 }
 
 export interface CommentFormProps {
-  /** "Slide 3 · “quote”": what the comment is about. */
   context: string;
   initial: string;
   editing: boolean;
   labels: CommentFormLabels;
-  /** `keyboard`: the action came from a key, so nothing animates. */
   onSubmit: (comment: string, keyboard: boolean) => void;
   onCancel: (keyboard: boolean) => void;
   onRemove?: () => void;
-  /** Phone sheet: full-width 44px buttons. */
   roomy?: boolean;
-  /** Characters a comment may hold. */
   maxLength?: number;
 }
 
-/** Ask what the agent should change about a selection. */
 export function CommentForm({
   context,
   initial,

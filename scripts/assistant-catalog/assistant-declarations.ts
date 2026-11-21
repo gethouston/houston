@@ -10,18 +10,11 @@ import {
   type TransportWrapper,
 } from "./assistant-transport-wrapper.ts";
 
-/**
- * An operation candidate: an exported module function, a public method, or one
- * member of the object an SDK module factory publishes.
- */
 export interface Declaration {
   name: string;
   node: FunctionNode;
-  /** The function body: a block, or a concise arrow's single expression. */
   body: ts.Node;
-  /** Nodes whose leading JSDoc may document it, nearest first. */
   docs: ts.Node[];
-  /** What the factory publishing it was called with (facade members only). */
   substitutions: Map<string, ts.Expression>;
 }
 
@@ -29,11 +22,6 @@ export interface FileSurface {
   declarations: Declaration[];
   helpers: Map<string, PathHelper>;
   wrappers: Map<string, TransportWrapper>;
-  /**
-   * Exported functions that answer with an object literal — the shape a module
-   * factory has. Whether one IS wiring is settled by the facade walk, which
-   * needs every candidate in hand before it can tell.
-   */
   factories: { name: string; node: FunctionNode }[];
 }
 
@@ -52,11 +40,6 @@ function isPublicMethod(node: ts.MethodDeclaration): boolean {
   ].some((kind) => hasModifier(node, kind));
 }
 
-/**
- * A cluster mixin's class factory. It is not an operation: everything it
- * publishes is a method of the class it declares, and treating the factory
- * itself as one would attribute the whole cluster's requests to a single name.
- */
 function isMixinFactory(node: ts.FunctionDeclaration): boolean {
   let found = false;
   const visit = (child: ts.Node): void => {
@@ -68,11 +51,7 @@ function isMixinFactory(node: ts.FunctionDeclaration): boolean {
   return found;
 }
 
-/** Parameters that are transport plumbing, never something a caller supplies. */
 const PLUMBING_TYPES = new Set([
-  // The web adapter's own context, the `ControlPlaneConfig` twin one rung up:
-  // the client HAS it, and publishing it as a parameter would ask the caller
-  // to hand back the client's entire state to reach a route with no arguments.
   "AdapterContext",
   "ControlPlaneConfig",
   "HttpScope",
@@ -87,11 +66,6 @@ export function isPlumbingParameter(
   return type !== undefined && PLUMBING_TYPES.has(type);
 }
 
-/**
- * Everything one source file contributes: the operations it publishes, the
- * path helpers its templates call, and the private transport wrappers its
- * methods reach the wire through.
- */
 export function readFileSurface(
   source: ts.SourceFile,
   isModuleSource: boolean,
@@ -137,9 +111,6 @@ export function readFileSurface(
         factories.push({ name: node.name.text, node });
       record(node, node.name.text, exported);
     }
-    // A CLASS method is published under its own name; a method written inside
-    // an object literal is one member of what a factory returns, and is
-    // reached under the facade path that mounts it, never bare.
     if (ts.isMethodDeclaration(node) && ts.isIdentifier(node.name) && inClass) {
       record(node, node.name.text, isPublicMethod(node));
     }

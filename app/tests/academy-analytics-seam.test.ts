@@ -12,7 +12,6 @@ import {
   TRACKED_PROPERTY_UNION as PROPERTY_UNION,
 } from "./fixtures/analytics-source.ts";
 
-// The bus contains the errors it reports.
 console.error = () => {};
 
 describe("the analytics bus", () => {
@@ -44,8 +43,6 @@ describe("the analytics bus", () => {
   });
 
   it("survives a listener that throws, and still reaches the next one", () => {
-    // Analytics is a side channel: a broken listener must never take down the
-    // user action that emitted the event, nor the listeners behind it.
     const reached: string[] = [];
     const offBroken = subscribeAnalytics(() => {
       throw new Error("listener exploded");
@@ -70,8 +67,6 @@ describe("the analytics bus", () => {
   });
 });
 
-// `analytics.ts` can't be imported here (posthog-js + the engine adapter come
-// with it), so its half of the seam is asserted against the source.
 const SOURCE = readFileSync(
   join(import.meta.dirname, "../src/lib/analytics.ts"),
   "utf8",
@@ -87,8 +82,6 @@ function block(startsWith: string, endsWith: string): string {
 
 describe("analytics.track's seam with the app", () => {
   it("notifies the app BEFORE the PostHog no-op path", () => {
-    // A build with no POSTHOG_KEY returns early — if the notify sat after that
-    // return, nobody would earn a usage point in local development.
     const track = block(
       "track: (event: AnalyticsEventName",
       "trackAiGeneration",
@@ -110,7 +103,6 @@ describe("analytics.track's seam with the app", () => {
     ]) {
       ok(EVENTS.has(event), `AnalyticsEventName is missing "${event}"`);
     }
-    // `cleanProps` drops anything missing from the Set, silently.
     ok(PROPERTY_UNION.has("lesson"), 'AnalyticsProperty is missing "lesson"');
     ok(ALLOWED_PROPS.has("lesson"), 'ALLOWED_PROPS is missing "lesson"');
   });

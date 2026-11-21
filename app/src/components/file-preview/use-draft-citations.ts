@@ -4,7 +4,6 @@ import { citationsFacade } from "../../lib/citations-facade";
 
 const NONE: readonly DraftCitation[] = [];
 
-/** A composer draft's file comments, live. Empty without a draft. */
 export function useDraftCitations(
   draftKey: string | null,
 ): readonly DraftCitation[] {

@@ -1,4 +1,3 @@
-/** Race local-model work against a timeout while sharing its abort signal. */
 export function withLocalModelTimeout<T>(
   work: (signal: AbortSignal) => Promise<T>,
   ms: number,

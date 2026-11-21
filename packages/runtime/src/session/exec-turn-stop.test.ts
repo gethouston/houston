@@ -5,15 +5,6 @@ import type { WireEvent, WireFrame } from "@houston/runtime-client";
 import { expect, test, vi } from "vitest";
 import type { HarnessSession } from "../backends/types";
 
-/**
- * A Stop ends the turn's stream for good. cancelTurn publishes the terminal
- * "Stopped by user" frame and then aborts, and pi keeps emitting while it
- * unwinds (the aborted tool's `tool_end`, the aborted `turn_end`'s `usage`);
- * the turn's file diff lands after prompt() resolves. None of that may reach
- * the bus: one frame after the terminal one flips the stream snapshot back to
- * running, and the pod then reads busy forever.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-stop-"));
 const WORKSPACE = mkdtempSync(join(tmpdir(), "houston-stop-ws-"));
 process.env.HOUSTON_WORKSPACE_DIR = WORKSPACE;
@@ -55,11 +46,6 @@ const { appendAssistantMessage } = await import("../store/conversations");
 
 type Conv = Parameters<typeof execTurn>[0];
 
-/**
- * Run one turn on a session that streams `head`, writes a file, and streams
- * `tail`. With `stop`, the user presses Stop once the head streamed and the
- * session streams `tail` while it unwinds the abort — pi's shape.
- */
 async function runTurn(
   id: string,
   head: WireEvent[],
@@ -119,7 +105,6 @@ async function runTurn(
   return frames;
 }
 
-/** The frame types published after the terminal "Stopped by user" frame. */
 const afterStop = (frames: WireFrame[]) =>
   frames
     .slice(
@@ -150,7 +135,6 @@ test("a Stop mid-tool publishes nothing after the stop and leaves no turn runnin
 
   expect(afterStop(frames)).toEqual([]);
   expect(snapshot(id).running).toBe(false);
-  // The recorded message stays complete: only the live stream is cut.
   expect(persisted(id)).toMatchObject({
     stopped: true,
     usage: USAGE,
@@ -161,7 +145,6 @@ test("a Stop mid-tool publishes nothing after the stop and leaves no turn runnin
 
 test("a Stop mid-generation drops the aborted turn's usage frame and leaves no turn running", async () => {
   const id = "stop-mid-text";
-  // The codex provider ends an aborted generation with an all-zero usage.
   const aborted = { context_tokens: 0, output_tokens: 0, cached_tokens: 0 };
   const frames = await runTurn(
     id,

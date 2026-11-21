@@ -14,18 +14,6 @@ import {
 import type { ResolvedTurnStore } from "./turn-store";
 import type { TurnRequest } from "./types";
 
-/**
- * The last refusals a pooled turn can meet, once its tree is hydrated and
- * before the stream opens. Resolves true when the turn was refused and already
- * answered; an overlapped session startup is abandoned on every refusal.
- *
- * While a card is live, only the person it is for may answer it. A message
- * from anyone else is a plain 403 JSON answer, never a setup-error frame: the
- * gateway maps the worker's 403 to its own, and neither the turnlog nor the
- * transcript may record a turn that never ran. Routine runs are exempt: they
- * share one conversation and act as different people (the creator on
- * schedule, whoever clicked "run now").
- */
 export async function refuseHydratedTurn(input: {
   turn: TurnRequest;
   preparation: TurnFilesystemPreparation;
@@ -61,8 +49,6 @@ export async function refuseHydratedTurn(input: {
     if (refused) throw new TurnSetupError("message_refused", refused);
     return false;
   } catch (error) {
-    // The turn root is removed behind this throw and the card read writes
-    // there: stop it (a store read has no deadline), then wait.
     card?.abort();
     await card?.settled;
     await reportAbandonedTurnStartup(input.startup);

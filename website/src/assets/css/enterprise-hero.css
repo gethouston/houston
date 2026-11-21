@@ -1,21 +1,3 @@
-/*
- * /enterprise — the hero and the industries panel.
- *
- * The hero borrows the B2C landing's fold mechanics (landing-hero.css:
- * .hero, .hero-fold, .hero-cta) and nothing of its look: a full-bleed reel
- * of real work (one clip per industry) under a scrim, a huge LIGHT statement
- * (the site's 340 display weight, set big and tight, two short lines), one
- * line under it and two pills, nothing else. The proof section (enterprise.css)
- * follows right under the fold, on white.
- *
- * The industries' six photographs sit in the right column of the landing's
- * split (landing-splits.css), names only.
- */
-
-/* ── Hero ────────────────────────────────────────────────────────────────── */
-/* The reel: six clips stacked, one shown, crossfading. The clips play their
-   own frames but nothing moves the layer itself (no drift, no parallax), so
-   PERFORMANCE.md rule 1 holds. */
 .ent-reel {
   position: absolute;
   inset: 0;
@@ -35,9 +17,6 @@
 .ent-reel-clip.is-on {
   opacity: 1;
 }
-/* Legibility first: the type sits over the middle of the frame, so the
-   middle is where the scrim is deepest; the top keeps the nav readable and
-   the floor darkens into the white page below. */
 .ent-reel::after {
   content: "";
   position: absolute;
@@ -60,17 +39,12 @@
   justify-content: space-between;
   padding-bottom: clamp(28px, 5vh, 52px);
 }
-/* No window to share the fold with: the statement takes the middle. */
 .ent-fold .hero-intro {
   position: relative;
   isolation: isolate;
   margin-block: auto;
   padding-block: clamp(24px, 6vh, 64px);
 }
-/* A feathered dark pool that travels with the text, so the headline reads
-   over the brightest frame of any clip (the white robot cell, the lit
-   warehouse). A gradient, not a frosted panel: blurring over moving video
-   re-rasterizes every frame (PERFORMANCE.md rule 2). */
 .ent-fold .hero-intro::before {
   content: "";
   position: absolute;
@@ -84,11 +58,8 @@
   );
   pointer-events: none;
 }
-/* The punch is scale and air, not weight: two short lines, very big, light. */
 .ent-h1 {
   font-weight: 340;
-  /* Width sets the size; height caps it, so a short laptop screen (or a
-     longer language that wraps to three lines) stays inside the fold. */
   font-size: clamp(44px, min(8.4vw, 11.5vh), 124px);
   line-height: 0.98;
   letter-spacing: -0.045em;
@@ -111,8 +82,6 @@
 .ent-fold .hero-cta {
   margin-top: clamp(28px, 3.4vw, 40px);
 }
-/* The outline pill gets a faint fill so it holds over the brightest frames
-   of the reel (the welding sparks, the white retail store). */
 .ent-fold .btn-ghost {
   background: rgba(10, 10, 10, 0.32);
 }
@@ -135,8 +104,6 @@
   }
 }
 
-/* ── Industries: six photographs, names only ─────────────────────────────── */
-/* The right column of the landing's split: two across, three down. */
 .ent-tiles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -165,7 +132,6 @@
 .ent-tiles.is-dim .ent-tile:not(.is-on) img {
   filter: grayscale(1) brightness(0.72) contrast(1.05);
 }
-/* One scrim, lifting the name off the photo. */
 .ent-tile::after {
   content: "";
   position: absolute;

@@ -1,15 +1,3 @@
-/**
- * Adding someone to the active org when a seat may cost money: the quote that
- * says what the add will charge, and the add itself, which carries the quote's
- * `prorationDate` back so the charge is the one the person saw.
- *
- * The seat refusals come back as outcomes, never as thrown errors: a declined
- * card, a bank that wants to confirm the payment, and a payer-only seat are
- * states the person acts on. A quote that went stale (`seat_quote_changed`,
- * `seat_quote_expired`) is re-quoted HERE, so every surface shows the new price
- * the same way instead of each deciding what a 409 means.
- */
-
 import {
   parseSeatQuote,
   SEAT_ADD_REFUSALS,
@@ -20,11 +8,6 @@ import { type HttpScope, httpRequest } from "../http";
 import { refusalCode, refusalStatus } from "../refusal-code";
 import type { AddOrgMemberResult, OrgRole } from "./types";
 
-/**
- * What an add answered: the person added (or invited), a refusal the person
- * acts on (nobody was added and nothing was charged), or a fresh quote because
- * the one the add carried no longer holds.
- */
 export type AddOrgMemberOutcome =
   | { kind: "added"; member: AddOrgMemberResult }
   | { kind: "seat_payment_failed" }
@@ -33,15 +16,9 @@ export type AddOrgMemberOutcome =
   | { kind: "seat_charge_in_app"; hint: string }
   | { kind: "quote_changed"; quote: SeatQuote };
 
-/**
- * What the AI Manager tells the person when an add it made needs a paid seat:
- * the manager never pays for one, so the person adds them from People, where
- * the price shows before anything is charged.
- */
 export const SEAT_CHARGE_IN_APP_HINT =
   "Every paid seat is in use, so adding this person needs a new paid seat. Ask the person to add them from People in Admin, where they will see the price before anything is charged.";
 
-/** The seat refusal behind a failed add, or null for every other error. */
 export function seatAddRefusal(error: unknown): SeatAddRefusal | null {
   if (!(error instanceof Error)) return null;
   const code = refusalCode(error);
@@ -101,7 +78,6 @@ export async function addOrgMember(
   prorationDate?: number,
   quotedAmountCents?: number,
 ): Promise<AddOrgMemberOutcome> {
-  // The amount only ever travels with the date it was quoted at.
   if (prorationDate === undefined) quotedAmountCents = undefined;
   try {
     const res = await httpRequest(scope, "/v1/org/members", {

@@ -16,15 +16,6 @@ const defaults: Pick<AgentCardLabels, "newAgent" | "installs"> = {
   installs: "installs",
 };
 
-/**
- * The wide card the featured row wears: the CREATOR is the hero — their
- * photo fills the field, because a featured agent is an endorsement of the
- * person behind it — and under it the agent's name, two lines of what it
- * does, the integrations it uses, and the quiet baseline the regular card
- * ends on. A creator without a photo hands the field to the agent's own
- * picture, or failing that its tone and mark. Same overlay-link grammar as
- * the regular card: the whole card is the way in, nothing else competes.
- */
 export function FeaturedAgentCard({
   agent,
   href,

@@ -10,25 +10,14 @@ import { SettingsCard } from "../settings/settings-row";
 import { AccountPage } from "./account-page";
 import { ProfilePhotoRow } from "./profile-photo";
 
-/** The gateway's own ceiling: `PUT /v1/me/profile` answers 400 above it. */
 const NAME_MAX_CHARS = 60;
 
-/** The inline validation key for a trimmed name, or `null` when it is fine. */
 function nameErrorKey(trimmed: string): "nameEmpty" | "nameTooLong" | null {
   if (!trimmed) return "nameEmpty";
   if (trimmed.length > NAME_MAX_CHARS) return "nameTooLong";
   return null;
 }
 
-/**
- * The display-name field. Mounted with the saved name as its seed and REMOUNTED
- * by its `key` whenever that saved name changes, so the field re-syncs to server
- * truth without an effect that could overwrite what the user is mid-way through
- * typing. Validation is inline under the field (a toast would scroll away from
- * the thing it is talking about). The save is optimistic: the new name becomes
- * the saved name at once (remounting this form on it), and a refusal puts the
- * old one back with its own toast (`useSetMyProfile`).
- */
 function ProfileNameForm({ savedName }: { savedName: string }) {
   const { t } = useTranslation("settings");
   const setProfile = useSetMyProfile();
@@ -96,19 +85,10 @@ function ProfileNameForm({ savedName }: { savedName: string }) {
   );
 }
 
-/**
- * Profile: the name and picture every multiplayer surface renders for this
- * user: chat sender rows, face stacks, mentions, the team roster. One card, two
- * hairline-divided rows. The account menu offers it only once the profile read
- * succeeded (`useProfileAvailable`), so the card is there by the time anyone
- * lands here.
- */
 export function ProfileView() {
   const { t } = useTranslation("settings");
   const { data: profile } = useMyEditableProfile();
   const me = useMyProfile();
-  // The gateway's effective name, falling back to the resolved self-identity
-  // for a user whose provider gave no name and who has not set one yet.
   const savedName = profile?.displayName ?? me?.name ?? "";
 
   return (

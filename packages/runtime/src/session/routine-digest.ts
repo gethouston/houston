@@ -6,7 +6,6 @@ import {
 } from "./replay-transcript";
 import { estimateTokens } from "./token-estimate";
 
-/** How an earlier turn of a routine chat ended. */
 export type RoutineTurnOutcome =
   | { kind: "finished" }
   | { kind: "failed"; error: string }
@@ -14,39 +13,24 @@ export type RoutineTurnOutcome =
   | { kind: "interrupted" }
   | { kind: "no_reply" };
 
-/** One earlier turn of a routine chat: a fire of the routine, or a person's message. */
 export interface RoutineTurn {
   at: number;
   source: "run" | "person";
-  /** What the person wrote; empty for a run, whose instructions follow anyway. */
   request: string;
   outcome: RoutineTurnOutcome;
-  /** The turn's final reply, whole. */
   reply: string;
 }
 
-/** Turns the digest shows, newest first. */
 const DIGEST_TURNS = 5;
 const DIGEST_REPLY_CHARS = 600;
 const DIGEST_REQUEST_CHARS = 200;
-/** The digest's ceiling in conservatively estimated tokens. */
 export const DIGEST_TOKEN_BUDGET = 2_000;
 
-/** Turns the results file keeps, newest first, and its size ceiling. */
 const RESULTS_TURNS = 50;
 const RESULTS_MAX_CHARS = 200_000;
 
-/**
- * Every fire opens with routineRunPreamble, whatever the routine is called, so
- * its fixed head tells a fire from a person's message without a stored flag.
- */
 const FIRE_HEAD = routineRunPreamble("\u0000").split("\u0000")[0] ?? "";
 
-/**
- * The earlier turns of a routine chat, oldest first, from its transcript tail.
- * Only what the model may still see counts (nothing above a `/clear`), and
- * `currentTurnId`'s own row is the prompt itself, never history.
- */
 export function routineTurns(
   messages: ReadonlyArray<ChatMessage>,
   currentTurnId: string,
@@ -104,7 +88,6 @@ function outcomeText(outcome: RoutineTurnOutcome): string {
 
 const when = (turn: RoutineTurn) => new Date(turn.at).toISOString();
 
-/** `text` on one line, cut to `max` characters (code points, never half a pair). */
 function excerpt(text: string, max: number): string {
   const chars = Array.from(text.replace(/\s+/g, " ").trim());
   return chars.length <= max
@@ -133,12 +116,6 @@ const DIGEST_HEADER =
   "work or reports.]";
 const DIGEST_FOOTER = "[End of earlier runs. This turn's message follows.]";
 
-/**
- * The short memory a fresh routine session opens with: the newest turns, each
- * reply cut to an excerpt, within DIGEST_TOKEN_BUDGET (older lines go first),
- * plus where the full replies are when `resultsPath` names a readable file.
- * Null when the chat has no earlier turn.
- */
 export function renderRoutineDigest(
   turns: ReadonlyArray<RoutineTurn>,
   resultsPath: string | null,
@@ -160,10 +137,6 @@ export function renderRoutineDigest(
   return { text: render(lines), truncated: lines.length < turns.length };
 }
 
-/**
- * The file the digest points at: the newest turns' full replies, newest
- * first, at most RESULTS_TURNS of them and RESULTS_MAX_CHARS in all.
- */
 export function renderRoutineResults(
   turns: ReadonlyArray<RoutineTurn>,
 ): string {

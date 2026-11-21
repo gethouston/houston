@@ -2,7 +2,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { TextStore } from "@houston/domain";
 
-/** Domain TextStore over the hydrated turn tree (absolute-path keys). */
 export function fsTextStore(): TextStore {
   return {
     async readText(key: string): Promise<string | null> {

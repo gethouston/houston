@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import { ComposioHttp } from "./composio-http";
 
-/** A fetch that throws `failures` in order, then answers `{ ok: true }`. */
 function flakyFetch(failures: unknown[]) {
   const calls: string[] = [];
   const impl = (async (_url: string, init?: RequestInit) => {

@@ -23,13 +23,6 @@ import { writeTurnHarness } from "./turn-harness-state";
 import { runTurn, type TurnDirectories } from "./turn-session";
 import type { RunTurnDeps } from "./turn-session-startup";
 
-/**
- * Houston's proactive autocompact on a POOLED turn: the standing server
- * compacts a conversation whose context is 93% full before prompting
- * (session/exec-turn.ts); a pooled turn must too, or a long chat on E2B runs
- * into its window and fails where the same chat on a pod kept going.
- */
-
 const target = vi.hoisted(() => ({
   model: {
     provider: "google",
@@ -68,7 +61,6 @@ async function directories(): Promise<TurnDirectories> {
   return { turnRoot, workspaceDir, dataDir };
 }
 
-/** A chat whose last reply reported `contextTokens` of context fill. */
 function seedChat(dataDir: string, contextTokens: number): void {
   const dir = join(dataDir, "conversations");
   appendUserMessageAt(dir, ID, "Remember the blue lantern.", {
@@ -84,7 +76,6 @@ function seedChat(dataDir: string, contextTokens: number): void {
   });
 }
 
-/** A pi session resumed at `fill` tokens that records what it was asked. */
 function piBackend(fill: number, compact: HarnessSession["compact"]) {
   const created: CreateSessionOptions[] = [];
   const prompts: string[] = [];
@@ -192,7 +183,6 @@ test("a failed compaction holds the next pooled turns off for the cooldown", asy
     throw new Error("Summarization failed: the summarizer returned no summary");
   });
 
-  // Two turns, two processes: nothing survives between them but the tree.
   await send(dirs, "t1", {
     createBackend: () => piBackend(95_000, compact).backend,
   });
@@ -200,8 +190,6 @@ test("a failed compaction holds the next pooled turns off for the cooldown", asy
     createBackend: () => piBackend(96_000, compact).backend,
   });
 
-  // The first turn paid for one failed summarization; the second did not pay
-  // for another, and both turns still ran.
   expect(compact).toHaveBeenCalledTimes(1);
   expect(lastAssistant(dirs.dataDir)?.turnId).toBe("t2");
 });
@@ -253,8 +241,6 @@ test("a fresh Claude process reads the fill from the transcript and compacts", a
 
   await send(dirs, "t1", { claudeSdk: claudeSdk(api) }, frames);
 
-  // The summarization resumed the full session; the turn then opened a new
-  // session carrying only the summary, and no transcript replay on top.
   expect(api.calls.map((call) => call.resume)).toEqual(["sim-old", undefined]);
   expect(api.calls[1]?.prompt).toContain("Checked everything");
   expect(api.calls[1]?.prompt).not.toContain(
@@ -270,10 +256,7 @@ test("a fresh Claude process reads the fill from the transcript and compacts", a
     join(dirs.dataDir, "conversations"),
     ID,
   );
-  // Delivered, so retired: the next turn resumes the new session.
   expect(conversation?.claudeCompaction).toBeUndefined();
-  // The summary row carries the turn's boundary, the reply follows it: the
-  // same transcript the pod's Claude autocompact leaves.
   expect(conversation?.messages.filter((m) => m.compaction)).toEqual([
     expect.objectContaining({
       role: "assistant",
@@ -297,8 +280,6 @@ test("a fresh Claude process sizes the CLI's first-byte deadline from the transc
 
   await send(dirs, "t1", { claudeSdk: claudeSdk(api) });
 
-  // 150k recorded, the question, and 100k of growth during the turn: 12.5 s
-  // more than a small prompt's 15 s.
   expect(api.calls.map((call) => [call.resume, call.apiTimeoutMs])).toEqual([
     ["sim-old", "27500"],
   ]);
@@ -434,7 +415,6 @@ test("a cancel during compaction stops the summary and the prompt never runs", a
         compact: () =>
           new Promise((_, reject) => {
             stopSummary = () => reject(new Error("This operation was aborted"));
-            // The person presses Stop while the summary is being written.
             cancel.abort();
           }),
         setThinkingLevel: () => undefined,
@@ -460,7 +440,6 @@ test("a cancel during compaction stops the summary and the prompt never runs", a
   expect(outcome).toEqual({});
 });
 
-/** A CLI transcript of `rounds` tool rounds, each result `chars` long. */
 function toolTranscript(rounds: number, chars: number): string {
   const lines: string[] = [];
   for (let i = 0; i < rounds; i++) {
@@ -496,8 +475,6 @@ function toolTranscript(rounds: number, chars: number): string {
 test("a Claude chat whose fill is mostly stale results clears them and does not compact", async () => {
   target.model = claudeModel;
   const dirs = await directories();
-  // 195k recorded; six stale 80k-character results (the batches through
-  // round 5) come off the resume, about 120k tokens, leaving ~75k.
   seedChat(dirs.dataDir, 195_000);
   const api = simulatedClaudeApi({
     windowTokens: 1_000_000,
@@ -519,7 +496,6 @@ test("a Claude chat whose fill is mostly stale results clears them and does not 
 
   expect(api.calls.map((call) => call.resume)).toEqual(["sim-old"]);
   expect(frames.some((f) => f.type === "context_compacted")).toBe(false);
-  // The cleared results were saved where their stubs point.
   expect(
     await readdir(join(dirs.workspaceDir, ".tool-results", ID)),
   ).toHaveLength(6);

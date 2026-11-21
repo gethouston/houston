@@ -1,9 +1,3 @@
-// Real-DOM mount of the rail's drag hook (the ui/chat interaction-card-mount
-// pattern: jsdom globals BEFORE the dynamic react-dom import). Pins the drop
-// hand-off: the host's store reaches the rail a tick after `onArrange`, and the
-// rail must keep drawing the dropped arrangement in between instead of
-// flashing the previous order back.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
@@ -260,9 +254,6 @@ it("activates an agent with Enter and arranges it with Alt+ArrowDown", async () 
   container.remove();
 });
 
-// A row that stays mounted keeps its focus through a reorder: React restores
-// the focused element after each commit. Only a row that leaves the screen
-// needs the rail to move focus.
 describe("focus after a keyboard move", () => {
   async function mountList(listGroups: SidebarGroupView[]) {
     const container = document.createElement("div");

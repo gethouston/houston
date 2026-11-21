@@ -1,18 +1,4 @@
 #!/bin/sh
-# `pnpm dev:reset` — reset the LOCAL dev environment to from-zero, so the next
-# `pnpm dev` boots like a brand-new install. Never touches prod or staging
-# (that is cloud's `make reset-test-user`, scoped to the hosted test account).
-#
-# What it clears, and why each layer exists:
-#   1. The dev stack + Postgres volume  — the local gateway's users/orgs/agents/prefs.
-#   2. ~/Library/WebKit/houston-app     — the dev app's WKWebView container:
-#      localStorage (device prefs like onboarding_completed, the dev session)
-#      and caches. NOTE the container is named after the productName
-#      ("houston-app"), NOT the bundle id com.houston.app — wiping the wrong
-#      dir leaves stale first-run flags behind and skips onboarding.
-#   3. ~/.houston (ONLY with --with-data) — local agent/workspace data. Keep it
-#      when testing the cloud-migration flow: it IS the migration source; the
-#      offer only appears when legacy workspaces exist.
 set -eu
 cd "$(dirname "$0")/../.."
 

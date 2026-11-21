@@ -18,41 +18,20 @@ import { useSkillsViewActions } from "./use-skills-view-actions";
 import { useUnfinishedSkillDrafts } from "./use-unfinished-skill-drafts";
 import { useWorkspaceSkillRows } from "./workspace-skill-rows";
 
-/**
- * One AI Employee's Skills, the section in its settings rail: the skills it
- * has, a search, and a "Create skill" menu whose second way puts a skill the
- * workspace already holds on this employee. It stands inside the frame the
- * rail already provides.
- *
- * Clicking a skill replaces the list with that skill's EDITOR: its workflow
- * (or markdown) here, its chat in the shell's right panel. The editor brings
- * its OWN header, whose back arrow returns the list. "Create skill" opens the
- * guided create chat in the same panel with the list still on the left.
- */
 export function SkillsBody({ agent }: { agent: Agent }) {
   const { t } = useTranslation("skills");
   const workspaceAgents = useAgentStore((s) => s.agents);
   const agents = useMemo(() => [agent], [agent]);
   const models = useSkillsModels(agents);
-  // The shared store lists every skill it holds, so the surface drops the
-  // ones this employee does not load and points what is left at the copy that
-  // employee runs; the copy-based model is already narrow.
   const rows = useScopedSkillRows(models.rows, models.listsByPath, agent);
   const actions = useSkillsViewActions();
   const [query, setQuery] = useState("");
 
-  // The panel COVERS the content below md, so a phone opens the chat on
-  // demand instead of burying the editor the tap just opened.
   const isMobile = useIsMobile();
-  // The chat host and the editor nav each need the other: the chat's "Edit
-  // manually" drives the left pane, and entering the editor opens the chat.
-  // A ref breaks the cycle without a second render.
   const openTextRef = useRef<(slug: string) => void>(() => {});
   const onEditSkill = useCallback((slug: string) => {
     openTextRef.current(slug);
   }, []);
-  // The chat is fed what each employee RUNS, not just its own copies: a
-  // workspace skill it loads has no copy, and its chat has to find it.
   const skillsByPath = useMemo(
     () =>
       effectiveSkillsByPath({
@@ -67,8 +46,6 @@ export function SkillsBody({ agent }: { agent: Agent }) {
     skillsFailed: models.failed,
     onEditSkill,
   });
-  // Reads the UNSCOPED rows: a workspace skill this employee does not have
-  // yet is exactly what the dialog offers, and scoping already dropped it.
   const addExisting = useAddExistingSkill({
     agent,
     rows: models.rows,
@@ -91,9 +68,6 @@ export function SkillsBody({ agent }: { agent: Agent }) {
     query,
     onOpenEditor: nav.open,
   });
-  // A creation chat closed before the skill exists is listed here or nowhere:
-  // setup chats are kept off every mission board. It sits ABOVE the skills as
-  // the thing still being made, out of their count and their search.
   const drafts = useUnfinishedSkillDrafts(
     agent,
     skillsByPath,
@@ -126,8 +100,6 @@ export function SkillsBody({ agent }: { agent: Agent }) {
           {models.loading && rows.length === 0 ? (
             <SkillsListSkeleton />
           ) : models.failed && rows.length === 0 ? (
-            // Rows that DID land keep the list: a partial read is still the
-            // user's skills, and the failure was already toasted.
             <SkillsRetryEmpty
               title={t("global.loadFailedTitle")}
               description={t("global.loadFailedDescription")}

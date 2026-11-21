@@ -10,7 +10,6 @@ import { sharedHandoffs } from "../session/tools/browser/live/registry";
 import type { BrowserTab } from "../session/tools/browser/open-tab";
 import { createRuntimeServer } from "./server";
 
-/** A CDP session that records what was sent and lets the test paint frames. */
 class FakeCdp extends EventEmitter {
   sent: string[] = [];
   async send(method: string): Promise<unknown> {
@@ -40,7 +39,6 @@ function fakeTab(cdp: FakeCdp): BrowserTab {
     viewportSize: () => ({ width: 1280, height: 800 }),
     setViewportSize: async () => {},
   };
-  // SAFETY: the live view touches only these members of a tab, page and context.
   return {
     page,
     context: { newCDPSession: async () => cdp, pages: () => [page] },
@@ -88,7 +86,6 @@ const input = (cid: string, body: unknown, headers = {}) =>
     body: JSON.stringify(body),
   });
 
-/** The SSE stream's `data:` messages, as they arrive. */
 function events(response: Response) {
   const seen: BrowserLiveEvent[] = [];
   let ended = false;
@@ -141,7 +138,6 @@ test("a viewer gets the status, the page, then frames, a window ahead of its ack
     url: "https://site.test/login",
     title: "Sign in",
   });
-  // The window is full: the next frame was replaced by the last while held.
   const answer = await input(conversationId, {
     handoff: session.handoffId,
     ack: { viewer: "viewer-0001", seq: BROWSER_LIVE_FRAME_WINDOW },

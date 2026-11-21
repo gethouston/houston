@@ -1,17 +1,5 @@
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
-/**
- * The account key/value store, as the control plane serves it.
- *
- * The app's own preference reads and writes are the SDK's
- * (`sdk.preferences.get/set`, delegated from `client/config-prefs-mixin.ts`).
- * These two remain the control-plane path for callers INSIDE this layer — the
- * agent-colour reconcile (`agent-color-sync.ts`) runs off a
- * {@link ControlPlaneConfig} handed down by `cp/agents.ts` and reaches no SDK.
- */
-
-/** The route an account preference reads and writes, as EVERY path that
- *  touches it — this helper pair, the SDK-delegated mixin calls — spells it. */
 export const prefPath = (key: string) =>
   `/v1/preferences/${encodeURIComponent(key)}`;
 

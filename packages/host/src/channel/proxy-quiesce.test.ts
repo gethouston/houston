@@ -3,21 +3,6 @@ import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
 import { ProxyChannel } from "./proxy";
 
-/**
- * withQuiesced — the rename precondition. Idempotence regression: quiescing an
- * agent whose runtime is ABSENT (never woken, or already torn down) must be a
- * no-op success, NOT a launcher sleep. The launcher's sleep contract rejects
- * sleeping an unknown sandbox (FakeLauncher throws "cannot sleep sandbox for
- * unknown agent"), and the dual-profile suite proved a blind sleep turns a
- * plain rename into a 500 on the cloud profile while local answered 200.
- *
- * HOU-827 regression: the hold latch must span the sleep AND the callback —
- * the app's reconnect storm dispatches with the old id within ~500ms of the
- * runtime dying, and an unlatched window let ensureAwake boot a fresh runtime
- * into the directory being renamed. And it must be RELEASED afterward, even
- * when the callback throws, or the agent is bricked.
- */
-
 const ws: Workspace = {
   id: "w1",
   ownerUserId: "alice",

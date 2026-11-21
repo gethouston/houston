@@ -1,20 +1,3 @@
-/**
- * The spaces module (C8) — the spaces a caller belongs to, their lifecycle, the
- * invitations addressed to them, and moving an agent between spaces. The
- * subscription behind a team space belongs to the billing family.
- *
- * These are pure commands over hosted-gateway routes: a space list is read when
- * the switcher opens and every write is a form's one-shot, so there is no
- * reactive scope to publish and nothing here subscribes to an event. The same
- * handlers back both the typed facade and the `dispatch` path.
- *
- * SEAM — user-scoped, NOT per-agent. Even the agent-move routes are gateway
- * control routes about WHICH namespace an agent lives in, so they run on the
- * module's own {@link moduleScope} rooted at the base URL, never
- * `clientFor(agentId)`.
- * A 401 routes through the shared {@link ModuleContext.authExpiry} notifier.
- */
-
 import type { BillingInterval } from "@houston/wire-types";
 import type { ModuleContext } from "../../module-context";
 import { checkoutIntervalField } from "../billing/seat-price";
@@ -55,37 +38,23 @@ export type {
 } from "./types";
 export { SpacesCommand } from "./types";
 
-/** The typed facade for the spaces family. Every call throws on a non-2xx. */
 export interface SpacesModule {
-  /** The caller's spaces plus the invitations waiting for them. */
   listOrgs(): Promise<OrgsList>;
-  /**
-   * Create an org, free unless `plan` is `paid`; a paid one bills monthly
-   * unless `interval` says `year`. The caller's states (the free slot taken, a
-   * paid org awaiting checkout) are outcomes, never throws. NOT idempotent —
-   * reconcile with `listOrgs`.
-   */
   createOrg(input: {
     name: string;
     plan?: OrgPlan;
     interval?: BillingInterval;
   }): Promise<CreateOrgOutcome>;
-  /** Delete a team space the caller owns, and everything inside it. */
   deleteOrg(slug: string): Promise<void>;
-  /** Accept a pending invite; answers the space that was joined. */
   acceptOrgInvite(inviteId: string): Promise<OrgSummary>;
-  /** Decline a pending invite addressed to the caller. */
   declineOrgInvite(inviteId: string): Promise<void>;
-  /** Start moving an agent into `toSlug`; answers the id to poll. */
   moveAgent(agentSlugOrId: string, toSlug: string): Promise<AgentMoveStart>;
-  /** Poll one agent move — the ONLY completion signal for it. */
   getMoveStatus(
     agentSlugOrId: string,
     moveId: string,
   ): Promise<AgentMoveStatus>;
 }
 
-/** A failed spaces request. `status` is the upstream HTTP status. */
 export class SpacesHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "SpacesHttpError");
@@ -102,7 +71,6 @@ export function createSpacesModule(ctx: ModuleContext): SpacesModule {
         scope,
         name,
         plan,
-        // A free create starts no checkout, so it names no interval.
         plan === "paid" ? checkoutIntervalField(interval) : undefined,
       ),
     deleteOrg: (slug) => deleteOrg(scope, slug),

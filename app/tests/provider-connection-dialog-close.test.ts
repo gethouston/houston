@@ -5,14 +5,6 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { closeMeansCancel } from "../src/lib/provider-connect-dialog-close.ts";
 
-/**
- * The chat's provider-connect step arms a connection observer and resumes the
- * agent when fresh auth evidence lands; a dialog close that reads as a cancel
- * tears that observer down. PRODUCT review (Sep 2026): picking a Copilot plan
- * closed the plan dialog as if the user had walked away, so the sign-in that
- * the pick had just STARTED was never observed and the agent never resumed.
- */
-
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "../src/components");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
 
@@ -44,10 +36,6 @@ describe("closeMeansCancel", () => {
   });
 
   it("cancels a login close even when reported as completed", () => {
-    // The login dialog has no completion of its own — its flow finishes out of
-    // band and the parent unmounts it — so a "completed" close there would be a
-    // wiring mistake; it must still stop the observation rather than leave it
-    // running against a sign-in nobody started.
     strictEqual(closeMeansCancel("login", "completed"), true);
   });
 });
@@ -76,9 +64,6 @@ describe("the connect dialogs route their closes through closeMeansCancel", () =
   });
 
   it("never lets the Copilot dialog report its own submit as a close", () => {
-    // The submit hands the plan back through `onConnect`, which is what CLOSES
-    // the dialog. Calling `onClose` too reported a dismissal on the success
-    // path — the cancel that killed the observation mid sign-in.
     const src = read("shell/provider-copilot-connect-dialog.tsx");
     const submit = src.slice(src.indexOf("const handleSubmit"));
     const body = submit.slice(0, submit.indexOf("\n  };"));

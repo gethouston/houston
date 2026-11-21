@@ -27,7 +27,6 @@ import {
   treeRowKey,
 } from "./sidebar-tree";
 
-/** Sideways drag, in px, that moves the ghost one level in or out. */
 export const SIDEBAR_INDENT_STEP = 20;
 
 interface DragState {
@@ -40,8 +39,6 @@ export interface SidebarTreeDragOptions {
   items: SidebarItem[];
   groups: SidebarGroupView[];
   order: SidebarRootEntry[];
-  /** Stores a drop and answers whether it was accepted. Absent: the rail
-   *  cannot store yet, so nothing can be dragged or moved. */
   onArrange?: (arrangement: SidebarArrangement) => boolean;
 }
 
@@ -59,11 +56,6 @@ export function useSidebarTreeDrag({
     }),
   );
 
-  // A drop is drawn from the arrangement it produced until the host's props
-  // change: the host's store reaches this component a tick after the drop, and
-  // rendering the old props in between would flash every row back to its
-  // previous slot (and fly the drop animation there). Any props change ends
-  // it, the stored arrangement or a rollback alike.
   const [landed, setLanded] = useState<SidebarArrangement | null>(null);
   const committed = JSON.stringify([
     order,
@@ -129,12 +121,10 @@ export function useSidebarTreeDrag({
 
   return {
     rows,
-    /** No drag starts and no keyboard move applies: nothing could store it. */
     disabled: !onArrange,
     sensors,
     collisionDetection: closestCenter,
     activeKey: drag?.activeKey ?? null,
-    /** The dragged row as it will land: where the ghost is drawn and indented. */
     ghost: ghost ?? null,
     keyboardStep: (activeKey: string, direction: SidebarKeyboardDirection) => {
       const groupId = activeKey.startsWith("group:")

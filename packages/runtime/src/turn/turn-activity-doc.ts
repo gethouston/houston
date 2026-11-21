@@ -2,16 +2,13 @@ import { fetchWithRetry } from "@houston/runtime-client/object-sync";
 
 const REQUEST_TIMEOUT_MS = 5_000;
 
-/** Outcome of projecting a claimed turn's uploaded activity file. */
 export type ActivityDocPublishResult =
   | { ok: true }
   | { disabled: true; reason: "route_absent" }
-  /** Lost the revision race and could not re-read the object to redo it. */
   | { skipped: "stale_after_conflict" }
   | { error: string };
 
 export interface ActivityDocOptions {
-  /** Any family or view the pod-store admits (validDocFamily). */
   family: string;
   baseUrl: string;
   org: string;
@@ -100,9 +97,6 @@ export async function acceptPut(
   response: Response,
 ): Promise<ActivityDocPublishResult> {
   if (response.status === 404 || response.status === 403) {
-    // 404: the docs route is absent. 403: the store predates this family in
-    // the claim scope. Both mean "this deployment cannot take the doc yet" —
-    // a diagnostic on the terminal frame, never a failed turn.
     await response.body?.cancel();
     return { disabled: true, reason: "route_absent" };
   }
@@ -114,11 +108,6 @@ export async function acceptPut(
   return { ok: true };
 }
 
-/**
- * PUT `doc` at the current revision. On a 409 another writer (the gateway's
- * own board writes) projected first: with `reload`, the doc is re-derived from
- * the durable object and PUT at the winner's revision, never the stale copy.
- */
 export async function publish(
   opts: ActivityDocOptions,
   doc: unknown,
@@ -145,8 +134,6 @@ export async function publish(
   return acceptPut(await putAtRevision(opts, latest, current));
 }
 
-/** Failed, skipped, or refused by the store: the doc did not land, so no
- *  refetch is promised. */
 export const activityDocStale = (result: ActivityDocPublishResult | null) =>
   result !== null &&
   ("error" in result || "skipped" in result || "disabled" in result);

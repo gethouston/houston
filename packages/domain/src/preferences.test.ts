@@ -7,15 +7,11 @@ import {
 } from "./preferences";
 import type { TextStore } from "./store";
 
-/** `readDelayMs` widens the read→write window so an interleave is deterministic
- *  rather than dependent on microtask ordering. */
 function memStore(readDelayMs = 0): TextStore & { raw: Map<string, string> } {
   const raw = new Map<string, string>();
   return {
     raw,
     async readText(key) {
-      // Snapshot first, then stall: a slow read answers with the state it saw
-      // when it started, which is exactly what makes a read-modify-write lose.
       const value = raw.get(key) ?? null;
       if (readDelayMs > 0)
         await new Promise((resolve) => setTimeout(resolve, readDelayMs));

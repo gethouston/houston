@@ -5,13 +5,6 @@ import { assistantClaim } from "../routes/assistant-claim";
 import { resolveAssistantGateway } from "../routes/assistant-wiring";
 import { gatewayAgentSlug, runAsCoordinator } from "./coordinator-scope";
 
-/**
- * A pool worker runs the host's own operation and mission handlers for
- * Houston's turn. It has no pod environment to say "this is the coordinator",
- * so the turn hands the identity to exactly the calls it makes, and nothing
- * outside them sees it.
- */
-
 const vault: CredentialVault = {
   sandboxToken: () => "token",
   validateSandboxToken: (agentId) => ({ workspaceId: "w", agentId }),
@@ -37,7 +30,6 @@ test("inside the scope the host answers as the coordinator", () => {
     expect(
       assistantClaim(vault, "ws/Assistant", { gatewayFronted: true }),
     ).toEqual({ workspaceId: "w", agentId: "ws/Assistant" });
-    // The turn's own credential, never marked as this host calling itself.
     expect(resolveAssistantGateway()).toEqual({
       url: "https://gateway.test",
       token: "assistant-turn-v1.x.y",

@@ -8,16 +8,6 @@ import { SettingsRow } from "../settings/settings-row";
 import { BackControl } from "../shell/back-control";
 import { AgentApiDetails } from "./agent-api-details";
 
-/**
- * "API access", one level below an AI Employee's Settings: the two IDs a
- * developer needs to reach THIS employee from their own code and the ready
- * prompt ({@link AgentApiDetails}, shared with the AI Manager's chat card),
- * plus the doors to the person's keys (Settings > API keys) and the developer
- * docs. Its row on the Settings card is gated on `capabilities.apiKeys`, so
- * this screen only mounts where the deployment serves the public API. On the
- * hosted gateway the agent's client-side id IS its public slug
- * (`agent-connect-model.ts`).
- */
 export function AgentApiAccess({
   agent,
   onBack,

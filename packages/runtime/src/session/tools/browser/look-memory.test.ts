@@ -9,7 +9,6 @@ import {
 } from "./look-memory";
 import type { BrowserTab } from "./open-tab";
 
-// SAFETY: look memory only keys on the tab and compares the page by identity.
 const tab = () => ({}) as BrowserTab;
 const page = () => ({}) as Page;
 
@@ -18,9 +17,7 @@ test("the previous look counts only for the same page and document", () => {
   const p = page();
   rememberLook(t, p, 100.5, new Set(["e1"]));
   expect(previousRefs(t, p, 100.5)).toEqual(new Set(["e1"]));
-  // Same page, a new document (a navigation): nothing to compare.
   expect(previousRefs(t, p, 200.5)).toBeUndefined();
-  // Another page (a popup) with a matching document stamp: still nothing.
   expect(previousRefs(t, page(), 100.5)).toBeUndefined();
   expect(previousRefs(tab(), p, 100.5)).toBeUndefined();
 });

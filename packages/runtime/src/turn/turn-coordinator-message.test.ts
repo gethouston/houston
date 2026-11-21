@@ -10,12 +10,6 @@ import { receiveTurnMessage } from "./turn-coordinator-message";
 import type { TurnFilesystem } from "./turn-filesystem";
 import type { TurnRequest } from "./types";
 
-/**
- * A message is admitted once, for as long as a standing runtime remembers it
- * (a week), not for as long as an approval lives (ten minutes): a retry that
- * arrives after its approvals expired must mint nothing a second time.
- */
-
 const AGENT = "Personal/Assistant";
 afterEach(() => vi.useRealTimers());
 
@@ -47,7 +41,6 @@ async function receive(
     manifest: new Map(),
     immediateWrites: new Set<string>(),
   } as unknown as TurnFilesystem;
-  // Production opens inside the turn's coordinator scope (turn-coordinator.ts).
   return runAsCoordinator(
     {
       userId: "owner-1",
@@ -134,7 +127,6 @@ test("a damaged record admits the message but mints no grant from it", async () 
       objects.set(key, { ...value, body: "{damaged" });
   const retried = await receive(store, message({ turnId: "t2" }));
   expect(spend(retried)).toBeUndefined();
-  // The file is whole again, so the next message is handled normally.
   const next = await receive(store, message({ nonce: "n2", turnId: "t3" }));
   expect(spend(next)).toBeDefined();
 });

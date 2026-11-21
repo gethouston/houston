@@ -11,19 +11,11 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import { CLAMPED_FILE_TOOL_NAMES, makeClampedFileTools } from "./clamped-fs";
 
-/**
- * Gate #1 tool-level wall: drive pi's REAL tool implementations through the
- * clamped definitions and prove every escape shape fails while normal
- * workspace operations keep working. grep/find escapes must throw BEFORE any
- * rg/fd subprocess is spawned on the hostile path.
- */
-
 const base = mkdtempSync(join(tmpdir(), "houston-clamp-"));
 const ws = join(base, "workspace");
 mkdirSync(ws);
 writeFileSync(join(ws, "hello.txt"), "hello from the workspace");
 mkdirSync(join(ws, "docs"));
-// The crown jewel an injected agent goes for: a credential OUTSIDE the workspace.
 writeFileSync(join(base, "auth.json"), JSON.stringify({ access: "SECRET" }));
 
 const tools = new Map(makeClampedFileTools(ws).map((t) => [t.name, t]));
@@ -117,14 +109,6 @@ test("find: hostile search path throws before any fd spawn", async () => {
   );
 });
 
-/**
- * The runtime's dataDir lives INSIDE the workspace (`<agentDir>/.houston/
- * runtime`), so containment cannot protect the credential files — every team
- * member's provider tokens sit on a path the file tools can otherwise resolve.
- * Drive pi's real tools at them and prove the deny wall holds end to end.
- */
-// Canonical root: on macOS /tmp is a symlink, and an absolute path through it
-// would be rejected as an escape before the credential deny even runs.
 const runtimeDir = join(realpathSync(ws), ".houston", "runtime");
 mkdirSync(join(runtimeDir, "auth-users"), { recursive: true });
 writeFileSync(
@@ -278,7 +262,6 @@ test("shared roots are fully usable through file tools (agents edit the org orig
   expect(JSON.stringify(read.content)).toContain("shared procedure");
   await run("write", { path: skillFile, content: "replaced procedure" });
   expect(readFileSync(skillFile, "utf8")).toBe("replaced procedure");
-  // Containment still holds: a path outside every root stays rejected.
   await expect(
     run("write", { path: "/etc/houston-nope", content: "x" }),
   ).rejects.toThrow("outside the agent workspace");

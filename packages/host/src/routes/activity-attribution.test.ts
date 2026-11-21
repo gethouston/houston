@@ -11,13 +11,6 @@ import { MemoryVfs } from "../vfs";
 import { stampTurnAttribution } from "./activity-attribution";
 import { workspaceRoot } from "./agent-data";
 
-/**
- * Per-mission attribution (Teams): the acting human is stamped as a contributor
- * on activity create/PATCH and on the mission a user turn drives. Attribution
- * runs ONLY under a gateway-injected acting-as identity — off the gateway,
- * single-player activity.json stays byte-identical (no attribution keys).
- */
-
 const verifier: TokenVerifier = {
   async verify(bearer) {
     return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
@@ -48,12 +41,6 @@ const CAPS: Capabilities = {
   sharedSkills: false,
 };
 
-// A turn POST (…/conversations/:cid/messages) reaches the channel; answer 202
-// so the client's fetch resolves — the route already stamped attribution before
-// dispatch, which is what these tests assert.
-/** The body the channel actually received — the stream-exhaustion guard: the
- *  route drains the turn body to read its mentions, so it MUST hand the buffer
- *  down or the runtime would receive an empty message. */
 let forwardedBody: string | undefined;
 const pushReports: { report: PushReport; actingAs?: string }[] = [];
 let blockPush: Promise<void> | null = null;
@@ -85,7 +72,6 @@ const deps = (): ControlPlaneDeps => ({
   capabilities: CAPS,
 });
 
-/** A gateway-shaped acting-as token; the pod decodes the payload, never the sig. */
 const actingToken = (sub: string, name?: string) =>
   `acting-v1.${Buffer.from(
     JSON.stringify({ sub, ...(name ? { name } : {}), exp: 4102444800 }),
@@ -123,7 +109,6 @@ afterAll(async () => {
   await new Promise<void>((r) => fronted.close(() => r()));
 });
 
-/** Read the raw activity.json rows straight off the vfs. */
 const rows = async (): Promise<Activity[]> => {
   const raw = await vfs.readText(docKey(root, "activity"));
   return raw ? (JSON.parse(raw) as Activity[]) : [];
@@ -159,7 +144,6 @@ test("PATCH under a different acting token upserts a second contributor", async 
   expect(patched.status).toBe(200);
   const next = (await patched.json()) as Activity;
   expect(next.status).toBe("done");
-  // created_by is unchanged; the editor is appended as a contributor.
   expect(next.created_by).toBe("supa-1");
   expect(next.contributors).toEqual([
     { user_id: "supa-1", name: "Ada" },
@@ -219,12 +203,6 @@ test("a user turn falls back to the activity-<id> key when there is no session_k
   expect(m2?.contributors).toEqual([{ user_id: "supa-4" }]);
 });
 
-/**
- * The per-mission @mention aggregate (HOU-945): the mentions ride the turn
- * body, so the route drains it once, stamps, and hands the buffer to the
- * channel. Latest-per-person — a second mention overwrites the first entry
- * rather than appending a log line.
- */
 test("a turn whose body carries mentions stamps `mentioned` on the mission", async () => {
   await vfs.writeText(
     docKey(root, "activity"),
@@ -259,12 +237,10 @@ test("a turn whose body carries mentions stamps `mentioned` on the mission", asy
     "supa-grace",
     "supa-alan",
   ]);
-  // Every entry carries the instant and the acting author who wrote it.
   for (const m of m4?.mentioned ?? []) {
     expect(m.by).toBe("supa-6");
     expect(Number.isNaN(Date.parse(m.at))).toBe(false);
   }
-  // The contributor stamp rides the SAME single pass.
   expect(m4?.contributors).toEqual([{ user_id: "supa-6", name: "Ada" }]);
   expect(pushReports).toContainEqual({
     actingAs: actingToken("supa-6", "Ada"),
@@ -277,7 +253,6 @@ test("a turn whose body carries mentions stamps `mentioned` on the mission", asy
       user_ids: ["supa-grace", "supa-alan"],
     },
   });
-  // …and the drained body still reached the channel intact.
   expect(forwardedBody && JSON.parse(forwardedBody)).toMatchObject({
     text: "hey @Grace @Alan",
     mentions: [{ userId: "supa-grace" }, { userId: "supa-alan" }],
@@ -352,7 +327,6 @@ test("mentioning the same person again overwrites the entry (latest wins)", asyn
   );
   expect(turn.status).toBe(202);
   const m4 = (await rows()).find((a) => a.id === "m4");
-  // Still ONE entry for Grace, now attributed to the second author.
   expect(m4?.mentioned).toHaveLength(2);
   const grace = m4?.mentioned?.find((m) => m.user_id === "supa-grace");
   expect(grace?.by).toBe("supa-7");
@@ -445,8 +419,6 @@ test("an unparseable turn body never breaks the turn and stamps no mentions", as
       body: "{not json",
     },
   );
-  // The channel still gets the body and owns the client-facing outcome; the
-  // attribution seam just records no mentions.
   expect(turn.status).toBe(202);
   const m7 = (await rows()).find((a) => a.id === "m7");
   expect("mentioned" in (m7 ?? {})).toBe(false);
@@ -479,7 +451,7 @@ test("a malformed acting header stamps nothing and never errors the turn", async
 });
 
 test("off the gateway, an inbound acting header stamps NOTHING (byte-identical)", async () => {
-  const plain = createControlPlaneServer(deps()); // not gatewayFronted
+  const plain = createControlPlaneServer(deps());
   await new Promise<void>((r) => plain.listen(0, "127.0.0.1", () => r()));
   const addr = plain.address();
   const b = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
@@ -494,7 +466,6 @@ test("off the gateway, an inbound acting header stamps NOTHING (byte-identical)"
     });
     expect(created.status).toBe(201);
     const activity = (await created.json()) as Activity;
-    // No attribution keys at all — desktop/self-player output is unchanged.
     expect("created_by" in activity).toBe(false);
     expect("contributors" in activity).toBe(false);
   } finally {

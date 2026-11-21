@@ -1,16 +1,3 @@
-/**
- * RoutineModelSelector — the routine screen's model row (PRODUCT-1208, made
- * honest in PRODUCT-1475).
- *
- * It always names the RESOLVED pair — provider + model, e.g. "Claude · Opus 5"
- * — because "Agent's model" told the user nothing about which AI account was
- * about to run (and be billed for) the routine. An unpinned routine resolves
- * through the agent (`useRoutineModelResolution`) and adds a quiet line saying
- * it follows the agent; picking a row pins it, and the picker's footer offers
- * the way back. Reuses `ChatModelSelector` wholesale, so Teams gating
- * (visibility + the allowed-models ceiling) stays one implementation.
- */
-
 import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -24,8 +11,6 @@ import { ChatModelSelector } from "../chat-model-selector";
 interface Props {
   agent: Agent;
   routine: Routine;
-  /** Wrap the trigger in a field-style border (the routine screen's Model
-   *  row) so it reads as a control, not floating text. Omit for bare. */
   bordered?: boolean;
 }
 
@@ -45,8 +30,6 @@ export function RoutineModelSelector({ agent, routine, bordered }: Props) {
     });
 
   return (
-    // The popover content is portaled, so the field-style border (`bordered`)
-    // wraps only the trigger.
     <span
       className={
         bordered
@@ -58,8 +41,6 @@ export function RoutineModelSelector({ agent, routine, bordered }: Props) {
         provider={provider}
         model={model}
         onSelect={(nextProvider, nextModel) =>
-          // The pin is stored in pi's CANONICAL dialect, the one the fire path
-          // resolves; the picker speaks display ids.
           save({
             provider: toCanonicalProviderId(nextProvider),
             model: nextModel,
@@ -70,9 +51,6 @@ export function RoutineModelSelector({ agent, routine, bordered }: Props) {
         agent={agent}
         allowedModels={allowedModels}
         coloredGlyph
-        // Both states name the pair; only the hint below differs. `undefined`
-        // when nothing resolved yet, so the picker's own "Select model" shows
-        // rather than a half-built label.
         triggerLabel={providerModelLabel(provider, model) ?? undefined}
         pickerFooter={
           followsAgent ? undefined : (
@@ -80,8 +58,6 @@ export function RoutineModelSelector({ agent, routine, bordered }: Props) {
               type="button"
               className="w-full rounded-md px-1 py-1 text-left text-xs text-ink-muted hover:bg-hover hover:text-ink transition-colors"
               onClick={() => {
-                // `null` clears the pin so the routine follows the agent again
-                // (RoutineUpdate contract).
                 save({ provider: null, model: null, effort: null });
                 setOpen(false);
               }}

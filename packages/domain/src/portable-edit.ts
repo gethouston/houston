@@ -4,14 +4,6 @@ import type { PortableContent, PortablePackage } from "./portable";
 import { skillKey } from "./skills";
 import { jsonDoc } from "./store";
 
-/** Pure edits on portable content: the install-time subset and the seed
- *  serialization an install rides. */
-
-/**
- * Keep only the selected parts of an unpacked package — the install-time
- * subset (the importer unticked items in the wizard). Unknown ids are simply
- * absent from the result; the manifest rides along unchanged.
- */
 export function filterPackage(
   pkg: PortablePackage,
   sel: PortableSelection,
@@ -30,17 +22,8 @@ export function filterPackage(
   };
 }
 
-/** Root-relative form of a key built by the canonical `<root>/…` builders. */
 const relativeKey = (key: string) => key.slice(1);
 
-/**
- * Serialize portable content into the agent-create seed payload: CLAUDE.md
- * plus a flat `relativePath → contents` map in the exact on-disk layout
- * (`.agents/skills/<slug>/SKILL.md`, `.houston/<family>/<family>.json`).
- * This is what lets an import ride the ordinary create-agent pipeline —
- * including a hosted-cloud gateway, which persists the payload and seeds the
- * new agent's pod with it — instead of needing a dedicated install route.
- */
 export function packageSeed(content: PortableContent): {
   claudeMd?: string;
   seeds: Record<string, string>;

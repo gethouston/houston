@@ -1,11 +1,3 @@
-/**
- * RoutineAutoPauseBanner — the routine screen's notice for a routine the
- * engine paused by itself after its runs kept failing on the same account or
- * model problem (or on having no model at all). It names the problem and the
- * one fix (the SDK's `routinePauseNotice` decides which), and offers Resume.
- * Renders nothing for a running routine or one a person paused.
- */
-
 import type { Routine } from "@houston/engine-adapter";
 import {
   type RoutinePauseNotice,
@@ -21,7 +13,6 @@ interface Props {
   routine: Routine;
   onResume: () => void;
   resuming: boolean;
-  /** The reader's own account for a provider (`useRoutineReader`). */
   readerFor: (provider: string) => RoutineReaderAccount;
 }
 
@@ -39,8 +30,6 @@ export function RoutineAutoPauseBanner({
   );
   if (!notice) return null;
 
-  // Spelled out per remedy rather than built from it: `t()` keys are typed, so
-  // a template-literal key would compile past a typo the validator can't see.
   const body = (n: RoutinePauseNotice): string => {
     if (n.remedy === "choose_model") return t("details.autoPause.chooseModel");
     const provider = providerName(n.provider);
@@ -68,8 +57,6 @@ export function RoutineAutoPauseBanner({
       body={body(notice)}
       className="mx-auto mb-6 max-w-3xl"
       actions={
-        // Quiet on purpose: the body names the real fix, and resuming before
-        // it only fails again.
         <Button
           variant="secondary"
           size="sm"

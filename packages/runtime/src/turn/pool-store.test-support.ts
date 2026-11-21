@@ -12,15 +12,6 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 
-/**
- * The gateway's pod-store as a `fetchImpl`: the object routes a claimed
- * worker reads and writes (`/v1/pod/store/<org>/<agent>/...`, create-only
- * CAS included), the doc route (revisioned, If-Match enforced), the
- * custom-secret custody route, the transcript routes and the claim
- * heartbeat. Every store write, doc PUT and transcript call is recorded with
- * the claim it carried.
- */
-
 export const POOL_STORE_URL = "https://store.example";
 export const HEARTBEAT_URL = `${POOL_STORE_URL}/hb`;
 
@@ -70,8 +61,6 @@ export function fakePoolStore(prefix: string, transcriptStatus = 200) {
   ) => {
     const headers = new Headers(init?.headers);
     if (rest === "manifest") {
-      // Keys relative to the agent root, `?prefix=` a directory, and
-      // `?delimiter=/` one level of it, as pod-store answers.
       const agent = new LocalDirStore(join(root, prefix));
       const dir = query.get("prefix") ?? "";
       if (query.get("delimiter") === "/") {
@@ -169,7 +158,6 @@ export function fakePoolStore(prefix: string, transcriptStatus = 200) {
         ? Response.json({ error: "not found" }, { status: 404 })
         : Response.json({ value });
     }
-    // POST creates (412 over a value), PUT sets: the gateway's custody route.
     if (method === "POST" || method === "PUT") {
       if (method === "POST" && secrets.has(id))
         return Response.json({ error: "secret exists" }, { status: 412 });

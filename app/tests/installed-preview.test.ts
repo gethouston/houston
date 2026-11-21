@@ -86,8 +86,6 @@ describe("sortSkillsByTitle", () => {
   });
 });
 
-// ── filterInstalled (integrations strip) ────────────────────────────────────
-
 const conn = (toolkit: string): IntegrationConnection => ({
   toolkit,
   connectionId: `conn-${toolkit}`,
@@ -131,7 +129,6 @@ describe("filterInstalled", () => {
   });
 
   it("matches app name and toolkit case-insensitively", () => {
-    // "SLACK" matches Slack's name; "gmail" also matches its toolkit slug.
     const byName = filterInstalled(ACTIVE, CUSTOM, "SLACK");
     deepStrictEqual(
       byName.active.map((r) => r.connection.toolkit),
@@ -142,9 +139,6 @@ describe("filterInstalled", () => {
   });
 
   it("matches an active app by its description (browse-side parity)", () => {
-    // A term living only in the description must still surface the installed
-    // app, matching the browse filter so ONE query never hides it here while
-    // showing it under Available.
     const rows = [row("gmail", "Gmail", "Email by Google")];
     const byDescription = filterInstalled(rows, [], "email");
     deepStrictEqual(
@@ -173,8 +167,6 @@ describe("filterInstalled", () => {
   });
 });
 
-// ── filterInstalledBy (query + category, the surface's one controls row) ─────
-
 const CATALOG: IntegrationToolkit[] = [
   { slug: "gmail", name: "Gmail", categories: ["productivity"] },
   { slug: "slack", name: "Slack", categories: ["communication"] },
@@ -192,7 +184,6 @@ describe("filterInstalledBy", () => {
   });
 
   it("narrows active rows to the category and drops custom (no category)", () => {
-    // Custom integrations carry no category, so ANY active category excludes them.
     const byCategory = filterInstalledBy(ACTIVE, CUSTOM, CATALOG, {
       query: "",
       category: "productivity",
@@ -228,7 +219,6 @@ describe("filterInstalledBy", () => {
   });
 
   it("composes the category filter with the query", () => {
-    // productivity keeps gmail; the "slack" query then hits nothing in it.
     const composed = filterInstalledBy(ACTIVE, CUSTOM, CATALOG, {
       query: "slack",
       category: "productivity",
@@ -253,8 +243,6 @@ describe("filterInstalledBy", () => {
   });
 });
 
-// ── filterInstalledSkills (skills strip) ────────────────────────────────────
-
 const skill = (name: string, title: string | null = null): SkillSummary => ({
   name,
   title,
@@ -271,8 +259,6 @@ const skill = (name: string, title: string | null = null): SkillSummary => ({
   prompt_template: null,
 });
 
-// "send-email" has no title → humanized to "Send email"; "invoicer" carries an
-// accented display title the slug can't.
 const SKILLS: SkillSummary[] = [
   skill("send-email"),
   skill("invoicer", "Facturación"),
@@ -287,7 +273,6 @@ describe("filterInstalledSkills", () => {
   });
 
   it("matches the humanized display title case-insensitively", () => {
-    // "SEND" matches the humanized "Send email" title, not the raw slug casing.
     const bySend = filterInstalledSkills(SKILLS, "SEND");
     deepStrictEqual(
       bySend.filtered.map((s) => s.name),
@@ -297,7 +282,6 @@ describe("filterInstalledSkills", () => {
   });
 
   it("matches the underlying slug even when the title differs", () => {
-    // The user typed the slug ("invoicer") though the display title is Spanish.
     const bySlug = filterInstalledSkills(SKILLS, "invoicer");
     deepStrictEqual(
       bySlug.filtered.map((s) => s.name),

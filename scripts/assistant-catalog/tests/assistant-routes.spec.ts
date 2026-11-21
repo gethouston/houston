@@ -91,8 +91,6 @@ describe("assistant route derivation", () => {
   });
 
   it("carries an optional query key the caller may omit", () => {
-    // The dispatcher drops a key whose parameter the caller left out, which is
-    // the same thing the source's `if` does - so optionality needs no marker.
     expect(routes.get("auditThings")?.query).toEqual({
       before: "before",
       limit: "limit",
@@ -100,8 +98,6 @@ describe("assistant route derivation", () => {
   });
 
   it("drops an optional key no caller of the operation can fill", () => {
-    // `listNotes` offers a window; the module method never passes one, so the
-    // request can never carry it and a key here would be uncallable noise.
     expect(routes.get("things.notes")).toEqual(
       route("/agents/{agentId}/things/{id}/notes", {
         pathParams: segments("agentId", "id"),

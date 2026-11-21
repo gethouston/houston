@@ -1,9 +1,3 @@
-// The /data-partners/refer page zips structure (_data/refer.js) with copy
-// (_data/i18n/refer/<lang>.js) by index and fills the program's figure into
-// the copy by placeholder. Nunjucks renders a missing lookup as an empty
-// string, so nothing at build time notices drift. These tests are that
-// notice, plus the form's rules (assets/refer-model.js).
-
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -53,8 +47,6 @@ for (const code of ["en", "es", "pt"]) {
     }
   });
 
-  // The figure is written once, in _data/refer.js; the copy states the
-  // referral share in words, so hold it to that.
   test(`${code}: the copy states the program's terms`, () => {
     assert.equal(
       Number(refer.amountText[code].replace(/\D/g, "")),

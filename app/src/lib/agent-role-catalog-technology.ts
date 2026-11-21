@@ -1,4 +1,3 @@
-/** The technology worlds and the jobs each one hires for (ids only; labels live in `agentOnboarding:roleSetup`). */
 export const TECHNOLOGY_WORLDS = {
   software_it: [
     "product_manager",

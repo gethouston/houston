@@ -4,11 +4,6 @@ import type { Routine } from "@houston/engine-adapter";
 import type { ProviderHealth } from "@houston/protocol";
 import routines from "../src/locales/en/routines.json" with { type: "json" };
 
-// The routine screen's auto-pause notice: the engine records WHY it paused a
-// routine (Routine.auto_paused), the SDK picks the fix, and the banner renders
-// that fix in the person's language with a Resume action. A running routine,
-// or one a person paused, shows nothing.
-
 let render: (routine: Routine, readerHealth?: ProviderHealth) => string;
 
 const base: Routine = {

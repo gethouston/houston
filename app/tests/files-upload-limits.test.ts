@@ -23,8 +23,6 @@ describe("files upload size validation", () => {
   });
 
   it("rejects a file sitting exactly on the cap", () => {
-    // The host measures the base64 payload with an estimator that rounds up, so
-    // a file of exactly MAX bytes still 413s there. Catch it client side.
     const result = splitOversizedUploads([
       { name: "exactly-at-the-cap.zip", size: MAX_UPLOAD_FILE_BYTES },
     ]);

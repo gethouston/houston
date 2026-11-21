@@ -9,29 +9,12 @@ import {
   isIntegrationExecuteCall,
 } from "./integration-execute.ts";
 
-/**
- * External-artifact rows for the turn-end "Updates made" summary
- * (PRODUCT-1196): every successful `integration_execute` WRITE action (sent an
- * email, edited a sheet, updated a record...) becomes a reviewable row, with a
- * click-through URL whenever the action's result (or its parameters) can name
- * one. Read actions (fetch/list/search) never appear — the summary reviews
- * what the agent CHANGED in the outside world, not what it looked at.
- *
- * Pure and DOM-free so the app's node:test suite covers it directly.
- */
 export interface TurnIntegrationUpdate {
   kind: "integration";
-  /** The action slug exactly as executed (Composio slug or custom executor
-   *  address) — the brand resolver turns it into `Gmail · Sent email`. */
   action: string;
-  /** The external artifact, when the result named one. Absent = a plain row. */
   url?: string;
 }
 
-// Mutation verbs. An action counts as an external WRITE when any
-// underscore-separated token of its slug is one of these — token-scanned (not
-// prefix-stripped) because the toolkit catalog is not available here to strip
-// the app prefix ("GOOGLESHEETS_BATCH_UPDATE" hits via "update").
 const WRITE_VERBS = new Set([
   "send",
   "create",
@@ -69,8 +52,6 @@ const WRITE_VERBS = new Set([
   "trash",
 ]);
 
-/** "listJobs" → "list_jobs", so a custom executor tool name token-scans the
- *  same way a Composio slug does. */
 function toSnakeTokens(name: string): string[] {
   return name
     .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
@@ -79,9 +60,6 @@ function toSnakeTokens(name: string): string[] {
     .filter(Boolean);
 }
 
-/** True when the action mutates an external artifact. Handles both grammars:
- *  a Composio slug (`GMAIL_SEND_EMAIL`) and a custom executor address
- *  (`tools.<slug>.<owner>.<connection>...<tool>`, scanned by its tool name). */
 export function isExternalWriteAction(action: string): boolean {
   const subject = action.startsWith("tools.")
     ? (action.split(".").at(-1) ?? "")
@@ -89,11 +67,6 @@ export function isExternalWriteAction(action: string): boolean {
   return toSnakeTokens(subject).some((t) => WRITE_VERBS.has(t));
 }
 
-/**
- * The external-artifact rows of a turn. Only SUCCESSFUL write actions qualify
- * ({@link integrationExecuteSucceeded}). Identical (action, url) repeats
- * collapse into one row; distinct artifacts keep their own.
- */
 export function integrationUpdatesOf(
   tools: ToolEntry[],
 ): TurnIntegrationUpdate[] {
@@ -108,10 +81,7 @@ export function integrationUpdatesOf(
     let data: Record<string, unknown> = {};
     try {
       data = asRecord(JSON.parse(tool.result.content));
-    } catch {
-      // Truncated payload: URL extraction falls back to a raw-text scan and
-      // synthesis works from the action's params alone.
-    }
+    } catch {}
     const url =
       externalUrlOf(tool.result.content) ??
       synthesizedUrl(action, asRecord(input.params), data);

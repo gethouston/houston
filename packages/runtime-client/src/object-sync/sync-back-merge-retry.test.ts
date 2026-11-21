@@ -17,11 +17,6 @@ type Card = { id: string; title: string; status: string };
 const body = (cards: Card[]) => `${JSON.stringify(cards, null, 2)}\n`;
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
 
-/**
- * A generation-guarded store whose board another writer (the gateway, a
- * sibling turn) rewrites right before each of our first `racedUploads`
- * uploads, so every one of those misses its precondition.
- */
 function racingStore(initial: Card[], racedUploads: number, race: RaceStep) {
   let remote = initial;
   let generation = 1;
@@ -83,7 +78,7 @@ const addSibling: RaceStep = (remote, upload) => [
 ];
 
 test("a board contended on every round but the last lands with every card and the title", async () => {
-  const raced = MERGE_UPLOAD_ATTEMPTS; // the first upload + 5 merge rounds lose
+  const raced = MERGE_UPLOAD_ATTEMPTS;
   const { store, remote, preconditions } = racingStore(
     [mine],
     raced,
@@ -158,7 +153,6 @@ test("each round merges the turn's own bytes: a card deleted between rounds stay
 test("a landed merge names the board cards it removed from the remote", async () => {
   const gone: Card = { id: "gone", title: "Old mission", status: "done" };
   const { store, remote } = racingStore([mine, gone], 1, addSibling);
-  // The turn deleted `gone`; the merge keeps that delete over the remote.
   const tree = await turnTree([mine, gone], [titled]);
 
   const result = await syncBack(store, "", tree.root, tree.manifest, {

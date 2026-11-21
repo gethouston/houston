@@ -22,7 +22,6 @@ test("an unset or blank HOUSTON_CLOUD_ROOT names the sibling checkout", () => {
   const beside = defaultCheckout();
   expect(beside.configured).toBe(false);
   expect(beside.root.endsWith("/cloud")).toBe(true);
-  // A variable exported empty by a shell profile is not a path to a checkout.
   process.env[CLOUD_ROOT] = "  ";
   expect(defaultCheckout()).toEqual(beside);
 });
@@ -38,7 +37,6 @@ test("a set HOUSTON_CLOUD_ROOT is the checkout, and is answerable for it", () =>
   });
 });
 
-/** A throwaway repository with two commits on its only branch. */
 function repoWithTwoCommits(): { root: string; first: string; second: string } {
   const root = mkdtempSync(join(tmpdir(), "cloud-checkout-"));
   const git = (...args: string[]): string =>
@@ -59,8 +57,6 @@ test("git decides whether a checkout carries the stamped commit", () => {
   const { root, first, second } = repoWithTwoCommits();
   expect(gitContainsCommit(root, first)).toBe(true);
   expect(gitContainsCommit(root, second)).toBe(true);
-  // A checkout parked on the earlier commit does not carry the later one —
-  // the shape of a branch cut before the vendoring, which must not warn.
   execFileSync("git", ["-C", root, "reset", "-q", "--hard", first]);
   expect(gitContainsCommit(root, second)).toBe(false);
   expect(gitContainsCommit(root, "f".repeat(40))).toBe(false);

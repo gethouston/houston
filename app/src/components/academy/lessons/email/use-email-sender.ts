@@ -10,7 +10,6 @@ import { useUIStore } from "../../../../stores/ui";
 import { useWorkspaceStore } from "../../../../stores/workspaces";
 import { useEmailLessonStore } from "./email-lesson-store";
 
-/** Every AI Employee, in sidebar order, and the one that sends, live. */
 export function useEmailSender(): EmailSenderChoice {
   const agents = useAgentStore((s) => s.agents);
   const workspaceId = useWorkspaceStore((s) => s.current?.id);

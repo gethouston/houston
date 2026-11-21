@@ -15,8 +15,6 @@ import {
 } from "./role-step-model";
 import type { AgentRoleState } from "./use-agent-role-state";
 
-/** The person's own leadership position, which only the question about them
- *  offers: an AI Employee is hired for a job, never for a position. */
 export interface LeadershipChoice {
   selectedId: LeadershipRoleId | null;
   onSelect: (id: LeadershipRoleId) => void;
@@ -26,19 +24,6 @@ type Audience =
   | { audience?: "agent"; leadership?: never }
   | { audience: "self"; leadership: LeadershipChoice };
 
-/**
- * Step 2 of the guided setup: the job the agent takes over. The picked
- * context's own jobs lead, because they are the ones that made the user answer
- * the first question; the roles every industry shares follow under their
- * own heading. A context the user typed themselves has only the shared run.
- *
- * Searching reaches the whole catalog, so a job the user can name is found
- * wherever it was filed (`role-step-model.ts`).
- *
- * Onboarding asks the person their own role with the same catalog
- * (`audience: "self"`), headed by the leadership positions, which reach the
- * caller through `leadership` rather than `onAnswered`.
- */
 export function RoleStep({
   state,
   audience = "agent",
@@ -46,7 +31,6 @@ export function RoleStep({
   onAnswered,
 }: Audience & {
   state: AgentRoleState;
-  /** The answer as given, since `state` only shows it on the next render. */
   onAnswered: (answer: RoleQuestionAnswer<AgentRoleId>) => void;
 }) {
   const { t } = useTranslation("agentOnboarding");
@@ -82,9 +66,6 @@ export function RoleStep({
           ? "roleSetup.selfRoleHeadline"
           : "roleSetup.roleHeadline",
       )}
-      // An industry the user typed has no jobs of its own, so the ten shared ones
-      // are the whole run: say out loud that the filter reaches the rest,
-      // or a short run reads as the entire offer.
       hint={
         state.contextId === null ? t("roleSetup.typeToFindAnyRole") : undefined
       }
@@ -103,20 +84,16 @@ export function RoleStep({
         noMatchesLabel: t("roleSetup.noRoleMatches"),
         queryAnswerLabel: (query) => t("roleSetup.useQueryAsRole", { query }),
         onUseQuery: (query) => {
-          // The words already typed into the filter ARE the answer: taking
-          // them into the custom field saves typing them a second time.
           state.chooseCustomRole();
           state.writeCustomRole(query);
         },
       }}
       onSelect={(id) => {
         if (leadership && isLeadershipRoleId(id)) {
-          // A position is the answer instead of a job, never beside one.
           state.clearRole();
           leadership.onSelect(id);
           return;
         }
-        // The runs render catalog ids alone, so this only ever narrows.
         if (!isAgentRoleId(id)) return;
         state.chooseRole(id);
         onAnswered({ kind: "catalog", id });

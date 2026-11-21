@@ -2,13 +2,6 @@ import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { resolveCopilotDomain } from "../src/lib/copilot-domain.ts";
 
-/**
- * The Copilot connect dialog's domain resolver (2026-07 provider QA: "Copilot
- * Business fails where personal works"). Personal AND Copilot Business sign in
- * at github.com; only GitHub Enterprise data residency has a custom domain. A
- * typed github.com must collapse to the no-domain path, and unusable input must
- * fail at the dialog, never inside the device-code flow.
- */
 describe("resolveCopilotDomain", () => {
   it("collapses github.com in every common spelling to the github.com path", () => {
     for (const input of [
@@ -32,7 +25,6 @@ describe("resolveCopilotDomain", () => {
       kind: "enterprise",
       domain: "acme.ghe.com",
     });
-    // URL forms and paths normalize to the bare hostname pi-ai will use.
     deepStrictEqual(resolveCopilotDomain("https://acme.ghe.com/login"), {
       kind: "enterprise",
       domain: "acme.ghe.com",

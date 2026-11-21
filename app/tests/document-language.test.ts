@@ -2,9 +2,6 @@ import { strictEqual } from "node:assert";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { bindDocumentLanguage } from "../src/lib/document-language.ts";
 
-// <html lang> must follow the active locale: index.html ships "en" for the
-// pre-JS frame, and a Spanish screen labelled English invites translation.
-
 interface FakeI18n {
   language: string | undefined;
   handlers: Array<(lng: string) => void>;

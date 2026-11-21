@@ -5,8 +5,6 @@ import { scopeSkillRows } from "../src/components/skills-view/skills-scope.ts";
 const rows = [
   { slug: "invoices", agents: [{ id: "a" }, { id: "b" }] },
   { slug: "contracts", agents: [{ id: "b" }] },
-  // A workspace-store skill nobody loads yet: an employee's own section must
-  // not list it.
   { slug: "payroll", agents: [] },
 ];
 

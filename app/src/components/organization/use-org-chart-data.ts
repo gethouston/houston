@@ -23,15 +23,6 @@ import type { OrgViewContext } from "./organization-view";
 import { rosterPersonName } from "./people-tab-model";
 import { useStableByContent } from "./use-stable-by-content";
 
-/**
- * Everything the org chart draws, read and ranked. Time worked is read only
- * where the deployment serves it; message usage only for owners and admins
- * (the gateway serves nobody else). Both queries park themselves while Admin
- * is off screen (`useAdminScreenActive`), and a read that never landed stays
- * `loading`, so nothing is drawn from data that is not there. Each read is
- * rolled up once per answer, against the day it landed on, so a figure and
- * its chart always count the same window.
- */
 export function useOrgChartData(ctx: OrgViewContext) {
   const { t } = useTranslation("teams");
   const unnamedAccount = t("people.roster.unnamedAccount");

@@ -1,14 +1,6 @@
 import { Button, FormDialog, Input } from "@houston-ai/core";
 import { type ReactNode, useState } from "react";
 
-/**
- * The trigger + instance pair every `FormDialog` row on the specimen page is
- * built from. Split out only to keep that page inside the 200-line rule.
- *
- * Like `ConfirmDialog`, `FormDialog` is controlled-only — it has no trigger of
- * its own. Every row therefore pairs one button with one instance, which is
- * exactly how the app uses it.
- */
 export function Form({
   label,
   buttonVariant = "outline",
@@ -37,6 +29,5 @@ export function Form({
   );
 }
 
-/** Work that takes long enough to watch the pending state. */
 export const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));

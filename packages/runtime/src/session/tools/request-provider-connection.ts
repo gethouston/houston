@@ -28,12 +28,6 @@ export function makeRequestProviderConnectionTool() {
         throw new Error(
           "Unknown AI provider. Read the provider catalog and use its exact provider id.",
         );
-      // pi's catalog is WIDER than Houston's: it carries providers Houston
-      // surfaces no connect card for (structurally unconnectable ones, retired
-      // cards, regional duplicates). Queuing a card for one renders "unavailable
-      // here" with no Connect button and blocks the composer until the user
-      // presses Skip, so the id is refused HERE, where the model can correct
-      // course. The list is shared with the app's catalog builder.
       if (isHiddenProviderId(provider, isPiProvider))
         throw new Error(
           `'${provider}' cannot be connected here. Read the provider catalog and use one of the provider ids it lists.`,

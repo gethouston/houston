@@ -65,10 +65,6 @@ describe("the employees band's one selection", () => {
   });
 });
 
-/**
- * The row itself, guarded on its SOURCE: it builds a JSX icon and reads the
- * stores, which the node runner does not mount.
- */
 describe("the pinned Manager row", () => {
   it("exists only while the Manager is reachable", () => {
     assert.ok(ROW.includes("const reachable = useManagerReachable()"));
@@ -79,7 +75,6 @@ describe("the pinned Manager row", () => {
     assert.ok(ROW.includes("id: ASSISTANT_VIEW_ID"));
     assert.ok(ROW.includes('name: t("shell:sidebar.assistant")'));
     assert.ok(ROW.includes('subtitle: t("shell:sidebar.assistantRole")'));
-    // The rail's slot diameter, so the collapsed rail shrinks it like an agent.
     assert.ok(
       ROW.includes("<ManagerAvatar size={useSidebarAvatarDiameter()} />"),
     );

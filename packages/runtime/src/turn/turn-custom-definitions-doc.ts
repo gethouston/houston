@@ -16,19 +16,12 @@ import { customDefinitionsFile } from "./turn-custom-context";
 import { publishDerived } from "./turn-doc-merge-publish";
 import { readStoreText } from "./turn-store-read";
 
-/** A writer's re-captured definitions list, the definitions that list was
- *  built from, and the slugs the writer changed. */
 export interface CapturedCustomDefinitions {
   view: unknown;
   defs: readonly CustomIntegrationDef[];
   touched: ReadonlySet<string>;
 }
 
-/**
- * Capture the list the pod's route serves after this writer's mutations,
- * with the definitions file it was built from (the writer's local copy at
- * `storeRoot`): the view alone hides a definition's credential and source.
- */
 export async function captureCustomDefinitions(
   manager: Pick<CustomIntegrationManager, "list">,
   storeRoot: string,
@@ -73,20 +66,12 @@ function storedDefinitions(raw: string | null): CustomIntegrationDef[] {
 
 const plain = (value: unknown) => JSON.parse(JSON.stringify(value)) as unknown;
 
-/** A standing entry shows exactly `def` as far as a view can tell. */
 const showsDef = (def: CustomIntegrationDef, entry: CustomIntegrationView) =>
   isDeepStrictEqual(
     plain(viewOf(def, entry.state, entry.authMethods ?? [])),
     plain(entry),
   );
 
-/**
- * One definition's entry: the store's def with the live state (compile
- * status, auth methods) of a capture of exactly that def when there is one,
- * so a capture of an older def never brings its state back. The writer's
- * own capture leads for the slugs it changed, the standing doc's otherwise.
- * Undefined when no capture holds the slug: its writer publishes it.
- */
 function entryFor(
   def: CustomIntegrationDef,
   ours: { entry?: CustomIntegrationView; def?: CustomIntegrationDef },
@@ -112,14 +97,6 @@ function entryFor(
   return pick && viewOf(def, pick.state, pick.authMethods ?? []);
 }
 
-/**
- * Publish the custom-integration definitions view, merged per slug against
- * what the STORE holds once the doc revision is read (publishDerived): the
- * definitions file names which integrations exist and their details, so one
- * another writer added stays, one it removed stays gone, and a detail it
- * changed is never put back. Never the writer's captured list alone, which
- * is a snapshot from its own tree.
- */
 export async function publishCustomDefinitionsView(
   target: ActivityDocOptions,
   source: ActivityDocSource,

@@ -8,16 +8,6 @@ import {
 import { expect, test } from "vitest";
 import { parseTurnRequest } from "../turn/parse-turn-request";
 
-/**
- * The @mention send-body guard (HOU-944). `parseMentions` is the ONE place a
- * mention sidecar is trusted — the long-lived send route
- * (`conversation-routes.ts` → `handleStartTurn`), the cloud turn parser
- * (`turn/parse-turn-request.ts`) and the host's forwarding hop all call
- * it — so a junk shape can never reach the transcript or the wire. It lives in
- * `@houston/protocol` beside `normalizeTurnMode` and is exercised here, where
- * both runtime readers live.
- */
-
 test("a non-array is nothing at all", () => {
   expect(parseMentions(undefined)).toBeUndefined();
   expect(parseMentions(null)).toBeUndefined();
@@ -35,9 +25,9 @@ test("well-formed entries survive with their order and names intact", () => {
 test("an entry without a usable userId is dropped, the rest survive", () => {
   expect(
     parseMentions([
-      { name: "Ada" }, // no userId
-      { userId: "" }, // empty userId
-      { userId: 42 }, // non-string userId
+      { name: "Ada" },
+      { userId: "" },
+      { userId: 42 },
       null,
       "u3",
       ["u4"],
@@ -47,8 +37,6 @@ test("an entry without a usable userId is dropped, the rest survive", () => {
 });
 
 test("a non-string name is dropped but the mention itself is kept", () => {
-  // The userId is the load-bearing half (it is what a notification scans for);
-  // a garbled name must never cost the user the mention.
   expect(parseMentions([{ userId: "u1", name: 42 }])).toEqual([
     { userId: "u1" },
   ]);
@@ -69,8 +57,6 @@ test("the list is capped at MENTIONS_MAX", () => {
 });
 
 test("a userId repeated across entries is kept once, first one wins", () => {
-  // Otherwise one id could spend the whole MENTIONS_MAX budget and crowd the
-  // real mentions out of the message.
   expect(
     parseMentions([
       { userId: "u1", name: "Ada" },
@@ -81,8 +67,6 @@ test("a userId repeated across entries is kept once, first one wins", () => {
 });
 
 test("an over-long userId or name is clipped, never dropped", () => {
-  // The userId is what a notification scans for: an oversized one is a bad
-  // client, not a reason to lose the mention.
   const parsed = parseMentions([
     { userId: "u".repeat(MENTION_USER_ID_MAX + 50), name: "x".repeat(9999) },
   ]);
@@ -91,8 +75,6 @@ test("an over-long userId or name is clipped, never dropped", () => {
 });
 
 test("the scan stops after MENTIONS_SCAN_MAX entries", () => {
-  // A junk array is not walked in full. A valid mention hiding past the scan
-  // window is simply never seen.
   const junk = Array.from({ length: MENTIONS_SCAN_MAX + 500 }, () => null);
   expect(parseMentions(junk)).toBeUndefined();
   expect(parseMentions([...junk, { userId: "u_late" }])).toBeUndefined();

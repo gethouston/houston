@@ -46,32 +46,13 @@ export function ChatProcessBlock({
   renderToolResult,
   getThinkingMessage,
 }: ChatProcessBlockProps) {
-  // HOU-448: the log is hidden by default and the user clicks the chevron to
-  // reveal it. We never auto-open while the agent works (the header alone shows
-  // the one action in progress) and never auto-close when it settles, so a
-  // manual open stays open for the life of the mounted block.
   const [isOpen, setIsOpen] = useState(false);
 
-  // The single trigger line. While active it surfaces only the one in-progress
-  // task: a per-tool icon + the verb ("Reading file"), upgraded to the app
-  // logo + "Gmail · Sending email" when the current tool is an integration the
-  // app resolves, held sticky through the reasoning gaps between tools
-  // (HOU-448) with an "x3" suffix when the same activity repeats
-  // (PRODUCT-1226); settled it reads the helmet + "Mission log". The playful
-  // astronaut phrases never play here — they belong to the standalone
-  // connecting indicator only (PRODUCT-1226).
   const header = useMemo(
     () => buildProcessHeader({ isActive, segments, labels, toolLabels }),
     [isActive, segments, labels, toolLabels],
   );
 
-  // Once the user opens the (now closed-by-default) pane during an active run,
-  // tool calls keep streaming in; pin the latest into view inside the
-  // height-capped pane so the live step stays visible without the list
-  // swallowing the conversation (HOU-426 — the cap is the sole guard now that
-  // the pane is opened on demand rather than auto-opened). The hook releases
-  // the lock the moment the user scrolls up, and a settled log starts at the
-  // top instead of jumping.
   const { scrollRef, contentRef } = useStickToBottom({
     initial: isActive ? "instant" : false,
     resize: "smooth",
@@ -159,21 +140,11 @@ export function ChatProcessBlock({
   );
 }
 
-/**
- * The header's leading glyph for a running tool: the same per-tool icon the
- * expanded mission-log rows show, sized to the header line. Returns undefined
- * for a tool we don't map so `ChatStatusLine` keeps the Houston helmet.
- */
 function renderToolIcon(toolName: string) {
   const Icon = getMappedToolIcon(toolName);
   return Icon ? <Icon className="size-3.5 shrink-0" /> : undefined;
 }
 
-/**
- * The header's glyph for a classified command activity (HOU-1048): the globe
- * for a web fetch, the Python mark for a Python run — both `currentColor`, so
- * the row keeps the muted monochrome language of the other tool icons.
- */
 function renderActivityIcon(kind: CommandActivity["kind"]) {
   return kind === "web" ? (
     <GlobeIcon className="size-3.5 shrink-0" />

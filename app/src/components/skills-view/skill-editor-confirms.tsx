@@ -6,17 +6,6 @@ import type { WorkspaceSkillRow } from "../../lib/workspace-skills";
 import type { ScopedActKind } from "./scoped-skill-actions";
 import type { WorkspaceDeleteRequest } from "./workspace-skill-menu-items";
 
-/**
- * The editor's handshakes, split out for the 200-line rule: leaving unsaved
- * work, and the destructive acts.
- * Delete removes THIS employee's copy, so its confirm names this employee
- * alone; Delete for all names every holder, or the workspace for a store
- * skill.
- *
- * The third handshake belongs to an employee that keeps its OWN version of a
- * workspace skill: both scoped acts delete that version, and neither reads as
- * a delete from the control that starts it.
- */
 export function SkillEditorConfirms({
   row,
   agent,
@@ -34,20 +23,16 @@ export function SkillEditorConfirms({
   onCancelScopedAct,
 }: {
   row: WorkspaceSkillRow;
-  /** The employee whose copy Delete removes. */
   agent: Agent;
-  /** Leaving a dirty editor awaits the discard handshake. */
   pendingLeave: boolean;
   onCancelLeave: () => void;
   onConfirmLeave: () => void;
-  /** A delete for every employee awaiting its handshake, or null. */
   deleteForEveryone: WorkspaceDeleteRequest | null;
   onCancelDeleteForEveryone: () => void;
   onConfirmDeleteForEveryone: () => void;
   confirmDelete: boolean;
   onConfirmDelete: () => void;
   onCancelDelete: () => void;
-  /** The scoped act awaiting its handshake, or null while none is. */
   scopedAct: ScopedActKind | null;
   onConfirmScopedAct: () => Promise<void>;
   onCancelScopedAct: () => void;

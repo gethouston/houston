@@ -8,17 +8,6 @@ import {
 } from "./settle-from-history";
 import { newTurnState, type TurnState } from "./turn-settle";
 
-/**
- * A settle that never learned its turn id (the user echo was lost) used to
- * fall back to the legacy heuristic: adopt the trailing assistant message if
- * the newest user row is our prompt. On a history that carries turn ids that
- * is wrong while the turn still runs: a native compaction persists its summary
- * marker (no turn id yet) as the trailing message BEFORE the reply exists, so
- * the pre-settled poll adopted the summary as the answer and stopped the
- * stream early. With turn ids in history the settle derives the id from our
- * user row and adopts only a later conclusive record under that id.
- */
-
 type Item = { feed_type?: string; data?: unknown };
 
 const PROMPT = "Run the digest";
@@ -51,7 +40,6 @@ const ours: ChatMessage = {
   ts: 3,
   turnId: "t-1",
 };
-/** What a native compaction writes mid-turn, before the reply exists. */
 const pendingMarker: ChatMessage = {
   role: "assistant",
   content: SUMMARY,
@@ -155,8 +143,6 @@ test("a history without turn ids keeps the legacy trailing-reply settle", async 
 });
 
 test("a mixed history keeps the legacy settle for our own id-less turn", async () => {
-  // Older turns ran on a worker that stamps ids; ours ran on one that does
-  // not (version skew, a rollback). Our pair is what concludes the turn.
   const { s, items } = state();
   const settled = await presettle(
     s,

@@ -1,8 +1,3 @@
-// Real-DOM mount of ChatInput bound to a `draftStore`: the composer reads and
-// writes its text under `draftKey`, follows outside writes and a key switch,
-// and without a store keeps its own text as before.
-// DOM-mounting pattern: interaction-card-mount.test.ts.
-
 import { strict as assert } from "node:assert";
 import { afterEach, describe, it } from "node:test";
 import { JSDOM } from "jsdom";
@@ -49,7 +44,6 @@ g.React = React;
 const { createRoot } = await import("react-dom/client");
 const { ChatInput } = await import("../src/chat-input.tsx");
 
-/** A plain map with listeners: the smallest store the composer accepts. */
 function memoryStore(initial: Record<string, string>) {
   const texts = { ...initial };
   const listeners = new Set<() => void>();

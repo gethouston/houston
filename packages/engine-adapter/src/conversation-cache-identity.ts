@@ -1,13 +1,3 @@
-/**
- * Cache-scope identity for the local conversation cache (HOU-712): entries
- * are keyed per gateway + signed-in user so cached transcripts never leak
- * across accounts on a shared machine.
- */
-
-/**
- * The `sub` claim of a Supabase access token, or null when the token isn't a
- * readable JWT.
- */
 export function jwtSub(token: string): string | null {
   try {
     const payload = token.split(".")[1];
@@ -21,11 +11,6 @@ export function jwtSub(token: string): string | null {
   }
 }
 
-/**
- * The cache scope for a gateway + bearer, or null when the bearer carries no
- * user (static tokens, tests) — null disables caching rather than risking a
- * cross-account key.
- */
 export function conversationCacheScope(
   baseUrl: string,
   token: string,

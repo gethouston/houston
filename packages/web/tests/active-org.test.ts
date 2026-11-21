@@ -5,20 +5,7 @@ import {
 } from "@houston/engine-adapter/control-plane";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * Active-space plumbing on the HOSTED path (C8 §Active space). The engine
- * adapter's transport is what every cloud build actually runs, so the
- * `x-houston-org` header and the SSE `?org=` fallback have to land here.
- *
- * - `gatewayAuthFetch` injects `x-houston-org` from a live getter (present when
- *   a team space is active, absent for personal), re-read per attempt so a 401
- *   refresh-replay picks up a switch.
- * - `cpFetch` threads the same getter off `cfg.activeOrgSlug`.
- * - `subscribeEvents` rides the slug as `?org=` beside `?token=` on `/v1/events`
- *   (browsers can't header a stream; the gateway's SSE routes take the query).
- */
-
-const SLUG = "0123456789abcdef"; // [a-f0-9]{16}
+const SLUG = "0123456789abcdef";
 
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
 const originalFetch = globalThis.fetch;
@@ -62,7 +49,6 @@ interface Call {
   init: RequestInit | undefined;
 }
 
-/** Stub fetch with a queue of responses; records every (url, init) call. */
 function stubFetch(...responses: Response[]): Call[] {
   const calls: Call[] = [];
   globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
@@ -74,7 +60,6 @@ function stubFetch(...responses: Response[]): Call[] {
   return calls;
 }
 
-/** Stub fetch that answers every call with a fresh response from `make`. */
 function stubFetchAlways(make: () => Response): Call[] {
   const calls: Call[] = [];
   globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
@@ -109,7 +94,7 @@ test("gatewayAuthFetch sends NO org header for personal (null / no getter)", asy
 test("gatewayAuthFetch re-reads the org getter per attempt (401 replay)", async () => {
   let org: string | null = "aaaaaaaaaaaaaaaa";
   const refresh = vi.fn(async () => {
-    org = "bbbbbbbbbbbbbbbb"; // a space switch that races the refresh
+    org = "bbbbbbbbbbbbbbbb";
     return "fresh";
   });
   setEngineWindow({ token: "stale", refresh });
@@ -151,7 +136,7 @@ test("cpFetch omits the header for a personal config", async () => {
 
 test("subscribeEvents appends ?org= to the SSE URL for a team space", async () => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
-  const calls = stubFetchAlways(() => json(500)); // non-ok → reconnect loop
+  const calls = stubFetchAlways(() => json(500));
   const stop = subscribeEvents(
     { baseUrl: "https://gateway.example", token: "tok", activeOrgSlug: SLUG },
     () => {},

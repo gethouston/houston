@@ -38,7 +38,6 @@ test("the folder stays within 16 MiB by dropping the oldest results, never the o
       "integration_execute",
       `${i}`.padEnd(MiB, "x"),
     );
-    // Oldest first, a second apart, whatever the filesystem's mtime grain.
     utimesSync(join(workspaceDir, path), 1_000 + i, 1_000 + i);
     saved.push(path);
   }

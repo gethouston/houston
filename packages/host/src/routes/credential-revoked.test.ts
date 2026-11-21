@@ -8,16 +8,6 @@ import type {
 } from "../ports";
 import { handleSandboxCredentialRevoked } from "./credential-revoked";
 
-/**
- * The revoked-token report is a DELETE trigger for someone else's credential,
- * so what the route passes DOWN is the safety-critical part: the digest that
- * makes the delete conditional, and — for a personal credential — the acting
- * identity that says WHOSE row it is (HOU-976). A personal report without it
- * cannot be actioned at all: the gateway keys those rows by (org, user,
- * provider) and answers 400, leaving the dead token to 401 every turn until it
- * expires (HOU-952).
- */
-
 const vault: CredentialVault = {
   sandboxToken: () => "sbx",
   validateSandboxToken: (t) =>
@@ -124,7 +114,6 @@ test("a team report has no acting identity to forward", async () => {
     accessSha256: "e".repeat(64),
   });
 
-  // `removed:false` is the ordinary superseded case, still a 200.
   expect(status).toBe(200);
   expect(body).toEqual({ ok: true, removed: false });
   expect(reports[0]?.opts).toEqual({ scope: "team", actingAs: undefined });
@@ -169,9 +158,6 @@ test("an unauthenticated report never reaches the store", async () => {
 });
 
 test("a store failure answers a clean 502, never an unhandled throw", async () => {
-  // A gateway blip during the delete must come back as a retriable status: the
-  // reporting runtime retries on its next serve sync (quietly), instead of the
-  // route-level 500 that fed the per-sync error loop (HOUSTON-APP-567).
   const credentials: CredentialStore = {
     get: async () => null,
     put: async () => {},
@@ -207,8 +193,6 @@ test("a confirmed removal tombstones the credential and logs info, not error (HO
       revocations,
     );
 
-    // The expected disconnect pipeline working is NOT a Sentry error — that
-    // error-level line was the whole HOUSTON-APP-530 flood.
     expect(errorSpy).not.toHaveBeenCalled();
     expect(infoSpy).toHaveBeenCalledWith(
       expect.stringContaining("credential disconnected"),

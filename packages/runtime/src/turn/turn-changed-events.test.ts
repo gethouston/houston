@@ -49,16 +49,11 @@ describe("changedEventTypes", () => {
   });
 
   it("isolates a sibling agent's doc; classifies this agent's schema file via the canonical rule", () => {
-    // A sibling agent's key is outside this turn's workspaceRel, so it never
-    // contributes — cross-agent isolation holds.
     expect(
       changedEventTypes(layout, [
         "workspaces/Houston/Other/.houston/activity/activity.json",
       ]),
     ).toEqual([]);
-    // The canonical classifier (agentFileEventType) is prefix-based, so this
-    // agent's own activity SCHEMA file maps to ActivityChanged — a rare, safe
-    // over-fire (a refetch), never a miss.
     expect(
       changedEventTypes(layout, [
         "workspaces/Houston/Agent/.houston/activity/activity.schema.json",
@@ -83,7 +78,6 @@ describe("announcedOpEvents", () => {
   });
 
   it("announces nothing when a projection failed", () => {
-    // Other tabs would refetch a doc that lagged: the read falls to the pod.
     expect(
       announcedOpEvents(
         [{ type: "RoutinesChanged", agentPath: "a" }],

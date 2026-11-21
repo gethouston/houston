@@ -1,11 +1,3 @@
-/**
- * Composer-attachments contract: `sdk.turns.saveAttachments` (and the
- * `turns/attachments/save` dispatch command) drive the REAL fake host's
- * `attachments` route over real HTTP — the files land in the agent's visible
- * `uploads/` folder, colliding names are disambiguated, and the returned
- * relative paths are exactly what the agent's Read tool opens.
- */
-
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
 import type { CommandResult } from "@houston/sdk";
 import {
@@ -60,8 +52,6 @@ describe("turns/attachments/save against the fake host", () => {
       scopeId: "conv-2",
       files: [{ name: "report.csv", contentBase64: b64("two") }],
     });
-    // Durable uploads never clobber: the second lands beside the first, with
-    // the counter inserted before the extension (like the real host).
     expect(second).toEqual({ paths: ["uploads/report (1).csv"] });
   });
 

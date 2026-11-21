@@ -29,13 +29,10 @@ fn claude_bin_name() -> &'static str {
 ///      the real `claude` on PATH instead.
 ///   3. Bare `claude`, resolved via `PATH` (the dev/test path). No panics.
 pub(super) fn resolve_claude_binary() -> PathBuf {
-    // 1. Explicit env override.
     if let Ok(p) = std::env::var("HOUSTON_CLAUDE_BIN") {
         return PathBuf::from(p);
     }
 
-    // 2. Sibling of the current executable, if bundled — release builds only
-    //    (debug stages a `sleep`-forever placeholder; see the doc note above).
     #[cfg(not(debug_assertions))]
     if let Ok(exe) = std::env::current_exe() {
         if let Some(exe_dir) = exe.parent() {
@@ -46,8 +43,6 @@ pub(super) fn resolve_claude_binary() -> PathBuf {
         }
     }
 
-    // 3. Fall back to PATH (always in a debug build; the release fallback when
-    //    no bundled sibling is present).
     PathBuf::from("claude")
 }
 
@@ -67,25 +62,12 @@ pub(super) fn build_login_command(bin: &Path, config_dir: &Path) -> Command {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
-    // The CLI's Windows startup gate needs a resolvable shell (Git Bash or
-    // PowerShell); repair the child env so it can't miss (HOUSTON-APP-4YP).
     crate::shell_env::apply_claude_shell_env(cmd.as_std_mut());
-    // Spawn from the user's home dir, NOT the inherited cwd: the CLI's shell
-    // probe discards which() hits inside its own cwd, so an inherited
-    // `C:\Windows\System32` (autostart / deep-link launches) silently filters
-    // out the very PowerShell the env repair above made reachable
-    // (HOUSTON-APP-4YP's post-repair residue).
     if let Some(cwd) = crate::shell_env::claude_spawn_cwd() {
         cmd.current_dir(cwd);
     }
     #[cfg(windows)]
     {
-        // `claude.exe` is a console binary and this GUI app has no console:
-        // without CREATE_NO_WINDOW every sign-in pops a visible console
-        // window, and a user closing it hangs up the child — the CLI then
-        // dies with SIGHUP semantics, exit 129 (HOUSTON-APP-4YQ).
-        // CREATE_NEW_PROCESS_GROUP keeps console control events aimed at the
-        // parent from propagating, mirroring the engine sidecar spawn.
         cmd.creation_flags(
             crate::child_guard::CREATE_NEW_PROCESS_GROUP | crate::child_guard::CREATE_NO_WINDOW,
         );
@@ -103,15 +85,12 @@ fn strip_osc8(line: &str) -> String {
     while let Some(start) = rest.find("\u{1b}]8;") {
         out.push_str(&rest[..start]);
         let after = &rest[start..];
-        // The sequence ends at BEL or ESC-backslash; skip it entirely (the URI
-        // between `]8;;` and the terminator is control data, not visible text).
         let end = after
             .find('\u{7}')
             .map(|i| i + 1)
             .or_else(|| after.find("\u{1b}\\").map(|i| i + 2));
         match end {
             Some(e) => rest = &after[e..],
-            // Unterminated sequence: drop the tail rather than emit raw escapes.
             None => return out,
         }
     }
@@ -128,12 +107,10 @@ pub(super) fn extract_visit_url(line: &str) -> Option<String> {
     let line = strip_osc8(line);
     let idx = line.find(MARKER)?;
     let rest = line[idx + MARKER.len()..].trim();
-    // The URL is the first whitespace-delimited token after the marker.
     let token = rest.split_whitespace().next()?;
     if !(token.starts_with("http://") || token.starts_with("https://")) {
         return None;
     }
-    // Strip trailing sentence punctuation the CLI might append (`.` / `)`).
     let trimmed = token.trim_end_matches(|c| c == '.' || c == ')');
     Some(trimmed.to_string())
 }
@@ -159,13 +136,11 @@ mod tests {
 
     #[test]
     fn extract_visit_url_strips_trailing_punctuation() {
-        // The CLI could wrap the URL in a sentence: `visit: <url>.`
         let line = "If the browser didn't open, visit: https://claude.ai/oauth/authorize?code=abc.";
         assert_eq!(
             extract_visit_url(line).as_deref(),
             Some("https://claude.ai/oauth/authorize?code=abc")
         );
-        // …or in parentheses.
         let line = "(visit: https://claude.ai/oauth/authorize?code=abc)";
         assert_eq!(
             extract_visit_url(line).as_deref(),
@@ -175,13 +150,10 @@ mod tests {
 
     #[test]
     fn extract_visit_url_unwraps_osc8_hyperlinks() {
-        // Real shape from CLI 2.1.201: the URL is OSC-8 wrapped (BEL-terminated)
-        // — control URI, visible URL text, then the closing empty hyperlink.
         let url = "https://claude.com/cai/oauth/authorize?code=true&client_id=abc&state=xyz";
         let line =
             format!("If the browser didn't open, visit: \u{1b}]8;;{url}\u{7}{url}\u{1b}]8;;\u{7}");
         assert_eq!(extract_visit_url(&line).as_deref(), Some(url));
-        // ESC-backslash terminated variant.
         let line = format!(
             "If the browser didn't open, visit: \u{1b}]8;;{url}\u{1b}\\{url}\u{1b}]8;;\u{1b}\\"
         );
@@ -190,24 +162,18 @@ mod tests {
 
     #[test]
     fn extract_visit_url_drops_an_unterminated_osc8_tail() {
-        // A truncated read mid-sequence must not surface raw escape bytes.
         let line = "visit: \u{1b}]8;;https://claude.com/cai/oauth/authorize?x=1";
         assert_eq!(extract_visit_url(line), None);
     }
 
     #[test]
     fn extract_visit_url_returns_none_without_a_marker_or_url() {
-        // No `visit:` marker.
         assert_eq!(extract_visit_url("Opening browser to sign in"), None);
-        // Marker but no http(s) token.
         assert_eq!(extract_visit_url("please visit: the docs"), None);
     }
 
     #[test]
     fn build_login_command_pins_cwd_to_home() {
-        // The login child must never inherit the app's cwd — an inherited
-        // `C:\Windows\System32` makes the CLI's shell probe filter out the
-        // built-in PowerShell and fail the sign-in (HOUSTON-APP-4YP).
         let cmd = build_login_command(Path::new("/nonexistent/claude"), Path::new("/tmp/config"));
         let expected = crate::shell_env::claude_spawn_cwd().expect("home dir resolves");
         assert_eq!(cmd.as_std().get_current_dir(), Some(expected.as_path()));
@@ -216,7 +182,6 @@ mod tests {
     #[test]
     fn resolve_claude_binary_honors_env_override() {
         let _guard = ENV_LOCK.lock().unwrap();
-        // The override wins verbatim over sibling/PATH resolution.
         let sentinel = "/nonexistent/houston/claude-override";
         std::env::set_var("HOUSTON_CLAUDE_BIN", sentinel);
         let resolved = resolve_claude_binary();
@@ -228,10 +193,6 @@ mod tests {
     #[cfg(debug_assertions)]
     fn resolve_claude_binary_uses_path_in_debug_not_the_placeholder() {
         let _guard = ENV_LOCK.lock().unwrap();
-        // Tests run in a debug build, where the bundled sibling is a no-op
-        // `sleep`-forever placeholder. Resolution must SKIP it and fall back to
-        // the real `claude` on PATH — spawning the placeholder would hang the
-        // login on a spinner forever (the dev-mode bug this guards).
         std::env::remove_var("HOUSTON_CLAUDE_BIN");
         assert_eq!(resolve_claude_binary(), PathBuf::from("claude"));
     }

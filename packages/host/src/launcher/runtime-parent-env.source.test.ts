@@ -8,45 +8,14 @@ import {
   runtimeParentEnv,
 } from "./runtime-parent-env";
 
-/**
- * THE GUARD THE DENYLIST NEEDS.
- *
- * `runtimeParentEnv` strips a listed set, so a Houston variable nobody thought
- * about is INHERITED by every runtime this host spawns — a model-directed
- * process — and the next host-only credential added anywhere in this package
- * would reach it silently. The runtime's own needs cannot be enumerated from
- * here (provider keys, proxy/certificate variables, PATH, locale), so the
- * allowlist that would replace the denylist is not writable; what IS
- * enumerable is every `HOUSTON_*` / `COMPOSIO_*` name this package reads.
- *
- * This scans the host sources for those names and requires each to be
- * classified exactly once: withheld (HOST_ONLY) or deliberately shared
- * (RUNTIME_PASS_THROUGH). A new variable fails here until somebody decides.
- */
-
 const HOST_SRC = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/**
- * Domain is scanned BESIDE the host because the per-spawn stamps are declared
- * there, not here: the handshake needs both halves, so the name the host writes
- * into a child's environment (`assistant-role.ts`, `assistant-deployment.ts`)
- * and the name the runtime reads back are one constant in `@houston/domain`.
- * A stamp declared over there and classified nowhere is inherited by every
- * runtime exactly as a host-declared one would be, and the scan that only read
- * this package could not see it.
- */
 const DOMAIN_SRC = resolve(HOST_SRC, "../../domain/src");
 
 const SRC_ROOTS = [HOST_SRC, DOMAIN_SRC];
 
-/** `packages/`, so a reported file says which package it came from. */
 const PACKAGES_ROOT = resolve(HOST_SRC, "../..");
 
-/**
- * `process.env.NAME`, `process.env["NAME"]`, and any double-quoted Houston /
- * Composio name — which is how the names read through a constant reach the
- * scan (`process.env[ASSISTANT_USER_ID_ENV]`, `optionalPositiveNumber("…")`).
- */
 const NAME_PATTERN =
   /(?:process\.env\.|process\.env\[\s*"|")((?:HOUSTON|COMPOSIO)_[A-Z0-9_]+)/g;
 
@@ -60,7 +29,6 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/** Every host-read environment name, with the files that mention it. */
 function hostEnvironmentNames(): Map<string, string[]> {
   const found = new Map<string, string[]>();
   for (const file of SRC_ROOTS.flatMap(sourceFiles)) {
@@ -99,7 +67,6 @@ test("the classification is what the child env actually gets", () => {
   for (const name of HOST_ONLY) expect(child[name]).toBeUndefined();
   for (const name of RUNTIME_PASS_THROUGH)
     expect(child[name]).toBe(`value-of-${name}`);
-  // The unenumerable half the denylist exists to preserve.
   expect(child.PATH).toBe("/usr/bin");
   expect(child.ANTHROPIC_API_KEY).toBe("sk-provider");
 });

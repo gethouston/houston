@@ -48,16 +48,13 @@ export interface CreatorDirectoryRow extends StoreCreatorRow {
   installsCount: number;
 }
 
-/** Publish lifecycle of an agent the signed-in user owns. */
 export type OwnedAgentState = "draft" | "published" | "archived";
 
-/** A row on the owner dashboard: a catalog row plus its publish state. */
 export interface OwnedAgentRow extends StoreAgentRow {
   state?: OwnedAgentState;
   visibility?: "public" | "unlisted";
 }
 
-/** The mutations the owner dashboard's row actions request. */
 export interface OwnedAgentPatch {
   publish?: boolean;
   unpublish?: boolean;
@@ -65,7 +62,6 @@ export interface OwnedAgentPatch {
   visibility?: "unlisted";
 }
 
-/** The editable listing metadata the Edit-listing dialog saves (`PATCH {identity}`). */
 export interface OwnedAgentIdentity {
   name: string;
   tagline: string;
@@ -74,7 +70,6 @@ export interface OwnedAgentIdentity {
   tags: string[];
 }
 
-/** One rolled-up day on the installs chart (`fraction` of the busiest day). */
 export interface InstallsDayBar {
   day: string;
   installs: number;

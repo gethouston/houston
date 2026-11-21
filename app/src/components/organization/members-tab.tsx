@@ -7,16 +7,6 @@ import { PeopleAddRow } from "./people-add-row";
 import { PendingInvites } from "./people-invites";
 import { PeopleRoster } from "./people-roster";
 
-/**
- * The Organization > People tab: add/invite people, review pending invitations,
- * and manage the roster (membership only). Owners do everything; admins
- * (Managers) see the add/re-role controls read-only per the role matrix v2. WHO
- * can use which agent is the Permissions view's job now — a roster row is no
- * longer a drill-in. The shell already gates this view to multiplayer
- * owner/admin, so it never mounts in single-player or for a plain member. All
- * mutations route through hooks whose `call()` wrapper toasts on failure, so
- * there are no silent failures here.
- */
 export default function MembersTab({ ctx }: OrgTabProps) {
   const { t } = useTranslation("teams");
   const { data: session } = useSession();
@@ -30,7 +20,6 @@ export default function MembersTab({ ctx }: OrgTabProps) {
   return (
     <div className="flex flex-col gap-8 py-6">
       {canManage ? (
-        // A locked org takes no one new; removing people stays open below.
         <OrgLockedFieldset>
           <PeopleAddRow />
         </OrgLockedFieldset>

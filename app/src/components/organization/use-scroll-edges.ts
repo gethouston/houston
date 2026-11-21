@@ -5,14 +5,6 @@ import {
   scrollEdges,
 } from "./org-chart-scroll-edges";
 
-/**
- * A callback ref for a sideways scroller and which of its sides hide
- * content, kept current as it scrolls and resizes. It opens wherever the
- * browser puts it, the left edge, so a chart wider than the screen shows
- * its first columns (the owners) rather than a clipped middle. Admin is
- * kept alive, so while it is hidden every measure reads 0 and no side is
- * reported; the ResizeObserver catches the first real size.
- */
 export function useScrollEdges<T extends HTMLElement>() {
   const [edges, setEdges] = useState<ScrollEdges>(NO_EDGES);
   const cleanup = useRef<(() => void) | null>(null);

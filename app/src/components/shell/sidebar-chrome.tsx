@@ -1,10 +1,8 @@
 import type { SidebarLabels } from "@houston-ai/layout";
 import type { TFunction } from "i18next";
 
-/** The namespaces every builder and component in the rail's chrome reads from. */
 export type SidebarChromeT = TFunction<["shell", "common", "teams"]>;
 
-/** Labels for the rail's collapse toggle and its drag announcements. */
 export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
   return {
     collapseSidebar: t("shell:sidebar.collapse"),

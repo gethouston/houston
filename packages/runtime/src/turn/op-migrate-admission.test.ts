@@ -14,12 +14,6 @@ import {
 } from "./op-seed.test-support";
 import type { OpRequest } from "./parse-op-request";
 
-/**
- * What the migrate op downloads: the files the boot migrations read, never
- * an agent's own big trees (H-031: a store holding 2.8 GiB of backup
- * tarballs under `.houston/backups/` failed every run at the 2 GiB cap).
- */
-
 const AGENT = "workspaces/Personal/Ledger";
 
 async function run(
@@ -97,11 +91,6 @@ test("an agent whose backups alone pass the cap migrates without reading them", 
   expect(fake.read(tarball)).toBe("x".repeat(8192));
 });
 
-/**
- * An empty listing is its own code: the gateway blocks `layout_unexpected`
- * until the store changes, and a listing that is empty for a moment must
- * not park an agent there.
- */
 test("a prefix that lists nothing is refused as store_empty", async () => {
   const fake = generationStore();
 

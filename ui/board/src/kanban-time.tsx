@@ -3,9 +3,6 @@ import { useRef } from "react";
 import { useFittingLabel } from "./fit-label";
 import { formatMessageTime, type MessageTimeFormatter } from "./message-time";
 
-/** The same visible timestamp and full-date tooltip on cards and list rows.
- *  A compact (card) label from another year steps down to the longest of its
- *  shorter forms that fits; rows with room keep the full date. */
 export function KanbanTime({
   iso,
   formatTime = formatMessageTime,

@@ -9,20 +9,6 @@ import {
 import { Loader2, ShieldCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-/**
- * The BOOT gate only: Houston is still working out whether this deployment even
- * serves integrations. Once the surface is up, a data refresh shows skeletons
- * that mirror the real sections instead (`integrations-view/catalog-skeletons`).
- *
- * The pulse is the whole animation. It replaced a 5s `transition: width` fill
- * bar, which both animated layout (banned: transform and opacity only) and lied
- * about progress by pretending to know how long the fetch would take. Opacity
- * only, and it stops entirely under `prefers-reduced-motion` — the copy above
- * already says what is happening, so nothing is lost when it does.
- */
-
-/** The three staggered dots, named so their keys are identities rather than the
- *  animation delay they happen to carry (the first delay is the empty string). */
 const LOADING_DOTS = [
   { id: "first", delay: "" },
   { id: "second", delay: "[animation-delay:200ms]" },
@@ -54,7 +40,6 @@ export function LoadingState() {
   );
 }
 
-/** Desktop, signed out of Houston: one sign-in is the only step. */
 export function SigninState({
   onSignIn,
   signingIn,
@@ -82,7 +67,6 @@ export function SigninState({
   );
 }
 
-/** Integrations not configured for this deployment at all. */
 export function UnavailableState() {
   const { t } = useTranslation("integrations");
   return (
@@ -95,7 +79,6 @@ export function UnavailableState() {
   );
 }
 
-/** The one-time "reconnect your apps" security notice, with a dismiss action. */
 export function ReconnectBanner({
   onDismiss,
 }: {

@@ -1,4 +1,3 @@
-/** Resolves all list drops inside one filesystem boundary. */
 import { useCallback, useRef, useState } from "react";
 import { useDropZone } from "./drop-zone";
 

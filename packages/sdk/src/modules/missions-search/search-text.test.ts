@@ -17,7 +17,6 @@ describe("matchesPhrase", () => {
   it("matches a folded phrase contiguously, whitespace flexible", () => {
     const q = normalizeQuery("this month");
     expect(matchesPhrase("plan for this\nmonth", q)).toBe(true);
-    // Scattered words are NOT a phrase match.
     expect(matchesPhrase("this quarter, next month", q)).toBe(false);
   });
 

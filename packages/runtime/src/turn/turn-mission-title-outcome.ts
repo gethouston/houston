@@ -7,63 +7,33 @@ import type { Activity } from "@houston/protocol";
 import type { MissionTitleMiss } from "../session/mission-title";
 import type { TurnSyncReport } from "./turn-sync-report";
 
-/**
- * What became of a new mission's after-turn title, as the per-turn terminal
- * frame reports it (worker stdout is invisible in a per-turn sandbox, so the
- * frame is the only telemetry). `written` means the LANDED board's card
- * carries the title; `sync_lost` means it was written in the tree but never
- * landed.
- */
 export type MissionTitleOutcome =
-  /** The landed card carries the title. */
   | "written"
-  /** The card no longer showed its fallback: a rename won. */
   | "renamed"
-  /** No card for the mission in the hydrated, stored or landed board. */
   | "card_missing"
-  /** The card write itself threw. */
   | "write_failed"
-  /** The turn failed or was cancelled, so no title was attempted. */
   | "skipped"
-  /** Titled in the tree, but the title never landed with the board. */
   | "sync_lost"
-  /** The board landed, but the pass could not read back the bytes that did
-   *  (the file changed during its upload), so the title is unconfirmed. */
   | "unverified"
   | MissionTitleMiss;
 
-/** The terminal frame's `missionTitle` diagnostic. */
 export interface MissionTitleReport {
   outcome: MissionTitleOutcome;
-  /** Title call plus card write, from the title's start (the model's first
-   *  response, so it overlaps the reply). */
   ms: number;
-  /** How long the reply's end waited on the title and card write: the delay
-   *  the title added to the terminal frame. */
   waitMs?: number;
-  /** Merge rounds the board needed to land after a lost race. */
   mergeAttempts?: number;
 }
 
-/** The card write a `written` report stands for. */
 export interface MissionTitleWrite {
   conversationId: string;
   title: string;
   fallback: string;
 }
 
-/** The in-session report. `written` is checked against the landed board and
- *  never rides the frame: a title is the user's words, not telemetry. */
 export interface InTreeMissionTitle extends MissionTitleReport {
   written?: MissionTitleWrite;
 }
 
-/**
- * The in-session report settled against what sync-back landed. No sync
- * report means no pass completed (fenced, or the sync threw), so nothing did.
- * A landed board is read back: a merge may have kept a concurrent rename or
- * delete over the title.
- */
 export function landedMissionTitle(
   inTree: InTreeMissionTitle | undefined,
   sync: TurnSyncReport | undefined,
@@ -78,8 +48,6 @@ export function landedMissionTitle(
   };
 }
 
-/** What the landed card says. A landing with no bytes to read back is not
- *  evidence of the title: other bytes than the hashed ones may have landed. */
 function landedOutcome(
   written: MissionTitleWrite | undefined,
   body: string | undefined,
@@ -99,8 +67,6 @@ function landedCards(body: string): Activity[] | undefined {
   try {
     return normalizeActivities(parseJsonDoc(body, BOARD), BOARD).items;
   } catch (err) {
-    // Only this worker's own JSON lands here; a throw must not cost the turn
-    // its terminal frame.
     console.error(
       "[mission-title] landed board unreadable; the title is unverified:",
       err instanceof Error ? err.message : String(err),

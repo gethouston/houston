@@ -1,13 +1,3 @@
-/**
- * `POST /agents/:id/first-day` for the fake host: the same decisions the real
- * host makes (`packages/host/src/routes/agent-first-day-start.ts`), over the
- * in-memory store. A setup task that exists is handed back; otherwise a
- * pending first day gets its task, its hidden first turn and its recorded
- * start, and anything else is refused.
- */
-
-// Subpaths only: the domain barrel reaches JSON schema imports Node's own
-// loader refuses (see routes-portable.ts).
 import { CONFIG_SEED_KEY } from "@houston/domain/first-day-config";
 import { AGENT_SETUP_AGENT_MODE } from "@houston/domain/first-day-mode";
 import {
@@ -38,7 +28,6 @@ function config(agentId: string): Record<string, unknown> {
 }
 
 function recordStarted(agentId: string): void {
-  // Straight to the store: the agent-file writer keeps this field the host's.
   const next = { ...config(agentId), firstDay: "started" };
   store.files.set(fileKey(agentId, CONFIG_SEED_KEY), JSON.stringify(next));
   emitDomain("ConfigChanged", agentId);

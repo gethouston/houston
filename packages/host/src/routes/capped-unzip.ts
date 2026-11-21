@@ -9,14 +9,6 @@ export class ZipLimitError extends Error {
   }
 }
 
-/**
- * Unzip an archive whose limits apply BEFORE anything inflates. fflate sizes
- * each deflated entry's output from the size the central directory declares
- * and never grows it (a longer stream is cut there), and a stored entry is a
- * slice of its compressed bytes. So the declared sizes summed in the filter
- * bound memory, even for an archive whose sizes lie. Directory entries are
- * dropped and not counted.
- */
 export function unzipCapped(
   bytes: Uint8Array,
   limits: { maxEntries: number; maxUnpackedBytes: number },

@@ -18,7 +18,6 @@ import {
   turnCodeExecution,
 } from "./turn-toolset";
 
-/** The turn's own transport: every host-proxying tool must ride THIS one. */
 const call: SandboxFetch = async () => Response.json({});
 
 const base = (scopes?: TurnSessionRequest["grant"]): TurnSessionRequest => ({
@@ -106,10 +105,6 @@ test("plan mode strips granted acting and write tools", () => {
   ]);
 });
 
-// The three backends must offer the SAME secure key-entry surface for the same
-// runtime: an agent that can ask for a key on one and not on another is the
-// same agent behaving differently for reasons the user cannot see. These pin
-// the turn path to `credentialTools`' answer rather than to today's tool list.
 test("an agent turn registers exactly the shared credential surface", () => {
   const turn = base({ scopes: ["integrations"] });
   expect(buildTurnHostTools(turn).map((tool) => tool.name)).toEqual([
@@ -161,8 +156,6 @@ test("an agent turn binds the credential surface to its own transport", async ()
   expect(seen[0]?.integrations?.call).toBe(call);
 });
 
-// --- run_code rides the code-run scope ---------------------------------------
-
 test("remote + the code-run scope puts run_code on the list", () => {
   const turn = base({ scopes: ["code-run"] });
   const selection = buildTurnToolSelection(turn, "remote");
@@ -172,9 +165,6 @@ test("remote + the code-run scope puts run_code on the list", () => {
 });
 
 test("remote WITHOUT the scope runs the turn with code execution disabled", () => {
-  // The worker may be configured for remote, but only the gateway can relay
-  // the run route: a tool that 404s on every call is worse than no tool, and
-  // the system prompt is built from the same answer (turn-session-startup.ts).
   const turn = base({ scopes: ["integrations"] });
   const selection = buildTurnToolSelection(turn, "remote");
   expect(selection.includeRunCode).toBe(false);
@@ -183,7 +173,6 @@ test("remote WITHOUT the scope runs the turn with code execution disabled", () =
 });
 
 test("a code-run scope on a turn with no sandbox grants nothing", () => {
-  // No facade = no transport; the scope alone can never admit the tool.
   const turn: TurnSessionRequest = {
     ...base(),
     grant: { scopes: ["code-run"] },

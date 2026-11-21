@@ -1,14 +1,3 @@
-/**
- * Integrations contract: the `integrations` view-model reflects the gateway's
- * Composio readiness + catalog + connections, degrades to explicit not-ready
- * states (503 → `unavailable`, provider → `signin`) WITHOUT crashing, drives
- * the connect → poll → active flow (both the typed facade and the `dispatch`
- * path).
- *
- * The `IntegrationsViewModel` is the snapshot every subscriber reads (the
- * dispatch path, the adapter, a test), so its shape is pinned here as API.
- */
-
 import type { FakeHost } from "@houston/fake-host";
 import { INTEGRATIONS_SCOPE, type IntegrationsViewModel } from "@houston/sdk";
 import {
@@ -60,9 +49,6 @@ describe("integrations VM", () => {
     expect(result).toEqual({
       loaded: true,
       ready: true,
-      // The gateway's discovery catalog grows freely (blocked/unconnected apps
-      // are surfaced too), so pin the VM SHAPE and the canonical seeds' presence
-      // rather than the exact fixture length.
       toolkits: expect.arrayContaining([
         expect.objectContaining({ slug: "github", name: "GitHub" }),
         expect.objectContaining({ slug: "gmail", name: "Gmail" }),
@@ -73,7 +59,6 @@ describe("integrations VM", () => {
       ],
     });
     expect(vm()).toEqual(result);
-    // No `reason` key on a ready VM.
     expect("reason" in (vm() as object)).toBe(false);
   });
 

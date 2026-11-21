@@ -1,11 +1,3 @@
-/*
- * Motion — a restrained load fade-in for the hero, plus scroll reveals.
- * Rules (DESIGN.md §5): transform + opacity only, ease-OUT entrances, never
- * from scale(0). Everything is wrapped so `prefers-reduced-motion: reduce`
- * and no-JS both fall back to fully-visible static content (no hidden copy).
- * Toned down: a subtle fade/rise, no hero orchestration theatrics.
- */
-
 @media (prefers-reduced-motion: no-preference) {
   html.js .hero-load {
     opacity: 0;
@@ -35,12 +27,10 @@
   }
 }
 
-/* A gentle stagger for the hero load — the headline block rises in first. */
 .hero-intro.hero-load {
   --load-delay: 120ms;
 }
 
-/* Reveal delay steps for grouped children (both naming schemes). */
 .reveal-d1,
 .reveal-delay-1 {
   --reveal-delay: 80ms;
@@ -54,10 +44,6 @@
   --reveal-delay: 240ms;
 }
 
-/* ── Scripted hero demo — card enter + running pulse ──────────────────────
-   Applied only to JS-created cards (hero-demo.js), which never spawn under
-   prefers-reduced-motion (the script no-ops there), so the static board
-   stands. The Running→Done FLIP is a WAAPI transform inside hero-demo.js. */
 @keyframes hd-card-in {
   from {
     opacity: 0;
@@ -87,7 +73,6 @@
   50% { opacity: 0.3; }
 }
 
-/* Typing dots — reused by the multiplayer chat replay's typing indicator. */
 @keyframes typing-bounce {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30% { transform: translateY(-4px); opacity: 1; }
@@ -102,16 +87,7 @@
   }
 }
 
-/* ── GSAP-driven hero (professional stack: GSAP + ScrollTrigger + Lenis) ──────
-   When motion is allowed, a synchronous head flag adds `gsap-hero` to <html>
-   before first paint; hero-motion.js (deferred) then owns the hero's load +
-   scroll choreography. These rules pre-hide exactly the pieces it animates so
-   nothing flashes before the deferred libraries run, and supersede the CSS
-   load-fade above. If the libraries fail to init, hero-motion.js removes the
-   flag and the CSS fade takes over. Reduced motion never sets the flag — the
-   static hero (identical to the no-JS page) stands. */
 @media (prefers-reduced-motion: no-preference) {
-    /* Perspective for the load tilt (window) and the scroll tilt (stage). */
   html.gsap-hero .hero-visual {
     perspective: 1800px;
   }

@@ -17,7 +17,6 @@ test("a tampered payload is rejected (signature no longer matches)", () => {
   const v = new EnvCredentialVault({ secret: SECRET });
   const token = v.sandboxToken("ws-1", "agent-9");
   const [payload, sig] = token.split(".");
-  // Re-encode a different payload but keep the old signature → forgery.
   const forgedPayload = Buffer.from(
     JSON.stringify({ workspaceId: "ws-evil", agentId: "agent-9" }),
     "utf8",
@@ -47,18 +46,15 @@ test("malformed tokens are rejected, never thrown", () => {
   expect(v.validateSandboxToken("nodot")).toBeNull();
   expect(v.validateSandboxToken(".onlysig")).toBeNull();
   expect(v.validateSandboxToken("onlypayload.")).toBeNull();
-  // Valid-looking shape but payload is not the right object.
   const badPayload = Buffer.from(
     JSON.stringify({ foo: "bar" }),
     "utf8",
   ).toString("base64url");
   const stamped = new EnvCredentialVault({ secret: SECRET });
-  // Sign the bad payload so the HMAC passes but the schema check fails.
   const token = (() => {
     const t = stamped.sandboxToken("x", "y");
     const sig = t.split(".")[1];
     return `${badPayload}.${sig}`;
   })();
-  // The signature won't match badPayload, so it's null either way — assert null.
   expect(v.validateSandboxToken(token)).toBeNull();
 });

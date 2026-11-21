@@ -6,22 +6,6 @@ import {
 } from "@houston/engine-adapter/cp/retry";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * HOU-981, the "wrong space all session" half.
- *
- * `listWorkspaces` used to end in `catch { return [personal] }`. One transient
- * `GET /v1/workspaces` failure therefore dropped every `org:*` team space
- * SILENTLY: `resolveActiveWorkspace` fell back to personal, and a Teams user
- * spent the whole session in the wrong space with all their missions
- * apparently gone — no toast, no retry, nothing to report.
- *
- * The posture now: retry transient failures, degrade on a 404 (a host that
- * predates the surface genuinely has no team spaces), and THROW on anything
- * else so the workspace store lands in its visible `loadError` state (with the
- * `call()` toast) and the persisted `last_workspace_id` survives for the next
- * successful load.
- */
-
 const originalFetch = globalThis.fetch;
 
 afterEach(() => {
@@ -36,10 +20,6 @@ function json(status: number, body: unknown = {}): Response {
   });
 }
 
-/**
- * Route `/v1/workspaces` through a queue of responses. Any other request fails
- * loudly: the space list reads nothing else.
- */
 function stubWorkspaceReads(...responses: Response[]) {
   const calls: string[] = [];
   globalThis.fetch = vi.fn(async (input: unknown) => {
@@ -116,7 +96,7 @@ test("retryTransientRead is bounded and rethrows the last failure verbatim", asy
   await expect(retryTransientRead(read, [0, 0])).rejects.toThrow(
     "still rolling (engine error 503)",
   );
-  expect(attempts).toBe(3); // the first try plus one per delay
+  expect(attempts).toBe(3);
 });
 
 test("retryTransientRead never retries a terminal failure", async () => {

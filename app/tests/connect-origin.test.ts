@@ -5,13 +5,6 @@ import {
   inlineOwners,
 } from "../src/components/integrations/connect-origin.ts";
 
-/**
- * The catalog renders some apps TWICE — the curated "Most used" spotlight
- * repeats rows that also live in their own category section. Without an owner
- * rule both copies expand, so one click paints two identical waiting panels
- * (two live regions, two Cancel buttons) for one hand-off.
- */
-
 const rendered = [
   { section: "__mostUsed", slugs: ["gmail", "slack"] },
   { section: "communication", slugs: ["slack", "discord"] },
@@ -44,9 +37,6 @@ describe("inlineOwners", () => {
   });
 
   it("falls back to the first rendered copy when the origin row is gone", () => {
-    // The user pressed the spotlight row, then searched: the spotlight only
-    // exists at rest, so its row dropped out mid-hand-off. The live OAuth (and
-    // its Cancel) must not vanish with it.
     const owners = inlineOwners(
       [{ section: "communication", slugs: ["slack"] }],
       "integrations",

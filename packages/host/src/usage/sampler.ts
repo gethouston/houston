@@ -1,31 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ChannelCtx } from "../ports";
 
-/**
- * Managed-pod active-time sampler.
- *
- * The gateway meters how long this pod is AWAKE from the outside; what it
- * cannot see is how much of that time the agent spent actually executing
- * (turns run inside the runtime subprocess — this host only has the `/busy`
- * probe). So the pod samples its own busy state every few seconds, accrues
- * per-UTC-day totals, and reports them CUMULATIVELY (per boot, per day) to the
- * gateway's pod-usage ingest. Cumulative + GREATEST-upsert server-side makes
- * at-least-once flushing exact: a lost response self-heals on the next flush
- * and a crash loses at most one flush interval.
- *
- * Every report also carries the pod's CURRENT busy state (`busy`): the
- * control plane labels a busy pod so a PodDisruptionBudget shields it from
- * node drains (PRODUCT-1782). That is why a busy edge always reports, even
- * when the floor delays it to the next sample: the label must follow the
- * turn, not the accounting.
- *
- * Constructed ONLY on managed cloud pods (the HOUSTON_CREDENTIALS_URL env
- * quadruple); desktop and self-host never build one. Reporting is accounting,
- * never load-bearing: every failure is logged and swallowed — this daemon has
- * no user action to surface to (the beta silent-failure rule's watcher/daemon
- * exception) and must never take a pod down.
- */
-
 interface DayTotals {
   activeMs: number;
   turns: number;
@@ -33,20 +8,12 @@ interface DayTotals {
 }
 
 export interface UsageSamplerOptions {
-  /** Gateway ingest target — the managed-pod env quadruple. */
   report: { url: string; orgSlug: string; agentSlug: string; podToken: string };
-  /** Every (workspace, agent) this host serves (a managed pod hosts one). */
   listAgents(): Promise<ChannelCtx[]>;
-  /**
-   * Whether a turn is executing in this agent's runtime right now. Must not
-   * wake anything (ProxyChannel.busy short-circuits on a non-running runtime).
-   */
   turnBusy(ctx: ChannelCtx): Promise<boolean>;
-  /** Ids of this agent's routine runs currently in "running" state. */
   runningRoutineRuns(ctx: ChannelCtx): Promise<string[]>;
   sampleMs?: number;
   flushMs?: number;
-  /** Test seams. */
   now?: () => number;
   fetchImpl?: typeof fetch;
   log?: (message: string, err?: unknown) => void;
@@ -67,7 +34,6 @@ export class UsageSampler {
   private lastTickAt = 0;
   private lastBusy = false;
   private lastEdgeFlushAt = 0;
-  /** A busy edge the flush floor held back; the next sample reports it. */
   private edgePending = false;
   private lastFailure: string | null = null;
   private timers: ReturnType<typeof setInterval>[] = [];
@@ -88,7 +54,6 @@ export class UsageSampler {
     ];
   }
 
-  /** Final sample + flush; used as the pod's SIGTERM drain hook. */
   async stop(): Promise<void> {
     if (this.stopped) return;
     this.stopped = true;
@@ -97,12 +62,8 @@ export class UsageSampler {
     await this.flush();
   }
 
-  /** One busy sample. Exposed for tests; production runs it on the interval. */
   async tick(): Promise<void> {
     const now = this.now();
-    // Cap the credited stretch so a suspended/starved event loop (or a missed
-    // tick) never counts dead time as active — bounded undercount, like the
-    // gateway's awake accounting.
     const elapsed = Math.min(
       Math.max(0, now - this.lastTickAt),
       2 * this.sampleMs,
@@ -126,16 +87,10 @@ export class UsageSampler {
         busy ||= turnBusy || running.size > 0;
       }
     } catch (err) {
-      // A failed sample loses ≤ one sampleMs of attribution; never crash a pod
-      // over accounting.
       this.log("[usage-sampler] sample failed (skipping tick):", err);
       return;
     }
     if (busy && elapsed > 0) this.credit(now - elapsed, now);
-    // Edge-triggered flush: report the moment work starts or finishes so the
-    // app sees new turns within one poll instead of one flush interval. The
-    // periodic flush stays the backstop for long-running work; a floor keeps
-    // rapid-fire turns from turning every edge into a request.
     if (busy !== this.lastBusy) {
       this.lastBusy = busy;
       this.edgePending = true;
@@ -147,15 +102,9 @@ export class UsageSampler {
     }
   }
 
-  /**
-   * Report today's (± yesterday's) cumulative totals plus the current busy
-   * state. Never throws.
-   */
   async flush(): Promise<void> {
     const today = dayOf(this.now());
     const yesterday = dayOf(this.now() - DAY_MS);
-    // Days that scrolled out of the reporting window are done — the gateway
-    // rejects them anyway; drop them so a long-lived pod stays bounded.
     for (const day of this.days.keys()) {
       if (day !== today && day !== yesterday) this.days.delete(day);
     }
@@ -183,9 +132,6 @@ export class UsageSampler {
         }),
       });
       if (!res.ok) {
-        // A 404 is an older gateway that doesn't serve the ingest yet
-        // (deploy-order tolerance); anything else is worth a look. Either way
-        // keep accumulating — totals are cumulative, the next flush self-heals.
         this.failure(`[usage-sampler] report rejected: ${res.status}`);
         return;
       }
@@ -206,7 +152,6 @@ export class UsageSampler {
     return t;
   }
 
-  /** Attribute a busy stretch to UTC days, splitting at midnight. */
   private credit(fromTs: number, toTs: number): void {
     let from = fromTs;
     while (from < toTs) {
@@ -217,7 +162,6 @@ export class UsageSampler {
     }
   }
 
-  /** Log each distinct failure once, not every 60s forever. */
   private failure(message: string): void {
     if (this.lastFailure === message) return;
     this.lastFailure = message;

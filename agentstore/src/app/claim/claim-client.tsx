@@ -13,7 +13,6 @@ import { claimAgent, listMyAgents } from "@/lib/store-client";
 import { ClaimManage } from "./claim-manage";
 import { ClaimNotice, ClaimSuccess } from "./claim-notices";
 
-/** The claim credentials carried in the URL fragment: `#c=<code>&a=<agentId>`. */
 interface ClaimParams {
   code: string;
   agentId: string;
@@ -62,7 +61,6 @@ export function ClaimClient() {
       try {
         await claimAgent(token, params);
       } catch (err) {
-        // A 409 means the agent is already claimed — fine if it is already ours.
         if (!(err instanceof StoreApiError) || err.status !== 409) throw err;
       }
       const mine = await listMyAgents(token);
@@ -144,9 +142,7 @@ export function ClaimClient() {
           <Button
             size="lg"
             onClick={() => {
-              void signIn().catch(() => {
-                /* popup dismissed — the button stays available */
-              });
+              void signIn().catch(() => {});
             }}
           >
             <LogIn aria-hidden className="size-4" />

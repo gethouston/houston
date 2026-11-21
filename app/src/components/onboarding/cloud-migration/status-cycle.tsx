@@ -11,12 +11,6 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-/**
- * The progress screen's cycling status line: fades between phase phrases
- * every ~2.6s so a long wait still shows movement second to second (the same
- * "AI working, never a dead screen" principle as everywhere else in the
- * app). Reduced-motion shows the first phrase only, no cycling.
- */
 export function MigrationStatusCycle({ phrases }: { phrases: string[] }) {
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(true);

@@ -14,16 +14,6 @@ type ComposerPin = Pick<
   | "resolveSendPin"
 >;
 
-/**
- * The assistant chat's sends: the board send and its queue, on the pin the
- * composer shows (provider, model AND effort, like every mission chat), plus
- * the first message onboarding may have left for it ({@link useManagerHandoff}).
- *
- * No board behind this chat (`rawItems: undefined`, not an empty board): the
- * send hook's per-conversation loading then follows the SDK conversation VM
- * alone, which is the only lifecycle signal an activity-less chat has — it
- * starts the spinner on the turn and ends it on the settle.
- */
 export function useAssistantSend(
   agent: Agent,
   sessionKey: string,

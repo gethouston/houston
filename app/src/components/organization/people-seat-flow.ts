@@ -8,17 +8,6 @@ import {
 } from "@houston/sdk";
 import { type AddOutcome, describeAddResult } from "./people-tab-model";
 
-/**
- * Pure, DOM-free state for the add-someone seat flow on the People tab: the
- * charge dialog's phases and what the screen shows after each add outcome.
- * What a quote means (ask first, add, or stop) is the SDK's `seatAddStep`;
- * this module only places its answer on screen.
- */
-
-/**
- * The charge dialog: asking, charging, or showing why nothing was added (a
- * declined card, or a bank that wants to confirm the payment).
- */
 export type ChargePhase = "ask" | "paying" | "declined" | "needs_action";
 
 export interface ChargeDialog {
@@ -26,7 +15,6 @@ export interface ChargeDialog {
   role: OrgRole;
   quote: ChargeSeatQuote;
   phase: ChargePhase;
-  /** The billing portal opened from the refusal, so the copy says so. */
   portalOpened: boolean;
 }
 
@@ -38,13 +26,6 @@ export function chargeDialog(
   return { email, role, quote, phase: "ask", portalOpened: false };
 }
 
-/**
- * Where the screen goes after an add answered: the person is in (`done`, with
- * the line to show), the dialog stays up in a new phase or with a new quote
- * (`dialog`), the add goes again under a new quote that charges nothing
- * (`resend`), or it closes with nobody added while the note under the form
- * re-reads the quote (`closed`).
- */
 export type SeatFlowNext =
   | { kind: "done"; outcome: AddOutcome }
   | { kind: "dialog"; dialog: ChargeDialog }
@@ -54,12 +35,10 @@ export type SeatFlowNext =
 export function afterAdd(input: {
   email: string;
   role: OrgRole;
-  /** The quote the add was sent under. */
   quote: SeatQuote;
   billing: OrgBilling | null | undefined;
   outcome: AddOrgMemberOutcome;
   dialog: ChargeDialog | null;
-  /** False in the store apps, which never show a price or take a charge. */
   purchasable: boolean;
 }): SeatFlowNext {
   const { outcome, dialog } = input;
@@ -93,7 +72,6 @@ export function afterAdd(input: {
               dialog: chargeDialog(input.email, input.role, step.quote),
             }
           : { kind: "closed" };
-      // The person already agreed to pay more than nothing costs now.
       if (step.kind === "add" && dialog)
         return { kind: "resend", quote: outcome.quote };
       return { kind: "closed" };

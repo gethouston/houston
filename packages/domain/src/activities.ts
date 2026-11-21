@@ -19,7 +19,6 @@ import {
   type TextStore,
 } from "./store";
 
-/** Board statuses, per ui/agent-schemas/activity.schema.json. */
 export const ACTIVITY_STATUSES = [
   "running",
   "needs_you",
@@ -31,18 +30,8 @@ export const ACTIVITY_STATUSES = [
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** Validate the pending_interaction shape (mirrors the schema). The canonical
- *  structural guard lives beside the type in @houston/protocol: an old
- *  top-level `{kind, questions}` / `{kind, toolkit}` shape has no `steps`, so a
- *  value persisted before the step-sequence change is dropped. */
 const isValidPendingInteraction = isPendingInteraction;
 
-/**
- * Normalize a raw activity array (agents write this file with file tools, so
- * junk happens): entries missing the required identity fields are dropped and
- * reported; unknown statuses are preserved as-is (forward compat — the UI
- * renders unknown statuses neutrally).
- */
 export function normalizeActivities(
   raw: unknown,
   key: string,
@@ -102,12 +91,6 @@ export async function saveActivities(
   await saveJson(store, docKey(root, "activity"), items);
 }
 
-/**
- * Materialize a NewActivity. Caller supplies identity + clock (domain stays
- * pure). When `author` is present (hosted Teams acting-as identity) the mission
- * is stamped with `created_by` + a single-entry `contributors`; without it the
- * output is byte-identical to a single-player mission (no attribution keys).
- */
 export function createActivity(
   input: NewActivity,
   id: string,
@@ -128,7 +111,6 @@ export function createActivity(
       ? { provider: toCanonicalProviderId(input.provider) }
       : {}),
     ...(input.model !== undefined ? { model: input.model } : {}),
-    // A create body is untrusted at runtime: an unknown mode is the default.
     ...(input.mode !== undefined
       ? { mode: normalizeTurnMode(input.mode) }
       : {}),
@@ -144,11 +126,6 @@ export function createActivity(
   };
 }
 
-/**
- * Apply a partial update; undefined fields leave the current value alone
- * (explicit null clears). When `author` is present (hosted Teams acting-as
- * identity) the actor is recorded as a contributor on the resulting mission.
- */
 export function applyActivityUpdate(
   current: Activity,
   update: ActivityUpdate,
@@ -163,18 +140,11 @@ export function applyActivityUpdate(
   const next = { ...current, ...defined, updated_at: nowIso } as Activity;
   if (stamp === "last_message") next.last_message_at = nowIso;
   else next.last_message_at ??= current.updated_at ?? nowIso;
-  // `provider`/`model` are the mission's model pin: `null` deletes the key so
-  // the mission falls back to the engine's own resolution (the warming flush
-  // clears a pin its pod cannot honor).
   if (provider === null) delete next.provider;
   else if (provider !== undefined)
     next.provider = toCanonicalProviderId(provider);
   if (model === null) delete next.model;
   else if (model !== undefined) next.model = model;
-  // PATCH bodies are untrusted at runtime (an old client or a stale message can
-  // carry a pre-step shape the compile-time type can't catch), and closing a
-  // mission answers whatever it was waiting on. Both rules live once, in
-  // @houston/protocol, shared with the app's local write path and the fake host.
   const outcome = resolveInteractionPatch({
     patched: pending_interaction,
     stored: next.pending_interaction,

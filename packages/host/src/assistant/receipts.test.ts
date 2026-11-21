@@ -2,12 +2,6 @@ import { expect, test } from "vitest";
 import { ApprovalStore } from "./approvals";
 import { applyApprovalReceipts } from "./receipts";
 
-/**
- * A4 / A5 — where a person's yes becomes a receipt, and everything that must
- * NOT become one: a replayed reply, an answer from another chat, a card the
- * user walked away from, and anything a runtime could put on the wire itself.
- */
-
 const AGENT = "Personal/.assistant";
 const CONV = "assistant";
 
@@ -21,7 +15,6 @@ function issued(store: ApprovalStore, params: Record<string, unknown> = {}) {
   });
 }
 
-/** One user message arriving with (or without) receipts on its own field. */
 function reply(store: ApprovalStore, field?: unknown) {
   return applyApprovalReceipts({
     approvals: store,
@@ -97,12 +90,6 @@ test("an answer from another conversation decides nothing", () => {
   ).toBe(0);
 });
 
-/**
- * A4 — dismissal, `/clear`, an edited-out turn: every one of them ends with the
- * user sending something that is not an answer, and the card is gone from their
- * screen. So it is gone from here: a pending survives only the message that
- * answers it.
- */
 test("a message that answers nothing retires every card the user walked away from", () => {
   const store = new ApprovalStore();
   const abandoned = issued(store, { id: "a" });

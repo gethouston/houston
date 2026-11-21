@@ -25,7 +25,6 @@ test("checkpoint and summary marker are durable in the conversation file", () =>
   expect(stored.messages.at(-1)).toMatchObject({
     content: "The real summary",
     compaction: { trigger: "native" },
-    // The model's memory, not a reply: the chat shows only the divider.
     compactionSummary: true,
   });
   expect(createCompactionCheckpoints(dir).read("c")).toEqual(checkpoint);
@@ -71,7 +70,6 @@ test("a turn that fails after compacting keeps its own error beside the summary"
 });
 test("a later compaction never claims an older, already-passed summary", () => {
   const { store } = setup();
-  // The summary was followed by a reply that carried no marker of its own.
   store.appendUserMessage("c", "Next", { turnId: "t2" });
   store.appendAssistantMessage("c", "Reply", { turnId: "t2" });
   store.appendUserMessage("c", "Again", { turnId: "t3" });

@@ -10,7 +10,6 @@ import { StoreReadTimeoutError } from "./read-timeout";
 
 type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
-/** `promise`, or the signal's reason as soon as it aborts. */
 function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   let onAbort: () => void = () => undefined;
   const aborted = new Promise<never>((_resolve, reject) => {
@@ -23,14 +22,6 @@ function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   );
 }
 
-/**
- * Start the listing that lands while the critical set downloads, under the
- * hydration's signal and, given one, a deadline (StoreReadTimeoutError).
- * Settled at once, so a failure surfaces through `deferred` and never as an
- * unhandled rejection; an abort (the turn abandoned its files) settles it
- * without waiting for the store, so nothing that waits on `deferred` waits on
- * the listing.
- */
 export function startLater(
   list: NonNullable<HydrateListing["later"]>,
   signal: AbortSignal,
@@ -52,11 +43,6 @@ export function startLater(
   );
 }
 
-/**
- * The later listing's admitted objects, every one deferred. They share the
- * deferred budget with the deferred objects of the first listing, checked
- * from the listed sizes before any of them downloads.
- */
 export function admitLater(
   settled: Settled<readonly ObjectMetadata[]>,
   opts: {

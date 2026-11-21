@@ -22,7 +22,6 @@ test("restores the last-selected workspace when still present", () => {
 
 test("falls back to a team when the persisted id is gone", () => {
   const list = [PERSONAL, TEAM_A];
-  // The user last used a team they were removed from since.
   assert.equal(resolveActiveWorkspace(list, "org:deadbeefdeadbeef"), TEAM_A);
 });
 
@@ -39,15 +38,10 @@ test("empty list resolves to null", () => {
 });
 
 test("personal-only host resolves to its single workspace either way", () => {
-  // Byte-identical behaviour: whether or not a stale id was persisted, the sole
-  // default workspace is selected.
   assert.equal(resolveActiveWorkspace([PERSONAL], null), PERSONAL);
   assert.equal(resolveActiveWorkspace([PERSONAL], "stale"), PERSONAL);
   assert.equal(resolveActiveWorkspace([PERSONAL], "ws_personal"), PERSONAL);
 });
-
-// HOU-818: the Settings gate used to spin forever on a failed workspace load,
-// because "loading" and "load failed" both read as `current === null`.
 
 test("gate is loading while the store is still fetching", () => {
   assert.equal(
@@ -64,7 +58,6 @@ test("gate is failed once a THROWN load leaves no workspace", () => {
 });
 
 test("gate is empty when the load succeeded with nothing to show", () => {
-  // Nothing is broken here, so the screen must not blame the connection.
   assert.equal(
     workspaceGateState({ current: null, loading: false, loadError: false }),
     "empty",
@@ -79,10 +72,6 @@ test("gate is ready as soon as a workspace is current", () => {
 });
 
 test("gate prefers a current workspace over an in-flight refresh", () => {
-  // Reachable state: App.tsx's boot splash now gates on `loaded` (has a load
-  // ever settled), so a retry or a later refresh re-raises `loading` while the
-  // shell keeps rendering. An already-resolved workspace must keep its content
-  // rather than flashing a spinner over it.
   assert.equal(
     workspaceGateState({ current: PERSONAL, loading: true, loadError: false }),
     "ready",
@@ -90,9 +79,6 @@ test("gate prefers a current workspace over an in-flight refresh", () => {
 });
 
 test("gate spins during a retry that follows a failure", () => {
-  // The Settings retry path: `loadError` is still true from the failed attempt
-  // until the new one settles, but a load IS in flight, so the user sees
-  // progress instead of the error card they just clicked.
   assert.equal(
     workspaceGateState({ current: null, loading: true, loadError: true }),
     "loading",

@@ -11,12 +11,6 @@ import {
   resolveProviderErrorForChat,
 } from "../src/components/shell/provider-error-cards/not-connected.ts";
 
-// HOU-676: the not-connected refusal settles as a typed unauthenticated card
-// synthesized client-side. These helpers are the surface's half of that
-// contract: label a provider-less card with the chat's own provider, resend
-// the refused prompt (not the generic retry), and keep the auto-dismissing
-// store-driven card suppressed while the inline card is present.
-
 const notConnectedCard: ProviderError = {
   kind: "unauthenticated",
   provider: "",
@@ -42,8 +36,6 @@ describe("resolveProviderErrorForChat", () => {
   });
 
   it("leaves the card unlabeled when there is no provider evidence", () => {
-    // A guessed label sends the user to the WRONG sign-in — better a generic
-    // card than "Connect Anthropic" shown to someone on OpenAI.
     const resolved = resolveProviderErrorForChat(notConnectedCard, null);
     strictEqual(resolved.provider, "");
     deepStrictEqual(resolved, notConnectedCard);
@@ -182,9 +174,6 @@ describe("continuesTaskAfterReconnect", () => {
 
 describe("reconnectContinueText", () => {
   it("re-delivers the undelivered prompt when the model never received it", () => {
-    // pi's prompt-time credential guard raised before recording the message
-    // in its session store — a bare "continue" would meet a model that never
-    // saw the message ("I don't see a previous task").
     strictEqual(
       reconnectContinueText(
         {
@@ -252,9 +241,6 @@ describe("isInlineAuthCard", () => {
       isInlineAuthCard(item({ ...notConnectedCard, provider: "openai" })),
       true,
     );
-    // The inline card carries the provider the turn ACTUALLY failed on — a
-    // stale chat-provider resolution must never let a second (wrong-provider)
-    // store card render next to it, so the match is provider-agnostic.
     strictEqual(
       isInlineAuthCard(
         item({ ...notConnectedCard, provider: "openai-compatible" }),

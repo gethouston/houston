@@ -22,7 +22,6 @@ const roster = (
   assignedUserIds: assignments.map((a) => a.userId),
 });
 
-/** The everyone sentinel: assignee fields present, but empty. */
 const EVERYONE = roster();
 const OWNER_AND_BOB = roster(
   { userId: "u-self", access: "manager" },
@@ -31,8 +30,6 @@ const OWNER_AND_BOB = roster(
 
 describe("accessWidened — what actually counts as sharing", () => {
   it("switching to EVERYONE widens, even though the array shrinks to []", () => {
-    // The bug this guards: `assignments.length > prev` never fires on the
-    // broadest share in the product, because the sentinel is the empty array.
     strictEqual(
       accessWidened({
         before: OWNER_AND_BOB,

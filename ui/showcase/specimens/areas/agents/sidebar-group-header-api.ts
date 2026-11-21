@@ -1,13 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * `SidebarGroupHeaderProps`, read off `ui/layout/src/sidebar-group-header.tsx`.
- *
- * The header renders no words of its own: every string on the row arrives as a
- * prop (`name`) or as a node the host composed (`icon`, `trailing`), which is
- * what keeps this component out of the i18n runtime and lets a specimen mount
- * it standalone with nothing but literals.
- */
 export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
   {
     name: "name",

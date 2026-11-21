@@ -16,7 +16,6 @@ import {
 } from "../src/lib/providers.ts";
 
 const none: RunsAsLookup = () => null;
-/** anthropic runs its retired `claude-opus-5` row as `claude-opus-5-5`. */
 const lineup: RunsAsLookup = (provider, model) =>
   provider === "anthropic" && model === "claude-opus-5"
     ? "claude-opus-5-5"

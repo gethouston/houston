@@ -1,12 +1,3 @@
-/**
- * User-attachment message marker.
- *
- * The full persisted message still contains the model-facing prompt,
- * including absolute file paths. The leading HTML-comment marker carries
- * display metadata so consumers can render a clean attachment summary
- * instead of leaking the raw path block into chat history.
- */
-
 const MARKER_RE = /^<!--houston:attachments (\{[\s\S]*?\})-->\s*\n?\n?/;
 
 export interface AttachmentReference {
@@ -15,9 +6,7 @@ export interface AttachmentReference {
 }
 
 export interface AttachmentInvocation {
-  /** Text the user typed alongside the uploaded files. */
   message: string;
-  /** Absolute paths are intentionally decodeable but not rendered. */
   files: AttachmentReference[];
 }
 

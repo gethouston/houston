@@ -1,10 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * The message family's API, read off `ui/chat/src/ai-elements/message.tsx`.
- * Every row names the component it belongs to, because the family is one
- * bubble assembled from five pieces rather than five separate components.
- */
 export const messageProps: readonly SpecimenProp[] = [
   {
     name: "from",
@@ -68,7 +63,6 @@ export const messageProps: readonly SpecimenProp[] = [
   },
 ];
 
-/** Every token utility the family paints with, read off its source. */
 export const messageTokens: readonly string[] = [
   "bg-ink",
   "text-input",

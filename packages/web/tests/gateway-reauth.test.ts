@@ -7,12 +7,6 @@ import { REJECTED_MINT_VERIFY_DELAY_MS } from "@houston/engine-adapter/cp/reject
 import { refreshLiveToken } from "@houston/engine-adapter/session-refresh";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * The 401 → refresh → replay seam (HOU-687): a gateway roll (or an access
- * token that expired while the app idled) must be invisible — the transport
- * re-mints the bearer and replays instead of surfacing a toast storm.
- */
-
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
 const originalFetch = globalThis.fetch;
 
@@ -45,8 +39,6 @@ function setEngineWindow(opts: {
   });
 }
 
-/** The `error` field of a JSON Response body, or null. `signedOutResponse`
- *  mints `{ error: "signed_out" }`, which the toast layer suppresses. */
 async function errorFieldOf(res: Response): Promise<string | null> {
   const body = (await res.clone().json()) as { error?: string };
   return body.error ?? null;
@@ -59,7 +51,6 @@ function json(status: number, body: unknown = {}): Response {
   });
 }
 
-/** Stub fetch with a queue of responses; records every (url, init) call. */
 function stubFetch(...responses: Response[]) {
   const calls: { url: string; init: RequestInit | undefined }[] = [];
   globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
@@ -110,12 +101,6 @@ test("a 401 whose refresh fails (real sign-out) surfaces as-is", async () => {
 });
 
 test("a refresh that returns the SAME rejected bearer stays quiet, never replays", async () => {
-  // On a wake-from-sleep burst, securetoken hands back the still-cached idToken
-  // when refreshed twice inside one token's lifetime — no network mint (no
-  // breadcrumb) — so the "fresh" bearer equals the one the gateway just
-  // rejected. Replaying it earns the identical 401 and a raw expired-token
-  // toast storm (HOUSTON-APP-4YD/53R/58P, PRODUCT-1664). Treat it as the quiet
-  // synthetic signed-out state instead, and never send the doomed replay.
   const refresh = vi.fn(async () => "stale");
   setEngineWindow({ token: "stale", refresh, controlPlane: true });
   const calls = stubFetch(json(401));
@@ -125,14 +110,10 @@ test("a refresh that returns the SAME rejected bearer stays quiet, never replays
   expect(res.status).toBe(401);
   expect(await errorFieldOf(res)).toBe("signed_out");
   expect(refresh).toHaveBeenCalledTimes(1);
-  expect(calls).toHaveLength(1); // only the original attempt — no replay
+  expect(calls).toHaveLength(1);
 });
 
 test("a genuinely NEW fresh bearer the gateway keeps rejecting stays LOUD", async () => {
-  // The narrow same-bearer carve-out must not swallow a real bug: a token the
-  // refresher actually minted anew, refused on replay AND on the one delayed
-  // verification re-send, is surfaced raw — with a token-free breadcrumb
-  // naming the refused bearer's timing claims (PRODUCT-1812).
   vi.useFakeTimers();
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const refresh = vi.fn(async () => "minted-secret");
@@ -144,7 +125,7 @@ test("a genuinely NEW fresh bearer the gateway keeps rejecting stays LOUD", asyn
   const res = await pending;
 
   expect(res.status).toBe(401);
-  expect(await errorFieldOf(res)).toBe(null); // the gateway's raw 401, not signed_out
+  expect(await errorFieldOf(res)).toBe(null);
   expect(calls.map(bearerOf)).toEqual([
     "Bearer stale",
     "Bearer minted-secret",
@@ -157,9 +138,6 @@ test("a genuinely NEW fresh bearer the gateway keeps rejecting stays LOUD", asyn
 });
 
 test("a fresh bearer refused on replay heals on the one delayed re-send (PRODUCT-1812)", async () => {
-  // Field shape after a laptop wake: the gateway refuses the just-minted
-  // bearer and accepts the very same session a second later. The refusal is
-  // verified once after a beat instead of being handed to the caller raw.
   vi.useFakeTimers();
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const refresh = vi.fn(async () => "fresh");
@@ -182,10 +160,6 @@ test("a fresh bearer refused on replay heals on the one delayed re-send (PRODUCT
 });
 
 test("N joiners of one refresh whose mint is refused go loud ONCE (PRODUCT-1812)", async () => {
-  // Every joiner of the single-flight refresh resumes in the same microtask
-  // flush, so all of them replay before any sibling's refusal is known. One
-  // owner verifies the bearer; when it is refused again the owner alone keeps
-  // the raw 401 and every sibling takes the quiet known-state answer.
   vi.useFakeTimers();
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const refresh = vi.fn(async () => "b2");
@@ -193,11 +167,11 @@ test("N joiners of one refresh whose mint is refused go loud ONCE (PRODUCT-1812)
   const calls = stubFetch(
     json(401),
     json(401),
-    json(401), // three initial 401s
     json(401),
     json(401),
-    json(401), // three replays, all refused
-    json(401), // the owner's one verification re-send, refused
+    json(401),
+    json(401),
+    json(401),
   );
 
   const pending = Promise.all(
@@ -212,7 +186,7 @@ test("N joiners of one refresh whose mint is refused go loud ONCE (PRODUCT-1812)
 
   expect(refresh).toHaveBeenCalledTimes(1);
   expect(calls).toHaveLength(7);
-  expect(answers.filter((a) => a === null)).toHaveLength(1); // one loud
+  expect(answers.filter((a) => a === null)).toHaveLength(1);
   expect(answers.filter((a) => a === "signed_out")).toHaveLength(2);
   expect(warn).toHaveBeenCalledTimes(1);
   warn.mockRestore();
@@ -224,11 +198,11 @@ test("siblings of a verified mint replay their own requests and heal (PRODUCT-18
   setEngineWindow({ token: "b1", refresh, controlPlane: true });
   const calls = stubFetch(
     json(401),
-    json(401), // two initial 401s
     json(401),
-    json(401), // two replays refused
-    json(200, { owner: true }), // the owner's verification re-send, accepted
-    json(200, { sibling: true }), // the sibling's own replay
+    json(401),
+    json(401),
+    json(200, { owner: true }),
+    json(200, { sibling: true }),
   );
 
   const pending = Promise.all([
@@ -261,7 +235,6 @@ test("concurrent 401s share one refresh (single-flight)", async () => {
   expect(await second).toBe("fresh");
   expect(refresh).toHaveBeenCalledTimes(1);
 
-  // After settling, a later 401 starts a NEW refresh (not the stale result).
   const again = vi.fn(async () => "fresher");
   setEngineWindow({ token: "fresh", refresh: again });
   expect(await refreshLiveToken()).toBe("fresher");
@@ -283,8 +256,6 @@ test("writes never blind-retry a transient status", async () => {
   setEngineWindow({ token: "tok" });
   const calls = stubFetch(json(503));
 
-  // A POST is the cpFetch write path. transientRetryFetch only blind-retries
-  // GET/HEAD, so a write surfaces the 503 on the first attempt.
   await expect(
     cpFetch(CFG, "/agents", {
       method: "POST",
@@ -295,9 +266,6 @@ test("writes never blind-retry a transient status", async () => {
 });
 
 test("the boot-race bearer settles through the same 401 recovery (PRODUCT-1737)", async () => {
-  // No bearer on the window yet, so the refresher is asked first. On a wake
-  // burst that answer can be the slept-out token re-read from storage; its
-  // 401 used to be handed back raw. It must refresh again and replay.
   const refresh = vi
     .fn<() => Promise<string | null>>()
     .mockResolvedValueOnce("slept-out")
@@ -313,10 +281,6 @@ test("the boot-race bearer settles through the same 401 recovery (PRODUCT-1737)"
 });
 
 test("a bearer a sibling request already had rejected is never replayed (PRODUCT-1737)", async () => {
-  // Request 1 mints "b2", replays it, and the gateway refuses it: that ONE
-  // replay stays loud (a rejected fresh mint is a real bug). Request 2, still
-  // holding the old bearer, is handed the same "b2" by the shared refresh —
-  // the answer is already known, so it goes quiet without a doomed replay.
   vi.useFakeTimers();
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const refresh = vi.fn(async () => "b2");
@@ -327,24 +291,17 @@ test("a bearer a sibling request already had rejected is never replayed (PRODUCT
   await vi.advanceTimersByTimeAsync(REJECTED_MINT_VERIFY_DELAY_MS);
   const first = await pending;
   expect(first.status).toBe(401);
-  expect(await errorFieldOf(first)).toBe(null); // loud
-  expect(calls.map(bearerOf)).toEqual([
-    "Bearer b1",
-    "Bearer b2",
-    "Bearer b2", // the one verification re-send
-  ]);
+  expect(await errorFieldOf(first)).toBe(null);
+  expect(calls.map(bearerOf)).toEqual(["Bearer b1", "Bearer b2", "Bearer b2"]);
 
   const second = await gatewayAuthFetch("b1")("https://gateway.example/y");
   expect(second.status).toBe(401);
-  expect(await errorFieldOf(second)).toBe("signed_out"); // quiet
-  expect(calls).toHaveLength(4); // the sibling's own attempt, no replay
+  expect(await errorFieldOf(second)).toBe("signed_out");
+  expect(calls).toHaveLength(4);
   warn.mockRestore();
 });
 
 test("a refresher that lands one tick after the 401 is still used (PRODUCT-1737)", async () => {
-  // Field shape: the first 401 processed after a laptop wake found no
-  // refresher on the window while its siblings two milliseconds later did.
-  // The transport waits exactly one macrotask before giving up on it.
   setEngineWindow({ token: "stale", controlPlane: true });
   const calls = stubFetch(json(401), json(200, { ok: true }));
   const refresh = vi.fn(async () => "fresh");
@@ -377,8 +334,6 @@ test("a hosted 401 with no refresher at all stays raw and leaves a breadcrumb", 
   warn.mockRestore();
 });
 
-/** A bearer shaped like the real one: a three-part JWT whose `exp` is what the
- *  gateway judges. `expOffsetS` is relative to now; `tag` keeps them distinct. */
 function jwtExpiringIn(expOffsetS: number, tag: string): string {
   const nowS = Math.floor(Date.now() / 1000);
   const enc = (o: unknown) =>
@@ -395,11 +350,6 @@ function jwtExpiringIn(expOffsetS: number, tag: string): string {
 }
 
 test("a refreshed bearer already expired by its own claims is never replayed; the refresher is asked once more (HOUSTON-APP-5HZ)", async () => {
-  // After a laptop wake the refresher can answer with the token a pre-sleep
-  // run minted: fresh to the session store, 27 minutes past `exp` to the
-  // gateway. Replaying it only earns the 401 the breadcrumb then reports as
-  // a refused fresh mint. The claims already say the answer, so the bearer
-  // is not sent: one more refresh, and THAT one replays.
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const sleptOut = jwtExpiringIn(-1_621, "slept");
   const fresh = jwtExpiringIn(3_600, "fresh");
@@ -423,10 +373,6 @@ test("a refreshed bearer already expired by its own claims is never replayed; th
 });
 
 test("a second answer still expired by its claims replays once and lets the gateway judge", async () => {
-  // A client clock hours ahead of Google's makes EVERY token look expired
-  // locally while the gateway accepts it. One extra refresh is the budget;
-  // after that the bearer is sent and the verifier decides, so a wrong clock
-  // never locks a user out.
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const first = jwtExpiringIn(-7_200, "clock-a");
   const second = jwtExpiringIn(-7_200, "clock-b");
@@ -474,7 +420,6 @@ test("N joiners handed one slept-out bearer share ONE extra refresh", async () =
   expect(calls.slice(3).map(bearerOf)).toEqual(
     Array(3).fill(`Bearer ${fresh}`),
   );
-  // One breadcrumb per discarded bearer, not one per joiner.
   expect(warn).toHaveBeenCalledTimes(1);
   warn.mockRestore();
 });

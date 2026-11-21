@@ -13,7 +13,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** One file, sent with a line of text. */
 const ONE_FILE: AttachmentInvocation = {
   message: "Here is the December invoice, tell me if it was already paid.",
   files: [
@@ -24,7 +23,6 @@ const ONE_FILE: AttachmentInvocation = {
   ],
 };
 
-/** Several files and no words — a drag-and-drop with nothing typed. */
 const FILES_ONLY: AttachmentInvocation = {
   message: "",
   files: [
@@ -115,7 +113,6 @@ function ChatAttachmentMessageSpecimen() {
   );
 }
 
-/** The `@houston-ai/*` symbols this page documents. */
 export const sources: string[] = [
   "UserAttachmentMessage",
   "UserAttachmentBadge",

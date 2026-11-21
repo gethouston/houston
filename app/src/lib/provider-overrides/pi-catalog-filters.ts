@@ -1,55 +1,9 @@
-/**
- * Presentation-only gating of pi-ai's catalog: the providers Houston never
- * surfaces, the regional deployments it folds away, and the curated per-provider
- * model sets. Hiding is never removal — a hidden id stays runnable on the wire,
- * so a conversation already pinned to one keeps working.
- */
-
-/**
- * pi providers dropped BEFORE the rename is applied. Two classes:
- * - `openai`: pi's direct api-key `openai` provider collides with the
- *   `openai-codex → openai` rename (Houston surfaces the OAuth Codex provider
- *   under `openai`, not the raw API-key one).
- * - Retired cards (2026-07 provider QA): Ant Ling, the Kimi For Coding
- *   subscription (Kimi models surface under Moonshot AI instead), Moonshot AI's
- *   China deployment, and the three regional Xiaomi Token Plans. Dropping is
- *   presentation-only: the ids stay runnable on the wire, so an existing
- *   conversation pinned to one keeps working; they just can't be connected or
- *   picked anymore.
- * - Structurally unconnectable (2026-07 provider QA): both Cloudflare providers
- *   need the user's ACCOUNT ID (AI Gateway also a gateway id) baked into the
- *   request URL, so the single-pasted-key connect dialog can never verify or
- *   run them — every attempt dead-ends in "could not verify". Dropped until a
- *   multi-field connect ships (mapped follow-up); same presentation-only rules.
- *   (Azure OpenAI sat here briefly for the same reason; its connect dialog now
- *   collects the resource endpoint alongside the key — PRODUCT-1477.)
- */
 export {
   DROP_PI_PROVIDERS,
   REGIONAL_SUFFIX,
 } from "@houston/sdk/provider-catalog";
 
-/**
- * Curated per-provider VISIBLE model sets, keyed by Houston (display) provider
- * id. A provider WITH an entry surfaces only these pi model ids; a provider
- * without one shows its full pi catalog. Both model surfaces read this one
- * table — the chat model picker (via `buildProvider` in `providers.ts`) and the
- * AI-hub models directory (via `piCatalogToCandidates`) — so the two can never
- * drift apart. Curation is presentation-only: a hidden id stays runnable on the
- * wire (an existing conversation pinned to one keeps working); it just can't be
- * picked anymore.
- *
- * Every id here must exist in the shipped pi-ai catalog — the drift guard
- * (`provider-overrides-drift.test.ts`) rejects orphans.
- */
 export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
-  // The current OpenAI line, minus pi's 2023-era gpt-4 rows. Azure serves a
-  // model only when the user DEPLOYED it under that name, so a short current
-  // list also keeps the "deployment named after the model id" rule legible.
-  // Wider than the `openai` set below by gpt-5.5 / gpt-5.3-codex-spark /
-  // gpt-5.4 / gpt-5.4-mini: those are refused by the CODEX backend (a ChatGPT
-  // subscription), not by Azure, which runs whatever the user's own resource
-  // has deployed.
   "azure-openai-responses": new Set([
     "gpt-6-luna",
     "gpt-6-sol",
@@ -64,13 +18,6 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gpt-5.4",
     "gpt-5.4-mini",
   ]),
-  // What OpenAI's Codex backend offers a ChatGPT subscription —
-  // `codexOfferedModelIds` in packages/runtime/src/ai/codex-offered.ts is the
-  // documented source and carries the live-probe evidence;
-  // `codex-models.test.ts` pins this set to it. An id that probe answered `400
-  // not supported when using Codex with a ChatGPT account` can only produce a
-  // dead turn. The served GPT-5.6 rows are hidden to keep the picker to the
-  // GPT-6 line; pins on them still run (`ProviderInfo.hiddenModels`).
   openai: new Set([
     "gpt-6-luna",
     "gpt-6.1-terra",
@@ -80,22 +27,13 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gpt-6-astra",
     "gpt-6.2-astra",
   ]),
-  // The Claude lineup, one model per family (`ANTHROPIC_LINEUP` in
-  // @houston/domain model-aliases.ts; `anthropic-model-catalog.test.ts` pins
-  // this set to it). pi still lists older Claude rows; a stored pin on one
-  // runs on its own family's lineup model, so none is runnable-but-hidden.
   anthropic: new Set([
     "claude-sonnet-5-5",
     "claude-opus-5-5",
     "claude-fable-5-2",
     "claude-haiku-5-5",
   ]),
-  // What MiniMax serves today. pi still lists the retired M2.7 rows, and the
-  // host keeps them (and `MiniMax-M3[1m]`) as hidden `runsAs` rows so a ceiling
-  // naming one still admits M3.1 Flash (@houston/domain minimax-retired.ts).
   minimax: new Set(["MiniMax-M3.1-Flash", "MiniMax-M3"]),
-  // NOTE: pi-ai ships no plain `gemini-3.1-flash` (only the Lite tier), so the
-  // 3.1 line is represented by Flash Lite here.
   google: new Set([
     "gemini-4-neon",
     "gemini-3.8-flash",
@@ -107,12 +45,6 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gemma-4-26b-a4b-it",
     "gemma-4-31b-it",
   ]),
-  // Moonshot AI retired the whole kimi-k2 preview series on 2026-05-25
-  // (platform.kimi.ai/docs/models: kimi-k2-0711-preview, -0905-preview,
-  // -turbo-preview, -thinking, -thinking-turbo) and closed kimi-k2.5 to new
-  // accounts ahead of its 2026-08-31 sunset, but pi-ai's catalog still lists
-  // them all — picking one answers `404 Not found the model` (PRODUCT-1411).
-  // Only what Moonshot serves today. Presentation-only, like every set here.
   moonshotai: new Set([
     "kimi-k3",
     "kimi-k2.7-code",
@@ -121,20 +53,10 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   ]),
 };
 
-/**
- * OpenRouter's rolling aliases (`~anthropic/claude-opus-latest`, named
- * "Anthropic: Claude Opus Latest") duplicate a concrete model under a name that
- * reads as the lab's own. In the hub / ceiling editor they surfaced as a
- * separate Anthropic-lab model offered ONLY by OpenRouter, so a Claude user who
- * allowed "Claude Opus Latest" got a ceiling nothing they connected could run
- * (PRODUCT-1657). Presentation-only, like `VISIBLE_MODELS`: an existing pin to
- * one stays runnable on the wire.
- */
 function isOpenRouterAlias(providerId: string, modelId: string): boolean {
   return providerId === "openrouter" && modelId.startsWith("~");
 }
 
-/** Whether `modelId` may surface for `providerId` (a Houston display id). */
 export function isModelVisible(providerId: string, modelId: string): boolean {
   if (isOpenRouterAlias(providerId, modelId)) return false;
   const visible = VISIBLE_MODELS[providerId];

@@ -112,8 +112,6 @@ describe("reasoning model discovery", () => {
 });
 
 describe("guided connect failure screen", () => {
-  // PRODUCT-1717: a server without the bridge gets its own copy; "keep the
-  // app open and retry" would blame a local app that was never the problem.
   it("lands on the unsupported screen only for bridge_not_supported", () => {
     strictEqual(
       connectFailureMode(

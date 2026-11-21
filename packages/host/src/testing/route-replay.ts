@@ -8,27 +8,11 @@ import {
   replayHost,
 } from "./route-replay-host";
 
-/**
- * What one probe pins. Everything here is stable across runs by construction.
- *
- * `status` carries the two non-answers apart on purpose: "timeout" is the host
- * holding the request open (a stream, a hung handler) and "error" is the
- * request failing outright (a path the client itself refuses to send). Folding
- * them together would let a route that started throwing pass as one that
- * always streamed.
- */
 export interface ProbeRecord {
   status: number | "timeout" | "error";
   contentType: string | null;
-  /** The `error` field of a JSON body — the chain's own failure vocabulary. */
   errorCode: string | null;
-  /** Sorted keys of a JSON object body, `["<array>"]` for an array, else null. */
   bodyKeys: string[] | null;
-  /**
-   * Every `"METHOD rest"` the recording runtime proxy saw — WHICH handler won.
-   * The full list, not the first: a handler that forwards twice (or forwards
-   * after answering) is a routing change the first entry alone would hide.
-   */
   forwarded: string[];
 }
 
@@ -41,7 +25,6 @@ const AUTH_HEADERS: Record<ProbeCase["auth"], Record<string, string>> = {
   other: { Authorization: "Bearer tok:bob" },
 };
 
-/** Substitute the live ids and the fixed stand-ins into a probe pattern. */
 function render(path: string, ids: Record<string, string>): string {
   return path
     .split("/")
@@ -53,7 +36,6 @@ function render(path: string, ids: Record<string, string>): string {
     .join("/");
 }
 
-/** Stand-ins for the pattern segments the store does not mint. */
 const PARAM_VALUES: Record<string, string> = {
   conversationId: "c1",
   turnId: "t1",
@@ -101,7 +83,6 @@ async function record(
       method: probe.method,
       headers: {
         ...AUTH_HEADERS[probe.auth],
-        // Keep the legacy raw-zip probe alongside the JSON commit tests.
         ...(hasBody
           ? {
               "Content-Type":
@@ -116,8 +97,6 @@ async function record(
       signal: abort.signal,
     });
     const contentType = response.headers.get("content-type");
-    // A stream never ends on its own: its headers ARE the whole answer here,
-    // so the body is left unread and the request cut.
     const streaming = contentType?.includes("event-stream") === true;
     if (streaming) abort.abort();
     const body = streaming
@@ -132,8 +111,6 @@ async function record(
     };
   } catch {
     return {
-      // The abort the timer fired is a timeout; anything else is the request
-      // itself failing, and the two must not read alike in the baseline.
       status: abort.signal.aborted ? "timeout" : "error",
       contentType: null,
       errorCode: null,
@@ -145,12 +122,6 @@ async function record(
   }
 }
 
-/**
- * Replay every probe against a FRESH host. One server per probe is what makes
- * the baseline order-free: a `DELETE /agents/:agentId` probe cannot change the
- * answer a later probe records, so a diff is always a routing change and never
- * a replay artefact.
- */
 export async function replayRoutes(): Promise<Record<string, ProbeRecord>> {
   const records: Record<string, ProbeRecord> = {};
   const unfence = fenceOutboundFetch();

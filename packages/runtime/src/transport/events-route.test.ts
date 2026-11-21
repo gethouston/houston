@@ -4,14 +4,6 @@ import { config } from "../config";
 import { evict, publish } from "../session/bus";
 import { createRuntimeServer } from "./server";
 
-/**
- * The resumable conversation events stream over real HTTP: fresh connects get
- * a sync + live frames; a resume cursor (`?after=` / `Last-Event-ID`) replays
- * the in-flight turn's missed frames with no gap and no duplicate; a cursor
- * the buffer can't serve degrades to a `resync` sync. SSE `id:` lines carry
- * each frame's seq (the EventSource resume affordance).
- */
-
 let counter = 0;
 const freshId = () => `events-route-conv-${counter++}`;
 
@@ -35,11 +27,9 @@ interface Frame {
   type: string;
   data: unknown;
   seq?: number;
-  /** The SSE `id:` line accompanying the frame, if any. */
   id?: string;
 }
 
-/** Connect to the stream and collect parsed frames until `count` arrive. */
 async function collectFrames(res: Response, count: number): Promise<Frame[]> {
   if (!res.body) throw new Error("expected an SSE body");
   const reader = res.body.getReader();
@@ -56,7 +46,7 @@ async function collectFrames(res: Response, count: number): Promise<Frame[]> {
       buf = buf.slice(sep + 2);
       sep = buf.indexOf("\n\n");
       const dataLine = block.split("\n").find((l) => l.startsWith("data: "));
-      if (!dataLine) continue; // ": connected" / ": hb"
+      if (!dataLine) continue;
       const idLine = block.split("\n").find((l) => l.startsWith("id: "));
       frames.push({
         ...(JSON.parse(dataLine.slice(6)) as Frame),
@@ -112,15 +102,14 @@ test("fresh subscribe: sync (watermark + id line), then sequenced live frames", 
 test("resume replay: no sync, missed frames + live frames with no gap and no duplicate", async () => {
   const id = freshId();
   await withServer(async (base) => {
-    publish(id, { type: "user", data: { content: "q", ts: 1 } }); // 1
-    publish(id, { type: "text", data: "a" }); // 2
-    publish(id, { type: "text", data: "b" }); // 3
+    publish(id, { type: "user", data: { content: "q", ts: 1 } });
+    publish(id, { type: "text", data: "a" });
+    publish(id, { type: "text", data: "b" });
     const res = await fetch(`${base}/conversations/${id}/events?after=1`, {
       headers: authHeaders(),
     });
-    // Publish concurrently with the replay flush: still exactly-once, in order.
-    publish(id, { type: "text", data: "c" }); // 4
-    publish(id, { type: "done", data: null }); // 5
+    publish(id, { type: "text", data: "c" });
+    publish(id, { type: "done", data: null });
     const frames = await collectFrames(res, 4);
     expect(frames.some((f) => f.type === "sync")).toBe(false);
     expect(frames.map((f) => [f.seq, f.data])).toEqual([
@@ -135,11 +124,11 @@ test("resume replay: no sync, missed frames + live frames with no gap and no dup
 test("a cursor already at the watermark replays nothing and streams live", async () => {
   const id = freshId();
   await withServer(async (base) => {
-    publish(id, { type: "user", data: { content: "q", ts: 1 } }); // 1
+    publish(id, { type: "user", data: { content: "q", ts: 1 } });
     const res = await fetch(`${base}/conversations/${id}/events?after=1`, {
       headers: authHeaders(),
     });
-    publish(id, { type: "text", data: "live" }); // 2
+    publish(id, { type: "text", data: "live" });
     const frames = await collectFrames(res, 1);
     expect(frames).toEqual([{ type: "text", data: "live", seq: 2, id: "2" }]);
   });
@@ -164,9 +153,9 @@ test("a cursor ahead of the watermark resyncs (engine restarted)", async () => {
 test("a cursor from inside a finished turn resyncs (buffer cleared at the terminal frame)", async () => {
   const id = freshId();
   await withServer(async (base) => {
-    publish(id, { type: "user", data: { content: "q", ts: 1 } }); // 1
-    publish(id, { type: "text", data: "answer" }); // 2
-    publish(id, { type: "done", data: null }); // 3 → buffer cleared
+    publish(id, { type: "user", data: { content: "q", ts: 1 } });
+    publish(id, { type: "text", data: "answer" });
+    publish(id, { type: "done", data: null });
     const res = await fetch(`${base}/conversations/${id}/events?after=1`, {
       headers: authHeaders(),
     });
@@ -183,11 +172,10 @@ test("a cursor from inside a finished turn resyncs (buffer cleared at the termin
 test("Last-Event-ID resumes like ?after=, and the header wins when both are sent", async () => {
   const id = freshId();
   await withServer(async (base) => {
-    publish(id, { type: "user", data: { content: "q", ts: 1 } }); // 1
-    publish(id, { type: "text", data: "a" }); // 2
-    publish(id, { type: "text", data: "b" }); // 3
+    publish(id, { type: "user", data: { content: "q", ts: 1 } });
+    publish(id, { type: "text", data: "a" });
+    publish(id, { type: "text", data: "b" });
 
-    // Header alone: replay after seq 1.
     const viaHeader = await fetch(`${base}/conversations/${id}/events`, {
       headers: authHeaders({ "Last-Event-ID": "1" }),
     });
@@ -195,9 +183,6 @@ test("Last-Event-ID resumes like ?after=, and the header wins when both are sent
       2, 3,
     ]);
 
-    // The header beats a contradicting query: the gateway advances
-    // Last-Event-ID past its Redis replay while the original ?after= stays in
-    // the query string, so query-first would re-serve the replayed frames.
     const both = await fetch(`${base}/conversations/${id}/events?after=0`, {
       headers: authHeaders({ "Last-Event-ID": "2" }),
     });
@@ -239,19 +224,16 @@ test("turnId rides the wire: sync data names the running turn, live frames carry
 test("a connected subscriber survives a seq regression (evicted conversation) — dedupe is stitch-window only", async () => {
   const id = freshId();
   await withServer(async (base) => {
-    publish(id, { type: "user", data: { content: "q", ts: 1 } }); // 1
-    publish(id, { type: "text", data: "old" }); // 2
+    publish(id, { type: "user", data: { content: "q", ts: 1 } });
+    publish(id, { type: "text", data: "old" });
     const res = await fetch(`${base}/conversations/${id}/events`, {
       headers: authHeaders(),
     });
-    const pending = collectFrames(res, 3); // sync + the 2 post-regression frames
+    const pending = collectFrames(res, 3);
 
-    // The conversation is deleted and re-created: fresh channel, seq restarts
-    // at 1 — BELOW the subscriber's watermark of 2. The frames must still
-    // arrive (a lifetime seq gate would starve this stream forever).
     evict(id);
-    publish(id, { type: "user", data: { content: "second life", ts: 2 } }); // 1
-    publish(id, { type: "text", data: "delivered" }); // 2
+    publish(id, { type: "user", data: { content: "second life", ts: 2 } });
+    publish(id, { type: "text", data: "delivered" });
 
     const frames = await pending;
     expect(frames[0]?.type).toBe("sync");
@@ -265,11 +247,10 @@ test("a connected subscriber survives a seq regression (evicted conversation) �
 test("DELETE /conversations/:id evicts the event channel — an outstanding cursor resyncs", async () => {
   const id = freshId();
   await withServer(async (base) => {
-    // A real transcript on disk so the DELETE route reports 200.
     const { appendUserMessage } = await import("../store/conversations");
     appendUserMessage(id, "hello");
-    publish(id, { type: "user", data: { content: "hello", ts: 1 } }); // 1
-    publish(id, { type: "text", data: "answer" }); // 2
+    publish(id, { type: "user", data: { content: "hello", ts: 1 } });
+    publish(id, { type: "text", data: "answer" });
 
     const del = await fetch(`${base}/conversations/${id}`, {
       method: "DELETE",
@@ -277,8 +258,6 @@ test("DELETE /conversations/:id evicts the event channel — an outstanding curs
     });
     expect(del.status).toBe(200);
 
-    // The deleted conversation's stream state is gone: a resume cursor from
-    // before the delete cannot be served and degrades to a fresh resync.
     const res = await fetch(`${base}/conversations/${id}/events?after=2`, {
       headers: authHeaders(),
     });
@@ -295,7 +274,7 @@ test("DELETE /conversations/:id evicts the event channel — an outstanding curs
 test("a non-numeric or negative cursor is treated as absent (fresh sync)", async () => {
   const id = freshId();
   await withServer(async (base) => {
-    publish(id, { type: "user", data: { content: "q", ts: 1 } }); // 1
+    publish(id, { type: "user", data: { content: "q", ts: 1 } });
     const res = await fetch(`${base}/conversations/${id}/events?after=-3`, {
       headers: authHeaders({ "Last-Event-ID": "bogus" }),
     });

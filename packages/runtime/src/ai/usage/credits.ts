@@ -1,30 +1,16 @@
 import { type KeyStore as FullKeyStore, keyStore } from "../../auth/storage";
 import type { ProviderUsage } from "./types";
 
-/** The slice of the credential store the balance probes read. */
 type KeyStore = Pick<FullKeyStore, "has" | "getApiKey">;
-
-/**
- * Prepaid-credit balances for the API-key providers that expose one:
- *
- *   OpenRouter — GET https://openrouter.ai/api/v1/credits
- *                → { data: { total_credits, total_usage } }
- *   DeepSeek   — GET https://api.deepseek.com/user/balance
- *                → { balance_infos: [{ currency, total_balance: "12.34" }] }
- *
- * Both authenticate with the stored API key as a Bearer token. No rate-limit
- * windows here — a balance is the whole story for pay-as-you-go keys.
- */
 
 async function apiKeyFor(
   store: KeyStore,
   provider: string,
 ): Promise<string | null> {
-  if (!store.has(provider)) return null; // stored-only, like providerConnected
+  if (!store.has(provider)) return null;
   return (await store.getApiKey(provider)) ?? null;
 }
 
-/** Fetch the OpenRouter account's remaining prepaid credits. */
 export async function fetchOpenRouterUsage(
   fetchImpl: typeof fetch = fetch,
   store: KeyStore = keyStore,
@@ -52,7 +38,6 @@ export async function fetchOpenRouterUsage(
   };
   const total = body.data?.total_credits;
   const used = body.data?.total_usage;
-  // A missing/renamed field must read as a probe failure, not a $0 balance.
   if (typeof total !== "number" || typeof used !== "number") {
     return {
       provider,
@@ -65,7 +50,6 @@ export async function fetchOpenRouterUsage(
     provider,
     status: "ok",
     windows: [],
-    // OpenRouter credits are denominated in USD.
     credits: {
       remaining: Math.max(0, total - used),
       granted: total,
@@ -75,7 +59,6 @@ export async function fetchOpenRouterUsage(
   };
 }
 
-/** Fetch the DeepSeek account's remaining balance (prefers the USD row). */
 export async function fetchDeepSeekUsage(
   fetchImpl: typeof fetch = fetch,
   store: KeyStore = keyStore,
@@ -102,7 +85,6 @@ export async function fetchDeepSeekUsage(
     balance_infos?: { currency?: unknown; total_balance?: unknown }[];
   };
   const rows = Array.isArray(body.balance_infos) ? body.balance_infos : [];
-  // DeepSeek reports balances as strings, one row per currency.
   const preferred = rows.find((r) => r.currency === "USD") ?? rows[0];
   const remaining = Number.parseFloat(String(preferred?.total_balance ?? ""));
   if (!Number.isFinite(remaining)) {

@@ -9,18 +9,10 @@ import {
 } from "./effects-parts";
 import { useThemeName } from "./use-live-theme";
 
-/**
- * The aurora, at postage-stamp size: the same four radial gradients the body
- * paints full-bleed, scaled into a fixed box. Static on purpose — the real one
- * drifts over 32 seconds, which says nothing a still frame does not.
- */
 function AuroraPreview({ dark }: { dark: boolean }) {
   return (
     <div
       className="h-32 rounded-xl border border-line bg-gutter"
-      // The four layers over the gutter, exactly as the body stacks them:
-      // `body` is painted `--ht-base` and `body::before` puts the aurora on
-      // top of it. Over a transparent box the mix would read too pale.
       style={
         dark
           ? { background: `${AURORA_BACKGROUND}, var(--ht-base)` }
@@ -30,30 +22,18 @@ function AuroraPreview({ dark }: { dark: boolean }) {
   );
 }
 
-/** The dark-only note, loud in light (where there is nothing else to see). */
 function AuroraNote({ dark }: { dark: boolean }) {
   return (
-    <p
-      className={cn(
-        storeType.meta,
-        !dark && "font-medium text-ink",
-        // The value the box shows in light IS "nothing", so the note is the
-        // only content — it has to carry the weight rather than whisper.
-      )}
-    >
+    <p className={cn(storeType.meta, !dark && "font-medium text-ink")}>
       dark only — off in light by design
     </p>
   );
 }
 
-/** The frosted-glass card, shown ON the aurora, which is where it earns its keep. */
 function GlassPreview({ dark }: { dark: boolean }) {
   return (
     <div
       className="flex h-32 items-center justify-center rounded-xl border border-line bg-gutter p-4"
-      // The four layers over the gutter, exactly as the body stacks them:
-      // `body` is painted `--ht-base` and `body::before` puts the aurora on
-      // top of it. Over a transparent box the mix would read too pale.
       style={
         dark
           ? { background: `${AURORA_BACKGROUND}, var(--ht-base)` }
@@ -68,7 +48,6 @@ function GlassPreview({ dark }: { dark: boolean }) {
   );
 }
 
-/** `property: value` plus one line on why, in the shared meta role. */
 function ValueList({
   items,
 }: {
@@ -88,12 +67,6 @@ function ValueList({
   );
 }
 
-/**
- * The two effects that make Houston look like Houston but are NOT part of the
- * palette. They are on the colours page because that is where a designer comes
- * looking for them — and they are marked as effects because swapping the
- * palette will not touch either one.
- */
 export function EffectsSection() {
   const dark = useThemeName() === "dark";
   return (
@@ -110,16 +83,11 @@ export function EffectsSection() {
           <AuroraPreview dark={dark} />
           <ValueList
             items={AURORA_STOPS.map((stop) => ({
-              // Tone AND position: two of the four layers are the same blue,
-              // and the position is what tells them apart — for the reader and
-              // for React's key.
               property: `${stop.tone} · ${stop.where}`,
               value: stop.color,
               note: stop.shape,
             }))}
           />
-          {/* Pinned to the foot of the card so the two cards agree, whichever
-              one has more values to list. */}
           <p className={cn(storeType.meta, "mt-auto")}>{EFFECT_DISCLAIMER}</p>
         </div>
 
@@ -133,8 +101,6 @@ export function EffectsSection() {
           </div>
           <GlassPreview dark={dark} />
           <ValueList items={GLASS_VALUES} />
-          {/* Pinned to the foot of the card so the two cards agree, whichever
-              one has more values to list. */}
           <p className={cn(storeType.meta, "mt-auto")}>{EFFECT_DISCLAIMER}</p>
         </div>
       </div>

@@ -10,12 +10,6 @@ import {
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
-/**
- * The node runner has no DOM, so the view's wiring is guarded on its source
- * (the repo's React-test idiom). Each assertion below stands for a bug that
- * shipped once: one navigation emitting two analytics events, and a scroll
- * gutter that shifted the page sideways on drill-in.
- */
 describe("settings-view source", () => {
   const src = read("../src/components/settings/settings-view.tsx");
 
@@ -27,8 +21,6 @@ describe("settings-view source", () => {
   });
 
   it("puts every section behind the ONE workspace gate", () => {
-    // No section opts out any more: the two that read org/billing instead of
-    // `GET /v1/workspaces` are not sections.
     ok(
       !src.includes("settingsSectionNeedsWorkspace"),
       "no per-section workspace opt-out",
@@ -52,8 +44,6 @@ describe("settings-view source", () => {
   });
 
   it("matches the sections' scroll gutter on the index scroller", () => {
-    // Every section screen reserves the gutter (`back-bar-screen.tsx`), so the
-    // index must too or content shifts sideways on drill-in/out.
     ok(
       src.includes(
         'className="flex-1 overflow-y-auto [scrollbar-gutter:stable]"',
@@ -69,12 +59,6 @@ describe("settings-view source", () => {
   });
 });
 
-/**
- * The person is the account menu's, not Settings': who is signed in, Sign
- * out, Profile and About me are reached only through the avatar in the rail's
- * foot (the phone's "Your account" row), so the Settings index carries none of
- * them and no section can open them.
- */
 describe("Settings without the person", () => {
   const index = read("../src/components/settings/settings-index.tsx");
   const body = read("../src/components/settings/settings-section-body.tsx");
@@ -93,36 +77,22 @@ describe("Settings without the person", () => {
   });
 });
 
-/**
- * About me is the account menu's screen: a standing fact about the person,
- * drawn on the account pages' shared frame.
- */
 describe("the About me screen", () => {
   const src = read("../src/components/account/about-me-view.tsx");
 
   it("reuses the ONE standing-prose editor over the `user` slot", () => {
-    // The stored file does not move with the surface: this reads and writes
-    // the same workspace-context slot the agents' prompt is built from.
     ok(src.includes('useContextSlot("user")'), "the user slot");
     ok(src.includes("<ContextEditorBox"), "the shared editor, not a new one");
     ok(src.includes('t("aboutMe.title")'), "the copy it already owned");
   });
 
   it("draws the COMPACT card, because the page column scrolls", () => {
-    // A `fill` card claims the height its parents grant, and the account
-    // page grants none: it is a reading column inside its own scroller, so a
-    // pinned card would collapse to nothing.
     ok(src.includes("layout={{ rows: 14 }}"), "rows mode");
     ok(!src.includes('layout="fill"'), "never the pinned page layout");
     ok(src.includes("<AccountPage"), "the account pages' frame");
   });
 });
 
-/**
- * The API-keys row came back after HOU-806 hid it: the index lists it and the
- * section mounts it behind the same capability gate, so a deployment without
- * the public API shows neither the row nor a deep-linked blank screen.
- */
 describe("Settings > API keys", () => {
   const index = read("../src/components/settings/settings-index.tsx");
   const body = read("../src/components/settings/settings-section-body.tsx");
@@ -142,8 +112,6 @@ describe("Settings > API keys", () => {
       "../src/components/agent-settings/agent-settings-manage.tsx",
     );
     const card = read("../src/components/agent-settings/agent-api-access.tsx");
-    // The row and the screen behind it share one gate, so a host without
-    // the public API never reads `/v1/orgs` for it.
     ok(manage.includes("apiKeysSupported(useCapabilities().capabilities)"));
     ok(manage.includes("apiAvailable && apiFor === agent.id"));
     ok(manage.includes("<AgentApiAccess agent={agent} onBack="));
@@ -181,10 +149,6 @@ describe("the Admin screen", () => {
   });
 });
 
-/**
- * Settings holds no Skills section: the shared library is the Integrations
- * screen's Skills tab (`integrations-tabs.test.ts` guards it there).
- */
 describe("Settings after the Skills library left", () => {
   it("draws no Skills row and mounts no library", () => {
     const index = read("../src/components/settings/settings-index.tsx");
@@ -218,9 +182,6 @@ describe("workspace-shell analytics", () => {
 describe("use-surface-gates", () => {
   const src = read("../src/hooks/use-surface-gates.ts");
 
-  // The rules themselves are EXECUTED in `surface-gates.test.ts`; all that is
-  // left to pin here is that the hook delegates to them instead of deriving a
-  // second copy that could drift.
   it("composes every gate through the pure model", () => {
     ok(src.includes("surfaceGatesFor({"), "calls the model");
     ok(

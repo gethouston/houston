@@ -4,19 +4,11 @@ import type { ButtonHTMLAttributes } from "react";
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon: LucideIcon;
-  /** The accessible name, also the tooltip. */
   label: string;
-  /** A toggle's state: pressed toggles keep a filled background. */
   pressed?: boolean;
-  /** The key that does the same, shown in the tooltip. */
   shortcut?: string;
 }
 
-/**
- * The preview header's one icon button: a fixed 32px square with the 16px
- * glyph centered on the grid (never padding-centered, which drifts with the
- * glyph's own box), a tooltip, and press feedback.
- */
 export function IconButton({
   icon: Icon,
   label,

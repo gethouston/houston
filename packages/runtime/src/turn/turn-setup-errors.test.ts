@@ -86,7 +86,6 @@ test("an over-cap hydrate emits hydrate_over_cap before provider work", async ()
 test("every setup message is a sentence, and over-cap never advises a retry", () => {
   for (const [code, message] of Object.entries(TURN_SETUP_MESSAGES))
     expect(message, code).not.toContain(code);
-  // A retry cannot shrink the agent: cloud stores this line on missions.
   expect(TURN_SETUP_MESSAGES.hydrate_over_cap).not.toMatch(/again/i);
 });
 

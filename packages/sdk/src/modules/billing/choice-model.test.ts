@@ -74,8 +74,6 @@ describe("choiceNotice", () => {
     expect(
       choiceNotice({ ...single, payer: "plus" }, at(BEFORE)),
     ).toMatchObject({ kind: "single_org", payer: true });
-    // The notice is stored once, so the space they happen to be in when it
-    // shows must not turn an owner into a member.
     const elsewhere = { ...at(BEFORE), activeOrgSlug: "ffffffffffffffff" };
     expect(choiceNotice(single, elsewhere)).toMatchObject({
       kind: "single_org",
@@ -90,7 +88,6 @@ describe("choiceNotice", () => {
   });
 
   it("keeps a stored pick after the owner drops to one org", () => {
-    // Picked among several, then deleted or handed over the others.
     const narrowed = choice({
       needed: false,
       orgs: [INNOVA],
@@ -101,7 +98,6 @@ describe("choiceNotice", () => {
       freeOrgSlug: INNOVA.slug,
       paidOrgSlug: null,
     });
-    // A stored pick of an org they no longer own is no pick at all.
     expect(
       choiceNotice({ ...narrowed, orgs: [LA_FILA] }, at(BEFORE)),
     ).toMatchObject({ kind: "single_org", orgSlug: LA_FILA.slug });
@@ -144,7 +140,6 @@ describe("choiceNotice", () => {
   it("names the day in the reader's language, as its UTC calendar day", () => {
     expect(formatCutoverDate(CUTOVER, "es")).toBe("viernes, 23 de octubre");
     expect(formatCutoverDate(CUTOVER, "pt")).toBe("sexta-feira, 23 de outubro");
-    // A midnight anywhere in the Americas is still the 23rd in UTC.
     for (const seed of ["2026-10-23T00:00:00Z", "2026-10-23T07:00:00Z"])
       expect(formatCutoverDate(seed, "en")).toBe("Friday, October 23");
   });

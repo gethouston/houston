@@ -14,13 +14,6 @@ import { useChoiceNow } from "../../../hooks/use-choice-now";
 import { FreeOrgPicker } from "../../shell/free-org-picker";
 import { useOrgName } from "../../shell/free-org-picker-rows";
 
-/**
- * The way back into the free-org picker while a pick is still open, so a
- * dismissed announcement never strands an owner who still has to choose.
- * The SDK decides what stays ({@link choicePickerEntry}): past the deadline
- * the row goes, but an open picker or success step stays until closed, and
- * its focus then lands on `fallbackFocus`, which outlives the row.
- */
 export function FreeOrgChoiceRow({
   fallbackFocus,
 }: {
@@ -30,7 +23,6 @@ export function FreeOrgChoiceRow({
   const { data: choice } = useBillingChoice();
   const orgName = useOrgName();
   const [stored, setFrame] = useState(CLOSED_CHOICE_PICKER);
-  // Derived from the last render's frame; React re-renders before painting.
   const frame = choice ? settleChoicePick(stored, choice) : stored;
   if (frame !== stored) setFrame(frame);
   const opener = useRef<HTMLButtonElement>(null);
@@ -38,7 +30,6 @@ export function FreeOrgChoiceRow({
   const entry = choicePickerEntry(choice, now, frame);
   if (!choice || entry === "none") return null;
   const free = choice.orgs.find((org) => org.slug === choice.freeOrgSlug);
-  // After the cutover the row changes the pick it applied, inside the window.
   const applied =
     choice.state === "applied" && free && choice.changeableUntil
       ? {
@@ -46,7 +37,6 @@ export function FreeOrgChoiceRow({
           date: formatCutoverDay(choice.changeableUntil, i18n.language),
         }
       : null;
-  // The picker keeps its slot whether or not the row shows, so it never remounts.
   return (
     <>
       {entry === "row" && (

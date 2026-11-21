@@ -5,9 +5,6 @@ import {
   taskListSectionsFor,
 } from "../src/components/board/task-list-model.ts";
 
-// The phone task list's segmented control: every segment leaves exactly the
-// bands it names.
-
 describe("taskListSectionsFor", () => {
   it("keeps all three bands under All and exactly one under a segment", () => {
     assert.deepEqual(taskListSectionsFor("all"), [

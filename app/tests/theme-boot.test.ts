@@ -26,12 +26,8 @@ const HOUSTON_LIGHT: ResolvedTheme = {
   mode: "light",
   palette: DEFAULT_PALETTE.light,
 };
-/** A non-Houston palette: it proves the palette, not the mode, picks the hexes. */
 const NORD: ResolvedTheme = { mode: "dark", palette: "nord" };
 
-// A hermetic in-memory `localStorage`. theme-boot reads `globalThis.localStorage`
-// lazily at call time, so installing a fake before any call exercises the real
-// mirror path. `throwOn` simulates a disabled / quota-full store.
 class FakeLocalStorage {
   store = new Map<string, string>();
   throwOn: "get" | "set" | null = null;
@@ -48,7 +44,6 @@ class FakeLocalStorage {
   }
 }
 
-/** Just enough of an element to observe attributes and the inline background. */
 class FakeElement {
   attrs = new Map<string, string>();
   style = { background: "" };
@@ -60,7 +55,6 @@ class FakeElement {
   }
 }
 
-/** A `matchMedia` stand-in whose `change` event the test fires by hand. */
 class FakeMediaQueryList {
   listeners = new Set<(event: { matches: boolean }) => void>();
   constructor(public matches: boolean) {}
@@ -106,8 +100,6 @@ describe("theme boot", () => {
     themeColorMeta = new FakeElement();
     globalThis.document = {
       documentElement: root,
-      // theme-boot only ever looks up the theme-color meta (shipped in
-      // index.html); anything else resolving to null matches a real document.
       querySelector: (selector: string) =>
         selector === 'meta[name="theme-color"]' ? themeColorMeta : null,
     } as unknown as Document;

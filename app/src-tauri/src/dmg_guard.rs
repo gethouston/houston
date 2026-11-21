@@ -139,10 +139,6 @@ fn copy_to_applications(source_app: &Path) -> Result<PathBuf, String> {
         if is_installed_copy_running() {
             return Err("running".into());
         }
-        // `rm -rf` is safe here: dest is a hardcoded path to a specific
-        // .app bundle, not a user-supplied value. The alternative (Rust
-        // recursive remove) fails on signed bundles whose `Contents/_CodeSignature`
-        // has restrictive perms; the shell tool handles it correctly.
         let rm = Command::new("/bin/rm")
             .args(["-rf", "/Applications/Houston.app"])
             .status()
@@ -182,9 +178,6 @@ pub fn handle_if_needed() {
         return;
     }
 
-    // In debug mode with the force flag, we have no real DMG to copy
-    // from — just show the dialog so the wording can be reviewed, then
-    // let the launch continue regardless of the user's choice.
     let forced_debug =
         cfg!(debug_assertions) && std::env::var("HOUSTON_FORCE_DMG_GUARD").as_deref() == Ok("1");
 
@@ -199,8 +192,6 @@ pub fn handle_if_needed() {
         Some(a) => a,
         None => {
             if forced_debug {
-                // Dev preview: show the dialog with a fake source so the
-                // user can verify the copy + branding. Quit after.
                 let _ = show_move_dialog();
                 return;
             }
@@ -214,7 +205,6 @@ pub fn handle_if_needed() {
         }
         Choice::Move => {
             if forced_debug {
-                // Don't actually clobber /Applications/Houston.app in dev.
                 tracing::info!("[dmg-guard] forced-debug Move clicked — skipping real copy");
                 return;
             }

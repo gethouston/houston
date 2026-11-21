@@ -8,44 +8,10 @@ import { latestCachedAgentActivities } from "../../lib/all-conversations-cache";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity } from "../../lib/tauri";
 
-/**
- * ONE agent's activity list, as options. `useActivity` below and the
- * employee's Routines list (its DRAFT rows are setup chats) build from this,
- * so they share the key, the cache entry, the queryFn and the placeholder
- * policy documented below: the activity invalidation refreshes both and
- * neither can serve a different truth.
- */
 export function activityQueryOptions(qc: QueryClient, agentPath: string) {
   return {
     queryKey: queryKeys.activity(agentPath),
     queryFn: () => tauriActivity.list(agentPath),
-    // No `initialData: []` here on purpose. With it, the query is in
-    // "success with empty data" the instant a consumer mounts, so any
-    // empty-state UI gated on `items.length === 0` flashes for the
-    // 50-500ms it takes the queryFn to round-trip through the Tauri
-    // command and engine HTTP. On Windows where engine startup is
-    // slower the flash can be a full second. Returning `undefined`
-    // until the real data lands lets consumers distinguish "loading"
-    // from "loaded and genuinely empty". All call sites already guard
-    // reads with `(activities ?? []).map(...)`.
-    //
-    // Cold-open seeding: on a cloud boot this read is held for the whole
-    // pod wake, and the disk-restored `["activity", X]` entry only exists
-    // for agents whose board was open in a session that outlived the wake
-    // plus the persist throttle — often not the very agent being looked
-    // at. Conversations are derived 1:1 from activities, so this agent's
-    // rows in the always-swept cross-agent aggregate (the same rows the
-    // sidebar badges paint from) ARE this board's missions.
-    // Placeholder semantics keep the contract above: never persisted,
-    // replaced by the held read when the pod answers, and `undefined`
-    // (still loading) when nothing is cached — never a fabricated `[]`.
-    //
-    // The placeholder must ignore `placeholderData`'s previous-data argument
-    // (HOU-858): that argument carries the PREVIOUS query key's data, and the
-    // only way this key changes is an agent switch — so "previous data" is
-    // always the previous AGENT's board, and serving it painted the old
-    // agent's mission cards under the new agent until the fetch landed. Only
-    // the agent-scoped cache lookup may seed the placeholder.
     placeholderData: () => latestCachedAgentActivities(qc, agentPath),
   };
 }
@@ -58,11 +24,6 @@ export function useActivity(agentPath: string | undefined) {
   });
 }
 
-/**
- * An activity patch with the AGENT in the variables instead of in the hook
- * argument, the sibling of `useRoutineWritesForAnyAgent`: one binding serves
- * whichever agent a call names.
- */
 export function useUpdateActivityForAnyAgent() {
   const qc = useQueryClient();
   return useMutation({

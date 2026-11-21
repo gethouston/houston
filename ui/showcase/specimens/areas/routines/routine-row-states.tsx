@@ -15,11 +15,6 @@ import {
   weeklyReport,
 } from "./sample";
 
-/**
- * Rows are `role="option"` elements, so in the product they always sit inside
- * the list's single listbox. Every example on the page borrows that frame so a
- * screen reader reads a row here exactly as it reads one in the app.
- */
 export function Listbox({ children }: { children: ReactNode }) {
   return (
     <div
@@ -32,7 +27,6 @@ export function Listbox({ children }: { children: ReactNode }) {
   );
 }
 
-/** The States block of the RoutineRow page — every run and trigger condition. */
 export function RowStates() {
   return (
     <SpecimenSection

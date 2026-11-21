@@ -3,14 +3,6 @@ import { describe, it } from "node:test";
 import { kickoffPinFromScan } from "../src/lib/kickoff-pin.ts";
 import { getDefaultModel } from "../src/lib/providers.ts";
 
-/**
- * The rule every creation path pins by. Three answers, and the difference
- * between two of them is the whole bug this covers: "the scan says nothing is
- * connected" (pin nothing) is not the same claim as "the scan cannot tell"
- * (ask again), and collapsing them is how a new agent got pinned to a provider
- * the user had just signed out of.
- */
-
 describe("kickoffPinFromScan", () => {
   it("pins the last-used pair while its provider is connected", () => {
     deepStrictEqual(
@@ -35,9 +27,6 @@ describe("kickoffPinFromScan", () => {
   });
 
   it("pins NOTHING when the scan confirms no connection at all", () => {
-    // The agent is created with no saved provider, so its first turn falls to
-    // whatever is connected — and with nothing connected it surfaces the
-    // connect card, which is the honest answer.
     deepStrictEqual(
       kickoffPinFromScan({
         connected: [],

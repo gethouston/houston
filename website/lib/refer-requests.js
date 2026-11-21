@@ -1,17 +1,3 @@
-// The open requests on /data-partners/refer, at the reference program's
-// figures. _data/refer.js reads them for the headline amount and
-// _data/referListings.js for the board; both pay them through refer.pay, the
-// share the /data-partners estimator pays. Text lives in
-// _data/i18n/referListings/* (keyed by slug).
-//
-// A referral earns refer.headlineShare of the request's dealMaxUsd, so there
-// is no separate referral figure here; _data/referListings.js sorts the board.
-// `category` is an id from _data/refer.js categories; `tools` are product
-// names, the same in every language.
-//
-// Outside _data/ so both data files can import it without importing each
-// other. Eleventy does not reload it on save: restart `npm run dev` after an
-// edit.
 export const REQUESTS = [
   {
     slug: "law-firm",

@@ -14,7 +14,6 @@ import { agentPayload } from "./agents-payload";
 import { json, readJson } from "./http";
 import { defineRoute } from "./registry";
 
-/** A live runtime holds paths into its agent's directory during rename/delete. */
 const HERE = "packages/host/src/routes/agents-modify.ts";
 
 async function cleanup(
@@ -59,9 +58,7 @@ defineRoute({
       throw err;
     }
     const { renamed, policyError } = result;
-    // The old id can be reused once the directory moves.
     if (renamed.id !== agentId) forgetAgentState(agentId);
-    // Color metadata follows the directory id.
     const vfs = deps.vfs;
     if (vfs) {
       await cleanup(`color move for ${agentId}`, async () => {
@@ -88,8 +85,6 @@ defineRoute({
   phase: "agent",
   classification: "sdk",
   source: HERE,
-  // Teardown and deletion share the quiesced span so dispatch cannot recreate
-  // a deleted agent's directory between those operations.
   async handler({ deps, userId, authz, agentId, res }) {
     return withAgentPolicyLock(authz.workspace.id, async () => {
       const channel = channelFor(deps, authz.workspace);
@@ -102,8 +97,6 @@ defineRoute({
       if (channel.withQuiesced) await channel.withQuiesced(ctx, doDelete);
       else await doDelete();
       forgetAgentState(agentId);
-      // A local agent's id is its path, so a future agent can reuse it — leaving
-      // the entry behind would hand it a dead agent's color.
       const vfs = deps.vfs;
       if (vfs) {
         await cleanup(`color clear for ${agentId}`, async () => {

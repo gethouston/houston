@@ -26,9 +26,6 @@ describe("resolveAgentModelOverrides", () => {
   });
 
   it("reads a provider stored in the ENGINE dialect", () => {
-    // Engine-written configs carry pi's `openai-codex`; the catalog is keyed by
-    // Houston's `openai`. Unmapped, the pin vanished and the kickoff ran on
-    // whatever the runtime had active instead of the agent's own Codex model.
     deepStrictEqual(
       resolveAgentModelOverrides({
         provider: "openai-codex",
@@ -104,9 +101,6 @@ describe("resolveAgentModelOverrides", () => {
   });
 
   it("omits the model pin when the provider has no default to give (B4)", () => {
-    // The local OpenAI-compatible provider's model is whatever the user's own
-    // server serves, so `getDefaultModel` answers `""` — and an emitted
-    // `modelOverride: ""` is a half-pin the runtime rejects.
     deepStrictEqual(
       resolveAgentModelOverrides({ provider: "openai-compatible" }),
       {
@@ -116,10 +110,6 @@ describe("resolveAgentModelOverrides", () => {
   });
 });
 
-// PRODUCT-1236: a setup-chat kickoff is a fresh, message-less turn, so it must
-// follow the composer's initial-selection rule and never open on a provider the
-// user has not connected. A pin is honored verbatim downstream, so an
-// unconnected one is a guaranteed provider error, not a silent switch.
 describe("resolveAgentModelOverrides + connected providers", () => {
   it("moves the pin to a connected provider when the configured one is signed out (the reported bug: OpenAI-only user, agent configured for Anthropic)", () => {
     const pins = resolveAgentModelOverrides(
@@ -127,8 +117,6 @@ describe("resolveAgentModelOverrides + connected providers", () => {
       ["openai"],
     );
     strictEqual(pins.providerOverride, "openai");
-    // The substitute takes its OWN default — the stored model belongs to the
-    // provider the user never connected.
     strictEqual(pins.modelOverride, getDefaultModel("openai"));
   });
 
@@ -258,12 +246,6 @@ describe("readAgentModelOverrides", () => {
   });
 });
 
-/**
- * B3 — the activity row is read back in pi's CANONICAL dialect by every send
- * path (`resolveActivityOverride`, `preferRowPin`), and three comments already
- * claimed it was stored that way; the create/pick paths wrote the DISPLAY id.
- * B4 — an empty model is a half-pin the runtime rejects, so it is omitted.
- */
 describe("activityRowPin", () => {
   it("stamps the row in the CANONICAL dialect (B3)", () => {
     deepStrictEqual(
@@ -276,7 +258,6 @@ describe("activityRowPin", () => {
   });
 
   it("is idempotent for an already-canonical id (B3)", () => {
-    // The data layer canonicalizes too; canonicalizing twice must be a no-op.
     deepStrictEqual(
       activityRowPin({ providerOverride: "openai-codex" }),
       activityRowPin({ providerOverride: "openai" }),

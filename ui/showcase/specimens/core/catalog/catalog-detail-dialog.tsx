@@ -25,10 +25,6 @@ import {
 
 const [expense, standup] = availableAgents;
 
-/**
- * A live trigger for every example: the same {@link CatalogRow} body click that
- * opens the modal in the product. Click a row.
- */
 function DetailDemo({
   item,
   tags,
@@ -157,11 +153,6 @@ function CatalogDetailDialogSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["CatalogDetailDialog"];
 
 export const specimen: Specimen = {

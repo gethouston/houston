@@ -4,14 +4,6 @@ import { expect, test } from "vitest";
 import { MemoryVfs } from "../vfs";
 import { createRoutineChecked, updateRoutineChecked } from "./routine-write";
 
-/**
- * The plan floor on the shared routine-write gate. A turn the gateway stamped
- * with `limits.routineMinIntervalMinutes` may not save a routine that fires
- * more often; the gate judges with the app editor's own rule, so the agent and
- * the person are held to one line. No floor = no check (Plus, desktop, the
- * app's own route).
- */
-
 const ROOT = "ws1/agent1";
 const WS = "ws1";
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -54,7 +46,6 @@ const onDisk = async (vfs: MemoryVfs) => (await loadRoutines(vfs, ROOT)).items;
 
 test("a create below the floor is refused and nothing is saved", async () => {
   const vfs = new MemoryVfs();
-  // */16 restarts at the top of the hour: :48 then :00, 12 minutes apart.
   for (const cron of [
     "*/5 * * * *",
     "* * * * *",
@@ -101,7 +92,6 @@ test("an interval below the floor is refused, at or above it saves", async () =>
     expect(refused, schedule).toEqual(REFUSAL);
   }
   expect(await onDisk(vfs)).toEqual([]);
-  // Uneven counts run exactly N apart, so 16 and 17 clear a 15-minute floor.
   for (const schedule of ["@every 16m", "@every 17m", "@every 15m"]) {
     const saved = await createRoutineChecked(
       vfs,
@@ -182,7 +172,6 @@ test("renaming a routine that already fires below the floor is refused: the edit
     { name: "Renamed" },
     { ...FLOOR, actorSub: "free-person" },
   );
-  // The schedule was not part of the edit: the refusal says it must move first.
   expect(result).toEqual(KEPT_REFUSAL);
   expect(await onDisk(vfs)).toEqual([routine]);
 });
@@ -306,8 +295,6 @@ test("a routine created disabled is exempt: it never fires", async () => {
 });
 
 test("an update that re-sends the stored fast schedule gets the kept wording", async () => {
-  // The schedule rides the body but is the one already stored: it is the
-  // schedule that has to move, whatever else the edit changes.
   const vfs = new MemoryVfs();
   const routine = await seed(vfs, "*/5 * * * *");
   const result = await updateRoutineChecked(

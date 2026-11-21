@@ -1,6 +1,3 @@
-/**
- * AgentAvatar — Avatar for Houston and Apollo across the app.
- */
 import { cn } from "../utils";
 
 interface Props {

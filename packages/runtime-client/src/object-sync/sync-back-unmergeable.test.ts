@@ -5,13 +5,6 @@ import { expect, test, vi } from "vitest";
 import { type ObjectStore, StoreConflictError } from "./object-store";
 import { syncBack } from "./sync-back";
 
-/**
- * The worker's merge rounds on a document one side of which will not parse:
- * the pass must not throw (every later file would stay un-synced). The turn's
- * bytes overwrite the remote at its current generation, as every conflict did
- * before merges existed, and the merge record says why.
- */
-
 const BOARD = "workspaces/P/Bob/.houston/activity/activity.json";
 const ROUTINES = "workspaces/P/Bob/.houston/routines/routines.json";
 const card = (id: string) => ({ id, title: id, status: "running" });

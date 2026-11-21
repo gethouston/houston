@@ -3,10 +3,6 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, it } from "node:test";
 
-// Store-safe payments, wired: every place that can open Stripe, show a price
-// or sell a paid plan answers to `lib/purchase-policy.ts`. A new entry point fails
-// the inventory below until someone decides how it is gated in the store apps.
-
 const SRC = join(import.meta.dirname, "../src");
 const read = (file: string) => readFileSync(join(SRC, file), "utf8");
 
@@ -18,35 +14,25 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/** Opens checkout or the portal, formats a price, or draws a sale. */
 const ENTRY_POINT =
   /\b(useOrgCheckout|usePortal|formatPlanAmount)\(|<(ReferralPanel)\b/;
 
-/** Each entry point and the file whose policy check gates it. */
 const GATED_BY: Record<string, string> = {
   "components/auth/sign-in-screen.tsx": "components/auth/sign-in-screen.tsx",
-  // Draws the checkout and portal buttons; its card decides the action.
   "components/organization/billing-plan-action.tsx":
     "components/organization/billing-plan-card.tsx",
   "components/organization/billing-plan-card.tsx":
     "components/organization/billing-plan-card.tsx",
-  // The monthly-or-yearly rows and the bill under them are drawn only by
-  // the plan card, the paid-org offer and the strip's checkout dialog, each
-  // behind the policy's answer.
   "components/organization/checkout-price-line.tsx":
     "components/organization/billing-plan-card.tsx",
   "components/organization/seat-interval-choice.tsx":
     "components/organization/billing-plan-card.tsx",
-  // The seat note, the charge dialog and the added line name a seat's price
-  // only from the seat flow, which never opens the dialog and drops the
-  // monthly price in the store apps.
   "components/organization/people-add-done.tsx":
     "components/organization/use-seat-add.ts",
   "components/organization/people-seat-note.tsx":
     "components/organization/use-seat-add.ts",
   "components/organization/seat-charge-dialog.tsx":
     "components/organization/use-seat-add.ts",
-  // The pricing-change modal names prices only where the app sells.
   "components/shell/billing-change-copy.ts":
     "components/shell/billing-change-copy.ts",
   "components/shell/create-organization-dialog.tsx":
@@ -55,19 +41,13 @@ const GATED_BY: Record<string, string> = {
     "components/shell/free-org-picker-rows.tsx",
   "components/shell/paid-org-offer-dialog.tsx":
     "components/shell/paid-org-offer-dialog.tsx",
-  // The promo-ended notice's steps draw only inside its modal, which the
-  // store apps never open.
   "components/shell/promo-ended-steps.tsx":
     "components/shell/promo-ended-modal.tsx",
   "hooks/queries/use-billing.ts": "hooks/queries/use-billing.ts",
   "hooks/queries/use-org-checkout.ts": "hooks/queries/use-org-checkout.ts",
-  // The org-status strip and the locked composer card hand the policy's
-  // answer in; the view drops every pay button without it. Their pay
-  // actions run through `useOrgCheckout` (start, recover), gated there.
   "hooks/use-team-status.ts": "components/shell/team-status-banner.tsx",
 };
 
-/** Upsell copy and Upgrade buttons that sell without opening Stripe. */
 const UPSELL_SURFACES = [
   "components/agent/routine-plan-skip-notice-view.tsx",
   "components/shell/plan-composer-state.tsx",
@@ -106,7 +86,6 @@ describe("purchase entry points", () => {
     });
 });
 
-/** The body of `export [async] function <name>(`, up to the next export. */
 function body(file: string, name: string): string {
   const source = read(file);
   const start = source.search(
@@ -159,11 +138,9 @@ describe("a paid create's checkout", () => {
   });
 });
 
-/** Copy that sends someone to ask for an upgrade (owner-directed). */
 const OWNER_UPGRADE_COPY =
   /degrade\.(owner|member|writeBlocked)|status\.(askOwner|writeLocked)|billing\.askOwner|askOwner(Hint|Label)|sidebar\.askOwner|limitBodyMember|freeTakenInline|inviteInbox\.errors\.\$\{|shareViaTeam\.moveFailed\.\$\{/;
 
-/** Each place that shows it, all with a store-app variant. */
 const OWNER_UPGRADE_SURFACES = [
   "components/agent/share-via-team-failed-steps.tsx",
   "components/agent/use-share-create-team.ts",

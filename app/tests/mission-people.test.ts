@@ -88,7 +88,6 @@ describe("buildMissionPeople — label fallbacks", () => {
       created_by: "u-1",
       contributors: [{ user_id: "u-1", name: "Stored Name" }],
     };
-    // profile row exists but its name is null (never set a display name)
     const people = buildMissionPeople(conv, profiles([profile("u-1", null)]));
     strictEqual(people[0].label, "Stored Name");
   });
@@ -167,16 +166,11 @@ describe("missionMatchesMe", () => {
   });
 
   it("keeps unattributed / legacy missions mine (empty or absent stack)", () => {
-    // The load-bearing clause: pre-Teams / unstamped missions carry no people,
-    // and off multiplayer none do. Without it, `missionIsMine` would go silent
-    // on a long-tenured user's whole history and on all of single player.
     strictEqual(missionMatchesMe(undefined, "me"), true);
     strictEqual(missionMatchesMe([], "me"), true);
   });
 
   it("is strictly wider than missionMatchesPerson, only for unattributed work", () => {
-    // The two rules must not be confused: the filter-by-person control stays
-    // strict, so a named teammate never picks up unstamped missions.
     strictEqual(missionMatchesPerson(undefined, "me"), false);
     strictEqual(missionMatchesPerson([], "me"), false);
   });
@@ -200,7 +194,6 @@ describe("distinctBoardPeople", () => {
       result.map((p) => p.id),
       ["u-1", "u-2"],
     );
-    // first occurrence retained (label "A", not "A dupe")
     strictEqual(result[0].label, "A");
     strictEqual(result[0].imageUrl, "a.png");
   });

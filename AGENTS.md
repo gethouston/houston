@@ -35,7 +35,7 @@ Every coding agent reads this file (Claude Code through the one-line `CLAUDE.md`
 | `agentstore/`, `packages/agentstore-*` | Agent Store frontend (agents.gethouston.ai), its client and contract |
 | `crates/local-model-bridge` | Rust bridge to local models, used by the desktop shell |
 | `selfhost/` | Docker + Caddy self-host image (`selfhost/README.md`) |
-| `skills/` | Task procedures: `/release`, `/debug`, `/build-app-local`, `/design-review`, `/frontend-design` |
+| `skills/` | Task procedures: `/release`, `/debug`, `/build-app-local`, `/design-review`, `/frontend-design`, `/delete-comment` |
 | `convergence/`, `store/` | Historical: the Rust to TS cutover record; legacy bundled catalog data. Never the current map |
 
 ## Non-obvious wiring
@@ -57,7 +57,7 @@ Every coding agent reads this file (Claude Code through the one-line `CLAUDE.md`
 1. **Writing to the live install.** `~/.houston` is the developer's real desktop data, in use while you work. The dev stack keeps its data under `~/.dev-houston*`, but a host started without `HOUSTON_HOME` (e.g. `cd packages/host && pnpm dev`) falls back to `~/.houston`. Reading or copying from `~/.houston` is fine. Never start a host against it, write into it or clean it up.
 2. **Restarting someone else's stack.** The machine runs one dev stack, and `pnpm dev` and `pnpm dev:reset` reap whichever one is running, including a stack started from another worktree (`scripts/dev/reap.sh`). Ask before you start or stop it. Never start vite, host or tauri panes by hand, and never `kill`/`pkill` by name or path pattern. `pnpm dev:down` stops the stack. To run only the host, use `pnpm dev:host`, which sets `HOUSTON_HOME`.
 3. **Stomping parallel sessions.** Several agents work in sibling worktrees that share one git stash and object store. Stage explicit paths. Never run `git add -A`, `git add .`, bare `git stash`/`git stash pop`, `git reset --hard`, `git checkout .`, `git clean -fd` or `git commit --no-verify`. Review a PR with `gh pr diff` and `git show <ref>:<path>`; don't switch your worktree to its branch.
-4. **Hand-editing generated files.** Regenerate instead: `docs/assistant/` (`pnpm gen:assistant-catalog`), `packages/host/src/routes/routes.golden.json` (`HOUSTON_ROUTES_GOLDEN=update`, with the diff justified in the PR body), `scripts/sdk-parity/gateway-routes.generated.json` (`pnpm vendor:gateway-routes`), Playwright baselines (`test:visual:update`, both `darwin` and `linux` sets), `ui/layout/src/sidebar-group-glyph-data-*` (`pnpm generate:team-icons`).
+4. **Hand-editing generated files.** Regenerate instead: `docs/assistant/` (`pnpm gen:assistant-catalog`), `packages/host/src/routes/routes.golden.json` (`HOUSTON_ROUTES_GOLDEN=update`, with the diff justified in the PR body), `scripts/sdk-parity/gateway-routes.generated.json` (`pnpm vendor:gateway-routes`), Playwright baselines (`test:visual:update`, both `darwin` and `linux` sets), `ui/layout/src/sidebar-group-glyph-data-*` (`pnpm generate:team-icons`), `scripts/comments/baseline.json` (`pnpm comments:ratchet`).
 
 ## Dev loop
 
@@ -69,7 +69,8 @@ A packaged build, or `pnpm tauri dev` with no host URL, spawns the staged sideca
 
 | Area | Check / test |
 |------|--------------|
-| Any TS/JS/JSON change | `pnpm check:fix` after every change; done means `pnpm check` exits 0 (Biome + `check:desktop-native` + `check:assistant-catalog` + `check:assistant-coverage` + `check:sdk-parity`) |
+| Any TS/JS/JSON change | `pnpm check:fix` after every change; done means `pnpm check` exits 0 (Biome + `check:desktop-native` + `check:assistant-catalog` + `check:assistant-coverage` + `check:sdk-parity` + `check:comments`) |
+| Comments | `pnpm check:comments` (in `pnpm check`); `pnpm comments:verify` after a sweep; `pnpm test:comments` for the tooling itself |
 | Types, all packages | `pnpm typecheck` (the pre-commit hook runs it after lint-staged) |
 | host / runtime / domain | `pnpm --filter @houston/host --filter @houston/runtime --filter @houston/domain test` (vitest) |
 | engine adapter | `pnpm --filter @houston/engine-adapter test`; its wire specs (`packages/web/tests/wire-*`) run with `pnpm --filter houston-web test` |
@@ -166,7 +167,7 @@ Users and agents are equal writers. Every `.houston/` read goes through TanStack
 - 200 lines per file max (CSS 500). Never compress code to fit; extract a module.
 - Read files in full before wide-ranging changes. Don't edit from search snippets.
 - Search before building: shadcn/ui registry, the `@houston-ai` showcase, existing components, npm.
-- Comments state non-obvious constraints and surprising behavior. Never narrate control flow or record history; the PR carries that.
+- TS, JS, CSS and shell carry no prose comments; only tooling comments stay (`@assistant` and `@deprecated` JSDoc, `biome-ignore`, `@ts-expect-error` and the others `scripts/comments/classify.ts` lists). Rust keeps rustdoc (`///`, `//!`) and `// SAFETY:` justifications on `unsafe`, and no other prose. A non-obvious decision, constraint or external quirk goes into an ADR in `docs/adr/`; names, types and tests carry the rest. `pnpm check:comments` enforces it against `scripts/comments/baseline.json`, a baseline that only shrinks; `/delete-comment` is the sweep. Moving or renaming a file listed in the baseline means sweeping it in the same change or carrying its entry over to the new path.
 - No hover-only affordances. Interactive elements are visible without hovering.
 - Before adding complexity for an unlikely race or security edge case, state the concrete failure, its likelihood and its cost, and get a yes.
 - Be critical, not agreeable. If a better approach exists, say so. When you answer review feedback, say whether you agree before you say what you changed.

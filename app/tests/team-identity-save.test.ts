@@ -10,12 +10,6 @@ import {
   teamNameTooLong,
 } from "../src/components/shell/team-identity-save.ts";
 
-/**
- * The edit dialog's save is a DIFF against what the form was seeded with, and
- * clearing must be expressible: the old rail submenu had a "Default" entry
- * that cleared a team's icon and colour, and the unified dialog keeps that
- * power by deselecting (the wire spells a clear as an explicit `null`).
- */
 describe("teamIdentitySaveWrites", () => {
   const seed = (over: Partial<TeamIdentityDraft> = {}): TeamIdentityDraft => ({
     name: "Sales",
@@ -67,9 +61,6 @@ describe("teamIdentitySaveWrites", () => {
   });
 
   it("never clears what the form never held", () => {
-    // A server team may store a raw hex this palette cannot name: it seeds as
-    // undefined, and an untouched undefined must NOT become a null that wipes
-    // the colour the user never touched.
     const raw = seed({ colorId: undefined });
     assert.deepEqual(teamIdentitySaveWrites(raw, { ...raw, name: "Ops" }), {
       rename: "Ops",

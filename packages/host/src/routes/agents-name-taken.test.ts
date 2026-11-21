@@ -13,16 +13,6 @@ import { LocalWorkspaceStore } from "../store/local";
 import { FsVfs } from "../vfs";
 import { dispatchGroup } from "./registry/all";
 
-/**
- * Every write that names an agent onto a name another AI Employee already
- * holds (PRODUCT-1929), over the real desktop store, where an agent IS its
- * folder. A create that reused the existing folder rewrote that employee's
- * CLAUDE.md and seeds, and a failing seed's rollback then deleted the whole
- * existing folder. Create, portable install and rename all refuse the name
- * BEFORE touching disk, whatever the letter case (macOS and Windows folders
- * are case-insensitive, so "mia" IS "Mia" there), with one 409 shape.
- */
-
 const CAPS: Capabilities = {
   profile: "local",
   revealInOs: true,
@@ -83,7 +73,6 @@ function res() {
   return out as unknown as ServerResponse & typeof out;
 }
 
-/** One request's routing context, and the response it will be answered on. */
 function request(method: string, path: string, body: unknown) {
   const response = res();
   const ctx = {
@@ -141,8 +130,6 @@ test.each([
   ["the exact name", "Mia"],
   ["a case variant", "mia"],
 ])("a failing seed on %s never deletes the existing employee's folder", async (_label, name) => {
-  // A traversal key makes writeAgentSeeds throw mid-write, which is what runs
-  // the create's rollback.
   const response = await post({
     name,
     seeds: { "notes.json": "[]", "../evil": "x" },
@@ -219,7 +206,6 @@ test("a portable install whose seeding fails leaves no agent behind, so a retry 
 
   const logged = vi.spyOn(console, "error").mockImplementation(() => {});
   await expect(install(body)).rejects.toThrow("disk full");
-  // A clean rollback leaves no "rollback failed" breadcrumb in backend.log.
   expect(logged).not.toHaveBeenCalled();
   logged.mockRestore();
   expect(await agentNames()).toEqual(["Mia"]);

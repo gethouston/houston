@@ -1,9 +1,3 @@
-/**
- * The input batcher's POST plumbing: a lane is one POST at a time with its own
- * backoff (events on one, frame acks on the other), and every POST is bounded
- * by `BROWSER_LIVE_INPUT_TIMEOUT_MS` so a stuck one never freezes a lane.
- */
-
 import {
   BROWSER_LIVE_INPUT_TIMEOUT_MS,
   type BrowserLiveInputAnswer,
@@ -12,7 +6,6 @@ import {
 import type { Clock } from "../../ports";
 import { BrowserLiveInputTimeout } from "./live-failure";
 
-/** Pause before the next POST on a lane whose last one got no usable answer. */
 export const BROWSER_LIVE_INPUT_RETRY_MS = [
   500, 1000, 2000, 4000, 8000,
 ] as const;
@@ -21,13 +14,7 @@ export interface InputLane {
   busy: boolean;
   timer: number | null;
   failures: number;
-  /** The frame ack the POST in flight carries. */
   ack: number | null;
-  /**
-   * A refusal on this lane was reported and this lane has not succeeded
-   * since: a repeated 400 reports once per episode, and the other lane's
-   * successes do not re-arm it.
-   */
   reported: boolean;
 }
 
@@ -39,7 +26,6 @@ export const inputLane = (): InputLane => ({
   reported: false,
 });
 
-/** Arms `lane`'s next pause (growing with its failures) then runs `next`. */
 export function backOff(lane: InputLane, clock: Clock, next: () => void): void {
   const steps = BROWSER_LIVE_INPUT_RETRY_MS;
   const pause = steps[Math.min(lane.failures, steps.length - 1)];
@@ -55,11 +41,6 @@ export function clearLane(lane: InputLane, clock: Clock): void {
   lane.timer = null;
 }
 
-/**
- * `post(request)`, rejected with {@link BrowserLiveInputTimeout} when it takes
- * longer than `BROWSER_LIVE_INPUT_TIMEOUT_MS`. A late answer is dropped: the
- * retry carries the same batch seq, so the runtime applies it once either way.
- */
 export function timedPost(
   post: (request: BrowserLiveInputRequest) => Promise<BrowserLiveInputAnswer>,
   clock: Clock,

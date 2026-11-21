@@ -49,11 +49,6 @@ async function cardTitle(dirs: TurnDirectories) {
 
 type Ending = "reply" | "provider_error" | "throw" | "user_cancel";
 
-/**
- * A backend whose response opens (message start), runs a tool round trip
- * (a second message start), and ends as `ending` says. `reply_done` lands in
- * `order` when the reply is complete.
- */
 function backend(
   order: string[],
   ending: Ending,
@@ -63,8 +58,6 @@ function backend(
     id: "pi",
     async createSession() {
       let listener: ((e: never) => void) | undefined;
-      // A set, like both real backends: the frame collector and the stall
-      // guard subscribe too.
       const onStart = new Set<() => void>();
       return {
         subscribe: (fn: (e: never) => void) => {
@@ -82,7 +75,6 @@ function backend(
           for (const fn of onStart) fn();
           await new Promise((resolve) => setTimeout(resolve, 10));
           if (ending === "throw") throw new Error("socket closed");
-          // pi resolves a cancelled prompt rather than throwing.
           if (ending === "user_cancel") return void cancel.abort();
           listener?.(
             (ending === "provider_error"
@@ -112,8 +104,6 @@ function run(
 ) {
   const signals: AbortSignal[] = [];
   const cancel = new AbortController();
-  // A failing turn's title is still in flight when the turn ends, so the
-  // drop has a call to abort; a clean turn's title answers after `titleMs`.
   const titleRunner = vi.fn((_excerpt: string, signal: AbortSignal) => {
     order.push("title_start");
     signals.push(signal);
@@ -160,7 +150,6 @@ test("a provider failure after the response opened drops the title", async () =>
   expect(signals[0]?.aborted).toBe(true);
   expect(result.missionTitle).toBeUndefined();
   expect(await cardTitle(dirs)).toBe(FALLBACK);
-  // Dropping the title is not a title failure.
   expect(
     error.mock.calls.some((c) => String(c[0]).includes("[mission-title]")),
   ).toBe(false);

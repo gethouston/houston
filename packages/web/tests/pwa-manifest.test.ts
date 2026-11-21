@@ -3,11 +3,6 @@ import { fileURLToPath } from "node:url";
 import { inflateSync } from "node:zlib";
 import { describe, expect, test } from "vitest";
 
-// The web app is installable (Add to Home Screen / Install app) only while the
-// manifest, the icons it points at, and the index.html links all agree. Each
-// piece fails silently in the browser (no install prompt, a screenshot for an
-// icon), so the contract is pinned here instead.
-
 const publicDir = new URL("../public/", import.meta.url);
 const read = (rel: string, base: URL = publicDir) =>
   readFileSync(fileURLToPath(new URL(rel, base)));
@@ -35,21 +30,15 @@ const manifest = JSON.parse(
 ) as Manifest;
 const indexHtml = read("../index.html").toString("utf8");
 
-/** Width/height from the PNG IHDR chunk (bytes 16..24 of any valid PNG). */
 function pngSize(png: Buffer): { width: number; height: number } {
   expect(png.subarray(1, 4).toString("ascii")).toBe("PNG");
   return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
 }
 
-/**
- * Smallest alpha value in a PNG's raster (255 for a fully opaque image).
- * Decodes the IDAT stream and reverses the per-row filters; only the 8-bit
- * RGBA layout the icon pipeline (sips) writes is supported.
- */
 function minAlpha(png: Buffer): number {
   const { width, height } = pngSize(png);
   const colorType = png.readUInt8(25);
-  if (colorType !== 6) return 255; // no alpha channel at all
+  if (colorType !== 6) return 255;
   const idat: Buffer[] = [];
   for (let pos = 8; pos < png.length; ) {
     const length = png.readUInt32BE(pos);
@@ -99,8 +88,6 @@ describe("PWA manifest", () => {
   });
 
   test("splash colours match the pre-JS frame index.html paints", () => {
-    // index.html's first frame is #fcfcfc (light `--ht-background`); the
-    // splash the OS draws before that frame must not flash a different colour.
     expect(indexHtml).toContain(
       '<meta name="theme-color" content="#fcfcfc" />',
     );
@@ -128,9 +115,6 @@ describe("PWA manifest", () => {
   });
 
   test("icons are fully opaque (no transparent corners on the launcher)", () => {
-    // The artwork sits on a white plate: a maskable shape crop never cuts into
-    // the helmet, and Android never draws a black square behind a transparent
-    // PNG. Every alpha byte in the decoded raster must be 255.
     for (const icon of manifest.icons) {
       expect(minAlpha(read(`.${icon.src}`))).toBe(255);
     }
@@ -145,7 +129,6 @@ describe("index.html install links", () => {
     expect(indexHtml).toContain(
       '<link rel="apple-touch-icon" href="/apple-touch-icon.png" />',
     );
-    // iOS ignores the manifest icons; this file is the only icon it reads.
     expect(pngSize(read("apple-touch-icon.png"))).toEqual({
       width: 180,
       height: 180,
@@ -162,16 +145,12 @@ describe("index.html install links", () => {
     expect(indexHtml).toContain(
       '<meta name="apple-mobile-web-app-title" content="Houston" />',
     );
-    // `default` keeps the OS status bar opaque above the page: the safe-area
-    // top inset stays 0 in standalone mode, so the top bar never sits under it.
     expect(indexHtml).toContain(
       '<meta name="apple-mobile-web-app-status-bar-style" content="default" />',
     );
   });
 
   test("does not register a service worker", () => {
-    // The bundle is served no-cache so each launch runs the current release;
-    // a service worker would pin stale chunks against a live host.
     expect(indexHtml).not.toContain("serviceWorker");
   });
 });

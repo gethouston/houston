@@ -13,52 +13,20 @@ import {
 } from "../agent/agent-access-model.ts";
 import { rosterPersonName } from "../organization/people-tab-model.ts";
 
-/**
- * Pure, DOM-free logic behind the Permissions agent People tab: ONE agent, every
- * org member, and the None / Can use / Manager control for each. This is the
- * roster face of the Share dialog (which only lists people WITH access plus an
- * add-picker), so it reuses the dialog's own `agent-access-model` primitives
- * verbatim — the two surfaces never derive access or write rosters differently.
- * The GATEWAY is the sole enforcer; these helpers only shape the affordances.
- */
-
-/**
- * One member's level on this agent. `none` = not on the roster; `user`/`manager`
- * = their assignment level. An org owner is always `manager`. The People tab is
- * reached only by a caller who manages the agent (page-level gate), so the
- * roster is always readable here — no `unknown` state exists.
- */
 export type AgentPersonLevel = "none" | "user" | "manager";
 
-/** One member row: the member, their level, and the flags the control reads. */
 export interface AgentPersonRow {
   member: OrgMember;
   level: AgentPersonLevel;
-  /** This is the signed-in viewer (guarded against self-lockout). */
   isSelf: boolean;
-  /** Org owner: always has access, row is non-editable. */
   isOwner: boolean;
-  /** May hold a Manager seat (org owner/admin only). */
   canBeManager: boolean;
 }
 
-/** May this person hold a Manager seat on an agent? Only org owner/admin can. */
 export function canPersonBeManager(role: OrgRole): boolean {
   return role === "owner" || role === "admin";
 }
 
-/**
- * What the People tab renders, given the resolved rows and whether its levels
- * are editable. Kept pure so the (small) degradation rule is unit-tested in
- * isolation:
- *
- * - `roster` — one or more rows to show (the editable list, or the static one).
- * - `viewerOnly` — static levels and an EMPTY roster. The gateway only serves
- *   the member list to owner/admin, so a manager who is a plain org member
- *   (role `user`) sees none; rather than a misleading "no people" empty state
- *   we show an honest line about who reaches the agent.
- * - `empty` — an editable roster with genuinely no members yet.
- */
 export type AgentPeopleView = "roster" | "viewerOnly" | "empty";
 
 export function agentPeopleView(
@@ -76,13 +44,6 @@ function rankOf(row: AgentPersonRow): number {
   return 3;
 }
 
-/**
- * A row for EVERY org member, level resolved against the agent's roster via the
- * Share dialog's {@link buildSharePeople} (which expands the everyone sentinel to
- * the whole team and always includes the owner as manager). Members absent from
- * that set have no access (`none`), so the owner can GRANT from here, not only
- * revoke. Sorted owner, then managers, then can-use, then no-access, by email.
- */
 export function buildAgentPeople(opts: {
   unnamedAccount: string;
   agent: Pick<Agent, "assignments" | "assignedUserIds">;
@@ -105,22 +66,12 @@ export function buildAgentPeople(opts: {
   return rows.sort((a, b) => {
     const r = rankOf(a) - rankOf(b);
     if (r !== 0) return r;
-    // Ordered by the name each row SHOWS: sorting on a key the user cannot
-    // read (the email behind a display name) makes the list look unsorted.
     return rosterPersonName(a.member, opts.unnamedAccount).localeCompare(
       rosterPersonName(b.member, opts.unnamedAccount),
     );
   });
 }
 
-/**
- * The next assignee set to WRITE after changing one member's access (set-replace,
- * PUT `/agents/:slug/assignments`). Reuses the Share dialog's `buildSharePeople`
- * + `applyShareAction` so an everyone-agent materializes into an explicit roster
- * on first edit exactly as the dialog does. A member not yet on the roster is
- * appended at the chosen level; removing an absent member is a no-op. The org
- * owner is never stripped (guarded inside `applyShareAction`).
- */
 export function writeAgentPerson(opts: {
   agent: Pick<Agent, "assignments" | "assignedUserIds">;
   members: readonly OrgMember[];
@@ -137,12 +88,6 @@ export function writeAgentPerson(opts: {
   return [...current, { userId: opts.userId, access: opts.action }];
 }
 
-/**
- * Would this action lock the signed-in VIEWER out of managing the agent (editing
- * their OWN row down/off)? Delegates to the Share dialog's
- * {@link needsSelfLockoutConfirm} so the confirm gate is identical across both
- * surfaces; builds the minimal `SharePerson` it reads.
- */
 export function agentPersonNeedsConfirm(
   row: AgentPersonRow,
   action: ShareAction,

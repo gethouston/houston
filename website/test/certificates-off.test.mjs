@@ -1,8 +1,3 @@
-// With no CERTS_EXPORT_TOKEN the certificate section is off: the deploy runs
-// that way so it never spends ~27 min rendering certificate images. Off has to
-// mean gone, not half there: no claim page with an empty event list, no sitemap
-// entry and no 404 that sends people to a verifier the build left out.
-
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";

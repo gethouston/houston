@@ -14,7 +14,6 @@ import { type ReactNode, useState } from "react";
 
 import type { SpecimenProp } from "../../../src/specimen";
 
-/** The shell every row on the specimen page opens: one trigger, one content. */
 export function Menu({
   trigger,
   children,
@@ -30,14 +29,12 @@ export function Menu({
   );
 }
 
-/** The overflow button an agent row carries in the product. */
 export const iconTrigger = (
   <Button variant="outline" size="icon" aria-label="Agent actions">
     <MoreHorizontalIcon />
   </Button>
 );
 
-/** Checkbox items keep the menu open, so they need real state to be honest. */
 export function ColumnsMenu() {
   const [showRuns, setShowRuns] = useState(true);
   const [showOwner, setShowOwner] = useState(false);
@@ -64,7 +61,6 @@ export function ColumnsMenu() {
   );
 }
 
-/** Radio items are single-choice, so they need the same. */
 export function SortMenu() {
   const [sort, setSort] = useState("recent");
   return (
@@ -81,11 +77,6 @@ export function SortMenu() {
   );
 }
 
-/**
- * `DropdownMenu`'s public API, read off
- * `ui/core/src/components/dropdown-menu.tsx`. Split out only to keep the
- * specimen file inside the 200-line rule.
- */
 export const dropdownMenuProps: SpecimenProp[] = [
   {
     name: "DropdownMenu.open",

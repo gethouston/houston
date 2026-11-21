@@ -30,7 +30,6 @@ test("double quotes, single quotes and backslashes keep a spaced path whole", ()
   expect(bashWords(`cd "${root}" && ls`)).toEqual(["cd", root, "ls"]);
   expect(bashWords(`ls '${root}'`)).toEqual(["ls", root]);
   expect(bashWords("ls /ws/Personal/neqw\\ copia")).toEqual(["ls", root]);
-  // Mixed: a quoted run glued to bare text is one word.
   expect(bashWords("cat /ws/\"Personal\"/neqw' copia'/a.txt")).toEqual([
     "cat",
     `${root}/a.txt`,

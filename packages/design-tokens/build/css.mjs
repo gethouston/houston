@@ -50,17 +50,14 @@ function block(selector, entries) {
   return `${selector} {\n${lines.join("\n")}\n}`;
 }
 
-/** One --ht-shadow-<tier> per elevation tier, layers joined into one value. */
 const elevations = (tokens) =>
   shadows(tokens).map(({ name, layers }) => ({
     name: `shadow-${name}`,
     value: layers.map(shadowLayerCss).join(", "),
   }));
 
-/** Every custom property one theme block carries: colours, then elevation. */
 const vars = (tokens) => [...colors(tokens), ...elevations(tokens)];
 
-/** The theme-independent scales CSS reads: durations, easings, spacing. */
 const themeless = (tokens) => [
   ...font(tokens, "size").map(({ name, value }) => ({
     name: `font-size-${name}`,
@@ -92,7 +89,6 @@ export function buildCss(light, dark, palettes) {
       "",
       block(`[data-palette="${palette.id}"]`, [
         ...palette.colors,
-        // Elevation is authored per mode, so a palette wears its mode's ladder.
         ...elevations(palette.mode === "light" ? light : dark),
       ]),
     ]);

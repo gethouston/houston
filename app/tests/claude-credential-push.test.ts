@@ -5,16 +5,6 @@ import {
   pushClaudeCredentialWithRetry,
 } from "../src/lib/claude-credential-push.ts";
 
-/**
- * The desktop Anthropic browser login's credential push, retry loop included.
- *
- * WHOSE account the mint lands on is decided server-side from the space the push
- * is made in (HOU-976), so the push itself carries a credential and nothing
- * else — the cases below pin the retry contract and the one-argument wire that
- * keeps a scope from creeping back in.
- */
-
-/** A pusher that records exactly what it was called with. */
 function recorder(outcomes: unknown[] = []) {
   const calls: string[] = [];
   const push: ClaudeCredentialPush = async (json) => {
@@ -25,13 +15,10 @@ function recorder(outcomes: unknown[] = []) {
   return { calls, push };
 }
 
-/** Retries must not really wait; the delays themselves are pinned elsewhere. */
 const noSleep = async () => {};
 
 describe("pushClaudeCredentialWithRetry", () => {
   it("pushes the credential, and nothing else", async () => {
-    // One argument, by construction: there is no account to address, so there is
-    // no scope for a caller to get backwards.
     const { calls, push } = recorder();
     const result = await pushClaudeCredentialWithRetry({
       push,
@@ -43,8 +30,6 @@ describe("pushClaudeCredentialWithRetry", () => {
   });
 
   it("re-sends the SAME credential on every retry", async () => {
-    // A waking pod 503s the first push; the retry must carry the same mint, not
-    // a re-read of a dir the first attempt may already have discarded.
     const { calls, push } = recorder([{ status: 503 }, { status: 503 }]);
     const result = await pushClaudeCredentialWithRetry({
       push,
@@ -80,7 +65,6 @@ describe("pushClaudeCredentialWithRetry", () => {
       sleep: noSleep,
     });
     assert.deepEqual(result, { ok: false, error: down });
-    // One initial attempt plus one per backoff delay.
     assert.equal(calls.length, 4);
   });
 });

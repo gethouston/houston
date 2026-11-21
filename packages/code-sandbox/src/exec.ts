@@ -15,15 +15,6 @@ export type ExecResult = {
   truncated: boolean;
 };
 
-/**
- * SIGKILL the whole process GROUP, not just the leader. Untrusted code can fork
- * grandchildren (`subprocess.Popen`, `sleep &`); killing only the direct child
- * leaves them running on the instance — and if a grandchild inherits the stdout
- * pipe it would keep the pipe open forever, so we settle on `exit` (the program
- * is done) and reap the group rather than waiting for `close`. Best-effort: the
- * group may already be gone, which is the success case, so there's nothing to
- * surface.
- */
 function killGroup(pid: number | undefined) {
   if (!pid) return;
   try {
@@ -31,9 +22,7 @@ function killGroup(pid: number | undefined) {
   } catch {
     try {
       process.kill(pid, "SIGKILL");
-    } catch {
-      /* already dead — nothing to do */
-    }
+    } catch {}
   }
 }
 
@@ -47,11 +36,7 @@ export function runProcess(
   return new Promise((resolveP) => {
     const child = spawn(INTERPRETER[language], [programPath], {
       cwd,
-      // `detached` makes the child its own process-group leader, so killGroup can
-      // take out the whole tree of anything it spawns.
       detached: true,
-      // Minimal, explicit env: no inherited secrets; HOME/TMPDIR pinned to the
-      // disposable workdir so nothing leaks outside it.
       env: {
         PATH: "/usr/local/bin:/usr/bin:/bin",
         HOME: cwd,
@@ -93,14 +78,14 @@ export function runProcess(
 
     const timer = setTimeout(() => {
       timedOut = true;
-      killGroup(child.pid); // `exit` fires next → finish()
+      killGroup(child.pid);
     }, timeoutMs);
 
     const finish = (exitCode: number | null, extraStderr = "") => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      killGroup(child.pid); // reap any grandchildren the program left behind
+      killGroup(child.pid);
       resolveP({
         exitCode,
         stdout,
@@ -110,8 +95,6 @@ export function runProcess(
       });
     };
 
-    // Settle on `exit` (the program ended) rather than `close` (all stdio closed),
-    // which a lingering grandchild could hold open indefinitely.
     child.on("exit", (code) => finish(code));
     child.on("error", (err: Error) =>
       finish(

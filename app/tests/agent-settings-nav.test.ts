@@ -45,9 +45,6 @@ describe("agentSettingsSections", () => {
   });
 
   it("keeps Settings first, for the managers who are the page's only audience", () => {
-    // The page's one door is the agent's own Settings section, drawn for its
-    // managers alone, so it leads the rail and there is no per-caller gate
-    // left in this list.
     strictEqual(agentSettingsSections(TEAMS).at(0), "manage");
     strictEqual(agentSettingsSections(null).at(0), "manage");
   });
@@ -77,8 +74,6 @@ describe("targetToSection", () => {
 
 describe("agent settings selection", () => {
   it("opens on Settings when nothing was requested", () => {
-    // No request means the user came to administer the agent, so the page
-    // opens on the manage section on every rail this page builds.
     strictEqual(
       resolveAgentSettingsSection(agentSettingsSections(TEAMS), undefined),
       "manage",
@@ -98,8 +93,6 @@ describe("agent settings selection", () => {
       resolveAgentSettingsSection(agentSettingsSections(TEAMS), "integrations"),
       "integrations",
     );
-    // Settings leads the permissions group now, so a hidden access deep link
-    // lands there rather than on People.
     strictEqual(
       resolveAgentSettingsSection(
         agentSettingsSections(LEGACY_MULTIPLAYER),

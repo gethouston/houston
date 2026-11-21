@@ -1,9 +1,3 @@
-/**
- * Control-plane host data under `/agents/:id/*` for the fake host: the skills
- * manifest, activities, skills, routines, agent files and composer
- * attachments (packages/engine-adapter/src/control-plane.ts).
- */
-
 import { activityStampSchema, activityUpdateSchema } from "@houston/protocol";
 import {
   ROUTINE_NOT_FOUND,
@@ -64,8 +58,6 @@ export function handleSkills(
   rest: string[],
   body: Record<string, unknown> | undefined,
 ): Response {
-  // Skills are agent-scoped; creates land in the per-agent skills state
-  // (state-skills.ts) so the list, the editor and delete work end to end.
   if (rest.length === 2) {
     if (method === "GET") return json({ items: state.listSkills(id) });
     if (method === "POST") {
@@ -91,7 +83,7 @@ export function handleSkills(
         : json({ error: {} }, 404);
     }
   }
-  return noContent(); // run etc. — accepted no-ops
+  return noContent();
 }
 
 export function handleRoutines(
@@ -117,7 +109,7 @@ export function handleRoutines(
     state.deleteRoutine(id, rid);
     return noContent();
   }
-  return noContent(); // run-now / scheduler-sync — accepted no-ops
+  return noContent();
 }
 
 export function handleAgentFile(
@@ -126,8 +118,6 @@ export function handleAgentFile(
   rest: string[],
   body: Record<string, unknown> | undefined,
 ): Response {
-  // Files-first store: `/agents/:id/agentfile/<relPath>`. The board reads +
-  // writes `.houston/activity/activity.json` through here.
   const relPath = rest.slice(2).join("/");
   if (method === "GET")
     return json({ content: state.readAgentFile(id, relPath) });
@@ -143,17 +133,11 @@ export function handleAttachments(
   id: string,
   body: Record<string, unknown> | undefined,
 ): Response {
-  // Composer attachments — faithful to the real host's `turn/attachments.ts`:
-  // a 100MB request cap (413), `scopeId` accepted+ignored, and files stored
-  // in the agent's visible, durable `uploads/` folder (HOU-706) with
-  // colliding names disambiguated. Returns the RELATIVE `uploads/<name>`
-  // paths the agent's Read tool opens.
   if (method !== "POST") return noContent(405);
   const files = (Array.isArray(body?.files) ? body.files : []) as {
     name: string;
     contentBase64: string;
   }[];
-  // base64 is ~4/3 the byte size; estimate to reject oversized uploads.
   let total = 0;
   for (const f of files) total += Math.floor((f.contentBase64.length * 3) / 4);
   if (total > 100 * 1024 * 1024)

@@ -11,13 +11,6 @@ import {
 } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
-/**
- * The phone's pushed mission-chat screen (PR 5 of the responsiveness
- * overhaul): a task row pushes the chat as a first-class nav level, the
- * send round-trip works on the phone viewport, and the compose flow's draft
- * chat creates its mission on first send.
- */
-
 test("a task row pushes the chat; back returns to the list", async ({
   page,
 }) => {
@@ -29,7 +22,6 @@ test("a task row pushes the chat; back returns to the list", async ({
   await expect(chat).toBeVisible();
   await expect(chat.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
 
-  // The chat's own back chevron pops the level, like hardware back.
   await chat.getByTestId("mission-chat-back").tap();
   await expect(page.getByTestId("mission-chat-screen")).toHaveCount(0);
   await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
@@ -49,9 +41,6 @@ test("a follow-up sent from the pushed chat round-trips", async ({ page }) => {
   await composer.fill("Also check the trains");
   await composer.press("Enter");
 
-  // The user's bubble and the fake host's echoed reply both land in the log.
-  // Exact match: the reply quotes the sent text, so a substring locator races
-  // the echo into a strict-mode violation when the reply lands first.
   await expect(
     chat.getByText("Also check the trains", { exact: true }),
   ).toBeVisible();
@@ -72,8 +61,6 @@ test("the compose draft chat creates its mission on first send", async ({
   await composer.fill("Book a hotel in Kyoto");
   await composer.press("Enter");
 
-  // The draft adopted the created mission: the reply streams in, and backing
-  // out lands where compose started, never on the blank draft again.
   await expect(chat.getByText(/Roger that\. You said:/)).toBeVisible({
     timeout: 15_000,
   });
@@ -99,8 +86,6 @@ test("an archived task opens as the pushed chat, and a send revives it", async (
   await list.getByTestId("agent-missions-archived-toggle").tap();
   await list.getByText("Quarterly review").tap();
 
-  // The archive opens in place: the same pushed chat an active task opens,
-  // over the same task list, never the employee's other screen.
   const chat = page.getByTestId("mission-chat-screen");
   await expect(chat.getByText("Task: Quarterly review")).toBeVisible();
   await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");

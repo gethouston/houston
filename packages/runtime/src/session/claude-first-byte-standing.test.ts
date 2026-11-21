@@ -9,14 +9,6 @@ import { beforeEach, expect, test, vi } from "vitest";
 import type { ClaudeQuery } from "../backends/claude/session";
 import type { ResolvedModel } from "../backends/types";
 
-/**
- * A Claude chat of 800k tokens, through the standing server's real turn path
- * and the real Claude Agent SDK backend: every turn's CLI must get a
- * first-byte deadline (`API_TIMEOUT_MS`) long enough for Anthropic to read
- * the conversation, whatever rebuilt its session and whatever the last
- * request did. Only the Anthropic API is simulated.
- */
-
 process.env.HOUSTON_HOME = mkdtempSync(join(tmpdir(), "houston-cfb-home-"));
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-cfb-data-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
@@ -55,7 +47,6 @@ const PIN = {
 };
 const FILL = 800_000;
 
-/** The CLI's answer to a request Anthropic never opened. */
 function* timedOut(sessionId: string): Generator<SDKMessage> {
   yield { type: "system", subtype: "init", session_id: sessionId } as never;
   yield {
@@ -68,7 +59,6 @@ function* timedOut(sessionId: string): Generator<SDKMessage> {
   } as never;
 }
 
-/** A chat whose last reply recorded `FILL`, resuming an SDK session that big. */
 function seedLongChat(id: string) {
   const api = simulatedClaudeApi({
     windowTokens: 2_000_000,
@@ -136,7 +126,6 @@ test("a turn after a timed-out request still waits for the whole chat", async ()
   chat.failNextRequest();
 
   await runTurn(id, "Which contracts renew this month?", undefined, PIN);
-  // The next turn may run in a fresh process: it reads the recorded fill.
   await disposeConversation(id);
   await runTurn(id, "Which contracts renew this month?", undefined, PIN);
 

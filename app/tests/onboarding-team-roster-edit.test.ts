@@ -32,7 +32,6 @@ describe("editing a hire while it joins", () => {
       rosterSettle(edited, "hire-1", { kind: "hired", id: "pax", name: "Pax" }),
     );
     strictEqual(landed.name, "Olivia");
-    // The host holds what it created; the edit is still to save.
     deepStrictEqual(landed.saved, { name: "Pax", color: "navy", brief });
     deepStrictEqual(rosterUnsaved(landed), { name: "Olivia", color: "forest" });
   });
@@ -49,7 +48,6 @@ describe("editing a hire while it joins", () => {
       reason: "failed",
     });
     const edited = rosterEdit(failed, "hire-1", { name: "Olivia" });
-    // Nothing to save while it does not exist.
     strictEqual(rosterUnsaved(only(edited)), null);
     const retried = rosterRetry(edited, "hire-1", []);
     strictEqual(retried?.retried.name, "Olivia");

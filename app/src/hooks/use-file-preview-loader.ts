@@ -1,11 +1,3 @@
-/**
- * Loader for the Files grid card thumbnails. Classifies by extension
- * (previewKind) and reads bytes through the shared per file+mtime byte cache
- * (`lib/file-bytes-cache.ts`), so scrolling back is instant AND opening the
- * same file in the preview panel reuses the bytes instead of downloading them
- * again. Edited files get a fresh cache entry via the dateModified key segment;
- * stale entries age out through the default gcTime.
- */
 import type {
   FileEntry,
   FilePreviewData,
@@ -25,10 +17,6 @@ export function useFilePreviewLoader(
       if (!agentPath) return null;
       const kind = previewKind(file);
       if (!kind) return null;
-      // `kind` is non-null here, so this is exactly `sharedBytesKey(file)`:
-      // the bytes are cacheable whenever the entry carries an mtime.
-      // Errors intentionally propagate: the card falls back to its type icon,
-      // and any real failure surfaces when the user opens the file.
       const { blob, contentType } = await fetchFileBytes(
         queryClient,
         agentPath,

@@ -29,11 +29,6 @@ import {
   sidebarLayoutWriteOptions,
 } from "./sidebar-layout-writes";
 
-/**
- * Non-React read of the current sidebar layout from the shared query cache, for
- * keyboard shortcuts and the command palette (they run outside the React tree).
- * Falls back to the default when the workspace has no cached layout yet.
- */
 export function getCurrentSidebarLayout(
   workspaceId: string | undefined,
 ): SidebarLayout {
@@ -43,10 +38,6 @@ export function getCurrentSidebarLayout(
   );
 }
 
-/**
- * Non-React twin of {@link useSidebarLayoutReady}: the layout read settled. A
- * refused read counts, as its normalized default order is still usable.
- */
 export function isSidebarLayoutSettled(
   workspaceId: string | undefined,
 ): boolean {
@@ -57,8 +48,6 @@ export function isSidebarLayoutSettled(
   return status === "success" || status === "error";
 }
 
-/** The one read of the layout. Its key is also the one optimistic writes
- *  target, so a read and a write can never key differently. */
 function sidebarLayoutQuery(workspaceId: string | undefined) {
   return queryOptions({
     queryKey: workspaceId
@@ -70,15 +59,6 @@ function sidebarLayoutQuery(workspaceId: string | undefined) {
   });
 }
 
-/**
- * The workspace's stored sidebar layout, read-only. What every consumer that
- * only READS it should use (the teams resolution, the command palette): none of
- * the optimistic mutation stack is built.
- *
- * Memoized on the cached value, not recomputed per render: consumers derive
- * memoized structures from it (the folders the sidebar and the employee screen
- * both resolve), and a fresh object every render would invalidate all of them.
- */
 export function useSidebarLayoutValue(
   workspaceId: string | undefined,
 ): SidebarLayout {
@@ -90,12 +70,9 @@ export function useSidebarLayoutReady(
   workspaceId: string | undefined,
 ): boolean {
   const query = useQuery(sidebarLayoutQuery(workspaceId));
-  // A refused read already reports through the adapter. Its normalized
-  // default order is still a usable landing; waiting for success would hang.
   return !!workspaceId && (query.isSuccess || query.isError);
 }
 
-/** A successful document read, required before editing or rendering groups. */
 export function useSidebarLayoutLoaded(
   workspaceId: string | undefined,
 ): boolean {
@@ -106,7 +83,6 @@ export function useSidebarLayoutLoaded(
 export interface UseSidebarLayout {
   layout: SidebarLayout;
   ready: boolean;
-  /** Create a group and return its new id (so the caller can focus its name). */
   createGroup: (
     name: string,
     identity?: { icon?: string; color?: string },
@@ -114,34 +90,19 @@ export interface UseSidebarLayout {
   ) => string | null;
   renameGroup: (id: string, name: string) => void;
   remapAgentId: (oldId: string, newId: string) => void;
-  /** Set a team's glyph + color: `null` CLEARS a field, a string sets it, an
-   *  omitted field is untouched. */
   setGroupIdentity: (
     id: string,
     patch: { icon?: string | null; color?: string | null },
   ) => void;
   deleteGroup: (id: string) => void;
   toggleGroupCollapsed: (id: string) => void;
-  /** Reorder an agent or move it into or out of a folder. */
   moveItem: (agentId: string, dest: ItemDest) => void;
-  /** Store a sidebar drop: the top-level order and every group's members.
-   *  False when nothing was written (layout not loaded, or no change). */
   arrange: (arrangement: {
     order: SidebarRootEntry[];
     members: Record<string, string[]>;
   }) => boolean;
 }
 
-/**
- * The workspace's sidebar layout plus the helpers the sidebar drives it with.
- * Reads via TanStack Query; every helper computes the next layout immutably
- * from the freshest cached value and fires an OPTIMISTIC write so drag and
- * grouping feel instant. Ordering, refetch and rollback rules for overlapping
- * writes live in `sidebar-layout-writes.ts`; a rollback tells the person their
- * change did not save, unless `call()` already explained the refusal.
- *
- * Reading the layout and nothing else? Use {@link useSidebarLayoutValue}.
- */
 export function useSidebarLayout(
   workspaceId: string | undefined,
 ): UseSidebarLayout {

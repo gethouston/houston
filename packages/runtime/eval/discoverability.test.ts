@@ -7,41 +7,18 @@ import { buildAssistantRulesSection } from "../src/session/assistant-rules-conte
 import { httpSandboxFetch } from "../src/session/tools/sandbox-fetch";
 import { DISCOVERABILITY_CASES } from "./discoverability-cases";
 
-/**
- * THE CI HALF of the discoverability eval: everything that can be proved
- * without a model.
- *
- * The model half (`pnpm eval:assistant`) answers "does the assistant FIND the
- * operation"; it needs a credential and real tokens, so it stays opt-in. What
- * runs here is the half that would make that eval meaningless if it broke: the
- * operations the fixtures expect must still exist and still be visible, the map
- * the assistant reads must still name them, and the loop that tells it to
- * search before refusing must still be in the prompt. A renamed or newly hidden
- * operation fails the build instead of quietly turning a fixture into an
- * impossible request.
- */
-
 const catalog = readEmbeddedCatalog();
 if (!catalog) throw new Error("the embedded assistant catalog is unreadable");
 
 const visible = new Set(
   catalog.operations.filter((op) => !op.hidden).map((op) => op.name),
 );
-// The map advertises what houston_call can actually perform: a visible
-// operation with no route would only ever answer "not supported", and naming
-// it teaches the assistant to promise what it cannot do.
 const callable = new Set(
   catalog.operations.filter(isCallableOperation).map((op) => op.name),
 );
 
 const section = buildAssistantRulesSection("coordinator") ?? "";
 
-/**
- * Whether the capability map names this operation as a WHOLE name. A substring
- * test is vacuous for prefix pairs in both directions: `providers.refresh`
- * would read as present because `providers.refreshStatus` is listed, and a
- * hidden `providers.refresh` would read as leaked for the same reason.
- */
 function mapNames(operation: string): boolean {
   const escaped = operation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`(^|[^\\w.])${escaped}(?![\\w.])`).test(
@@ -61,8 +38,6 @@ test("every case is either an operation to find or a refusal to make", () => {
 });
 
 test("every operation a fixture expects exists and is visible", () => {
-  // The incident in one assertion: a fixture naming an operation the assistant
-  // can no longer see is a request the user will be told is impossible.
   for (const one of DISCOVERABILITY_CASES) {
     for (const operation of one.operations) {
       expect(visible.has(operation), `${one.id} -> ${operation}`).toBe(true);
@@ -71,8 +46,6 @@ test("every operation a fixture expects exists and is visible", () => {
 });
 
 test("the capability map names every callable operation and no other", () => {
-  // The map is what removes "I did not know it existed" from the loop, so it
-  // has to be the WHOLE callable surface, not a curated excerpt of it.
   for (const operation of callable) {
     expect(mapNames(operation), operation).toBe(true);
   }
@@ -100,9 +73,6 @@ test("the always-on rules carry the mandatory loop", () => {
 });
 
 test("no tool the assistant is offered describes itself with an em dash", () => {
-  // Every tool description is read back to a non-technical user in the model's
-  // own words; an em dash there ends up in Houston's copy, which the product
-  // forbids everywhere else.
   const call = httpSandboxFetch("http://host.local", "token");
   const tools = buildBridgedToolSet({
     integrations: { call },

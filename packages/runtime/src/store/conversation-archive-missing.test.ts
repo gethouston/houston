@@ -19,7 +19,6 @@ const msg = (n: number): ChatMessage => ({
   ts: n,
 });
 
-/** A rotated chat: segments of [3, 3, 3] messages, then a 2-message tail. */
 function rotated(): string {
   const dir = mkdtempSync(join(tmpdir(), "archive-missing-"));
   mkdirSync(archiveDirFor(dir, "c1"), { recursive: true });
@@ -66,11 +65,8 @@ test("a missing segment reads as a reported gap, never a failed chat", () => {
   rmSync(segmentFileFor(dir, "c1", 1));
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
   try {
-    // The newest window never touches segment 1: nothing to report.
     expect(getHistoryAt(dir, "c1", { limit: 5 })?.messages.length).toBe(5);
     expect(errors).not.toHaveBeenCalled();
-    // The full read serves what is left and reports the hole, once per
-    // segment however often the chat is read.
     expect(getHistoryAt(dir, "c1")?.messages.map((m) => m.content)).toEqual(
       Array.from({ length: 8 }, (_, n) => `m${n + 3}`),
     );
@@ -82,7 +78,6 @@ test("a missing segment reads as a reported gap, never a failed chat", () => {
   } finally {
     errors.mockRestore();
   }
-  // And it is not remembered as empty: once the segment is back, it reads.
   writeFileSync(
     segmentFileFor(dir, "c1", 1),
     JSON.stringify({ id: "c1", segment: 1, messages: [0, 1, 2].map(msg) }),

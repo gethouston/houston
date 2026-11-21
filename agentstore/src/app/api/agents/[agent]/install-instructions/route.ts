@@ -1,10 +1,3 @@
-/**
- * GET /api/agents/:slug/install-instructions — the copy-paste block that tells a
- * receiving assistant to FETCH this agent's IR/bundle from our public URLs and set
- * it up locally, framing everything fetched as untrusted data. Built from the IR
- * snapshot fetched from the gateway. Published + non-deleted only. Read-only.
- */
-
 import { buildInstallInstructions } from "@/lib/install/instructions";
 import { artifactCors, corsPreflight } from "@/lib/proxy-headers";
 import { siteBase } from "@/lib/site-config";

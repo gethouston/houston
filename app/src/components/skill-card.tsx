@@ -3,15 +3,10 @@ import type { ReactNode } from "react";
 import { SkillIcon } from "./skill-icon";
 
 interface Props {
-  /** Image URL or Microsoft Fluent Emoji slug. */
   image?: string | null;
-  /** Card heading. */
   title: string;
-  /** Optional muted description below the title. */
   description?: string;
-  /** Optional custom media for callers that already have an avatar component. */
   media?: ReactNode;
-  /** Optional content rendered beneath the description (e.g. integration chips). */
   footer?: ReactNode;
   className?: string;
   onClick: () => void;
@@ -19,15 +14,6 @@ interface Props {
   busy?: boolean;
 }
 
-/**
- * The single source of truth for "skill card" visual treatment used in
- * the chat empty state and the New Mission picker.
- *
- * Visual contract: `rounded-2xl` card on the SOLID chip fill (`bg-chip-solid`
- * — the alpha `bg-chip` read see-through over translucent surfaces), 48px grayscale
- * image bubble on the left, title + description stacked on the right and
- * vertically centered.
- */
 export function SkillCard({
   image,
   title,

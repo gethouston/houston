@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import { TeamGlyph } from "./sidebar-group-header-chrome";
 
-/** Team blocks live on the rail, at the rail's width. */
 export function Rail({ children }: { children: ReactNode }) {
   return (
     <div className="w-[272px] space-y-2.5 rounded-xl bg-sidebar px-2 py-2">
@@ -13,27 +12,14 @@ export function Rail({ children }: { children: ReactNode }) {
   );
 }
 
-/** A block holds MEMBERS and nothing else. */
 const MEMBERS: readonly string[] = ["Ada", "Kai", "Nova"];
 
 export interface LiveTeamProps {
   name: string;
-  /** Start folded. The header stays live either way. */
   startCollapsed?: boolean;
-  /** This block owns the open view, so its header wears the pill. */
   owns?: boolean;
 }
 
-/**
- * A whole block, live: the header and the region it folds.
- *
- * The region is here rather than mocked because it is what makes the folded
- * state legible. Folding hides EVERYTHING under the header, so the header is
- * left carrying both answers: the pill that says the open view belongs here,
- * and the `trailing` badge that rolls up what the hidden rows were signalling.
- *
- * Activating the row folds or unfolds the block, exactly as Houston's rail does.
- */
 export function LiveTeam({
   name,
   startCollapsed = false,

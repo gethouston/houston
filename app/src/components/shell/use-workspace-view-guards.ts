@@ -19,18 +19,10 @@ import {
   shouldDropAdminPin,
 } from "./view-guard-rules.ts";
 
-/**
- * Desktop boot opens the first employee in rail order once the roster and
- * layout resolve. The other standing rules keep the open view valid (the AI
- * Manager's view stays open while onboarding runs in it), keep a current agent
- * for routing, drop a pinned Admin section the settled org gate will never let
- * open, and record real view transitions.
- */
 export function useWorkspaceViewGuards(gates: {
   showAiModels: boolean;
   showAssistant: boolean;
   showOrganization: boolean;
-  /** False while the reads behind the gates are still loading. */
   ready: boolean;
 }): BootLanding {
   const { showAiModels, showAssistant, showOrganization, ready } = gates;
@@ -116,15 +108,6 @@ export function useWorkspaceViewGuards(gates: {
     }
     if (lastTracked.current === viewMode) return;
     lastTracked.current = viewMode;
-    // Settings emits its OWN top-level event (`settings` for the index,
-    // `settings:<id>` for a section) once the surface really renders. Emitting
-    // here too would double-count every deep link, so the one view that owns
-    // its event is skipped.
-    //
-    // Admin is NOT skipped: this is its only top-level event. What it tracks
-    // itself is strictly a DRILL-IN — an Admin section detail
-    // (`org:<section>`) — which fires on a narrower transition, never on
-    // landing, so the pair reads as one view event plus its sub-navigation.
     if (viewMode === "settings") return;
     analytics.track("tab_opened", { tab_name: viewMode });
   }, [viewMode]);

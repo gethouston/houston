@@ -9,7 +9,6 @@ import {
 } from "./oauth-ops";
 import type { CustomIntegrationDef } from "./types";
 
-/** Deps stubs: these paths fail BEFORE any store/host/network use. */
 const deps = (over: Partial<CustomOAuthDeps> = {}): CustomOAuthDeps =>
   ({
     store: {} as CustomOAuthDeps["store"],

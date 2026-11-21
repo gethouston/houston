@@ -5,7 +5,6 @@ import type { BrowserTab } from "./open-tab";
 import { newSlot, type Slot } from "./pool-slot";
 import { SlotAbandoned, slotSwap } from "./tab-swap";
 
-/** A tab whose close is counted: a backup's ends a paid session. */
 function fakeTab(host?: string) {
   const dispose = vi.fn(async () => undefined);
   const close = vi.fn(async () => undefined);
@@ -30,7 +29,6 @@ function fakeBackup() {
 
 const openLocal = vi.fn(async () => fakeTab().tab);
 
-/** A call that runs past its deadline and is abandoned, then resumes. */
 async function abandoned(slot: Slot, stuck: Promise<unknown>): Promise<void> {
   await expect(withinDeadline(slot, stuck, 5)).rejects.toMatchObject({
     code: "page_unresponsive",

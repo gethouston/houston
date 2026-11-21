@@ -1,6 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/** `TabBarProps`, read off `ui/layout/src/tab-bar.tsx`. */
 export const TAB_BAR_PROPS: readonly SpecimenProp[] = [
   {
     name: "tabs",

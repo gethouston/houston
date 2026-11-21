@@ -13,17 +13,10 @@ import type { SidebarChromeT } from "./sidebar-chrome";
 import { SidebarCreateButton } from "./sidebar-create-button";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
-/**
- * The rail's two verbs, on its top line: find anything, and add an employee
- * or a group. Search opens the ⌘K palette, the same one the shortcut toggles,
- * and its tooltip teaches that shortcut so the button is also the lesson.
- */
 export function SidebarHeaderActions(props: {
   t: SidebarChromeT;
   collapsed: boolean;
-  /** Absent when this caller may not create agents. */
   onNewAgent: (() => void) | undefined;
-  /** Absent until the layout read succeeds. */
   onNewTeam: (() => void) | undefined;
 }) {
   const { t, collapsed } = props;

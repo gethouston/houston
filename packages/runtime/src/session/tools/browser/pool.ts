@@ -14,30 +14,14 @@ export type { TabSwap } from "./tab-swap";
 
 export interface BrowserPoolOptions {
   launch?: () => Promise<Browser>;
-  /** How long an untouched conversation keeps its context open. */
   idleMs?: number;
-  /** Pages one conversation may keep open; by default 3 in turn mode, else 8 (tab-pages.ts). */
   maxPages?: number;
-  /** One action's time limit (action-deadline.ts); tests shorten it. */
   deadlineMs?: number;
-  /**
-   * Where a blocked site's page goes (open-fallback.ts). By default Kernel
-   * when KERNEL_API_KEY is set; none when `launch` is given (tests).
-   */
   backup?: BackupBrowser | null;
 }
 
 export const BROWSER_IDLE_MS = 5 * 60_000;
 
-/**
- * ONE browser per runtime process, launched on the first call, and one
- * BrowserContext per conversation so two chats never share a page. Calls for
- * one conversation run in order, so a `close` or an idle sweep never lands in
- * the middle of an action. A context untouched for `idleMs` is saved and
- * closed, and the browser goes with the last one. A browser that crashed, or
- * a page the site closed, is replaced on the next call. A conversation moved
- * to the backup browser owns that remote browser; closing its tab ends it.
- */
 export class BrowserPool {
   private readonly browser: LocalBrowser;
   private readonly slots = new Map<string, Slot>();
@@ -59,12 +43,6 @@ export class BrowserPool {
     this.deadlineMs = options.deadlineMs ?? ACTION_DEADLINE_MS;
   }
 
-  /**
-   * Run `fn` on `key`'s tab after every earlier call for `key` has finished.
-   * A call whose turn was stopped while it queued is dropped, not run. A call
-   * past the deadline closes the tab; a hand-off adds the time it waits on
-   * the person (`extraMs`), so the steps after still have a bound.
-   */
   run<T>(
     key: string,
     statePath: string,
@@ -88,28 +66,16 @@ export class BrowserPool {
     });
   }
 
-  /**
-   * Mark `key` as in use without queueing: a person driving the page through
-   * the live view acts on it directly while the hand-off holds the queue.
-   */
   touch(key: string): void {
     const slot = this.slots.get(key);
     if (slot) slot.lastUsed = Date.now();
   }
 
-  /** Save and close one conversation's context; false when the save did not finish. */
   async closeTab(key: string): Promise<boolean> {
     const slot = this.slots.get(key);
     return slot ? this.enqueue(slot, () => disposeSlot(slot)) : true;
   }
 
-  /**
-   * Save and close every context whose sign-ins live under `dir`, and forget
-   * them: a pooled turn's workspace is about to be deleted, and a context left
-   * open would outlive it (and a later save would write into a removed tree).
-   * Waits behind each one's running call. Failures are logged, never thrown,
-   * so the caller's cleanup goes on.
-   */
   async closeUnder(dir: string): Promise<void> {
     const prefix = dir.endsWith(sep) ? dir : `${dir}${sep}`;
     const keys = [...this.slots]
@@ -130,7 +96,6 @@ export class BrowserPool {
         );
   }
 
-  /** Save every context and close the browser. Safe to call twice. */
   async shutdown(): Promise<void> {
     if (this.sweepTimer) clearTimeout(this.sweepTimer);
     this.sweepTimer = null;
@@ -163,7 +128,6 @@ export class BrowserPool {
         console.error("[browser] idle close failed", error),
       );
     }, this.idleMs);
-    // The idle close must never be what keeps a finished process alive.
     this.sweepTimer.unref();
   }
 
@@ -180,11 +144,8 @@ export class BrowserPool {
   }
 }
 
-/** The process-wide pool every `browser` tool instance shares. */
 export const sharedBrowserPool = new BrowserPool();
 
-// Scripts end through beforeExit; a server's SIGTERM path exits hard, and
-// Playwright's own exit hook kills the child there (state is already saved).
 process.once("beforeExit", () => {
   sharedBrowserPool
     .shutdown()

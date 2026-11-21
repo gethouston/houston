@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Prepare Linux AppImage/deb artifacts for TS-engine desktop workflow.
 set -euo pipefail
 
 TARGET="${1:-x86_64-unknown-linux-gnu}"

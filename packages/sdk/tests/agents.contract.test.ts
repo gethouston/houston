@@ -1,13 +1,3 @@
-/**
- * Agents contract: the `agents` view-model reflects the host's `GET /agents`,
- * and a change made by ANOTHER client (an out-of-band `AgentsChanged` on the
- * `/v1/events` reactivity feed) live-updates the snapshot without a manual
- * refresh.
- *
- * The `AgentsViewModel` is the snapshot every subscriber reads (the dispatch
- * path, the adapter, a test), so its seed shape is pinned here as API.
- */
-
 import {
   type FakeHost,
   SEED_AGENT_ID,
@@ -68,9 +58,6 @@ describe("agents VM", () => {
     await h.sdk.agents.refresh();
     await until(() => agentsVm()?.items.length === 1, "seed loaded");
 
-    // A different client creates an agent directly on the host; the fake host
-    // emits AgentsChanged on /v1/events, which the SDK's reactivity stream
-    // catches and refetches from — no local mutation through the facade.
     const res = await fetch(`${host.url}/agents`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -92,7 +79,6 @@ describe("agents VM", () => {
   });
 });
 
-// Keep the scope constant honest against the store key the VM is published on.
 describe("agents scope key", () => {
   it("is 'agents'", () => {
     expect(AGENTS_SCOPE).toBe("agents");

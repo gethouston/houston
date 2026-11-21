@@ -18,13 +18,6 @@ import { removeRoutinesNote } from "./people-remove-model";
 import { PeopleRemoveRoutines } from "./people-remove-routines";
 import { rosterPersonName } from "./people-tab-model";
 
-/**
- * Asks before removing `member` (null = closed), and lists the routines they
- * set up that the removal would stop. The routines read never gates the
- * button: a removal is the owner's call whether or not the check answered.
- * On a paid org it also says what happens to the seat (the SDK's
- * `seatRemoveNote`): no refund on yearly, a smaller next bill on monthly.
- */
 export function PeopleRemoveConfirm({
   member,
   onCancel,
@@ -36,8 +29,6 @@ export function PeopleRemoveConfirm({
 }) {
   const { t, i18n } = useTranslation("teams");
   const seat = seatRemoveNote(useActiveOrgBilling().billing);
-  // The dialog fades out after `member` clears: keep showing who it was
-  // about until then, instead of a blank title and a loading note.
   const [shown, setShown] = useState(member);
   if (member !== null && member !== shown) setShown(member);
   const open = member !== null;

@@ -1,24 +1,3 @@
-/*
- * Multiplayer chat replay (landing #multiplayer). Four use-case pills; picking
- * one rewrites the shared thread — the agent header (name + mission + helmet
- * color), the participant face stack, and every turn — then replays it: turns
- * appear in sequence, a typing indicator precedes each agent turn, and the
- * thread loops. Turns come from real people (photo avatars) AND the agent (a
- * tinted Houston helmet), so the preview reads as a genuine multi-person
- * conversation doing complex work across real tool integrations, not a demo.
- *
- * Text is translated: it comes from window.HOUSTON_I18N (js.chat and js.people,
- * emitted by _includes/landing/i18n-data.njk before this asset), with the
- * English copy below as the fallback. The structure mirrors _data/landing.js
- * chat — pill order, helmet colors, the people in each room and who speaks each
- * turn — which stays the source of truth; a classic script cannot import it, so
- * the small structure is copied here.
- *
- * Presentational only, no network. Loaded `defer`. Scenario 0 (Sales) is also
- * inlined in multiplayer.njk so JS-off shows a full settled thread; with
- * prefers-reduced-motion this script renders the settled thread and does NOT
- * loop. Copy rules: plain English, non-technical, no em dashes.
- */
 (() => {
   var root = document.querySelector("[data-chat-demo]");
   if (!root) return;
@@ -27,7 +6,6 @@
     return window.houstonT ? window.houstonT(path, fallback) : fallback;
   }
 
-  // Human participants — real teammate photos (astronaut headshots), circular.
   var PEOPLE = {
     julian: {
       name: t("people.julian", "Julian"),
@@ -41,11 +19,6 @@
     },
   };
 
-  // Structure of each scenario: the shared agent's helmet-color av, the people
-  // in the room, and who speaks each turn (a PEOPLE key or "agent"). Zips by
-  // index with the locale's turns. Every story is complex, multi-step work with
-  // a SECOND human jumping in to redirect (the multiplayer signal). Agents act
-  // across their real integrations only.
   var STRUCTURE = [
     {
       id: "sales",
@@ -73,7 +46,6 @@
     },
   ];
 
-  // English fallback copy, same shape as window.HOUSTON_I18N.chat.scenarios.
   var FALLBACK = {
     sales: {
       label: "Sales",
@@ -157,8 +129,6 @@
 
   var reduceMq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 
-  // Mentions are matched by NAME, so the pattern is built from the locale's
-  // people (longest first, so one name can never mask a longer one).
   function escapeRe(s) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
@@ -257,7 +227,6 @@
     });
   }
 
-  // Replay engine. A run token cancels an in-flight replay when the pill changes.
   var token = 0;
   function wait(ms) {
     return new Promise((res) => setTimeout(res, ms));
@@ -268,7 +237,6 @@
     var s = SCENARIOS[idx];
     setHeader(s, idx);
 
-    // Reduced motion / no animation: render the whole settled thread, no loop.
     if (reduceMq?.matches) {
       thread.innerHTML = s.thread.map((m) => msgHtml(s, m)).join("");
       thread.scrollTop = thread.scrollHeight;
@@ -293,8 +261,6 @@
         if (mine !== token) return;
       }
       await wait(2800);
-      // Auto-advance to the next use case after a full pass, unless the user
-      // has taken over the pills or is reading (hovering the window).
       if (mine === token && !userTookOver && !hovered) {
         play((idx + 1) % SCENARIOS.length);
         return;
@@ -302,7 +268,6 @@
     }
   }
 
-  // User intent wins: a manual pill click ends auto-rotation for good.
   var userTookOver = false;
   var hovered = false;
   root.addEventListener("mouseenter", () => {

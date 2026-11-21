@@ -2,10 +2,6 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { isNetworkTransportError } from "../src/lib/network-transport-error.ts";
 
-// HOU-1085: the surfacing-layer classifier that keeps connectivity drops out
-// of the red bug-toast + Sentry pipeline. It must catch every browser engine's
-// fetch transport message, and must NEVER catch a coding-bug TypeError — a
-// false positive here silently drops a real bug report.
 describe("isNetworkTransportError", () => {
   it("matches WebKit's transport failures, with and without the host suffix", () => {
     strictEqual(isNetworkTransportError(new TypeError("Load failed")), true);
@@ -52,8 +48,6 @@ describe("isNetworkTransportError", () => {
       isNetworkTransportError(new TypeError("Failed to fetch")),
       true,
     );
-    // Chromium's (WebView2's) answer when the connection drops while the
-    // response body streams, after the headers already arrived.
     strictEqual(isNetworkTransportError(new TypeError("network error")), true);
     strictEqual(
       isNetworkTransportError(
@@ -65,10 +59,6 @@ describe("isNetworkTransportError", () => {
   });
 
   it("matches the adapter's synthetic transient-session-refresh failure (HOU-1106)", () => {
-    // packages/engine-adapter/src/session-refresh.ts mints exactly this
-    // message when the token refresh loses to a settling reconnect. If the
-    // classifier stops matching it, that failure regresses to a red bug toast
-    // + Sentry report — keep the two in lockstep.
     strictEqual(
       isNetworkTransportError(new TypeError("Load failed (session refresh)")),
       true,
@@ -88,9 +78,6 @@ describe("isNetworkTransportError", () => {
     );
   });
 
-  // PRODUCT-1735: a client that wraps a thrown fetch keeps the transport
-  // TypeError as its `cause`. That wrapper IS the offline drop; one level of
-  // cause is unwrapped, no more.
   it("unwraps one level of `cause` around a transport failure", () => {
     const wrapped = new Error("Failed to fetch", {
       cause: new TypeError("Failed to fetch"),

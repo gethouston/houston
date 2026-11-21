@@ -71,8 +71,6 @@ describe("hexColorMix", () => {
 
 describe("HoustonAvatar", () => {
   it("keeps the helmet's visor bar where its rect transform put it", () => {
-    // Was <rect width="15.334" height="16.211"
-    // transform="translate(258.6 409.939) rotate(-89.717)">.
     const t = (-89.717 * Math.PI) / 180;
     const corners = [
       [0, 0],

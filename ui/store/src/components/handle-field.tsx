@@ -9,7 +9,6 @@ import { Input } from "@houston-ai/core";
 import { Check, Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-/** Local availability status, before/after the gateway round-trip. */
 type Status =
   | "idle"
   | "invalid"
@@ -18,7 +17,6 @@ type Status =
   | "available"
   | "taken";
 
-/** The gateway's answer to an availability probe. */
 export interface HandleAvailability {
   available: boolean;
   reason?: "taken" | "reserved" | "invalid";
@@ -58,20 +56,11 @@ const TONE: Record<Status, "ok" | "bad" | "mute"> = {
 export interface HandleFieldProps {
   value: string;
   onChange: (value: string) => void;
-  /** The surface's availability probe (gateway round-trip with its bearer).
-   *  A rejection is advisory only — the hint falls back to neutral. */
   checkHandle: (handle: string) => Promise<HandleAvailability>;
-  /** The profile's current handle, always treated as available for the owner. */
   currentHandle: string | null;
   labels?: Partial<HandleFieldLabels>;
 }
 
-/**
- * The `@handle` input with live availability feedback. Grammar and the
- * reserved list are decided locally for instant response; uniqueness is
- * confirmed through the injected `checkHandle` after a short debounce. The
- * gateway stays the sole authority — this only guides the user before save.
- */
 export function HandleField({
   value,
   onChange,
@@ -98,8 +87,6 @@ export function HandleField({
         if (result.available) return setStatus("available");
         setStatus(result.reason ?? "taken");
       } catch {
-        // A failed probe is advisory only; fall back to a neutral hint rather
-        // than blocking the save the gateway will re-validate anyway.
         if (!cancelled) setStatus("idle");
       }
     }, 400);

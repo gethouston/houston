@@ -13,20 +13,8 @@ import { useState } from "react";
 import type { SpecimenProp } from "../../../src/specimen";
 import { AGENT_ICON, COLUMNS, MISSIONS } from "./sample";
 
-/**
- * The board's live drag demo, its empty state, and its props table. Helper
- * module: it exports no `specimen`.
- */
-
-/** The board's own height context — it is a `flex-1` row inside a pane. */
 const BOARD_FRAME = "flex h-96 w-full flex-col rounded-xl bg-background";
 
-/**
- * A real board with a real drag: pick a card up and drop it on another
- * section and `onItemMove` rewrites its status here, exactly as the app's
- * board source does. The columns a card may land on come from
- * `defaultCanDropItem` — any section that does not already hold its status.
- */
 export function DraggableBoard() {
   const [items, setItems] = useState<KanbanItem[]>(MISSIONS);
   return (
@@ -52,7 +40,6 @@ export function DraggableBoard() {
   );
 }
 
-/** No missions yet: the board hands its whole area to the consumer's node. */
 export function EmptyBoard() {
   return (
     <div className={BOARD_FRAME}>
@@ -78,7 +65,6 @@ export function EmptyBoard() {
   );
 }
 
-/** The four roles a column can play for the card in flight. */
 const ROLES = [
   ["idle", "Nothing is being dragged."],
   [

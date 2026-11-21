@@ -10,13 +10,6 @@ import {
 } from "./process";
 import type { RuntimeExit } from "./process-types";
 
-/**
- * The local launcher's lifecycle: lazily spawn one runtime per agent, reuse a
- * warm one, kill on sleep, surface a never-healthy spawn instead of caching a
- * zombie. The spawner + health probe are injected so this is a pure unit test
- * (the real RuntimeProcessSpawner is exercised by an integration run, not here).
- */
-
 const agent = (id: string): Agent => ({
   id,
   workspaceId: "w1",
@@ -24,7 +17,6 @@ const agent = (id: string): Agent => ({
   createdAt: 0,
 });
 
-/** Records spawns + kills; hands back sequential ports. */
 function recordingSpawner() {
   const spawns: SpawnSpec[] = [];
   const killed: number[] = [];
@@ -48,8 +40,8 @@ const opts = (
   workspaceDirFor: (a: Agent) => `/houston/${a.id}/workspace`,
   dataDirFor: (a: Agent) => `/houston/${a.id}/data`,
   mintToken: (a: Agent) => `token-${a.id}`,
-  allocatePort: async () => 0, // overridden by the spawner's own port in the handle
-  waitHealthy: async () => {}, // healthy immediately
+  allocatePort: async () => 0,
+  waitHealthy: async () => {},
   ...over,
 });
 
@@ -89,7 +81,7 @@ test("a warm runtime is reused, not respawned", async () => {
   const first = await launcher.ensureAwake(a);
   const second = await launcher.ensureAwake(a);
   expect(second).toEqual(first);
-  expect(spawns).toHaveLength(1); // reused
+  expect(spawns).toHaveLength(1);
 });
 
 test("afterSpawn runs once per fresh runtime, including wake-from-idle respawns", async () => {
@@ -143,20 +135,17 @@ test("sleep kills the process; the next ensureAwake spawns a fresh one", async (
   const { spawner, spawns, killed } = recordingSpawner();
   const launcher = new ProcessLauncher(opts(spawner));
   const a = agent("ops");
-  await launcher.ensureAwake(a); // port 5000
+  await launcher.ensureAwake(a);
   await launcher.sleep("ops");
   expect(killed).toEqual([5000]);
   expect(await launcher.status("ops")).toBe("asleep");
 
-  const woken = await launcher.ensureAwake(a); // port 5001
+  const woken = await launcher.ensureAwake(a);
   expect(woken.baseUrl).toBe("http://127.0.0.1:5001");
   expect(spawns).toHaveLength(2);
 });
 
 test("a healthy runtime that dies on its own is reported with its exit; a drained or shut-down one is not", async () => {
-  // The unrequested death is the one nobody else can see (runtime-death.ts):
-  // the child is gone, its stderr with it, and the replacement's boot report
-  // knows the turn but not the cause.
   let exitCb: ((exit?: RuntimeExit) => void) | undefined;
   const spawner: RuntimeSpawner = {
     spawn() {
@@ -195,17 +184,14 @@ test("a healthy runtime that dies on its own is reported with its exit; a draine
     },
   ]);
 
-  // A sleep's drain asked for the exit: nothing to report.
   await launcher.ensureAwake(agent("ram"));
   await launcher.sleep("ram");
   expect(deaths).toHaveLength(1);
 
-  // A stub that fires without an exit has no cause to name.
   await launcher.ensureAwake(agent("ram"));
   exitCb?.();
   expect(deaths).toHaveLength(1);
 
-  // Shutdown clears the live-set first: the exit that follows is requested.
   await launcher.ensureAwake(agent("ram"));
   launcher.shutdownAll();
   exitCb?.({ code: null, signal: "SIGTERM", stderrTail: [] });
@@ -213,15 +199,12 @@ test("a healthy runtime that dies on its own is reported with its exit; a draine
 });
 
 test("sleep resolves only after the child has ACTUALLY exited", async () => {
-  // A rename moves the agent's directory right after sleeping it — resolving
-  // on SIGTERM alone would let the move race the still-flushing child (and on
-  // Windows the live child's cwd locks the directory outright).
   let exitCb: (() => void) | undefined;
   const spawner: RuntimeSpawner = {
     spawn() {
       return {
         port: 5000,
-        kill: () => {}, // the "process" ignores SIGTERM for a while
+        kill: () => {},
         onExit: (cb) => {
           exitCb = cb;
         },
@@ -236,9 +219,9 @@ test("sleep resolves only after the child has ACTUALLY exited", async () => {
     slept = true;
   });
   await new Promise((r) => setTimeout(r, 10));
-  expect(slept).toBe(false); // still waiting on the real exit
+  expect(slept).toBe(false);
 
-  exitCb?.(); // now the child actually dies
+  exitCb?.();
   await sleeping;
   expect(slept).toBe(true);
   expect(await launcher.status("slow")).toBe("asleep");
@@ -251,7 +234,7 @@ test("a child that ignores SIGTERM is SIGKILLed; sleep resolves once it actually
     spawn() {
       return {
         port: 5000,
-        kill: () => signals.push("TERM"), // ignored — wedged drain
+        kill: () => signals.push("TERM"),
         forceKill: () => {
           signals.push("KILL");
           exitCb?.();
@@ -270,17 +253,13 @@ test("a child that ignores SIGTERM is SIGKILLed; sleep resolves once it actually
 });
 
 test("sleep REJECTS when the child survives even SIGKILL — a live child is never reported asleep (HOU-827)", async () => {
-  // The old contract resolved silently after the bound, and the rename then
-  // moved the directory under a live child whose next write resurrected the
-  // old-named folder. Fail closed instead: the PATCH surfaces a 500 and the
-  // directory does not move.
   const spawner: RuntimeSpawner = {
     spawn() {
       return {
         port: 5000,
         kill: () => {},
         forceKill: () => {},
-        onExit: () => {}, // exit never fires — a truly unkillable process
+        onExit: () => {},
       };
     },
   };
@@ -289,7 +268,6 @@ test("sleep REJECTS when the child survives even SIGKILL — a live child is nev
   await expect(launcher.sleep("hung", 20, 20)).rejects.toThrow(
     "refusing to report it asleep",
   );
-  // status stays truthful: the process is still alive.
   expect(await launcher.status("hung")).toBe("running");
 });
 
@@ -303,7 +281,6 @@ test("ensureAwake during a drain waits for the exit instead of racing a second c
       return {
         port: 5000 + mine,
         kill: () => {
-          // First child exits 30ms after SIGTERM — a realistic drain.
           if (mine === 1) setTimeout(() => exitCb?.(), 30);
         },
         onExit: (cb) => {
@@ -315,8 +292,6 @@ test("ensureAwake during a drain waits for the exit instead of racing a second c
   const launcher = new ProcessLauncher(opts(spawner));
   await launcher.ensureAwake(agent("drainy"));
   const sleeping = launcher.sleep("drainy", 5_000);
-  // Arrives mid-drain (the entry still exists, child still alive): must not
-  // be handed the dying child's port, must not spawn until the drain ends.
   const endpoint = await launcher.ensureAwake(agent("drainy"));
   await sleeping;
   expect(spawned).toBe(2);
@@ -324,10 +299,6 @@ test("ensureAwake during a drain waits for the exit instead of racing a second c
 });
 
 test("a hold acquired MID-BOOT aborts the boot before the child spawns", async () => {
-  // The port-allocation await is the one window where a boot exists but no
-  // running entry does — invisible to sleep(). A rename that begins inside
-  // it must abort the boot, not let a runtime come up bound to the old
-  // directory mid-move.
   let releasePort: ((port: number) => void) | undefined;
   let spawned = 0;
   const spawner: RuntimeSpawner = {
@@ -359,10 +330,9 @@ test("hold() blocks ensureAwake for the id until released (the rename latch)", a
   await expect(launcher.ensureAwake(agent("held-agent"))).rejects.toThrow(
     "is being renamed",
   );
-  // Other agents are unaffected.
   await launcher.ensureAwake(agent("other-agent"));
   release();
-  release(); // idempotent
+  release();
   await launcher.ensureAwake(agent("held-agent"));
 });
 
@@ -378,13 +348,11 @@ test("a runtime that never becomes healthy is killed and not cached (the turn er
   await expect(launcher.ensureAwake(agent("bad"))).rejects.toThrow(
     "never healthy",
   );
-  expect(killed).toEqual([5000]); // zombie reaped
-  expect(await launcher.status("bad")).toBe("asleep"); // not cached as running
+  expect(killed).toEqual([5000]);
+  expect(await launcher.status("bad")).toBe("asleep");
 });
 
 test("a runtime that exits mid-boot fails fast instead of waiting out the health budget", async () => {
-  // The health probe alone can't tell "still booting" from "already dead" — it
-  // would poll a dead port for the full budget. The exit signal must preempt it.
   const killed: number[] = [];
   let exitCb: (() => void) | undefined;
   const spawner: RuntimeSpawner = {
@@ -399,24 +367,19 @@ test("a runtime that exits mid-boot fails fast instead of waiting out the health
     },
   };
   const launcher = new ProcessLauncher(
-    opts(spawner, { waitHealthy: () => new Promise(() => {}) }), // never settles
+    opts(spawner, { waitHealthy: () => new Promise(() => {}) }),
   );
 
   const boot = launcher.ensureAwake(agent("crash"));
-  // Let the async spawn (behind allocatePort's await) actually run, then die.
   await new Promise((r) => setTimeout(r, 0));
   if (!exitCb) throw new Error("spawn never registered onExit");
-  exitCb(); // the child dies before ever answering /health
+  exitCb();
   await expect(boot).rejects.toThrow("exited before becoming healthy");
-  expect(killed).toEqual([5000]); // kill() on an exited child is a safe no-op
-  expect(await launcher.status("crash")).toBe("asleep"); // not cached as running
+  expect(killed).toEqual([5000]);
+  expect(await launcher.status("crash")).toBe("asleep");
 });
 
 test("concurrent callers during a boot share one spawn and resolve only once healthy", async () => {
-  // HOU-639: on a cold pod the desktop fires chat-history and provider-status
-  // together; the loser of the spawn race used to be handed a port the child
-  // hadn't bound yet and 502'd (rendered as an empty chat / disconnected
-  // provider). Both callers must ride the same boot to the same endpoint.
   const { spawner, spawns } = recordingSpawner();
   let releaseHealth!: () => void;
   const health = new Promise<void>((r) => {
@@ -434,12 +397,12 @@ test("concurrent callers during a boot share one spawn and resolve only once hea
     secondResolved = true;
   });
   await new Promise((r) => setTimeout(r, 10));
-  expect(secondResolved).toBe(false); // must not resolve before healthy
+  expect(secondResolved).toBe(false);
 
   releaseHealth();
   const [ep1, ep2] = await Promise.all([first, second]);
   expect(ep2).toEqual(ep1);
-  expect(spawns).toHaveLength(1); // one shared spawn, not one per caller
+  expect(spawns).toHaveLength(1);
 });
 
 test("a failed shared boot rejects every waiter; the next call respawns fresh", async () => {
@@ -461,7 +424,7 @@ test("a failed shared boot rejects every waiter; the next call respawns fresh", 
   failHealth(new Error("never healthy"));
   await expect(first).rejects.toThrow("never healthy");
   await expect(second).rejects.toThrow("never healthy");
-  expect(killed).toEqual([5000]); // the dead boot was reaped
+  expect(killed).toEqual([5000]);
 
   const woken = await launcher.ensureAwake(a);
   expect(woken.baseUrl).toBe("http://127.0.0.1:5001");
@@ -476,12 +439,6 @@ test("multiple agents get distinct ports + processes", async () => {
   expect(a.baseUrl).not.toBe(b.baseUrl);
 });
 
-// PRODUCT-1399: shutdownAllAndWait clears the live-set BEFORE the children
-// have exited, so a dispatch landing in that drain window (a provider poll, a
-// routine, an SSE resume) used to find no running entry and respawn a runtime
-// the exiting host never killed — an orphan that, on a serve-mode pod, booted
-// into a host whose listener was already closed and logged an ECONNREFUSED
-// per known provider (41 Sentry errors per pod termination).
 test("ensureAwake during shutdownAllAndWait's drain is REFUSED, never respawned (PRODUCT-1399)", async () => {
   let exitCb: (() => void) | undefined;
   let spawned = 0;
@@ -490,7 +447,6 @@ test("ensureAwake during shutdownAllAndWait's drain is REFUSED, never respawned 
       spawned += 1;
       return {
         port: 5000 + spawned,
-        // The child exits 30ms after SIGTERM — a realistic drain window.
         kill: () => setTimeout(() => exitCb?.(), 30),
         onExit: (cb) => {
           exitCb = cb;
@@ -504,12 +460,10 @@ test("ensureAwake during shutdownAllAndWait's drain is REFUSED, never respawned 
 
   const shutdown = launcher.shutdownAllAndWait(5_000);
   expect(launcher.isClosed()).toBe(true);
-  // Arrives mid-drain (child alive, live-set already cleared).
   await expect(launcher.ensureAwake(agent("polled"))).rejects.toBeInstanceOf(
     LauncherClosedError,
   );
   await shutdown;
-  // And stays refused after the drain — a closed launcher never spawns again.
   await expect(launcher.ensureAwake(agent("polled"))).rejects.toThrow(
     "shutting down",
   );
@@ -535,7 +489,6 @@ test("a boot that entered BEFORE shutdown but had not spawned yet is refused, so
   let releasePort!: () => void;
   const launcher = new ProcessLauncher(
     opts(spawner, {
-      // The one await between "enter" and "spawn": the port allocation.
       allocatePort: () =>
         new Promise<number>((resolve) => {
           releasePort = () => resolve(0);
@@ -543,15 +496,13 @@ test("a boot that entered BEFORE shutdown but had not spawned yet is refused, so
     }),
   );
   const boot = launcher.ensureAwake(agent("late"));
-  await new Promise((r) => setTimeout(r, 0)); // parked on allocatePort
+  await new Promise((r) => setTimeout(r, 0));
   await launcher.shutdownAllAndWait();
   releasePort();
   await expect(boot).rejects.toBeInstanceOf(LauncherClosedError);
-  expect(spawns).toHaveLength(0); // no child ever spawned past the sweep
+  expect(spawns).toHaveLength(0);
 });
 
-// A shutdown lets each runtime drain its turns within the budget; only a
-// child still alive past it is SIGKILLed, and the sync proceeds either way.
 test("shutdownAllAndWait waits out the drain budget, then SIGKILLs a survivor", async () => {
   const events: string[] = [];
   let exitCb: (() => void) | undefined;
@@ -588,8 +539,6 @@ test("shutdownAllAndWait returns as soon as a draining child exits, never escala
         port: spec.port,
         kill: () => {
           events.push("SIGTERM");
-          // The runtime finishes its turn and leaves on its own, well inside
-          // the budget.
           setTimeout(() => exitCb?.(), 10);
         },
         forceKill: () => events.push("SIGKILL"),
@@ -631,9 +580,6 @@ test("rename refusal uses agent-facing punctuation without an em dash", async ()
   release();
 });
 
-// An engine roll drains the pod while a routine fire is booting its runtime:
-// the drain kills the child, and the fire must read that as the drain (503,
-// retried on the replacement pod), not as a broken runtime (settled failed).
 test("a boot killed by the drain fails as the drain, not as a crash", async () => {
   let exitCb: (() => void) | undefined;
   const spawner: RuntimeSpawner = {

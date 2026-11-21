@@ -4,9 +4,6 @@ import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { unconnectedRoutineTurn } from "./turn-routine-unconnected";
 
-// The pooled worker's half of PRODUCT-1982: which provider a credential-less
-// routine turn blames, matching the standing host's 409 `no_provider` body.
-
 let dataDir: string;
 beforeEach(async () => {
   dataDir = await mkdtemp(join(tmpdir(), "routine-unconnected-"));

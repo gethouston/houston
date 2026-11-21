@@ -12,8 +12,6 @@ test("a provider is named the way the app names it, without the plan parenthetic
 });
 
 test("a provider the catalog does not carry keeps its own id", () => {
-  // Better a bare id than an empty sentence; the catalog stays the one source
-  // of names, so nothing is invented here.
   expect(sentenceProviderName("gemini-cli")).toBe("gemini-cli");
 });
 

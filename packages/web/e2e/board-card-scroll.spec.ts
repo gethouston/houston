@@ -1,12 +1,3 @@
-/**
- * A board column long enough to scroll keeps its cards as wide as a column
- * that doesn't (HOU-165). The styled scrollbar takes layout width, so without
- * a reserved gutter a Done column of a dozen cards at 1280 with the chat open
- * narrowed every card by 6px and clipped labels sized for the full width.
- * Scrollbars are shown here: Playwright's Chromium hides them by default,
- * which would hide the bug. Also runs on WebKit (`test:e2e:webkit`), the
- * desktop app's engine.
- */
 import {
   BUCKET_NAMES,
   card,

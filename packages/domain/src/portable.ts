@@ -12,20 +12,6 @@ import {
 } from "./portable-strip";
 import { normalizeRoutines } from "./routines";
 
-/**
- * Pack / unpack a `.houstonagent` — a zip of an agent's shareable content. Pure
- * (structured data ↔ bytes); the host filters by the user's selection and does
- * the vfs I/O. The same format flows local↔cloud, so an agent shared from a
- * desktop installs in cloud and vice versa.
- *
- * Layout:
- *   manifest.json
- *   CLAUDE.md                     (optional)
- *   skills/<slug>/SKILL.md        (per included skill)
- *   routines.json                 (the included routines, as an array)
- *   learnings.json                (the included learnings, as an array)
- */
-
 export interface PortableContent {
   claudeMd?: string;
   skills: { slug: string; body: string }[];
@@ -43,7 +29,6 @@ const ROUTINES = "routines.json";
 const LEARNINGS = "learnings.json";
 const skillPath = (slug: string) => `skills/${slug}/SKILL.md`;
 
-/** Build the `.houstonagent` bytes. Caller supplies content already filtered by selection. */
 export function packAgent(
   content: PortableContent,
   meta: {
@@ -71,11 +56,6 @@ export function packAgent(
     files[CLAUDE_MD] = strToU8(content.claudeMd);
   for (const s of content.skills) files[skillPath(s.slug)] = strToU8(s.body);
   if (content.routines.length) {
-    // A setup chat is machine-local (its activity id means nothing on the
-    // importer's side) and `created_by` is the exporter's account identity
-    // (who a fired routine acts as — never valid on another account, and not
-    // ours to publish), so shared routines carry neither; nor an auto-pause
-    // reason, which names the exporter's own account.
     const shareable = content.routines.map(stripLocalRoutineKeys);
     files[ROUTINES] = strToU8(JSON.stringify(shareable, null, 2));
   }
@@ -89,7 +69,6 @@ export function packAgent(
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** Read a `.houstonagent`. Throws on a missing/old manifest or unknown future format. */
 export function unpackAgent(bytes: Uint8Array): PortablePackage {
   let entries: Record<string, Uint8Array>;
   try {
@@ -131,11 +110,6 @@ export function unpackAgent(bytes: Uint8Array): PortablePackage {
     manifest,
     ...(claude !== undefined ? { claudeMd: strFromU8(claude) } : {}),
     skills,
-    // Run imported routines through the SAME normalization the read path uses:
-    // an entry the store would drop (no identity, malformed trigger, not
-    // exactly one wake mechanism) must not reach the install preview only to
-    // silently vanish on the first read after install. Machine/account-local
-    // keys are stripped defensively too — packs from older builds carry them.
     routines: normalizeRoutines(
       parseArray<Routine>(routinesRaw),
       ROUTINES,
@@ -146,7 +120,6 @@ export function unpackAgent(bytes: Uint8Array): PortablePackage {
   };
 }
 
-/** The pre-install preview of an unpacked package. */
 export function portableInventory(pkg: PortablePackage): PortableInventory {
   return {
     hasClaudeMd: pkg.claudeMd !== undefined,
@@ -174,7 +147,6 @@ export function portableInventory(pkg: PortablePackage): PortableInventory {
   };
 }
 
-/** Pull `description:` out of a SKILL.md frontmatter for the preview (best-effort). */
 function skillDescription(body: string): string {
   const m = body.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!m) return "";

@@ -1,11 +1,6 @@
 import { serveBrowserInput, serveBrowserLive } from "./browser-live-http";
 import type { RouteContext } from "./http-helpers";
 
-/**
- * The browser hand-off's live view (session/tools/browser/live/): frames down
- * an SSE stream, the person's input up in POST batches. Same handlers in
- * server mode (here) and turn mode (turn/server.ts).
- */
 export async function handleBrowserLiveRoute(
   ctx: RouteContext,
 ): Promise<boolean> {

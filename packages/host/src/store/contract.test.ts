@@ -6,18 +6,6 @@ import { runWorkspaceStoreContract } from "../testing/store-contract";
 import { LocalWorkspaceStore } from "./local";
 import { MemoryWorkspaceStore } from "./memory";
 
-/**
- * The OPEN WorkspaceStore adapters (Memory + Local) run through the shared
- * contract (../testing/store-contract.ts → runWorkspaceStoreContract). The
- * closed PgWorkspaceStore, which ran the SAME contract over pg-mem, was retired
- * with `@houston/host-cloud` (git history) — the contract stays open as the
- * behavioral bar for any out-of-repo adapter.
- *
- * The divergence block below pins the per-impl behaviors that are NOT part of the
- * shared contract (id shape, single-user-vs-per-user provisioning, the
- * setWorkspaceRuntime split). See the contract module header for the full list.
- */
-
 runWorkspaceStoreContract(
   "MemoryWorkspaceStore",
   () => new MemoryWorkspaceStore(),
@@ -51,13 +39,13 @@ describe("WorkspaceStore divergences (asserted per-impl, NOT in the shared contr
     const mem = new MemoryWorkspaceStore();
     const a = await mem.getOrCreatePersonalWorkspace("user-1");
     const b = await mem.getOrCreatePersonalWorkspace("user-2");
-    expect(a.id).not.toBe(b.id); // distinct per user
+    expect(a.id).not.toBe(b.id);
 
     const local = new LocalWorkspaceStore(
       mkdtempSync(join(tmpdir(), "houston-store-user-")),
     );
     const l1 = await local.getOrCreatePersonalWorkspace("user-1");
     const l2 = await local.getOrCreatePersonalWorkspace("user-2");
-    expect(l1.id).toBe(l2.id); // userId ignored on a laptop
+    expect(l1.id).toBe(l2.id);
   });
 });

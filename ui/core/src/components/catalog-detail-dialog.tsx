@@ -10,13 +10,6 @@ import {
   DialogTitle,
 } from "./dialog";
 
-/**
- * The catalog item's "more info" modal — what a {@link CatalogRow} body click
- * opens: the item's art + name (with optional tag chips beside it), its full
- * untruncated description, any extra `children`, and the install CTA in the
- * footer. Domain-blind like the rest of the family: the consumer owns the
- * icon, the tags, the action button, and every string.
- */
 export function CatalogDetailDialog({
   open,
   onOpenChange,
@@ -29,15 +22,11 @@ export function CatalogDetailDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The item's art (~40px), same node the row leads with. */
   icon: ReactNode;
   title: string;
-  /** Small chips under the title (categories, kind badges...). */
   tags?: ReactNode;
-  /** The FULL description — this surface exists so it never truncates. */
   description?: string;
   children?: ReactNode;
-  /** The footer CTA (install / connect), owned by the consumer. */
   action?: ReactNode;
 }) {
   return (

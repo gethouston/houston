@@ -25,47 +25,15 @@ import { ChatHandsOnApiKeyCard } from "./chat-hands-on-api-key-card";
 
 interface Props extends StepChrome, StepDraftApi {
   stepId: string;
-  /** The screen the agent is handing over, straight off the wire. */
   surface: string;
-  /** The employee the screen belongs to (`agentApiAccess`), off the wire. */
   targetAgentId?: string;
-  /** The employee a key minted here is for (a sibling `agentApiAccess` step),
-   *  which the key's name defaults to. */
   keyNameAgentId?: string;
-  /** The AI Manager's own chat: the only place the API errands run inline. */
   managerChat: boolean;
   reason?: string;
-  /** The user says they finished on the screen; carries its display name. */
   onFinished: (name: string) => void;
   onSkip: (name: string, message?: string) => void;
 }
 
-/**
- * The errand card: "open this screen, do the thing there, come back".
- *
- * It covers every task only the person's own hands can finish — a card on file,
- * a key Houston reveals once, files on their device, a space they alone may
- * destroy — because all of them are the same interaction and none of them can
- * carry a result back through the runtime.
- *
- * Nothing here can OBSERVE completion, which is what separates it from the
- * connect cards: no status poll can tell whether the person actually paid. So
- * the card asks instead of pretending, and both answers stand side by side from
- * the start — Open takes them to the screen, Done and Skip are the two honest
- * ways back. Open NAVIGATES, which tears this card down and rebuilds it when
- * the person returns, so the card keeps no state of its own: the outcome log
- * behind the stepper is the memory, and re-answering simply overwrites it.
- *
- * A screen this build does not know (a newer engine named it), and one this
- * person's own Houston does not hold (Billing for a plain member, the Danger
- * zone for anyone but the space owner), both say so and leave Skip as the way
- * on, rather than offering a button to nowhere.
- *
- * In the AI Manager's chat the two API errands do their job INLINE instead
- * (people dislike being sent out of the chat): a key is created and copied
- * right in the card, and an employee's IDs and setup prompt are shown there.
- * Anywhere else `apiKeys` keeps navigating ({@link inlineHandsOn}).
- */
 export function ChatHandsOnInteractionCard({
   stepId,
   surface,
@@ -83,8 +51,6 @@ export function ChatHandsOnInteractionCard({
   const agents = useAgentStore((s) => s.agents);
   const loaded = useAgentStore((s) => s.loaded);
   const loading = useAgentStore((s) => s.loading);
-  // Only an employee's own screen asks whose it is: its Settings are drawn for
-  // its managers alone, so anyone else would land on nothing.
   const target = resolveHandsOnAgent(targetAgentId, {
     agents,
     loaded,

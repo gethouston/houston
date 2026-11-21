@@ -1,12 +1,6 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "../support/fixtures";
 
-/**
- * The composer toolbar under a phone chat: mode, model and effort are 44px
- * targets in a row that scrolls sideways when it cannot fit, and the context
- * ring stays pinned at the right edge, never scrolled out of view.
- */
-
 async function openChat(page: Page): Promise<void> {
   await page.goto("/");
   await page.getByTestId("agents-home-row").tap();
@@ -41,7 +35,6 @@ for (const width of [360, 412]) {
 test("the context ring stays in view while the pickers scroll", async ({
   page,
 }) => {
-  // Narrower than any phone we ship to, so the pickers must overflow.
   await page.setViewportSize({ width: 280, height: 700 });
   await openChat(page);
   const pickers = page.getByTestId("composer-toolbar-pickers");
@@ -59,7 +52,6 @@ test("the context ring stays in view while the pickers scroll", async ({
   if (!box) throw new Error("the context ring is not laid out");
   expect(box.x + box.width).toBeLessThanOrEqual(280);
   expect(box.x).toBeGreaterThanOrEqual(0);
-  // No document-level overflow either: only the pickers scroll.
   const docOverflow = await page.evaluate(
     () =>
       document.documentElement.scrollWidth -

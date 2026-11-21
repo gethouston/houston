@@ -80,8 +80,6 @@ const OP_HANDLERS: Record<OpGroup, OpHandler> = {
       res,
       deps.emit,
     ),
-  // Files (list/read/download/archive/import/move/rename/folder): the Files
-  // tab, byte-identical to the pod.
   "workspace-files": (deps, method, rest, req, res) =>
     handleFiles(
       deps.vfs,
@@ -101,7 +99,6 @@ const OP_HANDLERS: Record<OpGroup, OpHandler> = {
         purpose: "files_import",
       }),
     ),
-  // Composer drops land in uploads/ BEFORE the send (which is a pool turn).
   attachments: (deps, method, rest, req, res) =>
     handleAttachments(
       deps.vfs,
@@ -123,9 +120,6 @@ const OP_HANDLERS: Record<OpGroup, OpHandler> = {
     handlePortablePreview(deps, deps.ctx, method, rest, req, res),
   "portable-export": (deps, method, rest, req, res) =>
     handlePortableExport(deps, deps.ctx, method, rest, req, res),
-  // agentDir: a transcript chunk synthesizes its pi sessions on the worker's
-  // own tree (turn/op-route.ts), unless the import asked `sessions=0`.
-  // routineCreatedBy: the op's verified actor stamps imported routines.
   migration: (deps, method, rest, req, res) =>
     handleMigration(
       {
@@ -147,11 +141,6 @@ const OP_HANDLERS: Record<OpGroup, OpHandler> = {
     ),
 };
 
-/**
- * The pod's own handler chain, run for one op: the SAME handlers the per-agent
- * groups serve, over a hydrated copy of the agent's workspace instead of the
- * pod's disk. Unknown routes answer 404, never a throw.
- */
 export async function runAgentOpChain(
   deps: AgentOpChainDeps,
   method: string,

@@ -21,11 +21,6 @@ import { MemoryVfs } from "../vfs";
 import { reconcileAgentRuns } from "./reconcile";
 import { ORPHANED_RUN_SUMMARY } from "./reconcile-decide";
 
-/**
- * A `running` row whose routine was deleted must still settle: the host's busy probe counts every
- * `running` row, so a skipped orphan kept its engine pod awake for good.
- */
-
 const STARTED = new Date("2026-06-12T12:00:00.000Z");
 const SOON = new Date(STARTED.getTime() + 2 * 60 * 1000);
 const LATE = new Date(STARTED.getTime() + ROUTINE_RUN_TIMEOUT_MS + 60_000);
@@ -37,7 +32,6 @@ const routine = (id: string): Routine =>
     STARTED.toISOString(),
   );
 
-/** `kept` stay in routines.json; `gone` fired a run, then were deleted. */
 async function setup(kept: Routine[], gone: Routine[]) {
   const store = new MemoryWorkspaceStore();
   const vfs = new MemoryVfs();
@@ -155,7 +149,6 @@ test("an orphan settles beside a live routine's run, and a second sweep changes 
 
 test("after an orphan settles, the pod's busy probe reads idle", async () => {
   const env = await setup([], [routine("gone")]);
-  // Only the busy probe is read; no turn is live on this pod.
   const idle = { busy: async () => false } as unknown as RuntimeChannel;
   const probe = () =>
     podActivityStatus({

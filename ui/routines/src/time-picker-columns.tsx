@@ -1,9 +1,3 @@
-/**
- * The scrollable columns inside the TimePicker popover. Kept apart from
- * time-picker.tsx so each file stays small; these are presentational and own no
- * time logic — the parent computes values and hands selection callbacks down.
- */
-
 import { cn } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import {
@@ -13,13 +7,6 @@ import {
   pad2,
 } from "./time-picker-utils.ts";
 
-/**
- * One scrollable column of zero-padded numbers. The selected value is kept
- * centered: the column is padded at both ends so even the first/last number can
- * sit dead-center, and `scrollTop` is re-set whenever the selection changes so
- * the current value never drifts off-center. We set `scrollTop` directly rather
- * than `scrollIntoView` so only the column scrolls — never the page or popover.
- */
 export function TimeColumn({
   ariaLabel,
   options,
@@ -39,8 +26,6 @@ export function TimeColumn({
     const c = containerRef.current;
     const el = selectedRef.current;
     if (!c || !el) return;
-    // Pad the ends so the extreme values can also center, then bring the current
-    // selection to the middle. (offsetTop reflects the padding once it's set.)
     c.style.paddingBlock = `${centerPadding(c.clientHeight, el.clientHeight)}px`;
     c.scrollTop = centerScrollTop(
       el.offsetTop,
@@ -80,7 +65,6 @@ export function TimeColumn({
   );
 }
 
-/** The AM/PM column, shown only for 12-hour locales. */
 export function PeriodColumn({
   ariaLabel,
   periods,

@@ -14,13 +14,6 @@ import {
 } from "./pending-move";
 import { MOVE_POLL_TIMEOUT_MS, type TeamRef } from "./share-via-team";
 
-/**
- * Move one agent of a team move to terminal. The pending record is written
- * BEFORE the POST (so a quit mid-request still resumes) and cleared when the
- * move is done, the agent is in neither space (`gone`), or the move was
- * refused before anything started (`refused`): only then is there nothing
- * left on the gateway to finish.
- */
 export async function moveTeamAgent(
   agent: { id: string; name: string },
   target: TeamRef,
@@ -67,7 +60,6 @@ export async function moveTeamAgent(
   }
 }
 
-/** The failure a not-done team agent move shows, from its code or error. */
 export function teamAgentMoveError(result: ResumeOutcome): MoveErrorKind {
   return classifyMoveError(
     "code" in result

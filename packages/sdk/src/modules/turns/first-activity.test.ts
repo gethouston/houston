@@ -13,13 +13,6 @@ import {
 import { StreamRegistry, type StreamTuning } from "./stream-registry";
 import { streamTurn } from "./turn-stream";
 
-/**
- * A turn's FIRST ACTIVITY: the first visible item of any kind (thinking, a
- * tool call, or text), carried on the turn's one first-response report. It is
- * the "is it alive" time: a turn that runs tools before it writes shows the
- * person it is working long before its first text.
- */
-
 const registry = new StreamRegistry();
 afterEach(() => {
   registry.disposeAll();
@@ -31,10 +24,8 @@ const fast: StreamTuning = {
   backoff: { initialMs: 1, maxMs: 2, jitter: () => 0 },
 };
 
-/** Each step moves the wall clock to `at`, then delivers `frame`. */
 type Step = { at: number; frame: WireFrame };
 
-/** One sent turn on conversation `a`, its frames delivered on a fake clock. */
 async function timedTurn(steps: Step[]): Promise<FirstResponse[]> {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(1_000_000);
@@ -176,7 +167,6 @@ test("an engine restart after thinking reports interrupted with its first activi
       vi.setSystemTime(1_003_000);
       o.onEvent({ type: "thinking", data: "Plan", turnId: "t1" } as WireFrame);
       vi.setSystemTime(1_009_000);
-      // The engine restarted: an idle resync, and history says interrupted.
       o.onEvent({
         type: "sync",
         data: { running: false, partial: "", seq: 0, resync: true },
@@ -246,7 +236,6 @@ test("a tool replayed by a running sync after a reconnect is the first activity"
     async streamEvents(_id: string, o: EventStreamOptions) {
       connects++;
       if (connects === 1) {
-        // The first connection drops before any of the turn's frames arrive.
         o.onEvent({
           type: "sync",
           data: { running: false, partial: "", seq: 0 },
@@ -254,7 +243,6 @@ test("a tool replayed by a running sync after a reconnect is the first activity"
         while (!sent) await new Promise((r) => setTimeout(r, 2));
         return;
       }
-      // The reconnect's running sync replays the tool that ran meanwhile.
       vi.setSystemTime(1_006_000);
       o.onEvent({
         type: "sync",

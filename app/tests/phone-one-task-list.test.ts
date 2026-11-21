@@ -2,10 +2,6 @@ import { ok } from "node:assert";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-// The phone has ONE task list per employee, the AI Employees drill-in
-// (`agents-home/agent-missions-screen.tsx`). The board never grows a phone
-// form of its own again.
-
 const src = (path: string) =>
   new URL(`../src/components/${path}`, import.meta.url);
 

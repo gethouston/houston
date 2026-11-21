@@ -20,10 +20,6 @@ const steps = [
   "Drafted 6 replies for approval",
 ];
 
-/**
- * The primitive ships no styles, so every example spells its own chrome — which
- * is the point: `Collapsible` is the show/hide behaviour and nothing else.
- */
 function RunDetails({
   defaultOpen,
   disabled,
@@ -116,19 +112,10 @@ function CollapsibleSpecimen() {
       </SpecimenSection>
 
       <SpecimenProps items={props} />
-      {/* No `SpecimenTokens`: the component paints nothing at all — it renders
-          three Radix primitives with `data-slot` hooks and no className of its
-          own, so there is no token list to audit. Every colour on this page
-          belongs to the example's chrome. */}
     </SpecimenPage>
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = [
   "Collapsible",
   "CollapsibleContent",

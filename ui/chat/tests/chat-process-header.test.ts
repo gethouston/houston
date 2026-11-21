@@ -25,10 +25,6 @@ function seg(tools: ToolStub[]): ChatProcessSegment {
   } as unknown as ChatProcessSegment;
 }
 
-// HOU-448: the header is the whole story while the log stays collapsed. It must
-// surface the one current action, hold it across the reasoning gaps between
-// tools (so it isn't a brief flash), fall back cleanly before the first tool,
-// and never leak a count.
 describe("buildProcessHeaderLabel", () => {
   it("names the tool currently running while active (the bare verb)", () => {
     strictEqual(
@@ -112,8 +108,6 @@ describe("buildProcessHeaderLabel", () => {
   });
 });
 
-// The current action tracks the most recent tool of the active turn — across
-// segment boundaries — so the header narrates each step the agent takes.
 describe("getCurrentActionToolName", () => {
   it("returns the last tool of the LAST segment that has tools", () => {
     const segments = [
@@ -144,9 +138,6 @@ describe("getCurrentActionToolName", () => {
   });
 });
 
-// HOU-717: the pi engine's tools are lowercase (bash/read/grep/find/ls) —
-// they must resolve to the same human verbs the Claude names do, or the
-// header reads "bash".
 describe("pi tool-name labels", () => {
   it("maps pi's lowercase tool names to verbs", () => {
     const segments = [seg([{ name: "bash" }])];
@@ -165,8 +156,6 @@ describe("pi tool-name labels", () => {
   });
 });
 
-// getCurrentActionTool returns the whole ToolEntry (not just its name) so the
-// branded path can read `input.action` off the current call.
 describe("getCurrentActionTool", () => {
   it("returns the last tool ENTRY of the last segment with tools", () => {
     const segments = [
@@ -187,8 +176,6 @@ describe("getCurrentActionTool", () => {
   });
 });
 
-// integrationActionOf reads the Composio action off an integration_execute call,
-// tolerating MCP prefixes and any malformed/half-streamed input.
 describe("integrationActionOf", () => {
   const tool = (name: string, input?: unknown): ToolEntry =>
     ({ name, input }) as ToolEntry;
@@ -246,9 +233,6 @@ describe("integrationActionOf", () => {
   });
 });
 
-// HOU-1048: a bash/run_code call that is really a web fetch or a Python run
-// upgrades to the activity row — globe / Python glyph + a branded-style label —
-// instead of the generic terminal "Running command".
 describe("buildProcessHeader activity rows", () => {
   it("labels a curl as browsing the web with the host", () => {
     deepStrictEqual(
@@ -307,8 +291,6 @@ describe("buildProcessHeader activity rows", () => {
   });
 });
 
-// buildProcessHeader chooses the branded row only when the current tool is a
-// resolvable integration_execute; everything else stays the plain text label.
 describe("buildProcessHeader", () => {
   const brand: ChatActionBrand = {
     name: "Gmail",
@@ -366,10 +348,6 @@ describe("buildProcessHeader", () => {
     );
   });
 
-  // PRODUCT-1226: the playful phrase deck never plays in the mission-log
-  // header — once any tool has run, the header holds the concrete task
-  // (sticky through reasoning gaps, HOU-448). The deck belongs to the
-  // standalone connecting indicator alone.
   describe("task stays visible while executing (PRODUCT-1226)", () => {
     it("keeps the task after the tool finishes (reasoning gap, sticky verb)", () => {
       deepStrictEqual(
@@ -418,8 +396,6 @@ describe("buildProcessHeader", () => {
     });
   });
 
-  // PRODUCT-1226: a run of the SAME activity folds into one row with an "xN"
-  // suffix — 27 issue-creations must not read as one stuck step.
   describe("repeat counter", () => {
     const linear = (result?: unknown): ToolStub => ({
       name: "integration_execute",

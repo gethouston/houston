@@ -14,20 +14,12 @@ import { createTurnsModule } from "./index";
 import type { ConversationVM } from "./vm-output";
 import { conversationScope } from "./vm-output";
 
-/**
- * The turns module: `turns/send` and the conversation-control command
- * registrations, the
- * built-in conversation VM, model/effort application, and the multiplexed
- * external output (one machinery, many outputs, single settle).
- */
-
 const doneTurn: WireFrame[] = [
   { type: "sync", data: { running: false, partial: "", seq: 0 }, seq: 0 },
   { type: "text", data: "hi there", seq: 1 },
   { type: "done", data: null, seq: 2 },
 ];
 
-/** A turn already in flight when we attach — for observer-facade coverage. */
 const runningTurn: WireFrame[] = [
   { type: "sync", data: { running: true, partial: "", seq: 0 }, seq: 0 },
   { type: "text", data: "observed reply", seq: 1 },
@@ -43,7 +35,6 @@ function harness(frames: WireFrame[] = doneTurn) {
     cancels: [] as string[],
     modes: [] as Array<{ id: string; mode: string }>,
     dismissed: [] as string[],
-    /** Set to make the runtime refuse the next dismiss with this error. */
     dismissRefusal: null as Error | null,
     truncated: [] as Array<{ id: string; turnId: string }>,
     settings: [] as unknown[],
@@ -82,7 +73,6 @@ function harness(frames: WireFrame[] = doneTurn) {
       calls.settings.push(input);
       return {} as never;
     },
-    // The picker resolves the owning provider from here (see model-settings.ts).
     async listProviders() {
       calls.providersListed++;
       return [
@@ -106,14 +96,10 @@ function harness(frames: WireFrame[] = doneTurn) {
       reactivity: false,
     },
     store,
-    // One injected engine for any agent id — this suite asserts through the
-    // recorded calls, not per-agent URLs (see conversations for those).
     clientFor: () => client,
     authExpiry: createAuthExpiryNotifier(store),
     registerCommand: (type, handler) => commands.set(type, handler),
   };
-  // The default board-status persister the turns module drives on every turn
-  // (backed by the activities module in the real SDK) — recorded here.
   const persistBoardStatus = async (
     _agentId: string,
     sessionKey: string,
@@ -122,7 +108,6 @@ function harness(frames: WireFrame[] = doneTurn) {
     calls.boardPersists.push({ sessionKey, status });
   };
   const mod = createTurnsModule(ctx, persistBoardStatus);
-  // Sends in this suite carry no agentId, so the VM lands on the "" agent slot.
   const vm = () =>
     store.getSnapshot(conversationScope("", "c1")) as ConversationVM;
   return { store, commands, calls, mod, vm };
@@ -166,7 +151,7 @@ test("turns/send drives the conversation VM to a settled reply", async () => {
       id: texts[0]?.id ?? "",
       feed_type: "assistant_text",
       data: "hi there",
-      ts: expect.any(Number), // a live push is stamped at push time
+      ts: expect.any(Number),
     },
   ]);
 });
@@ -184,7 +169,6 @@ test("turns/send pushes the user bubble pending, then confirms it (clock -> chec
   await commands.get("turns/send")?.({ conversationId: "c1", text: "hi" });
   await waitFor(() => vm()?.sessionStatus === "completed");
 
-  // It entered pending (a clock) and the reply's arrival confirmed it (a check).
   expect(userPending[0]).toBe(true);
   expect(userPending.at(-1)).toBeUndefined();
   const finalUser = vm().feed.find((f) => f.feed_type === "user_message");
@@ -195,7 +179,6 @@ test("an observed (resumed) conversation never shows a pending bubble", async ()
   const { mod, vm } = harness(runningTurn);
   await mod.observe("c1", "");
   await waitFor(() => vm()?.sessionStatus === "completed");
-  // observe pushes no optimistic bubble — nothing is unconfirmed on the surface.
   expect(vm().feed.some((f) => f.pending)).toBe(false);
 });
 
@@ -219,7 +202,6 @@ test("an attached external output sees every push, settled exactly once", async 
   await mod.send({ conversationId: "c1", text: "hi" });
   await waitFor(() => vm()?.sessionStatus === "completed");
 
-  // The external output got the same feed, and the sink settled ONCE.
   expect(items.some((i) => i.feed_type === "assistant_text")).toBe(true);
   expect(items.filter((i) => i.feed_type === "final_result")).toHaveLength(1);
 });
@@ -228,11 +210,7 @@ test("the default board-status persister fires running at start and terminal on 
   const { mod, vm, calls } = harness();
   await mod.send({ conversationId: "c1", text: "hi" });
   await waitFor(() => vm()?.sessionStatus === "completed");
-  // The terminal persist is awaited AFTER the settle: wait for it, not a tick.
   await waitFor(() => calls.boardPersists.length >= 2);
-  // A running turn PATCHes the card to running, then to its terminal status —
-  // the write the SDK path used to drop, keyed by the chat's id. Every clean
-  // settle lands `needs_you`: the engine never closes a mission, the user does.
   expect(calls.boardPersists.map((p) => p.status)).toEqual([
     "running",
     "needs_you",
@@ -249,16 +227,12 @@ test("a model pick rides the send as a per-turn pin paired with its owner — ne
     effort: "high",
   });
   await waitFor(() => vm()?.sessionStatus === "completed");
-  // The runtime hard-fails a model under the wrong provider, so the facade
-  // pairs the pick with its owner (from the live listing) on the wire pin.
   expect(calls.providersListed).toBe(1);
   expect(calls.sendOpts[0]).toMatchObject({
     provider: "anthropic",
     model: "claude-opus-4-8",
     effort: "high",
   });
-  // HOU-695: the pick pins THIS turn only. Writing it to the agent-wide
-  // settings would move every other conversation's fallback provider.
   expect(calls.settings).toEqual([]);
 });
 
@@ -315,13 +289,11 @@ test("observe replays the running turn's thinking + tools from the sync, deduped
         thinking: "planning the steps",
         tools: [
           { name: "bash", input: { cmd: "ls" }, isError: false, content: "ok" },
-          { name: "read", input: { path: "a.txt" } }, // still running
+          { name: "read", input: { path: "a.txt" } },
         ],
       },
       seq: 2,
     },
-    // Reconnect resync: same activity again (must NOT double), and the
-    // still-running tool has since ended (its result must land).
     {
       type: "sync",
       data: {
@@ -357,7 +329,6 @@ test("observe replays the running turn's thinking + tools from the sync, deduped
     { name: "bash", input: { cmd: "ls" } },
     { name: "read", input: { path: "a.txt" } },
   ]);
-  // Both results landed exactly once, carrying their output previews.
   const results = feed.filter((f) => f.feed_type === "tool_result");
   expect(results.map((f) => f.data)).toEqual([
     { name: "bash", content: "ok", is_error: false },
@@ -372,8 +343,6 @@ test("turns/cancel aborts the conversation's turn and reports what it stopped", 
     agentId: "a1",
   });
   expect(calls.cancels).toEqual(["c1"]);
-  // The runtime's own answer reaches the caller: a surface settles its own
-  // stuck card when nothing was actually in flight.
   expect(result).toEqual({ ok: true, cancelled: true });
 });
 
@@ -444,8 +413,6 @@ test("the control commands drive the same path as the typed facade", async () =>
 
 test("a one-conversation command without an agent is refused, never guessed", () => {
   const { commands } = harness();
-  // The agent IS the sandbox the chat lives in; defaulting it would stop a turn
-  // in the single local runtime while the caller meant an agent's pod.
   expect(() =>
     commands.get("turns/cancel")?.({ conversationId: "c1" }),
   ).toThrow(/agentId/);
@@ -459,8 +426,6 @@ test("a one-conversation command without an agent is refused, never guessed", ()
 
 test("a malformed turns/send payload throws (the registry's dispatch turns it into ok:false)", () => {
   const { commands } = harness();
-  // The handler validates synchronously; CommandRegistry.dispatch wraps the
-  // call in try/catch, so a throw here becomes a failed CommandResult.
   expect(() => commands.get("turns/send")?.({ text: "hi" })).toThrow(
     /conversationId/,
   );

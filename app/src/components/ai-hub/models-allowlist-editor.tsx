@@ -22,17 +22,6 @@ export type {
   ModelsAllowlistEditorProps,
 } from "./models-allowlist-editor-types";
 
-/**
- * Presentational, i18n-agnostic editor for an AI-model allowlist ceiling
- * (Teams v2), the model-side twin of {@link AllowlistEditor}. An always-visible
- * {@link AccessChoice} (allow all saves `null`, "Only models you pick" saves an
- * explicit set) over the AI-hub catalog's visual language: one {@link ModelAllowRow}
- * per {@link CatalogModel} (brand mark + name + lab + allow Switch). Selection is
- * over provider-native offer ids — toggling a model flips ALL its offers at once
- * (see {@link toggleModel}) — so a member can pick that model from any provider
- * connected. Writes are instant. All copy is passed in; both the per-agent and
- * org ceilings consume this so they never drift.
- */
 export function ModelsAllowlistEditor({
   models,
   allowedModels,
@@ -45,7 +34,6 @@ export function ModelsAllowlistEditor({
   const generatedHeadingId = useId();
   const headingId = labelledBy ?? generatedHeadingId;
   const [search, setSearch] = useState("");
-  // View-only lab filter (never touches saved data); composes with the search.
   const [lab, setLab] = useState<ProviderValue>("all");
   const labFilter = lab === "all" ? undefined : lab;
 
@@ -53,7 +41,6 @@ export function ModelsAllowlistEditor({
     () => new Set(allowedModels ?? []),
     [allowedModels],
   );
-  // Every model the ceiling currently allows (before the view-only lab filter).
   const pickedModels = useMemo(
     () => models.filter((m) => modelChecked(m, allowedSet)),
     [models, allowedSet],
@@ -67,8 +54,6 @@ export function ModelsAllowlistEditor({
     hasPicked: pickedModels.length > 0,
     labFiltered: labFilter !== undefined,
   });
-  // The remaining (not-yet-allowed) models to add, narrowed to the picked lab
-  // and ranked by the search box — allowed models live in their own list above.
   const results = useMemo(() => {
     const base = filterModels(
       models.filter((m) => !modelChecked(m, allowedSet)),

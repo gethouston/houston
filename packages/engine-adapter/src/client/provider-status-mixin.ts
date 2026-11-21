@@ -11,35 +11,13 @@ import { withProviderAgentRetarget } from "./provider-agent-gone";
 import { reportProbeFailure } from "./provider-probe-report";
 import { providerRoutingSettled } from "./provider-routing";
 
-/**
- * How long the batched status probe waits for the runtime before calling it
- * unreachable (HOU-1153). A host that accepts the connection but never answers
- * — a wedged desktop sidecar, a pod stuck mid-boot — used to leave this promise
- * pending for the life of the app, which the picker rendered as a permanent
- * "Loading providers…". A bounded probe turns that into the same "unknown"
- * answer any other unreachable engine produces, which the caller retries.
- */
 const PROBE_TIMEOUT_MS = 15_000;
 
 export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
-  // Internal label only (the exported factory is the contract). Named to avoid
-  // shadowing the imported ui `ProviderStatus` type the verbatim bodies return.
   class ProviderStatusMethods extends Base {
     async providerStatus(name: string): Promise<ProviderStatus> {
       return (await this.providerStatuses([name]))[0];
     }
-    /**
-     * Batched provider status: ONE `listProviders()` round-trip, then derive every
-     * requested provider's status from it.
-     *
-     * `listProviders` already returns EVERY provider (with its configured flag and
-     * dynamic model id — the OpenAI-compatible provider's model is absent from the
-     * static catalog, so this is the picker's only source). The old per-card
-     * `providerStatus` fetched that whole list and threw away all but one entry, so
-     * a settings screen with a dozen cards fired a dozen identical round-trips —
-     * each proxied to the agent's sandbox in cloud. Fetching once and mapping N
-     * cards off the result is the fix for HOU-650.
-     */
     async providerStatuses(
       names: readonly string[],
     ): Promise<ProviderStatus[]> {
@@ -48,38 +26,13 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
         {
           configured?: boolean;
           activeModel?: string;
-          // WHOSE credential answered (HOU-976). Absent on desktop, self-host,
-          // and any pre-HOU-976 pod — see the spread below, which keeps the
-          // mapped status byte-identical there.
           credentialScope?: CredentialScope;
           health?: ProviderHealth;
           reconnectBy?: number;
         }
       >();
-      // "unauthenticated" is only ever a CONFIRMED answer from the engine. An
-      // unreachable engine (cold pod still waking after a relaunch/update, a
-      // network drop) reports "unknown" instead: fabricating "unauthenticated"
-      // flips every provider card to Connect and blocks the local-model tunnel
-      // auto-reconnect, for connections that are still registered server-side.
-      //
-      // What an all-"unknown" scan is WORTH is the caller's call, and the two
-      // callers differ on purpose (HOU-1153): the AI hub keeps painting its
-      // last-known snapshot, while the chat picker classifies it as a probe
-      // failure and re-probes until a definitive answer lands. This method
-      // stays non-throwing so both readings remain possible.
       let reachable = false;
       try {
-        // Do NOT probe before the active space's agent list has settled
-        // (HOU-979). The probe routes per-agent, so the only id available then
-        // is the raw pref — which right after a space switch still names the
-        // PREVIOUS space's agent. Asking `/v1/agents/<other-space-agent>/…`
-        // under the new `x-houston-org` 404s, and the catch below would report
-        // "unknown" anyway; skipping the request reaches the same honest
-        // "checking" answer without a cross-space call.
-        // A target the gateway no longer has (`404 agent not found`) is
-        // forgotten and the probe re-asks the re-resolved runtime once
-        // (HOUSTON-APP-52F) — swallowed into "unknown" it re-asked the same
-        // dead pod on every re-probe for the whole session.
         if (providerRoutingSettled(this.ctx)) {
           const list = await withProviderAgentRetarget(this.ctx, (target) =>
             (target
@@ -91,7 +44,6 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
           reachable = true;
         }
       } catch (error) {
-        // Cards read "unknown" below either way.
         reportProbeFailure(error);
       }
       return names.map((name) => {
@@ -109,21 +61,12 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
           installSource: "managed",
           cliPath: null,
           activeModel: p?.activeModel || undefined,
-          // Carry the credential attribution through (HOU-976) — spread
-          // CONDITIONALLY, never as explicit `undefined` keys: a pre-HOU-976
-          // pod (and every desktop/self-host answer) must map to exactly the
-          // object shape the provider-status tests already assert on.
           ...(p?.credentialScope ? { credentialScope: p.credentialScope } : {}),
-          // An engine we never reached says nothing about the credential — the
-          // ENGINE is what's unreachable, which is exactly `"unreachable"`.
           ...(reachable
             ? p?.health
               ? { health: p.health }
               : {}
             : { health: "unreachable" as const }),
-          // The login's sign-in-again deadline (hosted Claude subscription);
-          // conditional like the fields above, so every other answer keeps
-          // its exact shape.
           ...(reachable && p?.reconnectBy !== undefined
             ? { reconnectBy: p.reconnectBy }
             : {}),

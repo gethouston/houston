@@ -1,20 +1,6 @@
-/**
- * Decode-only view of a gateway bearer for the 401 recovery's breadcrumbs.
- *
- * The transport never verifies a token (the gateway does, against Google's
- * JWKS); it only needs to DESCRIBE the bearer it just had refused, so the next
- * Sentry event can say whether the refresher handed back a freshly minted
- * token or a slept-out one (PRODUCT-1812). Shape-tolerant: anything that is
- * not a three-part JWT with a JSON payload yields `null`, never a throw, and
- * nothing here ever logs the token itself.
- */
-
 export interface BearerDescription {
-  /** Seconds until `exp`, negative once expired; null when the claim is absent. */
   expiresInS: number | null;
-  /** Seconds since `iat`; null when the claim is absent. */
   issuedAgoS: number | null;
-  /** The signing-key id from the header, or null. */
   kid: string | null;
 }
 
@@ -42,7 +28,6 @@ function numberClaim(
   return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
 
-/** Describe a bearer's timing claims relative to `nowMs` (default: now). */
 export function describeBearer(
   bearer: string,
   nowMs: number = Date.now(),
@@ -63,7 +48,6 @@ export function describeBearer(
   };
 }
 
-/** One-line, token-free rendering for a console breadcrumb. */
 export function formatBearerDescription(
   description: BearerDescription | null,
 ): string {

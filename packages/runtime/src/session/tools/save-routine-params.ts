@@ -1,18 +1,5 @@
 import { type Static, Type } from "typebox";
 
-/**
- * What `save_routine` takes, as the model fills it in. Split from the tool so
- * the schema - which is documentation the model READS, not logic - can grow a
- * field without pushing the tool's own behaviour off the page.
- */
-
-/**
- * The wake binding for an event-triggered scheduled task (Houston Cloud only).
- * All fields optional so both shapes pass the schema; the host validates the
- * binding and rejects it where event triggers are unavailable.
- *  - Composio: `toolkit` + `trigger_slug` + `trigger_config`.
- *  - Webhook:  `kind: "webhook"` (the gateway mints the URL out of band).
- */
 const TriggerParam = Type.Object({
   kind: Type.Optional(
     Type.String({

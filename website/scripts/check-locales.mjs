@@ -1,16 +1,4 @@
 #!/usr/bin/env node
-// Structural parity gate for the website's translations.
-//
-// en.js is the source of truth. Every other locale must have the SAME key
-// paths, the SAME array lengths at every array node, and the same leaf types,
-// so a template written against `t.<path>` can never hit an undefined value in
-// one language and a string in another. It also bans the em dash, which the
-// house copy rules forbid in user-facing text.
-//
-// Locales that do not exist yet are skipped with a note, so this passes while
-// es.js and pt.js are still being written.
-//
-// Run: node scripts/check-locales.mjs   (pnpm/npm run check:locales)
 
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -34,8 +22,6 @@ const kindOf = (value) => {
   return typeof value;
 };
 
-// Walks a locale tree against the base tree, reporting every divergence rather
-// than stopping at the first one.
 const compare = (locale, path, base, actual) => {
   const baseKind = kindOf(base);
   const actualKind = kindOf(actual);
@@ -74,7 +60,6 @@ const compare = (locale, path, base, actual) => {
   }
 };
 
-// Em dashes are banned in every locale, including the base one.
 const checkDashes = (locale, path, value) => {
   if (typeof value === "string") {
     if (value.includes(EM_DASH)) fail(locale, path, "contains an em dash");
@@ -93,9 +78,6 @@ const checkDashes = (locale, path, value) => {
   }
 };
 
-// A locale's tree as templates see it: <locale>.js, plus the page copy that
-// _data/eleventyComputed.js joins on (PAGE_TREES), so all of it is held to
-// the same parity.
 const load = async (locale) => {
   const file = resolve(i18nDir, `${locale}.js`);
   if (!existsSync(file)) return null;

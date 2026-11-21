@@ -12,15 +12,8 @@ import {
   type TurnState,
 } from "./turn-settle";
 
-/**
- * settleFromHistory — the "terminal frame was lost" settle. With a turnId the
- * match is exact; without one it falls back to the legacy trailing-reply +
- * guard heuristic. It must NEVER render an empty "completed" turn.
- */
-
 type Item = { feed_type?: string; data?: unknown; fails_pending?: boolean };
 
-/** A FeedOutput that records every push for assertions. */
 function recorder(): {
   items: Item[];
   statuses: Array<[string, string?]>;
@@ -48,22 +41,12 @@ function run(
   const { items, statuses, output } = recorder();
   const s = newTurnState("Houston/Bo", "activity-settle", output);
   s.text = opts.streamed ?? "";
-  // settleFromHistory is only ever reached AFTER the turn was seen live (a
-  // boundary / resync), so the send always landed — model that so a dead turn
-  // keeps its bubble confirmed rather than falsely flagged undelivered.
   s.delivered = true;
   settleFromHistory(s, messages, turnId, () => opts.guard ?? false);
   return { s, items, statuses };
 }
 
 const usage = { context_tokens: 42, output_tokens: 7, cached_tokens: 0 };
-
-// ── finishErr: a send that never landed must fail the optimistic bubble ───────
-// The clock→tick mapping is boolean; a settle that clears `pending` without
-// evidence flips the bubble to a "Sent" check that contradicts the error the
-// same turn surfaces. A genuine send failure must instead FAIL the pending
-// bubble (`fails_pending` on the settle push), while a delivered-then-stopped
-// turn keeps its confirmation — the message DID reach the agent.
 
 test("a not-connected refusal fails the optimistic bubble (the send never landed)", () => {
   const { items, output } = recorder();
@@ -74,10 +57,6 @@ test("a not-connected refusal fails the optimistic bubble (the send never landed
 });
 
 test("a blocked-account refusal settles as the billing_locked card, not a sign-in", () => {
-  // H-005: the provider blocks the account behind an intact credential. The
-  // card names the provider the gateway named, carries the refused prompt for
-  // "Send again", and never reads as `no_credentials` (a sign-in would change
-  // nothing).
   const { items, statuses, output } = recorder();
   const s = newTurnState("Houston/Bo", "activity", output, { prompt: "hi" });
   s.provider = "anthropic";
@@ -96,7 +75,6 @@ test("a blocked-account refusal settles as the billing_locked card, not a sign-i
   expect(card?.fails_pending).toBe(true);
   expect(s.settled).toBe(true);
   expect(statuses.at(-1)?.[0]).toBe("error");
-  // Settled once: a late failure line must not land on top of the card.
   finishErr(s, "late failure");
   expect(items.filter((i) => i.feed_type === "system_message")).toHaveLength(0);
 });
@@ -125,16 +103,12 @@ test("matches the assistant reply by turnId and adopts its text + usage", () => 
     [
       { role: "user", content: "hi", ts: 1, turnId: "t-1" },
       { role: "assistant", content: "Full reply", ts: 2, turnId: "t-1", usage },
-      // A LATER turn's messages must not be adopted.
       { role: "user", content: "next", ts: 3, turnId: "t-2" },
     ],
     "t-1",
   );
   expect(s.settled).toBe(true);
-  // A clean settle with NO pending interaction still lands on `needs_you` —
-  // the engine never writes `done`.
   expect(s.terminal).toBe("needs_you");
-  // The settle's pushes carry the adopted identity (HOU-1214 dedup).
   expect(items).toContainEqual({
     feed_type: "assistant_text",
     data: "Full reply",
@@ -174,9 +148,6 @@ test("a persisted pendingInteraction recovers on reload: needs_you + the interac
     "t-1",
   );
   expect(s.settled).toBe(true);
-  // The live `done` was missed; recovering the persisted interaction carries it
-  // onto the terminal needs_you persist — the machinery reads
-  // s.pendingInteraction from here, so the card renders the question.
   expect(s.terminal).toBe("needs_you");
   expect(s.pendingInteraction).toEqual(interaction);
   expect(statuses).toEqual([["completed", undefined]]);
@@ -204,8 +175,6 @@ test("an empty-summary plan_ready settles to needs_you like every blocking inter
 });
 
 test("a legacy pre-step pendingInteraction on a persisted reply is ignored, not adopted", () => {
-  // Written by an older build: no `steps`. Adopting it would crash every
-  // consumer that reads interaction.steps ("undefined is not an object").
   const legacy = {
     kind: "question",
     question: "which date?",
@@ -245,11 +214,6 @@ test("a persisted providerError for our turn settles as the typed card", () => {
   expect(s.settled).toBe(true);
   expect(items.some((i) => i.feed_type === "provider_error")).toBe(true);
 });
-
-// ── The card is the transcript's LAST word (PRODUCT-1578) ─────────────────────
-// A turn that streamed work before failing must finalize that work and put the
-// typed card BELOW it — a card above a bubble still marked streaming read as
-// "the agent is still going" with the failure buried mid-transcript.
 
 test("a live provider-error settle finalizes the streamed reply BEFORE the card", () => {
   const { items, output } = recorder();
@@ -303,8 +267,6 @@ test("a persisted stopped reply settles needs_you with the standard stop line, n
   const { s, items, statuses } = run(
     [
       { role: "user", content: "do it", ts: 1, turnId: "t-1" },
-      // The runtime never publishes a clean `done` for a stopped turn; adopting
-      // it as a plain reply would render the interruption as a normal finish.
       {
         role: "assistant",
         content: "working on",
@@ -316,8 +278,6 @@ test("a persisted stopped reply settles needs_you with the standard stop line, n
     "t-1",
   );
   expect(s.settled).toBe(true);
-  // Mirrors the LIVE stop settle recovered from history: needs_you, the standard
-  // "Stopped by user" line, an `error` status with no text — same code path.
   expect(s.terminal).toBe("needs_you");
   expect(items).toContainEqual({
     feed_type: "system_message",
@@ -346,8 +306,6 @@ test("a stopped reply with an (illegal) pendingInteraction: stopped wins, no car
     ],
     "t-1",
   );
-  // Precedence: `stopped` wins — a stopped turn must never render a card, so the
-  // interaction is never adopted onto the board.
   expect(s.terminal).toBe("needs_you");
   expect(s.pendingInteraction).toBeNull();
   expect(items.some((i) => i.feed_type === "provider_error")).toBe(false);
@@ -375,7 +333,6 @@ test("an `interrupted` reply for our turnId settles as the ENGINE RESTART error,
   );
   expect(s.settled).toBe(true);
   expect(s.terminal).toBe("error");
-  // The reply's turnId is adopted first, so the settle push carries it.
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: ENGINE_RESTART_MESSAGE,
@@ -403,8 +360,6 @@ test("a RESUMED interruption settles neutrally: the pause line, no error, no ter
     { streamed: "half a repl" },
   );
   expect(s.settled).toBe(true);
-  // No board persist at all: the engine is already running the turn again, so
-  // the card keeps its `running` status (PRODUCT-1785).
   expect(s.terminal).toBeNull();
   expect(items).toContainEqual({
     feed_type: "system_message",
@@ -428,7 +383,6 @@ test("our user message with NO assistant reply for our turnId settles as the dea
     feed_type: "system_message",
     data: TURN_DIED_MESSAGE,
   });
-  // NEVER the old empty "completed" render.
   expect(items.some((i) => i.feed_type === "final_result")).toBe(false);
   expect(statuses).toEqual([["error", TURN_DIED_MESSAGE]]);
 });
@@ -457,7 +411,7 @@ test("legacy: a rejected guard settles the streamed accumulation as completed", 
     undefined,
     { guard: false, streamed: "what we streamed" },
   );
-  expect(s.terminal).toBe("needs_you"); // clean settle: never `done`
+  expect(s.terminal).toBe("needs_you");
   expect(items).toContainEqual({
     feed_type: "assistant_text",
     data: "what we streamed",
@@ -480,7 +434,7 @@ test("legacy: a rejected guard with NOTHING streamed settles as the dead-turn er
 
 test("a failed history reload (null) still settles: streamed text as completed, nothing as error", () => {
   const withText = run(null, "t-1", { streamed: "partial tail" });
-  expect(withText.s.terminal).toBe("needs_you"); // clean settle: never `done`
+  expect(withText.s.terminal).toBe("needs_you");
   expect(withText.items).toContainEqual({
     feed_type: "assistant_text",
     data: "partial tail",
@@ -489,14 +443,6 @@ test("a failed history reload (null) still settles: streamed text as completed, 
   const withoutText = run(null, "t-1");
   expect(withoutText.s.terminal).toBe("error");
 });
-
-/**
- * finishOk — the clean-settle board status. There is NO split any more: every
- * clean finish lands `needs_you`, because the engine never writes `done` (only
- * the user moves a card there). What the captured pending interaction decides is
- * what the card RENDERS, and it must ride the settle untouched — blocking steps
- * or offer-only ones alike. The session status is `completed` in every case.
- */
 
 test("finishOk without a captured interaction settles the card to needs_you", () => {
   const { statuses, output } = recorder();
@@ -523,7 +469,6 @@ test("finishOk with a blocking interaction settles needs_you and keeps the inter
       },
     ],
   };
-  // The `done` frame stashes the interaction before finishOk (turn-frames.ts).
   s.pendingInteraction = interaction;
   finishOk(s);
   expect(s.terminal).toBe("needs_you");
@@ -535,9 +480,6 @@ test("finishOk with a LONE suggest_reusable step settles needs_you and persists 
   const { statuses, output } = recorder();
   const s = newTurnState("Houston/Bo", "activity-suggest", output);
   s.text = "Done. Sales summary is ready.";
-  // The mission IS finished, but finishing is not the engine's call to close:
-  // the card parks on needs_you and the offer rides along so it renders there
-  // (and survives the user's later move to done).
   const interaction: PendingInteraction = {
     steps: [
       {
@@ -678,14 +620,6 @@ test("finishOk with a plan_ready step settles needs_you and keeps the plan", () 
   expect(s.pendingInteraction).toEqual(interaction);
 });
 
-/**
- * finishErr — the not-connected refusal (HOU-676). A logged-out send is
- * refused BEFORE the message reaches the engine, so it must settle as the
- * persistent typed reconnect card (which survives the reconnect and offers
- * "Send again" with the original text) — never as the raw system message
- * that only fed the auto-dismissing store-driven card.
- */
-
 const NOT_CONNECTED = "No provider connected. Connect an AI provider first.";
 
 test("a not-connected refusal settles as the typed card carrying provider + failed prompt", () => {
@@ -699,7 +633,6 @@ test("a not-connected refusal settles as the typed card carrying provider + fail
   expect(s.terminal).toBe("needs_you");
   expect(items).toContainEqual({
     feed_type: "provider_error",
-    // The refused send never landed → its optimistic bubble is failed.
     fails_pending: true,
     data: {
       kind: "unauthenticated",
@@ -709,12 +642,8 @@ test("a not-connected refusal settles as the typed card carrying provider + fail
       failed_prompt: "hey",
     },
   });
-  // The card IS the surface: no raw system_message duplicate, and the
-  // invisible final_result stops the progress line.
   expect(items.some((i) => i.feed_type === "system_message")).toBe(false);
   expect(items.some((i) => i.feed_type === "final_result")).toBe(true);
-  // Status clears the loading flag with NO text — text would re-synthesize
-  // the "Session error:" echo that fed the auto-dismissing card.
   expect(statuses).toEqual([["error", undefined]]);
 });
 
@@ -736,12 +665,10 @@ test("a real turn failure still settles as system_message + red error", () => {
     provider: "openai",
     prompt: "hey",
   });
-  s.delivered = true; // a REAL turn failure: the turn ran, so the send landed
+  s.delivered = true;
   finishErr(s, "upstream exploded");
   expect(s.terminal).toBe("error");
   expect(items).toContainEqual({
-    // Delivered-then-errored: the red error is about the turn, so the bubble
-    // stays confirmed — no undelivered flag.
     feed_type: "system_message",
     data: "upstream exploded",
   });

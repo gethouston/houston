@@ -1,7 +1,3 @@
-// SSR render of ChatInteractionCard, kept apart from the pure-logic suite
-// (interaction-card.test.ts) because it needs react-dom/server and the real
-// component tree.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import * as React from "react";
@@ -40,8 +36,6 @@ const card = (state?: StepperState): string =>
     }),
   );
 
-/** The free-text escape field is a <textarea>, so SSR prints its value as the
- *  element's child text rather than a value attribute. */
 const draftText = (html: string): string =>
   /<textarea[^>]*>([^<]*)<\/textarea>/.exec(html)?.[1] ?? "";
 

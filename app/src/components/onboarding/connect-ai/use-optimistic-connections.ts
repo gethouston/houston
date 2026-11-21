@@ -4,14 +4,6 @@ import { logAndReportError } from "../../../lib/error-report";
 import type { ProviderInfo } from "../../../lib/providers";
 import { optimisticConnectionState } from "./optimistic-connection";
 
-/**
- * The connect card's provider connections, usable before the first probe has
- * answered ({@link optimisticConnectionState}). A Connect pressed while the
- * probe is on its way shows as connecting at once and starts the moment the
- * probe answers: a sign-in sent to an AI home still starting up would fail,
- * so it waits for it instead. Cancel drops a press still waiting. When the
- * probe answers, the cards' own statuses refresh so none stays "checking".
- */
 export function useOptimisticConnections(
   connections: ProviderConnections,
   probeSettled: boolean,
@@ -32,8 +24,6 @@ export function useOptimisticConnections(
   useEffect(() => {
     if (!probeSettled || waiting === null) return;
     setWaiting(null);
-    // Already connected (it was, before the probe could say): nothing to
-    // start, and onboarding moves on by itself.
     if (live.current.connectionState(waiting) !== "connected")
       live.current.connect(waiting);
   }, [probeSettled, waiting]);

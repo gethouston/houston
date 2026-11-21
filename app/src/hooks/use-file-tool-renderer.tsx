@@ -7,14 +7,8 @@ import { isFileWriteTool } from "../lib/file-write-tools";
 import { buildTurnSummaryItems } from "../lib/turn-summary-items";
 import { isUserVisibleFilePath } from "../lib/user-visible-files";
 
-/**
- * Returns `isSpecialTool`, `renderToolResult`, and `renderTurnSummary`
- * callbacks for rendering clickable file cards on Write/Edit tool results
- * and an aggregated end-of-turn file summary.
- */
 export function useFileToolRenderer(
   agentPath: string,
-  /** The chat these render in: a file opened from it takes comments there. */
   draftKey: string | null,
 ) {
   const isSpecialTool = useCallback(
@@ -25,7 +19,6 @@ export function useFileToolRenderer(
   const renderToolResult = useCallback(
     (tool: ToolEntry, index: number) => {
       const inp = tool.input as Record<string, unknown> | null | undefined;
-      // Claude tools carry `file_path`; pi tools carry `path`.
       const filePath = (inp?.file_path ?? inp?.path) as string | undefined;
       const isError = tool.result?.is_error ?? false;
 

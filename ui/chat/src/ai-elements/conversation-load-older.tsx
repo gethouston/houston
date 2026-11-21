@@ -6,21 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 
 export type ConversationLoadOlderProps = {
-  /** Older messages exist server-side (the loaded window has a start > 0). */
   hasOlder: boolean;
-  /** Prepend the previous page; resolves once the feed carries it. */
   onLoadOlder: () => Promise<unknown>;
 };
 
-/**
- * Scroll-up lazy-load trigger (HOU-819). Mount as the FIRST child of
- * <ConversationContent>: when the user scrolls the top of the loaded window
- * into view, the previous transcript page is fetched and prepended, and the
- * viewport is anchored (same distance from the bottom) so the content on
- * screen never jumps. Guarded against the initial stick-to-bottom animation
- * (which sweeps the sentinel past the viewport while pinned to bottom) and
- * against overlapping loads.
- */
 export const ConversationLoadOlder = ({
   hasOlder,
   onLoadOlder,
@@ -42,19 +31,9 @@ export const ConversationLoadOlder = ({
         if (loadingRef.current || isAtBottomRef.current) return;
         loadingRef.current = true;
         setLoading(true);
-        // Anchor by distance-from-bottom: prepended content grows the pane
-        // upward, so restoring that distance keeps the visible messages still.
-        // Known limitation: content APPENDED during the fetch (an actively
-        // streaming turn) is indistinguishable from prepended growth here, so
-        // the viewport shifts by that delta. Message keys are stable now
-        // (feed-entry ids), so a follow-up can anchor on a surviving DOM node
-        // instead of this pane-level measurement.
         const bottomGap = pane.scrollHeight - pane.scrollTop;
         void onLoadOlder()
-          .catch(() => {
-            // The parent's loader surfaces its own failure (toast path); here
-            // only the trigger state must recover so a retry can fire.
-          })
+          .catch(() => {})
           .finally(() => {
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {

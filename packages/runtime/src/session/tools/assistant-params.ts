@@ -3,22 +3,10 @@ import { Value } from "typebox/value";
 import type { AssistantError } from "./assistant-result";
 import { invalidParamMessage } from "./assistant-schema-hint";
 
-/**
- * Argument validation for `houston_call`. The catalog carries each param's JSON
- * Schema, so the tool checks the model's arguments HERE — before any request
- * leaves the runtime — instead of letting a mistyped argument surface as an
- * opaque gateway 400 the model cannot correct itself from.
- *
- * Fail closed: an argument the operation does not declare is an error, not
- * something to forward. A generic dispatcher that passed unknown keys through
- * would let a model reach fields no annotated operation exposes.
- */
-
 export type AssistantParamCheck =
   | { ok: true; params: Record<string, unknown> }
   | { ok: false; error: AssistantError };
 
-/** A plain argument bag (`{}`-rooted, not an array, not null). */
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return null;
@@ -26,12 +14,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-/**
- * Check the model's arguments against one operation's declared params and
- * return them ORDERED as the operation declares them — the host maps that order
- * onto the client method's positional signature, so the order is contract, not
- * cosmetics. Params left out (optional, or explicitly `undefined`) are omitted.
- */
 export function checkCallParams(
   op: AssistantOperation,
   raw: unknown,
@@ -73,10 +55,6 @@ export function checkCallParams(
       };
     }
     if (!Value.Check(param.schema, value)) {
-      // The message carries the accepted values (or the expected type) inline:
-      // a model that has to spend a round trip on houston_describe to learn
-      // them instead guesses formats until it reaches for a destructive
-      // workaround. See assistant-schema-hint.ts.
       return {
         ok: false,
         error: {

@@ -1,10 +1,5 @@
 import type { MemberRoutine, MemberRoutines } from "@houston/engine-adapter";
 
-/**
- * What the remove confirmation says about the member's routines, derived from
- * the read's state. A failed read never blocks the removal: it says, neutrally,
- * that the check did not happen.
- */
 export type RemoveRoutinesNote =
   | { kind: "loading" }
   | { kind: "failed" }
@@ -23,7 +18,6 @@ export function removeRoutinesNote(read: {
   return read.isError ? { kind: "failed" } : { kind: "loading" };
 }
 
-/** A stable React key: a routine id is unique per employee, not per space. */
 export function memberRoutineKey(routine: MemberRoutine): string {
   return `${routine.agentSlug}/${routine.routineId}`;
 }

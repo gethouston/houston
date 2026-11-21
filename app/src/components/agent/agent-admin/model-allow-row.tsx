@@ -3,13 +3,6 @@ import type { CatalogModel } from "../../../lib/ai-hub/catalog-types.ts";
 import { labName, modelMarkId } from "../../ai-hub/format.ts";
 import { BrandMark } from "../../provider-browser/brand-mark.tsx";
 
-/**
- * One allow-list row for a hub `CatalogModel`, in the AI-hub's visual language
- * but allowlist-shaped: the model's colorful {@link BrandMark}, its friendly
- * name, its muted lab name, and an allow {@link Switch} on the right. Toggling
- * the switch flips every provider offer of the model at once (see
- * {@link toggleModel}); the parent owns the id set.
- */
 export function ModelAllowRow({
   model,
   checked,
@@ -20,7 +13,6 @@ export function ModelAllowRow({
   model: CatalogModel;
   checked: boolean;
   disabled: boolean;
-  /** Localized `aria-label` for the switch (e.g. "Allow Claude Opus 4.8"). */
   allowLabel: string;
   onToggle: () => void;
 }) {

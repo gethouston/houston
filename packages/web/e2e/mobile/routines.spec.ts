@@ -3,13 +3,6 @@ import { expect, test } from "../support/fixtures";
 import { openPhoneTeamSection } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
-/**
- * Routines on a phone (the tier-1 CI gate's last leg): the team's Routines
- * section is reachable from the employee's task list menu, the list is usable at a
- * Pixel-7-class width, and a row tap opens the routine's own screen — never a
- * popover — with its actions reachable and nothing forcing a horizontal scroll.
- */
-
 async function seedRoutine(name: string): Promise<void> {
   const agents = (await (await fetch(`${FAKE_HOST_URL}/agents`)).json()) as {
     id: string;
@@ -37,7 +30,6 @@ test("a routine opens as its own screen from the phone employee screen", async (
   await seedRoutine("Morning digest");
 
   await page.goto("/");
-  // The phone reaches Routines from the employee's task list menu.
   await openPhoneTeamSection(page, "routines");
 
   const row = screen(page)
@@ -46,9 +38,6 @@ test("a routine opens as its own screen from the phone employee screen", async (
   await expect(row).toBeVisible();
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
 
-  // Row tap → the routine's own screen (PRODUCT-1208: never a popover),
-  // with every header action on screen at 412px. Tap the TITLE: the row's
-  // center is the schedule-summary button, which opens its own editor.
   await row.getByText("Morning digest").tap();
   const detail = page.getByTestId("routine-screen");
   await expect(
@@ -60,7 +49,6 @@ test("a routine opens as its own screen from the phone employee screen", async (
   ).toBeVisible();
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
 
-  // Back returns to the list.
   await detail.getByRole("button", { name: "Back" }).tap();
   await expect(page.getByTestId("routine-screen")).toHaveCount(0);
   await expect(

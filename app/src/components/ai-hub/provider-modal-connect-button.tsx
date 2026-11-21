@@ -3,8 +3,6 @@ import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
 
-/** The provider modal header's Connect CTA: disabled until the status probe
- *  resolves, and swaps to Cancel while a connect is in flight. */
 export function ConnectButton({
   provider,
   connections,

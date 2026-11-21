@@ -10,14 +10,6 @@ import type { TurnFilesystem } from "./turn-filesystem";
 import { publishStoreDoc } from "./turn-store-doc";
 import type { TurnRequest } from "./types";
 
-/**
- * Project the learnings file into its DB doc from the STORE object,
- * normalized like the standing projector (absent = empty). Every pooled
- * writer (a turn's save_learning, an op's whole-list save) publishes this
- * way: overlapping writers merge into that object by id, reordering it, so
- * no writer's own copy is what landed, and a copy from a tree listed before
- * another writer's landing would drop that writer's memory.
- */
 export async function publishLearningsDoc(
   target: ActivityDocOptions,
   source: ActivityDocSource,
@@ -29,7 +21,6 @@ export async function publishLearningsDoc(
   );
 }
 
-/** A claimed turn's memories write or deletion, projected (null = no doc system). */
 export async function publishTurnLearningsDoc(
   deps: TurnServerDeps,
   turn: TurnRequest,

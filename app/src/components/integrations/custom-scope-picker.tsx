@@ -12,15 +12,6 @@ import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
 
-/**
- * The Integrations page's "whose custom integrations" pill (PRODUCT-1773):
- * on a per-agent deployment (one pod per agent) the custom list the page
- * shows belongs to ONE agent, and this control names which. The same pill
- * idiom as the phone Agents home's team filter; the visible text is the
- * control's name. Rendered only where the choice exists (per-agent scope,
- * more than one agent) — a single-agent workspace or a shared host has
- * nothing to pick.
- */
 export function CustomScopePicker({
   agents,
   selected,
@@ -41,8 +32,6 @@ export function CustomScopePicker({
           data-testid="custom-scope-picker"
           title={t("custom.scope.title")}
           className={cn(
-            // Capped so a long agent name never squeezes the search field out
-            // of the sticky strip on a phone (that row does not wrap).
             "ht-hairline inline-flex max-w-40 shrink-0 items-center gap-2 rounded-full md:max-w-64 bg-chip pr-3 pl-3 text-[13px] font-weight-510 text-ink transition-colors hover:bg-hover active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
             compact ? "h-8" : "h-9",
           )}

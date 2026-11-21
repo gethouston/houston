@@ -15,7 +15,6 @@ import {
 import { meetingNotes } from "./sample";
 import { badgeProps } from "./trigger-status-badge-parts";
 
-/** The five wire states, in the order a routine degrades through them. */
 const states: TriggerStatusItem["status"][] = [
   "active",
   "pending",
@@ -33,7 +32,6 @@ const status = (
   detail,
 });
 
-/** The detail block sits in the chat header, so give it that column width. */
 function Block({ children }: { children: ReactNode }) {
   return (
     <div className={cn(storeSurface.panel, "w-full max-w-sm")}>{children}</div>
@@ -122,11 +120,6 @@ function TriggerStatusBadgeSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["RoutineTriggerStatus", "TriggerStatusBadge"];
 
 export const specimen: Specimen = {

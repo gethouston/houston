@@ -13,12 +13,6 @@ import {
   runWithInteractionCapture,
 } from "./interaction";
 
-/**
- * The follow-up safety net decides on the turn's own facts (clean end, a
- * reply, nothing recorded, an interactive chat) and, when it runs, records
- * the forced call's actions exactly as an in-band `suggest_actions` would.
- */
-
 const ARGS = {
   actions: [
     { id: "a", label: "Otra versión", message: "Haz otra versión" },
@@ -75,7 +69,6 @@ test("a clean reply with nothing recorded runs once and lands the actions as the
   expect(interaction.pending).toEqual({
     steps: [{ kind: "suggest_actions", id: "a1", actions: ARGS.actions }],
   });
-  // Recorded now, so the same turn never runs it twice.
   expect(followUpPassSkip(input({ session, interaction }))).toBe("answered");
 });
 

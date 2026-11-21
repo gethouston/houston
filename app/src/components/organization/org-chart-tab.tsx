@@ -16,16 +16,6 @@ import { useOrgNav } from "./org-nav-store";
 import type { OrgTabProps } from "./organization-view";
 import { useOrgChartData } from "./use-org-chart-data";
 
-/**
- * Admin > Org chart: the chart itself first (the space, its people, each
- * person's AI Employees) with its one-click Share, then the space's month in
- * one hero band (its hours of work, its messages, a 30-day chart), then
- * every AI Employee ranked by the hours it worked, the #1 featured, each
- * with the people who manage and use it. A card or line opens its board; a
- * face opens People on that person. A read that fails says so once with a
- * retry instead of drawing zeroes. A personal space is its one person: the
- * hero names them and the ledger draws no people columns.
- */
 export default function OrgChartTab({ ctx }: OrgTabProps) {
   const { t } = useTranslation("teams");
   const isMobile = useIsMobile();

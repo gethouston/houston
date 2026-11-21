@@ -22,25 +22,6 @@ import {
 } from "./agents-home-model";
 import { ManagerHomeRow } from "./manager-home-row";
 
-/**
- * The mobile Agents home: every agent as a chat-list row — a large avatar
- * (a fanned stack when the agent holds several conversations), the name, the
- * latest task as the preview line, the time it moved and the needs-you badge.
- * Reads the same one-sweep `all-conversations` query and the same per-agent
- * summaries every other badge surface reads — no fetch path of its own — so
- * the rows repaint through the ordinary event invalidation.
- *
- * The AI Manager leads the list, pinned above the roster
- * (`manager-home-row.tsx`). The roster is one FLAT list, narrowed by the
- * group filter under the title (present once
- * the workspace has a group): every agent by default, or one group's. The
- * choice is a store preference, not a nav level, so drilling into an agent and
- * back finds the filter where it was left. The title block
- * ({@link AgentsHomeHeader}) also carries the phone's group actions.
- *
- * Tapping an agent adopts it as current (the same subject-acquisition the rail's
- * agent rows perform) and pushes its task list on the nav stack.
- */
 export function AgentsHomeList() {
   const { t } = useTranslation(["shell", "teams"]);
   const agents = useAgentStore((s) => s.agents);
@@ -97,8 +78,6 @@ export function AgentsHomeList() {
         ) : swept ? (
           <ul>
             {rows.map((row) => (
-              // The divider is the list's: one hairline under each row but the
-              // last, inset the same distance from both screen edges.
               <li
                 key={row.agent.id}
                 className="mx-4 border-b border-line last:border-b-0"
@@ -119,8 +98,6 @@ export function AgentsHomeList() {
   );
 }
 
-/** Placeholder mirroring {@link AgentHomeRowCell}'s two-line track while the
- *  sweep has no data at all yet, so the list never claims agents are idle. */
 function AgentsHomeRowSkeleton() {
   return (
     <div className="mx-4 flex items-center gap-3 border-b border-line last:border-b-0">

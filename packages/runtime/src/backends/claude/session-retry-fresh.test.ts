@@ -10,12 +10,6 @@ vi.mock("../../auth/report-revoked", () => ({
   reportRevokedServedToken: vi.fn(),
 }));
 
-/**
- * A refused resume reruns the turn fresh on its OWN credential read. Whatever
- * way that rerun fails, the revoked-token report must name the token the rerun
- * ran on (`d-2`), never the refused attempt's (`d-1`).
- */
-
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -54,7 +48,6 @@ function rejecting(err: Error): AsyncIterable<SDKMessage> {
 const refused = () =>
   rejecting(new Error("No conversation found with session ID: sess-gone"));
 
-/** Attempt 1 is refused as a dangling resume; attempt 2 runs `second`. */
 function retryingQuery(
   second: () => AsyncIterable<SDKMessage>,
 ): ClaudeQuery & { optionsSeen: Options[] } {

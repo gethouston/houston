@@ -1,14 +1,3 @@
-/**
- * FilesBody — the current view (the grid's open folder, or the list's whole
- * workspace tree), plus the three states that replace it: the loading skeleton,
- * the empty search result and the empty folder. All three are hoisted ABOVE the
- * view switch, so the list gets the search miss too instead of showing bare
- * column headers (the empty FOLDER is a grid state now: the list is rooted at
- * the workspace, and an empty folder inside it says so on its own row). Chrome
- * (header, scroll container, drop tinting, background menu) stays in
- * FilesBrowser; this owns only what renders inside the content column.
- */
-
 import { cn } from "@houston-ai/core";
 import type { FilesBrowserProps } from "./files-browser";
 import type { FilesBrowserLabels } from "./files-browser-labels";
@@ -30,7 +19,6 @@ export function FilesBody({
   b: ReturnType<typeof useFilesBrowser>;
   props: FilesBrowserProps;
   l: Required<FilesBrowserLabels>;
-  /** Built by FilesBrowser only when the consumer passed onDeleteMany. */
   selection?: FilesSelection;
 }) {
   if (props.loading) {
@@ -73,8 +61,6 @@ export function FilesBody({
   const onCreateFolder = props.onCreateFolder ? b.createFolderAt : undefined;
   const onCancelCreateFolder = () => b.setCreatingFolder(false);
   const onNewFolder = onCreateFolder ? b.startCreatingFolder : undefined;
-  // Create-folder mode always wins: the new card/row has to be able to render,
-  // or the affordances that start it are dead clicks.
   const isBlank = b.visibleFolder.children.length === 0 && !b.creatingFolder;
 
   if (isBlank && b.query) {

@@ -1,12 +1,3 @@
-/**
- * Visual-regression baselines for the org plan: Admin > Billing of a free
- * org (the share of the week, the price and Upgrade) and of a paid one (seats,
- * the total and Manage billing), each at desktop and phone width.
- *
- * Deterministic by construction: the page clock starts at `PLAN_NOW` and every
- * instant on screen comes from the fixture (`support/plan.ts`). Shot light.
- */
-
 import type { PlanSummary } from "@houston/wire-types";
 import type { Page } from "@playwright/test";
 import { expect, test } from "../support/fixtures";
@@ -32,7 +23,6 @@ async function boot(page: Page, width: Width): Promise<void> {
 }
 
 const PLANS: Record<"free" | "paid", PlanSummary> = {
-  // A fixed reset, or the fake host dates it a week from its own clock.
   free: freePlan({
     usage: {
       percent: 25,

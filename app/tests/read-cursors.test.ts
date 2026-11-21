@@ -21,8 +21,6 @@ import {
 const UID = "user-me";
 const NOW = Date.UTC(2026, 6, 27, 12, 0, 0);
 
-/** The injectable storage seam, backed by a Map instead of the DOM. Insertion
- *  order is `Map`'s, which is what `localStorage`'s index order is too. */
 function memoryStorage(seed?: Record<string, string>): CursorStorage & {
   map: Map<string, string>;
 } {
@@ -43,7 +41,6 @@ function memoryStorage(seed?: Record<string, string>): CursorStorage & {
   };
 }
 
-/** The persisted envelope, as it actually sits in storage. */
 function storedBlob(
   storage: CursorStorage,
   uid: string,
@@ -175,7 +172,6 @@ describe("markMentionNotified", () => {
     const store: ReadCursorStore = { since: 100, cursors: {} };
     const next = markMentionNotified(store, "k", 900);
     strictEqual(notifiedFloorFor(next, "k"), 900);
-    // Seeded from `since`, so the unread badge the ping announced survives.
     strictEqual(readFloorFor(next, "k"), 100);
   });
 
@@ -207,7 +203,6 @@ describe("growth cap", () => {
 
     const keys = Object.keys(store.cursors);
     strictEqual(keys.length, 500);
-    // The 20 oldest were dropped; the newest 500 survive.
     strictEqual(store.cursors.k0, undefined);
     strictEqual(store.cursors.k19, undefined);
     strictEqual(store.cursors.k20?.readAt, 21);
@@ -229,24 +224,14 @@ describe("growth cap", () => {
   });
 });
 
-/**
- * HOU-945 review fix: opening a mission must silence its pending mention ping.
- * Both repro paths are asserted, because they fail for different reasons —
- * one is "the mention landed while I was looking", the other is "I opened the
- * mission after a reload and the mention predates that".
- */
 describe("notifiedFloorFor folds in the read cursor", () => {
   it("silences a mention that lands in a conversation I have open", () => {
-    // I am reading the mission: the tracker stamped `readAt` on the last
-    // repaint. A mention written a moment later must not reach the OS.
     const store = markRead({ since: 100, cursors: {} }, "k", 5_000);
     strictEqual(notifiedFloorFor(store, "k"), 5_000);
     ok(4_900 <= notifiedFloorFor(store, "k"));
   });
 
   it("silences a mention that predates the mission I just opened", () => {
-    // Fresh boot, never notified about anything here; the mention is older
-    // than the moment I opened the mission, so I have already seen it.
     const store: ReadCursorStore = {
       since: 100,
       cursors: { k: { readAt: 9_000 } },
@@ -263,7 +248,6 @@ describe("notifiedFloorFor folds in the read cursor", () => {
   });
 
   it("keeps the notified watermark when it leads the read cursor", () => {
-    // Pinged about a mention I have not opened yet: the ping must not repeat.
     const store: ReadCursorStore = {
       since: 100,
       cursors: { k: { readAt: 200, notifiedAt: 9_000 } },
@@ -272,8 +256,6 @@ describe("notifiedFloorFor folds in the read cursor", () => {
   });
 
   it("leaves the UNREAD badge lit for a mention I was only pinged about", () => {
-    // The whole point of keeping the two watermarks separate: folding them at
-    // write time would clear the badge the notification was announcing.
     const store = markMentionNotified({ since: 100, cursors: {} }, "k", 9_000);
     strictEqual(notifiedFloorFor(store, "k"), 9_000);
     ok(9_000 > mentionReadFloorFor(store, "k"));
@@ -344,19 +326,13 @@ describe("mergeReadCursorStores", () => {
   });
 });
 
-/**
- * Two tabs, one blob. Every one of these fails with a plain `setItem`, which is
- * what the app did before this fix.
- */
 describe("saveReadCursors merges instead of clobbering", () => {
   it("keeps what another tab wrote while this one was open", () => {
     const storage = memoryStorage();
-    // The other tab read mission B and saved.
     saveReadCursors(storage, UID, {
       since: 100,
       cursors: { b: { readAt: 900 } },
     });
-    // This tab still holds a view from before that, and now reads mission A.
     const merged = saveReadCursors(storage, UID, {
       since: 100,
       cursors: { a: { readAt: 800 } },
@@ -424,7 +400,6 @@ describe("saveReadCursors merges instead of clobbering", () => {
 });
 
 describe("pruneForeignCursorStores", () => {
-  /** Seed `count` other accounts, oldest first, plus unrelated origin keys. */
   function withAccounts(count: number) {
     const storage = memoryStorage({
       "houston.theme": "dark",

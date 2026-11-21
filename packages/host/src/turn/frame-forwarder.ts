@@ -2,10 +2,6 @@ import { isTerminalFrame, type SequencedFrame } from "@houston/runtime-client";
 import type { TurnBus } from "./bus";
 import { eventChannel } from "./relay-dialect";
 
-/**
- * Long enough for legitimate tool-heavy turns, bounded so dead SSE captures
- * cannot leak forever.
- */
 const CAPTURE_IDLE_MS = 30 * 60 * 1000;
 const STOP_DRAIN_TIMEOUT_MS = 3_000;
 
@@ -21,7 +17,6 @@ interface CaptureState {
   unsubscribe: () => void;
 }
 
-/** Unconditional ev2 subscriber: batches relay frames even with no SSE client. */
 export class FrameForwarder {
   private readonly states = new Map<string, CaptureState>();
   private readonly sendTails = new Map<string, Promise<void>>();

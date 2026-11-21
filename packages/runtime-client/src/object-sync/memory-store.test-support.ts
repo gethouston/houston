@@ -10,8 +10,6 @@ import {
   type WriteOptions,
 } from "./object-store";
 
-/** A generation-aware store in memory, as pod-store answers: create-only
- *  and generation preconditions enforced, every call recorded. */
 export function memoryStore(seed: Record<string, string> = {}) {
   let next = 10;
   const objects = new Map<string, { data: Buffer; generation: string }>();

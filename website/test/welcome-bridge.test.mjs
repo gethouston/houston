@@ -1,8 +1,3 @@
-// The attribution bridge on /welcome: the desktop app opens that URL on first
-// launch with ?install_id=<id>, and the page ties the website's anonymous
-// visitor to it on BOTH sinks — the first-party funnel and PostHog. The page's
-// script is inline, so it is read out of the template and evaluated against a
-// stub window, the same way the asset tests drive the analytics assets.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -20,11 +15,6 @@ const source = inline[1];
 
 const INSTALL_ID = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
 
-/**
- * Evaluates the inline script against a stub window and fires DOMContentLoaded.
- * `analytics` / `posthog` are left undefined to stand for an asset that never
- * loaded — the whole point of the two sinks being independent.
- */
 function visit({ installId = INSTALL_ID, analytics, posthog } = {}) {
   const handlers = [];
   const window = {
@@ -42,7 +32,6 @@ function visit({ installId = INSTALL_ID, analytics, posthog } = {}) {
   for (const handler of handlers) handler();
 }
 
-/** A stub of the first-party sink (assets/houston-analytics.js). */
 function fakeAnalytics({ valid = true } = {}) {
   const tracked = [];
   return {
@@ -52,7 +41,6 @@ function fakeAnalytics({ valid = true } = {}) {
   };
 }
 
-/** A stub of the PostHog snippet. */
 function fakePosthog({ throws = false } = {}) {
   const calls = [];
   const record =
@@ -70,9 +58,6 @@ function fakePosthog({ throws = false } = {}) {
 }
 
 test("bridges PostHog even when the first-party sink never loaded", () => {
-  // houston-analytics.js (or its identity half) can be blocked or 404 on its
-  // own; the PostHog identity merge is what carries the website's UTM props
-  // into the app, and it must not depend on the other asset being there.
   const posthog = fakePosthog();
   visit({ posthog });
   assert.deepEqual(
@@ -111,8 +96,6 @@ test("a PostHog that throws never costs the first-party event", () => {
 });
 
 test("an id the gateway would refuse bridges neither sink", () => {
-  // A PostHog alias is irreversible, so a crafted install_id must never merge
-  // the visitor's person onto it; the first-party event is refused by the same rule.
   const analytics = fakeAnalytics({ valid: false });
   const posthog = fakePosthog();
   visit({ analytics, posthog, installId: "not-a-uuid" });

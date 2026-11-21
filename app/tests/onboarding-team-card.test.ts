@@ -88,7 +88,6 @@ describe("team card walk", () => {
 
   it("offers no Back on the choice, and leads the roster back to it", () => {
     strictEqual(previousTeamView(TEAM_CHOICE, fresh), null);
-    // The choice holds the basic team, so switching paths is one Back away.
     deepStrictEqual(
       previousTeamView({ kind: "hired" }, { hasIndustry: true, hiredCount: 2 }),
       TEAM_CHOICE,
@@ -102,7 +101,6 @@ describe("team card walk", () => {
     deepStrictEqual(asked, { kind: "basicIndustry" });
     const team = nextTeamView(asked);
     deepStrictEqual(team, { kind: "basic", viaIndustry: true });
-    // Picked here, the industry stays changeable from the team screen.
     deepStrictEqual(previousTeamView(team, fresh), { kind: "basicIndustry" });
     deepStrictEqual(
       previousTeamView({ kind: "basic", viaIndustry: false }, fresh),
@@ -253,13 +251,11 @@ describe("basic team", () => {
     const rows = named(["Ava", "Leo", "Iris"]).map((m, i) =>
       i === 0 ? { ...m, rosterKey: "hire-1" } : m,
     );
-    // The joined starter's own name is now one of the taken ones.
     deepStrictEqual(basicTeamNameIssues(rows, ["Ava"]), [null, null, null]);
     strictEqual(hasBasicTeamWork(rows, 0), true);
     const joined = rows.map((m, i) => ({ ...m, rosterKey: `hire-${i}` }));
     strictEqual(hasBasicTeamWork(joined, 0), false);
     deepStrictEqual(basicTeamSubmit(joined, [], 0), { kind: "idle" });
-    // A starter whose create failed is worth pressing again for.
     strictEqual(hasBasicTeamWork(joined, 1), true);
     deepStrictEqual(basicTeamSubmit(joined, [], 1), { kind: "hire" });
   });

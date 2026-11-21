@@ -1,10 +1,3 @@
-/**
- * Protocol v3 — the ONE wire contract for the Houston host, every deployment.
- * The frontend talks ONLY to the host (local profile on 127.0.0.1, cloud
- * profile behind the host URL); the host talks to runtimes. The
- * conversation core (conversation.ts) is runtime v2 verbatim, nested under
- * /v1/agents/:id/conversations/* at the host.
- */
 export const PROTOCOL_VERSION = 3;
 
 export type ErrorCode =
@@ -37,115 +30,30 @@ export interface VersionResponse {
   build: string | null;
 }
 
-/**
- * A member's authority inside a multiplayer org. `owner` is the billing/root
- * seat, `admin` manages members + agents, `user` is a plain seat that can only
- * use the agents assigned to them. Absent capability means single-player.
- */
 export type OrgRole = "owner" | "admin" | "user";
 
-/** See `Capabilities.customIntegrationScope`. */
 export type CustomIntegrationScope = "host" | "agent";
 
-/**
- * What this host deployment can do. The UI gates affordances on capabilities,
- * NEVER on "am I web / desktop / cloud" branches — that's where drift breeds.
- */
 export interface Capabilities {
-  /** Office-to-PDF previews are configured. Absent means false. */
   officePreview?: boolean;
-  /** Deployment profile, for diagnostics only — never branch UI logic on it. */
   profile: "local" | "cloud";
-  /** OS file-manager reveal / open (desktop shell present). */
   revealInOs: boolean;
-  /** Spawning an OS terminal at a path. */
   terminal: boolean;
-  /** Mobile pairing via the reverse tunnel (local profile). */
   tunnel: boolean;
-  /**
-   * Where agent code runs: in-process bash, the remote sandbox, or nowhere
-   * beyond clamped file tools.
-   */
   codeExecution: "local-bash" | "remote-sandbox" | "disabled";
-  /** Providers this deployment offers for connect-once login. */
   providers: string[];
-  /**
-   * Whether the user can connect an OpenAI-compatible (local) server — Ollama /
-   * vLLM / LM Studio, by base URL + model. LOCAL profile only: the URL is the
-   * user's own machine, unreachable from a cloud runtime, so cloud sets false.
-   */
   openaiCompatible: boolean;
-  /** Managed relay protocol versions actually served by this deployment. */
   localModelBridge?: { versions: number[] };
-  /**
-   * Third-party integration providers available (e.g. "composio"). Each lets a
-   * user connect their OWN account and gives agents tools over those apps.
-   * Empty = integrations off for this deployment.
-   */
   integrations: string[];
-  /** Workspace-shared skills store served by this deployment (ADR 0003). */
   sharedSkills: boolean;
-  /** This deployment serves agent-to-agent mission policy and delegation. */
   agentDelegation?: boolean;
-  /**
-   * Whether routines may be woken by an external event (a Composio trigger)
-   * instead of a cron schedule. Requires an integration key AND a public webhook
-   * URL, so it is on for managed cloud / self-host and off on desktop. The UI
-   * hides the event-wake option when false. Absent = off (legacy hosts stay valid).
-   */
   triggers?: boolean;
-  /** C19 personal plan routes are configured on this deployment. */
   plan?: boolean;
-  /**
-   * Whether a custom integration can sign in through its own OAuth flow
-   * (PRODUCT-1172): the host can serve a browser-reachable callback (the
-   * desktop sidecar's loopback, or a configured public base URL). Absent/false
-   * = the deployment cannot receive the redirect (managed cloud until its
-   * gateway callback ships) — the UI keeps the honest "can't connect yet"
-   * verdict instead of offering a sign-in that can only fail.
-   */
   customIntegrationOAuth?: boolean;
-  /**
-   * Where a custom integration's definition + secret live (PRODUCT-1773).
-   * `host`: one definitions file shared by every agent this host serves
-   * (desktop, self-host) — absent means host, so legacy hosts stay valid.
-   * `agent`: one pod per agent, each holding its own definitions and vault
-   * secrets (the hosted gateway) — an integration set up with one agent is
-   * that agent's alone, so a surface with no ambient agent must let the user
-   * choose whose list it shows instead of reading the first agent's as
-   * everyone's.
-   */
   customIntegrationScope?: CustomIntegrationScope;
-  /**
-   * Whether this deployment runs in multiplayer (paid org) mode: members,
-   * roles, per-agent assignment. Absent/false = single personal workspace.
-   * Optional so every existing single-player host/profile stays valid.
-   */
   multiplayer?: boolean;
-  /**
-   * The current user's role in the org, when `multiplayer` is on. Drives which
-   * management affordances the UI shows. Absent in single-player mode.
-   */
   role?: OrgRole;
-  /**
-   * The server titles a new mission from the send's `missionTitle` field after
-   * its first turn. Absent/false = the client asks `POST /agents/:id/title`
-   * and PATCHes the card itself. Only a deployment that runs turns in per-turn
-   * workers advertises it; the open host (desktop, self-host) never does.
-   */
   missionTitleOnSend?: boolean;
-  /**
-   * The gateway readies the sandbox a person's next send will run in while
-   * they type (`POST /v1/agents/:slug/conversations/:cid/prewarm`). Present
-   * only where the active space's sends run in per-turn sandboxes; the open
-   * host (desktop, self-host) never sets it.
-   */
   conversationPrewarm?: boolean;
-  /**
-   * This deployment serves the AI Manager's daily morning briefing
-   * (`/v1/heartbeat`): its settings, its daemon and "brief me now". Set by the
-   * open host (desktop, self-host); absent = not served here, and the app
-   * hides the settings row.
-   */
   heartbeat?: boolean;
 }

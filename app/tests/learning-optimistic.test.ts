@@ -8,11 +8,6 @@ import {
   newLearning,
 } from "../src/lib/learning-optimistic.ts";
 
-/**
- * The Memory tab paints a learning added, edited or removed before the file
- * write lands. The patches re-run over any refetch mid-write, so each must be
- * idempotent and must leave a cache that never loaded alone.
- */
 const NOW = "2026-10-08T12:00:00.000Z";
 const a: Learning = {
   id: "a",

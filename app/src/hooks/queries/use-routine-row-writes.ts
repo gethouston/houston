@@ -13,21 +13,15 @@ import {
 } from "../../lib/routine-run-optimistic";
 import { tauriRoutines } from "../../lib/tauri";
 
-/** A routine write aimed at an agent chosen per call, not per mount. */
 export interface RoutineWriteFor {
   agentPath: string;
   routineId: string;
 }
 
-/**
- * "Run now" writes still in flight, per routine. A stop pressed on the
- * placeholder run waits for its run to exist before naming it to the host.
- */
 const startingRuns = new Map<string, Promise<void>>();
 const runKey = ({ agentPath, routineId }: RoutineWriteFor) =>
   `${agentPath}\u0000${routineId}`;
 
-/** The id the host knows a stopped run by, once a placeholder has a real run. */
 async function hostRunId(
   qc: QueryClient,
   target: RoutineWriteFor,
@@ -42,12 +36,6 @@ async function hostRunId(
   return latestRunningRunId(runs, target.routineId);
 }
 
-/**
- * The routine row's delete and run controls, optimistic: the row leaves, starts
- * or stops the instant it is pressed, and a refusal puts it back with the
- * authored toast (`optimisticWrite`), unless `call()` already showed
- * copy of its own for it (offline, waking).
- */
 export function useRoutineRowWrites() {
   const qc = useQueryClient();
   const { t } = useTranslation("routines");
@@ -90,7 +78,6 @@ export function useRoutineRowWrites() {
         title: t("toasts.runError"),
         description: t("toasts.runErrorBody"),
       },
-      // A run-now of a routine the list showed but the host lacks.
       onError: (err) =>
         refetchIfRoutineGone(qc, queryKeys.routines(target.agentPath), err),
     });
@@ -115,7 +102,6 @@ export function useRoutineRowWrites() {
       ],
       write: async () => {
         const runId = await hostRunId(qc, target, target.runId);
-        // The run already ended on its own: there is nothing left to stop.
         if (runId === undefined) return;
         await tauriRoutines.cancelRun(
           target.agentPath,

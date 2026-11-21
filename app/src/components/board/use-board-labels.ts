@@ -5,12 +5,6 @@ import { type BoardLabelSurface, buildBoardLabels } from "./board-labels";
 
 export type { BoardLabelSurface };
 
-/**
- * Translated label bundles AIBoard needs that are identical for both board
- * views: the board's own composer copy, the per-card action tooltips + delete
- * confirm, and the composer's file-drop / paste notices. The per-agent select
- * tooltip is always included (a no-op for views without multi-select).
- */
 export function useBoardLabels(surface: BoardLabelSurface = "board"): {
   labels: AIBoardProps["labels"];
   cardLabels: AIBoardProps["cardLabels"];

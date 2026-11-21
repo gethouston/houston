@@ -3,13 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 
-/**
- * Each safe-area utility reads Capacitor's `--safe-area-inset-*` first (set
- * only on Android WebViews whose env() is wrong edge to edge), then env()
- * (iOS, current Android, notched browsers), then 0 (desktop). Dropping either
- * fallback puts the app's chrome under the status bar or home indicator on
- * one platform.
- */
 const globalsCss = readFileSync(
   join(import.meta.dirname, "../src/globals.css"),
   "utf8",

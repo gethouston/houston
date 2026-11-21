@@ -6,14 +6,6 @@ import {
   shareNewSkillToWorkspace,
 } from "../src/lib/org-skill-share.ts";
 
-// HOU-1192: a skill created with an agent lands in the workspace store by
-// default and is installed ONLY to the agent that built it — other agents see
-// it in the store and are enabled explicitly by the user. The flow must never
-// lose the skill: every failure path leaves it usable somewhere, and the local
-// copy dies only when the creator can already load the shared one and nothing
-// diverged.
-
-/** The shape `HoustonEngineError` carries: the status plus the parsed body. */
 const engineError = (status: number, body: unknown = null) => ({
   status,
   body,
@@ -25,7 +17,6 @@ const ARGS = {
   slug: "meeting-prep",
 };
 
-/** Recording fake: every dep resolves and appends to `calls`. */
 function makeDeps(overrides?: Partial<OrgSkillShareDeps>) {
   const calls: string[] = [];
   const deps: OrgSkillShareDeps = {
@@ -54,8 +45,6 @@ describe("isOrgSkillShareDeclined", () => {
   it("matches the expected declines and nothing else", () => {
     strictEqual(isOrgSkillShareDeclined(engineError(409)), true);
     strictEqual(isOrgSkillShareDeclined(engineError(403)), true);
-    // Route absent (pre-shared-skills deployment) = feature absence, the
-    // HOU-1105 rule — the share is attempted before capabilities resolve.
     strictEqual(isOrgSkillShareDeclined(engineError(404)), true);
     strictEqual(
       isOrgSkillShareDeclined(
@@ -63,7 +52,6 @@ describe("isOrgSkillShareDeclined", () => {
       ),
       true,
     );
-    // A plain 503 (pod waking, real outage) is NOT a decline.
     strictEqual(isOrgSkillShareDeclined(engineError(503, null)), false);
     strictEqual(
       isOrgSkillShareDeclined(engineError(503, { error: "boom" })),
@@ -85,10 +73,6 @@ describe("shareNewSkillToWorkspace", () => {
       creatorEnabled: true,
       localDeleted: true,
     });
-    // Ordering: load → promote → creator enable (the ONLY enable — other
-    // agents are never installed to) → beforeDelete (cache refresh) →
-    // reload → delete, with the reload/compare directly against the delete
-    // so a concurrent edit has the narrowest window.
     deepStrictEqual(calls, [
       "load:/ws/Creator:meeting-prep",
       "promote:ws1:meeting-prep",

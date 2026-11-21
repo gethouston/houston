@@ -9,12 +9,6 @@ import {
   stubOpener,
 } from "../support/plan";
 
-/**
- * The org plan on the phone: Admin > Billing reached through the More menu.
- * The desktop twin (`../plan.spec.ts`) covers the flows; this proves the
- * phone layout holds them without a horizontal scroll.
- */
-
 test.beforeEach(async ({ page }) => {
   await installPlanClock(page);
 });

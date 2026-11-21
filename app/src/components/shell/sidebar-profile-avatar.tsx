@@ -3,12 +3,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@houston-ai/core";
 import { useSidebarAvatarDiameter } from "@houston-ai/layout";
 import { UserRound } from "lucide-react";
 
-/**
- * The signed-in person's round portrait at the rail slot's diameter: their
- * photo, else their initials, else (single-player, no identity) a plain
- * person glyph. The phone's account row draws the same face at its glyph
- * size (`sidebar-account-menu.tsx`).
- */
 export function SidebarProfileAvatar(props: {
   name: string | null;
   avatarUrl: string | null;

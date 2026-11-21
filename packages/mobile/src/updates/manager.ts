@@ -21,15 +21,10 @@ export interface UpdatePorts {
   onRequired(manifest: UpdateManifest): void;
   onCleared?(): void;
   report(error: unknown): void;
-  /** Highest applied OTA sequence, per native build: a store upgrade restarts
-   *  from that build's own builtin bundle, so an older build's record must not
-   *  hide OTAs newer than the new builtin. */
   sequenceStore: {
     get(nativeBuild: string): Promise<string | null>;
     set(nativeBuild: string, value: string): Promise<void>;
   };
-  /** Newest authenticated policy, per channel, persisted apart from bundle
-   *  installs so a replayed older manifest can never relax a required gate. */
   policyStore: {
     get(): Promise<string | null>;
     set(value: string): Promise<void>;
@@ -64,7 +59,6 @@ export function createUpdateManager(
     try {
       return parseStoredPolicy(raw);
     } catch (error) {
-      // Corrupt local state: report it and let this manifest reseed the policy.
       ports.report(error);
       return null;
     }
@@ -80,7 +74,7 @@ export function createUpdateManager(
           { cache: "no-store" },
         );
       } catch (error) {
-        if (error instanceof TypeError) return "unavailable"; // Fetch network failure; retry on a later resume.
+        if (error instanceof TypeError) return "unavailable";
         throw error;
       }
       if (!response.ok) {
@@ -112,7 +106,6 @@ export function createUpdateManager(
         throw new Error("Invalid native build number");
       const policy = await readPolicy();
       if (policy && manifest.sequence < policy.sequence) {
-        // A replayed or stale manifest: keep enforcing the newer policy.
         ports.report(
           new Error(
             `OTA manifest ${manifest.sequence} is older than policy ${policy.sequence}`,
@@ -123,8 +116,6 @@ export function createUpdateManager(
         ports.onRequired(manifest);
         return "required";
       }
-      // Equal sequence = the same signed publish (sequences are unique per
-      // run), so it may raise a policy seeded without its native requirement.
       if (
         !policy ||
         manifest.sequence > policy.sequence ||

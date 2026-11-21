@@ -9,13 +9,6 @@ import type {
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { HarnessSession, ResolvedModel } from "../backends/types";
 
-/**
- * A standing engine's turn runs the follow-up safety net after the prompt:
- * a GPT reply that skipped `suggest_actions` still ends on a `done` carrying
- * the bubbles, the pass adds no frame, and a Stop that lands during the pass
- * settles the turn as stopped instead.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-fu-data-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-fu-ws-"),
@@ -64,7 +57,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** A pi session whose model answers in plain text and never calls the tool. */
 function gptSession(onForce: () => void = () => undefined) {
   const wire = new Set<(e: WireEvent) => void>();
   const oneShotText = vi.fn(async (): Promise<string> => {

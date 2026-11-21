@@ -7,7 +7,6 @@ import {
   unknownFamilyRejection,
 } from "./wire";
 
-/** The revision/content caches one seed refreshes (shared with the shadow). */
 export interface SeedCaches<F extends string> {
   revisions: Map<F, number>;
   remote: Map<F, string>;
@@ -15,16 +14,9 @@ export interface SeedCaches<F extends string> {
 
 export interface SeedOutcome {
   seeded: boolean;
-  /** Set when the gateway rejected the family as unknown (deploy skew). */
   unsupported?: string;
 }
 
-/**
- * Seed one family's revision + canonical content from a GET response the
- * caller fetched. 404 is the normal empty case (revision 0); an unknown-family
- * rejection is reported for the caller to latch; unavailability defers with a
- * warning (the next write re-seeds); anything else fails the seed loudly.
- */
 export async function seedFromResponse<F extends string>(
   family: F,
   fetchDoc: () => Promise<Response>,

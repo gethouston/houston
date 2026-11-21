@@ -10,12 +10,6 @@ import { useTranslation } from "react-i18next";
 import { PlanWebNote } from "../shell/plan-web-note";
 import { BILLING_CURRENCY } from "./billing-tab-model";
 
-/**
- * The line under the add form saying what adding someone costs, before
- * anything is sent (the SDK's `seatNote`). A free paid seat wears the success
- * dot. In the store apps a price is never named: a charged seat is bought on
- * the web, and the monthly price line is left out.
- */
 export function PeopleSeatNote({
   quote,
   billing,

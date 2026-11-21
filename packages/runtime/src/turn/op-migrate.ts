@@ -22,18 +22,10 @@ export interface MigrateOpInput {
   turn: OpClaimTurn;
   store: ObjectStore;
   prefix: string;
-  /** Per-op temp directory, removed by the caller. */
   root: string;
-  /** Whether the claim was fenced (checked before anything is written). */
   fenced: () => Promise<boolean>;
 }
 
-/**
- * The custody move, whose failure leaves the plaintext file and the rest of
- * the migration in place: the answer is incomplete (the gateway records no
- * version and runs it again later), never a failure that sends the agent to
- * a pod, whose boot would move the same secrets.
- */
 async function moveCustody(
   input: MigrateOpInput,
   storeRoot: string,
@@ -53,16 +45,6 @@ async function moveCustody(
   }
 }
 
-/**
- * The `migrate` op: the host's boot migrations over one agent's store
- * prefix, where no pod boots to run them (host/src/migrate/agent-store.ts).
- * Hydrates only the small files the migrations read, writes back under the
- * agent-ops claim with every new file create-only and every rewrite at the
- * generation it read, so nothing another writer landed is ever replaced.
- * Answers the version reached only when every write is durable; any failure
- * leaves the agent where it was for the gateway's fallback and a later run.
- * Then the projections a pod's boot made: family docs, routine schedules.
- */
 export async function executeMigrateOp(
   input: MigrateOpInput,
 ): Promise<MigrateReply> {
@@ -82,20 +64,12 @@ export async function executeMigrateOp(
       claimed: true,
       allowLegacyLayout: true,
       filter: migrateHydrateFilter,
-      // A store whose admitted files alone pass the cap refuses before the
-      // bulk download, not after reading up to 2 GiB of it. The check runs
-      // after the priority set, which this filter admits none of.
       capListed: true,
       ...(input.deps.maxHydrateBytes !== undefined
         ? { maxBytes: input.deps.maxHydrateBytes }
         : {}),
     });
   } catch (error) {
-    // The store itself refuses the run (two complete agent trees under the
-    // prefix, a tree over the hydration cap): no retry over the same objects
-    // changes that, so the gateway reads the code and waits for the store to
-    // change instead of spending a sandbox per retry. Anything else stays a
-    // bare failure the gateway retries.
     if (!(error instanceof TurnSetupError)) throw error;
     const code = error instanceof StoreEmptyError ? "store_empty" : error.code;
     console.error(
@@ -117,8 +91,6 @@ export async function executeMigrateOp(
       ...(op.op.ownerSub ? { ownerSub: op.op.ownerSub } : {}),
       log,
     });
-    // Custody is written directly, not through the claimed sync: no run
-    // that lost its claim may reach it.
     if (await input.fenced()) return fenced;
     custody = await moveCustody(input, filesystem.storeRoot);
   } catch (error) {
@@ -168,7 +140,6 @@ export async function executeMigrateOp(
     docsPublished: projection.published,
     docsLagging: projection.lagging,
     routinesReprojected: projection.reprojected,
-    // The gateway records the version only once these landed too.
     complete: projection.lagging.length === 0 && custody.complete,
   });
 }

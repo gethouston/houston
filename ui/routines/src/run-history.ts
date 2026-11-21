@@ -1,11 +1,5 @@
-/**
- * Pure formatting helpers for the run-history list (PRODUCT-1208). Kept out of
- * the component so they are unit-testable without a DOM.
- */
-
 import type { RoutineRun } from "./types";
 
-/** Localized "Aug 7, 9:15 AM" start stamp. Empty string on a bad date. */
 export function formatRunStart(iso: string, locale?: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -17,11 +11,6 @@ export function formatRunStart(iso: string, locale?: string): string {
   }).format(date);
 }
 
-/**
- * Compact elapsed time for a finished run: "12s", "3m 20s", "1h 04m". Null
- * while the run is still going (no `completed_at`) or on a bad/negative span,
- * so the row simply omits it.
- */
 export function formatRunDuration(run: RoutineRun): string | null {
   if (!run.completed_at) return null;
   const ms =

@@ -128,7 +128,6 @@ describe("handOffCheckoutReturn", () => {
     const { ports, calls, posted } = fakePorts(true);
     await handOffCheckoutReturn(r, ports);
     deepStrictEqual(posted, [{ type: "returned", ...r }]);
-    // A refused close moves this tab into the app at that org's Billing.
     deepStrictEqual(calls, [
       "show web",
       "close",

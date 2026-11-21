@@ -16,16 +16,10 @@ import type {
 } from "./org-chart-share-state";
 import type { ConnectPhase } from "./org-chart-share-step";
 
-/**
- * Connect LinkedIn from the share dialog. A connect writes only into the
- * opening and attempt it started in, and ends when the connection lands or
- * its window closes.
- */
 export function useLinkedInConnect(input: {
   state: ShareDialogState;
   dispatch: Dispatch<ShareDialogAction>;
   session: RefObject<number>;
-  /** The connection read says LinkedIn is connected. */
   connected: boolean;
   recheck: () => Promise<unknown>;
 }) {
@@ -33,8 +27,6 @@ export function useLinkedInConnect(input: {
   const { state, dispatch, session, connected, recheck } = input;
   const attempt = state.connect;
   const attempts = useRef(0);
-  // A double click minted two states, and the gateway keeps only the last:
-  // the first tab then failed. Checked before the click claims a tab.
   const [gate] = useState(() => createLinkedInGate(() => performance.now()));
 
   const opening = state.session;
@@ -49,9 +41,6 @@ export function useLinkedInConnect(input: {
     return () => clearTimeout(timer);
   }, [attempt, opening, connected, dispatch]);
 
-  // Inside the click: a browser only grants LinkedIn's tab there. Starting
-  // over is the same click: a new attempt, whose state replaces the old one
-  // at the gateway, and the old attempt's results are dropped.
   const connect = () => {
     gate(() => {
       const tag = { session: session.current, attempt: ++attempts.current };
@@ -74,8 +63,6 @@ export function useLinkedInConnect(input: {
                 : undefined,
           });
         },
-        // tauriLinkedIn.connect already reported it (or silenced a deployment
-        // with no LinkedIn); the connect is simply over.
         () => {
           dispatch({ type: "connectEnded", ...tag });
           void recheck();

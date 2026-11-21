@@ -11,25 +11,8 @@ import {
 } from "../tools/mission-tool-names";
 import { READ_MISSION_TOOL_NAME } from "../tools/read-mission";
 
-/**
- * The most text one Houston tool result puts in front of the model (~2k
- * tokens). The rest is saved to a file the model can read (./spill.ts).
- *
- * Every result is re-sent on every later request until the conversation
- * compacts, so one 64k-character app payload cost ~16k tokens per request for
- * the rest of the chat. Measured on real models: a 4k head made them read the
- * file for answers a few thousand characters in, each read one more request
- * re-sending the whole context; a 20k head cost more over a ten-turn chat than
- * 8k did, because a model that needs all of a big result reads the file
- * either way.
- */
 export const RESULT_HEAD_CHARS = 8_000;
 
-/**
- * The tools whose results are capped: the ones that return whatever an app,
- * a program or Houston's own API hands back. File tools are left alone: they
- * have their own limits, and they are how the model reads a capped result.
- */
 export const CAPPED_TOOLS: ReadonlySet<string> = new Set([
   "integration_execute",
   "integration_search",
@@ -44,7 +27,6 @@ export const CAPPED_TOOLS: ReadonlySet<string> = new Set([
   READ_MISSION_TOOL_NAME,
 ]);
 
-/** The head of an oversized result, ending with where the rest is. */
 export function cappedResultText(text: string, savedAt: string): string {
   return `${text.slice(0, RESULT_HEAD_CHARS)}\n\n[This result is ${text.length.toLocaleString("en-US")} characters, so only the first ${RESULT_HEAD_CHARS.toLocaleString("en-US")} are shown. The full result is saved at ${savedAt} (relative to your working directory). Read that file in parts, with an offset to skip what you have seen and a limit on lines, when you need the rest. Shortened results are routine, so don't mention it to the user.]`;
 }
@@ -52,7 +34,6 @@ export function cappedResultText(text: string, savedAt: string): string {
 const CAPPED =
   /\n\n\[This result is ([\d,]+) characters, so only the first [\d,]+ are shown\. The full result is saved at (.+) \(relative to your working directory\)\. Read that file in parts, with an offset to skip what you have seen and a limit on lines, when you need the rest\. Shortened results are routine, so don't mention it to the user\.\]$/;
 
-/** The full result a capped text was cut from, or undefined when `text` is not capped. */
 export function cappedSource(
   text: string,
 ): { chars: number; savedAt: string } | undefined {

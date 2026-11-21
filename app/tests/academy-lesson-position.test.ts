@@ -23,9 +23,6 @@ import {
   lessonBeatView,
 } from "../src/lib/academy/lesson-spec.ts";
 
-// Leaving a lesson is a pause: the beat it was on is kept in the synced record
-// and the next run opens there, until finishing clears it.
-
 const NOW = new Date("2026-09-01T10:00:00.000Z");
 
 const record = (patch: Partial<AcademyRecord> = {}): AcademyRecord => ({
@@ -59,7 +56,6 @@ describe("a stored lesson position", () => {
   });
 
   it("drops an unreadable position without refusing the record", () => {
-    // A position is disposable; the rank the record carries is not.
     const raw = JSON.stringify({
       ...record({ lessons: { tour: FINISHED } }),
       lessonPositions: { a: 2, b: -1, c: 1.5, d: "3", " ": 4 },
@@ -126,8 +122,6 @@ describe("merging positions", () => {
 });
 
 describe("a position past the end of a shipped lesson", () => {
-  // The tour ships six beats: a position of 9 was kept by a longer version
-  // of it and names a beat that no longer exists.
   const TOUR = HOUSTON_TOUR_LESSON_ID;
 
   it("is dropped by the merge, so a fresh run's place is not buried", () => {
@@ -208,8 +202,6 @@ describe("lessonStartIndex", () => {
   });
 
   it("opens a beat that stands on an earlier choice on that choice", () => {
-    // The choice lives in session memory only, so a run resumed after a
-    // restart must ask it again rather than act on a default.
     const spec: LessonSpec = {
       ...tour(0),
       steps: [
@@ -244,8 +236,6 @@ describe("lessonStartIndex", () => {
         email,
       );
     strictEqual(pausedOn("ask"), at("sender"));
-    // The task is already sent: asking again would send a second email, so
-    // the watch beat resumes where it stood.
     strictEqual(pausedOn("watch"), at("watch"));
   });
 });
@@ -280,8 +270,6 @@ describe("lessonBeatView", () => {
   });
 
   it("walks back to the last navigate when a run opens mid-lesson", () => {
-    // Resumed from the Academy on a spotlight whose target lives on the
-    // screen an earlier beat navigated to.
     strictEqual(lessonBeatView(spec, 2, "open"), "team");
     strictEqual(lessonBeatView(spec, 3, "open"), "team");
     strictEqual(lessonBeatView(spec, 0, "open"), null);

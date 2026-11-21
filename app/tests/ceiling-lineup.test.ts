@@ -6,18 +6,6 @@ import {
 } from "../src/lib/ceiling-pin.ts";
 import { resolvePersonalModelPin } from "../src/lib/model-selector-lock.ts";
 
-/**
- * A ceiling written before the Claude lineup moved names retired ids
- * ("Claude Opus 5" = `anthropic/claude-opus-5` + `claude-opus-5`). The anthropic
- * provider runs `claude-opus-5` as `claude-opus-5-5`, and the catalog says so
- * with `runsAs` on that provider's row only. A Claude-only member must land on
- * anthropic's lineup model, never on an OpenRouter account they never
- * connected, and the retired entry must never unlock the lineup id on another
- * provider. Mirrors the gateway's clamp (cloud `internal/edge/agents/ceiling.go`).
- */
-
-// What the picker can offer per provider once hydrated: anthropic shows only
-// its lineup; its retired rows are hidden but still carry `runsAs`.
 const visible: Record<string, string[]> = {
   anthropic: [
     "claude-sonnet-5-5",

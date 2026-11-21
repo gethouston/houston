@@ -5,7 +5,6 @@ import { BrowserToolError } from "./errors";
 const page = (status: number | null, title: string, html: string) =>
   ({ status, title, html }) satisfies LoadedPage;
 
-/** Walls as the DOM serializes them (entities decoded), trimmed. */
 const WALLS: Record<string, LoadedPage> = {
   cloudflare: page(
     403,
@@ -140,8 +139,6 @@ describe("pageBlock", () => {
       page(503, "Sorry! Something went wrong!", "<p>Down for maintenance</p>"),
     ],
     ["no response at all", page(null, "", "")],
-    // A forum post asking about each wall, its HTML quoted as the DOM
-    // serializes text: `<` escaped, quotes and words left as they are.
     [
       "a page quoting Imperva's block text",
       page(

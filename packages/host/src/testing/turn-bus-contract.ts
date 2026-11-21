@@ -1,26 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { TurnBus } from "../turn/bus";
 
-/**
- * The TurnBus CONTRACT, run verbatim against every adapter — the anti-drift net
- * for the shared-state port that makes the cloudrun turn path replica-safe.
- * Everything the relay, the one-turn-per-agent gate, the quota counters, and the
- * device-code connect state ride on this surface, so the two impls (in-process
- * MemoryTurnBus, cross-replica RedisTurnBus) must agree on: pub/sub fan-out +
- * unsubscribe, key set/get/del with TTL, the setNx mutex + lease renew via
- * expire, and atomic incr/decr with creation TTL.
- *
- * Exported from `@houston/host` (OPEN) and run by the open adapter suite
- * (turn/bus.contract.test.ts: MemoryTurnBus, virtual clock). The closed
- * RedisTurnBus suite that also consumed it was retired with
- * `@houston/host-cloud` (git history); the contract stays exported as the
- * behavioral bar for any out-of-repo adapter.
- *
- * TIME: the contract is parameterized by a `make(now)` so impls with a virtual
- * clock (MemoryTurnBus) can prove TTL expiry deterministically. An impl with no
- * injectable clock (e.g. Redis) passes the non-time assertions verbatim and
- * drives the time-dependent ones against its native EX/NX/TTL semantics.
- */
 export function runTurnBusContract(
   name: string,
   make: (now: () => number) => TurnBus,
@@ -35,7 +15,6 @@ export function runTurnBusContract(
       await bus.publish("ch", "one");
       unsubA();
       await bus.publish("ch", "two");
-      // Delivery order per channel is the publish order.
       expect(a).toEqual(["one"]);
       expect(b).toEqual(["one", "two"]);
     });
@@ -55,7 +34,7 @@ export function runTurnBusContract(
       const bus = make(() => t);
       await bus.set("k", "v", 5);
       expect(await bus.get("k")).toBe("v");
-      t += 5_001; // TTL lapses
+      t += 5_001;
       expect(await bus.get("k")).toBeNull();
 
       await bus.set("k", "v2", 5);
@@ -71,23 +50,23 @@ export function runTurnBusContract(
     test("setNx is a mutex; expire renews the lease; the TTL frees a crashed owner", async () => {
       let t = 0;
       const bus = make(() => t);
-      expect(await bus.setNx("lock", "1", 10)).toBe(true); // acquired
-      expect(await bus.setNx("lock", "1", 10)).toBe(false); // held
-      t += 9_000;
-      await bus.expire("lock", 10); // heartbeat: lease renewed at 9s
-      t += 9_000; // 18s total, still held thanks to the renew
+      expect(await bus.setNx("lock", "1", 10)).toBe(true);
       expect(await bus.setNx("lock", "1", 10)).toBe(false);
-      t += 10_001; // lease lapsed (owner crashed, no more heartbeats) → free
+      t += 9_000;
+      await bus.expire("lock", 10);
+      t += 9_000;
+      expect(await bus.setNx("lock", "1", 10)).toBe(false);
+      t += 10_001;
       expect(await bus.setNx("lock", "1", 10)).toBe(true);
     });
 
     test("incr creates with TTL, counts atomically; decr reverses; the counter resets after TTL", async () => {
       let t = 0;
       const bus = make(() => t);
-      expect(await bus.incr("n", 60)).toBe(1); // creates with a 60s TTL
+      expect(await bus.incr("n", 60)).toBe(1);
       expect(await bus.incr("n", 60)).toBe(2);
       expect(await bus.decr("n")).toBe(1);
-      t += 60_001; // TTL set at creation → the counter lapses
+      t += 60_001;
       expect(await bus.incr("n", 60)).toBe(1);
     });
   });

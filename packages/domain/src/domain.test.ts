@@ -22,7 +22,6 @@ import {
 import type { TextStore } from "./store";
 import { loadJson } from "./store";
 
-/** Tiny in-memory TextStore (the same shape the host's Vfs satisfies). */
 function memStore(): TextStore & { dump(): Map<string, string> } {
   const m = new Map<string, string>();
   return {
@@ -53,7 +52,6 @@ test("activities round-trip: create → save → load, pretty-printed on disk", 
   expect(diagnostics).toEqual([]);
   expect(items[0]?.status).toBe("running");
 
-  // files-first: the on-disk doc is human/agent-readable (pretty, trailing newline)
   const raw = store.dump().get(docKey(ROOT, "activity"));
   if (raw == null) throw new Error("expected activity doc in store");
   expect(raw.endsWith("\n")).toBe(true);
@@ -78,7 +76,7 @@ test("agent-written junk: malformed entries drop with diagnostics, good ones sur
   );
   const { items, diagnostics } = await loadActivities(store, ROOT);
   expect(items.map((a) => a.id)).toEqual(["ok-1", "ok-2"]);
-  expect(items[1]?.status).toBe("future_status"); // unknown status preserved, not dropped
+  expect(items[1]?.status).toBe("future_status");
   expect(diagnostics).toHaveLength(2);
 });
 
@@ -132,14 +130,13 @@ test("normalize: a valid pending_interaction survives, an invalid one is strippe
         title: "Broken",
         status: "needs_you",
         description: "",
-        // the old top-level `{kind, questions}` shape has no `steps` → dropped
         pending_interaction: { kind: "question", question: "Which deck?" },
       },
     ],
     "k",
   );
 
-  expect(items.map((a) => a.id)).toEqual(["q", "c", "bad"]); // activity kept, only the field dropped
+  expect(items.map((a) => a.id)).toEqual(["q", "c", "bad"]);
   expect(items[0]?.pending_interaction).toEqual({
     steps: [
       {
@@ -204,7 +201,6 @@ test("activity update: pending_interaction set / clear / untouched", () => {
     steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
   });
 
-  // undefined leaves the current interaction alone
   const untouched = applyActivityUpdate(
     withInteraction,
     { status: "running" },
@@ -214,7 +210,6 @@ test("activity update: pending_interaction set / clear / untouched", () => {
     steps: [{ kind: "connect", id: "c1", toolkit: "slack" }],
   });
 
-  // explicit null clears the field entirely (not stored as null)
   const cleared = applyActivityUpdate(
     withInteraction,
     { pending_interaction: null },
@@ -251,8 +246,6 @@ test("activity update: an invalid (pre-step legacy) pending_interaction is not p
     },
     NOW,
   );
-  // A PATCH carrying the old top-level shape (no `steps`) must leave the
-  // current value alone instead of storing a shape the UI cannot render.
   const legacy = applyActivityUpdate(
     current,
     {
@@ -291,13 +284,11 @@ test("routines: schema defaults applied on create and on read of sparse entries"
   expect(r.enabled).toBe(true);
   expect(r.chat_mode).toBe("shared");
   expect(r.integrations).toEqual([]);
-  // No pin given → provider/model/effort are null (inherit the agent default).
   expect(r.provider).toBeNull();
   expect(r.model).toBeNull();
   expect(r.effort).toBeNull();
   await saveRoutines(store, ROOT, [r]);
 
-  // A sparse, hand-written entry gains defaults on read.
   await store.writeText(
     docKey(ROOT, "routines"),
     JSON.stringify([
@@ -326,7 +317,6 @@ test("normalizeRoutines: a trigger-only routine (no schedule) is kept — forwar
   expect(items[0]?.id).toBe("t1");
   expect("schedule" in (items[0] ?? {})).toBe(false);
   expect(items[0]?.trigger).toEqual(TRIGGER);
-  // Schema defaults still fill in.
   expect(items[0]?.enabled).toBe(true);
   expect(items[0]?.chat_mode).toBe("shared");
 });
@@ -372,9 +362,7 @@ test("normalizeRoutines: entries with NEITHER schedule nor trigger are dropped +
 test("normalizeRoutines: a malformed trigger object is dropped + diagnosed", () => {
   const { items, diagnostics } = normalizeRoutines(
     [
-      // missing trigger_slug
       { id: "m1", name: "A", prompt: "p", trigger: { toolkit: "gmail" } },
-      // trigger_config not an object
       {
         id: "m2",
         name: "B",
@@ -395,18 +383,13 @@ test("normalizeRoutines: a malformed trigger object is dropped + diagnosed", () 
 });
 
 test("isValidTriggerBinding: kind discriminant — webhook, composio, junk", () => {
-  // Composio: kind absent (legacy) or explicit "composio", both valid.
   expect(isValidTriggerBinding(TRIGGER)).toBe(true);
   expect(isValidTriggerBinding({ ...TRIGGER, kind: "composio" })).toBe(true);
-  // Webhook: kind alone is valid (no key yet); key_prefix as a string is valid.
   expect(isValidTriggerBinding({ kind: "webhook" })).toBe(true);
   expect(
     isValidTriggerBinding({ kind: "webhook", key_prefix: "wh_abc123" }),
   ).toBe(true);
-  // Webhook with a non-string key_prefix is malformed.
   expect(isValidTriggerBinding({ kind: "webhook", key_prefix: 7 })).toBe(false);
-  // A webhook binding does NOT need Composio fields; junk (no kind, no
-  // Composio identity) is still invalid.
   expect(isValidTriggerBinding({ toolkit: "gmail" })).toBe(false);
   expect(isValidTriggerBinding({})).toBe(false);
   expect(isValidTriggerBinding(null)).toBe(false);
@@ -563,11 +546,6 @@ test("applyRoutineUpdate: switching to a trigger clears the schedule (and vice v
 });
 
 test("applyRoutineUpdate: the editor's cron save shape `{schedule, trigger: null}` keeps the schedule", () => {
-  // The routines editor sends `trigger: null` alongside the schedule on EVERY
-  // cron save. Treating that null as "switching to a trigger" deleted the
-  // schedule too, leaving a wake-less routine that normalizeRoutines dropped on
-  // the next read — every edited cron routine vanished from the list and was
-  // purged from disk by the next save.
   const cron = createRoutine(
     { name: "N", prompt: "p", schedule: "0 9 * * *" },
     "r",
@@ -581,7 +559,6 @@ test("applyRoutineUpdate: the editor's cron save shape `{schedule, trigger: null
   expect(saved.schedule).toBe("0 10 * * *");
   expect("trigger" in saved).toBe(false);
   expect(saved.name).toBe("N2");
-  // The result survives a save → load round-trip (nothing for normalize to drop).
   const { items, diagnostics } = normalizeRoutines([saved], "k");
   expect(diagnostics).toEqual([]);
   expect(items).toHaveLength(1);
@@ -597,8 +574,6 @@ test("applyRoutineUpdate: `trigger: null` clears only the trigger, never writes 
   expect(next.schedule).toBe("0 9 * * *");
   expect("trigger" in next).toBe(false);
 
-  // Moving a trigger routine back to cron: the null clears the binding while
-  // the schedule in the same update becomes the wake.
   const trig = createRoutine(
     { name: "T", prompt: "p", trigger: TRIGGER },
     "t",
@@ -614,15 +589,12 @@ test("applyRoutineUpdate: `trigger: null` clears only the trigger, never writes 
 });
 
 test("routine setup chat link: setup_activity_id round-trips create and update (HOU-725)", () => {
-  // Without a chat the key is simply absent (legacy shape, no "" noise)…
   const plain = createRoutine(
     { name: "N", prompt: "p", schedule: "0 9 * * *" },
     "r",
     NOW,
   );
   expect("setup_activity_id" in plain).toBe(false);
-  // …with one, create writes it and a later stamp (a modify chat claiming a
-  // form-era routine) lands through the ordinary update path.
   const linked = createRoutine(
     {
       name: "N",
@@ -641,9 +613,6 @@ test("routine setup chat link: setup_activity_id round-trips create and update (
 });
 
 test("a stray on-disk routine description is dropped on read (HOU-725)", async () => {
-  // The display-only description field was removed; routines written by
-  // older builds still carry it. Same idempotent read-side cleanup as the
-  // legacy timezone key.
   const store = memStore();
   await store.writeText(
     docKey(ROOT, "routines"),
@@ -674,14 +643,12 @@ test("routine update: defined fields overwrite, undefined leaves untouched", () 
     "2026-06-12T13:00:00.000Z",
   );
   expect(renamed.name).toBe("M");
-  expect(renamed.prompt).toBe("p"); // untouched
+  expect(renamed.prompt).toBe("p");
   expect(renamed.updated_at).toBe("2026-06-12T13:00:00.000Z");
-  expect(applyRoutineUpdate(r, { name: undefined }, NOW).name).toBe("N"); // undefined leaves it
+  expect(applyRoutineUpdate(r, { name: undefined }, NOW).name).toBe("N");
 });
 
 test("routine update ignores a stray legacy timezone key (HOU-470)", () => {
-  // The per-routine override was removed (one account-wide zone). A client still
-  // sending it must not get it written back onto the routine.
   const r = createRoutine(
     { name: "N", prompt: "p", schedule: "0 9 * * *" },
     "r",
@@ -697,9 +664,6 @@ test("routine update ignores a stray legacy timezone key (HOU-470)", () => {
 
 test("a stray on-disk per-routine timezone is dropped on read and not re-saved (HOU-470)", async () => {
   const store = memStore();
-  // A routine written by an older build still carries a `timezone` key. The
-  // reader must drop it (no migration) and never write it back out — the
-  // idempotent cleanup that mirrors the Rust engine's serde drop.
   await store.writeText(
     docKey(ROOT, "routines"),
     JSON.stringify([
@@ -734,7 +698,6 @@ test("a stray on-disk per-routine timezone is dropped on read and not re-saved (
 
 test("routine created_by: set on create, preserved on update, round-trips; legacy absent (C2)", async () => {
   const store = memStore();
-  // Set from the authenticated creator on create.
   const r = createRoutine(
     { name: "Report", prompt: "p", schedule: "0 9 * * *" },
     "r1",
@@ -743,8 +706,6 @@ test("routine created_by: set on create, preserved on update, round-trips; legac
   );
   expect(r.created_by).toBe("sub-alice");
 
-  // An update (even one changing other fields) preserves the creator — a client
-  // cannot reassign it (RoutineUpdate has no created_by).
   const renamed = applyRoutineUpdate(
     r,
     { name: "Daily report", created_by: "sub-mallory" } as RoutineUpdate & {
@@ -754,12 +715,10 @@ test("routine created_by: set on create, preserved on update, round-trips; legac
   );
   expect(renamed.created_by).toBe("sub-alice");
 
-  // It survives a save → load round-trip (the tolerant reader spreads it back).
   await saveRoutines(store, ROOT, [r]);
   const { items } = await loadRoutines(store, ROOT);
   expect((items[0] as { created_by?: string }).created_by).toBe("sub-alice");
 
-  // Omitting the creator (legacy / single-user) leaves the key ABSENT, not "".
   const legacy = createRoutine(
     { name: "Old", prompt: "p", schedule: "0 9 * * *" },
     "r2",
@@ -785,7 +744,6 @@ test("routine provider/model/effort: pinned on create, cleared by null, left by 
   expect(pinned.model).toBe("claude-opus-4-8");
   expect(pinned.effort).toBe("high");
 
-  // A picked model/effort updates the pin; another field's update leaves them.
   const repinned = applyRoutineUpdate(
     pinned,
     { model: "gpt-5.5", effort: "xhigh" },
@@ -795,7 +753,6 @@ test("routine provider/model/effort: pinned on create, cleared by null, left by 
   expect(repinned.effort).toBe("xhigh");
   expect(repinned.provider).toBe("anthropic");
 
-  // Explicit null clears back to inherit; undefined leaves unchanged.
   const cleared = applyRoutineUpdate(
     pinned,
     { provider: null, model: null, effort: null },
@@ -829,11 +786,6 @@ test("config: object round-trip; junk reported as empty + diagnostic", async () 
 });
 
 test("a UTF-8 BOM is decoded away, not read as corruption", async () => {
-  // Files-first docs are written by agents, users and editors, and plenty emit
-  // a BOM. `JSON.parse` rejects one, so the read used to throw and declare the
-  // user's intact data unreadable — which stopped every routine on a pod for
-  // six days (HOU-953). Every TextStore impl must tolerate it, not just the
-  // host's Vfs.
   const store = memStore();
   const routines = [
     createRoutine({ name: "R", prompt: "p", schedule: "0 9 * * *" }, "r1", NOW),

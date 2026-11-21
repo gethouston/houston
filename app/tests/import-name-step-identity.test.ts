@@ -3,18 +3,6 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-/**
- * Step 2 of "From a friend" hand-rolled the name-and-colour screen that
- * `AgentIdentityForm` already is, and drifted: its name field had no
- * `aria-label` and no 44px touch target. Naming an agent is one screen the user
- * learns once, so the import wizard renders the SAME component every other
- * creation path ends on.
- *
- * Pinned against the source — this repo's React-test idiom, since the node test
- * runner has no DOM. The rendered result is exercised by
- * `packages/web/e2e/copy-agent.spec.ts`, the other caller of the shared form.
- */
-
 const read = (rel: string) =>
   readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
 

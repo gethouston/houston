@@ -1,25 +1,3 @@
-/**
- * The mission rename: the ONE field a person edits on a mission card.
- *
- * It issues the same `PATCH /agents/:id/activities/:id` {@link updateActivity}
- * does, but with the title pinned as a body FIELD rather than carried inside an
- * open `ActivityUpdate`. That is the whole point of the separate function: the
- * derived operation can express nothing but a title, so the in-app assistant
- * gets the board edit a person actually performs without also getting the
- * lineage the runtime owns (session keys, routine run ids, the pending
- * interaction that authors an approval card) or a second, guard-free path to a
- * status move — that one belongs to the coordinator's `update_mission_status`
- * tool, which refuses a running mission and forwards cross-pod.
- *
- * `updateActivity` stays exactly as it is: wide, hidden, and the app's.
- *
- * It issues the request itself rather than delegating to `updateActivity`: the
- * catalog's route is read off the annotated function's OWN body
- * (`scripts/assistant-catalog/assistant-route.ts`), so a one-line delegation
- * here would leave this operation with no derivable route and the assistant
- * with no way to perform it.
- */
-
 import type { Activity } from "@houston/protocol";
 import { type HttpScope, httpRequest } from "../http";
 

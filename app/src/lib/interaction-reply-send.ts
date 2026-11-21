@@ -5,13 +5,10 @@ import {
 } from "./attachment-message";
 import type { TurnMode } from "./turn-mode";
 
-/** One interaction reply: the composed text and what rides with it. */
 export interface InteractionReply {
   text: string;
   mode: TurnMode;
   approvals?: MessageApproval[];
-  /** Files attached in the card, saved and named in the prompt exactly like
-   *  a composer send, so they arrive WITH the answer. */
   files: readonly File[];
 }
 
@@ -24,8 +21,6 @@ export interface InteractionReplySendOptions {
   queuedPreview?: AttachmentSend["queuedPreview"];
 }
 
-/** The I/O an interaction reply goes through, injected so the flow is
- *  testable without the engine. */
 export interface InteractionReplyPorts {
   resolvePin: () => Promise<{
     provider: string;
@@ -34,20 +29,11 @@ export interface InteractionReplyPorts {
   }>;
   save: (files: File[]) => Promise<string[]>;
   send: (prompt: string, opts: InteractionReplySendOptions) => Promise<unknown>;
-  /** The reply was accepted. */
   onSent: (files: readonly File[]) => void;
-  /** The pin, the upload or the send failed: nothing reached the agent. */
   onFailed: (err: unknown) => void;
-  /** `onSent` itself threw. The send DID land, so this is never reported to
-   *  the user as a failed message. */
   onSentThrew: (err: unknown) => void;
 }
 
-/**
- * Send an interaction reply. Resolves whether the reply was accepted and
- * never rejects: the card keeps its attached files on `false`, so a retry
- * still carries them.
- */
 export async function sendInteractionReply(
   reply: InteractionReply,
   ports: InteractionReplyPorts,

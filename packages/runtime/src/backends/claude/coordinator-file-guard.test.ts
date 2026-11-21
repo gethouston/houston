@@ -14,19 +14,6 @@ import type { ResolvedModel } from "../types";
 import { createClaudeBackend } from "./backend";
 import { serverClaudeLayout } from "./paths";
 
-/**
- * The coordinator's exact-file wall must hold on the ANTHROPIC path too.
- *
- * The coordinator is the user's personal assistant: it hands every piece of
- * real work to one of the user's agents and produces nothing itself, so its
- * file tools get an exact-file allowlist (its memory document) instead of a
- * root (session/coordinator-policy.ts). The Claude backend enforces its file
- * rules in `canUseTool` rather than in pi's clamped file tools, so the policy
- * has to be handed to THAT gate — otherwise the same prompt injection the pi
- * path refuses would, on the one provider that runs through the Agent SDK,
- * rewrite a shared skill that then runs inside every one of the user's agents.
- */
-
 const h = vi.hoisted(() => ({
   capturedOptions: undefined as Options | undefined,
 }));
@@ -54,24 +41,16 @@ const MODEL: ResolvedModel = {
   contextWindow: 200_000,
 };
 
-// The permission-context 3rd arg is unused by the clamp; a stub typed from the
-// SDK's own signature keeps the call site honest without `any`.
 const CTX: Parameters<CanUseTool>[2] = {
   signal: new AbortController().signal,
   toolUseID: "t",
   requestId: "r",
 };
 
-// realpath so the root matches WorkspaceGuard's canonicalization (on macOS the
-// tmpdir is a /var → /private/var symlink; an un-canonicalized root would make
-// every absolute in-workspace path look like an escape).
 function tempRoot(): string {
   return realpathSync(mkdtempSync(join(tmpdir(), "claude-coord-")));
 }
 
-/** The SDK options the last run produced, cleared so the next run cannot read
- *  a stale capture. Read in its own scope: assigning `undefined` in the caller
- *  narrows the hoisted field to `undefined` for the rest of that function. */
 function takeCapturedOptions(): Options {
   const options = h.capturedOptions;
   h.capturedOptions = undefined;
@@ -79,11 +58,6 @@ function takeCapturedOptions(): Options {
   return options;
 }
 
-/**
- * The permission gate the backend actually hands the SDK, for a runtime in the
- * given role — built end to end through `createClaudeBackend` so this pins the
- * WIRING, not just the policy function it reads.
- */
 async function gateFor(
   role: "coordinator" | null,
   workspaceDir: string,
@@ -127,9 +101,6 @@ test("the coordinator is refused a Write into the shared skills mirror", async (
     (await decide(coordinator, "Write", { file_path: skill })).behavior,
   ).toBe("deny");
 
-  // The SAME mirror is writable for an ordinary agent — editing a shared skill
-  // there IS editing the org original, by design. The refusal above is the
-  // role's, not the directory's.
   const agent = await gateFor(null, tempRoot(), sharedSkillsDir);
   expect((await decide(agent, "Write", { file_path: skill })).behavior).toBe(
     "allow",
@@ -147,8 +118,6 @@ test("the coordinator keeps exactly its memory document, nothing else", async ()
       })
     ).behavior,
   ).toBe("allow");
-  // Its own workspace is not a licence: consolidating memory is the only file
-  // work it has, so every other in-workspace path is refused too.
   expect(
     (await decide(gate, "Write", { file_path: join(workspaceDir, "notes.md") }))
       .behavior,
@@ -160,10 +129,6 @@ test("the coordinator keeps exactly its memory document, nothing else", async ()
 });
 
 test("the coordinator can Read what people send it, and never Write there", async () => {
-  // H-044: a photo sent over Slack lands in `uploads/`, and the assistant must
-  // be able to look at it. The gate is built before the folder exists (it
-  // appears with the first upload), so the read must hold for a folder that
-  // arrives later.
   const workspaceDir = tempRoot();
   const gate = await gateFor("coordinator", workspaceDir, tempRoot());
   const uploads = join(workspaceDir, "uploads");
@@ -183,7 +148,6 @@ test("the coordinator can Read what people send it, and never Write there", asyn
     (await decide(gate, "Write", { file_path: join(uploads, "new.md") }))
       .behavior,
   ).toBe("deny");
-  // The folder is not a door: `..` out of it is still the narrowed wall.
   expect(
     (
       await decide(gate, "Read", {

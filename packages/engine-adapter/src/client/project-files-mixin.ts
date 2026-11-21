@@ -9,17 +9,8 @@ import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
-/**
- * Workspace file transport. JSON operations bind sdk.files; binary downloads
- * return Blobs here and use the SDK's preview retry policy.
- */
 export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProjectFiles extends Base {
-    // ---- project files (the agent's REAL workspace) ----
-    // The transport the two binary reads still own. Routed through cpFetch so
-    // they ride the same transient-retry path as every other control-plane call
-    // (HOU-1085: a bare gatewayAuthFetch here gave files listings zero retries
-    // through a brief network blip).
     private async cpFilesFetch(
       agentId: string,
       path: string,

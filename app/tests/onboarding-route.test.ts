@@ -35,8 +35,6 @@ describe("isFirstRun (per-wire first-run signal)", () => {
 });
 
 describe("onboardingRoute (first-run gate)", () => {
-  // A genuine, uncompleted first run that can create agents, with nothing
-  // answered or connected yet. Each test overrides only what it exercises.
   const base: OnboardingRouteInputs = {
     firstRun: true,
     pendingStage: "none",
@@ -107,8 +105,6 @@ describe("onboardingRoute (first-run gate)", () => {
   });
 
   it("a stale in-app tutorial flag never pulls an account with employees back in", () => {
-    // The in-app tutorial stored "1" in the same preference. Its accounts
-    // already have AI Employees and no first run to resume.
     strictEqual(
       onboardingRoute({
         ...base,

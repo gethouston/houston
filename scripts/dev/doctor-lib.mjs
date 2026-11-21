@@ -1,10 +1,7 @@
-// Helpers for scripts/dev-doctor.mjs — the `pnpm dev` preflight. Pure checks
-// only; the entry script owns ordering, output, and the exit code.
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import net from "node:net";
 
-/** Run a command, returning trimmed stdout or null on any failure. */
 export function tryRun(cmd) {
   try {
     return execSync(cmd, { stdio: ["ignore", "pipe", "ignore"] })
@@ -15,11 +12,6 @@ export function tryRun(cmd) {
   }
 }
 
-/**
- * Parse a KEY=VALUE env file (comments/blank lines skipped, surrounding
- * quotes stripped). Returns {} when the file is absent — callers decide
- * whether absence is an error.
- */
 export function parseEnvFile(path) {
   if (!existsSync(path)) return {};
   const out = {};
@@ -41,7 +33,6 @@ export function parseEnvFile(path) {
   return out;
 }
 
-/** Compare dotted versions: negative when a < b. Missing segments are 0. */
 export function compareVersions(a, b) {
   const pa = a.split(".").map(Number);
   const pb = b.split(".").map(Number);
@@ -52,20 +43,12 @@ export function compareVersions(a, b) {
   return 0;
 }
 
-/** The `go X.Y.Z` directive from a go.mod, or null. */
 export function goModVersion(goModPath) {
   if (!existsSync(goModPath)) return null;
   const m = readFileSync(goModPath, "utf8").match(/^go (\d+(?:\.\d+)*)$/m);
   return m ? m[1] : null;
 }
 
-/**
- * True when a local TCP port is free. lsof is the primary check: Node's bind
- * probe sets SO_REUSEADDR, so binding a specific address can SUCCEED while
- * another process holds the wildcard address — the exact way a real pane
- * (binding 0.0.0.0) then dies with "address already in use". The wildcard
- * bind probe remains as the fallback for a machine without lsof.
- */
 export function portFree(port) {
   const listeners = tryRun(`lsof -nP -iTCP:${port} -sTCP:LISTEN -Fp`);
   if (listeners !== null) return Promise.resolve(listeners.trim() === "");
@@ -77,7 +60,6 @@ export function portFree(port) {
   });
 }
 
-/** Best-effort `command (pid)` owning a port, for the port warning line. */
 export function portOwner(port) {
   const out = tryRun(`lsof -nP -iTCP:${port} -sTCP:LISTEN -Fcp`);
   if (!out) return "unknown process";

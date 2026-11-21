@@ -20,7 +20,6 @@ test("a sandboxed launch that fails is refused loudly with the remedy, never ret
   expect(refusal).toBeInstanceOf(BrowserToolError);
   expect(refusal).toMatchObject({ code: "browser_unavailable" });
   expect((refusal as Error).message).toContain("Houston's side");
-  // Every candidate was tried, every one sandboxed.
   expect(launch).toHaveBeenCalledTimes(3);
   for (const [options] of launch.mock.calls)
     expect(options).toMatchObject({ chromiumSandbox: true });
@@ -61,13 +60,11 @@ test("by default the sandboxed launch that starts is the browser", async () => {
   expect(launch.mock.calls[0]?.[0]).toMatchObject({ chromiumSandbox: true });
 });
 
-/** The fence proxy's port, from a launch's flags. */
 function proxyPort(options: { args?: string[] }): number {
   const flag = options.args?.find((a) => a.startsWith("--proxy-server="));
   return Number(flag?.split(":").at(-1));
 }
 
-/** Whether something listens on 127.0.0.1:`port`. */
 async function listening(port: number): Promise<boolean> {
   const { connect } = await import("node:net");
   return new Promise((resolve) => {

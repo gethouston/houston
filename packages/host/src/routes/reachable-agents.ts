@@ -7,29 +7,11 @@ import {
   qualifiedAgentRef,
 } from "./agent-refs";
 
-/**
- * WHICH agents a caller can address, and how a written reference matches one.
- *
- * The mission routes and assistant dispatcher share reference matching, but
- * their candidate sets deliberately differ for regular agents: missions stay
- * in the caller's workspace, while the AI Manager spans the owner's workspaces.
- *
- * The ladder itself lives in agent-refs.ts, over the flat shape a candidate in
- * another pod also has; this module answers only WHICH agents are candidates.
- *
- * This base directory spans the workspaces of the calling agent's owner.
- * Mission callers narrow it in missions-directory.ts.
- * Hidden dot-agents (the personal assistant itself, the setup runtime) are
- * synthetic and list-hidden by construction: they are not a place work can go
- * and never a target, so they are absent here and can never match.
- */
-
 export interface ReachableAgent {
   workspace: Workspace;
   agent: Agent;
 }
 
-/** A reachable agent as the shared ladder reads it. */
 const toRef = ({ workspace, agent }: ReachableAgent): AgentRef => ({
   id: agent.id,
   name: agent.name,
@@ -37,12 +19,10 @@ const toRef = ({ workspace, agent }: ReachableAgent): AgentRef => ({
   workspaceId: workspace.id,
 });
 
-/** An agent a caller may address. Dot-named agents are Houston's own. */
 export function isAddressableAgent(agent: Agent): boolean {
   return !agent.name.startsWith(".");
 }
 
-/** Every agent the calling agent's owner can reach, its own workspace first. */
 export async function reachableAgents(
   store: WorkspaceStore,
   own: Workspace,
@@ -63,12 +43,6 @@ export async function reachableAgents(
   return out;
 }
 
-/**
- * The same set for a caller known only by the workspace its sandbox token was
- * minted for — the assistant's route, which authenticates an agent, not a user.
- * A workspace that no longer exists yields nothing, so an unresolvable
- * reference is refused with "no agents" rather than resolved against a guess.
- */
 export async function reachableAgentsForWorkspace(
   store: WorkspaceStore,
   workspaceId: WorkspaceId,
@@ -77,12 +51,10 @@ export async function reachableAgentsForWorkspace(
   return own ? reachableAgents(store, own) : [];
 }
 
-/** `<Workspace>/<Agent>` — the unambiguous way to name one of two same-named agents. */
 export function qualifiedAgentName(entry: ReachableAgent): string {
   return qualifiedAgentRef(toRef(entry));
 }
 
-/** Every agent a written reference names — the shared ladder (agent-refs.ts). */
 export function matchAgentRefs(
   reachable: readonly ReachableAgent[],
   ref: string,
@@ -93,7 +65,6 @@ export function matchAgentRefs(
   ).map((match) => match.entry);
 }
 
-/** Every reachable agent, spelled so the reader can pick one and try again. */
 export function agentDirectory(reachable: readonly ReachableAgent[]): string {
   return agentRefDirectory(reachable.map(toRef));
 }

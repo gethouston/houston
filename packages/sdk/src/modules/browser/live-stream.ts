@@ -1,19 +1,11 @@
-/**
- * One attempt at the live-view stream: watches it for silence, and sorts how
- * it ended into what the connection does next. Every exit aborts the request,
- * so a stream given up on never keeps its connection open.
- */
-
 import type { BrowserLiveEvent, BrowserLiveLayout } from "@houston/wire-types";
 import type { Clock } from "../../ports";
 
-/** The runtime heartbeats every 15 s; this long without a byte is a dead stream. */
 export const BROWSER_LIVE_IDLE_MS = 45_000;
 
 export interface BrowserLiveWatchOptions {
   viewer: string;
   layout: BrowserLiveLayout;
-  /** The hand-off a reconnect is for; undefined before the first status. */
   handoff: string | undefined;
   signal: AbortSignal;
   onEvent: (event: BrowserLiveEvent) => void;
@@ -21,13 +13,6 @@ export interface BrowserLiveWatchOptions {
   onMalformed?: (error: unknown) => void;
 }
 
-/**
- * `cut`: the stream closed, went silent, or dropped after it answered 200 (a
- * mid-body read error such as Chromium's "network error" or Firefox's "Error
- * in body stream" is the connection, never an answer). `refused`: it failed
- * before any byte, so the error is the engine's answer to classify.
- * `malformed`: a data line that is not JSON.
- */
 export type LiveStreamEnd =
   | { kind: "cut" }
   | { kind: "refused"; error: unknown }
@@ -41,11 +26,9 @@ export interface LiveStreamAttempt {
   clock: Clock;
   onEvent(event: BrowserLiveEvent): void;
   onMalformed(error: unknown): void;
-  /** Not called once the returned `stop` ran. */
   onEnd(end: LiveStreamEnd): void;
 }
 
-/** Starts the attempt; the returned function stops it silently. */
 export function startLiveStream(attempt: LiveStreamAttempt): () => void {
   const { clock } = attempt;
   const controller = new AbortController();

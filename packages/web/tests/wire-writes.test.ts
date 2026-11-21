@@ -8,24 +8,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The web-adapter WRITES delegated to `@houston/sdk`: agent
- * create/rename/delete, activity create/delete, and integration
- * connect/disconnect/session/reconnect-dismiss.
- *
- * Each path MUST issue exactly the request recorded here — same method, path,
- * body, and headers (`Content-Type`,
- * `Authorization` bearer, and the live `x-houston-org`) — over the ONE shared
- * gateway fetch, with NO post-write refetch (a single request). Writes never
- * transient-retry in either path (cpFetch only blind-retries GET/HEAD; the SDK
- * requester re-sends only the gateway's typed nothing-ran refusals,
- * `compute_busy` and `pod_wake_refused`, pinned in wire-routines), so a single
- * stubbed response is the whole wire.
- *
- * The color overlay (agents) and the setSession 404-swallow (integrations) stay
- * adapter-side and are asserted here alongside the wire.
- */
-
 const BASE = "http://host";
 
 const { calls, reset, restore, stubResponses: stubFetch } = createWireCapture();
@@ -43,8 +25,6 @@ afterEach(() => {
 const client = (controlPlane = true) =>
   new HoustonClient({ baseUrl: BASE, token: "t", controlPlane });
 
-// ---- agents ----
-
 test("createAgent delegates a byte-identical single POST /agents (body + headers)", async () => {
   stubFetch(
     json(200, { id: "a1", workspaceId: "w", name: "Ada", createdAt: 0 }),
@@ -57,7 +37,7 @@ test("createAgent delegates a byte-identical single POST /agents (body + headers
     seeds: { "a.md": "x" },
   });
 
-  expect(calls).toHaveLength(1); // no post-write refetch
+  expect(calls).toHaveLength(1);
   const [post] = calls;
   expect(post.method).toBe("POST");
   expect(post.url).toBe(`${BASE}/agents`);
@@ -66,7 +46,6 @@ test("createAgent delegates a byte-identical single POST /agents (body + headers
   );
   expect(post.headers.get("Content-Type")).toBe("application/json");
   expect(post.headers.get("Authorization")).toBe("Bearer t");
-  // The RETURNED wire id drives the color overlay web layers on top.
   expect(r.agent.id).toBe("a1");
   expect(r.agent.color).toBe("#123456");
 });
@@ -122,7 +101,6 @@ test.each([
   const refusal = await client()
     .createAgent("w", { name: "Ada" })
     .catch((err: unknown) => err);
-  // One byte-identical POST, never retried: a taken name is the user's to fix.
   expect(calls).toHaveLength(1);
   expect(calls[0].method).toBe("POST");
   expect(calls[0].url).toBe(`${BASE}/agents`);
@@ -155,8 +133,6 @@ test("the desktop-to-cloud move's create posts migration: true after the seeds",
   stubFetch(
     json(200, { id: "a1", workspaceId: "w", name: "Houston", createdAt: 0 }),
   );
-  // `color` rides along as `migratedAgentCreate` always sends it: it lands in
-  // the adapter's overlay under the new id, never on the wire.
   const r = await client().createAgent("w", {
     name: "Houston",
     configId: "migrated",
@@ -220,7 +196,6 @@ test.each([
     }),
   );
   const refusal = await write().catch((err: unknown) => err);
-  // One byte-identical request, never retried: the name is the user's to change.
   expect(calls).toHaveLength(1);
   expect(calls[0].method).toBe(method);
   expect(calls[0].url).toBe(url);
@@ -228,8 +203,6 @@ test.each([
   expect(isAgentNameReserved(refusal)).toBe(true);
   expect(isAgentNameTaken(refusal)).toBe(false);
 });
-
-// ---- activities ----
 
 test("createActivity delegates a byte-identical single POST /agents/:id/activities", async () => {
   stubFetch(json(200, { id: "m1", title: "Do", status: "todo" }));
@@ -250,8 +223,6 @@ test("deleteActivity delegates a byte-identical single DELETE", async () => {
   expect(calls[0].method).toBe("DELETE");
   expect(calls[0].url).toBe(`${BASE}/agents/a1/activities/m1`);
 });
-
-// ---- integrations ----
 
 test("connectIntegration delegates a byte-identical POST /v1/integrations/:provider/connect", async () => {
   stubFetch(json(200, { redirectUrl: "u", connectionId: "c1" }));
@@ -280,9 +251,6 @@ test("disconnectIntegration delegates a byte-identical POST .../disconnect", asy
   expect(calls[0].body).toBe(JSON.stringify({ toolkit: "gmail" }));
 });
 
-// The adapter first asks /v1/capabilities whether the deployment has a
-// session sink (PRODUCT-1474); a deployment that does not say `false` gets the
-// legacy PUT.
 test("setIntegrationSession delegates a byte-identical PUT .../session", async () => {
   stubFetch(json(200, { profile: "local" }), json(200, {}));
   await client().setIntegrationSession("tok");

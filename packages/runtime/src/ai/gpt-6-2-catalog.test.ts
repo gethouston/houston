@@ -7,8 +7,6 @@ import { piModelIds } from "./pi-catalog";
 type ModelId = Parameters<typeof getModel>[1];
 type ProviderId = Parameters<typeof getModel>[0];
 
-// OpenAI's published prices for both models: standard tier, then the whole
-// request at 2x input/cache and 1.5x output once input passes 272k tokens.
 const SOL_COST = {
   input: 2,
   output: 10,
@@ -40,7 +38,6 @@ const ASTRA_COST = {
   ],
 };
 
-/** pi's GPT-6.2 rows (native since pi 1.6.0), with the window each path serves. */
 const ROWS: ReadonlyArray<{
   provider: ProviderId;
   id: string;
@@ -48,7 +45,6 @@ const ROWS: ReadonlyArray<{
   contextWindow: number;
   cost: typeof SOL_COST;
 }> = [
-  // Codex's own models listing: 500k default for Sol, 272k for Astra.
   {
     provider: "openai-codex",
     id: "gpt-6.2-sol",
@@ -111,7 +107,6 @@ test.each(
     cost: row.cost,
     compat: sibling.compat,
   });
-  // Neither model accepts reasoning.effort none, so thinking cannot be off.
   expect(getSupportedThinkingLevels(model)).not.toContain("off");
   expect(getSupportedThinkingLevels(model)).toEqual(
     getSupportedThinkingLevels(sibling),

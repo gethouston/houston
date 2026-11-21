@@ -17,26 +17,11 @@ interface ConnectInlineProps {
   toolkit: string;
   appName: string;
   agentId: string;
-  /** The connection landed / the key was saved — advance to event picking. */
   onConnected: () => void;
-  /** Return to the app grid. */
   onBack: () => void;
 }
 
-/**
- * The inline connect panel shown after the user picks a not-yet-connected app.
- * Most apps hand off to the browser OAuth / hosted-key page via {@link
- * useConnectFlow} (same page collects an API key for key-based Composio apps);
- * a user-added custom (API / MCP) integration still waiting on its secret takes
- * the in-app {@link CustomCredentialForm} instead — detected the same way the
- * in-chat credential card decides. Either way, on success the connection view
- * refetches and we continue to picking the event. A back affordance always
- * returns to the app grid so this is never a dead end.
- */
 export function ConnectInline(props: ConnectInlineProps) {
-  // Per-agent surface (HOU-823): this intake runs on managed cloud (triggers
-  // are cloud-only), where the top-level custom-integrations read 404s at the
-  // gateway — only the agent-scoped form reaches the pod.
   const list = useAgentCustomIntegrations(props.agentId);
   const view = list.data?.find((v) => v.slug === props.toolkit);
   const needsKey = !!view && isPendingCredential(view);
@@ -57,13 +42,7 @@ function OAuthConnect({
 }: ConnectInlineProps) {
   const { t } = useTranslation("routines");
   const connectFlow = useConnectFlow({ agentId });
-  // Per-slug flow states (main's multi-connect API): this card only ever drives
-  // ONE toolkit, so "busy" is scoped to it rather than any in-flight connect.
   const busy = toolkit in connectFlow.states;
-  // The inline block covers the whole flow, settled outcome included — but a
-  // settled notice must never gate the retry: the Connect button stays up
-  // whenever no flow is LIVE, so a failed attempt can be retried immediately
-  // while its outcome line is still visible above the button.
   const showFlow =
     toolkit in connectFlow.states || toolkit in connectFlow.notices;
 

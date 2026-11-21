@@ -16,7 +16,6 @@ import {
   SAMPLE_TOOLS,
 } from "./sample-chat";
 
-/** Tool rows are full-width lines in the log, so every row gets a measure. */
 function Log({ children }: { children: ReactNode }) {
   return <div className="w-full max-w-md">{children}</div>;
 }
@@ -153,7 +152,6 @@ function ChatToolBlockSpecimen() {
   );
 }
 
-/** The `@houston-ai/*` symbols this page documents. */
 export const sources: string[] = ["ToolBlock", "ToolsAndCards"];
 
 export const specimen: Specimen = {

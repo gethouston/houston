@@ -24,13 +24,6 @@ import { forwardMissionStatus } from "./missions-remote-forward";
 import { fireActivityChanged, type MissionsCtx } from "./missions-sandbox";
 import { refuseMissionRoute, resolveMissionRoute } from "./missions-target";
 
-/**
- * Explicit delegated review may move a finished mission to `done` or
- * `archived`, visible as a tool call in the parent chat. The guards exclude
- * running missions and the caller's own conversation, whose settle would
- * contradict the move. An optional `agent` targets another agent's board,
- * locally or in its pod, where the same guards apply.
- */
 export async function handleMissionStatus(
   callerCtx: MissionsCtx,
   req: IncomingMessage,
@@ -54,12 +47,6 @@ export async function handleMissionStatus(
   });
 }
 
-/**
- * The move itself, on the board this host holds - the half that runs on
- * whichever side owns the files, so the pod serving a cross-pod move applies
- * the identical guards (never a running mission, never the conversation the
- * caller is speaking in) rather than a looser copy of them.
- */
 export async function applyMissionStatus(
   ctx: MissionsCtx,
   { id, status }: MissionStatusInput,
@@ -75,8 +62,6 @@ export async function applyMissionStatus(
     if (current.status === "running") return "running" as const;
     if (missionConversationKey(current) === ctx.conversationId)
       return "self" as const;
-    // applyActivityUpdate carries the user-move semantics: a move to `done`
-    // strips the blocking interaction steps and keeps the clean-finish offers.
     const applied = applyActivityUpdate(
       current,
       { status },
@@ -113,11 +98,6 @@ export async function applyMissionStatus(
   json(res, 200, { id: outcome.id, status: outcome.status });
 }
 
-/**
- * The runtime's turn-end report stamps every successful reply, even if an
- * observer already changed the card. Only running agent-started or API missions
- * change status here, since those may have no client to settle them.
- */
 export async function handleMissionSettle(
   ctx: MissionsCtx,
   req: IncomingMessage,
@@ -133,15 +113,8 @@ export async function handleMissionSettle(
     json(res, 400, { error: "missing 'conversation_id' or invalid 'status'" });
     return;
   }
-  // Malformed interaction shapes are dropped by resolveInteractionPatch inside
-  // applyActivityUpdate - pass through as-is; null clears explicitly.
   const interaction = (body.pending_interaction ??
     null) as PendingInteraction | null;
-  // THE TURN IS OVER. This report is the one thing the runtime sends at the end
-  // of every turn on every deployment, so it is where the host observes a turn
-  // ending: the live-turn record for that conversation is dropped, and a
-  // /sandbox write arriving after the work finished is refused as out-of-turn
-  // rather than served against a turn that is no longer running.
   liveTurns.end(ctx.agent.id, cid);
   const modelCalls = parseModelCallReport(body.model_calls);
   if (modelCalls) ctx.deps.modelCallReports?.(modelCalls);

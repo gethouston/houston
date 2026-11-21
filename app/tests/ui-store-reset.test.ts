@@ -2,10 +2,6 @@ import { strictEqual } from "node:assert";
 import { afterEach, describe, it } from "node:test";
 import { useUIStore } from "../src/stores/ui.ts";
 
-// HOU-903: on an identity change the UI store must drop the outgoing account's
-// ephemeral view state back to its initial values, while keeping the
-// per-machine layout preferences (which are device-, not account-, scoped).
-
 afterEach(() => useUIStore.getState().reset());
 
 describe("useUIStore.reset", () => {
@@ -20,10 +16,6 @@ describe("useUIStore.reset", () => {
     useUIStore.getState().reset();
 
     const next = useUIStore.getState();
-    // The honest initial view: the Agents home. Home is the first team's
-    // Mission Control, and no team has resolved at this point, so the screen
-    // that needs no team is where the store starts (the shell's boot rule
-    // moves the user on once a team lands).
     strictEqual(next.viewMode, "agents-home");
     strictEqual(next.activityPanelId, null);
     strictEqual(next.paletteOpen, false);
@@ -34,8 +26,6 @@ describe("useUIStore.reset", () => {
 
   it("keeps the per-machine layout preferences", () => {
     useUIStore.getState().setSidebarCollapsed(true);
-    // The wide chat is the same kind of pref: how THIS machine lays out the
-    // chat, not something the next account should have to choose again.
     useUIStore.getState().setChatWide(true);
 
     useUIStore.getState().reset();

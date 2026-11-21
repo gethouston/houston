@@ -11,7 +11,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** The textarea is `w-full`; this is the form column it normally sits in. */
 function Field({ children }: { children: ReactNode }) {
   return <div className="w-80 max-w-full">{children}</div>;
 }
@@ -160,11 +159,6 @@ function TextareaSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["Textarea"];
 
 export const specimen: Specimen = {

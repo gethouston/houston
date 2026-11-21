@@ -45,14 +45,11 @@ test("every installed routine gets a fresh id, and the map says which was which"
     ["n1", "Daily"],
     ["n2", "Hook"],
   ]);
-  // The source's minted address does not travel: the copy has no key yet.
   expect(out.routines[1]?.trigger).toEqual({ kind: "webhook" });
-  // Everything else rides along untouched.
   expect(out.claudeMd).toBe("# Role");
   expect(out.skills).toHaveLength(1);
   expect(out.learnings).toHaveLength(1);
   expect(out.manifest).toBe(source.manifest);
-  // The source package is not mutated.
   expect(source.routines.map((r) => r.id)).toEqual(["r1", "r2"]);
 });
 

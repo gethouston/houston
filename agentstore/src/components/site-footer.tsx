@@ -4,7 +4,6 @@ const links = [
   { label: "Privacy", href: "https://gethouston.ai/privacy" },
 ] as const;
 
-/** Quiet global footer, mounted once by the root layout. */
 export function SiteFooter() {
   return (
     <footer className="w-full">

@@ -2,9 +2,6 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-// Mock the firebase SDK + the local firebase bootstrap so the session module is
-// importable without the `firebase` package installed. `hoisted` lets the mock
-// factories read a mutable "configured" flag the tests flip.
 const state = vi.hoisted(() => ({ configured: false }));
 
 vi.mock("firebase/auth", () => ({
@@ -23,7 +20,6 @@ vi.mock("./firebase", () => ({
 
 import { SessionProvider, useSession } from "./session";
 
-/** A consumer that renders the current session status. */
 function StatusProbe() {
   const { status } = useSession();
   return createElement("span", null, status);

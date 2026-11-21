@@ -1,6 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/** `KanbanPeopleProps`, read off the component's TypeScript types. */
 export const PEOPLE_PROPS: SpecimenProp[] = [
   {
     name: "people",

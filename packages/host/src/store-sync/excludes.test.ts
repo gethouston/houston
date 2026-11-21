@@ -4,8 +4,6 @@ import { STORE_SYNC_EXCLUDES } from "./daemon-policy";
 
 const AGENT = "workspaces/Personal/Marketing Manager";
 
-// PRODUCT-1784: toolchains and browser caches an agent installs inside its
-// workspace are rebuildable from its setup script and never ride the store.
 test("toolchains and caches inside a workspace never sync", () => {
   for (const rel of [
     `${AGENT}/render/node_modules/remotion/package.json`,
@@ -18,7 +16,6 @@ test("toolchains and caches inside a workspace never sync", () => {
     `${AGENT}/profile/Default/Cache/data_0`,
     `${AGENT}/profile/Default/Code Cache/js/index`,
     `${AGENT}/profile/Default/GPUCache/index`,
-    // pnpm's store, at the synced root and inside a project.
     ".pnpm-store/v3/files/00/abc-index.json",
     `${AGENT}/render/.pnpm-store/v3/files/00/abc`,
   ]) {
@@ -57,8 +54,6 @@ test("an agent or workspace named like a toolchain still syncs", () => {
   ).toBe(true);
 });
 
-// The any-depth matcher (hydrate-excludes.ts) reads `**/<dir>/` as ONE
-// directory name; any other `**` shape would silently match nothing.
 test("every any-depth exclude names exactly one directory", () => {
   for (const pattern of STORE_SYNC_EXCLUDES.filter((p) => p.includes("**"))) {
     expect(pattern, pattern).toMatch(/^\*\*\/[^/*]+\/$/);

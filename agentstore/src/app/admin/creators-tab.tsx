@@ -19,7 +19,6 @@ import { GrantHandleForm } from "./grant-handle-form";
 
 type Action = "verify" | "unverify" | "release";
 
-/** Result feedback after a management action; success or a failure reason. */
 type Result = { tone: "ok" | "bad"; message: string } | null;
 
 function resultMessage(action: Action, handle: string): string {
@@ -29,11 +28,6 @@ function resultMessage(action: Action, handle: string): string {
   return `Released @${handle}. The handle is now free to claim.`;
 }
 
-/**
- * The creator moderation panel: look up a creator by handle to grant or remove
- * the verified badge or release the handle, and review creator abuse reports.
- * Access is gated by the gateway (404 for non-admins), surfaced by the actions.
- */
 export function CreatorsTab({
   getToken,
 }: {

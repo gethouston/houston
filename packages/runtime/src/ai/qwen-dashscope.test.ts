@@ -15,13 +15,6 @@ import {
   resolveQwenModel,
 } from "./qwen-dashscope";
 
-// Houston's qwen extension provider (HOU-1077): Qwen on Alibaba Model Studio's
-// international PAY-AS-YOU-GO endpoints, for the regular (free-quota) keys the
-// pi-shipped Token Plan gateways reject. The models are derived from pi's own
-// qwen-token-plan catalog, so these tests pin the derivation contract, not a
-// hand-copied model list. The endpoint is REGION-scoped per verified key
-// (qwen-region.json); Singapore is the never-verified default.
-
 const INTL = QWEN_REGIONS[0];
 const US = QWEN_REGIONS[1];
 
@@ -46,8 +39,6 @@ test("qwen models are the Token Plan Qwen entries on the DashScope url", () => {
 });
 
 test("qwen3.7-max is the first (default) model", () => {
-  // `firstCatalogModel` picks index 0 as the provider default — a card named
-  // Qwen must not default to something else by alphabetical accident.
   expect(qwenModels()[0]?.id).toBe("qwen3.7-max");
   expect(modelFor(QWEN_PROVIDER_ID)).toBe("qwen3.7-max");
 });
@@ -75,11 +66,6 @@ test("an unknown unpinned id falls back to the qwen default, not undefined", () 
   expect(m?.id).toBe("qwen3.7-max");
 });
 
-// ---------------------------------------------------------------------------
-// Region scoping (HOU-1077): a key works only against the Model Studio region
-// it was created in, so the verified region persists per data dir and every
-// model read serves it.
-
 test("no region file → the Singapore default", () => {
   const dir = mkdtempSync(join(tmpdir(), "houston-qwen-region-"));
   expect(activeQwenRegion(dir).id).toBe("intl");
@@ -103,7 +89,6 @@ test("an unknown/corrupt region file falls back to the default, never throws", (
 test("resolveQwenModel keeps safeGetModel semantics with the dir's region", () => {
   const dir = dirWithRegion("us");
   expect(resolveQwenModel("qwen3.7-max", false, dir).baseUrl).toBe(US.baseUrl);
-  // Stale saved id → default with a diagnostic; pinned id → clean throw.
   expect(resolveQwenModel("stale-id", false, dir).id).toBe("qwen3.7-max");
   expect(() => resolveQwenModel("stale-id", true, dir)).toThrow(
     /not available/,

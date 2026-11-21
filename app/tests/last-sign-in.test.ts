@@ -9,9 +9,6 @@ import {
 
 const KEY = "houston.last-sign-in";
 
-// A hermetic in-memory `localStorage`. last-sign-in reads `globalThis.localStorage`
-// lazily at call time, so installing a fake before any call exercises the real
-// load/save path. `throwOn` lets a test simulate a disabled / quota-full store.
 class FakeLocalStorage {
   store = new Map<string, string>();
   throwOn: "get" | "set" | null = null;

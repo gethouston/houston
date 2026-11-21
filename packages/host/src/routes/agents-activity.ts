@@ -12,12 +12,6 @@ import {
 import { json } from "./http";
 import { defineRoute } from "./registry";
 
-/**
- * One agent's turn/routine busy inputs — the shared core of the per-agent
- * probe below and the pod-level `GET /activity` aggregate. The caller resolves
- * the channel and the vfs first (the two probes answer their absence
- * differently: 503 per-agent, conservative busy at pod level).
- */
 async function agentBusyInputs(
   deps: AgentRouteDeps,
   vfs: Vfs,
@@ -53,26 +47,13 @@ async function activityStatus(
   const runtime = channel.runtimeStatus
     ? await channel.runtimeStatus(ctx)
     : "unknown";
-  // A sign-in waiting on its user is not a turn: reported apart, never busy.
   const loginPending = channel.loginPending
     ? await channel.loginPending(ctx)
     : false;
-  // Other /agents/* requests held open right now — minus this probe itself.
-  // Catches what the turn check cannot: an open conversation-events SSE
-  // subscription (an agent open in a UI tab) between turns. Two probes
-  // overlapping see each other and both answer busy — conservative, and gone
-  // by the next sweep.
   const activeRequests = deps.agentRequestCount
     ? Math.max(0, deps.agentRequestCount() - 1)
     : 0;
-  // The probe is a GET, so it never counts among the writes. turnBusy,
-  // loginPending and activeWrites let a caller that ignores open reads still
-  // see real work.
   const activeWrites = deps.agentWriteCount ? deps.agentWriteCount() : 0;
-  // State held only in this process and waiting on a person, reported apart
-  // like a pending sign-in (never busy): approval cards and their unspent
-  // answers for this agent (each expires on its own), and custom-integration
-  // sign-ins waiting on the browser (host-wide; a managed pod hosts one agent).
   const pendingApprovals = assistantApprovals.pendingCount(ctx.agent.id);
   const pendingOAuth = deps.customIntegrations?.pendingOAuthAttempts ?? 0;
   return {
@@ -88,11 +69,6 @@ async function activityStatus(
   };
 }
 
-/**
- * `GET /agents/:agentId/activity` — the gateway's per-agent idle-sleep probe.
- * It reports whether a runtime turn or a routine run is still active without
- * falling through to the runtime dispatch surface (routes/agents.ts).
- */
 defineRoute({
   group: "agent-activity",
   method: "GET",
@@ -101,8 +77,6 @@ defineRoute({
   classification: "infra",
   reason:
     "The cloud waker's per-agent idle sweep polls it to decide whether the pod may sleep; no UI reads it.",
-  // A POST here must NOT 405: it falls past this check into the generic
-  // dispatch and is proxied to the agent's own runtime.
   methodMismatch: "fallthrough",
   source: "packages/host/src/routes/agents-activity.ts",
   async handler({ deps, authz, res }) {
@@ -116,16 +90,6 @@ defineRoute({
   },
 });
 
-/**
- * Pod-level busy aggregate for `GET /activity` (routes/pod-activity.ts): every
- * agent in every workspace on this host — engine pods are single-tenant, so the
- * store-wide enumeration IS the pod's population. The control plane's
- * pre-roll probe (same parsing rule as the waker's idle sweep) treats
- * anything but a literal `busy: false` as busy, so `false` must mean
- * provably idle: an agent whose workspace has no channel wired, whose vfs is
- * unconfigured, or that throws while probed counts as busy rather than
- * failing the whole answer.
- */
 export async function podActivityStatus(deps: AgentRouteDeps): Promise<{
   busy: boolean;
   activeRequests: number;
@@ -134,14 +98,9 @@ export async function podActivityStatus(deps: AgentRouteDeps): Promise<{
   pendingApprovals: number;
   pendingOAuth: number;
 }> {
-  // The counter is pod-global (server.ts counts /agents/*-prefixed requests),
-  // so read it ONCE — and unlike the per-agent probe above, /activity is not
-  // under /agents/, so it never counts itself: no self-subtraction here.
   const activeRequests = deps.agentRequestCount ? deps.agentRequestCount() : 0;
   let runningRoutineRuns = 0;
   let busyAgents = 0;
-  // Held in memory and waiting on a person, as on the per-agent probe: summed
-  // over the pod's agents, and never part of busy.
   let pendingApprovals = 0;
   for (const workspace of await deps.store.listWorkspaces()) {
     const channel = channelFor(deps, workspace);
@@ -161,7 +120,7 @@ export async function podActivityStatus(deps: AgentRouteDeps): Promise<{
         runningRoutineRuns += running;
         if (turnBusy || running > 0) busyAgents++;
       } catch {
-        busyAgents++; // an unprobeable agent must not read as idle
+        busyAgents++;
       }
     }
   }

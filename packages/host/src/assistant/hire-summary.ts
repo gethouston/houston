@@ -1,10 +1,6 @@
 import type { ApprovalArg } from "@houston/protocol/approval";
 import type { ConfirmationSummary } from "./summary";
 
-/**
- * A hire's card in the host's English: its name as the question, then its
- * color, the role its instructions declare, and the instructions whole.
- */
 export function hireSummary(args: ApprovalArg[]): ConfirmationSummary {
   const name = args.find((arg) => arg.name === "name")?.value;
   const color = args.find((arg) => arg.name === "color")?.value;

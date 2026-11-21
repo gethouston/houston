@@ -27,7 +27,6 @@ function memoryLedger(): LinkLedger & { value: string | null } {
   };
 }
 
-/** One mount of the hook: its own gate, sharing the app run's handed links. */
 function mount(handed: HandedLinks, ready = true) {
   const state = { ready };
   const applied: SettingsLanding[] = [];
@@ -123,7 +122,6 @@ describe("handing over a settings link", () => {
       link: null,
       applied: () => acks++,
     };
-    // The shell remounts before sign-in: the held offer dies unapplied.
     const first = mount(handed, false);
     await first.gate.offer(boot);
     strictEqual(acks, 0);

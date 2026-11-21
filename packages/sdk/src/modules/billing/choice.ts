@@ -1,9 +1,3 @@
-/**
- * The free-org pick REST calls (`/v1/me/billing-choice*`). Account-scoped: the
- * gateway reads the caller's session alone, so the pick an owner makes is the
- * same from every space they are in.
- */
-
 import {
   BILLING_CHOICE_REFUSALS,
   type BillingChoice,
@@ -14,16 +8,10 @@ import {
 import { type HttpScope, httpRequest } from "../http";
 import { refusalCode, refusalStatus } from "../refusal-code";
 
-/** What a save answers: the stored choice, or a state the person is in. */
 export type BillingChoiceSave =
   | { kind: "saved"; choice: BillingChoice }
   | { kind: BillingChoiceRefusal };
 
-/**
- * The refusal behind a failed pick, or null for every other error. A code is
- * recognized only with the status the contract pairs it with, so an unrelated
- * error carrying the same word stays a bug.
- */
 export function billingChoiceRefusal(
   error: unknown,
 ): BillingChoiceRefusal | null {

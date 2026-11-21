@@ -8,13 +8,6 @@ import {
   type VmSessionStatus,
 } from "../src/components/board/session-loading.ts";
 
-/**
- * The assistant chat has NO activity row by design, so its spinner had nothing
- * to turn it off: the local "we sent" flag survived the turn, and the rollup
- * read a settled conversation as "unknown, assume running" forever.
- * A boardless surface settles from the conversation VM alone.
- */
-
 const NO_BOARD: BoardRows = { present: false };
 const board = (rows: Record<string, string>): BoardRows => ({
   present: true,
@@ -39,9 +32,6 @@ describe("a chat with no board settles from the conversation VM", () => {
   });
 
   it("clears the spinner when the server confirms the conversation is idle", () => {
-    // The stale-running heal (`confirmIdle`) is the VM's other way of saying a
-    // turn is over. With no row to fall back on, reading it as "unknown" left
-    // the spinner on for the rest of the session.
     deepStrictEqual(
       deriveSessionLoading({
         locallySent: { assistant: true },
@@ -104,8 +94,6 @@ describe("a chat with no board settles from the conversation VM", () => {
 
 describe("a board keeps its activity-row semantics", () => {
   it("stays busy while the row runs, even after the VM idles", () => {
-    // The documented board rule: busy whenever the activity is running, not
-    // just when WE started it. An idle/settled VM must never override it.
     deepStrictEqual(
       deriveSessionLoading({
         locallySent: { s1: true },
@@ -142,8 +130,6 @@ describe("a board keeps its activity-row semantics", () => {
   });
 
   it("keeps a just-created mission busy until its row lands", () => {
-    // An EMPTY board is not a boardless surface: the row for the mission just
-    // created has not arrived yet, so an unknown session stays busy.
     deepStrictEqual(
       deriveSessionLoading({
         locallySent: { s1: true },
@@ -156,8 +142,6 @@ describe("a board keeps its activity-row semantics", () => {
   });
 
   it("keeps a running row busy even after its VM settled", () => {
-    // The host-persisted row is the board's signal: a settled VM must not
-    // clear a card the engine still reports as running.
     deepStrictEqual(
       deriveSessionLoading({
         locallySent: { s1: true },
@@ -183,8 +167,6 @@ describe("a board keeps its activity-row semantics", () => {
 });
 
 describe("a turn whose reply completed ends its Stop before the card's write lands", () => {
-  // `reply_complete`: only the wrap-up (offers, durability, title) remains.
-  // The row still says running for a beat; the VM already knows.
   it("clears a session we sent even while its row still reads running", () => {
     deepStrictEqual(
       deriveSessionLoading({
@@ -239,9 +221,6 @@ describe("the open conversation follows running turns", () => {
 });
 
 describe("the send hook subscribes to the open conversation's VM", () => {
-  // The rollup is a `useMemo`: a synchronous VM read alone never wakes it, so a
-  // surface whose activity list never refetches (the assistant has none) froze
-  // its spinner at send time. The subscription is what makes the settle land.
   const source = readFileSync(
     join(
       import.meta.dirname,

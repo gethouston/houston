@@ -9,9 +9,6 @@ import {
 
 describe("isProviderAuthMessage", () => {
   it("recognizes the new engine's not-connected refusal (both variants)", () => {
-    // The TS engine refuses a turn whose provider is logged out with these
-    // verbatim strings and emits NO AuthRequired event, so this feed message
-    // is the only signal that surfaces the in-chat reconnect card.
     strictEqual(
       isProviderAuthMessage(
         "No provider connected. Log in with Claude or Codex first.",
@@ -33,10 +30,6 @@ describe("isProviderAuthMessage", () => {
   });
 
   it("recognizes the runtime's disconnected-local-model refusal (surfaces the reconnect card)", () => {
-    // Verbatim from runtime ai/openai-compatible.ts: a chat pinned to the
-    // local provider whose endpoint was disconnected in Settings fails every
-    // send with this message and NO AuthRequired event — the feed pattern is
-    // the only card trigger.
     strictEqual(
       isProviderAuthMessage(
         "No local model configured. Set a base URL and model for the OpenAI-compatible provider.",
@@ -54,9 +47,6 @@ describe("isProviderAuthMessage", () => {
   });
 
   it("does not match a code buried inside a longer token (HOU-734)", () => {
-    // A `.includes("401")` fired on any hex UUID that contained the digits,
-    // e.g. the activity id the routine-setup kickoff echoes — hiding the whole
-    // reply. Word-boundary matching leaves such an embedded code alone.
     strictEqual(
       isProviderAuthMessage(
         'Set its "setup_activity_id" field to exactly ' +
@@ -64,9 +54,7 @@ describe("isProviderAuthMessage", () => {
       ),
       false,
     );
-    // Neither does a plain sentence that merely spells the digits inside a word.
     strictEqual(isProviderAuthMessage("Order #40199 shipped."), false);
-    // …but a standalone status code is still an auth signal.
     strictEqual(isProviderAuthMessage("Request failed: 401"), true);
   });
 });

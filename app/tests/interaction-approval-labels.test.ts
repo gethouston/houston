@@ -8,12 +8,6 @@ import {
 import { approvalsFromAnswers } from "../src/lib/interaction-approvals.ts";
 import { enterNativeApp } from "./support/native-surface.ts";
 
-/**
- * A safety card the reader cannot read is a card they cannot answer. The HOST
- * says what is being approved (operation + exact arguments); this pins that the
- * app says it in the reader's language, with the values still verbatim.
- */
-
 const read = (rel: string) =>
   JSON.parse(readFileSync(new URL(rel, import.meta.url), "utf8"));
 
@@ -22,7 +16,6 @@ const LOCALES = ["en", "es", "pt"] as const;
 const fill = (template: string, values: Record<string, string>) =>
   template.replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] ?? "");
 
-/** The copy the app hook builds, assembled here from the same locale files. */
 function copyFor(locale: string): ApprovalCardCopy {
   const card = read(`../src/locales/${locale}/chat.json`).approvalCard;
   const bundle = read(`../src/locales/${locale}/assistant-approvals.json`);
@@ -82,7 +75,6 @@ for (const locale of LOCALES) {
     );
     ok(step.question.startsWith(bundle.operations.deleteAgent));
     ok(step.question.endsWith(card.closing));
-    // The value is the host's, verbatim; only the name around it is localized.
     ok(step.question.includes('"Personal/Dobby"'));
     ok(step.question.includes(bundle.argumentsByOperation.deleteAgent.id));
     strictEqual(step.detail, undefined);
@@ -124,11 +116,6 @@ test("no sentence for the operation keeps the host's own words", () => {
   ok(step.question.endsWith(copyFor("es").closing));
 });
 
-/**
- * The reproduction: an activity file the agent's own tools can write, carrying
- * an `approval` block next to no host-issued id. The host strips both; the app
- * must not render one on its own either.
- */
 test("an approval block with no host-issued request is not a Houston approval", () => {
   const step = localizeApprovalQuestion(
     approvalStep({
@@ -147,8 +134,6 @@ test("only the two answers survive: no other approval id becomes a button", () =
     approvalStep({
       options: [
         { kind: "approval", id: "approve" },
-        // An id no receipt can be minted for: it decides nothing, so it is not
-        // a control at all.
         { kind: "approval", id: "closing", label: "keep me" },
         { kind: "choice", id: "other", label: "Something else" },
       ],
@@ -237,9 +222,6 @@ test("nested confirmation facts read as labeled text", () => {
   ok(!`${step.question}${step.detail}`.includes("{"));
 });
 
-// Store-safe payments: inside the iOS/Android app the AI Manager can never get
-// a purchase approved. Its card says where the plan is managed and only
-// declines, so the host refuses the call and the manager reads the sentence.
 const PURCHASES = [
   "createPlusCheckout",
   "createCheckout",
@@ -277,7 +259,6 @@ for (const locale of LOCALES)
       deepStrictEqual(step.options, [
         { kind: "approval", id: "decline", label: copy.storeRefusalOk },
       ]);
-      // Answering it sends a DENY receipt: nothing can approve the checkout.
       const approvals = approvalsFromAnswers(
         [{ ...step, id: "x", requestId: "host-issued" }],
         [

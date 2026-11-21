@@ -29,55 +29,35 @@ import { basicTeamNameIssues, basicTeamNames } from "./basic-team-names";
 import type { RosterMember } from "./team-roster-model";
 import type { TeamRoster } from "./use-team-roster";
 
-/** A starter as its card shows it, before or after joining the roster. */
 export interface BasicTeamRow {
-  /** The card's identity in the team (`BasicTeamDraft.key`). */
   key: string;
   roleId: AgentRoleId;
   roleLabel: string;
-  /** The industry the card shows: its own, or the team's. */
   industry: string;
-  /** What the name field holds: a draft's name (its job until the person
-   *  types one), or the member's name once it joined. */
   name: string;
   color: string;
-  /** Null while a draft; the roster's member once it joined, edited from
-   *  then on through the roster. */
   joined: RosterMember | null;
-  /** The card's message for a draft's name, or null. */
   error: string | null;
-  /** A draft the person may let go (another card still stands). */
   removable: boolean;
 }
 
 export interface BasicTeam {
   rows: BasicTeamRow[];
-  /** A draft is still to hire, a starter's create failed, or a save did. */
   hasWork: boolean;
-  /** Hires made one by one whose create or save failed: off this screen,
-   *  yet they hold the team back until tried again (or removed). */
   offscreenFailures: RosterMember[];
-  /** A draft's name, brief and color; a joined starter is edited on the
-   *  roster. */
   rename: (index: number, name: string) => void;
   answer: (index: number, field: JobBriefField, answer: string) => void;
   recolor: (index: number, color: string) => void;
-  /** One more draft on top, dealt the next shared job ("Hire one more"). */
   add: () => void;
-  /** Lets a draft go before it is hired. */
   remove: (index: number) => void;
-  /** Hires every draft and retries every starter whose create failed, or,
-   *  when a name holds them back, says which card to fix first. */
   submit: () => BasicTeamSubmit;
 }
 
-/** The starter team's editable cards, hiring through the shared roster. */
 export function useBasicTeam({
   industry,
   contextId,
   roster,
 }: {
-  /** The industry as the person reads it: every member's brief context. */
   industry: string;
   contextId: AgentContextId | null;
   roster: TeamRoster;
@@ -95,8 +75,6 @@ export function useBasicTeam({
   useEffect(() => {
     setDrafts(basicTeamDefaults(roleLabel, contextId));
   }, [contextId, roleLabel]);
-  // A starter let go from the roster (its create failed) is a draft again,
-  // with the name and color it had.
   const settle = (list: readonly BasicTeamDraft[]) =>
     list.map((draft) =>
       draft.rosterKey !== null &&
@@ -125,7 +103,6 @@ export function useBasicTeam({
     };
   });
   const failed = rows.filter((row) => row.joined?.status.kind === "failed");
-  // A save that failed is sent again by the finish this press requests.
   const retries =
     failed.length + roster.members.filter((m) => m.saveFailed).length;
 
@@ -144,12 +121,9 @@ export function useBasicTeam({
         context: row.industry,
         role: row.roleLabel,
       });
-      // Unreachable while the view holds an industry; narrowing, not a skip.
       if (!brief) return null;
       return roster.join({ name: row.name.trim(), color: row.color, brief });
     });
-    // The name and color are pinned with the hire, so a starter let go comes
-    // back as a draft with the ones it had.
     setDrafts((current) =>
       current.map((draft, at) => ({
         ...draft,

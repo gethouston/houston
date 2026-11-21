@@ -17,12 +17,6 @@ export function kebabCase(value) {
     .toLowerCase();
 }
 
-/**
- * The only markup a team icon may be made of. Everything the emitted bodies
- * reach is `dangerouslySetInnerHTML`, so a `<script>`, a `<foreignObject>` or
- * an `on*` handler slipped into a future source file would run in the app.
- * Anything outside these two lists stops the build instead.
- */
 const ALLOWED_ELEMENTS = new Set(
   "path circle ellipse rect line polyline polygon g".split(" "),
 );
@@ -32,14 +26,6 @@ const ALLOWED_ATTRIBUTES = new Set(
   ),
 );
 
-/**
- * Both name patterns admit `:` so a NAMESPACED name is captured whole and put
- * to the allowlist as it is written. Stopping at the colon would read
- * `xlink:href` as `href` and `<svg:script>` as `svg`, judging a name the
- * document never used: `xlink:href` is a live script vector in an SVG that
- * ships through `dangerouslySetInnerHTML`. Nothing on either allowlist has a
- * colon, so every namespaced name is rejected, which is the fail-closed answer.
- */
 function assertDrawingOnly(id, body) {
   for (const [, element] of body.matchAll(/<\/?([a-zA-Z][\w:-]*)/g)) {
     if (!ALLOWED_ELEMENTS.has(element)) {
@@ -65,8 +51,6 @@ export function parseSymbols(source) {
       .replace(/\sfill=("[^"]*"|'[^']*')/g, "")
       .replace(/></g, ">\n<")
       .trim();
-    // Checked on what actually SHIPS, after the fill strip, so the allowlist
-    // judges the exact markup the app will render.
     assertDrawingOnly(id, body);
     return { key: kebabCase(id), viewBox, body };
   });
@@ -126,8 +110,6 @@ if (
   process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  // The committed asset by default, so `pnpm generate:team-icons` regenerates
-  // exactly what is in the tree; an argument overrides it with a new source.
   const sourcePath =
     process.argv[2] ?? path.join(repoRoot, "ui/layout/icons/team-icons.svg");
   try {

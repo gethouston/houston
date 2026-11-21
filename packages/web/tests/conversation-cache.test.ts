@@ -14,13 +14,6 @@ import {
 } from "@houston/engine-adapter/conversation-cache";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * The local conversation cache (HOU-712): per-gateway+user scoping, round
- * trips, corruption tolerance, prune, and the never-throws guarantee — the
- * cache is an accelerator, so any storage failure must degrade to "no cache",
- * never break the chat.
- */
-
 function memoryBackend(): ConversationCacheBackend & {
   map: Map<string, CacheRecord>;
 } {

@@ -9,14 +9,6 @@ export interface SidebarPinnedListProps {
   ctx: SidebarBaseRowContext;
 }
 
-/**
- * The expanded rail's pinned rows, ahead of every group: person rows exactly
- * like an agent's, selected through the same `selectedId` / `onSelect`, but
- * outside every drag container and the list's scroll box, so
- * they neither drag nor wear the grab cursor, no drop can land above them,
- * and they stay in view while the list scrolls. The collapsed
- * rail has no groups and simply lists them first.
- */
 export function SidebarPinnedList({ items, ctx }: SidebarPinnedListProps) {
   if (items.length === 0) return null;
   return (

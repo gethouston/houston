@@ -2,12 +2,6 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { type AppHiddenSource, onAppHidden } from "../src/lib/app-hidden.ts";
 
-/**
- * The window going away is not a React unmount.
- *
- * Everything that must be durable before the process ends hangs off this rule,
- * so it is driven here against a fake page rather than a browser.
- */
 function fakePage() {
   const listeners = new Map<string, Set<() => void>>();
   let hidden = false;
@@ -39,8 +33,6 @@ function fakePage() {
 
 describe("onAppHidden", () => {
   it("hears the window closing", () => {
-    // The desktop's WKWebView delivers `pagehide` on quit; it is the only
-    // notice a flush that must survive the shutdown will ever get.
     const page = fakePage();
     let hidden = 0;
     onAppHidden(() => {
@@ -64,7 +56,6 @@ describe("onAppHidden", () => {
   });
 
   it("says nothing when the window comes BACK", () => {
-    // Both directions raise the same event; only one of them is a goodbye.
     const page = fakePage();
     let hidden = 0;
     onAppHidden(() => {

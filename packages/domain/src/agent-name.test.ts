@@ -24,7 +24,6 @@ describe("validateAgentName", () => {
       ok: true,
       name: "Ana's agent (v2)",
     });
-    // Interior dots are fine; only leading dots hide the folder.
     expect(validateAgentName("v2.0 helper").ok).toBe(true);
   });
 
@@ -70,7 +69,6 @@ describe("sameAgentName", () => {
     expect(sameAgentName("Mia", "Mia")).toBe(true);
     expect(sameAgentName("Mia", "mia")).toBe(true);
     expect(sameAgentName("  MIA ", "mia")).toBe(true);
-    // Composed and decomposed é are one name on APFS.
     expect(sameAgentName("Jos\u00e9", "Jose\u0301")).toBe(true);
   });
 

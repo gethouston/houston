@@ -1,19 +1,3 @@
-/**
- * One provider CARD in the marketplace grid (Providers tab). A colorful,
- * recognition-first card mirroring the Integrations page's `AppRow`: a boxless
- * full-color brand mark + name (with an inline `LiveStatus` "Connected" dot
- * when connected) on the first line, then a secondary line leading with the
- * live model count in bold (`{N} models`), a middot, then
- * the muted friendly cost story (e.g. "Your Claude subscription" — how the
- * card is billed lives in this prose and in the Subscription/Pay-as-you-go
- * quick filter, `provider-filtering.ts`, not on the card itself) + a trailing
- * action button: a Connect pill when disconnected (which, while a connect is
- * in flight, flips to Cancel on hover so a stuck sign-in can be aborted) or a
- * ghost Sign out when connected (opening the shared confirm). Nothing
- * hover-only. Serves onboarding / migration / workspace setup; the AI hub's
- * own Providers tab uses the catalog-grammar `ProvidersPane` instead.
- */
-
 import { AsyncButton, Button } from "@houston-ai/core";
 import { Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -24,19 +8,8 @@ import { BrandMark } from "./brand-mark";
 
 interface ProviderRowProps {
   provider: ProviderInfo;
-  /**
-   * Live model count for this provider from the catalog. Rendered bold as
-   * `{N} models` at the head of the secondary line; when 0 (unknown) the line is
-   * the description alone.
-   */
   modelCount: number;
-  /** Muted one-line secondary: the friendly cost prose or provider description. */
   description: string;
-  /**
-   * The card's connection state. `checking` (an unconfirmable probe) renders a
-   * muted, non-actionable "Checking" in place of both the Connected dot and the
-   * Connect / Sign out buttons: claiming either would be a guess (HOU-979).
-   */
   connection: ProviderConnectionState;
   connecting: boolean;
   signingOut: boolean;
@@ -82,9 +55,6 @@ export function ProviderRow({
 
       <div className="flex shrink-0 items-center gap-1">
         {connection === "checking" ? (
-          // Not confirmable right now (engine unreachable, pod waking, the
-          // space's agent list still settling). Say exactly that instead of
-          // offering an action whose premise we can't verify.
           <span className="px-3 text-[13px] text-ink-muted">
             {t("card.checking")}
           </span>
@@ -100,15 +70,10 @@ export function ProviderRow({
           </Button>
         ) : (
           <AsyncButton
-            // Fixed min-width so the label swap (Connect / Connecting / Cancel)
-            // never nudges the row's width.
             size="sm"
             variant="secondary"
             spinner={false}
             className="group/connect relative min-w-[92px]"
-            // Per-provider accessible name so every Connect pill reads distinctly
-            // to screen readers (the visible label is just "Connect"); flips to
-            // "Cancel" while a connect is in flight.
             aria-label={
               connecting
                 ? t("card.cancel")
@@ -120,7 +85,6 @@ export function ProviderRow({
           >
             {connecting ? (
               <>
-                {/* Resting: spinner + "Connecting" — fades out on hover. */}
                 <span className="flex items-center justify-center gap-1.5 transition-opacity group-hover/connect:opacity-0">
                   <Loader2
                     className="size-3.5 animate-spin"
@@ -128,7 +92,6 @@ export function ProviderRow({
                   />
                   {t("card.connecting")}
                 </span>
-                {/* Hover: Cancel — click aborts so the user can retry. */}
                 <span className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 transition-opacity group-hover/connect:opacity-100">
                   <X className="size-3.5" aria-hidden="true" />
                   {t("card.cancel")}

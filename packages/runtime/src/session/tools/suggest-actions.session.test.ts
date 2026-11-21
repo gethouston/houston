@@ -28,17 +28,6 @@ import {
 import { makeSuggestActionsTool } from "./suggest-actions";
 import { makeSuggestReusableTool } from "./suggest-reusable";
 
-/**
- * The one-pass finish, driven through a REAL pi AgentSession over the scripted
- * faux provider (no network): a turn whose closing message and offer calls
- * arrive in one assistant message ends on the tool results — pi honors the
- * results' `terminate` hint, so the provider is called exactly ONCE and the
- * scripted next response is never requested. An offer that arrives before any
- * visible text in ITS message falls back to the extra round-trip so the user
- * still gets a reply. The holder is fed exactly the way exec-turn feeds it:
- * the session's assistant message-start channel plus the wire text.
- */
-
 const actions = [
   { id: "review", label: "Review it", message: "Review the result." },
   { id: "extend", label: "Extend it", message: "Extend the result." },
@@ -49,7 +38,6 @@ const reusable = {
   rationale: "Reusable.",
 };
 
-/** A plain tool with no finish semantics, to stand in for any work tool. */
 const lookupTool = defineTool({
   name: "lookup",
   label: "Lookup",
@@ -84,8 +72,6 @@ async function fauxSession(responses: AssistantMessage[]) {
     model: faux.getModel() as never,
     sessionManager: SessionManager.inMemory(),
     settingsManager: SettingsManager.inMemory({ retry: { baseDelayMs: 0 } }),
-    // pi exposes the intersection of the name allowlist and the registered
-    // objects (conversation-cache-tools.test.ts), so names go in both.
     tools: ["suggest_actions", "suggest_reusable", "lookup"],
     customTools: [
       makeSuggestActionsTool(),
@@ -152,8 +138,6 @@ test("both offers in the final message end the turn together, in one call", asyn
     "suggest_actions",
     "suggest_reusable",
   ]);
-  // Neither offer was refused: the reusable's finish did not reset the mark
-  // the actions call read.
   expect(
     events.filter((e) => e.type === "tool_end").map((e) => e.data.isError),
   ).toEqual([false, false]);
@@ -181,7 +165,6 @@ test("text from an earlier round-trip of the turn is not the closing message of 
       [fauxText("Looking that up."), fauxToolCall("lookup", {})],
       { stopReason: "toolUse" },
     ),
-    // The model wrote nothing in THIS message before the offer: still open.
     fauxAssistantMessage([fauxToolCall("suggest_actions", { actions })], {
       stopReason: "toolUse",
     }),

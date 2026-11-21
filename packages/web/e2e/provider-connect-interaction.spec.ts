@@ -103,15 +103,6 @@ test("canceling provider key entry leaves the connection request actionable", as
   await expect(page.getByPlaceholder(ASSISTANT_COMPOSER)).toHaveCount(0);
 });
 
-/**
- * GitHub Copilot is ONE card with two sign-in homes (github.com vs a company
- * GitHub Enterprise domain), so its Connect asks WHERE before starting the
- * device-code login. Picking a plan CLOSES that dialog — and a close read as
- * "the user walked away" cancels the connection observation behind the step, so
- * the sign-in the pick just started is never observed and the agent never
- * resumes (Sep 2026 review). `closeMeansCancel` is the unit-level guard; these
- * pin the user-visible halves.
- */
 test("picking a Copilot plan starts the sign-in from the connect step", async ({
   page,
   request,
@@ -146,11 +137,6 @@ test("picking a Copilot plan starts the sign-in from the connect step", async ({
   await expect(plan).toBeVisible();
   await plan.getByRole("button", { name: "Continue", exact: true }).click();
 
-  // The plan dialog is gone and the sign-in it started is on screen: the
-  // device-code dialog the fake host's login URL opens. An abandoned step would
-  // show an idle Connect instead. The card underneath is inert while the
-  // dialog is up, so the step's own waiting state is pinned by the unit tests
-  // of closeMeansCancel, not asserted through the modal.
   await expect(plan).toHaveCount(0);
   const signIn = page.getByRole("dialog", {
     name: "Finish signing in to GitHub Copilot",
@@ -158,10 +144,6 @@ test("picking a Copilot plan starts the sign-in from the connect step", async ({
   await expect(signIn).toBeVisible();
   await expect(page.getByPlaceholder(ASSISTANT_COMPOSER)).toHaveCount(0);
 
-  // Finish the device-code sign-in on the agent's runtime, as the provider's
-  // own page would. Only an observation that SURVIVED the plan pick can see
-  // this land — the bug closed the dialog and cancelled the observation, so
-  // the conversation stayed blocked here no matter what the user did next.
   const completed = await request.post(
     `${FAKE_HOST_URL}/agents/${SEED_AGENT_ID}/auth/github-copilot/login/complete`,
   );
@@ -174,9 +156,6 @@ test("picking a Copilot plan starts the sign-in from the connect step", async ({
   await expect(
     page.getByText("Connect GitHub Copilot for this task.", { exact: true }),
   ).toHaveCount(0);
-  // The mission's own message plus ONE resume — a second nudge would start a
-  // second turn and a second card. Counted once the resumed turn's own reply
-  // has landed, so a duplicate nudge would already be in `sent`.
   await expect(page.getByText(/Roger that\. You said:/)).toHaveCount(2, {
     timeout: 20_000,
   });

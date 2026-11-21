@@ -9,15 +9,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * Warm-while-typing on the wire, byte for byte.
- *
- * The prewarm is a GATEWAY route (`/v1/agents/:slug/…`), not the agent-proxy
- * family the other conversation controls ride: a request that drifted onto
- * `/agents/:slug/…` would wake the agent's pod instead of readying a sandbox,
- * and nothing else in the suite would notice.
- */
-
 const BASE = "https://gw.example";
 const AGENT = "sales";
 const ANSWER = { outcome: "launching", holdMs: 20_000 };
@@ -26,7 +17,6 @@ const PREWARM_ON = { conversationPrewarm: true };
 const { calls, reset, restore, stubFetch } = createWireCapture();
 
 beforeEach(() => {
-  // Only the clocks: the typing policy reads them, and the fetches still settle.
   vi.useFakeTimers({ toFake: ["Date", "performance"] });
   installLocalStorage();
   reset();
@@ -41,8 +31,6 @@ afterEach(() => {
 
 type Draft = Parameters<HoustonClient["draftChanged"]>[0];
 
-/** Types on, a keystroke every 250 ms, until just short of the typing
- *  threshold: the next keystroke is the one that prewarms. */
 async function typeUpTo(c: HoustonClient, draft: Draft) {
   for (let t = 0; t < PREWARM_TYPING_MS; t += 250) {
     await c.draftChanged(draft, PREWARM_ON);

@@ -1,30 +1,6 @@
 import { NAVY, navy } from "./chrome.mjs";
 import h from "./h.mjs";
 
-/**
- * The glass panel: one translucent slab of the photograph's own navy, inset
- * from the frame so the picture still reads all the way round it, carrying
- * every word of the document.
- *
- * satori has no `backdrop-filter`, so there is no blur to hide behind — the
- * illusion is made of exactly two things and both have to be right:
- *
- *  1. **Alpha low enough that the scene survives.** Under ~0.35 the type loses
- *     the sunrise; over ~0.60 the panel stops being glass and becomes a grey
- *     card stuck on a photo. The tint is also the photograph's own darkest sky
- *     (#040c1e) rather than black, so it darkens the picture instead of
- *     desaturating it.
- *  2. **A lit edge.** A single warm-white hairline is what tells the eye there
- *     is a pane of something there. Without it the panel reads as a smudge.
- *
- * The tint is a gradient, not a flat wash, for one reason: the sunrise sits
- * behind the panel's lower third, exactly where the code and
- * the QR are. Deepening the last stops buys those their contrast while the
- * middle of the panel stays open enough for the glow to come through, which is
- * the whole point of putting the panel on this photograph at all.
- */
-
-/** The lit edge. Warm white, barely there — see (2) above. */
 export const PANEL_EDGE = "rgba(250, 249, 245, 0.18)";
 
 /**

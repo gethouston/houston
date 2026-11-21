@@ -21,7 +21,6 @@ const ACME = "1111111111111111";
 const PERSONAL = "2222222222222222";
 const LA_FILA = "3333333333333333";
 
-/** What the cutover left a Plus payer who never picked. */
 const PROVISIONAL: BillingChoice = {
   needed: true,
   payer: "plus",

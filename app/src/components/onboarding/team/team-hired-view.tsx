@@ -4,12 +4,6 @@ import { RosterEmployeeCard } from "./roster-employee-card";
 import type { RosterPatch } from "./team-roster-edit";
 import type { RosterMember } from "./team-roster-model";
 
-/**
- * The roster: everyone this card has hired, newest last, each on the employee
- * card they were welcomed with and editable in place. A hire still on its way
- * says so on its card, and one that failed carries its Retry. The actions
- * under it ("Hire another", "Done") are the card's footer.
- */
 export function TeamHiredView({
   members,
   takenNames,

@@ -14,23 +14,12 @@ import { Effect } from "effect";
 import { createCustomSecret, moveLegacyToCustody } from "./legacy-custody";
 import { parseBundle, resolveOAuthValue } from "./oauth-bundle";
 
-/**
- * Secret storage for custom-integration credentials (API keys, MCP tokens).
- *
- * A PORT so each deployment picks its custody: the local/self-host default is
- * a 0600 file on the host's data disk (on managed cloud pods that disk is an
- * encrypted GKE PD); a future cloud adapter can move custody to the gateway's
- * encrypted Postgres or a secret manager WITHOUT touching anything above this
- * interface. Values never enter definitions, events, logs, or the agent
- * runtime — execution resolves them host-side at request-build time.
- */
 export interface CustomSecretStore {
   get(id: string): Promise<string | null>;
   set(id: string, value: string): Promise<void>;
   delete(id: string): Promise<void>;
 }
 
-/** In-memory store for tests. */
 export class MemoryCustomSecretStore implements CustomSecretStore {
   private readonly byId = new Map<string, string>();
 
@@ -47,20 +36,6 @@ export class MemoryCustomSecretStore implements CustomSecretStore {
   }
 }
 
-/**
- * File-backed store: one JSON object, owner-only, atomic tmp+rename. A corrupt
- * file throws (a vanished credential must surface as an error the user can act
- * on, never silently degrade to "not connected").
- *
- * Owner-only is PLATFORM-SPECIFIC. On POSIX (macOS desktop, self-host, cloud
- * pods) the 0600 file mode is the protection, asserted after every write. On
- * Windows there are no POSIX modes: files under the user's profile inherit
- * user-scoped NTFS ACLs, `mode`/`chmod` map onto nothing but the read-only
- * attribute — so the write path must NOT chmod (a POSIX-only concept), and it
- * clears a stray read-only attribute on the destination first, because
- * rename-replace over a read-only file fails EPERM on Windows (backup/AV
- * tools set that attribute in the wild).
- */
 export class FileCustomSecretStore implements CustomSecretStore {
   constructor(private readonly path: string) {}
 
@@ -77,14 +52,10 @@ export class FileCustomSecretStore implements CustomSecretStore {
     const tmp = atomicTempPath(this.path);
     writeFileSync(tmp, JSON.stringify(map), { encoding: "utf8", mode: 0o600 });
     if (process.platform === "win32" && existsSync(this.path)) {
-      // Clears the read-only attribute (the one thing chmod maps to on
-      // Windows) so the rename below can replace the file.
       chmodSync(this.path, 0o600);
     }
     renameSync(tmp, this.path);
     if (process.platform !== "win32") {
-      // The tmp file was created 0600; re-assert on the destination in case a
-      // pre-existing file carried a wider mode.
       chmodSync(this.path, 0o600);
     }
   }
@@ -105,12 +76,10 @@ export class FileCustomSecretStore implements CustomSecretStore {
     this.write(map);
   }
 
-  /** Migration-only snapshot. Values are copied so callers cannot mutate the store. */
   entries(): Record<string, string> {
     return { ...this.read() };
   }
 
-  /** Remove the legacy file only after every value has reached remote custody. */
   clear(): void {
     if (existsSync(this.path)) rmSync(this.path);
   }
@@ -123,21 +92,9 @@ export interface RemoteCustomSecretStoreOptions {
   podToken: string;
   legacy?: FileCustomSecretStore;
   fetchImpl?: typeof fetch;
-  /** How long a resolved value may serve from memory. Test seam; default 60s. */
   cacheTtlMs?: number;
 }
 
-/**
- * Managed-cloud adapter. The host resolves values lazily through its scoped
- * gateway route; the engine pod has no GCP identity or Secret Manager IAM.
- *
- * Reads are cached in memory with a short TTL: the executor's credential
- * provider resolves per request (`has` + `get` are BOTH remote reads), and one
- * integration call must not cost two gateway→Secret-Manager round trips. The
- * cache is write-through — this host is the only writer for its agent's
- * secrets, so the TTL only bounds staleness against a future surface writing
- * to custody directly.
- */
 export class RemoteCustomSecretStore implements CustomSecretStore {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
@@ -193,12 +150,6 @@ export class RemoteCustomSecretStore implements CustomSecretStore {
     this.cache.set(id, { value: null, at: Date.now() });
   }
 
-  /**
-   * Move every pre-Secret-Manager value into custody after object-store
-   * hydration, never replacing one custody holds (legacy-custody.ts), and
-   * remove the plaintext file only once custody holds them all. A failure
-   * leaves the file for a safe retry on the next boot.
-   */
   async migrateLegacy(): Promise<number> {
     const legacy = this.opts.legacy;
     if (!legacy) return 0;
@@ -216,7 +167,6 @@ export class RemoteCustomSecretStore implements CustomSecretStore {
           value,
         ),
     });
-    // The creates bypassed set(): drop the absences the first reads cached.
     for (const id of Object.keys(legacy.entries())) this.cache.delete(id);
     if (result.complete) legacy.clear();
     return result.moved;
@@ -238,32 +188,11 @@ export class RemoteCustomSecretStore implements CustomSecretStore {
   }
 }
 
-/** The secret-store id for one integration variable (stable, listable). */
 export const secretIdFor = (slug: string, variable: string): string =>
   `ci_${slug}_${variable}`;
 
-/** The executor CredentialProvider key our connections resolve through. */
 export const HOUSTON_PROVIDER_KEY = "houston";
 
-/**
- * Adapt the store to the executor's Effect-shaped CredentialProvider so
- * connections reference secrets by id (`from: {provider:"houston", id}`) and
- * the executor resolves values lazily at request time — it never copies them
- * into its own state.
- *
- * OAuth-aware (PRODUCT-1172): a stored value that parses as a token bundle
- * resolves to its CURRENT access token (refreshing + persisting first when it
- * is about to expire), so the executor renders `Authorization: Bearer` with a
- * live token on every request and rotation never needs a rewire. Plain API
- * keys pass through untouched.
- */
-/**
- * Resolve one stored credential to the value a request would carry: a bundle
- * to its CURRENT access token (refreshing first when needed), a plain key to
- * itself, a missing id to null. The provider below resolves through this, and
- * the compile-time credential health check reuses it so both judge the SAME
- * value.
- */
 export async function resolveCredentialValue(
   store: CustomSecretStore,
   id: string,
@@ -279,7 +208,6 @@ export function houstonCredentialProvider(
 ): CredentialProvider {
   const resolve = (id: string) => resolveCredentialValue(store, id);
   return {
-    // The key is a branded string on the executor side; ours is a constant.
     key: HOUSTON_PROVIDER_KEY as CredentialProvider["key"],
     writable: true as const,
     get: (id: string) => Effect.promise(() => resolve(id)),

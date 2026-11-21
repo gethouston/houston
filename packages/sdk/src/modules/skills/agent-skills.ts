@@ -1,18 +1,3 @@
-/**
- * The per-AGENT skill REST calls — the skills that live in one agent's own
- * `.agents/skills/` — over the injected `fetch`. That agent's manifest, which
- * says which of its skills are switched on, is {@link ./agent-manifest}.
- *
- * These are control-plane routes proxied to the agent's pod
- * (`/agents/:id/skills*`): the runtime client does not serve them, so the module
- * talks to them through {@link httpRequest} with literal paths, which is also
- * what keeps them visible to the assistant's operation catalog.
- *
- * Nothing is swallowed here: a non-2xx always throws an
- * {@link AgentSkillsHttpError} carrying the HTTP `status`, so a surface that
- * wants to degrade a 404 (a host without a skills backend) decides that itself.
- */
-
 import { type HttpScope, httpRequest } from "../http";
 import {
   type HostSkillSummary,
@@ -37,8 +22,6 @@ export async function listSkills(
     `/agents/${encodeURIComponent(agentId)}/skills`,
   );
   const items = ((await res.json()) as { items: HostSkillSummary[] }).items;
-  // The host dropped the legacy structured-inputs/prompt-template fields (the UI
-  // ignores them); restore them as empty so the v1 SkillSummary type is satisfied.
   return items.map(toClientSummary);
 }
 

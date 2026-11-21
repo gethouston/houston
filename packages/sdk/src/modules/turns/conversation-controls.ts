@@ -1,18 +1,3 @@
-/**
- * The one-shot controls a surface applies to an EXISTING conversation: stop the
- * running turn, switch the mode it runs under, retire its pending interaction,
- * cut the transcript for an edit-and-resend, write in lines said elsewhere
- * (`conversation-imports.ts`), and ready the sandbox the next send runs in
- * (`conversation-prewarm.ts`).
- *
- * Each is a single request that returns exactly what the server said: no
- * stream, no VM fold, no refetch. The agent's own runtime answers all of them
- * but the prewarm, which the gateway answers. Kept beside the
- * turn operations rather than inside them because those own the streaming
- * machinery and these own nothing, so a surface that drives the feed itself
- * (the web engine-adapter) binds these unchanged.
- */
-
 import type { ModuleContext } from "../../module-context";
 import { refusalCode, refusalStatus } from "../refusal-code";
 import { createConversationImports } from "./conversation-imports";
@@ -25,16 +10,6 @@ import {
 } from "./turn-inputs";
 import { isTurnRunningRejection } from "./turn-running";
 
-/**
- * What a dismiss came to. `turn_running`: the runtime refused because a turn
- * is accepted, queued or running on the chat, so the card the caller showed was
- * already retired by that turn. The caller catches its view up to the running
- * turn (the interaction is gone either way) and must NOT clear a persisted
- * copy of the card, which would race the running turn's own settle write.
- * `not_interaction_owner`: on a shared agent the card is for the member whose
- * message raised it, and only they may dismiss it (403). Nothing changed; the
- * card stays for its person.
- */
 export type DismissInteractionOutcome =
   | { ok: true }
   | { ok: false; refusal: "turn_running" | "not_interaction_owner" };
@@ -68,15 +43,6 @@ export function createConversationControls(
   ): Promise<{ ok: boolean; cancelled: boolean }> =>
     ctx.clientFor(agentId).cancel(conversationId);
 
-  /**
-   * The person's Stop, on this client, of a message in the chat that has not
-   * gone out yet (held behind a turn, or waiting for room). It ends the send
-   * at once and answers the `finish` to call once {@link cancel} answered,
-   * when the turn settles as stopped (so a message queued behind it can never
-   * meet that cancel); null when nothing here was waiting. Call it just
-   * before `cancel`, and `finish` in a `finally`. Local to this client: it
-   * reaches no route, and the cancel's answer stays the host's own.
-   */
   const stopUnsent = (
     conversationId: string,
     agentId: string,
@@ -157,8 +123,6 @@ export function createConversationControls(
   ): Promise<{ ok: boolean; removed: number }> =>
     ctx.clientFor(agentId).truncateConversation(conversationId, turnId);
 
-  // The command is the whole Stop: a send still waiting here ends first, and
-  // settles once the engine's cancel answered. The answer stays the host's.
   const stopAndCancel = async (conversationId: string, agentId: string) => {
     const finish = stopUnsent(conversationId, agentId);
     try {

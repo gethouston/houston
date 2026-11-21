@@ -13,7 +13,6 @@ export function BootLandingContent({
   return landing.kind === "done" ? children : <BootLandingPlaceholder />;
 }
 
-/** The screen card's quiet loading shape while desktop resolves its landing. */
 export function BootLandingPlaceholder() {
   const { t } = useTranslation("shell");
   return (

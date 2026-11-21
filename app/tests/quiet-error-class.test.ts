@@ -12,9 +12,6 @@ import {
   quietErrorDetails,
 } from "../src/lib/quiet-error-class.ts";
 
-// PRODUCT-1640: the low-noise Sentry event for a quiet class must carry the
-// RAW gateway body and the agent, off whichever client stack minted the error.
-
 function named(
   name: string,
   message: string,
@@ -25,11 +22,6 @@ function named(
   return Object.assign(err, fields);
 }
 
-/**
- * A gateway client's error shape: an HTTP `status` with the observed payload on
- * `body`, and — on a network-level failure (`status: 0`) — the thrown transport
- * error kept as BOTH the body and the standard `cause`.
- */
 function gatewayError(status: number, message: string, body: unknown): Error {
   const err = new Error(
     message,
@@ -63,9 +55,6 @@ describe("classifyQuietError", () => {
     strictEqual(classifyQuietError(new TypeError("x is not a function")), null);
   });
 
-  // HOUSTON-APP-5CG: an upload the edge proxy cut at 60 s read as offline while
-  // every other read answered. Its transport message is "Failed to fetch" too,
-  // so the class must not fall through to offline.
   it("names an interrupted upload its own class, never offline", () => {
     const cut = new UploadInterruptedError(
       "attachments",
@@ -77,8 +66,6 @@ describe("classifyQuietError", () => {
     strictEqual(isNetworkTransportError(cut), false);
   });
 
-  // PRODUCT-1735: a client's status-0 wrapper around a thrown fetch is the
-  // offline class; a real gateway status stays a bug (a 5xx is ours to fix).
   it("names the offline class for a client's network-failure wrapper", () => {
     const offline = gatewayError(
       0,
@@ -94,8 +81,6 @@ describe("classifyQuietError", () => {
     );
   });
 
-  // PRODUCT-1717: a gateway without the local-model bridge answers every
-  // desktop boot; it is one quiet class, and it wins over the waking 503.
   it("names the bridge_unsupported class off the adapter's 503 body", () => {
     strictEqual(
       classifyQuietError(
@@ -124,9 +109,6 @@ describe("classifyQuietError", () => {
     );
   });
 
-  // PRODUCT-1833: the bridge bootstrap in a zero-agent space and the SDK's
-  // own retry states are expected, inline-surfaced states, never a red bug
-  // (HOUSTON-APP-5E0 / -5E1). The SDK names them; the app only binds.
   it("names the bridge_no_agent and bridge_state classes off the SDK's errors", () => {
     strictEqual(
       classifyQuietError(new NoAgentForProviderWriteError()),
@@ -144,7 +126,6 @@ describe("classifyQuietError", () => {
     );
   });
 
-  // PRODUCT-1666: the three shapes that escaped the waking class.
   it("names the waking class for the still-starting 503 and the activities shape", () => {
     strictEqual(
       classifyQuietError(
@@ -171,7 +152,6 @@ describe("classifyQuietError", () => {
     );
   });
 
-  // HOUSTON-APP-5JZ / 5K0: a write against a routine a stale list still showed.
   it("names a routine write's typed 404 routine_gone, never an agent 404", () => {
     for (const body of [
       { error: "routine not found", code: "routine_not_found" },
@@ -287,17 +267,6 @@ describe("agentKeyOf", () => {
   });
 });
 
-/**
- * PRODUCT-1735 (HOUSTON-APP-54J / 55K): `showErrorToast` is the last reporting
- * surface a raw TanStack query error can reach without passing through the
- * engine-call layer's quiet-class gate, so an offline device was captured as a
- * per-user bug 36 times. The gate has to run BEFORE the per-event Sentry
- * capture, and each class has to keep its own informational surface.
- *
- * Asserted against the source: `error-toast` pulls i18n and the Zustand store,
- * neither of which loads under this suite's runner (the same constraint
- * `error-toast-not-shown.test.ts` works around).
- */
 describe("showErrorToast routes the quiet classes to their own surfaces", () => {
   const source = readFileSync(
     join(import.meta.dirname, "../src/lib/error-toast.ts"),
@@ -321,7 +290,6 @@ describe("showErrorToast routes the quiet classes to their own surfaces", () => 
       ),
     );
     ok(body.includes("showEngineWakingToast(command, message, originalError)"));
-    // The other classes are handed to their own surfaces before any capture.
     const handoff = body.indexOf(
       "surfaceQuietState(quiet, command, message, originalError)",
     );
@@ -330,7 +298,6 @@ describe("showErrorToast routes the quiet classes to their own surfaces", () => 
       join(import.meta.dirname, "../src/lib/quiet-state-surface.ts"),
       "utf8",
     );
-    // PRODUCT-1833: the three bridge classes share one report-only branch.
     for (const kind of [
       "bridge_unsupported",
       "bridge_no_agent",

@@ -17,7 +17,6 @@ import { appendAssistantMessageAt } from "../store/conversation-file";
 import { TurnBackendProviderError } from "./turn-backend";
 import type { TurnOutcome } from "./turn-session-types";
 
-/** Classify and persist a thrown session failure. */
 export function handleTurnSessionFailure(input: {
   error: unknown;
   signal?: AbortSignal;

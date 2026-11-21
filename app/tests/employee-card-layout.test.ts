@@ -3,13 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-/**
- * The compact badge's layout seams. The components load React, framer-motion
- * and i18n, which this suite's runner cannot render, so the seams are pinned
- * on source: the metal panel's engraving is cropped (a stretched one squeezes
- * the waves into zigzags on a narrow strip), and a team of badges takes its
- * columns from its own width, never scrolling sideways.
- */
 const source = (file: string) =>
   readFileSync(
     join(import.meta.dirname, "../src/components/employee-card", file),

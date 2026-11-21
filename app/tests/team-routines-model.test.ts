@@ -48,8 +48,6 @@ describe("teamRoutinesList", () => {
   });
 });
 
-// A routine still being built in chat is not a routine yet: it is an unclaimed
-// setup activity, and the list shows it as its own resumable row.
 describe("teamRoutineDrafts", () => {
   it("lists unclaimed setup chats by their own activity ids", () => {
     const drafts = teamRoutineDrafts([activity("d-1"), activity("d-2")], []);

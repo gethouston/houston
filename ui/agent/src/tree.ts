@@ -1,22 +1,11 @@
-/**
- * Tree types and builder for the FilesBrowser hierarchy.
- * Converts a flat list of FileEntry (with relative paths) into a nested tree.
- */
 import type { FileEntry } from "./types";
 
 export interface FolderNode {
   kind: "folder";
   name: string;
-  /** Relative path from workspace root (e.g. "2025/Investments - Fidelity") */
   path: string;
   children: TreeNode[];
-  /** The folder's own listing entry (dates), when the backend reported one. */
   entry?: FileEntry;
-  /**
-   * Child count BEFORE a search pruned this folder. Set only by `filterFolder`;
-   * read it through `folderChildCount` so a card never states a pruned count as
-   * if it were the folder's real size.
-   */
   unfilteredChildCount?: number;
 }
 
@@ -44,18 +33,10 @@ export function folderAtPath(
   return current;
 }
 
-/**
- * Convert a flat list of FileEntry (with relative paths) into a tree.
- * Path separators are "/" (as produced by the Rust backend).
- *
- * Example: ["2025/Investments - Fidelity/statement.pdf", "2025/W2.pdf"]
- * Produces: root → 2025 → [Investments - Fidelity → [statement.pdf], W2.pdf]
- */
 export function buildTree(files: FileEntry[]): FolderNode {
   const root: FolderNode = { kind: "folder", name: "", path: "", children: [] };
 
   for (const file of files) {
-    // Directory entries become folder nodes directly
     if (file.is_directory) {
       const parts = file.path.split("/");
       let node = root;
@@ -76,7 +57,6 @@ export function buildTree(files: FileEntry[]): FolderNode {
         }
         node = child;
       }
-      // This entry IS the folder — keep its metadata (dates) on the node.
       node.entry = file;
       continue;
     }

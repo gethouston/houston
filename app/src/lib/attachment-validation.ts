@@ -11,14 +11,6 @@ export type ComposerAttachmentRejectReason =
   | { kind: "tooLarge"; maxBytes: number }
   | { kind: "modelCannotViewImages" };
 
-/**
- * What the active chat allows, threaded from the composer's effective model.
- * `modelAcceptsImages: false` = the model that will run this turn cannot take
- * image input, so image files are rejected LOUDLY at attach time — without
- * this, the agent gets a file path it can never see and burns the mission
- * planning OCR forever. `true`/`undefined` (unknown) both permit images:
- * only a definitive "no vision" from the catalog blocks.
- */
 export interface ComposerAttachmentPolicy {
   modelAcceptsImages?: boolean;
 }
@@ -28,14 +20,6 @@ export interface ComposerAttachmentRejection<T extends ComposerAttachmentFile> {
   reason: ComposerAttachmentRejectReason;
 }
 
-// Only executables/installers and exotic archives are blocked. Standard
-// archives (zip and the tar family) are allowed: the agent expands them with
-// stock `unzip`/`tar`, and expansion size is the agent's own workspace concern
-// — the upload itself is bounded by MAX_COMPOSER_ATTACHMENT_BYTES. 7z and rar
-// stay blocked because the agent has no stock tool to open them. Every other
-// binary — video and audio included — is a legitimate workspace file the
-// agent processes with its shell and code tools (and the Files section
-// accepts them already), so the composer must too.
 const BLOCKED_EXTENSIONS = new Set([
   "7z",
   "apk",
@@ -104,9 +88,6 @@ export function validateComposerAttachment(
   return null;
 }
 
-// Raster/photo formats only: these are opaque to a no-vision model (its Read
-// tool can't show them, which is what sends the agent into the OCR spiral).
-// SVG is deliberately NOT here — it's text/XML any model can read.
 const IMAGE_EXTENSIONS = new Set([
   "avif",
   "bmp",

@@ -1,12 +1,3 @@
-/**
- * The concept vocabulary a team icon is searchable by: each rule pairs a run
- * of concept words with the icon keys that earn them, and the FIRST matching
- * rule also decides which shelf an icon lands on in the generated set.
- *
- * Its own module so the generator stays about parsing and emitting, and so a
- * vocabulary edit is a diff against words rather than against machinery.
- */
-
 export const TAG_RULES = [
   [
     "money finance accounting payment banking business",

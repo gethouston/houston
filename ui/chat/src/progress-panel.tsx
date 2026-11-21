@@ -1,20 +1,9 @@
-/**
- * ProgressPanel — shows what an agent is working on during a session.
- *
- * Renders as a right-side panel alongside chat when the agent has called
- * update_progress. Steps are shown as an animated checklist:
- * - pending: open circle
- * - active: spinning loader (highlighted)
- * - done: filled checkmark
- */
-
 import { cn, ScrollArea } from "@houston-ai/core";
 import { Check, Circle, Loader2 } from "lucide-react";
 import type { ProgressStep } from "./use-progress-steps";
 
 export interface ProgressPanelProps {
   steps: ProgressStep[];
-  /** Header title. Defaults to "Working on". */
   title?: string;
 }
 
@@ -27,7 +16,6 @@ export function ProgressPanel({
 
   return (
     <div className="flex flex-col h-full border-l border-line bg-chip/30">
-      {/* Header */}
       <div className="px-5 pt-5 pb-4 border-b border-line">
         <h2 className="text-sm font-medium text-ink">{title}</h2>
         {total > 0 && (
@@ -37,7 +25,6 @@ export function ProgressPanel({
         )}
       </div>
 
-      {/* Step list */}
       <ScrollArea className="flex-1">
         <div className="px-5 py-4 space-y-1">
           {steps.map((step) => (

@@ -12,12 +12,6 @@ import {
   space,
 } from "../dist/ts/tokens.ts";
 
-/**
- * Smoke test: the generated TypeScript entry point is importable, typed, and
- * carries the values downstream JS relies on (e.g. motion durations).
- */
-
-/** The elevation ladder, shallow to deep. Every theme carries all of it. */
 const TIERS = [
   "edge",
   "field",
@@ -51,8 +45,6 @@ describe("generated TypeScript tokens", () => {
   });
 
   it("exposes the mobile breakpoint in both CSS and JS forms", () => {
-    // Must stay equal to Tailwind v4's default `md` boundary — the token is
-    // what keeps useIsMobile() and the `md:` utilities on the same edge.
     expect(breakpoint.mobile).toBe("768px");
     expect(breakpointPx.mobile).toBe(768);
   });
@@ -79,8 +71,6 @@ describe("generated CSS elevation", () => {
     return (value?.[1] ?? "").trim();
   };
 
-  // A tier missing from one block is a component with no depth under that
-  // theme, which is exactly what the Tailwind bridge cannot fall back from.
   it.each([
     ":root",
     '[data-theme="light"]',
@@ -93,12 +83,6 @@ describe("generated CSS elevation", () => {
   });
 
   it("keeps the dark focused field wearing the two layers focus already wore", () => {
-    // The composer spelled its focus depth as
-    // `focus-within:shadow-[0_1px_2px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.04)]`,
-    // an unprefixed arbitrary value that outranked the zero-specificity `dark:`
-    // variant beside it, so a focused field in DARK wore exactly these two
-    // layers too. The tier inherits that resolved value rather than inventing a
-    // dark focus depth the product never shipped.
     expect(tier('[data-theme="dark"]', "field-focus")).toBe(
       "0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 2px 6px 0 rgba(0, 0, 0, 0.04)",
     );
@@ -108,10 +92,6 @@ describe("generated CSS elevation", () => {
   });
 
   it("opens the dark dialog tier with the glass sheen", () => {
-    // The sheen is the FIRST layer of the tier, not a separate `.bg-dialog`
-    // rule: a descendant rule at (0,2,0) outranks `.ht-shadow-dialog` (0,1,0)
-    // and replaces the whole box-shadow, so a framed dark dialog kept the sheen
-    // and lost every ambient layer under it.
     expect(tier('[data-theme="dark"]', "dialog")).toBe(
       [
         "inset 0 1px 0 0 rgba(255, 255, 255, 0.06)",

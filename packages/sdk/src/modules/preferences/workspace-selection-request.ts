@@ -6,7 +6,6 @@ import {
   WorkspacePreferenceTimeout,
 } from "./workspace-selection-errors";
 
-/** Bounds the whole response, including its body, even if transport ignores abort. */
 export async function workspacePreferenceRequest<T>(
   ctx: ModuleContext,
   valid: () => boolean,

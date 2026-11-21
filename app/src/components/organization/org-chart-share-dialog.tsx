@@ -18,16 +18,6 @@ import { OrgChartSharePreview } from "./org-chart-share-preview";
 import { postsThroughApi } from "./org-chart-share-step";
 import type { useOrgChartShare } from "./use-org-chart-share";
 
-/**
- * Share the org chart: the image as it will be posted, the post's words
- * (editable), one primary button (Share on LinkedIn, Connect LinkedIn, Post
- * to LinkedIn or View post, `shareStep`), then Download image and Copy
- * image. One line under them says what happened. The dialog stays open, so
- * the line is still there when the person comes back from LinkedIn.
- *
- * Phone: one column, the picture over the words. Desktop: the picture
- * beside the words, so the portrait image fits without scrolling.
- */
 export function OrgChartShareDialog({
   share,
 }: {
@@ -47,8 +37,6 @@ export function OrgChartShareDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:gap-6">
-          {/* One column below 768px: the picture keeps a phone's width there,
-              however wide the dialog's sm: cap lets it grow. */}
           <div className="mx-auto w-full max-w-sm md:max-w-none">
             <OrgChartSharePreview
               preview={share.preview}
@@ -66,8 +54,6 @@ export function OrgChartShareDialog({
               onChange={(event) => share.setText(event.target.value)}
               className="min-h-32 resize-none md:min-h-0 md:flex-1"
             />
-            {/* LinkedIn's API terms allow pre-filled words only beside this
-                notice: they are editable and our privacy policy covers them. */}
             {postsThroughApi(share.step) && (
               <p className="text-xs text-pretty text-ink-muted">
                 <Trans

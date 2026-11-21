@@ -6,22 +6,13 @@ import { blockedHost } from "./url-policy";
 
 export type { FenceLookup, ResolvedAddress } from "./fence-resolve";
 
-/** Addresses a connect tries, at most: a long answer list is not a retry loop. */
 export const MAX_CONNECT_ADDRESSES = 4;
 
-/**
- * Where a request may go. `allowed` carries the addresses the proxy then
- * connects to, in order, every one of them checked, so the name is never
- * resolved a second time (a DNS rebinding answer between the check and the
- * connect changes nothing). `unreachable` is an ordinary failure (no such
- * name), not a refusal.
- */
 export type FenceVerdict =
   | { kind: "allowed"; addresses: readonly string[] }
   | { kind: "refused" }
   | { kind: "unreachable" };
 
-/** A request target's host as written: brackets and one root dot off. */
 export function bareHost(host: string): string {
   return host
     .toLowerCase()
@@ -29,15 +20,6 @@ export function bareHost(host: string): string {
     .replace(/\.$/, "");
 }
 
-/**
- * Decide a request's target: a blocked name or literal is refused outright
- * (url-policy.ts), and a name is refused when ANY of its answers is blocked
- * under `privateNetworks` or is one of this machine's `own` addresses
- * (ip-ranges.ts), so a public name pointing at 127.0.0.1, at the metadata
- * server or (on the managed cloud) at a private network never gets through.
- * The one exception: IPv6 link-local answers beside other answers are dropped
- * (never dialed) and the rest judged, since mDNS names carry one routinely.
- */
 export async function judgeTarget(
   rawHost: string,
   privateNetworks: PrivateNetworks,
@@ -57,7 +39,6 @@ export async function judgeTarget(
   try {
     answers = await lookup(host);
   } catch (error) {
-    // NXDOMAIN and friends: the page simply does not exist.
     if (isDnsMiss(error)) return { kind: "unreachable" };
     throw error;
   }
@@ -83,7 +64,6 @@ function isDnsMiss(error: unknown): boolean {
   );
 }
 
-/** `host:port` of a CONNECT line, `[v6]:port` included; null if malformed. */
 export function parseAuthority(
   authority: string,
 ): { host: string; port: number } | null {

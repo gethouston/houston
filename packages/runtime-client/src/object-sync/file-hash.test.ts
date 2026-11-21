@@ -5,12 +5,6 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import { fileSha256, STREAM_HASH_THRESHOLD_BYTES } from "./file-hash";
 
-/**
- * Both hashing paths — one whole-file Buffer under the threshold, a read
- * stream at or above it — must agree with a plain sha256 of the bytes, and the
- * threshold must stay small: sixteen concurrent whole-file reads at the old
- * 16 MB threshold held up to 256 MB of transient Buffers on a hydrating host.
- */
 test("streamed and buffered hashing agree with sha256 of the bytes", async () => {
   const dir = mkdtempSync(join(tmpdir(), "houston-file-hash-"));
   const small = Buffer.alloc(STREAM_HASH_THRESHOLD_BYTES - 1, 7);

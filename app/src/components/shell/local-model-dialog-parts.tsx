@@ -4,15 +4,12 @@ import { useTranslation } from "react-i18next";
 import { appDisplayName, type LocalModelKind } from "../../lib/local-model";
 import { osOpenUrl } from "../../lib/os-bridge";
 
-/** Download pages for the friendly empty state. Brand URLs, not translated. */
 const APP_LINKS: { kind: LocalModelKind; url: string }[] = [
   { kind: "lmstudio", url: "https://lmstudio.ai" },
   { kind: "jan", url: "https://jan.ai" },
   { kind: "ollama", url: "https://ollama.com" },
 ];
 
-/** A quiet centered status block (spinner + line) for the busy screens. An
- *  optional Cancel aborts the in-flight detect/connect and closes the dialog. */
 export function BusyScreen({
   title,
   body,
@@ -42,7 +39,6 @@ export function BusyScreen({
   );
 }
 
-/** Friendly, jargon-free guidance when no local app is running. */
 export function EmptyScreen({
   onRecheck,
   onManual,
@@ -98,13 +94,11 @@ export function EmptyScreen({
   );
 }
 
-/** Calm error screen with retry + the manual escape hatch. */
 export function ErrorScreen({
   body,
   onRetry,
   onManual,
 }: {
-  /** Authored copy for this failure; defaults to the generic connect error. */
   body?: string;
   onRetry: () => void;
   onManual: () => void;
@@ -123,12 +117,6 @@ export function ErrorScreen({
   );
 }
 
-/**
- * Opt-in "show the model's thinking" toggle, shared by the guided pick step and
- * the manual form. On => the saved endpoint is marked as a reasoning model, so
- * Houston surfaces its chain-of-thought. Accessible label + microcopy, design
- * tokens only. `id` keeps the label association unique per host form.
- */
 export function ReasoningToggle({
   id = "lm-reasoning",
   checked,
@@ -165,7 +153,6 @@ export function ReasoningToggle({
   );
 }
 
-/** The shared "enter details manually" text link. */
 export function ManualLink({ onClick }: { onClick: () => void }) {
   const { t } = useTranslation("providers");
   return (

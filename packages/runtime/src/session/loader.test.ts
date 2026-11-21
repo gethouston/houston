@@ -7,16 +7,6 @@ import { RULES_HEADING } from "./assistant-rules-context";
 import { learningsDocPath } from "./learnings-context";
 import { buildAgentLoader, makeAgentLoader } from "./resource-loader";
 
-/**
- * The loader is the seam deciding what an agent sees: OUR system prompt, the
- * workspace's OWN context file, and SKILL.md skills from the workspace's
- * skills dir — and nothing else from disk. Two invariants matter:
- *  - Houston's existing .agents/skills/<slug>/SKILL.md layout loads AS-IS
- *    (the convergence bet: no skills migration).
- *  - Context files come from the workspace root ONLY. pi's own discovery walks
- *    every ancestor up to /, which would leak files from outside the clamp.
- */
-
 function freshWorkspace(): { parent: string; ws: string } {
   const parent = mkdtempSync(join(tmpdir(), "houston-loader-"));
   const ws = join(parent, "agent-ws");
@@ -47,7 +37,7 @@ function seedSkillAt(
       "---",
       `name: ${name}`,
       `description: ${description}`,
-      "category: research", // Houston-specific frontmatter must be tolerated
+      "category: research",
       "featured: yes",
       "image: magnifying-glass-tilted-left",
       "---",
@@ -98,7 +88,6 @@ test("Houston's existing .agents/skills SKILL.md layout loads as-is", async () =
 test("workspace CLAUDE.md is the context file; ancestor context files do NOT leak", async () => {
   const { parent, ws } = freshWorkspace();
   writeFileSync(join(ws, "CLAUDE.md"), "# Role\nYou are the sales agent.");
-  // A context file OUTSIDE the workspace — pi's own walk would pick this up.
   writeFileSync(join(parent, "CLAUDE.md"), "LEAKED ancestor context");
 
   const loader = loaderFor(ws);
@@ -122,7 +111,6 @@ test("the job description's industry and role reach the model as plain lines", a
   await loader.reload();
 
   const { agentsFiles } = loader.getAgentsFiles();
-  // The model never sees the YAML block: it reads the two answers as text.
   expect(agentsFiles[0]?.content).toBe(
     "Industry: Healthcare\nRole: Medical coder\n\nYou code charts.",
   );
@@ -158,8 +146,6 @@ test("the compaction guard loads as an inline extension despite noExtensions (HO
 
   const { extensions, errors } = loader.getExtensions();
   expect(errors).toHaveLength(0);
-  // The guard is the ONE inline factory; it must survive noExtensions (which
-  // only gates on-disk discovery) and register the compaction handler.
   expect(extensions).toHaveLength(1);
   expect(extensions[0]?.handlers.has("session_before_compact")).toBe(true);
 });
@@ -266,10 +252,6 @@ test("a mangled manifest logs a diagnostic and does not crash loader reload", as
   }
 });
 
-/**
- * The assistant's memory injection, pinned on the pi side of the prompt-assembly
- * parity pair (its twin is backends/claude/system-prompt.test.ts).
- */
 function agentDirNamed(name: string): string {
   const dir = join(mkdtempSync(join(tmpdir(), "houston-loader-")), name);
   mkdirSync(dir, { recursive: true });
@@ -287,11 +269,6 @@ function seedLearnings(cwd: string, text: string): void {
   );
 }
 
-/**
- * The assistant's memory and rules follow the ROLE the host stamped on this
- * runtime, not the name of the directory it runs in (the managed pod runs under
- * `/workspace` with an ordinarily-named agent).
- */
 async function asCoordinator<T>(fn: () => Promise<T> | T): Promise<T> {
   const prior = process.env.HOUSTON_ASSISTANT_ROLE;
   process.env.HOUSTON_ASSISTANT_ROLE = "coordinator";
@@ -317,7 +294,6 @@ test("makeAgentLoader injects the assistant's memory, with the mode overlay LAST
   const memoryAt = prompt.indexOf("# What you remember about this user");
   expect(memoryAt).toBeGreaterThan(-1);
   expect(prompt).toContain("- Julian prefers short replies.");
-  // Ordering: workspace/user context → memory → mode overlay.
   expect(memoryAt).toBeGreaterThan(prompt.indexOf("# Workspace Context"));
   expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(memoryAt);
 });
@@ -334,7 +310,6 @@ test("makeAgentLoader puts the assistant's operating rules after its memory", as
 });
 
 test("the rules are injected for the coordinator with no memory yet", async () => {
-  // Named like any other agent: on the managed pod the coordinator IS one.
   const prompt = await asCoordinator(() =>
     promptFor(agentDirNamed("Assistant")),
   );

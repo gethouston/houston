@@ -52,8 +52,6 @@ fn register_scheme<R: tauri::Runtime>(
 
     let mut ran_default = false;
     if next == AfterPlugin::RunXdgMime {
-        // Same location the plugin writes to. A missing file means the plugin
-        // stopped before writing it, and xdg-mime would point at nothing.
         let desktop_file = app
             .path()
             .data_dir()
@@ -97,8 +95,6 @@ fn register_scheme<R: tauri::Runtime>(
         AfterXdgMime::Failed => {}
     }
 
-    // The plugin returned Ok, but it ignores exit statuses and the handler is
-    // not ours. One retry of the step that sets it.
     let xdg = set_default(scheme, &file_name);
     let (outcome, retried) = current_handler(scheme, &file_name);
     match outcome {
@@ -117,7 +113,6 @@ fn register_scheme<R: tauri::Runtime>(
 
 fn xdg_mime() -> Command {
     let mut cmd = Command::new("xdg-mime");
-    // xdg-mime lives outside the bundle; the AppImage's library paths break it.
     crate::appimage_env::sanitize_std_command(&mut cmd);
     cmd
 }

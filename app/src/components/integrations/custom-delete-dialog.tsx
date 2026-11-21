@@ -3,11 +3,6 @@ import { ConfirmDialog } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { useCustomIntegrationScope } from "../../hooks/queries";
 
-/**
- * The remove confirm for a custom integration: destructive, named after the
- * integration. `integration === null` keeps it closed; the parent owns the
- * selection and the actual removal.
- */
 export function CustomDeleteDialog({
   integration,
   onClose,
@@ -18,7 +13,6 @@ export function CustomDeleteDialog({
   onConfirm: (integration: CustomIntegrationView) => void;
 }) {
   const { t } = useTranslation("integrations");
-  // One pod per agent (PRODUCT-1773): only this agent loses the actions.
   const scope = useCustomIntegrationScope();
   return (
     <ConfirmDialog

@@ -4,21 +4,6 @@ import { conversationIdForChat } from "../src/lib/chat-conversation-id.ts";
 import { queryClient } from "../src/lib/query-client.ts";
 import { queryKeys } from "../src/lib/query-keys.ts";
 
-/**
- * HOU-945 review fix: the read-cursor tracker must not write a cursor it can
- * never read back.
- *
- * A chat's query key carries a SESSION key, and only the board lists can say
- * which mission that is. While they are cold the resolver used to hand back the
- * raw session key, which for a routine chat (`routine-<id>`) is unrelated to
- * the conversation id every unread surface looks up — so the cursor landed
- * under a key nothing reads, and the badge it was meant to clear stayed lit.
- *
- * This drives the resolver against the app's real query cache, seeded directly,
- * because the "which cache answers, and when is it cold" question IS the
- * behaviour under test.
- */
-
 const AGENT = "/w/alpha";
 
 afterEach(() => {
@@ -42,8 +27,6 @@ describe("conversationIdForChat", () => {
   });
 
   it("answers NULL for a routine chat no cached list can name", () => {
-    // The regression: this used to answer "routine-7", writing a cursor under a
-    // key no unread surface ever looks up.
     strictEqual(conversationIdForChat(AGENT, "routine-7"), null);
     queryClient.setQueryData(queryKeys.activity(AGENT), []);
     strictEqual(conversationIdForChat(AGENT, "routine-7"), null);
@@ -55,8 +38,6 @@ describe("conversationIdForChat", () => {
   });
 
   it("still resolves a standard mission with no list cached", () => {
-    // `activity-<id>` carries the mission id in the key itself, so a cold cache
-    // costs nothing here — only the keys that need a lookup can go unresolved.
     strictEqual(conversationIdForChat(AGENT, "activity-m-9"), "m-9");
   });
 

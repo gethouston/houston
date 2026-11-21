@@ -9,18 +9,11 @@ import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test, vi } from "vitest";
 import { hedgedModelRuntime } from "./hedged-runtime";
 
-/**
- * The hedge's deadline follows the request it races: a provider reads the
- * whole prompt before its first byte, so an 800k-token request resent at the
- * small-prompt deadline would be cut while it is being read.
- */
-
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
-/** A model runtime whose requests never answer; counts what goes out. */
 function silentRuntime() {
   const sent: AbortSignal[] = [];
   const runtime = {

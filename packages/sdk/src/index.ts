@@ -1,20 +1,3 @@
-/**
- * `@houston/sdk` — the single headless Houston client.
- *
- * One client implementation under every surface (web, desktop). Reads flow as
- * scope snapshots; writes flow as commands. See README.md for the model.
- *
- * This barrel is the package's public API: the kernel (`HoustonSdk`, the store,
- * the command registry), the shared auth surface, and each module's CONTRACT —
- * its view-model types, scope helpers, and command constants that a consumer
- * subscribes to and dispatches. The `create<Name>Module` factories are internal
- * (the kernel composes them); a host uses `new HoustonSdk(...)`, not a factory.
- */
-
-// Rules that live once in @houston/domain and are re-exported for surfaces:
-// the agent-name rule, so a surface validates BEFORE submitting instead of
-// rendering the server's rejection (HOU-1166), and the job-description grammar
-// (`CLAUDE.md`), which the app edits and the runtime renders into the prompt.
 export {
   AGENT_NAME_MAX_LENGTH,
   type AgentNameValidation,
@@ -30,7 +13,6 @@ export {
   takesReservedAgentName,
   validateAgentName,
 } from "@houston/domain";
-// ===== Kernel =========================================================
 export {
   type AuthExpiryNotifier,
   createAuthExpiryNotifier,
@@ -43,11 +25,6 @@ export type {
   CommandResult,
 } from "./commands";
 export { CommandRegistry, isCommandEnvelope } from "./commands";
-// ===== Module contracts ===============================================
-// Each module's view-model types, scope helpers and command constants — the
-// surface a consumer subscribes to and dispatches — grouped by what they are
-// about. `create<Name>Module` factories stay internal: the kernel composes
-// them, and a host uses `new HoustonSdk(...)`.
 export * from "./contracts-account";
 export * from "./contracts-agent";
 export * from "./contracts-billing";
@@ -92,7 +69,6 @@ export {
   delegationWithMode,
   otherAddressableAgents,
 } from "./modules/delegation";
-// The AI Manager's daily morning briefing: settings, last run, "brief me now".
 export {
   classifyHeartbeatFailure,
   HeartbeatCommand,
@@ -101,14 +77,10 @@ export {
   HeartbeatHttpError,
   type HeartbeatModule,
 } from "./modules/heartbeat";
-// Email-code sign-in and the account-exists link. The one factory a surface
-// builds itself: no kernel exists before sign-in (see the module header).
 export * from "./modules/identity";
 export * from "./modules/plan/announcement-model";
 export * from "./modules/plan/billing-model";
 export { PushCommand, PushHttpError, type PushModule } from "./modules/push";
-// The rules around a skill still being built in chat: what counts as one,
-// which is picked back up, which are listed, and discarding one.
 export {
   type CreateChatStart,
   type DraftResume,

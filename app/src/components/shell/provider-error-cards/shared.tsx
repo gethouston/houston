@@ -1,17 +1,3 @@
-/**
- * Shared layout + CTA primitives for typed-provider-error cards.
- *
- * The card surface is mid-migration to the unified `RowCard` (HOU-467): the
- * stateful pills below are thin wrappers over `RowCardButton` so migrated
- * variants match the reconnect / integration cards exactly. `ReportBugButton`
- * is re-exported from `components/cards/`, where it moved once a second surface
- * (the team sections' failure strip) needed the same one report path.
- * Variants that have not been ported yet still render on the
- * secondary-tinted `ErrorCard` slab (icon + title + body + button row) and can
- * mount the `StatusPageButton` / `statusPageUrl` helper.
- * Either way the per-variant files own only the copy + which CTAs to mount.
- */
-
 import { Button } from "@houston-ai/core";
 import { useState } from "react";
 import { tauriSystem } from "../../../lib/tauri";
@@ -19,9 +5,6 @@ import { RowCardButton } from "../../cards/row-card-button";
 import { statusPageUrl } from "./labels.ts";
 
 export { ReportBugButton } from "../../cards/report-bug-button";
-// The pure naming/URL lookups live in `labels.ts` so the unit tests (which
-// cannot load a `.tsx` module) reach them; re-exported here so the card files
-// keep one import.
 export {
   providerErrorModelLabel,
   providerLabel,

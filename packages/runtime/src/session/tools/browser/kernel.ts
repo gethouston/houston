@@ -2,34 +2,20 @@ import { DESKTOP_VIEWPORT } from "./live/layout";
 
 type Env = Record<string, string | undefined>;
 
-/** A Kernel (kernel.sh) project's API key: the backup browser's account. */
 export interface Kernel {
   apiKey: string;
-  /** The tests' seam; the global fetch otherwise. */
   fetch?: typeof fetch;
 }
 
-/** One Kernel browser: a whole remote Chromium with one default context. */
 export interface KernelSession {
   id: string;
-  /** The CDP websocket; it carries a session token, so it is never logged. */
   connectUrl: string;
 }
 
 const API = "https://api.onkernel.com";
 
-/**
- * Seconds WITHOUT a CDP connection before Kernel ends the session (not a
- * lifetime cap). A live connection keeps it up; this only reaps a session
- * whose deletion never reached the API.
- */
 export const KERNEL_TIMEOUT_S = 600;
 
-/**
- * Why the backup browser did nothing, as a code the operator's log names:
- * Kernel's own error code when its answer had one, else what failed here.
- * The message never carries the key, the CDP url or Kernel's raw text.
- */
 export class KernelError extends Error {
   constructor(readonly code: string) {
     super(`Kernel: ${code}`);
@@ -37,11 +23,6 @@ export class KernelError extends Error {
   }
 }
 
-/**
- * The backup browser's settings, or null. The key IS the switch: absent, the
- * fallback is off and that is logged with its remedy, as a warning: an ERROR
- * line is a Sentry event, and nothing broke on a desktop without the key.
- */
 export function kernelFrom(env: Env): Kernel | null {
   const apiKey = env.KERNEL_API_KEY?.trim();
   if (apiKey) return { apiKey };
@@ -51,11 +32,6 @@ export function kernelFrom(env: Env): Kernel | null {
   return null;
 }
 
-/**
- * Start a headless stealth browser, desktop-sized like every other tab.
- * Stealth routes through Kernel's ISP proxy AND turns on its automatic
- * CAPTCHA solver; Kernel has no switch for the solver alone.
- */
 export async function createKernelSession(
   kernel: Kernel,
 ): Promise<KernelSession> {
@@ -72,7 +48,6 @@ export async function createKernelSession(
   const id = typeof body.session_id === "string" ? body.session_id : null;
   if (id !== null && typeof body.cdp_ws_url === "string")
     return { id, connectUrl: body.cdp_ws_url };
-  // A session we cannot drive still bills until it is deleted.
   if (id !== null)
     await deleteKernelSession(kernel, id).catch((error: unknown) =>
       console.error(
@@ -83,7 +58,6 @@ export async function createKernelSession(
   throw new KernelError("no_session_in_answer");
 }
 
-/** End a session now: it is billed until it ends. */
 export async function deleteKernelSession(
   kernel: Kernel,
   id: string,
@@ -91,7 +65,6 @@ export async function deleteKernelSession(
   await call(kernel, "DELETE", `/browsers/${encodeURIComponent(id)}`);
 }
 
-/** The code to log for any failure on the backup's path. */
 export function kernelCode(error: unknown): string {
   if (error instanceof KernelError) return error.code;
   if (error instanceof Error && error.name === "TimeoutError") return "timeout";
@@ -124,7 +97,6 @@ async function call(
   throw new KernelError(`${response.status}:${await errorCode(response)}`);
 }
 
-/** Kernel's `{"code": ...}`, reduced to a plain token. */
 async function errorCode(response: Response): Promise<string> {
   const parsed: unknown = await response.json().catch(() => null);
   const code =

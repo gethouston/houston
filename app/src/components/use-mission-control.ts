@@ -58,13 +58,7 @@ export function useMissionControl(agents: Agent[]) {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
-  // activityId → agentPath. Keyed by the activity id (the KanbanItem id), used
-  // by the card-level handlers (delete/approve/archive/rename) on item.id.
   const pathMapRef = useRef<Record<string, string>>({});
-  // session_key → { agentPath, activityId }. A routine chat's key is
-  // `routine-{rid}`, NOT `activity-{id}`, so stripping an "activity-" prefix to
-  // recover the agent fails for routines and the chat loads empty. Resolve by
-  // the stored session_key directly instead (#381).
   const sessionMapRef = useRef<
     Record<string, { agentPath: string; activityId: string }>
   >({});
@@ -77,21 +71,6 @@ export function useMissionControl(agents: Agent[]) {
     isPlaceholderData,
     isError,
   } = useAllConversations(paths);
-  // A FAILED sweep must never read as "you have no missions" (HOU-981). React
-  // Query's `placeholderData` covers the pending state only, so on error the
-  // board used to fall through to zero cards — and, because `isFetched` is true
-  // on error too, it also auto-opened the new-mission composer over an empty
-  // board while a toast said the read failed. Both are fixed here: on error the
-  // last known rows (this key's own, or the newest disk-restored roster
-  // variant) paint instead, and `isLoaded` waits for a genuine, SETTLED success
-  // (`sweepIsAuthoritative` — TanStack calls the placeholder paint a success
-  // too) so "empty" only ever means "successfully empty".
-  // App-open → board perf mark (HOU-1011) for the DEFAULT surface: since
-  // Everyone-first scope, the first mission cards a user sees come from THIS
-  // cross-agent sweep, not a per-agent board (whose hook carries the same
-  // mark — perfSpans latches once per session, so both firing is free).
-  // Authoritative-settled only: a placeholder or failed sweep is not "the
-  // user sees their cards". The rAF waits for the paint that shows them.
   const sweepSettled = sweepIsAuthoritative({ isSuccess, isPlaceholderData });
   useEffect(() => {
     if (!sweepSettled) return;
@@ -108,20 +87,12 @@ export function useMissionControl(agents: Agent[]) {
         : undefined),
     [sweptConvos, isError, queryClient],
   );
-  // Missions started against a still-cold engine (HOU-713). Their board-row
-  // write is held for the whole warm-up, and this is the only board they can
-  // appear on now that agents have none of their own, so they are overlaid as
-  // running cards until the flush's real rows arrive and win by id.
   const warming = useWarmingConversations(agents);
   const convos = useMemo(
     () => mergeWarmingRows(swept, warming as RawConversation[]),
     [swept, warming],
   );
 
-  // Per-mission attribution (hosted Teams only): resolve the contributor ids on
-  // every visible conversation to display profiles. Single-player never runs
-  // the query (useUserProfiles is multiplayer-gated) and gets no `people` key,
-  // so the board stays byte-identical to desktop.
   const { capabilities } = useCapabilities();
   const multiplayer = isMultiplayer(capabilities);
   const contributorIds = useMemo(
@@ -130,10 +101,6 @@ export function useMissionControl(agents: Agent[]) {
   );
   const { profiles } = useUserProfiles(contributorIds);
 
-  // ONE roster lookup behind both halves of a card's identity. The colour was
-  // always taken from here; the NAME used to come off the swept row, which the
-  // web adapter stamps from a registry that does not know the host's agents —
-  // so every card read "Houston". See `mission-card-agent.ts`.
   const agentsByFolderPath = useMemo(() => agentsByPath(agents), [agents]);
   const originTagOf = useMissionOriginTag(agents);
   const items: KanbanItem[] = useMemo(() => {
@@ -144,9 +111,6 @@ export function useMissionControl(agents: Agent[]) {
       { agentPath: string; activityId: string }
     > = {};
     const result = convos
-      // Archived missions live in Mission Control's archived view — keep them
-      // off the active board. Guided-setup chats (routine / skill / custom
-      // integration) live in the team's own sections, never as a card.
       .filter(
         (c) =>
           c.type === "activity" &&
@@ -164,8 +128,6 @@ export function useMissionControl(agents: Agent[]) {
         return {
           id: c.id,
           title: c.title,
-          // Decode a Skill / attachment first-message marker to the user's
-          // words; never echo the raw `<!--houston:...-->` on the card (HOU-425).
           description: messagePreviewText(c.description),
           group: missionCardAgentName(
             agentsByFolderPath,
@@ -184,8 +146,6 @@ export function useMissionControl(agents: Agent[]) {
             sessionKey: c.session_key,
             ...(c.agent ? { agent: c.agent } : {}),
             ...(c.routine_id ? { routineId: c.routine_id } : {}),
-            // The parent chat this mission was started from (PRODUCT-1244) —
-            // what the child-mission list above that chat's composer filters on.
             ...(c.origin_session_key
               ? { originSessionKey: c.origin_session_key }
               : {}),
@@ -198,8 +158,6 @@ export function useMissionControl(agents: Agent[]) {
     return result;
   }, [convos, agentsByFolderPath, originTagOf, multiplayer, profiles]);
 
-  // Which conversation is open, and its live feed — including the beat after a
-  // create, before the sweep has returned the new mission's row.
   const {
     activeSessionKey,
     activeAgentPath,
@@ -241,12 +199,6 @@ export function useMissionControl(agents: Agent[]) {
       if (!entry) return;
       const { agentPath, activityId } = entry;
       const scopeId = `activity-${activityId}`;
-      // The pod is warming or was detected asleep (HOU-693 / HOU-730): park
-      // the send with the queue the per-agent board uses — the bubble renders
-      // now and the wire send fires when the readiness probe clears. A held
-      // wire send would die with infrastructure timeouts or a reload. The
-      // flush re-reads the mission's own pin once the pod answers, so the
-      // composer's guess below is never final (PRODUCT-1643).
       const agentId = agentsByFolderPath.get(agentPath)?.id;
       const queuedWarm = agentId
         ? useAgentProvisioningStore.getState().queueWarmingSend(agentId, {
@@ -278,22 +230,11 @@ export function useMissionControl(agents: Agent[]) {
       try {
         const paths = await tauriAttachments.save(agentPath, scopeId, files);
         const prompt = buildAttachmentPrompt(text, files, paths);
-        // Mission Control is cross-agent: the mission's stored provider/model
-        // is the per-activity override the chat picker shows, and the engine
-        // session router only reads agent config when no override is sent —
-        // dropping it would route the message to the agent's default brain.
-        // Resolved from the CACHED activity list (the chat panel mounts that
-        // query), never a pod read: against an asleep pod that read rode the
-        // whole cold start before the bubble could show (PRODUCT-1643).
         const sendOverrides = resolveFollowUpOverrides(
           sessionKey,
           queryClient.getQueryData<Activity[]>(queryKeys.activity(agentPath)),
           overrides,
         );
-        // The turn stream pushes the user bubble into the conversation VM
-        // itself — no app-side optimistic push. If the conversation is
-        // mid-turn the adapter holds this send; the queued bubble shows the
-        // user's words, not the built prompt.
         await tauriChat.send(agentPath, prompt, sessionKey, {
           ...sendOverrides,
           mentions: overrides.mentions,
@@ -305,9 +246,6 @@ export function useMissionControl(agents: Agent[]) {
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       } catch (err) {
         setLoading((prev) => ({ ...prev, [sessionKey]: false }));
-        // The send failed BEFORE a turn stream existed (attachment save,
-        // refused start) — nothing wrote to the VM, so surface it as a
-        // toast, same as the create path below.
         showSendFailedToast(err);
         throw err;
       }
@@ -315,13 +253,6 @@ export function useMissionControl(agents: Agent[]) {
     [agentsByFolderPath, queryClient],
   );
 
-  // Blank "New mission" create path for Mission Control. Mirrors the
-  // per-agent BoardTab `handleCreateConversation` (it routes through the
-  // same `createMission` source of truth) but takes the agent explicitly
-  // because this view is cross-agent. Wired into AIBoard via
-  // `onCreateConversation`; without it a blank submit had no handler and
-  // the composer silently cleared (issue #328). AIBoard selects the
-  // returned activity id, so we don't call setSelectedId here.
   const handleCreateConversation = useCallback(
     async (
       agent: Agent,
@@ -331,11 +262,8 @@ export function useMissionControl(agents: Agent[]) {
         providerOverride?: string;
         modelOverride?: string;
         effortOverride?: string;
-        /** The composer's Mode pill, kept on the new mission's card. */
         modeOverride?: TurnMode;
-        /** Teammates the first message @mentions (HOU-944). */
         mentions?: MessageMention[];
-        /** The id the composer's typing prewarmed (`CreateMissionOptions`). */
         conversationId?: string;
       },
     ): Promise<string> => {
@@ -369,28 +297,20 @@ export function useMissionControl(agents: Agent[]) {
               );
               return buildAttachmentPrompt(text, files, saved);
             },
-            // A composer send: the bubble must show before the row lands.
             optimistic: true,
           },
         );
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
-        // Hold the new mission's identity until the sweep returns its row, so
-        // the panel that just opened on it keeps a session key and an agent.
         rememberCreated({ activityId: conversationId, agentPath, sessionKey });
         sessionMapRef.current[sessionKey] = {
           agentPath,
           activityId: conversationId,
         };
-        // createMission bypasses the activity mutation hooks, so refresh
-        // the cross-agent conversation list manually.
         queryClient.invalidateQueries({
           queryKey: queryKeys.allConversations(paths),
         });
         return conversationId;
       } catch (err) {
-        // No silent failures: createMission already rolled back the
-        // half-created activity. Surface why the mission did not start so
-        // the user can retry or report it.
         showSendFailedToast(err);
         throw err;
       }
@@ -424,17 +344,9 @@ export function useMissionControl(agents: Agent[]) {
 
   return {
     items,
-    /** The swept rows BEFORE any board filtered them — the one view of the
-     *  workspace where active and archived missions coexist. The surface
-     *  router classifies a published nav target against these
-     *  (`lib/board-surface-nav.ts`); neither board's items can, each holding
-     *  only its own half. */
     rawConversations: convos,
     selectedId,
     setSelectedId,
-    /** The open conversation's session key and agent path, with the
-     *  just-created fallback applied. The panel reads BOTH from here so it can
-     *  never disagree with the feed above. */
     activeSessionKey,
     activeAgentPath,
     loading: effectiveLoading,

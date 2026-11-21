@@ -1,18 +1,5 @@
-/**
- * Lightweight client-side OS detection.
- *
- * Houston doesn't bundle `@tauri-apps/plugin-os`, and the webview's
- * `navigator` is enough for coarse OS detection: shortcut hints,
- * notification routing, and analytics OS breakdowns. Anything finer-grained
- * belongs in Rust behind `#[cfg]`.
- */
 export type PlatformOs = "macos" | "windows" | "linux" | "unknown";
 
-/**
- * Pure OS classifier over raw `navigator` fields, exported for tests. Prefers
- * `platform` and falls back to `userAgent` (some webviews leave `platform`
- * empty) so a spoofed/fallback UA cannot override a concrete platform value.
- */
 export function detectPlatformOs(
   platform: string | undefined | null,
   userAgent: string | undefined | null,
@@ -24,7 +11,6 @@ export function detectPlatformOs(
   return "unknown";
 }
 
-/** Pure macOS check over raw `navigator` fields, exported for tests. */
 export function isMacPlatform(
   platform: string | undefined | null,
   userAgent: string | undefined | null,
@@ -39,14 +25,8 @@ export const currentPlatformOs: PlatformOs =
 
 export const isMac = currentPlatformOs === "macos";
 
-/** Where a client latency span ran: the desktop's OS, or the web app. */
 export type MetricsPlatform = PlatformOs | "web";
 
-/**
- * The `platform` a client latency span is labelled with. The web app reports
- * "web" rather than the OS of the browser it runs in, so web and desktop never
- * fold into one series (the browser's OS says nothing about the code path).
- */
 export function metricsPlatform(
   isDesktopShell: boolean,
   os: PlatformOs,

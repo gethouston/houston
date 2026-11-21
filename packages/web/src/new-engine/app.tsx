@@ -9,19 +9,8 @@ import {
 } from "react";
 import { ui } from "./styles";
 
-// The full Houston desktop UI. Lazily imported so its module graph (and the
-// engine-adapter behind @houston/engine-adapter) only evaluates after the
-// engine config global is set and a provider is connected.
 const AppTree = lazy(() => import("../app-tree"));
 
-/**
- * Boots the desktop UI on the new engine. The gate is a REACHABILITY check
- * only: one authStatus probe against the host's pre-agent /setup-runtime
- * surface proves the URL + token work, then the app tree mounts. Connecting a
- * provider is owned by the app itself — first-run onboarding's "Connect your
- * AI" step (curated ProviderBrowser), and the in-app reconnect cards after
- * that — so an unconnected engine must still boot to the shell.
- */
 export function WebApp({
   baseUrl,
   token,
@@ -30,14 +19,9 @@ export function WebApp({
 }: {
   baseUrl: string;
   token?: string;
-  /** Cloud (control-plane) mode: skip the per-runtime OAuth gate. */
   cloud?: boolean;
   onChangeEngine?: () => void;
 }) {
-  // The pre-agent connect surface lives under the host's /setup-runtime/*
-  // (auth/status, providers, the OAuth login routes) — the host serves no flat
-  // /auth/status. The app itself keeps talking to the bare baseUrl through the
-  // engine adapter; only this gate speaks setup-runtime.
   const client = useMemo(
     () =>
       new HoustonEngineClient({ baseUrl: `${baseUrl}/setup-runtime`, token }),
@@ -58,8 +42,6 @@ export function WebApp({
     [client],
   );
 
-  // Cloud is keyless (Supabase auth + control-plane credentials): there is no
-  // per-runtime OAuth gate, so skip the auth probe and mount the app directly.
   useEffect(() => {
     if (!cloud) void refresh();
   }, [cloud, refresh]);

@@ -21,27 +21,12 @@ import {
 import { orderFeaturedFirst } from "../provider-browser/provider-filtering";
 import { providerModels } from "../provider-browser/provider-grouping";
 
-/**
- * The hub's Available provider surface: a two-column grid of flat
- * {@link CatalogRow}s — full-color brand mark, name, a muted line leading with
- * the live model count then the friendly cost prose. Free-text search AND the
- * billing facet ({@link ProviderQuickFilterChips}, riding the page header's
- * tools zone) are applied by the page before the list arrives, so the heading
- * count and this grid can never disagree; the pane owns only the featured-first
- * ordering. The row BODY opens the provider modal (connect, sign-out, its model
- * list); the ghost `+` connects directly, flipping to a Cancel pill while that
- * provider's OAuth is in flight so a stuck sign-in can always be aborted. Only
- * NOT-connected providers browse here; connected ones live in the strip above
- * it.
- */
 export function ProvidersPane({
   providers,
   connections,
   catalog,
   onOpen,
 }: {
-  /** The NOT-connected providers, already narrowed by the page's query and
-   *  billing facet (the connected ones render in the strip). */
   providers: readonly ProviderInfo[];
   connections: ProviderConnections;
   catalog: HubCatalog;

@@ -26,19 +26,10 @@ import {
 } from "./report-dialog-parts";
 
 export interface ReportDialogProps {
-  /** The published agent's slug (path segment for the report endpoint). */
   slug: string;
-  /** Agent display name, woven into the dialog copy. */
   agentName: string;
 }
 
-/**
- * The "Report this agent" affordance on the detail page: an always-visible, quiet
- * ghost button that opens a modal with a reason radio group, optional details, and
- * an optional contact. Submits to the gateway (POST /v1/agentstore/agents/:slug/reports
- * via `reportAgent`) and shows explicit success and error states. No hover-only
- * affordances; fully keyboard-operable.
- */
 export function ReportDialog({ slug, agentName }: ReportDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [reason, setReason] = React.useState<ReasonValue | null>(null);
@@ -79,8 +70,6 @@ export function ReportDialog({ slug, agentName }: ReportDialogProps) {
       setStatus("success");
     } catch (err) {
       if (err instanceof StoreApiError) {
-        // Prefer the gateway's error token, then the numeric status (e.g. the
-        // rate-limit token "rate limited" has no copy of its own but 429 does).
         setError(
           (err.code ? ERROR_COPY[err.code] : undefined) ??
             ERROR_COPY[String(err.status)] ??

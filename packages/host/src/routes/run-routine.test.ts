@@ -15,21 +15,12 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { workspaceRoot } from "./agent-data";
 
-/**
- * POST /agents/:id/routines/:rid/run — fire a routine ON DEMAND through the same
- * firer + record path the scheduler uses. Asserts: a routine_run is recorded,
- * the channel's fireTurn is called with the routine's prompt + conversation, a
- * fire failure marks the run errored AND answers 502 (never a silent miss), and
- * the route is ownership-walled + 404s an unknown routine.
- */
-
 const verifier: TokenVerifier = {
   async verify(bearer) {
     return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
   },
 };
 
-/** A channel that records every fireTurn; optionally throws to exercise the error path. */
 class SpyChannel implements RuntimeChannel {
   fired: {
     conversationId: string;
@@ -93,8 +84,6 @@ const auth = (who: string) => ({
   "Content-Type": "application/json",
 });
 
-/** A gateway-minted acting-as header value naming `sub` (payload only; the
- *  pod never verifies the signature). */
 function actingAs(sub: string): string {
   const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
   return `acting-v1.${payload}.signature`;
@@ -159,18 +148,14 @@ test("fires the routine now: records a running run and calls fireTurn with the p
   const body = (await res.json()) as { ok: boolean; runId: string };
   expect(body.ok).toBe(true);
 
-  // The firer reached the channel with the routine's prompt + its shared conversation.
   expect(channel.fired).toHaveLength(1);
   const fired0 = channel.fired[0];
   if (!fired0) throw new Error("expected channel.fired[0] to exist");
-  // The routine's own instruction rides the fired prompt, under the run
-  // framing that keeps the agent from re-creating the routine (PRODUCT-1208).
   expect(fired0.text).toContain("send the weekly digest");
   expect(fired0.text).toContain("never call save_routine");
   expect(fired0.conversationId).toBe(`routine-${routine.id}`);
   expect(fired0.pin?.mode).toBe("auto");
 
-  // A run was recorded (the same record a scheduled fire writes).
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const agents = await store.listAgents(ws.id);
   const agent = agents[0];
@@ -235,8 +220,6 @@ test("a second run while one is in flight answers 409 and fires nothing (in-flig
   );
   expect(first.status).toBe(200);
 
-  // The first run is still `running` (nothing reconciled it) — parity with the
-  // Rust create_if_routine_idle Conflict.
   const second = await fetch(
     `${base}/agents/${agentId}/routines/${routine.id}/run`,
     { method: "POST", headers: auth("alice") },
@@ -251,7 +234,7 @@ test("a second run while one is in flight answers 409 and fires nothing (in-flig
   const agent = (await store.listAgents(ws.id))[0];
   if (!agent) throw new Error("expected at least one agent to exist");
   const { items } = await loadRoutineRuns(vfs, workspaceRoot(ws, agent));
-  expect(items).toHaveLength(1); // no second run row
+  expect(items).toHaveLength(1);
 });
 
 test("an unknown routine 404s, never fires", async () => {
@@ -285,9 +268,6 @@ test("another user cannot run the agent's routine (403)", async () => {
 
 test("two simultaneous run-now requests: one fires, one 409s, exactly one run row", async () => {
   const routine = await makeRoutine();
-  // Both requests race the in-flight gate; the per-agent runs-file queue must
-  // let exactly one through — never two turns into the same conversation, and
-  // never a run row silently dropped by the second whole-file save.
   const [a, b] = await Promise.all([
     fetch(`${base}/agents/${agentId}/routines/${routine.id}/run`, {
       method: "POST",
@@ -309,9 +289,6 @@ test("two simultaneous run-now requests: one fires, one 409s, exactly one run ro
 });
 
 test("on a gateway-fronted host the run acts as the presser: the acting-as token reaches the firer", async () => {
-  // A managed pod: the gateway stamps the presser's minted identity on the
-  // proxied request, and the run must resolve THAT credential scope — the one
-  // the routine screen's connection badge probed — not the team's.
   await boot({ gatewayFronted: true, ownerSub: "owner-1" });
   const routine = await makeRoutine();
   const token = actingAs("member-7");
@@ -328,14 +305,10 @@ test("on a gateway-fronted host the run acts as the presser: the acting-as token
   const fired = channel.fired[0];
   if (!fired) throw new Error("expected channel.fired[0] to exist");
   expect(fired.actingAs).toBe(token);
-  // The minted token REPLACES the bare creator sub (ChannelRoutineFirer's
-  // contract): never both, or the runtime would read two identities.
   expect(fired.actingUser).toBeUndefined();
 });
 
 test("off the gateway an inbound acting-as header is ignored: the run keeps the creator's bare sub", async () => {
-  // Desktop / self-host: clients reach this host directly, so the header is
-  // untrusted client input. The firer's creator fallback stays in force.
   const routine = await makeRoutine();
 
   const res = await fetch(

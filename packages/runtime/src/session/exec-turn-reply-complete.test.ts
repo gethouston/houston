@@ -9,12 +9,6 @@ import type {
   ResolvedModel,
 } from "../backends/types";
 
-/**
- * A standing engine's turn publishes `reply_complete` the moment the reply is
- * done (an offer opened after the closing text), BEFORE the offer's tool
- * frames and the clean `done` — the client hands the card back then.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-rc-data-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-rc-ws-"),
@@ -37,7 +31,6 @@ const { execTurn } = await import("./exec-turn");
 const bus = await import("./bus");
 type Conversation = import("./conversation-cache").Conversation;
 
-/** A session that writes its reply, then opens and runs an offer tool. */
 class OfferingSession implements HarnessSession {
   private wire = new Set<(e: WireEvent) => void>();
   private starts = new Set<() => void>();
