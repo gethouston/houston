@@ -12,6 +12,7 @@
  */
 import { toCanonicalProviderId } from "@houston/sdk/provider-catalog";
 import { serialQueue } from "../lib/serial-queue.ts";
+import type { TurnMode } from "../lib/turn-mode.ts";
 import type { Activity, ActivityUpdate } from "./activity";
 import {
   applyActivityPatch,
@@ -37,6 +38,7 @@ export function activityWrites(io: ActivityFileIo) {
       agent?: string,
       provider?: string,
       model?: string,
+      mode?: TurnMode,
     ): Promise<Activity> =>
       queued(agentPath, async () => {
         const items = await io.list(agentPath);
@@ -53,6 +55,7 @@ export function activityWrites(io: ActivityFileIo) {
               ? undefined
               : toCanonicalProviderId(provider),
           model,
+          ...(mode ? { mode } : {}),
         };
         await io.write(agentPath, [...items, item]);
         return item;

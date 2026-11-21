@@ -15,6 +15,7 @@ import { cleanupTurn } from "./turn-cleanup";
 import { writeTurnCredential } from "./turn-credential";
 import type { TurnFilesystemPreparation } from "./turn-filesystem";
 import { refuseHydratedTurn } from "./turn-hydrated-admission";
+import { adoptKeptMode } from "./turn-kept-mode";
 import { TurnSetupError } from "./turn-layout";
 import { setActiveTurnTimings } from "./turn-network-marks";
 import { stampPooledTurn } from "./turn-push";
@@ -125,6 +126,8 @@ export async function executeTurn(
       res,
     });
     if (refused) return;
+    // Hydrated: a send that names no mode adopts its conversation's (HOU-205).
+    await adoptKeptMode(turn, filesystem.workspaceDir);
     // Setup can no longer refuse the turn: answer (the gateway's 202) now.
     const sse = openSSE(res);
     closeSse = sse.close;

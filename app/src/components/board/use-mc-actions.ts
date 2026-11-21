@@ -47,6 +47,7 @@ export function useMcActions({
       providerOverride,
       modelOverride,
       effortOverride,
+      modeOverride,
       mentions,
       conversationId,
     }: NewConversationArgs) => {
@@ -66,6 +67,7 @@ export function useMcActions({
         providerOverride: plan.providerOverride,
         modelOverride: plan.modelOverride,
         effortOverride,
+        modeOverride,
         mentions,
         conversationId,
       });

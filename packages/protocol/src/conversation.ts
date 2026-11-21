@@ -253,8 +253,9 @@ export interface Settings {
  * approve; "auto" (Autopilot) = acts with everything EXCEPT the two
  * blocking/interactive tools (`ask_user`, `request_connection`) — it never waits
  * on the user, makes its own sensible choices, and reports back at the end.
- * Deliberately NOT part of `Settings`: mode rides the per-turn pin only, so an
- * unpinned turn is always "execute".
+ * Deliberately NOT part of `Settings`: a send pins its own mode, and a send
+ * that pins none runs on its conversation's mode (the mission card's `mode`,
+ * see `Activity.mode`), else "execute".
  */
 export type TurnMode = "execute" | "plan" | "auto";
 export const TURN_MODES: readonly TurnMode[] = ["execute", "plan", "auto"];
@@ -271,6 +272,17 @@ export function normalizeTurnMode(value: unknown): TurnMode {
   return TURN_MODES.includes(value as TurnMode)
     ? (value as TurnMode)
     : DEFAULT_TURN_MODE;
+}
+
+/**
+ * The mode a send body PINS, or `undefined` when it names none (absent, null,
+ * or the empty string a Go `omitempty` drops). A pin-less send runs on its
+ * conversation's stored mode; a garbage pin still normalizes to the default,
+ * never to a surprise.
+ */
+export function parseTurnModePin(value: unknown): TurnMode | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  return normalizeTurnMode(value);
 }
 
 export type ChatRole = "user" | "assistant";

@@ -216,6 +216,7 @@ export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> =
   setContext: { group: "settings", confirm: true, hidden: false, route: "PUT /v1/{kind}-context", rawResponse: false },
   setCustomEndpoint: { group: "providers", confirm: false, hidden: true, route: "POST /agents/{agentId}/provider/openai-compatible", rawResponse: false },
   setHeartbeat: { group: "settings", confirm: false, hidden: false, route: "PUT /v1/heartbeat", rawResponse: true },
+  setMissionMode: { group: "missions", confirm: false, hidden: false, route: "PATCH /agents/{agentId}/activities/{id}", rawResponse: true },
   setMyProfile: { group: "settings", confirm: false, hidden: false, route: "PUT /v1/me/profile", rawResponse: true },
   setOrgMemberRole: { group: "org", confirm: true, hidden: false, route: "PATCH /v1/org/members/{userId}", rawResponse: false },
   setPreference: { group: "settings", confirm: false, hidden: true, route: "PUT /v1/preferences/{key}", rawResponse: false },

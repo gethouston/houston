@@ -1,8 +1,9 @@
-import { normalizeTurnMode, parseMentions } from "@houston/protocol";
+import { parseMentions, parseTurnModePin } from "@houston/protocol";
 import {
   NextStepSuggestionsSchema,
   TurnTimezoneSchema,
 } from "@houston/wire-types";
+import { config } from "../config";
 import { actingFromHeaders } from "../session/acting-context";
 import { ensureProviderForTurn, runTurn } from "../session/chat";
 import { parseConversationCommand } from "../session/conversation-command";
@@ -10,6 +11,7 @@ import {
   conversationCommandInFlight,
   holdConversationTurn,
 } from "../session/conversation-command-gate";
+import { storedConversationMode } from "../session/conversation-mode";
 import { isDraining } from "../session/drain";
 import { parseMissionTitle } from "../session/mission-title";
 import { startConversationCommand } from "./conversation-command-start";
@@ -100,9 +102,12 @@ export async function handleStartTurn(ctx: RouteContext, id: string) {
     );
     return;
   }
-  // Never trust the wire: only the known mode literals ("plan", "auto") pass;
-  // everything else (absent, garbage, unknown) normalizes to "execute".
-  const turnMode = normalizeTurnMode(mode);
+  // Never trust the wire: only the known mode literals pass, and garbage
+  // normalizes to "execute". A send that names no mode runs on the mode its
+  // conversation keeps (HOU-205), else "execute".
+  const turnMode =
+    parseTurnModePin(mode) ??
+    (await storedConversationMode(config.workspaceDir, id));
   // The hosting gateway (cloud) puts the org + caller context on the turn body
   // from its own store (HOU-711). Either field present means "use these" (each
   // defaults to ""), so a new session's prompt is built from them instead of the
