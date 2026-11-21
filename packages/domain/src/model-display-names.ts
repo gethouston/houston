@@ -76,6 +76,7 @@ export const MODEL_DISPLAY: Partial<
     "claude-opus-4.8": "Claude Opus 4.8",
     "claude-haiku-4.5": "Claude Haiku 4.5",
     "gemini-3.8-flash": "Gemini 3.8 Flash",
+    "gemini-4-neon": "Gemini 4 Neon",
   },
   opencode: {
     "claude-sonnet-4-6": "Sonnet 4.6",
@@ -86,7 +87,7 @@ export const MODEL_DISPLAY: Partial<
     "nemotron-3.5-super-vl-free": "Nemotron 3.5 Super VL (Free)",
   },
   "opencode-go": {
-    "glm-5.2": "GLM-5.2",
+    "glm-5.3": "GLM-5.3",
     "kimi-k2.7-code": "Kimi K2.7 Code",
     "minimax-m3": "MiniMax M3",
     "qwen3.8-max": "Qwen3.8 Max",
@@ -103,6 +104,8 @@ export const MODEL_DISPLAY: Partial<
     "deepseek-flash": "DeepSeek V4.1 Flash",
     "deepseek-v4-pro": "DeepSeek V4 Pro",
   },
+  // A bare "Gemini" lands on 3.8 Flash, the default a free key runs: Neon
+  // follows the Flash rows because Google serves it on paid keys only.
   google: {
     "gemini-3.8-flash": "Gemini 3.8 Flash",
     "gemini-3.7-flash": "Gemini 3.7 Flash",
@@ -110,6 +113,7 @@ export const MODEL_DISPLAY: Partial<
     "gemini-3.5-flash": "Gemini 3.5 Flash",
     "gemini-3.5-flash-lite": "Gemini 3.5 Flash Lite",
     "gemini-3.1-flash-lite": "Gemini 3.1 Flash Lite",
+    "gemini-4-neon": "Gemini 4 Neon",
     "gemma-4-26b-a4b-it": "Gemma 4 26B A4B IT",
     "gemma-4-31b-it": "Gemma 4 31B IT",
   },

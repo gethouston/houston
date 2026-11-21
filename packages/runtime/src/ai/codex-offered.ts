@@ -29,8 +29,8 @@
  * Re-probed 2026-10-26, same method:
  *   served  — gpt-6.1-terra (200 `response.created`, efforts none/low/max)
  *
- * Re-probed 2026-11-17, same method, for the two rows the pi-ai 1.5.2 patch
- * backports:
+ * Re-probed 2026-11-17, same method, for the two GPT-6.2 rows (backported by
+ * a pi-ai patch then, native since pi 1.6.0):
  *   served  — gpt-6.2-sol, gpt-6.2-astra (200 `response.created` with no
  *             effort and with efforts low, medium, high, xhigh and max)
  *   refused — efforts none and minimal (400 `unsupported_value`, "Supported

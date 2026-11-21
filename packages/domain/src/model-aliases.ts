@@ -13,13 +13,15 @@
  *
  * A LEAF (see `provider-dialect.ts`): exposed as the
  * `@houston/domain/model-aliases` subpath so the app reads legacy model ids
- * through this module instead of restating it. Its ONE dependency is the
- * sibling `provider-dialect` leaf, reached through the package's own subpath so
- * both stay loadable under plain `node --experimental-strip-types` — where an
- * extensionless relative specifier does not resolve and a `.ts` one is a type
- * error under this package's emitting tsconfig.
+ * through this module instead of restating it. Its dependencies are the
+ * sibling `provider-dialect` and `model-aliases-gateways` leaves, reached
+ * through the package's own subpaths so all stay loadable under plain
+ * `node --experimental-strip-types`, where an extensionless relative specifier
+ * does not resolve and a `.ts` one is a type error under this package's
+ * emitting tsconfig.
  */
 
+import { GATEWAY_MODEL_ALIASES } from "@houston/domain/model-aliases-gateways";
 import { toCanonicalProviderId } from "@houston/domain/provider-dialect";
 import type { ProviderId } from "./provider-ids";
 
@@ -119,45 +121,18 @@ export const MODEL_ALIASES: Partial<
     "deepseek-v4-flash": "deepseek-flash",
     "deepseek-v4-flash-vision-exp": "deepseek-flash",
   },
-  // An open-catalog gateway carries ONLY renames (see `canonicalModelId`): a
-  // gateway id with no successor keeps passing through, because the gateway —
-  // not this table — is the authority on what it routes. `mimo-v2.5-free` is
-  // `mimo-v2.6-flash-free` in pi 0.87.1: the same free tier (zero cost,
-  // text+image, 200k window), so the map holds the tier.
-  // pi 1.4.0 dropped `claude-sonnet-4`; Sonnet 4.6 costs the same per token.
-  // pi 1.5.0 dropped `nemotron-3-ultra-free`; Nemotron 3.5 Super VL is
-  // NVIDIA's free successor with the same 1M window. Zen's `deepseek-v4-flash`
-  // gets no row: V4.1 Flash costs 4.3x more per output token.
-  opencode: {
-    "mimo-v2.5-free": "mimo-v2.6-flash-free",
-    "claude-sonnet-4": "claude-sonnet-4-6",
-    "nemotron-3-ultra-free": "nemotron-3.5-super-vl-free",
+  // pi 1.6.0 dropped NVIDIA's gpt-oss-20b, the old NVIDIA default, so many
+  // stored NVIDIA pins hold it. MiniMax M3.1 Flash is the new default and,
+  // like every NVIDIA row, free.
+  nvidia: {
+    "openai/gpt-oss-20b": "minimaxai/minimax-m3.1-flash",
   },
-  // Each row is a model pi dropped from OpenCode Go, mapped to its successor.
-  // 0.99.1 dropped the glm, kimi and qwen rows, each to the same price tier.
-  // 1.1.0 dropped the free `space-bunny-free` preview: `space-bunny` is the
-  // same model (same 1M window and output cap) out of preview, so a pin on it
-  // now draws plan usage. It is still the cheapest runnable home; with no row
-  // the pin would fall to glm-5.2, which costs about 9x more.
-  // 1.3.0 dropped four rows, each for its next version at the same price.
-  // deepseek-v4.1-flash also takes images, so the vision pin keeps them.
-  // 1.4.0 dropped `space-bunny`; deepseek-v4.1-flash has its exact price,
-  // window and image input, so both Space Bunny ids land there.
-  // 1.5.0 dropped two previews for the same model's GA row: MiniMax M3.1
-  // Flash (now plan usage, like Space Bunny) and Gemini 4 Argon (half price).
-  "opencode-go": {
-    "glm-5.1": "glm-5.2",
-    "kimi-k2.6": "kimi-k2.7-code",
-    "qwen3.7-max": "qwen3.8-max",
-    "space-bunny-free": "deepseek-v4.1-flash",
-    "space-bunny": "deepseek-v4.1-flash",
-    "deepseek-v4-flash": "deepseek-v4.1-flash",
-    "deepseek-v4-flash-vision-exp": "deepseek-v4.1-flash",
-    "minimax-m2.7": "minimax-m3",
-    "grok-4.6": "grok-4.7",
-    "minimax-m3.1-flash-free": "minimax-m3.1-flash",
-    "gemini-4-argon-contributor": "gemini-4-argon",
-  },
+  // pi 1.6.0 dropped the Team plan's `deepseek-v4-flash` for its dated
+  // `deepseek-v4-flash-0731` row: the same window, output cap and levels on the
+  // same plan. `deepseek-v3.2` gets no row: its successors are a newer family.
+  "qwen-token-plan": { "deepseek-v4-flash": "deepseek-v4-flash-0731" },
+  "qwen-token-plan-cn": { "deepseek-v4-flash": "deepseek-v4-flash-0731" },
+  ...GATEWAY_MODEL_ALIASES,
 };
 
 /**

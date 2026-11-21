@@ -22,6 +22,20 @@ concurrency:
 permissions:
   contents: read
 
+# Job budgets are 1.5x the p95 of the latest 60 main runs, rounded up to
+# whole minutes, with a two-minute floor; a matrix takes its slowest leg's
+# p95. A budget sits above real p95 so it only trips on a hang, and a
+# timeout fails the job. A PR that makes a job faster or slower re-measures
+# and moves its budget in the same PR.
+
+# Every job runs on `vars.CI_RUNNER` (a repo variable; unset = GitHub's
+# ubuntu-latest), the same switch the cloud repo uses. Hosted jobs share the
+# org's concurrent-job limit with the cloud repo, and a full run here is 13
+# jobs, so two PRs at once queue: 2 s p50 but 6 to 12 min p95 of waiting per
+# job over the 150 runs before this. A runner label with its own capacity
+# (Blacksmith's `blacksmith-4vcpu-ubuntu-2404`, the same 4 vCPU) removes the
+# queue without touching a job; unsetting the variable rolls back.
+
 jobs:
   changes:
     # Decides whether the Playwright jobs below (the web shards and the
@@ -49,8 +63,8 @@ jobs:
     # event (if a merge queue is ever enabled) is not a pull_request, so it
     # would need a checkout plus `base` for the action, or to run everything.
     name: Changed paths
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 2
     permissions:
       contents: read
       pull-requests: read
@@ -95,8 +109,8 @@ jobs:
     name: TS checks (lint · typecheck · contract tests)
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -170,12 +184,16 @@ jobs:
     name: Unit tests (${{ matrix.package }})
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
       matrix:
-        package: [runtime, host]
+        include:
+          - package: runtime
+            timeout: 10
+          - package: host
+            timeout: 4
     steps:
       # Same actions the sibling jobs run, at the commits their `v4` tags
       # resolve to today, pinned. The suites never push, so the token is not
@@ -260,8 +278,8 @@ jobs:
     name: Web (UI tests)
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -340,8 +358,8 @@ jobs:
     # packages/web/e2e/README.md → Visual regression → Platforms).
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 25
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
     steps:
@@ -357,12 +375,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Browsers ship in the image (PLAYWRIGHT_BROWSERS_PATH) — no install step.
-      # The committed `-linux` baselines were recorded against the vite dev
-      # server, so this job keeps serving from it (the functional shards
-      # moved to the prebuilt bundle; packages/web/e2e/support/serve-mode.ts).
+      # Served from the prebuilt development-mode bundle, like the functional
+      # shards (packages/web/e2e/support/serve-mode.ts): the same CSS and
+      # React tree the dev server produces, without one vite process
+      # transforming every module for every page boot.
+      - name: Build web bundles (e2e)
+        run: pnpm --filter houston-web e2e:build
+
       - name: Visual tests (Playwright)
-        env:
-          HOUSTON_E2E_SERVE: dev
         run: pnpm --filter houston-web test:visual
 
       - name: Upload Playwright report
@@ -385,8 +405,8 @@ jobs:
     name: App · Web unit · Agent Store (typecheck · tests · builds)
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 11
     steps:
       - uses: actions/checkout@v6
 
@@ -438,8 +458,8 @@ jobs:
     name: Website (lint · tests · locales · build)
     needs: changes
     if: needs.changes.outputs.site == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 2
     steps:
       - uses: actions/checkout@v6
         with:

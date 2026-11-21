@@ -57,7 +57,10 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  `outside_workspace` is a files read refused because the path points
  *  outside the agent's files (`files/outside-workspace`): an agent's link
  *  with its own copy, still one fingerprinted warning, since a burst of
- *  them means agents keep linking such paths. */
+ *  them means agents keep linking such paths.
+ *  `codex_port_taken` is another process on the person's machine holding
+ *  the fixed port OpenAI's desktop sign-in redirects to (HOUSTON-APP-5EV):
+ *  the sign-in falls back to a device code, so it is one counted warning. */
 export type QuietErrorClass =
   | "office_preview_capacity"
   | "engine_waking"
@@ -73,7 +76,8 @@ export type QuietErrorClass =
   | "upload_interrupted"
   | "routine_gone"
   | "link_identity_taken"
-  | "outside_workspace";
+  | "outside_workspace"
+  | "codex_port_taken";
 
 /**
  * The burst-gate key a quiet-class report collapses on.
