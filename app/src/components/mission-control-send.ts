@@ -40,7 +40,8 @@ export interface SendOverrides {
   modelOverride?: string;
   /** Rows never store effort: it is always the composer's. */
   effortOverride?: string;
-  /** Turn mode pin for user-typed sends; absent = execute. */
+  /** Turn mode pin for user-typed sends; absent = the conversation's kept
+   *  mode, else execute. */
   modeOverride?: "execute" | "plan" | "auto";
 }
 
@@ -95,7 +96,7 @@ export function resolveMissionControlSendOverrides(
  * has been open a beat (it mounts the same query), so:
  *
  *  - cached and the row is found -> the row's own provider/model, with the
- *    composer's effort (a row stores none);
+ *    composer's effort (a row stores none) and the composer's mode;
  *  - otherwise -> the composer's effective pick, which the chat panel derives
  *    from that same row when loaded and from the agent default until then —
  *    so picker and wire still agree, and nothing awaits the pod.
@@ -106,9 +107,9 @@ export function resolveFollowUpOverrides(
   composer: SendOverrides,
 ): SendOverrides {
   const fromRow = resolveActivityOverride(sessionKey, cachedActivities);
-  if (fromRow.providerOverride === undefined) {
-    return { ...composer, modeOverride: DEFAULT_TURN_MODE };
-  }
+  // The composer's mode IS the conversation's: the chat panel resolves it from
+  // the card's kept mode (HOU-205), so a follow-up runs the way the pill shows.
+  if (fromRow.providerOverride === undefined) return composer;
   // The composer's effort was validated against the composer's model, which
   // can still be the agent default while the row pins another one.
   return {
@@ -118,6 +119,6 @@ export function resolveFollowUpOverrides(
       fromRow.modelOverride,
       composer.effortOverride,
     ),
-    modeOverride: DEFAULT_TURN_MODE,
+    modeOverride: composer.modeOverride,
   };
 }

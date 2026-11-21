@@ -3,6 +3,7 @@
 // `claude_session_id` is a legacy field name baked into user data; it stays.
 
 import { z } from "zod";
+import type { TurnMode } from "../conversation";
 import type { PendingInteraction } from "./interaction";
 import type { MissionStarter } from "./mission-starter";
 
@@ -56,6 +57,13 @@ export interface Activity {
   last_message_at?: string;
   provider?: string;
   model?: string;
+  /**
+   * The mission's turn mode (the composer's Mode pill), kept per conversation
+   * so it survives leaving and reopening the chat. A send that pins no mode
+   * runs on it; absent means "execute". A send's own pin never rewrites it:
+   * only a pick of the conversation's mode does (HOU-205).
+   */
+  mode?: TurnMode;
   /** The one thing this mission is waiting on the user for, if any. Present
    *  drives the `needs_you` card; absent means the mission needs nothing. */
   pending_interaction?: PendingInteraction;
@@ -123,6 +131,7 @@ export const activityUpdateSchema = z
     skill_slug: z.string().optional(),
     provider: z.string().nullable().optional(),
     model: z.string().nullable().optional(),
+    mode: z.enum(["execute", "plan", "auto"]).optional(),
     pending_interaction: z.custom<PendingInteraction>().nullable().optional(),
   })
   .strict();
@@ -140,6 +149,8 @@ export interface ActivityUpdate {
   skill_slug?: string;
   provider?: string | null;
   model?: string | null;
+  /** The conversation's mode; "execute" is the default, so it never clears. */
+  mode?: TurnMode;
   /** Set to record a new pending interaction; `null` clears it explicitly. */
   pending_interaction?: PendingInteraction | null;
 }
@@ -158,6 +169,8 @@ export interface NewActivity {
   worktree_path?: string;
   provider?: string;
   model?: string;
+  /** The mode the composer had picked when the mission was created. */
+  mode?: TurnMode;
   /**
    * The parent conversation, set ONLY by the host's missions sandbox route
    * when the agent starts a mission for itself (`start_mission`). Client

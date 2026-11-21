@@ -9,6 +9,7 @@ import {
   type ActivityStamp,
   type ActivityUpdate,
   isMissionStarter,
+  normalizeTurnMode,
   resolveInteractionPatch,
 } from "@houston/protocol";
 import { ACTIVITY_PATH, emitDomain, fileKey, ISO, state } from "./state-store";
@@ -50,6 +51,8 @@ export function createActivity(
     ...(input.mentioned !== undefined && { mentioned: input.mentioned }),
     // The mode sentinel a setup task carries (the first-day route stamps it).
     ...(input.agent !== undefined && { agent: input.agent }),
+    // The conversation's turn mode, as the real host's createActivity keeps it.
+    ...(input.mode !== undefined && { mode: normalizeTurnMode(input.mode) }),
     // The agent-started marker (PRODUCT-1244) is stamped by the real host's
     // missions route, never by a client POST — accept it here for the same
     // reason as the attribution keys: an e2e needs to seed a child mission.
