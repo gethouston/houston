@@ -20,6 +20,7 @@ export async function createTurnCustomContext(opts: {
   hostToken: string;
   orgSlug: string;
   agentSlug: string;
+  customOAuthCallbackUrl?: string;
   fetchImpl?: typeof fetch;
   /** Each definition a mutation changed, by slug. */
   onChanged?: (slug: string) => void;
@@ -48,7 +49,12 @@ export async function createTurnCustomContext(opts: {
     secrets,
     executor,
     opts.onChanged ?? (() => undefined),
-    {},
+    opts.customOAuthCallbackUrl
+      ? {
+          callbackUrl: opts.customOAuthCallbackUrl,
+          statePrefix: `${opts.orgSlug}.${opts.agentSlug}`,
+        }
+      : {},
   );
   return {
     manager,
