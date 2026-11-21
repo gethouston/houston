@@ -1,30 +1,22 @@
 import { storedConversationMode } from "../session/conversation-mode";
-import type { TurnServerDeps } from "./server-types";
 import type { TurnRequest } from "./types";
 
 /**
- * Whether the turn's session may start beside hydration. A send that names no
- * mode runs on the mode its conversation keeps (HOU-205), which only the
- * hydrated board says, so its session waits for {@link adoptKeptMode}.
+ * Give a pin-less turn its conversation's kept mode (HOU-205), live mode
+ * included, once the hydrated board can say what it is.
+ *
+ * The early session start does not wait for this: model, backend and toolset
+ * setup never read the mode, and the session itself is opened from the
+ * adopted turn, so a pin-less send keeps the hydration overlap.
+ *
+ * A routine run is skipped: it always runs Autopilot (`routinePhaseTurn`),
+ * whatever a person picked on the card of the chat it posts into.
  */
-export function earlySessionAllowed(
-  turn: TurnRequest,
-  deps: Pick<TurnServerDeps, "runTurn">,
-): boolean {
-  return (
-    turn.mode !== undefined &&
-    Boolean(turn.credential) &&
-    !turn.routine &&
-    !turn.shadow &&
-    !deps.runTurn
-  );
-}
-
-/** Give a pin-less turn its conversation's kept mode, live mode included. */
 export async function adoptKeptMode(
   turn: TurnRequest,
   workspaceDir: string,
 ): Promise<void> {
+  if (turn.mode !== undefined || turn.routine) return;
   turn.mode = await storedConversationMode(workspaceDir, turn.conversationId);
   if (turn.liveMode) turn.liveMode.current = turn.mode ?? "execute";
 }

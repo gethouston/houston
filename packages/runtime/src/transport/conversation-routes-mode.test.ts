@@ -93,6 +93,12 @@ test("a send's own mode still wins over the kept one", async () => {
   expect(turnMode()).toBe("plan");
 });
 
+test("an API mission older than the field keeps running Autopilot", async () => {
+  writeBoard([{ ...missionCard(), started_by: "api" }]);
+  await post({ text: "next step" });
+  expect(turnMode()).toBe("auto");
+});
+
 test("no card, a card with no mode, or an unreadable board runs Ask first", async () => {
   await post({ text: "hello" });
   expect(turnMode()).toBeUndefined();

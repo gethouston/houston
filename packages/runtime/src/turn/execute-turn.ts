@@ -15,7 +15,7 @@ import { cleanupTurn } from "./turn-cleanup";
 import { writeTurnCredential } from "./turn-credential";
 import type { TurnFilesystemPreparation } from "./turn-filesystem";
 import { refuseHydratedTurn } from "./turn-hydrated-admission";
-import { adoptKeptMode, earlySessionAllowed } from "./turn-kept-mode";
+import { adoptKeptMode } from "./turn-kept-mode";
 import { TurnSetupError } from "./turn-layout";
 import { setActiveTurnTimings } from "./turn-network-marks";
 import { stampPooledTurn } from "./turn-push";
@@ -101,7 +101,7 @@ export async function executeTurn(
 
     let sendFrame: ((frame: WireFrame) => void) | undefined;
     const earlyEmit = (frame: WireFrame) => sendFrame?.(frame);
-    if (earlySessionAllowed(turn, deps)) {
+    if (turn.credential && !turn.routine && !turn.shadow && !deps.runTurn) {
       startup = startTurnSession(
         { ...filesystem, turnRoot: root },
         turnSessionRequest(
@@ -127,8 +127,7 @@ export async function executeTurn(
     });
     if (refused) return;
     // Hydrated: a send that names no mode adopts its conversation's (HOU-205).
-    if (turn.mode === undefined)
-      await adoptKeptMode(turn, filesystem.workspaceDir);
+    await adoptKeptMode(turn, filesystem.workspaceDir);
     // Setup can no longer refuse the turn: answer (the gateway's 202) now.
     const sse = openSSE(res);
     closeSse = sse.close;

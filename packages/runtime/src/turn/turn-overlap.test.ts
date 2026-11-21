@@ -132,8 +132,6 @@ test("turn setup overlaps hydration but prompt waits for the complete tree", asy
       agentId: "agent-1",
       conversationId: "c1",
       text: "hello",
-      // A pinned send, as the app sends: a pin-less one waits for the board.
-      mode: "execute",
       gcsPrefix: prefix,
       credential: {
         provider: "anthropic",
@@ -303,7 +301,6 @@ test("hydration failure reports an abandoned startup failure", async () => {
         agentId: "agent-1",
         conversationId: "c1",
         text: "hello",
-        mode: "execute",
         gcsPrefix: prefix,
         credential: {
           provider: "openai-codex",

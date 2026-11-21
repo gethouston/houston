@@ -6,6 +6,7 @@ import { tauriActivity, tauriChat } from "../lib/tauri";
 import {
   DEFAULT_TURN_MODE,
   type PickedTurnMode,
+  pickSettled,
   resolveConversationTurnMode,
   type TurnMode,
 } from "../lib/turn-mode";
@@ -50,10 +51,9 @@ export function useConversationTurnMode({
     previousSessionKey.current = sessionKey;
     if (previous && !sessionKey) setLocalMode(fallback);
   }, [sessionKey, fallback]);
-  // The pick stops being echoed once the card reads it back.
+  // The pick stops being echoed once the card reads back any write.
   useEffect(() => {
-    if (picked && card?.id === picked.cardId && card.mode === picked.mode)
-      setPicked(null);
+    if (picked && pickSettled(picked, card)) setPicked(null);
   }, [card, picked]);
 
   const turnMode = resolveConversationTurnMode({
@@ -66,7 +66,7 @@ export function useConversationTurnMode({
   const selectTurnMode = useCallback(
     (mode: TurnMode) => {
       if (card && path) {
-        setPicked({ cardId: card.id, mode });
+        setPicked({ cardId: card.id, mode, from: card.mode });
         // A failed write keeps the pick for this session: every send still
         // pins it, only the next visit would not see it.
         reportRejection(

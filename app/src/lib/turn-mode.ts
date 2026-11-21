@@ -30,10 +30,27 @@ export function normalizeTurnMode(value: unknown): TurnMode {
   return DEFAULT_TURN_MODE;
 }
 
-/** A pick made on a card, shown until the card itself reads it back. */
+/** A pick made on a card, shown until the card itself reads back a write. */
 export interface PickedTurnMode {
   cardId: string;
   mode: TurnMode;
+  /** The card's `mode` when the pick was made. */
+  from: unknown;
+}
+
+/**
+ * Whether the card has caught up with a pick: it reads the picked mode back,
+ * or it moved to anything else, which is a later write from another surface
+ * (the manager, a teammate) and wins. Only a card that still holds what it
+ * held at pick time keeps echoing the pick, so a failed write stays visible
+ * for the session but a newer stored value is never hidden behind it.
+ */
+export function pickSettled(
+  picked: PickedTurnMode,
+  card: { id: string; mode?: unknown } | null,
+): boolean {
+  if (card?.id !== picked.cardId) return false;
+  return card.mode === picked.mode || card.mode !== picked.from;
 }
 
 /**

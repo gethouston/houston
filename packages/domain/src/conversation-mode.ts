@@ -8,12 +8,22 @@ import { addressesMission } from "./conversation-keys";
  *
  * The board is agent-writable file content, so a value outside the known
  * modes reads as no mode at all rather than a surprise one.
+ *
+ * An API-started card older than the field reads as Autopilot: every API
+ * follow-up ran Autopilot before the card kept a mode, and an unattended
+ * caller has nobody to answer an approval prompt. The gateway applies the same
+ * rule when it can read the card (cloud `mission.followUpMode`); this is the
+ * answer when it cannot and sends the follow-up with no mode.
  */
 export function conversationTurnMode(
-  items: readonly Pick<Activity, "id" | "session_key" | "mode">[],
+  items: readonly Pick<
+    Activity,
+    "id" | "session_key" | "mode" | "started_by"
+  >[],
   conversationId: string,
 ): TurnMode | undefined {
-  const mode = items.find((card) => addressesMission(card, conversationId))
-    ?.mode as unknown;
-  return TURN_MODES.includes(mode as TurnMode) ? (mode as TurnMode) : undefined;
+  const card = items.find((item) => addressesMission(item, conversationId));
+  const mode = card?.mode as unknown;
+  if (TURN_MODES.includes(mode as TurnMode)) return mode as TurnMode;
+  return card?.started_by === "api" ? "auto" : undefined;
 }

@@ -60,7 +60,8 @@ export interface Activity {
   /**
    * The mission's turn mode (the composer's Mode pill), kept per conversation
    * so it survives leaving and reopening the chat. A send that pins no mode
-   * runs on it; absent means "execute". A send's own pin never rewrites it:
+   * runs on it; absent means "execute" (an API-started card, "auto": the
+   * Autopilot its follow-ups always ran). A send's own pin never rewrites it:
    * only a pick of the conversation's mode does (HOU-205).
    */
   mode?: TurnMode;

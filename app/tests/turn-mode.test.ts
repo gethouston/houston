@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   DEFAULT_TURN_MODE,
   normalizeTurnMode,
+  pickSettled,
   resolveConversationTurnMode,
 } from "../src/lib/turn-mode.ts";
 
@@ -60,7 +61,7 @@ describe("resolveConversationTurnMode", () => {
       resolveConversationTurnMode({
         ...base,
         card: { id: "m1", mode: "execute" },
-        picked: { cardId: "m1", mode: "auto" },
+        picked: { cardId: "m1", mode: "auto", from: "execute" },
       }),
       "auto",
     );
@@ -71,7 +72,7 @@ describe("resolveConversationTurnMode", () => {
       resolveConversationTurnMode({
         ...base,
         card: { id: "m2" },
-        picked: { cardId: "m1", mode: "auto" },
+        picked: { cardId: "m1", mode: "auto", from: undefined },
       }),
       "execute",
     );
@@ -93,5 +94,26 @@ describe("resolveConversationTurnMode", () => {
 
   it("holds the in-session pick when no card backs the chat", () => {
     strictEqual(resolveConversationTurnMode({ ...base, card: null }), "plan");
+  });
+});
+
+describe("pickSettled", () => {
+  const picked = { cardId: "m1", mode: "auto", from: "execute" } as const;
+
+  it("keeps echoing the pick while the card still holds the old mode", () => {
+    strictEqual(pickSettled(picked, { id: "m1", mode: "execute" }), false);
+  });
+
+  it("settles when the card reads the pick back", () => {
+    strictEqual(pickSettled(picked, { id: "m1", mode: "auto" }), true);
+  });
+
+  it("settles on a later write from another surface, which wins", () => {
+    strictEqual(pickSettled(picked, { id: "m1", mode: "plan" }), true);
+  });
+
+  it("never settles against another card", () => {
+    strictEqual(pickSettled(picked, { id: "m2", mode: "auto" }), false);
+    strictEqual(pickSettled(picked, null), false);
   });
 });

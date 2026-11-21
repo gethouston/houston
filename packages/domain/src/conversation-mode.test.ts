@@ -37,6 +37,22 @@ describe("conversationTurnMode (HOU-205)", () => {
     expect(conversationTurnMode([junk], "activity-m1")).toBeUndefined();
   });
 
+  test("an API card older than the field keeps the Autopilot it always ran", () => {
+    expect(
+      conversationTurnMode([card({ started_by: "api" })], "activity-m1"),
+    ).toBe("auto");
+    // A mode the person picked since still wins.
+    expect(
+      conversationTurnMode(
+        [card({ started_by: "api", mode: "execute" })],
+        "activity-m1",
+      ),
+    ).toBe("execute");
+    expect(
+      conversationTurnMode([card({ started_by: "houston" })], "activity-m1"),
+    ).toBeUndefined();
+  });
+
   test("a create keeps the composer's mode, normalizing an unknown one", () => {
     expect(createActivity({ title: "T", mode: "auto" }, "m1", NOW).mode).toBe(
       "auto",

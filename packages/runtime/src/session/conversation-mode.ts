@@ -15,7 +15,8 @@ import type { TurnMode } from "@houston/protocol";
  * or any other pin-less send keeps the mode the person picked.
  *
  * `undefined` when there is no board, no card for the conversation, or a card
- * with no mode: the turn then runs "execute". A board that cannot be read is
+ * with no mode: the turn then runs "execute". An API-started card with no
+ * mode reads as "auto" (`conversationTurnMode`). A board that cannot be read is
  * reported and read the same way, because the person's message must still run.
  */
 export async function storedConversationMode(
