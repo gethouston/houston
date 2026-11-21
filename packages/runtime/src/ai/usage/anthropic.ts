@@ -6,24 +6,8 @@ import {
   currentCredentialScope,
   isPersonalScope,
 } from "../../session/acting-context";
-import {
-  clampPercent,
-  type ProviderUsage,
-  type ProviderUsageWindow,
-  settleWindow,
-} from "./types";
-
-/**
- * Claude (Pro / Max) account usage via Anthropic's OAuth usage API — the same
- * surface Claude Code's own `/usage` reads:
- *
- *   GET https://api.anthropic.com/api/oauth/usage
- *   Authorization: Bearer <oauth access token>
- *   anthropic-beta: oauth-2025-04-20
- *
- * Response: `five_hour` / `seven_day` / `seven_day_opus` blocks, each
- * `{utilization: 0-100, resets_at: ISO8601}` (nullable per block).
- */
+import { type AnthropicUsageBody, anthropicWindows } from "./anthropic-windows";
+import type { ProviderUsage } from "./types";
 
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 /** UA the endpoint expects (a Claude Code client). Static fallback version. */
@@ -103,22 +87,6 @@ function readKeychainCredential(): Promise<string | null> {
   });
 }
 
-type OAuthUsageBlock = { utilization?: unknown; resets_at?: unknown } | null;
-
-function toWindow(
-  id: ProviderUsageWindow["id"],
-  block: OAuthUsageBlock | undefined,
-  windowMinutes: number,
-): ProviderUsageWindow | null {
-  if (!block || typeof block !== "object") return null;
-  return {
-    id,
-    usedPercent: clampPercent(block.utilization),
-    resetsAt: typeof block.resets_at === "string" ? block.resets_at : null,
-    windowMinutes,
-  };
-}
-
 /**
  * Fetch the connected Claude account's usage windows. A window the API still
  * reports past its own reset is settled to empty (`settleWindow`).
@@ -151,18 +119,8 @@ export async function fetchAnthropicUsage(
       message: `Anthropic usage API answered ${res.status}`,
     };
   }
-  const body = (await res.json()) as {
-    five_hour?: OAuthUsageBlock;
-    seven_day?: OAuthUsageBlock;
-    seven_day_opus?: OAuthUsageBlock;
-  };
-  const windows = [
-    toWindow("session", body.five_hour, 300),
-    toWindow("week", body.seven_day, 10_080),
-    toWindow("week_opus", body.seven_day_opus, 10_080),
-  ]
-    .filter((w): w is ProviderUsageWindow => w !== null)
-    .map((w) => settleWindow(w, now()));
+  const body = (await res.json()) as AnthropicUsageBody;
+  const windows = anthropicWindows(body ?? {}, now());
   return {
     provider,
     status: "ok",

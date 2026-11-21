@@ -47,6 +47,51 @@ describe("fetchAnthropicUsage", () => {
     expect(row.fetchedAt).toBeTruthy();
   });
 
+  it("reads the HOU-227 answer from the server's limit rows", async () => {
+    const row = await fetchAnthropicUsage(
+      jsonResponse({
+        five_hour: { utilization: null, resets_at: "2026-07-13T10:00:00Z" },
+        seven_day: { utilization: null, resets_at: "2026-07-18T00:00:00Z" },
+        seven_day_opus: null,
+        limits: [
+          {
+            kind: "session",
+            group: "session",
+            percent: 100,
+            resets_at: "2026-07-13T10:00:00Z",
+            scope: null,
+            is_active: true,
+          },
+          {
+            kind: "weekly_all",
+            group: "weekly",
+            percent: 22,
+            resets_at: "2026-07-18T00:00:00Z",
+            scope: null,
+            is_active: false,
+          },
+        ],
+      }),
+      someToken,
+      beforeFixtures,
+    );
+    expect(row.status).toBe("ok");
+    expect(row.windows).toEqual([
+      {
+        id: "session",
+        usedPercent: 100,
+        resetsAt: "2026-07-13T10:00:00Z",
+        windowMinutes: 300,
+      },
+      {
+        id: "week",
+        usedPercent: 22,
+        resetsAt: "2026-07-18T00:00:00Z",
+        windowMinutes: 10_080,
+      },
+    ]);
+  });
+
   it("reports unauthenticated with no token and on a 401", async () => {
     const noToken = await fetchAnthropicUsage(
       jsonResponse({}),
