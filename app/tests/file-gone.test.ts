@@ -89,9 +89,16 @@ describe("surfaceFileReadRefusal", () => {
     assert.deepEqual(reports, ["outside_workspace"]);
     const [toast] = useUIStore.getState().toasts;
     assert.equal(toast?.variant, "info");
+    // The shared test process runs files in random order, so i18n may hold
+    // the agents namespace, only its init, or nothing: the title is the en
+    // copy or the key with or without its namespace. Each is this refusal's
+    // copy, never the gone file's.
     assert.ok(
-      toast?.title === en.files.outsideWorkspace.title ||
-        toast?.title === "agents:files.outsideWorkspace.title",
+      [
+        en.files.outsideWorkspace.title,
+        "agents:files.outsideWorkspace.title",
+        "files.outsideWorkspace.title",
+      ].includes(toast?.title ?? ""),
     );
   });
 
