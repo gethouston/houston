@@ -1,0 +1,86 @@
+{
+  "five_hour": null,
+  "seven_day": {
+    "utilization": 1.0,
+    "resets_at": "2026-11-27T02:00:00.074682+00:00",
+    "limit_dollars": null,
+    "used_dollars": null,
+    "remaining_dollars": null,
+    "locked_reason": null
+  },
+  "seven_day_oauth_apps": null,
+  "seven_day_opus": null,
+  "seven_day_sonnet": null,
+  "seven_day_cowork": null,
+  "extra_usage": {
+    "is_enabled": false,
+    "monthly_limit": null,
+    "used_credits": null,
+    "utilization": null,
+    "currency": null,
+    "decimal_places": null,
+    "disabled_reason": null,
+    "user_disabled": false,
+    "spend_limit_reached": false,
+    "credits_can_pay": "no",
+    "credits_ever_enabled": false,
+    "daily": null,
+    "weekly": null
+  },
+  "limits": [
+    {
+      "kind": "weekly_all",
+      "group": "weekly",
+      "percent": 1,
+      "severity": "normal",
+      "resets_at": "2026-11-27T02:00:00.074682+00:00",
+      "scope": null,
+      "is_active": true
+    },
+    {
+      "kind": "weekly_scoped",
+      "group": "weekly",
+      "percent": 0,
+      "severity": "normal",
+      "resets_at": "2026-11-27T02:00:00.074857+00:00",
+      "scope": {
+        "model": { "id": null, "display_name": "Fable" },
+        "surface": null
+      },
+      "is_active": false
+    }
+  ],
+  "spend": {
+    "used": { "amount_minor": 0, "currency": "USD", "exponent": 2 },
+    "limit": null,
+    "percent": 0,
+    "severity": "normal",
+    "enabled": false
+  },
+  "member_dashboard_available": false,
+  "seven_day_breakdown": {
+    "as_of": "2026-11-21T18:36:36.118311+00:00",
+    "window_started_at": "2026-11-20T02:00:00.074682+00:00",
+    "rows": [
+      {
+        "key": "claude_code",
+        "display_name": "Claude Code",
+        "percent": 100,
+        "percent_of_limit": 1
+      },
+      {
+        "key": "chat",
+        "display_name": "Chats",
+        "percent": 0,
+        "percent_of_limit": 0
+      }
+    ]
+  },
+  "weekly_scoped_shares": [
+    {
+      "limit_index": 1,
+      "used_percent_of_weekly": 0,
+      "allowance_percent_of_weekly": 50
+    }
+  ]
+}
