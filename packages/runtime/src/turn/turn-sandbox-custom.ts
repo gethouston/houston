@@ -7,9 +7,9 @@ import type { TurnSandboxDeps } from "./turn-sandbox";
 const oauthDecline = (): Response =>
   Response.json(
     {
-      error:
-        "This service signs in through its own website, and that sign-in cannot start from this chat here. Ask the user to open Integrations in the Houston app, add a custom integration, and paste the same address you tried; they sign in from there, and it is ready for you afterwards. Do not retry this, and do not ask for an API key.",
       code: "oauth_connect_from_integrations",
+      error:
+        "Do not ask for an API key or retry. Give the user this server's exact address and ask them to open Integrations, choose Add manually, pick MCP server, paste it, and sign in.",
     },
     { status: 409 },
   );
@@ -59,7 +59,7 @@ export function makeTurnCustomRoutes(
     if (
       action === "add" &&
       input?.auth === "oauth" &&
-      !(await getCustom(signal)).manager.oauthSupported
+      !deps.customOAuthCallbackUrl
     )
       return oauthDecline();
     if (

@@ -1,14 +1,18 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import type { AddCustomIntegrationInput } from "@houston/host/src/integrations/custom/manager";
 import { FsVfs } from "@houston/host/src/vfs";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { expect, test } from "vitest";
+import { makeCustomIntegrationTools } from "../session/tools/custom-integrations";
 import type { TurnCustomContext } from "./turn-custom-context";
 import type { TurnFilesystem } from "./turn-filesystem";
 import type { TurnSandboxDeps } from "./turn-sandbox";
 import { makeTurnCustomRoutes } from "./turn-sandbox-custom";
+
+const CALLBACK = "https://gateway.test/v1/integrations/custom/oauth/callback";
 
 const MCP_ADD = {
   kind: "mcp",
@@ -17,7 +21,7 @@ const MCP_ADD = {
   auth: "oauth",
 };
 
-async function deps(): Promise<TurnSandboxDeps> {
+async function deps(oauthSupported: boolean): Promise<TurnSandboxDeps> {
   const root = await mkdtemp(join(tmpdir(), "turn-sandbox-custom-"));
   const store: ObjectStore = {
     list: async () => [],
@@ -40,14 +44,17 @@ async function deps(): Promise<TurnSandboxDeps> {
     generationAware: true,
     immediateWrites: new Set(),
   } satisfies TurnFilesystem;
-  // SAFETY: the custom routes read only the store, prefix and filesystem.
-  return { store, prefix: "", filesystem } as unknown as TurnSandboxDeps;
+  return {
+    store,
+    prefix: "",
+    filesystem,
+    ...(oauthSupported ? { customOAuthCallbackUrl: CALLBACK } : {}),
+  } as unknown as TurnSandboxDeps;
 }
 
 async function routes(oauthSupported: boolean) {
-  const sandbox = await deps();
+  const sandbox = await deps(oauthSupported);
   const added: AddCustomIntegrationInput[] = [];
-  // SAFETY: the routes call only detect, add and oauthSupported here.
   const context = {
     manager: {
       oauthSupported,
@@ -116,7 +123,7 @@ test("without sign-in support, detection sends the person to Integrations", asyn
   expect(response.status).toBe(409);
   const body = await response.json();
   expect(body.code).toBe("oauth_connect_from_integrations");
-  expect(body.error).toMatch(/open Integrations.*add a custom integration/);
+  expect(body.error).toMatch(/Add manually, pick MCP server, paste it/);
   expect(body.error).not.toMatch(/awake/i);
 });
 
@@ -140,7 +147,30 @@ test("without sign-in support, an OAuth add is declined before any write", async
   expect(response.status).toBe(409);
   expect(await response.json()).toMatchObject({
     code: "oauth_connect_from_integrations",
-    error: expect.stringContaining("do not ask for an API key"),
+    error: expect.stringContaining("Do not ask for an API key"),
   });
   expect(added).toEqual([]);
+});
+
+test("the model reads the whole decline through the custom-integration tool", async () => {
+  const { route } = await routes(false);
+  const [detect] = makeCustomIntegrationTools({
+    call: async (path, init) =>
+      route(path, JSON.parse(String(init?.body ?? "{}"))),
+  });
+  const failure = await detect
+    .execute(
+      "t1",
+      { url: "https://mcp.example.test" },
+      undefined,
+      undefined,
+      {} as unknown as ExtensionToolContext,
+    )
+    .then(
+      () => null,
+      (error: Error) => error.message,
+    );
+  expect(failure).toContain("oauth_connect_from_integrations");
+  expect(failure).toContain("Do not ask for an API key");
+  expect(failure).toMatch(/paste it, and sign in\."\}$/);
 });
