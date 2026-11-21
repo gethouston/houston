@@ -107,10 +107,17 @@ export function initSentry(): void {
       // - GlobalHandlers: uncaught errors + unhandled rejections are captured
       //   AND toasted explicitly in main.tsx (so the user gets the event id);
       //   drop the SDK's auto-capture to avoid duplicate events.
+      // - BrowserApiErrors: it wraps timer, rAF, event-listener and XHR
+      //   callbacks to capture what they throw, then rethrows, and only
+      //   GlobalHandlers honors its "already captured" mark. With that gone,
+      //   the app's window.onerror (global-error-handlers.ts) captured every
+      //   callback error a second time (HOUSTON-APP-5KV counted each one
+      //   twice), so window.onerror stays the one capture path.
       ...defaultIntegrations.filter(
         (integration) =>
           integration.name !== "BrowserSession" &&
-          integration.name !== "GlobalHandlers",
+          integration.name !== "GlobalHandlers" &&
+          integration.name !== "BrowserApiErrors",
       ),
     ],
     // Session Replay is deliberately OFF (no replayIntegration). Keep the

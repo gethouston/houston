@@ -13,6 +13,9 @@ export function releaseCanvas(el: Element): void {
   canvas.height = 0;
 }
 
+const isRenderCancelled = (error: unknown): boolean =>
+  (error as { name?: unknown } | null)?.name === "RenderingCancelledException";
+
 /**
  * Draw one page into a fresh canvas at `cssWidth` CSS pixels wide, at the
  * screen's pixel ratio. Resolves `null` when `signal` aborts first.
@@ -42,7 +45,11 @@ export async function renderPageCanvas(
     await task.promise;
   } catch (error) {
     releaseCanvas(canvas);
-    if (signal.aborted) return null;
+    // pdf.js also cancels a page's renders when its document is destroyed,
+    // which happens on a swap to a rewritten file or on close, before this
+    // page's own effect cleanup aborts: the render is no longer wanted either
+    // way (HOUSTON-APP-5MM).
+    if (signal.aborted || isRenderCancelled(error)) return null;
     throw error;
   } finally {
     signal.removeEventListener("abort", abort);

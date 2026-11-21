@@ -54,6 +54,10 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  whose provider identity already belongs to another account
  *  (`modules/identity`): the person stays signed in by email code and sees
  *  a notice. Support can join the accounts, so it is one counted warning.
+ *  `outside_workspace` is a files read refused because the path points
+ *  outside the agent's files (`files/outside-workspace`): an agent's link
+ *  with its own copy, still one fingerprinted warning, since a burst of
+ *  them means agents keep linking such paths.
  *  `codex_port_taken` is another process on the person's machine holding
  *  the fixed port OpenAI's desktop sign-in redirects to (HOUSTON-APP-5EV):
  *  the sign-in falls back to a device code, so it is one counted warning. */
@@ -72,6 +76,7 @@ export type QuietErrorClass =
   | "upload_interrupted"
   | "routine_gone"
   | "link_identity_taken"
+  | "outside_workspace"
   | "codex_port_taken";
 
 /**

@@ -1,5 +1,5 @@
 import { posix } from "node:path";
-import type { FileOpCode } from "@houston/protocol";
+import { type FileOpCode, OUTSIDE_WORKSPACE } from "@houston/protocol";
 
 /**
  * Path validation for the workspace files routes — the wall every UI- or
@@ -8,8 +8,16 @@ import type { FileOpCode } from "@houston/protocol";
  * focused on storage operations.
  */
 
+/**
+ * A path or name the files routes refuse (400). `code` is set when the path
+ * points outside the agent's files ({@link safeRel}); a malformed NAME (a
+ * rename or upload name with a slash) carries none, since it points nowhere.
+ */
 export class FilePathError extends Error {
-  constructor(rel: string) {
+  constructor(
+    rel: string,
+    readonly code?: FileOpCode,
+  ) {
     super(`invalid workspace path: ${rel}`);
     this.name = "FilePathError";
   }
@@ -39,19 +47,16 @@ export function safeRel(rel: string): string {
   const cleaned = rel.replace(/\\/g, "/");
   // Absolute (POSIX or Windows-drive) paths are anomalous — reject, don't silently clamp.
   if (cleaned.startsWith("/") || /^[A-Za-z]:/.test(cleaned))
-    throw new FilePathError(rel);
+    throw new FilePathError(rel, OUTSIDE_WORKSPACE);
   const norm = posix.normalize(cleaned);
-  if (
-    norm === "" ||
-    norm === "." ||
-    norm.startsWith("..") ||
-    norm.split("/").includes("..")
-  ) {
-    throw new FilePathError(rel);
-  }
+  // An empty path names no file at all, so it carries no code.
+  if (norm === "" || norm === ".") throw new FilePathError(rel);
+  if (norm.startsWith("..") || norm.split("/").includes(".."))
+    throw new FilePathError(rel, OUTSIDE_WORKSPACE);
   // Internal Houston state lives in top-level dot-dirs (.houston, .agents). The
   // Files tab must never read or write there.
-  if (norm.split("/")[0]?.startsWith(".")) throw new FilePathError(rel);
+  if (norm.split("/")[0]?.startsWith("."))
+    throw new FilePathError(rel, OUTSIDE_WORKSPACE);
   return norm;
 }
 

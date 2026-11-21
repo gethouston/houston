@@ -40,6 +40,7 @@ import { saveAttachmentBatch, uploadFileBatch } from "./upload-batches";
 
 export type { FilesModule } from "./facade-types";
 export { FilesHttpError } from "./http";
+export { isOutsideWorkspaceRefusal } from "./outside-workspace";
 export type { ResumableUploadOptions } from "./resumable-upload";
 export type {
   BlobUpload,
