@@ -20,7 +20,6 @@ vi.mock("../config", () => ({
     get dataDir() {
       return state.directory;
     },
-    // Where a pin-less send looks for its conversation's kept mode.
     get workspaceDir() {
       return state.directory;
     },

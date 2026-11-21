@@ -1,14 +1,3 @@
-/**
- * Library-style file row (list view): a single click opens the file, the
- * tree checkbox is the ONLY way to select it, and the kebab or a right-click
- * carries everything else (rename, download, delete). Draggable for moves.
- * Selecting and opening are deliberately different gestures now — a click that
- * both highlighted and did nothing else was a dead click.
- *
- * The row draws no separator: it is a transparent object that paints a soft
- * rounded fill under the pointer, and a checked row keeps a quieter fill of its
- * own so a selection is legible without counting checkboxes.
- */
 import { cn } from "@houston-ai/core";
 import { useState } from "react";
 import { INTERNAL_DRAG_TYPE } from "./drop-zone";
@@ -53,7 +42,6 @@ export function FileRow({
 }: {
   file: FileEntry;
   depth?: number;
-  /** Present only when the browser can act on a selection (see FilesSelection). */
   selection?: FilesSelection;
   loadPreview?: LoadFilePreview;
   onOpen?: (file: FileEntry) => void;
@@ -62,12 +50,9 @@ export function FileRow({
   onDelete?: (file: FileEntry) => void;
   onRename?: (file: FileEntry, newName: string) => void;
   onMove?: (sourcePath: string, targetFolder: string | null) => void;
-  /** BCP-47 tag for the Modified cell; undefined follows the browser. */
   locale?: string;
-  /** Translated word the Modified cell shows for the current calendar day. */
   modifiedTodayLabel: string;
   menuLabels?: FileMenuLabels;
-  /** Accessible name for the always-visible kebab button. */
   menuButtonLabel?: string;
   dragScope?: string;
 }) {

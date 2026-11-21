@@ -12,7 +12,6 @@ import type { TeamPromptProps } from "./manager-team-prompt";
 import type { ManagerTeam } from "./use-manager-team";
 import type { ScriptCopy } from "./use-script-copy";
 
-/** What every team card is handed. */
 export interface TeamCardProps {
   team: ManagerTeam;
   copy: ScriptCopy;
@@ -23,12 +22,6 @@ export interface TeamCardProps {
 
 const DONE = { question: "teamDone", value: "done" } as const;
 
-/**
- * A run resumed with AI Employees already hired, below the manager's count
- * of them: the team so far (each hire's progress, and Try again on one that
- * failed), then "That's my team", which holds a spinner until every hire has
- * landed, and "Hire one more", which opens the starter team.
- */
 export function NextCard({ team, view, onAnswer }: TeamCardProps) {
   const { t } = useTranslation("assistant");
   const { finishing } = team;

@@ -13,12 +13,6 @@ export interface Grant {
   expiresAt: number;
 }
 
-/**
- * One-use approvals a person's message carries for its own turn. Spending one
- * pre-approves a single call; the grant is HELD against that call's request
- * until the call is performed, and comes back if the app refused it (a name
- * already taken), so the retry the person already approved needs no card.
- */
 export class GrantStore {
   private readonly byId = new Map<string, Grant>();
   private readonly heldByRequest = new Map<string, Grant>();
@@ -57,19 +51,14 @@ export class GrantStore {
     return undefined;
   }
 
-  /** The grant held against `requestId`, if its call has not run yet. */
   held(requestId: string): Grant | undefined {
     return this.heldByRequest.get(requestId);
   }
 
-  /** Keep a spent grant against the request it pre-approved. */
   hold(requestId: string, grant: Grant): void {
     this.heldByRequest.set(requestId, grant);
   }
 
-  /** The call behind `requestId` was answered: one the app refused (so
-   *  nothing happened) gets its grant back, as it was (same expiry, same
-   *  turn). One that may have happened never does. */
   settle(requestId: string, operation: string, refused: boolean): void {
     const grant = this.heldByRequest.get(requestId);
     if (!grant || grant.operation !== operation) return;

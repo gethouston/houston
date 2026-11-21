@@ -18,16 +18,6 @@ import {
 } from "./migration-import";
 import { MAX_IMPORT_BODY_BYTES } from "./migration-scope";
 
-/**
- * Agent-scoped routes of the one-click desktop→cloud migration (HOU-719).
- * On the SOURCE (the desktop's briefly-spawned local host) the wizard POSTs
- * `migration/export {paths}` per chunk and streams the zip out. On the TARGET
- * (a cloud pod — the same host image behind the gateway's `/agents/:slug/*`
- * proxy) it POSTs the zip to `migration/import`, then `migration/complete`
- * writes the server-authoritative marker `migration/status` reads back for
- * resume. Returns true when the request was handled.
- */
-
 const MARKER_REL = ".houston/migration/imported.json";
 
 export async function handleMigration(
@@ -36,7 +26,6 @@ export async function handleMigration(
     uploads?: StagedUploads;
     paths?: WorkspacePaths;
     agentDir?: string;
-    /** The verified actor, stamped as imported routines' `created_by`. */
     routineCreatedBy?: string;
   },
   ctx: { workspace: Workspace; agent: Agent },
@@ -78,10 +67,6 @@ export async function handleMigration(
         return true;
       }
       const url = new URL(req.url ?? "", "http://local");
-      // `sessions=0`: write the transcripts but rebuild no pi session from them.
-      // A caller that stamps `needsSessionReplay` on the transcripts instead
-      // ("Copy an agent") gets the history replayed into whichever backend the
-      // next turn runs on; a synthesized pi session on top would double it.
       const synthesize = url.searchParams.get("sessions") !== "0";
       const { result, events } = await applyMigrationArchive({
         vfs,
@@ -136,7 +121,7 @@ export async function handleMigration(
       try {
         imported = JSON.parse(marker);
       } catch {
-        imported = null; // a corrupt marker reads as "not migrated" → safe redo
+        imported = null;
       }
     }
     json(res, 200, { imported });

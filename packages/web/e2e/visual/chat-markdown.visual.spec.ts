@@ -1,25 +1,3 @@
-/**
- * Visual-regression baselines for markdown inside chat bubbles (HOU-1051).
- *
- * Only the AGENT renders markdown: the fake host answers with its fixed
- * MARKDOWN_SHOWCASE (triggered by "markdown" in the prompt) — all six heading
- * levels, emphasis, ordered/unordered/nested lists, a blockquote, a table,
- * inline code, a fenced code block, and a link — retuned to the chat type
- * scale in `ui/chat` (h1 20px … h5/h6 14px). The USER bubble pins the other
- * half of HOU-1051: the multi-line markdown typed into the composer renders
- * VERBATIM (`##` and `**` stay literal, line break kept), never as markup.
- * Any drift on either path shows up here first.
- *
- * The viewport is TALLER than the suite's 1280×800 default: the showcase is a
- * full document, and at 800px the chat scroller would crop the user bubble +
- * top headings out of the frame. 1280×1550 fits the entire settled
- * conversation, so every element is pinned in one deterministic shot.
- *
- * Settle rule: the showcase's fixed closing sentence must be on screen before
- * the pixel compare, so no streaming delta or caret is in the frame. Both
- * themes; determinism rules in ../README.md.
- */
-
 import { FOLLOW_UP_PLACEHOLDER } from "../support/composer";
 import { expect, test } from "../support/fixtures";
 import { missionCard } from "../support/team-nav";
@@ -43,9 +21,6 @@ for (const theme of THEMES) {
     await composer.fill(USER_MARKDOWN);
     await composer.press("Enter");
 
-    // The user bubble shows the typed markdown VERBATIM (no heading element),
-    // and the showcase reply settled (its fixed last line is only published
-    // with the final delta).
     await expect(
       page.getByText("## Can you show me **markdown**?"),
     ).toBeVisible();

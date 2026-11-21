@@ -10,11 +10,6 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EmployeeColorPalette } from "./employee-color-palette";
 
-/**
- * The card's color, as a labelled line beside its job and industry: its name
- * led by a swatch, open to change in plain sight. It opens the palette in a
- * popover on desktop and a sheet on a phone.
- */
 export function EmployeeColorPicker({
   color,
   onColorChange,

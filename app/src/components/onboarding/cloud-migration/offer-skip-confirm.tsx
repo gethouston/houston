@@ -11,15 +11,6 @@ import {
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-/**
- * Confirmation for the offer screen's honest "start without my assistants"
- * escape. Skipping the migration starts the cloud app EMPTY — the user's
- * existing assistants and conversations stay in their old local data and do not
- * appear here — so this step states that plainly while reassuring that nothing
- * is deleted (their data stays safe on this computer) and the move can be
- * resumed anytime from Settings. The quiet action performs the exact same skip
- * as before; the primary, default-focused action returns to the offer.
- */
 export function OfferSkipConfirm({
   open,
   onOpenChange,
@@ -47,12 +38,9 @@ export function OfferSkipConfirm({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          {/* Quiet, on the left: the honest escape wired to the same skip
-              handler as before. */}
           <AlertDialogAction variant="ghost" onClick={onConfirmSkip}>
             {t("offer.skipConfirm.confirm")}
           </AlertDialogAction>
-          {/* Primary + default focus: the safe path back to the migration. */}
           <AlertDialogCancel ref={goBackRef} variant="default">
             {t("offer.skipConfirm.goBack")}
           </AlertDialogCancel>

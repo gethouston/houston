@@ -1,7 +1,3 @@
-// The choice surfaces' clock: it must re-render at the change window and the
-// cutover with no new data, and a new choice must never push that later.
-// Mounted in jsdom with mocked timers.
-
 import { strict as assert } from "node:assert";
 import { after, describe, it, mock } from "node:test";
 import "./support/dom-env.ts";
@@ -43,7 +39,6 @@ describe("useChoiceNow", () => {
     const root = createRoot(document.createElement("div"));
     await act(async () => root.render(h(Probe, { value: choice() })));
     await act(async () => mock.timers.tick(HOUR));
-    // A save an hour in swaps the choice object; the cutover stays 05:00.
     await act(async () =>
       root.render(h(Probe, { value: choice({ freeOrgSlug: "a" }) })),
     );

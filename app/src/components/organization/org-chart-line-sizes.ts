@@ -1,13 +1,5 @@
-/** The three line sizes: the featured #1, a roomy ledger, a dense one. */
 export type LineSize = "featured" | "line" | "dense";
 
-/**
- * Per-size type and cell widths, shared by the lines and their header. The
- * roomy sizes let the bar breathe; the dense one gives the name the room and
- * holds the bar to a fixed stub, as two columns of it must fit side by side.
- * The skeletons stand in for a figure at its own size, so nothing moves when
- * it lands.
- */
 export const LINE = {
   featured: {
     agent: "flex-7 gap-3",
@@ -31,7 +23,6 @@ export const LINE = {
     agent: "flex-7 gap-3",
     rank: "w-8 text-xs",
     rankWidth: "w-8",
-    /** The name's inset past the rank: gap, helmet, gap and padding. */
     indent: "pl-17.5",
     avatar: 40,
     name: "text-base",

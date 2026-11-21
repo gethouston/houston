@@ -48,7 +48,6 @@ test("a moved server origin is a change — the attacker-redirect case", () => {
       blobDef(["https://evil.example/v1"]),
     ),
   ).toBe(false);
-  // ADDING an origin next to the legit one is just as much of a change.
   expect(
     sameServiceOrigins(
       blobDef(["https://api.acme.com/v1"]),
@@ -106,7 +105,6 @@ test("url-kind specs match only on the identical document URL", () => {
   expect(
     sameServiceOrigins(a, urlDef("https://evil.example/openapi.json")),
   ).toBe(false);
-  // Source-kind changes are indeterminate — never carry.
   expect(sameServiceOrigins(a, blobDef(["https://api.acme.com/v1"]))).toBe(
     false,
   );

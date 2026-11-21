@@ -11,26 +11,12 @@ import { json, prefixFor, type TurnDeps } from "./deps";
 import { freshCredential } from "./fresh-credential";
 import { TurnQuotaError } from "./quota";
 
-/**
- * Fire one turn against the per-turn runtime: claim the workspace quota and
- * the per-agent relay slot, build the self-contained POST /turn (short-TTL
- * access credential included), and pump the runtime's SSE frames into the
- * relay where this conversation's subscribers receive them.
- */
-
-/** Outcome of asking the per-turn runtime to start a turn. */
 export type TurnStart =
   | { status: "accepted" }
   | { status: "busy" }
   | { status: "duplicate" }
   | { status: "quota"; message: string };
 
-/**
- * The transport-free core: claim the quota + relay slot and kick off the POST
- * /turn (the runtime streams back through the relay). Returns an outcome rather
- * than writing HTTP, so BOTH the user-message route (startTurn → status code)
- * and the scheduler's routine firer (RoutineFirer → run record) share one path.
- */
 export async function dispatchTurn(
   deps: TurnDeps,
   ws: Workspace,
@@ -44,11 +30,6 @@ export async function dispatchTurn(
   missionTitle?: MissionTitle,
 ): Promise<TurnStart> {
   const prefix = prefixFor(ws, agent);
-  // Resolve the provider (+ effort) for this turn BEFORE claiming the quota/relay
-  // slot: an unservable pin, or a saved openai-compatible with no endpoint, fails
-  // VISIBLY here (the firer marks the run errored) and leaks no slot. resolveCloudTurn
-  // NEVER silently substitutes Codex for the user's real pick — the routine's pin
-  // wins over the agent's saved active provider, and neither writes settings.
   const { provider, effort } = await resolveCloudTurn(deps, prefix, pin);
   let release: () => Promise<void>;
   try {
@@ -59,8 +40,6 @@ export async function dispatchTurn(
     throw err;
   }
   const key = `${agent.id}/${cid}`;
-  // Capture is independent of any client events subscription, so routine turns
-  // and background sends enter turnlog too.
   try {
     deps.frameForwarder?.capture(cid, key);
   } catch (error) {
@@ -88,19 +67,11 @@ export async function dispatchTurn(
               conversationId: cid,
               text,
               nonce,
-              // Model/effort/mode for this turn (omitted when absent →
-              // runtime inherits/defaults).
               ...(pin?.model ? { model: pin.model } : {}),
               ...(effort ? { effort } : {}),
               ...(pin?.mode ? { mode: pin.mode } : {}),
-              // Presentation-only bubble text — the runtime persists it beside
-              // the user message; the model still runs on `text`.
               ...(displayText ? { displayText } : {}),
-              // The @mention sidecar — omitted when the message named nobody,
-              // so a single-player turn's body is byte-identical to today.
               ...(mentions?.length ? { mentions } : {}),
-              // A new mission's first send: the runtime titles the card after
-              // the reply, before sync-back. Omitted on every other turn.
               ...(missionTitle ? { missionTitle } : {}),
               gcsPrefix: prefix,
               credential: cred
@@ -110,9 +81,6 @@ export async function dispatchTurn(
                     expires: cred.expiresAt,
                     accountId: cred.accountId ?? null,
                     kind: isApiKeyCredential(cred) ? "api_key" : "oauth",
-                    // Non-secret provider base URL riding the row (Copilot
-                    // Enterprise domain, Azure's resource endpoint) — dropping
-                    // it here silently unaims the served key (PRODUCT-1532).
                     ...(cred.enterpriseUrl
                       ? { enterpriseUrl: cred.enterpriseUrl }
                       : {}),
@@ -127,10 +95,6 @@ export async function dispatchTurn(
             `turn runtime ${upstream.status}: ${await upstream.text().catch(() => "")}`,
           );
         }
-        // Each frame is awaited into the relay (sequence → persist snapshot →
-        // broadcast) before the next is parsed, preserving stream order. The
-        // runtime's frames arrive seq-less with a turnId; the relay stamps seq
-        // itself and turnId rides the envelope through.
         await readEventStream(upstream.body, publish);
       } finally {
         await release();
@@ -140,10 +104,6 @@ export async function dispatchTurn(
   );
   if (!started) {
     await release();
-    // A re-send of the turn we are ALREADY pumping (same conversation, same
-    // nonce) is a caller retrying a send whose response it lost — a torn
-    // connection during pod boot, a proxy blip. The turn is running; telling
-    // that caller "busy" fails work that actually succeeded (HOU-807).
     if (nonce && deps.relay.duplicateSend(agent.id, key, nonce))
       return { status: "duplicate" };
     return { status: "busy" };
@@ -151,7 +111,6 @@ export async function dispatchTurn(
   return { status: "accepted" };
 }
 
-/** The user-message route: dispatch a turn and map the outcome to a status code. */
 export async function startTurn(
   deps: TurnDeps,
   ws: Workspace,
@@ -182,7 +141,5 @@ export async function startTurn(
     return json(res, 409, {
       error: "a turn is already running for this agent",
     });
-  // "duplicate" answers exactly like the accept it replays: the original send
-  // started this turn; the retry must not read as a failure.
   return json(res, 202, { ok: true });
 }

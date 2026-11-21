@@ -9,12 +9,6 @@ import {
 } from "./feedback";
 import { LinearFeedbackSender } from "./feedback-linear";
 
-/**
- * The web build's "Send feedback" intake. Formatting mirrors the desktop's
- * bug_report/format.rs so web + desktop reports read identically in Linear;
- * the sender speaks Linear's GraphQL (label lookup, then issueCreate).
- */
-
 const payload: FeedbackPayload = {
   command: "user_feedback",
   error: "Error: no workspace found\nsecond line",
@@ -65,7 +59,7 @@ test("parseFeedbackPayload requires command and bounds every field", () => {
   expect(() => parseFeedbackPayload({})).toThrow("missing 'command'");
   const p = parseFeedbackPayload({
     command: "c".repeat(500),
-    error: 42, // non-string → empty, never a crash
+    error: 42,
     userMessage: "hello",
     logs: { backend: "b", frontend: "f" },
   });
@@ -186,9 +180,6 @@ async function refusalOf(status: number, body: unknown) {
   return err as FeedbackIntakeError;
 }
 
-// H-009 / HOUSTON-APP-5FT: the workspace at its plan's issue cap answers every
-// create with this GraphQL error. It must come back typed so the route can
-// answer the 503 the app reads as "deliver through the fallback".
 test("a Linear usage-limit refusal is a typed intake_unavailable", async () => {
   const err = await refusalOf(200, {
     errors: [
@@ -222,10 +213,6 @@ test("a rate limit or outage is intake_unavailable, a bad team is other", async 
   ).toBe("other");
   expect((await refusalOf(401, { error: "bad key" })).kind).toBe("other");
 });
-
-// ---------------------------------------------------------------------------
-// Route-level: POST /feedback on the control-plane server
-// ---------------------------------------------------------------------------
 
 import type { Capabilities } from "@houston/protocol";
 import { ProxyChannel } from "./channel/proxy";
@@ -304,13 +291,11 @@ test("POST /feedback requires auth, 503s unconfigured, files when wired", async 
   );
   const unwired = await listen(routeDeps());
 
-  // No token → 401.
   expect(
     (await fetch(`${wired.base}/feedback`, { method: "POST", body: "{}" }))
       .status,
   ).toBe(401);
 
-  // Not configured → 503 with a real error, never a silent drop.
   const r503 = await fetch(`${unwired.base}/feedback`, {
     method: "POST",
     headers: {
@@ -321,7 +306,6 @@ test("POST /feedback requires auth, 503s unconfigured, files when wired", async 
   });
   expect(r503.status).toBe(503);
 
-  // Bad payload → 400.
   const r400 = await fetch(`${wired.base}/feedback`, {
     method: "POST",
     headers: {
@@ -332,7 +316,6 @@ test("POST /feedback requires auth, 503s unconfigured, files when wired", async 
   });
   expect(r400.status).toBe(400);
 
-  // Happy path → files with the verified user id, returns the issue identifier.
   const ok = await fetch(`${wired.base}/feedback`, {
     method: "POST",
     headers: {

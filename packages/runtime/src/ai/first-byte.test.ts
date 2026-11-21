@@ -1,12 +1,6 @@
 import { expect, test } from "vitest";
 import { firstByteDeadlineMs, unansweredWindowMs } from "./first-byte";
 
-/**
- * Anthropic sends its first byte only after reading the prompt. On one
- * production Claude session, prompts past 600k tokens took up to 26.6 s to
- * answer; a fixed 15 s deadline cut every one of them.
- */
-
 test("a small or unsized prompt keeps the configured deadline", () => {
   expect(firstByteDeadlineMs("anthropic", 15_000)).toBe(15_000);
   expect(firstByteDeadlineMs("anthropic", 15_000, undefined)).toBe(15_000);
@@ -24,7 +18,6 @@ test("the deadline grows with the prompt the provider must read first", () => {
 test("an 800k-token prompt gets about twice the slowest first byte measured there", () => {
   const deadline = firstByteDeadlineMs("anthropic", 15_000, 800_000);
   expect(deadline).toBeGreaterThan(2 * 26_600);
-  // Still far inside the 300 s a stalled provider sat silent for.
   expect(unansweredWindowMs("anthropic", 15_000, 800_000)).toBe(183_333);
 });
 

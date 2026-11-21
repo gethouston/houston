@@ -29,12 +29,6 @@ import {
   stillChecking,
 } from "./model-picker-parts";
 
-/**
- * The picker lives in a popover — that is where its sizing, its focus handling
- * and its Escape/Backspace back-navigation are true, so every example here is a
- * real trigger: open it and drill in. Auto-focus is prevented both ways, as the
- * consumer contract requires, so the picker can place focus itself.
- */
 function LivePicker({
   label,
   providers: providerList = providers,
@@ -188,11 +182,6 @@ function ModelPickerSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["ModelPicker"];
 
 export const specimen: Specimen = {

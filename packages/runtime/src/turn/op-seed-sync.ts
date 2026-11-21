@@ -6,13 +6,6 @@ import {
 } from "@houston/runtime-client/object-sync";
 import type { SeedTree } from "./op-seed-tree";
 
-/**
- * Upload a seeded tree create-only: every key `ifGenerationMatch: "0"`, even
- * though the (empty) listing shows no generations, and only inside the new
- * agent's directory. The store is handed over WITHOUT its listing, so a 412
- * stays a conflict: the sync's refreshed-generation retry would otherwise
- * overwrite the object another seeder just created.
- */
 export function syncSeedTree(
   store: ObjectStore,
   prefix: string,
@@ -33,8 +26,6 @@ export function syncSeedTree(
   });
 }
 
-/** Remove this op's create-only uploads after losing a seeding race; an
- *  object someone rewrote since (its generation moved) is theirs and stays. */
 export async function withdrawSeedTree(
   store: ObjectStore,
   prefix: string,

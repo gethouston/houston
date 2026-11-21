@@ -28,12 +28,6 @@ import {
   SKILL_SETUP_AGENT_MODE,
 } from "../src/lib/skill-chat-setup.ts";
 
-// HOU-791: a custom skill is built and changed in a persistent agent chat
-// (the Automations-tab experience), never a raw markdown editor. The kickoff
-// is Houston-sent, not user-typed: it must ride the auto-continue marker so
-// the transcript hides the bubble and the chat opens with the AGENT's
-// greeting.
-
 describe("skill chat setup message", () => {
   it("is tagged as an auto-continue message and filtered from the feed", () => {
     for (const body of [
@@ -73,21 +67,14 @@ describe("skill chat setup message", () => {
     ok(isSkillSetupMode(SKILL_SETUP_AGENT_MODE));
     ok(!isSkillSetupMode("researcher"));
     ok(!isSkillSetupMode(null));
-    // The ONE shared predicate every board filter uses covers the new kind.
     ok(isSetupChatMode(SKILL_SETUP_AGENT_MODE));
-    // Both mission surfaces drop `isSetupChatMode` rows before splitting on
-    // ARCHIVED_STATUS (`components/use-mission-control.ts` for the active
-    // board, `components/board/use-mission-control-archived.ts` for the
-    // archived view), so a skill chat is invisible in EITHER status.
     const missions = [setup, archivedSetup, normal, archivedNormal].filter(
       (m) => !isSetupChatMode(m.agent),
     );
-    // Active board: only the normal mission survives.
     deepStrictEqual(
       missions.filter((m) => m.status !== ARCHIVED_STATUS).map((m) => m.id),
       ["n1"],
     );
-    // Archived view: closed setup chats stay invisible too.
     deepStrictEqual(
       missions.filter((m) => m.status === ARCHIVED_STATUS).map((m) => m.id),
       ["n2"],
@@ -118,10 +105,6 @@ describe("skill chat setup message", () => {
   });
 
   it("create kickoff covers the guided interview HOU-791 asks for", () => {
-    // Load-bearing beats: the agent opens in a single ask_user call (no
-    // wasted greeting turn), batches questions, gates creation on approval,
-    // stays non-technical, and links the skill back to this chat via the
-    // frontmatter setup_activity_id.
     const prompt = skillSetupPrompt("act-42");
     for (const needle of [
       "The user has not said anything yet",
@@ -135,8 +118,6 @@ describe("skill chat setup message", () => {
       "approval",
       "Never mention files, markdown, JSON, schemas, tools, or field names",
       '"setup_activity_id" set to exactly "act-42"',
-      // A step that uses a connected app names it, so the built skill can run
-      // the app action directly instead of searching for it.
       "carries that app's tag",
     ]) {
       ok(prompt.includes(needle), `prompt must mention: ${needle}`);
@@ -153,14 +134,9 @@ describe("skill chat setup message", () => {
       "exactly one short, friendly line",
       "do not call ask_user",
       "end your turn after that single line",
-      // Location by lookup, not a hardcoded path: the skill may live in the
-      // workspace's shared library, and the model's own skills list carries
-      // the real location either way.
       'named "weekly-update" in your skills list',
       "edit that file where it is",
       "Never create a second skill",
-      // Structure awareness: a rename means the display title, never the
-      // folder/name identity (renaming those breaks how Houston finds it).
       "DISPLAY NAME",
       'means changing "title"',
       "NEVER rename or move the folder",
@@ -168,7 +144,6 @@ describe("skill chat setup message", () => {
       '"description" is the one-line card text',
       "step-by-step procedure",
       '"setup_activity_id" field exactly as it is',
-      // Moving a step to another app is a tag change, not just prose.
       "update that step's tag too",
       "approval",
     ]) {
@@ -177,9 +152,6 @@ describe("skill chat setup message", () => {
   });
 
   it("resolves a skill's chat by the durable reverse link first", () => {
-    // The forward link (frontmatter setup_activity_id) lives in SKILL.md,
-    // which the agent rewrites on every edit — a rewrite that drops it must
-    // NOT lose the chat, because the activity's skill_slug stamp survives.
     const chat = {
       id: "a1",
       agent: SKILL_SETUP_AGENT_MODE,
@@ -190,7 +162,6 @@ describe("skill chat setup message", () => {
       findSkillChatActivity([other, chat], { name: "weekly-update" }),
       chat,
     );
-    // Forward link only (agent-created skill, before the heal stamps back).
     const unstamped = { id: "a3", agent: SKILL_SETUP_AGENT_MODE };
     deepStrictEqual(
       findSkillChatActivity([unstamped], {
@@ -199,7 +170,6 @@ describe("skill chat setup message", () => {
       }),
       unstamped,
     );
-    // No link at all → null (a modify chat gets started on open).
     deepStrictEqual(findSkillChatActivity([other], { name: "sin-chat" }), null);
   });
 
@@ -214,13 +184,11 @@ describe("skill chat setup message", () => {
       agent: SKILL_SETUP_AGENT_MODE,
       status: "needs_you",
     };
-    // Claimed by a skill's forward link (setup_activity_id).
     const claimedForward = {
       id: "d2",
       agent: SKILL_SETUP_AGENT_MODE,
       status: "done",
     };
-    // Claimed by its own skill_slug stamp (the durable reverse link).
     const claimedReverse = {
       id: "d3",
       agent: SKILL_SETUP_AGENT_MODE,
@@ -255,7 +223,6 @@ describe("skill chat setup message", () => {
   });
 
   it("link heal: stamps the activity once, then stays quiet", () => {
-    // Fresh claim: forward link exists, reverse stamp missing → stamp it.
     deepStrictEqual(
       findSkillChatHeal(
         [{ id: "a1", agent: SKILL_SETUP_AGENT_MODE }],
@@ -268,7 +235,6 @@ describe("skill chat setup message", () => {
         reason: "forward_link",
       },
     );
-    // Already stamped → nothing to do (the effect loop terminates).
     deepStrictEqual(
       findSkillChatHeal(
         [
@@ -282,8 +248,6 @@ describe("skill chat setup message", () => {
       ),
       null,
     );
-    // A stamped activity is never reassigned, even if another skill's
-    // forward link points at it.
     deepStrictEqual(
       findSkillChatHeal(
         [{ id: "a1", agent: SKILL_SETUP_AGENT_MODE, skill_slug: "s-old" }],
@@ -291,7 +255,6 @@ describe("skill chat setup message", () => {
       ),
       null,
     );
-    // A forward link to a non-setup activity is ignored.
     deepStrictEqual(
       findSkillChatHeal(
         [{ id: "a1", agent: "researcher" }],
@@ -302,9 +265,6 @@ describe("skill chat setup message", () => {
   });
 
   it("heal adopts a title-matched orphan chat back onto its chatless skill", () => {
-    // The reported bug: "Meeting prep" installed AND showing as a draft —
-    // the modify chat was created (titled with the skill's display name) but
-    // the link stamp never landed. The heal stamps it back.
     const orphan = {
       id: "a1",
       agent: SKILL_SETUP_AGENT_MODE,
@@ -324,7 +284,6 @@ describe("skill chat setup message", () => {
         reason: "orphan_adoption",
       },
     );
-    // Frontmatter title wins over the humanized slug, same as everywhere.
     deepStrictEqual(
       findSkillChatHeal(
         [{ ...orphan, title: "Preparar reunión" }],
@@ -338,7 +297,6 @@ describe("skill chat setup message", () => {
         reason: "orphan_adoption",
       },
     );
-    // Ambiguous (two skills share the display title) → never guess.
     deepStrictEqual(
       findSkillChatHeal(
         [orphan],
@@ -350,7 +308,6 @@ describe("skill chat setup message", () => {
       ),
       null,
     );
-    // The skill already has its own chat → the orphan stays a draft.
     deepStrictEqual(
       findSkillChatHeal(
         [
@@ -366,8 +323,6 @@ describe("skill chat setup message", () => {
       ),
       null,
     );
-    // A create-flow draft ("New skill") matches no skill → untouched, and
-    // without the resolver rule 2 never runs.
     deepStrictEqual(
       findSkillChatHeal(
         [{ ...orphan, title: "New skill" }],
@@ -385,7 +340,6 @@ describe("skill chat setup message", () => {
   it("fallback claim: the one new, linkless, chatless skill wins the draft", () => {
     const prev = new Set(["existing"]);
     const acts = [{ id: "d1", agent: SKILL_SETUP_AGENT_MODE }];
-    // One arrival, no forward link, no chat → claimed.
     deepStrictEqual(
       claimNewlyCreatedSkill(
         prev,
@@ -394,7 +348,6 @@ describe("skill chat setup message", () => {
       ),
       "meeting-prep",
     );
-    // An arrival that DID link itself is the normal claim path, not this one.
     deepStrictEqual(
       claimNewlyCreatedSkill(
         prev,
@@ -403,7 +356,6 @@ describe("skill chat setup message", () => {
       ),
       null,
     );
-    // Two ambiguous arrivals → never guess.
     deepStrictEqual(
       claimNewlyCreatedSkill(
         prev,
@@ -412,7 +364,6 @@ describe("skill chat setup message", () => {
       ),
       null,
     );
-    // An arrival whose chat already exists (stamped elsewhere) is not free.
     deepStrictEqual(
       claimNewlyCreatedSkill(
         prev,
@@ -427,7 +378,6 @@ describe("skill chat setup message", () => {
       ),
       null,
     );
-    // Nothing new → nothing claimed.
     deepStrictEqual(
       claimNewlyCreatedSkill(new Set(["existing"]), [{ name: "existing" }], []),
       null,
@@ -435,9 +385,6 @@ describe("skill chat setup message", () => {
   });
 
   it("per-turn context pins the bound skill on every send, hidden from the bubble", () => {
-    // The reported bug: inside "Audit my books"'s own chat, the model asked
-    // "which skill should I rename?" — first-message context alone is not
-    // reliable, so every outgoing prompt re-asserts the binding.
     const ctx = skillChatTurnContext({
       slug: "audit-my-books",
       displayName: "Audit my books",
@@ -453,13 +400,9 @@ describe("skill chat setup message", () => {
     ]) {
       ok(ctx.includes(needle), `context must mention: ${needle}`);
     }
-    // No files: the model prompt is context + the user's words (the bubble is
-    // the caller's displayText, not this).
     const prompt = buildAttachmentPrompt("rename it", [], [], ctx);
     ok(prompt.startsWith(ctx));
     ok(prompt.endsWith("rename it"));
-    // With files: the attachment marker's `message` keeps ONLY the user's
-    // words — the context never leaks into the rendered bubble.
     const withFile = buildAttachmentPrompt(
       "rename it",
       [{ name: "notes.txt" } as File],
@@ -473,9 +416,6 @@ describe("skill chat setup message", () => {
   });
 
   it("title heal keeps a skill's chat named after the skill", () => {
-    // The reported gap: renaming the skill in its chat left the persisted
-    // conversation title on the old name (and a claimed create draft stayed
-    // "New skill") — the chat follows the skill's display title.
     const chat = {
       id: "a1",
       agent: SKILL_SETUP_AGENT_MODE,
@@ -490,7 +430,6 @@ describe("skill chat setup message", () => {
       ),
       { activityId: "a1", title: "meeting skill" },
     );
-    // Already consistent → nothing to do (the effect loop terminates).
     deepStrictEqual(
       findSkillChatTitleHeal(
         [{ ...chat, title: "meeting skill" }],
@@ -499,7 +438,6 @@ describe("skill chat setup message", () => {
       ),
       null,
     );
-    // No frontmatter title → the humanized slug is the display title.
     deepStrictEqual(
       findSkillChatTitleHeal(
         [{ ...chat, title: "New skill" }],
@@ -508,7 +446,6 @@ describe("skill chat setup message", () => {
       ),
       { activityId: "a1", title: "Meeting prep" },
     );
-    // A chat two skills resolve to is never retitled (no flip-flopping).
     deepStrictEqual(
       findSkillChatTitleHeal(
         [{ id: "a2", agent: SKILL_SETUP_AGENT_MODE, title: "X" }],
@@ -523,14 +460,6 @@ describe("skill chat setup message", () => {
   });
 });
 
-/**
- * An AI Employee's Skills section IS the workspace Skills surface, scoped: it
- * mounts `SkillsBody` with that employee, so there is exactly one list, one
- * set of states and one writable door — the full-page skill editor.
- *
- * Pinned on the source because the claim is about which surfaces EXIST, which
- * no render of a reachable surface can show.
- */
 describe("the agent Skills section is the shared surface, scoped", () => {
   const read = (p: string) =>
     readFileSync(new URL(`../src/components/${p}`, import.meta.url), "utf8");
@@ -569,8 +498,6 @@ describe("the agent Skills section is the shared surface, scoped", () => {
   });
 
   it("offers no remote skill import", () => {
-    // Skills arrive from the guided create chat or from the workspace store.
-    // Nothing here may reach a GitHub repo or a community directory again.
     for (const [name, src] of [
       ["agent-admin-skills", section],
       ["skills-view", body],
@@ -584,8 +511,6 @@ describe("the agent Skills section is the shared surface, scoped", () => {
   });
 
   it("gives the scoped surface the second way in, and the library one button", () => {
-    // The library stands on no employee, so it has nothing to add a skill TO
-    // and its control stays a single button.
     ok(controls.includes("onAddExisting === undefined"), "the library's fork");
     ok(controls.includes('t("global.createMenu.addExisting")'));
     ok(

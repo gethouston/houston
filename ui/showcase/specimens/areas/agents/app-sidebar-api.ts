@@ -1,6 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/** `SidebarProps`, read off `ui/layout/src/sidebar-props.ts`. */
 export const APP_SIDEBAR_PROPS: readonly SpecimenProp[] = [
   {
     name: "items",

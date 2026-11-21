@@ -61,8 +61,6 @@ describe("isToolkitConnected", () => {
   });
 
   it("normalizes the agent-authored slug (casing + whitespace)", () => {
-    // The fragment is agent-authored: `GMail ` must still match the
-    // catalog's `gmail`, or the card sticks on "Connect" while connected.
     strictEqual(isToolkitConnected(connections, " GMail "), true);
     strictEqual(normalizeToolkitSlug(" GoogleDrive "), "googledrive");
   });
@@ -72,10 +70,6 @@ describe("isToolkitConnected", () => {
   });
 
   it("counts a no-auth catalog toolkit as connected despite no connection row", () => {
-    // HOUSTON-APP-4Z1: "composio" is a real no-auth toolkit the agent offered
-    // connect cards for. It can never hold a connection row, so without the
-    // catalog signal the card shows a Connect that only ends in the host's
-    // toolkit_no_auth 400.
     const noAuth = { slug: "composio", name: "Composio", noAuth: true };
     strictEqual(isToolkitConnected([], "composio", noAuth), true);
     strictEqual(isToolkitConnected(undefined, "composio", noAuth), true);
@@ -119,9 +113,6 @@ describe("shouldAutoContinueConnected", () => {
   };
 
   it("advances a stepper connect step whose toolkit is already connected", () => {
-    // The soft-lock repro: a mixed question+connect sequence reaches an
-    // already-connected Gmail step. There is no Connect button to click, so the
-    // card MUST self-report or the queued answers never send.
     strictEqual(shouldAutoContinueConnected(base), true);
   });
 
@@ -154,11 +145,6 @@ describe("shouldAutoContinueConnected", () => {
   });
 });
 
-/**
- * HOU-847: the in-chat connect surfaces bind the SAME shared flow as the
- * Integrations tab, so they must not re-announce what the flow already
- * announced (a card that JOINS a running connect would otherwise toast twice).
- */
 describe("in-chat connect card source", () => {
   const src = readFileSync(
     new URL("../src/components/use-integration-connect.tsx", import.meta.url),
@@ -232,7 +218,6 @@ describe("reconnect step (the app's login stopped working)", () => {
       connectStepAutoContinues({ reconnect: true, refusedAt, revisited: true }),
       false,
     );
-    // No refusal time: the existing connection may be the dead one.
     strictEqual(
       connectStepAutoContinues({ reconnect: true, revisited: false }),
       false,

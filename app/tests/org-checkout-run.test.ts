@@ -110,8 +110,6 @@ describe("runOrgCheckout", () => {
     const ledger = tracker();
     strictEqual(await runOrgCheckout(ledger, base), null);
     deepStrictEqual(refused, ["interval_unavailable"]);
-    // The prices refetch before the surface hears of it, so its choice
-    // already reads monthly only.
     deepStrictEqual(order, ["refresh", "refused"]);
     strictEqual(t.log.discarded, 1);
     deepStrictEqual(opened, []);

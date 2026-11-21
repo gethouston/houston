@@ -14,7 +14,6 @@ const LOOPBACK = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status });
 
-/** A channels SDK whose gateway answers each connect from `answers`, in order. */
 function gateway(...answers: Array<() => Response>) {
   const bodies: Array<string | null> = [];
   const fetchImpl = vi.fn(

@@ -34,13 +34,6 @@ function RoleRow({ role }: { role: ColorRole }) {
   );
 }
 
-/**
- * The design language, rendered from the real tokens and the real primitives —
- * the page to eyeball (in both themes) before approving the direction.
- *
- * A language sheet, not a component page, so it owns its own frame instead of
- * the Variants / States / Sizes scaffold every component specimen follows.
- */
 function DesignSheet() {
   return (
     <StorePage>
@@ -161,11 +154,6 @@ function DesignSheet() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = [
   "storeDensity",
   "storeMotion",

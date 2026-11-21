@@ -25,31 +25,22 @@ import {
 } from "../src/lib/academy/academy-store.ts";
 import { accrueUsage } from "../src/lib/academy/usage-points.ts";
 
-// The store logs the engine-write failures it deliberately swallows.
 console.error = () => {};
 
 const DEVICE = "install-1";
 const UID = "userA";
 
 interface Harness {
-  /** Ports for {@link UID}, wired exactly as the live ones are. */
   ports: AcademyStorePorts;
-  /** A queue over those ports, as every award path uses. */
   queue: AcademyMutationQueue;
-  /** The preference store of one account — the engine only ever serves one. */
   engineOf: (uid: string | null) => Map<string, string>;
   engine: Map<string, string>;
   mirrorOf: (uid: string | null) => AcademyRecord | null;
   mirror: () => AcademyRecord | null;
-  /** Put a record on the device without going through the store. */
   setMirror: (value: AcademyRecord) => void;
-  /** Every value handed to the preference store, successful or not. */
   writes: string[];
-  /** Flip the whole preference store between healthy and "pod is waking". */
   setEngineDown: (down: boolean) => void;
-  /** Sign a different account in — the engine follows it, the mirrors do not. */
   setActiveUid: (uid: string | null) => void;
-  /** Hold every engine read/write until the returned release is called. */
   gate: () => () => void;
 }
 
@@ -137,12 +128,9 @@ const record = (patch: Partial<AcademyRecord> = {}): AcademyRecord => ({
   ...patch,
 });
 
-/** The record half of a load. Whether the ENGINE was reached is the Academy
- *  screen's business — that half is driven in `academy-error-state.test.ts`. */
 const loadRecord = async (ports: AcademyStorePorts) =>
   (await loadAcademyRecord(ports)).record;
 
-/** Let the store's non-blocking engine heal settle before asserting on it. */
 const settle = () => new Promise((r) => setImmediate(r));
 
 const now = new Date("2026-08-10T12:00:00.000Z");
@@ -186,7 +174,6 @@ describe("loadAcademyRecord", () => {
     const merged = await loadRecord(h.ports);
     strictEqual(totalExperience(merged), 150);
     strictEqual(totalUsagePoints(merged), 310);
-    // Self-heal: the mirror AND the engine now hold the merged record.
     deepStrictEqual(h.mirror(), merged);
     await settle();
     deepStrictEqual(
@@ -210,7 +197,6 @@ describe("loadAcademyRecord", () => {
 
     deepStrictEqual(await loadRecord(h.ports), earned);
     await settle();
-    // An UNREAD engine is not an empty one: nothing was pushed over it.
     strictEqual(h.writes.length, 0);
   });
 
@@ -239,25 +225,17 @@ describe("saveAcademyRecord", () => {
   });
 });
 
-/**
- * The engine preference store serves whoever is authenticated, and only the
- * mirror is keyed by uid. Every engine call must therefore re-check the account
- * or one user's progress lands in another user's preference.
- */
 describe("academyPortsFor — the account that earned it", () => {
   it("never writes one account's record into another's preference", async () => {
     const h = harness();
     await h.queue.run(pay(3));
     strictEqual(totalUsagePoints(h.mirror()), 3);
 
-    // The user signs out and somebody else signs in; the buffered flush for the
-    // first account lands afterwards.
     h.setActiveUid("userB");
     await h.queue.run(pay(2));
 
     strictEqual(h.engineOf("userB").get(ACADEMY_PREF_KEY), undefined);
     strictEqual(h.mirrorOf("userB"), null);
-    // The points still belong to the account that earned them, on this device.
     strictEqual(totalUsagePoints(h.mirror()), 5);
   });
 
@@ -289,7 +267,7 @@ describe("academyPortsFor — the account that earned it", () => {
     );
     const release = h.gate();
     const reading = loadRecord(h.ports);
-    h.setActiveUid("userB"); // signed out while the read was in flight
+    h.setActiveUid("userB");
     release();
 
     strictEqual(await reading, null);
@@ -374,17 +352,11 @@ describe("the mutation queue — awards", () => {
     strictEqual(totalUsagePoints(h.mirror()), 20);
     const writesAfterCap = h.writes.length;
 
-    // A capped accrual hands back the record it read, untouched.
     strictEqual(totalUsagePoints(await h.queue.run(pay(2))), 20);
     strictEqual(h.writes.length, writesAfterCap);
   });
 });
 
-/**
- * Chapters, lessons and usage points are three read-modify-writes over ONE
- * record. Un-serialized, two of them read the same copy and the second saves
- * over the first — the award the user just earned, gone.
- */
 describe("the mutation queue — one writer", () => {
   it("keeps every award when three paths fire together", async () => {
     const h = harness();
@@ -394,8 +366,6 @@ describe("the mutation queue — one writer", () => {
       h.queue.run(teach("intro", 10)),
       h.queue.run(pay(2)),
     ]);
-    // Every engine read resumes in the same turn: without a queue all three
-    // would load the same empty record and the last write would win.
     release();
     await all;
 
@@ -440,7 +410,6 @@ describe("the mutation queue — one writer", () => {
     const h = harness();
     const release = h.gate();
     const awarding = h.queue.run(teach("houston-tour", 50));
-    // A second window (its own queue, same mirror) finishes a lesson meanwhile.
     h.setMirror(completeLessonRecord(null, "intro", 10, now));
     release();
     await awarding;
@@ -463,15 +432,11 @@ describe("the mutation queue — one writer", () => {
   });
 });
 
-/**
- * A closing window never gets its awaits back, so anything that must survive
- * the shutdown cannot be behind one.
- */
 describe("the mutation queue — teardown", () => {
   it("has the mirror before the engine has answered anything", async () => {
     const h = harness();
-    await h.queue.run(pay(1)); // warms the device id, as a running app would
-    h.gate(); // from here the engine never answers again
+    await h.queue.run(pay(1));
+    h.gate();
 
     h.queue.commitSync(pay(4));
 
@@ -502,9 +467,6 @@ describe("the mutation queue — teardown", () => {
   });
 
   it("pays once when the window says goodbye twice", async () => {
-    // The flush now runs on `pagehide` AND on the window going hidden, so a
-    // user who cmd-tabs away and then quits reaches it twice. An award already
-    // applied must cost nothing the second time.
     const h = harness();
     h.queue.commitSync(teach("houston-tour", 50));
     const writesAfterFirst = h.writes.length;

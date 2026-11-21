@@ -8,9 +8,6 @@ import { afterEach, expect, test } from "vitest";
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/** The seed op through `/op`: a brand-new agent's empty prefix is seeded,
- *  never refused like a claimed turn's blank hydrate. */
-
 const servers: Server[] = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();

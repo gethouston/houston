@@ -8,28 +8,8 @@ import { academyChapterPaths } from "./academy-path-state";
 import { availableLessons } from "./lessons/lesson-availability";
 import { ACADEMY_LESSONS } from "./lessons/registry";
 
-/** How many "coming soon" stops stand after the chapters that exist. */
 const PLACEHOLDER_NODES = [0, 1];
 
-/**
- * The path: the chapters in the order they are walked, each listing its
- * lessons (`academyChapterPaths` reads both from the registry and the stored
- * record), then the stops still to come drawn as locked so the shape of the
- * climb is visible without pretending those chapters are ready.
- *
- * A plain vertical list on purpose. The finished path gets its own art, and
- * building that art before there are chapters to hang it on would be
- * decoration standing in for content.
- *
- * Only the lessons this deployment can teach are listed
- * (`lesson-availability.ts`), so the path waits on the host's capabilities as
- * well as the record.
- *
- * The record is skeletoned rather than assumed while it loads: an unread record
- * looks exactly like an untouched one, so drawing it would offer "Start" to
- * someone who finished the lesson months ago and then swap the button under
- * their cursor.
- */
 export function AcademyPath(props: {
   record: AcademyRecord | null;
   loading: boolean;
@@ -68,7 +48,6 @@ export function AcademyPath(props: {
   );
 }
 
-/** A lesson node's shape while the record is in flight, so nothing shifts. */
 function AcademyPathSkeleton() {
   return (
     <div className="flex items-center gap-4 py-3 pl-1">

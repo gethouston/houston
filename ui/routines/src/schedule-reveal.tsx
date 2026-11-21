@@ -1,11 +1,3 @@
-/**
- * Reveal — animated wrapper for a schedule field that conditionally appears.
- * `layout` lets the surrounding fields slide to their new positions as this one
- * mounts/unmounts, so the builder card grows and shrinks smoothly instead of
- * snapping. Wrap each conditional field in an `<AnimatePresence>`. Values per
- * design-system.md.
- */
-
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 

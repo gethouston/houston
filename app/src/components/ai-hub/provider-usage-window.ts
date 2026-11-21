@@ -1,16 +1,5 @@
 import type { ProviderUsageWindow } from "@houston/engine-adapter";
 
-/**
- * Render-time settling of ONE rate-limit window on the AI Models hub's
- * Connected strip. The engine already settles a window the provider reports
- * past its own reset (`packages/runtime/src/ai/usage/types.ts`), but a reading
- * AGES on screen: the strip polls every five minutes, keeps the last reading
- * through a failed refetch, and the hub stays mounted while hidden. A 5h window
- * whose reset instant passed since the last successful fetch has rolled over
- * (the next request opens a fresh one at 0%), so the bar must not keep drawing
- * the percentage of a window that no longer exists next to no reset note. Pure
- * so it unit-tests under node:test (app/tests/ai-hub-usage-window.test.ts).
- */
 export function settleUsageWindow(
   window: ProviderUsageWindow,
   now: number = Date.now(),
@@ -21,11 +10,6 @@ export function settleUsageWindow(
   return { ...window, usedPercent: 0, resetsAt: null };
 }
 
-/**
- * A localized "3 hours ago" phrase for when the strip's retained reading was
- * fetched, so a reading the poll could not refresh is dated instead of shown
- * as live. Null for a junk instant (the note then omits its age).
- */
 export function formatReadingAge(
   fetchedAt: number,
   locale: string,

@@ -20,9 +20,6 @@ import {
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
-// ---------------------------------------------------------------------------
-// Finding 8 — capability-flag merge (logic bug, failing-test-first)
-// ---------------------------------------------------------------------------
 describe("catalog merge preserves a dropped variant's capabilities", () => {
   const raw = (id: string, extra: Partial<RawModel> = {}): RawModel => ({
     key: "qwen plus 0728",
@@ -33,8 +30,6 @@ describe("catalog merge preserves a dropped variant's capabilities", () => {
 
   it("keeps reasoning=true when the shorter-id variant lacks it (openrouter Qwen Plus 0728)", () => {
     const drafts = new Map<string, Draft>();
-    // The plain id is shorter, so addCandidate would keep it; the ":thinking"
-    // variant (longer id) carries reasoning=true and used to be dropped whole.
     addCandidate(drafts, {
       providerId: "openrouter",
       raw: raw("qwen/qwen-plus-0728"),
@@ -53,7 +48,6 @@ describe("catalog merge preserves a dropped variant's capabilities", () => {
     );
     strictEqual(model.reasoning, true);
     strictEqual(model.offers.length, 1, "still one merged offer per provider");
-    // The surviving offer keeps the cleaner (shorter, region/variant-free) id.
     strictEqual(model.offers[0]?.modelId, "qwen/qwen-plus-0728");
   });
 
@@ -77,9 +71,6 @@ describe("catalog merge preserves a dropped variant's capabilities", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Finding 6 — count fallback rounding helper (shared, unit-tested)
-// ---------------------------------------------------------------------------
 describe("roundedModelCount / fewModels", () => {
   it("rounds down to the nearest 50", () => {
     strictEqual(roundedModelCount(438), 400);
@@ -97,12 +88,6 @@ describe("roundedModelCount / fewModels", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Status-cache instant paint — ported from main's provider-settings work into
-// the hub's extracted `use-provider-statuses` hook (localStorage seeds the
-// cards so they paint their last-known state instead of a skeleton; the probe
-// reconciles and re-persists).
-// ---------------------------------------------------------------------------
 function memStore(): Pick<Storage, "getItem" | "setItem"> {
   const m = new Map<string, string>();
   return {
@@ -170,9 +155,6 @@ describe("provider status cache seeds instant paint", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Finding 7 — knowledge cutoff formatted like a release date
-// ---------------------------------------------------------------------------
 describe("formatReleaseDate parses a YYYY-MM-DD knowledge cutoff", () => {
   it("renders month + year for a day-precision date", () => {
     strictEqual(formatReleaseDate("2026-01-31", "en-US"), "Jan 2026");
@@ -180,10 +162,6 @@ describe("formatReleaseDate parses a YYYY-MM-DD knowledge cutoff", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Findings 1, 2, 4, 9, 10, 11 — component contracts (source assertions, the
-// repo's React-test idiom; the node runner has no DOM — see card-unification).
-// ---------------------------------------------------------------------------
 describe("AI Hub review fixes (component source contracts)", () => {
   it("Finding 1: connections expose a `ready` flag gating the list", () => {
     const hook = read("../src/hooks/use-provider-connections.ts");
@@ -191,9 +169,6 @@ describe("AI Hub review fixes (component source contracts)", () => {
     ok(hook.includes("loading"), "reads the status loading flag");
     const types = read("../src/hooks/provider-connections/types.ts");
     ok(types.includes("ready"), "ready is on the ProviderConnections type");
-    // The card grid was extracted into the reusable `ProviderBrowser`; the ready
-    // gate moved with it (renders a skeleton list before the first status probe
-    // resolves).
     const list = read(
       "../src/components/provider-browser/provider-browser.tsx",
     );
@@ -204,9 +179,6 @@ describe("AI Hub review fixes (component source contracts)", () => {
   });
 
   it("Finding 4/9: SpecChip is the shared chip primitive, no local HubChip", () => {
-    // The pill outgrew the hub: the Academy states its counts in the same
-    // shape, so the primitive sits at the app's shared level and the hub's
-    // own kit composes it.
     const chip = read("../src/components/spec-chip.tsx");
     ok(chip.includes("export function SpecChip"), "SpecChip is the primitive");
     const badges = read("../src/components/ai-hub/hub-badges.tsx");
@@ -214,9 +186,6 @@ describe("AI Hub review fixes (component source contracts)", () => {
       badges.includes('import { SpecChip } from "../spec-chip"'),
       "the hub kit composes the shared chip rather than redeclaring it",
     );
-    // `provider-card.tsx` (which once carried the local HubChip) was deleted in
-    // the list redesign; the provider detail surface is now `provider-modal`.
-    // It consumes the shared SpecChip and declares no local chip primitive.
     const providerModal = read("../src/components/ai-hub/provider-modal.tsx");
     ok(
       providerModal.includes("SpecChip"),

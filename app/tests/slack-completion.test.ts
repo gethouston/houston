@@ -22,7 +22,6 @@ describe("why a Slack connection did not happen", () => {
   });
   it("tells an account connected elsewhere apart from a dead link", () => {
     strictEqual(slackCompletionResult(null, "already"), "taken");
-    // The link that landed is spent either way: what the gateway said wins.
     strictEqual(
       slackCompletionResult({ kind: "invalid" }, "already"),
       "unredeemable",

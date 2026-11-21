@@ -5,13 +5,6 @@ import type {
 } from "../../../lib/academy/lesson-spec.ts";
 import { INTEGRATION_PROVIDER } from "../../integrations/model.ts";
 
-/**
- * Which lessons this deployment can teach. A lesson whose requirement is
- * missing is not offered at all: its beats would wait on something the user
- * cannot do here. Pure, so the rule is tested without React
- * (`app/tests/academy-lesson-availability.test.ts`).
- */
-
 export type LessonCapabilities = Pick<Capabilities, "integrations"> | null;
 
 function requirementMet(
@@ -33,7 +26,6 @@ export function lessonAvailable(
   );
 }
 
-/** The lessons that can be taught here, in the order given. */
 export function availableLessons(
   lessons: readonly LessonSpec[],
   capabilities: LessonCapabilities,

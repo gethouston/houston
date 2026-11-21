@@ -1,6 +1,3 @@
-/* Searchable dropdown used by the download gate (country code + country).
-   The menu is fixed-positioned by download-gate-dropdown.js so it can hang
-   outside the modal card without being clipped by its scroll container. */
 .dl-dd {
   position: relative;
 }
@@ -67,8 +64,6 @@
   padding: 8px;
   border-bottom: 1px solid var(--line);
 }
-/* Scoped through .dl-dd so the gate's generic `.dl-field input` sizing, which
-   also matches this nested input, loses on specificity instead of load order. */
 .dl-dd .dl-dd-search input {
   width: 100%;
   height: 34px;
@@ -90,11 +85,6 @@
   outline: none;
   box-shadow: none;
 }
-/* The list absorbs whatever height is left after the search row. min-height:0
-   lets it shrink past its content so the max-height download-gate-dropdown.js
-   measures against the visual viewport actually takes effect — otherwise a menu
-   opened with a phone keyboard up keeps its full height and its last rows sit
-   under the keyboard, unreachable. */
 .dl-dd-list {
   flex: 1 1 auto;
   min-height: 0;

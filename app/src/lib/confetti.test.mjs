@@ -12,8 +12,6 @@ afterEach(() => {
 });
 
 test("the setup celebration is exactly three bursts sharing one base config", () => {
-  // Locking the single source of truth so ready-step and setup-progress can
-  // never drift apart again (the duplication these tests replaced).
   assert.equal(SETUP_CONFETTI_BURSTS.length, 3);
   for (const burst of SETUP_CONFETTI_BURSTS) {
     assert.equal(burst.startVelocity, 45);

@@ -5,7 +5,6 @@ import type {
 } from "./assistant-operation-ctx";
 import { json } from "./http";
 
-/** Spend the receipt, or answer why this call is not going to happen. */
 export function approved(
   ctx: AssistantOperationCtx,
   input: AssistantCallInput,
@@ -37,7 +36,6 @@ export function approved(
   return false;
 }
 
-/** Whether the spent receipt is durable, answering the refusal when not. */
 export async function persisted(
   ctx: AssistantOperationCtx,
   res: ServerResponse,

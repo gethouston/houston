@@ -4,10 +4,8 @@ import { afterAll, afterEach, beforeAll, expect, test, vi } from "vitest";
 import { relayOne } from "./fence-forward";
 import { type FenceNet, type FenceProxy, startFenceProxy } from "./fence-proxy";
 
-/** Two "sites" on this machine, told apart by the address the fence dialed. */
 const FIRST = "198.51.100.10";
 const SECOND = "198.51.100.11";
-/** A raw site: a reason-less `100` interim, then a keep-alive final head. */
 const RAW = "198.51.100.12";
 const DNS: Record<string, string> = {
   "one.test": FIRST,
@@ -21,7 +19,6 @@ function site(name: string) {
     req.resume();
     req.on("end", () => {
       seen.push({ site: name, url: req.url, cookie: req.headers.cookie });
-      // Offers keep-alive: the proxy must still close.
       res.writeHead(200, { connection: "keep-alive", "content-length": "2" });
       res.end("ok");
     });
@@ -77,7 +74,6 @@ afterAll(async () => {
   raw.close();
 });
 
-/** Write `parts` in order on ONE proxy connection, each after a reply. */
 function session(parts: string[]): Promise<string> {
   return new Promise((resolve) => {
     const socket = connect({ host: "127.0.0.1", port: fence.port });

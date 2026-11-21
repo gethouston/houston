@@ -3,12 +3,6 @@ import { expect, test } from "vitest";
 import { fileToolGuardOptions, sharedRootsFor } from "./coordinator-policy";
 import { learningsDocPath } from "./learnings-context";
 
-/**
- * The coordinator produces no work, so it needs no working files: one document
- * (its memory) to read and write, and the attachments people send it to read. What this pins is the gap between that and an
- * ordinary agent, whose workspace containment must stay exactly as it was.
- */
-
 const workspaceDir = "/data/ws/.assistant";
 const sharedSkillsDir = "/data/ws/.shared/skills";
 
@@ -31,8 +25,6 @@ test("the coordinator's file tools are scoped to its memory and its attachments"
 });
 
 test("the coordinator gets no shared skills root to write to", () => {
-  // A skill edited there runs inside every one of the user's agents, so it is
-  // reach the one chat that never does work has no use for.
   expect(
     sharedRootsFor({ role: "coordinator", workspaceDir, sharedSkillsDir }),
   ).toEqual([]);
@@ -69,7 +61,6 @@ test("a pooled turn's shared skills snapshot is readable, never a writable root"
       sharedSkillsSnapshot: snapshot,
     }),
   ).toEqual({ sharedRoots: [], readOnlyRoots: [snapshot] });
-  // The coordinator keeps its one document, snapshot or not.
   expect(
     fileToolGuardOptions({
       role: "coordinator",

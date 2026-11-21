@@ -3,12 +3,6 @@ import { logAndReportError } from "../lib/error-report";
 import { markPlanPresence, planPresenceDue } from "../lib/plan-session";
 import { tauriOrg } from "../lib/tauri";
 
-/**
- * Tell the gateway the person is here in the active org (at most once per
- * presence window per org) whenever the app becomes visible or focused, on a
- * deployment with plans. The request rides the active org's header, so it
- * waits until that org is known.
- */
 export function usePlanPresence(
   enabled: boolean,
   orgSlug: string | null,

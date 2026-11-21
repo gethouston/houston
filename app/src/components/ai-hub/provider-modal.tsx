@@ -1,14 +1,3 @@
-/**
- * The provider modal: replaces the old provider-detail PAGE. A blocking,
- * centered modal (via `ModalShell`) that shows a provider's identity + how it
- * connects, a searchable list of the models it can run, and the connect /
- * sign-out actions. Not connected → a prominent Connect CTA; connected → a
- * live-status header and a footer with Sign out + (optional) Set as default.
- *
- * Presentational shell; connect/cancel/sign-out plumbing comes from the shared
- * `ProviderConnections`, exactly as the old provider-settings drove it.
- */
-
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
@@ -45,10 +34,6 @@ export function ProviderModal({
   onOpenModel: (key: string) => void;
 }) {
   const { t } = useTranslation(["aiHub", "common"]);
-  // Tri-state (HOU-979): only a CONFIRMED connection gets the live badge, the
-  // sign-out footer and the local-bridge treatment; only a CONFIRMED
-  // disconnection gets the Connect CTA. An unconfirmable probe gets neither, so
-  // the modal never guesses in either direction.
   const connection = connections.connectionState(provider);
   const connected = connection === "connected";
   const checking = connection === "checking";
@@ -57,16 +42,11 @@ export function ProviderModal({
     [catalog, provider],
   );
   const isLocal = provider.auth === "openaiCompatible";
-  // Most hub providers have no aiHub:providers.* marketing copy — without a
-  // default the modal renders the raw lookup key ("providers.xiaomi.description",
-  // PRODUCT-1517). Fall back to the provider-list row's one-liner, which every
-  // id resolves to.
   const description = t(
     `providers.${providerDescriptionKey(provider.id)}.description`,
     { defaultValue: providerDescription(provider.id) },
   );
 
-  // Local model: the bridge state + a disconnect that tears the tunnel down.
   const {
     showTunnelPill,
     showConnectedBadge,

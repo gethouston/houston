@@ -7,11 +7,6 @@ import {
   welcomeBridgeUrl,
 } from "../src/lib/startup-analytics.ts";
 
-/**
- * Records the order of analytics calls so we can assert `install_created`
- * is emitted before any onboarding event would be (the whole point of the
- * relocation — see runStartupAnalytics docs).
- */
 function fakeAnalytics(init: { installId: string; isNew: boolean }) {
   const calls: string[] = [];
   const analytics: StartupAnalytics = {
@@ -60,7 +55,6 @@ describe("runStartupAnalytics", () => {
       sessionIdx > installIdx,
       "session_started must fire after install_created",
     );
-    // The attribution bridge opened with the install id.
     deepStrictEqual(opened, [welcomeBridgeUrl("id-1")]);
   });
 
@@ -108,7 +102,6 @@ describe("runStartupAnalytics", () => {
       throw new Error("no default browser");
     });
 
-    // The failure is swallowed; session_started still fires.
     ok(calls.includes("track:install_created"));
     ok(calls.includes("track:session_started"));
   });

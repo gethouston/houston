@@ -1,8 +1,3 @@
-// Verifies a Tauri updater signature the way the in-app updater does
-// (tauri-plugin-updater -> minisign-verify): the signature must come from the
-// key in tauri.conf.json, cover these exact bytes, and carry a valid global
-// signature over its trusted comment. Both the pubkey and the .sig file are
-// base64 of a minisign text file.
 import { createHash, createPublicKey, verify } from "node:crypto";
 
 const decodeText = (b64, what) => {
@@ -47,7 +42,6 @@ export function verifyUpdaterSignature({ pubkey, signature, data }) {
     );
   }
   const sig = sigBytes.subarray(10);
-  // "ED" signs the BLAKE2b-512 digest of the file; legacy "Ed" signs the bytes.
   const message =
     algorithm === "ED" ? createHash("blake2b512").update(data).digest() : data;
   if (!verify(null, message, key, sig)) {

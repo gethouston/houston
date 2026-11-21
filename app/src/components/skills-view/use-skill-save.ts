@@ -8,31 +8,14 @@ import type {
   SkillEditorActions,
 } from "./skill-editor-props";
 
-/**
- * The skill editor's save + delete flow, split out for the file law, for ONE
- * employee's Skills section. A store skill's save is one store write; a copy's
- * save rewrites this employee's copy and no one else's. Delete removes this
- * employee's copy, behind a confirm; deleting a skill for EVERY employee is the
- * menu's own act (`use-workspace-skill-acts.tsx`). A save failure is already
- * surfaced by the `call` wrapper, and the editor stays open with the typed
- * work so the user can retry. Delete is optimistic: the skill leaves the list
- * and the editor at once, and a refusal puts it back with its own toast; the
- * catch below only meets a throw before the write starts, and reports it.
- *
- * `onSaved` and `onDeleted` are separate because the editor stays on the skill
- * it just saved and only leaves once the skill is gone.
- */
 export function useSkillSave(args: {
   row: ManagedSkillRow | null;
-  /** The employee whose Skills section this is. */
   agent: Agent;
   isShared: boolean;
   shared: SharedDialogActions | undefined;
   onApply: SkillEditorActions["onApply"];
   onDeleteEverywhere: SkillEditorActions["onDeleteEverywhere"];
-  /** A save landed. */
   onSaved: () => void;
-  /** The skill no longer exists on this employee. */
   onDeleted: () => void;
 }) {
   const { row, agent, isShared, shared, onApply, onDeleteEverywhere } = args;
@@ -66,8 +49,6 @@ export function useSkillSave(args: {
     confirmDeleteNow: () => {
       setConfirmDelete(false);
       if (!row) return;
-      // Only THIS employee's copy: the row may name other holders of the same
-      // slug, whose copies are theirs.
       const mine = {
         ...row,
         agents: row.agents.filter((holder) => holder.id === agent.id),

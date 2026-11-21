@@ -11,11 +11,6 @@ import ptPlan from "../src/locales/pt/plan.json" with { type: "json" };
 import ptTeams from "../src/locales/pt/teams.json" with { type: "json" };
 import { enterNativeApp } from "./support/native-surface.ts";
 
-// Store-safe payments, rendered per reader: the billing owner gets the
-// price, checkout and the portal on desktop and in a browser tab; everyone
-// else is told to ask the owner; inside the iOS/Android app nobody sees a
-// price, a checkout or portal button, or a push to upgrade.
-
 let billing: OrgBilling | null = null;
 type OpenCheckout = Extract<BillingCheckoutState, { phase: "open" }>;
 const IDLE_CHECKOUT = {
@@ -167,14 +162,12 @@ describe("BillingPlanCard", () => {
     const html = text(markup(element));
     ok(html.includes(enTeams.billing.planFree), html);
     ok(html.includes("Monthly $20 per member a month"), html);
-    // Yearly wears its saving, worked out from the wire's two prices.
     ok(
       html.includes(
         "Yearly Save 25% $15 per member a month, billed yearly ($180 per member a year)",
       ),
       html,
     );
-    // Yearly is preselected, so the total under the choice is a year's.
     ok(html.includes("$540 a year for 3 members"), html);
     ok(/checked="" value="year"/.test(markup(element)), markup(element));
     ok(html.includes(enTeams.billing.upgrade), html);
@@ -202,11 +195,9 @@ describe("BillingPlanCard", () => {
   });
 
   it("shows the seats alone when the wire states no interval", () => {
-    // A comp grant or an ended subscription: no figure is better than a guess.
     for (const value of [
       paid({ interval: null }),
       paid({ interval: null, seatGraceEndsAt: "2099-11-20T12:00:00Z" }),
-      // A live subscription whose price the gateway has not read yet.
       paid({ interval: null, seatPriceCents: null }),
     ]) {
       const html = planCard(value);
@@ -275,7 +266,6 @@ describe("BillingPlanCard", () => {
     let html = planCard(free());
     ok(html.includes(pending.elsewhere), html);
     ok(html.includes(pending.startOver), html);
-    // Another org's session is never offered to reopen here.
     equal(html.includes(pending.reopen), false, html);
     checkout = { ...checkout, open: { ...open, orgSlug: "acme" } };
     html = planCard(free());

@@ -6,11 +6,6 @@ import {
   INITIAL_BOOT_GUARD,
 } from "./view-guard-rules.ts";
 
-/**
- * Runs the boot guard over renders and opens the employee it lands on. The
- * guard state is React state so every transition re-renders the landing:
- * opening an employee who is already open changes nothing else on screen.
- */
 export function useBootLanding(
   input: BootGuardInput,
   openAgent: (agentId: string) => void,

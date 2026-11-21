@@ -6,16 +6,8 @@ import {
 } from "../interaction";
 import { makePlanReadyTool, PLAN_READY_TOOL_NAME } from "./plan-ready";
 
-/**
- * The plan-mode-only plan-presentation tool. These pin: the tool records the
- * single plan-ready step (id `p1`), trims the summary, rejects an empty summary,
- * returns the end-your-turn instruction, and is a no-op outside a turn.
- */
-
 const planReady = makePlanReadyTool();
 
-// pi's tool.execute takes (id, params, signal, onUpdate, ctx); the last three
-// are irrelevant here, so one helper supplies them.
 const ctx = {} as unknown as ExtensionToolContext;
 const run = (params: unknown) =>
   planReady.execute("id", params as never, undefined, undefined, ctx);

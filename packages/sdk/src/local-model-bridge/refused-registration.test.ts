@@ -3,13 +3,6 @@ import { expect, test, vi } from "vitest";
 import { LocalModelBridgeController } from "./controller";
 import type { LocalBridgeJournal, LocalModelBridgePorts } from "./types";
 
-// HOUSTON-APP-5DY: the gateway refused a registration (403 bridge_forbidden:
-// the agent's model ceiling, the person's role, the agent gone). The prepared
-// journal survived the refusal, so every boot and every switch back to that
-// agent re-registered it, met the same 403 and reported a loud bug, for weeks;
-// and the retirement any later connect or disconnect runs first re-registered
-// it too, so the agent's local model could never be changed.
-
 const identity = {
   environment: "https://gateway.test",
   userId: "user",
@@ -38,7 +31,6 @@ function harness(saved: LocalBridgeJournal | null = null) {
     management: {
       identity,
       register: vi.fn(async (request) => {
-        // The ceiling allows every model but "denied".
         if (request.model === "denied") throw forbidden();
         live = {
           bridgeId: "00000000-0000-4000-8000-000000000001",
@@ -111,7 +103,6 @@ test("a refused connect forgets the attempt, so the next boot neither registers 
     body: { code: "bridge_forbidden" },
   });
   expect(h.journal()).toBeNull();
-  // Nothing is connected: the pill must not ask the person to sign in again.
   expect(controller.getSnapshot().status).toBe("disabled");
   expect(h.ports.report).toHaveBeenCalledWith(
     expect.objectContaining({ status: 403 }),

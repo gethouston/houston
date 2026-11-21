@@ -1,19 +1,3 @@
-/**
- * The billing REST calls, over the injected `fetch`.
- *
- * These are HOSTED-GATEWAY routes: a subscription belongs to the managed
- * cloud's orgs, so no host serves them and the runtime client has no
- * surface for them. They go straight through {@link httpRequest} with literal
- * paths, which is also what keeps them visible to the assistant's operation
- * catalog.
- *
- * Nothing here degrades. A non-2xx throws a `BillingHttpError` (`index.ts`)
- * carrying the HTTP `status` (the swap's own refusals are its outcomes), and a surface that wants a softer answer (the web
- * adapter's "no billing to show" on a gateway with no Stripe) decides that for
- * itself on the status. A `401` additionally fires `onUnauthorized`, so a lapsed
- * session token becomes a visible `tokenExpired` signal.
- */
-
 import {
   CLAIM_FREE_REFUSALS,
   type ClaimFreeRefusal,
@@ -90,15 +74,10 @@ export async function createPortal(scope: HttpScope): Promise<BillingCheckout> {
   return (await res.json()) as BillingCheckout;
 }
 
-/** What the free-slot swap answered: done, or a state the caller is in. */
 export type ClaimFreeSlotResult =
   | { kind: "claimed" }
   | { kind: ClaimFreeRefusal };
 
-/**
- * The refusal behind a failed swap, or null for every other error. A code is
- * recognized only with the status the contract pairs it with.
- */
 export function claimFreeSlotRefusal(error: unknown): ClaimFreeRefusal | null {
   if (!(error instanceof Error)) return null;
   const code = refusalCode(error);

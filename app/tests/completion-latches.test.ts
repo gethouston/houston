@@ -5,10 +5,6 @@ import {
   type LatchTimers,
 } from "../src/hooks/completion-latches.ts";
 
-/**
- * A controllable clock: latch timers never fire on their own; the test runs
- * them explicitly via `runAll` to exercise the grace backstop.
- */
 function fakeTimers(): LatchTimers & { runAll: () => void } {
   const pending = new Map<number, () => void>();
   let next = 1;
@@ -44,16 +40,13 @@ describe("CompletionLatches", () => {
       () => sent.push("s1"),
     );
 
-    // Echo before the fold: nothing fires yet.
     latches.fireForAgent("Work/Sales");
     deepStrictEqual(sent, []);
 
-    // The settle folds; its own echo now fires.
     ready = true;
     latches.fireForAgent("Work/Sales");
     deepStrictEqual(sent, ["s1"]);
 
-    // A later echo is a no-op (the latch is gone).
     latches.fireForAgent("Work/Sales");
     deepStrictEqual(sent, ["s1"]);
   });
@@ -61,14 +54,10 @@ describe("CompletionLatches", () => {
   it("does NOT fire a sibling latch whose settle has not folded yet (the bug)", () => {
     const timers = fakeTimers();
     const latches = new CompletionLatches(2000, timers);
-    // Body each session WOULD send, resolved from its own fold state at fire
-    // time — the real hook reads the VM interaction the same way.
     const body: string[] = [];
     const foldedA = { done: false };
     const foldedB = { done: false };
 
-    // A finishes cleanly; B ends on a question. Both are latched for the SAME
-    // agent, before either settle folds.
     latches.latch(
       "Work/Sales",
       "A",
@@ -82,14 +71,10 @@ describe("CompletionLatches", () => {
       () => body.push(foldedB.done ? "B:question" : "B:plain"),
     );
 
-    // A's settle folds and emits `ActivityChanged` (no session key). Pre-fix,
-    // the handler fired EVERY latch for the agent, so B fired here — unfolded —
-    // and would have sent "B:plain", then been discarded.
     foldedA.done = true;
     latches.fireForAgent("Work/Sales");
     deepStrictEqual(body, ["A:plain"]);
 
-    // B's own settle folds; its echo fires with the correct question body.
     foldedB.done = true;
     latches.fireForAgent("Work/Sales");
     deepStrictEqual(body, ["A:plain", "B:question"]);
@@ -103,14 +88,14 @@ describe("CompletionLatches", () => {
     latches.latch(
       "Work/Sales",
       "s1",
-      () => false, // no board card ever folds
+      () => false,
       () => sent.push("s1"),
     );
 
     latches.fireForAgent("Work/Sales");
-    deepStrictEqual(sent, []); // gate holds
+    deepStrictEqual(sent, []);
 
-    timers.runAll(); // backstop
+    timers.runAll();
     deepStrictEqual(sent, ["s1"]);
   });
 

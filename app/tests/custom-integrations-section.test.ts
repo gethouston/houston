@@ -10,10 +10,6 @@ describe("unified custom integrations surface", () => {
     const src = read(
       "../src/components/integrations/use-custom-integrations-surface.tsx",
     );
-    // A failed BACKGROUND refetch keeps `list.isError` true while `data`
-    // still holds the last good list (React Query v5). Gating the error
-    // panel on `data === undefined` keeps those rows on screen; dropping
-    // the guard would erase the whole custom surface on one transient 500.
     ok(
       src.includes("list.isError && list.data === undefined"),
       "error state gates on isError AND no cached data",
@@ -24,9 +20,6 @@ describe("unified custom integrations surface", () => {
     const src = read(
       "../src/components/integrations/use-custom-integrations-surface.tsx",
     );
-    // The chooser dialog (guided chat vs manual form) was cut: clicking Add
-    // starts the chat with the workspace's only agent immediately; only a
-    // multi-agent workspace interposes the agent picker.
     ok(
       src.includes("void chatSetup.start(target)"),
       "the add handler starts the setup chat directly",
@@ -41,12 +34,6 @@ describe("unified custom integrations surface", () => {
     const src = read(
       "../src/components/integrations/use-custom-integrations-surface.tsx",
     );
-    // The hosted gateway proxies only the per-agent custom routes: reading the
-    // list through the transport agent is what keeps the global Integrations
-    // page's custom rows from silently hiding on managed cloud (its top-level
-    // fetch 404s to null). The section has no ambient agent of its own since
-    // the per-agent Integrations tab was deleted, so the transport agent is the
-    // ONLY thing standing between it and that silent hide.
     ok(
       src.includes("useCustomTransportAgentId()"),
       "the list rides the transport agent",

@@ -35,11 +35,6 @@ import {
 import { wakeForDispatch } from "./probe-wake";
 import { stampTurnTimezone } from "./turn-timezone";
 
-/**
- * Forwards one authorized request to a standing runtime and streams the reply
- * back (SSE byte-for-byte). Concrete impl: proxy/route.ts `forward`. Kept as a
- * shape so the channel depends on an interface, not a module.
- */
 export interface RuntimeProxy {
   forward(
     endpoint: RuntimeEndpoint,
@@ -48,50 +43,20 @@ export interface RuntimeProxy {
   ): Promise<void>;
 }
 
-/**
- * Clock-skew grace for the fresh-push staleness gate in
- * saveClaudeOAuthCredential: a credential minted seconds ago on a machine with
- * a slightly-fast clock must not be rejected as expired.
- */
 const STALE_SKEW_MS = 60_000;
 const TURN_LOG_ATTACH_TIMEOUT_MS = 1_500;
 
-/**
- * The standing-runtime channel: wake the agent's runtime (GKE pod today, local
- * subprocess in P4) and relay the request 1:1 over the runtime's whole contract
- * (chat, SSE events, provider device-code login, settings).
- */
 export class ProxyChannel implements RuntimeChannel {
   constructor(
     private readonly opts: {
       launcher: RuntimeLauncher;
       proxy: RuntimeProxy;
       credentials: CredentialStore;
-      /**
-       * Whether an inbound `x-houston-acting-as` header is relayed to the
-       * runtime. The runtime decodes that token's payload WITHOUT verifying
-       * it (C2/C5: the gateway is the trust boundary), so this must be true
-       * ONLY when a trusted gateway sits in front minting/stripping the
-       * header (cloud). On the desktop clients reach this host directly —
-       * forwarding would let any client forge message attribution, so the
-       * local profile sets false and inbound headers are dropped. The
-       * routine path is unaffected either way: fireTurn's server-minted
-       * `x-houston-acting-user` never rides this header.
-       */
       forwardActingHeader: boolean;
-      /**
-       * Whether this host serves anthropic back to its runtimes (gateway-
-       * fronted). Default true. False on the desktop/self-host host, where an
-       * anthropic capture must leave the runtime's shared login dir as the
-       * single holder (capture-credential.ts, PRODUCT-1644).
-       */
       anthropicServedHere?: boolean;
-      /** Managed pod shared-cache freshness gate, invoked only for turn starts. */
       beforeTurn?: (agent: ChannelCtx["agent"]) => Promise<void>;
-      /** The person's suggestions setting, on unfronted hosts (./next-step-suggestions.ts). */
       nextStepSuggestions?: NextStepSuggestionsReader;
       timezone?: (workspaceId: string) => Promise<string | null>;
-      /** Detached standing-runtime SSE capture for durable turnlog ingest. */
       turnLogCapture?: {
         capture(
           endpoint: RuntimeEndpoint,
@@ -100,7 +65,6 @@ export class ProxyChannel implements RuntimeChannel {
         ): Promise<void>;
         stopCapture(agentId: string, conversationId: string): void;
       };
-      /** Injectable for tests; defaults to the process-wide ledger. */
       revocations?: RevocationTombstones;
     },
   ) {}
@@ -166,9 +130,6 @@ export class ProxyChannel implements RuntimeChannel {
     req: IncomingMessage,
     res: ServerResponse,
   ): Promise<void> {
-    // First touch spins the runtime up (a GKE cold start can take a minute or
-    // two). Read-only probes don't hold the socket for all of it — they answer
-    // "retry shortly" and let the boot finish in the background.
     const endpoint = await wakeForDispatch(
       this.opts.launcher,
       ctx,
@@ -176,21 +137,8 @@ export class ProxyChannel implements RuntimeChannel {
       rest,
       res,
     );
-    if (!endpoint) return; // already answered 503; the boot lives on
+    if (!endpoint) return;
 
-    // Collect the raw body for non-GET so arbitrary payloads ({text}, {code},
-    // {activeProvider}) pass through untouched. Strip the caller's `token` auth
-    // param so the user's JWT is never leaked downstream to the runtime.
-    //
-    // Bounded by MAX_JSON_BYTES: file uploads and attachments are intercepted
-    // host-side (handleFiles / handleAttachments) BEFORE this forward, so the
-    // only bodies that reach a standing pod are control-plane JSON (messages,
-    // settings, provider login) — a few MB is generous, and the cap stops an
-    // oversized body from OOM-ing the (memory-capped) engine pod.
-    //
-    // A route that already drained the body hands it over on the ctx (the turn
-    // path peeks it to stamp mission attribution) — the stream is exhausted by
-    // then, so re-reading it here would forward an EMPTY body.
     let body = ctx.body;
     if (!body && method !== "GET" && method !== "HEAD") {
       body = await readBody(req, MAX_JSON_BYTES);
@@ -213,7 +161,6 @@ export class ProxyChannel implements RuntimeChannel {
         capturedConversationId = conversationId;
         await this.attachTurnLogCapture(endpoint, ctx.agent.id, conversationId);
       } catch (error) {
-        // Shadow-only: a malformed id or capture setup must never affect send.
         console.debug("[turnlog] standing capture enqueue failed", error);
       }
       try {
@@ -229,11 +176,6 @@ export class ProxyChannel implements RuntimeChannel {
     params.delete("token");
     const qs = params.toString();
 
-    // Forward the gateway's per-turn acting-as token (C2) verbatim — nothing is
-    // minted host-side; when absent the runtime acts as the workspace owner.
-    // Gateway-fronted deployments only (forwardActingHeader): without a gateway
-    // to have minted it, an inbound header is untrusted client input and is
-    // dropped. A single-value header only.
     const actingHeader = this.opts.forwardActingHeader
       ? req.headers["x-houston-acting-as"]
       : undefined;
@@ -241,8 +183,6 @@ export class ProxyChannel implements RuntimeChannel {
       ? actingHeader[0]
       : actingHeader;
 
-    // The SSE resume cursor: an EventSource reconnect sends Last-Event-ID, and
-    // the runtime's events route honors it — relay it so resume survives the proxy.
     const lastEventHeader = req.headers["last-event-id"];
     const lastEventId = Array.isArray(lastEventHeader)
       ? lastEventHeader[0]
@@ -283,10 +223,6 @@ export class ProxyChannel implements RuntimeChannel {
     pin?: TurnPin,
     { actingUser, actingAs, limits, routine, nonce }: FireTurnOptions = {},
   ): Promise<void> {
-    // A turn begins here for every programmatic fire (a routine, a trigger, a
-    // mission's first turn): the host records which conversation this agent is
-    // working in AND whose name the work is done in, because a runtime's own
-    // claim about either is not evidence (routes/live-turn.ts).
     liveTurns.start(
       ctx.agent.id,
       conversationId,
@@ -294,12 +230,6 @@ export class ProxyChannel implements RuntimeChannel {
       { actingAs, actingUser, limits },
       liveTurnPin(pin),
     );
-    // Wake the standing runtime and POST the routine's prompt as a normal
-    // message — the runtime starts the turn (202) and persists the reply into
-    // the conversation, exactly as a user message would. The routine's
-    // provider/model/effort/mode pins ride alongside (omitted when absent →
-    // the session's current/default). A non-2xx throws so the scheduler records
-    // an errored run.
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     await this.opts.beforeTurn?.(ctx.agent);
     const suggestions = (await this.opts.nextStepSuggestions?.()) ?? true;
@@ -319,9 +249,6 @@ export class ProxyChannel implements RuntimeChannel {
               : actingUser
                 ? { "x-houston-acting-user": actingUser }
                 : {}),
-            // Set only here: `dispatch` relays a client's request through
-            // `forward`, which builds its own header list, so no client
-            // message can carry this marker.
             ...(routine ? { [ROUTINE_FIRE_HEADER]: "1" } : {}),
           },
           body: JSON.stringify({
@@ -358,16 +285,8 @@ export class ProxyChannel implements RuntimeChannel {
   }
 
   async cancelTurn(ctx: ChannelCtx, conversationId: string): Promise<boolean> {
-    // An asleep/absent runtime cannot be running a turn (turns live inside the
-    // runtime process; sleep kills it) — answer false without paying a cold
-    // start just to hear the same thing from a fresh process.
     if ((await this.opts.launcher.status(ctx.agent.id)) !== "running")
       return false;
-    // The runtime's own cancel route aborts the in-flight turn; `cancelled`
-    // reports whether anything was actually running. A non-2xx (or a 2xx with
-    // an unreadable body — a protocol bug, not a clean no-op) throws — the
-    // caller has already marked the run cancelled, so this only surfaces the
-    // abort failure, it never resurrects the run.
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     const res = await fetch(
       `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/cancel`,
@@ -390,8 +309,6 @@ export class ProxyChannel implements RuntimeChannel {
   }
 
   async busy(ctx: ChannelCtx): Promise<boolean> {
-    // An asleep/absent runtime cannot be running a turn (turns live inside the
-    // runtime process; sleep kills it) — answer false without waking it.
     if ((await this.opts.launcher.status(ctx.agent.id)) !== "running")
       return false;
     try {
@@ -408,8 +325,6 @@ export class ProxyChannel implements RuntimeChannel {
   }
 
   async loginPending(ctx: ChannelCtx): Promise<boolean> {
-    // Same reach as busy: an asleep runtime holds no sign-in (sleep ends the
-    // process), and an unreadable answer must not read as nothing pending.
     if ((await this.opts.launcher.status(ctx.agent.id)) !== "running")
       return false;
     try {
@@ -419,8 +334,6 @@ export class ProxyChannel implements RuntimeChannel {
       });
       if (!res.ok) return true;
       const body = (await res.json()) as { loginPending?: unknown };
-      // Absent = a runtime older than the field: it reports no sign-in. Any
-      // present value but a literal false reads as pending.
       return body.loginPending !== undefined && body.loginPending !== false;
     } catch {
       return true;
@@ -432,23 +345,6 @@ export class ProxyChannel implements RuntimeChannel {
   }
 
   async withQuiesced<T>(ctx: ChannelCtx, fn: () => Promise<T>): Promise<T> {
-    // Sleep, not destroy: the runtime's state stays on disk and the next
-    // dispatch respawns it (pi's continueRecent restores its sessions). The
-    // launcher's sleep waits for the child to ACTUALLY exit — escalating to
-    // SIGKILL and failing loudly rather than reporting a live child asleep —
-    // so a caller that needs the agent's directory quiet (rename) can rely
-    // on it.
-    //
-    // The hold spans sleep AND fn: the app reconnects its streams within
-    // ~500ms of the runtime dying and dispatches with the OLD id; without
-    // the latch, ensureAwake spawned a fresh runtime bound to the directory
-    // being renamed, and its first write resurrected the old name (HOU-827).
-    //
-    // Idempotent by contract: an absent runtime is ALREADY quiet. The
-    // launcher's sleep deliberately rejects sleeping an unknown sandbox
-    // (a genuine sleep-of-absent elsewhere is a bug it must not paper over),
-    // so only an existing runtime is slept — renaming a never-woken agent
-    // must succeed, not 500.
     const release = this.opts.launcher.hold?.(ctx.agent.id) ?? (() => {});
     try {
       if ((await this.opts.launcher.status(ctx.agent.id)) !== "absent") {
@@ -464,15 +360,6 @@ export class ProxyChannel implements RuntimeChannel {
     await this.opts.launcher.destroy(ctx.agent.id, { dropVolume: true });
   }
 
-  /**
-   * Connect-once capture: pull the credential out of the agent's runtime, store
-   * it for the WHOLE workspace, then scrub the runtime's refresh token (Gate #2).
-   * A scrub failure after the store landed settles as success (the connect
-   * worked) — it is logged loudly and the runtime's serve sync finishes the
-   * scrub (PRODUCT-1318). This path is the USER-initiated connect, so its full
-   * PUT deliberately supersedes tombstones; automatic re-pushes (the serve
-   * healer) pass ifAbsent instead.
-   */
   async captureCredential(
     ctx: ChannelCtx,
     provider?: string,
@@ -482,13 +369,9 @@ export class ProxyChannel implements RuntimeChannel {
       credentials: this.opts.credentials,
       workspaceId: ctx.agent.workspaceId,
       provider,
-      // The connecting MEMBER's own credential (HOU-976): read from their
-      // runtime auth file, stored on their row, scrubbed from their file.
       actingAs: ctx.actingAs,
       anthropicServedHere: this.opts.anthropicServedHere ?? true,
     });
-    // A user-driven device-code connect supersedes any provider revocation of
-    // the previous credential — automatic serving may resume immediately.
     if (result.ok) {
       this.revocations.clear({
         workspaceId: ctx.agent.workspaceId,
@@ -499,30 +382,12 @@ export class ProxyChannel implements RuntimeChannel {
     return result;
   }
 
-  /**
-   * Connect-once logout: drop the workspace's central credential for a provider.
-   * Every agent runtime re-pulls this credential from the host before each turn,
-   * so removing it here is what actually logs the workspace out — clearing a
-   * single runtime's local auth.json alone would be undone by the next re-serve.
-   */
   async forgetCredential(ctx: ChannelCtx, provider: string): Promise<void> {
     await this.opts.credentials.remove(ctx.agent.workspaceId, provider, {
       actingAs: ctx.actingAs,
     });
   }
 
-  /**
-   * Store a pasted API key: push it into the standing runtime FIRST — the
-   * runtime live-verifies the key against the provider (verify-api-key.ts) and
-   * rejects one that doesn't authenticate — then store it centrally for the
-   * whole workspace. Order matters: storing before the runtime's verdict left a
-   * garbage key "connected" everywhere (the central store is the source of
-   * truth every future runtime is served from). The runtime's own store is
-   * written by the push, so status reads connected immediately. If the central
-   * store then rejects the PUT, the runtime write is rolled back
-   * (`rollbackRuntimeApiKey`) — a failed connect must not leave a working but
-   * unmanifested key behind (PRODUCT-1321).
-   */
   async saveApiKeyCredential(
     ctx: ChannelCtx,
     provider: string,
@@ -539,8 +404,6 @@ export class ProxyChannel implements RuntimeChannel {
           Authorization: `Bearer ${endpoint.token}`,
           ...(ctx.actingAs ? { "x-houston-acting-as": ctx.actingAs } : {}),
         },
-        // Azure OpenAI rides its per-resource endpoint with the key
-        // (PRODUCT-1477); the runtime validates and persists it.
         body: JSON.stringify({
           key: apiKey,
           ...(providerEndpoint ? { endpoint: providerEndpoint } : {}),
@@ -551,9 +414,6 @@ export class ProxyChannel implements RuntimeChannel {
       const body = (await res.json().catch(() => undefined)) as
         | { error?: string; reason?: string }
         | undefined;
-      // The runtime's typed verification reason (invalid_key / key_restricted /
-      // provider_unavailable) must survive to the connect dialog's copy — keep
-      // it on the error so the route can put it back on the wire.
       throw new ApiKeyRejectedError(
         body?.error ??
           `the agent runtime did not accept the key (${res.status}) — try connecting again`,
@@ -569,29 +429,14 @@ export class ProxyChannel implements RuntimeChannel {
           refreshToken: "",
           expiresAt: 0,
           kind: "api_key",
-          // The provider endpoint (Azure's per-resource URL) rides the row's
-          // non-secret enterpriseUrl slot: the key is served workspace-wide,
-          // and a runtime that never ran this connect needs the endpoint with
-          // it or every turn dies before HTTP (PRODUCT-1532). The runtime
-          // just verified the key AGAINST this endpoint, so it is proven.
           ...(providerEndpoint ? { enterpriseUrl: providerEndpoint } : {}),
         },
         { actingAs: ctx.actingAs },
       );
     } catch (err) {
-      // The runtime just verified AND persisted this key — but the central
-      // store is the source of truth every future runtime is served from, and
-      // a key it never learned about is absent from the runtime's
-      // served-providers manifest, so no authoritative sync can ever remove
-      // it. Left in place it works until the pod recycles, then silently
-      // vanishes: the "spontaneous disconnect" (PRODUCT-1321). Roll the
-      // runtime entry back so this failed connect leaves NO local residue,
-      // then surface the central failure the user already sees.
       await this.rollbackRuntimeApiKey(endpoint, provider, apiKey, ctx);
       throw err;
     }
-    // A verified pasted key (incl. the anthropic setup token) is a fresh
-    // user-driven connect: it supersedes any provider revocation.
     this.revocations.clear({
       workspaceId: ctx.agent.workspaceId,
       provider,
@@ -599,14 +444,6 @@ export class ProxyChannel implements RuntimeChannel {
     });
   }
 
-  /**
-   * Best-effort undo of the runtime-side key write when the central PUT
-   * failed. The runtime removes the entry only if it still holds THIS exact
-   * key (a concurrent connect's newer key survives). A rollback failure is
-   * logged loudly, never thrown — the caller is already rethrowing the central
-   * failure, which is the error the user acts on; masking it with a rollback
-   * transport error would hide the real reason the connect failed.
-   */
   private async rollbackRuntimeApiKey(
     endpoint: RuntimeEndpoint,
     provider: string,
@@ -635,53 +472,12 @@ export class ProxyChannel implements RuntimeChannel {
     }
   }
 
-  /**
-   * Materialize the desktop-pushed Claude subscription OAuth credential onto the
-   * standing pod so its Claude Agent SDK authenticates and self-refreshes.
-   *
-   * Dual write, mirroring saveApiKeyCredential: store it centrally (access +
-   * refresh — the control plane is the single refresher from here on) AND push
-   * it into the standing runtime, which writes the SDK's own
-   * `<CLAUDE_CONFIG_DIR>/.credentials.json` (immediate connect signal) and
-   * warms the connected probe so status flips at once. The runtime push is
-   * SKIPPED for an attributed (acting-as) connect — the shared file is team
-   * material the runtime would refuse anyway (HOU-976), and the central store
-   * put alone is the whole connect on that arm (served access-only per turn).
-   *
-   * From the next serve sync onward, a MANAGED pod rides the per-turn
-   * access-only path like every provider (serve.ts + routes/credential.ts):
-   * the gateway refreshes centrally and the pod never rotates the refresh
-   * token — one rotator, no family races, and a recycled pod (emptyDir /data)
-   * reconnects from the central store. The materialized file remains the
-   * fallback when a serve is unavailable; the served env token outranks it
-   * inside the SDK. On a desktop/self-host host this central entry is an inert
-   * durability marker (never served, never refreshed). The multi-tenant
-   * per-turn Cloud Run channel refuses this credential entirely. The token is
-   * never logged.
-   */
   async saveClaudeOAuthCredential(
     ctx: ChannelCtx,
     cred: ClaudeOAuthCredential,
     opts?: { ifAbsent?: boolean },
   ): Promise<void> {
     if (opts?.ifAbsent) {
-      // Fill-only push (the desktop reconcile of a CACHED snapshot, HOU-855):
-      // when the workspace already holds a central anthropic credential —
-      // whose refresh token the gateway may have rotated since this snapshot
-      // was cached — storing OR materializing the snapshot would poison the
-      // family (the gateway's next refresh with the superseded token trips
-      // Anthropic's reuse detection and revokes every access token). Present
-      // means done: the pod serves the live credential. A probe failure
-      // throws — the reconcile logs it and retries next session; guessing
-      // "absent" here and materializing a stale file is never worth it.
-      //
-      // ABSENT is not automatically fillable either (HOUSTON-APP-530): when
-      // the row is absent because the provider REVOKED it (the runtime's
-      // revoked-token report deleted it minutes ago), a cached snapshot of
-      // that same family is exactly the poison above — old clients pre-HOU-950
-      // loop this push on a 15–30s cadence, re-revoking the fill every cycle.
-      // Refuse while the tombstone is live; a real sign-in pushes WITHOUT
-      // ifAbsent and is never blocked.
       if (
         this.revocations.active({
           workspaceId: ctx.agent.workspaceId,
@@ -701,17 +497,6 @@ export class ProxyChannel implements RuntimeChannel {
       );
       if (existing) return;
     } else if (cred.expiresAt && cred.expiresAt < Date.now() - STALE_SKEW_MS) {
-      // Overwrite intent claims "just minted by a browser login" — but a
-      // genuine fresh mint always carries a future-dated access token. An
-      // already-expired one is a CACHED snapshot wearing the wrong hat (a
-      // login flow that failed to update the OS cache before extraction), and
-      // storing it would clobber the live central credential and poison the
-      // token family exactly like the HOU-855 clobber (observed in HOU-892: a
-      // 7-hours-expired snapshot overwrote a freshly reconnected credential,
-      // re-revoking it). Reject loudly — the desktop degrades to the paste
-      // flow with a visible toast. Credentials without an expiry pass: absent
-      // metadata proves nothing, and the reconcile's fill-only path (above)
-      // stays the home for possibly-stale snapshots.
       throw new Error(
         "This Claude credential's access token is already expired, so it can't be a fresh sign-in. Sign in to Claude again, or paste a setup token.",
       );
@@ -719,26 +504,14 @@ export class ProxyChannel implements RuntimeChannel {
     await this.opts.credentials.put(
       {
         workspaceId: ctx.agent.workspaceId,
-        // pi's provider id for Houston's native Anthropic provider.
         provider: "anthropic",
         kind: "oauth",
         accessToken: cred.accessToken,
-        // Central-store durability marker only — the pod authenticates from the
-        // materialized file, not this. A credential without a refresh token /
-        // expiry (both optional in the CLI shape) still stores cleanly.
         refreshToken: cred.refreshToken ?? "",
         expiresAt: cred.expiresAt ?? 0,
       },
-      // Belt-and-braces under the gateway's atomic row lock: a concurrent
-      // write between the probe above and this put still cannot be clobbered.
       { ifAbsent: opts?.ifAbsent, actingAs: ctx.actingAs },
     );
-    // A stored OVERWRITE push is a fresh user-driven sign-in: it supersedes
-    // any provider revocation, so automatic serving may resume immediately.
-    // BEFORE the attributed early-return below — an attributed reconnect
-    // (every cloud connect) must not strand a live tombstone that would block
-    // automatic recovery for a TTL and prime a false "refilled AND revoked
-    // AGAIN" escalation if the fresh credential later dies.
     if (!opts?.ifAbsent) {
       this.revocations.clear({
         workspaceId: ctx.agent.workspaceId,
@@ -747,19 +520,6 @@ export class ProxyChannel implements RuntimeChannel {
       });
     }
     if (ctx.actingAs) {
-      // An ATTRIBUTED connect (the gateway minted acting-as for it — every
-      // proxied dispatch since cloud #208, personal spaces included) must not
-      // touch the pod-shared claude-login dir: the runtime's HOU-976 scope
-      // guard refuses the materialize, correctly, because that file is
-      // pod-wide and a second self-refreshing holder would fork the family's
-      // rotator (trap #4). Treating that refusal as a push failure was the
-      // Aug-2026 reconnect loop: the central store put above had SUCCEEDED,
-      // yet the 502 sent the desktop into retry + paste fallback, and the
-      // serial re-mints got the fresh families revoked at Anthropic
-      // (HOUSTON-APP-56F). The store put IS the connect here — the pod serves
-      // the credential access-only per turn (`CLAUDE_CODE_OAUTH_TOKEN`
-      // outranks the file inside the SDK), and the runtime's serve sync flips
-      // the scoped status connected on the next poll.
       return;
     }
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
@@ -772,7 +532,6 @@ export class ProxyChannel implements RuntimeChannel {
           Authorization: `Bearer ${endpoint.token}`,
           ...(ctx.actingAs ? { "x-houston-acting-as": ctx.actingAs } : {}),
         },
-        // The CLI envelope, forwarded verbatim so the pod writes the exact file.
         body: JSON.stringify({ claudeAiOauth: cred }),
       },
     );
@@ -783,24 +542,6 @@ export class ProxyChannel implements RuntimeChannel {
     }
   }
 
-  /**
-   * Persist an OpenAI-compatible (local) endpoint in the standing runtime, then
-   * store its (placeholder) key centrally like any other api-key connect.
-   *
-   * The acting identity rides to the runtime: the runtime keys its auth file
-   * by credential scope (HOU-976), and every later turn, serve probe and heal
-   * for this user resolves THEIR scope. Saving without it wrote the key into
-   * the team file, so a cloud pod answered "Provider is not configured" 400 ms
-   * after a 200 connect, and the heal (which exports the acting scope's file)
-   * never found a key to capture (PRODUCT-1807).
-   *
-   * The central PUT is the same contract as `saveApiKeyCredential`: pods are
-   * stateless, so the runtime's local copy dies at the next recycle, and the
-   * per-turn serve is the only durable source. A plain (non-if-absent) PUT is
-   * the user's "I reconnected" signal that clears a revocation tombstone left
-   * by an earlier disconnect. Desktop/self-host store it in their local
-   * credential store, which the serve path already hands back unchanged.
-   */
   async saveCustomEndpoint(
     ctx: ChannelCtx,
     endpoint: CustomEndpoint,

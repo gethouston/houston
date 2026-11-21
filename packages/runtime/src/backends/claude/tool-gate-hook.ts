@@ -7,16 +7,9 @@ import type { WorkspaceGuardOptions } from "../../session/tools/fs-guard";
 import { denyToolUse, fileGuardHook } from "./file-guard-hook";
 import { buildTurnEndHooks } from "./turn-end-hook";
 
-/** The SDK lets a tool run once a hook times out, so the gate answers first. */
 const TOOL_GATE_TIMEOUT_S = 600;
 export const TOOL_GATE_DENY_AFTER_MS = (TOOL_GATE_TIMEOUT_S - 10) * 1000;
 
-/**
- * PreToolUse: hold every tool call, built-in or Houston MCP, until
- * `beforeTool` resolves. Hooks run for auto-approved calls too, which
- * `canUseTool` does not see. A rejection, an aborted turn or the deadline
- * denies the call with its reason instead of running it early.
- */
 export function toolGateHook(beforeTool: () => Promise<void>): HookCallback {
   return async (_input, _toolUseId, { signal }) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -44,18 +37,10 @@ export function toolGateHook(beforeTool: () => Promise<void>): HookCallback {
 
 export interface SessionHookOptions {
   workspaceDir: string;
-  /** The SAME policy object `canUseTool` is built from. */
   fileGuard?: WorkspaceGuardOptions;
   beforeTool?: () => Promise<void>;
 }
 
-/**
- * The session's SDK hooks: the turn-end stop, and one PreToolUse that runs the
- * tool gate (if any) and then the workspace guard, in that order. One callback
- * rather than two matchers because Claude Code runs a matcher's hooks in
- * parallel: the guard must judge paths only once the deferred files it may
- * resolve through are on disk, and either one denying stops the call.
- */
 export function buildSessionHooks({
   workspaceDir,
   fileGuard,

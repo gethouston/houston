@@ -1,14 +1,3 @@
-/**
- * Loading placeholders for the Files body, mirroring the real row layout
- * one-for-one (in-tree checkbox slot, depth indent, column template). The real
- * list owns no header row, so the placeholders begin where its rows begin.
- *
- * The skeleton MOUNTS NOTHING for its first 150ms: a local read lands well
- * inside that window, so expanding a section goes straight from closed to the
- * real listing with no placeholder flashing tall and collapsing. Only a
- * genuinely slow read (cloud, cold cache) ever shows the skeleton, fading in
- * via `.files-skeleton-in`.
- */
 import { cn, Skeleton } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import {
@@ -23,10 +12,6 @@ import {
 } from "./files-list-chrome";
 import { RowIndent } from "./files-list-indent";
 
-/** Stable keys: the placeholder count is fixed, so no index-derived keys.
- *  THREE rows, deliberately few: inside the accordion the skeleton is a guess
- *  about a section it has never read, and a tall guess that collapses onto a
- *  two-file listing reads as a glitch. */
 const ROW_KEYS = ["r1", "r2", "r3"];
 
 const SKELETON_DELAY_MS = 150;
@@ -51,9 +36,6 @@ export function FilesListSkeleton({
           <div
             key={key}
             aria-hidden
-            // The real row's geometry without its hover: a placeholder is not
-            // hoverable, and a fill chasing the cursor over dead rows reads as
-            // a listing that is already interactive.
             className={cn(ROW_CLASS, "hover:bg-transparent")}
             style={{
               display: "grid",
@@ -79,7 +61,6 @@ export function FilesListSkeleton({
             <span className={META_CELL}>
               <Skeleton className="h-2.5 w-10" />
             </span>
-            {/* The actions column: a kebab is chrome, never a loading bar. */}
             <span className={ACTIONS_CELL} />
           </div>
         ))}

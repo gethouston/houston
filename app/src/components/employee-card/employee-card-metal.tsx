@@ -8,21 +8,12 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { memo, useMemo } from "react";
 import { EmployeeCardPortrait } from "./employee-card-portrait";
 
-/**
- * The badge's photo panel. A single material layer crossfades; the palette
- * trigger keeps its focus.
- *
- * The panel is taller than it is wide and its height follows the badge, so the
- * engraving is cropped to it rather than stretched: stretched, a narrow strip
- * would squeeze the waves into zigzags. Its lines stay hairlines at any scale.
- */
 export const EmployeeCardMetal = memo(function EmployeeCardMetal({
   paint,
   seed,
   dim,
 }: {
   paint: string;
-  /** The engraving's seed (`metalEngravingSeed`). */
   seed: number;
   dim: boolean;
 }) {

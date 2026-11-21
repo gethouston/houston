@@ -109,8 +109,6 @@ describe("sendInteractionReply", () => {
   });
 
   it("sends a connect-only reply verbatim, so it stays a hidden auto-continue", async () => {
-    // The card hands a connect-only completion no files (see ui/chat's
-    // interaction-card-attachments-send test), so nothing wraps the marker.
     const text = encodeAutoContinueMessage(
       "I connected Gmail. Please continue.",
     );

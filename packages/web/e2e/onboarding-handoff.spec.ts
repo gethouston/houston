@@ -22,16 +22,6 @@ import {
 } from "./support/onboarding";
 import { openAssistant } from "./support/settings-nav";
 
-/**
- * How first run ends, once the team is built: the manager closes on one team
- * card (each AI Employee a row that opens them, then what the manager does),
- * then starts the goal the person gave as its first real turn. That hidden
- * turn is drawn as the goal card: its steps tick as the manager works, and
- * the manager's own words never show, except a failure's one sentence, on
- * the card beside Try again. A person who skipped the goal is asked for a
- * task instead.
- */
-
 const CLOSING_ASK =
   "What's a task you'd normally do yourself? Tell me and I'll get it done.";
 const GOAL = "Chase my overdue invoices every Monday";
@@ -44,8 +34,6 @@ test("the goal starts as a card, never as the manager's words", async ({
   await resetToFirstRun(request);
   await openManagerOnboarding(page);
   await reachTeamStep(page);
-  // The fake host replies in words alone: no hire, no mission, so the turn
-  // ends with the goal not started, and the card says why.
   await request.post(`${FAKE_HOST_URL}/__test__/chat-reply`, {
     data: { text: FAILURE },
   });
@@ -55,7 +43,6 @@ test("the goal starts as a card, never as the manager's words", async ({
   await expect(chat).toBeVisible();
   await expect(managerOnboarding(page)).toHaveCount(0);
   await expectClosing(page, GOAL);
-  // Every AI Employee opens from the team card.
   for (const name of hired)
     await expect(
       teamCard(chat).getByRole("button", { name: `Open ${name}` }),
@@ -72,15 +59,12 @@ test("the goal starts as a card, never as the manager's words", async ({
   await expect(card.getByText(FAILURE, { exact: true })).toBeVisible();
   await expect(chat.getByText(FAILURE, { exact: true })).toHaveCount(1);
 
-  // A reload lands on the first AI Employee; the person opens their
-  // manager again to find the card where they left it.
   await page.reload();
   await openAssistant(page);
   const replayed = goalCard(page.getByTestId("assistant-chat"));
   await expect(replayed).toHaveAttribute("data-phase", "failed");
   await expect(replayed.getByText(FAILURE, { exact: true })).toBeVisible();
 
-  // Try again starts the goal over, and its card replaces the first.
   await request.post(`${FAKE_HOST_URL}/__test__/chat-reply`, {
     data: { text: "Still no luck." },
   });
@@ -99,8 +83,6 @@ test("the goal card ticks to started and opens the employee on it", async ({
   await resetToFirstRun(request);
   await openManagerOnboarding(page);
   await reachTeamStep(page);
-  // The manager picks an employee already on the team and starts the
-  // mission, saying nothing: the card alone tells it.
   await request.post(`${FAKE_HOST_URL}/__test__/chat-tools`, {
     data: {
       calls: [
@@ -130,8 +112,6 @@ test("the goal card ticks to started and opens the employee on it", async ({
     ),
   ).toBeVisible();
 
-  // A reload lands on the first AI Employee; the person opens their
-  // manager again to find the card where they left it.
   await page.reload();
   await openAssistant(page);
   const replayed = goalCard(page.getByTestId("assistant-chat"));
@@ -148,8 +128,6 @@ test("an account that skipped the goal before it was required gets asked for a t
   page,
   request,
 }) => {
-  // The goal cannot be skipped any more; a record from before still can hold
-  // a skip, and the survey counts it as answered.
   await resetToFirstRun(request);
   await setAccountPreference(
     request,
@@ -173,7 +151,6 @@ test("an account that skipped the goal before it was required gets asked for a t
   await connectAi(page, "click", "team-basic");
   await hireStarterTeam(page, null, "click", STARTER_ROLES);
 
-  // Nothing to answer: the chat is the manager's, composer ready to type in.
   const chat = page.getByTestId("assistant-chat");
   await expect(chat).toBeVisible({ timeout: 15_000 });
   await expect(managerOnboarding(page)).toHaveCount(0);
@@ -181,7 +158,6 @@ test("an account that skipped the goal before it was required gets asked for a t
     await expect(teamCard(chat).getByText(line, { exact: true })).toBeVisible();
   await expect(chat.getByText(CLOSING_ASK, { exact: true })).toBeVisible();
   await expect(goalCard(chat)).toHaveCount(0);
-  // The fake host serves no integrations: nothing promises connecting tools.
   await expect(teamCard(chat).getByText("Connect your tools")).toHaveCount(0);
   await expect(chat.getByPlaceholder(ASSISTANT_COMPOSER)).toBeFocused();
 });

@@ -15,13 +15,6 @@ import {
 } from "../src/lib/agent-provisioning/born-config.ts";
 import { queryKeys } from "../src/lib/query-keys.ts";
 
-/**
- * Optimistic creation: a new hire's board offers its first day the moment the
- * create answers, not after its hosted engine warms up. The create's own
- * config is seeded into the config cache, and the config read keeps it while
- * the agent's reads still answer the creating placeholder.
- */
-
 const PATH = "/w/nova";
 const nova = { folderPath: PATH };
 
@@ -32,8 +25,6 @@ const HIRE: AgentInitialConfig = {
   arrival: "created",
 };
 
-/** The config query as `agentConfigQueryOptions` runs it, with the engine
- *  read and the creating flag supplied by the test. */
 function readConfig(
   client: QueryClient,
   creating: boolean,
@@ -51,7 +42,6 @@ function readConfig(
   });
 }
 
-/** What the employee's own board offers, off the cached config. */
 function placementOf(client: QueryClient) {
   const config = client.getQueryData<Config>(queryKeys.config(PATH));
   return firstDayPlacement({
@@ -83,7 +73,6 @@ describe("seedBornConfig", () => {
 
   it("offers nothing for an install that recorded no pending first day", () => {
     const client = new QueryClient();
-    // A copy of an existing agent: born on its brain, with no first day.
     seedBornConfig(client, PATH, { provider: "anthropic", model: "opus" });
     deepStrictEqual(placementOf(client), { kind: "none" });
   });
@@ -102,7 +91,6 @@ describe("seedBornConfig", () => {
     const query = client
       .getQueryCache()
       .find({ queryKey: queryKeys.config(PATH) });
-    // The app's default staleTime: a just-seeded entry is already past it.
     strictEqual(query?.isStaleByTime(30_000), true);
   });
 });
@@ -111,7 +99,6 @@ describe("the config read while the agent is still being created", () => {
   it("keeps the seed instead of the empty placeholder", async () => {
     const client = new QueryClient();
     seedBornConfig(client, PATH, HIRE);
-    // A ConfigChanged event or a focus refetch mid-warm-up.
     await readConfig(client, true);
     deepStrictEqual(placementOf(client), { kind: "hero", agent: nova });
   });

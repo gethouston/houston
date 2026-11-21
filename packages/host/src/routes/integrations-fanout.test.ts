@@ -55,14 +55,12 @@ test("the custom provider's bare connect row is dropped when another provider of
   expect(both.items.map((item) => item.action)).toEqual([
     "HIGHLEVEL_CREATE_CONTACT",
   ]);
-  // Custom alone still offers the connect (the only path there is).
   const alone = await searchIntegrations({
     registry: new IntegrationRegistry([offering]),
     userId: "user",
     query: "contact",
   });
   expect(alone.items.map((item) => item.toolkit)).toEqual(["highlevel"]);
-  // A compiled custom tool for the same app is never a duplicate offer.
   const compiled = new FakeIntegrationProvider({
     id: "custom",
     actions: [
@@ -112,9 +110,6 @@ test("a curated alias scope reaches other providers as the real slug", async () 
 });
 
 test("a scope naming a custom integration EXACTLY is served by custom alone: no fuzzy Composio neighbour", async () => {
-  // PRODUCT-1841: "COMFER Odoo 19 JSON-2" also matched Composio's `odoo`
-  // toolkit by substring, so a dozen turned-off ODOO_* rows were listed ahead
-  // of the user's own integration and the model read them as the catalog.
   const composio = new FakeIntegrationProvider({
     id: "composio",
     actions: [
@@ -153,7 +148,6 @@ test("a scope naming a custom integration EXACTLY is served by custom alone: no 
     ]);
     expect(composio.lastApp).toBeUndefined();
   }
-  // A scope no custom integration names exactly still fans out to everyone.
   const loose = await searchIntegrations({
     registry: new IntegrationRegistry([composio, custom]),
     userId: "user",

@@ -5,11 +5,6 @@ interface EngineConfig {
   token: string;
 }
 
-/**
- * Installs local host-sidecar lifecycle listeners (`houston-engine-ready` /
- * `houston-engine-restarted`, emitted by the Tauri supervisor). Remote host
- * modes skip this so a local restart event can never replace a remote client.
- */
 export function installEngineLifecycleListeners(opts: {
   hasClient: () => boolean;
   applyConfig: (config: EngineConfig) => void;
@@ -20,15 +15,11 @@ export function installEngineLifecycleListeners(opts: {
     if (!opts.hasClient()) {
       opts.applyConfig(ev.payload);
     }
-  }).catch(() => {
-    /* non-Tauri environment */
-  });
+  }).catch(() => {});
 
   listen<EngineConfig>("houston-engine-restarted", (ev) => {
     opts.applyConfig(ev.payload);
     opts.resetWebSocket();
     opts.notifyRestarted();
-  }).catch(() => {
-    /* non-Tauri environment */
-  });
+  }).catch(() => {});
 }

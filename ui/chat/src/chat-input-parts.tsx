@@ -1,15 +1,6 @@
-/**
- * Internal sub-components for ChatInput.
- * Not exported from the package index — used only by chat-input.tsx.
- */
-
 import { FileIcon, XIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-
-// ---------------------------------------------------------------------------
-// FileChip — shows an attached file with a remove button
-// ---------------------------------------------------------------------------
 
 export interface FileChipProps {
   name: string;
@@ -32,10 +23,6 @@ export function FileChip({ name, onRemove }: FileChipProps) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// AttachMenu — portal-rendered popup triggered by the + button.
-// ---------------------------------------------------------------------------
 
 export interface AttachMenuItem {
   label: string;
@@ -61,7 +48,6 @@ export function AttachMenu({ items, onClose, anchorRef }: AttachMenuProps) {
     };
   }
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();

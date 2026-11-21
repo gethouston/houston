@@ -19,41 +19,16 @@ import { useBoardChatWiring } from "./use-board-chat-wiring";
 import { useBoardKeyboard } from "./use-board-keyboard";
 import { useBoardSelectionUI } from "./use-board-selection-ui";
 
-/**
- * The one board every mission surface renders (Mission Control and each team
- * board, which is the same source narrowed by a scope). It owns the
- * board-shaped concerns — columns, the multi-select UI, keyboard navigation,
- * the shell panel portal, and the AIBoard prop spread — and pulls the chat
- * half from the shared {@link useBoardChatWiring} (the same wiring the
- * phone's pushed mission-chat screen binds) and the divergent pieces (data,
- * active agent, new-mission flow, bulk routing, toolbar, dialogs) from
- * `source`.
- *
- * Desktop only: the phone's tasks live on the employee's task list
- * (`agents-home/agent-missions-screen.tsx`), and the employee screen never
- * mounts a board below md (`team-view/agent-view.tsx`).
- */
 export function MissionBoard({ source }: { source: BoardSource }) {
   const { t } = useTranslation(["dashboard", "board"]);
-  // A mission chat may go wide (PRODUCT-1722): the board is a place to come
-  // back to, not a form the chat is helping to fill in.
   const { panelContainer, setPanelOpen } = useShellDetailPanel({ wide: true });
-  // A file preview beside the chat makes it wide: the board steps out.
   const chatWide = useUIStore((s) => s.chatWide || s.filePreview !== null);
-  // Every board is the whole of a kept-alive top-level screen, so the
-  // screen-level signal alone says whether this one is on the glass. It gates
-  // the keyboard nav and the shell detail panel: a hidden-but-mounted screen
-  // must stop portaling its panel, or two screens stack their panels into the
-  // one shared slot and the chat renders "split in half" (HOU-1165).
   const isActive = useIsActiveView();
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 
   const wiring = useBoardChatWiring(source);
   const { locked } = useOrgWriteLock();
 
-  // Columns: base layout (single source of truth for status→section) plus the
-  // Done "archive all" / Needs-you "select all" header actions when the source
-  // supports multi-select.
   const baseColumns = useMemo(
     () =>
       buildMissionBoardColumns(
@@ -79,9 +54,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     onCloseOpenChat: closeOpenChat,
   });
 
-  // AIBoard's closer, kept here as well as in the keyboard hook: the wide
-  // header's "Back to tasks" must close the empty new-task composer too,
-  // whose open state lives inside AIBoard and is unreachable by selection.
   const closerRef = useRef<(() => void) | null>(null);
   const { handleCloserReady } = useBoardKeyboard({
     isActive,
@@ -116,8 +88,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
 
   const handleSelect = useCallback(
     (id: string | null) => {
-      // Card-open perf mark (HOU-1011): completed when the opened
-      // conversation's messages paint (use-mc-open-conversation.ts).
       if (id) perfSpans.cardClicked();
       source.setSelectedId(id);
     },
@@ -144,8 +114,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           onRename={source.onRename}
           onNewPanelOpenerReady={source.registerOpener}
           onPanelCloserReady={handleCloserReadyWide}
-          // Wide: the board is gone from the layout, so the header leads with
-          // the way back to it and drops the X (one exit, as on the phone).
           hidePanelClose={chatWide}
           panelLeading={
             chatWide ? (

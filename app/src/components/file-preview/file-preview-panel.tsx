@@ -18,7 +18,6 @@ import { useFilePreviewLoad } from "./use-file-preview-load";
 const shows = (l: Loaded) =>
   l.state !== "loading" && l.state !== "error" && l.state !== "binary";
 
-/** True for a moment after the same file's content is replaced in place. */
 function useUpdatedFlash(loaded: Loaded, filePath: string): boolean {
   const [updated, setUpdated] = useState(false);
   const previous = useRef<{ filePath: string; loaded: Loaded } | null>(null);
@@ -36,12 +35,6 @@ function useUpdatedFlash(loaded: Loaded, filePath: string): boolean {
   return updated;
 }
 
-/**
- * The file preview: a card beside the chat on the desktop (resizable, can
- * take the whole row), a full-screen sheet on the phone that back closes.
- * One file at a time; opening another swaps the content. Opened from a chat,
- * its paged files take comments for that chat's agent.
- */
 export function FilePreviewPanel({
   target,
   leaving,
@@ -50,12 +43,9 @@ export function FilePreviewPanel({
   width,
 }: {
   target: FilePreviewTarget;
-  /** Closed, playing its exit. */
   leaving: boolean;
   expanded: boolean;
-  /** False when the row has no room for the chat beside it. */
   canExpand: boolean;
-  /** The desktop card's CSS width. */
   width: string;
 }) {
   const { t } = useTranslation("agents");
@@ -86,8 +76,6 @@ export function FilePreviewPanel({
   }, [fileKey]);
 
   const close = useCallback(() => setFilePreview(null), [setFilePreview]);
-  // Esc closes from anywhere the panel's layers (the comment popover, menus)
-  // and the board's own Esc handling have not claimed the key.
   useEffect(() => {
     if (leaving) return;
     const onKey = (e: KeyboardEvent) => {

@@ -52,8 +52,8 @@ describe("admin auth logic", () => {
   it("refreshDelayMs fires REFRESH_SKEW_MS before expiry, never negative", () => {
     const now = 1_000_000;
     expect(refreshDelayMs(now + REFRESH_SKEW_MS + 60_000, now)).toBe(60_000);
-    expect(refreshDelayMs(now, now)).toBe(0); // already inside the skew window
-    expect(refreshDelayMs(now - 999, now)).toBe(0); // already expired → clamped
+    expect(refreshDelayMs(now, now)).toBe(0);
+    expect(refreshDelayMs(now - 999, now)).toBe(0);
   });
 
   it("isTerminalRefreshError is true only for an expired / invalid refresh token", () => {
@@ -77,10 +77,10 @@ describe("admin auth logic", () => {
     expect(parseStoredSession(JSON.stringify(valid))).toEqual(valid);
     expect(parseStoredSession(null)).toBeNull();
     expect(parseStoredSession("not json")).toBeNull();
-    expect(parseStoredSession(JSON.stringify({ idToken: "id" }))).toBeNull(); // missing fields
+    expect(parseStoredSession(JSON.stringify({ idToken: "id" }))).toBeNull();
     expect(
       parseStoredSession(JSON.stringify({ ...valid, expiresAt: "5" })),
-    ).toBeNull(); // wrong type
+    ).toBeNull();
   });
 
   it("adminAuthMessage gives operator-friendly copy per stable code", () => {

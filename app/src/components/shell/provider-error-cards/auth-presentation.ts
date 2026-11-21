@@ -4,23 +4,12 @@ import {
   unhealablePresentation,
 } from "./auth-unhealable.ts";
 
-/**
- * Pure state -> presentation mapping for the inline `UnauthenticatedCard`.
- *
- * The card is a 4-phase machine (`idle | waiting | done | failed`). Its labels
- * carried two OPPOSITE meanings under one "Try again" string, so the mapping is
- * pulled out here where every phase can be asserted without mounting React. The
- * component keeps ALL side effects (launchLogin, cancel, resend) and only reads
- * the keys + action tag this returns.
- */
-
 export type LoginPhase = "idle" | "waiting" | "done" | "failed";
 
 type UnauthCause = Extract<ProviderError, { kind: "unauthenticated" }>["cause"];
 
 const K = "providerError.unauthenticated";
 
-/** Every auth-failure cause maps to a body key so the card always names a reason. */
 export function authCauseBodyKey(cause: UnauthCause): string {
   switch (cause) {
     case "token_expired":
@@ -40,12 +29,6 @@ export function authCauseBodyKey(cause: UnauthCause): string {
   }
 }
 
-/**
- * The action a button fires. A `badge` button is a disabled status pill.
- * `open_ai_hub` navigates to the AI Hub instead of launching a sign-in — the
- * org-policy card's action, because reconnecting cannot heal that failure and
- * the remedy (an API key) lives on the AI Hub's connect surfaces.
- */
 export type AuthCardAction = "reconnect" | "cancel" | "open_ai_hub";
 
 export type AuthCardButton =
@@ -54,18 +37,12 @@ export type AuthCardButton =
   | null;
 
 export interface AuthCardPresentation {
-  /** `done` = green confirmation card; `active` = the provider-glyph card. */
   variant: "done" | "active";
   titleKey: string;
   bodyKey: string;
   button: AuthCardButton;
 }
 
-/**
- * The `done` phase, parameterised by its title only: the bodies never name a
- * provider, so the generic (unknown-provider) card reuses them verbatim and
- * differs solely in the title it confirms with.
- */
 function donePresentation(args: {
   titleKey: string;
   hasFailedPrompt: boolean;
@@ -97,25 +74,6 @@ function donePresentation(args: {
   };
 }
 
-/**
- * Resolve the card's title/body/button from its phase.
- *
- * - `hasProvider: false`: the error named no provider (nothing is connected at
- *   all), so EVERY provider-named string is off the table — `{{provider}}`
- *   would interpolate to an empty string, and the old guess ("anthropic") lied.
- *   The card becomes a generic "connect an AI provider" prompt whose action
- *   opens the AI Hub instead of a sign-in that cannot be launched.
- * - `done` with a retry handler: the resume already auto-fired, so the pill
- *   is a disabled "Signed in" badge. The body says what resumed: the refused
- *   send's message (`hasFailedPrompt`) or the interrupted task.
- * - `done` without a retry handler: nothing to resume — plain confirmation.
- * - `waiting`: the wait is on the user's browser, so the action is Cancel.
- * - `failed` / `idle`: the Reconnect button relaunches sign-in.
- * - `unhealable` (idle / failed): a cause a sign-in cannot heal; the card
- *   comes from `unhealablePresentation` and never offers a reconnect. A
- *   later successful connect still lands the normal `done` confirmation +
- *   auto-resume.
- */
 export function resolveAuthCardPresentation(args: {
   phase: LoginPhase;
   hasProvider: boolean;
@@ -134,8 +92,6 @@ export function resolveAuthCardPresentation(args: {
         hasRetry,
       });
     }
-    // idle / failed / waiting alike: the generic action never leaves the app
-    // for a browser, so there is no browser wait to narrate or cancel.
     return {
       variant: "active",
       titleKey: `${K}.titleGeneric`,
@@ -156,9 +112,6 @@ export function resolveAuthCardPresentation(args: {
     });
   }
 
-  // idle and failed alike: this card never launches a sign-in (a reconnect
-  // can only hit the same wall), so a stray login failure elsewhere must not
-  // swap in the "sign-in did not finish" body over the honest one.
   if (args.unhealable) return unhealablePresentation(args.unhealable);
 
   if (phase === "waiting") {

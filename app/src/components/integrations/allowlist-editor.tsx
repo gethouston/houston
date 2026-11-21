@@ -16,14 +16,6 @@ export type {
   AllowlistEditorProps,
 } from "./allowlist-editor-types";
 
-/**
- * Presentational, i18n-agnostic editor for an integration allowlist ceiling
- * (Teams v2): an always-visible {@link AccessChoice} (allow all saves `null`,
- * "Only apps you pick" saves an explicit set) over the shared
- * {@link AppCatalogGrid} with a per-app allow Switch. Writes are instant; "Only
- * apps you pick" seeds from `seedToolkits` (filtered to `universe`) so it never
- * cuts off in-use apps; all copy is passed in.
- */
 export function AllowlistEditor({
   universe,
   allowedToolkits,
@@ -37,7 +29,6 @@ export function AllowlistEditor({
 }: AllowlistEditorProps) {
   const generatedHeadingId = useId();
   const headingId = labelledBy ?? generatedHeadingId;
-  // View-only category filter shared by the allowed list + "Add apps" catalog.
   const [category, setCategory] = useState("all");
 
   const universeSlugs = useMemo(
@@ -48,7 +39,6 @@ export function AllowlistEditor({
     () => new Set(allowedToolkits ?? []),
     [allowedToolkits],
   );
-  // The allowed apps (within the universe), then narrowed to the picked category.
   const allowedApps = useMemo(
     () => universe.filter((tk) => allowedSet.has(tk.slug)),
     [universe, allowedSet],
@@ -69,8 +59,7 @@ export function AllowlistEditor({
   const onChoice = (mode: AccessMode) =>
     mode === "any"
       ? onSave(null)
-      : // Seed with in-use apps (within the universe) so restricting never cuts off one already in use.
-        onSave([...seedToolkits].filter((s) => universeSlugs.has(s)).sort());
+      : onSave([...seedToolkits].filter((s) => universeSlugs.has(s)).sort());
   const toggle = (slug: string) => {
     const next = new Set(allowedSet);
     if (next.has(slug)) next.delete(slug);

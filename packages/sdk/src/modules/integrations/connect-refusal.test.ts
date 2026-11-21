@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { integrationConnectRefusal } from "./connect-refusal";
 
-// The error shapes a refused connect reaches a classifier in: the adapter's
-// HoustonEngineError with a PARSED body, the local runtime-client's
-// EngineError with the RAW response text, and the SDK's own errors whose
-// message is the response text.
 const parsedBody = (body: unknown) => Object.assign(new Error("x"), { body });
 const rawBody = (body: unknown) =>
   Object.assign(new Error("x"), { body: JSON.stringify(body) });

@@ -7,18 +7,6 @@ import type { SkillEditorView } from "./skill-editor-model";
 import { SkillsRetryEmpty } from "./skills-list-states";
 import type { SkillEditorState } from "./use-skill-editor";
 
-/**
- * A skill's body. A skill Houston wrote carries a numbered workflow — the
- * thing a non-technical owner checks — and an imported one carries only its
- * markdown, which then IS the skill. One reading at a time, switched from the
- * editor's header, with the states a full page owes: a skeleton while SKILL.md
- * lands, the load failure, and the notice that the chat rewrote the file under
- * an unsaved draft.
- */
-
-/** `dvh`, never `vh`: the phone's collapsing browser chrome would size the
- *  editor against a viewport that is not there. It grows past the minimum with
- *  the content (`field-sizing-content` on the base). */
 const EDITOR_SIZE = "min-h-[50dvh] md:min-h-[60dvh]";
 
 function MarkdownEditor({
@@ -38,8 +26,6 @@ function MarkdownEditor({
       onChange={(e) => onChange(e.target.value)}
       aria-label={t("detail.instructionsLabel")}
       placeholder={t("detail.instructionsPlaceholder")}
-      // No size class: the base is 16px on phones (never zooms the viewport on
-      // focus) and 14px from md up.
       className={cn("resize-none font-mono", EDITOR_SIZE)}
     />
   );
@@ -67,7 +53,6 @@ export function SkillBodyEditor({
   view: SkillEditorView;
   onViewChange: (view: SkillEditorView) => void;
   editor: SkillEditorState;
-  /** Readable, not editable: the org is locked. */
   readOnly?: boolean;
 }) {
   const { t } = useTranslation("skills");

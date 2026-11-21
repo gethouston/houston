@@ -5,14 +5,6 @@ import { dirname, join } from "node:path";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterAll, expect, test } from "vitest";
 
-/**
- * Org-shared skills on ONE pool worker that serves two orgs back to back,
- * through real pooled pi turns: each turn's prompt offers exactly the shared
- * skills its own org holds and its own agent enabled. Nothing of one org's
- * snapshot survives into the next turn, because nothing about shared skills
- * lives in the worker's process.
- */
-
 const scratch = mkdtempSync(join(tmpdir(), "houston-pool-shared-skills-"));
 process.env.HOUSTON_MODE = "turn";
 process.env.HOUSTON_DATA_DIR = join(scratch, "process-data");
@@ -121,7 +113,6 @@ const runtime = createTurnServer({
   store: new LocalDirStore(storeRoot),
   token: "",
   concurrency: 1,
-  // The org's shared prefix, as pod-store serves it to that org's turn token.
   sharedSkillsStore: (turn) =>
     new LocalDirStore(join(sharedRoot, poolIdentity(turn.gcsPrefix).org)),
 });

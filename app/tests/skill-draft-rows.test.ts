@@ -11,11 +11,6 @@ const locale = (lang: string) =>
 
 const rows = read("../src/components/skills-view/skill-draft-rows.tsx");
 
-/**
- * Two chats abandoned mid-build are the same words twice ("Unfinished: New
- * skill"), so the only thing that tells them apart is WHEN each was last
- * worked on. The row therefore dates itself from the chat's own stamp.
- */
 describe("the unfinished-chat row's description", () => {
   it("dates the chat from its last movement", () => {
     ok(rows.includes("skillDraftLastWorkedAt("));

@@ -20,20 +20,11 @@ export interface AgentOpChainDeps {
   actingAuthor?: ActivityContributor;
   startedBy?: MissionStarter;
   triggersEnabled: boolean;
-  /** The acting person's plan floor for a routine write (op `limits`). */
   routineFloorMinutes?: number;
-  /** Wired for custom-integration ops only (a per-op manager over the
-   *  hydrated definitions file + the gateway's secret store). */
   customIntegrations?: CustomIntegrationManager;
-  /** The worker's on-disk agent dir; anchors a migration import's pi
-   *  sessions (routes/migration-import.ts). */
   agentDir?: string;
 }
 
-/**
- * One route family's handler, adapted to the single shape an op arrives in.
- * The answer is the chain's, unchanged: anything but `false` means answered.
- */
 export type OpHandler = (
   deps: AgentOpChainDeps,
   method: string,

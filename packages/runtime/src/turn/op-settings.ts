@@ -15,16 +15,6 @@ import {
   pickClaimedProvider,
 } from "../ai/providers";
 
-/**
- * The agent's `settings.json` (active provider, per-provider model, effort)
- * for a SLEEPING agent, applied on a pool worker against the hydrated
- * runtime dir — the dataDir-bound twins of the live runtime's
- * `setSettings` / `claimActiveProvider` (`ai/providers.ts`), which are bound
- * to `config.dataDir` (the worker's own, never an agent's).
- *
- * The claim policy needs the connected providers; a worker has no auth.json,
- * so the gateway (the credential store's owner) sends the connected set.
- */
 export type Settings = {
   activeProvider?: ProviderId;
   models?: Partial<Record<ProviderId, string>>;
@@ -50,7 +40,6 @@ function loadSettings(dataDir: string): Settings {
   }
 }
 
-/** The agent's saved provider in a hydrated runtime dir, connected or not. */
 export function savedActiveProviderIn(dataDir: string): ProviderId | null {
   return loadSettings(dataDir).activeProvider ?? null;
 }
@@ -78,7 +67,6 @@ function setCustomModelIdIn(dataDir: string, model: string): void {
   writeJsonAtomic(file, { ...stored, model });
 }
 
-/** Mirrors `setSettings`: validate, merge, persist. Throws on a bad input. */
 export function putSettingsIn(
   dataDir: string,
   input: { activeProvider?: string; model?: string; effort?: string },
@@ -100,8 +88,6 @@ export function putSettingsIn(
   return s;
 }
 
-/** Mirrors `claimActiveProvider`: a connect never moves an agent that already
- *  resolves to a provider (HOU-695). */
 export function claimActiveProviderIn(
   dataDir: string,
   pid: string,
@@ -120,7 +106,6 @@ export function claimActiveProviderIn(
   return putSettingsIn(dataDir, { activeProvider: claim });
 }
 
-/** The runtime-dir files a settings op may touch (its sync-back scope). */
 export function settingsOpFiles(dataRel: string): string[] {
   return [`${dataRel}/settings.json`, `${dataRel}/custom-endpoint.json`];
 }

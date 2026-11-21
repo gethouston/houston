@@ -27,20 +27,16 @@ describe("cronToPreset", () => {
     assert.equal(cronToPreset("30 8 * * *"), "daily");
     assert.equal(cronToPreset("0 9 * * 3"), "weekly");
     assert.equal(cronToPreset("0 9 * * 1,3,5"), "weekly");
-    // Legacy "Weekdays only" range still classifies as Weekly (Mon-Fri).
     assert.equal(cronToPreset("0 9 * * 1-5"), "weekly");
     assert.equal(cronToPreset("0 9 15 * *"), "monthly");
   });
 
-  // The crux of issue #374: an every-N-minutes cron must classify as "custom",
-  // not null. Previously null was treated as "empty" and the builder fell back
-  // to the Daily preset, silently overwriting the schedule on reopen.
   it("classifies a non-empty, non-preset cron as custom", () => {
     assert.equal(cronToPreset("*/5 * * * *"), "custom");
     assert.equal(cronToPreset("*/1 * * * *"), "custom");
     assert.equal(cronToPreset("* * * * *"), "custom");
     assert.equal(cronToPreset("0 */2 * * *"), "custom");
-    assert.equal(cronToPreset("0 9 1-3 * *"), "custom"); // day-of-month range
+    assert.equal(cronToPreset("0 9 1-3 * *"), "custom");
     assert.equal(cronToPreset("not a cron"), "custom");
   });
 
@@ -107,7 +103,6 @@ describe("cronSummary", () => {
   it("describes the presets", () => {
     assert.equal(cronSummary("*/30 * * * *"), "Runs every 30 minutes");
     assert.equal(cronSummary("0 9 * * *"), "Runs every day at 9:00 AM");
-    // A legacy Mon-Fri range now reads as a Weekly day list.
     assert.equal(
       cronSummary("0 9 * * 1-5"),
       "Runs every week on Mon, Tue, Wed, Thu, and Fri at 9:00 AM",
@@ -119,7 +114,6 @@ describe("cronSummary", () => {
   });
   it("describes weekly and every-N-month schedules", () => {
     assert.equal(cronSummary("0 9 * * 3"), "Runs every Wednesday at 9:00 AM");
-    // Day list is localized + joined with Intl.ListFormat (Oxford comma in en).
     assert.equal(
       cronSummary("0 9 * * 1,3,5"),
       "Runs every week on Mon, Wed, and Fri at 9:00 AM",
@@ -228,10 +222,9 @@ describe("scheduleToInterval", () => {
     });
   });
   it("returns null for crons the picker can't represent", () => {
-    // Weekly day lists/ranges belong to the Weekly preset, not the custom picker.
     assert.equal(scheduleToInterval("0 9 * * 1,3,5"), null);
     assert.equal(scheduleToInterval("0 9 * * 1-5"), null);
-    assert.equal(scheduleToInterval("0 9 1-3 * *"), null); // day-of-month range
+    assert.equal(scheduleToInterval("0 9 1-3 * *"), null);
     assert.equal(scheduleToInterval("not a cron"), null);
   });
   it("round-trips through intervalToSchedule", () => {

@@ -88,7 +88,6 @@ describe("the browser live connection's stream", () => {
     h.streams[0].resolve();
     await flush();
     await h.advance(500);
-    // A stream that says its status and dies at once is no recovery.
     h.streams[1].onEvent(waiting);
     h.streams[1].onEvent(frame(1));
     h.streams[1].resolve();

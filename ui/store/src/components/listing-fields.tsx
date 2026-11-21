@@ -6,12 +6,6 @@ import { type KeyboardEvent, type ReactNode, useState } from "react";
 
 import { normalizeListingTags } from "./edit-listing-model";
 
-/**
- * Field primitives for the Edit-listing dialog: a labelled field wrapper and
- * the tag editor (chip list plus Enter/comma-to-add input, same trim/de-dupe/
- * cap rules as the publish wizard via `normalizeListingTags`).
- */
-
 export function LabelledField({
   id,
   label,
@@ -47,7 +41,6 @@ export function TagsInput({
   tags: string[];
   onChange: (next: string[]) => void;
   placeholder: string;
-  /** Accessible label for a chip's remove button. */
   removeLabel: (tag: string) => string;
 }) {
   const [draft, setDraft] = useState("");

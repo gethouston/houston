@@ -3,7 +3,6 @@
 import { Button, DialogDescription, DialogTitle } from "@houston-ai/core";
 import { CheckCircle2 } from "lucide-react";
 
-/** Reason values MUST match the `report_reason` DB enum / report `validate.ts`. */
 export const REASONS = [
   { value: "spam", label: "Spam or misleading" },
   { value: "malicious", label: "Malicious or unsafe behavior" },
@@ -14,10 +13,6 @@ export const REASONS = [
 
 export type ReasonValue = (typeof REASONS)[number]["value"];
 
-/**
- * Reader-facing message keyed by the gateway's error `code` (preferred) or, when
- * the envelope carries no code, by the HTTP status as a string fallback.
- */
 export const ERROR_COPY: Record<string, string> = {
   "rate limited": "Too many reports from here. Please try again in a minute.",
   "429": "Too many reports from here. Please try again in a minute.",
@@ -28,7 +23,6 @@ export const ERROR_COPY: Record<string, string> = {
   "404": "This agent is no longer available.",
 };
 
-/** The reason radio group: a labelled fieldset with one selectable row per reason. */
 export function ReasonRadioGroup({
   value,
   onChange,
@@ -59,7 +53,6 @@ export function ReasonRadioGroup({
   );
 }
 
-/** The post-submit confirmation shown in place of the form. */
 export function ReportSuccess({
   agentName,
   onDone,

@@ -4,10 +4,6 @@ import { HoustonSdk, type SdkPorts } from "@houston/sdk";
 import { decodeCitedMessage } from "@houston-ai/chat";
 import { submitWithCitations } from "../src/components/file-preview/cited-submit.ts";
 
-// The chat composer's submit: file comments fold into the text before the
-// Skill's own send sees it, and leave the draft only for good once the engine
-// accepts that send (the adapter's `accept`, keyed by the prompt it sent).
-
 const memory = () => {
   const map = new Map<string, string>();
   return {
@@ -59,7 +55,6 @@ function citedSdk() {
   return { sdk, prepare, comments };
 }
 
-/** A Skill send as the chat's Skill submit builds it, recorded. */
 function skillSend(sent: string[]) {
   return async ({ text }: { text: string }) => {
     const marker = JSON.stringify({ skill: "polish", message: text });
@@ -84,7 +79,6 @@ describe("composer submit with file comments", () => {
       decodeCitedMessage(sent[0] ?? "")?.citations.map((c) => c.comment),
       ["Brand green"],
     );
-    // Out with the send: not in the draft, not yet gone.
     assert.deepEqual(comments(), []);
     sdk.citations.release(sent[0] ?? "");
     assert.deepEqual(comments(), ["Brand green"]);

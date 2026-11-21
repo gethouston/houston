@@ -18,9 +18,7 @@ import { useChatProviderConnect } from "./use-chat-provider-connect";
 
 interface Props extends StepChrome, StepDraftApi {
   stepId: string;
-  /** The agent whose chat holds the card. */
   agentId: string;
-  /** The conversation the interaction belongs to, `null` before its id lands. */
   conversationId: string | null;
   providerId: string;
   reason?: string;
@@ -29,7 +27,6 @@ interface Props extends StepChrome, StepDraftApi {
   onSkip: (name: string, message?: string) => void;
 }
 
-/** The model names an account; only the existing secure dialogs receive secrets. */
 export function ChatProviderConnectInteractionCard({
   stepId,
   agentId,
@@ -42,8 +39,6 @@ export function ChatProviderConnectInteractionCard({
   ...chrome
 }: Props) {
   const { t } = useTranslation("chat");
-  // The step id alone names the first provider request of EVERY turn ("p1"), so
-  // the memory is keyed by the whole request (`provider-connect-step-memory.ts`).
   const stepKey = useMemo(
     () =>
       providerConnectStepKey({ agentId, conversationId, providerId, stepId }),
@@ -59,8 +54,6 @@ export function ChatProviderConnectInteractionCard({
   const connected = flow.state === "connected";
   const busy = chrome.disabled || flow.connecting || flow.dialogOpen;
   const canConnect = !!flow.provider && !connected;
-  // An answered step is never read again: drop what the app run remembers of it
-  // so a later request in this conversation starts live.
   const skip = (text?: string) => {
     forgetProviderConnectStep(stepKey);
     onSkip(name, text);

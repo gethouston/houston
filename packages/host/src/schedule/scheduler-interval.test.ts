@@ -7,12 +7,6 @@ import { MemoryTurnBus } from "../turn/bus";
 import { MemoryVfs } from "../vfs";
 import { type FiringJob, type RoutineFirer, Scheduler } from "./scheduler";
 
-/**
- * The local scheduler fires an `@every` routine on its true interval: after the
- * 12:48 UTC fire, "every 16 minutes" next fires at 13:04, where the cron
- * `*\/16` restarts the hour and fires at 13:00.
- */
-
 class CaptureFirer implements RoutineFirer {
   fired: { routineId: string; at: string }[] = [];
   constructor(private readonly clock: () => Date) {}
@@ -56,7 +50,6 @@ test("an @every 16m routine fires at 13:04 while */16 fires at 13:00", async () 
     now: () => clock,
     newId: () => `run-${++id}`,
   });
-  // The constructor pins the first window's left edge to the clock.
 
   const end = new Date("2026-06-12T13:05:00.000Z").getTime();
   while (clock.getTime() < end) {

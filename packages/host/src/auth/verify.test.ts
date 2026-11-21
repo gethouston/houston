@@ -5,12 +5,6 @@ import {
   ServiceTokenVerifier,
 } from "./verify";
 
-/**
- * The OPEN token verifiers (dev / service-token wrapper + parseServiceTokens).
- * The cloud SupabaseTokenVerifier (jose/JWKS) was retired with
- * `@houston/host-cloud` (git history).
- */
-
 test("DevTokenVerifier parses 'dev:<userId>'", async () => {
   const v = new DevTokenVerifier();
   expect(await v.verify("dev:u123")).toEqual({ userId: "u123" });
@@ -33,7 +27,6 @@ test("ServiceTokenVerifier matches a static token, else falls through", async ()
   );
   expect(await v.verify(tok)).toEqual({ userId: "eval-user" });
   expect(await v.verify(`Bearer ${tok}`)).toEqual({ userId: "eval-user" });
-  // Fall-through: still a working dev verifier underneath.
   expect(await v.verify("dev:u1")).toEqual({ userId: "u1" });
   expect(await v.verify("nope")).toBeNull();
 });

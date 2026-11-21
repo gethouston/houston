@@ -1,9 +1,3 @@
-// FIXTURE: the routine pause and failure mappings exactly as shipped on main
-// (597cba982, before PRODUCT-1982), so tests can prove what an OLD client does with
-// records this engine writes now. Never update it to the current code.
-// Bodies are verbatim; only the protocol types are widened to plain strings.
-
-// The types as main declared them (the old client compiled against these).
 type RoutineRunFailureCode =
   | "creator_not_connected"
   | "team_not_connected"
@@ -59,7 +53,6 @@ const SIGNED_OUT: Partial<
   team_not_connected: { as: "team_needs_reconnect", account: "team" },
 };
 
-/** The account failure code to present for `failure`, as `reader` can see it. */
 export function failureCodeForReader(
   failure: RoutineRunFailure,
   reader?: RoutineReaderAccount,
@@ -91,13 +84,6 @@ const REMEDY: Record<
   model_unavailable: { remedy: "change_model" },
 };
 
-/**
- * The notice for an auto-paused routine, or null when the routine is running
- * or a person paused it (a hand pause carries no reason and needs no notice).
- * `reader` is what the reader's own account says about the pause's provider:
- * a "not connected" pause on an account the gateway signed out asks to sign
- * in again (`./failure-view`).
- */
 export function routinePauseNotice(
   routine: Pick<Routine, "enabled"> & { auto_paused?: RoutineAutoPause },
   reader?: RoutineReaderAccount,

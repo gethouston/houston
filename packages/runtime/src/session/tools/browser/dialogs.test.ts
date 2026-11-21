@@ -19,7 +19,6 @@ afterEach(() => {
 
 function fakeTab(answerMs?: number) {
   const context = new EventEmitter();
-  // SAFETY: the dialog watcher only listens on the tab's context.
   const tab = { context } as unknown as BrowserTab;
   watchDialogs(tab, answerMs);
   return { tab, open: (dialog: Dialog) => context.emit("dialog", dialog) };
@@ -40,7 +39,6 @@ function fakeDialog(type: string, message = "Sure?") {
       calls.push("dismiss");
     },
   };
-  // SAFETY: the watcher reads only these members of a Dialog.
   return { dialog: dialog as unknown as Dialog, calls, page };
 }
 

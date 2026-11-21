@@ -8,7 +8,6 @@ import {
 } from "../src/lib/academy/lesson-signals.ts";
 import type { LessonStepSpec } from "../src/lib/academy/lesson-spec.ts";
 
-/** A world where nothing has happened yet. */
 function world(over: Partial<LessonSignals> = {}): LessonSignals {
   return {
     viewMode: "agents-home",
@@ -67,8 +66,6 @@ describe("lesson signals — conversationCreated", () => {
   const spec: LessonSignalSpec = { type: "conversationCreated" };
 
   it("never fires before the baseline is taken", () => {
-    // The sweep has not settled: a count with nothing to compare against
-    // would read every conversation the user already had as brand new.
     strictEqual(lessonSignalMet(spec, world({ conversationCount: 7 })), false);
   });
 

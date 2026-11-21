@@ -4,24 +4,6 @@ import {
 } from "@houston/engine-adapter/client";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * The INVITEE half of C8 invites on the HOSTED path — the client every cloud
- * build actually runs. Two things have to hold and neither is free:
- *
- *  1. the routes are the CROSS-org `/v1/org-invites/*` pair, NOT the org-scoped
- *     `/v1/org/invites/:id` the owner's revoke uses. One stray slash and an
- *     invitee's Accept would hit the owner-only revoke route;
- *  2. accept UNWRAPS the gateway's `201 {org: OrgSummary}` envelope, so the
- *     caller can name the team it just joined.
- *
- * Neither call degrades: every rejection (`404 invite_not_found`,
- * `409 already_member`, `403 needs_upgrade`) is a state the invitee must see,
- * so it throws and the UI explains it. Mirrors `billing-degrade.test.ts`.
- *
- * Driven through the composed client the app holds, which is where the two
- * calls live: the requests themselves are `sdk.spaces`'.
- */
-
 const CFG = { baseUrl: "https://gw.example", token: "t", controlPlane: true };
 const cp = () => new HoustonClient(CFG);
 

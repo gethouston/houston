@@ -1,12 +1,3 @@
-/**
- * The conversation contract: the conversation list, the turn/feed machinery a
- * host drives with its own `FeedOutput`, and search across missions.
- *
- * Re-exported wholesale by the package barrel; import from `@houston/sdk`.
- */
-// ===== Conversations module contract ===================================
-
-// ===== Browser hand-off module contract ===============================
 export type { BrowserWatchOptions } from "./modules/browser";
 export type * from "./modules/browser/types";
 export {
@@ -14,16 +5,11 @@ export {
   type ConversationListVM,
   conversationListScope,
 } from "./modules/conversations";
-// ===== Mission-search module contract ==================================
 export type {
   MatchedIn,
   MissionMatch,
   MissionsSearchModule,
 } from "./modules/missions-search";
-// ===== Turns module public surface =====================================
-// The turn/feed machinery lives in the turns module; it is re-exported here so
-// a host (the web engine-adapter) can drive it with its OWN FeedOutput. The
-// typed facade is still reached through `sdk.turns`.
 export {
   AGENT_SETUP_FAILED_MESSAGE,
   AGENT_TOO_LARGE_MESSAGE,

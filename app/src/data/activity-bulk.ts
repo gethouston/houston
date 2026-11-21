@@ -1,40 +1,7 @@
-/**
- * Pure helpers for mutations over the activity list.
- *
- * Kept free of any engine / Tauri imports (only erased `import type`s) so
- * the read-mutate-write logic stays unit-testable in isolation. `data/activity.ts`
- * composes these with `readAgentJson` / `writeAgentJson`.
- */
-
-// Subpath import (like `lib/active-interaction.ts`): the app's node:test runner
-// loads value imports for real, and the package index's extensionless import
-// chain only resolves under bundler resolution.
 import { resolveInteractionPatch } from "@houston/protocol/interaction";
 import { toCanonicalProviderId } from "@houston/sdk/provider-catalog";
 import type { Activity, ActivityUpdate } from "./activity";
 
-/**
- * Merge one patch into one mission — the single write rule both `update()` and
- * `applyBulkPatch` compose, and the local-write twin of the host's
- * `applyActivityUpdate` (`packages/domain/src/activities.ts`). It mirrors that
- * twin field for field:
- *
- *  - an `undefined` VALUE is not a value: it leaves the stored field alone,
- *    rather than writing `undefined` over a schema-required one (a caller that
- *    spreads an optional into a patch must not blank `status` or `title`).
- *  - `provider` is canonicalized on the way in, exactly as the CREATE path
- *    does (`data/activity.ts`): the app speaks display ids ("openai") and pi
- *    reads canonical ones off the row ("openai-codex"), so a display alias
- *    merged verbatim by an update leaves a row the engine cannot resolve a pin
- *    from.
- *  - `pending_interaction` follows the shared rule in @houston/protocol
- *    ({@link resolveInteractionPatch}): `null` deletes the key, a structurally
- *    valid object replaces it, and an absent (or malformed) one leaves it alone
- *    EXCEPT on a `status: "done"` patch, which strips the blocking steps and
- *    keeps the optional clean-finish offers — closing a mission is the user's
- *    own move and answers whatever it was waiting on, but "what to do next" and
- *    "save this as a Skill" keep rendering on the Done card.
- */
 export function applyActivityPatch(
   item: Activity,
   patch: ActivityUpdate,
@@ -46,9 +13,6 @@ export function applyActivityPatch(
   );
   const merged: Activity = { ...item, ...defined, updated_at: timestamp };
   merged.last_message_at ??= item.updated_at ?? timestamp;
-  // `provider` / `model` are the mission's model pin: `null` DELETES the key
-  // (the schema has no null type) so the mission falls back to the engine's
-  // own resolution — the warming flush clears a pin its pod cannot honor.
   if (provider === null) delete merged.provider;
   else if (provider !== undefined)
     merged.provider = toCanonicalProviderId(provider);
@@ -64,9 +28,6 @@ export function applyActivityPatch(
   return merged;
 }
 
-/** Apply `patch` to every item whose id is in `ids`, stamping `updated_at`.
- *  One shared rule with the single-row `update()` — see
- *  {@link applyActivityPatch} for the `pending_interaction` semantics. */
 export function applyBulkPatch(
   items: Activity[],
   ids: ReadonlySet<string>,
@@ -78,7 +39,6 @@ export function applyBulkPatch(
   );
 }
 
-/** Drop one item by id. Missing ids are an idempotent no-op. */
 export function applyRemove(
   items: Activity[],
   id: string,
@@ -91,7 +51,6 @@ export function applyRemove(
   };
 }
 
-/** Drop every item whose id is in `ids`. */
 export function applyBulkRemove(
   items: Activity[],
   ids: ReadonlySet<string>,

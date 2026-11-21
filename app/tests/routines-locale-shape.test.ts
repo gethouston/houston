@@ -4,18 +4,6 @@ import en from "../src/locales/en/routines.json" with { type: "json" };
 import es from "../src/locales/es/routines.json" with { type: "json" };
 import pt from "../src/locales/pt/routines.json" with { type: "json" };
 
-// The `ui/routines` IntervalPicker types `units` / `unitsSingular` as
-// Record<IntervalUnit, string> and renders `plural ? units[u] : unitsSingular[u]`
-// straight into JSX. The app sources these labels via
-// `t("schedule", { returnObjects: true })`, so a value authored as an OBJECT
-// (e.g. an i18next `{ one, other }` plural) instead of a flat string is handed
-// to React as a child and crashes the whole app:
-//   "Objects are not valid as a React child (found: object with keys
-//    {one, other})."
-// (regression guard — the plural-object crash in the custom schedule builder.)
-// Keep the unit labels flat strings; per-count wording is chosen in `ui/` by
-// switching between `unitsSingular` (count 1) and `units` (count > 1).
-
 const INTERVAL_UNITS = ["minutes", "hours", "days", "months"] as const;
 const LOCALES = { en, es, pt } as const;
 

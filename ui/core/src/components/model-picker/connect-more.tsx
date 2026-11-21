@@ -1,8 +1,6 @@
 import { Plus } from "lucide-react";
 import { CommandItem } from "../command";
 
-/** The quiet footer affordance that opens the provider-connection surface. A
- *  `CommandItem` so it stays reachable by ↑↓/Enter (no hover-only affordances). */
 export function ConnectMore({
   label,
   onSelect,

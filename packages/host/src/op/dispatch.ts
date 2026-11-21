@@ -13,79 +13,39 @@ import { FsVfs, LazyReadRefusedError, type Vfs } from "../vfs";
 import { lazyRefusalBody, relayAgentOpResponse } from "./dispatch-relay";
 import { runAgentOpChain } from "./handler-chain";
 
-/**
- * A write the gateway routes to a pool worker instead of waking the agent's
- * pod: the SAME route handlers the pod runs, executed against a hydrated
- * copy of the agent's workspace. Byte-identical semantics by construction —
- * nothing is reimplemented; only the filesystem underneath is different.
- */
 export interface AgentOpRequest {
   method: string;
-  /** Route rest after `/agents/<id>/`, e.g. `routines/<id>`, `agentfile/CLAUDE.md`. */
   rest: string;
   body?: string;
-  /** Binary request body (a migration zip), base64 — JSON can't carry raw
-   *  bytes. Mutually exclusive with `body`. */
   bodyBase64?: string;
   contentType?: string;
-  /** Verified acting identity (routines' created_by, activity contributors). */
   actingSub?: string;
   actingAuthor?: ActivityContributor | null;
-  /** `houston` when the gateway verified the AI Manager made this write: a
-   *  card it creates is stamped `started_by` (PRODUCT-1928). */
   startedBy?: MissionStarter;
   triggersEnabled: boolean;
-  /** The acting person's plan floor (the op envelope's `limits`): a routine
-   *  write is held to it, as the pod holds a gateway-stamped one. */
   routineFloorMinutes?: number;
-  /** Raw query string (files routes take `?path=`), no leading `?`. */
   query?: string;
 }
 
 export interface AgentOpResponse {
-  /** The hydrated tree holds no such agent: the worker must NOT relay this
-   *  as the handler's answer (a legacy layout, a stale envelope) — it declines
-   *  so the gateway takes the proxy path instead. */
   agentMissing?: true;
-  /** A binary answer over the relay cap, or a lazy read over its cap:
-   *  refused before buffering. */
   tooLarge?: true;
-  /** A lazy read of sign-in state its private directory refused: the
-   *  overlay may be partial, as with `tooLarge`, but nothing was too big. */
   privateRefused?: true;
   status: number;
   contentType: string;
-  /** Text body (JSON/text responses). Empty when `bodyBase64` is set. */
   body: string;
-  /** Binary body (a file download, an archive) — base64, relayed raw. */
   bodyBase64?: string;
-  /** Response headers a client depends on (Content-Disposition, Cache-Control). */
   headers?: Record<string, string>;
-  /** Domain events the handler emitted — the caller republishes their docs. */
   events: HoustonEvent[];
 }
 
-/**
- * Dispatch one op against `workspacesRoot` (the hydrated `workspaces/` dir)
- * for `agentId`. Runs the handler chain over a loopback server so the
- * handlers see ordinary IncomingMessage/ServerResponse objects. Unknown
- * routes answer 404, never a throw: the worker relays the status verbatim.
- */
 export async function dispatchAgentOp(opts: {
   workspacesRoot: string;
   agentId: string;
   request: AgentOpRequest;
-  /** Wired for custom-integration ops (see op/handler-chain.ts). */
   customIntegrations?: CustomIntegrationManager;
-  /** The handlers' file port, rooted at `workspacesRoot`. Default: the real
-   *  directory. A lazy store-backed vfs lets an op run over a manifest-only
-   *  tree that downloads objects on first read. */
   vfs?: Vfs;
-  /** The gateway's display name for the agent (auth/agent-name-header.ts):
-   *  the handlers print it, the folder id stays. */
   agentName?: string;
-  /** The agent's on-disk directory: a migration import synthesizes each
-   *  imported transcript's pi session against it, as the pod does. */
   agentDir?: string;
 }): Promise<AgentOpResponse> {
   const store = new LocalWorkspaceStore(opts.workspacesRoot);
@@ -105,9 +65,6 @@ export async function dispatchAgentOp(opts: {
   const events: HoustonEvent[] = [];
   const { method, rest } = opts.request;
 
-  // A refused lazy read answers 503 from INSIDE the handler chain (the
-  // handler may be half-way through a multi-key mutation); the flag tells
-  // the caller to discard the overlay instead of syncing a partial result.
   let refused: LazyReadRefusedError["reason"] | undefined;
   const relayError = (res: ServerResponse, error: unknown): void => {
     if (error instanceof LazyReadRefusedError) {
@@ -164,16 +121,12 @@ export async function dispatchAgentOp(opts: {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   try {
     const { port } = server.address() as AddressInfo;
-    // A GET/HEAD must carry NO body (fetch throws on any, even ""), and the
-    // gateway sends an empty string on every route op.
     const bodiless = method === "GET" || method === "HEAD";
     const body = bodiless
       ? undefined
       : opts.request.bodyBase64 !== undefined
         ? Buffer.from(opts.request.bodyBase64, "base64")
         : opts.request.body || undefined;
-    // The query rides the loopback URL too: handlers that parse req.url
-    // (migration's ?overwrite=1) see exactly what the pod's server sees.
     const query = opts.request.query ? `?${opts.request.query}` : "";
     const response = await fetch(`http://127.0.0.1:${port}/op${query}`, {
       method,

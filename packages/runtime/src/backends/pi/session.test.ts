@@ -14,15 +14,6 @@ import type { ResolvedModel, ThinkingLevel } from "../types";
 import { SentRequests } from "./model-phase";
 import { PiSession } from "./session";
 
-/**
- * PiSession is the pi implementation of the HarnessSession seam. These tests pin
- * two things: (1) it runs pi's `AgentSessionEvent` stream through `toWire` and
- * forwards ONLY the non-null WireEvents (the same mapping wire.test.ts fixtures
- * exercise, now proven end-to-end through the wrapper's subscribe), and (2) every
- * other method forwards to the underlying pi session, with dispose idempotent.
- */
-
-/** A valid pi `Usage` for fixtures; `cost` is required by the type. */
 function usage(partial: Partial<Usage>): Usage {
   return {
     input: 0,
@@ -35,7 +26,6 @@ function usage(partial: Partial<Usage>): Usage {
   };
 }
 
-/** A minimal valid assistant message carrying the given usage. */
 function assistantMessage(u: Usage, over: Partial<AssistantMessage> = {}) {
   return {
     role: "assistant",
@@ -91,8 +81,6 @@ function turnEnd(message: AssistantMessage | UserMessage): AgentSessionEvent {
   return { type: "turn_end", message, toolResults: [] } as AgentSessionEvent;
 }
 
-/** A stub pi AgentSession: captures listeners, lets the test emit events, and
- *  records every forwarded method call. Only the surface PiSession touches. */
 class StubAgentSession {
   private listeners = new Set<(e: AgentSessionEvent) => void>();
   calls: string[] = [];
@@ -200,7 +188,6 @@ test("subscribe surfaces an errored turn_end as a typed provider_error once the 
       }),
     ),
   );
-  // Held until the prompt settles — pi may still auto-recover (HOU-1057).
   expect(events).toEqual([]);
   stub.emit({ type: "agent_settled" } as AgentSessionEvent);
 
@@ -293,15 +280,11 @@ test("subscribeLiveness ticks on a toolcall_delta that subscribe drops (PRODUCT-
   session.subscribe((e) => wire.push(e));
   const unsub = session.subscribeLiveness(() => ticks++);
 
-  // A model streaming a big tool input: pure toolcall_delta traffic. The wire
-  // dialect has no frame for it — so the wire is silent — but the model is
-  // alive, and the liveness channel must say so.
   stub.emit(toolcallDelta('{"command":"cat > /tmp/brain.py'));
   stub.emit(toolcallDelta(" << 'PYEOF'"));
   expect(wire).toEqual([]);
   expect(ticks).toBe(2);
 
-  // A wire-visible event ticks liveness too (it is every raw event).
   stub.emit(textDelta("done"));
   expect(wire).toEqual([{ type: "text", data: "done" }]);
   expect(ticks).toBe(3);
@@ -342,13 +325,11 @@ test("subscribeModelPhase marks each request, its response, and the gaps between
   const emit = (e: unknown) => stub.emit(e as AgentSessionEvent);
 
   emit({ type: "turn_start" });
-  // The user's message is not the response.
   emit({ type: "message_start", message: user });
   emit({ type: "message_end", message: user });
   emit({ type: "message_start", message: assistant });
   stub.emit(textDelta("x"));
   emit({ type: "message_end", message: assistant });
-  // A failed request pi retries after its backoff, on a switched model.
   stub.model = { provider: "anthropic" };
   emit({
     type: "auto_retry_start",
@@ -379,15 +360,12 @@ test("a request's phase carries the size the hedge sent, in pi's event order", (
   const assistant = assistantMessage(usage({}));
   const emit = (e: unknown) => stub.emit(e as AgentSessionEvent);
 
-  // pi announces the turn before it appends the prompt...
   emit({ type: "turn_start" });
   emit({ type: "message_start", message: user });
   emit({ type: "message_end", message: user });
-  // ...so only the hedge, sending the request pi built, knows its size.
   hedge.sent?.({ provider: "opencode", promptTokens: 801_000 });
   emit({ type: "message_start", message: assistant });
   emit({ type: "message_end", message: assistant });
-  // A request outside the turn (a forced tool call) moves no phase.
   hedge.sent?.({ provider: "opencode", promptTokens: 801_500 });
 
   expect(phases).toEqual([

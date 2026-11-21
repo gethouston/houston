@@ -13,7 +13,6 @@ import {
   type WorkspaceStore,
 } from "../ports";
 
-/** DNS-safe slug for a workspace (used for the K8s namespace). */
 function slugify(name: string): string {
   return (
     name
@@ -24,10 +23,6 @@ function slugify(name: string): string {
   );
 }
 
-/**
- * In-memory WorkspaceStore. The source of truth for tests and `dev` mode; the
- * Postgres-backed store must match its semantics exactly. No persistence.
- */
 export class MemoryWorkspaceStore implements WorkspaceStore {
   private workspaces = new Map<WorkspaceId, Workspace>();
   private agents = new Map<AgentId, Agent>();
@@ -88,8 +83,6 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
     return [...this.agents.values()];
   }
 
-  /** Whether an agent in `workspaceId` other than `except` already holds
-   *  `name` as the disk store compares it (see `sameAgentName`). */
   private nameTaken(
     workspaceId: WorkspaceId,
     name: string,
@@ -130,8 +123,6 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
     const v = validateAgentName(name);
     if (!v.ok) throw new InvalidAgentNameError(name, v.reason);
     if (v.name === agent.name) return agent;
-    // Same contract as the disk store: a sibling already holding the name is a
-    // typed conflict, never a raw backend failure (#172).
     if (this.nameTaken(agent.workspaceId, v.name, id))
       throw new AgentNameConflictError(v.name);
     const next: Agent = { ...agent, name: v.name };

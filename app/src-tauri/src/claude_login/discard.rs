@@ -75,7 +75,7 @@ fn delete_keychain_items(service: &str) -> Result<(), String> {
             .output()
             .map_err(|e| format!("Could not access the macOS Keychain: {e}"))?;
         if output.status.success() {
-            continue; // deleted one item — check for more under another account
+            continue;
         }
         return match output.status.code() {
             Some(SECURITY_NOT_FOUND) => Ok(()),

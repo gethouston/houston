@@ -3,7 +3,6 @@ import {
   readAssistantRole,
 } from "@houston/domain/assistant-role";
 
-/** Both backends describe the same planner zones, including custom prompts. */
 export function withRoutineTimezone(
   prompt: string,
   timezone?: string,

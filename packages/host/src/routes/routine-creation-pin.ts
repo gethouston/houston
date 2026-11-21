@@ -3,7 +3,6 @@ import type { NewRoutine } from "@houston/protocol";
 import type { Vfs } from "../vfs";
 import { type LiveTurnPin, liveTurnPin } from "./live-turn-pin";
 
-/** Resolve authoring context only for agent-made creations without a provider. */
 export async function routineAuthoringPin(input: {
   vfs: Vfs;
   root: string;
@@ -29,7 +28,6 @@ const EFFORT_ORDER = [
 type RoutineEffort = (typeof EFFORT_ORDER)[number];
 type DefaultPin = { model: string; efforts: readonly RoutineEffort[] };
 
-// Unattended runs use cheaper models so an expensive authoring chat does not set their cost.
 const ROUTINE_DEFAULTS: Readonly<Record<string, DefaultPin>> = {
   anthropic: {
     model: "claude-sonnet-5-5",
@@ -37,7 +35,6 @@ const ROUTINE_DEFAULTS: Readonly<Record<string, DefaultPin>> = {
   },
   "openai-codex": {
     model: "gpt-6.1-terra",
-    // The verified subscription efforts in runtime/ai/codex-offered.ts are narrower than pi's catalog.
     efforts: ["low", "max"],
   },
 };
@@ -62,7 +59,6 @@ export function routineCreationPin(
   const knownEffort =
     EFFORT_ORDER.find((level) => level === requested) ?? "medium";
   const rank = EFFORT_ORDER.indexOf(knownEffort);
-  // Equidistant efforts choose the cheaper, lower level.
   const effort = defaults.efforts.reduce<RoutineEffort>(
     (closest, level) =>
       Math.abs(EFFORT_ORDER.indexOf(level) - rank) <

@@ -22,7 +22,6 @@ const card = (id: string, status = "running") => ({
   status,
 });
 
-/** A store serving `body` for every read, versioned at `generation` if set. */
 function storeServing(body: string, generation?: string) {
   const keys: string[] = [];
   const download = async (key: string, dest: string) => {
@@ -46,7 +45,6 @@ function storeServing(body: string, generation?: string) {
   return { store, keys };
 }
 
-/** A turn tree whose board hydrated as `hydrated` and now reads `local`. */
 async function tree(opts: {
   hydrated?: unknown[];
   local?: unknown[];
@@ -95,7 +93,6 @@ test("the stored board carries the turn's own edits, merged three-way", async ()
     await tree({ hydrated, local: [card("edited", "done"), card("made")] }),
   );
   const items = (await read())?.items ?? [];
-  // The turn's status edit and new card survive; its delete stays deleted.
   expect(items.map((a) => [a.id, a.status])).toEqual([
     ["edited", "done"],
     ["mine", "running"],
@@ -126,11 +123,9 @@ test("an unversioned read keeps the hydrated guard, or none on a guarded store",
     generation: "3",
     mergeBase: raw,
   });
-  // No generation anywhere: an entry would make the upload unconditional.
   const cold = await tree({});
   (await remoteActivityReader(store, "", cold)())?.adopt();
   expect(cold.manifest.has(BOARD)).toBe(false);
-  // A store without generations has no guard to lose.
   const plain = await tree({ generationAware: false });
   (await remoteActivityReader(store, "", plain)())?.adopt();
   expect(plain.manifest.get(BOARD)).toEqual({

@@ -8,18 +8,6 @@ import { Button } from "../src/components/button.tsx";
 Object.assign(globalThis, { React });
 const { createElement } = React;
 
-/**
- * A `<button>` with no `type` is a SUBMIT button — the HTML default — so one
- * dropped inside a form fires that form. `FormDialog` puts a real `<form>`
- * around its fields, which turned every plain Button among them (a team row,
- * a "Get your API key", a segmented choice) into a second submit: clicking it
- * saved the form with whatever was selected a moment ago (PRODUCT-1523, the
- * copy-agent dialog copying into the previous team).
- *
- * The fix is the default, not the call sites: `type="button"` unless the
- * caller asks otherwise, so a Button placed in a form does nothing but its own
- * job and the ONE control meant to submit says so out loud.
- */
 const attrs = (element: React.ReactElement): string =>
   renderToStaticMarkup(element);
 
@@ -45,9 +33,6 @@ describe("Button's type", () => {
   });
 
   it("puts no type on the child it only styles", () => {
-    // `asChild` hands the classes to someone else's element — an anchor, a
-    // Radix trigger. `type` is not a valid attribute on most of them, and the
-    // ones that are buttons bring their own.
     const html = attrs(
       createElement(
         Button,

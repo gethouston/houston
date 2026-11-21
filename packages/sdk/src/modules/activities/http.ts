@@ -1,9 +1,3 @@
-/**
- * The runtime client is scoped to conversations, so board writes use host
- * routes. The stamped writer is public through ActivitiesWrites.update, but
- * stays out of the AI Manager catalog defined by named @assistant functions.
- */
-
 import type {
   Activity,
   ActivityStamp,
@@ -20,14 +14,12 @@ import {
 import { retryWriteWhileRefused, WAKING_CREATE_RETRY_MS } from "./busy-retry";
 import type { ActivitiesWrites, CreateActivityOptions } from "./types";
 
-/** A failed `/activities` request. `status` is the upstream HTTP status. */
 export class ActivitiesHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "ActivitiesHttpError");
   }
 }
 
-/** The activities operations the module (and mission search) need. */
 export interface ActivitiesHttp {
   list(agentId: string): Promise<Activity[]>;
   create(
@@ -85,7 +77,6 @@ export async function createActivity(
         body: JSON.stringify(input),
       }),
     {
-      // Only an id-bearing create is safe to re-issue after a waking answer.
       wakingLadderMs:
         opts?.retryWhileWaking && input.id !== undefined
           ? WAKING_CREATE_RETRY_MS
@@ -143,7 +134,6 @@ export async function deleteActivity(
   );
 }
 
-// A turn's writer is private: generic catalog edits cannot stamp message time.
 async function stampActivityMessage(
   scope: HttpScope,
   agentId: string,
@@ -175,12 +165,6 @@ export function createActivitiesHttp(ctx: ScopeContext): ActivitiesHttp {
   };
 }
 
-/**
- * The no-refetch {@link ActivitiesWrites}: the underlying http ops surfaced
- * directly (returning the wire entity), with no post-write refresh. `setStatus`
- * and `rename` are the `update` PATCH with a `{ status }` / `{ title }` body —
- * the same wire writes the refetching facade issues, minus the refetch.
- */
 export function createActivitiesWrites(http: ActivitiesHttp): ActivitiesWrites {
   return {
     create: (agentId, input, opts) => http.create(agentId, input, opts),

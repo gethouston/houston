@@ -1,14 +1,5 @@
-/**
- * Rewrite a SKILL.md's frontmatter `title:` — the display phrase every surface
- * renders via `skillDisplayTitle` (PRODUCT-1018's header rename). The
- * directory slug (the skill's one canonical identity) is deliberately left
- * alone: a title can drift freely while loading keeps resolving by slug.
- */
-
-/** Opening frontmatter fence + block + closing fence (with its newline). */
 const FRONTMATTER_RE = /^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
 
-/** YAML double-quoted scalars accept JSON escaping, so this is always safe. */
 const titleLine = (title: string) => `title: ${JSON.stringify(title)}`;
 
 export function withSkillTitle(content: string, title: string): string {
@@ -19,8 +10,6 @@ export function withSkillTitle(content: string, title: string): string {
   const lines = match[1].split(/\r?\n/);
   const at = lines.findIndex((l) => /^title\s*:/.test(l));
   if (at >= 0) {
-    // Swallow a block-scalar value's indented continuation lines so a
-    // multi-line title collapses to the one new line instead of orphaning.
     let end = at + 1;
     while (end < lines.length && /^[ \t]/.test(lines[end])) end += 1;
     lines.splice(at, end - at, line);

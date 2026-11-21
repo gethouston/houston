@@ -20,10 +20,6 @@ before(async () => {
   });
 });
 
-// The pushed chat's back chevron is the phone's most-used control: its 36px
-// box keeps the header's look, and an ::after hit-slop takes the touch target
-// to 44px on a phone only (dropped at md:, where a pointer needs no slop).
-// Desktop keeps the 0.95 press it always had.
 describe("mission chat back control", () => {
   it("reaches a 44px phone target without changing the desktop box", () => {
     const html = renderToStaticMarkup(createElement(MissionChatBack));
@@ -39,9 +35,7 @@ describe("mission chat back control", () => {
     ok(classes.includes("md:after:hidden"), "no slop at the desktop edge");
     ok(classes.includes("active:scale-[0.96]"), "phone press feedback");
     ok(classes.includes("md:active:scale-95"), "desktop keeps its 0.95 press");
-    // ...and keeps it instant, as on main: no scale in the desktop transition.
     ok(classes.includes("md:transition-colors"), "desktop press stays instant");
-    // Tailwind's scale-* is the CSS `scale` property, not `transform`.
     ok(
       classes.some((c) => /^transition-\[.*\bscale\b.*\]$/.test(c)),
       "the press scale animates",

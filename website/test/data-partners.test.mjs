@@ -1,9 +1,3 @@
-// The /data-partners page: the payout estimate and the structure/copy zip.
-// The estimate is pinned to reference points sampled from the reference
-// program's published estimator (employees, years, region → low, high in
-// USD). Houston pays model.share of that curve, so every point, times the
-// share, must come out within 2%.
-
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -25,7 +19,6 @@ import {
 const src = resolve(dirname(fileURLToPath(import.meta.url)), "../src");
 const { model } = dataPartners;
 
-// [employees, years, low, high], all US.
 const US = [
   [1, 1, 116681, 196438],
   [1, 5, 151682, 254773],
@@ -55,7 +48,6 @@ const US = [
   [5000, 5, 9192814, 21719794],
   [10000, 5, 18236876, 43191669],
 ];
-// [region, employees, years, low, high]
 const REGIONS = [
   ["Canada", 100, 5, 247224, 508017],
   ["Europe", 100, 5, 247224, 508017],
@@ -75,7 +67,6 @@ test("Houston pays 60% of the reference curve", () => {
 });
 
 test("the estimate matches every US reference point within 2%", () => {
-  // Points under the 20-employee floor are out of range.
   const inRange = ([e]) => e >= LIMITS.employees.min;
   for (const [employees, years, low, high] of US.filter(inRange)) {
     const got = estimatePayout(model, { employees, years, region: "US" });

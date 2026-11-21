@@ -1,11 +1,3 @@
-/**
- * The requests Houston must REFUSE, plainly and without inventing an operation.
- * A refusal is only honest after the search came back empty, so these are the
- * other half of the same measurement: a model that guesses an operation here is
- * as wrong as one that misses `deleteActivity` there.
- *
- * Shape and rationale: {@link ./discoverability-cases.ts}.
- */
 import type { DiscoverabilityCase } from "./discoverability-cases";
 
 export const REFUSAL_CASES: readonly DiscoverabilityCase[] = [

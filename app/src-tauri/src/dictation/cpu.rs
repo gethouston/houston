@@ -17,8 +17,6 @@
 pub(super) fn cpu_supported() -> bool {
     #[cfg(all(target_arch = "x86_64", not(target_os = "macos")))]
     {
-        // AVX2 implies the rest of the pinned baseline (FMA/F16C/BMI2 all
-        // arrived with Haswell), so one probe covers it.
         std::arch::is_x86_feature_detected!("avx2")
     }
     #[cfg(not(all(target_arch = "x86_64", not(target_os = "macos"))))]
@@ -33,10 +31,6 @@ mod tests {
 
     #[test]
     fn cpu_supported_on_capable_hardware() {
-        // Every CI/dev host (Apple Silicon, AVX2-era x86-64) can run the
-        // sidecar; a pre-AVX2 x86-64 has no CI representation, so this pins
-        // the common-path contract instead: no false positives that would
-        // hide voice typing from capable machines.
         assert!(cpu_supported());
     }
 }

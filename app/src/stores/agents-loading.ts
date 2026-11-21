@@ -29,7 +29,6 @@ export function agentLoadingActions(
       const load = loadOrder.begin(silent);
       const selectionBeforeLoad = get().current?.id;
       if (!silent) set({ loading: true });
-      /** False when a newer load or a mutation superseded this one. */
       const lands = () => {
         const outcome = loadOrder.settle(load);
         if (outcome === "drop-and-settle") set({ loading: false });

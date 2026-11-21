@@ -15,13 +15,6 @@ import type {
 } from "./agent-settings-nav.ts";
 import { AgentSettingsPeople } from "./agent-settings-people.tsx";
 
-/**
- * The flush bodies (job description, people, apps, models) deliberately own no
- * width of their own, so the mounting surface does. This gives them the SAME
- * column the one self-padded body (learnings) brings — `max-w-3xl px-6` on one
- * `pt-2` top rhythm — so nothing shifts as the rail switches sections. Every
- * section page-scrolls inside it, and a locked org turns its controls off.
- */
 function AccessColumn({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto w-full max-w-3xl px-6 pt-2 pb-12">
@@ -54,11 +47,6 @@ function HeroAccessColumn({
   );
 }
 
-/**
- * The ONE section switch: renders the section the rail selected into the right
- * pane. Every branch COMPOSES the existing section component rather than
- * re-implementing it, so no two surfaces can drift.
- */
 export function AgentSettingsSectionView({
   agent,
   section,
@@ -108,7 +96,6 @@ export function AgentSettingsSectionView({
         </AccessColumn>
       );
     case "manage":
-      // Its own rows decide: moving the AI Employee out stays open.
       return (
         <div className="mx-auto w-full max-w-3xl px-6 pt-2 pb-12">
           <OrgLockedNote />

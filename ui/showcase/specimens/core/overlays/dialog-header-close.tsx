@@ -8,11 +8,6 @@ import {
   DialogTrigger,
 } from "@houston-ai/core";
 
-/**
- * The close X in a header row of the recipe's own, the way the wide FlowSheet
- * and the AI Hub detail carry it: `DialogCloseButton` is the corner X moved
- * into the row, so a recipe with a header never hand-rolls a second X.
- */
 export function HeaderCloseDialog() {
   return (
     <Dialog>

@@ -19,7 +19,6 @@ const row = (title: string, status: string, day: number): HeadlineRow => ({
 
 describe("the mission a row leads with", () => {
   it("is the work in progress, even over a newer wait", () => {
-    // The wait keeps its own signal (the row's count); work has no other.
     deepStrictEqual(
       headlineOf([row("Busy", "running", 20), row("Ask", "needs_you", 26)]),
       { title: "Busy", status: "running", updatedAt: "2026-09-20T10:00:00Z" },

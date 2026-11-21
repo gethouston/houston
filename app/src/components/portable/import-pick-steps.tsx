@@ -1,12 +1,3 @@
-/**
- * Steps 3 to 5 of "From a friend": keep or leave behind the package's skills,
- * routines and learnings.
- *
- * One component for all three because they are the same screen with a different
- * list — the wizard skips whichever kinds the package does not carry, so the
- * step ids are already filtered by the time this renders.
- */
-
 import type { PortableUploadPreviewResponse } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import { PickListStep } from "./pick-list-step";
@@ -25,7 +16,6 @@ export function ImportPickStep({
   uploaded: PortableUploadPreviewResponse;
   selection: ImportSelection;
   onSelectionChange: (next: ImportSelection) => void;
-  /** Threat-scan findings for one item; empty when the scan was declined. */
   findingsForId: (kind: string, id: string) => unknown[];
 }) {
   const { t } = useTranslation("portable");

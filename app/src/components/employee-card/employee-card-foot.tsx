@@ -9,20 +9,12 @@ import {
   employeeStatusView,
 } from "./employee-card-model";
 
-/** A failed hire's way out, on the card's foot. */
 export interface EmployeeCardRecovery {
-  /** Who the buttons act on, for their accessible names. */
   name: string;
   onRetry: () => void;
-  /** Omitted where the hire belongs to a set the person cannot shrink. */
   onRemove?: () => void;
 }
 
-/**
- * The card's foot: where the employee stands, one quiet line, and for a hire
- * that did not join, its Retry and Remove on the right. A new status fades in
- * over the old one and is announced politely.
- */
 export function EmployeeCardFoot({
   status,
   recovery,
@@ -35,7 +27,6 @@ export function EmployeeCardFoot({
   if (status === "draft") return null;
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-      {/* One region across statuses, so each new status is announced. */}
       <div role="status" aria-live="polite" className="relative min-w-0">
         <AnimatePresence initial={false} mode="popLayout">
           <motion.p

@@ -21,11 +21,6 @@ function paramKind(param: AssistantParameter): string {
 const cell = (value: string): string =>
   value.replaceAll("|", "\\|").replaceAll("\n", " ");
 
-/**
- * Every operation stays auditable, hidden ones included: the method it sends,
- * whether a person has to say yes first and why not when nobody does, and what
- * each parameter is allowed to be.
- */
 export function operationInventory(catalog: AssistantCatalog): string[] {
   return [
     "## Operation policies and parameter resolution",

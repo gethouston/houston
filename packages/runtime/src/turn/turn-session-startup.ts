@@ -18,20 +18,16 @@ import { buildTurnToolSelection, turnCodeExecution } from "./turn-toolset";
 
 export interface RunTurnDeps {
   claudeSdk?: ClaudeBackendDeps["sdk"];
-  /** Test seam: replaces the turn's own title runner (turn-mission-title.ts). */
   titleRunner?: MissionTitleRunner;
   createBackend?: (provider: string, deps: TurnBackendDeps) => HarnessBackend;
   createModelRuntime?: typeof createTurnModelRuntime;
-  /** Test seam: the stall window, else `config.turnStallTimeoutMs`. */
   stallTimeoutMs?: number;
-  /** Test seam: the first-byte deadline, else `config.turnFirstByteDeadlineMs`. */
   firstByteDeadlineMs?: number;
 }
 
 export interface TurnSessionStartup {
   backend: HarnessBackend;
   model: Awaited<ReturnType<typeof createTurnModelRuntime>>["model"];
-  /** The turn's own model runtime (per-request auth), reused by its title. */
   modelRuntime: Awaited<
     ReturnType<typeof createTurnModelRuntime>
   >["modelRuntime"];
@@ -41,7 +37,6 @@ export type TurnSessionStartupTask = Promise<
   { ok: true; startup: TurnSessionStartup } | { ok: false; error: unknown }
 >;
 
-/** Start model setup, the Claude SDK import, and backend construction. */
 export function startTurnSession(
   directories: TurnDirectories,
   turn: TurnSessionRequest,
@@ -58,9 +53,6 @@ async function prepareTurnSession(
   turn: TurnSessionRequest,
   deps: RunTurnDeps,
 ): Promise<TurnSessionStartup> {
-  // ONE answer for the allowlist, the tool and the prompt: whatever the grant
-  // withheld must be missing from all three, or the model is told it can run
-  // code it has no tool for.
   const codeExecution = turnCodeExecution(
     turn,
     turnCodeExecutionMode(config.codeExecution, config.poolSingleUse),
@@ -81,8 +73,6 @@ async function prepareTurnSession(
     turn.timings,
   );
   if (sdkLoad) await sdkLoad;
-  // The worker holds no sandbox URL, app token or GCP identity: the call rides
-  // this turn's sandbox facade, which relays it under the grant.
   const codeSandbox =
     toolSelection.includeRunCode && turn.sandbox
       ? makeRunCodeTool({
@@ -101,10 +91,6 @@ async function prepareTurnSession(
     toolSelection,
     codeSandbox,
     systemPrompt: config.systemPrompt || turnSystemPrompt(codeExecution),
-    // The ROLE's file wall, the same policy the long-lived runtime builds
-    // (session-tools.ts): a coordinator turn is held to its memory document
-    // (plus read-only attachments), so the shared skills mirror it must never
-    // rewrite is not a writable root for it on any provider.
     fileGuard: fileToolGuardOptions({
       role: turn.role ?? null,
       workspaceDir: directories.workspaceDir,
@@ -126,7 +112,6 @@ export async function finishTurnSessionStartup(
   return result.startup;
 }
 
-/** Report setup work that failed after hydration had already doomed the turn. */
 export async function reportAbandonedTurnStartup(
   task: TurnSessionStartupTask | undefined,
 ): Promise<void> {

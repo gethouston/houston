@@ -6,15 +6,6 @@ import {
 } from "@houston/engine-adapter/history-window";
 import { expect, test } from "vitest";
 
-/**
- * The windowed-seed decision (HOU-819) anchors on USER-MESSAGE CONTENT (the
- * turn skeleton), never on frame timestamps — live pushes are stamped by the
- * client clock while history folds carry the runtime's clock, so recency
- * comparisons across the two domains are meaningless. A server TAIL can be
- * shorter than the on-screen feed yet strictly newer (teammate turns landed
- * while the chat was closed and cache-painted).
- */
-
 const user = (text: string): SeedFrame => ({
   feed_type: "user_message",
   data: text,
@@ -48,8 +39,6 @@ test("an unconfirmed optimistic send is never clobbered", () => {
 });
 
 test("a tail containing newer turns replaces a stale cache paint", () => {
-  // Teammate turn "t2" landed while this chat was closed; the cache painted
-  // through "t1" only. The fold still contains t1, so it supersedes the feed.
   expect(
     decideServerSeed(
       [user("t1"), reply("r1")],
@@ -60,8 +49,6 @@ test("a tail containing newer turns replaces a stale cache paint", () => {
 });
 
 test("a raced stale fold (feed's latest turn missing from it) is skipped", () => {
-  // The feed settled turn "t2" live; a read fired mid-turn resolves late
-  // carrying only through "t1" — replacing would eat the reply.
   expect(
     decideServerSeed(
       [user("t1"), reply("r1"), user("t2"), reply("r2")],
@@ -126,8 +113,6 @@ test("different server content replaces a same-length cached fold", () => {
 });
 
 test("an UNSTAMPED longer cache paint is replaced by the authoritative window", () => {
-  // The cache painted more older content than the tail window covers, but the
-  // feed has no server indices — replace so load-older arms correctly.
   expect(
     decideServerSeed(
       [user("t0"), reply("r0"), user("t1"), reply("r1")],
@@ -138,8 +123,6 @@ test("an UNSTAMPED longer cache paint is replaced by the authoritative window", 
 });
 
 test("a STAMPED wider feed (loaded pages) survives a same-content tail refetch", () => {
-  // The user loaded older pages; a ConversationsChanged revalidation refetches
-  // the tail — discarding the prepended pages would throw away their work.
   expect(
     decideServerSeed(
       [user("t0"), reply("r0"), user("t1"), reply("r1")],
@@ -166,16 +149,12 @@ test("no user anchor on either side falls back to richer-wins", () => {
   expect(decideServerSeed([reply("a")], [reply("a")], false)).toBe("stamp");
 });
 
-// ── Cache trim (turn-aligned) ───────────────────────────────────────────────
-
 test("trimForCache keeps a small feed untouched", () => {
   const frames = [user("t1"), reply("r1")];
   expect(trimForCache(frames, 10, 20)).toBe(frames);
 });
 
 test("trimForCache cuts at a turn boundary, never mid-turn", () => {
-  // 3 turns of 4 frames each; a budget of 6 lands mid-turn-2 and must walk
-  // back to turn 2's user message.
   const frames = [1, 2, 3].flatMap((n) => [
     user(`t${n}`),
     reply(`a${n}`),

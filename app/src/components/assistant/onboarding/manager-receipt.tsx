@@ -4,17 +4,11 @@ import { Pencil } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ReceiptCopy } from "./use-script-copy";
 
-/**
- * The person's answer, as the same receipt a real answered question leaves
- * in the chat. The latest answer carries "Change answer" beneath it, always
- * visible, which asks its question again.
- */
 export function ManagerReceipt({
   copy,
   onChange,
 }: {
   copy: ReceiptCopy;
-  /** Present only on the latest answer, while it can still change. */
   onChange?: () => void;
 }) {
   const { t } = useTranslation("assistant");

@@ -85,12 +85,10 @@ export function ReviewItem({ item, onClick }: ReviewItemProps) {
         "hover:bg-hover/30",
       )}
     >
-      {/* Status indicator */}
       <div className="flex items-center justify-center w-4">
         {statusIndicator(item.status)}
       </div>
 
-      {/* Content */}
       <div className="flex-1 min-w-0">
         <p
           className={cn(
@@ -109,12 +107,10 @@ export function ReviewItem({ item, onClick }: ReviewItemProps) {
         </p>
       </div>
 
-      {/* Timestamp */}
       <span className="text-xs text-ink-muted/50 shrink-0">
         {relativeTime(item.createdAt)}
       </span>
 
-      {/* Right chevron for actionable items */}
       {isUnreviewed && (
         <ChevronRight className="size-4 shrink-0 text-ink-muted" />
       )}

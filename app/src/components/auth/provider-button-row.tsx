@@ -18,19 +18,6 @@ export function hasAvailableProviders(): boolean {
   return (["google", "apple", "azure"] as const).some(providerAvailable);
 }
 
-/**
- * The OAuth options. On a phone they stack full width, each with its icon and
- * its full "Continue with X" label: a store app may offer a single provider,
- * where a lone glyph in a wide pill reads as nothing, and Sign in with Apple
- * must be as prominent as every other option (same size, same style). From
- * md: they are one row of icon-only pills under the email field, where the
- * label survives as `aria-label` + `title`; equal `flex-1` widths keep that
- * row balanced.
- *
- * The returning user's last account is surfaced by the prominent
- * {@link ContinueLastSignIn} button above this row, so the pills here stay a
- * calm, un-decorated "use another way" fallback.
- */
 export function ProviderButtonRow({
   pending,
   onSignIn,

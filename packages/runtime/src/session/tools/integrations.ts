@@ -39,18 +39,6 @@ import {
 } from "./integrations-search-result";
 import type { SandboxFetch } from "./sandbox-fetch";
 
-/**
- * The agent's window into the user's connected third-party apps (Gmail, Google
- * Calendar, Slack, Notion, …) via the Composio platform integration.
- *
- * Two GENERIC tools — search (discover an action) then execute (run it) — kept
- * deliberately thin: they hold NO credential and talk ONLY to the host's
- * `/sandbox/integrations/*` proxy under the per-sandbox HMAC token. The host
- * (or its cloud gateway, which owns the platform key) acts as the user and
- * makes the real provider call, so a prompt-injected agent here can never read
- * any integration secret — there is none on this machine at all.
- */
-
 const SearchParams = Type.Object({
   query: Type.String({
     description:
@@ -99,23 +87,10 @@ const ConnectParams = Type.Object({
 });
 type ConnectParams = Static<typeof ConnectParams>;
 
-/**
- * Canonical toolkit slug: trimmed + lowercased, matching the connection/catalog
- * lists the connect card compares against (app-side `normalizeToolkitSlug`). A
- * model-authored slug can carry stray casing or whitespace; comparing raw would
- * silently miss a real connection and leave the card stuck on "Connect".
- */
 function normalizeToolkitSlug(slug: string): string {
   return slug.trim().toLowerCase();
 }
 
-/**
- * The `code` the host stamps on its OWN actionable error signals (409
- * "signin_required", 503 "integrations_not_configured"). Returns it, or
- * undefined for a body that carries none — including any upstream error the
- * host relays verbatim during a transient outage, which must NOT be read as one
- * of those states. A non-JSON or malformed body is simply uncoded.
- */
 function signalCode(detail: string): string | undefined {
   try {
     const body: unknown = JSON.parse(detail);
@@ -123,21 +98,10 @@ function signalCode(detail: string): string | undefined {
       const { code } = body as { code?: unknown };
       if (typeof code === "string") return code;
     }
-  } catch {
-    // Non-JSON body (e.g. an HTML proxy error page) → uncoded, generic error.
-  }
+  } catch {}
   return undefined;
 }
 
-/**
- * Thrown by `post()` when the gateway REFUSED an integration `execute` because
- * the action's app is outside this agent's allowlist (403 "toolkit_not_allowed"
- * — the app is turned OFF in this agent's Settings, under Apps). Module-private: the
- * `execute` tool catches it and RETURNS a normal (non-error) instruction, since
- * being walled off is an expected policy state the user can fix, not a tool
- * failure. Classified on the stable `code`, never the bare 403 (a relayed
- * upstream 403 during an outage carries no such code).
- */
 class ToolkitNotAllowedError extends Error {
   constructor() {
     super("toolkit not allowed");
@@ -145,14 +109,6 @@ class ToolkitNotAllowedError extends Error {
   }
 }
 
-/**
- * Thrown by `post()` when the gateway REFUSED because the acting USER may not
- * use this agent at all (403 "not_assigned" — they are not among the people
- * with access to it). Module-private and handled by BOTH tools: like the
- * allowlist refusal, it is an expected, user-fixable permission state, so each
- * tool RETURNS guidance rather than failing. Classified on the stable `code`,
- * never the bare 403 (a relayed upstream 403 carries no such code).
- */
 class NoAgentAccessError extends Error {
   constructor() {
     super("no agent access");
@@ -160,18 +116,6 @@ class NoAgentAccessError extends Error {
   }
 }
 
-/**
- * Thrown by `post()` when Composio reports the EXECUTED action slug does not
- * exist at the current tool version ("Tool_ToolNotFound", code 2401). The slug
- * came from the model's context — a search result from earlier in a long chat
- * (Composio renames and removes actions over time) or an invented name — so the
- * recovery is mechanical: search again, run a slug from the fresh results
- * (PRODUCT-1266: the raw failure taught users that only a NEW chat "fixes"
- * integrations). Classified on Composio's stable error slug, which every relay
- * path carries verbatim inside the failure body (the cloud gateway wraps the
- * upstream 404 in a 502, the direct adapter surfaces it as a 500) — never the
- * bare status, which any transient upstream failure shares.
- */
 class ActionNotFoundError extends Error {
   constructor() {
     super("action not found");
@@ -179,13 +123,6 @@ class ActionNotFoundError extends Error {
   }
 }
 
-/**
- * What the model must say when the user may not use this agent. The gateway's
- * own wording is internal jargon ("this agent isn't assigned to you") and its
- * body is JSON — both would be paraphrased straight at a non-technical user, so
- * neither ever reaches the model. This does: the state, the human remedy, and
- * the exact place someone who manages the agent fixes it.
- */
 const NO_AGENT_ACCESS_GUIDANCE =
   "The user does not have access to this agent, so its connected apps cannot be used for them. Tell the user plainly that someone who manages this agent needs to give them access to it in this agent's Settings, under People. Do not retry until they confirm they have access, do not call request_connection, and never imply the app they asked for is unsupported or that something is broken.";
 
@@ -193,20 +130,8 @@ export interface IntegrationToolOptions {
   call: SandboxFetch;
 }
 
-/**
- * Ceiling for one integration EXECUTE result. App APIs return unbounded
- * documents — a single GMAIL_FETCH_EMAILS with include_payload can exceed 1 MB
- * of JSON (HOU-893). Past this the result is cut with an instructive marker,
- * and the model re-runs the action with tighter parameters.
- *
- * The model never sees this much at once: both backends cut a capped tool's
- * result to its first 8k characters and save the whole of it in the agent
- * folder for the model to read (session/tool-results/cap.ts). This ceiling
- * only bounds that file and the session record.
- */
 const MAX_RESULT_CHARS = 512 * 1024;
 
-/** Bound a tool-result text; the marker tells the model how to recover. */
 function boundResultText(text: string, guidance: string): string {
   if (text.length <= MAX_RESULT_CHARS) return text;
   return `${text.slice(0, MAX_RESULT_CHARS)}\n[result truncated: it exceeded the ${MAX_RESULT_CHARS / 1024} KB tool-result limit and is cut off mid-document. ${guidance}]`;
@@ -217,20 +142,13 @@ interface ActionResult {
   error?: string;
 }
 
-/** Search, execute and the connect hand-off, built on one host transport. */
 export function makeIntegrationTools(opts: IntegrationToolOptions) {
-  // Action → toolkit, as integration_search reported it: names the app to
-  // reconnect when an action's refusal is classified (toolkitForAction).
   const toolkitByAction = new Map<string, string>();
   async function post<T>(
     path: "search" | "execute",
     body: unknown,
     signal: AbortSignal | undefined,
   ): Promise<T> {
-    // WHO this turn acts as (C2): attach the header the host reads to authenticate
-    // the upstream provider call as that user. Turn-scoped via AsyncLocalStorage
-    // (chat.ts wraps the turn), so it's present only when this turn received one —
-    // absent otherwise, preserving the act-as-owner behavior.
     const acting = currentActingContext();
     const res = await opts.call(`/sandbox/integrations/${path}`, {
       method: "POST",
@@ -246,33 +164,13 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      // The host tags its OWN actionable signals with a stable `code` on the
-      // JSON error body. A relayed upstream error (a transient gateway/provider
-      // outage the host passes through VERBATIM) carries the upstream's status
-      // + body and NO such code — so we classify on the code, never the bare
-      // status, and let any uncoded failure fall through to the generic error
-      // below rather than a false "sign in" / "not set up" claim.
       const code = signalCode(detail);
-      // toolkit_not_allowed (403): the gateway walled this action off because
-      // its app is outside this agent's allowlist (turned off in the agent's
-      // Settings, under Apps). A normal, user-fixable policy state — throw the typed
-      // error the execute tool turns into guidance, never a raw failure.
       if (code === "toolkit_not_allowed") {
         throw new ToolkitNotAllowedError();
       }
-      // not_assigned (403): the gateway refused because the acting user is not
-      // one of the people with access to this agent — a permission state a
-      // manager fixes in Permissions > this agent > People. Applies to search
-      // and execute alike, so both tools turn the typed error into guidance.
       if (code === "not_assigned") {
         throw new NoAgentAccessError();
       }
-      // signin_required (409): integrations can't act for this user yet (on
-      // desktop: they're signed out of Houston, so the gateway has no session to
-      // forward) — a normal, actionable state. Queue a signin step in THIS
-      // turn's interaction flow so Houston renders a sign-in card in place of
-      // the chat input, then tell the model to keep queuing what it needs and
-      // end its turn.
       if (code === "signin_required") {
         recordSignin({
           reason: "Sign in to Houston to use your connected apps.",
@@ -286,28 +184,14 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           "This turn's connected-app access expired before the action could run. Do not retry it in this turn, especially if it may have changed external data. Tell the user plainly that connected apps are temporarily unavailable and ask them to send a new message to continue.",
         );
       }
-      // integrations_not_configured (503): connected apps are not set up in this
-      // Houston install (dev with no key, self-host that never set
-      // COMPOSIO_API_KEY). A closed, honest state: there is nothing to sign into
-      // or connect here.
       if (code === "integrations_not_configured") {
         throw new Error(
           "Connected apps are not set up in this Houston install. Tell the user plainly that connected apps aren't available here (a self-hoster enables them by setting COMPOSIO_API_KEY), and do not offer to connect any apps.",
         );
       }
-      // Tool_ToolNotFound: Composio says the executed action slug does not
-      // exist at the current tool version — a stale or invented slug, fixed by
-      // searching again. The provider 404 reaches us wrapped in a relayed 5xx
-      // whose body keeps Composio's stable error slug verbatim, so that slug
-      // (not the outer status) is the classification key.
       if (path === "execute" && detail.includes("Tool_ToolNotFound")) {
         throw new ActionNotFoundError();
       }
-      // Anything else. A 4xx is a REFUSAL, and its body is gateway/provider
-      // JSON written for us, not for a person — the model reads whatever we
-      // throw and paraphrases it straight at the user, so the body is REDACTED
-      // and only the status (+ any unrecognized code, for the logs) survives. A
-      // 5xx is a transient upstream failure whose body is genuinely diagnostic.
       if (res.status >= 400 && res.status < 500) {
         throw new Error(
           `integrations ${path} failed (${res.status}${code ? `, code ${code}` : ""}). The request was refused. Tell the user plainly that this could not be done right now, and never quote this message, any code, or any other technical detail to them.`,
@@ -322,8 +206,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
 
   const search = defineTool<
     typeof SearchParams,
-    // Pinned so the result path ({ matches, actions }) and the no-access path
-    // (which adds the flag) share ONE details type.
     { matches: number; actions: string[]; noAgentAccess?: boolean }
   >({
     name: "integration_search",
@@ -339,13 +221,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       signal: AbortSignal | undefined,
     ) {
       let items: ToolMatch[];
-      // Host-set when the `app` scope matched NO known app and the results are
-      // an unscoped retry — they belong to OTHER apps, and the model must not
-      // attribute them to the one it named.
       let unscopedFallback: boolean | undefined;
-      // Host-set when a provider IGNORED the scope (a gateway predating the
-      // contract): the results are not certainly the named app's, and an
-      // empty result proves nothing about the app existing.
       let scopeIgnored: boolean | undefined;
       try {
         ({ items, unscopedFallback, scopeIgnored } = await post<{
@@ -358,9 +234,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           signal,
         ));
       } catch (err) {
-        // The user may not use this agent at all: not a search failure, a
-        // permission state someone who manages the agent fixes. Return the
-        // guidance so the model relays it in Houston's voice.
         if (err instanceof NoAgentAccessError) {
           return {
             content: [
@@ -374,9 +247,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       for (const m of items)
         if (m.action && m.toolkit) toolkitByAction.set(m.action, m.toolkit);
       if (items.length === 0) {
-        // What may be CLAIMED from an empty result depends on why it is empty
-        // (a verified not-found vs a scope the deployment could not honor) —
-        // integrations-search-notes.ts owns that speech act.
         return {
           content: [
             {
@@ -391,9 +261,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           details: { matches: 0, actions: [] as string[] },
         };
       }
-      // Results that are NOT certainly the named app's (an unscoped retry, or
-      // a provider that ignored the scope) lead with a note saying so — or
-      // the model would present another app's action as the named app's.
       const leadNote = searchLeadNote(
         params.app,
         unscopedFallback,
@@ -413,9 +280,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
 
   const execute = defineTool<
     typeof ExecuteParams,
-    // Pinned so the success path ({ action }) and the refused paths (walled-off
-    // app, no access to the agent, stale slug) share ONE details type — each
-    // flag is present only in its state.
     {
       action: string;
       appTurnedOff?: boolean;
@@ -437,8 +301,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       _onUpdate: unknown,
       ctx: ExtensionContext | undefined,
     ) {
-      // Live gate for the mid-turn Mode-pill switch: an execute/auto-built turn
-      // may now be running in Plan — acting on the user's apps is off-limits.
       assertNotPlanMode("take real-world actions on the user's connected apps");
       let result: ActionResult;
       try {
@@ -452,10 +314,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           signal,
         );
       } catch (err) {
-        // The gateway walled this action off: its app is outside this agent's
-        // allowlist (turned off in this agent's Settings, under Apps). NOT a tool
-        // failure — return guidance the model relays to the user, and do not
-        // retry until the user confirms the app is switched on.
         if (err instanceof ToolkitNotAllowedError) {
           const action = params.action;
           return {
@@ -468,8 +326,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
             details: { action, appTurnedOff: true },
           };
         }
-        // The user may not use this agent at all — same shape: an expected
-        // permission state, returned as guidance rather than a failure.
         if (err instanceof NoAgentAccessError) {
           return {
             content: [
@@ -478,11 +334,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
             details: { action: params.action, noAgentAccess: true },
           };
         }
-        // The action slug does not exist (any more): a stale slug remembered
-        // from earlier in the conversation, or an invented one. RETURN the
-        // mechanical recovery — search again, use a fresh slug — so the model
-        // completes the task in THIS chat instead of telling the user that
-        // integrations are broken (PRODUCT-1266).
         if (err instanceof ActionNotFoundError) {
           return {
             content: [
@@ -496,20 +347,13 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         }
         throw parameterFailureError(err, params.action);
       }
-      // The action ran but the app rejected it → surface, don't pretend success.
       if (!result.successful) {
         const reason = result.error ?? "unknown error";
-        // A refusal no retry can fix (dead login, missing feature, unshared
-        // Notion page) says so and names the way forward.
         const { toolkit, known } = toolkitForAction(
           params.action,
           toolkitByAction,
         );
         const failure = classifyIntegrationFailure(reason, toolkit);
-        // Hint order: a classified refusal, then a missing connection (an
-        // actionable state: hand the model the connect-card instruction), then
-        // a missing permission, then the parameter-lookup hint. Anything new
-        // slots in before the last.
         const hint = failure
           ? failureClassGuidance(
               failure,
@@ -537,12 +381,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
   return [search, execute, makeRequestConnectionTool()];
 }
 
-/**
- * Where a dead login sends the user, queueing the reconnect card when it is
- * the card: only for a toolkit integration_search named (a guessed slug would
- * put a card for an app that does not exist in front of the user), and once
- * per conversation (reconnect-once.ts). Refusals of other kinds route nowhere.
- */
 function reconnectRoute(
   failure: IntegrationFailureClass,
   known: boolean,
@@ -560,16 +398,6 @@ function reconnectRoute(
   return "card";
 }
 
-/**
- * The in-chat connect hand-off. Appends a connect step to this turn's
- * interaction sequence (carried on the terminal `done` frame → a card rendered
- * in place of the chat input that walks the user through every queued step).
- *
- * Standalone because it holds no credential and makes no network call — it just
- * records the request — so an assistant-only runtime, which has no
- * `/sandbox/integrations/*` transport to search or execute with, can still
- * expose the hand-off without building the two tools that need one.
- */
 export function makeRequestConnectionTool() {
   return defineTool({
     name: REQUEST_CONNECTION_TOOL_NAME,
@@ -580,11 +408,6 @@ export function makeRequestConnectionTool() {
     parameters: ConnectParams,
     executionMode: "sequential",
     async execute(_id: string, params: ConnectParams) {
-      // Live gate for the mid-turn Mode-pill switch: connecting an app sets up
-      // a real-world capability, off-limits while planning. Autopilot is NOT
-      // gated (HOU-853): the recorded step doesn't hold the turn open — it ends
-      // the turn with the connect card, and the live connection auto-continues
-      // the run (same shape as request_credential).
       assertNotPlanMode("ask the user to connect an app");
       const toolkit = normalizeToolkitSlug(params.toolkit);
       if (!toolkit)
@@ -604,18 +427,8 @@ export function makeRequestConnectionTool() {
   });
 }
 
-/**
- * The in-chat connect hand-off tool. Available in EVERY acting mode, Autopilot
- * included (HOU-853): a missing connection is the one thing autonomy cannot
- * produce, and the recorded step doesn't hold the turn open — it ends the turn
- * with the connect card, and the live connection auto-continues the run (the
- * same rationale as `request_credential`). Only Plan mode withholds it (no
- * real-world setup while planning). Named here so the mode tool filter can
- * reference it without a string literal.
- */
 export const REQUEST_CONNECTION_TOOL_NAME = "request_connection";
 
-/** The tool names — pi's allowlist needs the names alongside the objects. */
 export const INTEGRATION_TOOL_NAMES = [
   "integration_search",
   "integration_execute",

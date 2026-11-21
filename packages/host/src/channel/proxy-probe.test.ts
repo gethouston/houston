@@ -9,15 +9,6 @@ import {
 } from "../ports";
 import { ProxyChannel } from "./proxy";
 
-/**
- * HOU cold-boot probe behavior: the desktop fires read-only status probes
- * (providers, provider usage, auth status) the moment a chat or the provider
- * picker mounts. On a sleeping runtime those used to hold the HTTP socket for
- * the WHOLE cold boot (up to the 60s health budget), so the picker spinner sat
- * there. They must answer fast with a retryable 503 while the boot continues in
- * the background — a turn (or any other route) still waits for the runtime.
- */
-
 const ws: Workspace = {
   id: "w1",
   ownerUserId: "alice",
@@ -60,11 +51,6 @@ const res = () => fakeRes();
 const asServerResponse = (r: ReturnType<typeof fakeRes>) =>
   r as unknown as ServerResponse;
 
-/**
- * A launcher whose runtime is asleep and whose boot is released by the test —
- * single-flight like the real ProcessLauncher: every caller during a boot rides
- * the SAME spawn, so a racing probe can never double-spawn.
- */
 function coldRuntime() {
   const endpoint: RuntimeEndpoint = {
     baseUrl: "http://127.0.0.1:5000",
@@ -101,9 +87,6 @@ function coldRuntime() {
       },
       async destroy() {},
       async status() {
-        // Mid-boot the real launcher already reports "running" (the live-set
-        // entry exists before the child is healthy) — the probe path must not
-        // trust it as "reachable".
         return "running" as const;
       },
     },
@@ -153,7 +136,7 @@ test("a provider probe answers 503 + Retry-After instead of holding the socket t
   });
 
   await vi.advanceTimersByTimeAsync(100);
-  expect(answered).toBe(false); // a fast boot must still be awaited
+  expect(answered).toBe(false);
 
   await vi.advanceTimersByTimeAsync(1_500);
   await dispatched;
@@ -161,7 +144,7 @@ test("a provider probe answers 503 + Retry-After instead of holding the socket t
   expect(out.statusCode).toBe(503);
   expect(out.headers["Retry-After"]).toBe("2");
   expect(JSON.parse(out.body)).toMatchObject({ error: expect.any(String) });
-  expect(forwarded).toEqual([]); // nothing reached a runtime that isn't up
+  expect(forwarded).toEqual([]);
 });
 
 test("the deadlined probe leaves the boot running, so the client's retry lands on a live runtime", async () => {
@@ -181,7 +164,6 @@ test("the deadlined probe leaves the boot running, so the client's retry lands o
     await first;
   })();
 
-  // The boot was NOT aborted — it completes on its own moments later.
   expect(rt.sleeps).toEqual([]);
   rt.ready();
 
@@ -196,8 +178,8 @@ test("the deadlined probe leaves the boot running, so the client's retry lands o
   );
 
   expect(forwarded.map((f) => f.path)).toEqual(["/providers"]);
-  expect(out.statusCode).toBe(0); // untouched: the proxy owns the response now
-  expect(rt.spawns).toBe(1); // one shared boot, never a second spawn
+  expect(out.statusCode).toBe(0);
+  expect(rt.spawns).toBe(1);
 });
 
 test.each([
@@ -226,7 +208,7 @@ test.each([
 
 test("a warm runtime forwards a probe immediately, with no deadline in play", async () => {
   const rt = coldRuntime();
-  rt.ready(); // already awake
+  rt.ready();
   const { channel, forwarded } = channelFor(rt);
   const out = res();
 
@@ -261,7 +243,7 @@ test("a non-probe route keeps waiting for the whole cold boot", async () => {
   });
 
   await vi.advanceTimersByTimeAsync(30_000);
-  expect(answered).toBe(false); // the SSE stream waits for its runtime
+  expect(answered).toBe(false);
 
   rt.ready();
   await dispatched;
@@ -302,8 +284,6 @@ test("a boot that fails AFTER the probe was answered is not an unhandled rejecti
     await vi.advanceTimersByTimeAsync(1_500);
     await dispatched;
 
-    // Real timers from here: Node only reports an unhandled rejection once the
-    // microtask queue drains on a real event-loop turn.
     vi.useRealTimers();
     rt.crash(new Error("runtime exited before becoming healthy"));
     await new Promise((r) => setTimeout(r, 0));
@@ -313,9 +293,6 @@ test("a boot that fails AFTER the probe was answered is not an unhandled rejecti
   }
 });
 
-// PRODUCT-1399: a host mid-shutdown refuses to spawn. That is a "retry
-// elsewhere", not a runtime failure — both a probe and a full route answer 503
-// + Retry-After instead of falling into the server's generic 500.
 function closedLauncher() {
   return {
     async ensureAwake(): Promise<RuntimeEndpoint> {
@@ -352,9 +329,6 @@ test("a probe against a shutting-down host answers 503 + Retry-After (PRODUCT-13
   );
   expect(r.statusCode).toBe(503);
   expect(r.headers["Retry-After"]).toBe("2");
-  // The gateway's waking pair, not the raw message as the reason: every
-  // client reads `engine unavailable` as "retry against the replacement"
-  // (PRODUCT-1777 / HOUSTON-APP-56Z).
   expect(JSON.parse(r.body)).toEqual({
     error: "engine unavailable",
     detail: "the host is shutting down; retry shortly",

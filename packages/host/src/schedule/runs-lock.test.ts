@@ -4,7 +4,6 @@ import { storeSyncRunsLock, withRunsFile } from "./runs-lock";
 const lock = storeSyncRunsLock("workspaces");
 const RUNS = "workspaces/Personal/Bob/.houston/routine_runs/routine_runs.json";
 
-/** A host section on `root` that holds the runs queue until released. */
 function held(root: string, order: string[]) {
   let release = () => {};
   const done = withRunsFile(root, async () => {

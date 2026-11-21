@@ -26,14 +26,12 @@ describe("resolveClientDeployment", () => {
   });
 
   it("splits an explicit host URL by co-location", () => {
-    // The dev two-terminal setup runs a host on loopback — still desktop.
     strictEqual(
       resolveClientDeployment({
         engine: { kind: "static-host", url: "http://127.0.0.1:4318" },
       }),
       "desktop",
     );
-    // A real remote host is someone's own deployment.
     strictEqual(
       resolveClientDeployment({
         engine: { kind: "static-host", url: "https://houston.example.com" },

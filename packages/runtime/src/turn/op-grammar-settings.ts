@@ -4,7 +4,6 @@ import {
 } from "@houston/protocol";
 import { str, strings } from "./op-grammar-fields";
 
-/** The model-picker and endpoint-connect ops (op-settings.ts, op-endpoint.ts). */
 export type SettingsOp =
   | {
       kind: "settings";

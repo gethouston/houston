@@ -11,7 +11,6 @@ describe("resolveSearchTarget", () => {
   });
 
   it("treats an @ that fails the handle grammar as a query", () => {
-    // "a" is one char (grammar needs 2–30), so it is not a handle.
     expect(resolveSearchTarget("@a")).toBe("/?q=%40a");
   });
 

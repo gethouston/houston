@@ -1,12 +1,5 @@
 import { beforeEach, expect, test, vi } from "vitest";
 
-// HOU-1113 — the submit/cancel side of a cloud provider login must land on the
-// SAME runtime the login started in. `providerAgentId()` re-derived at call
-// time moves when the first agent materializes mid-login (onboarding tears the
-// setup pod down at that moment), so the relayed OAuth code hit a pod that
-// never saw the login: `no active login for openai-codex`. These pin the
-// routing to the connect poll's `activeLogins` registration.
-
 const mocks = vi.hoisted(() => ({
   agentComplete: vi.fn<() => Promise<void>>(),
   setupComplete: vi.fn<() => Promise<void>>(),
@@ -67,7 +60,6 @@ function context(overrides: Partial<Ctx> = {}): Ctx {
   return {
     cp: { baseUrl: "https://example.test", token: "token" },
     activeLogins: new Set<string>(),
-    // Re-derivation must NOT be consulted when a pin exists.
     providerEngine: () => {
       throw new Error("re-derived routing instead of using the pin");
     },
@@ -110,7 +102,6 @@ test("pinnedLoginAgentId: a dash-suffixed provider never cross-matches", () => {
 
 test("submit routes to the setup runtime the login started in, even after an agent appears", async () => {
   const ctx = context({
-    // The first agent materialized mid-login: live derivation now names it.
     providerAgentId: () => "agent-1",
   });
   ctx.activeLogins.add(loginKey(null, "openai-codex"));

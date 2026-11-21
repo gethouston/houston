@@ -170,15 +170,12 @@ describe("orgBillingPrice", () => {
   });
 
   it("names no figure where the wire states no interval", () => {
-    // A comp grant, an ended subscription, an interval this client does not
-    // know (parsed to null), and a free org with no subscription.
     expect(orgBillingPrice(paidOrgBilling({ interval: null }), NOW)).toEqual({
       kind: "unpriced",
     });
     expect(orgBillingPrice(freeOrgBilling(), NOW)).toEqual({
       kind: "unpriced",
     });
-    // A live subscription whose price the gateway has not read yet.
     expect(
       orgBillingPrice(
         paidOrgBilling({ interval: null, seatPriceCents: null }),

@@ -10,16 +10,7 @@ import {
 } from "./attachments";
 import { listWorkspace } from "./files";
 
-/**
- * Composer attachments over an agent's workspace root. Files land in a VISIBLE
- * top-level `uploads/` folder (HOU-706): the runtime's clamped file tools
- * (rooted at the same dir) Read them at the RELATIVE path returned, the Files
- * tab lists them, and nothing ever deletes them behind the user's back — an
- * upload from one conversation stays referenceable from every later one.
- * Path safety stops a hostile filename escaping the folder.
- */
-
-const ROOT = "ws/w1/agent-1/workspace"; // cloud agentRoot
+const ROOT = "ws/w1/agent-1/workspace";
 const PATHS = { agentRoot: () => ROOT } as unknown as WorkspacePaths;
 const CTX = { workspace: {} as Workspace, agent: { id: "a-1" } as Agent };
 
@@ -32,10 +23,7 @@ test("save returns relative workspace paths; bytes land where the agent reads th
     { name: "data.csv", contentBase64: b64("a,b\n1,2") },
   ]);
 
-  // The returned paths are relative to the workspace root (what the agent's
-  // Read tool resolves).
   expect(paths).toEqual(["uploads/brief.txt", "uploads/data.csv"]);
-  // The bytes are at `<root>/<relPath>` — i.e. resolvable under the clamp root.
   expect(await vfs.readText(`${ROOT}/${paths[0]}`)).toBe("hello brief");
   expect(await vfs.readText(`${ROOT}/${paths[1]}`)).toBe("a,b\n1,2");
 });
@@ -68,7 +56,6 @@ test("uploads persist across saves: a later conversation's same-named file never
   const first = await saveAttachments(vfs, ROOT, [
     { name: "report.pdf", contentBase64: b64("from chat one") },
   ]);
-  // A different conversation, days later, attaches a file with the same name.
   const second = await saveAttachments(vfs, ROOT, [
     { name: "report.pdf", contentBase64: b64("from chat two") },
   ]);
@@ -117,8 +104,6 @@ test("a colliding file inside a folder dedupes the FILE, keeping the folder", as
   await saveAttachments(vfs, ROOT, [
     { name: "a.txt", contentBase64: b64("first"), relPath: "docs/a.txt" },
   ]);
-  // The same folder attached again later merges: no "docs (1)/", the file
-  // inside disambiguates instead — the returned paths stay exact either way.
   const second = await saveAttachments(vfs, ROOT, [
     { name: "a.txt", contentBase64: b64("second"), relPath: "docs/a.txt" },
   ]);
@@ -139,13 +124,13 @@ test("nested folder-upload files show up in the Files tab listing", async () => 
 test("hostile relPaths are rejected loudly, never clamped or flattened", async () => {
   const vfs = new MemoryVfs();
   const bad = [
-    "../escape.txt", // traversal out of uploads/
-    "docs/../../auth.json", // traversal via inner segment
-    "docs//a.txt", // empty segment
-    "docs/.hidden/a.txt", // hidden dir segment
-    "docs/.env", // hidden file segment
-    "docs\\a.txt/b.txt", // backslash inside a segment
-    "plain.txt", // single segment must arrive as `name`, not relPath
+    "../escape.txt",
+    "docs/../../auth.json",
+    "docs//a.txt",
+    "docs/.hidden/a.txt",
+    "docs/.env",
+    "docs\\a.txt/b.txt",
+    "plain.txt",
   ];
   for (const relPath of bad) {
     await expect(
@@ -154,7 +139,6 @@ test("hostile relPaths are rejected loudly, never clamped or flattened", async (
       ]),
     ).rejects.toThrow(AttachmentError);
   }
-  // Nothing may have been written by any of the rejected uploads.
   expect(await vfs.list(ROOT)).toEqual([]);
 });
 
@@ -166,7 +150,6 @@ test("a bad path anywhere in a batch rejects the WHOLE batch — no partial pers
       { name: "evil", contentBase64: b64("x"), relPath: "../evil" },
     ]),
   ).rejects.toThrow(AttachmentError);
-  // The valid file listed BEFORE the invalid one must not have been written.
   expect(await vfs.list(ROOT)).toEqual([]);
 });
 
@@ -231,8 +214,6 @@ test("traversal or dotfile in filename is rejected, never silently clamped", asy
   ).rejects.toThrow(AttachmentError);
 });
 
-// --- HTTP handler ---
-
 function fakeRes() {
   const state = { status: 0, body: null as unknown };
   const res = {
@@ -250,7 +231,6 @@ function fakeRes() {
   return { res: res as never, state };
 }
 
-/** A fake IncomingMessage that yields a JSON body once (async-iterable). */
 function fakeReq(body: unknown) {
   const buf = Buffer.from(JSON.stringify(body));
   return {
@@ -271,8 +251,6 @@ test("POST uploads over the HTTP handler and fires FilesChanged", async () => {
     CTX,
     "POST",
     "attachments",
-    // Legacy clients still send `scopeId` (older pods require it); it must be
-    // accepted and ignored, not 400ed.
     fakeReq({
       scopeId: "activity-1",
       files: [{ name: "n.txt", contentBase64: b64("body") }],
@@ -286,7 +264,6 @@ test("POST uploads over the HTTP handler and fires FilesChanged", async () => {
     "uploads/n.txt",
   ]);
   expect(await vfs.readText(`${ROOT}/uploads/n.txt`)).toBe("body");
-  // The upload landed in a visible folder → other Files tabs must refresh.
   expect(events).toEqual([{ type: "FilesChanged", agentPath: "a-1" }]);
 });
 

@@ -12,7 +12,6 @@ const slots = () => useLinkedInPosts.getState().slots;
 
 afterEach(() => useLinkedInPosts.setState({ slots: {} }));
 
-// The sign-out and account-switch paths both run resetForIdentityChange.
 describe("a LinkedIn post through resetForIdentityChange", () => {
   it("drops the outgoing person's settled posts", () => {
     const posts = useLinkedInPosts.getState();

@@ -52,9 +52,6 @@ test("rejects empty and unknown provider ids before queuing", async () => {
 test("refuses providers Houston has no connect card for", async () => {
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, async () => {
-    // Structurally unconnectable + a retired card + a regional duplicate of a
-    // provider that also ships its standard deployment: each renders a card
-    // with no Connect button, blocking the composer until the user hits Skip.
     for (const provider of [
       "cloudflare-workers-ai",
       "cloudflare-ai-gateway",
@@ -64,8 +61,6 @@ test("refuses providers Houston has no connect card for", async () => {
       await expect(execute(provider)).rejects.toThrow(
         `'${provider}' cannot be connected here`,
       );
-    // Houston's display id for the Codex subscription still connects, even
-    // though pi's raw api-key `openai` is the id the drop list names.
     await execute("openai");
     await execute("anthropic");
   });

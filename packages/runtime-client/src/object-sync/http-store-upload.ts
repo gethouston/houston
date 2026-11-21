@@ -3,7 +3,6 @@ import { readFile, stat } from "node:fs/promises";
 import { Readable } from "node:stream";
 import type { FetchRetryOptions } from "./retry";
 
-/** Above this size each upload attempt opens a fresh disk stream. */
 export const STREAM_UPLOAD_THRESHOLD_BYTES = 16 * 1024 * 1024;
 
 type StoreFetch = (

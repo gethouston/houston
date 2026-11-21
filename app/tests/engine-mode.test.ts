@@ -10,10 +10,6 @@ import {
   resolveEngine,
 } from "../src/lib/engine-mode.ts";
 
-// Provider OAuth loopback only works when the desktop app and runtime are on the
-// same machine. A Tauri desktop pointed at a self-host / managed host must use
-// Codex's device-code flow, otherwise the browser opens against a callback on
-// the remote host and the login strands.
 describe("providerLoginUsesDeviceAuthByDefault", () => {
   it("uses browser loopback for the default co-located desktop engine", () => {
     strictEqual(
@@ -70,10 +66,6 @@ describe("providerLoginUsesDeviceAuthByDefault", () => {
   });
 });
 
-// The app-side Codex loopback relay is GONE: pi binds the provider's fixed
-// localhost callback port in-process and completes the exchange itself, so the
-// client's only job is opening the URL. What matters is co-location — and a
-// LOOPBACK VITE_NEW_ENGINE_URL (the dev two-terminal setup) IS co-located.
 describe("isLoopbackHostUrl + the co-located dev URL case", () => {
   it("recognizes this machine's addresses", () => {
     strictEqual(isLoopbackHostUrl("http://127.0.0.1:4318"), true);
@@ -99,13 +91,6 @@ describe("isLoopbackHostUrl + the co-located dev URL case", () => {
   });
 });
 
-// The desktop Codex/OpenAI loopback relay is re-introduced but gated to the
-// REMOTE-engine cases ONLY. When the engine is CO-LOCATED, pi binds 1455
-// in-process on THIS machine — an app-side bind would lose the race (the #615
-// collision, reverted in #620). Relay ON is therefore exactly the set where
-// topology would otherwise force device-code, and OFF for every co-located /
-// web case. The two OFF cases below are the regression guard proving the #620
-// collision cannot recur.
 describe("codexUsesLoopbackRelay (B2 truth table)", () => {
   it("relay OFF for the local sidecar desktop (tauri, no URLs — pi owns 1455)", () => {
     strictEqual(codexUsesLoopbackRelay({}, { isTauri: true }), false);
@@ -163,10 +148,6 @@ describe("codexUsesLoopbackRelay (B2 truth table)", () => {
   });
 });
 
-// HOU-611: VITE_HOSTED_ENGINE_AUTH is the enable/disable switch for the hosted
-// Supabase Google-login gate, so a developer can point the desktop app at a
-// hosted gateway (e.g. the local kind cluster) and toggle OAuth on or off
-// without changing the URL.
 describe("hostedAuthMode (HOU-611)", () => {
   it("defaults to oauth when a hosted URL is set (managed-cloud contract)", () => {
     strictEqual(
@@ -273,7 +254,6 @@ describe("hostedGateState (HOU-611)", () => {
       hostedGateState({ ...base, authConfigured: false, hasSession: false }),
       "misconfigured",
     );
-    // misconfigured wins even mid-load — never spins on the splash forever.
     strictEqual(
       hostedGateState({ ...base, authConfigured: false, sessionLoading: true }),
       "misconfigured",
@@ -300,9 +280,6 @@ describe("hostedGateState (HOU-611)", () => {
   });
 });
 
-// HOU-642: the gateway URL is baked into the build — there is no runtime
-// chooser. A build-baked target (host URL or hosted gateway) wins; everything
-// else runs against its co-located sidecar / injected config.
 describe("resolveEngine (HOU-642)", () => {
   it("uses the baked static host when VITE_NEW_ENGINE_URL is set", () => {
     deepStrictEqual(
@@ -345,9 +322,6 @@ describe("resolveEngine (HOU-642)", () => {
     );
   });
 
-  // The Rust shell trims both flags before deciding whether to spawn the
-  // sidecar; a blank-but-set URL must resolve to the sidecar here too, or
-  // the app would wait on a host the shell never started.
   it("reads a whitespace-only URL as unset, like the shell does", () => {
     deepStrictEqual(
       resolveEngine({

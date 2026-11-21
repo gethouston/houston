@@ -12,15 +12,6 @@ interface Recorded {
   body: string | null;
 }
 
-/**
- * An inert SDK (`reactivity:false`) over a mock `fetch` that records the whole
- * request and answers whatever the test queues. The `/v1/org*` routes are
- * gateway-only, so every assertion here is about the exact URL, method and body
- * bytes that reach the wire — and about the fact that nothing is swallowed: the
- * two 404 degradations this family has belong to the CALLER (the web adapter's
- * mixin), never to the SDK, or a surface would be handed an empty roster it
- * cannot tell from a real one.
- */
 function makeSdk(respond: (url: string) => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(

@@ -1,9 +1,3 @@
-/**
- * The Python two-snakes mark as a `currentColor` glyph, so the process-block
- * header can brand a Python run (HOU-1048) while keeping the header line's
- * near-monochrome language — the same treatment the lucide tool icons and the
- * Houston helmet get. Path from Simple Icons (CC0).
- */
 export function PythonIcon({ className }: { className?: string }) {
   return (
     <svg

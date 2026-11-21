@@ -7,12 +7,6 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/**
- * A pooled turn's token spend reaches the agent's stored ledger before the
- * terminal frame, the way a standing pod's turn lands in its runtime dir:
- * `GET /providers/usage` then reports E2B turns too.
- */
-
 const storeRoot = mkdtempSync(join(tmpdir(), "houston-ledger-store-"));
 const store = new LocalDirStore(storeRoot);
 const PREFIX = "ws/w1/agent-1";

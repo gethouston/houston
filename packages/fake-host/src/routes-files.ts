@@ -1,9 +1,3 @@
-/**
- * `/agents/:id/files*` — the Files tab's workspace surface, mirroring the real
- * host's `turn/files*.ts` routes: list, download, archive (a real zip), import
- * (upload), move, rename, folder create, delete. Backed by `state-workspace.ts`.
- */
-
 import { mimeFor } from "@houston/host/src/turn/files";
 import { NAME_TAKEN, READ_ONLY } from "@houston/protocol";
 import { type Zippable, zipSync } from "fflate";
@@ -11,13 +5,6 @@ import { CORS, json, noContent } from "./http";
 import { fakeOfficePreview } from "./office-preview";
 import * as state from "./state";
 
-/**
- * The real host refuses a taken name rather than overwriting the other entry —
- * same status and same `{error, code}` body, so the UI's expected-state
- * handling is exercised here and not just in production. The code comes from
- * the SHARED protocol vocabulary both ends answer with: a drift would make the
- * e2e green while the app showed a red bug toast against the real thing.
- */
 const nameTaken = (path: string) =>
   json(
     {
@@ -27,17 +14,9 @@ const nameTaken = (path: string) =>
     409,
   );
 
-/**
- * The real host's refusal when the workspace folder answers EACCES/EPERM/EROFS
- * (the vfs raises `VfsReadOnlyError`, `turn/files.ts` names it): a read-only
- * mount, revoked folder permissions. Same status and same `{error, code}`
- * body, from the shared protocol constant, so the app's authored surface is
- * exercised here too.
- */
 const readOnly = () =>
   json({ error: "this workspace is read-only", code: READ_ONLY }, 403);
 
-/** The subroutes that WRITE. The collection's own write is its DELETE. */
 const WRITE_SUBS: ReadonlySet<string> = new Set([
   "import",
   "move",
@@ -59,9 +38,6 @@ export function handleWorkspaceFiles(
   const sub = rest[2];
   const query = new URL(req.url).searchParams;
 
-  // Every write primitive on an unwritable volume refuses (the case probe the
-  // real host runs first among them), while every read still answers — the
-  // asymmetry the Files tab's copy describes.
   if (isFilesWrite(method, sub) && state.isWorkspaceReadOnly(id))
     return readOnly();
 
@@ -84,10 +60,6 @@ export function handleWorkspaceFiles(
         f.bytes,
         state.getCapabilities().officePreview === true,
       );
-    // The REAL host's `mimeFor`, imported rather than re-implemented: the
-    // Files tab decides whether a row/card gets a thumbnail by sniffing this
-    // header, so a mock that answered octet-stream for everything would have
-    // silently made image previews untestable.
     return new Response(new Uint8Array(f.bytes), {
       status: 200,
       headers: { ...CORS, "Content-Type": mimeFor(path) },
@@ -95,8 +67,6 @@ export function handleWorkspaceFiles(
   }
 
   if (sub === "archive" && method === "GET") {
-    // No `path` → whole workspace; with `path` → that folder's subtree, with
-    // the folder itself as the zip's root entry (like the real host).
     const folder = query.get("path");
     const base = folder ? folder.slice(0, folder.lastIndexOf("/") + 1) : "";
     const files = state

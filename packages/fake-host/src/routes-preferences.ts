@@ -6,7 +6,6 @@ import {
 import { json } from "./http";
 import * as state from "./state";
 
-/** `GET/PUT /v1/preferences/:key`, create-only writes included. */
 export function handlePreference(
   method: string,
   key: string,
@@ -18,7 +17,6 @@ export function handlePreference(
       body?.value === null || body?.value === undefined
         ? null
         : String(body.value);
-    // Create-only (@houston/protocol preference-create), same as the host.
     const stored = state.getPreference(key);
     if (body?.[PREFERENCE_ONLY_IF_ABSENT_FIELD] === true && stored?.trim())
       return json(

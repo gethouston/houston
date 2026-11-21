@@ -46,7 +46,6 @@ describe("shouldShowThinkingIndicator (HOU-471)", () => {
   });
 
   it("shows the indicator in the gap after sending, before any output", () => {
-    // Just the user's message on the feed, waiting on the first token.
     equal(shouldShowThinkingIndicator([message("user")], "submitted"), true);
   });
 
@@ -55,8 +54,6 @@ describe("shouldShowThinkingIndicator (HOU-471)", () => {
   });
 
   it("suppresses the indicator while an active process block surfaces progress", () => {
-    // The mission-log header already reads "Thinking..." or the current step,
-    // so a second standalone line would duplicate it.
     equal(
       shouldShowThinkingIndicator(
         [message("user"), process(true)],

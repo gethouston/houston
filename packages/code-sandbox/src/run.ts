@@ -22,21 +22,7 @@ export type {
   RunRequest,
   RunResult,
 } from "./types";
-// Public surface re-exported so callers import everything from "./run".
 export { DEFAULT_LIMITS, isLanguage, LANGUAGES } from "./types";
-
-/**
- * The code-execution core. Its only side effect is a temp directory it ALWAYS
- * cleans up, so it is unit-testable without the HTTP layer.
- *
- * Threat model: `code` is UNTRUSTED (an AI agent wrote it, possibly under prompt
- * injection). The kernel/tenant wall is Cloud Run's per-instance microVM; this
- * function's job is the in-instance hygiene that makes a warm instance safe to
- * reuse for the next tenant: a brand-new working directory per run (removed in
- * `finally`, so request N+1 can't see request N's files), a minimal non-secret
- * environment, hard timeouts that reap the whole process group, and output +
- * artifact caps.
- */
 
 const PROGRAM_FILE: Record<Language, string> = {
   python: "__houston_main__.py",
@@ -64,7 +50,6 @@ export async function runInSandbox(
 
   const work = await mkdtemp(join(tmpdir(), "houston-sbx-"));
   const programPath = join(work, PROGRAM_FILE[req.language]);
-  // Remember seeded inputs so we don't echo unchanged uploads back as "artifacts".
   const seeded = new Map<string, number>();
   try {
     for (const f of files) {

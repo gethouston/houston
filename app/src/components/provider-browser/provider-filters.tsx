@@ -1,13 +1,3 @@
-/**
- * The Providers-tab filter bar: a search box + two Subscription / Pay-as-you-go
- * toggle buttons (a `Select` dropdown here read as needless indirection for a
- * binary choice — a button IS the choice, no menu to open first). The search
- * markup mirrors `ModelsBrowser` (pill input with a leading magnifier). Filter
- * state lives in the parent (`ProviderList`); this owns nothing but its own
- * layout. Single-select: clicking the already-active button clears back to
- * `all`, clicking the other one switches.
- */
-
 import { cn } from "@houston-ai/core";
 import { CreditCard, Search, Wallet } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
@@ -17,7 +7,6 @@ import {
   type ProviderQuickFilter,
 } from "./provider-filtering.ts";
 
-/** The lucide glyph paired with each quick-filter facet. */
 const FILTER_ICON: Record<
   Exclude<ProviderQuickFilter, "all">,
   typeof CreditCard
@@ -37,10 +26,6 @@ export function ProviderFilters({
   setQuery: Dispatch<SetStateAction<string>>;
   filter: ProviderQuickFilter;
   setFilter: Dispatch<SetStateAction<ProviderQuickFilter>>;
-  /** Show the Subscription/Pay-as-you-go billing toggles alongside the search.
-   *  Off in curated onboarding, where the sections already split by connect
-   *  type and a billing facet would both duplicate the "Subscription" label and
-   *  overload a focused first-run screen. Search stays either way. */
   showQuickFilters?: boolean;
 }) {
   const { t } = useTranslation("aiHub");

@@ -15,38 +15,21 @@ import {
 export { MERGE_UPLOAD_ATTEMPTS } from "./sync-back-doc-merge";
 export type { RefreshManifest } from "./sync-back-remote-read";
 
-/** Delay before merge round `retry` (1-based: the round after the first). */
 export type ConflictBackoff = (retry: number) => number;
 
-/**
- * 50, 100, 200, 400, 800 ms, each scaled by a random 0.5-1.5. Several turns
- * finishing on one board together would otherwise re-collide in lockstep.
- */
 export const jitteredConflictBackoff: ConflictBackoff = (retry) =>
   Math.round(Math.min(800, 50 * 2 ** (retry - 1)) * (0.5 + Math.random()));
 
-/** Outcome of the merge loop; `attempts` counts merge rounds run. */
 export interface MergedUploadResult {
   entry?: HydrateManifestEntry;
   uploaded: boolean;
   conflict?: string;
   vanished?: boolean;
   attempts: number;
-  /** Board card ids the remote held that the landed merge does not. */
   removedCards?: string[];
-  /** A side would not parse: the local bytes overwrote the remote. */
   unmergeable?: string;
 }
 
-/**
- * Land a merged document (the board, routines, run history, learnings,
- * custom integrations) after its first upload lost a generation race. Every round
- * re-reads the remote and merges the turn's ORIGINAL bytes into it from
- * scratch, never an earlier round's output: a card another writer deleted
- * between rounds stays deleted, and a two-way merge never pins an entry at a
- * stale remote copy. Concurrent turns on one agent plus the gateway's own
- * board writes can take several rounds; exhausting them records a conflict.
- */
 export async function uploadMergedDocument(opts: {
   store: ObjectStore;
   abs: string;
@@ -64,8 +47,6 @@ export async function uploadMergedDocument(opts: {
   const backoff = opts.backoff ?? jitteredConflictBackoff;
   let onDisk = local;
   let conflict = opts.conflict;
-  // The remote generation the on-disk bytes are merged against: a later pass
-  // may only upload them over exactly that generation.
   let generation = opts.previous?.generation;
   let attempts = 0;
   let unmergeable: string | undefined;
@@ -86,8 +67,6 @@ export async function uploadMergedDocument(opts: {
     const merged = outcome.body;
     unmergeable = outcome.unmergeable;
     if (merged !== onDisk) {
-      // A standing daemon's agent may rewrite the file while a round waits:
-      // leave its bytes for the next pass rather than overwrite them.
       const current = await readLocal(opts.abs);
       if (current === undefined)
         return { uploaded: false, vanished: true, attempts };
@@ -134,12 +113,6 @@ export async function uploadMergedDocument(opts: {
   };
 }
 
-/**
- * The agent keeps writing while an upload reads its source, so the file can be
- * unlinked between the scan's hash and the upload's stat/read (runtime session
- * files churn constantly). On the streaming path the errno arrives wrapped as
- * the fetch error's cause.
- */
 export function sourceVanished(error: unknown): boolean {
   if ((error as NodeJS.ErrnoException).code === "ENOENT") return true;
   const cause = (error as { cause?: unknown }).cause;

@@ -96,7 +96,6 @@ pub(super) async fn attempt(
     let offset = partial.len();
     let total = partial.total();
     if matches!(total, Some(total) if offset >= total) {
-        // An earlier call received everything and stopped before the check.
         return Ok(AttemptOutcome::Done);
     }
     let mut request = client.get(url.clone()).headers(headers.clone());
@@ -130,8 +129,6 @@ pub(super) async fn attempt(
             return restart_after(partial, status, message).await;
         }
         StatusCode::OK => {
-            // A fresh body, a server that ignored the range, or a re-published
-            // asset the `If-Range` no longer matched: start over.
             let sidecar = Sidecar {
                 url: url.to_string(),
                 validator: validator_of(response.headers()),
@@ -171,7 +168,6 @@ pub(super) async fn attempt(
     }
     if let Some(total) = partial.total() {
         if partial.len() < total {
-            // The server closed the stream early without an error frame.
             return Ok(AttemptOutcome::Retry(DownloadFailure::stopped(
                 DownloadFailureKind::Network,
                 format!("stream ended at {} of {total} bytes", partial.len()),

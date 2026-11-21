@@ -8,15 +8,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * A hosted Claude subscription login ends about 28 days after it. The gateway
- * puts the sign-in-again deadline on the provider list (`reconnectBy`, epoch
- * ms) for the caller's own login, and the provider status the app renders
- * must carry it through unchanged. These pin the read (`GET` on the agent's
- * provider list, no new route) and that only a row with a deadline grows the
- * field.
- */
-
 const BASE = "http://host";
 const AGENT = "agent-1";
 const DEADLINE = 1_790_000_000_000;

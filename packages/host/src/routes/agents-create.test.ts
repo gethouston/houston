@@ -10,13 +10,6 @@ import { MemoryVfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
 import { dispatchGroup } from "./registry/all";
 
-/**
- * POST /agents create + seed. The create is atomic-enough: when the seed write
- * fails, the just-created agent record + folder are rolled back so a retry (the
- * onboarding path reuses an existing record) recreates cleanly instead of
- * reusing a permanently seedless agent.
- */
-
 const CAPS: Capabilities = {
   profile: "cloud",
   revealInOs: false,
@@ -111,7 +104,6 @@ test("a healthy create seeds the agent and keeps the record", async () => {
 });
 
 test("a failed seed write rolls back the agent record and its folder", async () => {
-  // Capture the record the route creates so we can prove it was rolled back.
   const created: Agent[] = [];
   const orig = store.createAgent.bind(store);
   store.createAgent = async (input) => {
@@ -120,8 +112,6 @@ test("a failed seed write rolls back the agent record and its folder", async () 
     return a;
   };
 
-  // A seed with a traversal key makes writeAgentSeeds throw mid-write, after a
-  // valid earlier seed + the schema files have already landed on disk.
   await expect(
     post({ name: "Seedling", seeds: { "notes.json": "[]", "../evil": "x" } }),
   ).rejects.toThrow(/unsafe seed path/);
@@ -130,11 +120,8 @@ test("a failed seed write rolls back the agent record and its folder", async () 
   const rolledBack = created[0] as Agent;
 
   const ws = await store.getOrCreatePersonalWorkspace("alice");
-  // Record gone → the onboarding retry (list-then-reuse) sees no assistant and
-  // recreates cleanly.
   expect(await store.getAgent(rolledBack.id)).toBeNull();
   expect(await store.listAgents(ws.id)).toEqual([]);
-  // Folder gone → no half-written schema/seed files linger.
   const root = DEFAULT_PATHS.agentRoot(ws, rolledBack);
   expect(await vfs.list(root)).toEqual([]);
 });

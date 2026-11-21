@@ -8,13 +8,11 @@ import type {
 } from "@houston/runtime-client/object-sync";
 import { resolveListedLayout, TurnSetupError } from "./turn-layout";
 
-/** What a seed op may do with a prefix, judged from its listing alone. */
 export type SeedListing =
   | { kind: "empty" }
   | { kind: "adopt"; id: string; workspaceRel: string }
   | { kind: "refuse"; reason: string };
 
-/** The prefix's objects with store-relative keys, nothing downloaded. */
 export async function listPrefix(
   store: ObjectStore,
   prefix: string,
@@ -36,13 +34,6 @@ export async function listPrefix(
   return { objects, rels };
 }
 
-/**
- * One agent tree is adopted, an empty prefix is seeded, anything else is
- * data a seed must never write over. The drain stamp and the preferences
- * namespace exist before any agent does, so they count as empty. The tree
- * rules are the turn layout's own (`resolveListedLayout`), resolved against
- * a scratch directory under `root` so the seed tree stays untouched.
- */
 export async function classifySeedListing(
   rels: readonly string[],
   root: string,

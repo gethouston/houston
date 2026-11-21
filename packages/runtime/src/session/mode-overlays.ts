@@ -1,20 +1,5 @@
 import type { TurnMode } from "@houston/protocol";
 
-/**
- * Plan mode's system-prompt overlay. Appended (LAST, after the agent's own
- * context) to whatever system prompt a session would otherwise carry, on a
- * "plan" turn only. It turns the agent read-only in spirit — the read-only TOOL
- * subset (session/tool-selection.ts + the Claude tool policy) enforces it in
- * fact; this overlay tells the model WHY and shapes the output into a plan the
- * user approves before anything is done.
- *
- * Voice: the target user is non-technical (see the product prompt rules), so the
- * overlay names no files, JSON, or CLIs — it speaks in plain outcomes. The only
- * tools it names are `ask_user` and `plan_ready`: every plan turn must end in
- * one of them, so the model writes its finished plan in the transcript and the
- * approval card only chooses what happens next. (exec-turn backstops the rule:
- * a clean plan turn that ends with neither still gets a plan_ready attached.)
- */
 export const PLAN_MODE_OVERLAY = [
   "You are in Plan mode. Here you help the user think through and design an approach before anything is actually done.",
   "",
@@ -25,18 +10,6 @@ export const PLAN_MODE_OVERLAY = [
   "- End EVERY Plan mode turn by calling ask_user when you need an answer, or plan_ready when the plan is ready for approval. Never end with neither. When the plan is ready, write the FULL plan as your normal assistant message, then call plan_ready with only a short 1-2 sentence summary. The user reads the full plan in the chat; the approval card only asks whether to start now, finish it independently, or keep planning together. Do not ask for approval in the message. End your turn right after the tool call.",
 ].join("\n");
 
-/**
- * Autopilot mode's system-prompt overlay. Appended (LAST, after the agent's own
- * context) on an "auto" turn only. Auto is fire-and-forget: the model CANNOT
- * block on the user's judgment — `ask_user` is withheld from its toolset
- * (session/tool-selection.ts) — so this overlay tells it to act on its own
- * judgment and report back. `request_connection` DOES survive auto (HOU-853):
- * a missing app connection is the one thing autonomy cannot produce, and the
- * queued connect card ends the turn rather than holding it open, so the
- * overlay teaches the hand-off instead of declaring the app out of reach.
- *
- * Voice: same non-technical rule as the plan overlay — no files, JSON, or CLIs.
- */
 export const AUTO_MODE_OVERLAY = [
   "You are in Autopilot mode. The user has handed you this task and stepped away; they expect to come back to a finished result.",
   "",
@@ -47,12 +20,6 @@ export const AUTO_MODE_OVERLAY = [
   "- Finish with a short report: what you did, what you assumed, and anything that needs the user's attention.",
 ].join("\n");
 
-/**
- * Append the mode's system-prompt overlay: the plan overlay on a "plan" turn,
- * the Autopilot overlay on an "auto" turn, and an "execute" (or absent) mode
- * passes the prompt through unchanged. Both backends call this with the overlay
- * LAST so it sits after the workspace context file.
- */
 export function withModeOverlay(systemPrompt: string, mode?: TurnMode): string {
   if (mode === "plan") return `${systemPrompt}\n\n${PLAN_MODE_OVERLAY}`;
   if (mode === "auto") return `${systemPrompt}\n\n${AUTO_MODE_OVERLAY}`;

@@ -1,11 +1,3 @@
-/**
- * Fitting text to the share card's widths. Pure: it only needs something
- * that measures (the canvas context, or a fake in tests). Text is cut and
- * wrapped on `Intl.Segmenter` boundaries, so a family or skin-tone emoji is
- * never split before the ellipsis, accents stay on their letters, and CJK
- * (which has no spaces) still wraps between words.
- */
-
 export interface Measurer {
   measureText(text: string): { width: number };
   font: string;
@@ -23,14 +15,12 @@ type SegmenterCtor = new (
 
 const Segmenter = (Intl as unknown as { Segmenter?: SegmenterCtor }).Segmenter;
 
-/** User-perceived characters; code points where Segmenter is missing. */
 export function graphemes(text: string): string[] {
   if (!Segmenter) return [...text];
   const segmenter = new Segmenter(undefined, { granularity: "grapheme" });
   return Array.from(segmenter.segment(text), (s) => s.segment);
 }
 
-/** Words and the spaces between them, in order; CJK yields one per word. */
 function wordSegments(text: string): string[] {
   if (!Segmenter) return text.split(/(\s+)/).filter(Boolean);
   const segmenter = new Segmenter(undefined, { granularity: "word" });
@@ -40,7 +30,6 @@ function wordSegments(text: string): string[] {
 const fits = (ctx: Measurer, text: string, max: number) =>
   ctx.measureText(text).width <= max;
 
-/** Text cut with an ellipsis to fit `max` at the current font. */
 export function fitText(ctx: Measurer, text: string, max: number): string {
   if (fits(ctx, text, max)) return text;
   const chars = graphemes(text);
@@ -52,10 +41,6 @@ export function fitText(ctx: Measurer, text: string, max: number): string {
   return ELLIPSIS;
 }
 
-/**
- * `text` broken between words into at most `maxLines` lines that fit `max`
- * at the current font, the last cut with an ellipsis if it still runs on.
- */
 export function wrapLines(
   ctx: Measurer,
   text: string,
@@ -83,7 +68,6 @@ export function wrapLines(
   return lines.map((l) => fitText(ctx, l, max));
 }
 
-/** The largest size (down to `min`) at which `text` fits on one line. */
 export function fitFontSize(
   ctx: Measurer,
   text: string,

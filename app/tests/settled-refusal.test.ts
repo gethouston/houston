@@ -19,7 +19,6 @@ const told = (message: string) => {
 const warming = () =>
   Object.assign(new Error("almost ready"), { name: "AgentWarmingError" });
 
-/** The value `throwFirstRefusal` threw, by identity. */
 function thrown(settled: PromiseSettledResult<unknown>[]): unknown {
   try {
     throwFirstRefusal(settled);

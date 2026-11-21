@@ -8,17 +8,10 @@ import { useReconnectNotice } from "../../hooks/use-reconnect-notice";
 import { providerName } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 
-/**
- * A slim strip across the top of the workspace card, shown a few days before a hosted
- * Claude subscription login ends (the provider ends it about 28 days after the
- * sign-in). When to show it and what day it reads are the SDK's rules, kept
- * current by `useReconnectNotice`.
- */
 export function ProviderReconnectNotice() {
   const { statuses } = useProviderStatuses();
   const notice = useReconnectNotice(statuses);
   if (!notice) return null;
-  // Keyed by the deadline: a new login (a new deadline) starts a fresh strip.
   return (
     <ReconnectStrip
       key={`${notice.provider}:${notice.reconnectBy}`}
@@ -27,14 +20,6 @@ export function ProviderReconnectNotice() {
   );
 }
 
-/**
- * Pressing runs the same sign-in every reconnect surface runs
- * (`tauriProvider.launchLogin`). The spinner covers only the launch: past it,
- * the sign-in's own screen owns the flow, and a finished login refreshes the
- * provider statuses, which moves the deadline out and clears the strip.
- * The button label never changes, so the launch state speaks in the message
- * and the button holds its width.
- */
 function ReconnectStrip({ notice }: { notice: Notice }) {
   const { t } = useTranslation("shell");
   const [launching, setLaunching] = useState(false);
@@ -47,7 +32,6 @@ function ReconnectStrip({ notice }: { notice: Notice }) {
       await tauriProvider.launchLogin(notice.provider);
       setFailed(false);
     } catch {
-      // `launchLogin` already reported the failure; the strip offers a retry.
       setFailed(true);
     } finally {
       setLaunching(false);

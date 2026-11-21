@@ -11,16 +11,6 @@ import {
 import { DEFAULT_AGENT_COLOR } from "@houston/engine-adapter/synthetic";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * PRODUCT-1344: an agent's color must survive sign-out and follow the account.
- * The device overlay (`houston.web.cp.agentColors`) is account-scoped
- * localStorage, so the sign-out purge deleted it — and the gateway stores no
- * agent color — leaving every agent default-purple with nothing to restore
- * from (all-purple after the team migration's multi-account testing). These
- * tests pin the durable copy: the `agent_colors` account preference, which the
- * agent list reconciles into the overlay and every color write pushes back.
- */
-
 const originalFetch = globalThis.fetch;
 
 let store: Map<string, string>;
@@ -68,10 +58,6 @@ const wireAgents = [
   { id: "bbbb111122223333", workspaceId: "Houston", name: "Ada", createdAt: 0 },
 ];
 
-/** Each test builds a FRESH client: its control-plane config is a new object,
- *  which resets the sync state, so it starts like a new session. The list read
- *  itself is the SDK's `GET /agents`; the reconcile rides alongside it in the
- *  adapter (`client/agents-mixin.ts`). */
 const freshClient = () =>
   new HoustonClient({ baseUrl: "http://cp", token: "t", controlPlane: true });
 const freshCfg = () => ({ baseUrl: "http://cp", token: "t" });
@@ -82,18 +68,14 @@ const overlay = (): Record<string, string> =>
 
 const prefUrl = "http://cp/v1/preferences/agent_colors";
 
-// ── pure helpers ────────────────────────────────────────────────────────────
-
 test("merge: entries only one side holds always survive", () => {
   const account = { a: "forest", b: "teal" };
   const device = { b: "crimson", c: "navy" };
-  // An unsaved device pick wins the shared id …
   expect(mergeColorOverlays(account, device, true)).toEqual({
     a: "forest",
     b: "crimson",
     c: "navy",
   });
-  // … and once the account has it, the account is the truth.
   expect(mergeColorOverlays(account, device, false)).toEqual({
     a: "forest",
     b: "teal",
@@ -110,8 +92,6 @@ test("parse: absent, corrupt, and non-record values all read as empty", () => {
   });
 });
 
-// ── reconcile ───────────────────────────────────────────────────────────────
-
 test("post-sign-out restore: the account pref repaints an empty device overlay", async () => {
   stubFetch((url) =>
     url === prefUrl
@@ -125,8 +105,6 @@ test("post-sign-out restore: the account pref repaints an empty device overlay",
 });
 
 test("an unsaved device pick outranks the account copy it is replacing", async () => {
-  // The account save never succeeds, so the pick stays owed — the reconcile
-  // must not restore the color the user just replaced.
   const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   stubFetch((url, method) => {
     if (url !== prefUrl) return json(200, wireAgents);
@@ -144,8 +122,6 @@ test("an unsaved device pick outranks the account copy it is replacing", async (
 });
 
 test("a color set elsewhere lands on this device once the account has ours", async () => {
-  // What makes the assistant's `updateAgentColor` visible: it writes the same
-  // `agent_colors` preference, and the agent-list refetch adopts it.
   let accountValue = '{"aaaa111122223333":"forest"}';
   stubFetch((url, method) => {
     if (url !== prefUrl) return json(200, wireAgents);
@@ -201,10 +177,6 @@ test("an unreachable pref read degrades to the device copy and retries next list
   const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   store.set("houston.web.cp.agentColors", '{"aaaa111122223333":"teal"}');
   let prefReads = 0;
-  // 500, not 503: transient statuses are retried INSIDE one cpFetch (the
-  // gateway-roll patience), which would hide the degrade path under test.
-  // (The successful second read also heals the device map UP with a PUT to
-  // the same URL — count reads only.)
   stubFetch((url, method) => {
     if (url !== prefUrl) return json(200, wireAgents);
     if (method === "PUT") return json(200, {});
@@ -216,12 +188,10 @@ test("an unreachable pref read degrades to the device copy and retries next list
   const client = freshClient();
   const agents = await client.listAgents(WS);
   expect(agents.find((a) => a.name === "Bob")?.color).toBe("teal");
-  await client.listAgents(WS); // the next list simply reads again
+  await client.listAgents(WS);
   expect(prefReads).toBe(2);
   errorSpy.mockRestore();
 });
-
-// ── write-through ───────────────────────────────────────────────────────────
 
 test("a color pick after hydration re-pushes the full map to the account", async () => {
   stubFetch((url) =>
@@ -271,8 +241,6 @@ test("a failed account save keeps the device pick and stays quiet", async () => 
 });
 
 test("the reconcile never repaints over a device write that landed mid-read", async () => {
-  // The GET resolves AFTER the user's pick, which is still owed to the
-  // account — so the pick must survive the reconcile's write-back.
   let releasePref: (r: Response) => void = () => {};
   const gate = new Promise<Response>((resolve) => {
     releasePref = resolve;

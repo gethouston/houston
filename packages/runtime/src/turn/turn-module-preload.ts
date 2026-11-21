@@ -4,7 +4,6 @@ import {
 } from "../backends/claude/sdk-loader";
 import { preloadCustomIntegrationModules } from "./custom-integration-loader";
 
-/** Evaluate every deferred turn module while the pool worker is snapshotting. */
 export async function preloadTurnModules(): Promise<void> {
   await Promise.all([
     loadedClaudeSdk(preloadClaudeSdk()),

@@ -33,26 +33,10 @@ import { useAgentOrgMove } from "./use-agent-org-move";
 import { useShareCreateTeam } from "./use-share-create-team";
 import { useShareInvites } from "./use-share-invites";
 
-/**
- * Where a flow can move its AI Employee. `share`: a team the caller runs, or
- * one they create on the spot, then teammates are invited. `move_out`: the
- * destinations the SDK allows out of the active org (`moveOutDestinations`),
- * Personal included, which needs no invite.
- */
 export type ShareViaTeamMode =
   | { kind: "share" }
   | { kind: "move_out"; destinations: TeamRef[] };
 
-/**
- * The "move one AI Employee into another org" pipeline (C8
- * §Share-triggers-team). Drives the pure {@link ShareViaTeamState} machine:
- *
- *   pick -> confirm -> move (poll to `done`) -> SWITCH the active space ->
- *   invite teammates (a team) or end (Personal).
- *
- * PIPELINE ORDER IS LAW: `addOrgMember` targets the ACTIVE space, so the
- * switch into the team precedes any invite (`useShareInvites`).
- */
 export function ShareViaTeamFlow({
   agent,
   open,

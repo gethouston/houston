@@ -1,13 +1,6 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
-/**
- * The API-key entry field: a labelled password input with a reveal toggle.
- *
- * Its own component so {@link ProviderApiKeyDialog} stays the flow (submit and
- * verification verdicts) rather than also owning input chrome. Paste is never blocked and the reveal state resets with the
- * field's own mount, so a revealed key can't survive a reopen.
- */
 export function ProviderApiKeyField({
   label,
   placeholder,
@@ -18,9 +11,7 @@ export function ProviderApiKeyField({
 }: {
   label: string;
   placeholder: string;
-  /** Accessible name for the reveal toggle while the key is hidden. */
   showLabel: string;
-  /** Accessible name for the reveal toggle while the key is visible. */
   hideLabel: string;
   value: string;
   onChange: (value: string) => void;

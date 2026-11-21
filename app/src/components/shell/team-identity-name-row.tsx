@@ -6,18 +6,6 @@ import type { TeamIdentityChoices } from "./team-identity";
 import { TeamIdentityPopover } from "./team-identity-popover";
 import { teamNameTooLong } from "./team-identity-save";
 
-/**
- * The "Icon & Name" form row: one label, then the identity button and the name
- * field as a single object, with the shared too-long validation copy beneath.
- * The button IS the icon-and-colour picker (a popover of swatches + searchable
- * glyph grid) and always previews the pair the team will get.
- *
- * ONE component on purpose: the create-team dialog and the rail's
- * "Change icon & name" dialog both render a team's identity through this row —
- * layout, picker, validation rule and error copy alike — so the two surfaces
- * cannot drift apart. Callers read the same `teamNameTooLong` for their
- * submit gate and add nothing of their own.
- */
 export function TeamIdentityNameRow({
   icon,
   colorId,
@@ -31,9 +19,7 @@ export function TeamIdentityNameRow({
   colorId: string | undefined;
   name: string;
   choices: TeamIdentityChoices;
-  /** `undefined` = cleared back to the neutral mark. */
   onIconChange: (iconName: string | undefined) => void;
-  /** `undefined` = cleared back to the default ink. */
   onColorChange: (id: string | undefined) => void;
   onNameChange: (name: string) => void;
 }) {

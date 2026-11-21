@@ -6,14 +6,6 @@ import { startMission } from "./support/mission";
 import { openAssistant } from "./support/settings-nav";
 import { missionCard } from "./support/team-nav";
 
-/**
- * The hands-on errand: work only the person's own hands can finish on a Houston
- * screen. Nothing can observe it, so the card asks — and both answers must get
- * the agent moving again, exactly once.
- */
-
-/** The chat's composer on either surface: the manager's question changes with
- *  its history, the mission's is always the follow-up. */
 const composer = (page: Page) => page.getByPlaceholder(ASSISTANT_COMPOSER);
 const ASK = "Connect my accounting app to Houston";
 
@@ -26,7 +18,6 @@ const queueErrand = (request: APIRequestContext, reason: string) =>
     },
   });
 
-/** Reach the chat that will carry the errand card, on either surface. */
 async function openSurface(page: Page, surface: "manager" | "mission") {
   if (surface === "mission") {
     await startMission(page, ASK);
@@ -40,10 +31,6 @@ async function openSurface(page: Page, surface: "manager" | "mission") {
 
 const SECRET = `hst_${"5e1d0c7a".repeat(8)}`;
 
-/**
- * The fake host serves no `/v1/keys`: answer the mint here, once, with the
- * secret, and count every mint so a second key can never slip through.
- */
 async function mockKeyMint(page: Page): Promise<() => number> {
   let mints = 0;
   await page.route("**/v1/keys**", async (route) => {
@@ -65,7 +52,6 @@ async function mockKeyMint(page: Page): Promise<() => number> {
   return () => mints;
 }
 
-/** Every request body the page sends, and the resumes among them. */
 function recordRequests(page: Page) {
   const bodies: string[] = [];
   const resumes: Record<string, unknown>[] = [];
@@ -81,7 +67,6 @@ function recordRequests(page: Page) {
   return { bodies, resumes };
 }
 
-/** The person never typed the reply, so no bubble of theirs may carry it. */
 const ownBubble = (page: Page, text: string) =>
   page
     .locator('[data-conversation-message-key^="user-"]')
@@ -94,8 +79,6 @@ test("the manager mints the key right in the chat and never sees it", async ({
   const { bodies, resumes } = recordRequests(page);
   const mints = await mockKeyMint(page);
   const reason = "Create a key for your script and copy it.";
-  // API keys exist only where the public API is served; without the
-  // capability the card offers no way in (hands-on-gates).
   await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
     data: { apiKeys: true },
   });
@@ -104,14 +87,12 @@ test("the manager mints the key right in the chat and never sees it", async ({
 
   await expect(page.getByText(reason, { exact: true })).toBeVisible();
   await expect(composer(page)).toHaveCount(0);
-  // The safety line is fixed copy beside the agent's own reason.
   await expect(
     page.getByText("it is shown only once, and I never see it", {
       exact: false,
     }),
   ).toBeVisible();
 
-  // No trip out of the chat: the key is named, created and revealed here.
   await expect(
     page.getByText("Create an API key", { exact: true }),
   ).toBeVisible();
@@ -119,14 +100,11 @@ test("the manager mints the key right in the chat and never sees it", async ({
   await page.getByRole("button", { name: "Create key", exact: true }).click();
   await expect(page.getByText(SECRET, { exact: true })).toBeVisible();
   expect(mints()).toBe(1);
-  // A ready request shows how the key is used, with the key filled in.
   await expect(page.getByText("Try your key", { exact: true })).toBeVisible();
   await expect(
     page.locator("pre").filter({ hasText: `Bearer ${SECRET}` }),
   ).toBeVisible();
 
-  // Shown once means Done is the only way out: nothing to decline, no box to
-  // paste the key into, and Esc closes nothing.
   await expect(page.getByRole("button", { name: /^Skip/ })).toHaveCount(0);
   await expect(
     page.getByPlaceholder("Or tell it what to do instead..."),
@@ -138,11 +116,9 @@ test("the manager mints the key right in the chat and never sees it", async ({
   await expect(composer(page)).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(reason, { exact: true })).toHaveCount(0);
   await expect(page.getByText(SECRET)).toHaveCount(0);
-  // The opening message plus ONE resume, which states the fact...
   await expect.poll(() => resumes.length).toBe(2);
   expect(JSON.stringify(resumes[1])).toContain("Finished API keys.");
   await expect(ownBubble(page, "Finished API keys.")).toHaveCount(0);
-  // ...and the secret rides NO request the page sent, resume or otherwise.
   expect(bodies.some((body) => body.includes("Finished API keys."))).toBe(true);
   expect(bodies.filter((body) => body.includes(SECRET))).toEqual([]);
   expect(mints()).toBe(1);
@@ -152,8 +128,6 @@ test("a mission's key errand still sends the person to the screen", async ({
   page,
   request,
 }) => {
-  // Only the AI Manager mints in place: a mint form under a mission agent's
-  // own words would be a phishing kit in Houston's chrome.
   const { resumes } = recordRequests(page);
   const mints = await mockKeyMint(page);
   const reason = "Copy the key Houston shows you once.";
@@ -171,9 +145,7 @@ test("a mission's key errand still sends the person to the screen", async ({
     page.getByRole("heading", { name: "API keys", level: 2 }),
   ).toBeVisible();
 
-  // Back the way they came; the card holds no state across that round trip.
   await page.goBack();
-  // `.first()`: the card repeats the task text as its own preview line.
   await missionCard(page, ASK).first().click();
   await expect(page.getByText(reason, { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Done", exact: true }).click();
@@ -209,8 +181,6 @@ for (const surface of ["manager", "mission"] as const) {
     await expect(composer(page)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(reason, { exact: true })).toHaveCount(0);
     await expect.poll(() => sent.length).toBe(2);
-    // A skip is a FACT the agent must hear, or it waits forever on a key the
-    // person already decided not to fetch.
     expect(JSON.stringify(sent)).toContain("Skipped API keys.");
   });
 }

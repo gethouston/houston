@@ -1,7 +1,3 @@
-// The composer's control names come from the caller's `labels` (the app passes
-// t() strings in en/es/pt) and fall back to English, so a Spanish screen reader
-// no longer hears "Submit", "Stop", "Attach files" or "Remove <file>".
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";

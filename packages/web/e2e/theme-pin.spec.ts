@@ -2,40 +2,16 @@ import { expect, test } from "./support/fixtures";
 
 import { workspaceMenuTrigger } from "./support/workspace-menu";
 
-/**
- * Regression: subtree theme pinning via data-theme must re-resolve Tailwind
- * colour utilities (bg-input / text-ink) INSIDE the pinned subtree,
- * independent of the app theme on <html>.
- *
- * This is the guarantee the pre-app screens rely on (FirstRunScreen pins
- * data-theme="light" so a dark-mode user still gets a light language gate and
- * sign-in). It only holds because the token→utility
- * bridge in ui/core/src/globals.css is `@theme inline`: that makes each utility
- * read var(--ht-*) directly (resolved at the consuming element). With a plain
- * `@theme` the utility reads a --color-* that resolved ONCE at :root and merely
- * inherits down, so a mid-tree pin is inert — the bug this test guards.
- *
- * We probe computed rgb() rather than screenshot: deterministic and it pins the
- * exact token values from design-tokens' tokens.css.
- */
-
-// Token values from packages/design-tokens/dist/css/tokens.css, as computed rgb.
-const LIGHT_BG = "rgb(252, 252, 252)"; // --ht-input #fcfcfc
-const LIGHT_FG = "rgb(20, 22, 29)"; //    --ht-ink #14161d
-const DARK_BG = "rgb(30, 30, 30)"; //     --ht-input #1e1e1e
-const DARK_FG = "rgb(229, 229, 229)"; //  --ht-ink #e5e5e5
+const LIGHT_BG = "rgb(252, 252, 252)";
+const LIGHT_FG = "rgb(20, 22, 29)";
+const DARK_BG = "rgb(30, 30, 30)";
+const DARK_FG = "rgb(229, 229, 229)";
 
 interface Probe {
   bg: string;
   fg: string;
 }
 
-/**
- * Inject a wrapper (optionally data-theme-pinned) with a `bg-input
- * text-ink` child, read the child's computed colours, then clean up.
- * `htmlTheme` sets/removes data-theme on <html> exactly as app/src/lib/theme.ts
- * does, so the probe runs under a real app-theme baseline.
- */
 async function probe(
   page: import("@playwright/test").Page,
   htmlTheme: "light" | "dark",
@@ -69,22 +45,16 @@ test("data-theme pin re-resolves Tailwind color utilities per subtree", async ({
   page,
 }) => {
   await page.goto("/");
-  // Anchor: the shell is up, so globals.css (the @theme inline bridge) is loaded.
   await expect(workspaceMenuTrigger(page)).toBeVisible();
 
-  // --- Light app: a data-theme="dark" pin must render DARK inside it. ---
   const lightAppUnpinned = await probe(page, "light", null);
   const lightAppDarkPin = await probe(page, "light", "dark");
 
-  // Unpinned tracks the light app theme.
   expect(lightAppUnpinned).toEqual({ bg: LIGHT_BG, fg: LIGHT_FG });
-  // The pinned subtree re-resolves to the DARK token values...
   expect(lightAppDarkPin).toEqual({ bg: DARK_BG, fg: DARK_FG });
-  // ...and therefore differs from its unpinned sibling (the actual bug symptom).
   expect(lightAppDarkPin.bg).not.toBe(lightAppUnpinned.bg);
   expect(lightAppDarkPin.fg).not.toBe(lightAppUnpinned.fg);
 
-  // --- Mirror: dark app, a data-theme="light" pin must render LIGHT inside it. ---
   const darkAppUnpinned = await probe(page, "dark", null);
   const darkAppLightPin = await probe(page, "dark", "light");
 

@@ -14,8 +14,6 @@ fn config(connect_url: String) -> BridgeConfig {
     }
 }
 
-// A relay that answers the upgrade with a plain HTTP status, as the gateway
-// does for an unaccepted ticket (401) or no relay ready (502/503).
 async fn refusing_relay(status: &'static str) -> String {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = format!("ws://{}/bridge", listener.local_addr().unwrap());

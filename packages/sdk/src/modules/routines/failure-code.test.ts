@@ -62,7 +62,6 @@ test("the reader's signed-out account turns a not-connected run into a reconnect
       readerFor,
     ),
   ).toBe("creator_needs_reconnect");
-  // Delivery expiry is not about an account, whatever the reader says.
   expect(
     routineFailureCode(
       {

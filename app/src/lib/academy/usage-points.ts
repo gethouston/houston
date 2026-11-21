@@ -1,23 +1,8 @@
-// The USAGE currency: what actually flying Houston is worth, capped per day.
-//
-// Experience is earned by learning; usage points are earned by doing, which is
-// why the top ranks cannot be read into existence. The cap is the whole design:
-// it makes the ladder a habit rather than an afternoon of clicking, and it is
-// what the streak rewards. Pure module — `now` is always injected, so a day
-// boundary is a test case rather than a thing you wait for.
-
 import type { AnalyticsEventName } from "../analytics-vocabulary";
 import { type AcademyRecord, createAcademyRecord } from "./academy-record.ts";
 
-/** Points a single day can pay out, however much the user does. */
 export const USAGE_DAILY_CAP = 20;
 
-/**
- * v1 rates. Everyday moments pay 1; the ones that mean the user taught Houston
- * something durable (a skill, an integration, a routine, an agent) pay 2. Any
- * event NOT listed here is worth nothing — the map is the whole economy, so a
- * new analytics event never silently starts paying.
- */
 export const USAGE_POINT_EVENTS: Partial<Record<AnalyticsEventName, number>> = {
   mission_created: 1,
   chat_message_sent: 1,
@@ -31,8 +16,6 @@ export function usagePointsFor(event: AnalyticsEventName): number {
   return USAGE_POINT_EVENTS[event] ?? 0;
 }
 
-/** The LOCAL calendar day of a moment, `YYYY-MM-DD`. Local, not UTC: a user's
- *  day ends when their evening does, not at a timezone's convenience. */
 export function usageDayStamp(now: Date): string {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
@@ -45,13 +28,6 @@ function isDayAfter(previous: string, day: string): boolean {
   return to - from === 24 * 60 * 60 * 1000;
 }
 
-/**
- * The streak on a day the user was active. Same day changes nothing (the streak
- * counts DAYS, not visits), the next calendar day extends it, and any longer gap
- * starts over at one — today still counts. A `lastActiveDay` in the future (a
- * record merged from a device whose clock or timezone runs ahead) is left alone
- * rather than dragged backwards.
- */
 function extendStreak(
   streak: AcademyRecord["streak"],
   day: string,
@@ -67,27 +43,6 @@ function extendStreak(
   };
 }
 
-/**
- * Pays points for something the user just did, rolling the day and the streak.
- * Points are credited to `deviceId` — the install that earned them — so two
- * devices earning at once both keep what they earned (see the record's
- * `usageByDevice`).
- *
- * Returns the record UNCHANGED (identity, so callers can skip the write) when
- * there is nothing to pay: a worthless event, a day already at its cap, or a
- * clock reading EARLIER than the day already counted. That last one is the
- * whole reason the day only ever rolls forward: a day that merely DIFFERS from
- * the stored one used to clear the tally, so setting yesterday's date, earning
- * a full cap, setting today's and earning another paid twice — and alternating
- * the two paid forever.
- *
- * The accepted cost of forward-only: a device whose local day is AHEAD (one
- * flown east, or simply a second machine in a later timezone) writes that day
- * into the shared record, and a device still on the earlier day accrues
- * nothing until its own calendar catches up. Points already earned are never
- * lost, only paused — which is the right way round, because the alternative is
- * an economy anyone can farm by moving a clock.
- */
 export function accrueUsage(
   record: AcademyRecord | null,
   points: number,
@@ -101,7 +56,6 @@ export function accrueUsage(
   const day = usageDayStamp(now);
   const base = record ?? createAcademyRecord(now);
   if (base.usageDay !== null && day < base.usageDay) return record;
-  // A LATER day resets the tally: yesterday's cap is not today's problem.
   const usedToday = base.usageDay === day ? base.usageToday : 0;
   const awarded = Math.min(wanted, USAGE_DAILY_CAP - usedToday);
   if (awarded <= 0) return record;
@@ -118,13 +72,6 @@ export function accrueUsage(
   };
 }
 
-/**
- * The streak as it is TRUE TODAY, which is not what the record says. A stored
- * streak keeps its number until it is next extended, so a run that ended on
- * Monday would still read "5 days" on Friday and quietly lie to the user. A run
- * is alive only if it reaches today or yesterday — yesterday because the day is
- * not over yet and the user can still keep it. `best` is history and stands.
- */
 export function liveStreak(
   record: AcademyRecord | null,
   today: Date,

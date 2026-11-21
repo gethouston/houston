@@ -3,12 +3,6 @@ import { assistantApprovals } from "../assistant/approvals";
 import { json } from "./http";
 import { defineRouteFamily } from "./registry";
 
-/**
- * One pending assistant approval, read back on the authenticated shell surface
- * (never the sandbox router). BOTH spellings are live and always have been —
- * the app addresses the gateway's versioned surface, the desktop the bare one —
- * so they are two routes over one handler rather than a permissive regex.
- */
 defineRouteFamily({
   group: "agent-approvals",
   members: [

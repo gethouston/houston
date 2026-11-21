@@ -9,15 +9,6 @@ import { queryClient } from "./query-client";
 import { queryKeys } from "./query-keys";
 import { AI_HUB_VIEW_ID } from "./top-level-views";
 
-/**
- * The copy for a first-day start the host or gateway refused because the
- * person has no AI connected (`409 first_day_no_provider`): an info toast,
- * never the red bug pair and never Sentry. When the refusal names the hire's
- * saved provider (signed out, while another AI may be connected) the copy
- * says to reconnect THAT one. The action opens the AI Hub, the place the
- * composer's connect-AI state leads, only when the viewer can reach it (the
- * gate's own `canConnect`); otherwise the copy stands alone.
- */
 export function showFirstDayNoProviderToast(error: unknown): void {
   const provider = firstDayRefusal(error)?.provider;
   analytics.track("agent_first_day_needs_ai", {
@@ -47,7 +38,6 @@ export function showFirstDayNoProviderToast(error: unknown): void {
   });
 }
 
-/** The gate's `canConnect`, off the cached capabilities (no React here). */
 function canReachAiHub(): boolean {
   const key = queryKeys.capabilities();
   const status = queryClient.getQueryState(key)?.status;

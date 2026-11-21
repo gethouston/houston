@@ -4,14 +4,6 @@ import { type RosterPatch, rosterBriefPatch } from "./team-roster-edit";
 import type { RosterMember } from "./team-roster-model";
 import { useRosterNameField } from "./use-roster-name-field";
 
-/**
- * A hire on the roster as its employee card, editable in place like a draft:
- * the name commits when the person leaves it, a new job or industry and a
- * swatch at once, and the roster saves each through the host once the hire
- * exists. A failed hire says why in the card's message slot, with Retry and
- * (when allowed) Remove on its foot; an edit that did not save says so there
- * too, and the next Done sends it again.
- */
 export function RosterEmployeeCard({
   member,
   takenNames,
@@ -23,7 +15,6 @@ export function RosterEmployeeCard({
   takenNames: readonly string[];
   onEdit: (patch: RosterPatch) => void;
   onRetry: () => void;
-  /** Omitted where the hire belongs to a set the person cannot shrink. */
   onRemove?: () => void;
 }) {
   const { t } = useTranslation(["agentOnboarding", "agents"]);

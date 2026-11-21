@@ -4,15 +4,6 @@ import { CustomExecutorHost } from "./executor-host";
 import { MemoryCustomSecretStore } from "./secrets";
 import type { CustomIntegrationDef } from "./types";
 
-/**
- * The curated ManyChat entry compiles the frontend's COMMITTED OpenAPI
- * document (`scripts/gen-manychat-openapi.mjs`) through the real executor,
- * offline: no spec fetch, no ManyChat call. This pins what the agent will
- * actually see — readable tool names, the bearer key method the credential
- * card collects — so a regenerated document that regressed either fails
- * here, not in a user's chat. Read from the app tree on purpose: the
- * document has one home and this is its executor-side contract.
- */
 const SPEC = new URL(
   "../../../../../app/src/components/integrations/manychat-openapi.json",
   import.meta.url,
@@ -41,8 +32,6 @@ test("without a key the entry lands pending with the spec's own bearer method", 
     status: "pending",
     authMethods: [{ fields: [{ variable: "token" }] }],
   });
-  // Declared by the document (`Authorization: Bearer <key>`), so the
-  // synthesized fallback template is never needed.
   const integration = await executor.integrations.get("manychat");
   expect(integration?.authMethods).toMatchObject([
     {
@@ -83,7 +72,6 @@ test("with a key the agent sees every operation under a readable name", async ()
     ]),
   );
   for (const tool of tools) {
-    // `subscriber.getInfo`, never `subscriber.ae51a27b65b7…`.
     expect(tool.name).toMatch(/^(page|sending|subscriber)\.[a-z][A-Za-z]+$/);
     expect(tool.description ?? "").not.toMatch(/^\*\*\*Limit/);
   }

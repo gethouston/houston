@@ -1,25 +1,3 @@
-/**
- * The agent-scoped migration requests — zip a set of one agent's files out,
- * unpack that zip into another, then stamp and read back the marker that says
- * the transfer finished — over the injected `fetch`.
- *
- * All four are HOST routes (`packages/host/src/routes/migration.ts`), and on cloud
- * the gateway proxies them to the agent's pod, so the pair moves an agent's
- * data between any two Houston deployments the caller can reach. "Copy an
- * agent" runs both halves against the same engine; the desktop-to-cloud wizard
- * runs the export half against a passive source host it spawned over the old
- * tree, which is its own peer rather than this scope's base.
- *
- * SEAM — gateway control routes ABOUT an agent, not calls into its sandbox, so
- * they run on the module's own {@link moduleScope} rooted at the base URL and
- * never `clientFor(agentId)`.
- *
- * NOTHING here degrades: a missing route, a refused agent and a corrupt archive
- * are three different answers, and a copy that quietly wrote nothing would read
- * to the user as a copy that worked. Every failure throws a
- * `MigrationHttpError` carrying the HTTP `status`.
- */
-
 import type { MigrationImportCommit } from "@houston/wire-types";
 import { type HttpScope, httpRequest } from "../http";
 import type {
@@ -118,8 +96,5 @@ export async function migrationStatus(
     scope,
     `/agents/${encodeURIComponent(agentId)}/migration/status`,
   );
-  // `null` here is the SERVER's answer that it holds no marker — a 404 has
-  // already thrown, because a deployment that cannot be asked is not the same
-  // answer as one that says this agent was never imported.
   return ((await res.json()) as { imported: MigrationMarker | null }).imported;
 }

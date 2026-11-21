@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { type FakeHost, startFakeHost } from "./server";
 
-/**
- * The fake host's first-day lifecycle mirrors the real host's, so the e2e
- * suite drives the same decisions: born pending in the create, one start, a
- * repeat hands back the same task, and a config write cannot move it back.
- */
-
 const JSON_HEADERS = { "content-type": "application/json" };
 const CONFIG = ".houston/config/config.json";
 
@@ -18,8 +12,6 @@ afterEach(async () => {
   await host.stop();
 });
 
-// The fake host's state outlives each test, and a name belongs to one agent,
-// so every hire takes its own.
 let hires = 0;
 
 async function hire(): Promise<string> {

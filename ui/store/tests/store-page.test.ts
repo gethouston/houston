@@ -9,9 +9,6 @@ import {
   StoreSection,
 } from "../src/components/store-page.tsx";
 
-// The components are written in TSX, but node's type stripping does not
-// transform JSX, so the specimens under test are built with createElement.
-
 describe("StorePage", () => {
   it("wraps children in the centred 1040px measure with the page gutters", () => {
     const html = renderToStaticMarkup(

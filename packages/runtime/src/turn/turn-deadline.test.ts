@@ -14,7 +14,6 @@ import { buildTurnBrowserTool } from "./turn-toolset";
 const NOW = 1_800_000_000_000;
 const MIN = 60_000;
 
-/** The gateway's wire form (cloud internal/turntoken), signature unchecked. */
 function turnToken(claims: Record<string, unknown>): string {
   const body = Buffer.from(JSON.stringify(claims)).toString("base64url");
   return `turn-v1.${body}.c2lnbmF0dXJl`;
@@ -36,20 +35,16 @@ test("an exp later than arrival plus the TTL is capped there (a sandbox clock be
 });
 
 test("with iat the lifetime counts from arrival, whatever this sandbox's clock says", () => {
-  // Issued 30 min before it expires, but this clock reads 10 min behind the
-  // gateway's: exp alone would look 10 min later than it is.
   const behind = turnToken({
     iat: (NOW + 10 * MIN) / 1000,
     exp: (NOW + 25 * MIN) / 1000,
   });
   expect(turnTokenExpiry(behind, NOW)).toBe(NOW + 15 * MIN);
-  // A clock ahead of the gateway's no longer cuts the budget short.
   const ahead = turnToken({
     iat: (NOW - 20 * MIN) / 1000,
     exp: (NOW - 5 * MIN) / 1000,
   });
   expect(turnTokenExpiry(ahead, NOW)).toBe(NOW + 15 * MIN);
-  // Still capped at arrival + TTL, and an iat after exp is ignored.
   const long = turnToken({ iat: NOW / 1000, exp: (NOW + 45 * MIN) / 1000 });
   expect(turnTokenExpiry(long, NOW)).toBe(NOW + TURN_TOKEN_TTL_MS);
   const inverted = turnToken({
@@ -64,7 +59,7 @@ test("a token with no readable exp falls back to arrival plus the TTL", () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
   for (const token of [
     undefined,
-    "a".repeat(64), // a standing host token
+    "a".repeat(64),
     "turn-v1.only-one-part",
     "turn-v1.e30.sig.extra",
     `turn-v1.${Buffer.from("not json").toString("base64url")}.sig`,
@@ -103,7 +98,6 @@ test("a pooled turn whose token expires in 2 minutes refuses to hand over", asyn
     () => NOW,
   );
   if (!tool) throw new Error("no browser tool");
-  // SAFETY: the browser tool never reads its ExtensionContext.
   const result = await runWithConversationId("c1", () =>
     tool.execute(
       "t",

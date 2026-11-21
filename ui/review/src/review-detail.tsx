@@ -45,9 +45,7 @@ export function ReviewDetail({
 
     try {
       await onSendFeedback?.(trimmed);
-    } catch {
-      // Caller handles error display
-    }
+    } catch {}
 
     setIsRevising(false);
   };
@@ -73,7 +71,6 @@ export function ReviewDetail({
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      {/* Header */}
       <div className="shrink-0 px-4 py-3 border-b border-line">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           <button
@@ -93,7 +90,6 @@ export function ReviewDetail({
         </div>
       </div>
 
-      {/* Body -- scrollable */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-3xl mx-auto space-y-6">
           <DeliverableCard content={deliverableContent} />
@@ -117,7 +113,6 @@ export function ReviewDetail({
         </div>
       </div>
 
-      {/* Footer -- input + approve button */}
       <div className="shrink-0 px-4 py-3 border-t border-line">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <Input

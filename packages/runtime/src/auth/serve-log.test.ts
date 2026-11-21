@@ -8,7 +8,6 @@ import {
   resetServeProbeLog,
 } from "./serve-log";
 
-// vitest 4 hands back the existing spy when a method is spied again, so calls would pile up across tests.
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -67,7 +66,7 @@ test("a uniformly failed sweep is ONE incident: one error, warnings on repeat, o
   expect(warn).toHaveBeenCalledOnce();
   noteServeSweepOk();
   expect(info).toHaveBeenCalledWith("[serve] control plane reachable again");
-  noteServeSweepOk(); // silent without a prior incident
+  noteServeSweepOk();
   expect(info).toHaveBeenCalledOnce();
 });
 
@@ -82,7 +81,6 @@ test("probes failing ALIKE in one sweep are ONE incident, not one per provider (
   expect(error).toHaveBeenCalledWith(
     `[serve] credential probes for google, openrouter, opencode-go failed alike: ${blip}`,
   );
-  // The identical repeat — in any grouping — is a warning, never a new event.
   logServeProbeFailures([
     { id: "google", detail: blip },
     { id: "openrouter", detail: blip },
@@ -123,8 +121,6 @@ test("distinct failure details stay distinct incidents; a lone failure keeps the
   expect(error).toHaveBeenCalledWith(
     "[serve] credential anthropic: 500: served key rejected",
   );
-  // The grouped entry point and the per-provider path share one transition
-  // map: the lone failure's identical repeat is the same incident.
   logServeProbeFailure("anthropic", "500: served key rejected");
   expect(error).toHaveBeenCalledTimes(2);
 });
@@ -147,7 +143,6 @@ test("a dead central credential NEVER logs an error (user state, not incident)",
   logServeProbeFailure("github-copilot", detail);
   expect(error).not.toHaveBeenCalled();
   expect(warn).toHaveBeenCalledTimes(2);
-  // Reconnecting re-arms the transition tracking like any recovery.
   noteServeProbeOk("github-copilot");
   expect(info).toHaveBeenCalledWith(
     "[serve] credential github-copilot recovered",
@@ -176,7 +171,6 @@ test("connectivity-class failures NEVER log an error (PRODUCT-1602)", () => {
   for (const detail of connectivity) logServeProbeFailure("openrouter", detail);
   expect(error).not.toHaveBeenCalled();
   expect(warn).toHaveBeenCalledTimes(connectivity.length);
-  // Recovery still re-arms the transition map like any other failure class.
   noteServeProbeOk("openrouter");
   expect(info).toHaveBeenCalledWith("[serve] credential openrouter recovered");
 });

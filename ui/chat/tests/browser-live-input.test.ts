@@ -16,7 +16,6 @@ import {
   createBrowserLivePointer,
 } from "../src/browser-live-pointer.ts";
 
-/** A 640x400 painting of a 1280-wide frame, 100 px from the top-left. */
 const GEO: BrowserLiveStageGeometry = {
   left: 100,
   top: 100,
@@ -104,7 +103,6 @@ describe("live view pointer", () => {
     const p = createBrowserLivePointer();
     p.down(finger(420, 300), GEO, 0);
     const [scroll] = p.move(finger(420, 280), GEO, 10);
-    // 20 css px up on a half-size painting = 40 page px down.
     strictEqual(scroll?.type === "wheel" && scroll.dy, 40);
     strictEqual(scroll?.type === "wheel" && scroll.dx, 0);
     const up = p.up(finger(420, 280), GEO);

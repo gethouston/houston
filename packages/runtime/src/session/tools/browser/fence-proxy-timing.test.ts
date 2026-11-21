@@ -5,7 +5,6 @@ import { type FenceNet, type FenceProxy, startFenceProxy } from "./fence-proxy";
 import type { FenceLookup } from "./fence-resolve";
 
 const PUBLIC = "198.51.100.7";
-/** Never answers a connect. */
 const HANG = "198.51.100.9";
 const http = createHttpServer((_req, res) => res.end("ok"));
 let httpPort = 0;

@@ -8,17 +8,6 @@ import {
 import type { SandboxFetch } from "./sandbox-fetch";
 import type { SessionToolError } from "./tool-error";
 
-/**
- * The mission tools' parameter schemas and the one rule that varies by session:
- * WHOSE board the call acts on.
- *
- * Every agent acts on its own board unless it names another. The personal
- * assistant MUST name one: it holds no board of its own, so a mission it
- * started for itself would land somewhere the user can never look at. The
- * schema keeps `agent` optional either way — a missing one is refused here,
- * with a sentence the model can act on, rather than as a validation error.
- */
-
 const AGENT_DESCRIPTION =
   "Another AI Employee's name, from list_agents, to act on THEIR board instead of your own. Omit it for your own board.";
 
@@ -34,7 +23,6 @@ const agentParam = (personalAssistant: boolean) =>
     }),
   );
 
-/** Everything a mission start takes except the provider choice. */
 const missionFields = (
   personalAssistant: boolean,
   providers: readonly ProviderOption[],
@@ -67,23 +55,12 @@ const withProviderChoice = (
   provider: TOptional<TString>,
 ) => Type.Object({ ...fields, provider });
 
-/**
- * The accepted provider ids ARE the ones connected right now, so the model
- * chooses from a list instead of inventing one; with nothing connected the
- * param is not offered at all (an empty union is not a schema) and the `model`
- * description says why. Frozen for the session with the rest of the tool defs —
- * `resolveMissionPin` and the host's start route are what catch a provider
- * connected or disconnected after this snapshot.
- */
 export const startMissionParams = (
   personalAssistant: boolean,
   providers: readonly ProviderOption[],
 ) => {
   const fields = missionFields(personalAssistant, providers);
   const provider = missionProviderParam(providers, personalAssistant);
-  // SAFETY: the declared shape always carries `provider` as an optional id, so
-  // the tool's params are one stable type; a caller must handle its absence
-  // regardless, because the model may simply omit it.
   return provider
     ? withProviderChoice(fields, provider)
     : (Type.Object(fields) as unknown as ReturnType<typeof withProviderChoice>);
@@ -123,15 +100,6 @@ export type UpdateMissionStatusParams = Static<
 >;
 export type ReadMissionParams = Static<ReturnType<typeof readMissionParams>>;
 
-/**
- * The named target, or the refusal the assistant gets for leaving it out.
- *
- * A VALUE, not a throw: the message is written to the model, it says what to do
- * next, and it NAMES the agents that would have worked. An identifier is never
- * to be guessed, and a refusal that withholds the list is what makes a model
- * guess one (mission-agents.ts fetches it; an unreadable list simply drops out
- * of the sentence).
- */
 export type TargetAgent =
   | { ok: true; agent: string | undefined }
   | { ok: false; error: SessionToolError };
@@ -159,6 +127,5 @@ export async function resolveTargetAgent(
   };
 }
 
-/** `?agent=<name>` for the read routes, or "" when acting on the own board. */
 export const agentQuery = (agent: string | undefined): string =>
   agent ? `?agent=${encodeURIComponent(agent)}` : "";

@@ -5,12 +5,6 @@ import { expect, test } from "vitest";
 import { AgentNameConflictError, InvalidAgentNameError } from "../ports";
 import { LocalWorkspaceStore } from "./local";
 
-/**
- * The desktop tree IS the store: workspaces are subdirs of the root, agents are
- * subdirs of each, ids are the on-disk paths. Pins the id model the local
- * profile relies on (agent.id = "<Workspace>/<Agent>") + traversal safety.
- */
-
 function tree(layout: Record<string, string[]>): string {
   const root = mkdtempSync(join(tmpdir(), "houston-local-"));
   for (const [ws, agents] of Object.entries(layout)) {
@@ -40,8 +34,8 @@ test("getAgent resolves an existing path, rejects unknown + traversal", async ()
   const store = new LocalWorkspaceStore(root);
   expect((await store.getAgent("Work/Sales"))?.name).toBe("Sales");
   expect(await store.getAgent("Work/Ghost")).toBeNull();
-  expect(await store.getAgent("Work")).toBeNull(); // a workspace, not an agent
-  expect(await store.getAgent("Work/../../etc/passwd")).toBeNull(); // traversal
+  expect(await store.getAgent("Work")).toBeNull();
+  expect(await store.getAgent("Work/../../etc/passwd")).toBeNull();
 });
 
 test("getOrCreatePersonalWorkspace returns the first, or creates the default when empty", async () => {
@@ -115,11 +109,9 @@ test("renameAgent onto an existing sibling is a typed 409-able conflict, not ENO
   await expect(store.renameAgent("Work/Sales", "HR")).rejects.toBeInstanceOf(
     AgentNameConflictError,
   );
-  // The failed rename must leave both directories untouched.
   expect(existsSync(join(root, "Work", "Sales"))).toBe(true);
   expect(existsSync(join(root, "Work", "HR"))).toBe(true);
 
-  // Renaming to the CURRENT name is a no-op success, never a self-conflict.
   const same = await store.renameAgent("Work/Sales", "Sales");
   expect(same.id).toBe("Work/Sales");
 });

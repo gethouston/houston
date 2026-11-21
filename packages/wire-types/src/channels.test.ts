@@ -44,8 +44,6 @@ describe("the channels wire guards", () => {
   });
 
   it("keeps the provider vocabulary closed, dropping ids it cannot render", () => {
-    // A gateway that grows a provider must not blank the section in an app
-    // that predates it - and must not smuggle an unknown id past the guard.
     expect(
       parseChannelStatus({
         providers: [

@@ -1,10 +1,3 @@
-/**
- * Lightweight context menu for file rows, opened by right-click or the row's
- * kebab button. Portal-based: renders at the reported position and closes on
- * outside click or Escape (the latter on the document, since the portal never
- * holds focus).
- */
-
 import {
   Download,
   ExternalLink,

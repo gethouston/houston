@@ -8,7 +8,6 @@ import { makeTurnSandboxFetch } from "./turn-sandbox";
 import type { poolIdentity, resolveTurnStore } from "./turn-store";
 import type { TurnRequest } from "./types";
 
-/** Build the grant-bound sandbox after identity validation. */
 export function createTurnSandbox(input: {
   deps: TurnServerDeps;
   turn: TurnRequest;
@@ -18,15 +17,11 @@ export function createTurnSandbox(input: {
 }): ReturnType<typeof makeTurnSandboxFetch> | null {
   const { turn, identity } = input;
   if (!turn.grant || !turn.hostToken || !identity) return null;
-  // Houston's routes run the host's handlers over its agent's own tree; a
-  // turn that hydrated any other layout could answer none of them.
   if (turn.coordinator && input.filesystem.kind !== "standing")
     throw new TurnSetupError(
       "layout_unexpected",
       "Houston's turn needs its agent's own workspace tree",
     );
-  // Houston's own turn: the gateway marked it, and bound the token to the
-  // owner, who is the person this turn acts for.
   const coordinator =
     turn.coordinator && turn.actingAs
       ? startTurnCoordinator({

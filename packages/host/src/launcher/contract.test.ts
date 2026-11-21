@@ -12,35 +12,6 @@ import {
   type RuntimeSpawner,
 } from "./process";
 
-/**
- * The OPEN RuntimeLauncher adapters run through the shared contract
- * (../testing/launcher-contract.ts → runRuntimeLauncherContract):
- *   - FakeLauncher (the cloud 3-state model used in tests), and
- *   - ProcessLauncher, driven through INJECTED doubles (a recording spawner + an
- *     instant health probe) so the contract is a pure unit test. No real
- *     subprocess is spawned here.
- *
- * The closed GkeLauncher, which ran the SAME contract plus an apiserver-object
- * reconcile/idempotency suite against a live cluster, was retired with
- * `@houston/host-cloud` (git history) — the shipped cloud launches engine pods
- * from the private gateway repo, which carries its own launcher and tests. The
- * contract stays open as the behavioral bar for any out-of-repo adapter.
- *
- * INTENTIONAL DIVERGENCES (NOT part of the shared contract — pinned per-impl in
- * fake.test.ts / process.test.ts and the divergence block below):
- *   - status's "absent" state. FakeLauncher models running → asleep → absent so
- *     destroy reports "absent" and sleeping an unknown agent THROWS.
- *     ProcessLauncher has no "absent": a laptop process is either up ("running")
- *     or not ("asleep"); sleeping an unknown agent is a silent no-op and destroy
- *     == sleep. The contract only asserts the running/asleep transitions both
- *     share, never the post-destroy state.
- *   - endpoint VALUE. Fake hands back one configurable URL; Process allocates a
- *     loopback port per spawn. The contract only requires a non-empty baseUrl +
- *     token, never a specific value.
- */
-
-/** A recording spawner + instant health probe so ProcessLauncher runs as a
- *  pure unit (no real subprocess). Mirrors process.test.ts's doubles. */
 function makeProcessLauncher(): ProcessLauncher {
   let nextPort = 6000;
   const spawner: RuntimeSpawner = {
@@ -55,7 +26,7 @@ function makeProcessLauncher(): ProcessLauncher {
     workspaceDirFor: (a: Agent) => `/houston/${a.id}/workspace`,
     dataDirFor: (a: Agent) => `/houston/${a.id}/data`,
     mintToken: (a: Agent) => `token-${a.id}`,
-    waitHealthy: async () => {}, // healthy immediately
+    waitHealthy: async () => {},
   };
   return new ProcessLauncher(opts);
 }
@@ -63,9 +34,6 @@ function makeProcessLauncher(): ProcessLauncher {
 runRuntimeLauncherContract("FakeLauncher", () => new FakeLauncher());
 runRuntimeLauncherContract("ProcessLauncher", () => makeProcessLauncher());
 
-// CloudRun: per-turn runtimes have NO launcher (nothing stands between turns);
-// the TurnChannel + dispatchTurn path replaces it. Recorded so the absence is
-// an explicit design fact, not an overlooked adapter.
 test.todo("RuntimeLauncher contract: CloudRun has no launcher by design (per-turn runtime)", () => {});
 
 describe("RuntimeLauncher divergences (asserted per-impl, NOT in the shared contract)", () => {
@@ -82,9 +50,9 @@ describe("RuntimeLauncher divergences (asserted per-impl, NOT in the shared cont
     const proc = makeProcessLauncher();
     const a = agent("z2");
     await proc.ensureAwake(a);
-    await proc.destroy(a.id); // local destroy just stops the process
-    expect(await proc.status(a.id)).toBe("asleep"); // never "absent"
-    await proc.sleep("never-seen"); // no-op, not a throw (continueRecent restores on wake)
+    await proc.destroy(a.id);
+    expect(await proc.status(a.id)).toBe("asleep");
+    await proc.sleep("never-seen");
     expect(await proc.status("never-seen")).toBe("asleep");
   });
 });

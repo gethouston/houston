@@ -1,12 +1,3 @@
-/**
- * Visual-regression baselines for the pricing-change modal: an owner's two
- * intro pages, the picker, a payer's paid step then free step, and both
- * success steps in the same frame,
- * the read-only member and single-org notices, and the Spanish intro, at
- * desktop and phone width. The page clock is pinned before the cutover and
- * every value on screen comes from the fixture. The modal pins its own dark theme; the shell
- * behind it is shot light.
- */
 import type { BillingChoice } from "@houston/wire-types";
 import type { Locator, Page } from "@playwright/test";
 import {
@@ -41,10 +32,6 @@ async function boot(
   await armChoice(choice);
   await page.goto("/");
   const modal = choiceModal(page);
-  // The visual job serves from the vite dev server: a boot loads ~3,100
-  // modules, and the modal waits on the last read of the boot chain
-  // (`/v1/me/billing-choice`). With two workers booting at once on CI that
-  // lands around 15 s, so a 15 s budget flaked the run's first test.
   await expect(modal.getByRole("button").first()).toBeVisible({
     timeout: 25_000,
   });

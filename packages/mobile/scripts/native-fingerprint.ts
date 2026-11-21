@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-/** Files only a store build can change: an OTA bundle never ships them. */
 export const NATIVE_FILES = [
   "capacitor.config.ts",
   "ios/App/App/Info.plist",
@@ -20,7 +19,6 @@ const isNativePackage = (name: string) =>
   name.startsWith("@capacitor-firebase/") ||
   name.startsWith("@capgo/");
 
-/** Resolved versions of the mobile importer's native packages in pnpm-lock.yaml. */
 export function lockedNativeVersions(lockfile: string): Record<string, string> {
   const start = lockfile.indexOf("\n  packages/mobile:\n");
   if (start < 0)
@@ -44,7 +42,6 @@ export function lockedNativeVersions(lockfile: string): Record<string, string> {
   );
 }
 
-/** Hash of everything a native build bakes in; line endings normalised. */
 export function nativeFingerprint(mobileDir: string): string {
   const lockfile = readFileSync(
     path.join(mobileDir, "../../pnpm-lock.yaml"),

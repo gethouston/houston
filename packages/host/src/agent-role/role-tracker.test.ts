@@ -6,11 +6,6 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { AgentRoleTracker, RolePublishDeferredError } from "./role-tracker";
 
-/**
- * The role each agent's listing names follows its job description, whoever
- * wrote it, and is announced only once the listing can serve it.
- */
-
 let store: MemoryWorkspaceStore;
 let vfs: MemoryVfs;
 let workspace: Workspace;
@@ -59,8 +54,6 @@ beforeEach(async () => {
 });
 
 test("a rewritten job description is published BEFORE it is announced", async () => {
-  // The gateway lists roles from its own database: a client re-listing on the
-  // announcement must already find the new role there.
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -89,7 +82,6 @@ test("the agent rewriting its own role re-announces; an unchanged one stays quie
   await writeJob(brief("Store manager"));
   roles.onEvent(contextChanged());
   await roles.flush();
-  // A change to another context file (or a body-only edit) moves no role.
   await writeJob(`${brief("Store manager")}\n\nMore detail.`);
   roles.onEvent(contextChanged());
   await roles.flush();
@@ -157,7 +149,6 @@ test("a deferred role change is retried by the next addressed request", async ()
     await writeJob(brief("Operations lead"));
     roles.onEvent(contextChanged());
     await roles.flush();
-    // Nothing landed: nothing is announced, at warning level only.
     expect(log).toEqual([`announce:AgentRoleChanged:${agent.id}`]);
     expect(warn).toHaveBeenCalledOnce();
 

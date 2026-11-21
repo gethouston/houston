@@ -72,10 +72,6 @@ describe("assistant catalog extraction", () => {
   });
 
   it("composes a sub-client's path with the root its client is bound to", () => {
-    // The literal lives in the sub-client, the values in the module method,
-    // and `/agents/<id>` comes from the client the module resolved.
-    // Both bodies do nothing but return the call, so a caller driving the
-    // route directly gets exactly what the operation would have returned.
     expect(named("things.inspect")?.route).toEqual(
       route("/agents/{agentId}/gadgets/{id}", {
         pathParams: segments("agentId", "id"),
@@ -91,8 +87,6 @@ describe("assistant catalog extraction", () => {
   });
 
   it("reads a path name through the body's own const, never the module's", () => {
-    // `scrapThing` declares `const KIND = "gadgets"` over the module's
-    // `const KIND = "widgets"`, and the body is what runs.
     expect(named("things.scrap")?.route).toEqual(
       route("/v1/gadgets/{id}", {
         method: "DELETE",
@@ -103,9 +97,6 @@ describe("assistant catalog extraction", () => {
   });
 
   it("names an overloaded operation's parameters from its first signature", () => {
-    // The implementation signature is written for the body (`a, b?`); a caller
-    // sees `pin(id)`. Routing still reads the implementation, which is why the
-    // operation is published at all - with its body's unroutable reason.
     expect(named("things.pin")?.params).toEqual([
       { name: "id", required: true, schema: { type: "string" } },
     ]);
@@ -113,15 +104,10 @@ describe("assistant catalog extraction", () => {
   });
 
   it("answers with what the CLIENT method returns, not the wrapper", () => {
-    // `count` declares `Promise<void>` because it publishes what it read; the
-    // route answers the client method's own shape, and that is what a caller
-    // driving the route directly receives.
     expect(named("things.count")?.returns).toMatchObject({
       type: "object",
       properties: {
         total: { type: "number" },
-        // `(string & {})` is a string, not the String prototype's methods.
-        // The literals read in alphabetical order (`literalsInOrder`).
         kind: {
           anyOf: [
             { const: "gadget", type: "string" },
@@ -171,9 +157,6 @@ describe("assistant catalog extraction", () => {
   });
 
   it("publishes the VISIBLE twin of a shared route, whatever was read first", () => {
-    // `gadgets` is mounted first, so the hidden `tally` reaches the route
-    // before `things.count` does. Order must not decide which name a caller
-    // can dispatch.
     expect(named("gadgets.tally")).toBeUndefined();
     expect(named("things.count")?.route?.path).toBe("/v1/widgets/count");
   });
@@ -205,8 +188,6 @@ describe("assistant catalog extraction", () => {
   });
 
   it("names the sub-client when a hop cannot be rooted, instead of vanishing", () => {
-    // Before, an unrootable hop read as "makes no request": the operation left
-    // the catalog AND the coverage gate, so nothing asked for a reason.
     expect(named("gadgets.stray")?.route).toBeNull();
     expect(
       result.coverage.unroutable.find(({ name }) => name === "gadgets.stray")
@@ -217,8 +198,6 @@ describe("assistant catalog extraction", () => {
   });
 
   it("refuses a route whose path names something the signature does not", () => {
-    // The overload publishes `id`; the body binds `a`. A route keyed on `a` is
-    // a call no caller could assemble.
     expect(named("gadgets.seek")?.params.map(({ name }) => name)).toEqual([
       "id",
     ]);
@@ -230,8 +209,6 @@ describe("assistant catalog extraction", () => {
   });
 
   it("treats a spread argument as supplying every parameter it reaches", () => {
-    // `detachAll(...args)` could carry the `scope` that keys the route, so the
-    // default it would otherwise fall back to is not the only possible path.
     expect(named("gadgets.detachAll")?.route).toBeNull();
     expect(
       result.coverage.unroutable.find(
@@ -241,7 +218,6 @@ describe("assistant catalog extraction", () => {
   });
 
   it("reads a template-literal widening and a string parameter as strings", () => {
-    // Both would otherwise walk the String prototype into a 50-property object.
     expect(named("gadgets.stamp")?.params).toEqual([
       { name: "id", required: true, schema: { type: "string" } },
       { name: "token", required: true, schema: { type: "string" } },
@@ -256,9 +232,6 @@ describe("assistant catalog extraction", () => {
   });
 
   it("still judges a dedupe-skipped SDK operation at the coverage gate", () => {
-    // Dropping it from the catalog must not drop it from the gate: an
-    // unannotated SDK function reaches the assistant the day either copy's
-    // path literal moves, and nothing else would have failed.
     expect(
       coverageViolations(result.annotations)
         .filter(({ name }) => name === "things.read")
@@ -364,9 +337,6 @@ describe("the live engine adapter", () => {
   });
 
   it("never drops the callability of an operation that had it", () => {
-    // Staying in the catalog is not enough: an operation that loses its route,
-    // or loses it to a hidden twin claiming the same one, is gone from the
-    // assistant exactly as completely as a deleted one.
     const callable = new Set(
       live.catalog.operations
         .filter(isCallableOperation)
@@ -378,11 +348,6 @@ describe("the live engine adapter", () => {
   });
 
   it("never changes an operation's policy or wire across the SDK flip", () => {
-    // Moving a capability from its `cp/*` copy to an SDK module must carry the
-    // whole `@assistant` block and the exact route with it. A twin that lands
-    // in another group, drops its `confirm`, becomes visible, or answers a
-    // different path leaves the catalog complete and callable — and changes
-    // what the assistant is allowed to do, with nothing else to catch it.
     for (const [name, want] of Object.entries(OPERATION_POLICY_FLOOR)) {
       const operation = live.catalog.operations.find((o) => o.name === name);
       expect(operation, name).toBeDefined();
@@ -402,8 +367,6 @@ describe("the live engine adapter", () => {
   });
 
   it("reviews the policy of every operation the catalog carries", () => {
-    // A new operation with no floor line is a new confirmation prompt, or a
-    // new visible write, that reached the assistant with nobody reading it.
     expect(
       live.catalog.operations
         .map(({ name }) => name)
@@ -413,8 +376,6 @@ describe("the live engine adapter", () => {
   });
 
   it("advertises only what houston_call will perform", () => {
-    // The index is always-on context: a name in it that the dispatcher refuses
-    // has the agent promise the user an action this build cannot do.
     const module = renderCapabilityIndex(live.catalog);
     const index = JSON.parse(
       module.slice(module.indexOf('= "') + 2, module.lastIndexOf(";")),

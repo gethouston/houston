@@ -1,16 +1,6 @@
 import type * as React from "react";
 import { type MarkdownBlock, parseMarkdownBlocks } from "./markdown-blocks";
 
-/**
- * A small, dependency-free Markdown renderer for agent-authored descriptions.
- *
- * It emits React elements only — never `dangerouslySetInnerHTML` — so all text
- * is escaped by React and no author-supplied HTML can execute. It covers the
- * subset that shows up in agent descriptions: headings, paragraphs, ordered and
- * unordered lists, fenced code, blockquotes, thematic breaks, and inline
- * emphasis / code / links. Links are limited to http(s) and open in a new tab
- * with `rel="noopener noreferrer"`; anything else renders as plain text.
- */
 export function Markdown({ content }: { content: string }) {
   const blocks = parseMarkdownBlocks(content.replace(/\r\n/g, "\n"));
   return (

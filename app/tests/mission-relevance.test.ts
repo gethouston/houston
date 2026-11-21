@@ -42,8 +42,6 @@ describe("missionIsMine", () => {
   });
 
   it("treats a mission with NO attribution at all as mine", () => {
-    // The load-bearing desktop-parity clause: legacy / pre-Teams missions carry
-    // no created_by and no contributors and must never go silent.
     strictEqual(missionIsMine(conv(), ME), true);
     strictEqual(missionIsMine(conv({ contributors: [] }), ME), true);
   });
@@ -70,9 +68,6 @@ describe("missionMentionsMe", () => {
   });
 
   it("is false when I mentioned MYSELF", () => {
-    // Typing your own name is not news, and the OS ping already refuses to fire
-    // on it. Counting it here would earn a permanent inbox row and a
-    // mention-unread badge that no amount of reading can clear.
     const c = conv({
       created_by: ME,
       mentioned: [{ user_id: ME, at: "2026-07-01T10:00:00.000Z", by: ME }],
@@ -81,8 +76,6 @@ describe("missionMentionsMe", () => {
   });
 
   it("still counts a mention of me carrying NO author", () => {
-    // Pre-stamp entries have no `by`. Reading "no author" as "me" would go
-    // silent on every mention written before the gateway stamped authors.
     const c = conv({
       created_by: MATE,
       mentioned: [{ user_id: ME, at: "2026-07-01T10:00:00.000Z" }],
@@ -137,7 +130,6 @@ describe("latestMentionFor", () => {
   });
 
   it("skips a NEWER self-mention in favour of a real one", () => {
-    // The newest entry is mine; the inbox must still show me the teammate's.
     const c = conv({
       mentioned: [
         { user_id: ME, at: "2026-07-05T10:00:00.000Z", by: MATE },

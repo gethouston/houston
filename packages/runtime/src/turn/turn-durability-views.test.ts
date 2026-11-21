@@ -17,13 +17,6 @@ import {
 } from "./turn-views.test-support";
 import { landOp } from "./turn-views-op.test-support";
 
-/**
- * A pooled turn changes what a sleeping agent's tabs read: the gateway serves
- * the Skills tab from the captured skills view doc and the memories list from
- * the learnings doc. These pin that the turn's settle republishes exactly the
- * docs its landed writes changed, merge-safely, before it announces them.
- */
-
 test("a turn that adds a skill republishes the skills view and announces it", async () => {
   const agent = await agentStore();
   const docs = podDocs({ skills: await podSkillsAnswer(agent) });
@@ -61,7 +54,6 @@ test("a turn that changes no skill or memory republishes nothing", async () => {
   const agent = await agentStore();
   const docs = podDocs({ skills: await podSkillsAnswer(agent) });
   const { filesystem, settle } = await claimedTurn(agent, docs);
-  // An ordinary file and a skill's helper script: neither feeds a view doc.
   await seed(filesystem.workspaceDir, "notes.md", "draft\n");
   await seed(filesystem.workspaceDir, ".agents/skills/existing/run.py", "1\n");
 
@@ -72,8 +64,6 @@ test("a turn that changes no skill or memory republishes nothing", async () => {
 });
 
 test("overlapping turns keep each other's skills in the view", async () => {
-  // Both hydrate before either lands: each tree lacks the other's skill, so a
-  // whole-list copy from the later turn would drop the earlier one's.
   const agent = await agentStore();
   const docs = podDocs({ skills: await podSkillsAnswer(agent) });
   const first = await claimedTurn(agent, docs, "c1");
@@ -97,7 +87,6 @@ test("turns settling at once merge into the view, never clobber", async () => {
   await Promise.all(
     turns.map((turn, i) => writeSkill(turn.filesystem, `s${i}`, `Turn ${i}`)),
   );
-  // One overlapping turn also removes the shared skill.
   await rm(
     join(turns[2]?.filesystem.workspaceDir ?? "", ".agents/skills/existing"),
     { recursive: true },
@@ -132,7 +121,6 @@ test("a skills view that did not land is not announced and fails nothing", async
 
   const result = await settle();
 
-  // The SKILL.md is durable; only the view lags until the next projection.
   expect(result.outcome).toEqual({});
   expect(docs.doc("skills")).toEqual(standing);
   expect(result.changed).toEqual(["FilesChanged"]);
@@ -155,8 +143,6 @@ test("a turn that saves a memory republishes the learnings doc and announces it"
 });
 
 test("overlapping turns' memories all reach the doc, in the store's order", async () => {
-  // The second save merges the first into the object (sync-back's merge by
-  // id reorders it), so neither turn's own copy is what the store holds.
   const agent = await agentStore();
   const docs = podDocs({ learnings: await podLearnings(agent) });
   const first = await claimedTurn(agent, docs, "c1");
@@ -208,9 +194,6 @@ test("a learnings doc that did not land is not announced", async () => {
 });
 
 test("a learnings doc the store will not take is not announced and fails nothing", async () => {
-  // Rollout order: this worker may meet a pod-store that predates learnings
-  // in the turn-claim doc scope (403). The doc stays stale, so no refetch is
-  // promised; the memory itself is durable, so the turn did not fail.
   const agent = await agentStore();
   const docs = podDocs(
     { learnings: await podLearnings(agent) },
@@ -226,9 +209,6 @@ test("a learnings doc the store will not take is not announced and fails nothing
 });
 
 test("a turn that settles late never re-serves a skill summary another turn replaced", async () => {
-  // The first turn lands its edit, then stalls before its doc GET. A second
-  // turn hydrates after that landing, edits the same skill again, lands and
-  // publishes. The late publisher must not put its older summary back.
   const gate = holdFirstGet("skills", "c1");
   const agent = await agentStore();
   const docs = podDocs(
@@ -274,8 +254,6 @@ const landSkillCreateOp = (agent: AgentStore, docs: PodDocs, name: string) =>
   });
 
 test("an op that projects after a turn keeps the turn's skill", async () => {
-  // The op lands `alpha` from a tree listed before the turn's `beta`, then
-  // the turn publishes. A whole-list op snapshot would drop `beta`.
   const agent = await agentStore();
   const docs = podDocs({ skills: await podSkillsAnswer(agent) });
   const turn = await claimedTurn(agent, docs);
@@ -291,8 +269,6 @@ test("an op that projects after a turn keeps the turn's skill", async () => {
 });
 
 test("an op that projects after a turn keeps the turn's memory", async () => {
-  // The Memories tab's whole-list save lands from a tree listed before the
-  // turn's save_learning; projecting that list would drop the turn's fact.
   const agent = await agentStore();
   const docs = podDocs({ learnings: await podLearnings(agent) });
   const project = await landOp(agent, docs, {
@@ -343,9 +319,6 @@ test("an op whose learnings doc the store would not take announces nothing", asy
 });
 
 test("a memory deleted in the tab stays deleted when a turn saves another during the op", async () => {
-  // The tab's whole-list save drops l0 and loses its upload race to the
-  // turn's save_learning. The merge keeps the turn's memory and never brings
-  // l0 back from the store's copy.
   const agent = await agentStore();
   const docs = podDocs({ learnings: await podLearnings(agent) });
   const turn = await claimedTurn(agent, docs);
@@ -364,10 +337,6 @@ test("a memory deleted in the tab stays deleted when a turn saves another during
 });
 
 test("a memory deleted while a turn's save retries stays deleted", async () => {
-  // The turn's file holds an unsynced memory of its own. Its save_learning
-  // refreshes, then loses the upload race to the tab deleting l0. The retry
-  // merges against what it refreshed from, so l0 stays deleted and the
-  // turn's own memories stay.
   const agent = await agentStore();
   const docs = podDocs({ learnings: await podLearnings(agent) });
   const turn = await claimedTurn(agent, docs);
@@ -399,9 +368,6 @@ test("a memory deleted while a turn's save retries stays deleted", async () => {
 });
 
 test("a memory a turn saves after the tab's op listed the store survives the tab's save", async () => {
-  // The tab's whole-list save keeps l0 and adds its own memory. The turn's
-  // memory lands after the op listed the store, before the op writes: the
-  // tab never saw it, so leaving it out of the list is no deletion.
   const agent = await agentStore();
   const docs = podDocs({ learnings: await podLearnings(agent) });
   const turn = await claimedTurn(agent, docs);
@@ -427,7 +393,6 @@ test("a memory a turn saves after the tab's op listed the store survives the tab
   expect(docs.doc("learnings")).toEqual(stored);
 });
 
-/** Another turn deletes the memories file outright and lands that. */
 async function deleteMemoriesFile(agent: AgentStore, docs: PodDocs) {
   const other = await claimedTurn(agent, docs, "c-delete");
   await rm(join(other.filesystem.workspaceDir, ".houston", "learnings"), {

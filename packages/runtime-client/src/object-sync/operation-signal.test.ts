@@ -46,8 +46,6 @@ test("no parent, or an aborted one, passes through unchanged", async () => {
   expect(await withOperationSignal(aborted, async (own) => own)).toBe(aborted);
 });
 
-// fetch keeps its abort listener on the signal it is given until the Request
-// is garbage-collected, so this pins the fix against real fetch, not a stub.
 let server: Server;
 let baseUrl: string;
 

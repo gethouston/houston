@@ -1,13 +1,3 @@
-/**
- * Activities contract: the `activities/<agentId>` view-model reflects the host's
- * `GET /agents/:id/activities`, the CRUD facade mutates then refetches so the
- * snapshot always reflects the server, and a change made by ANOTHER client (an
- * out-of-band `ActivityChanged` on `/v1/events`) live-updates the snapshot.
- *
- * The `ActivitiesViewModel` is the snapshot every subscriber reads (the
- * dispatch path, the adapter, a test), so its seed shape is pinned here as API.
- */
-
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
 import {
   type ActivitiesViewModel,
@@ -51,9 +41,6 @@ const vm = (): ActivitiesViewModel | undefined =>
 describe("activities VM", () => {
   it("loads the seed activities into a pinned snapshot shape", async () => {
     await h.sdk.activities.refresh(SEED_AGENT_ID);
-    // The reactivity stream's onConnect fires a concurrent background refetch,
-    // which briefly republishes a `loaded:false` catch-up snapshot; wait for it
-    // to settle so the pinned shape is read once the list is stable.
     await until(() => vm()?.loaded === true, "activities loaded");
 
     expect(vm()).toEqual({
@@ -65,7 +52,6 @@ describe("activities VM", () => {
           description: "Research flights and hotels for the spring",
           status: "needs_you",
           updatedAt: ISO,
-          // No explicit session_key on the wire → the board's activity-<id>.
           sessionKey: "activity-act-1",
           startedBy: { kind: "person" },
         },
@@ -95,7 +81,6 @@ describe("activities VM", () => {
     expect(item).toMatchObject({
       title: "Book the venue",
       description: "for the launch party",
-      // New missions are created running.
       status: "running",
       sessionKey: created.sessionKey,
     });
@@ -140,9 +125,6 @@ describe("activities VM", () => {
     await h.sdk.activities.refresh(SEED_AGENT_ID);
     await until(() => vm()?.items.length === 2, "seed loaded");
 
-    // A different client creates an activity directly on the host; the fake host
-    // emits ActivityChanged on /v1/events, which the SDK's reactivity stream
-    // catches and refetches from — no local mutation through the facade.
     const res = await fetch(`${host.url}/agents/${SEED_AGENT_ID}/activities`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -160,8 +142,6 @@ describe("activities VM", () => {
   });
 
   it("reads who started a mission off the row the host stamped (PRODUCT-1928)", async () => {
-    // The fake host takes the stamp off a seeding POST; the real host stamps it
-    // from the verified caller.
     const res = await fetch(`${host.url}/agents/${SEED_AGENT_ID}/activities`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -189,7 +169,6 @@ it("message stamps survive status changes and reach the AI Manager's VM", async 
     null,
     "last_message",
   );
-  // A background refetch can land after the write; wait for the VM to settle.
   await until(
     () =>
       vm()?.items.find((item) => item.id === "act-1")?.lastMessageAt ===

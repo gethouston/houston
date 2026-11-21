@@ -17,8 +17,6 @@ const committed = JSON.parse(
   ),
 );
 
-/** A raw document in ManyChat's published shape: hashed operation ids, empty
- *  summaries, HTML in descriptions, an empty server url. */
 const raw = (paths) => ({
   openapi: "3.0.0",
   info: { title: "ManyChat API", version: "beta" },
@@ -117,8 +115,6 @@ describe("cleanManyChatSpec", () => {
 
 describe("the committed document", () => {
   it("is what the generator produces from its own output shape (idempotent)", () => {
-    // Re-cleaning the committed document must be a no-op: every operation id
-    // is already the path segment and every summary already authored.
     expect(cleanManyChatSpec(committed)).toEqual(committed);
   });
 

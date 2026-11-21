@@ -1,12 +1,6 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { ReplyBeat } from "../types";
 
-/**
- * Shape reads over the Claude Agent SDK's message union that the turn loop
- * needs but the SDK does not expose as type guards.
- */
-
-/** A main-thread `message_start` stream event — the start of one API response. */
 export function isAssistantMessageStart(msg: SDKMessage): boolean {
   return (
     msg.type === "stream_event" &&
@@ -15,12 +9,6 @@ export function isAssistantMessageStart(msg: SDKMessage): boolean {
   );
 }
 
-/**
- * The {@link ReplyBeat} a main-thread stream event carries, if any: a
- * `tool_use` block opening (its input streams with no wire frame until the
- * block stops), or a response stopping on `end_turn` / `stop_sequence` (no
- * tool call to run). A subagent's stream is not this conversation's reply.
- */
 export function replyBeatOf(msg: SDKMessage): ReplyBeat | null {
   if (msg.type !== "stream_event" || msg.parent_tool_use_id !== null)
     return null;

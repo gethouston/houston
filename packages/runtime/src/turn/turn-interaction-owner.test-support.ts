@@ -10,8 +10,6 @@ import {
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/** A pooled turn against a conversation whose last turn ended on a card. */
-
 export const AGENT = "workspaces/Personal/Probe";
 export const RUNTIME = `${AGENT}/.houston/runtime`;
 export const OWNER = "member-owner";
@@ -54,9 +52,6 @@ const noCardConversation = (id: string) =>
     messages: JSON.parse(cardConversation(id)).messages.slice(0, 1),
   });
 
-/** The listing and bytes the gateway inlines into a turn, read right now.
- *  `skip` keys are listed but not inlined, like an object over the
- *  gateway's per-object inline cap. */
 async function prefetchOf(
   pool: ReturnType<typeof fakePoolStore>,
   skip: readonly string[] = [],
@@ -77,30 +72,16 @@ async function prefetchOf(
 }
 
 export interface PooledTurnOptions {
-  /** The gateway read the conversation before the card landed. */
   stalePrefetch?: boolean;
-  /** The gateway prefetched after the card landed. */
   currentPrefetch?: boolean;
-  /** The gateway prefetched before the conversation existed. */
   prefetchBeforeConversation?: boolean;
-  /** List the conversation in the prefetch without inlining its bytes. */
   conversationNotInlined?: boolean;
-  /** The conversation object's generation in the store under the claim;
-   *  the prefetch carries generation 1. */
   storeGeneration?: string;
-  /** Fail every live read of the conversation object with this status. */
   failRead?: number;
-  /** Fail every live read of the agent's CLAUDE.md with this status. */
   failHydration?: number;
-  /** The generation the gateway's batch read reported for inlined bytes. */
   inlinedGeneration?: string;
-  /** Fail the live read of this key with a 403 (it is never inlined). */
   failLive?: string;
-  /** The conversation's read under the claim never answers until aborted. */
   hangReread?: boolean;
-  /** Hold hydration's live read of this key until the conversation is read
-   *  again under the claim, or 1 s passes. Later reads of the key (the
-   *  activity stamp refreshing its document) pass through unrecorded. */
   holdLive?: string;
 }
 
@@ -123,8 +104,6 @@ export async function pooledTurn(
   let prefetch: unknown;
   if (options.prefetchBeforeConversation) prefetch = await prefetchOf(pool);
   if (options.stalePrefetch) {
-    // The gateway read the agent's files before it held the claim: its bytes
-    // predate the card the previous turn ended on.
     pool.put(conversationKey, noCardConversation(conversationId));
     prefetch = await prefetchOf(pool, skip, generation);
   }

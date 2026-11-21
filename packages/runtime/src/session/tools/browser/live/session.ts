@@ -18,29 +18,16 @@ import { VIEWER_WINDOW, ViewerWindow } from "./viewer-window";
 
 export interface HandoffInit {
   conversationId: string;
-  /** What the person needs to do, as the agent put it. */
   text: string;
-  /** The signed-in person who may drive it; undefined = anyone (desktop). */
   owner?: string;
   tab: BrowserTab;
   limitMs: number;
-  /** Called on every input batch, so an idle sweep spares a page in use. */
   touch?: () => void;
   now?: () => number;
 }
 
-/**
- * One hand-off: the agent's `browser` call waits on `ended` while the person
- * drives the tab through any number of viewers. Ends exactly once: done or
- * cancelled by the person, cancelled by a stopped turn, or expired.
- */
 export class HandoffSession {
   readonly conversationId: string;
-  /**
-   * Unguessable, minted per hand-off and echoed by the client on everything
-   * it sends: a chat may hand over again, and nothing aimed at an earlier
-   * hand-off (a late Done, a retried batch) may act on this one.
-   */
   readonly handoffId = randomUUID();
   readonly text: string;
   readonly owner: string | undefined;
@@ -58,7 +45,6 @@ export class HandoffSession {
   private latestPage: BrowserLivePage | null = null;
   private seq = 0;
   private chain: Promise<unknown> = Promise.resolve();
-  /** The highest input batch seq applied per viewer of this hand-off. */
   private readonly applied = new Map<string, number>();
 
   constructor(init: HandoffInit) {
@@ -77,7 +63,6 @@ export class HandoffSession {
       page: (page) => this.broadcastPage(page),
     });
     this.deadline = setTimeout(() => this.finish("expired"), init.limitMs);
-    // A hand-off nobody finishes must never be what keeps a process alive.
     this.deadline.unref();
   }
 
@@ -92,7 +77,6 @@ export class HandoffSession {
     };
   }
 
-  /** End the hand-off; later calls change nothing. */
   finish(end: BrowserHandoffEnd): void {
     if (this.state !== "waiting") return;
     this.state = end;
@@ -105,11 +89,6 @@ export class HandoffSession {
     this.settle(end);
   }
 
-  /**
-   * Start sending one viewer the status, the page, the latest frame, then live
-   * frames. A viewer id that reconnects replaces its old stream. Returns the
-   * detach for when the stream closes.
-   */
   attachViewer(
     viewer: string,
     layout: BrowserLiveLayout,
@@ -135,12 +114,6 @@ export class HandoffSession {
     this.viewers.get(viewer)?.ack(seq);
   }
 
-  /**
-   * Apply one input batch, in order, after every earlier batch. A batch that
-   * was queued when the hand-off ended, or that repeats one already applied
-   * for its viewer (`batch.seq` not above the last), applies nothing. Batches
-   * aimed at another hand-off never get here (the route checks `handoff`).
-   */
   apply(
     events: readonly BrowserLiveInput[],
     batch?: { viewer: string; seq: number },
@@ -150,7 +123,6 @@ export class HandoffSession {
       this.touch();
       return this.input.apply(events);
     });
-    // The chain only orders batches; each caller gets its own batch's failure.
     this.chain = run.then(
       () => undefined,
       () => undefined,
@@ -158,10 +130,6 @@ export class HandoffSession {
     return run;
   }
 
-  /**
-   * Records `batch` as applied and says whether it is new. Recorded before the
-   * events run: a batch that failed halfway is not typed a second time.
-   */
   private firstApply(batch?: { viewer: string; seq: number }): boolean {
     if (!batch) return true;
     if (batch.seq <= (this.applied.get(batch.viewer) ?? 0)) return false;

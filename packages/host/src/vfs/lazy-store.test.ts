@@ -21,7 +21,6 @@ import { VfsExistsError, VfsReadLimitError } from "./vfs";
 
 const PREFIX = "ws/w1/agent-1";
 
-/** A LocalDirStore that counts downloads — the whole point of laziness. */
 function countingStore(root: string): ObjectStore & { downloads: string[] } {
   const inner = new LocalDirStore(root);
   const downloads: string[] = [];
@@ -68,7 +67,6 @@ async function seeded(files: Record<string, string> = {}) {
   return { store, root, manifest, vfs, storeRoot };
 }
 
-// An empty store: the overlay alone must honor the full port contract.
 runVfsContract("LazyStoreVfs (empty store)", () => {
   const manifest: HydrateManifest = new Map();
   return new LazyStoreVfs({
@@ -129,7 +127,6 @@ test("an object over the per-read cap is refused before any byte is downloaded",
     vfs.readBytes("workspaces/P/Bob/big.bin"),
   ).rejects.toBeInstanceOf(LazyReadRefusedError);
   expect(store.downloads).toEqual([]);
-  // Still listed: the Files tab shows it; only fetching it is unavailable.
   expect(await vfs.list("workspaces/P/Bob")).toContain(
     "workspaces/P/Bob/big.bin",
   );
@@ -137,7 +134,6 @@ test("an object over the per-read cap is refused before any byte is downloaded",
 
 test("sync-back after lazy edits: untouched objects are neither re-uploaded nor deleted", async () => {
   const { vfs, store, manifest, root, storeRoot } = await seeded();
-  // Delete before read, overwrite before read, create, rename an unread one.
   await vfs.deleteKey("workspaces/P/Bob/docs/notes.md");
   await vfs.writeText("workspaces/P/Bob/report.csv", "changed");
   await vfs.writeText("workspaces/P/Bob/new.txt", "new");
@@ -146,7 +142,6 @@ test("sync-back after lazy edits: untouched objects are neither re-uploaded nor 
     UNREAD_HASH,
   );
   expect(manifest.get("workspaces/P/Bob/report.csv")?.hash).toBe(UNREAD_HASH);
-  // The vfs view is already consistent before the sync.
   expect(await vfs.list("workspaces/P/Bob")).toEqual([
     "workspaces/P/Bob/CLAUDE.md",
     "workspaces/P/Bob/new.txt",
@@ -166,7 +161,6 @@ test("sync-back after lazy edits: untouched objects are neither re-uploaded nor 
     "workspaces/P/Bob/docs/deep/x.txt",
     "workspaces/P/Bob/docs/notes.md",
   ]);
-  // CLAUDE.md was never touched: it must survive untouched in the store.
   const remaining = (await store.list(PREFIX)).map((k) =>
     k.slice(PREFIX.length + 1),
   );
@@ -180,7 +174,6 @@ test("sync-back after lazy edits: untouched objects are neither re-uploaded nor 
   expect(
     existsSync(join(storeRoot, PREFIX, "workspaces/P/Bob/CLAUDE.md")),
   ).toBe(true);
-  // The only download was the move's source (a rename needs the bytes).
   expect(store.downloads).toEqual([
     `${PREFIX}/workspaces/P/Bob/docs/deep/x.txt`,
   ]);
@@ -222,18 +215,12 @@ test("moving a missing or deleted source throws like the real filesystem", async
 
 test("an object deleted remotely after the listing reads as absent, not a failure", async () => {
   const { vfs, storeRoot } = await seeded();
-  // Another writer deleted it between the turn's listing and this first
-  // read: a vanished object is a delete, never a failed turn
-  // (HOUSTON-APP-5AS).
   rmSync(join(storeRoot, PREFIX, "workspaces/P/Bob/report.csv"));
   expect(await vfs.readText("workspaces/P/Bob/report.csv")).toBeNull();
-  // Listings agree with the read, and the vanished key never enters the
-  // sync-back manifest as something to re-create or delete.
   expect(await vfs.list("workspaces/P/Bob")).not.toContain(
     "workspaces/P/Bob/report.csv",
   );
 
-  // Moving a vanished source fails like a missing file, not like a store error.
   rmSync(join(storeRoot, PREFIX, "workspaces/P/Bob/docs/notes.md"));
   await expect(
     vfs.move("workspaces/P/Bob/docs/notes.md", "workspaces/P/Bob/n.md"),
@@ -241,9 +228,6 @@ test("an object deleted remotely after the listing reads as absent, not a failur
 });
 
 test("a folder dropped on a NON-EMPTY folder refuses the way the Files tab reads", async () => {
-  // The refusal has to be TYPED: `moveOrRefuse` turns a VfsExistsError into
-  // the 409 "already exists there" the user sees, and anything else escapes as
-  // an unexpected 500 for a collision the user can fix by renaming.
   const { vfs } = await seeded({ "workspaces/P/Bob/archive/old.md": "old" });
   await expect(
     vfs.move("workspaces/P/Bob/docs", "workspaces/P/Bob/archive"),

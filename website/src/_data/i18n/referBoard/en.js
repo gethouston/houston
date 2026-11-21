@@ -1,9 +1,3 @@
-// English copy for the request board on /data-partners/refer and each
-// request's own page. Joined onto the locale tree as `t.referBoard` by
-// _data/eleventyComputed.js, so scripts/check-locales.mjs holds es and pt to
-// this exact tree. No em dashes. {amount}, {min}, {max}, {count} and {title}
-// are filled in by the templates and assets/refer-board.js.
-
 export default {
   board: {
     all: "All",

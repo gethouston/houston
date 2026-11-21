@@ -67,7 +67,6 @@ describe("applyDetect", () => {
       requiresOAuth: true,
     });
     strictEqual(next.needsKey, false);
-    // ...but a needsKey the user already turned on is left alone.
     const kept = applyDetect(form({ needsKey: true }), {
       kind: "mcp",
       requiresAuthentication: true,
@@ -157,7 +156,6 @@ describe("addInputFrom", () => {
         auth: "oauth",
       },
     );
-    // Unsupported (or unchecked) stays on the key/none path.
     deepStrictEqual(
       addInputFrom(
         form({ kind: "mcp", name: "Acme MCP", url: "https://mcp.acme.com" }),
@@ -191,7 +189,6 @@ describe("oauthBlocked", () => {
       false,
     );
     strictEqual(oauthBlocked(form({ kind: "mcp" }), null), false);
-    // A deployment that CAN run the sign-in does not block (PRODUCT-1172).
     strictEqual(
       oauthBlocked(form({ kind: "mcp" }), {
         kind: "mcp",

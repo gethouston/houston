@@ -30,8 +30,6 @@ const JOSE: MentionPerson = { userId: "u_jose", name: "José" };
 const BOB: MentionPerson = { userId: "u_bob", name: "Bob Ross" };
 const ROSTER = [ADA, ADA_SHORT, JOSE, BOB];
 
-/** "José" the two ways Unicode spells it: one precomposed character, or
- *  "e" plus a combining acute. A reader sees no difference; `.length` does. */
 const JOSE_NFC = "Jos\u00e9";
 const JOSE_NFD = "Jose\u0301";
 
@@ -276,14 +274,10 @@ describe("findMentionSpans — Unicode normalization", () => {
       { name: JOSE_NFC, userId: "u_jose" },
     ]);
     assert.equal(spans.length, 1);
-    // The offsets index the NFC form, where the accent is part of the name —
-    // the bug this guards is a span that ended one unit short and leaked the
-    // combining accent into the text node after the chip.
     assert.equal(at(text, spans[0] as { start: number; end: number }), "@José");
   });
 
   it("never truncates mid-grapheme: a floating accent is not a match at all", () => {
-    // "@Ana" + a combining acute composes to "@Aná", which is somebody else.
     const spans = findMentionSpans("hi @Ana\u0301 there", [
       { name: "Ana", userId: "u_ana" },
     ]);
@@ -312,8 +306,6 @@ describe("findMentionSpans — two people, one name", () => {
   });
 
   it("emphasizes the mention when ANY same-name entry is the viewer", () => {
-    // The viewer sorted second; dropping their flag would silently
-    // un-address the person reading the message.
     const spans = findMentionSpans("@Ana", anas);
     assert.equal(spans[0]?.target.isSelf, true);
   });
@@ -397,16 +389,12 @@ describe("resolveMentions", () => {
   });
 
   it("records nothing for a name the RENDERER would never chip", () => {
-    // Each of these renders as verbatim content, so a chip never appears —
-    // recording the mention would notify someone about a message that
-    // addresses them nowhere.
     assert.deepEqual(resolveMentions("run `@Ada Lovelace`", pending), []);
     assert.deepEqual(resolveMentions("```\n@Ada Lovelace\n```", pending), []);
     assert.deepEqual(
       resolveMentions("see [@Ada Lovelace](https://x)", pending),
       [],
     );
-    // …and the same name OUTSIDE the code span still ships.
     assert.deepEqual(resolveMentions("run `x` @Ada Lovelace", pending), [
       { userId: "u_ada", name: "Ada Lovelace" },
     ]);
@@ -497,7 +485,6 @@ describe("the dismissal state machine", () => {
   });
 
   it("STAYS shut for the rest of the token after a dismissal", () => {
-    // Escape at "@Ad", then one more character typed: same token, same start.
     assert.equal(open({ dismissedStart: 4 }), false);
     assert.equal(
       open({ dismissedStart: 4, active: { start: 4, query: "Ada" } }),
@@ -513,9 +500,7 @@ describe("the dismissal state machine", () => {
   });
 
   it("lifts the dismissal only when the token itself is gone", () => {
-    // Still inside the token: kept.
     assert.equal(carryDismissal(4, { start: 4, query: "Ada" }), 4);
-    // The "@" was deleted / the caret left / it stopped being a name.
     assert.equal(carryDismissal(4, null), null);
   });
 });
@@ -574,7 +559,6 @@ describe("pending mentions are scoped per draft", () => {
   });
 
   it("a FAILED send keeps the picks; only a landed one drops them", async () => {
-    // Mirrors `chat-input.tsx`'s ordering: resolve, await onSend, then commit.
     const drafts: PendingMentions = new Map();
     recordPending(drafts, A, ADA_PICK);
     const send = async (accepted: boolean) => {
@@ -588,7 +572,6 @@ describe("pending mentions are scoped per draft", () => {
     };
 
     await assert.rejects(() => send(false));
-    // The text is still in the composer, so the retry must still carry Ada.
     assert.deepEqual(readPending(drafts, A), [ADA_PICK]);
     assert.deepEqual(await send(true), [ADA_PICK]);
     assert.deepEqual(readPending(drafts, A), []);

@@ -18,31 +18,11 @@ import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
 
-/**
- * Boot-time healer for abandoned C8 agent moves (HOU-817).
- *
- * A move whose driver vanished (dialog closed, app quit, poll timed out)
- * leaves the gateway's durable lock in place, and a locked agent cannot wake:
- * every request answers 503 "agent is being moved", which reads as a fully
- * broken app. On each boot of a spaces-capable host this re-drives every
- * persisted pending move to terminal: poll the recorded ticket, re-POST to
- * stale-adopt when it reads failed, and clear the record only once nothing is
- * left to finish (`done`, `gone`, or refused before anything started).
- * Success and failure both toast — a silently healed (or still-stuck) agent
- * would hide what happened to it.
- *
- * `enabled` MUST be the signed-in state: the capabilities probe (and every
- * move call) is authenticated on hosted deployments, so firing it on the
- * sign-in screen would only produce 401 noise.
- */
 export function useMoveResume(enabled: boolean): void {
   const queryClient = useQueryClient();
   const { t } = useTranslation("teams");
   const ranRef = useRef(false);
 
-  // A record can only have been written by a spaces-capable host, so with no
-  // records this observes nothing and fetches nothing. The shared query key
-  // means the shell's own `useCapabilities` consumers dedupe against this.
   const hasPending = readPendingMoves().length > 0;
   const capsQuery = useQuery({
     queryKey: queryKeys.capabilities(),
@@ -67,17 +47,14 @@ export function useMoveResume(enabled: boolean): void {
           ).some((team) => team.agentIds.includes(pending.agentId))
         )
           continue;
-        if (!claimMove(pending.agentId)) continue; // a dialog is driving it
+        if (!claimMove(pending.agentId)) continue;
         try {
-          // A terminal failure gets ONE toast below (see `moveWire`).
           const result = await resumePendingMove(pending, moveWire, {
             onMoveAccepted: (moveId) =>
               updatePendingMoveId(pending.agentId, moveId),
           });
           if (result.outcome === "done" || result.outcome === "gone") {
             clearPendingMove(pending.agentId);
-            // `gone`: the agent is in neither space, so there is no move to
-            // announce; the refresh shows where things stand.
             if (result.outcome === "done")
               addToast({
                 title: t("moveResume.done", {
@@ -86,8 +63,6 @@ export function useMoveResume(enabled: boolean): void {
                 }),
                 variant: "success",
               });
-            // The agent changed spaces: refresh the switcher, the team list,
-            // and the active workspace's sidebar.
             await useWorkspaceStore.getState().loadWorkspaces();
             await queryClient.invalidateQueries({
               queryKey: queryKeys.orgs(),
@@ -99,8 +74,6 @@ export function useMoveResume(enabled: boolean): void {
                 .loadAgents(current.id, { silent: true });
             }
           } else if (result.outcome === "refused") {
-            // Refused before anything started: nothing to finish, and
-            // re-sending can only be refused again until a rename.
             clearPendingMove(pending.agentId);
             addToast({
               title: t("moveResume.nameTaken", {
@@ -110,11 +83,7 @@ export function useMoveResume(enabled: boolean): void {
               variant: "info",
             });
           } else if (result.outcome === "inProgress") {
-            // A live move already owns the agent (another window or a fresh
-            // dialog is driving it) — leave the record; its driver settles it.
           } else {
-            // Keep the record: the lock is still held and only a finished move
-            // frees the agent, so the next boot tries again.
             if ("moveId" in result && result.moveId) {
               updatePendingMoveId(pending.agentId, result.moveId);
             }

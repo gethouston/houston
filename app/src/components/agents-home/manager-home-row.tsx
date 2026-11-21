@@ -5,17 +5,6 @@ import { useUIStore } from "../../stores/ui";
 import { ASSISTANT_VIEW_ID } from "../assistant/id";
 import { FRONT_DIAMETER } from "./agent-avatar-stack";
 
-/**
- * The AI Manager, pinned above the phone's roster: the same chat-list row an
- * agent gets (a large mark in the stack's 56px box, the name, one line under
- * it), wearing the Manager's round mark (disc and halo together at an
- * employee avatar's diameter, so the halo stays inside the row) and its role
- * in place of a preview.
- * Gated on reachability (`useManagerReachable`) like the rail's row, so it
- * stands while onboarding runs even where discovery serves none. The team
- * filter never hides it: the Manager belongs to no team. Tapping it PUSHES
- * the assistant chat, so the chat's back chevron returns here.
- */
 export function ManagerHomeRow() {
   const { t } = useTranslation("shell");
   const reachable = useManagerReachable();

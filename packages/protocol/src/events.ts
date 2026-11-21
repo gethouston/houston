@@ -1,17 +1,3 @@
-/**
- * The global host event channel (`GET /v1/events`, WS or SSE): domain-change
- * notifications that drive UI reactivity (TanStack Query invalidation).
- * Carries the SAME vocabulary the Rust engine's firehose used, so the
- * frontend's event→query-key invalidation map survives the convergence.
- *
- * How an event is DETECTED differs per profile (local: FS watcher; cloud:
- * post-turn sync diff) — the vocabulary on the wire does not.
- *
- * Per-turn streaming (text/thinking/tool frames) is NOT here — that rides the
- * per-conversation SSE stream (conversation.ts WireEvent).
- */
-
-/** `agentPath` is the agent's opaque key (the v1 folderPath; cloud synthesizes a stable key). */
 export type HoustonEvent =
   | { type: "ActivityChanged"; agentPath: string }
   | { type: "RoutinesChanged"; agentPath: string }
@@ -20,10 +6,6 @@ export type HoustonEvent =
   | { type: "LearningsChanged"; agentPath: string }
   | { type: "SkillsChanged"; agentPath: string }
   | { type: "ContextChanged"; agentPath: string }
-  /** The role an agent's job description names changed, and the agent listing
-   *  (`GET /agents`, its `role` field) already serves the new one. Raised only
-   *  once the listing can answer with it: on a gateway-fronted pod, after the
-   *  role document the gateway lists from is durable. */
   | { type: "AgentRoleChanged"; agentPath: string }
   | { type: "FilesChanged"; agentPath: string }
   | { type: "ConversationsChanged"; agentPath: string }
@@ -35,13 +17,8 @@ export type HoustonEvent =
   | { type: "CompletionToast"; agentPath: string; title: string; body: string }
   | { type: "AuthRequired"; provider: string }
   | { type: "CustomIntegrationsChanged" }
-  /** The morning briefing turn FINISHED with a reply on the person's AI
-   *  Manager (`agentPath` is the manager's own agent); the app notifies on it. */
   | { type: "HeartbeatDelivered"; agentPath: string; date: string }
-  /** The briefing settings or its last-run record changed. */
   | { type: "HeartbeatChanged"; workspaceId: string }
-  /** One of the person's account preferences (`/v1/preferences/:key`) was
-   *  written, by them or by the AI Manager acting for them. */
   | { type: "PreferencesChanged"; workspaceId: string };
 
 export type HoustonEventType = HoustonEvent["type"];

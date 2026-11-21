@@ -8,15 +8,6 @@ import { specimen as scrollArea } from "./scroll-area";
 import { specimen as sidebar } from "./sidebar";
 import { specimen as tabs } from "./tabs";
 
-/**
- * The "Structure & nav" family: layout frames, panels, tabs, sidebars — anything
- * that positions content or routes between it.
- *
- * One file per component in this folder (`<component>.tsx`, each exporting
- * `export const specimen: Specimen` with `group: "Structure & nav"`), imported
- * here and listed below in nav order: the flat switchers first, then the frames
- * that hold a whole screen, then the composed pickers.
- */
 export const specimens: readonly Specimen[] = [
   tabs,
   accordion,

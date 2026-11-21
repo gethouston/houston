@@ -17,7 +17,6 @@ describe("conversationTurnMode (HOU-205)", () => {
     expect(conversationTurnMode([card({ mode: "auto" })], "activity-m1")).toBe(
       "auto",
     );
-    // An explicit session key addresses the card too.
     expect(
       conversationTurnMode(
         [card({ mode: "plan", session_key: "welcome-1" })],
@@ -32,7 +31,6 @@ describe("conversationTurnMode (HOU-205)", () => {
     expect(
       conversationTurnMode([card({ mode: "auto" })], "activity-other"),
     ).toBeUndefined();
-    // Agents write the board with file tools: junk is not a mode.
     const junk = { ...card({}), mode: "turbo" } as unknown as Activity;
     expect(conversationTurnMode([junk], "activity-m1")).toBeUndefined();
   });
@@ -41,7 +39,6 @@ describe("conversationTurnMode (HOU-205)", () => {
     expect(
       conversationTurnMode([card({ started_by: "api" })], "activity-m1"),
     ).toBe("auto");
-    // A mode the person picked since still wins.
     expect(
       conversationTurnMode(
         [card({ started_by: "api", mode: "execute" })],

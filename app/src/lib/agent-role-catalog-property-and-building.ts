@@ -1,4 +1,3 @@
-/** The property and building worlds and the jobs each one hires for (ids only; labels live in `agentOnboarding:roleSetup`). */
 export const PROPERTY_AND_BUILDING_WORLDS = {
   real_estate: [
     "listing_agent",

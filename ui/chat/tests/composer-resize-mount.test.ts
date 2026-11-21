@@ -1,8 +1,3 @@
-// Real-DOM mounts (the interaction-card-mount.test.ts pattern) of the two
-// growing fields: the composer's resize handle and the question card's
-// free-text answer. jsdom does no layout, so each test stubs the one number
-// the code measures (scrollHeight, or the drawn textarea's height).
-
 import { strict as assert } from "node:assert";
 import { afterEach, describe, it } from "node:test";
 import { JSDOM } from "jsdom";
@@ -64,7 +59,6 @@ function mount(node: React.ReactElement): HTMLElement {
   return container;
 }
 
-/** A composer surface whose textarea is drawn `drawnPx` tall, with the handle. */
 function mountHandle(drawnPx: number, height: number | null) {
   const calls: (number | null)[] = [];
   const container = mount(

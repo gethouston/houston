@@ -15,7 +15,6 @@ const item = (
 
 describe("triggerBadgeState", () => {
   it("resolves absent status to the muted 'unknown' fallback, never nothing", () => {
-    // The load-bearing rule: a trigger routine ALWAYS resolves to a state.
     assert.equal(triggerBadgeState(undefined), "unknown");
   });
   it("passes the five wire states through unchanged", () => {

@@ -13,9 +13,6 @@ describe("onboarding survey ownership", () => {
   );
 
   it("mounts the survey hook exactly once, in App's routing hook", () => {
-    // `useOnboardingSurvey` runs the record's catch-up flush per instance, so
-    // a second live instance inside the chat would double every recovery
-    // PUT. App's routing hook owns it and the state is passed down.
     assert.equal((routing.match(/useOnboardingSurvey\(\)/g) ?? []).length, 1);
     assert.doesNotMatch(routes, /useOnboardingSurvey\(\)/);
     assert.doesNotMatch(card, /useOnboardingSurvey\(\)/);
@@ -45,12 +42,6 @@ describe("first-run resume contract", () => {
   const hook = read("../src/components/onboarding/use-first-run-onboarding.ts");
 
   it("starting records the started stage once, on a run not already pending", () => {
-    // Hiring the first AI Employee flips the zero-agent first-run signal, so
-    // the durable pending stage is the ONLY thing that resumes a user who quit
-    // mid-onboarding (`useFirstRunRouting` routes it back in). What a start
-    // does on a fresh or resumed mount is `startFirstRun`'s contract
-    // (`first-run-start.test.ts`); a stale in-app tutorial flag never mounts
-    // the onboarding at all (`onboarding-route.test.ts`).
     assert.match(
       hook,
       /if \(started\.current\) return;[\s\S]*?startFirstRun\(\{\s*isPending: stage !== "none",[\s\S]*?markPending\("started"\)/,

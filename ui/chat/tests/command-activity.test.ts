@@ -6,9 +6,6 @@ import type { ToolEntry } from "../src/feed-to-messages.ts";
 const bash = (command: unknown): ToolEntry =>
   ({ name: "bash", input: { command } }) as ToolEntry;
 
-// HOU-1048: the header narrates "the agent is on the internet" / "the agent is
-// running Python" off the raw command line — the runtime has no dedicated web
-// tool, so curl/wget/python all arrive as bash (or run_code).
 describe("classifyCommand", () => {
   it("classifies curl with a full URL as web and extracts the host", () => {
     deepStrictEqual(
@@ -92,7 +89,6 @@ describe("classifyCommand", () => {
 
   it("returns undefined for ordinary shell work", () => {
     strictEqual(classifyCommand("ls -la && git status"), undefined);
-    // Only the leading executable counts: a mention isn't an invocation.
     strictEqual(
       classifyCommand("cat curl-notes.md python_tips.txt"),
       undefined,

@@ -44,9 +44,6 @@ export function IntegrationsReady({
   const connectFlow = useConnectFlow({});
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const selection = useConnectionSelection(apps);
-  // The curated connect dialog's subject: the slug pressed and the row's own
-  // provider hand-off, so a Composio pick in the dialog lands on that row and
-  // runs the row's completion (the search-clearing callback included).
   const [curatedRequest, setCuratedRequest] = useState<{
     slug: string;
     providerConnect: () => void;
@@ -55,8 +52,6 @@ export function IntegrationsReady({
     curatedRequest === null
       ? null
       : (curatedIntegrationOf(curatedRequest.slug) ?? null);
-  // The PROVIDER catalog, not the merged one: a curated extra wears the same
-  // slug on a deployment without Composio, where its connect would 400.
   const providerCatalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
   const providerHasCurated =
     curatedRequest !== null &&
@@ -80,9 +75,6 @@ export function IntegrationsReady({
         </div>
       )}
 
-      {/* Above the shell: the in-flow draft banner must greet the user, not
-          trail a long catalog (the chat panel and dialogs are portals and
-          render wherever they like). */}
       <CustomSurfaceSupport surface={custom} />
 
       <PageHeaderTools>
@@ -118,10 +110,6 @@ export function IntegrationsReady({
               custom={shown.custom}
               onOpen={selection.openConn}
               customSelection={custom.selection}
-              // A curated row's Sign in reopens the chooser: after an
-              // abandoned or refused browser sign-in the user must still be
-              // able to pick the provider connect or the token, not only
-              // retry the same page.
               onCustomSignIn={(slug) =>
                 curatedIntegrationOf(slug)
                   ? setCuratedRequest({
@@ -176,9 +164,6 @@ export function IntegrationsReady({
         }
       />
 
-      {/* Only a RESOLVED list may claim emptiness — while it loads or after a
-          failed read (CustomSurfaceSupport's loud error above), saying "none
-          yet" would contradict the truth. */}
       {category === "custom" &&
         Array.isArray(custom.items) &&
         shown.custom.length === 0 &&

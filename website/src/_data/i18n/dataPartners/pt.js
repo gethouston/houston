@@ -1,5 +1,3 @@
-// Portuguese copy for /data-partners. Mirrors en.js key for key (Brazilian, você).
-
 export default {
   meta: {
     title:

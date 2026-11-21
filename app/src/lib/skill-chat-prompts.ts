@@ -1,23 +1,5 @@
-/**
- * The Claude-facing kickoffs for a custom skill's setup chat (HOU-791 — the
- * Skills surface gets a routine's setup-chat experience: build and change a
- * skill by talking to the agent, never by hand-editing markdown). English on
- * purpose (all prompts are); the agent mirrors the user's language when it
- * answers. They ride the auto-continue marker (`lib/auto-continue-message.ts`):
- * the user never typed anything, so the transcript hides the bubble and the
- * conversation opens with the agent's greeting.
- *
- * The product prompt's "Skills" how-to section (the SKILL.md shape, naming
- * rules, user-voice rules) does the heavy lifting; these kickoffs run the
- * interview and pin the chat <-> skill link (`skill-chat-setup.ts`).
- */
-
 import { encodeAutoContinueMessage } from "./auto-continue-message.ts";
 
-/**
- * The create kickoff. Takes the setup chat's own activity id so the agent can
- * link the new skill back to it via the frontmatter `setup_activity_id`.
- */
 export function skillSetupPrompt(activityId: string): string {
   return `The app sent this message automatically: the user clicked "Create with AI" on the Skills page. This chat is where you build their new skill, and it stays attached to the skill forever — the user can come back to it any time to change how the skill works. The user has not said anything yet and is waiting for you to start.
 
@@ -39,11 +21,6 @@ What you need to learn (batch these into that first call wherever possible):
 When you have everything, summarize the skill in a few plain lines (what it does, and when you'll use it) and ask for approval with ask_user (Yes / No). Only create it after a Yes. Create it following your Skills guidance — propose a short plain name yourself — and include a frontmatter field "setup_activity_id" set to exactly "${activityId}"; that keeps this chat attached to the skill. Also keep the Houston-created metadata and the versioned Workflow marker from the Skills guidance, because the app uses that Workflow section to show the user clear steps. Every step that uses one of their connected apps carries that app's tag, exactly as your Skills guidance describes, so running the skill later goes straight to the right app action. Never mention these fields or any other technical detail to the user. Then confirm it is ready, mention they can run it any time just by asking, and remind them they can change it right here, in this same chat, any time.`;
 }
 
-/**
- * The kickoff for an existing skill's first-ever chat (installed from the
- * store or GitHub, created from scratch, or from before setup chats existed).
- * One calm greeting, no interview — it already exists.
- */
 export function skillModifyPrompt(skill: {
   slug: string;
   displayName: string;
@@ -66,14 +43,6 @@ Know the skill's anatomy so every request lands on the right part:
 Change only what the user asked about and keep everything else exactly as it already is. Ask for approval with ask_user (Yes / No) before saving a change, keep every message short and non-technical, and never mention files, markdown, schemas, ids, or field names to the user — talk about "the name", "the description", "the steps" in plain words.`;
 }
 
-/**
- * The per-TURN context prefix for an existing skill's chat. The kickoff names
- * the bound skill once, but a model can lose first-message context (long
- * histories, compaction, or plain inattention — observed: "which skill should
- * I rename?" asked INSIDE a skill's own chat). Every send re-asserts the
- * binding on the model-facing prompt; the user's bubble stays their own words
- * (`displayText`).
- */
 export function skillChatTurnContext(skill: {
   slug: string;
   displayName: string;
@@ -81,15 +50,10 @@ export function skillChatTurnContext(skill: {
   return `[App context — not written by the user: this conversation manages ONE skill, the one named "${skill.slug}" in your skills list (the user knows it as "${skill.displayName}"). Your skills list shows where its SKILL.md lives — edit that file in place, whether it sits in your own skills folder or the workspace's shared skills library; never write a copy anywhere else. Any request about "this skill" or "the skill" — renaming it, changing its description, steps, tone, anything — refers to exactly that skill. Never ask which skill is meant, and never touch a different skill unless the user explicitly names another one. A rename means the frontmatter "title" field; never rename the folder or the "name" field. Reply to the message below.]`;
 }
 
-/**
- * The full first-message body for a new-skill chat: marker (hides the bubble)
- * + create kickoff (what the model acts on).
- */
 export function encodeSkillSetupMessage(activityId: string): string {
   return encodeAutoContinueMessage(skillSetupPrompt(activityId));
 }
 
-/** The full first-message body for an existing skill's first-ever chat. */
 export function encodeSkillModifyMessage(skill: {
   slug: string;
   displayName: string;

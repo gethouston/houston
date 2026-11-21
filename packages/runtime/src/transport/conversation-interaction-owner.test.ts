@@ -12,12 +12,6 @@ import { Readable } from "node:stream";
 import { ROUTINE_FIRE_HEADER } from "@houston/protocol";
 import { afterAll, beforeEach, describe, expect, test, vi } from "vitest";
 
-/**
- * On a shared agent, only the person a card is for can answer it (their next
- * message) or dismiss it. The person comes from the gateway-signed acting-as
- * token; the AI Manager acting for someone carries that someone as `sub`.
- */
-
 const chat = vi.hoisted(() => ({
   runTurn: vi.fn(async () => {}),
   ensureProviderForTurn: vi.fn(async () => "openai" as string | null),
@@ -56,7 +50,6 @@ function actingToken(sub: string, via?: "assistant"): string {
 }
 
 let seq = 0;
-/** A conversation whose last turn, sent by OWNER, ended on a question card. */
 function seedCard(prefix = "c"): string {
   const id = `${prefix}${++seq}`;
   const dir = join(dataDir, "conversations");
@@ -173,7 +166,6 @@ describe("answering a card (send)", () => {
     const id = seedCard();
     expect(await send(id, actingToken(OTHER))).toEqual(refusal);
     expect(chat.runTurn).not.toHaveBeenCalled();
-    // Refused before the nonce was reserved: the owner's own send still runs.
     expect((await send(id, actingToken(OWNER))).status).toBe(202);
   });
 
@@ -202,9 +194,6 @@ describe("answering a card (send)", () => {
   });
 
   test("a routine fire is not refused by a card an earlier run left", async () => {
-    // Routine runs share one conversation and act as different people (the
-    // creator on a schedule, whoever clicked "run now"). The host marks its
-    // own fire; only that marker exempts it.
     const out = await send(seedCard("routine-r"), actingToken(OTHER), "run", {
       [ROUTINE_FIRE_HEADER]: "1",
     });

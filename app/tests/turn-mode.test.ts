@@ -7,8 +7,6 @@ import {
   resolveConversationTurnMode,
 } from "../src/lib/turn-mode.ts";
 
-// `normalizeTurnMode` remains the read-side guard for legacy/live pins: only
-// the three known mode values may cross the UI boundary.
 describe("normalizeTurnMode", () => {
   it("keeps the three known modes", () => {
     strictEqual(normalizeTurnMode("plan"), "plan");
@@ -24,8 +22,8 @@ describe("normalizeTurnMode", () => {
 
   it("normalizes unknown / legacy / wrong-typed values to the default mode", () => {
     strictEqual(normalizeTurnMode("planning"), DEFAULT_TURN_MODE);
-    strictEqual(normalizeTurnMode("Plan"), DEFAULT_TURN_MODE); // case-sensitive
-    strictEqual(normalizeTurnMode("Auto"), DEFAULT_TURN_MODE); // case-sensitive
+    strictEqual(normalizeTurnMode("Plan"), DEFAULT_TURN_MODE);
+    strictEqual(normalizeTurnMode("Auto"), DEFAULT_TURN_MODE);
     strictEqual(normalizeTurnMode("autopilot"), DEFAULT_TURN_MODE);
     strictEqual(normalizeTurnMode("readonly"), DEFAULT_TURN_MODE);
     strictEqual(normalizeTurnMode(42), DEFAULT_TURN_MODE);
@@ -37,8 +35,6 @@ describe("normalizeTurnMode", () => {
   });
 });
 
-// HOU-205: a conversation keeps its mode on its card, so reopening the chat
-// shows the mode the person picked instead of Ask first.
 describe("resolveConversationTurnMode", () => {
   const base = {
     picked: null,

@@ -11,19 +11,6 @@ import type {
   ResolvedModel,
 } from "../backends/types";
 
-/**
- * PLAN MODE — the per-turn mode flip rebuilds the session read-only while
- * preserving history, emits no provider_switched frame, and a cross-backend
- * switch that ALSO flips mode lands on the requested mode in ONE rebuild.
- *
- * History carryover is the load-bearing guarantee: a real backend reopens THIS
- * conversation's persisted session by id on rebuild (pi via continueRecent, the
- * Claude store keyed by conversationId), so prior turns rehydrate. The fake
- * backend here models that with a per-conversation "disk" the rebuilt session
- * re-attaches to — proving switchModeIfNeeded keys the rebuild by conversationId
- * and clears nothing.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "houston-mode-data-"),
 );
@@ -52,12 +39,6 @@ const { registerBackend, setDefaultBackend } = await import(
 const { subscribe } = await import("./bus");
 type Conversation = import("./conversation-cache").Conversation;
 
-/**
- * A session backed by a shared per-conversation "disk": its `prompts` array is
- * the conversation's transcript, so a rebuilt session for the same id re-attaches
- * to the SAME transcript — modeling on-disk rehydration (continueRecent / the
- * Claude store). Records the mode it was built at + dispose.
- */
 class HistSession implements HarnessSession {
   disposed = false;
   private listeners = new Set<(e: WireEvent) => void>();
@@ -90,7 +71,6 @@ class HistSession implements HarnessSession {
   }
 }
 
-/** A backend whose sessions rehydrate from a shared per-conversation disk. */
 function histBackend(
   id: string,
   disk: Map<string, string[]>,
@@ -170,10 +150,8 @@ test("switchModeIfNeeded rebuilds on a flip and the rebuilt session keeps prior 
   expect(session.disposed).toBe(true);
   expect(conv.mode).toBe("plan");
   expect(built).toHaveLength(1);
-  // Rebuilt read-only, and the prior turn rehydrated (same conversation disk).
   expect(built[0].builtMode).toBe("plan");
   expect(built[0].prompts).toEqual(["earlier turn"]);
-  // A flip back to execute rebuilds again and still sees the history.
   const back = await switchModeIfNeeded(conv, "c", OPENAI, "execute");
   expect(back.rebuilt).toBe(true);
   expect(conv.mode).toBe("execute");
@@ -200,11 +178,8 @@ test("switchModeIfNeeded rebuilds execute→auto and the rebuilt session keeps p
   expect(session.disposed).toBe(true);
   expect(conv.mode).toBe("auto");
   expect(built).toHaveLength(1);
-  // Rebuilt at auto, prior turn rehydrated (same conversation disk).
   expect(built[0].builtMode).toBe("auto");
   expect(built[0].prompts).toEqual(["earlier turn"]);
-  // A flip auto→plan rebuilds again and still sees the history — the switch is
-  // value-agnostic across all three modes.
   const toPlan = await switchModeIfNeeded(conv, "c", OPENAI, "plan");
   expect(toPlan.rebuilt).toBe(true);
   expect(conv.mode).toBe("plan");
@@ -258,7 +233,7 @@ test("a mode-only flip through execTurn rebuilds read-only, keeps history, and e
     backendId: "pi",
     mode: "execute",
   } as unknown as Conversation;
-  modelState.model = OPENAI; // same provider/model — only the mode changes
+  modelState.model = OPENAI;
 
   const events: WireEvent[] = [];
   const unsub = subscribe("conv-flip", (e) => events.push(e));
@@ -274,11 +249,9 @@ test("a mode-only flip through execTurn rebuilds read-only, keeps history, and e
 
   expect(session.disposed).toBe(true);
   expect(conv.mode).toBe("plan");
-  // Exactly one rebuild — the read-only session ran the turn on the prior history.
   expect(built).toHaveLength(1);
   expect(built[0].builtMode).toBe("plan");
   expect(built[0].prompts).toEqual(["prior turn", "draft me a plan"]);
-  // A mode flip is internal (same provider/model): no divider frame.
   expect(events.some((e) => e.type === "provider_switched")).toBe(false);
 });
 
@@ -306,7 +279,7 @@ test("a cross-backend switch that also flips mode lands on plan in a SINGLE rebu
     backendId: "pi",
     mode: "execute",
   } as unknown as Conversation;
-  modelState.model = ANTHROPIC; // cross-backend AND plan
+  modelState.model = ANTHROPIC;
 
   const events: WireEvent[] = [];
   const unsub = subscribe("conv-x", (e) => events.push(e));
@@ -323,10 +296,8 @@ test("a cross-backend switch that also flips mode lands on plan in a SINGLE rebu
   expect(piSession.disposed).toBe(true);
   expect(conv.backendId).toBe("anthropic");
   expect(conv.mode).toBe("plan");
-  // ONE session built on the anthropic backend, already at plan (no double flip).
   expect(claudeBuilt).toHaveLength(1);
   expect(claudeBuilt[0].builtMode).toBe("plan");
-  // The cross-backend boundary still draws its divider.
   expect(events.some((e) => e.type === "provider_switched")).toBe(true);
 });
 

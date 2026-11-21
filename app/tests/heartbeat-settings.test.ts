@@ -22,7 +22,6 @@ describe("morning briefing time picker", () => {
   });
 
   it("writes the time the way the person's locale does", () => {
-    // ICU versions differ on the space before AM/PM (a narrow no-break one).
     const en = (time: string) =>
       formatHeartbeatTime(time, "en-US").replace(/\s/g, " ");
     strictEqual(en("08:00"), "8:00 AM");

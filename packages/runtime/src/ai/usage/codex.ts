@@ -7,19 +7,6 @@ import {
   settleWindow,
 } from "./types";
 
-/**
- * ChatGPT / Codex (Plus / Pro) account usage — the rate-limit windows the Codex
- * product enforces per subscription:
- *
- *   GET https://chatgpt.com/backend-api/wham/usage
- *   Authorization: Bearer <ChatGPT OAuth access token>
- *   ChatGPT-Account-Id: <account id>   (when the credential carries one)
- *
- * Response: `rate_limit.primary_window` / `secondary_window`, each
- * `{used_percent, reset_at: epoch seconds, limit_window_seconds}`, plus
- * `plan_type`.
- */
-
 const USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
 
 type WireWindow = {
@@ -28,11 +15,6 @@ type WireWindow = {
   limit_window_seconds?: unknown;
 } | null;
 
-/**
- * Classify a Codex window by its length, not its position: ~5h (≤ a day) is
- * the rolling session lane, anything longer is the weekly lane. `fallback`
- * covers a payload that omits `limit_window_seconds`.
- */
 function toWindow(
   block: WireWindow | undefined,
   fallback: ProviderUsageWindow["id"],
@@ -53,18 +35,12 @@ function toWindow(
   };
 }
 
-/**
- * Fetch the connected Codex account's rate-limit windows. A window the API
- * still reports past its own reset is settled to empty (`settleWindow`).
- */
 export async function fetchCodexUsage(
   fetchImpl: typeof fetch = fetch,
   store: Pick<KeyStore, "get" | "getApiKey"> = keyStore,
   now: () => number = Date.now,
 ): Promise<ProviderUsage> {
   const provider = "openai-codex";
-  // getApiKey auto-refreshes the OAuth token under the store's serialized
-  // modify; get() reads the (non-secret-shaped) account id alongside.
   const token = await store.getApiKey(provider);
   const cred = store.get(provider);
   const accountId =

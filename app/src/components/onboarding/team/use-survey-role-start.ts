@@ -12,25 +12,13 @@ import type { AgentRoleStart } from "../../shell/use-agent-role-state";
 import { surveyRoleStart } from "./team-industry";
 
 export interface SurveyRoleStart {
-  /** The record is still arriving: the industry question must wait for it,
-   *  since it only takes its starting answer when it opens. */
   loading: boolean;
   start: AgentRoleStart;
 }
 
-/**
- * The person's survey industry and role, as the hire flow's opening answers.
- *
- * A READER of the record App's one `useOnboardingSurvey` owns: the observer
- * never fetches (`enabled: false`), so the owner's load and its catch-up push
- * stay the only ones. A record the owner never managed to load reads as no
- * industry at all, and the question simply opens blank.
- */
 export function useSurveyRoleStart(): SurveyRoleStart {
   const { data: session, isLoading: sessionLoading } = useSession();
   const uid = session?.uid ?? null;
-  // The owner's own options, load included, so this reader never leaves the
-  // shared query without one (`surveyQueryOptions`).
   const query = useQuery<OnboardingSurveyPreference | null>({
     ...surveyQueryOptions(uid, () => loadOwnSurvey(uid)),
     enabled: false,

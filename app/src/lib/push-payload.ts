@@ -9,7 +9,6 @@ export interface PushPayload {
   event: string;
 }
 
-/** Unknown native plugin data never reaches navigation without C23's shape. */
 export function parsePushPayload(value: unknown): PushPayload | null {
   if (typeof value !== "object" || value === null) return null;
   const data = value as Record<string, unknown>;

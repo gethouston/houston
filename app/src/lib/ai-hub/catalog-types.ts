@@ -1,15 +1,3 @@
-/**
- * AI Hub catalog contracts. The hub folds every provider's model list into a
- * single directory of unique models (`CatalogModel`), each carrying the set of
- * providers that offer it (`CatalogOffer`). Built by `loadHubCatalog`.
- */
-
-/**
- * The lab that makes a model. Derived from the data (OpenRouter `vendor/model`
- * id prefixes, models.dev `family` fields, and name heuristics), so the union
- * mirrors the labs actually present in the snapshot. `other` covers the long
- * tail (Perplexity, Microsoft, IBM, AI21, and smaller open-weight shops).
- */
 export type LabId =
   | "anthropic"
   | "openai"
@@ -27,41 +15,22 @@ export type LabId =
   | "nvidia"
   | "other";
 
-/** One provider's way to run a given model. */
 export interface CatalogOffer {
-  /** Engine gateway id (e.g. `openrouter`, `amazon-bedrock`, `anthropic`). */
   providerId: string;
-  /** The provider-native model id to select. */
   modelId: string;
-  /** Price per 1M input tokens (dollars). Omitted for subscription offers. */
   costInput?: number;
-  /** Price per 1M output tokens (dollars). Omitted for subscription offers. */
   costOutput?: number;
-  /** Context window (tokens) this provider serves for the model. */
   context?: number;
-  /** True when access comes with a subscription (no per-token price shown). */
   subscription: boolean;
 }
 
-/** A unique model, merged across every provider that offers it. */
 export interface CatalogModel {
-  /** Cross-provider normalized identity key (`normalizeKey` of the name). */
   key: string;
   name: string;
   lab: LabId;
   description?: string;
   reasoning: boolean;
-  /**
-   * The model advertises native tool/function calling. pi-ai's catalog carries
-   * no tool-call signal, so this comes from the models.dev snapshot enrichment
-   * (`foldEnrichment`) on a pi-ai model that has a snapshot twin.
-   */
   toolCall: boolean;
-  /**
-   * The model generates images (output modality). No source carries this signal
-   * today (pi-ai has no field; models.dev has none), so it is effectively always
-   * `false`; the field is kept for when an enrichment source supplies it.
-   */
   imageGen: boolean;
   inputModalities: string[];
   knowledge?: string;
@@ -71,7 +40,6 @@ export interface CatalogModel {
   offers: CatalogOffer[];
 }
 
-/** The built catalog, derived from the pi-ai runnable set. */
 export interface HubCatalog {
   models: CatalogModel[];
   byKey: Map<string, CatalogModel>;

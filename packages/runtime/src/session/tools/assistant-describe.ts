@@ -4,20 +4,6 @@ import type {
 } from "@houston/host/src/assistant/catalog";
 import { acceptedValues } from "./assistant-schema-hint";
 
-/**
- * What `houston_describe` answers with.
- *
- * The schema alone says a parameter is a string; it never says WHICH string,
- * and an identifier the model is left to invent is one it will invent. The
- * generated catalog carries the missing half on each parameter — the author's
- * own sentence (`description`) and the operation that LISTS its accepted
- * values (`source`) — so the contract is rendered with both, and the closing
- * paragraph names, parameter by parameter, where each value is to be read
- * from. A model that knows to call `listAgents` first stops guessing agent
- * names on the second try instead of the fifth.
- */
-
-/** One parameter as the model reads it, annotations included when present. */
 function renderParam(param: AssistantOperationParam): Record<string, unknown> {
   return {
     name: param.name,
@@ -41,20 +27,11 @@ function renderParam(param: AssistantOperationParam): Record<string, unknown> {
   };
 }
 
-/**
- * The sentence that ends the guessing: every parameter whose values live
- * somewhere else, and where. Empty when the operation has none, so an operation
- * that takes only free text is not given a paragraph about identifiers.
- */
 export function sourceGuidance(op: AssistantOperation): string {
   const sourced = op.params.flatMap((param) => [
     ...(param.source && !param.resolver
       ? [`"${param.name}" from ${param.source}`]
       : []),
-    // A body object hides its identifiers from a reader that stops at the top
-    // level: the provider and model inside a `choice`, the toolkits inside a
-    // settings ceiling. Named the way they are passed, so the sentence maps
-    // onto the object the model is about to build.
     ...(param.fields ?? []).flatMap((field) =>
       field.source && !field.resolver
         ? [`"${param.name}.${field.name}" from ${field.source}`]
@@ -67,12 +44,6 @@ export function sourceGuidance(op: AssistantOperation): string {
   } with houston_call first unless you already have the exact value the user gave you.`;
 }
 
-/**
- * The sentence for the parameters Houston checks itself before it acts: the
- * model may pass the exact name the user said instead of spending a call on the
- * lookup first, and a value that matches nothing comes back with the ones that
- * do - so a wrong guess costs a correction, never a wrong thing done.
- */
 export function resolutionGuidance(op: AssistantOperation): string {
   const resolved = op.params.flatMap((param) => [
     ...(param.resolver ? [`"${param.name}"`] : []),
@@ -84,10 +55,6 @@ export function resolutionGuidance(op: AssistantOperation): string {
   return ` The app resolves ${resolved.join(", ")} against what exists: pass the id, or the exact name the user gave you. A value that matches nothing is refused with the ones that do.`;
 }
 
-/**
- * The sentence for parameters whose schema is already a closed set: the values
- * are right there, so the instruction is to pick one rather than to look it up.
- */
 export function choiceGuidance(op: AssistantOperation): string {
   const closed = op.params.flatMap((param) => {
     const values = acceptedValues(param.schema);
@@ -96,7 +63,6 @@ export function choiceGuidance(op: AssistantOperation): string {
   return closed.length === 0 ? "" : ` Exact choices: ${closed.join("; ")}.`;
 }
 
-/** The whole answer: the contract, then how to fill it in without guessing. */
 export function describeOperation(op: AssistantOperation): string {
   const contract = JSON.stringify({
     name: op.name,

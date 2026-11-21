@@ -65,7 +65,6 @@ describe.skipIf(!available)(
       expect(shown.text).toContain("2 new since the last look");
       expect(shown.text).toMatch(/button "Advanced" \[ref=s\d+e\d+\] \[new\]/);
       expect(shown.text).not.toMatch(/"Show more"[^\n]*\[new\]/);
-      // The refs printed with [new] are the latest ones: they click.
       expect(
         (
           await browse({
@@ -93,7 +92,6 @@ describe.skipIf(!available)(
       expect(found.text).toContain('4 lines match "gadget"');
       expect(found.text).not.toContain('"Item 3"');
       expect(found.text).toContain(`/url: ${origin}/item/17?session=[hidden]`);
-      // A filtered look is still the latest: its refs click.
       const clicked = await browse({
         action: "click",
         ref: ref(found.text, "link", "Item 7 gadget"),
@@ -209,10 +207,8 @@ describe.skipIf(!available)(
   },
 );
 
-/** The tool's raw result: its text, and whether it carried an image. */
 async function execute(ws: string, pool: BrowserPool, params: BrowserParams) {
   const browser = makeBrowserTool({ workspaceDir: ws, pool, liveView: false });
-  // SAFETY: the browser tool never reads its ExtensionContext.
   const result = await browser.execute(
     "t",
     params,

@@ -1,28 +1,6 @@
-/**
- * The workspace-file REST calls — listing, reading, and rearranging what lives
- * in an agent's real workspace — over the injected `fetch`.
- *
- * The runtime client (`@houston/runtime-client`) is scoped to one conversation
- * and serves none of the `/agents/:id/files*` family, so this module talks to
- * those host routes through {@link httpRequest} with literal paths, which is
- * also what keeps them visible to the assistant's operation catalog.
- *
- * Nothing is swallowed here: a non-2xx always throws a {@link FilesHttpError}
- * carrying the HTTP `status`, so a deployment with no workspace to serve (the
- * synthetic local web build) reaches the caller and it — not this layer —
- * decides whether that is an empty Files section or a failure. A `401`
- * additionally fires {@link HttpScope.onUnauthorized}, so a lapsed session token
- * becomes a visible `tokenExpired` signal.
- *
- * The two BINARY reads (a file's bytes, the workspace zip) stay with the
- * surface that renders them: both answer a `Blob`, which a JSON envelope cannot
- * carry, so there is nothing for this module to hold.
- */
-
 import { type HttpScope, httpRequest, SdkHttpError } from "../http";
 import type { ProjectFile } from "./types";
 
-/** A failed `/agents/:id/files*` request. `status` is the upstream HTTP status. */
 export class FilesHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "FilesHttpError");
@@ -57,10 +35,6 @@ export async function readProjectFile(
     scope,
     `/agents/${encodeURIComponent(agentPath)}/files/read?path=${encodeURIComponent(relPath)}`,
   );
-  // The host frames anything it cannot serve as text (an image, a PDF) as
-  // base64 and says so, so what a caller gets back is always the file's real
-  // contents (as the latin1 string `atob` answers) rather than a mojibake
-  // transcription of its bytes.
   const body = (await res.json()) as { content: string; base64: boolean };
   return body.base64 ? atob(body.content) : body.content;
 }

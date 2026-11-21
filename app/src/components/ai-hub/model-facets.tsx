@@ -1,11 +1,3 @@
-/**
- * The model directory's facet row: the "AI provider" / "Good at" / "Cost" /
- * "Memory" comboboxes that narrow the {@link ModelsBrowser} list alongside the
- * page's free-text search. The provider combobox is passed in via `labOptions`
- * and hides itself when the catalog is all one lab (a single useless option);
- * the other three always show. Presentational — the browser owns the state.
- */
-
 import { useTranslation } from "react-i18next";
 import {
   FilterCombobox,

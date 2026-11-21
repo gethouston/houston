@@ -116,11 +116,9 @@ test("the next change is the window opening, then each day ticking down", () => 
   const status = (reconnectBy: number) => [
     { provider: "anthropic", connected: true, reconnectBy },
   ];
-  // Ten days out: the window opens five days before.
   expect(nextReconnectNoticeChange(status(now + 10 * DAY), now)).toBe(
     now + 5 * DAY,
   );
-  // 2.5 days out ("2 days"): it reads "1 day" once two whole days are left.
   const by = now + 2.5 * DAY;
   const next = nextReconnectNoticeChange(status(by), now);
   expect(next).toBe(by - 2 * DAY + 1);
@@ -130,7 +128,6 @@ test("the next change is the window opening, then each day ticking down", () => 
       next as number,
     )?.daysLeft,
   ).toBe(1);
-  // At zero nothing changes on its own, and a signed-out row never does.
   expect(nextReconnectNoticeChange(status(now + DAY / 2), now)).toBeNull();
   expect(
     nextReconnectNoticeChange(

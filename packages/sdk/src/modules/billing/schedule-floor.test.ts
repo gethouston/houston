@@ -6,10 +6,6 @@ import {
 } from "./org-billing-fixtures";
 import { routineScheduleFloor, scheduleFloorRule } from "./schedule-floor";
 
-/**
- * The gateway judges every fire against the org the routine lives in, so the
- * floor is the ACTIVE ORG's tier: neither the editor nor the creator decides.
- */
 describe("routineScheduleFloor: the active org's tier decides", () => {
   it("a free org holds every save to its floor", () => {
     expect(routineScheduleFloor(freeOrgBilling())).toBe(15);
@@ -39,7 +35,6 @@ describe("scheduleFloorRule: what an editor binds", () => {
     expect(rule.minutes).toBe(15);
     expect(rule.allows("*/15 * * * *")).toBe(true);
     expect(rule.allows("*/20 * * * *")).toBe(true);
-    // :48 then :00: a 12-minute gap, whatever the step says.
     expect(rule.allows("*/16 * * * *")).toBe(false);
     expect(rule.allows("*/5 * * * *")).toBe(false);
     expect(rule.allows("0 9 * * *")).toBe(true);

@@ -1,23 +1,5 @@
 import { beforeEach, expect, test, vi } from "vitest";
 
-/**
- * HOU-818: `loadWorkspaces()` used to swallow its failure with a console.error,
- * leaving the Settings gate spinning forever on a state nothing would ever
- * resolve. The store now SETTLES that state honestly — `loading` clears,
- * `loaded` flips, and `loadError` records whether the attempt threw — so a
- * gated screen can offer a retry, and can tell "the load broke" apart from
- * "this account has no workspace".
- *
- * What the store must NOT do is report: both awaited calls go through `call()`
- * (`lib/tauri.ts`), which already toasts AND captures to Sentry. A second
- * report here would file two issues for one failure, so the reporting helpers
- * are mocked and asserted untouched.
- *
- * Lives in packages/web rather than app/tests because it needs module mocking:
- * app/tests runs under node:test, which the store's engine/analytics/query
- * imports would drag a real browser environment into.
- */
-
 const {
   track,
   logAndReportError,
@@ -100,9 +82,6 @@ test("a failed load settles as an error the gate can act on", async () => {
 });
 
 test("a failed load adds no telemetry of its own", async () => {
-  // `tauriWorkspaces.list` is a `call()`, whose surfaceError already toasts the
-  // failure AND captures it to Sentry. Reporting again here filed two issues
-  // for one failure — this guards against re-adding it.
   listWorkspaces.mockRejectedValue(new Error("gateway unreachable"));
 
   await useWorkspaceStore.getState().loadWorkspaces();
@@ -111,13 +90,6 @@ test("a failed load adds no telemetry of its own", async () => {
   expect(reportError).not.toHaveBeenCalled();
 });
 
-/**
- * HOU-981: `listWorkspaces` now THROWS on a persistent failure instead of
- * silently degrading to personal-only, which makes this guarantee load-bearing.
- * A failed load must not write `last_workspace_id` — the remembered team space
- * has to survive the outage so the next successful load restores it, instead of
- * the user being pinned to personal with all their missions apparently gone.
- */
 test("a failed load leaves the remembered space preference untouched", async () => {
   getPreference.mockResolvedValue("org:00112233aabbccdd");
   listWorkspaces.mockRejectedValue(new Error("gateway unreachable"));
@@ -157,9 +129,6 @@ test("a retry stays `loaded` so the boot splash never remounts the app", async (
   await useWorkspaceStore.getState().loadWorkspaces();
   expect(useWorkspaceStore.getState().loadError).toBe(true);
 
-  // The retry the Settings gate fires. `loaded` must stay true throughout: it
-  // is what keeps App.tsx's full-screen splash from swapping out the shell
-  // mid-retry, while `loading` goes back up so the gate can spin in place.
   listWorkspaces.mockResolvedValue([PERSONAL]);
   const retry = useWorkspaceStore.getState().loadWorkspaces();
   expect(useWorkspaceStore.getState().loading).toBe(true);

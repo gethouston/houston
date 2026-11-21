@@ -12,9 +12,6 @@ interface Recorded {
   body?: unknown;
 }
 
-/** A write-only SDK (`reactivity:false`) over a mock `fetch` recording every
- *  `/v1/integrations` call. The refetching facade `disconnect` ends with a
- *  `refresh()` (GET /v1/integrations …); a no-refetch write issues no GET. */
 function makeSdk() {
   const calls: Recorded[] = [];
   const json = (b: unknown) =>
@@ -119,7 +116,6 @@ describe("integrations module — no-refetch writes + session/notice ops", () =>
   it("the refetching facade disconnect() DOES refetch afterward (contrast)", async () => {
     const { sdk, calls } = makeSdk();
     await sdk.integrations.disconnect("gmail");
-    // POST then the refresh reads: GET /v1/integrations, toolkits, connections.
     expect(calls[0]).toEqual({
       method: "POST",
       path: `${I}/composio/disconnect`,

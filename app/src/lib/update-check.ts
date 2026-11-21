@@ -9,12 +9,6 @@ export type CheckResult = { outcome: UpdateCheckOutcome; message?: string };
 
 export type FoundUpdate = { update: AvailableUpdate; info: UpdateInfo };
 
-/**
- * One check of the release feed: the plugin's `check()`, the `update_offered`
- * analytics event on the FIRST sighting of a version, and the fail-open
- * classification `useUpdateChecker` counts. `previous` is the machine's
- * status before the check, so a re-sighting of the same release stays quiet.
- */
 export async function runUpdateCheck(
   origin: CheckOrigin,
   previous: UpdateStatus,
@@ -35,8 +29,6 @@ export async function runUpdateCheck(
     }
     return { result: { outcome: "found" }, found: { update, info } };
   } catch (error) {
-    // Fail-open by design: a launch must never block on the release feed.
-    // The checker counts these to surface a client that NEVER succeeds.
     console.warn("[updater] check failed", error);
     return {
       result: {

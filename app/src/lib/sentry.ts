@@ -5,41 +5,20 @@ import { currentClientDeployment } from "./sentry-deployment";
 import { sentrySendInDevEnabled } from "./sentry-dev";
 import { eventIdFromEnvelope, isAcceptedStatus } from "./sentry-transport";
 
-// __SENTRY_DSN__ baked at build time by Vite (see vite.config.ts). Empty
-// string in dev / forks → init bails, every capture is a silent no-op.
 const DSN = typeof __SENTRY_DSN__ !== "undefined" ? __SENTRY_DSN__ : "";
 
-// Opt-in (truthy __SENTRY_SEND_IN_DEV__) to send Sentry events from a dev
-// build. Unset by default.
 const SEND_IN_DEV = sentrySendInDevEnabled(
   typeof __SENTRY_SEND_IN_DEV__ !== "undefined" ? __SENTRY_SEND_IN_DEV__ : "",
 );
 
-/**
- * True when this is a dev build (`pnpm tauri dev`) and the SENTRY_SEND_IN_DEV
- * opt-in is NOT set. In that state Sentry is hard-disabled — `initSentry` bails
- * so nothing reaches the prod project — and `error-toast` surfaces a dev-only
- * "no issue sent" notice instead of the green "report sent" toast. Release
- * builds are never suppressed (`import.meta.env.DEV` is false).
- */
 export const sentrySuppressedInDev = import.meta.env.DEV && !SEND_IN_DEV;
 
-// Release MUST match what the Rust SDK reports (the explicit
-// `houston-app@<CARGO_PKG_VERSION>` in lib.rs) AND what release.yml uploads
-// sourcemaps + debug-files under, otherwise stack traces won't resolve.
 const RELEASE = `houston-app@${
   typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0"
 }`;
 
 let initialized = false;
 
-/**
- * Sentry `environment` tag. The web entry injects the runtime deploy
- * environment (`production` / `preview` / `development`, derived from the
- * hostname of the ONE promoted bundle) on `window.__HOUSTON_DEPLOY_ENV__`; use
- * it when present so preview and production crashes are filterable apart. On the
- * desktop the global is unset, so we keep the original dev/prod split.
- */
 function resolveEnvironment(): string {
   const injected =
     typeof window !== "undefined" ? window.__HOUSTON_DEPLOY_ENV__ : undefined;
@@ -47,27 +26,6 @@ function resolveEnvironment(): string {
   return import.meta.env.DEV ? "development" : "production";
 }
 
-/**
- * Init Sentry on the frontend.
- *
- * Transport: renderer events go STRAIGHT to Sentry over HTTP
- * (`makeFetchTransport`), NOT through the tauri-plugin-sentry IPC bridge. The
- * IPC path silently dropped `@sentry/browser` 10.x error envelopes in packaged
- * builds (the plugin's Rust `sentry-types` parser rejected the newer envelope
- * and discarded it with no logging), so JS errors never reached Sentry while
- * `flush()` still reported success. Direct HTTP is proven to work from the
- * Tauri webview.
- * Native (Rust) crash reporting is unaffected — it's the `sentry` crate's panic
- * handler from `sentry::init` in lib.rs, not this transport.
- *
- * The transport is wrapped to record each send's real HTTP outcome per event
- * id, so captureException can confirm Sentry actually accepted an event before
- * the "report sent" toast claims so.
- *
- * Fire-and-forget. Empty DSN → silent no-op (local dev without secrets).
- * Dev build without the SENTRY_SEND_IN_DEV opt-in → also a no-op, so dev
- * errors never reach the prod Sentry project (see `sentrySuppressedInDev`).
- */
 export function initSentry(): void {
   if (initialized || !DSN || sentrySuppressedInDev) return;
   initialized = true;
@@ -76,10 +34,7 @@ export function initSentry(): void {
     dsn: DSN,
     release: RELEASE,
     environment: resolveEnvironment(),
-    // Houston serves non-technical users whose chat messages, prompts, agent +
-    // workspace names and file paths must never ride an event automatically.
     sendDefaultPii: false,
-    // Direct HTTP transport, wrapped to record real per-event delivery.
     transport: (options) => {
       const inner = Sentry.makeFetchTransport(options);
       return {
@@ -92,7 +47,6 @@ export function initSentry(): void {
             }
             return response;
           } catch (err) {
-            // Network error / timeout: the event did NOT reach Sentry.
             if (eventId) recordDelivery(eventId, false);
             throw err;
           }
@@ -101,40 +55,20 @@ export function initSentry(): void {
       };
     },
     integrations: (defaultIntegrations) => [
-      // - BrowserSession: app release-health sessions are tracked in Rust
-      //   (lib.rs auto_session_tracking), so drop the browser one to avoid
-      //   double counting.
-      // - GlobalHandlers: uncaught errors + unhandled rejections are captured
-      //   AND toasted explicitly in main.tsx (so the user gets the event id);
-      //   drop the SDK's auto-capture to avoid duplicate events.
       ...defaultIntegrations.filter(
         (integration) =>
           integration.name !== "BrowserSession" &&
           integration.name !== "GlobalHandlers",
       ),
     ],
-    // Session Replay is deliberately OFF (no replayIntegration). Keep the
-    // explicit zero rates so an SDK default can never silently re-enable it.
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0,
   });
-  // Stamp the deployment AFTER init so it rides every subsequent event: which
-  // Houston deployment this client is part of, in the SAME vocabulary the
-  // engine uses, so one filter spans a deployment's whole stack.
   Sentry.setTag("deployment", currentClientDeployment());
   const { surface } = nativeTelemetryTag();
   if (surface) Sentry.setTag("surface", surface);
 }
 
-/**
- * Capture an exception and return its Sentry event id ONLY once the transport
- * flushed AND Sentry accepted the event with a 2xx. Otherwise returns "" so the
- * caller never shows a "report sent" confirmation for an event that didn't
- * actually land (offline, timeout, rate-limited, sampled/dropped). This is a
- * real send/accept confirmation — the direct fetch transport's flush waits for
- * the HTTP round-trip, unlike the old IPC transport which reported success
- * unconditionally.
- */
 export async function captureException(
   error: unknown,
   context?: Record<string, string>,
@@ -149,11 +83,6 @@ export async function captureException(
   return confirmDelivery(eventId);
 }
 
-/**
- * Tag every subsequent event with the signed-in user. Call on sign-in.
- * Email is sent so it's queryable in the Sentry dashboard for B2B triage,
- * matching the PostHog person-property convention. No-op if not init'd.
- */
 export function setUser(user: {
   id: string;
   email?: string | null;
@@ -167,7 +96,6 @@ export function setUser(user: {
   });
 }
 
-/** Clear user identity on sign-out. */
 export function clearUser(): void {
   if (!initialized) return;
   Sentry.setUser(null);

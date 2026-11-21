@@ -45,7 +45,6 @@ export abstract class LocalBridgeLifecycle extends LocalBridgeState {
     retry: boolean,
     external?: AbortSignal,
   ): Promise<void>;
-  /** Every explicit operation on a superseded controller refuses with this. */
   protected disposedRejection(): Promise<never> {
     return Promise.reject(new BridgeDisposedError());
   }
@@ -108,8 +107,6 @@ export abstract class LocalBridgeLifecycle extends LocalBridgeState {
   }
   replaceEndpoint(save: () => Promise<void>): Promise<void> {
     if (this.disposed) return this.disposedRejection();
-    // Pending writes/logout must drain before replacement. A healthy committed
-    // connection stays live (including renewal) until the new settings succeed.
     if (this.snapshot.journal?.phase !== "committed")
       this.lifetime.invalidate();
     const epoch = this.lifetime.epoch;

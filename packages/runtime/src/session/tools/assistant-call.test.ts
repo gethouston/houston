@@ -5,16 +5,6 @@ import { runWithActingContext } from "../acting-context";
 import { makeAssistantCallTool } from "./assistant-call";
 import { httpSandboxFetch } from "./sandbox-fetch";
 
-/**
- * `houston_call` is the tool that ACTS. These pin the two things that keep a
- * mis-addressed or unapproved call from ever leaving the runtime — catalog
- * validation and the confirm gate — and, on the happy path, that it carries the
- * sandbox token and the turn's acting identity to the host and nothing else.
- *
- * No failure may throw: the model has to be able to tell a fixable addressing
- * mistake from a refusal it must relay to the user.
- */
-
 const CTX = {} as ExtensionToolContext;
 
 const catalog: AssistantCatalog = {
@@ -68,9 +58,6 @@ const catalog: AssistantCatalog = {
       returns: { type: "null" },
       route: null,
     },
-    // Not hidden, but no route was derived for it, so nothing in this build can
-    // perform it. Its required param is here to pin that the callability gate
-    // runs BEFORE argument validation.
     {
       name: "exportLedger",
       group: "billing",
@@ -144,8 +131,6 @@ test("performs a valid operation against the host under the sandbox token", asyn
   expect(calls[0].url).toBe("http://host/sandbox/assistant/call");
   expect(calls[0].method).toBe("POST");
   expect(calls[0].headers.authorization).toBe("Bearer sb-token");
-  // The host, not the runtime, decides the destination — the wire carries the
-  // operation NAME and its named arguments, never a URL or a method.
   expect(calls[0].body).toEqual({
     operation: "listRoutines",
     params: { agentPath: "Work/Ada" },
@@ -185,8 +170,6 @@ test("optional params are omitted rather than sent as undefined", async () => {
 
 test.each([
   ["an unknown operation", { operation: "noSuchOp", params: {} }],
-  // Hidden must refuse identically to unknown: a distinct message would tell
-  // the model the operation exists and is merely being withheld.
   ["a hidden operation", { operation: "rotateSecret", params: {} }],
 ])("refuses %s before any request leaves the runtime", async (_l, params) => {
   const calls = mockFetch(() => ({ body: {} }));
@@ -196,8 +179,6 @@ test.each([
   expect(calls).toHaveLength(0);
 });
 
-// The host refuses a routeless operation with the same code, so the runtime
-// answering it locally costs a round trip less and names the reason plainly.
 test.each([
   ["with no arguments at all", {}],
   ["with the arguments it declares", { id: "led-1" }],
@@ -237,10 +218,6 @@ test("params that are not an object are refused, not forwarded", async () => {
   expect(calls).toHaveLength(0);
 });
 
-// The gate itself lives in `assistant-confirm.test.ts`; what belongs HERE is
-// that a confirm operation cannot reach the host through this tool on the
-// model's say-so alone. Run outside a conversation (an unattended turn), where
-// there is nobody to ask, so the only correct answer is a refusal.
 test("a confirm operation with nobody to ask is refused and forwarded nowhere", async () => {
   const calls = mockFetch(() => ({ body: null }));
   const result = await run({
@@ -292,8 +269,6 @@ test("an unreachable host is a transport_error, not an exception", async () => {
   expect(text(result)).toContain("ECONNREFUSED");
 });
 
-// A 2xx whose body is not JSON means something other than the host answered
-// (a captive portal, a proxy) — it must not read as a successful operation.
 test("an unreadable 2xx body is a transport_error, not a success", async () => {
   mockFetch(() => ({ raw: "<html>gateway</html>" }));
   const result = await run({
@@ -313,14 +288,6 @@ test("an empty 2xx body reads as a null payload", async () => {
   expect(text(result)).toBe("null");
 });
 
-/**
- * THE DEPLOYMENT GATE. The catalog describes desktop and hosted cloud at once,
- * and the host tells this runtime which half it serves
- * (`@houston/domain/assistant-deployment`). Refused here so the model gets one
- * plain, final sentence instead of a 404 the forwarder dresses up as a gateway
- * error — the shape that has the assistant retry, then tell the user Houston is
- * broken.
- */
 test("an operation this Houston cannot perform is refused, unsent", async () => {
   vi.stubEnv("HOUSTON_ASSISTANT_UNSERVED", "listRoutines");
   const calls = mockFetch(() => ({ body: [] }));
@@ -334,8 +301,6 @@ test("an operation this Houston cannot perform is refused, unsent", async () => 
 });
 
 test("a withheld operation is still indistinguishable from a missing one", async () => {
-  // Naming a hidden operation in the stamp must not give it its own answer:
-  // "unavailable here" would confirm that `rotateSecret` exists.
   vi.stubEnv("HOUSTON_ASSISTANT_UNSERVED", "rotateSecret");
   mockFetch(() => ({ body: {} }));
   expect(errorCode(await run({ operation: "rotateSecret", params: {} }))).toBe(
@@ -350,8 +315,6 @@ test("no stamp withholds nothing", async () => {
 });
 
 test("the host's own refusal reaches the model with its sentence intact", async () => {
-  // A host one release ahead knows something this runtime was not stamped
-  // with. Its wording is already the sentence the model must act on.
   mockFetch(() => ({
     status: 400,
     body: {

@@ -1,23 +1,3 @@
-/**
- * The citations module: comments a person pins to regions of a previewed file
- * (selected text on a slide, or an area drawn over a chart) and sends to the
- * agent with their next message.
- *
- * A draft's comments are client state keyed by the composer's draft key, the
- * way its typed text is: they survive switching chats. Each draft publishes
- * its list at {@link CitationsModule.scope}, so the composer chips, the marks
- * on the page and the thumbnail counts all read one list.
- *
- * At send time {@link CitationsModule.compose} uploads each region's PNG crop
- * into the agent's `uploads/` folder (the composer attachment route) and folds
- * the comments into the message text: a model-facing list with the crop paths,
- * plus a hidden marker the sent bubble decodes into pills
- * (`@houston/wire-types` citations). The comments leave the draft while that
- * message is out, and are dropped only once the engine accepts it
- * ({@link CitationsModule.accept}); a refused or removed send gives them back
- * ({@link CitationsModule.release}).
- */
-
 import {
   CITATION_COMMENT_MAX,
   decodeCitationsEnvelopes,
@@ -43,39 +23,23 @@ export type {
 } from "./types";
 export { CITATION_LIMIT } from "./types";
 
-/** The typed facade for a composer draft's citations. */
 export interface CitationsModule {
-  /** Comments one message may carry. */
   readonly limit: number;
-  /** Characters one comment may hold. */
   readonly commentLimit: number;
-  /** The store scope a draft's list publishes at. */
   scope(draftKey: string): string;
   list(draftKey: string): readonly DraftCitation[];
   add(draftKey: string, input: NewCitation): AddCitationResult;
   updateComment(draftKey: string, id: string, comment: string): void;
   remove(draftKey: string, id: string): void;
-  /** Drop every draft's comments, and any message's still out (the crops are
-   *  private to the person who made them, so an identity change takes all). */
   clearAll(): void;
-  /** Flag the comments on pages a rewrite of `filePath` removed, unflag the
-   *  ones whose page came back, and note the file's new page count. */
   reconcile(draftKey: string, filePath: string, pageCount: number): void;
-  /** Upload the crops and fold the draft's comments into `text`, taking them
-   *  out of the draft until {@link accept} or {@link release} sees the text.
-   *  Unchanged text when the draft holds none. */
   compose(input: {
     agentId: string;
     draftKey: string;
     text: string;
   }): Promise<string>;
-  /** The engine accepted a send whose prompt is `prompt`: the comments it
-   *  carries are gone for good. */
   accept(prompt: string): void;
-  /** A send whose prompt is `prompt` was refused, removed from the queue, or
-   *  never left: its comments go back to their draft. */
   release(prompt: string): void;
-  /** Lift the citations out of a sent message, or `null` when it has none. */
   decode(text: string): DecodedCitations | null;
 }
 

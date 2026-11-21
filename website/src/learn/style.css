@@ -1,13 +1,4 @@
-/* ═══════════════════════════════════════════
-   Houston Learn — Design System
-   Mirrors @houston-ai/core globals.css
-   ═══════════════════════════════════════════ */
-
 :root {
-  /* Space theme: the docs sit over the landing's fixed Milky Way background
-     (space-bg.njk + /assets/space.css). Text is white-on-space, panels are
-     NEAR-OPAQUE dark fills — never backdrop-filter, which re-blurs the moving
-     photo every scroll frame on Gecko (see assets/space.css). */
   --background: transparent;
   --foreground: rgba(255, 255, 255, 0.92);
   --secondary: rgba(255, 255, 255, 0.05);
@@ -70,10 +61,6 @@ a {
   text-decoration: none;
 }
 
-/* ═══════════════════════════════════════════
-   Layout
-   ═══════════════════════════════════════════ */
-
 .layout {
   display: grid;
   grid-template-columns: 260px 1fr;
@@ -95,10 +82,6 @@ a {
     padding: 32px 22px 64px;
   }
 }
-
-/* ═══════════════════════════════════════════
-   Sidebar (chapter list)
-   ═══════════════════════════════════════════ */
 
 .sidebar {
   position: sticky;
@@ -168,10 +151,6 @@ a {
 .sidebar-nav a.active .num {
   color: var(--gray-600);
 }
-
-/* ═══════════════════════════════════════════
-   Content
-   ═══════════════════════════════════════════ */
 
 .content {
   max-width: 720px;
@@ -282,10 +261,6 @@ a {
   font-size: 14px;
 }
 
-/* ═══════════════════════════════════════════
-   On-this-page TOC
-   ═══════════════════════════════════════════ */
-
 .toc {
   background: var(--gray-50);
   border: 1px solid var(--border-light);
@@ -333,10 +308,6 @@ a {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-
-/* ═══════════════════════════════════════════
-   Callouts
-   ═══════════════════════════════════════════ */
 
 .callout {
   border: 1px solid var(--border-light);
@@ -387,10 +358,6 @@ a {
 .callout-success .callout-label {
   color: var(--success);
 }
-
-/* ═══════════════════════════════════════════
-   Chat example (mimics Houston chat)
-   ═══════════════════════════════════════════ */
 
 .chat-example {
   background: var(--gray-50);
@@ -449,10 +416,6 @@ a {
   color: var(--gray-500);
 }
 
-/* ═══════════════════════════════════════════
-   Comparison grid (for the shift chapter)
-   ═══════════════════════════════════════════ */
-
 .compare {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -510,10 +473,6 @@ a {
     0 2px 8px rgba(0, 0, 0, 0.02);
 }
 
-/* ═══════════════════════════════════════════
-   Table of contents cards (index page)
-   ═══════════════════════════════════════════ */
-
 .chapter-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -569,10 +528,6 @@ a {
   line-height: 1.55;
   color: var(--muted-foreground);
 }
-
-/* ═══════════════════════════════════════════
-   Hero (index page)
-   ═══════════════════════════════════════════ */
 
 .hero {
   padding-top: 24px;
@@ -636,10 +591,6 @@ a {
   background: var(--gray-50);
 }
 
-/* ═══════════════════════════════════════════
-   Prev / Next
-   ═══════════════════════════════════════════ */
-
 .pager {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -693,10 +644,6 @@ a {
   border: none;
 }
 
-/* ═══════════════════════════════════════════
-   File tree (for pages chapter)
-   ═══════════════════════════════════════════ */
-
 .tree {
   background: var(--gray-50);
   border: 1px solid var(--border-light);
@@ -719,10 +666,6 @@ a {
 .tree .comment {
   color: var(--gray-500);
 }
-
-/* ═══════════════════════════════════════════
-   Footer
-   ═══════════════════════════════════════════ */
 
 .footer {
   border-top: 1px solid var(--border-light);

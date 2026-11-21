@@ -3,13 +3,6 @@ import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-/**
- * The task list's inline search field, revealed from the "…" menu and closed
- * by its own control or Escape. It takes focus on reveal — the user asked for
- * it by name, so the keyboard coming up is the point, not a surprise.
- *
- * The list hands it the query it narrows and filters its own rows with it.
- */
 export function TaskListSearch({
   query,
   onQuery,
@@ -19,7 +12,6 @@ export function TaskListSearch({
   query: string;
   onQuery: (query: string) => void;
   onClose: () => void;
-  /** Stamped on the field, so a spec can address the list it means. */
   testId: string;
 }) {
   const { t } = useTranslation("shell");

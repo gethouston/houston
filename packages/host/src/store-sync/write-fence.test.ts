@@ -42,7 +42,6 @@ test("a check that finds nobody holding the lease latches and retires", async ()
 
   expect(await subject.writable()).toBe(false);
   expect(subject.lost).toBe(true);
-  // Latched: no further asks, no second notice, even from a sync 409.
   expect(await subject.writable()).toBe(false);
   subject.lose({ message: "object store PUT failed (409)" });
   expect(probe).toHaveBeenCalledOnce();
@@ -50,8 +49,6 @@ test("a check that finds nobody holding the lease latches and retires", async ()
   expect(holders).toEqual(["stale"]);
 });
 
-// Two running engines must not trade the lease through restarts: against a
-// live holder the pod stands down, and retires only once it goes stale.
 test("a live holder makes the pod stand down until it stops renewing", async () => {
   vi.useFakeTimers();
   let verdict = fencedBy("live");
@@ -67,7 +64,6 @@ test("a live holder makes the pod stand down until it stops renewing", async () 
   verdict = fencedBy("stale");
   await vi.advanceTimersByTimeAsync(1_000);
   expect(holders).toEqual(["live", "stale"]);
-  // Stale is final: the heartbeat stops.
   const asks = probe.mock.calls.length;
   await vi.advanceTimersByTimeAsync(5_000);
   expect(probe).toHaveBeenCalledTimes(asks);
@@ -103,7 +99,6 @@ test("concurrent writes share one check", async () => {
   answer(held);
   expect(await Promise.all([first, second])).toEqual([true, true]);
   expect(probe).toHaveBeenCalledOnce();
-  // The next write asks again: a held answer is never cached.
   const third = subject.writable();
   answer(held);
   expect(await third).toBe(true);
@@ -120,8 +115,6 @@ test("an unreachable store fails open and leaves a breadcrumb", async () => {
   expect(logs[0]).toContain("fetch failed");
 });
 
-// A pod-store replica from before the check route (a rolling deploy, or the
-// engine landing first) must not switch the check off for the pod's life.
 test("a store without the check is still asked on the next write", async () => {
   let verdict: WriteLeaseVerdict = { state: "unsupported" };
   const probe = vi.fn(async () => verdict);
@@ -135,8 +128,6 @@ test("a store without the check is still asked on the next write", async () => {
   expect(probe).toHaveBeenCalledTimes(3);
 });
 
-// The incident's other half: an idle superseded pod kept firing its local
-// copy of a routine for days. The heartbeat acts without any write.
 test("the heartbeat finds a takeover on an idle pod", async () => {
   vi.useFakeTimers();
   let verdict: WriteLeaseVerdict = held;
@@ -154,9 +145,6 @@ test("the heartbeat finds a takeover on an idle pod", async () => {
   expect(probe).toHaveBeenCalledTimes(2);
 });
 
-// A heartbeat check answered "held" just before a takeover must not stand in
-// for the classification: that would retire the pod and its restart would
-// fence the running engine.
 test("a sync 409 never classifies on a check sent before the loss", async () => {
   const answers: Array<(verdict: WriteLeaseVerdict) => void> = [];
   const probe = vi.fn(
@@ -176,8 +164,6 @@ test("a sync 409 never classifies on a check sent before the loss", async () => 
   await vi.waitFor(() => expect(holders).toEqual(["live"]));
 });
 
-// A pod-store replica without the route (a mixed fleet during a roll) must
-// not turn a stand-down into a retire whose restart re-claims the lease.
 test("a stood-down pod does not retire on an unsupported answer", async () => {
   vi.useFakeTimers();
   let verdict: WriteLeaseVerdict = fencedBy("live");
@@ -194,9 +180,6 @@ test("a stood-down pod does not retire on an unsupported answer", async () => {
   expect(holders).toEqual(["live", "stale"]);
 });
 
-// Prod runs with fencing off: the boot's claim answered 404 and it carries no
-// token. Nothing can fence it, so no write may wait on the store and no
-// heartbeat may call it, until a token is published (the flag flip).
 test("a boot without a lease token never calls the store", async () => {
   vi.useFakeTimers();
   let token: string | undefined;
@@ -214,7 +197,6 @@ test("a boot without a lease token never calls the store", async () => {
   await vi.advanceTimersByTimeAsync(5_000);
   expect(probe).not.toHaveBeenCalled();
 
-  // A token captured after the flip turns the check and the heartbeat on.
   token = "9";
   expect(await subject.writable()).toBe(true);
   expect(probe).toHaveBeenCalledOnce();
@@ -222,8 +204,6 @@ test("a boot without a lease token never calls the store", async () => {
   expect(probe).toHaveBeenCalledTimes(2);
 });
 
-// The flip's other signal: the sync of a token-less boot meets a 409. That
-// proves the store fences this agent, so the holder is watched from then on.
 test("a token-less boot whose sync meets a 409 still watches the holder", async () => {
   vi.useFakeTimers();
   let verdict: WriteLeaseVerdict = { state: "unsupported" };
@@ -240,15 +220,12 @@ test("a token-less boot whose sync meets a 409 still watches the holder", async 
   subject.startHeartbeat();
   subject.lose({ message: "object store PUT a.json failed (409)" });
   await vi.advanceTimersByTimeAsync(2_000);
-  // An old pod-store replica decides nothing.
   expect(holders).toEqual([]);
   verdict = fencedBy("stale");
   await vi.advanceTimersByTimeAsync(1_000);
   expect(holders).toEqual(["stale"]);
 });
 
-// After the flag flip an idle pod gets its token from a read (the capture),
-// not from a write: the heartbeat that was ticking without I/O starts asking.
 test("an idle boot starts checking once a read hands it a token", async () => {
   vi.useFakeTimers();
   let token: string | undefined;

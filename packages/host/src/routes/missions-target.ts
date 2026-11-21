@@ -20,24 +20,6 @@ import {
 import type { RemoteMissionRoute } from "./missions-remote";
 import type { MissionsCtx } from "./missions-sandbox";
 
-/**
- * WHICH agent's board a mission call acts on. Absent → the calling agent's own
- * board (every agent's own missions, unchanged). Present → the named agent's,
- * which is what the personal assistant needs: it keeps no board of its own, so
- * the work it starts must land where the user actually sees it.
- *
- * Resolution is fail-closed and scoped to what the CALLER can already reach:
- * the agents in this host, plus — in managed cloud, where every agent is its
- * own pod — the agents the gateway lists for the user (missions-directory.ts).
- * A name that resolves to nothing answers with the names that WOULD resolve,
- * and a name that resolves to SEVERAL is refused with the qualified names that
- * separate them, so the model corrects itself instead of guessing again.
- *
- * A resolved target is either local (the handler retargets its ctx and stays
- * target-blind) or remote (the call travels to that agent's pod,
- * missions-remote.ts). Refusals are values carrying a code.
- */
-
 export type MissionRouteError =
   | "invalid_agent"
   | "agent_not_found"
@@ -50,10 +32,6 @@ export type MissionRoute =
   | { ok: true; remote: true; route: RemoteMissionRoute }
   | { ok: false; status: number; code: MissionRouteError; error: string };
 
-/**
- * Retarget a mission call at the agent named by `ref`. Answers the local ctx
- * for an agent this host holds, or the route to the pod that holds it.
- */
 export async function resolveMissionRoute(
   ctx: MissionsCtx,
   ref: unknown,
@@ -129,8 +107,6 @@ export async function resolveMissionRoute(
       },
     };
   }
-  // The directory only produced a remote candidate because a gateway answered
-  // for it, so the credential that listed it is the one that drives it.
   const wiring = resolveMissionGateway(ctx);
   if (!wiring.ok) return { ok: false, ...delegationRefusal(wiring.code) };
   const gateway = opts.gateway ?? wiring.value?.gateway;
@@ -154,7 +130,6 @@ export async function resolveMissionRoute(
   };
 }
 
-/** Write a refusal as the agent-facing body every mission route answers with. */
 export function refuseMissionRoute(
   refusal: Extract<MissionRoute, { ok: false }>,
   res: ServerResponse,

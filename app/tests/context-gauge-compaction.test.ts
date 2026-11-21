@@ -33,7 +33,6 @@ test("a window smaller than the ceiling's room is divided by as is", () => {
     100_000,
   );
   strictEqual(window, 128_000);
-  // 93% of 128k is where that model compacts.
   strictEqual(contextFillPercent(usage(119_040), window), 93);
 });
 

@@ -1,9 +1,3 @@
-/**
- * A fully-populated, schema-valid AgentIR 2.0.0 fixture. Every optional field is
- * present so the JSON-Schema drift test can compare property keys against it, and
- * the skill bodies are real SKILL.md files (frontmatter + markdown) so the
- * frontmatter parser can be exercised against them.
- */
 import type { AgentIR } from "../ir";
 
 const triageSkillBody = `---

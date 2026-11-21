@@ -24,12 +24,10 @@ async function writeStarted(
   if (changed) deps.emit?.({ type: "ConfigChanged", agentPath: deps.agentId });
 }
 
-/** Record a first-day turn that has started. */
 export function recordFirstDayStarted(deps: FirstDayRecord): Promise<void> {
   return writeStarted(deps, "setup");
 }
 
-/** Retire a pending first day after an ordinary mission starts. */
 export async function retirePendingFirstDay(
   deps: FirstDayRecord,
 ): Promise<void> {

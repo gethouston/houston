@@ -25,8 +25,6 @@ test("every ref in a snapshot carries its generation, iframe refs included", () 
       '- textbox "Username" [ref=s7e4]',
       "- iframe [ref=s7e9]:",
       '  - button "Verify" [ref=s7f1e3]',
-      // Page text spelling out another element's ref stays unstamped, so
-      // the model can never be steered to it as if it were current.
       "- text: [ref=e5] in prose is not a ref mark",
       '- button "Keep [ref=e5]" [active] [ref=s7e6]: Keep [ref=e5]',
     ].join("\n"),
@@ -49,7 +47,6 @@ test("generations are one counter for every tab in the process", () => {
   const a = nextGeneration();
   const b = nextGeneration();
   expect(b).toBe(a + 1);
-  // A ref stamped for one tab never resolves on another that snapshotted next.
   expect(refusal(() => resolveRef({ generation: b }, `s${a}e1`))).toBe(
     "stale_ref",
   );

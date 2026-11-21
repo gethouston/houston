@@ -1,22 +1,8 @@
-/**
- * Shared building blocks for the automation setup-chat kickoffs
- * (`routine-chat-prompts.ts`). Kept apart so each kickoff file stays focused
- * and under the size cap.
- */
-
-/** A provider the user has actually connected, for the kickoff prompts. */
 export interface ConnectedProviderRef {
   id: string;
   name: string;
 }
 
-/**
- * The kickoffs tell the agent which model providers the user actually has
- * connected: without this it happily pins a routine to any provider the user
- * names (e.g. "use deepseek"), and it then fails at fire time.
- * `null` means the statuses haven't loaded yet — stay generic rather than
- * wrongly claiming nothing is connected.
- */
 export function providerAwareness(
   connected: ConnectedProviderRef[] | null,
 ): string {

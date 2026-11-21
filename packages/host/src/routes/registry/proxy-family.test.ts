@@ -6,13 +6,6 @@ import type { AgentRouteDeps } from "../agent-authz";
 import { dispatchGroup, listRoutes } from "./all";
 import { defineProxyFamily } from "./index";
 
-/**
- * `defineProxyFamily` is how the catch-all forward to an agent's own runtime
- * stays enumerable: matching is still `*rest`, so an unlisted rest reaches the
- * channel all the same, while the declared members are what the SDK parity
- * gate reads. This file registers one into the live registry — vitest
- * isolates a file's module graph, so the extra routes exist only here.
- */
 const SOURCE = "packages/host/src/routes/registry/proxy-family.test.ts";
 
 const MEMBERS = [
@@ -89,8 +82,6 @@ const dispatch = async (
 };
 
 test("listRoutes() publishes one entry per declared member", () => {
-  // Scoped to the family declared here: the real one (routes/agents.ts) is in
-  // the same registry, and its members are agents-proxy-members.test.ts's.
   const proxied = listRoutes().filter(
     (route) =>
       route.classification === "runtime-proxy" && route.source === SOURCE,
@@ -103,8 +94,6 @@ test("listRoutes() publishes one entry per declared member", () => {
 
 test("any method on any rest reaches the family, with the rest raw", async () => {
   const { deps, agentId } = await host();
-  // Undeclared rest, undeclared method: the chain forwards it, so the family
-  // claims it too — the member list is for the gate, not for the match.
   const { handled } = await dispatch(
     deps,
     "PATCH",
@@ -123,7 +112,6 @@ test("the specific route declared earlier still wins over the family", async () 
     `/agents/${agentId}/activity`,
   );
   expect(handled).toBe(true);
-  // The activity route answered from routes/agents-activity.ts; nothing was forwarded.
   expect(seen.length).toBe(before);
   expect(res.status).toBe(503);
 });

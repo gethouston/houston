@@ -1,15 +1,6 @@
 import { AUTH_WEB_URL } from "../config";
 import { expect, test } from "../support/fixtures";
 
-/**
- * The cloud sign-in screen on a phone viewport (the tier-1 CI gate's first
- * leg). Runs in the `mobile` project but against the identity-ON server (the
- * same one the desktop `auth` project uses), so `SignInScreen` renders. The
- * full OTP contract is driven by the desktop sign-in spec; here the gate is
- * usability at 412px — everything reachable, the code row inside the
- * viewport, no horizontal overflow.
- */
-
 test.use({ baseURL: AUTH_WEB_URL });
 
 test("sign-in is usable at a phone width through to the code entry", async ({
@@ -31,8 +22,6 @@ test("sign-in is usable at a phone width through to the code entry", async ({
     );
   expect(await overflow()).toBeLessThanOrEqual(0);
 
-  // The email path: field + send stay reachable, and the six-slot code row
-  // fits the phone card (it used to overflow the p-8 desktop paddings).
   await page.getByPlaceholder("you@example.com").fill("pilot@example.com");
   await page.getByRole("button", { name: "Send code" }).tap();
   const codeInput = page.locator('input[data-slot="input-otp"]');
@@ -50,8 +39,6 @@ test("each provider is a full-width 44px row at 360px", async ({ page }) => {
   );
   const boxes = [];
   for (const button of providers) {
-    // The visible label is the phone's: a lone glyph in a wide pill reads as
-    // nothing, and Apple's option must match the others.
     await expect(button).toContainText("Continue with");
     const box = await button.boundingBox();
     if (!box) throw new Error("provider button not laid out");
@@ -61,7 +48,6 @@ test("each provider is a full-width 44px row at 360px", async ({ page }) => {
     expect(box.height).toBeGreaterThanOrEqual(44);
     expect(box.width).toBe(boxes[0]?.width);
   }
-  // Stacked, one per row, as wide as the address row above the send button.
   expect(boxes[1]?.y).toBeGreaterThan((boxes[0]?.y ?? 0) + 43);
   const fieldBox = await field.boundingBox();
   expect(fieldBox?.height).toBeGreaterThanOrEqual(44);

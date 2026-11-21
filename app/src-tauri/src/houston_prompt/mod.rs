@@ -59,24 +59,17 @@ mod tests {
     fn pi_prompt_swaps_cli_guidance_for_integration_tools() {
         let prompt = system_prompt_pi();
 
-        // The pi runtime has in-process tools + the request_connection card…
         assert!(prompt.contains("integration_search"));
         assert!(prompt.contains("integration_execute"));
         assert!(prompt.contains("request_connection"));
         assert!(prompt.contains("I've connected Gmail. Please continue."));
-        // A blocked (turned-off) app sends the user to this agent's Settings,
-        // under Apps, not a workspace admin, and never offers the connect card.
         assert!(prompt.contains("turned off for this agent"));
         assert!(prompt.contains("switched on in this agent's Settings, under Apps"));
         assert!(!prompt.contains("their admin needs to enable"));
-        // …the sign-in card joins the same flow, and app powers are never
-        // claimed unavailable unless a tool result says they are not set up…
         assert!(prompt.contains("a sign-in card joins"));
         assert!(prompt.contains("unless a tool result says they are not set up in this install"));
-        // …the markdown-link connect hack is gone…
         assert!(!prompt.contains("houston_toolkit"));
         assert!(!prompt.contains("markdown link"));
-        // …and none of the retired CLI guidance.
         assert!(!prompt.contains("Composio CLI"));
         assert!(!prompt.contains("composio link"));
         assert!(!prompt.contains("houston_composio_signin"));
@@ -95,10 +88,7 @@ mod tests {
     fn prompt_tells_the_agent_to_batch_questions_into_one_call() {
         let prompt = system_prompt_pi();
 
-        // The cap and the options live on the ask_user tool itself; the
-        // prompt keeps the one-call mandate.
         assert!(prompt.contains("batching everything you need into that one call"));
-        // The old one-question-per-turn drip is gone.
         assert!(!prompt.contains("one thing at a time"));
         assert!(!prompt.contains("one question at a time"));
     }
@@ -109,7 +99,6 @@ mod tests {
 
         assert!(prompt.contains("call `ask_user` and `request_connection` in the SAME turn"));
         assert!(prompt.contains("one card the user completes step by step"));
-        // The email example the step sequence was designed around.
         assert!(prompt.contains("to send an email you were asked to send"));
     }
 
@@ -117,8 +106,6 @@ mod tests {
     fn memory_guidance_requires_user_opt_in() {
         let prompt = system_prompt_pi();
 
-        // Inferred learnings are offered in the end-of-task reflection step
-        // (the suggest_reusable card), never asked mid-task via ask_user.
         assert!(prompt.contains("end-of-task reflection step"));
         assert!(prompt.contains("Reflection step:"));
         assert!(prompt.contains("Save a learning only when"));
@@ -130,8 +117,6 @@ mod tests {
     fn instructions_guidance_teaches_the_job_description_block() {
         let prompt = system_prompt_pi();
 
-        // The desktop agent rewrites its OWN CLAUDE.md: it has to know the file
-        // opens with the user's industry + role, and that the block stays.
         assert!(prompt.contains("### Instructions (Self-Editing)"));
         assert!(prompt.contains("Your own instructions live in `CLAUDE.md`"));
         assert!(prompt.contains("`industry` and `role`"));
@@ -159,12 +144,10 @@ mod tests {
     fn workflow_steps_tag_the_connected_app_they_use() {
         let prompt = system_prompt_pi();
 
-        // The example step carries a tag, and the rule says where it goes…
         assert!(prompt.contains("**Share the result** [gmail:GMAIL_SEND_EMAIL]"));
         assert!(prompt.contains("tag it with that app's toolkit slug right after the bold title"));
         assert!(prompt.contains("**Send the digest** [gmail]"));
         assert!(prompt.contains("[toolkit:ACTION_SLUG]"));
-        // …and why it matters: the action runs without a search first.
         assert!(prompt.contains(
             "calling `integration_execute` with that action straight away, with no `integration_search` first"
         ));

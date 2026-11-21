@@ -1,28 +1,4 @@
 #!/usr/bin/env node
-// Generate the frontend's built-in agent "templates" from the canonical
-// `store/agents/<id>/` content (the first-party agents formerly served by the
-// cut store/marketplace). The TS engine has no store backend, so instead of a
-// remote catalog we bake these agents into the New Agent picker and hand their
-// files to the host via the existing `seeds` create contract.
-//
-// Outputs (regenerate with `node scripts/gen-agent-templates.mjs`):
-//   app/src/agents/builtin/store-catalog.ts        — light AgentConfig cards
-//   app/src/agents/builtin/store-templates/<id>.json — { claudeMd, seeds }
-//   app/src/agents/builtin/store-templates/<id>.<lang>.json — the es/pt
-//     variant: same payload with the `.agents/skills/*` seeds swapped for the
-//     translated tree (`store/agents-i18n/<lang>/<id>/`), every English skill
-//     slug token rewritten to its translated slug (in skill bodies, CLAUDE.md,
-//     data-schema.md, and manifest agentSeeds — cross-references must follow
-//     the renamed directories), plus a `skillRenames` en→lang slug map the
-//     app's locale migration uses to swap already-seeded agents.
-//
-// Slug/title source of truth: store/skills-i18n.json. Translated SKILL.md
-// sources keep ENGLISH slug tokens in their bodies (translators preserve
-// identifiers verbatim); this script is the single place tokens are renamed,
-// so cross-references can never drift per-file.
-//
-// The JSON payloads are Biome-ignored (see biome.json) and lazily loaded per
-// agent at create time; only the light catalog ships in the initial bundle.
 
 import {
   existsSync,
@@ -44,13 +20,12 @@ const OUT_DIR = join(ROOT, "app/src/agents/builtin/store-templates");
 const CATALOG_TS = join(ROOT, "app/src/agents/builtin/store-catalog.ts");
 const LANGS = ["es", "pt"];
 
-// Top-level files that are store/engine metadata, not agent content.
 const EXCLUDE = new Set([
   "houston.json",
   "icon.png",
   ".migrations.json",
   ".gitignore",
-  "CLAUDE.md", // carried separately as `claudeMd`
+  "CLAUDE.md",
 ]);
 const BINARY_EXT = new Set([
   ".png",
@@ -65,7 +40,6 @@ const BINARY_EXT = new Set([
   ".otf",
 ]);
 
-/** Recursively list every file under `dir` as absolute paths. */
 function walk(dir) {
   const out = [];
   for (const entry of readdirSync(dir)) {
@@ -76,11 +50,6 @@ function walk(dir) {
   return out;
 }
 
-/**
- * Rewrite every English skill-slug token to its translated slug. Tokens are
- * matched with kebab-boundaries so one slug can never bite a longer one
- * (longest-first ordering guards prefix pairs too).
- */
 function rewriteSlugTokens(text, renames) {
   let out = text;
   const pairs = Object.entries(renames).sort(([a], [b]) => b.length - a.length);
@@ -93,7 +62,6 @@ function rewriteSlugTokens(text, renames) {
   return out;
 }
 
-/** Light card fields lifted from houston.json (never the heavy seeds/claudeMd). */
 const CARD_FIELDS = [
   "id",
   "name",
@@ -135,9 +103,6 @@ for (const id of ids) {
     ? readFileSync(claudePath, "utf8")
     : undefined;
 
-  // Seeds: every content file under the agent dir (skills, data-schema, etc.),
-  // then overlay the manifest's declared agentSeeds (empty data files, seeded
-  // routines) which live only in houston.json, not on disk.
   const seeds = {};
   for (const abs of walk(agentDir)) {
     const rel = relative(agentDir, abs).split("\\").join("/");
@@ -153,8 +118,6 @@ for (const id of ids) {
     JSON.stringify({ claudeMd, seeds }),
   );
 
-  // Per-locale variants: swap the skills tree for the translated one and
-  // rename every slug token so cross-references keep resolving.
   for (const lang of LANGS) {
     const skillsDir = join(STORE_I18N, lang, id, ".agents/skills");
     if (!existsSync(skillsDir)) {
@@ -170,7 +133,7 @@ for (const id of ids) {
 
     const langSeeds = {};
     for (const [rel, content] of Object.entries(seeds)) {
-      if (rel.startsWith(".agents/skills/")) continue; // replaced wholesale
+      if (rel.startsWith(".agents/skills/")) continue;
       langSeeds[rel] = rewriteSlugTokens(content, skillRenames);
     }
     for (const abs of walk(skillsDir)) {
@@ -202,8 +165,6 @@ for (const id of ids) {
   cards.push(card);
 }
 
-// Light slug→store-agent index so the app's skill locale migration can spot
-// candidates in a skills list without loading any heavy template payload.
 const skillSources = {};
 for (const id of ids) {
   for (const enSlug of Object.keys(slugMap.skills[id] ?? {})) {

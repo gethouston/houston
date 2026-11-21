@@ -125,8 +125,6 @@ async fn fetch_and_admit<R: Runtime>(
         &mut partial,
         attempt_budget(attempts),
         |event| {
-            // Progress callback with no UI thread: a closed channel only means
-            // the webview went away mid-download, and the result still returns.
             if let Err(e) = on_event.send(event) {
                 tracing::warn!("[updater] progress channel closed: {e}");
             }
@@ -162,8 +160,6 @@ pub async fn install_update<R: Runtime>(
         .install(bytes.as_slice())
         .map_err(|e| e.to_string())?;
     STAGED.forget(&staged.version, &staged.signature);
-    // Windows never reaches here (the installer hand-off exits the process);
-    // on macOS the bytes are on disk now and the buffer can go.
     webview
         .resources_table()
         .close(bytes_rid)

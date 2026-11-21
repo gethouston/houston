@@ -73,10 +73,8 @@ describe("canOpenAgentSettings", () => {
     ({ multiplayer: true, role }) as unknown as Parameters<
       typeof canOpenAgentSettings
     >[0];
-  /** Only `access` matters here — it is what the gate reads. */
   const managed = { access: "manager" } as const;
   const used = { access: "user" } as const;
-  /** Single-player wire rows carry no access field at all. */
   const bare = {} as { access?: "manager" | "user" };
 
   it("is open to a single-player user (the solo owner of every team)", () => {
@@ -91,21 +89,12 @@ describe("canOpenAgentSettings", () => {
   });
 
   it("is open to a member who MANAGES the agent, and closed when they only use it", () => {
-    // An employee's Settings section is a per-agent door, so the page's gate
-    // is per agent: a member who manages this agent reaches it, a member who
-    // only uses it does not (the affordance would resolve back to Mission
-    // Control).
     strictEqual(canOpenAgentSettings(caps("user"), managed), true);
     strictEqual(canOpenAgentSettings(caps("user"), used), false);
     strictEqual(canOpenAgentSettings(caps("user"), bare), false);
   });
 });
 
-// A nav that names no employee (the tour's "Click New task" step, New task
-// from the palette or the AI Models hub, a lesson beat, a hands-on errand)
-// works on the current employee, else the first one the rail shows: the
-// Agents home has no New task button, and a spotlight would find nothing
-// there.
 describe("workingAgentId", () => {
   const agent = (id: string) => ({ id, name: id }) as Agent;
   const roster = [agent("a"), agent("b"), agent("c")];

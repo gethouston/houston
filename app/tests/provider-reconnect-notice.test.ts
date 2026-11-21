@@ -22,11 +22,6 @@ const status = (
   ...(reconnectBy === undefined ? {} : { reconnectBy }),
 });
 
-/**
- * The shell pill reads the probed statuses through the SDK's rule. These pin
- * the hand-off: the connected flag is the probe's `authenticated`, and only a
- * deadline inside the window shows.
- */
 describe("providerReconnectNoticeFor", () => {
   it("shows the soonest connected login inside the window", () => {
     deepStrictEqual(

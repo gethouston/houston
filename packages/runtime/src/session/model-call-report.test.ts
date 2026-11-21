@@ -16,7 +16,6 @@ const call: ModelCallTiming = {
   outputTokens: 20,
 };
 
-/** A session whose timing feed the test drives by hand. */
 function fakeSession(withTimings = true) {
   const listeners = new Set<(e: HarnessTimingEvent) => void>();
   const session = {

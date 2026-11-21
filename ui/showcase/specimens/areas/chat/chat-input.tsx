@@ -15,7 +15,6 @@ import {
   StaticComposer,
 } from "./chat-input-parts";
 
-/** The messages waiting behind a running turn. */
 const QUEUED = [
   { id: "q-1", text: "Also archive anything older than a year." },
   {
@@ -144,7 +143,6 @@ function ChatInputSpecimen() {
   );
 }
 
-/** The `@houston-ai/*` symbols this page documents. */
 export const sources: string[] = ["ChatInput"];
 
 export const specimen: Specimen = {

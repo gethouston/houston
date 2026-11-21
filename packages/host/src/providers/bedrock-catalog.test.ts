@@ -40,9 +40,6 @@ test("keeps global inference profiles and Amazon's own models, in order", () => 
 });
 
 test("bare Claude foundation ids and regional profiles are not invokable", () => {
-  // Bedrock 400s both on a valid key: the bare id with "on-demand throughput
-  // isn't supported", the off-region profile with "The provided model
-  // identifier is invalid" (the two failure cards from PRODUCT-1641).
   for (const id of [
     "anthropic.claude-fable-5",
     "anthropic.claude-sonnet-4-6",
@@ -72,17 +69,13 @@ test("the served catalog offers Bedrock only invokable ids", () => {
   const ids = bedrock?.models.map((m) => m.id) ?? [];
   expect(ids.length).toBeGreaterThan(0);
   for (const id of ids) expect(isInvokableBedrockModelId(id), id).toBe(true);
-  // The ids the user confirmed working on a plain Bedrock API key survive.
   expect(ids).toContain("global.anthropic.claude-sonnet-4-6");
   expect(ids).toContain("amazon.nova-pro-v1:0");
-  // The two ids from the PRODUCT-1641 failure cards are gone.
   expect(ids).not.toContain("anthropic.claude-fable-5");
   expect(ids).not.toContain("au.anthropic.claude-opus-5");
 });
 
 test("every curated host Bedrock id (incl. the default) survives the filter", () => {
-  // The host's curated list and connect default must never name an id the
-  // catalog no longer serves — otherwise the picker's default row vanishes.
   const curated = PROVIDERS.find((p) => p.id === BEDROCK_PROVIDER_ID);
   expect(curated).toBeDefined();
   const served = new Set(

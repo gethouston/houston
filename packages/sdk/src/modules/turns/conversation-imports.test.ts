@@ -12,12 +12,6 @@ import { RESEND_AFTER_MS, RESEND_MAX_MS } from "./conversation-import-hold";
 import { PENDING_IMPORTS_KEY } from "./conversation-import-outbox";
 import { createConversationImports } from "./conversation-imports";
 
-/**
- * Imports are an outbox: written down before they are sent, crossed off once
- * the runtime answers or refuses for good, and sent again by
- * `retryPendingImports` when the send failed on the way.
- */
-
 const request: ConversationImportRequest = {
   importId: "onboarding:first_run",
   messages: [
@@ -26,7 +20,6 @@ const request: ConversationImportRequest = {
   ],
 };
 
-/** A page the test drives: leaving or not, and "live again" on demand. */
 function fakePage(unloading = false) {
   const listeners = new Set<() => void>();
   return {
@@ -38,7 +31,6 @@ function fakePage(unloading = false) {
         return () => listeners.delete(listener);
       },
     },
-    /** The page is live after all: the flag drops, listeners run. */
     live() {
       page.unloading = false;
       for (const listener of listeners) listener();
@@ -47,7 +39,6 @@ function fakePage(unloading = false) {
 }
 let page = fakePage();
 
-/** Settled with its result, rejected, or still pending after a turn. */
 async function stateOf<T>(p: Promise<T>): Promise<string> {
   const pending = Symbol("pending");
   const outcome = await Promise.race([
@@ -67,10 +58,7 @@ function harness(opts: { unloading: boolean } = { unloading: false }) {
   page = fakePage(opts.unloading);
   const stored = new Map<string, string>();
   const sent: Array<{ agentId: string; id: string; importId: string }> = [];
-  /** What the runtime answers next: a count, an error to throw, or a
-   *  promise of a count the test settles itself (a slow send). */
   const answers: Array<number | Error | Promise<number>> = [];
-  /** The hold's own resend timers, fired by hand. */
   const timers: Array<{ id: number; fn: () => void; ms: number }> = [];
   let nextTimer = 1;
   const clock = {
@@ -85,7 +73,6 @@ function harness(opts: { unloading: boolean } = { unloading: false }) {
       if (at >= 0) timers.splice(at, 1);
     },
   };
-  /** Let every armed resend timer lapse. */
   const elapse = () => {
     for (const t of timers.splice(0)) t.fn();
   };
@@ -111,7 +98,6 @@ function harness(opts: { unloading: boolean } = { unloading: false }) {
       logged.push(msg);
     },
   };
-  /** When set, every outbox write fails (storage full, blocked). */
   const storageFails = { now: false };
   const kv = memoryKv(stored);
   const storage = {
@@ -157,7 +143,6 @@ function harness(opts: { unloading: boolean } = { unloading: false }) {
   };
 }
 
-/** A promise the test settles by hand: a send that is still on the wire. */
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((r) => {
@@ -204,7 +189,6 @@ describe("importMessages", () => {
   });
 
   test("an import the page left mid-flight is held: pending, still owed, sent once more when the page is live", async () => {
-    // A reload aborts the fetch; the browser reports it like a dead network.
     const h = harness({ unloading: true });
     h.answers.push(new TypeError("Failed to fetch"));
     const held = h.imports.importMessages(
@@ -218,8 +202,6 @@ describe("importMessages", () => {
     ]);
     expect(h.sent).toHaveLength(1);
 
-    // The navigation was cancelled (or the document came back from the
-    // back/forward cache): the import goes out again and the hold settles.
     page.live();
     expect(await stateOf(held)).toBe('resolved:{"ok":true,"imported":2}');
     expect(h.sent).toHaveLength(2);
@@ -266,7 +248,6 @@ describe("importMessages", () => {
       request,
     );
     expect(await stateOf(held)).toBe("pending");
-    // The 2 s fallback fired on a page still leaving: the resend dies too.
     page.live();
     expect(await stateOf(held)).toBe("pending");
     expect(h.sent).toHaveLength(2);
@@ -277,8 +258,6 @@ describe("importMessages", () => {
   });
 
   test("a pagehide followed by nothing: the hold's own timer still resends", async () => {
-    // iOS backgrounds the tab (pagehide) and brings it back with no pageshow:
-    // the port's flag stays up, but a timer that fires is a page that is alive.
     const h = harness({ unloading: true });
     h.answers.push(new TypeError("Failed to fetch"));
     const held = h.imports.importMessages(
@@ -329,7 +308,7 @@ describe("importMessages", () => {
     h.elapse();
     await stateOf(held);
     expect(h.timers[0]?.ms).toBe(12_000);
-    page.live(); // answer #4: another drop, but the wait is short again
+    page.live();
     await stateOf(held);
     expect(h.timers[0]?.ms).toBe(RESEND_AFTER_MS);
   });
@@ -350,15 +329,10 @@ describe("importMessages", () => {
       "conversation import outbox write failed after a resend",
     ]);
     expect(h.timers).toHaveLength(0);
-    // The write failed, so the entry is still written down as owed: the next
-    // load's retry sends it and the runtime answers `imported: 0`.
     expect(h.owed()).toHaveLength(1);
   });
 
   test("an outbox write that fails after a refused resend still rejects the caller, and is logged", async () => {
-    // A resend with no answer writes nothing (the entry stays owed as it is),
-    // so the only failing write on the rejection path is the cross-off after
-    // a final refusal.
     const h = harness({ unloading: true });
     const gone = new EngineError(404, '{"error":"agent not found"}');
     h.answers.push(new TypeError("Failed to fetch"), gone);
@@ -436,7 +410,6 @@ describe("importMessages", () => {
     page.live();
     expect(await stateOf(first)).toBe('resolved:{"ok":true,"imported":2}');
     expect(await stateOf(second)).toBe('resolved:{"ok":true,"imported":2}');
-    // One send before the hold, one resend after it: the second ask sent nothing.
     expect(h.sent).toHaveLength(2);
   });
 
@@ -546,8 +519,6 @@ describe("retryPendingImports", () => {
   });
 
   test("sends only the asked agent's owed imports, keeping another person's", async () => {
-    // A device someone else signs in to holds their owed import too: their
-    // agent would refuse it, and that refusal would cross it off for good.
     const h = harness();
     h.answers.push(new Error("offline"), new Error("offline"));
     await expect(

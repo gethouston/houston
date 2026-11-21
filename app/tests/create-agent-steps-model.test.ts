@@ -34,13 +34,11 @@ test("the rail's + opens on what the user can add", () => {
 test("a caller that already knows lands on that path's own first screen", () => {
   assert.equal(createFlowShape("agent", gates()).first, "choose");
   assert.equal(createFlowShape("team", gates()).first, "team");
-  // The opening choice belongs to the door that has one.
   assert.equal(createFlowShape("agent", gates()).offersAdd, false);
   assert.equal(createFlowShape("team", gates()).offersAdd, false);
 });
 
 test("a choice with one answer is not a screen", () => {
-  // A plain member of a team space may create groups but not agents.
   const teamOnly = createFlowShape("choose", gates({ canCreateAgent: false }));
   assert.equal(teamOnly.first, "team");
   assert.equal(teamOnly.offersAdd, false);
@@ -51,8 +49,6 @@ test("a choice with one answer is not a screen", () => {
 });
 
 test("a door onto a path the gates closed falls to the one they allow", () => {
-  // The sheet opens optimistic and the capabilities land under it, so a caller
-  // that asked for the hire path must not walk the brief into a refusal.
   assert.equal(
     createFlowShape("agent", gates({ canCreateAgent: false })).first,
     "team",
@@ -155,36 +151,28 @@ test("both doors off the choice hang at the same depth", () => {
   assert.equal(createFlowStepDirection("choose", "copy"), "forward");
   assert.equal(createFlowStepDirection("copy", "choose"), "back");
   assert.equal(createFlowStepDirection("copy", "context"), "forward");
-  // Re-entering the step you are already on must not look like a rewind.
   assert.equal(createFlowStepDirection("role", "role"), "forward");
 });
 
 test("a step that asks one short thing wears the hand-sized frame", () => {
-  // The defect this map ends: a two-option question stretched down a 900px,
-  // 85dvh sheet with the cards floating in the middle of it.
   for (const step of ["add", "choose", "team", "customize"] as const) {
     assert.equal(createFlowStepSize(step), "compact");
   }
 });
 
 test("only the catalogs and the copy wizard take the tall frame", () => {
-  // A hundred and eighty chips, and a list of the user's own agents, are
-  // scanning work; nothing else in the flow is.
   for (const step of ["context", "role", "copy"] as const) {
     assert.equal(createFlowStepSize(step), "wide");
   }
 });
 
 test("only a screen that ASKS for something carries a bottom bar", () => {
-  // A choice is answered by pressing one of the things on offer; a bar under
-  // it would be a second way to say the same thing, disabled until it is not.
   assert.equal(hasFlowPrimary("add", "source"), false);
   assert.equal(hasFlowPrimary("choose", "source"), false);
   assert.equal(hasFlowPrimary("context", "source"), false);
   assert.equal(hasFlowPrimary("role", "source"), false);
   assert.equal(hasFlowPrimary("customize", "source"), true);
   assert.equal(hasFlowPrimary("team", "source"), true);
-  // The copy wizard's source list is a choice too; everything after it walks.
   assert.equal(hasFlowPrimary("copy", "source"), false);
   for (const inner of ["instructions", "routines", "skills", "name"] as const) {
     assert.equal(hasFlowPrimary("copy", inner), true);

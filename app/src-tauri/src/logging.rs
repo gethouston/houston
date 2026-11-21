@@ -39,7 +39,6 @@ pub fn init(data_dir: &Path) {
     let file_appender = tracing_appender::rolling::daily(&logs_dir, "backend.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-    // Store the guard so the background writer thread stays alive
     let _ = GUARD.set(guard);
 
     let filter = EnvFilter::try_from_default_env()
@@ -56,7 +55,6 @@ pub fn init(data_dir: &Path) {
     tracing_subscriber::registry()
         .with(filter)
         .with(fmt_layer)
-        // Keeps the runtime's webview creation error for the guard's event.
         .with(crate::webview_guard::FailureRecorder)
         .with(sentry_tracing::layer().event_mapper(crate::sentry_filter::map_event))
         .init();

@@ -1,11 +1,3 @@
-/**
- * Which chat items are browser hand-offs, and what each card says: waiting for
- * the person, or how it ended. Pure over the feed a surface already holds; the
- * outcome is read from the `browser` tool's own result (`ERROR handoff_*:`),
- * so no wire field was added for it.
- * Where the cards sit in the chat: `handoff-layout.ts`.
- */
-
 import { browserHandoffFailureOf } from "@houston/wire-types";
 import {
   type BrowserHandoffFeedItem,
@@ -24,18 +16,14 @@ export type BrowserHandoffCardState =
   | "ended";
 
 export interface BrowserHandoffCardModel {
-  /** `${callItem.id ?? index}:handoff` */
   key: string;
-  /** Insert the card AFTER this item: the result if present, else the call. */
   anchorIndex: number;
   text: string;
   url: string | null;
-  /** Hostname of `url`, else of the turn's latest browser `open`/`handoff` url. */
   site: string | null;
   state: BrowserHandoffCardState;
 }
 
-/** The `browser` tool, bare (pi) or MCP-prefixed (Claude: `mcp__houston__browser`). */
 export function isBrowserToolName(name: string): boolean {
   return name === "browser" || name.endsWith("__browser");
 }
@@ -49,7 +37,7 @@ function hostOf(url: string | null): string | null {
   try {
     return new URL(url).hostname.replace(/^www\./, "") || null;
   } catch {
-    return null; // not an absolute URL: the card names no site rather than a wrong one
+    return null;
   }
 }
 
@@ -61,8 +49,6 @@ function stateOf(
   if (call.result === null) return waiting ? "waiting" : "ended";
   const result = fields(items[call.result]?.data);
   const content = String(result?.content ?? "");
-  // A successful hand-off always says so. An empty success is what the history
-  // fold writes for a tool the turn never finished (stopped, crashed).
   if (result?.is_error !== true) return content.trim() ? "done" : "ended";
   const failure = browserHandoffFailureOf(content);
   if (failure === "handoff_cancelled") return "cancelled";
@@ -70,7 +56,6 @@ function stateOf(
   return "ended";
 }
 
-/** The url the turn's browser was last pointed at before `before`. */
 function turnSite(
   calls: readonly FeedCall[],
   before: number,
@@ -86,13 +71,6 @@ function turnSite(
   return null;
 }
 
-/**
- * Whether anything after `position` shows its turn went on without it: a turn
- * end, a later call that already has its result (tools run one at a time, so
- * the hand-off's own result would have come first), or a call of another turn.
- * A later call alone is not enough: a model may ask for the hand-off and
- * another tool in one message, and that call waits behind the hand-off.
- */
 function movedOn(
   calls: readonly FeedCall[],
   position: number,
@@ -111,12 +89,6 @@ function movedOn(
     );
 }
 
-/**
- * One card per hand-off call, in feed order. An unanswered call is `waiting`
- * only while a turn runs and nothing after it shows the turn moved on; a
- * person's message written while it waits does not end it, because the turn
- * queues that message behind the hand-off.
- */
 export function browserHandoffCards(
   items: readonly BrowserHandoffFeedItem[],
   turnRunning: boolean,

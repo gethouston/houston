@@ -16,12 +16,6 @@ import { ManagerQuestionStep } from "./manager-question-step";
 
 export type AboutQuestion = "industry" | "role";
 
-/**
- * "About you": the person's industry, then their role, asked with the create
- * sheet's own two steps (`ContextStep`, `RoleStep`) addressed to them. The
- * role question leads with the leadership positions, then the industry's own
- * roles, and searches the whole catalog, exactly as it does for a hire.
- */
 export function ManagerAboutStep({
   question,
   start,
@@ -34,18 +28,13 @@ export function ManagerAboutStep({
   onBack,
 }: {
   question: AboutQuestion;
-  /** The answers already given, preselected. */
   start: AgentRoleStart;
-  /** The leadership position already given, preselected: a hire's start
-   *  never carries one. */
   leadershipStart: LeadershipRoleId | null;
   busy: boolean;
   error: string | null;
   onIndustry: (answer: RoleQuestionAnswer<AgentContextId>) => void;
   onRole: (answer: RoleQuestionAnswer<OnboardingRoleId>) => void;
-  /** "Not now", where the questions can be put off. */
   onDecline?: () => void;
-  /** Reopens the answer before this question, where it can still change. */
   onBack?: (() => void) | null;
 }) {
   const state = useAgentRoleState(true, start);

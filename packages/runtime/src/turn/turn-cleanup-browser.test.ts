@@ -15,7 +15,6 @@ import { cleanupTurn } from "./turn-cleanup";
 const available = await browserAvailable();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** A turn root holding one agent workspace. */
 function turnRoot() {
   const root = mkdtempSync(join(tmpdir(), "turn-browser-"));
   const workspaceDir = join(root, "workspace", "Agent");

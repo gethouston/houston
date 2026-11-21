@@ -25,8 +25,6 @@ import {
 } from "../src/components/organization/org-chart-view-model.ts";
 import teams from "../src/locales/en/teams.json" with { type: "json" };
 
-// tsx compiles `ui/` sources against their own tsconfig, which names no JSX
-// runtime, so their JSX comes out as classic `React.createElement` calls.
 Object.assign(globalThis, { React });
 
 const NOW = new Date("2026-09-26T12:00:00Z");
@@ -130,7 +128,6 @@ describe("org chart ledger rendering", () => {
 
   it("features the #1 on its own card, larger than the rest", () => {
     const html = ledger([agent("a"), agent("b"), agent("c")]);
-    // Agent c worked the most hours, so it leads.
     match(html, /<ol[^>]*><li[^>]*rounded-2xl bg-card-solid[^>]*>.*?Agent c/);
     strictEqual(count(html, /rounded-2xl bg-card-solid/), 1);
     match(html, /Ranked by hours/);
@@ -157,7 +154,6 @@ describe("org chart ledger rendering", () => {
   });
 
   it("says Everyone once for an agent shared with the whole organization", () => {
-    // The gateway omits an empty assignment list, even for its manager.
     const html = ledger([
       agent("a", { access: "manager", assignments: undefined }),
     ]);

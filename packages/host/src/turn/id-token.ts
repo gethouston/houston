@@ -1,11 +1,3 @@
-/**
- * Google-signed ID tokens from the metadata server, for calling the
- * IAM-gated turn runtime (--no-allow-unauthenticated). Works on GKE with
- * Workload Identity; on a dev machine there is none, so the provider yields
- * null and only the app-layer X-Internal-Token is sent — enforcement is
- * server-side (Cloud Run IAM rejects, the failure surfaces on the turn).
- */
-
 const METADATA_IDENTITY_URL =
   "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity";
 
@@ -23,7 +15,6 @@ function tokenExpiryMs(jwt: string): number {
   }
 }
 
-/** Caching ID-token provider for one audience (refreshes 5 min before expiry). */
 export function makeIdTokenProvider(
   audience: string,
 ): () => Promise<string | null> {
@@ -42,7 +33,7 @@ export function makeIdTokenProvider(
         },
       );
     } catch {
-      return null; // no metadata server: dev machine. IAM enforcement is server-side.
+      return null;
     }
     if (!res.ok) {
       throw new Error(

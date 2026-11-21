@@ -2,11 +2,6 @@ import { afterEach, expect, test, vi } from "vitest";
 import { unansweredWindowMs } from "../ai/first-byte";
 import { createStallWatchdog, type StallReason } from "./stall-watchdog";
 
-/**
- * The `unanswered` cut waits as long as the hedge does for the request it
- * watches: a large prompt is still being read when a small one's window ends.
- */
-
 afterEach(() => {
   vi.useRealTimers();
 });

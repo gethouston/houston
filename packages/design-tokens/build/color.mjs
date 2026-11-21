@@ -1,10 +1,3 @@
-// Colour parsing and maths shared by the native serializers, the palette
-// derivation and the zero-diff test. Normalizes any CSS colour string the token
-// source uses (#rrggbb, rgb(), rgba(), transparent) to float components in
-// [0, 1]. This is what makes the zero-diff proof robust: two strings that render
-// the SAME pixels (e.g. the `0.10` vs `0.1` alpha wart in the legacy CSS)
-// compare equal.
-
 /** @typedef {{ r: number, g: number, b: number, a: number }} Rgba */
 
 /**
@@ -43,7 +36,6 @@ export function parseColor(raw) {
   throw new Error(`Unparseable colour: ${raw}`);
 }
 
-/** Accept either an already-parsed colour or any CSS string the tokens use. */
 const rgba = (c) => (typeof c === "string" ? parseColor(c) : c);
 
 const clamp01 = (n) => Math.min(1, Math.max(0, n));
@@ -91,7 +83,6 @@ export function mix(a, b, t) {
   };
 }
 
-/** The same colour at a new alpha, scaled by whatever alpha it already carries. */
 export function withAlpha(color, a) {
   const c = rgba(color);
   return { ...c, a: clamp01(c.a * a) };
@@ -182,14 +173,12 @@ export function hueDistance(a, b) {
   return diff > 180 ? 360 - diff : diff;
 }
 
-/** WCAG 2.x relative luminance. The colour must already be opaque to mean anything. */
 export function luminance(color) {
   const { r, g, b } = rgba(color);
   const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
   return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 
-/** WCAG 2.x contrast ratio between two opaque colours. */
 export function contrast(a, b) {
   const la = luminance(a);
   const lb = luminance(b);

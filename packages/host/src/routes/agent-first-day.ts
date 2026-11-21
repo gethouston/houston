@@ -5,7 +5,6 @@ import { startFirstDay } from "./agent-first-day-start";
 import { json, readJson } from "./http";
 import { defineRoute } from "./registry";
 
-/** The longest locale tag or title a start accepts: both are one short label. */
 const MAX_FIELD_LENGTH = 200;
 
 type Parsed =
@@ -35,12 +34,6 @@ export function parseFirstDayStart(body: Record<string, unknown>): Parsed {
   };
 }
 
-/**
- * `POST /agents/:agentId/first-day` — start the employee's first day, or hand
- * back the setup task that already started it (`agent-first-day-start.ts`).
- * The pool worker also shares its input parser and task builder; the gateway
- * completes that start with claimed board and config writes.
- */
 defineRoute({
   group: "agent-first-day",
   method: "POST",
@@ -76,11 +69,8 @@ defineRoute({
         agent: authz.agent,
         channel,
         author: actingAuthor ?? undefined,
-        // The same acting policy a routine fire follows (auth/acting.ts).
         actingUser: routineActorFor(deps, req, userId),
         actingAs,
-        // The gateway's plan stamp, trusted only behind it: the first turn's
-        // routine saves are held to the person's floor.
         limits: deps.gatewayFronted ? parseTurnLimits(body.limits) : undefined,
         emit,
       },

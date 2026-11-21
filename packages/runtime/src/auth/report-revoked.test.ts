@@ -13,20 +13,8 @@ import {
 } from "./report-revoked";
 import { recordServedScope, resetServedScopes } from "./served-scope";
 
-/**
- * The reporter is a DELETE trigger for a workspace-wide credential, so the
- * gating is the safety-critical part: every test here is about what must NOT
- * produce a report (HOU-952).
- *
- * The digest argument is the caller's capture of the token the FAILED turn ran
- * on (auth/used-token.ts, PRODUCT-1319) — the reporter never derives it from
- * auth.json, whose content at report time may already be a healthy
- * replacement.
- */
-
 type Captured = { url: string; body: Record<string, unknown> } | null;
 
-/** Serve mode + a data dir, with fetch captured. Returns what was reported. */
 async function withServeMode(
   setup: (dataDir: string) => void,
   body: () => void,
@@ -55,7 +43,6 @@ async function withServeMode(
   try {
     setup(config.dataDir);
     body();
-    // The reporter is fire-and-forget; let its microtasks drain.
     await new Promise((r) => setTimeout(r, 10));
     return captured;
   } finally {
@@ -66,7 +53,6 @@ async function withServeMode(
   }
 }
 
-/** A served oauth credential on disk, as a serve sync would leave it. */
 function servedOauth(dataDir: string, provider: string, access: string): void {
   writeFileSync(
     join(dataDir, "auth.json"),
@@ -80,12 +66,10 @@ function servedOauth(dataDir: string, provider: string, access: string): void {
   );
 }
 
-/** The common case: anthropic, the provider most turns run on. */
 function servedAnthropic(dataDir: string, access = "served-access"): void {
   servedOauth(dataDir, "anthropic", access);
 }
 
-/** The same, but in ONE member's files — where a per-identity serve sync lands. */
 function servedAnthropicFor(
   dataDir: string,
   scopeKey: string,
@@ -135,22 +119,12 @@ test("reports a revoked served token, naming it by digest only", async () => {
   );
   expect(captured?.body.provider).toBe("anthropic");
   expect(captured?.body.accessSha256).toBe(accessDigest("the-revoked-token"));
-  // The token itself must never leave the runtime.
   expect(JSON.stringify(captured?.body)).not.toContain("the-revoked-token");
 });
 
-/**
- * PRODUCT-1319 — the bug this parameter exists to fix. The failed turn ran on
- * token A; a serve sync (or the user's reconnect) stored healthy token B
- * between the 401 and the report. Re-reading auth.json here digested B, and
- * the gateway's compare-and-delete then destroyed the FRESH credential,
- * potentially feeding a reconnect loop. The report must name A.
- */
 test("names the token the FAILED turn ran on, not the healthier one stored since", async () => {
   const captured = await withServeMode(
-    // A re-serve already replaced the dead token in auth.json…
     (dir) => servedAnthropic(dir, "fresh-healthy-token"),
-    // …but the turn that 401'd ran on the old one, and says so.
     () => reportRevokedServedToken(revoked, accessDigest("the-dead-token")),
   );
 
@@ -161,11 +135,6 @@ test("names the token the FAILED turn ran on, not the healthier one stored since
 });
 
 test("an UNKNOWN at-failure token never reports — even with a token stored", async () => {
-  // The caller could not capture what the failed turn ran on (it threw before
-  // any request resolved a credential). Falling back to the file would aim the
-  // delete at an unverified target — possibly a fresh reconnect — so the safe
-  // move is to skip: a missed report costs a retry on the next failed turn, a
-  // false one signs the workspace out of a working credential (PRODUCT-1319).
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir, "fresh-healthy-token"),
     () => reportRevokedServedToken(revoked, undefined),
@@ -174,10 +143,6 @@ test("an UNKNOWN at-failure token never reports — even with a token stored", a
 });
 
 test("still reports when the local entry is already gone (row may live centrally)", async () => {
-  // A local disconnect can race the report; the central store may still hold
-  // (and keep serving) the dead row. The failed token is known and confirmed
-  // revoked, and the gateway's compare-and-delete no-ops unless its row
-  // matches — so the report goes out.
   const captured = await withServeMode(
     (dir) => {
       writeFileSync(join(dir, "auth.json"), JSON.stringify({}));
@@ -192,9 +157,6 @@ test("still reports when the local entry is already gone (row may live centrally
 });
 
 test("a member's report names the acting identity, not just the scope", async () => {
-  // Without the acting token the gateway cannot tell WHICH member's row a
-  // personal digest-delete targets, so it answers 400 and the dead token
-  // survives — the whole HOU-952 failure this path exists to end.
   const captured = await withServeMode(
     (dir) => servedAnthropicFor(dir, "u:sub-alice", "alice-revoked-token"),
     () =>
@@ -210,8 +172,6 @@ test("a member's report names the acting identity, not just the scope", async ()
 });
 
 test("a team report carries no acting identity at all", async () => {
-  // Desktop, self-host and every pre-HOU-976 turn: the body stays exactly what
-  // it was, so an older control plane sees no new field.
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir),
     () => reportRevokedServedToken(revoked, accessDigest("served-access")),
@@ -222,8 +182,6 @@ test("a team report carries no acting identity at all", async () => {
 });
 
 test("does NOT report a non-terminal auth failure", async () => {
-  // `unauthenticated` at large covers transient provider blips and bad keys.
-  // Reporting those would delete a credential that is fine.
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir),
     () =>
@@ -243,10 +201,6 @@ test.each([
     "with Anthropic's own remedy prose",
     "Your organization has disabled Claude subscription access for Claude Code",
   ],
-  // Belt and braces: even a message carrying a confirmed revocation marker
-  // must not report under this cause — the token is NOT dead (the org policy
-  // is the wall), and the compare-and-delete would sign the whole workspace
-  // out of a credential that other environments can still use.
   ["even when the text carries a confirmed marker", "403 has been revoked"],
 ])("does NOT report an org_policy_blocked failure %s (PRODUCT-1393)", async (_label, message) => {
   const captured = await withServeMode(
@@ -271,10 +225,6 @@ test.each([
   ],
   ["prose about a terminated session", "401 Unauthorized: session terminated"],
 ])("does NOT report %s — loose copy, no confirmed revocation", async (_label, message) => {
-  // These phrasings legitimately produce the `token_revoked` CARD (both
-  // classifiers map them), but providers also reach for them on transient
-  // auth blips. Reporting one deletes the workspace's credential on a single
-  // failed turn, so the destructive half needs a machine-emitted marker.
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir),
     () =>
@@ -293,10 +243,6 @@ test.each([
   ],
   ["an unrelated field that merely spells it", '401 {"revoked_scopes":[]}'],
 ])("does NOT report %s — the marker must be anchored", async (_label, message) => {
-  // The bare substring "revoked" reads a NEGATION and a field name as a
-  // confirmed revocation, and this gate deletes the credential for every
-  // runtime in the workspace. The anchored phrases ("has been revoked",
-  // "access revoked", "token_revoked") survive neither.
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir),
     () =>
@@ -316,9 +262,6 @@ test.each([
   ["a structured revocation code", '401 {"error":{"code":"token_revoked"}}'],
   ["prose naming the access", "401 Unauthorized: access revoked by the admin"],
 ])("reports %s (anchored marker)", async (_label, message) => {
-  // The anthropic path (backends/claude/errors.ts) hands the provider's verbatim
-  // text straight through, so these are the shapes the strict list must keep
-  // catching after anchoring.
   const captured = await withServeMode(
     (dir) => servedAnthropic(dir, "the-revoked-token"),
     () =>
@@ -361,8 +304,6 @@ test.each([
 });
 
 test("does NOT report a credential this runtime owns locally", async () => {
-  // No served-providers entry = a desktop keychain login. It never backed this
-  // turn and is none of the control plane's business.
   const captured = await withServeMode(
     (dir) => {
       writeFileSync(
@@ -388,12 +329,6 @@ test("does NOT report when serve mode is off", async () => {
 });
 
 test("an api_key credential records no used token, so no report can fire", async () => {
-  // An api_key has no revocation semantics worth acting on here; treating one
-  // as revoked would delete a key the user still wants. The oauth-only gate is
-  // enforced at CAPTURE — every digest source (the credential store's
-  // request-time read, the Claude spawn env, the per-turn hydrated read)
-  // digests OAuth access tokens only — so an api_key turn reaches the reporter
-  // with `undefined` and skips.
   const captured = await withServeMode(
     (dir) => {
       writeFileSync(
@@ -411,10 +346,6 @@ test("an api_key credential records no used token, so no report can fire", async
 });
 
 test("the same dead token is reported once per pod lifetime (HOUSTON-APP-530)", async () => {
-  // A control plane whose DELETE→GET path lags can re-serve a token this pod
-  // already reported dead; re-reporting it re-fires the confirmed delete and
-  // its Sentry trail once per failed turn. Once is enough — the delete is
-  // idempotent, and the reconnect card is already up.
   const prevFetch = globalThis.fetch;
   const prevUrl = config.controlPlaneUrl;
   const prevTok = config.sandboxToken;
@@ -437,8 +368,6 @@ test("the same dead token is reported once per pod lifetime (HOUSTON-APP-530)", 
     await new Promise((r) => setTimeout(r, 10));
     expect(reports).toBe(1);
 
-    // A DIFFERENT token (the workspace reconnected, then that one died too)
-    // is a new fact and reports again.
     servedAnthropic(config.dataDir, "next-dead-token");
     reportRevokedServedToken(revoked, accessDigest("next-dead-token"));
     await new Promise((r) => setTimeout(r, 10));
@@ -473,7 +402,6 @@ test("a failed report is not deduped — the next turn retries", async () => {
     await new Promise((r) => setTimeout(r, 10));
     reportRevokedServedToken(revoked, accessDigest("retry-dead-token"));
     await new Promise((r) => setTimeout(r, 10));
-    // The failed attempt un-marked itself; the second turn's report went out.
     expect(reports).toBe(2);
   } finally {
     globalThis.fetch = prevFetch;
@@ -484,8 +412,6 @@ test("a failed report is not deduped — the next turn retries", async () => {
 });
 
 test("a failing control plane never throws into the caller", async () => {
-  // This runs inside error handling for a turn that already failed; a
-  // reporting hiccup must not replace the real provider error.
   const prevFetch = globalThis.fetch;
   const prevUrl = config.controlPlaneUrl;
   const prevTok = config.sandboxToken;

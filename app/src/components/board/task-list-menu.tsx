@@ -7,22 +7,10 @@ import { Ellipsis } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-/**
- * The phone task list's overflow control: the round "…" chip in the drilled
- * header and the menu it opens. The ITEMS are the caller's (Search, Archived,
- * the employee's other sections); the chip, its name and its geometry are
- * this control's.
- *
- * Search hides behind it because an always-on field would take the screen's
- * first line from the tasks, and most visits scroll rather than search. The
- * archive hides behind it because it is the one band that is not part of the
- * list's job — reaching it is a deliberate act, not a scroll away.
- */
 export function TaskListMenu({
   testId,
   children,
 }: {
-  /** Stamped on the trigger, so a spec can address the list it means. */
   testId: string;
   children: ReactNode;
 }) {

@@ -20,7 +20,6 @@ import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { mutateTurnDocument } from "./turn-doc-cas";
 import type { TurnFilesystem } from "./turn-filesystem";
 
-/** Turn-local storage and identity seams for agent-owned writes. */
 export interface TurnWriteRoutesDeps {
   store: ObjectStore;
   prefix: string;
@@ -28,9 +27,7 @@ export interface TurnWriteRoutesDeps {
   workspaceId: string;
   conversationId: string;
   actingAs?: { userId: string; name?: string };
-  /** The acting person's plan limits; a routine save is held to its floor. */
   limits?: TurnLimits;
-  /** IANA zone in which the deployment fires routines. */
   timezone?: string;
   authoringPin?: LiveTurnPin;
 }
@@ -73,8 +70,6 @@ async function saveRoutine(
   const nowIso = new Date().toISOString();
   const minIntervalMinutes = deps.limits?.routineMinIntervalMinutes;
   const floor = minIntervalMinutes ? { minIntervalMinutes } : {};
-  // The agent-scoped store cannot read workspace preferences. Dispatch's
-  // planner zone makes pooled validation agree with the routine's next fire.
   const result = await mutateTurnDocument({
     ...deps,
     relativePath: docKey(deps.filesystem.workspaceRel, "routines"),
@@ -113,7 +108,6 @@ async function saveRoutine(
   });
   if ("notFound" in result)
     return json(404, { error: `no routine with id '${id}'` });
-  // A plan-floor refusal carries its code and minutes beside the reason.
   if ("error" in result) return json(400, result);
   return json(creating ? 201 : 200, result.routine);
 }
@@ -149,7 +143,6 @@ async function saveLearning(
     : json(201, result.learning);
 }
 
-/** Handle a routine or learning route, or return null when unmatched. */
 export async function handleTurnWriteRoute(
   path: string,
   body: Record<string, unknown>,

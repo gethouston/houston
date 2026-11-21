@@ -15,14 +15,6 @@ import houstonBlack from "../../assets/houston-black.svg";
 import houstonWhite from "../../assets/houston-icon-white.svg";
 import type { UpdateStatus } from "../../lib/update-status";
 
-/**
- * An undismissable launch-time AlertDialog on the shared dialog frame.
- * The install runs with progress and ends in a relaunch.
- * Outside of an error there is nothing to click; a failed download
- * or install shows the error copy with a manual retry, and a failed relaunch
- * offers the relaunch again. Mid-session finds never come here (they end in
- * the restart pill, `update-pill.tsx`).
- */
 export function UpdateLaunchOverlay({
   status,
   onRetry,
@@ -53,24 +45,12 @@ export function UpdateLaunchOverlay({
   })();
 
   return (
-    <AlertDialog
-      open
-      // Nothing dismisses this dialog: the install runs to a relaunch, and an
-      // error's only way out is the retry in the footer.
-      onOpenChange={() => undefined}
-    >
-      {/* `z-[70]`: above the lesson band (`z-[60]`, the spotlight veil
-          over an open dialog), so a launch-time install landing mid-lesson
-          still shows its recovery controls unveiled. The only layering rule
-          a caller may add to the frame. */}
+    <AlertDialog open onOpenChange={() => undefined}>
       <AlertDialogContent
         ref={content}
         tabIndex={-1}
         className="z-[70] max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md"
         onEscapeKeyDown={(event) => event.preventDefault()}
-        // Radix hands an alert dialog's focus to its Cancel; there is none
-        // here, and the primary is disabled while the install runs, so the
-        // surface itself takes focus or the user is left on the inert app.
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           content.current?.focus({ preventScroll: true });
@@ -95,9 +75,6 @@ export function UpdateLaunchOverlay({
             {t("updateChecker.launchTitle")}
             {error && <AlertCircle className="size-4 shrink-0 text-danger" />}
           </AlertDialogTitle>
-          {/* Pinned assertive: a live region whose politeness flips with its
-              text is announced under the old setting, or not at all. The only
-              change this text ever makes is the error. */}
           <AlertDialogDescription aria-live="assertive">
             {error
               ? message

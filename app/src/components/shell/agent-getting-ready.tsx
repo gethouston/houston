@@ -10,17 +10,11 @@ import {
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
 
-/**
- * What an AI Employee's own task list shows while its engine is still
- * starting and it has no tasks yet: the helmet in motion, as in the warm-up
- * dialog, so the wait reads as one continuous "getting ready" state.
- */
 export function AgentGettingReady({
   agent,
   stalled,
 }: {
   agent: Agent;
-  /** Past the normal start window: say so instead of promising seconds. */
   stalled: boolean;
 }) {
   const { t } = useTranslation("shell");

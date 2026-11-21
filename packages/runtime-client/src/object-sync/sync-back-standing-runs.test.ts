@@ -7,12 +7,6 @@ import type { ObjectMetadata } from "./object-manifest";
 import { type ObjectStore, StoreConflictError } from "./object-store";
 import { type LocalWriteLock, syncBack } from "./sync-back";
 
-/**
- * The standing store sync (a pod's daemon, no `workerMerge`) on the run
- * history: a generation conflict merges the runs once, like routines, so a
- * run a sandbox landed while the pod was awake is never overwritten.
- */
-
 const RUNS = "workspaces/P/Bob/.houston/routine_runs/routine_runs.json";
 const run = (id: string, minute: number) => ({
   id,
@@ -25,9 +19,7 @@ const run = (id: string, minute: number) => ({
 async function standing(opts: {
   local: string;
   remote: string;
-  /** The host's own write landing while the daemon reads the remote. */
   duringRead?: string;
-  /** The host's queue, given the synced file's path. */
   lock?: (abs: string) => LocalWriteLock;
 }) {
   const root = await mkdtemp(join(tmpdir(), "standing-runs-"));
@@ -95,11 +87,9 @@ test("a host write landing mid-merge is kept for the next pass, never clobbered"
   expect(sync.result.conflicts).toEqual([
     { key: RUNS, reason: `${RUNS} changed locally during its merge` },
   ]);
-  // The stale generation stays: the next pass conflicts and merges again.
   expect(sync.result.manifest.get(RUNS)).toEqual(sync.previous);
 });
 
-/** A generation-guarded store; `onRead` fires on the first remote read. */
 function generationStore(initial: string, onRead: () => void) {
   let body = initial;
   let generation = 7;
@@ -126,7 +116,6 @@ function generationStore(initial: string, onRead: () => void) {
   return { store, remote: () => JSON.parse(body) as { id: string }[] };
 }
 
-/** The host's per-agent runs queue, as the daemon is handed it. */
 function runsQueue() {
   let tail = Promise.resolve();
   return <T>(_relativePath: string, fn: () => Promise<T>): Promise<T> => {
@@ -149,7 +138,6 @@ test("a host fire spanning the daemon's merge keeps both its row and the sandbox
   const { store, remote } = generationStore(
     JSON.stringify([run("sandbox", 1)]),
     () => {
-      // The host's fire: load, then save a row on top of what it loaded.
       fire = lock(RUNS, async () => {
         const loaded = JSON.parse(await readFile(abs, "utf8")) as unknown[];
         await new Promise((resolve) => setTimeout(resolve, 20));
@@ -182,7 +170,6 @@ test("the daemon holds the host's queue only to compare and swap in a staged mer
     },
   });
   expect(staged).toHaveLength(1);
-  // Beside the remote read's temp, the merge is already written in its own.
   const replacements = (staged[0] ?? []).filter(
     (name) => name.endsWith(ATOMIC_TMP_SUFFIX) && !name.includes(".remote."),
   );

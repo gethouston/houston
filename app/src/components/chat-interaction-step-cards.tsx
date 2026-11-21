@@ -13,22 +13,10 @@ type StepRenderers = Pick<
   "renderCustom" | "renderSignin" | "renderConnect" | "renderCredential"
 >;
 
-/**
- * The app-owned bodies for every step kind the stepper cannot render itself
- * (ui/chat is auth- and Composio-unaware, so it hands each one back here).
- *
- * Every renderer records the step's outcome and ADVANCES only: the composed
- * reply fires once, at completion. Starting a turn from a single step would
- * tear the card down before its later siblings could be walked.
- */
 export function interactionStepCards(args: {
-  /** The protocol steps, so a custom step can be matched back to its request. */
   steps: readonly NonPlanReadyStep[];
   agentId: string;
-  /** The conversation the interaction belongs to, `null` before its id lands —
-   *  half of the identity a provider request is remembered by. */
   conversationId: string | null;
-  /** The AI Manager connects for the ACCOUNT, an agent chat for its agent. */
   accountScope: boolean;
   outcomes: InteractionOutcomes;
 }): StepRenderers {
@@ -89,13 +77,10 @@ export function interactionStepCards(args: {
         stepId={step.id}
         reason={step.reason}
         onSignedIn={() => {
-          // FINAL state: signed in wins over any earlier skip.
           outcomes.signin = "signedIn";
           api.onSignedIn();
         }}
         onSkip={(message) => {
-          // A message makes the sequence resume visibly, so the agent (and the
-          // transcript) hears the redirection.
           outcomes.signin = "skipped";
           outcomes.signinDeclineText = message;
           api.onSkip();
@@ -141,8 +126,6 @@ export function interactionStepCards(args: {
           api.onSaved();
         }}
         onSkip={(name, mode, message) => {
-          // The agent hears "Skipped adding the X key." (or the sign-in /
-          // redirect variant) so it stops waiting on a key that never comes.
           outcomes.credentialModes.set(name, mode);
           outcomes.credentials.set(step.id, { name, saved: false, message });
           api.onSkip();

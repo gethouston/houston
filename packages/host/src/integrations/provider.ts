@@ -13,113 +13,39 @@ import type {
   ToolMatch,
 } from "./types";
 
-/**
- * WHO the agent runtime is acting as for one integration call (C2). Read off the
- * runtime→host proxy call by the sandbox route and handed to `search`/`execute`
- * so a gateway adapter can authenticate as that user upstream. Exactly one of
- * the two is set per call in the cloud; both absent locally (single-user).
- *
- *  - `actingAs`:   a signed acting-as token minted by the gateway for the user
- *                  driving THIS turn (a normal message dispatch).
- *  - `actingUser`: the Supabase `sub` of a routine's creator (routine turns,
- *                  where no per-turn token is minted — see C2 "Routine path").
- *
- * The direct adapter (self-host, own key) ignores both — identity is the
- * verified `userId` it already has. Optional so implementors may ignore it.
- */
 export interface ActingContext {
   actingAs?: string;
   actingUser?: string;
 }
 
-/**
- * What an adapter did with a requested `app` scope. Direct adapters answer
- * "resolved" (the items are hard-scoped to the named app) or "unresolved"
- * (the scope matched nothing they know — items are EMPTY, never an unscoped
- * fallback). ONLY the remote adapter may report "ignored": its upstream
- * predates the scope contract and served an unscoped result, which the
- * sandbox proxy must surface rather than present as scoped.
- */
 export type ScopeOutcome = "resolved" | "unresolved" | "ignored";
 
-/** One provider's search answer. `scope` is present iff an `app` scope was
- *  requested on the call. */
 export interface ProviderSearchResult {
   items: ToolMatch[];
   scope?: ScopeOutcome;
 }
 
-/**
- * The integration-provider PORT: Composio is the first adapter, and a future
- * provider slots in by implementing this same interface. The host routes + the
- * agent's generic tools depend ONLY on this; no provider's wire types or SDK
- * leak past its adapter.
- *
- * Credential model (platform): Houston holds ONE platform API key; users never
- * create a provider account. Every scoped method takes the caller's verified
- * Houston `userId` — the provider keys that user's connections by it. On the
- * desktop the adapter is a thin gateway that forwards to Houston's cloud host
- * (which holds the key and re-derives the userId from the Supabase JWT), so the
- * platform key never ships in a client binary. Self-hosters point the direct
- * adapter at their own provider key instead.
- *
- * Same code in every deployment (local + cloud) — availability is a capability
- * flag, not a forked implementation, so there is no drift.
- */
 export interface IntegrationProvider {
-  /** Which registered provider this is — the same closed set the
-   *  `/v1/integrations/{provider}/…` path segment names. */
   readonly id: IntegrationProviderId;
 
-  /** Can this deployment serve the user right now (gateway needs a session)? */
   readiness(): Promise<ProviderReadiness>;
 
-  // ── Toolkits + connections (scoped to one Houston user) ───────────────────
-  /** The catalog of connectable apps. */
   listToolkits(): Promise<Toolkit[]>;
-  /** The toolkits this user has connected. */
   listConnections(userId: string): Promise<Connection[]>;
-  /** Start connecting a toolkit; returns the OAuth redirect to send the user to. */
   connect(userId: string, toolkit: string): Promise<ConnectStart>;
-  /** One connection by id (poll after connect() until it turns active). */
   connection(userId: string, connectionId: string): Promise<Connection | null>;
-  /**
-   * Remove a toolkit connection. With `connectionId`, remove only THAT account
-   * (a toolkit can hold several — two Gmail logins); without it, remove every
-   * account the user has for the toolkit.
-   */
   disconnect(
     userId: string,
     toolkit: string,
     connectionId?: string,
   ): Promise<void>;
 
-  // ── Execution (what the agent's generic tools call) ───────────────────────
-  /**
-   * Discover actions matching a natural-language query (slug + param schema).
-   * `acting` (optional) names the user the agent is acting as this turn (C2);
-   * a gateway adapter authenticates upstream as that user, direct adapters
-   * ignore it. `app` (optional) HARD-scopes discovery to one named app — a
-   * loose name or slug ("PostHog", "google sheets") the adapter resolves via
-   * the shared rules (scope-resolve.ts); the result is then STRICTLY that
-   * app's actions (PRODUCT-1274). A scope the adapter cannot resolve to any
-   * app it knows returns EMPTY items with scope "unresolved" — never an
-   * unscoped fallback, which would pollute a multi-provider merge where
-   * another provider resolves the same scope. The sandbox proxy owns the one
-   * unscoped retry after every provider reported "unresolved".
-   */
   search(
     userId: string,
     query: string,
     acting?: ActingContext,
     app?: string,
   ): Promise<ProviderSearchResult>;
-  /**
-   * Run one action by slug with its params. `acting` (optional) as in `search`.
-   * `account` (optional) targets ONE of the user's connected accounts for the
-   * action's toolkit (a `Connection.connectionId`) when they have several —
-   * omitted, the provider picks its default for that user + toolkit.
-   */
   execute(
     userId: string,
     action: string,
@@ -128,15 +54,11 @@ export interface IntegrationProvider {
     account?: string,
   ): Promise<ActionResult>;
 
-  // ── File arguments (file-staging.ts) — optional: a provider without them
-  //    executes file arguments exactly as the agent passed them ──────────────
-  /** One action's catalog entry with its raw input schema; null if unknown. */
   describeAction?(
     userId: string,
     action: string,
     acting?: ActingContext,
   ): Promise<ActionDescription | null>;
-  /** Reserve a slot to PUT one file's bytes to before an execute names it. */
   reserveFileUpload?(
     userId: string,
     req: FileUploadRequest,

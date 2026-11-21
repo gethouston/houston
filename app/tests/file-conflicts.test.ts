@@ -25,7 +25,6 @@ const files = [
   entry("Docs", true),
   entry("Docs/report.pdf"),
   entry("Docs/notes.txt"),
-  // An implied folder: no explicit entry, only a child.
   entry("Archive/old/report.pdf"),
 ];
 
@@ -48,8 +47,6 @@ test("moving onto an occupied name is a conflict in both directions", () => {
 });
 
 test("a folder that exists only through children still conflicts", () => {
-  // Moving a file named like the implied "Archive" folder's sibling is clear,
-  // but a folder named "old" into Archive collides with the implied dir.
   assert.equal(
     detectMoveConflict([entry("stuff/old", true)], "stuff/old", "Archive").kind,
     "clear",
@@ -84,7 +81,6 @@ test("non-colliding moves are clear", () => {
 
 test("keepBothName picks the first free numbered name in both folders", () => {
   assert.equal(keepBothName(files, "report.pdf", "Docs"), "report (1).pdf");
-  // "report (1).pdf" taken in the destination: skip to (2).
   assert.equal(
     keepBothName(
       [...files, entry("Docs/report (1).pdf")],
@@ -93,12 +89,10 @@ test("keepBothName picks the first free numbered name in both folders", () => {
     ),
     "report (2).pdf",
   );
-  // Taken in the SOURCE folder also skips (the item renames there first).
   assert.equal(
     keepBothName([...files, entry("report (1).pdf")], "report.pdf", "Docs"),
     "report (2).pdf",
   );
-  // Folders have no extension: suffix goes at the end.
   assert.equal(
     keepBothName([...files, entry("stuff/Docs", true)], "stuff/Docs", null),
     "Docs (1)",
@@ -114,7 +108,6 @@ test("renaming onto a name the folder already uses is a conflict", () => {
       name: "report.pdf",
     },
   );
-  // Root level, same story.
   assert.deepEqual(
     detectRenameConflict([...files, entry("notes.txt")], "notes.txt", "Docs"),
     { kind: "conflict", targetPath: "Docs", name: "Docs" },
@@ -122,8 +115,6 @@ test("renaming onto a name the folder already uses is a conflict", () => {
 });
 
 test("a folder that exists only through children blocks a rename too", () => {
-  // Nothing lists "Archive" itself, but a file named that would collide with
-  // the folder the children imply: one name, one entry.
   assert.deepEqual(detectRenameConflict(files, "report.pdf", "Archive"), {
     kind: "conflict",
     targetPath: "Archive",
@@ -147,7 +138,6 @@ test("a free name is clear to rename", () => {
     detectRenameConflict(files, "Docs/notes.txt", "notes 2.txt").kind,
     "clear",
   );
-  // The source's own subtree never blocks its rename.
   assert.equal(detectRenameConflict(files, "Docs", "Papers").kind, "clear");
 });
 
@@ -160,14 +150,10 @@ test("keepBothName never lands on a name either folder already uses", () => {
   ];
   const name = keepBothName(crowded, "report.pdf", "Docs");
   assert.equal(name, "report (4).pdf");
-  // Which is exactly what `detectRenameConflict` would wave through: the
-  // keep-both rename can never hit the host's 409.
   assert.equal(detectRenameConflict(crowded, "report.pdf", name).kind, "clear");
 });
 
 test("isNameTakenError reads the host's code, not its status or wording", () => {
-  // What the host actually sends (`turn/files.ts`), as the engine adapter
-  // hands it over: status + the parsed body.
   assert.equal(
     isNameTakenError({
       status: 409,
@@ -175,7 +161,6 @@ test("isNameTakenError reads the host's code, not its status or wording", () => 
     }),
     true,
   );
-  // A DIFFERENT 409 on the same route must not inherit the taken-name copy.
   assert.equal(
     isNameTakenError({
       status: 409,
@@ -193,8 +178,6 @@ test("isNameTakenError reads the host's code, not its status or wording", () => 
 });
 
 test("isReadOnlyError reads the host's code, not its status or wording", () => {
-  // The TS host's 403 body (`turn/files-names.ts`, raised when the workspace
-  // folder answers EACCES/EPERM/EROFS), as the engine adapter hands it over.
   assert.equal(
     isReadOnlyError({
       status: 403,
@@ -202,16 +185,12 @@ test("isReadOnlyError reads the host's code, not its status or wording", () => {
     }),
     true,
   );
-  // The gateway's flat body and the adapter's own `kind` say the same thing.
   assert.equal(isReadOnlyError({ code: "read_only" }), true);
   assert.equal(isReadOnlyError({ kind: "read_only" }), true);
-  // Every OTHER 403 on the route (an authz refusal, a policy block) must not
-  // inherit this copy — the status cannot identify the state.
   assert.equal(
     isReadOnlyError({ status: 403, body: { error: "forbidden" } }),
     false,
   );
-  // Nor may the host's English wording stand in for the contract.
   assert.equal(
     isReadOnlyError(new Error("this workspace is read-only")),
     false,
@@ -227,9 +206,6 @@ test("the two refusals never answer for each other", () => {
 });
 
 test("the codes the client explains are the host's own, not a copy of them", () => {
-  // The whole value of keying on the code rather than the status is that the
-  // two ends cannot drift; a client-side mirror of the union would drift the
-  // day the host added a member, and explain the new state with old copy.
   assert.equal(
     fileRefusal({ status: 409, body: { code: NAME_TAKEN } }),
     NAME_TAKEN,
@@ -249,8 +225,6 @@ test("fileRefusal routes each host FileOpCode to its own surface", () => {
     fileRefusal({ status: 403, body: { code: "read_only" } }),
     "read_only",
   );
-  // A code the client does not know is NOT a refusal it can explain: it keeps
-  // the report path rather than borrowing the nearest authored copy.
   assert.equal(fileRefusal({ status: 409, body: { code: "quota" } }), null);
   assert.equal(fileRefusal(new Error("boom")), null);
   assert.equal(fileRefusal(undefined), null);

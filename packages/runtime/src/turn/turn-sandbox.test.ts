@@ -276,8 +276,6 @@ test("custom definition writes capture the updated asleep-read view", async () =
   await sandbox.dispose();
 });
 
-// --- The code-run relay -------------------------------------------------------
-
 const CODE_RUN = "/sandbox/code/run";
 const RUN_REQUEST = { language: "python", code: "print(1)", files: [] };
 

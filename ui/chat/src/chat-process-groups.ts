@@ -20,16 +20,6 @@ export type ChatDisplayItem =
       isActive: boolean;
       isTrailing: boolean;
       sourceIndex: number;
-      /**
-       * The block holds nothing but the clean-finish offer calls
-       * (`suggest_actions` / `suggest_reusable`) and no reasoning. Those calls
-       * only record the bubbles and the save card that render above the
-       * composer, so a "Task log" line for them under an already complete
-       * reply is noise: the renderer draws no log for such a block, keeping
-       * only the turn-end summary it may anchor. Still emitted (never dropped)
-       * so the summary keyed on its source index survives and the item key
-       * stays stable across the turn.
-       */
       offersOnly: boolean;
     };
 
@@ -61,18 +51,10 @@ function segmentFrom(
   };
 }
 
-/**
- * HOU-717: keyed by the FIRST segment only. A streaming turn keeps appending
- * segments, so a key that also names the last segment changes on every new
- * thinking/tool block — React remounts the block and the user's open mission
- * log snaps shut mid-run. The first segment is fixed for the life of the
- * block (blocks flush on user/content boundaries, so no two share a first).
- */
 function processKey(segments: ChatProcessSegment[]): string {
   return `process-${segments[0]?.key ?? "empty"}`;
 }
 
-/** See `ChatDisplayItem.offersOnly`. */
 function isOffersOnly(segments: ChatProcessSegment[]): boolean {
   return segments.every(
     (segment) =>
@@ -127,12 +109,6 @@ export function getChatDisplayItems(
         sourceIndex,
       });
     } else if (!messageHasProcess) {
-      // Empty/whitespace-only assistant message with no reasoning and no
-      // tools would render as a bare avatar + empty bubble (chat-messages.tsx
-      // draws the Message wrapper, but its `{msg.content && ...}` body
-      // collapses to nothing). Suppress it — UNLESS it is the actively
-      // streaming final message, which legitimately starts empty
-      // (assistant_text_streaming) and carries the typing/thinking affordance.
       const isStreamingTail =
         message.isStreaming && sourceIndex === messages.length - 1;
       if (isStreamingTail) {
@@ -145,15 +121,6 @@ export function getChatDisplayItems(
   return items;
 }
 
-/**
- * HOU-471: the standalone thinking indicator is the only in-flight signal
- * during the gap before the agent's first output. Once an active process block
- * is on screen it ALREADY surfaces "Thinking..." or the current step, so the
- * standalone line would duplicate it. Show the indicator only while a turn is
- * `submitted` AND no active process block, nor a host card that shows its own
- * progress, is trailing. Finished assistant text after such a card (a reply
- * the host placed under it) still leaves the progress to the card.
- */
 export function shouldShowThinkingIndicator(
   items: ChatDisplayItem[],
   status: ChatStatus,
@@ -164,7 +131,6 @@ export function shouldShowThinkingIndicator(
   return !progressCardTrails(items);
 }
 
-/** Whether a progress-owning host card ends the log, past finished replies. */
 function progressCardTrails(items: ChatDisplayItem[]): boolean {
   for (let i = items.length - 1; i >= 0; i--) {
     const item = items[i];

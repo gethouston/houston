@@ -53,7 +53,6 @@ describe("sidebar review wiring", () => {
 
   it("creates a named folder with one write", () => {
     const form = source("components/shell/use-create-team-form.ts");
-    // `new-group-submit.test.ts` pins the single identity-carrying write.
     assert.match(form, /submitNewGroup\(\s*\{ name, icon, color \}/);
     assert.match(form, /createGroup: sidebar\.createGroup/);
     assert.doesNotMatch(form, /sidebar\.setGroupIdentity/);
@@ -68,8 +67,6 @@ describe("sidebar review wiring", () => {
 
   it("shows the inline generic agent creation failure", () => {
     const creation = source("components/shell/use-create-blank-agent.ts");
-    // The create's own `call("create_agent")` reports the failure once; the
-    // hook only shows the inline copy.
     assert.match(
       creation,
       /kind: "failed",\s*message: t\("agentOnboarding:roleSetup\.createFailed"\)/,

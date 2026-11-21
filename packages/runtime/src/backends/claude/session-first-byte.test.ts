@@ -4,13 +4,6 @@ import { buildClaudeEnv } from "./claude-env";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import type { SessionsStore } from "./sessions-store";
 
-/**
- * The CLI's request timeout (`API_TIMEOUT_MS`) is the first-byte deadline,
- * and Anthropic reads the whole prompt before its first byte. One value
- * covers every request of the turn, so it is sized for the conversation the
- * turn resumes, its prompt, and the turn's own growth.
- */
-
 function store(resume: string | undefined): SessionsStore {
   return {
     getSessionId: () => resume,
@@ -24,15 +17,9 @@ function store(resume: string | undefined): SessionsStore {
   };
 }
 
-/**
- * One call's result: its measured prompt size, a request that failed, or the
- * CLI refusing the session id the call tried to resume.
- */
 type Reply = number | "timed-out" | "resume-refused";
 
 function result(reply: number | "timed-out"): SDKMessage {
-  // The CLI reports a request that never answered as an error result whose
-  // usage is all zeros.
   const failed = reply === "timed-out";
   return {
     type: "result",
@@ -96,7 +83,6 @@ test("a turn resuming an 800k-token conversation waits for Anthropic to read it"
     recorded: 800_000,
   });
   await claude.prompt("go");
-  // 800k recorded, the prompt, and 100k of growth during the turn.
   expect(timeouts).toEqual(["60000"]);
 });
 
@@ -147,7 +133,6 @@ test("a refused resume's fresh retry waits for the replay it sends", async () =>
     resume: "sess-1",
     recorded: 10_000,
     replies: ["resume-refused", 100],
-    // About 750k tokens of canonical history, far past the resumed fill.
     replay: "word ".repeat(600_000),
   });
   await claude.prompt("go");

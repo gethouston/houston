@@ -1,21 +1,3 @@
-/**
- * HTTP transport for the cloud-migration wizard (HOU-719).
- *
- * Two peers:
- *  - the SOURCE host — the passive sidecar `start_migration_source_host`
- *    spawned against the old `~/.houston` tree (loopback URL + static bearer).
- *    A different deployment with its own base URL, which the app's one bound
- *    client — rooted at the live account's engine — cannot address, so this
- *    half fetches for itself;
- *  - the CLOUD GATEWAY — the same account and the same engine the whole app
- *    already talks to, so it rides the bound client (`sdk.migration` behind
- *    `getEngine()`), which owns the live bearer, the 401 refresh-and-replay and
- *    the active-space header.
- *
- * The rows' copy for a failed gateway call lives in `cloud-migration-errors.ts`
- * — the per-agent row renders the thrown `Error.message` verbatim.
- */
-
 import type {
   MigrationCounts,
   MigrationSource,
@@ -35,8 +17,6 @@ export interface SourceHostHandshake {
   baseUrl: string;
   token: string;
 }
-
-// ── Source host (loopback) ────────────────────────────────────────────
 
 function sourceFetch(
   src: SourceHostHandshake,
@@ -60,13 +40,9 @@ async function throwHttpError(label: string, res: Response): Promise<never> {
 
 export interface SourceScan {
   agents: SourceAgent[];
-  /** The legacy Composio account's connected toolkit slugs (`~/.composio`),
-   *  best-effort — absent on an older source host reads as none. */
   accountIntegrations: string[];
 }
 
-/** Every legacy agent across every workspace, with its migration manifest,
- *  plus the account-level connected integrations. */
 export async function fetchSourceScan(
   src: SourceHostHandshake,
 ): Promise<SourceScan> {
@@ -82,7 +58,6 @@ export async function fetchSourceScan(
   };
 }
 
-/** Zip the given paths of one legacy agent on the source host. */
 export async function exportSourceZip(
   src: SourceHostHandshake,
   sourceAgentId: string,
@@ -101,11 +76,6 @@ export async function exportSourceZip(
   return await res.arrayBuffer();
 }
 
-// ── Cloud gateway (the app's own bound client) ────────────────────────
-
-/** The live wiring of `cloud-migration-errors.ts`: the bound client, and the
- *  authored copy the rows render. `i18n.t` (not the hook) is how a non-React
- *  lib module speaks, as in `provider-login-error.ts`. */
 function gatewayDeps(): MigrationCallDeps {
   return {
     engine: getEngine,
@@ -121,8 +91,6 @@ const cloudCall = <T>(
   call: (engine: MigrationGatewayEngine) => Promise<T>,
 ): Promise<T> => migrationCall(label, gatewayDeps(), call);
 
-/** Upload one raw zip chunk into a cloud agent. `overwrite` on retries so a
- *  re-sent chunk lands cleanly over a partial first attempt. */
 export const importAgentZip = (
   agentId: string,
   zip: ArrayBuffer,
@@ -135,7 +103,6 @@ export const importAgentZip = (
     engine.migrationImport(agentId, zip, opts),
   );
 
-/** Stamp the import marker once every chunk of an agent has landed. */
 export const completeAgentMigration = (
   agentId: string,
   source: MigrationSource,
@@ -145,7 +112,6 @@ export const completeAgentMigration = (
     engine.migrationComplete(agentId, source, counts),
   );
 
-/** An existing cloud agent's import marker, `null` when never imported. */
 export const agentMigrationStatus = (agentId: string) =>
   cloudCall("migration status", (engine) =>
     nullOn404(() => engine.migrationStatus(agentId)),

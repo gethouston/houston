@@ -15,16 +15,9 @@ import { hydrate } from "./hydrate";
 import { LocalDirStore } from "./object-store";
 import { PrefetchedObjectStore } from "./prefetched-store";
 
-/**
- * A `.houston/browser` the tool user planted (a symlink to their own
- * directory) refuses the sign-in state: every landing site says so with a
- * typed outcome, and hydration leaves that one key out instead of failing.
- */
-
 const STATE = ".houston/browser/state.json";
 const posixOnly = process.platform === "win32" ? describe.skip : describe;
 
-/** A hydrate destination whose `.houston/browser` points at `catcher`. */
 function planted() {
   const dest = mkdtempSync(join(tmpdir(), "houston-refused-"));
   const catcher = mkdtempSync(join(tmpdir(), "houston-catch-"));

@@ -1,17 +1,5 @@
-// The persisted identity session — one JSON blob, stored under the Keychain key
-// `houston-auth` on desktop (see identity/session-store.ts, Wave 2) or
-// localStorage on web. This is the SHAPE the whole app treats as "signed in".
-//
-// Shape-tolerant parse (design §6.8 / §6.8-keychain): an upgrading user has a
-// stale Supabase session blob under the reused `houston-auth` key. Any blob
-// that is not a well-formed Firebase `Session` — a legacy Supabase blob,
-// truncated JSON, a future shape — deserializes to `null` (treated as signed
-// out) AND emits a structured log. It is NEVER silently swallowed and NEVER
-// throws into module load.
-
 import { identityLog } from "./log.ts";
 
-/** How the user authenticated — recorded on the session for analytics + UX. */
 export type AuthProvider =
   | "google.com"
   | "microsoft.com"
@@ -28,32 +16,17 @@ const AUTH_PROVIDERS: readonly AuthProvider[] = [
 ];
 
 export interface Session {
-  /** Firebase ID token (JWT). The gateway bearer. */
   idToken: string;
-  /** Long-lived Firebase refresh token (not rotated). */
   refreshToken: string;
-  /** Firebase UID — `sub` of the ID token; the gateway's opaque user id. */
   uid: string;
-  /** Account email (may be "" for a provider that withholds it). */
   email: string;
-  /** Whether the provider asserts the email is verified. */
   emailVerified: boolean;
-  /** Display name, when the provider supplies one. */
   displayName: string | null;
-  /** Provider avatar URL (Google/Microsoft photo), when supplied. */
   photoUrl: string | null;
-  /** Which sign-in method minted this session. */
   provider: AuthProvider;
-  /** Absolute expiry of `idToken`, epoch milliseconds. */
   expiresAt: number;
 }
 
-/**
- * A completed interactive sign-in: the session plus whether GCIP created the
- * account during this exchange (`isNewUser`). Deliberately NOT part of
- * `Session` — being new is a fact about the sign-up moment, not state to
- * persist and re-serve on every launch.
- */
 export interface SignInOutcome {
   session: Session;
   isNewUser: boolean;
@@ -85,7 +58,6 @@ function isSessionShape(v: unknown): v is Session {
   );
 }
 
-/** Serialize a session for storage. Deterministic, no extra fields. */
 export function serializeSession(session: Session): string {
   const canonical: Session = {
     idToken: session.idToken,
@@ -101,11 +73,6 @@ export function serializeSession(session: Session): string {
   return JSON.stringify(canonical);
 }
 
-/**
- * Parse a stored blob back into a `Session`. Returns `null` for absent,
- * unparseable, or non-Firebase-shaped input (e.g. a leftover Supabase blob) —
- * always with a structured log so the discard is visible, never a throw.
- */
 export function deserializeSession(
   raw: string | null | undefined,
 ): Session | null {
@@ -132,7 +99,6 @@ export function deserializeSession(
   return parsed;
 }
 
-/** Whether `session.idToken` is within `skewMs` of (or past) expiry. */
 export function sessionExpiresWithin(
   session: Session,
   skewMs: number,

@@ -13,18 +13,8 @@ import {
   orderSection,
 } from "./heartbeat-sections";
 
-/**
- * The deterministic look across the person's agents that runs BEFORE any model
- * call. An empty snapshot means the briefing records "quiet" and costs
- * nothing; a non-empty one is the material the prompt hands the manager.
- * Pure: the host loads each agent's board, routines and runs, this decides.
- */
-
-/** One agent's documents, as the host loaded them. */
 export interface HeartbeatAgentData {
-  /** The workspace-qualified agent id: the identity every key carries. */
   agentId: string;
-  /** What the prompt calls the agent. */
   agentName: string;
   activities: readonly Activity[];
   routines: readonly Routine[];
@@ -34,7 +24,6 @@ export interface HeartbeatAgentData {
 export interface HeartbeatNeedsYou {
   agent: string;
   title: string;
-  /** What the mission waits on (a question, a sign-in...), when it says. */
   waitingOn?: InteractionStep["kind"];
 }
 
@@ -62,18 +51,12 @@ export interface HeartbeatSnapshot {
   routineRuns: HeartbeatSection<HeartbeatRoutineRun>;
   pausedRoutines: HeartbeatSection<HeartbeatPausedRoutine>;
   done: HeartbeatSection<HeartbeatDone>;
-  /** Items not yet in the seen set, across sections, cut ones included. */
   unseen: number;
-  /** Keys of the items this snapshot's briefing names. */
   namedKeys: string[];
-  /** Keys of every matched item. */
   presentKeys: string[];
-  /** Agents whose documents could not be read this time: their items are
-   *  unknown, so their seen keys must survive (heartbeat-news.ts rule 5). */
   unreadAgents: string[];
 }
 
-/** The first step the mission is genuinely blocked on (offers never block). */
 function blockingKind(activity: Activity): InteractionStep["kind"] | undefined {
   return activity.pending_interaction?.steps.find(
     (step) => !isSuggestionStep(step),
@@ -83,14 +66,6 @@ function blockingKind(activity: Activity): InteractionStep["kind"] | undefined {
 const atOrAfter = (iso: string | undefined, sinceMs: number) =>
   iso !== undefined && Date.parse(iso) >= sinceMs;
 
-/**
- * Everything worth a morning sentence: missions waiting on the person, routine
- * runs since `sinceMs` that failed or reported something, routines the engine
- * paused by itself, and missions finished since `sinceMs`. A surfaced run
- * whose card is already waiting on the person is named once, as the card.
- * Each item carries its identity key (heartbeat-news.ts); `seen` decides the
- * order each section is capped in.
- */
 export function buildHeartbeatSnapshot(
   agents: readonly HeartbeatAgentData[],
   sinceMs: number,
@@ -184,7 +159,6 @@ export function buildHeartbeatSnapshot(
   };
 }
 
-/** Nothing in any section: no model call, no message, no notification. */
 export function isHeartbeatSnapshotEmpty(snapshot: HeartbeatSnapshot): boolean {
   return (
     snapshot.needsYou.items.length === 0 &&

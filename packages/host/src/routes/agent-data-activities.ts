@@ -22,17 +22,6 @@ import { retirePendingFirstDay } from "./agent-first-day-retire";
 import { withDocLock } from "./doc-lock";
 import { json, methodNotAllowed, readJson } from "./http";
 
-/**
- * The fields a create DECIDES. A repeat of the same create (HOU-693: the app
- * posts the card optimistically against a warming engine and re-posts when the
- * first attempt is lost) matches on every one of them and is answered with the
- * row already on the board. Anything else with that id is a DIFFERENT mission
- * asking to take an existing one's place, which would reset its status and
- * erase its provenance, so it is refused.
- *
- * `status` is not compared: the board owns it after the create, and a retry
- * that lands behind an agent's first status write is still the same mission.
- */
 const CREATE_FIELDS = [
   "title",
   "description",
@@ -56,13 +45,7 @@ export async function handleActivitiesData(
   res: ServerResponse,
   emit?: (event: HoustonEvent) => void,
   stamps: {
-    // The verified acting human (C2), server-stamped onto the mission as
-    // `created_by` + a contributor entry on create, and upserted as a
-    // contributor on PATCH. Absent on desktop/self-host (non-gateway-fronted),
-    // so a single-player activity.json stays byte-identical.
     author?: ActivityContributor;
-    // Which AI created the card, stamped on create only and never from the
-    // body: `createActivity` copies no `started_by`, and PATCH refuses it.
     startedBy?: MissionStarter;
   } = {},
 ): Promise<void> {
@@ -70,14 +53,9 @@ export async function handleActivitiesData(
   const fireChange = () =>
     emit?.({ type: "ActivityChanged", agentPath: agentId });
   const nowIso = new Date().toISOString();
-  // Every mutation below is a load→save over the whole activity doc;
-  // serialize them per agent so concurrent requests can't drop each other's
-  // entries (see doc-lock.ts). Reads stay lock-free.
   const locked = <T>(fn: () => Promise<T>) =>
     withDocLock(`${root}#activity`, fn);
 
-  // Every row that leaves here goes through the host's approval substitution:
-  // `pending_interaction` is agent-writable file content (activity-approval-cards.ts).
   const served = (payload: unknown) => hostOwnedApprovalCards(payload, agentId);
 
   if (method === "GET" && !itemId) {
@@ -91,8 +69,6 @@ export async function handleActivitiesData(
       json(res, 400, { error: "missing 'title'" });
       return;
     }
-    // Optional client-generated id (optimistic creation against a warming
-    // engine, HOU-693). A repeated id must never overwrite the existing card.
     if (
       body.id !== undefined &&
       (typeof body.id !== "string" ||
@@ -102,9 +78,6 @@ export async function handleActivitiesData(
       json(res, 400, { error: "invalid 'id'" });
       return;
     }
-    // `origin_session_key` marks a mission the AGENT started for itself and is
-    // stamped only by the missions sandbox route — never trusted from a client
-    // create, or any client could dress a mission up as agent-started.
     delete body.origin_session_key;
     const activity: Activity = {
       ...createActivity(
@@ -129,9 +102,6 @@ export async function handleActivitiesData(
       });
       return;
     }
-    // A retry answers with the STORED row, never the one just built: the card
-    // may have moved on (a status the agent settled, contributors it gained)
-    // and the caller must read what is really on the board.
     if (landed.created) fireChange();
     if (landed.activity.agent !== AGENT_SETUP_AGENT_MODE)
       await retirePendingFirstDay({ vfs: store, root, agentId, emit });

@@ -17,9 +17,6 @@ const STATES: TriggerBadgeState[] = [
 
 describe("trigger-status-badge styles", () => {
   it("colours the label with the INK of its hue, never the fill", () => {
-    // A fill carries its own `-text` label; worn as text it measures 3.4:1
-    // (green) and 2.1:1 (amber) in light. The design-tokens contrast test
-    // guards the `-ink` variants at 4.5:1 in both themes.
     assert.equal(TRIGGER_TONE_CLASS.active, "text-success-ink");
     assert.equal(TRIGGER_TONE_CLASS.paused_disconnected, "text-warning-ink");
     assert.equal(TRIGGER_TONE_CLASS.paused_revoked, "text-warning-ink");

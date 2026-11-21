@@ -1,23 +1,3 @@
-/**
- * Dev-only demo mode for the cloud-migration wizard (HOU-719).
- *
- * In `pnpm dev` the gate stays closed: the app runs against the local sidecar
- * (`remoteGateway` false) and the real run needs the source-host sidecar + the
- * cloud gateway, neither of which exists locally. This module forces the wizard
- * open with stub data and simulates the run FRONTEND-ONLY, so the whole flow
- * (offer → progress → done) can be clicked through on a dev machine.
- *
- * Toggle it from the running app's devtools console:
- *   localStorage.setItem("houston.cloudMigration.demo", "1"); location.reload();
- *   // "hold" instead of "1" parks the run mid-upload FOREVER — the progress
- *   // screen (and its wait game) stays up for design iteration:
- *   localStorage.setItem("houston.cloudMigration.demo", "hold"); location.reload();
- *   // turn off: localStorage.removeItem("houston.cloudMigration.demo")
- *
- * Guarded by `import.meta.env.DEV`, so the whole path is dead-code-eliminated
- * from production builds — it can never reach a shipped app.
- */
-
 import type { LegacyDetection, MigrationTask } from "./cloud-migration";
 import {
   type AgentMigrationProgress,
@@ -27,8 +7,6 @@ import {
 function demoFlag(): string | null {
   try {
     if (!import.meta.env.DEV) return null;
-    // `VITE_MIGRATION_DEMO=1|hold pnpm tauri dev` forces it on for the whole
-    // launch (no console step needed); otherwise the per-tab localStorage flag.
     const env = import.meta.env.VITE_MIGRATION_DEMO;
     if (env === "1" || env === "hold") return env;
     return typeof localStorage !== "undefined"
@@ -83,11 +61,6 @@ export const DEMO_TASKS: MigrationTask[] = [
 
 export const DEMO_INTEGRATIONS = ["gmail", "googlecalendar", "slack"];
 
-/**
- * Simulate the whole migration run against the wizard store — no source host,
- * no gateway. Steps each stub agent through creating → warming → uploading →
- * finalizing → done on timers, then lands on the done screen.
- */
 export async function runDemoMigration(
   set: (
     fn: (s: {
@@ -124,9 +97,6 @@ export async function runDemoMigration(
     await sleep(650);
     patch(t.sourceId, { step: "uploading", chunkIndex: 1, chunkCount: 3 });
     await sleep(500);
-    // "hold": park the SECOND agent mid-upload forever (one done, one active,
-    // one pending — a representative frame) so the progress screen + game can
-    // be designed against without racing the timers.
     if (i === 1 && demoFlag() === "hold") return;
     patch(t.sourceId, { chunkIndex: 2 });
     await sleep(500);

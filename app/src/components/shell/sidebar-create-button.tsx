@@ -13,25 +13,11 @@ import { FolderPlus, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
 export interface SidebarCreateLabels {
-  /** Names the control when more than one thing can be added. */
   title: string;
   newAgent: string;
   newTeam: string;
 }
 
-/**
- * The ONE "+" on the rail's top line: everything a user can ADD to the rail,
- * behind a single control.
- *
- * When both choices are available, its menu opens the corresponding form
- * directly. A sole available choice opens that form with one press. With
- * nothing to create it renders nothing at all.
- *
- * It wears the library's header-control treatment, the same class as the
- * collapse toggle and the search button beside it, so the top line reads as
- * one set. Always visible and muted, strengthening on hover and focus: Houston
- * forbids hover-GATED affordances.
- */
 export function SidebarCreateButton({
   labels,
   onNewAgent,
@@ -42,9 +28,7 @@ export function SidebarCreateButton({
   labels: SidebarCreateLabels;
   onNewAgent?: () => void;
   onNewTeam?: () => void;
-  /** Icon rail: the tooltip and the menu open to the right. */
   collapsed: boolean;
-  /** Tour anchor on the button. */
   dataAttrs?: Record<string, string>;
 }): ReactNode {
   const canAddAgent = onNewAgent !== undefined;

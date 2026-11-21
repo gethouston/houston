@@ -1,11 +1,3 @@
-/**
- * File-type iconography shared by file surfaces: a Lucide glyph tinted with
- * its type's reserved `filetype.*` token. The tint is
- * IDENTITY, like an agent's helmet colour — never status, never decoration:
- * it is what lets a list of forty filenames read as "four PDFs and a video" at
- * a glance. Folders keep a monochrome glyph, because a folder is not a type.
- */
-
 import {
   File,
   FileArchive,
@@ -37,12 +29,6 @@ const ICONS: Record<FileCategory, LucideIcon> = {
   other: File,
 };
 
-/**
- * Category -> tint utility. Written as whole class names on purpose: Tailwind
- * scans source text, so a composed `text-filetype-${x}` would never be built.
- * `data` rides the code hue (JSON/YAML are code to the eye) and `other` the
- * neutral one, which is why ten hues cover eleven categories.
- */
 const TINTS: Record<FileCategory, string> = {
   pdf: "text-filetype-pdf",
   image: "text-filetype-image",
@@ -57,18 +43,11 @@ const TINTS: Record<FileCategory, string> = {
   other: "text-filetype-generic",
 };
 
-/**
- * Text-sized glyph for a file named INLINE in prose (chat's file chip). Keeps
- * its type tint. At 14px the tint is a hint of hue on a hairline mark, not
- * colour poured onto a content surface.
- */
 export function FileTypeGlyphInline({
   extension,
   className,
 }: {
   extension: string;
-  /** Consumers that size the glyph to their own icon column (the file list's
-   *  rows) override the inline 14px step here. */
   className?: string;
 }) {
   const category = fileCategory(extension);
@@ -82,7 +61,6 @@ export function FileTypeGlyphInline({
   );
 }
 
-/** Folder glyph: the same outline style in the grid and the list. */
 export function FolderGlyph({
   small,
   className,

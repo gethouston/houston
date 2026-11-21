@@ -5,12 +5,6 @@ import {
   parseLegacyComposioConfig,
 } from "./migration-legacy-composio";
 
-/**
- * The legacy `~/.composio` consumer-account probe feeding the wizard's
- * reconnect checklist. Everything is injected (file read + fetch), so these
- * run hermetically; the REST shapes mirror the Rust engine's cli.rs calls.
- */
-
 const CONFIG = JSON.stringify({
   api_key: "uak_test",
   base_url: "https://backend.composio.dev/",
@@ -34,7 +28,6 @@ test("parses the user_data.json shapes (trailing-slash base, defaults)", () => {
     baseUrl: "https://backend.composio.dev",
     orgId: "ok_test",
   });
-  // Minimal file: base_url + org_id default.
   expect(parseLegacyComposioConfig('{"api_key":"k"}')).toEqual({
     apiKey: "k",
     baseUrl: "https://backend.composio.dev",
@@ -75,7 +68,6 @@ test("resolves the consumer project then lists its connected toolkits", async ()
 });
 
 test("every failure mode reads as no legacy account, never a throw", async () => {
-  // No file on disk (fresh machine / never connected).
   expect(
     await legacyConnectedToolkits({
       readTextFile: async () => {
@@ -84,14 +76,12 @@ test("every failure mode reads as no legacy account, never a throw", async () =>
       fetchFn: fakeFetch(() => null),
     }),
   ).toEqual([]);
-  // Expired/revoked key: resolve answers 401.
   expect(
     await legacyConnectedToolkits({
       readTextFile: async () => CONFIG,
       fetchFn: fakeFetch(() => ({ status: 401, body: {} })),
     }),
   ).toEqual([]);
-  // Network down.
   expect(
     await legacyConnectedToolkits({
       readTextFile: async () => CONFIG,

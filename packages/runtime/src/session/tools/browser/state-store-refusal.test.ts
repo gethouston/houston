@@ -7,7 +7,6 @@ import { browserStatePath, readState } from "./state-store";
 const posixOnly = process.platform === "win32" ? describe.skip : describe;
 const SAVED = JSON.stringify({ cookies: [], origins: [] });
 
-/** A workspace whose state file holds `SAVED`, in a dir it owns. */
 function savedState(): string {
   const dir = mkdtempSync(join(tmpdir(), "browser-refusal-"));
   const path = browserStatePath(dir);
@@ -29,7 +28,6 @@ posixOnly("reading sign-ins from a directory the tool user planted", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const path = savedState();
     const uid = process.getuid?.() ?? 0;
-    // `getuid` is optional on the type (Windows has none); posix-only here.
     const posix = process as { getuid: () => number };
     vi.spyOn(posix, "getuid").mockReturnValue(uid + 1);
     expect(await readState(path)).toBeUndefined();

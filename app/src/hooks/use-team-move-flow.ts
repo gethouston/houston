@@ -38,7 +38,6 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
   const addMember = useAddMember();
   const ownsClaim = useRef(false);
   const startedSource = useRef(source);
-  // The space switch can unmount the dialog before the move completes.
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -51,8 +50,6 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
   useEffect(() => {
     if (!open) {
       releaseOwnedTeamMove(source.id, ownsClaim);
-      // A move parked on a taken name reopens resumed (with a retry for after
-      // the rename), never on the retry-less face it closed on.
       const pending = readPendingTeamMoves(undefined, reportPendingMove).find(
         (item) => item.sourceTeam.id === source.id,
       );
@@ -121,7 +118,6 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
         setState((current) => teamAgentMoveFailed(current, "unknown"));
         return;
       }
-      // `gone`: the agent is in neither space, so nothing is left to move.
       if (result.outcome !== "done" && result.outcome !== "gone") {
         if (result.outcome === "refused")
           parkRefusedTeamMove(source.id, agent.id);
@@ -161,10 +157,6 @@ export function useTeamMoveFlow(source: TeamMoveSource, open: boolean) {
     }
   };
 
-  /** The postscript-failure face's Retry: show the resumed busy stage AND
-   *  re-drive. The durable record carries `postscriptStage`, so the driver
-   *  picks up exactly where the failure left it; a state change alone would
-   *  leave the dialog on a busy face nothing is behind. */
   const retryPostscript = () => {
     if (
       !beginPostscriptRetry(source.id, ownsClaim, () => setState(retryTeamMove))

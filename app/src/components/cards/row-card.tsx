@@ -1,53 +1,13 @@
-/**
- * RowCard — the single inline card shape used across the chat feed and
- * integration surfaces. Modeled on the integration / Composio sign-in card:
- * a small logo on the LEFT, a title + (optional) description in the middle,
- * and a single action area on the RIGHT, on a grey (`bg-chip`) slab.
- *
- * One component, two render shapes:
- *  - block (default): a full-width `<div>` row — feed cards (reconnect,
- *    rate-limit, provider-switch dialog body).
- *  - `inline`: a `<span>`-based row that drops into assistant markdown prose
- *    without breaking the flow — the Composio cards the agent posts
- *    mid-message.
- *
- * `size`:
- *  - `"sm"` (default) — feed/integration density (13px title, 11px body).
- *  - `"md"` — a roomier heading (15px title, 13px body) for the
- *    provider-switch dialog, which reads as a modal heading rather than a
- *    feed row.
- *
- * Body text is `text-ink/70` (not `text-ink-muted`): the muted
- * token is too low-contrast on the grey slab to read comfortably.
- *
- * The action slot is a free `ReactNode` so a card can mount one button, two,
- * or a status pill. Use `RowCardButton` for the standard pill button.
- */
-
 import type { ReactNode } from "react";
 
 interface RowCardProps {
-  /** Left media — a `ProviderGlyph`, app logo `<img>`, favicon, or icon. */
   media: ReactNode;
   title: ReactNode;
   description?: ReactNode;
-  /** Right-side slot: a `RowCardButton`, two of them, or a status pill. */
   action?: ReactNode;
-  /** Truncate title + description to one line (integration/Composio look). */
   truncate?: boolean;
-  /** Render as an inline `<span>` row for embedding in chat prose. */
   inline?: boolean;
-  /** Text density — `md` for the modal dialog heading. */
   size?: "sm" | "md";
-  /**
-   * The surface this card sits ON, which sets the slab tone so it always reads
-   * as raised:
-   *  - `"base"` (default): on a `bg-input` surface → grey `bg-chip`
-   *    slab (the feed / inline-prose look).
-   *  - `"secondary"`: on a `bg-chip` surface (e.g. inside the interaction
-   *    card) → white `bg-input` slab with a hairline border, so it matches
-   *    the raised chip hierarchy of the sibling option rows and input.
-   */
   surface?: "base" | "secondary";
 }
 
@@ -62,10 +22,6 @@ export function RowCard({
   surface = "base",
 }: RowCardProps) {
   const Wrapper = inline ? "span" : "div";
-  // Invert against the parent surface so the slab (and its media well) never go
-  // tone-on-tone: on `bg-chip` the slab flips to `bg-input` (raised
-  // white chip, hairline border matching the option rows) and the media well
-  // flips to `bg-chip`.
   const raised = surface === "secondary";
   const slabTone = raised
     ? "rounded-2xl border border-line/50 bg-input"

@@ -11,11 +11,6 @@ import { AppRow } from "../../../integrations/app-row";
 import { INTEGRATION_PROVIDER } from "../../../integrations/model";
 import { useConnectFlow } from "../../../integrations/use-connect-flow";
 
-/**
- * Gmail and Outlook, each on the Integrations screen's own row and through its
- * own connect flow, so what the user does here is exactly what they would do
- * there.
- */
 export function EmailConnectList() {
   const { t } = useTranslation("academy");
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);

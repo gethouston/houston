@@ -1,14 +1,8 @@
 import type { Workspace } from "../lib/types";
 
-/**
- * `saved`: this was the newest choice and the host kept it. `superseded`: a
- * later choice for the same workspace owns the outcome, so this one changes
- * nothing visible either way.
- */
 export type LocaleWriteOutcome = "saved" | "superseded";
 
 export interface LocaleWriteDeps {
-  /** The workspace's locale as the store shows it now. */
   read: (id: string) => string | null | undefined;
   swap: (id: string, next: (w: Workspace) => Workspace) => void;
   write: (id: string, locale: string | null) => Promise<Workspace>;
@@ -17,20 +11,11 @@ export interface LocaleWriteDeps {
 interface Run {
   issued: number;
   pending: number;
-  /** The newest locale the host acknowledged (or the one shown before the run). */
   confirmed: string | null | undefined;
   confirmedSeq: number;
   newestRefused: boolean;
 }
 
-/**
- * Optimistic workspace-locale writes, one sequence per workspace. A person can
- * pick twice before the first save answers; only the NEWEST pick may swap the
- * host's record in or roll back, and a rollback lands on the newest locale the
- * host acknowledged, never a click-time guess an earlier save already replaced.
- * The newest refusal rejects (its caller tells the person); an older one
- * resolves `superseded`, its error already surfaced by `call()`.
- */
 export function workspaceLocaleWrites(deps: LocaleWriteDeps) {
   const runs = new Map<string, Run>();
   return async (
@@ -54,7 +39,6 @@ export function workspaceLocaleWrites(deps: LocaleWriteDeps) {
       if (seq > run.confirmedSeq) {
         run.confirmedSeq = seq;
         run.confirmed = updated.locale;
-        // The newest pick, or the newest the host kept after it refused a later one.
         if (seq === run.issued || run.newestRefused)
           deps.swap(id, () => updated);
       }

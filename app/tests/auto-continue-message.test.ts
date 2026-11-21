@@ -59,8 +59,6 @@ describe("filterAutoContinueFeedItems", () => {
   });
 
   it("only hides user_message turns, never assistant/tool items", () => {
-    // Defensive: an assistant message that happens to start with the marker
-    // is still a real assistant turn and must survive.
     const items: FeedItem[] = [
       { feed_type: "assistant_text", data: encodeAutoContinueMessage("x") },
     ];

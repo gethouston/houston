@@ -1,7 +1,6 @@
 import { HoustonEngineError } from "../client/errors";
 import { type ControlPlaneConfig, gatewayAuthFetch } from "./fetch";
 
-/** Subject comparison fences UI races only; the gateway still verifies the JWT. */
 export function bridgeTokenSubject(token: string): string | null {
   try {
     const payload = token.split(".")[1];

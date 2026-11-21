@@ -1,16 +1,9 @@
-/**
- * Pure mappings between the v1 client's portable-agent shapes (what the
- * wizards in app/src consume) and the host's v3 wire shapes / the domain
- * package model. No I/O — the network half lives in `portable.ts`.
- */
-
 import { type PortablePackage, portableInventory } from "@houston/domain";
 import type {
   PortableInventoryPreview,
   PortableManifestSummary,
 } from "@houston/wire-types";
 
-/** The host's `PortableSelection` wire shape (packages/protocol). */
 export interface WireSelection {
   includeClaudeMd: boolean;
   skillSlugs: string[];
@@ -18,7 +11,6 @@ export interface WireSelection {
   learningIds: string[];
 }
 
-/** Map the v1 client's selection field names onto the v3 wire shape. */
 export function toWireSelection(sel: {
   includeClaudeMd: boolean;
   includeSkillSlugs: string[];
@@ -38,7 +30,6 @@ function excerpt(text: string, max = 160): string {
   return flat.length <= max ? flat : `${flat.slice(0, max)}…`;
 }
 
-/** The unpacked package → the wizard's upload-preview shape. */
 export function packagePreview(pkg: PortablePackage): {
   manifest: PortableManifestSummary;
   preview: PortableInventoryPreview;
@@ -46,8 +37,6 @@ export function packagePreview(pkg: PortablePackage): {
   const inventory = portableInventory(pkg);
   return {
     manifest: {
-      // v3 manifests don't carry the source agent id; the wizard only reads
-      // agentName/exporter/anonymized.
       agentId: "",
       agentName: pkg.manifest.agentName,
       description: pkg.manifest.description ?? null,

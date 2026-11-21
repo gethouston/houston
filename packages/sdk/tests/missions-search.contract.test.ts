@@ -1,11 +1,3 @@
-/**
- * Mission-search contract: ranked full-text search over the host's missions,
- * mirroring the desktop EXACTLY — a TITLE match first (no snippet), then a
- * DESCRIPTION match, then lazily-fetched chat-history CONTENT. Title/description
- * run off the activities list; content fetches each unmatched mission's history
- * (bounded, no observers).
- */
-
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
 import type { MissionMatch } from "@houston/sdk";
 import {
@@ -69,12 +61,10 @@ describe("missions/search — ranked matches", () => {
   });
 
   it("is accent/case-insensitive (folds like the desktop)", async () => {
-    // "tokyo" lower-cases the title match; the fold is the same one the board uses.
     expect((await h.sdk.missions.search("tokyo"))[0]?.activityId).toBe("act-1");
   });
 
   it("falls through to lazily-fetched history CONTENT", async () => {
-    // A phrase in neither title nor description, only in the chat transcript.
     const cid = "activity-act-1";
     await h.sdk.turns.send({
       agentId: SEED_AGENT_ID,
@@ -88,7 +78,6 @@ describe("missions/search — ranked matches", () => {
     const [m] = matches;
     expect(m.activityId).toBe("act-1");
     expect(m.matchedIn).toBe("content");
-    // The canned reply echoes the phrase, so the snippet surfaces it.
     expect(m.snippet).toContain("pistachio");
     expect(cannedReply("pistachio")).toContain("pistachio");
   });

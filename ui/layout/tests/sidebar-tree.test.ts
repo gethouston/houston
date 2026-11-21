@@ -14,7 +14,6 @@ import {
   type SidebarTreeRow,
 } from "../src/sidebar-tree.ts";
 
-// Rail: A, B, [G: x, y], C   (and a collapsed group K holding z, at the end)
 const items: SidebarItem[] = ["A", "B", "C", "x", "y", "z"].map((id) => ({
   id,
   name: id,
@@ -36,7 +35,6 @@ const sections = computeSidebarSections(items, groups, order);
 const rows = flattenSidebar(sections, false);
 const hidden = { K: ["z"] };
 
-/** Render a row list the way the rail reads: members indented with ">". */
 const draw = (list: SidebarTreeRow[] | null) =>
   list
     ?.map((row) =>
@@ -169,7 +167,6 @@ test("unknown keys resolve to no drop", () => {
   assert.equal(drop("agent:A", "agent:nope"), null);
 });
 
-// Rail: A, B (never arranged, so first), [G: x, y], [K collapsed: z], C
 const pastFold = flattenSidebar(
   computeSidebarSections(items, groups, [
     { kind: "group", id: "G" },

@@ -1,19 +1,3 @@
-/**
- * The workspaces family's REST calls, over the injected `fetch`.
- *
- * Four capabilities share this module because they share one addressee — the
- * space the user is in: the list of spaces, the raw `.houston/**` docs of an
- * agent inside one, the background notes spliced into every conversation, and
- * the person's sidebar folder arrangement.
- *
- * The runtime client is scoped to ONE conversation and exposes none of them, so
- * this module talks to the host routes directly through `ports.fetch` — auth
- * rides that fetch, exactly as the kernel constructs the runtime client without
- * a token. A non-2xx throws the {@link WorkspacesHttpError} the scope mints; a
- * `401` additionally fires `onUnauthorized`, so a lapsed session becomes a
- * visible `tokenExpired` signal.
- */
-
 import { type HttpScope, httpRequest } from "../http";
 import type { SidebarLayout, Workspace } from "./types";
 
@@ -26,8 +10,6 @@ export async function listWorkspaces(scope: HttpScope): Promise<Workspace[]> {
   return (await res.json()) as Workspace[];
 }
 
-// Raw .houston/** doc read/write — what the desktop UI's files-first data layer
-// (readAgentJson/writeAgentJson) uses for the board, config, and learnings.
 /**
  * Reads one of an agent's saved data files.
  * @assistant group:files
@@ -104,13 +86,6 @@ export async function setContext(
   });
 }
 
-/**
- * The person's per-workspace sidebar folders and order, served by the host or
- * gateway at `GET`/`PUT /v1/workspaces/:id/sidebar-layout`.
- *
- * `workspaceId` must be the SERVER's id — the one `listWorkspaces` answers
- * with, never a client-side synthetic id for the personal space.
- */
 const layoutPath = (workspaceId: string) =>
   `/v1/workspaces/${encodeURIComponent(workspaceId)}/sidebar-layout`;
 

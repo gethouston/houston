@@ -5,24 +5,8 @@ import {
 } from "../../integration-execute.ts";
 import type { EmailToolkit } from "./email-sender.ts";
 
-/**
- * Whether a task's conversation shows the email going out, and through which
- * app. Pure, so it unit-tests without React
- * (`app/tests/academy-email-sent.test.ts`).
- *
- * The proof is the app's own answer, never the AI Employee's prose: an
- * `integration_execute` call whose action is a Gmail or Outlook send, paired
- * with the app's own answer to it ({@link integrationExecuteSucceeded}). A
- * send that fails is the AI Employee's to explain in the chat, where the user
- * answers it like any task.
- */
-
 type EmailToolkitSlug = EmailToolkit["toolkit"];
 
-/**
- * A send action, as the integrations catalog names them: `GMAIL_SEND_EMAIL`,
- * `GMAIL_SEND_DRAFT`, `OUTLOOK_SEND_EMAIL`, `OUTLOOK_OUTLOOK_SEND_EMAIL`.
- */
 const SEND_ACTION_RE = /^(GMAIL|OUTLOOK)_(?:[A-Z]+_)*SEND_(?:EMAIL|DRAFT)$/i;
 
 interface Call {
@@ -31,11 +15,6 @@ interface Call {
   result: { content: string; is_error: boolean } | null;
 }
 
-/**
- * Pairs calls with results the way the chat renders them: a result belongs to
- * the most recent call still without one, and a call streamed as a null-input
- * placeholder is completed by its twin rather than counted twice.
- */
 function pairCalls(feed: readonly FeedItem[]): Call[] {
   const calls: Call[] = [];
   for (const item of feed) {
@@ -59,7 +38,6 @@ function pairCalls(feed: readonly FeedItem[]): Call[] {
   return calls;
 }
 
-/** The email app a call's action sends through, or null for any other action. */
 function sendingToolkit(input: unknown): EmailToolkitSlug | null {
   if (typeof input !== "object" || input === null) return null;
   const { action } = input as { action?: unknown };
@@ -69,7 +47,6 @@ function sendingToolkit(input: unknown): EmailToolkitSlug | null {
   return match[1].toUpperCase() === "GMAIL" ? "gmail" : "outlook";
 }
 
-/** The app the conversation's first successful email send went through, or null. */
 export function emailSentVia(
   feed: readonly FeedItem[],
 ): EmailToolkitSlug | null {

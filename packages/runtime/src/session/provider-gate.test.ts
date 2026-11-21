@@ -8,11 +8,6 @@ process.env.HOUSTON_DATA_DIR = mkdtempSync(
 );
 process.env.HOUSTON_WORKSPACE_DIR = process.env.HOUSTON_DATA_DIR;
 
-/**
- * The shared-dir signal, stubbed at its two seams: the SYNC read every status
- * surface uses, and the SETTLED read the turn gate awaits. `settled === true`
- * warms the sync read exactly like a real probe answering.
- */
 const signal = vi.hoisted(() => ({
   cached: false,
   settled: undefined as boolean | undefined,
@@ -53,8 +48,6 @@ test("a pin with no stored credential is unavailable without waiting on anthropi
 });
 
 test("an anthropic pin on a COLD signal is NOT refused (unknown is not logged out)", async () => {
-  // The undelivered-prompt bug: the sync signal answers false while the first
-  // probe is still running, and the turn was refused with its prompt attached.
   expect(await pinnedProviderUnavailable("anthropic")).toBe(false);
   expect(signal.settleCalls).toBe(1);
 });

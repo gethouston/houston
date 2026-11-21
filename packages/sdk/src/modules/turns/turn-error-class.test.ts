@@ -6,8 +6,6 @@ import {
   turnErrorDisposition,
 } from "./turn-error-class";
 
-// The vocabulary a surface reads off an untyped bus event: every named class,
-// every `provider_<kind>` for a real ProviderError kind, nothing else.
 test("names every class and refuses anything else", () => {
   for (const cls of [
     "stopped",
@@ -34,9 +32,6 @@ test("names every class and refuses anything else", () => {
   expect(isSessionStatusOrigin("foreground")).toBe(false);
 });
 
-// What a failure counts as is the SDK's call, not a per-surface list: a Stop
-// is intended, a state with its own copy or card is handled, the rest is an
-// error the person saw with nothing but generic copy.
 test("disposes each class once, for every surface", () => {
   expect(turnErrorDisposition("stopped")).toBe("intended");
   for (const cls of [
@@ -48,13 +43,9 @@ test("disposes each class once, for every surface", () => {
     "provider_plan_message_limit",
     "provider_provider_internal",
     "provider_malformed_response",
-    // A usage limit pauses the routine until its reset with its own card.
     "provider_usage_limit_paused",
   ] as const)
     expect(turnErrorDisposition(cls), cls).toBe("handled");
-  // The unclassified provider card is generic copy over a raw excerpt; a setup
-  // failure and a turn lost after its 202 are authored lines over our own
-  // fault, reported as bugs, so they count as errors shown too.
   for (const cls of [
     "provider_unknown",
     "turn_died",

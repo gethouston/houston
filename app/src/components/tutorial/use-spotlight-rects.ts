@@ -1,17 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Rect, Viewport } from "./tutorial-spotlight-geometry";
 
-/** Padding between the target and the hole's edge. */
 const PAD = 6;
-/** Re-measure cadence: well under a user's aim time, cheap enough to poll. */
 const MEASURE_MS = 300;
 
-/**
- * The first VISIBLE element a selector matches. Some anchors exist twice in
- * the tree — a desktop control CSS-hidden on the phone beside the phone's
- * own — and `querySelector` would hand back the hidden one first, leaving the
- * hole shut over a control the user can see.
- */
 function firstVisible(selector: string): Element | null {
   for (const el of document.querySelectorAll(selector)) {
     if (el.getBoundingClientRect().width > 0) return el;
@@ -28,14 +20,6 @@ const sameRect = (a: Rect | null, b: Rect | null) =>
     a.width === b.width &&
     a.height === b.height);
 
-/**
- * Live bounds for a step: the target's hole, the open dialog's own box (only
- * for in-dialog steps) and the viewport.
- *
- * Poll + resize: the target can appear/move at any time (view switches,
- * sidebar collapse, async panes). The equality guard keeps the steady state
- * render-free, so a step that has settled costs nothing.
- */
 export function useSpotlightRects(
   selector: string,
   inDialog: boolean | undefined,
@@ -62,8 +46,6 @@ export function useSpotlightRects(
     const measure = () => {
       const next = toRect(firstVisible(selector), PAD);
       setHole((prev) => (sameRect(prev, next) ? prev : next));
-      // The Radix dialog content (`data-state` excludes the lesson's own card,
-      // which is a bare role="dialog").
       const nextDialog = inDialog
         ? toRect(
             document.querySelector('[role="dialog"][data-state="open"]'),

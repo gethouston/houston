@@ -2,7 +2,6 @@ import { EngineError } from "@houston/runtime-client";
 import { describe, expect, it } from "vitest";
 import { retryComputeRefusals } from "./compute-retry";
 
-/** A clock that fires each timer at once and records the pause asked for. */
 function instantClock() {
   const pauses: number[] = [];
   return {

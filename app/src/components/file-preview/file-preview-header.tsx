@@ -17,25 +17,18 @@ export const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
 export interface PreviewHeaderProps {
   fileName: string;
-  /** What the file is doing: converting on first open, or just reloaded
-   *  because the agent rewrote it. */
   status: "converting" | "updated" | null;
-  /** "3 / 8" while a paged document shows; null otherwise. */
   pager: { page: number; count: number } | null;
-  /** The phone's thumbnail strip, which the page counter opens. */
   strip: { open: boolean; onToggle: () => void } | null;
-  /** The page zoom, or null when the body has none. */
   zoom: number | null;
   onZoom: (zoom: number) => void;
   rail: { shown: boolean; onToggle: () => void } | null;
   canDownload: boolean;
   onDownload: () => void;
-  /** Null when the row is too narrow for the chat beside it. */
   expand: { expanded: boolean; onToggle: () => void } | null;
   onClose: () => void;
 }
 
-/** The preview's quiet header: file, page, zoom, download, size, close. */
 export function FilePreviewHeader(props: PreviewHeaderProps) {
   const { fileName, status, pager, strip, zoom, onZoom, rail, expand } = props;
   const { t } = useTranslation("agents");

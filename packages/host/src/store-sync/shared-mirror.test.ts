@@ -10,8 +10,6 @@ import {
 import { expect, test, vi } from "vitest";
 import { SharedMirrorController } from "./shared-mirror";
 
-// Headroom over eventually()'s 15s deadline; the default 5s test timeout
-// left none and made these watcher-driven tests flake under suite load.
 vi.setConfig({ testTimeout: 20_000 });
 
 const md5 = (body: Buffer) => createHash("md5").update(body).digest("base64");
@@ -37,9 +35,6 @@ function memoryStore(initial: Record<string, string>) {
       await writeFile(destination, body);
     },
     async upload(source, key) {
-      // Read BEFORE recording: `eventually()` polls `uploads`, and recording
-      // first opens a window where the upload is visible but `objects` still
-      // holds the previous bytes — a flaky TOCTOU on slow runners.
       const body = await readFile(source);
       objects.set(key, body);
       uploads.push(key);
@@ -48,14 +43,6 @@ function memoryStore(initial: Record<string, string>) {
   return { objects, store, uploads };
 }
 
-/**
- * Polls the assertion, periodically rewriting `file` with the SAME bytes.
- * macOS FSEvents subscriptions activate asynchronously, so a write landing
- * right after the controller starts can be missed entirely; the controller
- * has no periodic fallback, so only a fresh FS event recovers. Identical
- * bytes are hash-skipped by syncSharedMirror, so retouches never add
- * uploads once a push has landed.
- */
 async function eventuallyWithRetouch(
   file: string,
   content: string,

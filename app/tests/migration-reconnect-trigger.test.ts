@@ -6,8 +6,6 @@ import {
 } from "../src/hooks/migration-reconnect-trigger.ts";
 import type { ProviderConnectionStatus } from "../src/lib/provider-connection.ts";
 
-// The "show" case: a migrated user, on the new engine, with no provider and no
-// prior dismissal, once every signal has resolved.
 const SHOW = {
   newEngine: true,
   coLocated: true,
@@ -54,8 +52,6 @@ test("hidden on the legacy Rust engine even if it looks migrated", () => {
 });
 
 test("hidden on a remote engine even if its /v1/version claims migrated (HOU-688)", () => {
-  // The hosted gateway synthesizes `chatHistoryMigrated: true`; a remote
-  // engine can never be "this install migrated", so the gate stays closed.
   assert.equal(
     shouldShowMigrationReconnect({ ...SHOW, coLocated: false }),
     false,
@@ -63,10 +59,7 @@ test("hidden on a remote engine even if its /v1/version claims migrated (HOU-688
 });
 
 test("loading wins over every show condition", () => {
-  // Even with all show-conditions met, a loading signal holds the gate closed.
   assert.equal(shouldShowMigrationReconnect({ ...SHOW, loading: true }), false);
-  // And a not-yet-resolved provider probe must never flash the gate in front
-  // of a user who is in fact connected.
   assert.equal(
     shouldShowMigrationReconnect({
       ...SHOW,
@@ -76,12 +69,6 @@ test("loading wins over every show condition", () => {
     false,
   );
 });
-
-// HOU-979: the gate used to read the denormalized `authenticated` flag, so an
-// `unknown` probe (unreachable engine, waking pod, a space whose agent list is
-// still settling) read as "no provider" — and a migrated user who IS connected
-// got the reconnect screen. The signals now come from the ONE derivation, and
-// an unconfirmable answer defers the gate instead of firing it.
 
 const probe = (
   over: Partial<ProviderConnectionStatus>,
@@ -117,9 +104,6 @@ test("an UNKNOWN probe is unconfirmable, never a confirmed absence", () => {
 });
 
 test("the gate DEFERS on an unconfirmable probe instead of showing", () => {
-  // The exact regression: statuses settle `unknown` for a migrated user whose
-  // provider is in fact connected. Firing here would demand a reconnect they
-  // do not need; the unconfirmable signal folds into `loading` so it does not.
   const { hasProvider, unconfirmable } = migrationProviderSignals([
     probe({ auth_state: "unknown", authenticated: false }),
   ]);

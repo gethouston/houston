@@ -30,7 +30,6 @@ function setup() {
   };
 }
 
-/** A clock and a sleep that only ever move when the wait asks them to. */
 function clock(startMs = 10_000) {
   let nowMs = startMs;
   const slept: number[] = [];
@@ -90,7 +89,6 @@ test("polls until the predecessor's final sync removes the stamp", async () => {
     pollMs: 10_000,
     sleep: async (ms) => {
       await time.sleep(ms);
-      // The predecessor finished its turn on the third poll.
       if (++polls === 3) rmSync(join(remoteRoot, DRAIN_STAMP_FILE));
     },
   });
@@ -112,7 +110,6 @@ test("a predecessor killed at its deadline stops the wait at `until`", async () 
     pollMs: 10_000,
     sleep: time.sleep,
   });
-  // The last poll is trimmed to the deadline, never slept past it.
   expect(time.slept).toEqual([10_000, 10_000, 5_000]);
   expect(logs.at(-1)).toEqual({
     message: "[local-host] predecessor drain window elapsed; hydrating now",

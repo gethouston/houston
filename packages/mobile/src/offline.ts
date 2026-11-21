@@ -1,7 +1,6 @@
 import "@houston/app/styles/globals.css";
 import i18n from "@houston/app/lib/i18n";
 
-/** The bundle is local, so airplane mode still has a usable first frame. */
 export function showOffline(onRetry: () => void): () => void {
   const root = document.getElementById("root");
   if (!root) throw new Error("Missing #root element");

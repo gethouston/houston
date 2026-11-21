@@ -11,7 +11,6 @@ import type {
   ProvidersT,
 } from "./types";
 
-/** Open the copilot Personal-vs-Company dialog; see `useCopilotConnect`. */
 type BeginCopilot = (
   provider: ProviderInfo,
   run: (enterpriseDomain?: string) => void,
@@ -30,20 +29,11 @@ interface Args {
 }
 
 export interface ProviderConnectActions {
-  /** Start a connect. Branches on `p.auth` / `copilotConnect` (may open a dialog). */
   connect(provider: ProviderInfo): void;
-  /** Abort an in-flight sign-in so the engine slot frees up for a retry. */
   cancel(provider: ProviderInfo): Promise<void>;
-  /** Run the confirmed sign-out (called from the confirm dialog's onConfirm). */
   signOutConfirmed(provider: ProviderInfo): Promise<void>;
 }
 
-/**
- * The connect / cancel / sign-out actions for the provider-connections layer,
- * extracted from `provider-settings.tsx`. Each renders its own provider-specific
- * failure toast (`toast: false` on the engine call so the message doesn't show
- * twice) and reconciles the optimistic card state with `loadStatuses`.
- */
 export function useProviderConnectActions({
   addToast,
   t,
@@ -55,8 +45,6 @@ export function useProviderConnectActions({
   setApiKeyDialog,
   setCustomEndpointDialog,
 }: Args): ProviderConnectActions {
-  // `enterpriseDomain` is set only for GitHub Copilot Enterprise (collected by
-  // the copilot dialog).
   const startOAuthLogin = useCallback(
     async (provider: ProviderInfo, enterpriseDomain?: string) => {
       setPending({ id: provider.id, mode: "connecting" });
@@ -71,12 +59,6 @@ export function useProviderConnectActions({
           `[use-provider-connections] launchLogin(${provider.id}) failed:`,
           msg,
         );
-        // A device-offline transport drop was already surfaced by the
-        // engine-call layer as the one deduped connectivity toast (HOU-1085);
-        // the authored red toast on top would double-surface an environment
-        // state (HOUSTON-APP-4PQ, PRODUCT-1383). Same for the gateway's
-        // owner/admin refusal of a member's org-level connect: the engine-call
-        // layer already showed the "ask an admin" info toast.
         if (!isNetworkTransportError(err) && !isOrgAdminRequiredError(err)) {
           addToast({
             title: t("toast.signInFailed", { provider: provider.name }),
@@ -92,18 +74,14 @@ export function useProviderConnectActions({
 
   const connect = useCallback(
     (provider: ProviderInfo) => {
-      // API-key providers (OpenCode / OpenRouter / …) connect by pasting a key.
       if (provider.auth === "apiKey") {
         setApiKeyDialog(provider);
         return;
       }
-      // OpenAI-compatible (local) servers connect by base URL + model.
       if (provider.auth === "openaiCompatible") {
         setCustomEndpointDialog(provider);
         return;
       }
-      // GitHub Copilot: choose Personal vs Company first; the chosen plan
-      // resumes the login with the right domain (Company) or none (Personal).
       if (
         beginCopilot(
           provider,
@@ -119,9 +97,6 @@ export function useProviderConnectActions({
 
   const cancel = useCallback(
     async (provider: ProviderInfo) => {
-      // Abort the engine-side login subprocess so the slot frees up and a retry
-      // isn't rejected as "already pending". The engine's benign
-      // ProviderLoginComplete (handled by the events hook) is the backstop.
       try {
         await tauriProvider.cancelLogin(provider.id);
       } catch (err) {
@@ -130,7 +105,6 @@ export function useProviderConnectActions({
           `[use-provider-connections] cancelLogin(${provider.id}) failed:`,
           msg,
         );
-        // Connectivity drop: the engine-call layer's toast already covered it.
         if (!isNetworkTransportError(err)) {
           addToast({
             title: t("toast.cancelFailed", { provider: provider.name }),
@@ -153,8 +127,6 @@ export function useProviderConnectActions({
       setPending({ id: provider.id, mode: "signingOut" });
       try {
         await tauriProvider.launchLogout(provider.id);
-        // Flip the card to disconnected now rather than blocking on the
-        // several-second re-probe; loadStatuses reconciles in the background.
         patchAuthState(provider.id, false);
         void loadStatuses();
       } catch (err) {
@@ -163,7 +135,6 @@ export function useProviderConnectActions({
           `[use-provider-connections] launchLogout(${provider.id}) failed:`,
           msg,
         );
-        // Connectivity drop: the engine-call layer's toast already covered it.
         if (!isNetworkTransportError(err)) {
           addToast({
             title: t("toast.signOutFailed", { provider: provider.name }),

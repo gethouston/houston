@@ -6,14 +6,6 @@ import {
   nativeFingerprint,
 } from "../scripts/native-fingerprint";
 
-// Every native fingerprint, oldest first, with the first store build that
-// carries it. Anything a store build bakes in (locked native plugin versions,
-// capacitor.config.ts, Info.plist, entitlements, app delegates,
-// AndroidManifest.xml, MainActivity, Android XML resources) changes the hash:
-// APPEND an entry, never edit one, with a build above every store build already
-// uploaded, and move min_native_build (and the native build numbers) to it.
-// Store builds are github.run_number * 100 + github.run_attempt (attempt < 100);
-// the first mobile-release run uploads 101.
 const nativeBaselines = [
   {
     min_native_build: 101,
@@ -38,8 +30,6 @@ test("a native fingerprint change moves the OTA floor past every older build", (
   expect(compat.required_native_build).toBeGreaterThanOrEqual(
     compat.min_native_build,
   );
-  // Local builds (including the hand-uploaded first Play bundle) sit one below
-  // the first CI store build, so they never reuse its versionCode.
   const local = compat.min_native_build - 1;
   expect(readFileSync("android/app/build.gradle", "utf8")).toContain(
     `System.getenv('HOUSTON_NATIVE_BUILD_NUMBER') ?: '${local}'`,

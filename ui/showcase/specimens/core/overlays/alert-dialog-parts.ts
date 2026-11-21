@@ -1,9 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * `AlertDialog`'s public API, read off `ui/core/src/components/alert-dialog.tsx`.
- * Split out only to keep the specimen file inside the 200-line rule.
- */
 export const alertDialogProps: SpecimenProp[] = [
   { name: "AlertDialog.open", type: "boolean", note: "Controlled open state." },
   {

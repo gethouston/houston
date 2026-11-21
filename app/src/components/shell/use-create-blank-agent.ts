@@ -25,7 +25,6 @@ export function useCreateBlankAgent({
 }: {
   open: boolean;
   selectedDef: AgentDefinition | undefined;
-  /** Why the create did not land, or null when a new attempt starts. */
   onError: (failure: CreateFailure | null) => void;
   onDone: () => void;
 }) {

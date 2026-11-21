@@ -39,8 +39,6 @@ describe("canonicalJson", () => {
   });
 
   it("never reads a value JSON cannot represent as some other value's JSON", () => {
-    // `JSON.stringify(undefined)` is `undefined`, not a string; the sentinel
-    // has to stay outside the range of real output.
     strictEqual(canonicalJson(undefined), "undefined");
     strictEqual(canonicalJson("undefined") === canonicalJson(undefined), false);
   });

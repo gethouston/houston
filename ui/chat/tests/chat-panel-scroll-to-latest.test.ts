@@ -1,8 +1,3 @@
-// Real-DOM mount of ChatPanel, pinning `scrollToLatestToken`: a surface whose
-// answers are taps (the scripted onboarding chat) brings the latest line into
-// view on each one, the way sending does, even for a person scrolled up to
-// read. Anything else re-rendering the panel leaves that reader in place.
-
 import { strict as assert } from "node:assert";
 import { beforeEach, describe, it } from "node:test";
 import {

@@ -1,10 +1,3 @@
-/**
- * Inventory + changelog validation for the parity contract. Pure functions over
- * already-parsed objects; each returns an array of violation strings (empty ==
- * clean). Precise by design: an unknown key or a bad shape is a hard fail,
- * because a silently-ignored field would let the contract rot. Manifest
- * validation lives in ./manifest.mjs.
- */
 import {
   COMPONENT_KEYS,
   isInt,
@@ -16,11 +9,6 @@ import {
   STRING_FIELDS,
 } from "./schema.mjs";
 
-/**
- * Validate inventory.yaml. Returns { violations, version, sinceById } so callers
- * can cross-check manifests even when some components are malformed (sinceById
- * holds only the components that passed).
- */
 export function validateInventory(inv) {
   const violations = [];
   const sinceById = new Map();
@@ -57,7 +45,6 @@ export function validateInventory(inv) {
   return { violations, version: isInt(version) ? version : null, sinceById };
 }
 
-/** Validate one inventory component; records a valid id->since into sinceById. */
 function validateComponent(comp, i, version, seen, sinceById) {
   const at = `[inventory] components[${i}]`;
   if (!isObject(comp)) return [`${at} must be a mapping`];
@@ -110,7 +97,6 @@ function validateComponent(comp, i, version, seen, sinceById) {
   return out;
 }
 
-/** version bumped => CHANGELOG.md must carry a matching `## vN` heading. */
 export function validateChangelog(text, version) {
   if (!isInt(version)) return [];
   const re = new RegExp(`^##\\s+v?${version}\\b`, "m");

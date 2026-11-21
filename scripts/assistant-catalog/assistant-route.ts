@@ -19,12 +19,6 @@ export type RouteResult =
   | {
       route: AssistantRoute;
       reason: null;
-      /**
-       * What the ROUTE answers with, when that is not the declaration's own
-       * return type — a request made a hop deeper answers the sub-client
-       * method's shape, whatever the SDK wrapper does with it afterwards.
-       * `null` for a direct call, whose declaration already says.
-       */
       returns: ts.Type | null;
     }
   | { route: null; reason: string; returns: null };
@@ -37,9 +31,7 @@ const unroutable = (reason: string): RouteResult => ({
 
 export interface RouteContext {
   surface: FileSurface;
-  /** Path helpers shared across files (`agentPath` from the transport module). */
   shared: Map<string, PathHelper>;
-  /** Type resolution for a request made through a runtime-client sub-client. */
   hops: Omit<HopContext, "parameters" | "substitutions">;
 }
 
@@ -47,17 +39,9 @@ interface Request {
   call: ts.CallExpression;
   path: ts.Expression;
   init: ts.Expression | undefined;
-  /** Set when the request is made one call deeper, inside a sub-client. */
   hop?: ClientHop;
 }
 
-/**
- * The one request a body makes: a direct transport call `(scope, path, init?)`,
- * a call to a private wrapper that makes it, or a call into a
- * `@houston/runtime-client` sub-client the module resolved, which makes it a
- * hop deeper. All three reach the same wire, so a method must contain exactly
- * ONE of them combined.
- */
 function soleRequest(
   declaration: Declaration,
   parameters: Set<string>,
@@ -103,7 +87,6 @@ function soleRequest(
   return only;
 }
 
-/** Every path helper visible while resolving one file's templates. */
 function helpersFor(context: RouteContext): Map<string, PathHelper> {
   const helpers = new Map<string, PathHelper>(context.shared);
   for (const [name, helper] of context.surface.helpers)
@@ -113,19 +96,6 @@ function helpersFor(context: RouteContext): Map<string, PathHelper> {
   return helpers;
 }
 
-/**
- * The route a declaration takes, or the reason it cannot be derived. It
- * qualifies when the body makes EXACTLY ONE request — at any nesting, so
- * `try`/`catch`, `if`, `Promise.all` and `const` assignment all count — whose
- * path is built only from literals and escaped parameters and whose options
- * name a literal verb and a parameter-shaped body. Anything else yields
- * `route: null` with its reason rather than a guess.
- *
- * A direct call site builds its path under the transport's own contract
- * (literals plus `encodeURIComponent(<parameter>)`), so nothing else is
- * resolved for it: a computed path here is a call site to fix, not a template
- * to decode.
- */
 export function extractRoute(
   declaration: Declaration,
   parameters: Set<string>,

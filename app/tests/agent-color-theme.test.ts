@@ -7,12 +7,6 @@ import {
   resolveAgentColor,
 } from "../../ui/core/src/agent-colors.ts";
 
-/**
- * HOU-699 regression: agent avatar colors must survive a theme switch without
- * a re-render. That only holds if the resolved color is a var(--ht-agent-*)
- * reference (flipped by CSS on [data-theme="dark"]), never a hex snapshot
- * picked by reading data-theme at render time.
- */
 describe("agent colors are theme-reactive CSS references (HOU-699)", () => {
   it("palette ids resolve to a var(--ht-agent-*) reference, not a hex", () => {
     for (const entry of AGENT_COLORS) {

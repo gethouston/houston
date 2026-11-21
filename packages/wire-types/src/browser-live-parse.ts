@@ -1,9 +1,3 @@
-/**
- * Strict parsers for the browser hand-off wire (`./browser-live`). The runtime
- * validates the input POST with the same parser the SDK uses to read the SSE
- * stream, so both ends throw on the same drift instead of guessing.
- */
-
 import {
   BROWSER_HANDOFF_FAILURES,
   type BrowserHandoffFailure,
@@ -22,7 +16,6 @@ import {
 
 export { parseBrowserLiveInputRequest } from "./browser-live-input-parse";
 
-/** One SSE `data:` message, or a throw naming what is wrong with it. */
 export function parseBrowserLiveEvent(value: unknown): BrowserLiveEvent {
   const body = record(value, "browser live event");
   switch (body.type) {
@@ -73,7 +66,6 @@ function liveWindow(value: unknown): BrowserLiveWindow {
   return { frames, bytes };
 }
 
-/** The input POST's `200` answer, or a throw. */
 export function parseBrowserLiveInputAnswer(
   value: unknown,
 ): BrowserLiveInputAnswer {
@@ -90,7 +82,6 @@ export function parseBrowserLiveInputAnswer(
 
 const FAILURE_PATTERN = /\bERROR (handoff_[a-z]+):/;
 
-/** The hand-off refusal a `browser` tool result carries, if any. */
 export function browserHandoffFailureOf(
   content: string,
 ): BrowserHandoffFailure | null {

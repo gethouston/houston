@@ -3,25 +3,6 @@ import type { CredentialStore, CredentialVault } from "../ports";
 import { bearer, json } from "./http";
 import { defineRoute } from "./registry";
 
-/**
- * Sandbox-facing central usage probe (connect-once). GitHub Copilot's quota
- * endpoint (`GET api.<host>/copilot_internal/user`) authenticates with the
- * LONG-LIVED GitHub OAuth token — which, by design (Gate #2), never leaves
- * this process: the runtime's auth.json is scrubbed to access-only right
- * after login, so the runtime cannot run this probe itself and its Usage row
- * read "sign in again" forever on a perfectly healthy connection. The host
- * runs the probe against its central credential and relays GitHub's quota
- * payload (plan, percentages, reset date — never a token); the runtime maps
- * it onto the wire row exactly as it maps a direct response
- * (packages/runtime/src/ai/usage/copilot.ts, which mirrors these headers).
- *
- * Answers: 200 with GitHub's JSON; 401 when GitHub rejected the stored token
- * (runtime → "sign in again"); marked 404 when the workspace never connected
- * Copilot; 502 for any other upstream failure (runtime → honest error row).
- *
- * Returns true when the request was handled.
- */
-
 const COPILOT_QUOTA_HEADERS = {
   Accept: "application/json",
   "User-Agent": "GitHubCopilotChat/0.35.0",
@@ -47,7 +28,6 @@ export async function handleSandboxProviderUsage(
   deps: {
     vault: CredentialVault;
     credentials: CredentialStore;
-    /** Injectable for tests; defaults to global fetch. */
     fetchImpl?: typeof fetch;
   },
   method: string,
@@ -65,15 +45,10 @@ export async function handleSandboxProviderUsage(
     return true;
   }
   const provider = url.searchParams.get("provider");
-  // Copilot is the only provider whose usage needs the centrally-held token;
-  // every other probe runs fine in the runtime with what it already has.
   if (provider !== "github-copilot") {
     json(res, 400, { error: `no central usage probe for ${provider}` });
     return true;
   }
-  // WHOSE Copilot account this quota is for (HOU-976): the runtime forwards the
-  // gateway-minted acting-as token, exactly as it does for the credential serve.
-  // Absent (desktop, self-host, every pre-HOU-976 pod) = the single shared row.
   const actingHeader = req.headers["x-houston-acting-as"];
   const actingAs = Array.isArray(actingHeader) ? actingHeader[0] : actingHeader;
   const cred = await deps.credentials.get(
@@ -82,8 +57,6 @@ export async function handleSandboxProviderUsage(
     actingAs ? { actingAs } : undefined,
   );
   if (!cred?.refreshToken) {
-    // Same authoritative marker as /sandbox/credential: the store's own
-    // "not connected" answer, never a bare route-level 404.
     json(
       res,
       404,
@@ -114,8 +87,6 @@ export async function handleSandboxProviderUsage(
     return true;
   }
   if (upstream.status === 401 || upstream.status === 403) {
-    // The stored GitHub token is dead — the runtime's honest row is
-    // "sign in again", so relay the auth failure as our own 401.
     json(res, 401, { error: "GitHub rejected the stored Copilot token" });
     return true;
   }

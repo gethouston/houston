@@ -1,13 +1,6 @@
 import type { SkillsManifest } from "@houston/protocol";
 import { loadJson, saveJson, type TextStore } from "./store";
 
-/**
- * The per-agent shared-skills manifest (ADR 0003): which workspace-shared
- * skills THIS agent loads. Lives in agent data (hydrates with the agent,
- * survives moves, works offline). A missing file means "nothing enabled" —
- * the copy-based world is the valid degenerate state the migration starts
- * from, so absence is never an error.
- */
 export const skillsManifestKey = (root: string) =>
   `${root}/.houston/skills-manifest/skills-manifest.json`;
 
@@ -16,12 +9,6 @@ export const EMPTY_SKILLS_MANIFEST: SkillsManifest = {
   enabled: [],
 };
 
-/**
- * Normalize an untrusted parsed value into a valid manifest. Files-first: the
- * file is agent- and user-editable, so tolerate garbage per-field (drop it)
- * rather than rejecting the document — but keep `loadJson`'s throw for
- * unparseable JSON (a mangled file must surface, not silently reset).
- */
 export function normalizeSkillsManifest(value: unknown): SkillsManifest {
   if (typeof value !== "object" || value === null) return EMPTY_SKILLS_MANIFEST;
   const raw = (value as { enabled?: unknown }).enabled;
@@ -54,7 +41,6 @@ export async function saveSkillsManifest(
   });
 }
 
-/** Pure enable/disable — returns a new manifest, never mutates. */
 export function withSharedSkill(
   manifest: SkillsManifest,
   slug: string,

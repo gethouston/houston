@@ -2,13 +2,9 @@ import type { ToolMatch } from "./integrations-render";
 
 type Account = NonNullable<ToolMatch["accounts"]>[number];
 
-// The whole account-choice rule set, stated once: it rides only on a search
-// result that lists several accounts, the one moment the model needs it.
 const ACCOUNT_SELECTION_GUIDANCE =
   "When the app has several connected accounts, always pass `account`; never omit it. Choose an account yourself only when the user's words, the task, or an earlier choice in this conversation unambiguously identify one of the listed accounts. If ANY account lacks an identity label and the choice is still unclear, you MUST ask ONE ask_user question before acting, even for read-only actions. Describe each account by its identity label (email or workspace name), otherwise 'connected on <date>', otherwise 'account 1' or 'account 2', as listed above. Never guess which account is work or personal from a connection date or its order. When all accounts have identity labels, ask once if the choice matters and is ambiguous. Once the user chooses, keep using that account for the rest of this conversation without asking again, unless they say otherwise. When you set up a routine that uses such an app, settle the account while setting it up and write it into the routine's instructions in plain words. If no one can answer a question right now and nothing identifies the account, do not act on that app: finish the rest, then say plainly which accounts you found and that the user needs to pick one, because that always needs their attention. Never show an internal account id to the user, and never ask when the app has a single account.";
 
-// UTC because the runtime does not know the user's timezone; the date only has
-// to tell accounts apart, not match a local calendar to the minute.
 const connectionDate = new Intl.DateTimeFormat("en-US", {
   month: "long",
   day: "numeric",
@@ -29,11 +25,6 @@ function connectedAt(account: Account): number | undefined {
   return Number.isNaN(at) ? undefined : at;
 }
 
-/**
- * Each account's plain description: its identity label, else its connection
- * date, else an ordinal. Two unnamed accounts connected on the same day would
- * read as twins, so those carry their connection order within that day.
- */
 function accountDescriptions(accounts: Account[]): string[] {
   const days = accounts.map((account) => {
     const at = connectedAt(account);
@@ -54,7 +45,6 @@ function accountDescriptions(accounts: Account[]): string[] {
   });
 }
 
-/** List each app once, keeping human descriptions beside the execute target. */
 export function multiAccountNote(items: ToolMatch[]): string {
   const byToolkit = new Map<string, Account[]>();
   for (const item of items) {

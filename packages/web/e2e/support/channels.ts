@@ -2,14 +2,12 @@ import { expect, type Page } from "@playwright/test";
 import { signInAsViewer } from "./identity";
 import { openSettings } from "./settings-nav";
 
-/** One request the app made to the channels routes (reads excluded). */
 export interface ChannelCall {
   method: string;
   path: string;
   body: unknown;
 }
 
-/** A connection as the gateway lists it. */
 export interface MockConnection {
   id: string;
   provider: "slack" | "whatsapp";
@@ -19,14 +17,10 @@ export interface MockConnection {
 }
 
 export interface MockChannelsOptions {
-  /** Slack's provider entry reports a finished admin setup. */
   slackConfigured?: boolean;
-  /** WhatsApp's provider entry reports a finished admin setup. */
   whatsappConfigured?: boolean;
   holdFirstListUntilRedeemed?: boolean;
-  /** What the list holds at the start. Default: one Slack connection. */
   connections?: MockConnection[];
-  /** How long each minted WhatsApp code lives, in mint order; the last repeats. */
   whatsAppCodeTtlMs?: number[];
 }
 
@@ -40,11 +34,6 @@ export const SLACK_CONNECTION: MockConnection = {
 
 export const WHATSAPP_NUMBER = "+15550001111";
 
-/**
- * The WhatsApp codes the mock mints, in order, with the `wa.me` link each
- * carries. The first uses Go's `+` for the space and the second `%20`: the
- * gateway has sent both, and the app accepts both.
- */
 export const WHATSAPP_CODES = [
   {
     code: "ABCDEFGH234567AB",
@@ -56,13 +45,6 @@ export const WHATSAPP_CODES = [
   },
 ] as const;
 
-/**
- * The gateway, recorded rather than asserted: an expectation thrown inside a
- * route handler fails the request instead of the test, so every claim about
- * what the app sent is made from the test body, after the UI settled.
- * `connections` is the live list: a spec pushes into it to model a connection
- * made outside the app (a WhatsApp message sent from the phone).
- */
 export async function mockChannels(
   page: Page,
   {
@@ -95,8 +77,6 @@ export async function mockChannels(
       return route.fulfill({ status: 204 });
     }
     if (path.endsWith("/slack/complete")) {
-      // One ticket, one binding: redeeming again binds nothing new, and the
-      // test asserts the app never asked twice.
       if (!bound) {
         bound = {
           id: "connection-2",
@@ -138,9 +118,6 @@ export async function mockChannels(
         },
       });
     }
-    // The list is answered NOW; holding the first answer until the ticket is
-    // redeemed models a read the server served before a write the browser saw
-    // land first.
     const json = structuredClone({
       providers: [
         { id: "slack", name: "Slack", configured: slackConfigured },
@@ -156,7 +133,6 @@ export async function mockChannels(
   return { calls, connections };
 }
 
-/** Sign in and open Settings → Channels (the phone's More card on a phone). */
 export async function openChannels(page: Page) {
   await signInAsViewer(page);
   await openSettings(page);
@@ -166,12 +142,10 @@ export async function openChannels(page: Page) {
   ).toBeVisible();
 }
 
-/** The Slack provider card, a region named by its heading. */
 export function slackCard(page: Page) {
   return page.getByRole("region", { name: "Slack", exact: true });
 }
 
-/** The WhatsApp provider card, a region named by its heading. */
 export function whatsAppCard(page: Page) {
   return page.getByRole("region", { name: "WhatsApp", exact: true });
 }

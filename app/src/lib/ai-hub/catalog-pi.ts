@@ -1,17 +1,3 @@
-/**
- * Map the pi-ai provider catalog (`@houston/protocol` `ProviderCatalog`, the
- * host's `GET /v1/catalog` = the RUNNABLE set) into the internal merge candidates
- * the hub folds into unique models. This is the AUTHORITATIVE base source: every
- * model in the hub exists because pi-ai can run it, with pi's own pricing,
- * context window, reasoning, and vision. The models.dev snapshot only enriches
- * these afterwards (see `foldEnrichment`); it never adds a model.
- *
- * Provider ids are put through the SAME renames the frontend uses when hydrating
- * `PROVIDERS` (`DROP_PI_PROVIDERS` first, then `PROVIDER_ID_RENAME`), so an
- * offer's `providerId` + preserved `modelId` reproduce the picker's
- * `${providerId}::${modelId}` key exactly. Nothing is re-hardcoded here.
- */
-
 import type { CatalogModelEntry, ProviderCatalog } from "@houston/protocol";
 import {
   modelDisplayName,
@@ -27,18 +13,6 @@ import { detectLab } from "./catalog-lab.ts";
 import type { Candidate } from "./catalog-merge.ts";
 import type { RawModel } from "./catalog-snapshot.ts";
 
-/**
- * One runnable pi model entry → the internal `RawModel` carrier.
- *
- * The NAME is Houston's curated name when the shared display table carries one
- * (the same table `buildProvider` labels the picker from, keyed by pi's
- * canonical ids), so the hub calls a model exactly what the picker calls it.
- * The KEY stays
- * derived from pi's own name: it is the cross-provider merge identity AND what
- * the baked models.dev snapshot was keyed with, so a curated label must never
- * reach it (`normalizeKey`). Search falls through to the key, so a model is
- * still findable by the vendor-qualified name pi ships.
- */
 function entryToRaw(providerId: string, entry: CatalogModelEntry): RawModel {
   const raw: RawModel = {
     key: normalizeKey(entry.name),
@@ -48,36 +22,15 @@ function entryToRaw(providerId: string, entry: CatalogModelEntry): RawModel {
       entry.name,
   };
   if (entry.reasoning) raw.reasoning = true;
-  // Vision (image INPUT) rides on the `input` modality list so `capabilitiesOf`
-  // derives `vision` the same way it always has.
   if (entry.vision) raw.input = ["text", "image"];
   if (typeof entry.contextWindow === "number")
     raw.context = entry.contextWindow;
   if (typeof entry.maxTokens === "number") raw.output = entry.maxTokens;
-  // pi prices are already per-1M-token dollars, the unit the offer surfaces.
   raw.costIn = entry.pricing.input;
   raw.costOut = entry.pricing.output;
   return raw;
 }
 
-/**
- * Turn the pi-ai catalog into merge candidates: one per `(provider, model)`,
- * under the renamed Houston provider id, marked `subscription` for OAuth
- * providers (their per-token price is never shown). `detectLab` reads the raw
- * (openrouter `vendor/model` prefixes, then name heuristics) to assign the lab.
- *
- * `visibleIds`, when given, restricts candidates to those (renamed) provider ids
- * — the SAME set `getVisibleProviders` shows the picker, so the AI Models tab and
- * the picker render exactly the same providers (a coming-soon or otherwise-gated
- * provider in the raw catalog never becomes a hub model the picker can't offer).
- *
- * Model curation: the hub, the provider modal, and the chat model picker must
- * offer the SAME set, so both apply the ONE shared gate — `isModelVisible`
- * (`VISIBLE_MODELS` in `provider-overrides.ts`), the same table `buildProvider`
- * filters the hydrated `PROVIDERS` with. A provider without a `VISIBLE_MODELS`
- * entry carries its full pi model list. Hidden ids stay runnable on the wire;
- * pi's catalog remains the single existence source.
- */
 export function piCatalogToCandidates(
   catalog: ProviderCatalog,
   visibleIds?: ReadonlySet<string>,

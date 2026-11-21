@@ -3,7 +3,6 @@ import { CornerDownLeft, Loader2, LogIn } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { CredentialStepMode } from "./chat-credential-step-fields";
 
-/** The filled CTA: the service's Sign in button, or the form's Save submit. */
 export function CredentialStepCta({
   mode,
   missing,
@@ -17,16 +16,13 @@ export function CredentialStepCta({
   mode: CredentialStepMode;
   missing: boolean;
   formId: string;
-  /** The key form has every required field filled. */
   ready: boolean;
-  /** A sign-in already ran from this card, so the button offers another go. */
   retry: boolean;
   signInPending: boolean;
   submitting: boolean;
   onSignIn: () => void;
 }) {
   const { t } = useTranslation("chat");
-  // No registered integration to credential: Skip is the only honest action.
   if (missing) return null;
   if (mode === "oauth") {
     return (

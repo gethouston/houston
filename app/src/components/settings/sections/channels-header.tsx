@@ -1,8 +1,6 @@
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
-/** The section's title, intro and space. The title takes focus when a
- *  disconnect removes the card that held it. */
 export function ChannelsHeader({
   spaceName,
   titleRef,

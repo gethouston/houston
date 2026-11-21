@@ -1,7 +1,3 @@
-/**
- * Shared inline-rename behavior for file/folder rows and cards: start with
- * the basename selected, Enter commits, Escape cancels, blur commits.
- */
 import { cn } from "@houston-ai/core";
 import { useRef, useState } from "react";
 
@@ -29,11 +25,6 @@ export function useInlineRename(
     setRenaming(true);
     requestAnimationFrame(() => {
       const input = inputRef.current;
-      // Focus can beat this frame: a fast user (or an automated fill, which
-      // focuses in one task and inserts text in the next) may already be
-      // mid-edit, and re-selecting the basename now would make their next
-      // keystroke replace part of what they typed (the e2e-caught
-      // "Q3 final.pdf.pdf" corruption). First-focus only.
       if (!input || document.activeElement === input) return;
       input.focus();
       const dot = name.lastIndexOf(".");

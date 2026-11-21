@@ -1,31 +1,12 @@
-/**
- * Whether a person is typing on, for the typing policy (`draft-prewarm.ts`):
- * one run per draft slot, kept while keystrokes come at most
- * {@link PREWARM_TYPING_GAP_MS} apart on one target.
- *
- * Package self-references only, like `draft-prewarm.ts`: the app's node:test
- * runner loads both through `@houston/sdk` subpaths.
- */
-
-/** How long a person types without stopping before a prewarm starts. */
 export const PREWARM_TYPING_MS = 1_500;
 
-/** The longest pause between keystrokes that still counts as typing on. */
 export const PREWARM_TYPING_GAP_MS = 1_000;
 
-/**
- * One reading of two clocks. The wall clock goes on through system sleep but
- * can be set back or forward; the monotonic one is never set but stops while
- * the machine sleeps (`performance.now()` on macOS WebKit). A span measured
- * to start something is read on the monotonic clock, which no adjustment
- * lengthens; a span measured to end something must have passed on either.
- */
 export interface DraftInstant {
   wall: number;
   mono: number;
 }
 
-/** One draft slot's typing without a pause past the gap. */
 export interface DraftTypingRun {
   target: string;
   startedMono: number;
@@ -33,13 +14,9 @@ export interface DraftTypingRun {
   lastMono: number;
 }
 
-/** The typing runs of one policy's draft slots. */
 export class DraftTypingRuns {
   private readonly runs = new Map<string, DraftTypingRun>();
 
-  /** Extends the slot's run, or starts one on another target or after a
-   *  pause past the gap on either clock: a sleep shows on the wall clock, and
-   *  a wall clock set back leaves the pause unknown. */
   keystroke(
     draftKey: string,
     target: string,
@@ -69,7 +46,6 @@ export class DraftTypingRuns {
     return started;
   }
 
-  /** The slot's text emptied: its next keystroke starts a run. */
   end(draftKey: string): void {
     this.runs.delete(draftKey);
   }
@@ -78,14 +54,12 @@ export class DraftTypingRuns {
     return [...this.runs].map(([key, run]) => [key, { ...run }]);
   }
 
-  /** Takes over runs for every slot this instance has not typed in. */
   adopt(entries: readonly [string, DraftTypingRun][]): void {
     for (const [key, run] of entries)
       if (!this.runs.has(key)) this.runs.set(key, { ...run });
   }
 }
 
-/** The hold a prewarm answer reports; none for a skip or a shape it is not. */
 export function holdOf(answer: unknown): number {
   const holdMs =
     answer && typeof answer === "object"

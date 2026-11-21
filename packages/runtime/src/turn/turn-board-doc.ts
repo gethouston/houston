@@ -11,14 +11,6 @@ import type { TurnRequest } from "./types";
 
 class BoardUnreadable extends Error {}
 
-/**
- * Project a claimed turn's landed board into the activity DB doc, derived
- * from the STORE object read after the doc revision (publishDerived), never
- * the turn's own copy: another turn (or the gateway's own board write) can
- * land and project between this turn's upload and its publish, and the
- * older copy would roll that card back. A board the store will not give
- * back now is skipped: stale and unannounced, never a failed turn.
- */
 export async function publishTurnActivityDoc(
   deps: TurnServerDeps,
   turn: TurnRequest,

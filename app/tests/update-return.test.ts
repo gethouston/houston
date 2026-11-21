@@ -21,8 +21,6 @@ const HOUR = 60 * MINUTE;
 const T0 = 1_700_000_000_000;
 const TICK = UPDATE_CHECK_INTERVAL_MS;
 
-/** Feed events the way the hook does: one ref, one step per event, and the
- *  indexes of the events that reported a return. */
 function run(start: AbsenceState, events: AbsenceEvent[]): number[] {
   let state = start;
   const returns: number[] = [];
@@ -78,10 +76,6 @@ describe("absenceStep", () => {
     );
   });
 
-  // A desktop that never sleeps, locked overnight with Houston frontmost:
-  // the lock hides the document while `hasFocus()` stays true, so every
-  // tick reads `focused: false` (`windowInFront`), and the unlock is a
-  // `visible` with focus and no `focus` event behind it.
   it("returns once at the unlock of a desktop locked overnight", () => {
     const ticks: AbsenceEvent[] = [];
     for (let at = T0 + TICK; at <= T0 + 8 * HOUR; at += TICK) {
@@ -203,9 +197,6 @@ describe("absenceStep", () => {
     );
   });
 
-  // The hook is remounted with <App/> on every identity change. A new mount
-  // starts in front with no absence behind it, so its first focus, even
-  // hours after the process started, and its first tick arm nothing.
   it("arms nothing on a remount", () => {
     const mountedAt = T0 + 9 * HOUR;
     deepStrictEqual(

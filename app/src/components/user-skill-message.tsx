@@ -11,15 +11,6 @@ interface Props {
   attachmentLabels?: UserAttachmentMessageLabels;
 }
 
-/**
- * Read-only card rendered in place of a plain user_message body when the
- * user submitted a Skill. Mirrors the SkillCard / selected-skill visual
- * (round image bubble + title + description + integrations) and lists
- * the labelled values the user filled.
- *
- * The card sits in the right column of the conversation (where user
- * bubbles live) so the speaker attribution stays the same.
- */
 export function UserSkillMessage({ invocation, attachmentLabels }: Props) {
   const {
     displayName,

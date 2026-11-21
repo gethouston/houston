@@ -21,11 +21,6 @@ import {
 import { json } from "./http";
 import { defineRoute } from "./registry";
 
-/**
- * The routine-run routes: on-demand fire ("run now") and stop. Both are matched
- * BEFORE the generic per-agent runtime dispatch — the runtime has no routine
- * routes — and a wrong method on either falls through to it exactly as before.
- */
 const SOURCE = "packages/host/src/routes/routine-runs.ts";
 
 interface RunWiring {
@@ -35,11 +30,6 @@ interface RunWiring {
   root: string;
 }
 
-/**
- * The storage and the live channel both routes need, or null once the 503 has
- * been answered: a run that cannot reach the runtime must never read as one
- * that started.
- */
 function runWiring(
   deps: AgentRouteDeps,
   authz: { workspace: Workspace; agent: Agent },
@@ -63,12 +53,6 @@ function runWiring(
   };
 }
 
-/**
- * Run a routine ON DEMAND: fire it now through the SAME firer + record path the
- * scheduler uses, so a hand-pressed run is indistinguishable from a cron one
- * (records a routine_run, reconcile completes it). A fire failure surfaces as a
- * real status — never a silent miss.
- */
 defineRoute({
   group: "routine-runs",
   method: "POST",
@@ -86,21 +70,6 @@ defineRoute({
         error: ROUTINE_NOT_FOUND_REASON,
         code: ROUTINE_NOT_FOUND,
       });
-    // The firer wraps the workspace's channel — the exact path
-    // ChannelRoutineFirer takes for the scheduler. fireRoutineRun records the
-    // run, then fires; a fire failure marks the run errored AND rethrows, so
-    // we answer 502 (never 200).
-    //
-    // The run acts as the person who pressed the button: on a managed pod the
-    // gateway-minted acting-as token rides along, so the turn resolves THEIR
-    // credential scope — the same identity the gateway's own pool run-now
-    // mints, and the identity the routine screen's connection badge probed.
-    // Without it the firer falls back to the creator's bare sub, which a pod
-    // cannot elevate (HOU-976 D10), so the run landed on the TEAM credential:
-    // in a team space where the presser connected a provider personally, the
-    // badge said "connected" and the run failed "creator has no account
-    // connected". Scheduled fires never had this gap (the control plane
-    // mints the creator's token for them).
     const firer = new ChannelRoutineFirer(
       deps.channels,
       trustedActingAs(deps, req),
@@ -122,8 +91,6 @@ defineRoute({
       );
       json(res, 200, { ok: true, runId });
     } catch (err) {
-      // A run already in flight is a 409 the UI can toast plainly (the Rust
-      // engine's Conflict); anything else is a real fire failure.
       json(res, err instanceof RoutineBusyError ? 409 : 502, {
         error: err instanceof Error ? err.message : String(err),
       });
@@ -131,10 +98,6 @@ defineRoute({
   },
 });
 
-/**
- * Stop an in-flight routine run: the row goes terminal first, then the live
- * turn is aborted through the channel (schedule/cancel.ts).
- */
 defineRoute({
   group: "routine-runs",
   method: "POST",
@@ -162,9 +125,6 @@ defineRoute({
       return json(res, 404, { error: "run not found" });
     if (result.status === "not_running")
       return json(res, 409, { error: "run is not running" });
-    // The run is cancelled either way; `abort_failed` (additive) tells the
-    // client the live-turn abort itself failed — the runtime may still be
-    // burning the turn (no-silent-failures: the caller can surface it).
     json(res, 200, {
       ...result.run,
       ...(result.abortFailed ? { abort_failed: true } : {}),

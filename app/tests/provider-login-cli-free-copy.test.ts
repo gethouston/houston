@@ -4,26 +4,14 @@ import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-/**
- * The provider sign-in copy must NEVER instruct running a CLI command
- * (2026-08-15 incident: a broken engine image degraded cloud Anthropic
- * connects into a dialog telling non-technical users to run
- * `claude setup-token` in a terminal). Houston's audience is non-technical
- * and the product prompt forbids mentioning CLIs — the connect surfaces obey
- * the same rule. This scans every locale's provider sign-in namespaces for
- * terminal/CLI phrasing so a regression fails in CI, not in front of a user.
- */
-
 const LOCALES_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
   "../src/locales",
 );
 const LANGS = ["en", "es", "pt"] as const;
 
-/** The sign-in namespaces whose strings the dialogs/toasts render. */
 const NAMESPACES = ["providerLogin", "claudeLogin"] as const;
 
-/** Phrasings that read as "go run a CLI command". */
 const BANNED = [
   /setup-token/i,
   /claude setup-token/i,

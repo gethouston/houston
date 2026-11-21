@@ -1,11 +1,5 @@
-// `.ts` extensions so the node test runner can load this module on its own.
 import { type AgentNameIssue, agentNameIssue } from "../../lib/agent-name.ts";
 
-/**
- * What stops an employee card's name from being hired under: blank (every AI
- * Employee needs a name), or anything the host would refuse. `currentName` is
- * the name a hired employee already holds (see `agentNameIssue`).
- */
 export type EmployeeNameIssue = AgentNameIssue | "required";
 
 export function employeeNameIssue(
@@ -17,11 +11,6 @@ export function employeeNameIssue(
   return agentNameIssue(name, [...takenNames], currentName);
 }
 
-/**
- * The issue a card shows. A blank name is only a problem once the person
- * tried to go on: an empty field on arrival is an invitation, not an error.
- * Every other issue shows as it is typed.
- */
 export function visibleNameIssue(
   issue: EmployeeNameIssue | null,
   attempted: boolean,
@@ -29,7 +18,6 @@ export function visibleNameIssue(
   return issue === "required" && !attempted ? null : issue;
 }
 
-/** The first card whose name holds the submit back, or null when none does. */
 export function firstNameIssueIndex(
   issues: readonly (EmployeeNameIssue | null)[],
 ): number | null {

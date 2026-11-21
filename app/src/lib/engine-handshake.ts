@@ -5,10 +5,6 @@ interface EngineConfig {
   token: string;
 }
 
-/**
- * Pulls the Tauri-provided host sidecar handshake when the one-shot ready event
- * raced ahead of the React listener.
- */
 export async function pullEngineHandshakeWithRetry(opts: {
   hasClient: () => boolean;
   applyConfig: (config: EngineConfig) => void;
@@ -23,9 +19,7 @@ export async function pullEngineHandshakeWithRetry(opts: {
         opts.applyConfig(config);
         return;
       }
-    } catch {
-      /* engine not ready yet, retry */
-    }
+    } catch {}
     await new Promise((r) => setTimeout(r, delay));
     delay = Math.min(delay * 1.5, 1000);
   }

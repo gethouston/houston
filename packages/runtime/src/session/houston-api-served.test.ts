@@ -7,8 +7,6 @@ import {
 } from "./houston-api-served";
 
 test("the API-key operations it reads are real catalog names", () => {
-  // A renamed operation would never appear in the stamp, and every desktop
-  // manager would go on pitching an API it does not have.
   const names = new Set(
     processAssistantCatalog()?.operations.map((o) => o.name),
   );
@@ -16,7 +14,6 @@ test("the API-key operations it reads are real catalog names", () => {
 });
 
 test("served unless the host stamps the API-key operations unserved", () => {
-  // Fail open, like the stamp: the gateway stamps nothing.
   expect(houstonApiServedHere({})).toBe(true);
   expect(houstonApiServedHere(assistantUnservedEnv(["createOrg"]))).toBe(true);
   expect(

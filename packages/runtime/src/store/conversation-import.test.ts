@@ -69,8 +69,6 @@ test("an import lands after what the conversation already holds", () => {
 });
 
 test("an import `at: start` lands before what the chat already holds, stamped before it", () => {
-  // A first-run onboarding whose import only lands on a later load, after the
-  // chat moved on: it was said first, so it reads first.
   const dir = freshDir();
   appendUserMessageAt(dir, "assistant", "Yes, let's do it", { turnId: "t1" });
   appendAssistantMessageAt(dir, "assistant", "On it.", { turnId: "t1" });
@@ -105,7 +103,6 @@ test("the same import twice writes it once", () => {
   importConversationMessagesAt(dir, "assistant", onboarding);
   expect(importConversationMessagesAt(dir, "assistant", onboarding)).toBe(0);
   expect(loadConversation(dir, "assistant")?.messages).toHaveLength(3);
-  // A different import is a different import.
   expect(
     importConversationMessagesAt(dir, "assistant", {
       importId: "onboarding:profile_completion",
@@ -120,8 +117,6 @@ test("the next turn carries the imported lines to the model like any earlier tur
   appendAssistantMessageAt(dir, "assistant", "Hi there.", { turnId: "t1" });
   importConversationMessagesAt(dir, "assistant", onboarding);
 
-  // exec-turn consumes the marker and replays the transcript into the fresh
-  // session it opens for the next turn.
   expect(consumeSessionReplayAt(dir, "assistant")).toBe(true);
   const replay = renderReplayPreamble(
     getHistoryAt(dir, "assistant")?.messages ?? [],

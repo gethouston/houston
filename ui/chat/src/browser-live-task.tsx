@@ -8,11 +8,6 @@ export interface BrowserLiveTaskProps {
   showLess: string;
 }
 
-/**
- * The agent's instruction, never cut mid-sentence without a way back: a
- * phone clamps it to three lines and offers Show more only when it really
- * overflows; desktop has the room and shows it whole.
- */
 export function BrowserLiveTask({
   task,
   showMore,
@@ -26,7 +21,6 @@ export function BrowserLiveTask({
     const el = ref.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const measure = () => {
-      // Measured while clamped; once expanded the toggle must stay to fold.
       if (!el.dataset.expanded)
         setOverflows(el.scrollHeight > el.clientHeight + 1);
     };

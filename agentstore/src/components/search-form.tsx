@@ -7,23 +7,13 @@ import type * as React from "react";
 import { resolveSearchTarget } from "@/lib/search-routing";
 
 export interface SearchFormProps {
-  /** Prefill value for the current catalog query. */
   defaultValue?: string;
-  /** Placeholder copy. */
   placeholder?: string;
-  /** Visually hidden label text for the input. */
   label?: string;
   className?: string;
-  /** Larger hero treatment vs. the compact in-page control. */
   size?: "lg" | "md";
 }
 
-/**
- * The catalog search box. It degrades to a plain GET form to Home (works with
- * the keyboard and without hydration), and enhances with JS so a leading `@handle`
- * jumps to that creator's page instead of a full-text search. Every result URL
- * stays shareable and crawlable.
- */
 export function SearchForm({
   defaultValue,
   placeholder = "Search agents",

@@ -128,8 +128,6 @@ test("a single-use worker REJECTS an unclaimed real turn (no reusable bash)", as
     headers: { "content-type": "application/json" },
     body: JSON.stringify(unclaimed),
   });
-  // An unclaimed real turn would run bash (config-keyed) without spending the
-  // pod — serially reusable cross-tenant bash. The worker refuses it outright.
   expect(response.status).toBe(400);
   expect(await response.json()).toEqual({ error: "single_use_requires_claim" });
   expect(begin).not.toHaveBeenCalled();
@@ -160,18 +158,14 @@ test("a single-use worker binds the turn to its own pod UID (X-Pool-Pod-UID)", a
       body: JSON.stringify(claimed),
     });
 
-  // A turn the gateway minted for a DIFFERENT incarnation (this IP was reused by
-  // a replacement pod): refused, and the worker is NOT spent.
   const mismatch = await post({ "x-pool-pod-uid": "pod-B" });
   expect(mismatch.status).toBe(409);
   expect(await mismatch.json()).toEqual({ error: "pod_uid_mismatch" });
-  // A single-use worker fails closed: a missing binding is refused too.
   const absent = await post({});
   expect(absent.status).toBe(409);
   expect(begin).not.toHaveBeenCalled();
   expect(workerSpent()).toBe(false);
 
-  // The turn minted for THIS incarnation is served normally.
   const ok = await post({ "x-pool-pod-uid": "pod-A" });
   await ok.text();
   expect(ok.status).toBe(200);
@@ -241,10 +235,8 @@ test("concurrency-1: a second claimed turn cannot straddle the first's release",
       body: JSON.stringify(claimed),
     });
   const first = post();
-  await firstEntered; // first holds the only admission slot and has spent the pod
+  await firstEntered;
   const second = await post();
-  // The slot is held for the whole first turn, so the second is refused; even
-  // after the first releases, the pod is spent (isDraining) so it never runs.
   expect(second.status).toBe(503);
   releaseFirst();
   expect((await first).status).toBe(200);
@@ -262,16 +254,12 @@ test("markWorkerSpent requires HOUSTON_HOME", () => {
 });
 
 test("a single-use worker refuses to boot without its pod UID (incarnation fence)", () => {
-  // The dispatch fence fails open on an empty podUid (incarnationOK returns
-  // true). A single-use worker missing HOUSTON_POD_UID would accept a turn
-  // dispatched for a prior incarnation of its ordinal — so boot must throw.
   expect(() => assertSingleUseIncarnationConfigured(true, "")).toThrow(
     /HOUSTON_POD_UID/,
   );
   expect(() => assertSingleUseIncarnationConfigured(true, "   ")).toThrow(
     /HOUSTON_POD_UID/,
   );
-  // A configured single-use worker and any non-single-use worker boot fine.
   expect(() =>
     assertSingleUseIncarnationConfigured(true, "pod-uid-abc"),
   ).not.toThrow();

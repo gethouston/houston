@@ -15,7 +15,6 @@ import { WorkspaceSelectionState } from "./workspace-selection-state";
 
 export { WORKSPACE_SELECTION_KEY } from "./workspace-selection-device";
 
-/** Boot only reads; deliberate choices write in identity-bound order. */
 export function workspaceSelectionPreference(ctx: ModuleContext) {
   const state =
     ctx.config.ports.workspaceSelection ?? new WorkspaceSelectionState();
@@ -59,7 +58,6 @@ export function workspaceSelectionPreference(ctx: ModuleContext) {
       const local = device();
       const generation = state.bind(user());
       const valid = () => state.bind(user()) === generation;
-      // The list and account read overlap; an unused result is always handled.
       const account = read(valid).then(
         (selection) => ({ selection }),
         (error: unknown) => ({ error }),

@@ -9,7 +9,6 @@ import {
 describe("currentRank", () => {
   it("starts everyone at cadet", () => {
     strictEqual(currentRank(0, 0).id, "cadet");
-    // A caller bug (negative totals) must still yield a rank, not a crash.
     strictEqual(currentRank(-10, -10).id, "cadet");
   });
 
@@ -29,9 +28,7 @@ describe("currentRank", () => {
   });
 
   it("does not stop at the first unmet rung", () => {
-    // Enough usage for the top, but the experience is only specialist-grade.
     strictEqual(currentRank(150, 5000).id, "specialist");
-    // Both currencies far past the top: the ladder ends at mission-director.
     strictEqual(currentRank(9999, 9999).id, "mission-director");
   });
 });

@@ -8,7 +8,6 @@ import {
 export const clipSchemaText = (text: string, max: number): string =>
   text.length <= max ? text : `${text.slice(0, max - 1)}…`;
 
-/** Receives a depth-bounded, locally resolved schema from schemaNode. */
 export function schemaType(
   node: Record<string, unknown>,
   enumLimit = 12,
@@ -69,7 +68,6 @@ export function schemaType(
   return typeof node.type === "string" ? node.type : "any";
 }
 
-/** Cut only between complete top-level parameters, never inside a literal. */
 export function schemaSignature(schema: unknown): string | null {
   if (!schemaObject(schema)) return null;
   const signature = schemaType(schemaNode(schema));

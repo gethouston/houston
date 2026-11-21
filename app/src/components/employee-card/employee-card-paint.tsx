@@ -1,7 +1,6 @@
 import { durationMs, easing } from "@houston/design-tokens";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-/** Only paint crossfades; the controls and their focus stay mounted. */
 export function EmployeeCardPaint({ paint }: { paint: string }) {
   const reduce = useReducedMotion();
   return (

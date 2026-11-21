@@ -150,8 +150,6 @@ test("the shell reads the live host presentation; sandbox and missing requests c
     expect(await response.json()).toEqual({
       title: issued.summary,
       detail: issued.detail,
-      // The structure a surface renders in its own language, and the English
-      // button copy every decoder can count on being there.
       args: [{ name: "id", value: "Dobby", long: false }],
       options: [
         { kind: "approval", id: "approve", label: "Yes, go ahead" },

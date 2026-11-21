@@ -1,8 +1,3 @@
-/* The file preview panel's motion (app/src/components/file-preview/).
-   Entrances ease out on the entrance curve; exits are quicker. Nothing here
-   runs on a keyboard action: an Esc close unmounts without an exit. */
-
-/* The desktop card slides in from the chat's edge; the phone sheet rises. */
 .preview-panel {
   transition:
     transform 240ms var(--ht-easing-entrance),
@@ -30,7 +25,6 @@
   }
 }
 
-/* The splitter: a short bar, darker under the pointer and while dragged. */
 .preview-grip::before {
   content: "";
   width: 4px;
@@ -48,7 +42,6 @@
   }
 }
 
-/* Press feedback on everything pressable in the panel. */
 .preview-press {
   transition: transform var(--ht-duration-press) var(--ht-easing-entrance);
 }
@@ -56,7 +49,6 @@
   transform: scale(0.97);
 }
 
-/* The hint and the "comments ready" bar rise into place. */
 .preview-float {
   display: flex;
   align-items: center;
@@ -74,7 +66,6 @@ button.preview-float:active {
   transform: scale(0.97);
 }
 
-/* "Converting…" / "Updated" next to the file name. */
 .preview-status {
   transition: opacity var(--ht-duration-fast) var(--ht-easing-entrance);
   @starting-style {

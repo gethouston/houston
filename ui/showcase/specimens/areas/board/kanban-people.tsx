@@ -13,10 +13,8 @@ import {
 import { PEOPLE_PROPS } from "./kanban-people-parts";
 import { PEOPLE } from "./sample";
 
-/** Labels whose initials are worth showing: two words, one word, an accent. */
 const INITIALS = ["Ana Silva", "julian", "Tomás Vidal", "Rin Watanabe"];
 
-/** A face stack is only honest on the surface it was ringed for. */
 function Surface({
   tone,
   children,

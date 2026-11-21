@@ -3,7 +3,6 @@ import type { PdfAnchor } from "./types";
 
 export const PAGE_ATTR = "data-pdf-page";
 
-/** The page frame an event or node sits in, with its 1-based number. */
 export function pageOf(
   node: Node | null,
 ): { el: HTMLElement; page: number } | null {
@@ -14,8 +13,6 @@ export function pageOf(
   return { el, page: Number(el.getAttribute(PAGE_ATTR)) };
 }
 
-/** Whether a pointer landed on a word of the text layer (a drag there
- *  selects text) rather than on the page around it (a drag draws an area). */
 export function isOnText(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
@@ -25,10 +22,6 @@ export function isOnText(target: EventTarget | null): boolean {
   );
 }
 
-/**
- * The live text selection inside `container`, as an anchor on the page it
- * starts on, or null when nothing (or only whitespace) is selected there.
- */
 export function readTextSelection(
   container: HTMLElement,
 ): { page: number; el: HTMLElement; anchor: PdfAnchor } | null {

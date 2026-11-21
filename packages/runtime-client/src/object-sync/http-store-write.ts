@@ -4,7 +4,6 @@ import { parseObjectManifest } from "./object-manifest";
 import type { WriteResult } from "./object-store";
 import { withOperationSignal } from "./operation-signal";
 
-/** Upload one object and normalize its generation response. */
 export async function uploadHttpObject(input: {
   fetchRequest: Parameters<typeof uploadFile>[0];
   url: string;

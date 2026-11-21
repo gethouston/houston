@@ -1,7 +1,3 @@
-// After Post: the post this opening made opens in the browser once, quietly,
-// and the dialog says so; a post replayed into another opening never opens.
-// Plus how loudly the primary button asks, and where the privacy notice shows.
-
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { postAndOpen } from "../src/components/organization/linkedin-post-open.ts";
@@ -34,10 +30,6 @@ const connected = {
   },
 } as const;
 
-/**
- * The dialog as the hooks drive it (one reducer, opened once) and a browser
- * that records every URL handed to it and every reported failure.
- */
 function dialog(
   browser: { mayOpen?: boolean; open?: (url: string) => Promise<boolean> } = {},
 ) {
@@ -64,11 +56,9 @@ function dialog(
     dispatch,
     opened,
     reported,
-    /** One Post: `during` runs while it is out, then it settles as `outcome`. */
     post: (outcome: LinkedInPostOutcome | null, during = () => {}) =>
       postAndOpen(async () => {
         during();
-        // The slot's landing, as the dialog's layout effect dispatches it.
         if (outcome?.kind === "posted")
           dispatch({ type: "posted", postUrl: outcome.postUrl });
         return outcome;
@@ -95,7 +85,6 @@ describe("the post this opening made", () => {
   it("opens once, and View post steps back with the line saying so", async () => {
     const d = dialog();
     const outcome = await d.post(POSTED);
-    // The slot's landing may come again after the open: it stays opened.
     d.dispatch({ type: "posted", postUrl: POST_URL });
 
     deepStrictEqual(outcome, POSTED);
@@ -195,8 +184,6 @@ describe("the post this opening made", () => {
 describe("a post replayed into another opening", () => {
   it("is shown without opening, View post leading", async () => {
     const d = dialog();
-    // The dialog reopens while the earlier opening's Post is out; the new
-    // opening reads the slot's landing.
     await d.post(POSTED, () => {
       d.dispatch({ type: "close" });
       d.dispatch({ type: "open" });

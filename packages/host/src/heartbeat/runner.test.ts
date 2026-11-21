@@ -56,11 +56,8 @@ let channel: {
 };
 let events: HoustonEvent[];
 let now: Date;
-/** How the fake runtime's briefing turn ends once admitted. */
 let reply: "ok" | "provider_error" | "stopped" | "none";
 
-/** The runtime's side: the hidden message (with the sender's nonce) and its
- *  turn's reply, persisted the way the runtime does. */
 async function persistTurn(
   _ctx: unknown,
   cid: string,
@@ -107,8 +104,6 @@ function runner(over: Partial<HeartbeatDeps> = {}) {
   const store = {
     getOrCreatePersonalWorkspace: async () => WS,
     getAgent: async (id: string) => (id === MANAGER.id ? MANAGER : null),
-    // The operator's every-tenant list holds a stranger's workspace the
-    // briefing must never read.
     listWorkspaces: async () => [WS, OTHER],
     listWorkspacesForUser: async () => [WS],
     listAgents: async (id: string) => (id === OTHER.id ? [BOB] : [ANA]),
@@ -128,7 +123,6 @@ function runner(over: Partial<HeartbeatDeps> = {}) {
   });
 }
 
-/** A mission waiting on the person: a non-empty snapshot. */
 const seedWaitingMission = () =>
   saveActivities(vfs, ANA.id, [
     { id: "m1", title: "Invoice", description: "", status: "needs_you" },
@@ -155,7 +149,6 @@ describe("the daily tick", () => {
     await seedWaitingMission();
     const r = runner();
     expect(await r.tick()).toEqual({ kind: "delivered" });
-    // Admitted, not yet finished: the person is not told yet.
     expect(events.map((e) => e.type)).not.toContain("HeartbeatDelivered");
     later(1);
     expect(await r.tick()).toEqual({ kind: "not_due" });
@@ -164,7 +157,6 @@ describe("the daily tick", () => {
       channel.fireTurn.mock.calls[0] ?? [];
     expect(ctx).toEqual({ workspace: WS, agent: MANAGER });
     expect(conversation).toBe("assistant");
-    // The exact bytes the cloud gateway also sends; channels key on them.
     expect(
       text.startsWith(`${AUTO_CONTINUE_MARKER}\n\n${HEARTBEAT_MARKER}\n`),
     ).toBe(true);
@@ -261,7 +253,6 @@ describe("the daily tick", () => {
   test("the person's timezone decides the local day", async () => {
     await setPreference(vfs, WS.id, "timezone", "America/Los_Angeles");
     await seedWaitingMission();
-    // 08:30 UTC is 01:30 in Los Angeles: not yet morning there.
     expect(await runner().tick()).toEqual({ kind: "not_due" });
   });
 });
@@ -286,7 +277,6 @@ describe("only when there is news", () => {
     nextMorning();
     expect(await r.tick()).toEqual({ kind: "quiet" });
     expect(channel.fireTurn).toHaveBeenCalledTimes(1);
-    // A mission the person has not been told about is news.
     await saveActivities(vfs, ANA.id, [
       {
         id: "m2",
@@ -308,7 +298,6 @@ describe("only when there is news", () => {
     channel.fireTurn.mockRejectedValueOnce(new Error("quota"));
     expect((await r.tick()).kind).toBe("error");
     nextMorning();
-    // Never delivered: the first briefing still counts any item.
     expect(await r.tick()).toEqual({ kind: "delivered" });
   });
 });
@@ -342,7 +331,6 @@ describe("an admitted briefing counts once its turn finishes", () => {
     expect(doc.seen).toEqual([]);
     expect(doc.pending).toBeNull();
     expect(events.map((e) => e.type)).not.toContain("HeartbeatDelivered");
-    // The same, unchanged mission is told the next morning.
     reply = "ok";
     nextMorning();
     expect(await r.tick()).toEqual({ kind: "delivered" });

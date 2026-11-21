@@ -6,9 +6,7 @@ const CONVERSATIONS_CHANGED_EVENT = "ConversationsChanged";
 const RECONNECT_DELAY_MS = 1500;
 
 export interface TurnsStreamHandlers {
-  /** Reconnected: refresh every actively viewed conversation to catch up gaps. */
   onConnect(): void;
-  /** Refresh actively viewed conversations for this agent (or all if absent). */
   onConversationsChanged(agentPath: string | undefined): void;
   onUnauthorized(): void;
 }
@@ -21,7 +19,6 @@ export interface TurnsStreamDeps {
   handlers: TurnsStreamHandlers;
 }
 
-/** Keep subscribed conversation VMs current from the host's event stream. */
 export function startTurnsEventStream(deps: TurnsStreamDeps): () => void {
   const ac = new AbortController();
   const { clock, logger, handlers } = deps;

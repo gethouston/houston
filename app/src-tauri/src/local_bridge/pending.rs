@@ -86,7 +86,6 @@ mod tests {
         .await
         .unwrap();
         drop(held);
-        // Exercise the same cancellation guard while a real WS handshake is hanging.
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = format!("ws://{}/bridge", listener.local_addr().unwrap());

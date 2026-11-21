@@ -1,17 +1,3 @@
-/**
- * The mission-search module — ranked full-text search over an agent's (or every
- * agent's) missions, mirroring the desktop's semantics EXACTLY
- * (`app/src/components/mission-search.ts`): a TITLE match first, then a
- * DESCRIPTION match, then the mission's lazily-fetched chat-history CONTENT,
- * over the same per-feed-item searchable text. History is fetched ONLY for
- * missions not already matched by title/description, with bounded concurrency
- * and NO observers (a plain `getHistory`, never a stream). Search runs over ALL
- * statuses (active + archived), as the board does.
- *
- * This is a pure command (`missions/search`) — it returns ranked matches, it
- * publishes no scope and holds no long-lived resource.
- */
-
 import type { Activity } from "@houston/protocol";
 import type { ModuleContext } from "../../module-context";
 import { createActivitiesHttp } from "../activities/http";
@@ -25,11 +11,8 @@ import {
   normalizeQuery,
 } from "./search-text";
 
-/** Where in a mission the query matched. Ranked in this order. */
 export type MatchedIn = "title" | "description" | "content";
 
-/** One ranked mission match. `snippet` is omitted for a title match (the title
- *  already shows the phrase and is never highlighted, per the desktop). */
 export interface MissionMatch {
   agentId: string;
   activityId: string;
@@ -39,16 +22,12 @@ export interface MissionMatch {
   matchedIn: MatchedIn;
 }
 
-/** The typed facade for mission search. */
 export interface MissionsSearchModule {
-  /** Search `query` across `agentId`'s missions, or every agent's when omitted. */
   search(query: string, agentId?: string): Promise<MissionMatch[]>;
 }
 
-/** How many history fetches (or agent activity lists) run at once. */
 const CONCURRENCY = 4;
 
-/** Run `fn` over `items` with at most `limit` in flight, preserving no order. */
 async function mapLimit<T>(
   items: readonly T[],
   limit: number,
@@ -79,7 +58,6 @@ export function createMissionsSearchModule(
   const http = createActivitiesHttp(ctx);
   const agents = createAgentsHttp(agentsScope(ctx));
 
-  /** The agents to search: the one given, else the whole personal workspace. */
   async function resolveAgentIds(agentId?: string): Promise<string[]> {
     if (agentId) return [agentId];
     return (await agents.list()).map((a) => a.id);
@@ -132,11 +110,6 @@ export function createMissionsSearchModule(
       unmatched.push(c);
     }
 
-    // Lazily search chat-history content for the still-unmatched missions,
-    // bounded so N missions never spawn N simultaneous fetches. A per-mission
-    // history failure degrades that mission (mirrors the desktop's non-fatal
-    // "couldn't search every mission" notice) — logged through the port, never
-    // silently dropped, and never failing the matches we already have.
     const contentMatches: MissionMatch[] = [];
     await mapLimit(unmatched, CONCURRENCY, async (c) => {
       const sessionKey = sessionKeyOf(c.activity);

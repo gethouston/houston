@@ -3,19 +3,13 @@ import { join, relative, sep } from "node:path";
 import type { TurnSetupCode as WireTurnSetupCode } from "@houston/wire-types";
 import { realAgents, standingTree } from "./turn-layout-agents";
 
-/** Stable internal codes for failures before provider execution. */
 export type TurnSetupCode =
   | "credential_write_failed"
   | "hydrate_over_cap"
   | "layout_unexpected"
-  /** The agent's store still holds the pre-v0.4 flat layout: only the
-   *  `migrate` op may run until its boot migration has (turn-layout-legacy). */
   | "agent_not_migrated"
-  /** Houston's message reused a nonce for other words: a host refuses it. */
   | "message_refused";
 
-/** Clients parse these codes from `@houston/wire-types`: the two lists are
- *  the same set, or this fails to compile. */
 type SameCodes = [TurnSetupCode] extends [WireTurnSetupCode]
   ? [WireTurnSetupCode] extends [TurnSetupCode]
     ? true
@@ -23,7 +17,6 @@ type SameCodes = [TurnSetupCode] extends [WireTurnSetupCode]
   : never;
 export const TURN_SETUP_CODES_MATCH_WIRE: SameCodes = true;
 
-/** A setup failure the internal turn stream exposes as a stable code. */
 export class TurnSetupError extends Error {
   constructor(
     readonly code: TurnSetupCode,
@@ -35,14 +28,6 @@ export class TurnSetupError extends Error {
   }
 }
 
-/**
- * A claimed run over a store prefix that lists no agent tree: nothing at
- * all, only the workspace preferences, or only root files such as the
- * legacy secrets. Turns still see
- * `layout_unexpected` (clients and the gateway key on it); the migrate op
- * answers `store_empty` instead, because a listing that is empty for a moment
- * is not the multi-tree layout the gateway blocks until the store changes.
- */
 export class StoreEmptyError extends TurnSetupError {
   constructor() {
     super(
@@ -53,7 +38,6 @@ export class StoreEmptyError extends TurnSetupError {
   }
 }
 
-/** Resolved pi directories and their object-store-relative data path. */
 export interface TurnLayout {
   kind: "standing" | "cloudrun";
   workspaceDir: string;
@@ -65,22 +49,6 @@ export interface TurnLayout {
 const storeRelative = (storeRoot: string, path: string) =>
   relative(storeRoot, path).split(sep).join("/");
 
-/**
- * Resolve the hydrated agent tree into the directories pi consumes. An EMPTY
- * tree is a legitimate first turn only for an unclaimed (legacy per-workspace)
- * runtime; a claimed pool turn targets a standing agent that already exists,
- * so zero hydrated objects there means the hydrate missed (a blank prefix)
- * and running would seed a second layout beside the real one.
- *
- * The dispatch names the agent's store prefix, never its folder. The
- * preferences namespace (`workspaces/ws/`) counts as absent: alone it makes
- * no `workspaces/` folder (the tree is then per-turn or empty), and it is
- * never an agent candidate. A single remaining folder is the agent even
- * without markers (a load-test agent may hold only schemas and a runtime
- * tree); among several, the ones carrying an agent's files win, and only two
- * REAL agents are ambiguous. `listed` is the store listing, keys relative to
- * `storeRoot`.
- */
 export async function resolveTurnLayout(
   storeRoot: string,
   opts: { allowEmpty?: boolean; listed?: readonly string[] } = {},
@@ -153,12 +121,6 @@ export async function resolveTurnLayout(
   );
 }
 
-/**
- * The directories the layout resolver and the host's agent lookup key on,
- * without a single download: `workspaces/<ws>/<agent>` for the standing
- * layout, `data` / `workspace` for the per-turn one. Deeper directories
- * appear as objects materialize.
- */
 export async function layoutSkeleton(
   storeRoot: string,
   rels: readonly string[],
@@ -176,7 +138,6 @@ export async function layoutSkeleton(
   );
 }
 
-/** Lay out a store listing's skeleton, then resolve the layout against it. */
 export async function resolveListedLayout(
   storeRoot: string,
   listed: readonly string[],

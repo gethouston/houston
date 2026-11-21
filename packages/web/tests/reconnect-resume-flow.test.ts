@@ -8,16 +8,6 @@ import {
 } from "@houston/fake-host";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 
-/**
- * Real-chain guard for the reconnect auto-continue (HOU-849): the REAL
- * `startSession` against the REAL fake host, with the conversation VM wedged
- * on a stale `running` flag — the state a provider-reconnect resume finds
- * when the failed turn's stream died without a settle. The resume must be
- * HELD (queued), then actually reach the engine once the passive observer
- * confirms the conversation is idle. The unit tests in send-queue.test.ts
- * drive `confirmIdle` by hand; this drives the whole wiring.
- */
-
 let host: FakeHost;
 
 beforeAll(async () => {
@@ -49,8 +39,6 @@ test("a resume held against a stale running flag still reaches the engine", asyn
   const resumeText =
     "<!--houston:auto_continue-->\n\nI'm signed in again. Please continue where you left off.";
 
-  // The wedge: the VM says a turn is running, but nothing is streaming it —
-  // the failed turn's stream was torn down without a settle.
   conversationVm.sessionStatus(SEED_AGENT_ID, sessionKey, "running");
 
   await client.startSession(SEED_AGENT_ID, {
@@ -60,8 +48,6 @@ test("a resume held against a stale running flag still reaches the engine", asyn
     queuedPreview: { text: "I'm signed in again." },
   });
 
-  // The held resume must flush once the observer confirms idle — the message
-  // actually lands in the engine's transcript.
   await vi.waitFor(
     async () => {
       expect(await historyOf(sessionKey)).toContain(resumeText);

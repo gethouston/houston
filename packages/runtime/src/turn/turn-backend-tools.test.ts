@@ -7,13 +7,6 @@ import { writeAuthFile } from "../auth/auth-file";
 import type { TurnBackendDeps } from "./turn-backend";
 import type { TurnSessionRequest } from "./turn-session";
 
-/**
- * The provider branch must never decide what the agent can do: a tool the turn
- * was granted has to reach the pi backend and the Claude backend alike. Both
- * factories are mocked here so the assertion is about the tool LISTS they are
- * handed, which nothing else can observe.
- */
-
 const piTools = vi.fn<(names: string[]) => void>();
 const piBrowserActions = vi.fn<(actions: string[]) => void>();
 const claudeTools = vi.fn<(names: string[]) => void>();
@@ -104,16 +97,11 @@ test("a granted run_code reaches BOTH the pi and the Claude tool list", async ()
   createTurnBackend("anthropic", deps());
   expect(piTools.mock.calls[0]?.[0]).toContain("run_code");
   expect(claudeTools.mock.calls[0]?.[0]).toContain("run_code");
-  // The turn's prompt describes the turn's capabilities on BOTH branches; the
-  // pi branch used to fall back to the PROCESS's prompt instead.
   expect(piPrompt.mock.calls[0]?.[0]).toBe("system");
   expect(claudePrompt.mock.calls[0]?.[0]).toBe("system");
 });
 
 test("a pooled turn pins pi to SSE: the Codex WebSocket is never reused here", async () => {
-  // turn/turn-pi-transport.ts: a single-use (or cross-conversation) worker
-  // cannot reuse pi's per-session socket, so `auto` only costs a handshake and
-  // a wait for the socket to die before pi's own SSE fallback.
   const { createTurnBackend } = await import("./turn-backend");
   piTransport.mockClear();
   createTurnBackend("openai-codex", deps());
@@ -121,10 +109,6 @@ test("a pooled turn pins pi to SSE: the Codex WebSocket is never reused here", a
 });
 
 test("both branches carry the follow-up tools the product prompt mandates", async () => {
-  // The product prompt ends every non-blocking turn with suggest_actions and
-  // offers saving work through suggest_reusable. A name in the allowlist with
-  // no tool object behind it is invisible to the model, so the prompt would
-  // order a call to a tool the turn does not have.
   const { createTurnBackend } = await import("./turn-backend");
   piTools.mockClear();
   claudeTools.mockClear();
@@ -148,7 +132,6 @@ test("a coordinator turn tells BOTH branches its role", async () => {
   createTurnBackend("openai-codex", coordinator);
   createTurnBackend("anthropic", coordinator);
   expect(piRole.mock.calls[0]?.[0]).toBe("coordinator");
-  // The Claude branch clamps its SDK built-ins with the same flag.
   expect(claudeRole.mock.calls[0]).toEqual(["coordinator", true]);
   createTurnBackend("openai-codex", deps());
   createTurnBackend("anthropic", deps());
@@ -169,8 +152,6 @@ test("a selected browser reaches BOTH branches; an unselected one neither", asyn
   createTurnBackend("anthropic", browsing);
   expect(piTools.mock.calls[0]?.[0]).toContain("browser");
   expect(claudeTools.mock.calls[0]?.[0]).toContain("browser");
-  // A coordinator's selection never names it (tool-selection.test.ts), so no
-  // object is built for either branch.
   createTurnBackend("openai-codex", deps());
   createTurnBackend("anthropic", deps());
   expect(piTools.mock.calls[1]?.[0]).not.toContain("browser");

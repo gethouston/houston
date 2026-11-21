@@ -1,9 +1,3 @@
-// The /enterprise page zips structure (_data/enterprise.js) with copy
-// (_data/i18n/enterprise/<lang>.js) by index, and points at image files by
-// name. Nothing at build time notices when the two drift: Nunjucks renders an
-// undefined lookup as an empty string and a missing image as a broken tile.
-// These tests are that notice.
-
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -51,8 +45,6 @@ for (const code of ["en", "es", "pt"]) {
     }
   });
 
-  // The landing's company band names the same rollout /enterprise walks
-  // through, one step per phase.
   test(`${code}: the landing's company band lists every phase`, () => {
     const { companies, hero } = tree;
     assert.equal(companies.steps.length, copy.solution.phases.length);
@@ -88,8 +80,6 @@ test("every logo exists, once", () => {
   const files = enterprise.logos.map((logo) => logo.file);
   assert.equal(new Set(files).size, files.length);
   for (const file of files) {
-    // The source artwork, and the light set the black band shows
-    // (scripts/make-light-logos.sh builds the second from the first).
     for (const dir of ["logos", "logos-light"]) {
       const path = `assets/img/enterprise/${dir}/${file}.png`;
       assert.ok(existsSync(resolve(src, path)), path);

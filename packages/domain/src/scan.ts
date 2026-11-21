@@ -5,25 +5,6 @@ import type {
 } from "@houston/protocol";
 import type { PortableContent } from "./portable";
 
-/**
- * Heuristic threat scan for uploaded portable agent packages — the TS port
- * of the Rust engine's `portable/scan.rs`, behavior-preserving.
- *
- * V1 is pattern-based. Categories mirror the wire contract the UI renders:
- * each finding shows up next to the offending item with a severity badge
- * and a short reason. An LLM-driven scan is the v2 upgrade — same API.
- *
- * Calibration is intentionally noisy on the side of caution. The UI frames
- * results as "reviewed automatically, here's what stood out", not "Safe ✓".
- * False positives are recoverable (the user can dismiss); false negatives
- * are not.
- */
-
-/**
- * Stays on the wire for protocol v3 compatibility (additive-only). The app
- * renders the localized `portable:import.step1.scanDisclaimer` copy instead,
- * so both must say the same thing.
- */
 const DISCLAIMER =
   "This package was reviewed automatically. The review may have missed concerns. Open anything that looks unusual before installing.";
 
@@ -53,9 +34,6 @@ const TOOL_ABUSE_NEEDLES = [
   "never ask",
 ];
 
-// The curl arm stops at the next `curl`: an open-ended `[^|]*` would rescan
-// the rest of the body from every `curl` on it, and `\s+` before it would
-// backtrack over a long run of spaces.
 const SUSPICIOUS_SHELL =
   /(rm\s+-rf\s+\/|:\(\)\{\s*:\|:|chmod\s+777|sudo\s+rm|>\s*\/dev\/sda|mkfs\.|dd\s+if=|curl\s(?:(?!curl\s)[^|])*\|\s*(sh|bash))/i;
 
@@ -71,13 +49,10 @@ function excerptAround(body: string, start: number, end: number): string {
   return out;
 }
 
-/** Run every heuristic over one text. Exported for tests. */
 export function scanBody(body: string): PortableScanFinding[] {
   const out: PortableScanFinding[] = [];
   const lower = body.toLowerCase();
 
-  // Exfiltration: known sensitive paths + an action verb suggesting they
-  // should be read / uploaded.
   const exfil = EXFIL_SENSITIVE_PATH.exec(lower);
   if (
     exfil &&
@@ -144,7 +119,6 @@ export function scanBody(body: string): PortableScanFinding[] {
   return out;
 }
 
-/** Scan every item in a package's content; clean items are omitted. */
 export function scanContent(content: PortableContent): PortableScanResponse {
   const items: PortableScanItem[] = [];
 

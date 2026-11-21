@@ -25,8 +25,6 @@ describe("turnTerminalFrame", () => {
   });
 
   it("carries changed on the error frame beside the message", () => {
-    // A provider failure after a durable tool write still changed what other
-    // tabs show; the message the SDK reads is untouched.
     expect(
       turnTerminalFrame({ error: "boom" }, "t1", 2, undefined, undefined, [
         "ConversationsChanged",

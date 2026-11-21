@@ -22,17 +22,8 @@ import {
 } from "../src/lib/providers.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
-// Labels and defaults come from the hydrated pi catalog, the same source the
-// app reads at runtime.
 before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
-/**
- * The founder's bug: a conversation pinned to pi's canonical `openai-codex`
- * drew the OpenAI mark (the LOGO path aliases the dialect) beside a Claude
- * model id and the raw provider string (the LABEL path did not). Both halves
- * now translate through the same `@houston/domain` dialect map, so no surface
- * can name one provider while drawing another.
- */
 describe("the label path aliases the provider dialect, like the icon path", () => {
   it("names the canonical Codex id the way the picker does", () => {
     strictEqual(providerName("openai-codex"), providerName("openai"));
@@ -60,8 +51,6 @@ describe("the label path aliases the provider dialect, like the icon path", () =
       providerErrorModelLabel("anthropic", "claude-sonnet-5"),
       "Sonnet 5",
     );
-    // An id the catalog has never seen is still NAMED, never echoed raw — the
-    // card reads "GPT Nine ran out of room", not "gpt-nine ran out of room".
     strictEqual(providerErrorModelLabel("openai", "gpt-nine"), "GPT Nine");
   });
 
@@ -90,8 +79,6 @@ describe("the label path aliases the provider dialect, like the icon path", () =
   it("resolves a label for every provider the domain ships a default for", () => {
     for (const canonical of Object.keys(DEFAULT_MODEL)) {
       const display = toDisplayProviderId(canonical);
-      // The fixture catalog is a subset of the real `/v1/catalog`; only the
-      // providers it actually hydrates can carry a name here.
       const hydrated = PROVIDERS.find((p) => p.id === display);
       if (!hydrated) continue;
       strictEqual(
@@ -103,13 +90,6 @@ describe("the label path aliases the provider dialect, like the icon path", () =
   });
 });
 
-/**
- * D2: `getDefaultModel` answered a hardcoded `claude-sonnet-4-6` for ANY
- * provider it could not find — so a canonical `openai-codex` (which missed the
- * display-keyed catalog entirely) was handed a Claude model id, and creation
- * flows persisted that pair into `config.json`. A model may never travel from
- * one provider onto another.
- */
 describe("getDefaultModel never crosses providers", () => {
   it("answers the Codex default for the canonical Codex id", () => {
     strictEqual(getDefaultModel("openai-codex"), getDefaultModel("openai"));
@@ -121,11 +101,6 @@ describe("getDefaultModel never crosses providers", () => {
   });
 });
 
-/**
- * D3: the Anthropic default read `claude-sonnet-5` in the app catalog and the
- * runtime but `claude-sonnet-4-6` in the domain migration that REWRITES stored
- * configs. One table owns it now.
- */
 describe("the app catalog reads its defaults from the domain table", () => {
   it("has no default of its own to drift", () => {
     for (const [id, override] of Object.entries(PROVIDER_OVERRIDES)) {

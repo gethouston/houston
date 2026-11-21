@@ -9,16 +9,6 @@ import { buildSystemPrompt } from "../backends/claude/system-prompt";
 import { makeAgentLoader } from "./resource-loader";
 import { withRoutineTimezone } from "./routine-timezone";
 
-/**
- * The fixed prefix every model request re-sends, for an agent with twenty
- * skills: Houston's product prompt, each backend's assembled system prompt,
- * and the Houston tools both backends advertise. Every byte here is paid on
- * every request of every turn, so growth must be a decision, not drift.
- *
- * Budgets are bytes with a few percent of headroom. Raising one means saying
- * in the PR what the new text buys; a situational rule belongs in the tool
- * description or tool result of the workflow that needs it instead.
- */
 const BUDGET = {
   productPrompt: 20_000,
   claudeSystemPrompt: 28_750,

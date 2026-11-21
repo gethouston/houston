@@ -5,21 +5,12 @@ import {
 } from "@houston/runtime-client/object-sync";
 import { UNREAD_HASH } from "./lazy-store-types";
 
-/**
- * What the lazy vfs knows about the store's objects and what the op did to
- * them: the remote listing, the keys hidden by a local delete/move, and the
- * sync-back ownership manifest (materialized keys + UNREAD_HASH entries for
- * keys written or deleted without a read).
- */
 export class LazyOwnership {
   readonly remote = new Map<string, ObjectMetadata>();
-  /** Remote keys deleted (or moved away) locally: hidden from every read. */
   readonly hidden = new Set<string>();
 
   constructor(private readonly manifest: HydrateManifest) {}
 
-  /** Learn the store's listing: keys under `prefix`, made relative to it,
-   *  minus the excluded ones. */
   ingest(objects: ObjectMetadata[], prefix: string, excludes: string[]): void {
     for (const object of objects) {
       const rel = !prefix
@@ -32,7 +23,6 @@ export class LazyOwnership {
     }
   }
 
-  /** A completed store-side write is visible without owning an absent overlay file. */
   copied(rel: string, meta: ObjectMetadata): void {
     this.remote.set(rel, meta);
     this.hidden.delete(rel);
@@ -43,7 +33,6 @@ export class LazyOwnership {
     return this.hidden.has(rel) ? undefined : this.remote.get(rel);
   }
 
-  /** Remote keys visible under `prefix/` (not hidden). */
   under(prefix: string): [string, ObjectMetadata][] {
     const within = `${prefix}/`;
     return [...this.remote].filter(
@@ -51,7 +40,6 @@ export class LazyOwnership {
     );
   }
 
-  /** A real tree refuses a file where a directory is and vice versa. */
   assertWritable(key: string): void {
     const segments = key.split("/");
     for (let i = 1; i < segments.length; i++) {
@@ -65,7 +53,6 @@ export class LazyOwnership {
     }
   }
 
-  /** Put an unread remote key under sync-back ownership (CAS on its generation). */
   own(rel: string): void {
     const meta = this.remote.get(rel);
     if (!meta || this.manifest.has(rel)) return;
@@ -75,14 +62,12 @@ export class LazyOwnership {
     });
   }
 
-  /** Hide a remote key from reads and make sure sync-back deletes it. */
   tombstone(rel: string): void {
     if (!this.remote.has(rel)) return;
     this.hidden.add(rel);
     this.own(rel);
   }
 
-  /** The key was (re)created locally: visible again, owned if remote. */
   written(rel: string): void {
     this.hidden.delete(rel);
     this.own(rel);

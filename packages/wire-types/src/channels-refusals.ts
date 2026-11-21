@@ -1,17 +1,3 @@
-/**
- * The two refusals a channels call answers with, read off the error the engine
- * adapter throws. Pure readings of a status and a body: nothing here calls a
- * server, so both surfaces and their tests share one vocabulary.
- */
-
-/**
- * The completion route's own refusals, about the TICKET rather than the
- * deployment: unknown, expired, already redeemed or minted for someone else
- * (404), and a Slack account already connected to another Houston account or
- * to another of the caller's spaces (409). Reconnecting an account to the space
- * it already serves succeeds. A deployment that does not serve the route
- * answers 404 too, and "connect again" is the right thing to say there as well.
- */
 export type SlackCompletionFailure = "invalid" | "already";
 
 export function slackCompletionFailure(
@@ -24,7 +10,6 @@ export function slackCompletionFailure(
 
 export type ChannelUnavailableReason = "unsupported" | "not-configured";
 
-/** Expected deployment states, including both gateway error envelope shapes. */
 export function channelUnavailableReason(
   error: unknown,
 ): ChannelUnavailableReason | null {

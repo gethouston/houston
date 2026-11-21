@@ -5,12 +5,6 @@ import { countSpecimens, filterTiers } from "../src/nav-filter.ts";
 import type { SpecimenTier } from "../src/registry.ts";
 import { specimenTiers } from "../src/registry.ts";
 
-// The rail's filter is the only place the two-tier tree is reshaped at runtime,
-// and it is pure — so it is tested against a hand-built tree where every
-// expected result is readable, plus the real registry for the shapes that only
-// the live tree has (an empty product area, a tier name a reader might type).
-
-/** A tier tree small enough to assert on exactly. */
 const TREE: readonly SpecimenTier[] = [
   {
     name: "Primitives",
@@ -64,7 +58,6 @@ const TREE: readonly SpecimenTier[] = [
   },
 ];
 
-/** `Tier > Group > Title` for every branch a filter kept — the whole shape. */
 function shapeOf(tiers: readonly SpecimenTier[]): string[] {
   return tiers.flatMap((tier) =>
     tier.groups.flatMap((group) =>
@@ -118,8 +111,6 @@ describe("the rail filter", () => {
   });
 
   it("drops a named-but-empty area from a search, and keeps it without one", () => {
-    // The areas are the map of the product, so an empty one shows in the idle
-    // rail. A search must never answer with a heading that holds no result.
     assert.ok(shapeOf(TREE).includes("Product areas > Agent Store > (empty)"));
     assert.deepEqual(filterTiers(TREE, "agent store"), []);
   });

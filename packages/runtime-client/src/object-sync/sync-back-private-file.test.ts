@@ -14,12 +14,8 @@ import type { HydrateManifest } from "./hydrate";
 import type { ObjectStore } from "./object-store";
 import { syncBack } from "./sync-back";
 
-/** Runs right after the directory gate said yes: the tool user's window. */
 const afterGate = vi.hoisted(() => ({ hook: async () => {} }));
 
-// The directory gate is the cheap first check; these tests let it pass and
-// then swap or plant under it, so only the per-file check stands between
-// the tool user and the upload.
 vi.mock("./private-dir-gate", async (original) => {
   const real = await original<typeof import("./private-dir-gate")>();
   return {
@@ -40,7 +36,6 @@ const KEPT: HydrateManifest = new Map([
   [STATE, { hash: "the-person's", generation: "7" }],
 ]);
 
-/** A store recording each upload's key and the bytes it read. */
 function recordingStore() {
   const uploads = new Map<string, string>();
   const deletes: string[] = [];
@@ -58,7 +53,6 @@ function recordingStore() {
   return { store, uploads, deletes };
 }
 
-/** An agent folder whose own browser directory holds the person's state. */
 function agent() {
   const root = mkdtempSync(join(tmpdir(), "houston-syncback-file-"));
   mkdirSync(join(root, ".houston", "browser"), {
@@ -89,7 +83,6 @@ posixOnly("sync-back checks each sign-in file where it reads it", () => {
   test("a file another uid owns is skipped, its entry kept, logged once", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const root = agent();
-    // The gate saw the directory as ours; the file is then judged foreign.
     const uid = process.getuid?.() ?? 0;
     afterGate.hook = async () => {
       vi.spyOn(process as { getuid: () => number }, "getuid").mockReturnValue(
@@ -147,7 +140,6 @@ posixOnly("sync-back checks each sign-in file where it reads it", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const root = agent();
     const browser = join(root, ".houston", "browser");
-    // A worker-owned, group-writable file the tool user filled with cookies.
     const ours = join(root, "notes.json");
     writeFileSync(ours, '{"cookies":["planted"],"origins":[]}');
     const planted = mkdtempSync(join(tmpdir(), "planted-"));

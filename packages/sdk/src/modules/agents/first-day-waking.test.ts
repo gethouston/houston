@@ -5,14 +5,6 @@ import { memoryKv } from "../../test-ports";
 import { WAKING_CREATE_RETRY_MS } from "../activities/busy-retry";
 import { AgentsCommand } from "./index";
 
-/**
- * A first day is offered the moment a new hire is created, usually seconds
- * before its pod answers. The start therefore rides out the gateway's waking
- * answers on the board-card create's ladder, in the SDK, so every surface and
- * the AI Manager get the same wait. The host makes the start idempotent, which
- * is what makes a re-issue safe.
- */
-
 const BASE = "http://127.0.0.1:4317";
 const WAKING = JSON.stringify({ error: "engine unavailable" });
 const STARTED = {
@@ -35,11 +27,6 @@ const started: Answer = () =>
     headers: { "content-type": "application/json" },
   });
 
-/**
- * An SDK whose `fetch` plays `answers` in order (the last repeats) and whose
- * clock fires every timer at once, recording the pause asked for, so a whole
- * ladder runs without waiting.
- */
 function makeSdk(answers: Answer[]) {
   const pauses: number[] = [];
   const bodies: unknown[] = [];

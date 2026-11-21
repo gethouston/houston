@@ -17,11 +17,6 @@ afterAll(() => {
 
 describe("BundleSourceMap", () => {
   it("agrees with Node's own SourceMap.findOrigin on every generated position", () => {
-    // Node's decoder is what `--enable-source-maps` used to apply to stack
-    // traces; the streaming scan must give the same answer for every line
-    // and column of the bundle (including positions past the last segment
-    // of a line and on lines without segments, where Node extrapolates), or
-    // the mapped frames would silently drift from what pods reported before.
     const map = BundleSourceMap.load(fixture.bundlePath);
     expect(map).toBeDefined();
     const oracle = new SourceMap(
@@ -36,7 +31,6 @@ describe("BundleSourceMap", () => {
         needles.push({ line, column });
       }
     }
-    // Shuffle so the batch scan's sort-by-line is exercised too.
     needles.sort(() => Math.random() - 0.5);
     const found = (map as BundleSourceMap).lookup(needles);
     let mapped = 0;
@@ -51,7 +45,6 @@ describe("BundleSourceMap", () => {
       expect(actual, `${needle.line}:${needle.column}`).toEqual({
         file: resolve(dirname(fixture.mapPath), expected.fileName),
         line: expected.lineNumber,
-        // Node lets a cross-line extrapolation go negative; the mapper clamps.
         column: Math.max(0, expected.columnNumber - 1),
       });
     });
@@ -61,9 +54,6 @@ describe("BundleSourceMap", () => {
   });
 
   it("needles before the first segment are unmapped; later ones extrapolate", () => {
-    // ";AAAA": no segment on generated line 1, one at line 2 col 0 → source
-    // 0 line 1 col 0. Node's rule carries the distance from the last segment
-    // over, so line 4 col 5 lands on source line 3 col 5.
     const bundle = `${fixture.dir}/sparse.mjs`;
     writeFileSync(
       `${bundle}.map`,
@@ -97,10 +87,6 @@ describe("BundleSourceMap", () => {
   });
 
   it("lookup: a malformed mappings string keeps what was resolved before it", () => {
-    // Line 1 has two valid segments (col 0 → src line 1, col 1 → src line
-    // 2); line 2 is garbage. The needle between the two segments resolved
-    // before the scan hit the corruption and stands; the one on line 2 is
-    // left alone rather than guessed.
     const bundle = `${fixture.dir}/broken.mjs`;
     writeFileSync(
       `${bundle}.map`,

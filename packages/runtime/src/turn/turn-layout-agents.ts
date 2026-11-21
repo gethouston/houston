@@ -16,14 +16,6 @@ async function readEntries(path: string): Promise<Dirent[]> {
 const directories = (entries: Dirent[]) =>
   entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith("."));
 
-/**
- * The standing `workspaces/` tree with the preferences namespace treated as
- * absent. `workspaces/ws/` holds preferences docs, never agents, but a
- * standing host once booted runtimes into it (`ws/<wsId>/.houston/runtime/`),
- * so stores still carry agent-shaped trees there, with or without markers.
- * `present` is whether anything else sits under `workspaces/`; `candidates`
- * are the `workspaces/<ws>/<agent>` folders outside the namespace.
- */
 export async function standingTree(
   storeRoot: string,
 ): Promise<{ present: boolean; candidates: string[] }> {
@@ -41,13 +33,6 @@ export async function standingTree(
   return { present: entries.length > 0, candidates: agents.flat() };
 }
 
-/**
- * Objects only a real agent has. A `.houston/<family>/*.schema.json` or a
- * `.houston/runtime/` tree is not one: a standing host that mistook a stray
- * folder for an agent booted a runtime into it (runtime.log, models-store,
- * the shell fence) and its schema re-seed writes into any folder that has a
- * `.houston/`. The docs, the instructions and the skills are authored.
- */
 const AGENT_MARKER_FILES = [
   "CLAUDE.md",
   ".houston/activity/activity.json",
@@ -84,12 +69,6 @@ async function onDiskMarker(agentDir: string): Promise<boolean> {
   return found.includes(true);
 }
 
-/**
- * The candidates that are real agents. `listed` is the store listing (keys
- * relative to the store root): a lazy or still-hydrating tree only has the
- * `workspaces/<ws>/<agent>` skeleton on disk when the layout resolves, so the
- * listing is what says whether a folder carries an agent's files.
- */
 export async function realAgents(
   storeRoot: string,
   candidates: string[],

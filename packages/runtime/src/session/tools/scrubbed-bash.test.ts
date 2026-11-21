@@ -16,13 +16,6 @@ import {
   scrubbedBashEnv,
 } from "./scrubbed-bash";
 
-/**
- * bash is where a leaked environment becomes an exploit: one `echo` prints
- * whatever the runtime was started with. The env a bash child gets is therefore
- * built from an allowlist, never from `process.env` minus a few names — a
- * denylist is one new variable away from being wrong.
- */
-
 test("no HOUSTON_ variable survives into a bash child", () => {
   const env = scrubbedBashEnv({
     PATH: "/usr/bin",
@@ -70,8 +63,6 @@ test("the non-secret process bootstrap survives, so commands still run", () => {
 });
 
 test("Windows process vars survive whatever case they arrive in", () => {
-  // A child cannot start on native Windows without these, and Windows env keys
-  // vary in case — matching case-sensitively would strip them.
   const env = scrubbedBashEnv({
     SystemRoot: "C:\\Windows",
     Path: "C:\\Windows\\System32",
@@ -102,14 +93,9 @@ describe("the memory fence", () => {
     });
   });
 
-  // Runs a real shell: the fence only counts if it reaches the process that
-  // executes the model's command, not just the option bag. Linux only: macOS
-  // bash refuses to set RLIMIT_DATA at all (the fence is inert there, and no
-  // container limit exists to derive a cap from anyway).
   test.skipIf(process.platform !== "linux")(
     "the shell that runs the command sees the cap",
     async () => {
-      // pi reads the session id/file off the context for its PI_* env vars.
       const ctx = {
         sessionManager: {
           getSessionId: () => "test-session",
@@ -148,7 +134,6 @@ describe("the memory fence", () => {
 });
 
 describe("the tool shell", () => {
-  // pi reads the session id/file off the context for its PI_* env vars.
   const ctx = {
     sessionManager: {
       getSessionId: () => "test-session",
@@ -156,8 +141,6 @@ describe("the tool shell", () => {
     },
   } as unknown as ExtensionToolContext;
 
-  // A real wrapper stands in for the deployment's (which drops to the tool
-  // user): the command only counts as wrapped if its output came through it.
   test.skipIf(process.platform === "win32")(
     "a configured tool shell runs the command, with the fence and scrubbed env",
     async () => {
@@ -186,7 +169,6 @@ describe("the tool shell", () => {
         expect(out.content[0]).toMatchObject({
           text: expect.stringMatching(/^via-tool-shell\nsecret=\[\]\n/),
         });
-        // One argument after -c: the memory prefix, then the model's command.
         expect(readFileSync(marker, "utf8")).toBe(
           'ulimit -d 786432 2>/dev/null\necho "secret=[$HOUSTON_TOOL_SHELL_TEST_SECRET]"',
         );

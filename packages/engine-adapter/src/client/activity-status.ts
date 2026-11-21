@@ -7,23 +7,6 @@ import { agentPath as agentRoute } from "../control-plane";
 import type { AdapterContext } from "./context";
 import { viaSdk } from "./sdk-error";
 
-/**
- * Transition a chat activity's board status, honoring cloud vs standalone mode.
- * The board READS activities from the host in cloud mode (listActivities →
- * control plane), so a turn's status write MUST reach the host too — a
- * localStorage write (the standalone store) would never show up on the board
- * and the card would hang in "running". Matches by session_key, or the
- * `activity-<id>` convention the board uses for missions with no explicit key.
- *
- * Shared by the chat mixin's `startSession` / `cancelSession` / `loadChatHistory`
- * observe paths, so it takes the {@link AdapterContext} rather than living on any
- * one of them.
- *
- * `turnCard` is ONE turn's memory of the card it writes ({@link turnCardWriter}):
- * the turn's first write finds the card by its session key, every later write
- * of that turn PATCHes the same id with no list read in front of it. A failed
- * PATCH forgets the id, so the retry looks the card up again.
- */
 export async function setActivityStatus(
   ctx: AdapterContext,
   agentPath: string,
@@ -41,21 +24,10 @@ export async function setActivityStatus(
       pendingInteraction,
       opts?.stamp,
     );
-    // Write-through echo: this is the settle path (a turn finishing PATCHes
-    // its board status). Without it the card sticks on "running" until a
-    // server event that, in hosted mode, historically never comes.
     emitLocalEcho("ActivityChanged", { agentPath });
     return;
   }
-  // This write MUST land: the turn flipped its card to "running", and a
-  // turn guarantees a terminal status on exit — a lost settle write leaves
-  // the mission visibly stuck on "running" forever. The PATCH is idempotent
-  // (fixed status + interaction), so retrying a network blip or proxy
-  // hiccup is safe. cpFetch deliberately never blind-retries writes; this
-  // caller knows its write is replay-safe.
   const retryDelaysMs = [500, 1500, 3000];
-  // The SDK serves both halves (byte-identical GET then PATCH, neither
-  // refetching); `viaSdk` keeps the adapter's error shape and stuck-wake signal.
   const board = `${agentRoute(agentPath)}/activities`;
   for (let i = 0; ; i++) {
     try {
@@ -65,12 +37,10 @@ export async function setActivityStatus(
           ctx.sdk.activities.list(agentPath),
         );
         const match = list.find((a) => addressesMission(a, sessionKey));
-        if (!match) return; // transient session with no board card — nothing to update
+        if (!match) return;
         id = match.id;
       }
       const cardId = id;
-      // `pending_interaction: null` clears it explicitly (the host route +
-      // domain applyActivityUpdate honor null); a value records the interaction.
       await viaSdk(`${board}/${encodeURIComponent(cardId)}`, () =>
         ctx.sdk.activities.writes.update(
           agentPath,
@@ -85,7 +55,7 @@ export async function setActivityStatus(
       if (turnCard) turnCard.id = cardId;
       break;
     } catch (err) {
-      if (turnCard) turnCard.id = undefined; // the card may be gone: look again
+      if (turnCard) turnCard.id = undefined;
       if (i >= retryDelaysMs.length) throw err;
       await new Promise((r) => setTimeout(r, retryDelaysMs[i]));
     }
@@ -93,11 +63,6 @@ export async function setActivityStatus(
   emitLocalEcho("ActivityChanged", { agentPath });
 }
 
-/**
- * The board setter ONE turn writes its card through: start, early hand-back,
- * settle. It carries the card id across those writes (see
- * {@link setActivityStatus}), and lives exactly as long as the turn's stream.
- */
 export function turnCardWriter(
   ctx: AdapterContext,
   agentPath: string,

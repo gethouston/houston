@@ -1,6 +1,5 @@
 import type { ColorWord } from "./color-vocabulary";
 
-/** The seven agent helmet tones, and the five desaturated teammate tones. */
 const AGENT_TONES = [
   "charcoal",
   "forest",
@@ -12,14 +11,8 @@ const AGENT_TONES = [
 ];
 const PERSON_TONES = ["slate", "sage", "mauve", "taupe", "indigo"];
 
-/** `charcoal` → `Charcoal`. */
 const title = (tone: string) => tone.charAt(0).toUpperCase() + tone.slice(1);
 
-/**
- * The avatar families are generated rather than typed out one by one: every
- * member of a family does the same job, and the tone name IS the difference.
- * Writing seven near-identical sentences by hand only invites them to drift.
- */
 const AVATAR_WORDS: Record<string, ColorWord> = {
   ...Object.fromEntries(
     AGENT_TONES.map((tone) => [
@@ -62,7 +55,6 @@ const AVATAR_WORDS: Record<string, ColorWord> = {
   },
 };
 
-/** Families exactly one feature owns: the avatars and the QR pair. */
 export const PALETTE_WORDS: Record<string, ColorWord> = {
   ...AVATAR_WORDS,
   "qr-ink": {

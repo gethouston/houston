@@ -160,7 +160,6 @@ test("a textless request forwards neither receipts nor caller retry metadata", (
     hostMessageFingerprint: "f".repeat(64),
   });
   expect(JSON.parse(result.body.toString())).toEqual({ nonce: "n" });
-  // Nothing was admitted, so the card is still the user's to answer.
   expect(
     store.pending(request.requestId, agentId, conversationId),
   ).toBeDefined();

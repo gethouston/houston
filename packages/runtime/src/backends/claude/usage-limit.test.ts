@@ -56,12 +56,10 @@ test("the Claude Code limit sentences are usage limits even without an event", (
     kind: "usage_limit_paused",
     resets_at: null,
   });
-  // "resets 6pm (UTC)" at 20:47Z is 21 h out: not a 5-hour window, unknown.
   expect(classifyClaudeRateLimit(SESSION, null, {}, NOW)).toMatchObject({
     kind: "usage_limit_paused",
     resets_at: null,
   });
-  // Earlier in the day it is today's 18:00Z, minutes included.
   expect(
     usageLimitFromText(
       "You've hit your session limit · resets 6:30pm (UTC)",
@@ -69,7 +67,6 @@ test("the Claude Code limit sentences are usage limits even without an event", (
       Date.parse("2026-10-08T16:12:00Z"),
     ),
   ).toMatchObject({ resets_at: "2026-10-08T18:30:00.000Z" });
-  // A zone Intl does not know is an unknown reset, never a guess.
   expect(
     usageLimitFromText(
       "You've hit your session limit · resets 3pm (Mars/Olympus)",
@@ -126,7 +123,6 @@ test("mapSdkError hands rate_limit to the usage-limit classifier without an out-
     kind: "usage_limit_paused",
     resets_at: RESET,
   });
-  // Often one model's weekly limit: the account is not out of credits.
   expect(noteQuotaExhausted).not.toHaveBeenCalled();
   expect(noteAuthFailure).not.toHaveBeenCalled();
 });

@@ -1,22 +1,8 @@
 import { withDocLock } from "./doc-lock";
 import { loadJson, saveJson, type TextStore } from "./store";
 
-/**
- * Per-workspace key-value preferences (timezone, locale, …).
- * Stored as one doc ABOVE the agent prefixes — `ws/<workspaceId>/preferences.json`
- * — so it survives agent deletion. In cloud personal-tier (one workspace per
- * user) this is effectively per-user; locally it is per-workspace, matching the
- * desktop's per-workspace locale override.
- */
 export type Preferences = Record<string, string | null>;
 
-/**
- * The top-level key segment every preferences doc lives under. The local
- * profile roots its FsVfs at the workspaces directory itself, so there this
- * segment is a real folder beside the workspaces: anything that enumerates
- * workspaces from disk must skip it, or each doc's folder reads as an agent
- * `ws/<workspaceId>`.
- */
 export const PREFERENCES_NAMESPACE = "ws";
 
 export const prefDocKey = (workspaceId: string) =>
@@ -27,8 +13,6 @@ export async function loadPreferences(
   workspaceId: string,
 ): Promise<Preferences> {
   const prefs = await loadJson<unknown>(store, prefDocKey(workspaceId), {});
-  // A non-object doc (corrupt/hand-edited) reads as empty rather than crashing
-  // the boot-path language gate that depends on locale.
   return prefs && typeof prefs === "object" && !Array.isArray(prefs)
     ? (prefs as Preferences)
     : {};
@@ -42,23 +26,11 @@ export async function getPreference(
   return (await loadPreferences(store, workspaceId))[key] ?? null;
 }
 
-/** One key's value before an update, plus the whole document after it. */
 export interface PreferenceUpdate {
   previous: string | null;
   preferences: Preferences;
 }
 
-/**
- * Atomically read-modify-write ONE key of the preferences document.
- *
- * The whole doc is a single JSON blob, so every write is a load → merge → save
- * and two overlapping writers of DIFFERENT keys would each save over the
- * other's base: the loser's key silently disappears. Preferences are written
- * concurrently all the time (the locale PATCH, the sidebar layout, the agent
- * colour map a template install rewrites per agent), so the lock lives HERE,
- * around the read as well as the write, rather than at each caller — a caller
- * that forgot it would reintroduce the loss.
- */
 export function updatePreference(
   store: TextStore,
   workspaceId: string,
@@ -74,7 +46,6 @@ export function updatePreference(
   });
 }
 
-/** Set or clear (null) one key; returns the merged preferences. */
 export async function setPreference(
   store: TextStore,
   workspaceId: string,
@@ -85,11 +56,6 @@ export async function setPreference(
     .preferences;
 }
 
-/**
- * Write `value` only when the key holds nothing (absent, null or blank), under
- * the same lock as every other write. `created: false` carries the value that
- * was already there, untouched.
- */
 export async function createPreference(
   store: TextStore,
   workspaceId: string,

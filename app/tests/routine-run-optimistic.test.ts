@@ -10,12 +10,6 @@ import {
   markRunCancelled,
 } from "../src/lib/routine-run-optimistic.ts";
 
-/**
- * "Run now" and "Stop run" paint on the routine row before the host answers.
- * The host names no run on "Run now", so the row shows a placeholder until the
- * real run is listed, and a stop pressed on the placeholder lands on the real
- * run once it is.
- */
 const NOW = "2026-10-08T12:00:00.000Z";
 const LATER = "2026-10-08T12:00:05.000Z";
 
@@ -43,7 +37,6 @@ describe("addOptimisticRun", () => {
   it("is idempotent, and gives way to a real running run", () => {
     const once = addOptimisticRun([], "r1", NOW);
     strictEqual(addOptimisticRun(once, "r1", NOW), once);
-    // Stopped before the host answered: still painted, never painted twice.
     const stopped = markRunCancelled(once, "r1", "optimistic-run:r1", NOW);
     strictEqual(addOptimisticRun(stopped, "r1", NOW), stopped);
     const real = [run({ status: "running" })];

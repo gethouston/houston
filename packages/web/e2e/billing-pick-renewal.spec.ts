@@ -16,14 +16,6 @@ import {
 import { expect, test } from "./support/fixtures";
 import { armPlan, freePlan } from "./support/plan";
 
-/**
- * A refused paid pick that a later choice settles in the same open. The
- * gateway refuses the pair (`not_payer`) and the refetch names no payer,
- * which confirms the refusal. A later refusal's refetch names the payer again
- * (a subscription started in another tab): the paid step comes back, and the
- * pick stores with the paid org.
- */
-
 const RENEWAL = {
   refusals: [
     { refuse: "not_payer" as const, after: ownerChoice() },
@@ -53,7 +45,6 @@ test("a payer refused, then none, then a payer again gets the paid step back", a
     .getByRole("button", { name: "Keep Innova on the free tier" })
     .click();
 
-  // No payer: the free step is the picker's only one.
   await expect(modal).toContainText("Step 3 of 4");
   await expect(modal.getByRole("radio", { name: /Innova/ })).toBeChecked();
   await modal
@@ -61,7 +52,6 @@ test("a payer refused, then none, then a payer again gets the paid step back", a
     .click();
   await expect.poll(sets).toHaveLength(2);
 
-  // A payer again: the paid step returns, and the pick carries the paid org.
   await expect(modal).toContainText("Step 3 of 5");
   await modal.getByRole("button", { name: "Use it for La Fila" }).click();
   await expect(modal).toContainText("Step 4 of 5");
@@ -94,7 +84,6 @@ test("the Settings picker gets the paid step back when a payer returns", async (
     .getByRole("button", { name: "Keep Innova on the free tier" })
     .click();
 
-  // No payer: one step, so no progress.
   await expect(picker).not.toContainText(/Step \d+ of/);
   await expect(picker.getByRole("radio", { name: /Innova/ })).toBeChecked();
   await picker
@@ -102,7 +91,6 @@ test("the Settings picker gets the paid step back when a payer returns", async (
     .click();
   await expect.poll(sets).toHaveLength(2);
 
-  // A payer again: the paid step returns, and the pick carries the paid org.
   await expect(picker).toContainText("Step 1 of 3");
   await picker.getByRole("button", { name: "Use it for La Fila" }).click();
   await expect(picker).toContainText("Step 2 of 3");

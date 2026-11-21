@@ -1,4 +1,3 @@
-/** Registered only by the Capacitor entry, before the shared app graph loads. */
 export interface NativeShell {
   openUrl(url: string): Promise<boolean>;
   identity: {

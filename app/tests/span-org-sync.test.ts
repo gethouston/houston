@@ -13,7 +13,6 @@ const { createRoot } = await import("react-dom/client");
 const { useSpanOrgSync } = await import("../src/hooks/use-span-org-sync.ts");
 
 const spans = new PerfSpans({ t0Ms: 0, now: () => 0 });
-/** The org a turn sent in each commit's layout phase would be tagged with. */
 const seenBySiblingLayout: Array<string | null> = [];
 
 function Sync({ slug }: { slug: string | null }) {
@@ -21,8 +20,6 @@ function Sync({ slug }: { slug: string | null }) {
   return null;
 }
 
-// A LATER sibling's layout effect runs after Sync's layout effect but before
-// any passive effect of the same commit.
 function Probe({ slug }: { slug: string | null }) {
   useLayoutEffect(() => {
     seenBySiblingLayout.push(spans.orgSlugAt(0));

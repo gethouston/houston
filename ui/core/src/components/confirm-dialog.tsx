@@ -19,20 +19,9 @@ interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "default" | "destructive";
-  /**
-   * May return a promise (the AsyncButton idiom, HOU-465): while it is in
-   * flight the dialog STAYS OPEN in a pending state — both buttons disable,
-   * the action shows a spinner with `pendingLabel` (falling back to
-   * `confirmLabel`), and close requests (Esc, overlay) are refused — then
-   * closes when it settles. A sync handler keeps the classic confirm-and-close.
-   */
   // biome-ignore lint/suspicious/noConfusingVoidType: sync handlers return void, async ones return a Promise
   onConfirm: () => void | Promise<unknown>;
   pendingLabel?: string;
-  /**
-   * Radix's close focus hook. Prevent the event to choose where focus lands,
-   * such as when confirming removed the element that opened the dialog.
-   */
   onCloseAutoFocus?: (event: Event) => void;
 }
 
@@ -55,9 +44,6 @@ export function ConfirmDialog({
   onCloseAutoFocus,
 }: ConfirmDialogProps) {
   const [pending, setPending] = React.useState(false);
-  // Same-frame rage clicks land before React commits `disabled` (HOU-465), so
-  // an instant ref guards re-entry; `mounted` keeps the settle callback from
-  // touching state after the owner unmounted the dialog mid-flight.
   const inFlight = React.useRef(false);
   const mounted = React.useRef(true);
   React.useEffect(
@@ -73,15 +59,10 @@ export function ConfirmDialog({
       return;
     }
     const result = onConfirm();
-    if (!isThenable(result)) return; // sync confirm: the default close stands
-    // Radix's Action closes the dialog after this handler unless prevented —
-    // the pending state must be visible until the work settles.
+    if (!isThenable(result)) return;
     event.preventDefault();
     inFlight.current = true;
     setPending(true);
-    // `finally` resets and closes without swallowing a rejection (the
-    // AsyncButton posture): a failing handler still rejects up the chain
-    // rather than being silently dropped.
     void result.finally(() => {
       inFlight.current = false;
       if (!mounted.current) return;

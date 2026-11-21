@@ -1,11 +1,6 @@
 import type { ToastItem } from "../stores/ui.ts";
 import type { TeamMoveSource, TeamMoveState } from "./move-team.ts";
 
-/**
- * The toast a closed postscript failure leaves behind. Once the source
- * cleanup ran, the folder whose menu opens the move is gone from the sidebar,
- * so this is the only way back to Retry before the next launch resumes it.
- */
 export function closedPostscriptFailureToast(
   state: TeamMoveState,
   source: TeamMoveSource,

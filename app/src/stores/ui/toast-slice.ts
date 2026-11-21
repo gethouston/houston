@@ -15,11 +15,8 @@ export const toastInitialState = {
 } satisfies ToastFields;
 
 let toastCounter = 0;
-// Live dismiss timers by toast id, so a coalesced repeat can RESTART its
-// toast's countdown (see addToast) and a manual dismiss cancels it.
 const toastTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-/** Cancel every live dismiss timer (the store's `reset`). */
 export function clearToastTimers(): void {
   for (const timer of toastTimers.values()) clearTimeout(timer);
   toastTimers.clear();
@@ -43,12 +40,6 @@ export const createToastActions: UISliceCreator<ToastActions> = (set) => ({
         );
       };
 
-      // Repeats COALESCE instead of stacking (a repeatedly failing
-      // connect used to wall the screen with identical error boxes): the
-      // existing toast's counter bumps and its dismiss countdown restarts,
-      // so every firing still gives visible feedback AND the toast's
-      // action ("Report bug") stays alive — the two failure modes the old
-      // "never dedupe errors" rule protected against.
       const existing = s.toasts.find(
         (t) =>
           t.title === toast.title &&

@@ -11,15 +11,6 @@ import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
-/**
- * Posting to the person's own LinkedIn: the gateway's `/v1/linkedin/*`
- * family, delegated to `sdk.linkedin`, which parses every answer and types
- * every refusal.
- *
- * Off the gateway (`this.ctx.cp === null`) there is no LinkedIn at all: the
- * reads throw a 501 the share dialog reads as "share by copy and paste", and
- * a post is refused `not_configured` without a request.
- */
 export function LinkedInMixin<TBase extends BaseCtor>(Base: TBase) {
   class LinkedIn extends Base {
     private requireLinkedInGateway(): void {
@@ -33,7 +24,6 @@ export function LinkedInMixin<TBase extends BaseCtor>(Base: TBase) {
         this.ctx.sdk.linkedin.connection(signal),
       );
     }
-    /** LinkedIn's authorization page, for the person's browser to open. */
     async connectLinkedIn(
       returnTo?: LinkedInConnectReturn,
       signal?: AbortSignal,
@@ -43,10 +33,6 @@ export function LinkedInMixin<TBase extends BaseCtor>(Base: TBase) {
         this.ctx.sdk.linkedin.connect(returnTo, signal),
       );
     }
-    /**
-     * Redeem the callback's ticket: what BINDS the LinkedIn account to the
-     * signed-in person. A mangled ticket never becomes a request.
-     */
     async completeLinkedIn(
       ticket: string,
       signal?: AbortSignal,

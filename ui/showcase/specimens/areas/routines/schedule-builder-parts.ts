@@ -1,9 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * `ScheduleBuilderProps`, read off `ui/routines/src/schedule-builder.tsx`.
- * Data only — the page beside this file renders it.
- */
 export const builderProps: readonly SpecimenProp[] = [
   {
     name: "value",

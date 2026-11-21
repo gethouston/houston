@@ -3,13 +3,6 @@ import { afterEach, expect, test, vi } from "vitest";
 import type { CredentialVault } from "../ports";
 import { refuseOutOfCoordinatorScope } from "./sandbox-scope";
 
-/**
- * S3: a valid sandbox token is every runtime's key to `/sandbox/*`, and the
- * coordinator's runtime holds one. The table below is EVERY sandbox family this
- * host mounts (server.ts), so a new one added without a decision here shows up
- * as a missing row rather than as silent reach.
- */
-
 const ASSISTANT = "ws/.assistant";
 const ORDINARY = "ws/Dobby";
 
@@ -48,7 +41,6 @@ function callWith(
 
 afterEach(() => vi.unstubAllEnvs());
 
-/** Every `/sandbox/*` path server.ts mounts, and whether the assistant reaches it. */
 const ROUTES: readonly [path: string, allowed: boolean][] = [
   ["/sandbox/assistant/call", true],
   ["/sandbox/assistant/pending", true],
@@ -86,8 +78,6 @@ test.each(ROUTES)("an ordinary agent keeps %s (allowed=%s)", (path) => {
 });
 
 test("an assistant pod's single agent is held to the same scope", () => {
-  // On a managed pod the coordinator is an ordinarily-named agent, so the
-  // identity comes from the gateway-stamped assistant user id, not the name.
   vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "owner");
   expect(callWith("ws/Assistant", "/sandbox/routines/save", true).status).toBe(
     403,

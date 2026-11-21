@@ -5,37 +5,17 @@ import type {
   SessionStartRequest,
 } from "@houston/wire-types";
 
-/**
- * How N held sends become ONE (see send-queue.ts): the per-field merge rules for
- * a flush. Every field of the combined request comes from the LAST entry (the
- * most recent picker state) EXCEPT the ones derived here, which must reflect ALL
- * the merged entries — the combined send says everything the user typed, so it
- * must also carry everything that text implied.
- */
-
-/** The fields a flush derives from the whole queue rather than its last entry. */
 export type MergedSendFields = Pick<
   SessionStartRequest,
   "prompt" | "displayText" | "mentions" | "approvals" | "grants"
 >;
 
-/** Trim, drop the empties, and join blank-line-separated — the shape the old
- *  app-side queue produced. */
 const joinLines = (parts: readonly string[]): string =>
   parts
     .map((p) => p.trim())
     .filter(Boolean)
     .join("\n\n");
 
-/**
- * The @mention sidecars of every merged entry, deduped by `userId` and in
- * first-seen order (HOU-944). The combined prompt contains every entry's text,
- * so it must carry every entry's mentions: taking only the last entry's (the
- * rule for the picker overrides) would silently drop a teammate the user named
- * in an earlier queued line — the one thing a merge must never lose.
- * `undefined` when no entry mentioned anyone, so an unmentioning flush stays
- * byte-identical to what it sent before mentions existed.
- */
 function unionMentions(
   reqs: readonly SessionStartRequest[],
 ): MessageMention[] | undefined {
@@ -46,15 +26,6 @@ function unionMentions(
   return seen.size > 0 ? [...seen.values()] : undefined;
 }
 
-/**
- * Every approval receipt the merged entries carry, deduped by `requestId` and
- * in first-seen order. Like the mentions union and for a sharper reason: a
- * receipt is a person's yes, and taking only the last entry's would silently
- * drop an approval they actually gave — the card would come back and ask again.
- * A repeat of the same request id keeps the FIRST answer: the host retires a
- * request the moment it is decided, so a later duplicate is not a second
- * decision.
- */
 function unionApprovals(
   reqs: readonly SessionStartRequest[],
 ): MessageApproval[] | undefined {
@@ -74,15 +45,6 @@ function unionGrants(
   return grants.size ? [...grants] : undefined;
 }
 
-/**
- * Combine the held requests' prompt, bubble text, @mentions and approvals.
- *
- * The BUBBLE is reconstructed exactly like the prompt so a history reload
- * matches what the send showed: each entry contributes what its own bubble
- * showed (`displayText ?? prompt`). It is only carried when at least one entry
- * hid its prompt behind a `displayText`; otherwise the bubble equals the prompt
- * and the field stays absent.
- */
 export function mergeSendFields(
   reqs: readonly SessionStartRequest[],
 ): MergedSendFields {

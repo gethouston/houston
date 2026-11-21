@@ -8,12 +8,6 @@ import type { TurnFilesystem } from "./turn-filesystem";
 import { publishTurnRunsDoc } from "./turn-runs-doc";
 import type { TurnRequest } from "./types";
 
-/**
- * Overlapping routine runs each project the run history into the pod-store
- * doc the Routines tab reads while the agent sleeps. Each publisher merges
- * its rows into the doc it read (or the one a 409 names), never overwrites it.
- */
-
 async function publishRows(rows: Row[], fetchImpl: typeof fetch) {
   const workspaceDir = await mkdtemp(join(tmpdir(), "turn-runs-doc-"));
   const runsDir = join(workspaceDir, ".houston", "routine_runs");
@@ -39,7 +33,6 @@ async function publishRows(rows: Row[], fetchImpl: typeof fetch) {
 const ids = (rows: Row[]) => rows.map((r) => r.id);
 
 test("a slower run keeps the rows a newer doc already holds", async () => {
-  // run-3 settled and published first; this run hydrated before it existed.
   const store = docStore([row("run-3", 3), row("run-1", 1)]);
   const result = await publishRows(
     [row("run-2", 2), row("run-1", 1)],

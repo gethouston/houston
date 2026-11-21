@@ -4,14 +4,6 @@ import { appDisplay } from "./app-display";
 import { AppLogo } from "./app-logo";
 import { useToolkitBySlug } from "./use-toolkit-catalog";
 
-/**
- * The app a workflow step runs on, as a chip beside the step's title: the
- * real brand mark and the real app name from the Composio catalog, plus the
- * action spoken as a phrase ("Send email"). `@houston-ai/skills` can only show
- * the machine slug on its own, so every app surface that renders steps passes
- * this in as `renderIntegration` — the skill editor, the two skill previews
- * and the manage dialog's body all resolve an app the same way.
- */
 export function SkillStepIntegrationChip({
   integration,
 }: {

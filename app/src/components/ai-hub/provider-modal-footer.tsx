@@ -3,14 +3,6 @@ import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
 import type { ProviderInfo } from "../../lib/providers.ts";
 
-/**
- * The provider modal's connected footer: which provider is signed in and the
- * disconnect action. A local (OpenAI-compatible) provider disconnects through
- * the bridge teardown instead of a credential sign-out, hence the separate
- * `onDisconnectLocal`.
- *
- * Extracted from `provider-modal.tsx` to keep that file inside the size budget.
- */
 export function ProviderModalFooter({
   provider,
   connections,
@@ -20,9 +12,7 @@ export function ProviderModalFooter({
 }: {
   provider: ProviderInfo;
   connections: ProviderConnections;
-  /** The provider is a local OpenAI-compatible server. */
   isLocal: boolean;
-  /** A local disconnect is in flight. */
   disconnecting: boolean;
   onDisconnectLocal: () => void;
 }) {

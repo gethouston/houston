@@ -17,26 +17,12 @@ import { MissionPersonTeaser } from "./mission-person-teaser";
 import { usePersonFilterMode } from "./use-person-filter-mode";
 
 interface MissionPersonFilterProps {
-  /** The board items the person roster is drawn from (post agent-filter). */
   items: KanbanItem[];
-  /** Currently selected person, or `null` for Everyone. */
   filterUserId: string | null;
   onFilterUserIdChange: (userId: string | null) => void;
-  /** Compact layout: collapse the trigger to an icon-only face. */
   collapsed: boolean;
 }
 
-/**
- * Filter-by-person control for Mission Control. Three states, decided purely in
- * {@link personFilterMode}:
- * - a real filter (Everyone / My missions / every other human on the board) in
- *   a hosted team space, or on a legacy multiplayer host;
- * - a growth TEASER in a personal space on a spaces host (see
- *   {@link MissionPersonTeaser});
- * - nothing at all off-spaces / single-player / signed out.
- *
- * The gateway stamps attribution; this only narrows the view.
- */
 export function MissionPersonFilter({
   items,
   filterUserId,
@@ -49,8 +35,6 @@ export function MissionPersonFilter({
   if (mode === "hidden" || !user) return null;
 
   const selfName = myProfile?.name ?? user.email ?? shortUserLabel(user.id);
-  // Carrying the `id` is what earns the initials fallback this person's opaque
-  // `person.*` tone — the same one their face wears on every board card.
   const selfFace: FilterFace = {
     id: user.id,
     label: selfName,
@@ -83,9 +67,6 @@ export function MissionPersonFilter({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <FilterTrigger
-          // The team strip's lozenge height, so the right zone is one row of
-          // capsules. Passed from HERE and not baked into `FilterTrigger`,
-          // which the empty-board teaser also renders at its own scale.
           size={collapsed ? "icon-sm" : "sm"}
           face={activeFace}
           text={activeText}

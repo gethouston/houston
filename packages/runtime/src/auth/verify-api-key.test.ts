@@ -1,15 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * verify-api-key.ts decision table: which provider outcomes prove a pasted key
- * authenticates (store it) vs reject it (never store), and the typed `reason`
- * each rejection carries to the connect dialog. The generic path is mocked at
- * the pi-ai `completeSimple` seam; classification runs the REAL
- * `classifyProviderError`, so these tests pin the taxonomy wiring too. Google
- * rides the models-LIST probe instead (a completion probe let Google's
- * "high demand" 503 fail a perfectly good key), mocked at global fetch.
- */
-
 const completeSimple = vi.fn();
 vi.mock("@earendil-works/pi-ai/compat", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -117,10 +107,6 @@ test("insufficient balance proves the key authenticated — verified", async () 
 });
 
 test("a 402 payment-required reply proves the key authenticated — verified", async () => {
-  // The no-credits connect (2026-07 provider QA): a VALID key on an account
-  // with an empty balance answers 402. That is past auth — a garbage key can't
-  // owe money — so the key stores; the first chat turn then renders the
-  // quota_exhausted card with the provider's own billing message.
   completeSimple.mockResolvedValue(
     reply({
       stopReason: "error",
@@ -132,8 +118,6 @@ test("a 402 payment-required reply proves the key authenticated — verified", a
 });
 
 test("vercel's no-card block proves the key authenticated — verified", async () => {
-  // Vercel AI Gateway rejects EVERY request until a card is on file, with no
-  // status in pi's surfaced message — the body wording must carry the verdict.
   completeSimple.mockResolvedValue(
     reply({
       stopReason: "error",
@@ -157,8 +141,6 @@ test("a network failure rejects without storing, as provider_unavailable", async
 });
 
 test("a gated model (together's 'Unable to access model') proves auth — verified", async () => {
-  // together.ai validates the key BEFORE model entitlement, so this body means
-  // the key works and only the probe model is out of reach on the plan.
   completeSimple.mockResolvedValue(
     reply({
       stopReason: "error",
@@ -170,12 +152,6 @@ test("a gated model (together's 'Unable to access model') proves auth — verifi
 });
 
 test("moonshotai: a retired probe model's 404 still verifies the key (PRODUCT-1411)", async () => {
-  // Live shape from HOUSTON-APP-54G: pi's catalog kept Moonshot's retired
-  // kimi-k2 previews, so the probe answered `404 Not found the model` and 58
-  // users read "couldn't reach Moonshot AI" for a perfectly good key. Moonshot
-  // authenticates before it looks the model up (a bad key is a 401 even for a
-  // garbage id), so this is a model verdict, not a key verdict — the key
-  // stores; the retired model is a switch-model card later, not a lockout.
   completeSimple.mockResolvedValue(
     reply({
       stopReason: "error",
@@ -193,24 +169,16 @@ const nvidiaGate = (model: string) =>
   });
 
 test("nvidia: a gated probe model retries a broadly-served fallback — key verified", async () => {
-  // Live evidence (HOU-890): the SAME key answered `404 Not found for
-  // account` on gemma and 200 on llama — NVIDIA gates models per account, so
-  // one gated probe proves nothing about the key. The verifier must try the
-  // fallback list before any verdict.
   completeSimple
     .mockResolvedValueOnce(nvidiaGate("test-model"))
     .mockResolvedValueOnce(reply({}));
   await expect(verifyApiKey("nvidia", "nvapi-valid")).resolves.toBeUndefined();
   expect(completeSimple).toHaveBeenCalledTimes(2);
-  // The fallback probe ran against a model NVIDIA serves broadly.
   const fallbackModel = completeSimple.mock.calls[1][0] as { id: string };
   expect(fallbackModel.id).toBe("minimaxai/minimax-m3.1-flash");
 });
 
 test("nvidia: every probe gated rejects as key_restricted", async () => {
-  // The account-level "Public API Endpoints" wall: primary + all fallbacks
-  // answer the gate. NOT provider_unavailable ("try again in a moment")
-  // and NOT invalid_key ("paste it again") — neither remedy can work.
   completeSimple.mockResolvedValue(nvidiaGate("any"));
   await expect(verifyApiKey("nvidia", "nvapi-valid")).rejects.toMatchObject({
     name: "ApiKeyVerifyError",
@@ -221,8 +189,6 @@ test("nvidia: every probe gated rejects as key_restricted", async () => {
 });
 
 test("nvidia: a gated probe then a 403 on the fallback rejects as invalid_key", async () => {
-  // A non-gate failure on a fallback probe hands the verdict to the normal
-  // classification path — here NVIDIA's bad-key rejection.
   completeSimple
     .mockResolvedValueOnce(nvidiaGate("test-model"))
     .mockResolvedValueOnce(
@@ -238,8 +204,6 @@ test("nvidia: a gated probe then a 403 on the fallback rejects as invalid_key", 
 });
 
 test("nvidia: 403 'Authorization failed' still rejects as invalid_key", async () => {
-  // A genuinely bad or revoked key — the HOU-1077 classification must keep
-  // owning this shape; only the 404/410 gate reads key_restricted.
   completeSimple.mockResolvedValue(
     reply({
       stopReason: "error",
@@ -253,9 +217,6 @@ test("nvidia: 403 'Authorization failed' still rejects as invalid_key", async ()
 });
 
 test("an abort/timeout maps to a readable did-not-answer message", () => {
-  // Tested on the pure mapper: rejecting the mocked completeSimple with an
-  // abort-named error trips vitest's runner (it attributes the error object to
-  // the test itself), while the integrated path is just try/catch + this fn.
   const abort = new Error("This operation was aborted");
   abort.name = "TimeoutError";
   expect(raisedMessage(abort, "together")).toBe(
@@ -265,8 +226,6 @@ test("an abort/timeout maps to a readable did-not-answer message", () => {
   expect(raisedMessage(plain, "together")).toBe("boom");
   expect(raisedMessage("string failure", "together")).toBe("string failure");
 });
-
-// --- Google: verified against the models-list endpoint, never a completion ---
 
 const googleRes = (status: number, message?: string) => ({
   ok: status >= 200 && status < 300,
@@ -285,7 +244,6 @@ test("google: a 200 from the models list verifies — no completion is sent", as
   expect(url).toBe(
     "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1",
   );
-  // The key rides a header (never the query string, which lands in logs).
   expect((init.headers as Record<string, string>)["x-goog-api-key"]).toBe(
     "AIza-good",
   );
@@ -355,9 +313,6 @@ test("google: a non-JSON error body still surfaces, with the raw text", async ()
 });
 
 test("huggingface's Inference Providers permission gate reads as key_restricted", async () => {
-  // A fine-grained token without "Make calls to Inference Providers"
-  // (Sentry HOUSTON-APP-5CN, PRODUCT-1730): the token authenticated, the
-  // permission is missing — never "check the key and paste it again".
   completeSimple.mockResolvedValue(
     reply({
       stopReason: "error",

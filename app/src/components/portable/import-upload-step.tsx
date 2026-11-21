@@ -1,18 +1,3 @@
-/**
- * Step 1 of "From a friend": open the shared `.houstonagent` file, then decide
- * whether Houston reads it for risks before anything is installed.
- *
- * The scan choice is a two-card answer rather than a checkbox because it is
- * the one security decision in the flow, and both answers are legitimate. It
- * stays a local card (not the flow's `FlowChoiceRow`) because the pick must
- * keep reading as CHOSEN afterwards — the flow's Continue is gated on it.
- *
- * Renders bare, in the compact frame: what the step is called is the sheet's
- * own title, so the screen opens on the line that explains it. The scan cards
- * stack rather than pairing up — two of them side by side inside a hand-sized
- * dialog leave neither enough room to read.
- */
-
 import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
@@ -105,7 +90,6 @@ export function ImportUploadStep({
   );
 }
 
-/** The chosen card carries a full-ink border: depth in a line, never a shadow. */
 function ScanChoiceCard({
   selected,
   onClick,

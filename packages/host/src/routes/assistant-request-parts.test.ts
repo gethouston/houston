@@ -3,18 +3,6 @@ import type { AssistantRoute } from "../assistant/catalog";
 import { processAssistantCatalog } from "../assistant/catalog-source";
 import { buildPath } from "./assistant-request-parts";
 
-/**
- * The address a catalog operation is allowed to build.
- *
- * A path parameter is caller-supplied — on the assistant surface the caller is
- * a language model — and the built path is handed to `new URL(...)`, which
- * RESOLVES `.` and `..` segments before anything sees it. So a parameter that
- * carries dot segments does not address its own operation: it walks onto some
- * other route's address and is then performed with the gateway credential,
- * including routes deliberately withheld from the assistant. These tests pin
- * that a built path always addresses the route it was built from.
- */
-
 const loaded = processAssistantCatalog();
 if (!loaded) throw new Error("the generated assistant catalog must load");
 
@@ -24,13 +12,10 @@ function route(operation: string): AssistantRoute {
   return found;
 }
 
-/** The pathname a URL parser actually addresses for a built path. */
 const resolved = (path: string) =>
   new URL(`http://houston.test${path}`).pathname;
 
 describe("a path parameter cannot leave its own route", () => {
-  // The real shipped route: `path`-encoded `relPath` keeps its separators, so
-  // it is the one parameter that can spell more than one segment.
   const readAgentFile = () => route("readAgentFile");
 
   test("a plain traversal is refused, not sent", () => {
@@ -44,8 +29,6 @@ describe("a path parameter cannot leave its own route", () => {
   });
 
   test("a percent-encoded traversal is refused too", () => {
-    // WHATWG resolves `%2e%2e` exactly like `..`, so spelling it encoded is
-    // the same attack with a different keyboard.
     const built = buildPath(readAgentFile(), {
       agentId: "Work/Sales",
       relPath: "%2e%2e/%2e%2e/%2e%2e/v1/preferences/private-key",
@@ -72,8 +55,6 @@ describe("a path parameter cannot leave its own route", () => {
   });
 
   test("a segment parameter carrying a traversal is refused", () => {
-    // `agentId` is `segment`-encoded, and `encodeURIComponent("..")` is still
-    // `..`, so the escaping alone does not stop it.
     const built = buildPath(route("listActivities"), { agentId: ".." });
     expect(built.ok).toBe(false);
   });
@@ -103,9 +84,6 @@ describe("a path parameter cannot leave its own route", () => {
   });
 
   test("every accepted path resolves to itself", () => {
-    // The invariant behind the checks above, asserted directly: whatever a
-    // caller supplies, the address the URL parser lands on is the address the
-    // route declared.
     const hostile = [
       "..",
       ".",

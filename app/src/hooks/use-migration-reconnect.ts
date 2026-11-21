@@ -11,39 +11,17 @@ import {
 import { useProviderStatuses } from "./use-provider-statuses";
 
 export interface MigrationReconnectState {
-  /** Render the reconnect screen now. */
   show: boolean;
-  /**
-   * Persist that the moment is done (a provider connected, or the user chose to
-   * continue without one) so it never shows again. Idempotent.
-   */
   dismiss: () => Promise<void>;
 }
 
-/**
- * Drives the post-migration "reconnect your AI" gate.
- *
- * Signals:
- * - `chatHistoryMigrated()` from the host's `/v1/version` — did this install
- *   come from the legacy desktop build (history migrated, credentials did not).
- * - `useProviderStatuses()` — is any provider already connected.
- * - a `migration_reconnect_dismissed` engine preference — the persisted "seen"
- *   flag, so it survives reinstall-in-place.
- *
- * The flag is written on a successful reconnect (or an explicit "continue"),
- * after which `dismissed` flips true and the gate never returns.
- */
 export function useMigrationReconnect(): MigrationReconnectState {
   const qc = useQueryClient();
 
-  // Remote engines (hosted gateway, self-host VPS) can never be "this install
-  // migrated" — don't even probe them; the trigger holds the gate closed on
-  // `coLocated` regardless of what their `/v1/version` reports (HOU-688).
   const coLocated = isCoLocatedEngine();
 
   const migratedQuery = useQuery({
     queryKey: queryKeys.migrationReconnect(),
-    // The host's answer is stable for the life of the install; fetch once.
     queryFn: () => tauriSystem.chatHistoryMigrated(),
     staleTime: Number.POSITIVE_INFINITY,
     enabled: coLocated,
@@ -63,12 +41,6 @@ export function useMigrationReconnect(): MigrationReconnectState {
     isLoading: statusesLoading,
     isError: statusesError,
   } = useProviderStatuses();
-  // Both provider signals come from the ONE shared derivation (HOU-979): an
-  // `unknown` probe is "not yet known", never "not connected", so it defers the
-  // gate rather than firing it at a migrated user who IS connected. A FAILED
-  // probe says exactly the same thing and arrives with no statuses at all
-  // (HOU-1153), so it defers through `statusesError` below — without that the
-  // empty map would read as a confident "nothing is connected".
   const { hasProvider, unconfirmable } = migrationProviderSignals(
     Object.values(statuses),
   );

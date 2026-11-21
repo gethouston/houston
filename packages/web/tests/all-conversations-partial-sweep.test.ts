@@ -2,21 +2,6 @@ import { HoustonClient } from "@houston/engine-adapter/client";
 import { AGENT_FAN_OUT_LIMIT } from "@houston/sdk";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * HOU-981, the fan-out half.
- *
- * The cross-agent sweep is one `GET /agents/:id/activities` per agent. It used
- * to run under `Promise.all`, so ONE agent's failed read rejected the whole
- * sweep — a single pod that never woke blanked Mission Control, the sidebar
- * badges and the command palette for every other agent, and (because the query
- * layer's placeholder only covers the pending state) the board rendered EMPTY
- * rather than showing the cached missions.
- *
- * `allSettled` keeps whoever answered and names whoever did not, so the query
- * layer can carry the failed agents' last-known rows and re-sweep. A sweep
- * where EVERY agent failed is still a failure and still throws.
- */
-
 const originalFetch = globalThis.fetch;
 
 afterEach(() => {
@@ -32,7 +17,6 @@ const activity = (id: string, title: string) => ({
   updated_at: "2026-01-01T00:00:00.000Z",
 });
 
-/** Serve `/agents/:id/activities` per agent: rows, or a status to fail with. */
 function stubAgentReads(byAgent: Record<string, unknown[] | number>) {
   const calls: string[] = [];
   globalThis.fetch = vi.fn(async (input: unknown) => {
@@ -83,10 +67,6 @@ test("one unreachable agent no longer blanks the whole board", async () => {
   expect(result.conversations.map((c) => c.title)).toEqual([
     "Plan a trip to Tokyo",
   ]);
-  // Named, never silently dropped — this is what the query layer recovers
-  // from. The REASON travels too, so the surface layer can tell a waking
-  // pod's 503 from a real failure (HOUSTON-APP-538) instead of reporting
-  // every partial sweep blind.
   expect(result.failedAgents.map((f) => f.agentPath)).toEqual(["kai"]);
   const reason = result.failedAgents[0].reason as Error & { status?: number };
   expect(reason.name).toBe("HoustonEngineError");
@@ -124,7 +104,6 @@ test("an empty roster sweeps to an empty, COMPLETE answer", async () => {
   });
 });
 
-/** Answer every board read empty after `ms`, tracking how many overlap. */
 function stubSlowReads(ms = 1) {
   const load = { inFlight: 0, peak: 0, calls: 0 };
   globalThis.fetch = vi.fn(async () => {
@@ -145,8 +124,6 @@ const rosterOf = (n: number, prefix = "agent") =>
   Array.from({ length: n }, (_, i) => `${prefix}-${i}`);
 
 test("a large roster is read a few agents at a time, not all at once", async () => {
-  // Every app load swept a 105-agent space with 105 simultaneous reads; a
-  // reload mid-sweep cancelled all of them in the same instant.
   const load = stubSlowReads();
   const roster = rosterOf(40);
 
@@ -159,8 +136,6 @@ test("a large roster is read a few agents at a time, not all at once", async () 
 });
 
 test("the bound holds across a bearer rotation mid-sweep", async () => {
-  // Every hosted token refresh rebuilds the client's SDK; a gate per SDK
-  // would let the second sweep run beside the first one's queue.
   const load = stubSlowReads(5);
   const c = client();
   const first = c.listAllConversations(rosterOf(30, "first"));
@@ -174,8 +149,6 @@ test("the bound holds across a bearer rotation mid-sweep", async () => {
 });
 
 test("an aborted sweep drops its queued reads and rejects", async () => {
-  // A space switch removes the sweep's query; its queued reads must not go
-  // out later under the next space's header.
   const load = stubSlowReads(5);
   const controller = new AbortController();
   const sweep = client().listAllConversations(rosterOf(40), {

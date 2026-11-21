@@ -27,10 +27,9 @@ test("per-hour cap refills in the next hour window", async () => {
 
 test("a rejected attempt does not consume the hourly budget", async () => {
   const q = new TurnQuota({ maxConcurrent: 1, perHour: 3 });
-  const r1 = await q.acquire("ws-1"); // hourly slot 1
-  await expect(q.acquire("ws-1")).rejects.toThrow(TurnQuotaError); // concurrent reject — no hourly cost
+  const r1 = await q.acquire("ws-1");
+  await expect(q.acquire("ws-1")).rejects.toThrow(TurnQuotaError);
   await r1();
-  // Slots 2 and 3 must still be claimable (the reject above didn't burn one).
   await (await q.acquire("ws-1"))();
   await (await q.acquire("ws-1"))();
   await expect(q.acquire("ws-1")).rejects.toThrow(/per hour/);
@@ -51,7 +50,6 @@ test("the cap holds ACROSS replicas sharing one bus", async () => {
   const replicaB = new TurnQuota({ maxConcurrent: 2, perHour: 100 }, { bus });
   const r1 = await replicaA.acquire("ws-1");
   await replicaB.acquire("ws-1");
-  // Third concurrent turn rejected no matter which replica it lands on.
   await expect(replicaA.acquire("ws-1")).rejects.toThrow(TurnQuotaError);
   await expect(replicaB.acquire("ws-1")).rejects.toThrow(TurnQuotaError);
   await r1();

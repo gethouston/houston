@@ -1,14 +1,3 @@
-/**
- * An agent's skills MANIFEST — which of the skills it can reach are switched
- * on — over the injected `fetch`.
- *
- * The route replaces the whole enabled list, which is the right shape for the
- * screen that edits the list as a whole and the wrong one for a single skill
- * being switched on. {@link setSkillEnabled} is that single act: the read and
- * the write belong together, so they live here rather than in each surface
- * that needs one. The module factory serializes them per agent.
- */
-
 import { type HttpScope, httpRequest } from "../http";
 import type { SkillsManifest } from "./types-agent";
 

@@ -27,7 +27,6 @@ export class ApprovalMessageRefusal extends Error {
   }
 }
 
-/** The host-owned fields a client may propose but never have forwarded. */
 const HOST_OWNED = ["approvals", "grants", "hostMessageFingerprint"] as const;
 
 function withoutHostFields(
@@ -42,17 +41,11 @@ function withoutHostFields(
   return rest;
 }
 
-/**
- * The bytes to forward. Serializing is skipped when the request carried nothing
- * host-owned, so an ordinary message reaches the runtime as the exact bytes the
- * client sent.
- */
 function forwarded(body: Record<string, unknown>, original: Buffer): Buffer {
   if (!HOST_OWNED.some((field) => field in body)) return original;
   return Buffer.from(JSON.stringify(withoutHostFields(body)));
 }
 
-/** Guard before touching approvals; rejection releases only this request's own reservation. */
 export function prepareMessageReceipts(input: {
   approvals: ApprovalStore;
   agentId: AgentId;
@@ -60,13 +53,10 @@ export function prepareMessageReceipts(input: {
   actor: string;
   grantActor?: string;
   body: Buffer;
-  /** The body's parsed object (`turn-body.ts`), or null when it is not one. */
   parsed: Record<string, unknown> | null;
   durableReceipt?: MessageAdmissionReceipt | null;
 }): { body: Buffer; release?: () => void; duplicate?: true } {
   const body = input.parsed;
-  // A body that is not the JSON this route speaks is left entirely alone: what
-  // to tell the client about it belongs to the channel it is headed for.
   if (!body) return { body: input.body };
   const grants =
     body.grants === undefined
@@ -80,8 +70,6 @@ export function prepareMessageReceipts(input: {
     throw new ApprovalMessageRefusal("grants_not_allowed");
   const nonce = parseMessageNonce(body.nonce);
   if (nonce === false) throw new ApprovalMessageRefusal("invalid_nonce");
-  // A malformed request must not mutate approvals or reserve an identity - and
-  // must not carry host-owned fields past this seam either.
   if (typeof body.text !== "string" || !body.text)
     return { body: forwarded(body, input.body) };
   const content = messageRetryContent(body, input.actor);
@@ -105,9 +93,6 @@ export function prepareMessageReceipts(input: {
     throw new ApprovalMessageRefusal("nonce_conflict");
   if (guard?.kind === "full")
     throw new ApprovalMessageRefusal("approval_guard_busy");
-  // Only a message the user actually sent mints or retires receipts, and only
-  // when a card is live for this agent and conversation - so the hot turn path
-  // pays a map lookup and nothing else.
   if (
     guard?.kind !== "duplicate" &&
     input.approvals.hasPending(input.agentId, input.conversationId)
@@ -118,9 +103,6 @@ export function prepareMessageReceipts(input: {
       conversationId: input.conversationId,
       field: body.approvals,
     });
-  // A grant is the approval of the message it rode on, for that one turn: a
-  // new message starts a new turn, so whatever an earlier one left unspent
-  // can no longer skip a card.
   if (guard?.kind !== "duplicate")
     input.approvals.grants.clear(input.agentId, input.conversationId);
   const issuedGrants: string[] = [];
@@ -135,8 +117,6 @@ export function prepareMessageReceipts(input: {
           requiresActor: input.grantActor !== undefined,
         }),
       );
-  // Receipts never reach the runtime, even after they expired or were spent,
-  // and the retry fingerprint it does see is authored here, never copied.
   return {
     body: nonce
       ? Buffer.from(
@@ -146,7 +126,6 @@ export function prepareMessageReceipts(input: {
           }),
         )
       : forwarded(body, input.body),
-    // A rejected turn never carried the person's grant into a live conversation.
     ...(guard?.kind === "new" || issuedGrants.length
       ? {
           release: () => {

@@ -63,7 +63,6 @@ describe("seeding the timezone", () => {
   });
 
   it("a stored zone is the answer and nothing is written", async () => {
-    // An old gateway would write unconditionally: the read keeps it safe.
     const { sdk, calls } = makeSdk(() => json({ value: "Europe/Lisbon" }));
     expect(
       await sdk.preferences.seedTimezone({ detected: "America/Bogota" }),
@@ -98,8 +97,6 @@ describe("seeding the timezone", () => {
   });
 
   it("never writes a zone the server would refuse", async () => {
-    // Chromium on some Linux hosts reports Etc/Unknown; a 400 would repeat
-    // on every app open and the zone would never land.
     const { sdk, calls } = makeSdk(() => json({ value: null }));
     expect(
       await sdk.preferences.seedTimezone({ detected: "Etc/Unknown" }),
@@ -127,9 +124,6 @@ describe("seeding the timezone", () => {
   });
 
   it("a locked team's refusal is a typed outcome, never a throw", async () => {
-    // A background seed on a team whose writes are refused (403
-    // needs_upgrade) is a business state the team's own banner explains;
-    // a throw here filed a bug report on every app open.
     const { sdk, calls } = makeSdk((method) =>
       method === "GET"
         ? json({ value: null })

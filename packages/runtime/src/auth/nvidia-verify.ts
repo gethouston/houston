@@ -2,30 +2,8 @@ import { extractHttpStatus, isNvidiaFunctionGated } from "../ai/provider-error";
 import { safeGetModel } from "../ai/providers";
 import { ApiKeyVerifyError } from "./verify-errors";
 
-/**
- * NVIDIA's per-account model gate at connect time (HOU-890). NVIDIA serves
- * each hosted model ("function") per account, so the verify probe's model
- * being gated proves nothing about the KEY — verified live: the same key
- * answered `404 Not found for account` on gemma and 200 on llama. Before any
- * verdict, retry broadly-served models; only when EVERY probe is gated is the
- * account behind the "Public API Endpoints" wall, and that verdict must be
- * `key_restricted` — NOT invalid_key ("paste it again") and NOT
- * provider_unavailable ("try again in a moment"), neither of which can work.
- */
-
-/** A completion probe: `null` = the provider accepted the request. */
 type Probe = (model: ReturnType<typeof safeGetModel>) => Promise<string | null>;
 
-/**
- * Models served to every NVIDIA account we have evidence from. Of the families
- * our partially-gated live key was served (llama / gpt-oss / minimax), pi
- * retired the llama-3.x rows in 0.84.4, gpt-oss-120b in 0.85.0 and gpt-oss-20b
- * in 1.6.0, so MiniMax M3.1 Flash leads. NVIDIA's own Nemotron 3.5 Super VL is
- * a second family, so a MiniMax-wide gate still can't produce a false
- * `key_restricted`. The first is also NVIDIA's entry in the domain
- * default-model table (`@houston/domain/provider-default-models`, what a first
- * chat runs on) and the classifier's suggested fallback.
- */
 const NVIDIA_VERIFY_FALLBACKS = [
   "minimaxai/minimax-m3.1-flash",
   "nvidia/nemotron-3.5-super-vl-120b-a12b",
@@ -39,11 +17,6 @@ export function nvidiaGated(providerId: string, message: string): boolean {
   );
 }
 
-/**
- * Resolve a gated first probe: `null` = a fallback model verified the key.
- * A non-gated failure is returned so the caller's normal classification (403
- * bad key, network, …) owns the verdict; all-gated throws `key_restricted`.
- */
 export async function retryNvidiaFallbacks(
   providerId: string,
   triedModelId: string,
@@ -56,7 +29,7 @@ export async function retryNvidiaFallbacks(
     try {
       fallback = safeGetModel(providerId, id, true);
     } catch {
-      continue; // catalog drift — this fallback id no longer exists
+      continue;
     }
     const message = await probe(fallback);
     if (message === null) return null;

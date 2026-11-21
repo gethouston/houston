@@ -6,7 +6,6 @@ import {
   type ProviderQuickFilter,
 } from "../provider-browser/provider-filtering";
 
-/** The lucide glyph paired with each billing quick-filter facet. */
 const FILTER_ICON: Record<
   Exclude<ProviderQuickFilter, "all">,
   typeof CreditCard
@@ -15,12 +14,6 @@ const FILTER_ICON: Record<
   payg: Wallet,
 };
 
-/**
- * The providers mode's billing facet — Subscription / Pay-as-you-go toggle
- * chips. They ride the page header's tools zone beside the search (compact in
- * the strip, natural in the stacked row), the same home every mode's filters
- * share. Clicking the active chip clears back to "all".
- */
 export function ProviderQuickFilterChips({
   filter,
   onFilterChange,

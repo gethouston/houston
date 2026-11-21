@@ -15,8 +15,6 @@ describe("hiddenPromptDisplayText", () => {
   });
 
   it("carries nothing for a conversation Houston started itself", () => {
-    // An empty bubble is not a message: the hidden kickoff has no user text to
-    // stand in for, so no displayText is sent and none is persisted.
     strictEqual(hiddenPromptDisplayText("", true), undefined);
     strictEqual(hiddenPromptDisplayText("", false), undefined);
   });

@@ -1,26 +1,6 @@
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
 
-/**
- * The phone's header for a DRILLED screen — a team's section, the team's
- * settings level, a focused agent.
- *
- * A different grammar from the desktop strip on purpose, and it is the level
- * above, not this header, that carries the difference. On the phone the
- * section was already chosen one level up (the AI Employees list, or an
- * employee's task list menu), so a
- * switcher here would offer the same list twice and leave the screen without a
- * title. What a drilled phone screen owes instead is the two things a lozenge
- * cluster cannot say at 375px: where you ARE (a real `<h1>`, the subject and
- * its section) and how to get BACK.
- *
- * The back control is a floating round chip rather than a labelled lozenge:
- * the destination is named by the tab the user is standing in, and a chip
- * leaves the whole row to the title. Its `aria-label` names the destination, so
- * the affordance is never just an arrow to a screen reader.
- *
- * Presentational only — every caller passes its own words and its own retreat.
- */
 export function MobileDrilledHeader({
   backLabel,
   onBack,
@@ -30,17 +10,11 @@ export function MobileDrilledHeader({
   trailing,
   testId,
 }: {
-  /** The destination, spoken: the screen this chip retreats to. */
   backLabel: string;
   onBack: () => void;
-  /** The subject's mark (team glyph, agent helmet), beside its name. */
   glyph?: ReactNode;
   title: string;
-  /** The section on screen, under the subject. */
   subtitle: string;
-  /** The row's own end: a screen's single overflow control, when it has one.
-   *  Deliberately one slot — a drilled phone header has room for the title or
-   *  for a toolbar, never both. */
   trailing?: ReactNode;
   testId: string;
 }) {

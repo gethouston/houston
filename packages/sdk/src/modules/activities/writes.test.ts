@@ -13,12 +13,6 @@ interface Recorded {
   body?: unknown;
 }
 
-/**
- * A write-only SDK (`reactivity:false`, so NO `/v1/events` stream) over a mock
- * `fetch` that records every `/activities` call. `reactivity:false` is what lets
- * a "does not refetch" assertion be exact: a GET on the list route can only come
- * from a facade `refresh()` — a no-refetch write must issue none.
- */
 function makeSdk() {
   const calls: Recorded[] = [];
   const wireActivity = (over: Record<string, unknown>) => ({
@@ -39,7 +33,6 @@ function makeSdk() {
         return new Response("", { status: 200 });
       if (method === "GET") return json({ items: [] });
       if (method === "DELETE") return json({ ok: true });
-      // POST create / PATCH update echo a wire Activity.
       return json(wireActivity((body as Record<string, unknown>) ?? {}));
     },
   );
@@ -78,15 +71,13 @@ describe("activities module — no-refetch writes", () => {
       { method: "POST", path: base, body: { title: "Reconcile" } },
     ]);
     expect(created).toMatchObject({ id: "m1", title: "Reconcile" });
-    expect(gets(calls)).toEqual([]); // no refresh() GET
+    expect(gets(calls)).toEqual([]);
     expect(sdk.getSnapshot(activitiesScope(AGENT))).toBeUndefined();
     sdk.dispose();
   });
 
   it("writes.update PATCHes the caller's whole update in ONE request, no refetch", async () => {
     const { sdk, calls } = makeSdk();
-    // A settling turn writes its status and clears its interaction together;
-    // two narrow PATCHes would publish a half-settled card between them.
     const updated = await sdk.activities.writes.update(AGENT, "m1", {
       status: "done",
       pending_interaction: null,
@@ -108,7 +99,6 @@ describe("activities module — no-refetch writes", () => {
     const rows = await sdk.activities.list(AGENT);
     expect(calls).toEqual([{ method: "GET", path: base, body: undefined }]);
     expect(rows).toEqual([]);
-    // The read a host with its own read model wants: nothing lands in the store.
     expect(sdk.getSnapshot(activitiesScope(AGENT))).toBeUndefined();
     await sdk.activities.refresh(AGENT);
     expect(sdk.getSnapshot(activitiesScope(AGENT))).toBeDefined();
@@ -147,7 +137,6 @@ describe("activities module — no-refetch writes", () => {
   it("the refetching facade create() DOES list afterward (contrast)", async () => {
     const { sdk, calls } = makeSdk();
     await sdk.activities.create(AGENT, "Reconcile");
-    // POST then a GET list (the facade's refresh) — the behavior it guarantees.
     expect(calls.map((c) => c.method)).toEqual(["POST", "GET"]);
     const snap = sdk.getSnapshot(activitiesScope(AGENT)) as ActivitiesViewModel;
     expect(snap.loaded).toBe(true);

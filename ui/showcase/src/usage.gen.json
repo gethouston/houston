@@ -476,9 +476,10 @@
   "core-progress": {
     "surfaces": [
       "Chat",
-      "Settings"
+      "Settings",
+      "ui/chat (library)"
     ],
-    "fileCount": 2
+    "fileCount": 3
   },
   "core-scroll-area": {
     "surfaces": [

@@ -8,25 +8,14 @@ import {
 } from "../../../lib/manager-onboarding/reveal";
 import type { ScriptLine } from "../../../lib/manager-onboarding/script";
 
-/** One word per beat: a short message types out in well under a second. */
 const WORD_MS = 40;
 
 export interface ScriptedReveal {
-  /** The lines already on screen, in order. */
   shown: ScriptLine[];
-  /** The manager line being typed out, and how much of it shows. */
   typing: { key: string; text: string } | null;
-  /** Everything is said: the manager is waiting on the person. */
   settled: boolean;
 }
 
-/**
- * The manager "typing" its scripted lines the way a streamed reply arrives,
- * one message at a time, a word per beat after a short pause. The person's own
- * answers appear at once, and a reopened conversation shows its history at
- * once and types only the manager's latest turn. Reduced motion shows every
- * line whole.
- */
 export function useScriptedReveal(
   lines: ScriptLine[],
   textOf: (line: Extract<ScriptLine, { kind: "manager" }>) => string,

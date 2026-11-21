@@ -21,16 +21,8 @@ import {
 } from "../../shell/use-agent-role-state";
 import type { RosterRow } from "./manager-roster-list";
 
-/** The answer that closes the team, shown once it is built. */
 export type TeamClosingAnswer = Omit<TeamAnswer, "locked">;
 
-/**
- * The team being built in the conversation, on the SAME machinery as the
- * "Build your team" card: the roster that hires real AI Employees behind the
- * person, the starter team, and the finish that waits for every hire to land
- * before the confetti. Reaching the starter team is a step of the onboarding
- * funnel, counted once per run.
- */
 export function useManagerTeam({
   workspaceId,
   start,
@@ -47,8 +39,6 @@ export function useManagerTeam({
   const { t } = useTranslation(["agentOnboarding", "agents"]);
   const hiring = useTeamHiring(workspaceId);
   const roster = useTeamRoster(hiring);
-  // The team's industry: the survey's, or the one asked here when it left
-  // none. `start` is read once, as the step opens.
   const industryState = useAgentRoleState(true, start);
   const industry = industryState.contextLabel.trim();
   const basic = useBasicTeam({
@@ -70,7 +60,6 @@ export function useManagerTeam({
     analytics.track("onboarding_step_viewed", { step: funnelStep });
   }, [funnelStep]);
 
-  /** Why a hire or its last change did not land, in the person's words. */
   const problemOf = (member: RosterMember): string | null => {
     if (member.status.kind === "failed")
       return member.status.reason === "nameTaken"
@@ -79,7 +68,6 @@ export function useManagerTeam({
     return member.saveFailed ? t("agentOnboarding:roleSetup.saveFailed") : null;
   };
 
-  // Already on the team: hired, with nothing left to go wrong.
   const earlierRows = earlierHires.map(
     (agent): RosterRow => ({
       key: `earlier-${agent.id}`,
@@ -117,13 +105,9 @@ export function useManagerTeam({
     industry,
     rows,
     finishState,
-    /** Anyone on the team, from this run or an earlier one. */
     anyone: rows.length > 0,
     finishing: finish.busy,
-    /** Work is landing that no answer may undo: the finish. */
     busy: finish.busy,
-    /** Finish the team, closing the conversation with `answer` once every
-     *  hire has landed. */
     finish: (answer: TeamClosingAnswer | null) => {
       closing.current = answer;
       finish.request();

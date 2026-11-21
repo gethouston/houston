@@ -56,26 +56,15 @@ const MessageAvatarContext = createContext<React.ReactNode | undefined>(
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
-  /** Optional badge avatar shown on the message bubble (e.g., channel logo). */
   avatar?: React.ReactNode;
-  /**
-   * A user turn written by SOMEONE ELSE (HOU-960). Alignment stops following
-   * the role and follows the WRITER: the viewer's own turns keep the
-   * right-aligned near-ink bubble (`is-user`), a teammate's mirrors to the left
-   * as a recessed, hairlined bubble (`is-peer`) with room for their face.
-   */
   peer?: boolean;
 };
 
-/** Role/authorship marker classes the bubble styling below scopes itself to. */
 function messageVariantClass(
   from: UIMessage["role"],
   peer: boolean | undefined,
 ): string {
   if (from !== "user")
-    // A bubbled agent turn in a GROUP chat (HOU-960): the agent is one more
-    // member, so it wears the same incoming `is-peer` bubble a teammate does,
-    // just wider — its prose (lists, code) needs more line than small talk.
     return peer ? "is-peer is-agent mr-auto max-w-[85%]" : "is-assistant";
   if (peer) return "is-peer mr-auto max-w-[70%]";
   return "is-user ml-auto max-w-[70%] justify-end";
@@ -121,27 +110,8 @@ export const MessageContent = ({
       <div
         className={cn(
           "flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-base leading-6",
-          // The user's own bubble: pure-white medium-weight text over the
-          // fill in BOTH themes (PRODUCT-1217) — the near-white grays the
-          // surfaces use (input / ink) read dull at bubble size, and 500
-          // matches the perceived weight of ChatGPT's bubble type on the
-          // system stack.
           "group-[.is-user]:ml-auto group-[.is-user]:rounded-[22px] group-[.is-user]:bg-bubble group-[.is-user]:px-4 group-[.is-user]:py-2.5 group-[.is-user]:font-medium group-[.is-user]:text-bubble-text",
-          // An incoming bubble (teammate or bubbled agent turn): the recessed
-          // chip fill instead of near-ink, plus a hairline — over the
-          // near-white canvas (light) and the glass canvas (dark) the fill
-          // alone is only a few levels of separation, so the line is what makes
-          // it read as an object rather than a smudge. Geometry is the
-          // group-chat grammar (HOU-960): 12px corners with the top-left
-          // squared toward the sender's face (the landing's own bubble tail),
-          // compact 12/8 padding.
           "group-[.is-peer]:mr-auto group-[.is-peer]:rounded-xl group-[.is-peer]:rounded-tl-sm group-[.is-peer]:border group-[.is-peer]:border-line group-[.is-peer]:bg-chip group-[.is-peer]:px-3 group-[.is-peer]:py-2 group-[.is-peer]:text-ink",
-          // The agent's plain prose (single-player): `prose-text`, not `ink`
-          // — same colour in light, pure white in dark, where ink's #e5e5e5
-          // reads dim beside the user bubble. Weight stays regular: this is
-          // long-form reading text, and ChatGPT keeps its assistant prose at
-          // 400 too. A GROUP-chat agent turn wears the peer bubble instead
-          // (short-form, on a chip fill) and keeps `ink`.
           "group-[.is-assistant]:text-prose-text",
           className,
         )}
@@ -299,7 +269,6 @@ export const MessageBranchContent = ({
     [children],
   );
 
-  // Use useEffect to update branches when they change
   useEffect(() => {
     if (branches.length !== childrenArray.length) {
       setBranches(childrenArray);
@@ -328,7 +297,6 @@ export const MessageBranchSelector = ({
 }: MessageBranchSelectorProps) => {
   const { totalBranches } = useMessageBranch();
 
-  // Don't render if there's only one branch
   if (totalBranches <= 1) {
     return null;
   }
@@ -412,14 +380,6 @@ export const MessageBranchPage = ({
   );
 };
 
-/**
- * Props passed to a custom link renderer. `onOpen` is the default
- * open-URL handler (what the built-in button would call on click) — the
- * custom renderer can invoke it directly or ignore it. Returning
- * `undefined` (or `null`) from the renderer falls back to the default
- * button, which lets the app handle *only* specific URL patterns and
- * leave everything else alone.
- */
 export type RenderLinkProps = {
   href: string;
   children: ReactNode;
@@ -429,20 +389,7 @@ export type RenderLinkFn = (props: RenderLinkProps) => ReactNode | undefined;
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
   onOpenLink?: (url: string) => void;
-  /**
-   * Optional custom renderer for markdown links. When provided, it
-   * replaces the default button for every `<a>` tag rendered by
-   * Streamdown. The default button behavior is exposed to the custom
-   * renderer as `onOpen` so it can fall back when it doesn't want to
-   * handle a particular link. Pure generic — the chat package stays
-   * Composio-unaware; the app layer is responsible for detecting
-   * special URL patterns.
-   */
   renderLink?: RenderLinkFn;
-  /**
-   * People whose "@Name" occurrences in this message should render as chips
-   * (HOU-944). Empty/absent leaves the markdown pipeline exactly as it was.
-   */
   mentions?: readonly MentionTarget[];
 };
 
@@ -456,21 +403,6 @@ export const MessageResponse = memo(
     mentions,
     ...props
   }: MessageResponseProps) => {
-    // Streamdown REPLACES its own plugin chain when `rehypePlugins` is set, so
-    // we rebuild it around the defaults rather than beside them. Order is
-    // load-bearing:
-    //
-    //   raw → sanitize → FILE LINKS → harden → mentions
-    //
-    // The file-link pass sits between `sanitize` and `harden` on purpose: after
-    // sanitize, whose attribute whitelist would strip the `data-file-path` it
-    // mints, and before harden, which would otherwise BLOCK every bare relative
-    // file link outright (PRODUCT-1231). Mentions still run last, so the spans
-    // they mint are never stripped and the sanitizer stays fully in force.
-    //
-    // Tuple form for mentions: Streamdown keys its compiled-processor cache on
-    // the plugin name plus JSON-stringified options, so the targets must ride
-    // in the options or two messages would share one processor.
     const rehypePlugins = useMemo(() => {
       const { harden, ...beforeHarden } = defaultRehypePlugins;
       const chain: unknown[] = [
@@ -504,44 +436,20 @@ export const MessageResponse = memo(
           node?: unknown;
           [FILE_PATH_ATTR]?: string;
         }) => {
-          // A link to a workspace file opens its PATH, not the href: harden
-          // rewrites `./plan.md` to `/plan.md` and re-encodes it, which names
-          // no real file. `data-file-path` carries the pristine, decoded
-          // destination the file-link pass recorded (PRODUCT-1231).
           const filePath = rest[FILE_PATH_ATTR];
           const url = filePath ?? (href as string);
           const kind = classifyMarkdownLink(url, children);
-          // No destination → nothing to open.
           if (kind === "plain") {
             return <span>{children}</span>;
           }
           const onOpen = () => fn?.(url);
-          // The app's custom renderer gets first say on every link (its
-          // contract). When it returns undefined/null we fall through to
-          // the defaults below, so the app can override only specific URL
-          // patterns (e.g. Composio connect cards) and leave the rest alone.
           if (renderLink) {
             const custom = renderLink({ href: url, children, onOpen });
             if (custom != null) {
               return <>{custom}</>;
             }
           }
-          // DESTINATION KIND decides the affordance, before anything about
-          // the label does. A workspace file is not a link: it opens a preview
-          // INSIDE Houston (or hands off to the OS), so it must not wear the
-          // web's clothes. It gets the file vocabulary instead — the
-          // per-extension glyph on the recessed chip, the same mark the Files
-          // tab and the turn summary use — and it gets ONE look regardless of
-          // how the agent wrote the markdown (PRODUCT-1231).
-          //
-          // That also keeps link blue meaning something: after HOU-1152 every
-          // URL is the same Slack chip, so blue now reads as "this leaves
-          // Houston" and the neutral chip as "this is yours".
           if (filePath !== undefined) {
-            // The agent's own label when it wrote one, the file name when it
-            // wrote the path as the label (a raw path reads as noise
-            // mid-sentence) — but ALWAYS carrying the extension, so a chip
-            // never hides whether it opens a `.pdf` or a `.md`.
             const fileLabel =
               kind === "autolink" ? (
                 fileNameOf(filePath)
@@ -561,26 +469,10 @@ export const MessageResponse = memo(
               </FileChip>
             );
           }
-          // Every remaining link — the bare URL the agent dropped in chat
-          // (issue #358) and the labeled `[Open report](…)` alike — is the
-          // same inline chip that opens in the system browser (HOU-1152).
-          // A labeled link used to render as a solid button pill, the one
-          // variant still wearing the pre-Slack styling; a descriptive label
-          // is not a call to action and reading it as a second link shape
-          // made the same message look like two different products.
-          //
-          // Only an autolink shortens: a URL label markdown broke across
-          // lines flattens with a softbreak in it (HOU-1071), so show the
-          // reassembled URL rather than raw children with a stray space
-          // mid-URL, scheme-stripped and capped (HOU-1152). A label is the
-          // author's own words and renders verbatim, wrapping inline instead
-          // of clipping the way the fixed-height pill did.
           const label =
             kind === "autolink"
               ? (autolinkDisplay(children) ?? children)
               : children;
-          // Only interactive when there's an open handler; otherwise it
-          // would look clickable but do nothing.
           if (!fn) return <span>{label}</span>;
           return (
             <Autolink href={url} onOpen={onOpen}>
@@ -592,9 +484,6 @@ export const MessageResponse = memo(
     }, [onOpenLink, renderLink]);
 
     return (
-      // Degrade to the raw markdown text if a render-time failure escapes
-      // Streamdown (e.g. shiki's JS regex engine on an older WebView) so a
-      // single message can't blank the whole chat.
       <ErrorBoundary
         fallback={
           <div className="size-full whitespace-pre-wrap break-words">
@@ -610,7 +499,6 @@ export const MessageResponse = memo(
           plugins={streamdownPlugins}
           components={components}
           rehypePlugins={rehypePlugins}
-          // streamdown 2.7 boxes tables at 300px with their own scroll; replies keep full-height tables.
           tableMaxHeight={0}
           {...props}
         />
@@ -622,9 +510,6 @@ export const MessageResponse = memo(
     nextProps.isAnimating === prevProps.isAnimating &&
     prevProps.onOpenLink === nextProps.onOpenLink &&
     prevProps.renderLink === nextProps.renderLink &&
-    // By VALUE: the row above rebuilds the target list every render, and
-    // comparing by identity here would re-parse every message on every
-    // keystroke.
     sameMentionTargets(prevProps.mentions, nextProps.mentions),
 );
 

@@ -90,20 +90,11 @@ const teams = (role: OrgRole): Capabilities =>
   caps({ multiplayer: true, role, teams: true });
 
 describe("canSeeAiModelsPage (HOU-976)", () => {
-  // Six role/deployment cases used to be spelled out here against a function
-  // that now returns a constant, so not one of them could fail. The gate itself
-  // needs exactly one line; what CAN regress is the SEPARATION below.
   it("is true for everyone, in every deployment", () => {
     strictEqual(canSeeAiModelsPage(teams("user")), true);
   });
 
   it("does not carry the owner/admin matrix that guards team consumption", () => {
-    // Opening the hub (every member connects their OWN AI account there) must
-    // not widen the space-wide spend surface with it: the team roll-up lives in
-    // Admin's Org chart, which still rides the owner/admin matrix (`canSeeMembers`,
-    // through `canSeeOrganization`). Re-uniting the two would either hide the
-    // hub from the member whose own account it exists to manage, or open the
-    // space's spend to every member.
     strictEqual(canSeeMembers(teams("user")), false);
     notStrictEqual(
       canSeeAiModelsPage(teams("user")),
@@ -114,14 +105,9 @@ describe("canSeeAiModelsPage (HOU-976)", () => {
 
 describe("canSeeBilling (C8)", () => {
   it("owner and admin see billing; member and single-player do not", () => {
-    // Admin sees the summary (read) though the owner-only checkout write 403s —
-    // the admin/owner asymmetry is intended (C8 §Error codes).
     strictEqual(canSeeBilling(multiplayer("owner")), true);
     strictEqual(canSeeBilling(multiplayer("admin")), true);
-    // Members NEVER see billing data (C8 §Client UX) — they read the degrade
-    // banner from OrgSummary.degraded instead.
     strictEqual(canSeeBilling(multiplayer("user")), false);
-    // Single-player has no billing surface at all.
     strictEqual(canSeeBilling(caps()), false);
     strictEqual(canSeeBilling(null), false);
   });
@@ -161,7 +147,6 @@ describe("canSeeBillingTab", () => {
   });
 
   it("shows it on the Personal row, whose sole owner pays for it", () => {
-    // A personal space advertises no multiplayer role; paying is enough.
     strictEqual(canSeeBillingTab(caps({ spaces: true }), billing(true)), true);
   });
 
@@ -244,8 +229,6 @@ describe("isSpaceOwner", () => {
   });
 
   it("multiplayer without spaces is never personal, so the role decides", () => {
-    // No `spaces` capability means no personal/team split at all: the
-    // active-space flag is meaningless and must not grant ownership.
     strictEqual(isSpaceOwner(multiplayer("admin"), false), false);
     strictEqual(isSpaceOwner(multiplayer("user"), false), false);
     strictEqual(isSpaceOwner(multiplayer("owner"), false), true);

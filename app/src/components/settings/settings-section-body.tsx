@@ -14,16 +14,10 @@ import { ShortcutsSection } from "./sections/shortcuts";
 
 interface SettingsSectionBodyProps {
   active: SettingsSectionId;
-  /** Names the level the way back returns to (always the Settings index). */
   backLabel: string;
   onBack: () => void;
 }
 
-/**
- * One settings section, mounted on its own screen: a back bar to the index over
- * the reading column, capped at `max-w-xl` (Plan's comparison takes
- * `max-w-4xl`).
- */
 export function SettingsSectionBody({
   active,
   backLabel,

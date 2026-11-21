@@ -1,16 +1,3 @@
-/**
- * Geometry + fill state for the reasoning-effort "signal bars" icon
- * ({@link EffortIcon}). Pure so the bar math is unit-tested without a DOM — the
- * .tsx component is a thin `<rect>` map over {@link effortBars}.
- *
- * One ascending bar per level the active model accepts, solid up to (and
- * including) the current level and dimmed beyond it, so the glyph itself
- * encodes the effort. Bar count tracks the model's own level set (up to the
- * four-tier low→xhigh spectrum), keeping the provider > model > effort cascade
- * legible at a glance.
- */
-
-/** Square viewBox the bars are laid out in (bottom-aligned). */
 export const EFFORT_ICON_VIEWBOX = 24;
 
 const BASELINE = 21;
@@ -20,21 +7,13 @@ const BAR_WIDTH = 3;
 const BAR_GAP = 1.6;
 
 export interface EffortBar {
-  /** Left edge (viewBox units). */
   x: number;
-  /** Top edge (viewBox units); bars share a fixed bottom baseline. */
   y: number;
   width: number;
   height: number;
-  /** True when this bar is at or below the active level (drawn solid). */
   filled: boolean;
 }
 
-/**
- * 1-based position of `active` within `levels` (ordered low→high), i.e. how
- * many bars are solid. 0 when `active` is unset or not a member, so the icon
- * reads "nothing selected" rather than guessing a level.
- */
 export function effortFillCount(
   levels: readonly string[],
   active: string | null | undefined,
@@ -44,11 +23,6 @@ export function effortFillCount(
   return index < 0 ? 0 : index + 1;
 }
 
-/**
- * Ascending bar specs for `levels`, the first {@link effortFillCount} of them
- * solid. The group is centered horizontally in the viewBox so the icon stays
- * balanced whether the model offers 4 levels or 5.
- */
 export function effortBars(
   levels: readonly string[],
   active: string | null | undefined,

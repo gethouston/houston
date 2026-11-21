@@ -12,10 +12,8 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** The plan Inbox Zero drafted before touching anything. */
 const PLAN = `I will read the last 30 days of mail from Stripe, file every receipt under a new "Receipts" label, and leave anything that looks like an unpaid invoice in the inbox for you.`;
 
-/** Spanish labels, to show the card carries no English of its own. */
 const SPANISH_LABELS = {
   title: "Plan listo",
   collapse: "Contraer la aprobación del plan",
@@ -29,7 +27,6 @@ const SPANISH_LABELS = {
   send: "Enviar",
 };
 
-/** A card whose three rows really fire, echoing which one the user picked. */
 function LiveCard({ disabled }: { disabled?: boolean }) {
   const [picked, setPicked] = useState<string | null>(null);
   return (
@@ -152,7 +149,6 @@ function ChatPlanReadyCardSpecimen() {
   );
 }
 
-/** The `@houston-ai/*` symbols this page documents. */
 export const sources: string[] = [
   "ChatPlanReadyCard",
   "DEFAULT_PLAN_READY_LABELS",

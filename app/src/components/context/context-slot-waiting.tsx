@@ -8,11 +8,6 @@ import {
 import { useTranslation } from "react-i18next";
 import type { ContextSlotState } from "./context-slot-state";
 
-/**
- * What a context editor shows before it can: a spinner while the read is on
- * its way, and the honest reason when there is no AI Employee to keep the
- * text with yet.
- */
 export function ContextSlotWaiting({
   state,
 }: {

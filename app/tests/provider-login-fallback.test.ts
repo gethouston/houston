@@ -6,13 +6,6 @@ import {
   providerLoginSurfaceClaimed,
 } from "../src/components/shell/provider-login-surface.ts";
 
-// HOU-676: a sign-in launched from a surface without its own login handler
-// (the in-chat reconnect card) emitted `ProviderLoginUrl` into the void — the
-// runtime had started the OAuth flow but nothing opened the browser, so the
-// button read as dead. The shell-global fallback acts on the event exactly
-// when no dedicated login surface (AI hub, picker, onboarding step) is
-// mounted; these tests pin the claim lifecycle and the routing decision.
-
 describe("claimProviderLoginSurface", () => {
   it("claims while held, releases on the returned function, and is idempotent", () => {
     strictEqual(providerLoginSurfaceClaimed(), false);
@@ -20,9 +13,7 @@ describe("claimProviderLoginSurface", () => {
     const releaseB = claimProviderLoginSurface();
     strictEqual(providerLoginSurfaceClaimed(), true);
     releaseA();
-    // The other surface still holds a claim.
     strictEqual(providerLoginSurfaceClaimed(), true);
-    // Double release (a re-run effect cleanup) must not free B's claim.
     releaseA();
     strictEqual(providerLoginSurfaceClaimed(), true);
     releaseB();
@@ -70,8 +61,6 @@ describe("providerLoginFallbackAction", () => {
   });
 
   it("shows the dialog for device-code and web/remote flows", () => {
-    // Device code: the user must read the one-time code, browser-open alone
-    // would strand them.
     strictEqual(
       providerLoginFallbackAction({
         claimed: false,
@@ -80,8 +69,6 @@ describe("providerLoginFallbackAction", () => {
       }),
       "dialog",
     );
-    // Web client: popup-blockers eat a non-gesture open; the dialog's button
-    // gives the user gesture.
     strictEqual(
       providerLoginFallbackAction({
         claimed: false,
@@ -93,8 +80,6 @@ describe("providerLoginFallbackAction", () => {
   });
 
   it("shows the dialog for the Claude/Anthropic setup-token paste flow (auth_code), even on desktop", () => {
-    // The event's url is a docs reference, not a sign-in page — auto-opening it
-    // would drop the user on docs and skip the paste box (the reported bug).
     strictEqual(
       providerLoginFallbackAction({
         claimed: false,

@@ -1,11 +1,3 @@
-/**
- * Move-with-conflict flow for the Files section: a drop that would collide with
- * an existing entry opens a Replace / Keep both dialog instead of hitting
- * the host's 409. Replace deletes the occupant then moves; Keep both renames
- * the moved item to a free "name (n)" first. Each choice paints its end state
- * at once and runs its steps in the background as one optimistic write, so a
- * refused step rolls the whole listing back with one surface.
- */
 import type { FileEntry } from "@houston-ai/agent";
 import { useCallback, useState } from "react";
 import { detectMoveConflict, keepBothName } from "../lib/file-conflicts";
@@ -14,7 +6,6 @@ import { useFileWrites } from "./queries";
 export interface PendingMove {
   sourcePath: string;
   toDir: string | null;
-  /** The colliding name shown in the dialog. */
   name: string;
   targetPath: string;
 }

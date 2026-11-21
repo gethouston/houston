@@ -1,101 +1,26 @@
-/**
- * An agent-scoped READ answered "this agent does not exist" (HOUSTON-APP-544).
- *
- * Agent-scoped routes resolve the agent id before anything else: the hosted
- * gateway looks it up in its registry, and the host's own authz does the same
- * (`packages/host/src/routes/agent-authz.ts`) — both answer
- * `404 { error: "agent not found" }` when the id no longer resolves. For a
- * GET the client sends routinely (the skills-manifest queries), that answer
- * has exactly one meaning: the LOCAL ROSTER IS STALE. The agent was deleted
- * or unshared on another device, or a space switch's cache reset
- * (`lib/space-cache.ts`) refired queries built from the previous space's
- * roster under the new `x-houston-org` before `loadAgents` re-resolved.
- *
- * That is an expected, explainable lifecycle state, NOT a Houston bug: the
- * honest surface is the roster without the agent, so the read is silenced
- * (no red bug toast, no Sentry report — `call()` still logs it) and the
- * roster is silently reloaded so the ghost disappears on its own.
- *
- * Like `isMissingSkillError`, the classifier keys on the structural
- * `.status`: the TS host emits bare-string error bodies with no typed
- * `kind`, and an agent-scoped read has exactly one 404 path — the agent is
- * gone (a missing data file answers 200 with empty content, and a missing
- * skill goes through `isMissingSkillError` on its own route) — so the status
- * is unambiguous in context. Applied ONLY to passive reads — the manifest
- * queries and the `passiveAgentRead` wrappers in `lib/tauri.ts`
- * (HOUSTON-APP-4W3 family); writes keep the default loud surfacing.
- */
 export function isAgentGoneError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   return (err as { status?: unknown }).status === 404;
 }
 
-/**
- * An agent-scoped READ answered "this viewer may not use this agent"
- * (HOUSTON-APP-540 / 5AV / 5AT / 55C). The hosted gateway's proxy gate answers
- * `403 { error: "not allowed", code: "not_assigned" }` for every agent-scoped
- * route the caller is not assigned to, and a passive read reaches one in two
- * expected ways: the roster is stale (unassigned on another device, and the
- * `AgentsChanged` reload has not landed yet), or the event stream named an
- * agent outside the viewer's roster (the fan-in is org-wide, not per
- * assignee). Neither is a Houston bug — the honest surface is the roster
- * without the agent — so a 403 on a passive read is silenced and heals the
- * roster exactly like {@link isAgentGoneError}. Same structural `.status`
- * key: the gateway's 403 body carries its code at the top level, which the
- * engine adapter's `.code` getter (`body.error.code`) never sees.
- */
 export function isAgentUnreadableError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   return (err as { status?: unknown }).status === 403;
 }
 
-/**
- * The passive-read silence + heal classifier: the agent is gone (404) or not
- * readable by this viewer (403). Both mean the LOCAL ROSTER is not the
- * server's — nothing to re-sweep, nothing to report, only a roster to reload.
- */
 export function isStaleRosterReadError(err: unknown): boolean {
   return isAgentGoneError(err) || isAgentUnreadableError(err);
 }
 
-/** The agent-store signals the query gate reads. */
 export interface AgentRosterSignals {
-  /** True once `loadAgents` has settled at least once (even on failure). */
   loaded: boolean;
-  /** True while a `loadAgents` is in flight. */
   loading: boolean;
 }
 
-/**
- * Whether the CURRENT space's roster has settled, so an agent-scoped query
- * would target this space's agents rather than the previous one's.
- *
- * Same gate as the provider probe's (`providerProbeReady`, HOU-979), for the
- * same race: a space switch wipes the query cache, which refires every
- * mounted agent-scoped query — but the components still render the PREVIOUS
- * space's roster until `loadAgents` re-resolves, so each refetch asks the
- * new org about an agent it never had and gets `404 agent not found`.
- * `loaded` alone is not enough: it stays true across the switch while the
- * re-`loadAgents` runs, which is exactly the window the doomed reads fired
- * in. Both signals together mean "settled, for this space".
- */
 export function agentRosterSettled(roster: AgentRosterSignals): boolean {
   return roster.loaded && !roster.loading;
 }
 
-/**
- * The self-heal half of the agent-gone contract: a silent roster reload, so
- * an agent the server no longer knows vanishes from the rail instead of
- * sitting there as a ghost whose every surface errors quietly.
- *
- * Factory form so the dedupe is unit-testable: `load` is the store's
- * `loadAgents(workspaceId, { silent: true })`. One reload at a time — a
- * Skills page with several stale agents observes one agent-gone error per
- * manifest query in the same beat, and each mounted surface calls the healer,
- * so concurrent calls collapse into the single in-flight reload. No loop is
- * possible: a reload that still lists the agent changes nothing, and the
- * errored queries (`staleTime: Infinity`) do not refetch on their own.
- */
 export function makeRosterHealer(
   load: (workspaceId: string) => Promise<void>,
 ): (workspaceId: string | null, agentGone: boolean) => Promise<boolean> {
@@ -112,17 +37,6 @@ export function makeRosterHealer(
   };
 }
 
-/**
- * The engine-call-layer trigger: classify a failed passive read and, when the
- * roster is stale about the agent (gone, or not readable by this viewer),
- * fire the roster heal for the current workspace — the same
- * classify→heal contract `useStaleRosterHeal` gives the query surfaces, for
- * reads whose surfaces don't observe the error (HOUSTON-APP-4W3 family).
- * Factory form so the wiring is unit-testable: `heal` is the ONE shared
- * healer (`lib/roster-heal.ts`) and `currentWorkspaceId` reads the workspace
- * store. Anything but a stale-roster error is a no-op — surfacing stays with
- * the caller.
- */
 export function makeAgentGoneHealTrigger(
   heal: (workspaceId: string | null, agentGone: boolean) => Promise<boolean>,
   currentWorkspaceId: () => string | null,
@@ -133,18 +47,6 @@ export function makeAgentGoneHealTrigger(
   };
 }
 
-/**
- * Split a cross-agent sweep's failed reads into the agents the local roster
- * is wrong about (gone, or not readable by this viewer — see
- * {@link isStaleRosterReadError}) and the real failures. A stale-roster read
- * is not "missions unread": there is nothing to re-sweep or report, only a
- * roster to heal, so the sweep's recovery layer
- * (`hooks/queries/all-conversations-sweep.ts`) must never see it as a partial
- * failure — that made every stale roster a red toast, a Sentry report, and
- * three doomed re-sweeps (HOUSTON-APP-4WR / 58R / 55E), and every unassigned
- * agent a deterministic 403 on every sweep, escalating to
- * `list_all_conversations_stuck` (HOUSTON-APP-5AV / 5AT).
- */
 export function partitionStaleRosterReads<T extends { reason: unknown }>(
   failed: readonly T[],
 ): { stale: T[]; failed: T[] } {

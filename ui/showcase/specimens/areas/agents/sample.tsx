@@ -11,17 +11,6 @@ import {
 import { Users } from "lucide-react";
 import type { ReactNode } from "react";
 
-/**
- * The **Your Agents** area's shared stand-in content.
- *
- * Every component on this rail is domain-blind — `AppSidebar` takes `icon` and
- * `trailing` nodes, `TabBar` takes labels — so an honest specimen has to feed
- * them exactly what the desktop shell feeds them: `HoustonAvatar` for the agent
- * glyph, a count `Badge` for "needs you", a quiet dot for unread. These are the
- * same shapes `app/src/components/shell/agent-sidebar-status.tsx` builds.
- */
-
-/** The rail's agent glyph: the Houston helmet in the agent's palette colour. */
 export function AgentIcon({
   color,
   running,
@@ -38,20 +27,10 @@ export function AgentIcon({
   );
 }
 
-/**
- * A team block's mark, in the same glyph column the agent avatars use one
- * indent to the right. Deliberately MONOCHROME — it inherits the row's colour,
- * because the identity colour in that column belongs to the avatars below it
- * and a second palette stacked above them would compete with the one that
- * carries real meaning.
- */
 export function TeamIcon() {
   return <Users className="size-4" />;
 }
 
-/** "Act on me now": a count chip, the loudest signal a row carries. */
-
-/** "There is something new here": deliberately a dot, never a count. */
 export function UnreadDot() {
   return (
     <span
@@ -65,12 +44,10 @@ export function UnreadDot() {
   );
 }
 
-/** The AI Manager's avatar, at the rail slot's diameter. */
 function ManagerIcon() {
   return <ManagerAvatar size={useSidebarAvatarDiameter()} />;
 }
 
-/** Houston, pinned ahead of every group and employee. */
 export const managerItem: SidebarItem = {
   id: "houston",
   name: "Houston",
@@ -78,7 +55,6 @@ export const managerItem: SidebarItem = {
   icon: <ManagerIcon />,
 };
 
-/** Four agents a Houston user would actually have, with live-looking signals. */
 export const agentItems: SidebarItem[] = [
   {
     id: "inbox-zero",
@@ -103,7 +79,6 @@ export const agentItems: SidebarItem[] = [
   },
 ];
 
-/** Two named groups; Expense Filer leads the list without a folder header. */
 export const agentGroups: SidebarGroupView[] = [
   {
     id: "mornings",
@@ -119,18 +94,12 @@ export const agentGroups: SidebarGroupView[] = [
   },
 ];
 
-/** The workspaces the switcher lists. */
 export const workspaces: readonly { id: string; name: string }[] = [
   { id: "personal", name: "Julian's workspace" },
   { id: "taxflow", name: "Taxflow" },
   { id: "houston", name: "Houston HQ" },
 ];
 
-/**
- * A bounded stage for a full-height app-frame component. The rail and the split
- * view both size themselves from their parent, so a specimen has to give them a
- * window with a real height or they collapse to nothing.
- */
 export function Viewport({
   children,
   className,

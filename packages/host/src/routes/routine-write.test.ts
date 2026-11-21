@@ -3,14 +3,6 @@ import { expect, test } from "vitest";
 import { MemoryVfs } from "../vfs";
 import { createRoutineChecked, updateRoutineChecked } from "./routine-write";
 
-/**
- * The merge-safe scheduled-task write path shared by the agent-data route and
- * the runtime save_routine tool. The bug it fixes: two isolated setup chats each
- * knew only their own routine, so a wholesale write of the second deleted the
- * first. These tests prove the read-modify-write keeps both, updates in place,
- * and holds the wake + trigger-backend gates.
- */
-
 const ROOT = "ws1/agent1";
 const WS = "ws1";
 const OPTS = { triggersEnabled: false, nowIso: "2026-01-01T00:00:00.000Z" };

@@ -20,7 +20,6 @@ test("the workspace/user context section is appended to the system prompt", () =
   writeFileSync(join(dir, "USER.md"), "Juan, sales lead.");
 
   const prompt = buildSystemPrompt(dir, "You are Houston.");
-  // Base prompt, then the CLAUDE.md instructions, then the context section.
   expect(prompt).toContain("You are Houston.");
   expect(prompt).toContain("You are the sales agent.");
   expect(prompt).toContain("# Workspace Context");
@@ -37,7 +36,6 @@ test("the job description's industry and role reach the model as plain lines", (
   );
 
   const prompt = buildSystemPrompt(dir, "You are Houston.");
-  // The model never sees the YAML block: it reads the two answers as text.
   expect(prompt).toContain("Industry: Healthcare\nRole: Medical coder");
   expect(prompt).toContain("You code charts.");
   expect(prompt).not.toContain("industry: Healthcare");
@@ -79,7 +77,6 @@ test("workspace skills are indexed with their SKILL.md locations (HOU-894)", () 
   expect(prompt).toContain("<available_skills>");
   expect(prompt).toContain("<name>marketing-report</name>");
   expect(prompt).toContain("Weekly marketing report with brand guidelines");
-  // The location is the absolute path the Read tool loads the procedure from.
   expect(prompt).toContain(
     join(dir, ".agents", "skills", "marketing-report", "SKILL.md"),
   );
@@ -112,10 +109,6 @@ test("the skills index lands before the mode overlay", () => {
   expect(overlayAt).toBeGreaterThan(skillsAt);
 });
 
-/**
- * The assistant's memory injection, pinned on the claude side of the
- * prompt-assembly parity pair (its twin is session/loader.test.ts).
- */
 function agentDirNamed(name: string): string {
   const dir = join(mkdtempSync(join(tmpdir(), "houston-sysprompt-")), name);
   mkdirSync(dir, { recursive: true });
@@ -133,11 +126,6 @@ function seedLearnings(cwd: string, text: string): void {
   );
 }
 
-/**
- * The assistant's memory and rules follow the ROLE the host stamped on this
- * runtime, not the name of the directory it runs in (the managed pod runs under
- * `/workspace` with an ordinarily-named agent).
- */
 async function asCoordinator<T>(fn: () => Promise<T> | T): Promise<T> {
   const prior = process.env.HOUSTON_ASSISTANT_ROLE;
   process.env.HOUSTON_ASSISTANT_ROLE = "coordinator";
@@ -162,7 +150,6 @@ test("the assistant's memory lands after the context sections and before the ove
   expect(memoryAt).toBeGreaterThan(-1);
   expect(prompt).toContain("- Julian prefers short replies.");
   expect(memoryAt).toBeGreaterThan(prompt.indexOf("# Workspace Context"));
-  // Skills stay last before the overlay, and the overlay stays last of all.
   expect(prompt.indexOf("<available_skills>")).toBeGreaterThan(memoryAt);
   expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(
     prompt.indexOf("<available_skills>"),
@@ -179,7 +166,6 @@ test("the assistant's operating rules land right after its memory", async () => 
   const memoryAt = prompt.indexOf("# What you remember about this user");
   const rulesAt = prompt.indexOf(RULES_HEADING);
   expect(rulesAt).toBeGreaterThan(memoryAt);
-  // Skills, then the overlay, still come after both.
   expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(rulesAt);
 });
 

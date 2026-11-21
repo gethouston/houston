@@ -25,17 +25,6 @@ interface HostProps {
   children: ReactNode;
 }
 
-/**
- * Hands the onboarding to the AI Manager's view, around the shell.
- *
- * The first-run lifecycle (the funnel, the pending stage that resumes a run)
- * lives HERE, not in the chat: the chat is one kept-alive screen the person
- * may leave, and a run must be counted once however they move around. It
- * mounts beside the children, never around them, so the shell is not
- * remounted when onboarding starts or ends. Each time onboarding becomes
- * active the manager's view opens once; the person can leave it and come
- * back to the same conversation.
- */
 export function ManagerOnboardingHost({
   route,
   survey,
@@ -46,8 +35,6 @@ export function ManagerOnboardingHost({
 }: HostProps) {
   const finishRef = useRef<() => void>(() => {});
   useOwedTranscriptRetry();
-  // The prompt stops being owed the moment its last answer saves, which is
-  // before the manager has thanked the person: it stays open until closed.
   const [promptOpen, setPromptOpen] = useState(showSurveyPrompt);
   useEffect(() => {
     if (showSurveyPrompt) setPromptOpen(true);
@@ -97,8 +84,6 @@ function useOpenManagerOnce(active: boolean) {
     }
     if (opened.current) return;
     opened.current = true;
-    // A redirect, not a place the person chose: replacing keeps it off the
-    // nav stack.
     useUIStore.getState().setViewMode(ASSISTANT_VIEW_ID, { nav: "replace" });
   }, [active]);
 }

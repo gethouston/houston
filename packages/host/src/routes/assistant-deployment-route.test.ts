@@ -165,8 +165,6 @@ test("every visible catalogued custom-integration route is rewritten", () => {
     const route = op.route;
     if (!route) throw new Error(`${op.name} lost its route`);
     const request: AssistantUpstreamRequest = {
-      // The catalog carries `{param}` placeholders; the dispatcher substitutes
-      // them before this route ever sees a path.
       path: route.path.replace(/\{[^}]+\}/g, "custom-app"),
       method: route.method,
       query: {},
@@ -175,16 +173,6 @@ test("every visible catalogued custom-integration route is rewritten", () => {
       gatewayFronted: true,
       gatewayAgentId: "trusted-pod",
     });
-    // The hand-listed shapes in assistantDeploymentRoute must keep covering the
-    // GENERATED catalog: a newly catalogued operation the list never learned
-    // about 400s on every gateway-fronted deployment and nowhere else. Hidden
-    // operations are exempt — the secret-bearing credential/oauth pair is
-    // refused before dispatch (see "hidden %s stays refused" above), so
-    // whether a route exists for them decides nothing.
-    //
-    // Pinned to the exact upstream request, not merely non-null: a rewrite that
-    // lands on the wrong pod path (or drops the method/query) reaches a real
-    // gateway and fails there, which a null-check can never catch.
     expect(
       rewritten,
       `${op.name} (${route.method} ${route.path}) is not routed for a gateway-fronted deployment`,
@@ -223,10 +211,6 @@ test("route mapping escapes trusted target and preserves method, query and body"
   ).toBeNull();
 });
 
-// The allowlist pairs a SHAPE with its methods, so a method the pod never
-// serves on that shape must be declined rather than forwarded: a rewrite that
-// looked only at the path would send these to the agent's engine, where they
-// land on no handler at all.
 test.each([
   "/v1/integrations/custom/definitions/app/credential",
   "/v1/integrations/custom/definitions/app/detect",

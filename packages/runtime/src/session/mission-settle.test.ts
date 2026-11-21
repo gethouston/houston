@@ -2,16 +2,6 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { config } from "../config";
 import { reportMissionSettle } from "./mission-settle";
 
-/**
- * The settle report crosses the pod↔control-plane network, whose drops are
- * connectivity, not Houston faults (Sentry HOUSTON-APP-595: 225 undici
- * `TypeError: fetch failed` events, every one a socket reset mid-settle).
- * The contract under test: transient failures RETRY (the host applies at most
- * one settle per mission, so replays are safe), and a settle that still fails
- * logs a WARN breadcrumb — never a console.error, which the capture feed
- * would mint into a Sentry error event.
- */
-
 const prev = { url: "", token: "" };
 let warnSpy: ReturnType<typeof vi.spyOn>;
 let errorSpy: ReturnType<typeof vi.spyOn>;
@@ -32,7 +22,6 @@ afterEach(() => {
   errorSpy.mockRestore();
 });
 
-/** Fire-and-forget returns void; drain its internal promise chain. */
 async function settled(check: () => boolean): Promise<void> {
   await vi.waitFor(() => {
     expect(check()).toBe(true);

@@ -19,22 +19,12 @@ import type { TurnAttemptState } from "./session-turn-attempt";
 
 export type { ClaudeQuery, ClaudeSessionDeps, TurnAuth } from "./session-deps";
 
-/**
- * The Claude Agent SDK implementation of `HarnessSession`. `prompt` runs one
- * `query()` to completion, translating SDK messages into the pi wire dialect
- * (text/thinking/tool_start/tool_end/usage/provider_error) — never `done`, which
- * the orchestrator emits. It NEVER throws on a provider failure: a typed error
- * rides the stream as a `provider_error` frame instead. `abort` cancels via the
- * turn's `AbortController`; the SDK iterator then throws, and the post-abort
- * throw is swallowed (whatever its shape) so the stop is not double-reported.
- */
 export class ClaudeSession
   extends SessionEventSubscriptions
   implements HarnessSession
 {
   private disposed = false;
   private aborting = false;
-  /** Why the last attempt asked for a fresh rerun, for the warn line. */
   private retryReason = "";
   private abortController: AbortController | undefined;
   private model: string;
@@ -51,12 +41,6 @@ export class ClaudeSession
     this.usedAccessDigest = deps.usedAccessDigest;
   }
 
-  /**
-   * The digest of the OAuth access token this session's next spawn runs on
-   * (build-time until the first prompt, then each attempt's `refreshAuth` read).
-   * The conversation cache compares it against the CURRENTLY stored credential
-   * to rebuild sessions left on a rotated-out token (PRODUCT-1355 layer 2).
-   */
   getUsedAccessDigest(): string | undefined {
     return this.usedAccessDigest;
   }
@@ -82,7 +66,6 @@ export class ClaudeSession
       this.compactions.consume(this.deps.conversationId, checkpoint);
   }
 
-  /** This session's mutable state as one attempt is allowed to see it. */
   private attemptState(): TurnAttemptState {
     return {
       deps: this.deps,
@@ -126,25 +109,12 @@ export class ClaudeSession
     this.model = toSdkModel(model.id);
   }
 
-  /**
-   * Summarize this conversation and restart its SDK session on the summary
-   * (`./compact`). Rejects rather than reporting a compaction that did not
-   * happen — the caller turns that into the turn's error — and leaves the
-   * session untouched when it does, so a failed compaction never costs history.
-   *
-   * `customInstructions` ride the summarization request, which is what lets the
-   * assistant's compaction ask for the durable facts the summarized stretch
-   * revealed (session/durable-facts.ts) on this backend exactly as on pi.
-   */
   async compact(
     customInstructions?: string,
   ): Promise<CompactionOutcome | undefined> {
     if (this.disposed) return undefined;
-    // The summary request carries the whole conversation.
     const auth = this.deps.refreshAuth(this.knownFill());
     this.usedAccessDigest = auth.accessDigest;
-    // Registered as the session's controller so the user's Stop (and dispose)
-    // cancels a summarization that is still running.
     const abortController = new AbortController();
     this.abortController = abortController;
     const outcome = await compactClaudeSession(
@@ -163,16 +133,10 @@ export class ClaudeSession
       },
       customInstructions,
     );
-    // The window now holds a summary, not the history: reporting the old fill
-    // would make the autocompact check compact again on every following turn
-    // (exec-turn.ts). Unknown until the next turn's usage frame — which is the
-    // honest answer, and the one a fresh session starts from.
     this.contextTokens = undefined;
     return outcome;
   }
 
-  /** Clear stale tool results before the autocompact check reads the fill, so
-   *  it decides on what the next request sends (the resume finds them done). */
   clearStaleToolResults(): number {
     const { conversationId, sessionsStore } = this.deps;
     if (this.disposed || this.compactions.read(conversationId)) return 0;
@@ -183,7 +147,6 @@ export class ClaudeSession
     return cleared ?? 0;
   }
 
-  /** The context fill measured in this process, else the one recorded. */
   private knownFill(): number | undefined {
     return this.contextTokens ?? this.deps.recordedContextTokens?.();
   }

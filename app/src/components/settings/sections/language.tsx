@@ -61,8 +61,6 @@ export function LanguageSection() {
   );
 
   const handleLocaleChange = (value: string) => {
-    // `current` is guaranteed once a workspace is active; the guard just
-    // defends the rare unmount race.
     if (!isSupported(value) || !current) return;
     void change(current.id, value);
   };

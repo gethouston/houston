@@ -9,12 +9,6 @@ import {
 import { gatewayMissionDirectory } from "./missions-directory-gateway";
 import type { MissionsCtx, MissionsSandboxDeps } from "./missions-sandbox";
 
-/**
- * The candidate set a mission may be addressed to, per deployment: this host's
- * own agents, the gateway's agents for a managed pod, and — the point of the
- * seam — the same shape either way.
- */
-
 const gateway = { url: "https://gw.test", token: "gw-token" };
 
 async function ctxFor(
@@ -39,7 +33,6 @@ async function ctxFor(
   };
 }
 
-/** A fetch that answers the gateway's agent list with `body` at `status`. */
 function listing(body: unknown, status = 200): typeof fetch {
   return (async () =>
     new Response(JSON.stringify(body), {
@@ -66,9 +59,6 @@ test("an agent can name its own board", async () => {
 });
 
 test("a candidate is a reference the shared ladder resolves", async () => {
-  // The directory's whole job is to hand the ONE matcher (agent-refs.ts)
-  // something it can match: an id, both qualifiers, and a bare name. A
-  // candidate missing a field is a target the caller could only name one way.
   const result = await localMissionDirectory(await ctxFor()).list();
   if (!result.ok) throw new Error("expected a directory");
   const writer = result.candidates.find(
@@ -122,8 +112,6 @@ test("the gateway directory maps the agents the user owns", async () => {
 });
 
 test("an unreadable gateway is an error, never an empty directory", async () => {
-  // Answering "there is no agent called Dobby" because the gateway hiccuped
-  // would teach the model that the agent does not exist.
   for (const impl of [
     listing({ error: "nope" }, 500),
     listing({ notAnArray: true }),
@@ -164,8 +152,6 @@ test("a fronted pod lists both sides; an unfronted host stays local", async () =
     "Dobby",
   ]);
 
-  // No gateway wiring: the local store is the whole directory, and nothing is
-  // fetched (the desktop's own agents are all of them).
   const desktop = await missionTargetDirectory(await ctxFor()).list();
   expect(desktop.ok && desktop.candidates.map((c) => c.name)).toEqual([
     "Helper",

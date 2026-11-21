@@ -48,8 +48,6 @@ describe("narrow badge name fields", () => {
     const fallback = fittingNamePlaceholder(
       employeeNamePlaceholder("Executive assistant"),
       340,
-      // A 375px phone's badge: 295px, less the 72px photo panel, the body's
-      // padding and the pencil.
       149,
     );
     for (const language of ["en", "es", "pt"]) {

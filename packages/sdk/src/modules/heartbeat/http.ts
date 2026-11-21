@@ -1,13 +1,3 @@
-/**
- * The heartbeat REST calls, over the injected `fetch`: the open host's
- * `/v1/heartbeat` family (desktop, self-host). Literal paths through
- * {@link httpRequest}, which is what keeps them visible to the assistant's
- * catalog.
- *
- * Nothing here degrades: a non-2xx throws a `HeartbeatHttpError` carrying the
- * status, and {@link classifyHeartbeatFailure} (`types.ts`) names it.
- */
-
 import { type HttpScope, httpRequest } from "../http";
 import type {
   HeartbeatRunResult,

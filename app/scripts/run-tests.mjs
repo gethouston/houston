@@ -1,14 +1,3 @@
-// `pnpm test`: every `tests/*.test.ts` in ONE node process, except the files
-// tests/own-process.txt lists, which keep a process each. A process per file
-// was 80 s locally and 142 s on CI for 719 files, almost all of it booting
-// node + tsx again for each; the shared process runs the 614 others in 8 s.
-//
-// Files run in seeded random order on every supported node version so tests
-// cannot rely on state left behind by an alphabetically earlier file.
-// The seed is printed; HOUSTON_TEST_SEED reruns that order.
-//
-// With file arguments (`pnpm test tests/foo.test.ts`) those files run the old
-// way, a process each.
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -41,9 +30,6 @@ function run(args, shared = false) {
   });
 }
 
-// Exit codes go through `process.exitCode`, never `process.exit()`: stdout to
-// a pipe (CI) is asynchronous, and exiting cut the log off at 64 KB, before
-// the failures and the summary.
 async function main() {
   const given = process.argv.slice(2);
   if (given.length > 0) {
@@ -81,7 +67,6 @@ async function main() {
     [shared[i], shared[j]] = [shared[j], shared[i]];
   }
 
-  // One shared process plus three isolated workers fits the CI runner's four CPUs.
   const results = await Promise.all([
     run(shared, true),
     run(["--test-concurrency=3", ...ownProcess]),

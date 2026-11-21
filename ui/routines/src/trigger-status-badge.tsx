@@ -1,19 +1,3 @@
-/**
- * TriggerStatusBadge — the live provisioning status of an event-driven routine
- * (C9), as a sober colored-dot + human label (mirrors the integrations
- * `ConnectionStatusBadge` treatment, never a tinted card). A disconnected account
- * offers a one-click Reconnect; a revoked toolkit explains access was turned
- * off.
- *
- * A trigger routine ALWAYS shows a status: when no status item has arrived yet
- * (the host is still checking, or a deployment that serves none) the badge
- * renders a muted, hollow-dot `"unknown"` chip that never reads as healthy —
- * it never renders nothing.
- *
- * Props-only and i18n-agnostic: all copy arrives via `labels` (English
- * defaults). `withDetail` switches from the compact row badge to the editor's
- * fuller block (adds the explanatory line + the Reconnect action).
- */
 import { Button, cn } from "@houston-ai/core";
 import { DEFAULT_TRIGGER_LABELS, type TriggerLabels } from "./labels";
 import {
@@ -24,14 +8,9 @@ import { triggerBadgeState, triggerStatusDetail } from "./trigger-status-view";
 import type { TriggerStatusItem } from "./types";
 
 export interface TriggerStatusBadgeProps {
-  /** Live status. Absent renders the muted "checking" (`unknown`) chip. */
   status?: TriggerStatusItem;
-  /** Override the chip's text while keeping the state's dot + tone — used for
-   *  the "Active. Waiting for the first event." idle line. */
   statusLabel?: string;
-  /** Reconnect the disconnected account (only wired for `paused_disconnected`). */
   onReconnect?: () => void;
-  /** Editor mode: show the explanatory line + the Reconnect button. */
   withDetail?: boolean;
   labels?: TriggerLabels;
   className?: string;
@@ -78,7 +57,6 @@ export function TriggerStatusBadge({
             variant="ghost"
             size="sm"
             onClick={(e) => {
-              // The badge can ride a clickable list row; don't open its chat.
               e.stopPropagation();
               onReconnect?.();
             }}

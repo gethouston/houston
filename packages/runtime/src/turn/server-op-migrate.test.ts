@@ -11,14 +11,6 @@ import {
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/**
- * Where no pod boots, the host's boot migrations run as a pool `migrate` op,
- * and no other worker op may write family files over an agent still on the
- * pre-v0.4 flat layout: the boot migration copies a flat file only into a
- * MISSING family file, so a write that lands first hides the old data for
- * good.
- */
-
 const servers: Server[] = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();
@@ -138,7 +130,6 @@ test("the migrate op moves the flat layout forward and the next write keeps ever
     routinesStamped: 1,
   });
   expect(routines(pool)).toEqual([{ ...OLD_ROUTINE, created_by: "owner-1" }]);
-  // The rollback net stays in the store.
   expect(pool.read(`${AGENT}/.houston/routines.json`)).toBe(
     JSON.stringify([OLD_ROUTINE]),
   );
@@ -183,9 +174,6 @@ test("a second migrate op changes nothing: no file, no doc, only the routines re
     secretsMoved: 0,
   });
   expect(pool.docPuts).toEqual([]);
-  // The schedule and trigger projections ride every routines PUT: an
-  // identical rewrite at the listed generation repairs a projection a past
-  // PUT failed, and never races a newer writer.
   expect(pool.writes).toEqual([
     {
       method: "PUT",

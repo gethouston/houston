@@ -7,22 +7,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The integrations family served by `@houston/sdk`: the provider-scoped reads,
- * the trigger catalog, the user's own custom connectors, and the per-agent
- * dispatch form of the same connectors.
- *
- * Each call MUST issue exactly the request recorded here — same method, path,
- * body bytes, and headers (`Content-Type`,
- * `Authorization` bearer, the live `x-houston-org`) — over the ONE shared
- * gateway fetch, as a SINGLE request (no post-write refetch).
- *
- * The two 404 dispositions stay adapter-side and are asserted here beside the
- * wire: a BARE 404 on a definitions/tools read means the deployment does not
- * serve the feature (→ null), while `{code:"not_found"}` means an unknown slug
- * and is a real failure.
- */
-
 const BASE = "http://host";
 
 const { calls, reset, restore, stubResponses: stubFetch } = createWireCapture();
@@ -40,7 +24,6 @@ afterEach(() => {
 const client = () =>
   new HoustonClient({ baseUrl: BASE, token: "t", controlPlane: true });
 
-/** The one call the delegation made, asserted whole. */
 function onlyCall(method: string, url: string, body: string | null = null) {
   expect(calls).toHaveLength(1);
   const [call] = calls;
@@ -51,8 +34,6 @@ function onlyCall(method: string, url: string, body: string | null = null) {
   expect(call.headers.get("Authorization")).toBe("Bearer t");
   return call;
 }
-
-// ---- provider-scoped reads ----
 
 test("integrationStatus delegates a single GET /v1/integrations and unwraps items", async () => {
   stubFetch(json(200, { items: [{ provider: "composio", ready: true }] }));
@@ -138,8 +119,6 @@ test("triggerTypes carries the toolkit as an escaped query value", async () => {
     `${BASE}/v1/integrations/composio/trigger-types?toolkit=git%20hub`,
   );
 });
-
-// ---- custom connectors, user-scoped form ----
 
 test("customIntegrations delegates a single GET of the definitions list", async () => {
   stubFetch(json(200, { items: [{ slug: "acme" }] }));
@@ -237,8 +216,6 @@ test("detectCustomIntegration posts the pasted url", async () => {
   );
 });
 
-// ---- custom connectors, per-agent dispatch form ----
-
 test("agentCustomIntegrations reads the agent's definitions list", async () => {
   stubFetch(json(200, { items: [{ slug: "acme" }] }));
 
@@ -335,8 +312,6 @@ test("detectAgentCustomIntegration posts the pasted url to the agent", async () 
     JSON.stringify({ url: "https://acme.test/mcp" }),
   );
 });
-
-// ---- the two 404 dispositions, which stay adapter-side ----
 
 test("a bare 404 on either definitions list means the feature is absent", async () => {
   stubFetch(json(404, {}), json(404, {}));

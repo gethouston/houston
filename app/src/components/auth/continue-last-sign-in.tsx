@@ -11,17 +11,6 @@ const ICON_BY_HIGHLIGHT: Record<SignInHighlight, () => ReactNode> = {
   email: () => <Mail className="size-4" />,
 };
 
-/**
- * The one-click "continue with the account you used last time" action. It IS
- * the returning-user path: a single filled, full-width button pinned above the
- * provider row, carrying the last provider's mark, the "Continue with X" title,
- * and the full account address as a caption. Clicking it runs exactly the
- * same sign-in the matching provider pill would (or, for the email path, kicks
- * off the passwordless code flow with the stored address prefilled).
- *
- * It owns the screen's single filled slot while shown, so the email form's send
- * button steps down to secondary underneath it.
- */
 export function ContinueLastSignIn({
   highlight,
   title,

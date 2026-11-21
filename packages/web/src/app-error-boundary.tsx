@@ -21,8 +21,6 @@ export class ErrorBoundary extends Component<
   }
   render() {
     if (this.state.error) {
-      // The app tree imports token CSS before this screen renders, so
-      // the --ht-* vars are already in the document when the tree crashes.
       return (
         <div
           data-houston-boot-crashed

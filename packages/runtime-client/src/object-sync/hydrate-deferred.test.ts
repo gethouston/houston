@@ -57,7 +57,6 @@ test("a large deferred read gets time for its size before it times out", async (
   const root = mkdtempSync(join(tmpdir(), "hydrate-deferred-"));
   mkdirSync(join(root, "p", "later"), { recursive: true });
   writeFileSync(join(root, "p", "a.md"), "a");
-  // ~1 MB: the floor rate allows it about a second on top of the deadline.
   writeFileSync(join(root, "p", "later", "pack.bin"), Buffer.alloc(1_000_000));
   const inner = new LocalDirStore(root);
   const store = wrap(inner, async (key, dest, opts) => {

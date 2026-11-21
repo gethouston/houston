@@ -21,8 +21,6 @@ export async function deleteHttpObject({
   opts?: WriteOptions;
   capture: (res: Response) => void;
 }): Promise<void> {
-  // As with PUT, a generation-guarded DELETE may have committed despite a
-  // lost response.
   const res = await fetchRequest(
     url,
     {

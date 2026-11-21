@@ -38,7 +38,6 @@ beforeEach(() => {
 
 afterEach(() => vi.useRealTimers());
 
-/** The capture is `sdk.providers.credentials`' now, so the SDK is the seam. */
 function context() {
   return {
     cp: { baseUrl: "https://example.test", token: "token" },

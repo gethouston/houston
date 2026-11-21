@@ -4,13 +4,6 @@ import { join } from "node:path";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { HarnessSession } from "../backends/types";
 
-/**
- * The wedge this guard exists to prevent: compaction is a model call, the
- * context fill only drops when it SUCCEEDS, and a failure that propagates kills
- * the turn — so one refusal used to break every later turn of the conversation
- * at exactly the same step, with no way out for the user.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "houston-autocompact-data-"),
 );
@@ -62,14 +55,10 @@ test("a caller's own cooldown store holds the retry instead of process memory", 
     false,
   );
   expect(held).toBe(now + AUTOCOMPACT_COOLDOWN_MS);
-  // The process map never learned of it: another conversation keyed "c1"
-  // without this store (a different tenant on the same worker) still runs.
   expect(await runAutocompact(session, "c1", claude, now + 1_000)).toBe(true);
-  // While the store holds it, the store's conversation stays held off...
   expect(
     await runAutocompact(session, "c1", claude, now + 60_000, { cooldown }),
   ).toBe(false);
-  // ...and runs again once the hold expires.
   expect(
     await runAutocompact(
       session,
@@ -89,8 +78,6 @@ test("a failed compaction resolves false instead of throwing", async () => {
 
   await expect(runAutocompact(session, "c1", claude)).resolves.toBe(false);
 
-  // Never silent to us: console.error is the runtime's Sentry feed, and a
-  // refusal the provider taxonomy cannot place is ours to look at.
   expect(error).toHaveBeenCalledWith(
     expect.stringContaining("compaction failed"),
     "Summarization failed: the summarizer returned no summary",
@@ -98,11 +85,6 @@ test("a failed compaction resolves false instead of throwing", async () => {
   error.mockRestore();
 });
 
-/**
- * The seven refusals behind HOUSTON-APP-5DC (PRODUCT-1818), verbatim as pi
- * wrapped them: each is the provider's own state, which the following turn
- * hits again and renders as its card — a warning, never a Sentry error.
- */
 test.each([
   [
     "openai-codex",
@@ -158,8 +140,6 @@ test("a failure is reported ONCE, not on every later turn", async () => {
   const now = 1_000_000;
 
   expect(await runAutocompact(session, "c1", claude, now)).toBe(false);
-  // The later turns of a conversation whose fill stays over the threshold: the
-  // summarization is not re-paid, and the log is not re-spammed.
   expect(await runAutocompact(session, "c1", claude, now + 1_000)).toBe(false);
   expect(await runAutocompact(session, "c1", claude, now + 60_000)).toBe(false);
 
@@ -197,8 +177,6 @@ test("one conversation's cooldown never holds another one back", async () => {
 });
 
 test("a session too small to summarize is noted, never reported as a fault", async () => {
-  // The ordinary state of a fresh chat (and of a session rebuilt under a fill
-  // Houston still reads high) — an error here would train us to ignore errors.
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
   const info = vi.spyOn(console, "info").mockImplementation(() => {});
   vi.mocked(compactWithFactHarvest).mockRejectedValueOnce(

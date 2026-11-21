@@ -19,51 +19,20 @@ import {
 import type { ClaudeQuery } from "./session";
 import { createStreamTranslator } from "./translate";
 
-/**
- * Generic one-shot prompt through the Claude Agent SDK. The COMPLIANCE reason
- * this exists: when the active provider is `anthropic`, ANY throwaway LLM call
- * (a conversation title, ...) must run through the `claude` subprocess (token in
- * `options.env`) exactly like a turn — never pi's in-process Anthropic client,
- * which is the harness-spoofing path Anthropic server-blocks.
- *
- * Deliberately minimal vs a `ClaudeSession`: no tools at all, NO session
- * persistence (no resume, no sessions.json write), and the SAME shared
- * `CLAUDE_CONFIG_DIR` (`claudeLoginConfigDir`) a turn uses, so it reads the
- * identical cached credential. Text is collected via the SAME stream
- * translator turns use, so a `provider_error` (rate limit, auth) simply
- * yields no text.
- */
 export interface ClaudeOneShotParams {
   prompt: string;
   systemPrompt: string;
   workspaceDir: string;
   readToken: () => ClaudeToken | undefined;
-  /**
-   * The runtime's data dir. Required whenever this can run under a PERSONAL
-   * scope (every production caller — pass `config.dataDir`): it locates that
-   * member's isolated Claude credential store, without which a mid-turn 401
-   * would recover onto the pod-shared team credential. Omitting it is a hard
-   * error on the personal path, never a silent fallback (`./scope-guard`).
-   */
   dataDir?: string;
-  /** pi model id to run with; mapped to the SDK model string. */
   modelId?: string;
-  /** Injected for tests; production lazily imports the optional SDK. */
   query?: ClaudeQuery;
-  /** Aborts the SDK query and its subprocess (a caller's time cap). */
   signal?: AbortSignal;
 }
 
 export async function oneShotWithClaude(
   p: ClaudeOneShotParams,
 ): Promise<string> {
-  // Same read-side scope refusal a turn applies (see `./scope-guard`): this path
-  // pins the same pod-shared `CLAUDE_CONFIG_DIR`, so a personal scope with no
-  // personal token would authenticate as the team and let the SDK self-refresh
-  // the team's credential. Decided before the SDK is imported or the env built,
-  // reading the credential exactly once. Its mid-flight sibling — the isolated
-  // credential store that keeps a 401 from recovering onto the team account —
-  // rides `buildClaudeEnv` below.
   const token = p.readToken();
   assertAnthropicScopeCredential(token);
 
@@ -76,8 +45,6 @@ export async function oneShotWithClaude(
     }
   }
 
-  // undefined on the Node path; set only inside the Bun-compiled desktop
-  // sidecar (same as a turn — see backend.ts / binary-path.ts).
   const pathToClaudeCodeExecutable = resolveClaudeExecutable();
   const options: Options = {
     cwd: p.workspaceDir,
@@ -87,8 +54,6 @@ export async function oneShotWithClaude(
     }),
     ...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
     ...CLAUDE_QUERY_DEFAULTS,
-    // A one-shot answers in prose. No built-in is offered, and the hook
-    // refuses any tool a future SDK would offer anyway.
     tools: [],
     allowedTools: [],
     disallowedTools: [...CREDENTIAL_PERMISSION_RULES],
@@ -108,7 +73,6 @@ export async function oneShotWithClaude(
   return text;
 }
 
-/** The SDK takes an AbortController, not a signal: bridge the caller's. */
 function abortControllerFor(signal: AbortSignal): AbortController {
   const controller = new AbortController();
   if (signal.aborted) controller.abort();

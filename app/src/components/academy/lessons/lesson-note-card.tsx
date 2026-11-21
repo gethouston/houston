@@ -1,13 +1,5 @@
 import { Button } from "@houston-ai/core";
 
-/**
- * A lesson's narration beat: what is about to happen, and the one word that
- * moves on.
- *
- * The same row the video beat ends on — words left, action right — so the two
- * docked beats read as one surface changing its contents rather than two
- * different cards. Nothing is centred and nothing is crowned.
- */
 export function LessonNoteCard({
   title,
   body,

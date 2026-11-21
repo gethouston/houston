@@ -1,15 +1,3 @@
-/**
- * The team step of the AI Manager's onboarding conversation, and its close.
- *
- * The team step opens straight on the starter team: the "Build your team"
- * card's own employee cards, each named for its job and open to change.
- * "Hire one more" adds a card, a draft's Remove lets it go, and "Hire my
- * team" hires everyone (each created behind the person). The finish waits
- * for every hire; the manager then closes on the person's goal and opens the
- * real chat. A
- * run resumed with AI Employees already hired first offers "Hire one more"
- * or "That's my team".
- */
 import { expect, type Locator, type Page } from "@playwright/test";
 import { prefilledName } from "./employee-name";
 import {
@@ -19,44 +7,33 @@ import {
 } from "./manager-onboarding";
 import { type PressMode, press } from "./mobile-nav";
 
-/** The resumed run's two answers, and the starter team's add button. */
 export const HIRE_ONE_MORE = "Hire one more";
 export const TEAM_DONE_CHOICE = "That's my team";
 
-/** The starter team's three jobs, in the order the card shows them. */
 export const STARTER_ROLES = [
   "Executive assistant",
   "Bookkeeper",
   "Accounts payable clerk",
 ] as const;
 
-/** The job "Hire one more" deals first: the first shared job no starter
- *  began as. */
 export const ADDED_ROLE = "Operations coordinator";
 
-/** The team so far, one row per AI Employee (`data-status` says how the
- *  hire is going: draft, joining, hired or failed). */
 export function roster(page: Page): Locator {
   return page.getByTestId("manager-roster");
 }
 
-/** The starter team's step. */
 export function starterTeam(page: Page): Locator {
   return managerStep(page, "team-basic");
 }
 
-/** The name field on an employee card, labelled by the job it was hired for.
- *  It arrives holding that job ("Bookkeeper", numbered when taken). */
 export function employeeNameField(scope: Locator, role: string): Locator {
   return scope.getByRole("textbox", { name: `Name (${role})` });
 }
 
-/** A resumed run's choice: the team so far over its two buttons. */
 export function teamNext(page: Page): Locator {
   return page.getByTestId("manager-team-next");
 }
 
-/** On a resumed run: "That's my team" or "Hire one more". */
 export async function afterHire(
   page: Page,
   choice: typeof TEAM_DONE_CHOICE | typeof HIRE_ONE_MORE,
@@ -68,8 +45,6 @@ export async function afterHire(
   );
 }
 
-/** "Hire one more" in the starter team's footer: a card for the next shared
- *  job, on top of the others. */
 export async function addStarterCard(
   page: Page,
   mode: PressMode = "click",
@@ -82,7 +57,6 @@ export async function addStarterCard(
   await expect(employeeNameField(step, ADDED_ROLE)).toBeVisible();
 }
 
-/** A draft card's Remove, by the name its field holds. */
 export function removeStarterCard(page: Page, name: string): Locator {
   return starterTeam(page).getByRole("button", {
     name: `Remove ${name}`,
@@ -90,12 +64,6 @@ export function removeStarterCard(page: Page, name: string): Locator {
   });
 }
 
-/**
- * Press "Hire my team" on the starter team, whose cards (`roles`, in order)
- * arrive named for their jobs: renamed to `names` first, or hired as they
- * stand when `names` is null. The Manager then starts its closing. Returns
- * the names hired.
- */
 export async function hireStarterTeam(
   page: Page,
   names: readonly string[] | null,
@@ -115,9 +83,6 @@ export async function hireStarterTeam(
     hired.push(await field.inputValue());
   }
   await press(step.getByRole("button", { name: "Hire my team" }), mode);
-  // The receipt names the team; the Manager goes straight to its closing.
-  // With nothing left to ask, the conversation may already be the real
-  // chat's, so both are read wherever the conversation is on screen.
   const conversation = managerOnboarding(page).or(
     page.getByTestId("assistant-chat"),
   );
@@ -129,9 +94,6 @@ export async function hireStarterTeam(
   return hired;
 }
 
-/** The team card the manager closes on, once the team is built. What the
- *  manager does is told as far as the deployment reaches; the fake host
- *  serves no shared spaces and no integrations. */
 export const CLOSING_LINES = [
   "Your team is ready!",
   "Open any of your AI Employees to give them work directly.",
@@ -149,7 +111,6 @@ export function goalCard(scope: Page | Locator): Locator {
   return scope.getByTestId("onboarding-goal-card");
 }
 
-/** Wait for the team card in the real chat, then the goal card under it. */
 export async function expectClosing(
   page: Page,
   goal: string = GOAL_ANSWER,
@@ -163,11 +124,6 @@ export async function expectClosing(
   await expect(goalCard(chat).getByText(`“${goal}”`)).toBeVisible();
 }
 
-/**
- * Wait for the real AI Manager chat after the scripted closing and transcript
- * import. The person's goal starts as its first real turn, drawn as the goal
- * card.
- */
 export async function finishOnboarding(page: Page): Promise<void> {
   const chat = page.getByTestId("assistant-chat");
   await expect(chat).toBeVisible({ timeout: 15_000 });

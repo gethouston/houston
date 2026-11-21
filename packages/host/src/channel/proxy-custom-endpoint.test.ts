@@ -7,16 +7,6 @@ import { FakeLauncher } from "../launcher/fake";
 import { forward } from "../proxy/route";
 import { ProxyChannel } from "./proxy";
 
-/**
- * `saveCustomEndpoint` (PRODUCT-1807): the local-model connect must reach the
- * runtime under the ACTING identity (the runtime keys its auth file by
- * credential scope, and every later turn / serve / heal resolves the user's
- * own scope) and must store the endpoint's key centrally like any other
- * api-key connect (a stateless pod loses its local copy at the next recycle;
- * the per-turn serve is the only durable source). Before this, a cloud pod
- * answered "Provider is not configured" 400 ms after a 200 connect.
- */
-
 const ws: Workspace = {
   id: "w1",
   ownerUserId: "alice",
@@ -86,7 +76,6 @@ test("forwards the acting identity to the runtime and stores the keyless placeho
     kind: "api_key",
     accessToken: "houston-local",
   });
-  // The team scope never learned it: the row belongs to the acting user.
   expect(await credentials.get("w1", "openai-compatible")).toBeNull();
 });
 

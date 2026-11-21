@@ -1,13 +1,6 @@
 import { gatewayAuthFetch } from "@houston/engine-adapter/control-plane";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * Build identity, transport half: gatewayAuthFetch must attach
- * `X-Houston-App-Version` on every request when the desktop shell installed
- * `window.__HOUSTON_APP_VERSION__`. The global never exists on web — then no
- * header is sent (which is what keeps web fetches preflight-free).
- */
-
 const originalFetch = globalThis.fetch;
 type AppVersionWindow = {
   __HOUSTON_APP_VERSION__?: string;
@@ -19,7 +12,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** Simulate the desktop shell's globals (no jsdom here — tests run in node). */
 function installWindow(w: AppVersionWindow) {
   (globalThis as { window?: AppVersionWindow }).window = w;
 }

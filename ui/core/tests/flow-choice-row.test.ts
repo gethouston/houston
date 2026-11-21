@@ -59,8 +59,6 @@ describe("FlowChoiceRow", () => {
   });
 
   it("sets its title in the button's own type, not a size of its own", () => {
-    // A door in a list of doors is a control: 14px/500, the type every button
-    // in the product is set in.
     const classes = classesOf(row());
     assert.ok(classes.includes("text-sm"), classes);
     assert.ok(classes.includes("font-medium"), classes);
@@ -109,8 +107,6 @@ describe("FlowChoiceList", () => {
     const classes = classesOf(html);
     assert.ok(classes.includes("gap-2"), classes);
     assert.ok(!classes.includes("divide-y"), classes);
-    // One column at every width: a decision laid out in two directions is a
-    // menu. No grid, and never `max-md:` — the phone layer is unprefixed.
     assert.ok(!classes.includes("grid"), classes);
     assert.ok(!classes.includes("max-md:"), classes);
   });

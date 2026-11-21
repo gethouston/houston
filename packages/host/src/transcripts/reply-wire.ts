@@ -1,6 +1,5 @@
 import type { ChatMessage } from "@houston/protocol";
 
-/** Parse the owned gateway's narrow reply-after response. */
 export function parseReplyAfter(value: unknown): ChatMessage | null {
   if (!value || typeof value !== "object") {
     throw new Error("transcript reply-after returned a non-object body");
@@ -20,8 +19,5 @@ export function parseReplyAfter(value: unknown): ChatMessage | null {
   ) {
     throw new Error("transcript reply-after returned an invalid message");
   }
-  // SAFETY: the owned gateway returns the protocol's verbatim ChatMessage.
-  // The fields reconcile relies on are refined above; additive metadata stays
-  // untouched so provider errors and attribution survive the projection.
   return message as ChatMessage;
 }

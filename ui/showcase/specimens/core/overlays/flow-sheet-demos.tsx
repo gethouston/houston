@@ -10,13 +10,6 @@ import {
 import { PenLine, Sparkles } from "lucide-react";
 import { useState } from "react";
 
-/**
- * The two live flows the FlowSheet page opens, split out so the page itself
- * stays inside the 200-line rule. A helper module: it exports no specimen, so
- * no family index lists it.
- */
-
-/** Each step's own title, and the frame it needs to ask for what it asks. */
 const STEPS: {
   id: string;
   label: string;
@@ -43,7 +36,6 @@ const STEPS: {
   },
 ];
 
-/** The create-agent flow, cut down to the three screens it really has. */
 export function CopyAgentFlow({ label }: { label: string }) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
@@ -121,7 +113,6 @@ export function CopyAgentFlow({ label }: { label: string }) {
   );
 }
 
-/** One wide screen with nothing to report: the title takes the centre slot. */
 export function PlainFlow({ label }: { label: string }) {
   const [open, setOpen] = useState(false);
   return (

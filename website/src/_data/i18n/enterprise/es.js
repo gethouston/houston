@@ -1,5 +1,3 @@
-// Spanish (LatAm neutral, tú) copy for /enterprise. Mirrors ./en.js exactly.
-
 export default {
   meta: {
     title:
@@ -17,8 +15,6 @@ export default {
   },
 
   hero: {
-    // The headline is set as lines: each one is its own block, so the
-    // break lands where the copy means it in every language.
     h1Lines: ["Pon la IA a trabajar", "en tu empresa."],
     sub: "La plataforma y los ingenieros para operar agentes de IA en toda tu empresa.",
     ctaDemo: "Agenda una llamada de descubrimiento",
@@ -94,10 +90,7 @@ export default {
     lead: "Los mismos cuatro pasos que seguimos con cada empresa.",
     prev: "Anterior",
     next: "Siguiente",
-    // The last slide's way forward: the round chevron becomes this pill.
     bookCall: "Agenda una llamada de descubrimiento",
-    // The process slider: the title and lead are its first slide, then
-    // one slide per phase: `head` is the big title, `rest` the line under it.
     phases: [
       {
         head: "Una llamada de descubrimiento con tu equipo.",

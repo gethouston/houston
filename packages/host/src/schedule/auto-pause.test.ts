@@ -25,12 +25,6 @@ import { MemoryVfs } from "../vfs";
 import { reconcileAgentRuns } from "./reconcile";
 import { fireRoutineRun } from "./run";
 
-/**
- * Auto-pause on the standing host: the run that completes a streak of
- * same-kind user-fixable failures pauses its routine (enabled false + the
- * typed reason) and announces RoutinesChanged; a transient failure never does.
- */
-
 const EDITED = new Date("2026-09-29T10:00:00.000Z");
 const STARTED = new Date("2026-09-29T11:00:00.000Z");
 const NOW = new Date("2026-09-29T11:00:30.000Z");
@@ -48,7 +42,6 @@ const routine = (over: Partial<Routine> = {}): Routine => ({
   ...over,
 });
 
-/** `count` earlier errored runs of r1, newest first, all after the edit. */
 const failedRuns = (count: number): RoutineRun[] =>
   Array.from({ length: count }, (_, i) => ({
     id: `old-${i}`,
@@ -170,7 +163,6 @@ test("a fire refused for a missing connection counts toward the streak", async (
     failure: { code: "creator_not_connected", provider: "anthropic" } as const,
   }));
   const env = await setup(pinned, earlier);
-  // Only the earlier runs: the fire records its own running row.
   await saveRoutineRuns(env.vfs, env.root, earlier);
   const refusal = new TurnFireError("no provider", 409, "no_provider");
   await expect(

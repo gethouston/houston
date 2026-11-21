@@ -17,12 +17,6 @@ import { defineRouteFamily, type UserCtx } from "./registry";
 const COLLECTION = "/v1/workspaces/:workspaceId/shared-skills";
 const ITEM = "/v1/workspaces/:workspaceId/shared-skills/:slug";
 
-/**
- * Workspace-level shared skill CRUD. The workspace owner is the local authz
- * seam, and both paths are `owns`ed for every method because the 405 is written
- * BEHIND that seam: a stranger learns the workspace is not theirs, never which
- * methods it would have served.
- */
 defineRouteFamily({
   group: "shared-skills",
   members: [
@@ -76,10 +70,6 @@ async function serveSharedSkills(ctx: UserCtx): Promise<void> {
         detail ?? { error: "shared skill not found" },
       );
     }
-    // Promote: place a FULL existing SKILL.md (frontmatter intact) into the
-    // store at an exact slug — the explicit "Share to workspace" act that
-    // replaced auto-migration (a skill becomes shared only when a user says
-    // so). Unlike the compose-create above, content arrives verbatim.
     if (method === "POST")
       return promote(vfs, dir, slug, await readJson(req), res, fireChange);
     if (method === "PUT")
@@ -166,7 +156,6 @@ async function replace(
   json(res, 200, { ok: true });
 }
 
-/** The verbatim SKILL.md a promote/replace carries, or null once 400 is sent. */
 function readContent(
   body: Record<string, unknown>,
   res: ServerResponse,

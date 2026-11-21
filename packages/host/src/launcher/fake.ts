@@ -1,17 +1,8 @@
 import type { Agent, AgentId } from "../domain/types";
 import type { RuntimeEndpoint, RuntimeLauncher, RuntimeState } from "../ports";
 
-/**
- * In-memory RuntimeLauncher for dev and tests. No cluster: it tracks each agent's
- * state in a map and points every awake sandbox at one configurable engine URL
- * (a locally-running engine, or a fake). State transitions mirror the live impl:
- *   ensureAwake -> running, sleep -> asleep, destroy -> absent.
- */
-
 export interface FakeLauncherOptions {
-  /** Base URL handed back by ensureAwake. Defaults to env or 127.0.0.1:4317. */
   baseUrl?: string;
-  /** Token handed back by ensureAwake. Defaults to a static dev token. */
   token?: string;
 }
 
@@ -35,8 +26,6 @@ export class FakeLauncher implements RuntimeLauncher {
   }
 
   async sleep(agentId: AgentId): Promise<void> {
-    // Sleeping something that was destroyed/never-created is a no-op-to-absent
-    // mismatch we must not paper over: only an existing sandbox can sleep.
     const current = this.states.get(agentId) ?? "absent";
     if (current === "absent") {
       throw new Error(`cannot sleep sandbox for unknown agent ${agentId}`);

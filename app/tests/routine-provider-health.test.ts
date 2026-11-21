@@ -7,12 +7,6 @@ import {
   routineProviderHealth,
 } from "../src/lib/routine-provider-health.ts";
 
-/**
- * PRODUCT-1475 — a routine says which AI account it runs on and whether that
- * account works, BEFORE it fires. These pin the two things that were silently
- * wrong before: an engine with no `health` field must still answer, and an
- * unconfirmable probe must never read as either healthy or broken.
- */
 describe("routineProviderHealth", () => {
   it("no status yet is checking, never 'not connected'", () => {
     strictEqual(routineProviderHealth(undefined), "checking");
@@ -34,8 +28,6 @@ describe("routineProviderHealth", () => {
   });
 
   it("a present credential keeps its richer health", () => {
-    // Out of credits is an AUTHENTICATED credential with no quota: reading
-    // `authenticated` alone would call it connected and the run would fail.
     strictEqual(
       routineProviderHealth({ authenticated: true, health: "out_of_credits" }),
       "out_of_credits",
@@ -46,10 +38,6 @@ describe("routineProviderHealth", () => {
     );
   });
 
-  // A sleeping pod's `/providers` is the pod's LAST captured answer with only
-  // `configured` overlaid from the credential store (PRODUCT-1706): the
-  // captured `health` can be another member's "not connected" while THIS
-  // viewer's account is stored and usable. The store's claim wins.
   it("a stored credential overrides a captured 'not connected'", () => {
     strictEqual(
       routineProviderHealth({
@@ -73,10 +61,6 @@ describe("routineProviderHealth", () => {
   });
 
   it("a missing credential the gateway signed out asks to sign in again", () => {
-    // The runtime never pairs a missing credential with needs_reconnect, and
-    // the gateway rewrites a sleeping agent's captured health to match the
-    // store. This pairing is the gateway's sign-out record: the account was
-    // connected and its login ended.
     strictEqual(
       routineProviderHealth({
         authenticated: false,
@@ -148,7 +132,6 @@ describe("routineHealthOffersConnect", () => {
   it("offers connect only where connecting is the remedy", () => {
     strictEqual(routineHealthOffersConnect("not_connected"), true);
     strictEqual(routineHealthOffersConnect("needs_reconnect"), true);
-    // Already connected — a sign-in would change nothing.
     strictEqual(routineHealthOffersConnect("out_of_credits"), false);
     strictEqual(routineHealthOffersConnect("connected"), false);
     strictEqual(routineHealthOffersConnect("checking"), false);

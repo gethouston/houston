@@ -16,23 +16,13 @@ import {
 } from "./files";
 import { moveWorkspaceEntry } from "./files-move";
 
-/**
- * The Files tab over an agent's workspace root, served by the host for every
- * profile (cloud GCS prefix `<prefix>/workspace`, local FS `<W>/<A>`). The agent
- * writes files to that root during a turn; these endpoints make them show up, be
- * readable, downloadable, renamable, and deletable. Internal Houston state
- * (`.houston`, `.agents`) is hidden + refused, and path-safety stops a hostile
- * rel-path escaping the root.
- */
-
 const PREFIX = "ws/w1/agent-1";
-const ROOT = `${PREFIX}/workspace`; // cloud agentRoot
+const ROOT = `${PREFIX}/workspace`;
 
 async function seed(objects: MemoryVfs, rel: string, content: string) {
   await objects.writeText(`${ROOT}/${rel}`, content);
 }
 
-/** A paths stub that resolves any agent to ROOT, for the handleFiles HTTP cases. */
 const PATHS = { agentRoot: () => ROOT } as unknown as WorkspacePaths;
 const CTX = { workspace: {} as Workspace, agent: {} as Agent };
 
@@ -44,10 +34,8 @@ test("lists workspace files with synthesized folders, newest metadata", async ()
 
   const files = await listWorkspace(objects, ROOT);
   const byPath = Object.fromEntries(files.map((f) => [f.path, f]));
-  // The folder is synthesized and sorts first.
   expect(byPath.data?.is_directory).toBe(true);
   expect(files[0]?.is_directory).toBe(true);
-  // Files carry name/extension/size.
   expect(byPath["deck.pptx"]).toMatchObject({
     name: "deck.pptx",
     extension: "pptx",
@@ -70,7 +58,7 @@ test("conversation/settings data outside the root is NOT listed", async () => {
 
 test("local layout (no workspace/ split): lists user files, hides .houston/.agents internals", async () => {
   const objects = new MemoryVfs();
-  const LOCAL = "Houston/Bo"; // local agentRoot — the agent dir IS the root
+  const LOCAL = "Houston/Bo";
   await objects.writeText(`${LOCAL}/report.txt`, "hi");
   await objects.writeText(`${LOCAL}/Decks/q3.pptx`, "PPTX");
   await objects.writeText(`${LOCAL}/CLAUDE.md`, "instructions");
@@ -79,10 +67,9 @@ test("local layout (no workspace/ split): lists user files, hides .houston/.agen
 
   const paths = (await listWorkspace(objects, LOCAL)).map((f) => f.path).sort();
   expect(paths).toContain("report.txt");
-  expect(paths).toContain("Decks"); // synthesized folder
+  expect(paths).toContain("Decks");
   expect(paths).toContain("Decks/q3.pptx");
   expect(paths).toContain("CLAUDE.md");
-  // Internal Houston state is never exposed in the Files tab.
   expect(paths.some((p) => p.startsWith(".houston"))).toBe(false);
   expect(paths.some((p) => p.startsWith(".agents"))).toBe(false);
 });
@@ -90,7 +77,7 @@ test("local layout (no workspace/ split): lists user files, hides .houston/.agen
 test("reads text as content, binary as base64", async () => {
   const objects = new MemoryVfs();
   await seed(objects, "notes.txt", "hello world");
-  await objects.writeText(`${ROOT}/blob.bin`, "PK�� payload"); // U+FFFD => treated as binary
+  await objects.writeText(`${ROOT}/blob.bin`, "PK�� payload");
   const text = await readWorkspaceFile(objects, ROOT, "notes.txt");
   expect(text).toEqual({ content: "hello world", base64: false });
   const bin = await readWorkspaceFile(objects, ROOT, "blob.bin");
@@ -122,8 +109,6 @@ test("rename moves a file within its folder, preserving content", async () => {
 test("renaming a file that is gone answers 404, never a 500", async () => {
   const objects = new MemoryVfs();
   await seed(objects, "data/kept.csv", "1,2,3");
-  // The op names the status itself: a source deleted in another tab (or a stale
-  // listing) is the user's state, not a server fault.
   const rejected = renameWorkspaceFile(objects, ROOT, "data/gone.csv", "x.csv");
   await expect(rejected).rejects.toBeInstanceOf(FileOpError);
   await expect(rejected).rejects.toMatchObject({ status: 404 });
@@ -133,8 +118,6 @@ test("renaming onto a name already in use is refused, both files intact", async 
   const objects = new MemoryVfs();
   await seed(objects, "data/old.csv", "old");
   await seed(objects, "data/taken.csv", "taken");
-  // Same conflict the move op names (files-move.ts): a rename that silently
-  // overwrote the other file would destroy content the user never chose to lose.
   const rejected = renameWorkspaceFile(
     objects,
     ROOT,
@@ -182,12 +165,6 @@ test("renaming a file to the name it already has changes nothing", async () => {
   });
 });
 
-/**
- * A store that folds letter case — the macOS/Windows disk every desktop user
- * runs on. The MemoryVfs stands in for it so these cases hold on a
- * case-SENSITIVE CI volume too (`files-ops.fs.test.ts` proves the real disk
- * agrees with whichever kind it is).
- */
 const foldedVfs = () =>
   new MemoryVfs({ keyCase: { fold: "folded", normalize: true } });
 
@@ -195,7 +172,6 @@ test("a folded store refuses a rename that differs only in case from a sibling",
   const objects = foldedVfs();
   await objects.writeText(`${ROOT}/readme.md`, "kept");
   await objects.writeText(`${ROOT}/notes.md`, "moved");
-  // Without the fold this passed the guard and `readme.md` was gone for good.
   await expect(
     renameWorkspaceFile(objects, ROOT, "notes.md", "README.md"),
   ).rejects.toMatchObject({ status: 409, code: "name_taken" });
@@ -212,8 +188,6 @@ test("a folded store refuses a rename that differs only in case from a sibling",
 test("a folded store still performs a case-ONLY rename", async () => {
   const objects = foldedVfs();
   await objects.writeText(`${ROOT}/readme.md`, "doc");
-  // The destination is the file's own slot: a re-spelling, not a collision and
-  // not a no-op.
   expect(
     await renameWorkspaceFile(objects, ROOT, "readme.md", "README.md"),
   ).toBe("renamed");
@@ -240,7 +214,6 @@ test("createFolder makes an empty folder visible via a hidden marker", async () 
   expect(await createWorkspaceFolder(objects, ROOT, "Reports")).toBe("Reports");
   const files = await listWorkspace(objects, ROOT);
   expect(files.find((f) => f.path === "Reports")?.is_directory).toBe(true);
-  // The .keep marker is hidden from the listing.
   expect(files.some((f) => f.name === ".keep")).toBe(false);
 });
 
@@ -304,7 +277,6 @@ function fakeRes() {
 
 test("download serves raw bytes with the right MIME + disposition", async () => {
   const objects = new MemoryVfs();
-  // Non-UTF-8 payload: must come back byte-for-byte, not JSON/base64.
   const payload = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0xff, 0x00, 0x80]);
   await objects.writeBytes(`${ROOT}/deck.pptx`, payload);
 
@@ -360,9 +332,6 @@ test("download honors disposition=inline, 404s on missing, rejects traversal", a
     String(inline.state.headers["Content-Disposition"]).startsWith("inline;"),
   ).toBe(true);
 
-  // The 404 carries a host log line saying why (PRODUCT-1780): here the
-  // agent's absolute pod path is stripped, the root has a sibling, no
-  // FilesChanged was ever seen for this agent.
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const missing = fakeRes();
   await handleFiles(
@@ -416,21 +385,19 @@ test("a missing vfs answers 503 for files routes", async () => {
 
 test("listing reports date_created for files and the oldest one for folders", async () => {
   const objects = new MemoryVfs();
-  await seed(objects, "data/first.csv", "1"); // created @ clock 1
-  await seed(objects, "data/second.csv", "2"); // created @ clock 2
-  await objects.writeText(`${ROOT}/data/first.csv`, "1-updated"); // overwrite keeps createdMs
+  await seed(objects, "data/first.csv", "1");
+  await seed(objects, "data/second.csv", "2");
+  await objects.writeText(`${ROOT}/data/first.csv`, "1-updated");
 
   const byPath = Object.fromEntries(
     (await listWorkspace(objects, ROOT)).map((f) => [f.path, f]),
   );
   expect(byPath["data/first.csv"]?.date_created).toBe(1);
   expect(byPath["data/second.csv"]?.date_created).toBe(2);
-  // The folder inherits the OLDEST creation and the NEWEST modification beneath it.
   expect(byPath.data?.date_created).toBe(1);
   expect(byPath.data?.date_modified).toBe(3);
 });
 
-/** A fake IncomingMessage that yields a JSON body once (async-iterable). */
 function fakeReq(body: unknown) {
   const buf = Buffer.from(JSON.stringify(body));
   return (async function* () {
@@ -459,14 +426,6 @@ test("POST files/rename on a missing source is a 404 response body", async () =>
   });
 });
 
-/**
- * A workspace whose storage refuses every write (a read-only mount, a folder
- * whose permissions were revoked). The vfs raises its typed refusal from
- * whichever primitive hits it first; the route has to name it 403 `read_only`
- * so the person gets authored copy, and so the report path can tell this
- * expected state from a bug. Left to the generic handler it is a 500 — which
- * is what every writer but the case probe used to get.
- */
 class ReadOnlyVfs extends MemoryVfs {
   override deleteKey(key: string): Promise<void> {
     return Promise.reject(new VfsReadOnlyError(key));
@@ -509,8 +468,6 @@ test("POST files/rename onto a taken name is a 409 response body", async () => {
     new URLSearchParams(),
   );
   expect(state.status).toBe(409);
-  // The CODE is what the client matches on: a second 409 on this route would
-  // otherwise inherit the taken-name copy (`app/src/lib/file-conflicts.ts`).
   expect(
     JSON.parse(String(state.body)) as { error: string; code: string },
   ).toEqual({
@@ -535,7 +492,6 @@ test("a rename to the name the file already has announces nothing", async () => 
     ((e: { type: string }) => events.push(e.type)) as never,
   );
   expect(handled).toBe(true);
-  // Nothing moved, so no other client has anything to refetch.
   expect(events).toEqual([]);
 });
 

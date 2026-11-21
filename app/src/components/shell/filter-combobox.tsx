@@ -1,21 +1,3 @@
-/**
- * The house filter combobox: a Popover + cmdk Command picker over a short list
- * of facet options, the same idiom as the Share dialog's "Add people" and the
- * allowed-models editor's lab filter. The trigger is a token pill echoing the
- * current selection (its leading `BrandMark` when the option carries one); the
- * dropdown lists an always-present "clear" row (value `"all"`) then the options,
- * each with a check on the selected one and an optional colorful mark (options
- * with no mark, e.g. app categories, render cleanly without one). An in-dropdown
- * search box appears for long lists (labs, categories) and hides for short
- * facets (cost, memory) — pass `searchable` to force either way.
- *
- * Lives in `shell/` (a neutral home) because three domains now share it with no
- * forked logic: the AI-hub model browser (`aiHub` ns), the teams allowed-models
- * editor (`teams` ns), and the integrations catalog's category filter
- * (`integrations`/`teams` ns). i18n-agnostic: every string (labels, the "all"
- * label, aria + search + empty copy) arrives already translated.
- */
-
 import {
   Command,
   CommandEmpty,
@@ -31,7 +13,6 @@ import { Check, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { BrandMark } from "../provider-browser/brand-mark.tsx";
 
-/** One selectable facet value; `mark` names a provider/lab whose brand mark leads it. */
 export interface FilterOption {
   value: string;
   label: string;
@@ -50,15 +31,12 @@ export function FilterCombobox({
   className,
 }: {
   options: FilterOption[];
-  /** The selected option's `value`, or `"all"` for the cleared state. */
   value: string;
   onChange: (next: string) => void;
-  /** Label of the always-present clear row (its value is `"all"`). */
   allLabel: string;
   ariaLabel: string;
   searchPlaceholder?: string;
   emptyText?: string;
-  /** Show an in-dropdown search box. Defaults on once the list runs long (> 8). */
   searchable?: boolean;
   className?: string;
 }) {
@@ -119,11 +97,6 @@ export function FilterCombobox({
   );
 }
 
-/**
- * A provider/lab's colorful mark, sized to the row/trigger. `text-current!`
- * re-inherits the mark's brand color, which the Command item's default `svg`
- * rule (`text-ink-muted`) would otherwise flatten to gray.
- */
 function OptionMark({ providerId }: { providerId: string }) {
   return (
     <BrandMark

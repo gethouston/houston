@@ -5,12 +5,6 @@ import {
   parseDurableFacts,
 } from "./durable-facts";
 
-/**
- * The parse is the whole trust boundary of compact-time extraction: a MODEL
- * writes the block, so every shape it can plausibly produce must yield facts or
- * nothing — never an error, never garbage saved as a memory.
- */
-
 const block = (body: string) =>
   `Here is what happened.\n\n\`\`\`${DURABLE_FACTS_FENCE}\n${body}\n\`\`\`\n`;
 
@@ -46,7 +40,6 @@ test("an empty or placeholder block yields no facts", () => {
 });
 
 test("an unterminated block still yields its facts", () => {
-  // Losing real facts to a missing closing fence would be the worse failure.
   expect(
     parseDurableFacts(
       `Summary.\n\n~~~${DURABLE_FACTS_FENCE}\nWorks from Lisbon.`,

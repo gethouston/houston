@@ -29,26 +29,15 @@ export interface SeedPublishInput {
   turn: OpClaimTurn;
   store: ObjectStore;
   prefix: string;
-  /** The listing the seed decided on; with `storeRoot` (what this op
-   *  wrote), the agent exactly as the store now holds it. */
   objects: ObjectMetadata[];
   storeRoot: string;
   tree: SeedTree;
   views: SeedViewSources;
-  /** An adopted tree, not a fresh seed: its pod may have captured its own
-   *  provider views, which the baseline must never replace. */
   adopted?: boolean;
 }
 
-/** Views a pod captures from live state; an adopt only fills them in. */
 const PROVIDER_VIEWS = new Set(["providers", "provider_usage"]);
 
-/**
- * Everything the gateway serves a sleeping agent from, so the app's first
- * reads of an agent born asleep never wake a pod: the five family docs, the
- * skills list (the host's own `GET skills`) and the provider baseline. A
- * failed publish is a logged projection lag, never a failed seed.
- */
 export async function publishSeedDocs(input: SeedPublishInput): Promise<void> {
   const target = docTarget(input.deps, input.turn);
   if (!target) return;
@@ -70,8 +59,6 @@ export async function publishSeedDocs(input: SeedPublishInput): Promise<void> {
     failures.push(`views: ${String(error)}`);
   }
   const round = async () => {
-    // The files are durable: a throw here (a network failure) is a lag to
-    // log, never a failed seed.
     try {
       const out = await publishFamilyDocs(
         input.deps,
@@ -97,25 +84,17 @@ export async function publishSeedDocs(input: SeedPublishInput): Promise<void> {
   };
   let lag = await round();
   if (lag.length > 0) {
-    // One more round: a blip on the doc PUT is the common case.
     await new Promise((resolve) => setTimeout(resolve, 500));
     lag = await round();
   }
   failures.push(...lag);
   if (failures.length > 0) {
-    // The files ARE durable; asleep reads lag until the next projection.
     console.error(
       `[op] seed projection failed after a durable sync: ${failures.join("; ")} prefix=${input.prefix}`,
     );
   }
 }
 
-/**
- * The skills view, merged per slug: only the skills this seed's listing
- * held move, each read back from the store after the doc revision is. A
- * turn may land and publish a skill (or delete one) after that listing, and
- * the seed's whole captured list would drop (or bring back) it.
- */
 const publishSeedSkills = (
   input: SeedPublishInput,
   target: ActivityDocOptions,

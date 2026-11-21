@@ -26,7 +26,6 @@ interface HomePageProps {
 
 async function loadCreators() {
   const creators: CreatorDirectoryEntry[] = [];
-  // Interim only. HOU-1070 moves universal search into the gateway.
   for (let page = 1; page <= CREATOR_SEARCH_PAGE_LIMIT; page++) {
     const result = await listCreators(page);
     creators.push(...result.items);

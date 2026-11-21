@@ -15,10 +15,6 @@ describe("engineCallSurface", () => {
   });
 
   it("suppresses the toast but STILL captures when toast:false", () => {
-    // The contract behind the provider-login double-toast fix: the picker /
-    // settings / Gemini dialog render their own failure toast, so `call` must
-    // not toast on top — but the failure must still reach Sentry. Suppressing
-    // the toast must never become a silent failure.
     deepStrictEqual(engineCallSurface(undefined, { toast: false }), {
       toast: false,
       capture: true,
@@ -47,7 +43,6 @@ describe("engineCallSurface", () => {
       toast: false,
       capture: false,
     });
-    // Even if a caller asked to toast, an abort stays silent.
     deepStrictEqual(
       engineCallSurface("AbortError", { toast: true, capture: true }),
       {

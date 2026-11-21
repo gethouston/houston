@@ -7,7 +7,6 @@ import {
   setupGreetingRole,
 } from "../src/lib/setup-mission-greeting.ts";
 
-/** Manual clock + in-memory mirror. */
 function harness(initialRaw: string | null = null) {
   let now = 1_000_000;
   let raw = initialRaw;

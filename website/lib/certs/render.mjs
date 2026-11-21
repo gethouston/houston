@@ -11,16 +11,6 @@ import {
 } from "./image-cache.mjs";
 import { loadFontCoverage, loadFonts, renderItemImages } from "./raster.mjs";
 
-// Build-time certificate images, written by the `eleventy.after` hook.
-//
-// Per attendee: `_site/c/<CODE>.png` (the 2000x1414 printable certificate) and
-// `_site/c/<CODE>.og.png` (the 1200x630 social card). An image is re-rendered
-// whenever the attendee's data or the renderer itself changed since the last
-// build (see image-cache.mjs) — existence alone is NOT enough, or a corrected
-// name would show on the page and never on the certificate. `CERT_IMAGES=force`
-// re-renders unconditionally.
-
-/** Images rendered at once. Each one is a satori + resvg pass on a big canvas. */
 const CONCURRENCY = 4;
 
 async function exists(path) {
@@ -62,7 +52,6 @@ export async function renderAllCertificates(outputDir) {
   const force = process.env.CERT_IMAGES === "force";
   const started = Date.now();
   const counts = { rendered: 0, skipped: 0, failed: 0 };
-  /** Digests of the images actually present when this build ends. */
   const fresh = {};
 
   let next = 0;
@@ -117,7 +106,6 @@ export async function renderAllCertificates(outputDir) {
   );
 }
 
-/** Everything the render loop needs. Throws; the caller turns that into a warn. */
 async function prepare(outputDir) {
   const dir = join(outputDir, "c");
   await mkdir(dir, { recursive: true });
@@ -130,14 +118,6 @@ async function prepare(outputDir) {
   return { dir, fonts, coverage, fingerprint, manifest };
 }
 
-/**
- * Say so, loudly, when a certificate is about to be drawn with empty boxes.
- *
- * The bundled fonts are Latin cuts and satori substitutes `.notdef` for
- * anything else without a word. The image is a permanent public credential, so
- * a build that produces boxes has to be visible in the log rather than
- * discovered by the attendee.
- */
 function warnAboutMissingGlyphs(item, coverage) {
   const text = [
     item.displayName,

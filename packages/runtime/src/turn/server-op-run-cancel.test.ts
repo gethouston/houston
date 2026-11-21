@@ -15,13 +15,6 @@ import {
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/**
- * A routine run's stop, run as a route op for an agent with no pod: the
- * gateway has already released the run's pool claim (that is what stops the
- * sandbox), so the worker only settles the row, through the host's own cancel
- * minus the channel abort a worker has no runtime for.
- */
-
 const servers: Server[] = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();
@@ -37,7 +30,6 @@ const noopTurn: TurnRunner = async () => ({});
 const PREFIX = "ws/w1/agent-1";
 const STARTED = "2026-10-01T09:00:00.000Z";
 
-/** An agent seeded through the host's own store, holding `runs`. */
 async function seedAgent(runs: RoutineRun[] | null) {
   const storeRoot = mkdtempSync(join(tmpdir(), "op-run-cancel-"));
   const workspaces = join(storeRoot, PREFIX, "workspaces");
@@ -81,7 +73,6 @@ async function heartbeatOK(): Promise<string> {
   );
 }
 
-/** The gateway's op envelope, retried past a `worker_full` like the gateway. */
 async function postOp(base: string, op: Record<string, unknown>) {
   const envelope = {
     workspaceId: "w1",
@@ -111,7 +102,6 @@ async function postOp(base: string, op: Record<string, unknown>) {
   }
 }
 
-/** `POST routines/<rid>/runs/<runId>/cancel`, as the gateway sends it. */
 function postCancel(base: string, routineId: string, runId: string, body = "") {
   return postOp(base, {
     kind: "route",
@@ -147,8 +137,6 @@ test("a running row settles as cancelled and the change is announced", async () 
 });
 
 test("a stopped pooled run with no stored row records its one cancelled row", async () => {
-  // A pooled run lands its row only when it settles, and the stopped worker
-  // lands nothing: the gateway's stop is the only evidence the run existed.
   const older: RoutineRun = {
     ...running,
     id: "run-0",
@@ -172,7 +160,6 @@ test("a stopped pooled run with no stored row records its one cancelled row", as
     summary: "Stopped by user",
   });
   expect(json.events).toEqual(["RoutineRunsChanged"]);
-  // Newest first, beside the history it joins.
   expect(storedRuns().map((r) => r.id)).toEqual(["run-2", "run-0"]);
 });
 
@@ -195,8 +182,6 @@ test("a finished run is a no-op: the pod's 409, the row untouched, nothing annou
     completed_at: "2026-10-01T09:05:00.000Z",
   };
   const { base, storedRuns } = await seedAgent([finished]);
-  // Even with the gateway's stop: a run that settled before the stop landed
-  // keeps the settle, as on the pod.
   const stopped = JSON.stringify({
     stopped: { sessionKey: "routine-r1", startedAt: STARTED },
   });
@@ -226,7 +211,6 @@ test("an unknown run with no stop behind it is the pod's 404", async () => {
   const { base } = await seedAgent([running]);
   const { json } = await postCancel(base, "r1", "nope");
   expect(json.status).toBe(404);
-  // The routine id is part of the run's identity, as on the pod.
   expect((await postCancel(base, "r2", "run-1")).json.status).toBe(404);
 });
 
@@ -327,8 +311,6 @@ test("the run history doc the gateway serves asleep gets the cancelled row, unde
 });
 
 test("a vouched-for row joins the history in start order and never evicts a newer run", async () => {
-  // A stop retried long after the run (its claim still says it was stopped)
-  // must not push a newer run past the per-routine cap.
   const settledAt = (i: number) =>
     new Date(Date.parse(STARTED) + (i + 1) * 60_000).toISOString();
   const newer: RoutineRun[] = Array.from({ length: 50 }, (_, i) => ({
@@ -347,7 +329,6 @@ test("a vouched-for row joins the history in start order and never evicts a newe
   expect(json.status).toBe(409);
   expect(storedRuns()).toEqual(newer);
 
-  // One between two kept runs lands between them.
   const { base: base2, storedRuns: stored2 } = await seedAgent(
     newer.slice(0, 3),
   );

@@ -1,15 +1,5 @@
 import type { FirstDayRefusal, FirstDayRefusalCode } from "@houston/protocol";
 
-/**
- * The 409 a refused first-day start answers with (`POST
- * /agents/:agentId/first-day`), from the host on desktop and self-host and
- * from the gateway's pool path in the cloud. The codes are the protocol's
- * `FirstDayRefusalCode`; `first_day_no_provider` alone may name the pinned
- * `provider` that is not connected.
- *
- * Erasable-syntax-only with a type-only import, so the app's node:test entry
- * points load it through the `@houston/wire-types/first-day-refusal` subpath.
- */
 export type { FirstDayRefusal } from "@houston/protocol";
 
 const CODES: readonly string[] = [
@@ -18,7 +8,6 @@ const CODES: readonly string[] = [
   "first_day_no_provider",
 ] satisfies readonly FirstDayRefusalCode[];
 
-/** Parse only a typed first-day refusal body; anything else is null. */
 export function parseFirstDayRefusal(body: unknown): FirstDayRefusal | null {
   if (typeof body !== "object" || body === null) return null;
   const value = body as Record<string, unknown>;
@@ -41,12 +30,10 @@ export function parseFirstDayRefusal(body: unknown): FirstDayRefusal | null {
   return refusal;
 }
 
-/** {@link parseFirstDayRefusal} over a raw response text. */
 export function parseFirstDayRefusalText(text: string): FirstDayRefusal | null {
   try {
     return parseFirstDayRefusal(JSON.parse(text));
   } catch {
-    // Not JSON: no typed refusal; the caller keeps the raw text.
     return null;
   }
 }

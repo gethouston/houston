@@ -1,6 +1,5 @@
 import type { BillingChoice, BillingChoiceOrg } from "@houston/wire-types";
 
-/** Friday 2026-10-23, as the gateway seeds it. */
 export const CUTOVER = "2026-10-23T05:00:00Z";
 export const BEFORE = Date.parse("2026-10-20T17:00:00.000Z");
 

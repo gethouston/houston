@@ -1,18 +1,3 @@
-/**
- * Tool-name → human label resolution. Pure (no React imports) so the exact
- * same verb that a `ToolBlock` row shows ("Reading file", "Running command")
- * can also drive the process-block header, and so it can be unit-tested under
- * `node:test` without a DOM.
- *
- * These labels are intentionally English: `ui/` stays i18n-agnostic, and the
- * app does not pass `toolLabels`, so tool verbs read in English in every
- * locale (matching how the in-pane tool rows have always rendered).
- */
-
-// Two dialects share these maps: the Claude tool names (PascalCase) and the
-// pi coding-agent tool names (lowercase: bash/read/write/edit/grep/find/ls).
-// Both run through the same engine, so both must resolve to the same verbs —
-// an unmapped name leaks a raw "bash" row into the mission log (HOU-717).
 const ACTIVE_LABELS: Record<string, string> = {
   Read: "Reading file",
   Write: "Writing file",
@@ -31,10 +16,6 @@ const ACTIVE_LABELS: Record<string, string> = {
   find: "Searching files",
   grep: "Searching code",
   ls: "Listing files",
-  // Houston product tools (MCP-prefixed on the wire, resolved by short name).
-  // Plain human verbs so the mission-log ROW never leaks a raw underscored
-  // name; the process-block HEADER upgrades an execute to a branded
-  // "Gmail · Sending email" line when the app resolves it.
   integration_execute: "Using an app",
   integration_search: "Looking through your apps",
   ask_user: "Checking with you",
@@ -89,29 +70,16 @@ const DONE_LABELS: Record<string, string> = {
   update_mission_status: "Updated the board",
 };
 
-/** The bare tool name with any MCP `server__tool` prefix stripped. */
 export function toolShortName(name: string): string {
   return name.includes("__") ? (name.split("__").at(-1) ?? name) : name;
 }
 
-/**
- * The clean-finish OFFER tools: they record the follow-up bubbles and the
- * save-as-reusable card that render above the composer, and do no work the
- * mission log needs to account for. A process block made of nothing else is
- * bookkeeping, not a task log (see `getChatDisplayItems`).
- */
 const OFFER_TOOLS = new Set(["suggest_actions", "suggest_reusable"]);
 
-/** Whether a tool call (plain or MCP-prefixed name) is a clean-finish offer. */
 export function isOfferTool(name: string): boolean {
   return OFFER_TOOLS.has(toolShortName(name));
 }
 
-/**
- * Human label for a tool call. `done` picks past vs. present tense; `custom`
- * (the consumer's optional `toolLabels`) overrides by short name. Falls back to
- * the de-underscored short name for unknown tools.
- */
 export function getToolActionLabel(
   name: string,
   done: boolean,

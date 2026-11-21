@@ -5,14 +5,6 @@ import { expect, test } from "vitest";
 import { OPENAI_COMPATIBLE } from "../ai/openai-compatible";
 import { resolveTurnModel } from "./turn-model";
 
-/**
- * The per-turn cloud runtime resolves each turn's model against the THROWAWAY
- * hydrated data dir (turn-session.ts materializes the agent's object-storage
- * prefix into its own root per request), never `config.dataDir`. For the
- * OpenAI-compatible (custom endpoint) provider the model is hand-built from the
- * hydrated `custom-endpoint.json`, so resolution must read THAT dir.
- */
-
 function tmpDataDir(): string {
   return mkdtempSync(join(tmpdir(), "houston-turn-model-"));
 }
@@ -45,8 +37,6 @@ test("a per-turn pin matching the local model resolves that model", () => {
 
 test("fails loudly when openai-compatible is active but no endpoint was hydrated", () => {
   const dataDir = tmpDataDir();
-  // No custom-endpoint.json in the hydrated dir: the turn must surface a clear
-  // error, never silently fall back to another provider or a default model.
   expect(() => resolveTurnModel(dataDir, OPENAI_COMPATIBLE)).toThrow(
     /No local model configured/,
   );
@@ -71,9 +61,6 @@ test("azure resolves with the endpoint hydrated into THIS turn's data dir", asyn
     "../ai/azure-openai"
   );
   const dataDir = tmpDataDir();
-  // The endpoint file arrives via hydration (a pool-op connect's sync-back or
-  // the served credential's landing) — never via config.dataDir, which is the
-  // WORKER's own root and empty for this agent (PRODUCT-1532).
   setAzureEndpointIn(dataDir, "https://acme.openai.azure.com");
   const model = resolveTurnModel(dataDir, AZURE_OPENAI) as ResolvedModel;
   expect(model.provider).toBe(AZURE_OPENAI);

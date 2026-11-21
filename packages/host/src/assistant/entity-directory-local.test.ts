@@ -30,8 +30,6 @@ test("local directory uses owned live documents and excludes its coordinator ide
   const root = paths.agentRoot(ws, agent);
   await saveActivities(vfs, root, [
     { id: "a", title: "Research", description: "", status: "done" },
-    // A mission whose chat is NOT at the convention address: the board is the
-    // only place that spelling is written down.
     {
       id: "b",
       title: "Welcome",
@@ -77,8 +75,6 @@ test("local directory uses owned live documents and excludes its coordinator ide
   expect(await directory.routines(agent.id)).toEqual([
     { id: "r", name: "Morning" },
   ]);
-  // Each mission carries the chat it is talked about in, so a caller holding
-  // the board can tell that chat apart from one the person started.
   expect(await directory.activities(agent.id)).toEqual([
     { id: "a", name: "Research", sessionKey: "activity-a" },
     { id: "b", name: "Welcome", sessionKey: "welcome-xyz" },
@@ -89,9 +85,6 @@ test("local directory uses owned live documents and excludes its coordinator ide
   expect(await directory.sharedSkills(ws.id)).toEqual([
     { slug: "shared", name: "shared" },
   ]);
-  // The people of a team space and their invitations are not an empty list on
-  // a local host: they are not part of it at all. An empty list would have the
-  // model offering to invite the first one.
   await expect(directory.members()).rejects.toThrow(
     "team members are not supported on this Houston",
   );

@@ -32,8 +32,6 @@ test("each overlay is placed LAST, after the base prompt", () => {
 });
 
 test("both overlays speak in a non-technical voice (no file/JSON/CLI jargon)", () => {
-  // The target user is non-technical; the product prompt forbids naming files,
-  // JSON, configs, or CLIs. Guard the overlay copy against that jargon leaking in.
   for (const overlay of [PLAN_MODE_OVERLAY, AUTO_MODE_OVERLAY]) {
     const lower = overlay.toLowerCase();
     for (const banned of ["file", "json", "cli"])
@@ -47,7 +45,6 @@ test("the plan overlay establishes the read-only, plan-then-approve contract", (
   expect(lower).toContain("must not change anything");
   expect(lower).toContain("end every plan mode turn");
   expect(lower).toContain("ask_user");
-  // The full plan stays in the assistant message and plan_ready asks what is next.
   expect(lower).toContain("approval");
   expect(lower).toContain("plan_ready");
   expect(lower).toContain("full plan as your normal assistant message");
@@ -57,14 +54,11 @@ test("the auto overlay establishes the never-wait, act-and-report contract", () 
   const lower = AUTO_MODE_OVERLAY.toLowerCase();
   expect(lower).toContain("autopilot mode");
   expect(lower).toContain("do not ask the user");
-  // Auto acts on its own judgment and closes with a report.
   expect(lower).toContain("assum");
   expect(lower).toContain("report");
 });
 
 test("the auto overlay teaches the connect hand-off instead of writing apps off (HOU-853)", () => {
-  // request_connection survives Autopilot (tool-selection.ts): an unconnected
-  // app must produce a connect card, never a "go connect it yourself" reply.
   const lower = AUTO_MODE_OVERLAY.toLowerCase();
   expect(lower).toContain("request_connection");
   expect(lower).toContain("not connected");

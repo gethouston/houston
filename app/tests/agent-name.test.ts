@@ -43,7 +43,6 @@ describe("agentNameIssue", () => {
   it("flags the AI Manager's own name as reserved, in any spelling", () => {
     strictEqual(agentNameIssue("Houston", existing), "reserved");
     strictEqual(agentNameIssue("  HOUSTON ", existing), "reserved");
-    // Reserved wins over taken: another agent holding it changes nothing.
     strictEqual(agentNameIssue("houston", ["Houston"]), "reserved");
   });
 

@@ -5,15 +5,6 @@ import type { TurnMode } from "@houston/protocol";
 import { afterEach, expect, test, vi } from "vitest";
 import type { HarnessSession, ResolvedModel } from "../backends/types";
 
-/**
- * LIVE MODE SWITCH — the user changes the Mode pill WHILE the agent works
- * (Claude Code's shift+tab): `setLiveTurnMode` mutates the executing turn's
- * live-mode ref, `currentTurnMode()` sees the flip mid-prompt, and the
- * execute-time gates (live-mode-gate.ts) start/stop firing accordingly.
- * Between turns there is no ref — the switch reports `applied: false` and the
- * next turn's pin carries the mode instead.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "houston-livemode-data-"),
 );
@@ -95,7 +86,6 @@ test("currentTurnMode reads the live ref, so a mid-flight mutation is visible", 
 });
 
 test("the plan/auto gates fire from the LIVE mode and are no-ops outside a turn", () => {
-  // Outside a turn: no ambient mode, no gate.
   expect(() => assertNotPlanMode("act")).not.toThrow();
   expect(() => assertNotAutoMode("wait")).not.toThrow();
 
@@ -115,8 +105,6 @@ test("the plan/auto gates fire from the LIVE mode and are no-ops outside a turn"
 test("setLiveTurnMode flips the EXECUTING turn's ambient mode mid-prompt", async () => {
   const seen: Array<TurnMode | undefined> = [];
   const session = new FakeSession(() => {
-    // Inside the turn: the ambient mode is the pin's, then the user's live
-    // switch (the route's call) is visible to the SAME running prompt.
     seen.push(currentTurnMode());
     expect(setLiveTurnMode("conv-live", "plan")).toBe(true);
     seen.push(currentTurnMode());
@@ -135,7 +123,6 @@ test("setLiveTurnMode flips the EXECUTING turn's ambient mode mid-prompt", async
   );
 
   expect(seen).toEqual(["execute", "plan"]);
-  // The ref retires with the turn: nothing left to apply live between turns.
   expect(conv.liveMode).toBeUndefined();
   expect(setLiveTurnMode("conv-live", "auto")).toBe(false);
 });

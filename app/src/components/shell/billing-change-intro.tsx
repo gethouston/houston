@@ -15,12 +15,6 @@ import { PlanBriefingCta, PlanBriefingQuietButton } from "./plan-briefing-cta";
 const TITLE_CLASS =
   "pr-8 text-balance text-2xl font-semibold leading-tight tracking-tight text-ink outline-none md:text-3xl";
 
-/**
- * The modal's intro, one page at a time ({@link ChoiceIntroPage}). An owner
- * who has to pick reads what changes, then what happens to the orgs they do
- * not keep free, and goes on to the picker; everyone else reads one page and
- * closes it. "Maybe later" sits on the first page only, Back on the rest.
- */
 export function BillingChangeIntro({
   notice,
   choice,
@@ -33,7 +27,6 @@ export function BillingChangeIntro({
 }: {
   notice: IntroNotice;
   choice: BillingChoice;
-  /** A new checkout's list prices (SDK `announcedSeatPrices`); null while unknown. */
   listPrices: SeatPrices | null;
   page: ChoiceIntroPage;
   progress: FlowProgress | null;
@@ -126,7 +119,6 @@ function Points({ points }: { points: NoticePoint[] }) {
   );
 }
 
-/** The phone sheet seats the actions at the bottom, under the thumb. */
 function Actions({
   label,
   onNext,

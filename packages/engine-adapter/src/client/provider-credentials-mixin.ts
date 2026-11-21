@@ -27,25 +27,9 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
     async providerLogout(name: string): Promise<void> {
       const pid = toNewProvider(name);
       if (!pid) return;
-      // Sign-out clears every gateway the connect card represents — for OpenCode
-      // that's both Zen and Go, since one key connected both. Clearing a gateway
-      // that was never connected is a benign no-op.
       const targets = credentialSiblings(pid);
       const cp = this.ctx.cp;
       if (cp) {
-        // Connect-once logout. Clearing only the runtime's local auth.json (what
-        // engine.logout does) is NOT enough: the credential also lives in the
-        // workspace's CENTRAL store, and the runtime re-pulls it from the host
-        // before every turn — so the next message re-hydrated the agent and the
-        // provider showed connected again. Forget the central credential FIRST so
-        // no in-flight turn can re-serve it, then clear the runtime's local copy.
-        // SPACE-VALIDATED id (HOU-979): the raw pref can still name the
-        // previous space's agent, and forgetting a credential through a foreign
-        // agent's route is a cross-space write. Refuse only while the list is
-        // still loading; a settled space with NO agent signs out through the
-        // hidden setup runtime, the mirror of how it connected (PRODUCT-1662):
-        // the credential is workspace-central, so no agent is needed to forget
-        // it, and the setup runtime's own auth copy is cleared alongside.
         requireProviderRouting(this.ctx);
         const agentId = this.ctx.providerAgentId();
         const credentials = this.ctx.sdk.providers.credentials;
@@ -68,15 +52,6 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
           await this.ctx.engine.logout(target);
         }
       }
-      // A sign-out is a CONNECTION CHANGE, and every cached provider status has
-      // to see it — not just the screen that asked for it. `ProviderLoginComplete`
-      // is the only signal that invalidates the shared status query
-      // (`app/src/lib/agent-invalidation-plan.ts`), which the chat model picker
-      // and the create-agent dialog both read: without it a provider the user
-      // just disconnected still counted as connected for the cache's lifetime,
-      // and a new agent was pinned to it. `success: false, error: null` is the
-      // benign completion the cancel path uses — a refresh, never an error toast.
-      // This is the ONE exit, so no branch above can forget to announce itself.
       emitEvent("ProviderLoginComplete", {
         provider: name,
         success: false,
@@ -84,20 +59,10 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
       });
     }
 
-    /**
-     * Push a desktop-extracted Anthropic OAuth credential to this space's pod
-     * (or, with no settled agent, its setup runtime). See `provider-claude-push`
-     * for the target-resolution rule.
-     */
     async pushClaudeOAuthCredential(credentialJson: string): Promise<void> {
       await pushClaudeCredential(this.ctx, credentialJson);
     }
 
-    /**
-     * Connect an API-key provider by pasted key — see {@link connectApiKey} for
-     * the whole flow (sibling gateways, the pre-agent setup path, the active
-     * provider claim, and the completion event).
-     */
     async setProviderApiKey(
       name: string,
       apiKey: string,
@@ -123,11 +88,6 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
      */
     async setProviderCustomEndpoint(endpoint: CustomEndpoint): Promise<void> {
       if (this.ctx.cp) {
-        // Space-validated, like every other provider write (HOU-979). Unlike
-        // the credential writes this one has NO pre-agent path: the endpoint
-        // is per-runtime state and the setup runtime dies with the first
-        // agent's creation, so a zero-agent space is the typed expected
-        // state the app turns into "create an agent first" (PRODUCT-1662).
         const agentId = requireProviderAgentId(this.ctx);
         await viaSdk(
           `${controlPlane.agentPath(agentId)}/provider/openai-compatible`,

@@ -4,24 +4,6 @@ import path from "node:path";
 import { AUTH_WEB_PORT, FAKE_FIREBASE_API_KEY, WEB_PORT } from "../config";
 import { type BundleName, bundleDir, STAMP_FILE } from "./serve-mode";
 
-/**
- * Build the two web bundles the `bundle` serve mode serves (serve-mode.ts).
- *
- * DEVELOPMENT-mode builds, on purpose. `NODE_ENV=development vite build` keeps
- * every `import.meta.env.DEV` branch, the React dev runtime with its console
- * warnings, and the dev-only test hooks exactly as the dev server has them, so
- * a spec behaves the same under either serve mode. The suite leans on three of
- * those today: `__HOUSTON_UPDATE_PREVIEW__` (update-pill.spec; tree-shaken out
- * of a production build), React's dev-only warnings (skills-react-clean.spec
- * asserts there are none, which a production bundle would pass vacuously), and
- * Sentry's dev suppression in error-toast.ts. `--mode development` matches the
- * dev server's env files and `__APP_VERSION__` suffix too.
- *
- * Unminified, no sourcemaps: nothing serves these beyond localhost, and a
- * readable stack in a failing trace is worth more than a smaller file. The two
- * builds run concurrently; rollup is single-threaded and the runner has four
- * cores.
- */
 interface BundleSpec {
   name: BundleName;
   port: number;
@@ -52,10 +34,6 @@ function build(spec: BundleSpec): Promise<void> {
     "--emptyOutDir",
   ];
   return new Promise((resolve, reject) => {
-    // `vite` resolves from node_modules/.bin because this runs under `pnpm run`.
-    // The identity key is the one define that differs between the servers
-    // (vite.config.ts bakes FIREBASE_API_KEY); HOUSTON_E2E_WEB_PORT keeps the
-    // per-port vite cacheDir split the dev servers use.
     const child = spawn("vite", args, {
       stdio: "inherit",
       env: {
@@ -76,8 +54,6 @@ function build(spec: BundleSpec): Promise<void> {
   });
 }
 
-/** The commit the bundles are built at, for serve-bundle.ts's stale warning.
- *  No git (an exported tree): no stamp, no warning. */
 function gitHead(): string | null {
   try {
     return execFileSync("git", ["rev-parse", "HEAD"], {

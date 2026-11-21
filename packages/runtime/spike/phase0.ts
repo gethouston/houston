@@ -1,23 +1,6 @@
-/**
- * Phase 0 de-risk spike for the Houston TS engine built on pi-coding-agent.
- *
- * Verifies, with ZERO credentials/network by default:
- *   1. The barrel imports headless (non-TTY) without side effects.
- *   2. createAgentSession constructs headless with discovery DISABLED + our own system prompt.
- *   3. A FULL agent turn runs via the faux provider: text streaming + tool execution + agent_end.
- *   4. The AgentSessionEvent stream shape we'll wrap for SSE.
- *
- * Optional (guarded):
- *   - SPIKE_OAUTH=1   exercises the Codex device-code login headless (network; aborts after capturing the code).
- *   - ANTHROPIC_API_KEY / OPENAI_API_KEY present -> runs a real one-shot turn.
- */
-
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-// `getModel`/`registerFauxProvider` are pi-ai's legacy global-registry API,
-// preserved on `/compat`; the other symbols move with them so everything
-// reads/writes the one registry instance.
 import {
   type FauxResponseStep,
   fauxAssistantMessage,
@@ -45,7 +28,6 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   ]);
 }
 
-/** Minimal headless ResourceLoader: no discovery, just our system prompt. */
 function makeHeadlessLoader(cwd: string, systemPrompt: string) {
   const loader = new DefaultResourceLoader({
     cwd,
@@ -69,7 +51,6 @@ async function runFauxTurn(opts: {
   section(opts.label);
   const cwd = mkdtempSync(join(tmpdir(), "houston-spike-"));
 
-  // An in-process fake model provider — no network, scripted responses.
   const faux = fauxProvider({
     provider: "faux",
     api: "faux",
@@ -79,8 +60,6 @@ async function runFauxTurn(opts: {
   });
   faux.setResponses(opts.responses);
 
-  // Seed via auth.json (NOT setRuntimeApiKey: its awaited refresh() hangs in
-  // pi 0.82); faux ignores the key — it just satisfies the pre-flight auth gate.
   writeFileSync(
     join(cwd, "auth.json"),
     JSON.stringify({ faux: { type: "api_key", key: "faux-key" } }),
@@ -134,7 +113,6 @@ async function runFauxTurn(opts: {
   unsub();
   session.dispose();
 
-  // Summarize the event stream we observed.
   const counts: Record<string, number> = {};
   for (const t of seen) counts[t] = (counts[t] ?? 0) + 1;
   log("  event types:", JSON.stringify(counts));
@@ -157,7 +135,7 @@ async function probeCodexDeviceCode() {
       signal: ac.signal,
       prompt: async (p) => {
         if (p.type === "select") return "device_code";
-        return new Promise<string>(() => {}); // never paste — the abort ends it
+        return new Promise<string>(() => {});
       },
       notify: (event) => {
         if (event.type !== "device_code") return;
@@ -246,7 +224,6 @@ async function main() {
   section("1. Barrel imported headless");
   log("  createAgentSession:", typeof createAgentSession);
 
-  // 2 + 3 + 4: full headless turn, text-only.
   await runFauxTurn({
     label: "2. Headless faux turn — text only",
     prompt: "Hi there.",
@@ -258,7 +235,6 @@ async function main() {
     ],
   });
 
-  // Tool execution path: scripted tool call, then a final answer.
   await runFauxTurn({
     label: "3. Headless faux turn — tool call then answer",
     prompt: "List the files in this directory.",

@@ -4,13 +4,8 @@ import { AGENTS_HOME_VIEW_ID } from "../../lib/top-level-views.ts";
 import type { NavActions } from "./nav-state.ts";
 import type { UISliceCreator } from "./state.ts";
 
-/** Every navigation that is not the chat itself closes the pushed chat: the
- *  chat renders over ANY view, so a stale pair would keep it glued over the
- *  next screen. Spread into each nav-aware action's write. */
 export const noChat = { chatAgentId: null, chatMissionId: null };
 
-/** The same for the file preview: it belongs to the screen (and chat) it
- *  was opened from, so moving to another place shuts it. */
 export const noPreview = { filePreview: null };
 
 export const createNavActions: UISliceCreator<NavActions> = (set, get) => ({
@@ -21,11 +16,6 @@ export const createNavActions: UISliceCreator<NavActions> = (set, get) => ({
     if (clamped === s.navIndex) return;
     const entry = s.navStack[clamped];
     set({ navIndex: clamped, ...viewFieldsOf(entry) });
-    // The panel closes through its OWNER (deselect and all), outside the
-    // write above: the closer's own store writes then find the stack
-    // already at the panel-less entry, so they fold in as no-ops instead
-    // of double-popping. An entry WITH a panel can't reopen it — the
-    // selection it derived from is gone (see NavEntry.panelOpen).
     if (!entry.previewOpen && get().filePreview) set({ filePreview: null });
     if (!entry.panelOpen && get().missionPanelOpen) {
       const close = get().onPanelClose;
@@ -51,8 +41,6 @@ export const createNavActions: UISliceCreator<NavActions> = (set, get) => ({
         opts?.nav ?? "push",
       ),
     ),
-  // Drilling INTO a section is a new place; back to the index is a
-  // "back" (pops when the index is where the user came from).
   setSettingsSection: (settingsSection) =>
     set((s) =>
       navigated(

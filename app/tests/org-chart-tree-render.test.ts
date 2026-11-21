@@ -14,8 +14,6 @@ import {
 import { OrgChartTreeView } from "../src/components/organization/org-chart-tree-view.tsx";
 import teams from "../src/locales/en/teams.json" with { type: "json" };
 
-// tsx compiles `ui/` sources against their own tsconfig, which names no JSX
-// runtime, so their JSX comes out as classic `React.createElement` calls.
 Object.assign(globalThis, { React });
 
 const members: OrgMember[] = [
@@ -78,7 +76,6 @@ describe("org chart tree rendering", () => {
     ]);
     match(html, /aria-label="Org chart"/);
     match(html, />Acme</);
-    // No captions: no counts under the space, no section title.
     doesNotMatch(html, /3 people/);
     doesNotMatch(html, /Who works here/);
     for (const name of ["Julian Arango", "Sara Diaz", "Tom Reed"])
@@ -88,7 +85,6 @@ describe("org chart tree rendering", () => {
       );
     match(html, /aria-label="Open Agent a&#x27;s board"/);
     match(html, /aria-label="Open Agent b&#x27;s board"/);
-    // Nor a role under anyone: not People's roles, not a job description.
     for (const role of [
       "Handles the inbox",
       ">Owner<",
@@ -108,7 +104,6 @@ describe("org chart tree rendering", () => {
       );
       for (const id of ["root", "p:julian", "p:sara", "p:tom", "a:a"])
         match(html, new RegExp(`data-tree-node="${id}"`));
-      // Every card joins the one-time reveal.
       strictEqual(count(html, /data-reveal=""/), 5);
       match(html, /<svg[^>]*aria-hidden="true"/);
     }
@@ -118,7 +113,6 @@ describe("org chart tree rendering", () => {
     const html = render([agent("a")]);
     match(html, /active:scale-\[0\.97\]/);
     match(html, /class="[^"]*transition-transform[^"]*active:scale-\[0\.97\]/);
-    // Timing only inline: a transition-property there would shadow `scale`.
     match(
       html,
       /style="transition-duration:160ms;transition-timing-function:cubic-bezier/,
@@ -140,7 +134,6 @@ describe("org chart tree rendering", () => {
       agentsPerPerson: 1,
       rootAgents: 1,
     });
-    // Said once, "+2 people", never a "+2" beside "2 more people".
     match(html, />\+2 AI Employees</);
     match(html, />\+2 people</);
     strictEqual(count(html, />\+2</), 0);
@@ -154,7 +147,6 @@ describe("org chart tree rendering", () => {
     );
     match(html, />\+2 people</);
     doesNotMatch(html, /1 AI Employee</);
-    // The owner stays even though Tom has the only AI Employee.
     match(html, /aria-label="Open Julian Arango in People"/);
   });
 

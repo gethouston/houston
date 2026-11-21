@@ -1,4 +1,3 @@
-/** The newest authenticated required-update policy this installation has seen. */
 export interface StoredPolicy {
   sequence: number;
   required_native_build: number;

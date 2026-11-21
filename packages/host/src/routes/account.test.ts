@@ -22,7 +22,6 @@ test("GET /v1/workspaces returns the caller's personal workspace in wire shape",
   expect(list).toHaveLength(1);
   expect(list[0]).toMatchObject({ isDefault: true, locale: null });
   expect(typeof list[0]?.createdAt).toBe("string");
-  // No tenancy internals leak to the wire.
   expect(JSON.stringify(list[0])).not.toContain("slug");
   expect(JSON.stringify(list[0])).not.toContain("runtime");
 });
@@ -111,7 +110,6 @@ test("concurrent PUTs of different preference keys both survive", async () => {
       body: JSON.stringify({ value }),
     }).then((r) => r.json());
   try {
-    // Warm the personal workspace so both writes race on the SAME document.
     await putLocale("en");
     const list = (await (
       await fetch(`${slow.base}/v1/workspaces`, { headers: auth("hal") })

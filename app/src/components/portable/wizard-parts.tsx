@@ -1,12 +1,3 @@
-/**
- * Shared presentational primitives for the portable import and copy-agent
- * wizards. Visual language follows `/DESIGN.md` — semantic ink tokens, no
- * decorative icons, sentence-case sections.
- *
- * `ProgressDots` is what the flows hand to `FlowSheet`'s centred header slot,
- * so it carries no margins of its own.
- */
-
 import { cn, Switch } from "@houston-ai/core";
 import type React from "react";
 
@@ -48,7 +39,6 @@ export function SwitchRow({
   title: string;
   subtitle?: string;
   trailing?: React.ReactNode;
-  /** Shown under a row the threat scan flagged. */
   flaggedNote?: string | null;
 }) {
   return (

@@ -14,28 +14,13 @@ import {
 import { createSentryReportError } from "./sentry-report-error";
 import { markReportedToSentry } from "./sentry-reported-mark";
 
-/** Collapses one root cause's burst of failures into a single counted event. */
 const errorBurst = createBurstGate();
 
 export interface ErrorToastOptions {
-  /** Authored, localized product copy for this specific failure (a `t()`
-   *  result, never a raw `err.message`). Since HOU-1245 it is no longer
-   *  displayed; it survives as the burst key, which is what keeps two
-   *  genuinely different failures counted separately while one failure hitting
-   *  N callers counts once. */
   userMessage?: string;
-  /** Diagnostic context attached to the Sentry event as `extra` (never a tag:
-   *  free text such as a sidecar's stderr tail must not become a facet). */
   extra?: Record<string, unknown>;
 }
 
-/**
- * Surface an EXPECTED, explainable business state as a plain informational
- * toast. Used for gateway states a user can understand and act on (C8
- * `needs_upgrade`: a write blocked because the team's trial expired), where a
- * bug report would be wrong: nothing is broken. No Sentry capture. The raw
- * diagnostic still reaches the frontend log via the caller's `logger.error`.
- */
 export function showExpectedStateToast(
   title: string,
   description: string,
@@ -43,17 +28,6 @@ export function showExpectedStateToast(
   useUIStore.getState().addToast({ title, description, variant: "info" });
 }
 
-/**
- * Surface a transport-level network failure (device offline, host unreachable
- * — HOU-1085) as ONE informational connectivity toast. A connectivity drop
- * fails every live query at once, so the toast dedupes on its (constant)
- * displayed body: the burst reads as one problem. No green "report sent"
- * toast — nothing in Houston broke and there is nothing for us to fix — but
- * the drop still reaches Sentry as a burst-collapsed warning in the single
- * fingerprinted `offline` issue (PRODUCT-1640), so its raw diagnostic is
- * findable beyond the caller's `logger.error` and the `[toast:…]` line here.
- * The analytics event fires only past the dedupe, mirroring `showErrorToast`.
- */
 export function showConnectivityErrorToast(
   command: string,
   message: string,
@@ -74,20 +48,6 @@ export function showConnectivityErrorToast(
   });
 }
 
-/**
- * Surface a gateway "engine unavailable" 503 (HOU-1114) or "engine proxy
- * failed" 502 (PRODUCT-1403) as ONE informational "your agent is waking up"
- * toast. The agent's engine pod is provisioning (a just-installed store
- * agent), cold-starting, or restarting under a roll; every per-agent call fails the
- * same way until it wakes, so the toast dedupes on its constant displayed body
- * and the burst reads as one state, not a storm. No green "report sent"
- * toast: nothing in Houston broke and the request self-heals on retry. The
- * answer still reaches Sentry as a burst-collapsed warning in the single
- * fingerprinted `engine_waking` issue, carrying the raw gateway body, and
- * feeds the per-agent stuck-wake escalation (PRODUCT-1640) — `context` is the
- * engine-call context, whose `agentPath` / `agentId` keys that tracker. The
- * analytics event fires only past the dedupe, mirroring `showErrorToast`.
- */
 export function showEngineWakingToast(
   command: string,
   message: string,
@@ -109,62 +69,20 @@ export function showEngineWakingToast(
   });
 }
 
-/**
- * Report an unexpected error — WITHOUT showing the user anything (HOU-1245).
- *
- * This used to render a toast pair: the red branded "Houston, we have a
- * problem!" box, then a green "report sent — Reference #<id>" follow-up with a
- * copy-the-code action. Both are gone. A generic red box a non-technical user
- * cannot act on, followed by a Sentry event id that means nothing to them, cost
- * more in alarm than it bought in information — and the errors that a user CAN
- * act on (a name that's already taken, no microphone, an expired trial) never
- * came through here: they have authored copy at their own call sites, and they
- * still toast exactly as before. So do the informational states
- * (`showConnectivityErrorToast`, `showEngineWakingToast`) above.
- *
- * NOTE this is a deliberate, scoped exception to the repo's no-silent-failures
- * beta policy: silent to the USER, never silent to us. Every reporting path is
- * untouched, so the failure still reaches:
- *   - the frontend log, via the `console.error` below (mirrored to the log file
- *     and bundled into a Report-bug submission);
- *   - PostHog, via `app_error_shown` (the event name is kept despite nothing
- *     being shown, so the existing error-rate dashboards stay continuous);
- *   - Sentry, via `captureException` with `command` as the triage tag.
- * Losing the toast means losing the user-reported half of a bug report, which
- * makes those three the whole signal — do not quiet them too.
- *
- * `command` is a short machine-readable tag (e.g. "list_workspaces",
- * "uncaught_error") used as the Sentry tag for triage.
- * True when the user was dealt with (a surface of its own shown or withheld
- * on purpose); false for a report-only failure, which the caller must tell.
- */
 export function showErrorToast(
   command: string,
   message: string,
   originalError?: unknown,
   options?: ErrorToastOptions,
 ): boolean {
-  // A hosted call answered by the transport's synthetic signed-out 401 is an
-  // EXPECTED lifecycle state (sign-out / account switch): the sign-in screen is
-  // the surface, nothing is broken, and there is no bug to report — so not even
-  // a Sentry capture. A REAL rejected bearer never takes this branch because
-  // the transport only mints the synthetic body when no session exists at all.
   if (isSignedOutEngineError(originalError)) {
     console.warn(`[toast:${command}] suppressed: signed-out engine call`);
     return true;
   }
-  // The app's own warming-guard refusal (HOU-693): the "almost ready" dialog
-  // is the surface and nothing failed — no capture either (HOUSTON-APP-53K).
   if (isAgentWarmingRefusal(originalError)) {
     console.debug(`[toast:${command}] write blocked while the agent warms up`);
     return true;
   }
-  // The quiet classes (PRODUCT-1735) — the same gate the engine-call layer,
-  // `reportError` and the global handlers run. A caller that hands a raw
-  // query error here (the store screens: an anonymous catalog read that
-  // never passes through `call()`) used to capture an offline device as a
-  // per-user bug. Each class keeps its own informational surface and its ONE
-  // fingerprinted warning (`quiet-state-surface.ts` for the rest).
   const quiet = classifyQuietError(originalError);
   if (quiet === "offline") {
     showConnectivityErrorToast(command, message, originalError);
@@ -177,13 +95,8 @@ export function showErrorToast(
   if (quiet && surfaceQuietState(quiet, command, message, originalError))
     return true;
 
-  // With no toast left, this line is the failure's only trace on the user's
-  // machine — guarantee it here rather than trusting each caller to log.
   console.error(`[toast:${command}] ${message}`);
 
-  // Burst key: the copy this failure WOULD have displayed. Analytics counts a
-  // problem, so one root cause failing N concurrent callers (HOU-687) must
-  // count once, while two distinct authored failures still count separately.
   const surfacedAs =
     options?.userMessage ?? i18n.t("shell:errorToast.genericDescription");
   if (errorBurst.isFirst(surfacedAs, Date.now())) {
@@ -193,9 +106,6 @@ export function showErrorToast(
     });
   }
 
-  // Sentry keeps EVERY occurrence (it dedupes server-side, and the per-event
-  // context is what tells one user's outage from a fleet-wide one).
-  // Dev build with Sentry suppressed: initSentry already bailed, so don't.
   if (sentrySuppressedInDev) return false;
   markReportedToSentry(originalError);
   void sentryCapture(

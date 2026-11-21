@@ -1,11 +1,3 @@
-/*
- * /enterprise — the solution: the process as one centered slide at a time
- * (the title first, then each phase). Two levels of type, a big title and a
- * smaller line under it, the proof band's pairing; a solid round chevron to
- * the right of the text says "next". enterprise-process.js moves it.
- */
-
-/* ── Spacing: exactly #compound, content in the middle of the screen ───── */
 @media (min-width: 881px) {
   .ent-process-sec {
     min-height: 100svh;
@@ -15,7 +7,6 @@
   }
 }
 
-/* ── The slider: back, the slide, next; the marks underneath ───────────── */
 .ent-slider {
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr) 56px;
@@ -33,14 +24,9 @@
 .ent-slides {
   grid-area: slides;
 }
-/* With JS the slides share one grid cell, so the slider is as tall as the
-   longest and nothing around it moves when they change. */
 html.js .ent-slides {
   display: grid;
 }
-/* Each slide sits on the cell's floor, so the pill lands on the same line
-   above the marks on every slide and a short slide's air goes above its
-   title, not under the button. */
 html.js .ent-slide {
   grid-area: 1 / 1;
   align-self: end;
@@ -62,7 +48,6 @@ html.js .ent-slide.is-on {
 html.js .ent-slide + .ent-slide {
   margin-top: 0;
 }
-/* The title: the landing's section-title voice. */
 .ent-slide-head {
   max-width: 18ch;
   margin: 0 auto;
@@ -73,7 +58,6 @@ html.js .ent-slide + .ent-slide {
   color: var(--ink-strong);
   text-wrap: balance;
 }
-/* The line under it: a step down in size and ink, with real air between. */
 .ent-slide-rest {
   max-width: 40ch;
   margin: clamp(18px, 2.2vw, 28px) auto 0;
@@ -83,7 +67,6 @@ html.js .ent-slide + .ent-slide {
   text-wrap: balance;
 }
 
-/* ── Buttons and marks ───────────────────────────────────────────────────── */
 .ent-arrow {
   width: 56px;
   height: 56px;
@@ -103,7 +86,6 @@ html.js .ent-slide + .ent-slide {
 .ent-arrow:active:not(:disabled) {
   transform: scale(0.96);
 }
-/* Forward is the one loud object: the ink pill, round. */
 .ent-arrow-next {
   grid-area: next;
   border: 0;
@@ -113,7 +95,6 @@ html.js .ent-slide + .ent-slide {
 .ent-arrow-next:hover {
   background: var(--action-hover);
 }
-/* Back stays quiet, and out of the way on the first slide. */
 .ent-arrow-prev {
   grid-area: prev;
   border: 1px solid var(--line-strong);
@@ -146,9 +127,6 @@ html.js .ent-slide + .ent-slide {
   width: 22px;
   background: var(--ink-strong);
 }
-/* Every slide closes on the same pill that books the call, so all five
-   have one shape and the slider never sits on empty air. Inside the slide,
-   so it fades with it. */
 .ent-slide-cta {
   display: inline-flex;
   align-items: center;
@@ -175,13 +153,10 @@ html.js .ent-slide + .ent-slide {
 .ent-slide-cta:active {
   transform: scale(0.96);
 }
-/* Nowhere further to go: next steps out of the way, like back does on the
-   first slide, and keeps its place so nothing shifts. */
 .ent-slider.is-last .ent-arrow-next {
   opacity: 0;
   pointer-events: none;
 }
-/* Phones: the text takes the full width, the buttons flank the marks. */
 @media (max-width: 640px) {
   .ent-slider {
     grid-template-columns: 48px minmax(0, 1fr) 48px;
@@ -195,8 +170,6 @@ html.js .ent-slide + .ent-slide {
     height: 48px;
     margin-top: 32px;
   }
-  /* The Spanish label runs long: a tighter pill keeps it on one line in a
-     390px screen. */
   .ent-slide-cta {
     height: 48px;
     gap: 6px;
@@ -205,7 +178,6 @@ html.js .ent-slide + .ent-slide {
   }
 }
 
-/* Its dark dress, for when the page's tone flow turns the ground black. */
 .is-dark .ent-slide-head {
   color: #fff;
 }

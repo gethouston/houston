@@ -19,7 +19,6 @@ export interface BrowserLiveDialogProps {
   onOpenChange: (open: boolean) => void;
   agentPath: string;
   conversationId: string;
-  /** What the agent asked the person to do. */
   task: string;
 }
 
@@ -55,7 +54,6 @@ function useBrowserLiveLabels(): BrowserLiveViewLabels {
   );
 }
 
-/** Escape typed into the page is the page's, not a request to close. */
 function keepPageEscape(event: KeyboardEvent) {
   if (
     event.target instanceof Element &&
@@ -64,22 +62,11 @@ function keepPageEscape(event: KeyboardEvent) {
     event.preventDefault();
 }
 
-/**
- * Opening lands focus on the frame itself, not its first control: the close
- * X wore a focus ring from the moment the view appeared. The frame is
- * focusable (tabIndex -1), so the focus trap and Tab order are unchanged.
- */
 function focusFrame(event: Event) {
   event.preventDefault();
   if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus();
 }
 
-/**
- * The live browser's frame: a full-height bottom sheet on phones (rising on
- * the drawer curve), a large dialog on desktop (scaling in from 0.96) (a structural fork, so `useIsMobile`). Closing it only
- * stops watching; the hand-off keeps waiting until the person answers or the
- * time runs out.
- */
 export function BrowserLiveDialog({
   open,
   onOpenChange,

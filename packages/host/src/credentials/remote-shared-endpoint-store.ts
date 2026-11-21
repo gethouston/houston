@@ -34,7 +34,6 @@ export interface RemoteSharedEndpointStoreOptions {
   fetchImpl?: typeof fetch;
 }
 
-/** Managed-pod client for the gateway's single organization endpoint share. */
 export class RemoteSharedEndpointStore implements SharedEndpointStore {
   private readonly baseUrl: string;
   private readonly orgSlug: string;

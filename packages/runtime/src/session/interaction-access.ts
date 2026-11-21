@@ -1,12 +1,6 @@
 import type { HandsOnSurface } from "@houston/runtime-client";
 import { currentInteractionHolder } from "./interaction-holder";
 
-/**
- * Record the single signin step for this turn (the host reported the user must
- * sign in to Houston before integrations can act). Idempotent: there is at most
- * one signin step (id `s1`), so a repeat call keeps that one step and the LAST
- * call's reason wins. A no-op outside a turn.
- */
 export function recordSignin(input: { reason?: string }): void {
   const holder = currentInteractionHolder();
   if (!holder) return;
@@ -18,14 +12,6 @@ export function recordSignin(input: { reason?: string }): void {
   };
 }
 
-/**
- * Append a connect step for this turn, deduped by toolkit: a first mention gets
- * the next `c1`..`cN` id; a repeat for the same toolkit updates its reason in
- * place (keeping its id and position). A reconnect (`refusedAt`, the time the
- * app refused the login) sticks once set: a later plain request for the app
- * must not turn the card back into one that counts the dead connection as
- * done. A no-op outside a turn.
- */
 export function recordConnection(input: {
   toolkit: string;
   reason?: string;
@@ -52,7 +38,6 @@ export function recordConnection(input: {
   });
 }
 
-/** Whether this turn already queued a reconnect step for `toolkit`. */
 export function reconnectQueued(toolkit: string): boolean {
   return (
     currentInteractionHolder()?.connects.some(
@@ -61,12 +46,6 @@ export function reconnectQueued(toolkit: string): boolean {
   );
 }
 
-/**
- * Append a credential step for this turn (the model called `request_credential`
- * for a custom integration), deduped by toolkit exactly like connects: a first
- * mention gets the next `k1`..`kN` id; a repeat for the same toolkit updates
- * its reason in place. A no-op outside a turn.
- */
 export function recordCredentialRequest(input: {
   toolkit: string;
   reason?: string;
@@ -86,7 +65,6 @@ export function recordCredentialRequest(input: {
   });
 }
 
-/** Provider requests keep their first position and refresh a repeated reason. */
 export function recordProviderConnection(input: {
   provider: string;
   reason?: string;
@@ -110,13 +88,6 @@ export function recordProviderConnection(input: {
   });
 }
 
-/**
- * Append a hands-on errand for this turn (ids `h1`..`hN`), deduped by the
- * SCREEN (and, for one employee's screen, by that employee): the card's only
- * job is to send the person there, so the same screen asked for twice is one
- * card, while two employees' API access are two trips. A repeat keeps its id
- * and position and refreshes the reason. A no-op outside a turn.
- */
 export function recordHandsOn(input: {
   surface: HandsOnSurface;
   agentId?: string;

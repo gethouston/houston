@@ -7,10 +7,6 @@ import {
   type SessionErrorData,
 } from "../src/lib/session-failure-analytics.ts";
 
-// PostHog `app_error_shown source=session` read `error_kind` off copy the SDK
-// had already made product-safe, so 85% of the fleet's session failures were
-// `unknown`, handled states counted as errors, and one install's looping run
-// was 80% of the volume. The SDK's typed class now drives every decision.
 const status = (over: Partial<SessionErrorData>): SessionErrorData => ({
   agent_path: "Houston/Bo",
   session_key: "c1",
@@ -80,7 +76,6 @@ describe("session failure analytics", () => {
       ).map((e) => e.props.error_kind),
       ["auth"],
     );
-    // The unclassified provider card is an error shown, under `provider`.
     deepStrictEqual(
       track(status({ error_class: "provider_unknown", error: null }), 0).map(
         (e) => [e.event, e.props.error_kind],
@@ -109,7 +104,6 @@ describe("session failure analytics", () => {
     deepStrictEqual(events(0), ["session_failed", "app_error_shown"]);
     deepStrictEqual(events(15 * 60_000), ["session_failed"]);
     deepStrictEqual(events(30 * 60_000), ["session_failed"]);
-    // Another conversation, or another cause, is a distinct problem.
     deepStrictEqual(
       track({ ...data, session_key: "c2" }, 31 * 60_000).map((e) => e.event),
       ["session_failed", "app_error_shown"],
@@ -120,7 +114,6 @@ describe("session failure analytics", () => {
       ),
       ["session_failed", "app_error_shown"],
     );
-    // Quiet for a whole window: the next one counts again.
     deepStrictEqual(events(32 * 60_000 + SESSION_ERROR_SHOWN_WINDOW_MS + 1), [
       "session_failed",
       "app_error_shown",

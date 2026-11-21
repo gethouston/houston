@@ -1,26 +1,7 @@
-/**
- * The routine-DEFINITION REST calls — what an agent repeats, and when — over
- * the injected `fetch`. The runs themselves (firing one now, stopping one under
- * way, the incoming-webhook key an outside service starts one with) live in
- * `runs.ts`, so each file is one lifecycle; both hang off the same `/agents/:id`
- * prefix.
- *
- * These are agent-proxy routes: the gateway forwards them to that agent's pod.
- * They go through {@link httpRequest} with literal paths rather than the runtime
- * client, which is what keeps them visible to the assistant's operation catalog.
- *
- * Nothing is swallowed here: a non-2xx always throws a {@link RoutinesHttpError}
- * carrying the HTTP `status`, so the caller — never this layer — decides whether
- * a `404` hides a surface or is a failure. A `401` additionally fires
- * {@link HttpScope.onUnauthorized}, so a lapsed session token becomes a visible
- * `tokenExpired` signal.
- */
-
 import { type HttpScope, httpRequest, SdkHttpError } from "../http";
 import { isRoutineGone } from "./routine-gone";
 import type { NewRoutine, Routine, RoutineUpdate } from "./types";
 
-/** A failed routine request. `status` is the upstream HTTP status. */
 export class RoutinesHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "RoutinesHttpError");
@@ -131,11 +112,6 @@ export async function deleteRoutine(
       { method: "DELETE" },
     );
   } catch (error) {
-    // Idempotent for SDK callers (the catalog's raw route still answers the
-    // 404): the routine was deleted elsewhere or listed from a stale mirror,
-    // and the end state already holds. The worker that answered re-projects
-    // the routines doc; if that doc PUT fails it logs an error and the row
-    // can reappear on the next list read until a later projection lands.
     if (isRoutineGone(error)) return;
     throw error;
   }

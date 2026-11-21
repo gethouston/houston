@@ -1,21 +1,6 @@
-/*
- * /enterprise — the page frame: shared primitives, the proof band and the
- * contact panel. The problem cards live in enterprise-problem.css, the hero
- * in enterprise-hero.css, the process slider in enterprise-solution.css.
- *
- * Everything here is the landing's own system (site-tokens.css + landing.css):
- * the near-black hero ground with one white bloom, light 340-weight section
- * titles, quiet --panel surfaces, hairlines, and the ink pill. This file adds
- * layout, never a new palette. Strictly black and white: color appears only
- * in the photographs.
- */
-
-/* ── Shared bits ─────────────────────────────────────────────────────────── */
-/* In-page anchors land below the fixed nav. */
 .ent-section {
   scroll-margin-top: 72px;
 }
-/* The small quiet label that names a group (industries, logos, compliance). */
 .ent-label {
   font-size: 13.5px;
   font-weight: 500;
@@ -32,8 +17,6 @@
   width: 15px;
   height: 15px;
 }
-/* A section head as a two-column statement: the claim left, the reasoning
-   right, both resting on the same baseline. */
 .ent-head {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
@@ -57,13 +40,9 @@
   max-width: 17ch;
   margin: 0 auto;
 }
-/* Section titles exactly as the landing sets them (landing.css .sec-title),
-   but allowed to run one line when they fit. */
 .ent-center .ent-title {
   max-width: none;
 }
-/* The landing's section head caps at 760px; this page's titles are short
-   sentences that should run on one line when the measure allows. */
 .ent-section .mp-head {
   max-width: none;
 }
@@ -74,14 +53,9 @@
   }
 }
 
-/* The landing's breathing, measured on its #multiplayer section: the visual
-   starts ~173px under the title at 1440px (its tab pill and chat window sit
-   that far down), not the 40px the bare .mp-split margin gives. */
 .ent-section .mp-split {
   margin-top: clamp(64px, 12vw, 172px);
 }
-/* The lines beside a section's title: the landing's .split-line, a step
-   bigger here (they are the only body copy), the second one strong. */
 .ent-section .split-line {
   font-size: clamp(18px, 1.6vw, 21px);
   line-height: 1.45;
@@ -93,8 +67,6 @@
 .section.is-dark .split-line.is-strong {
   color: #fff;
 }
-/* And, like the landing's story sections, each owns a viewport on desktop,
-   content centered in it. Phones stack to their natural height. */
 @media (min-width: 881px) {
   #industries,
   #problem {
@@ -105,20 +77,12 @@
   }
 }
 
-/* ── Proof: the number, then the belt ────────────────────────────────── */
-/* mercury.com's "Loved by 300K+" band, measured at 1440px: the section's
-   top to the sentence ~200px, the sentence 42px / 1.15 at weight 480 and
-   0.01em, one color, at most 672px wide. */
-/* Always on black, out of the page's tone flow (data-tone-fixed): the marks
-   are the light set (scripts/make-light-logos.sh), drawn for this ground. */
 .ent-proof {
   background: var(--band-black);
   padding-top: clamp(112px, 14vw, 200px);
   padding-bottom: clamp(88px, 10vw, 144px);
   text-align: center;
 }
-/* Two classes deep: landing.css widens every child of a dark band
-   (.section.is-dark > *), and this one keeps Mercury's narrow measure. */
 .ent-proof .ent-proof-head {
   max-width: 672px;
   margin: 0 auto;
@@ -136,16 +100,12 @@
   max-width: none;
   margin: 40px calc(50% - 50vw) 0;
 }
-/* Edge to edge of the screen, like Mercury's, the ends dissolving into the
-   page so marks fade in and out instead of being sliced. */
 .ent-belt-window {
   display: flex;
   overflow: hidden;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent);
 }
-/* Two identical tracks slide one full track-width together, so the second
-   takes the first's place the instant it leaves: no seam, no jump. */
 .ent-belt-track {
   list-style: none;
   flex: none;
@@ -164,9 +124,6 @@
   align-items: center;
   height: 56px;
 }
-/* The light set, built from the dark artwork with its grays and soft edges
-   kept (scripts/make-light-logos.sh), so no filter here. A CSS knock-out
-   (brightness 0, invert) flattened two-tone marks and frayed fine edges. */
 .ent-belt-track img {
   width: auto;
   height: auto;
@@ -180,7 +137,6 @@
     transform: translateX(-100%);
   }
 }
-/* Phones: Mercury's 40px row. */
 @media (max-width: 640px) {
   .ent-belt-track {
     gap: 40px;
@@ -194,7 +150,6 @@
     max-width: 120px;
   }
 }
-/* No motion: the first list stands as a wrapped wall, the copy goes away. */
 @media (prefers-reduced-motion: reduce) {
   .ent-belt-window {
     -webkit-mask-image: none;
@@ -213,11 +168,6 @@
   }
 }
 
-/* ── Contact: the closing scene ───────────────────────────────────────── */
-/* Full width, no box, generous air (the proof band's measure), and in the
-   page's tone flow, so on the way down it turns dark and meets the black
-   footer as one ending. Both dresses below: light by default, .is-dark when
-   the flow is dark. */
 .ent-contact {
   display: flex;
   flex-direction: column;
@@ -231,8 +181,6 @@
   display: flex;
   margin-bottom: 32px;
 }
-/* Complete on its own: /data-partners/refer does not load
-   landing-app-window.css, where the base .face circle and crop live. */
 .ent-contact-faces .face {
   width: 56px;
   height: 56px;
@@ -251,8 +199,6 @@
 .ent-contact-faces .face:first-child {
   margin-left: 0;
 }
-/* Two classes deep: landing.css widens every child of a dark band
-   (.section.is-dark > *); these keep their own measure. */
 .ent-contact .ent-contact-title {
   max-width: 16ch;
   font-size: clamp(36px, 5vw, 64px);
@@ -270,7 +216,6 @@
   color: var(--ink-muted);
   text-wrap: balance;
 }
-/* The one action: the process slider's "Book a call" pill. */
 .ent-contact-cta {
   display: inline-flex;
   align-items: center;
@@ -318,11 +263,6 @@
   }
 }
 
-/* ── The bar on black ────────────────────────────────────────────────────
-   landing.css frosts the scrolled bar with #0d0d0d, but this page's black
-   ground is --band-black (#0a0a0a), so the bar read as a lighter strip.
-   The page's own black instead: over a black section the bar disappears
-   into it. (On white the bar's white already matches the ground.) */
 .lnav.scrolled {
   background: color-mix(in srgb, var(--band-black) 92%, transparent);
 }
@@ -331,12 +271,9 @@
   background: color-mix(in srgb, var(--band-black) 97%, transparent);
 }
 
-/* Phones: the discovery-call label runs too long for the bar, so the pill
-   moves into the sheet as its last row. */
 .lnav-drop-cta {
   display: none;
 }
-/* While the pill is hidden, the last language row closes the sheet. */
 @media (min-width: 641px) {
   .lnav + .lnav-drop a.lnav-drop-lang:nth-last-child(2) {
     border-bottom: none;
@@ -352,11 +289,6 @@
   }
 }
 
-/* ── Nav collapse ────────────────────────────────────────────────────────
-   This page's five anchors run longer than the landing's (most of all in
-   Spanish), so the centered links meet the language menu before landing.css
-   moves them into the sheet at 1200px. Collapse them earlier here (the
-   discovery-call pill is wide too). */
 @media (max-width: 1240px) {
   .lnav-links {
     display: none;

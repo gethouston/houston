@@ -1,12 +1,6 @@
 import { expect, test } from "vitest";
 import { buildProviderCatalog } from "./pi-catalog";
 
-/**
- * Claude Opus 5.5 and Sonnet 5.5 ship natively in pi-ai's baked Anthropic
- * catalog as of 0.99.1, Haiku 5.5 as of 1.1.0. They are the newest headline
- * rows, and a pi bump that dropped or reshaped one would silently strip it from `GET /v1/catalog` — the exact
- * failure that shipped a picker with no models once before.
- */
 const ROWS = [
   { id: "claude-opus-5-5", name: "Claude Opus 5.5" },
   { id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5" },
@@ -22,8 +16,6 @@ test("GET /v1/catalog advertises Claude Opus, Sonnet and Haiku 5.5 under anthrop
     expect(row?.name, id).toBe(name);
     expect(row?.reasoning, id).toBe(true);
     expect(row?.contextWindow, id).toBe(1_000_000);
-    // pi's map nulls "minimal" on all three, so above "off" the effort
-    // selector starts at low. Only Haiku can turn thinking off (pi 1.3.0).
     expect(row?.thinkingLevels, id).toEqual([
       ...(id === "claude-haiku-5-5" ? ["off"] : []),
       "low",

@@ -10,13 +10,6 @@ import { acknowledgements } from "./assistant-gate.ts";
 import { operationInventory } from "./assistant-operation-inventory.ts";
 import { ASSISTANT_PROVENANCE } from "./assistant-paths.ts";
 
-/**
- * The two documents a PERSON reads: whether every operation is reachable
- * (coverage) and what each one does to the user's data (operations). The
- * machine-read artifacts - the catalog, the capability index - are rendered
- * next door in ./assistant-render.ts.
- */
-
 function section(title: string, values: string[]): string[] {
   return [
     `## ${title} (${values.length})`,
@@ -39,13 +32,6 @@ function unroutableSection(values: UnroutableOperation[]): string[] {
   ];
 }
 
-/**
- * Every operation that ends the agent's turn to ask the person, with what they
- * are being protected from. Read together it is the confirmation budget: a
- * surface that asks about everything trains people to answer yes without
- * looking, so the list is meant to be short and each line is meant to be worth
- * an interruption.
- */
 function confirmedSection(
   annotations: readonly OperationAnnotation[],
 ): string[] {
@@ -64,14 +50,6 @@ function confirmedSection(
   ];
 }
 
-/**
- * What the PERSON is handed for everything the assistant is not allowed to do.
- *
- * Read against the acknowledged exceptions above it, this is the other half of
- * every hidden operation: the card that still reaches it, or the author's
- * statement that nothing does. A withheld operation with neither line is what
- * the coverage gate refuses, so this section is the whole answer, not a sample.
- */
 function handsSection(catalog: AssistantCatalog): string[] {
   const named = catalog.operations.flatMap(({ name, hands }) =>
     hands ? [{ name, hands }] : [],
@@ -172,11 +150,6 @@ export function renderCoverage({
   ].join("\n")}\n`;
 }
 
-/**
- * The per-operation ledger: what each operation does to the user's data, and
- * where every value it takes comes from. The coverage doc above judges whether
- * an operation is REACHABLE; this one is the policy an approver reads.
- */
 export function renderOperations(catalog: AssistantCatalog): string {
   return `${[
     `<!-- ${ASSISTANT_PROVENANCE} -->`,

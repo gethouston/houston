@@ -11,14 +11,6 @@ import { ChoiceOrgList } from "./free-org-picker-list";
 import { PickerProgress, useOrgName } from "./free-org-picker-rows";
 import { PlanBriefingCta } from "./plan-briefing-cta";
 
-/**
- * What a stored pick means, in the same frame: the picker's last step, and
- * the note an owner who picked before the cutover reads once it applied. The
- * SDK decides when it shows and each org's status ({@link ChoiceDone}).
- * Before the cutover it reads as what each org becomes then; once applied, as
- * what each org is now, with each org's members and activity. The action, the
- * X, Escape and a click outside all close it.
- */
 export function DoneStep({
   done,
   onClose,
@@ -28,18 +20,12 @@ export function DoneStep({
 }: {
   done: ChoiceDone;
   onClose: () => void;
-  /** The last dot of the flow that led here, if it shows progress. */
   progress?: FlowProgress | null;
-  /**
-   * The last day the pick may change, formatted, or null once it can't.
-   * Defaults to the window the stored pick answered with.
-   */
   until?: string | null;
   closeLabel?: string;
 }) {
   const { t, i18n } = useTranslation("plan");
   const orgName = useOrgName();
-  // Formatted on render, so an open step follows a language change.
   const lastDay =
     until !== undefined
       ? until
@@ -83,7 +69,6 @@ export function DoneStep({
       <div className="mb-6 flex flex-col gap-1 text-[13px] text-ink-muted">
         {hints.map((hint) => hint && <p key={hint}>{hint}</p>)}
       </div>
-      {/* The phone sheet seats the action at the bottom, under the thumb. */}
       <div className="mt-auto flex flex-col md:mt-0">
         <PlanBriefingCta
           label={closeLabel ?? t("choice.done.close")}

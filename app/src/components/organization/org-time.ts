@@ -1,9 +1,3 @@
-/**
- * Localized relative-time formatting for the Organization dashboard (Teams v2),
- * shared by the Activity feed and the Agents grid. Uses the platform
- * `Intl.RelativeTimeFormat` so day/word choice localizes per locale without any
- * per-language strings. `now` is injectable so the unit picking is testable.
- */
 export function formatRelativeTime(
   atMs: number,
   locale: string,

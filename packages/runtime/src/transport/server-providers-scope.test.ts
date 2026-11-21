@@ -4,26 +4,6 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, afterEach, expect, test, vi } from "vitest";
 
-/**
- * `GET /providers` END-TO-END under two acting identities (HOU-976).
- *
- * server-acting.test.ts proves the transport wrap reaches a route, but it mocks
- * `./provider-routes` away — so the REAL route's per-scope behavior was never
- * exercised. This suite runs the unmocked route through an actual HTTP server
- * and asserts the two things a member's model picker depends on:
- *  1. each identity's `configured` comes from ITS OWN credential file, and no
- *     member's connection is ever visible to another member or to the team;
- *  2. the row names WHOSE credential produced `configured` (`credentialScope`),
- *     and stays byte-identical to the pre-HOU-976 shape for a request with no
- *     acting identity.
- *
- * The ONE stub: `refreshAnthropicCredential`, which `GET /providers` calls to
- * warm the shared-dir probe. It SPAWNS `claude auth status`, so a developer's
- * real Claude login would flip the anthropic row to connected and make the
- * result machine-dependent (and every request pay a subprocess). Nothing else is
- * mocked — `anthropicCredentialCached` (the sync signal the rows actually read)
- * stays real, and answers from this suite's empty `HOUSTON_HOME`.
- */
 vi.mock("../backends/claude/credential-status", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("../backends/claude/credential-status")
@@ -31,7 +11,6 @@ vi.mock("../backends/claude/credential-status", async (importOriginal) => ({
   refreshAnthropicCredential: async () => false,
 }));
 
-/** The gateway's per-turn acting-as token, minted exactly as the gateway does. */
 function actingToken(sub: string): string {
   const payload = Buffer.from(
     JSON.stringify({ sub, agent: "acme", exp: 9_000_000_000 }),
@@ -44,10 +23,6 @@ const BOB = actingToken("sub-bob");
 const CONTROL_PLANE = "http://control-plane.test";
 
 const dataDir = mkdtempSync(join(tmpdir(), "houston-providers-scope-"));
-// The runtime reads its data dir from the environment at import time, so it is
-// pinned BEFORE the modules under test load. HOUSTON_HOME roots the shared
-// claude-login dir inside this empty temp tree too, so the real anthropic
-// signal cannot read a credential off the developer's machine.
 const prevEnv = {
   dataDir: process.env.HOUSTON_DATA_DIR,
   home: process.env.HOUSTON_HOME,
@@ -55,17 +30,8 @@ const prevEnv = {
 process.env.HOUSTON_DATA_DIR = dataDir;
 process.env.HOUSTON_HOME = dataDir;
 
-// auth-file.ts is config-free (pure path + file logic), so importing it here to
-// compute the per-scope paths does not pin the data dir before the assignment
-// above — the modules that DO read config are imported after it.
 const { authPathIn } = await import("../auth/auth-file");
 
-/**
- * Seed one scope's credential file the way production writes it: the team scope's
- * `<dataDir>/auth.json`, a member's `<dataDir>/auth-users/<sha256(sub)[:16]>.json`.
- * Written before the store is constructed, so its warm team cache and every
- * lazily-opened personal cache read these bytes.
- */
 function seedScope(scopeKey: string, providers: Record<string, string>): void {
   const path = authPathIn(dataDir, scopeKey);
   mkdirSync(dirname(path), { recursive: true });
@@ -112,7 +78,6 @@ function listen(server: Server): Promise<string> {
   });
 }
 
-/** Run `fn` against a live runtime server, always closing the port after. */
 async function withServer(
   fn: (get: (actingAs?: string) => Promise<ProviderRow[]>) => Promise<void>,
 ): Promise<void> {
@@ -146,7 +111,6 @@ function row(rows: ProviderRow[], id: string): ProviderRow {
   return found;
 }
 
-/** Which providers a request saw as connected — the picker's whole input. */
 function configuredIds(rows: ProviderRow[]): string[] {
   return rows.filter((r) => r.configured).map((r) => r.id);
 }
@@ -158,8 +122,6 @@ afterEach(() => {
   config.sandboxToken = "";
 });
 
-// The env pins above outlive this file's module graph, so they are handed back —
-// a worker shared with another suite must not inherit this temp data dir.
 afterAll(() => {
   restoreEnv("HOUSTON_DATA_DIR", prevEnv.dataDir);
   restoreEnv("HOUSTON_HOME", prevEnv.home);
@@ -171,8 +133,6 @@ function restoreEnv(name: string, value: string | undefined): void {
 }
 
 test("GET /providers answers each acting identity from its OWN credential file", async () => {
-  // Serve mode off: this is the file-backed truth alone (a pod between syncs, a
-  // self-hosted deployment), so nothing here can come from a gateway response.
   config.controlPlaneUrl = "";
   config.sandboxToken = "";
 
@@ -180,17 +140,12 @@ test("GET /providers answers each acting identity from its OWN credential file",
     const alice = await get(ALICE);
     expect(configuredIds(alice)).toEqual(["openrouter"]);
 
-    // Bob is the inverse: his own key, and NOT a byte of Alice's or the team's.
     const bob = await get(BOB);
     expect(configuredIds(bob)).toEqual(["google"]);
 
-    // No header: the team file, exactly as desktop / self-host / every
-    // pre-HOU-976 caller sees it — neither member's connection leaks in.
     const team = await get();
     expect(configuredIds(team)).toEqual(["deepseek"]);
 
-    // With no serve verdict recorded, no row carries the scope labels — the
-    // pre-HOU-976 row shape, unchanged for every identity.
     for (const rows of [alice, bob, team]) {
       for (const r of rows) {
         expect(r).not.toHaveProperty("credentialScope");
@@ -203,10 +158,6 @@ test("GET /providers labels WHOSE credential served each acting identity", async
   config.controlPlaneUrl = CONTROL_PLANE;
   config.sandboxToken = "sbx-token";
   const realFetch = globalThis.fetch;
-  // Stands in for the gateway's /sandbox/credential: Alice is served her OWN
-  // openrouter key, Bob is served the TEAM's Gemini key (the two verdicts the
-  // picker labels differently), and every other pair is an authoritative
-  // "not connected". Requests to the test server itself pass through.
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
     if (!url.startsWith(CONTROL_PLANE)) return realFetch(input, init);
@@ -226,9 +177,6 @@ test("GET /providers labels WHOSE credential served each acting identity", async
           ? {
               provider,
               kind: "api_key",
-              // AIza-shaped: a served google key of the OAuth-material shape
-              // (ya29./eyJ) is the dead legacy family served-key-guard.ts
-              // refuses (HOU-1107).
               access: "AIzaTeamGemini",
               expires: 0,
               accountId: null,
@@ -250,8 +198,6 @@ test("GET /providers labels WHOSE credential served each acting identity", async
         configured: true,
         credentialScope: "personal",
       });
-      // Bob's provider is untouched for Alice, and an unserved row carries no
-      // stale label.
       expect(row(alice, "google").configured).toBe(false);
       expect(row(alice, "google")).not.toHaveProperty("credentialScope");
 
@@ -263,8 +209,6 @@ test("GET /providers labels WHOSE credential served each acting identity", async
       expect(row(bob, "openrouter").configured).toBe(false);
       expect(row(bob, "openrouter")).not.toHaveProperty("credentialScope");
 
-      // A request with no acting identity keeps the team file and the exact
-      // pre-HOU-976 row shape: one credential, nothing to disambiguate.
       const team = await get();
       expect(configuredIds(team)).toEqual(["deepseek"]);
       for (const r of team) {
@@ -279,10 +223,6 @@ test("GET /providers labels WHOSE credential served each acting identity", async
 test("GET /providers reports WHY each acting identity's provider is (un)usable", async () => {
   config.controlPlaneUrl = "";
   config.sandboxToken = "";
-  // Alice's openrouter credential died mid-flight (a rotated refresh token, a
-  // revoked key): the file still holds it, so `configured` alone would keep
-  // saying Connected — which is the lie a routine then fails behind
-  // (PRODUCT-1475). The mark is recorded under HER acting identity.
   runWithActingContext({ actingAs: ALICE }, () =>
     noteAuthFailure("openrouter"),
   );
@@ -293,11 +233,8 @@ test("GET /providers reports WHY each acting identity's provider is (un)usable",
       configured: false,
       health: "needs_reconnect",
     });
-    // Never connected at all is a DIFFERENT remedy, and must read as such.
     expect(row(alice, "google").health).toBe("not_connected");
 
-    // Bob holds his own, working Gemini key: one member's dead credential says
-    // nothing about another member's.
     const bob = await get(BOB);
     expect(row(bob, "google")).toMatchObject({
       configured: true,
@@ -305,7 +242,6 @@ test("GET /providers reports WHY each acting identity's provider is (un)usable",
     });
     expect(row(bob, "openrouter").health).toBe("not_connected");
 
-    // And the team file is untouched by either member's mark.
     const team = await get();
     expect(row(team, "deepseek")).toMatchObject({
       configured: true,

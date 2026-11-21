@@ -1,9 +1,3 @@
-/**
- * `local-bridge` category: outbound transport to a model server running on this
- * machine or its LAN, plus the secure device journal that remembers it. The
- * engine cannot reach a user's `localhost`, so the shell holds this tunnel.
- */
-
 import type { LocalBridgeDevice, LocalBridgeIdentity } from "@houston/protocol";
 import type { LocalBridgeJournal, LocalBridgeNativePort } from "@houston/sdk";
 import type { DetectedServer } from "../local-model";

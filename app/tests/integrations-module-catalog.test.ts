@@ -32,7 +32,6 @@ describe("browseCatalog (new module)", () => {
       category: "all",
       connected: new Set(["gmail"]),
     });
-    // Google Calendar, Notion, SerpApi, Slack (A-Z by name, not usage rank).
     deepStrictEqual(
       result.map((t) => t.slug),
       ["googlecalendar", "notion", "serpapi", "slack"],
@@ -65,7 +64,6 @@ describe("browseCatalog (new module)", () => {
       category: "all",
       connected: new Set(),
     });
-    // airtable (lowercase) sorts before Asana; Box before Zoom.
     deepStrictEqual(
       result.map((t) => t.slug),
       ["a1", "a2", "b", "z"],
@@ -79,7 +77,6 @@ describe("browseCatalog (new module)", () => {
       category: "collaboration",
       connected: new Set(),
     });
-    // Filter keeps Slack + Notion; the sort reorders them to Notion, Slack.
     deepStrictEqual(
       byCategory.map((t) => t.slug),
       ["notion", "slack"],
@@ -122,10 +119,6 @@ describe("browseCatalog (new module)", () => {
 });
 
 describe("browseCatalog hides no-auth apps", () => {
-  // No-auth toolkits never surface in the catalog: there is nothing to
-  // connect (a Connect button could only 400 — the Auth_Config_NoAuthApp
-  // prod crash). They stay agent-facing: search stamps their matches
-  // connected server-side, so agents use the working ones directly.
   const NOAUTH_CATALOG: IntegrationToolkit[] = [
     ...CATALOG,
     { ...tk("weathermap", "Weathermap", ["utilities"]), noAuth: true },
@@ -169,7 +162,6 @@ describe("toolkitsInCategory (new module)", () => {
   });
 
   it("matches apps carrying the category among several", () => {
-    // notion is both collaboration + developer-tools.
     const set = toolkitsInCategory(CATALOG, "developer-tools");
     deepStrictEqual([...(set ?? [])].sort(), ["notion", "serpapi"]);
   });

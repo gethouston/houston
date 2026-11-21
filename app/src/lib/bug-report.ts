@@ -7,17 +7,13 @@ import { captureBugReportFeedback } from "./sentry-feedback";
 export type { BugReportOutcome } from "./bug-report-delivery";
 
 interface BugReportContext {
-  /** Flat snake_case triage tag (`manual_report`, a card's command). */
   command: string;
-  /** The diagnostic; for a person's own report, their words again. */
   error: string;
   spaceName?: string;
   workspaceName?: string;
   userEmail?: string | null;
   timestamp: string;
   appVersion: string;
-  /** Free-text the person typed (Settings > Report bug). Linear titles and
-   *  leads the issue with it, and the fallback feedback's message is it. */
   userMessage?: string;
 }
 
@@ -27,8 +23,6 @@ async function getRecentLogs(
   try {
     return await osReadRecentLogs(lines);
   } catch (err) {
-    // The report still goes, saying its logs are missing; why they are
-    // missing reaches us on its own.
     reportError(
       "read_recent_logs",
       err instanceof Error ? err.message : String(err),
@@ -38,12 +32,6 @@ async function getRecentLogs(
   }
 }
 
-/**
- * The ONE way a surface sends a bug report (Settings > Report bug, every
- * card's report pill). Linear first, Sentry user feedback when Linear refuses
- * (`deliverBugReport`), so a report is only lost when every channel failed.
- * The refusal is reported here, once: a surface never reports it again.
- */
 export async function submitBugReport(
   context: BugReportContext,
 ): Promise<BugReportOutcome> {
@@ -69,8 +57,6 @@ export async function submitBugReport(
       }),
     reportIntakeFailure: (failure, err) => {
       if (failure.kind === "intake_unavailable") {
-        // Our side (Linear's plan cap, HOUSTON-APP-5FT): one fingerprinted
-        // warning per burst; the fallback feedback carries the report itself.
         console.warn(
           `[${command}] bug intake unavailable, sending as feedback: ${failure.message}`,
         );

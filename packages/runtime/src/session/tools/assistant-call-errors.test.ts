@@ -2,16 +2,6 @@ import { expect, test } from "vitest";
 import { errorFromResponse } from "./assistant-call-errors";
 import { assistantErrorResult } from "./assistant-result";
 
-/**
- * The host's named refusals, as the model reads them.
- *
- * PLAN MODE is the host's to enforce (routes/assistant-operate.ts): the runtime
- * withholds its acting tools, but the process holding the credential refuses
- * too. That refusal has to arrive as a NAMED state — read as a generic gateway
- * error, the only sensible reaction is to retry, and retrying is the one thing
- * that can never work here: only the user leaves plan mode.
- */
-
 const refusal = (status: number, body: unknown) =>
   errorFromResponse(Response.json(body, { status }));
 
@@ -53,10 +43,6 @@ test("an unsupported operation keeps its own remedy", async () => {
 });
 
 test("a host with no live turn recorded is a named state, not a gateway error", async () => {
-  // The host answers 400 not_in_turn when nothing is running for this chat
-  // (a late callback, a retry after the turn settled). "The gateway refused"
-  // would read as something to retry; retrying is the one thing that cannot
-  // work, because the correction is to act inside a turn.
   const error = await errorFromResponse(
     Response.json(
       {
@@ -76,10 +62,6 @@ test("a host with no live turn recorded is a named state, not a gateway error", 
 });
 
 test("a chat the assistant may not change is a named state, not a gateway error", async () => {
-  // The host refuses a rename or delete aimed at the chat the turn is running
-  // in, or at a chat a mission card or a routine owns (routes/
-  // assistant-protected-chat.ts). Its sentence already names the thing to act
-  // on instead, so the model must hear the refusal, never "retry this".
   const sentence =
     "that chat belongs to a mission's card, not to the user's list of chats.";
   const error = await refusal(409, {
@@ -95,8 +77,6 @@ test("a chat the assistant may not change is a named state, not a gateway error"
 });
 
 test("a createAgent onto a taken name reads as the host's own sentence", async () => {
-  // What `assistant-forward.ts` relays for the host's 409 `name_taken`: the
-  // upstream body, verbatim, as the error text.
   const upstream = JSON.stringify({
     error: 'an agent named "Mia" already exists in this workspace',
     code: "name_taken",
@@ -112,8 +92,6 @@ test("a createAgent onto a taken name reads as the host's own sentence", async (
 });
 
 test("a createAgent named Houston reads as the host's reserved-name sentence", async () => {
-  // The host's 400 `name_reserved`, relayed by `assistant-forward.ts` as the
-  // upstream body: the sentence tells the manager what to do next.
   const upstream = JSON.stringify({
     error:
       "Houston is the AI Manager's own name, so an AI Employee can't use it. Ask the user for another name.",

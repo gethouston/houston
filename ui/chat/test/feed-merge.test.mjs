@@ -44,11 +44,8 @@ test("streaming updates replace existing stream before queued user message", () 
   ]);
 });
 
-// ── reconcileUserMessageEcho: optimistic↔echo dedup (issues #363 + #381) ───
-
 test("echo of an optimistic push is dropped (issue #363)", () => {
   const pending = {};
-  // The local client pushed the prompt optimistically first.
   assert.equal(
     reconcileUserMessageEcho(
       pending,
@@ -58,7 +55,6 @@ test("echo of an optimistic push is dropped (issue #363)", () => {
     true,
   );
   assert.deepEqual(pending, { ping: 1 });
-  // The engine's WS echo of that same prompt is the duplicate — drop it.
   assert.equal(
     reconcileUserMessageEcho(
       pending,
@@ -71,8 +67,6 @@ test("echo of an optimistic push is dropped (issue #363)", () => {
 });
 
 test("an echo with no pending optimistic push appends (routine run / cross-client)", () => {
-  // A background routine run never pushes optimistically, so its prompt arrives
-  // only as a WS echo and must append.
   const pending = {};
   assert.equal(
     reconcileUserMessageEcho(
@@ -86,8 +80,6 @@ test("an echo with no pending optimistic push appends (routine run / cross-clien
 });
 
 test("repeated routine runs with the identical prompt all append (issue #381)", () => {
-  // One chat per routine: every run carries the same prompt and arrives as a WS
-  // echo with nothing pending. Each must append — no run's prompt is swallowed.
   const pending = {};
   for (let i = 0; i < 3; i += 1) {
     assert.equal(
@@ -147,8 +139,6 @@ test("non-user_message items are never gated by the echo tally", () => {
   assert.deepEqual(pending, {});
 });
 
-// ── mergeFeedItem: streaming/tool merges leave user_messages alone ──────────
-
 test("mergeFeedItem appends user_messages verbatim (dedup moved out)", () => {
   const feed = [{ feed_type: "user_message", data: "ping" }];
   const merged = mergeFeedItem(feed, {
@@ -161,12 +151,7 @@ test("mergeFeedItem appends user_messages verbatim (dedup moved out)", () => {
   ]);
 });
 
-// ── mergeFeedHistory: hydration reconcile (issue #363) ─────────────────────
-
 test("history reconcile: surfaced routine does not duplicate its turn", () => {
-  // A routine ran in the background: the live bucket accumulated the turn over
-  // WS, and the same turn is persisted in server history. Opening the activity
-  // must not render user + reply twice.
   const history = [
     { feed_type: "user_message", data: "run the report" },
     { feed_type: "assistant_text", data: "done" },
@@ -188,8 +173,6 @@ test("history reconcile: surfaced routine does not duplicate its turn", () => {
 });
 
 test("history reconcile: live streaming form matches persisted final", () => {
-  // Server persists the final assistant_text; the live bucket may still hold
-  // the streaming variant. They are the same turn and must collapse.
   const history = [
     { feed_type: "user_message", data: "hi" },
     { feed_type: "assistant_text", data: "hello there" },
@@ -216,8 +199,6 @@ test("history reconcile: live thinking_streaming matches persisted thinking", ()
 });
 
 test("history reconcile: genuinely new live tail is appended", () => {
-  // The user sent a follow-up after history was snapshotted; it isn't on the
-  // server yet, so it must survive the reconcile.
   const history = [
     { feed_type: "user_message", data: "first" },
     { feed_type: "assistant_text", data: "reply" },
@@ -236,8 +217,6 @@ test("history reconcile: genuinely new live tail is appended", () => {
 });
 
 test("history reconcile: count-based — a legitimate repeat is kept", () => {
-  // History has the turn once; the live bucket has it twice (the user really
-  // did send it twice). One copy is matched by history; the extra survives.
   const history = [{ feed_type: "user_message", data: "ok" }];
   const current = [
     { feed_type: "user_message", data: "ok" },
@@ -269,13 +248,7 @@ test("history reconcile: distinct turns of the same type stay distinct", () => {
   ]);
 });
 
-// ── mergeFeedHistory: client-only items keep their position (HOU-457) ───────
-
 test("history reconcile: a client-only error stays where it first appeared", () => {
-  // The desktop pushes a synthetic `Session error: …` system_message on a
-  // failed turn; the engine never persists it. After the user retries, the new
-  // turn is persisted ABOVE nothing — the error must stay between the failed
-  // prompt and the retry, not get re-pinned to the bottom of the chat.
   const history = [
     { feed_type: "user_message", data: "do the thing" },
     { feed_type: "user_message", data: "retry" },
@@ -297,8 +270,6 @@ test("history reconcile: a client-only error stays where it first appeared", () 
 });
 
 test("history reconcile: a trailing client-only error appends after history", () => {
-  // The failed turn has no successor yet: the error is the latest event, so it
-  // belongs at the end — and below the persisted prompt, never above it.
   const history = [{ feed_type: "user_message", data: "do the thing" }];
   const current = [
     { feed_type: "user_message", data: "do the thing" },
@@ -332,9 +303,6 @@ test("history reconcile: consecutive client-only items keep their order", () => 
 });
 
 test("history reconcile: a history-only background turn weaves in around a client-only error", () => {
-  // History gained a turn the live bucket never saw (another client / a
-  // background run). The persisted turn stays in history order; the client-only
-  // error keeps its slot after its anchor.
   const history = [
     { feed_type: "user_message", data: "first" },
     { feed_type: "assistant_text", data: "reply" },

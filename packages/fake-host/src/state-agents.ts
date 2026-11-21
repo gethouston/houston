@@ -1,8 +1,3 @@
-/**
- * Agents and their `.houston/**` files-first store — the create/rename/delete
- * writers plus raw agent-file read/write, all over the shared {@link state}.
- */
-
 import { sameAgentName } from "@houston/domain/agent-name";
 import {
   CONFIG_SEED_KEY,
@@ -37,18 +32,12 @@ const objectIn = (raw: string): Record<string, unknown> | null => {
   }
 };
 
-/** A config write as the real host stores it: the first-day fields are the
- *  host's (`keepHostOwnedConfig`), whatever the written document says. */
 function surfaceConfigWrite(stored: string, content: string): string {
   const incoming = objectIn(content);
   if (!incoming) return content;
   return JSON.stringify(keepHostOwnedConfig(incoming, objectIn(stored) ?? {}));
 }
 
-// ---- agents ----
-/** The roster as `GET /agents` serves it: each agent with the role its job
- *  description names, like the real host. Given an org, only the agents that
- *  space holds: the ones a move put there, and every one never moved. */
 export function listAgents(orgSlug?: string): CpAgent[] {
   return state.agents.flatMap(({ orgSlug: home, ...agent }) => {
     if (orgSlug !== undefined && home !== undefined && home !== orgSlug)
@@ -57,16 +46,11 @@ export function listAgents(orgSlug?: string): CpAgent[] {
     return [role ? { ...agent, role } : agent];
   });
 }
-/** Whether an agent other than `exceptId` holds `name` the way the real
- *  host's store compares it (`sameAgentName`). */
 function agentNameTaken(name: string, exceptId?: string): boolean {
   return state.agents.some(
     (agent) => agent.id !== exceptId && sameAgentName(agent.name, name),
   );
 }
-/** `claudeMd` is the job description the create request carries (the real host
- *  writes it to `CLAUDE.md` before the agent ever runs), so a surface that
- *  reads the file back sees what creation put there. */
 export function createAgent(
   name: string,
   claudeMd?: string,
@@ -82,15 +66,11 @@ export function createAgent(
   state.agents.push(agent);
   state.files.set(fileKey(agent.id, ACTIVITY_PATH), "[]");
   if (claudeMd) state.files.set(fileKey(agent.id, JOB_DESCRIPTION), claudeMd);
-  // The create's seed map, written before the agent answers, like the real
-  // host: a new hire's config (its pending first day) rides it.
   for (const [relPath, content] of Object.entries(seeds ?? {}))
     state.files.set(fileKey(agent.id, relPath), content);
   emitDomain("AgentsChanged");
   return agent;
 }
-/** Resolves the agent BEFORE the name, like the real host's authz does: an
- *  unknown id is `not_found` whatever name it asks for. */
 export function renameAgent(
   id: string,
   name: string,
@@ -112,32 +92,14 @@ export function deleteAgent(id: string): boolean {
   return true;
 }
 
-// ---- Teams v2 access (multiplayer) ----
-
-/** One armed Teams agent for the per-member access lens (`/__test__/org`). */
 export interface AgentAccessSeed {
   id: string;
   name: string;
-  /** Explicit roster; omit (or an empty array with `everyone`) for org-wide. */
   assignments?: FakeAssignment[];
-  /** `true` = shared with everyone (empty assignee set = the everyone sentinel). */
   everyone?: boolean;
-  /**
-   * The SERVED caller's effective access on this agent (`GET /agents` `access`).
-   * Defaults to `manager` (the owner/manager lens). Arm `"user"` to serve a
-   * plain member who can only USE the agent — the read-only Settings access rows.
-   */
   access?: FakeAssignment["access"];
 }
 
-/**
- * Replace the agent fleet with a Teams-shaped set carrying per-agent
- * assignments, so `GET /agents` serves the access fields the per-member lens
- * reads (`assignedUserIds`/`assignments`/`access`). The served caller's `access`
- * defaults to `manager` (the owner/manager lens) and can be armed to `user` for
- * the plain-member read-only view. `everyone` agents get the empty-assignee
- * sentinel.
- */
 export function armAgents(seed: AgentAccessSeed[]): CpAgent[] {
   state.agents = seed.map((row) => {
     const assignments = row.everyone ? [] : (row.assignments ?? []);
@@ -155,11 +117,6 @@ export function armAgents(seed: AgentAccessSeed[]): CpAgent[] {
   return state.agents;
 }
 
-/**
- * Set-replace one agent's assignee roster (the `PUT /v1/agents/:slug/assignments`
- * body), mirroring the real gateway. Recomputes `assignedUserIds` so a
- * subsequent `GET /agents` reflects the write. Returns `null` for an unknown id.
- */
 export function setAgentAssignments(
   agentId: string,
   assignments: FakeAssignment[],
@@ -172,7 +129,6 @@ export function setAgentAssignments(
   return agent;
 }
 
-// ---- agent files (.houston/**) ----
 export function readAgentFile(agentId: string, relPath: string): string {
   return state.files.get(fileKey(agentId, relPath)) ?? "";
 }
@@ -188,14 +144,9 @@ export function writeAgentFile(
       ? surfaceConfigWrite(readAgentFile(agentId, relPath), content)
       : content,
   );
-  // The real file watcher fires ActivityChanged when the board file is written.
   if (relPath === ACTIVITY_PATH) emitDomain("ActivityChanged", agentId);
-  // ...and the real host announces a job description whose role moved, once
-  // the listing already serves the new one (`agent-role/role-tracker.ts`).
   if (relPath === JOB_DESCRIPTION && roleOf(agentId) !== roleBefore)
     emitDomain("AgentRoleChanged", agentId);
-  // ...and classifies a SKILL.md write as SkillsChanged: the Skills dialogs'
-  // fan-out save is a plain file write, so the list must re-serve it.
   const skillSlug = relPath.match(SKILL_FILE)?.[1];
   if (skillSlug) writeSkillFile(agentId, skillSlug, content);
 }

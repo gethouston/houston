@@ -1,15 +1,7 @@
-/**
- * The two whole-cluster panels of the admin dashboard: the top-line stat cards
- * and the unattributed-resources panel. The orphans panel renders nothing when
- * no leaked pod or volume exists, so its absence is the healthy state. Spend
- * and per-user tables live in `components-spend.tsx` / `components-users.tsx`.
- */
-
 import type { Overview } from "./api";
 import { usd } from "./api";
 import { C, card, tint } from "./styles";
 
-/** Top-line cluster cards: users, agents, running pods, live burn. */
 export function StatCards({ overview }: { overview: Overview }) {
   const t = overview.totals;
   const items = [
@@ -60,7 +52,6 @@ export function StatCards({ overview }: { overview: Overview }) {
   );
 }
 
-/** Only rendered when leaked pods/volumes exist — an operator wants to see these. */
 export function OrphansPanel({ overview }: { overview: Overview }) {
   const o = overview.orphans;
   if (o.pods.length === 0 && o.volumes.length === 0) return null;

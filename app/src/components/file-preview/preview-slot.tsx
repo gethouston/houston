@@ -10,17 +10,10 @@ import { useUIStore } from "../../stores/ui";
 import type { FilePreviewTarget } from "../../stores/ui/types";
 import { FilePreviewPanel } from "./file-preview-panel";
 
-/** The narrowest chat (or screen) beside the preview, the narrowest preview,
- *  and the row gap between them. Below their sum the preview takes the row. */
 const SIDE_MIN = 360;
 const PANEL_MIN = 400;
 const GAP = 8;
 
-/**
- * The last target, kept through its exit so the panel can animate out. A
- * close from the keyboard (Esc) skips the exit: keys repeat, and motion on
- * them reads as lag.
- */
 function usePresence(value: FilePreviewTarget | null, exitMs: number) {
   const [last, setLast] = useState(value);
   const keyboard = useRef(false);
@@ -65,12 +58,6 @@ function useNarrow(row: HTMLElement | null): boolean {
   return narrow;
 }
 
-/**
- * The shell's side of the preview: the panel (and its grip) for the content
- * row, and whether it takes the whole row, so the shell steps `<main>` and
- * the chat card out of the layout. Layout follows the panel's presence, not
- * the store, so nothing reflows until its exit has played.
- */
 export function useFilePreviewSlot() {
   const target = useUIStore((s) => s.filePreview);
   const expandedPref = useUIStore((s) => s.previewExpanded);
@@ -95,11 +82,6 @@ export function useFilePreviewSlot() {
   return { rowRef: setRow, open, expanded, slot };
 }
 
-/**
- * The visible handle between the chat and the preview. Dragging moves the
- * panel's edge directly (no re-render per frame) and stores the share of the
- * row on release; arrow keys step it.
- */
 function PreviewGrip({ share }: { share: number }) {
   const { t } = useTranslation("agents");
   const setShare = useUIStore((s) => s.setPreviewWidth);
@@ -117,7 +99,6 @@ function PreviewGrip({ share }: { share: number }) {
     setDragging(false);
     const { row, panel } = parts(e.currentTarget);
     setShare(panel.offsetWidth / row.clientWidth);
-    // Hand the width back to the stored share, which follows the window.
     panel.style.width = "";
   };
   return (

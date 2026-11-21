@@ -2,8 +2,6 @@ import { expect, test } from "vitest";
 import { looksLikeAuthFailure } from "./auth-failure";
 import { unwrapExecutorResult } from "./provider";
 
-/** The exact body HighLevel's MCP server returns for a wrong Private
- *  Integration Token — inside an `isError` tool result, HTTP 200. */
 const HIGHLEVEL_BAD_PIT =
   '{\n  "success": false,\n  "status": 401,\n  "data": {\n    "statusCode": 401,\n    "message": "Invalid Private Integration token"\n  },\n  "tool": {\n    "name": "opportunities_get-pipelines"\n  }\n}';
 
@@ -52,7 +50,6 @@ test("unwrapExecutorResult adds the key-entry hint only for an MCP in-result ref
   expect(refused.error).toContain("'highlevel'");
   const ordinary = failed("Contact 401 not found");
   expect(ordinary.error).not.toContain("request_credential");
-  // The same text from a non-MCP failure is not reinterpreted.
   const openapi = failed(HIGHLEVEL_BAD_PIT, "http_error");
   expect(openapi.error).not.toContain("request_credential");
 });

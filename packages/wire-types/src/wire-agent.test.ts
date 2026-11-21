@@ -12,7 +12,6 @@ test("agent timezone is additive and names the firing zone", () => {
 });
 
 test("a zone this device's time zone data lacks never rejects the agent", () => {
-  // The server validated it; an older WebKit may not know a newer IANA name.
   expect(
     WireAgentSchema.parse({ ...agent, timezone: "Mars/Olympus" }).timezone,
   ).toBe("Mars/Olympus");

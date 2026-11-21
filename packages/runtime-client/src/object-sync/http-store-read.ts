@@ -17,7 +17,6 @@ import { withOperationSignal } from "./operation-signal";
 type CaptureResponse = (response: Response) => void;
 type SignalledRequest = (signal?: AbortSignal) => Promise<Response>;
 
-/** The manifest route for `prefix`, recursive or one level (`?delimiter=/`). */
 export function manifestUrl(
   baseUrl: string,
   prefix: string,
@@ -50,8 +49,6 @@ export function readHttpManifest(
   });
 }
 
-/** One level of a directory (`?delimiter=/`); undefined from a pod-store
- *  that predates the delimiter (object-manifest.ts). */
 export function readHttpDirManifest(
   request: SignalledRequest,
   capture: CaptureResponse,
@@ -70,7 +67,6 @@ export function readHttpDirManifest(
   });
 }
 
-/** A GET given its signal and the not-modified condition headers, if any. */
 type ConditionalRequest = (
   signal: AbortSignal | undefined,
   condition: Record<string, string>,

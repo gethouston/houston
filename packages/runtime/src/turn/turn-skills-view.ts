@@ -15,7 +15,6 @@ import {
 } from "./turn-skills-doc";
 import type { TurnRequest } from "./types";
 
-/** The pod's own `GET skills` over the turn's tree: byte parity by construction. */
 async function captureSkillsView(
   filesystem: TurnFilesystem,
 ): Promise<SkillsView | undefined> {
@@ -30,12 +29,6 @@ async function captureSkillsView(
   return isSkillsView(view) ? view : undefined;
 }
 
-/**
- * Republish the skills view a claimed turn changed. The gateway serves a
- * sleeping agent's Skills tab from that doc, so without this a skill the
- * agent wrote (or deleted) stays invisible until a pod wakes. Null when the
- * turn landed no SKILL.md or has no doc system to project into.
- */
 export async function publishLandedSkillsView(input: {
   deps: TurnServerDeps;
   turn: TurnRequest;
@@ -45,7 +38,6 @@ export async function publishLandedSkillsView(input: {
 }): Promise<ActivityDocPublishResult | null> {
   const { filesystem } = input;
   const slugs = landedSkillSlugs(filesystem.workspaceRel, input.landed);
-  // Only a standing tree is an agent the host's handlers can resolve.
   if (slugs.size === 0 || filesystem.kind !== "standing") return null;
   const target = turnDocTarget(input.deps, input.turn, "skills");
   if (!target) return null;

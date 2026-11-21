@@ -81,8 +81,6 @@ async function seedFiles(storeRoot: string, rels: string[]) {
   );
 }
 
-// The staging store of agent "prime": the real agent beside the folder a
-// standing pod wrote for its preferences doc and then booted a runtime into.
 const PRIME = [
   "workspaces/Personal/prime/CLAUDE.md",
   "workspaces/Personal/prime/.houston/activity/activity.json",
@@ -93,7 +91,6 @@ const STRAY = [
   "workspaces/ws/Personal/.houston/runtime/models-store.json",
   "workspaces/ws/Personal/.houston/runtime/runtime.log",
   "workspaces/ws/Personal/.houston/runtime/bin/claude-shell-fence",
-  // A later boot's schema re-seed writes into any folder with a `.houston/`.
   "workspaces/ws/Personal/.houston/activity/activity.schema.json",
 ];
 
@@ -128,9 +125,6 @@ test.each([
   } satisfies Partial<TurnSetupError>);
 });
 
-// The staging store of load-test agent 456dfb1fd310de07: the agent carries no
-// marker (only schemas and a runtime tree), beside two preferences-namespace
-// folders a standing host booted runtimes into.
 const BENCH = [
   "workspaces/Personal/bench-increments-20260921-077/.houston/activity/activity.schema.json",
   "workspaces/Personal/bench-increments-20260921-077/.houston/routines/routines.schema.json",

@@ -1,10 +1,6 @@
 import { expect, test } from "vitest";
 import { accountBlockedDetail, mintFailureStatus } from "./account-blocked";
 
-// GitHub's Copilot mint 403 for a locked billing account (H-005): the sentence
-// up to "have failed" is what prod logged (truncated at 200 bytes); the fields
-// after it are a guess at GitHub's shape. It reaches this host two ways: as a
-// response body and inside pi-ai's thrown "<status> <text>: <body>".
 const body =
   '{"error_details":{"message":"Your account\'s billing is currently locked because recent account charges have failed. Please update your payment method to restore access.","url":"https://github.com/settings/billing","notification_id":"billing_locked"}}';
 

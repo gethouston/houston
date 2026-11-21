@@ -15,7 +15,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** A card whose two rows really fire, echoing which one the user picked. */
 function LiveCard({
   reusableKind,
   title,
@@ -156,7 +155,6 @@ function ChatSuggestReusableCardSpecimen() {
   );
 }
 
-/** The `@houston-ai/*` symbols this page documents. */
 export const sources: string[] = [
   "ChatSuggestReusableCard",
   "DEFAULT_SUGGEST_REUSABLE_LABELS",

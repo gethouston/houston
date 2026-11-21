@@ -9,13 +9,11 @@ import {
   shuffle,
 } from "../src/thinking-phrases.ts";
 
-/** Deterministic RNG cycling through the given `[0, 1)` values. */
 function seededRandom(values: number[]): () => number {
   let i = 0;
   return () => values[i++ % values.length];
 }
 
-/** Walk the deck for `steps` advances, collecting each phrase shown. */
 function collect(deck: PhraseDeck, steps: number, random: () => number) {
   const seen = [currentPhrase(deck)];
   let cursor = deck;
@@ -35,7 +33,7 @@ describe("shuffle", () => {
   });
 
   it("is deterministic for a fixed RNG", () => {
-    const rng = () => 0; // Fisher-Yates with j=0 reverses adjacent picks.
+    const rng = () => 0;
     deepEqual(
       shuffle(["a", "b", "c"], rng),
       shuffle(["a", "b", "c"], () => 0),
@@ -79,7 +77,6 @@ describe("advanceDeck", () => {
 
   it("never repeats a phrase across the reshuffle seam", () => {
     const phrases = ["a", "b", "c", "d", "e"];
-    // 200 advances over a 5-phrase deck crosses the seam many times.
     for (let seed = 0; seed < 50; seed += 1) {
       let cursor = createDeck(phrases, Math.random);
       let prev = currentPhrase(cursor);

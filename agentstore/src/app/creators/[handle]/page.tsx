@@ -14,8 +14,6 @@ import { siteBase } from "@/lib/site-config";
 import { getCreator } from "@/lib/store-api";
 import { CreatorPagination } from "./creator-pagination";
 
-// Rendered dynamically so `next build` never calls the gateway; the per-fetch
-// `revalidate` (60s) still caches creator reads across requests at runtime.
 export const dynamic = "force-dynamic";
 
 interface CreatorPageProps {
@@ -23,25 +21,21 @@ interface CreatorPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-/** The tab options for the creator's agents, with the href each points at. */
 const SORTS: ReadonlyArray<{ value: StoreCatalogSort; label: string }> = [
   { value: "recent", label: "Recent" },
   { value: "installs", label: "Most installed" },
 ];
 
-/** Read a single string search param, trimmed. */
 function firstParam(value: string | string[] | undefined): string | undefined {
   const raw = Array.isArray(value) ? value[0] : value;
   return raw?.trim() || undefined;
 }
 
-/** Normalize the path handle; null when it fails the grammar (a sure 404). */
 function readHandle(raw: string): string | null {
   const handle = normalizeHandle(raw);
   return HANDLE_REGEX.test(handle) ? handle : null;
 }
 
-/** Parse `?sort=` and `?page=` into a canonical view. */
 function readView(sp: Record<string, string | string[] | undefined>): {
   sort: StoreCatalogSort;
   page: number;

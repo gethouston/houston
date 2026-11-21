@@ -9,11 +9,6 @@ import { planInvalidation } from "../src/lib/agent-invalidation-plan.ts";
 import { isNetworkTransportError } from "../src/lib/network-transport-error.ts";
 import "./support/dom-env.ts";
 
-// The preview panel's load: an Office file arrives as its converted PDF, any
-// other file as its bytes, and a rewrite the listing reports swaps the new
-// bytes in place. Ported from the retired dialog's suite, now against the hook
-// the panel renders from.
-
 const React = await import("react");
 const { act, createElement: h } = React;
 const { createRoot } = await import("react-dom/client");
@@ -180,7 +175,6 @@ afterEach(async () => {
   image = new Blob(["png-1"], { type: "image/png" });
 });
 
-/** Let every load, byte comparison and query notification land. */
 const flush = () =>
   act(async () => {
     for (let i = 0; i < 10; i++)

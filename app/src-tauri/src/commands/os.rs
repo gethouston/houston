@@ -16,8 +16,6 @@ fn expand(p: &str) -> PathBuf {
     super::expand_tilde(&PathBuf::from(p))
 }
 
-// -- Launch timestamp (HOU-1011 client perf spans) --
-
 static LAUNCH_T0_MS: OnceLock<u64> = OnceLock::new();
 
 /// Stamp "Houston's own code started" as early as `run()` allows. The webview's
@@ -38,8 +36,6 @@ pub fn launch_t0_ms() -> Option<u64> {
     LAUNCH_T0_MS.get().copied().filter(|&ms| ms > 0)
 }
 
-// -- Open a URL in the default browser --
-
 /// Spawn the OS-native "open this in the default app" command. Path-or-URL
 /// flavor — caller passes either a URL or a filesystem path; on every
 /// platform the same shell verb opens both. Rejects typed so `open_url` can
@@ -55,22 +51,9 @@ fn spawn_default_open(target: &str) -> Result<(), UrlOpenFailure> {
     }
     #[cfg(target_os = "windows")]
     {
-        // Hand the target straight to the Win32 shell API instead of
-        // `cmd /C start`. `cmd` parses its command line for metacharacters
-        // BEFORE `start` ever runs, and an OAuth/PKCE authorize URL trips two
-        // of them: every `&` is read as a command separator (so
-        // `…&code_challenge=…` becomes a bogus `'code_challenge' is not
-        // recognized…` command), and `%xx` percent-escapes can pair up into
-        // `%VAR%` expansions that silently corrupt the URL. ShellExecuteW
-        // takes the target as a single wide-string parameter — the default
-        // handler receives it verbatim, with no shell in the path. Same
-        // "open with the default handler" semantics `start` gave us, so it
-        // covers URLs, files, and folders alike.
         use std::os::windows::ffi::OsStrExt;
         use windows_sys::Win32::UI::Shell::ShellExecuteW;
 
-        // SW_SHOWNORMAL — lives in Win32_UI_WindowsAndMessaging; inlined so we
-        // don't pull that whole feature in for one constant.
         const SW_SHOWNORMAL: i32 = 1;
 
         let wide = |s: &str| -> Vec<u16> {
@@ -95,8 +78,6 @@ fn spawn_default_open(target: &str) -> Result<(), UrlOpenFailure> {
                 SW_SHOWNORMAL,
             )
         };
-        // ShellExecuteW returns a value > 32 on success; <= 32 is a Win32
-        // error code. Surface the failure rather than swallowing it.
         if (result as isize) <= 32 {
             return Err(url_open_failure::from_shell_execute_code(result as isize));
         }
@@ -104,9 +85,6 @@ fn spawn_default_open(target: &str) -> Result<(), UrlOpenFailure> {
     }
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
     {
-        // The default browser must not inherit the AppImage's LD_LIBRARY_PATH
-        // / GTK module env — under it the browser loads the bundle's libraries
-        // and crashes before showing the OAuth consent page (appimage_env.rs).
         let mut cmd = std::process::Command::new("xdg-open");
         cmd.arg(target);
         crate::appimage_env::sanitize_std_command(&mut cmd);
@@ -124,8 +102,6 @@ pub async fn open_url(url: String) -> Result<(), UrlOpenFailure> {
     spawn_default_open(&url).map_err(|e| e.context("Failed to open URL"))
 }
 
-// -- File reveal / open --
-
 #[tauri::command(rename_all = "snake_case")]
 pub async fn open_file(agent_path: String, relative_path: String) -> Result<(), String> {
     let root = expand(&agent_path);
@@ -133,10 +109,6 @@ pub async fn open_file(agent_path: String, relative_path: String) -> Result<(), 
     if !full.exists() {
         return Err(format!("File does not exist: {}", full.display()));
     }
-    // Relative paths arrive forward-slash per the engine's ProjectFile.path
-    // contract, and Path::join keeps them when appended to a backslash agent
-    // root. Some Windows shell handlers (notably Office) reject the mixed
-    // form, so normalize before handing off to `cmd /C start`.
     let target = full.to_string_lossy();
     #[cfg(target_os = "windows")]
     let target = target.replace('/', "\\");
@@ -192,24 +164,6 @@ fn reveal_in_file_manager(path: &Path) -> Result<(), std::io::Error> {
     }
     #[cfg(target_os = "windows")]
     {
-        // explorer.exe /select,<path> opens the parent folder with the
-        // file highlighted. Two Windows quirks to handle:
-        //   1. Explorer refuses mixed separators. Relative paths arrive
-        //      forward-slash per the engine's ProjectFile.path contract,
-        //      and Path::join keeps them when appended to a backslash
-        //      agent root, so the joined string is mixed. Normalize to \.
-        //   2. Command::arg auto-wraps any arg containing spaces in double
-        //      quotes on Windows. Explorer can't parse `"/select,...` —
-        //      the leading quote makes it ignore the verb and open the
-        //      default folder (Documents). Use raw_arg so the cmdline goes
-        //      out exactly as `/select,C:\path with space\file.txt`.
-        //   3. Some machines refuse to spawn explorer.exe from Houston at all
-        //      ("Access is denied. (os error 5)": an app-control policy, or
-        //      an update-launched instance still under the installer's
-        //      token). The shell verb goes through the running Explorer
-        //      instead of a new process, so opening the parent folder that
-        //      way still gets the user next to the file. The original error
-        //      is what gets reported when both fail.
         use std::os::windows::process::CommandExt;
         let native = path.to_string_lossy().replace('/', "\\");
         let select_arg = format!("/select,{native}");
@@ -232,8 +186,6 @@ fn reveal_in_file_manager(path: &Path) -> Result<(), std::io::Error> {
     }
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
     {
-        // No portable "select" verb on Linux — fall back to opening the
-        // parent directory. Better than failing.
         let parent = path.parent().unwrap_or(path);
         let mut cmd = std::process::Command::new("xdg-open");
         cmd.arg(parent);

@@ -11,24 +11,12 @@ import { MarkdownToolbar } from "./markdown-toolbar";
 
 const extensions = [StarterKit, Markdown];
 
-/**
- * The markdown the doc currently serializes to. `tiptap-markdown` registers
- * its storage under `markdown` but does not augment @tiptap/core's `Storage`
- * type, so the one cast lives here instead of at every call site.
- */
 function serialized(editor: Editor): string {
   return (
     editor.storage as unknown as { markdown: MarkdownStorage }
   ).markdown.getMarkdown();
 }
 
-/**
- * The document's type: 16px body (the input floor from the polish checklist)
- * under a modest heading ladder matching the chat's markdown scale — a
- * document field, not a marketing page. Headings open their block (`mt`
- * collapses on the first child) so a doc that starts with a title sits flush
- * with the card's padding.
- */
 const proseClass = [
   "text-base text-ink leading-relaxed",
   "[&_h1]:text-xl [&_h1]:font-semibold [&_h1]:mt-5 [&_h1]:mb-2 [&_h1:first-child]:mt-0",
@@ -49,23 +37,14 @@ export interface MarkdownEditorProps {
   onBlur: () => void;
   onFocusChange?: (focused: boolean) => void;
   readOnly?: boolean;
-  /**
-   * Plain-text fallback: the document contains markdown the rich schema
-   * would corrupt (`isWysiwygSafe` said no), so it is edited raw —
-   * byte-preserving, no toolbar, no rendering.
-   */
   plain?: boolean;
   placeholder: string;
   ariaLabel?: string;
   dataTestId?: string;
   layout: ContextEditorLayout;
-  /** The save status node, seated on the top bar's right edge. */
   statusSlot?: ReactNode;
 }
 
-/** Latest-ref for the parent callbacks: TipTap binds its event handlers ONCE
- *  at construction (and @tiptap/react never re-registers them), so handlers
- *  must read through a ref or they hold the first render's props forever. */
 function useCallbacksRef(props: MarkdownEditorProps) {
   const ref = useRef(props);
   ref.current = props;
@@ -84,14 +63,10 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
   return props.plain ? <PlainEditor {...props} /> : <RichEditor {...props} />;
 }
 
-/** The byte-preserving fallback face: same card, raw text, no toolbar. */
 function PlainEditor(props: MarkdownEditorProps) {
   const { content, readOnly = false, ariaLabel, dataTestId, layout } = props;
   const callbacks = useCallbacksRef(props);
 
-  // The seed echo the rich editor emits from onCreate: plain text never
-  // normalizes, so echoing the content verbatim settles the parent's dirty
-  // baseline the same way.
   useEffect(() => {
     callbacks.current.onChange(content);
   }, [content, callbacks]);
@@ -126,15 +101,12 @@ function PlainEditor(props: MarkdownEditorProps) {
   );
 }
 
-/** The greyed example, RENDERED (real muted headings) — decoration only. */
 function ExampleOverlay({ placeholder }: { placeholder: string }) {
   const preview = useEditor({
     extensions,
     content: placeholder,
     editable: false,
     editorProps: {
-      // Without this the overlay would announce as a SECOND textbox
-      // (TipTap's default role): a phantom editor to assistive tech.
       attributes: { "aria-hidden": "true", role: "presentation" },
     },
   });
@@ -170,18 +142,10 @@ function RichEditor(props: MarkdownEditorProps) {
         "aria-readonly": String(readOnly),
         ...(ariaLabel !== undefined && { "aria-label": ariaLabel }),
         ...(dataTestId !== undefined && { "data-testid": dataTestId }),
-        // The editable node IS the whole visible page: it carries the card's
-        // content padding and min-height itself, so a click anywhere in the
-        // frame lands in the document and places the caret.
         class: `outline-none px-5 py-4 ${proseClass}`,
         style: `min-height: ${fill ? "100%" : compactMinHeight(layout.rows)}`,
       },
     },
-    // The parent's dirty baseline is the SEEDED DOC'S OWN serialization
-    // (markdown → doc → markdown may normalize bullets/whitespace), so the
-    // baseline is announced the moment the doc exists — unconditionally, or
-    // a prop that round-trips unchanged would leave the baseline unseeded
-    // and the user's FIRST edit would read as clean.
     onCreate: ({ editor: created }) =>
       callbacks.current.onChange(serialized(created)),
     onUpdate: ({ editor: active }) =>
@@ -200,10 +164,6 @@ function RichEditor(props: MarkdownEditorProps) {
 
   useEffect(() => {
     if (!editor) return;
-    // Every keystroke echoes back as a `content` prop change (the parent is
-    // controlled on the serialized markdown). Replacing the doc on that echo
-    // would throw the cursor away mid-word, so only a GENUINELY different
-    // markdown — an external reseed — rebuilds the doc.
     if (serialized(editor) === content) return;
     editor.commands.setContent(content, { emitUpdate: false });
     callbacks.current.onChange(serialized(editor));
@@ -220,9 +180,6 @@ function RichEditor(props: MarkdownEditorProps) {
         {!readOnly && empty ? (
           <ExampleOverlay placeholder={placeholder} />
         ) : null}
-        {/* In fill mode the wrapper's definite height flows down (h-full) so
-            the ProseMirror node's min-height:100% resolves; a longer doc
-            simply overflows into the wrapper's own scroll. */}
         <EditorContent
           editor={editor}
           className={cn(

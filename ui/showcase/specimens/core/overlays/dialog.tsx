@@ -24,10 +24,6 @@ import {
 import { HeaderCloseDialog } from "./dialog-header-close";
 import { dialogProps } from "./dialog-parts";
 
-/**
- * The rename flow, reused across every row so the only thing that changes
- * between them is the prop under review.
- */
 function RenameDialog({
   trigger,
   showCloseButton,
@@ -61,7 +57,6 @@ function RenameDialog({
   );
 }
 
-/** `DialogFooter showCloseButton` renders its own outline Close button. */
 function FooterCloseDialog() {
   return (
     <Dialog>
@@ -82,7 +77,6 @@ function FooterCloseDialog() {
   );
 }
 
-/** The controlled shape: the parent owns `open`, the trigger lives outside. */
 function ControlledDialog() {
   const [open, setOpen] = useState(false);
   return (
@@ -172,11 +166,6 @@ function DialogSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = [
   "Dialog",
   "DialogClose",

@@ -1,57 +1,27 @@
-/**
- * The whole of a Slack connect a surface starts: which return to ask the
- * gateway for, the desktop listener that return needs, and when that listener
- * is freed again.
- *
- * Web names none and lands back in the tab it came from. The desktop binds a
- * loopback listener first and names its port and a fresh `state`, so the
- * approving browser comes back over plain `http://127.0.0.1` with no "Open
- * Houston?" prompt. A listener that cannot start falls back to the `app` deep
- * link, which still finishes in the app after that prompt, and so does a
- * gateway that refused the loopback return (`connectSlack` retries it once).
- *
- * A listener no browser can reach any more is freed: the gateway took another
- * return, the connect failed, the surface moved on, or the page could not be
- * opened. One the browser merely refused to open stays up, since the surface
- * offers the page again.
- */
-
 import type { SlackConnectReturn } from "@houston/wire-types";
 import type { SlackConnectAnswer } from "./types";
 
-/** The desktop shell's Slack return listener. */
 export interface SlackReturnListener {
   start(state: string): Promise<{ port: number; attemptId: number }>;
-  /** A no-op for an attempt that already ended. */
   cancel(attemptId: number): Promise<void>;
 }
 
-/** The effects a Slack connect needs, bound by the surface that starts it. */
 export interface SlackConnectPorts {
-  /** The bound `channels.connectSlack`, with the surface's own guards. */
   connect(
     returnTo: SlackConnectReturn | undefined,
   ): Promise<SlackConnectAnswer>;
-  /** Null where nothing can listen on the device (web). */
   listener: SlackReturnListener | null;
-  /** A fresh base64url nonce for the loopback `state`. */
   newState(): string;
-  /** Throws when the surface moved on (another space, another person) since
-   *  the connect began. Checked right before the page opens. */
   assertCurrent(): void;
-  /** Opens the page outside the app; false when the browser refused it. */
   open(url: string): Promise<boolean>;
-  /** Reports what the person never sees: a failure, or a gateway skew. */
   report(command: string, error: unknown): void;
 }
 
-/** The page a connect produced, and whether the browser opened it. */
 export interface SlackConnectStarted {
   url: string;
   opened: boolean;
 }
 
-/** Raised to the report path when a gateway refused the loopback return. */
 export class SlackLoopbackRefusedError extends Error {
   constructor() {
     super("the gateway refused the loopback return; fell back to app");

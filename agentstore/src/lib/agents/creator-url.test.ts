@@ -9,10 +9,7 @@ describe("normalizeCreatorUrl", () => {
   });
 
   it("prepends https:// to a scheme-less bare domain so it publishes cleanly", () => {
-    // Reproduces the defect root cause: the raw value a non-technical user types
-    // ("mysite.com") is REJECTED by the store's https-only creatorSchema...
     expect(creatorSchema.shape.url.safeParse("mysite.com").success).toBe(false);
-    // ...but after normalization it is a valid https URL the PATCH route accepts.
     expect(normalizeCreatorUrl("mysite.com")).toEqual({
       ok: true,
       url: "https://mysite.com",

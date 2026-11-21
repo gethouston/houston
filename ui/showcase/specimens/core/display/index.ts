@@ -14,16 +14,6 @@ import { specimen as spinner } from "./spinner";
 import { specimen as statusBadge } from "./status-badge";
 import { specimen as verifiedBadge } from "./verified-badge";
 
-/**
- * The "Data display" family: cards, badges, avatars, progress, skeletons —
- * anything that presents data at rest.
- *
- * One file per component in this folder (`<component>.tsx`, each exporting
- * `export const specimen: Specimen` with `group: "Data display"`), imported
- * here and listed below in nav order: the badges first, then the avatars, then
- * the containers, then the thin presentational primitives. The layout helpers
- * live in `../../../src/specimen`.
- */
 export const specimens: readonly Specimen[] = [
   badge,
   statusBadge,

@@ -13,22 +13,12 @@ import type { CustomIntegrationDef, CustomIntegrationView } from "./types";
 import { CustomIntegrationError } from "./types";
 import { viewOf } from "./views";
 
-/**
- * The manager-side OAuth operations (PRODUCT-1172), split out so the manager
- * stays a thin serializer. Preparation leaves attempt custody to the caller;
- * completion exchanges the callback's code, persists the token bundle under the
- * SAME secret id a pasted key would use, and rewires the connection through
- * the proven setCredential sequence.
- */
 export interface CustomOAuthDeps {
   store: CustomIntegrationStore;
   secrets: CustomSecretStore;
   host: CustomExecutorHost;
   attempts: CustomOAuthAttempts;
-  /** The browser-reachable callback URL; absent = this deployment cannot
-   *  receive the redirect. */
   callbackUrl?: string;
-  /** Gateway-fronted hosts and workers bind state to `<orgSlug>.<agentSlug>`. */
   statePrefix?: string;
   fetchFn?: typeof fetch;
   onChanged: (slug: string) => void;
@@ -54,10 +44,6 @@ export async function prepareOAuthOp(
       `'${def.slug}' is not an MCP server - only MCP servers offer their own sign-in`,
     );
   }
-  // The stored bundle is only an OPTIMIZATION here (reuse the registered
-  // client on a re-auth) — a custody hiccup must not kill the START; the
-  // flow simply registers fresh. Completion still fails loudly if the store
-  // cannot take the tokens.
   const raw = await deps.secrets
     .get(secretIdFor(def.slug, TOKEN_VARIABLE))
     .catch(() => null);
@@ -106,9 +92,6 @@ export async function completeOAuthWithAttempt(
   code: string,
 ): Promise<CustomIntegrationView> {
   const def = await defOf(attempt.slug);
-  // The attempt binds to the SERVICE, not just the slug: a replace that moved
-  // the slug to a different endpoint mid-flow must not receive the old
-  // service's tokens (the executor would then send them to the new host).
   if (def.kind !== "mcp" || def.endpoint !== attempt.endpoint) {
     throw new CustomIntegrationError(
       "oauth_state_invalid",
@@ -134,9 +117,6 @@ export async function completeOAuthWithAttempt(
   const updated: CustomIntegrationDef = { ...def, auth: "oauth", credential };
   await deps.store.put(updated);
   await deps.host.reconnect(executor, def.slug, credential);
-  // The SAME zero-tool judge the compile path uses: a sign-in whose fresh
-  // token the server still turns away must land pending/error, not celebrate
-  // as "Connected, 0 actions".
   const liveState = await deps.host.connectedState(executor, updated);
   states.set(def.slug, liveState);
   deps.onChanged(def.slug);

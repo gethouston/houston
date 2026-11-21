@@ -5,10 +5,6 @@ import {
   sentrySendInDevEnabled,
 } from "../src/lib/sentry-dev.ts";
 
-// Pins the dev-mode Sentry opt-in parser. Default (unset/empty) MUST stay
-// false so dev builds never pollute the prod Sentry project; only an explicit
-// truthy flag flips it on.
-
 describe("sentrySendInDevEnabled", () => {
   it("is off by default (unset / empty / whitespace)", () => {
     assert.equal(sentrySendInDevEnabled(undefined), false);

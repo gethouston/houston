@@ -1,19 +1,3 @@
-/**
- * ReportBugButton — the ONE "tell us about this" pill.
- *
- * The repo's no-silent-failures policy asks every user-visible failure to carry
- * a report path, and there can only be one of them: one payload shape (the
- * command tag, the diagnostic, the log tail `reportBug` bundles), one pending
- * look, one pair of result toasts, one delivery rule (`submitBugReport`: Linear,
- * then the Sentry feedback fallback). It started life inside the provider-error
- * cards and moved here the moment a second surface needed it (the team
- * sections' "we could not read these agents" strip), because a copied version
- * is how one of them quietly stops sending logs.
- *
- * `command` is the flat, snake_case triage tag every report site uses — never
- * composed per instance, or one issue fans out into unbounded Sentry groups.
- */
-
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { submitBugReport } from "../../lib/bug-report";
@@ -29,7 +13,6 @@ export function ReportBugButton({
   label,
 }: {
   command: string;
-  /** The diagnostic that goes in the report body. */
   details: string;
   label: string;
 }) {
@@ -55,8 +38,6 @@ export function ReportBugButton({
     if (sending) return;
     setSending(true);
     try {
-      // Reports every channel failure itself; `none` = Linear AND the
-      // fallback both failed, the only case that earns a "try again".
       const outcome = await submitBugReport({
         command,
         error: details || "(no detail)",
@@ -67,8 +48,6 @@ export function ReportBugButton({
       });
       toast(outcome.delivered !== "none");
     } catch (err) {
-      // Not a channel failure (those settle as `none`): a bug in the
-      // submit path itself, which must still reach us.
       logAndReportError(command, err);
       toast(false);
     } finally {

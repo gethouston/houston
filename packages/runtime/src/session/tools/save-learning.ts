@@ -10,27 +10,8 @@ import {
   toolErrorResult,
 } from "./tool-error";
 
-/**
- * The agent's structured tool to SAVE a learning (a stable fact or preference
- * the agent should carry into future sessions).
- *
- * WHY it exists: the product prompt used to tell the agent to edit
- * `.houston/learnings/learnings.json` with file tools. Two problems with that.
- * (1) It is the same wholesale-write hazard `save_routine` was created for — a
- * model that rewrites the array drops everything it did not happen to read.
- * (2) A learning has PROVENANCE the agent cannot know or be trusted to write:
- * WHO taught it and WHICH mission it came from. Both are derived server-side —
- * the person from the gateway-minted acting-as header, the mission from the
- * turn's conversation id — so the tool takes only the learning's text.
- *
- * Same trust posture as the other host-proxying tools: it holds no secret and
- * carries only the per-sandbox HMAC token; the host resolves the sandbox to its
- * workspace, stamps provenance, and owns the merge-safe write.
- */
 export const SAVE_LEARNING_TOOL_NAME = "save_learning";
 
-/** The header carrying the turn's conversation id, so the host can resolve the
- *  mission this learning came from. Read-only provenance, never authorization. */
 export const CONVERSATION_ID_HEADER = "x-houston-conversation-id";
 
 const SaveLearningParams = Type.Object({
@@ -45,12 +26,10 @@ export interface SaveLearningToolOptions {
   call: SandboxFetch;
 }
 
-/** What the host echoes back on a successful save. */
 interface SavedLearning {
   id: string;
 }
 
-/** What one save did: the learning it stored, or the named reason it did not. */
 export type SaveLearningDetails =
   | { ok: true; id: string }
   | SessionToolErrorDetails;
@@ -69,10 +48,6 @@ export function makeSaveLearningTool(opts: SaveLearningToolOptions) {
       params: SaveLearningParams,
       signal: AbortSignal | undefined,
     ): Promise<AgentToolResult<SaveLearningDetails>> {
-      // WHO this turn acts as (C2) and WHICH conversation it belongs to: both
-      // are turn-scoped ambient context, forwarded so the host can stamp the
-      // learning's provenance. Absent outside a turn (or off the gateway), and
-      // the host then simply stamps nothing.
       const acting = currentActingContext();
       const conversationId = currentConversationId();
       const res = await opts.call("/sandbox/learnings/save", {
@@ -92,10 +67,6 @@ export function makeSaveLearningTool(opts: SaveLearningToolOptions) {
         body: JSON.stringify({ text: params.text }),
         signal,
       });
-      // The host's error bodies are already agent-actionable (empty text,
-      // memory full, memory not available on this install) — relayed as a
-      // value, so the agent explains the reason to the user or corrects itself
-      // instead of losing the whole turn to an exception.
       if (!res.ok) {
         return toolErrorResult(await hostErrorFrom(res, "save_learning"));
       }

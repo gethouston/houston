@@ -7,10 +7,8 @@ import { HeroFigure, HeroSentence, HeroStats } from "./org-chart-hero-parts";
 import type { HeroFigures, OrgChartScope } from "./org-chart-scope";
 import type { OrgChartLead } from "./org-chart-view-model";
 
-/** The window's daily totals for the lead metric, oldest first. */
 export interface HeroSeries {
   values: readonly number[];
-  /** The window's first UTC day, `YYYY-MM-DD`. */
   from: string;
 }
 
@@ -33,16 +31,6 @@ const CAPTIONS = {
   personal: "orgChart.captionPersonal",
 } as const satisfies Record<OrgChartScope, string>;
 
-/**
- * The band over the ledger: the space named large with its one sentence,
- * the month's huge figure with its supporting counts, and the 30-day chart
- * of the same figure. Hours lead; with time worked unreadable messages lead
- * and say so in the captions; with neither the band is the name and the
- * sentence alone, never a figure of zero. The three blocks share a row once
- * the band is wide enough (a container query), the chart wraps under the
- * first two below that, and the phone stacks them. An owner's band is the
- * organization's; anyone else's is scoped to their own AI Employees.
- */
 export function OrgChartHero({
   title,
   lead,

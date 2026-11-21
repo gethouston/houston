@@ -39,8 +39,6 @@ describe("connectedProviderId", () => {
   });
 
   it("a failed re-probe does not vouch for the connection it last saw", () => {
-    // The query keeps its last good scan beside the error: the provider may
-    // have disconnected since, so the connection is no longer confirmed.
     strictEqual(
       connectedProviderId({
         isLoading: false,

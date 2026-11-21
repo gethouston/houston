@@ -24,17 +24,6 @@ import { PaletteAgents, PaletteMissions } from "./command-palette-lists";
 
 const RECENT_MISSION_LIMIT = 12;
 
-/**
- * Global ⌘K command palette. Open state lives in the UI store so any
- * shortcut handler can toggle it. Sections:
- *  - Actions: top-level navigation + new-mission
- *  - Agents: jump to any employee’s Tasks screen (sidebar order)
- *  - Recent missions: open a card directly on its board
- *
- * Keeps its data sources out of the board tree so it works from any
- * view (settings, integrations, agent files, etc.). The three list groups
- * render from `command-palette-lists.tsx`.
- */
 export function CommandPalette() {
   const { t } = useTranslation("shell");
   const open = useUIStore((s) => s.paletteOpen);
@@ -56,21 +45,16 @@ export function CommandPalette() {
 
   const recentMissions = useMemo(() => {
     if (!convos) return [];
-    return (
-      convos
-        // Archived missions live in the board's archived view, and
-        // guided-setup chats are never missions — neither belongs in the
-        // quick-switcher's recent list.
-        .filter(
-          (c) =>
-            c.type === "activity" &&
-            c.status !== ARCHIVED_STATUS &&
-            !isSetupChatMode(c.agent),
-        )
-        .slice()
-        .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""))
-        .slice(0, RECENT_MISSION_LIMIT)
-    );
+    return convos
+      .filter(
+        (c) =>
+          c.type === "activity" &&
+          c.status !== ARCHIVED_STATUS &&
+          !isSetupChatMode(c.agent),
+      )
+      .slice()
+      .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""))
+      .slice(0, RECENT_MISSION_LIMIT);
   }, [convos]);
 
   const colorByPath = useMemo(() => {
@@ -97,10 +81,6 @@ export function CommandPalette() {
       close();
       return;
     }
-    // Same handoff `session-notifications.ts` uses: open the board the
-    // mission's card lives on, then
-    // publish the mission id via `activityPanelId`. The board on the glass
-    // consumes it and selects the card, which opens the right panel.
     setCurrentAgent(agent);
     openAgentBoard(agent.id, {
       onOpened: () => setActivityPanelId(missionId),
@@ -110,8 +90,6 @@ export function CommandPalette() {
 
   function newMission() {
     close();
-    // Defer so the palette unmounts before the view changes and focus lands
-    // on the composer.
     setTimeout(() => startNewMission(), 30);
   }
 

@@ -44,7 +44,6 @@ const free: PlanSummary = {
 const BEFORE_LAUNCH = Date.parse("2026-09-25T00:00:00Z");
 const AFTER_LAUNCH = Date.parse("2026-10-02T00:00:00Z");
 
-/** The active free org at its pool's limit, with routines paused and over. */
 const freeOrg: OrgBilling = {
   tier: "free",
   status: "active",

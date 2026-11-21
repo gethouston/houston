@@ -1,14 +1,5 @@
-/**
- * The agent's WORKSPACE files — what the Files tab lists, uploads into, moves,
- * renames, deletes, and downloads. Distinct from the `.houston/**` files-first
- * store (state-agents.ts): this models the real host's `turn/files*.ts` surface
- * (list with synthesized folders + dates, Finder-style upload dedupe, `.keep`
- * folder markers, prefix deletes/moves) faithfully enough for UI tests.
- */
-
 import { emitDomain, state } from "./state-store";
 
-/** The v3 files-listing wire shape (host `turn/files-ops.ts` ProjectFile). */
 interface ProjectFile {
   path: string;
   name: string;
@@ -26,7 +17,6 @@ export interface WorkspaceFile {
 }
 
 const KEEP = ".keep";
-/** Store key of one workspace entry; shared with state-workspace-entries.ts. */
 export const workspaceKey = (agentId: string, rel: string) =>
   `${agentId}:${rel}`;
 const extOf = (name: string) => {
@@ -55,7 +45,6 @@ export function writeWorkspaceFile(
   });
 }
 
-/** Files + synthesized folder rows, exactly the shape the real host lists. */
 export function listWorkspaceFiles(agentId: string): ProjectFile[] {
   const out: ProjectFile[] = [];
   const dirs = new Map<string, { updated: number; created: number }>();
@@ -104,7 +93,6 @@ export function readWorkspaceFile(
   return state.workspace.get(workspaceKey(agentId, rel));
 }
 
-/** Finder-style upload: never overwrite, suffix " (n)" instead. */
 export function importWorkspaceFiles(
   agentId: string,
   dir: string | null,
@@ -113,8 +101,6 @@ export function importWorkspaceFiles(
   const now = Date.now();
   const paths: string[] = [];
   for (const f of files) {
-    // Folder uploads (HOU-889) send the folder-relative path; nested keys
-    // synthesize their directory rows in listWorkspaceFiles, like the real host.
     const name = f.relPath ?? f.name;
     let rel = dir ? `${dir}/${name}` : name;
     const dot = rel.lastIndexOf(".");
@@ -135,7 +121,6 @@ export function importWorkspaceFiles(
   return paths;
 }
 
-/** A file's own key, or the prefix a folder's children share. */
 export function workspacePathTaken(agentId: string, rel: string): boolean {
   if (state.workspace.has(workspaceKey(agentId, rel))) return true;
   const prefix = `${workspaceKey(agentId, rel)}/`;
@@ -143,14 +128,8 @@ export function workspacePathTaken(agentId: string, rel: string): boolean {
   return false;
 }
 
-/** What an op that could land on an occupied name answers. */
 export type NameResult<T> = { kind: "ok"; value: T } | { kind: "taken" };
 
-/**
- * An empty folder, which exists only through the `.keep` marker under it.
- * Refuses a name a file already holds, exactly like the real host: writing
- * `<name>/.keep` beneath a file is ENOTDIR on a real disk.
- */
 export function createWorkspaceFolder(
   agentId: string,
   folder: string,

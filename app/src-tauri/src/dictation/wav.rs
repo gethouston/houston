@@ -33,7 +33,6 @@ fn parse_duration(bytes: &[u8]) -> Option<f64> {
     }
     let mut byte_rate: Option<u32> = None;
     let mut data_size: Option<u32> = None;
-    // Walk chunks: [4-byte id][4-byte LE size][size bytes of body].
     let mut pos = 12usize;
     while pos + 8 <= bytes.len() {
         let id = &bytes[pos..pos + 4];
@@ -41,7 +40,6 @@ fn parse_duration(bytes: &[u8]) -> Option<f64> {
         let body = pos + 8;
         match id {
             b"fmt " if body + 16 <= bytes.len() => {
-                // fmt layout: format(2) channels(2) sampleRate(4) byteRate(4)...
                 byte_rate = Some(u32::from_le_bytes(
                     bytes[body + 8..body + 12].try_into().ok()?,
                 ));
@@ -49,7 +47,6 @@ fn parse_duration(bytes: &[u8]) -> Option<f64> {
             b"data" => data_size = Some(size as u32),
             _ => {}
         }
-        // Chunk bodies are word-aligned: odd sizes carry a pad byte.
         pos = body + size + (size & 1);
     }
     let rate = byte_rate.filter(|r| *r > 0)?;
@@ -82,13 +79,13 @@ mod tests {
         w.extend_from_slice(&(36 + data_len).to_le_bytes());
         w.extend_from_slice(b"WAVE");
         w.extend_from_slice(b"fmt ");
-        w.extend_from_slice(&16u32.to_le_bytes()); // fmt chunk size
-        w.extend_from_slice(&1u16.to_le_bytes()); // PCM
-        w.extend_from_slice(&1u16.to_le_bytes()); // mono
-        w.extend_from_slice(&16_000u32.to_le_bytes()); // sample rate
+        w.extend_from_slice(&16u32.to_le_bytes());
+        w.extend_from_slice(&1u16.to_le_bytes());
+        w.extend_from_slice(&1u16.to_le_bytes());
+        w.extend_from_slice(&16_000u32.to_le_bytes());
         w.extend_from_slice(&byte_rate.to_le_bytes());
-        w.extend_from_slice(&2u16.to_le_bytes()); // block align
-        w.extend_from_slice(&16u16.to_le_bytes()); // bits/sample
+        w.extend_from_slice(&2u16.to_le_bytes());
+        w.extend_from_slice(&16u16.to_le_bytes());
         w.extend_from_slice(b"data");
         w.extend_from_slice(&data_len.to_le_bytes());
         w
@@ -96,28 +93,24 @@ mod tests {
 
     #[test]
     fn duration_parsed_from_header() {
-        // 2 seconds of audio = byte_rate * 2 = 64000 data bytes.
         let wav = synthetic_header(64_000);
         assert!((duration_secs(&wav) - 2.0).abs() < 1e-6);
     }
 
     #[test]
     fn duration_falls_back_when_header_garbage() {
-        // Not a RIFF/WAVE buffer: divide whole length by the fallback rate.
         let junk = vec![0u8; 32_000];
         assert!((duration_secs(&junk) - 1.0).abs() < 1e-6);
     }
 
     #[test]
     fn timeout_honors_120s_floor() {
-        // A 1s clip → 4s, floored up to the 120s minimum.
         assert_eq!(transcription_timeout(1.0), Duration::from_secs(120));
         assert_eq!(transcription_timeout(0.0), Duration::from_secs(120));
     }
 
     #[test]
     fn timeout_scales_4x_past_floor() {
-        // A 60s clip → 240s dominates the floor.
         assert_eq!(transcription_timeout(60.0), Duration::from_secs(240));
     }
 

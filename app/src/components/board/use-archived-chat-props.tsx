@@ -11,12 +11,6 @@ import type { useMissionControlArchivedPanel } from "./use-mission-control-archi
 type ArchivedData = ReturnType<typeof useMissionControlArchived>;
 type ArchivedPanel = ReturnType<typeof useMissionControlArchivedPanel>;
 
-/**
- * The chat half of an archived mission's `AIBoard`, shared by the desktop
- * archive list and the phone's pushed chat so an archived chat is ONE wiring
- * whichever breakpoint shows it. `chatProps` spreads into `<AIBoard>`;
- * `dialogs` mounts beside it.
- */
 export function useArchivedChatProps(
   data: ArchivedData,
   archivedPanel: ArchivedPanel,
@@ -44,7 +38,6 @@ export function useArchivedChatProps(
     onAttachmentRejections: attachmentValidation.onAttachmentRejections,
     thinkingIndicator: panel.thinkingIndicator,
     panelAgentName: activeAgent?.name ?? selectedItem?.subtitle,
-    // Composed here, never left to `ui/`'s English fallback.
     panelMissionLabel: panelTaskLabel(
       {
         task: (title) => t("panel.taskLabel", { title }),
@@ -67,11 +60,6 @@ export function useArchivedChatProps(
     },
     chatEmptyState: panel.chatEmptyState,
     composerHeader: panel.composerHeader,
-    // Only the OFFERS an archived mission finished with, never a blocking
-    // stepper: archiving answers nothing, so a mission archived mid-question
-    // still carries its question steps (see `offersComposerOverride`). Acting
-    // on an offer sends a message, which re-activates the mission like any
-    // other send.
     composerOverride: panel.offersComposerOverride,
     composerOverrideMode: "above",
     canSendEmpty: panel.canSendEmpty,

@@ -3,26 +3,20 @@ import type { TurnRequest } from "./types";
 
 const REQUEST_TIMEOUT_MS = 5_000;
 
-/** Per-claim heartbeat state owned by one admitted turn. */
 export interface ClaimHeartbeat {
   readonly fenced: boolean;
   readonly stopReason?: TurnErrorCode;
   readonly stopReceivedAt?: number;
-  /** Completion of the eager first heartbeat. */
   readonly ready: Promise<void>;
-  /** Send and await a fresh heartbeat at a durability boundary. */
   checkpoint(): Promise<void>;
-  /** Stop scheduling heartbeats and await the bounded in-flight request. */
   stop(): Promise<void>;
 }
 
-/** Start the eager, 15-second claim heartbeat loop for one turn. */
 export function startClaimHeartbeat(opts: {
   claim: NonNullable<TurnRequest["claim"]>;
   hostToken: string;
   fetchImpl?: typeof fetch;
   intervalMs?: number;
-  /** Fired once, the moment a heartbeat learns the claim was adopted. */
   onFenced?: () => void;
   onMode?: (mode: TurnMode) => void;
   onStop?: (reason: TurnErrorCode) => void;
@@ -117,10 +111,6 @@ export function startClaimHeartbeat(opts: {
   };
 }
 
-/**
- * A claimed turn's heartbeat, or null for an unclaimed one: a fenced claim
- * aborts the turn, and a mode the gateway reports becomes the turn's live mode.
- */
 export function startTurnClaimHeartbeat(
   turn: TurnRequest,
   abort: AbortController,

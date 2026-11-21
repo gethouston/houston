@@ -18,7 +18,6 @@ test("forkDestination: template choice opens the template picker", () => {
 
 test("forkDestination: 'know' asks the wake only where triggers exist", () => {
   assert.equal(forkDestination("know", true), "wake");
-  // No event triggers: the wake question would have one option, so skip it.
   assert.equal(forkDestination("know", false), "schedule");
 });
 

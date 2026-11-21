@@ -1,22 +1,3 @@
-/**
- * Composer context-usage indicator.
- *
- * A small footer control showing how full the model's context window is for
- * the current conversation. The trigger is a ring gauge (a
- * donut whose arc fills with the occupied fraction and turns red near the
- * limit) plus the bare percentage; hovering reveals the detail (on the phone
- * a tap opens it as a bottom sheet: a hover card never opens for a touch
- * pointer). The caller
- * resolves `usage` (latest turn) and `contextWindow` (a self-correcting
- * estimate; see `sessionContextUsage` + `effectiveContextWindow` in
- * `lib/context-usage.ts` and `getContextWindowConfig` in `lib/providers.ts`).
- * When no window is known for a model it degrades to a raw token count rather
- * than a misleading percentage.
- *
- * App-side (not in `ui/`) because it depends on the app's model catalog and
- * i18n; it uses `t()` directly per the library-boundary rule.
- */
-
 import type { TokenUsage } from "@houston-ai/chat";
 import {
   HoverCard,
@@ -32,22 +13,12 @@ import { useTranslation } from "react-i18next";
 import { contextFillPercent } from "../lib/context-usage";
 
 interface ContextIndicatorProps {
-  /** Latest turn's usage, or null when no turn has reported it yet. */
   usage: TokenUsage | null;
-  /** Active model's max context window in tokens, if catalogued. */
   contextWindow?: number;
 }
 
-/** Threshold at which the indicator warns the window is nearly full. */
 const WARN_PERCENT = 90;
 
-/**
- * Context gauge: a ring whose arc fills clockwise from 12
- * o'clock in proportion to `percent` (0-100), over a faint full-circle track.
- * The arc follows `currentColor`, so the caller turns it red by setting
- * `text-danger`. A `null` percent (unknown window or no usage yet) shows
- * the bare track.
- */
 function ContextRing({ percent }: { percent: number | null }) {
   const pct = percent == null ? 0 : Math.min(100, Math.max(0, percent));
   const radius = 12;
@@ -86,9 +57,6 @@ export function ContextIndicator({
   const { t, i18n } = useTranslation("context");
   const isMobile = useIsMobile();
 
-  // A directly-narrowable `number | null` — TypeScript won't carry a boolean
-  // alias's narrowing of `contextWindow` across the JSX branches below, so we
-  // branch on this value itself and read it where it's already proven non-null.
   const windowTokens =
     typeof contextWindow === "number" && contextWindow > 0
       ? contextWindow
@@ -96,7 +64,6 @@ export function ContextIndicator({
   const percent = contextFillPercent(usage, windowTokens);
   const warn = percent != null && percent >= WARN_PERCENT;
 
-  // Compact, rounded token counts (e.g. "100K", "10.5K", "1M") — locale-aware.
   const fmt = (n: number) =>
     new Intl.NumberFormat(i18n.language, {
       notation: "compact",
@@ -148,8 +115,6 @@ export function ContextIndicator({
     </>
   );
 
-  // Structural fork, not a layout tweak: a hover card is dead to a touch
-  // pointer, so the phone gets a tap-to-open sheet around the same detail.
   if (isMobile) {
     return (
       <ResponsivePopover>

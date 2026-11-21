@@ -25,7 +25,6 @@ interface Fixtures {
 const fixturePath = (rel: string) =>
   fileURLToPath(new URL(rel, import.meta.url));
 const OWN = fixturePath("./schedule-interval.fixtures.json");
-// The ui/routines twin of the parser and canonicalizer reads this table too.
 const UI_TWIN = fixturePath(
   "../../../ui/routines/tests/schedule-interval.fixtures.json",
 );
@@ -60,7 +59,6 @@ describe("canonicalSchedule rewrites every fixture row", () => {
 
 describe("nextRun follows the epoch grid in every fixture row", () => {
   test.each(fixtures.next)("$schedule after $after", (row) => {
-    // A zone never moves the grid, pre-epoch instants included.
     for (const tz of ["UTC", "Asia/Kolkata", null]) {
       expect(
         nextRun(row.schedule, tz, at(row.after))?.toISOString() ?? null,
@@ -79,7 +77,6 @@ test("validateSchedule accepts intervals and names what is wrong otherwise", () 
   expect(validateSchedule("@every 169h")).toMatch(/at most 7 days/);
 });
 
-// A UTC day is 90 steps of 16 minutes, so 12:48 UTC is on the grid.
 test("every 16 minutes keeps its cadence across the hour: :48 -> :04", () => {
   const fire = nextRun("@every 16m", "UTC", at("2026-06-12T12:48:00.000Z"));
   expect(fire?.toISOString()).toBe("2026-06-12T13:04:00.000Z");
@@ -93,8 +90,6 @@ test("nextRun is strictly after `after` and sits on the epoch grid", () => {
   expect(nextRun("@every 1m", null, at("1970-01-01T00:00:00.000Z"))).toEqual(
     at("1970-01-01T00:01:00.000Z"),
   );
-  // 2026-06-12 starts 494784 hours after the epoch, 4 hours past a 5-hour
-  // step, so that day's grid runs 01:00, 06:00, 11:00…
   expect(
     nextRun("@every 5h", null, at("2026-06-12T00:00:00.000Z"))?.toISOString(),
   ).toBe("2026-06-12T01:00:00.000Z");

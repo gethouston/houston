@@ -6,16 +6,6 @@ import {
   piProviderToCatalog,
 } from "./pi-catalog";
 
-/**
- * The pure mappers turn pi-ai `Model`s into the `ProviderCatalog` wire shape
- * without touching the live registry. These samples exercise both metadata
- * paths — a reasoning + vision model (full pricing, context, thinking levels)
- * and a text-only non-reasoning model — plus the OAuth vs API-key `auth`
- * derivation on the provider mapper.
- */
-
-// A reasoning + vision model. `thinkingLevelMap` marks "off" unsupported (null)
-// and pins xhigh; pi-ai's getSupportedThinkingLevels expands the rest.
 const REASONING_VISION: Model<Api> = {
   id: "claude-fable-5",
   name: "Claude Fable 5",
@@ -30,7 +20,6 @@ const REASONING_VISION: Model<Api> = {
   maxTokens: 128_000,
 };
 
-// A cheap, text-only, non-reasoning model.
 const TEXT_ONLY: Model<Api> = {
   id: "gpt-4",
   name: "GPT-4",
@@ -53,7 +42,6 @@ test("maps a reasoning + vision model with full metadata", () => {
     maxTokens: 128_000,
     reasoning: true,
     vision: true,
-    // Derived from getSupportedThinkingLevels: "off" is dropped (marked null).
     thinkingLevels: ["minimal", "low", "medium", "high", "xhigh"],
   });
 });
@@ -69,7 +57,6 @@ test("maps a text-only, non-reasoning model with no thinking levels", () => {
     reasoning: false,
     vision: false,
   });
-  // Non-reasoning models get no effort selector.
   expect(entry.thinkingLevels).toBeUndefined();
 });
 
@@ -96,12 +83,6 @@ test("derives auth: apiKey for a non-OAuth provider", () => {
   });
 });
 
-/**
- * The built catalog is the FULL pi-ai registry on every deployment — no profile
- * gating. This is the guard for the "hosted users see every provider" product
- * decision: OAuth subscriptions AND the API-key providers must all be present,
- * each with a non-empty, wire-shaped model list.
- */
 test("buildProviderCatalog serves the full pi-ai registry", () => {
   const catalog = buildProviderCatalog();
   expect(catalog.length).toBeGreaterThanOrEqual(30);
@@ -139,9 +120,6 @@ test("buildProviderCatalog serves the full pi-ai registry", () => {
 });
 
 test("catalog offers MiniMax only ids its API serves", () => {
-  // `MiniMax-M3[1m]` is Claude Code's client-side 1M marker; MiniMax answers
-  // it with `unknown model` (2013), and MiniMax retired the M2.7 line. Every
-  // row without `runsAs` is one a turn runs as itself.
   const minimax = buildProviderCatalog().find((p) => p.id === "minimax");
   const served = (minimax?.models ?? [])
     .filter((m) => m.runsAs === undefined)
@@ -151,8 +129,6 @@ test("catalog offers MiniMax only ids its API serves", () => {
 });
 
 test("MiniMax's retired ids stay as rows that run as M3.1 Flash", () => {
-  // A team ceiling written with a retired id keeps admitting MiniMax: the
-  // gateway's clamp and the app map the entry through `runsAs`.
   const minimax = buildProviderCatalog().find((p) => p.id === "minimax");
   const runsAs = Object.fromEntries(
     (minimax?.models ?? [])

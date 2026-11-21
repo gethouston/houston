@@ -35,10 +35,6 @@ function useAmounts(figures: HeroFigures) {
   };
 }
 
-/**
- * The one sentence a founder reads first: who is here, then what they did
- * in the window, saying only the totals that could be read.
- */
 export function HeroSentence({ figures }: { figures: HeroFigures }) {
   const { t } = useTranslation("teams");
   const { hours, messages } = useAmounts(figures);
@@ -82,7 +78,6 @@ export function HeroSentence({ figures }: { figures: HeroFigures }) {
   );
 }
 
-/** The huge figure with its unit word, or its skeleton while it loads. */
 export function HeroFigure({
   metric,
   loading,
@@ -122,7 +117,6 @@ export function HeroFigure({
   );
 }
 
-/** The supporting counts under the figure: whatever the figure is not. */
 export function HeroStats({
   metric,
   figures,

@@ -2,9 +2,6 @@ import { expect, test } from "vitest";
 import { COPILOT_NO_ACCESS_ERROR } from "../auth/login-state";
 import { loadLoginRunner } from "./login-runner";
 
-// A pool worker's login runner reports sign-in failures through the same
-// sentinel mapping a pod's runtime uses: the app localizes the Copilot
-// no-access toast by matching this exact string (ui/core provider-login.ts).
 test("the login runner reports a Copilot no-access failure as the shared sentinel", async () => {
   const runner = await loadLoginRunner();
   const raw =

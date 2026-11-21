@@ -163,9 +163,6 @@ describe("interactionDraftKey", () => {
     ok(interactionDraftKey(STEPS) !== interactionDraftKey([STEPS[0]]));
   });
 
-  // The same interaction reaches the card from two sources (the live VM and
-  // the persisted activity), each having built its objects its own way. Property
-  // order is the one difference that must NOT split them into two cards.
   it("is the same key when a step's own properties come in a different order", () => {
     const written: InteractionStep = {
       kind: "question",

@@ -36,8 +36,6 @@ describe("AI Hub uses the shared dialog frame", () => {
     match(shell, /className="min-w-0 flex-1"/);
     match(shell, /className="min-h-0 flex-1 overflow-y-auto"/);
     match(shell, /className="shrink-0 border-t border-line px-5 py-3"/);
-    // Header, body and footer share one inset; a desktop-only inset on the
-    // chrome alone leaves the rows 12px ragged against the title.
     doesNotMatch(shell, /md:px-/);
     match(shell, /<DialogTitle className="sr-only">\{title\}/);
     match(shell, /<DialogDescription className="sr-only">\{description\}/);

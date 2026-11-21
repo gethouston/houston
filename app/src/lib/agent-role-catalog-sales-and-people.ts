@@ -1,4 +1,3 @@
-/** The sales and people worlds and the jobs each one hires for (ids only; labels live in `agentOnboarding:roleSetup`). */
 export const SALES_AND_PEOPLE_WORLDS = {
   sales: [
     "account_executive",

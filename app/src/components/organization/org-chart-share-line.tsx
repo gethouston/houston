@@ -8,7 +8,6 @@ import { FallbackLink } from "../shell/fallback-link";
 import { LINE_KEY, shareLineKey } from "./org-chart-share-line-copy";
 import type { ShareLine } from "./org-chart-share-run";
 
-/** A rate limit names its wait when the gateway said how long. */
 function useLineText(line: ShareLine | null): string | null {
   const { t } = useTranslation("teams");
   if (!line || line.kind === "blocked") return null;
@@ -19,12 +18,6 @@ function useLineText(line: ShareLine | null): string | null {
     : t("orgChart.share.rateLimitedIn", { count: minutes });
 }
 
-/**
- * The one line under the share dialog's buttons (`ShareLine`). Always
- * mounted, so a screen reader announces it when it arrives; only its words
- * change. Empty, it is sr-only, which takes it out of the layout without
- * hiding it.
- */
 export function ShareStatusLine({
   line,
   onFollowBlocked,
@@ -32,7 +25,6 @@ export function ShareStatusLine({
 }: {
   line: ShareLine | null;
   onFollowBlocked: () => void;
-  /** The person checked LinkedIn: Post comes back. */
   onDismissUnconfirmed: () => void;
 }) {
   const { t } = useTranslation("teams");

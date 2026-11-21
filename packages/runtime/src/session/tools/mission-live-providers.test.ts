@@ -4,16 +4,6 @@ import { expect, test, vi } from "vitest";
 import { makeMissionTools } from "./missions";
 import type { SandboxFetch } from "./sandbox-fetch";
 
-/**
- * A provider connected (or disconnected) AFTER the session's tool defs were
- * built. The defs are cached for the session, so the schema's enum is a
- * construction-time hint; every refusal, every accepted pin and every "it runs
- * on X" sentence comes from the provider list resolved when the tool RUNS, in
- * the acting member's own scope.
- */
-
-// The tools take their request scope from AsyncLocalStorage and never read the
-// extension context, so an empty one is safe (same stance as the MCP bridge).
 const NOOP = {} as ExtensionToolContext;
 
 const { live } = vi.hoisted(() => ({
@@ -47,11 +37,6 @@ interface Started {
   details: unknown;
 }
 
-/**
- * The tools as a session holds them: `built` is the status frozen into the
- * schema, and `set` moves the LIVE status the way the user does in the app
- * while the session is open.
- */
 function session(built: readonly ProviderOption[]) {
   const bodies: unknown[] = [];
   let current: readonly ProviderOption[] = built;
@@ -141,7 +126,6 @@ test("a refusal lists the values accepted right now, not at build time", async (
       },
     },
   });
-  // Refused before the host: no board grew a card for a pin nothing matches.
   expect(s.bodies).toEqual([]);
 });
 
@@ -205,7 +189,6 @@ test("with no list injected, the live one is the runtime's own status", async ()
       headers: { "content-type": "application/json" },
     });
   };
-  // The production call site (conversation-cache.ts) passes exactly these two.
   const [start] = makeMissionTools({ call, personalAssistant: false });
   if (!start) throw new Error("missing start_mission");
   const run = (params: Parameters<typeof start.execute>[1]) =>

@@ -11,20 +11,6 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import type { AgentRouteDeps } from "./agent-authz";
 import { dispatchGroup } from "./registry/all";
 
-/**
- * The acting-as trust seam on the four CREDENTIAL routes (C2/C5). The gateway is
- * the trust boundary: only it can mint `x-houston-acting-as`, so only a
- * gateway-fronted host may read one. Off the gateway (desktop / self-host) the
- * client talks to this server directly, so an inbound header is forged input —
- * and a forged one here does real damage: the runtime files the credential into
- * a per-user `auth-users/<hash>.json` scope instead of the shared `auth.json`,
- * so the user connects a provider and every agent still reads as disconnected.
- *
- * Mirrors channel/proxy-acting.test.ts (the dispatch/relay side of the same
- * seam) one level up, at the routes that read the header themselves.
- */
-
-/** A well-formed acting-v1 header a client could trivially forge itself. */
 const FORGED = `acting-v1.${Buffer.from(
   JSON.stringify({ sub: "mallory", name: "Mallory" }),
   "utf8",
@@ -38,11 +24,6 @@ const CLAUDE_ENVELOPE = {
   },
 };
 
-/**
- * The four credential routes, each with the minimum body its validator demands
- * (an api-key provider pi-ai knows; a complete claudeAiOauth envelope) so every
- * request actually reaches the channel instead of stopping at a 400.
- */
 const ROUTES = [
   { path: "credential/capture", body: { provider: "openrouter" } },
   { path: "credential/forget", body: { provider: "openrouter" } },
@@ -53,11 +34,6 @@ const ROUTES = [
   { path: "credential/claude-oauth", body: CLAUDE_ENVELOPE },
 ] as const;
 
-/**
- * A record-only channel: every credential operation captures the ChannelCtx the
- * route handed it and succeeds. What the runtime would DO with `actingAs` is
- * ProxyChannel's business (proxy-acting.test.ts) — here only the ctx matters.
- */
 class RecordingChannel implements RuntimeChannel {
   readonly seen: ChannelCtx[] = [];
 
@@ -101,7 +77,6 @@ interface Fixture {
   agentId: string;
 }
 
-/** Boot the credential routes over real HTTP so a client-supplied header rides req.headers. */
 async function boot(opts: { gatewayFronted: boolean }): Promise<Fixture> {
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const workspace = await store.getOrCreatePersonalWorkspace("alice");
@@ -118,7 +93,6 @@ async function boot(opts: { gatewayFronted: boolean }): Promise<Fixture> {
 
   const s = createServer((req, res) => {
     const url = new URL(req.url || "/", "http://x");
-    // Single-principal host: the bearer names the acting user.
     const userId = req.headers.authorization?.replace(/^Bearer /, "") || "";
     void dispatchGroup("agent-credentials", {
       deps,
@@ -171,8 +145,6 @@ describe.each(ROUTES)("POST /agents/:id/$path — acting-as trust", ({
       const res = await post(fx, path, body, FORGED);
       expect(res.status).toBe(200);
       expect(fx.channel.seen).toHaveLength(1);
-      // The credential must land in the workspace's shared scope, exactly as it
-      // would with no header at all.
       expect(fx.channel.seen[0]?.actingAs).toBeUndefined();
     } finally {
       fx.close();

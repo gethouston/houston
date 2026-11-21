@@ -7,11 +7,6 @@ import { ChannelLinkCommand } from "./channel-link-command";
 import type { ChannelCardState } from "./channel-provider-cards";
 import { ChannelProviderPanel } from "./channel-provider-panel";
 
-/**
- * The Slack card's connect flow. The browser hand-off speaks for itself:
- * "finish in Slack" only once the page is really open, and the page offered
- * behind a click when the browser refused it.
- */
 export function ChannelsSlackCard({
   name,
   state,

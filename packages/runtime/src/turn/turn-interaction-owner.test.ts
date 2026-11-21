@@ -9,12 +9,6 @@ import {
   pooledTurn,
 } from "./turn-interaction-owner.test-support";
 
-/**
- * A pooled turn is someone's next message: on a shared agent, only the person
- * the conversation's live card is for may send it. The refusal is a plain 403
- * before the stream opens, so nothing reaches the turnlog or the transcript.
- */
-
 afterEach(closeTurnServers);
 
 test("another member's message is refused with a 403 before the stream opens", async () => {
@@ -123,8 +117,6 @@ test("a prefetched turn from the card's own person runs", async () => {
 });
 
 test("an unchanged generation is not read again: the prefetched bytes decide", async () => {
-  // The store's bytes carry a card, but its generation is the prefetched one:
-  // the worker trusts what it hydrated and skips the body.
   const out = await pooledTurn(
     "c1",
     { actingAs: { userId: OTHER } },

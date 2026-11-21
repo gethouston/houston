@@ -4,15 +4,6 @@ import { connectOrgSlug } from "../../../lib/agent-connect-model";
 import { useWorkspaceStore } from "../../../stores/workspaces";
 import { CopyIdRow } from "../copy-id-row";
 
-/**
- * The open organization's ID, the value an API caller sends as `x-houston-org` (and
- * the `:org` segment of an A2A address). Keys belong to the person, not an
- * organization, and no route a key can reach returns this slug, so the app is the
- * only place a developer can read it. `null` while `GET /v1/orgs` loads;
- * `failed` once that read failed (already reported by the adapter), so the
- * caller hides the row instead of promising an ID forever. Pass `enabled`
- * false off the public API: a host without it serves no `/v1/orgs`.
- */
 export function useOrgSlug(enabled = true): {
   slug: string | null;
   failed: boolean;
@@ -23,10 +14,6 @@ export function useOrgSlug(enabled = true): {
   return { slug, failed: !slug && isError };
 }
 
-/**
- * The Organization ID card above the key list. Rendered only inside the API-keys
- * section, which is already gated on `capabilities.apiKeys`.
- */
 export function ApiOrgId() {
   const { t } = useTranslation("settings");
   const workspace = useWorkspaceStore((s) => s.current);

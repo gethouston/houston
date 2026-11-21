@@ -8,12 +8,6 @@ import {
   settingsKey as turnSettingsKey,
 } from "./turn/deps";
 
-/**
- * The path seam: CloudPaths must reproduce the EXACT keys the cloud already
- * uses (so the shared handlers and the per-turn dispatch agree on byte-for-byte
- * the same GCS objects), and LocalPaths must map to the desktop tree.
- */
-
 const ws: Workspace = {
   id: "w1",
   ownerUserId: "alice",
@@ -42,9 +36,6 @@ test("CloudPaths reproduces today's GCS-prefix layout", () => {
 });
 
 test("shared root (ADR 0003) — cloud sits beside agent prefixes, local is a dot-dir", () => {
-  // Load-bearing shapes: the cloud key is what the pod-store's shared routes
-  // scope (OrgRoot + "/shared"), and the local dot name is what keeps agent
-  // discovery (dot-filtered) from listing the store as an agent.
   expect(new CloudPaths().sharedRoot(ws)).toBe("ws/w1/shared");
   expect(sharedSkillsDirKey(new CloudPaths().sharedRoot(ws))).toBe(
     "ws/w1/shared/skills",
@@ -79,8 +70,6 @@ test("LocalPaths maps to the desktop tree (agent.id IS the <Workspace>/<Agent> p
 });
 
 test("local agentRoot == agent.id, so a host write and a watched write hit the same path", () => {
-  // The FsWatcher emits agentPath = "<Workspace>/<Agent>" (= agent.id), and
-  // agentRoot is that exact prefix — host-written and user-written files align.
   const p = new LocalPaths();
   const root = p.agentRoot(
     { ...ws, id: "Work" },

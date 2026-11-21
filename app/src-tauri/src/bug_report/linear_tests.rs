@@ -100,9 +100,6 @@ async fn send_bug_report_surfaces_graphql_errors() {
     assert_eq!(error.kind, BugReportFailureKind::Other);
 }
 
-// HOUSTON-APP-5FT: the workspace at its plan's issue cap answers the create
-// with a 200 carrying this GraphQL error. It must come back typed, so the
-// frontend delivers the report through its fallback instead of losing it.
 #[tokio::test]
 async fn send_bug_report_types_the_usage_limit_as_intake_unavailable() {
     let (url, server) = serve_sequence(vec![
@@ -177,8 +174,6 @@ async fn send_bug_report_fails_when_label_is_missing() {
     assert_eq!(error.kind, BugReportFailureKind::Other);
 }
 
-// A Linear that accepts the connection and never answers must not hang the
-// report: the client timeout lands it as `other`, so the fallback runs.
 #[tokio::test]
 async fn send_bug_report_times_out_as_other() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");

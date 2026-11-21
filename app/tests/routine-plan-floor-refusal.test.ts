@@ -7,18 +7,9 @@ import { classifyQuietError } from "../src/lib/quiet-error-class.ts";
 import { toastRoutineWriteFailure } from "../src/lib/routine-write-failure.ts";
 import { useUIStore } from "../src/stores/ui.ts";
 
-/**
- * A routine save the engine refused under the saver's plan floor (`400
- * plan_min_interval`) is an expected business state: ONE info toast with the
- * plan's copy, from the engine-call layer, and nothing reported. The routine
- * screen and its model row attach their own failure handlers; both stand down
- * for it instead of stacking a red "couldn't save" toast and a Sentry report.
- */
-
 const SRC = join(import.meta.dirname, "../src");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
 
-/** The adapter's `HoustonEngineError` shape for the refusal. */
 function refusal(minutes = 15): Error {
   return Object.assign(new Error("HTTP 400"), {
     name: "HoustonEngineError",
@@ -159,9 +150,6 @@ describe("the routine screen and model row on a plan-floor refusal", () => {
   });
 
   it("the update hook owns the one refusal toast; no caller adds its own", () => {
-    // Per-call `mutate(vars, { onError })` only fires for the observer's latest
-    // mutate while mounted: a second edit or leaving the screen would drop the
-    // first refusal's toast. The hook-level onError fires for every write.
     const hook = read("hooks/queries/use-routines.ts");
     const onError = hook.slice(
       hook.indexOf("onError: (err, { agentPath, kind }"),

@@ -1,38 +1,11 @@
-/**
- * Live recording waveform for the composer takeover (audio-editor style). While
- * recording, each 100ms amplitude bucket owns a fixed-width slot: buckets fill
- * left→right as a smooth mirrored envelope, and the remainder of the track is a
- * solid hairline leader. Once the track fills, the strip scrolls left with the
- * newest bucket at the right edge — previously drawn history stays pixel-stable,
- * never re-compressed. Requesting shows a full-width hairline pulse; transcribing
- * freezes the final envelope (same stable layout) at reduced opacity under a
- * gentle scanning shimmer.
- *
- * The leading edge (playhead) is a small lucide Rocket "flying" right along the
- * track: an absolutely-positioned DOM overlay (NOT drawn on canvas) moved each
- * rAF frame via `style.transform` on a ref, so per-frame motion never triggers a
- * React re-render. It rides the track midline at `layout.headX` — the left start
- * while requesting, gliding with the head while recording, pinned to the right
- * edge once scrolling — and is hidden while transcribing.
- *
- * Rendered on a devicePixelRatio-scaled <canvas> for crisp, cheap drawing.
- * Colors come from `currentColor` (the wrapper carries `text-ink-muted`)
- * so it themes without hardcoded hex. Levels are polled with requestAnimationFrame
- * — never through React state — so per-frame updates never trigger a re-render.
- */
-
 import { RocketIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { DictationControl } from "./dictation-types";
 import { drawWaveform, type WaveformMode } from "./dictation-waveform-draw";
 import { computeWaveformLayout } from "./dictation-waveform-math";
 
-/** Rocket overlay size (px). Nose points up-right at rest; +45° faces it right. */
 const ROCKET_PX = 15;
 
-/** The wrapper's `currentColor`, read per frame so a theme switch repaints the
- *  strip without a React re-render. `color` is an inherited property, so a
- *  connected element always resolves it to a real colour string. */
 function canvasColor(canvas: HTMLCanvasElement): string {
   return getComputedStyle(canvas).color;
 }
@@ -87,8 +60,6 @@ export function DictationWaveform({ control }: { control: DictationControl }) {
         ? Date.now() - c.recordingStartedAt
         : 0;
 
-      // Freeze the exact recording layout (levels + elapsed) so transcribing
-      // shows the same stable strip, with no re-compression on freeze.
       if (mode === "recording" && live.length > 0) {
         frozenRef.current = { levels: live, elapsedMs: liveElapsed };
       }
@@ -105,9 +76,6 @@ export function DictationWaveform({ control }: { control: DictationControl }) {
       const shimmer = mode === "transcribing" ? (Date.now() / 1400) % 1 : 0;
       drawWaveform(ctx, cssW, cssH, color, layout, { mode, shimmer });
 
-      // Fly the rocket to the leading edge. The overlay sits at the container's
-      // left/top:50% (the canvas midline); translate centers it on headX and the
-      // track midline, rotate(+45deg) turns lucide's up-right nose to face right.
       const rocket = rocketRef.current;
       if (rocket) {
         if (mode === "transcribing") {

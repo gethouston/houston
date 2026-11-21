@@ -8,47 +8,26 @@ import type { TurnRequest } from "./types";
 
 export type { AgentOp } from "./op-grammar";
 
-/**
- * The acting human of an op, plus `via: "assistant"` when the gateway
- * verified the caller is the AI Manager's credential (PRODUCT-1928): the op
- * twin of the acting-as token's `via` claim an awake pod reads. Trusted for
- * the same reason `userId` is: an envelope reaches `/op` only from the
- * gateway (deployment IAM + the pool's X-Internal-Token), which builds it
- * from its own verified principal, never from client input.
- */
 export type OpActingAs = NonNullable<TurnRequest["actingAs"]> & {
   via?: typeof ACTING_VIA_ASSISTANT;
 };
 
-/**
- * An OP is a write the gateway routes to a pool worker instead of waking the
- * agent's pod: the same claim/host-token envelope as a turn, plus the
- * operation (the op shapes and their parsers live in ./op-grammar).
- */
 export interface OpRequest {
   workspaceId: string;
   agentId: string;
-  /** The gateway registry's display name. The folder never follows a cloud
-   *  rename, so handlers print this; an invalid value is simply absent. */
   agentName?: string;
   gcsPrefix: string;
   hostToken: string;
   claim: NonNullable<TurnRequest["claim"]>;
   actingAs?: OpActingAs;
-  /** The connecting member's acting-as token (their own credential row in a
-   *  team space) — only a credential op needs it. */
   actingToken?: string;
   credential: ServedCredential | null;
   triggersEnabled: boolean;
   customOAuthCallbackUrl?: string;
-  /** The acting person's plan limits, stamped by the gateway like a turn's:
-   *  a routine write this op makes is held to their floor. */
   limits?: TurnLimits;
   op: AgentOp;
 }
 
-// An unknown `via` reads as absent rather than failing the op: the write is
-// still the acting human's, it just earns no "Started by Houston" tag.
 function parseActing(raw: unknown): OpActingAs | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const a = raw as { userId?: unknown; name?: unknown; via?: unknown };
@@ -95,7 +74,6 @@ export function parseOpRequest(body: unknown): OpRequest {
   const raw = b.op as Record<string, unknown> | undefined;
   if (!raw || typeof raw !== "object") throw new Error("invalid 'op'");
   const agentName = validDisplayName(b.agentName);
-  // A garbled stamp is no limit, never a failed op (parseTurnLimits).
   const limits = parseTurnLimits(b.limits);
   return {
     workspaceId: str(b.workspaceId, "workspaceId"),

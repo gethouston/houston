@@ -1,13 +1,4 @@
-/* ═══════════════════════════════════════════
-   Houston Developers — Design System
-   Mirrors the Learn section (globals.css)
-   ═══════════════════════════════════════════ */
-
 :root {
-  /* Space theme: the docs sit over the landing's fixed Milky Way background
-     (space-bg.njk + /assets/space.css). Text is white-on-space, panels are
-     NEAR-OPAQUE dark fills — never backdrop-filter, which re-blurs the moving
-     photo every scroll frame on Gecko (see assets/space.css). */
   --background: transparent;
   --foreground: rgba(255, 255, 255, 0.92);
   --secondary: rgba(255, 255, 255, 0.05);
@@ -66,10 +57,6 @@ a {
   text-decoration: none;
 }
 
-/* ═══════════════════════════════════════════
-   Layout
-   ═══════════════════════════════════════════ */
-
 .layout {
   display: grid;
   grid-template-columns: 260px 1fr;
@@ -91,10 +78,6 @@ a {
     padding: 32px 22px 64px;
   }
 }
-
-/* ═══════════════════════════════════════════
-   Sidebar
-   ═══════════════════════════════════════════ */
 
 .sidebar {
   position: sticky;
@@ -161,10 +144,6 @@ a {
 }
 
 .sidebar-nav a.active .num { color: var(--gray-600); }
-
-/* ═══════════════════════════════════════════
-   Content
-   ═══════════════════════════════════════════ */
 
 .content {
   max-width: 760px;
@@ -254,10 +233,6 @@ a {
   color: var(--gray-950);
 }
 
-/* ═══════════════════════════════════════════
-   Code blocks (with copy button)
-   ═══════════════════════════════════════════ */
-
 .codeblock {
   position: relative;
   margin-bottom: 24px;
@@ -327,10 +302,6 @@ a {
   .copy-btn { opacity: 1; }
 }
 
-/* ═══════════════════════════════════════════
-   Endpoint header (method + path)
-   ═══════════════════════════════════════════ */
-
 .endpoint {
   display: flex;
   align-items: center;
@@ -366,10 +337,6 @@ a {
 }
 
 .endpoint .path b { color: var(--info); font-weight: 600; }
-
-/* ═══════════════════════════════════════════
-   Field / reference tables
-   ═══════════════════════════════════════════ */
 
 .fields-table {
   width: 100%;
@@ -414,10 +381,6 @@ a {
 
 .table-scroll { overflow-x: auto; }
 
-/* ═══════════════════════════════════════════
-   On-this-page TOC
-   ═══════════════════════════════════════════ */
-
 .toc {
   background: var(--gray-50);
   border: 1px solid var(--border-light);
@@ -461,10 +424,6 @@ a {
   text-underline-offset: 3px;
 }
 
-/* ═══════════════════════════════════════════
-   Callouts
-   ═══════════════════════════════════════════ */
-
 .callout {
   border: 1px solid var(--border-light);
   border-radius: 10px;
@@ -507,10 +466,6 @@ a {
   border-color: color-mix(in oklch, var(--success) 20%, transparent);
 }
 .callout-success .callout-label { color: var(--success); }
-
-/* ═══════════════════════════════════════════
-   Surface cards (overview)
-   ═══════════════════════════════════════════ */
 
 .hero { padding-top: 8px; }
 .hero h1 {
@@ -564,10 +519,6 @@ a {
   color: var(--muted-foreground);
 }
 
-/* ═══════════════════════════════════════════
-   Buttons
-   ═══════════════════════════════════════════ */
-
 .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 
 .btn {
@@ -593,10 +544,6 @@ a {
   border: 1px solid var(--border-medium);
 }
 .btn-secondary:hover { background: var(--gray-50); }
-
-/* ═══════════════════════════════════════════
-   Prev / Next
-   ═══════════════════════════════════════════ */
 
 .pager {
   display: grid;
@@ -627,10 +574,6 @@ a {
 .pager .next { text-align: right; }
 .pager .spacer { border: none; background: transparent; }
 .pager .spacer:hover { background: transparent; border: none; }
-
-/* ═══════════════════════════════════════════
-   Footer
-   ═══════════════════════════════════════════ */
 
 .footer {
   border-top: 1px solid var(--border-light);

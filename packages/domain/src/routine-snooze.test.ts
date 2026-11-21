@@ -51,7 +51,6 @@ const NO_CREDITS: RoutineRunFailure = {
   provider: "anthropic",
 };
 
-/** Errored runs of r1, OLDEST first, one minute apart after the edit. */
 function errors(failures: RoutineRunFailure[]): RoutineRun[] {
   const base = Date.parse(EDITED) + 60_000;
   return failures
@@ -159,17 +158,12 @@ test("a snoozed routine is not due until its snooze ends", () => {
     at: NOW,
   });
   const since = new Date("2026-10-09T11:59:00.000Z");
-  // Every instant in the window (12:00, 12:05) is before the snooze ends.
   expect(dueAt(snoozed, since, new Date("2026-10-09T12:06:00Z"), "UTC")).toBe(
     null,
   );
-  // The window reaches past the snooze: the first instant after it fires,
-  // never the skipped ones (no catch-up burst into the wall).
   expect(
     dueAt(snoozed, since, new Date("2026-10-09T12:11:00Z"), "UTC"),
   ).toEqual(new Date("2026-10-09T12:10:00.000Z"));
-  // An instant exactly at the snooze end fires, as in the cloud planner: the
-  // provider's reset is when requests work again.
   const atEdge = snoozeRoutine(routine(), {
     reason: "usage_limit",
     provider: "anthropic",
@@ -180,7 +174,6 @@ test("a snoozed routine is not due until its snooze ends", () => {
   expect(dueAt(atEdge, since, new Date("2026-10-09T12:11:00Z"), "UTC")).toEqual(
     new Date("2026-10-09T12:05:00.000Z"),
   );
-  // Unsnoozed, the same window fires its first instant.
   expect(
     dueAt(routine(), since, new Date("2026-10-09T12:06:00Z"), "UTC"),
   ).toEqual(new Date("2026-10-09T12:00:00.000Z"));
@@ -206,7 +199,6 @@ test("changing the model or provider, or resuming, clears the snooze; a rename k
   expect(applyRoutineUpdate(snoozed, { name: "Renamed" }, NOW).snoozed).toEqual(
     snoozed.snoozed,
   );
-  // A client can never write the engine-owned field through an update.
   const update = { name: "x", snoozed: snoozed.snoozed };
   expect(applyRoutineUpdate(routine(), update, NOW).snoozed).toBeUndefined();
 });

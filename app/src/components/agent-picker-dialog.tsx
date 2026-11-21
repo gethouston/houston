@@ -15,30 +15,10 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   agents: Agent[];
   onPick: (agent: Agent) => void;
-  /** Override the heading for a caller that is not starting a mission (a
-   *  team's Routines asks the same question about a routine). Defaults to the
-   *  mission wording, so the board is unchanged. */
   title?: string;
   description?: string;
 }
 
-/**
- * Modal that asks "which agent should run this?" and renders one card per
- * agent. It is the ONE answer to that question wherever a create starts from a
- * surface that spans several agents — but it only ASKS: what picking an agent
- * leads to belongs entirely to the caller, and differs by caller.
- *
- * - A team's Mission Control "New mission" switches to that agent's board view
- *   and opens the new-mission right panel, the same flow the per-agent New
- *   Mission button gives. That sequencing lives in the board's own wiring,
- *   because it depends on view-mode state.
- * - A team's Routines opens that agent's routine intake in the shared shell
- *   panel; nothing navigates.
- *
- * So the copy is the caller's too: pass `title` / `description` whenever "a
- * fresh conversation" is not what happens next. The defaults are the mission
- * wording, so the board is unchanged.
- */
 export function AgentPickerDialog({
   open,
   onOpenChange,

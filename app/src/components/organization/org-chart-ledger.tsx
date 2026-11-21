@@ -25,16 +25,6 @@ interface LedgerProps {
   onOpenPerson: (userId: string) => void;
 }
 
-/**
- * The ranked ledger under the hero: the #1 AI Employee featured on its own
- * card, then everyone else in rank order under one row of captions. Past
- * {@link DENSE_LEDGER} lines tighten and, once the ledger is wide enough to
- * hold two (a container query, so it follows the room the ledger actually
- * gets), split into two columns read top to bottom, each with its captions.
- * The phone stacks every line in two rows. While the hours it ranks by are
- * still loading it stays a skeleton, so the order never reshuffles under
- * the reader when they land. The same hold applies when messages lead.
- */
 export function OrgChartLedger(props: LedgerProps) {
   const { t } = useTranslation("teams");
   const { lines, columns, phone } = props;

@@ -5,9 +5,6 @@ import {
   toFileOpFailure,
 } from "../src/lib/file-op-failure.ts";
 
-// PRODUCT-1732: the shell's save / reveal commands reject with a typed
-// failure; the OS states a user can fix become informational copy with no
-// Sentry report, and only `other` still goes down the report path.
 describe("toFileOpFailure", () => {
   it("reads the shell's typed rejection", () => {
     deepStrictEqual(
@@ -74,7 +71,6 @@ describe("planFileOpFailure", () => {
   });
 
   it("Explorer refusing to launch is the one expected reveal state", () => {
-    // HOUSTON-APP-5C6: "Failed to reveal path: Access is denied. (os error 5)".
     const denied = planFileOpFailure("reveal", {
       kind: "permission",
       message: "os error 5",
@@ -106,8 +102,6 @@ describe("planFileOpFailure", () => {
   });
 
   it("a destination that no longer exists is an expected save state", () => {
-    // HOUSTON-APP-53A after PR #1555: the folder picked in the dialog is on a
-    // drive that went away (os error 3 / 2).
     const gone = planFileOpFailure("save", {
       kind: "not_found",
       message: "Failed to save file: (os error 3)",

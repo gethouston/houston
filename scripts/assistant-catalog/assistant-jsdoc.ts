@@ -30,24 +30,15 @@
 export interface AssistantDocs {
   description?: string;
   group?: string;
-  /**
-   * `@param <name> <what it is>` lines, by parameter name. A parameter naming
-   * an existing thing (an agent, a routine, a skill) is unguessable from its
-   * type alone, so the author's sentence is what a caller reads instead of
-   * inventing an identifier.
-   */
   params: Record<string, string>;
   confirm: boolean;
-  /** Why the caller must be asked, when the author wrote it. */
   confirmed?: string;
   hidden: boolean;
   hiddenReason?: string;
-  /** The `hands:` text verbatim; the card vocabulary is the gate's to judge. */
   handsCard?: string;
   unconfirmed?: string;
   unroutableReason?: string;
   unschematizedReason?: string;
-  /** Tags the grammar does not define — a typo, or a reason left off. */
   unknownTags: string[];
 }
 
@@ -60,7 +51,6 @@ const REASON_KEYS = {
   unschematized: "unschematizedReason",
 } as const;
 
-/** Tags whose flag stands on its own, so a missing reason is the gate's call. */
 const FLAG_TAGS = new Set(["confirm", "hidden"]);
 
 type ReasonTag = keyof typeof REASON_KEYS;
@@ -69,13 +59,6 @@ function isReasonTag(name: string): name is ReasonTag {
   return name in REASON_KEYS;
 }
 
-/**
- * The block's lines with their comment furniture off. The leading `*` is
- * OPTIONAL: a one-line block (`/** @assistant group:files hidden: … *\/`) has
- * no star on the only line it has, and a tag left behind its own indentation
- * there would be read as prose — withholding nothing, grouping nothing, and
- * publishing the operation as if the author had written no tag at all.
- */
 function cleanBlock(block: string): string[] {
   return block
     .replace(/^\s*\/\*\*/, "")
@@ -108,13 +91,8 @@ function parseTags(line: string, docs: AssistantDocs): void {
     if (isReasonTag(name)) {
       if (name === "hidden") docs.hidden = true;
       if (name === "confirm") docs.confirm = true;
-      // The reason is the rest of the line: anything after it would be read as
-      // part of the prose, so a reason-bearing tag ends its line.
       const reason = colon ? rest.trim() : "";
       if (reason) docs[REASON_KEYS[name]] = reason;
-      // A bare `unroutable`/`unschematized` asserts nothing; `confirm` and
-      // `hidden` carry their flag without a reason, and the gate rejects the
-      // missing rationale with a message that says which one is owed.
       else if (!FLAG_TAGS.has(name)) docs.unknownTags.push(name);
       if (colon) return;
       rest = rest.trimStart();
@@ -126,12 +104,6 @@ function parseTags(line: string, docs: AssistantDocs): void {
   }
 }
 
-/**
- * `@param <name> <description>`, description running to the end of the line and
- * on through any following lines that are neither blank nor another tag — the
- * ordinary JSDoc wrapping rule, so a long sentence does not have to fit 80
- * columns to survive.
- */
 function parseParams(lines: readonly string[]): Record<string, string> {
   const params: Record<string, string> = {};
   let open: string | null = null;

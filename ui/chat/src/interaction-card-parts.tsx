@@ -5,11 +5,6 @@ import { ArrowRight } from "lucide-react";
 import { useState } from "react";
 import type { ChatInteractionOption } from "./interaction-card-logic";
 
-/** The app-logo lockup image for a branded question's title, sized to match the
- *  header's icon row (24px, the same box the connect card's `sm` logo uses). The
- *  URL is app-supplied; a load failure drops the image so the title falls back to
- *  the name alone — never a broken image. `alt` is the app name so the logo is
- *  addressable in tests/a11y. */
 export function BrandLogo({ url, name }: { url: string; name: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
@@ -25,10 +20,6 @@ export function BrandLogo({ url, name }: { url: string; name: string }) {
   );
 }
 
-/** A question step's scrollable body: the single-select option rows (when the
- *  agent offered choices). The free-text escape field and the card-wide decline
- *  are NOT here — they live in {@link QuestionAnswerRow}, fixed below the
- *  scroll region. Selecting an option answers and advances. */
 export function QuestionStepBody({
   options,
   selectedId,
@@ -63,18 +54,6 @@ export function QuestionStepBody({
   );
 }
 
-/** One selectable answer, a full-width single-select row (click = answer): a
- *  REGULAR-weight label (never bold — color tone carries the hierarchy), an
- *  optional soft "Recommended" chip, and a RIGHT-edge circular number badge
- *  (the digit doubles as the keyboard shortcut). The row surface is transparent
- *  until hover/selected, when it fills a soft grey and the badge crossfades
- *  into a trailing arrow — the affordance that a click answers and advances —
- *  in the same right slot, so nothing shifts. Selection is carried by that same
- *  fill, not a border. A label longer than the row WRAPS onto more lines —
- *  never an ellipsis: the user is choosing between these sentences, so every
- *  word must be readable at any panel width (PRODUCT-1769). An option's
- *  `description`, when present, sits under the label as a muted second line
- *  that wraps the same way. */
 export function OptionRow({
   option,
   selected,
@@ -123,8 +102,6 @@ export function OptionRow({
           </span>
         ) : null}
       </span>
-      {/* One right slot: the number badge at rest, the advance arrow on
-          hover/selected — a crossfade in place, so the row never reflows. */}
       <span className="relative flex size-7 shrink-0 items-center justify-center">
         <span
           className={cn(

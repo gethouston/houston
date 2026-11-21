@@ -20,11 +20,6 @@ const SUMMARY = {
   seats: 3,
 };
 
-/**
- * A billing SDK over a mock `fetch` that records the whole wire. `reactivity` is
- * off, so every recorded call is one a billing operation made and nothing else —
- * which is what makes "exactly one request" an exact claim.
- */
 function makeSdk(answer: () => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(
@@ -57,7 +52,6 @@ const json = (body: unknown, status = 200) =>
 
 const ok = (body: unknown) => makeSdk(() => json(body));
 
-/** The three statuses a caller may read as "no subscription to show". */
 const NOT_ENTITLED = [404, 403, 503];
 
 describe("the billing requests", () => {
@@ -100,7 +94,6 @@ describe("the billing requests", () => {
         kind: code,
       });
     }
-    // A code under a status the contract does not pair it with still throws.
     const { sdk } = makeSdk(() => json({ code: "interval_unavailable" }, 400));
     await expect(
       sdk.billing.createCheckout({ interval: "year" }),
@@ -125,17 +118,12 @@ describe("the billing requests", () => {
 });
 
 describe("what the module refuses to soften", () => {
-  // The not-entitled trio is the whole point: a surface that cannot tell "no
-  // subscription to show" from "could not ask" shows the user a lie, so the
-  // reading stays with the surface and the SDK reports the status it got.
   for (const status of NOT_ENTITLED) {
     it(`throws a BillingHttpError carrying the status — a ${status} never degrades`, async () => {
       const { sdk } = makeSdk(() => json({ error: "no billing here" }, status));
       const err = await sdk.billing.getBilling().catch((e: unknown) => e);
       expect(err).toBeInstanceOf(BillingHttpError);
       expect((err as BillingHttpError).status).toBe(status);
-      // The body travels as the message, which is what the web adapter parses
-      // back into a HoustonEngineError.
       expect((err as BillingHttpError).message).toBe(
         JSON.stringify({ error: "no billing here" }),
       );

@@ -21,7 +21,6 @@ test("MemoryCredentialStore: get is null, then put → get → overwrite → rem
   await s.put(cred());
   expect((await s.get("ws_1", "openai-codex"))?.accessToken).toBe("at");
 
-  // A refresh overwrites the row in place (same workspace+provider key).
   await s.put(cred({ accessToken: "at2", refreshToken: "rt2" }));
   const got = await s.get("ws_1", "openai-codex");
   expect(got?.accessToken).toBe("at2");
@@ -34,11 +33,9 @@ test("MemoryCredentialStore: get is null, then put → get → overwrite → rem
 test("MemoryCredentialStore: ifAbsent put fills a hole but never clobbers (HOU-855)", async () => {
   const s = new MemoryCredentialStore();
 
-  // Absent → fills.
   await s.put(cred({ accessToken: "at-fill" }), { ifAbsent: true });
   expect((await s.get("ws_1", "openai-codex"))?.accessToken).toBe("at-fill");
 
-  // Present → the stale snapshot is dropped, the live row survives.
   await s.put(cred({ accessToken: "at-stale", refreshToken: "rt-stale" }), {
     ifAbsent: true,
   });
@@ -58,8 +55,8 @@ test("MemoryCredentialStore: workspaces + providers are isolated keys", async ()
 
 test("isExpiring: fresh → false; within skew or past expiry → true", () => {
   expect(isExpiring(cred({ expiresAt: Date.now() + 3_600_000 }))).toBe(false);
-  expect(isExpiring(cred({ expiresAt: Date.now() + 30_000 }))).toBe(true); // within 2-min skew
-  expect(isExpiring(cred({ expiresAt: Date.now() - 1_000 }))).toBe(true); // already expired
+  expect(isExpiring(cred({ expiresAt: Date.now() + 30_000 }))).toBe(true);
+  expect(isExpiring(cred({ expiresAt: Date.now() - 1_000 }))).toBe(true);
 });
 
 test("an api-key credential round-trips with its kind and never looks expiring", async () => {
@@ -76,7 +73,5 @@ test("an api-key credential round-trips with its kind and never looks expiring",
   if (!got) throw new Error("expected the stored openrouter credential");
   expect(got.kind).toBe("api_key");
   expect(got.accessToken).toBe("sk-or-v1-THEKEY");
-  // Far-future expiry → /sandbox/credential never tries to refresh it (which
-  // would throw — there is no OAuth refresh config for openrouter).
   expect(isExpiring(got)).toBe(false);
 });

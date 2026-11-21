@@ -1,10 +1,6 @@
 import { HoustonEngineError } from "@houston/engine-adapter/client";
 import { expect, test } from "vitest";
 
-// The host's own explanation must survive into the error message — it is what
-// the red toast, the frontend log, and the Sentry report show. A bare
-// "engine error <status>" is only acceptable when the body carried no reason.
-
 test("carries the host's string error body into the message", () => {
   const err = new HoustonEngineError(503, {
     error: "integrations not configured",

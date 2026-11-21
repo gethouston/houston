@@ -5,14 +5,6 @@ import {
   MANAGED_CLOUD_CAPABILITIES,
 } from "./capabilities";
 
-/**
- * The capability profiles are the single source of truth the host serves at
- * /v1/capabilities and the UI gates on. This pins the OpenAI-compatible (BYO
- * endpoint) flag now that it is enabled on EVERY profile (cloud accepts a public
- * HTTPS endpoint; the save route adds the public-:443 validation). The broader
- * profile parity/asymmetry contract lives in dual-profile.test.ts.
- */
-
 describe("capability profiles: openaiCompatible", () => {
   test("is enabled on every profile (desktop, cloud, managed cloud pod)", () => {
     expect(LOCAL_CAPABILITIES.openaiCompatible).toBe(true);

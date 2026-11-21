@@ -1,18 +1,9 @@
-/**
- * Describe a routine's next fire for the row and the routine screen: a
- * relative ("in 2h 14m") and an absolute ("today at 9:00 AM") label.
- */
 import {
   DEFAULT_NEXT_FIRE_LABELS,
   interp,
   type NextFireLabels,
 } from "./labels.ts";
 
-/**
- * Format a future `Date` as a relative ("in 2h 14m") + absolute ("today at
- * 9:00 AM") pair, both interpreted in the routine's `timeZone`. The connector
- * words come from `labels`; weekday/month/time formatting comes from `locale`.
- */
 export function describeNextFire(
   next: Date,
   timeZone: string,
@@ -36,7 +27,6 @@ export function describeNextFire(
     relative = interp(labels.inDaysHours, { d: days, h: hours });
   else relative = interp(labels.inDays, { d: days });
 
-  // Absolute: today / tomorrow / weekday — computed in the routine's tz.
   let dayLabel = labels.soon;
   let timeLabel = "";
   try {
@@ -79,9 +69,7 @@ export function describeNextFire(
       hour: "numeric",
       minute: "2-digit",
     }).format(next);
-  } catch {
-    // fall through with defaults
-  }
+  } catch {}
 
   const absolute = timeLabel
     ? interp(labels.at, { day: dayLabel, time: timeLabel })

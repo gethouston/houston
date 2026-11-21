@@ -4,11 +4,6 @@ import { PROVIDERS } from "./catalog";
 import { hostProvider, isKnownProvider } from "./lookup";
 import { buildProviderCatalog } from "./pi-catalog";
 
-/**
- * The hosted gateway resolves a sleeping agent's mission pin from the pin
- * facts `GET /v1/catalog` carries, so they must say exactly what the host's
- * own resolver (routes/missions-provider.ts) reads.
- */
 const catalog = buildProviderCatalog();
 
 test("every catalog provider is one the pin resolver knows, and carries its pin facts", () => {
@@ -28,9 +23,6 @@ test("curated providers carry the host's display name; others none", () => {
   expect(nvidia?.pin).toEqual({ models: [] });
   for (const curated of PROVIDERS) {
     const entry = catalog.find((p) => p.id === curated.id);
-    // The local endpoint is curated but has no pi catalog of its own, so no
-    // entry carries its name: the hosted gateway lists it under this exact
-    // string (cloud internal/edge/agents/missionpin.go localEndpointName).
     if (curated.id === "openai-compatible") {
       expect(entry).toBeUndefined();
       expect(curated.name).toBe("Local model (OpenAI-compatible)");
@@ -40,7 +32,6 @@ test("curated providers carry the host's display name; others none", () => {
 
 test("spoken rows are the valid named rows, in the order a family name picks", () => {
   const anthropic = catalog.find((p) => p.id === "anthropic");
-  // Retired Claude rows are named but outside the lineup, so they never resolve.
   expect(anthropic?.pin?.models).toEqual([
     { id: "claude-fable-5-2", name: "Fable 5.2" },
     { id: "claude-opus-5-5", name: "Opus 5.5" },
@@ -65,8 +56,6 @@ test("first matching spoken row is what the host resolves, for every named provi
 });
 
 test("the curated order a refusal lists is the one the hosted gateway mirrors", () => {
-  // cloud internal/pooldispatch/provider.go curatedProviderOrder: the gateway
-  // lists a refusal's connected providers in this order.
   expect(PROVIDERS.map((p) => p.id)).toEqual([
     "anthropic",
     "openai-codex",

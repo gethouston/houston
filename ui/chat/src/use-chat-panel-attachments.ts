@@ -18,12 +18,6 @@ type AttachmentOptions = Pick<
   | "composerLabels"
 >;
 
-/**
- * ChatPanel's attachments. They live at panel level so the ENTIRE panel is a
- * drop target, not just the composer. Controlled props are forwarded;
- * otherwise the files are kept per conversation (`useSessionFiles`) and the
- * sent ones removed after a send.
- */
 export function useChatPanelAttachments({
   sessionKey,
   onSend,
@@ -41,9 +35,6 @@ export function useChatPanelAttachments({
   );
   const duplicateNotice = composerLabels?.fileAlreadyInChat;
   const tooManyNotice = composerLabels?.tooManyFiles;
-  // Bound to this render's conversation and its file rules, its list read
-  // when it runs: a drop resolves after its read, possibly once the panel
-  // shows another conversation or the drop target that caught it is gone.
   const addDroppedFiles = useCallback(
     (incoming: File[]) =>
       ingestInto(sessionKey, (current, write) =>

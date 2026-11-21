@@ -11,15 +11,6 @@ import { expect, test } from "vitest";
 import { fileToolGuardOptions } from "../coordinator-policy";
 import { makeClampedFileTools } from "./clamped-fs";
 
-/**
- * H-044 end to end on the pi path: the coordinator's REAL file tools, built
- * with the REAL policy, read a photo someone sent and hand the model an image
- * it can see, while every write into the attachments folder is refused before
- * a byte is written. The guard is built before `uploads/` exists, as it is in
- * a runtime that boots before the first upload arrives.
- */
-
-// A 1x1 PNG: real image bytes, so pi's mime sniffing takes the image path.
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
   "base64",

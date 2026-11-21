@@ -12,14 +12,6 @@ import { useState } from "react";
 import type { SpecimenProp } from "../../../src/specimen";
 import { SampleIcon, type SampleItem } from "./sample";
 
-/**
- * The pieces the {@link CatalogShell} specimen composes. The shell is a layout:
- * it owns nothing but the sticky controls slot, the two section headers and the
- * tab chrome, so demonstrating it honestly means feeding it the real rows,
- * controls and skeletons a Houston surface would.
- */
-
-/** The shell's public API, read off its TypeScript types. */
 export const shellProps: readonly SpecimenProp[] = [
   {
     name: "controls",
@@ -64,11 +56,6 @@ export const shellProps: readonly SpecimenProp[] = [
   },
 ];
 
-/**
- * A bounded scroll container so the shell's sticky controls row can actually be
- * seen doing its job — transparent at rest, fading in its opaque `popover` fill
- * once rows pass behind it. Scroll the box.
- */
 export function ShellViewport({ children }: { children: ReactNode }) {
   return (
     <div className="h-80 w-full overflow-y-auto rounded-2xl border border-line bg-gutter px-4 pb-4">
@@ -77,7 +64,6 @@ export function ShellViewport({ children }: { children: ReactNode }) {
   );
 }
 
-/** The surface's ONE search-and-filters row, exactly as a consumer owns it. */
 export function ShellControls() {
   const [query, setQuery] = useState("");
   return (
@@ -85,7 +71,6 @@ export function ShellControls() {
   );
 }
 
-/** Rows for the discovery half: each carries the ghost `+` install action. */
 export function AvailableRows({ items }: { items: readonly SampleItem[] }) {
   return (
     <CatalogGrid>
@@ -102,7 +87,6 @@ export function AvailableRows({ items }: { items: readonly SampleItem[] }) {
   );
 }
 
-/** Rows for the installed strip: a presence dot, no install affordance. */
 export function InstalledRows({ items }: { items: readonly SampleItem[] }) {
   return (
     <CatalogGrid>
@@ -119,7 +103,6 @@ export function InstalledRows({ items }: { items: readonly SampleItem[] }) {
   );
 }
 
-/** What the strip shows while the surface is still loading its own items. */
 export function InstalledSkeleton() {
   return (
     <CatalogGrid>

@@ -12,13 +12,6 @@ import { LEGACY_SETUP_BEGIN, LEGACY_SETUP_END } from "@houston/domain";
 import { afterEach, expect, test } from "vitest";
 import { AGENT_STORE_MIGRATION_PATHS, migrateAgentStore } from "./agent-store";
 
-/**
- * A pool worker hydrates only AGENT_STORE_MIGRATION_PATHS before it runs the
- * migrations. A step that reads or writes any other agent file would see a
- * different tree there than on a pod, so the migration over the admitted
- * files alone must land exactly what it lands over the whole agent.
- */
-
 const AGENT = join("Personal", "Ledger");
 const roots: string[] = [];
 
@@ -44,7 +37,6 @@ const FIXTURE: Record<string, string> = {
   "report.pdf": "pdf",
 };
 
-/** Every file under the agent, agent-relative and `/`-joined. */
 function tree(agentRoot: string, dir = agentRoot): Record<string, string> {
   const out: Record<string, string> = {};
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -59,7 +51,6 @@ function tree(agentRoot: string, dir = agentRoot): Record<string, string> {
   return out;
 }
 
-/** learnings.md converts with fresh ids and timestamps on every run. */
 const comparable = (files: Record<string, string>) => {
   const key = ".houston/learnings/learnings.json";
   const learnings = files[key];
@@ -68,7 +59,6 @@ const comparable = (files: Record<string, string>) => {
   return { ...files, [key]: entries.map((entry) => entry.text).join("\n") };
 };
 
-/** An agent whose learnings already moved: the flat markdown must stay put. */
 const MOVED_LEARNINGS: Record<string, string> = {
   ...FIXTURE,
   ".houston/learnings/learnings.json": '[{"id":"l1","text":"Kept"}]',
@@ -114,7 +104,6 @@ test.each([
     Object.entries(whole.files).filter(([rel]) => !untouched.includes(rel)),
   );
   expect(admitted.files).toEqual(wholeAdmitted);
-  // Nothing outside the admitted paths was written, moved or removed.
   for (const rel of untouched) expect(whole.files[rel]).toBe(fixture[rel]);
   for (const rel of Object.keys(whole.files))
     expect(

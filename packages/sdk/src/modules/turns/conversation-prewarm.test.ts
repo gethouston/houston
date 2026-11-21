@@ -16,7 +16,6 @@ interface Call {
   contentType: string | null;
 }
 
-/** A real SDK over a recording fetch and a clock the test moves. */
 function sdk(answer: () => Response = () => json(202, LAUNCHING)) {
   const calls: Call[] = [];
   let now = 0;
@@ -38,7 +37,6 @@ function sdk(answer: () => Response = () => json(202, LAUNCHING)) {
     devicePreferences: memoryKv(),
     clock: {
       now: () => now,
-      // performance.now(): never set, stopped while the machine sleeps.
       monotonic: () => elapsed,
       setTimeout: () => 0,
       clearTimeout: () => {},
@@ -50,18 +48,14 @@ function sdk(answer: () => Response = () => json(202, LAUNCHING)) {
     now += ms;
     elapsed += ms;
   };
-  /** The wall clock alone is set: time itself went on as before. */
   const setWallClock = (ms: number) => {
     now += ms;
   };
-  /** The machine sleeps: the wall clock runs, the monotonic one stops. */
   const sleep = (ms: number) => {
     now += ms;
   };
   const client = new HoustonSdk(config);
   type Draft = Parameters<typeof client.turns.draftChanged>[0];
-  /** Types on, a keystroke every 250 ms, until just short of the typing
-   *  threshold: the next keystroke reaches it. */
   const typeUpTo = async (draft: Draft) => {
     for (let t = 0; t < PREWARM_TYPING_MS; t += 250) {
       await client.turns.draftChanged(draft, { conversationPrewarm: true });
@@ -184,8 +178,6 @@ describe("turns.draftChanged and claimNewConversationId", () => {
     await typeUpTo(draft);
     await client.turns.draftChanged(draft, { conversationPrewarm: true });
     expect(calls).toHaveLength(1);
-    // The wall clock is set back 15 s while 30 s pass: the 20 s hold has
-    // ended, so one keystroke readies nothing.
     setWallClock(-15_000);
     advance(30_000);
     await client.turns.draftChanged(
@@ -204,8 +196,6 @@ describe("turns.draftChanged and claimNewConversationId", () => {
       text: "h",
     };
     const caps = { conversationPrewarm: true };
-    // Four keystrokes a quarter second apart: 1 s of real typing, with the
-    // wall clock set 500 ms forward in the middle of it.
     for (let i = 0; i < 4; i++) {
       await client.turns.draftChanged(draft, caps);
       advance(250);

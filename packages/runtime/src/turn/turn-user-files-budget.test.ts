@@ -22,7 +22,6 @@ import {
 
 const PREFIX = "ws/w1/agent-1";
 const AGENT = "workspaces/Personal/Bob";
-/** Room for the startup set, never for the person's files. */
 const CRITICAL_CAP = 1024;
 
 const dirs: string[] = [];
@@ -37,7 +36,6 @@ function temp(name: string) {
   return dir;
 }
 
-/** A small startup set beside `userBytes` of the person's own documents. */
 function storeWithUserFiles(userBytes: number) {
   const storeRoot = temp("user-files-store-");
   const put = (rel: string, body: string) => {
@@ -95,14 +93,11 @@ test("user files over their own budget refuse only the tools, and sync touches n
   const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
   const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
   const preparation = await claimedTurn(store, 2 * CRITICAL_CAP);
-  // The prompt still runs: the startup set landed.
   const fs = await preparation.hydrated;
   expect(existsSync(join(fs.workspaceDir, "CLAUDE.md"))).toBe(true);
   await expect(fs.workspaceReady).rejects.toMatchObject({
     code: "hydrate_over_cap",
   });
-  // An expected, lasting state: logged with its size, never as an error
-  // (console.error feeds Sentry on the worker).
   expect(error).not.toHaveBeenCalled();
   expect(info).toHaveBeenCalledWith(
     expect.stringContaining("deferred_files_over_budget listed=8192"),
@@ -111,7 +106,6 @@ test("user files over their own budget refuse only the tools, and sync touches n
   info.mockRestore();
   const refusal = awaitDeferredFiles(fs.workspaceReady);
   await expect(refusal).rejects.toThrow(/too large/);
-  // A retry cannot shrink the person's files.
   await expect(refusal).rejects.not.toThrow(/again/);
   expect(existsSync(join(fs.workspaceDir, "Documents", "scan.pdf"))).toBe(
     false,
@@ -132,7 +126,6 @@ test("user files over their own budget refuse only the tools, and sync touches n
 
 test("an agent listing 2.3 GiB of its person's files chats under the default caps", async () => {
   const MiB = 1024 * 1024;
-  // The stuck agent's largest objects, then the rest of its 2,361 MiB.
   const listed = [390, 272, 169, 158, 119, 118, 1135];
   const { storeRoot } = storeWithUserFiles(2);
   listed.forEach((_, i) => {

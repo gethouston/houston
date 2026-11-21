@@ -7,11 +7,6 @@ import type {
 import agents from "../src/locales/en/agents.json" with { type: "json" };
 import shell from "../src/locales/en/shell.json" with { type: "json" };
 
-// Every name field (hire cards, import, identity dialog, rename, both copy
-// flows) reads its issue copy from ONE hook, so the reserved-name wording
-// ("Houston" belongs to the AI Manager) can never drift between surfaces. The
-// copy flows keep their own "taken" wording through the `taken` override.
-
 let render: (options?: EmployeeNameIssueCopyOptions) => EmployeeNameIssueCopy;
 
 before(async () => {

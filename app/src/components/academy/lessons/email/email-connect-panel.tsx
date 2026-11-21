@@ -6,18 +6,6 @@ import { LessonPanelFrame } from "../lesson-panel-frame";
 import { EmailConnectList } from "./email-connect-list";
 import { EmailPanelLoading } from "./email-panel-loading";
 
-/**
- * Connect the email the AI Employee sends from.
- *
- * The panel never moves the lesson on itself: the beat waits on an active
- * email connection (`integrationConnected`), so a connection made here, on
- * the Integrations screen or in another window all end it the same way.
- *
- * The path only offers the lesson where the integrations are served
- * (`lesson-availability.ts`), so "unavailable" is the rare deployment that
- * stopped serving them mid-lesson; while the capabilities load, the panel
- * waits rather than flash it.
- */
 export function EmailConnectPanel({ copy }: LessonPanelProps) {
   const { t } = useTranslation("academy");
   const { capabilities, isLoading } = useCapabilities();

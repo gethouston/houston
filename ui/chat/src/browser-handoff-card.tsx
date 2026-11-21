@@ -12,12 +12,9 @@ import { useRef } from "react";
 import type { BrowserHandoffCardState } from "./browser-live-types";
 
 export interface BrowserHandoffCardLabels {
-  /** The heading when the hand-off names a site. */
   heading: (site: string) => string;
-  /** The heading when it does not. */
   headingNoSite: string;
   open: string;
-  /** The Open button's accessible name. */
   openLabel: (site: string | null) => string;
   done: string;
   cancelled: string;
@@ -39,7 +36,6 @@ export const DEFAULT_BROWSER_HANDOFF_CARD_LABELS: BrowserHandoffCardLabels = {
 
 export interface BrowserHandoffCardProps {
   site: string | null;
-  /** What the agent asked the person to do, in its own words. */
   task: string;
   state: BrowserHandoffCardState;
   onOpen?: () => void;
@@ -48,7 +44,6 @@ export interface BrowserHandoffCardProps {
 
 type Outcome = Exclude<BrowserHandoffCardState, "waiting">;
 
-/** Done is the one success; every other ending is neutral, never an error. */
 const NEUTRAL = "bg-chip text-ink-muted";
 const OUTCOME: Record<Outcome, { icon: LucideIcon; tone: string }> = {
   done: { icon: CheckIcon, tone: "bg-success/10 text-success-ink" },
@@ -75,12 +70,6 @@ function OutcomeChip({
   );
 }
 
-/**
- * The in-chat card for a browser hand-off: the agent is waiting for the person
- * to do something on a website themselves (sign in, a code, a captcha). Open
- * shows only while it waits; afterwards the same slot keeps the outcome, so
- * the card keeps its height and the chat under it never jumps.
- */
 export function BrowserHandoffCard({
   site,
   task,
@@ -91,8 +80,6 @@ export function BrowserHandoffCard({
   const labels = { ...DEFAULT_BROWSER_HANDOFF_CARD_LABELS, ...labelOverrides };
   const heading = site ? labels.heading(site) : labels.headingNoSite;
   const waiting = state === "waiting";
-  // Animate a state CHANGE only: a card scrolled back into a settled chat
-  // mounts already ended and must not fade in again.
   const mountedState = useRef(state);
   const swap = mountedState.current === state ? "" : "browser-handoff-swap-in";
   return (
@@ -116,7 +103,6 @@ export function BrowserHandoffCard({
         {task ? (
           <p className="line-clamp-2 text-xs text-ink-muted">{task}</p>
         ) : null}
-        {/* One slot, one height: Open while it waits, then how it ended. */}
         <div
           className={`mt-2 flex min-h-11 items-center md:min-h-9 ${swap}`}
           key={state}

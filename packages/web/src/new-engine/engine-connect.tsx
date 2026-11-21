@@ -1,12 +1,3 @@
-/**
- * Engine Connect screen for the NEW TS engine. The browser has no supervisor to
- * mint an endpoint, so the user points the web app at a running houston-engine
- * (base URL + optional token). We validate with a real `authStatus()` call
- * before persisting, so a bad/unreachable URL or wrong token surfaces here
- * instead of failing deep in the app. Self-contained inline styles: this renders
- * in the entry chunk, before the app's Tailwind/i18n stack loads.
- */
-
 import { HoustonEngineClient } from "@houston/runtime-client";
 import { type FormEvent, useState } from "react";
 import type { EngineConfig } from "../engine-config";
@@ -34,10 +25,6 @@ export function EngineConnectScreen({
     setBusy(true);
     setError(null);
     try {
-      // Validates reachability (HTTPS + CORS) AND the token (401 throws). The
-      // probe targets the host's pre-agent connect surface (/setup-runtime/*)
-      // — the host serves no flat /auth/status; the stored config keeps the
-      // bare URL (the app adapter builds its own paths from it).
       await new HoustonEngineClient({
         baseUrl: `${url}/setup-runtime`,
         token: tok || undefined,

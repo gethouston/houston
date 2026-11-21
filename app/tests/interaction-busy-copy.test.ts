@@ -3,12 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-/**
- * PRODUCT-1827 (HOUSTON-APP-5EY): the SDK answers a dismiss raced by a running
- * turn as a typed `turn_running` outcome, and the panel says so in authored
- * copy, as it does for a card meant for another member of a shared agent
- * (`not_interaction_owner`). The copy must exist in every shipped locale.
- */
 describe("chat:errors.interactionBusy copy", () => {
   for (const locale of ["en", "es", "pt"] as const) {
     it(`${locale} has authored title + body`, () => {

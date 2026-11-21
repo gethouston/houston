@@ -1,7 +1,3 @@
-// PRODUCT-2132: a question the agent marks `wantsFiles` is answered with a
-// file, so the card leads with a large upload area above its answer row.
-// Mounted inside a real ChatPanel: the area writes the panel's ONE list.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
@@ -54,10 +50,8 @@ function drag(target: Element, kinds: string[], files: File[]): void {
   }
 }
 
-/** A file drag that ends in a drop on `target`, as the browser fires it. */
 async function dropOn(target: Element, files: File[]): Promise<void> {
   drag(target, ["dragenter", "dragover", "drop"], files);
-  // The drop resolves its files asynchronously (folders are walked).
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
@@ -73,7 +67,6 @@ describe("question card upload area", () => {
     const area = uploadArea();
     assert.ok(area, "no upload area");
     assert.equal(area.type, "button");
-    // The area opens the picker, so the row's own "+" is gone.
     assert.equal(byLabel("Attach files").length, 0);
     const field = win.document.querySelector("textarea");
     assert.equal(field?.placeholder, "Or type your answer...");
@@ -142,8 +135,6 @@ describe("question card upload area", () => {
     );
     const area = uploadArea();
     assert.ok(area, "no upload area");
-    // The drop reads its files asynchronously; the user moves on before it
-    // resolves, so the area is gone by then.
     drag(area, ["dragenter", "dragover", "drop"], [photo]);
     click(option("The fox"));
     assert.equal(uploadArea(), undefined);
@@ -170,8 +161,6 @@ describe("question card upload area", () => {
       (el) => el.childElementCount === 0 && el.textContent === WANTS.question,
     );
     assert.ok(question, "no question text");
-    // Dropped in A; the read resolves after the panel switched to B, whose
-    // conversation refuses every file.
     drag(question, ["dragenter", "dragover", "drop"], [photo]);
     render(
       panel(null, {
@@ -222,7 +211,6 @@ describe("question card upload area", () => {
     render(panel(card([WANTS], [], { disabled: true })));
     assert.equal(area().dataset.dragging, undefined);
 
-    // The next drag starts from a clean count, so leaving clears it.
     render(panel(card([WANTS], [])));
     drag(area(), ["dragenter", "dragover", "dragleave"], [photo]);
     assert.equal(area().dataset.dragging, undefined);

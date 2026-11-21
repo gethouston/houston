@@ -1,7 +1,5 @@
 import type { Plugin } from "vite";
 
-// Only the home route opens the store app. Plan links stay on the web, because the
-// store app cannot sell plans and an owner must reach the web plan page.
 export const APP_LINK_PATHS = ["/"] as const;
 
 export function associationAssets(

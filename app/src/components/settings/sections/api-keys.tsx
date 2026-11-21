@@ -4,13 +4,6 @@ import { tauriSystem } from "../../../lib/tauri";
 import { ApiKeysBody } from "./api-keys-body";
 import { ApiOrgId } from "./api-org-id";
 
-/**
- * Settings > API keys (C9): mint and revoke personal keys for the public API.
- * Shown only on a gateway that advertises `capabilities.apiKeys` (gated by the
- * caller in `settings-view`). The header links the concept to the developer
- * docs; the open organization's ID sits above the list, create, and revoke flows in
- * {@link ApiKeysBody}.
- */
 export function ApiKeysSection() {
   const { t } = useTranslation("settings");
 

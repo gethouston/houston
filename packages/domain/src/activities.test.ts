@@ -15,7 +15,6 @@ import { upsertContributor } from "./contributors";
 import { docKey } from "./layout";
 import type { TextStore } from "./store";
 
-/** Tiny in-memory TextStore (mirrors domain.test.ts). */
 function memStore(): TextStore & { dump(): Map<string, string> } {
   const m = new Map<string, string>();
   return {
@@ -37,7 +36,6 @@ test("createActivity with author stamps created_by + single-entry contributors",
   const a = createActivity({ title: "Deck" }, "act-1", NOW, ALICE);
   expect(a.created_by).toBe("u-alice");
   expect(a.contributors).toEqual([{ user_id: "u-alice", name: "Alice" }]);
-  // author is copied, not aliased
   expect(a.contributors?.[0]).not.toBe(ALICE);
 });
 
@@ -94,22 +92,20 @@ test("upsertContributor dedups by user_id and updates name in place", () => {
     user_id: "u-bob",
     name: "Bob",
   });
-  const withAlice = upsertContributor(a, ALICE); // append -> [bob, alice]
+  const withAlice = upsertContributor(a, ALICE);
   const renamed = upsertContributor(withAlice, {
     user_id: "u-bob",
     name: "Bobby",
   });
   expect(renamed.contributors).toEqual([
-    { user_id: "u-bob", name: "Bobby" }, // same position, new name
+    { user_id: "u-bob", name: "Bobby" },
     { user_id: "u-alice", name: "Alice" },
   ]);
 });
 
 test("upsertContributor returns the same reference when nothing changes", () => {
   const a = createActivity({ title: "T" }, "a1", NOW, ALICE);
-  // same user, same name -> no change
   expect(upsertContributor(a, ALICE)).toBe(a);
-  // same user, name undefined -> no change (never clears an existing name)
   expect(upsertContributor(a, { user_id: "u-alice" })).toBe(a);
 });
 
@@ -152,11 +148,11 @@ test("normalize sanitizes attribution: malformed dropped, valid preserved", () =
         created_by: "u-alice",
         contributors: [
           { user_id: "u-alice", name: "Alice" },
-          { user_id: "u-bob" }, // valid, no name
-          { user_id: 42 }, // bad user_id -> dropped
-          { name: "orphan" }, // no user_id -> dropped
-          "nope", // not an object -> dropped
-          { user_id: "u-cara", name: 7 }, // bad name -> name stripped
+          { user_id: "u-bob" },
+          { user_id: 42 },
+          { name: "orphan" },
+          "nope",
+          { user_id: "u-cara", name: 7 },
         ],
       },
       {
@@ -164,8 +160,8 @@ test("normalize sanitizes attribution: malformed dropped, valid preserved", () =
         title: "T2",
         status: "running",
         description: "",
-        created_by: 123, // non-string -> dropped
-        contributors: "not-an-array", // non-array -> dropped
+        created_by: 123,
+        contributors: "not-an-array",
       },
     ],
     "k",
@@ -242,10 +238,6 @@ test("a load round-trip strips malformed contributors from disk", async () => {
     { user_id: "u-alice", name: "Alice" },
   ]);
 });
-
-// ── Manual move to Done: blocking steps go, suggestion offers stay ──────────
-// Closing a mission is the user's own move and answers whatever it was waiting
-// on, but the clean-finish offers keep rendering on the Done card.
 
 const QUESTION_STEP = {
   kind: "question" as const,
@@ -347,14 +339,10 @@ test("moving to done is a no-op when there is no interaction", () => {
   expect(next.pending_interaction).toBeUndefined();
 });
 
-// A payload this build cannot read says NOTHING about what should be stored, so
-// it is treated as absent — never as "keep what's there". Otherwise a done patch
-// that also carried junk would skip the strip and leave a Done card asking a
-// question.
 const MALFORMED = {
   kind: "question",
   question: "Which deck?",
-} as unknown as PendingInteraction; // a pre-step build's shape: no `steps`
+} as unknown as PendingInteraction;
 
 test("a done patch with a MALFORMED pending_interaction still strips", () => {
   const next = applyActivityUpdate(

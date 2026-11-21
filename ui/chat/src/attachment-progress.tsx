@@ -44,8 +44,6 @@ export function AttachmentProgress({
   return (
     <div className="mt-1 min-w-0">
       <p className="text-xs text-ink-muted tabular-nums">
-        {/* Only the reconnect is announced: a live region per percent or per
-            finished file would talk over everything else on screen. */}
         <span role={progress.state === "reconnecting" ? "status" : undefined}>
           {label}
         </span>

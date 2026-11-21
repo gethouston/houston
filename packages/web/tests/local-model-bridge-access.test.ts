@@ -49,8 +49,6 @@ test.each([
   responses(capabilities);
   const refusal = localModelBridgeAccess(context(url), "owner", "agent-a");
   await expect(refusal).rejects.toMatchObject({ status: 503 });
-  // The SDK's discovery stops (no 30s poll) and the app files it as the quiet
-  // bridge_unsupported class only if the thrown shape carries this code.
   await expect(refusal).rejects.toSatisfy(isBridgeUnsupported);
 });
 
@@ -87,9 +85,6 @@ test("pins the account, workspace and agent and renews the same generation", asy
 });
 
 test("binds the agent the person has open, not the provider-routing pick", async () => {
-  // Provider routing falls back to the space's first agent when the selection
-  // pref lags; the bridge belongs to the open agent, and naming another one
-  // failed every boot as "Local model identity changed" (HOUSTON-APP-5E2).
   responses(caps, { id: "org-a" });
   const access = await localModelBridgeAccess(context(), "owner", "agent-b");
   expect(access?.identity.agentId).toBe("agent-b");

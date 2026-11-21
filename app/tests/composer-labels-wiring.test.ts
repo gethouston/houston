@@ -4,8 +4,6 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-// Every composer the app mounts names its controls (send, stop, attach,
-// remove) in the person's language: ui/chat only has English fallbacks.
 const SRC = fileURLToPath(new URL("../src/", import.meta.url));
 
 function sources(dir: string): string[] {

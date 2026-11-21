@@ -5,7 +5,6 @@ import { arrowExpressionBody } from "./assistant-ast.ts";
 import type { PathHelper } from "./assistant-path-parts.ts";
 import { repoRelative } from "./assistant-paths.ts";
 
-/** Module-scope arrow helpers a file exports for other files' templates. */
 export function sharedHelpers(source: ts.SourceFile): Map<string, PathHelper> {
   const helpers = new Map<string, PathHelper>();
   const visit = (node: ts.Node): void => {
@@ -24,7 +23,6 @@ export function sharedHelpers(source: ts.SourceFile): Map<string, PathHelper> {
   return helpers;
 }
 
-/** sha256 over every source the catalog is derived from, path included. */
 export function hashSources(paths: string[]): string {
   const hash = createHash("sha256");
   for (const path of paths)

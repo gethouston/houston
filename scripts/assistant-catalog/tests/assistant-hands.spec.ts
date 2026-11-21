@@ -5,13 +5,6 @@ import { handsViolations } from "../assistant-hands-rules.ts";
 import { parseAssistantDocs } from "../assistant-jsdoc.ts";
 import { annotation, realOptions } from "./assistant-catalog-support.ts";
 
-/**
- * A withheld operation whose errand still has to happen, and what the person is
- * handed instead. The three rules below are the whole enforcement: without them
- * `hidden:` is a refusal with no follow-up, and the model learns only that
- * Houston will not do the thing.
- */
-
 const rules = (...overrides: Parameters<typeof annotation>): CoverageRule[] =>
   handsViolations(annotation(...overrides)).map((finding) => finding.rule);
 
@@ -72,8 +65,6 @@ describe("hands-missing", () => {
   });
 
   it("leaves alone what raises no errand", () => {
-    // Visible: the assistant performs it. A read outside `files`: nothing
-    // moves. A group nobody hands over: no screen exists to send them to.
     expect(rules({ group: "billing", method: "POST" })).toEqual([]);
     expect(rules({ group: "billing", hidden: true, method: "GET" })).toEqual(
       [],
@@ -84,7 +75,6 @@ describe("hands-missing", () => {
   });
 
   it("leaves alone an operation with no derived route", () => {
-    // `unroutable` already refuses an unstated one, and nothing dispatches it.
     expect(
       rules({ group: "providers", hidden: true, routable: false }),
     ).toEqual([]);

@@ -27,32 +27,14 @@ import {
 import { curatedLogoUrl } from "./curated-logos";
 import { CustomCredentialForm } from "./custom-credential-form";
 
-/**
- * The connect dialog for a curated catalog entry (Croma, HighLevel): the
- * provider's own connect when the deployment's catalog has this app (the lead
- * option — Composio's app covers the whole API), the service's MCP sign-in,
- * and, where the service offers one, an API key with the where-to-register /
- * where-keys-live guidance non-technical users need. The MCP picks first
- * materialize the custom definition (`curatedAddInput`, idempotent) and then
- * drive the STOCK flow: `oauth/start` + browser, or the secure credential
- * save. Failures toast via the `call()` wrappers and keep the dialog open for
- * a retry; the half-made definition it may leave behind lands in the
- * Installed strip wearing its own Sign in / Enter key affordance, so nothing
- * dead-ends.
- */
 export function CuratedConnectDialog({
   curated,
   agentId,
   providerConnect,
   onClose,
 }: {
-  /** The entry to connect, or null when the dialog is closed. */
   curated: CuratedIntegration | null;
-  /** The transport agent (HOU-823): every call rides its routes, the one
-   *  custom surface a gateway-fronted deployment proxies to the pod. */
   agentId?: string;
-  /** Start the provider (Composio) connect for this slug — present only when
-   *  that catalog carries the app, so the option never dead-ends. */
   providerConnect?: () => void;
   onClose: () => void;
 }) {
@@ -64,7 +46,6 @@ export function CuratedConnectDialog({
       }}
     >
       {curated && (
-        // Remount per entry so step/field state never leaks across opens.
         <DialogContent key={curated.slug} className="sm:max-w-md">
           <CuratedConnectBody
             curated={curated}
@@ -91,11 +72,7 @@ function CuratedConnectBody({
 }) {
   const { t } = useTranslation("integrations");
   const addToast = useUIStore((s) => s.addToast);
-  // The options themselves (and which one leads) live in
-  // `CuratedConnectOptions`; this body owns the two MCP flows behind them.
   const [step, setStep] = useState<"choose" | "key">("choose");
-  // The non-secret companion value some servers need as a header on every
-  // call (HighLevel's sub-account id). Required whenever the entry asks.
   const [headerValue, setHeaderValue] = useState("");
   const [headerMissing, setHeaderMissing] = useState(false);
 
@@ -106,8 +83,6 @@ function CuratedConnectBody({
   const name = curated.name;
 
   const startSignIn = () => {
-    // The tab is claimed HERE, inside the click, because the add's round-trip
-    // comes first and would leave the sign-in open outside the gesture.
     const tab = claimSignInTab();
     add.mutate(curatedAddInput(curated, "oauth"), {
       onSuccess: () =>

@@ -13,9 +13,6 @@ const json = (body: unknown, status = 200, headers = {}) =>
     headers: { "content-type": "application/json", ...headers },
   });
 
-/** A Supabase-shaped gateway: every guessed well-known path answers 401 (the
- *  executor's probe reads that as "no OAuth"); only the endpoint's
- *  WWW-Authenticate hint leads to the real metadata. */
 const gatewayFetch: typeof fetch = async (input) => {
   const url = String(input instanceof Request ? input.url : input);
   if (url === ENDPOINT) {
@@ -45,8 +42,6 @@ const keyOnlyFetch: typeof fetch = async () =>
 type Probe = Awaited<ReturnType<CustomExecutor["mcp"]["probeEndpoint"]>>;
 
 function executorWith(probe: Partial<Probe>): CustomExecutor {
-  // The probe output is a union of literal shapes; the fake merges over the
-  // auth-wall default, so it is asserted rather than narrowed.
   const full = {
     connected: false,
     requiresAuthentication: true,

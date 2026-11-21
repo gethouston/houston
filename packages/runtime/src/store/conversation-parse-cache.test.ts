@@ -3,21 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 
-/**
- * The parse cache is bounded by BYTES: the sum of the cached files' on-disk
- * sizes never exceeds the budget, the least-recently-read transcript goes
- * first, a file that alone exceeds the budget is parsed for its caller and
- * never retained, and the list route's summary survives independently so an
- * over-budget transcript is not re-parsed on every list.
- *
- * The budget is pinned tiny via env BEFORE the module graph loads — config
- * reads env at import.
- */
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-pc-data-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-pc-ws-"),
 );
-process.env.HOUSTON_CONVERSATION_PARSE_CACHE_MB = "0.001"; // 1048 bytes
+process.env.HOUSTON_CONVERSATION_PARSE_CACHE_MB = "0.001";
 
 const { listConversationsAt } = await import("./conversation-queries");
 const { dropParsedFile, parseCacheStats, readParsedFile, readParsedSummary } =
@@ -25,7 +15,6 @@ const { dropParsedFile, parseCacheStats, readParsedFile, readParsedSummary } =
 
 const BUDGET = 0.001 * 1024 * 1024;
 
-/** A conversation file whose on-disk size is about `bytes`. */
 function writeConv(dir: string, id: string, bytes: number): string {
   const f = join(dir, `${id}.json`);
   const base = {
@@ -53,8 +42,6 @@ test("the sum of cached file bytes stays under budget, oldest read evicted first
   const parsedB = readParsedFile(b);
   expect(parsedA?.id).toBe("a");
   expect(parsedB?.id).toBe("b");
-  // Two 400-byte files fit the 1048-byte budget together (a stat-hit returns
-  // the same reference and keeps `b` the most recent); a third does not.
   expect(readParsedFile(b)).toBe(parsedB);
   expect(parseCacheStats()).toMatchObject({ entries: 2 });
   expect(parseCacheStats().bytes).toBeLessThanOrEqual(BUDGET);
@@ -63,8 +50,6 @@ test("the sum of cached file bytes stays under budget, oldest read evicted first
   expect(parsedC?.id).toBe("c");
   expect(parseCacheStats()).toMatchObject({ entries: 2 });
   expect(parseCacheStats().bytes).toBeLessThanOrEqual(BUDGET);
-  // `c` (most recent) and `b` stayed; `a` (least recent) was evicted and a
-  // re-read is a fresh parse.
   expect(readParsedFile(c)).toBe(parsedC);
   expect(readParsedFile(b)).toBe(parsedB);
   expect(readParsedFile(a)).not.toBe(parsedA);
@@ -79,7 +64,6 @@ test("a file over the whole budget is parsed for the caller, never retained", ()
   expect(first?.id).toBe("big");
   expect(parseCacheStats().entries).toBe(before.entries);
   expect(parseCacheStats().bytes).toBe(before.bytes);
-  // Every read is a fresh parse (no stale reference either).
   expect(readParsedFile(big)).not.toBe(first);
 });
 
@@ -95,11 +79,10 @@ test("the list summary is cached apart from the transcript, even over budget", (
 
   expect(readParsedSummary(big, derive)).toBe("big");
   expect(readParsedSummary(big, derive)).toBe("big");
-  expect(derived).toBe(1); // second call was a stat-hit on the summary
+  expect(derived).toBe(1);
   expect(parseCacheStats().entries).toBe(before.entries);
   expect(parseCacheStats().summaries).toBe(before.summaries + 1);
 
-  // A rewrite (new size) invalidates the summary; a drop forgets it.
   writeConv(dir, "big", 4100);
   expect(readParsedSummary(big, derive)).toBe("big");
   expect(derived).toBe(2);

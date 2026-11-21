@@ -59,9 +59,6 @@ describe("profilesQueryEnabled", () => {
   const base = { idCount: 1, authConfigured: true, multiplayer: false };
 
   it("the caller's OWN-profile lookup fires off multiplayer (uploaded avatar is readable)", () => {
-    // Regression: before the fix, useMyProfile's own-profile fetch was
-    // multiplayer-gated, so an uploaded avatar on a signed-in single-player /
-    // personal-space host never appeared anywhere (write-only).
     strictEqual(profilesQueryEnabled({ ...base, alwaysEnabled: true }), true);
   });
 

@@ -6,11 +6,6 @@ import {
   installForeignDomGuard,
 } from "../src/lib/foreign-dom-guard.ts";
 
-// A browser translator wraps text nodes in <font><font> under React's feet;
-// React's next removeChild/insertBefore on the text node must land on the
-// wrapper instead of throwing NotFoundError (HOUSTON-APP-590/55V/5CA).
-
-/** The DOM's own contract, minus everything the guard does not touch. */
 class FakeNode {
   parentNode: FakeNode | null = null;
   childNodes: FakeNode[] = [];
@@ -30,7 +25,6 @@ class FakeNode {
   }
 }
 
-/** Prototype with the strict browser semantics the guard wraps. */
 function strictProto() {
   return {
     removeChild(this: FakeNode, child: FakeNode): FakeNode {
@@ -57,7 +51,6 @@ type Proto = ReturnType<typeof strictProto>;
 const asDom = (proto: Proto) =>
   proto as unknown as Parameters<typeof installForeignDomGuard>[0];
 
-/** <p>text</p> after translation: <p><font><font>text</font></font></p>. */
 function translated() {
   const p = new FakeNode("p");
   const text = new FakeNode("#text");

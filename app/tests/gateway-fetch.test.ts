@@ -52,7 +52,6 @@ function deps(
   };
 }
 
-/** Give queued microtasks/timers a turn before asserting. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("gatewayFetch", () => {
@@ -134,10 +133,6 @@ describe("gatewayFetch", () => {
   });
 
   it("does not replay when the refresh returns the same rejected bearer", async () => {
-    // securetoken hands back the still-cached idToken when refreshed twice
-    // inside one token's lifetime, so the "fresh" bearer equals the one the
-    // gateway just rejected — replaying it only earns the identical 401
-    // (PRODUCT-1664). Surface the original 401 without a doomed second send.
     const sent: Sent[] = [];
     let refreshes = 0;
     const res = await gatewayFetch(
@@ -156,10 +151,6 @@ describe("gatewayFetch", () => {
   });
 
   it("never replays a bearer a sibling request already had rejected", async () => {
-    // Wake burst (PRODUCT-1737): request 1 mints "b2", replays it and the
-    // gateway refuses it — that one replay stays loud. Request 2, still holding
-    // the old bearer, is handed the same "b2" by the shared refresh: the answer
-    // is already known, so its original 401 stands without a doomed replay.
     const sent: Sent[] = [];
     const overrides = { token: () => "b1", refresh: async () => "b2" };
     const first = await gatewayFetch(
@@ -167,7 +158,7 @@ describe("gatewayFetch", () => {
         [
           new Response(null, { status: 401 }),
           new Response(null, { status: 401 }),
-          new Response(null, { status: 401 }), // the one verification re-send
+          new Response(null, { status: 401 }),
         ],
         sent,
         overrides,
@@ -229,8 +220,6 @@ describe("gatewayFetch", () => {
   });
 
   it("stops after the replay and its one verification when the 401 survives", async () => {
-    // One refresh, one replay, one delayed re-send, then the caller's problem:
-    // a gateway that keeps answering 401 must not be hammered in a loop.
     const sent: Sent[] = [];
     const res = await gatewayFetch(
       deps(
@@ -245,9 +234,6 @@ describe("gatewayFetch", () => {
   });
 
   it("a fresh bearer refused on replay heals on the one delayed re-send (PRODUCT-1812)", async () => {
-    // Wake shape: the gateway refuses the just-minted bearer and accepts the
-    // same session a moment later. The refusal is verified once after a beat
-    // (the injected sleep) instead of being handed to the caller raw.
     const sent: Sent[] = [];
     const slept: number[] = [];
     const res = await gatewayFetch(
@@ -297,8 +283,6 @@ describe("gatewayFetch", () => {
       answers.map((res) => res?.status),
       [200, 200],
     );
-    // Two initials, two replays, ONE verification re-send by the owner, then
-    // the sibling's own replay once the bearer is proven.
     deepStrictEqual(
       sent.map((s) => s.bearer),
       [
@@ -313,8 +297,6 @@ describe("gatewayFetch", () => {
   });
 
   it("carries the caller's headers and body into the replay", async () => {
-    // Migration-critical: a chunk upload that 401s mid-flight is replayed, and
-    // a replay that dropped the zip would import an empty agent.
     const sent: Sent[] = [];
     await gatewayFetch(
       deps(
@@ -355,8 +337,6 @@ describe("gatewayFetch active space", () => {
   });
 
   it("sends no header for the personal space", async () => {
-    // Absent ⇒ the gateway resolves the caller's personal org, which is the
-    // right answer for `/v1/me/*` and for a personal-space agent alike.
     const sent: Sent[] = [];
     await gatewayFetch(
       deps([new Response(null, { status: 200 })], sent, { org: () => null }),
@@ -374,11 +354,6 @@ describe("gatewayFetch active space", () => {
   });
 
   it("falls back to the app-installed active-space global", async () => {
-    // `liveGatewayDeps` wires no org getter of its own, so the migration
-    // transport picks the workspace switcher's pin up for free — which is the
-    // whole point: `/agents/:slug/migration/*` is org-scoped, and without the
-    // header the gateway resolved the personal space and 404'd every
-    // team-space agent.
     const restoreWindow = snapshotGlobals(["window"]);
     (globalThis as { window?: Record<string, unknown> }).window = {
       __HOUSTON_ACTIVE_ORG__: "abcdef0123456789",
@@ -397,10 +372,6 @@ describe("gatewayFetch active space", () => {
   });
 
   it("leaves the pin off a request that opts out, active space or not", async () => {
-    // `/v1/me/*` is USER-scoped, but the gateway resolves the pin BEFORE the
-    // handler and derives the write gate's billing from it: with the header on,
-    // a plain member of an expired team ate a silent 403 on their OWN
-    // onboarding answers (and burned the once-per-account catch-up on it).
     const sent: Sent[] = [];
     await gatewayFetch(
       deps([new Response(null, { status: 200 })], sent, {
@@ -410,7 +381,6 @@ describe("gatewayFetch active space", () => {
       { method: "PUT", body: "{}", orgScoped: false },
     );
     strictEqual(sent[0].org, null);
-    // …and the opt-out survives the 401 replay, which builds its headers again.
     const replayed: Sent[] = [];
     await gatewayFetch(
       deps(
@@ -434,8 +404,6 @@ describe("gatewayFetch active space", () => {
   });
 
   it("still pins by default, and never sends the flag as a fetch option", async () => {
-    // The default is the canonical `cp/fetch` behaviour — an org-scoped caller
-    // must not have to remember anything.
     const sent: Sent[] = [];
     let init: RequestInit | undefined;
     await gatewayFetch(
@@ -491,9 +459,6 @@ describe("gatewayFetch active space", () => {
 
 describe("gatewayFetch concurrent refresh", () => {
   it("collapses a 401 storm into ONE refresher call", async () => {
-    // Refresh tokens ROTATE on use: two racing mints can invalidate each other
-    // and sign the user out. The canonical `session-refresh.ts` holds the same
-    // single-flight latch, and this transport is its app-side peer.
     const sent: Sent[] = [];
     let refreshes = 0;
     let release: () => void = () => {};
@@ -516,7 +481,6 @@ describe("gatewayFetch concurrent refresh", () => {
       gatewayFetch(shared, "/v1/me/onboarding", { orgScoped: false }),
       gatewayFetch(shared, "/agents/a1/migration/status"),
     ]);
-    // Both first attempts must reach the refresher before it settles.
     await settle();
     release();
     const answers = await both;
@@ -586,9 +550,6 @@ describe("gatewayFetch concurrent refresh", () => {
 
 describe("gatewayFetch refresh failures", () => {
   it("surfaces a transient refresh failure as connectivity, not auth", async () => {
-    // HOU-1106: swallowing this to null turned every sleep-wake refresh race
-    // into a bogus expired-session failure. The "Load failed" prefix is what
-    // `lib/network-transport-error.ts` classifies on.
     for (const boom of [
       new TypeError("Failed to fetch"),
       Object.assign(new Error("offline"), { code: "network" }),
@@ -617,8 +578,6 @@ describe("gatewayFetch refresh failures", () => {
   });
 
   it("still lets the 401 stand when the refresher fails unexpectedly", async () => {
-    // A refresher BUG is not connectivity; the response the gateway actually
-    // gave is the honest answer.
     const sent: Sent[] = [];
     const res = await gatewayFetch(
       deps([new Response(null, { status: 401 })], sent, {
@@ -676,7 +635,6 @@ describe("liveGatewayDeps", () => {
     const live = liveGatewayDeps();
     ok(live);
     strictEqual(live.baseUrl, "https://gw.example");
-    // An empty token reads as "no bearer yet", not as the empty string.
     strictEqual(live.token(), undefined);
     const w = win();
     ok(w);

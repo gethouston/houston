@@ -10,19 +10,11 @@ import {
   renameFailure,
 } from "./mission-writes";
 
-/**
- * Mission Control's single-card writes: delete, the checkmark, the archive
- * box and rename. Each paints now and runs behind the click
- * (`mission-writes.ts`), so the card leaves, moves or renames in this frame
- * and a refusal brings it back with a toast. A card that leaves the board
- * closes its open chat in the same frame.
- */
 export function useMissionCardWrites({
   agentPathOf,
   selectedId,
   setSelectedId,
 }: {
-  /** The owning agent of a card on this board, by activity id. */
   agentPathOf: (id: string) => string | undefined;
   selectedId: string | null;
   setSelectedId: (id: string | null) => void;
@@ -39,9 +31,6 @@ export function useMissionCardWrites({
     [qc, agentPathOf, selectedId, setSelectedId],
   );
 
-  // The user signing a mission off. Failed missions get the move without the
-  // fanfare (`armMissionDoneCelebration` decides, and says why the burst
-  // fires with the paint rather than the host's answer).
   const handleApprove = useCallback(
     (item: KanbanItem) => {
       const agentPath = agentPathOf(item.id);
@@ -59,8 +48,6 @@ export function useMissionCardWrites({
     [qc, agentPathOf],
   );
 
-  // Filing away a mission the user already signed off. No confetti: the win
-  // was the checkmark.
   const handleArchive = useCallback(
     (item: KanbanItem) => {
       const agentPath = agentPathOf(item.id);

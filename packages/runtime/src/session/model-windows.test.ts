@@ -6,9 +6,6 @@ import {
 import { expect, test } from "vitest";
 
 test("resolveModelWindow: an override wins over pi's raw window", () => {
-  // pi reports 1,050,000 for gpt-6-astra; Codex's effective window is 95% of
-  // the 272k standard tier, with Codex's 872k max_context_window (× 95%) as
-  // the ceiling.
   expect(resolveModelWindow("openai-codex", "gpt-6-astra", 1_050_000)).toEqual({
     default: 258_400,
     max: 828_400,
@@ -16,12 +13,9 @@ test("resolveModelWindow: an override wins over pi's raw window", () => {
 });
 
 test("resolveModelWindow: no override falls back to pi's raw as both default + max", () => {
-  // Gemini via the native `google` provider: pi's 1,048,576 is correct, so no
-  // override — default and max are both the raw window (no snapping).
   expect(
     resolveModelWindow("google", "gemini-3-flash-preview", 1_048_576),
   ).toEqual({ default: 1_048_576, max: 1_048_576 });
-  // An entirely unknown model likewise passes pi's raw window through.
   expect(resolveModelWindow("nope", "who", 12_345)).toEqual({
     default: 12_345,
     max: 12_345,
@@ -35,14 +29,12 @@ test("effectiveModelWindow: starts at the default before observed usage proves m
 });
 
 test("effectiveModelWindow: snaps up to the ceiling once observed exceeds the default", () => {
-  // 300k observed proves the opt-in larger window is active.
   expect(
     effectiveModelWindow("openai-codex", "gpt-6-astra", 1_050_000, 300_000),
   ).toBe(828_400);
 });
 
 test("effectiveModelWindow: never reads below the observed count (mis-catalogued ceiling)", () => {
-  // Observed above even the max floors the window at observed, so % <= 100.
   expect(
     effectiveModelWindow("openai-codex", "gpt-6-astra", 1_050_000, 1_200_000),
   ).toBe(1_200_000);
@@ -54,8 +46,6 @@ test("effectiveModelWindow: no-override model divides by pi's raw window", () =>
   ).toBe(1_048_576);
 });
 
-// Pins the Anthropic sizing so a pi-ai catalog drift (or an accidental edit)
-// fails CI rather than silently changing the bar + autocompact denominator.
 test("MODEL_WINDOW_OVERRIDES: the Claude lineup carries no row (native 1M)", () => {
   expect(MODEL_WINDOW_OVERRIDES.anthropic).toBeUndefined();
   for (const id of [
@@ -72,12 +62,6 @@ test("MODEL_WINDOW_OVERRIDES: the Claude lineup carries no row (native 1M)", () 
 });
 
 test("MODEL_WINDOW_OVERRIDES: every served Codex row reads the 95%-effective window with the 872k ceiling", () => {
-  // pi reports 272,000 and one price tier for every served 272k Codex row;
-  // Codex's own `/status` sizes against 95% of it. Without the override the bar
-  // divides by 272,000 and reads the chat as emptier than Codex does — on
-  // gpt-6-luna, the model every unpinned Codex turn runs on. Without the
-  // ceiling the bar pins at 100% at 258k and compacts a chat the provider
-  // would carry on under the opt-in larger window.
   for (const id of [
     "gpt-6-luna",
     "gpt-6-sol",
@@ -96,8 +80,6 @@ test("MODEL_WINDOW_OVERRIDES: every served Codex row reads the 95%-effective win
       max: 828_400,
     });
   }
-  // pi reports 500,000 for the GPT-6.1 rows and GPT-6.2 Sol, and no `/status`
-  // reading backs another number, so pi's windows stand.
   for (const id of ["gpt-6.1-terra", "gpt-6.1-sol", "gpt-6.2-sol"])
     expect(MODEL_WINDOW_OVERRIDES["openai-codex"][id]).toBeUndefined();
 });

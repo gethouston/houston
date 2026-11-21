@@ -185,7 +185,6 @@ test("a fenced heartbeat skips syncBack and emits claim_fenced", async () => {
   const heartbeatBase = await listen(heartbeat);
   const storeRoot = mkdtempSync(join(tmpdir(), "pool-store-"));
   const store = new LocalDirStore(storeRoot);
-  // A claimed turn needs an existing agent; seed the standing layout.
   const settings = join(
     storeRoot,
     "ws",
@@ -302,8 +301,6 @@ test("a claimed turn outlives a dropped client connection and still syncs", asyn
     finished = resolve;
   });
   const runTurn: TurnRunner = async (layout, turn) => {
-    // Give the client time to hang up, then keep working as if nothing
-    // happened: the claim, not the socket, owns this turn.
     await new Promise((resolve) => setTimeout(resolve, 150));
     sawAbort = turn.signal?.aborted;
     try {
@@ -320,8 +317,6 @@ test("a claimed turn outlives a dropped client connection and still syncs", asyn
   };
   const base = await listen(createTurnServer({ store, token: "", runTurn }));
   const controller = new AbortController();
-  // The response headers arrive once the SSE opens (after hydrate); aborting
-  // right after that drops the socket while the turn is still running.
   const response = await fetch(`${base}/turn`, {
     method: "POST",
     headers: { "content-type": "application/json" },

@@ -1,5 +1,3 @@
-/** Field checks shared by the browser hand-off parsers. Internal to wire-types. */
-
 import {
   BROWSER_HANDOFF_STATES,
   BROWSER_LIVE_HANDOFF,

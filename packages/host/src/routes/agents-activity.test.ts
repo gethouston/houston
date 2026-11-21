@@ -20,12 +20,6 @@ import { workspaceRoot } from "./agent-data";
 import { podActivityStatus } from "./agents-activity";
 import { dispatchGroup } from "./registry/all";
 
-/**
- * GET /agents/:id/activity — gateway idle-sleep probe. It reports whether any
- * runtime turn or routine run is still active, without falling through to the
- * runtime dispatch surface.
- */
-
 class SpyChannel implements RuntimeChannel {
   busyResult = false;
   loginPendingResult = false;
@@ -136,7 +130,6 @@ function res() {
   return out as unknown as ServerResponse & typeof out;
 }
 
-/** The two chain slots this probe can be answered from, in server.ts's order. */
 async function probe(
   d: ControlPlaneDeps,
   userId: string,
@@ -243,15 +236,12 @@ test("reports busy when a routine run is still running", async () => {
 });
 
 test("counts OTHER held /agents/* requests as busy (open SSE stream)", async () => {
-  // The probe itself is one of the counted requests — 1 means "just me".
   deps.agentRequestCount = () => 1;
   expect((await activity()).json).toMatchObject({
     busy: false,
     activeRequests: 0,
   });
 
-  // A second held request (a conversation-events subscription, a streaming
-  // turn reply) keeps the pod busy even with no turn and no routine run.
   deps.agentRequestCount = () => 2;
   expect((await activity()).json).toMatchObject({
     busy: true,
@@ -260,9 +250,6 @@ test("counts OTHER held /agents/* requests as busy (open SSE stream)", async () 
 });
 
 test("reports a sign-in waiting on its user apart from busy", async () => {
-  // A provider sign-in lives only in the runtime process until the user
-  // finishes it; a pod slept under it drops the sign-in. It is not a turn, so
-  // `busy` (and the usage meters that share its inputs) stay as they were.
   channel.loginPendingResult = true;
   expect((await activity()).json).toMatchObject({
     busy: false,
@@ -272,10 +259,7 @@ test("reports a sign-in waiting on its user apart from busy", async () => {
 });
 
 test("reports a running turn and held writes apart from open reads", async () => {
-  // The cloud waker sleeps some pods on turns and writes alone: an open chat
-  // stream between turns is not a reason to stay awake there, a running turn
-  // or a write still in flight is. `busy` keeps counting every held request.
-  deps.agentRequestCount = () => 2; // the probe + one open chat stream
+  deps.agentRequestCount = () => 2;
   deps.agentWriteCount = () => 0;
   expect((await activity()).json).toMatchObject({
     busy: true,
@@ -284,7 +268,7 @@ test("reports a running turn and held writes apart from open reads", async () =>
     activeWrites: 0,
   });
 
-  deps.agentRequestCount = () => 3; // + a write still in flight
+  deps.agentRequestCount = () => 3;
   deps.agentWriteCount = () => 1;
   channel.busyResult = true;
   expect((await activity()).json).toMatchObject({
@@ -296,8 +280,6 @@ test("reports a running turn and held writes apart from open reads", async () =>
 });
 
 test("reports approvals and custom sign-ins held in memory apart from busy", async () => {
-  // Both wait on a person and live only in this process: a pod slept under
-  // them asks that person again. Neither is a turn, so `busy` is unchanged.
   assistantApprovals.issue({
     operation: "delete_agent",
     params: { agent: "x" },
@@ -315,7 +297,6 @@ test("reports approvals and custom sign-ins held in memory apart from busy", asy
       pendingApprovals: 1,
       pendingOAuth: 2,
     });
-    // Another agent's card is not this agent's.
     expect(assistantApprovals.pendingCount("someone-else")).toBe(0);
   } finally {
     assistantApprovals.retireExcept(agentId, "whatsapp", []);
@@ -338,15 +319,6 @@ test("unknown or unauthorized agents follow the existing authz statuses", async 
   const forbidden = await activity("bob");
   expect(forbidden.response.status).toBe(403);
 });
-
-// --- GET /activity — the pod-level aggregate (server.ts) ---------------------
-//
-// The control plane's pre-roll busy probe: a single answer for the whole pod,
-// no agent enumeration on the caller's side, so busy-aware engine rolls can
-// defer a restart that would kill an in-flight turn. Aggregation semantics are
-// unit-tested against podActivityStatus; the HTTP test below pins auth and
-// the counter wiring (the probe lives outside /agents/, so it never counts
-// itself).
 
 test("pod probe: a genuinely idle host answers busy:false", async () => {
   expect(await podActivityStatus(deps)).toEqual({
@@ -372,8 +344,6 @@ test("pod probe: any agent with an active turn flips the pod busy", async () => 
 });
 
 test("pod probe: sums running routine runs across EVERY workspace, not one user's", async () => {
-  // alice's agent has a running run; so does bob's, in a different workspace —
-  // engine pods are single-tenant, so the pod answer spans the whole store.
   await seedRun(createRoutineRun(routine, "run-1", "2026-01-01T00:00:00.000Z"));
   const bobWs = await store.getOrCreatePersonalWorkspace("bob");
   const bobAgent = await store.createAgent({
@@ -395,9 +365,6 @@ test("pod probe: sums running routine runs across EVERY workspace, not one user'
 });
 
 test("pod probe: held /agents/* requests count once, with NO self-subtraction", async () => {
-  // Unlike the per-agent probe (which is itself a counted /agents/* request
-  // and subtracts one), /activity is outside the counted prefix — a count of
-  // 1 means one genuinely held per-agent request, and the pod is busy.
   deps.agentRequestCount = () => 1;
   expect(await podActivityStatus(deps)).toEqual({
     busy: true,
@@ -410,7 +377,6 @@ test("pod probe: held /agents/* requests count once, with NO self-subtraction", 
 });
 
 test("pod probe: an unprobeable agent reads busy, never a false idle", async () => {
-  // No channel wired for the workspace's runtime → conservative busy.
   expect(await podActivityStatus({ ...deps, channels: {} })).toEqual({
     busy: true,
     activeRequests: 0,
@@ -420,7 +386,6 @@ test("pod probe: an unprobeable agent reads busy, never a false idle", async () 
     pendingOAuth: 0,
   });
 
-  // A probe that throws (runtime unreachable) counts the same way.
   channel.busy = async () => {
     throw new Error("runtime unreachable");
   };
@@ -435,8 +400,6 @@ test("pod probe: an unprobeable agent reads busy, never a false idle", async () 
 });
 
 test("pod probe: sums held approvals over the pod's agents and reports custom sign-ins", async () => {
-  // Never busy (the pre-roll and the original idle rule read busy alone):
-  // the cloud waker reads these counts on their own.
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const other = await store.createAgent({ workspaceId: ws.id, name: "Other" });
   for (const id of [agentId, other.id])
@@ -468,8 +431,6 @@ test("GET /activity over HTTP: 401 unauthenticated; a held per-agent stream keep
       return bearer === "pod-token" ? { userId: "alice" } : null;
     },
   };
-  // A dispatch that streams and never ends on its own — an open per-agent SSE
-  // subscription, exactly what a roll must not restart the pod under.
   let release: (() => void) | undefined;
   channel.dispatch = async (
     _ctx: ChannelCtx,
@@ -498,7 +459,6 @@ test("GET /activity over HTTP: 401 unauthenticated; a held per-agent stream keep
   try {
     expect((await fetch(`${base}/activity`)).status).toBe(401);
 
-    // Idle, and the probe itself never counts (it is not an /agents/* request).
     const idle = await fetch(`${base}/activity`, { headers: auth });
     expect(idle.status).toBe(200);
     expect(await idle.json()).toEqual({
@@ -525,7 +485,6 @@ test("GET /activity over HTTP: 401 unauthenticated; a held per-agent stream keep
 
     release?.();
     await (await held).text();
-    // The stream ended → its count is released and the pod reads idle again.
     await vi.waitFor(async () => {
       const after = await fetch(`${base}/activity`, { headers: auth });
       expect(await after.json()).toMatchObject({
@@ -545,8 +504,6 @@ test("the real server wires the counter: a held stream reads busy over HTTP", as
       return { userId: "alice" };
     },
   };
-  // A dispatch that streams and never ends on its own — an open per-agent
-  // SSE subscription, as the gateway proxies it.
   let release: (() => void) | undefined;
   channel.dispatch = async (
     _ctx: ChannelCtx,
@@ -592,7 +549,6 @@ test("the real server wires the counter: a held stream reads busy over HTTP", as
 
     release?.();
     await (await held).text();
-    // The stream ended → its count is released and the pod reads idle again.
     await vi.waitFor(async () => {
       const after = await fetch(
         `${base}/agents/${encodeURIComponent(agentId)}/activity`,
@@ -683,8 +639,6 @@ test("a write keeps counting after its client hangs up, until its handler settle
       return { userId: "alice" };
     },
   };
-  // A handler still writing files when its client goes away: the gateway's
-  // clock stopped with the client, so this count is all that holds the pod.
   let started = false;
   let finish: (() => void) | undefined;
   channel.dispatch = async (

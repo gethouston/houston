@@ -12,24 +12,11 @@ import {
   snoozeRoutineTurn,
 } from "./turn-routine-auto-pause";
 
-/** A settled routine turn: an error for the outcome, and its pending pause. */
 export interface FinishedRoutineTurn {
   error?: string;
-  /**
-   * The auto-pause, for the caller to run after sync-back with the keys it
-   * landed. Overlapping runs of the routine settle in other sandboxes, and
-   * only the merged history the sync-back leaves on disk holds their rows.
-   * Resolves to an error to append to the turn's outcome.
-   */
   afterSync?: (landed: readonly string[]) => Promise<string | undefined>;
 }
 
-/**
- * A routine turn's terminal step: settle its run row, and when the run failed
- * on a typed wall hand back the pause check for after the sync-back. A failed
- * pause is reported, never swallowed: the run row already landed, and the next
- * failed run retries it.
- */
 export async function finishRoutineTurn(opts: {
   store: ObjectStore;
   prefix: string;
@@ -37,14 +24,8 @@ export async function finishRoutineTurn(opts: {
   phase: RoutinePhase;
   conversationId: string;
   turnError?: string;
-  /**
-   * The turn never reached a provider: nothing was connected to run it on.
-   * `provider` is what the turn would have run on; absent when nothing named
-   * one (an unpinned routine).
-   */
   unconnected?: { provider?: string } | undefined;
 }): Promise<FinishedRoutineTurn> {
-  // Same rule as the standing fire path (schedule/run.ts).
   const failure: RoutineRunFailure | undefined = opts.unconnected
     ? unconnectedRoutineFailure(opts.unconnected.provider)
     : undefined;
@@ -65,9 +46,6 @@ export async function finishRoutineTurn(opts: {
     };
   }
   if (!settled) return {};
-  // A usage limit snoozes on this run alone, durable row or not: the failure
-  // is the proof, and the snooze is what spares the next fire. A run that
-  // answered lifts a hold the routine carried when the turn hydrated.
   const answered = settled.status === "silent" || settled.status === "surfaced";
   if (
     settled.failure?.code === "usage_limit" ||
@@ -78,7 +56,6 @@ export async function finishRoutineTurn(opts: {
   const runsKey = turnRoutineRunsKey(opts.filesystem.workspaceRel);
   return {
     afterSync: async (landed) => {
-      // This run's row is not durable: the next failed run decides instead.
       if (!landed.includes(runsKey)) return undefined;
       return pauseIfEarned(opts);
     },

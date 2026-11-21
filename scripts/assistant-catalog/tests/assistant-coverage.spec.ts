@@ -125,8 +125,6 @@ describe("the coverage gate's rules", () => {
   });
 
   it("fails an undecidable route claim even on a reasoned hidden operation", () => {
-    // `hidden` excuses how an operation would have been routed. It cannot
-    // excuse leaving the catalog's entry for a route to source order.
     const conflict = {
       route: "GET /agents/{agentId}/auth/status",
       others: ["providers.refreshStatus"],
@@ -151,8 +149,6 @@ describe("the coverage gate's rules", () => {
     ]);
   });
 
-  // The exemption is the whole reason `hidden` must carry a reason: hiding an
-  // operation silences the route and schema rules with it.
   it("exempts a reasoned hidden from the route and schema rules, a bare one never", () => {
     expect(
       rulesFor({
@@ -217,8 +213,6 @@ describe("acknowledgements", () => {
   });
 });
 
-// The extraction builds the whole TypeScript program inside the test body,
-// which takes close to vitest's 5 s default on a CI runner (about 4.8 s).
 describe("the live engine adapter", () => {
   it("passes the coverage gate", { timeout: 30_000 }, () => {
     expect(coverageViolations(extractCatalog(realOptions).annotations)).toEqual(

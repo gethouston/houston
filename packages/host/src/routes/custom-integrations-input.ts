@@ -1,14 +1,5 @@
 import type { AddCustomIntegrationInput } from "../integrations/custom/manager";
 
-/** Validate the discriminated add-input (400 on shape errors — the agent tool
- *  relays the message so the model can correct itself; the manual-add form
- *  never produces one because it builds the body from typed fields). Shared
- *  with the USER add route in custom-integrations-user.ts, so both surfaces
- *  accept the exact same body. */
-/** Static request headers for an MCP definition: a small map of plain
- *  header names to short values. Never a credential — `Authorization` (and
- *  any cookie) is refused here so a secret can only travel through the
- *  credential save, where it lands in the vault instead of the def file. */
 function parseStaticHeaders(raw: unknown): Record<string, string> | string {
   if (raw === undefined) return {};
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
@@ -51,8 +42,6 @@ export function parseAddInput(
         ? ("oauth" as const)
         : ("none" as const);
   const slug = typeof body.slug === "string" ? body.slug : undefined;
-  // The brand website for the card's icon (cosmetic; non-http values are
-  // simply dropped — icon derivation guards again anyway).
   const website =
     typeof body.website === "string" &&
     /^https?:\/\//i.test(body.website.trim())
@@ -60,8 +49,6 @@ export function parseAddInput(
       : undefined;
   if (body.kind === "openapi") {
     const url = typeof body.url === "string" ? body.url.trim() : "";
-    // An inline document (agent-authored from the service's API docs when no
-    // published OpenAPI URL exists) — no network fetch, ever again.
     const inline = typeof body.spec === "string" ? body.spec.trim() : "";
     if (!url && !inline)
       return "missing 'url' (the OpenAPI document URL) or 'spec' (an inline OpenAPI document)";

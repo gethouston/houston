@@ -116,8 +116,6 @@ describe("allAgentReadsFailed", () => {
   });
 
   it("is false while even one agent answered: that list is a real list", () => {
-    // The strip still names the agent that failed, but "no routines" is now a
-    // fact about the agents that DID answer, so the empty state may say it.
     assert.equal(
       allAgentReadsFailed(
         agentReadFailures([
@@ -139,14 +137,10 @@ describe("allAgentReadsFailed", () => {
   });
 
   it("is false for an empty roster: nothing failed, so nothing is hidden", () => {
-    // A team with no agents in scope has its own honest empty state; calling
-    // that "we could not read them" would invent a failure.
     assert.equal(allAgentReadsFailed(agentReadFailures([])), false);
   });
 
   it("reads the MERGED set, so one agent short of the roster is enough", () => {
-    // Two of the section's reads, three agents, and between them every agent
-    // failed at least one — nobody in this team can be spoken for.
     const merged = mergeAgentReadFailures(
       agentReadFailures([
         { agent: agent("a"), error: boom },

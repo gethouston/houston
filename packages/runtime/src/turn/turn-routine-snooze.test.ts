@@ -17,12 +17,6 @@ import type { TurnFilesystem } from "./turn-filesystem";
 import { finishRoutineTurn } from "./turn-routine-finish";
 import type { TurnRequest } from "./types";
 
-/**
- * The pooled snooze: a creator's run that hit a plan usage limit holds the
- * routine in the store until the reset, someone else's run does not, and a
- * run that answered lifts a hold.
- */
-
 const WS = "workspaces/Personal/Bob";
 const ROUTINES = docKey(WS, "routines");
 const RUNS = docKey(WS, "routine_runs");
@@ -67,8 +61,6 @@ const store: ObjectStore = {
   delete: async () => undefined,
 };
 
-// The snooze is taken at the wall clock and a past reset is ignored, so the
-// provider's reset must stay in the future (and inside the 8-day cap).
 const RESET = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
 const HELD: RoutineSnooze = {
   reason: "usage_limit",

@@ -8,9 +8,6 @@ import {
 export interface KanbanListRailProps {
   children: ReactNode;
   className?: string;
-  /** Sizing of the rail within its pane. "center" (default) keeps a fixed-width
-   *  reading column centered; "left" fills the full pane width, left-aligned
-   *  (the wide Archived list). */
   align?: "center" | "left";
 }
 

@@ -18,9 +18,6 @@ function hub(): EventHub & { fire: (e: HoustonEvent) => void } {
   };
 }
 
-// A freshly woken pod's runtime may take its whole 60s boot-health budget
-// (probes answer 503 throughout); the warm must outlast that, not give up
-// mid-boot (HOUSTON-APP-5AP).
 test("boot warm outlasts a runtime that takes 70s to become healthy", async () => {
   vi.useFakeTimers();
   const store = new MemoryWorkspaceStore();
@@ -49,9 +46,6 @@ function stillStarting(): Response {
   });
 }
 
-// A fleet-synchronised roll can blow the launcher's 60s boot budget outright;
-// the warm's next probe re-spawns, so the runtime is only up after a SECOND
-// full boot. The warm must cover that, not give up between the two.
 test("boot warm outlasts a failed first boot plus a second one (150s)", async () => {
   vi.useFakeTimers();
   const store = new MemoryWorkspaceStore();
@@ -79,9 +73,6 @@ test("boot warm outlasts a failed first boot plus a second one (150s)", async ()
   vi.useRealTimers();
 });
 
-// A runtime STILL not up after the whole window is the launcher's failure and
-// already a Sentry error there; the warm stands down as a breadcrumb instead
-// of filing a second error per pod per roll (HOUSTON-APP-5AP).
 test("a runtime still starting after the whole window stands down quietly", async () => {
   vi.useFakeTimers();
   const store = new MemoryWorkspaceStore();
@@ -95,7 +86,6 @@ test("a runtime still starting after the whole window stands down quietly", asyn
   warmViewDocs({ port: 4318, token: "t", store, fetchImpl });
   await vi.advanceTimersByTimeAsync(1_000_000);
   expect(errorSpy).not.toHaveBeenCalled();
-  // One stand-down per view route, each after its own window.
   expect(warnSpy).toHaveBeenCalledTimes(4);
   expect(warnSpy.mock.calls[0]?.[0]).toMatch(/still starting/);
   errorSpy.mockRestore();
@@ -103,8 +93,6 @@ test("a runtime still starting after the whole window stands down quietly", asyn
   vi.useRealTimers();
 });
 
-// A runtime that IS up but answers the view with an error is a broken view,
-// never a boot: that stays loud.
 test("a view that keeps answering 500 after the window still reports", async () => {
   vi.useFakeTimers();
   const store = new MemoryWorkspaceStore();
@@ -125,8 +113,6 @@ test("a view that keeps answering 500 after the window still reports", async () 
   vi.useRealTimers();
 });
 
-// A plain 503 (no Retry-After) is not the probe contract's "not now" — e.g. a
-// route with no channel wired — and stays loud like any other failure.
 test("a bare 503 without Retry-After still reports", async () => {
   vi.useFakeTimers();
   const store = new MemoryWorkspaceStore();
@@ -146,10 +132,6 @@ test("a bare 503 without Retry-After still reports", async () => {
   vi.useRealTimers();
 });
 
-// A rename moves the agent's directory, and the rename request is often the
-// very wake this warm runs under: boot listed the OLD name, the client reads
-// the NEW one. The warm must follow the move, never 404 the old id for the
-// rest of its window (HOUSTON-APP-5AP, the 404 flavor).
 test("boot warm follows an agent renamed mid-window", async () => {
   vi.useFakeTimers();
   const store = new MemoryWorkspaceStore();
@@ -162,9 +144,7 @@ test("boot warm follows an agent renamed mid-window", async () => {
   const urls: string[] = [];
   const fetchImpl = vi.fn(async (url: string | URL | Request) => {
     urls.push(String(url));
-    // The runtime is still booting when the warm's first attempt lands.
     if (Date.now() - start < 5_000) return stillStarting();
-    // The disk store's ids are directory names: only the current one serves.
     const agent = (await store.listAgents(workspace.id))[0];
     const served = String(url).includes(encodeURIComponent(agent?.id ?? ""));
     return served
@@ -174,8 +154,6 @@ test("boot warm follows an agent renamed mid-window", async () => {
   const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   warmViewDocs({ port: 4318, token: "t", store, fetchImpl });
-  // First attempt lands on the old id, then the rename moves the directory
-  // (the memory store keeps ids stable, so model the move as delete+create).
   await vi.advanceTimersByTimeAsync(50);
   await store.deleteAgent(old.id);
   const renamed = await store.createAgent({
@@ -187,7 +165,6 @@ test("boot warm follows an agent renamed mid-window", async () => {
   const renamedUrls = urls.filter((u) =>
     u.includes(encodeURIComponent(renamed.id)),
   );
-  // Every view route warmed under the new name, none reported.
   expect(renamedUrls).toHaveLength(4);
   expect(errorSpy).not.toHaveBeenCalled();
   expect(warnSpy).not.toHaveBeenCalled();
@@ -196,9 +173,6 @@ test("boot warm follows an agent renamed mid-window", async () => {
   vi.useRealTimers();
 });
 
-// A host that stops serving exactly one agent mid-window (delete, or a
-// leftover directory appearing beside the live one) has no view to warm: the
-// warm stands down as a breadcrumb, never an error.
 test("boot warm stands down quietly when the single agent goes away", async () => {
   vi.useFakeTimers();
   const store = new MemoryWorkspaceStore();
@@ -248,10 +222,6 @@ test("a SkillsChanged event re-fetches /skills for that agent (debounced)", asyn
   vi.useRealTimers();
 });
 
-// An agent delete/rename unlinks its skills tree; the watcher classifies each
-// unlink as SkillsChanged for the now-gone path, and the debounced refresh
-// then 404s. A gone agent is the delete's designed outcome, never an error
-// (HOUSTON-APP-5AP).
 test("a refresh 404 for an agent no longer in the store stays silent", async () => {
   vi.useFakeTimers();
   const store = new MemoryWorkspaceStore();
@@ -331,7 +301,6 @@ test("a global CustomIntegrationsChanged resolves the single agent", async () =>
   expect(urls).toEqual([
     `http://127.0.0.1:4318/agents/${encodeURIComponent(agent.id)}/integrations/custom/definitions`,
   ]);
-  // Unrelated events never fetch.
   events.fire({ type: "ActivityChanged", agentPath: agent.id });
   await vi.advanceTimersByTimeAsync(600);
   expect(urls).toHaveLength(1);

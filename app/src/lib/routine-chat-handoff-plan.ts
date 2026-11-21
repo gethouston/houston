@@ -1,20 +1,7 @@
-/**
- * The numbered "what you need to learn" interview plan the intake handoff
- * (`routine-chat-handoff.ts`) assembles from the intake result: the FIRST-ask
- * (what it should do, or what wakes an app trigger), the wake interview (only for
- * a fully undecided wake) or the schedule-hint confirmation (when the user typed
- * WHEN in their own words), and the shared tail. Split out so the assembly file
- * stays under the size cap.
- */
-
 import type { WakePick } from "../components/agent/automation-intake/types.ts";
 import { eventNameExamples } from "./routine-chat-handoff-catalog.ts";
 import { scheduleHintStep } from "./routine-chat-handoff-wake.ts";
 
-/** Plain-language example first-asks for "what should it do", tuned to the wake
- *  (or its absence). A schedule hint means it is time-based, so it draws the same
- *  recurring examples as a chosen schedule; an undecided wake with no hint
- *  includes an app-event example. */
 function purposeExamples(
   wake: WakePick | null,
   scheduleHint: string | null,
@@ -28,8 +15,6 @@ function purposeExamples(
   return `reactions to being called like "Process whatever was sent to me", "Notify me on Slack about it", or "Save the details somewhere I can find them"`;
 }
 
-/** The FIRST-question step for a schedule/webhook/undecided wake: ask what it
- *  should do, unless the user already described it (then confirm and tailor). */
 function purposeStep(
   wake: WakePick | null,
   intent: string | null,
@@ -41,17 +26,10 @@ function purposeStep(
   return `What the routine should do. This is your FIRST question, and it must be a single ask_user call. Offer 3 or 4 concrete example options that fit ${purposeExamples(wake, scheduleHint)} — and let them know they can always describe their own idea instead. Gather any details you still need to do it well.`;
 }
 
-/** The wake-interview step, added only when no wake was chosen. Same two-way
- *  plain-language guidance as `routineSetupPrompt`'s wakeGuidance. */
 function wakeInterviewStep(): string {
   return `When it should happen. There are two ways a routine wakes, and the user picks in plain words: on a schedule (how often, and at what time), OR the moment something happens in one of their connected apps (a new email arrives, a message is posted, a file changes). If they choose an app event, learn which connected app it lives in and exactly which event should wake it — it MUST be an app they have actually connected; if the app they want is not connected, help them connect it first. Also ask about any filters that narrow WHEN it fires, if they want them.`;
 }
 
-/** The numbered "what you need to learn" plan, assembled for this intake. A
- *  chosen app trigger opens on WHAT in the app wakes it; every other case opens
- *  on what it should do (or confirming the described intent). A fully undecided
- *  wake inserts the wake interview; a schedule hint inserts the confirm-the-time
- *  step instead. The tail (apps, chat mode, notifications) is shared. */
 export function interviewPlan(
   wake: WakePick | null,
   intent: string | null,
@@ -69,8 +47,6 @@ export function interviewPlan(
     );
   } else {
     steps.push(purposeStep(wake, intent, scheduleHint));
-    // Only interview for the wake when it is fully undecided; a schedule hint
-    // means the user already said WHEN, so the agent confirms it instead.
     if (wake === null && scheduleHint) {
       steps.push(scheduleHintStep(scheduleHint));
     } else if (wake === null) {
@@ -89,8 +65,6 @@ export function interviewPlan(
   return steps.map((s, i) => `${i + 1}. ${s}`).join("\n");
 }
 
-/** How the agent saves an UNDECIDED wake once the interview settles it. Same
- *  one-wake-mechanism rule as `routineSetupPrompt`. */
 export function aiWakeSaveRule(): string {
   return `Save it as a routine with exactly ONE wake mechanism, matching what the user chose: either the agreed schedule (and no trigger), or a trigger naming the chosen app, event, and any filters (and no schedule).`;
 }

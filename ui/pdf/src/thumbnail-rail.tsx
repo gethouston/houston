@@ -99,20 +99,15 @@ const Thumb = memo(function Thumb({
 export interface ThumbnailRailProps {
   handle: PdfDocumentHandle;
   active: number;
-  /** Comments per page, for the count badges. */
   counts: ReadonlyMap<number, number>;
   heading: string;
   thumbLabel: (page: number, count: number) => string;
   onPick: (page: number) => void;
   onError: (error: unknown) => void;
-  /** A horizontal strip (the phone's, under the page counter) instead of
-   *  the labelled column. */
   strip?: boolean;
   className?: string;
 }
 
-/** Every page as a small preview: the current one ringed, comment counts on
- *  the ones that have them. Follows the reader as the pages scroll. */
 export function ThumbnailRail({
   handle,
   active,

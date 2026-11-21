@@ -6,13 +6,6 @@ import type {
   FileUploadSlot,
 } from "./file-args";
 
-/**
- * The direct adapter's file leg (self-host, own key): the same two calls the
- * cloud gateway makes for remote hosts (cloud C1 "File arguments"), so a file
- * argument stages identically on every deployment.
- */
-
-/** One action's raw schema, at the tool version execute runs (`latest`). */
 export async function describeComposioAction(
   http: ComposioHttp,
   action: string,
@@ -33,8 +26,6 @@ export async function describeComposioAction(
     : null;
 }
 
-/** POST /api/v3.1/files/upload/request — what Composio's SDKs call before a
- *  tool execute that carries a file. */
 export async function reserveComposioUpload(
   http: ComposioHttp,
   req: FileUploadRequest,
@@ -63,7 +54,6 @@ export async function reserveComposioUpload(
     uploadUrl,
     headers: {
       "Content-Type": req.mimetype,
-      // Composio documents that an Azure-backed slot needs the blob type set.
       ...(body.metadata?.storage_backend === "azure_blob_storage"
         ? { "x-ms-blob-type": "BlockBlob" }
         : {}),

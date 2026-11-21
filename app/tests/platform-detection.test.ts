@@ -6,10 +6,6 @@ import {
   metricsPlatform,
 } from "../src/lib/platform.ts";
 
-// `isMacPlatform` gates the whole notification fix: macOS keeps the JS
-// notification plugin, every other OS routes through the Rust command. A
-// misdetection here sends macOS down the Rust path (or vice-versa), so the
-// platform string / userAgent parsing is worth pinning down.
 describe("isMacPlatform", () => {
   it("detects macOS from navigator.platform", () => {
     strictEqual(isMacPlatform("MacIntel", "Mozilla/5.0 (Macintosh)"), true);
@@ -90,8 +86,6 @@ describe("detectPlatformOs", () => {
   });
 });
 
-// Latency spans must tell the web app from the desktop: a browser on a Mac is
-// not the macOS desktop app, and folding them together hid web in "macos".
 describe("metricsPlatform", () => {
   it("labels the desktop shell with its OS", () => {
     strictEqual(metricsPlatform(true, "windows"), "windows");

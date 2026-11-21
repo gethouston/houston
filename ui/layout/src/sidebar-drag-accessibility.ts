@@ -52,8 +52,6 @@ const parentOf = (rows: SidebarTreeRow[], key: string) => {
   return row?.kind === "agent" ? row.parentId : null;
 };
 
-/** The row's 1-based slot among its siblings: its group's members, or the
- *  top-level rows (groups and ungrouped agents). */
 function positionOf(
   rows: SidebarTreeRow[],
   key: string,
@@ -65,8 +63,6 @@ function positionOf(
   return String(siblings.findIndex((row) => treeRowKey(row) === key) + 1);
 }
 
-/** What a keyboard move says: the group it entered or left, or its new slot
- *  inside its group or at the top level. */
 export function keyboardMoveAnnouncement(
   before: SidebarTreeRow[],
   after: SidebarTreeRow[],

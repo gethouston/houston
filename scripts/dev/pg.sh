@@ -1,9 +1,4 @@
 #!/bin/sh
-# `pnpm dev` pane: Postgres for the local cloud stack (gateway + control-plane).
-# Data persists in the named volume `houston-dev-pg` across restarts; the
-# container itself is recreated on every boot so a half-dead leftover from a
-# previous run can never wedge the loop. Port 5433 (not 5432) so a system
-# Postgres never collides — keep in lockstep with GW_DB_URL in .env.development.
 set -eu
 . scripts/dev/env.sh
 

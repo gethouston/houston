@@ -11,14 +11,6 @@ import type { Activity, HoustonEvent } from "@houston/protocol";
 import { afterEach, expect, test, vi } from "vitest";
 import { handleActivitiesData } from "./agent-data-activities";
 
-/**
- * Concurrent mutations of one agent's activity doc must serialize. Before the
- * doc lock, two simultaneous creates both loaded the same base list and the
- * last save dropped the other's entry — a double-fired first-message submit
- * lost a mission's board entry this way in production (its conversation
- * persisted fine but became unreachable in the UI).
- */
-
 const ROOT = "ws/agent";
 const KEY = docKey(ROOT, "activity");
 
@@ -87,12 +79,6 @@ test("a setup task does not retire its own pending first day", async () => {
   expect((await loadConfig(store, ROOT)).config.firstDay).toBe("pending");
 });
 
-/** In-memory TextStore that snapshots the value at read START and only
- * returns it after yielding to the event loop — the remote-store shape
- * (GCS/fs) where a concurrent writer's save lands between a reader's
- * snapshot and its continuation. Without serialization, two load→save
- * mutations interleave on this store and the last save deterministically
- * drops the other's entry. */
 function slowStore(): TextStore & { data: Map<string, string> } {
   const data = new Map<string, string>();
   return {

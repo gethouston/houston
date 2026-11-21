@@ -1,14 +1,3 @@
-/**
- * Transient typed-provider-error variants that recover by RETRYING NOW —
- * network-unreachable, provider-internal, malformed-response. The failure is
- * infrastructure, not the account: nothing about which AI account ran the turn
- * changes the remedy, so these carry no credential-scope affordance.
- *
- * The account-shaped limits (rate-limited, usage-limit-paused) live in the
- * sibling `limits.tsx` — they recover by waiting or by moving to another account.
- * All render on the unified `RowCard` (HOU-467).
- */
-
 import type { ProviderError } from "@houston-ai/chat";
 import { AlertTriangleIcon, ServerCrashIcon, WifiOffIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -27,9 +16,6 @@ export function NetworkUnreachableCard({
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
-  // The local (OpenAI-compatible) provider is the user's own machine, not a
-  // provider API: "check your internet" is the wrong remedy. Name the real
-  // one — the model app stopped or its server is off.
   const local = error.provider === "openai-compatible";
   return (
     <div className="w-full px-1 py-2">

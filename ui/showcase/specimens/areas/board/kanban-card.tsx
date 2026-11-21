@@ -23,7 +23,6 @@ import {
   RUNNING_MISSION,
 } from "./sample";
 
-/** Status → the card's treatment, in the order the board's sections run. */
 const BY_STATUS = [
   { label: "running", item: RUNNING_MISSION },
   { label: "needs_you", item: NEEDS_YOU_MISSION },

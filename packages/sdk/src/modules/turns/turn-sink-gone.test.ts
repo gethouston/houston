@@ -14,12 +14,6 @@ import {
   systemLines,
 } from "./turn-sink-setup-fixtures";
 
-/**
- * The backstop for a setup failure whose frame never reached the stream at
- * all (H-003): history answers 404 for a conversation that was never saved.
- * It used to be read every 1.5 s until the person left.
- */
-
 beforeEach(() => {
   vi.useFakeTimers();
 });
@@ -35,20 +29,16 @@ test("a conversation still not found long after the 202 settles as lost, then po
 
   await vi.advanceTimersByTimeAsync(PRESETTLED_GONE_MS - POLL_MS);
   expect(sink.settled).toBe(false);
-  // Backed off: far fewer reads than one per 1.5 s.
   expect(reload.mock.calls.length).toBeLessThan(
     PRESETTLED_GONE_MS / POLL_MS / 4,
   );
   await vi.advanceTimersByTimeAsync(PRESETTLED_GONE_MAX_POLL_MS * 2);
   expect(sink.settled).toBe(true);
-  // Only this client's stream closes; nothing is cancelled server-side.
   expect(stopped()).toBe(true);
   const [line] = systemLines(items);
-  // Its own line: we do not know the message failed, so no "send it again".
   expect(line).toMatchObject({ notice: "turn_unconfirmed", cause: "gone" });
   expect(line.data).toBe(TURN_UNCONFIRMED_MESSAGE);
   expect(noticeEndsTurn("turn_unconfirmed")).toBe(true);
-  // Not proof that nothing was saved: the bubble keeps its state.
   expect(line.fails_pending).toBeUndefined();
   const calls = reload.mock.calls.length;
   await vi.advanceTimersByTimeAsync(PRESETTLED_GONE_MS * 4);

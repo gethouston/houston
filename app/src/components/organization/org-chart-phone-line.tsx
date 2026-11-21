@@ -9,13 +9,6 @@ import { OrgChartFaces } from "./org-chart-faces";
 import { formatCount, formatWork } from "./org-chart-format";
 import type { LedgerColumns, LedgerLine } from "./org-chart-view-model";
 
-/**
- * One AI Employee on the phone's ledger, stacked in two rows: rank, helmet,
- * name and role with the lead figure, then the bar, the messages and every
- * face (managers first, the dots telling them apart). The #1 is featured on
- * a card. As on the desktop, the name is the board's button stretched over
- * the line and each face is its own button above it.
- */
 export function OrgChartPhoneLine({
   line,
   rank,

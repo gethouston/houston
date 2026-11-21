@@ -17,11 +17,8 @@ import { SkillIcon } from "../skill-icon";
 import type { ManagedSkillRow } from "./skill-editor-props";
 import { SkillsRetryEmpty } from "./skills-list-states";
 
-/** How many rows the wait lays out — enough to read as a list. */
 const SKELETON_ROWS = ["a", "b", "c"] as const;
 
-/** One row's leading art, shared by the wait and the real rows so nothing
- *  shifts when the list lands. */
 const ICON_CLASS =
   "flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-line-input";
 
@@ -51,8 +48,6 @@ function AddableSkillRow({
         size="sm"
         variant="outline"
         className="shrink-0 rounded-full"
-        // Every row's button reads "Add", so the name carries the skill it
-        // adds — a list of identical buttons is unusable by ear.
         aria-label={t("global.addExisting.addNamed", { name: title })}
         onClick={() => onAdd(row)}
       >
@@ -62,14 +57,6 @@ function AddableSkillRow({
   );
 }
 
-/**
- * "Add an existing skill": the workspace skills this AI Employee does not have
- * yet, each with the one act that gives it one.
- *
- * A workspace skill lives once in the store and an employee LOADS it, so the
- * add is a reversible manifest write and the row leaves the list the moment it
- * lands — the dialog stays open so several can be added in one sitting.
- */
 export function AddExistingSkillDialog({
   open,
   onOpenChange,
@@ -81,10 +68,8 @@ export function AddExistingSkillDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Store skills this employee does not load yet. */
   skills: ManagedSkillRow[];
   loading: boolean;
-  /** The read did not answer. Already toasted and reported at the call. */
   failed: boolean;
   onRetry: () => void;
   onAdd: (row: ManagedSkillRow) => Promise<void>;

@@ -1,22 +1,3 @@
-/**
- * The Claude-facing kickoff for an automation's setup chat AFTER the visual
- * intake (`components/agent/automation-intake`) collected what the user gave up
- * front: at most an INTENT (what they want it to do, in their own words) and a
- * WAKE (a cron schedule, an incoming webhook, or an app the trigger watches).
- * Either can be absent — the user may have skipped straight to the AI, or picked
- * only a wake, or only a template intent. This kickoff hands the agent whatever
- * was settled (verbatim machine values it must save exactly and never re-ask)
- * and interviews for the rest.
- *
- * It is the intake sibling of `routineSetupPrompt` in `routine-chat-prompts.ts`
- * (same tone, interview rules, provider awareness, and `setup_activity_id`
- * stamping); the difference is the "already chosen" block and the verbatim save
- * rule. For an app trigger the intake picked ONLY the app (and account); WHICH
- * event on it, and its filters, are decided here, in plain words, guided by the
- * app's event catalog embedded as an internal machine block. Like every setup
- * kickoff it rides the auto-continue marker so the user never sees a fake bubble.
- */
-
 import type { WakePick } from "../components/agent/automation-intake/types.ts";
 import { encodeAutoContinueMessage } from "./auto-continue-message.ts";
 import { aiWakeSaveRule, interviewPlan } from "./routine-chat-handoff-plan.ts";
@@ -33,27 +14,12 @@ import {
   providerAwareness,
 } from "./setup-chat-prompt-shared.ts";
 
-/** Everything the intake settled before the model was called. */
 export interface RoutineIntake {
-  /** The user's own description of what it should do, or null (they gave none —
-   *  the agent opens by asking what it should do). */
   intent: string | null;
-  /** The already-chosen wake, or null (the agent interviews for the wake, unless
-   *  a `scheduleHint` narrows it to a schedule). */
   wake: WakePick | null;
-  /** When the user said WHEN it runs in their OWN WORDS on the text schedule step
-   *  ("every weekday morning", "every second Tuesday at 3pm"): the agent
-   *  interprets it into an exact schedule and confirms it rather than re-asking.
-   *  Only ever set when `wake` is null; null on every other path. */
   scheduleHint: string | null;
 }
 
-/**
- * The intake handoff kickoff. Takes the setup chat's own activity id (the agent
- * stamps it into the routine's `setup_activity_id`), the user's connected
- * providers (so it never pins an unconnected one), and the intake result (the
- * intent and/or wake the visual cards resolved — either may be null).
- */
 export function routineIntakeHandoffPrompt(
   activityId: string,
   connectedProviders: ConnectedProviderRef[] | null,
@@ -61,7 +27,6 @@ export function routineIntakeHandoffPrompt(
 ): string {
   const { wake } = intake;
   const intent = intake.intent?.trim() ? intake.intent.trim() : null;
-  // A schedule hint only ever applies when no exact wake was picked.
   const scheduleHint =
     wake === null && intake.scheduleHint?.trim()
       ? intake.scheduleHint.trim()
@@ -113,8 +78,6 @@ ${providerAwareness(connectedProviders)}
 When you have everything, summarize the routine in a few plain lines (what wakes it, and what it does) and ask for approval with ask_user (Yes / No). Only create it after a Yes. ${saveRule} Set its "setup_activity_id" field to exactly "${activityId}" — that keeps this chat attached to it; never mention this field or any other technical detail to the user. Then confirm it is set up and remind them they can change it right here, in this same chat, any time.`;
 }
 
-/** The full first-message body for an intake-seeded new-automation chat: marker
- *  (hides the bubble) + the handoff kickoff. */
 export function encodeRoutineIntakeHandoffMessage(
   activityId: string,
   connectedProviders: ConnectedProviderRef[] | null,

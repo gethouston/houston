@@ -20,10 +20,6 @@
 //! AppImage identity variables are dropped outright. Outside an AppImage
 //! (dev builds, macOS, Windows) the list is empty and spawns are untouched.
 
-// Everything below the public entry points is reachable only from the
-// `target_os = "linux"` branch (and the tests); other platforms compile the
-// empty-list path, so silence their dead-code lint rather than cfg-ing the
-// pure logic out from under the cross-platform unit tests.
 #![cfg_attr(not(target_os = "linux"), allow(dead_code))]
 
 /// `(key, Some(new_value))` → set; `(key, None)` → remove.
@@ -192,7 +188,6 @@ mod tests {
 
     #[test]
     fn double_slash_hook_paths_are_recognized() {
-        // linuxdeploy's gtk hook emits `$APPDIR//usr/lib/...` doubles.
         let vars = env(&[(
             "GTK_PATH",
             "/tmp/.mount_HoustoXYZ//usr/lib/x86_64-linux-gnu/gtk-3.0:/usr/lib/x86_64-linux-gnu/gtk-3.0",
@@ -236,7 +231,6 @@ mod tests {
 
     #[test]
     fn sibling_mount_prefix_is_not_confused_with_the_mount() {
-        // `/tmp/.mount_HoustoXYZ2/...` must NOT match `/tmp/.mount_HoustoXYZ`.
         assert!(!path_is_under("/tmp/.mount_HoustoXYZ2/usr/lib", APPDIR));
         assert!(path_is_under("/tmp/.mount_HoustoXYZ/usr/lib", APPDIR));
         assert!(path_is_under("/tmp/.mount_HoustoXYZ", APPDIR));

@@ -8,14 +8,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * Posting to LinkedIn rides `sdk.linkedin`. Pinned literally: the whole URL,
- * the method, the body (JSON, or the multipart parts) and the headers the
- * gateway routes on. A multipart body carries its own Content-Type (with
- * the boundary), so the JSON one every other gateway call stamps is absent
- * from the post.
- */
-
 const BASE = "http://host";
 const AUTHORIZE =
   "https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=c&redirect_uri=https%3A%2F%2Fgateway.gethouston.ai%2Fv1%2Flinkedin%2Foauth%2Fcallback&state=s&scope=openid%20profile%20w_member_social";

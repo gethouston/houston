@@ -2,7 +2,6 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { runPool } from "../src/lib/async-pool.ts";
 
-/** A promise plus its resolver, so a test decides when a task settles. */
 function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((r) => {
@@ -39,7 +38,6 @@ describe("runPool", () => {
       done.push(i);
     });
 
-    // Settle out of order: results are committed as they land, not batched.
     gates[2].resolve();
     await tick();
     deepStrictEqual(done, [2]);
@@ -59,7 +57,6 @@ describe("runPool", () => {
       2,
       async (item) => {
         started.push(item);
-        // A phrase change lands while the first pair is in flight.
         if (started.length === 2) generation = 2;
         await tick();
       },

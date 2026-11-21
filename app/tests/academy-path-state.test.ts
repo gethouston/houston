@@ -9,9 +9,6 @@ import { ACADEMY_CHAPTER_IDS } from "../src/lib/academy/academy-chapters.ts";
 import type { AcademyRecord } from "../src/lib/academy/academy-record.ts";
 import type { LessonSpec } from "../src/lib/academy/lesson-spec.ts";
 
-// What the path offers for each lesson, and when a chapter is done. The runner
-// opens a lesson on `lessonStartIndex`; the path must say the same thing.
-
 const record = (patch: Partial<AcademyRecord> = {}): AcademyRecord => ({
   version: 1,
   chapters: {},

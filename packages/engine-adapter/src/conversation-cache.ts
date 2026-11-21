@@ -1,30 +1,3 @@
-/**
- * Local conversation cache (HOU-712).
- *
- * Cloud chats live on a per-agent engine pod behind the gateway, and a cold
- * pod HOLDS `GET …/conversations/:id/messages` until it wakes — minutes in
- * the worst case — so opening a chat painted nothing until the read landed.
- * This module persists each cloud conversation's folded feed frames locally
- * (IndexedDB); `loadChatHistory` seeds the conversation VM from it instantly,
- * then the network read revalidates when it finally resolves.
- *
- * Every operation is best-effort BY DESIGN: the cache is an accelerator,
- * never a source of truth, and the network path is untouched — so a storage
- * failure logs once and degrades to exactly today's behavior instead of
- * breaking the chat (a deliberate carve-out from the no-silent-failures rule:
- * no user-initiated outcome is swallowed).
- *
- * Entries are keyed per gateway + user (the Supabase JWT `sub`), so cached
- * transcripts never leak across accounts on a shared machine; sign-out clears
- * the whole store. Local/desktop engines never cache (reads are local disk).
- *
- * This module is the cache's OPERATIONS and its policy (scoping, validation,
- * disk cap). The record shapes and the storage port live in
- * `conversation-cache-types.ts`, the IndexedDB implementation of that port in
- * `conversation-cache-idb.ts`, and the scope derivation in
- * `conversation-cache-identity.ts` — all re-exported here as the front door.
- */
-
 import { createIdbBackend } from "./conversation-cache-idb";
 import type {
   CachedFrame,
@@ -42,15 +15,8 @@ export type {
   ConversationCacheBackend,
 } from "./conversation-cache-types";
 
-/** Disk cap: keep the most recently written transcripts, evict the oldest. */
 export const MAX_CACHED_CONVERSATIONS = 256;
 
-/**
- * The current cache scope, or null when caching is off (local engine, no
- * signed-in user). Installed by the adapter's HoustonClient so the scope
- * tracks the LIVE bearer — a token refresh keeps the same `sub`, a different
- * account lands in different keys.
- */
 let identity: () => string | null = () => null;
 
 export function setConversationCacheIdentity(fn: () => string | null): void {
@@ -59,7 +25,6 @@ export function setConversationCacheIdentity(fn: () => string | null): void {
 
 let backend: ConversationCacheBackend | null | undefined;
 
-/** Test seam. Pass null to disable, undefined to restore the default. */
 export function setConversationCacheBackend(
   b: ConversationCacheBackend | null | undefined,
 ): void {
@@ -100,7 +65,6 @@ function validFrames(value: unknown): CachedFrame[] | null {
   return value as CachedFrame[];
 }
 
-/** The locally cached transcript, or null (no cache / caching off / corrupt). */
 export async function readCachedConversation(
   agentPath: string,
   sessionKey: string,
@@ -117,7 +81,6 @@ export async function readCachedConversation(
   }
 }
 
-/** Persist a transcript (full replace), then prune past the cap. */
 export async function writeCachedConversation(
   agentPath: string,
   sessionKey: string,
@@ -128,17 +91,12 @@ export async function writeCachedConversation(
   if (!key || !b || frames.length === 0) return;
   try {
     await b.set(key, {
-      // Bounded (HOU-819): the cache exists to paint a cold open instantly,
-      // so it keeps a recent-window snapshot, trimmed at a TURN boundary —
-      // never mid-turn, which would paint a reply missing its own prompt.
       frames: trimForCache(frames).map((f) => ({
         feed_type: f.feed_type,
         data: f.data,
         ...(f.ts !== undefined ? { ts: f.ts } : {}),
         ...(f.author !== undefined ? { author: f.author } : {}),
         ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
-        // Turn identity (HOU-1214): a cache-painted feed must stay dedupable
-        // against a live replay of the same turn.
         ...(f.turnId !== undefined ? { turnId: f.turnId } : {}),
         ...(f.toolIndex !== undefined ? { toolIndex: f.toolIndex } : {}),
         ...(f.notice !== undefined ? { notice: f.notice } : {}),
@@ -155,7 +113,6 @@ export async function writeCachedConversation(
   }
 }
 
-/** Drop one conversation's cached transcript (server says it's gone). */
 export async function deleteCachedConversation(
   agentPath: string,
   sessionKey: string,
@@ -170,10 +127,6 @@ export async function deleteCachedConversation(
   }
 }
 
-/**
- * Wipe every cached transcript — the sign-out hook, so nothing from this
- * account lingers on a shared machine. Never throws.
- */
 export async function clearConversationCache(): Promise<void> {
   const b = activeBackend();
   if (!b) return;

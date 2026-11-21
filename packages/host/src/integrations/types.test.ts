@@ -4,13 +4,6 @@ import {
   integrationUpstreamErrorFromResponse,
 } from "./types";
 
-/**
- * The upstream-error mapper must ALWAYS yield the typed error carrying the
- * real upstream status — a content-type is a claim, not a guarantee, so a
- * malformed "json" body must never surface as a SyntaxError that callers bury
- * behind a generic 500.
- */
-
 const respond = (raw: string, status: number, contentType?: string) =>
   new Response(raw === "" ? null : raw, {
     status,
@@ -34,8 +27,8 @@ test("a MALFORMED body with a json content-type still yields the typed error, ra
     "gateway GET /toolkits",
   );
   expect(err).toBeInstanceOf(IntegrationUpstreamError);
-  expect(err.status).toBe(502); // the real upstream status survives
-  expect(err.body).toBe(raw); // the raw text is the detail, not a SyntaxError
+  expect(err.status).toBe(502);
+  expect(err.body).toBe(raw);
   expect(err.message).toContain("502");
 });
 

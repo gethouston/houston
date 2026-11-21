@@ -6,14 +6,6 @@ import { MemoryVfs } from "../vfs";
 import { handleDocsData } from "./agent-data-docs";
 import { handleAgentFile } from "./agent-file";
 
-/**
- * The first-day fields of an agent's config are HOST-OWNED (codex 7, C4): a
- * surface writes the whole config after reading it, so a read taken before the
- * first day started (or before a hosted pod's seed landed) must not put the
- * start button back, or take it away for good. Both config write doors keep
- * what the stored config holds.
- */
-
 const ws: Workspace = {
   id: "ws-1",
   ownerUserId: "alice",

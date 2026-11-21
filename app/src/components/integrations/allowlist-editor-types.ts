@@ -22,8 +22,6 @@ export interface AllowlistEditorProps {
   onSave: (next: string[] | null) => void;
   copy: AllowlistEditorCopy;
   rowMeta?: ReadonlyMap<string, string>;
-  /** Visible heading id supplied by a mounting page hero. */
   labelledBy?: string;
-  /** Keep false when the mounting page hero carries the question and helper. */
   showIntro?: boolean;
 }

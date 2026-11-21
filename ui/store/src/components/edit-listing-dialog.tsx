@@ -36,20 +36,11 @@ export interface EditListingDialogProps {
   agent: OwnedAgentRow;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The store's category vocabulary, labelled by the surface. */
   categories: StoreCategoryRow[];
-  /** Persist the edited identity; reject with an Error to surface its message. */
   onSave: (identity: OwnedAgentIdentity) => Promise<void>;
   labels?: Partial<EditListingDialogLabels>;
 }
 
-/**
- * THE listing editor — the store-facing metadata of an owned agent (name,
- * tagline, description, category, tags), saved as one `PATCH {identity}`.
- * One shared composition so web and app cannot drift. Content (skills,
- * instructions) is deliberately absent: it comes from the agent in Houston
- * via re-publish.
- */
 export function EditListingDialog({
   agent,
   open,
@@ -63,8 +54,6 @@ export function EditListingDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Re-seed from the row each time the dialog opens, so a save-then-reopen
-  // shows the server truth, not the last local draft.
   useEffect(() => {
     if (open) {
       setDraft(listingDraftOf(agent));

@@ -22,7 +22,6 @@ type Load =
   | { status: "error"; message: string }
   | { status: "ready"; items: AdminQueueItem[] };
 
-/** A 404 from an admin route means the caller is not an admin (fail-closed). */
 function classify(err: unknown): Load {
   if (err instanceof StoreApiError && err.status === 404) {
     return { status: "forbidden" };
@@ -33,11 +32,6 @@ function classify(err: unknown): Load {
   };
 }
 
-/**
- * The public-listing review queue. Loads pending requests, then lets an admin
- * approve (go public) or reject (stay unlisted) each agent. A decided card is
- * removed on success; failures surface inline.
- */
 export function QueueTab({
   getToken,
 }: {

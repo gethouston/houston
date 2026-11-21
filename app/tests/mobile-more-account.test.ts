@@ -5,9 +5,6 @@ import { JSDOM } from "jsdom";
 import type { ReactElement } from "react";
 import shell from "../src/locales/en/shell.json" with { type: "json" };
 
-// workspace-switcher-face reaches the session hooks, which read Vite's
-// `import.meta.env` on load; the page only needs its SignedInHeader, so the
-// node runner swaps in a plain one that draws the same name and email.
 registerHooks({
   resolve(specifier, context, next) {
     if (
@@ -67,9 +64,6 @@ const page = (account: Parts) =>
   new JSDOM(render(h(Page, { account, onBack: () => undefined }))).window
     .document;
 
-// "Your account" in the phone's More card drills in INSIDE the card: a back
-// row, who is signed in, then the account's actions as sheet rows. No menu
-// pops over the card's other rows.
 describe("the More card's account page", () => {
   it("lists the account's actions under a back row, Sign out apart", () => {
     const doc = page(
@@ -83,7 +77,6 @@ describe("the More card's account page", () => {
       }),
     );
     const buttons = [...doc.querySelectorAll("button")];
-    // The name starts with the visible text (WCAG 2.5.3), then the target.
     strictEqual(
       buttons[0]?.getAttribute("aria-label"),
       "Your account, back to More",
@@ -97,7 +90,6 @@ describe("the More card's account page", () => {
       "Profile,About me,Sign out",
     );
     ok(doc.body.textContent?.includes("ada@example.com"));
-    // Sign out sits in its own group, after a rule.
     const signOut = buttons.at(-1);
     ok(signOut?.parentElement?.className.includes("border-t"));
     strictEqual(doc.querySelectorAll('[role="menu"]').length, 0);

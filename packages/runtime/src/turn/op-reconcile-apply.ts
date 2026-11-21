@@ -27,22 +27,11 @@ import type { TurnFilesystem } from "./turn-filesystem";
 
 export interface ReconcileApplied {
   events: HoustonEvent[];
-  /** The chat's interruption reply for the dead turn, for the store. */
   line?: ChatMessage;
-  /** What became of the dead turn's chat (the reply body names it). */
   chat: string;
-  /** Not this worker's agent, or a chat over the read cap: decline. */
   decline?: true;
 }
 
-/**
- * The reconcile op over the hydrated tree, before any sync-back: the dead
- * turn's chat gets its interruption reply, a lost routine fire gets the run
- * row its sandbox never uploaded, and the host's own reconcile settles the
- * conversation's running rows exactly as a pod's scheduler would. The worker
- * holds this conversation's claim and nothing else, so nothing outside it is
- * settled here.
- */
 export async function applyReconcileOp(
   op: ReconcileOp,
   filesystem: TurnFilesystem,
@@ -81,14 +70,10 @@ export async function applyReconcileOp(
   const deps: ReconcileDeps = {
     vfs: new PrefixedVfs(filesystem.vfs, "workspaces"),
     paths: new LocalPaths(),
-    // The conversation claim is the exclusivity: no other writer settles
-    // this conversation's runs while the op holds it.
     lock: { setNx: async () => true },
     events: collect(events),
     now: () => new Date(),
     newId: randomUUID,
-    // Never here: the hydrated routines would overwrite a concurrent edit.
-    // The caller snoozes/pauses after its sync-back, from the durable history.
     settleRuns: async () => {},
   };
   if (abandoned?.routine)
@@ -104,13 +89,6 @@ export async function applyReconcileOp(
   return { events, chat, ...(line ? { line } : {}) };
 }
 
-/**
- * A pooled fire writes its run row only into its own tree and uploads it
- * settled, so a fire whose sandbox died left no row anywhere. Record it as
- * running from its first claim's start; the reconcile that follows settles
- * it. A routine since deleted, or a chat no routine maps to, has no history
- * to show it in.
- */
 async function recordLostRun(
   deps: ReconcileDeps,
   ws: Workspace,

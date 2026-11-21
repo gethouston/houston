@@ -14,7 +14,6 @@ import { restoreTurnDocument, snapshotTurnDocument } from "./turn-doc-state";
 
 const MAX_ATTEMPTS = 3;
 
-/** A document remained concurrently modified across every bounded CAS attempt. */
 export class TurnDocConflictError extends Error {
   readonly code = "document_conflict";
 
@@ -24,13 +23,11 @@ export class TurnDocConflictError extends Error {
   }
 }
 
-/** Dependencies and mutation callback for one guarded document write. */
 export interface TurnDocCasOptions<T> extends DocRefreshTarget {
   apply: () => Promise<T>;
   shouldCommit?: (result: T) => boolean;
 }
 
-/** Re-read, re-apply, and generation-guard one document mutation up to three times. */
 export async function mutateTurnDocument<T>(
   opts: TurnDocCasOptions<T>,
 ): Promise<T> {

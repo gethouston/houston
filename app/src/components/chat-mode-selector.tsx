@@ -23,31 +23,11 @@ import {
 } from "./chat-mode-options";
 
 interface ChatModeSelectorProps {
-  /** Currently-pinned turn mode. */
   mode: TurnMode;
-  /** Called when the user picks a mode. */
   onSelect: (mode: TurnMode) => void;
-  /**
-   * The agent this control configures, when composer-scoped. Threaded so the
-   * Mode pill follows the same audience as the model + effort selectors: shown
-   * for everyone in a Teams org and in single-player, hidden only for a member
-   * on a pre-Teams multiplayer host. Omit outside an agent scope and it always
-   * shows.
-   */
   agent?: Pick<Agent, "access"> | null;
 }
 
-/**
- * "Mode" picker, rendered beside {@link ChatModelSelector} in the composer.
- * Three modes — Planner (read-only planning), Ask first (execute), and
- * Autopilot (auto, fire-and-forget) — each with an icon in a soft tile, a
- * name, and a one-line description. The trigger is the same h-7 muted pill as
- * the model + effort selectors. On desktop the menu matches the model picker's
- * card (rounded-2xl, bordered, shadowed, roomy rows); on the phone the same
- * rows open in a bottom sheet, since an anchored menu has no room above a
- * composer that sits on the keyboard. Hidden only for a member on a pre-Teams
- * multiplayer host (mirrors the other selectors); otherwise always available.
- */
 export function ChatModeSelector({
   mode,
   onSelect,
@@ -75,8 +55,6 @@ export function ChatModeSelector({
   );
 
   return (
-    // Stop pointer events from bubbling — keeps the board detail panel from
-    // reading trigger clicks as "click outside → close panel".
     <fieldset
       className="contents border-0 p-0 m-0"
       onPointerDown={(e) => e.stopPropagation()}
@@ -108,8 +86,6 @@ export function ChatModeSelector({
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-          {/* Match the model picker card: rounded-2xl, hairline border, soft
-              shadow, roomy 1.5 padding — not the default menu slab. */}
           <DropdownMenuContent
             align="start"
             sideOffset={6}

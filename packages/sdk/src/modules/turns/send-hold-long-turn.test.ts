@@ -45,7 +45,6 @@ test("a follow-up stays pending past fifteen minutes of running refusals and sen
       throw error;
     },
   );
-  // Attach immediately so the intentional red run also captures a rejection.
   const observed = result.catch((error) => error);
   await vi.advanceTimersByTimeAsync(16 * 60_000);
   expect(settled).toBe(false);
@@ -69,7 +68,6 @@ test("an observer handoff stays pending with live progress past fifteen minutes 
   );
   await vi.advanceTimersByTimeAsync(16 * 60_000);
   expect(settled).toBe(false);
-  // Both terminal progress and the existing dead-stream evidence remove it.
   registry.release("key", observer);
   await expect(result).resolves.toBe(true);
 });

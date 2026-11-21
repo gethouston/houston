@@ -2,13 +2,6 @@ import { expect, test } from "vitest";
 import { parseTurnRequest } from "./parse-turn-request";
 import { turnSessionRequest } from "./turn-request";
 
-/**
- * Houston's turn arrives marked by the gateway: `coordinator` carries the
- * turn's own Houston credential, and the person's message may carry its
- * approval answers and grants. A worker never decides it is the coordinator
- * from anything else.
- */
-
 const CLAIMED = {
   workspaceId: "w1",
   agentId: "a1",

@@ -93,10 +93,6 @@ test.each([
     ],
   },
   {
-    // Re-seed even when the visible descriptor is identical: the status never
-    // exposes the api key, and the owner's reconnect rotates the proxyKey
-    // under the SAME tunnel URL — skipping here would strand teammates on the
-    // dead key.
     name: "re-seeds an equal-looking organization-hydrated endpoint (key may have rotated)",
     gateway: shared,
     status: {

@@ -8,17 +8,6 @@ import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 
-/**
- * Switch into an org the create dialog just made and say so. The switch is
- * the workspaces store's `setCurrent`, which IS the C8 E3 sequence (re-point
- * `x-houston-org`, drop the query cache, re-establish the event stream), never
- * re-implemented here. `useCreateTeam`'s own onSuccess already reloaded the
- * workspaces, so this only reads the store.
- *
- * A paid org waits on its checkout, so its toast says where to finish paying
- * instead of inviting people. When no browser took the checkout, the toast
- * carries the link as its action, which runs inside a click and so opens.
- */
 export function useLandInCreatedOrg() {
   const { t } = useTranslation("teams");
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
@@ -34,12 +23,6 @@ export function useLandInCreatedOrg() {
     if (ws) {
       setCurrentWorkspace(ws);
       await loadAgents(ws.id);
-      // The active space just switched under the user. If they opened this
-      // from Settings (or any non-home view, or an agent that belonged to the
-      // old space and the reload above just dropped), the view would stay put
-      // and the whole create reads as a silent failure. Land them on home,
-      // the same place the shell sends a blocked view, so the switch is
-      // visible.
       openHome();
     }
     if (paying) {

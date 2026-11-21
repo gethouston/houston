@@ -9,12 +9,6 @@ import {
   withRemedyDetails,
 } from "../src/components/agent/trigger-remedy-detail.ts";
 
-/**
- * The SDK's `triggerRemedy` decides what the person should do; this helper is
- * the ONE place the app turns that into authored copy, for the routine
- * screen's chip and for the grid's badge (which shows `detail` verbatim).
- */
-
 const SRC = join(import.meta.dirname, "../src");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
 const translate = (key: string) => `t:${key}`;

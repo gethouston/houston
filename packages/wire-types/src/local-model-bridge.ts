@@ -8,7 +8,6 @@ import type {
 } from "@houston/protocol";
 import type { CustomEndpoint } from "./types";
 
-/** All operations remain bound to the identity captured when access was opened. */
 export interface LocalModelBridgeAccess {
   identity: LocalBridgeIdentity;
   register(

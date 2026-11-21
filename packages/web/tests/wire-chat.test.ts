@@ -12,22 +12,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The chat surface on the wire, byte for byte.
- *
- * Chat is the one family the web adapter does not reach through `cpFetch`: it
- * drives the agent's own runtime directly, so the SDK binds the CLIENT
- * (`sdk.clientFor`, and `sdk.turns` / `sdk.conversations` for the one-shot
- * commands) rather than the request builder. Nothing else in the suite would
- * notice that binding putting a turn on a different path, sending a different
- * body, or losing the active-space header that picks which pod answers — the
- * requests below ARE that record.
- *
- * Read the paths against protocol v3: every conversation route is nested under
- * the agent's own sandbox (`/agents/<id>/conversations/<sessionKey>/…`), which
- * the gateway proxies to that agent's pod.
- */
-
 const BASE = "http://host";
 const AGENT = "a1";
 const SK = "sk-1";
@@ -40,8 +24,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  // A spec's turn must not outlive it: a turn still holding SK would make the
-  // next spec's history read wait it out.
   disposeAllStreams();
   restore();
   vi.clearAllMocks();
@@ -57,11 +39,6 @@ const client = (org = ORG) => {
   return c;
 };
 
-/**
- * Answer the conversation routes: JSON for the commands, an empty body for the
- * observer/turn event stream (which ends it immediately, so a spec never leaves
- * a stream running into the next one).
- */
 function stubEngine(body: Record<string, unknown> = { ok: true }) {
   stubRouted((call: Call) =>
     call.url.endsWith("/events")
@@ -75,14 +52,12 @@ const onlyCall = (): Call => {
   return calls[0];
 };
 
-// ---- the one-shot conversation controls ----
-
 test("cancelSession posts a byte-identical single POST …/conversations/:id/cancel", async () => {
   stubEngine({ ok: true, cancelled: true });
 
   const result = await client().cancelSession(AGENT, SK);
 
-  const post = onlyCall(); // a live turn settles itself: no rescue write
+  const post = onlyCall();
   expect(post.method).toBe("POST");
   expect(post.url).toBe(`${BASE}/agents/${AGENT}/conversations/${SK}/cancel`);
   expect(post.body).toBeNull();
@@ -161,8 +136,6 @@ test("truncateConversation posts the turn it cuts at", async () => {
   expectGatewayHeaders(post);
 });
 
-// ---- the reads and the send ----
-
 test("loadChatHistory reads the tail window, then attaches the observer stream", async () => {
   stubEngine({ id: SK, title: "t", messages: [] });
 
@@ -175,7 +148,6 @@ test("loadChatHistory reads the tail window, then attaches the observer stream",
   );
   expect(read.headers.get("Authorization")).toBe("Bearer t");
   expect(read.headers.get("x-houston-org")).toBe(ORG);
-  // The observer attaches ONCE — a second subscription would double every frame.
   const streams = calls.filter((c) => c.url.endsWith("/events"));
   expect(streams).toHaveLength(1);
   expect(streams[0].url).toBe(
@@ -227,10 +199,6 @@ test("loadChatHistory carries a persisted mission receipt into the chat feed", a
 });
 
 test("a chat-open read still rides the transient-retry ladder a pod handoff needs", async () => {
-  // The SDK's client is built over the SAME read retry every control-plane call
-  // gets (`createEngineSdk` composes `transientRetryFetch`). Without it, a
-  // history read that lands mid rolling-deploy throws once and the chat renders
-  // empty until the user reselects it (HOU-731) — invisible in every other spec.
   vi.useFakeTimers();
   let messageReads = 0;
   stubRouted((call: Call) => {
@@ -263,7 +231,6 @@ test("startSession posts the turn to the agent's own sandbox, carrying its per-t
   );
   expect(send.url).toBe(`${BASE}/agents/${AGENT}/conversations/${SK}/messages`);
   expectGatewayHeaders(send);
-  // The nonce is minted per turn; everything else is the caller's own send.
   const body = JSON.parse(send.body ?? "{}") as Record<string, unknown>;
   expect(typeof body.nonce).toBe("string");
   expect({ ...body, nonce: undefined }).toEqual({
@@ -281,10 +248,6 @@ test("startSession posts the turn to the agent's own sandbox, carrying its per-t
 });
 
 test("a typed send carries the picker's effort in the body", async () => {
-  // A pooled turn reads effort from the send alone (the stored choice is not
-  // injected when the body names a provider), so a send without it ran the
-  // default effort whatever the picker showed, for every agent and the
-  // assistant alike.
   stubEngine({ ok: true });
 
   await client().startSession(AGENT, {
@@ -310,7 +273,6 @@ test("a new mission's first send asks the runtime to title the card after the re
   stubEngine({ ok: true });
 
   await client().startSession(AGENT, {
-    // A fresh conversation: SK still has the previous spec's turn open.
     sessionKey: "activity-new-mission",
     prompt: "Write the weekly sales report",
     provider: "openai",
@@ -329,14 +291,10 @@ test("a new mission's first send asks the runtime to title the card after the re
     fallback: "Write the weekly sales report",
     text: "Write the weekly sales report",
   });
-  // No separate title request rides beside the send.
   expect(calls.some((c) => c.url.endsWith("/title"))).toBe(false);
 });
 
 test("a send refused as turn running goes out again byte-identical, never dropped", async () => {
-  // The cloud pool holds the conversation's claim through the previous turn's
-  // write-back, so the follow-up meets 409 turn running (staging 2026-10-02).
-  // The SDK holds it and re-sends the SAME request: one message, one nonce.
   let posts = 0;
   stubRouted((call: Call) => {
     if (call.url.endsWith("/events")) return new Response("", { status: 200 });
@@ -369,9 +327,6 @@ test("a send refused as turn running goes out again byte-identical, never droppe
 });
 
 test("a send the shared compute had no room for goes out again byte-identical", async () => {
-  // The cloud refuses a send it has no sandbox room for with 503 compute_busy
-  // (nothing ran) instead of waking a pod. The SDK keeps the turn thinking and
-  // re-sends the SAME request after the hint: one message, one nonce.
   let posts = 0;
   stubRouted((call: Call) => {
     if (call.url.endsWith("/events")) return new Response("", { status: 200 });
@@ -408,8 +363,6 @@ test("a send the shared compute had no room for goes out again byte-identical", 
   expectGatewayHeaders(sends[1]);
 });
 
-// ---- the gateway's typed provider refusals ----
-
 const BLOCKED = {
   error:
     "Your GitHub Copilot account is blocked by the provider. Fix it there, or connect another AI.",
@@ -417,7 +370,6 @@ const BLOCKED = {
   provider: "github-copilot",
 };
 
-/** Every FeedItem event the adapter emits for `sessionKey`, as pushed. */
 function collectFeed(sessionKey: string): {
   items: Array<Record<string, unknown>>;
   stop: () => void;
@@ -439,11 +391,6 @@ function collectFeed(sessionKey: string): {
 }
 
 test("a send the gateway refused as provider_account_blocked settles as the billing_locked card, not a sign-in", async () => {
-  // H-005: the credential is intact but GitHub locked the account's billing.
-  // The 409 carries the typed code; the SDK reads the code (never the
-  // sentence) and settles the fresh send as the `unauthenticated` card with
-  // cause `billing_locked`, carrying the refused prompt for "Send again".
-  // Nothing is re-sent: a retry would read the same refusal.
   let posts = 0;
   stubRouted((call: Call) => {
     if (call.url.endsWith("/events")) return new Response("", { status: 200 });
@@ -474,8 +421,6 @@ test("a send the gateway refused as provider_account_blocked settles as the bill
         message: BLOCKED.error,
       },
     });
-    // The adapter maps the engine id to the desktop's provider name on the
-    // way out, like every provider_error card.
     expect((card.data as { provider: string }).provider).not.toBe("");
     await new Promise((r) => setTimeout(r, 300));
     expect(posts).toBe(1);
@@ -485,11 +430,6 @@ test("a send the gateway refused as provider_account_blocked settles as the bill
 });
 
 test("a held message's re-send refused as provider_account_blocked lands the billing_locked card on the feed", async () => {
-  // The handoff path: the first send meets 409 turn running, the SDK holds
-  // it and re-sends once the running turn settles; the re-send is refused
-  // with the typed code. The observed turn keeps rendering, so the refusal
-  // lands as its own card, failing the optimistic bubble, and no third send
-  // follows.
   let posts = 0;
   stubRouted((call: Call) => {
     if (call.url.endsWith("/events")) return new Response("", { status: 200 });
@@ -556,13 +496,10 @@ test("Stop on a message still waiting for room ends it: the cancel goes out, no 
   expect(cancel?.url).toBe(
     `${BASE}/agents/${AGENT}/conversations/activity-busy-stop/cancel`,
   );
-  // Stopped locally: no orphan rescue write, and nothing re-sent.
   expect(calls.some((call) => call.method === "PATCH")).toBe(false);
   await new Promise((r) => setTimeout(r, 1_200));
   expect(posts).toBe(1);
 });
-
-// ---- the ids the paths splice ----
 
 test("every conversation path percent-encodes the agent and the session key", async () => {
   stubEngine({ ok: true, cancelled: true });
@@ -586,8 +523,6 @@ test("a failed control surfaces the engine's status — never swallowed", async 
   ).rejects.toMatchObject({ status: 409 });
 });
 
-// ---- lines said elsewhere, written in as history ----
-
 const IMPORT = {
   importId: "onboarding:first_run",
   messages: [
@@ -596,7 +531,6 @@ const IMPORT = {
   ],
 };
 
-/** The import answers `imported`; the history read after it answers the lines. */
 function stubImport(imported: number) {
   stubRouted((call: Call) =>
     call.url.endsWith("/import")
@@ -657,7 +591,6 @@ test("a refused import surfaces its status and is sent again by the retry", asyn
     ],
   ]);
 
-  // Landed: nothing is owed any more.
   reset();
   await client().retryPendingConversationImports(AGENT);
   expect(calls).toEqual([]);

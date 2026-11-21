@@ -55,7 +55,6 @@ const end: BrowserHandoffFeedItem = {
   ...T,
 };
 
-/** The rows as item ids, a card as `card`. */
 function layout(items: BrowserHandoffFeedItem[], running: boolean): string[] {
   return browserHandoffFeedRows(items, running).map((row) =>
     row.kind === "card" ? "card" : (items[row.index].id ?? "?"),
@@ -63,8 +62,6 @@ function layout(items: BrowserHandoffFeedItem[], running: boolean): string[] {
 }
 
 describe("browserHandoffFeedRows", () => {
-  // The live fold keeps the whole reply in one entry where its first words
-  // streamed; the settled transcript puts it after the tools.
   const live = [
     user,
     thinking,

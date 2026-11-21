@@ -15,16 +15,12 @@ afterEach(() => {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 test("announces every file the Files tab would show, whatever the extension", () => {
-  // The chat card and the Files tab must agree: an agent-created file that
-  // shows in the tab is announced in chat. The old extension allowlist hid
-  // extensionless files ("create a file named ping") — the tab showed them,
-  // the chat said nothing (HOU-677 follow-up).
   const before = snapshotWorkspace(dir);
 
   writeFileSync(join(dir, "deck.pptx"), "ppt");
   writeFileSync(join(dir, "ping"), "pong");
   writeFileSync(join(dir, "make_deck.py"), "print('x')");
-  writeFileSync(join(dir, ".env"), "SECRET=1"); // dot-files stay hidden
+  writeFileSync(join(dir, ".env"), "SECRET=1");
 
   const changes = diffSnapshots(before, snapshotWorkspace(dir));
   expect(changes.created).toEqual(["deck.pptx", "make_deck.py", "ping"]);
@@ -32,10 +28,6 @@ test("announces every file the Files tab would show, whatever the extension", ()
 });
 
 test("markdown deliverables tracked but role files ignored", () => {
-  // Markdown reports are user deliverables and must appear in the chat
-  // file-change summary. The seeded role files (CLAUDE.md, AGENTS.md,
-  // GEMINI.md) must NOT — otherwise every agent's first session would
-  // falsely report creating its own instructions.
   const before = snapshotWorkspace(dir);
 
   writeFileSync(join(dir, "CLAUDE.md"), "role");

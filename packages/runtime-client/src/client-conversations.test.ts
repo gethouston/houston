@@ -1,19 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { HoustonEngineClient } from "./client";
 
-/**
- * The conversation-record routes {@link EngineConversationsClient} contributes
- * to {@link HoustonEngineClient}. Asserted THROUGH the concrete client, because
- * that is the only way anything calls them: the split is a file boundary, never
- * a surface a caller reaches on its own.
- *
- * Most of this family keys one conversation by id, and several routes differ
- * only by their last segment (`/cancel` vs `/truncate` vs `/mode`) or by method
- * alone (`PATCH` renames, `DELETE` destroys the SAME url) — so each case pins
- * the exact outgoing {method, url, body}. A swapped literal here deletes a chat
- * the user asked to rename.
- */
-
 const BASE = "http://127.0.0.1:4317";
 
 interface Recorded {
@@ -45,8 +32,6 @@ function makeClient(payload: unknown = { ok: true }) {
   return { client, calls };
 }
 
-// The id carries a slash and a space: every route below must ESCAPE it, or the
-// segment splices the path and the call lands on a different route.
 const ID = "chat 1/x";
 const ENC = `${BASE}/conversations/chat%201%2Fx`;
 
@@ -74,8 +59,6 @@ describe("the engine client's conversation-record routes", () => {
   });
 
   it("keeps a zero window instead of dropping it as falsy", async () => {
-    // `before: 0` is the first page, not "no page": a truthiness check here
-    // would silently load the newest window instead of the oldest.
     const { client, calls } = makeClient({ messages: [] });
     await client.getHistory(ID, { before: 0 });
     expect(calls[0].url).toBe(`${ENC}/messages?before=0`);

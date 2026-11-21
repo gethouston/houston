@@ -5,20 +5,12 @@ import { type ResumableStreamSource, serveResumableStream } from "./stitch";
 import { StreamChannel } from "./stream-channel";
 import type { WireEvent, WireFrame } from "./types";
 
-/**
- * The shared resume stitch, driven against a real StreamChannel: replay vs
- * sync vs resync decisions, the gap/dupe-free flush of frames that arrive
- * during the async reads, and — critically — that the watermark dedupe dies
- * with the flush (a seq regression must not starve a connected subscriber).
- */
-
 const user = (content: string): WireEvent => ({
   type: "user",
   data: { content, ts: 1 },
 });
 const text = (s: string): WireEvent => ({ type: "text", data: s });
 
-/** A source over a StreamChannel with injectable read delays. */
 function makeSource(opts?: { delayReads?: () => Promise<void> }) {
   let channel = new StreamChannel();
   const subscribers = new Set<(f: SequencedFrame) => void>();
@@ -44,7 +36,6 @@ function makeSource(opts?: { delayReads?: () => Promise<void> }) {
         for (const cb of [...subscribers]) cb(frame);
       });
     },
-    /** Simulate a full authority restart: fresh channel, seq counter back to 0. */
     resetChannel() {
       channel = new StreamChannel();
     },
@@ -61,10 +52,10 @@ async function serve(src: ReturnType<typeof makeSource>, cursor?: number) {
 
 test("fresh connect: sync with the snapshot (turnId included), then live frames", async () => {
   const src = makeSource();
-  src.publish({ ...user("hi"), turnId: "t-1" }); // 1
-  src.publish({ ...text("Hel"), turnId: "t-1" }); // 2
+  src.publish({ ...user("hi"), turnId: "t-1" });
+  src.publish({ ...text("Hel"), turnId: "t-1" });
   const { sent } = await serve(src);
-  src.publish({ ...text("lo"), turnId: "t-1" }); // 3
+  src.publish({ ...text("lo"), turnId: "t-1" });
   expect(sent[0]).toEqual({
     type: "sync",
     data: { running: true, partial: "Hel", seq: 2, turnId: "t-1" },
@@ -74,17 +65,15 @@ test("fresh connect: sync with the snapshot (turnId included), then live frames"
 });
 
 test("resume: replay + concurrently-published frames, no gap, no duplicate, no sync", async () => {
-  // Delay the reads so live frames land in the stitch buffer mid-decision.
   let release!: () => void;
   const gate = new Promise<void>((r) => (release = r));
   const src = makeSource({ delayReads: () => gate });
-  src.publish(user("q")); // 1
-  src.publish(text("a")); // 2
-  src.publish(text("b")); // 3
+  src.publish(user("q"));
+  src.publish(text("a"));
+  src.publish(text("b"));
 
   const pending = serve(src, 1);
-  // Published while replayAfter is still awaited: buffered by the stitch.
-  src.publish(text("c")); // 4
+  src.publish(text("c"));
   release();
   const { sent } = await pending;
   expect(sent.some((f) => f.type === "sync")).toBe(false);
@@ -95,10 +84,9 @@ test("the stitch flush dedupes frames the replay already covered", async () => {
   let release!: () => void;
   const gate = new Promise<void>((r) => (release = r));
   const src = makeSource({ delayReads: () => gate });
-  src.publish(user("q")); // 1
+  src.publish(user("q"));
   const pending = serve(src, 0);
-  // Arrives live AND will be included in the replay read below → must be sent once.
-  src.publish(text("a")); // 2
+  src.publish(text("a"));
   release();
   const { sent } = await pending;
   expect(sent.map((f) => f.seq)).toEqual([1, 2]);
@@ -106,8 +94,8 @@ test("the stitch flush dedupes frames the replay already covered", async () => {
 
 test("an unserviceable cursor gets a resync sync built from the snapshot", async () => {
   const src = makeSource();
-  src.publish(user("q")); // 1
-  src.publish({ type: "done", data: null }); // 2 → window cleared
+  src.publish(user("q"));
+  src.publish({ type: "done", data: null });
   const { sent } = await serve(src, 1);
   expect(sent).toEqual([
     {
@@ -120,16 +108,14 @@ test("an unserviceable cursor gets a resync sync built from the snapshot", async
 
 test("after the flush, live frames flow in arrival order — a seq regression never starves the subscriber", async () => {
   const src = makeSource();
-  src.publish(user("q")); // 1
-  src.publish(text("long-lived")); // 2 … watermark 2
-  const { sent } = await serve(src); // connected, watermark 2
+  src.publish(user("q"));
+  src.publish(text("long-lived"));
+  const { sent } = await serve(src);
   sent.length = 0;
 
-  // The authority's state is lost (snapshot TTL expiry / conversation evicted):
-  // a fresh channel restarts seq at 1 — BELOW this subscriber's watermark.
   src.resetChannel();
-  src.publish(user("new world")); // seq 1
-  src.publish(text("still delivered")); // seq 2
+  src.publish(user("new world"));
+  src.publish(text("still delivered"));
   expect(sent.map((f) => [f.seq, f.type])).toEqual([
     [1, "user"],
     [2, "text"],
@@ -141,5 +127,5 @@ test("unsubscribe stops live delivery", async () => {
   const { sent, unsubscribe } = await serve(src);
   unsubscribe();
   src.publish(user("q"));
-  expect(sent).toHaveLength(1); // just the sync
+  expect(sent).toHaveLength(1);
 });

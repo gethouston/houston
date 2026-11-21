@@ -25,8 +25,6 @@ export function UserAttachmentMessage({
   labels,
 }: UserAttachmentMessageProps) {
   const message = invocation.message.trim();
-  // An interaction card's answers sent with files: the answers keep their
-  // receipt, the files their badge.
   const answers = decodeInteractionAnswersMessage(message);
   return (
     <div className="flex max-w-md flex-col items-end gap-2">

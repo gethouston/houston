@@ -11,10 +11,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/**
- * The field is `w-full` by design, so it takes the width of whatever lays it
- * out. This rail gives it a realistic form column instead of the page.
- */
 function Field({ children }: { children: ReactNode }) {
   return <div className="w-72 max-w-full">{children}</div>;
 }
@@ -187,11 +183,6 @@ function InputSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["Input"];
 
 export const specimen: Specimen = {

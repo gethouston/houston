@@ -1,18 +1,6 @@
 import { cn } from "@houston-ai/core";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
-/**
- * The shell's ONE detail-panel card: the portal target every panel surface
- * renders into (`useShellDetailPanel`), a sibling of `<main>` in the content
- * row. Rendered only while a surface claims the panel.
- *
- * Three shapes, one element, all in CSS. The phone layer (unprefixed) covers
- * the content area (the board stays mounted underneath; the panel's own close
- * button returns to it). The desktop layer (`md:`) is the 45% side card — or,
- * when the chat is wide (`usePanelWide`), it takes the row `<main>` has left.
- * It steps out of the desktop layout (still mounted, so the chat keeps its
- * state) while an expanded file preview takes the whole row.
- */
 export function ShellPanelCard({
   wide,
   stepsOut,

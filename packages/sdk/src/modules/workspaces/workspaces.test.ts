@@ -31,11 +31,6 @@ const LAYOUT: SidebarLayout = {
   ],
 };
 
-/**
- * A workspaces SDK over a mock `fetch` that records the whole wire.
- * `reactivity` is off, so every recorded call is one a workspaces operation
- * made and nothing else — which is what makes "exactly one request" exact.
- */
 function makeSdk(answer: (path: string) => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(

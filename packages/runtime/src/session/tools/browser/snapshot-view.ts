@@ -8,19 +8,14 @@ import {
   walk,
 } from "./snapshot-tree";
 
-/** How much of the page a snapshot shows; the default is the compact whole. */
 export interface SnapshotView {
-  /** Only the controls, with the headings and named sections around them. */
   interactive: boolean;
-  /** Only lines containing this (any case), with a little context. */
   query?: string;
-  /** Keep each link's address (redacted), which is dropped by default. */
   links: boolean;
 }
 
 export const FULL_VIEW: SnapshotView = { interactive: false, links: false };
 
-/** OpenClaw's interactive roles: what click, fill and select act on. */
 const INTERACTIVE = new Set([
   "button",
   "link",
@@ -42,14 +37,12 @@ const INTERACTIVE = new Set([
 ]);
 
 const POINTER = "[cursor=pointer]";
-/** How many enclosing lines a query match keeps, nearest first. */
 const QUERY_CONTEXT = 3;
 
 export function isInteractive(node: TreeNode): boolean {
   return INTERACTIVE.has(node.role) || node.content.includes(POINTER);
 }
 
-/** A wrapper with nothing of its own: no name, no value, not clickable. */
 function isBareWrapper(node: TreeNode): boolean {
   return (
     !node.content.includes(POINTER) &&
@@ -60,17 +53,13 @@ function isBareWrapper(node: TreeNode): boolean {
 export interface ViewInput {
   tree: string;
   view: SnapshotView;
-  /** The page's address, to resolve relative link addresses against. */
   pageUrl: string;
-  /** Refs of the previous look at this same document, to mark what is new. */
   previous?: ReadonlySet<string>;
 }
 
 export interface ViewOutput {
   tree: string;
-  /** Tool-level lines for above the page content (match and new counts). */
   notes: string[];
-  /** Every ref in the whole tree, for the next look's comparison. */
   refs: Set<string>;
 }
 
@@ -114,7 +103,6 @@ export function viewTree({
   };
 }
 
-/** Wanted nodes, plus named ancestors that hold one (a form, a dialog). */
 function contextKeep(
   roots: readonly TreeNode[],
   wanted: (n: TreeNode) => boolean,
@@ -167,7 +155,6 @@ function queryKeep(
   return keep;
 }
 
-/** A link's address, absolute and with its secrets hidden. */
 function linkLine(node: TreeNode, pageUrl: string): string {
   const raw = unquoted(node.content.replace(/^\/url:\s*/, ""));
   const absolute = URL.canParse(raw, pageUrl)

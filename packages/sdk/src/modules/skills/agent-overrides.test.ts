@@ -5,14 +5,6 @@ import { HoustonSdk } from "../../sdk";
 import { memoryKv } from "../../test-ports";
 import { AgentSkillsHttpError } from "./index";
 
-/**
- * An agent's own copy of a workspace skill loads whether or not the manifest
- * names it, so putting the agent back on the workspace version and taking the
- * workspace skill off the agent are each TWO writes. What makes them right is
- * the order: the copy is the only thing here nothing can restore, so it goes
- * last, after the reversible manifest write has landed.
- */
-
 const BASE = "http://127.0.0.1:4317";
 
 interface Recorded {
@@ -27,11 +19,6 @@ const json = (body: unknown, status = 200) =>
     headers: { "content-type": "application/json" },
   });
 
-/**
- * A host holding one agent's manifest and, optionally, that agent's own copy
- * of the skill. `holdsCopy: false` is the agent that only ever loaded the
- * workspace version — its DELETE answers 404, exactly as the host does.
- */
 function agentHost(
   options: {
     holdsCopy?: boolean;
@@ -47,8 +34,6 @@ function agentHost(
       const body = typeof init?.body === "string" ? init.body : null;
       const url = String(input);
       calls.push({ method, url, body });
-      // A round trip the caller waits for, so two acts on one agent can
-      // genuinely interleave when nothing serializes them.
       await new Promise((resolve) => setTimeout(resolve, 1));
       if (new URL(url).pathname.endsWith("/skills-manifest")) {
         if (method === "PUT") {
@@ -81,7 +66,6 @@ function agentHost(
   return { sdk: new HoustonSdk(config), calls, read: () => enabled };
 }
 
-/** Each call as `METHOD path`, which is what the ordering claims read on. */
 const trace = (calls: readonly Recorded[]) =>
   calls.map((call) => `${call.method} ${new URL(call.url).pathname}`);
 
@@ -100,8 +84,6 @@ describe("putting an agent back on the workspace version of a skill", () => {
   });
 
   it("keeps the copy when the entry could not be switched on", async () => {
-    // Otherwise the agent is left with neither version of the skill while the
-    // toast says it is on the workspace one.
     const { sdk, calls } = agentHost({
       holdsCopy: true,
       failManifestPut: true,
@@ -149,9 +131,6 @@ describe("taking a workspace skill off one agent", () => {
 
 describe("what these acts publish to the assistant's catalog", () => {
   it("claims nothing there, because they reach no route of their own", () => {
-    // The catalog is extracted from the functions that ISSUE a request; these
-    // two compose the manifest write and the delete, so an `@assistant` tag on
-    // them is read by nothing while it reads as a decision somebody made.
     const source = readFileSync(
       new URL("./agent-overrides.ts", import.meta.url),
       "utf8",
@@ -170,8 +149,6 @@ describe("the queue these acts share with the single switch", () => {
       sdk.skills.agent.setSkillEnabled("a1", "triage", true),
     ]);
 
-    // Unqueued, both would have read ["invoices"] before either wrote, and the
-    // second write would have restored what the first took off.
     expect(read()).toEqual(["triage"]);
   });
 });

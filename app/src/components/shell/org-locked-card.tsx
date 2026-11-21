@@ -9,12 +9,6 @@ import { RowCardButton } from "../cards/row-card-button";
 import { CheckoutOpenNote } from "./checkout-open-note";
 import { TeamStatusCheckoutDialog } from "./team-status-checkout-dialog";
 
-/**
- * What a chat shows in place of its composer while the org is locked: the
- * same reason the strip gives, and the billing owner's way to pay. Everyone
- * else reads "ask the owner"; the store apps never sell, so they read it
- * with no button.
- */
 export function OrgLockedCard() {
   const { t } = useTranslation("teams");
   const { reason } = useOrgWriteLock();

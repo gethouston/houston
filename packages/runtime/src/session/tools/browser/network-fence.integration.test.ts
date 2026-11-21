@@ -17,7 +17,6 @@ import { blockedAddress } from "./ip-ranges";
 
 const available = await browserAvailable();
 
-/** This machine's own address on a private LAN, when it has one. */
 const lanAddress = Object.values(networkInterfaces())
   .flat()
   .find(
@@ -40,7 +39,6 @@ const lanPort =
       )
     : 0;
 
-/** Every way a page can name the local service, by name or by address. */
 const sneaky = () =>
   [
     `http://${LOOPBACK_NAME_HOST}:${localPort}/name`,
@@ -71,7 +69,6 @@ const site = createServer((req, res) => {
 });
 const origin = available ? `http://${SITE_HOST}:${await listen(site)}` : "";
 
-/** The deployment both the launch and the URL checks read (launch.ts). */
 function deployment(managed: boolean): void {
   vi.stubEnv("HOUSTON_MANAGED_CLOUD", managed ? "1" : "");
 }
@@ -114,7 +111,6 @@ describe.skipIf(!available)("the network fence in a real Chromium", () => {
     });
     expect(bounced.text).toContain("not on the public web");
     expect(local.hits).toEqual([]);
-    // The tab is usable again right after.
     const next = await run({ action: "open", url: `${origin}/` });
     expect(next.text).toContain("Public page");
   });

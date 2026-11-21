@@ -10,21 +10,6 @@ import { specimen as chatSuggestReusableCard } from "./chat-suggest-reusable-car
 import { specimen as chatThinkingIndicator } from "./chat-thinking-indicator";
 import { specimen as chatToolBlock } from "./chat-tool-block";
 
-/**
- * The **Chat** area: the mission conversation — the stream a turn lands in,
- * the composer it is written in, the lines that mark waiting, and the cards
- * that take the composer's place when the agent needs a decision.
- *
- * One file per component in this folder (`<component>.tsx`, each exporting
- * `export const specimen: Specimen` with `group: "Chat"` alongside
- * `export const sources: string[]`), imported here and listed below in the
- * order a mission reads: the stream, then the composer, then the waiting
- * states, then the composer-replacing cards.
- *
- * `ChatPanel` — the whole screen, assembled — has no page of its own on
- * purpose: it takes a live feed, a session key and a sender resolver, and a
- * static fixture of it would document a mock rather than the product.
- */
 export const specimens: readonly Specimen[] = [
   chatMessage,
   chatConversation,

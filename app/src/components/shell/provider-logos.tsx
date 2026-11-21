@@ -1,15 +1,3 @@
-/**
- * Provider logo dispatch — the single front door shared by every surface that
- * shows a "which AI provider" mark (chat model picker, provider cards,
- * onboarding, reconnect/error cards, and the AI hub).
- *
- * ONE registry (`BRAND_LOGOS`) maps a `BrandKey` to its SVG mark; the pure
- * resolver in `provider-logo-map.ts` folds every provider id (and AI-hub lab id)
- * onto a key, including regional/variant ids that reuse a parent brand's art.
- * Anything with no bespoke mark renders the polished `Monogram` tile instead of
- * a bare initial, so a provider can never silently borrow the wrong brand's logo
- * and a new provider is a single map edit rather than three drifting switches.
- */
 import type { ReactElement } from "react";
 import type { LogoProps } from "./provider-glyph-svg.tsx";
 import {
@@ -51,7 +39,6 @@ import {
   ZaiLogo,
 } from "./provider-marks-extra.tsx";
 
-/** The one place a `BrandKey` binds to its mark. Exhaustive by construction. */
 const BRAND_LOGOS: Record<BrandKey, (props?: LogoProps) => ReactElement> = {
   anthropic: AnthropicLogo,
   cohere: CohereLogo,
@@ -98,13 +85,6 @@ export function providerLogo(
   return key ? BRAND_LOGOS[key]({ className }) : null;
 }
 
-/**
- * The fallback tile for any provider without a bespoke mark: a rounded chip in a
- * faint `currentColor` wash with the provider's 1-2 char monogram. It draws into
- * the same 24x24 slot as the brand marks (so `[&_svg]:size-full` wrappers scale
- * it identically) and reads in light and dark because both the wash and the
- * glyph derive from the inherited text color.
- */
 export function Monogram({
   seed,
   className = "h-5 w-5",
@@ -146,15 +126,6 @@ export function Monogram({
   );
 }
 
-/**
- * Monochrome provider mark by id — the shared dispatcher used across chat,
- * onboarding, reconnect/error cards, and the AI hub. Resolves the id to a brand
- * mark, else falls back to the `Monogram` tile seeded from the id.
- *
- * `className` replaces the default 20px box for callers that need a different
- * size or, in a flex title row, `shrink-0` so a long provider name can't squash
- * the mark at phone width.
- */
 export function ProviderGlyph({
   providerId,
   className,

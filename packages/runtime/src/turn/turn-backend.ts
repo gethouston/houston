@@ -26,7 +26,6 @@ import { buildTurnBrowserTool, buildTurnCommonTools } from "./turn-toolset";
 
 type TurnTool = PiBackendDeps["customTools"][number];
 
-/** Dependencies shared by the pi and Claude pooled-turn backend branches. */
 export interface TurnBackendDeps {
   directories: TurnDirectories;
   turn: TurnSessionRequest;
@@ -34,25 +33,17 @@ export interface TurnBackendDeps {
   toolSelection: ToolSelection;
   codeSandbox: TurnTool | null;
   systemPrompt: string;
-  /**
-   * How much of the filesystem this turn's ROLE may touch
-   * (`session/coordinator-policy.ts`): shared writable roots for an ordinary
-   * agent, an exact-file allowlist for the coordinator. ONE object for BOTH
-   * branches below — the wall must not depend on which provider the user is on.
-   */
   fileGuard?: WorkspaceGuardOptions;
   claudeSdk?: ClaudeBackendDeps["sdk"];
   claudeSdkLoad?: ClaudeBackendDeps["sdkLoad"];
 }
 
-/** Claude directories split between durable conversation state and turn state. */
 export interface TurnClaudeLayout extends ClaudeLayout {
   credentialStorageDir: string;
   homeDir: string;
   sessionsFile: string;
 }
 
-/** Typed provider failure raised before a backend session can stream events. */
 export class TurnBackendProviderError extends Error {
   constructor(
     readonly providerError: ProviderError,
@@ -68,7 +59,6 @@ export class TurnBackendProviderError extends Error {
   }
 }
 
-/** Build the per-conversation Claude layout for one disposable turn root. */
 export function turnClaudeLayout(
   turnRoot: string,
   dataDir: string,
@@ -83,7 +73,6 @@ export function turnClaudeLayout(
   };
 }
 
-/** Select and assemble the provider harness for a pooled turn. */
 export function createTurnBackend(
   provider: string,
   deps: TurnBackendDeps,
@@ -117,8 +106,6 @@ export function createTurnBackend(
       ...(workspaceReady
         ? { beforeTool: () => awaitDeferredFiles(workspaceReady) }
         : {}),
-      // SAFETY: these are the same pi ToolDefinition objects the MCP bridge
-      // accepts; only their heterogeneous schema generics need widening.
       tools: commonTools as unknown as BridgedPiTool[],
       sdk: deps.claudeSdk,
       sdkLoad: deps.claudeSdkLoad,
@@ -150,8 +137,6 @@ export function createTurnBackend(
     workspaceDir,
     dataDir,
     modelRuntime: deps.modelRuntime,
-    // The turn's first answered request and first hedge, on the terminal
-    // frame's timingsMs (turn-terminal.ts) beside the other marks.
     hedge: timings
       ? {
           answered() {
@@ -162,8 +147,6 @@ export function createTurnBackend(
           },
         }
       : undefined,
-    // The SAME prompt the Claude branch gets: the capability sentence follows
-    // the turn's granted tools, not the provider it landed on.
     systemPrompt: deps.systemPrompt,
     transport: POOLED_TURN_TRANSPORT,
     sharedSkillsDir: turnSharedSkillsDir(turnRoot),

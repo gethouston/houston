@@ -603,8 +603,6 @@ test("a higher publish sequence rolls back an OTA zip above the native baseline"
 });
 
 test("a store upgrade ignores the older build's OTA record and its older builtin", async () => {
-  // Build 2 applied OTA 20; build 3 ships builtin 15. Capgo resets to builtin
-  // 15 after the upgrade, so OTA 18 is newer than what now runs.
   const upgrade = { ...body, sequence: 18, bundle_sequence: 18 };
   const stored = new Map([["2", "20"]]);
   const download = vi.fn().mockResolvedValue({ id: "bundle" });
@@ -700,7 +698,6 @@ test("a replayed older manifest cannot clear a newer required-update gate", asyn
   expect(await check()).toBe("required");
   served = replay;
   expect(await check(true)).toBe("required");
-  // A fresh launch reads the persisted policy, not just in-memory state.
   expect(await make()()).toBe("required");
   expect(cleared).not.toHaveBeenCalled();
   expect(download).not.toHaveBeenCalled();

@@ -1,14 +1,3 @@
-/**
- * Every compact time label shows in full on a board card (HOU-165): at every
- * board width, chat open or closed, in en, es and pt, for every label bucket,
- * column action set and card state. The narrowest case is a 180px column (1280
- * window, chat open). Revealing the select checkbox on hover, focus or a
- * selection must not move the label, resize it or change the card's height.
- * board-card-scroll.spec.ts covers a column long enough to scroll.
- *
- * Assertions, not screenshots: the label's text width against its box, its
- * position and box against the resting card, and the card's width and height.
- */
 import type { BrowserContext, Page } from "@playwright/test";
 import {
   BUCKET_NAMES,
@@ -26,9 +15,6 @@ import { seedPage } from "../support/seed";
 
 test.use({ timezoneId: "UTC" });
 
-// One boot per locale, width and chat state, shared by one test per column: a
-// boot plus every bucket and state of all three columns outran the 30s test
-// budget on a slow CI runner, and a boot per column made the job 50% longer.
 for (const locale of ["en", "es", "pt"] as const)
   for (const width of [1280, 1440, 1920])
     for (const chat of [false, true])
@@ -38,11 +24,6 @@ for (const locale of ["en", "es", "pt"] as const)
         let page: Page;
         let failed = false;
 
-        // beforeAll gets no `page` fixture. The runner fills the project's
-        // context options (and this file's `test.use`) into a context made
-        // here too, but not its video: the config records every attempt
-        // because recording paces the page, so the context records its own,
-        // kept only when a test of the group fails.
         test.beforeAll(async ({ browser, fakeHost }, testInfo) => {
           context = await browser.newContext({
             viewport: { width, height: 900 },
@@ -108,7 +89,6 @@ for (const locale of ["en", "es", "pt"] as const)
               );
               await card(page, id).blur();
             }
-            // One checked card puts every card of its column in selection mode.
             const checkbox = card(page, `now-${status}`).getByRole("checkbox");
             await card(page, `now-${status}`).hover({
               position: { x: 40, y: 50 },
@@ -120,8 +100,6 @@ for (const locale of ["en", "es", "pt"] as const)
               const fit = await measure(card(page, id));
               expectSteady(fit, restOf(id), `${id} selected`);
             }
-            // The next column measures this page at rest, and a selection
-            // hides every other column's checkbox.
             await checkbox.uncheck();
             await checkbox.blur();
             await page.mouse.move(0, 0);
@@ -134,7 +112,6 @@ for (const locale of ["en", "es", "pt"] as const)
 test("a past-year label steps down to a shorter form that fits", async ({
   page,
 }) => {
-  // Widen only the past-year labels, as a wider platform font would.
   await page.addInitScript(() => {
     document.addEventListener("DOMContentLoaded", () => {
       const style = document.createElement("style");

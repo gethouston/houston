@@ -21,7 +21,6 @@ export async function moveLazyStoreEntry(
 ): Promise<void> {
   assertSafeKey(fromKey);
   assertSafeKey(toKey);
-  // POSIX rename: onto itself is a no-op, into itself is an error.
   if (toKey === fromKey) return;
   if (toKey.startsWith(`${fromKey}/`)) {
     throw new Error(`move: destination is inside the source: ${fromKey}`);
@@ -29,14 +28,10 @@ export async function moveLazyStoreEntry(
   const isFile =
     (await local.readBytes(fromKey)) !== null || state.visible(fromKey);
   if (!isFile) {
-    // A directory: exists only as its descendants. Move each one.
     const children = await vfs.listDetailed(fromKey);
     if (children.length === 0) {
       throw new Error(`move: source not found: ${fromKey}`);
     }
-    // Typed, like the single-object refusal below: `moveOrRefuse` turns a
-    // VfsExistsError into the 409 "already exists there" the user can act
-    // on. A plain Error would surface a fixable name collision as a 500.
     if ((await vfs.listDetailed(toKey)).length > 0) {
       throw new VfsExistsError(toKey);
     }
@@ -57,8 +52,6 @@ export async function moveLazyStoreEntry(
       throw new Error(`move: source not found: ${fromKey}`);
     }
   }
-  // The store's half is exact-keyed and invisible to the overlay's own
-  // guard: an object nobody has read yet still occupies the destination.
   if (state.visible(toKey)) throw new VfsExistsError(toKey);
   await local.move(fromKey, toKey);
   state.written(toKey);

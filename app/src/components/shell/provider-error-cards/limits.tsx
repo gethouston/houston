@@ -1,18 +1,3 @@
-/**
- * The LIMIT variants — rate-limited and usage-limit-paused. Both mean "this
- * account has no room right now": rate-limited clears in seconds (so it offers a
- * retry), the plan-window pause clears at a stated time (so it does not).
- *
- * Neither offers another ACCOUNT to continue on, because in a team space there
- * is no other account: every turn runs on the AI account of whoever sent it
- * (HOU-976). The limit is the sender's own to wait out, which is exactly what
- * these cards say.
- *
- * Split from the sibling `transient.tsx` (network / provider-internal /
- * malformed, which recover by retrying now) so each file stays inside the
- * file-size budget. All render on the unified `RowCard` (HOU-467).
- */
-
 import { formatLocalDateTime } from "@houston/sdk";
 import type { ProviderError } from "@houston-ai/chat";
 import { Clock, TimerResetIcon } from "lucide-react";
@@ -47,10 +32,6 @@ export function RateLimitedCard({
         media={<Clock className="size-5" />}
         title={t("providerError.rateLimited.title")}
         description={body}
-        // `undefined`, never an always-rendered fragment: `RowCard` tests the
-        // slot for null, so an empty fragment still mounts the action <span> and
-        // its `gap-2` — a phantom column on a card with no buttons. Same rule as
-        // `UsageLimitPausedCard` below.
         action={
           onRetry || onSwitchModel ? (
             <>
@@ -75,11 +56,6 @@ export function RateLimitedCard({
   );
 }
 
-/**
- * Plan-window usage limit (Anthropic's 5-hour session and weekly model
- * limits). Distinct from RateLimited: retrying now fails until the stated
- * reset, so there is no Retry; the one way on before then is another model.
- */
 export function UsageLimitPausedCard({
   error,
   onSwitchModel,

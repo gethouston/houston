@@ -1,7 +1,6 @@
 import { OFFICE_MAX_BYTES, officeExtensionSchema } from "@houston/wire-types";
 import { CORS, json } from "./http";
 
-// A real one-page PDF lets browser tests exercise the existing PDF renderer.
 const objects = [
   "<< /Type /Catalog /Pages 2 0 R >>",
   "<< /Type /Pages /Count 1 /Kids [3 0 R] >>",

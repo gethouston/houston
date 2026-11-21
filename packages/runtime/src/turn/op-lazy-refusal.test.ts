@@ -7,7 +7,6 @@ import type { TurnFilesystem } from "./turn-filesystem";
 const CID = "c1";
 const DATA_REL = "workspaces/P/Bob/.houston";
 
-/** A lazy tree whose only chat refuses its read for `reason`. */
 function refusingTree(reason: LazyReadRefusedError["reason"]): TurnFilesystem {
   const file = `${DATA_REL}/conversations/${CID}.json`;
   const vfs = {
@@ -16,7 +15,6 @@ function refusingTree(reason: LazyReadRefusedError["reason"]): TurnFilesystem {
       throw new LazyReadRefusedError(reason, key, 10, 5);
     },
   };
-  // Only the members these ops touch before the refused read.
   return {
     dataRel: DATA_REL,
     dataDir: "/nowhere/.houston",

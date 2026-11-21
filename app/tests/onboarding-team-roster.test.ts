@@ -99,8 +99,6 @@ describe("finishing the card", () => {
   });
 
   it("a resumed run finishes with the team it hired before the restart", () => {
-    // The roster only holds this mount's hires; the employees an interrupted
-    // run already hired exist in the workspace and count toward the team.
     strictEqual(teamFinishState([], 2), "ready");
     strictEqual(finishPressable(teamFinishState([], 2)), true);
     const failed = rosterSettle(join([], "hire-1", "Pax"), "hire-1", {
@@ -135,7 +133,6 @@ describe("finishing the card", () => {
     strictEqual(teamFinishState(failed), "failed");
     strictEqual(finishPressable(teamFinishState(failed)), false);
     strictEqual(finishStep("failed"), "cancel");
-    // Still waiting beats failed: the press holds until every create answers.
     const mixed = join(failed, "hire-2", "Quill");
     strictEqual(teamFinishState(mixed), "waiting");
   });

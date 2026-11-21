@@ -1,4 +1,3 @@
-/** The money and law worlds and the jobs each one hires for (ids only; labels live in `agentOnboarding:roleSetup`). */
 export const MONEY_AND_LAW_WORLDS = {
   finance: [
     "financial_analyst",

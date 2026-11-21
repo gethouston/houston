@@ -14,7 +14,6 @@ import { TITLE_PROMPT } from "./title-prompt";
 const errMessage = (err: unknown): string =>
   err instanceof Error ? err.message : String(err);
 
-/** First turns of the transcript, trimmed to a prompt-sized excerpt. */
 export function buildExcerpt(messages: ChatMessage[]): string {
   return messages
     .slice(0, 6)
@@ -23,10 +22,6 @@ export function buildExcerpt(messages: ChatMessage[]): string {
     .slice(0, 2400);
 }
 
-/**
- * Pure, parameterized title generation: a throwaway one-shot turn (see
- * `oneShotText`) trimmed to a single title line.
- */
 export async function generateTitle(opts: {
   cwd: string;
   model: unknown;
@@ -45,18 +40,8 @@ export async function generateTitle(opts: {
   return text.trim().split("\n")[0]?.trim().slice(0, 80) ?? "";
 }
 
-/** Produce a title for an excerpt (one provider's title implementation). */
 export type TitleRunner = (excerpt: string) => Promise<string>;
 
-/**
- * COMPLIANCE GATE (titles): route the title the SAME way a turn routes. When the
- * active provider is `anthropic` the title runs through the Claude Agent SDK —
- * NEVER pi's `createAgentSession`, which would hit api.anthropic.com in-process
- * with the setup token, the harness-spoofing path Anthropic server-blocks. Every
- * other provider keeps the existing pi title path byte-identical. Pure (the
- * runners are injected) so the "pi is not invoked for anthropic" guarantee is
- * unit-tested with spies.
- */
 export function dispatchTitle(
   provider: string | null,
   excerpt: string,
@@ -67,23 +52,12 @@ export function dispatchTitle(
     : runners.pi(excerpt);
 }
 
-/**
- * How to route ONE conversation's title. Titles run on the CONVERSATION's own
- * provider when its session is live (it just ran a turn — the moment titles
- * are requested). Dispatching on the agent-wide active provider titled a
- * local-model chat through a full Claude one-shot: a different backend the
- * chat never picked, burning a real Anthropic call (and failing outright when
- * that provider was the disconnected one). Only when the session is no longer
- * cached does the active provider decide. Pure, so the routing is unit-tested.
- */
 export function titlePlan(
   conv: { provider: string; model: string } | undefined,
   active: string | null,
 ): {
   provider: string | null;
-  /** Claude model to title with (anthropic conversations only). */
   claudeModelId?: string;
-  /** Model pin the pi runner must resolve (non-anthropic conversations). */
   resolvePin?: { provider: string; model: string };
 } {
   if (!conv) return { provider: active };
@@ -95,7 +69,6 @@ export function titlePlan(
   };
 }
 
-/** The concrete runners bound to this workspace's config/credentials. */
 function titleRunners(
   model?: unknown,
   claudeModelId?: string,
@@ -117,12 +90,6 @@ function titleRunners(
   };
 }
 
-/**
- * The anthropic title runner: a one-shot Claude SDK query. The ONLY expected
- * failure is the optional SDK being absent from this build; degrade to no title
- * (the caller truncates) rather than reroute an anthropic title onto pi's client
- * — that reroute is precisely what the compliance gate forbids.
- */
 async function claudeTitle(
   excerpt: string,
   modelId?: string,
@@ -134,8 +101,6 @@ async function claudeTitle(
       titlePrompt: TITLE_PROMPT,
       workspaceDir: config.workspaceDir,
       readToken: () => readAnthropicToken(authStorage),
-      // Locates the acting member's isolated Claude credential store, so a 401
-      // here can never recover onto the team credential (HOU-976).
       dataDir: config.dataDir,
       modelId: modelId ?? resolveModel().id,
       ...(signal ? { signal } : {}),
@@ -151,19 +116,6 @@ async function claudeTitle(
   }
 }
 
-/**
- * Title an arbitrary excerpt (the composer's first message), independent of any
- * stored conversation. Powers `POST /title` for shipped clients that predate the
- * send's `missionTitle` field — they have the message text but no conversation
- * id — so a board mission gets a real LLM title instead of a client-side
- * truncation. Returns "" for empty
- * input or when the model emits nothing (the caller falls back to truncation).
- *
- * The model is resolved LAZILY (only once we know there is text to title), so
- * empty input returns "" even when no provider is connected — resolving it in a
- * default-param argument would throw "No provider connected" before the
- * empty-input short-circuit could run.
- */
 export async function titleFromText(
   text: string,
   model?: unknown,
@@ -173,12 +125,6 @@ export async function titleFromText(
   return dispatchTitle(activeProvider(), excerpt, titleRunners(model));
 }
 
-/**
- * Title an excerpt on ONE turn's own resolved model (its provider, model id and,
- * through the caller's acting context, its credential) — never the agent-wide
- * active provider. Same compliance gate as every title: anthropic runs through
- * the Claude Agent SDK, everything else through pi's one-shot.
- */
 export function titleWithTurnModel(
   excerpt: string,
   model: { provider: string; id: string },
@@ -195,12 +141,6 @@ export function titleWithTurnModel(
   );
 }
 
-/**
- * Summarize a conversation into a short title and persist it. Returns the new
- * title, or null when the conversation does not exist or is empty. The model is
- * resolved LAZILY (after the existence check) so a missing/empty conversation
- * returns null even when no provider is connected.
- */
 export async function summarizeTitle(
   id: string,
   model?: unknown,
@@ -221,9 +161,6 @@ export async function summarizeTitle(
         plan.resolvePin.provider,
       );
     } catch {
-      // The chat's provider is disconnected (e.g. its local endpoint is
-      // gone): no title rather than silently rerouting onto a provider the
-      // chat never chose — the caller falls back to truncation.
       return null;
     }
   }

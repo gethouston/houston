@@ -22,9 +22,7 @@ export interface ConversationMapProps {
   moments: ConversationMoment[];
   conversationLength: number;
   labels?: ConversationMapLabels;
-  /** Increment to open the search popover from outside (the header menu's "Find"). */
   findToken?: number;
-  /** The header trigger; the search returns focus there when it closes. */
   returnFocusRef?: RefObject<HTMLButtonElement | null>;
   onOpenChange?: (open: boolean, conversationLength: number) => void;
   onMomentClick?: (
@@ -42,7 +40,6 @@ export interface ConversationMapActions {
   deleteDescription?: string;
 }
 
-/** A props-only, current-DOM conversation index. It intentionally keeps no history. */
 export function ConversationMap({
   moments,
   conversationLength,
@@ -72,10 +69,6 @@ export function ConversationMap({
     [conversationLength, onOpenChange],
   );
 
-  // The header "Find" action lives outside this subtree; it requests the
-  // search by bumping the token. Seeding the ref with the mount-time value
-  // keeps a conversation switch (this component remounts per session) from
-  // replaying the previous request.
   const seenFindToken = useRef(findToken);
   useEffect(() => {
     if (findToken === undefined || findToken === seenFindToken.current) return;

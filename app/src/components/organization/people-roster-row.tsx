@@ -15,12 +15,6 @@ import { useTranslation } from "react-i18next";
 import { GRANTABLE_ROLES } from "../../lib/org-roles";
 import { initialsFor, rosterPersonName } from "./people-tab-model";
 
-/**
- * One member on the People roster: avatar, name/email and role, with the
- * role dropdown and Remove when the caller may edit them. `focused` is the
- * person People was opened on, ringed and announced as the current row.
- * `pays` marks the person who pays for the org in place of their email.
- */
 export function PeopleRosterRow({
   member,
   isSelf,
@@ -39,8 +33,6 @@ export function PeopleRosterRow({
   onRemove: () => void;
 }) {
   const { t } = useTranslation("teams");
-  // Display name is primary when the gateway resolved one; the email then
-  // drops to a muted secondary line. Unnamed accounts use translated copy.
   const name = rosterPersonName(member, t("people.roster.unnamedAccount"));
   const secondaryEmail =
     member.displayName && member.email ? member.email : null;

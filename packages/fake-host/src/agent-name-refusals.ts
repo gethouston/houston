@@ -6,7 +6,6 @@ import { NAME_RESERVED, NAME_TAKEN } from "@houston/protocol";
 import { json } from "./http";
 import { listAgents } from "./state";
 
-/** The real host's refusal for another agent's name (routes/agent-name-taken.ts). */
 export const nameTaken = (name: string) =>
   json(
     {
@@ -16,13 +15,6 @@ export const nameTaken = (name: string) =>
     409,
   );
 
-/**
- * The real host's refusal for the AI Manager's own name
- * (routes/agent-name-reserved.ts), or null when the name is free to take.
- * The fake host plays the desktop edge, so it always enforces the rule: a
- * create unless it is the desktop-to-cloud move (`migration: true`), a rename
- * unless agent `renamingId` already holds the name.
- */
 export function reservedNameRefusal(
   name: string,
   opts: { migration?: unknown; renamingId?: string },

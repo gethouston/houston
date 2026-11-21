@@ -32,16 +32,6 @@ const SECTION_STATUS = {
   done: "done",
 } as const satisfies Record<TaskListSectionId, TaskRowStatus>;
 
-/**
- * One agent's tasks: the board's sections as bands of chat-list rows (the
- * agent's avatar, the title, the preview, a status tag), with the archive
- * folded at the bottom.
- *
- * The archive only exists under "All": it is the list's basement, and offering
- * it under a status segment would answer a question the segment did not ask —
- * the "…" menu's Archived action is what opens it, resetting the segment on
- * the way.
- */
 export function AgentMissionsList({
   sections,
   agentColor,
@@ -54,16 +44,13 @@ export function AgentMissionsList({
   originTagOf,
 }: {
   sections: AgentMissionSections;
-  /** The owning agent's stored colour id, worn by every row's avatar. */
   agentColor?: string;
   filter: TaskListFilterId;
   query: string;
   archivedOpen: boolean;
   archivedRef: RefObject<HTMLDivElement | null>;
   onToggleArchived: () => void;
-  /** Every row, archived ones included, opens as the pushed chat. */
   onOpen: (mission: AgentHomeConversation) => void;
-  /** Who started a task, in words (`useMissionOriginTag`). */
   originTagOf: (mission: AgentHomeConversation) => string | undefined;
 }) {
   const { t } = useTranslation(["shell", "dashboard"]);

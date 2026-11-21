@@ -16,28 +16,11 @@ import { certCopy } from "./copy.mjs";
 import h from "./h.mjs";
 import { canvas, panel, tint } from "./panel.mjs";
 
-/**
- * The social card: 1200x630 on the same photograph and the same glass panel as
- * the certificate.
- *
- * Deliberately NOT a shrunken certificate — at feed size a document reads as
- * grey noise. The card keeps the panel language for family recognition, but
- * everything inside it stays left-aligned and set at feed size: the mark, the
- * claim, the name and the event, with the sunrise coming up through the lower
- * half of the glass behind them. The inset is tighter than the certificate's,
- * proportionally, because at thumbnail size a wide frame eats the type.
- */
 export const OG_WIDTH = 1200;
 export const OG_HEIGHT = 630;
 
-/** Photograph left visible on all four sides of the panel. */
 const INSET = 40;
 
-/**
- * Same shape of ramp as the certificate's, one notch lighter throughout: the
- * card is read at thumbnail size, where a heavy tint is the difference between
- * a photograph and a grey rectangle in a feed.
- */
 const PANEL = tint([
   [0.88, 0],
   [0.85, 36],
@@ -46,16 +29,8 @@ const PANEL = tint([
   [0.92, 100],
 ]);
 
-/** A vignette, nothing more — the panel carries the contrast. */
 const VIGNETTE = `linear-gradient(180deg, ${navy(0.1)} 0%, ${navy(0.01)} 28%, ${navy(0)} 62%, ${navy(0.12)} 100%)`;
 
-/**
- * The certificate's ladder at feed scale — the same rungs, ~0.58x.
- *
- * Cut for General Sans at the wordmark's weight, exactly like the printed
- * ladder (citation.mjs), so the two images step at the same name lengths and a
- * cohort's cards look like one set.
- */
 function nameSize(name) {
   const len = [...name].length;
   if (len <= 12) return 100;
@@ -68,8 +43,6 @@ function nameSize(name) {
 export function ogCardElement(item) {
   const copy = certCopy(item.lang);
   const size = nameSize(item.displayName);
-  // Joined, not concatenated: an event whose date the gateway could not give us
-  // must show the code alone, never a dangling separator.
   const meta = [item.eventDateDisplay, item.code].filter(Boolean).join("  ·  ");
 
   return h(
@@ -85,7 +58,6 @@ export function ogCardElement(item) {
         padding: "44px 54px 48px 54px",
         background: PANEL,
       },
-      // ── Issuer left, credential metadata right ───────────────────────────
       h(
         "div",
         {
@@ -105,12 +77,6 @@ export function ogCardElement(item) {
           color: INK_SUBTLE,
         }),
       ),
-      // ── The claim ────────────────────────────────────────────────────────
-      // CENTRED in the glass left under the header, not pinned to the floor.
-      // Bottom-anchored, it pooled every spare pixel — over 200 of them — into
-      // one band across the card's middle, and with the panel tint this opaque
-      // there is no photograph coming through it to justify the emptiness. A
-      // name long enough to wrap now grows both ways into air it already has.
       h(
         "div",
         {
@@ -124,9 +90,6 @@ export function ogCardElement(item) {
           },
         },
         text(copy.certificateOf, {
-          // Right pad is 6px short so the pill reads optically centred: satori
-          // adds the letter spacing after the final glyph, and the closing "N"
-          // carries a right sidebearing on top of it.
           padding: "9px 16px 9px 22px",
           border: `1px solid ${HAIRLINE}`,
           borderRadius: 999,

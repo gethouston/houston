@@ -1,10 +1,3 @@
-/**
- * Internal pieces used by ChatInput. Not exported from the package index.
- *  - AttachmentChip: rich attachment card with type icon + remove button
- *  - FolderAttachmentChip: one chip for a whole attached folder
- * The send row beside them lives in `composer-trailing.tsx`.
- */
-
 import { FileTypeGlyphInline, FolderGlyph } from "@houston-ai/core";
 import { XIcon } from "lucide-react";
 import {
@@ -40,21 +33,10 @@ export function getTypeLabel(ext: string): string {
   return map[ext] ?? (ext ? ext.toUpperCase() : "File");
 }
 
-/**
- * The chip's icon column. Fixed at 32px whatever mark lands in it, so the name
- * and type lines beside it sit at the same x in every chip of a row.
- */
 const ICON_SLOT = "flex size-8 shrink-0 items-center justify-center";
 
-/** 20px in a 32px slot: the Files list's glyph-to-slot proportion. */
 const GLYPH = "size-5";
 
-/**
- * File identity drawn the way the Files list and chat's file chips draw it: the
- * bare Lucide glyph tinted with its `filetype` token (DESIGN.md §4), with the
- * extension classified by `@houston-ai/core` so a chip and a list row never
- * disagree about what a file is.
- */
 export function AttachmentIcon({ ext }: { ext: string }) {
   return (
     <span className={ICON_SLOT}>
@@ -68,7 +50,6 @@ export interface AttachmentChipProps {
   progress?: AttachmentUploadProgress;
   labels?: AttachmentProgressLabels;
   onRemove: () => void;
-  /** The remove button's name for `name`; English default. */
   removeLabel?: (name: string) => string;
 }
 
@@ -112,14 +93,11 @@ export interface FolderAttachmentChipProps {
   name: string;
   progress?: AttachmentUploadProgress;
   labels?: AttachmentProgressLabels;
-  /** Localized "N files" line under the folder name (HOU-808). */
   countLabel: string;
   onRemove: () => void;
   removeLabel?: (name: string) => string;
 }
 
-/** A whole attached folder as ONE chip — its files upload together and are
- *  removed together. Same card anatomy as AttachmentChip. */
 export function FolderAttachmentChip({
   name,
   countLabel,
@@ -131,7 +109,6 @@ export function FolderAttachmentChip({
   return (
     <div className="relative flex items-center gap-2.5 rounded-xl border border-ink/[0.08] bg-input pl-2.5 pr-8 py-2 min-w-0 shrink-0 max-w-[240px] shadow-sm">
       <span className={ICON_SLOT}>
-        {/* A folder is not a file type, so it keeps the monochrome glyph. */}
         <FolderGlyph small className={GLYPH} />
       </span>
       <div className="min-w-0">

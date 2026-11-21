@@ -1,15 +1,12 @@
 import type { StoreApi } from "zustand";
 
-/** The agent store's load flags, all a roster wait reads. */
 export interface RosterLoadState {
   loaded: boolean;
   loading: boolean;
 }
 
-/** Arms a watch that calls `trip` on a change; returns its disarm. */
 export type Tripwire = (trip: () => void) => () => void;
 
-/** Trips when `select` over the store yields a different value. */
 export function onStoreChange<T, V>(
   store: Pick<StoreApi<T>, "getState" | "subscribe">,
   select: (state: T) => V,
@@ -22,11 +19,6 @@ export function onStoreChange<T, V>(
   };
 }
 
-/**
- * Run `run` once the roster has settled: now when it already has, else on the
- * first write that settles it. Any tripwire firing first abandons the wait.
- * Returns a cancel, so a newer request can drop one still waiting.
- */
 export function afterRosterSettles<S extends RosterLoadState>(
   store: Pick<StoreApi<S>, "getState" | "subscribe">,
   run: () => void,

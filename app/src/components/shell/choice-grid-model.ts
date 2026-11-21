@@ -1,14 +1,3 @@
-/**
- * Arrow-key movement across the WRAPPING chips of one question — every run of
- * it at once, since a question is one radio group whatever it is drawn in.
- *
- * A wrapping run has no columns in the markup — the rows only exist once the
- * browser has laid it out. So the caller measures where each chip landed and
- * hands the rows in; everything here is pure, which is what makes "down keeps
- * your column, and clamps into a shorter row" testable at all.
- */
-
-/** The keys this model answers to. Enter and Space stay with the button. */
 const CHIP_GRID_KEYS = [
   "ArrowLeft",
   "ArrowRight",
@@ -24,12 +13,6 @@ export function isChipGridKey(key: string): key is ChipGridKey {
   return (CHIP_GRID_KEYS as readonly string[]).includes(key);
 }
 
-/**
- * Chip indices grouped into the rows the wrap produced, from each chip's
- * measured top edge in document order. Chips share one height, so a new top is
- * a new row; section headings between runs only ever start another row, which
- * is exactly how they read.
- */
 export function groupIntoRows(tops: readonly number[]): number[][] {
   const rows: number[][] = [];
   let currentTop: number | null = null;
@@ -55,14 +38,6 @@ function locate(
   return null;
 }
 
-/**
- * Where the focus goes, or null when the key asks for somewhere that isn't
- * there (the caller then leaves the event alone, so the dialog keeps its own
- * meaning for it). Left/right walk the question in reading order across rows
- * and runs alike; up/down hold the column and clamp into a shorter row;
- * Home/End are the first and last answer of the whole question, because the
- * question is one radio group and a row is only where the wrap fell.
- */
 export function nextChipIndex(
   key: ChipGridKey,
   index: number,

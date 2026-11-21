@@ -1,24 +1,12 @@
-/**
- * How a list row states its depth: the leading indent and the folder row's
- * disclosure triangle. The two have to agree — a file pads past exactly the
- * chevron a folder draws, or the icon column staircases down the tree — so
- * they live together.
- */
 import { cn } from "@houston-ai/core";
 import { ChevronRight } from "lucide-react";
 import { BASE_INDENT, DEPTH_INDENT, TRIANGLE_AREA } from "./files-list-chrome";
 
-/**
- * The leading space a row's name cell reserves for its depth. `chevron` adds
- * the room a FOLDER's disclosure triangle occupies, so a file's tile lines up
- * with the folder glyphs at its own depth instead of 20px to their left.
- */
 export function RowIndent({
   depth,
   chevron,
 }: {
   depth: number;
-  /** True on rows that draw no chevron of their own (files, empty rows). */
   chevron?: boolean;
 }) {
   return (
@@ -33,7 +21,6 @@ export function RowIndent({
   );
 }
 
-/** Folder-row expand/collapse indicator (rotates a quarter turn when open). */
 export function DisclosureChevron({
   open,
   className,

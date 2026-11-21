@@ -10,32 +10,12 @@ import {
 } from "./sdk-parity/inputs.ts";
 import { checkRules } from "./sdk-parity/rules.ts";
 
-/**
- * Does every route a signed-in human can reach have exactly one
- * `@houston/sdk` method, and does every SDK method reach a route some server
- * serves?
- *
- * It runs on every `pnpm check` (`check:sdk-parity`) and FAILS the process on
- * any violation the exceptions file does not excuse. Both servers are always
- * judged: the host declares its own route registry, and the gateway's is
- * vendored into scripts/sdk-parity/gateway-routes.generated.json, so a run with
- * no cloud checkout is a full run rather than a blind spot. Every remaining
- * violation is written down, with the reason it stands, in
- * scripts/sdk-parity-exceptions.json.
- *
- * Run with tsx, not `node --experimental-strip-types`: the host's modules
- * import each other extensionlessly, which Node's ESM resolver refuses.
- */
-/** HOUSTON_SDK_PARITY_EXCEPTIONS points the gate at a fixture; its own test
- *  runs this script for real and needs a file with a violation left out. */
 const EXCEPTIONS =
   process.env.HOUSTON_SDK_PARITY_EXCEPTIONS ??
   resolve(repoRoot, "scripts/sdk-parity-exceptions.json");
 
 const host = listRoutes();
 const gateway = readGatewayInventory();
-// A cloud checkout beside this repo never moves the verdict; when it has
-// something to say about the vendored copy's freshness, it says it here.
 if (gateway.sibling.notice) process.stdout.write(`${gateway.sibling.notice}\n`);
 const sdk = sdkMethods();
 const desktop = desktopCalls();

@@ -4,7 +4,6 @@ import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test } from "vitest";
-// The package root does not export pi's branch selection resolver.
 import { getBranchSelection } from "../../../node_modules/@earendil-works/pi-coding-agent/dist/core/virtual-models.js";
 import { resumeSessionManager } from "./session-files";
 import { SESSION_LOG_ROTATION_BYTES } from "./session-rotation";

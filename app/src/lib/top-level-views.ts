@@ -1,11 +1,3 @@
-/**
- * Full-window destinations share one view registry. The employee screen has
- * one view id; its selected employee and section live in store state. Folder
- * headers have no view id because they only change SidebarLayout disclosure.
- * Admin is a gated screen in the rail footer; Profile and About me are the
- * account menu's screens. A stale view falls back to AI Employees home.
- */
-
 import { ACADEMY_VIEW_ID } from "../components/academy/id.ts";
 import { ABOUT_ME_VIEW_ID, PROFILE_VIEW_ID } from "../components/account/id.ts";
 import { AGENTS_HOME_VIEW_ID } from "../components/agents-home/id.ts";
@@ -53,20 +45,14 @@ export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   AGENT_VIEW_ID,
 ]);
 
-/** Whether a `viewMode` names one of the app's screens. */
 export function isTopLevelView(viewMode: string): boolean {
   return TOP_LEVEL_VIEWS.has(viewMode as TopLevelViewId);
 }
 
-/** The employee view can host a board, depending on its open section. */
 export function isMissionBoardView(viewMode: string): boolean {
   return viewMode === AGENT_VIEW_ID;
 }
 
-/**
- * Board shortcuts belong only to the open Tasks section. A null section
- * resolves to Tasks; other sections must leave keyboard events alone.
- */
 export function isMissionBoardSurface(ui: {
   viewMode: string;
   agentSection: TeamSectionId | null;
@@ -75,7 +61,6 @@ export function isMissionBoardSurface(ui: {
   return ui.agentSection === null || ui.agentSection === "mission-control";
 }
 
-/** Whether a kept-alive top-level surface is the one currently on screen. */
 export function isActiveTopLevelView(
   activeViewMode: string,
   viewId: TopLevelViewId,
@@ -83,22 +68,6 @@ export function isActiveTopLevelView(
   return activeViewMode === viewId;
 }
 
-/**
- * Whether a top-level `viewMode` points at a view whose gate is off for this
- * caller: Admin follows the organization gate, and the assistant exists only where
- * discovery hands out an address. The sidebar entry is already hidden,
- * so a STALE `viewMode` (the role changed on a space switch, or the install
- * moved off the hosted cloud, while the page was open) would otherwise fall
- * through every render branch and strand the user on the shell's engine pane
- * with no way back; the workspace shell sends a blocked view home. Pure so the
- * fallback rule is unit-tested.
- *
- * Callers must only act on this once the gates have RESOLVED (`ready` in
- * `useSurfaceGates`): capabilities are null while they load and every gate reads
- * false then, so deciding early would bounce a legitimate view on every space
- * switch — the exact window a team-space switch opens, since it drops the
- * capabilities query.
- */
 export function blockedTopLevelView(
   viewMode: string,
   gates: {

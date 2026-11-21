@@ -15,7 +15,6 @@ export class WorkspacePreferenceIdentityChanged extends Error {
   }
 }
 
-/** Unavailable is distinct from unset: boot keeps this device's previous space. */
 export class WorkspacePreferenceUnavailable extends Error {
   constructor(
     readonly operation: "read",
@@ -39,7 +38,6 @@ export function isWorkspacePreferenceConnectivity(error: unknown): boolean {
   );
 }
 
-/** Every surface reports the SDK's expected refusals without filing a bug. */
 export function workspacePreferenceErrorKind(
   error: unknown,
 ): "signed_out" | "identity_changed" | "connectivity" | "unexpected" {

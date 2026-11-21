@@ -6,22 +6,6 @@ import type {
 } from "@houston-ai/board";
 import { Bot } from "lucide-react";
 
-/**
- * The Activity area's shared fixture: one workspace's missions across two
- * agents, frozen at a fixed instant.
- *
- * Every page in this folder reads from here so a reviewer comparing the card,
- * the column and the whole board is looking at the SAME missions — a difference
- * on screen is then a difference in the component, never in the copy. The
- * timestamps are literals rather than `Date.now()` offsets so the board's
- * newest-first sort renders identically on every run.
- *
- * Exports no `specimen`, so the registry walks past it (helper modules are
- * pulled in by the pages that use them).
- */
-
-/** The teammates a mission is attributed to. Ids are stable, which is what
- *  `personToneClass` hashes — the same person keeps one colour everywhere. */
 export const PEOPLE: KanbanPerson[] = [
   { id: "u-julian", label: "Julian Mora" },
   { id: "u-ana", label: "Ana Silva" },
@@ -32,11 +16,8 @@ export const PEOPLE: KanbanPerson[] = [
   { id: "u-rin", label: "Rin Watanabe" },
 ];
 
-/** The agent helmet every card on a board wears as its leading icon. The board
- *  passes ONE node for the whole board (`avatar`), not one per card. */
 export const AGENT_ICON = <Bot className="size-3.5 shrink-0 text-ink-muted" />;
 
-/** The mission board's three sections, exactly as the app builds them. */
 export const COLUMNS: KanbanColumnConfig[] = [
   { id: "running", label: "Running", statuses: ["running"] },
   { id: "needs-you", label: "Needs you", statuses: ["needs_you"] },
@@ -83,7 +64,6 @@ export const ERROR_MISSION: KanbanItem = {
   lastMessageAt: "2026-03-04T06:30:00.000Z",
 };
 
-/** Every mission the board renders, one per section plus the failed one. */
 export const MISSIONS: KanbanItem[] = [
   RUNNING_MISSION,
   {
@@ -100,7 +80,6 @@ export const MISSIONS: KanbanItem[] = [
   DONE_MISSION,
 ];
 
-/** The archived list's rows, including one that only matched in its body. */
 export const ARCHIVED: KanbanItem[] = [
   DONE_MISSION,
   {
@@ -120,7 +99,6 @@ export const ARCHIVED: KanbanItem[] = [
   },
 ];
 
-/** The unified conversation feed: the agent's main chat plus its missions. */
 export const CONVERSATIONS: ConversationEntry[] = [
   {
     id: "c-main",

@@ -11,24 +11,12 @@ import { CopyIdRow } from "../settings/copy-id-row";
 import { useOrgSlug } from "../settings/sections/api-org-id";
 import { SettingsCard } from "../settings/settings-row";
 
-/**
- * What a developer needs to reach ONE AI Employee from their own code: the
- * "Copy prompt for AI agent" button (the SDK's {@link apiSetupPrompt}, never a
- * key) with its hint, then the Agent ID and Organization ID with copy buttons.
- * The employee's API access screen and the AI Manager's chat card both render
- * it, so the two can never hand out different values. `children` join the ID
- * card as extra rows (the screen adds its doors to the keys and the docs).
- *
- * Only mounted where the deployment serves the public API: the gateway origin
- * is the address the prompt tells the coding agent to call.
- */
 export function AgentApiDetails({
   agent,
   compact = false,
   children,
 }: {
   agent: Pick<Agent, "id" | "name">;
-  /** Inside a chat card, whose shell already spaces its body. */
   compact?: boolean;
   children?: ReactNode;
 }) {
@@ -62,7 +50,6 @@ export function AgentApiDetails({
     }
   }
 
-  // Compact = rows of the chat card's own body, spaced by its shell.
   const body = (
     <>
       <Button

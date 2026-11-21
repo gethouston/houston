@@ -30,11 +30,6 @@ export interface BrowserLiveOverlayProps {
   onRetry: () => void;
 }
 
-/**
- * What sits over the page when it is not simply live: a status pill while
- * connecting or reconnecting (the last frame stays, dimmed, underneath), and
- * a centered note once the connection is lost or the hand-off has ended.
- */
 export function BrowserLiveOverlay({
   state,
   labels,

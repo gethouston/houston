@@ -8,13 +8,6 @@ import { mergeUniqueFiles } from "./use-file-drop-zone";
 
 export const DEFAULT_TOO_MANY_FILES_NOTICE = `You can attach up to ${MAX_ATTACHMENT_FILES} files at a time`;
 
-/**
- * The single ingest path for user-attached files. Every entry point (drop,
- * picker, clipboard paste) funnels through here so validation, dedupe and
- * the duplicate-file notice behave identically. Both `ChatInput` and the
- * panel-wide drop zone in `ChatPanel` consume this — keep it the only
- * place that owns that sequence.
- */
 export interface AttachmentIntakeOptions {
   files: File[];
   setFiles: (files: File[]) => void;
@@ -25,8 +18,6 @@ export interface AttachmentIntakeOptions {
   tooManyNotice?: string;
 }
 
-/** One ingest of `incoming` into `files`, the sequence every entry point
- *  shares. Plain so a caller can run it against a list read at call time. */
 export function ingestAttachments(
   {
     files,
@@ -39,9 +30,6 @@ export function ingestAttachments(
   }: AttachmentIntakeOptions,
   incoming: File[],
 ): void {
-  // A folder pick can sweep in thousands of files (the drop path already
-  // aborts its traversal at the same ceiling). Refuse the whole batch —
-  // attaching a silent subset would misrepresent what the agent gets.
   if (incoming.length + files.length > MAX_ATTACHMENT_FILES) {
     onNotice?.(tooManyNotice ?? DEFAULT_TOO_MANY_FILES_NOTICE);
     return;

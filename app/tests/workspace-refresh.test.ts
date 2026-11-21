@@ -6,10 +6,6 @@ import {
   withoutPendingDeletes,
 } from "../src/lib/workspace-refresh.ts";
 
-// The live-spaces poll (HOU: "a new org must appear without relaunching").
-// planSpacesRefresh is the pure merge decision the workspace store applies on
-// every background re-list; these pin its three outcomes.
-
 const ws = (id: string, name: string, isDefault = false): Workspace => ({
   id,
   name,
@@ -78,9 +74,6 @@ describe("planSpacesRefresh", () => {
   });
 });
 
-// PRODUCT-1426: while an optimistic delete is in flight the server still lists
-// the space, so every re-list must drop pending-delete rows or the 60s poll /
-// a window focus would resurrect a space the user just watched disappear.
 describe("withoutPendingDeletes", () => {
   it("returns the same array when nothing is pending (the common tick)", () => {
     const fresh = [personal, teamA];

@@ -25,18 +25,15 @@ for (const theme of THEMES) {
       name: "Name (Financial analyst)",
     });
     const create = dialog.getByRole("button", { name: "Create AI Employee" });
-    // Named for its job on arrival, so the desktop focus waits on the hire.
     await expect(name).toHaveValue("Financial analyst");
     await expect(create).toBeFocused();
     await expect(name).toHaveCSS("font-size", "16px");
     await expect(name).toHaveAttribute("aria-required", "true");
     await expect(dialog.getByText("New hire", { exact: true })).toHaveCount(0);
 
-    // A press on the name selects it whole, so typing replaces it.
     await name.click();
     await page.keyboard.type("Ava");
     await expect(name).toHaveValue("Ava");
-    // A name cleared to blank holds the hire back and says why.
     await name.fill("");
     await create.click();
     await expect(name).toBeFocused();
@@ -101,7 +98,6 @@ for (const width of [1280, 375]) {
     const first = teamCardNameField(page, "Executive assistant");
     await expect(first).toBeVisible();
     const last = teamCardNameField(page, "Production supervisor");
-    // Nothing spills sideways: the page and the dialog hold the team's width.
     expect(
       await page.evaluate(
         () =>
@@ -112,7 +108,6 @@ for (const width of [1280, 375]) {
     expect(
       await card.evaluate((node) => node.scrollWidth <= node.clientWidth),
     ).toBe(true);
-    // The footer never scrolls away, however tall the cards run.
     await expect(
       page.getByRole("button", { name: "Hire my team" }),
     ).toBeInViewport();
@@ -121,7 +116,6 @@ for (const width of [1280, 375]) {
       last.boundingBox(),
     ]);
     if (width >= 768) {
-      // Three compact badges across the 1152px frame, all in view at once.
       const frame = await card.boundingBox();
       expect(frame?.width).toBe(1152);
       for (const role of BASIC_TEAM_ROLES) {
@@ -136,7 +130,6 @@ for (const width of [1280, 375]) {
         ).toBe(true);
       }
     } else {
-      // Stacked full width, one badge under the other, never a carousel.
       expect(lastBox?.x).toBe(firstBox?.x);
       expect(lastBox?.y).toBeGreaterThan(firstBox?.y ?? 0);
       await expect(first).toHaveValue("Executive assistant");
@@ -145,7 +138,6 @@ for (const width of [1280, 375]) {
       await first.fill("");
       await last.scrollIntoViewIfNeeded();
       await page.getByRole("button", { name: "Hire my team" }).click();
-      // A blank name takes the person back up to its badge.
       await expect(first).toBeFocused();
       await expect(first).toBeInViewport();
     }

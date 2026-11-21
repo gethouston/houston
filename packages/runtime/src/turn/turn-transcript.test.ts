@@ -177,7 +177,6 @@ async function runClaimedTurn(
   const server = createTurnServer({
     store: new LocalDirStore(mkdtempSync(join(tmpdir(), "fallback-store-"))),
     token: "",
-    // Transient statuses retry; keep the test fast and the attempt count exact.
     transcriptRetryDelaysMs: [0, 0],
     ...deps,
   });
@@ -256,8 +255,6 @@ test("a compacted turn publishes its own final record, with the boundary the mar
     appendUserMessageAt(conversationsDir, turn.conversationId, turn.text, {
       turnId: turn.turnId,
     });
-    // The compaction before the prompt writes its summary marker; the turn's
-    // own record claims it (turnId) and follows it — here, a failure card.
     createCompactionCheckpoints(conversationsDir).save(
       turn.conversationId,
       "Summary of the chat so far",
@@ -289,9 +286,6 @@ test("a compacted turn publishes its own final record, with the boundary the mar
   });
 
   expect(failure?.providerError?.kind).toBe("rate_limited");
-  // The claim moved the compaction boundary onto the summary marker; the one
-  // remote row carries it on the turn's final record, so web history keeps the
-  // divider and the context reset a desktop reload draws.
   expect(failure?.compaction).toBeUndefined();
   expect(requests[1]?.url).toContain("/turns/turn.7/assistant");
   expect(requests[1]?.body).toEqual({
@@ -382,11 +376,8 @@ test("a transcript 503 becomes part of the terminal error", async () => {
     heartbeatIntervalMs: 60_000,
   });
 
-  // Three attempts (two retries) on a transient 503, then the real answer.
   expect(requests).toHaveLength(3);
   expect(raw).toContain('"type":"error"');
-  // Status only, never the response body: that text reaches the client and
-  // the turn log.
   expect(raw).toContain("transcript publish failed: user row rejected (503)");
   expect(raw).not.toContain("unavailable");
   expect(raw).not.toContain('"type":"done"');
@@ -516,7 +507,6 @@ test("a corrupt conversation file still ends in a terminal error frame", async (
   const objects = seedStandingLayout();
   const requests: TranscriptRequest[] = [];
   const runTurn: TurnRunner = async (filesystem, turn) => {
-    // The turn "ran" but left the conversation file unparseable.
     writeFileSync(
       join(filesystem.dataDir, "conversations", `${turn.conversationId}.json`),
       "{not json",
@@ -549,9 +539,7 @@ test("the user row lands on the user frame, before the turn finishes", async () 
       turn.text,
       { turnId: turn.turnId },
     );
-    // What the real session does right after persisting the user message.
     turn.emit({ type: "user", data: message, turnId: turn.turnId });
-    // Let the early publish run while the "model" is still working.
     await new Promise((resolve) => setTimeout(resolve, 50));
     requestsWhenTurnEnded = requests.length;
     appendAssistantMessageAt(conversationsDir, turn.conversationId, "Reply", {
@@ -567,8 +555,6 @@ test("the user row lands on the user frame, before the turn finishes", async () 
     heartbeatIntervalMs: 60_000,
   });
 
-  // The user PUT was already on the wire while the turn was still running,
-  // and the final publish did not send it twice.
   expect(requestsWhenTurnEnded).toBe(1);
   expect(requests.map((r) => r.url.split("/").at(-1))).toEqual([
     "user",
@@ -594,13 +580,6 @@ function errorMessage(raw: string): string | undefined {
 
 const NO_PROVIDER = "No provider connected. Connect your subscription first.";
 
-/**
- * A turn dispatched with no credential never runs: its user frame is an echo
- * with nothing persisted behind it. Publishing a transcript for it used to
- * append "transcript publish failed: conversation file is missing" (a fresh
- * routine run's conversation) or "turn user message is missing" (a shared
- * chat) to the no-provider error, or PUT a row an earlier attempt persisted.
- */
 test.each([
   { name: "a fresh conversation", conversationId: "routine.run.1" },
   { name: "an existing conversation", conversationId: "mission.1" },
@@ -694,7 +673,6 @@ test("an unconnected routine run ends on the no-provider message alone", async (
   );
   const requests: TranscriptRequest[] = [];
   const pool = poolFetch(objects, requests);
-  // The run history doc route: empty until this run's rows land.
   const docs = new Map<string, unknown>();
   const fetchImpl: typeof fetch = async (input, init) => {
     const url = String(input);
@@ -728,7 +706,6 @@ test("an unconnected routine run ends on the no-provider message alone", async (
   );
 
   expect(requests).toHaveLength(0);
-  // The run row still settles on the no-provider error, typed.
   const rows = [...docs.values()].flat() as { id: string }[];
   expect(rows.findLast((r) => r.id === "turn.7")).toMatchObject({
     status: "error",

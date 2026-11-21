@@ -10,12 +10,6 @@ import { resolveClipboardPaste } from "./clipboard-files";
 import { useAttachmentIntake } from "./use-attachment-intake";
 import { useControllable } from "./use-file-drop-zone";
 
-/**
- * The composer's full attachment surface: controlled-or-internal file
- * state plus the picker and clipboard-paste handlers. `ChatPanel`'s
- * panel-wide drop zone shares only the ingest core (`useAttachmentIntake`);
- * the picker/paste affordances are composer-specific and live here.
- */
 export interface ComposerAttachmentsOptions {
   attachments?: File[];
   onAttachmentsChange?: (files: File[]) => void;
@@ -68,8 +62,6 @@ export function useComposerAttachments({
   const handleFileChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || e.target.files.length === 0) return;
-      // A folder pick sweeps in hidden files (.DS_Store, .git/**) the host
-      // refuses — filter them here; plain picks pass through untouched.
       const picked = visibleAttachmentFiles(Array.from(e.target.files));
       if (picked.length > 0) addFiles(picked);
       e.target.value = "";
@@ -97,8 +89,6 @@ export function useComposerAttachments({
   const openFilePicker = useCallback(() => {
     const input = fileInputRef.current;
     if (!input) return;
-    // Reset BEFORE click so the same file can be re-picked and so WKWebView
-    // doesn't hold onto stale state between invocations.
     input.value = "";
     input.click();
   }, []);
@@ -110,8 +100,6 @@ export function useComposerAttachments({
     input.click();
   }, []);
 
-  // Index-set removal (not single-index): a folder chip removes every file of
-  // that folder in ONE state update.
   const removeFiles = useCallback(
     (indices: readonly number[]) => {
       const drop = new Set(indices);

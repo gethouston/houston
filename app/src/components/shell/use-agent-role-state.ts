@@ -15,42 +15,26 @@ import { type JobBriefField, jobAnswerEntry } from "../context/job-brief-model";
 
 export interface AgentRoleState {
   contextId: AgentContextId | null;
-  /** "Something else" is the picked answer: the typed field is the live one. */
   contextIsCustom: boolean;
   customContext: string;
   roleId: AgentRoleId | null;
   roleIsCustom: boolean;
   customRole: string;
-  /** The answers as the user reads them — the labels that go into the agent's
-   *  job description, never the catalog ids. */
   contextLabel: string;
   roleLabel: string;
-  /** The finished brief, or null while either answer is still missing. */
   brief: AgentRoleContext | null;
   chooseContext: (id: AgentContextId) => void;
   chooseCustomContext: () => void;
-  /** Leave the typed answer and go back to the suggestions (Escape). */
   cancelCustomContext: () => void;
-  /** Capped to the brief's own length (`AGENT_ROLE_PART_MAX_LENGTH`) whoever
-   *  writes it: the field, or the filter's query taken as the answer. */
   writeCustomContext: (value: string) => void;
   chooseRole: (id: AgentRoleId) => void;
   chooseCustomRole: () => void;
   cancelCustomRole: () => void;
-  /** Capped like {@link AgentRoleState.writeCustomContext}. */
   writeCustomRole: (value: string) => void;
-  /** Drop the job and keep the industry: the next hire in the same world. */
   clearRole: () => void;
-  /** An answer given again on the employee card, as the person reads it: a
-   *  catalog label picks its entry, other words are the typed answer. Unlike
-   *  `chooseContext`, a new industry keeps the job. */
   answerBrief: (field: JobBriefField, answer: string) => void;
 }
 
-/**
- * Where the two questions open: a catalog entry to preselect, or the words of
- * an answer the catalog does not list. Both empty opens a question blank.
- */
 export interface AgentRoleStart {
   contextId: AgentContextId | null;
   customContext: string;
@@ -68,13 +52,6 @@ export const EMPTY_ROLE_START: AgentRoleStart = {
 const startsCustom = (id: string | null, words: string) =>
   id === null && words !== "";
 
-/**
- * The context + role answers a hire collects, and the brief they add up to.
- * Every open starts from `start`: the in-app create dialog passes nothing, so
- * an agent's industry is its own and nothing is preselected there; onboarding
- * passes the person's own survey answers, because a first team is hired for
- * the business they just described.
- */
 export function useAgentRoleState(
   open: boolean,
   start: AgentRoleStart = EMPTY_ROLE_START,
@@ -103,8 +80,6 @@ export function useAgentRoleState(
     setCustomRole("");
   };
 
-  // Only an open resets: a start that settles while the questions are on
-  // screen must never overwrite an answer the user already changed.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `open` is the whole trigger.
   useEffect(() => {
     if (!open) return;
@@ -127,10 +102,6 @@ export function useAgentRoleState(
       ? t(`roleSetup.roles.${roleId}`)
       : "";
 
-  // Each question holds exactly one answer: picking from the catalog drops the
-  // typed one and vice versa, so a re-pick can never strand stale words in the
-  // job description. A new context also drops the role, which was picked from
-  // the previous context's list.
   return {
     contextId,
     contextIsCustom,
@@ -155,9 +126,6 @@ export function useAgentRoleState(
       setContextIsCustom(false);
       setCustomContext("");
     },
-    // Capped HERE rather than only in the field: "use what you typed" seeds
-    // the answer straight from the filter's query, which wears no `maxLength`
-    // of the answer's own.
     writeCustomContext: (value) => setCustomContext(capRolePart(value)),
     chooseRole: (id) => {
       setRoleId(id);

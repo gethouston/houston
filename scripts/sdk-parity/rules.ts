@@ -18,7 +18,6 @@ export type Rule =
   | "proxy-drift"
   | "client-route-unbound";
 
-/** Every rule, in the order the report states them. */
 export const RULES: Rule[] = [
   "sdk-route-unbound",
   "sdk-method-unserved",
@@ -29,12 +28,10 @@ export const RULES: Rule[] = [
 
 export interface Violation {
   rule: Rule;
-  /** Stable identity an exception entry addresses. */
   key: string;
   message: string;
 }
 
-/** R3 within ONE server's list. Host∩gateway overlap is legal and expected. */
 function duplicates(
   entries: { key: string; source: string }[],
   side: string,
@@ -54,11 +51,6 @@ function duplicates(
     }));
 }
 
-/**
- * The gateway mounts `/x` and `/x/` on ONE handler on purpose (Go's mux would
- * redirect otherwise), and normalising the trailing slash folds the pair into
- * one key — so collapse it before counting declarations.
- */
 function gatewayEntries(
   gateway: GatewayRoute[],
 ): { key: string; source: string }[] {
@@ -77,9 +69,6 @@ function gatewayEntries(
   ];
 }
 
-/** Both servers are always known: the host declares its own registry, and the
- *  gateway's inventory is vendored into this repo, so every rule is judged on
- *  every run. */
 export function checkRules(
   host: RouteDescriptor[],
   gatewayRoutes: GatewayRoute[],
@@ -98,14 +87,11 @@ export function checkRules(
       route.methods.map((method) => keyOf(method, route.pattern)),
     ),
   );
-  // A gateway pattern whose methods are `*` dispatches inside its handler, so
-  // any method on that path counts as served.
   const gatewayPaths = new Set(
     gatewayRoutes.map((route) => normalize(route.pattern)),
   );
   const violations: Violation[] = [];
 
-  // R1 — a route a signed-in human can reach, with no SDK method behind it.
   for (const route of host) {
     if (route.classification !== "sdk") continue;
     const key = keyOf(route.method, route.path);
@@ -129,9 +115,6 @@ export function checkRules(
     });
   }
 
-  // R2 — an SDK method no server answers. ANY of its keys answering is enough:
-  // a method whose path parameter is closed to a set issues one call per call
-  // site, not one per member. A literal key also meets an any-key route.
   const anyKey = [...hostKeys, ...gatewayKeys].filter((key) =>
     ANY_KEY_PATHS.has(pathOf(key)),
   );
@@ -156,7 +139,6 @@ export function checkRules(
     });
   }
 
-  // R3 — the same key declared twice on one side.
   violations.push(
     ...duplicates(
       host.map((route) => ({
@@ -168,8 +150,6 @@ export function checkRules(
     ...duplicates(gatewayEntries(gatewayRoutes), "gateway"),
   );
 
-  // R4 — a declared runtime-proxy member nothing reaches: the list has gone
-  // stale against the client that actually calls the agent's own runtime.
   for (const route of host) {
     if (route.classification !== "runtime-proxy") continue;
     const key = keyOf(route.method, route.path);
@@ -181,11 +161,6 @@ export function checkRules(
     });
   }
 
-  // R5 — the inverse of R1, read from the client instead of the servers: a
-  // method the shipped app calls that reaches a server on its own. R1 asks
-  // whether every reachable route has an SDK method; this asks whether every
-  // request the app issues IS one. Both surfaces are covered at once, because
-  // the desktop and the web app run this same adapter.
   for (const method of desktop.unbound) {
     violations.push({
       rule: "client-route-unbound",

@@ -1,12 +1,3 @@
-/**
- * The memoized derivation half of the chat model picker: turns fetched provider
- * statuses into the picker's model/provider view-models, the selected-row id,
- * catalog freshness, and the trigger's display label. Split from
- * `use-chat-model-picker` so neither the derivation nor the interaction half
- * breaches the file-size budget; the memos live here in one place because the
- * composer footer re-renders on every streamed token.
- */
-
 import type { ModelPickerModel, ModelPickerProvider } from "@houston-ai/core";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -33,7 +24,6 @@ import { useCapabilities } from "./use-capabilities";
 import { useProviderCatalog } from "./use-provider-catalog";
 import { useProviderStatuses } from "./use-provider-statuses";
 
-/** The derived view-models the interaction half renders. */
 export interface PickerViewModels {
   models: ModelPickerModel[];
   providers: ModelPickerProvider[];
@@ -42,7 +32,6 @@ export interface PickerViewModels {
   displayLabel: string;
 }
 
-/** Build the picker's view-models for the current selection + open state. */
 export function usePickerViewModels(opts: {
   provider: string;
   model: string;
@@ -52,9 +41,6 @@ export function usePickerViewModels(opts: {
   const { t } = useTranslation("chat");
   const { statuses, isLoading } = useProviderStatuses();
   const { capabilities, isLoading: capabilitiesLoading } = useCapabilities();
-  // The pi-ai catalog hydrates `PROVIDERS` IN PLACE with no React signal, so the
-  // `getVisibleProviders` memo below must re-key on `updatedAt` — otherwise the
-  // picker stays pinned to the empty override-only seed captured on first render.
   const { isReady: catalogReady, updatedAt: catalogUpdatedAt } =
     useProviderCatalog();
 
@@ -62,10 +48,6 @@ export function usePickerViewModels(opts: {
   const desktop = osIsTauri();
   const providerCapabilities =
     capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
-  // Memoized on stable inputs (`capabilities` is a stable query ref, the frozen
-  // EMPTY constant otherwise), plus `catalogUpdatedAt` so the list rebuilds off
-  // the freshly-hydrated `PROVIDERS` the moment the pi-ai catalog resolves —
-  // `getVisibleProviders` reads the mutated-in-place cache, invisible to biome.
   // biome-ignore lint/correctness/useExhaustiveDependencies: catalogUpdatedAt keys the in-place PROVIDERS hydration.
   const visibleProviders = useMemo(
     () =>
@@ -77,10 +59,6 @@ export function usePickerViewModels(opts: {
     [newEngine, desktop, providerCapabilities, catalogUpdatedAt],
   );
 
-  // Localize a curated row's description via the same `modelDescriptions` key
-  // scheme the old dropdown used, falling back to the catalog English. A model
-  // whose copy differs per card (the plan it needs) reads its card's
-  // `providerModelDescriptions` entry first.
   const describe = useCallback(
     (providerId: string, modelId: string, fallback: string) => {
       const key = modelId.replace(/\./g, "_");
@@ -93,19 +71,12 @@ export function usePickerViewModels(opts: {
     [t],
   );
 
-  // Which ACCOUNT a provider's models run on (HOU-976 §6). The status row says
-  // whose credential answered the probe; `statusCredentialScope` maps an absent
-  // field — every deployment with no acting identity — to null, and
-  // `pickerAccountLabel` maps null to no label, so the row subtitle is
-  // byte-identical to what shipped before per-user accounts.
   const accountLabelOf = useCallback(
     (providerId: string) =>
       pickerAccountLabel(t, statusCredentialScope(statuses[providerId])),
     [t, statuses],
   );
 
-  // Build the (potentially 300+) rows only while the picker is open — the
-  // panel is unmounted otherwise, so there is nothing to feed when closed.
   const models = useMemo(
     () =>
       isOpen
@@ -141,29 +112,10 @@ export function usePickerViewModels(opts: {
       statuses[provider]?.active_model,
     ),
   );
-  // The pi-ai catalog is the source of the runnable set, so the picker is
-  // "loading" until it resolves and "ready" after. This drives the picker's
-  // neutral level-1 loading state (#342 guard) while providers resolve.
-  //
-  // Capabilities join it: they GATE the visible provider set, and the empty
-  // state they lead to makes a claim about the viewer ("connect one" vs "ask an
-  // admin") that depends on a role we don't have yet. Settling early flashed a
-  // connect CTA at a plain team member and then withdrew it (HOU-979). Not
-  // knowing yet is exactly what the neutral loading state is for.
   const catalogState: "loading" | "ready" =
     catalogReady && !capabilitiesLoading ? "ready" : "loading";
 
   const currentProvider = getProvider(provider);
-  // The shared label chain (`modelDisplayLabel`): catalog label, then the
-  // engine-reported configured model, then the raw selection. The routine
-  // screen's model row names the same pair through the same chain, so the two
-  // can't disagree.
-  //
-  // `active_model` is offered ONLY for an open-catalog provider (the local
-  // OpenAI-compatible endpoint, the gateways): there it is the model's ONLY
-  // name. For a catalogued provider it is that provider's saved pick, not this
-  // chat's — printing it labelled the trigger with a model the conversation was
-  // never pinned to.
   const activeModel = isOpenCatalogProvider(provider)
     ? statuses[provider]?.active_model
     : undefined;

@@ -8,29 +8,12 @@ import { CuratedConnectDialog } from "./integrations/curated-connect-dialog";
 import { useChatConnect } from "./use-chat-connect";
 
 interface IntegrationConnectCardProps {
-  /** The raw `#houston_toolkit=<slug>` fragment from the agent's link. */
   toolkit: string;
-  /** The agent whose chat hosts the card. */
   agentId: string;
   accountScope?: boolean;
-  /**
-   * Fired once when a connection the user started from THIS card lands. The
-   * chat panel uses it to nudge the agent ("I've connected X. Please
-   * continue.") so the task resumes without the user having to type.
-   */
   onConnected?: (toolkit: string, appName: string) => void;
 }
 
-/**
- * Rich inline card rendered in place of a plain markdown link when the agent
- * tags a URL with `#houston_toolkit=<slug>` — the in-chat integration connect
- * hand-off on the TS engine (HOU-670). Clicking Connect mints the hosted
- * OAuth link, opens the system browser, and polls until the connection turns
- * active (via {@link useIntegrationConnect}, the same flow as the Integrations
- * tab). It stays a passive badge inside assistant prose; the interaction
- * stepper's connect STEP renders its own Mercury row + footer CTA
- * ({@link ChatConnectInteractionCard}) over the same hook.
- */
 export function IntegrationConnectCard({
   toolkit,
   agentId,
@@ -77,10 +60,6 @@ export function IntegrationConnectCard({
   );
 }
 
-/**
- * Right-slot: status (badge) stays visually distinct from the action (the
- * Connect button) — see issue #379 for why fusing them was ambiguous.
- */
 function ConnectStatusSlot({
   view,
   onConnect,

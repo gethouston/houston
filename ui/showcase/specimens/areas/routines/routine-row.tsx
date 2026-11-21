@@ -22,7 +22,6 @@ import {
   weeklyReport,
 } from "./sample";
 
-/** The inline schedule editor, wired: Save writes the cron back into the row. */
 function EditableRow() {
   const [schedule, setSchedule] = useState(inboxZero.schedule ?? "");
   return (
@@ -104,11 +103,6 @@ function RoutineRowSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["RoutineRow", "RoutineRowScheduleEdit"];
 
 export const specimen: Specimen = {

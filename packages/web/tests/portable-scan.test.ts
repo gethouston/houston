@@ -3,12 +3,6 @@ import { previewUpload, scanUpload } from "@houston/engine-adapter/portable";
 import { packagePreview } from "@houston/engine-adapter/portable-map";
 import { expect, test } from "vitest";
 
-/**
- * The in-browser half of the import wizard: an uploaded `.houstonagent` is
- * unpacked and parked locally, and the threat scan runs on the parked
- * package without any host round-trip.
- */
-
 const NOW = "2026-07-04T00:00:00.000Z";
 
 function archive(skillBody: string, anonymized = false) {

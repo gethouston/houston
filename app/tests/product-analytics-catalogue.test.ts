@@ -11,12 +11,6 @@ import {
   TRACKED_EVENTS as EVENTS,
 } from "./fixtures/analytics-source.ts";
 
-// The table types itself against `AnalyticsEventName` / `AnalyticsProperty`, so
-// the compiler already refuses a name or a property key that does not exist.
-// What it cannot see is `ALLOWED_PROPS`: these properties reach us through the
-// same call sites PostHog's `cleanProps` filters, and a key missing from that
-// Set is dropped there silently.
-
 const NAMES = Object.keys(PRODUCT_EVENTS) as Array<keyof typeof PRODUCT_EVENTS>;
 
 describe("product analytics catalogue", () => {
@@ -30,9 +24,6 @@ describe("product analytics catalogue", () => {
   });
 
   it("gathers the whole first-run funnel", () => {
-    // The steps between "the app opened" and "onboarding finished" are the
-    // funnel activation is read from: a name dropped here turns one stage of
-    // it into a silent gap that nothing in the app would ever complain about.
     const FUNNEL = [
       "onboarding_started",
       "onboarding_step_viewed",
@@ -89,7 +80,6 @@ describe("pickProductProps", () => {
       pickProductProps("skill_installed", {
         skill_slug: "opaque-slug",
         source: "github",
-        // Tracked on the same call, but not part of what this event gathers.
         agent_id: "opaque-id",
       }),
       { skill_slug: "opaque-slug", source: "github" },
@@ -105,8 +95,6 @@ describe("pickProductProps", () => {
     deepStrictEqual(
       pickProductProps("onboarding_started", {
         source: "in_app_replay",
-        // The same call site's PostHog payload carries more; this is the only
-        // key the funnel reads, so it is the only one that leaves the device.
         step: "welcome",
       }),
       { source: "in_app_replay" },

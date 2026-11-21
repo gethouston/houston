@@ -17,7 +17,6 @@ function withoutDeferred(
     : include;
 }
 
-/** Sync a turn, limiting a claimed writer to its granted turn-owned files. */
 export async function syncTurnFilesystem(opts: {
   store: ObjectStore;
   prefix: string;
@@ -33,17 +32,11 @@ export async function syncTurnFilesystem(opts: {
   merges: SyncResult["merges"];
   manifest: SyncResult["manifest"];
 }> {
-  // A deferred upload landing mid-walk would read as a file the turn wrote.
-  // One that never landed is in no manifest, so its absence deletes nothing.
   let deferredFailed = false;
   if (opts.filesystem.workspaceReady) {
     try {
       await opts.filesystem.workspaceReady;
     } catch (error) {
-      // No tool ran (the gate refused them all, or the prompt ended before
-      // any asked), so nothing in the deferred folders is the turn's: one
-      // that landed before the stop but never reached the manifest must not
-      // read as a new file to upload. The failure itself was reported once.
       deferredFailed = true;
       if (!(error instanceof DeferredFilesAbandonedError))
         console.warn(
@@ -58,11 +51,7 @@ export async function syncTurnFilesystem(opts: {
     opts.filesystem.manifest,
     {
       generations: opts.filesystem.generationAware,
-      // The temp tree disappears after one pool turn. If a replacement write
-      // fails, keep the durable source object instead of completing its delete.
       holdDeletesOnFailure: opts.claimed,
-      // Concurrent turns and the gateway's own card writes share one board:
-      // merge it over bounded rounds (the standing daemon never sets this).
       workerMerge: true,
       ...(opts.claimed
         ? {

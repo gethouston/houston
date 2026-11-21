@@ -12,7 +12,6 @@ interface Recorded {
   body: string | null;
 }
 
-/** An inert SDK over a mock `fetch` that answers the queued responses in order. */
 function makeSdk(...answers: Response[]) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(

@@ -1,12 +1,6 @@
 import { expect, test } from "vitest";
 import { MemoryTurnBus } from "./bus";
 
-/**
- * MemoryTurnBus is the default TurnBus and the reference semantics the Redis
- * implementation must match: synchronous fan-out, NX mutex, lazy TTL expiry,
- * counters that take a TTL on creation.
- */
-
 test("publish fans out to all subscribers; unsubscribe stops delivery", async () => {
   const bus = new MemoryTurnBus();
   const a: string[] = [];
@@ -26,10 +20,10 @@ test("setNx is a mutex; expire extends; TTL lapses lazily", async () => {
   expect(await bus.setNx("lock", "1", 10)).toBe(true);
   expect(await bus.setNx("lock", "1", 10)).toBe(false);
   t += 9_000;
-  await bus.expire("lock", 10); // lease heartbeat
-  t += 9_000; // 18s total, but lease renewed at 9s → still held
+  await bus.expire("lock", 10);
+  t += 9_000;
   expect(await bus.setNx("lock", "1", 10)).toBe(false);
-  t += 10_001; // lease lapsed (crashed owner) → free
+  t += 10_001;
   expect(await bus.setNx("lock", "1", 10)).toBe(true);
 });
 
@@ -39,7 +33,7 @@ test("incr creates with TTL, counts atomically, decr reverses", async () => {
   expect(await bus.incr("n", 60)).toBe(1);
   expect(await bus.incr("n", 60)).toBe(2);
   expect(await bus.decr("n")).toBe(1);
-  t += 60_001; // TTL set at creation — the counter resets after it
+  t += 60_001;
   expect(await bus.incr("n", 60)).toBe(1);
 });
 

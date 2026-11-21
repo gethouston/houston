@@ -6,9 +6,6 @@ import { homeDestination } from "../src/lib/home-destination.ts";
 const src = (path: string) =>
   readFileSync(new URL(`../src/${path}`, import.meta.url), "utf8");
 
-// Home is where the app opens. The desktop opens on the first employee's
-// Tasks screen; the Agents home is the phone's Agents tab root and the
-// desktop's screen only while nothing can be opened yet.
 describe("homeDestination", () => {
   const ready = { isMobile: false, rosterReady: true, firstAgentId: "c" };
 
@@ -23,7 +20,6 @@ describe("homeDestination", () => {
   });
 
   it("stays on the Agents home while the roster or layout resolves", () => {
-    // The boot landing finishes the move once both reads settle, in rail order.
     deepStrictEqual(homeDestination({ ...ready, rosterReady: false }), {
       kind: "agents-home",
     });

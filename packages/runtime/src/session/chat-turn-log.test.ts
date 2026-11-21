@@ -3,18 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-// Keep any file the chat module touches inside a throwaway dir.
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-turn-log-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-turn-log-ws-"),
 );
 
-/**
- * The agent's SAVED provider is anthropic; the turn under test is PINNED to
- * openai-codex. `resolveModel` is the seam that applies a pin, so the mock
- * honours the override exactly as the real one does — the diagnostic is only
- * honest if it reads THAT.
- */
 const state = vi.hoisted(() => ({ saved: "anthropic" as string | null }));
 vi.mock("../ai/providers", async (importOriginal) => {
   const real = await importOriginal<typeof import("../ai/providers")>();
@@ -54,9 +47,6 @@ afterEach(() => vi.restoreAllMocks());
 const turnLine = () => logged.find((l) => l.startsWith("[turn] provider="));
 
 test("the turn diagnostic names the PINNED provider and model, not the agent default", async () => {
-  // The Dobby defect: a mission pinned `openai-codex` (no model) and the log
-  // announced `provider=anthropic model=claude-sonnet-5`, sending a whole
-  // diagnosis after the wrong provider while the turn ran on Codex.
   expect(await ensureProviderForTurn({ provider: "openai-codex" })).toBe(
     "anthropic",
   );
@@ -79,8 +69,6 @@ test("an unpinned turn reports the agent's own provider and says it is unpinned"
 });
 
 test("a request that is refused before it becomes a turn logs no [turn] line", async () => {
-  // No pin and nothing connected: the route answers 409 and no turn runs, so a
-  // line here would claim a run that never happened.
   state.saved = null;
   expect(await ensureProviderForTurn()).toBeNull();
   expect(turnLine()).toBeUndefined();

@@ -5,26 +5,18 @@ import {
 } from "@houston/runtime-client/object-sync";
 import type { TurnRequest } from "./types";
 
-/** Per-turn object-store selection inputs. */
 export interface TurnStoreConfig {
   poolStoreUrl?: string;
   fetchImpl?: typeof fetch;
 }
 
-/** Store and key prefix selected for an admitted turn. */
 export interface ResolvedTurnStore {
   store: ObjectStore;
   prefix: string;
-  /** The claim-backed store without the prefetched layer: what the store
-   *  holds now, under this turn's claim. Set only for a claimed turn. */
   live?: ObjectStore;
-  /** The objects whose bytes the gateway inlined into the turn, read BEFORE
-   *  it held the claim, with those bytes' generation. Captured here because
-   *  hydration consumes the prefetch. */
   inlined?: ReadonlyMap<string, { generation?: string }>;
 }
 
-/** Fail-loud fallback used when turn mode has only the pool store configured. */
 export function poolOnlyFallbackStore(): ObjectStore {
   const unavailable = async (): Promise<never> => {
     throw new Error("this pooled worker requires a claim-backed object store");
@@ -37,7 +29,6 @@ export function poolOnlyFallbackStore(): ObjectStore {
   };
 }
 
-/** Parse the exact `ws/<org>/<agent>` identity encoded in a pool prefix. */
 export function poolIdentity(gcsPrefix: string): {
   org: string;
   agent: string;
@@ -54,7 +45,6 @@ export function poolIdentity(gcsPrefix: string): {
   return { org: segments[1], agent: segments[2] };
 }
 
-/** Select claim-backed HTTP storage or preserve the configured legacy store. */
 export function resolveTurnStore(
   turn: Pick<
     TurnRequest,
@@ -78,8 +68,6 @@ export function resolveTurnStore(
       bootId: turn.claim.bootId,
       conversationId: turn.conversationId,
     },
-    // The single-use worker hydrates cold on every turn, so it takes the
-    // batched read; standing pods' stores never set this.
     batchReads: true,
     ...(config.fetchImpl ? { fetchImpl: config.fetchImpl } : {}),
   });

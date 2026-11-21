@@ -1,36 +1,15 @@
 import { ConfirmDialog } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 
-/**
- * What the People section is asking the manager to confirm before it replaces
- * the agent's assignee set.
- *
- * - `selfLockout` — switching to "Everyone on your team" while the VIEWER holds
- *   a non-owner Manager grant: the empty sentinel cannot carry it, so they
- *   demote themselves and lose this page. Same act, same destructive warning as
- *   the per-person control's self-lockout gate.
- * - `everyone` — switching to "Everyone on your team" changes somebody ELSE's
- *   resolved access. Informational, so it is NOT destructive.
- * - `specific` — switching to "Only specific people" materializes today's
- *   roster. Nobody loses access, but the write is a snapshot: it says how many
- *   people it is freezing and that future teammates are no longer included.
- */
 export type PeopleConfirmKind = "selfLockout" | "everyone" | "specific";
 
-/**
- * The confirm in front of every team-wide access change. One dialog, three
- * voices, so the destructive variant is spent only on the one outcome the
- * manager cannot undo alone.
- */
 export function AgentPeopleConfirm({
   kind,
   count,
   onCancel,
   onConfirm,
 }: {
-  /** The pending question, or null when nothing is being confirmed. */
   kind: PeopleConfirmKind | null;
-  /** People the "Only specific people" write would freeze into the roster. */
   count: number;
   onCancel: () => void;
   onConfirm: () => void;

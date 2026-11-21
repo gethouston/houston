@@ -6,14 +6,12 @@ import { useId, useState } from "react";
 
 import { SIDEBAR_ROW_CONSUMERS } from "./sidebar-row-button-api";
 
-/** Rows only read honestly on the rail's own fill, at the rail's own width. */
 export function Rail({ children }: { children: ReactNode }) {
   return (
     <div className="w-[272px] rounded-xl bg-sidebar px-2 py-2">{children}</div>
   );
 }
 
-/** The whole ladder in one block, so the shared column is visible as a column. */
 export function Ladder() {
   const contentId = useId();
   const [collapsed, setCollapsed] = useState(false);

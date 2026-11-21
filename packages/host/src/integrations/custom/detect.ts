@@ -3,30 +3,16 @@ import { guardedFetch } from "./fetch-guard";
 import { advertisesOAuth } from "./oauth-discovery";
 import { slugify } from "./slug";
 
-/** What a pasted URL turned out to be — the agent's interview pivot. */
 export interface DetectResult {
   kind: "openapi" | "mcp" | "unknown";
   name?: string;
   suggestedSlug?: string;
-  /** MCP probe: does the server demand auth before listing tools? */
   requiresAuthentication?: boolean;
-  /** MCP probe: the auth it demands is ITS OWN sign-in flow (OAuth) — a
-   *  pasted API key will never work. Surfaced so the UI/agent offers the
-   *  browser sign-in (when `oauthSupported`) instead of collecting a dead
-   *  key. */
   requiresOAuth?: boolean;
-  /** Present with `requiresOAuth`: whether THIS deployment can run the
-   *  browser sign-in (PRODUCT-1172) — it needs a browser-reachable callback. */
   oauthSupported?: boolean;
   toolCount?: number;
 }
 
-/**
- * Classify a user-provided URL: an OpenAPI document (the executor's detect
- * parses it), else probe it as a remote MCP endpoint, else unknown. Detection
- * failures are a RESULT (`unknown`), never a throw — the agent relays "not a
- * recognizable service URL" and asks for a better link.
- */
 export async function detectSource(
   executor: CustomExecutor,
   url: string,
@@ -43,9 +29,6 @@ export async function detectSource(
   }
   try {
     const probe = await executor.mcp.probeEndpoint(url);
-    // The executor's OAuth verdict is a well-known-path guess; an auth wall
-    // it could not explain gets the sign-in flow's own discovery before it
-    // is called an API key (see advertisesOAuth).
     const requiresOAuth =
       probe.requiresOAuth ||
       (probe.requiresAuthentication &&

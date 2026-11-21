@@ -1,18 +1,3 @@
-/**
- * TimezonePicker — account-wide IANA timezone selector.
- *
- * Replaces the old native `<select>` (which popped the OS-native option list
- * occupying the full window height and offered no search) with a searchable
- * combobox in the same idiom as the app's integration browser: a button trigger
- * opening a small Popover whose Command lets the user type keywords ("tokyo",
- * "new york", "gmt+5") to narrow ~400 zones. See HOU-496.
- *
- * Two variants share one trigger + popover: `"card"` keeps the gray panel with
- * its title + hint row (so the control reads as "this one zone governs every
- * routine below"); `"bare"` drops all card chrome and renders just the trigger
- * button, sized to sit inline in a toolbar.
- */
-
 import {
   Command,
   CommandEmpty,
@@ -29,11 +14,6 @@ import { Check, ChevronDown, Globe } from "lucide-react";
 import { useMemo, useState } from "react";
 import { buildZoneOptions, foldDiacritics } from "./timezone-format.ts";
 
-/**
- * Accent-insensitive wrapper around cmdk's default scorer: fold the query and
- * the item (value + keywords) before scoring, so "são paulo" matches "Sao
- * Paulo". cmdk only normalizes case/whitespace, not diacritics.
- */
 function filterZones(
   value: string,
   search: string,
@@ -47,22 +27,12 @@ function filterZones(
 }
 
 export interface TimezonePickerProps {
-  /** The persisted account-wide IANA zone. */
   accountTimezone: string;
-  /** Persist a newly chosen zone. */
   onTimezoneChange: (tz: string) => void;
-  /** Card title + accessible name for the trigger. */
   label: string;
-  /** One-line hint shown beside the title. */
   hint: string;
-  /** Placeholder for the in-popover search field. */
   searchPlaceholder: string;
-  /** Shown when no zone matches the query. */
   noResults: string;
-  /**
-   * `"card"` (default) wraps the trigger in the titled gray panel; `"bare"`
-   * renders only the trigger button for inline/toolbar placement.
-   */
   variant?: "card" | "bare";
   className?: string;
 }
@@ -79,8 +49,6 @@ export function TimezonePicker({
 }: TimezonePickerProps) {
   const [open, setOpen] = useState(false);
 
-  // Built once: ~400 zones with offset + keywords. The account zone is always
-  // present, so `current` resolves even if the platform list omits it.
   const zones = useMemo(
     () => buildZoneOptions(accountTimezone, new Date()),
     [accountTimezone],
@@ -90,10 +58,6 @@ export function TimezonePicker({
     [zones, accountTimezone],
   );
 
-  // The button's visible text is the live value, so give it an accessible name
-  // that pairs the field label WITH that value, e.g. "Timezone: America/New
-  // York, GMT-4". A bare aria-label of just `label` would hide the chosen zone
-  // from screen readers (aria-label overrides the visible text).
   const currentName = current
     ? current.offset
       ? `${current.display}, ${current.offset}`
@@ -144,8 +108,6 @@ export function TimezonePicker({
         align="start"
         className={cn(
           "p-0",
-          // A bare trigger is narrow, so pin the list to a readable fixed width
-          // instead of matching the trigger.
           isBare ? "w-72" : "w-(--radix-popover-trigger-width)",
         )}
       >
@@ -177,12 +139,10 @@ export function TimezonePicker({
     </Popover>
   );
 
-  // Bare: just the trigger + popover, for inline/toolbar placement.
   if (isBare) return picker;
 
   return (
     <section className={cn("rounded-xl bg-chip px-5 py-4", className)}>
-      {/* Title + hint share one row so the card stays short. */}
       <div className="flex items-center justify-between gap-3 mb-1.5">
         <span className="text-xs font-medium text-ink-muted shrink-0">
           {label}

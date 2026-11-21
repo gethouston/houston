@@ -13,7 +13,6 @@ import {
   renameConversationMutationAt,
 } from "./conversation-file";
 
-/** Mint an `acting-v1.<payloadB64Url>.<sig>` token carrying `payload` (C2). */
 function actingToken(payload: Record<string, unknown>): string {
   const b64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `acting-v1.${b64}.sig`;
@@ -35,7 +34,7 @@ test("rename persists the new title and bumps updatedAt", () => {
   if (!after) throw new Error("loadConversation returned null after rename");
   expect(after.title).toBe("Quarterly report");
   expect(after.updatedAt).toBeGreaterThanOrEqual(before.updatedAt);
-  expect(after.messages).toHaveLength(1); // transcript untouched
+  expect(after.messages).toHaveLength(1);
   expect(listConversationsAt(dir)[0]?.title).toBe("Quarterly report");
 });
 
@@ -166,14 +165,12 @@ test("assistant message with no pending interaction stays interaction-free in th
     (m) => m.role === "assistant",
   );
   expect(msg?.pendingInteraction ?? null).toBeNull();
-  // Absent, not present-and-undefined — a plain turn's record is unchanged.
   const raw = readFileSync(join(dir, "c1.json"), "utf8");
   expect(raw).not.toContain("pendingInteraction");
 });
 
 test("a user message from an acting-as token persists its author (C5), served on read-back", () => {
   const dir = freshDir();
-  // The runtime decodes WHO the turn acts as off the C2 token, then stamps it.
   const author = decodeActingAuthor(
     actingToken({ sub: "user_ada", name: "Ada", agent: "mercury", exp: 1 }),
   );
@@ -205,8 +202,6 @@ test("messages without a turnId stay turnId-free in the JSON (pre-turn-id record
 
 test("a user message persists displayText beside content; the model input (content) is untouched", () => {
   const dir = freshDir();
-  // `content` is the real prompt the model runs on (a hidden setup directive);
-  // `displayText` is only what the bubble renders on a history reload.
   appendUserMessageAt(dir, "c1", "HIDDEN setup directive the user never sees", {
     displayText: "Let's set you up",
   });
@@ -222,15 +217,12 @@ test("a user message with no displayText stays displayText-free in the JSON (unc
 
   const msg = getHistoryAt(dir, "c1")?.messages.find((m) => m.role === "user");
   expect(msg?.displayText).toBeUndefined();
-  // Absent, not present-and-undefined — a plain message's record is unchanged.
   const raw = readFileSync(join(dir, "c1.json"), "utf8");
   expect(raw).not.toContain("displayText");
 });
 
 test("a user message persists the @mentions sidecar beside content (HOU-944)", () => {
   const dir = freshDir();
-  // The model already saw the names as plain text inside `content`; the sidecar
-  // is what lets a reader map "@Ada" back to a person.
   appendUserMessageAt(dir, "c1", "@Ada can you confirm? @Grace fyi", {
     mentions: [
       { userId: "user_a", name: "Ada" },
@@ -249,31 +241,24 @@ test("a user message persists the @mentions sidecar beside content (HOU-944)", (
 test("a user message with no mentions stays mentions-free in the JSON (unchanged records)", () => {
   const dir = freshDir();
   appendUserMessageAt(dir, "c1", "just a normal message");
-  // An empty list is treated exactly like an absent one — never `[]` on disk.
   appendUserMessageAt(dir, "c1", "another normal message", { mentions: [] });
 
   const msgs = getHistoryAt(dir, "c1")?.messages ?? [];
   expect(msgs.every((m) => m.mentions === undefined)).toBe(true);
-  // Absent, not present-and-undefined — a single-player record is byte-identical.
   const raw = readFileSync(join(dir, "c1.json"), "utf8");
   expect(raw).not.toContain("mentions");
 });
 
 test("a user message with no acting-as token stays author-free (byte-identical to today)", () => {
   const dir = freshDir();
-  // No token → decode yields undefined → no author stamped.
   const author = decodeActingAuthor(undefined);
   appendUserMessageAt(dir, "c1", "ship the report", { author });
 
   const msg = getHistoryAt(dir, "c1")?.messages.find((m) => m.role === "user");
   expect(msg?.author).toBeUndefined();
-  // The `author` key must be ABSENT from the JSON, not present-and-undefined,
-  // so a single-user transcript is byte-identical to before this feature.
   const raw = readFileSync(join(dir, "c1.json"), "utf8");
   expect(raw).not.toContain("author");
 });
-
-// ── Transcript windowing (HOU-819) ──────────────────────────────────────────
 
 function seedConversation(dir: string, count: number) {
   for (let i = 0; i < count; i++) {
@@ -354,12 +339,10 @@ test("before at the transcript start returns an empty page (nothing older)", () 
   expect(h.totalMessages).toBe(4);
 });
 
-// ── Parse cache (HOU-819) ───────────────────────────────────────────────────
-
 test("a cached read returns the appended state written through save", () => {
   const dir = freshDir();
   appendUserMessageAt(dir, "c1", "first");
-  expect(getHistoryAt(dir, "c1")?.messages).toHaveLength(1); // warm the cache
+  expect(getHistoryAt(dir, "c1")?.messages).toHaveLength(1);
   appendAssistantMessageAt(dir, "c1", "reply");
 
   const h = getHistoryAt(dir, "c1");
@@ -371,8 +354,6 @@ test("an EXTERNAL rewrite (bypassing save) is picked up on the next read", () =>
   appendUserMessageAt(dir, "c1", "original");
   expect(getHistoryAt(dir, "c1")?.messages[0]?.content).toBe("original");
 
-  // The cloud store-sync (and any manual edit) writes files directly — the
-  // mtime/size validation must invalidate the cached parse.
   const f = join(dir, "c1.json");
   const replaced = {
     id: "c1",
@@ -393,7 +374,7 @@ test("an EXTERNAL rewrite (bypassing save) is picked up on the next read", () =>
 test("a deleted conversation reads null even when its parse was cached", () => {
   const dir = freshDir();
   appendUserMessageAt(dir, "c1", "hello");
-  expect(getHistoryAt(dir, "c1")).not.toBeNull(); // cached
+  expect(getHistoryAt(dir, "c1")).not.toBeNull();
   deleteConversationAt(dir, "c1");
   expect(getHistoryAt(dir, "c1")).toBeNull();
 });
@@ -402,7 +383,7 @@ test("list reflects an external rewrite (per-file cache validated by stat)", () 
   const dir = freshDir();
   appendUserMessageAt(dir, "c1", "one");
   appendUserMessageAt(dir, "c2", "two");
-  expect(listConversationsAt(dir)).toHaveLength(2); // warm both
+  expect(listConversationsAt(dir)).toHaveLength(2);
 
   const f = join(dir, "c2.json");
   const conv = JSON.parse(readFileSync(f, "utf8"));

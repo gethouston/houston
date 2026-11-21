@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import { buildProviderCatalog } from "./pi-catalog";
 
-// Retired Fable rows retain their original metadata and name their successor.
 test("GET /v1/catalog advertises Claude Fable 5.1 under anthropic", () => {
   const anthropic = buildProviderCatalog().find((p) => p.id === "anthropic");
   expect(anthropic).toBeDefined();
@@ -12,14 +11,12 @@ test("GET /v1/catalog advertises Claude Fable 5.1 under anthropic", () => {
   expect(fable51?.reasoning).toBe(true);
   expect(fable51?.contextWindow).toBe(1_000_000);
   expect(fable51?.maxTokens).toBe(128_000);
-  // Same per-token price as Fable 5; only cache reads dropped ($1 → $0.25).
   expect(fable51?.pricing).toEqual({
     input: 10,
     output: 50,
     cacheRead: 0.25,
     cacheWrite: 12.5,
   });
-  // Same effort ladder as Fable 5 (thinking always on — no "off" level).
   expect(fable51?.thinkingLevels).toEqual(
     anthropic?.models.find((m) => m.id === "claude-fable-5")?.thinkingLevels,
   );

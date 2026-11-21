@@ -6,28 +6,10 @@ import { genericErrorDescription } from "../../lib/error-report";
 import { tauriSystem } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 
-/**
- * Device-grant completion panel (codex `--device-auth`): shows the
- * one-time code the user enters on the provider's verification page,
- * plus a waiting indicator and a close button. The CLI polls and
- * completes on its own, so there's no paste-back input — the parent
- * `ProviderLoginDialog` auto-closes on `ProviderLoginComplete`. Rendered
- * only when the engine surfaced a `userCode`. Split out to keep the
- * dialog under the 200-line ceiling.
- *
- * On mount we open the verification page once (`verificationUri`) so a
- * non-technical user lands where the code goes without hunting for a
- * button. Popup blockers can veto an open that isn't tied to a click, so
- * the parent dialog's "Open URL" button stays as the user-driven
- * fallback. `settingsUrl`, when set (OpenAI/ChatGPT), surfaces the
- * "turn on device-code sign-in" hint that catches the most common
- * dead-end: device login switched off in the provider's own settings.
- */
 interface Props {
   code: string;
   providerName: string;
   verificationUri: string;
-  /** Provider settings page to enable device-code sign-in. OpenAI only. */
   settingsUrl?: string | null;
   onClose: () => void;
 }
@@ -41,19 +23,10 @@ export function ProviderDeviceCode({
 }: Props) {
   const { t } = useTranslation("providers");
   const addToast = useUIStore((s) => s.addToast);
-  // Brief inline confirmation: on copy the code box swaps to "Code
-  // copied!" for a couple seconds, then reverts. Clearer than a toast for
-  // a value the user is about to paste elsewhere — the feedback lands
-  // right where they're looking.
   const [copied, setCopied] = useState(false);
   const revertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Open the verification page exactly once per mounted panel, even if a
-  // re-emit swaps the code prop underneath us.
   const openedRef = useRef(false);
 
-  // Drop the confirmation if a fresh code arrives (e.g. a re-emit), and
-  // clear any pending timer on unmount so it can't fire into an unmounted
-  // component.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `code` is intentionally in deps to reset the copied state whenever a new code prop arrives; the effect body calls only the stable setCopied setter but the trigger is the prop change.
   useEffect(() => {
     setCopied(false);
@@ -64,9 +37,6 @@ export function ProviderDeviceCode({
     };
   }, []);
 
-  // Auto-open the verification page on first render. A failed open is
-  // surfaced by `openUrl` itself so the user knows to use the dialog's
-  // "Open URL" button instead of staring at a code with nowhere to enter it.
   useEffect(() => {
     if (openedRef.current || !verificationUri) return;
     openedRef.current = true;

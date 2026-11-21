@@ -1,7 +1,3 @@
-/* Shared download lead form for the landing and every subpage. */
-
-/* Scroll lock. --dl-sbw replaces the width the scrollbar gave back so the
-   page does not jump sideways; download-gate.js also stops Lenis. */
 html.dl-modal-open {
   overflow: hidden;
   padding-right: var(--dl-sbw, 0px);
@@ -187,7 +183,6 @@ html.dl-modal-open body {
 .dl-cc.open .dl-cc-caret {
   transform: rotate(180deg);
 }
-/* Direct child only: the dropdown menus nest their own inputs under a field. */
 .dl-field.invalid > input,
 .dl-field.invalid .dl-phone-group {
   border-color: var(--app-danger);

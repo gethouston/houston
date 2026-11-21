@@ -20,14 +20,6 @@ import {
 } from "../../ui/routines/src/schedule-interval-utils.ts";
 import type { SchedulePreset } from "../../ui/routines/src/types.ts";
 
-/**
- * SDK regression: the schedule picker offers exactly what the save backstop
- * and the host's gate accept under a free org's floor. The picker lives in
- * `ui/routines` and only asks the rule it is handed; the app hands it the
- * SDK's (`scheduleFloorRule`), the same `scheduleFloorAllows` the host's
- * routine-write gate runs, so the agreement is pinned here.
- */
-
 const free: OrgBilling = {
   tier: "free",
   status: "active",
@@ -75,8 +67,6 @@ describe("picker and save backstop agree in a free org", () => {
   });
 
   it("offers every minute count from the floor up, each one saved at its own gap", () => {
-    // An uneven count saves as a true interval (`@every 16m`), so its real gap
-    // IS the count; a plain `*\/16` would restart at :00 (:48 then :00).
     const minimum = floorMinuteMinimum(rule);
     deepStrictEqual(minimum, 15);
     for (let every = 1; every <= intervalCountMax("minutes"); every++) {

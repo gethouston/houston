@@ -10,14 +10,6 @@ import { parseAssistantDocs } from "../assistant-jsdoc.ts";
 import { nestedFieldsFor } from "../assistant-nested-fields.ts";
 import { route } from "./assistant-catalog-support.ts";
 
-/**
- * "Never guess an identifier", in three derived halves: the author's sentence
- * about a parameter, the operation that lists what it accepts, and the live
- * list the host resolves it against. All three are derived, so all three are
- * pinned here rather than left to the drift check, which only proves the
- * generated file matches whatever the rules currently produce.
- */
-
 const at = (path: string, extra: Partial<AssistantRoute> = {}) =>
   route(path, extra) as AssistantRoute;
 
@@ -75,8 +67,6 @@ describe("entitySourceFor", () => {
     expect(
       entitySourceFor("relPath", at("/agents/{agentPath}/files/read")),
     ).toBe("listProjectFiles");
-    // Nothing enumerates an agent's `.houston` documents, so the same spelling
-    // under `/agentfile` is deliberately left without a source.
     expect(
       entitySourceFor("relPath", at("/agents/{agentId}/agentfile/{relPath}")),
     ).toBeUndefined();
@@ -162,7 +152,6 @@ describe("entityRuleFor", () => {
       ],
       ["/v1/integrations/custom/definitions/{slug}", "slug"],
       ["/agents/{agentId}/agentfile/{relPath}", "relPath"],
-      // The chat a rename or delete acts on is spelled `id` in the path.
       ["/agents/{agentId}/conversations/{id}", "id"],
     ];
     for (const [path, parameter] of cases) {
@@ -270,9 +259,6 @@ describe("nestedFieldsFor", () => {
   });
 
   it("claims nothing a rule does not name", () => {
-    // A creation payload is full of `slug`/`id` fields that name something being
-    // MADE. The top level's spelling heuristic would resolve them against lists
-    // they are not in; here, only a declared field is claimed.
     expect(
       nestedFieldsFor(
         "input",

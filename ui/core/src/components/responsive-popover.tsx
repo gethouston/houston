@@ -12,18 +12,6 @@ import {
   SheetTrigger,
 } from "./sheet";
 
-/**
- * One picker, two presentations: an anchored popover on desktop and a bottom
- * sheet below the one breakpoint. A popover pinned to a 28px pill has nowhere
- * to go on a phone (it goes edge to edge and lands on top of the composer);
- * the sheet gives the same content the full width, a title, and the home
- * indicator's safe area. A structural fork, so it reads `useIsMobile()`.
- *
- * The trigger and content are the same children either way; `title` is the
- * sheet's heading (a dialog needs an accessible name) and is not rendered in
- * the popover form.
- */
-
 const MobileContext = React.createContext(false);
 
 function ResponsivePopover({
@@ -66,9 +54,7 @@ function ResponsivePopoverContent({
   onCloseAutoFocus,
   ...popoverProps
 }: React.ComponentProps<typeof PopoverContent> & {
-  /** The sheet's heading; doubles as its accessible name. */
   title: string;
-  /** Extra classes for the sheet form only (the popover takes `className`). */
   sheetClassName?: string;
 }) {
   const mobile = React.useContext(MobileContext);

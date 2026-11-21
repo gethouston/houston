@@ -6,11 +6,6 @@ import { useClaimFreeSlot } from "../../hooks/queries/use-billing";
 import { showExpectedStateToast } from "../../lib/error-toast";
 import { useUIStore } from "../../stores/ui";
 
-/**
- * Use as free org: confirm first, naming the org that locks in its place
- * (the one holding the free slot today), then swap. The strip clears on its
- * own once the orgs list says this org is working.
- */
 export function TeamStatusClaimDialog({
   open,
   onOpenChange,
@@ -36,7 +31,6 @@ export function TeamStatusClaimDialog({
     try {
       result = await claim.mutateAsync();
     } catch {
-      // Already surfaced and reported by the engine call.
       return;
     }
     if (result.kind === "claimed") {

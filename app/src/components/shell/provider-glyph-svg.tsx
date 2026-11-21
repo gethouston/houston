@@ -1,8 +1,3 @@
-/**
- * Shared SVG wrapper for every provider brand mark. Centralizes the 24x24
- * viewBox, the default 20x20 render size, `currentColor` fill, rounded stroke
- * joins, and the accessible `<title>`/`role` so each mark is just its path(s).
- */
 import type { ReactNode } from "react";
 
 export type LogoProps = { className?: string };

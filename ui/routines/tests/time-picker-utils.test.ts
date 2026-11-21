@@ -98,8 +98,6 @@ describe("centerPadding", () => {
 
 describe("centerScrollTop", () => {
   it("lands the first (end-padded) item at scrollTop 0", () => {
-    // With centerPadding(112, 32) = 40px of top padding, the first item sits at
-    // offsetTop 40 — and centering it must require no scroll.
     assert.equal(centerScrollTop(40, 112, 32), 0);
   });
 
@@ -114,7 +112,6 @@ describe("centerScrollTop", () => {
       [1060, 128, 34],
     ]) {
       const scrollTop = centerScrollTop(offsetTop, vh, ih);
-      // item center, measured from the scrolled viewport's top, is the midpoint
       assert.equal(offsetTop + ih / 2 - scrollTop, vh / 2);
     }
   });

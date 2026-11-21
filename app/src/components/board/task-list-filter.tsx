@@ -12,19 +12,6 @@ import {
   type TaskListFilterId,
 } from "./task-list-model.ts";
 
-/**
- * The task list's status filter: one pill that names the band the list is
- * narrowed to ("All" by default) and drops a radio menu of the four choices —
- * All, Needs you, Running, Done — the same pill grammar the Agents home's
- * team selector wears, so narrowing a list reads the same wherever the user
- * found one.
- *
- * The choices are a NARROWING of the same sectioned list, not four screens:
- * "All" keeps the sections stacked, and picking one leaves only that section
- * standing. Needs you carries its count, because that number is the reason a
- * user came here at all; the other choices carry no badge, so the menu does
- * not turn into a scoreboard.
- */
 export function TaskListFilter({
   active,
   needsYouCount,
@@ -34,8 +21,6 @@ export function TaskListFilter({
   active: TaskListFilterId;
   needsYouCount: number;
   onSelect: (filter: TaskListFilterId) => void;
-  /** Stamped on every choice (and `<testId>-trigger` on the pill), so a spec
-   *  can address the list it means. */
   testId: string;
 }) {
   const { t } = useTranslation(["shell", "dashboard"]);

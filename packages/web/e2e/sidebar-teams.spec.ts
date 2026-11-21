@@ -42,8 +42,6 @@ test("the list closes on one Add new AI Employee shortcut, outside every folder"
   await page.goto("/");
   const rail = page.locator("[data-tour-target='agents']");
   await expect(rail.locator("[data-sidebar-group='last']")).toBeVisible();
-  // ONE shortcut closes the list, after the last folder and outside every
-  // one of them; the "+" on the top line keeps the tour's newAgent anchor.
   const addRow = rail.getByTestId("rail-add-employee");
   await expect(addRow).toHaveCount(1);
   await expect(addRow).toContainText("Add new AI Employee");
@@ -61,8 +59,6 @@ test("the list closes on one Add new AI Employee shortcut, outside every folder"
   await expect(
     page.locator("[data-tour-target='sidebar'] [data-tour-target='newAgent']"),
   ).toBeVisible();
-  // A member steps in one level from the root rows, with no line down the
-  // folder or between its members.
   const member = rail.locator("[data-sidebar-member-of='work']");
   await expect(member.locator("button").first()).toHaveClass(/\bpl-8\b/);
   await expect(member).not.toHaveClass(/after:bg-line/);
@@ -161,11 +157,9 @@ test("folder menu launches Move to another space when spaces are available", asy
   await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
     data: { multiplayer: true, teams: true, spaces: true, role: "owner" },
   });
-  // A move needs a destination: a team space this person owns.
   await request.post(`${FAKE_HOST_URL}/__test__/workspaces`, {
     data: { teams: [{ slug: "00000000000000ab", name: "Acme Team" }] },
   });
-  // The folder lives in the personal space, the one this person last used.
   await setAccountPreference(request, "last_workspace_id", SEED_WORKSPACE_ID);
   await seedSidebarLayout(request, {
     groups: [{ id: "design", name: "Design", collapsed: false, agentIds: [] }],
@@ -188,8 +182,6 @@ test("the list's shortcut opens the create sheet on a new AI Employee", async ({
     .locator("[data-tour-target='agents']")
     .getByTestId("rail-add-employee")
     .click();
-  // Straight onto the employee path: no choice between an employee and a
-  // group, which is the top line's "+".
   await expect(page.getByRole("menuitem", { name: "New group" })).toHaveCount(
     0,
   );

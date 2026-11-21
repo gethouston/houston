@@ -14,9 +14,6 @@ export interface PendingTeamMove {
   agentIds: string[];
   movedAgentIds: string[];
   postscriptStage?: TeamMoveStage;
-  /** The agent the gateway refused on a name the team already holds (C8
-   *  `name_taken`). A parked move waits for the person: the boot resume leaves
-   *  it alone, and the dialog's retry records the move afresh without it. */
   refusedAgentId?: string;
   startedAt: number;
 }
@@ -110,12 +107,6 @@ export function updatePendingTeamMove(
   storage.setItem(STORAGE_KEY, JSON.stringify(moves));
 }
 
-/**
- * A team move whose agent was refused on a taken name. Nothing started for that
- * agent, so when no agent has moved yet the whole record is void and the person
- * starts over after renaming; otherwise the record is parked on the agent so the
- * dialog can finish the move into the same folder once it is renamed.
- */
 export function parkRefusedTeamMove(
   sourceTeamId: string,
   agentId: string,

@@ -12,7 +12,6 @@ import {
   categoryLabel,
 } from "./browse-model";
 
-/** What one app row contributes: its trailing control + optional row click. */
 export interface AppCatalogRow {
   trailing: ReactNode;
   onClick?: () => void;
@@ -20,30 +19,13 @@ export interface AppCatalogRow {
 
 interface AppCatalogGridProps {
   catalog: IntegrationToolkit[];
-  /**
-   * The selected category slug, or `"all"`. Controlled by the surface so ONE
-   * category picker filters every list on it (this grid + the connected /
-   * allowed lists beside it), not just the browse grid.
-   */
   category: string;
   onCategoryChange: (next: string) => void;
-  /** Apps to hide entirely (e.g. already-connected in the connect flow). */
   excludeToolkits?: ReadonlySet<string>;
-  /** The catalog is still fetching (show a loader, not a "no apps" message). */
   loading?: boolean;
-  /** Per-app trailing control (+ optional row click). Owns the row's action. */
   renderRow: (app: AppDisplay, toolkit: IntegrationToolkit) => AppCatalogRow;
 }
 
-/**
- * The shared app-catalog shell: a control row (search box `flex-1` + the shared
- * {@link FilterCombobox} category picker trailing) above a paginated two-column
- * {@link AppRow} grid + load-more over the ~1000-app catalog. The per-row action
- * (allow toggle, ...) is delegated via `renderRow`, so a surface picking apps out
- * of the catalog gets this layout without duplicating the shell markup. Category
- * is controlled by the surface so the same selection also filters the lists that
- * sit beside this grid.
- */
 export function AppCatalogGrid({
   catalog,
   category,
@@ -74,9 +56,6 @@ export function AppCatalogGrid({
     [catalog, search, category, excludeToolkits],
   );
 
-  // A fresh result list (new search or category) collapses the page cap back to
-  // the first page. Adjusting state during render (React's documented pattern)
-  // keeps the reset in sync with the new list identity without a wasted paint.
   const [visible, setVisible] = useState(BROWSE_PAGE_SIZE);
   const [shownFor, setShownFor] = useState(apps);
   if (shownFor !== apps) {

@@ -1,21 +1,6 @@
 import { spawn } from "node:child_process";
 import { acquireSuiteLock, releaseSuiteLock } from "./machine-lock";
 
-/**
- * Run a full Playwright suite under the machine-wide one-suite lock.
- *
- * The lock must wrap the WHOLE `playwright test` process — not live in
- * globalSetup — because Playwright boots its webServers BEFORE globalSetup: a
- * queued run would adopt the running suite's live servers (reuseExistingServer)
- * and then lose them mid-run when the first suite finishes and tears its own
- * down. Wrapping the invocation means a queued run starts nothing until the
- * machine is truly free.
- *
- * Usage (package.json): `tsx e2e/support/run-locked.ts playwright test …`.
- * Scoped single-spec `pnpm exec playwright test <file>` runs bypass the lock
- * on purpose — they are light, and queueing them behind a full suite would
- * slow the fix loop for no protection worth having.
- */
 async function main(): Promise<void> {
   const [cmd, ...args] = process.argv.slice(2);
   if (!cmd) {

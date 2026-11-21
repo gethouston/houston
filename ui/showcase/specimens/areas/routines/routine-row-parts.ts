@@ -1,10 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * `RoutineRowProps`, read off `ui/routines/src/routine-row.tsx`, plus the token
- * utilities the row and its status ring paint with. Data only — the page beside
- * this file renders it.
- */
 export const rowProps: readonly SpecimenProp[] = [
   {
     name: "routine",
@@ -93,7 +88,6 @@ export const rowProps: readonly SpecimenProp[] = [
   },
 ];
 
-/** The token utilities the row, its ring and its inline editor paint with. */
 export const rowTokens: readonly string[] = [
   "bg-card",
   "bg-hover",

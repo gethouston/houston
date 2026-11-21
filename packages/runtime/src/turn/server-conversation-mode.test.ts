@@ -7,13 +7,6 @@ import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/**
- * A pooled worker runs a send that names no mode on the mode its conversation
- * keeps (HOU-205), read off the board it hydrated, the same answer the
- * standing runtime gives. Without it every pin-less send on the pool (an API
- * follow-up, a channel relay) ran Ask first whatever the person picked.
- */
-
 const storeRoot = mkdtempSync(join(tmpdir(), "houston-turn-mode-"));
 const store = new LocalDirStore(storeRoot);
 const PREFIX = "ws/w1/agent-1";

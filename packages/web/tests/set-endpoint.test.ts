@@ -2,15 +2,6 @@ import { HoustonClient } from "@houston/engine-adapter/client";
 import { PREWARM_TYPING_MS } from "@houston/sdk/draft-typing";
 import { afterEach, expect, test, vi } from "vitest";
 
-// The desktop shell repoints an already-built client whenever a new engine
-// config lands (`applyConfig` in app/src/lib/engine.ts): every hosted bearer
-// rotation (`setHostedEngineSessionToken` — fires again on each Supabase token
-// refresh, and immediately in dev under StrictMode's double effect) and a
-// sidecar restart on a fresh random port (HOU-432). The adapter client shipped
-// without `setEndpoint`, so the SECOND config crashed the whole app with
-// "_client.setEndpoint is not a function". These pin the method and its
-// in-place repointing on both transports.
-
 const BASE_A = "https://gateway-a.example";
 const BASE_B = "https://gateway-b.example";
 
@@ -43,9 +34,6 @@ test("setEndpoint repoints gateway calls to the new base URL and bearer", async 
     token: "token-1",
     controlPlane: true,
   });
-  // listAgents also reads the `agent_colors` account preference in parallel
-  // (PRODUCT-1344); pick out the /agents requests so the repointing assertion
-  // stays about the endpoint, not about that side channel.
   const agentCalls = () =>
     cap.urls
       .map((url, i) => ({ url, bearer: cap.bearers[i] }))
@@ -54,13 +42,10 @@ test("setEndpoint repoints gateway calls to the new base URL and bearer", async 
   expect(agentCalls()[0].url).toBe(`${BASE_A}/agents`);
   expect(agentCalls()[0].bearer).toBe("Bearer token-1");
 
-  // The hosted token-refresh path: same shape the shell applies, twice.
   client.setEndpoint({ baseUrl: BASE_B, token: "token-2" });
   await client.listAgents("ws");
   expect(agentCalls()[1].url).toBe(`${BASE_B}/agents`);
   expect(agentCalls()[1].bearer).toBe("Bearer token-2");
-  // The repoint also re-keys the color hydration: its pref reads must follow
-  // the endpoint, never keep hitting the old gateway.
   const prefBases = cap.urls
     .filter((u) => u.includes("/v1/preferences/"))
     .map((u) => new URL(u).origin);
@@ -84,7 +69,6 @@ test("setEndpoint rebuilds the direct runtime client on the new port (local side
 });
 
 test("setEndpoint keeps the id a new chat's typing already prewarmed", async () => {
-  // Only the clocks: the typing policy reads them, and the fetches still settle.
   vi.useFakeTimers({ toFake: ["Date", "performance"] });
   const urls: string[] = [];
   vi.stubGlobal(
@@ -116,7 +100,6 @@ test("setEndpoint keeps the id a new chat's typing already prewarmed", async () 
     prewarmUrl,
   )?.[1];
   expect(prewarmed).toBeTruthy();
-  // The hosted bearer rotation rebuilds the SDK mid-typing.
   client.setEndpoint({ baseUrl: BASE_A, token: "token-2" });
   expect(client.claimNewConversationId("new-conversation:board")).toBe(
     prewarmed,

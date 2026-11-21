@@ -8,17 +8,6 @@ import {
   resolveEntityParams,
 } from "./entity-resolution";
 
-/**
- * IDENTIFIERS THAT ARRIVE INSIDE A BODY, and the two shapes they arrive in.
- *
- * The resolver used to read top-level string parameters and nothing else, so a
- * manifest's list of skills, a list of people, and every field of a body object
- * reached the approval card and the request exactly as the model wrote them:
- * checked against nothing, presented to the user as fact. These pin the walk
- * that closes it - one level in, lists included - and pin that a value nothing
- * matches is refused with the values that do exist.
- */
-
 const workspace = (id: string, name: string): Workspace => ({
   id,
   ownerUserId: "u1",
@@ -96,8 +85,6 @@ const putSkillsManifest = operation("putSkillsManifest", [
   },
 ]);
 
-// Exactly as the catalog declares it: the parameter itself names people (the
-// plain list-of-ids form) AND each object entry carries `userId`.
 const setAgentAssignments = operation("setAgentAssignments", [
   agentParam,
   {
@@ -127,8 +114,6 @@ test("a list inside a body object resolves entry by entry", async () => {
       manifest: { version: 1, enabled: ["draft", "invoice"] },
     },
   });
-  // One directory read for the whole list: two reads could disagree, and the
-  // refusal would then name values from neither.
   expect(skillReads).toBe(1);
 });
 
@@ -179,8 +164,6 @@ test("a body that omits the field is left exactly as it came", async () => {
     ok: true,
     params: { agentId: "a-legal", manifest: { version: 1 } },
   });
-  // The caller's object is never mutated: the approval card and the request are
-  // built from the returned copy.
   expect(params.manifest).toEqual({ version: 1 });
 });
 

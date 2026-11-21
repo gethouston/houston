@@ -18,14 +18,6 @@ import { reportsNotDone } from "../../session/tools/assistant-result";
 import { startedMissionFromDetails } from "../../session/tools/start-mission-receipt";
 import { toZodShape } from "./schema-to-zod";
 
-/**
- * The minimal slice of a pi tool this bridge reads. `execute`'s trailing
- * `onUpdate`/`ctx` params are inert for every Houston custom tool (verified:
- * none read them), so the adapter passes inert placeholders — see {@link NOOP_CTX}.
- * A pi `ToolDefinition<S>` narrows `params` to `Static<S>`; here it is widened to
- * `unknown` so heterogeneous tools share one adapter, and the SDK-validated args
- * are handed straight through.
- */
 export interface BridgedPiTool {
   name: string;
   description: string;
@@ -39,23 +31,8 @@ export interface BridgedPiTool {
   ): Promise<AgentToolResult<unknown>>;
 }
 
-/**
- * Inert `ExtensionContext` placeholder. The bridged tools never touch `ctx`
- * (they use the turn-scoped AsyncLocalStorage stores instead), so an empty object
- * is safe. Cast once here rather than threading a real context the SDK path has
- * no way to supply.
- */
-// SAFETY: every tool admitted to this bridge ignores ExtensionContext and gets
-// its request scope from AsyncLocalStorage, as documented on BridgedPiTool.
 const NOOP_CTX = {} as ExtensionContext;
 
-/**
- * Adapt one pi tool into an SDK in-process MCP tool definition. With a
- * `spill` target, an oversized result from a capped tool reaches the model as
- * its head plus the path of the full result (session/tool-results/cap.ts).
- * The CLI only offloads results past ~50k characters, to a file under its
- * config dir that Houston's file guard keeps the model from reading.
- */
 export function adaptTool(
   tool: BridgedPiTool,
   spill?: SpillTarget,
@@ -65,11 +42,7 @@ export function adaptTool(
     description: tool.description,
     inputSchema: toZodShape(tool.parameters),
     async handler(args: unknown, extra: unknown) {
-      // The SDK passes an abort signal on `extra`; forward it so a stopped turn
-      // cancels the integration proxy fetch mid-flight (same as the pi path).
       const signal = (extra as { signal?: AbortSignal } | undefined)?.signal;
-      // The SAME tool-call record the pi path writes (session/tool-call-log.ts),
-      // so runtime.log reads identically whichever backend served the turn.
       const result = await loggedToolCall(tool.name, () =>
         tool.execute(`mcp-${tool.name}`, args, signal, undefined, NOOP_CTX),
       );
@@ -96,7 +69,6 @@ function capped(
   try {
     path = spillToolResult(spill, toolName, text);
   } catch (err) {
-    // Unsaved, the result goes out whole: a bigger request, never a lost one.
     console.error(
       `[tool-results] could not save the ${toolName} result; sending it whole:`,
       err,
@@ -112,12 +84,10 @@ function capped(
   };
 }
 
-/** The MCP content blocks Houston's tools emit: text, and `browser` screenshots. */
 type McpContent =
   | { type: "text"; text: string }
   | { type: "image"; data: string; mimeType: string };
 
-/** Map a pi tool result onto the MCP `CallToolResult` content shape. */
 function toCallToolResult(
   result: AgentToolResult<unknown>,
   toolName: string,

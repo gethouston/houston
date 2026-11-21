@@ -7,8 +7,6 @@ import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
 import { useCustomIntegrationScope } from "./use-custom-transport";
 
-/** Remove a custom integration entirely (definition + secret + tools). The
- *  row leaves every list that holds it on the click; the write follows. */
 export function useRemoveCustomIntegration(agentId?: string) {
   const qc = useQueryClient();
   const { t } = useTranslation("integrations");

@@ -14,44 +14,26 @@ import {
   workspaceActsState,
 } from "./workspace-skill-acts";
 
-/** A delete for every employee, waiting on the editor's confirm. */
 export interface WorkspaceDeleteRequest {
-  /** Who holds it, for the confirm's copy; empty for a store skill. */
   holders: string[];
   run: () => Promise<void>;
 }
 
 interface WorkspaceSkillMenuProps {
   slug: string;
-  /** The employee whose editor this is: sharing publishes THEIR copy. */
   agent: Agent;
   workspaceAgents: Agent[];
   onDeleteEverywhere: SkillEditorActions["onDeleteEverywhere"];
-  /** The skill moved into the store, or left: back to the list. */
   onBack: () => void;
-  /** Run an act that leaves the editor behind the dirty-draft confirm. */
   guard: (run: () => void) => void;
   onRequestDelete: (request: WorkspaceDeleteRequest) => void;
 }
 
-/**
- * The skill editor menu's acts that reach EVERY employee: Share to workspace,
- * Enable for all, Delete for all. They are the space owner's
- * (`manageWorkspaceSkills`), so anyone else reads nothing and sees none.
- */
 export function WorkspaceSkillMenuItems(props: WorkspaceSkillMenuProps) {
   const { manageWorkspaceSkills } = useSurfaceGates();
   return manageWorkspaceSkills ? <WorkspaceActs {...props} /> : null;
 }
 
-/**
- * The acts need the skill's WORKSPACE row (every holder), which one
- * employee's section never reads, so this reads every employee's skills when
- * it mounts, and the menu mounts it only while open: opening an employee's
- * Skills section wakes no one else, the menu does. Nothing is offered until
- * every read has landed (`workspaceActsState`), or a partial row would act on
- * some holders and miss the rest.
- */
 function WorkspaceActs(props: WorkspaceSkillMenuProps) {
   const { t } = useTranslation("skills");
   const models = useSkillsModels(props.workspaceAgents);

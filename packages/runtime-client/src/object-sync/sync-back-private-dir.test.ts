@@ -9,7 +9,6 @@ import { syncBack } from "./sync-back";
 const posixOnly = process.platform === "win32" ? describe.skip : describe;
 const STATE = ".houston/browser/state.json";
 
-/** A store that records every write; listing and reads are never needed. */
 function recordingStore() {
   const uploads: string[] = [];
   const deletes: string[] = [];
@@ -27,7 +26,6 @@ function recordingStore() {
   return { store, uploads, deletes };
 }
 
-/** An agent folder with a notes file and, when asked, a browser directory. */
 function agent(browser: "real" | "none") {
   const root = mkdtempSync(join(tmpdir(), "houston-syncback-private-"));
   mkdirSync(join(root, ".houston"));
@@ -39,10 +37,8 @@ function agent(browser: "real" | "none") {
   return root;
 }
 
-/** Make every directory this process owns look like another user's. */
 function asSomeoneElse() {
   const uid = process.getuid?.() ?? 0;
-  // `getuid` is optional on the type (Windows has none); posix-only here.
   const posix = process as { getuid: () => number };
   vi.spyOn(posix, "getuid").mockReturnValue(uid + 1);
 }
@@ -112,7 +108,6 @@ posixOnly("sync-back of the browser's private directory", () => {
       generations: true,
     });
     expect(uploads.sort()).toEqual([`p/${STATE}`, "p/notes.md"]);
-    // Sign-in state is only ever forgotten by an explicit store delete.
     expect(deletes).toEqual([]);
     expect(result.manifest.get(".houston/browser/old.json")).toEqual({
       hash: "older",
@@ -123,7 +118,6 @@ posixOnly("sync-back of the browser's private directory", () => {
   test("only a real storage state named state.json uploads", async () => {
     const root = agent("none");
     mkdirSync(join(root, ".houston", "browser"), { mode: 0o700 });
-    // A worker-owned folder renamed to `browser` brings its own files along.
     writeFileSync(join(root, ".houston/browser/board.json"), '{"cards":[]}');
     writeFileSync(join(root, STATE), '{"cards":[]}');
     const { store, uploads, deletes } = recordingStore();

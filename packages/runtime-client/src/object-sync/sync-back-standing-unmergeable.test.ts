@@ -10,13 +10,6 @@ import {
 } from "./object-store";
 import { syncBack } from "./sync-back";
 
-/**
- * The standing store sync's one merge on a document it cannot merge: the
- * remote is gone, or one side will not parse. The pass must not throw: every
- * later file would stay un-synced, pass after pass. The local bytes land at
- * the refreshed generation, as every conflict did before merges existed.
- */
-
 const RUNS = "workspaces/P/Bob/.houston/routine_runs/routine_runs.json";
 const LOCAL = JSON.stringify([
   {

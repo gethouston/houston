@@ -9,18 +9,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The per-agent policy (assignments, toolkit/model ceilings, model choice,
- * trigger status) rides `sdk.teams`.
- *
- * What these tests pin is the wire: the mixin method must issue exactly the
- * request recorded here, down to the URL, the method, the body bytes and the
- * auth/active-space headers — one request, never two. The degradations stay
- * adapter-side, so they are pinned here too: model choice and trigger status
- * read `null` on a 404 (a deployment that is single-player says so by not
- * serving the route), and every other failure surfaces.
- */
-
 const BASE = "http://host";
 
 const { calls, reset, restore, stubFetch } = createWireCapture();
@@ -35,7 +23,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** A hosted client with an active space pinned, as the app runs in cloud. */
 function client(): HoustonClient {
   const c = new HoustonClient({
     baseUrl: BASE,
@@ -87,8 +74,6 @@ describe("the delegated per-agent policy", () => {
       `GET ${BASE}/v1/agents/a1/settings`,
       `PUT ${BASE}/v1/agents/a1/settings`,
     ]);
-    // A one-ceiling PUT must not carry the other key: the gateway merges, so an
-    // invented `allowedToolkits: null` would erase a live allowlist.
     expect(calls[1].body).toBe(JSON.stringify({ allowedModels: null }));
     for (const call of calls) expectGatewayHeaders(call);
   });
@@ -189,7 +174,6 @@ describe("the delegated per-agent policy", () => {
 
     await expect(client().getAgentModelChoice("a1")).resolves.toBeNull();
     await expect(client().agentTriggerStatus("a1")).resolves.toBeNull();
-    // The writes and the ceilings read still surface the host's reason.
     await expect(client().getAgentSettings("a1")).rejects.toThrow(
       HoustonEngineError,
     );

@@ -1,88 +1,21 @@
-/**
- * The ONE default model per provider, keyed by pi's CANONICAL provider id.
- *
- * The picker, runtime and stored-model migrations share these defaults.
- * A provider-only pin and a newly connected provider select the same model.
- *
- * `Partial` because `ProviderId` is open (any pi-ai id): a provider absent from
- * this table has no catalog default, and readers must handle the missing key
- * (see `provider-model.ts` `defaultModelFor`, and the app catalog's fallback to
- * the provider's first pi model) rather than assume a value. A cross-provider
- * guess is the exact bug this table exists to prevent.
- *
- * A dependency-free LEAF (see `provider-dialect.ts`): exposed as the
- * `@houston/domain/provider-default-models` subpath so the app catalog reads
- * these values instead of restating them.
- */
-
 import type { ProviderId } from "./provider-ids";
 
 export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   anthropic: "claude-sonnet-5-5",
-  // Codex's cheapest gpt-6 tier, and the id a pin naming `openai-codex` with NO
-  // model lands on. It has to be a row the ChatGPT subscription serves: a
-  // default the Codex backend refuses kills every such pin on its first turn.
-  // The runtime states this id a second time as
-  // `CODEX_DEFAULT_MODEL` (packages/runtime/src/ai/codex-offered.ts), where the
-  // live probe that proves it lives; `app/tests/codex-models.test.ts` pins the
-  // two together so the copy cannot drift silently.
   "openai-codex": "gpt-6-luna",
-  // The cheapest model served on every paid Copilot plan (HOU-578; Free and
-  // Student get auto model selection only). GitHub retired
-  // gpt-4.1 on 2026-06-01 and gpt-5-mini on 2026-10-19, naming the latest GPT
-  // Luna as its successor (pi 1.4.0 dropped the row). Under usage-based billing
-  // every model spends AI credits, so the default is the lowest-cost row rather
-  // than a "free" one. Copilot uses DOTTED model ids, unlike native Anthropic.
   "github-copilot": "gpt-6-luna",
   opencode: "claude-sonnet-4-6",
-  // The GLM row that holds glm-5.1's tier (same price, same plan). pi 0.99.1
-  // dropped glm-5.1 and pi 1.6.0 glm-5.2, and a default the catalog no longer
-  // carries fails every provider-only pin on its first turn.
   "opencode-go": "glm-5.3",
   openrouter: "anthropic/claude-sonnet-4.6",
   deepseek: "deepseek-flash",
-  // 3.8 Flash (GA 2026-09-02): 1M context, 64K output, and cheaper than 3.5
-  // Flash while scoring higher. Also the key-verify probe model.
   google: "gemini-3.8-flash",
-  // Inference-profile id (`global.`), NOT the bare foundation id: Bedrock
-  // serves Claude 4.x only through inference profiles, so bare-id invocation
-  // (including the connect-time key probe) fails with "on-demand throughput
-  // isn't supported" (PRODUCT-1477).
   "amazon-bedrock": "global.anthropic.claude-sonnet-4-6",
-  // The one text model MiniMax serves on BOTH key kinds: pay-as-you-go keys run
-  // M3.1 Flash and M3, while M Plan / Token Plan keys list only M3.1 Flash
-  // (platform.minimax.io/docs/m-plan/faq.md). The key, not the model id,
-  // decides which balance is charged, so the default never has to guess it.
   minimax: "MiniMax-M3.1-Flash",
-  // NVIDIA serves each hosted model per ACCOUNT (HOU-890), so pi's
-  // alphabetically-first rows (gemma, deepseek) answer `404 Function not found
-  // for account` for many accounts — and the default is what the key VERIFIER
-  // probes, so a dead pick breaks connect itself. Of the families our
-  // partially-gated live key was served (llama / gpt-oss / minimax), only
-  // MiniMax is left: pi 0.84.4 retired the llama-3.x NIM rows, 0.85.0
-  // gpt-oss-120b and 1.6.0 gpt-oss-20b. Keep in sync with the runtime
-  // classifier's NVIDIA_BROAD_FALLBACK and the verifier's
-  // NVIDIA_VERIFY_FALLBACKS.
   nvidia: "minimaxai/minimax-m3.1-flash",
-  // pi lists Alibaba's multi-vendor Token Plan catalogs alphabetically, which
-  // would make MiniMax the default on a card named Qwen.
   qwen: "qwen3.7-max",
-  // Mistral's general flagship (reasoning, 1M context). With no row here the
-  // default was pi's first Mistral row, a Codestral code-completion model
-  // capped at 4K output (8K on the dated snapshot pi 1.1.0 put first).
   mistral: "mistral-large-4",
   "qwen-token-plan": "qwen3.7-max",
   "qwen-token-plan-individual": "qwen3.7-max",
-  // Moonshot's own migration target for the retired kimi-k2 previews. Unlocked
-  // by the same >= $1 first top-up Moonshot requires before any request works,
-  // so every account that can chat has it (PRODUCT-1411).
   moonshotai: "kimi-k3",
-  // pi's azure catalog is alphabetical (gpt-4 first) — start current. What the
-  // Codex backend serves a ChatGPT subscription does not bind Azure at all: an
-  // Azure request hits the user's own resource and runs whatever they deployed.
   "azure-openai-responses": "gpt-5.5",
-  // `openai-compatible` is deliberately ABSENT, not empty: the model is whatever
-  // the user's local server serves, and an "" entry is non-nullish, so every
-  // `catalogDefaultModel(id) ?? models[0]?.id` fallback stopped at it and the
-  // picker offered no model at all.
 };

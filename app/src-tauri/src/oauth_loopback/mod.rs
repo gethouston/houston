@@ -73,13 +73,8 @@ pub async fn start_oauth_loopback(
     expected_state: String,
     exact_port: Option<u16>,
 ) -> Result<LoopbackStart, String> {
-    // Mint the generation FIRST: it records when the user clicked, not which
-    // coroutine happens to reach `install` last.
     let attempt_id = state.mint_id();
 
-    // Claim before binding, and supersede the previous listener BEFORE binding.
-    // Binding first meant the old listener still held its port, so every
-    // re-click moved to the next candidate and the fourth had nowhere to go.
     match state.claim(attempt_id)? {
         Claim::Stale { current } => {
             tracing::info!(
@@ -91,9 +86,6 @@ pub async fn start_oauth_loopback(
         Claim::Won(None) => {}
     }
 
-    // The GCIP-brokered flow minted its authorize URL for ONE port, so it asks
-    // for exactly that port and steps + re-mints on `PortBusy`; the PKCE flow
-    // takes the first free candidate.
     let sockets = match exact_port {
         Some(port) => match bind_exact(port).await? {
             BindOutcome::Bound(sockets) => sockets,
@@ -116,7 +108,6 @@ pub async fn start_oauth_loopback(
         freed: freed_rx,
     })? {
         Installed::Ok(Some(orphan)) => {
-            // A concurrent OLDER start installed between our claim and ours.
             tracing::warn!(
                 "[oauth-loopback] a concurrent attempt {} was superseded",
                 orphan.id
@@ -125,9 +116,6 @@ pub async fn start_oauth_loopback(
         }
         Installed::Ok(None) => {}
         Installed::Stale { newest } => {
-            // A newer click claimed the loopback while we were binding. Free
-            // the sockets we just bound (dropping them releases the port) and
-            // tell the frontend this attempt lost — never install it as current.
             tracing::info!(
                 "[oauth-loopback] attempt {attempt_id} lost to {newest} while binding; releasing port {port}"
             );

@@ -67,8 +67,6 @@ describe("resolveFilterPath", () => {
   });
 
   it("drops a filter naming an agent outside the scope", () => {
-    // The agent moved to another team while its board was open: showing every
-    // agent beats an empty board whose filter menu cannot clear itself.
     assert.equal(resolveFilterPath("z", ["a", "b"]), "");
     assert.equal(resolveFilterPath("a", []), "");
   });
@@ -76,8 +74,6 @@ describe("resolveFilterPath", () => {
 
 describe("missionControlDraftScope", () => {
   it("leaves the global board's scope byte-unchanged", () => {
-    // Existing stored drafts live under the bare scope; namespacing the global
-    // board too would silently orphan every one of them.
     assert.equal(GLOBAL_MISSION_DRAFT_SCOPE, "mission-control");
     assert.equal(missionControlDraftScope(), "mission-control");
     assert.equal(missionControlDraftScope(undefined), "mission-control");
@@ -89,7 +85,6 @@ describe("missionControlDraftScope", () => {
       missionControlDraftScope("team-a"),
       missionControlDraftScope("team-b"),
     );
-    // A team never collides with the global board either.
     assert.notEqual(
       missionControlDraftScope("team-a"),
       GLOBAL_MISSION_DRAFT_SCOPE,
@@ -109,8 +104,6 @@ describe("filteredScopeAgent", () => {
   });
 
   it("falls back to every agent when the path has no agent behind it", () => {
-    // The title IS the filter now: a path nobody owns would otherwise leave
-    // the board's only heading blank while the board shows everything.
     assert.equal(filteredScopeAgent(roster, "Sales/Gone"), null);
     assert.equal(filteredScopeAgent([], "Sales/Ana"), null);
   });
@@ -131,12 +124,6 @@ describe("mission control source draft scope wiring", () => {
   });
 });
 
-/**
- * The agent filter is READ-ONLY on a board. The surfaces that change it (the
- * team strip's breadcrumb, the archive's own dropdown) write their own source
- * directly, so a board that also offered a setter would be a second, silent
- * way to move a pin the rail believes it owns.
- */
 describe("the board applies the agent filter it is given", () => {
   const mcScope = readFileSync(
     new URL("../src/components/board/use-mc-scope.ts", import.meta.url),
@@ -153,7 +140,6 @@ describe("the board applies the agent filter it is given", () => {
   it("exposes no filter setter and keeps no filter state of its own", () => {
     assert.ok(!mcScope.includes("setFilterPath"));
     assert.ok(!mcScope.includes("useState"));
-    // Nor a write-back callback: the scope is the filter a board RENDERS.
     assert.ok(!mcScope.includes("onFilterPathChange"));
     assert.ok(!teamBoardScope.includes("onFilterPathChange"));
   });

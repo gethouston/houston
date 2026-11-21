@@ -66,7 +66,6 @@ mod tests {
 
     #[test]
     fn hex_of_known_input() {
-        // sha256("") — a fixed vector anchoring the hex encoder + digest wiring.
         assert_eq!(
             hex(&Sha256::digest(b"")),
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"

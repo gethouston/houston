@@ -24,11 +24,6 @@ interface ConversationActionsMenuProps {
   triggerRef?: RefObject<HTMLButtonElement | null>;
 }
 
-/**
- * The chat header's overflow menu: find-in-chat plus the mission actions.
- * Lives in the detail-panel header row (left of the people stack), so the
- * trigger mirrors the plain close button beside it rather than a pill Button.
- */
 export function ConversationActionsMenu({
   actions,
   canFind,
@@ -56,9 +51,6 @@ export function ConversationActionsMenu({
           align="end"
           className="w-52"
           onCloseAutoFocus={(event) => {
-            // The menu's Radix close cycle must finish before the search
-            // popover opens, or the popover's focus trap and the menu's exit
-            // focus fight; onCloseAutoFocus is the first safe moment.
             if (!openFindAfterMenuCloses.current) return;
             event.preventDefault();
             openFindAfterMenuCloses.current = false;

@@ -1,4 +1,3 @@
-/** The field services worlds and the jobs each one hires for (ids only; labels live in `agentOnboarding:roleSetup`). */
 export const FIELD_SERVICES_WORLDS = {
   beauty_salons: [
     "salon_receptionist",

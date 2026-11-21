@@ -1,12 +1,6 @@
-// The download step's buttons: which platform group is visible, where each
-// button points, and what a click reports. The modal around them (opening,
-// closing, the form gate) is download-gate.js, which drives this through
-// `window.HoustonDLButtons.init`.
 (() => {
   var RELEASES_PAGE = "https://github.com/gethouston/houston/releases";
 
-  // window.houstonT comes from the inline i18n block; fall back to the English
-  // literal if a page ever loads this script without it.
   function tr(path, fallback) {
     return window.houstonT ? window.houstonT(path, fallback) : fallback;
   }
@@ -22,14 +16,6 @@
     }
   }
 
-  /**
-   * Wires the buttons and starts resolving the installer URLs. `opts.track` is
-   * the page's analytics helper, `opts.funnel` the first-party sink, and
-   * `opts.source` reads which entry point opened the modal (it changes between
-   * opens, so it is read per click). Returns the handle download-gate.js uses:
-   * `applyOs(os)` pins the visible group and answers with the platform it
-   * settled on, `os()` reads that back later.
-   */
   function init(opts) {
     var macGroup = document.getElementById("dl-mac-group");
     var windowsGroup = document.getElementById("dl-windows-group");
@@ -59,8 +45,6 @@
         next === "mac" || next === "windows" || next === "linux"
           ? next
           : "other";
-      // A pinned OS shows only its own group plus an escape hatch that reveals
-      // every platform; "other" starts with all of them visible.
       var pinned = currentOs !== "other";
       macGroup.hidden = pinned && currentOs !== "mac";
       windowsGroup.hidden = pinned && currentOs !== "windows";
@@ -78,9 +62,6 @@
       opts.track("download_os_switched", { to: "all" });
     });
 
-    // `os` is the platform the button actually downloads, which is not always
-    // the detected one: from the "different OS?" view a Mac visitor can pick
-    // the MSI.
     function trackEnabledClick(button, event, name, props, os) {
       if (button.classList.contains("btn-disabled")) {
         event.preventDefault();
@@ -127,7 +108,6 @@
       );
     });
 
-    // Installer resolution is resilient to missing assets and network errors.
     var urlsPromise;
     try {
       urlsPromise = window.houstonInstallerUrls();

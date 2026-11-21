@@ -22,21 +22,10 @@ import { useReasoningToggle } from "./use-reasoning-toggle";
 
 export type { LocalModelMode } from "../lib/local-model-connect-state";
 
-/**
- * Owns the guided "connect a local model" flow: detection, model pick, and the
- * tunnel connect, with a timeout + Cancel + AbortController on the in-flight
- * steps. Closing the dialog mid-flight aborts the work (no setState after
- * unmount) and rolls back any half-open bridge, so we never strand a zombie
- * tunnel. Keeps the dialog component thin and presentational.
- */
 export function useLocalModelConnect(opts: {
-  /** The dialog is open (a provider was passed). */
   active: boolean;
-  /** Native bridge available (desktop). Web opens straight to the manual form. */
   desktop: boolean;
-  /** Whether the active workspace can publish an organization share. */
   teamWorkspace: boolean;
-  /** Active workspace identity, used to prevent sharing into a newly switched team. */
   workspaceId: string;
   onConnected?: (model: string) => void;
   onClose: () => void;
@@ -48,7 +37,6 @@ export function useLocalModelConnect(opts: {
   const [selected, setSelected] = useState(0);
   const [model, setModelState] = useState("");
   const { shared, setShared } = useLocalModelShare(workspaceId);
-  // "Show the model's thinking" toggle (heuristic default, user can override).
   const {
     reasoning,
     setReasoning,
@@ -56,7 +44,6 @@ export function useLocalModelConnect(opts: {
     reset: resetReasoning,
   } = useReasoningToggle();
 
-  /** Pick a model and re-apply the reasoning default for it. */
   const chooseModel = useCallback(
     (next: string) => {
       setModelState(next);
@@ -65,8 +52,6 @@ export function useLocalModelConnect(opts: {
     [applyModelDefault],
   );
 
-  // The controller for the current in-flight step (detect or connect); Cancel /
-  // close abort it. `mounted` guards setState after the dialog unmounts.
   const abortRef = useRef<AbortController | null>(null);
   const mounted = useRef(true);
   useEffect(() => {
@@ -100,13 +85,10 @@ export function useLocalModelConnect(opts: {
       chooseModel(defaultModelFor(found[0]));
       setMode("pick");
     } catch {
-      // detectLocalModels already toasted the real reason (Report-bug); an abort
-      // is a silent cancel. Either way, land on the calm error state if visible.
       if (!controller.signal.aborted && mounted.current) setMode("error");
     }
   }, [chooseModel]);
 
-  // Fresh start on every open: guided detection on desktop, manual in a browser.
   useEffect(() => {
     if (!active) return;
     setServers([]);
@@ -152,8 +134,6 @@ export function useLocalModelConnect(opts: {
       onConnected?.(model);
       onClose();
     } catch (error) {
-      // The failing step already reported; an abort/timeout rolled the bridge
-      // back. Show a calm retry state unless we were cancelled/closed.
       if (!controller.signal.aborted && mounted.current)
         setMode(connectFailureMode(error));
     }
@@ -168,8 +148,6 @@ export function useLocalModelConnect(opts: {
     onClose,
   ]);
 
-  /** Cancel the in-flight detect/connect: abort the work (the connect's own
-   *  abort path rolls back any half-open bridge) and close the dialog. */
   const cancel = useCallback(() => {
     abortRef.current?.abort();
     onClose();

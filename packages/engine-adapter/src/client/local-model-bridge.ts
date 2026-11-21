@@ -16,13 +16,6 @@ import { getCapabilities } from "./host-capabilities";
 const prefix = "/v1/local-model-bridges";
 const pathFor = (id: string) => `${prefix}/${encodeURIComponent(id)}`;
 
-/**
- * `agentId` is the agent the person has open: the bridge, its native journal
- * and its binding are all scoped to it. The provider-routing pick
- * (`providerAgentId`) is not this; it falls back to the space's first agent
- * whenever the selection pref lags, and binding to that agent failed every
- * boot that hit the gap (HOUSTON-APP-5E2).
- */
 export async function localModelBridgeAccess(
   ctx: AdapterContext,
   userId: string,

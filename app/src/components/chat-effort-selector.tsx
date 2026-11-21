@@ -12,32 +12,13 @@ import {
 import { EffortIcon } from "./effort-icon";
 
 interface ChatEffortSelectorProps {
-  /** Active provider id — used to look up the model's effort levels. */
   provider: string;
-  /** Active model id. */
   model: string;
-  /** Current effective effort for the active model. */
   effort?: string;
-  /** Called when the user advances to the next level. */
   onSelect: (effort: EffortLevel) => void;
-  /**
-   * The agent this control configures, when composer-scoped. Threaded so effort
-   * follows the same audience as the model selector (Teams E8): shown for
-   * everyone in a Teams org (effort is part of the acting user's per-agent
-   * choice) and in single-player, hidden only for a member on a pre-Teams
-   * multiplayer host. Omit outside an agent scope and it always shows.
-   */
   agent?: Pick<Agent, "access"> | null;
 }
 
-/**
- * Reasoning-effort cycle button, rendered beside {@link ChatModelSelector} in
- * the composer. One click advances to the next level the active model accepts,
- * wrapping after the last (low → … → xhigh → low). The icon's filled bars and
- * the label both track the level, so the control reads at a glance without a
- * menu. Renders nothing when the model has no effort control (e.g. Gemini), so
- * the composer row collapses cleanly.
- */
 export function ChatEffortSelector({
   provider,
   model,
@@ -48,9 +29,6 @@ export function ChatEffortSelector({
   const { t } = useTranslation("chat");
   const { capabilities } = useCapabilities();
   const levels = getEffortLevels(provider, model);
-  // Hidden only for a member on a pre-Teams multiplayer host (mirrors the model
-  // selector), and for any model without effort levels (e.g. Gemini) so the
-  // composer row collapses cleanly.
   if (!modelSelectorDecision(capabilities, agent).show) return null;
   if (levels.length === 0) return null;
 
@@ -67,11 +45,7 @@ export function ChatEffortSelector({
     xhigh: t("modelSelector.effortDescriptions.xhigh"),
   };
 
-  // Normalize a persisted legacy `max` to `xhigh` so an agent carrying it still
-  // reads as its top tier (not "unset") until the next pick rewrites it.
   const current = normalizeEffort(effort);
-  // The current level (only when the stored value is one this model accepts)
-  // and the level a click advances to, wrapping past the last back to the first.
   const activeLevel =
     current && levels.includes(current as EffortLevel)
       ? (current as EffortLevel)
@@ -85,7 +59,6 @@ export function ChatEffortSelector({
   return (
     <button
       type="button"
-      // Announce the value (the visible label alone reads as a bare "High").
       aria-label={
         activeLevel
           ? t("modelSelector.effortValue", { level: activeLabel })
@@ -94,8 +67,6 @@ export function ChatEffortSelector({
       title={
         activeLevel ? descriptions[activeLevel] : t("modelSelector.effort")
       }
-      // Stop pointer events from bubbling — keeps the board detail panel from
-      // reading the click as "click outside → close panel".
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation();
@@ -103,13 +74,7 @@ export function ChatEffortSelector({
       }}
       className="flex shrink-0 items-center justify-center gap-1.5 h-11 min-w-11 px-2 rounded-lg text-xs text-ink-muted whitespace-nowrap hover:text-ink hover:bg-hover transition-[color,background-color,scale] active:scale-[0.96] outline-none md:h-7 md:min-w-0 md:shrink md:active:scale-100 focus-visible:ring-1 focus-visible:ring-focus"
     >
-      {/* Always render the full effort spectrum (filled to the active level)
-          so the gauge looks identical across models — a 2-level model no longer
-          renders as a lone short + tall bar. Cycling still uses the model's own
-          `levels` above. */}
       <EffortIcon levels={EFFORT_ORDER} active={current} className="size-3.5" />
-      {/* The gauge alone on a phone: the bars already read the level, and the
-          row has no room for the word. The aria-label keeps the value. */}
       <span className="hidden md:inline">{activeLabel}</span>
     </button>
   );

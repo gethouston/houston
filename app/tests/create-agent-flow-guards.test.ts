@@ -15,22 +15,6 @@ import ptOnboarding from "../src/locales/pt/agent-onboarding.json" with {
 };
 import ptShell from "../src/locales/pt/shell.json" with { type: "json" };
 
-/**
- * The create-agent flow's non-pure seams: the wiring that no render test and
- * no Playwright spec can observe.
- *
- * What the user can see is guarded where it is visible: the shared choice row
- * in `ui/core/tests/flow-choice-row.test.ts`, the typed answer on both
- * breakpoints in `packages/web/e2e/agent-onboarding.spec.ts` and
- * `packages/web/e2e/mobile/create-agent-brief.spec.ts`, the frame's recipe in
- * `dialog-recipes-flow.test.ts`, each question's model in
- * `choice-step-model.test.ts` / `role-step-model.test.ts`. What is left here is
- * the wiring between them — which component a screen composes, which reach its
- * filter is judged by, the field caps, the failure path's reporting, the one
- * way back, and the copy shipped in all three locales. None of those modules
- * loads under this suite's `--experimental-strip-types` runner (React, the
- * Zustand stores and the i18n barrel all come with them).
- */
 function source(path: string): string {
   return readFileSync(join(import.meta.dirname, "../src", path), "utf8");
 }
@@ -44,8 +28,6 @@ describe("both choice screens are composed from the ONE choice recipe", () => {
   ] as const;
 
   it("lays two rows out in the shared list, on both screens", () => {
-    // `FlowChoiceRow` in a `FlowChoiceList` is the shared choice grammar
-    // (@houston-ai/core), so no screen invents a tile of its own.
     for (const [name, screen] of screens) {
       assert.equal(
         screen.match(/<FlowChoiceRow/g)?.length,
@@ -70,18 +52,13 @@ describe("both choice screens are composed from the ONE choice recipe", () => {
 });
 
 describe("each question's filter is judged by the catalog it reaches", () => {
-  // `ChoiceStep` shows the filter past `SEARCH_THRESHOLD` reachable options, so
-  // a step passing the runs ON SCREEN would drop its own field mid-query.
   it("hands the role question the whole catalog to reach", () => {
     const role = source("components/shell/role-step.tsx");
-    // The person's own role reaches the leadership positions on top.
     assert.ok(
       role.includes(
         "reach: asksSelf ? SELF_ROLE_SEARCH_REACH : ROLE_SEARCH_REACH",
       ),
     );
-    // An industry the user typed has no run of its own, so the headline says
-    // out loud that typing finds any job.
     assert.ok(role.includes("roleSetup.typeToFindAnyRole"));
   });
 
@@ -96,8 +73,6 @@ describe("each question's filter is judged by the catalog it reaches", () => {
 
 describe("a typed answer is capped in the field, not only on the way out", () => {
   it("clamps BOTH fields of the row to the brief's own cap", () => {
-    // The filter's query becomes the answer ("use what you typed"), so a paste
-    // must stop at whichever of the two the user is standing in.
     const row = source("components/shell/choice-row.tsx");
     assert.equal(
       row.match(/maxLength=\{AGENT_ROLE_PART_MAX_LENGTH\}/g)?.length,
@@ -106,9 +81,6 @@ describe("a typed answer is capped in the field, not only on the way out", () =>
   });
 
   it("caps every write into the state, whichever field seeded it", () => {
-    // `capRolePart` is the cap itself (`agent-role-context.test.ts`); this
-    // guards that BOTH answers are written through it, so the seeded path
-    // cannot route around the fields' own `maxLength`.
     const state = source("components/shell/use-agent-role-state.ts");
     assert.ok(state.includes("setCustomContext(capRolePart(value))"));
     assert.ok(state.includes("setCustomRole(capRolePart(value))"));
@@ -143,7 +115,6 @@ describe("a create is reported and lands at the top level", () => {
 
 describe("the guided setup goes back the way everything else does", () => {
   it("rewinds from the sheet's own header slot, never a screen's own arrow", () => {
-    // ONE way back for the whole flow, in the one place it never moves.
     for (const path of [
       "components/shell/naming-step.tsx",
       "components/shell/customize-step.tsx",
@@ -172,8 +143,6 @@ describe("the flow's copy ships in all three locales", () => {
   });
 
   it("leaves the industry question with no copy link of its own", () => {
-    // Hiring or copying is answered on the first screen; a second door under
-    // the industry chips would ask the same question twice.
     for (const [locale, copy] of [
       ["en", enOnboarding],
       ["es", esOnboarding],

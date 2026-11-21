@@ -1,13 +1,6 @@
 import type { AssistantRoute } from "../assistant/catalog";
 import { addressSegments, safeSegment } from "./assistant-path-segments";
 
-/**
- * The pieces of one outbound request, built from a catalog route and the
- * caller's named arguments — or the refusal that replaces the whole call.
- * Split from the dispatcher so the address/query/body rules read on their own.
- */
-
-/** A `{param}` placeholder the catalog's `pathParams` did not declare. */
 const UNSUBSTITUTED = /\{[^}]*\}/;
 
 export type AssistantDispatchCode =
@@ -25,16 +18,10 @@ export const refuse = (
   message: string,
 ): AssistantRefusal => ({ ok: false, code, message });
 
-/** Own properties only: a catalog param named `constructor` must read as absent. */
 export function arg(params: Record<string, unknown>, name: string): unknown {
   return Object.hasOwn(params, name) ? params[name] : undefined;
 }
 
-/**
- * Query and path values are scalars on the wire. Anything else (an object, an
- * array) means the catalog and the caller disagree about the parameter — a 400,
- * never a `[object Object]` smuggled into a URL.
- */
 function scalar(value: unknown): string | null {
   if (typeof value === "string") return value;
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
@@ -42,7 +29,6 @@ function scalar(value: unknown): string | null {
   return null;
 }
 
-/** A built piece of the request, or the refusal that replaces the whole call. */
 export type Built<T> =
   | { ok: true; value: T }
   | { ok: false; refusal: AssistantRefusal };
@@ -53,10 +39,6 @@ export const blocked = <T>(
   message: string,
 ): Built<T> => ({ ok: false, refusal: refuse(code, message) });
 
-/**
- * The address a URL parser lands on for this path. Anything but the path
- * itself means the path does not address what it spells.
- */
 function resolvesToItself(path: string): boolean {
   try {
     return new URL(`http://houston.invalid${path}`).pathname === path;
@@ -92,14 +74,9 @@ export function buildPath(
         : encodeURIComponent(value),
     );
   }
-  // A placeholder the catalog's `pathParams` never declared: the generator and
-  // this dispatcher disagree, so no address can be built from it.
   if (UNSUBSTITUTED.test(path)) {
     return blocked("operation_not_supported", "this host cannot address it");
   }
-  // The invariant the checks above serve, asserted on the finished address
-  // rather than trusted: whatever the caller supplied, this path addresses the
-  // route it was built from.
   if (!resolvesToItself(path)) {
     return blocked(
       "invalid_params",
@@ -116,8 +93,6 @@ export function buildQuery(
   const query: Record<string, string> = {};
   for (const [key, name] of Object.entries(route.query)) {
     const raw = arg(params, name);
-    // An omitted optional parameter drops its key, matching the client's own
-    // `if (v !== undefined && v !== null)` filter.
     if (raw === undefined || raw === null) continue;
     const value = scalar(raw);
     if (value === null) {
@@ -128,11 +103,6 @@ export function buildQuery(
   return built(query);
 }
 
-/**
- * A `bodyFields` value: a parameter by name, or one of its fields by a dotted
- * read (`seed.claudeMd`). Own properties only at every step, and a non-object
- * on the way down reads as absent rather than throwing.
- */
 function read(params: Record<string, unknown>, reference: string): unknown {
   let value: unknown = params;
   for (const key of reference.split(".")) {
@@ -144,11 +114,6 @@ function read(params: Record<string, unknown>, reference: string): unknown {
   return value;
 }
 
-/**
- * The JSON body this route sends, or `undefined` for none. `bodyFields` skips
- * parameters the caller omitted, exactly as `JSON.stringify` drops the
- * `undefined` properties of the adapter's inline object literal.
- */
 export function buildBody(
   route: AssistantRoute,
   params: Record<string, unknown>,

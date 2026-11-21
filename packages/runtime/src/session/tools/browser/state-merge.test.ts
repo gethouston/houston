@@ -28,7 +28,6 @@ const values = (s: StorageState) =>
 
 describe("mergeStorageState", () => {
   test("a chat that opened earlier never erases a sign-in made since", () => {
-    // B opened with nothing; A then signed into github; B signs into gitlab.
     const theirs = state([cookie("gh", "A", "github.com")]);
     const ours = state([cookie("gl", "B", "gitlab.com")]);
     expect(values(mergeStorageState(EMPTY_STATE, ours, theirs))).toEqual({

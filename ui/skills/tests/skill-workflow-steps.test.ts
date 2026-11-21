@@ -29,7 +29,6 @@ describe("SkillWorkflowSteps", () => {
   it("shows a step's detail only when it has one", () => {
     const html = render({ steps });
     assert.match(html, />Load the sales context first.</);
-    // Two steps, one detail: the second step renders a title and nothing else.
     assert.equal(html.split("text-ink-muted leading-relaxed").length - 1, 1);
   });
 
@@ -106,7 +105,6 @@ describe("SkillWorkflowSteps integrations", () => {
     });
     assert.match(html, /data-app="gmail"/);
     assert.match(html, />GMAIL_SEND_EMAIL</);
-    // The fallback chip stands down entirely — no double render.
     assert.doesNotMatch(html, /gmail · Send email/);
   });
 

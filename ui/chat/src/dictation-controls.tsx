@@ -1,19 +1,9 @@
-/**
- * Trailing actions for the active-dictation composer takeover. The waveform
- * itself owns the input row (`dictation-waveform.tsx`); this renders the two
- * icon buttons that sit at the right end of the track:
- *  - recording / requesting: ✕ cancel (discard) + ✓ accept (stop + transcribe)
- *  - transcribing: a spinner replacing ✓ (nothing left to cancel)
- * All affordances are always visible (no hover gating) and keyboard-focusable.
- */
-
 import { CheckIcon, Loader2Icon, XIcon } from "lucide-react";
 import type { DictationControl } from "./dictation-types";
 
 const ICON_BUTTON =
   "flex size-9 items-center justify-center rounded-full transition-colors";
 
-/** ✕ cancel + ✓ accept, shown while requesting or recording. */
 export function DictationActions({ control }: { control: DictationControl }) {
   const { labels } = control;
   return (
@@ -38,7 +28,6 @@ export function DictationActions({ control }: { control: DictationControl }) {
   );
 }
 
-/** Spinner shown in the accept slot while the clip is being transcribed. */
 export function DictationTranscribing({ label }: { label: string }) {
   return (
     <div className={ICON_BUTTON} aria-label={label} role="status">

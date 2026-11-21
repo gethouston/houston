@@ -21,10 +21,6 @@ export interface ChatSuggestActionsProps {
   onDismiss?: () => void;
 }
 
-/** Optional next-step bubbles shown above a live composer after a clean finish.
- *  The chips wrap onto more lines, so the heading and the dismiss X sit on the
- *  first line (both 32px tall, the chip height) rather than centring on the
- *  whole block. */
 export function ChatSuggestActions({
   actions,
   disabled = false,

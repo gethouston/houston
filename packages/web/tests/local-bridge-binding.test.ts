@@ -122,8 +122,6 @@ test("a teardown failure is reported and retried before starting another scope",
 });
 
 test("discovery is asked for the agent the person has open", async () => {
-  // The bridge used to let the adapter pick its agent and then refuse when the
-  // pick differed from the open one (HOUSTON-APP-5E2).
   const binding = await import("../../../app/src/lib/local-bridge-binding");
   await expect(binding.localBridgeController("owner")).resolves.not.toBeNull();
   expect(mocks.access).toHaveBeenCalledWith("owner", "agent");

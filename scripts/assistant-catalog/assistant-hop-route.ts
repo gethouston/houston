@@ -13,27 +13,10 @@ import {
   type ValueScope,
 } from "./assistant-value-scope.ts";
 
-/**
- * The route of a request made through a `@houston/runtime-client` sub-client.
- *
- * The path and verb live in the client method; the values live in the SDK
- * method's parameters. So the client method is read with the caller's
- * arguments bound to its own parameters, and the prefix its client is rooted
- * at is prepended to whatever literal it builds.
- *
- * The client's literals were not authored against the transport contract the
- * adapter's own call sites follow (`packages/sdk/src/modules/http.ts`), so this
- * side additionally resolves the `const`s they name — the `${COMPOSIO}`
- * provider segment, the `opts?.provider ?? COMPOSIO` default. A value the SDK
- * caller can actually override never collapses to its default; see
- * {@link callerSupplied}.
- */
-
 export type HopRouteResult =
   | { route: AssistantRoute; reason: null; returns: ts.Type | null }
   | { route: null; reason: string; returns: null };
 
-/** Every name a parameter binds: its own, or each one its pattern destructures. */
 function boundNames(name: ts.BindingName): string[] {
   if (ts.isIdentifier(name)) return [name.text];
   return name.elements.flatMap((element) =>
@@ -41,17 +24,12 @@ function boundNames(name: ts.BindingName): string[] {
   );
 }
 
-/** What each client-method parameter holds, given what the SDK method passed. */
 function bindArguments(
   method: ts.MethodDeclaration,
   call: ts.CallExpression,
   parameters: Set<string>,
 ): Map<string, Binding> {
   const bindings = new Map<string, Binding>();
-  // A spread hands over an unknown number of values, so every parameter from
-  // there on could have been supplied. Reading one as OMITTED would make the
-  // default it guards the only route the request can take, which is exactly the
-  // guess `unpinThing` exists to refuse.
   const spreadAt = call.arguments.findIndex((argument) =>
     ts.isSpreadElement(argument),
   );
@@ -78,10 +56,6 @@ function bindArguments(
         continue;
       }
     }
-    // The caller DID pass something nothing static describes: record it under
-    // every name it reaches the body as - a DESTRUCTURED parameter binds its
-    // fields, and a field left unrecorded reads as one the caller cannot
-    // supply, which turns the default it guards into the only possible route.
     for (const bound of boundNames(parameter.name))
       bindings.set(bound, { kind: "opaque" });
   }
@@ -120,9 +94,6 @@ export function hopRoute(
   const init = extractInit(inner.arguments[1], scope);
   if (typeof init === "string")
     return { route: null, reason: init, returns: null };
-  // The SDK wrapper's declared type describes what IT hands back after
-  // publishing to a store or discarding the reply; the route answers what the
-  // client method returns, and that is what a caller driving it receives.
   const signature = checker.getSignatureFromDeclaration(hop.method);
   return {
     route: {
@@ -132,8 +103,6 @@ export function hopRoute(
       query: template.query,
       body: init.body,
       bodyFields: init.bodyFields,
-      // Two bodies stand between the caller and the response; either one doing
-      // more than returning the call post-processes what the wire answered.
       rawResponse: !(
         isBareCall(declaration.body, call) &&
         hop.method.body !== undefined &&

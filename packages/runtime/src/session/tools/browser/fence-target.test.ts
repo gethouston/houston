@@ -112,13 +112,9 @@ test("an IPv6 link-local answer beside a usable one is dropped, never dialed", a
     kind: "allowed",
     addresses: ["192.168.1.20"],
   });
-  // The usable rest is still judged: a private LAN answer stays managed-only.
   expect(await managed("nas.local")).toEqual({ kind: "refused" });
-  // Only fe80::/10 gets this: the old site-local block still refuses the name.
   expect(await selfHosted("site-local.test")).toEqual({ kind: "refused" });
-  // Any other blocked answer still refuses the name.
   expect(await selfHosted("ll-loop.test")).toEqual({ kind: "refused" });
-  // Link-local alone is never dialed.
   expect(await selfHosted("zone.test")).toEqual({ kind: "refused" });
 });
 

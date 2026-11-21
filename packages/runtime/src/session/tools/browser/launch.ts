@@ -7,7 +7,6 @@ import { privateNetworksFor } from "./ip-ranges";
 import { reportNoBrowser } from "./launch-report";
 import { networkFenceArgs } from "./network-fence";
 
-/** One way to get a Chromium-family browser, tried in order. */
 export interface LaunchCandidate {
   label: string;
   options: LaunchOptions;
@@ -15,10 +14,6 @@ export interface LaunchCandidate {
 
 type BrowserEnv = Record<string, string | undefined>;
 
-/**
- * The fence (its proxy on `fenceProxyPort`), `--disable-dev-shm-usage`
- * (containers ship a 64 MB /dev/shm), then the operator's extras.
- */
 export function launchArgs(env: BrowserEnv, fenceProxyPort: number): string[] {
   const extra = (env.HOUSTON_BROWSER_ARGS ?? "").split(/\s+/).filter(Boolean);
   return [
@@ -28,33 +23,12 @@ export function launchArgs(env: BrowserEnv, fenceProxyPort: number): string[] {
   ];
 }
 
-/**
- * Whether Chromium runs its own sandbox: yes, on every platform, unless the
- * operator opts out with `HOUSTON_BROWSER_SANDBOX=0` (logged at each launch).
- * Playwright's default turns it off (`--no-sandbox`), so a renderer exploit
- * would run as this process's user, next to the turn's credentials. A
- * sandboxed launch that fails is NOT retried unsandboxed (see
- * {@link launchBrowser}).
- */
 export function wantsChromiumSandbox(env: BrowserEnv): boolean {
   return env.HOUSTON_BROWSER_SANDBOX !== "0";
 }
 
-/**
- * Playwright's default flags the browser keeps off: `--disable-popup-blocking`
- * would let a page `window.open` itself a chain of renderers without any
- * click. The model's clicks are real input events, so a popup it opens on
- * purpose (a "Sign in with Google" button) still opens.
- */
 export const IGNORED_DEFAULT_ARGS = ["--disable-popup-blocking"];
 
-/**
- * Where a browser can come from, most deliberate first:
- * 1. `HOUSTON_BROWSER_EXECUTABLE`: what a cloud image bakes (the headless
- *    shell, ~440 MB PSS on a 2 GB sandbox where full Chrome took ~1.2 GB).
- * 2. Playwright's own chromium headless shell, when it was installed.
- * 3. The person's installed Chrome, then Edge (desktop).
- */
 export function launchCandidates(
   env: BrowserEnv,
   fenceProxyPort: number,
@@ -85,7 +59,6 @@ export function launchCandidates(
 export const NO_BROWSER_MESSAGE =
   "No web browser is available here, so I cannot open websites. Installing Google Chrome on this computer fixes it.";
 
-/** Houston's cloud: nothing on the person's computer can fix it. */
 export const NO_CLOUD_BROWSER_MESSAGE =
   "The web browser is not available right now, so websites cannot be opened. This is on Houston's side: nothing on the person's computer needs to change. Tell them, and carry on without the browser if you can.";
 
@@ -95,12 +68,6 @@ export function noBrowserMessage(env: BrowserEnv): string {
     : NO_BROWSER_MESSAGE;
 }
 
-/**
- * Launch the first candidate that starts, behind its own fence proxy, which
- * closes when the browser goes. `playwright-core` loads here, on the first
- * browser call, so a runtime that never browses never pays for it. `net` is
- * the tests' seam for the proxy's DNS and connects.
- */
 export async function launchBrowser(
   env: BrowserEnv = process.env,
   net: FenceNet = {},

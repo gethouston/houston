@@ -1,4 +1,3 @@
-/** C19 personal-plan wire shapes. A plan belongs to a person, across spaces. */
 export interface PlanSummary {
   plan: "free" | "plus";
   usage?: { percent: number; used: number; limit: number; resetsAt?: string };
@@ -6,8 +5,6 @@ export interface PlanSummary {
     status: "none" | "active" | "past_due" | "lapsed";
     renewsAt?: string;
     cancelAtPeriodEnd?: boolean;
-    /** The person has a Stripe customer, so the portal (Manage) works. False
-     * for an operator-granted Plus, whose portal answers `409 no_subscription`. */
     manageable: boolean;
     price: {
       amount: number;
@@ -15,8 +12,6 @@ export interface PlanSummary {
       interval: "month";
       compareAt?: number;
     };
-    /** The beta tester gift, present while the person is eligible:
-     * `amount` is what the first month of Plus costs with it, minor units. */
     offer?: {
       amount: number;
       currency: string;
@@ -65,7 +60,6 @@ export interface PlusInvoice {
   pdfUrl?: string;
 }
 
-/** Whose allowance ran out: a free org's shared pool, or one paid seat's. */
 export const MESSAGE_LIMIT_SCOPES = ["org", "seat"] as const;
 export type MessageLimitScope = (typeof MESSAGE_LIMIT_SCOPES)[number];
 
@@ -74,11 +68,9 @@ export interface MessageLimitRefusal {
   code: "message_limit";
   limit: number;
   resetsAt: string;
-  /** Absent from a legacy (per-person) refusal and from an unknown scope. */
   scope?: MessageLimitScope;
 }
 
-/** Parse only the exact refusal; other 429s keep their existing handling. */
 export function parseMessageLimitRefusal(
   body: unknown,
 ): MessageLimitRefusal | null {
@@ -103,11 +95,6 @@ export function parseMessageLimitRefusal(
   };
 }
 
-/**
- * The engine's refusal of a routine save under the saver's plan floor (`400
- * plan_min_interval`). The shape and its parser are the protocol's, shared
- * with the host that mints it, so the client never parses a second copy.
- */
 export {
   PLAN_MIN_INTERVAL,
   type PlanMinIntervalRefusal,

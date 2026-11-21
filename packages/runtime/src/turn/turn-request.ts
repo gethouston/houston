@@ -6,18 +6,12 @@ import type { TurnSessionStartupTask } from "./turn-session-startup";
 import type { TurnOutcome } from "./turn-session-types";
 import type { TurnRequest } from "./types";
 
-/**
- * A dispatched pin outranks the credential so a mismatched credential fails
- * on the provider the user chose. Legacy dispatches have no provider pin and
- * run on the credential's provider.
- */
 export function turnProvider(
   turn: Pick<TurnRequest, "provider" | "credential">,
 ): string {
   return turn.provider || turn.credential?.provider || "";
 }
 
-/** Project the accepted envelope onto the provider-agnostic turn session. */
 export function turnSessionRequest(
   turn: TurnRequest,
   turnId: string,
@@ -53,8 +47,6 @@ export function turnSessionRequest(
     ...(sandbox ? { sandbox } : {}),
     ...(timings ? { timings } : {}),
     ...(startup ? { startup } : {}),
-    // Either context field present means "use these" (each defaults to ""),
-    // mirroring the long-lived server's message-send contract.
     ...(turn.workspaceContext !== undefined || turn.userContext !== undefined
       ? {
           context: {
@@ -66,23 +58,12 @@ export function turnSessionRequest(
   };
 }
 
-/**
- * A turn dispatched with no credential never runs: it ends in
- * unconnectedTurnOutcome. Keyed on the credential alone, never on the
- * provider: the gateway also withholds the credential for a custom provider
- * it proved absent.
- */
 export function turnIsUnconnected(
   turn: Pick<TurnRequest, "credential">,
 ): boolean {
   return !turn.credential;
 }
 
-/**
- * A turn with no credential: echo the user's message, then fail with the
- * reconnect instruction (the workspace is not connected yet). The echo is
- * not persisted, so it has no transcript row behind it.
- */
 export function unconnectedTurnOutcome(
   turn: TurnRequest,
   turnId: string,

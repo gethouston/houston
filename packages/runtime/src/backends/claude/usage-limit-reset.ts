@@ -1,18 +1,3 @@
-/**
- * The reset instant Claude Code's own limit sentence names, read from text
- * because the result path carries no `rate_limit_event`. Shapes it writes:
- *
- * - "Claude AI usage limit reached|1760331600" (older CLIs: epoch seconds)
- * - "You've hit your session limit · resets 6pm (UTC)"
- * - "You've hit your weekly limit · resets Oct 13, 5am (America/Bogota)"
- *
- * A time-only reset more than five hours out is unknown (see below). The
- * wall-clock forms are resolved in the zone they name through Intl, so a
- * DST zone gets its real offset. A zone Intl does not know, or anything else
- * unparseable, is an unknown reset (null): a wrong reset is worse than none,
- * since the snooze then waits a bounded hour and learns the truth again.
- */
-
 const EPOCH_FORM = /usage limit reached\|(\d{9,13})/i;
 const WALL_CLOCK_FORM =
   /resets\s+(?:at\s+)?(?:([A-Za-z]{3})[a-z]*\s+(\d{1,2}),?\s+(?:at\s+)?)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*\(([^)]+)\)/i;
@@ -53,17 +38,11 @@ export function resetFromText(message: string, nowMs: number): string | null {
     const month = MONTHS.indexOf(m[1].toLowerCase());
     const day = Number(m[2]);
     if (month < 0 || day < 1 || day > 31) return null;
-    // The sentence names no year: the reset is the next such date, so one
-    // more than half a year behind us belongs to next year.
     let at = instantIn(clock, today.year, month, day, hour, minute);
     if (at < nowMs - 183 * DAY_MS)
       at = instantIn(clock, today.year + 1, month, day, hour, minute);
     return new Date(at).toISOString();
   }
-  // A time with no date is the 5-hour session window's reset, so it lies at
-  // most five hours ahead. One further out (its time passed moments ago and
-  // the sentence means today's, or the clocks disagree) is not trusted: an
-  // unknown reset waits a bounded hour, a wrong one would wait a day.
   const sameDay = instantIn(
     clock,
     today.year,
@@ -84,7 +63,6 @@ interface WallClock {
   minute: number;
 }
 
-/** The wall clock of `zone` at an instant, or null for a zone Intl rejects. */
 function zoneClock(zone: string): ((ms: number) => WallClock) | null {
   let format: Intl.DateTimeFormat;
   try {
@@ -98,7 +76,6 @@ function zoneClock(zone: string): ((ms: number) => WallClock) | null {
       minute: "numeric",
     });
   } catch {
-    // RangeError: not a zone this runtime knows. An unknown reset, by design.
     return null;
   }
   return (ms) => {
@@ -116,7 +93,6 @@ function zoneClock(zone: string): ((ms: number) => WallClock) | null {
   };
 }
 
-/** The instant the zone's wall clock reads the given time (two DST passes). */
 function instantIn(
   clock: (ms: number) => WallClock,
   year: number,

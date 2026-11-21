@@ -1,4 +1,3 @@
-/** Shared column band for a team Files list. */
 import { cn } from "@houston-ai/core";
 import {
   BASE_INDENT,

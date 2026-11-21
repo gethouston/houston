@@ -1,12 +1,3 @@
-/**
- * Installed skills, a per-agent in-memory list so the Skills surface (the
- * list, the full-page editor, delete) and the create flow can be exercised
- * end to end. The real host stores these under `.agents/skills/*`; here a
- * simple map suffices, the UI only reads the REST surface. Mutations emit
- * `SkillsChanged` so the TanStack invalidation path refreshes exactly as
- * against the real host.
- */
-
 import type { SkillDetail, SkillSummary } from "@houston/protocol";
 import { frontmatterScalar } from "./state-shared-skills";
 import { emitDomain } from "./state-store";
@@ -71,8 +62,6 @@ export function createSkill(
   emitDomain("SkillsChanged", agentId);
 }
 
-/** Mirror the real host: summary fields are re-parsed from the saved file's
- *  frontmatter, so a header rename's `title:` write shows up in the list. */
 function refresh(skill: SkillRow, content: string): void {
   skill.content = content;
   skill.title = frontmatterScalar(content, "title");
@@ -92,9 +81,6 @@ export function saveSkill(
   return true;
 }
 
-/** The real host's file watcher: a direct `.agents/skills/<slug>/SKILL.md`
- *  write (the Skills dialogs' fan-out save) lands in the skill list too,
- *  upserting a newly assigned holder's copy. */
 export function writeSkillFile(
   agentId: string,
   slug: string,
@@ -113,7 +99,6 @@ export function deleteSkill(agentId: string, slug: string): boolean {
   return removed;
 }
 
-/** Restore the (empty) seed. Called from the store's `reset()`. */
 export function resetSkills(): void {
   skillsByAgent.clear();
 }

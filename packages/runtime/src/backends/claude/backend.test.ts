@@ -13,10 +13,6 @@ import {
 import { claudeLoginConfigDir, serverClaudeLayout } from "./paths";
 import type { ClaudeSessionDeps } from "./session-deps";
 
-// Capture the deps the backend hands a session WITHOUT running the SDK: the
-// whole point of the scope guard is that a refused turn never builds an env at
-// all, so "was a session constructed, and with which env" is the assertion —
-// plus, since PRODUCT-1355, "does its refreshAuth re-read the CURRENT token".
 type CapturedDeps = Pick<
   ClaudeSessionDeps,
   "baseOptions" | "refreshAuth" | "recordedContextTokens" | "usedAccessDigest"
@@ -30,8 +26,6 @@ vi.mock("./session", () => ({
   },
 }));
 
-// buildClaudeEnv reads process.env; snapshot the three credential vars so a test
-// that plants a stale one can't leak into another.
 const CREDS = [
   "CLAUDE_CODE_OAUTH_TOKEN",
   "ANTHROPIC_API_KEY",
@@ -74,8 +68,6 @@ test("every session skips the CLI's git context and keeps its overflow recovery"
 });
 
 test("an OAuth token scrubs a stale ambient ANTHROPIC_API_KEY", () => {
-  // The exact fail-open: the host process has an API key, the user connects an
-  // OAuth subscription token. The subprocess must carry ONLY the OAuth token.
   process.env.ANTHROPIC_API_KEY = "stale-host-key";
   process.env.ANTHROPIC_AUTH_TOKEN = "stale-alias";
   const env = buildClaudeEnv(oauth, { configDir: "/cfg" });
@@ -109,10 +101,6 @@ test("operational ambient env (PATH) is preserved", () => {
 });
 
 test("the Windows Git Bash override reaches the subprocess", () => {
-  // The desktop shell repairs CLAUDE_CODE_GIT_BASH_PATH into the engine's env
-  // on Windows (app/src-tauri shell_env.rs) so the CLI's shell gate passes.
-  // If the allowlist drops it, sign-in works but every turn exits at startup
-  // on machines that need the override.
   const saved = process.env.CLAUDE_CODE_GIT_BASH_PATH;
   process.env.CLAUDE_CODE_GIT_BASH_PATH =
     "C:\\Program Files\\Git\\bin\\bash.exe";
@@ -128,11 +116,6 @@ test("the Windows Git Bash override reaches the subprocess", () => {
 });
 
 test("the username (USER/LOGNAME) reaches the subprocess", () => {
-  // The Claude CLI derives its macOS Keychain item's ACCOUNT from the
-  // username. Scrubbing USER made the SDK resolve "unknown" and read a
-  // DIFFERENT (empty) Keychain item than the one `claude auth login` wrote —
-  // connected in the UI, unauthenticated at every turn, unfixable by
-  // reconnecting.
   const savedIdentity = {
     USER: process.env.USER,
     LOGNAME: process.env.LOGNAME,
@@ -152,9 +135,6 @@ test("the username (USER/LOGNAME) reaches the subprocess", () => {
 });
 
 test("Houston host secrets never reach the subprocess env", () => {
-  // The core of the finding: the SDK subprocess runs model-directed Bash, so any
-  // host secret in its env is one `printenv` away from exfiltration. These are the
-  // control-plane credentials config.ts reads from process.env — none may survive.
   const secrets = {
     HOUSTON_SANDBOX_TOKEN: "sbx-tok",
     HOUSTON_CODE_SANDBOX_TOKEN: "code-sbx-tok",
@@ -173,7 +153,6 @@ test("Houston host secrets never reach the subprocess env", () => {
     for (const key of Object.keys(secrets)) {
       expect(env[key]).toBeUndefined();
     }
-    // The allowlisted essentials still survive so the SDK works.
     expect(env.PATH).toBe(process.env.PATH);
     expect(env.CLAUDE_CONFIG_DIR).toBe("/cfg");
     expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBe("sk-ant-oat01-x");
@@ -185,14 +164,6 @@ test("Houston host secrets never reach the subprocess env", () => {
   }
 });
 
-/**
- * The READ-side mirror of the credentials-file scope guard (HOU-976):
- * `CLAUDE_CONFIG_DIR` is
- * the POD-SHARED login dir holding the TEAM's `.credentials.json`. Handing it to
- * the SDK with no personal token in the env makes a member's turn authenticate as
- * the team AND lets the SDK self-refresh the team's refresh-token family — a
- * second rotator beside the gateway, plus a cross-member credential leak.
- */
 function actingToken(sub: string): string {
   const payload = Buffer.from(
     JSON.stringify({ sub, agent: "acme", exp: 9_000_000_000 }),
@@ -209,7 +180,6 @@ const MODEL: ResolvedModel = {
 };
 
 function backendDeps(readToken: ClaudeBackendDeps["readToken"]) {
-  // A real directory: the tool policy's workspace clamp realpath()s the cwd.
   const workspaceDir = mkdtempSync(join(tmpdir(), "claude-backend-scope-"));
   return {
     workspaceDir,
@@ -227,7 +197,6 @@ test("a personal scope with NO personal token refuses the session", async () => 
       backend.createSession({ conversationId: "c1", model: MODEL }),
     ),
   ).rejects.toThrow(/^No provider connected\./);
-  // No session, and therefore no env pinned at the pod-shared login dir.
   expect(built).toEqual([]);
 });
 
@@ -243,8 +212,6 @@ test("a personal scope with its OWN token proceeds (env token outranks the dir)"
 });
 
 test("the team scope still pins the shared login dir with no token (unchanged)", async () => {
-  // Desktop / self-host / every pre-HOU-976 request: the SDK legitimately reads
-  // the credential cached in its own login dir. Byte-identical to before.
   const backend = createClaudeBackend(backendDeps(() => undefined));
   await backend.createSession({ conversationId: "c1", model: MODEL });
   expect(built).toHaveLength(1);
@@ -255,18 +222,12 @@ test("the team scope still pins the shared login dir with no token (unchanged)",
 });
 
 test("every session names itself, so the CLI never spends a request titling it", async () => {
-  // Without an SDK `title` the CLI fires a Haiku generate_session_title call on
-  // the user's plan for every new conversation, inside the turn's startup.
-  // Houston titles conversations itself and never reads the CLI's title.
   const backend = createClaudeBackend(backendDeps(() => oauth));
   await backend.createSession({ conversationId: "c1", model: MODEL });
   expect(built[0]?.baseOptions.title).toEqual(expect.stringMatching(/\S/));
 });
 
 test("the session's refreshAuth re-reads the CURRENT token — a rotation between turns reaches the next spawn (PRODUCT-1355)", async () => {
-  // The live incident: the serve path updates auth.json every turn, but the
-  // session's env was baked at build. refreshAuth must read THROUGH to the
-  // store on every call, digest included.
   let current: ClaudeToken = {
     kind: "oauth-token",
     value: "sk-ant-oat01-old",
@@ -311,9 +272,6 @@ test("refreshAuth re-asserts the personal-scope guard: a token that vanished mid
 });
 
 test("browser-login path: shared config dir, NO token env (SDK reads the cached cred)", () => {
-  // The desktop primary path passes claudeLoginConfigDir() + no token: the SDK
-  // reads the credential cached in the shared dir and self-refreshes, so we must
-  // pin CLAUDE_CONFIG_DIR to that dir and set none of the credential vars.
   const prevHome = process.env.HOUSTON_HOME;
   process.env.HOUSTON_HOME = "/home/x/.houston";
   try {

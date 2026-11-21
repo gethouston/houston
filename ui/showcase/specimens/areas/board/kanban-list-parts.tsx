@@ -19,18 +19,12 @@ import { useState } from "react";
 import type { SpecimenProp } from "../../../src/specimen";
 import { AGENT_ICON, ARCHIVED, DONE_MISSION } from "./sample";
 
-/**
- * The archived list's demos and props table. Helper module: no `specimen`.
- */
-
-/** The delete tooltip and confirm copy, already translated by the consumer. */
 const LABELS = {
   deleteTooltip: "Delete mission",
   deleteTitle: (name: string) => `Delete "${name}"?`,
   deleteDescription: "The mission and its history are removed for good.",
 };
 
-/** A body match: the fragment plus the character range that matched in it. */
 export const SNIPPET: Record<string, BoardSearchSnippet> = {
   [DONE_MISSION.id]: {
     text: "…assigned the pricing follow-up to Ana Silva and set Thursday as the deadline.",
@@ -38,7 +32,6 @@ export const SNIPPET: Record<string, BoardSearchSnippet> = {
   },
 };
 
-/** A routine's run: the row wears the board card's "Routine" tag. */
 const ROUTINE_RUN: KanbanItem = {
   id: "m-weekly",
   group: "Meeting Notes",
@@ -48,7 +41,6 @@ const ROUTINE_RUN: KanbanItem = {
   tags: ["Routine"],
 };
 
-/** The list as Mission Control's Archived view mounts it, with a working delete. */
 export function LiveArchivedList({
   align = "center",
 }: {
@@ -109,7 +101,6 @@ export function LiveArchivedList({
   );
 }
 
-/** One row on its own, so the row shapes can be compared side by side. */
 export function Rows() {
   return (
     <div className="flex w-full max-w-lg flex-col gap-1.5">

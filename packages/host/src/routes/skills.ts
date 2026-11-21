@@ -16,13 +16,6 @@ import { agentRest } from "./agent-rest";
 import { json, methodNotAllowed, readJson } from "./http";
 import { defineRouteFamily } from "./registry";
 
-/**
- * Skills (.agents/skills/<slug>/SKILL.md — the same folders pi loads into the
- * agent's prompt) served by the host off the workspace Vfs. A created/edited
- * skill reaches the agent on its next session/turn with no extra plumbing:
- * locally the dir IS the agent's, in cloud it hydrates with the workspace.
- * Returns true when handled.
- */
 export async function handleSkills(
   vfs: Vfs | undefined,
   paths: WorkspacePaths,
@@ -128,11 +121,6 @@ export async function handleSkills(
   return true;
 }
 
-/**
- * The five pairs one regex serves. The family owns both of its paths for
- * every method, so a wrong verb still reaches the handler — which answers the
- * unwired-vfs 503 BEFORE its 405, an order the dispatcher's own 405 would skip.
- */
 defineRouteFamily({
   group: "skills",
   members: [

@@ -1,15 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * The Claude/Anthropic connect uses the sanctioned setup-token flow: the
- * runtime returns a `{ kind: "auth_code", url: <docs cli-reference>,
- * instructions }` LoginInfo where the url is only a docs reference and the user
- * finishes by pasting a token. The adapter MUST forward both `auth_code: true`
- * and `instructions` on the `ProviderLoginUrl` bus event so the app shows the
- * paste dialog (with the steps) instead of auto-opening the docs page — the
- * reported bug. A co-located loopback `url` login stays `auth_code: false`.
- */
-
 const startLogin = vi.fn();
 
 vi.mock("@houston/runtime-client", async (importOriginal) => {
@@ -19,7 +9,6 @@ vi.mock("@houston/runtime-client", async (importOriginal) => {
     ...actual,
     HoustonEngineClient: class {
       startLogin = startLogin;
-      // watchLoginCompletion polls this; empty providers keeps it a no-op.
       authStatus = async () => ({ providers: [] });
     },
   };
@@ -29,7 +18,6 @@ import { bus } from "@houston/engine-adapter/bus";
 import { HoustonClient } from "@houston/engine-adapter/client";
 
 beforeEach(() => {
-  // Freeze the login-completion poll interval so it never fires during the test.
   vi.useFakeTimers();
   startLogin.mockReset();
 });
@@ -70,7 +58,6 @@ test("anthropic setup-token: ProviderLoginUrl carries auth_code:true + instructi
   expect(login?.data.provider).toBe("anthropic");
   expect(login?.data.auth_code).toBe(true);
   expect(login?.data.instructions).toMatch(/claude setup-token/);
-  // Paste flow, not device-grant.
   expect(login?.data.user_code).toBeNull();
 });
 

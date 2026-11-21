@@ -5,11 +5,6 @@ import { describe, it } from "node:test";
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
-/**
- * The node runner has no DOM, so the ONE standing-context editor's wiring is
- * guarded on its source (the repo's React-test idiom). Each assertion stands
- * for a review finding that shipped once in the consolidated grammar.
- */
 describe("context-editor source", () => {
   const box = read("../src/components/context/context-editor.tsx");
   const hook = read("../src/components/context/use-context-editor-save.ts");
@@ -17,8 +12,6 @@ describe("context-editor source", () => {
   const toolbar = read("../src/components/context/markdown-toolbar.tsx");
 
   it("recovers from a failed save instead of sticking on Saving…", () => {
-    // The data layer owns the toast; the queue must still catch so the
-    // promise is never an unhandled rejection and the state returns to idle.
     ok(
       /\.catch\(\(\) => \{[\s\S]*?setState\("idle"\)/.test(hook),
       "a rejection resets the save state",
@@ -66,8 +59,6 @@ describe("context-editor source", () => {
   });
 
   it("reads TipTap callbacks through the latest-ref, never a stale closure", () => {
-    // TipTap binds handlers once at construction and @tiptap/react never
-    // re-registers them, so every handler must dereference the ref.
     ok(editor.includes("function useCallbacksRef"), "the latest-ref exists");
     ok(
       !/on(Create|Update|Focus|Blur): \(\) => on[A-Z]/.test(editor),

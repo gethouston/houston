@@ -13,14 +13,6 @@ import { type RefreshManifest, sourceVanished } from "./sync-back-merge-retry";
 import { mergeOrOverwrite, stageReplacement } from "./sync-back-merge-write";
 import type { LocalWriteLock } from "./sync-back-types";
 
-/**
- * The standing store sync's generation-conflict retry, unchanged from before
- * the per-turn worker's merge rounds (`sync-back-merge-retry.ts`): refresh the
- * listing, merge routines/learnings/run history/custom integrations into the
- * remote once (the board is never merged here: it re-uploads, last writer
- * wins), and upload once at the refreshed generation. A second conflict, or a
- * local write that landed during the merge, is recorded for the next pass.
- */
 export async function retryAtRefreshedGeneration(
   opts: {
     store: ObjectStore;
@@ -76,15 +68,6 @@ const CHANGED_LOCALLY = Symbol("changed locally");
 
 const unlocked: LocalWriteLock = (_relativePath, write) => write();
 
-/**
- * Merge a conflict-sensitive document and replace its local copy, unless the
- * pod's host rewrote it while the remote was read: the merge would drop that
- * write (a run the host just fired), so it waits for the next pass. The
- * compare and the replace hold the host's lock on the file when given one.
- * A remote that is gone, or a side that will not parse, has nothing to merge:
- * the local bytes upload as they are, never throwing out of the whole pass
- * (every later file would stay un-synced, pass after pass).
- */
 async function mergeSyncBackDocument(
   opts: {
     store: ObjectStore;

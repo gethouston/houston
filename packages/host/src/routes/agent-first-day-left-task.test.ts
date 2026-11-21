@@ -6,27 +6,12 @@ import {
   PENDING,
 } from "../testing/first-day-harness";
 
-/**
- * A setup task that exists while the config still says pending is one whose
- * start never recorded its turn: the host stopped between the two, or the
- * record failed after an accepted turn.
- *
- * - R5: it gets its first turn, never a second task.
- * - T5: a start never takes it off the board. Its turn may be running (the
- *   agent is busy with THAT task's conversation), which records the start and
- *   hands the task back; a slot busy with any other conversation, or any
- *   other failure, leaves it, still pending, for the next start to fire.
- * - T6: a start that cannot fire is a domain refusal (409), never a gateway
- *   status the transport's wake ladder would retry into more fires.
- */
-
 let host: FirstDayHost;
 beforeEach(async () => {
   host = await bootFirstDayHost();
 });
 afterEach(() => host.close());
 
-/** The agent's one turn slot is taken by a turn in `conversationId`. */
 const busyIn = (conversationId: string) => turnBusyError(conversationId);
 
 test("a left task gets its first turn, then the start is recorded (R5)", async () => {

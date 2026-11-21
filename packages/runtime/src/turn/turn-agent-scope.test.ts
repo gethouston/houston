@@ -9,8 +9,6 @@ test.each([
   "custom-integrations.json",
   `${ROOT}/.agents/skills/example/SKILL.md`,
   `${ROOT}/notes.md`,
-  // The agent's own state: a routine's dedupe watermark must survive the
-  // sandbox or the next run repeats every post.
   `${ROOT}/.houston/state/signup_slack_alerts.json`,
   `${ROOT}/.houston/cache/seen.json`,
 ])("agent scope includes %s", (path) => {

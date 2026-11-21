@@ -5,16 +5,6 @@ import {
   CredentialRefreshCoalescer,
 } from "./refresh-coalescer";
 
-/**
- * The serve path refreshes ONE credential per (workspace, scope, provider) at a
- * time. openai-codex rotates the refresh token on every use, so a concurrent
- * burst (one runtime process per agent, each serving per turn AND per
- * /providers poll) used to spend the same refresh token N times: the first
- * exchange wins, the rest come back invalid_grant, and the route reads that as
- * "session ended" and deletes the user's credential.
- */
-
-/** Fake clock shared by the coalescer's TTL and refresh.ts's isExpiring. */
 let clock = 1_700_000_000_000;
 
 function tick(ms: number) {
@@ -40,12 +30,11 @@ function cred(over: Partial<WorkspaceCredential> = {}): WorkspaceCredential {
     provider: "openai-codex",
     accessToken: "AT-old",
     refreshToken: "RT-old",
-    expiresAt: clock + 1_000, // inside the 120s skew → expiring
+    expiresAt: clock + 1_000,
     ...over,
   };
 }
 
-/** A rotated credential: new access + refresh, an hour of life. */
 function rotated(suffix = ""): WorkspaceCredential {
   return cred({
     accessToken: `AT-new${suffix}`,
@@ -100,7 +89,7 @@ test("a concurrent burst produces exactly one refresh and one persist", async ()
   const results = await Promise.all(flights);
 
   expect(calls).toHaveLength(1);
-  expect(calls[0]?.refreshToken).toBe("RT-old"); // the token spent exactly once
+  expect(calls[0]?.refreshToken).toBe("RT-old");
   expect(persisted).toHaveLength(1);
   for (const result of results) expect(result).toBe(results[0]);
   expect(results[0]?.accessToken).toBe("AT-new");
@@ -116,11 +105,11 @@ test("a fresh result answers later serves without refreshing, until the TTL", as
   await run();
   expect(calls).toHaveLength(1);
 
-  tick(29_000); // inside the result TTL, rotated token still valid
+  tick(29_000);
   await run();
   expect(calls).toHaveLength(1);
 
-  tick(2_000); // past the TTL → the store is consulted again
+  tick(2_000);
   await run();
   expect(calls).toHaveLength(2);
 });
@@ -169,7 +158,6 @@ test("two acting identities refresh independently", async () => {
     async () => expiring,
   );
 
-  // {"sub":"u1"} / {"sub":"u2"} payloads → distinct credential scope keys.
   await Promise.all([
     run({ actingAs: "h.eyJzdWIiOiJ1MSJ9.s" }),
     run({ actingAs: "h.eyJzdWIiOiJ1MiJ9.s" }),
@@ -195,9 +183,6 @@ test("forget drops a cached result so the next serve refreshes again", async () 
 });
 
 test("a credential deleted mid-flight is never refreshed back into existence", async () => {
-  // The user hit Disconnect while a refresh was queued. Refreshing the copy the
-  // caller read, then persisting it, RECREATES the row they just deleted — and
-  // hands their agents a live token for a connection they revoked.
   const gate = deferred<WorkspaceCredential>();
   const reading = deferred<void>();
   let stored: WorkspaceCredential | null = cred();
@@ -210,7 +195,7 @@ test("a credential deleted mid-flight is never refreshed back into existence", a
   );
 
   const flight = run();
-  stored = null; // Disconnect lands before the critical section re-reads.
+  stored = null;
   reading.resolve();
 
   await expect(flight).rejects.toBeInstanceOf(CredentialGoneError);
@@ -219,9 +204,6 @@ test("a credential deleted mid-flight is never refreshed back into existence", a
 });
 
 test("forget never evicts a live flight, so single-flight survives it", async () => {
-  // disconnect.ts awaits store I/O before calling forget(). A new serve can open
-  // a flight in that window; evicting it would let the NEXT serve open a second
-  // concurrent exchange against the same rotating refresh token.
   const gate = deferred<WorkspaceCredential>();
   const expiring = cred();
   const { coalescer, calls, run } = harness(
@@ -230,7 +212,7 @@ test("forget never evicts a live flight, so single-flight survives it", async ()
   );
 
   const first = run();
-  coalescer.forget("w1", "openai-codex"); // the late disconnect cleanup
+  coalescer.forget("w1", "openai-codex");
   const second = run();
 
   gate.resolve(rotated());
@@ -249,22 +231,19 @@ test("a settled flight only clears its own slot, never a successor's", async () 
   );
 
   const a = run();
-  coalescer.reset(); // A's slot is dropped wholesale while A is still running
-  const b = run(); // B claims a fresh slot for the same key
+  coalescer.reset();
+  const b = run();
 
   first.reject(new Error("A lost"));
   await expect(a).rejects.toThrow("A lost");
 
-  const c = run(); // must join B rather than open a THIRD exchange
+  const c = run();
   second.resolve(rotated());
   expect(await c).toBe(await b);
   expect(calls).toHaveLength(2);
 });
 
 test("caching a result sweeps entries that aged past the TTL", async () => {
-  // The cache holds full credentials (access AND refresh tokens). Without a
-  // sweep it grows one entry per (workspace, scope, provider) ever served and
-  // keeps live secrets in memory for the life of the process.
   const expiring = cred();
   const { coalescer, run } = harness(
     async () => rotated(),
@@ -276,9 +255,9 @@ test("caching a result sweeps entries that aged past the TTL", async () => {
   await run({ actingAs: "h.eyJzdWIiOiJ1MSJ9.s" });
   expect(cache.size).toBe(1);
 
-  tick(31_000); // u1's entry is now stale
+  tick(31_000);
   await run({ actingAs: "h.eyJzdWIiOiJ1MiJ9.s" });
-  expect([...cache.keys()]).toHaveLength(1); // u1 swept, only u2 remains
+  expect([...cache.keys()]).toHaveLength(1);
 });
 
 test("run forwards its refresh options to the refresher", async () => {

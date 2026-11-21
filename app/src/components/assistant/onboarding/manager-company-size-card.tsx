@@ -10,13 +10,6 @@ import { useChipGrid } from "../../shell/use-choice-keyboard";
 import { CARD_ACTION_CLASS, CardActions } from "./card-actions";
 import { ManagerStepBody, ManagerStepFrame } from "./manager-step-frame";
 
-/**
- * "How big is your company?", answered with one tap on the create sheet's own
- * chips, the buckets smallest first, so the whole range reads at a glance.
- * The answer already held (one being changed) is the chip picked; the arrows
- * walk the chips as they do on the sheet. Back reopens the answer before it,
- * and "Not now" puts the questions off where they can be.
- */
 export function ManagerCompanySizeCard({
   title,
   held,
@@ -27,12 +20,10 @@ export function ManagerCompanySizeCard({
   onBack = null,
 }: {
   title: string;
-  /** The size already given, when it is being changed. */
   held: OnboardingCompanySize | null;
   busy: boolean;
   error: string | null;
   onAnswer: (size: OnboardingCompanySize) => void;
-  /** "Not now", where the questions can be put off. */
   onDecline?: () => void;
   onBack?: (() => void) | null;
 }) {

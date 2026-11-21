@@ -11,26 +11,14 @@ import { teamDisplayName } from "../../lib/team-display";
 import type { TeamView } from "../../lib/teams-model";
 import { TeamGlyph } from "../shell/team-glyph";
 
-/** The radio value standing for "every group": a group id can never be it. */
 const ALL_GROUPS = "all";
 
-/**
- * The phone Agents home's group selector: one pill under the title that names
- * the group the list is narrowed to ("All groups" by default) and drops a menu
- * of every group to pick from. Props only: the caller resolves the choice and
- * holds it, so the pill can never claim a group the list is not showing.
- *
- * A menu rather than a row of chips because a person may hold more groups
- * than a phone's width holds chips, and a filter that scrolls off screen is a
- * filter the user cannot see is applied.
- */
 export function AgentsHomeTeamFilter({
   teams,
   selected,
   onSelect,
 }: {
   teams: readonly TeamView[];
-  /** The resolved choice, `null` for every group. */
   selected: TeamView | null;
   onSelect: (teamId: string | null) => void;
 }) {
@@ -40,8 +28,6 @@ export function AgentsHomeTeamFilter({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {/* No `aria-label`: the visible text IS the control's name, so a
-            screen reader hears the current choice, not a generic label. */}
         <button
           type="button"
           data-testid="agents-home-team-filter"

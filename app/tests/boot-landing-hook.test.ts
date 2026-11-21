@@ -43,8 +43,6 @@ describe("useBootLanding", () => {
   it("clears the placeholder after landing on the employee already open", async () => {
     await render(onAgent);
     assert.equal(landing(), "done");
-    // "Move to another space": the space changes, the open employee and view
-    // do not, so opening it changes nothing else that could re-render.
     await render({ ...onAgent, workspaceId: "ws-2" });
     assert.deepEqual(opened, ["a"]);
     assert.equal(landing(), "done");

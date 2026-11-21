@@ -7,13 +7,6 @@ import {
   resolveLearningProvenance,
 } from "../src/lib/learning-provenance.ts";
 
-/**
- * Learning provenance (HOU-946): every learning links to the person who taught
- * it and the mission it came from. These pin the two fallback ladders that make
- * that readable on EVERY deployment — including desktop, where there is no
- * roster to resolve names or photos from.
- */
-
 const profiles = (rows: UserProfile[]): Map<string, UserProfile> =>
   new Map(rows.map((r) => [r.userId, r]));
 
@@ -46,7 +39,6 @@ describe("resolveLearningProvenance", () => {
       NO_PROFILES,
       NO_MISSIONS,
     );
-    // The id rides along as the face's tone key even with no roster.
     deepStrictEqual(view, { name: "Felipe", personId: "u1" });
   });
 
@@ -82,8 +74,6 @@ describe("resolveLearningProvenance", () => {
   });
 
   it("an id with no resolvable name and no mission renders nothing", () => {
-    // A stamped id whose owner left the org and whose name was never stored:
-    // an id slice is not a person, so the line is omitted entirely.
     strictEqual(
       resolveLearningProvenance(
         { taughtBy: { user_id: "u-ghost" } },
@@ -95,8 +85,6 @@ describe("resolveLearningProvenance", () => {
   });
 
   it("an unnameable id carries NO personId onto a mission-only line", () => {
-    // Same rule one level down: the mission keeps the line alive, but there is
-    // no person to draw, so nothing hands the face a tone key.
     deepStrictEqual(
       resolveLearningProvenance(
         { taughtBy: { user_id: "u-ghost" }, missionId: "act-1" },

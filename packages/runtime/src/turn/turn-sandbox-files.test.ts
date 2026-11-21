@@ -7,12 +7,6 @@ import { expect, test } from "vitest";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { makeTurnSandboxFetch } from "./turn-sandbox";
 
-/**
- * Pooled turns (every cloud agent) run integrations through the turn facade,
- * not the host: a workspace file the agent names is uploaded from the turn's
- * own tree and executed as Composio's file object.
- */
-
 interface Seen {
   method: string;
   path: string;

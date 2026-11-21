@@ -6,18 +6,6 @@ import {
 } from "@houston-ai/layout";
 import type { ReactNode } from "react";
 
-/**
- * The rail's ONE "something is running here" treatment: a ring around whatever
- * mark sits in the glyph column. An agent row wears it around its avatar; a
- * FOLDED team's header wears it around the team's glyph, on behalf of the agent
- * rows it is hiding. Same component, because a second ring drawn a hair
- * differently would read as a second kind of running.
- *
- * It is sized off what it circles (`diameter`, the rail's 20px glyph column
- * by default), not off its contents, so every team mark wears the same 24px
- * ring. It overhangs the column by 2px a side, which the 28px row absorbs
- * vertically.
- */
 export function RunningRing({
   label,
   diameter = sidebarGlyphDiameter,
@@ -46,9 +34,6 @@ interface AgentSidebarIconProps {
   color?: string;
   running: boolean;
   runningLabel: string;
-  /** Avatar diameter; by default the rail slot's own (the person row's
-   *  portrait, or the collapsed rail's smaller avatar). A surface outside the
-   *  rail (the phone's drilled header) passes its own. */
   diameter?: number;
 }
 
@@ -78,8 +63,6 @@ interface NeedsYouChipProps {
   label: string;
 }
 
-/** The rail's quiet badge: a recessed chip in muted ink. Shared, so the
- *  needs-you count and the "New" mark read as one family. */
 const RAIL_BADGE_CLASS =
   "h-5 min-w-7 bg-input/90 px-2 text-[11px] font-semibold leading-none text-ink/80";
 
@@ -98,8 +81,6 @@ export function NeedsYouChip({ count, label }: NeedsYouChipProps) {
   );
 }
 
-/** Marks an employee that has never been given work: the badge a count would
- *  take, saying why the row is worth opening. */
 export function NewAgentChip({ label }: { label: string }) {
   return (
     <Badge variant="secondary" className={RAIL_BADGE_CLASS}>

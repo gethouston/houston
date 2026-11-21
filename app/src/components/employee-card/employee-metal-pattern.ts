@@ -1,11 +1,7 @@
-// `.ts` extensions so the node test runner can load this module on its own.
 import { foldForSearch } from "../shell/choice-step-model.ts";
 
-/** Folded catalog role label, in any shipped language, to its role id. */
 export type RoleLabelIndex = ReadonlyMap<string, string>;
 
-/** Indexes every language's role labels. The first language to claim a label
- *  keeps it, so a label two languages share resolves the same everywhere. */
 export function roleLabelIndex(
   labelSets: readonly Readonly<Record<string, string>>[],
 ): RoleLabelIndex {
@@ -19,11 +15,6 @@ export function roleLabelIndex(
   return index;
 }
 
-/**
- * The role half of a badge's engraving: the catalog role, whichever language
- * its label is read in, else the typed words. Seeding from the label itself
- * would engrave the same employee differently per language.
- */
 export function employeeEngravingRole(
   role: string,
   index: RoleLabelIndex,
@@ -33,10 +24,6 @@ export function employeeEngravingRole(
   return id === undefined ? `text:${folded}` : `role:${id}`;
 }
 
-/** The color half: the palette id for any stored form of a palette color
- *  (id, light or dark value), the stored value for a legacy custom one, and
- *  the first palette color for none, as the card paints it. Seeding from the
- *  painted value would engrave differently per theme. */
 export function employeeEngravingColor(
   stored: string | undefined,
   palette: readonly { id: string; light: string; dark: string }[],

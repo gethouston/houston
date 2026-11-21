@@ -5,13 +5,11 @@ import {
   type TriggerRemedyHintKey,
 } from "./trigger-remedy-detail";
 
-/** The headline for a trigger binding that needs attention. */
 export type ActivationAlertLabelKey =
   | "trigger.status.paused_disconnected"
   | "trigger.status.paused_revoked"
   | "trigger.status.error";
 
-/** Authored detail copy, in the `routines` namespace. */
 export type ActivationAlertHintKey =
   | "trigger.statusDisconnectedHint"
   | "trigger.statusRevokedHint"
@@ -25,17 +23,9 @@ export type ActivationAlertDetail =
 export interface ActivationAlertView {
   labelKey: ActivationAlertLabelKey;
   detail: ActivationAlertDetail;
-  /** Only when reconnecting the account is what fixes the binding. */
   showReconnect: boolean;
 }
 
-/**
- * What the routine screen's alert block says, from the SDK's `triggerRemedy`.
- * An event the app no longer offers, or a setup it refused, gets the authored
- * remedy copy (`remedyHintKey`, the same mapping the grid uses) instead of the
- * host's English `detail`, and never a Reconnect, which would not help. Pure,
- * so it unit-tests under bare node.
- */
 export function activationAlertView(
   status: TriggerStatusItem | undefined,
 ): ActivationAlertView {

@@ -16,8 +16,6 @@ function textWidth(text: string, font: string): number {
   return context.measureText(text).width;
 }
 
-/** The rounded catalog search field. `label` is both its full placeholder and
- * accessible name, so consumers pass localized copy. */
 export function CatalogSearchField({
   value,
   onChange,
@@ -39,11 +37,8 @@ export function CatalogSearchField({
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // Visible placeholder: the full text, or the short one when it wouldn't fit.
   const [placeholder, setPlaceholder] = useState(label);
 
-  // Layout effect (not useEffect) so the first measurement happens before paint
-  // — avoids a full→short flicker on mount when the input is already narrow.
   useLayoutEffect(() => {
     const input = inputRef.current;
     if (!input || !labelShort) {
@@ -59,7 +54,6 @@ export function CatalogSearchField({
           (parseFloat(style.paddingLeft) || 0) -
           (parseFloat(style.paddingRight) || 0),
       );
-      // +4px so it switches just before the text would actually clip.
       setPlaceholder(
         textWidth(label, font) + 4 <= available ? label : labelShort,
       );

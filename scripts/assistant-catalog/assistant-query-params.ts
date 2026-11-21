@@ -3,58 +3,17 @@ import { calleeName, stringLiteralText, unwrap } from "./assistant-ast.ts";
 import { entriesAfterSet, type QueryEntry } from "./assistant-query-set.ts";
 import type { PathPart, ValueScope } from "./assistant-value-scope.ts";
 
-/**
- * The one idiom that builds an OPTIONAL query string:
- *
- * ```ts
- * const q = new URLSearchParams();
- * if (before !== undefined) q.set("before", before.toString());
- * const suffix = q.toString();
- * httpRequest(scope, `/v1/org/audit${suffix ? `?${suffix}` : ""}`);
- * ```
- *
- * A literal template can only spell a key that is ALWAYS sent, so an operation
- * carrying an optional window (`limit`/`before`) had no derivable route at all -
- * and the reads a person asks for in words ("what happened in this space",
- * "what was said in that chat") are exactly the ones that carry one.
- *
- * Nothing about optionality reaches the catalog. A route's `query` maps a key
- * to the parameter supplying it, and the dispatcher already drops a key whose
- * parameter the caller omitted (`packages/host/src/routes/
- * assistant-request-parts.ts`, `buildQuery`) - the same thing the `if` above
- * does, which is why no marker has to be invented for it.
- *
- * Conservative like every other resolver here: a params object handed anywhere
- * else, or seeded with values, makes the whole query undescribable and the
- * operation stays unroutable with that reason rather than a guess.
- */
-
-/**
- * Names that stand for an assembled query string, mapped to the keys they
- * carry - or `null` when the assembly cannot be described. Both the
- * `URLSearchParams` local and any `const` holding its `.toString()` are in
- * here, because the path reads the second and the `.set` calls write the first.
- */
 export type QueryAssemblies = ReadonlyMap<string, QueryEntry[] | null>;
 
-/** One assembly, shared by every name that stands for it. */
 interface Assembly {
   entries: QueryEntry[] | null;
 }
 
-/**
- * The two kinds of name an assembly answers to. The OBJECT may only be written
- * through `.set` and read through `.toString()` - anywhere else it could be
- * seeded, cleared or handed on, and what it carries stops being knowable. The
- * string its `.toString()` produced is under no such rule: it is a value like
- * any other, and the path reads it exactly once.
- */
 interface Declared {
   objects: Map<string, Assembly>;
   aliases: Map<string, Assembly>;
 }
 
-/** The `URLSearchParams` local a `.set`/`.toString()` receiver names. */
 function receiverName(call: ts.CallExpression): string | null {
   const callee = unwrap(call.expression);
   if (!ts.isPropertyAccessExpression(callee)) return null;
@@ -62,7 +21,6 @@ function receiverName(call: ts.CallExpression): string | null {
   return ts.isIdentifier(target) ? target.text : null;
 }
 
-/** Every `const x = new URLSearchParams()`, and every `const y = x.toString()`. */
 function declaredAssemblies(body: ts.Node): Declared {
   const found: Declared = { objects: new Map(), aliases: new Map() };
   const visit = (node: ts.Node): void => {
@@ -77,7 +35,6 @@ function declaredAssemblies(body: ts.Node): Declared {
         ts.isIdentifier(initializer.expression) &&
         initializer.expression.text === "URLSearchParams"
       ) {
-        // Seeded with values means the keys are not spelled here at all.
         const seeded = (initializer.arguments?.length ?? 0) > 0;
         found.objects.set(node.name.text, { entries: seeded ? null : [] });
       } else if (
@@ -86,8 +43,6 @@ function declaredAssemblies(body: ts.Node): Declared {
       ) {
         const target = receiverName(initializer);
         const origin = target === null ? undefined : found.objects.get(target);
-        // The SAME assembly object, so a `.set` written after the alias still
-        // reaches the name the path reads.
         if (origin) found.aliases.set(node.name.text, origin);
       }
     }
@@ -97,7 +52,6 @@ function declaredAssemblies(body: ts.Node): Declared {
   return found;
 }
 
-/** Whether an identifier is the receiver of `x.<method>(…)`, and which one. */
 function methodOn(node: ts.Identifier): string | null {
   const parent = node.parent;
   return parent &&
@@ -107,10 +61,6 @@ function methodOn(node: ts.Identifier): string | null {
     : null;
 }
 
-/**
- * The query keys each assembled search-params name carries, given what the
- * operation's caller can actually supply.
- */
 export function searchParamsIn(
   body: ts.Node,
   scope: ValueScope,
@@ -125,9 +75,6 @@ export function searchParamsIn(
         ts.isVariableDeclaration(node.parent) &&
         node.parent.name === node;
       const method = methodOn(node);
-      // The params object reaching anything but its own declaration, a `.set`
-      // or a `.toString()` escaped somewhere else, and what it carries from
-      // there is unknowable.
       if (assembly && !declaring && method !== "set" && method !== "toString")
         assembly.entries = null;
     }
@@ -149,7 +96,6 @@ export function searchParamsIn(
   );
 }
 
-/** The assembled query a path expression reads, or `null` for anything else. */
 function searchParamsName(
   expression: ts.Expression,
   assemblies: QueryAssemblies,
@@ -164,12 +110,6 @@ function searchParamsName(
   return null;
 }
 
-/**
- * The conditional suffix an assembled query string is spliced with:
- * `${qs ? `?${qs}` : ""}`. It resolves to the keys that query carries, and to
- * nothing at all when it carries none - which is the honest reading, since the
- * source omits the `?` in exactly that case.
- */
 export function resolveQuerySuffix(
   node: ts.ConditionalExpression,
   assemblies: QueryAssemblies,
@@ -182,8 +122,6 @@ export function resolveQuerySuffix(
   if (!ts.isTemplateExpression(truthy) || truthy.head.text !== "?")
     return refuse;
   const [span, ...rest] = truthy.templateSpans;
-  // The suffix must be the WHOLE query and nothing beside it, or the template
-  // carries text no route can describe.
   if (!span || rest.length > 0 || span.literal.text !== "") return refuse;
   if (searchParamsName(span.expression, assemblies) !== name) return refuse;
   const entries = assemblies.get(name);

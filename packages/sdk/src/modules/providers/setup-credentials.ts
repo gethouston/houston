@@ -1,16 +1,3 @@
-/**
- * SETUP-RUNTIME credential writes (`/setup-runtime/credential/*`): the agentless
- * mirrors of the per-agent writes in `credentials.ts`, for the flows that land
- * before any agent exists. They carry no scope either — the space the request
- * lands in decides whose account the write hits.
- *
- * The host keeps ONE hidden setup runtime per space, alive until the space's
- * first agent is created; it is the only runtime that can hold a credential
- * while no agent does. First-run onboarding connects the AI ahead of agent
- * creation, and a space whose last agent was deleted still holds the credential
- * the user connected (PRODUCT-1662) — both reach the central store through here.
- */
-
 import { type HttpScope, httpRequest } from "../http";
 
 /**

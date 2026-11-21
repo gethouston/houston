@@ -11,11 +11,6 @@ const input: CSSProperties = {
   color: C.text,
 };
 
-/**
- * Operator sign-in gate. Google SSO (popup) or email + password — both GCIP
- * (Firebase). Operator accounts are provisioned by the platform admin; there is
- * no self-signup here.
- */
 export function AdminSignIn({ auth }: { auth: AdminAuth }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

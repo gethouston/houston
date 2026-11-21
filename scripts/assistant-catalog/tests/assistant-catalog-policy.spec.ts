@@ -5,13 +5,6 @@ import { parseAssistantDocs } from "../assistant-jsdoc.ts";
 import { renderOperations } from "../assistant-render-docs.ts";
 import { annotation, realOptions } from "./assistant-catalog-support.ts";
 
-/**
- * What the assistant is ALLOWED to do, judged against the live adapter: a call
- * that changes something either asks the user first or says in writing why it
- * need not, every identifier it takes is resolved or accounted for, and the
- * operations doc states both for every operation Houston ships.
- */
-
 const live = extractCatalog(realOptions);
 const visible = live.catalog.operations.filter((op) => !op.hidden);
 
@@ -34,9 +27,6 @@ describe("approval policy", () => {
   });
 
   it("requires a written reason for a confirmation too", () => {
-    // The other half of the same decision. Every card ends the turn and asks
-    // the person a question, and a `confirm` nobody justified is how the
-    // surface drifts into asking about everything.
     const asking = { ...annotation(), method: "POST" as const, confirm: true };
     expect(coverageViolations([asking]).map((v) => v.rule)).toEqual([
       "confirm-unstated",
@@ -46,8 +36,6 @@ describe("approval policy", () => {
         { ...asking, confirmed: "Irreversible. Nothing puts it back." },
       ]),
     ).toEqual([]);
-    // Hidden with a reason is exempt from the whole reach family: the
-    // operation raises no card because it is never dispatched at all.
     expect(
       coverageViolations([
         { ...asking, hidden: true, hiddenReason: "Returns a secret." },
@@ -56,9 +44,6 @@ describe("approval policy", () => {
   });
 
   it("fails an acknowledgement the code has already made untrue", () => {
-    // A `debt:` note that outlives its refactor tells the next reader work is
-    // still owed, and the drift check cannot see it: the generated output is
-    // legitimately unchanged by a tag nobody reads any more.
     const [violation] = coverageViolations([
       { ...annotation(), routable: true, unroutableReason: "debt: no query." },
     ]);
@@ -113,15 +98,6 @@ describe("approval policy", () => {
       confirmed: "Irreversible. Nothing puts the file back.",
       unknownTags: [],
     });
-    // A BARE `confirm` is grammar, not a typo: it raises the flag and files no
-    // unknown tag, so the missing rationale is `confirm-unstated`'s to refuse
-    // (above) with a message naming what is owed — rather than surfacing as an
-    // unparsed tag, which would read as a spelling mistake.
-    //
-    // Written on ONE line on purpose: that block has no leading `*`, and a
-    // parser that only recognises starred lines reads the tag as prose and
-    // reports an operation with no group, no flag and nothing to complain
-    // about — a `hidden:` written this way would publish the operation.
     expect(
       parseAssistantDocs("/** @assistant group:files confirm */"),
     ).toMatchObject({ confirm: true, group: "files", unknownTags: [] });
@@ -189,8 +165,6 @@ describe("what the model and the approver read", () => {
   });
 
   it("never names Houston in what the agent reads", () => {
-    // The manager is told "You are Houston", so any "Houston" in an operation
-    // it can see reads as the manager itself acting or owning the thing.
     const naming = visible
       .filter((op) => JSON.stringify(op).includes("Houston"))
       .map((op) => op.name);

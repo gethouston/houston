@@ -11,15 +11,6 @@ import {
 import { beforeEach, expect, test, vi } from "vitest";
 import { recordPooledTokenSpend } from "./turn-ledger";
 
-/**
- * The token-spend ledger a standing pod folds every turn into
- * (`<agent>/.houston/runtime/token-usage.json`, ai/usage/ledger.ts), written
- * by a pooled turn into the same stored object. Two conversations of one
- * agent can run pooled at once, so the write is a generation-guarded
- * read-fold-write: a concurrent turn's spend is folded in, never lost or
- * counted twice.
- */
-
 const DATA_REL = "workspaces/Personal/Bob/.houston/runtime";
 const KEY = `${DATA_REL}/token-usage.json`;
 const usage = (context: number, output: number): TokenUsage => ({
@@ -73,7 +64,6 @@ test("each pooled turn folds its spend into the agent's stored ledger", async ()
   expect(ledger.providers.deepseek?.turns).toBe(1);
 });
 
-/** A store whose object changes under the first conditional write. */
 function racingStore(root: string): ObjectStore & { uploads: string[] } {
   const inner = new LocalDirStore(root);
   let generation = 1;
@@ -91,7 +81,6 @@ function racingStore(root: string): ObjectStore & { uploads: string[] } {
       uploads.push(opts?.ifGenerationMatch ?? "none");
       if (!raced) {
         raced = true;
-        // Another conversation's turn lands its spend first.
         await recordPooledTokenSpend({
           store: inner,
           prefix: "",
@@ -124,7 +113,6 @@ test("a concurrent turn's spend is folded in, not overwritten", async () => {
     scratchDir: scratch(),
   });
 
-  // The retry re-read the newer object and wrote against its generation.
   expect(store.uploads).toEqual(["0", "2"]);
   expect(storedLedger(root).providers.google).toMatchObject({
     inputTokens: 1_500,
@@ -156,7 +144,6 @@ test("a fenced claim records nothing and never fails the turn", async () => {
       scratchDir: scratch(),
     }),
   ).resolves.toBeUndefined();
-  // A fenced worker's turn belongs to whoever adopted it: one try, no retry.
   expect(upload).toHaveBeenCalledTimes(1);
 });
 
@@ -202,7 +189,6 @@ test("a read the store releases after the deadline never turns into a write", as
   const store: ObjectStore = {
     list: async () => [],
     download: async () => undefined,
-    // A store that ignores cancellation and answers late.
     downloadVersioned: () =>
       new Promise((resolve) =>
         setTimeout(() => resolve({ generation: "3" }), 60),
@@ -224,6 +210,5 @@ test("a read the store releases after the deadline never turns into a write", as
   await new Promise((resolve) => setTimeout(resolve, 120));
 
   expect(upload).not.toHaveBeenCalled();
-  // Its working copy went once the late read was done with it.
   expect(readdirSync(scratchDir)).toEqual([]);
 });

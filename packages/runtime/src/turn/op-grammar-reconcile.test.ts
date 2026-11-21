@@ -40,7 +40,6 @@ test("a reconcile op parses the conversation and the turn that died in it", () =
       userMessage: user,
     },
   });
-  // A stale-run sweep names only the conversation.
   expect(
     parseOpRequest(envelope({ kind: "reconcile", conversationId: "c1" })).op,
   ).toEqual({ kind: "reconcile", conversationId: "c1" });
@@ -60,7 +59,6 @@ test("a reconcile op refuses shapes it cannot settle safely", () => {
   expect(bad({ turnId: "t1", startedAt: "yesterday" })).toThrow(
     "invalid 'op.abandoned.startedAt'",
   );
-  // The user row it lands must be THIS turn's user message.
   expect(
     bad({
       turnId: "t1",

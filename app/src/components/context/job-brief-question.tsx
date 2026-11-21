@@ -20,11 +20,6 @@ import {
   typedJobAnswer,
 } from "./job-brief-model";
 
-/**
- * One of the two questions, wired to the catalog it is answered from: the runs
- * to show, the words to show them in, and the way back from a stored answer to
- * the chip it was picked from.
- */
 function useJobBriefCatalog(
   field: JobBriefField,
   industryId: AgentContextId | null,
@@ -56,7 +51,6 @@ function useJobBriefCatalog(
     t,
     industry,
     runsFor,
-    /** The runs render catalog ids alone, so this only ever narrows. */
     labelFor: (id: string): string | null => {
       if (industry) return isAgentContextId(id) ? contextLabel(id) : null;
       return isAgentRoleId(id) ? roleLabel(id) : null;
@@ -68,19 +62,6 @@ function useJobBriefCatalog(
   };
 }
 
-/**
- * The industry / role question, asked again about an answer already given:
- * from the Job description tab, and from an employee card's role and industry
- * lines. It is the SAME control the create flow asks it with
- * ({@link ChoiceStep}: a filter, a wrapping run of chips, and "Something else"
- * for an answer nobody listed), so there is one way of answering it.
- *
- * It opens on `current`: a catalog answer as its picked chip, words the person
- * typed as the typed field holding them, so a small fix is a small edit. It
- * reads `current` once, on mount; its frame mounts it only while open.
- * `onAnswer` gets the answer as the person reads it (a chip's label, or the
- * typed words); picking a chip answers outright, typed words on Continue.
- */
 export function JobBriefQuestion({
   field,
   current,
@@ -89,9 +70,7 @@ export function JobBriefQuestion({
   onAnswer,
 }: {
   field: JobBriefField;
-  /** The answer given so far, as the person reads it. */
   current: string | null;
-  /** The industry's catalog id, so the role runs lead with its own jobs. */
   industryId: AgentContextId | null;
   compact?: boolean;
   onAnswer: (answer: string) => void;
@@ -102,8 +81,6 @@ export function JobBriefQuestion({
   );
   const sections = useMemo(() => runsFor(""), [runsFor]);
   const opening = entryFor(current);
-  // Words that match no chip are the person's own: the typed field opens
-  // holding them, rather than making them start the answer over.
   const [custom, setCustom] = useState({
     active: opening.typed !== "",
     value: opening.typed,
@@ -115,8 +92,6 @@ export function JobBriefQuestion({
     <ChoiceStep
       compact={compact}
       headline={t(key("roleSetup.contextHeadline", "roleSetup.roleHeadline"))}
-      // An industry the person typed has no jobs of its own, so say out loud
-      // that the filter reaches the rest of the catalog.
       hint={
         industry || industryId ? undefined : t("roleSetup.typeToFindAnyRole")
       }
@@ -141,8 +116,6 @@ export function JobBriefQuestion({
           t(key("roleSetup.useQueryAsContext", "roleSetup.useQueryAsRole"), {
             query,
           }),
-        // The words already typed into the filter ARE the answer: taking
-        // them into the typed field saves typing them a second time.
         onUseQuery: (query) => setCustom(typedJobAnswer(query)),
       }}
       onSelect={(id) => {

@@ -10,10 +10,6 @@ import { expect, test } from "vitest";
 import { routinePauseNotice } from "../src/modules/routines/auto-pause";
 import * as main from "./fixtures/routine-pause-main";
 
-// PRODUCT-1982: the gateway serves routines.json and routine_runs.json from the
-// store to every client version, so what this engine writes must not throw in
-// a client that predates `no_model`. The fixture is main's mapping, verbatim.
-
 const NOW = "2026-10-06T12:00:00.000Z";
 const routine = createRoutine(
   { name: "Inbox sweep", prompt: "check", schedule: "*/15 * * * *" },
@@ -35,7 +31,6 @@ const runs: RoutineRun[] = Array.from(
 const pause = routineAutoPause(routine, runs, NOW);
 if (!pause) throw new Error("the streak should pause");
 const paused = autoPauseRoutine(routine, pause);
-// What a client receives: the JSON the engine wrote, read back.
 const wire = <T>(value: unknown): T => JSON.parse(JSON.stringify(value)) as T;
 
 test("an old client reads a no-model pause as 'change the model' instead of throwing", () => {
@@ -69,9 +64,6 @@ test("this client reads the same pause as 'choose a model', naming no provider",
   });
 });
 
-// PRODUCT-2050: cloud writes `creator_no_access` rows to every client version.
-// An old client hands the code it does not know to a switch with no case for
-// it, which falls back to the run's own summary; it must not throw first.
 test("an old client reads a creator-access row as an unnamed code", () => {
   const refused = wire<Parameters<typeof main.routineFailureCode>[0]>({
     ...runs[0],

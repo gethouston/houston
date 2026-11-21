@@ -4,7 +4,6 @@ import { type ShortcutAction, shortcutParts } from "../../../lib/shortcuts";
 
 interface Row {
   action?: ShortcutAction;
-  /** Used for groups of glyphs that don't map to a single action (e.g. arrows). */
   parts?: string[][];
   labelKey: string;
 }

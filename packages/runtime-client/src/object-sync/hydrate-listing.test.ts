@@ -51,9 +51,6 @@ test("a write at a path the listing never named goes out create-only, and its co
     workerMerge: true,
     include: () => true,
   });
-  // Create-only first. The retry at the generation the one-key read saw is
-  // the standing conflict rule for a plain file (last writer wins); a claimed
-  // turn never writes outside what it listed (runtime turn-store-scope.ts).
   expect(remote.writes).toEqual([
     { op: "put", key: "b/unlisted.txt", ifGenerationMatch: "0" },
     { op: "put", key: "b/unlisted.txt", ifGenerationMatch: theirs },
@@ -150,7 +147,6 @@ test("abandoning while the later listing is pending rejects `deferred` at once a
   const started = await startHydrate(remote.store, "", dest, {
     listing: {
       objects: (await remote.store.manifest?.("agent")) ?? [],
-      // A listing that never answers on its own.
       later: (signal) => {
         listingSignal = signal;
         return new Promise(() => undefined);
@@ -190,7 +186,6 @@ test("a point read that returns no generation lands but stays unowned, so its wr
   const dest = await mkdtemp(join(tmpdir(), "hydrate-listing-"));
   const listed = (await remote.store.manifest?.("")) ?? [];
   const started = await startHydrate(store, "", dest, {
-    // The listing shows a store with generations.
     listing: {
       objects: listed.filter(({ key }) => key !== "conv/c1.json"),
       reads: ["conv/c1.json"],

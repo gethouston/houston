@@ -8,27 +8,17 @@ import {
 import { makeIntegrationTools } from "./integrations";
 import { httpSandboxFetch } from "./sandbox-fetch";
 
-/**
- * integration_execute on a refusal for a permission the connection lacks: a
- * never-grantable Gmail settings write gets manual steps, any other Google
- * refusal queues ONE reconnect card per app per conversation (the guard dead
- * logins share), Slack is reconnected from
- * Integrations.
- */
-
 const realFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = realFetch;
 });
 
-// The prod shape: Composio relays Google's 403 body verbatim.
 const GOOGLE_SCOPE_403 = `{"error":{"code":403,"message":"Request had insufficient authentication scopes.","status":"PERMISSION_DENIED","details":[{"reason":"ACCESS_TOKEN_SCOPE_INSUFFICIENT"}]}}`;
 const SLACK_MISSING_SCOPE = `{"ok":false,"error":"missing_scope","needed":"reactions:write"}`;
 
 const EXECUTE = "/sandbox/integrations/execute";
 const SEARCH = "/sandbox/integrations/search";
 
-/** Search names `toolkit` for `action`; execute refuses with `error`. */
 function refuseWith(error: string, action = "", toolkit = "") {
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const path = new URL(String(input)).pathname;
@@ -47,11 +37,6 @@ function refuseWith(error: string, action = "", toolkit = "") {
 
 let conversations = 0;
 
-/**
- * A fresh conversation. Each call is one turn: search (so the toolkit is
- * known) unless `searchFirst` is false, then run the action; returns the
- * failure text and the steps the turn queued.
- */
 function conversation() {
   const id = `conv-permission-${++conversations}`;
   return async (action: string, searchFirst = true) => {
@@ -99,7 +84,6 @@ test.each([
 
 test.each([
   ["GMAIL_FETCH_EMAILS", "gmail"],
-  // Settings reads and forwarding also accept the full-mail permission.
   ["GMAIL_LIST_FILTERS", "gmail"],
   ["GMAIL_FORWARD_MESSAGE", "gmail"],
   ["GOOGLEDRIVE_FIND_FILE", "googledrive"],
@@ -116,7 +100,6 @@ test.each([
     { kind: "connect", id: "c1", toolkit, reconnect: true, refusedAt: "<t>" },
   ]);
 
-  // Refused again in a later turn: the reconnect did not help.
   const again = await turn(action);
   expect(again.message).toContain("a reconnect was already offered");
   expect(again.message).toContain("do not ask for another reconnect");

@@ -5,12 +5,6 @@ import { expect, test } from "vitest";
 import { buildSystemPrompt } from "../backends/claude/system-prompt";
 import { makeAgentLoader } from "./resource-loader";
 
-/**
- * Both prompt builders take the coordinator role as an argument, so a pool
- * worker (whose process has no role) can build Houston's prompt for Houston's
- * turn and an ordinary prompt for the next turn.
- */
-
 const MANAGER = "You are Houston, the user's AI Manager";
 const workspace = () => mkdtempSync(join(tmpdir(), "prompt-role-"));
 

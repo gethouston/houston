@@ -1,10 +1,3 @@
-// Admin's Company context: a pill in the header's tools slot opening a sheet
-// that holds the ONE standing-prose editor. Mounted in a real (jsdom) DOM
-// under the header-tools provider, so the strip crossing its threshold, the
-// editor's lifetime and the analytics seam are the real ones. The editor is
-// a probe: the real one reads through the engine, which the node runner
-// cannot load.
-
 import { strict as assert } from "node:assert";
 import { beforeEach, describe, it } from "node:test";
 import "./support/dom-env.ts";
@@ -39,8 +32,6 @@ win.matchMedia = ((query: string) => ({
   addEventListener() {},
   removeEventListener() {},
 })) as unknown as typeof win.matchMedia;
-// The strip's width is what the header measures; the probe reports it on
-// demand, the way the browser's observer would on a resize.
 const observers = new Set<() => void>();
 g.ResizeObserver = class {
   constructor(private readonly callback: () => void) {}

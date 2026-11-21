@@ -8,16 +8,6 @@ import {
 import { parseAddInput } from "./custom-integrations-input";
 import { json } from "./http";
 
-/**
- * The surface-agnostic core of the custom-integration USER routes: serve one
- * request against the manager. The three mounts in custom-integrations-user.ts
- * (top-level, agent-scoped, per-agent dispatch) all land here, so the answer a
- * client gets cannot depend on which one it called.
- *
- * Returns false when method + target name no route in this family — the caller
- * declines and the chain walks on, which is how `custom/connections` still
- * reaches the generic provider family behind it.
- */
 export async function serveCustomTarget(
   manager: CustomIntegrationManager,
   method: string,
@@ -30,8 +20,6 @@ export async function serveCustomTarget(
       json(res, 200, { items: await manager.list() });
       return true;
     }
-    // The manual add form (HOU-980). Same body grammar as the agent's
-    // sandbox add tool — parseAddInput is the one validator for both.
     if (target.kind === "definitions" && method === "POST") {
       const body = await bodyOr400(req, res);
       if (!body) return true;
@@ -69,9 +57,6 @@ export async function serveCustomTarget(
       json(res, 200, { items: await manager.tools(target.slug) });
       return true;
     }
-    // OAuth sign-in start (PRODUCT-1172): mint the authorize URL the client
-    // opens in the browser; the redirect lands on the PUBLIC callback route
-    // (custom-integrations-oauth.ts), which completes the flow server-side.
     if (target.kind === "oauthStart" && method === "POST") {
       json(res, 200, await manager.startOAuth(target.slug));
       return true;

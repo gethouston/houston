@@ -39,8 +39,6 @@ pub fn ensure_main_webview(app: &AppHandle) {
 fn shut_down_sidecars(app: &AppHandle) {
     crate::engine_supervisor::mark_shutting_down();
     crate::local_bridge::shutdown();
-    // Release the single-instance mutex now: the child must not be routed
-    // back to this dying process as a secondary launch.
     tauri_plugin_single_instance::destroy(app);
 }
 

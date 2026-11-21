@@ -1,6 +1,3 @@
-// Types
-
-// Hooks
 export {
   INTERNAL_DRAG_TYPE,
   useDropZone,
@@ -9,7 +6,6 @@ export {
 export type { FileMenuLabels } from "./file-menu";
 export { FilesAgentRow } from "./files-agent-row";
 export type { FilesBrowserProps } from "./files-browser";
-// Components
 export { FilesBrowser } from "./files-browser";
 export type { FilesBrowserLabels } from "./files-browser-labels";
 export {
@@ -30,5 +26,4 @@ export type {
   LoadFilePreview,
 } from "./types";
 export type { SortDirection, SortKey } from "./utils";
-// Utilities
 export { formatSize } from "./utils";

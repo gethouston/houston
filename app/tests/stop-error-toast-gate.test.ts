@@ -3,20 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-// A Stop pressed while the agent's pod is still cold-starting: the cancel POST
-// answers the gateway's waking 502 ("engine proxy failed", the pod's service
-// name not resolving yet). `call("stop_session")` classified it and showed the
-// deduped "your agent is waking up" notice, then rethrew — and the stop catch
-// added a SECOND, red "Couldn't stop the task: <raw dial error>" toast on top,
-// so the user read the pair as the conversation being broken. Same
-// layered-gate shape as the rejection handler (engine-waking-rejection-gate
-// .test.ts): every catch that toasts after `call()` must decline the quiet
-// classes `call()` already surfaced.
-//
-// Asserted against the source: the helper pulls i18n and the Zustand store,
-// neither of which loads under this suite's `--experimental-strip-types`
-// runner (same constraint as error-toast-not-shown.test.ts).
-
 const read = (rel: string): string =>
   readFileSync(join(import.meta.dirname, rel), "utf8");
 

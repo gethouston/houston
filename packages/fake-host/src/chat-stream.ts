@@ -1,16 +1,3 @@
-/**
- * The fake host's chat request surface — the SSE subscribe endpoint and the
- * message POST — served from the SAME shared pieces as the real servers
- * (runtime `transport/events-route.ts`, host `turn/events-route.ts`):
- *
- * - `serveResumableStream` serves each connection: fresh connect → `sync`;
- *   `?after=<seq>` / `Last-Event-ID` → gap/dupe-free replay; unserviceable
- *   cursor → `sync` with `resync: true`.
- * - The turn produces into the replay log whether or not a stream is attached,
- *   just like the real runtime; the nonce is echoed on the `user` frame, and
- *   the 202 names the accepted turn's id.
- */
-
 import type { ChatMessage } from "@houston/protocol";
 import {
   parseResumeCursor,
@@ -22,7 +9,6 @@ import { streamReplySafe } from "./chat-turn";
 import { json } from "./http";
 import { type SseSink, sseResponse } from "./sse";
 
-/** `GET /agents/:id/conversations/:cid/events` — subscribe to the turn stream. */
 export function openChatStream(
   req: Request,
   agentId: string,
@@ -57,14 +43,6 @@ export function openChatStream(
   });
 }
 
-/**
- * `POST /agents/:id/conversations/:cid/messages` — fire the turn (202). The
- * turn produces into the replay log whether or not a stream is attached, just
- * like the real runtime. The nonce is echoed on the `user` frame, and so are
- * the send's `mentions` (already guarded by the route). The 202 body is the
- * runtime's (`transport/conversation-start-turn.ts`): it names the turn, which
- * is how a client whose stream attached mid-turn knows the turn is its own.
- */
 export function sendMessage(
   agentId: string,
   cid: string,

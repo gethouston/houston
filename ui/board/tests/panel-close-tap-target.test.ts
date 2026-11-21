@@ -1,7 +1,3 @@
-// The detail panel's close X keeps its 28px desktop box; on a phone an ::after
-// hit-slop grows it, reaching only 4px toward the actions menu so that the
-// menu's own 8px slop meets it across the row's 12px gap instead of overlapping.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import * as React from "react";
@@ -28,8 +24,6 @@ describe("detail panel close X", () => {
         React.createElement("div"),
       ),
     );
-    // ui/board has no DOM library: read the close button's class off the
-    // markup, and the row gap off the element that directly wraps the menu.
     const close = html.match(/<button[^>]*aria-label="Close"[^>]*>/)?.[0];
     assert.ok(close, "no close button");
     const c = (close.match(/class="([^"]*)"/)?.[1] ?? "").split(/\s+/);

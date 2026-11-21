@@ -16,7 +16,6 @@ import {
 
 const freshDir = () => mkdtempSync(join(tmpdir(), "houston-truncate-"));
 
-/** A two-turn transcript: t1 (user+assistant), t2 (user+assistant). */
 function seedTwoTurns(dir: string) {
   appendUserMessageAt(dir, "c1", "Hi", { turnId: "t1" });
   appendAssistantMessageAt(dir, "c1", "Hi, how can I help?", { turnId: "t1" });
@@ -41,7 +40,6 @@ test("truncate at a later turn keeps everything before it and stamps the replay 
     ["assistant", "t1"],
   ]);
   expect(conv.needsSessionReplay).toBe(true);
-  // The windowed read serves the truncated transcript.
   expect(getHistoryAt(dir, "c1")?.totalMessages).toBe(2);
 });
 
@@ -85,7 +83,6 @@ test("consumeSessionReplayAt is one-shot: true once after a truncate, then false
 
   expect(consumeSessionReplayAt(dir, "c1")).toBe(true);
   expect(consumeSessionReplayAt(dir, "c1")).toBe(false);
-  // The clear is durable, not just cache-state.
   expect(loadConversation(dir, "c1")?.needsSessionReplay).toBeUndefined();
 });
 
@@ -102,7 +99,6 @@ test("stampSessionReplayAt re-arms the marker durably, and only for a known conv
   expect(consumeSessionReplayAt(dir, "c1")).toBe(false);
   expect(stampSessionReplayAt(dir, "c1")).toBe(true);
   expect(loadConversation(dir, "c1")?.needsSessionReplay).toBe(true);
-  // Consumed once, gone again: the re-arm is the same one-shot marker.
   expect(consumeSessionReplayAt(dir, "c1")).toBe(true);
   expect(consumeSessionReplayAt(dir, "c1")).toBe(false);
   expect(stampSessionReplayAt(dir, "ghost")).toBe(false);

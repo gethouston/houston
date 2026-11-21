@@ -1,6 +1,5 @@
 import type { PdfPageSize } from "./types";
 
-/** The slice of a pdf.js document the size measuring reads. */
 export interface SizedDoc {
   numPages: number;
   getPage(n: number): Promise<{
@@ -14,11 +13,6 @@ async function pageSize(doc: SizedDoc, n: number): Promise<PdfPageSize> {
   return { width, height };
 }
 
-/**
- * Sizes for a first paint: page 1's, standing in for every page until
- * {@link measureAll} has the rest. A document whose first page cannot be read
- * is destroyed here, since nobody else holds it yet.
- */
 export async function firstPaintSizes(doc: SizedDoc): Promise<PdfPageSize[]> {
   try {
     const first = await pageSize(doc, 1);
@@ -29,8 +23,6 @@ export async function firstPaintSizes(doc: SizedDoc): Promise<PdfPageSize[]> {
   }
 }
 
-/** Every page's own size, or `null` when none differs from `guess`. A page
- *  that cannot be read keeps its guess; rendering it reports the failure. */
 export async function measureAll(
   doc: SizedDoc,
   guess: readonly PdfPageSize[],

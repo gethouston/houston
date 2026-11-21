@@ -20,14 +20,6 @@ import type { SharedSkillRow } from "../../lib/workspace-shared-skills";
 import { useUIStore } from "../../stores/ui";
 import { useSharedSkillAssignments } from "./use-shared-skill-assignments";
 
-/**
- * Store-backed skill actions (ADR 0003): content is ONE
- * write to the workspace store, assignment is per-agent manifest toggles
- * (reversible — no copies move), and an agent's divergent copy is an override
- * the row can revert. A content save and a promote re-throw so the editor
- * keeps the typed work; delete and the assignments
- * (`use-shared-skill-assignments.ts`) paint first and roll back on refusal.
- */
 export function useSharedSkillsActions(workspaceId: string | null) {
   const { t } = useTranslation("skills");
   const qc = useQueryClient();
@@ -48,9 +40,6 @@ export function useSharedSkillsActions(workspaceId: string | null) {
     [qc, workspaceId],
   );
 
-  // One entry at a time, through the SDK: the manifest route replaces the
-  // whole list, and the SDK is where that read-modify-write is serialized per
-  // agent so two writes started together cannot drop each other.
   const setManifestEntry = useCallback(
     async (path: string, slug: string, enabled: boolean) => {
       await tauriSkillsManifest.setEnabled(path, slug, enabled);
@@ -58,8 +47,6 @@ export function useSharedSkillsActions(workspaceId: string | null) {
     [],
   );
 
-  /** One save: content (when edited) is a single store write; assignment is
-   *  manifest toggles. Nothing here can clobber an agent's override. */
   const applyShared = useCallback(
     async (
       row: SharedSkillRow,
@@ -84,13 +71,6 @@ export function useSharedSkillsActions(workspaceId: string | null) {
     [addToast, invalidate, setManifestEntry, t, workspaceId],
   );
 
-  /**
-   * Delete the store copy; agents' modified copies stay as their own skills.
-   * Optimistic: the row leaves at once and the promise resolves before the
-   * host answers. A manifest write that failed leaves some employee loading a
-   * deleted skill, so a partial delete is a refusal: everything is painted
-   * back, refetched and toasted, never called a success.
-   */
   const deleteShared = useCallback(
     async (row: SharedSkillRow, agents: Agent[]): Promise<void> => {
       if (workspaceId === null) throw new Error("no workspace");
@@ -123,10 +103,6 @@ export function useSharedSkillsActions(workspaceId: string | null) {
     [addToast, qc, setManifestEntry, t, workspaceId],
   );
 
-  /** "Share to workspace": the explicit act that replaced auto-migration. The
-   *  canonical copy (first holder's) moves into the store, current holders get
-   *  manifest entries, and only their BYTE-IDENTICAL copies are deleted — a
-   *  holder whose copy diverged keeps it, surfacing as an override. */
   const promoteToShared = useCallback(
     async (row: SharedSkillRow): Promise<void> => {
       if (workspaceId === null) throw new Error("no workspace");

@@ -46,7 +46,6 @@ it("drops a queued choice when the live client changes identity", async () => {
   pending.shift()?.();
   await first;
   await new Promise((resolve) => setTimeout(resolve, 10));
-  // Release a wrongly sent request too, so the failing test leaves no work behind.
   pending.shift()?.();
   await queued;
   expect(sent).toEqual([{ bearer: `Bearer ${token("A")}`, value: team }]);

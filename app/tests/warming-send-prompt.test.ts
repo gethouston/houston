@@ -19,12 +19,9 @@ import {
   warmingSendRecord,
 } from "../src/lib/warming-send-prompt.ts";
 
-/** What a setup chat's kickoff hands the queue: no text, all prompt. */
 const KICKOFF =
   "<!-- houston:auto-continue -->You are Nova. Introduce yourself.";
 
-/** Queue → localStorage mirror → relaunch, exactly the store's round trip:
- *  the entry is JSON in localStorage and every closure is gone. */
 function afterReload(input: WarmingSendInput): PendingWarmingSend {
   const entry: ProvisioningEntry = {
     agentId: "a1",
@@ -82,8 +79,6 @@ describe("the prompt a queued warming send delivers", () => {
   });
 
   it("an attachment send falls back to the user's words", () => {
-    // Attachment prompts stay closures (they write through the warming pod),
-    // so a relaunch leaves only the text — the pre-existing behavior.
     const send = afterReload({
       sessionKey: "activity-m2",
       text: "look at this",
@@ -95,17 +90,12 @@ describe("the prompt a queued warming send delivers", () => {
   });
 
   it("refuses when there is nothing to put on the wire", () => {
-    // Empty text AND no prompt: the runtime rejects an empty turn, so the
-    // flush must report instead of sending.
     const send = afterReload({ sessionKey: "activity-m3", text: "" });
     strictEqual(chooseWarmingPrompt(send, undefined), null);
-    // A builder that threw at flush leaves `built` undefined too.
     strictEqual(chooseWarmingPrompt({ text: "", prompt: "" }, ""), null);
   });
 
   it("a setup mission's kickoff reaches the wire across the relaunch", async () => {
-    // End to end over the pure seam: what `createMissionWhileWarming` hands
-    // the queue → the mirror → the flush's choice, with the closures gone.
     const opts = { kickoffPrompt: () => KICKOFF };
     const send = afterReload({
       sessionKey: "activity-m1",
@@ -133,7 +123,6 @@ describe("the prompt a queued warming send delivers", () => {
     strictEqual(hasHiddenPrompt({ kickoffPrompt: () => KICKOFF }), true);
     strictEqual(hasHiddenPrompt({ buildPrompt: () => "x" }), true);
     strictEqual(hasHiddenPrompt({}), false);
-    // The non-warming paths resolve the same two shapes, kickoff first.
     strictEqual(await missionPrompt({}, "m1", "typed"), "typed");
     strictEqual(
       await missionPrompt({ kickoffPrompt: () => KICKOFF }, "m1", "typed"),
@@ -146,10 +135,6 @@ describe("the prompt a queued warming send delivers", () => {
   });
 
   it("hands the mission of an undeliverable send back to the user", () => {
-    // The row landed at the flush, so it exists with the default `running`
-    // status and an empty chat — and no turn will ever settle it, because the
-    // send that would have opened it has no prompt. `needs_you` is what turns
-    // that permanent spinner into a card the user can act on.
     deepStrictEqual(undeliverableSend({ sessionKey: "activity-m3" }, "m3"), {
       reason: "queued send has no prompt to deliver (session activity-m3)",
       settleRow: { id: "m3", status: "needs_you" },
@@ -157,8 +142,6 @@ describe("the prompt a queued warming send delivers", () => {
   });
 
   it("settles nothing when the send created no row of its own", () => {
-    // A parked follow-up, or a row create that failed: there is no card to
-    // correct, only the report.
     strictEqual(
       undeliverableSend({ sessionKey: "activity-m4" }, null).settleRow,
       null,

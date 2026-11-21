@@ -27,38 +27,9 @@ import {
 } from "./files-ops";
 import { handleFileReads } from "./files-read";
 
-/**
- * Files browser for an agent's workspace — the HOST serves it for EVERY
- * deployment profile (cloud GCS prefix, local real FS) off the shared Vfs, so
- * the web Files tab behaves identically everywhere with no drift. `root` is the
- * agent's workspace root (`WorkspacePaths.agentRoot`): cloud `<prefix>/workspace`,
- * local `<Workspace>/<Agent>`. The agent writes deck.pptx / sheet.xlsx / etc.
- * there during a turn; these endpoints list, read, download, upload, move,
- * rename, delete, create folders, and zip it up for "Download all".
- *
- * Internal Houston state — the top-level `.houston/` (typed data) and `.agents/`
- * (skills) dot-directories — is hidden from the listing and refused by every
- * path op, so the Files tab can neither show nor clobber it.
- *
- * Path safety: every model/UI-supplied relative path is validated to stay inside
- * `root` (no `..`, no absolute, no top-level dot-dir) before it touches storage.
- * The pure operations live in `files-ops.ts` / `files-import.ts` /
- * `files-archive.ts`; this module is the HTTP surface.
- */
-
-// The pure ops and the download headers are part of this module's public
-// surface (tests, attachments, the fake host).
 export * from "./files-mime";
 export * from "./files-ops";
 
-/**
- * HTTP handler for `files*` routes, intercepted by the host BEFORE the runtime
- * channel (the runtime has no /files route). Returns true when it owns the
- * request (every `files*` path — so a files request is never forwarded to the
- * runtime). A missing vfs 503s; path-safety failures 400. Nothing is swallowed.
- * Every mutation fires `FilesChanged` through `emit` so other clients' Files
- * tabs refresh (the uploader's own tab invalidates on mutation success).
- */
 export async function handleFiles(
   vfs: Vfs | undefined,
   paths: WorkspacePaths,
@@ -123,8 +94,6 @@ export async function handleFiles(
     }
     if (method === "POST" && rest === "files/rename") {
       const b = await readJson(req);
-      // A rename to the name the file already has moved nothing: announcing it
-      // would send every other client's Files tab refetching for no change.
       const outcome = await renameWorkspaceFile(
         vfs,
         root,
@@ -146,8 +115,6 @@ export async function handleFiles(
       await json(res, 200, { created });
       return true;
     }
-    // A files* path we don't serve — own it with a 404 rather than forward it
-    // to the runtime (which has no /files route either).
     json(res, 404, { error: "not found" });
     return true;
   } catch (err) {
@@ -166,13 +133,8 @@ export async function handleFiles(
       json(res, 400, { error: err.message });
       return true;
     }
-    // Storage that refuses every write reaches here from WHICHEVER op hit it
-    // first — the case probe, the delete, the upload — so it is named once,
-    // here, rather than by each op remembering permissions.
     const refusal = readOnlyRefusal(err) ?? err;
     if (refusal instanceof FileOpError) {
-      // The code travels beside the sentence: a client that must tell an
-      // EXPECTED refusal from a bug cannot do it on the status alone.
       json(res, refusal.status, {
         error: refusal.message,
         ...(refusal.code ? { code: refusal.code } : {}),

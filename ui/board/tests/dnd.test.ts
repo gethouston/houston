@@ -32,7 +32,6 @@ describe("defaultCanDropItem", () => {
   });
 
   it("treats every status mapped to a column as the same section", () => {
-    // `error` lives in the needs_you column, so a move there is a no-op.
     const needsYou = col("needs_you", ["needs_you", "error"]);
     assert.equal(defaultCanDropItem(item("error"), needsYou), false);
     assert.equal(defaultCanDropItem(item("needs_you"), needsYou), false);
@@ -50,10 +49,7 @@ describe("columnDragRole", () => {
   });
 
   it("marks the dragged card's own section as origin (no-op, not forbidden)", () => {
-    // The card lives in needs_you; that column can't accept it (canDrop=false)
-    // but it's the origin, not a forbidden target.
     assert.equal(columnDragRole(item("needs_you"), needsYou, false), "origin");
-    // A status mapped into the same column is still the origin section.
     assert.equal(columnDragRole(item("error"), needsYou, false), "origin");
   });
 
@@ -62,7 +58,6 @@ describe("columnDragRole", () => {
   });
 
   it("marks an ineligible non-origin section as forbidden", () => {
-    // Running never accepts a manual drop, and it's not the card's section.
     assert.equal(
       columnDragRole(item("needs_you"), running, false),
       "forbidden",
@@ -70,7 +65,6 @@ describe("columnDragRole", () => {
   });
 
   it("treats origin before eligibility (origin can never be forbidden)", () => {
-    // Even if a buggy canDrop said true, the card's own section stays origin.
     assert.equal(columnDragRole(item("done"), done, true), "origin");
   });
 });

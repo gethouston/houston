@@ -14,14 +14,6 @@ function RowFace(props: { icon: ReactNode; label: string }) {
   );
 }
 
-/**
- * One destination in the phone's More menu: a sheet row
- * (`sidebarSheetRowClasses`) like the switcher and the connect rows above it,
- * so the card has one left edge and one type size. It spreads the rail's own
- * `dataAttrs`, so the lessons' anchors resolve to THIS element on the phone
- * exactly as they resolve to the rail's control on the desktop — one
- * vocabulary, two renderings.
- */
 export function MobileMoreRowButton({ row }: { row: MenuRow }) {
   return (
     <button
@@ -35,12 +27,6 @@ export function MobileMoreRowButton({ row }: { row: MenuRow }) {
   );
 }
 
-/**
- * The More card's account row: the person's portrait and "Your account". It
- * drills into the card's account page (`mobile-more-account.tsx`), the
- * phone's form of the rail's account menu, so the chevron says it goes
- * deeper rather than somewhere else.
- */
 export function MobileAccountRow(props: {
   label: string;
   avatar: ReactNode;

@@ -30,17 +30,6 @@ import { liveTurns } from "./live-turn";
 import { missionFanout } from "./mission-fanout";
 import { handleSandboxMissions } from "./missions-sandbox";
 
-/**
- * The runtime-facing mission board routes (PRODUCT-1244). Invariants:
- *  - `start` creates the board row FIRST (origin-stamped, merge-safe, evented)
- *    and fires the child turn through the same channel a routine firing uses;
- *    a failed fire rolls the row back so no card sticks on Running.
- *  - Depth 1: an agent-started mission can't start missions of its own.
- *  - `status` moves only FINISHED missions, never the calling conversation's.
- *  - `settle` changes status only for agent-started missions still running;
- *    every successful reply stamps its card, even after an observer's write.
- */
-
 const paths = new LocalPaths();
 
 let store: MemoryWorkspaceStore;
@@ -56,8 +45,6 @@ let fired: {
   limits?: TurnLimits;
 }[];
 let fireError: Error | null;
-/** Which providers the host's central credential store holds a row for, or
- *  null for a deployment that has no store to judge with. */
 let connectedProviders: string[] | null;
 
 const vault: CredentialVault = {
@@ -129,17 +116,12 @@ async function call(
   body: unknown,
   opts: {
     conversationId?: string;
-    /** A conversation the RUNTIME claims and the host never recorded (S7). */
     forgedConversationId?: string;
     token?: string;
-    /** The mode the host recorded for the turn (the Mode pill's answer). */
     mode?: TurnMode;
-    /** The acting token the GATEWAY stamped on the send that started the turn. */
     actingAs?: string;
-    /** An acting token the RUNTIME puts on its own loopback call (S16). */
     spoofedActingAs?: string;
     gatewayFronted?: boolean;
-    /** The plan limits the host recorded on the parent turn. */
     limits?: TurnLimits;
     modelCallReports?: (report: ModelCallReport) => void;
     pushReports?: import("../telemetry/push-report").PushReporter;
@@ -148,9 +130,6 @@ async function call(
   const headers: Record<string, string> = {
     authorization: `Bearer ${opts.token ?? "sb-good"}`,
   };
-  // The runtime NAMES the conversation on every mission call; the host matches
-  // it against its own record of the turn (routes/live-turn.ts), which
-  // production writes when the turn starts.
   const claimed = opts.forgedConversationId ?? opts.conversationId;
   if (claimed) headers[CONVERSATION_ID_HEADER] = claimed;
   if (opts.spoofedActingAs) headers[ACTING_AS_HEADER] = opts.spoofedActingAs;
@@ -294,8 +273,6 @@ test("a friendly provider name starts the mission on the real id", async () => {
     { conversationId: "conv-parent" },
   );
   expect(r.status).toBe(201);
-  // The pin must reach the TURN, not just the board row: a mission whose first
-  // turn runs on the agent's default provider is a silent substitution.
   expect(fired[0]?.pin).toMatchObject({
     provider: "openai-codex",
     model: "gpt-5.5",
@@ -501,7 +478,6 @@ test("status moves a finished mission and refuses the rest", async () => {
   );
   expect(run.status).toBe(409);
 
-  // The calling conversation's own (settled) mission is refused too.
   await saveActivities(vfs, root, [{ ...PARENT, status: "needs_you" }]);
   const self = await call(
     "POST",
@@ -534,7 +510,6 @@ test("settle changes status only for agent-started missions still running", asyn
       origin_session_key: "conv-parent",
     },
   ]);
-  // A user mission gets a reply stamp without changing status.
   const user = await call("POST", "/sandbox/missions/settle", {
     conversation_id: "conv-parent",
     status: "needs_you",
@@ -548,7 +523,6 @@ test("settle changes status only for agent-started missions still running", asyn
     "running",
   );
 
-  // The agent-started child settles by its activity-<id> conversation.
   const child = await call("POST", "/sandbox/missions/settle", {
     conversation_id: "activity-child-1",
     status: "needs_you",
@@ -562,7 +536,6 @@ test("settle changes status only for agent-started missions still running", asyn
   expect(settled?.last_message_at).toBe("2026-10-27T16:25:00.000Z");
   expect(settled?.pending_interaction?.steps[0]?.id).toBe("q1");
 
-  // A second settle (already off `running`) is a no-op.
   const again = await call("POST", "/sandbox/missions/settle", {
     conversation_id: "activity-child-1",
     status: "error",
@@ -655,14 +628,7 @@ test("mission refusal copy contains no em dash", async () => {
   expect(JSON.stringify(result.body)).not.toContain("\u2014");
 });
 
-/**
- * S7 — PROVENANCE THE CALLER CANNOT AUTHOR. The conversation a start comes
- * from decides whether it is allowed at all, so it is the host's record of the
- * turn that answers, never the runtime's header.
- */
 test("a forged conversation header does not buy a fresh top-level chat", async () => {
-  // The caller IS working inside a mission; it claims a conversation of its own
-  // invention, which the depth guard would read as a person's chat.
   await saveActivities(vfs, root, [
     { ...PARENT, origin_session_key: "conv-grandparent", origin_depth: 1 },
   ]);
@@ -672,8 +638,6 @@ test("a forged conversation header does not buy a fresh top-level chat", async (
     { title: "t", prompt: "p" },
     { conversationId: "conv-parent", forgedConversationId: "conv-invented" },
   );
-  // Naming a chat the host never started a turn in is refused outright, so the
-  // depth chain is never even reached from an invented parent.
   expect(r.status).toBe(400);
   expect(r.body).toMatchObject({ code: "not_in_turn" });
   expect(fired).toEqual([]);
@@ -709,9 +673,6 @@ test("the started row records WHO asked and how deep it sits", async () => {
 });
 
 test("a start from the desktop's AI Manager is stamped as Houston's", async () => {
-  // The desktop coordinator is the dot-named `.assistant` no user can create,
-  // so it is installed here the way the local store would hold it. It keeps no
-  // board of its own: every start it makes names an employee's.
   const employee = await store.createAgent({
     workspaceId: ws.id,
     name: "Dobby",
@@ -753,7 +714,6 @@ test("a start from the desktop's AI Manager is stamped as Houston's", async () =
 });
 
 test("the caller's own budget refuses a flood spread across boards", async () => {
-  // Nothing is running on THIS board, so only the caller-side ledger can refuse.
   for (let i = 0; i < 20; i++)
     missionFanout.record(agent.id, {
       missionId: `remote-${i}`,
@@ -807,7 +767,6 @@ test("a remote flood remains capped after an hour until the boards settle", asyn
 test("a finished local mission gives its caller's slot back", async () => {
   for (let i = 0; i < 20; i++)
     missionFanout.record(agent.id, { missionId: `m-${i}`, boardRoot: root });
-  // Not one of them is on the board, so every slot reconciles away.
   const r = await call(
     "POST",
     "/sandbox/missions/start",
@@ -817,8 +776,6 @@ test("a finished local mission gives its caller's slot back", async () => {
   expect(r.status).toBe(201);
 });
 
-/** A gateway-minted acting-as header value for `sub` (the signature is never
- *  verified pod-side; the gateway is the trust boundary — auth/acting.ts). */
 function actingToken(sub: string, name: string): string {
   const payload = Buffer.from(JSON.stringify({ sub, name })).toString(
     "base64url",
@@ -962,7 +919,6 @@ test("the mission is created in the name the GATEWAY vouched for, not the one th
       conversationId: "conv-parent",
       gatewayFronted: true,
       actingAs: actingToken("alice-sub", "Alice"),
-      // The runtime's own loopback call claims somebody else entirely.
       spoofedActingAs: actingToken("mallory-sub", "Mallory"),
     },
   );
@@ -999,15 +955,11 @@ test("the settle report ends the turn: a later write is out of turn", async () =
     { conversationId: "conv-parent" },
   );
   expect(started.status).toBe(201);
-  // The runtime reports its terminal state for the turn it was running.
   const settled = await call("POST", "/sandbox/missions/settle", {
     conversation_id: "conv-parent",
     status: "needs_you",
   });
   expect(settled.status).toBe(200);
-  // A second start naming the same (now finished) chat has no live turn behind
-  // it. `call` re-records when `conversationId` is passed, so this one names it
-  // the way a runtime would after its turn ended.
   const late = await call(
     "POST",
     "/sandbox/missions/start",
@@ -1029,7 +981,6 @@ test("the after-turn title lands only while the card shows its fallback", async 
     { id: "m-2", title: "Renamed by me", description: "", status: "needs_you" },
   ]);
   const before = events.length;
-  // No live turn: the title arrives after the turn's settle report.
   const titled = await call("POST", "/sandbox/missions/title", {
     conversation_id: "activity-m-1",
     title: "Weekly sales summary",
@@ -1043,7 +994,6 @@ test("the after-turn title lands only while the card shows its fallback", async 
     { type: "ActivityChanged", agentPath: agent.id },
   ]);
 
-  // A user rename wins: the card no longer shows the fallback.
   const renamed = await call("POST", "/sandbox/missions/title", {
     conversation_id: "activity-m-2",
     title: "Weekly sales summary",
@@ -1102,7 +1052,6 @@ test("settle hands a well-formed model-call report to the sink, any mission", as
     droppedCalls: 0,
   };
   const sink = { modelCallReports: (r: ModelCallReport) => reports.push(r) };
-  // A user mission's settle changes no card, yet its timings still count.
   await call(
     "POST",
     "/sandbox/missions/settle",

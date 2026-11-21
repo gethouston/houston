@@ -21,7 +21,6 @@ import {
 } from "../../../src/specimen";
 import { Portrait } from "./app-sidebar-stage";
 
-/** `SidebarProfileMenuProps`, read off `ui/layout/src/sidebar-profile-menu.tsx`. */
 const PROPS: readonly SpecimenProp[] = [
   {
     name: "avatar",
@@ -51,7 +50,6 @@ const PROPS: readonly SpecimenProp[] = [
   },
 ];
 
-/** The rail's foot, on the rail's fill and at its width. */
 function Foot({ children, narrow }: { children: ReactNode; narrow?: boolean }) {
   return (
     <div
@@ -123,11 +121,6 @@ function SidebarProfileMenuSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["SidebarProfileMenu"];
 
 export const specimen: Specimen = {

@@ -6,9 +6,6 @@ import { useOrgWriteLock } from "../../../hooks/use-org-write-lock";
 export function TeamRoutinesCreateButton({ onClick }: { onClick: () => void }) {
   const { t } = useTranslation("teams");
   const { locked } = useOrgWriteLock();
-  // The team strip's lozenge height and a full radius, the same capsule the
-  // board's "New task" wears: the right zone is one row of them, and this is
-  // the section's one filled control.
   return (
     <Button
       size="sm"

@@ -27,14 +27,12 @@ export interface ConversationMoment {
 const MAX_MOMENTS = 24;
 const PREVIEW_LENGTH = 96;
 
-/** Search-filtered map entries and their display highlight ranges. */
 export interface ConversationMomentSearchResult {
   moments: ConversationMoment[];
   hasQuery: boolean;
   rangesById: Record<string, HighlightRange[]>;
 }
 
-/** Derives searchable navigation moments from every message currently rendered. */
 export function deriveConversationMoments(
   displayItems: ChatDisplayItem[],
 ): ConversationMoment[] {
@@ -59,11 +57,6 @@ export function deriveConversationMoments(
   return moments;
 }
 
-/**
- * True when at least one message can anchor the chat search. Lets the header
- * menu (rendered outside ChatMessages) decide whether "Find" is actionable
- * without waiting on the map's own derivation.
- */
 export function hasConversationMoments(messages: ChatMessage[]): boolean {
   return (
     deriveConversationMoments(
@@ -76,7 +69,6 @@ export function hasConversationMoments(messages: ChatMessage[]): boolean {
   );
 }
 
-/** Filter every loaded message before compacting the visible map. */
 export function searchConversationMoments(
   moments: ConversationMoment[],
   rawQuery: string,
@@ -117,8 +109,6 @@ function momentTypeFor(message: ChatMessage): ConversationMomentType | null {
 }
 
 function searchTextFor(content: string): string {
-  // Decode Skill / attachment / interaction-answers markers so the map never
-  // leaks raw marker JSON; plain assistant/user text passes through unchanged.
   const decoded = messagePreviewText(content);
   return decoded.replace(/\s+/g, " ").trim();
 }

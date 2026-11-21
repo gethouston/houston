@@ -86,8 +86,6 @@ describe("agentPeople", () => {
   });
 
   it("reads a managed agent with no assignment fields as shared with everyone", () => {
-    // The gateway omits an empty assignment list, so an agent shared with
-    // everyone arrives with both fields absent even for its manager.
     const people = agentPeople(
       { access: "manager" },
       members,

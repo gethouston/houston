@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { type FakeHost, startFakeHost } from "./server";
 
-/**
- * The fake host's conversation import mirrors the runtime's route, so an e2e
- * run that finishes onboarding lands the transcript the way a real one does:
- * written once however often it is sent, and refused when it is not an import.
- */
-
 const JSON_HEADERS = { "content-type": "application/json" };
 const AGENT = "personal/.assistant";
 const CHAT = `${encodeURIComponent(AGENT)}/conversations/assistant`;

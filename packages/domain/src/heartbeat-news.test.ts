@@ -154,7 +154,6 @@ describe("capping", () => {
 
 describe("ordering by instant", () => {
   test("offsets never break chronology; unreadable times count as oldest", () => {
-    // +14:00 midnight on the 11th is 10:00Z on the 10th: the older one.
     const s = snapshotOf({
       activities: [
         mission("late", "needs_you", "2026-10-10T23:30:00Z"),

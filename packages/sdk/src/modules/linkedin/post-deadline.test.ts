@@ -14,7 +14,6 @@ const POSTED: LinkedInPostResult = {
   postUrl: null,
 };
 
-/** A request that settles only when its signal aborts, or never. */
 function hung(heedAbort: boolean) {
   const seen: AbortSignal[] = [];
   const post = (signal: AbortSignal) => {
@@ -40,7 +39,6 @@ describe("a LinkedIn post's deadline", () => {
     expect(seen[0]?.aborted).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
     await expect(result).resolves.toEqual({ kind: "unknown" });
-    // The abandoned request is aborted on this device.
     expect(seen[0]?.aborted).toBe(true);
   });
 
@@ -61,7 +59,6 @@ describe("a LinkedIn post's deadline", () => {
     const result = withPostDeadline(clock, undefined, async (_, answered) => {
       await new Promise((r) => setTimeout(r, LINKEDIN_POST_DEADLINE_MS - 1));
       answered();
-      // The body takes past the deadline.
       await new Promise((r) => setTimeout(r, 2));
       return POSTED;
     });

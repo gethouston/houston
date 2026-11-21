@@ -1,29 +1,4 @@
 #!/usr/bin/env bash
-# Point the in-app updater at the CLOUD release channel's manifest.
-#
-# The desktop app ships two channels from this repo's releases:
-#   - local build  (tag `v*`)       → `releases/latest/download/latest.json`
-#   - cloud build  (tag `cloud-v*`) → `releases/download/cloud-latest/latest-cloud.json`
-#
-# A cloud app must NEVER read the local channel's `latest.json`: doing so would
-# auto-update it into a LOCAL build, dropping the baked gateway URL and dumping
-# the user back on the connection chooser (and symmetrically a local app must
-# not read a cloud manifest). The two channels' manifests are distinct release
-# assets, so neither can ever feed the other — the worst case is "no update
-# found", never a wrong-channel update.
-#
-# The cloud endpoint is pinned to the fixed tag `cloud-latest` rather than the
-# `/latest/` alias because cloud releases are PRERELEASES (so they can never
-# become GitHub's "latest release" and shadow the local channel's endpoint) —
-# and `/latest/` only ever resolves to non-prereleases, so a
-# `releases/latest/download/latest-cloud.json` URL would permanently 404.
-# The `cloud-latest` rolling release is maintained by
-# .github/workflows/cloud-updater-manifest.yml, which copies the published
-# cloud release's `latest-cloud.json` onto it on every `cloud-v*` publish.
-#
-# Edits ONLY the runner's checkout of tauri.conf.json — never committed. Uses
-# Node (present on every GitHub runner, including windows-11-arm where jq is
-# not), mirroring configure-ts-engine-unsigned.sh.
 set -euo pipefail
 
 CONF="app/src-tauri/tauri.conf.json"

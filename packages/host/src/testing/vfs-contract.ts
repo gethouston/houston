@@ -1,18 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { type Vfs, VfsExistsError } from "../vfs/vfs";
 
-/**
- * The Vfs CONTRACT, run verbatim against every adapter — the anti-drift
- * mechanism for this port: an adapter that passes here is interchangeable, so
- * local (FsVfs) and cloud (GcsVfs/MemoryVfs) cannot quietly diverge in file
- * semantics.
- *
- * Exported from `@houston/host` (OPEN) and run by the open adapter suite
- * (vfs/contract.test.ts: Memory/Fs). The closed GcsVfs suite that also
- * consumed it was retired with `@houston/host-cloud` (git history); the
- * contract stays exported as the behavioral bar for any out-of-repo adapter.
- * It is never faked green.
- */
 export function runVfsContract(name: string, make: () => Vfs): void {
   describe(`Vfs contract: ${name}`, () => {
     const P = "ws/w1/agent-1";
@@ -31,20 +19,12 @@ export function runVfsContract(name: string, make: () => Vfs): void {
     });
 
     test("keyCase tells the truth about how this backend compares names", async () => {
-      // The collision guards in `turn/files-names.ts` trust this answer to
-      // decide whether a rename would destroy a neighbouring file, so an
-      // adapter that merely REPORTS a fold it does not perform (or hides one
-      // it does) is worse than no answer at all. Runs on either kind of CI
-      // volume: the assertion is the adapter's own claim, checked against it.
       const vfs = make();
       await vfs.writeText(`${P}/workspace/readme.md`, "doc");
       const { fold, normalize } = await vfs.keyCase();
       expect(await vfs.readText(`${P}/workspace/README.md`)).toBe(
         fold === "folded" ? "doc" : null,
       );
-      // Same question for Unicode: macOS stores a name DECOMPOSED and every
-      // browser sends it COMPOSED, so a backend that resolves the two to one
-      // object has to say so or the guards compare bytes that never match.
       const nfd = `${P}/workspace/informe-espan\u0303a.pdf`;
       await vfs.writeText(nfd, "informe");
       expect(await vfs.readText(nfd.normalize("NFC"))).toBe(
@@ -53,8 +33,6 @@ export function runVfsContract(name: string, make: () => Vfs): void {
     });
 
     test("exists answers with the backend's own name resolution", async () => {
-      // The upload dedupe decides a WRITE destination with this, and a write
-      // that lands on an object it did not know about replaces it in silence.
       const vfs = make();
       await vfs.writeText(`${P}/workspace/report.pdf`, "one");
       expect(await vfs.exists(`${P}/workspace/report.pdf`)).toBe(true);
@@ -68,10 +46,6 @@ export function runVfsContract(name: string, make: () => Vfs): void {
     });
 
     test("readText drops a leading BOM; readBytes keeps the file verbatim", async () => {
-      // A files-first doc can be written by any editor or agent, and plenty
-      // emit a UTF-8 BOM. `JSON.parse` rejects one outright, so a BOM'd
-      // routines.json bricked every routine on a pod (HOU-953). Text reads
-      // decode it away; byte reads stay lossless (downloads, binary seeds).
       const vfs = make();
       const bommed = `﻿[{"id":"a"}]`;
       await vfs.writeBytes(
@@ -122,10 +96,6 @@ export function runVfsContract(name: string, make: () => Vfs): void {
     });
 
     test("move refuses a destination holding a DIFFERENT object", async () => {
-      // `rename(2)` and an object-store overwrite both replace the destination
-      // without a word, and the caller's pre-check cannot know the volume's
-      // fold table. This is the door that has to hold, so every adapter shuts
-      // it: the neighbour survives, and the refusal is typed.
       const vfs = make();
       await vfs.writeText(`${P}/workspace/notes.md`, "mine");
       await vfs.writeText(`${P}/workspace/budget.md`, "theirs");
@@ -137,12 +107,6 @@ export function runVfsContract(name: string, make: () => Vfs): void {
     });
 
     test("a directory moved onto a NON-EMPTY directory of another name is refused", async () => {
-      // Dropping a folder on a folder is one drag in the Files tab, and the
-      // backends disagree about what it MEANS: `rename(2)` merges nothing —
-      // it replaces, or fails ENOTEMPTY — while an object store has no
-      // directories to collide at all. What every adapter owes the user is the
-      // same outcome, whatever error it words it with: the call is refused and
-      // NEITHER folder loses a file.
       const vfs = make();
       await vfs.writeText(`${P}/workspace/2025/report.md`, "mine");
       await vfs.writeText(`${P}/workspace/2024/taxes.md`, "theirs");
@@ -154,9 +118,6 @@ export function runVfsContract(name: string, make: () => Vfs): void {
     });
 
     test("a case-only re-spell of one object is a rename, not a collision", async () => {
-      // On a folded backend the destination "exists" — it IS the source. A
-      // guard that read that as a collision would make the file impossible to
-      // re-capitalize, which is a rename users do all the time.
       const vfs = make();
       await vfs.writeText(`${P}/workspace/readme.md`, "doc");
       await vfs.move(`${P}/workspace/readme.md`, `${P}/workspace/README.md`);
@@ -171,7 +132,7 @@ export function runVfsContract(name: string, make: () => Vfs): void {
       await vfs.writeText(`ws/w1/agent-2/keep.txt`, "keep");
 
       await vfs.deleteKey(`${P}/workspace/f.txt`);
-      await vfs.deleteKey(`${P}/workspace/f.txt`); // absent → no-op
+      await vfs.deleteKey(`${P}/workspace/f.txt`);
       expect(await vfs.readText(`${P}/workspace/f.txt`)).toBeNull();
 
       await vfs.writeText(`${P}/data/a.json`, "{}");
@@ -183,8 +144,6 @@ export function runVfsContract(name: string, make: () => Vfs): void {
     test("listDetailed on a plain-file prefix answers empty, never throws", async () => {
       const vfs = make();
       await vfs.writeText(`${P}/workspace/report.txt`, "x");
-      // A file is not a prefix — no keys live UNDER it. The Files tab's delete
-      // path relies on this to tell files from folders.
       expect(await vfs.listDetailed(`${P}/workspace/report.txt`)).toEqual([]);
     });
 
@@ -192,18 +151,11 @@ export function runVfsContract(name: string, make: () => Vfs): void {
       const vfs = make();
       await vfs.writeText(`${P}/workspace/doc.txt`, "v1");
       const first = (await vfs.listDetailed(P))[0];
-      if (first?.createdMs === undefined) return; // backend has no birthtime — allowed
-      // Overwrite: ATOMIC replacement (tmp+rename) is required of adapters — a
-      // plain in-place write let concurrent readers observe a truncated file
-      // (the activity.json torn-read 500s). Replacing the inode is how every
-      // atomic save works (editors included), and a filesystem's birthtime does
-      // not survive it — so overwrite only guarantees a createdMs that is
-      // never NEWER than the write itself, not the original stamp.
+      if (first?.createdMs === undefined) return;
       await vfs.writeText(`${P}/workspace/doc.txt`, "v2 (longer content)");
       const overwritten = (await vfs.listDetailed(P))[0];
       expect(overwritten?.createdMs ?? 0).toBeLessThanOrEqual(Date.now());
       const afterOverwrite = overwritten?.createdMs;
-      // Move is a pure rename: the inode travels, so createdMs must survive.
       await vfs.move(`${P}/workspace/doc.txt`, `${P}/workspace/renamed.txt`);
       const moved = (await vfs.listDetailed(P))[0];
       expect(moved?.createdMs).toBe(afterOverwrite);

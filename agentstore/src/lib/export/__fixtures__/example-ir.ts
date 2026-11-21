@@ -1,10 +1,3 @@
-/**
- * A fully-populated, schema-valid AgentIR 2.0.0 fixture for the export/install
- * tests. Skill bodies are real SKILL.md files (frontmatter + markdown) so the ZIP
- * adapter can be asserted byte-for-byte and the copy-paste block can be checked
- * for verbatim inclusion. Validity is guarded by a test that runs
- * `agentIrSchema.parse` over it.
- */
 import type { AgentIR } from "@houston/agentstore-contract";
 
 export const triageSkillBody = `---

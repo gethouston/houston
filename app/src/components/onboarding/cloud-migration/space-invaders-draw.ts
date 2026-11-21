@@ -1,11 +1,3 @@
-/**
- * Canvas renderer for the {@link SpaceInvaders} shell — every fillText/fillRect
- * of one frame, split out so the component keeps to input wiring and the rAF
- * loop. Pure with respect to the model: it reads {@link GameState}, never
- * mutates it (the swarm's bob is applied at render only — collision stays
- * authoritative on model coords).
- */
-
 import {
   COLS,
   EXPLOSION_TTL,
@@ -18,22 +10,16 @@ import {
   W,
 } from "./space-invaders-defs.ts";
 
-/** Per-spawn-row invader sprites, top to bottom. */
 const INVADER_SPRITES = ["👾", "🛸", "👽", "🤖"];
 
 export interface DrawOptions {
-  /** Resolved ink color (the canvas's CSS `color`) for HUD text and shots. */
   color: string;
-  /** All-time best score, shown top-right. */
   best: number;
-  /** Elapsed play seconds — drives the swarm's render-only bob. */
   elapsed: number;
-  /** Localized game-over copy: headline (with score) + play-again hint. */
   overLine: string;
   playAgainLine: string;
 }
 
-/** Render one frame of `state` onto `canvas` (already sized to DPR). */
 export function drawGame(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
@@ -68,7 +54,6 @@ export function drawGame(
   }
   ctx.font = "10px system-ui, sans-serif";
   for (const bomb of state.bombs) ctx.fillText("⚡", bomb.x, bomb.y + 5);
-  // The rocket glyph natively points up-right 45°; rotate it to point up.
   ctx.save();
   ctx.translate(state.shipX, SHIP_Y);
   ctx.rotate(-Math.PI / 4);

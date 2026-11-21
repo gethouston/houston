@@ -12,12 +12,6 @@ import { ONBOARDING_INDUSTRY_SOMETHING_ELSE } from "./onboarding-industry.ts";
 import { ONBOARDING_ROLE_SOMETHING_ELSE } from "./onboarding-role.ts";
 import type { OnboardingSurveyPreference } from "./onboarding-survey-record.ts";
 
-/**
- * The person's industry as the hire flow's context question takes it: a
- * catalog context to preselect, or the words they gave for an industry the
- * catalog does not list. Both null means there is nothing to preselect (the
- * question is unanswered, or was declined).
- */
 export interface SurveyIndustryContext {
   contextId: AgentContextId | null;
   customLabel: string | null;
@@ -39,10 +33,6 @@ export function surveyIndustryContext(
   return NO_INDUSTRY;
 }
 
-/** The person's role as the hire flow's role question takes it, the same way:
- *  a catalog role, or their own words. A leadership position is neither: it
- *  describes the person, never a job to hire for, so it preselects nothing
- *  (the industry still does). */
 export interface SurveyRoleContext {
   roleId: AgentRoleId | null;
   customLabel: string | null;
@@ -64,9 +54,6 @@ export function surveyRoleContext(
   return NO_SURVEY_ROLE;
 }
 
-/** The leadership position the person answered with, which the survey's own
- *  role question preselects when the answer is changed; null for anything
- *  else. */
 export function surveyLeadershipRole(
   record: Pick<OnboardingSurveyPreference, "role"> | null,
 ): LeadershipRoleId | null {

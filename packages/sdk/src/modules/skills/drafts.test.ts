@@ -11,13 +11,6 @@ import {
   unfinishedDraftRows,
 } from "../../index";
 
-/**
- * Building a skill in chat starts a conversation every mission board filters
- * out, so until the agent writes the SKILL.md nothing but the Skills surface
- * lists it. The rules for picking one back up, listing them and throwing one
- * away are the SDK's, so iOS and the AI Manager answer them the same way.
- */
-
 const setup = (over: Record<string, unknown> = {}) => ({
   id: "a1",
   agent: SKILL_SETUP_AGENT_MODE,
@@ -84,9 +77,6 @@ describe("resolveCreateChatStart", () => {
   });
 
   it("waits while the data is a cached placeholder", () => {
-    // A placeholder row carries no `skill_slug` stamp, so a finished skill's
-    // chat reads as unfinished; resuming it lands the user in a conversation
-    // that disappears the moment the real read answers.
     expect(
       resolveCreateChatStart({
         ...listing,
@@ -172,8 +162,6 @@ describe("resolveDraftResume", () => {
   });
 
   it("reports a chat the settled read no longer lists", () => {
-    // The row was drawn off a cached placeholder, or the skill claimed the
-    // chat between the tap and the read: there is nothing left to resume.
     expect(
       resolveDraftResume({
         settled: true,
@@ -198,8 +186,6 @@ describe("resolveDraftResume", () => {
 
 describe("unfinishedDraftRows", () => {
   it("draws nothing until the read is settled", () => {
-    // Cross-agent placeholder rows carry no `skill_slug`, so every shipped
-    // skill's chat would paint as an unfinished draft on a cold open.
     expect(
       unfinishedDraftRows({
         settled: false,
@@ -257,8 +243,6 @@ describe("discardDraftThenRestart", () => {
   });
 
   it("keeps the current chat when the archive fails", async () => {
-    // A replacement beside a chat that is still there leaves TWO unfinished
-    // chats, and the user threw one away.
     let started = false;
     await discardDraftThenRestart({
       archive: async () => false,

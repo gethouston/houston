@@ -17,17 +17,6 @@ import { type ClaudeQuery, ClaudeSession } from "./session";
 import type { SessionsStore } from "./sessions-store";
 import { makeCanUseTool } from "./tool-policy";
 
-/**
- * HOU-776: the mid-turn Mode-pill switch (Claude Code's shift+tab) on the
- * Claude Agent SDK backend. `POST /conversations/:id/mode` mutates the running
- * turn's `TurnModeRef`; on this backend the flip lands through TWO live gates:
- * `makeCanUseTool`'s plan-deny for the mutating built-ins (Edit/Write/Bash),
- * and the bridged pi tools' own gates (ask_user's auto refusal). Both read the
- * ref via `currentTurnMode()`, so they depend on exec-turn's AsyncLocalStorage
- * context reaching callbacks the SDK dispatches during `session.prompt()` —
- * the exact chain these tests pin down.
- */
-
 const CTX: Parameters<CanUseTool>[2] = {
   signal: new AbortController().signal,
   toolUseID: "t",
@@ -56,7 +45,6 @@ test("a live flip to plan denies Edit/Write/Bash at permission time, and flippin
     const target = { file_path: join(ws, "a.txt") };
     expect((await decide(can, "Write", target)).behavior).toBe("allow");
 
-    // The user switches the Mode pill to Plan while the turn runs.
     ref.current = "plan";
     for (const tool of ["Edit", "Write"]) {
       const r = await decide(can, tool, target);
@@ -66,10 +54,8 @@ test("a live flip to plan denies Edit/Write/Bash at permission time, and flippin
     expect((await decide(can, "Bash", { command: "ls" })).behavior).toBe(
       "deny",
     );
-    // Read-only built-ins keep working in plan.
     expect((await decide(can, "Read", target)).behavior).toBe("allow");
 
-    // Flipping back to execute re-allows immediately — same turn.
     ref.current = "execute";
     expect((await decide(can, "Write", target)).behavior).toBe("allow");
   });
@@ -93,12 +79,6 @@ function fakeStore(): SessionsStore {
 }
 
 test("a mid-turn flip reaches canUseTool dispatched off a Claude-session turn", async () => {
-  // Model the SDK's real dispatch (see custom-tools.test): `query()` spawns its
-  // subprocess-stream reader synchronously, and that reader later invokes
-  // `canUseTool` across an async boundary. The reader inherits the ALS context
-  // active when `query()` was called — the turn-mode ref exec-turn establishes
-  // around `session.prompt()`. Two Write decisions are requested; the ref flips
-  // to plan between them, exactly what `setLiveTurnMode` does mid-turn.
   const ws = workspace();
   const can = makeCanUseTool(ws);
   const ref: TurnModeRef = { current: "execute" };
@@ -108,7 +88,7 @@ test("a mid-turn flip reaches canUseTool dispatched off a Claude-session turn", 
     const dispatched = (async () => {
       await Promise.resolve();
       decisions.push(await decide(can, "Write", { file_path: join(ws, "a") }));
-      ref.current = "plan"; // the Mode pill switched while the turn runs
+      ref.current = "plan";
       decisions.push(await decide(can, "Write", { file_path: join(ws, "b") }));
     })();
     return {
@@ -136,8 +116,6 @@ test("a mid-turn flip reaches canUseTool dispatched off a Claude-session turn", 
 });
 
 test("a mid-turn flip to auto makes the bridged ask_user refuse", async () => {
-  // The execute-built session exposes ask_user via the in-process MCP bridge;
-  // the flip must reach the pi tool's own live gate (assertNotAutoMode).
   let tools: SdkMcpToolDefinition[] = [];
   buildHoustonMcpServer({
     createSdkMcpServer: ((opts: { tools: SdkMcpToolDefinition[] }) => {

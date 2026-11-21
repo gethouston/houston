@@ -11,7 +11,6 @@ const mission = (activityId: string) => ({
   sessionKey: `activity-${activityId}`,
 });
 
-/** A handoff with a clock the test drives. */
 function harness(start = 1_000) {
   let clock = start;
   const handoff = new CreatedMissionHandoff({ now: () => clock });
@@ -26,8 +25,6 @@ describe("CreatedMissionHandoff", () => {
   });
 
   it("serves every kept-alive board, not just the first one to look", () => {
-    // The one-shot version of this handed the mission to whichever board
-    // mounted first — a HIDDEN one — and left the board on the glass blank.
     const { handoff } = harness();
     handoff.publish(mission("m1"));
     strictEqual(handoff.read()?.activityId, "m1");
@@ -45,7 +42,6 @@ describe("CreatedMissionHandoff", () => {
     handoff.publish(mission("orphan"));
     advance(CREATED_MISSION_HANDOFF_TTL_MS);
     strictEqual(handoff.read(), null);
-    // Dropped, not merely hidden: winding the clock back cannot resurface it.
     advance(-CREATED_MISSION_HANDOFF_TTL_MS);
     strictEqual(handoff.read(), null);
   });
@@ -90,7 +86,6 @@ describe("CreatedMissionHandoff", () => {
     unsubscribe();
     handoff.publish(mission("m1"));
     strictEqual(calls, 0);
-    // Nothing consumed it, so the mission is still there for the next board.
     strictEqual(handoff.read()?.activityId, "m1");
   });
 

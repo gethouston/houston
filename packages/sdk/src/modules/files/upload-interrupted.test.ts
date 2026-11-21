@@ -9,15 +9,10 @@ import {
 } from "./index";
 
 const BASE = "http://127.0.0.1:4317";
-// 8 base64 characters: 6 decoded bytes.
 const FRAMES = [
   { name: "a.txt", contentBase64: "YWJjZGVm", relPath: undefined },
 ];
 
-/**
- * An inert SDK whose `fetch` runs `outcome` and whose monotonic clock moves
- * 60 s while the request is in flight: the span a proxy `readTimeout` cuts.
- */
 function makeSdk(outcome: () => Promise<Response>) {
   let t = 1_000;
   const ports: SdkPorts = {
@@ -41,9 +36,6 @@ function makeSdk(outcome: () => Promise<Response>) {
 
 const dropped = () => Promise.reject(new TypeError("Failed to fetch"));
 
-// HOUSTON-APP-5CG: an upload cut mid-body read as "you're offline" while the
-// rest of the app answered fine. The SDK names it, with the two numbers that
-// tell a proxy timeout from a dropped connection.
 describe("files module — an upload the transport cut", () => {
   it("types a composer attachment cut mid-flight", async () => {
     const err = await makeSdk(dropped)
@@ -57,7 +49,6 @@ describe("files module — an upload the transport cut", () => {
     expect(cut.elapsedMs).toBe(60_000);
     expect(cut.fileBytes).toBe(6);
     expect(cut.message).toContain("Failed to fetch");
-    // Never chained to the TypeError: offline classifiers unwrap one `cause`.
     expect(cut.cause).toBeUndefined();
   });
 

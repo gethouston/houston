@@ -1,13 +1,3 @@
-/**
- * The agent-scoped migration routes (`/agents/:id/migration/export|import`),
- * the pair "Copy an agent" moves chats through. Modeled over the fake's own
- * state: the board file rides as `.houston/activity/activity.json` and each
- * conversation's history as `.houston/runtime/conversations/<key>.json`, the
- * real host's layout, so the app's path planning is exercised as is. The
- * transcript body here is the fake's history shape, not the runtime's, since
- * only this fake reads it back.
- */
-
 import { missionConversationKey } from "@houston/domain/conversation-keys";
 import type { ChatMessage } from "@houston/runtime-client";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
@@ -55,7 +45,6 @@ function exportZip(agentId: string, paths: string[]): Response {
   });
 }
 
-/** Skip-existing per entry, like the real importer; `?overwrite=1` replaces. */
 async function importZip(agentId: string, req: Request): Promise<Response> {
   const overwrite = new URL(req.url).searchParams.get("overwrite") === "1";
   const entries = unzipSync(new Uint8Array(await req.arrayBuffer()));
@@ -90,7 +79,6 @@ async function importZip(agentId: string, req: Request): Promise<Response> {
   return json({ written, skipped, rejected: [], sessionsRebuilt: true });
 }
 
-/** Dispatch `/agents/:id/migration/<action>`. */
 export function handleMigrationRoutes(
   method: string,
   agentId: string,

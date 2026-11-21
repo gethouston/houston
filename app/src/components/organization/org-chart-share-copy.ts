@@ -1,7 +1,3 @@
-/**
- * A clipboard the browser refused: a write it did not allow (no focus, no
- * permission). The person's setup, not a bug: nothing to report.
- */
 export function isExpectedClipboardRefusal(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -11,14 +7,6 @@ export function isExpectedClipboardRefusal(error: unknown): boolean {
   );
 }
 
-/**
- * The dialog's Copy image over a clipboard `write`, DOM-free so it is
- * testable: `true` once the PNG is on the clipboard. A refused write reports
- * unless the drawing failed (it reported itself) or the browser refused it
- * (the person's setup, not a bug). A write that throws before it starts (a
- * `ClipboardItem` the browser will not build) comes back as a rejection, so
- * the caller's `.catch` sees it rather than the click handler.
- */
 export function copyImageWith(
   write: (png: Promise<File>) => Promise<void>,
   report: (command: string, error: unknown) => void,

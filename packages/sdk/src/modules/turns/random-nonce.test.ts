@@ -1,13 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { randomNonce } from "./random-nonce";
 
-/**
- * The nonce util degrades through the capability chain (randomUUID →
- * getRandomValues → Math.random) instead of throwing on a runtime that lacks
- * `crypto.randomUUID` — the SDK ports doc bans reaching for that global raw, and
- * some embedded engines ship neither crypto primitive.
- */
-
 afterEach(() => vi.restoreAllMocks());
 
 test("prefers crypto.randomUUID when present", () => {
@@ -26,12 +19,11 @@ test("falls back to getRandomValues hex when randomUUID is missing", () => {
     return arr;
   });
   const n = randomNonce();
-  expect(n).toBe("ab".repeat(16)); // 16 bytes → 32 hex chars, no dashes
+  expect(n).toBe("ab".repeat(16));
   expect(n).not.toContain("-");
 });
 
 test("last-resort Math.random hex when no crypto primitive exists", () => {
-  // Simulate a runtime where neither crypto primitive is callable.
   vi.spyOn(crypto, "randomUUID").mockImplementation(() => {
     throw new Error("no randomUUID");
   });

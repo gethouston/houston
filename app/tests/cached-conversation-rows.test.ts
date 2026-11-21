@@ -45,8 +45,6 @@ describe("unionConversationRows", () => {
 
 describe("allCachedActivityRows", () => {
   it("unions both caches, so an empty served read hides nothing", () => {
-    // The per-agent query can be cached EMPTY from a sweep that ran while the
-    // agent was idle; the aggregate still names the missions it owns.
     const qc = new QueryClient();
     qc.setQueryData(queryKeys.activity("/w/a"), []);
     qc.setQueryData(
@@ -138,8 +136,6 @@ describe("allCachedConversationRows", () => {
   const PATHS = ["/w/a", "/w/b"];
 
   it("unions the served aggregate with the newest roster variant", () => {
-    // The served key is the CURRENT roster's; a variant swept under an older
-    // roster still names missions the current fan-out has not returned yet.
     const qc = new QueryClient();
     qc.setQueryData(
       queryKeys.allConversations(PATHS),

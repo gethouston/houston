@@ -16,18 +16,6 @@ export interface TeamCardActions {
   secondary?: { label: string; onClick: () => void };
 }
 
-/**
- * What the action row offers on each screen.
- *
- * On a question, a catalog pick answers it outright, so Continue only appears
- * while a PICKED answer is held: the industry the survey preselected, or an
- * answer the person came Back to. A typed answer carries its own Continue in
- * its row, and a second one down here would be two buttons for one thing.
- *
- * Hire never waits on the host (the roster creates behind the person). Done
- * is the one press that can: it waits for hires still on their way, and is
- * held while one that failed still needs a Retry or letting go.
- */
 export function useTeamCardActions({
   view,
   facts,

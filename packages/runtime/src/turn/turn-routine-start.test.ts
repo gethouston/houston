@@ -23,13 +23,6 @@ import {
 } from "./turn-routine-start";
 import type { TurnRequest } from "./types";
 
-/**
- * A pooled routine run is visible while it runs: its running row reaches the
- * store and the run history doc before the turn starts. A run-now of a routine
- * the store lacks (dispatched off a stale routines mirror) heals that mirror
- * before it fails.
- */
-
 const WS = "workspaces/Personal/Bob";
 const ROUTINES = docKey(WS, "routines");
 const RUNS = docKey(WS, "routine_runs");
@@ -91,7 +84,6 @@ const running = (id: string): RoutineRun => ({
   started_at: NOW,
 });
 
-/** Hydrate `hydrated` at generation 1; the store may have moved on since. */
 async function sandbox(hydrated: RoutineRun[], stored = hydrated) {
   const put = async (key: string, body: string) => {
     await mkdir(dirname(join(root, key)), { recursive: true });
@@ -179,7 +171,6 @@ test("a pooled run's running row reaches the store and its doc before the turn r
   expect(phase.run).toMatchObject({ id: "t1", status: "running" });
   expect(stored()).toEqual([phase.run]);
   expect(docs.puts).toEqual([[phase.run]]);
-  // The final sync-back builds on the generation it uploaded.
   expect(filesystem.manifest.get(RUNS)?.generation).toBe("2");
 });
 
@@ -244,7 +235,6 @@ test("the same turn re-dispatched after its run settled never runs twice", async
   expect(stored()).toEqual([settled]);
 });
 
-/** The routine is gone from the store and the hydrated tree alike. */
 async function sandboxWithoutRoutine() {
   const filesystem = await sandbox([]);
   objects.set(ROUTINES, { body: "[]", generation: 2 });
@@ -256,7 +246,6 @@ function poolDeps(
   options: { failDocs?: boolean; hangPuts?: boolean; mirror?: unknown[] } = {},
 ) {
   const pool = fakePoolStore("ws/w1/bob");
-  // The gateway's asleep mirror still lists the deleted routine.
   pool.docs.set("routines", { doc: options.mirror ?? [routine], revision: 1 });
   const fetchImpl = (async (input: unknown, init?: RequestInit) => {
     const isDoc = String(input).includes("/v1/pod/docs/");
@@ -299,9 +288,7 @@ test("a run-now of a routine the store lacks heals the routines doc before faili
   expect(puts).toHaveLength(1);
   expect(puts[0]?.claim).toBe("routine-r1");
   expect(JSON.stringify(puts[0]?.doc)).not.toContain('"r1"');
-  // No run row was written for a routine that does not exist.
   expect(stored()).toEqual([]);
-  // The gateway fans the healed family out from the error frame.
   expect((await errorFrame(error)).data).toMatchObject({
     code: "no_routine",
     changed: ["RoutinesChanged"],

@@ -3,10 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-// HOU-721: the red error toast body is `errorToast.genericDescription` (or a
-// caller's authored copy), never the raw engine/transport message. If this key
-// goes missing in any locale, i18next would render the bare key to every user
-// whose action fails — guard its presence and shape here.
 const LOCALES = ["en", "es", "pt"] as const;
 
 describe("errorToast locale shape", () => {
@@ -23,14 +19,10 @@ describe("errorToast locale shape", () => {
       const text = value as string;
       ok(text.length > 0, "must not be empty");
       ok(!text.includes("—"), "no em dashes in user-facing copy");
-      // The whole point: the body must be authored copy, not a raw diagnostic.
       ok(!/engine error|fetch|http|\{/i.test(text));
     });
   }
 
-  // HOU-1085: the connectivity toast body has the same failure mode — a
-  // missing key would render `shell:errorToast.offlineDescription` verbatim to
-  // every offline user.
   for (const locale of LOCALES) {
     it(`${locale} has a usable errorToast offline pair`, () => {
       const shell = JSON.parse(

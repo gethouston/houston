@@ -53,11 +53,6 @@ export async function bridgeNeedsWake(
       return "reconnecting" as const;
     return undefined;
   } catch (error) {
-    // A wake whose lifetime was invalidated mid-check (a space or agent switch
-    // aborted the status GET) was superseded, not failed: nothing to report
-    // and nothing to wake (HOUSTON-APP-5HX). The next scope wakes on its own.
-    // Only OUR signal counts: a foreign AbortError (WebKit's "Fetch is
-    // aborted" on a dropped connection) is a real failure and stays loud.
     if (signal.aborted) return undefined;
     ports.report(error);
     if (isAuthorizationFailure(error)) return "authorization_required" as const;

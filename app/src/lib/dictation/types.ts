@@ -1,10 +1,3 @@
-/**
- * Wire shapes the Rust shell's three dictation commands speak
- * (`app/src-tauri/src/dictation/`), plus small pure helpers used by the
- * composer wiring. The rejection shapes live in `sidecar-failure.ts`, which
- * is import-free so it loads under the bare Node test runner.
- */
-
 import { normalizeLocale } from "../locale";
 
 export {
@@ -14,43 +7,29 @@ export {
   isDictationSidecarFailure,
 } from "./sidecar-failure";
 
-/** Mirrors `DictationModelStatus` in `app/src-tauri/src/dictation/types.rs`
- *  (`dictation_model_status`'s return shape). */
 export interface DictationModelStatus {
   ready: boolean;
   modelId: string;
   sizeBytes: number;
-  /** False when this machine's CPU cannot run the bundled whisper-cli
-   *  (pre-AVX2 x86-64 on Windows/Linux): explain, never offer the download. */
   cpuSupported: boolean;
 }
 
-/** Exact reject string `transcribe_audio` returns on a CPU that cannot run
- *  the sidecar (mirrors `dictation/whisper.rs`). An expected machine limit,
- *  not a bug: mapped to translated copy, never a Sentry report. */
 export const DICTATION_UNSUPPORTED_CPU = "dictation-unsupported-cpu";
 
-/** A single progress tick on the `dictation-model-progress` event, mirroring
- *  `ModelProgress` in the Rust shell (`download_dictation_model`). */
 export interface DictationModelProgress {
   received: number;
   total: number;
   phase: "downloading" | "verifying" | "done" | "error";
 }
 
-/** The `x-dictation-lang` header value `transcribe_audio` accepts. */
 export type DictationLangHint = "en" | "es" | "pt" | "auto";
 
-/** Maps the app's resolved UI language to whisper's language hint;
- *  unsupported/unresolved locales fall through to "auto" (whisper
- *  autodetects rather than mis-transcribing under a wrong forced language). */
 export function resolveDictationLangHint(
   resolvedLanguage: string | undefined,
 ): DictationLangHint {
   return normalizeLocale(resolvedLanguage) ?? "auto";
 }
 
-/** Bytes -> whole MB, floored at 1 so a tiny/zero size never reads as "0 MB". */
 export function dictationSizeMb(sizeBytes: number): number {
   return Math.max(1, Math.round(sizeBytes / 1_000_000));
 }

@@ -10,10 +10,6 @@ import es from "../src/locales/es/plan.json" with { type: "json" };
 import pt from "../src/locales/pt/plan.json" with { type: "json" };
 import { enterNativeApp } from "./support/native-surface.ts";
 
-// The routine screen and runs dialog notice for trigger events the Free plan
-// refused: the SDK picks the reason and the actions, the view says it in the
-// person's language with one button per action.
-
 const resources = { en, es, pt };
 type Language = keyof typeof resources;
 let render: (
@@ -212,8 +208,6 @@ describe("RoutinePlanSkipNoticeView", () => {
   }
 });
 
-// Inside the iOS/Android app Houston never sells: Upgrade is dropped and the
-// copy that pointed to Plus says the plan is managed on the web instead.
 describe("RoutinePlanSkipNoticeView inside a store app", () => {
   let leave: (() => void) | null = null;
   afterEach(() => {

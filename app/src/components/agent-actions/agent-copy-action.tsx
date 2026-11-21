@@ -11,13 +11,6 @@ import { useEmployeeNameIssueCopy } from "../employee-card/use-employee-name";
 import { TeamGlyph } from "../shell/team-glyph";
 import { suggestCopyName } from "./copy-agent-model";
 
-/**
- * "Copy agent": name the duplicate and pick the team it joins. The current
- * team is offered too — copying next to the original is legal, the name is
- * what must differ (agent names are unique per WORKSPACE, not per team), so
- * the field opens pre-filled with the first free "<name> copy" and validates
- * live against the loaded agent list.
- */
 export function AgentCopyDialog({
   agent,
   open,
@@ -33,7 +26,6 @@ export function AgentCopyDialog({
   teams: readonly TeamView[];
   currentTeamId: string | null;
   existingNames: readonly string[];
-  /** Resolves `true` when the copy exists — the dialog closes on it. */
   onCopy: (name: string, team: TeamView | null) => Promise<boolean>;
 }) {
   const { t } = useTranslation(["agents", "teams", "common"]);
@@ -43,8 +35,6 @@ export function AgentCopyDialog({
   const [name, setName] = useState("");
   const [teamId, setTeamId] = useState<string | null>(currentTeamId);
 
-  // Re-seed per opening: the free name and the home team both move under the
-  // dialog while it is closed.
   // biome-ignore lint/correctness/useExhaustiveDependencies: seed only per opening
   useEffect(() => {
     if (!open) return;
@@ -73,9 +63,6 @@ export function AgentCopyDialog({
         disabled: name.trim().length === 0 || issue !== null,
         onClick: async () => {
           const team = teams.find((entry) => entry.id === teamId) ?? null;
-          // A refused copy (a name that was taken while the dialog was open)
-          // keeps the form on screen with the typed name — the caller has
-          // already said why.
           if (!(await onCopy(name, team))) return stayOpen();
         },
       }}

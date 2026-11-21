@@ -1,7 +1,6 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { APIRequestContext, APIResponse } from "@playwright/test";
 
-/** One seeded mission per origin, and the tag each one wears (PRODUCT-1928). */
 export const ORIGIN_MISSIONS = [
   {
     id: "origin-houston",
@@ -16,7 +15,6 @@ export const ORIGIN_MISSIONS = [
   },
 ] as const;
 
-/** An archived mission Houston started: the archive wears the same tag. */
 export const ARCHIVED_HOUSTON_MISSION = {
   id: "origin-houston-archived",
   title: "Last month's recap",
@@ -25,8 +23,6 @@ export const ARCHIVED_HOUSTON_MISSION = {
 
 const ACTIVITY_FILE = ".houston/activity/activity.json";
 
-/** A seeding write the fake host refused fails the spec here, not later as a
- *  missing tag. */
 async function expectOk(response: Promise<APIResponse>): Promise<APIResponse> {
   const res = await response;
   if (!res.ok())
@@ -36,14 +32,6 @@ async function expectOk(response: Promise<APIResponse>): Promise<APIResponse> {
   return res;
 }
 
-/**
- * Seed the seed agent's board with one mission per origin, all waiting on the
- * user, plus an archived Houston one. `started_by` rides the activities POST
- * (the fake host accepts it for seeding; the real host stamps it); the
- * employee one is a row older than `started_by`, known only by its parent
- * chat; `routine_id` is only ever written by the scheduler, so that row goes
- * straight into the board file the way a routine run lands.
- */
 export async function seedOriginMissions(
   request: APIRequestContext,
 ): Promise<void> {

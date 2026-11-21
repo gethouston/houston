@@ -30,18 +30,12 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const agents = useAgentStore((s) => s.agents);
   const [createWsOpen, setCreateWsOpen] = useState(false);
 
-  // Store-owned so every other door into the create sheet (the phone's AI
-  // Employees list, a team's empty board) opens the one the shell mounts.
   const openCreateFlow = useUIStore((s) => s.openCreateFlow);
   const canCreateAgents = useCanAddAgentsHere();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
 
-  // Below md the rail is not rendered at all: the phone navigates through the
-  // floating nav bar and its More menu (`mobile-nav-bar.tsx`). Selecting
-  // anything that navigates still closes that menu, so the content is
-  // immediately visible.
   const isMobile = useIsMobile();
   const windowControlsInset = useWindowControlsInset();
   const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
@@ -91,11 +85,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
       : undefined,
   };
 
-  /* Gutter around the floating "screen" (Arc canvas). On the desktop the small
-     padding lets the window background show as a frame on all four sides; the
-     screen itself is workspace-shell.tsx's rounded panel. The PHONE has no
-     frame at all — one flat background edge to edge — so the padding is a
-     desktop layer. */
   const gutter = (
     <div
       data-tauri-drag-region={osIsTauri() && isMac ? true : undefined}
@@ -112,8 +101,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
         onCreateWorkspaceOpenChange={setCreateWsOpen}
       />
       <div className="flex h-full min-w-0 flex-1">
-        {/* Phone: no rail at all, the content column takes the full width.
-            Desktop: the fixed rail. */}
         {isMobile ? (
           gutter
         ) : (

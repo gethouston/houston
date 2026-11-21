@@ -12,7 +12,6 @@ function actingAs(sub: string): string {
   return `header.${Buffer.from(JSON.stringify({ sub })).toString("base64url")}.sig`;
 }
 
-/** A heal that records who asked and resolves when the test says so. */
 function recorder(result = true) {
   const seen: (string | undefined)[] = [];
   const heal: CredentialHeal = async (args) => {
@@ -23,9 +22,6 @@ function recorder(result = true) {
 }
 
 test("a member's heal is not coalesced into another member's in-flight attempt", async () => {
-  // Both are the same (workspace, provider); only the acting identity differs.
-  // Sharing the slot would answer member B with A's result — and, worse, capture
-  // A's live credential onto B's row (HOU-976).
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
@@ -72,8 +68,6 @@ test("the SAME member's concurrent misses still coalesce to one attempt", async 
 
 test("one member's cooldown never mutes another member's heal", async () => {
   const { seen, heal } = recorder();
-  // A real epoch, not 0: the cooldown compares `now - (last ?? 0)`, so a clock
-  // that starts at 0 reads a never-attempted key as one attempted this instant.
   let now = 1_700_000_000_000;
   const healer = new CredentialServeHealer(heal, () => now);
   const base = {
@@ -84,14 +78,12 @@ test("one member's cooldown never mutes another member's heal", async () => {
 
   await healer.attempt({ ...base, actingAs: actingAs("member-a") });
   now += 1_000;
-  // Within A's cooldown window: A is refused, B is not.
   expect(
     await healer.attempt({ ...base, actingAs: actingAs("member-a") }),
   ).toBe(false);
   expect(
     await healer.attempt({ ...base, actingAs: actingAs("member-b") }),
   ).toBe(true);
-  // …and A heals again once ITS own window has passed.
   now += HEAL_COOLDOWN_MS;
   expect(
     await healer.attempt({ ...base, actingAs: actingAs("member-a") }),
@@ -115,14 +107,10 @@ test("a heal is refused while the provider's revocation tombstone is active (HOU
     provider: "anthropic",
   };
 
-  // The serve miss exists BECAUSE the provider revoked the credential; healing
-  // would re-upload the pod's copy of the same dead family.
   revocations.mark({ workspaceId: "ws", provider: "anthropic", scope: "team" });
   expect(await healer.attempt(args)).toBe(false);
   expect(seen).toEqual([]);
 
-  // A fresh user-driven connect clears the tombstone; healing resumes — and
-  // the refusal above must not have spent the cooldown.
   revocations.clear({ workspaceId: "ws", provider: "anthropic" });
   now += 1_000;
   expect(await healer.attempt(args)).toBe(true);
@@ -131,8 +119,6 @@ test("a heal is refused while the provider's revocation tombstone is active (HOU
 
 test("no acting identity keeps the single shared slot (desktop, self-host)", async () => {
   const { seen, heal } = recorder();
-  // A real epoch, not 0: the cooldown compares `now - (last ?? 0)`, so a clock
-  // that starts at 0 reads a never-attempted key as one attempted this instant.
   let now = 1_700_000_000_000;
   const healer = new CredentialServeHealer(heal, () => now);
   const args = {
@@ -149,10 +135,6 @@ test("no acting identity keeps the single shared slot (desktop, self-host)", asy
 });
 
 test("a launcher refusal mid-shutdown rethrows its closed shape without a Sentry error (PRODUCT-1672)", async () => {
-  // ensureAwake throws LauncherClosedError once stop() latched the launcher.
-  // That is the drain, not a fault: the route must answer the waking shape,
-  // and nothing may reach console.error (every console.error is a Sentry
-  // event on a managed pod).
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
   const healer = new CredentialServeHealer(async () => {
     throw new LauncherClosedError();
@@ -165,11 +147,6 @@ test("a launcher refusal mid-shutdown rethrows its closed shape without a Sentry
 });
 
 test("a heal refused by the rename latch is the rename, not a fault, and spends no cooldown (PRODUCT-1804)", async () => {
-  // The runtime was slept for a rename and its serve sync misses every
-  // provider with the OLD id; ensureAwake refuses each with the latch. That
-  // is expected traffic: the route answers the waking shape, nothing reaches
-  // console.error, and the respawned runtime (new id, same workspace +
-  // provider key) heals on its very next miss instead of waiting 5 minutes.
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
   let now = 1_700_000_000_000;
   let held = true;
@@ -200,8 +177,6 @@ test("a heal refused by the rename latch is the rename, not a fault, and spends 
 });
 
 test("a heal that dies once the host is draining is the drain, not a fault", async () => {
-  // The runtime was killed under the export fetch: undici's bare "fetch
-  // failed". With the host draining that is the same shutdown.
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
   let draining = false;
   const healer = new CredentialServeHealer(
@@ -235,8 +210,6 @@ test("a draining host refuses the heal before it starts and spends no cooldown",
     LauncherClosedError,
   );
   expect(seen).toEqual([]);
-  // The refusal must not have burned the cooldown: a host that stops draining
-  // (tests, a cancelled shutdown) heals on the very next miss.
   draining = false;
   now += 1_000;
   expect(await healer.attempt(args)).toBe(true);
@@ -265,8 +238,6 @@ test("a heal that fails on a live host stays a loud error and names the cause", 
 });
 
 test("a runtime unreachable for the whole sweep reports one Sentry error per incident (PRODUCT-1687)", async () => {
-  // The runtime's sync heals every provider through the same socket; a
-  // stalled runtime failed 40 heals at once and each was a Sentry error.
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
   const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
   let now = 1_700_000_000_000;
@@ -293,17 +264,13 @@ test("a runtime unreachable for the whole sweep reports one Sentry error per inc
   expect(warns).toHaveBeenCalledTimes(2);
   expect(warns.mock.calls[0]?.[0]).toContain("same incident");
 
-  // Still failing 4 minutes on: the same incident, still one error. The
-  // cooldown is per provider, so a fourth provider heals (and fails) now.
   now += 4 * 60_000;
   await healer.attempt({ ...base, provider: "groq" });
   expect(errors).toHaveBeenCalledTimes(1);
 
-  // A different runtime is a different incident.
   await healer.attempt({ ...base, agentId: "ws/other", provider: "cerebras" });
   expect(errors).toHaveBeenCalledTimes(2);
 
-  // Quiet for longer than the gap, then failing again: a new incident.
   now += 6 * 60_000;
   await healer.attempt({ ...base, provider: "xai" });
   expect(errors).toHaveBeenCalledTimes(3);

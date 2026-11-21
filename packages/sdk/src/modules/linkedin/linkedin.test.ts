@@ -234,7 +234,6 @@ describe("postImage", () => {
     await expect(
       sdk.linkedin.postImage({ image: png(), text }),
     ).resolves.toEqual({ kind: "posted", ...POSTED });
-    // Sent as written: the gateway does the escaping.
     expect((calls[0].body as FormData).get("text")).toBe(text);
   });
 
@@ -286,7 +285,6 @@ describe("postImage", () => {
     ).resolves.toEqual({ kind: "refused", code: "offline" });
   });
 
-  // The gateway may have taken the post before the connection broke.
   it.each([
     "The network connection was lost.",
     "Load failed",
@@ -332,7 +330,6 @@ describe("postImage", () => {
       () => json({}, 201),
       () => json({ postUrl: "x" }, 201),
       () => new Response("", { status: 201 }),
-      // The body stream dies after the 201: the post is still up.
       () =>
         new Response(
           new ReadableStream({
@@ -361,7 +358,6 @@ describe("postImage", () => {
         clearTimeout: (id) => clearTimeout(id),
       };
       const { sdk } = makeSdk(async () => {
-        // The headers come a moment before the deadline, the body never.
         await new Promise((r) => setTimeout(r, LINKEDIN_POST_DEADLINE_MS - 1));
         return new Response(new ReadableStream({ start() {} }), {
           status: 201,
@@ -376,7 +372,6 @@ describe("postImage", () => {
         postUrn: null,
         postUrl: null,
       });
-      // Only the stalled body was cut, once.
       expect(aborts).toHaveBeenCalledTimes(1);
       aborts.mockRestore();
     });

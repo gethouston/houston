@@ -5,12 +5,6 @@ import { useDeleteInvite } from "../../hooks/queries";
 import { memberLabel } from "./org-roster";
 import { initialsFor } from "./people-tab-model";
 
-/**
- * Pending invitations on the People tab: people invited by email who haven't
- * signed in yet (the invite is consumed on their first sign-in). Owners can
- * revoke; admins see the list read-only. A revoke is optimistic: the row leaves
- * on the click, and comes back with a toast if the host refuses.
- */
 export function PendingInvites({
   invites,
   members,

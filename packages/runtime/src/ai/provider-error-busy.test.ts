@@ -1,11 +1,6 @@
 import { expect, test } from "vitest";
 import { classifyProviderError } from "./provider-error";
 
-/**
- * Status-less failures pi retries. One that still reaches the classifier
- * means pi's retries ran out on a server-side outage: the wait-and-retry card,
- * never the report-bug `unknown`.
- */
 test.each([
   ["deepseek", '{"error":{"code":"server_busy","message":"Server busy"}}'],
   ["deepseek", "The servers are currently busy, please try again later."],

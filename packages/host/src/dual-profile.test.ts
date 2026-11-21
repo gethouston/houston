@@ -18,32 +18,6 @@ import { MemoryWorkspaceStore } from "./store/memory";
 import { MemoryTurnBus } from "./turn/bus";
 import { MemoryVfs } from "./vfs";
 
-/**
- * THE DUAL-PROFILE PARITY GATE (the automated half of the P6 parity net).
- *
- * The convergence's whole promise is "one host, two adapter profiles, zero
- * drift" — the SAME route handlers + domain layer compiled into both the local
- * (desktop) and cloud deployments, differing ONLY in which adapters main()
- * wires (store, vfs, paths, identity, capabilities). The per-adapter contract
- * suites (store/vfs/launcher/channel/bus/credential `*.contract.test.ts`) prove
- * each adapter satisfies its port. THIS test proves the assembled SYSTEM: boot
- * both profiles over real HTTP and drive an identical v3 request battery through
- * them, asserting the observable wire behavior is byte-identical on every
- * surface that must not drift — and asserting the DOCUMENTED asymmetries
- * (capabilities) are exactly the ones we intend.
- *
- * Its value is forward-looking: it's a guard. The day someone adds a
- * `if (profile === "cloud")` branch inside a shared handler, or a route starts
- * keying off the layout instead of the WorkspacePaths seam, the two transcripts
- * diverge and this fails loudly — which is precisely what "no drift" must mean
- * once engine/ (the rollback oracle) is deleted at P6.
- *
- * Both hosts are assembled with in-memory / temp-fs adapters (no Postgres, GCS,
- * Redis, GKE) — this pins the HANDLERS under the two adapter PROFILES, which is
- * where drift lives; the cloud service bootstrapping (pg/gcs/redis wiring in
- * main.ts) is profile-specific by construction and is covered by its own tests.
- */
-
 const TOKEN = "boot-secret";
 const auth = {
   Authorization: `Bearer ${TOKEN}`,
@@ -61,14 +35,10 @@ function freePort(): Promise<number> {
   });
 }
 
-// Neither profile dispatches a turn in this battery (every route exercised is
-// intercepted by the host BEFORE the runtime channel), so a never-invoked
-// spawner is enough for the local profile's ProcessLauncher.
 const fakeSpawner: RuntimeSpawner = {
   spawn: () => ({ port: 0, kill: () => {} }),
 };
 
-/** The local adapter profile, assembled exactly as the desktop sidecar does. */
 async function bootLocal(): Promise<{ host: LocalHost; base: string }> {
   const workspacesRoot = mkdtempSync(join(tmpdir(), "parity-local-"));
   const credentialsPath = join(
@@ -88,13 +58,6 @@ async function bootLocal(): Promise<{ host: LocalHost; base: string }> {
   return { host, base: `http://127.0.0.1:${port}` };
 }
 
-/**
- * The cloud adapter profile, assembled with the in-memory adapters main() uses
- * in dev mode: MemoryWorkspaceStore (synthetic ids) + CloudPaths (the
- * ws/<wsId>/<agentId>/workspace key layout) + MemoryVfs + the real
- * CLOUD_CAPABILITIES. The single-tenant verifier mirrors the cloud identity
- * seam: a valid token resolves to one owner, anything else is unauthenticated.
- */
 async function bootCloud(): Promise<{
   server: ReturnType<typeof createControlPlaneServer>;
   base: string;
@@ -120,7 +83,6 @@ async function bootCloud(): Promise<{
         launcher: new FakeLauncher(),
         proxy: { async forward() {} },
         credentials,
-        // Mirrors the cloud wiring: the gateway in front mints/strips the header.
         forwardActingHeader: true,
       }),
     },
@@ -133,12 +95,6 @@ async function bootCloud(): Promise<{
   return { server, base: `http://127.0.0.1:${port}` };
 }
 
-// ── Normalization ──────────────────────────────────────────────────────────
-// The two profiles assign different (but equally valid) ids, workspace ids, and
-// timestamps — local ids are the on-disk `<Workspace>/<Agent>` path, cloud ids
-// are synthetic. None of that is drift, so we blank it before comparing. What
-// remains — statuses, names, slugs, counts, error messages, validation gates,
-// shapes — is the behavior that MUST match.
 const VOLATILE = new Set([
   "id",
   "workspaceId",
@@ -151,9 +107,6 @@ const VOLATILE = new Set([
   "session_key",
   "created",
   "exportedAt",
-  // A routine's creator sub (C2) is the profile's single owner — local-owner vs
-  // cloud-owner — so it differs by design, like id/created_at above. The parity
-  // check is about route + shape, not per-deployment identity values.
   "created_by",
 ]);
 
@@ -172,9 +125,6 @@ function norm(v: unknown, agentId: string): unknown {
   if (v && typeof v === "object") {
     const out: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(v)) {
-      // `dir` (the agent's real on-disk directory, HOU-677) is a DOCUMENTED
-      // profile asymmetry — local serves it, cloud has no local path to serve.
-      // Dropped here; its presence/absence is pinned in the asymmetries test.
       if (ASYMMETRIC.has(k)) continue;
       out[k] = VOLATILE.has(k) ? "<X>" : norm(val, agentId);
     }
@@ -183,7 +133,6 @@ function norm(v: unknown, agentId: string): unknown {
   return v;
 }
 
-/** Keys that legitimately exist on one profile only (see the asymmetries test). */
 const ASYMMETRIC = new Set(["dir"]);
 
 type Step = {
@@ -194,15 +143,6 @@ type Step = {
   value?: unknown;
 };
 
-/**
- * The identical request battery, run against one host. Every operation here is
- * profile-INDEPENDENT by design: single-owner happy paths, validation 400s,
- * not-found 404s, the dup-skill 409, and a portable export→preview round trip.
- * (Cross-user 403 and the workspaces list are deliberately NOT here — they are
- * documented asymmetries: local is single-user so an unknown token is 401 at the
- * identity seam, not 403 at authorization, and the workspaces list reflects the
- * on-disk tree vs the synthetic personal workspace.)
- */
 async function battery(base: string): Promise<Step[]> {
   const raw: Step[] = [];
 
@@ -220,7 +160,6 @@ async function battery(base: string): Promise<Step[]> {
     body: createdBody,
   });
 
-  // A helper that fetches, records status + JSON (or zip metadata), one line each.
   const hit = async (
     label: string,
     path: string,
@@ -245,14 +184,12 @@ async function battery(base: string): Promise<Step[]> {
     return res;
   };
 
-  // Create validation.
   await hit("POST /agents (no name → 400)", "/agents", {
     method: "POST",
     body: JSON.stringify({}),
   });
   await hit("GET /agents (list)", "/agents");
 
-  // Activities CRUD.
   await hit("GET activities (empty)", `/agents/${a}/activities`);
   const act = (await (
     await fetch(`${base}/agents/${a}/activities`, {
@@ -288,7 +225,6 @@ async function battery(base: string): Promise<Step[]> {
     },
   );
 
-  // Routines: create, the cron validation gate, list, runs.
   await hit("POST routine (good cron)", `/agents/${a}/routines`, {
     method: "POST",
     body: JSON.stringify({
@@ -308,29 +244,23 @@ async function battery(base: string): Promise<Step[]> {
   await hit("GET routines", `/agents/${a}/routines`);
   await hit("GET routine_runs (empty)", `/agents/${a}/routine_runs`);
 
-  // Config.
   await hit("PUT config", `/agents/${a}/config`, {
     method: "PUT",
     body: JSON.stringify({ provider: "openai-codex", model: "gpt-5.5" }),
   });
   await hit("GET config", `/agents/${a}/config`);
 
-  // Claude subscription push (hosted connect): a malformed body is a strict 400 on
-  // BOTH profiles — validation precedes the runtime channel, so this asserts the
-  // route + its validation gate exist identically without needing a live pod.
   await hit(
     "POST claude-oauth (malformed → 400)",
     `/agents/${a}/credential/claude-oauth`,
     { method: "POST", body: JSON.stringify({ nope: true }) },
   );
 
-  // Context file (raw agentfile) — also what the portable export reads.
   await hit("PUT agentfile CLAUDE.md", `/agents/${a}/agentfile/CLAUDE.md`, {
     method: "PUT",
     body: JSON.stringify({ content: "# Role\nYou help with planning.\n" }),
   });
 
-  // Skills lifecycle (slug is content-derived → identical on both profiles).
   await hit("POST skill", `/agents/${a}/skills`, {
     method: "POST",
     body: JSON.stringify({
@@ -350,8 +280,6 @@ async function battery(base: string): Promise<Step[]> {
   await hit("GET skills (list)", `/agents/${a}/skills`);
   await hit("GET skill", `/agents/${a}/skills/summarize-inbox`);
 
-  // Learnings via the raw agentfile route, then read back through the typed route
-  // (proves the raw write and the typed read agree — one store, both profiles).
   const learnPath = ".houston/learnings/learnings.json";
   await hit(
     "GET learnings file (empty)",
@@ -371,10 +299,6 @@ async function battery(base: string): Promise<Step[]> {
   });
   await hit("GET learnings (typed)", `/agents/${a}/learnings`);
 
-  // Portable export → preview round trip: pack the agent (CLAUDE.md + the skill)
-  // through one profile's vfs, then unpack + inventory it. The inventory must
-  // match across profiles (the pack/unpack domain code is shared; only the vfs
-  // underneath differs).
   const exp = await fetch(`${base}/agents/${a}/portable/export`, {
     method: "POST",
     headers: auth,
@@ -406,14 +330,11 @@ async function battery(base: string): Promise<Step[]> {
     body: await prev.json(),
   });
 
-  // Delete the skill last (the export above needed it) and confirm 404 after.
   await hit("DELETE skill", `/agents/${a}/skills/summarize-inbox`, {
     method: "DELETE",
   });
   await hit("GET deleted skill → 404", `/agents/${a}/skills/summarize-inbox`);
 
-  // Rename last (local renames the on-disk dir → the agent id changes, so nothing
-  // may reference it afterward). Both return the renamed agent; ids/ts normalized.
   await hit("PATCH /agents (rename)", `/agents/${a}`, {
     method: "PATCH",
     body: JSON.stringify({ name: "Planner" }),
@@ -433,9 +354,7 @@ test("the v3 wire behavior is byte-identical across the local and cloud profiles
       battery(local.base),
       battery(cloud.base),
     ]);
-    // Step count + labels line up (catches a route silently missing on one side).
     expect(localT.map((s) => s.label)).toEqual(cloudT.map((s) => s.label));
-    // And every normalized step is identical — the actual no-drift assertion.
     expect(localT).toEqual(cloudT);
   } finally {
     local.host.stop();
@@ -454,34 +373,19 @@ test("the documented profile asymmetries are exactly the intended ones", async (
       await fetch(`${cloud.base}/v1/capabilities`)
     ).json()) as Capabilities;
 
-    // Each serves its own real profile constant (the single source of truth).
-    // Composio availability is CONFIG-driven, not a profile asymmetry: the
-    // local boot here wires no gateway/key, so only the always-on key-free
-    // custom provider (HOU-550) is served (the cloud fixture passes the
-    // nominal constant straight through).
-    // customIntegrationOAuth is DEPLOYMENT-derived, not part of the nominal
-    // constants: the loopback-bound local boot serves its own browser-reachable
-    // OAuth callback (PRODUCT-1172); the cloud fixture passes the constant
-    // straight through and stays off.
     expect(lc).toEqual({
       ...LOCAL_CAPABILITIES,
       integrations: ["custom"],
       customIntegrationOAuth: true,
-      // DEPLOYMENT-derived too: the open host runs the AI Manager's morning
-      // briefing; a gateway-fronted pod leaves it to the gateway.
       heartbeat: true,
     });
     expect(cc).toEqual(CLOUD_CAPABILITIES);
-    // The per-turn gateway alone titles a mission from the send; a served open
-    // host never claims it (the client keeps its own title call).
     expect(lc.missionTitleOnSend).toBeUndefined();
     expect(cc.missionTitleOnSend).toBeUndefined();
     expect(CLOUD_CAPABILITIES.integrations).toEqual(
       LOCAL_CAPABILITIES.integrations,
     );
 
-    // The asymmetries are ONLY these — desktop shell + the user's own machine vs
-    // the egress-locked remote sandbox. Anything else differing is a bug.
     expect(lc.profile).toBe("local");
     expect(cc.profile).toBe("cloud");
     expect([lc.revealInOs, lc.terminal]).toEqual([true, true]);
@@ -490,19 +394,10 @@ test("the documented profile asymmetries are exactly the intended ones", async (
     expect(cc.codeExecution).toBe("remote-sandbox");
     expect(lc.providers).toEqual(LOCAL_CAPABILITIES.providers);
     expect(cc.providers).toEqual(CLOUD_CAPABILITIES.providers);
-    // Cloud offers the SAME model providers as desktop, including the OpenAI-
-    // compatible (BYO endpoint) provider — no provider-side asymmetry remains.
     expect(cc.providers).toEqual(lc.providers);
-    // The OpenAI-compatible (BYO endpoint) provider is offered on BOTH profiles
-    // now: cloud accepts a public HTTPS endpoint the user hosts. Availability is
-    // symmetric; the cloud-only constraint is base-URL validation at save time.
     expect(lc.openaiCompatible).toBe(true);
     expect(cc.openaiCompatible).toBe(true);
 
-    // Agent payloads: only the LOCAL profile reports the agent's real on-disk
-    // directory (`dir`) — the desktop shell needs it for OS reveal/open
-    // (HOU-677); a cloud deployment has no local path to report. Pinned here
-    // because the parity battery deliberately drops the key (ASYMMETRIC).
     const mk = async (base: string) =>
       (await (
         await fetch(`${base}/agents`, {
@@ -514,13 +409,11 @@ test("the documented profile asymmetries are exactly the intended ones", async (
     const localAgent = await mk(local.base);
     const cloudAgent = await mk(cloud.base);
     expect(typeof localAgent.dir).toBe("string");
-    // Separator-agnostic: the id is slash-joined, the dir is OS-native.
     expect(localAgent.dir?.split("\\").join("/").endsWith(localAgent.id)).toBe(
       true,
     );
     expect(cloudAgent.dir).toBeUndefined();
 
-    // Shared invariants: mobile/tunnel is gone everywhere; one protocol version.
     expect(lc.tunnel).toBe(false);
     expect(cc.tunnel).toBe(false);
     const lv = (await (await fetch(`${local.base}/v1/version`)).json()) as {

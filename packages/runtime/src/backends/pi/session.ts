@@ -18,15 +18,6 @@ import { createReplyBeatReader } from "./reply-beats";
 import { piThinkingLevel } from "./thinking-level";
 import { createWireTranslator } from "./wire";
 
-/**
- * The pi implementation of HarnessSession: a thin wrapper over a pi
- * `AgentSession`. It runs pi's event stream through a per-subscription wire
- * translator (`createWireTranslator` — the `toWire` mapping plus block-boundary
- * separators, HOU-857) and forwards only the non-null WireEvents; every other
- * method forwards to the underlying session. The single `Model<Api>` cast lives
- * here — the seam speaks `ResolvedModel`, and the concrete objects flowing
- * through are real pi models.
- */
 export class PiSession implements HarnessSession {
   private disposed = false;
   private oneShot: AbortController | undefined;
@@ -36,7 +27,6 @@ export class PiSession implements HarnessSession {
 
   constructor(
     private readonly session: AgentSession,
-    /** What the session's hedged model runtime sends (backend.ts). */
     private readonly requests: SentRequests,
   ) {}
 
@@ -48,21 +38,10 @@ export class PiSession implements HarnessSession {
     });
   }
 
-  /**
-   * Every pi `AgentSessionEvent`, untranslated. The `toWire` mapping drops
-   * `toolcall_delta` (a tool call's streamed input), so a turn spent writing a
-   * big file emits nothing on `subscribe` for its whole generation; this is
-   * the channel that still ticks then.
-   */
   subscribeLiveness(listener: () => void): () => void {
     return this.session.subscribe(() => listener());
   }
 
-  /**
-   * pi's `message_start` for an ASSISTANT message: one model round-trip
-   * beginning. The same event also announces user, steering, and tool-result
-   * messages, which are not boundaries the finish marks care about.
-   */
   subscribeAssistantMessageStart(listener: () => void): () => void {
     return this.session.subscribe((e) => {
       if (e.type === "message_start" && e.message.role === "assistant")
@@ -70,7 +49,6 @@ export class PiSession implements HarnessSession {
     });
   }
 
-  /** Tool-call opens and clean answer ends (`createReplyBeatReader`). */
   subscribeReplyBeats(listener: (beat: ReplyBeat) => void): () => void {
     const read = createReplyBeatReader();
     return this.session.subscribe((e) => {
@@ -79,13 +57,10 @@ export class PiSession implements HarnessSession {
     });
   }
 
-  /** pi's round-trip boundaries as `ModelPhase`s (`subscribePiModelPhase`). */
   subscribeModelPhase(listener: (phase: ModelPhase) => void): () => void {
     return subscribePiModelPhase(this.session, this.requests, listener);
   }
 
-  /** One timing per answered request (`createPiCallTimer`); pi is in-process,
-   *  so there is no harness start cost to report. */
   subscribeModelCalls(
     listener: (event: HarnessTimingEvent) => void,
   ): () => void {

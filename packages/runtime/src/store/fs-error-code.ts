@@ -1,4 +1,3 @@
-/** Whether `error` is a Node error carrying `code` (`ENOENT`, `EEXIST`...). */
 export function hasCode(error: unknown, code: string): boolean {
   return (
     typeof error === "object" &&

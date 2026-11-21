@@ -72,14 +72,12 @@ for (const profile of ["local", "pooled"] as const) {
         if (history !== "fresh") {
           mkdirSync(dirname(layout.sessionsFile), { recursive: true });
           writeFileSync(layout.sessionsFile, JSON.stringify({ c: "s" }));
-          // A foreign cwd also exercises lookup after pooled workspace relocation.
           const transcriptDir = join(
             layout.configDir,
             "projects",
             sdkProjectSlug("/old/workspace"),
           );
           mkdirSync(transcriptDir, { recursive: true });
-          // A quit mid-append leaves a torn last line that names the tool.
           const torn =
             '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__houston__suggest_actions"';
           writeFileSync(
@@ -232,8 +230,6 @@ for (const profile of ["local", "pooled"] as const) {
             ]);
             expect(holder.suggestActions).toBeUndefined();
             expect(holder.pending).toBeUndefined();
-            // The reply is already written: the turn must end here, or the
-            // SDK calls the model again and it repeats the reply.
             expect(holder.finish.turnEndedByTool).toBe(true);
             expect(
               await endTurnIfRequested(

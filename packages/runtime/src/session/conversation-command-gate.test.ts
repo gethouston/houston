@@ -1,15 +1,5 @@
 import { expect, test, vi } from "vitest";
 
-/**
- * The acceptance gate between a conversation's turns and its commands.
- *
- * Everything here exists for one race: `/clear` works for a while (it harvests
- * the assistant's durable facts first), and a turn accepted during that window
- * used to run against a session the clear then disposed, with its message
- * stranded above the boundary marker. The gate is what makes the two decisions
- * mutually exclusive from the instant the route says yes.
- */
-
 const cache = vi.hoisted(() => ({
   pending: 0,
 }));
@@ -24,7 +14,6 @@ const {
   holdConversationTurn,
 } = await import("./conversation-command-gate");
 
-/** A promise settled by the test, standing in for a turn in flight. */
 function pendingTurn(): { promise: Promise<void>; settle: () => void } {
   let settle = () => {};
   const promise = new Promise<void>((resolve) => {
@@ -46,9 +35,6 @@ test("a turn holds the conversation against commands until it settles", async ()
 });
 
 test("the hold spans the gap between acceptance and the turn actually running", () => {
-  // A turn is accepted several awaits before it reaches the conversation queue
-  // (credential sync, session build). Nothing else marks the conversation
-  // during that window, which is exactly when a `/clear` used to slip in.
   const turn = pendingTurn();
   holdConversationTurn("accepted", turn.promise);
 
@@ -73,8 +59,6 @@ test("two turns on one conversation release the hold only when both are done", a
 });
 
 test("a turn that rejects still releases its hold, and says so", async () => {
-  // `runTurn` settles rather than rejecting, so a rejection is a runtime bug —
-  // but a conversation wedged against every future command would be worse.
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   holdConversationTurn("broken", Promise.reject(new Error("boom")));
   await Promise.resolve();
@@ -110,16 +94,12 @@ test("holds are per conversation — one chat never blocks another", () => {
 });
 
 test("a queued turn the route never saw still blocks a command", () => {
-  // The session cache's own counter: a turn parked on the workdir lock is not
-  // "running" on the bus yet, and its route hold may already have settled.
   cache.pending = 1;
   expect(conversationCommandBusy("queued")).toBe(true);
   cache.pending = 0;
 });
 
 test("a stream left reading running with no turn behind it never blocks a command", async () => {
-  // A frame published after a turn's terminal one (a stopped turn unwinding)
-  // leaves the stream snapshot running; the gate reads lifecycle only.
   const { publish, snapshot } = await import("./bus");
   publish("stale", { type: "error", data: { message: "stop" }, turnId: "t" });
   publish("stale", { type: "text", data: "late", turnId: "t" });

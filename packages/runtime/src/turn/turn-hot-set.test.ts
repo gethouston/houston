@@ -42,8 +42,6 @@ test("admits the turn's own conversation state, nothing of the others", () => {
 });
 
 test("admits the turn's own archive segments, never another conversation's", () => {
-  // A shared routine chat's archive grows without bound (54+ MiB of
-  // segments); a turn in any OTHER chat of the agent must not download it.
   const root = rootWithSessions();
   const admit = ownConversationOnly("c1");
   for (const runtime of [standing, "data"]) {
@@ -57,8 +55,6 @@ test("admits the turn's own archive segments, never another conversation's", () 
   }
   const encoded = `${standing}/conversations/a%20b.archive/2.json`;
   expect(ownConversationOnly("a b")(encoded, listed(encoded), root)).toBe(true);
-  // Anything deeper or oddly named under conversations/ is not a segment of
-  // this chat either.
   expect(
     admit(`${standing}/conversations/c1.archive/deep/2.json`, listed(), root),
   ).toBe(false);
@@ -68,16 +64,12 @@ test("admits the turn's own archive segments, never another conversation's", () 
 });
 
 test("hydrates only the two newest of the turn's own archive segments", () => {
-  // The rest stay remote: a routine digest reads ROUTINE_REPLAY_TAIL
-  // messages, and an older segment is fetched only when a reader reaches
-  // back (turn-archive-fetch.ts).
   const root = rootWithSessions();
   for (const runtime of [standing, "data"]) {
     const segment = (n: number) =>
       `${runtime}/conversations/c1.archive/${n}.json`;
     const listing = listed(...[1, 2, 9, 10, 11].map(segment));
     const admit = ownConversationOnly("c1");
-    // Numeric order, not lexical: 10 and 11 are newer than 9.
     for (const n of [10, 11])
       expect(admit(segment(n), listing, root)).toBe(true);
     for (const n of [1, 2, 9])
@@ -198,7 +190,6 @@ test("hydrates the acting member's flag cache and no other member's", () => {
     false,
     false,
   ]);
-  // No acting member: nobody's cache.
   const anonymous = ownConversationOnly("c1");
   for (const path of paths) expect(anonymous(path, listing, root)).toBe(false);
 });
@@ -210,7 +201,6 @@ test("an unclaimed turn's whole-tree hydrate still skips other members' caches",
   expect(asAlice(`${standing}/claude-flags/${alice}`)).toBe(true);
   expect(asAlice(`${standing}/claude-flags/${bob}`)).toBe(false);
   expect(asAlice(`data/claude-flags/${bob}`)).toBe(false);
-  // Everything else still hydrates, other conversations included.
   expect(asAlice(`${standing}/conversations/c2.json`)).toBe(true);
   expect(asAlice("workspaces/Personal/Bob/notes.md")).toBe(true);
   expect(ownClaudeFlagsOnly()(`${standing}/claude-flags/${alice}`)).toBe(false);

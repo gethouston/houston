@@ -9,13 +9,6 @@ import {
   systemLines,
 } from "./turn-sink-setup-fixtures";
 
-/**
- * A pooled turn that fails during setup (H-003) answers with one terminal
- * `error` frame and nothing else: no echo, no running sync, and its
- * conversation is never persisted. That frame can reach the stream a few ms
- * BEFORE the send's 202.
- */
-
 beforeEach(() => {
   vi.useFakeTimers();
 });
@@ -36,8 +29,6 @@ test("a setup error that beats the 202 settles the turn the 202 names", async ()
   expect(stopped()).toBe(true);
   expect(statuses).toEqual(["error"]);
   const [line] = systemLines(items);
-  // Typed, with the code only as the report's cause; nothing was saved, so
-  // the optimistic bubble fails like an undelivered send.
   expect(line).toMatchObject({
     notice: "agent_too_large",
     cause: "hydrate_over_cap",
@@ -162,7 +153,6 @@ test("a bare done before the 202 is not claimed: the reply comes from history", 
   sink.onFrame({ type: "done", data: null, turnId: "t1", seq: 2 } as WireFrame);
 
   sink.sendAccepted("t1");
-  // An empty done would settle a reply-less turn.
   expect(sink.settled).toBe(false);
 
   await vi.advanceTimersByTimeAsync(2_000);

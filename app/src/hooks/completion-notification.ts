@@ -24,21 +24,14 @@ import {
   getConversationInteraction,
 } from "./use-conversation-vm";
 
-/**
- * Everything the completion notification needs from the shell, passed in rather
- * than read from stores here, so this module stays a plain function over data.
- */
 export interface CompletionNotificationContext {
   agents: Agent[];
   workspaceName: string;
-  /** Name to fall back to when the finished agent is not in the loaded list. */
   fallbackAgentName: string;
-  /** Read at FIRE time, so the copy follows a language change mid-turn. */
   t: () => TFunction<["common"]>;
   stopReason?: "turn_time_limit" | "turn_time_limit_unsaved";
 }
 
-/** The translated body for the interaction the turn settled on. */
 function completionBody(
   t: TFunction<["common"]>,
   agentPath: string,
@@ -63,21 +56,6 @@ function completionBody(
   }
 }
 
-/**
- * Should this completed session interrupt the signed-in user? (HOU-945)
- *
- * In a team many agents run in parallel, so "a mission finished" is only news
- * when the mission is MINE or @mentions me; otherwise the ping trains the user
- * to dismiss every ping, including the ones that matter. The rule itself lives
- * in `lib/notification-relevance.ts` (pure, unit-tested) and fails OPEN: an
- * unattributed mission, a mission the roster cache has not described yet, and a
- * signed-out user all notify, so desktop and single-player behaviour stay
- * byte-identical to before this gate existed.
- *
- * `selfId` is read HERE rather than when the latch was armed: a latch can
- * outlive a sign-in or sign-out by its grace window, and the person worth
- * interrupting is whoever is signed in when the notification actually fires.
- */
 function isRelevantCompletion(agentPath: string, sessionKey: string): boolean {
   return shouldNotifyCompletion({
     rows: latestCachedAllConversations<SessionConversationRow[]>(queryClient),
@@ -87,19 +65,6 @@ function isRelevantCompletion(agentPath: string, sessionKey: string): boolean {
   });
 }
 
-/**
- * Arm the OS notification for a session that just completed.
- *
- * The body depends on the interaction the turn settled on, which
- * `persistBoardStatus` folds into the conversation VM AFTER the `SessionStatus`
- * event but BEFORE the settle's `ActivityChanged` echo. So the notification is
- * LATCHED here and sent on that echo: `ready` gates the fire on the fold having
- * landed, and the send reads the settled body (see `completion-latches.ts`).
- *
- * The nav target is resolved now, against the agent that FINISHED (matched by
- * folder path) rather than the one currently open, so clicking the notification
- * jumps to it even after the user switched agents or closed the chat.
- */
 export function latchCompletionNotification(
   latches: CompletionLatches,
   agentPath: string,
@@ -144,8 +109,6 @@ export function latchCompletionNotification(
   );
 }
 
-/** A chat that should have been navigable but isn't is a real (silent) defect,
- *  so it leaves a breadcrumb instead of failing quietly. */
 function warnIfUnnavigable(
   nav: NotificationNav | undefined,
   agentPath: string,

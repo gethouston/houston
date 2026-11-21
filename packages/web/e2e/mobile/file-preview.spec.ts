@@ -6,13 +6,6 @@ import {
   seedChatWithPdf,
 } from "../support/pdf-chat";
 
-/**
- * HOU-192 on the phone: a file opened from a chat is a full-screen sheet in
- * the navigation stack, so back closes it. A long press and drag marks an
- * area; the comment is asked for in a bottom sheet; "Back to chat" returns to
- * the composer holding the chip.
- */
-
 async function openPdfFromChat(page: Page) {
   await page.goto("/");
   await page.getByTestId("agents-home-row").first().tap();
@@ -26,8 +19,6 @@ async function openPdfFromChat(page: Page) {
   return sheet;
 }
 
-/** Hold still past the long-press delay, then drag: touch events through
- *  CDP, since Playwright's touchscreen only taps. */
 async function longPressDrag(page: Page) {
   const box = await page.locator(".pdf-page").first().boundingBox();
   if (!box) throw new Error("the page has no box");
@@ -39,7 +30,6 @@ async function longPressDrag(page: Page) {
     type: "touchStart",
     touchPoints: at(0.2, 0.5),
   });
-  // The hold IS the gesture: stillness past the 380 ms long-press delay.
   await page.waitForTimeout(500);
   for (let i = 1; i <= 8; i++)
     await cdp.send("Input.dispatchTouchEvent", {

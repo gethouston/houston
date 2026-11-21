@@ -73,8 +73,6 @@ describe("choiceModal", () => {
   });
 
   it("stays closed for the session once a read-only notice is closed", () => {
-    // The dismissal failed, so the server still says it is not dismissed: it
-    // shows again on a later app open, which retries the dismissal.
     expect(choiceModal(single, at({ closedThisSession: true }))).toEqual(
       CLOSED,
     );
@@ -125,7 +123,6 @@ describe("choiceModal", () => {
       behind,
     );
     expect(choiceModal(single, at({ otherDialogOpen: true }))).toEqual(behind);
-    // A stored pick has nothing to show, but the frame still learns it waits.
     const stored = choice({ freeOrgSlug: LA_FILA.slug });
     expect(choiceModal(stored, at({ otherDialogOpen: true }))).toEqual(behind);
     expect(choiceModal(choice(), at({ otherDialogOpen: false }))).toMatchObject(
@@ -163,7 +160,6 @@ describe("planDialogBlocks", () => {
 
   it("lets the modal follow the launch announcement once it is closed", () => {
     expect(blocks("announcement", { announcementClosed: true })).toBe(false);
-    // Only the announcement closes for the session; the others stay up.
     expect(blocks("keep", { announcementClosed: true })).toBe(true);
   });
 

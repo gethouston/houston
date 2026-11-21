@@ -32,7 +32,6 @@ test("connected Slack names its workspace and offers another", async ({
   await expect(
     slack.getByRole("button", { name: "Connect Slack", exact: true }),
   ).toHaveCount(0);
-  // WhatsApp holds no number: no status, just the way in.
   const whatsApp = whatsAppCard(page);
   await expect(whatsApp.getByText("Connected", { exact: true })).toHaveCount(0);
   await expect(
@@ -104,7 +103,6 @@ test("only a connection that lands while the card is open fades in", async ({
     .filter({ hasText: "Ada · Elsewhere" });
   await expect(landed).toHaveClass(/row-land-in/);
   await expect(first).not.toHaveClass(/row-land-in/);
-  // A refused disconnect puts the row back; it was already seen, so it stays.
   await page
     .getByRole("button", { name: "Disconnect Ada · Elsewhere" })
     .click();
@@ -152,7 +150,6 @@ test("Channels provides an existing-installation command and confirms disconnect
     page.getByText("Ada · Houston team", { exact: true }),
   ).toHaveCount(0);
   const slack = slackCard(page);
-  // The button that opened the dialog left with its row: the card holds focus.
   await expect(
     slack.getByRole("heading", { name: "Slack", exact: true }),
   ).toBeFocused();
@@ -180,7 +177,6 @@ test("WhatsApp shows its prefilled message, QR code, and open action", async ({
     name: "QR code to open WhatsApp with your connection message",
   });
   await expect(qr).toBeVisible();
-  // The code the phone scans is the very link the button opens.
   await expect(qr).toHaveAttribute("data-qr-value", WHATSAPP_CODES[0].url);
   await expect(
     page.getByRole("textbox", { name: "WhatsApp connection command" }),
@@ -188,7 +184,6 @@ test("WhatsApp shows its prefilled message, QR code, and open action", async ({
   await expect(
     page.getByText("Or send this message to +15550001111:"),
   ).toBeVisible();
-  // A real link, so no popup blocker stands between the click and WhatsApp.
   const open = page.getByRole("link", { name: "Open WhatsApp" });
   await expect(open).toBeVisible();
   await expect(open).toHaveAttribute("href", WHATSAPP_CODES[0].url);
@@ -214,7 +209,6 @@ test("an expired WhatsApp code says so and a new one replaces it", async ({
   await expect(
     page.getByText("This code has expired. Get a new code to connect."),
   ).toBeVisible();
-  // Nothing left to send: no QR, no link, no wait, and no dangling "Or".
   await expect(page.getByRole("img", { name: /^QR code/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Open WhatsApp" })).toHaveCount(
     0,
@@ -245,8 +239,6 @@ test("a WhatsApp connection landing ends the wait and clears the spent code", as
   await openChannels(page);
   await page.getByRole("button", { name: "Connect WhatsApp" }).click();
   await expect(page.getByText(WAITING)).toBeVisible();
-  // The person sends the message from their phone: the gateway binds it and
-  // nothing tells this tab, so the list's own poll has to find it.
   connections.push({
     id: "connection-wa",
     provider: "whatsapp",
@@ -281,8 +273,6 @@ test("a WhatsApp connection landing ends the wait and clears the spent code", as
 test("a Slack connection landing clears the spent code and the finish line", async ({
   page,
 }) => {
-  // The browser takes the authorization page: stubbed, so no real tab opens
-  // and the section says "finish in Slack" rather than "blocked".
   await page.addInitScript(() => {
     window.open = () => ({ opener: null }) as unknown as Window;
   });
@@ -300,7 +290,6 @@ test("a Slack connection landing clears the spent code and the finish line", asy
     name: "Slack connection command",
   });
   await expect(command).toHaveValue("connect ABCD-1234");
-  // The authorization finished in the other tab: nothing tells this one.
   connections.push({
     id: "connection-new",
     provider: "slack",
@@ -371,9 +360,6 @@ test("a new WhatsApp code waits until a disconnect settles", async ({
       },
     ],
   });
-  // The row leaves on the click, before the gateway answers. A code minted
-  // in that window would record the ids without the removed account, so a
-  // refused disconnect's rollback would read as a connection landing.
   let answer = () => {};
   const answered = new Promise<void>((resolve) => {
     answer = resolve;
@@ -450,7 +436,6 @@ test("WhatsApp that is not set up keeps a number already connected removable", a
     .getByRole("alertdialog")
     .getByRole("button", { name: "Disconnect", exact: true })
     .click();
-  // The last number took its card with it: the section title holds focus.
   await expect(whatsAppCard(page)).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Channels", exact: true }),
@@ -466,7 +451,6 @@ test("unconfigured Slack gives setup guidance while retaining disconnect", async
   await expect(
     page.getByRole("button", { name: "Connect Slack", exact: true }),
   ).toHaveCount(0);
-  // The workspace stays listed and removable, but nothing offers another.
   await expect(
     page.getByRole("button", { name: "Disconnect Ada · Houston team" }),
   ).toBeVisible();
@@ -498,7 +482,6 @@ test("the callback ticket is redeemed once and leaves the address bar", async ({
   await page.goto(`${AUTH_WEB_URL}/?settings=channels&slack=${TICKET}`);
   await expect(page.getByText("Ada · Personal", { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\?settings=channels$/);
-  // A reload of the cleaned URL has no ticket left to send.
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "Channels", exact: true }),
@@ -515,8 +498,6 @@ test("the callback ticket is redeemed once and leaves the address bar", async ({
 test("a ticket redeemed during the first list read still shows its connection", async ({
   page,
 }) => {
-  // The first list read was answered before the redemption and arrives after
-  // it: the redemption must trigger a read of its own, not ride the stale one.
   await mockChannels(page, { holdFirstListUntilRedeemed: true });
   await signInAsViewer(page);
   await page.goto(`${AUTH_WEB_URL}/?settings=channels&slack=${TICKET}`);

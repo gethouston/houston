@@ -6,19 +6,12 @@ import type { RosterMember } from "./team-roster-model";
 
 export interface RosterNameField {
   value: string;
-  /** The card's copy for a name that cannot be taken, or null. */
   error: string | null;
   onChange: (value: string) => void;
   onBlur: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
 }
 
-/**
- * A roster member's name field. Typing stays on the card until the person
- * leaves the field or presses Enter; only then is it a rename, since each one
- * is a round trip to the host. A blank name, or one another AI Employee holds,
- * stays in the field with why, and Escape puts the current name back.
- */
 export function useRosterNameField(
   member: RosterMember,
   takenNames: readonly string[],
@@ -42,8 +35,6 @@ export function useRosterNameField(
   };
 
   return {
-    // While not typing, the field follows the member (a name the host tidied,
-    // a rename it refused).
     value: draft ?? member.name,
     error: draft === null ? null : issueCopy(issue, draft),
     onChange: (value) => {
@@ -53,7 +44,6 @@ export function useRosterNameField(
     onBlur: commit,
     onKeyDown: (event) => {
       if (event.key === "Enter") {
-        // Never the surrounding form's submit: Enter here is this rename.
         event.preventDefault();
         commit();
       } else if (event.key === "Escape" && draft !== null) {

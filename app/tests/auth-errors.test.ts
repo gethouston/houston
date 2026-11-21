@@ -23,10 +23,8 @@ describe("authErrorKey", () => {
   });
 
   it("collapses related codes into one user-facing bucket", () => {
-    // Both "this email exists under another provider" shapes read the same.
     strictEqual(authErrorKey("email_exists"), "auth.credentialMismatch");
     strictEqual(authErrorKey("credential_mismatch"), "auth.credentialMismatch");
-    // Config-shaped failures the user cannot fix all point at support.
     strictEqual(authErrorKey("api_key_invalid"), "auth.configError");
     strictEqual(authErrorKey("invalid_custom_token"), "auth.configError");
     strictEqual(authErrorKey("invalid_idp_response"), "auth.configError");
@@ -35,8 +33,6 @@ describe("authErrorKey", () => {
   });
 
   it("gives the sign-out and pre-browser failures their own copy", () => {
-    // A surviving session blob means the next launch signs the user back in —
-    // it must never read as a generic "sign-in failed".
     strictEqual(
       authErrorKey(new IdentityError("session_clear_failed")),
       "auth.signOutIncomplete",

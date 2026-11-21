@@ -1,7 +1,6 @@
 import { Button } from "@houston-ai/core";
 import { FolderPlus, Upload } from "lucide-react";
 
-/** Compact inline hint for an expanded agent or folder with no rows. */
 export function FilesEmptyFolder({
   message,
   onUpload,

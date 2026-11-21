@@ -15,7 +15,6 @@ import {
   teamNameTooLong,
 } from "./team-identity-save";
 
-/** Folder menu dialogs stage name or identity edits until Save. */
 export function EditTeamIdentityDialog({
   team,
   mode,
@@ -26,9 +25,7 @@ export function EditTeamIdentityDialog({
   team: TeamView;
   mode: "rename" | "identity";
   onClose: () => void;
-  /** Saves the folder name to the personal sidebar layout. */
   renameGroup: (teamId: string, newName: string) => void;
-  /** An omitted identity field is left unchanged. */
   setIdentity: (
     teamId: string,
     patch: { icon?: string | null; color?: string | null },
@@ -37,14 +34,11 @@ export function EditTeamIdentityDialog({
   const { t } = useTranslation(["shell", "teams", "common"]);
   const choices = useMemo(() => buildTeamIdentityChoices(t), [t]);
 
-  // The save compares against the identity shown when the dialog opened.
   const [seeded, setSeeded] = useState<TeamIdentityDraft | null>(null);
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<string>();
   const [color, setColor] = useState<string>();
 
-  // Seed the form from the team each time the dialog OPENS for one — never
-  // while it is open, so a concurrent edit cannot yank the fields mid-type.
   const openedTeamId = team.id;
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-seed on the OPENED TEAM changing, deliberately not on every refetch of its fields
   useEffect(() => {
@@ -64,11 +58,7 @@ export function EditTeamIdentityDialog({
   const trimmed = name.trim();
   const tooLong = teamNameTooLong(name);
 
-  // The save closes the dialog by RESOLVING: the recipe owns the close, so a
-  // name that is still empty or too long is refused by `disabled` alone.
   const save = () => {
-    // The diff rules (what renames, what patches, how a deselect becomes an
-    // explicit null clear) are `teamIdentitySaveWrites`'s, unit-tested there.
     const writes = teamIdentitySaveWrites(seeded, {
       name: mode === "rename" ? name : seeded.name,
       icon,

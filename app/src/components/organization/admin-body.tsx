@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { PageContainer } from "../shell/page-shell";
 import type { AdminBodyState } from "./admin-body-state";
 
-/** The query and gate state selects exactly one Admin body. */
 export function AdminBody({
   state,
   loadingLabel,

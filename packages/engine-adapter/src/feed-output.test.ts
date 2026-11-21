@@ -3,13 +3,6 @@ import { bus } from "./bus";
 import { setAdapterErrorSink } from "./error-sink";
 import { createBusFeedOutput } from "./feed-output";
 
-/**
- * A board write that fails puts a line in the transcript only when the card
- * depends on it. The early hand-back on `reply_complete` (and its take-back)
- * is a forecast the settle's own write follows, so its failure is reported to
- * the app's error path and never shown.
- */
-
 const reported: { source: string; error: unknown }[] = [];
 const feedItems: unknown[] = [];
 const off = bus.on((event) => {

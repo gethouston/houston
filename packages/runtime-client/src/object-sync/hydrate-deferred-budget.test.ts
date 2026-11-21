@@ -21,8 +21,6 @@ function store(files: Record<string, string>) {
   return new LocalDirStore(root);
 }
 
-/** A store whose listing carries no sizes: only the download-time count
- *  can bound what lands. */
 function unsized(inner: LocalDirStore): ObjectStore {
   return {
     list: (p) => inner.list(p),
@@ -32,8 +30,6 @@ function unsized(inner: LocalDirStore): ObjectStore {
   };
 }
 
-/** `unsized`, plus a batch route that inlines every key, so the deferred
- *  set lands through hydrate-batch.ts. */
 function batched(inner: LocalDirStore): ObjectStore {
   return {
     ...unsized(inner),

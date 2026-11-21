@@ -1,7 +1,3 @@
-/**
- * Per-surface manifest validation for the parity contract. Pure function over an
- * already-loaded manifest, returning violation strings (empty == clean).
- */
 import {
   ENTRY_KEYS,
   isInt,
@@ -11,11 +7,6 @@ import {
   STATUSES,
 } from "./schema.mjs";
 
-/**
- * Validate one manifest against the inventory. `sinceById` maps id -> since for
- * the components that passed inventory validation; `invVersion` is the spec's
- * own version (a manifest may not claim to implement beyond it).
- */
 export function validateManifest(m, sinceById, invVersion) {
   const violations = [];
   const tag = m.label ?? m.name;
@@ -75,7 +66,6 @@ export function validateManifest(m, sinceById, invVersion) {
   return violations;
 }
 
-/** Validate a single component entry's shape + status. */
 function validateEntry(tag, id, entry, sinceById) {
   if (!sinceById.has(id)) {
     return [`[${tag}] references unknown component "${id}" (not in inventory)`];

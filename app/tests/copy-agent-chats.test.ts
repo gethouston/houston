@@ -33,8 +33,6 @@ describe("chatCopyPaths", () => {
   });
 
   it("names transcripts the way the runtime does, safely inside the scope", () => {
-    // The runtime encodes the id; a key with a slash could otherwise read as
-    // a path segment, which the host's export refuses.
     strictEqual(
       transcriptPath("activity/1"),
       ".houston/runtime/conversations/activity%2F1.json",
@@ -52,7 +50,6 @@ describe("chatCopyBatches", () => {
       [".houston/runtime/conversations/c.json"],
       [ACTIVITY_PATH],
     ]);
-    // A source with no conversations still ships its (empty) board.
     deepStrictEqual(chatCopyBatches([], 2), [[ACTIVITY_PATH]]);
   });
 });
@@ -87,7 +84,6 @@ describe("copyAgentChats", () => {
       },
       async migrationExport(agentPath, paths) {
         calls.push(`export:${agentPath}:${paths.length}`);
-        // The archive a host would build for these paths: one entry each.
         const files: Record<string, Uint8Array> = {};
         for (const rel of paths) {
           files[rel] = strToU8(
@@ -105,8 +101,6 @@ describe("copyAgentChats", () => {
       async migrationImport(agentPath, bytes, opts) {
         const names = Object.keys(unzipSync(new Uint8Array(bytes)));
         imported.push(names);
-        // Every import asks for NO pi session: the transcripts carry the
-        // replay marker instead.
         strictEqual(opts?.sessions, false);
         calls.push(
           `import:${agentPath}:${names.length}${opts?.overwrite ? ":overwrite" : ""}`,
@@ -127,7 +121,6 @@ describe("copyAgentChats", () => {
       "dst",
       () => `new${n++}`,
     );
-    // 30 transcripts in batches of 10, then the board on its own.
     deepStrictEqual(calls, [
       "list:src",
       "export:src:10",
@@ -144,8 +137,6 @@ describe("copyAgentChats", () => {
     strictEqual(outcome.transcriptsWritten, 30);
     strictEqual(outcome.boardWritten, true);
     ok(chatCopyComplete(outcome));
-    // The board is the LAST thing to land, and nothing lands under a source
-    // id: every transcript wears its new key.
     deepStrictEqual(imported[imported.length - 1], [ACTIVITY_PATH]);
     const all = imported.flat();
     ok(all.includes(".houston/runtime/conversations/activity-new0.json"));
@@ -180,8 +171,6 @@ describe("copyAgentChats", () => {
         return { written: names.length, skipped: 0, rejected: [] };
       },
     };
-    // The install re-minted r9 as q9: the copied chat must follow, or the
-    // copy's routine screen would open an orphaned `routine-r9` chat.
     const outcome = await copyAgentChats(
       engine,
       "src",
@@ -199,7 +188,6 @@ describe("copyAgentChats", () => {
   it("reports a board the target already had, and rejected files, as incomplete", async () => {
     const engine: ChatCopyEngine = {
       async listConversations(agentPath) {
-        // The target already holds a task: the board must not be replaced.
         return [
           {
             id: agentPath === "dst" ? "mine" : "t1",
@@ -219,8 +207,6 @@ describe("copyAgentChats", () => {
       },
       async migrationImport(_agentPath, bytes, opts) {
         const names = Object.keys(unzipSync(new Uint8Array(bytes)));
-        // The board already exists on the target: the importer skips it,
-        // and the copy never asked to overwrite it.
         const board = names[0] === ACTIVITY_PATH;
         ok(!opts?.overwrite);
         return {
@@ -261,7 +247,6 @@ describe("withWakingRetry", () => {
     );
     strictEqual(out, "ok");
     strictEqual(calls, 3);
-    // An unrelated failure is not retried.
     calls = 0;
     await rejects(
       withWakingRetry(

@@ -7,11 +7,6 @@ import {
   visibleOperations,
 } from "./catalog";
 
-/**
- * A FIXTURE catalog, never the generated one: these tests pin the parser's
- * contract (shape, version, hidden-withholding), which must not move when the
- * real catalog's 200-odd operations do.
- */
 const fixture = {
   version: 3,
   sourceHash: "fixture",
@@ -48,7 +43,6 @@ const fixture = {
   ],
 };
 
-/** The fixture document with the first operation's only parameter replaced. */
 const withFirstParam = (param: Record<string, unknown>): string =>
   JSON.stringify({
     ...fixture,
@@ -77,8 +71,6 @@ describe("parseAssistantCatalog", () => {
     expect(parseAssistantCatalog(body)).toBeNull();
   });
 
-  // `description` / `source` are printed verbatim to the model, so the parsed
-  // type may only claim they are strings if the envelope proved it.
   test("keeps a parameter's description and source when both are strings", () => {
     const annotated = withFirstParam({
       name: "agentPath",
@@ -123,8 +115,6 @@ describe("visibility", () => {
     );
   });
 
-  // Hidden must be indistinguishable from absent: resolving it to anything the
-  // agent can see would turn the hidden set into a list of things to go find.
   test("a hidden operation is indistinguishable from an unknown one", () => {
     expect(findVisibleOperation(catalog, "rotateEngineSecret")).toBeUndefined();
     expect(findVisibleOperation(catalog, "noSuchOperation")).toBeUndefined();
@@ -154,11 +144,6 @@ test("validates policy reasons in the shared operation envelope", () => {
   }
 });
 
-/**
- * The card a withheld operation is handed over with. A half-spelled one would
- * have the host name a screen the app cannot open, so the envelope takes the
- * two arms whole or refuses the document.
- */
 describe("the hands envelope", () => {
   const withHands = (hands: unknown): string =>
     JSON.stringify({
@@ -203,12 +188,6 @@ describe("the hands envelope", () => {
     expect(parseAssistantCatalog(withHands(hands))).toBeNull();
   });
 
-  /**
-   * The envelope reads what `@houston/domain` declares, so the two lists here
-   * are the LIVE ones: a card or a screen added over there and missing from
-   * the parser would refuse every document carrying it, which reads as the
-   * assistant family switching itself off after a regeneration.
-   */
   test("every live card passes the envelope", () => {
     for (const tool of ASSISTANT_HANDS_TOOLS) {
       const hands =
@@ -226,7 +205,6 @@ describe("the hands envelope", () => {
     }
   });
 
-  // Additive and optional: a catalog written before the tag existed still loads.
   test("accepts an operation that names no card", () => {
     expect(parseAssistantCatalog(JSON.stringify(fixture))).not.toBeNull();
   });

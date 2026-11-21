@@ -5,12 +5,6 @@ import i18next from "i18next";
 import { CURATED_API_KEY_OVERRIDES } from "../src/lib/provider-overrides/overrides-api-key-curated.ts";
 import { SUBSCRIPTION_OVERRIDES } from "../src/lib/provider-overrides/overrides-subscription.ts";
 
-/**
- * Gemini 4 Neon's picker copy names the plan each card needs (a paid Gemini
- * key, Copilot Pro+), so it lives under `providerModelDescriptions.<card>`
- * ahead of the per-model `modelDescriptions`. The lookup below is the one
- * `usePickerViewModels` runs, against the shipped locale files.
- */
 const chat = (lang: string) =>
   JSON.parse(
     readFileSync(

@@ -16,12 +16,6 @@ const B = "Houston/Kai";
 
 const row = (id: string, agent_path: string) => ({ id, agent_path });
 
-/**
- * HOU-981, the partial-sweep half. The hosted sweep fans out one read per
- * agent; when one agent's pod is unreachable the others still answer. The
- * result is INCOMPLETE, and treating it as complete is what silently deleted a
- * whole agent's missions from the board (and froze that hole in the cache).
- */
 describe("mergePartialSweep", () => {
   it("carries the failed agent's last-known rows forward", () => {
     const previous = [row("a1", A), row("a2", A), row("b1", B)];
@@ -37,8 +31,6 @@ describe("mergePartialSweep", () => {
   });
 
   it("lets the fresh rows win for every agent that ANSWERED", () => {
-    // A's read succeeded and returned nothing — that deletion is real and must
-    // survive the merge, unlike a failed agent's absence.
     const previous = [row("a1", A), row("b1", B)];
 
     const merged = mergePartialSweep([row("b1", B)], previous, []);
@@ -117,14 +109,6 @@ describe("planPartialSweep", () => {
   });
 });
 
-/**
- * The run counter is only meaningful for the roster it was counted on. It used
- * to be a bare module counter: it never reset on a space switch, so three
- * partial sweeps in the old space left the NEW space permanently past its
- * retries (no toast, no re-sweep, ever) — and the old space's pending re-sweep
- * still fired, invalidating the `all-conversations` prefix for a roster that
- * was gone.
- */
 describe("stepSweepRecovery", () => {
   const R1 = "a|b";
   const R2 = "c|d";
@@ -149,7 +133,6 @@ describe("stepSweepRecovery", () => {
   });
 
   it("starts the new roster from scratch — a space switch is not a retry", () => {
-    // Saturate R1: past the last delay it neither surfaces nor re-sweeps.
     let state = NO_SWEEP_RECOVERY;
     for (let i = 0; i <= PARTIAL_SWEEP_RETRY_DELAYS_MS.length; i += 1) {
       state = stepSweepRecovery(state, R1, 1).state;
@@ -171,12 +154,6 @@ describe("stepSweepRecovery", () => {
   });
 });
 
-/**
- * The bounded transient retry lives inside the queryFn, not at the useQuery
- * layer, because `call()` in lib/tauri.ts toasts AND Sentry-captures on every
- * rejection: a retrying query multiplied one dead fleet into ~4 captures and
- * ~2 visible toasts. Exactly one attempt of a run may surface.
- */
 describe("planSweepAttempt", () => {
   it("retries a transient failure on a widening backoff, silently", () => {
     for (const [attempt, delay] of SWEEP_ATTEMPT_DELAYS_MS.entries()) {
@@ -207,13 +184,6 @@ describe("planSweepAttempt", () => {
   });
 });
 
-/**
- * A TanStack query reports `status: "success"` the moment placeholder data is
- * handed out — before any fetch settles. The board's `isLoaded` is what gates
- * the empty-board verdict (auto-opening the composer), so a user whose
- * disk-restored roster variant was `[]` got the composer thrown over an empty
- * board while the real sweep was still in flight underneath.
- */
 describe("sweepIsAuthoritative", () => {
   it("rejects the placeholder paint — success is not yet an answer", () => {
     strictEqual(

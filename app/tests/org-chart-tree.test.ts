@@ -42,7 +42,6 @@ const build = (
     opts.caps ?? SCREEN_TREE_CAPS,
   );
 
-/** Each person shown with the ids of the AI Employees homed under them. */
 const homes = (tree: OrgTree) =>
   Object.fromEntries(
     tree.branches.map((b) => [b.person.userId, b.agents.map((a) => a.id)]),
@@ -69,7 +68,6 @@ describe("buildOrgTree", () => {
         ],
       }),
     ]);
-    // Abe sorts before Sara by name; Julian (owner) manages it too.
     deepStrictEqual(homes(tree).abe, ["scout"]);
     deepStrictEqual(homes(tree).julian, []);
   });
@@ -98,7 +96,6 @@ describe("buildOrgTree", () => {
     const tree = build([
       agent("stale", { assignments: [{ userId: "tom", access: "manager" }] }),
     ]);
-    // Tom is a user now: his row counts as use, and he is the one user.
     deepStrictEqual(homes(tree).tom, ["stale"]);
   });
 
@@ -164,7 +161,6 @@ describe("buildOrgTree", () => {
       tree.branches.map((b) => b.person.userId),
       ["julian", "abe"],
     );
-    // Sara and Tom are left out, with the AI Employees they are home to.
     strictEqual(tree.morePeople, 3);
   });
 
@@ -202,8 +198,6 @@ describe("buildOrgTree", () => {
         tree.branches.reduce((n, b) => n + b.agents.length + b.moreAgents, 0) +
         tree.rootAgents.length +
         tree.moreRootAgents;
-      // Everyone's AI Employees are on the chart or in a "+N", except those
-      // homed under people left out (who travel with their "+N people").
       if (tree.morePeople === 0)
         strictEqual(shownAgents, tree.counts.agents, `run ${run} agents`);
       else ok(shownAgents <= tree.counts.agents, `run ${run} agents`);

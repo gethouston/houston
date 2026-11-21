@@ -2,12 +2,6 @@ import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
 import { makeCustomIntegrationTools } from "./custom-integrations";
 
-/**
- * The custom-integration setup procedure rides on the setup tools' own
- * results (the product prompt keeps only the research that comes before
- * detect), so each step must arrive at the point in the setup where it applies.
- */
-
 const ctx = {} as unknown as ExtensionToolContext;
 
 function toolsAnswering(body: unknown) {

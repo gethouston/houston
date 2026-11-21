@@ -7,11 +7,6 @@ import { messageAdmissionFileName } from "@houston/protocol/message-admission-fi
 import type { Vfs } from "../vfs";
 import { ApprovalMessageRefusal } from "./message-receipts";
 
-/**
- * The same persisted record the standing runtime claims before execution.
- * Takes the turn body already parsed (`turn-body.ts`) so one request never
- * parses its own bytes twice.
- */
 export async function readMessageAdmission(
   vfs: Vfs | undefined,
   dataRoot: string,

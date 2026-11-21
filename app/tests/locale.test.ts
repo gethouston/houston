@@ -14,7 +14,7 @@ describe("isSupported", () => {
     ok(isSupported("es"));
     ok(isSupported("pt"));
     ok(!isSupported("fr"));
-    ok(!isSupported("EN")); // case-sensitive: normalization is a separate step
+    ok(!isSupported("EN"));
     ok(!isSupported(null));
     ok(!isSupported(undefined));
     ok(!isSupported(123));
@@ -49,7 +49,7 @@ describe("resolveEffectiveLocale", () => {
   it("falls back to the global default when the workspace has no valid override", () => {
     strictEqual(resolveEffectiveLocale(null, "pt"), "pt");
     strictEqual(resolveEffectiveLocale(undefined, "en"), "en");
-    strictEqual(resolveEffectiveLocale("fr", "es"), "es"); // invalid override ignored
+    strictEqual(resolveEffectiveLocale("fr", "es"), "es");
     strictEqual(resolveEffectiveLocale("", "es"), "es");
   });
 
@@ -69,28 +69,23 @@ describe("localeToApply", () => {
   });
 
   it("returns null to leave the language untouched", () => {
-    strictEqual(localeToApply("en", "en"), null); // already active
-    strictEqual(localeToApply("pt-BR", "pt"), null); // already active after normalize
-    strictEqual(localeToApply(null, "en"), null); // unset
-    strictEqual(localeToApply("fr", "en"), null); // unsupported
-    strictEqual(localeToApply("", "en"), null); // empty
+    strictEqual(localeToApply("en", "en"), null);
+    strictEqual(localeToApply("pt-BR", "pt"), null);
+    strictEqual(localeToApply(null, "en"), null);
+    strictEqual(localeToApply("fr", "en"), null);
+    strictEqual(localeToApply("", "en"), null);
   });
 });
 
 describe("localeGateIsLoading", () => {
   it("blocks the first paint until the global preference is loaded and applied", () => {
-    ok(localeGateIsLoading(true, false)); // global still loading
-    ok(localeGateIsLoading(true, true)); // global loading wins regardless of applied
-    ok(localeGateIsLoading(false, false)); // loaded but not yet applied
-    strictEqual(localeGateIsLoading(false, true), false); // loaded + applied -> paint
+    ok(localeGateIsLoading(true, false));
+    ok(localeGateIsLoading(true, true));
+    ok(localeGateIsLoading(false, false));
+    strictEqual(localeGateIsLoading(false, true), false);
   });
 
   it("does NOT depend on the best-effort workspace override query (gethouston/houston#439)", () => {
-    // The predicate takes no workspace-query argument by design: a non-settling
-    // GET /workspaces must never hold the gate. Once the global preference is
-    // loaded and applied, the gate releases — there is no third input that a
-    // stalled override query could keep true. This is the regression guard for
-    // the v0.4.17 launch hang.
     strictEqual(localeGateIsLoading(false, true), false);
   });
 });

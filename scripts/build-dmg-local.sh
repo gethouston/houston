@@ -1,40 +1,10 @@
 #!/usr/bin/env bash
-# Fast-iteration DMG builder for tweaking visuals locally.
-#
-# `pnpm tauri build` rebuilds the entire engine + frontend on every run
-# (multiple minutes). When you're just nudging the DMG background image
-# or icon positions, that loop is far too slow. This script takes an
-# already-built Houston.app and re-packages it into a styled DMG in
-# ~5 seconds so you can iterate on visuals without recompiling Rust.
-#
-# Prerequisites:
-#   1. You have an already-built .app, e.g. from a previous
-#      `pnpm tauri build`. Default lookup is
-#      `target/universal-apple-darwin/release/bundle/macos/Houston.app`,
-#      falling back to per-triple paths.
-#   2. The background image lives at
-#      `app/src-tauri/assets/dmg-background.png`.
-#
-# Usage:
-#   ./scripts/build-dmg-local.sh
-#   ./scripts/build-dmg-local.sh path/to/Houston.app
-#
-# Output:
-#   target/local-dmg/Houston-local.dmg (volume name: "Houston Installer")
-#
-# Iteration loop:
-#   1. Edit `app/src-tauri/assets/dmg-background.png` OR the positions
-#      in this script.
-#   2. Re-run this script.
-#   3. Double-click the DMG, eyeball the layout, eject.
-#   4. Repeat.
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-# 1. Locate the source .app.
 APP="${1:-}"
 if [ -z "$APP" ]; then
     for candidate in \
@@ -64,11 +34,7 @@ if [ ! -f "$BG" ]; then
     exit 1
 fi
 
-# 2. Layout — keep in sync with tauri.conf.json:bundle.macOS.dmg.
 WINDOW_W=608
-# Finder bounds include the title bar (~22px). Set 40px taller than the
-# 440px background so the bottom-most "After dragging..." line stays
-# inside the visible content area on every macOS version.
 WINDOW_H=480
 APP_X=145
 APP_Y=258
@@ -85,9 +51,6 @@ rm -f "$OUT_DMG"
 WORK_DIR=$(mktemp -d)
 STAGING="$WORK_DIR/staging"
 SPARSE="$WORK_DIR/work.dmg"
-# Finder needs the disk to live under /Volumes/<volume-name>/ to find
-# it by name in AppleScript. Custom mountpoints (e.g. $WORK_DIR/mnt)
-# work for hdiutil but Finder can't see them.
 MOUNT_POINT="/Volumes/$VOLUME_NAME"
 mkdir -p "$STAGING"
 
@@ -103,15 +66,8 @@ mkdir -p "$STAGING/.background"
 cp "$BG" "$STAGING/.background/background.tiff"
 ln -s /Applications "$STAGING/Applications"
 
-# Mark dot-prefixed folders as hidden so users with "show hidden files"
-# enabled in Finder (Cmd+Shift+.) don't see them overlapping the
-# background art. macOS HFS+ honors the UF_HIDDEN flag regardless of
-# the Finder setting.
 chflags hidden "$STAGING/.background"
 
-# 3. Create a writable sparse image sized to fit the .app + headroom.
-# `hdiutil makehybrid` would be faster but doesn't let us run AppleScript
-# to set the .DS_Store icon positions, so we go via mount + osascript.
 APP_SIZE_KB=$(du -sk "$STAGING" | cut -f1)
 SIZE_MB=$(( APP_SIZE_KB / 1024 + 80 ))
 
@@ -124,19 +80,14 @@ hdiutil create -srcfolder "$STAGING" -volname "$VOLUME_NAME" \
 echo "=== Mounting sparse image ==="
 hdiutil attach "$SPARSE" -noverify -quiet
 
-# .fseventsd is auto-created by macOS on every HFS+ mount — hide it.
 if [ -d "$MOUNT_POINT/.fseventsd" ]; then
     chflags hidden "$MOUNT_POINT/.fseventsd"
 fi
-# Belt-and-suspenders for .background (already marked in staging, but
-# the flag can be reset during image creation in some macOS versions).
 if [ -d "$MOUNT_POINT/.background" ]; then
     chflags hidden "$MOUNT_POINT/.background"
 fi
 
 echo "=== Applying Finder layout (window size, icon positions, background) ==="
-# AppleScript talks to Finder which writes .DS_Store inside the mounted
-# volume. Tauri's bundler does the same thing under the hood.
 osascript <<APPLESCRIPT
 tell application "Finder"
     tell disk "$VOLUME_NAME"
@@ -167,7 +118,6 @@ tell application "Finder"
 end tell
 APPLESCRIPT
 
-# Give Finder a beat to flush .DS_Store before we detach.
 sync
 sleep 1
 

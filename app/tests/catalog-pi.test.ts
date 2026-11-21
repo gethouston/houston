@@ -16,7 +16,6 @@ import { piCatalogToCandidates } from "../src/lib/ai-hub/catalog-pi.ts";
 import type { RawModel } from "../src/lib/ai-hub/catalog-snapshot.ts";
 import { isModelVisible } from "../src/lib/provider-overrides.ts";
 
-/** Compact CatalogModelEntry builder with sane defaults. */
 function entry(
   id: string,
   opts: Partial<CatalogModelEntry> & { name?: string } = {},
@@ -40,9 +39,7 @@ const provider = (
 
 describe("piCatalogToCandidates maps the pi-ai catalog to merge candidates", () => {
   const catalog: ProviderCatalog = [
-    // pi's DIRECT api-key OpenAI — collides with the codex rename, dropped.
     provider("openai", "apiKey", [entry("gpt-4o"), entry("gpt-4o-mini")]),
-    // OAuth Codex — renamed to `openai`, marked subscription.
     provider("openai-codex", "oauth", [
       entry("gpt-6-astra", {
         reasoning: true,
@@ -119,22 +116,14 @@ describe("piCatalogToCandidates maps the pi-ai catalog to merge candidates", () 
 });
 
 describe("piCatalogToCandidates applies the shared VISIBLE_MODELS curation", () => {
-  // The hub and the chat model picker must offer the SAME set, so both apply
-  // the ONE `isModelVisible` gate (`VISIBLE_MODELS` in provider-overrides.ts):
-  // a curated provider surfaces only its curated ids, an uncurated provider
-  // keeps its full pi list. Hidden ids stay runnable on the wire.
   const catalog: ProviderCatalog = [
     provider("anthropic", "oauth", [
-      // In VISIBLE_MODELS.anthropic — surfaces.
       entry("claude-sonnet-5-5"),
-      // Retired from the Claude lineup, NOT in VISIBLE_MODELS.anthropic —
-      // hidden.
       entry("claude-sonnet-5"),
       entry("claude-haiku-4-5"),
     ]),
     provider("google", "apiKey", [
       entry("gemini-3.5-flash"),
-      // Runnable but NOT in VISIBLE_MODELS.google — hidden.
       entry("gemini-2.5-pro"),
     ]),
     provider("groq", "apiKey", [entry("llama-4-scout")]),
@@ -210,7 +199,6 @@ describe("snapshot enrichment is gated to pi-existing models", () => {
     strictEqual(m.imageGen, true);
     strictEqual(m.toolCall, true);
     strictEqual(m.releaseDate, "2025-06-01");
-    // Existence + economics stay pi's.
     deepStrictEqual(
       m.offers.map((o) => o.providerId),
       ["openrouter"],
@@ -239,12 +227,6 @@ describe("snapshot enrichment is gated to pi-existing models", () => {
 });
 
 describe("OpenRouter rolling aliases never surface (PRODUCT-1657)", () => {
-  // `~anthropic/claude-opus-latest` ("Anthropic: Claude Opus Latest") is a
-  // duplicate of a concrete model under a name that reads as Anthropic's own.
-  // In the ceiling editor it became a separate Anthropic-lab model offered ONLY
-  // by OpenRouter, so a Claude user who allowed it got a ceiling nothing they
-  // connected could run. Hidden everywhere the visibility gate applies; still
-  // runnable on the wire for an existing pin.
   const catalog: ProviderCatalog = [
     provider("openrouter", "apiKey", [
       entry("anthropic/claude-opus-5", { name: "Claude Opus 5" }),

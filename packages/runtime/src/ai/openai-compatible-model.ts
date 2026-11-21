@@ -22,13 +22,10 @@ export function buildOpenAiCompatibleModel(
     baseUrl: endpoint.baseUrl,
     reasoning,
     input: ["text"],
-    // Local inference is free; a zero cost keeps the usage meter honest.
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow:
       endpoint.contextWindow ?? config.openaiCompatibleContextWindow,
     maxTokens: CUSTOM_MAX_TOKENS,
-    // Servers implement varying subsets of the OpenAI API. Disable the OpenAI-only
-    // extras most reject (`developer` role, `reasoning_effort`) unless reasoning.
     compat: {
       supportsDeveloperRole: false,
       supportsReasoningEffort: reasoning,

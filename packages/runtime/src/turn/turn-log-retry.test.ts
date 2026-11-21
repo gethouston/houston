@@ -19,7 +19,6 @@ afterEach(async () => {
   );
 });
 
-/** A gateway on a real socket: its answer arrives through I/O, not a timer. */
 async function gateway(): Promise<{ baseUrl: string; seqs: number[] }> {
   const seqs: number[] = [];
   const server = createServer((req, res) => {
@@ -54,10 +53,6 @@ function turnLog(baseUrl: string, fetchImpl: typeof fetch) {
 }
 
 test("a batch in flight across an event-loop stall longer than its timeout lands once", async () => {
-  // Staging 2026-10-02: pi walked a cyclic session for 6 to 11 s with the
-  // user frame's POST in flight. Its 5 s timeout fired the moment the loop ran
-  // again, the batch was dropped, and only the terminal landed: a seq gap that
-  // makes the gateway resync the conversation instead of delivering it.
   const { baseUrl, seqs } = await gateway();
   const fetchImpl = vi.fn<typeof fetch>((input, init) => fetch(input, init));
   const log = turnLog(baseUrl, fetchImpl);

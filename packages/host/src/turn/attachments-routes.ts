@@ -4,15 +4,6 @@ import { defineRoute } from "../routes/registry";
 import { stagedUploads } from "../uploads/commit";
 import { handleAttachments } from "./attachments";
 
-/**
- * The composer-attachment upload as a ROUTE. The handler lives in
- * attachments.ts, which is at the file-size cap; this module is only its
- * declaration.
- *
- * The 405 is behaviour old clients depend on: they still fire a best-effort
- * DELETE when a chat is cleared, get it, and ignore it — where a fall-through
- * would proxy that DELETE to a runtime that has no attachments route.
- */
 defineRoute({
   group: "attachments",
   method: "POST",

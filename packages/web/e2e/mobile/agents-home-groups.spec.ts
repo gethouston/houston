@@ -7,11 +7,6 @@ import {
   seedSidebarLayout,
 } from "../support/sidebar-layout";
 
-/**
- * The phone manages groups from the AI Employees list: New group in the title
- * row, and the picked group's menu beside the "All groups" filter.
- */
-
 const screen = (page: Page) => page.locator('[data-screen-active="true"]');
 const filter = (page: Page) => page.getByTestId("agents-home-team-filter");
 
@@ -83,8 +78,6 @@ test("deleting the picked group returns the filter to All groups", async ({
   await pickWork(page);
   await screen(page).getByTestId("team-folder-menu").tap();
   await page.getByRole("menuitem", { name: "Delete group" }).tap();
-  // Nothing is deleted until the user confirms, and the dialog says the AI
-  // Employees stay.
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toContainText("The AI Employees in this group stay");
   expect(

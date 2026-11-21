@@ -10,38 +10,14 @@ import type { TurnStoreConfig } from "./turn-store";
 import { poolIdentity } from "./turn-store";
 import type { TurnRequest } from "./types";
 
-/**
- * ORG-SHARED SKILLS ON A POOLED TURN.
- *
- * A standing pod mirrors its org's shared skills to disk and hands the mirror
- * to every runtime it spawns (`HOUSTON_SHARED_SKILLS_DIR`); the pi loader then
- * offers the ones the agent's skills manifest enables. A pool worker serves
- * one turn of any org, so nothing about shared skills may live in its process
- * config: each turn reads its own org's shared prefix from the store, with the
- * claim's turn token (pod-store binds that token to exactly one org and agent,
- * so naming another org's prefix is refused there), into a snapshot under the
- * turn's own root, which is deleted with the turn and never synced back.
- *
- * Only the skills the agent enabled are fetched: the loader would drop every
- * other one anyway, and an agent that enabled none reads nothing. The
- * snapshot is READ-ONLY to
- * the turn (fs-guard `readOnlyRoots`): org-shared writes are a standing pod's
- * alone, and an edit made here would silently vanish with the turn.
- */
-
-/** A store prefix names a directory, never with a trailing slash: pod-store refuses `skills/`. */
 const SKILLS_DIR = "skills";
-/** Parallel reads per turn: a large skill folder must not open a request per file at once. */
 const DOWNLOADS_AT_ONCE = 8;
-/** How long the snapshot may hold the prompt back before the turn runs without it. */
 const SNAPSHOT_DEADLINE_MS = 15_000;
 
-/** Where a pooled turn's shared skills snapshot lives: beside, never in, the synced tree. */
 export function turnSharedSkillsDir(turnRoot: string): string {
   return join(turnRoot, "shared-skills");
 }
 
-/** The org-shared store a claimed pool turn reads, or null for any other turn. */
 export function turnSharedSkillsStore(
   turn: Pick<TurnRequest, "gcsPrefix" | "claim" | "hostToken">,
   config: TurnStoreConfig = {},
@@ -59,7 +35,6 @@ export function turnSharedSkillsStore(
   });
 }
 
-/** The skill folder a shared key belongs to, or null for anything else. */
 function skillOf(key: string): string | null {
   if (!key.startsWith(`${SKILLS_DIR}/`)) return null;
   const segments = key.slice(SKILLS_DIR.length + 1).split("/");
@@ -68,13 +43,6 @@ function skillOf(key: string): string | null {
   return segments[0] ?? null;
 }
 
-/**
- * Fetch the org's shared skills this agent enabled into `dest`. Most agents
- * enable none, and their turns read nothing at all; the rest pay one listing
- * and their skills' files. Never fails the turn: a store failure is reported
- * and the turn runs without them, the way a pod whose mirror pull failed runs
- * on what it has.
- */
 export async function snapshotTurnSharedSkills(
   store: ObjectStore | null,
   dest: string,
@@ -82,10 +50,6 @@ export async function snapshotTurnSharedSkills(
   deadlineMs: number = SNAPSHOT_DEADLINE_MS,
 ): Promise<void> {
   if (!store?.manifest) return;
-  // One stop for every read: the deadline (a stalled store must not hold the
-  // prompt back) and the first failure. HTTP reads cancel on it at once, or
-  // after at most one retry pause; readers are drained before this returns,
-  // so none is left writing into a root the turn then removes.
   const stop = new AbortController();
   const timer = setTimeout(
     () => stop.abort(new Error(`shared skills took over ${deadlineMs} ms`)),
@@ -142,11 +106,6 @@ export async function snapshotTurnSharedSkills(
   }
 }
 
-/**
- * The pooled turn's snapshot, after hydration (it reads the agent's own
- * skills manifest) and after the worker answered: it never throws, so it
- * cannot refuse the turn, and only the prompt waits for it.
- */
 export async function snapshotPooledTurnSharedSkills(
   deps: { sharedSkillsStore?: typeof turnSharedSkillsStore },
   turn: Pick<TurnRequest, "gcsPrefix" | "claim" | "hostToken">,
@@ -161,11 +120,6 @@ export async function snapshotPooledTurnSharedSkills(
   at.timings.t_shared_skills = performance.now();
 }
 
-/**
- * Half a skill folder is worse than none: the loader would offer a skill whose
- * reference files never arrived. The directory itself stays, since the file
- * guard was built on it.
- */
 async function clearSnapshot(dest: string): Promise<void> {
   try {
     const left = await readdir(dest);

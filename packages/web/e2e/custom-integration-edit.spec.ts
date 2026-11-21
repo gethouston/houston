@@ -50,7 +50,6 @@ for (const width of [1280, 390]) {
         await route.fulfill({ json: { ok: true } });
       },
     );
-    // Keep the rendering test independent of the external site's availability.
     await page.route("https://spark.studioroda.co/favicon.ico", (route) =>
       route.abort(),
     );

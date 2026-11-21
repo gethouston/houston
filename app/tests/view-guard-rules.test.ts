@@ -20,18 +20,13 @@ describe("deadViewStep", () => {
   it("keeps a live view", () => {
     assert.equal(deadViewStep({ ...base, viewMode: "agents-home" }), "keep");
     assert.equal(deadViewStep({ ...base, viewMode: "agent" }), "keep");
-    // Ungated: no gate can take the Academy away, so the guard must never
-    // send a user home off it.
     assert.equal(deadViewStep({ ...base, viewMode: "academy" }), "keep");
-    // The account menu's screens are ungated too.
     assert.equal(deadViewStep({ ...base, viewMode: "profile" }), "keep");
     assert.equal(deadViewStep({ ...base, viewMode: "about-me" }), "keep");
   });
 
   it("sends a view no screen answers to home", () => {
     assert.equal(deadViewStep({ ...base, viewMode: "chat" }), "go-home");
-    // Retired ids an older install may still have pinned. These are stale
-    // `viewMode`s that must land the user home rather than on a blank card.
     assert.equal(deadViewStep({ ...base, viewMode: "inbox" }), "go-home");
     assert.equal(deadViewStep({ ...base, viewMode: "agent-store" }), "go-home");
     assert.equal(
@@ -41,8 +36,6 @@ describe("deadViewStep", () => {
   });
 
   it("sends the assistant home on a deployment that serves none", () => {
-    // Not a role gate: discovery answered 501/503, so there is no address to
-    // open a chat at and the screen is not even mounted.
     assert.equal(
       deadViewStep({ ...base, viewMode: "assistant", showAssistant: false }),
       "go-home",
@@ -51,8 +44,6 @@ describe("deadViewStep", () => {
   });
 
   it("keeps the assistant while the manager runs onboarding, whatever discovery says", () => {
-    // Onboarding is scripted and local: it runs on a deployment that serves
-    // no manager, so the gate must not bounce the person out of it.
     assert.equal(
       deadViewStep({
         ...base,
@@ -62,7 +53,6 @@ describe("deadViewStep", () => {
       }),
       "keep",
     );
-    // Once it ends there, the view is stale again and goes home.
     assert.equal(
       deadViewStep({
         ...base,
@@ -75,8 +65,6 @@ describe("deadViewStep", () => {
   });
 
   it("waits rather than bouncing the assistant while discovery is in flight", () => {
-    // Discovery is null until it lands, so the gate reads false in that window:
-    // acting on it would throw the user off the screen they just opened.
     assert.equal(
       deadViewStep({
         ...base,
@@ -101,20 +89,12 @@ describe("deadViewStep", () => {
   });
 
   it("sends a RETIRED view home whatever the gates say", () => {
-    // The Permissions screen, the standalone Time worked screen and the
-    // workspace Skills screen are gone (agent policy and skills live on each
-    // employee's own screen). No
-    // gate can make either valid again, so a `viewMode` an older session
-    // persisted must go home rather than strand the user on a blank card.
     for (const viewMode of ["permissions", "time-worked", "skills-home"]) {
       assert.equal(deadViewStep({ ...base, viewMode }), "go-home", viewMode);
     }
   });
 
   it("waits out a gated view while the capabilities are still loading", () => {
-    // Every gate reads false off null capabilities, so acting on that window
-    // would bounce the user off a screen they are entitled to, on every boot
-    // and every space switch.
     for (const viewMode of ["ai-hub", "admin"]) {
       assert.equal(
         deadViewStep({
@@ -175,8 +155,6 @@ describe("deadViewStep", () => {
   });
 
   it("still sends a non-top-level view home without employees", () => {
-    // No teams read can ever make `chat` a screen, so this one is genuinely
-    // stale, not in flight — and home with no teams is the Inbox.
     assert.equal(
       deadViewStep({ ...base, viewMode: "chat", agents: [] }),
       "go-home",

@@ -21,22 +21,12 @@ import { genericErrorDescription } from "../../lib/error-report";
 import { useUIStore } from "../../stores/ui";
 import { SettingsControlRow } from "../settings/settings-row";
 
-/**
- * One localized string per client-side rejection. Kept as a literal map (not a
- * template key) so a missing translation fails at compile time, and so the user
- * always reads the REAL reason their picture bounced rather than a generic
- * apology.
- */
 const PHOTO_ERROR_KEY = {
   notImage: "profile.errors.notImage",
   unreadable: "profile.errors.unreadable",
   tooLarge: "profile.errors.tooLarge",
 } as const satisfies Record<AvatarImageError["kind"], string>;
 
-/**
- * Up to two leading letters of the effective display name, uppercased — the
- * face shown when neither the user nor their Google account gave us a picture.
- */
 function pictureInitials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   const letters = words
@@ -46,19 +36,6 @@ function pictureInitials(name: string): string {
   return letters.toUpperCase() || "?";
 }
 
-/**
- * Profile > Picture: the preview, an always-visible "Change picture"
- * button driving a hidden file input, and — only when the current picture is the
- * user's OWN upload — a "Remove picture" button that clears back to their Google
- * photo. The image is squared and shrunk in the browser before it ever reaches
- * the gateway ({@link fileToAvatarDataUrl}); every client-side rejection toasts
- * its honest reason. The SAVE is optimistic: the new picture shows at once and
- * a refusal puts the old one back with its own toast (`useSetMyProfile`).
- *
- * `displayName` is the EFFECTIVE name the Profile screen already resolved (the gateway
- * value, else the identity session's), passed in rather than re-derived so the
- * initials here can never disagree with the name in the field below them.
- */
 export function ProfilePhotoRow({ displayName }: { displayName: string }) {
   const { t } = useTranslation("settings");
   const addToast = useUIStore((s) => s.addToast);
@@ -67,7 +44,6 @@ export function ProfilePhotoRow({ displayName }: { displayName: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preparing, setPreparing] = useState(false);
 
-  // Only the in-browser resize is waited on: the save itself is optimistic.
   const busy = preparing;
   const photoFailure = {
     title: t("writeFailed.profilePhoto.title"),
@@ -164,7 +140,6 @@ export function ProfilePhotoRow({ displayName }: { displayName: string }) {
           data-testid="profile-photo-input"
           onChange={(event) => {
             const file = event.target.files?.[0];
-            // Clear it first so re-picking the SAME file still fires a change.
             event.target.value = "";
             if (file) void handlePick(file);
           }}

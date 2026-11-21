@@ -1,24 +1,9 @@
-/**
- * The fake host's AI-provider catalog — the static shape of each provider the
- * per-agent connect flow exposes (name, auth kind, the `LoginInfo` kind its
- * `startLogin` returns, its selectable models). The mutable per-agent
- * credential/active state lives in `state-providers.ts`; this is the fixed spine
- * it reads.
- *
- * A small but realistic set spanning both auth kinds and both hosted login kinds
- * (`auth_code` = paste-back Claude; `device_code` = Codex/Copilot), so a contract
- * test can exercise every branch. Wire types come from the real package so a
- * `ProviderId` change breaks the typecheck here instead of drifting the mock.
- */
-
 import type { ProviderId } from "@houston/runtime-client";
 
 export interface ProviderSpec {
   id: ProviderId;
   name: string;
-  /** How the user connects: an OAuth dance or a pasted API key. */
   connect: "oauth" | "apiKey";
-  /** The `LoginInfo` kind `startLogin` returns for the OAuth providers. */
   loginKind: "auth_code" | "device_code";
   models: string[];
 }
@@ -54,19 +39,10 @@ export const CATALOG: ProviderSpec[] = [
   },
 ];
 
-/** Keyed by raw string so an untrusted request body can be looked up without
- *  being cast to {@link ProviderId} first. */
 export const SPEC: ReadonlyMap<string, ProviderSpec> = new Map(
   CATALOG.map((s) => [s.id, s]),
 );
 
-/**
- * The spec for a provider that connects with a pasted key — `undefined` for an
- * id the catalog doesn't know and for one that signs in through OAuth. The only
- * narrowing path from a request body to a {@link ProviderId}, mirroring the
- * `isApiKeyProvider` gate the real `POST /agents/:id/credential/api-key` applies
- * (packages/host/src/routes/agents.ts).
- */
 export function apiKeyProviderSpec(value: unknown): ProviderSpec | undefined {
   if (typeof value !== "string") return undefined;
   const spec = SPEC.get(value);

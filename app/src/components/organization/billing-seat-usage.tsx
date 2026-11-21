@@ -2,14 +2,8 @@ import type { SeatUsageView } from "@houston/sdk";
 import { cn } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 
-/** More dots than this stop reading as seats; the line still counts them. */
 const MAX_DOTS = 24;
 
-/**
- * A yearly org's paid seats that nobody uses: one dot per paid seat (filled
- * in use, hollow free), the count, and what a free seat means. Shown only
- * while a paid seat is free.
- */
 export function BillingSeatUsage({
   usage,
   pays,

@@ -7,13 +7,6 @@ import { PRESS_CLASS, PRESS_STYLE } from "./org-chart-motion";
 import type { ChartPerson } from "./org-chart-people";
 import type { OrgTreeAgent } from "./org-chart-tree";
 
-/**
- * The org chart's nodes: compact cards, a face and a name, the same size at every level so the chart reads as one grid. People and AI
- * Employees are buttons (People on that person, the AI Employee's board)
- * that press in a little; the hover fill is an extra, never the only sign.
- * `id` is the node's `data-tree-node`, which the connectors measure.
- */
-
 const CARD =
   "flex h-14 w-full min-w-0 items-center gap-3 rounded-xl bg-card px-3 text-left shadow-card ht-hairline";
 
@@ -112,7 +105,6 @@ export function TreeAgentNode({
   );
 }
 
-/** What the caps left out: a quiet card that says "+N people" once. */
 export function TreeMoreNode({ id, label }: { id: string; label: string }) {
   return (
     <Slot id={id}>

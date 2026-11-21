@@ -62,7 +62,6 @@ export interface LoginRunner {
   ): { error: string; kind?: string; reason?: string };
 }
 
-// Only a login request loads the provider catalog, credential store and CLI driver.
 export async function loadLoginRunner(): Promise<LoginRunner> {
   const [login, exported, verify, azure] = await Promise.all([
     import("../auth/login"),

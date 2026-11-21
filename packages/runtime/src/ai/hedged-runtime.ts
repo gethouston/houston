@@ -12,32 +12,17 @@ import { estimatePromptTokens } from "./prompt-tokens";
 
 type StreamSimpleOptions = Parameters<ModelRuntime["streamSimple"]>[2];
 
-/** A request as the hedge sent it: its provider and the size of its prompt. */
 export interface SentRequestSize {
   provider: string;
   promptTokens: number;
 }
 
 export interface HedgeObserver {
-  /** A request went out, before any of its attempts. */
   sent?(request: SentRequestSize): void;
-  /** A request's response opened, `afterMs` after its first attempt. */
   answered?(afterMs: number, attempt: number): void;
-  /** Another attempt of a request went out. */
   hedged?(attempt: number): void;
 }
 
-/**
- * `runtime` with every session request hedged (ai/hedged-stream.ts): a
- * request whose response has not opened within the first-byte deadline for
- * its provider and prompt size (ai/first-byte.ts) goes out again, at most
- * twice, and the first answer wins. pi sends each agent request through
- * `modelRuntime.streamSimple`, so this is the one seam; every other method
- * (model resolution, compaction's own calls) runs unchanged on `runtime`.
- *
- * Each hedge logs one `[provider_hedge]` line, the count of duplicate
- * requests and so of duplicate input tokens.
- */
 export function hedgedModelRuntime(
   runtime: ModelRuntime,
   observer: HedgeObserver = {},
@@ -54,17 +39,12 @@ export function hedgedModelRuntime(
   ): AssistantMessageEventStream => {
     const promptTokens = estimatePromptTokens(context);
     observer.sent?.({ provider: model.provider, promptTokens });
-    // pi's own provider-level retry (`retry.provider.maxRetries`, 0 unless a
-    // settings file raises it) can sleep out a 429's Retry-After before any
-    // event: that wait is not silence, so such a request is never hedged.
     const deadlineMs =
       (options?.maxRetries ?? 0) > 0
         ? 0
         : deadlineFor(model.provider, promptTokens);
     const target = `provider=${model.provider} model=${model.id}`;
     let hedges = 0;
-    // Unhedged, the same race with no extra attempt still reports the first
-    // byte (the pooled turn's `first_byte` mark).
     return hedgedStream(
       (signal) => runtime.streamSimple(model, context, { ...options, signal }),
       {

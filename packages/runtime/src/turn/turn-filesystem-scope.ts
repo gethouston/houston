@@ -2,7 +2,6 @@ import { posix } from "node:path";
 import { docKey } from "@houston/domain";
 import { agentScopeIncludes } from "./turn-agent-scope";
 
-/** Build the object scope owned by one claimed conversation turn. */
 export function claimedTurnIncludes(
   dataRel: string,
   workspaceRel: string,
@@ -13,8 +12,6 @@ export function claimedTurnIncludes(
     "conversations",
     `${encodeURIComponent(conversationId)}.json`,
   );
-  // The transcript's archive segments (store/conversation-archive.ts) belong
-  // to the same turn as its live file.
   const archive = posix.join(
     dataRel,
     "conversations",
@@ -32,7 +29,6 @@ export function claimedTurnIncludes(
     agentScopeIncludes(relativePath, workspaceRel);
 }
 
-/** Keep ordinary session state, but only durable files from the Claude CLI. */
 export function turnSessionScopeIncludes(
   sessionRel: string,
   relativePath: string,
@@ -45,10 +41,8 @@ export function turnSessionScopeIncludes(
   return claudeRel === "sessions.json" || claudeRel.startsWith("projects/");
 }
 
-/** Store-relative mission-board object granted to a claimed turn. */
 export const turnActivityKey = (workspaceRel: string): string =>
   docKey(workspaceRel, "activity");
 
-/** Store-relative routine-runs object granted to a claimed turn. */
 export const turnRoutineRunsKey = (workspaceRel: string): string =>
   docKey(workspaceRel, "routine_runs");

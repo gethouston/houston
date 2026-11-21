@@ -1,16 +1,4 @@
 import "../../uploads/routes";
-/**
- * The barrel that makes the registry complete.
- *
- * Every module that declares routes is imported here for its side effect, so
- * anything imported from HERE sees the whole registry rather than whichever
- * modules the importer happened to pull in. That is what server.ts and the SDK
- * parity gate need: they enter the chain at the top, and a group missing from
- * this list would be silently unreachable and silently unchecked.
- *
- * Import order is documentation, not behaviour: matching order is the group
- * order in registry/groups.ts's GROUP_PHASES, which mirrors server.ts's chain.
- */
 import "../meta";
 import "../catalog";
 import "../credential";
@@ -65,8 +53,6 @@ import "../agent-file";
 import "../../turn/files-routes";
 import "../../turn/attachments-routes";
 
-// The catch-all forward to the agent's own engine, last: every host-served
-// per-agent family above is only reachable because it is declared before this.
 import "../agents";
 
 export { dispatchGroup, listRoutes } from "./dispatch";

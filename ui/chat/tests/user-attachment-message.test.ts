@@ -1,6 +1,3 @@
-// An interaction card's answers sent with files render as the answers'
-// receipt plus the attachment badge, never as the raw answers marker.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import * as React from "react";

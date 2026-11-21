@@ -1,21 +1,3 @@
-/* ============================================================
-   FUTURISTIC THEME — app-only chrome
-   ------------------------------------------------------------
-   The shared canvas (aurora glow, glass surfaces, the Arc "screen"
-   and depth utilities) lives in @houston-ai/core/src/canvas.css.
-   This file holds the AI Hub live glow and onboarding click cues,
-   veil and guide elevation. app/src/styles/globals.css imports the
-   shared canvas first, followed by these app-only effects.
-   ============================================================ */
-
-/* ── AI Hub live glow (signature) ───────────────────────────────
-   Reserved for the CONNECTED/live provider card. An accent-tinted radial
-   wash painted as a background LAYER (sits over the surface fill, under
-   content, no pointer-events cost) + an accent inset ring via outline.
-   Reuses Houston's brand aurora hues (the same blue #3b82f6 / indigo
-   #818cf8 the aurora + card-running-glow use — the effects-layer brand
-   palette, not tokenized by design). Everything else in the hub stays
-   calm; only the connected card carries this. */
 .ht-live-glow {
   background-image:
     radial-gradient(
@@ -32,33 +14,18 @@
   outline-offset: -1px;
 }
 
-/* ---- In-app onboarding click cues --------------------------------------
-   (tutorial/tutorial-spotlight.tsx, tutorial/tutorial-center-card.tsx)
-
-   The cues that say "here, CLICK" on a spotlighted control — a sonar ping
-   radiating off the ring, a cursor glyph tapping at the target — plus the
-   veil and elevation the guided setup floats on. Effect values live here
-   untokenized on purpose, same rule as the aurora in canvas.css. */
-
-/* The spotlight's veil: a giant spread shadow paints everything OUTSIDE the
-   element dark, leaving its box as the lit hole. Light on purpose — the user
-   must still see the app they are being guided through. */
 .ht-tutorial-veil-cutout {
   box-shadow: 0 0 0 9999px rgba(13, 13, 13, 0.35);
 }
 
-/* The same veil with no hole in it, for the beats that dim the whole app:
-   a step whose anchor has not rendered yet, and the centered narration card. */
 .ht-tutorial-scrim {
   background: rgba(13, 13, 13, 0.35);
 }
 
-/* Keeps the white cursor glyph legible over a light control under the veil. */
 .ht-tutorial-cursor-shadow {
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
 }
 
-/* Radiates outward from the spotlight ring and fades — "look HERE". */
 .ht-tutorial-ping {
   animation: ht-tutorial-ping 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
@@ -75,7 +42,6 @@
   }
 }
 
-/* A small cursor glyph pressing at the target's corner — "and CLICK". */
 .ht-tutorial-cursor {
   animation: ht-tutorial-cursor 1.6s ease-in-out infinite;
 }

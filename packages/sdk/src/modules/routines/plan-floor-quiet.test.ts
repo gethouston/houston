@@ -12,7 +12,6 @@ const body = {
   minIntervalMinutes: 15,
 };
 
-/** The adapter's error shape: status plus the parsed (or raw) body. */
 function engineError(status: number, payload: unknown): Error {
   return Object.assign(new Error("engine error"), { status, body: payload });
 }
@@ -43,8 +42,6 @@ describe("planMinIntervalRefusal: an expected state, not a bug", () => {
 
 describe("isPlanMinIntervalRefusal: the quiet classifier's gate", () => {
   it("agrees with the parser on every transport shape", () => {
-    // A body naming the code but missing the floor is not the refusal either:
-    // the toast that names the floor and the classifier read the same parse.
     const partial = { error: "too often", code: "plan_min_interval" };
     expect(isPlanMinIntervalRefusal(engineError(400, partial))).toBe(false);
     expect(planMinIntervalRefusal(engineError(400, partial))).toBeNull();

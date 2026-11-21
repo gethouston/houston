@@ -1,16 +1,5 @@
 import type { EngineSentry, LogCaptureLevel } from "./client";
 
-/**
- * Route a process's `console.*` into Sentry WITHOUT changing what it prints —
- * the host logs straight through console (its stderr is the supervisor's
- * engine.log), so wrapping console is the one seam that sees every error site.
- *
- * The runtime does NOT use this: its `installRuntimeLogging` already owns
- * console and forwards entries via `LoggerOptions.capture` instead (wrapping
- * twice would double-report).
- *
- * Returns a restore function (tests).
- */
 export function installConsoleCapture(
   sentry: EngineSentry,
   target: Console = console,

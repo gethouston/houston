@@ -5,11 +5,6 @@ import {
   RUNTIME,
 } from "./server-op-conversation.test-support";
 
-/**
- * While a card is live, only the person it is for may answer, dismiss, import
- * into, or truncate the conversation: each of these retires or moves the card.
- */
-
 const OWNER = "member-owner";
 const OTHER = "member-other";
 
@@ -63,7 +58,6 @@ test("another member's dismissal is refused and writes nothing", async () => {
 
 test("the database rows decide whose card it is", async () => {
   const { pool, post } = await opWorker();
-  // The file lags the rows: only the rows hold the card.
   pool.put(FILE, JSON.stringify(conversation));
 
   const out = await post(dismiss({ transcript: withCard }), {

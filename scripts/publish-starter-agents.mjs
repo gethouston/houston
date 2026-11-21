@@ -1,29 +1,6 @@
 #!/usr/bin/env node
-/**
- * Publish (or update) the release-bundled starter agents (`store/agents/<id>/`)
- * to the Houston Agent Store via the gateway. Idempotent: lists the caller's
- * agents, matches each starter by `slugify(name)` (independent of the gateway's
- * finalized share slug, which may be suffixed or null on an unpublished agent),
- * and PATCHes the existing listing or POSTs a new one — both with
- * `publish: true`. Prints a per-agent result table and exits nonzero if any
- * agent fails.
- *
- *   node scripts/publish-starter-agents.mjs --dry-run
- *   HOUSTON_STORE_TOKEN=<bearer> node scripts/publish-starter-agents.mjs --only sales,support
- *
- * Flags:
- *   --gateway <url>   gateway origin (default https://staging-gateway.gethouston.ai)
- *   --token <bearer>  bearer token; falls back to env HOUSTON_STORE_TOKEN
- *   --dry-run         validate + print IR summaries only, no network
- *   --only <id,...>   restrict to these starter agent ids
- *
- * The bearer is the Firebase ID token from a signed-in Houston app session.
- * Granting the @houston handle to the publishing account is a separate
- * admin-console step (see store/README.md).
- */
 import { register } from "tsx/esm/api";
 
-// tsx ESM loader: lets this plain-node script import the TS `agentstore-*` pkgs.
 register();
 
 const { AgentStoreClient, StoreApiError } = await import(
@@ -143,7 +120,6 @@ async function main() {
   const opts = parseArgs(process.argv.slice(2));
   const ids = resolveIds(opts.only);
 
-  // Build + validate every IR up front so a mapping error aborts before network.
   const built = ids.map((id) => ({ id, ir: buildStarterAgentIr(id) }));
 
   if (opts.dryRun) {

@@ -7,19 +7,12 @@ import {
   applyBulkPatch,
 } from "../src/data/activity-bulk.ts";
 
-/**
- * A8: a display alias ("openai") must never land on disk. The domain's own
- * persistence boundary is pinned in `packages/domain/src/activities.test.ts`;
- * this pins the APP's writer, which builds the activity row itself.
- */
-
 test("the app's activity writer canonicalizes the provider it stores", () => {
   const source = readFileSync(
     new URL("../src/data/activity-writes.ts", import.meta.url),
     "utf8",
   );
   strictEqual(source.includes("toCanonicalProviderId(provider)"), true);
-  // The alias must not also survive verbatim on the row it writes.
   strictEqual(/\n\s+provider,\n/.test(source), false);
 });
 
@@ -34,11 +27,6 @@ const ROW = {
   status: "needs_you",
 } as Parameters<typeof applyActivityPatch>[0];
 
-/**
- * The reproduction: the CREATE path canonicalized while the UPDATE path merged
- * the patch verbatim, so re-pinning a mission from the picker (which speaks
- * "openai") wrote a row the engine cannot read a pin from.
- */
 test("an update canonicalizes the provider it stores, like the create does", () => {
   const patched = applyActivityPatch(ROW, { provider: "openai" }, "now");
 

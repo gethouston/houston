@@ -2,8 +2,6 @@ import assert from "node:assert/strict";
 import { it } from "node:test";
 import { nextFitIndex } from "../src/fit-label.ts";
 
-// Drive the measuring loop the way the hook does: re-measure after every
-// step until the pick settles.
 function settle(widths: number[], slot: number): number {
   let index = 0;
   for (;;) {
@@ -13,7 +11,6 @@ function settle(widths: number[], slot: number): number {
   }
 }
 
-// pt "ago. de 2025", "08/2025", "2025" on macOS at 11px.
 const PT = [70.2, 45.4, 28];
 
 it("keeps month and year when the slot holds it", () => {

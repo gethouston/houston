@@ -1,11 +1,5 @@
 import type { KeyCase, ObjectStat, Vfs } from "./vfs";
 
-/**
- * A Vfs whose keys are re-rooted under `prefix` of another Vfs. The op
- * handlers address an agent relative to the `workspaces/` directory while the
- * store-backed vfs is rooted one level up; this adapter bridges the two
- * without copying anything.
- */
 export class PrefixedVfs implements Vfs {
   constructor(
     private readonly inner: Vfs,
@@ -35,7 +29,6 @@ export class PrefixedVfs implements Vfs {
     return k.slice(this.prefix.length + 1);
   }
 
-  /** Re-rooting never changes how the backend compares names. */
   keyCase(): Promise<KeyCase> {
     return this.inner.keyCase();
   }

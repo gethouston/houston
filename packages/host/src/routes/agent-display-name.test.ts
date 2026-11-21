@@ -13,12 +13,6 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
 
-/**
- * The gateway owns a cloud agent's display name (a rename never moves the
- * folder), and hands it to the pod on every proxied request. Only a
- * gateway-fronted host takes it; anywhere else the header is client input.
- */
-
 const verifier: TokenVerifier = {
   async verify(b) {
     return b.startsWith("tok:") ? { userId: b.slice(4) } : null;
@@ -66,7 +60,6 @@ async function host(gatewayFronted: boolean) {
     body: JSON.stringify({ name: "Sales" }),
   });
   const { id } = (await created.json()) as { id: string };
-  // The Files zip needs something to zip.
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const [agent] = await store.listAgents(ws.id);
   if (!agent) throw new Error("the create made no agent");

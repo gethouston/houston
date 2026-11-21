@@ -1,23 +1,4 @@
 #!/usr/bin/env bash
-# Usage: write-train-json.sh <out-file>
-# Renders train.json: what train cloud-v<VERSION> shipped. For the engine and
-# the agentstore it records the image the train resolved to (sha, digest,
-# image ref), whether its prod dispatch actually went out (`dispatched`; job
-# outputs survive a failed job, so a resolved image is NOT proof of a roll) and
-# whether the matching label/ tag could be stamped. ship-train.yml uploads
-# it as a release asset, so the train -> image mapping exists even when a label
-# push is refused.
-#
-# Env, required: TAG, VERSION, REGISTRY.
-# Env, optional (an empty *_SHA makes that half `null`: its image never resolved):
-#   BASE_SHA, RUN_URL
-#   ENGINE_SHA, ENGINE_DIGEST, ENGINE_DISPATCHED, ENGINE_LABEL_STAMPED, ENGINE_LABEL_REASON
-#   AGENTSTORE_SHA, AGENTSTORE_DIGEST, AGENTSTORE_DISPATCHED, AGENTSTORE_LABEL_STAMPED,
-#   AGENTSTORE_LABEL_REASON
-# *_DISPATCHED is `true` only when the promote step wrote it; anything else
-# (unset, the step failed or never ran) renders as false.
-# *_LABEL_STAMPED is the stamp script's outcome (true | unchanged | false);
-# both `true` and `unchanged` mean the label exists at this sha.
 set -euo pipefail
 
 if [ $# -ne 1 ]; then
@@ -29,7 +10,7 @@ OUT="$1"
 : "${VERSION:?VERSION is required}"
 : "${REGISTRY:?REGISTRY is required}"
 
-half() { # <image repo> <label> <sha> <digest> <dispatched> <stamped> <reason>
+half() {
   if [ -z "$3" ]; then
     echo null
     return

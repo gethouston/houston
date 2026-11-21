@@ -7,12 +7,6 @@ import { Button } from "@houston-ai/core";
 import { storeType } from "@houston-ai/store";
 import { useState } from "react";
 
-/**
- * The bar's labels and its live demo. Helper module: it exports no `specimen`.
- */
-
-/** Every label the bar needs — it has no English defaults, because the app
- *  passes `t()` results and `ui/` stays language-agnostic. */
 export const LABELS: BulkActionBarLabels = {
   selected: (count) => `${count} selected`,
   moveTo: "Move to",
@@ -34,17 +28,11 @@ export const LABELS: BulkActionBarLabels = {
   confirmDeleteAction: "Delete",
 };
 
-/** The two sections a board selection can be moved to. */
 export const MOVE_TARGETS: BulkMoveTarget[] = [
   { status: "needs_you", label: "Needs you" },
   { status: "done", label: "Done" },
 ];
 
-/**
- * The bar as the board mounts it: floating over the bottom of the pane, with a
- * live selection behind it. Every action confirms first, so the outcome line
- * only changes once the dialog is accepted — no browser dialog anywhere.
- */
 export function LiveBulkActionBar({
   moveTargets = MOVE_TARGETS,
   initialCount = 4,

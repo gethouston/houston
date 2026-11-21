@@ -1,0 +1,111 @@
+# Architecture decision records
+
+- [0001](0001-conversation-scope-is-agent-qualified.md) Conversation scope is the (agent path, session key) pair
+- [0002](0002-runtime-owns-send-time-context-management.md) The runtime owns send-time context management
+- [0003](0003-org-level-shared-skills.md) Org storage is the source of truth for shared skills
+- [0004](0004-palette-library.md) Mode and palette are two axes, and imported palettes are derived
+- [0005](0005-standing-pods-are-the-last-resort.md) Standing pods are the last resort
+- [0006](0006-runtime-design-decisions.md) Runtime (packages/runtime): design decisions
+- [0007](0007-runtime-ai-design-decisions.md) Runtime models and providers: design decisions
+- [0008](0008-runtime-auth-design-decisions.md) Runtime credentials: design decisions
+- [0009](0009-runtime-backends-claude-design-decisions.md) Runtime Claude backend: design decisions
+- [0010](0010-runtime-backends-pi-design-decisions.md) Runtime pi backend: design decisions
+- [0011](0011-runtime-process-store-transport-design-decisions.md) Runtime process, store and transport: design decisions
+- [0012](0012-runtime-session-design-decisions.md) Runtime session: design decisions
+- [0013](0013-runtime-session-tools-design-decisions.md) Runtime session tools: design decisions
+- [0014](0014-runtime-tests-design-decisions.md) Runtime tests: design decisions
+- [0015](0015-runtime-turn-design-decisions.md) Runtime pooled turns: design decisions
+- [0016](0016-host-design-decisions.md) Host: design decisions
+- [0017](0017-protocol.md) Protocol v3: the shared contract between host, runtime and clients
+- [0018](0018-wire-types.md) Wire types: the client's copy of protocol v3
+- [0019](0019-sdk-core.md) The SDK kernel: one client, snapshots in, commands out
+- [0020](0020-sdk-accounts-and-spaces.md) Accounts, spaces and per-agent policy are gateway commands
+- [0021](0021-sdk-agents-and-board.md) Agents, the mission board and conversation lists
+- [0022](0022-sdk-billing-and-plan.md) Billing and plan rules are read in one place
+- [0023](0023-sdk-browser-handoff.md) Browser hand-off live view
+- [0024](0024-sdk-integrations-channels-linkedin.md) Integrations, channels and LinkedIn connections
+- [0025](0025-sdk-preferences-and-appearance.md) Account preferences and device appearance
+- [0026](0026-sdk-providers-and-local-model-bridge.md) AI provider connections and the local model bridge
+- [0027](0027-sdk-routines-skills-files.md) Routines, skills, files, citations and the briefing
+- [0028](0028-sdk-sign-in-and-session.md) Sign-in and session custody live in the SDK
+- [0029](0029-sdk-turns.md) Turn lifecycle in the SDK
+- [0030](0030-engine-adapter.md) The engine adapter binds the SDK to a real transport
+- [0031](0031-app-components-design-decisions.md) app/src/components (top-level files): design decisions
+- [0032](0032-app-components-academy-design-decisions.md) app/src/components/academy: design decisions
+- [0033](0033-app-components-account-design-decisions.md) app/src/components/account: design decisions
+- [0034](0034-app-components-agent-design-decisions.md) app/src/components/agent: design decisions
+- [0035](0035-app-components-agent-actions-design-decisions.md) app/src/components/agent-actions: design decisions
+- [0036](0036-app-components-agent-settings-design-decisions.md) app/src/components/agent-settings: design decisions
+- [0037](0037-app-components-agents-home-design-decisions.md) app/src/components/agents-home: design decisions
+- [0038](0038-app-components-ai-hub-design-decisions.md) app/src/components/ai-hub: design decisions
+- [0039](0039-app-components-assistant-design-decisions.md) app/src/components/assistant: design decisions
+- [0040](0040-app-components-auth-design-decisions.md) app/src/components/auth: design decisions
+- [0041](0041-app-components-board-design-decisions.md) app/src/components/board: design decisions
+- [0042](0042-app-components-browser-design-decisions.md) app/src/components/browser: design decisions
+- [0043](0043-app-components-cards-design-decisions.md) app/src/components/cards: design decisions
+- [0044](0044-app-components-context-design-decisions.md) app/src/components/context: design decisions
+- [0045](0045-app-components-copy-agent-design-decisions.md) app/src/components/copy-agent: design decisions
+- [0046](0046-app-components-employee-card-design-decisions.md) app/src/components/employee-card: design decisions
+- [0047](0047-app-components-file-preview-design-decisions.md) app/src/components/file-preview: design decisions
+- [0048](0048-app-components-first-day-design-decisions.md) app/src/components/first-day: design decisions
+- [0049](0049-app-components-integrations-design-decisions.md) app/src/components/integrations: design decisions
+- [0050](0050-app-components-integrations-view-design-decisions.md) app/src/components/integrations-view: design decisions
+- [0051](0051-app-components-mission-chat-design-decisions.md) app/src/components/mission-chat: design decisions
+- [0052](0052-app-components-onboarding-design-decisions.md) app/src/components/onboarding: design decisions
+- [0053](0053-app-components-organization-design-decisions.md) app/src/components/organization: design decisions
+- [0054](0054-app-components-permissions-design-decisions.md) app/src/components/permissions: design decisions
+- [0055](0055-app-components-portable-design-decisions.md) app/src/components/portable: design decisions
+- [0056](0056-app-components-provider-browser-design-decisions.md) app/src/components/provider-browser: design decisions
+- [0057](0057-app-components-settings-design-decisions.md) app/src/components/settings: design decisions
+- [0058](0058-app-components-shell-design-decisions.md) app/src/components/shell: design decisions
+- [0059](0059-app-components-skills-view-design-decisions.md) app/src/components/skills-view: design decisions
+- [0060](0060-app-components-team-view-design-decisions.md) app/src/components/team-view: design decisions
+- [0061](0061-app-components-tutorial-design-decisions.md) app/src/components/tutorial: design decisions
+- [0062](0062-app-src-agents-design-decisions.md) app/src/agents: design decisions
+- [0063](0063-app-src-data-design-decisions.md) app/src/data: design decisions
+- [0064](0064-app-src-hooks-design-decisions.md) app/src/hooks: design decisions
+- [0065](0065-app-src-lib-design-decisions.md) app/src/lib: design decisions
+- [0066](0066-app-src-lib-academy-design-decisions.md) app/src/lib/academy: design decisions
+- [0067](0067-app-src-lib-agent-provisioning-design-decisions.md) app/src/lib/agent-provisioning: design decisions
+- [0068](0068-app-src-lib-ai-hub-design-decisions.md) app/src/lib/ai-hub: design decisions
+- [0069](0069-app-src-lib-dictation-design-decisions.md) app/src/lib/dictation: design decisions
+- [0070](0070-app-src-lib-identity-design-decisions.md) app/src/lib/identity: design decisions
+- [0071](0071-app-src-lib-manager-onboarding-design-decisions.md) app/src/lib/manager-onboarding: design decisions
+- [0072](0072-app-src-lib-os-bridge-design-decisions.md) app/src/lib/os-bridge: design decisions
+- [0073](0073-app-src-lib-product-analytics-design-decisions.md) app/src/lib/product-analytics: design decisions
+- [0074](0074-app-src-lib-provider-overrides-design-decisions.md) app/src/lib/provider-overrides: design decisions
+- [0075](0075-app-src-lib-providers-design-decisions.md) app/src/lib/providers: design decisions
+- [0076](0076-app-src-root-design-decisions.md) app/src root files: design decisions
+- [0077](0077-app-src-stores-design-decisions.md) app/src/stores: design decisions
+- [0078](0078-app-src-styles-design-decisions.md) app/src/styles: design decisions
+- [0079](0079-app-tests-design-decisions.md) app/tests: design decisions
+- [0080](0080-agentstore-client-design-decisions.md) Agent Store client: design decisions
+- [0081](0081-agentstore-contract-design-decisions.md) Agent Store contract: design decisions
+- [0082](0082-code-sandbox-design-decisions.md) Code sandbox: design decisions
+- [0083](0083-design-tokens-design-decisions.md) Design tokens: design decisions
+- [0084](0084-domain-design-decisions.md) Domain: design decisions
+- [0085](0085-fake-host-design-decisions.md) Fake host: design decisions
+- [0086](0086-mobile-design-decisions.md) Mobile shell: design decisions
+- [0087](0087-office-convert-design-decisions.md) Office convert: design decisions
+- [0088](0088-runtime-client-design-decisions.md) Runtime client: design decisions
+- [0089](0089-web-design-decisions.md) Web build: design decisions
+- [0090](0090-ui-core-design-decisions.md) ui/core: design decisions
+- [0091](0091-ui-agent-design-decisions.md) ui/agent: design decisions
+- [0092](0092-ui-board-design-decisions.md) ui/board: design decisions
+- [0093](0093-ui-chat-design-decisions.md) ui/chat: design decisions
+- [0094](0094-ui-layout-design-decisions.md) ui/layout: design decisions
+- [0095](0095-ui-pdf-design-decisions.md) ui/pdf: design decisions
+- [0096](0096-ui-routines-design-decisions.md) ui/routines: design decisions
+- [0097](0097-ui-showcase-design-decisions.md) ui/showcase: design decisions
+- [0098](0098-ui-skills-design-decisions.md) ui/skills: design decisions
+- [0099](0099-ui-store-design-decisions.md) ui/store: design decisions
+- [0100](0100-agentstore-design-decisions.md) Agent Store site: design decisions
+- [0101](0101-website-design-decisions.md) Website: design decisions
+- [0102](0102-assistant-catalog-design-decisions.md) Assistant catalog generator: design decisions
+- [0103](0103-build-and-release-scripts-design-decisions.md) Build and release scripts: design decisions
+- [0104](0104-ci-scripts-design-decisions.md) CI scripts: design decisions
+- [0105](0105-desktop-shell-design-decisions.md) Desktop shell: design decisions
+- [0106](0106-dev-loop-design-decisions.md) Dev loop: design decisions
+- [0107](0107-local-model-bridge-design-decisions.md) Local model bridge: design decisions
+- [0108](0108-repo-checks-design-decisions.md) Repo checks: design decisions
+- [0109](0109-sdk-parity-design-decisions.md) SDK parity gate: design decisions

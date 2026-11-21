@@ -7,22 +7,7 @@ import { useUIStore } from "../../stores/ui";
 import { prettifyToolkit } from "./app-display";
 import { INTEGRATION_PROVIDER, type PollOutcome } from "./model";
 
-/**
- * The connect flow's voice: the app's real name for outcome copy, and the ONE
- * toast per settled outcome that every surface shares (`use-connect-flow.ts`
- * wires it in as the runner's `announce`).
- *
- * A landed connection is a success toast; an abandoned OAuth is a calm,
- * neutral toast pointing at the pending row's Finish action, never a red one
- * with a bug report — walking away is normal behavior, not a crash; a
- * provider-side failure is an error toast with no auto bug report either.
- * A cancel is silent by design and never reaches here; a connection that
- * vanished under the poll (`gone`) reaches here and stays silent too — the
- * user disconnected it themselves (or the provider let it lapse), and the
- * row's own notice line already says so (PRODUCT-1733).
- */
 export function useConnectAnnounce(): {
-  /** The app's real catalog name, never the machine slug. */
   appName: (toolkit: string) => string;
   announce: (toolkit: string, outcome: PollOutcome) => void;
 } {

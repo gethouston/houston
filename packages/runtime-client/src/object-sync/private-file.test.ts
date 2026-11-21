@@ -15,7 +15,6 @@ import { readPrivateFile } from "./private-file";
 const posixOnly = process.platform === "win32" ? describe.skip : describe;
 const uid = process.getuid?.();
 
-/** `<root>/.houston/browser/state.json` holding `body`, in an owned dir. */
 function stateFile(body = '{"cookies":[]}') {
   const root = mkdtempSync(join(tmpdir(), "private-file-"));
   const dir = join(root, ".houston", "browser");

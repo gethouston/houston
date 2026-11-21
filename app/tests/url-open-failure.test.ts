@@ -8,9 +8,6 @@ import {
   UrlOpenError,
 } from "../src/lib/url-open-failure.ts";
 
-// HOUSTON-APP-5ES: the shell's open_url rejects typed; a machine with no
-// default browser becomes informational copy with no Sentry report, and only
-// `other` still goes down the report path.
 describe("toUrlOpenFailure", () => {
   it("reads the shell's typed rejection", () => {
     deepStrictEqual(
@@ -64,9 +61,6 @@ describe("planUrlOpenFailure", () => {
   });
 });
 
-// PRODUCT-1814: the paths that keep the rejection (the codex loopback relay's
-// `logAndReportError`) must classify a browserless machine as the quiet
-// `no_url_handler` class off either shape, never file it as a bug.
 describe("UrlOpenError / isNoBrowserFailure", () => {
   const noHandler = {
     kind: "no_handler",

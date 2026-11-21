@@ -10,14 +10,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * One turn's board-card writes on the wire. The turn finds its card ONCE (the
- * start write's list read) and PATCHes that id from then on: the early
- * hand-back on `reply_complete` and the settle on `done` carry no list read in
- * front of them, and land in order — the early `needs_you` never overtaken by
- * the start's `running`, the settle last with the offers it ended on.
- */
-
 const BASE = "http://host";
 const AGENT = "a1";
 const SK = "activity-m1";
@@ -49,8 +41,6 @@ const chunk = (frames: object[]) =>
     frames.map((f) => `data: ${JSON.stringify(f)}\n\n`).join(""),
   );
 
-/** An SSE body that pauses between its parts, as a live turn's stream does:
- *  the wrap-up after `reply_complete` takes seconds, not one chunk. */
 const sse = (...parts: object[][]) =>
   new Response(
     new ReadableStream({

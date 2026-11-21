@@ -12,16 +12,6 @@ import type { TokenVerifier } from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 
-/**
- * The custom-integration USER routes over the FULL server, so the real
- * mounting order and ownership checks run: the top-level
- * `/v1/integrations/custom/*` form and the per-agent dispatch
- * `/agents/:id/integrations/custom/*` — the ONE form the hosted gateway
- * proxies to a pod, so the shipped in-chat credential card calls it in both
- * deployments (the gateway's own /v1/integrations subtree is Composio-only,
- * and the top-level form 404s there).
- */
-
 const USER = "alice";
 const OTHER = "mallory";
 const CAPS: Capabilities = {
@@ -374,8 +364,6 @@ test("malformed input is the CLIENT's error: bad JSON and bad escapes never 500"
     });
     expect(nullBody.status).toBe(400);
 
-    // A malformed escape in the slug is a NON-MATCH (falls through to the
-    // generic provider handler), never a URIError 500.
     const badEscape = await fetch(
       `${base}/v1/integrations/custom/definitions/%zz/tools`,
       { headers: auth() },

@@ -1,16 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * The pi-ai catalog is OPEN (~35 providers), and the host's api-key connect
- * route accepts any non-OAuth pi provider. The adapter's `toNewProvider` used to
- * enumerate only the curated ids and return null for everything else — so
- * pasting a key for an uncurated provider (mistral, groq, xai, nvidia,
- * huggingface, google-vertex, zai, ...) hard-failed with "provider not
- * supported" BEFORE any network call, the status probe never showed it
- * connected, and sign-out silently no-oped. These tests pin the pass-through:
- * only Codex is renamed; every other id flows to the engine verbatim.
- */
-
 const { setApiKey, claimActiveProvider, forgetCredential, logout } = vi.hoisted(
   () => ({
     setApiKey: vi.fn(),
@@ -61,20 +50,12 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/**
- * A client whose active space has already listed its agents. Provider writes
- * refuse until that resolves, because the persisted pref is not space-aware and
- * would otherwise route this space's connect at the previous space's agent
- * (HOU-979, pinned in `provider-space-routing.test.ts`).
- */
 async function client() {
   const c = new HoustonClient({
     baseUrl: "http://host",
     token: "t",
     controlPlane: true,
   });
-  // The two central-credential writes are `sdk.providers.credentials`', so the
-  // client's own SDK is the seam; both take the agent id first.
   const credentials = c.engineSdk.providers.credentials;
   vi.spyOn(credentials, "setApiKey").mockImplementation(setApiKey);
   vi.spyOn(credentials, "forgetCredential").mockImplementation(
@@ -88,11 +69,9 @@ test("toNewProvider renames only Codex and passes every other id through", () =>
   expect(toNewProvider("openai")).toBe("openai-codex");
   expect(toNewProvider("codex")).toBe("openai-codex");
   expect(toNewProvider("openai-codex")).toBe("openai-codex");
-  // Curated ids are unchanged.
   expect(toNewProvider("anthropic")).toBe("anthropic");
   expect(toNewProvider("opencode-go")).toBe("opencode-go");
   expect(toNewProvider("openai-compatible")).toBe("openai-compatible");
-  // Uncurated pi providers pass through verbatim (the open-catalog rule).
   for (const id of [
     "mistral",
     "groq",
@@ -105,7 +84,6 @@ test("toNewProvider renames only Codex and passes every other id through", () =>
   ]) {
     expect(toNewProvider(id)).toBe(id);
   }
-  // Null only for an empty name.
   expect(toNewProvider("")).toBeNull();
 });
 
@@ -118,7 +96,6 @@ test("setProviderApiKey connects an uncurated pi provider instead of throwing", 
   await (await client()).setProviderApiKey("mistral", "sk-mistral-key");
 
   expect(setApiKey).toHaveBeenCalledTimes(1);
-  // The trailing undefined is the (azure-only) endpoint arg — PRODUCT-1477.
   expect(setApiKey.mock.calls[0].slice(1)).toEqual([
     "mistral",
     "sk-mistral-key",

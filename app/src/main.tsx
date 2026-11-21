@@ -24,38 +24,15 @@ import { runStartupAnalytics } from "./lib/startup-analytics";
 import { loadThemePreference } from "./lib/theme";
 import { applyBootTheme } from "./lib/theme-boot";
 
-// Sentry first so global error handlers below can capture into it from the
-// very first render. Empty DSN → silent no-op (dev / forks).
 initSentry();
-// Sentry smoke-test triggers (Ctrl+Alt+Shift+J/N + the __HOUSTON_SENTRY_SMOKE__
-// global) are DEV-ONLY. Houston is open source and official release binaries
-// bake the prod SENTRY_DSN, so shipping these error-injectors would let anyone
-// flood the prod Sentry project. The `import.meta.env.DEV` guard is statically
-// false in production builds, so Vite tree-shakes the call + the module away.
-// To re-verify symbolication on a SIGNED build, temporarily drop this guard.
 if (import.meta.env.DEV) {
   installSentrySmokeShortcuts();
 }
 
-// Initialize file-based logging — patches console.error/warn to write to
-// ~/.houston/logs/frontend.log (or ~/.dev-houston/logs/frontend.log in dev).
 initFrontendLogging();
 
-// Global error handlers — surface uncaught errors as toasts + reports, while
-// swallowing benign background noise (Supabase Web Locks steal, HOU-435). Body
-// is shared with the web entry (packages/web/src/app-tree.tsx) so the two trees
-// can't drift. Must run AFTER initFrontendLogging() so the console.error → log
-// file patch is already in place.
 installGlobalErrorHandlers();
 
-// Theme BEFORE the first paint, and before React mounts. The engine preference
-// `theme` is the source of truth but is unreadable until the handshake lands
-// (see StartupEffects below), and the boot splash renders DURING that handshake
-// on the themed `bg-background` surface — so a dark-mode user would sit on the
-// light surface for the whole handshake, then snap to dark. This applies the
-// device-local mirror of the last resolved theme synchronously;
-// `loadThemePreference()` reconciles it against the engine moments later. No
-// mirror yet (first launch on this device) → the light default, as before.
 applyBootTheme();
 
 class ErrorBoundary extends Component<
@@ -114,36 +91,10 @@ class ErrorBoundary extends Component<
   }
 }
 
-/**
- * Install-lifecycle + theme bootstrap, mounted above the language gate.
- * Emits `install_created` and runs
- * `posthog.identify(install_id)` BEFORE
- * any `onboarding_*` event so the sequential acquisition→activation funnel
- * (keyed on `install_created` as step 1) doesn't break at step 2. The gates
- * short-circuit `<App/>` on a fresh install, so analytics.init() can't live in
- * App's mount effect — it would fire after the gate events. See
- * `runStartupAnalytics`. Renders children immediately; never blocks.
- */
 function StartupEffects({ children }: { children: ReactNode }) {
-  // The Academy's usage economy listens here, for the app's whole life: it must
-  // outlive <App/> (remounted on every identity change) and start before the
-  // gates, so nothing the user does goes unpaid. Mirrored in the web tree.
   useUsageAccrual();
-  // The first-party product-analytics pipe listens on the same bus, for the
-  // same reason and with the same life span. Mirrored in the web tree.
   useProductAnalyticsSink();
   useEffect(() => {
-    // Wait for the engine handshake before touching engine-backed preferences.
-    // `install_id`, the first-install vintage, the daily-active date, and the
-    // theme all read through `tauriPreferences -> getEngine()`, which THROWS
-    // until the handshake lands. Running before then would have getInstallId
-    // swallow the failure, mint a fresh id, and re-fire `install_created` (and
-    // re-open the /welcome bridge) on every launch — churning identity. The
-    // race is widest on Windows, where the sidecar spawns slowest. Gating here
-    // restores the original "engine-ready" precondition (these used to run in
-    // App's mount effect, below <EngineGate>) while still emitting
-    // `install_created` BEFORE the language gate — it renders
-    // inside <EngineGate>, i.e. only once this same handshake resolves.
     let cancelled = false;
     void whenEngineReady().then(() => {
       if (cancelled) return;
@@ -157,10 +108,6 @@ function StartupEffects({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-// StrictMode intentionally remounts components to catch bugs. In Tauri's
-// WKWebView that double-mount collides with portal DOM + Tauri event
-// listeners and throws NotFoundError on removeChild. Skipping it for now;
-// revisit once the underlying portal/listener churn is fixed.
 const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element #root not found in DOM");

@@ -26,11 +26,6 @@ import {
   USER_TURN,
 } from "./sample-chat";
 
-/**
- * A message is `w-full` and lays itself out against the column it sits in, so
- * every row gets the same fixed measure — otherwise a right-aligned bubble
- * would align to whatever the row happened to be wide.
- */
 function Thread({ children }: { children: ReactNode }) {
   return <div className="flex w-full max-w-md flex-col gap-4">{children}</div>;
 }
@@ -161,7 +156,6 @@ function ChatMessageSpecimen() {
   );
 }
 
-/** The `@houston-ai/*` symbols this page documents. */
 export const sources: string[] = [
   "Message",
   "MessageContent",

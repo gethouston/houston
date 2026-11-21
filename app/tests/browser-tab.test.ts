@@ -45,7 +45,6 @@ describe("reserveBrowserTab", () => {
     const { tab } = fakeTab();
     const reserved = reserveBrowserTab(() => tab);
     strictEqual(reserved !== null, true);
-    // The provider page must never be able to reach back into Houston's tab.
     strictEqual(tab.opener, null);
     strictEqual(reserved?.navigate("https://oauth.example/slack"), true);
     deepStrictEqual(tab.hrefs, ["https://oauth.example/slack"]);

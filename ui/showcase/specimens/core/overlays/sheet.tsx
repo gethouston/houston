@@ -21,7 +21,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** One agent-settings sheet, parameterised by the prop under review. */
 function SettingsSheet({
   trigger,
   side,
@@ -51,7 +50,6 @@ function SettingsSheet({
   );
 }
 
-/** Controlled: the parent owns `open`, so the trigger can live anywhere. */
 function ControlledSheet() {
   const [open, setOpen] = useState(false);
   return (
@@ -175,11 +173,6 @@ function SheetSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = [
   "Sheet",
   "SheetClose",

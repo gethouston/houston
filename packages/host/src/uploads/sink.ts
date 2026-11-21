@@ -73,7 +73,6 @@ export async function serveUploadSink(
       },
     });
     try {
-      // Pipeline backpressure bounds memory independently of the request's size.
       await pipeline(
         req,
         limit,
@@ -81,12 +80,10 @@ export async function serveUploadSink(
       );
     } catch (error) {
       if (received > length) {
-        // Earlier pieces of the oversized body already landed; drop them all.
         await truncate(sessions.path(id, "part"), start);
         return json(res, 400, { error: "upload body exceeds range" });
       }
       if (!isDroppedConnection(error)) throw error;
-      // The bytes that landed stay; the client's status query reads them.
       if (!res.destroyed && !res.headersSent)
         incomplete(req, res, (await sessions.offset(id)).size);
       return;

@@ -58,20 +58,17 @@ test("tranche-2 route allowlist: portable/migration/custom in, OAuth start out",
   ] as const) {
     expect(() => parseOpRequest(routeOp(rest, method)), rest).not.toThrow();
   }
-  // OAuth start is a dedicated op; its richer reply is gateway-only.
   expect(() =>
     parseOpRequest(
       routeOp("integrations/custom/definitions/acme/oauth/start", "POST"),
     ),
   ).toThrow(/not an op route/);
-  // Binary bodies ride bodyBase64 for the migration import ONLY.
   expect(() =>
     parseOpRequest(routeOp("migration/import", "POST", { bodyBase64: "AAAA" })),
   ).not.toThrow();
   expect(() =>
     parseOpRequest(routeOp("routines", "POST", { bodyBase64: "AAAA" })),
   ).toThrow(/bodyBase64/);
-  // ...and never as a text body: a zip in a UTF-8 string is corrupt.
   expect(() =>
     parseOpRequest(routeOp("migration/import", "POST", { body: "PK..." })),
   ).toThrow(/bodyBase64/);
@@ -137,7 +134,6 @@ test("actingAs.via: only the assistant marker survives, anything else reads as a
       JSON.stringify(via),
     ).toEqual({ userId: "u1" });
   }
-  // A marker without an acting human is no acting identity at all.
   expect(
     parseOpRequest(envelope({ via: "assistant" })).actingAs,
   ).toBeUndefined();
@@ -313,7 +309,6 @@ test("the envelope's plan limits ride the op, and only valid ones", () => {
       .limits,
   ).toEqual({ routineMinIntervalMinutes: 15 });
   expect(parseOpRequest(base)).not.toHaveProperty("limits");
-  // A garbled stamp is no limit, never a failed op.
   expect(
     parseOpRequest({ ...base, limits: { routineMinIntervalMinutes: "15" } }),
   ).not.toHaveProperty("limits");

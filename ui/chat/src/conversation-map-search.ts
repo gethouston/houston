@@ -3,12 +3,10 @@ import type { HighlightRange } from "@houston-ai/core";
 const COMBINING_MARKS = /[\u0300-\u036f]/g;
 const REGEXP_SPECIALS = /[.*+?^${}()|[\]\\]/g;
 
-/** Same folding semantics as archived mission search: ignore case and accents. */
 export function foldConversationSearch(value: string): string {
   return value.normalize("NFKD").replace(COMBINING_MARKS, "").toLowerCase();
 }
 
-/** Fold, collapse whitespace, and trim a raw conversation search query. */
 export function normalizeConversationSearchQuery(value: string): string {
   return foldConversationSearch(value).replace(/\s+/g, " ").trim();
 }
@@ -35,7 +33,6 @@ function foldWithMap(text: string): { folded: string; map: number[] } {
   return { folded, map };
 }
 
-/** Whether `text` contains the already-normalized search phrase. */
 export function matchesConversationSearch(
   text: string,
   phrase: string,
@@ -45,7 +42,6 @@ export function matchesConversationSearch(
   return new RegExp(pattern).test(foldConversationSearch(text));
 }
 
-/** A compact excerpt centered on the first search match. */
 export function conversationSearchSnippet(
   text: string,
   phrase: string,
@@ -70,7 +66,6 @@ export function conversationSearchSnippet(
   return excerpt ? `${prefix}${excerpt}${suffix}` : null;
 }
 
-/** Original-text ranges for the matching phrase, suitable for HighlightedText. */
 export function conversationSearchRanges(
   text: string,
   phrase: string,

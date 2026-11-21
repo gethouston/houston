@@ -22,7 +22,6 @@ type Load =
   | { status: "error"; message: string }
   | { status: "ready"; items: AdminReport[] };
 
-/** Bucket a flat report list by agent, preserving server order within each group. */
 export function groupByAgent(items: AdminReport[]): AgentGroup[] {
   const groups = new Map<string, AgentGroup>();
   for (const item of items) {
@@ -48,7 +47,6 @@ function classify(err: unknown): Load {
   };
 }
 
-/** The reports feed: filter by status, grouped by agent, resolve/dismiss inline. */
 export function ReportsTab({
   getToken,
 }: {

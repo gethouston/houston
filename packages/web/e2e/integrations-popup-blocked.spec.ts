@@ -3,22 +3,6 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { openNavRow } from "./support/workspace-menu";
 
-/**
- * The OAuth tab and the popup blocker (PRODUCT-1625).
- *
- * The hosted link is minted over an async hop, and Safari, Firefox, and
- * Chrome's strict popup setting refuse a `window.open` issued after that hop.
- * The row used to claim "we opened Slack in your browser" over a tab the
- * user never saw. Two guarantees now:
- *  - the tab is CLAIMED inside the click (an empty open, before the mint) and
- *    pointed at the link once it arrives, so ordinary blockers never fire;
- *  - a browser that refuses even that says so on the row, whose primary
- *    action opens the page from a click the blocker honors.
- *
- * `window.open` is stubbed with a ledger: `calls` records every URL handed to
- * it ("" is the empty claim), `navigations` every URL later assigned to a
- * claimed tab, and `blocked` makes the stub refuse (return null).
- */
 interface OpenLedger {
   calls: string[];
   navigations: string[];
@@ -81,8 +65,6 @@ test("the OAuth tab is claimed inside the click and pointed at the minted link",
   await page.getByRole("button", { name: "Connect Slack" }).first().click();
   await expect(page.getByText("Finish connecting Slack")).toBeVisible();
 
-  // ONE open, empty, from the click itself — then the link lands in that tab.
-  // A second, URL-carrying open after the mint is what blockers refuse.
   await expect
     .poll(async () => (await ledgerOf(page)).navigations)
     .toEqual(["https://connect.test/slack"]);
@@ -99,7 +81,6 @@ test("a refused tab is said out loud, and the row's own click opens it", async (
 
   await page.getByRole("button", { name: "Connect Slack" }).first().click();
 
-  // The row never claims a page the user did not see.
   const panel = page
     .getByRole("status")
     .filter({ hasText: "Your browser blocked the Slack tab" });
@@ -107,13 +88,11 @@ test("a refused tab is said out loud, and the row's own click opens it", async (
   await expect(page.getByText("We opened Slack in your browser")).toHaveCount(
     0,
   );
-  // Both the claim and the fallback open were refused.
   expect((await ledgerOf(page)).calls).toEqual([
     "",
     "https://connect.test/slack",
   ]);
 
-  // The user's own click is a fresh gesture the blocker honors.
   await page.evaluate(() => {
     (window as unknown as { __openLedger: OpenLedger }).__openLedger.blocked =
       false;
@@ -123,7 +102,6 @@ test("a refused tab is said out loud, and the row's own click opens it", async (
     .poll(async () => (await ledgerOf(page)).calls.at(-1))
     .toBe("https://connect.test/slack");
 
-  // Now the page IS open: the ordinary waiting copy and its three ways back.
   const waiting = page
     .getByRole("status")
     .filter({ hasText: "Finish connecting Slack" });

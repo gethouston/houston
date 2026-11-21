@@ -117,8 +117,6 @@ pub fn relaunch_if_inherited() {
             std::env::args_os().count() > 1,
         );
         if decision != Ok(true) {
-            // `report_after_logging_init` records the stand-down once
-            // logging is up; nothing can be logged yet.
             return;
         }
         let marker = std::env::temp_dir().join(RELAUNCH_MARKER);
@@ -126,8 +124,6 @@ pub fn relaunch_if_inherited() {
         if win::relaunch_through_shell() {
             std::process::exit(0);
         }
-        // No second instance appeared: keep running mitigated rather than
-        // leave the user with no app. The marker must not claim a hand-off.
         let _ = std::fs::remove_file(&marker);
     }
 }
@@ -176,7 +172,6 @@ mod win {
     const RELAUNCH_WAIT: Duration = Duration::from_secs(5);
 
     pub(super) fn current_process_enforces_redirection_trust() -> bool {
-        // The policy struct is a plain u32 of flags; read it as such.
         let mut flags: u32 = 0;
         // SAFETY: the buffer is a live u32 and the length matches it.
         let ok = unsafe {
@@ -187,7 +182,6 @@ mod win {
                 std::mem::size_of::<u32>(),
             )
         };
-        // Pre-22H2 Windows has no such policy: the call fails, nothing to drop.
         ok != 0 && super::enforces_redirection_trust(flags)
     }
 
@@ -314,28 +308,23 @@ mod tests {
 
     #[test]
     fn installer_launch_relaunches_even_when_the_parent_is_gone() {
-        // The PRODUCT-1698 shape: launched by the Windows Installer Service.
         assert_eq!(
             relaunch_decision(true, Some("msiexec.exe"), false, false),
             Ok(true)
         );
-        // msiexec often exits before we look: still relaunch.
         assert_eq!(relaunch_decision(true, None, false, false), Ok(true));
     }
 
     #[test]
     fn stands_down_when_a_relaunch_cannot_help() {
-        // Shell-launched: the policy is explorer's own, a relaunch would loop.
         assert_eq!(
             relaunch_decision(true, Some("explorer.exe"), false, false),
             Err(StandDown::ShellParent)
         );
-        // We are the relaunch and explorer did not delegate to the shell.
         assert_eq!(
             relaunch_decision(true, None, true, false),
             Err(StandDown::AlreadyRelaunched)
         );
-        // A deep link in argv would be lost through explorer.
         assert_eq!(
             relaunch_decision(true, Some("msiexec.exe"), false, true),
             Err(StandDown::HasArguments)

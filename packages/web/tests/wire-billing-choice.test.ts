@@ -2,12 +2,6 @@ import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createWireCapture, json, ORG } from "./support/wire-capture";
 
-/**
- * The free-org pick is account-wide: the gateway ignores the active space, so
- * the adapter never sends `x-houston-org` on these three routes even while a
- * team space is open.
- */
-
 const BASE = "https://gw.example";
 const { calls, reset, restore, stubFetch } = createWireCapture();
 

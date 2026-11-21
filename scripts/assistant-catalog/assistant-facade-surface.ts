@@ -8,23 +8,11 @@ import {
   type Walk,
 } from "./assistant-module-surface.ts";
 
-/**
- * The SDK facade: which module factory is mounted at which namespace, and the
- * namespaced surface that falls out of walking each one.
- */
-
 export interface Surface {
   members: PublishedMember[];
-  /** Every factory the walk descended into — wiring, not operations. */
   wiring: Set<ts.Node>;
 }
 
-/**
- * The SDK facade, property by property: `this.integrations =
- * createIntegrationsModule(ctx)` in the `HoustonSdk` constructor. The property
- * name is the namespace every operation the factory publishes is dispatched
- * under, which is why it comes from the facade and not from a directory name.
- */
 function facadeModules(
   facade: ts.SourceFile,
 ): { namespace: string; factory: string }[] {
@@ -46,7 +34,6 @@ function facadeModules(
   return found;
 }
 
-/** Every operation the SDK facade publishes, namespaced, in facade order. */
 export function facadeSurface(
   facade: ts.SourceFile,
   factories: Map<string, Candidate>,

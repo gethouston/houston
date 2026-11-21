@@ -1,19 +1,9 @@
-/**
- * Visual-regression baselines for the routines screens at phone width: the
- * team's merged Routines list (reached through the task list menu, so the screen
- * wears the drilled back chip) and a routine's own screen. Deterministic under
- * the fake host — one seeded routine with a fixed cron whose row summary
- * ("Runs every day at 9:00 AM") never moves; the routine screen's next-run line
- * reads the wall clock, so that span is masked (`data-relative-time`).
- */
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "../support/fixtures";
 import { openPhoneTeamSection } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 import { pinTheme, THEMES } from "./support";
 
-// The list footer names the account timezone, auto-seeded from the browser's
-// detected zone — pin it so darwin and the linux container render one zone.
 test.use({ timezoneId: "UTC" });
 
 async function seedRoutine(name: string): Promise<void> {
@@ -27,7 +17,6 @@ async function seedRoutine(name: string): Promise<void> {
   });
 }
 
-/** Phone-width Routines list + the routine's own screen, both themes. */
 for (const theme of THEMES) {
   test(`mobile routines list — ${theme}`, async ({ page }) => {
     await seedRoutine("Morning digest");
@@ -54,8 +43,6 @@ for (const theme of THEMES) {
     await page.goto("/");
 
     await openPhoneTeamSection(page, "routines", "click");
-    // The title, not the row center — the center is the schedule-summary
-    // button, which opens its own editor popover.
     await screen(page)
       .getByTestId("routine-row")
       .filter({ hasText: "Morning digest" })

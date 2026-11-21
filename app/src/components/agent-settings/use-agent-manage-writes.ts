@@ -9,15 +9,6 @@ import {
   useAgentIdentitySave,
 } from "../agent-actions/use-agent-identity-save";
 
-/**
- * The Manage section's two writes on its AI Employee: save the name and
- * colour, and delete it.
- *
- * Both are optimistic and reject only AFTER `useAgentActions` rolled the row
- * back and told the person, so there is exactly one surface already. Awaiting
- * them here is what stops that rejection from escaping the handler unhandled;
- * the catch adds no second surface and hides nothing.
- */
 export function useAgentManageWrites(agent: Agent) {
   const { t } = useTranslation(["shell", "teams", "agents", "settings"]);
   const workspaceId = useWorkspaceStore((state) => state.current?.id);
@@ -34,16 +25,12 @@ export function useAgentManageWrites(agent: Agent) {
     saveIdentity: async (patch: AgentIdentityPatch) => {
       try {
         await saveIdentity(patch);
-      } catch {
-        // Already rolled back and told by `useAgentActions`.
-      }
+      } catch {}
     },
     remove: async () => {
       try {
         await actions.remove(agent.id);
-      } catch {
-        // Already rolled back and told by `useAgentActions`.
-      }
+      } catch {}
     },
   };
 }

@@ -12,18 +12,6 @@ interface Recorded {
   body: string | null;
 }
 
-/**
- * An inert SDK (`reactivity:false`) over a mock `fetch` that records the whole
- * request and answers whatever the test queues. Routines ride agent-proxy paths
- * (`/agents/:id/…`) except the webhook mint, which is a gateway CONTROL route
- * (`/v1/agents/…`) — every assertion here is about the exact URL, method and
- * body bytes that reach the wire, because getting that prefix wrong routes the
- * mint at a pod that never serves it.
- *
- * Nothing degrades: the one 404 tolerance this family has (webhook keys
- * unsupported) belongs to the CALLER, or a surface would be handed a `null` it
- * cannot tell from a gateway that simply failed.
- */
 function makeSdk(respond: (url: string) => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(
@@ -195,8 +183,6 @@ describe("routines module — an agent's scheduled work", () => {
     await expect(
       sdk.routines.mintRoutineWebhookKey("a1", "r1"),
     ).resolves.toEqual(reveal);
-    // `/v1/agents/…`: the `/agents/…` prefix would be proxied to the pod, which
-    // never serves webhook keys, and its 404 would read as "can't mint here".
     expect(calls).toEqual([
       {
         method: "POST",

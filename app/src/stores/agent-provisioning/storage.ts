@@ -3,8 +3,6 @@ import { reportError } from "../../lib/error-report";
 
 const STORAGE_KEY = "houston.agent-provisioning";
 
-/** localStorage access, surfaced to Sentry (no toast — nothing user-blocking
- *  fails here, but a broken mirror must not stay invisible in beta). */
 export function storageRead(): string | null {
   try {
     return localStorage.getItem(STORAGE_KEY);

@@ -8,14 +8,6 @@ import { ChatInputAttachments } from "./chat-input-attachments";
 import type { CardAttach } from "./use-card-attachments";
 import { useFileDropZone } from "./use-file-drop-zone";
 
-/**
- * The upload area of a question answered with a file (`wantsFiles`): one large
- * button that opens the file picker and takes dropped files, with the files
- * that answer THIS question as the composer's chips right below it (a file
- * an earlier question already took stays on that question). It writes the
- * same panel list as the answer row's paste and the panel-wide drop, so every
- * file leaves with whichever answer completes the card.
- */
 export function InteractionUploadArea({
   attach,
   files,
@@ -31,14 +23,9 @@ export function InteractionUploadArea({
     attach.addDroppedFiles,
     attach.onDropError,
   );
-  // A disabled button gets no dragleave or drop, so a drag already over it
-  // would stay highlighted (and its depth count stuck) until the next drop.
   useEffect(() => {
     if (disabled) reset();
   }, [disabled, reset]);
-  // A file drag over the box stops here, so the panel's frosted drop overlay
-  // steps aside (its depth count sees the pointer leave) and the box itself
-  // shows where the files land.
   const own =
     (handler: DragEventHandler): DragEventHandler =>
     (e: DragEvent) => {
@@ -74,7 +61,6 @@ export function InteractionUploadArea({
         type="button"
         {...drop}
       >
-        {/* The wash is its own layer so only its opacity animates. */}
         <span
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 rounded-[inherit] bg-hover opacity-0 transition-opacity duration-(--ht-duration-fast) ease-(--ht-easing-entrance) group-hover:opacity-60 group-data-[dragging]:opacity-100"

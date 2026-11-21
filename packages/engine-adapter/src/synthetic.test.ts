@@ -5,11 +5,6 @@ import {
   toOldProvider,
 } from "./synthetic";
 
-/**
- * The adapter's provider dialect is the DOMAIN's ladder and nothing else: a
- * hand-rolled branch beside the domain call is a second table waiting to drift.
- */
-
 test("every legacy and spoken name resolves through the domain ladder", () => {
   expect(toNewProvider("codex")).toBe("openai-codex");
   expect(toNewProvider("openai")).toBe("openai-codex");
@@ -53,9 +48,6 @@ test("a provider+model+effort config write mirrors all three into the runtime", 
 });
 
 test("an effort-only config write still reaches the runtime", () => {
-  // The desktop assistant's config is `{}` (nothing seeds a provider), so the
-  // effort picker writes `{ effort }` alone. Dropping it left every turn on
-  // the runtime's default effort whatever the picker showed.
   expect(
     configWriteToSettings(CONFIG, JSON.stringify({ effort: "max" })),
   ).toEqual({ effort: "max" });

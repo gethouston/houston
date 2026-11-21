@@ -26,7 +26,6 @@ describe("sendPinSettled", () => {
   }
 });
 
-/** A manual clock so the timeout path is exercised without real timers. */
 function fakeTimers() {
   const timers = new Map<number, () => void>();
   let next = 1;
@@ -74,14 +73,12 @@ describe("createSendPinGate", () => {
     });
     await Promise.resolve();
     strictEqual(released, undefined);
-    // The row lands: the composer settles on the chat's real pin.
     gate.update({ provider: "anthropic", model: "claude-opus-5" }, true);
     await waiting;
     deepStrictEqual(released, {
       provider: "anthropic",
       model: "claude-opus-5",
     });
-    // The settle cancelled the timeout: nothing left to fire.
     strictEqual(clock.pending(), 0);
   });
 
@@ -120,7 +117,6 @@ describe("createSendPinGate", () => {
       model: "claude-opus-5",
     });
     strictEqual(timedOut, 1);
-    // A later settle must not wake a waiter that already gave up.
     gate.update({ provider: "openai", model: "gpt-6-astra" }, true);
     strictEqual(timedOut, 1);
   });

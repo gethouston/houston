@@ -3,77 +3,26 @@ import { createHash } from "node:crypto";
 import type { LocalModelTransportContext } from "../ai/local-model-transport";
 import { decodeActingAuthor } from "./attribution";
 
-/**
- * WHO the current turn is acting as (C2), captured from the host→runtime message
- * request and made available to the integration tools while the turn runs.
- *
- *  - `actingAs`:   the gateway's per-turn acting-as token (a live user drove the
- *                  turn) — forwarded verbatim on `/sandbox/integrations/*`.
- *  - `actingUser`: a routine creator's Supabase `sub` (a fired routine) —
- *                  forwarded so the host pairs it with the pod token upstream.
- *
- * Turn-scoping mechanism + assumption: an `AsyncLocalStorage` whose store is
- * established for the DURATION of `session.prompt()` (see chat.ts `execTurn`).
- * The tool `execute` callbacks run inside that same async context, so they read
- * the correct value with NO process-global mutation — this stays race-free even
- * when two conversations run concurrently in one runtime (a plain module-level
- * "current acting-as" would leak across them). Outside a turn (e.g. unit tests
- * calling a tool directly) the store is undefined, so no header is attached and
- * behavior is unchanged.
- */
 export interface ActingContext {
   localModelTransport?: LocalModelTransportContext;
   actingAs?: string;
   actingUser?: string;
-  /**
-   * The person a pooled turn's VERIFIED turn record names (execute-ready-turn
-   * only). Unlike `actingUser`, which a standing runtime takes from an
-   * unsigned header, this never comes from a request: it may name who owns
-   * something the turn starts, such as a browser hand-off.
-   */
   verifiedOwner?: string;
-  /**
-   * WHOSE credentials this subtree resolves. Normally derived from `actingAs`
-   * (see `credentialScopeKeyFor`); an internal caller may supply a stable
-   * execution scope independently of forwarded acting authority. Pooled turns
-   * use this to keep credential health isolated by workspace and agent.
-   * Precomputed because the credential store resolves it on every
-   * `read()` pi makes inside `prepareRequest`.
-   */
   credentialScopeKey?: string;
-  /** Explicit auth.json for a throwaway turn root. */
   authPath?: string;
 }
 
-/** The credential scope of a request with no acting identity: the shared file. */
 export const TEAM_CREDENTIAL_SCOPE = "team";
 
-/** WHOSE credentials the current async subtree resolves. */
 export interface CredentialScope {
-  /** `"team"`, or `u:<identity>` for an isolated credential scope. */
   key: string;
-  /** The acting-as token to forward when serving this scope's credential. */
   actingAs?: string;
 }
 
-/**
- * The credential scope key an acting-as token resolves to.
- *
- * Only `actingAs` (the gateway-SIGNED per-turn token) can select a member's own
- * credentials. `actingUser` deliberately cannot: a fired routine carries the
- * creator's bare sub with no signed identity behind it, so in-pod routines run
- * on the team account (HOU-976 D10).
- */
 export function credentialScopeKeyFor(actingAs: string | undefined): string {
   if (!actingAs) return TEAM_CREDENTIAL_SCOPE;
   const sub = decodeActingAuthor(actingAs)?.userId;
   if (sub) return `u:${sub}`;
-  // A token whose payload we cannot read is NOT the team: falling back to the
-  // shared scope would let a garbled token read the team credential. It gets
-  // its own isolated scope, keyed by a DIGEST of the token — this key reaches
-  // log lines and file names, so the token itself must never be it. Loud,
-  // because it means the gateway sent us something malformed and the request
-  // will surface as "not connected".
   const digest = createHash("sha256").update(actingAs).digest("hex");
   console.warn(
     "[acting] acting-as token payload is unreadable; isolating its credential scope instead of falling back to the team credential",
@@ -81,20 +30,16 @@ export function credentialScopeKeyFor(actingAs: string | undefined): string {
   return `u:unreadable-${digest.slice(0, 16)}`;
 }
 
-/** Whether a scope key addresses one member's own credentials. */
 export function isPersonalScope(key: string): boolean {
   return key !== TEAM_CREDENTIAL_SCOPE;
 }
 
 const store = new AsyncLocalStorage<ActingContext>();
 
-/** Run `fn` with `ctx` as the ambient acting context for its whole async subtree. */
 export function runWithActingContext<T>(
   ctx: ActingContext | undefined,
   fn: () => T,
 ): T {
-  // No identity to carry (local single-user, or neither header present): run
-  // plainly so the tools see `undefined` and attach nothing.
   if (
     !ctx ||
     (!ctx.actingAs &&
@@ -116,16 +61,10 @@ export function runWithActingContext<T>(
   );
 }
 
-/** The current turn's acting context, or undefined outside a turn. */
 export function currentActingContext(): ActingContext | undefined {
   return store.getStore();
 }
 
-/**
- * WHOSE credentials the current async subtree must resolve. `{ key: "team" }`
- * outside any acting identity — desktop, self-host, and every pre-HOU-976
- * request — so those paths keep reading the one shared auth.json.
- */
 export function currentCredentialScope(): CredentialScope {
   const ctx = store.getStore();
   if (!ctx?.actingAs && !ctx?.credentialScopeKey)
@@ -136,12 +75,6 @@ export function currentCredentialScope(): CredentialScope {
   };
 }
 
-/**
- * The C2 acting-as identity carried by a runtime request's headers, or
- * undefined. Read at the transport edge (server.ts wraps EVERY request) so the
- * credential scope, the integration tools and message attribution all see the
- * same identity.
- */
 export function actingFromHeaders(headers: {
   [key: string]: string | string[] | undefined;
 }): ActingContext | undefined {

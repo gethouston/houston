@@ -1,8 +1,3 @@
-// English copy for /enterprise. Imported by ../en.js as its `enterprise` key,
-// so scripts/check-locales.mjs holds es and pt to this exact tree. Same rules
-// as the landing copy: no em dashes, structure lives in _data/enterprise.js,
-// and arrays here zip by index with the arrays there.
-
 export default {
   meta: {
     title: "Houston Enterprise: the platform and engineers to implement AI",
@@ -19,8 +14,6 @@ export default {
   },
 
   hero: {
-    // The headline is set as lines: each one is its own block, so the
-    // break lands where the copy means it in every language.
     h1Lines: ["Put AI to work", "in your company."],
     sub: "The platform and the engineers to run AI agents across your operations.",
     ctaDemo: "Book a discovery call",
@@ -96,10 +89,7 @@ export default {
     lead: "The same four steps we follow with every company.",
     prev: "Previous",
     next: "Next",
-    // The last slide's way forward: the round chevron becomes this pill.
     bookCall: "Book a discovery call",
-    // The process slider: the title and lead are its first slide, then
-    // one slide per phase: `head` is the big title, `rest` the line under it.
     phases: [
       {
         head: "A discovery call with your team.",

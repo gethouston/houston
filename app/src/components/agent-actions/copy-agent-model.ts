@@ -4,18 +4,6 @@ import type {
 } from "@houston/engine-adapter";
 import { agentNameKey } from "@houston/sdk/agent-name";
 
-/**
- * The pure rules behind "Copy agent": what a copy carries and what name it is
- * born under. Unit-tested in `app/tests/copy-agent-model.test.ts`.
- */
-
-/**
- * Everything the portable preview offers, as the wire selection. A copy is
- * faithful, not curated: the whole portable surface (job description, skills,
- * routines, learnings) rides along. Conversations, files and connected
- * accounts are not part of that surface, which is exactly why the copy never
- * carries them.
- */
 export function fullPortableSelection(
   preview: PortableInventoryPreview,
 ): PortableExportSelection {
@@ -27,17 +15,6 @@ export function fullPortableSelection(
   };
 }
 
-/**
- * The first free "<name> <copyWord>" / "<name> <copyWord> N" against the
- * workspace's names, compared by the host's own key (`agentNameKey`: the
- * rule `agentNameIssue` applies too), and
- * capped at `maxLength` by trimming the BASE name — the suffix is what keeps
- * candidates distinct, so it must survive whole.
- *
- * When every candidate is taken the plain first one is returned anyway: the
- * dialog's live validation names the conflict and asks for a rename, which is
- * more honest than inventing an unrelated name.
- */
 export function suggestCopyName(
   name: string,
   existingNames: readonly string[],

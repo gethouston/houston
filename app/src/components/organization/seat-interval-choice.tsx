@@ -12,15 +12,6 @@ import { useTranslation } from "react-i18next";
 import { RowTag } from "../shell/free-org-picker-rows.tsx";
 import { BILLING_CURRENCY } from "./billing-tab-model.ts";
 
-/**
- * Monthly or yearly, before a checkout: one row per interval the gateway
- * sells, each with its per-member price. The whole row is the hit target (a
- * native radio inside the label, so the arrow keys move the pick) and the
- * picked row wears an ink ring and a filled check, so it reads without
- * hovering. Stacked at every width: the yearly line is long, and a column
- * keeps both rows the same width in a dialog and on the Billing card. Yearly
- * wears what it saves, worked out from the wire's two prices.
- */
 export function SeatIntervalChoice({
   prices,
   value,
@@ -32,12 +23,9 @@ export function SeatIntervalChoice({
   value: BillingInterval;
   onChange: (interval: BillingInterval) => void;
   disabled?: boolean;
-  /** Lead with yearly, where yearly is the offer (the promo-ended notice). */
   yearlyFirst?: boolean;
 }) {
   const { t } = useTranslation("teams");
-  // Two choices can share a screen (the Billing tab and the status strip's
-  // dialog), so each group names its own radios.
   const group = useId();
   const saves = yearlySavingsPercent(prices);
   return (

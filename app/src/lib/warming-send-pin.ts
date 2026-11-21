@@ -1,5 +1,3 @@
-// Explicit `.ts` extension: `node --test --experimental-strip-types` loads
-// this module directly (app/tests/warming-send-pin.test.ts).
 import { toDisplayProviderIdOrNull } from "./provider-overrides.ts";
 import { normalizeLegacyModel } from "./providers.ts";
 
@@ -9,29 +7,17 @@ export interface WarmingPin {
   effort?: string;
 }
 
-/** A mission row's stored pin, as the activity list returns it. */
 export interface RowPin {
   provider?: string;
   model?: string;
 }
 
-/**
- * The pin a parked FOLLOW-UP flushes with (PRODUCT-1643). A follow-up queued
- * while the pod was asleep carried the composer's best guess — the agent
- * default whenever the mission's own row had not loaded yet. The row's pin is
- * what the picker shows once loaded, and nobody could have changed it while
- * parked (writes block during a warm-up), so it wins whenever it names a
- * provider. Legacy aliases are normalized like every other row read. The
- * send's effort survives either way: rows never store one.
- */
 export function preferRowPin(
   row: RowPin | undefined,
   send: WarmingPin,
 ): WarmingPin {
   if (!row?.provider) return send;
   return {
-    // Rows store pi's CANONICAL id; the pin travels through the app's display
-    // dialect and is re-canonicalized at the wire (`wireTurnPin`).
     provider: toDisplayProviderIdOrNull(row.provider) ?? undefined,
     model: normalizeLegacyModel(row.model ?? null, row.provider) ?? undefined,
     effort: send.effort,

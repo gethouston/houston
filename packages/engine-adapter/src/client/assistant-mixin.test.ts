@@ -2,12 +2,6 @@ import { describe, expect, test, vi } from "vitest";
 import type { HoustonClientBase } from "./base";
 import { HoustonEngineError } from "./errors";
 
-/**
- * The assistant's address is the ONE thing the app cannot work out for itself.
- * A 200 whose body does not carry it used to be cast straight to a handle, so
- * `{}` opened a chat pane pointed at agent `undefined` and nothing said so.
- */
-
 const { cpFetch } = vi.hoisted(() => ({ cpFetch: vi.fn() }));
 vi.mock("../control-plane", () => ({ cpFetch }));
 

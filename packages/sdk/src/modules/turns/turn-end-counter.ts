@@ -1,8 +1,3 @@
-/**
- * Counts the turn ends a stream has shown, and wakes whoever waits for the
- * next one. A waiter names the count it saw BEFORE its send went out, so an
- * end that lands while the send is still in flight is never missed.
- */
 export class TurnEndCounter {
   private n = 0;
   private readonly waiters = new Set<() => void>();
@@ -16,7 +11,6 @@ export class TurnEndCounter {
     for (const wake of [...this.waiters]) wake();
   }
 
-  /** Resolves once the count exceeds `mark`, or `signal` aborts. */
   after(mark: number, signal: AbortSignal): Promise<void> {
     return new Promise<void>((resolve) => {
       const done = () => {

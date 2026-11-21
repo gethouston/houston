@@ -7,49 +7,10 @@ import {
 } from "../ports";
 import { json } from "../routes/http";
 
-/**
- * Idempotent, read-only status probes the client fires on mount (provider
- * picker, usage meter, connect dialog). They report what a runtime *knows*, so
- * an unanswered one costs the user nothing but a retry — unlike a turn, where
- * waiting out the cold boot IS the point. Deliberately narrow: GET only, exact
- * paths, no route that mutates or streams. `rest` is the dispatch remainder
- * (routes/agents.ts, routes/setup-runtime.ts), i.e. no leading slash.
- */
 const PROBE_ROUTES = new Set(["providers", "providers/usage", "auth/status"]);
 
-/**
- * How long a probe waits for a cold runtime before answering "ask again". Long
- * enough that an already-warm (or nearly-warm) runtime answers for real, short
- * enough that the picker never looks hung: the alternative was holding the
- * socket for the launcher's whole boot budget (60s) behind one spinner.
- */
 const PROBE_WAKE_DEADLINE_MS = 1_500;
 
-/**
- * Wake the agent's runtime for one dispatched request, and say where to reach
- * it — or null when the request has already been ANSWERED (503) and the caller
- * must stop.
- *
- * Everything but a read-only probe awaits the wake outright: a turn, an SSE
- * subscription or a login has nothing useful to say before its runtime is up.
- * A probe instead RACES the wake against a short deadline and, when the boot is
- * slower, answers 503 + `Retry-After` so the socket is freed in milliseconds
- * instead of minutes (the provider picker's spinner used to sit on exactly
- * this, for a full cold boot, on every zero-provider desktop launch).
- *
- * Two properties make that safe:
- * - The boot is NEVER aborted. `ensureAwake` keeps running in the background,
- *   so the client's retry a couple of seconds later meets a live runtime rather
- *   than paying for a fresh cold start.
- * - It cannot double-spawn. `ensureAwake` is single-flight per agent
- *   (launcher/process.ts `booting`), so the retry — and every other caller
- *   arriving meanwhile — joins the SAME spawn.
- *
- * The launcher's own `status` is deliberately not consulted: mid-boot it
- * already reports "running" (the live-set entry exists before the child is
- * healthy), which is exactly the case this guards. A warm runtime costs nothing
- * here — `ensureAwake` resolves at once and wins the race.
- */
 export async function wakeForDispatch(
   launcher: RuntimeLauncher,
   ctx: ChannelCtx,
@@ -61,9 +22,6 @@ export async function wakeForDispatch(
   if (method !== "GET" || !PROBE_ROUTES.has(rest))
     return wake.catch((err) => rejectIfClosed(err, res));
 
-  // A boot that fails after this request has been answered has no one left to
-  // tell; the next probe re-triggers the spawn and surfaces the failure then.
-  // (A failure BEFORE the deadline still rejects out of the race below.)
   wake.catch(() => {});
 
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -88,20 +46,6 @@ export async function wakeForDispatch(
   return null;
 }
 
-/**
- * A host mid-shutdown refuses to spawn (launcher/process.ts, PRODUCT-1399).
- * That is not a runtime failure but a "not here, not now": answer 503 +
- * Retry-After so the client retries against the replacement pod (or the next
- * app start) instead of rendering a 500. Any other rejection is the caller's.
- *
- * The body is the gateway's waking contract (`engine unavailable` + the
- * reason as detail), the same shape the server's catch-all mints for this
- * error: every client reads that pair as "not there yet" (the wake retry
- * budget, the quiet class). Answering the raw message as the reason instead
- * left a fourth reason string no client knew, so a chat opened against a
- * draining pod rode the 2s handoff budget and then surfaced as a bug
- * (PRODUCT-1777 / HOUSTON-APP-56Z).
- */
 function rejectIfClosed(err: unknown, res: ServerResponse): null {
   if (!(err instanceof LauncherClosedError)) throw err;
   json(

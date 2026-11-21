@@ -8,22 +8,16 @@ import type {
 import { expect, test } from "vitest";
 import { buildToolPolicy, makeCanUseTool } from "./tool-policy";
 
-// The permission-context 3rd arg is unused by the clamp; a stub typed from the
-// SDK's own signature keeps the call site honest without `any`.
 const CTX: Parameters<CanUseTool>[2] = {
   signal: new AbortController().signal,
   toolUseID: "t",
   requestId: "r",
 };
 
-// realpath so the root matches WorkspaceGuard's canonicalization (on macOS the
-// tmpdir is a /var → /private/var symlink; an un-canonicalized root would make
-// every absolute in-workspace path look like an escape).
 function workspace(): string {
   return realpathSync(mkdtempSync(join(tmpdir(), "claude-ws-")));
 }
 
-/** Invoke the gate and assert it returned a decision (never null here). */
 async function decide(
   can: CanUseTool,
   tool: string,
@@ -49,7 +43,6 @@ test("buildToolPolicy grants Bash only when code execution is local", () => {
 
   const off = buildToolPolicy({ localBash: false });
   expect(off.tools).toEqual(["Read", "Edit", "Write", "Glob", "Grep"]);
-  // Bash is both omitted from availability AND explicitly denied.
   expect(off.disallowedTools).toContain("Bash");
 });
 
@@ -58,9 +51,7 @@ test("plan mode clamps built-ins to Read/Glob/Grep and denies Edit/Write/Bash", 
   expect(plan.tools).toEqual(["Read", "Glob", "Grep"]);
   for (const denied of ["Edit", "Write", "Bash"])
     expect(plan.disallowedTools).toContain(denied);
-  // The pi-lacking set is still denied on top of the write/exec denials.
   expect(plan.disallowedTools).toContain("WebSearch");
-  // localBash is irrelevant in plan mode: no Bash either way.
   const planNoBash = buildToolPolicy({ localBash: false, mode: "plan" });
   expect(planNoBash.tools).toEqual(["Read", "Glob", "Grep"]);
   expect(planNoBash.disallowedTools).toContain("Bash");
@@ -76,8 +67,6 @@ test("execute mode is unchanged by the added mode param", () => {
 });
 
 test("auto mode keeps the SAME built-in policy as execute (file tools + Bash per localBash)", () => {
-  // Auto's "never wait" rule is enforced on the MCP side (ask_user dropped), not
-  // in the built-in policy — the Claude built-ins have no blocking tool to clamp.
   expect(buildToolPolicy({ localBash: true, mode: "auto" })).toEqual(
     buildToolPolicy({ localBash: true }),
   );
@@ -169,8 +158,6 @@ test("canUseTool denies an absolute-path escape", async () => {
 });
 
 test("canUseTool denies the in-workspace credential files (Read/Write/Grep)", async () => {
-  // The runtime's dataDir lives under the workspace root, so these paths pass
-  // containment; the guard's credential deny is the only thing that stops them.
   const ws = workspace();
   const runtime = join(ws, ".houston", "runtime");
   mkdirSync(join(runtime, "auth-users"), { recursive: true });
@@ -218,15 +205,12 @@ test("Glob / Grep: an in-workspace base path is allowed, an escape denied", asyn
   expect(
     (await decide(can, "Grep", { pattern: "x", path: "/var/log" })).behavior,
   ).toBe("deny");
-  // No base path → defaults to cwd, allowed.
   expect((await decide(can, "Glob", { pattern: "**/*" })).behavior).toBe(
     "allow",
   );
 });
 
 test("Glob: an absolute pattern with no path is denied", async () => {
-  // Regression: Glob's real target is its PATTERN. With no `path`, an absolute
-  // pattern must be clamped, not fail open to an out-of-workspace read.
   const can = makeCanUseTool(workspace());
   expect(
     (await decide(can, "Glob", { pattern: "/etc/**/*.conf" })).behavior,
@@ -287,7 +271,6 @@ test("Bash: a cwd-bound command is allowed, an absolute/home escape denied", asy
   expect(
     (await decide(can, "Bash", { command: "cat ~/secret" })).behavior,
   ).toBe("deny");
-  // Regression: `..` is relative but still escapes — must not fail open.
   expect(
     (await decide(can, "Bash", { command: "cat ../../../../etc/passwd" }))
       .behavior,
@@ -295,9 +278,6 @@ test("Bash: a cwd-bound command is allowed, an absolute/home escape denied", asy
 });
 
 test("Bash: a quoted or escaped workspace path with a space is allowed, a quoted escape still denied", async () => {
-  // Most agents have a space in their name, so their workspace path does too.
-  // Splitting the command on whitespace cut `.../neqw copia` into an absolute
-  // `.../neqw` that failed containment (PRODUCT-1809).
   const root = join(workspace(), "neqw copia");
   mkdirSync(root);
   const can = makeCanUseTool(root);
@@ -311,7 +291,6 @@ test("Bash: a quoted or escaped workspace path with a space is allowed, a quoted
       "allow",
     );
   }
-  // Quoting opens nothing: a quoted absolute path outside is one token, denied.
   for (const command of [
     'cat "/etc/passwd"',
     "cat '/etc/passwd'",
@@ -333,10 +312,6 @@ test("an unknown tool with no path targets is allowed", async () => {
 });
 
 test("the personal assistant gets only the built-ins memory consolidation needs", () => {
-  // The coordinator never produces work, so the SDK built-ins are clamped to
-  // the pair the "your memory is full" instruction names: read that file, write
-  // the trimmed list back. Everything else is denied, bash included, whatever
-  // the deployment's code-execution setting says.
   const policy = buildToolPolicy({ localBash: true, personalAssistant: true });
   expect(policy.tools).toEqual(["Read", "Write"]);
   for (const denied of [
@@ -349,7 +324,6 @@ test("the personal assistant gets only the built-ins memory consolidation needs"
   ])
     expect(policy.disallowedTools).toContain(denied);
 
-  // Plan mode narrows it further: reading only.
   const plan = buildToolPolicy({
     localBash: true,
     personalAssistant: true,

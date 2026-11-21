@@ -29,8 +29,6 @@ test("every context is offered once and hires a deep run of roles", () => {
   );
   for (const id of AGENT_CONTEXT_IDS) {
     const roles = AGENT_CONTEXT_ROLES[id];
-    // An industry the user recognizes must answer the next question too: a short
-    // run sends them straight back out to "Something else".
     assert.ok(roles.length >= 20, `${id} offers ${roles.length} roles`);
     assert.equal(new Set(roles).size, roles.length, `${id} repeats a role`);
   }
@@ -82,8 +80,6 @@ test("a context the user typed themselves is offered the shared roles alone", ()
   assert.deepEqual(common, [...AGENT_COMMON_ROLES]);
 });
 
-/** The one label a duplicate would hide behind: the same fold the filter
- *  matches on, so "Análisis" and "analisis" count as the collision they are. */
 function duplicateLabels(labels: Record<string, string>): string[] {
   const seen = new Map<string, string>();
   const clashes: string[] = [];
@@ -97,11 +93,6 @@ function duplicateLabels(labels: Record<string, string>): string[] {
 }
 
 test("no two catalog entries read the same in any language", () => {
-  // Two chips with identical words are two different answers to the user's
-  // eye and one arbitrary pick to their hand: the second is unreachable and
-  // the first means something it doesn't say. Translating is where they creep
-  // in (distinct English jobs collapsing onto one Spanish word), so every
-  // language is checked, not just the source one.
   for (const [locale, bundle] of Object.entries(LOCALES)) {
     assert.deepEqual(
       duplicateLabels(bundle.roleSetup.contexts),
@@ -117,9 +108,6 @@ test("no two catalog entries read the same in any language", () => {
 });
 
 test("both questions reach far enough to keep their filter", () => {
-  // The filter appears only past `SEARCH_THRESHOLD` reachable options. Neither
-  // question can be scanned without one, so a catalog that shrank under the
-  // threshold would silently drop the field and strand the rest of the run.
   assert.ok(
     isChoiceSearchable(CONTEXT_SEARCH_REACH),
     `the industry question reaches ${CONTEXT_SEARCH_REACH}, under the filter's threshold`,

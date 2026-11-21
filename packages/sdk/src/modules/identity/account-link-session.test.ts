@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { deferredLink, GOOD_CODE, identityKit } from "./test-kit";
 
-/** A link held in flight on the session the code minted, `uid-a`. */
 async function linkInFlight() {
   const kit = identityKit();
   const link = deferredLink();

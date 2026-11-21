@@ -11,27 +11,16 @@ import { feedItemsToMessages } from "./feed-to-messages";
 import type { FeedItem } from "./types";
 import { useProgressSteps } from "./use-progress-steps";
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
 interface SidebarStep {
   title: string;
   status: "pending" | "active" | "done";
 }
 
 export interface ChatSidebarProps {
-  /** Progress steps to display (explicit). */
   progressSteps?: SidebarStep[];
-  /** Feed items for extracting tool-based progress (used if progressSteps not provided). */
   feedItems?: FeedItem[];
-  /** Additional className. */
   className?: string;
 }
-
-/* ------------------------------------------------------------------ */
-/*  ChatSidebar                                                        */
-/* ------------------------------------------------------------------ */
 
 export function ChatSidebar({
   progressSteps,
@@ -44,10 +33,6 @@ export function ChatSidebar({
     </div>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/*  Progress Card                                                      */
-/* ------------------------------------------------------------------ */
 
 function ProgressCard({
   progressSteps,
@@ -96,10 +81,6 @@ function ProgressCard({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Step row                                                           */
-/* ------------------------------------------------------------------ */
-
 function StepRow({ step }: { step: SidebarStep }) {
   return (
     <div className="flex items-start gap-2.5 py-1.5">
@@ -132,10 +113,6 @@ function StepRow({ step }: { step: SidebarStep }) {
     </div>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/*  Tool-step extraction                                               */
-/* ------------------------------------------------------------------ */
 
 const TOOL_LABELS: Record<string, string> = {
   Read: "Reading file",

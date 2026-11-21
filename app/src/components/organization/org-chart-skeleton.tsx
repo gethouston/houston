@@ -1,11 +1,5 @@
 import { cn, Skeleton } from "@houston-ai/core";
 
-/**
- * The ledger before its ranking can be read: the caption, the featured #1
- * card and a few lines, the same boxes the real ledger draws. With a `label`
- * it announces itself as busy; inside the whole chart's skeleton, which
- * announces itself, it stays quiet.
- */
 export function OrgChartLedgerSkeleton({
   label,
   className,
@@ -48,11 +42,6 @@ export function OrgChartLedgerSkeleton({
   );
 }
 
-/**
- * The chart before the roster lands, in the shape it arrives in: the hero's
- * name, sentence, figure and chart over its rule, then the ledger's. The same
- * boxes the real chart draws, so nothing moves when it arrives.
- */
 export function OrgChartSkeleton({ label }: { label: string }) {
   return (
     <div

@@ -28,8 +28,6 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     type: "website",
   },
-  // summary_large_image: share cards come from the opengraph-image file
-  // convention (a default store card here, a per-agent card under /a/[slug]).
   twitter: {
     card: "summary_large_image",
     title: siteConfig.name,
@@ -43,8 +41,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* The fixed, constant script must run before paint to prevent a
-            light/dark flash; it contains no user-provided content. */}
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: constant pre-paint theme bootstrap */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

@@ -9,7 +9,6 @@ import {
 import { Archive, ChevronDown, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
-/** A status a selection can be moved to (e.g. Done / Needs me). */
 export interface BulkMoveTarget {
   status: string;
   label: string;
@@ -49,11 +48,6 @@ type Pending =
   | { kind: "delete" }
   | null;
 
-/**
- * Floating action bar shown while one or more board cards are multi-
- * selected. Every action is confirmed before it runs (move / archive /
- * delete) so a bulk mistake can't silently mutate many missions at once.
- */
 export function BulkActionBar({
   count,
   moveTargets,
@@ -107,8 +101,6 @@ export function BulkActionBar({
         </span>
         <span className="mx-0.5 h-5 w-px bg-line" />
         {moveTargets.length === 1 ? (
-          // A locked selection can only move to one other section — show it
-          // directly instead of a one-item dropdown.
           <Button
             variant="ghost"
             size="sm"

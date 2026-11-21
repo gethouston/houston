@@ -12,16 +12,6 @@ import {
 } from "@houston/sdk/appearance";
 import { describe, expect, it } from "vitest";
 
-/**
- * The appearance vocabulary's own rules: which values this build ships, which
- * palette a mode wears, and what the OS appearance is allowed to move.
- *
- * Pure — no store, no kernel — because every surface resolves a theme through
- * exactly these functions, including a pre-paint script that runs before any SDK
- * exists.
- */
-
-/** A preference with a non-default palette on each side, to prove which is read. */
 const PREF: ThemePreference = {
   mode: "light",
   light: "catppuccin-latte",
@@ -87,7 +77,6 @@ describe("resolving a preference", () => {
   });
 
   it("falls back to a mode's default when the saved palette is the other mode's", () => {
-    // `nord` is dark; under `theme.light` it would paint dark colours in light.
     expect(
       resolveTheme({ mode: "light", light: "nord", dark: "nord" }, false),
     ).toEqual({ mode: "light", palette: DEFAULT_PALETTE.light });

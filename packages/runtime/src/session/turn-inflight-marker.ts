@@ -11,49 +11,13 @@ import { join } from "node:path";
 import { atomicTempPath } from "@houston/protocol";
 import { parseTurnResumeInfo, type TurnResumeInfo } from "./turn-resume-info";
 
-/**
- * The "turn in flight" marker: one small file per conversation, written the
- * moment a turn is accepted and removed when it ends — by ANY path (clean
- * done, provider error, user stop, a thrown turn). A marker that survives into
- * the next boot is therefore the one trace of a turn the previous process died
- * on: a pod OOM-killed mid-turn (one cgroup, group kill, SIGKILL leaves no
- * process to report), the desktop force-quit. The boot settle
- * (settle-interrupted-turns.ts) reads survivors, writes the honest reply the
- * dead process never could, and reports the restart — the only way the fleet
- * count of these ever reaches Sentry.
- *
- * Lives under the runtime's data dir, beside `conversations/`, so the managed
- * pod's store sync carries it to the object store with the transcript: a
- * marker that never left the pod would die with it and there would be nothing
- * to find. Own directory rather than a sibling of the conversation file: the
- * conversation lister treats every `*.json` under `conversations/` as a
- * transcript.
- */
-
 export interface InflightTurnMarker {
   conversationId: string;
   turnId: string;
-  /** Epoch ms the turn was accepted (the user message persisted). */
   startedAt: number;
-  /** The tool running when the marker was last updated, when one started. */
   tool?: string;
-  /**
-   * Whether model-spawned processes ran under the child memory fence
-   * (child-memory-fence.ts). A survivor with a running bash tool AND the fence
-   * up is a kill the fence should have prevented — the report names it.
-   */
   fenced: boolean;
-  /**
-   * What the boot settle needs to run this turn AGAIN by itself
-   * (turn-resume-info.ts). Absent on a marker written by an older engine —
-   * that turn settles as before and is never resumed.
-   */
   resume?: TurnResumeInfo;
-  /**
-   * Set when THIS turn is itself the automatic resume of an interrupted turn,
-   * naming the turn it resumes. The one loop stop: a resume that dies is
-   * settled, reported and left alone.
-   */
   resumeOf?: string;
 }
 
@@ -66,7 +30,6 @@ export function inflightDir(dataDir: string): string {
 const fileFor = (dataDir: string, conversationId: string) =>
   join(inflightDir(dataDir), `${encodeURIComponent(conversationId)}.json`);
 
-/** Write (or replace) the marker for `marker.conversationId`. Atomic swap. */
 export function writeInflightMarker(
   dataDir: string,
   marker: InflightTurnMarker,
@@ -79,11 +42,6 @@ export function writeInflightMarker(
   renameSync(tmp, file);
 }
 
-/**
- * Record the tool that just started on the running turn. A marker that is
- * gone (the turn ended between the frame and this write) is left gone: the
- * update must never resurrect a settled turn as in-flight.
- */
 export function noteInflightTool(
   dataDir: string,
   conversationId: string,
@@ -108,12 +66,6 @@ export function readInflightMarker(
   return parseMarker(readOrNull(fileFor(dataDir, conversationId)));
 }
 
-/**
- * Every marker on disk — at boot, every one of them is a turn the previous
- * process died on. A file that does not parse as a marker is dropped from the
- * listing AND from disk: it can never be settled, and leaving it would make
- * every boot re-report the same junk.
- */
 export function listInflightMarkers(dataDir: string): InflightTurnMarker[] {
   const dir = inflightDir(dataDir);
   if (!existsSync(dir)) return [];
@@ -144,8 +96,6 @@ function parseMarker(raw: string | null): InflightTurnMarker | null {
     typeof m.startedAt !== "number"
   )
     return null;
-  // A resume payload we cannot read costs the turn its resume, never its
-  // settle: the marker is still the one trace of a turn the process died on.
   const resume = parseTurnResumeInfo(m.resume);
   return {
     conversationId: m.conversationId,

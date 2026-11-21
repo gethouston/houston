@@ -4,7 +4,6 @@ import type { HarnessSession, ReplyBeat } from "../backends/types";
 import { newInteractionHolder } from "../session/interaction";
 import { collectTurnFrames, newTurnFrames } from "./turn-session-frames";
 
-/** A pooled (E2B) turn emits `reply_complete` from the same finish marks. */
 test("a pooled turn emits reply_complete when the reply ends on plain text", () => {
   const wire = new Set<(e: WireEvent) => void>();
   const starts = new Set<() => void>();

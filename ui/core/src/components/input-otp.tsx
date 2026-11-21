@@ -5,13 +5,6 @@ import * as React from "react";
 
 import { cn } from "../utils";
 
-/**
- * One-time-code entry: one box per character, auto-advance, backspace
- * navigation, and paste distribution (via the `input-otp` primitive). Slots
- * are separate rounded boxes (`gap-2` on the group) rather than a joined
- * segmented field. The active slot signals with `border-focus`, matching how
- * every other field in the design system marks focus.
- */
 function InputOTP({
   className,
   containerClassName,

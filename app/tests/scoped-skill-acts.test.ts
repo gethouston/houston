@@ -12,14 +12,6 @@ import type {
 } from "../src/components/skills-view/skill-editor-props.ts";
 import type { Agent, SkillSummary } from "../src/lib/types.ts";
 
-/**
- * The two whole-skill acts inside ONE AI Employee's Skills section. Both take
- * the skill off the open editor, and on an employee that keeps its OWN copy
- * both DELETE that copy, which nothing restores — so what the acts carry is
- * whether the screen has to ask first, and whose screen their completion may
- * steer once the write lands.
- */
-
 const ANA: Agent = {
   id: "ana",
   name: "Ana",
@@ -51,7 +43,6 @@ const row = (over: Partial<ManagedSkillRow>): ManagedSkillRow => ({
   ...over,
 });
 
-/** The store handlers, recording which act reached them. */
 function sharedStub(): { shared: SharedDialogActions; calls: string[] } {
   const calls: string[] = [];
   return {
@@ -85,8 +76,6 @@ describe("the acts an employee's own Skills section offers", () => {
   });
 
   it("deletes nothing of this employee's when it runs the workspace copy", () => {
-    // Taking the workspace skill off this employee is a manifest write and
-    // nothing else, so it stands on its own.
     const { shared } = sharedStub();
     const acts = scopedSkillActions({
       row: row({ origin: "shared", overriddenBy: [] }),
@@ -115,7 +104,6 @@ describe("the acts an employee's own Skills section offers", () => {
   });
 });
 
-/** One act, plus the spies the editor would hand it. */
 function actRun(options: {
   run?: () => Promise<void>;
   live?: boolean;
@@ -158,8 +146,6 @@ describe("running one of those acts", () => {
   });
 
   it("never steers a screen the editor it started in has left", async () => {
-    // Back, then another skill opened while the write was still in flight:
-    // the shared way out would discard THAT skill's typed draft.
     const act = actRun({ live: false });
 
     await act.go();
@@ -200,8 +186,6 @@ describe("running one of those acts", () => {
 
 describe("what the acts module publishes", () => {
   it("keeps the override test to itself", () => {
-    // Which copy the employee runs is one question, answered here; exporting
-    // the predicate invites a second answer somewhere else.
     ok(!("isScopedOverride" in surface));
   });
 });

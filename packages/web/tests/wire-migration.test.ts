@@ -8,20 +8,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The agent-data migration family rides `sdk.migration`. What this file pins is
- * the WIRE: the four per-agent routes, their methods, the import's zip content
- * type and its conditional query, the export's and the complete's body bytes,
- * and the headers that carry auth and the active space — the whole recorded
- * request, because the four spellings differ by one segment and a substring
- * match would let one stand in for another.
- *
- * Each case drives the composed `HoustonClient` (what the app holds), not the
- * SDK. No call degrades: a copy that quietly wrote nothing would read to the
- * user as a copy that worked, so every status reaches the caller as a
- * `HoustonEngineError` with the host's parsed body.
- */
-
 const BASE = "https://gw.example";
 
 const { calls, reset, restore, stubFetch, stubRouted } = createWireCapture();
@@ -42,7 +28,6 @@ const RESULT = {
   sessionsRebuilt: true,
 };
 
-/** A cloud client with a team space active, so `x-houston-org` is live. */
 function client(): HoustonClient {
   const c = new HoustonClient({
     baseUrl: BASE,
@@ -53,7 +38,6 @@ function client(): HoustonClient {
   return c;
 }
 
-/** The single request the call made, with the two auth headers checked. */
 function soleCall(): Call {
   const commits = calls.filter((call) => !call.url.endsWith("/uploads"));
   expect(commits).toHaveLength(1);
@@ -63,14 +47,12 @@ function soleCall(): Call {
   return call;
 }
 
-/** A marker as the target's status route hands it back. */
 const MARKER = {
   completedAt: "2026-09-15T10:00:00.000Z",
   source: { workspace: "Personal", agent: "Assistant" },
   counts: { written: 9, skipped: 2, rejected: 0, sessionsRebuilt: true },
 };
 
-/** The archive bytes a stubbed export answers with. */
 const zip = () => new Response(new Uint8Array([80, 75, 3, 4]), { status: 200 });
 
 describe("the delegated migration requests", () => {
@@ -195,8 +177,6 @@ describe("what no half softens", () => {
     expect((err as HoustonEngineError).agentId).toBe("a1");
   });
 
-  // A pod that cannot answer the probe must not read as "this agent was never
-  // imported": the resume decision belongs to the wizard, which sees the 404.
   test("a missing status route reaches the caller as a 404, not as null", async () => {
     stubFetch(() => json(404, { error: "not found" }));
     const err = await client()

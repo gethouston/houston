@@ -15,8 +15,6 @@ describe("humanizeSkillName", () => {
   });
 
   it("never throws on a missing identity (the App-crash guard)", () => {
-    // A display helper must degrade, not white-screen the app, when a skill
-    // name comes back undefined/empty (see SkillDetailPage crash).
     const missing = undefined as unknown as string;
     strictEqual(humanizeSkillName(missing), "");
     strictEqual(humanizeSkillName(""), "");

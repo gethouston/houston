@@ -9,32 +9,13 @@ export interface AccessChoiceOption {
 }
 
 interface AccessChoiceProps {
-  /** Id of the VISIBLE heading that asks the question; names the radio group. */
   labelledBy: string;
-  /** Exactly two options: the "any" (allow-all) and "picked" (restricted) modes. */
   options: readonly [AccessChoiceOption, AccessChoiceOption];
-  /** The currently selected mode. */
   value: AccessMode;
-  /** A write is in flight (disables the control). */
   disabled?: boolean;
-  /** Fired only when the selection actually changes. */
   onChange: (value: AccessMode) => void;
 }
 
-/**
- * Accessible two-option choice (radio semantics) for "Any X" vs "Only X you
- * pick", rendered as a segmented control: a pill track with a primary thumb
- * that slides (framer-motion shared layout) to the selected segment, and
- * the selected option's description cross-fading below. Keeps full radio
- * semantics: a labelled `role="radiogroup"` of `role="radio"` segments with
- * `aria-checked`, a roving tabindex + arrow-key navigation, and a focus-visible
- * ring. The group is named by the section's VISIBLE question heading
- * (`aria-labelledby`), never by a duplicate `aria-label`, so a screen reader
- * announces the question once. i18n-agnostic: the caller passes the labels and
- * descriptions in. Selecting the
- * already-selected option is a no-op, so re-picking "Only ... you pick" never
- * re-seeds the allowed set.
- */
 export function AccessChoice({
   labelledBy,
   options,
@@ -44,18 +25,12 @@ export function AccessChoice({
 }: AccessChoiceProps) {
   const thumbId = useId();
   const reduce = useReducedMotion();
-  // One button element per option value, so arrow-key navigation can move DOM
-  // focus onto the newly-checked radio (the roving-tabindex contract: focus
-  // must follow selection, else a screen reader never announces the new option).
   const radioRefs = useRef<Partial<Record<AccessMode, HTMLButtonElement>>>({});
 
   const select = (next: AccessMode) => {
     if (!disabled && next !== value) onChange(next);
   };
 
-  // Two options only, so any arrow key just moves to the other one (a radio
-  // group must be arrow-navigable, not only clickable). Selection changes the
-  // value AND moves focus to the newly-checked radio.
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (
       e.key === "ArrowDown" ||

@@ -25,7 +25,6 @@ test("modify persists the returned credential; undefined leaves the entry unchan
     key: "sk-1",
   }));
   expect(store.get("openrouter")).toEqual({ type: "api_key", key: "sk-1" });
-  // Contract: undefined = leave unchanged (NOT a delete).
   await store.modify("openrouter", async () => undefined);
   expect(store.get("openrouter")).toEqual({ type: "api_key", key: "sk-1" });
 });
@@ -44,7 +43,6 @@ test("modify is serialized per provider — a slow refresh cannot interleave", a
   });
   const second = store.modify("openai-codex", async (current) => {
     order.push("second-start");
-    // The second writer must observe the first's committed value.
     expect((current as { access?: string })?.access).toBe("refreshed-1");
     return oauth("refreshed-2");
   });
@@ -57,19 +55,15 @@ test("modify is serialized per provider — a slow refresh cannot interleave", a
 });
 
 test("delete queued behind an in-flight refresh wins — sign-out is never resurrected", async () => {
-  // The race the pi 0.82 review caught: pi's getAuth refreshes an OAuth token
-  // inside `modify` (network await). A sign-out during that wait must not be
-  // undone when the refresh lands and re-persists the rotated credential —
-  // `delete` queues on the same per-provider chain, so it runs after and wins.
   const store = tmpStore();
   store.set("openai-codex", oauth("old"));
   let releaseRefresh!: () => void;
   const network = new Promise<void>((r) => (releaseRefresh = r));
   const refresh = store.modify("openai-codex", async () => {
-    await network; // pi's token-endpoint call, in flight
+    await network;
     return oauth("rotated");
   });
-  const signOut = store.delete("openai-codex"); // user clicks Sign out meanwhile
+  const signOut = store.delete("openai-codex");
   releaseRefresh();
   await Promise.all([refresh, signOut]);
   expect(store.get("openai-codex")).toBeUndefined();
@@ -82,7 +76,6 @@ test("a rejecting modify still propagates AND does not wedge the chain", async (
       throw new Error("token endpoint 500");
     }),
   ).rejects.toThrow("token endpoint 500");
-  // The chain keeps serving later writers.
   await store.modify("deepseek", async () => ({ type: "api_key", key: "k2" }));
   expect(store.get("deepseek")).toEqual({ type: "api_key", key: "k2" });
 });

@@ -8,19 +8,12 @@ import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";
 
-/**
- * First screen of "Copy an agent": which of your agents is the model. One row
- * per agent, the helmet in its own color so the list reads like the rail.
- * Picking a row reads that agent's shareable content; the row shows a spinner
- * while it loads and the wizard moves on by itself when it arrives.
- */
 export function SourceAgentStep({
   agents,
   loadingId,
   onPick,
 }: {
   agents: readonly Agent[];
-  /** The agent whose content is being read, if any. Locks the list. */
   loadingId: string | null;
   onPick: (agent: Agent) => void;
 }) {

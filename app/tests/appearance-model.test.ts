@@ -14,7 +14,6 @@ import {
   wrapIndex,
 } from "../src/components/settings/sections/appearance-model.ts";
 
-/** A preference with a non-default palette on each side, so a mix-up shows. */
 const PREF: ThemePreference = {
   mode: "system",
   light: "catppuccin-latte",
@@ -74,8 +73,6 @@ test("the summary names the mode by key and both palettes by name", () => {
     light: "Catppuccin Latte",
     dark: "Nord",
   });
-  // An explicit mode still summarizes BOTH palettes: the dialog behind the row
-  // edits both, so the row states the whole saved choice.
   assert.deepEqual(summaryParts({ ...PREF, mode: "dark" }), {
     modeKey: "appearance.dark",
     light: "Catppuccin Latte",

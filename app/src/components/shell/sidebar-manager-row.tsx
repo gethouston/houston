@@ -6,24 +6,10 @@ import { ASSISTANT_VIEW_ID } from "../assistant/id";
 import type { SidebarChromeT } from "./sidebar-chrome";
 import { bandSelectedId, routeBandSelect } from "./sidebar-manager-selection";
 
-/** The Manager's avatar at the diameter of the rail slot it renders in: the
- *  person row's portrait expanded, the smaller avatar collapsed. */
 function ManagerSidebarIcon() {
   return <ManagerAvatar size={useSidebarAvatarDiameter()} />;
 }
 
-/**
- * The AI Manager as the employees band's pinned first row, and the band's
- * selection with it folded in.
- *
- * The band has ONE `selectedId` and ONE `onSelect`, so the Manager rides them
- * under its view id (`sidebar-manager-selection.ts`): lit while the assistant
- * view is open, and selecting it opens that view instead of an agent's team
- * board. Gated on reachability (`useManagerReachable`), not on a role: a
- * deployment that serves no assistant has no row once no onboarding runs in
- * it. The test id tells it apart from an agent the person happened to name
- * "Houston".
- */
 export function useSidebarManagerRow(args: {
   t: SidebarChromeT;
   selectedAgentId: string | null;

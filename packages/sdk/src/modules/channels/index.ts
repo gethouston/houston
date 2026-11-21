@@ -1,19 +1,3 @@
-/**
- * The channels module — the messaging accounts a person's assistant answers
- * in: what is connected today, Slack and WhatsApp pairing, and removal.
- *
- * These are pure commands over hosted-gateway routes: the listing is read when
- * the Channels screen opens and every other call is a button's one-shot, so
- * there is no reactive scope to publish and nothing here subscribes to an
- * event. The same handlers back both the typed facade and the `dispatch` path.
- *
- * SEAM — space-scoped, NOT per-agent. The gateway resolves the space from the
- * caller's session plus the active-space header its `fetch` stamps, and binds
- * the connection to the person's own assistant, so nothing here names an agent
- * and the module runs on its own {@link moduleScope} rooted at the base URL. A
- * 401 routes through the shared {@link ModuleContext.authExpiry} notifier.
- */
-
 import type { SlackConnectReturn } from "@houston/wire-types";
 import type { ModuleContext } from "../../module-context";
 import { moduleScope, SdkHttpError } from "../http";
@@ -55,30 +39,18 @@ export type {
 } from "./types";
 export { CHANNEL_PROVIDER_IDS, ChannelsCommand } from "./types";
 
-/** The typed facade for the channels family. Every call throws on a non-2xx. */
 export interface ChannelsModule {
-  /** The deployment's providers and the active space's connections. */
   getChannels(signal?: AbortSignal): Promise<ChannelStatus>;
-  /**
-   * Slack's hosted authorization URL; `returnTo` is where the browser returns.
-   * A gateway that refuses `loopback` gets one retry as `app`, and `accepted`
-   * names the return the URL leads back to.
-   */
   connectSlack(
     returnTo?: SlackConnectReturn,
     signal?: AbortSignal,
   ): Promise<SlackConnectAnswer>;
-  /** An expiring code that pairs an already-installed Slack workspace. */
   linkSlack(signal?: AbortSignal): Promise<ChannelLink>;
-  /** An expiring code and prefilled message for WhatsApp pairing. */
   linkWhatsApp(signal?: AbortSignal): Promise<WhatsAppLink>;
-  /** Redeem the one-time ticket a Slack callback returned with. */
   completeSlack(ticket: string, signal?: AbortSignal): Promise<SlackCompletion>;
-  /** Remove one connection, by the id `getChannels` returns. */
   disconnectChannel(connectionId: string, signal?: AbortSignal): Promise<void>;
 }
 
-/** A failed channels request. `status` is the upstream HTTP status. */
 export class ChannelsHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "ChannelsHttpError");

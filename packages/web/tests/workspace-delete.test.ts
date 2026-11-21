@@ -3,17 +3,6 @@ import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
 import { teamSlugFromWorkspaceId } from "@houston/engine-adapter/client/workspaces-mixin";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * PRODUCT-1410 — "Workspace is not being deleted".
- *
- * `deleteWorkspace` on the v3 adapter used to be `async () => {}`: the Settings
- * Danger Zone "succeeded", dropped the row from the local store, and the team
- * space came straight back on the next spaces refresh (it was never touched
- * server-side). The posture now: a team row (`org:<slug>`) issues the real
- * `DELETE /v1/orgs/:slug` and lets every rejection propagate; the personal row
- * and an off-cloud client THROW instead of pretending.
- */
-
 const originalFetch = globalThis.fetch;
 
 afterEach(() => {

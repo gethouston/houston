@@ -8,14 +8,11 @@ import { ariaTree } from "./snapshot";
 import { parseTree, walk } from "./snapshot-tree";
 import { isInteractive } from "./snapshot-view";
 
-/** Badges past this many hide the page they label. */
 export const MAX_LABELS = 80;
-/** Elements measured to find the visible ones; a page lists more off screen. */
 const MAX_MEASURED = 400;
 const MEASURE_TIMEOUT_MS = 1_000;
 
 export interface ScreenLabel {
-  /** Stamped, as click takes it (`s7e12`). */
   ref: string;
   role: string;
   name: string;
@@ -27,12 +24,6 @@ interface Badge {
   y: number;
 }
 
-/**
- * A screenshot with each visible control's ref drawn at its corner, so the
- * model can click what it sees. Counts as a look: the refs drawn are a new
- * generation. The overlay lives in a closed shadow root that takes no input
- * and is removed whatever happens.
- */
 export async function labeledScreenshot(
   tab: BrowserTab,
   shoot: (page: Page) => Promise<Buffer>,
@@ -86,7 +77,6 @@ interface Box {
   height: number;
 }
 
-/** Null for an element hidden, gone, or too slow to measure. */
 async function boxOf(page: Page, ref: string): Promise<Box | null> {
   try {
     return await page
@@ -109,7 +99,6 @@ function onScreen(box: Box, viewport: { width: number; height: number }) {
   );
 }
 
-/** Runs in the page. */
 function drawBadges({ id, badges }: { id: string; badges: Badge[] }): void {
   const host = document.createElement("div");
   host.id = id;
@@ -125,7 +114,6 @@ function drawBadges({ id, badges }: { id: string; badges: Badge[] }): void {
   document.documentElement.append(host);
 }
 
-/** A page that navigated meanwhile took the overlay with it. */
 async function removeBadges(page: Page, id: string): Promise<void> {
   try {
     await page.evaluate(

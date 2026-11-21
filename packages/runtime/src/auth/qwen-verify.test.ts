@@ -3,10 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 
-// Qwen region probing (HOU-1077): Alibaba Model Studio international keys are
-// region-scoped, so verification must try every region and persist the one
-// that accepts the key. Bodies are verbatim from live DashScope responses.
-
 const previousDataDir = process.env.HOUSTON_DATA_DIR;
 
 afterEach(() => {
@@ -49,8 +45,6 @@ test("a US-region key: Singapore rejects, US accepts → verified, region persis
 });
 
 test("US answers a billing error → still verified (auth proven), region persisted", async () => {
-  // The live case that motivated this: a valid US key whose free tier ran out.
-  // A garbage key can't be out of quota, so the region is the key's home.
   const { verifyQwenRegions, persistedRegion } = await load();
   await verifyQwenRegions("qwen", async (m) =>
     m.baseUrl.includes("dashscope-us") ? US_FREE_TIER_EXHAUSTED : SG_REJECTED,
@@ -84,8 +78,6 @@ test("every region rejects the credential → invalid_key, nothing persisted", a
 });
 
 test("a region with no verdict → provider_unavailable, never 'paste it again'", async () => {
-  // Singapore rejects, the US times out: the key may belong to the region
-  // that gave no verdict, so burning it with invalid_key would be a lie.
   const { verifyQwenRegions, ApiKeyVerifyError } = await load();
   const err = await verifyQwenRegions("qwen", async (m) =>
     m.baseUrl.includes("dashscope-us")
@@ -115,9 +107,7 @@ test("an injected persist (the pool-worker seam) lands the region in the AGENT's
     async (m) => (m.baseUrl.includes("dashscope-us") ? null : SG_REJECTED),
     (regionId) => setQwenRegionIn(agentDataDir, regionId),
   );
-  // The worker's own data dir stays untouched...
   expect(persistedRegion()).toBeNull();
-  // ...and the hydrated agent root holds the verified region.
   const { readFileSync } = await import("node:fs");
   expect(
     (
@@ -129,8 +119,6 @@ test("an injected persist (the pool-worker seam) lands the region in the AGENT's
 });
 
 test("US answers the model is not activated → verified, region persisted", async () => {
-  // AccessDenied.Unpurchased comes after authentication: the key is good and
-  // the account must activate the model, which re-pasting the key never fixes.
   const { verifyQwenRegions, persistedRegion } = await load();
   await verifyQwenRegions("qwen", async (m) =>
     m.baseUrl.includes("dashscope-us")

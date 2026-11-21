@@ -9,16 +9,11 @@ export interface ScreencastSink {
   page(page: { url: string; title: string }): void;
 }
 
-/**
- * The frame cap fits both layouts unscaled, so a switch to the phone layout
- * needs no restart of the screencast.
- */
 const MAX_FRAME = {
   width: Math.max(DESKTOP_VIEWPORT.width, PHONE_VIEWPORT.width),
   height: Math.max(DESKTOP_VIEWPORT.height, PHONE_VIEWPORT.height),
 };
 
-/** Chromium only paints a frame on change; a static page gets one screenshot. */
 const STILL_PAGE_MS = 400;
 
 interface FrameEvent {
@@ -27,11 +22,6 @@ interface FrameEvent {
   metadata: { deviceWidth: number; deviceHeight: number };
 }
 
-/**
- * Streams the tab's current page as JPEG frames over CDP while anyone is
- * watching, and follows the tab to a popup or back. Attaches run one at a
- * time; a frame from a page the stream already left is dropped.
- */
 export class Screencast {
   private running = false;
   private generation = 0;
@@ -66,7 +56,6 @@ export class Screencast {
   }
 
   private enqueue(step: () => Promise<void>): void {
-    // A page closing mid-attach is routine; the next page change attaches anew.
     this.chain = this.chain.then(step).catch(warnUnlessClosed("live view"));
   }
 

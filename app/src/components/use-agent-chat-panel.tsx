@@ -1,24 +1,3 @@
-/**
- * Per-agent chat panel hook.
- *
- * Centralises every agent-scoped concern that gets spread into AIBoard
- * so the per-agent BoardTab and the cross-agent Mission Control share
- * one implementation. Callers pass an `agent` (the conversation's
- * scope) and the hook returns ready-to-use AIBoard props:
- *
- *   - chatEmptyState      — featured-skill cards + "see more"
- *   - composerHeader      — selected Skill chip above the prompt input
- *   - footer              — model selector + "Skills" button
- *   - renderUserMessage   — decode + render skill-invocation card
- *   - tool helpers        — file tool renderer
- *
- * The hook also owns the Skill submission pipeline (createMission
- * for new conversations, tauriChat.send for follow-ups) so we don't
- * duplicate the encoding + feed-push logic in two places.
- */
-
-// Subpath import (like `lib/active-interaction.ts`): value imports from the
-// package index only resolve under bundler resolution.
 import { hasOnlySuggestionSteps } from "@houston/protocol/interaction";
 import { setupGreetingCopy } from "@houston/sdk/first-day";
 import type { AIBoardProps } from "@houston-ai/board";
@@ -210,103 +189,40 @@ import { useToolkitBrandResolver } from "./use-toolkit-brand-resolver";
 import { UserSkillMessage } from "./user-skill-message";
 
 interface UseAgentChatPanelArgs {
-  /** The personal manager connects accounts without an ordinary agent allowlist. */
   integrationAccountScope?: boolean;
-  /** The agent the panel is currently scoped to. Null disables features. */
   agent: Agent | null;
-  /** Currently-open session key, if any. Drives Skill routing. */
   selectedSessionKey: string | null;
-  /** Called with the new conversation id after a Skill's "Start". */
   onSelectSession?: (id: string) => void;
-  /** New-conversation draft scope — must match the board's `useBoardDrafts`
-   *  scope so dictation lands in the composer the user sees (HOU-730). */
   draftScope?: string;
-  /** The mode a fresh composer, and a mission whose card keeps none, opens
-   *  on. The routine setup chat passes `"execute"` (Ask first): its kickoff
-   *  turn runs Ask first, so the live composer must match. Omit for Ask first. */
   initialTurnMode?: TurnMode;
-  /** Fires after a send THIS HOOK owns LANDS — every one that bypasses the
-   *  surface's own `onSendMessage`: an interaction offer (suggested-action
-   *  bubble, completed stepper, accepted save-as-reusable, plan-ready choice)
-   *  and a Skill submitted into an existing conversation. Each starts a turn,
-   *  which re-activates an ARCHIVED mission, so a surface that must react to
-   *  that (the archived views, which have to hand the user off to the active
-   *  board) wires its handoff here. Never called when the send fails — the
-   *  failure surfaces on its own and the user stays where they are. */
   onSendReactivated?: () => void;
-  /** The missions this chat started (PRODUCT-1244), already resolved + ordered
-   *  by the surface that owns the board data. Listed above the composer in
-   *  place of the generic follow-up bubbles. Omit on surfaces with no board
-   *  behind them (the setup chats) and nothing renders. */
   childMissions?: ChatMissionListItem[];
-  /** The way back UP (PRODUCT-1244): when THIS chat is a mission the agent
-   *  started, the mission it was started from. Renders the "Go to main
-   *  mission" bar above the composer. A chat never has both: spawned missions
-   *  can't spawn, so this and {@link childMissions} are mutually exclusive. */
   parentMission?: { id: string; title: string } | null;
-  /** Opens a mission by id — the board's own selection. Serves both the
-   *  child-mission rows and the parent link. */
   onOpenChildMission?: (id: string) => void;
 }
 
-/** Stable empty default, so the no-children case never re-runs the memo. */
 const EMPTY_CHILD_MISSIONS: ChatMissionListItem[] = [];
 
 interface AgentChatPanelProps {
-  /** Renders skill cards + "see more" when no Skill is in flight. */
   chatEmptyState: AIBoardProps["chatEmptyState"];
-  /** Selected Skill chip rendered above the prompt input. */
   composerHeader: AIBoardProps["composerHeader"];
-  /** The pending-interaction card shown when the mission is waiting on the user
-   *  (ask_user / request_connection / credential), or a lighter
-   *  plan_ready / suggest_reusable / suggest_actions offer. Undefined when nothing is pending or a
-   *  turn is running. Pair it with {@link composerOverrideMode}. */
   composerOverride: AIBoardProps["composerOverride"];
-  /** How the override composes with the input: interaction cards with their own
-   *  free-text row pass `"replace"` (the composer is not rendered under them),
-   *  while suggestion offers pass `"above"`. */
   composerOverrideMode: AIBoardProps["composerOverrideMode"];
-  /** {@link composerOverride} narrowed to the NON-BLOCKING clean-finish offers
-   *  (mode `"above"`), for the archived surfaces. Archiving a mission does not
-   *  answer what it was waiting on, so a mission archived mid-question still
-   *  carries blocking steps — and a composer-REPLACING stepper inside a
-   *  read-mostly archived list is a dead end. The offers are welcome there:
-   *  acting on one sends a message, which re-activates the mission like any
-   *  other send. Pair it with `composerOverrideMode="above"`. */
   offersComposerOverride: AIBoardProps["composerOverride"];
-  /** Submit can run the selected Skill without extra text. */
   canSendEmpty: AIBoardProps["canSendEmpty"];
-  /** Intercepts composer submit while a Skill is selected. */
   onComposerSubmit: AIBoardProps["onComposerSubmit"];
-  /** Composer footer with model selector + Skills button. */
   footer: AIBoardProps["footer"];
-  /** Paperclip popover content with Add files / Skills / Model. */
   attachMenu: AIBoardProps["attachMenu"];
-  /** Decodes skill-invocation user messages into a card. */
   renderUserMessage: AIBoardProps["renderUserMessage"];
-  /** Edit-and-resend (PRODUCT-1217): begins editing a previous user message.
-   *  Undefined while a turn runs, so the affordance vanishes instead of
-   *  inviting the runtime's 409. */
   onEditMessage: AIBoardProps["onEditMessage"];
-  /** Gates the affordance to messages the user actually typed (no markers,
-   *  no channel relays, own messages only in a shared thread). */
   canEditMessage: AIBoardProps["canEditMessage"];
-  /** Localized label for the edit affordance. */
   editMessageLabel: AIBoardProps["editMessageLabel"];
-  /** In-place editing state + Cancel/Send callbacks for the edited row. */
   messageEditing: AIBoardProps["messageEditing"];
-  /** Copy-message affordance on both sides of the conversation. */
   enableMessageCopy: AIBoardProps["enableMessageCopy"];
-  /** Gates copy to rows whose raw content is what the bubble shows. */
   canCopyMessage: AIBoardProps["canCopyMessage"];
-  /** Localized label for the copy affordance. */
   copyMessageLabel: AIBoardProps["copyMessageLabel"];
-  /** Renders agent-authored `#houston_toolkit=` links as connect cards. */
   renderLink: AIBoardProps["renderLink"];
-  /** Opens a link the chat's prose holds: a URL in the browser, a workspace
-   *  file in the preview panel, bound to this chat for comments. */
   openHref: (href: string) => void;
-  /** Forwarded to AIBoard / ChatPanel for tool rendering. */
   isSpecialTool: ChatPanelProps["isSpecialTool"];
   renderToolResult: ChatPanelProps["renderToolResult"];
   processLabels: ChatPanelProps["processLabels"];
@@ -314,44 +230,22 @@ interface AgentChatPanelProps {
   thinkingIndicator: ChatPanelProps["thinkingIndicator"];
   renderTurnSummary: ChatPanelProps["renderTurnSummary"];
   renderSystemMessage: AIBoardProps["renderSystemMessage"];
-  /** Props-only copy and metadata-only analytics for Conversation Map. */
   conversationMap: AIBoardProps["conversationMap"];
   mapFeedItems: AIBoardProps["mapFeedItems"];
   afterMessages: AIBoardProps["afterMessages"];
-  /** Hidden picker dialog mounted in the consumer. */
   pickerDialog: ReactNode;
-  /** Displayed provider/model/effort for sending. */
   effectiveProvider: string;
   effectiveModel: string;
   effectiveEffort: string | undefined;
-  /** The pin a send must carry, settled at send time (PRODUCT-1771). */
   resolveSendPin: () => Promise<ModelPin>;
-  /** The composer's turn mode: the open mission's kept mode, or the fresh
-   *  composer's pick. Consumers forward it as `modeOverride` on every
-   *  user-typed send. */
   turnMode: TurnMode;
-  /** Multiplayer only (C5): the signed-in viewer's user id, for attributing
-   *  teammates' messages. Undefined when signed out / single-player. */
   currentUserId: ChatPanelProps["currentUserId"];
-  /** Localized author-attribution labels forwarded to ChatPanel. */
   authorLabels: ChatPanelProps["authorLabels"];
-  /** Attribute EVERY turn (HOU-943): true whenever the deployment is
-   *  multiplayer, so a shared chat always says who sent each message.
-   *  Single-player stays false and the transcript is unchanged. */
   showSenders: ChatPanelProps["showSenders"];
-  /** The agent's display name, shown on its own rows when senders show. */
   agentLabel: ChatPanelProps["agentLabel"];
-  /** Face for a message's sender: teammate photo/initials, or the agent mark. */
   renderSenderAvatar: ChatPanelProps["renderSenderAvatar"];
-  /** Text colour for a sender's NAME: their person tone, or the agent's own
-   *  avatar colour (HOU-960). */
   senderNameClass: ChatPanelProps["senderNameClass"];
-  /** The @mention props (HOU-944), spread as ONE group at every AIBoard mount:
-   *  the composer's roster, the render roster, the row face and the labels.
-   *  Every list is empty off multiplayer, so "@" just types plainly. */
   mentionProps: ChatMentionProps;
-  /** Prop-driven dictation control for the composer mic. Undefined on web
-   *  (no native mic capture) — ChatPanel hides the mic entirely. */
   dictation: ChatPanelProps["dictation"];
 }
 
@@ -368,8 +262,6 @@ export function useAgentChatPanel({
   onOpenChildMission,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t, i18n } = useTranslation(["board", "chat", "dashboard", "teams"]);
-  // Approval cards are worded HERE, from the host's structural account of the
-  // exact call (`lib/interaction-approval-labels.ts`).
   const approvalCopy = useApprovalCardCopy();
   const {
     processLabels,
@@ -380,8 +272,6 @@ export function useAgentChatPanel({
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
 
-  // Multiplayer attribution (C5): the signed-in viewer's id lets ChatPanel tell
-  // the viewer's own bubbles from teammates'. Undefined signed out / local.
   const { data: session } = useSession();
   const currentUserId = session?.uid;
   const authorLabels = useMemo(() => ({ you: t("chat:attribution.you") }), [t]);
@@ -445,16 +335,8 @@ export function useAgentChatPanel({
     };
   }, [agent, selectedSessionKey, t]);
 
-  // ── Dictation (desktop-only voice typing) ──────────────────────────────
-  // Transcript text is appended to the SAME draft store AIBoard's
-  // `draftStore` reads from (`useBoardDrafts` in use-board-chat-wiring.tsx)
-  // — the key mirrors the board's own derivation (AIBoard's plain
-  // "new-conversation" translated through `useBoardDrafts`'s scope), so
-  // dictating into a fresh composer lands in the same draft the user would
-  // see if they typed instead.
   const newConversationKey = useNewConversationDraftKey(draftScope);
   const draftKey = selectedSessionKey ?? newConversationKey;
-  // File comments ride the composer of the chat their file was opened from.
   const citationComposer = useCitationComposer(
     agent?.folderPath ?? null,
     draftKey,
@@ -479,17 +361,9 @@ export function useAgentChatPanel({
     enabled: osIsTauri(),
   });
 
-  // Integration connect cards are a new-engine feature: the host advertises
-  // its wired providers in capabilities; the legacy Rust engine (null) and
-  // unconfigured deployments fall back to plain markdown links.
   const { capabilities, isLoading: capabilitiesLoading } = useCapabilities();
   const integrationsEnabled = integrationsSupported(capabilities);
 
-  // Teams E8: in a multiplayer Teams org the composer's model + effort pickers
-  // read+write the ACTING user's PERSONAL per-agent choice (clamped to the
-  // agent's allowed-models ceiling), not the shared agent config. Single-player
-  // / self-host keeps the shared-config behavior (personal=false, no ceiling).
-  // The gateway is the sole enforcer of the ceiling per turn.
   const modelDecision = modelSelectorDecision(capabilities, agent);
   const { data: modelChoiceInfo, isFetched: modelChoiceFetched } =
     useAgentModelChoice(agent?.id ?? "", modelDecision.personal);
@@ -500,11 +374,6 @@ export function useAgentChatPanel({
 
   const path = agent?.folderPath ?? null;
 
-  // Opening an agent whose hosted pod is scaled to zero (HOU-730): the open
-  // itself starts the wake, but every request is held for the whole cold
-  // start — a first message sent then would hang with no bubble. Detect the
-  // asleep engine now so sends park with the same warming machinery a
-  // just-created agent uses, and flush the moment the pod answers.
   const agentId = agent?.id ?? null;
   useEffect(() => {
     if (!agentId || !path) return;
@@ -513,24 +382,6 @@ export function useAgentChatPanel({
       .detectSleepingEngine({ id: agentId, folderPath: path });
   }, [agentId, path]);
 
-  // ── Activity / agent tier model resolution ─────────────────────────────
-  // Activity is the per-mission override; agent config is the per-agent
-  // default. Workspace-level defaults were retired and pushed into agent
-  // configs. Legacy Claude model aliases ("opus"/"sonnet") are normalized to
-  // their explicit version IDs on read (mirrors the engine migration) so a
-  // stored alias never falls through to the default model and silently
-  // downgrades an Opus agent to Sonnet — activity records in particular are
-  // never migrated on disk, so this read-side guard is what covers them.
-  // Provider ids get the same treatment on read: both tiers store pi's
-  // CANONICAL id (`openai-codex`) while the catalog, picker and logos speak
-  // Houston's DISPLAY id (`openai`), so they are mapped here — the seam
-  // `use-agent-model-choice` already applies to a stored model choice.
-  // Read through the config QUERY, not a one-shot effect (PRODUCT-1771): a
-  // read refused while a space switch leaves routing pending is retried, a
-  // ConfigChanged invalidation follows the file, and `isFetched` tells the
-  // send gate below that the tier is UNKNOWN (still loading) rather than
-  // absent — the two used to be indistinguishable, and "absent" fell through
-  // to the device-wide last-used provider.
   const agentConfigQuery = useAgentConfig(path ?? undefined);
   const agentConfigSettled = !path || agentConfigQuery.isFetched;
   const {
@@ -541,8 +392,6 @@ export function useAgentChatPanel({
     () => agentTierFromConfig(agentConfigQuery.data),
     [agentConfigQuery.data],
   );
-  // Optimistic flip for a shared-mode pick: lands on the cache the tier reads
-  // from, so the picker moves before the config write round-trips.
   const setAgentTier = useCallback(
     (patch: Pick<configData.Config, "provider" | "model" | "effort">) => {
       if (!path) return;
@@ -553,13 +402,6 @@ export function useAgentChatPanel({
     },
     [path, queryClient],
   );
-  // Last-used provider preference (`default_provider`, written by setLastUsed
-  // on every provider pick). The fallback when neither the activity nor the
-  // agent config names a provider, so an OpenAI-only user opening a no-provider
-  // agent sees their own provider in the dropdown and forwards it on send,
-  // instead of silently defaulting to Claude and failing auth (#483). One-shot
-  // load mirrors the agent-config read above; the literal "anthropic" below
-  // stays only as the last resort, matching the engine's factory default.
   const [lastUsedProvider, setLastUsedProvider] = useState<string | null>(null);
   useEffect(() => {
     reportRejection(
@@ -571,9 +413,6 @@ export function useAgentChatPanel({
 
   const activityQuery = useActivity(path ?? undefined);
   const activities = activityQuery.data;
-  // The list is served from the cross-agent cache as a PLACEHOLDER first
-  // (`latestCachedAgentActivities`); its rows carry no provider/model, so until
-  // the agent's own read lands the open row's pin is unknown, not absent.
   const activitySettled =
     !selectedSessionKey ||
     (activityQuery.isFetched && !activityQuery.isPlaceholderData);
@@ -587,9 +426,6 @@ export function useAgentChatPanel({
   }, [activities, selectedSessionKey]);
   const selectedActivityId = selectedActivity?.id ?? null;
 
-  // A pick applied to the OPEN chat, echoed locally until the activity query
-  // reflects the write (the optimistic flip for the dropdown). Scoped to one
-  // activity id so it can never leak into another chat's dropdown.
   const [pickedPin, setPickedPin] = useState<{
     activityId: string;
     provider: string;
@@ -599,8 +435,6 @@ export function useAgentChatPanel({
     if (!pickedPin) return;
     if (
       selectedActivity?.id === pickedPin.activityId &&
-      // The row comes back in the engine dialect while the pick was made in the
-      // display one, so the echo only clears when compared on equal terms.
       toDisplayProviderIdOrNull(selectedActivity.provider) ===
         pickedPin.provider &&
       selectedActivity.model === pickedPin.model
@@ -615,17 +449,9 @@ export function useAgentChatPanel({
   );
   const activityModel = normalizeLegacyModel(
     pinForSelected?.model ?? selectedActivity?.model ?? null,
-    // The row's own provider, not the picker's: a legacy id is only legacy
-    // against the provider it was stored for.
     pinForSelected?.provider ?? selectedActivity?.provider,
   );
 
-  // Which providers the user is actually logged into (reactive + cached), read
-  // through the ONE shared derivation (HOU-979) rather than the denormalized
-  // `authenticated` flag. The fallback below picks a CONFIRMED-connected one
-  // rather than a stale preference, so a no-provider agent never lands on a
-  // logged-out account (#483) — and an unconfirmable probe is kept separate, so
-  // it neither becomes a fallback target nor disqualifies the preferred one.
   const {
     statuses: providerStatuses,
     isLoading: providerStatusesLoading,
@@ -646,48 +472,25 @@ export function useAgentChatPanel({
     [providerStatuses],
   );
 
-  // With nothing connected the composer had no honest job: its picker showed a
-  // phantom model (the effective-provider default) and its textarea accepted a
-  // message no provider could answer. The whole input area is replaced by one
-  // CTA into the AI Hub, and returns by itself once a provider connects (the
-  // status query is invalidated on ProviderLoginComplete).
   const connectAiComposer = useConnectAiComposer({
     statuses: providerStatuses,
     isLoading: providerStatusesLoading,
     isError: providerStatusesError,
   });
 
-  // This conversation's reactive feed — the SDK conversation VM, the app's one
-  // turn-state source (history seeded by the adapter on load; live turns
-  // folded by the SDK machinery).
-  // Live resync (HOU-731): the chat-history subscription makes a
-  // ConversationsChanged event re-read the open conversation and reseed the
-  // VM, so turns from a teammate / another device / a routine repaint live.
   useChatHistory(
     selectedSessionKey && path ? path : undefined,
     selectedSessionKey ?? undefined,
   );
   const sessionFeedItems = useConversationFeed(path, selectedSessionKey);
 
-  // Sender identity (HOU-943): in a shared (multiplayer) deployment every turn
-  // shows who sent it — the teammate's face + name, the agent's mark + name.
-  // Resolved from the feed's authors, so it repaints as teammates' turns land.
   const { showSenders, agentLabel, renderSenderAvatar, senderNameClass } =
     useChatSenderAvatars(agent, sessionFeedItems);
 
-  // @mentions of teammates (HOU-944): the space roster the composer offers and
-  // the renderer chips against. Empty off multiplayer — "@" then types plainly.
   const mentionProps = useChatMentions();
 
-  // The live turn state for this conversation, for the pending-interaction
-  // override: `running` gates the card (a running turn shows the composer, not
-  // the card) and `pendingInteraction` is the live source the derivation
-  // prefers over the persisted activity fallback.
   const conversationVm = useConversationVm(path, selectedSessionKey);
-  // Plain boolean so callbacks can depend on "is a turn running" without
-  // re-creating on every VM tick (the VM reference churns while streaming).
   const turnRunning = conversationVm?.running ?? false;
-  // Composer "Mode" pin (execute/plan/auto), kept on the mission's card.
   const { turnMode, selectTurnMode: handleModeSelect } =
     useConversationTurnMode({
       path,
@@ -697,10 +500,6 @@ export function useAgentChatPanel({
       turnRunning,
     });
 
-  // Whether the open conversation already has turns. Once it does, the chat's
-  // provider is frozen (see resolveEffectiveProvider): a provider that logs out
-  // mid-conversation must surface the reconnect card, never silently hand the
-  // turn to another connected provider.
   const hasMessages = sessionFeedItems.length > 0;
 
   const effectiveProvider = resolveEffectiveProvider(
@@ -711,27 +510,17 @@ export function useAgentChatPanel({
     hasMessages,
     unconfirmedProviders,
   );
-  // The model that belongs beside that provider, from the SAME source that
-  // named it (mission pin → agent choice → the provider's own default). The
-  // glyph and the label can no longer disagree: a model never travels from one
-  // provider onto another. See `chat-model-pin` for the precedence.
   const effectiveModel = resolveChatModelPin(
     effectiveProvider,
     { provider: activityProvider, model: activityModel },
     { provider: agentProvider, model: agentModel },
   ).model;
-  // Effort is a per-agent setting validated against whatever model is active
-  // (activity override or agent default), so it never offers an unsupported
-  // level for the model that will actually run.
   const effectiveEffort = validEffortOrDefault(
     effectiveProvider,
     effectiveModel,
     agentEffort,
   );
 
-  // What a ceiling pick may run on: the hydrated catalog plus the CONFIRMED
-  // connected accounts, so a ceiling never pins the chat to a provider the user
-  // has not connected (PRODUCT-1657).
   const ceilingResolver = useMemo(
     () => ({
       offers: providerOffersModel,
@@ -764,10 +553,6 @@ export function useAgentChatPanel({
     ],
   );
 
-  // The provider/model/effort the composer picker displays and every send
-  // forwards. In personal (Teams) mode an open mission's in-ceiling activity
-  // pin wins for provider/model, while effort stays on the personal resolution.
-  // Without a mission pin, the personal choice remains the default.
   const rawDisplayModelPin = useMemo(
     () =>
       modelDecision.personal
@@ -804,10 +589,6 @@ export function useAgentChatPanel({
       ceilingResolver,
     ],
   );
-  // Last coherence pass over whichever tier won: a model the pinned provider
-  // cannot run falls back to THAT provider's default (the Teams personal
-  // resolution assembles its pair from stored halves, so it needs the same
-  // guarantee the shared path gets from `resolveChatModelPin`).
   const displayModelPin = useMemo(() => {
     const model = coherentPinModel(
       rawDisplayModelPin.provider,
@@ -824,11 +605,6 @@ export function useAgentChatPanel({
     };
   }, [rawDisplayModelPin]);
 
-  // Whether every input above has landed (PRODUCT-1771). Before that the pin is
-  // a guess that bottoms out on the device-wide last-used provider, and a send
-  // must not carry a guess as the turn's pin: `resolveSendPin` holds the send
-  // until the composer settles (bounded), then hands it the pin the picker
-  // shows at that moment.
   const pinSettled = sendPinSettled({
     agentConfigSettled,
     activitySettled,
@@ -848,20 +624,10 @@ export function useAgentChatPanel({
     reportPinTimeout,
   );
 
-  // Converge legacy pin-less chats (created before per-conversation pins):
-  // stamp the shared agent-derived provider/model onto its activity, so a later
-  // change to the agent
-  // default can never move a chat that already ran (HOU-695). Chats created
-  // now are stamped at creation (createMission); this covers the older ones,
-  // once per activity per mount. Background convergence, not a user action:
-  // a failure only postpones the stamp, so it logs instead of toasting.
   const stampedActivityIds = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!path || !selectedActivity || selectedActivity.provider) return;
     if (!hasMessages) return;
-    // A placeholder row has no pin field at all, and an unsettled composer
-    // would stamp a guess: both looked like a legacy pin-less row and wrote
-    // the device's last-used provider over the chat's real pin (PRODUCT-1771).
     if (!pinSettled || activityQuery.isPlaceholderData) return;
     if (stampedActivityIds.current.has(selectedActivity.id)) return;
     stampedActivityIds.current.add(selectedActivity.id);
@@ -883,22 +649,8 @@ export function useAgentChatPanel({
     activityQuery.isPlaceholderData,
   ]);
 
-  // ── Context-usage indicator ───────────────────────────────────────────
-  // Latest turn's normalized usage from this session's feed, divided by a
-  // self-correcting window estimate: the active model's catalogued default,
-  // snapped up once the session's observed peak proves a larger (plan/credit-
-  // gated) window. Drives the composer footer pill + dialog.
   const { contextUsage, contextWindow } = useMemo(() => {
     const { latest, peakContextTokens } = sessionContextUsage(sessionFeedItems);
-    // `peakContextTokens` is session-wide while `cfg` is the currently-selected
-    // model's. Providers CAN now differ across one conversation (the picker is
-    // unlocked, so a conversation can move to a new provider mid-session), so a
-    // peak observed under the old provider may snap the new model's window up
-    // until a `provider_switched` divider resets it. That only ever OVER-states
-    // the window (it never reads above 100%: `contextFillPercent` clamps),
-    // and the figure is already labeled an estimate, so
-    // it's acceptable for the post-switch turns until the new provider reports
-    // its own usage and the indicator re-settles.
     const cfg = getContextWindowConfig(
       displayModelPin.provider,
       displayModelPin.model,
@@ -910,17 +662,12 @@ export function useAgentChatPanel({
     };
   }, [sessionFeedItems, displayModelPin]);
 
-  // A provider switch awaiting the user's consent (it spends tokens). Held here
-  // and applied only on confirm.
   const [switchDialog, setSwitchDialog] = useState<{
     toProvider: string;
     toModel: string;
     mode: ProviderHandoffMode;
   } | null>(null);
 
-  // Whether this conversation has produced provider output already, so a switch
-  // crosses a LIVE conversation (vs. just setting the default before the first
-  // turn). Consent is only needed once output exists.
   const conversationStarted = useMemo(
     () =>
       (sessionFeedItems ?? []).some(
@@ -932,15 +679,6 @@ export function useAgentChatPanel({
     [sessionFeedItems],
   );
 
-  // Persist a provider/model choice with an optimistic picker flip. Shared by
-  // the plain pick and the post-consent switch path.
-  //
-  // Scope is the whole point (HOU-695): a pick inside an OPEN chat pins THAT
-  // conversation only — its activity record, which every send forwards as the
-  // turn's wire pin — and never touches the agent config other chats fall back
-  // to. Only a pick in a fresh, message-less composer (no activity yet) writes
-  // the agent config: that's the default the NEXT chats start on, and the
-  // mission created on first send stamps it onto its own activity.
   const applyProviderModel = useCallback(
     async (prov: string, mod: string) => {
       try {
@@ -966,8 +704,6 @@ export function useAgentChatPanel({
             const cfg = await tauriConfig.read(path);
             await tauriConfig.write(path, {
               ...cfg,
-              // config.json is CANONICAL (see `data/config.ts`); `prov` is the
-              // picker's display id.
               provider: toCanonicalProviderId(prov),
               model: mod,
             });
@@ -975,9 +711,6 @@ export function useAgentChatPanel({
         }
         await tauriProvider.setLastUsed(prov, mod);
       } catch (err) {
-        // A ceiling that moved under the user is already surfaced by the
-        // model-choice mutation as an expected state; a red toast on top would
-        // call it a bug twice (PRODUCT-1734).
         if (isModelNotAllowedError(err)) return;
         addToast({
           title: t("chat:errors.modelPersistFailed"),
@@ -998,13 +731,6 @@ export function useAgentChatPanel({
     ],
   );
 
-  // Picking a provider/model from the dropdown. Switching to a DIFFERENT provider
-  // mid-conversation brings the whole conversation over to it (the runtime
-  // re-points its session, carrying or summarizing prior context), which spends
-  // tokens — so ask first via the consent dialog. The size only decides which
-  // copy the dialog shows; the runtime makes the real replay/summarize call. A
-  // model change within the same provider, or any pick before the first turn,
-  // just persists.
   const handleModelSelect = useCallback(
     async (prov: string, mod: string) => {
       const isProviderSwitch =
@@ -1018,8 +744,6 @@ export function useAgentChatPanel({
       const mode = decideHandoffMode({
         currentContextTokens: contextUsage?.context_tokens ?? null,
         estimatedTokens: estimateConversationTokens(sessionFeedItems),
-        // The new provider hasn't been observed yet, so use its catalogued
-        // DEFAULT window, not a snapped-up estimate.
         targetWindowTokens: getContextWindowConfig(prov, mod)?.default ?? null,
       });
       setSwitchDialog({ toProvider: prov, toModel: mod, mode });
@@ -1034,8 +758,6 @@ export function useAgentChatPanel({
     ],
   );
 
-  // The user confirmed the switch dialog: persist the new provider/model. The
-  // runtime applies the actual handoff (and emits the divider) on the next send.
   const confirmProviderSwitch = useCallback(async () => {
     const pending = switchDialog;
     setSwitchDialog(null);
@@ -1044,8 +766,6 @@ export function useAgentChatPanel({
   }, [switchDialog, applyProviderModel]);
   const handleEffortSelect = useCallback(
     async (effort: EffortLevel) => {
-      // Effort is per-agent (not per-activity): persist to the agent config
-      // the engine reads at send time. Optimistic flip for the picker.
       setAgentTier({ effort });
       try {
         if (path) {
@@ -1062,9 +782,6 @@ export function useAgentChatPanel({
     },
     [path, addToast, t, setAgentTier],
   );
-  // In personal (Teams) mode, a fresh-composer model pick updates the user's
-  // default. A pick inside an open mission follows the activity-pin path,
-  // including provider-switch consent, and can never write agent config.
   const selectModel = useCallback(
     (prov: string, mod: string) => {
       if (
@@ -1083,9 +800,6 @@ export function useAgentChatPanel({
           model: mod,
           effort: validEffortOrDefault(prov, mod, displayModelPin.effort),
         });
-        // The device's sticky default too: the create-agent dialog seeds from
-        // it, so a hosted pick must register as "last used" like a shared-mode
-        // pick does (applyProviderModel writes it on the other branches).
         reportRejection(
           tauriProvider.setLastUsed(prov, mod),
           "chat.save-last-model",
@@ -1108,10 +822,6 @@ export function useAgentChatPanel({
   const selectEffort = useCallback(
     (effort: EffortLevel) => {
       if (modelDecision.personal) {
-        // The effort re-write carries the resolved model, so it is clamped to
-        // the ceiling the same way a model pick is: an EMPTY ceiling ("no model
-        // allowed") leaves the fallback outside it, and the gateway would answer
-        // `model_not_allowed` (PRODUCT-1734).
         if (
           !isModelAllowed(
             allowedModels,
@@ -1146,14 +856,10 @@ export function useAgentChatPanel({
     ],
   );
 
-  // ── File-tool rendering (per-agent path) ──────────────────────────────
   const { isSpecialTool, renderToolResult, renderTurnSummary } =
     useFileToolRenderer(path ?? "", selectedSessionKey);
 
-  // ── Skills + selected-skill state ─────────────────────────────────────
   const { data: allSkills } = useSkills(path ?? undefined);
-  // Swap unedited English store skills for the workspace language's versions
-  // (agents created before translated templates shipped, or in English).
   useStoreSkillLocaleMigration(agent);
   const emptySkillShowcase = useMemo(() => {
     const skills = allSkills ?? [];
@@ -1166,30 +872,19 @@ export function useAgentChatPanel({
   );
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  // Controlled open for the footer model dropdown, so an error card's "Pick
-  // another model" CTA pops the SAME picker (the Skills picker above is separate).
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const [activeSkill, setActiveSkill] = useState<SkillSummary | null>(null);
-  // Drop selected Skill when the agent / session changes so it doesn't
-  // leak across contexts.
   // biome-ignore lint/correctness/useExhaustiveDependencies: path and selectedSessionKey are intentional change-triggers that reset activeSkill when the agent or session switches; they are reactive values derived from props and must remain in the dep list.
   useEffect(() => {
     setActiveSkill(null);
   }, [path, selectedSessionKey]);
 
-  // ── Edit-and-resend (PRODUCT-1217) ─────────────────────────────────────
-  // The previous user turn being edited IN PLACE, or null: the row's bubble
-  // swaps for an inline editor (ChatGPT's grammar) — the composer is never
-  // touched. Send truncates the conversation at this turn and delivers the
-  // edited text as a plain send.
   const [editingTurn, setEditingTurn] = useState<{
     sessionKey: string;
     turnId: string;
     key: string;
   } | null>(null);
   useEffect(() => {
-    // Switching conversations abandons an in-progress edit — the pending
-    // rewind is meaningless against another transcript.
     if (editingTurn && editingTurn.sessionKey !== selectedSessionKey)
       setEditingTurn(null);
   }, [editingTurn, selectedSessionKey]);
@@ -1208,9 +903,6 @@ export function useAgentChatPanel({
   const onEditMessageSubmit = useCallback(
     async (_msg: ChatMessage, text: string) => {
       if (!editingTurn || !path) return;
-      // Rewind FIRST: a truncate failure (e.g. a turn raced the edit) throws
-      // before anything was cut, surfaces as a toast (tauri `call`), and the
-      // editor stays open with the user's text.
       await tauriChat.truncate(
         path,
         editingTurn.sessionKey,
@@ -1224,8 +916,6 @@ export function useAgentChatPanel({
         effortOverride: pin.effort,
         modeOverride: turnMode,
       });
-      // An ARCHIVED mission was just re-activated by the resend, exactly as
-      // any other send into it would.
       onSendReactivatedRef.current?.();
     },
     [editingTurn, path, resolveSendPin, turnMode],
@@ -1248,10 +938,6 @@ export function useAgentChatPanel({
   );
   const canEditMessage = useCallback(
     (msg: ChatMessage) => {
-      // Only what the user actually TYPED here is editable: channel-relayed
-      // rows and marker-encoded sends (skill / attachment / interaction
-      // answers) are not, and in a shared thread only your own messages are
-      // yours to rewrite.
       if (msg.source) return false;
       if (hasCitations(msg.content)) return false;
       if (decodeSkillMessage(msg.content)) return false;
@@ -1262,9 +948,6 @@ export function useAgentChatPanel({
     },
     [currentUserId],
   );
-  // Copy is broader than Edit: anyone's message on either side, as long as
-  // the raw content IS what the bubble shows — marker-encoded sends render a
-  // card, and copying their wire encoding would paste gibberish.
   const canCopyMessage = useCallback((msg: ChatMessage) => {
     if (hasCitations(msg.content)) return false;
     if (decodeSkillMessage(msg.content)) return false;
@@ -1273,9 +956,6 @@ export function useAgentChatPanel({
     return true;
   }, []);
 
-  // Both consumer callbacks live in refs so the send callbacks that fire them
-  // don't re-create (and re-render the override cards) every time the consumer
-  // passes a fresh closure.
   const onSendReactivatedRef = useRef(onSendReactivated);
   useEffect(() => {
     onSendReactivatedRef.current = onSendReactivated;
@@ -1293,9 +973,6 @@ export function useAgentChatPanel({
     [t],
   );
 
-  // While a Skill is selected, the regular composer still owns text
-  // and attachments. This hook only wraps the submitted message with the
-  // hidden Skill marker + deterministic "Use the X skill" prompt.
   const handleSkillComposerSubmit = useCallback<
     NonNullable<AIBoardProps["onComposerSubmit"]>
   >(
@@ -1309,8 +986,6 @@ export function useAgentChatPanel({
       const pin = await resolveSendPin();
 
       if (sessionKey) {
-        // Mid-conversation: optimistic feed push + send, mirrors the
-        // text-send pipeline.
         const scopeId = sessionKey;
         const attachmentPaths = await tauriAttachments.save(
           path,
@@ -1324,28 +999,15 @@ export function useAgentChatPanel({
           prompt,
           attachmentReferences(files, attachmentPaths),
         );
-        // The send's turn stream pushes the user bubble into the
-        // conversation VM itself — no app-side optimistic push.
         await tauriChat.send(path, encodedWithAttachments, sessionKey, {
-          // The wire pin must match the picker. In Teams this may be the open
-          // mission's pin rather than the agent's effective default.
           providerOverride: pin.provider,
           modelOverride: pin.model,
           effortOverride: pin.effort,
           modeOverride: turnMode,
-          // A Skill send still carries whatever the user typed alongside it, so
-          // the teammates they named there must ride too (HOU-944).
           mentions,
         });
-        // Landed, so the turn is starting: an ARCHIVED mission has just been
-        // re-activated by it, exactly as an interaction offer would. A throw
-        // above skips this and propagates to the composer's own error path.
-        // (Only this branch — the `else` CREATES a mission, which is never
-        // archived, and `onSelectSession` already moves the user to it.)
         onSendReactivatedRef.current?.();
       } else {
-        // New conversation: createMission with `title` override so the
-        // kanban card reads "Research a company" instead of the marker.
         const { conversationId } = await createMission(
           {
             id: agent.id,
@@ -1375,7 +1037,6 @@ export function useAgentChatPanel({
               );
             },
             title: friendlyTitle,
-            // A composer send: the bubble must show before the row lands.
             optimistic: true,
           },
         );
@@ -1390,25 +1051,11 @@ export function useAgentChatPanel({
     [activeSkill, agent, path, resolveSendPin, turnMode, queryClient],
   );
 
-  // Picking a skill from a card or the picker pins it above the regular
-  // composer. The user can add text or send the Skill by itself.
   const applySkill = useCallback(
     (skill: SkillSummary) => setActiveSkill(skill),
     [],
   );
 
-  // ── Integration connect card support (HOU-670) ───────────────────────
-  // The card owns its own connection status (it subscribes to the shared
-  // integration queries directly so it stays reactive inside Streamdown's
-  // memoized markdown blocks). The panel only supplies the agent nudge.
-  //
-  // When a connection the user started from a chat card lands, proactively
-  // nudge the agent so it resumes the task without the user having to
-  // retype. The agent needs a user turn to resume, but the user didn't type
-  // one — tag it with the auto-continue marker so the agent still receives
-  // the instruction while the transcript hides the bubble (see
-  // `mapFeedItems`). No optimistic push: we never want it shown, and the
-  // engine-persisted copy is filtered the same way on reload.
   const handleIntegrationConnected = useCallback(
     (_toolkit: string, appName: string) => {
       if (!path || !selectedSessionKey) return;
@@ -1424,13 +1071,7 @@ export function useAgentChatPanel({
             modeOverride: turnMode,
           }),
         )
-        // Two-arg `then`, not `.then().catch()`: the rejection handler stays
-        // exclusive to the SEND, so a throw inside the handoff callback is
-        // never reported as a failed follow-up.
         .then(
-          // The nudge starts a turn, so an ARCHIVED mission has just been
-          // re-activated by it — move the user with it (`useArchivedHandoff`),
-          // exactly as the interaction sends do.
           () => onSendReactivatedRef.current?.(),
           (err: unknown) => {
             addToast({
@@ -1445,8 +1086,6 @@ export function useAgentChatPanel({
   );
   const renderLink = useCallback<NonNullable<AIBoardProps["renderLink"]>>(
     ({ href, children }) => {
-      // A payment link (a checkout the AI Manager started elsewhere) is
-      // plain text in the store apps, which never sell.
       if (blocksPurchaseUrl(href)) return <span>{children}</span>;
       if (!integrationsEnabled || !agent) return undefined;
       const toolkit = parseToolkitFromHref(href);
@@ -1468,18 +1107,6 @@ export function useAgentChatPanel({
     ],
   );
 
-  // ── Pending-interaction override (ask_user / request_connection) ──────
-  // The one thing the mission is waiting on the user for: the live VM
-  // interaction if this client settled the turn, else the activity's persisted
-  // one (reload / observer). Gated on `running` so a fresh turn's composer wins
-  // and the card disappears the instant the user answers, and on the mission's
-  // board status so a card the user moved to Done shows the clean-finish offers
-  // and never a blocking stepper — the same strip the write seams persist, so
-  // the live view and a reload agree.
-  //
-  // Memoized because the Done strip can mint a new object: the override memo
-  // below keeps the stepper's in-progress outcomes in its body and must not
-  // recompute on an unrelated render.
   const activeInteraction = useMemo(
     () =>
       deriveActiveInteraction({
@@ -1496,18 +1123,9 @@ export function useAgentChatPanel({
     ],
   );
 
-  // A stable key for the CURRENT pending interaction. There is no single id on a
-  // PendingInteraction (only on its individual steps), so the step ids joined in
-  // order identify one sequence — enough to remember "the user abandoned THIS
-  // interaction" across renders without re-showing it.
   const interactionKey =
     activeInteraction?.steps.map((s) => s.id).join(",") ?? null;
 
-  // The ONE send every interaction card routes through (see the hook). It is
-  // not the only send this hook owns, and EVERY one of them reports through
-  // `onSendReactivated`: the Skill submit above, the integration-connected
-  // nudge, and the two error-card retries in `renderSystemMessage` each fire
-  // the callback from their own await/handler.
   const sendInteractionMessage = useSendInteractionMessage({
     agentId: agent?.id ?? "",
     path,
@@ -1517,14 +1135,8 @@ export function useAgentChatPanel({
     onSendReactivatedRef,
   });
 
-  // Resolves a question step's `toolkit` to the app's presentational brand (logo
-  // + name) so a question that concerns an integration wears the app's identity
-  // in its title. Read-only (no connect side effects); a catalog miss yields the
-  // prettified slug and no logo. Stable across renders unless the catalog moves.
   const resolveBrand = useToolkitBrandResolver();
 
-  // Names a requested AI provider through the GATED connect list, so a step's
-  // title and the card beneath it always say the same thing.
   const resolveProviderName = useConnectProviderName();
 
   const interactionLabels = useMemo(
@@ -1549,28 +1161,15 @@ export function useAgentChatPanel({
     [t],
   );
 
-  // ── Plan-ready override (plan_ready) ──────────────────────────────────
-  // When the model finishes planning it calls `plan_ready`, arriving as a lone
-  // `{kind:"plan_ready", summary}` step (like ask_user). The card offers two
-  // ways forward; its dismiss X retires it LOCALLY (composer returns, mode
-  // stays plan) by remembering THIS plan's summary. A later, different plan
-  // re-shows the card. The dismissal is per-conversation, so it resets when the
-  // open session changes or a new turn starts.
   const [dismissedPlanReady, setDismissedPlanReady] = useState<string | null>(
     null,
   );
-  // The optional "save as reusable" offer (suggest_reusable) is dismissed
-  // LOCALLY by id when the user picks "Not now" (or acts on Save), so the card
-  // doesn't reappear for that same offer. Per-conversation, like plan-ready.
   const [dismissedSuggestReusable, setDismissedSuggestReusable] = useState<
     string | null
   >(null);
   const [dismissedSuggestActions, setDismissedSuggestActions] = useState<
     string | null
   >(null);
-  // The user can abandon any pending interaction by its dismiss X, or an
-  // above-card offer by typing a fresh composer message. Remembering the
-  // interaction key suppresses its card uniformly until the next turn starts.
   const [abandonedInteractionKey, setAbandonedInteractionKey] = useState<
     string | null
   >(null);
@@ -1581,9 +1180,6 @@ export function useAgentChatPanel({
     setDismissedSuggestActions(null);
     setAbandonedInteractionKey(null);
   }, [selectedSessionKey]);
-  // A running turn has already null-cleared the prior pending interaction in
-  // the engine. Reset local suppression at its start so a later offer belongs
-  // to this turn, not to an earlier plan or suggestion with a reused step id.
   useEffect(() => {
     if (!turnRunning) return;
     setDismissedPlanReady(null);
@@ -1592,12 +1188,6 @@ export function useAgentChatPanel({
     setAbandonedInteractionKey(null);
   }, [turnRunning]);
 
-  // Writes to the open mission's PERSISTED pending interaction, so a dismissed
-  // card never reappears on reload: a blanket clear for the interrupt
-  // (dismissActiveInteraction, with a stop marker) and a per-step drop for the
-  // independent clean-finish offers (dismissing the bubbles must not take the
-  // save-as-reusable card with them). Both persist, then repaint the board +
-  // transcript — see `use-persisted-interaction.ts`.
   const {
     clearPersistedInteraction,
     dismissInteractionStep,
@@ -1608,26 +1198,10 @@ export function useAgentChatPanel({
     sessionKey: selectedSessionKey,
   });
 
-  // The stepper's X on ANY step kind (question/signin/connect/credential): "the
-  // user interrupted, nothing was decided" — exactly a Stop. Hide the card at
-  // once (the abandoned-key suppresses it), append the durable stop marker on the
-  // runtime (its own toast on failure via `call()`; swallow the re-throw so the
-  // clear still runs), then clear the persisted interaction + repaint. The model
-  // learns nothing from an interrupt, deliberately.
-  //
-  // The SDK's `turn_running` outcome is the user's state, not a failure: a
-  // turn started elsewhere (another device, a member, a routine) already
-  // retired this card and this window had not caught up (HOUSTON-APP-5EY).
-  // Then: no clear (it would race that turn's settle write), un-abandon the key
-  // so the resync decides what shows, and say so in authored copy. The same
-  // holds for `not_interaction_owner`: on a shared agent the card belongs to
-  // the member whose message raised it, so it stays for them.
   const dismissActiveInteraction = useCallback(() => {
     if (!path || !selectedSessionKey || !interactionKey) return;
     setAbandonedInteractionKey(interactionKey);
     void (async () => {
-      // A real failure surfaces through `call()`; swallow the re-throw so a
-      // failed marker never blocks clearing the persisted card.
       const outcome = await tauriChat
         .dismissInteraction(path, selectedSessionKey)
         .catch(() => null);
@@ -1647,9 +1221,6 @@ export function useAgentChatPanel({
         );
         return;
       }
-      // Only a CONFIRMED clear is definitive: the refusal branch above returns
-      // instead (its resync brings the very same card back), and a failed
-      // activity write toasts and resolves, leaving the card persisted.
       if (await clearPersistedInteraction())
         useInteractionDraftStore.getState().clear(selectedSessionKey);
     })();
@@ -1662,15 +1233,8 @@ export function useAgentChatPanel({
     t,
   ]);
 
-  // Start a turn from the plan-ready card: flip the composer's Mode pill (and
-  // persist it) to the chosen mode, then send the confirming message with an
-  // EXPLICIT `modeOverride` — never the async `turnMode` state, which the pill
-  // flip has not yet committed. The user's message bubble is visible (no
-  // suppress flags): the plan approval is a real user turn.
   const startPlan = useCallback(
     (mode: TurnMode, text: string) => {
-      // No path / session guard here: `sendInteractionMessage` owns that check,
-      // and the card only renders on an open conversation anyway.
       void handleModeSelect(mode);
       void sendInteractionMessage(text, mode);
     },
@@ -1693,22 +1257,12 @@ export function useAgentChatPanel({
     [t],
   );
 
-  // ── Suggest-reusable offer (suggest_reusable) ─────────────────────────
-  // On a clean finish the model may call `suggest_reusable`, arriving as a lone
-  // `{kind:"suggest_reusable", ...}` step. The card offers to save the work as a
-  // Skill, Routine, or Learning. "Save" sends a follow-up message asking the agent
-  // to actually WRITE the Skill/Routine/Learning, so it always runs in `execute` mode
-  // regardless of the composer's pinned mode (planning it is not enough), and it
-  // does NOT flip the composer's Mode pill (this is a one-off follow-up, not a
-  // change to the ongoing mode). It dismisses the offer locally first so the
-  // card can't fire twice.
   const suggestReusableLabels = useMemo<ChatSuggestReusableLabels>(
     () => ({
       eyebrow: t("chat:suggestReusable.title"),
       skillTitle: t("chat:suggestReusable.skillTitle"),
       routineTitle: t("chat:suggestReusable.routineTitle"),
       learningTitle: t("chat:suggestReusable.learningTitle"),
-      // The unified card-family decline word, shared with the interaction card.
       notNow: t("chat:interaction.notNow"),
     }),
     [t],
@@ -1734,7 +1288,6 @@ export function useAgentChatPanel({
 
   const saveReusable = useCallback(
     (step: SuggestReusableStep) => {
-      // No path / session guard here: `sendInteractionMessage` owns that check.
       setDismissedSuggestReusable(step.id);
       const text =
         step.reusableKind === "skill"
@@ -1751,31 +1304,15 @@ export function useAgentChatPanel({
     [sendInteractionMessage, t],
   );
 
-  // The mission is waiting on a sequence of steps (questions then connections):
-  // `chatInteractionStepsNode` builds the stepper that walks them. Everything
-  // that must survive the walk — the per-sequence outcome log, the position, the
-  // answers — lives inside that keyed component, NOT in this memo entry, which
-  // re-runs whenever any of its many inputs moves.
-  //
-  // The stepper and plan_ready REPLACE the composer: each owns the one text
-  // input on screen. The suggestion offers stay above the composer because they
-  // carry no text input. `node: undefined` means the composer stands alone.
   const composerOverrideState = useMemo<{
     node: AIBoardProps["composerOverride"];
     mode: "above" | "replace";
   }>(() => {
     const none = { node: undefined, mode: "above" as const };
-    // A requested provider connection already offers the remedy for missing AI;
-    // keep its secure flow reachable when the last connected provider signs out.
     if (
       shouldShowConnectAiEmptyState(!!connectAiComposer.node, activeInteraction)
     )
       return { mode: "replace" as const, node: connectAiComposer.node };
-    // Mission navigation (PRODUCT-1244): a coordinating chat lists the
-    // missions it started; a mission the agent started links back to the chat
-    // that started it (the two are mutually exclusive — spawned missions
-    // can't spawn). Either REPLACES the generic follow-up bubbles — but never
-    // a BLOCKING step: an unanswered question still owns the composer below.
     const missionsNode = childMissions.length ? (
       <ChatMissionList
         labels={missionListLabels}
@@ -1793,12 +1330,7 @@ export function useAgentChatPanel({
       return missionsNode
         ? { mode: "above" as const, node: missionsNode }
         : none;
-    // Abandoned interactions stay suppressed while this conversation is open,
-    // whatever their kind, and the composer stands alone.
     if (interactionKey === abandonedInteractionKey) return none;
-    // Optional clean-finish offers can coexist. They are handled before the
-    // blocking stepper so action bubbles and the reusable card remain above the
-    // live composer, while any blocking step still wins on the runtime side.
     if (hasOnlySuggestionSteps(activeInteraction.steps)) {
       const actions = resolveSuggestActionsOverride(
         activeInteraction.steps,
@@ -1816,18 +1348,11 @@ export function useAgentChatPanel({
         mode: "above",
         node: (
           <div className="flex flex-col gap-3">
-            {/* The children list stands in for the follow-up bubbles: on a
-                coordinating chat the concrete next step is reviewing what it
-                started, not a generic prompt. The save-as-reusable offer is a
-                different kind of offer and still rides below. */}
             {missionsNode}
             {actions.kind === "bubbles" && !missionsNode ? (
               <ChatSuggestActions
                 actions={actions.step.actions}
                 labels={suggestActionsLabels}
-                // Per-STEP dismissal: drop only this offer from the persisted
-                // interaction, so the sibling save-as-reusable card is still
-                // there after a reload.
                 onDismiss={() => {
                   setDismissedSuggestActions(actions.step.id);
                   void dismissInteractionStep(
@@ -1836,11 +1361,6 @@ export function useAgentChatPanel({
                   );
                 }}
                 onSelect={(action) => {
-                  // HOU-1050: a pill click PREFILLS the composer instead of
-                  // sending, so the user can edit the prompt (or pick another
-                  // pill — each click replaces the draft) before deciding to
-                  // send. The pills stay up until the actual send abandons the
-                  // interaction (onComposerSubmit) or the X dismisses it.
                   useDraftStore
                     .getState()
                     .setDraftText(draftKey, action.message);
@@ -1867,8 +1387,6 @@ export function useAgentChatPanel({
         ),
       };
     }
-    // A lone plan_ready step becomes the plan-ready card (unless dismissed);
-    // everything else feeds the stepper over its plan_ready-free steps.
     const override = resolvePlanReadyOverride(
       activeInteraction.steps,
       dismissedPlanReady,
@@ -1889,10 +1407,6 @@ export function useAgentChatPanel({
               startPlan("auto", t("chat:planReady.runAutopilotMessage"))
             }
             onDismiss={() => setDismissedPlanReady(summary)}
-            // No abandon bookkeeping: the turn start null-clears the pending
-            // interaction and deriveActiveInteraction hides the card while the
-            // turn runs. Keying the conversation-wide abandoned key here would
-            // suppress EVERY later plan card (each plan_ready step is id "p1").
             onSubmit={(text) => startPlan("plan", text)}
           />
         ),
@@ -1950,16 +1464,9 @@ export function useAgentChatPanel({
   const composerOverrideMode = planComposer.limit
     ? "replace"
     : composerOverrideState.mode;
-  // The archived surfaces take only the offers — the mode IS the distinction:
-  // "above" is the offers-beside-a-live-composer shape (and the nothing-pending
-  // shape, whose node is undefined anyway), "replace" is a blocking stepper or
-  // the plan-ready card.
   const offersComposerOverride =
     composerOverrideMode === "above" ? composerOverride : undefined;
 
-  // A fresh composer message while an above-card shows abandons that interaction
-  // and runs the usual submit path. Replacing cards submit through their own
-  // controls, so completing an interaction never self-abandons it.
   const onComposerSubmit = useCallback<
     NonNullable<AIBoardProps["onComposerSubmit"]>
   >(
@@ -1981,7 +1488,6 @@ export function useAgentChatPanel({
     ],
   );
 
-  // ── Built JSX bundles ─────────────────────────────────────────────────
   const renderUserMessage = useCallback(
     (msg: { content: string }) => {
       const cited = decodeCitedMessage(msg.content);
@@ -2020,10 +1526,6 @@ export function useAgentChatPanel({
     },
     [attachmentLabels, path, selectedSessionKey],
   );
-  // What an UNLABELED provider-error card may be attributed to: evidence
-  // only, never the composer's "anthropic" last resort — a guessed label sends
-  // the user to the wrong sign-in (OpenAI users were told to "Connect
-  // Anthropic"). No evidence leaves the card generic.
   const cardProvider = errorCardProvider({
     activityProvider,
     agentProvider,
@@ -2033,18 +1535,7 @@ export function useAgentChatPanel({
     (msg: ChatMessage) => {
       if (msg.compaction)
         return <ContextCompactedDivider info={msg.compaction} />;
-      // Typed provider-error card (rate-limit, quota, model-unavailable,
-      // UNAUTHENTICATED reconnect button, internal 5xx, …). The engine emits
-      // these as `provider_error` FeedItems; feed-to-messages stashes the
-      // payload on `msg.providerError` with empty `content`. Without this
-      // branch the message fell through to the default renderer below, which
-      // shows `msg.content` ("") — i.e. NOTHING. That's why a 429 card and the
-      // OpenAI reconnect card never appeared in chat.
       if (msg.providerError) {
-        // The not-connected card arrives provider-less (the refusal can't name
-        // one — nothing was connected); label it only from evidence of what
-        // this chat actually used, so its reconnect flow targets that provider
-        // and never a guessed one.
         const providerError = resolveProviderErrorForChat(
           msg.providerError,
           cardProvider,
@@ -2054,13 +1545,6 @@ export function useAgentChatPanel({
             error={providerError}
             onRetry={async () => {
               if (!path || !selectedSessionKey) return;
-              // A refused not-connected send never reached the engine —
-              // the card resends the original message verbatim. A mid-turn
-              // auth failure's context is already server-side, so reconnect
-              // resumes the interrupted task with a hidden auto-continue
-              // nudge (the transcript filters its bubble, see
-              // `mapFeedItems`). Both fire automatically on reconnect;
-              // other failures keep the generic visible retry prompt.
               const continues = continuesTaskAfterReconnect(providerError);
               const continueText = reconnectContinueText(
                 providerError,
@@ -2072,29 +1556,17 @@ export function useAgentChatPanel({
                     providerError,
                     t("chat:providerError.retryPrompt"),
                   );
-              // The reconnect resume fires WITHOUT the user typing, so it is an
-              // `autoResume` send: if the conversation shows a running turn it
-              // is held at most once (several mounted cards can fire the same
-              // resume), dropped when redundant, and held INVISIBLY — no
-              // queued bubble; the adapter's watchdog probes immediately so a
-              // stale hold clears within one round-trip (HOU-849).
               const pin = await resolveSendPin();
               await tauriChat.send(path, text, selectedSessionKey, {
                 providerOverride: pin.provider,
                 modelOverride: pin.model,
                 effortOverride: pin.effort,
                 modeOverride: turnMode,
-                // A refused not-connected send left its prompt's bubble in
-                // the feed already — resending it must not add a second one.
                 suppressUserBubble: resendsOriginalPrompt(providerError),
                 autoResume: providerError.kind === "unauthenticated",
               });
-              // This card renders inside archived transcripts too, and the
-              // send re-activates the mission — travel with it.
               onSendReactivatedRef.current?.();
             }}
-            // "Pick another model" pops the MODEL picker (not the Skills picker);
-            // "Switch to <fallback>" applies it directly on the same provider.
             onSwitchModel={() => setModelPickerOpen(true)}
             onApplyModel={(model) =>
               selectModel(displayModelPin.provider, model)
@@ -2103,7 +1575,6 @@ export function useAgentChatPanel({
         );
       }
       if (isProviderAuthMessage(msg.content)) return null;
-      // Typed system lines (restart, busy, setup) render by kind.
       if (msg.notice) return <SystemNote text={t(NOTICE_COPY[msg.notice])} />;
       return undefined;
     },
@@ -2118,15 +1589,9 @@ export function useAgentChatPanel({
       t,
     ],
   );
-  // The welcome chat's greeting (HOU-713): a hardcoded, localized agent
-  // message derived from the `welcome-` session key — prepended at render
-  // time (it survives reloads for free), held back for a short beat on the
-  // run that created the mission.
   const welcomeGreetingRevealed =
     useWelcomeGreetingRevealed(selectedSessionKey);
   const agentName = agent?.name;
-  // The self-setup mission's hello, and whether this chat is that mission at
-  // all (`hooks/use-setup-hello.ts`).
   const { isSetupMission, hello: setupHello } = useSetupHello({
     agentPath: path,
     sessionKey: selectedSessionKey,
@@ -2160,7 +1625,6 @@ export function useAgentChatPanel({
     },
     [welcomeGreetingRevealed, agentName, setupHello, selectedSessionKey, t],
   );
-  // Browser hand-offs as cards the person opens the live browser from.
   const browserHandoff = useBrowserHandoffCards({
     mapFeedItems,
     renderSystemMessage,
@@ -2169,30 +1633,10 @@ export function useAgentChatPanel({
   });
   const afterMessages = useCallback(
     ({ feedItems }: { sessionKey: string; feedItems: FeedItem[] }) => {
-      // A message sent while the agent's engine still warms up (HOU-693) is
-      // narrated by the standard in-flight indicator — deriveStatus treats
-      // the parked trailing user bubble as "submitted" (HOU-713).
-      // The persisted inline `UnauthenticatedCard` (a provider_error feed item)
-      // is the stable reconnect surface. When one is present, don't also
-      // render the store-driven card — it flickers (auto-dismisses) when the
-      // provider's auth probe is unreliable, and when the chat-provider
-      // resolution disagrees with the provider the turn ACTUALLY failed on
-      // (a stale activity record) it would name the wrong provider outright.
-      // One card per chat, and the inline one carries the true provider.
       const hasInlineAuthCard = feedItems.some(isInlineAuthCard);
       if (hasInlineAuthCard) return null;
-      // The connect-AI empty state already owns the one "connect a model" CTA
-      // for this chat, and it says the truer thing (nothing is connected at
-      // all, versus this provider needs reconnecting). Two CTAs stacked would
-      // just make the user choose between them. Inline historical
-      // provider-error cards in the transcript are untouched — they are a
-      // record of what happened, not an action.
       if (connectAiComposer.active) return null;
       const signalKey = providerAuthSignalKey(feedItems);
-      // Always hand the card THIS chat's provider so it can match the global
-      // `authRequired` flag against the provider this chat actually uses — a
-      // Claude logout must never surface a reconnect button in an OpenAI chat
-      // (HOU-410). The card stays hidden unless that provider truly needs auth.
       return (
         <ProviderReconnectCard
           providerId={effectiveProvider}
@@ -2203,11 +1647,6 @@ export function useAgentChatPanel({
     [effectiveProvider, connectAiComposer.active],
   );
 
-  // Shared-agent clarity (contract §6): when the agent is shared with more than
-  // one teammate, everyone with access sees this same conversation. Surface a
-  // subtle note above the composer so a teammate isn't surprised their reply is
-  // visible to others. Multiplayer-only; the assignee count is only populated
-  // for callers who receive it (owner / agent-managers).
   const composerHeader = useMemo<AIBoardProps["composerHeader"]>(() => {
     if (!agent) return undefined;
     if (!activeSkill && !planComposer.hint && !citationComposer.header)
@@ -2228,11 +1667,7 @@ export function useAgentChatPanel({
 
   const chatEmptyState = useMemo<AIBoardProps["chatEmptyState"]>(() => {
     if (!agent) return undefined;
-    // The welcome chat is only "empty" for the pre-greeting beat — skill
-    // cards flashing there and vanishing under the greeting reads as a bug.
     if (isWelcomeSessionKey(selectedSessionKey)) return undefined;
-    // Same for the self-setup mission: its whole chat is the agent introducing
-    // itself, and skill cards flashing under that read as a bug.
     if (isSetupMission) return undefined;
     if (activeSkill) return null;
     if (emptySkillShowcase.length === 0) return undefined;
@@ -2283,14 +1718,6 @@ export function useAgentChatPanel({
 
   const footer = useMemo<AIBoardProps["footer"]>(() => {
     if (!agent) return undefined;
-    // ONE row at both breakpoints. A phone composer has no room for five
-    // labelled pills, so there the Skills entry lives in the composer's "+"
-    // menu (see `attachMenu`), the effort pill is its gauge icon alone, and
-    // the pickers drop their chevrons. On a phone each control is a 44px
-    // target, and the pickers scroll sideways (scrollbar hidden) when a long
-    // model name or a translated mode will not fit, while the context ring
-    // stays pinned at the right edge. The scroller's 2px phone padding keeps
-    // the pickers' focus rings inside its clip. Desktop is unchanged.
     return () => (
       <div
         data-testid="composer-toolbar"
@@ -2356,7 +1783,6 @@ export function useAgentChatPanel({
     if (!agent) return undefined;
     return ({ openFilePicker, openFolderPicker, close }) => (
       <div className="flex flex-col gap-0.5">
-        {/* Phone only: the toolbar has no room for the Skills pill there. */}
         <button
           type="button"
           onClick={() => {
@@ -2420,15 +1846,11 @@ export function useAgentChatPanel({
     composerOverride,
     composerOverrideMode,
     offersComposerOverride,
-    // A message can be just comments on a file.
     canSendEmpty: activeSkill != null || citationComposer.count > 0,
     onComposerSubmit,
     footer,
     attachMenu,
     renderUserMessage,
-    // Rows carry the affordance only while the conversation is idle: a rewind
-    // behind an executing/queued turn is refused by the runtime (409) anyway,
-    // so the buttons vanish rather than invite the race.
     onEditMessage: turnRunning ? undefined : onEditMessage,
     canEditMessage,
     editMessageLabel: t("chat:editMessage.edit"),
@@ -2468,6 +1890,4 @@ export function useAgentChatPanel({
   };
 }
 
-/** Whether a sent message carried file comments (rendered as pills, so its
- *  raw text is neither what the bubble shows nor something to edit). */
 const hasCitations = (content: string) => decodeCitedMessage(content) !== null;

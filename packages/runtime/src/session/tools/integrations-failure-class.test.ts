@@ -5,11 +5,6 @@ import {
   toolkitForAction,
 } from "./integrations-failure-class";
 
-/**
- * Refusal bodies from 72 h of production Composio logs (2026-11-15 to 11-18),
- * scrubbed: ids, emails, file names and project numbers replaced. Each is the
- * `error` string the integration_execute tool receives verbatim.
- */
 const BODY = {
   slackFeature: "Slack API error: feature_not_enabled",
   apifyJson:
@@ -35,7 +30,6 @@ const BODY = {
     "Message: usage limit exceeded | Code: <id> | Path: issueCreate | Details: You've exceeded the free issue limit for this workspace. Please upgrade or contact support for a free trial.",
 } as const;
 
-/** Real refusals a retry or a different input CAN fix: never classified. */
 const RETRYABLE = {
   sheetsQuota:
     "API Error: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute' of service 'sheets.googleapis.com' for consumer 'project_number:<n>'.",

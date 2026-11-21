@@ -9,23 +9,11 @@ import { agentRest } from "./agent-rest";
 import { json } from "./http";
 import { defineRoute } from "./registry";
 
-/**
- * What the "Share with a friend" wizard shows on its pick screen: the agent's
- * exportable content (instructions + skills + routines + learnings) with
- * enough detail to render a row per item. Read-only; the actual export is
- * `POST .../portable/export` (routes/portable.ts).
- */
-
-/** One line, capped — enough for a preview row, never the whole document. */
 function excerpt(text: string, max = 160): string {
   const flat = text.replace(/\s+/g, " ").trim();
   return flat.length <= max ? flat : `${flat.slice(0, max)}…`;
 }
 
-/**
- * GET .../portable/preview → the agent-side export inventory. Returns true
- * when handled.
- */
 export async function handlePortablePreview(
   deps: { vfs?: Vfs; paths?: WorkspacePaths },
   ctx: { workspace: Workspace; agent: Agent },
@@ -77,10 +65,6 @@ export async function handlePortablePreview(
   return true;
 }
 
-/**
- * A wrong method here must NOT 405: the check above declines it, so the
- * request carries on down the dispatch chain to the agent's runtime.
- */
 defineRoute({
   group: "portable-preview",
   method: "GET",

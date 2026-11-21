@@ -24,10 +24,8 @@ export function startedMissions(summary: TurnEndSummary): StartedMission[] {
 }
 
 export interface ChatStartedMissionCardLabels {
-  /** The card's line, naming who took the mission. */
   heading: (agentName: string) => string;
   open: string;
-  /** The Open button's accessible name, naming the mission. */
   openMission: (title: string) => string;
   unavailable: string;
 }

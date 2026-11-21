@@ -8,32 +8,8 @@ import type { OnboardingStep } from "../../lib/onboarding-route";
 import { onboardingBeats } from "./connect-ai-card-state";
 import { startFirstRun } from "./first-run-start";
 
-/** Every first-run run reports this `source` on `onboarding_started`. */
 const FIRST_RUN_SOURCE = "first_run";
 
-/**
- * The first-run onboarding's lifecycle and funnel, for the component that
- * stays mounted across its three steps (`ManagerOnboardingHost`, around the
- * shell, whatever screen the person is on):
- *
- * - START ({@link startFirstRun}): a run that is not already pending records
- *   the `"started"` stage of `onboarding_pending` and reports
- *   `onboarding_started`; every mount arms `first_message_sent` for the
- *   account. The stage is the resume contract: hiring the first AI Employee
- *   flips the zero-agent first-run signal, so without it the user would be
- *   dropped out of onboarding before finishing their team.
- * - TEAM LATCH: the team step on screen records the `"team"` stage, so the
- *   run stays on it even if the AI provider drops while it hires.
- * - FUNNEL: each step shown reports its step view once, and leaving the
- *   connect step reports `ai_provider_connected` ({@link onboardingBeats}).
- * - FINISH (the returned callback, the conversation's last answer): reports
- *   `onboarding_completed`, clears the pending stage and stamps
- *   `onboarding_completed`. Both flags flip their query caches synchronously,
- *   so the same render routes into the app.
- *
- * `shown` is the step on display, or null while one is still loading, so a
- * step is never reported before the user can see it.
- */
 export function useFirstRunOnboarding(args: {
   shown: OnboardingStep | null;
   providerId: string | null;
@@ -42,8 +18,6 @@ export function useFirstRunOnboarding(args: {
   const { stage, markPending, clearPending } = useOnboardingPending();
   const { markCompleted } = useOnboardingCompleted();
 
-  // A ref, not an empty-deps effect alone: StrictMode replays mount effects,
-  // and a run must report exactly one start.
   const started = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: whether this run is a resume is decided once, at mount.
   useEffect(() => {
@@ -59,8 +33,6 @@ export function useFirstRunOnboarding(args: {
     });
   }, []);
 
-  // Set by the finish, which clears the stage in the same render that routes
-  // into the app: the latch must never record it again on the way out.
   const finished = useRef(false);
   useEffect(() => {
     if (shown !== "team" || stage === "team" || finished.current) return;

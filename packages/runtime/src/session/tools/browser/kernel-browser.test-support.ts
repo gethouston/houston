@@ -2,7 +2,6 @@ import { EventEmitter } from "node:events";
 import type { Browser } from "playwright-core";
 import { vi } from "vitest";
 
-/** A connected remote browser with one default context and its first page. */
 export function fakeBrowser() {
   const browser = new EventEmitter() as EventEmitter & Record<string, unknown>;
   const page = Object.assign(new EventEmitter(), {
@@ -25,7 +24,6 @@ export function fakeBrowser() {
       browser.emit("disconnected");
     }),
   });
-  // SAFETY: openKernelTab and wireTab touch only these members.
   const drop = () => browser.emit("disconnected");
   return { browser: browser as unknown as Browser, page, context, drop };
 }

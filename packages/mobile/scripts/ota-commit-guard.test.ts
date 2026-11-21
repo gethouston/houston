@@ -13,9 +13,6 @@ const commit = (name: string) => {
   git("commit", "--allow-empty", "-q", "-m", name);
   shas[name] = git("rev-parse", "HEAD");
 };
-// A release cut: commits on a main commit, reachable only by the tag on the
-// last one. The daily cut is one `release` commit; hand cuts add a notes commit
-// first, a CI fix on top of the release commit, or cherry-picked hotfixes.
 const cut = (version: string, base: string, commits = ["release"]) => {
   git("checkout", "-q", "--detach", shas[base] ?? "");
   for (const name of commits) commit(`${name} ${version}`);
@@ -38,8 +35,6 @@ beforeAll(() => {
   cut("1.0.9", "m4", ["release", "ci(release)"]);
   cut("1.0.10", "m4", ["hotfix-a", "hotfix-b", "release"]);
   cut("0.9.0", "m1", ["hotfix", "release"]);
-  // cloud-v1.0.0's shape: its notes commit reached main only after the next
-  // release's base, so neither main base contains the other.
   cut("2.0.0", "m4", ["notes", "release"]);
   commit("m5");
   cut("2.0.1", "m5", ["notes", "release"]);
@@ -51,7 +46,6 @@ beforeAll(() => {
     "merge notes 2.0.0",
     shas["notes 2.0.0"] ?? "",
   );
-  // A hotfix release cut from old main, tagged, and merged back much later.
   cut("1.5.0", "m5", ["hotfix", "release"]);
   for (let i = 0; i < 25; i++) commit(`late ${i}`);
   cut("3.0.0", "late 24");

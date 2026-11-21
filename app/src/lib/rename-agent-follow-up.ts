@@ -14,7 +14,6 @@ interface RenameAgentFollowUpInput {
   remapAgentId: (oldId: string, newId: string) => void;
 }
 
-/** Rename an agent, preserving sidebar placement if its folder-derived id moved. */
 export async function renameAgentWithFollowUp({
   workspaceId,
   agentId,

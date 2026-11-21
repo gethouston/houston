@@ -3,10 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 
-// Isolate this file's runtime state: config reads the env at import time, and
-// vitest gives each test file its own module registry, so pointing the data
-// dir at a tmpdir BEFORE importing keeps the failure-persistence writes out of
-// the developer's real ~/.houston-ts.
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-chat-"));
 process.env.HOUSTON_WORKSPACE_DIR = process.env.HOUSTON_DATA_DIR;
 const { runTurn } = await import("./chat");
@@ -17,13 +13,6 @@ const { recordServedScope, resetServedScopes } = await import(
 );
 const { runWithActingContext } = await import("./acting-context");
 
-/**
- * A turn that fails BEFORE executing (a pin naming an unknown provider — a
- * junk id routinePin passed through verbatim) must persist its failure, not
- * just publish an ephemeral stream error: an unattended reader (the host's
- * routine reconcile) errors the run off the persisted providerError, instead
- * of finding no reply and timing out with a vague message 15 minutes later.
- */
 test("a turn failing before execution persists the user message + typed providerError", async () => {
   await runTurn("conv-fail-1", "do the thing", undefined, {
     provider: "gemini-cli",
@@ -44,13 +33,6 @@ test("a turn failing before execution persists the user message + typed provider
   ).toContain("unknown provider: gemini-cli");
 });
 
-/**
- * A NOT-CONNECTED failure (disconnected local model / no provider) is typed
- * `unauthenticated`, not `unknown`: the typed card is the full reconnect
- * surface — correct provider label, the provider's own reconnect flow, and the
- * automatic task resume on reconnect. `undelivered_prompt` carries the turn's
- * text because the model never received it (the failure precedes the session).
- */
 test("a disconnected-local-model failure persists a typed unauthenticated error with the undelivered prompt", async () => {
   await runTurn("conv-fail-3", "everything is okey?", undefined, {
     provider: "openai-compatible",
@@ -69,15 +51,6 @@ test("a disconnected-local-model failure persists a typed unauthenticated error 
   );
 });
 
-/**
- * The failure must be RENDERABLE by a live turn stream, not just persisted:
- * the client sink adopts its turnId from the nonce-stamped `user` echo, and a
- * stamped `error` frame with no adopted id classifies as foreign and is
- * dropped — the turn then spins forever with no error and no reconnect card
- * (the disconnected-local-model repro). So the pre-execution failure path
- * publishes the SAME echo-then-error sequence as a normal turn, sharing one
- * turnId, echo first.
- */
 test("a turn failing before execution publishes the nonce-stamped echo before the error", async () => {
   const frames: { type: string; turnId?: string; nonce?: string }[] = [];
   const unsub = subscribe("conv-fail-2", (f) => {
@@ -109,8 +82,6 @@ test("a turn failing before execution publishes the nonce-stamped echo before th
   const error = frames.find((f) => f.type === "error");
   expect(user).toBeDefined();
   expect(error).toBeDefined();
-  // The echo carries OUR nonce (the sink's adoption key) and the error is
-  // stamped with the SAME turnId, in echo-then-error order.
   expect(user?.nonce).toBe("nonce-123");
   expect(user?.turnId).toBe("accepted-turn-id");
   expect(getHistory("conv-fail-2")?.messages[0]).toMatchObject({
@@ -123,13 +94,6 @@ test("a turn failing before execution publishes the nonce-stamped echo before th
   );
 });
 
-/**
- * A pre-execution failure is SYNTHESIZED here rather than classified by
- * ai/provider-error.ts, so it has to stamp the credential context itself
- * (HOU-976). Without the stamp a member whose OWN account is not connected gets
- * a card that never says whose account is missing, which is the one fact that
- * tells them the fix is theirs to make.
- */
 test("a pre-execution failure under a personal scope stamps the credential context", async () => {
   resetServedScopes();
   const acting = {
@@ -154,7 +118,6 @@ test("a pre-execution failure under a personal scope stamps the credential conte
   resetServedScopes();
 });
 
-/** The team scope records no served verdict, so the wire shape is unchanged. */
 test("a pre-execution failure with no acting identity carries no credential stamp", async () => {
   resetServedScopes();
   await runTurn("conv-fail-5", "who am I?", undefined, {

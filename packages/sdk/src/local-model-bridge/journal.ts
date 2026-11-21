@@ -5,7 +5,6 @@ import type {
   LocalModelBridgePorts,
 } from "./types";
 
-/** Publish only durable, owned state, including writes that finish after cancellation. */
 export function observeBridgeJournal(
   ports: LocalModelBridgePorts,
   publish: (journal: LocalBridgeJournal | null) => void,
@@ -18,7 +17,6 @@ export function observeBridgeJournal(
   return {
     async load(scope) {
       const journal = await ports.storage.load(scope);
-      // Let the scoped lifecycle reject foreign data without exposing it during discovery.
       if (!journal || sameBridgeIdentity(journal.identity, identity))
         publish(journal);
       return journal;

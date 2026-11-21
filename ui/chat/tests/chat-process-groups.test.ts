@@ -24,10 +24,6 @@ const user: ChatMessage = {
   fileChanges: [],
 };
 
-// HOU-717: the process block's React key must be STABLE while a turn streams.
-// It used to encode the LAST segment too, so every new thinking/tool block
-// changed the key, remounted the block, and snapped the user's open mission
-// log shut mid-run.
 describe("process item key stability", () => {
   it("keeps the same key as segments stream in, and across settle", () => {
     const thinking = assistant("assistant-1", {
@@ -67,10 +63,6 @@ describe("process item key stability", () => {
   });
 });
 
-// The setup-chat bug: an assistant message with empty text content and no
-// tools/reasoning rendered as a bare avatar + empty bubble floating under the
-// real message. Such messages are dropped unless they are the actively
-// streaming tail (which legitimately starts empty).
 describe("empty assistant message suppression", () => {
   const messageItems = (
     messages: ChatMessage[],
@@ -81,7 +73,6 @@ describe("empty assistant message suppression", () => {
   it("drops an empty, non-streaming assistant message", () => {
     const empty = assistant("assistant-1", { content: "" });
     const items = messageItems([user, empty], "ready");
-    // Only the user message survives.
     strictEqual(items.length, 1);
     strictEqual(items[0].kind === "message" && items[0].message.from, "user");
   });
@@ -117,9 +108,6 @@ describe("empty assistant message suppression", () => {
   });
 });
 
-// The clean-finish offer calls (suggest_actions / suggest_reusable) only record
-// the bubbles and the save card above the composer. A block made of nothing
-// else must not read as a "Task log" under an already complete reply.
 describe("offers-only process blocks", () => {
   const processItem = (
     messages: ChatMessage[],
@@ -133,7 +121,6 @@ describe("offers-only process blocks", () => {
     });
     const item = processItem([user, reply, offer], "ready");
     strictEqual(item?.kind === "process" && item.offersOnly, true);
-    // The block is still emitted (the turn-end summary keys on its index).
     strictEqual(item?.kind === "process" && item.sourceIndex, 2);
   });
 

@@ -19,7 +19,6 @@ interface BatchFrameHeader {
   generation?: string;
 }
 
-/** POST the keys and land the framed answer. A GET-shaped read: retry-safe. */
 export async function downloadHttpBatch(
   post: BatchPost,
   authHeaders: Record<string, string>,
@@ -37,11 +36,6 @@ export async function downloadHttpBatch(
   });
 }
 
-/**
- * Land one `POST …/batch` response. The body is a run of frames in request
- * order: a u32 big-endian header length, the header JSON, then `size` bytes.
- * A store without the route (404/405) answers every key `fallback`.
- */
 export async function landHttpBatch(
   response: Response,
   entries: BatchReadEntry[],
@@ -93,7 +87,6 @@ export async function landHttpBatch(
   return outcomes;
 }
 
-/** Land `content` at `destFile`; false when its private directory was refused. */
 export async function writeAtomically(
   destFile: string,
   content: Buffer,
@@ -101,7 +94,6 @@ export async function writeAtomically(
   if (!(await mkdirForLanding(destFile))) return false;
   const tempFile = atomicTempPath(destFile, randomUUID());
   try {
-    // "wx": never through a file or symlink already at the temp path.
     await writeFile(tempFile, content, {
       ...landingMode(destFile),
       flag: "wx",

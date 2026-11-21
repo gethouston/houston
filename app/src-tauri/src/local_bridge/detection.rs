@@ -55,8 +55,6 @@ pub async fn detect() -> Vec<DetectedServer> {
     {
         Ok(c) => c,
         Err(e) => {
-            // Building a client only fails on a broken TLS backend; degrade to
-            // "nothing reachable" rather than erroring the whole command.
             tracing::warn!("[local-bridge] detection client build failed: {e}");
             return CANDIDATES
                 .iter()
@@ -187,7 +185,6 @@ mod tests {
 
     #[test]
     fn openai_models_empty_when_shape_wrong() {
-        // A malformed / unexpected body yields no models, not a panic.
         assert!(parse_openai_models(&serde_json::json!({ "oops": true })).is_empty());
         assert!(parse_openai_models(&serde_json::json!([])).is_empty());
     }
@@ -215,8 +212,6 @@ mod tests {
 
     #[tokio::test]
     async fn unreachable_port_reports_not_reachable() {
-        // Port 1 is never a local model server → reachable:false, empty models,
-        // and detection must not hang (bounded by PROBE_TIMEOUT).
         let client = reqwest::Client::builder()
             .timeout(PROBE_TIMEOUT)
             .build()

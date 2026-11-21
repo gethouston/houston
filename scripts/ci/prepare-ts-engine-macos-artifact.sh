@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Prepare signed/unsigned macOS artifacts for TS-engine desktop workflow.
 set -euo pipefail
 
 BUNDLE="${1:-target/universal-apple-darwin/release/bundle}"

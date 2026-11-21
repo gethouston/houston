@@ -5,12 +5,6 @@ import routineRunsSchema from "@houston-ai/agent-schemas/routine_runs.schema.jso
 import routinesSchema from "@houston-ai/agent-schemas/routines.schema.json";
 import { jsonDoc, type TextStore } from "./store";
 
-/**
- * The `.houston/` layout inside an agent's workspace — ONE convention for
- * every deployment. Locally `root` is the agent's directory (via FsVfs);
- * in cloud it is the agent's object prefix + "/workspace". Each typed family
- * lives at `.houston/<family>/<family>.json` beside its seeded JSON schema.
- */
 export type HoustonFamily =
   | "activity"
   | "routines"
@@ -32,15 +26,8 @@ export const docKey = (root: string, family: HoustonFamily) =>
 export const schemaKey = (root: string, family: HoustonFamily) =>
   `${root}/.houston/${family}/${family}.schema.json`;
 
-/** Skills live beside `.houston`, in the Agent Skills standard layout. */
 export const skillsDirKey = (root: string) => `${root}/.agents/skills`;
 
-/**
- * Workspace-shared skills (ADR 0003): the ONE copy every agent in the
- * workspace/org mirrors read-only. `sharedRoot` comes from the paths seam
- * (cloud `ws/<org>/shared`, local `<Workspace>/.shared`); the skill folders
- * under it use the same `<slug>/SKILL.md` layout as agent skills.
- */
 export const sharedSkillsDirKey = (sharedRoot: string) =>
   `${sharedRoot}/skills`;
 
@@ -52,21 +39,10 @@ const SCHEMAS: Record<HoustonFamily, unknown> = {
   learnings: learningsSchema,
 };
 
-/**
- * The EXACT document `seedSchemas` writes for a family. Exported so a re-seed
- * (the host's boot migration for agents created before a schema changed) can
- * compare byte-for-byte and skip the write when the file is already current.
- */
 export function schemaDoc(family: HoustonFamily): string {
   return jsonDoc(SCHEMAS[family]);
 }
 
-/**
- * Seed every family's `.schema.json` (idempotent overwrite — the schema ships
- * with the app and is not user data). Run on agent creation so agents and
- * external tools can validate what they write. Existing agents are brought
- * forward on boot by the host's schema re-seed migration.
- */
 export async function seedSchemas(
   store: TextStore,
   root: string,

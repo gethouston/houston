@@ -17,13 +17,6 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { finishRoutineTurn } from "./turn-routine-finish";
 
-/**
- * The pooled worker's auto-pause: the settle that completes a streak hands
- * back a pause that writes the paused routine through the generation-guarded
- * routines doc upload (the write the store projects `enabled` from); anything
- * short of a streak leaves the routines doc untouched.
- */
-
 const WS_REL = "workspaces/Personal/Bob";
 const ROUTINES_KEY = docKey(WS_REL, "routines");
 const EDITED = "2026-09-29T10:00:00.000Z";
@@ -138,7 +131,6 @@ async function seed(
   return { routine, run, text: "", provider: null };
 }
 
-/** Settle, then run the pause the caller defers until after sync-back. */
 async function finish(
   phase: Awaited<ReturnType<typeof seed>>,
   unconnected?: { provider?: string },
@@ -203,7 +195,6 @@ test("a failure short of the streak leaves the routines doc alone", async () => 
 
 test("the pause is rebased on the store's routines, never the stale tree copy", async () => {
   const phase = await seed(ROUTINE_AUTO_PAUSE_AFTER - 1);
-  // While the turn ran, someone renamed r1 and added r2 in the store.
   const other = { ...routine, id: "r2", name: "Weekly" };
   remote.set(
     ROUTINES_KEY,

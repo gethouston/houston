@@ -9,10 +9,6 @@ type ContextDeps = Omit<
   "grantUrl" | "fetchImpl" | "onChanged"
 > & { grant: { url: string } };
 
-/**
- * A turn's custom-integration contexts, one per tool-call signal, and every
- * definition their mutations changed (by slug), across all of them.
- */
 export function turnCustomContexts(deps: ContextDeps, fetchImpl: typeof fetch) {
   const touched = new Set<string>();
   const contexts = new Map<AbortSignal | null, TurnCustomContext>();

@@ -2,11 +2,6 @@ import { ART, track } from "./org-chart-share-card-art";
 import type { CardFrame } from "./org-chart-share-card-geometry";
 import { FONT, fitFontSize, fitText } from "./org-chart-share-card-text";
 
-/*
- * The share image's header (name, counts) and its quiet footer.
- */
-
-/** The words on the image, all authored `t()` copy. */
 export interface ShareCardText {
   title: string;
   counts: string;
@@ -22,7 +17,6 @@ export function paintHeader(
   const { pad, type } = frame;
   const max = frame.width - pad * 2;
   ctx.textAlign = "left";
-  // A confident title: heavy, tight-tracked, shrunk to fit before it is cut.
   track(ctx, type.tracking);
   const size = fitFontSize(
     ctx,
@@ -41,10 +35,8 @@ export function paintHeader(
   ctx.fillText(fitText(ctx, text.counts, max), pad, frame.countsY);
 }
 
-/** The mark's viewBox is 412 x 449. */
 const MARK_ASPECT = 412 / 449;
 
-/** The Houston mark and the site, small, bottom left. */
 export function paintFooter(
   ctx: CanvasRenderingContext2D,
   text: ShareCardText,
@@ -54,7 +46,6 @@ export function paintFooter(
   const { footerY: y, type } = frame;
   let x = frame.pad;
   if (mark) {
-    // Sits on the site's baseline, a little above it like a capital.
     ctx.drawImage(
       mark,
       x,

@@ -4,14 +4,6 @@ import {
   PROBE_AGENT,
 } from "./assistant-parity-probes";
 
-/**
- * Operations the local host legitimately does not serve, each with the reason.
- *
- * They are asserted to MISS the route table entirely: a cloud-only path that
- * starts resolving locally means the two surfaces drifted and this list is
- * stale. The reason is the point of the entry — "the local host 404s" is a
- * fact, "and here is why that is correct" is the contract.
- */
 const AGENT = { agentSlugOrId: PROBE_AGENT };
 const NO_USER = { userId: "no-such-user" };
 const NO_INVITE = { inviteId: "no-such-invite" };
@@ -32,7 +24,6 @@ const NATIVE_PUSH =
   "device registrations and foreground presence belong to the hosted gateway";
 
 export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
-  // The space itself, and who is in it.
   cloudOnly("getOrg", SPACES),
   cloudOnly("listOrgs", "a local host has no account with more than one space"),
   cloudOnly("createOrg", SPACES, { name: "Parity Probe Space" }),
@@ -52,8 +43,6 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   cloudOnly("moveAgent", SPACES, { ...AGENT, toSlug: "no-such-space" }),
   cloudOnly("getMoveStatus", SPACES, { ...AGENT, moveId: "no-such-move" }),
 
-  // Workspace and user context: the gateway terminates these itself and keeps
-  // them in its own store, so a local host never sees the route.
   cloudOnly("getContext", "shared context is stored by the hosted gateway", {
     kind: "workspace",
   }),
@@ -62,7 +51,6 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     content: "",
   }),
 
-  // Money, which only a hosted subscription has.
   cloudOnly("getBilling", "billing is a hosted-subscription concern"),
   cloudOnly("createCheckout", "billing is a hosted-subscription concern"),
   cloudOnly("createPortal", "billing is a hosted-subscription concern"),
@@ -75,7 +63,6 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   cloudOnly("switchToYearly", "billing is a hosted-subscription concern"),
   cloudOnly("dismissPriceNotice", "billing is a hosted-subscription concern"),
 
-  // The personal plan (C19): limits and Plus are metered and billed by the gateway.
   cloudOnly("getPlan", PERSONAL_PLAN),
   cloudOnly("createPlusCheckout", PERSONAL_PLAN),
   cloudOnly("createPlusPortal", PERSONAL_PLAN),
@@ -115,7 +102,6 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     "the record of who did what is written by the gateway that authorizes them",
   ),
 
-  // The per-agent ceilings a manager sets on a shared agent.
   cloudOnly("setAgentAssignments", PER_AGENT_POLICY, {
     ...AGENT,
     assignments: [],
@@ -130,7 +116,6 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     AGENT,
   ),
 
-  // Messaging channels: the assistant answering in Slack and WhatsApp.
   cloudOnly("getChannels", CHANNELS),
   cloudOnly("connectSlack", CHANNELS),
   cloudOnly("linkSlack", CHANNELS),
@@ -140,14 +125,12 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     connectionId: "no-such-connection",
   }),
 
-  // Posting the org chart to the person's LinkedIn.
   cloudOnly("getLinkedInConnection", LINKEDIN),
   cloudOnly("connectLinkedIn", LINKEDIN),
   cloudOnly("completeLinkedIn", LINKEDIN, { ticket: "no-such-ticket" }),
   cloudOnly("disconnectLinkedIn", LINKEDIN),
   cloudOnly("postLinkedInImage", LINKEDIN),
 
-  // The person behind the account, as the identity provider knows them.
   cloudOnly(
     "getMyProfile",
     "the display profile comes from the hosted identity provider",
@@ -161,7 +144,6 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   cloudOnly("createApiKey", API_KEYS, { name: "parity probe" }),
   cloudOnly("revokeApiKey", API_KEYS, { id: "no-such-key" }),
 
-  // Readying the sandbox a send will run in, while the person types it.
   cloudOnly(
     "turns.prewarm",
     "a send runs in a per-turn sandbox only behind the hosted gateway, so only it has one to ready while the person types",
@@ -172,8 +154,6 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     },
   ),
 
-  // A routine's webhook, which arrives at the gateway that mints the key
-  // authenticating it — a local host has no public address to receive one.
   cloudOnly(
     "mintRoutineWebhookKey",
     "a routine webhook arrives at the hosted gateway, which mints the key that authenticates it",

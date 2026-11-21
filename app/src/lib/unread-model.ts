@@ -11,52 +11,14 @@ import {
   readFloorFor,
 } from "./read-cursors.ts";
 
-/**
- * Pure, DOM-free unread model (HOU-945): which missions have moved since I last
- * looked at them.
- *
- * Unread is defined against MY read floor ({@link readFloorFor}), never against
- * a server flag, so it stays correct with no write on every mission open and
- * degrades to the store's `since` for anything I have never opened.
- *
- * Relevance comes first, deliberately: in a team, a teammate's mission moving
- * is not news for me, and a sidebar that counts it teaches the user to ignore
- * the badge. A mission that @mentions me counts even though I never touched it
- * — the @mention IS the claim on my attention.
- */
-
 export interface UnreadConversationInput extends RelevanceConversation {
   id: string;
   agent_path: string;
   type: "primary" | "activity";
-  /** Agent-mode id; guided setup chats never count. */
   agent?: string | null;
-  /** ISO 8601 instant of the mission's last movement. */
   updated_at?: string;
 }
 
-/**
- * Is this conversation unread FOR ME? Only relevant missions can be unread
- * (relevance is the whole point). No `selfId` or a setup chat is never unread.
- *
- * "No `selfId` is never unread" is the mirror image of relevance failing open:
- * with nobody signed in there is no per-person read state to compare against,
- * so an unread badge would be a number nobody could ever clear. Notifications
- * fail open because a missed ping is unrecoverable; a badge is not.
- *
- * TWO clocks, because the two signals are not the same claim:
- *
- * - An outstanding @MENTION of me wins outright, measured against my cursor for
- *   this conversation ALONE ({@link mentionReadFloorFor} — no `since` fallback).
- *   Someone typed my name; until I open the mission that is unread however old
- *   it is and whether or not I have ever touched it. Judging a mention by
- *   `updated_at` would also lose it the moment the mission moved on without me.
- * - Otherwise ambient movement: `updated_at` strictly after my read floor, which
- *   DOES fall back to `since` so a fresh device does not open on a backlog.
- *
- * Strictly-after (not at-or-after) so marking a mission read at the instant of
- * its own `updated_at` clears it, instead of leaving it stuck unread.
- */
 export function isUnreadForMe(
   conv: UnreadConversationInput,
   store: ReadCursorStore,

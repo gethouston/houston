@@ -83,18 +83,15 @@ describe("StoreHomeScreen", () => {
       split.rest.map((item) => item.id),
       ["one"],
     );
-    // A search collapses back to the plain grid...
     assert.equal(
       splitFeaturedAgents(rows, { ...base, query: "writer" }).featured.length,
       0,
     );
-    // ...and one installed agent alone is not a featured row...
     assert.equal(
       splitFeaturedAgents([{ ...agent, installsCount: 0 }, rows[1]], base)
         .featured.length,
       0,
     );
-    // ...and the creators view never features.
     assert.equal(
       splitFeaturedAgents(rows, { ...base, view: "creators" as const }).featured
         .length,
@@ -159,10 +156,6 @@ describe("StoreHomeScreen", () => {
 });
 
 describe("screen-level drift guard", () => {
-  // The store website (agents.gethouston.ai) is the ONE surface that renders
-  // the catalog Home, so the screen must stay its source of truth: a page that
-  // re-implements the hero/results layout locally is how the two drifted apart
-  // the first time.
   it("requires the store website's Home to import StoreHomeScreen", () => {
     assert.match(
       readFileSync(

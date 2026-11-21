@@ -8,12 +8,6 @@ import {
 import { HandoffRegistry } from "../session/tools/browser/live/registry";
 import { serveBrowserInput, serveBrowserLive } from "./browser-live-http";
 
-/**
- * A chat that hands over twice: everything the first hand-off's view sends
- * names that hand-off (`handoff`), so none of it (a late Done, a retried
- * batch, an ack, a reconnect) acts on the second.
- */
-
 const registry = new HandoffRegistry(60_000);
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? "/", "http://runtime");
@@ -79,7 +73,6 @@ test("the first hand-off's finish, batch, ack and stream never reach the second"
     ack: { viewer: "viewer-0001", seq: 3 },
   });
   expect(lateAck.status).toBe(409);
-  // A reconnect of the first view learns how ITS hand-off ended, and closes.
   const reconnect = await live("chat-a", `handoff=${old}`);
   expect(reconnect.status).toBe(200);
   const body = await reconnect.text();
@@ -88,7 +81,6 @@ test("the first hand-off's finish, batch, ack and stream never reach the second"
   expect(next.session.state).toBe("waiting");
   expect(next.cdp.sent).toEqual([]);
 
-  // The second hand-off's own view drives and finishes it.
   const own = await input("chat-a", {
     handoff: next.session.handoffId,
     events: typed("b"),
@@ -112,7 +104,6 @@ test("a hand-off id no longer known is over while the chat has a newer one, else
   expect((await live("chat-b", "handoff=bad id")).status).toBe(400);
   expect((await live("chat-none", `handoff=${unknown}`)).status).toBe(404);
   expect(session.state).toBe("waiting");
-  // Another chat's hand-off id never reaches this chat's hand-off.
   const other = handOver("chat-c");
   const crossed = await input("chat-b", {
     handoff: other.session.handoffId,

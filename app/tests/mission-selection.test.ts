@@ -19,44 +19,33 @@ describe("mission selection", () => {
   });
 
   it("offers only the other section as a move target", () => {
-    // Locked to needs_you -> can only move to done, and vice versa.
     deepStrictEqual(moveTargetsForSection("needs_you"), ["done"]);
     deepStrictEqual(moveTargetsForSection("done"), ["needs_you"]);
-    // running isn't a move target, so both stay; null = nothing locked.
     deepStrictEqual(moveTargetsForSection("running"), ["done", "needs_you"]);
     deepStrictEqual(moveTargetsForSection(null), ["done", "needs_you"]);
   });
 
   it("allows a drag only across sections, to a bulk-move target", () => {
-    // needs_you <-> done are the only legal drops.
     strictEqual(canDropMission("needs_you", "done"), true);
     strictEqual(canDropMission("done", "needs_you"), true);
-    // Dropping on the card's own section is a no-op.
     strictEqual(canDropMission("done", "done"), false);
     strictEqual(canDropMission("needs_you", "needs_you"), false);
-    // running is never a drop target (matches the bulk-move rule)...
     strictEqual(canDropMission("done", "running"), false);
     strictEqual(canDropMission("needs_you", "running"), false);
-    // ...but a running card CAN be dragged out to either section.
     strictEqual(canDropMission("running", "done"), true);
     strictEqual(canDropMission("running", "needs_you"), true);
-    // An unknown / out-of-section origin still resolves against the targets.
     strictEqual(canDropMission(null, "done"), true);
     strictEqual(canDropMission(null, "archived"), false);
   });
 
   it("selects a whole section additively and never mutates the input", () => {
     const ids = ["a", "b"];
-    // None selected -> add them all.
     const fromNone = selectAllIds(new Set<string>(), ids);
     deepStrictEqual([...fromNone].sort(), ["a", "b"]);
-    // Some selected -> fill in the rest, keeping unrelated selections.
     const fromSome = selectAllIds(new Set(["a", "x"]), ids);
     deepStrictEqual([...fromSome].sort(), ["a", "b", "x"]);
-    // Idempotent: all already selected -> unchanged (never toggles back off).
     const fromAll = selectAllIds(new Set(["a", "b", "x"]), ids);
     deepStrictEqual([...fromAll].sort(), ["a", "b", "x"]);
-    // Input set is not mutated.
     const input = new Set(["a"]);
     selectAllIds(input, ids);
     deepStrictEqual([...input], ["a"]);

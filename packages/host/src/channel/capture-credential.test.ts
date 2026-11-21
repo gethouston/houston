@@ -8,7 +8,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** A CredentialStore fake recording every put with the opts it received. */
 function recordingStore(existing: WorkspaceCredential | null = null) {
   const puts: Array<{
     credential: WorkspaceCredential;
@@ -25,7 +24,6 @@ function recordingStore(existing: WorkspaceCredential | null = null) {
   return { credentials, puts };
 }
 
-/** Stubs global fetch with a connected runtime; scrub replies via `scrub()`. */
 function stubRuntimeFetch(scrub: () => Response) {
   const scrubUrls: string[] = [];
   vi.stubGlobal(
@@ -64,20 +62,13 @@ test("full export stores once then scrubs once, provider-scoped", async () => {
   ).toEqual({ ok: true, provider: "openai-codex" });
   expect(puts).toHaveLength(1);
   expect(puts[0]?.credential.refreshToken).toBe("RT");
-  // A user-initiated capture is a FULL put (it may supersede a tombstone)...
   expect(puts[0]?.opts?.ifAbsent).toBeUndefined();
-  // ...and the scrub names the provider it captured (PRODUCT-1320), so a
-  // concurrent connect's freshly-written refresh token survives on the runtime.
   expect(scrubUrls).toEqual([
     "http://runtime/auth/scrub-refresh?provider=openai-codex",
   ]);
 });
 
 test("a scrub failure after a landed central PUT settles as success and logs PRODUCT-1318", async () => {
-  // The connect DID succeed (the credential is stored and serving). Failing the
-  // capture here made the web client replay the entire credential PUT — the
-  // tombstone-clearing full PUT — while never fixing the leftover refresh token.
-  // The serve-sync self-heal owns that now; capture settles and shouts.
   const { credentials, puts } = recordingStore();
   stubRuntimeFetch(() => new Response("scrub exploded", { status: 503 }));
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -97,9 +88,6 @@ test("a scrub failure after a landed central PUT settles as success and logs PRO
 });
 
 test("a replayed capture with nothing left to export settles against the central store", async () => {
-  // Retry after an ambiguous response: the first attempt stored AND scrubbed,
-  // so the replay's export is empty. The central row proves settlement — the
-  // replay must report success, not fail a connect that worked.
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => Response.json({})),
@@ -118,7 +106,6 @@ test("a replayed capture with nothing left to export settles against the central
   });
   expect(settled).toEqual({ ok: true, provider: "openai-codex" });
 
-  // With no central row it stays the honest "not connected yet".
   const unsettled = await captureRuntimeCredential({
     endpoint: { baseUrl: "http://runtime", token: "runtime-token" },
     credentials: recordingStore(null).credentials,
@@ -129,9 +116,6 @@ test("a replayed capture with nothing left to export settles against the central
 });
 
 test("an automatic (healer) capture rides the gateway's if-absent maintenance contract", async () => {
-  // The serve healer re-pushes a pod's leftover copy with NO user behind it.
-  // A plain PUT would clear the gateway's revocation tombstone (cloud #230) —
-  // the one resurrection path that survived. Assert the flag reaches the wire.
   const gatewayPuts: Array<{ url: string; ifAbsent: string | null }> = [];
   const gatewayFetch = (async (
     input: RequestInfo | URL,
@@ -170,9 +154,6 @@ test("an automatic (healer) capture rides the gateway's if-absent maintenance co
 });
 
 test("the anthropic setup token captures as an api_key — stored centrally, no scrub (PRODUCT-1370)", async () => {
-  // The paste flow stores the token runtime-side as an api_key entry; before
-  // PRODUCT-1370 the export refused it, capture 400'd "not connected yet", the
-  // gateway never stored anthropic and the UI re-asked the code forever.
   const { credentials, puts } = recordingStore();
   const scrubbed: string[] = [];
   vi.stubGlobal(
@@ -208,16 +189,10 @@ test("the anthropic setup token captures as an api_key — stored centrally, no 
     refreshToken: "",
     expiresAt: Number.MAX_SAFE_INTEGER,
   });
-  // An api_key has no refresh token to strip, and the entry must STAY in
-  // auth.json (on the desktop, serve never re-supplies anthropic): no scrub.
   expect(scrubbed).toEqual([]);
 });
 
 test("a healer capture asks for local-origin credentials only and stores a returned api_key", async () => {
-  // The healer's contract rides to the runtime as excludeServed=1: the runtime
-  // refuses serve-written api_key projections (its served-providers manifest is
-  // the proof of origin), so an api_key it DOES return is attested local — the
-  // pasted setup token of a currently-looping user heals with no re-paste.
   const { credentials, puts } = recordingStore();
   const exportUrls: string[] = [];
   vi.stubGlobal(
@@ -254,8 +229,6 @@ test("a healer capture asks for local-origin credentials only and stores a retur
 });
 
 test("an api_key capture lands on the gateway wire as kind api_key", async () => {
-  // The e2e-shaped assertion from the issue: the fake gateway sees the PUT the
-  // real one would store — kind "api_key", the pasted token as the access.
   const gatewayPuts: Array<Record<string, unknown>> = [];
   const gatewayFetch = (async (
     input: RequestInfo | URL,
@@ -303,8 +276,6 @@ test("an api_key capture lands on the gateway wire as kind api_key", async () =>
 });
 
 test("a google api-key export that is an OAuth-type token is rejected before storing", async () => {
-  // The capture-side door of Sentry HOUSTON-APP-567: pushing a legacy runtime
-  // entry centrally would seed the store with a key every serve refuses.
   let puts = 0;
   vi.stubGlobal(
     "fetch",
@@ -364,8 +335,6 @@ test("a real AIza google api-key export still captures", async () => {
 });
 
 test("a new-format AQ. google auth key captures too (PRODUCT-1368)", async () => {
-  // AI Studio issues AQ.-prefixed auth keys since 2026; only OAuth material
-  // (ya29./eyJ) is refused from shape.
   const stored: WorkspaceCredential[] = [];
   vi.stubGlobal(
     "fetch",
@@ -395,9 +364,6 @@ test("a new-format AQ. google auth key captures too (PRODUCT-1368)", async () =>
 });
 
 test("an azure api_key capture stores the exported endpoint as enterpriseUrl (PRODUCT-1532)", async () => {
-  // The runtime exports azure's per-resource endpoint beside the key; the
-  // central row must keep them together or every OTHER runtime is served a
-  // key aimed at nothing ("base URL is required" on each turn).
   const { credentials, puts } = recordingStore();
   vi.stubGlobal(
     "fetch",
@@ -429,7 +395,6 @@ test("an azure api_key capture stores the exported endpoint as enterpriseUrl (PR
   });
 });
 
-/** A runtime whose export answers `exported` and whose status reports `configured`. */
 function stubAnthropicRuntime(exported: unknown, configured: boolean) {
   const calls: string[] = [];
   vi.stubGlobal(
@@ -515,8 +480,6 @@ test("anthropic behind the gateway keeps the capture chain: stored centrally, th
 });
 
 test("the runtime export read carries a timeout budget (PRODUCT-1687)", async () => {
-  // A stalled runtime must not hold the heal for undici's 300s headers
-  // timeout: the runtime's own serve probe gives up at 10s.
   const { credentials } = recordingStore();
   const inits: (RequestInit | undefined)[] = [];
   vi.stubGlobal(

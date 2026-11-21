@@ -13,22 +13,13 @@ import { CommentForm, type CommentFormProps } from "./comment-form";
 export interface CommentEditorProps
   extends Omit<CommentFormProps, "onSubmit" | "onCancel" | "roomy"> {
   open: boolean;
-  /** Where the selection is on screen right now. */
   anchorRect: () => DOMRect;
-  /** The selection's crop, shown on the phone sheet. */
   cropBase64?: string;
-  /** Gets focus back when the editor closes. */
   returnFocus: () => void;
   onSubmit: (comment: string) => void;
   onCancel: () => void;
 }
 
-/**
- * The comment prompt for a selection: a popover anchored to it on desktop,
- * scaling from the selection's edge, and a bottom sheet on the phone. Focus
- * stays inside while it is open and goes back to where it came from. Keyboard
- * closes (Esc, ⌘↵) skip the exit animation.
- */
 export function CommentEditor({
   open,
   anchorRect,
@@ -86,7 +77,6 @@ export function CommentEditor({
       </Sheet>
     );
   return (
-    // Modal: focus stays in the form until it is answered or dismissed.
     <Popover modal open={open} onOpenChange={(next) => !next && onCancel()}>
       <PopoverAnchor virtualRef={virtual} />
       <PopoverContent

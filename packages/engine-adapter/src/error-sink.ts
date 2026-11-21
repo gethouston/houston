@@ -1,11 +1,5 @@
 import { setUnreadableWireSink } from "@houston/wire-types";
 
-/**
- * Where the adapter reports a failure it absorbs: a read that degrades and
- * still answers has no caller to throw to, yet the failure must reach the
- * app's reporting path (frontend log, PostHog, Sentry). The app installs that
- * path at startup; until then the console carries it, so nothing is silent.
- */
 export type AdapterErrorSink = (source: string, error: unknown) => void;
 
 let sink: AdapterErrorSink = (source, error) =>
@@ -13,8 +7,6 @@ let sink: AdapterErrorSink = (source, error) =>
 
 export function setAdapterErrorSink(next: AdapterErrorSink): void {
   sink = next;
-  // A wire value the shared parsers replaced with a fallback reaches the
-  // same reporting path.
   setUnreadableWireSink(next);
 }
 

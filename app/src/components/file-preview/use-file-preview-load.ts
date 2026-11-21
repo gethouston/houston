@@ -17,13 +17,6 @@ import { tauriFiles } from "../../lib/tauri";
 import type { Loaded } from "./file-preview-body";
 import { reportPreviewRefusal, sameBytes, shownBytes } from "./preview-bytes";
 
-/**
- * A previewed file's bytes, as the panel renders them. Office files arrive as
- * their converted PDF, a .pdf as itself; both feed the page viewer as a blob.
- * The listing's current entry keys every load, so when the agent rewrites the
- * file the new bytes replace the old in place (no blank "loading" between),
- * and a reload that brings the same bytes changes nothing on screen.
- */
 export function useFilePreviewLoad(
   agentPath: string,
   filePath: string | null,
@@ -38,7 +31,6 @@ export function useFilePreviewLoad(
   const queryClient = useQueryClient();
   const save = useSaveDownload();
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
-  // What is on screen right now, readable from a load still in flight.
   const shown = useRef<Loaded>(loaded);
   const show = useCallback((next: Loaded) => {
     shown.current = next;
@@ -60,7 +52,6 @@ export function useFilePreviewLoad(
     ),
     enabled: !!filePath && !isLoading && plan === "pdf" && !listing.isPending,
     retry: false,
-    // Listing identities refresh PDFs. Failed entries have no data and retry on reopen.
     staleTime: "static",
     gcTime: 5 * 60_000,
     queryFn: (): Promise<FileBytes> =>
@@ -140,8 +131,6 @@ export function useFilePreviewLoad(
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        // A gone file is the user's state (PRODUCT-1780): authored copy, no
-        // report. Anything else is a fault and keeps the generic + report path.
         show({
           state: "error",
           message: isFileGoneError(error)

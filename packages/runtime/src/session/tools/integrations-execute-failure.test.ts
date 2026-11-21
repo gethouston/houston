@@ -9,12 +9,6 @@ import {
 import { makeIntegrationTools } from "./integrations";
 import { httpSandboxFetch } from "./sandbox-fetch";
 
-/**
- * integration_execute on a refusal no retry can fix: the failure names the
- * class's way forward, and a dead login queues the reconnect card: only for a
- * toolkit integration_search named, and once per conversation.
- */
-
 const realFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = realFetch;
@@ -49,7 +43,6 @@ const tools = (ctx = {} as ExtensionToolContext) => {
   return { search, execute, run };
 };
 
-/** One turn of `conversation`: search Apify, then hit the dead login. */
 async function deadApifyTurn(
   conversation: string,
   ctx?: ExtensionToolContext,
@@ -136,7 +129,6 @@ test("the persisted transcript also counts as an earlier card", async () => {
       ],
     },
   } as unknown as ExtensionToolContext;
-  // A process that never saw the first card (another sandbox, a restart).
   const { steps, error } = await deadApifyTurn("conv-transcript-b", ctx);
   expect(steps).toBeUndefined();
   expect(error).toContain("Integrations page");

@@ -1,8 +1,3 @@
-/**
- * Test support for the live-view suites: a clock the test moves by hand, and
- * fake `watch`/`input` operations whose every call the test settles.
- */
-
 import {
   BROWSER_LIVE_FRAME_WINDOW,
   BROWSER_LIVE_FRAME_WINDOW_BYTES,
@@ -67,9 +62,7 @@ function deferred<T>(): Deferred<T> & { promise: Promise<T> } {
   return { promise, resolve, reject };
 }
 
-/** The hand-off id {@link liveHarness}'s `known()` names by default. */
 export const HANDOFF = "handoff-1";
-/** The window {@link liveHarness}'s `known()` advertises by default. */
 export const WINDOW: BrowserLiveWindow = {
   frames: BROWSER_LIVE_FRAME_WINDOW,
   bytes: BROWSER_LIVE_FRAME_WINDOW_BYTES,
@@ -113,10 +106,6 @@ export function liveHarness() {
     handlers,
   };
   const connection = openBrowserLiveConnection(deps);
-  /**
-   * The latest stream's first status: names the hand-off, so input flows, and
-   * advertises `window` (null: none, as a runtime older than the field).
-   */
   const known = (
     handoffId = HANDOFF,
     state: "waiting" | "done" = "waiting",

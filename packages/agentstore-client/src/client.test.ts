@@ -9,10 +9,6 @@ interface RecordedCall {
   init: RequestInit;
 }
 
-/**
- * A fetch stub that records every call and returns a queued Response (or the
- * single default). `bodyOf`/`headersOf` read back what the client sent.
- */
 function stubFetch(responses: Response | Response[]): {
   fetchImpl: typeof fetch;
   calls: RecordedCall[];
@@ -27,7 +23,6 @@ function stubFetch(responses: Response | Response[]): {
   return { fetchImpl, calls };
 }
 
-/** A throwing fetch, to exercise the network-failure path. */
 function rejectingFetch(err: unknown): typeof fetch {
   return (async () => {
     throw err;
@@ -580,7 +575,6 @@ describe("AgentStoreClient — creator profiles", () => {
     const file = (body as FormData).get("file");
     expect(file).toBeInstanceOf(Blob);
     expect((file as Blob).type).toBe("image/webp");
-    // The client must NOT set Content-Type — fetch derives the boundary.
     expect(headersOf(calls[0]).has("content-type")).toBe(false);
   });
 
@@ -703,8 +697,6 @@ describe("AgentStoreClient — creator admin", () => {
       "open",
     );
     expect(reports).toEqual([row]);
-    // The report carries the targeted creator's handle and profile id, not an
-    // agent id/slug (the creator-report wire shape, not the agent-report one).
     expect(reports[0].handle).toBe("acme");
     expect(reports[0].profileUserId).toBe("u1");
     expect(calls[0].url).toBe(

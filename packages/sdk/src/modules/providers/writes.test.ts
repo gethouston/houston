@@ -14,12 +14,6 @@ interface Recorded {
   body?: unknown;
 }
 
-/**
- * A write-only SDK (`reactivity:false`) over a mock `fetch` recording every
- * per-agent runtime call. The refetching facade writes end with a full
- * `refresh()` = `GET /providers` + `GET /auth/status`; a no-refetch write must
- * NOT issue that trailing `GET /auth/status`, so counting it pins "no refetch".
- */
 function makeSdk() {
   const calls: Recorded[] = [];
   const json = (b: unknown) =>
@@ -112,7 +106,6 @@ describe("providers module — no-refetch writes", () => {
         body: { activeProvider: "claude", model: "opus" },
       },
     ]);
-    // The refetching facade would add a trailing GET /auth/status; the write does not.
     expect(statusGets(calls)).toEqual([]);
     sdk.dispose();
   });

@@ -2,10 +2,6 @@ import { deepStrictEqual, rejects, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { retryWhileWaking } from "../src/lib/waking-retry.ts";
 
-// PRODUCT-1736: a write refused with the waking 503 (the gateway's wake hold
-// gave up on a stalled control plane) is re-issued along a short ladder
-// instead of being dropped; every other refusal surfaces at once.
-
 class Waking extends Error {}
 
 function harness() {

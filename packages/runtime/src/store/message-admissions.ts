@@ -26,36 +26,12 @@ export type Admission =
 const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 
-/**
- * How long a receipt keeps answering retries after its turn settled. Longer
- * than any client's retry horizon by orders of magnitude, and short enough that
- * the directory holds a week of messages rather than every message an assistant
- * ever received: a channel-mirrored assistant takes one receipt per inbound
- * message, on a data root that may be replicated.
- */
 export const MESSAGE_ADMISSION_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Collection is housekeeping; once per hour of process life is plenty. */
 export const MESSAGE_ADMISSION_PRUNE_INTERVAL_MS = 60 * 60 * 1000;
 
-/**
- * How long an abandoned `.tmp` is left alone. A temporary is a receipt still
- * being published: it promises nothing and answers no retry, so it is held
- * only long enough to outlive the slowest write, never for a receipt's week.
- */
 export const MESSAGE_ADMISSION_TEMPORARY_MS = 60 * 60 * 1000;
 
-/**
- * Persist acceptance before execution. Receipts survive transcript rewind and
- * deletion: removing a conversation must never make an old request executable.
- * A receipt without a live owner or terminal transcript fails closed on retry.
- * This protects process restarts over the same data tree; asynchronous remote
- * replication is a separate durability boundary owned by the hosting service.
- *
- * A receipt outlives its turn on purpose — that is what answers a retry sent
- * after the answer was already written — so {@link MESSAGE_ADMISSION_RETENTION_MS}
- * is what ends its life, never settling.
- */
 export class MessageAdmissions {
   private readonly active = new Set<string>();
   private readonly directory: string;
@@ -89,7 +65,6 @@ export class MessageAdmissions {
       receipt = value;
     } catch (error) {
       if (hasCode(error, "ENOENT")) return null;
-      // Corruption is uncertainty, never evidence that execution is safe.
       throw error;
     }
     if (receipt.fingerprint !== fingerprint)
@@ -120,8 +95,6 @@ export class MessageAdmissions {
       ...(hostFingerprint ? { hostFingerprint } : {}),
     };
     const temporary = `${file}.${randomUUID()}.tmp`;
-    // Publish exclusively after flushing the complete record. A second runtime
-    // cannot overwrite a winner; an abandoned temporary file admits nothing.
     writeFileSync(temporary, JSON.stringify(receipt), {
       flag: "wx",
       flush: true,
@@ -147,19 +120,12 @@ export class MessageAdmissions {
       this.collect();
   }
 
-  /** Forget a receipt whose turn was refused before it recorded anything, so
-   *  a retry of the same message is judged afresh instead of as uncertain. */
   release(conversationId: string, nonce: string): void {
     const file = this.file(conversationId, nonce);
     this.active.delete(file);
     rmSync(file, { force: true });
   }
 
-  /**
-   * The collection this process last scheduled. Housekeeping is never the
-   * settling turn's work, so a caller that must observe it (shutdown, tests)
-   * waits here rather than on `settle`.
-   */
   collected(): Promise<void> {
     return this.collecting;
   }
@@ -168,13 +134,6 @@ export class MessageAdmissions {
     return join(this.dataRoot, messageAdmissionFileName(conversationId, nonce));
   }
 
-  /**
-   * Housekeeping never fails a message, and never blocks one either: the scan
-   * runs off the turn that scheduled it, one at a time. A receipt that outlives
-   * its window refuses a retry that is decades stale at worst, while a thrown
-   * collection error would reject the settled turn itself. The runtime log is
-   * the report.
-   */
   private collect(): void {
     const at = this.now();
     this.prunedAt = at;

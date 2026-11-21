@@ -28,13 +28,6 @@ import {
   type LocalHostOptions,
 } from "./host";
 
-/**
- * The local host wired end-to-end at the route level: the SAME server, driven
- * by the local adapter profile (LocalWorkspaceStore + FsVfs + LocalPaths +
- * SingleUserVerifier). No real runtime — the spawner is a fake, since these
- * routes (meta, workspaces, agents, preferences) never dispatch a turn.
- */
-
 function freePort(): Promise<number> {
   return new Promise((resolve) => {
     const s = createServer();
@@ -46,7 +39,6 @@ function freePort(): Promise<number> {
   });
 }
 
-// A spawner that is never actually invoked here (no turn dispatch in this test).
 const fakeSpawner: RuntimeSpawner = {
   spawn: () => ({ port: 0, kill: () => {} }),
 };
@@ -205,10 +197,6 @@ test("stop uploads local changes before closing the host", async () => {
   ).toBe("durable");
 });
 
-// PRODUCT-1783: an evicted pod keeps draining its turn while its replacement
-// boots. The stamp is what makes that replacement wait; the final sync ships
-// it back expired, so a pod that shut down cleanly never makes the next boot
-// wait on a corpse.
 test("stop stamps the drain window and the final sync expires it", async () => {
   const remoteRoot = mkdtempSync(join(tmpdir(), "host-drain-remote-"));
   const remote = new LocalDirStore(remoteRoot);
@@ -225,18 +213,13 @@ test("stop stamps the drain window and the final sync expires it", async () => {
     delete: (key, opts) => remote.delete(key, opts),
   };
   const { host, houstonHome } = await setup({
-    // No watcher/periodic pass in reach: only the drain's explicit flush can
-    // put the stamp in the store.
     storeSync: { store, quietMs: 60_000, intervalMs: 60_000 },
     shutdownDrainMs: 480_000,
   });
   await host.stop();
-  // Two uploads: the open window on the drain flush, the closed one from the
-  // final sync.
   expect(stampUploads).toHaveLength(2);
   const parse = (i: number) =>
     JSON.parse(stampUploads[i] ?? "{}") as { since: number; until: number };
-  // The advertised window is the drain budget plus the host's exit slack.
   expect(parse(0).until - parse(0).since).toBe(485_000);
   expect(parse(1).since).toBe(parse(0).since);
   expect(parse(1).until).toBeLessThanOrEqual(Date.now());
@@ -246,8 +229,6 @@ test("stop stamps the drain window and the final sync expires it", async () => {
   expect(existsSync(join(houstonHome, DRAIN_STAMP_FILE))).toBe(true);
 });
 
-// The other half of the handshake: an expired stamp in the store is inert.
-// The boot hydrates at once and the tree keeps the stamp as ordinary content.
 test("boot ignores an expired predecessor stamp", async () => {
   const remoteRoot = mkdtempSync(join(tmpdir(), "host-drain-stale-"));
   writeFileSync(
@@ -266,7 +247,6 @@ test("boot ignores an expired predecessor stamp", async () => {
   const stamp = JSON.parse(
     readFileSync(join(remoteRoot, DRAIN_STAMP_FILE), "utf8"),
   ) as { since: number; until: number };
-  // This host's own drain rewrote it: still closed, never a window to wait on.
   expect(stamp.until).toBeLessThanOrEqual(Date.now());
 });
 
@@ -276,16 +256,10 @@ test("capabilities report the local profile", async () => {
     const r = await fetch(`${base}/v1/capabilities`);
     expect(r.status).toBe(200);
     const caps = (await r.json()) as Capabilities;
-    // Composio availability is CONFIG-driven (this boot wired no gateway URL
-    // and no platform key), but the key-free custom provider (HOU-550) is
-    // always on — an install with no Composio can still add its own. The
-    // loopback-bound local profile also serves its own browser-reachable
-    // custom-OAuth callback (PRODUCT-1172).
     expect(caps).toEqual({
       ...LOCAL_CAPABILITIES,
       integrations: ["custom"],
       customIntegrationOAuth: true,
-      // The open host runs the AI Manager's morning briefing.
       heartbeat: true,
     });
     expect(caps.profile).toBe("local");
@@ -308,17 +282,10 @@ test("capabilities can report the managed cloud pod profile", async () => {
     expect(caps).toEqual({
       ...MANAGED_CLOUD_CAPABILITIES,
       integrations: ["custom"],
-      // A pod cannot receive a browser redirect — off until the gateway
-      // serves the callback (PRODUCT-1172).
       customIntegrationOAuth: false,
-      // This boot is not gateway-fronted (self-host shape), so it serves the
-      // morning briefing; a fronted pod does not (pinned below).
       heartbeat: true,
     });
-    // Pods run the agent's bash in the single-tenant container (HOU-669).
     expect(caps.codeExecution).toBe("local-bash");
-    // Managed pods offer the full provider set plus a BYO OpenAI-compatible
-    // endpoint (public-HTTPS, validated on save).
     expect(caps.providers).toContain("amazon-bedrock");
     expect(caps.providers).toContain("anthropic");
     expect(caps.openaiCompatible).toBe(true);
@@ -391,8 +358,6 @@ test("managed credential config serves sandbox credentials from the gateway", as
 
 test("a configured integrations gateway advertises composio and wins over a direct key", async () => {
   const { host, base } = await setup({
-    // Both configured (the dev prod-simulation shape) → the gateway wins, so
-    // the signin-gated remote adapter is what serves, never the direct key.
     integrations: {
       gatewayUrl: "https://cloud.test",
       composioApiKey: "pk_ignored",
@@ -402,10 +367,7 @@ test("a configured integrations gateway advertises composio and wins over a dire
     const caps = (await (
       await fetch(`${base}/v1/capabilities`)
     ).json()) as Capabilities;
-    // The key-free custom provider (HOU-550) rides along unconditionally.
     expect(caps.integrations).toEqual(["composio", "custom"]);
-    // Desktop gateway before sign-in: present but signin-gated, never a 503.
-    // The custom provider needs no session, so it is ready even signed out.
     const status = await (
       await fetch(`${base}/v1/integrations`, { headers: auth })
     ).json();
@@ -424,8 +386,6 @@ test("/v1/version reports chatHistoryMigrated=false on a fresh install", async (
     const v = (await (await fetch(`${base}/v1/version`)).json()) as {
       chatHistoryMigrated: boolean;
     };
-    // No legacy db path → not a migrating install; the reconnect moment must
-    // never fire for fresh users.
     expect(v.chatHistoryMigrated).toBe(false);
   } finally {
     host.stop();
@@ -433,10 +393,6 @@ test("/v1/version reports chatHistoryMigrated=false on a fresh install", async (
 });
 
 test("/v1/version reports chatHistoryMigrated=true when a legacy db is present", async () => {
-  // The flag keys on the db FILE existing (the durable "came from the legacy
-  // desktop build" signal), independent of whether the migration parse runs —
-  // an unreadable/empty file still marks the user as migrating, and start()
-  // swallows the parse failure. We point at a real, present file.
   const dbPath = join(
     mkdtempSync(join(tmpdir(), "houston-legacydb-")),
     "houston.db",
@@ -478,7 +434,6 @@ test("workspaces + agents are read from the on-disk desktop tree", async () => {
     ).json()) as Workspace[];
     expect(workspaces.map((w) => w.id)).toEqual(["Work"]);
 
-    // GET /agents lists the (default = first) workspace's agents.
     const agents = (await (
       await fetch(`${base}/agents`, { headers: auth })
     ).json()) as Agent[];
@@ -502,26 +457,20 @@ test("assistant discovery creates a hidden agent reachable on the ordinary per-a
       conversation: "assistant",
     });
 
-    // The whole point: no new chat wire. The discovered agent answers on the
-    // SAME per-agent routes every other agent uses.
     const activities = await fetch(
       `${base}/agents/${encodeURIComponent(handle.agent)}/activities`,
       { headers: auth },
     );
     expect(activities.status).toBe(200);
-    // A plain conversation creates no board row — the board only fills from an
-    // explicit start_mission.
     expect((await activities.json()) as { items: unknown[] }).toMatchObject({
       items: [],
     });
 
-    // …and it stays out of the sidebar: dot names are list-hidden.
     const agents = (await (
       await fetch(`${base}/agents`, { headers: auth })
     ).json()) as Agent[];
     expect(agents.map((a) => a.id)).toEqual(["Work/Sales"]);
 
-    // Idempotent: a second ask returns the same address, not a second agent.
     expect(
       await (await fetch(`${base}/v1/assistant`, { headers: auth })).json(),
     ).toEqual(handle);
@@ -564,9 +513,6 @@ test("a gateway-fronted pod neither advertises nor serves the morning briefing",
 });
 
 test("an unfronted host performs its own Houston operations; a fronted one waits for its gateway", async () => {
-  // The boot line is the observable form of the ONE wiring value this host
-  // resolves — the same value its dispatcher answers from and its runtimes
-  // carry in their environment (routes/assistant-wiring.ts).
   const lines: string[] = [];
   const log = vi
     .spyOn(console, "log")
@@ -596,8 +542,6 @@ test("an unfronted host performs its own Houston operations; a fronted one waits
 test("a slash-bearing agent id round-trips through the URL (encode → decode)", async () => {
   const { host, base } = await setup();
   try {
-    // The activities route is served by the host (no runtime needed); reaching
-    // it proves /agents/Work%2FSales/... decodes back to the "Work/Sales" agent.
     const r = await fetch(
       `${base}/agents/${encodeURIComponent("Work/Sales")}/activities`,
       { headers: auth },
@@ -610,13 +554,6 @@ test("a slash-bearing agent id round-trips through the URL (encode → decode)",
   }
 });
 
-// ── acting-as relay (C2): the managed pod is gateway-fronted ─────────────────
-
-/**
- * A fake runtime: a live HTTP server whose port the spawner hands to the
- * launcher. /health satisfies the launcher's readiness probe; every other
- * request records its headers so the test can see what the proxy relayed.
- */
 function fakeRuntime() {
   const seen: Record<string, string | string[] | undefined>[] = [];
   const server = createHttpServer((req, res) => {
@@ -666,9 +603,6 @@ async function relayActingHeader(gatewayFronted: boolean | undefined) {
 }
 
 test("managed pod (gatewayFronted): the gateway-minted acting-as header reaches the runtime", async () => {
-  // The bug this locks down: the pod profile dropping the header meant the
-  // runtime had no acting identity, so every integration call in a cloud chat
-  // died signin-required and agents claimed connected apps weren't connected.
   const headers = await relayActingHeader(true);
   expect(headers["x-houston-acting-as"]).toBe("acting-v1.payload.sig");
 });
@@ -694,8 +628,6 @@ test("preferences persist via the vfs under the workspace", async () => {
 });
 
 test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise", async () => {
-  // A real /health endpoint the launcher's poll can succeed against — the
-  // fake spawner hands out its port so ensureAwake completes.
   const health = createHttpServer((_req, res) => {
     res.writeHead(200, { "content-type": "application/json" });
     res.end('{"status":"ok"}');
@@ -716,7 +648,6 @@ test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise
 
   const eager = await setup({ spawner: recordingSpawner, eagerRuntime: true });
   try {
-    // Fire-and-forget after listen: poll until the spawn landed.
     const deadline = Date.now() + 5_000;
     while (spawned.length === 0 && Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 25));
@@ -730,7 +661,6 @@ test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise
     eager.host.stop();
   }
 
-  // Control: without the flag nothing spawns until a dispatch asks.
   spawned.length = 0;
   const lazy = await setup({ spawner: recordingSpawner });
   try {
@@ -740,8 +670,6 @@ test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise
     lazy.host.stop();
   }
 
-  // Managed pods point every runtime at the pod-local org mirror, never the
-  // workspace's desktop `.shared` tree.
   const managedMirrorDir = mkdtempSync(
     join(tmpdir(), "managed-shared-mirror-"),
   );

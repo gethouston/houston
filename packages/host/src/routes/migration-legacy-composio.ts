@@ -2,23 +2,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-/**
- * Account-level integrations of the LEGACY desktop app, for the migration
- * wizard's reconnect checklist (HOU-719). The Rust app connected apps through
- * the user's own Composio consumer account ("Composio for You"): the
- * credential persists at `~/.composio/user_data.json` and outlives the app
- * upgrade, so the migration source host can list the connected toolkits with
- * the same two REST calls the old engine made (houston-composio/cli.rs).
- *
- * Strictly best-effort and read-only: any failure (no file, expired key,
- * offline, API change) yields `[]` — the wizard then simply skips the
- * reconnect step. Only toolkit SLUGS ever leave this module; the API key is
- * read, used against Composio, and forgotten. Nothing here is uploaded.
- */
-
 const DEFAULT_BASE_URL = "https://backend.composio.dev";
-/** Per-request budget. The scan runs alongside the manifest walk; a slow or
- *  dead Composio must never hold the wizard's offer screen hostage. */
 const REQUEST_TIMEOUT_MS = 8_000;
 
 export interface LegacyComposioConfig {
@@ -27,7 +11,6 @@ export interface LegacyComposioConfig {
   orgId: string;
 }
 
-/** Parse `~/.composio/user_data.json` content. Null when unusable. */
 export function parseLegacyComposioConfig(
   content: string,
 ): LegacyComposioConfig | null {
@@ -51,7 +34,6 @@ export function parseLegacyComposioConfig(
   };
 }
 
-/** Slug hygiene, mirroring the Rust engine's normalize_toolkit_slugs. */
 export function normalizeToolkitSlugs(slugs: unknown): string[] {
   if (!Array.isArray(slugs)) return [];
   const cleaned = slugs
@@ -67,11 +49,6 @@ export interface LegacyComposioDeps {
   homeDir?: () => string;
 }
 
-/**
- * The legacy consumer account's connected toolkit slugs, `[]` on any failure.
- * Two calls, ported verbatim from the Rust engine: resolve the consumer
- * project, then list its connected toolkits.
- */
 export async function legacyConnectedToolkits(
   deps: LegacyComposioDeps = {},
 ): Promise<string[]> {
@@ -110,8 +87,6 @@ export async function legacyConnectedToolkits(
     const body = (await listRes.json()) as { toolkits?: unknown };
     return normalizeToolkitSlugs(body.toolkits);
   } catch (err) {
-    // Best-effort by contract: an unreadable file or a dead API reads as "no
-    // legacy account". Logged so a cohort-wide breakage is still visible.
     console.warn(
       "[migration] legacy Composio toolkit scan skipped:",
       err instanceof Error ? err.message : err,

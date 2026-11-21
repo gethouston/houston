@@ -8,15 +8,8 @@ import {
   type ReadResult,
 } from "@houston/runtime-client/object-sync";
 
-// Partial responses must retain nextPageToken or the client cannot auto-page.
 const LIST_FIELDS = "items(name,size,md5Hash,updated),nextPageToken";
 
-/**
- * GCS-backed ObjectStore. Auth is Application Default Credentials (the Cloud
- * Run service account); the runtime SA holds objectAdmin on THIS bucket only.
- * Thin by design — hydration/diff logic lives in hydrate.ts; this adapter only
- * maps GCS object operations and listing metadata onto the shared port.
- */
 export class GcsStore implements ObjectStore {
   private readonly bucket;
 
@@ -30,7 +23,6 @@ export class GcsStore implements ObjectStore {
     return files.map((f) => f.name).sort();
   }
 
-  /** GCS listing metadata for hydration; generations stay disabled here. */
   async manifest(prefix = ""): Promise<ObjectMetadata[]> {
     const files = await this.listFiles(prefix);
     return files
@@ -49,10 +41,6 @@ export class GcsStore implements ObjectStore {
   async download(key: string, destFile: string): Promise<ReadResult> {
     try {
       const file = this.bucket.file(key);
-      // The client's own download writes in place with the umask's mode
-      // (group-writable under a tool shell) and follows a planted symlink:
-      // sign-in state lands through an owner-only temp file and a rename.
-      // A refused private directory lands nothing, and hydrate skips it.
       if (privateDirOf(destFile))
         return (await landStream(() => file.createReadStream(), destFile))
           ? {}
@@ -60,8 +48,6 @@ export class GcsStore implements ObjectStore {
       await file.download({ destination: destFile });
       return {};
     } catch (error) {
-      // Same taxonomy as the HTTP store: a listed object deleted before the
-      // read is a vanished object, and readers treat it as an absent key.
       if ((error as { code?: unknown }).code !== 404) throw error;
       throw new ObjectNotFoundError(
         key,

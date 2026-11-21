@@ -10,7 +10,6 @@ import type {
   VerifyLinkOutcome,
 } from "./types";
 
-/** What the step after the inbox proof needs from the flow that owns it. */
 export interface LinkStep<S extends IdentitySession> {
   port: AccountLinkPort<S>;
   pending: {
@@ -19,23 +18,12 @@ export interface LinkStep<S extends IdentitySession> {
     handle: PendingLinkHandle;
     accountId: string | null;
   };
-  /** False once the flow ended elsewhere (the person signed out): from then
-   *  on the step establishes nothing and signs nothing out. */
   live(): boolean;
   publish(view: AccountLinkView): void;
-  /** End the flow refused, dropping the held credential. */
   refuse(refusal: AccountLinkRefusal): VerifyLinkOutcome;
-  /** End the flow linked, dropping the held credential. */
   linked(): VerifyLinkOutcome;
 }
 
-/**
- * The inbox is proved: link the held credential onto the session the email
- * code just minted, and only when that session names the address the
- * provider asserted and is the account Identity Platform said holds it.
- * Identity Platform links onto any session regardless, so these checks are
- * the whole takeover guard.
- */
 export async function linkOnto<S extends IdentitySession>(
   step: LinkStep<S>,
   minted: MintedSession<S>,
@@ -52,8 +40,6 @@ export async function linkOnto<S extends IdentitySession>(
       unexpected("link_failed", error);
     }
   };
-  // The flow ends before its session does: the web sign-out this runs is the
-  // flow's own cleanup, so it must not read as the person leaving.
   const refuseSignedOut = async (refusal: AccountLinkRefusal) => {
     const outcome = step.refuse(refusal);
     await signOut();
@@ -61,8 +47,6 @@ export async function linkOnto<S extends IdentitySession>(
   };
 
   if (!step.live()) {
-    // The person left while the code was checked: the session it minted
-    // after that is nobody's to keep.
     await signOut();
     return notWaiting;
   }

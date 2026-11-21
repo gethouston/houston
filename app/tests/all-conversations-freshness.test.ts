@@ -39,12 +39,6 @@ describe("createSliceFreshness", () => {
   });
 });
 
-/**
- * The incident shape: a sweep starts right before a mission is created on O1,
- * is held ~15s by a stranded agent that only answers 503, and settles after
- * the mission's reply landed through push-event patches. The sweep's O1 rows
- * are the older snapshot; the patched slice must win.
- */
 describe("foldSweep", () => {
   it("carries the patched slice forward over the sweep's older snapshot", () => {
     const sweepSnapshot = [row("buenas", O1, "needs_you"), row("c1", CEO)];
@@ -65,8 +59,6 @@ describe("foldSweep", () => {
   });
 
   it("drops the sweep's rows for an overtaken agent even when they carry a newer-looking status", () => {
-    // The patch emptied O1's slice (its last mission was archived while the
-    // sweep was held). The sweep's stale row must not resurrect it.
     const merged = foldSweep(
       [row("old", O1, "running"), row("c1", CEO)],
       [row("c1", CEO)],
@@ -89,8 +81,6 @@ describe("foldSweep", () => {
   });
 
   it("ignores the overtaken list with no cache to carry from", () => {
-    // First sweep of the session: the sweep's rows are the ONLY rows for O1;
-    // dropping them would blank the agent, not refresh it.
     const fresh = [row("hola", O1)];
     strictEqual(foldSweep(fresh, undefined, [], [O1]), fresh);
   });

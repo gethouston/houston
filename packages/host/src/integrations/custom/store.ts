@@ -9,21 +9,12 @@ import { dirname } from "node:path";
 import { atomicTempPath } from "@houston/protocol";
 import type { CustomIntegrationDef } from "./types";
 
-/**
- * Persistence for custom-integration DEFINITIONS (no secret material — secret
- * values live in the CustomSecretStore; definitions carry only secret IDs).
- * File lives next to the host's credentials file (user-level, not per-agent):
- * custom integrations belong to the user, like Composio connections.
- */
 export interface CustomIntegrationStore {
   list(): Promise<CustomIntegrationDef[]>;
-  /** Insert or replace by slug (callers validate slugs). */
   put(def: CustomIntegrationDef): Promise<void>;
-  /** Remove by slug; removing an absent slug is a no-op. */
   remove(slug: string): Promise<void>;
 }
 
-/** In-memory store for tests. */
 export class MemoryCustomIntegrationStore implements CustomIntegrationStore {
   private readonly bySlug = new Map<string, CustomIntegrationDef>();
 
@@ -45,12 +36,6 @@ interface FileShape {
   items: CustomIntegrationDef[];
 }
 
-/**
- * File-backed store (atomic tmp+rename, like the grant store). A missing file
- * reads as empty. A CORRUPT file throws: definitions are user-created state, so
- * silently reading them as "none" would make every custom integration vanish
- * without a trace — surfacing the parse failure is the no-silent-failures call.
- */
 export class FileCustomIntegrationStore implements CustomIntegrationStore {
   constructor(private readonly path: string) {}
 

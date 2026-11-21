@@ -55,7 +55,6 @@ test("a 409 fences the claim and fires onFenced once", async () => {
   await heartbeat.checkpoint();
   expect(heartbeat.fenced).toBe(true);
   expect(onFenced).toHaveBeenCalledOnce();
-  // Fenced is terminal: later checkpoints do not beat again.
   await heartbeat.checkpoint();
   expect(onFenced).toHaveBeenCalledOnce();
   await heartbeat.stop();

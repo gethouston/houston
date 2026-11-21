@@ -1,17 +1,3 @@
-/**
- * Wizard driver state for the first-run cloud migration (HOU-719).
- *
- * Owns the screen (offer → progress → done), the task list, and per-agent
- * progress; runs the agents SEQUENTIALLY (one warm-up + upload at a time so a
- * big install doesn't stampede the gateway). Pure logic lives in
- * `lib/cloud-migration.ts`, the prepare phase in `lib/cloud-migration-prepare.ts`,
- * per-task I/O in `lib/cloud-migration-runner.ts`.
- *
- * Failures are never silent: a failed prepare parks in `startError` with a
- * retry, a failed agent parks in a per-row error state with a retry, and both
- * are reported to Sentry (`reportError`) so beta noise reaches us.
- */
-
 import { create } from "zustand";
 import { analytics } from "../lib/analytics";
 import type { MigrationTask } from "../lib/cloud-migration";
@@ -37,30 +23,16 @@ export type CloudMigrationScreen = "offer" | "progress" | "done";
 
 interface CloudMigrationState {
   screen: CloudMigrationScreen;
-  /** Spawning the source host / scanning — can take minutes (chat db boot). */
   preparing: boolean;
-  /** Copying `~/.houston` to a local backup before anything is touched. A
-   *  subset of `preparing` (it stays true through the backup), branched on
-   *  first so the wait screen shows the backup step, not the prepare text. */
   backingUp: boolean;
-  /** Prepare failed (source host spawn / scan / resume probe). Retryable. */
   startError: string | null;
   tasks: MigrationTask[];
   progress: Record<string, AgentMigrationProgress>;
-  /** Toolkit slugs the legacy agents had connected (done-screen checklist). */
   integrations: string[];
-  /** Begin (or retry a failed prepare of) the whole migration. */
   start: () => Promise<void>;
-  /** Re-run one failed agent from its first incomplete step. */
   retryTask: (sourceId: string) => Promise<void>;
-  /** Leave remaining failures behind and move on to the done screen. */
   continueAnyway: () => void;
-  /** True once the user bailed out of a running migration ("Migrate later").
-   *  The run loop breaks after the current task; the source host is stopped. */
   deferred: boolean;
-  /** Bail out of an in-progress migration (it was taking too long). Stops the
-   *  source host and breaks the run loop; the migration stays resumable from
-   *  Settings (already-migrated agents are skipped on the next run). */
   deferMigration: () => void;
 }
 
@@ -87,10 +59,6 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
   (set, get) => {
     const runTask = async (task: MigrationTask, overwrite: boolean) => {
       try {
-        // A v3 host always reports one synthetic workspace, and `start` set
-        // the source host just above — but if either invariant ever breaks,
-        // it parks the row in the retryable error state, never an unhandled
-        // rejection out of the run loop.
         const workspaceId = useWorkspaceStore.getState().workspaces[0]?.id;
         if (!workspaceId || !sourceHost) {
           throw new Error("migration run started before its prerequisites");
@@ -116,9 +84,6 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
       }
     };
 
-    // Shared tails (per-task failure; stop source host, refresh agents,
-    // analytics) live in `cloud-migration-finish.ts`; the run tail flips the
-    // screen through this callback.
     const finish = () => finishRun(get, () => set(() => ({ screen: "done" })));
 
     const settleIfAllDone = async () => {
@@ -138,7 +103,6 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
       deferred: false,
 
       start: async () => {
-        // Dev-only: simulate the run frontend-only (no source host / gateway).
         if (isMigrationDemo()) {
           await runDemoMigration(set);
           return;
@@ -151,8 +115,6 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
           startError: null,
           deferred: false,
         }));
-        // Never migrate without a local backup: copy `~/.houston` aside FIRST,
-        // so a crash mid-upload can't lose the only copy of the user's data.
         try {
           const backup = await osBackupHoustonData();
           set(() => ({ backingUp: false }));
@@ -170,9 +132,6 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
           reportError("cloud_migration_backup", message, err);
           return;
         }
-        // Backup is safe on disk. Crash-recovery is server-side: the gateway
-        // stamps a per-agent import marker as each agent lands, so a re-run from
-        // Settings skips already-migrated agents (see buildMigrationPlan resume).
         let tasks: MigrationTask[];
         try {
           const prepared = await prepareMigration(
@@ -200,7 +159,7 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
           bytes: tasks.reduce((n, t) => n + t.manifest.totalBytes, 0),
         });
         for (const task of tasks) {
-          if (get().deferred) break; // user chose "Migrate later"
+          if (get().deferred) break;
           if (get().progress[task.sourceId]?.step === "done") continue;
           await runTask(task, false);
         }
@@ -210,8 +169,6 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
       retryTask: async (sourceId) => {
         const task = get().tasks.find((t) => t.sourceId === sourceId);
         if (!task || get().progress[sourceId]?.step !== "error") return;
-        // The source host may have died since (it never restarts itself);
-        // re-invoking the spawn is the documented idempotent recovery.
         try {
           sourceHost = await osStartMigrationSourceHost();
         } catch (err) {
@@ -233,8 +190,6 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
 
       deferMigration: () => {
         set(() => ({ deferred: true }));
-        // Stop the passive source host now; the run loop breaks after the
-        // task in flight. Best-effort — never blocks the user leaving.
         void osStopMigrationSourceHost().catch((err: unknown) =>
           reportError(
             "cloud_migration_defer_stop",

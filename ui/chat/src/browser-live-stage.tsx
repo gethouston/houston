@@ -26,7 +26,6 @@ export interface BrowserLiveStageProps {
   onInput: (events: BrowserLiveViewInput[]) => void;
   onRetry: () => void;
   onPaintError?: (error: unknown) => void;
-  /** Shift+Escape on the page: move focus to the view's own controls. */
   onLeavePage?: () => void;
   labels: BrowserLiveViewLabels;
 }
@@ -52,7 +51,6 @@ function sampleOf(e: PointerEvent): BrowserLivePointerSample {
   };
 }
 
-/** The page itself: a canvas of the latest frame that forwards input. */
 export function BrowserLiveStage({
   state,
   frames,
@@ -71,7 +69,6 @@ export function BrowserLiveStage({
   const send = (event: BrowserLiveViewInput) => onInput([event]);
   useBrowserLiveKeyboard(fieldRef, send, live, onLeavePage);
 
-  // React registers wheel listeners as passive; the page must own the scroll.
   const onInputRef = useRef(onInput);
   useEffect(() => {
     onInputRef.current = onInput;
@@ -104,12 +101,9 @@ export function BrowserLiveStage({
     if (!live) return;
     const up = pointer.up(sampleOf(e), geometryOf(e.currentTarget));
     handle(up.events);
-    // Raises the phone keyboard; on desktop it catches typing.
     if (up.focusKeyboard) fieldRef.current?.focus({ preventScroll: true });
   };
 
-  // The first frame fades in over the skeleton; later frames replace the
-  // canvas pixels in place, so a swap never blinks.
   const loading =
     !painted && (live || state === "connecting" || state === "reconnecting");
   return (

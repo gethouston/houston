@@ -11,7 +11,6 @@ interface ChannelProviderDisplay {
   notConfigured: string;
 }
 
-/** The per-provider art and copy of a channel card; the frame is shared. */
 export const CHANNEL_PROVIDER_DISPLAY = {
   slack: {
     logo: slackLogo,

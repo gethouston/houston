@@ -19,15 +19,6 @@ import { currentActingContext } from "../session/acting-context";
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/**
- * The per-turn server contract, end to end against a real (local) object
- * store: hydrate → run → stream frames → sync back → terminal frame. The pi
- * session itself is injected (a real turn needs an LLM); what's under test is
- * the orchestration every turn depends on — including that `done` is only
- * sent AFTER the workspace is durable, and that the per-turn credential is
- * written locally but never persisted.
- */
-
 const storeRoot = mkdtempSync(join(tmpdir(), "houston-turnstore-"));
 const store = new LocalDirStore(storeRoot);
 const PREFIX = "ws/w1/agent-1";
@@ -38,9 +29,6 @@ function seed(rel: string, content: string) {
   writeFileSync(abs, content);
 }
 
-// A fake pi turn: proves it sees the hydrated workspace + injected credential,
-// mutates the workspace, emits frames (stamped with the server-minted turnId,
-// like the real runTurn).
 const fakeTurn: TurnRunner = async (layout, turn) => {
   const { text, provider, emit, turnId } = turn;
   const notes = await readFile(join(layout.workspaceDir, "notes.txt"), "utf8");
@@ -104,8 +92,6 @@ test("a full turn: hydrates, injects the credential, streams frames, syncs back"
   expect(res.headers.get("content-type")).toContain("text/event-stream");
   const raw = await res.text();
 
-  // Frames arrive in order and carry proof the fake turn saw hydrated state +
-  // the injected access token (and only the access token — applyServedCredential).
   expect(raw).toContain('"type":"user"');
   expect(raw).toContain("saw:hello-from-gcs");
   expect(raw).toContain("provider:openai-codex");
@@ -114,7 +100,6 @@ test("a full turn: hydrates, injects the credential, streams frames, syncs back"
     raw.indexOf('"type":"done"'),
   );
 
-  // The mutation is durable in the store; the credential is NOT.
   const keys = await store.list(PREFIX);
   expect(keys).toContain(`${PREFIX}/workspace/deck.pptx`);
   expect(keys.find((k) => k.endsWith("auth.json"))).toBeUndefined();
@@ -180,9 +165,6 @@ test("one agent's auth failure survives another agent's clean turn", async () =>
 });
 
 test("a sync failure surfaces as the turn's error — never a quiet done", async () => {
-  // Fresh prefix: the fake turn's deck.pptx is genuinely NEW here, so syncBack
-  // must attempt the (broken) upload. Reusing the happy-path prefix would let
-  // the content differ correctly skip the identical bytes and mask the test.
   const PREFIX2 = "ws/w2/agent-2";
   const abs = join(storeRoot, ...PREFIX2.split("/"), "workspace", "notes.txt");
   mkdirSync(join(abs, ".."), { recursive: true });
@@ -232,7 +214,6 @@ test("a gzip-encoded turn body is accepted", async () => {
 });
 
 test("a routine's model/effort pin reaches the pi turn", async () => {
-  // Capture the pin the server forwards to runTurn.
   let seen: { model?: string | null; effort?: string | null } | undefined;
   const capture: TurnRunner = async (_root, turn) => {
     seen = turn.pin;
@@ -262,9 +243,6 @@ test("a routine's model/effort pin reaches the pi turn", async () => {
 });
 
 test("a turn's pinned provider outranks the attached credential's (PRODUCT-1515)", async () => {
-  // A dispatcher that serves a different provider's credential must fail as
-  // the PINNED provider's auth error, never silently run the turn on the
-  // credential's provider.
   let seen: string | undefined;
   const capture: TurnRunner = async (_root, turn) => {
     seen = turn.provider;

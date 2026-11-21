@@ -1,19 +1,3 @@
-/**
- * WORKSPACE-scoped shared skills (`/v1/workspaces/:id/shared-skills`): the
- * library every agent in a space can draw from, including promotion of an
- * agent's own skill into it. Per-agent skills are `sdk.skills.agent`.
- *
- * SEAM — workspace-scoped, NOT per-agent: the runtime client is rooted at one
- * agent's sandbox and serves none of these, so they ride {@link httpRequest} on
- * literal paths, the only spelling the assistant's operation catalog can see.
- * `workspaceId` is the id the SERVER answers to; the synthetic "default"
- * personal id the web UI holds is translated before it reaches here.
- *
- * Degradations are the CALLER's: every request throws on a non-2xx, 404
- * included, so a surface that wants "no library yet" says so itself and no
- * surface is handed a silent empty answer it did not ask for.
- */
-
 import type { ModuleContext } from "../../module-context";
 import { type HttpScope, httpRequest, moduleScope } from "../http";
 import { requireString } from "../payload";
@@ -157,7 +141,6 @@ export async function deleteSharedSkill(
   );
 }
 
-/** Bind the requests above to one scope and the `dispatch` command registry. */
 export function createSharedSkills(ctx: ModuleContext): SharedSkillsModule {
   const scope = moduleScope(ctx, "shared-skills", SharedSkillsHttpError);
 

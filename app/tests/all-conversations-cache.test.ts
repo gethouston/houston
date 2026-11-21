@@ -103,16 +103,11 @@ describe("latestCachedAgentActivities", () => {
         ["legacy", undefined, undefined],
       ],
     );
-    // A placeholder must never present a pinned chat as pin-less: the chat
-    // panel would fall through to the device's last-used provider.
     strictEqual("provider" in rows[1], false);
   });
 
   it("prefers the newest roster variant that actually has rows", () => {
     const qc = new QueryClient();
-    // An older roster variant carries a row for this agent; the newer variant
-    // (a roster this agent is not in) has none — absence is not evidence of
-    // empty, so the older rows must still win.
     qc.setQueryData(
       queryKeys.allConversations(["agent-a", "agent-b"]),
       [row("m1", "agent-a")],

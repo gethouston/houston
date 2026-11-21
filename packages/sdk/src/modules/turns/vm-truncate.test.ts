@@ -6,13 +6,6 @@ import {
   conversationScope,
 } from "./vm-output";
 
-/**
- * The edit-and-resend rewind fold (PRODUCT-1217): `truncateFromTurn` drops the
- * feed tail from the edited user turn onward. Explicit — the history reseed
- * path deliberately skips shorter folds, so this fold is the ONLY thing that
- * can rewind an on-screen feed.
- */
-
 const snap = (store: ScopeStore, agent: string, key: string) =>
   store.getSnapshot(conversationScope(agent, key)) as
     | ConversationVM
@@ -34,8 +27,6 @@ test("truncateFromTurn drops the edited turn and everything after; earlier turns
 
   const s = snap(store, "a", "c1");
   expect(s?.feed.map((f) => f.turnId)).toEqual(["t1", "t1"]);
-  // The stale window stamp is dropped — the feed no longer maps to the last
-  // read server window; the next authoritative read re-arms load-older.
   expect(s?.historyWindow).toBeUndefined();
 });
 

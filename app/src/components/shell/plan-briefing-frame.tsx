@@ -19,12 +19,6 @@ const briefingStyle = (width: string) =>
     "--briefing-easing": `cubic-bezier(${easing.entrance.join(", ")})`,
   }) as CSSProperties;
 
-/**
- * The frame every plan announcement wears: a dark briefing centered on the
- * desktop, a full-height sheet on phones. Only the person closes it (see
- * {@link createUserDismissal}); the X, Escape and a click outside all call
- * `onDismiss`.
- */
 export function PlanBriefingFrame({
   open,
   onDismiss,
@@ -38,9 +32,7 @@ export function PlanBriefingFrame({
   open: boolean;
   onDismiss: () => void;
   closeLabel: string;
-  /** A `layout` token: the frame's desktop width. */
   width: string;
-  /** False when the content carries no DialogDescription. */
   described?: boolean;
   onCloseAutoFocus?: (event: Event) => void;
   testId?: string;

@@ -20,7 +20,6 @@ import {
   type UploadMeta,
 } from "./types";
 
-/** Staging is outside the workspace and never enters its listing or sync. */
 export class LocalUploadSessions {
   private readonly busy = new Set<string>();
   private opening: Promise<unknown> = Promise.resolve();
@@ -154,7 +153,6 @@ export class LocalUploadSessions {
     );
   }
 
-  /** One writer per session; a retry observes only bytes its predecessor closed. */
   async exclusive<T>(
     id: string,
     operation: () => Promise<T>,

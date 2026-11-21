@@ -50,11 +50,6 @@ describe("provider is authenticated (the confirmed-connected predicate)", () => 
   });
 
   it("treats unknown as NOT connected (HOU-979)", () => {
-    // Reversed deliberately. The old `providerAppearsConnected` counted an
-    // unconfirmable probe as connected, which is how a team space whose
-    // per-agent probe 404'd kept reporting "Connected" in the AI hub while the
-    // chat picker showed no providers at all. `unknown` is now `checking`
-    // everywhere: never Connected, never silently hidden.
     strictEqual(
       providerIsAuthenticated({ cli_installed: true, auth_state: "unknown" }),
       false,
@@ -88,9 +83,6 @@ describe("provider is authenticated (the confirmed-connected predicate)", () => 
 
 describe("reconnect provider for a chat (HOU-410 scoping)", () => {
   it("does NOT show a Claude reconnect in an OpenAI chat when Claude is logged out elsewhere", () => {
-    // The exact bug: a Claude session (another agent / routine) set the global
-    // authRequired to "anthropic"; the user is in an OpenAI chat with no auth
-    // problem of its own. The card must stay hidden.
     strictEqual(
       reconnectProviderForChat({
         authRequired: "anthropic",
@@ -121,8 +113,6 @@ describe("reconnect provider for a chat (HOU-410 scoping)", () => {
   });
 
   it("falls back to this chat's own feed signal when the global flag is unset or foreign", () => {
-    // No global flag, but this chat's feed carried an auth signal and the
-    // status probe confirmed it needs auth.
     strictEqual(
       reconnectProviderForChat({
         authRequired: null,
@@ -131,7 +121,6 @@ describe("reconnect provider for a chat (HOU-410 scoping)", () => {
       }),
       "openai",
     );
-    // Foreign global flag must not suppress this chat's own confirmed signal.
     strictEqual(
       reconnectProviderForChat({
         authRequired: "anthropic",

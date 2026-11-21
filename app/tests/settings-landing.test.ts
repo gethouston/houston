@@ -79,8 +79,6 @@ describe("capturing a callback", () => {
   };
 
   it("takes the ticket out of the address bar the moment it is read", () => {
-    // Nothing waits on sign-in or workspace loading: while the ticket is in
-    // window.location, analytics and session replay can capture the URL.
     const { landing, cleaned } = capture(
       `https://app.test/home?settings=channels&slack=${ticket}#panel`,
     );
@@ -114,8 +112,6 @@ describe("capturing a callback", () => {
     deepStrictEqual(cleaned, ["/?settings=channels"]);
   });
   it("strips a ticket from a landing shape it refuses to act on", () => {
-    // Nothing redeems these, but each still carries a live ticket that
-    // analytics would capture from the address bar.
     for (const [href, left] of [
       [`https://app.test/?slack=${ticket}`, "/"],
       [
@@ -150,8 +146,6 @@ describe("capturing a callback", () => {
       completion: { kind: "ticket", ticket },
     };
     deepStrictEqual(peekBootLanding(href, clean), landing);
-    // A shell remount before sign-in reads the same landing from memory,
-    // and the URL is never cleaned twice.
     deepStrictEqual(peekBootLanding("https://app.test/", clean), landing);
     ackBootLanding();
     deepStrictEqual(peekBootLanding(href, clean), { kind: "absent" });

@@ -45,9 +45,7 @@ describe("generated store catalog", () => {
     for (const cfg of storeCatalogConfigs) {
       ok(cfg.name, `${cfg.id} has a name`);
       ok(cfg.description, `${cfg.id} has a description`);
-      // author === "Houston" is what makes the card localize via agents.json.
       strictEqual(cfg.author, "Houston", `${cfg.id} is Houston-authored`);
-      // Heavy content must NOT ride in the light card (bundle-size contract).
       strictEqual(cfg.claudeMd, undefined, `${cfg.id} card omits claudeMd`);
       strictEqual(cfg.agentSeeds, undefined, `${cfg.id} card omits agentSeeds`);
     }

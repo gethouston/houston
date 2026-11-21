@@ -7,30 +7,15 @@ import { genericErrorDescription } from "../../lib/error-report";
 import { useUIStore } from "../../stores/ui";
 
 interface Props {
-  /** The freshly minted key to reveal, or null when the dialog is closed. The
-   *  secret NEVER lands in the query cache or routine data: it lives only in the
-   *  parent chip's local state, which this dialog clears on close. */
   revealed: WebhookKeyReveal | null;
-  /** Clears the revealed key in the parent (which unmounts the secret). */
   onClose: () => void;
 }
 
-/**
- * Reveal a minted webhook address and secret exactly once, mirroring the API
- * key create dialog: the secret is held only in the parent chip's local state
- * (never the query cache), each value has its own copy button, and a loud
- * one-line warning says it will not be shown again. Closing clears everything.
- *
- * The reveal posture of `FormDialog`: the key is already minted, so there is
- * nothing left to cancel and the acknowledging primary is the only way out.
- */
 export function WebhookKeyDialog({ revealed, onClose }: Props) {
   const { t } = useTranslation("routines");
   const addToast = useUIStore((s) => s.addToast);
   const [copied, setCopied] = useState<"url" | "secret" | null>(null);
 
-  // Reset the copied affordance whenever the dialog closes, so reopening for a
-  // rotated key never shows a stale check mark.
   useEffect(() => {
     if (!revealed) setCopied(null);
   }, [revealed]);

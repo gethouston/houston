@@ -7,15 +7,7 @@ import { createTurnSandbox } from "./turn-sandbox-startup";
 import type { resolveTurnStore } from "./turn-store";
 import type { TurnRequest } from "./types";
 
-// Only what the startup hands the sandbox is under test here.
 vi.mock("./turn-sandbox", () => ({ makeTurnSandboxFetch: vi.fn(() => ({})) }));
-
-/**
- * Houston's routes run the host's handlers over its agent's own tree
- * (`workspaces/<ws>/<agent>`). A turn that hydrated anything else cannot serve
- * them, so it fails at setup instead of answering every call "agent not
- * found" after the model has started.
- */
 
 const turn = {
   workspaceId: "w1",

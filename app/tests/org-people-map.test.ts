@@ -7,11 +7,6 @@ import {
   toMentionPeople,
 } from "../src/hooks/queries/org-people-map.ts";
 
-// The app half of @mentions (HOU-944): `GET /v1/org/people` gives a sanitized
-// co-member directory whose display fields are BOTH optional. These cover the
-// projection into `ui/chat`'s MentionPerson, the named-only rule, and the
-// composer's self exclusion.
-
 describe("toMentionPeople", () => {
   it("maps displayName -> name and photoUrl -> imageUrl", () => {
     const rows: OrgPersonRow[] = [

@@ -2,9 +2,6 @@ import { ok } from "node:assert";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-// The selectors reach the session hooks (Vite's `import.meta.env`), so the node
-// runner pins their phone sizing on source; the Playwright phone project and a
-// 360/412px measurement cover the rendered row.
 const read = (path: string) =>
   readFileSync(new URL(`../src/components/${path}`, import.meta.url), "utf8");
 

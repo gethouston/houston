@@ -1,0 +1,59 @@
+{
+  "excludedDirNames": ["node_modules", "dist", "target", "vendor"],
+  "excluded": [
+    {
+      "path": "convergence/",
+      "reason": "historical record of the Rust to TS cutover, not live code"
+    },
+    {
+      "path": "store/",
+      "reason": "legacy bundled catalog data, product content rather than code"
+    },
+    {
+      "path": "app/src/agents/builtin/store-catalog.ts",
+      "reason": "written by scripts/gen-agent-templates.mjs, which emits its header comments"
+    },
+    {
+      "path": "app/src/agents/builtin/store-skill-sources.ts",
+      "reason": "written by scripts/gen-agent-templates.mjs, which emits its header comments"
+    },
+    {
+      "path": "ui/layout/src/sidebar-group-glyph-data-",
+      "reason": "written by pnpm generate:team-icons, which emits its header comment"
+    },
+    {
+      "path": "ui/layout/src/sidebar-group-glyph-tags.ts",
+      "reason": "written by pnpm generate:team-icons, which emits its header comment"
+    },
+    {
+      "path": "scripts/assistant-catalog/tests/fixtures/",
+      "reason": "input to the assistant catalog tests, which parse their JSDoc and comments"
+    },
+    {
+      "path": "packages/mobile/capacitor.config.ts",
+      "reason": "hashed into the native fingerprint (packages/mobile/scripts/native-fingerprint.ts); any edit moves the OTA floor and needs a store build"
+    }
+  ],
+  "pinned": [
+    {
+      "path": "app/src/lib/tauri.ts",
+      "startsWith": "// ─── Workspaces",
+      "reason": "app/tests/user-told-mark.test.ts slices tauri.ts up to this line"
+    },
+    {
+      "path": "packages/protocol/src/push-report.ts",
+      "startsWith": "/** Keep the ellipsis within the engine's 200-code-point title limit.",
+      "reason": "packages/protocol/src/push-report.test.ts asserts this text"
+    },
+    {
+      "path": "ui/core/src/canvas.css",
+      "startsWith": "/* ── ",
+      "reason": "ui/core/tests/dialog-frame.test.ts splits canvas.css on these numbered section headings"
+    },
+    {
+      "path": "app/src/components/shell/provider-logos.tsx",
+      "startsWith": "/**\n * The brand mark for a provider id",
+      "reason": "app/tests/card-unification.test.ts asserts the `?? <Monogram` text this comment carries"
+    }
+  ]
+}

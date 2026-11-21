@@ -3,19 +3,6 @@ import type { OrgChartUsage, OrgChartWork } from "./org-chart-model.ts";
 import { type AgentPeople, agentPeople } from "./org-chart-people.ts";
 import { messagesCounted, type OrgChartScope } from "./org-chart-scope.ts";
 
-/**
- * The org chart as data: the ledger of AI Employees ranked by the hours they
- * worked, each with its people, and which figure leads the hero when time
- * worked cannot be read. Pure and DOM-free.
- */
-
-/**
- * Where one read stands. `hidden` is a read this caller or deployment does
- * not get at all (time worked off the hosted cloud, message usage for a
- * non-admin): its numbers go away rather than reading as zeroes. A read
- * that never landed is `loading` even while its query is parked off screen,
- * so no figure is ever drawn from data that is not there.
- */
 export type OrgChartRead = "hidden" | "loading" | "error" | "ready";
 
 export function orgChartRead(input: {
@@ -38,7 +25,6 @@ export function orgChartState(input: {
   return input.agentCount > 0 ? "ready" : "empty";
 }
 
-/** The figure the hero leads with and the ledger's bars measure. */
 export type OrgChartMetric = "hours" | "messages";
 
 export interface OrgChartLead {
@@ -46,11 +32,6 @@ export interface OrgChartLead {
   loading: boolean;
 }
 
-/**
- * Hours lead whenever time worked is on, holding a skeleton while it loads
- * rather than flashing messages first. Hidden or failed hours hand the lead
- * to messages; with neither readable there is no figure at all.
- */
 export function orgChartLead(
   hours: OrgChartRead,
   messages: OrgChartRead,
@@ -62,11 +43,6 @@ export function orgChartLead(
   return null;
 }
 
-/**
- * The ledger's columns. The bar column carries the lead metric; messages get
- * their own column only beside hours (when they lead, the bar is theirs).
- * A personal space has one person, so it draws no people columns.
- */
 export interface LedgerColumns {
   bar: OrgChartLead | null;
   messages: "ready" | "loading" | null;
@@ -87,23 +63,14 @@ export function ledgerColumns(
 export interface LedgerLine {
   id: string;
   name: string;
-  /** The role its job description names, when it has one. */
   role?: string;
   color?: string;
   workMs: number;
-  /** `null` where the gateway does not count its messages for this caller. */
   messages: number | null;
-  /** Its bar against the top AI Employee by the lead metric, 0 to 1. */
   share: number;
-  /** `null` when the caller cannot see who it is assigned to. */
   people: AgentPeople | null;
 }
 
-/**
- * The people of one agent, its users ordered by who talks to it most over
- * the window, then by name, so the faces that show first are the ones that
- * use it.
- */
 function peopleOf(
   agent: Agent,
   members: readonly OrgMember[],
@@ -118,12 +85,6 @@ function peopleOf(
   return { manages: people.manages, uses };
 }
 
-/**
- * One line per agent, ranked by hours worked with messages breaking ties,
- * by messages alone when hours are not readable, then by name. A read that
- * is not there, or a count the caller is not served, ranks as zero; the
- * lines never draw it as one.
- */
 export function buildLedger(
   agents: readonly Agent[],
   members: readonly OrgMember[],
@@ -170,5 +131,4 @@ export function buildLedger(
   }));
 }
 
-/** Past this many AI Employees the ledger tightens and, when wide, splits. */
 export const DENSE_LEDGER = 8;

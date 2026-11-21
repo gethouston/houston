@@ -30,7 +30,6 @@ type Answer =
     }
   | { step: "monthly"; view: PromoEndedView };
 
-/** The yearly charge after a switch: the org's billing, else the offer's. */
 function yearlyNext(
   view: PromoEndedView,
   billing: OrgBilling | null,
@@ -48,17 +47,6 @@ function yearlyNext(
   };
 }
 
-/**
- * The promo-ended notice, on app open, for the billing owner whose org still
- * pays the promotional monthly seat price (the gateway sets
- * `billing.priceNotice` for them alone; the SDK reads it). Yearly is
- * preselected where it is sold. Switch charges the card and shows what the
- * org pays now; a declined card keeps the offer up with a toast. Continue
- * monthly stores the dismissal and says what the org pays from the next
- * charge. "Maybe later", the X and Escape close it for this session. One
- * modal at a time: it waits for every other plan dialog, the pricing-change
- * modal first. The store apps never sell, so they never show it.
- */
 export function PromoEndedModal({
   otherDialogOpen,
 }: {
@@ -79,7 +67,6 @@ export function PromoEndedModal({
     closedThisSession: closed,
     otherDialogOpen,
   });
-  // An answered notice clears off the billing; its step still shows.
   const shown = answer?.view ?? (opens ? view : null);
   if (!shown) return null;
   const orgName =
@@ -96,7 +83,6 @@ export function PromoEndedModal({
       try {
         await dismiss.mutateAsync();
       } catch {
-        // Already surfaced and reported by the engine call; the offer stays.
         return;
       }
       setAnswer({ step: "monthly", view: shown });
@@ -106,7 +92,6 @@ export function PromoEndedModal({
     try {
       result = await switching.mutateAsync();
     } catch {
-      // Already surfaced and reported by the engine call; the offer stays.
       return;
     }
     switch (result.kind) {
@@ -120,7 +105,6 @@ export function PromoEndedModal({
       case "already_yearly":
       case "no_subscription":
       case "switch_in_progress":
-        // Nothing left to offer: the refetched billing is the answer.
         close();
         return;
       case "payment_failed":

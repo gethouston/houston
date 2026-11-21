@@ -6,23 +6,11 @@ import {
   type ValueScope,
 } from "./assistant-value-scope.ts";
 
-/**
- * What a request carries besides its path: the JSON body a route sends, and
- * the one header that is plumbing rather than meaning.
- */
-
 export interface BodyParts {
   body: string | null;
   bodyFields: Record<string, string> | null;
 }
 
-/**
- * A conditional spread the caller cannot reach: `...(opts?.agent ? { agent } :
- * {})` where the caller passed no `opts`. Nothing it could add is reachable
- * from the operation's signature, so the body is exactly what the rest of the
- * literal spells. A spread the caller CAN reach makes the shape conditional,
- * which no static route describes.
- */
 function spreadEntries(
   property: ts.SpreadAssignment,
   scope: ValueScope,
@@ -37,8 +25,6 @@ function spreadEntries(
   return identifierMap(fallback, scope);
 }
 
-/** `{ key: param, key: param.field, shorthandParam }` — every value must read
- *  a parameter. */
 function identifierMap(
   expression: ts.ObjectLiteralExpression,
   scope: ValueScope,
@@ -71,8 +57,6 @@ function identifierMap(
   return map;
 }
 
-/** The JSON body of one `body:` property: `JSON.stringify(…)` or a raw string
- *  parameter (the pre-serialized credential blobs). */
 export function extractBody(
   expression: ts.Expression,
   scope: ValueScope,
@@ -103,11 +87,6 @@ export function extractBody(
     : { body, bodyFields: null };
 }
 
-/**
- * The one header a route may carry: the JSON content type the transport would
- * set anyway. It names no part of the wire shape, so it is plumbing — anything
- * else in `headers` carries meaning the catalog cannot describe.
- */
 export function isJsonContentType(
   expression: ts.Expression,
   scope: ValueScope,

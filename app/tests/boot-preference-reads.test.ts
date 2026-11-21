@@ -2,23 +2,6 @@ import { ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-/**
- * A DEVICE preference read rejects when this browser's localStorage refuses the
- * read (blocked site data, partitioned webview) — the adapter no longer reports
- * a store that cannot answer as an unset preference. Every BOOT reader of one
- * therefore has to take the rejection as "unset" and report it: the agent boot
- * reader awaited a preference alongside a LOAD, so a blocked store handed the
- * user the workspace-load failure screen with no agents, over an account whose
- * spaces had listed perfectly well.
- *
- * `readBootPreference` is the one place that resolution lives, and
- * `packages/web/tests/device-prefs-storage.test.ts` pins its behavior (unset +
- * one report) while workspace selection is tested through the SDK resolver. What is asserted HERE is that no boot reader keeps its own
- * handling: the hook cannot be driven under this suite's runner (a React hook,
- * and the tauri barrel does not load here — same constraint and pattern as
- * `error-report-connectivity.test.ts`), and the shape is the invariant anyway.
- */
-
 const read = (rel: string): string =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 

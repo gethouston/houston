@@ -1,17 +1,3 @@
-// Typed GCIP REST wrappers — the desktop's Firebase Auth client (the web +
-// admin surfaces use firebase-js-sdk instead; see MIGRATION-DESIGN §2). The
-// federated calls live in firebase-idp.ts. All `fetch`, all throwing typed
-// `IdentityError` on failure:
-//
-//   createAuthUri        — authorize URL for the brokered Apple/Microsoft flows
-//   signInWithPassword   — admin email+password
-//   signInWithCustomToken— email-OTP final exchange (gateway-minted token)
-//   refreshIdToken       — rehydrate/refresh via securetoken.googleapis.com
-//
-// Every wrapper normalizes the raw GCIP JSON into a stable result: `expiresIn`
-// (seconds string) → absolute `expiresAt` (epoch ms), snake_case → camelCase,
-// and validates required fields (missing → `malformed_response`).
-
 import { IdentityError } from "./errors.ts";
 import type { IdpProviderId } from "./firebase-idp.ts";
 import {
@@ -29,16 +15,13 @@ export interface PasswordSignInResult {
   email: string;
 }
 
-/** Custom-token exchange returns no profile — decode the idToken for uid/email. */
 export interface TokenSignInResult {
   idToken: string;
   refreshToken: string;
   expiresAt: number;
 }
 
-/** Custom-token exchange tokens + GCIP's account-creation flag. */
 export interface CustomTokenSignInResult extends TokenSignInResult {
-  /** True when THIS exchange created the GCIP account (first sign-in ever). */
   isNewUser: boolean;
 }
 
@@ -54,7 +37,6 @@ export function reqString(
   return v;
 }
 
-/** `expiresIn` arrives as a seconds STRING; convert to an absolute epoch-ms. */
 export function expiresAtFrom(
   obj: Record<string, unknown>,
   key: string,
@@ -67,20 +49,10 @@ export function expiresAtFrom(
   return Date.now() + seconds * 1000;
 }
 
-/**
- * Mint a provider authorize URL through GCIP (`accounts:createAuthUri`) for the
- * brokered desktop flows: GCIP builds the URL, carrying its own CSRF `state`,
- * and returns the `sessionId` that later pairs with the callback in
- * {@link signInWithIdpSession}. `continueUri` is passed to the provider
- * VERBATIM as `redirect_uri` (GCIP does NOT bounce through its `/__/auth`
- * handler), so it must be a redirect URI registered on the provider's app —
- * Apple's gateway bridge, or Microsoft's `http://localhost:<port>` loopback.
- */
 export async function createAuthUri(params: {
   apiKey: string;
   providerId: IdpProviderId;
   continueUri: string;
-  /** Space-delimited extra OAuth scopes (e.g. Apple's `name email`). */
   oauthScope?: string;
 }): Promise<{ authUri: string; sessionId: string }> {
   const body = await postGcipJson(
@@ -97,7 +69,6 @@ export async function createAuthUri(params: {
   };
 }
 
-/** Admin email + password sign-in. */
 export async function signInWithPassword(params: {
   apiKey: string;
   email: string;
@@ -116,7 +87,6 @@ export async function signInWithPassword(params: {
   };
 }
 
-/** Exchange a gateway-minted custom token (email-OTP flow) for a session. */
 export async function signInWithCustomToken(params: {
   apiKey: string;
   customToken: string;
@@ -133,7 +103,6 @@ export async function signInWithCustomToken(params: {
   };
 }
 
-/** Refresh (or rehydrate across launches) via securetoken. Snake_case body. */
 export async function refreshIdToken(params: {
   apiKey: string;
   refreshToken: string;
@@ -152,15 +121,6 @@ export async function refreshIdToken(params: {
   };
 }
 
-/**
- * Set the ACCOUNT RECORD's display profile (GCIP `accounts:update`). GCIP mints
- * the `name`/`picture` ID-token claims from the account record, not from the
- * federated identity, so a record created photo-less signs in with tokens that
- * carry no `picture` — and the gateway, which trusts the token, serves initials
- * to every teammate. Called by the sign-in completions to backfill the record
- * from the provider identity; `returnSecureToken` hands back fresh tokens that
- * already carry the new claims.
- */
 export async function updateAccountProfile(params: {
   apiKey: string;
   idToken: string;

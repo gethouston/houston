@@ -9,16 +9,6 @@ export type MigrateSync =
   | { durable: true; uploaded: string[]; deleted: string[] }
   | { durable: false; conflicts: string[]; skipped: string[] };
 
-/**
- * Write a migrated tree back. Every new file is create-only and every
- * rewrite carries the generation it read, and the store goes in WITHOUT its
- * listing, so a 412 stays a conflict: the sync's refreshed-generation retry
- * would otherwise write over an object a racing writer just landed
- * (op-seed-sync.ts does the same). Two passes: the workspace preferences,
- * where the GROUP.md and sidebar steps keep their done-markers, go only
- * after everything else landed, so a marker never claims a removal the
- * store does not have yet.
- */
 export async function syncMigratedTree(input: {
   store: ObjectStore;
   prefix: string;
@@ -54,8 +44,6 @@ export async function syncMigratedTree(input: {
         generations: input.generationAware,
       },
     );
-    // The first pass leaves the preferences changed on purpose; a change
-    // outside the scope is still changed in the last pass, and counted there.
     const stray = last ? synced.outOfScope : 0;
     if (synced.conflicts.length + synced.skipped.length + stray > 0)
       return {

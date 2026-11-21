@@ -6,7 +6,6 @@ import { ATOMIC_TMP_SUFFIX } from "@houston/protocol";
 const RETENTION_MS = 30 * 24 * 60 * 60_000;
 const MAX_BYTES = 1024 * 1024 * 1024;
 
-/** Prune only completed entries and temp files old enough to be abandoned. */
 export async function pruneOfficeCache(cacheDir: string): Promise<void> {
   const now = Date.now();
   const entries = [];

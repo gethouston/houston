@@ -4,10 +4,6 @@ import { handleBoardKeys } from "../src/hooks/board-keys.ts";
 import { AGENT_VIEW_ID } from "../src/lib/teams-model.ts";
 import { useUIStore } from "../src/stores/ui.ts";
 
-// The file preview is a level of the nav stack: opening pushes, back (the
-// phone's hardware back included) closes it, and leaving the place it was
-// opened from shuts it.
-
 afterEach(() => useUIStore.getState().reset());
 
 const deck = {
@@ -17,8 +13,6 @@ const deck = {
   chat: { draftKey: "activity-1" },
 };
 
-/** A bare Escape with focus on the page body, as the shell's key router
- *  receives it. Returns whether something claimed the key. */
 function pressEscape(): boolean {
   const event = {
     key: "Escape",

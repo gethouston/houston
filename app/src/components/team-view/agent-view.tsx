@@ -26,9 +26,6 @@ export function AgentView() {
   const agent = agents.find((item) => item.id === activeAgentId);
   const sections = agent ? visibleAgentSections(capabilities, agent) : [];
   const section = resolveTeamSection(sections, requestedSection);
-  // The phone's Tasks is the employee's task list on the AI Employees tab, so
-  // a phone standing on this screen's Tasks (a resize, a restored entry) is
-  // moved there rather than shown a desktop board.
   const phoneTasks =
     agent !== undefined && isMobile && section === "mission-control";
   useEffect(() => {

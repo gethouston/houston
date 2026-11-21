@@ -8,14 +8,6 @@ import { openExternalUrl } from "../../../lib/open-external-url";
 import { ChannelLinkCommand } from "./channel-link-command";
 import { useChannelLinkExpired } from "./use-channel-link-expired";
 
-/**
- * "Open WhatsApp" as a real link. A click on an anchor is the one open no
- * popup blocker refuses, and on a phone it hands `wa.me` to the WhatsApp app
- * instead of orphaning a blank tab behind a script open. The desktop webview
- * opens no windows, so there the click goes to the OS browser, which reports
- * its own failure (`open-external-url.ts`). While another channel call is in
- * flight it is a disabled button: the code it carries may be on its way out.
- */
 function WhatsAppOpenAction({
   url,
   busy,
@@ -56,11 +48,6 @@ function WhatsAppOpenAction({
   );
 }
 
-/**
- * The code a WhatsApp connect minted. A phone opens WhatsApp with the message
- * prefilled; a desktop shows a QR code for the phone to scan. Either way the
- * number and the command stay reachable for typing it by hand.
- */
 export function WhatsAppLinkDetails({
   link,
   busy,
@@ -100,8 +87,6 @@ export function WhatsAppLinkDetails({
             </details>
           </div>
           <div className="hidden space-y-3 md:block">
-            {/* Dark modules on a light tile in every theme: an inverted code
-                fails many phone scanners. */}
             <div className="inline-block rounded-xl bg-qr-tile p-3">
               <QRCodeSVG
                 value={link.url}

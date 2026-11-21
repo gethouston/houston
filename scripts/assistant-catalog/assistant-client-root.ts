@@ -3,23 +3,10 @@ import { calleeName, namedValue, unwrap } from "./assistant-ast.ts";
 import type { HopContext, Unresolved } from "./assistant-client-hop.ts";
 import type { PathPart } from "./assistant-value-scope.ts";
 
-/**
- * Where a sub-client is rooted, which is the prefix every literal inside it
- * hangs off.
- */
-
-/**
- * The route prefix a per-agent client is rooted at. `ModuleContext.clientFor`
- * builds `${baseUrl}/agents/${encodeURIComponent(agentId)}` (packages/sdk/
- * src/sdk.ts), so every method on it hangs off that prefix; the user-scoped
- * clients take the base URL itself and their literals already carry `/v1`.
- */
 const AGENT_ROOT = "/agents/";
 
-/** How a module resolves the client it calls: `ctx.clientFor(<agentId>)`. */
 const CLIENT_FOR = "clientFor";
 
-/** The declaration an identifier refers to, searching outward from `from`. */
 function declarationOf(
   name: string,
   from: ts.Node,
@@ -44,7 +31,6 @@ function declarationOf(
   return null;
 }
 
-/** `new SomeClient({ baseUrl, … })` — a client rooted at the engine base. */
 function isBaseRooted(expression: ts.Expression): boolean {
   const node = unwrap(expression);
   if (!ts.isNewExpression(node)) return false;
@@ -59,16 +45,6 @@ function isBaseRooted(expression: ts.Expression): boolean {
   );
 }
 
-/**
- * The prefix the receiving client contributes, or why it cannot be composed.
- *
- * `null` is reserved for the ONE case that is not a failure: a client the
- * operation was HANDED, which makes the body its caller's helper rather than an
- * operation. Every other shape answers `unresolved`, because the call already
- * landed in a sub-client method — the request IS being made, and a silent
- * `null` there would erase the operation from the catalog and from the coverage
- * gate alike.
- */
 export function clientRoot(
   receiver: ts.Expression,
   context: HopContext,
@@ -92,9 +68,6 @@ export function clientRoot(
       { kind: "param", name, encoding: "segment" },
     ];
   }
-  // A client reached through a property (`this.client`, `ctx.client`) was put
-  // there by whoever constructed the holder, so it is the handed-in case again:
-  // the body is that owner's helper, not an operation of its own.
   if (!ts.isIdentifier(node)) return null;
   const declaration = declarationOf(node.text, receiver);
   if (!declaration)
@@ -102,9 +75,6 @@ export function clientRoot(
       unresolved: `\`${node.text}\` is declared outside the module, so where it is rooted is not readable here`,
     };
   if (ts.isParameter(declaration)) {
-    // A client the module handed its own sub-factory is still the module's.
-    // One handed in from anywhere else belongs to the caller: that body is the
-    // caller's helper, not an operation a dispatcher could ever reach.
     const supplied = context.substitutions.get(node.text);
     return supplied ? clientRoot(supplied, context, depth + 1) : null;
   }

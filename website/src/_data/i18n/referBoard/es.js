@@ -1,7 +1,3 @@
-// Copia en español del tablero de solicitudes de /data-partners/refer y de la
-// página de cada solicitud. Espejo exacto de en.js (scripts/check-locales.mjs
-// lo verifica). Español neutro de LatAm, de tú.
-
 export default {
   board: {
     all: "Todas",

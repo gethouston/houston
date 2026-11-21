@@ -43,9 +43,6 @@ test("collects every file in the tree, folders excluded", () => {
 });
 
 test("walks depth-first, in the order the list renders the rows", () => {
-  // "taxes" comes before "notes.txt" in 2025's children, so the whole taxes
-  // subtree must be enumerated before the sibling file — otherwise shift-less
-  // "select all" would check rows in an order the eye cannot follow.
   assert.deepEqual(collectFilePaths(folder("2025")), [
     "2025/taxes/W2.pdf",
     "2025/taxes/receipts/coffee.png",
@@ -70,8 +67,6 @@ test("a leaf folder collects only its own files", () => {
 });
 
 test("select-all follows the SEARCH: a pruned tree collects only survivors", () => {
-  // Fed the filtered tree on purpose — "select all" must never reach rows the
-  // query hid, which is why FilesBrowser passes `visibleFolder`, not the root.
   assert.deepEqual(collectFilePaths(filterFolder(tree, "w2")), [
     "2025/taxes/W2.pdf",
   ]);

@@ -1,34 +1,17 @@
-/**
- * File arguments: Composio marks an action argument that carries a file with
- * `file_uploadable: true` in the action's input schema (Gmail `attachment`,
- * Drive `file_to_upload`). Execute accepts only `{ name, mimetype, s3key }`
- * there, with an `s3key` from Composio's own files API for this project, so a
- * workspace path the agent passes must be uploaded first (file-staging.ts).
- *
- * The walk mirrors Composio's own SDK (`walkFileUploadableLeaves`): it follows
- * the runtime value down the schema and resolves `anyOf`/`oneOf`/`allOf` to the
- * single file-bearing variant whose shape matches the value, so Gmail's
- * `attachment: FileUploadable | FileUploadable[]` handles one file or a list.
- */
-
-/** One action's catalog entry, as the provider describes it. */
 export interface ActionDescription {
   action: string;
   toolkit: string;
   inputParams?: unknown;
 }
 
-/** One file an action will reference, before its bytes are uploaded. */
 export interface FileUploadRequest {
   action: string;
   toolkit: string;
   filename: string;
   mimetype: string;
-  /** Lowercase hex MD5 of the bytes. */
   md5: string;
 }
 
-/** Where to PUT the bytes, with exactly these headers; `key` is the s3key. */
 export interface FileUploadSlot {
   key: string;
   uploadUrl: string;
@@ -50,11 +33,8 @@ const variantsOf = (schema: Schema): Schema[] =>
       : [];
   });
 
-/** Real file arguments sit a few levels deep; a deeper schema is pathological
- *  and must not overflow the stack. */
 const MAX_DEPTH = 32;
 
-/** Whether any node of the schema is a file argument. */
 export function hasFileArgs(schema: unknown, depth = 0): boolean {
   const node = asSchema(schema);
   if (!node || depth > MAX_DEPTH) return false;
@@ -77,10 +57,6 @@ function matchesShape(schema: Schema, value: unknown): boolean {
   return false;
 }
 
-/**
- * A copy of `value` with every value sitting at a file argument passed through
- * `leaf`; everything else is returned as it came. Nothing is mutated.
- */
 export async function mapFileArgs(
   value: unknown,
   schema: unknown,
@@ -109,7 +85,6 @@ export async function mapFileArgs(
   }
   if (Array.isArray(value) && node.items !== undefined) {
     const items = Array.isArray(node.items) ? node.items[0] : node.items;
-    // One item at a time: a file leaf holds that file's bytes while it runs.
     const out: unknown[] = [];
     for (const item of value) {
       out.push(await mapFileArgs(item, items, leaf, depth + 1));
@@ -119,13 +94,8 @@ export async function mapFileArgs(
   return value;
 }
 
-/** Keys Composio's files API hands out: upload keys under the project, and
- *  download keys like its own schema example ("47563/gmail/GET_ATTACHMENT/…"). */
 const COMPOSIO_KEY = /^(projects\/pr_|\d+\/[a-z0-9_-]+\/[A-Z0-9_]+\/)/;
 
-/** A path, from the documented string form or the `{ s3key: <path> }` shape
- *  agents copy from the raw schema. A real Composio key there (a file an
- *  earlier download action stored) is forwarded untouched. */
 export function fileRef(
   value: unknown,
 ): { path: string; name?: string } | null {

@@ -21,7 +21,6 @@ import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { BILLING_CURRENCY } from "../organization/billing-tab-model";
 import { useOrgName } from "./free-org-picker-rows";
 
-/** The notices the modal's intro announces, before the cutover. */
 export type IntroNotice = Extract<
   AnnouncedChoice,
   { kind: "pick" | "single_org" | "member" }
@@ -33,15 +32,6 @@ export interface NoticePoint {
   body: string;
 }
 
-/**
- * The pricing-change modal's first page, as points, for the notice it
- * announces. Only a pick names a price, and every figure is the gateway's: a
- * payer's own price per member off the pick's monthly totals (a payer keeps
- * the price they signed up at), everyone else's a new checkout's list prices
- * (`listPrices`: the orgs list's, else the billing choice's, SDK
- * `announcedSeatPrices`). A price the wire has not sent is left
- * unsaid, and so is every price inside the store apps, which never sell.
- */
 export function useNoticePoints(
   notice: IntroNotice,
   choice: BillingChoice,
@@ -96,7 +86,6 @@ export function useNoticePoints(
   }
 }
 
-/** The pick's second page: what happens to the orgs not kept free. */
 export function useNotKeptPoints(): NoticePoint[] {
   const { t } = useTranslation("plan");
   return [
@@ -121,7 +110,6 @@ export function useNotKeptPoints(): NoticePoint[] {
 type PlanT = TFunction<"plan">;
 type Money = (cents: number) => string;
 
-/** A payer's point: one org covered, at what one member costs them today. */
 function coversPoint(
   t: PlanT,
   seatCents: number | null,
@@ -137,7 +125,6 @@ function coversPoint(
   };
 }
 
-/** Everyone else's: the other orgs pay per member, monthly or yearly. */
 function restPoint(
   t: PlanT,
   prices: SeatPrices | null,

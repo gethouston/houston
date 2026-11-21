@@ -14,7 +14,6 @@ const SHAPES: StackedShape[] = ["column", "leaf"];
 describe("share card content budget", () => {
   it("fits the worst case of every stacked card inside it, mark and padding included", () => {
     for (const shape of SHAPES) {
-      // A name alone takes up to two lines; with a role, one line each.
       const cases = [
         ...Array.from({ length: NAME_LINES + 1 }, (_, n) => [n, 0]),
         [1, 1],

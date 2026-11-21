@@ -34,8 +34,6 @@ test("the sandbox facade authenticates and forwards the user turn verbatim", asy
         message,
         title: "hello",
         expectedCount: 3,
-        // Legacy field a pre-cleanup runtime still sends: must be tolerated
-        // (ignored), never required.
         needsSessionReplay: true,
       }),
     ),

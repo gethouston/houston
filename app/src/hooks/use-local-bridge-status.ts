@@ -6,7 +6,6 @@ import {
 import { reconnectLocalModel } from "../lib/local-model-connect";
 import { osIsTauri } from "../lib/os-bridge";
 
-/** The product observes the SDK snapshot; the native event subscription is shared. */
 export function useLocalBridgeStatus(enabled = true) {
   const snapshot = useSyncExternalStore(
     subscribeLocalBridge,
@@ -18,9 +17,7 @@ export function useLocalBridgeStatus(enabled = true) {
     if (!enabled || reconnecting || !osIsTauri()) return;
     setReconnecting(true);
     void reconnectLocalModel()
-      .catch(() => {
-        // The action reports through the app's standard error paths.
-      })
+      .catch(() => {})
       .finally(() => setReconnecting(false));
   }, [enabled, reconnecting]);
   const active = enabled && osIsTauri();

@@ -2,14 +2,6 @@ import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 import { expect, test } from "vitest";
 import { PROVIDERS } from "./catalog";
 
-/**
- * The host catalog is read LIVE on the cloud per-turn path
- * (`turn/dispatch-providers.ts` → the `activeModel` a hosted agent starts on),
- * so a default restated here and changed in `@houston/domain` sends a hosted
- * turn to a model the picker never offered. The domain table owns the value;
- * this file may only point at it.
- */
-
 test("no catalog entry restates a default the domain owns", () => {
   for (const p of PROVIDERS) {
     if (p.defaultModel === undefined) continue;

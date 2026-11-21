@@ -5,14 +5,6 @@ import { CommandItem } from "../command";
 import { ProviderIcon } from "./provider-icon";
 import type { ModelPickerLabels, ModelPickerProvider } from "./types";
 
-/**
- * Level 1: the connected providers, in the shared dropdown idiom. Each row is a
- * `CommandItem` so ↑↓/Enter roving works; Enter (or click) drills into that
- * provider's models. A neutral loading state stands in for an empty list while
- * statuses resolve (#342 guard); a truly empty connected set shows the explained
- * empty state below instead. A check marks the current provider; a trailing
- * chevron signals the drill-in to its models.
- */
 export function ProviderList({
   providers,
   loading,
@@ -31,7 +23,6 @@ export function ProviderList({
     className?: string,
   ) => React.ReactNode;
   onEnter: (providerId: string) => void;
-  /** Empty-state action. Omit to render the empty state with no action. */
   onConnect?: () => void;
 }) {
   if (loading) {
@@ -42,10 +33,6 @@ export function ProviderList({
       </div>
     );
   }
-  // Settled, and nothing is connected. Say so honestly and offer the way out
-  // rather than leaving a blank panel the user has to interpret: an empty
-  // provider list is the normal first state of a brand-new team space, not an
-  // error.
   if (providers.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">

@@ -28,12 +28,9 @@ function stamp(entry: Entry): number {
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
 }
 
-/** The later `updated_at` wins; without a later remote stamp the local side
- *  does, as every merged write did before merges kept a base. */
 const newer = (local: Entry, remote: Entry): Entry =>
   stamp(remote) > stamp(local) ? remote : local;
 
-/** One key's entry after the merge; undefined = it is gone. */
 function resolve(
   base: Entry | undefined,
   local: Entry | undefined,
@@ -43,33 +40,12 @@ function resolve(
     if (!base) return newer(local, remote);
     if (isDeepStrictEqual(local, base)) return remote;
     if (isDeepStrictEqual(remote, base)) return local;
-    // Both changed it. An entry's fields hang together (a routine's schedule
-    // or trigger, a provider and its model, a definition's kind and source),
-    // so the newer side's whole entry lands, never a mix of the two.
     return newer(local, remote);
   }
-  // In the base and missing from one side: that side deleted it, explicitly.
-  // An edit on the other side never brings it back.
   if (base) return undefined;
   return local ?? remote;
 }
 
-/**
- * Merge a writer's keyed array (routines and memories by `id`, custom
- * integration definitions by `slug`) into the remote copy it lost a
- * generation race to.
- *
- * With `base` (the bytes the writer started from) this is three-way per
- * entry: an entry the writer left untouched takes the remote's copy, so a
- * stale local copy never reverts another writer's edit; one both changed
- * goes whole to the newer side; one either side deleted stays deleted. Without a base (the standing pod's sync) the
- * author of a difference is unknowable: both sides' entries survive, and an
- * entry both hold resolves by `updated_at`, else to the local copy.
- *
- * Remote entries the writer lacks come first, then the writer's own in its
- * order: the order every merged write has kept. Entries without a key are
- * kept from both sides.
- */
 export function mergeKeyedArrays(
   remote: readonly unknown[],
   local: readonly unknown[],

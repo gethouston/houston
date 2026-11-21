@@ -13,7 +13,6 @@ import { agentRest } from "./agent-rest";
 import { json, methodNotAllowed, readJson } from "./http";
 import { defineRouteFamily } from "./registry";
 
-/** Per-agent shared-skill enablement, mounted behind the agent ownership check. */
 export async function handleSkillsManifest(
   vfs: Vfs | undefined,
   paths: WorkspacePaths,
@@ -45,12 +44,6 @@ export async function handleSkillsManifest(
   return true;
 }
 
-/**
- * One path, two verbs — and a wrong verb is answered by this handler, not by
- * the chain: the manifest 405s after the unwired-vfs 503, so the family
- * owns its own path for every method rather than letting the dispatcher
- * shortcut to a 405 the handler would never have reached.
- */
 defineRouteFamily({
   group: "skills-manifest",
   members: [

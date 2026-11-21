@@ -14,15 +14,6 @@ import {
   MAX_MIGRATION_FILE_BYTES,
 } from "./migration-scope";
 
-/**
- * The TARGET side of the desktop→cloud migration import (HOU-719): unpack one
- * uploaded zip chunk into the agent root. Every entry is re-validated against
- * the shared migration allowlist — the body is client input arriving through
- * the gateway, so a hostile archive must never write `auth.json`, engine
- * internals, or anything outside the root. Skip-existing per entry makes a
- * re-POST of the same chunk an idempotent resume.
- */
-
 export class MigrationImportError extends Error {
   constructor(
     readonly status: number,
@@ -37,33 +28,21 @@ export interface MigrationImportResult {
   written: number;
   skipped: number;
   rejected: { path: string; reason: string }[];
-  /** False when this deployment has no on-disk agent dir to anchor sessions. */
   sessionsRebuilt: boolean;
 }
 
-/** Imported runtime transcripts surface as conversation reactivity, not Files. */
 function migrationEventType(rel: string): AgentFileChangeEvent["type"] | null {
   if (rel.startsWith(".houston/runtime/")) return "ConversationsChanged";
   return agentFileEventType(rel);
 }
 
-/**
- * Re-synthesize the pi session for an imported transcript. Sessions are
- * cwd-anchored (`agentDir`), so the source machine's `.jsonl`s can't be
- * transplanted — rebuild the agent's memory from the transcript's user and
- * assistant text instead, exactly as the boot chat-history migration does.
- * pi persists a session only once it holds an assistant message.
- */
 function synthesizeSessionFromTranscript(
   agentDir: string,
   conv: StoredConversation,
   listedSessions: ReadonlySet<string>,
 ): void {
-  // The id names the session dir on disk — refuse anything path-like.
   if (!conv.id || /[/\\]/.test(conv.id) || conv.id.includes("..")) return;
   const sessionDir = join(agentDir, ".houston", "runtime", "sessions", conv.id);
-  // Idempotent resume. The listing sees a session a lazy tree (a pool
-  // worker) holds only in the store; on a real tree it adds nothing.
   if (listedSessions.has(conv.id) || existsSync(sessionDir)) return;
   const pairs = conv.messages.filter(
     (m) => (m.role === "user" || m.role === "assistant") && m.content,
@@ -77,19 +56,15 @@ function synthesizeSessionFromTranscript(
     );
     if (m.ts > lastTs) lastTs = m.ts;
   }
-  // Close the imported block so the next live turn treats it as a record, not
-  // as pending instructions (see IMPORTED_HISTORY_NOTE for the incident).
   mgr.appendMessage(importedHistoryNote(lastTs));
 }
 
 export async function applyMigrationArchive(opts: {
   vfs: Vfs;
   root: string;
-  /** Absolute on-disk agent dir (local profile / pod); anchors pi sessions. */
   agentDir?: string;
   bytes: Buffer;
   overwrite: boolean;
-  /** The verified importer, stamped as each routine's `created_by`. */
   routineCreatedBy?: string;
 }): Promise<{
   result: MigrationImportResult;
@@ -115,7 +90,6 @@ export async function applyMigrationArchive(opts: {
     );
   }
 
-  // One listing up front → O(1) existence checks for skip-existing.
   const existing = new Set(
     (await opts.vfs.listDetailed(opts.root)).map((s) => s.key),
   );
@@ -146,10 +120,6 @@ export async function applyMigrationArchive(opts: {
       rel.endsWith(".json");
     if (!opts.overwrite && existing.has(key)) {
       result.skipped++;
-      // A retry after a crash between the transcript write and its session
-      // finds the transcript here: its session is still rebuilt from the
-      // transcript the store KEEPS (the chat and the model's memory must
-      // agree), and synthesis skips any session that already exists.
       if (transcript) {
         const kept = await opts.vfs.readText(key);
         if (kept !== null) parseTranscript(Buffer.from(kept), transcripts);
@@ -163,8 +133,6 @@ export async function applyMigrationArchive(opts: {
     result.written++;
     const eventType = migrationEventType(rel);
     if (eventType) events.add(eventType);
-    // The transcript file itself is imported verbatim either way; an
-    // unparseable one just gets no synthesized session.
     if (transcript && !parseTranscript(data, transcripts))
       result.rejected.push({ path: rel, reason: "transcript not parseable" });
   }

@@ -17,22 +17,9 @@ import {
   type MissionsDeps,
 } from "@houston/host/src/routes/missions-sandbox";
 
-/**
- * The host half of a standing assistant pod, for ONE pooled Houston turn.
- *
- * On a pod the runtime reaches Houston operations and the mission board
- * through its host over loopback, with a per-agent sandbox token. This is the
- * same arrangement inside the worker: the SAME host handlers
- * (`routes/assistant-sandbox.ts`, `routes/missions-sandbox.ts`) on a loopback
- * port that lives for the turn, accepting only a random token minted for it
- * and held in this process. Every request runs inside the turn's coordinator
- * scope, which is how those handlers learn the owner, the slug and the
- * turn's credential without a pod environment.
- */
 export interface CoordinatorRoutes {
   scope: CoordinatorScope;
   claim: { workspaceId: string; agentId: string };
-  /** Resolved per request: the approval records may still be loading. */
   assistant: () => Promise<Omit<AssistantSandboxDeps, "vault">>;
   missions: Omit<MissionsDeps, "gatewayFronted">;
 }

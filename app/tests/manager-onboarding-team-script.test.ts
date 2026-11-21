@@ -9,7 +9,6 @@ import {
   teamUndo,
 } from "../src/lib/manager-onboarding/team-script.ts";
 
-/** The starter team, hired: it closes the team. */
 const HIRED = {
   question: "teamBasic",
   value: "Avery, Jordan and Riley",
@@ -17,7 +16,6 @@ const HIRED = {
 
 const DONE = { question: "teamDone", value: "done" } as const;
 
-/** The team's industry asked here, because the survey left none. */
 const viaIndustry = () =>
   teamAnswer(
     { ...TEAM_CONVERSATION_START, view: { kind: "basicIndustry" } },
@@ -25,7 +23,6 @@ const viaIndustry = () =>
     { kind: "basic", viaIndustry: true },
   );
 
-/** A resumed run: "Hire one more" opens the starter team. */
 const resumedMore = () =>
   teamAnswer(
     TEAM_CONVERSATION_START,

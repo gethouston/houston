@@ -1,11 +1,3 @@
-/**
- * Lines said somewhere else, written into a chat as its real history: the AI
- * Manager's scripted onboarding lands in the manager's own conversation this
- * way, so the chat that follows shows it and the model reads it. Each import
- * rides the outbox (`conversation-import-outbox.ts`), so one that fails is
- * sent again by `retryPendingImports`.
- */
-
 import type {
   ConversationImportRequest,
   ConversationImportResult,
@@ -19,14 +11,12 @@ import {
 } from "./conversation-import-outbox";
 import { asAgentInput, asImportInput } from "./turn-inputs";
 
-/** Which import, into which chat. */
 export interface ConversationImportRef {
   agentId: string;
   conversationId: string;
   importId: string;
 }
 
-/** What one retry pass came to: the imports that landed and why others did not. */
 export interface ConversationImportRetry {
   landed: (ConversationImportRef & { imported: number })[];
   failures: (ConversationImportRef & { error: unknown })[];
@@ -81,8 +71,6 @@ export function createConversationImports(ctx: ModuleContext) {
     await outbox.owe(entry);
     let result: ConversationImportResult;
     try {
-      // Spelled out, not `send(entry)`: the parity extractor routes this
-      // method to its host route by reading the client call here.
       result = await ctx
         .clientFor(agentId)
         .importMessages(conversationId, request);
@@ -100,18 +88,6 @@ export function createConversationImports(ctx: ModuleContext) {
     return result;
   };
 
-  /**
-   * Sends again every import this device still owes one agent.
-   *
-   * Only that agent's are sent: a device another person signs in to holds
-   * theirs too, which are not this person's to send (their agent refuses
-   * them, and the refusal would cross them off). Each one that lands is
-   * crossed off and listed in `landed`; one the runtime can never accept
-   * (not an import, an agent that is gone) is crossed off and its refusal
-   * listed in `failures`, as is every one still owed for the next try.
-   * @param agentId The agent whose owed imports to send, by the id listAgents
-   *   returns.
-   */
   const retryPendingImports = async (
     agentId: string,
   ): Promise<ConversationImportRetry> => {

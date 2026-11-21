@@ -5,15 +5,10 @@ import {
   isBenignLockRejection,
 } from "../src/lib/benign-rejections.ts";
 
-/**
- * auth-js's typed acquire-timeout error, reduced to the shape our predicate
- * reads: an Error subclass carrying `isAcquireTimeout === true`.
- */
 function acquireTimeoutError(message: string): Error {
   return Object.assign(new Error(message), { isAcquireTimeout: true });
 }
 
-/** WebKit's internal abort rejection, reduced to the shape the predicate reads. */
 function webkitAbortError(): unknown {
   return Object.assign(new Error("Fetch is aborted"), { name: "AbortError" });
 }

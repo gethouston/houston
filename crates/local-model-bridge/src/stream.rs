@@ -126,7 +126,6 @@ pub(crate) async fn forward(
             if value.len() > 256 {
                 return Err("upstream_failed");
             }
-            // The relay accepts only bare media types; parameters stay local.
             let media_type = value.split(';').next().ok_or("upstream_failed")?.trim();
             let canonical = ["application/json", "text/event-stream"]
                 .into_iter()

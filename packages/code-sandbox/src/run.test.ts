@@ -44,7 +44,7 @@ describe("runInSandbox", () => {
       files: [{ path: "in.txt", contentBase64: b64("seed") }],
     });
     expect(r.stdout.trim()).toBe("SEED");
-    expect(r.artifacts.map((a) => a.path)).toEqual(["out.txt"]); // in.txt unchanged → not returned
+    expect(r.artifacts.map((a) => a.path)).toEqual(["out.txt"]);
   });
 
   test("nonzero exit is reported, not thrown", async () => {
@@ -101,20 +101,15 @@ describe("runInSandbox", () => {
   });
 
   test("artifact budget counts base64 size, not raw bytes", async () => {
-    // 1000 raw bytes → ~1336 base64. Budget 1300 (base64 terms): raw "fits" but
-    // encoded does not, so it must be excluded.
     const r = await runInSandbox(
       { language: "python", code: "open('big.bin','wb').write(b'x'*1000)" },
       { ...DEFAULT_LIMITS, maxArtifactBytes: 1300 },
     );
     expect(r.artifacts.find((a) => a.path === "big.bin")).toBeUndefined();
-    // not silently dropped — surfaced for the caller/model.
     expect(r.droppedArtifacts).toContain("big.bin");
   });
 
   test("reaps grandchild processes on completion (process group killed)", async () => {
-    // Non-interactive bash runs `&` jobs in its own process group, so killing the
-    // group must take out the orphaned `sleep`.
     const r = await runInSandbox({
       language: "bash",
       code: "sleep 30 & echo $!",
@@ -124,7 +119,7 @@ describe("runInSandbox", () => {
     await new Promise((res) => setTimeout(res, 250));
     let alive = true;
     try {
-      process.kill(pid, 0); // signal 0 = existence check
+      process.kill(pid, 0);
     } catch {
       alive = false;
     }

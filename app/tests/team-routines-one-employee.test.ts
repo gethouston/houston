@@ -2,9 +2,6 @@ import { ok } from "node:assert";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-// An employee's Routines section shows ONE employee's routines, so nothing in
-// it may still ask "whose routine is this?" or "which employee?".
-
 const DIR = new URL(
   "../src/components/team-view/team-routines/",
   import.meta.url,

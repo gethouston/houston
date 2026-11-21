@@ -1,30 +1,10 @@
-/**
- * Which pending @mentions a SEND actually carries (HOU-944).
- *
- * The composer records `{userId, name}` on the side when a person is accepted;
- * the text stays plain. At send time only the picks whose "@Name" run still
- * survives in the message ship, so deleting the words deletes the mention —
- * and only where the RENDERER would chip them, so nobody is notified about a
- * message that addresses them nowhere (see `mention-mask.ts`). Pure, no React.
- */
-
 import { maskMarkdown } from "./mention-mask.ts";
 import { findMentionSpans } from "./mention-spans.ts";
 import { mentionSpanKey, normalizeMentionText } from "./mention-text.ts";
 import type { MessageMention } from "./types";
 
-/** A pending pick that can actually be matched: it knows the name it wrote. */
 type NamedMention = MessageMention & { name: string };
 
-/**
- * The mentions `text` still contains, in pick order, deduped by userId.
- *
- * Two co-members can share a display name, and "@Ana" cannot say which Ana it
- * means. Occurrences are therefore handed out IN ORDER to the picks made under
- * that name: the first "@Ana" is the first Ana the user chose, the second is
- * the second. Every occurrence past the number of people picked repeats the
- * first — one Ana picked and written twice is still one mention of her.
- */
 export function resolveMentions(
   text: string,
   pending: readonly MessageMention[],
@@ -55,7 +35,6 @@ export function resolveMentions(
   return resolved;
 }
 
-/** The userIds the occurrences of each name resolve to. */
 function claimOccurrences(
   occurrences: readonly string[],
   named: readonly NamedMention[],

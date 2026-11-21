@@ -11,31 +11,17 @@ import {
 } from "../../lib/installed-preview";
 import { browseCatalog, catalogHiddenToolkits } from "../integrations";
 
-/** The consolidated catalog surface's shared view state, ready for
- *  {@link CatalogShell}. */
 export interface CatalogSurface {
   query: string;
   setQuery: Dispatch<SetStateAction<string>>;
   category: string;
   setCategory: (value: string) => void;
-  /** True while the shared query or category is narrowing both sections — the
-   *  cue to uncap the Installed preview. */
   filtering: boolean;
-  /** The installed rows narrowed by the shared filter, fed to `InstalledStrip`. */
   shown: FilteredInstalled;
-  /** How many installed rows the strip currently shows (the total at rest). */
   installedCount: number;
-  /** How many connectable apps match the shared filter (the Available header's
-   *  count; the total at rest). */
   availableCount: number;
 }
 
-/**
- * Own the catalog surface's ONE controls row once: the shared query +
- * category state, the {@link filterInstalledBy} result feeding the Installed
- * strip, and the connectable-match count feeding the Available header, so the
- * two-section wiring lives in one place.
- */
 export function useCatalogSurface(opts: {
   active: readonly InstalledRow[];
   catalog: IntegrationToolkit[];

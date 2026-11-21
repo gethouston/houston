@@ -40,7 +40,6 @@ export function makeLoginRunnerRoutes(injected?: LoginRunner) {
       if (terminal || (provider && provider !== requested)) {
         return json(res, 409, { error: "worker_draining" });
       }
-      // Reserve before loading modules so concurrent requests cannot start two sign-ins.
       if (path === "/login/start") {
         provider = requested;
         operation = "login";

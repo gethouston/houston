@@ -10,14 +10,6 @@ import {
   type ServeProbe,
 } from "./serve-probe";
 
-/**
- * PRODUCT-1324 / HOUSTON-APP-4YV: runServedSync's ~40 unretried concurrent
- * probes turned one transient socket failure into a Sentry ERROR per provider
- * AND silently un-applied that provider for the sync. These pin the probe
- * layer's three defenses: one retry after a short backoff, a small concurrency
- * pool, and failure details that keep the undici `cause` code.
- */
-
 const served = (id: string): ServeProbe => ({
   id,
   state: "served",
@@ -41,7 +33,6 @@ test("a transient first failure is retried once and the retry's answer wins", as
     const probe = await probeProvider("openai-codex", attempt, 0);
     expect(probe.state).toBe("served");
     expect(calls).toBe(2);
-    // The first failure is a WARN breadcrumb, never an error.
     expect(
       warns.mock.calls.some(
         (c) =>
@@ -105,15 +96,11 @@ test("probeProviders caps concurrency and preserves order", async () => {
   };
   const results = await probeProviders(ids, probe, PROBE_CONCURRENCY);
   expect(peak).toBeLessThanOrEqual(PROBE_CONCURRENCY);
-  expect(peak).toBeGreaterThan(1); // still concurrent, not serial
+  expect(peak).toBeGreaterThan(1);
   expect(results.map((p) => p.id)).toEqual(ids);
 });
 
 test("normalizeProbeDetail replaces every echo of the probe's own provider id", () => {
-  // PRODUCT-1443: the host's error body names the provider ("credential
-  // gateway GET qwen failed (500)"), which made every probe's detail unique
-  // and defeated the sweep collapses. The id appears in the gateway path AND
-  // in nested error text — all occurrences must normalize.
   expect(
     normalizeProbeDetail(
       "qwen",
@@ -122,15 +109,12 @@ test("normalizeProbeDetail replaces every echo of the probe's own provider id", 
   ).toBe(
     'credential gateway GET <provider> failed (500): {"error":"<provider> gateway error"}',
   );
-  // A body that never mentions the id passes through untouched.
   expect(normalizeProbeDetail("qwen", '{"error":"gateway error"}')).toBe(
     '{"error":"gateway error"}',
   );
 });
 
 test("probePath asks for a fresh serve only while an auth failure is active", () => {
-  // PRODUCT-1515: the post-reconnect retry must not re-read the host's 15s
-  // cached "not connected" that the failing turn itself populated.
   expect(probePath("anthropic", true)).toBe(
     "/sandbox/credential?provider=anthropic&fresh=1",
   );
@@ -140,7 +124,6 @@ test("probePath asks for a fresh serve only while an auth failure is active", ()
 });
 
 test("describeProbeError surfaces the nested undici cause code", () => {
-  // undici's socket failure: TypeError("fetch failed") with the code on cause.
   const socketErr = Object.assign(new TypeError("fetch failed"), {
     cause: Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" }),
   });
@@ -148,8 +131,6 @@ test("describeProbeError surfaces the nested undici cause code", () => {
     "fetch failed (cause: ECONNRESET)",
   );
 
-  // Happy-eyeballs connect failure: the cause is an AggregateError of
-  // per-address errors, each carrying the code.
   const aggregate = Object.assign(new TypeError("fetch failed"), {
     cause: new AggregateError([
       Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:443"), {
@@ -161,7 +142,6 @@ test("describeProbeError surfaces the nested undici cause code", () => {
     "fetch failed (cause: ECONNREFUSED)",
   );
 
-  // errno-only causes stringify; causeless errors stay the bare message.
   const errnoErr = Object.assign(new TypeError("fetch failed"), {
     cause: Object.assign(new Error("socket hang up"), { errno: -54 }),
   });

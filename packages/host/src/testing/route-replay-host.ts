@@ -15,18 +15,9 @@ import type { ControlPlaneDeps } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 
-/**
- * The stubbed host the golden replay probes. Deliberately partial: the deps a
- * deployment may or may not wire (integrations, custom integrations, the
- * transcript shadow, the trigger locks) are ABSENT, so their routes answer the
- * 404/503 they answer on a host without them — a response the baseline pins
- * just as firmly as a 200.
- */
 export interface ReplayHost {
   deps: ControlPlaneDeps;
-  /** Ids the live store minted, substituted into the probe patterns. */
   ids: Record<string, string>;
-  /** Every `"METHOD rest"` the runtime proxy was handed, in order. */
   forwarded: string[];
 }
 
@@ -64,7 +55,6 @@ const verifier: TokenVerifier = {
   },
 };
 
-/** A fresh host: alice owns one agent, bob owns none (the wrong-user probes). */
 export async function replayHost(): Promise<ReplayHost> {
   const store = new MemoryWorkspaceStore();
   const credentials = new MemoryCredentialStore();
@@ -131,13 +121,6 @@ export async function close(server: Server): Promise<void> {
   await new Promise<void>((resolve) => server.close(() => resolve()));
 }
 
-/**
- * Loopback-only fetch. Several routes reach real services (GitHub, the Agent
- * Store, the integration provider) through the global `fetch`; leaving that
- * open would make the baseline depend on the network. The fence answers every
- * outbound call the same way, so what the baseline records is the handler's
- * own code path.
- */
 export function fenceOutboundFetch(): () => void {
   const real = globalThis.fetch;
   globalThis.fetch = (input, init) => {

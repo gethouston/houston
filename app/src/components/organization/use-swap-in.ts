@@ -2,10 +2,6 @@ import { durationMs } from "@houston/design-tokens";
 import { type RefObject, useLayoutEffect, useRef } from "react";
 import { ENTRANCE_CURVE, swapInKeyframes } from "./org-chart-motion";
 
-/**
- * Brings the element's content in (`swapInKeyframes`) each time `key`
- * changes, never on mount: a dialog opening on a step shows it still.
- */
 export function useSwapIn<T extends HTMLElement>(
   key: string,
 ): RefObject<T | null> {

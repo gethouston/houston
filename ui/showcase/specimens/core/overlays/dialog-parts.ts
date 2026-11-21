@@ -1,9 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * `Dialog`'s public API, read off `ui/core/src/components/dialog.tsx`. Split
- * out only to keep the specimen file inside the 200-line rule.
- */
 export const dialogProps: SpecimenProp[] = [
   { name: "Dialog.open", type: "boolean", note: "Controlled open state." },
   {

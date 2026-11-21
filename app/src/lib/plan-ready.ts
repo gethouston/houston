@@ -1,13 +1,7 @@
 import type { InteractionStep } from "@houston/protocol";
 
-/** A plan_ready step: the model called `plan_ready` with a compact plan lede. It
- *  reaches the frontend as a lone step in a `PendingInteraction`, exactly like
- *  ask_user. Extracted from the protocol union so the app narrows to it. */
 export type PlanReadyStep = Extract<InteractionStep, { kind: "plan_ready" }>;
 
-/** Every interaction step the ChatInteractionCard stepper can walk: question /
- *  signin / connect. Excludes plan_ready and the suggestion cards, which never
- *  belong in the stepper. */
 export type NonPlanReadyStep = Exclude<
   InteractionStep,
   | { kind: "plan_ready" }
@@ -15,23 +9,6 @@ export type NonPlanReadyStep = Exclude<
   | { kind: "suggest_actions" }
 >;
 
-/**
- * Which composer-replacing surface a pending interaction's steps resolve to:
- *
- *  - `card`    — a lone plan_ready step that hasn't been dismissed → the
- *                ChatPlanReadyCard, carrying its plan summary.
- *  - `stepper` — anything else with at least one non-plan_ready step → the
- *                existing ChatInteractionCard, over the plan_ready-free steps
- *                (defensive: a plan_ready step never enters the stepper).
- *  - `none`    — a lone plan_ready step the user dismissed,
- *                or nothing renderable → the composer returns.
- *
- * `dismissed` is the summary of the plan_ready step the user dismissed. It
- * only suppresses a matching offer during the current idle
- * window; the panel clears it when a new turn starts, so reused step ids and
- * summaries never suppress a later turn's card. Pure so the branch is
- * unit-tested without the panel's event plumbing.
- */
 export type PlanReadyOverride =
   | { kind: "card"; summary: string }
   | { kind: "stepper"; steps: NonPlanReadyStep[] }

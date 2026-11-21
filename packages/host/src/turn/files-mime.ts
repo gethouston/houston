@@ -1,12 +1,5 @@
 import { extOf } from "./files-path";
 
-/**
- * How a workspace file is HANDED to the browser: its media type, and the
- * header that decides whether the browser shows it or saves it. Split out of
- * `files.ts` (the HTTP handler) so that module stays the route surface alone.
- */
-
-/** Extension → MIME for the deliverables agents actually produce. */
 const MIME: Record<string, string> = {
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -33,7 +26,6 @@ const MIME: Record<string, string> = {
 export const mimeFor = (name: string): string =>
   MIME[extOf(name).toLowerCase()] ?? "application/octet-stream";
 
-/** RFC 6266 Content-Disposition with a safe ASCII fallback + UTF-8 filename*. */
 export const contentDisposition = (
   kind: "attachment" | "inline",
   name: string,

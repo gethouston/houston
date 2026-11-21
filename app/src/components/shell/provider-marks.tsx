@@ -1,12 +1,3 @@
-/**
- * Provider brand marks (A-M). Every mark is a REAL, single-color brand logo
- * sourced verbatim from models.dev (github.com/sst/models.dev, MIT) via its
- * per-provider logo endpoint (models.dev/logos/<id>.svg) — never
- * hand-approximated. Each renders in `currentColor` through the shared `Glyph`
- * wrapper, so the one mark reads on both light and dark tiles. The rest of the
- * set lives in `provider-marks-extra.tsx`; both are consumed via the
- * `BRAND_LOGOS` registry in `provider-logos.tsx`.
- */
 import { Glyph, type LogoProps } from "./provider-glyph-svg.tsx";
 
 export const AmazonBedrockLogo = ({ className }: LogoProps = {}) => (
@@ -19,8 +10,6 @@ export const AmazonBedrockLogo = ({ className }: LogoProps = {}) => (
 );
 
 export const AnthropicLogo = ({ className }: LogoProps = {}) => (
-  // Anthropic's current starburst logomark (models.dev still serves the retired
-  // "A" wordmark glyph, so this one ships from LobeHub's `claude` icon).
   <Glyph label="Claude" className={className} viewBox="0 0 24 24">
     <path
       fillRule="evenodd"
@@ -192,8 +181,6 @@ export const MiniMaxLogo = ({ className }: LogoProps = {}) => (
   </Glyph>
 );
 
-/** Generic "runs on your machine" mark for the OpenAI-compatible local provider
- * (intentionally NOT a brand logo — it's Houston's own server glyph). */
 export const LocalModelLogo = ({ className }: LogoProps = {}) => (
   <Glyph
     label="Local model"

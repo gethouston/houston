@@ -1,17 +1,5 @@
 import { useTranslation } from "react-i18next";
 
-/**
- * Per-provider "how to get your key" walkthrough inside the connect dialog.
- * Only providers whose key page needs a non-obvious choice get one — NVIDIA
- * first (HOU-890): a working key must be an NGC Personal Key with the
- * "Public API Endpoints" service included, a picker the quick
- * build.nvidia.com key flow never shows, so without these steps users mint
- * keys that fail on every chat model. Amazon Bedrock second (PRODUCT-1477):
- * the console shows a generated key's VALUE exactly once and afterwards lists
- * only its name, which users then paste as the key. Hugging Face third
- * (PRODUCT-1730): a fine-grained token without "Make calls to Inference
- * Providers" authenticates but is refused on every model.
- */
 const GUIDES = {
   huggingface: [
     "apiKey.guide.huggingface1",

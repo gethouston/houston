@@ -14,7 +14,6 @@ const oauthDecline = (): Response =>
     { status: 503 },
   );
 
-/** Build custom-integration routes over signal-scoped executor contexts. */
 export function makeTurnCustomRoutes(
   deps: TurnSandboxDeps,
   getCustom: (signal?: AbortSignal | null) => Promise<TurnCustomContext>,

@@ -1,20 +1,4 @@
-/*
- * Certificate page copy, en + es, in ONE place.
- *
- * A directory data file (not a Nunjucks `{% set %}`) because the copy is needed
- * by templates that cannot share a scope: the share page renders in the
- * attendee's own language (pagination over items, lang per certificate), the
- * per-event claim pages render in the event's language, and the entry +
- * verify pages render in English. Nunjucks `include` does not export `set`
- * variables to the caller, and a macro can only return markup, so the data
- * cascade is the only seam that gives every one of them the same dictionary.
- *
- * `{event}` / `{name}` placeholders are substituted in the templates with the
- * `replace` filter, never string-concatenated, so word order stays translatable.
- */
-
 const en = {
-  // ── Claim (entry + per-event) ──
   eyebrow: "Certificates",
   title: "Get your certificate",
   lead: "Enter the email you registered with and we will pull up your certificate.",
@@ -43,7 +27,6 @@ const en = {
   supportLine: "Still stuck? Write to",
   verifyPrompt: "Checking someone else's certificate?",
   verifyLink: "Verify a certificate",
-  // ── Claim step 2: confirm the name that goes on the certificate ──
   nameStepTitle: "You're on the list!",
   nameStepLead: "One last look at your name before we finish.",
   nameLabel: "Your name",
@@ -62,21 +45,17 @@ const en = {
     "We could not reach Houston to save your name. Check your connection and try again.",
   nameServer:
     "Something went wrong while saving your name. Try again in a moment.",
-  // ── Claim, done ──
   doneTitle: "Your certificate is ready.",
   doneBody: "Issued to {name}.",
   regenerating:
     "Your certificate is being regenerated with this name, it will show up there in a few minutes.",
   shareHint:
     "The link is public: share it anywhere, and anyone can check from that page that it is real.",
-  // ── Share page ──
   shareEyebrow: "Certificate of participation",
   imageAlt: "Houston certificate of participation for {name}, {event}",
   ogTitle: "{name} took part in {event}",
   ogDescription:
     "{event}, {date}. Certificate of participation issued by Houston.",
-  // Used when the event carries no usable date, so the sentence never ships
-  // with a hole in it.
   ogDescriptionNoDate:
     "{event}. Certificate of participation issued by Houston.",
   download: "Download",
@@ -161,6 +140,5 @@ const es = {
 
 export default {
   certCopy: { en, es },
-  // Support address shown on every failure path. One place to change it.
   certSupportEmail: "hello@gethouston.ai",
 };

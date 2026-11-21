@@ -18,9 +18,6 @@ export function ToastContainer({
 }) {
   return (
     <div
-      // The stack's own handle, so a test can ask what THIS surface raised
-      // instead of counting every live region on the page (an sr-only status,
-      // a busy spinner) as if it were a toast.
       data-testid="toast-container"
       className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm"
     >
@@ -49,10 +46,6 @@ function ToastItem({
 
   return (
     <motion.div
-      // The variant is the toast's MEANING, so it must reach assistive tech and
-      // not only the eye: `alert` is the "something went wrong" channel
-      // (assertive), `status` the calm one (polite). Without a role the whole
-      // stack is announced to nobody.
       role={toast.variant === "error" ? "alert" : "status"}
       layout
       initial={{ opacity: 0, y: 20, scale: 0.95 }}

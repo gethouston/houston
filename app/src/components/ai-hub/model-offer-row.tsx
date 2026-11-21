@@ -1,15 +1,3 @@
-/**
- * One provider's way to run a model, in a model modal's "Get it through" list.
- * A hub-local row (NOT the shared `RowCard`, which draws its own media box) that
- * pairs the provider's colorful `BrandMark` tile with its name, echoing the
- * models card grid's BrandMark tiles. Shows either a per-1M price line or a
- * subscription label. Connected -> a live status and a row that opens the
- * provider modal; CONFIRMED not connected -> a Connect pill; unconfirmable ->
- * a muted "Checking" and no action at all, because offering Connect for an
- * account that may already be signed in is exactly the guess the tri-state
- * exists to prevent (HOU-979).
- */
-
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
@@ -46,7 +34,6 @@ export function ModelOfferRow({
     t("model.offers.subscription")
   );
 
-  // A boxless logo lockup + copy + action, on the modal's grey slab.
   const row = (action: ReactNode) => (
     <span className="flex w-full min-w-0 items-center gap-3 rounded-xl bg-chip px-3 py-2.5">
       <BrandMark providerId={provider.id} size="sm" />
@@ -87,8 +74,6 @@ export function ModelOfferRow({
     <RowCardButton
       label={t("card.connect")}
       loading={connections.busy[provider.id] === "connecting"}
-      // Until the first status probe resolves we can't know this offer isn't
-      // already connected, so don't offer an actionable Connect yet.
       disabled={!connections.ready}
       onClick={() => connections.connect(provider)}
     />,

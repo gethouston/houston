@@ -1,7 +1,3 @@
-// A click while a LinkedIn share runs, or within a second of one, is dropped
-// (a double click opened two composers), and the gate survives a task that
-// throws or rejects.
-
 import { deepStrictEqual, strictEqual, throws } from "node:assert";
 import { describe, it } from "node:test";
 import {
@@ -9,7 +5,6 @@ import {
   LINKEDIN_OPEN_COOLDOWN_MS,
 } from "../src/components/organization/org-chart-share-gate.ts";
 
-/** A clock the test moves by hand. */
 function clock() {
   let at = 10_000;
   return {
@@ -20,7 +15,6 @@ function clock() {
   };
 }
 
-/** The next event turn: every microtask of the last one has run. */
 const nextTurn = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("createLinkedInGate", () => {

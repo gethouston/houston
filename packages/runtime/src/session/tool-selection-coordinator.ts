@@ -15,19 +15,6 @@ import { SAVE_LEARNING_TOOL_NAME } from "./tools/save-learning";
 import { SUGGEST_ACTIONS_TOOL_NAME } from "./tools/suggest-actions";
 import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
 
-/**
- * The personal assistant's whole tool surface. Everything here either operates
- * Houston, records the turn's interaction lifecycle, or hands work to an agent.
- *
- * `read` + `write` are the ONE file pair it keeps: memory consolidation needs
- * exactly them (a full memory is answered with "read that file, merge it, write
- * the trimmed list back", routes/learning-write.ts), and `read` also opens the
- * attachments people send it. The workspace guard holds both to that memory
- * document plus a read-only uploads folder (coordinator-policy.ts). No
- * `edit`/`ls`/`grep`/`find` — none of them is on that path. No `bash`,
- * `run_code`, integration execution or skill tools: those DO work, and work belongs on an
- * agent's board where the user can see it.
- */
 export const COORDINATOR_TOOL_NAMES: readonly string[] = [
   "read",
   "write",
@@ -47,7 +34,6 @@ export const COORDINATOR_TOOL_NAMES: readonly string[] = [
   ...ASSISTANT_TOOL_NAMES,
 ];
 
-/** Clamp any tool list to the coordinator surface, preserving order. */
 export function coordinatorToolNames(all: readonly string[]): string[] {
   return all.filter((name) => COORDINATOR_TOOL_NAMES.includes(name));
 }

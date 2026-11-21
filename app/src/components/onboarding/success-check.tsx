@@ -1,10 +1,5 @@
 import { Check } from "lucide-react";
 
-/**
- * The onboarding finished-screen "done" mark: a large filled circle with a check
- * that pops in, wrapped by an expanding ring. Its one and only caller is the
- * finished mission, so this is a single fixed success variant.
- */
 export function SuccessCheck() {
   return (
     <span className="relative flex size-20 items-center justify-center">

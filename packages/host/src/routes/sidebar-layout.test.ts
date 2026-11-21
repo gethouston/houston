@@ -93,7 +93,6 @@ test("sidebar-layout ignores unknown fields on write and read", async () => {
   expect(await get.json()).toEqual(LAYOUT);
 });
 
-/** A folder's optional icon and color retain their validated string values. */
 test("PUT sidebar-layout round-trips a group's icon and color", async () => {
   const id = await wsIdOf("mona");
   const styled: SidebarLayout = {

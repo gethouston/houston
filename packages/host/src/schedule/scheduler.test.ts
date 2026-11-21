@@ -14,16 +14,8 @@ import { MemoryTurnBus } from "../turn/bus";
 import { MemoryVfs } from "../vfs";
 import { type FiringJob, type RoutineFirer, Scheduler } from "./scheduler";
 
-/**
- * The scheduler driver: scans agents, fires routines that come due in the
- * tick window exactly once, records runs, and dedups across replicas via the
- * bus lock. Cron math is the domain's job (schedule.test.ts); here we pin the
- * driver's scan / dedup / run-recording / error-handling behavior.
- */
+const ENABLED = "0 14 * * *";
 
-const ENABLED = "0 14 * * *"; // 14:00 UTC daily
-
-/** A capturing firer; optionally throws to exercise the error path. */
 class CaptureFirer implements RoutineFirer {
   jobs: FiringJob[] = [];
   constructor(private readonly throwWith?: string | Error) {}
@@ -56,7 +48,7 @@ function routine(over: Partial<Routine> = {}): Routine {
 }
 
 const SINCE = new Date("2026-06-12T13:59:00.000Z");
-const DUE = new Date("2026-06-12T14:00:30.000Z"); // 14:00 instant falls in (SINCE, DUE]
+const DUE = new Date("2026-06-12T14:00:30.000Z");
 
 function makeScheduler(
   env: Awaited<ReturnType<typeof setup>>,
@@ -70,7 +62,7 @@ function makeScheduler(
     paths: new CloudPaths(),
     lock,
     firer,
-    now: () => SINCE, // start() pins lastTick to SINCE
+    now: () => SINCE,
     newId: () => `run-${++id}`,
   });
   return s;
@@ -87,7 +79,7 @@ test("a due routine fires once, with the right job and a recorded running run", 
 
   expect(firer.jobs).toHaveLength(1);
   expect(firer.jobs[0]?.routine.prompt).toBe("send the report");
-  expect(firer.jobs[0]?.conversationId).toBe("routine-r1"); // shared chat_mode
+  expect(firer.jobs[0]?.conversationId).toBe("routine-r1");
 
   const { items } = await loadRoutineRuns(
     env.vfs,
@@ -102,7 +94,7 @@ test("a routine not yet due does not fire", async () => {
   const firer = new CaptureFirer();
   const s = makeScheduler(env, firer);
   s.start();
-  await s.tick(new Date("2026-06-12T13:59:30.000Z")); // before 14:00
+  await s.tick(new Date("2026-06-12T13:59:30.000Z"));
   expect(firer.jobs).toHaveLength(0);
 });
 
@@ -117,7 +109,7 @@ test("a disabled routine never fires", async () => {
 
 test("the same scheduled instant fires once across replicas (shared lock)", async () => {
   const env = await setup([routine({ schedule: ENABLED })]);
-  const lock = new MemoryTurnBus(); // the shared bus both replicas use
+  const lock = new MemoryTurnBus();
   const firerA = new CaptureFirer();
   const firerB = new CaptureFirer();
   const a = makeScheduler(env, firerA, lock);
@@ -126,7 +118,7 @@ test("the same scheduled instant fires once across replicas (shared lock)", asyn
   b.start();
 
   await a.tick(DUE);
-  await b.tick(DUE); // same instant → loses the setNx race
+  await b.tick(DUE);
 
   expect(firerA.jobs.length + firerB.jobs.length).toBe(1);
 });
@@ -175,8 +167,6 @@ test("a no-provider 409 fire records the errored run but logs a warning, not an 
   try {
     s.start();
     await s.tick(DUE);
-    // Expected user state (nothing connected) → warning breadcrumb, no Sentry
-    // event. Asserted BEFORE mockRestore — restoring resets recorded calls.
     expect(warn).toHaveBeenCalledOnce();
     expect(error).not.toHaveBeenCalled();
   } finally {
@@ -184,15 +174,12 @@ test("a no-provider 409 fire records the errored run but logs a warning, not an 
     error.mockRestore();
   }
 
-  // The run record still carries the real reason — user-visible, never silent.
   const { items } = await loadRoutineRuns(
     env.vfs,
     workspaceRoot(env.ws, env.agent),
   );
   expect(items).toHaveLength(1);
   expect((items[0] as RoutineRun).status).toBe("error");
-  // Unpinned routine: there is no provider to name, so the row says the
-  // routine has no model (PRODUCT-1982) and counts toward the auto-pause.
   expect((items[0] as RoutineRun).failure).toEqual({ code: "no_model" });
 });
 
@@ -231,9 +218,6 @@ test("a no-provider 409 on a PINNED routine names the provider the creator must 
 });
 
 test("the workspace timezone preference re-times routines (account-wide zone)", async () => {
-  // "0 9 * * *" is 9am; in America/Bogota (UTC-5) that is 14:00 UTC, which falls
-  // in the (SINCE, DUE] window. Read as UTC, 9am already passed — so the account
-  // preference is what makes it fire (the cloud analog of respawn-on-tz-change).
   const env = await setup([routine({ schedule: "0 9 * * *" })]);
   await setPreference(env.vfs, env.ws.id, "timezone", "America/Bogota");
   const firer = new CaptureFirer();
@@ -244,15 +228,6 @@ test("the workspace timezone preference re-times routines (account-wide zone)", 
   expect(firer.jobs[0]?.routine.schedule).toBe("0 9 * * *");
 });
 
-/**
- * Fail-isolation (HOU-953). A files-first agent writes its own `.houston` docs,
- * so any of them can be unreadable at any moment. `tick` advances `lastTick`
- * before it scans, so a throw that escapes the sweep doesn't just skip a
- * workspace — it drops that window's instants for every agent behind it,
- * permanently and silently. The sweep must survive one bad document.
- */
-
-/** Silence the sanctioned scan-failure logs while asserting the sweep goes on. */
 function muteConsole() {
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
   return { error, restore: () => error.mockRestore() };
@@ -274,7 +249,6 @@ test("a BOM'd routines.json still fires — the byte is decoded, not fatal", asy
 
 test("an unreadable routines.json costs that agent only — every other agent still fires", async () => {
   const env = await setup([routine({ schedule: ENABLED })]);
-  // A second agent whose routines.json is mangled beyond decoding.
   const broken = await env.store.createAgent({
     workspaceId: env.ws.id,
     name: "Broken",
@@ -290,30 +264,25 @@ test("an unreadable routines.json costs that agent only — every other agent st
   try {
     s.start();
     await s.tick(DUE);
-    // Named, never swallowed: the broken agent surfaces in the logs...
     expect(log.error).toHaveBeenCalled();
   } finally {
     log.restore();
   }
-  // ...and the healthy agent's routine still fired.
   expect(firer.jobs).toHaveLength(1);
   expect(firer.jobs[0]?.agent.id).toBe(env.agent.id);
 });
 
 test("an unreadable routines.json still lets that agent's runs settle", async () => {
-  // Runs live in their own document; a broken routines.json must not strand
-  // in-flight runs as permanently "running".
   const env = await setup([routine({ schedule: ENABLED })]);
   const firer = new CaptureFirer();
   const s = makeScheduler(env, firer);
   s.start();
-  await s.tick(DUE); // records a running run
+  await s.tick(DUE);
 
   const root = workspaceRoot(env.ws, env.agent);
   await env.vfs.writeText(`${root}/.houston/routines/routines.json`, "{ bad");
   const log = muteConsole();
   try {
-    // The reconcile half runs even though the routine half threw.
     await expect(
       s.tick(new Date(DUE.getTime() + 60_000)),
     ).resolves.toBeUndefined();

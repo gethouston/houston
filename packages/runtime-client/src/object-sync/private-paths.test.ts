@@ -70,7 +70,6 @@ posixOnly("under a tool shell's umask 002", () => {
     expect(readFileSync(state, "utf8")).toBe("{}");
     expect(modeOf(state)).toBe(0o600);
     expect(modeOf(join(state, ".."))).toBe(0o700);
-    // Nothing else changes: the tool user keeps editing the agent's files.
     expect(modeOf(join(work, "workspaces/P/Bob/notes.txt"))).toBe(0o664);
   });
 
@@ -85,7 +84,6 @@ posixOnly("under a tool shell's umask 002", () => {
   test("a batched or prefetched read lands sign-in state owner-only", async () => {
     const work = mkdtempSync(join(tmpdir(), "houston-hyd-"));
     const dest = join(work, STATE);
-    // An earlier build left the directory open: landing closes it.
     mkdirSync(join(dest, ".."), { recursive: true, mode: 0o775 });
     await writeAtomically(dest, Buffer.from("{}"));
     expect(modeOf(dest)).toBe(0o600);

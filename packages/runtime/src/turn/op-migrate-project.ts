@@ -29,12 +29,8 @@ import {
 import { TURN_HYDRATE_MAX_BYTES } from "./turn-filesystem";
 
 export interface MigrateProjection {
-  /** Families whose doc this run created or brought up to the file. */
   published: HoustonFamily[];
-  /** Projections that still failed after a second round: the files are
-   *  durable, these docs or the routine schedules lag. */
   lagging: string[];
-  /** The routines file was rewritten in place to re-run its projections. */
   reprojected: boolean;
 }
 
@@ -43,28 +39,14 @@ type FamilyOutcome = "published" | "current" | "unreadable";
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
 
-/**
- * What a pod's boot projected that a quiet agent may never have had: every
- * family doc, and the routine schedule and trigger projections that ride a
- * routines PUT. Read from the store AFTER the migration landed, each doc's
- * revision BEFORE its file: a doc PUT another writer lands after that read is
- * a 409 here, and a writer that landed earlier wrote a file this read sees.
- * So a newer projection is never replaced by an older one. A family with no
- * file only fills a missing doc (the pod's projector answers the empty doc);
- * a file no salvage can read is never projected over its doc. A failure gets
- * one more round; what still fails is reported, never thrown.
- */
 export async function projectMigratedStore(input: {
   deps: DocDeps;
   turn: OpClaimTurn;
   store: ObjectStore;
   prefix: string;
   workspaceRel: string;
-  /** A scratch directory for the fresh reads. */
   root: string;
-  /** Store-relative keys this run's sync uploaded. */
   uploaded: readonly string[];
-  /** Pause before the second round (test seam). */
   retryDelayMs?: number;
 }): Promise<MigrateProjection> {
   const out: MigrateProjection = {
@@ -75,7 +57,6 @@ export async function projectMigratedStore(input: {
   const target = docTarget(input.deps, input.turn);
   const families = new Set<HoustonFamily>(target ? AGENT_DOC_FAMILIES : []);
   const routines = docKey(input.workspaceRel, "routines");
-  // An upload of the file already ran its projections.
   let reproject = !input.uploaded.includes(routines);
   for (let round = 0; round < 2; round++) {
     if (round > 0)
@@ -128,7 +109,6 @@ export async function projectMigratedStore(input: {
         out.reprojected = true;
         reproject = false;
       } catch (error) {
-        // A conflict is a newer write, whose own PUT projected it.
         if (error instanceof StoreConflictError) reproject = false;
         else out.lagging.push(`routines projection: ${message(error)}`);
       }
@@ -138,7 +118,6 @@ export async function projectMigratedStore(input: {
   return out;
 }
 
-/** One family's doc brought up to its file. Throws what may pass on retry. */
 async function projectFamily(
   opts: ActivityDocOptions,
   family: HoustonFamily,
@@ -166,15 +145,11 @@ async function projectFamily(
     return "current";
   const response = await putAtRevision(opts, doc, revision);
   if (response.status === 409) {
-    // Another projection landed after the revision read. It is not proof
-    // the doc matches the file (a late PUT can carry older content): the
-    // next round reads both again.
     await response.body?.cancel();
     throw new Error("another projection landed; re-checking");
   }
   const outcome = await acceptPut(response);
   if ("error" in outcome) throw new Error(outcome.error);
-  // A store that will not take the doc leaves it unprojected: unconfirmed.
   if (!("ok" in outcome)) throw new Error("doc route refused the family");
   return "published";
 }

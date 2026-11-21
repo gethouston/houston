@@ -7,7 +7,6 @@ import { closeContext } from "./tab-pages";
 
 const apiKey = process.env.KERNEL_API_KEY?.trim();
 
-/** A real, paid Kernel session: runs only where the key is set. */
 test.skipIf(!apiKey)(
   "a real Kernel tab opens a page and its session is deleted on close",
   { timeout: 90_000 },

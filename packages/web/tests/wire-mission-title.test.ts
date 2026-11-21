@@ -10,16 +10,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * A new mission's title on the wire, in both deployment modes.
- *
- * `Capabilities.missionTitleOnSend` true: the first send carries
- * `missionTitle` and nothing else is asked. Absent (every open host, every
- * gateway before the per-turn path, a snapshot not loaded yet): the send is
- * byte-identical to the one before the field existed, and once the row lands
- * the client asks `POST /agents/:id/title` and PATCHes the card.
- */
-
 const BASE = "http://host";
 const AGENT = "a1";
 const TEXT = "Write the weekly sales report for the whole east coast team";
@@ -61,7 +51,6 @@ function stubEngine(title: () => Response) {
 let mission = 0;
 
 async function send(plan: ReturnType<typeof planMissionTitle>) {
-  // A fresh conversation per spec: an earlier spec's turn may still be open.
   mission += 1;
   await client().startSession(AGENT, {
     sessionKey: `activity-m${mission}`,
@@ -105,7 +94,6 @@ test.each([
   if (title) expectGatewayHeaders(title);
   const patch = calls.find((c) => c.method === "PATCH");
   expect(patch?.url).toBe(`${BASE}/agents/${AGENT}/activities/m1`);
-  // Quotes and the trailing period trimmed, exactly as the app once did.
   expect(patch?.body).toBe(JSON.stringify({ title: "Weekly sales report" }));
 });
 
@@ -114,7 +102,6 @@ test("a runtime that cannot title falls back to truncation, PATCHed only when it
 
   await client().titleMissionFromClient(AGENT, "m1", TITLE);
 
-  // Six words of the 60-character truncation differ from the fallback.
   const patch = calls.find((c) => c.method === "PATCH");
   expect(patch?.body).toBe(
     JSON.stringify({ title: "Write the weekly sales report for" }),

@@ -8,13 +8,6 @@ import {
 } from "../src/components/chat-model-selector-ceiling.ts";
 import en from "../src/locales/en/chat.json" with { type: "json" };
 
-/**
- * PRODUCT-2074: a picker the allowed-models ceiling emptied used to say
- * "Connect an AI to start chatting" to someone with an AI already connected.
- * The ceiling story replaces it ONLY when the ceiling is the cause, and offers
- * the Models settings only to someone who can open them here.
- */
-
 const p = (
   connection: ModelPickerProvider["connection"],
 ): Pick<ModelPickerProvider, "connection"> => ({ connection });
@@ -68,9 +61,6 @@ test("a provider surviving the clamp means the list is not empty", () => {
 });
 
 test("an allowed model on an AI the viewer has not connected: connecting it is the fix", () => {
-  // Manager allows Claude only; this member connected ChatGPT only. Claude
-  // survives the clamp disconnected, so the story is Connect, not "ask", for
-  // managers and members alike.
   for (const canManageAgent of [true, false]) {
     for (const modelsSectionReachable of [true, false]) {
       assert.equal(
@@ -88,11 +78,9 @@ test("an allowed model on an AI the viewer has not connected: connecting it is t
 
 test("each story maps to the picker's empty-state action", () => {
   const choose = () => {};
-  // undefined = the picker's own connect action, gated as it always was.
   assert.equal(ceilingEmptyAction(null, choose), undefined);
   assert.equal(ceilingEmptyAction("connect", choose), undefined);
   assert.equal(ceilingEmptyAction("choose", choose), choose);
-  // null = no button: nobody standing here can act on these.
   assert.equal(ceilingEmptyAction("ask", choose), null);
   assert.equal(ceilingEmptyAction("unreachable", choose), null);
 });
@@ -110,7 +98,6 @@ test("the labels name the ceiling, never the connect copy", () => {
     noProvidersHint: "modelSelector.picker.ceilingEmpty.hint.ask",
     noProvidersAction: "modelSelector.picker.ceilingEmpty.action",
   });
-  // Connect's button IS the picker's connect action, so it keeps that label.
   assert.equal(
     ceilingEmptyLabels(t, "connect").noProvidersAction,
     "modelSelector.picker.noProviders.action",

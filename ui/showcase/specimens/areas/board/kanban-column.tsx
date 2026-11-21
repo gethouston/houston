@@ -16,7 +16,6 @@ import { AGENT_ICON, DONE_MISSION, MISSIONS, RUNNING_MISSION } from "./sample";
 
 const RUNNING = MISSIONS.filter((one) => one.status === "running");
 
-/** A column stretches to the board's height, so it is reviewed at one. */
 function ColumnSlot({ children }: { children: ReactNode }) {
   return <div className="flex h-80 w-64 flex-col">{children}</div>;
 }

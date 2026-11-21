@@ -3,22 +3,6 @@ import type { ApprovalRequest } from "./approval-record";
 import type { ApprovalStore } from "./approvals";
 import type { GuardReservation } from "./message-guard";
 
-/**
- * ONE conversation's approval state, as a pool worker carries it from the turn
- * that raised a card to the turn the person's answer starts.
- *
- * A standing host keeps this in memory for as long as it runs. A pool worker
- * lives for one turn, and Houston's card is raised in one turn and answered by
- * the message that starts the next, so the records travel (the worker keeps
- * them beside the agent's other state, `turn/turn-approvals.ts`). What travels
- * is exactly what the store holds: the requests, with their expiry, and the
- * message reservations that stop a retried message minting twice. Grants do
- * not travel: a grant belongs to the message that carried it, for that turn.
- *
- * Adoption never trusts the shape: a malformed entry, an expired one, or one
- * scoped to another agent or conversation is dropped, so the worst a damaged
- * file can do is ask the person again.
- */
 export interface ApprovalCarry {
   requests: ApprovalRequest[];
   reservations: GuardReservation[];

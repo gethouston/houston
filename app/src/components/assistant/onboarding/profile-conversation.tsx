@@ -21,19 +21,11 @@ import { useScriptCopy } from "./use-script-copy";
 
 type Profile = Extract<ManagerOnboardingState, { mode: "profile_completion" }>;
 
-/**
- * The survey questions an existing account still owes, asked once in the
- * manager's chat. Only the gaps are asked (fixed when it opens, so an answer
- * never drops the question on screen), and "Not now" is remembered: the
- * prompt never comes back.
- */
 export function ProfileConversation({ state }: { state: Profile }) {
   const { t } = useTranslation("assistant");
   const copy = useScriptCopy();
   const [plan] = useState(() => missingSurveySteps(state.survey));
   const [editing, setEditing] = useState<SurveyQuestion | null>(null);
-  // A ref, not an empty-deps effect alone: StrictMode replays mount effects,
-  // and the prompt must report one opening.
   const prompted = useRef(false);
   useEffect(() => {
     if (prompted.current) return;

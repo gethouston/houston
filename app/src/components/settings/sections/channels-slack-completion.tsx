@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import type { SlackCompletion } from "../../../lib/settings-landing";
 import { slackCompletionResult } from "../../../lib/slack-completion";
 
-/** Where a Slack hand-off returning to Houston stands, above the cards. */
 export function SlackCompletionStatus({
   completing,
   landed,

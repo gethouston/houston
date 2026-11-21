@@ -22,10 +22,6 @@ export function useLearnings(agentPath: string | undefined) {
     enabled: !!agentPath,
     staleTime: 30_000,
   });
-  // Adapt to the legacy `{ index, text }[]` shape so existing UIs keep working,
-  // carrying the provenance fields through: the Memory rows show who taught a
-  // learning and which mission it came from, and dropping them here (as this
-  // adapter used to) makes that invisible no matter what the file says.
   const entries: LearningSourceRow[] = (q.data ?? []).map((l, index) => ({
     index,
     text: l.text,
@@ -37,24 +33,11 @@ export function useLearnings(agentPath: string | undefined) {
   return { data: { entries }, isLoading: q.isLoading };
 }
 
-/**
- * The Memory tab's three writes, optimistic: the row appears, changes or
- * leaves the instant the user commits, and a refused write puts the list back
- * with an authored toast (`optimisticWrite`), unless `call()` already
- * showed copy of its own for it (offline, waking).
- *
- * Each resolves `true` once the file has the change and `false` when it was
- * refused, and never rejects: the card that sent it reopens with the typed
- * text on `false`, so a refusal never costs the user what they wrote.
- */
 export function useLearningWrites(agentPath: string | undefined) {
   const qc = useQueryClient();
   const { t } = useTranslation("agents");
   const { data: session } = useSession();
   const { capabilities } = useCapabilities();
-  // WHO is adding this learning by hand. Multiplayer only: in single player the
-  // answer is always "the one user", so stamping it would add an identity key
-  // to every desktop learnings.json for no reader.
   const taughtBy =
     isMultiplayer(capabilities) && session
       ? {

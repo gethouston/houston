@@ -1,11 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { AGENT_ROLE_FAMILY, HttpDocShadow } from "./http-shadow";
 
-/**
- * `publish` is the reporting put: a caller that announces a document (the
- * agent role) learns whether it actually landed in the gateway's store.
- */
-
 const GATEWAY = {
   baseUrl: "https://store.example",
   orgSlug: "acme",

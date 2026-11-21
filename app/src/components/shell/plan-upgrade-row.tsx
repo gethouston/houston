@@ -12,8 +12,6 @@ import type { NavMode } from "../../lib/nav-stack";
 import { openAdmin } from "../../lib/open-admin";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
 
-/** Plain Free draws no glyph beside its words; the icon rail, which has
- *  nothing else to draw, falls back to the usage gauge. */
 const GLYPH: Record<PlanUpgradeView["status"], LucideIcon | null> = {
   free: null,
   nearLimit: Gauge,
@@ -26,8 +24,6 @@ const TONE: Record<PlanUpgradeView["status"], string> = {
   limit: "text-danger-ink",
 };
 
-/** The way out drawn as a small filled pill inside the row, so it reads as
- *  an action even to someone who never opened Billing. */
 function UpgradeChip({ label }: { label: string }) {
   return (
     <span className="shrink-0 rounded-full bg-action px-2 py-0.5 font-medium text-action-text text-xs">
@@ -36,7 +32,6 @@ function UpgradeChip({ label }: { label: string }) {
   );
 }
 
-/** Who to ask, for someone who does not pay: plain words, not a control. */
 function AskOwner({ label }: { label: string }) {
   return <span className="shrink-0 pr-2 text-ink-muted text-xs">{label}</span>;
 }
@@ -44,27 +39,9 @@ function AskOwner({ label }: { label: string }) {
 const RAIL_PILL =
   "flex items-center rounded-full bg-sidebar-hover text-ink ht-hairline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
-/** Press feedback, only where the pill is a button. */
 const RAIL_PILL_PRESS =
   "transition-[background-color,transform] duration-200 hover:bg-sidebar-active active:scale-[0.96]";
 
-/**
- * A free org's way to a paid plan, on every screen: where its weekly pool
- * stands (`planUpgradeView`: Free, the 80% warning, or the reached limit).
- * For the billing owner it is a button beside an Upgrade chip that opens the
- * org's Billing; for everyone else it is the pool's state and "Ask the owner",
- * from the 80% warning on. A paid or legacy org and deployments without org
- * billing draw nothing.
- *
- * The rail draws a one-line pill between the update notice and the connect
- * rows, the icon rail the glyph alone with the same name as a tooltip. The
- * phone's More card draws it as its own sheet row, navigating with
- * `nav: "reset"`. Opening Admin closes More, a no-op on the desktop.
- *
- * The store apps never sell (`canPurchaseInApp`): there the row is the usage
- * status alone, with no chip and no "Ask the owner", and plain Free (nothing
- * but the offer) draws nothing.
- */
 export function PlanUpgradeRow({
   collapsed = false,
   surface = "rail",
@@ -83,8 +60,6 @@ export function PlanUpgradeRow({
     return null;
 
   const status = t(`sidebar.${view.status}`, { percent: view.percent });
-  // The store apps never send anyone to upgrade: there the row is the
-  // pool's state alone, for the owner and everyone else.
   const name = !purchasable
     ? status
     : payer
@@ -98,8 +73,6 @@ export function PlanUpgradeRow({
   const Icon = GLYPH[view.status];
   const RailIcon = Icon ?? Gauge;
   const tone = TONE[view.status];
-  // Only the billing owner can act on the pool; for everyone else the row
-  // is the pool's state, read by assistive tech as a status line.
   const Row = payer ? "button" : "div";
   const attrs = {
     ...(payer

@@ -1,10 +1,3 @@
-/**
- * The requests that MUST reach an operation. One line of everyday speech per
- * capability the assistant is expected to find - never the operation's own
- * vocabulary, because the model reading the map is the thing being tested.
- *
- * Shape and rationale: {@link ./discoverability-cases.ts}.
- */
 import type { DiscoverabilityCase } from "./discoverability-cases";
 
 export const OPERATION_CASES: readonly DiscoverabilityCase[] = [

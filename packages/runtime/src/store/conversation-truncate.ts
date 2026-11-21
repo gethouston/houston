@@ -1,21 +1,6 @@
 import { restoreArchivedTurn } from "./conversation-archive-cut";
 import { loadConversation, saveConversation } from "./conversation-file";
 
-/**
- * Transcript truncation for edit-and-resend (PRODUCT-1217): cut the canonical
- * transcript at a user turn so the client can resend an edited version of that
- * message. Pure dir-parameterized file logic like conversation-file.ts; the
- * session/bus invalidation that must accompany a cut lives in
- * session/truncate-turn.ts — never call this without it.
- */
-
-/**
- * Drop every message from the FIRST message of `turnId` (its user message)
- * through the end of the transcript, and stamp `needsSessionReplay` so the
- * next turn replays the kept messages into its fresh backend session
- * (HOU-951). Returns how many messages were removed, or null when the
- * conversation or the turn is unknown (nothing was written).
- */
 export function truncateConversationMutationAt(
   dir: string,
   id: string,
@@ -26,8 +11,6 @@ export function truncateConversationMutationAt(
   const at = conv.messages.findIndex((m) => m.turnId === turnId);
   let removed: number;
   if (at === -1) {
-    // Not in the live tail: the turn may sit in an archive segment, in which
-    // case the segment's earlier messages become the tail again.
     const restored = restoreArchivedTurn(dir, conv, turnId);
     if (restored === null) return null;
     removed = restored;
@@ -42,11 +25,6 @@ export function truncateConversationMutationAt(
   return { removed, conversation: conv };
 }
 
-/**
- * One-shot read of the replay marker: true exactly once after a truncation,
- * cleared on the same read. exec-turn calls this every turn — the common
- * un-truncated path is a cached load and a boolean check.
- */
 export function consumeSessionReplayAt(dir: string, id: string): boolean {
   const conv = loadConversation(dir, id);
   if (!conv?.needsSessionReplay) return false;
@@ -55,13 +33,6 @@ export function consumeSessionReplayAt(dir: string, id: string): boolean {
   return true;
 }
 
-/**
- * Re-arm the replay marker without touching the transcript. exec-turn calls
- * this when a turn that consumed the marker ended with NO assistant reply on a
- * backend whose session store keeps nothing from a failed prompt (the Claude
- * SDK): the replayed history never reached a persisted session, so the next
- * attempt must carry it in again or the conversation starts blank.
- */
 export function stampSessionReplayAt(dir: string, id: string): boolean {
   const conv = loadConversation(dir, id);
   if (!conv) return false;

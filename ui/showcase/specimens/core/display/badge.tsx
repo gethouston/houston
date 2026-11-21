@@ -9,12 +9,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/**
- * Badge — the six `badgeVariants` from the source, nothing invented. The
- * `[a&]:hover:*` rules only fire when the badge renders AS a link (`asChild`
- * around an `<a>`), so hover lives in its own row rather than a note nobody
- * can check.
- */
 function BadgeSpecimen() {
   return (
     <SpecimenPage
@@ -150,11 +144,6 @@ function BadgeSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["Badge"];
 
 export const specimen: Specimen = {

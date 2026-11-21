@@ -9,14 +9,6 @@ import {
   forwardMissionStatus,
 } from "./missions-remote-forward";
 
-/**
- * The leg out to the target's pod. What matters here is what the CALLER reads:
- * a pod's answer relayed unchanged (so a mission started across the wire is
- * indistinguishable from a local one), a pod's refusal keeping the sentence the
- * model has to act on, and everything that is NOT the pod answering surfacing
- * as a reachability error rather than a plausible-looking success.
- */
-
 const target = {
   remote: true as const,
   id: "slug-1",
@@ -76,7 +68,6 @@ test("a start is addressed to the target's pod and relayed verbatim", async () =
   expect(seen[0]?.url).toBe("https://gw.test/agents/slug-1/missions/start");
   const headers = seen[0]?.init?.headers as Record<string, string>;
   expect(headers.Authorization).toBe("Bearer gw-token");
-  // The gateway derives the acting user from the authenticated pod credential.
   expect(headers).not.toHaveProperty("x-houston-acting-as");
   expect(captured).toEqual({
     status: 201,
@@ -146,8 +137,6 @@ test("a move is posted to the target's pod and relayed verbatim", async () => {
 });
 
 test("the pod owns the guards, so its refusal to move is what comes back", async () => {
-  // Still running, the caller's own conversation, no such mission: all of them
-  // are decided on the side that holds the board, in words the model can act on.
   const { res, captured } = fakeRes();
   await forwardMissionStatus(
     route(
@@ -204,8 +193,6 @@ test("anything that is not the pod answering reads as unreachable", async () => 
     },
   });
 
-  // A 200 that is not JSON is something else answering (a proxy error page):
-  // it must never read as a mission that started.
   const garbled = fakeRes();
   await forwardMissionList(
     route(answers(200, "<html>oops</html>")),

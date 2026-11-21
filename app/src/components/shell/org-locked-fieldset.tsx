@@ -2,7 +2,6 @@ import { Lock } from "lucide-react";
 import type { ReactNode } from "react";
 import { useOrgWriteLock } from "../../hooks/use-org-write-lock";
 
-/** Why the controls below are off, while the active org is locked. */
 export function OrgLockedNote() {
   const { locked, reason } = useOrgWriteLock();
   if (!locked) return null;
@@ -17,12 +16,6 @@ export function OrgLockedNote() {
   );
 }
 
-/**
- * Turns off every control inside while the active org is locked, with the
- * reason above them. The text and values stay readable: a locked org
- * refuses writes, not reads. The fieldset is always rendered, so locking
- * never remounts what it wraps.
- */
 export function OrgLockedFieldset({ children }: { children: ReactNode }) {
   const { locked } = useOrgWriteLock();
   return (

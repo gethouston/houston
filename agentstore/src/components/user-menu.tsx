@@ -18,18 +18,11 @@ import Link from "next/link";
 import * as React from "react";
 import { useSession } from "@/lib/auth/session";
 
-/** First letter of a name/email for the avatar fallback glyph. */
 function initial(user: { displayName: string | null; email: string | null }) {
   const source = user.displayName || user.email || "";
   return source.trim().charAt(0).toUpperCase() || "?";
 }
 
-/**
- * The header's account control: the visible sign-in entry point. Shows a "Sign
- * in" button when signed out and an avatar dropdown (Your agents + Sign out) when
- * signed in. Renders nothing on a deployment with no auth configured, so an
- * un-provisioned preview never shows a dead button.
- */
 export function UserMenu() {
   const { status, user, signIn, signOut } = useSession();
   const [busy, setBusy] = React.useState(false);
@@ -49,8 +42,6 @@ export function UserMenu() {
           try {
             await signIn();
           } catch {
-            // A closed popup or cancelled sign-in is a normal user action, not an
-            // error to surface; the button simply re-enables.
           } finally {
             setBusy(false);
           }

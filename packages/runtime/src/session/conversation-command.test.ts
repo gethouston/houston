@@ -14,9 +14,6 @@ test("is case-insensitive and tolerates surrounding whitespace", () => {
 });
 
 test("never hijacks the user's own text: only an exact match commands", () => {
-  // The whole point of exact matching. A message that merely CONTAINS or
-  // extends a command is the user talking, and talking must always reach the
-  // model — silently swallowing it would be the worst possible failure here.
   for (const text of [
     "/clear the kitchen table",
     "please /clear",

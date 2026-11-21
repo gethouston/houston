@@ -7,34 +7,16 @@ import {
   chartPerson,
 } from "./org-chart-people.ts";
 
-/**
- * The org chart drawn as a tree: the space at the top, its people under it,
- * and under each person the AI Employees they are home to. Pure and
- * DOM-free; the on-screen chart and the share image both draw from it.
- *
- * Every owner manages every agent, so "who manages it" cannot place an
- * agent: it would hang every AI Employee under the owner. An agent's HOME is
- * the person explicitly assigned to manage it, by name when several match,
- * else its one user, else the first owner. Assignment rows carry no timestamp.
- * Agents whose people the caller cannot see home under the first owner.
- *
- * A personal space is one person, so its tree is that person over every AI
- * Employee, with no people row.
- */
-
 export interface OrgTreeAgent {
   id: string;
   name: string;
-  /** The role its job description names, when it has one. */
   role?: string;
-  /** The stored agent color id (or legacy hex). */
   color?: string;
 }
 
 export interface OrgTreeBranch {
   person: ChartPerson;
   agents: OrgTreeAgent[];
-  /** The person's AI Employees past the cap, drawn as "+N". */
   moreAgents: number;
 }
 
@@ -44,28 +26,19 @@ export type OrgTreeRoot =
 
 export interface OrgTree {
   root: OrgTreeRoot;
-  /** One per person shown, in roster order. Empty in a personal space. */
   branches: OrgTreeBranch[];
-  /** People past the cap, drawn as "+N". */
   morePeople: number;
-  /**
-   * AI Employees hung straight off the root: a personal space's, or a
-   * space's when nobody on the roster can be their home.
-   */
   rootAgents: OrgTreeAgent[];
   moreRootAgents: number;
-  /** The whole space, whatever the caps leave out. */
   counts: { people: number; agents: number };
 }
 
-/** How much of the tree a renderer can draw. */
 export interface OrgTreeCaps {
   people: number;
   agentsPerPerson: number;
   rootAgents: number;
 }
 
-/** The on-screen chart scrolls sideways on desktop, so it holds a lot. */
 export const SCREEN_TREE_CAPS: OrgTreeCaps = {
   people: 24,
   agentsPerPerson: 8,
@@ -89,11 +62,6 @@ function treeAgent(agent: Agent): OrgTreeAgent {
   };
 }
 
-/**
- * The people a capped row keeps: every owner first (the person sharing the
- * chart is never the one cut), then people with AI Employees, then the
- * rest, drawn in roster order.
- */
 function keepBranches(
   branches: readonly OrgTreeBranch[],
   cap: number,
@@ -115,7 +83,6 @@ export function buildOrgTree(
   input: {
     agents: readonly Agent[];
     members: readonly OrgMember[];
-    /** The space's name. */
     name: string;
     personal: boolean;
     unnamedAccount: string;

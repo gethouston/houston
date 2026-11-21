@@ -73,7 +73,6 @@ export interface LocalBridgeNativeEvent {
   generation: number;
   status: LocalBridgeStatus;
   sessionExpiresAt?: string;
-  /** The native session is two minutes from expiry and wants a fresh ticket. */
   renewalDue?: boolean;
 }
 export interface LocalBridgeNativePort {

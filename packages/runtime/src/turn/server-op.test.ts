@@ -23,7 +23,6 @@ async function listen(server: Server): Promise<string> {
 
 const noopTurn: TurnRunner = async () => ({});
 
-/** An agent seeded through the host's own store (the pod's real layout). */
 async function seedAgent(): Promise<{
   storeRoot: string;
   agentId: string;
@@ -35,14 +34,9 @@ async function seedAgent(): Promise<{
   const store = new LocalWorkspaceStore(workspaces);
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const agent = await store.createAgent({ workspaceId: ws.id, name: "Bob" });
-  // Every real agent carries a CLAUDE.md — the directory the layout resolver
-  // keys on. (Route ops hydrate WITHOUT the runtime tree, so the marker must
-  // not live there.)
   const agentDir = join(workspaces, ...agent.id.split("/"));
   mkdirSync(agentDir, { recursive: true });
   writeFileSync(join(agentDir, "CLAUDE.md"), "# Bob\n");
-  // A user file + a runtime file: the files op must see the former and the
-  // hydrate must skip the latter.
   writeFileSync(join(agentDir, "report.csv"), "a,b\n1,2\n");
   const runtime = join(agentDir, ".houston", "runtime", "conversations");
   mkdirSync(runtime, { recursive: true });
@@ -62,8 +56,6 @@ async function heartbeatOK(): Promise<string> {
 function opBody(_agentId: string, heartbeatUrl: string, op: unknown) {
   return {
     workspaceId: "w1",
-    // The gateway sends the agent SLUG; the worker derives the engine id
-    // ("Personal/Bob") from the hydrated layout.
     agentId: "agent-1",
     gcsPrefix: "ws/w1/agent-1",
     hostToken: "host-token",
@@ -79,8 +71,6 @@ function opBody(_agentId: string, heartbeatUrl: string, op: unknown) {
   };
 }
 
-/** Like the gateway: a `worker_full` (the previous op's slot still closing
- *  its temp dir) is retried, never treated as the op's answer. */
 async function postOp(base: string, body: unknown) {
   for (let attempt = 0; ; attempt++) {
     const result = await postOpOnce(base, body);
@@ -181,7 +171,6 @@ test("a conversation rename runs the runtime's own mutation and syncs only that 
     }),
   );
   expect(json.status).toBe(200);
-  // LocalDirStore keeps objects on disk under the store root: read it back.
   const after = JSON.parse(readFileSync(convFile, "utf8")) as { title: string };
   expect(after.title).toBe("new name");
   expect(prefix).toBe("ws/w1/agent-1");
@@ -242,8 +231,6 @@ test("a files list runs as a READ op: no sync-back, runtime tree not hydrated", 
   );
   const { json } = await postOp(
     base,
-    // The gateway's exact envelope: an empty-string body + a content type
-    // ride along on EVERY route op, GET included.
     opBody(agentId, await heartbeatOK(), {
       kind: "route",
       method: "GET",
@@ -256,7 +243,6 @@ test("a files list runs as a READ op: no sync-back, runtime tree not hydrated", 
   const listing = JSON.parse(json.body as string) as Array<{ name: string }>;
   const names = listing.map((e) => e.name);
   expect(names).toContain("report.csv");
-  // Runtime files never surface in the Files tab and were not hydrated.
   expect(JSON.stringify(listing)).not.toContain("c1.json");
 });
 
@@ -322,7 +308,6 @@ test("a file download relays binary bytes base64 with its headers", async () => 
     }),
   );
   expect(json.status).toBe(200);
-  // Always base64 on a download — byte-exact, whatever the MIME.
   expect(typeof json.bodyBase64).toBe("string");
   expect(json.body).toBe("");
   expect(
@@ -355,7 +340,6 @@ test("a root-level agentfile write persists (F6: no longer dropped)", async () =
   );
   expect(json.ok).toBe(true);
   expect(json.decline).toBeUndefined();
-  // The whole-agent-dir scope carried it to the store (before, it was dropped).
   const synced = await store.list(prefix);
   expect(synced.some((k) => k.endsWith("/data-schema.md"))).toBe(true);
 });
@@ -386,8 +370,6 @@ test("mission attribution (actingAs.name) reaches the activity handler", async (
   ]);
 });
 
-/** POST an activity create as an op whose envelope `actingAs` carries `via`
- *  (omitted when undefined) and answer the created row. */
 async function createActivityOp(
   via?: unknown,
 ): Promise<Record<string, unknown>> {
@@ -415,7 +397,6 @@ async function createActivityOp(
 test("an asleep agent's card created by the AI Manager (actingAs.via) is started by Houston", async () => {
   const created = await createActivityOp("assistant");
   expect(created.started_by).toBe("houston");
-  // The acting human is still recorded as ever.
   expect(created.created_by).toBe("user-1");
 });
 
@@ -440,7 +421,6 @@ test("a settings claim runs on the worker and syncs settings.json back (never mo
   );
   const hb = await heartbeatOK();
 
-  // Nothing set: the connect claims the active provider.
   let { json } = await postOp(
     base,
     opBody(agentId, hb, {
@@ -458,13 +438,10 @@ test("a settings claim runs on the worker and syncs settings.json back (never mo
   expect(
     synced.some((k) => k.endsWith("/.houston/runtime/settings.json")),
   ).toBe(true);
-  // And NOTHING else under the runtime tree was touched (no conversations
-  // hydrated, none deleted).
   expect(synced.some((k) => k.endsWith("/runtime/conversations/c1.json"))).toBe(
     true,
   );
 
-  // Already set: a second connect must not move it (HOU-695).
   ({ json } = await postOp(
     base,
     opBody(agentId, hb, {
@@ -479,7 +456,6 @@ test("a settings claim runs on the worker and syncs settings.json back (never mo
     activeProvider: "openai-codex",
   });
 
-  // The model picker (PUT /settings) does move it, and persists the model.
   ({ json } = await postOp(
     base,
     opBody(agentId, hb, {
@@ -522,8 +498,6 @@ test("a settings put merges into the stored settings.json (the op downloads it)"
     }),
   );
   expect(json, JSON.stringify(json)).toMatchObject({ status: 200 });
-  // A filter that skipped the runtime dir would answer (and sync) a fresh
-  // file: the stored model choice and effort would be gone.
   const stored = JSON.parse(
     readFileSync(join(storeRoot, ...settingsKey.split("/")), "utf8"),
   );
@@ -537,7 +511,6 @@ test("a settings put merges into the stored settings.json (the op downloads it)"
 test("an api-key connect that fails connectability pushes nothing and leaves no auth.json", async () => {
   const { storeRoot, agentId, prefix } = await seedAgent();
   const store = new LocalDirStore(storeRoot);
-  // The "gateway": heartbeat + the pod-credentials PUT the push lands on.
   const pushes: { path: string; auth: string; body: string }[] = [];
   const gateway = await listen(
     createServer((req, res) => {
@@ -564,9 +537,6 @@ test("an api-key connect that fails connectability pushes nothing and leaves no 
   const base = await listen(
     createTurnServer({ store, token: "", runTurn: noopTurn }),
   );
-  // A key that fails the connectability check (unknown provider) answers the
-  // runtime's own 400 and NOTHING is pushed. (The verify→push success path
-  // needs a live provider; it is exercised on staging, not here.)
   const { json } = await postOp(
     base,
     opBody(agentId, `${gateway}/hb`, {
@@ -578,13 +548,11 @@ test("an api-key connect that fails connectability pushes nothing and leaves no 
   );
   expect(json.status).toBe(400);
   expect(pushes).toHaveLength(0);
-  // No local residue: auth.json never appears in the store.
   expect((await store.list(prefix)).some((k) => k.endsWith("auth.json"))).toBe(
     false,
   );
 });
 
-/** A store that remembers every object it was asked to download. */
 class DownloadLog extends LocalDirStore {
   readonly downloaded: string[] = [];
   override download(
@@ -599,8 +567,6 @@ class DownloadLog extends LocalDirStore {
 
 test("settings and credential ops on a heavy agent download none of its project folders", async () => {
   const { storeRoot, agentId, prefix } = await seedAgent();
-  // A project folder three times the hydrate cap: an eager hydrate of the
-  // agent's folders would fail over the cap before the handler ran.
   const project = join(storeRoot, prefix, "workspaces", agentId, "render");
   mkdirSync(project, { recursive: true });
   writeFileSync(join(project, "big.bin"), Buffer.alloc(3 * 1024 * 1024, 1));
@@ -637,14 +603,11 @@ test("settings and credential ops on a heavy agent download none of its project 
       apiKey: "sk-test",
     }),
   ));
-  // The handler's own 400, not a hydration failure.
   expect(json, JSON.stringify(json)).toMatchObject({ status: 400 });
 
   expect(store.downloaded.some((k) => k.endsWith("/render/big.bin"))).toBe(
     false,
   );
-  // The folder the op never saw is still in the store: skipping a download
-  // must never read as a delete.
   const synced = await store.list(prefix);
   expect(synced.some((k) => k.endsWith("/render/big.bin"))).toBe(true);
   expect(

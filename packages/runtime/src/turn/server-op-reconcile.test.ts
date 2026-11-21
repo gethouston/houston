@@ -11,12 +11,6 @@ import {
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/**
- * A pooled turn whose sandbox died never settled anything: its claim ran out,
- * and the run row and the reply it would have written exist nowhere. The
- * control plane's reconcile op settles both on a worker, once.
- */
-
 const servers: Server[] = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();
@@ -227,7 +221,6 @@ test("a routine fire whose sandbox died settles its run and its chat once, and a
     turnId: "t1",
     interrupted: { cause: "engine_restart" },
   });
-  // The transcript store already holds the user row: only the reply lands.
   expect(w.assistantPuts()).toHaveLength(1);
   expect(w.assistantPuts()[0]?.path).toBe(
     "/v1/pod/transcripts/acme/bob/conversations/routine-r1/turns/t1/assistant",
@@ -242,7 +235,6 @@ test("a routine fire whose sandbox died settles its run and its chat once, and a
   expect(JSON.parse(runsDoc[0]?.body ?? "{}").doc).toEqual(
     expect.arrayContaining([expect.objectContaining({ id: "t1" })]),
   );
-  // Every write rode the conversation's claim.
   expect(w.pool.writes.map((write) => write.claim)).toEqual(
     w.pool.writes.map(() => "routine-r1"),
   );
@@ -255,7 +247,6 @@ test("a routine fire whose sandbox died settles its run and its chat once, and a
   expect(
     w.chat("routine-r1").filter((m) => m.interrupted !== undefined),
   ).toHaveLength(1);
-  // The retry re-sends the same reply (the store keeps one per turn).
   expect(w.assistantPuts().map((p) => p.body)).toEqual([
     w.assistantPuts()[0]?.body,
     w.assistantPuts()[0]?.body,
@@ -269,7 +260,6 @@ test("an attempt whose projection fails declines, and the retry finishes it", as
 
   const first = await w.reconcile(op);
   expect(first.decline, JSON.stringify(first)).toBe(true);
-  // The files are durable already.
   expect(w.runs().find((r) => r.id === "t1")?.status).toBe("error");
 
   const second = await w.reconcile(op);
@@ -445,8 +435,6 @@ test("a run that failed on a credential wall completes its streak and pauses the
       ],
     },
   });
-  // The store's copy carries an edit the seed does not: the pause rebases
-  // on it rather than writing a stale entry back.
   w.pool.put(
     `${AGENT}/.houston/routines/routines.json`,
     JSON.stringify([{ ...routine, name: "Renamed digest" }]),

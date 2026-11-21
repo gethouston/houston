@@ -3,7 +3,6 @@ export interface AppStateManagers {
   focused(focused: boolean): void;
 }
 
-/** Mirror TanStack Query's browser focus and online refresh on native resume. */
 export function applyNativeAppState(
   isActive: boolean,
   isOnline: boolean,

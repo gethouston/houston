@@ -5,12 +5,6 @@ import { piModelIds } from "./pi-catalog";
 
 type ModelId = Parameters<typeof getModel>[1];
 
-/**
- * The GPT-6 line ships natively in pi-ai's baked OpenAI catalogs. Luna is the
- * Codex default every unpinned turn lands on and Astra is the headline tier, so
- * a pi bump that drops or reshapes either entry would silently strip a model
- * Houston's own tables promise from the runnable set.
- */
 test("the GPT-6 line is in pi's openai-codex catalog", () => {
   for (const id of ["gpt-6-luna", "gpt-6.1-terra", "gpt-6-sol", "gpt-6-astra"])
     expect(piModelIds("openai-codex")).toContain(id);
@@ -30,7 +24,6 @@ test("GPT-6 Luna carries the Codex default's shape", () => {
     cacheRead: 0.01,
     cacheWrite: 0.125,
   });
-  // Long-context pricing kicks in above 272k input tokens.
   expect(m?.cost.tiers).toEqual([
     {
       inputTokensAbove: 272_000,

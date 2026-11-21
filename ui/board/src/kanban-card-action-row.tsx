@@ -12,18 +12,11 @@ import { Archive, Check, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useRef } from "react";
 import { ACTION_BUTTON_CLASS, ACTION_ICON_CLASS } from "./kanban-card-actions";
 
-/** Rename and delete sit inline only from the `card-actions` container width
- *  up. Below it they fold into one always-visible "more" button: three 24px
- *  targets in a 180px column leave the time too little room for labels like
- *  "10 de ago.", and a target may not shrink under 24px. */
 const INLINE_ONLY = "hidden @min-card-actions/card:inline-flex";
 const FOLDED_ONLY = "@min-card-actions/card:hidden";
 const PRESS_KEYS = new Set(["Enter", " "]);
 const MENU_KEYS = new Set(["Enter", " ", "ArrowDown", "ArrowUp"]);
 
-/** The board answers bare Enter (open the highlighted mission) and the arrows
- *  (move the highlight) on window. A key that presses a button, or opens the
- *  menu, is the control's alone; every other arrow still moves the board. */
 function keepKeys(keys: Set<string>) {
   return (e: KeyboardEvent<HTMLButtonElement>) => {
     if (keys.has(e.key)) e.stopPropagation();
@@ -40,9 +33,6 @@ export interface KanbanCardActionLabels {
   moreActions: string;
 }
 
-/** Every button is a 24px box holding a 16px glyph at the same light
- *  `ink-muted/40` resting tint (ACTION_BUTTON_CLASS). Colour appears on hover
- *  only where the outcome is semantic: approve turns green, delete red. */
 function ActionButton({
   label,
   onClick,
@@ -75,8 +65,6 @@ function ActionButton({
   );
 }
 
-/** The card's top-right controls. At most ONE status-gated primary action
- *  (approve on Needs you, archive on Done) always stays inline. */
 export function KanbanCardActionRow({
   onApprove,
   onArchive,
@@ -87,8 +75,6 @@ export function KanbanCardActionRow({
   onApprove?: () => void;
   onArchive?: () => void;
   onRename?: () => void;
-  /** Gets the menu's trigger when chosen from the menu: the menu item it was
-   *  opened from is gone, so the confirm dialog returns focus there. */
   onDelete?: (returnFocusTo?: HTMLElement | null) => void;
   labels: KanbanCardActionLabels;
 }) {
@@ -129,8 +115,6 @@ export function KanbanCardActionRow({
         </ActionButton>
       )}
       {(onRename || onDelete) && (
-        // Non-modal: delete opens a confirm dialog straight from the menu, and
-        // a modal menu closing under a dialog leaves the page inert.
         <DropdownMenu modal={false}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -149,9 +133,6 @@ export function KanbanCardActionRow({
             </TooltipTrigger>
             <TooltipContent side="top">{labels.moreActions}</TooltipContent>
           </Tooltip>
-          {/* The content is portalled, but React still bubbles its clicks to
-              the card, which would open the mission. Closing returns focus to
-              the trigger, except after Rename, whose input takes it. */}
           <DropdownMenuContent
             align="end"
             onClick={(e) => e.stopPropagation()}

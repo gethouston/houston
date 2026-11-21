@@ -31,7 +31,6 @@ const jsonRes = (body: unknown, status = 200) =>
     headers: { "content-type": "application/json" },
   });
 
-/** A fake authorization server + resource server, request-recorded. */
 function fakeAuthServer() {
   const calls: { url: string; body?: string }[] = [];
   const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {

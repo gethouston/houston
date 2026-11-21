@@ -4,12 +4,6 @@ import type { FeedOutput } from "./feed-output";
 import { applyTurnFrame } from "./turn-frames";
 import { newTurnState } from "./turn-settle";
 
-/**
- * The context-boundary frames are what a `/clear` and a `/compact` turn are
- * made of: neither produces assistant text, so if the fold dropped them the
- * turn would settle showing the user nothing at all.
- */
-
 function fold(frames: WireFrame[]): unknown[] {
   const items: unknown[] = [];
   const output = {

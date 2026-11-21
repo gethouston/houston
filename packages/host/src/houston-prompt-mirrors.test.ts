@@ -5,14 +5,6 @@ import { BASE } from "./houston-prompt-base";
 import { INTEGRATIONS } from "./houston-prompt-integrations";
 import { routinesGuidance } from "./houston-prompt-routines";
 
-/**
- * The desktop ships its own copy of the product prompt
- * (`app/src-tauri/src/houston_prompt/`), handed to the host as
- * HOUSTON_APP_SYSTEM_PROMPT. Each section there is a raw string literal, so
- * its bytes are the prompt's bytes and can be compared to the TypeScript
- * constant whole: a wording change made on one side fails here until it is
- * made on the other. The desktop's routines copy is the event-capable variant.
- */
 function rustLiteral(file: string, name: string): string | undefined {
   const source = readFileSync(
     fileURLToPath(

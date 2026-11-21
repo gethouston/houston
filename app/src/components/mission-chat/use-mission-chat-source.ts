@@ -10,19 +10,6 @@ import { useMissionControl } from "../use-mission-control";
 
 const noop = () => {};
 
-/**
- * The {@link BoardSource} behind the phone's pushed mission-chat screen: the
- * SAME cross-agent sweep and per-agent action routing the boards read
- * (`useMissionControl` + `useMcActions`, the one-sweep rule), narrowed to a
- * chat-only shape — no board is rendered, so the board-only members (search,
- * selection, auto-open, toolbar) are inert.
- *
- * Selection is the NAV STACK's, not local state: the open mission is the
- * pushed entry's `chatMissionId`. Selecting another mission (a child-mission
- * link, the parent-mission bar) pushes that chat; the draft chat adopting its
- * just-created mission replaces in place so back never revisits the blank
- * composer; deselecting closes the screen.
- */
 export function useMissionChatSource(
   agents: Agent[],
   agent: Agent,
@@ -30,8 +17,6 @@ export function useMissionChatSource(
 ): BoardSource {
   const mc = useMissionControl(agents);
 
-  // Mirror the nav-owned selection into the data hook so the open
-  // conversation's feed, session key and VM subscription track the screen.
   useEffect(() => {
     if (mc.selectedId !== missionId) mc.setSelectedId(missionId);
   }, [mc.selectedId, mc.setSelectedId, missionId]);
@@ -41,9 +26,6 @@ export function useMissionChatSource(
 
   const setSelectedId = useCallback(
     (id: string | null) => {
-      // Only while THIS chat is still the open one: AIBoard's create path
-      // resolves asynchronously, and a selection landing after the user
-      // already navigated away must not yank them back into the chat.
       const ui = useUIStore.getState();
       if (ui.chatAgentId !== agent.id || ui.chatMissionId !== missionId) return;
       if (id === null) {
@@ -59,8 +41,6 @@ export function useMissionChatSource(
     [agent, missionId],
   );
 
-  // Removing the open mission (delete, archive) removes the screen's subject:
-  // close the chat instead of stranding a dead composer over it.
   const closeIfOpen = useCallback(
     (item: KanbanItem) => {
       if (item.id === missionId) useUIStore.getState().closeMissionChat();
@@ -97,8 +77,6 @@ export function useMissionChatSource(
     highlightedId: null,
     setHighlightedId: noop,
     activeAgent: agent,
-    // The Mission Control scopes' draft store, so text parked in a mission's
-    // composer follows the mission across surfaces.
     draftScope: missionControlDraftScope(),
     selectedSessionKey: mc.activeSessionKey,
     selectedAgentPath: mc.activeAgentPath,
@@ -114,7 +92,6 @@ export function useMissionChatSource(
     sendMessageNow: actions.sendMessageNow,
     createConversation: actions.createConversation,
     stopSession: actions.stopSession,
-    // Chat-only: no board is rendered, so the board-only contract is inert.
     registerOpener: noop,
     openerReady: true,
     openNewMission: noop,

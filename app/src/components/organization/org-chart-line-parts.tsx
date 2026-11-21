@@ -4,7 +4,6 @@ import { formatCount, formatWork } from "./org-chart-format";
 import { LINE, type LineSize } from "./org-chart-line-sizes";
 import type { LedgerLine, OrgChartMetric } from "./org-chart-view-model";
 
-/** A light figure with its muted unit: "72 h". */
 function Figure({
   value,
   unit,
@@ -24,11 +23,6 @@ function Figure({
   );
 }
 
-/**
- * The bar column: a fine track filled to this line's share of the top AI
- * Employee, and its figure. The fill takes the link accent while the line is
- * hovered or focused.
- */
 export function LineBar({
   line,
   metric,
@@ -75,10 +69,6 @@ export function LineBar({
   );
 }
 
-/**
- * The messages column beside hours, right-aligned, or a quiet "Not counted"
- * where the gateway does not count this line's messages for the caller.
- */
 export function LineMessages({
   line,
   loading,

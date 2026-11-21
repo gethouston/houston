@@ -38,7 +38,6 @@ test("firstJsonValueEnd tracks nesting and string escapes", () => {
 });
 
 test("salvageLeadingJson keeps a complete value that has trailing junk", () => {
-  // The wild shape: the full array followed by a second, partial copy of it.
   expect(salvageLeadingJson(`${doc}${doc.slice(0, 40)}`)).toEqual([routine]);
   expect(salvageLeadingJson(`${doc}]}`)).toEqual([routine]);
 });
@@ -52,8 +51,6 @@ test("salvageLeadingJson refuses when nothing is cleanly recoverable", () => {
 });
 
 test("escapeControlCharsInStrings re-escapes raw control characters inside strings only", () => {
-  // The wild shape (HOUSTON-APP-5D6): an in-place edit of a long prompt left a
-  // literal tab and newline inside the string literal.
   const raw = '[{"id":"r1","prompt":"Line one\nLine\ttwo \u0001 end"}]\n';
   const fixed = escapeControlCharsInStrings(raw);
   expect(fixed).toBe(
@@ -62,27 +59,21 @@ test("escapeControlCharsInStrings re-escapes raw control characters inside strin
   expect(JSON.parse(fixed as string)).toEqual([
     { id: "r1", prompt: "Line one\nLine\ttwo \u0001 end" },
   ]);
-  // Already-clean text (whitespace between tokens is legal) is left alone.
   expect(escapeControlCharsInStrings(doc)).toBeUndefined();
-  // `\"` inside a string never closes it early, so the newline after it is
-  // still recognised as inside the string.
   expect(escapeControlCharsInStrings('{"a":"x\\"\ny"}')).toBe(
     '{"a":"x\\"\\ny"}',
   );
-  // A control character between tokens is a real syntax error, not ours.
   expect(escapeControlCharsInStrings('{"a":\u00011}')).toBeUndefined();
 });
 
 test("salvageJsonDoc repairs raw control characters, then trailing junk", () => {
   const rawNewline = '[{"id":"r1","prompt":"a\nb"}]\n';
   expect(salvageJsonDoc(rawNewline)).toEqual([{ id: "r1", prompt: "a\nb" }]);
-  // Both shapes at once: an appended partial copy of a doc with a raw tab.
   const rawTab = '[{"id":"r1","prompt":"a\tb"}]\n';
   expect(salvageJsonDoc(`${rawTab}${rawTab.slice(0, 12)}`)).toEqual([
     { id: "r1", prompt: "a\tb" },
   ]);
   expect(salvageJsonDoc(`${doc}]}`)).toEqual([routine]);
-  // Mangled beyond a lossless repair: the caller keeps its throw.
   expect(salvageJsonDoc('[{"id":"r1","prompt":"a\nb"}')).toBeUndefined();
   expect(salvageJsonDoc("{oops")).toBeUndefined();
 });
@@ -94,7 +85,6 @@ test("loadRoutines survives a raw newline inside a prompt (HOUSTON-APP-5D6)", as
     ...routine,
     prompt: "Every morning:\n- check mail\n\t- reply",
   };
-  // A hand edit that pasted the multi-line prompt in raw.
   await store.writeText(
     key,
     JSON.stringify([edited], null, 2).replace(
@@ -141,10 +131,6 @@ test("parseJsonDoc strips a BOM, salvages trailing junk, and names the key", () 
   );
 });
 
-// The wild shape behind a routines file that stopped one agent's routines
-// for a day and a half: a prompt pasted in place with a raw newline AND a
-// quoted word. The control-character pass alone left the quote to end the
-// string early; the quote pass finishes the repair.
 const strayQuoted = `[
   {
     "id": "r1",
@@ -161,9 +147,6 @@ test("escapeStrayQuotesInStrings escapes a quote that cannot end the string and 
   const fixed = escapeStrayQuotesInStrings('{"p": "say "hi" now", "k": 1}');
   expect(fixed).toBe('{"p": "say \\"hi\\" now", "k": 1}');
   expect(JSON.parse(fixed as string)).toEqual({ p: 'say "hi" now', k: 1 });
-  // A stray quote right before a comma reads as a terminator: the text
-  // after it is junk the grammar cannot place, so the parse still fails
-  // instead of guessing.
   const ambiguous = escapeStrayQuotesInStrings('{"p": "say "hi", now"}');
   expect(ambiguous).toBe('{"p": "say \\"hi", now"}');
   expect(() => JSON.parse(ambiguous as string)).toThrow();

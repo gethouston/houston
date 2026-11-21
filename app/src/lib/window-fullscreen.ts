@@ -3,7 +3,6 @@ type FullscreenWindow = {
   onResized(handler: () => void): Promise<() => void>;
 };
 
-/** Resize reads may settle out of order; only the latest live read applies. */
 export function watchFullscreen(
   win: FullscreenWindow,
   onChange: (fullscreen: boolean) => void,
@@ -23,9 +22,6 @@ export function watchFullscreen(
         onChange(value);
       }
     } catch (err) {
-      // A superseded read's failure is not this window's state: the newer
-      // read reports its own failure, and a stale one must not set the latch
-      // after a newer success cleared it.
       if (disposed || current !== revision) return;
       if (!fullscreenFailureReported) {
         fullscreenFailureReported = true;

@@ -30,8 +30,6 @@ afterEach(() => {
   auth.native = false;
 });
 
-// The popup resolver loads Google's gapi script, which throws an opaque
-// cross-origin "Script error." for the native shell's capacitor: origin.
 test("the native shell initializes Auth without the popup resolver", async () => {
   auth.native = true;
   const { initWebAuth } = await import("./firebase-auth-instance.ts");

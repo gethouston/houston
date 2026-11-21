@@ -10,10 +10,6 @@ import {
   xiaomiProbeOrder,
 } from "./xiaomi-endpoint";
 
-// Xiaomi endpoint persistence + overlay (PRODUCT-1502): a Token Plan key's
-// verified gateway must reach every model read, and a data dir that never
-// verified one stays on the general endpoint.
-
 const dir = () => mkdtempSync(join(tmpdir(), "houston-xiaomi-endpoint-"));
 
 test("an unverified data dir defaults to the general endpoint", () => {
@@ -42,7 +38,6 @@ test("withXiaomiBaseUrl swaps the catalog's general URL for the verified gateway
   expect(withXiaomiBaseUrl(model, d)).toMatchObject({
     baseUrl: "https://token-plan-ams.xiaomimimo.com/v1",
   });
-  // A non-xiaomi model passes through untouched.
   const other = {
     id: "x",
     provider: "deepseek",

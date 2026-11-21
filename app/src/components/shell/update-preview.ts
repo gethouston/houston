@@ -4,22 +4,6 @@ import type { UpdateInfo, UpdateStatus } from "../../lib/update-status";
 import { UpdateLaunchOverlay } from "./update-launch-overlay";
 import { UpdatePill, type UpdatePillStatus } from "./update-pill";
 
-/**
- * DEV-ONLY preview harness for the update surfaces (the sentry-smoke idiom:
- * gated on `import.meta.env.DEV`, so release builds tree-shake it). The real
- * flow only runs in packaged PROD builds against the live release feed; this
- * drives the same components with simulated status from the DevTools
- * console:
- *
- *   __HOUSTON_UPDATE_PREVIEW__("launch")   launch overlay, progress ramps
- *   __HOUSTON_UPDATE_PREVIEW__("pill")     the restart pill, click "restarts"
- *   __HOUSTON_UPDATE_PREVIEW__("error")    the pill in its failed-install state
- *   __HOUSTON_UPDATE_PREVIEW__(null)       close the preview
- *
- * Nothing downloads; a click on the pill shows the restarting state for a
- * beat and closes. English-only by design: it's for us, never a real user.
- */
-
 type PreviewScene = "launch" | "pill" | "error";
 
 declare global {
@@ -63,7 +47,6 @@ export function useUpdatePreview(collapsed = false): ReactElement | null {
         }
         stop();
         setStatus({ state: "installing", info: LAUNCH_INFO });
-        // The real flow relaunches by itself right after; mirror by closing.
         setTimeout(() => setStatus(null), 1500);
       }, 120);
     };

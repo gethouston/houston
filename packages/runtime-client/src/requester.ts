@@ -1,8 +1,6 @@
 import { trimTrailingSlashes } from "./trim-slashes";
 import type { EngineClientConfig } from "./types";
 
-/** A non-2xx response from the engine. `status` is the upstream HTTP status;
- *  `body` is the raw response text (empty when unreadable). */
 export class EngineError extends Error {
   constructor(
     public status: number,
@@ -13,20 +11,11 @@ export class EngineError extends Error {
   }
 }
 
-/**
- * The shared fetch plumbing every runtime-client class is built on: base-URL
- * joining, bearer auth, non-2xx → {@link EngineError}, and JSON decoding. A
- * single implementation so the conversation client and the user-scoped
- * integration/preference clients cannot drift in how they talk to the engine.
- */
 export interface Requester {
-  /** Issue a request; throws {@link EngineError} on a non-2xx response. */
   request(path: string, init?: RequestInit): Promise<Response>;
-  /** Issue a request and decode its JSON body. */
   json<T>(path: string, init?: RequestInit): Promise<T>;
 }
 
-/** Build a {@link Requester} from an {@link EngineClientConfig}. */
 export function createRequester(config: EngineClientConfig): Requester {
   const base = trimTrailingSlashes(config.baseUrl);
   const token = config.token;

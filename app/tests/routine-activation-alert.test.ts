@@ -8,12 +8,6 @@ import en from "../src/locales/en/routines.json" with { type: "json" };
 import es from "../src/locales/es/routines.json" with { type: "json" };
 import pt from "../src/locales/pt/routines.json" with { type: "json" };
 
-/**
- * The routine screen's alert block reads the SDK's `triggerRemedy`: Reconnect
- * only for a disconnected account, authored copy (never the host's English)
- * for an event the app no longer offers and for a refusal it retries itself.
- */
-
 const SRC = join(import.meta.dirname, "../src");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
 

@@ -7,14 +7,6 @@ import { LocalPaths } from "../paths";
 import { MemoryVfs } from "../vfs";
 import { handleAgentFile } from "./agent-file";
 
-/**
- * The raw `agentfile/**` read/write route the desktop board + agent-settings
- * panes ride. The load-bearing behavior under test is REACTIVITY: a write must
- * fire the event the SHARED domain classifier picks (not the drifted local copy
- * this route used to carry), so a CLAUDE.md PUT reaches every connected client's
- * Instructions pane as `ContextChanged`, not `FilesChanged` (HOU-644).
- */
-
 const ws: Workspace = {
   id: "ws-1",
   ownerUserId: "alice",
@@ -32,7 +24,6 @@ const agent: Agent = {
 };
 const paths = new LocalPaths();
 
-/** A fake IncomingMessage: an async byte stream carrying the JSON body. */
 function fakeReq(body?: unknown): IncomingMessage {
   const buf = Buffer.from(body === undefined ? "" : JSON.stringify(body));
   return {
@@ -42,7 +33,6 @@ function fakeReq(body?: unknown): IncomingMessage {
   } as unknown as IncomingMessage;
 }
 
-/** A fake ServerResponse capturing the status + JSON body `json()` writes. */
 function fakeRes() {
   const captured: { status: number; body: unknown } = { status: 0, body: null };
   const res = {
@@ -57,7 +47,6 @@ function fakeRes() {
   return { res, captured };
 }
 
-/** Drive the handler once; return the response + any events it emitted. */
 async function call(method: string, rel: string, body?: unknown) {
   const vfs = shared.vfs;
   const events: HoustonEvent[] = [];
@@ -75,7 +64,6 @@ async function call(method: string, rel: string, body?: unknown) {
   return { handled, ...captured, events };
 }
 
-// One vfs shared across the file's tests (writes accumulate, as on a real host).
 const shared = { vfs: new MemoryVfs() };
 
 test("PUT CLAUDE.md emits ContextChanged (was mis-classified as FilesChanged)", async () => {
@@ -120,7 +108,6 @@ test("a raw routines write is refused and writes nothing: routines change throug
     }
   }
   expect(await shared.vfs.readText(key)).toBe(stored);
-  // Reading it stays open.
   const read = await call("GET", ".houston/routines/routines.json");
   expect(read.status).toBe(200);
   expect(read.body).toEqual({ content: stored });
@@ -193,14 +180,6 @@ test("no vfs wired → 503, handled but no write", async () => {
   expect(captured.status).toBe(503);
 });
 
-/**
- * S3 — WHAT THIS ROUTE MAY SERVE. On the local layout the runtime's data
- * directory sits INSIDE the agent root (`paths.ts`), so the traversal clamp
- * alone left the OAuth tokens, the served-providers manifest, `settings.json`
- * and every transcript one request away from anything holding a session: the
- * app's own Files rule (no top-level dot-directory) plus the named documents
- * the app actually keeps under one.
- */
 const REFUSED_PATHS = [
   ".houston/runtime/auth.json",
   ".houston/runtime/served-providers.json",
@@ -250,14 +229,6 @@ for (const rel of SERVED_PATHS) {
   });
 }
 
-/**
- * S10 — THE BOARD IS READ THROUGH HERE. `app/src/data/activity.ts` reads
- * `.houston/activity/activity.json` as a document, so an approval card stored
- * on a mission row reaches the person through THIS route: it has to be
- * re-rendered from the host's record, exactly as the typed activities route
- * does, or the card says whatever the agent's file tools wrote next to a live
- * receipt.
- */
 test("an approval card on the board is served from the HOST's record", async () => {
   assistantApprovals.clear();
   const request = assistantApprovals.issue({

@@ -1,11 +1,3 @@
-/**
- * Staging experiment: stamp provider network milestones onto the running
- * turn's timings, so a far-away worker's first-token delay splits into
- * session setup, connection setup and the provider's first byte. A single-use
- * worker runs exactly one turn, so one active record is exact there; a
- * multi-turn worker never installs this.
- */
-
 let active: Record<string, number> | undefined;
 let ownOrigins: string[] = [];
 let unmarkedFetch: typeof fetch | undefined;
@@ -14,7 +6,6 @@ export function setActiveTurnTimings(timings: Record<string, number>) {
   active = timings;
 }
 
-/** First occurrence wins; later calls are free no-ops. */
 export function markTurnOnce(name: string) {
   if (active && active[name] === undefined) active[name] = performance.now();
 }
@@ -25,14 +16,10 @@ function requestUrl(input: Parameters<typeof fetch>[0]): string {
   return input.url;
 }
 
-/** The global fetch without the marks: a request that is not the turn's own
- *  (a prewarm's) rides the same connection pool and stamps nothing. */
 export function untrackedFetch(): typeof fetch {
   return unmarkedFetch ?? globalThis.fetch;
 }
 
-/** Wrap fetch and WebSocket once. Calls to Houston's own origins are not
- *  provider traffic and are left unmarked. */
 export function installTurnNetworkMarks(houstonOrigins: string[]) {
   ownOrigins = houstonOrigins.flatMap((value) => {
     try {

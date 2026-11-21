@@ -244,8 +244,6 @@ describe("prompt", () => {
     expect(prompt).toContain("suggest_actions");
   });
 
-  // The host fires only on a non-empty snapshot and has already pinged the
-  // person, so a silent "nothing to say" token would land raw in the chat.
   test("always asks for a briefing, never a silent token", () => {
     expect(prompt).not.toContain("HEARTBEAT_OK");
     expect(prompt).not.toMatch(/reply with exactly/i);

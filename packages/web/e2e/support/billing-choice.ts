@@ -3,13 +3,6 @@ import type { BillingChoice, BillingChoiceOrg } from "@houston/wire-types";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { billingScreen, openBilling } from "./plan";
 
-/**
- * The free-org pick, armed on the fake host (`/__test__/billing-choice`), and
- * the pricing-change modal and picker it drives. The page clock is pinned
- * three days before the cutover so every date on screen comes from the
- * fixture.
- */
-
 export const CHOICE_NOW = "2026-10-20T17:00:00.000Z";
 export const SPACES_OWNER_CAPS = {
   multiplayer: true,
@@ -64,14 +57,11 @@ export function ownerChoice(patch: Partial<BillingChoice> = {}): BillingChoice {
     freeOrgSlug: null,
     paidOrgSlug: null,
     orgs: [PERSONAL, INNOVA, LA_FILA],
-    // Before the cutover no org carries billing, so the announcement's list
-    // prices come from the billing choice itself.
     seatPrices: { monthlyCents: 2000, annualCents: 18000 },
     ...patch,
   };
 }
 
-/** A Plus payer kept on the $15 Plus price per member, grace on the bigger one. */
 export function payerChoice(): BillingChoice {
   return ownerChoice({
     payer: "plus",
@@ -99,17 +89,11 @@ export const armChoice = (
   choice: BillingChoice | null,
   refuse?: "not_owner" | "not_payer" | "same_org",
   options: {
-    /** What the gateway answers once a pick is refused. */
     afterRefusal?: BillingChoice;
-    /**
-     * Refusals the next picks answer, one each, before `refuse`; each may
-     * swap the choice the refetch reads (`after`). Then picks store.
-     */
     refusals?: {
       refuse: "not_owner" | "not_payer" | "same_org";
       after?: BillingChoice;
     }[];
-    /** Every dismissal answers 500. */
     failDismiss?: boolean;
   } = {},
 ) => post("/__test__/billing-choice", { choice, refuse, ...options });
@@ -125,15 +109,12 @@ export async function installChoiceClock(page: Page): Promise<void> {
   await page.clock.install({ time: new Date(CHOICE_NOW) });
 }
 
-/** The modal shown on app open: its intro, then the picker in the same frame. */
 export const choiceModal = (page: Page): Locator =>
   page.getByTestId("billing-change-modal");
 
-/** The picker opened from Settings > Billing. */
 export const settingsPicker = (page: Page): Locator =>
   page.getByTestId("free-org-picker");
 
-/** Settings > Billing, reached past the modal; the picker opens from there. */
 export async function openSettingsPicker(page: Page): Promise<Locator> {
   await page.goto("/");
   await choiceModal(page)
@@ -147,10 +128,6 @@ export async function openSettingsPicker(page: Page): Promise<Locator> {
 export const MODAL_TITLE = "Teams are out of beta";
 export const CHOOSE = "Choose my organization for the free tier";
 
-/**
- * Next through the pick's two intro pages to the picker: page two's action
- * is "Choose my organization for the free tier", or Next for a payer.
- */
 export async function openPicker(modal: Locator, payer = false): Promise<void> {
   await modal
     .getByRole("button", { name: "Next", exact: true })
@@ -160,19 +137,16 @@ export async function openPicker(modal: Locator, payer = false): Promise<void> {
     .click();
 }
 
-/** A single-org owner: the one org they own stays free. */
 export function singleOrgChoice(
   patch: Partial<BillingChoice> = {},
 ): BillingChoice {
   return ownerChoice({ needed: false, orgs: [LA_FILA], ...patch });
 }
 
-/** A member of an org someone else owns: nothing of theirs to pick. */
 export function memberChoice(): BillingChoice {
   return ownerChoice({ needed: false, orgs: [] });
 }
 
-/** Seed the app's language before boot (the fixture seeds English). */
 export async function seedLocale(
   page: Page,
   locale: "es" | "pt",

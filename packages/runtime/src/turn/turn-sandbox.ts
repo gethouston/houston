@@ -22,7 +22,6 @@ import {
 import { handleTurnWriteRoute } from "./turn-sandbox-writes";
 import type { TurnGrant } from "./types";
 
-/** Dependencies captured by a single turn's sandbox routing closure. */
 export interface TurnSandboxDeps {
   grant: TurnGrant;
   hostToken: string;
@@ -32,19 +31,15 @@ export interface TurnSandboxDeps {
   workspaceId: string;
   conversationId: string;
   actingAs?: { userId: string; name?: string };
-  /** The acting person's plan limits (TurnRequest.limits). */
   limits?: TurnLimits;
-  /** IANA zone in which the deployment fires routines. */
   timezone?: string;
   authoringPin?: LiveTurnPin;
   orgSlug: string;
   agentSlug: string;
   fetchImpl?: typeof fetch;
-  /** Present on Houston's own turn: its operation and mission routes. */
   coordinator?: TurnCoordinatorSession;
 }
 
-/** Mutation-derived views published after the turn's object sync lands. */
 export interface TurnSandboxViews {
   customDefinitions?: CapturedCustomDefinitions;
 }
@@ -52,7 +47,6 @@ export interface TurnSandboxViews {
 const json = (status: number, body: unknown): Response =>
   Response.json(body, { status });
 
-/** The JSON object a facade route expects, or null when the body is not one. */
 function parseBody(
   raw: BodyInit | null | undefined,
 ): Record<string, unknown> | null {
@@ -74,14 +68,11 @@ function customStatus(error: CustomIntegrationError): number {
       : 400;
 }
 
-/** Build the `/sandbox/*` facade available only for this granted turn. */
 export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
   call: SandboxFetch;
   dispose: () => Promise<void>;
   views: () => TurnSandboxViews;
-  /** A frame as the user is shown it (Houston's approval cards). */
   present: (frame: WireFrame) => WireFrame;
-  /** Why the person's message may not start this turn, or null. */
   admission: () => Promise<string | null>;
 } {
   const fetchImpl = deps.fetchImpl ?? fetch;
@@ -89,8 +80,6 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
   const custom = turnCustomContexts(deps, fetchImpl);
   const { get: getCustom, reset: resetCustom } = custom;
   const integrations = makeTurnIntegrationRoutes(deps, fetchImpl, getCustom);
-  // Scope-gated at BUILD time: without `code-run` the path is simply not a
-  // route this turn has, so it 404s like any other unknown one.
   const codeRun = deps.grant.scopes.includes("code-run")
     ? makeTurnCodeRoute(deps, fetchImpl)
     : null;
@@ -108,15 +97,11 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
   );
 
   const call: SandboxFetch = async (path, init) => {
-    // Houston's own routes first: its mission reads are GETs.
     const coordinated = deps.coordinator?.route(path, init);
     if (coordinated) return coordinated;
     if ((init?.method ?? "GET") !== "POST")
       return json(405, { error: "method not allowed" });
     try {
-      // The code relay forwards the RAW body: a run request carries base64
-      // input files up to the gateway's 32 MiB cap, and parsing then
-      // re-serializing it here would copy the whole payload for nothing.
       if (codeRun && path === TURN_CODE_RUN_PATH) {
         return await codeRun(
           typeof init?.body === "string" ? init.body : "{}",

@@ -2,7 +2,6 @@ import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { OrgBilling } from "@houston/wire-types";
 import { expect, type Locator, type Page } from "@playwright/test";
 
-/** A team whose billing owner still pays the $15 promotional monthly price. */
 const TEAM = { slug: "00000000000000ab", name: "Acme" };
 
 export function promoBilling(patch: Partial<OrgBilling> = {}): OrgBilling {
@@ -53,7 +52,6 @@ export async function enterPromoTeam(
     role: "owner",
   });
   await armFake("workspaces", { teams: [{ ...TEAM, billing }] });
-  // The team is the space this person last used, so the app opens on it.
   const res = await fetch(`${FAKE_HOST_URL}/v1/preferences/last_workspace_id`, {
     method: "PUT",
     headers: { "content-type": "application/json" },
@@ -65,7 +63,6 @@ export async function enterPromoTeam(
 
 export const promoModal = (page: Page) => page.getByTestId("promo-ended-modal");
 
-/** Wait for the modal's first control, the way an app open shows it. */
 export async function promoOpen(page: Page): Promise<Locator> {
   const modal = promoModal(page);
   await expect(modal.getByRole("button").first()).toBeVisible({

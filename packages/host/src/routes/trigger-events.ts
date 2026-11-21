@@ -10,7 +10,6 @@ import {
 import { json, readJson } from "./http";
 import { defineRoute } from "./registry";
 
-/** Validate one wire event, or null when malformed. */
 function parseEvent(raw: unknown): TriggerEvent | null {
   if (typeof raw !== "object" || raw === null) return null;
   const e = raw as Record<string, unknown>;
@@ -29,23 +28,6 @@ function parseEvent(raw: unknown): TriggerEvent | null {
   };
 }
 
-/**
- * POST /agents/:agentId/trigger-events — the INTERNAL pod route (contract C9 #2):
- * the control plane (or the self-host process) delivers a batch of external
- * events for an agent. Not user-facing — it rides the same host-token trust
- * boundary as the other /agents/* routes (the bearer principal is resolved in
- * server.ts; a managed pod's caller presents the pod token). Matches BEFORE the
- * generic per-agent runtime dispatch, which has no trigger routes.
- *
- * All outcomes are HTTP 200 with a discriminated `result` (fired / busy /
- * no_routine); the caller uses it to mark the events delivered or retry.
- *
- * `phase: "user"`, not "agent", though the path names an agent: the acting-as
- * refusal below must answer BEFORE ownership is evaluated, so a proxied user
- * request gets the same flat 404 whoever owns the agent — an agent-phase route
- * would relay authorizeAgent's 403 first and confirm the agent to the caller
- * this route exists to turn away.
- */
 defineRoute({
   group: "trigger-events",
   method: "POST",
@@ -56,15 +38,6 @@ defineRoute({
     "Server-to-server delivery: the control plane posts external events to the pod, never a client.",
   source: "packages/host/src/routes/trigger-events.ts",
   handler: async ({ deps, userId, params, req, res }) => {
-    // Trust boundary (C9 security): trigger delivery rides the host token from
-    // the control plane (or the self-host process calls fireTriggerEvents
-    // in-process) — it NEVER arrives via the user-facing gateway proxy, which
-    // stamps `x-houston-acting-as` on every request it forwards. So an acting-as
-    // header on THIS route means a user request was proxied to a pod-internal
-    // route; refuse it. Firing here would run a routine as its creator with a
-    // caller-supplied, attacker-authored payload (prompt injection into a live
-    // Autopilot turn). The gateway also 404s this path, so this is defense in
-    // depth: the pod is the last line even if a proxy denylist regresses.
     if (req.headers[ACTING_AS_HEADER] !== undefined)
       return json(res, 404, { error: "not found" });
 
@@ -88,10 +61,6 @@ defineRoute({
       events.push(parsed);
     }
 
-    // The creator's minted C2 token rides in the BODY, never the header: the
-    // header is the proxied-user marker refused above, and the internal delivery
-    // is the only caller of this route (same shape as routine-fires). Optional:
-    // an older control plane, or the self-host process, delivers without it.
     if (body.actingAs !== undefined && typeof body.actingAs !== "string")
       return json(res, 400, { error: "malformed 'actingAs'" });
     const actingAs = body.actingAs || undefined;

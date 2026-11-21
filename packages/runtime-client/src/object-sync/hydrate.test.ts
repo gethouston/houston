@@ -28,11 +28,6 @@ import {
   StoreFencedError,
 } from "./object-store";
 
-/**
- * The hydrate-to-sync loop pins faithful materialization, content diffing,
- * manifest ownership, secret exclusions, symlink safety, and hydration limits.
- */
-
 function setup() {
   const storeRoot = mkdtempSync(join(tmpdir(), "houston-store-"));
   const store = new LocalDirStore(storeRoot);
@@ -132,7 +127,6 @@ test("exclusions support basenames, subtrees, temp files, and runtime auth", () 
   expect(excluded("credentials.json", excludes)).toBe(true);
   expect(excluded("nested/credentials.json", excludes)).toBe(true);
   expect(excluded("db/houston.db", excludes)).toBe(true);
-  // Houston's own half-written file, by suffix; a user's `.tmp` is content.
   expect(excluded("workspace/write.houston.tmp", excludes)).toBe(true);
   expect(excluded("workspace/write.tmp", excludes)).toBe(false);
   expect(excluded("workspaces/W/A/.houston/runtime/auth.json", excludes)).toBe(
@@ -151,7 +145,6 @@ test("`**/dir/` excludes a directory at any depth, never a file of that name", (
   expect(
     excluded("workspaces/W/A/profile/Default/Code Cache/js/0", excludes),
   ).toBe(true);
-  // A FILE called node_modules is content, not a toolchain.
   expect(excluded("workspaces/W/A/notes/node_modules", excludes)).toBe(false);
   expect(excluded("workspaces/W/A/node_modules_backup/x", excludes)).toBe(
     false,
@@ -159,12 +152,6 @@ test("`**/dir/` excludes a directory at any depth, never a file of that name", (
   expect(excluded("workspaces/W/A/src/index.js", excludes)).toBe(false);
 });
 
-/**
- * The store-sync daemon's excludes, including the root-relative `auth-users/`
- * entry it used to carry: the per-member credential directory must stay
- * excluded at EVERY depth even when no caller configures it, because a
- * root-relative pattern can never match the real nested key.
- */
 const DAEMON_EXCLUDES = [
   "credentials.json",
   "auth-users/",
@@ -175,17 +162,12 @@ const DAEMON_EXCLUDES = [
 const POD_AUTH_USERS = "workspaces/W/A/.houston/runtime/auth-users";
 
 test("per-member credential files are excluded at any depth", () => {
-  // The daemon runs with rootDir = HOUSTON_HOME, so the real key is nested
-  // under the agent's runtime dir — the shape that leaked one member's tokens.
   expect(excluded(`${POD_AUTH_USERS}/abc123.json`, DAEMON_EXCLUDES)).toBe(true);
   expect(
     excluded(`${POD_AUTH_USERS}/abc123.served-providers.json`, DAEMON_EXCLUDES),
   ).toBe(true);
   expect(excluded("auth-users/abc123.json", DAEMON_EXCLUDES)).toBe(true);
-  // The per-turn layout puts the same directory one level down.
   expect(excluded("data/auth-users/abc123.json", DAEMON_EXCLUDES)).toBe(true);
-  // The TEAM served-providers manifest is shared state and DOES sync: the
-  // segment rule must not swallow everything named after credentials.
   expect(
     excluded(
       "workspaces/W/A/.houston/runtime/served-providers.json",
@@ -333,17 +315,12 @@ test("explicit generations capability makes empty-prefix first creates condition
   mkdirSync(join(work, "workspace"), { recursive: true });
   writeFileSync(join(work, "workspace", "first.txt"), "born");
 
-  // A cold agent has an EMPTY manifest: inference sees no generations, so
-  // without the boot-lease capability signal this create would have to go
-  // unconditional and concurrent first creates would be last-writer-wins.
   const result = await syncBack(observing, PREFIX, work, new Map(), {
     generations: true,
   });
   expect(preconditions).toEqual(["0"]);
   expect(result.manifest.get("workspace/first.txt")?.generation).toBe("1");
 
-  // An explicit false forces unconditional writes even where an observed
-  // generation would otherwise be sent (the signal outranks inference).
   preconditions.length = 0;
   writeFileSync(join(work, "workspace", "first.txt"), "changed");
   const manifest = new Map([
@@ -566,9 +543,6 @@ test("a file deleted mid-walk is reconciled as deleted, not a failed sync", asyn
   for (const name of ["a.txt", "b.txt", "c.txt"]) {
     writeFileSync(join(work, "workspace", name), `changed-${name}`);
   }
-  // The first upload deletes every other local file — whichever file the walk
-  // visits first, the rest vanish between the walk and their stat/read, the
-  // exact race an agent rewriting session files during a sync pass produces.
   let firstUpload = true;
   const racing = {
     list: (prefix: string) => store.list(prefix),
@@ -599,9 +573,6 @@ test("a file deleted between hash and upload is reconciled, not a failed sync", 
   const manifest = await hydrate(store, PREFIX, work);
   writeFileSync(join(work, "workspace", "a.txt"), "changed-a");
   writeFileSync(join(work, "workspace", "b.txt"), "changed-b");
-  // The upload finds its own source gone: unlinked AFTER syncBack hashed it —
-  // the second half of the vanish window (session files mid-rewrite), which
-  // the mid-walk test above cannot reach.
   const racing = {
     list: (prefix: string) => store.list(prefix),
     download: (key: string, dest: string) => store.download(key, dest),
@@ -622,8 +593,6 @@ test("a vanish surfacing as the fetch error's cause is reconciled too", async ()
   seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
   const manifest = await hydrate(store, PREFIX, work);
   writeFileSync(join(work, "workspace", "a.txt"), "changed-a");
-  // The streaming upload path hands the source to fetch, so the errno arrives
-  // wrapped as the fetch failure's cause instead of the thrown error itself.
   const streaming = {
     list: (prefix: string) => store.list(prefix),
     download: (key: string, dest: string) => store.download(key, dest),
@@ -779,7 +748,6 @@ test("startHydrate keeps deferred objects out of done and fetches them after it"
     defer: (rel) => rel.startsWith("workspace/uploads/"),
   });
   await Promise.resolve();
-  // The deferred object waits for the eager set instead of sharing its pipe.
   expect(requested).toEqual(["workspace/notes.txt"]);
   releaseEager();
   await started.done;
@@ -888,8 +856,6 @@ test("startHydrate aborts in-flight downloads before settlement", async () => {
 test("a non-finite concurrency override still hydrates everything", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, { "workspace/a.txt": "a", "workspace/b.txt": "b" });
-  // NaN would size the worker pool to zero and return a successful EMPTY
-  // manifest — the partial-manifest state the hydration latch must prevent.
   const manifest = await hydrate(store, PREFIX, work, {
     concurrency: Number.NaN,
   });
@@ -917,8 +883,6 @@ test("a download failure rejects hydrate with that error, workers stop", async (
   await expect(
     hydrate(flaky, PREFIX, work, { concurrency: 8 }),
   ).rejects.toThrow("store download exploded");
-  // The failure parks the pool: no worker takes new work afterwards, so at
-  // most the in-flight batch (< concurrency) follows the failing download.
   expect(downloads).toBeLessThan(30);
 });
 
@@ -933,7 +897,6 @@ test("an over-cap rejection skips that file, syncs the rest, and completes the d
     list: (prefix: string) => store.list(prefix),
     download: (key: string, dest: string) => store.download(key, dest),
     upload: (src: string, key: string) => {
-      // The cap is on SIZE, not identity: the shrunken re-write must go through.
       if (statSync(src).size > 32)
         return Promise.reject(
           new ObjectTooLargeError(key, `object store PUT ${key} failed (413)`),
@@ -944,18 +907,14 @@ test("an over-cap rejection skips that file, syncs the rest, and completes the d
   };
 
   const result = await syncBack(capped, PREFIX, work, manifest);
-  // The rest of the pass survived the rejection: other uploads AND deletes ran.
   expect(result.uploaded).toEqual(["workspace/notes.txt"]);
   expect(result.deleted).toEqual(["workspace/old.txt"]);
   expect(result.skipped).toHaveLength(1);
   expect(result.skipped[0]?.key).toBe("workspace/huge.mp4");
-  // The skip is remembered at the file's hash: an UNCHANGED file is not
-  // re-attempted next pass (a deterministic 413 can never heal on retry)...
   expect(result.manifest.has("workspace/huge.mp4")).toBe(true);
   const again = await syncBack(capped, PREFIX, work, result.manifest);
   expect(again.skipped).toEqual([]);
   expect(again.uploaded).toEqual([]);
-  // ...but a CHANGED file is (it may now fit under the cap).
   writeFileSync(join(work, "workspace", "huge.mp4"), "h");
   const changed = await syncBack(capped, PREFIX, work, again.manifest);
   expect(changed.uploaded).toEqual(["workspace/huge.mp4"]);
@@ -982,8 +941,6 @@ test("a large file round-trips: streamed hash agrees across syncBack and hydrate
   seed(storeRoot, PREFIX, {});
   const manifest = await hydrate(store, PREFIX, work);
   mkdirSync(join(work, "workspace"), { recursive: true });
-  // Over the 16 MiB streaming threshold — both the sync-back hash and the
-  // re-hydration hash take the streamed path and must agree with each other.
   writeFileSync(
     join(work, "workspace", "big.bin"),
     "B".repeat(17 * 1024 * 1024),
@@ -992,12 +949,9 @@ test("a large file round-trips: streamed hash agrees across syncBack and hydrate
   expect(result.uploaded).toEqual(["workspace/big.bin"]);
   expect(result.totalBytes).toBe(17 * 1024 * 1024);
 
-  // Unchanged → the next pass re-hashes (streamed) and must NOT re-upload.
   const again = await syncBack(store, PREFIX, work, result.manifest);
   expect(again.uploaded).toEqual([]);
 
-  // A fresh hydration (streamed hash of the downloaded copy) produces the
-  // same manifest entry, so the first sync after a wake is also a no-op.
   const rehydrated = await hydrate(
     store,
     PREFIX,
@@ -1012,9 +966,6 @@ test("a large file round-trips: streamed hash agrees across syncBack and hydrate
 });
 
 test("holdDeletesOnFailure: a rename whose destination is refused keeps the source object", async () => {
-  // A pool op renames a file that predates a store-cap reduction: the new key
-  // is rejected (413). With deletes held, the old key — the ONLY durable
-  // copy — survives; the default one-shot pass would have deleted it.
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, { "workspace/big.bin": "B".repeat(64) });
   const manifest = await hydrate(store, PREFIX, work);
@@ -1042,7 +993,6 @@ test("holdDeletesOnFailure: a rename whose destination is refused keeps the sour
   expect(held.skipped.map((s) => s.key)).toEqual(["workspace/renamed.bin"]);
   expect(held.deleted).toEqual([]);
   expect(await store.list(PREFIX)).toContain(`${PREFIX}/workspace/big.bin`);
-  // The held entry stays owned in the manifest, so nothing is orphaned.
   expect(held.manifest.has("workspace/big.bin")).toBe(true);
 });
 
@@ -1057,7 +1007,6 @@ test("segment-glob excludes match exactly one segment per `*` and only the named
   expect(
     excluded("workspaces/Personal/Bob/.houston/runtime/settings.json", ex),
   ).toBe(true);
-  // A user project's own .houston/runtime is NOT the agent's — hydrated.
   expect(
     excluded("workspaces/Personal/Bob/repo/.houston/runtime/state.db", ex),
   ).toBe(false);
@@ -1075,8 +1024,6 @@ test("an object deleted between the listing and its download is skipped, not fat
   });
   const listing = await store.list("agent-1");
   rmSync(join(storeRoot, "agent-1", "workspace", "vanishes.txt"));
-  // The stale listing still names the deleted object — the boot-gating pass
-  // must treat the vanish as a delete, not fail the whole hydration.
   const stale: ObjectStore = {
     list: async () => listing,
     download: (key, dest) => store.download(key, dest),
@@ -1090,6 +1037,5 @@ test("an object deleted between the listing and its download is skipped, not fat
   expect(readFileSync(join(work, "workspace", "keep.txt"), "utf8")).toBe(
     "keep",
   );
-  // Nothing half-fetched survives to be mistaken for a fresh local write.
   expect(existsSync(join(work, "workspace", "vanishes.txt"))).toBe(false);
 });

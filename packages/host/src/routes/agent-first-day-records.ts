@@ -14,17 +14,11 @@ import type {
 import { recordFirstDayStarted } from "./agent-first-day-retire";
 import type { FirstDayStartDeps } from "./agent-first-day-start";
 
-/**
- * The writes a first-day start makes (`agent-first-day-start.ts`), each under
- * the SAME per-document lock every other writer of that document takes.
- */
-
 type RecordDeps = Pick<FirstDayStartDeps, "vfs" | "root" | "agent" | "emit">;
 
 const activityChanged = (deps: RecordDeps) =>
   deps.emit?.({ type: "ActivityChanged", agentPath: deps.agent.id });
 
-/** Put the setup task on the board. */
 export async function saveTask(deps: RecordDeps, task: Activity) {
   await withDocLock(`${deps.root}#activity`, async () => {
     const { items } = await loadActivities(deps.vfs, deps.root);
@@ -33,7 +27,6 @@ export async function saveTask(deps: RecordDeps, task: Activity) {
   activityChanged(deps);
 }
 
-/** Take a task whose first turn never started off the board again. */
 export async function dropTask(deps: RecordDeps, id: string) {
   await withDocLock(`${deps.root}#activity`, async () => {
     const { items } = await loadActivities(deps.vfs, deps.root);
@@ -43,7 +36,6 @@ export async function dropTask(deps: RecordDeps, id: string) {
   activityChanged(deps);
 }
 
-/** Record the setup task's first turn after it starts. */
 export async function recordStarted(deps: RecordDeps): Promise<void> {
   await recordFirstDayStarted({
     vfs: deps.vfs,

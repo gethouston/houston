@@ -3,11 +3,6 @@ import type { ActivityDocOptions } from "./turn-activity-doc";
 import { poolIdentity } from "./turn-store";
 import type { TurnRequest } from "./types";
 
-/**
- * Where a turn publishes one doc family under its claim, or null when the
- * turn has no doc system to project into: a shadow turn, an unclaimed turn,
- * or a deployment with no pool store. Reads there never come from a doc.
- */
 export function turnDocTarget(
   deps: TurnServerDeps,
   turn: TurnRequest,

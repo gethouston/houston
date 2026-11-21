@@ -81,8 +81,6 @@ pub async fn start_channels_loopback(
     let attempt_id = state.mint_id();
     let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
     let (freed_tx, freed_rx) = oneshot::channel::<()>();
-    // Registered before the task starts, so a listener that ends at once still
-    // finds its own entry to release.
     state.insert(ActiveListener {
         id: attempt_id,
         cancel: cancel_tx,

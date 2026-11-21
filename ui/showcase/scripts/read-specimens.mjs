@@ -1,11 +1,3 @@
-/**
- * The specimen contract, read out of source text: every page's `id` and the
- * `@houston-ai/*` symbols it declares in `export const sources: string[]`.
- *
- * Read rather than imported so the generator stays a plain Node script with no
- * TypeScript loader — and so a page that forgets `sources` THROWS here instead
- * of quietly reporting that nothing uses it.
- */
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,7 +5,6 @@ import { fileURLToPath } from "node:url";
 const SHOWCASE = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const REPO = resolve(SHOWCASE, "../..");
 
-/** Every specimen module under `specimens/`, sorted so output is stable. */
 function specimenFiles() {
   const found = [];
   const walk = (dir) => {
@@ -30,7 +21,6 @@ function specimenFiles() {
   return found;
 }
 
-/** `{ id, sources, file }` for every specimen page. */
 export function readSpecimens() {
   const specimens = [];
   for (const path of specimenFiles()) {
@@ -50,9 +40,6 @@ export function readSpecimens() {
         `${where}: no \`export const sources: string[]\` — every specimen names the @houston-ai symbols it documents`,
       );
     const symbols = [...block[1].matchAll(/"([^"]+)"/g)].map((one) => one[1]);
-    // A Foundations page documents the design system itself — the palette, the
-    // canvas effects — not a `@houston-ai/*` export, so it has no symbols to
-    // name and no "Used in" row to build. Every other page still must.
     if (symbols.length === 0 && !id[1].startsWith("foundations-"))
       throw new Error(`${where}: \`sources\` is empty`);
     specimens.push({ id: id[1], sources: symbols, file: where });

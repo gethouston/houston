@@ -5,12 +5,6 @@ import {
   type RemoveRoutinesNote,
 } from "./people-remove-model";
 
-/**
- * The remove confirmation's routines section: which routines this person set
- * up will stop (they run on that person's own connected apps, and nothing
- * moves them to anyone else). Loading and failure stay quiet one-liners; a
- * failure was already reported, and the removal still works.
- */
 export function PeopleRemoveRoutines({ note }: { note: RemoveRoutinesNote }) {
   const { t } = useTranslation("teams");
   if (note.kind === "none") return null;

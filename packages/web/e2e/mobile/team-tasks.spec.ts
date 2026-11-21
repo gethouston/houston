@@ -4,12 +4,6 @@ import { expect, test } from "../support/fixtures";
 import { awaitAgentsHome } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
-/**
- * The phone reaches an employee's other sections from its task list's ⋯
- * menu: Routines and Files open that tab of the employee's own screen, and
- * Settings opens in place over the list.
- */
-
 async function openEmployeeMenu(page: Page): Promise<void> {
   await page.goto("/");
   await (await awaitAgentsHome(page)).tap();
@@ -43,7 +37,6 @@ for (const section of ["routines", "files"] as const) {
     await expect(
       screen(page).locator(`[data-team-section-tab='${section}']`),
     ).toHaveAttribute("aria-current", "page");
-    // The chip names where it goes: this employee's own task list.
     await expect(page.getByTestId("agent-mobile-back")).toHaveAttribute(
       "aria-label",
       SEED_AGENT_NAME,
@@ -67,7 +60,6 @@ test("switching tabs never stacks: back returns to the task list", async ({
   await expect(tab(page, "routines")).toHaveAttribute("aria-current", "page");
   await page.getByTestId("agent-mobile-back").tap();
   await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
-  // One more back leaves the employee for the AI Employees list.
   await page.goBack();
   await expect(page.getByTestId("agent-missions-screen")).toHaveCount(0);
   await expect(page.getByTestId("agents-home")).toBeVisible();
@@ -102,14 +94,11 @@ test("the Settings tab's back returns to the task list without stacking", async 
   await tab(page, "settings").tap();
   await screen(page).locator("[data-agent-settings-back]").tap();
   await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
-  // One more back leaves the employee for the AI Employees list.
   await page.goBack();
   await expect(page.getByTestId("agents-home")).toBeVisible();
 });
 
 test("a phone never shows the employee's desktop board", async ({ page }) => {
-  // Wide, the app opens on the first employee's board; narrowing the window
-  // to a phone moves that employee to its task list.
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/");
   await expect(screen(page)).toHaveAttribute("data-screen", "agent");

@@ -3,12 +3,6 @@ import { describe, it } from "node:test";
 import { resolveScopedOverrides } from "../src/components/skills-view/skills-scope.ts";
 import type { SkillSummary } from "../src/lib/types.ts";
 
-/**
- * An AI Employee that keeps its OWN copy of a workspace skill runs that copy —
- * the store version is shadowed. Its Skills section must therefore edit the
- * copy, never the workspace original, or one employee's save rewrites the
- * skill for everyone while its own copy stays exactly as it was.
- */
 const summary = (name: string, title: string): SkillSummary => ({
   name,
   title,
@@ -80,17 +74,11 @@ describe("resolveScopedOverrides", () => {
   });
 
   it("leaves the row untouched while the employee's list is still loading", () => {
-    // Flipping it to "local" over the STORE's summary renames the row on
-    // screen the moment the employee's own copy lands.
     const [invoices] = resolveScopedOverrides(rows, "ana", undefined);
     strictEqual(invoices, rows[0]);
   });
 
   it("holds the row back while the read list holds no such copy", () => {
-    // The aggregate and the list were read a frame apart. Listed as the store
-    // row, it opens the STORE copy: the editor would say "This is the
-    // workspace version" and a save would rewrite the skill for everyone,
-    // while the employee's own copy goes on shadowing it.
     const resolved = resolveScopedOverrides(rows, "ana", new Map());
     deepStrictEqual(
       resolved.map((r) => r.slug),

@@ -28,7 +28,6 @@ import {
 } from "./turn-session-startup";
 import type { TurnDirectories, TurnSessionRequest } from "./turn-session-types";
 
-/** Finish overlapped setup and open a backend session from hydrated state. */
 export async function openTurnBackendSession(input: {
   directories: TurnDirectories;
   turn: TurnSessionRequest;
@@ -51,11 +50,6 @@ export async function openTurnBackendSession(input: {
     baseUrl?: string;
     reasoning?: boolean;
   };
-  // Same one-line form the long-lived runtime logs (ai/turn-diagnostic.ts), so
-  // desktop and pod logs read identically. `pinned` speaks for the MODEL only:
-  // a pooled turn's provider always arrives on the request (this runtime holds
-  // no saved pick), while the model is a per-turn pin over the hydrated
-  // settings.json / provider default (turn-model.ts).
   logTurnTarget({
     provider,
     model: diagnostic.id,
@@ -66,8 +60,6 @@ export async function openTurnBackendSession(input: {
     pin?.effort ??
     (diagnostic.reasoning === true ? DEFAULT_REASONING_EFFORT : undefined);
   const thinkingLevel = toThinkingLevel(effort);
-  // A routine fire starts fresh, before anything reads or writes the session
-  // dir it deletes (turn-routine-context.ts).
   const routineFire = resetPooledRoutineSession({
     dataDir: directories.dataDir,
     conversationId,
@@ -94,12 +86,6 @@ export async function openTurnBackendSession(input: {
     harness === "claude" && !switchedHarness
       ? resolveTurnClaudeResume(directories, conversationId)
       : undefined;
-  // A routine chat opens on the digest of the same archive-aware tail the
-  // standing server reads; every other chat keeps its hydrated live file and
-  // the budget it always had here (routine-replay.ts). Built
-  // only when a session actually starts without its history: the tail can
-  // reach into archive segments, which a resumed run must never parse. Any
-  // the tail reaches that stayed remote land first (only stats when none).
   await loadRoutineReplayArchive(directories.loadArchive, conversationId);
   const replayOf = () =>
     replayForConversation({
@@ -113,15 +99,11 @@ export async function openTurnBackendSession(input: {
       dirs: { ...directories, assistantRole: turn.role ?? null },
       windowTokens: model.contextWindow,
     });
-  // An armed Claude summary IS the history the new session starts from.
   const replay =
     freshSession || (harness === "claude" && !claudeResume && !armedSummary)
       ? replayOf()
       : null;
-  // Claude's fallback when the SDK refuses its resume: deferred until then.
   const retryReplay = () => (replay ?? replayOf())?.text ?? "";
-  // The CLI blocks its first start on a flag fetch unless its config dir
-  // already holds the flags: hand it the acting member's stored copy.
   if (harness === "claude")
     seedTurnClaudeFlags({
       dataDir: directories.dataDir,
@@ -145,8 +127,6 @@ export async function openTurnBackendSession(input: {
     recordedContextTokens: () => recordedContextFill(input.canonicalMessages),
   });
   if (turn.timings) turn.timings.t_backend_session = performance.now();
-  // Proactive autocompact, as the pod runs it before every prompt: only a
-  // session that resumed its native history has anything to compact.
   const resumedHistory =
     !freshSession &&
     (harness === "pi" || (claudeResume !== undefined && !armedSummary));
@@ -176,7 +156,6 @@ export async function openTurnBackendSession(input: {
   };
 }
 
-/** Resolve native Claude continuity, relocating a foreign cwd slug if needed. */
 function resolveTurnClaudeResume(
   directories: TurnDirectories,
   conversationId: string,

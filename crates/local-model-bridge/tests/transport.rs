@@ -19,7 +19,7 @@ use uuid::Uuid;
 
 type Socket = WebSocketStream<TcpStream>;
 mod normalization;
-#[allow(clippy::result_large_err)] // Tungstenite fixes the handshake callback error type.
+#[allow(clippy::result_large_err)]
 async fn relay() -> (String, tokio::task::JoinHandle<Socket>) {
     relay_expiring(600).await
 }
@@ -193,7 +193,6 @@ async fn rejects_bad_sequence_and_bounds_admission() {
         start(&mut socket, id, "chat").await;
     }
     assert_eq!(receive(&mut socket).await["code"], "busy");
-    // Frames already in flight for a rejected fifth upload cannot kill the four admitted requests.
     send(
         &mut socket,
         json!({"type":"request_chunk","requestId":ids[4],"sequence":0,"data":"eA=="}),
@@ -296,9 +295,6 @@ async fn renews_drains_and_drop_closes_the_socket() {
     .unwrap();
 }
 
-// The desktop webview's timers sleep while the app idles (macOS App Nap), so
-// the native session itself must say when a renewal is due: two minutes before
-// expiry, and again after every renewal moves the expiry.
 #[tokio::test]
 async fn renewal_due_fires_before_expiry_and_rearms_after_renewal() {
     let (address, relay_task) = relay_expiring(121).await;

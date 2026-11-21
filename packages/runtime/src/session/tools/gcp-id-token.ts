@@ -1,18 +1,6 @@
-/**
- * Google-signed ID tokens from the metadata server, for calling IAM-gated
- * Cloud Run services (the code sandbox is deployed --no-allow-unauthenticated).
- *
- * Works wherever a metadata server exists (Cloud Run, GKE with Workload
- * Identity, GCE). On a dev machine there is none, so the provider yields null
- * and the caller sends only the app-layer X-Sandbox-Token — enforcement is
- * SERVER-side: a missing ID token in production is rejected by Cloud Run IAM
- * and surfaces as the tool call's error, never silently.
- */
-
 const METADATA_IDENTITY_URL =
   "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity";
 
-/** Decode a JWT's exp (ms epoch); 0 when unparsable (treated as expired). */
 function tokenExpiryMs(jwt: string): number {
   try {
     const payload = jwt.split(".")[1] ?? "";
@@ -27,10 +15,6 @@ function tokenExpiryMs(jwt: string): number {
   }
 }
 
-/**
- * A caching ID-token provider for one audience. Refreshes 5 minutes before
- * expiry. Returns null when no metadata server is reachable (local dev).
- */
 export function makeIdTokenProvider(
   audience: string,
 ): () => Promise<string | null> {
@@ -49,7 +33,7 @@ export function makeIdTokenProvider(
         },
       );
     } catch {
-      return null; // no metadata server: dev machine. IAM enforcement is server-side.
+      return null;
     }
     if (!res.ok) {
       throw new Error(

@@ -1,24 +1,3 @@
-// Texto em português para a landing. A árvore de chaves quem manda é o en.js:
-// este arquivo espelha ela exatamente (mesmos caminhos, mesmos tamanhos de
-// array), e scripts/check-locales.mjs garante isso.
-//
-// Regras:
-// - Chaves terminadas em `Html` podem trazer marcação e são renderizadas com
-//   `| safe`. Todo o resto é texto puro e o template escapa.
-// - Nada de travessão longo. Use vírgula, dois-pontos ou uma frase nova.
-// - `{price}` (o preço mensal por pessoa), `{yearlyPrice}` (o preço anual por
-//   pessoa expresso por mês) e `{yearlyTotal}` (o preço anual por pessoa) são
-//   os únicos marcadores. Os templates os substituem a partir de
-//   _data/pricing.js, então nenhum preço fica escrito na mão dentro de uma
-//   tradução.
-// - A estrutura (tons de avatar, elencos de rostos, caminhos de logo, selos)
-//   vive em _data/landing.js. Os arrays daqui casam por índice com os de lá.
-// - A subárvore `js` é serializada na página como window.HOUSTON_I18N pelo
-//   _includes/landing/i18n-data.njk. Só entram ali textos de runtime.
-
-// A falha genérica do portão de download. Ela é renderizada na marcação como a
-// linha de erro do formulário e o download-gate-form.js aplica ela de novo em
-// runtime, então mora em um lugar só e é usada nos dois.
 const GATE_FORM_ERROR = "Algo deu errado. Tente de novo.";
 
 export default {
@@ -61,8 +40,6 @@ export default {
     sub: "O Houston dá ao seu time um único lugar para usar agentes de IA, com qualquer modelo e conectados às ferramentas que vocês já usam, para que cada agente e tudo o que ele aprende pertença à empresa e não à conta de uma pessoa.",
     ctaDownload: "Baixar o app",
     ctaSeeHow: "Ver como funciona",
-    // The quiet route for a company buyer who arrives ready: under the
-    // buttons, to /enterprise.
     ctaCompanies: "Quer para a empresa toda? Fale com nosso time",
     windowAlt:
       "O Houston, o app de computador: o quadro de missões compartilhado de um time, onde os agentes movem tarefas entre Em execução, Precisa de você e Pronto, com os rostos de quem está em cada missão agrupados ao lado",
@@ -417,8 +394,6 @@ export default {
     },
   },
 
-  // The band after pricing that hands a team that already uses Houston to
-  // /enterprise: the company step of the ladder (Free, Team, Enterprise).
   companies: {
     title: "Seu time já usa? Leve para a empresa toda.",
     lead: "Nossos engenheiros fazem isso com você, da primeira conversa a todos os times, em cerca de um mês.",
@@ -642,15 +617,12 @@ export default {
     switchArch: "Escolheu errado? Troque para a outra versão →",
   },
 
-  // Aparece para quem chega com o navegador em outro idioma. O texto em inglês
-  // é só a âncora de paridade: aqui o convite é em português.
   langBanner: {
     text: "Este site também está em português.",
     cta: "Ver em português",
     dismiss: "Continuar em inglês",
   },
 
-  // Tudo daqui para baixo viaja ao navegador como window.HOUSTON_I18N.
   js: {
     people: {
       julian: "Julian",

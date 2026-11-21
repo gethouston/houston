@@ -3,15 +3,6 @@ import { parseTurnRequest } from "./parse-turn-request";
 import { turnSessionRequest } from "./turn-request";
 import type { TurnRequest } from "./types";
 
-/**
- * The provider a pool turn runs on comes from its pin. The turn's PIN (the
- * conversation's picked provider, forwarded by the dispatcher — or a routine's
- * own pinned provider overlaid by executeTurn) must outrank the attached
- * credential's provider: a dispatcher that serves the wrong credential fails
- * as the PINNED provider's auth error instead of silently running the turn on
- * a provider the user never picked.
- */
-
 const emit = () => {};
 const signal = new AbortController().signal;
 
@@ -53,12 +44,6 @@ test("no pin and no credential leaves the provider unattributed", () => {
   ).toBe("");
 });
 
-/**
- * The gateway always sends both context fields, empty when the org has none
- * (what the standing pod's send path gets). An empty string is still provided
- * context: it must never fall back to the file mode, whose section names
- * absolute paths under the turn root.
- */
 test("empty gateway context is provided context, never the file fallback", () => {
   const turn = turnSessionRequest(
     parseTurnRequest({ ...base, workspaceContext: "", userContext: "" }),

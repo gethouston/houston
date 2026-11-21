@@ -8,17 +8,10 @@ import { approvalsDocRel, openTurnApprovals } from "./turn-approvals";
 import { bucket } from "./turn-approvals.test-support";
 import type { TurnFilesystem } from "./turn-filesystem";
 
-/**
- * Houston's approval card is raised in one single-use sandbox and answered by
- * the message that starts the next. These pin that a card, its answer and its
- * spending survive the hop through the agent's store, and nothing else does.
- */
-
 const AGENT = "Personal/Assistant";
 const CONV = "assistant";
 const DATA = "workspaces/Personal/Assistant/.houston/runtime";
 
-/** A fresh disposable root: every turn runs in a new sandbox. */
 async function worker(): Promise<TurnFilesystem> {
   const root = await mkdtemp(join(tmpdir(), "turn-approvals-"));
   return {
@@ -74,7 +67,6 @@ test("a card raised in one turn is answered and spent in the next", async () => 
   expect(next.approvals.consume(call)).toBe("approved");
   await next.save();
 
-  // Spent in the store too: a third turn cannot run it again.
   const third = await open(store);
   expect(third.approvals.consume(call)).toBe("none");
 });
@@ -118,8 +110,6 @@ test("a damaged record file costs a fresh ask, never a failed turn", async () =>
 });
 
 test("the record lives inside the conversation claim's own scope", () => {
-  // A claimed turn may write only its conversation's runtime files (cloud
-  // pod-store claimIDFromKey): conversations/<cid>... and sessions/<cid>/...
   expect(approvalsDocRel({ dataRel: DATA }, "assistant")).toBe(
     `${DATA}/sessions/assistant/assistant-approvals.json`,
   );

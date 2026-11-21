@@ -26,20 +26,12 @@ import {
   openBilling,
 } from "./support/plan";
 
-/**
- * The announcement that plans move to organizations: a modal on app open,
- * cloud only. An owner who still has to pick sees it on every open until they
- * do, and picks in the same frame; everyone else reads it once. It never
- * stacks on a plan dialog.
- */
-
 test.beforeEach(async ({ page }) => {
   await installChoiceClock(page);
 });
 
 const routes = async () => (await choiceCalls()).map((call) => call.route);
 
-/** One org's row on the success step: its name and what it becomes. */
 const outcome = (frame: Locator, name: string) =>
   frame.getByRole("listitem").filter({ hasText: name });
 
@@ -56,8 +48,6 @@ test("an owner picks the org that stays free from the modal, and it stays gone",
   });
   await expect(modal).toContainText("From Friday, October 23");
   await expect(modal).toContainText("Step 1 of 4");
-  // Before the cutover no org carries billing yet, so the list prices come
-  // from the billing choice.
   await expect(modal.getByRole("listitem")).toHaveText([
     "Every space works like a teamYou can invite people to any of them.",
     "Each account gets one organization on the free tierEveryone in it shares the free tier's weekly limit.",
@@ -76,7 +66,6 @@ test("an owner picks the org that stays free from the modal, and it stays gone",
     "Move agents to your organization on the free tierBring the ones you want to keep using.",
     "New conversations wait for a planWhen you open one, you can pay for it there.",
   ]);
-  // Back returns to the first page, which alone offers Maybe later.
   await expect(modal.getByRole("button", { name: "Maybe later" })).toHaveCount(
     0,
   );
@@ -103,7 +92,6 @@ test("an owner picks the org that stays free from the modal, and it stays gone",
     "La FilaMost active1 member · 396 messages in the last 30 days",
   );
   await expect(modal.getByRole("radio", { name: /La Fila/ })).toBeChecked();
-  // A click moves focus to the pick without a keyboard ring.
   await expect(modal.getByRole("radio", { name: /La Fila/ })).toBeFocused();
   expect(await focusRing(modal.getByRole("radio", { name: /La Fila/ }))).toBe(
     false,
@@ -114,7 +102,6 @@ test("an owner picks the org that stays free from the modal, and it stays gone",
     .getByRole("button", { name: "Keep Innova on the free tier" })
     .click();
 
-  // The same frame confirms the pick, and survives the refetch behind it.
   await expect(
     page.getByRole("dialog", { name: "Innova stays on the free tier" }),
   ).toBeVisible();
@@ -186,15 +173,12 @@ test("a Plus payer picks the org the subscription covers first, then the free on
     }),
   ).toBeVisible();
   await expect(modal).toContainText("Step 4 of 5");
-  // The subscription's org stays listed where it was, but can't stay free.
   await expect(modal.getByRole("radio", { name: /Innova/ })).toBeDisabled();
   await expect(
     modal.getByRole("radio", { name: /Innova/ }),
   ).toHaveAccessibleName(/^Innova Your subscription/);
   await expect(modal.getByRole("radio", { name: /La Fila/ })).toBeChecked();
   await modal.getByText("Personal", { exact: true }).click();
-  // Back keeps the paid pick, then leaves the picker for the intro; both
-  // picks survive the trip there and back.
   await modal.getByRole("button", { name: "Back" }).click();
   await expect(modal.getByRole("radio", { name: /Innova/ })).toBeChecked();
   await modal.getByRole("button", { name: "Back" }).click();
@@ -215,7 +199,6 @@ test("a Plus payer picks the org the subscription covers first, then the free on
   ).toBeVisible();
   await expect(outcome(modal, "Personal")).toContainText("Free");
   await expect(outcome(modal, "Innova")).toContainText("Your subscription");
-  // A third org is neither free nor paid for.
   await expect(outcome(modal, "La Fila")).toContainText("Needs a plan");
   expect((await choiceCalls()).filter((c) => c.route === "set")).toEqual([
     {
@@ -237,7 +220,6 @@ test("a Plus payer picks the org the subscription covers first, then the free on
 const focusRing = (target: Locator) =>
   target.evaluate((el) => el.matches(":focus-visible"));
 
-/** Every animation the element or anything inside it names, by computed style. */
 const animated = (target: Locator) =>
   target.evaluate((root) =>
     [root, ...root.querySelectorAll("*")]
@@ -267,7 +249,6 @@ test("the keyboard walks an owner from the intro to the success step, focus foll
     true,
   );
 
-  // The action names each pick at once: arrowing never replays an animation.
   await page.keyboard.press("ArrowDown");
   await expect(modal.getByRole("radio", { name: /Innova/ })).toBeFocused();
   const keep = modal.getByRole("button", {
@@ -377,7 +358,6 @@ test("a refusal that leaves one owned org swaps the picker for the notice", asyn
   page,
 }) => {
   await armCapabilities(SPACES_OWNER_CAPS);
-  // The other orgs were handed over meanwhile: the refetch owns one org.
   await armChoice(ownerChoice(), "not_owner", {
     afterRefusal: singleOrgChoice(),
   });
@@ -404,7 +384,6 @@ test("Maybe later hides it for this session only, and Billing still opens the pi
   await page.goto("/");
 
   const modal = choiceModal(page);
-  // The text button; the X carries the same name.
   await modal.getByRole("button", { name: "Maybe later" }).first().click({
     timeout: 15_000,
   });
@@ -466,7 +445,6 @@ test("a pick from Billing ends on the success step, and the modal stays gone", a
     billingScreen(page).getByRole("button", { name: "Change" }),
   ).toBeFocused();
 
-  // Reopening starts on the picker again, on the stored pick.
   await billingScreen(page).getByRole("button", { name: "Change" }).click();
   await expect(picker.getByRole("radio", { name: /Innova/ })).toBeChecked();
   await page.keyboard.press("Escape");
@@ -485,7 +463,6 @@ test("a pick from Billing just before the window closes keeps its success step",
 }) => {
   await armCapabilities({ ...SPACES_OWNER_CAPS, plan: true });
   await armPlan({ summary: freePlan() });
-  // The window closes five minutes after the page clock starts.
   await armChoice(ownerChoice({ changeableUntil: "2026-10-20T17:05:00.000Z" }));
   await page.goto("/");
   await choiceModal(page)
@@ -504,7 +481,6 @@ test("a pick from Billing just before the window closes keeps its success step",
   ).toBeVisible();
 
   await page.clock.runFor("06:00");
-  // The row goes with the window; the confirmation stays until it is closed.
   await expect(
     billingScreen(page).getByRole("heading", {
       name: "Choose which organization is on the free tier",
@@ -573,7 +549,6 @@ test("a failed Got it keeps the modal closed, and a later open retries", async (
   await page.clock.runFor(3_000);
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
-  // Nothing was stored, so the next open shows it again.
   await page.reload();
   await expect(page.getByRole("dialog", { name: MODAL_TITLE })).toBeVisible({
     timeout: 15_000,

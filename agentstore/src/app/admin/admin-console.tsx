@@ -20,12 +20,6 @@ import { CreatorsTab } from "./creators-tab";
 import { QueueTab } from "./queue-tab";
 import { ReportsTab } from "./reports-tab";
 
-/**
- * The moderation console. Access is decided by the gateway: admin routes match
- * the caller's UID against `GW_STORE_ADMIN_UIDS` and fail-close to 404, so a
- * signed-in non-admin sees the same "not found" a stranger does — the tabs report
- * it. No shared token; the signed-in user's bearer authorizes every call.
- */
 export function AdminConsole() {
   const { status, signIn, getToken } = useSession();
 
@@ -63,9 +57,7 @@ export function AdminConsole() {
         </div>
         <Button
           onClick={() => {
-            void signIn().catch(() => {
-              /* popup dismissed */
-            });
+            void signIn().catch(() => {});
           }}
         >
           <LogIn aria-hidden className="size-4" /> Sign in
@@ -103,7 +95,6 @@ export function AdminConsole() {
   );
 }
 
-/** Runs the retention purge and shows the row counts it deleted. */
 function PurgeButton({ getToken }: { getToken: () => Promise<string | null> }) {
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState<string | null>(null);

@@ -1,11 +1,3 @@
-// Real-DOM mount (jsdom globals BEFORE the dynamic react-dom import). The drag
-// overlay is `position: fixed`, and a fixed box resolves against the nearest
-// transformed ancestor instead of the viewport. The rail's list plays an
-// entrance animation on `transform`, so an overlay mounted inside it during
-// that animation is placed (and measured by dnd-kit as the collision rect)
-// far from the pointer, and the drop lands on the wrong row. The overlay must
-// therefore live outside the rail's subtree.
-
 import { strict as assert } from "node:assert";
 import { it } from "node:test";
 import { JSDOM } from "jsdom";

@@ -28,9 +28,6 @@ function resolveAuthStorageMode(
   return "browser";
 }
 
-// Pick from either the shell or a local `.env.local` (gitignored). CI sets
-// the vars in the shell via GitHub Secrets; locally you drop them in
-// `app/.env.local` so `pnpm tauri dev` picks them up without exports.
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
   const authStorageMode = resolveAuthStorageMode(mode, env);
@@ -38,9 +35,6 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [
-        // The web-only Firebase Auth surface. Desktop resolves the STUB so
-        // firebase-js-sdk never ships to desktop; the web bundle points this
-        // same specifier at the real module (packages/web/vite.config.ts).
         {
           find: "@houston/web-identity",
           replacement: path.resolve(
@@ -58,9 +52,6 @@ export default defineConfig(({ mode }) => {
       __POSTHOG_HOST__: JSON.stringify(
         env.POSTHOG_HOST ?? "https://us.i.posthog.com",
       ),
-      // GCP Identity Platform (Firebase Auth), project `gethouston`. All three
-      // are PUBLIC values (the apiKey is not a secret, exactly as the Supabase
-      // anon key was), so baking them into the bundle is safe.
       __FIREBASE_API_KEY__: JSON.stringify(env.FIREBASE_API_KEY ?? ""),
       __FIREBASE_AUTH_DOMAIN__: JSON.stringify(
         env.FIREBASE_AUTH_DOMAIN ?? "gethouston.firebaseapp.com",
@@ -68,42 +59,21 @@ export default defineConfig(({ mode }) => {
       __FIREBASE_PROJECT_ID__: JSON.stringify(
         env.FIREBASE_PROJECT_ID ?? "gethouston",
       ),
-      // Desktop-only: the "Desktop app" Google OAuth client used by the
-      // loopback + PKCE sign-in. Google installed-app clients require the
-      // client secret in the code→token exchange; it is non-confidential
-      // (Google treats desktop secrets as public) and the TS side owns the
-      // exchange (google-authorize.ts), so the Rust loopback stays a dumb
-      // listener. Baked from build env, never a committed literal.
       __GOOGLE_DESKTOP_CLIENT_ID__: JSON.stringify(
         env.GOOGLE_DESKTOP_CLIENT_ID ?? "",
       ),
       __GOOGLE_DESKTOP_CLIENT_SECRET__: JSON.stringify(
         env.GOOGLE_DESKTOP_CLIENT_SECRET ?? "",
       ),
-      // Desktop-only: the Microsoft (Entra) native/public OAuth client for the
-      // loopback + PKCE sign-in. Public client — no secret in the exchange.
       __HOUSTON_AUTH_STORAGE_MODE__: JSON.stringify(authStorageMode),
       __HOUSTON_AUTH_STORAGE_SCOPE__: JSON.stringify(authStorageScope),
       __SENTRY_DSN__: JSON.stringify(env.SENTRY_DSN ?? ""),
-      // Opt-in to send Sentry events from a dev build. Unset (default) → dev
-      // builds suppress Sentry entirely (see lib/sentry-dev.ts). Release builds
-      // ignore it. Picked up from the shell or app/.env.local like the rest.
       __SENTRY_SEND_IN_DEV__: JSON.stringify(env.SENTRY_SEND_IN_DEV ?? ""),
     },
     build: {
-      // "hidden" emits .map files next to bundled JS but skips the
-      // //# sourceMappingURL= comment, so production users can't reconstruct
-      // source via DevTools. The release.yml CI step uploads these maps to
-      // Sentry tagged `houston-app@<version>` (the same release reported at
-      // runtime by sentry::release_name!() in lib.rs and the JS RELEASE in
-      // lib/sentry.ts); Sentry resolves frames to source by release + file
-      // path. Maps are uploaded ONLY by that CI release step — local builds
-      // emit maps but never upload them.
       sourcemap: "hidden",
     },
     clearScreen: false,
-    // Exclude workspace packages from Vite's dep pre-bundling so live edits
-    // are picked up immediately without stale cache issues.
     optimizeDeps: {
       exclude: [
         "@houston/engine-adapter",

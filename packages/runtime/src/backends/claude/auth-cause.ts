@@ -1,11 +1,5 @@
 import type { AuthFailureCause } from "@houston/runtime-client";
 
-/**
- * A minimal auth-cause read off an authentication failure's text. The full
- * pattern set lives (unexported) in `ai/provider-error.ts`; here the SDK has
- * already decided it is auth, so only the recover-vs-reconnect distinction is
- * needed to pick the card's body copy.
- */
 export function authCause(lower: string): AuthFailureCause {
   if (
     lower.includes("invalid api key") ||

@@ -15,22 +15,6 @@ import { useMissionControlArchived } from "./use-mission-control-archived";
 import { useMissionControlArchivedPanel } from "./use-mission-control-archived-panel";
 import { usePendingMissionTarget } from "./use-pending-mission-target";
 
-/**
- * Cross-agent Archived view for Mission Control: a column-less list of every
- * archived mission; clicking one opens its chat; sending re-activates it and
- * hands the user back to this screen's active board, with the mission's chat
- * open, to keep the conversation in view.
- *
- * `agents` is ALWAYS the full workspace roster, whoever is rendering: the sweep
- * behind it (`useMissionControlArchived`) keys the one shared
- * `all-conversations` query on it. An employee's archive narrows what it RENDERS
- * through `scope` instead (the one-sweep rule, `useAgentBoardScope`).
- *
- * It says nothing about WHERE it is: the archive is a MODE of Tasks, entered
- * from the active board's "Archived" button and left by the "Back to tasks"
- * button this screen's own toolbar carries, so a title, a qualifier or a trail
- * crumb here would be the third thing on one screen saying the same word.
- */
 export function MissionControlArchived({
   agents,
   onShowActive,
@@ -41,15 +25,10 @@ export function MissionControlArchived({
   onNewMissionMenuChange,
   onNewMission,
 }: {
-  /** The FULL workspace roster, always. Never a team's slice. */
   agents: Agent[];
   onShowActive: () => void;
-  /** Narrows what this archive renders. Every live caller is a team, so it is
-   *  always passed; omitting it archives the whole roster. */
   scope?: MissionControlScope;
-  /** The section's own agent filter capsule, rendered in the tools row. */
   agentFilter?: ReactNode;
-  /** The team's agents — the "New task" menu's roster. */
   scopedAgents: Agent[];
   newMissionMenuOpen: boolean;
   onNewMissionMenuChange: (open: boolean) => void;
@@ -57,18 +36,12 @@ export function MissionControlArchived({
 }) {
   const { t } = useTranslation("board");
   const { t: tTeams } = useTranslation("teams");
-  // An archived mission's chat may go wide too (PRODUCT-1722); its X still
-  // returns to the list.
   const { panelContainer, setPanelOpen } = useShellDetailPanel({ wide: true });
   const addToast = useUIStore((s) => s.addToast);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 
   const data = useMissionControlArchived(agents);
 
-  // An @mention (or a notification) can name a mission that was archived long
-  // ago, and the archive is the only surface that can open it. It claims those
-  // targets and only those: an ACTIVE mission's id stays published for the
-  // board this archive belongs to, which the owner's router swaps back in.
   const pendingId = useUIStore((s) => s.activityPanelId);
   const pendingSurface = pendingMissionSurface(
     data.rawConversations,
@@ -82,16 +55,9 @@ export function MissionControlArchived({
     missionPanelOpen,
   });
 
-  // Only the NARROWING is this surface's business now: the scope picker moved
-  // to the team strip's breadcrumb, which owns the pin both surfaces read.
   const { agentFilteredItems } = useMcScope(agents, data.items, scope);
   const [search, setSearch] = useState("");
 
-  // HOU-1165: there is ONE shell detail panel, shared by every kept-alive
-  // screen. `MissionBoard` releases it when its screen hides, but the archive
-  // is not a `MissionBoard` -- without its own release, a team archive left
-  // with a mission open keeps portaling its chat into that panel after the
-  // user navigates away.
   const isActive = useIsActiveView();
   useEffect(() => {
     if (isActive) return;
@@ -124,9 +90,6 @@ export function MissionControlArchived({
             search={search}
             isSearchingText={missionSearch.isSearchingText}
             onSearchChange={setSearch}
-            // Search, filter, primary action — the SAME left-to-right order the
-            // active board's tools take. The archive's filter is by agent
-            // rather than by person, but it sits in the same slot.
             agentFilter={agentFilter}
             modeToggle={
               <Button variant="secondary" size="sm" onClick={onShowActive}>

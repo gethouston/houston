@@ -4,10 +4,8 @@ import type { RemoteMissionStatus } from "./mission-fanout-remote-status";
 
 export { readRemoteMissionStatus } from "./mission-fanout-remote-status";
 
-/** A caller's cap spans target boards and turns. */
 export const MAX_AGENT_STARTED_MISSIONS = 20;
 
-/** Unreadable remote slots remain charged for at most a day after start. */
 const REMOTE_HOLD_MS = 60 * 60 * 1000;
 const REMOTE_FAILURE_CEILING_MS = 24 * 60 * 60 * 1000;
 const REMOTE_CHECK_CACHE_MS = 30_000;
@@ -16,7 +14,6 @@ const RECONCILE_BATCH_SIZE = 4;
 
 interface StartedMission {
   readonly missionId: string;
-  /** The target board's vfs root, or null when it lives in another pod. */
   readonly boardRoot: string | null;
   readonly startedAt: number;
   readonly readStatus?: (actingAs?: string) => Promise<RemoteMissionStatus>;
@@ -86,11 +83,6 @@ class MissionFanout {
     else this.pending.set(callerAgentId, pending - 1);
   }
 
-  /**
-   * How many missions this agent still has running, after dropping the ones it
-   * can prove are finished. Transient remote read failures keep their slots
-   * until the failure ceiling.
-   */
   async running(
     callerAgentId: string,
     vfs: Vfs,
@@ -166,7 +158,6 @@ class MissionFanout {
     }
   }
 
-  /** Charge one started mission to its caller. */
   record(
     callerAgentId: string,
     mission: {
@@ -181,12 +172,10 @@ class MissionFanout {
     this.started.set(callerAgentId, entries);
   }
 
-  /** Drop an agent's ledger - it was renamed or deleted, so the id is dead. */
   forget(callerAgentId: string): void {
     this.started.delete(callerAgentId);
     this.pending.delete(callerAgentId);
   }
 }
 
-/** The host's one ledger, for the same reason `liveTurns` is a singleton. */
 export const missionFanout = new MissionFanout();

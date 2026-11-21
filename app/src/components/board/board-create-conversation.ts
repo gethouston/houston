@@ -11,28 +11,17 @@ import { tauriAttachments } from "../../lib/tauri";
 import type { ToastItem } from "../../stores/ui";
 import type { NewConversationArgs } from "./board-source";
 
-/**
- * The composer's "start a new mission" send, lifted out of the React layer
- * (`use-agent-board-send.ts` keeps the `useCallback` wrapper). Everything the
- * write needs is passed in, so the wire never silently routes to a different
- * agent or model than the UI shows.
- */
 export interface CreateBoardConversationDeps {
-  /** The active agent's folder path. */
   path: string;
   agentId: string;
   agentName: string;
-  /** Optional, as on `Agent` and on `CreateMissionAgent`. */
   agentColor?: string;
   queryClient: QueryClient;
   addToast: (toast: Omit<ToastItem, "id">) => void;
   t: TFunction<["board", "chat", "common"]>;
-  /** Marks the new session locally sent, which lights its spinner until the
-   *  conversation VM or the board row takes over. */
   setSessionLoading: (sessionKey: string, loading: boolean) => void;
 }
 
-/** Create a conversation for the active agent and return its id. */
 export async function createBoardConversation(
   deps: CreateBoardConversationDeps,
   {
@@ -83,20 +72,11 @@ export async function createBoardConversation(
         );
         return buildAttachmentPrompt(text, files, saved);
       },
-      // A composer send: the bubble must show before the row lands.
       optimistic: true,
     },
   );
-  // The turn stream pushes the user bubble into the conversation VM
-  // itself — no app-side optimistic push. Warming agents included: the
-  // parked message shows the standard in-flight indicator (HOU-713).
   setSessionLoading(sessionKey, true);
-  // First-mission pre-prompt: a contextual, one-time nudge to turn on
-  // completion notifications, shown here — the moment a user kicks off a
-  // mission — only when delivery isn't already granted and we've never
-  // asked. Fire-and-forget; its own flags keep it one-time.
   void maybeShowFirstMissionPrompt({ addToast, t });
-  // createMission bypassed useCreateActivity so invalidate manually.
   queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
   analytics.track("mission_created", {
     provider: providerOverride,

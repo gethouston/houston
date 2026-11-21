@@ -13,17 +13,6 @@ import {
 import { queryKeys } from "../../lib/query-keys";
 import { tauriAgentModelChoice } from "../../lib/tauri";
 
-/**
- * The stored model choice crosses a provider-id DIALECT boundary here, the
- * single read+write seam for it. The gateway stores + injects the CANONICAL
- * engine id (pi's `openai-codex`); the whole app UI speaks the DISPLAY id
- * (Houston renames it to `openai`, see `PROVIDER_ID_RENAME`). So a read maps
- * engine → display and a write maps display → engine, keeping every downstream
- * comparison (picker highlight, `resolvePersonalModelPin`, the effort re-write)
- * in the display dialect it already assumes while the wire stays canonical — the
- * client mirror of the runtime's `canonicalPinProvider` backstop. Only Codex
- * differs; every other id is identical on both sides.
- */
 function toDisplayChoice(
   info: AgentModelChoiceInfo | null,
 ): AgentModelChoiceInfo | null {
@@ -37,16 +26,6 @@ function toDisplayChoice(
   };
 }
 
-/**
- * Teams v2: the ACTING user's model choice for one shared agent plus the agent's
- * effective `allowedModels` ceiling (`GET /agents/:slug/model-choice`). In
- * multiplayer the composer's model picker reads THIS (the member's personal
- * per-agent pick), not the shared agent config, and offers only the pickable set
- * the ceiling allows. Gated on the `teams` capability via `enabled`: a host that
- * predates Teams 404s the route and the engine adapter degrades that to `null`,
- * so the query is left idle there and the composer keeps its single-player
- * shared-config behavior. One choice per (agent, user); keyed by agent id.
- */
 export function useAgentModelChoice(agentId: string, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.agentModelChoice(agentId),
@@ -57,19 +36,6 @@ export function useAgentModelChoice(agentId: string, enabled: boolean) {
   });
 }
 
-/**
- * Teams v2: set the ACTING user's model choice for this agent. The gateway
- * validates the model is within the agent's `allowedModels` ceiling (else it
- * answers `model_not_allowed`) and clamps the acting user's turns to it. No
- * generic `onError` toast: `tauriAgentModelChoice.set` routes through `call()`,
- * which surfaces + reports the failure once; adding one here would double-toast.
- * The one exception is `model_not_allowed`, which `call()` silences (an expected
- * state, PRODUCT-1734): the ceiling changed under the user, so THIS hook shows
- * the plain informational toast and the settle-time refetch below pulls the new
- * ceiling, snapping the composer to a model that can run. The cache updates
- * optimistically so a racing send sees the new pin, rolls back on failure, and
- * refetches after the request settles.
- */
 export function useSetAgentModelChoice(agentId: string) {
   const qc = useQueryClient();
   const key = queryKeys.agentModelChoice(agentId);

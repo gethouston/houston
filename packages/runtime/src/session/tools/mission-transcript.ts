@@ -6,15 +6,6 @@ import { agentQuery } from "./mission-params";
 import type { SandboxFetch } from "./sandbox-fetch";
 import { hostErrorFrom, type SessionToolErrorDetails } from "./tool-error";
 
-/**
- * WHERE one mission's conversation comes from. The calling agent's OWN missions
- * live in this runtime's transcript store, so they are read in-process with
- * nothing to proxy and no secret involved; a mission on ANOTHER agent runs in
- * another runtime, so it is read through the host. `read_mission` renders
- * either the same way, which is the whole reason both shapes meet here.
- */
-
-/** One mission's messages, from either source, in the shape the tool renders. */
 export interface MissionTranscript {
   title: string;
   status?: string;
@@ -22,10 +13,6 @@ export interface MissionTranscript {
   totalMessages: number;
 }
 
-/** The mission's conversation id: `activity-<id>` by convention, with the
- *  explicit `session_key` from activity.json as the fallback for missions
- *  whose chat was keyed differently (legacy imports). Best-effort file read —
- *  the convention covers every mission this feature starts. */
 function conversationIdsFor(missionId: string): string[] {
   const ids = [`activity-${missionId}`];
   try {
@@ -45,14 +32,10 @@ function conversationIdsFor(missionId: string): string[] {
         if (typeof key === "string" && key && !ids.includes(key)) ids.push(key);
       }
     }
-  } catch {
-    // No readable activity.json — the convention id above still covers the
-    // normal case; a genuinely unknown mission errors below with guidance.
-  }
+  } catch {}
   return ids;
 }
 
-/** This runtime's own transcript for the mission, or null. */
 export function ownTranscript(
   missionId: string,
   limit: number,
@@ -73,7 +56,6 @@ export function ownTranscript(
   return null;
 }
 
-/** Another agent's transcript, served by the host from its file store. */
 export async function targetTranscript(
   call: SandboxFetch,
   agent: string | undefined,
@@ -88,8 +70,6 @@ export async function targetTranscript(
     method: "GET",
     signal,
   });
-  // The host's bodies are agent-actionable plain language (unknown agent, no
-  // conversation yet) — relayed, so the agent corrects itself.
   if (!res.ok) {
     return { ok: false, error: await hostErrorFrom(res, "read_mission") };
   }

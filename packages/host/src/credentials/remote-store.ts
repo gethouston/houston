@@ -33,22 +33,11 @@ export interface RemoteCredentialStoreOptions {
   podToken: string;
   fallback?: CredentialStore;
   fetchImpl?: typeof fetch;
-  /** Injectable for tests; defaults to the process-wide ledger. */
   revocations?: RevocationTombstones;
 }
 
-/** The gateway positively identified the stored credential as unusable. */
 export class RemoteCredentialDeadError extends Error {}
 
-/**
- * Managed-pod credential store: the pod never owns refresh-token rotation. The
- * gateway is the single refresher for org credentials (OpenAI refresh tokens
- * rotate), and pods fetch only access/API-key material just-in-time. Only the
- * gateway's own "not connected" 404 (JSON error body — see isNotConnected404)
- * means logged out; every other failure, including a route-level 404 from a
- * misdeployed gateway, must throw so the runtime keeps its last hydrated token
- * instead of logging the org out locally.
- */
 export class RemoteCredentialStore implements CredentialStore {
   private readonly baseUrl: string;
   private readonly orgSlug: string;
@@ -103,9 +92,6 @@ export class RemoteCredentialStore implements CredentialStore {
     cred: WorkspaceCredential,
     opts?: { ifAbsent?: boolean } & CredentialActing,
   ): Promise<void> {
-    // ifAbsent rides to the gateway as `x-houston-if-absent`, whose PUT is
-    // atomic under the per-(org, provider) row lock — the authoritative guard
-    // against clobbering a live rotated refresh token with a cached snapshot.
     await this.putRemote(cred.provider, cred, {
       ifAbsent: opts?.ifAbsent,
       acting: opts,
@@ -122,30 +108,12 @@ export class RemoteCredentialStore implements CredentialStore {
       method: "DELETE",
       headers: this.authHeaders({}, acting),
     });
-    // Sign-out is idempotent, like the file store: the gateway's "not
-    // connected" 404 means the row is already gone (another pod removed it, or
-    // this provider was never adopted) — callers forget credential siblings
-    // unconditionally and rely on the no-op.
     if (res.status !== 200 && !(await isNotConnected404(res)))
       throw await this.errorFromResponse(res, "DELETE", provider);
-    // Clear the legacy adoption source too — leaving the file entry would let
-    // the next get()'s 404-adoption silently resurrect the credential the user
-    // just removed, org-wide.
     if (!acting?.actingAs) await this.fallback?.remove(workspaceId, provider);
     this.cache.delete(scopeKeyOf(acting, provider));
   }
 
-  /**
-   * Report a token the PROVIDER revoked: the gateway drops its row only while
-   * that token is still the stored one (HOU-952). Rides the same DELETE with
-   * `x-houston-if-access-sha256`, so the comparison happens under the gateway's
-   * per-(org, provider) row lock rather than as a read-then-delete here — a
-   * reconnect racing the report waits behind it instead of being deleted by it.
-   *
-   * Returns whether the gateway actually removed anything. A `removed:false`
-   * is the ordinary superseded case (the org reconnected, or a sibling pod
-   * reported the same dead token first), not a failure.
-   */
   async removeIfAccess(
     workspaceId: WorkspaceId,
     provider: string,
@@ -154,9 +122,6 @@ export class RemoteCredentialStore implements CredentialStore {
   ): Promise<boolean> {
     const res = await this.fetchImpl(this.url(provider), {
       method: "DELETE",
-      // The scope says WHICH kind of row; the acting header (authHeaders) says
-      // WHOSE. A personal row is keyed by (org, user, provider), so without the
-      // acting identity the gateway cannot address it and refuses the report.
       headers: this.authHeaders(
         {
           ...(opts?.scope ? { "x-houston-credential-scope": opts.scope } : {}),
@@ -165,20 +130,13 @@ export class RemoteCredentialStore implements CredentialStore {
         opts,
       ),
     });
-    // Idempotent like remove(): an already-gone row is the outcome we wanted.
     if (res.status !== 200 && !(await isNotConnected404(res)))
       throw await this.errorFromResponse(res, "DELETE", provider);
     const removed =
       res.status === 200 &&
       ((await res.json().catch(() => null)) as { removed?: boolean } | null)
         ?.removed === true;
-    // Only a real removal invalidates local state. Leaving the cache and the
-    // legacy fallback entry alone on a superseded report is deliberate: they
-    // may describe the credential that SUPERSEDED the revoked one.
     if (removed) {
-      // Only the REPORTING identity's entry. Evicting every member's key would
-      // cost every other member of this pod a gateway round-trip for a row that
-      // is still theirs and still live.
       this.cache.delete(scopeKeyOf(opts, provider));
       if (opts?.scope !== "personal")
         await this.fallback?.remove(workspaceId, provider);
@@ -190,21 +148,10 @@ export class RemoteCredentialStore implements CredentialStore {
     workspaceId: WorkspaceId,
     provider: string,
   ): Promise<CachedCredential | null> {
-    // A gateway row deleted because the PROVIDER revoked the credential must
-    // not be refilled from the legacy local file — that copy is the same dead
-    // family, and re-adopting it re-fails the next turn into another revoked
-    // report (HOUSTON-APP-530). removeIfAccess clears this pod's fallback, but
-    // a sibling pod's file (or a remove that raced) can still hold the entry.
     if (this.revocations.active({ workspaceId, provider })) return null;
     const local = await this.fallback?.get(workspaceId, provider);
     if (!local) return null;
     if (deadStoredApiKey(local)) {
-      // A legacy pre-verification row (HOU-1107) still on this pod's disk.
-      // Adopting it would resurrect the central row the serve guard just
-      // reported dead — the workspace-wide whack-a-mole behind Sentry
-      // HOUSTON-APP-567, where every waking pod re-seeded the row its siblings
-      // had deleted. Drop the file entry instead: the provider honestly reads
-      // not-connected until the user pastes a real (live-verified) key.
       console.warn(
         `[credentials] refusing to adopt the legacy ${provider} credential — an OAuth-type token, not an API key; removing it`,
       );
@@ -255,8 +202,6 @@ export class RemoteCredentialStore implements CredentialStore {
     cred: WorkspaceCredential,
     opts: { ifAbsent?: boolean; acting?: CredentialActing } = {},
   ): Promise<void> {
-    // Last exit toward the central store: nothing in this process may seed the
-    // gateway with a key the serve guard would immediately refuse and delete.
     if (deadStoredApiKey(cred))
       throw new Error(
         `refusing to store a ${provider} credential that is not an API key (an OAuth-type token can never authenticate)`,
@@ -325,11 +270,6 @@ export class RemoteCredentialStore implements CredentialStore {
   }
 }
 
-/**
- * The cache key for one (acting identity, provider). The identity half is the
- * SHARED scope derivation (credentials/scope-key.ts), so this adapter and the
- * local ones resolve the same member to the same row. Exported for its test.
- */
 export function scopeKeyOf(
   acting: CredentialActing | undefined,
   provider: string,
@@ -337,8 +277,6 @@ export function scopeKeyOf(
   return `${credentialScopeKey(acting)}|${provider}`;
 }
 
-/** The stored-shape view of the shared dead-google-key predicate: a stored row
- *  tags its kind explicitly or via the expiresAt=0 sentinel (isApiKeyCredential). */
 function deadStoredApiKey(cred: WorkspaceCredential): boolean {
   return deadGoogleApiKey({
     provider: cred.provider,

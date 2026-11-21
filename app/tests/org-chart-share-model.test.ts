@@ -145,8 +145,6 @@ describe("shareCardCaps", () => {
   });
 
   it("never cuts someone with AI Employees for someone without", () => {
-    // Owner, two people with none (first by name), then two with some: the
-    // three that show are the owner and the two with AI Employees.
     const members: OrgMember[] = [
       { userId: "o", role: "owner", displayName: "Olga" },
       { userId: "a", role: "user", displayName: "Ann" },

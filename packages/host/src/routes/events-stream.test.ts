@@ -10,13 +10,6 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryTurnBus } from "../turn/bus";
 import { MemoryVfs } from "../vfs";
 
-/**
- * The global /v1/events SSE channel end to end: a mutation on the host emits a
- * HoustonEvent that arrives on the owner's stream — and NEVER on another
- * tenant's. This is the reactivity keystone the UI's query-invalidation map
- * rides on.
- */
-
 const verifier: TokenVerifier = {
   async verify(bearer) {
     return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
@@ -93,12 +86,6 @@ afterAll(async () => {
   await new Promise<void>((r) => server.close(() => r()));
 });
 
-/**
- * Open an SSE stream and resolve with the FIRST `data:` HoustonEvent that
- * arrives (or reject on timeout). Aborts the request on settle so the server
- * unsubscribes. `onConnected` fires once the comment preamble is seen, so the
- * caller can trigger the mutation only after the subscription is live.
- */
 async function firstEvent(
   who: string,
   onConnected: () => Promise<void>,
@@ -169,7 +156,6 @@ test("skill changes emit SkillsChanged on the stream", async () => {
 });
 
 test("another tenant's stream never sees alice's events", async () => {
-  // Bob listens; alice mutates. Bob must time out (no cross-tenant leak).
   const bobResult = await firstEvent(
     "bob",
     async () => {

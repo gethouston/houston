@@ -12,33 +12,19 @@ import {
 } from "./skill-workflow";
 import type { DocDiagnostic, FileStore } from "./store";
 
-/**
- * Skills on disk: `<root>/.agents/skills/<slug>/SKILL.md` (Agent Skills
- * standard — the SAME folders pi loads into the agent's prompt, see
- * packages/runtime resource-loader). YAML frontmatter drives discovery +
- * picker UI; the body is the procedure.
- */
-
-/** SKILL.md key inside ANY skills dir (agent `.agents/skills` or shared). */
 export const skillKeyInDir = (dir: string, slug: string) =>
   `${dir}/${slug}/SKILL.md`;
 
-/** The slug dir inside any skills dir (whole-skill deletion via deletePrefix). */
 export const skillDirKeyInDir = (dir: string, slug: string) => `${dir}/${slug}`;
 
 export const skillKey = (root: string, slug: string) =>
   skillKeyInDir(skillsDirKey(root), slug);
 
-/** The slug dir, for whole-skill deletion (host calls vfs.deletePrefix on it). */
 export const skillDirKey = (root: string, slug: string) =>
   skillDirKeyInDir(skillsDirKey(root), slug);
 
 const FM = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
 
-/**
- * YAML 1.1 (Rust serde_yml) reads `featured: yes` as true; YAML 1.2 (this
- * parser) reads it as the string "yes". User files contain both — normalize.
- */
 const truthy = (v: unknown): boolean =>
   v === true || (typeof v === "string" && /^(yes|true|on)$/i.test(v));
 
@@ -68,16 +54,7 @@ export function parseSkillMd(
     };
   }
   const summary: SkillSummary = {
-    // Identity = the on-disk directory slug, NOT the frontmatter `name:`.
-    // `loadSkillDetail` and the host's GET /skills/<slug> route resolve by
-    // directory, so the name surfaced to the UI (list -> click -> load) MUST be
-    // that slug. Agent-authored SKILL.md files sometimes drift a display phrase
-    // into `name:` (dir `redactar-outreach-esg`, `name: Redactar Outreach ESG`);
-    // trusting the frontmatter there made the list hand the UI a phrase that
-    // `load_skill` then 404'd on. Trust the directory. (HOU-515 / HOU-441)
     name: slug,
-    // Display-only phrase; may carry accents/casing the slug can't. Loading
-    // still resolves by the slug above, so a drifting title can never 404.
     title: str(fm.title),
     description: str(fm.description) ?? "",
     version: typeof fm.version === "number" ? fm.version : 1,
@@ -90,8 +67,6 @@ export function parseSkillMd(
       ? fm.integrations.map(String)
       : [],
     image: str(fm.image),
-    // The setup chat this skill was built in (HOU-791). Forward link only —
-    // the durable reverse link is the activity's `skill_slug`.
     setupActivityId: str(fm.setup_activity_id),
   };
   const body = m[2] ?? "";
@@ -104,7 +79,6 @@ export function parseSkillMd(
   };
 }
 
-/** List skills in an explicit dir (agent or shared). Unparseable SKILL.md files surface as diagnostics. */
 export async function loadSkillsFromDir(
   store: FileStore,
   dir: string,
@@ -124,7 +98,7 @@ export async function loadSkillsFromDir(
   for (const slug of slugs) {
     const key = skillKeyInDir(dir, slug);
     const content = await store.readText(key);
-    if (content === null) continue; // listed dir without SKILL.md at top level
+    if (content === null) continue;
     const parsed = parseSkillMd(slug, content);
     if ("error" in parsed) diagnostics.push({ key, message: parsed.error });
     else items.push(parsed.summary);
@@ -132,7 +106,6 @@ export async function loadSkillsFromDir(
   return { items, diagnostics };
 }
 
-/** List skills under the agent root's `.agents/skills`. */
 export const loadSkills = (store: FileStore, root: string) =>
   loadSkillsFromDir(store, skillsDirKey(root));
 
@@ -167,7 +140,6 @@ export async function loadSkillDetailFromDir(
 export const loadSkillDetail = (store: FileStore, root: string, slug: string) =>
   loadSkillDetailFromDir(store, skillsDirKey(root), slug);
 
-/** Compose a fresh SKILL.md (create flow). Caller supplies the date (domain stays pure). */
 export function composeSkillMd(input: {
   name: string;
   description: string;
@@ -188,7 +160,6 @@ export function composeSkillMd(input: {
   return `---\n${fm}\n---\n\n${body}\n`;
 }
 
-/** Kebab-case slug from a human name; empty when nothing survives. */
 export function slugify(name: string): string {
   return name
     .toLowerCase()

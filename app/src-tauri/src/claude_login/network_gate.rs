@@ -14,13 +14,10 @@
 /// failures are deliberately absent: a rejected certificate (corporate MITM)
 /// or a `400` from the auth endpoint is a real failure that keeps its surface.
 const NETWORK_MARKERS: [&str; 13] = [
-    // DNS: any getaddrinfo failure, plus the resolver's own codes.
     "getaddrinfo",
     "enotfound",
     "eai_again",
     "eai_fail",
-    // Connect: Windows reports DNS/connect timeouts as `ETIMEOUT`, POSIX as
-    // `ETIMEDOUT`; neither is a substring of the other.
     "etimeout",
     "etimedout",
     "econnrefused",
@@ -28,7 +25,6 @@ const NETWORK_MARKERS: [&str; 13] = [
     "enetunreach",
     "ehostunreach",
     "enetdown",
-    // undici's wrapper when the cause is not spelled out.
     "fetch failed",
     "socket hang up",
 ];
@@ -45,7 +41,6 @@ mod tests {
 
     #[test]
     fn recognizes_the_dns_failures_seen_in_the_field() {
-        // Verbatim from HOUSTON-APP-5E9 and -56S.
         assert!(is_network_failure(
             "Login failed: getaddrinfo ETIMEOUT platform.claude.com"
         ));
@@ -56,7 +51,6 @@ mod tests {
 
     #[test]
     fn recognizes_a_refused_or_timed_out_connect() {
-        // Verbatim from HOUSTON-APP-5AE.
         assert!(is_network_failure(
             "Login failed: connect ECONNREFUSED 160.79.104.10:443"
         ));
@@ -68,8 +62,6 @@ mod tests {
 
     #[test]
     fn ignores_other_login_failures() {
-        // A declined authorization, a server-side rejection, a TLS failure or
-        // the shell gate are not connectivity and must keep their surface.
         assert!(!is_network_failure("authentication was declined"));
         assert!(!is_network_failure(
             "Login failed: Request failed with status code 400"

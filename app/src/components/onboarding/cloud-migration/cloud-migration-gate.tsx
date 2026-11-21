@@ -13,13 +13,6 @@ import { DoneScreen } from "./done-screen";
 import { OfferScreen } from "./offer-screen";
 import { ProgressScreen } from "./progress-screen";
 
-/**
- * First-run cloud-migration gate (HOU-719). Mounted in App.tsx AFTER the
- * session/auth gates and BEFORE the firstRun onboarding branch — a migrating
- * user has zero cloud agents and would otherwise be captured by the first-run
- * onboarding. Renders children whenever the trigger says no
- * (see `hooks/cloud-migration-trigger.ts` for the full gate).
- */
 export function CloudMigrationGate({ children }: { children: ReactNode }) {
   const trigger = useCloudMigration();
 
@@ -37,8 +30,6 @@ export function CloudMigrationGate({ children }: { children: ReactNode }) {
   if (trigger.status !== "show" || !trigger.detection) return <>{children}</>;
   return (
     <>
-      {/* The done screen's provider reconnect needs the login handlers the
-          shell normally mounts (browser OAuth / device-code dialogs). */}
       <ProviderLoginFallback />
       <ClaudeBrowserLogin />
       <CloudMigrationWizard
@@ -65,11 +56,6 @@ function CloudMigrationWizard({
   const toasts = useUIStore((s) => s.toasts);
   const dismissToast = useUIStore((s) => s.dismissToast);
 
-  // The wizard REPLACES the app tree, so the WorkspaceShell's ToastContainer is
-  // not mounted while migrating — a migration-time error (e.g. an agent that
-  // failed to move) would otherwise have no surface to reach the user (the
-  // no-silent-failures rule). We mount the app's toast container inside the
-  // wizard, mapping the store toasts exactly the way App.tsx does.
   const mappedToasts: Toast[] = toasts.map((t) => {
     const base = t.description ? `${t.title} ${t.description}` : t.title;
     return {
@@ -80,8 +66,6 @@ function CloudMigrationWizard({
     };
   });
 
-  // One FirstRunScreen wrapping every wizard screen (like onboarding) so the
-  // grey background is painted once across offer → progress → done transitions.
   return (
     <FirstRunScreen>
       {screen === "offer" ? (
@@ -108,7 +92,6 @@ function CloudMigrationWizard({
       ) : (
         <DoneScreen persistOutcome={persistOutcome} />
       )}
-      {/* A normal light toast — the FirstRunScreen wrapper already pins light. */}
       <ToastContainer toasts={mappedToasts} onDismiss={dismissToast} />
     </FirstRunScreen>
   );

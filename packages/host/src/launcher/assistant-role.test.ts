@@ -6,15 +6,6 @@ import {
   readAssistantRole,
 } from "./assistant-role";
 
-/**
- * WHO is the coordinator. The decision is the host's, taken from the agent it
- * is spawning plus its OWN environment, because the two deployments name the
- * assistant differently: locally it is the synthetic `.assistant` agent, and on
- * a managed pod it is an ordinarily-named agent whose pod the gateway marked.
- * A runtime-side guess (its working directory's name) reads that pod as a plain
- * agent, which is exactly the coordinator restriction failing to apply.
- */
-
 test("locally the synthetic .assistant agent is the coordinator", () => {
   expect(
     assistantRuntimeRole({
@@ -31,9 +22,6 @@ test("every ordinary agent on the same host is a plain runtime", () => {
 });
 
 test("a managed assistant pod's runtime is the coordinator whatever the agent is named", () => {
-  // The pod provisions under /workspace with a seeded, ordinarily-named agent,
-  // so ONLY the gateway's marker identifies it - and the marker counts only on
-  // the managed profile that mints it.
   expect(
     assistantRuntimeRole({
       agentId: "ws-1/Assistant",
@@ -43,7 +31,6 @@ test("a managed assistant pod's runtime is the coordinator whatever the agent is
       },
     }),
   ).toBe("coordinator");
-  // A blank marker is not a marker.
   expect(
     assistantRuntimeRole({
       agentId: "ws-1/Assistant",
@@ -55,12 +42,6 @@ test("a managed assistant pod's runtime is the coordinator whatever the agent is
   ).toBeNull();
 });
 
-/**
- * S8 — the same second factor `routes/assistant-claim.ts` requires. A
- * self-hoster who copied the documented assistant variables into an ordinary
- * host would otherwise turn EVERY agent there into a coordinator: no bash, no
- * skills, and `start_mission` refused, on agents that are nobody's assistant.
- */
 test("the pod marker alone is not a coordinator off the managed profile", () => {
   for (const agentId of ["ws-1/Assistant", "ws-1/Writer"]) {
     expect(
@@ -74,8 +55,6 @@ test("the pod marker alone is not a coordinator off the managed profile", () => 
       }),
     ).toBeNull();
   }
-  // The synthetic dot-name is still the coordinator on such a host: that is the
-  // local deployment's own answer, and no environment is needed for it.
   expect(
     assistantRuntimeRole({
       agentId: `ws-1/${ASSISTANT_AGENT_NAME}`,
@@ -85,8 +64,6 @@ test("the pod marker alone is not a coordinator off the managed profile", () => 
 });
 
 test("holding the gateway credential does not make a pod an assistant pod", () => {
-  // An ordinary agent pod configured against a gateway must NOT inherit the
-  // coordinator's Houston-wide toolset.
   expect(
     assistantRuntimeRole({
       agentId: "ws-1/Writer",

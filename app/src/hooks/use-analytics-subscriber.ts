@@ -7,7 +7,6 @@ import { subscribeHoustonEvents } from "../lib/events";
 import { sessionFailureEvents } from "../lib/session-failure-analytics";
 import { tauriConfig } from "../lib/tauri";
 
-/** What the `final_result` feed frame carries (ui/chat FeedEntry). */
 interface FinalResultData {
   cost_usd: number | null;
   duration_ms: number | null;
@@ -18,11 +17,6 @@ interface FinalResultData {
   } | null;
 }
 
-/**
- * The agent's configured brain, cached briefly so one config read serves the
- * turns of a sit-down instead of one read per turn. 60s keeps a model-picker
- * change from being stale for long.
- */
 const OVERRIDES_TTL_MS = 60_000;
 type CachedOverrides = {
   at: number;
@@ -38,12 +32,6 @@ async function agentBrain(agentPath: string) {
   return value;
 }
 
-/**
- * One `$ai_generation` per finished turn, feeding the AI Usage dashboard
- * (cost / latency / tokens by model). Async because the model/provider come
- * from the agent config; fire-and-forget like every analytics path — a failed
- * capture must never touch the event pipeline.
- */
 async function trackGeneration(
   agentPath: string,
   sessionKey: string,
@@ -62,14 +50,6 @@ async function trackGeneration(
   );
 }
 
-/**
- * Subscribes to the HoustonEvent firehose and fires analytics for events
- * that originate from the backend (assistant replies, session failures,
- * backend errors) — i.e. anything that has no obvious call site in the
- * React code.
- *
- * Mount once in App.tsx. Never mounted in ui/ (library boundary rule).
- */
 export function useAnalyticsSubscriber() {
   const repliesRef = useRef<Set<string>>(new Set());
 
@@ -77,34 +57,24 @@ export function useAnalyticsSubscriber() {
     const unlisten = subscribeHoustonEvents((p: HoustonEvent) => {
       switch (p.type) {
         case "FeedItem": {
-          // Activation signal: user got a finalized assistant reply.
-          // "assistant_text_streaming" is skipped — it fires continuously
-          // during streaming and would inflate counts. "assistant_text" is
-          // emitted once per reply when the stream finalizes.
           if (p.data.item.feed_type === "assistant_text") {
             const key = `${p.data.agent_path}:${p.data.session_key}`;
             if (repliesRef.current.has(key)) break;
             repliesRef.current.add(key);
             analytics.track("chat_message_received");
           }
-          // Terminal frame of a model turn: exactly one per turn (NOT
-          // deduped like the activation signal above — every generation
-          // counts for the AI Usage dashboard).
           if (p.data.item.feed_type === "final_result") {
             trackGeneration(
               p.data.agent_path,
               p.data.session_key,
               p.data.item.data as FinalResultData,
-            ).catch(() => {
-              // Analytics unavailable — never disturb the event pipeline.
-            });
+            ).catch(() => {});
           }
           break;
         }
 
         case "SessionStatus": {
           if (p.data.status === "completed") {
-            // Reliability counts ended replies, not completed missions.
             analytics.track(
               "session_completed",
               p.data.stop_reason
@@ -112,9 +82,6 @@ export function useAnalyticsSubscriber() {
                 : undefined,
             );
           }
-          // The SDK's typed error class decides what a failure counts as
-          // (`session-failure-analytics.ts`); the copy alone classified
-          // every cause as `unknown`.
           if (p.data.status === "error")
             for (const { event, props } of sessionFailureEvents(
               p.data,

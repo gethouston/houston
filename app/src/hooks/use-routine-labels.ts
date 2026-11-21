@@ -8,17 +8,7 @@ import type {
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-/**
- * Builds the localized label objects the `@houston-ai/routines` components take.
- * The package stays i18n-agnostic (library boundary): it exposes `labels` props
- * with English defaults, and this hook feeds it `t()` results.
- *
- * The label values carry `{token}` placeholders (single brace) that the package
- * interpolates with computed numbers/times — i18next leaves them intact because
- * we read them with `returnObjects` and pass no interpolation values here.
- */
 export interface RoutineLabels {
-  /** BCP-47 locale for day names + time formatting inside the components. */
   locale: string;
   grid: RoutinesGridLabels;
   rowLabels: RoutineRowLabels;
@@ -27,10 +17,9 @@ export interface RoutineLabels {
   trigger: TriggerLabels;
 }
 
-/** Map the app's base locale tag to a region the formatters should use. */
 function intlLocale(language: string): string {
-  if (language.startsWith("pt")) return "pt-BR"; // Brazilian Portuguese
-  if (language.startsWith("es")) return "es"; // Latin-American neutral
+  if (language.startsWith("pt")) return "pt-BR";
+  if (language.startsWith("es")) return "es";
   return "en-US";
 }
 

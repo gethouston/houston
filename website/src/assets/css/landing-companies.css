@@ -1,8 +1,3 @@
-/*
- * Landing — the company step after pricing (landing/companies.njk): one
- * black band, centered, the type of /enterprise's closing scene. Tokens from
- * site-tokens.css; buttons are the landing's own .btn-white / .btn-ghost.
- */
 .companies {
   display: flex;
   flex-direction: column;
@@ -11,8 +6,6 @@
   padding-top: clamp(104px, 12vw, 176px);
   padding-bottom: clamp(104px, 12vw, 176px);
 }
-/* Two classes deep: landing.css widens every child of a dark band
-   (.section.is-dark > *); these keep their own measure. */
 .companies .companies-title {
   max-width: 17ch;
   margin: 0 auto;
@@ -26,8 +19,6 @@
   color: var(--on-ink-muted);
   text-wrap: balance;
 }
-/* The rollout in one quiet row: the steps' names only, a thin chevron
-   between them for the order (no numbers, per DESIGN.md). */
 .companies .companies-steps {
   list-style: none;
   display: flex;
@@ -65,7 +56,6 @@
   width: 16px;
   height: 16px;
 }
-/* Phones: the steps stack, one per line, the chevrons dropped. */
 @media (max-width: 640px) {
   .companies .companies-steps {
     flex-direction: column;
@@ -79,7 +69,6 @@
     align-items: stretch;
     width: 100%;
   }
-  /* The Spanish label runs long: one line in a 390px screen. */
   .companies-cta .btn {
     padding-inline: 16px;
     font-size: 14px;

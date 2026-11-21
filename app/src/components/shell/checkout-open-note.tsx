@@ -3,13 +3,6 @@ import { useTranslation } from "react-i18next";
 import type { useOrgCheckout } from "../../hooks/queries/use-org-checkout";
 import { FallbackLink } from "./fallback-link";
 
-/**
- * Why the pay buttons are disabled while a payment page this app opened is
- * still open, and the two ways on: reopen that same page (closing its tab
- * tells the app nothing), or start over, which ends it so the buttons come
- * back. `orgSlug` is the org this surface pays for, or null where none exists
- * yet; another org's page is never offered to reopen here.
- */
 export function CheckoutOpenNote({
   checkout,
   orgSlug,
@@ -17,7 +10,6 @@ export function CheckoutOpenNote({
 }: {
   checkout: Pick<ReturnType<typeof useOrgCheckout>, "open" | "startOver">;
   orgSlug: string | null;
-  /** Placement only (alignment, spacing). */
   className?: string;
 }) {
   const { t } = useTranslation("teams");

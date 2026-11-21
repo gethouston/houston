@@ -5,8 +5,6 @@ import {
   request,
 } from "./turn-activity-doc";
 
-/** PUT a view only where none exists (create at revision 0); a doc another
- *  writer holds stands. */
 export async function publishIfAbsent(
   opts: Parameters<typeof publish>[0],
   doc: unknown,

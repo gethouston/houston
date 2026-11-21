@@ -101,7 +101,6 @@ test("download forwards cancellation to the HTTP request", async () => {
   controller.abort(new Error("stop hydration"));
 
   await expect(downloading).rejects.toThrow("stop hydration");
-  // The request runs on its own signal that follows the caller's.
   expect(requestSignal).not.toBe(controller.signal);
   expect(requestSignal?.reason).toBe(controller.signal.reason);
 });
@@ -130,7 +129,6 @@ test("manifest forwards cancellation to the HTTP request", async () => {
   controller.abort(new Error("turn moved on"));
 
   await expect(listing).rejects.toThrow("turn moved on");
-  // The request runs on its own signal that follows the caller's.
   expect(requestSignal).not.toBe(controller.signal);
   expect(requestSignal?.reason).toBe(controller.signal.reason);
 });
@@ -143,7 +141,6 @@ test("upload forwards cancellation to the HTTP request and its retries", async (
     retryDelaysMs: [0, 0],
     fetchImpl: async (_input, init) => {
       requests += 1;
-      // Like fetch: an already-aborted signal rejects at once.
       init?.signal?.throwIfAborted();
       await new Promise<void>((_resolve, reject) => {
         init?.signal?.addEventListener(
@@ -575,7 +572,6 @@ test("a 413 PUT surfaces as the typed ObjectTooLargeError, with no retry", async
   expect(err).toBeInstanceOf(ObjectTooLargeError);
   expect((err as ObjectTooLargeError).key).toBe("work/huge.mp4");
   expect(String(err)).toContain("failed (413)");
-  // 413 is deterministic — the retry layer must not re-send the body.
   expect(calls).toBe(1);
 });
 
@@ -635,8 +631,6 @@ test("a large file uploads as a per-attempt stream, never one heap buffer", asyn
     calls += 1;
     expect((init as { duplex?: string }).duplex).toBe("half");
     expect(init?.body).toBeInstanceOf(ReadableStream);
-    // Drain the stream — a retried attempt must deliver the FULL body again,
-    // which only works if each attempt opened a fresh stream.
     let bytes = 0;
     for await (const chunk of init?.body as ReadableStream<Uint8Array>) {
       bytes += chunk.byteLength;

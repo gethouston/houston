@@ -11,7 +11,6 @@ import type {
 import { EmployeeCardUnit } from "./employee-card-unit";
 import { EmployeeNameField } from "./employee-name-field";
 
-/** The card's name field, as its owner drives it. */
 export interface EmployeeCardNameInput {
   value: string;
   onChange: (value: string) => void;
@@ -41,13 +40,10 @@ export function EditableEmployeeCard({
   color: string | undefined;
   name: EmployeeCardNameInput;
   message: string | null;
-  /** The name holds the card back, with an explanation beside the field. */
   invalid: boolean;
   recovery?: EmployeeCardRecovery;
   onColorChange: (color: string) => void;
-  /** The job or the industry answered again, as the person reads it. */
   onBriefChange: (field: JobBriefField, answer: string) => void;
-  /** Lets this draft go; omitted where it may not be. */
   onRemove?: () => void;
 }) {
   const { t } = useTranslation("shell");

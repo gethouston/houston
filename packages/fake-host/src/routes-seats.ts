@@ -1,24 +1,14 @@
-/**
- * Yearly seats on the fake gateway: `POST /v1/org/members/quote`, and the
- * seat side of adding and removing someone in a live yearly org (one whose
- * billing carries `paidSeats` and `seatsInUse`). Every other org falls
- * through to the Teams routes unchanged. A spec makes the next seat charge
- * decline, or need the bank's confirmation, with `/__test__/seat-charge`.
- */
-
 import type { OrgBilling, OrgRole, SeatQuote } from "@houston/wire-types";
 import { json } from "./http";
 import * as state from "./state";
 
 const YEAR_MS = 365 * 24 * 3_600_000;
 
-/** Who pays, as the gateway names them to an owner who does not. */
 export const FAKE_BILLING_OWNER_NAME = "Ana Ruiz";
 
 type SeatChargeResult = "ok" | "decline" | "needs_action";
 let nextCharge: SeatChargeResult = "ok";
 
-/** The next seat charge's answer; it applies once, then charges succeed. */
 export function setSeatChargeResult(result: SeatChargeResult): void {
   nextCharge = result;
 }
@@ -38,7 +28,6 @@ function yearlySeats(billing: OrgBilling | null): YearlySeats | null {
   return { ...billing, paidSeats, seatsInUse, renewsAt, seatPriceCents };
 }
 
-/** What adding one more person costs this org, as the gateway quotes it. */
 export function quoteFor(billing: OrgBilling | null, now: number): SeatQuote {
   const yearly = yearlySeats(billing);
   if (yearly) {
@@ -74,7 +63,6 @@ export function quoteFor(billing: OrgBilling | null, now: number): SeatQuote {
 const refuse = (status: number, code: string): Response =>
   json({ error: code, code }, status);
 
-/** Route a seat call, or return `undefined` to fall through. */
 export function handleSeatRoutes(
   method: string,
   segs: string[],
@@ -85,7 +73,6 @@ export function handleSeatRoutes(
   const slug = state.requestOrgSlug(req);
   const billing = state.orgBillingOf(slug);
   if (method === "POST" && segs.join("/") === "v1/org/members/quote") {
-    // A locked org takes no one new, so the gateway quotes nothing.
     if (state.orgWritesLocked(slug))
       return json(
         { error: "this organization is locked", code: "needs_upgrade" },
@@ -100,7 +87,6 @@ export function handleSeatRoutes(
     segs.length === 4 &&
     (segs[2] === "members" || segs[2] === "invites");
   if (removes) {
-    // A removed seat stays paid until renewal: only the use drops.
     state.setOrgBilling(slug, {
       ...yearly,
       seatsInUse: Math.max(0, yearly.seatsInUse - 1),
@@ -115,11 +101,8 @@ export function handleSeatRoutes(
   if (quote.kind === "billing_owner_only") return refuse(403, quote.kind);
   let paidSeats = yearly.paidSeats;
   if (quote.kind === "charge") {
-    // The AI Manager never pays for a seat: the person adds them from People.
     if (req.headers.has("x-houston-acting-as"))
       return refuse(403, "seat_charge_in_app");
-    // An add that carries no quote, or a different amount, is told the
-    // price changed.
     if (
       typeof body?.prorationDate !== "number" ||
       body?.quotedAmountCents !== quote.amountCents

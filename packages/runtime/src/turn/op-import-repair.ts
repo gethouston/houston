@@ -8,17 +8,6 @@ import type { TurnServerDeps } from "./server-types";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { poolIdentity } from "./turn-store";
 
-/**
- * After an import's files are durable, repair every conversation the chunk
- * carries into the transcript store with its FULL document (archived
- * segments folded in), the body the pod's transcript shadow sends on a
- * repair. The gateway serves an asleep agent's conversations from that
- * store, which otherwise learns of imported chats only when a pod next
- * projects them. A chat the import skipped (already in the store) is
- * repaired too: a retry after a crash between the sync and the repair finds
- * its file already there. Answers the diagnostics; a 404 (route absent) is
- * not one.
- */
 export async function repairImportedConversations(
   deps: Pick<TurnServerDeps, "poolStoreUrl" | "fetchImpl">,
   turn: OpClaimTurn,
@@ -37,8 +26,6 @@ export async function repairImportedConversations(
     uploaded,
   )) {
     try {
-      // A lazy tree holds only what this op wrote or read: the live file
-      // and every segment must be on disk before the full load.
       await filesystem.vfs.readBytes(
         posix.join(conversationsRel, `${encoded}.json`),
       );
@@ -85,8 +72,6 @@ export async function repairImportedConversations(
   return diagnostics;
 }
 
-/** `[encoded file name, conversation id]` of every conversation whose live
- *  file or archive segment the import uploaded. */
 function importedConversations(
   conversationsRel: string,
   uploaded: readonly string[],
@@ -103,19 +88,11 @@ function importedConversations(
     if (!encoded) continue;
     try {
       out.set(encoded, decodeURIComponent(encoded));
-    } catch {
-      // Not a name the conversation store writes: nothing to repair.
-    }
+    } catch {}
   }
   return out;
 }
 
-/**
- * Store-relative keys of the runtime conversation files an import archive
- * carries, normalized exactly as the import loop normalizes entry names
- * (safeSeedKey). Names only: the filter refuses every entry, so nothing
- * inflates. A malformed zip carries none (the import route owns its error).
- */
 export function archiveConversationKeys(
   bodyBase64: string | undefined,
   workspaceRel: string,

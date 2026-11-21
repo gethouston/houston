@@ -28,7 +28,6 @@ test("only the grid's own keys are claimed", () => {
   }
   assert.equal(isChipGridKey("Home"), true);
   assert.equal(isChipGridKey("End"), true);
-  // Enter and Space pick the focused chip; Escape and Tab belong to the dialog.
   for (const key of ["Enter", " ", "Escape", "Tab", "a"]) {
     assert.equal(isChipGridKey(key), false);
   }
@@ -62,17 +61,12 @@ test("there is nothing above the first row or below the last", () => {
 });
 
 test("home and end are the ends of the whole question, not of one row", () => {
-  // One question is ONE radio group however many labelled runs it is drawn in,
-  // so Home and End are its first and last answer — a row is a wrap artefact
-  // the user never asked for.
   assert.equal(nextChipIndex("Home", 5, ROWS), 0);
   assert.equal(nextChipIndex("End", 3, ROWS), 6);
   assert.equal(nextChipIndex("Home", 0, ROWS), null);
   assert.equal(nextChipIndex("End", 6, ROWS), null);
 });
 
-// Two labelled runs of one question: three chips wrapping into two rows, then
-// a heading's gap, then three more. The rows are measured across both.
 const RUN_ROWS = groupIntoRows([0, 0, 44, 140, 140, 140]);
 
 test("the runs of one question are measured as one grid", () => {

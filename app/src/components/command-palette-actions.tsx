@@ -1,13 +1,3 @@
-/**
- * The command palette's Actions group: the handful of destinations that are
- * always reachable, whatever the workspace holds. Split out of
- * `command-palette.tsx`, which keeps the dialog and the data-backed lists.
- *
- * Starting a mission is the one action with real routing behind it, so it
- * arrives as a prop; the rest are plain store navigations and read the store
- * here rather than travelling as five more props.
- */
-
 import { CommandGroup, CommandItem, CommandShortcut } from "@houston-ai/core";
 import { Keyboard, Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";

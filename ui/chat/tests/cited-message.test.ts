@@ -18,7 +18,6 @@ const pill = (n: number, comment: string): SentCitation => ({
 const cited = (words: string, ...pills: SentCitation[]) =>
   `${words}\n\n${encodeCitationsEnvelope(pills, "[list]")}`;
 
-// The app's attachment marker, byte for byte (app/src/lib/attachment-message.ts).
 const attached = (words: string, path: string) =>
   `<!--houston:attachments ${JSON.stringify({
     message: words,
@@ -28,7 +27,6 @@ const attached = (words: string, path: string) =>
     "\\u003e",
   )}-->\n\n${words}\n\n[User attached these files. Read them with the Read tool if needed:\n- ${path}]`;
 
-// The app's Skill marker and prompt (app/src/lib/skill-message.ts).
 const skilled = (words: string) =>
   `<!--houston:skill ${JSON.stringify({
     skill: "polish-deck",

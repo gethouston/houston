@@ -8,14 +8,6 @@ export interface PageHeaderTabItem<Id extends string> {
   dataAttrs?: Record<string, string>;
 }
 
-/**
- * Header navigation uses `aria-current`, not tab-panel semantics: these items
- * swap a whole page surface. One heading lozenge carries the screen's h1.
- *
- * A SINGLE item renders as a static heading lozenge — no nav landmark, no
- * button: a page with nothing to switch must not expose a focusable control
- * that does nothing when activated.
- */
 export function PageHeaderTabs<Id extends string>({
   items,
   active,
@@ -61,8 +53,6 @@ export function PageHeaderTabs<Id extends string>({
           </button>
         );
         return item.heading ? (
-          // A real flex box keeps the heading in both the layout and the
-          // accessibility tree, unlike `display: contents`.
           <h1 key={item.id} className="flex min-w-0">
             {button}
           </h1>

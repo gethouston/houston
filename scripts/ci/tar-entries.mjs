@@ -1,9 +1,3 @@
-// Lists every entry of a .tar.gz as "<type>\t<mode>\t<path>\t<link target>",
-// sorted. `tar -t` shows names only; the updater (tauri-plugin-updater, Rust
-// tar crate) also cares about entry TYPES: it resolves a hardlink entry's
-// target against its own working directory, so a hardlink that bsdtar emits
-// for a multiply-linked file would break the update on users' machines.
-// Comparing these listings catches that and any mode or symlink change.
 import { createReadStream } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { createGunzip } from "node:zlib";
@@ -23,7 +17,6 @@ const field = (block, start, length) => {
 };
 
 const octal = (block, start, length) => {
-  // GNU base-256 for sizes >= 8 GiB: high bit set, big-endian binary.
   if (block[start] & 0x80) {
     let value = 0;
     for (let i = start + 1; i < start + length; i += 1) {
@@ -57,9 +50,9 @@ const paxRecords = (data) => {
 export async function listTarEntries(chunks) {
   const entries = [];
   let buffer = Buffer.alloc(0);
-  let pending = null; // header waiting for its data (pax / GNU long names)
-  let skip = 0; // data bytes of a plain entry still to discard
-  let next = {}; // overrides from a preceding pax or GNU long-name entry
+  let pending = null;
+  let skip = 0;
+  let next = {};
   let ended = false;
 
   const consume = () => {
@@ -109,7 +102,6 @@ export async function listTarEntries(chunks) {
       const type = TYPES[flag] ?? `type-${flag}`;
       entries.push(`${type}\t${mode}\t${path.replace(/\/+$/, "")}\t${link}`);
       next = {};
-      // Hardlinks and symlinks carry no data even if size is set.
       skip =
         type === "file" || type.startsWith("type-")
           ? Math.ceil(size / 512) * 512

@@ -9,12 +9,6 @@ import { TriggerRoutineFirer } from "../triggers/trigger-firer";
 import { ChannelRoutineFirer } from "./firer";
 import type { FiringJob } from "./scheduler";
 
-/**
- * The routine firer routes a due job through the SAME per-workspace channel a
- * user message uses, and ProxyChannel.fireTurn posts the prompt to the standing
- * runtime's conversation endpoint exactly as a typed message would.
- */
-
 const ws = (runtime: Workspace["runtime"]): Workspace => ({
   id: "w1",
   ownerUserId: "alice",
@@ -48,7 +42,6 @@ function job(over: Partial<FiringJob> = {}): FiringJob {
   };
 }
 
-/** A channel that records fireTurn calls; the other verbs are unused here. */
 function recordingChannel(): RuntimeChannel & {
   calls: {
     cid: string;
@@ -102,20 +95,14 @@ test("ChannelRoutineFirer routes the prompt to the workspace's channel", async (
   const firer = new ChannelRoutineFirer({ cloudrun });
   await firer.fire(job());
   expect(cloudrun.calls).toEqual([
-    // No pins on this routine → all inherit. No created_by on a legacy
-    // routine → no acting user threaded (acts as owner).
     {
       cid: "routine-r1",
-      // The routine's instruction rides inside the run framing (PRODUCT-1208).
       text: expect.stringContaining("Write the daily report"),
       pin: { provider: null, model: null, effort: undefined, mode: "auto" },
       actingUser: undefined,
-      // Marks the request so the runtime tells a routine run from a person.
       routine: true,
     },
   ]);
-  // The framing is what stops a "every hour, …" prompt from reading as a
-  // request to CREATE a routine (which duplicated it and skipped the work).
   expect(cloudrun.calls[0]?.text).toContain("never call save_routine");
 });
 
@@ -154,8 +141,6 @@ test("ChannelRoutineFirer carries provider/model/effort plus autopilot mode", as
   );
   const call0 = cloudrun.calls[0];
   if (!call0) throw new Error("expected at least one fireTurn call");
-  // THE pin: the provider rides the turn, so the routine keeps firing on its
-  // own provider no matter what other chats/routines picked since.
   expect(call0.pin).toEqual({
     provider: "anthropic",
     model: "claude-opus-5-5",
@@ -167,8 +152,6 @@ test("ChannelRoutineFirer carries provider/model/effort plus autopilot mode", as
 test("ChannelRoutineFirer fires a retired Claude pin on its family's lineup model", async () => {
   const cloudrun = recordingChannel();
   const firer = new ChannelRoutineFirer({ cloudrun });
-  // routines.json is never rewritten: an Opus pin saved before the lineup
-  // moved must still fire on Opus, never on the Sonnet default.
   await firer.fire(
     job({
       routine: {
@@ -184,8 +167,6 @@ test("ChannelRoutineFirer fires a retired Claude pin on its family's lineup mode
 test("ChannelRoutineFirer maps a Rust-era provider pin to its pi id at fire time", async () => {
   const cloudrun = recordingChannel();
   const firer = new ChannelRoutineFirer({ cloudrun });
-  // A migrated routines.json can still say "claude"/"codex" — the pin the turn
-  // carries speaks pi ids, while the file on disk is never rewritten.
   await firer.fire(job({ routine: { ...job().routine, provider: "claude" } }));
   expect(cloudrun.calls[0]?.pin?.provider).toBe("anthropic");
 });
@@ -193,14 +174,8 @@ test("ChannelRoutineFirer maps a Rust-era provider pin to its pi id at fire time
 test("an unresolvable provider pin fails the fire with the real reason, before any turn starts", async () => {
   const cloudrun = recordingChannel();
   const firer = new ChannelRoutineFirer({ cloudrun });
-  // routinePin passes unknown ids through verbatim (never a silent switch);
-  // the firer must reject them HERE so the run errors immediately with the
-  // reason — firing anyway would die inside the runtime as an ephemeral
-  // stream error and the run would time out vague 15 minutes later.
   await expect(
     firer.fire(job({ routine: { ...job().routine, provider: "gemini-cli" } })),
-    // Named the way a person reads it, never pi's canonical id — the run
-    // history shows this sentence verbatim (providers/provider-copy.ts).
   ).rejects.toThrow(
     "This routine runs on gemini-cli, which is not available here. Open the routine and pick another provider.",
   );
@@ -208,8 +183,6 @@ test("an unresolvable provider pin fails the fire with the real reason, before a
 });
 
 test("a provider outside the curated list that the runtime can run still fires", async () => {
-  // Saves accept any provider the runtime knows (providerPinError), so both
-  // firers must too, or a routine that saved fine errors on every run.
   for (const provider of ["xai", "groq", "qwen"]) {
     const cloudrun = recordingChannel();
     const routine = { ...job().routine, provider };
@@ -223,15 +196,13 @@ test("a provider outside the curated list that the runtime can run still fires",
 });
 
 test("a missing channel for the workspace's runtime throws (→ errored run)", async () => {
-  const firer = new ChannelRoutineFirer({}); // nothing wired
+  const firer = new ChannelRoutineFirer({});
   await expect(firer.fire(job({ workspace: ws("cloudrun") }))).rejects.toThrow(
     "cloudrun runtime not configured",
   );
 });
 
 test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpoint", async () => {
-  // Held in an object so the fetch-closure write survives the outer
-  // control-flow analysis (a bare `let` would be narrowed to its `null` init).
   const captured: {
     seen: { path: string; body: unknown; auth: string | null } | null;
   } = { seen: null };
@@ -351,7 +322,6 @@ test("ProxyChannel.fireTurn sends exactly the requested routine identity header"
     forwardActingHeader: false,
   });
   try {
-    // Routine turn with a creator → the header carries the sub.
     await channel.fireTurn(
       { workspace: ws("gke"), agent },
       "c1",
@@ -361,11 +331,9 @@ test("ProxyChannel.fireTurn sends exactly the requested routine identity header"
     );
     expect(seen[0]?.actingUser).toBe("sub-alice");
     expect(seen[0]?.actingAs).toBeNull();
-    // Legacy routine (no creator) → the header is absent.
     await channel.fireTurn({ workspace: ws("gke"), agent }, "c1", "go");
     expect(seen[1]?.actingUser).toBeNull();
     expect(seen[1]?.actingAs).toBeNull();
-    // Control-plane delivery carries the signed token INSTEAD of a bare sub.
     await channel.fireTurn(
       { workspace: ws("gke"), agent },
       "c1",
@@ -412,9 +380,6 @@ test("ProxyChannel.fireTurn throws when the runtime rejects (→ errored run)", 
 });
 
 test("ProxyChannel.cancelTurn answers false for an asleep runtime without waking it", async () => {
-  // Asleep ⇒ no turn can be in flight (turns live inside the runtime process);
-  // paying a cold start just to hear cancelled:false would add seconds + spend
-  // to the user's Stop click on a stale row.
   const calls: string[] = [];
   const launcher = {
     async ensureAwake(): Promise<{ baseUrl: string; token: string }> {

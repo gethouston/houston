@@ -70,7 +70,6 @@ describe("imported messages", () => {
     ];
     expect(holdsImport(held, "onboarding:first_run")).toBe(true);
     expect(holdsImport(held, "onboarding:profile")).toBe(false);
-    // A name that only PREFIXES another import's name is a different import.
     expect(holdsImport(held, "onboarding:first")).toBe(false);
   });
 });

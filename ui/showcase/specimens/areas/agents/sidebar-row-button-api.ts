@@ -1,13 +1,5 @@
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * Every module in the product that draws a rail row, and what it passes.
- *
- * The list is the point of the component: if one of these stopped going
- * through it, the rail would go back to being several stacked lists that only
- * look alike by coincidence. `ui/layout/tests/sidebar-row-anatomy.test.ts`
- * asserts the same list against the source.
- */
 export const SIDEBAR_ROW_CONSUMERS: readonly {
   who: string;
   what: string;
@@ -22,7 +14,6 @@ export const SIDEBAR_ROW_CONSUMERS: readonly {
   },
 ];
 
-/** `SidebarRowButtonProps`, read off `ui/layout/src/sidebar-row-button.tsx`. */
 export const SIDEBAR_ROW_BUTTON_PROPS: readonly SpecimenProp[] = [
   {
     name: "label",

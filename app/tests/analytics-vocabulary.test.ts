@@ -1,9 +1,3 @@
-// The vocabulary every contract test downstream asserts against is READ OUT OF
-// SOURCE (posthog-js cannot be imported here), so those tests are only as good
-// as the anchors the fixture slices on. A renamed declaration or a union that
-// moved to another file would not fail to compile — it would quietly yield an
-// EMPTY set and make every assertion about a name pass by asserting nothing.
-// This is the guard on the reader itself.
 import { ok } from "node:assert";
 import { describe, it } from "node:test";
 import {
@@ -26,8 +20,6 @@ describe("the analytics vocabulary the tests read", () => {
   });
 
   it("keeps every allowed property declared in the union", () => {
-    // `cleanProps` iterates ALLOWED_PROPS, so a name in it that the union
-    // never declared would filter events against a property nothing can set.
     for (const prop of ALLOWED_PROPS) {
       ok(PROPERTY_UNION.has(prop), `AnalyticsProperty is missing "${prop}"`);
     }

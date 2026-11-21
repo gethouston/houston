@@ -21,13 +21,6 @@ import {
   migrateAgentStore,
 } from "./agent-store";
 
-/**
- * The boot migrations for ONE agent's hydrated store tree, the step a pool
- * worker runs (the `migrate` op) where no pod boots any more. What matters:
- * a pre-v0.4 agent comes out readable with every byte of its data kept, the
- * steps a pod's boot runs all run, and a second run changes nothing.
- */
-
 let workspacesRoot: string;
 let agentRoot: string;
 const noLog = () => {};
@@ -82,11 +75,9 @@ describe("migrateAgentStore", () => {
     expect(learnings).toEqual([
       expect.objectContaining({ text: "Prefers short replies" }),
     ]);
-    // The routine moved, then gained the owner as its creator.
     expect(JSON.parse(read(".houston/routines/routines.json"))).toEqual([
       { id: "r1", schedule: "0 9 * * *", created_by: "owner-1" },
     ]);
-    // Rollback net: the flat files stay exactly as they were.
     expect(read(".houston/activity.json")).toBe(
       '[{"id":"a1","title":"Old card"}]',
     );
@@ -205,7 +196,5 @@ test("every boot migration the host runs is in the pool's migrate op or named ho
     ...Object.keys(HOST_ONLY_MIGRATIONS),
   ]);
   expect(imported.length).toBeGreaterThan(0);
-  // A new boot migration fails here until migrateAgentStore runs it (and
-  // AGENT_STORE_MIGRATION_VERSION moves) or it says why no store needs it.
   expect(imported.filter((name) => !covered.has(name ?? ""))).toEqual([]);
 });

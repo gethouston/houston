@@ -10,21 +10,6 @@ import {
   categoryLabel,
 } from "../integrations";
 
-/**
- * The catalog app's modal — a row-body click opens it: brand art, name, the
- * app's category chips, its FULL description (the row truncates to one line),
- * and the connect CTA. `toolkit === null` keeps it closed. Connecting from here
- * closes the modal and hands off to the surface's one connect flow (the row's
- * inline card takes over, same as its `+`).
- *
- * `broken` = this app holds a connection that never went active, so the same
- * modal is where that connection is dealt with: it wears the status chip beside
- * the categories, says what happened, and its footer offers the two ways out —
- * Finish connecting / Reconnect (the same hand-off, from the row the user
- * opened) and Remove, which disconnects the half-made connection. There is no
- * second dialog for a broken app: a catalog row opens the catalog's modal,
- * whatever state its app is in.
- */
 export function AppInfoDialog({
   toolkit,
   broken,
@@ -34,15 +19,10 @@ export function AppInfoDialog({
   busy,
 }: {
   toolkit: IntegrationToolkit | null;
-  /** This app's pending / errored connection, when it has one. */
   broken?: BrokenConnection;
   onClose: () => void;
   onConnect: (toolkit: string) => void;
-  /** Disconnect a broken connection (never shown for a plain catalog app). */
   onRemove: (toolkit: string) => void;
-  /** THIS app's own hand-off is already running (the user started it from its
-   *  row, or from another surface) — the CTA disables rather than double-firing.
-   *  Never gated on some other app's connect: flows are per toolkit. */
   busy: boolean;
 }) {
   const { t } = useTranslation("integrations");
@@ -80,9 +60,6 @@ export function AppInfoDialog({
           ))}
         </>
       }
-      // A broken app's modal leads with its situation, not its blurb: the user
-      // opened it because the connect did not land, and the status chip above
-      // already names the app.
       description={copy ? copy.body : display.description}
       action={
         copy ? (

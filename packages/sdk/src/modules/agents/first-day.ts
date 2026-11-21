@@ -1,20 +1,3 @@
-/**
- * An AI Employee's first day: the setup task where it introduces itself and
- * interviews the user about how it should work. A new hire is born with its
- * first day pending (`AgentCreateInput.config`), and this is the ONE way it
- * starts, for every surface and the AI Manager alike.
- *
- * The host decides everything: it creates the task, fires its first turn on
- * the brain the employee was hired with, and records the start, all in one
- * operation under the employee's own lock. So a repeated start (a second
- * button, a second tab, a retry after a lost answer) is safe by construction:
- * it hands back the task the first start made, with `outcome: "existing"`.
- * That is also why the start, unlike other writes, rides out a pod that is
- * still coming up: a new hire's first day is offered the moment it is created,
- * often seconds before its pod answers, and a repeated start can only hand back
- * the same task.
- */
-
 import type {
   FirstDayStartInput,
   FirstDayStartResult,
@@ -62,13 +45,11 @@ export async function startFirstDay(
         method: "POST",
         body: JSON.stringify(input),
       }),
-    // Idempotent on the host, so a waking refusal is safe to re-issue.
     { wakingLadderMs: WAKING_CREATE_RETRY_MS },
   );
   return (await res.json()) as FirstDayStartResult;
 }
 
-/** The start input off an untrusted command payload; absent means none. */
 export function firstDayStartInput(payload: unknown): FirstDayStartInput {
   const value = field(payload, "input");
   if (value === undefined) return {};
@@ -85,7 +66,6 @@ export function firstDayStartInput(payload: unknown): FirstDayStartInput {
   };
 }
 
-/** The first-day half of the agents facade. */
 export interface AgentsFirstDay {
   startFirstDay(
     agentId: string,

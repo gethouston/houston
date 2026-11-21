@@ -9,22 +9,8 @@ import { json } from "./http";
 import { defineProxyFamily } from "./registry";
 import { turnBody } from "./turn-body";
 
-// The deps bag + authz helpers live in agent-authz.ts (shared with
-// routine-runs.ts); re-exported so existing importers keep working.
 export type { AgentRouteDeps } from "./agent-authz";
 
-/**
- * THE PER-AGENT RUNTIME SURFACE: `/agents/:agentId/<anything>` → the agent's
- * own engine, via the workspace's channel. The frontend points its runtime
- * client at `${controlPlaneUrl}/agents/${agentId}`, so chat turns, the SSE
- * event stream, and the provider connect flow all reach the engine under one
- * ownership check — run by the dispatcher, once, for this family and for every
- * host-served family declared ahead of it.
- *
- * Matching is `*rest`, so a rest nobody declared still reaches the engine and
- * gets the engine's own 404. The member list (agents-proxy-members.ts) is the
- * published surface, not the match.
- */
 defineProxyFamily({
   group: "agent-proxy",
   path: "/agents/:agentId/*rest",
@@ -83,8 +69,6 @@ defineProxyFamily({
       req,
       seams.client,
     );
-    // A definitive refusal did not accept the message. A thrown proxy failure
-    // is ambiguous, so its guard stays until expiry instead of risking mutation.
     if (res.statusCode >= 400) message.release?.();
   },
 });

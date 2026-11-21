@@ -10,28 +10,6 @@ import { createSentryReportError } from "./sentry-report-error";
 import { markReportedToSentry } from "./sentry-reported-mark";
 import { wakingStuckTracker } from "./waking-stuck-tracker";
 
-/**
- * The Sentry half of a quiet-class failure (PRODUCT-1640): the user got the
- * deduped informational toast (or nothing, for a `{ toast: false }` path), we
- * get ONE warning-level event per burst in the class's single fingerprinted
- * issue, carrying the command, agent, status and raw gateway body.
- *
- * Burst-collapsed with the toast layer's window (`quietBurstKey`): a dozen
- * concurrent reads of one waking agent are one occurrence of one problem, and
- * counting them twelve times would only inflate the issue's numbers against a
- * Sentry quota. For the waking class distinct commands and distinct agents
- * still count separately, so the issue's event list reads as a per-agent
- * timeline; the offline class is one event per drop, whatever fell with it.
- *
- * For the waking class the answer also feeds the per-agent stuck-wake tracker;
- * an agent answering nothing but waking past the threshold escalates once, as
- * an error-level `waking_stuck` event with the first and last raw bodies.
- *
- * `context` is the call-site context (an agent id or path to key the burst
- * on) and never reaches Sentry. `extra` is what a caller wants ON the event
- * (the byte position of a release download); the event's own fields win over
- * it, so no caller can rewrite `command` or `agent_id`.
- */
 const captureBurst = createBurstGate();
 
 export function reportQuietError(

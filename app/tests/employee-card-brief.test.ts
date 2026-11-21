@@ -60,7 +60,6 @@ describe("answering a card's job or industry again", () => {
       id: null,
       typed: "Dog grooming",
     });
-    // Typed words carry the answer's own cap, wherever they came from.
     strictEqual(jobAnswerEntry(ids, label, "a".repeat(200)).typed.length, 64);
   });
 });

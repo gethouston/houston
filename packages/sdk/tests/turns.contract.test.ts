@@ -1,13 +1,3 @@
-/**
- * Turn streaming contract: sending a message drives the `conversation/<id>`
- * view-model — streaming assistant text grows IN PLACE (one feed entry, stable
- * id, cumulative text), the turn settles exactly once on the terminal frame,
- * and a cancel settles cleanly.
- *
- * The settled `ConversationVM` is the feed snapshot every subscriber reads, so
- * its exact JSON is pinned here as API.
- */
-
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
 import { HoustonEngineClient } from "@houston/runtime-client";
 import { type ConversationVM, conversationScope } from "@houston/sdk";
@@ -67,8 +57,6 @@ describe("turn send → stream → settle", () => {
     );
 
     const vm = convVm(h.sdk, cid);
-    // Every feed entry carries a stamped epoch-ms `ts`; assert it is present
-    // and numeric, then compare the rest of the VM structurally (ts stripped).
     for (const f of vm?.feed ?? []) expect(typeof f.ts).toBe("number");
     expect({
       ...vm,
@@ -76,17 +64,9 @@ describe("turn send → stream → settle", () => {
     }).toEqual({
       running: false,
       sessionStatus: "completed",
-      // The persisted board status rides the VM (the handled-vs-error signal a
-      // surface reads); every clean settle lands `needs_you` — the engine never
-      // writes `done`, only the user moves a card there.
       boardStatus: "needs_you",
-      // No pending interaction — the canned turn ended asking nothing.
       pendingInteraction: null,
       feed: [
-        // The optimistic push — the ONE user bubble (its echo never renders,
-        // but it DOES stamp the turn's wire id onto this bubble so
-        // turn-anchored affordances like edit-and-resend work live,
-        // PRODUCT-1217).
         {
           id: "f0",
           feed_type: "user_message",
@@ -97,8 +77,6 @@ describe("turn send → stream → settle", () => {
           id: "f1",
           feed_type: "assistant_text",
           data: cannedReply("Ping"),
-          // Live pushes carry the adopted turn id — the VM fold's dedup
-          // identity (HOU-1214).
           turnId: expect.any(String) as unknown as string,
         },
         {
@@ -118,7 +96,6 @@ describe("turn send → stream → settle", () => {
 
   it("grows streaming text in ONE feed entry with a stable id", async () => {
     const cid = "c-stream";
-    // Slow the per-delta cadence so intermediate snapshots are observable.
     await control(host.url, "chat-config", { replyDelayMs: 40 });
 
     const streamingSnaps: ConversationVM[] = [];
@@ -134,25 +111,19 @@ describe("turn send → stream → settle", () => {
     await until(() => convVm(h.sdk, cid)?.running === false, "turn settled");
     off();
 
-    // The streaming entries: every mid-flight snapshot that carried an
-    // assistant_text_streaming feed item.
     const streamingEntries = streamingSnaps
       .map((s) =>
         s.feed.find((f) => f.feed_type === "assistant_text_streaming"),
       )
       .filter((f): f is NonNullable<typeof f> => f !== undefined);
 
-    expect(streamingEntries.length).toBeGreaterThan(1); // multiple deltas seen
-    // One stable id across the whole stream — the reply is one bubble.
-    // (f0 is the optimistic user bubble; the reply streams into f1.)
+    expect(streamingEntries.length).toBeGreaterThan(1);
     const ids = new Set(streamingEntries.map((f) => f.id));
     expect(ids).toEqual(new Set(["f1"]));
-    // Cumulative, monotonic growth — never a shrink, never a reset.
     const lengths = streamingEntries.map((f) => String(f.data).length);
     for (let i = 1; i < lengths.length; i++) {
       expect(lengths[i]).toBeGreaterThanOrEqual(lengths[i - 1]);
     }
-    // The final entry keeps the SAME id, finalized to assistant_text.
     const finalTextEntry = convVm(h.sdk, cid)?.feed.find(
       (f) => f.feed_type === "assistant_text",
     );
@@ -193,7 +164,6 @@ describe("turn send → stream → settle", () => {
     const { messages } = await engine.getHistory(cid);
     expect(messages.map((m) => m.role)).toEqual(["user", "assistant"]);
     expect(messages[1].content).toBe(cannedReply("Ping"));
-    // Both messages of a turn share its id (the resync-by-turnId contract).
     expect(messages[0].turnId).toBeTruthy();
     expect(messages[1].turnId).toBe(messages[0].turnId);
   });
@@ -206,9 +176,6 @@ describe("multi-client conversation reactivity", () => {
     const scope = conversationScope(SEED_AGENT_ID, cid);
     const off = receiver.sdk.subscribe(scope, () => {});
     try {
-      // A client opens the chat while it is idle. Its per-conversation observer
-      // sees the idle sync and closes; future turns must arrive through the SDK's
-      // global ConversationsChanged reactivity path.
       await receiver.sdk.turns.observe(cid, SEED_AGENT_ID);
       await sleep(100);
 
@@ -250,8 +217,6 @@ describe("turn cancel", () => {
       conversationId: cid,
       text: "Ping",
     });
-    // Wait for a streamed delta: proof the turn is genuinely in flight on the
-    // server (so cancel hits a live turn, not a not-yet-started one).
     await until(
       () =>
         convVm(h.sdk, cid)?.feed.some(
@@ -268,9 +233,6 @@ describe("turn cancel", () => {
 
     const vm = convVm(h.sdk, cid);
     expect(vm?.running).toBe(false);
-    // A user Stop is a handled state, not the red error card. sessionStatus is
-    // "error" (clears the loading flag) but the board lands on needs_you — the
-    // signal a surface must read to avoid rendering a normal Stop red.
     expect(vm?.sessionStatus).toBe("error");
     expect(vm?.boardStatus).toBe("needs_you");
     const stop = vm?.feed.find(

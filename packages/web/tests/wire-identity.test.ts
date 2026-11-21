@@ -84,8 +84,6 @@ describe("email-code wire (pre-auth)", () => {
     ).rejects.toMatchObject({ name: "EmailOtpError", code, status });
   });
 
-  // fetch resolves once the headers arrive, so a dropped connection can
-  // still fail the body read.
   const breaksOffMidBody = (status: number) =>
     new Response(
       new ReadableStream({

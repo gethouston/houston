@@ -47,7 +47,6 @@ describe("a briefing's two moments", () => {
       seen: ["need:Ana/m1"],
     });
     expect(doc.seen).toEqual([]);
-    // Host-owned: never on the wire.
     expect(Object.keys(await loadHeartbeat(store, "P")).sort()).toEqual([
       "enabled",
       "last",
@@ -110,7 +109,6 @@ describe("a briefing's two moments", () => {
   test("an outcome read for one briefing never lands on a newer one", async () => {
     const store = memoryStore();
     await admit(store, ["need:W/Ana/m1"]);
-    // A run-now replaced the pending briefing after the host read the first.
     await recordHeartbeatAdmitted(store, "P", {
       date: "2026-10-10",
       at: DONE,

@@ -75,8 +75,6 @@ test("settings and credential ops download exactly the runtime files their handl
     expect(lazy, op.kind).toBeUndefined();
     expect(filter, op.kind).toBeDefined();
     const admits = (rel: string) => filter?.(rel) === true;
-    // What the settings, endpoint and api-key handlers read or merge into,
-    // in the standing layout and in the per-turn (`data/`) one.
     for (const dataRel of [RUNTIME, "data"])
       for (const file of [
         "settings.json",
@@ -86,9 +84,6 @@ test("settings and credential ops download exactly the runtime files their handl
         "xiaomi-endpoint.json",
       ])
         expect(admits(`${dataRel}/${file}`), `${op.kind} ${file}`).toBe(true);
-    // Everything else stays listed (the layout resolves from the listing)
-    // and is never downloaded: project folders, hidden folders, root files,
-    // the runtime's log and its other files, the store root.
     for (const rel of [
       "workspaces/Personal/Bob/render/big.bin",
       "workspaces/Personal/Bob/data/export/report.csv",
@@ -111,7 +106,6 @@ test("settings and credential ops download exactly the runtime files their handl
     ])
       expect(admits(rel), `${op.kind} ${rel}`).toBe(false);
   }
-  // Route and conversation ops list lazily and need no filter.
   expect(
     opTreeOptions({ kind: "route", method: "POST", rest: "routines" }).filter,
   ).toBeUndefined();

@@ -1,8 +1,6 @@
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
-/** The column's header: the section's name and its live count, with the
- *  consumer's action (archive all, select all) pinned to the right. */
 export function KanbanColumnHeader({
   label,
   count,
@@ -31,8 +29,6 @@ export function KanbanColumnHeader({
   );
 }
 
-/** The column's "+" bar, trailing the cards. Label is the accessible name
- *  only; the bar stays a glyph. */
 export function KanbanColumnAdd({
   label,
   attrs,
@@ -49,8 +45,6 @@ export function KanbanColumnAdd({
       aria-label={label}
       title={label}
       onClick={onClick}
-      // The same surface as a resting card (`card-solid`, section 7 of
-      // canvas.css) so the bar reads as the column's next slot, both themes.
       className="flex h-10 w-full items-center justify-center rounded-xl border border-line/20 bg-card-solid text-ink-muted transition-colors hover:border-line/40 hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
     >
       <Plus className="h-4 w-4" />

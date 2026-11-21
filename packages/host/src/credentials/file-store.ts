@@ -22,26 +22,6 @@ import {
 } from "./scope-key";
 import { scopedKey } from "./store";
 
-/**
- * File-backed connect-once credential store for the LOCAL profile: the host —
- * not the agent — owns the user's subscription token, persisted to one JSON
- * file on the user's machine so a login survives an app restart. The refresh
- * token lives here (host-readable), never in a runtime's environment, so a
- * prompt-injected agent reading `env` finds only a short-lived access token —
- * the same Gate #2 guarantee as cloud, just single-tenant.
- *
- * SCOPE (HOU-976): rows are keyed by acting identity as well as (workspace,
- * provider). Desktop and self-host never carry one (the acting header is dropped
- * off the gateway — routes/agents.ts `trustedActingAs`), so their key AND their
- * on-disk record stay byte-identical to the pre-HOU-976 shape: an existing
- * credentials.json loads with no migration and never gains a field. Only a
- * member's row persists `scopeKey`, and only the profiles that can produce one
- * write it — the dev launcher runs the managed-cloud posture
- * (`HOUSTON_MANAGED_CLOUD=1`) without the credential-gateway env that would
- * select RemoteCredentialStore, so this adapter really does see members there.
- */
-
-/** One persisted row: the credential plus WHOSE it is (absent = the team's). */
 type StoredCredential = WorkspaceCredential & { scopeKey?: string };
 
 export class FileCredentialStore implements CredentialStore {
@@ -59,9 +39,7 @@ export class FileCredentialStore implements CredentialStore {
             scopedKey(c.workspaceId, c.provider, c.scopeKey ?? TEAM_SCOPE_KEY),
             c,
           );
-      } catch {
-        // A corrupt file means the user reconnects — never crash boot over it.
-      }
+      } catch {}
     }
   }
 
@@ -79,7 +57,7 @@ export class FileCredentialStore implements CredentialStore {
       encoding: "utf8",
       mode: 0o600,
     });
-    renameSync(tmp, this.path); // atomic swap
+    renameSync(tmp, this.path);
     chmodSync(this.path, 0o600);
   }
 
@@ -90,7 +68,6 @@ export class FileCredentialStore implements CredentialStore {
   ): Promise<WorkspaceCredential | null> {
     const stored = this.creds.get(this.key(workspaceId, provider, acting));
     if (!stored) return null;
-    // `scopeKey` is this store's own bookkeeping, not part of the port's shape.
     const { scopeKey: _scopeKey, ...cred } = stored;
     return cred;
   }
@@ -104,7 +81,6 @@ export class FileCredentialStore implements CredentialStore {
     if (opts?.ifAbsent && this.creds.has(key)) return;
     this.creds.set(key, {
       ...cred,
-      // Omitted for the team so its record keeps its exact historical shape.
       ...(isPersonalScopeKey(scopeKey) ? { scopeKey } : {}),
     });
     this.flush();
@@ -119,10 +95,6 @@ export class FileCredentialStore implements CredentialStore {
     this.flush();
   }
 
-  /** Compare-and-delete under this process's single-threaded map access — the
-   *  local equivalent of the gateway's row lock (HOU-952). Only the REPORTER's
-   *  own row is eligible: both rows can hold the same token, and dropping the
-   *  wrong one signs somebody else out. */
   async removeIfAccess(
     workspaceId: WorkspaceId,
     provider: string,

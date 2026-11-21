@@ -1,17 +1,3 @@
-/**
- * Pointer input on the live browser stage, as page input. Pure: the stage
- * feeds it DOM-shaped samples plus the canvas geometry and sends what it
- * returns.
- *
- * - A mouse forwards down / move / up of the PRIMARY button only.
- *   PointerEvent.detail is always 0, so double and triple clicks are counted
- *   here (within 500 ms and 5 px of the previous press).
- * - A touch is either a tap (a click) or a drag (a scroll of the page, never a
- *   text selection); it turns into a scroll once it travels 10 px.
- * - Moves are throttled to one per 33 ms: the page only needs the latest
- *   position, and the input POST would otherwise carry dozens per batch.
- */
-
 import {
   type BrowserLiveStageGeometry,
   normalizedPoint,
@@ -29,7 +15,6 @@ export interface BrowserLivePointerSample {
 
 export interface BrowserLivePointerUp {
   events: BrowserLiveViewInput[];
-  /** Whether to focus the hidden text field (raises the phone keyboard). */
   focusKeyboard: boolean;
 }
 
@@ -143,7 +128,6 @@ export function createBrowserLivePointer(): BrowserLivePointer {
       if (sample.pointerType === "touch") {
         const tap = touch !== null && !touch.moved;
         touch = null;
-        // A scroll must not raise the phone keyboard.
         if (!tap) return { events: [], focusKeyboard: false };
         return {
           events: [{ type: "mouse", action: "click", clickCount: 1, ...point }],

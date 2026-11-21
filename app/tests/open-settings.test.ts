@@ -2,11 +2,6 @@ import { strictEqual } from "node:assert";
 import { afterEach, describe, it } from "node:test";
 import { useUIStore } from "../src/stores/ui.ts";
 
-// "Go to Settings" is two pieces of state (the view AND the open section), and
-// they move together through one store action: setting only the view left a
-// dead click, since with a section open the sidebar's Settings entry did
-// nothing. Admin has its own top-level route and opens through `openAdmin`.
-
 afterEach(() => useUIStore.getState().reset());
 
 describe("useUIStore.openSettings", () => {

@@ -52,8 +52,6 @@ const base: FirstRunInput = {
   reach: { invite: false, connect: false },
 };
 
-/** The lines as short readable tags: `m:<id>` for the manager, `r:<question>`
- *  for an answer (with `*` when it can still be changed). */
 const tags = (script: Script) =>
   script.lines.map((line) =>
     line.kind === "manager"
@@ -282,7 +280,6 @@ describe("firstRunScript: the team", () => {
   });
 });
 
-/** The starter team hired: it closes the team. */
 const starterTeamHired = () =>
   teamFinished(TEAM_CONVERSATION_START, {
     question: "teamBasic",
@@ -408,7 +405,6 @@ describe("firstRunScript: the closing", () => {
       answered,
       record({ ...answered, automationGoal: null, goalSkipped: true }),
     ]) {
-      // No team answer after the survey: the goal is the latest answer.
       const script = firstRunScript({
         ...team,
         survey,

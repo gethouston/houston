@@ -4,34 +4,11 @@ import {
   type ActivityMention,
 } from "@houston/protocol";
 
-/** Copy a mention, keeping `by` only when it is defined. */
 const cloneMention = (m: ActivityMention): ActivityMention =>
   m.by !== undefined
     ? { user_id: m.user_id, at: m.at, by: m.by }
     : { user_id: m.user_id, at: m.at };
 
-/**
- * Sanitize an untrusted `mentioned` array read off disk (agents write
- * activity.json with file tools, so junk happens). Keep only objects with a
- * non-empty string `user_id` and a string `at`; `by` rides along only when it
- * is a string. The FIRST entry per `user_id` wins — a file that repeats a
- * person is already corrupt, and taking the first keeps the survivor a
- * function of the file, not of how far the scan ran.
- *
- * An over-cap file is trimmed the SAME way upsertMentions trims: keep the
- * newest ACTIVITY_MENTIONS_MAX by `at`, drop the oldest. Truncating in file
- * order instead would let a read silently discard the mentions a write just
- * decided were the ones worth keeping — the two sides must agree on which
- * mentions matter, or a hand-edited file quietly loses today's @mentions and
- * keeps last month's. Ties on `at` fall back to file order (the sort is
- * stable), so the survivor set is deterministic for a given file rather than
- * engine-dependent. Survivors come back in FILE order, not recency order: an
- * entry must never move just because the list was trimmed, exactly as
- * upsertMentions restores the original ordering after capping.
- *
- * `undefined` when nothing survives, so the caller can delete the key rather
- * than persist an empty array.
- */
 export function sanitizeMentions(
   value: unknown,
 ): ActivityMention[] | undefined {
@@ -54,8 +31,6 @@ export function sanitizeMentions(
   }
   if (out.length === 0) return undefined;
   if (out.length <= ACTIVITY_MENTIONS_MAX) return out;
-  // `at` is ISO 8601, so lexicographic ordering IS chronological ordering —
-  // the same comparison upsertMentions caps with, kept identical on purpose.
   const keep = new Set(
     out
       .slice()
@@ -66,14 +41,6 @@ export function sanitizeMentions(
   return out.filter((m) => keep.has(m.user_id));
 }
 
-/**
- * Record that `mentionedIds` were named in this mission at `atIso` by `by`.
- * Latest-per-person wins (an existing entry's `at`/`by` are overwritten);
- * new people are appended; the list is capped at ACTIVITY_MENTIONS_MAX by
- * dropping the OLDEST `at` first. Returns the SAME object reference when
- * nothing changed, so callers skip the disk write. Never touches `updated_at`
- * (board sort order must not churn from stamping).
- */
 export function upsertMentions(
   activity: Activity,
   mentionedIds: string[],
@@ -101,17 +68,12 @@ export function upsertMentions(
       continue;
     }
     const current = next[i];
-    // Re-stamping the same person with the same instant + author changes
-    // nothing; leave the reference alone so the caller skips the disk write.
     if (current !== undefined && current.at === entry.at && current.by === by)
       continue;
     next[i] = entry;
     changed = true;
   }
   if (!changed) return activity;
-  // Cap by dropping the OLDEST `at` first: sort a copy by recency, keep the
-  // newest ACTIVITY_MENTIONS_MAX, then restore the original ordering so a
-  // surviving entry never moves just because the list was trimmed.
   let capped = next;
   if (next.length > ACTIVITY_MENTIONS_MAX) {
     const keep = new Set(

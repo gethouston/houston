@@ -9,14 +9,6 @@ import { LocalPaths } from "../paths";
 import { FsVfs } from "../vfs";
 import { LocalWorkspaceStore } from "./local";
 
-/**
- * A standing engine pod runs the local profile: FsVfs and LocalWorkspaceStore
- * share one root, `/data/workspaces`. The preferences doc key
- * `ws/<wsId>/preferences.json` is therefore a real folder beside the
- * workspaces, and the pod once listed it as workspace `ws` with agent
- * `Personal`, then eagerly booted a runtime into `/data/workspaces/ws/Personal`
- * (staging agent "prime": runtime.log, models-store.json, the shell fence).
- */
 function podTree() {
   const root = mkdtempSync(join(tmpdir(), "houston-pod-"));
   mkdirSync(join(root, "Personal", "prime"), { recursive: true });
@@ -39,11 +31,9 @@ test("the boot sweep's preferences doc never becomes an agent", async () => {
 
   await sweep();
 
-  // The doc lands where the preferences layout puts it...
   expect(existsSync(join(root, "ws", "Personal", "preferences.json"))).toBe(
     true,
   );
-  // ...and the store still sees exactly one agent, the one the pod hosts.
   expect((await store.listWorkspaces()).map((ws) => ws.id)).toEqual([
     "Personal",
   ]);
@@ -69,8 +59,6 @@ test("a second boot does not recurse into the preferences namespace", async () =
 test("the personal workspace is never the preferences namespace", async () => {
   const root = mkdtempSync(join(tmpdir(), "houston-desktop-"));
   const vfs = new FsVfs(root);
-  // A fresh desktop whose first write is a preference: `ws` is the only
-  // folder on disk and must still not be picked as the personal workspace.
   await setPreference(vfs, "Personal", "locale", "es");
   const store = new LocalWorkspaceStore(root);
 

@@ -26,8 +26,6 @@ const agent = (id: string) => ({
   name: id.toUpperCase(),
 });
 
-/** One agent ("kai") warming with the given queued sends — the shape the store
- *  hands `warmingConversations`. */
 const kaiWarming = (...pendingSends: PendingWarmingSend[]) =>
   warmingConversations([agent("kai")], {
     kai: { since: SINCE, pendingSends },
@@ -59,11 +57,6 @@ describe("mergeWarmingRows", () => {
   });
 });
 
-/**
- * The CROSS-AGENT overlay. A mission started against a still-cold engine
- * appears on a board that reads the conversation sweep, which is exactly the
- * read the cold start is holding.
- */
 describe("warmingConversations", () => {
   it("stamps each queued row with its owning agent, as a running activity row", () => {
     deepStrictEqual(
@@ -90,7 +83,6 @@ describe("warmingConversations", () => {
   });
 
   it("anchors rows without a queue timestamp to the entry's since", () => {
-    // A relaunch restored a mirror written before `queuedAt` existed.
     const [row] = kaiWarming(send());
     strictEqual(row.updated_at, new Date(SINCE).toISOString());
   });

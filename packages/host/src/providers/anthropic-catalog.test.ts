@@ -71,7 +71,6 @@ test("GET /v1/catalog shapes anthropic's rows and no other provider's Claude row
   expect(byId.get("claude-opus-5-5")?.runsAs).toBeUndefined();
   expect(byId.get("claude-haiku-4-5")?.runsAs).toBe("claude-haiku-5-5");
   expect(byId.get("claude-haiku-5-5")?.runsAs).toBeUndefined();
-  // MiniMax's retired rows carry `runsAs` too (./pi-catalog.test.ts).
   for (const provider of catalog) {
     if (provider.id === ANTHROPIC_PROVIDER_ID || provider.id === "minimax")
       continue;
@@ -80,7 +79,6 @@ test("GET /v1/catalog shapes anthropic's rows and no other provider's Claude row
       provider.id,
     ).toBe(false);
   }
-  // Other providers keep their own Claude Haiku rows, unmapped.
   expect(
     catalog.some(
       (p) =>

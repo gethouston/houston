@@ -1,10 +1,3 @@
-/**
- * Routines — backed by the SAME `.houston/routines/routines.json` the real
- * host reads (files-first), so the Routines tab's create/edit/link flows
- * (HOU-725: the persistent setup chat rides `setup_activity_id`) can be
- * exercised end to end against this fake.
- */
-
 import type { NewRoutine, Routine, RoutineUpdate } from "@houston/protocol";
 import { emitDomain, fileKey, ISO, ROUTINES_PATH, state } from "./state-store";
 

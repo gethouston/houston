@@ -6,20 +6,6 @@ import type { AgentHomeConversation } from "./agents-home-model";
 import { MissionOriginTag } from "./mission-origin-tag";
 import { MissionStatusTag } from "./mission-status-tag";
 
-/**
- * One task in the phone's per-agent list, in the same chat-list grammar as
- * the Agents home row above it: the agent's large avatar on the left (its
- * running ring while THIS task runs), the task's title with the last message's
- * time trailing, the preview line under it ("Typing" while running, else the
- * task's own description), and the status label as a small tag beneath, with
- * the origin tag beside it when the task was not the user's own doing.
- *
- * The avatar is the AGENT's, repeated on every row on purpose: the list is
- * one agent's thread of conversations, and the mark is what says so at a
- * glance, exactly as a chat list repeats the correspondent's face. The
- * divider between rows is the LIST's (one hairline per row, inset the same
- * distance from both screen edges), so this cell draws none.
- */
 export function AgentMissionRow({
   mission,
   status,
@@ -29,10 +15,7 @@ export function AgentMissionRow({
 }: {
   mission: AgentHomeConversation;
   status: TaskRowStatus;
-  /** Who started the task, in words (`useMissionOriginTag`); none for the
-   *  user's own. */
   originTag?: string;
-  /** The owning agent's stored colour id. */
   color?: string;
   onOpen: (mission: AgentHomeConversation) => void;
 }) {
@@ -57,7 +40,6 @@ export function AgentMissionRow({
               {mission.title}
             </span>
             {time && (
-              // data-relative-time: a live clock the visual suite masks.
               <time
                 dateTime={iso}
                 title={time.full}

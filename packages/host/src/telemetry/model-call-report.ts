@@ -1,31 +1,15 @@
 import type { ModelCallReport } from "@houston/protocol";
 
 const REQUEST_TIMEOUT_MS = 5_000;
-/** Turn ids remembered to drop a replayed settle's report (its retry). */
 const SEEN_TURNS_CAP = 512;
 
 export interface ModelCallForwarderOptions {
-  /** Managed-pod gateway quadruple (same env as usage reporting). */
   report: { url: string; orgSlug: string; agentSlug: string; podToken: string };
   fetchImpl?: typeof fetch;
   warn?: (message: string) => void;
   error?: (message: string, err: unknown) => void;
 }
 
-/**
- * Forward each turn's model-call report to the gateway, which folds it into
- * its per-call latency histograms (engine pods are never scraped, the same
- * reason boot-report.ts pushes). One attempt per report: it is a sample, and
- * a retry that raced a lost response would count the turn twice. The runtime's
- * settle report retries on a dropped socket, so a turn id already forwarded is
- * skipped.
- *
- * Failure posture: a lost sample never touches the turn. A transient failure
- * (network, 5xx) is a warn line. 401/404 is an older gateway without the
- * ingest, or a pod token or slug it refuses: one warn per process says which
- * status, then quiet. Any other refusal means the two sides disagree on the
- * contract, which is our bug, so the first one per process is an error.
- */
 export function createModelCallForwarder(
   opts: ModelCallForwarderOptions,
 ): (report: ModelCallReport) => void {
@@ -37,8 +21,6 @@ export function createModelCallForwarder(
   const seen = new Set<string>();
   let contractErrorReported = false;
   let refusalWarned = false;
-  // Never rejects: every outcome, a failed body cancel included, ends in a
-  // status branch or the warn below.
   const send = async (report: ModelCallReport): Promise<void> => {
     try {
       const res = await fetchImpl(target, {

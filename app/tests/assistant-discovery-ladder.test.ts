@@ -2,12 +2,6 @@ import assert from "node:assert";
 import { describe, it } from "node:test";
 import { runDiscoveryLadder } from "../src/lib/assistant-discovery-ladder.ts";
 
-// The address ask keeps retrying a waking pod. Its key names a space, but each
-// attempt reads the ACTIVE space from the live request header, so an attempt
-// made after a switch would ask the new space and file the answer under the
-// old one. A cancelled ask must therefore stop where it stands, and must not
-// report anything: nobody is waiting for it any more.
-
 const WAKING = { status: 503, body: { error: "engine unavailable" } };
 const ABSENT = { status: 501, body: { code: "assistant_gateway_only" } };
 const HANDLE = { agent: "a551", conversation: "assistant" };

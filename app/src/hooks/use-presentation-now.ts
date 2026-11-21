@@ -29,7 +29,6 @@ function subscribe(listener: () => void) {
 const serverSnapshot = () => Math.floor(Date.now() / MINUTE) * MINUTE;
 const snapshot = () => (listeners.size === 0 ? serverSnapshot() : now);
 
-/** All relative-time labels share one minute-aligned presentation clock. */
 export function usePresentationNow(): number {
   return useSyncExternalStore(subscribe, snapshot, serverSnapshot);
 }

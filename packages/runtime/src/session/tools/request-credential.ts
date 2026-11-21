@@ -7,18 +7,6 @@ import { recordCredentialRequest } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
 import { VERIFY_STEP } from "./custom-integration-steps";
 
-/**
- * The secure key-entry hand-off tool (custom integrations, HOU-550). It
- * records a `credential` interaction step; Houston renders a secure entry
- * card in place of the chat input and posts the secret straight to the host —
- * the value never enters the transcript or this runtime.
- *
- * Available in EVERY acting mode, Autopilot included: an API key is the one
- * thing autonomy cannot produce, and the recorded step doesn't hold the turn
- * open — it ends the turn with the card, and the saved key auto-continues the
- * run (see AUTO_MODE_EXCLUDED_TOOL_NAMES in tool-selection.ts for the full
- * rationale).
- */
 export const REQUEST_CREDENTIAL_TOOL_NAME = "request_credential";
 
 const CredentialParams = Type.Object({
@@ -35,9 +23,6 @@ const CredentialParams = Type.Object({
 });
 type CredentialParams = Static<typeof CredentialParams>;
 
-/** What the pre-flight lookup needs back from the host: the definition's
- *  compile state (the rest of the view is irrelevant here). `null` = no
- *  definition with that slug exists. */
 export interface CredentialTargetStatus {
   state:
     | { status: "active"; toolCount: number }
@@ -46,8 +31,6 @@ export interface CredentialTargetStatus {
 }
 
 export interface RequestCredentialToolOptions {
-  /** Resolve the slug against the host's registered custom integrations
-   *  through its permitted host read. */
   status: (
     slug: string,
     signal: AbortSignal | undefined,
@@ -75,9 +58,6 @@ export function makeRequestCredentialTool(opts: RequestCredentialToolOptions) {
       const toolkit = params.toolkit.trim().toLowerCase();
       if (!toolkit)
         throw new Error("request_credential needs a non-empty toolkit slug.");
-      // Pre-flight (PRODUCT-1292): a card for a slug the host has no
-      // definition for renders fine but every save 404s — a user-facing dead
-      // end. Refuse HERE, where the model can still correct course.
       const target = await opts.status(toolkit, signal, context);
       if (!target) {
         throw new Error(
@@ -89,9 +69,6 @@ export function makeRequestCredentialTool(opts: RequestCredentialToolOptions) {
           `The custom integration '${toolkit}' is not working (${target.state.message}), so a saved key could not be used. Repair it first with custom_integration_add (replace: true) and a corrected spec, then call request_credential again.`,
         );
       }
-      // Re-checked AFTER the awaited pre-flight: the user can flip the Mode
-      // pill mid-turn, so a card cleared before the host round-trip would
-      // otherwise still be queued while planning.
       assertNotPlanMode("request an integration connection");
       const reason = params.reason?.trim();
       recordCredentialRequest({ toolkit, ...(reason ? { reason } : {}) });

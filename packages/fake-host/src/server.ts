@@ -1,16 +1,3 @@
-/**
- * Node HTTP adapter for the fake Houston host.
- *
- * Bridges Node's `http` server onto the pure {@link handle} router (a
- * `Request -> Response` function) and exposes a lifecycle: `startFakeHost`
- * resolves once the listener is up, and the returned {@link FakeHost} closes it.
- *
- * NO real backend, no AI provider, no credentials. Run standalone with
- * `pnpm --filter @houston/fake-host start`; the Playwright config starts one
- * as a `webServer` (for global-setup's warm-up), and each e2e worker starts
- * its own in-process (e2e/support/fixtures.ts).
- */
-
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
 import { FAKE_HOST_PORT } from "./config";
@@ -30,21 +17,12 @@ async function readBody(req: AsyncIterable<unknown>): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
-/** A running fake host. */
 export interface FakeHost {
-  /** The port the server actually bound to (useful when starting on `0`). */
   readonly port: number;
-  /** Base URL, e.g. `http://localhost:4399`. */
   readonly url: string;
-  /** Close the listener + its open connections; resolves once fully shut down. */
   stop(): Promise<void>;
 }
 
-/**
- * Start the fake host on `port` (default {@link FAKE_HOST_PORT}). Pass `0` to
- * bind an ephemeral port and read the assignment back from the handle. Resolves
- * once the listener is accepting connections.
- */
 export function startFakeHost(port = FAKE_HOST_PORT): Promise<FakeHost> {
   const server = createServer(async (req, res) => {
     const abort = new AbortController();
@@ -95,7 +73,6 @@ export function startFakeHost(port = FAKE_HOST_PORT): Promise<FakeHost> {
         url: `http://localhost:${boundPort}`,
         stop: () =>
           new Promise<void>((done, fail) => {
-            // SSE streams stay open; force them shut so close() can't hang.
             server.closeAllConnections();
             server.close((err) => (err ? fail(err) : done()));
           }),

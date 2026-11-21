@@ -2,10 +2,6 @@ import { EventEmitter } from "node:events";
 import type { Page } from "playwright-core";
 import type { BrowserTab } from "../open-tab";
 
-/**
- * A CDP session that records what was sent and lets the test paint frames.
- * `hold` makes the next sends of a method wait until the test releases them.
- */
 export class FakeCdp extends EventEmitter {
   sent: string[] = [];
   detached = false;
@@ -53,7 +49,6 @@ export interface FakePage {
   address: string;
 }
 
-/** A page with just what the live view touches. */
 export function fakePage(address = "https://site.test/login") {
   const state: FakePage = { closed: false, wentBack: 0, address };
   const frame = {};
@@ -79,13 +74,11 @@ export function fakePage(address = "https://site.test/login") {
   return page;
 }
 
-/** A tab over fake pages; every CDP session it opens is recorded in `sessions`. */
 export function fakeTab(
   pages = [fakePage()],
   makeCdp: () => FakeCdp = () => new FakeCdp(),
 ) {
   const sessions: FakeCdp[] = [];
-  // SAFETY: the live view touches only these members of a tab, page and context.
   const tab = {
     page: pages[0],
     context: {

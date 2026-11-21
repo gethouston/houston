@@ -7,11 +7,6 @@ import {
 } from "../src/lib/auth-error-bus.ts";
 import type { IdentityErrorCode } from "../src/lib/identity/errors.ts";
 
-// The bus is the ONLY surface for auth failures that have no inline home: post
-// hand-off OAuth errors and, critically, a sign-out whose keychain clear failed.
-// That last one is emitted while the sign-in screen is not mounted yet — it
-// mounts BECAUSE of the sign-out — so an unheard emit must not be dropped.
-
 beforeEach(() => resetAuthErrorBus());
 
 test("broadcasts to every live subscriber", () => {
@@ -34,9 +29,6 @@ test("an unsubscribed listener stops receiving", () => {
 });
 
 test("holds an unheard error for the surface that mounts next", () => {
-  // `signOut()` emits before the sign-in screen exists. Without the hold, the
-  // failure would reach nobody and the user would silently stay signed in on
-  // the next launch with no explanation.
   emitAuthError("session_clear_failed");
   const seen: IdentityErrorCode[] = [];
   onAuthError((c) => seen.push(c))();

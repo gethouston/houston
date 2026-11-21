@@ -34,7 +34,6 @@ export {
   webSignInWithCustomToken,
 } from "../../../web/src/identity/firebase-popup";
 
-/** A hung native plugin must never hold the sign-out screen hostage. */
 export const NATIVE_SIGN_OUT_TIMEOUT_MS = 3_000;
 
 async function nativeSignOut(): Promise<void> {
@@ -54,13 +53,6 @@ async function nativeSignOut(): Promise<void> {
   }
 }
 
-/**
- * Sign out of the JS session AND the native one. The native Google SDK /
- * Credential Manager and Apple's native Firebase session outlive the JS
- * signOut, so skipping them hands the next sign-in the previous account. A
- * native failure is reported but never fails the sign-out: the JS session is
- * the one Houston restores on launch.
- */
 export async function webSignOut(): Promise<void> {
   try {
     await jsSignOut();
@@ -78,7 +70,6 @@ async function signIn(
 ): Promise<SignInOutcome | PendingLink | null> {
   if (!nativeIdentity.providers[provider])
     throw new IdentityError("operation_not_allowed");
-  // Kept outside the try: an existing account refuses it, and the link needs it.
   let credential: OAuthCredential | null = null;
   try {
     const result =
@@ -92,8 +83,6 @@ async function signIn(
       await ready(),
       credential,
     );
-    // Apple's native sheet returns the name only on first consent; the JS
-    // credential carries only token and nonce, so preserve that first result.
     await backfillAccountProfile(userCredential.user, result.user?.displayName);
     return await toOutcome(userCredential);
   } catch (error) {
@@ -125,7 +114,5 @@ export function webSignInWithApple(): Promise<
 export function webSignInWithMicrosoft(): Promise<
   SignInOutcome | PendingLink | null
 > {
-  // The plugin cannot expose a Microsoft credential for JS SDK sign-in while
-  // skipNativeAuth is true. See Capawesome's firebase-js-sdk.md "Quirks".
   throw new IdentityError("operation_not_allowed");
 }

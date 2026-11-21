@@ -21,8 +21,6 @@ export async function toOutcome(cred: UserCredential): Promise<SignInOutcome> {
   };
 }
 
-// GCIP only puts the account record's profile into ID token claims. The provider
-// profile can fill missing values, then a refresh makes them visible immediately.
 export async function backfillAccountProfile(
   user: User,
   nativeDisplayName?: string | null,

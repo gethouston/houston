@@ -9,23 +9,6 @@ import {
 } from "../src/lib/composer-connect-ai.ts";
 import { connectAiGateState } from "../src/lib/connect-ai-gate.ts";
 
-/**
- * The composer's connect-AI empty state.
- *
- * The bug: with NO provider connected the composer still rendered its full
- * input row — a model picker showing a phantom model (the effective-provider
- * default resolves to `anthropic` whether or not anyone is logged in) and a
- * textarea that accepted a message no provider could answer. The fix replaces
- * the whole input area with one CTA into the AI Hub.
- *
- * What these pin is the ANTI-FLASH half of it. "Zero connected" is a claim only
- * a settled world can make, and a composer that vanishes on boot and comes back
- * a beat later reads as a broken app. So every uncertain signal — probe
- * loading, probe errored, a provider still "checking", a half-hydrated catalog
- * or capabilities — must keep the normal composer.
- */
-
-/** A settled, genuinely empty world: every gate open, nothing connected. */
 const settledEmpty: ConnectAiComposerSignals = {
   statusesLoading: false,
   statusesError: false,
@@ -104,11 +87,6 @@ test("a connected provider wins even while another is still checking", () => {
   );
 });
 
-/**
- * The wiring these three lock is not derivable from the pure helper, and the
- * node test runner has no DOM — so they assert on component source, the repo's
- * idiom for React contracts (see `card-unification.test.ts`).
- */
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
@@ -144,8 +122,6 @@ test("the empty state reuses the picker's no-providers copy", () => {
     src.includes("modelSelector.picker.noProviders.action"),
     "the CTA label is the picker's existing action key",
   );
-  // Split around the interpolation so this assertion is not itself a template
-  // placeholder in a plain string (which biome rightly flags).
   const perVariant = (leaf: string) =>
     `modelSelector.picker.noProviders.$\{variant}.${leaf}`;
   assert.ok(
@@ -198,11 +174,6 @@ test("the counts come off the one connection derivation", () => {
   });
 });
 
-/**
- * The first-day start button is the other way to fire a turn. With no AI
- * connected it used to fire one anyway, and the refusal reached Sentry as a
- * bug (HOUSTON-APP-5H4). It reads the composer's own gate, decided here once.
- */
 describe("connectAiGateState", () => {
   const settled = {
     statusesLoading: false,

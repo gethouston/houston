@@ -24,7 +24,6 @@ interface Captured {
   body: string;
 }
 
-/** Stub fetch with a fixed response; capture the last request. */
 function stubFetch(status: number, body: unknown): { captured: Captured } {
   const captured: Captured = { url: "", body: "" };
   globalThis.fetch = (async (url: string, init?: RequestInit) => {
@@ -47,13 +46,11 @@ function stubNetworkFailure(): void {
   }) as typeof fetch;
 }
 
-/** The session of an exchange that signed in. */
 function signedIn(exchange: IdpExchange): IdpSignInResult {
   if (exchange.kind !== "signed_in") throw new Error(exchange.kind);
   return exchange.result;
 }
 
-/** Assert the thrown value is an IdentityError with the given code. */
 function hasCode(code: string) {
   return (e: unknown) => e instanceof IdentityError && e.code === code;
 }
@@ -88,7 +85,7 @@ describe("firebase-rest signInWithIdp", () => {
     strictEqual(r.photoUrl, "https://example.com/grace.png");
     strictEqual(r.expiresAt >= before + 3600 * 1000, true);
     strictEqual(r.expiresAt <= Date.now() + 3600 * 1000, true);
-    strictEqual(r.isNewUser, false); // absent in the response → not a signup
+    strictEqual(r.isNewUser, false);
   });
 
   it("parses isNewUser=true when the exchange created the account", async () => {
@@ -211,7 +208,7 @@ describe("firebase-rest signInWithCustomToken", () => {
     const r = await signInWithCustomToken({ apiKey: "k", customToken: "ct" });
     strictEqual(r.idToken, "id-2");
     strictEqual(r.refreshToken, "r-2");
-    strictEqual(r.isNewUser, false); // absent in the response → not a signup
+    strictEqual(r.isNewUser, false);
   });
 
   it("parses isNewUser=true when the exchange created the account (email-OTP signup)", async () => {

@@ -47,8 +47,6 @@ describe("childMissionsOf", () => {
       ]),
       [
         ["a", "running", "Running"],
-        // error parks in Needs you on the board — the list must not invent a
-        // fourth state.
         ["b", "attention", "Needs You"],
         ["c", "attention", "Needs You"],
         ["d", "done", "Done"],

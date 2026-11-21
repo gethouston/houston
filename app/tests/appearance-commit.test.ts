@@ -6,26 +6,15 @@ import {
   createAppearanceCommitter,
 } from "../src/components/settings/sections/appearance-commit.ts";
 
-/**
- * The Appearance row's writer, driven without React, a DOM or a clock.
- *
- * What is pinned is the shape of a picking BURST: every pick paints at once, the
- * store is written once the picking stops, and the write diffs against the last
- * SAVED preference — not against what is on screen, which is the mistake that
- * makes every pick after the first store nothing.
- */
-
 const SAVED: ThemePreference = {
   mode: "light",
   light: "houston-light",
   dark: "houston-dark",
 };
 
-/** Let the committer's promise chain (then → catch → finally) run out. */
 const settle = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0));
 
-/** The trailing-edge delay, in the test's hands: nothing fires until `fire()`. */
 class FakeSchedule {
   private pending: (() => void) | null = null;
   arms = 0;
@@ -44,7 +33,6 @@ class FakeSchedule {
     return this.pending !== null;
   }
 
-  /** Run the pending write and let it settle. */
   async fire(): Promise<void> {
     const fn = this.pending;
     this.pending = null;
@@ -65,14 +53,6 @@ type Answer = (
 
 const accept: Answer = async (patch, previous) => ({ ...previous, ...patch });
 
-/**
- * A committer whose paint, write and reporting are all observable.
- *
- * `paintsOnPersist` gives the write seam the behaviour the persisting call used
- * to have: it painted the preference it had just stored. That is a seam the
- * committer must survive, because a pick made while the write was in flight owns
- * the screen and the write's own result is by then a preference nobody chose.
- */
 function harness(answer: Answer = accept, paintsOnPersist = false) {
   const painted: ThemePreference[] = [];
   const shown: ThemePreference[] = [];
@@ -94,7 +74,6 @@ function harness(answer: Answer = accept, paintsOnPersist = false) {
   return { committer, clock, painted, shown, writes, reported };
 }
 
-/** A write the test finishes by hand, so a pick can land while it is in flight. */
 function held() {
   let resolve: ((pref: ThemePreference) => void) | null = null;
   let reject: ((err: unknown) => void) | null = null;

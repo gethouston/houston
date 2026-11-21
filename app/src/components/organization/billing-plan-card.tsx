@@ -26,13 +26,6 @@ const BADGE: Record<BillingTabStatus, StatusKind | null> = {
   locked: "error",
 };
 
-/**
- * The org's plan: Free or Paid, its seats and what they bill per the
- * subscription's interval (a month or a year), when it renews or next bills,
- * a seat grace's two prices, a scheduled lock, and the one action the caller
- * has. A live yearly org counts its paid seats (priced for the payer alone)
- * and, while some are free, how many are in use.
- */
 export function BillingPlanCard({
   billing,
   orgSlug,
@@ -50,10 +43,6 @@ export function BillingPlanCard({
   const day = (iso: string) => formatLocalDate(iso, i18n.language);
   const paid = billing.tier === "paid";
   const seats = Math.max(1, billing.seats);
-  // The store apps never draw a price (`purchase-policy`), and an org whose
-  // interval the wire does not state (a comp grant, an ended subscription)
-  // shows its seats alone. During a seat grace the header names the seats
-  // alone: the grace line says the prices.
   const purchasable = canPurchaseInApp();
   const price = orgBillingPrice(billing, now);
   const priced = purchasable && price.kind === "priced" ? price : null;

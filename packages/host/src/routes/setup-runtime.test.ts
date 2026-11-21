@@ -13,15 +13,6 @@ import type {
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 
-/**
- * The pre-agent provider-connect surface (`/setup-runtime/*`) over real HTTP:
- * first-run onboarding connects the user's AI BEFORE any agent exists, so the
- * host runs the login in a hidden setup runtime scoped to the personal
- * workspace. Verifies the synthetic-agent shape (capture lands on the REAL
- * workspace id), the strict allowlist (no chat/export surface pre-agent), and
- * the capture/api-key mirrors of the per-agent routes.
- */
-
 const USER = "alice";
 const CAPS: Capabilities = {
   profile: "cloud",
@@ -35,7 +26,6 @@ const CAPS: Capabilities = {
   sharedSkills: false,
 };
 
-/** Records every call; dispatch answers 200 with the rest it was asked for. */
 class FakeChannel implements RuntimeChannel {
   dispatched: { ctx: ChannelCtx; method: string; rest: string }[] = [];
   captured: { ctx: ChannelCtx; provider?: string }[] = [];
@@ -139,8 +129,6 @@ test("login + status dispatch to a hidden setup agent on the PERSONAL workspace"
     for (const [method, path] of [
       ["POST", "auth/openai-codex/login?deviceAuth=false"],
       ["POST", "auth/openai-codex/login/complete"],
-      // The reconnect card's every press goes cancel → launch, so a blocked
-      // cancel 404s and the login never launches (HOU-676).
       ["POST", "auth/openai-codex/login/cancel"],
       ["GET", "auth/status"],
       ["GET", "providers"],
@@ -159,11 +147,8 @@ test("login + status dispatch to a hidden setup agent on the PERSONAL workspace"
       "providers",
     ]);
     for (const d of channel.dispatched) {
-      // Capture scope: the credential must land where every REAL agent's
-      // connect-once serve reads it — the user's personal workspace.
       expect(d.ctx.agent.workspaceId).toBe(ws.id);
       expect(d.ctx.workspace.id).toBe(ws.id);
-      // Hidden: a dot-directory name the FS store never lists as an agent.
       expect(d.ctx.agent.name.startsWith(".")).toBe(true);
     }
   } finally {
@@ -175,7 +160,7 @@ test("everything outside the connect surface is 404 — chat and auth/export nev
   const { base, channel, stop } = await setup();
   try {
     for (const [method, path] of [
-      ["GET", "auth/export"], // would hand a refresh token to a client
+      ["GET", "auth/export"],
       ["POST", "auth/export"],
       ["POST", "conversations/x/messages"],
       ["POST", "settings"],
@@ -256,8 +241,6 @@ test("credential/api-key stores through the channel and validates its body", asy
 test("credential/forget + auth/:provider/logout: a space with no agent signs out through the setup runtime (PRODUCT-1662)", async () => {
   const { base, ws, channel, stop } = await setup();
   try {
-    // The central credential is forgotten on the PERSONAL workspace — the same
-    // scope the setup-runtime connect captured it into.
     const forget = await fetch(`${base}/setup-runtime/credential/forget`, {
       method: "POST",
       headers: auth,
@@ -275,8 +258,6 @@ test("credential/forget + auth/:provider/logout: a space with no agent signs out
       },
     ]);
 
-    // …and the runtime's own auth copy is cleared through the allowlisted
-    // logout, so `auth/status` stops reading connected.
     const logout = await fetch(`${base}/setup-runtime/auth/anthropic/logout`, {
       method: "POST",
       headers: auth,
@@ -304,9 +285,6 @@ test("credential/forget + auth/:provider/logout: a space with no agent signs out
 test("credential/claude-oauth mirrors the per-agent push (validated envelope, personal-workspace scope, channel error → 502)", async () => {
   const { base, ws, channel, stop } = await setup();
   try {
-    // The desktop's browser login lands here when NO agent is selected yet
-    // (first-run onboarding, the cloud-migration wizard) — the regression that
-    // used to force the paste flow.
     const ok = await fetch(`${base}/setup-runtime/credential/claude-oauth`, {
       method: "POST",
       headers: auth,
@@ -316,12 +294,8 @@ test("credential/claude-oauth mirrors the per-agent push (validated envelope, pe
     expect(await ok.json()).toEqual({ ok: true });
     expect(channel.claudeOAuth).toHaveLength(1);
     expect(channel.claudeOAuth[0]?.accessToken).toBe("at-1");
-    // Central-store scope: the credential must land on the personal workspace
-    // every real agent pod is served from.
     expect(channel.claudeOAuth[0]?.ctx.agent.workspaceId).toBe(ws.id);
 
-    // Malformed envelope → clean 400 (never a false success) so the desktop
-    // degrades to the paste flow.
     const bad = await fetch(`${base}/setup-runtime/credential/claude-oauth`, {
       method: "POST",
       headers: auth,
@@ -330,8 +304,6 @@ test("credential/claude-oauth mirrors the per-agent push (validated envelope, pe
     expect(bad.status).toBe(400);
     expect(channel.claudeOAuth).toHaveLength(1);
 
-    // A channel refusal (e.g. the per-turn runtime's explicit gate) surfaces
-    // as 502 with the real reason.
     channel.claudeOAuthError = new Error("not available here");
     const refused = await fetch(
       `${base}/setup-runtime/credential/claude-oauth`,

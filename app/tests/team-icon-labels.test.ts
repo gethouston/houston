@@ -1,8 +1,5 @@
 import { ok, strictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
-// The five generated shelves directly, not their barrel: the barrel's imports
-// are extensionless (the bundler's convention in `ui/`), which node's own ESM
-// loader cannot resolve.
 import { SIDEBAR_GROUP_GLYPHS_1 } from "../../ui/layout/src/sidebar-group-glyph-data-1.ts";
 import { SIDEBAR_GROUP_GLYPHS_2 } from "../../ui/layout/src/sidebar-group-glyph-data-2.ts";
 import { SIDEBAR_GROUP_GLYPHS_3 } from "../../ui/layout/src/sidebar-group-glyph-data-3.ts";
@@ -11,14 +8,6 @@ import { SIDEBAR_GROUP_GLYPHS_5 } from "../../ui/layout/src/sidebar-group-glyph-
 import en from "../src/locales/en/shell.json" with { type: "json" };
 import es from "../src/locales/es/shell.json" with { type: "json" };
 import pt from "../src/locales/pt/shell.json" with { type: "json" };
-
-// Every mark in the team identity picker is NAMED aloud: its label is the
-// button's `aria-label`, its `title`, and (since the picker also searches the
-// label) the word a Spanish or Portuguese reader types to find it. The label
-// comes from `shell:sidebar.teamIcons.<name>`, and a template-literal key is
-// NOT checked by the react-i18next type augmentation, so a missing key would
-// ship the raw slug into an aria-label instead of failing the build. This is
-// the check that makes the icon set and the three locales move together.
 
 const NAMES = [
   SIDEBAR_GROUP_GLYPHS_1,
@@ -53,8 +42,6 @@ describe("team icon labels", () => {
     });
 
     it(`${lang}: gives each glyph a distinct label`, () => {
-      // Two grid buttons announcing the same name are indistinguishable to a
-      // screen reader, and ambiguous to anyone reading the tooltip.
       const seen = new Set<string>();
       for (const name of NAMES) {
         const label = labels[name].toLocaleLowerCase();

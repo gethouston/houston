@@ -1,22 +1,13 @@
 import { ownRef } from "./refs";
 
-/**
- * Playwright's AI-mode tree (`- role "name" [attr] [ref=e3]: value`, two
- * spaces per level) as nodes, so the snapshot can be filtered and re-printed
- * without breaking its shape. A node that is left out has its kept
- * descendants promoted to its level.
- */
 export interface TreeNode {
-  /** The line after `- `, or the whole line for text outside any item. */
   content: string;
-  /** Continuation lines (a multi-line value), relative to the node's indent. */
   extra: string[];
   bullet: boolean;
   parent: TreeNode | null;
   children: TreeNode[];
   role: string;
   name: string | undefined;
-  /** Playwright's bare ref (`e12`, `f1e3`), when the element has one. */
   ref: string | undefined;
 }
 
@@ -66,7 +57,6 @@ function node(
   };
 }
 
-/** Every node, parents before children, in page order. */
 export function* walk(nodes: readonly TreeNode[]): Generator<TreeNode> {
   for (const n of nodes) {
     yield n;
@@ -76,7 +66,6 @@ export function* walk(nodes: readonly TreeNode[]): Generator<TreeNode> {
 
 export interface RenderOptions {
   keep: (node: TreeNode) => boolean;
-  /** The line to print for a kept node; its content by default. */
   line?: (node: TreeNode) => string;
 }
 
@@ -98,7 +87,6 @@ export function renderTree(
       out.push("");
       const hasKids = emit(n.children, depth + 1);
       let content = options.line ? options.line(n) : n.content;
-      // A trailing ":" introduces children; with all of them left out it goes.
       if (!hasKids && n.children.length > 0 && content.endsWith(":"))
         content = content.slice(0, -1);
       out[at] = n.bullet ? `${indent}- ${content}` : `${indent}${content}`;
@@ -110,11 +98,6 @@ export function renderTree(
   return out.join("\n");
 }
 
-/**
- * The tree YAML-quotes a value with special characters ("a: b"). Its only
- * escape JSON lacks is `\xNN` for control characters, so those are
- * rewritten as `\u00NN` (an escaped backslash before an "x" is left alone).
- */
 export function unquoted(value: string): string {
   if (!value.startsWith('"')) return value;
   try {
@@ -125,7 +108,6 @@ export function unquoted(value: string): string {
     );
     return typeof parsed === "string" ? parsed : value;
   } catch {
-    // Not JSON-quoted after all: compare it as printed.
     return value;
   }
 }

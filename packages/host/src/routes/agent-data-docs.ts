@@ -5,12 +5,6 @@ import { writeSurfaceConfig } from "./agent-config-write";
 import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
 
-/**
- * The whole-document families: config and learnings are read and replaced in
- * one shot, with none of the per-item CRUD activities and routines carry (see
- * agent-data-activities.ts / agent-data-routines.ts). Returns true when it
- * answered; false leaves the caller's family-wide 405 to speak.
- */
 export async function handleDocsData(
   vfs: Vfs,
   root: string,
@@ -21,8 +15,6 @@ export async function handleDocsData(
   res: ServerResponse,
   fireChange: () => void,
 ): Promise<boolean> {
-  // Neither family has items: `config/anything` is a shape this route owns but
-  // does not serve, and falls to the 405 like a wrong method does.
   if (itemId) return false;
 
   if (family === "config") {
@@ -50,10 +42,6 @@ export async function handleDocsData(
       json(res, 400, { error: "missing 'items' array" });
       return true;
     }
-    // Whole-file replace, under the SAME per-doc lock the runtime's
-    // `save_learning` route takes (routes/learnings-sandbox.ts) — otherwise
-    // this write can land in the middle of that route's load→append→save and
-    // silently drop the learning the agent just recorded.
     await withDocLock(`${root}#learnings`, () =>
       saveLearnings(vfs, root, items),
     );

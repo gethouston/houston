@@ -7,9 +7,6 @@ import {
 import { createSliceCoverage } from "../src/lib/all-conversations-coverage.ts";
 import type { RawConversation } from "../src/lib/conversations-facade.ts";
 
-// The user sends the lesson's request as an ordinary task, so the lesson finds
-// that task as the sender's one it did not know about when it asked.
-
 const row = (
   id: string,
   agentPath: string,
@@ -24,7 +21,6 @@ const row = (
   updated_at: updatedAt,
 });
 
-/** A board where every slice was read this session. */
 const allRead = () => {
   const coverage = createSliceCoverage();
   coverage.noteRead(["/ada", "/bob"]);
@@ -67,9 +63,6 @@ describe("the email lesson's task", () => {
   });
 
   it("takes no note from a slice this session never read", () => {
-    // The sender's read failed, so the board still shows what it last knew
-    // (here: nothing). Noted now, the old tasks a later sweep fills in would
-    // each look like the one the user just sent.
     const coverage = createSliceCoverage();
     coverage.noteRead(["/bob"]);
     strictEqual(emailAsk([row("b1", "/bob")], "/ada", coverage), null);

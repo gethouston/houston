@@ -71,8 +71,6 @@ async fn pick_destination(name: &str) -> Result<Option<PathBuf>, FileOpFailure> 
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 async fn pick_destination(name: &str) -> Result<Option<PathBuf>, FileOpFailure> {
-    // No native dialog on this platform — save into ~/Downloads like a
-    // browser would, deduplicating "name.ext" → "name (2).ext".
     let dir = dirs::download_dir()
         .or_else(dirs::home_dir)
         .ok_or_else(|| FileOpFailure::other("Could not resolve a download directory"))?;

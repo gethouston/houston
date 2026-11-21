@@ -8,14 +8,6 @@ import type {
 } from "@houston/runtime-client";
 import { afterEach, expect, test } from "vitest";
 
-/**
- * EngineWebSocket.disconnect() is the adapter's client-teardown seam (logout /
- * mode change): live conversation streams must not outlive the client. The
- * dispose is deferred one tick so the token-rotation bounce — disconnect()
- * immediately followed by connect() in setHostedEngineSessionToken — keeps a
- * live turn's rendering alive.
- */
-
 const fakeClient = {
   subscribeServerEvents: () => () => {},
 } as unknown as HoustonClient;
@@ -74,11 +66,11 @@ test("a disconnect()+connect() bounce (token rotation) keeps the streams alive",
   await tick();
 
   ws.disconnect();
-  ws.connect(); // same tick — the rotation path in setHostedEngineSessionToken
+  ws.connect();
   await tick();
   expect(observer.isAborted()).toBe(false);
 
-  ws.disconnect(); // real teardown
+  ws.disconnect();
   await tick();
   expect(observer.isAborted()).toBe(true);
 });

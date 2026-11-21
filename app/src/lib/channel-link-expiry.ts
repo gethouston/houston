@@ -1,4 +1,3 @@
-/** Device sleep and delayed browser timers must not leave a stale code usable. */
 export function channelLinkExpired(
   expiresAt: string,
   now = Date.now(),

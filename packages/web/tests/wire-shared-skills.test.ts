@@ -8,23 +8,6 @@ import {
   ORG as ORG_SLUG,
 } from "./support/wire-capture";
 
-/**
- * The workspace-shared skill library rides `sdk.skills.shared`. What this file
- * pins is the WIRE: six routes over one collection and one item path, their
- * methods, their exact
- * bodies, the headers carrying auth and the active space, and the encoding of
- * the two ids spliced into every path — a team workspace id (`org:<slug>`) and
- * a slug, neither of which is URL-safe on its own.
- *
- * Each case drives the composed `HoustonClient` (what the app holds), not the
- * SDK, and asserts the whole recorded request: a substring match would let the
- * collection route stand in for the item route, which is the difference between
- * creating a skill and promoting one.
- *
- * Nothing in this family degrades — the host serves every one of these routes,
- * so a 404 is a real failure and must reach the caller as it always did.
- */
-
 const BASE = "https://gw.example";
 const WS = "org:acme";
 const WS_PATH = `${BASE}/v1/workspaces/org%3Aacme/shared-skills`;
@@ -37,7 +20,6 @@ const DETAIL = {
   content: "# Brand voice",
 };
 
-/** Invalidation echoes the adapter pushed onto its own bus, newest last. */
 let echoes: string[];
 let unsubscribe: () => void;
 
@@ -58,14 +40,12 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** Local: this family answers its mutations `204`, with no body and no type. */
 const json = (status: number, body: unknown = {}): Response =>
   new Response(status === 204 ? null : JSON.stringify(body), {
     status,
     headers: status === 204 ? {} : { "Content-Type": "application/json" },
   });
 
-/** A cloud client with a team space active, so `x-houston-org` is live. */
 function client(): HoustonClient {
   const c = new HoustonClient({
     baseUrl: BASE,
@@ -76,7 +56,6 @@ function client(): HoustonClient {
   return c;
 }
 
-/** The single request the call made, with the shared headers already checked. */
 function soleCall(): Call {
   expect(calls).toHaveLength(1);
   const [call] = calls;

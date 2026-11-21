@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { type FakeHost, startFakeHost } from "./server";
 
-/**
- * A spec can hold the conversation import on the server, so onboarding stays
- * on its closing across a reload: the browser sees an ordinary request still
- * in flight, which a reload cancels cleanly.
- */
-
 const JSON_HEADERS = { "content-type": "application/json" };
 const CHAT = `${encodeURIComponent("personal/.assistant")}/conversations/assistant`;
 const IMPORT = {

@@ -1,40 +1,12 @@
-/**
- * Attachment message text — the SINGLE cross-surface source of truth for the
- * marker the composer weaves into a turn's message when the user attaches
- * files, AND for decoding that marker back for feed rendering.
- *
- * Ported byte-for-byte from the desktop's two copies:
- *  - encode  ← `app/src/lib/attachment-message.ts` (the visible path block +
- *    the hidden `<!--houston:attachments {json}-->` marker), and
- *  - decode  ← `ui/chat/src/attachment-message.ts` (`decodeAttachmentMessage`).
- *
- * Those desktop copies still exist and are deliberately NOT edited here (the
- * app owns its own copy). This is the home the SDK owns so every surface emits
- * and reads the EXACT same bytes; collapsing the desktop copies onto this is a
- * follow-up consolidation. The format is pinned in `attachment-text.test.ts`.
- */
-
 const MARKER_PREFIX = "<!--houston:attachments ";
 const MARKER_SUFFIX = "-->";
-/** Matches the leading marker and the blank line(s) after it (decode side). */
 const MARKER_RE = /^<!--houston:attachments (\{[\s\S]*?\})-->\s*\n?\n?/;
 
-/**
- * One attached file on the wire: the workspace-relative `path` the agent's Read
- * tool opens, plus the original display `name`. Key order (path, name) is
- * load-bearing — it is what the desktop encoder serializes, and
- * `buildAttachmentText` reproduces those exact bytes.
- */
 export interface AttachmentRef {
   path: string;
   name: string;
 }
 
-/**
- * The decoded marker shaped for feed rendering: the user's original text and
- * the attachment names. Paths are intentionally dropped from the render (they
- * are model-facing only).
- */
 export interface DecodedAttachmentText {
   displayText: string;
   attachments: { name: string }[];
@@ -45,7 +17,6 @@ function fileNameFromPath(path: string): string {
   return parts.at(-1) ?? path;
 }
 
-/** Append the visible, model-facing path block to the user's text. */
 function withAttachmentPaths(text: string, paths: readonly string[]): string {
   if (paths.length === 0) return text;
   const list = paths.map((p) => `- ${p}`).join("\n");
@@ -53,16 +24,6 @@ function withAttachmentPaths(text: string, paths: readonly string[]): string {
   return text.length > 0 ? `${text}\n\n${block}` : block;
 }
 
-/**
- * Build the full message text for a turn carrying attachments: a hidden
- * `<!--houston:attachments {json}-->` marker (display metadata for feed
- * rendering) followed by the user's text and the visible path block the model
- * reads. Byte-for-byte identical to the desktop composer's output. With no
- * `paths` it returns `text` unchanged.
- *
- * `names[i]` pairs with `paths[i]`; a missing name falls back to the path's
- * basename (matching the desktop encoder).
- */
 export function buildAttachmentText(
   text: string,
   paths: readonly string[],
@@ -74,9 +35,6 @@ export function buildAttachmentText(
     path,
     name: names[i] ?? fileNameFromPath(path),
   }));
-  // No ">" may reach the marker: the text can itself carry a marker (an
-  // interaction card's answers sent with files), and its "-->" would close
-  // this comment early. JSON.parse reads the escape back as ">".
   const json = JSON.stringify({ message: text.trim(), files }).replace(
     />/g,
     "\\u003e",
@@ -84,12 +42,6 @@ export function buildAttachmentText(
   return `${MARKER_PREFIX}${json}${MARKER_SUFFIX}\n\n${prompt}`;
 }
 
-/**
- * Decode a persisted message's leading attachment marker into the display text
- * and attachment names for feed rendering. Returns `null` when there is no
- * marker, its JSON is malformed, or it carries no files (nothing to render
- * specially). Never throws.
- */
 export function decodeAttachmentText(
   text: string,
 ): DecodedAttachmentText | null {
@@ -108,8 +60,6 @@ export function decodeAttachmentText(
   }
 }
 
-/** Extract render names from a marker's `files`, dropping entries with no path
- *  (matching the desktop decoder's `normalizeAttachmentReferences`). */
 function normalizeNames(value: unknown): { name: string }[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {

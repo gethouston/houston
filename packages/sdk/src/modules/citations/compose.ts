@@ -14,7 +14,6 @@ function unitOf(fileName: string): "slide" | "page" {
   return PRESENTATION_RE.test(fileName) ? "slide" : "page";
 }
 
-/** The crop's upload name: readable in the Files tab, unique per comment. */
 export function cropUploadName(citation: DraftCitation): string {
   const stem = citation.fileName
     .replace(/\.[^.]+$/, "")
@@ -45,10 +44,6 @@ function anchorLine(c: DraftCitation): string {
   return `${where}, ${what}${gone}`;
 }
 
-/**
- * The model-facing list: every comment numbered as the person saw it, grouped
- * by file, each with the workspace path of its crop.
- */
 export function readableCitations(
   citations: readonly DraftCitation[],
   cropPaths: readonly string[],
@@ -90,7 +85,6 @@ export function sentCitations(
   }));
 }
 
-/** The typed text followed by the citations envelope, and the envelope. */
 export function citedText(
   text: string,
   citations: readonly DraftCitation[],

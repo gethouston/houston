@@ -115,7 +115,6 @@ describe("shareDialogReducer", () => {
       ...tag,
     });
     strictEqual(waiting.connect?.minting, false);
-    // Started over: attempt 2 replaces 1, whose late results change nothing.
     const restarted = shareDialogReducer(waiting, {
       type: "connecting",
       session: open.session,
@@ -166,7 +165,6 @@ describe("shareDialogReducer", () => {
       line: { kind: "blocked", url: "https://x.test", channel: null },
     });
     strictEqual(stale, reopened);
-    // A connect started after the dialog closed lands nowhere.
     const closed = run({ type: "open" }, { type: "close" });
     strictEqual(
       shareDialogReducer(closed, {
@@ -188,7 +186,6 @@ describe("shareDialogReducer", () => {
     );
     deepStrictEqual(posted.posted, { postUrl: url, opened: false });
     deepStrictEqual(posted.line, { kind: "posted", opened: false });
-    // Closed: the space's post slot holds the link for the next opening.
     const closed = run({ type: "open" }, { type: "close" });
     strictEqual(
       shareDialogReducer(closed, { type: "posted", postUrl: url }),
@@ -236,7 +233,6 @@ describe("a post with no answer in time", () => {
     strictEqual(dismissed.line, null);
   });
 
-  // Closing, reopening or leaving the page is not checking LinkedIn.
   it("holds Post in the next opening, until the person checked", () => {
     const key = linkedInPostKey("uid-ada", "space-a");
     const posts = useLinkedInPosts.getState();
@@ -244,7 +240,6 @@ describe("a post with no answer in time", () => {
     if (!claim) throw new Error("the slot was taken");
     posts.unconfirmed(claim);
     posts.ended(claim);
-    // The dialog's own state starts over in each opening; the slot does not.
     const reopened = run({ type: "close" }, { type: "open" });
     strictEqual(reopened.line, null);
     const slot = () =>

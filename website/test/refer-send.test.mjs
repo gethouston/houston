@@ -1,9 +1,3 @@
-// Where a referral goes: the row the form builds (assets/refer-model.js),
-// the requests it makes (assets/refer-send.js), and the table it lands in
-// (supabase/migrations/*_data_referrals.sql). The SQL is read here so the
-// columns the public site may write stay the ones the form sends, and the
-// statuses the table allows cover the page's referral tracker.
-
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
@@ -15,8 +9,6 @@ import {
 } from "../src/assets/refer-model.js";
 import { sendReferral } from "../src/assets/refer-send.js";
 
-// The table and every later change to it, oldest first: the public site may
-// write the columns all of their grants add up to.
 const migrations = new URL("../../supabase/migrations/", import.meta.url);
 const sql = readdirSync(migrations)
   .filter((f) => /_data_referrals(_[a-z_]+)?\.sql$/.test(f))
@@ -51,7 +43,6 @@ const config = {
   sheetEndpoint: "https://script.google.com/macros/s/x/exec",
 };
 
-// Records every call; answers the database with `status` (or throws).
 const fakeFetch = (status) => {
   const calls = [];
   const fetch = async (url, init) => {
@@ -149,9 +140,6 @@ test("without a sheet endpoint only the database is written", async () => {
   assert.equal(calls.length, 1);
 });
 
-// A referral is stored, never emailed: no part of the form (its markup, the
-// script that sends it, the request that stores it) may hand off to a mail
-// app, with JS or without it.
 test("the referral form never opens an email", () => {
   for (const file of [
     "../src/_includes/refer/form.njk",

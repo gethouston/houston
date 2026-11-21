@@ -12,7 +12,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** What the desktop app passes in: the localized deck, Spanish here. */
 const SPANISH_PHRASES = [
   "Houston, tenemos una solución.",
   "Alineando los satélites...",
@@ -89,7 +88,6 @@ function ChatThinkingIndicatorSpecimen() {
   );
 }
 
-/** The `@houston-ai/*` symbols this page documents. */
 export const sources: string[] = [
   "ChatThinkingIndicator",
   "DEFAULT_THINKING_PHRASES",

@@ -9,18 +9,9 @@ import {
 import type { CreateAgentFlow } from "./use-create-agent-flow";
 import type { CreateTeamForm } from "./use-create-team-form";
 
-/** The two identity forms the bottom bar submits from outside them. */
 export const CREATE_AGENT_FORM_ID = "create-agent-identity";
 export const COPY_AGENT_FORM_ID = "copy-agent-identity";
 
-/**
- * The step's one action, in the sheet's bottom bar.
- *
- * ONE per screen and always in the same place, at both widths: a flow whose
- * primary is sometimes inline, sometimes pinned and sometimes sticky asks the
- * user to find the way on again at every step. Full width on a phone, where it
- * is the thumb's target, its natural size on a desktop.
- */
 function CreateFlowPrimary({
   label,
   form,
@@ -30,17 +21,13 @@ function CreateFlowPrimary({
   cancel,
 }: {
   label: string;
-  /** Submits this form from outside it. Mutually exclusive with `onClick`. */
   form?: string;
   onClick?: () => Promise<void> | void;
   disabled?: boolean;
   pending?: boolean;
-  /** The way out, beside the primary — the FormDialog footer's pair. */
   cancel?: { label: string; onClick: () => void };
 }) {
   return (
-    // The dialog footer's own shape: stacked on a phone with the primary on
-    // top (`flex-col-reverse`), one right-aligned row from md:.
     <div className="flex flex-col-reverse gap-2 md:flex-row md:justify-end">
       {cancel ? (
         <Button
@@ -76,7 +63,6 @@ function CreateFlowPrimary({
   );
 }
 
-/** What the bottom bar says on the screens {@link hasFlowPrimary} admits. */
 export function CreateFlowFooter({
   step,
   agent,
@@ -88,7 +74,6 @@ export function CreateFlowFooter({
   agent: CreateAgentFlow;
   copy: CopyAgentWizardState;
   team: CreateTeamForm;
-  /** Leaves the flow from the team form, where the pair reads as a form's. */
   onCancel: () => void;
 }): ReactNode {
   const { t } = useTranslation(["shell", "teams", "agents", "common"]);

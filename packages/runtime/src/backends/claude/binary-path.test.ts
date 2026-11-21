@@ -6,10 +6,7 @@ import {
   resolveClaudeExecutable,
 } from "./binary-path";
 
-// The leading bytes of a real native `claude` image (Mach-O magic here) — never
-// a shebang or a batch marker, so it must NOT read as a placeholder.
 const MACHO_MAGIC = "\xcf\xfa\xed\xfe\x0c\x00\x00\x01";
-// The two placeholder stubs build.rs stages when the real binary is absent.
 const POSIX_PLACEHOLDER =
   "#!/bin/sh\necho 'placeholder external bin' >&2\nexit 1\n";
 const WINDOWS_PLACEHOLDER = "@echo off\r\nexit /b 1\r\n";
@@ -32,8 +29,6 @@ describe("isBunCompiled", () => {
 
 describe("resolveClaudeExecutable", () => {
   it("returns undefined on the Node path (SDK self-resolves)", () => {
-    // No override → the SDK's own require.resolve of the platform subpackage
-    // must not be pre-empted.
     expect(
       resolveClaudeExecutable({
         moduleUrl: "file:///app/packages/runtime/src/backends/claude/x.ts",
@@ -54,7 +49,7 @@ describe("resolveClaudeExecutable", () => {
         seen.push(p);
         return true;
       },
-      readHead: () => MACHO_MAGIC, // a real binary
+      readHead: () => MACHO_MAGIC,
     });
     expect(path).toBe("/Applications/Houston.app/Contents/MacOS/claude");
     expect(seen).toEqual(["/Applications/Houston.app/Contents/MacOS/claude"]);
@@ -83,8 +78,6 @@ describe("resolveClaudeExecutable", () => {
   });
 
   it("throws when the sibling is a POSIX placeholder stub (would hang the turn)", () => {
-    // A present-but-placeholder `claude` is the silent-hang bug: the SDK would
-    // spawn it and (historically) sleep forever. Refuse it → loud typed error.
     expect(() =>
       resolveClaudeExecutable({
         moduleUrl: "file:///$bunfs/root/binary-path.ts",

@@ -26,22 +26,6 @@ import { liveTurns } from "./live-turn";
 import { missionFanout } from "./mission-fanout";
 import { dispatchGroup } from "./registry/all";
 
-/**
- * PATCH /agents/:id (rename) — the runtime-quiesce contract.
- *
- * The reported bug: a rename moved the agent's directory while its warm local
- * runtime kept running with absolute paths into the OLD directory; the
- * runtime's next write resurrected the old-named folder, which the
- * directory-derived store re-listed as an agent with the old name ("my rename
- * reverted"). The route must run the store rename INSIDE the channel's
- * quiesced span (runtime stopped with a confirmed exit AND the id latched
- * against respawn until the directory has moved — HOU-827's second vector was
- * the app's reconnect storm booting a fresh runtime into the old directory
- * during the stop window) — and surface a quiesce failure instead of renaming
- * under a live runtime. Also covers the legacy Rust-era color riding
- * rename/list payloads.
- */
-
 class SpyChannel implements RuntimeChannel {
   constructor(private readonly calls: string[]) {}
   quiesceError: Error | null = null;
@@ -81,7 +65,6 @@ class SpyChannel implements RuntimeChannel {
   async saveCustomEndpoint() {}
 }
 
-/** The same channel with `quiesce` absent — a per-turn channel's shape. */
 function withoutQuiesce(channel: SpyChannel): RuntimeChannel {
   return {
     dispatch: channel.dispatch.bind(channel),
@@ -97,7 +80,6 @@ function withoutQuiesce(channel: SpyChannel): RuntimeChannel {
   };
 }
 
-/** Delegating store that records rename calls into the shared ledger. */
 function recordingStore(
   inner: MemoryWorkspaceStore,
   calls: string[],
@@ -332,14 +314,13 @@ test("rename quiesces the standing runtime BEFORE the store moves the directory"
 test("a same-name PATCH never kills the runtime (no-op rename)", async () => {
   const { status } = await rename("Sales");
   expect(status).toBe(200);
-  // The store still gets the (no-op) rename; only the quiesce is skipped.
   expect(calls).toEqual([`rename:${agentId}:Sales`]);
 });
 
 test("a quiesce failure surfaces and the rename does NOT run", async () => {
   channel.quiesceError = new Error("runtime refused to die");
   await expect(rename("Marketing")).rejects.toThrow("runtime refused to die");
-  expect(calls).toEqual([]); // no rename recorded
+  expect(calls).toEqual([]);
   const agent = await memory.getAgent(agentId);
   expect(agent?.name).toBe("Sales");
 });
@@ -362,7 +343,6 @@ test("rename still works when the workspace has no channel wired", async () => {
 });
 
 test("the rename response and the agent list carry the legacy agent.json color", async () => {
-  // CloudPaths (the deps default): agentRoot = ws/<wsId>/<agentId>/workspace.
   await vfs.writeText(
     `ws/${workspaceId}/${agentId}/workspace/.houston/agent.json`,
     JSON.stringify({ id: "legacy", config_id: "blank", color: "forest" }),
@@ -372,8 +352,6 @@ test("the rename response and the agent list carry the legacy agent.json color",
   expect(json.color).toBe("forest");
 
   const response = res();
-  // GET /agents is user-phase, so its slot takes the whole deps bag; this test
-  // wires only the per-agent half the two routes under test read.
   await dispatchGroup("agents", {
     deps: deps() as unknown as ControlPlaneDeps,
     userId: "alice",
@@ -432,7 +410,7 @@ test("an invalid name answers 400 without touching runtime or store (HOU-1166)",
     expect(status).toBe(400);
     expect(String(json.error)).toMatch(/agent name/);
   }
-  expect(calls).toEqual([]); // no quiesce, no rename
+  expect(calls).toEqual([]);
 });
 
 test("rename trims the submitted name before storing it", async () => {
@@ -602,21 +580,10 @@ test("DELETE runs inside the quiesced span too (a stale dispatch must not resurr
   });
   expect(handled).toBe(true);
   expect(response.status).toBe(200);
-  // The teardown + record drop happen INSIDE the latch: quiesce first, so a
-  // dispatch landing between teardown and directory removal cannot respawn a
-  // runtime into the doomed directory (HOU-827's sibling for delete).
   expect(calls).toEqual([`quiesce:${agentId}`, `teardown:${agentId}`]);
   expect(await memory.getAgent(agentId)).toBeNull();
 });
 
-/**
- * A local agent's id IS its `<Workspace>/<Agent>` path, so a rename frees the
- * old id and a delete frees it for reuse. Everything this process remembers
- * under that id has to go with it (routes/agent-state-cleanup.ts): a pending
- * approval receipt would otherwise answer for an agent nobody approved
- * anything for, and a spent fan-out budget would follow a dead id to whoever
- * takes the path next.
- */
 function seedAgentState(id: string): string {
   liveTurns.start(id, "conv-1", "execute");
   missionFanout.record(id, { missionId: "m1", boardRoot: null });
@@ -631,8 +598,6 @@ function seedAgentState(id: string): string {
 
 test("a rename takes the old id's approvals, turn and fan-out with it", async () => {
   const requestId = seedAgentState(agentId);
-  // The desktop store's shape: an agent's id IS its path, so a rename MOVES it
-  // and the old id is free for the next agent to hold.
   const base = deps();
   const moved = {
     ...base,

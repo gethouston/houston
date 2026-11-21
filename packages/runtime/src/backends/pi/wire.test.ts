@@ -17,13 +17,10 @@ import {
 } from "../../auth/used-token";
 import { createWireTranslator, normalizeUsage, toWire } from "./wire";
 
-// The reporter is a workspace-wide DELETE trigger; here only its arguments are
-// under test (its own gates live in report-revoked.test.ts).
 vi.mock("../../auth/report-revoked", () => ({
   reportRevokedServedToken: vi.fn(),
 }));
 
-/** A valid pi `Usage` for fixtures; `cost` is required by the type. */
 function usage(partial: Partial<Usage>): Usage {
   return {
     input: 0,
@@ -36,7 +33,6 @@ function usage(partial: Partial<Usage>): Usage {
   };
 }
 
-/** A minimal valid assistant message carrying the given usage. */
 function assistantMessage(u: Usage): AssistantMessage {
   return {
     role: "assistant",
@@ -50,12 +46,6 @@ function assistantMessage(u: Usage): AssistantMessage {
   };
 }
 
-/**
- * An assistant message that ended in failure — pi's shape: a model/provider error
- * (or the user's abort) is caught internally and delivered as the final message
- * with stopReason "error"/"aborted" and the reason in `errorMessage`, NOT thrown
- * from prompt(). `over` sets provider/model/usage for a specific provider's shape.
- */
 function failedAssistantMessage(
   stopReason: "error" | "aborted",
   errorMessage: string | undefined,
@@ -75,17 +65,13 @@ function failedAssistantMessage(
   };
 }
 
-/** A user message — has no `usage` field, like a turn that ended without one. */
 const userMessage: UserMessage = { role: "user", content: "", timestamp: 0 };
 
-/** A `turn_end` session event with the given final message. */
 function turnEnd(message: AssistantMessage | UserMessage): AgentSessionEvent {
   return { type: "turn_end", message, toolResults: [] };
 }
 
 test("normalizeUsage: context_tokens = totalTokens - output; cached = cacheRead", () => {
-  // input 100 + output 20 + cacheRead 300 + cacheWrite 50 = 470 totalTokens.
-  // The prompt occupying the window is everything but output: 450.
   expect(
     normalizeUsage({
       input: 100,
@@ -101,25 +87,19 @@ test("normalizeUsage: missing/garbage usage degrades to null (no misleading zero
   expect(normalizeUsage(undefined)).toBeNull();
   expect(normalizeUsage(null)).toBeNull();
   expect(normalizeUsage({})).toBeNull();
-  // Output alone carries no context signal, and there is no totalTokens to derive
-  // one from → null rather than a misleading empty context.
   expect(normalizeUsage({ output: 5 })).toBeNull();
   expect(normalizeUsage({ output: 5, totalTokens: "x" })).toBeNull();
 });
 
 test("normalizeUsage: no totalTokens → synthesizes context from the components", () => {
-  // The Gemini-through-pi case: components present, but pi never summed them.
-  // context_tokens = input + cacheRead + cacheWrite (everything but output).
   expect(
     normalizeUsage({ input: 100, output: 20, cacheRead: 300, cacheWrite: 50 }),
   ).toEqual({ context_tokens: 450, output_tokens: 20, cached_tokens: 300 });
-  // Input only (no cache, no total): context is the input.
   expect(normalizeUsage({ input: 5000, output: 100 })).toEqual({
     context_tokens: 5000,
     output_tokens: 100,
     cached_tokens: 0,
   });
-  // A lone cacheRead is a valid context signal on its own.
   expect(normalizeUsage({ cacheRead: 200 })).toEqual({
     context_tokens: 200,
     output_tokens: 0,
@@ -159,13 +139,10 @@ test("toWire maps turn_end (with usage) to a usage frame", () => {
 });
 
 test("toWire drops a turn_end whose final message has no usage", () => {
-  // A user message carries no `usage` field, so there is nothing to report.
   expect(toWire(turnEnd(userMessage))).toBeNull();
 });
 
 test("toWire maps an errored turn_end to a typed provider_error frame", () => {
-  // pi resolves a failed request rather than throwing — the final message comes
-  // back with stopReason "error" + errorMessage. toWire classifies it.
   expect(
     toWire(
       turnEnd(
@@ -189,11 +166,6 @@ test("toWire maps an errored turn_end to a typed provider_error frame", () => {
 });
 
 test("toWire reports an auth failure under the digest of the token the TURN ran on (PRODUCT-1319)", () => {
-  // The turn's used-token capture — filled by the credential store at pi's
-  // request-time read, inside this same async subtree — is what names the
-  // failed token. Re-reading auth.json at report time would digest whatever a
-  // re-serve stored since, aiming the gateway's compare-and-delete at a fresh,
-  // healthy credential.
   vi.mocked(reportRevokedServedToken).mockClear();
   const capture = newUsedTokenCapture();
   capture.record("openai-codex", "the-token-that-401d");
@@ -213,8 +185,6 @@ test("toWire reports an auth failure under the digest of the token the TURN ran 
     capture.digestFor("openai-codex"),
   );
 
-  // Outside a turn's capture the used token is unknown — said so explicitly,
-  // and the reporter's unknown-token gate skips.
   vi.mocked(reportRevokedServedToken).mockClear();
   toWire(
     turnEnd(
@@ -249,10 +219,6 @@ test("toWire marks raw openai auth failures against openai-codex", () => {
 });
 
 test("toWire surfaces a pi-internal turn error (the Copilot no-response bug) as a typed provider_error", () => {
-  // The regression that made Copilot look dead: pi catches a model/provider
-  // failure (an expired/rejected token, a rate limit, a 4xx) and delivers it here
-  // instead of throwing. Dropping it left the turn an empty, silent success ("no
-  // response, no error"). The reason MUST reach the user — now as a typed card.
   expect(
     toWire(
       turnEnd(
@@ -275,9 +241,6 @@ test("toWire surfaces a pi-internal turn error (the Copilot no-response bug) as 
 });
 
 test("toWire does NOT surface an aborted turn (the user's Stop) as a provider_error", () => {
-  // Pressing Stop aborts the session -> pi emits an aborted failure message.
-  // cancelTurn already published "Stopped by user", so surfacing this too would
-  // double-report the stop. It falls through to the usage path, never an error.
   expect(
     toWire(
       turnEnd(
@@ -293,8 +256,6 @@ test("toWire does NOT surface an aborted turn (the user's Stop) as a provider_er
 });
 
 test("toWire ignores a stopReason 'error' with no errorMessage (falls back to usage)", () => {
-  // Defensive: only surface when there is an actual reason to show; otherwise
-  // fall through to usage so the turn still settles rather than emitting a blank.
   expect(
     toWire(
       turnEnd(
@@ -364,9 +325,6 @@ test("toWire carries a successful start_mission receipt without parsing its text
   ).not.toHaveProperty("data.mission");
 });
 
-// --- createWireTranslator: block-boundary separators (HOU-857) ---------------
-
-/** A `message_update` session event carrying the given assistant-message event. */
 function msgUpdate(assistantMessageEvent: unknown): AgentSessionEvent {
   return {
     type: "message_update",
@@ -385,9 +343,6 @@ const agentStart = () =>
   ({ type: "agent_start" }) as unknown as AgentSessionEvent;
 
 test("translator inserts a paragraph break between a turn's text blocks (HOU-857)", () => {
-  // The screenshot bug: text → tool call → text streamed as two blocks, but the
-  // bare deltas concatenate downstream into "…for you now.Go ahead…". The
-  // second block's FIRST delta must carry the separator.
   const translate = createWireTranslator();
   expect(translate(textStart())).toBeNull();
   expect(translate(textDelta("I'll get that set up for you now."))).toEqual({
@@ -405,7 +360,6 @@ test("translator inserts a paragraph break between a turn's text blocks (HOU-857
     type: "text",
     data: "\n\nGo ahead and sign in.",
   });
-  // Later deltas of the SAME block stream unprefixed.
   expect(translate(textDelta(" Once connected, I'll confirm."))).toEqual({
     type: "text",
     data: " Once connected, I'll confirm.",
@@ -419,7 +373,6 @@ test("translator never prefixes the turn's first text block — even after think
     type: "thinking",
     data: "hmm",
   });
-  // First TEXT block: thinking streamed already, but text starts fresh.
   expect(translate(textStart())).toBeNull();
   expect(translate(textDelta("Hello"))).toEqual({
     type: "text",
@@ -447,20 +400,15 @@ test("translator resets its block state on agent_start (a new turn starts fresh)
   translate(textDelta("turn one"));
   translate(agentStart());
   translate(textStart());
-  // A long-lived subscriber crossing into the next turn: no leaked separator.
   expect(translate(textDelta("turn two"))).toEqual({
     type: "text",
     data: "turn two",
   });
 });
 
-// --- createWireTranslator: provider errors gated on the prompt's outcome
-// (HOU-1057) ------------------------------------------------------------------
-
 const agentSettled = () =>
   ({ type: "agent_settled" }) as unknown as AgentSessionEvent;
 
-/** An errored turn_end shaped like a GPT-5.5 context-overflow rejection. */
 const overflowTurnEnd = () =>
   turnEnd(
     failedAssistantMessage(
@@ -471,13 +419,8 @@ const overflowTurnEnd = () =>
   );
 
 test("translator suppresses an errored turn_end that pi recovers from (HOU-1057)", () => {
-  // The false "chat got too long, switch model" card: one request overflowed,
-  // pi compacted and retried INSIDE the same prompt, and the turn answered
-  // normally — but the errored turn_end had already painted a terminal card.
-  // The error must be held, and a later clean assistant turn must drop it.
   const translate = createWireTranslator();
   expect(translate(overflowTurnEnd())).toBeNull();
-  // pi's recovery re-runs the prompt and it succeeds.
   translate(agentStart());
   expect(
     translate(
@@ -487,13 +430,10 @@ test("translator suppresses an errored turn_end that pi recovers from (HOU-1057)
     type: "usage",
     data: { context_tokens: 40, output_tokens: 10, cached_tokens: 0 },
   });
-  // The prompt settles clean: no provider_error ever reaches the chat.
   expect(translate(agentSettled())).toBeNull();
 });
 
 test("translator flushes the held error at agent_settled when recovery never happened", () => {
-  // A failure pi could NOT recover (compaction declined, retries exhausted):
-  // the card must still surface — at settle time, before prompt() resolves.
   const translate = createWireTranslator();
   expect(translate(overflowTurnEnd())).toBeNull();
   const flushed = translate(agentSettled());
@@ -502,13 +442,10 @@ test("translator flushes the held error at agent_settled when recovery never hap
     kind: "context_overflow",
     provider: "openai-codex",
   });
-  // Once flushed, nothing leaks into the next prompt.
   expect(translate(agentSettled())).toBeNull();
 });
 
 test("translator keeps the NEWEST failure when a retry fails again", () => {
-  // Overflow recovery retried the prompt and the retry itself failed for a
-  // different reason — the flushed card must name the final failure.
   const translate = createWireTranslator();
   expect(translate(overflowTurnEnd())).toBeNull();
   translate(agentStart());
@@ -539,8 +476,6 @@ test("translator does NOT treat an aborted turn as recovery — the error still 
       }),
     ),
   );
-  // An aborted turn is neutral (the Stop is its own surface) — the held error
-  // still flushes at settle so a real failure is never silently dropped.
   const flushed = translate(agentSettled());
   expect(flushed?.type).toBe("provider_error");
 });
@@ -561,8 +496,6 @@ test("toWire clips an oversized tool result to the preview cap", () => {
   expect(wire.data.content?.endsWith("… (truncated)")).toBe(true);
 });
 
-// --- ChatGPT's terse refusals (PRODUCT-1832) ---------------------------------
-
 const TERSE = '{"detail":"Bad Request"}';
 
 const terseTurnEnd = (model: string) =>
@@ -579,9 +512,6 @@ const autoRetryStart = (errorMessage: string): AgentSessionEvent => ({
 });
 
 test("translator reads a terse final attempt from the retry attempt that explained it (PRODUCT-1832)", () => {
-  // The gpt-6-astra flavor: pi retried a usage-limit 429 three times with the
-  // friendly text, and the final attempt got the bare `Bad Request`. The card
-  // must be the usage-limit one, and the log a warning, not a Sentry error.
   resetCodexRefusalMemory();
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -609,9 +539,6 @@ test("translator reads a terse final attempt from the retry attempt that explain
 });
 
 test("toWire reads a terse refusal from the plan gate the same model hit a turn earlier", () => {
-  // The gpt-5.4-mini storm: a routine firing every minute alternates between
-  // the explained gate and the bare 400. The explained one is remembered, so
-  // the bare one renders the same switch-model card.
   resetCodexRefusalMemory();
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -663,7 +590,6 @@ test("translator forgets a retry attempt's text once the turn ends or a new prom
       "You have hit your ChatGPT usage limit (plus plan). Try again in ~10 min.",
     ),
   );
-  // A clean turn consumes the attempt; nothing remembered for the next prompt.
   translate(turnEnd(assistantMessage(usage({ totalTokens: 5, output: 1 }))));
   translate(agentSettled());
   translate(agentStart());

@@ -1,4 +1,3 @@
-/** Fence async handoffs, including switching away and back before they settle. */
 export function createChannelScope(
   readIdentity: () => string,
   subscribe: (changed: () => void) => () => void,

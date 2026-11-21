@@ -1,13 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { type FakeHost, startFakeHost } from "./server";
 
-/**
- * A spec can script the tool calls the next turn makes, so "the manager hired
- * someone and started a mission" happens against the fake host the way the
- * real runtime reports it: persisted on the reply as its tool record, so a
- * reload replays the same rows.
- */
-
 const JSON_HEADERS = { "content-type": "application/json" };
 const CHAT = `${encodeURIComponent("personal/.assistant")}/conversations/assistant`;
 const MISSION = { id: "m1", title: "Chase invoices", agent: "ava" };

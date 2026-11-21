@@ -9,10 +9,6 @@ import {
   workspaceActsState,
 } from "../src/components/skills-view/workspace-skill-acts.ts";
 
-/**
- * The editor menu's acts that reach every AI Employee read the skill's
- * WORKSPACE row (every holder), never one employee's narrowed view of it.
- */
 const local = (ids: string[]) => ({
   origin: "local" as const,
   agents: ids.map((id) => ({ id })),
@@ -67,8 +63,6 @@ describe("offersDeleteForEveryone", () => {
 
 describe("workspaceActsState", () => {
   it("offers nothing until every employee's skills have been read", () => {
-    // A row found while other reads are still out names only some holders:
-    // "Delete for all" would miss the rest.
     strictEqual(
       workspaceActsState({
         loading: true,
@@ -93,9 +87,6 @@ describe("workspaceActsState", () => {
   });
 
   it("offers nothing while an employee's read never answered", () => {
-    // An employee the roster lists but the server will not read (gone, or
-    // unreadable) is neither loading nor a reported failure, yet the row
-    // cannot name what that employee holds.
     strictEqual(
       workspaceActsState({
         loading: false,
@@ -148,8 +139,6 @@ describe("everyReadAnswered", () => {
   it("counts a read only while its latest answer stands", () => {
     strictEqual(everyReadAnswered([{ isSuccess: true }]), true);
     strictEqual(everyReadAnswered([]), true);
-    // A refetch the server refused keeps the old list in the cache, but that
-    // list is no longer what the employee holds.
     strictEqual(
       everyReadAnswered([{ isSuccess: true }, { isSuccess: false }]),
       false,

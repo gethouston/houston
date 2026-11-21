@@ -17,19 +17,11 @@ import { providerName } from "../../../lib/providers";
 type Receipt = Extract<ScriptLine, { kind: "receipt" }>;
 type ManagerLine = Extract<ScriptLine, { kind: "manager" }>;
 
-/** One receipt as the answers card shows it: the question it answered (none
- *  for a confirmation, like a connection) above the answer. */
 export interface ReceiptCopy {
   question?: string;
   answer: string;
 }
 
-/**
- * The words of the scripted conversation: what the manager says, each
- * question as its card asks it, and each answer as the person gave it. The
- * question text is ONE lookup, so a receipt always repeats its card's
- * question word for word.
- */
 export function useScriptCopy() {
   const { t } = useTranslation([
     "assistant",
@@ -53,8 +45,6 @@ export function useScriptCopy() {
           return t("agentOnboarding:roleSetup.contextHeadline");
         case "teamBasic":
           return t("setup:team.basic.title");
-        // Answered with a button right under the manager's line: the answer
-        // is the whole reply.
         case "connectAi":
         case "teamNext":
         case "teamDone":
@@ -64,8 +54,6 @@ export function useScriptCopy() {
     [t],
   );
 
-  /** A catalog id as its label, "Something else" as such, and anything else
-   *  as the words the person typed. */
   const catalogAnswer = useCallback(
     (value: string, label: (value: string) => string | null): string => {
       if (value === "something_else")
@@ -75,8 +63,6 @@ export function useScriptCopy() {
     [t],
   );
 
-  /** An answer as the person reads it, from the question and the value its
-   *  receipt carries. */
   const answer = useCallback(
     (question: ReceiptQuestion, value: string): string => {
       if (value === SURVEY_SKIPPED && question !== "teamBasic")
@@ -128,8 +114,6 @@ export function useScriptCopy() {
           return t("assistant:onboarding.say.teamResume", {
             count: line.count ?? 0,
           });
-        // The chat draws this line as the team card: these are the words
-        // the manager reads it as, one paragraph per thing the card says.
         case "closingTeam":
           return [
             t("assistant:onboarding.say.closingReady"),

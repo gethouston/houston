@@ -10,7 +10,6 @@ import {
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** config.json is a single object; a non-object file is reported and treated as empty. */
 export async function loadConfig(
   store: TextStore,
   root: string,

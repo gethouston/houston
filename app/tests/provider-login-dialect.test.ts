@@ -4,18 +4,6 @@ import { before, describe, it } from "node:test";
 import { getProvider, hydrateProviderCatalog } from "../src/lib/providers.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
-/**
- * `ProviderLoginUrl` / `ProviderLoginComplete` name their provider in pi's
- * CANONICAL dialect, while the catalog, the status map and the login dialogs
- * are keyed by Houston's DISPLAY id. Matched raw, a Codex sign-in toasts the
- * bare id "openai-codex", never flips its card to connected, and leaves the
- * dialog and the row spinner up for good.
- *
- * These surfaces are React modules the strip-types runner cannot load, so the
- * dialect rule is pinned on their source the same way the activity writer's is
- * (`activity-canonical-provider.test.ts`).
- */
-
 const source = (path: string) =>
   readFileSync(new URL(`../src/${path}`, import.meta.url), "utf8");
 

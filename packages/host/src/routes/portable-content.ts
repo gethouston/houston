@@ -7,12 +7,6 @@ import {
 import type { PortableSelection } from "@houston/protocol";
 import type { Vfs } from "../vfs";
 
-/**
- * Gather an agent's selected shareable content off the vfs, behind portable
- * export. The selection is untrusted
- * wizard input, so every read stays defensive (optional chaining, unknown
- * ids simply don't match).
- */
 export async function gatherPortableContent(
   vfs: Vfs,
   root: string,

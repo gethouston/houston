@@ -3,13 +3,6 @@ import { cn } from "@houston-ai/core";
 import { ExternalLink, Globe, Wrench } from "lucide-react";
 import { useState } from "react";
 
-/**
- * An external-artifact row of the turn-end summary (PRODUCT-1196): the app's
- * logo (wrench for custom integrations, globe when no brand art resolves or
- * the favicon 404s) + `{name} · {Sent email}`. With a URL the whole row is a
- * button that opens the artifact and wears a visible external-link glyph
- * (never hover-gated); without one it is a plain fact row.
- */
 export function IntegrationUpdateRow({
   action,
   url,
@@ -22,8 +15,6 @@ export function IntegrationUpdateRow({
   onOpenUrl: (url: string) => void;
 }) {
   const [logoFailed, setLogoFailed] = useState(false);
-  // The brand resolver only misses on an empty action; still, never render a
-  // raw slug — de-underscore it into words as the last resort.
   const label = brand
     ? `${brand.name} · ${brand.doneLabel ?? brand.actionLabel}`
     : action.replace(/_/g, " ").toLowerCase();

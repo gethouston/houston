@@ -10,15 +10,6 @@ import type {
   ResolvedModel,
 } from "../backends/types";
 
-/**
- * The session cache's idle TTL runs on a clock: a runtime whose user walked
- * away sheds its settled sessions WITHOUT anyone opening another conversation
- * (before, the sweep ran only inside getConversation, so a quiet process kept
- * every session it had ever opened). A busy session is still never swept.
- *
- * Pinned via env BEFORE the module graph loads — config reads env at import,
- * and conversation-cache arms the sweep timer at module load.
- */
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "houston-sweep-data-"),
 );
@@ -87,8 +78,6 @@ test("a settled session past the idle TTL is disposed with no further access", a
   const session = conv.session as IdleSession;
   expect(conversations.has("quiet")).toBe(true);
 
-  // Longer than the TTL plus the (TTL-clamped) sweep interval; nothing touches
-  // the cache meanwhile.
   await settle(200);
   expect(session.disposed).toBe(true);
   expect(conversations.has("quiet")).toBe(false);
@@ -99,7 +88,7 @@ test("a session with an in-flight turn survives the clock sweep", async () => {
   setDefaultBackend(backend);
 
   const conv = await getConversation("busy");
-  conv.pending = 1; // chat.ts pins a session this way while a turn is queued
+  conv.pending = 1;
   await settle(200);
   expect((conv.session as IdleSession).disposed).toBe(false);
   expect(conversations.has("busy")).toBe(true);

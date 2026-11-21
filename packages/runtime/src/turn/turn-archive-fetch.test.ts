@@ -24,8 +24,6 @@ const msg = (n: number): ChatMessage => ({
   ts: n,
 });
 
-/** The store holds 4 segments of 3 messages and a 2-message tail; the turn's
- *  tree hydrated the tail and the two newest segments only. */
 function fixture() {
   const storeRoot = mkdtempSync(join(tmpdir(), "archive-store-"));
   const agent = join(storeRoot, ...PREFIX.split("/"));
@@ -101,8 +99,6 @@ test("a reader reaching back fetches exactly the missing segments, owned by the 
     `manifest ${PREFIX}/${ARCHIVE}`,
     `${PREFIX}/${ARCHIVE}/2.json`,
   ]);
-  // In the manifest with its hash: unchanged, so the sync never re-uploads
-  // it, and owned, so a later local delete (edit-and-resend) reaches the store.
   expect(manifest.get(`${ARCHIVE}/2.json`)?.hash).toMatch(/^[0-9a-f]{64}$/);
   expect(manifest.has(`${ARCHIVE}/1.json`)).toBe(false);
   await load("routine-r1", {});
@@ -119,7 +115,6 @@ test("a segment the store lost fails the fetch loudly, reported once", async () 
     await expect(load("routine-r1", {})).rejects.toBeInstanceOf(
       ArchiveSegmentMissingError,
     );
-    // A reader that goes on anyway sees the gap, already reported.
     expect(getHistoryAt(conversations, "routine-r1")?.messages).toHaveLength(
       11,
     );

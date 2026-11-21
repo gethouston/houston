@@ -6,7 +6,6 @@ import {
   teamAgentMoveError,
 } from "../src/lib/team-agent-move.ts";
 
-// `pending-move` reads the browser's storage by default: give the run one.
 const store = new Map<string, string>();
 Object.assign(globalThis, {
   localStorage: {

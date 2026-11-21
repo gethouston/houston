@@ -9,11 +9,6 @@ import type {
   ResolvedModel,
 } from "../backends/types";
 
-/**
- * The standing server's routine fire start, at its own seam: what it reads,
- * and what a conversation looks like when building the fresh session fails.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-rreset-"));
 process.env.HOUSTON_WORKSPACE_DIR = process.env.HOUSTON_DATA_DIR;
 
@@ -154,7 +149,6 @@ test("a rebuild that fails keeps the record, and its next turn retries it", asyn
   expect(record.sessionRebuildPending).toBe(true);
   expect((old as ReturnType<typeof session>).disposed).toBe(true);
 
-  // A person's turn would keep its session, but the pending flag rebuilds it.
   appendAssistantMessage("routine-flaky", "", { turnId: "now" });
   const retry = await resetRoutineSessionIfNeeded(
     record,

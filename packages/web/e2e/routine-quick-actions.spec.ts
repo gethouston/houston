@@ -2,14 +2,6 @@ import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
 import { openTeamSection } from "./support/team-nav";
 
-/**
- * The routine row's inline schedule editor. The redesigned row has no
- * "Edit manually" panel: the schedule-summary line itself is the edit
- * affordance (always visible, never hover-gated). Clicking it opens a
- * popover with the ScheduleBuilder over a Save / Cancel footer. Save
- * commits the new cron to the host; Cancel discards the draft.
- */
-
 async function seedAgentId(): Promise<string> {
   const agents = (await (await fetch(`${FAKE_HOST_URL}/agents`)).json()) as {
     id: string;
@@ -51,12 +43,10 @@ test("the schedule summary opens the inline editor and Save persists the cron", 
   await openRoutinesTab(page);
   await expect(page.getByText("Morning digest")).toBeVisible();
 
-  // The summary line is the edit affordance, visible without hovering.
   await page.getByRole("button", { name: "Edit schedule" }).click();
   await page.getByRole("button", { name: "Every hour" }).click();
   await page.getByRole("button", { name: "Save" }).click();
 
-  // The row re-derives its summary from the new cron, and the host has it.
   await expect(
     page.getByText("Runs at the start of every hour").first(),
   ).toBeVisible();
@@ -81,14 +71,11 @@ test("Cancel discards the schedule draft and keeps the saved cron", async ({
   await page.getByRole("button", { name: "Every hour" }).click();
   await page.getByRole("button", { name: "Cancel" }).click();
 
-  // Nothing changed: the row keeps the 9 AM summary and the host the old cron.
   await expect(
     page.getByText("Runs every day at 9:00 AM").first(),
   ).toBeVisible();
   expect(await routineSchedules(agentId)).toEqual(["0 9 * * *"]);
 
-  // Reopening reseeds from the live cron, so the cancelled draft never leaks:
-  // an immediate Save is a no-op.
   await page.getByRole("button", { name: "Edit schedule" }).click();
   await page.getByRole("button", { name: "Save" }).click();
   await expect(

@@ -6,33 +6,16 @@ import { normalizeSource } from "./github-source";
 import { json, readJson } from "./http";
 import { defineRoute } from "./registry";
 
-/**
- * The installed agent-config library: `houston.json` templates the user added
- * (today: from a GitHub repo) that the create-agent picker merges alongside the
- * bundled first-party templates. This is the TS-host successor of the Rust
- * engine's `/agent-configs` + `/agents/install-from-github` surface (HOU-662);
- * the store catalog/updates half of that surface stays cut.
- *
- * Layout under `root(userId)` (mirrors the legacy `~/.houston/agents` tree so
- * desktop users keep their previously installed configs):
- *   <root>/<agentId>/houston.json   the manifest (required)
- *   <root>/<agentId>/CLAUDE.md      instructions (optional)
- *   <root>/<agentId>/.source.json   install provenance {repo, installedAt}
- */
 export interface AgentConfigsDeps {
   vfs: Vfs;
-  /** Library prefix for this user (never empty). Local: "agents"; cloud: per-user. */
   root(userId: UserId): string;
-  /** Injection point for tests; production uses the global fetch. */
   fetchImpl?: typeof fetch;
 }
 
 const GH_HEADERS = { "User-Agent": "houston-agents/1.0" };
 
-/** A library id must be a single safe path segment (it becomes a vfs key). */
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
-/** Fetch one repo file's raw content (main → master), or null when absent. */
 async function fetchRepoFile(
   fetchImpl: typeof fetch,
   source: string,
@@ -62,23 +45,18 @@ async function listInstalled(
   const suffix = "/houston.json";
   const out: InstalledAgentConfig[] = [];
   for (const key of keys) {
-    // Exactly <root>/<id>/houston.json — nested matches are the config's own files.
     const rel = key.slice(root.length + 1);
     if (!rel.endsWith(suffix) || rel.split("/").length !== 2) continue;
     const path = key.slice(0, -suffix.length);
     const raw = await deps.vfs.readText(key);
-    if (raw === null) continue; // raced with a delete
+    if (raw === null) continue;
     let config: Record<string, unknown>;
     try {
       config = JSON.parse(raw) as Record<string, unknown>;
     } catch {
-      // A malformed manifest hides one library entry, not the whole list; the
-      // picker still renders and the entry is recoverable by reinstalling.
       console.warn(`[agent-configs] skipping malformed manifest: ${key}`);
       continue;
     }
-    // The create flow seeds the new agent's CLAUDE.md client-side from the
-    // config, so inline the sibling file when the manifest doesn't embed one.
     if (typeof config.claudeMd !== "string") {
       const claudeMd = await deps.vfs.readText(`${path}/CLAUDE.md`);
       if (claudeMd !== null) config = { ...config, claudeMd };
@@ -133,8 +111,6 @@ async function installFromGithub(
 
   const dir = `${deps.root(userId)}/${agentId}`;
   await deps.vfs.writeText(`${dir}/houston.json`, manifest);
-  // Instructions are optional; a fetch failure here loses seeding, not the
-  // install, so surface it as the route's error instead of writing a half entry.
   let claudeMd: string | null;
   try {
     claudeMd = await fetchRepoFile(fetchImpl, source, "CLAUDE.md");
@@ -153,11 +129,6 @@ async function installFromGithub(
 
 const SOURCE = "packages/host/src/routes/agent-configs.ts";
 
-/**
- * The library itself, fed into the create-agent picker's "installed" source. No
- * library wired is an empty list: nothing IS installed on such a host, and the
- * picker still renders its bundled first-party templates.
- */
 defineRoute({
   group: "agent-configs",
   method: "GET",
@@ -171,10 +142,6 @@ defineRoute({
   },
 });
 
-/**
- * Add a repo's houston.json to the library. Unlike the read above, an install
- * with no library wired fails loudly rather than pretending to have stored it.
- */
 defineRoute({
   group: "agent-configs",
   method: "POST",

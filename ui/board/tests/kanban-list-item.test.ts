@@ -1,8 +1,3 @@
-// SSR render of the archived list row. The promise it guards: a mission's tag
-// ("Routine", "Started by Houston") reads the same in the archive as on the
-// board card, in the card's own chip, and a mission without one stays a
-// plain row.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { TooltipProvider } from "@houston-ai/core";
@@ -42,7 +37,6 @@ const card = (item: KanbanItem): string =>
     ),
   );
 
-/** The outer element of the pill wrapping `label`, as rendered. */
 const chipAround = (html: string, label: string): string | undefined =>
   html.match(
     new RegExp(`<span class="([^"]*)"><span class="truncate">${label}<`),

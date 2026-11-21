@@ -1,18 +1,3 @@
-/**
- * The cross-provider identity key for a model, derived from its display name.
- * A model's key is what folds the same underlying model (e.g. "Claude Opus 4.8"
- * via Anthropic, Bedrock, OpenRouter) into one directory entry.
- *
- * This is the RUNTIME twin of the bake-time `normalizeKey` in
- * `scripts/generate-model-catalog.mjs`: the snapshot's keys are baked with that
- * copy, and a pi-ai model must derive the SAME key here (`catalog-pi.ts`) so its
- * offer folds onto the matching snapshot model for enrichment instead of missing
- * it. The two MUST stay identical — change one, change the other.
- */
-
-// Leading tokens stripped from a name before it becomes a key: deployment
-// regions (Bedrock) and vendor echoes (OpenRouter "Anthropic Claude ...",
-// Bedrock "AU Anthropic Claude ..."). Never the trailing model words.
 const LEAD_NOISE = new Set(
   (
     "au eu us apac global anthropic openai google meta metallama mistral " +
@@ -21,11 +6,6 @@ const LEAD_NOISE = new Set(
   ).split(" "),
 );
 
-/**
- * Drops parenthetical/bracketed suffixes ("(latest)", "(EU)", "(Fast)"),
- * collapses punctuation to single spaces (dots kept as version separators),
- * strips leading region/vendor echoes, and drops a trailing "latest" word.
- */
 export function normalizeKey(name: string): string {
   let s = String(name || "").toLowerCase();
   s = s.replace(/[([{][^)\]}]*[)\]}]/g, " ");

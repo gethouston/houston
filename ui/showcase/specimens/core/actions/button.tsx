@@ -19,7 +19,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** Every `variant` the button's cva declares, paired with a real action. */
 const VARIANTS = [
   { name: "default", label: "Deploy agent", icon: Play },
   { name: "destructive", label: "Delete agent", icon: Trash2 },
@@ -29,10 +28,8 @@ const VARIANTS = [
   { name: "link", label: "View in store", icon: ArrowUpRight },
 ] as const;
 
-/** The label sizes, smallest first. `default` is what you get unset. */
 const TEXT_SIZES = ["xs", "sm", "default", "lg"] as const;
 
-/** The square sizes, for a button whose whole label is its icon. */
 const ICON_SIZES = ["icon-xs", "icon-sm", "icon", "icon-lg"] as const;
 
 const props: readonly SpecimenProp[] = [
@@ -179,11 +176,6 @@ function ButtonSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["Button"];
 
 export const specimen: Specimen = {

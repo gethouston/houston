@@ -37,8 +37,6 @@ test("sessionContextUsage: tracks latest + peak within one provider segment", ()
 });
 
 test("sessionContextUsage: provider_switched resets peak + latest to the new provider's segment", () => {
-  // Big Opus turns, then a switch, then a small GPT-5.5 turn. The Opus peak must
-  // NOT bleed across the boundary.
   const r = sessionContextUsage([
     finalResult(280_000),
     finalResult(300_000),
@@ -57,27 +55,21 @@ test("sessionContextUsage: latest is null right after a switch, before the new p
 
 test("effectiveContextWindow: a cross-provider peak no longer snaps the new window up (the reported bug)", () => {
   const gpt = { default: 258_400, max: 950_000 };
-  // Pre-fix: the 300k Opus peak snapped GPT-5.5 to 950k, so 19_197 read as ~2%.
-  // Post-fix: the reset means peak is the post-switch value, so the window stays
-  // at GPT-5.5's 258_400 default.
   const { latest, peakContextTokens } = sessionContextUsage([
     finalResult(300_000),
     providerSwitched,
     finalResult(19_197),
   ]);
   const window = effectiveContextWindow(gpt, peakContextTokens);
-  // GPT-5.5's 258_400 default, cut to the room before compaction (200k / 93%).
   assert.equal(window, 215_054);
-  assert.equal(contextFillPercent(latest, window), 9); // 19_197 / 215_054 ≈ 9%
+  assert.equal(contextFillPercent(latest, window), 9);
 });
 
 test("effectiveContextWindow: still snaps up within the SAME provider when its own usage proves a larger window", () => {
   const sonnet = { default: 200_000, max: 1_000_000 };
-  // No switch: a 240k peak proves the credit-gated 1M window is active.
   const { peakContextTokens } = sessionContextUsage([
     finalResult(120_000),
     finalResult(240_000),
   ]);
-  // Snapped to 1M, then cut to the room before compaction.
   assert.equal(effectiveContextWindow(sonnet, peakContextTokens), 215_054);
 });

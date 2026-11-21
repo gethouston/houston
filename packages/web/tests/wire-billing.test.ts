@@ -8,19 +8,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The billing family rides `sdk.billing`. What this file pins is the WIRE: the
- * gateway routes, their methods, their bodies, and the headers that carry auth
- * and the org — the whole recorded request, because `/v1/org/billing/checkout`
- * and `/v1/org/billing/portal` differ by one segment and a substring match
- * would let one stand in for the other.
- *
- * Each case drives the composed `HoustonClient` (what the app holds), not the
- * SDK. The one degradation this family has stays in the mixin, so the statuses
- * it softens — and the ones it must not — are pinned here too; the deeper
- * not-entitled story lives in `billing-degrade.test.ts`.
- */
-
 const BASE = "https://gw.example";
 
 const { calls, reset, restore, stubFetch } = createWireCapture();
@@ -31,8 +18,6 @@ beforeEach(() => {
 
 afterEach(() => {
   restore();
-  // Unconditionally, so a case that fails mid-ladder cannot leave fake timers
-  // installed for the next one.
   vi.useRealTimers();
   vi.clearAllMocks();
 });
@@ -46,10 +31,8 @@ const SUMMARY = {
 
 const CHECKOUT = { url: "https://checkout.stripe.test/c/pay_1" };
 
-/** The three statuses the mixin reads as "no subscription to show". */
 const NOT_ENTITLED = [404, 403, 503];
 
-/** A cloud client with a team space active, so `x-houston-org` is live. */
 function client(): HoustonClient {
   const c = new HoustonClient({
     baseUrl: BASE,
@@ -60,7 +43,6 @@ function client(): HoustonClient {
   return c;
 }
 
-/** The single request the call made, with the shared headers already checked. */
 function soleCall(): Call {
   expect(calls).toHaveLength(1);
   const [call] = calls;
@@ -80,8 +62,6 @@ describe("the delegated billing requests", () => {
     expect(call.body).toBeNull();
   });
 
-  // Monthly is the absent field, which every gateway reads as monthly (an
-  // older one refuses a named "month"); yearly is named.
   test("createCheckout POSTs a monthly checkout with no interval", async () => {
     stubFetch(() => json(200, CHECKOUT));
     expect(await client().createCheckout()).toEqual({
@@ -186,8 +166,6 @@ describe("the delegated billing requests", () => {
 });
 
 describe("a yearly org's paid seats", () => {
-  // The counts ride each org's billing on the one orgs read: no route of
-  // their own, nothing else on the wire.
   test("listOrgs reads paidSeats and seatsInUse off GET /v1/orgs", async () => {
     const billing = {
       tier: "paid",
@@ -226,8 +204,6 @@ describe("a yearly org's paid seats", () => {
 describe("what the mixin softens, and what it must not", () => {
   for (const status of NOT_ENTITLED) {
     test(`a ${status} on getBilling is a team with no billing to show`, async () => {
-      // 503 is transient for reads, so the shared read ladder re-attempts twice
-      // before the degrade sees it; fake timers fast-forward those waits.
       vi.useFakeTimers();
       stubFetch(() => json(status, { error: "no billing" }));
       const read = client().getBilling();

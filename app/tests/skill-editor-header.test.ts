@@ -11,8 +11,6 @@ const read = (rel: string) =>
 
 describe("the page-header strip height is declared once", () => {
   it("the desktop-layer spelling is the same height", () => {
-    // Written out rather than composed because Tailwind reads class names out
-    // of source; this pins the two together.
     strictEqual(HEADER_HEIGHT_DESKTOP, `md:${HEADER_HEIGHT}`);
   });
 
@@ -41,12 +39,6 @@ describe("one way back, everywhere", () => {
   });
 });
 
-/**
- * One skill body and one frame serve both scopes of the Skills surface: the
- * workspace library and an AI Employee's own Skills section. Pinned on the
- * SOURCE because the claim is about which surfaces exist, which no render of a
- * reachable surface can show.
- */
 describe("one skill editor, parameterised by frame", () => {
   it("keeps no second, dialog-shaped body", () => {
     const body = read("../src/components/skills-view/skill-body-editor.tsx");

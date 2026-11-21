@@ -11,16 +11,8 @@ import { json, readJson } from "./http";
 import { gatherPortableContent } from "./portable-content";
 import { defineRoute } from "./registry";
 
-/** Bumped independently of the wire protocol; rides in the manifest. */
 const HOUSTON_VERSION = "0.0.0";
 
-/**
- * Export an agent as a `.houstonagent` (agent-scoped: POST
- * .../portable/export). The body is either a bare PortableSelection (the
- * original contract) or `{ selection, meta? }`, where `meta.anonymized` stamps
- * the manifest. Gathers the selected content off the vfs and returns the zip.
- * Returns true when handled.
- */
 export async function handlePortableExport(
   deps: { vfs?: Vfs; paths?: WorkspacePaths },
   ctx: { workspace: Workspace; agent: Agent },
@@ -36,7 +28,6 @@ export async function handlePortableExport(
   }
   const paths = deps.paths ?? new CloudPaths();
   const root = paths.agentRoot(ctx.workspace, ctx.agent);
-  // Untrusted wizard input; the reads below stay defensive.
   const body = await readJson(req);
   const wrapped = body.selection !== undefined;
   const sel = (wrapped ? body.selection : body) as PortableSelection;
@@ -59,10 +50,6 @@ export async function handlePortableExport(
   return true;
 }
 
-/**
- * A wrong method falls through to the agent's runtime: the check above
- * declines rather than refuses.
- */
 defineRoute({
   group: "portable-export",
   method: "POST",

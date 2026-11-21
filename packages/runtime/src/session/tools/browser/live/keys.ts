@@ -1,10 +1,5 @@
 import type { BrowserLiveInput, BrowserLiveKey } from "@houston/wire-types";
 
-/**
- * Windows virtual key codes per special key, and the text the key types.
- * Chromium needs the codes for focus moves, form submits and deletes; a key
- * with text is a `keyDown` (it types), one without is a `rawKeyDown`.
- */
 const KEYS: Record<BrowserLiveKey, readonly [code: number, text?: string]> = {
   Enter: [13, "\r"],
   Tab: [9],
@@ -32,7 +27,6 @@ export interface KeyEventParams {
   unmodifiedText?: string;
 }
 
-/** The CDP `Input.dispatchKeyEvent` pair (down, up) for one special key. */
 export function keyPress(
   key: BrowserLiveKey,
   modifiers = 0,
@@ -68,7 +62,6 @@ export interface MouseEventParams {
   clickCount: number;
 }
 
-/** The CDP `Input.dispatchMouseEvent` calls for one mouse event at `at` (px). */
 export function mouseSteps(
   event: Extract<BrowserLiveInput, { type: "mouse" }>,
   at: { x: number; y: number },

@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { liveDeadline } from "./turn-log-post";
 
-// The deadline reads its own clock; fake timers drive its setTimeout. A stall
-// is the clock jumping while no timer runs, which is what a blocked event loop
-// looks like from inside the callback.
 let clock = 0;
 const now = () => clock;
 const run = (ms: number) => {

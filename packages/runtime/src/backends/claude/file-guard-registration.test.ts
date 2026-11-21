@@ -21,13 +21,6 @@ import { serverClaudeLayout } from "./paths";
 import type { ClaudeSdk } from "./sdk-loader";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 
-/**
- * Every path that builds a Claude query carries the workspace guard as a
- * PreToolUse hook: Claude Code auto-approves reads inside `cwd` without asking
- * `canUseTool`, so every query this backend builds must carry the hook.
- * Each kind is built through its real entry point and its options captured.
- */
-
 const MODEL: ResolvedModel = {
   provider: "anthropic",
   id: "claude-sonnet-4-6",
@@ -71,7 +64,6 @@ function capturingSdk(): { sdk: ClaudeSdk; calls: Options[] } {
   return { sdk: { query, createSdkMcpServer: createServer }, calls };
 }
 
-/** A workspace with the runtime's data dir inside it, as in production. */
 function workspace(): { workspaceDir: string; dataDir: string } {
   const workspaceDir = realpathSync(mkdtempSync(join(tmpdir(), "guard-reg-")));
   const dataDir = join(workspaceDir, ".houston", "runtime");
@@ -110,7 +102,6 @@ async function expectGuarded(options: Options | undefined): Promise<void> {
   });
   expect(options?.disallowedTools).toContain("Read(**/auth.json)");
   expect(options?.canUseTool).toBeTypeOf("function");
-  // An `@path` in the prompt would attach the file with no tool call at all.
   expect(options?.env?.CLAUDE_CODE_DISABLE_ATTACHMENTS).toBe("1");
 }
 
@@ -135,8 +126,6 @@ test("a long-lived session and its compaction carry the guard", async () => {
   await session.prompt("hi");
   await expectGuarded(calls[0]);
 
-  // Compaction runs on the session's own options; fed the options this
-  // backend really built, no file call may get through it.
   const { sdk: summarizer, calls: summarized } = capturingSdk();
   let resume: string | undefined = "sdk-session-1";
   const compacting = new ClaudeSession({
@@ -166,8 +155,6 @@ test("a long-lived session and its compaction carry the guard", async () => {
   await compacting.compact();
   const summary = summarized[0];
   expect(summary?.resume).toBe("sdk-session-1");
-  // The summary keeps the turn's tools (the cached prefix) and runs none of
-  // them: a call the guard would allow is refused too.
   expect(summary?.tools).toEqual(calls[0]?.tools);
   for (const path of [".houston/runtime/auth.json", "notes.md"])
     expect(await preToolUse(summary, path)).toMatchObject({
@@ -216,7 +203,6 @@ test("a one-shot call offers no tool and refuses any", async () => {
     query: sdk.query,
   });
   expect(calls[0]?.tools).toEqual([]);
-  // Its prompt quotes conversation text, so an `@path` there attaches nothing.
   expect(calls[0]?.env?.CLAUDE_CODE_DISABLE_ATTACHMENTS).toBe("1");
   expect(calls[0]?.disallowedTools).toContain("Read(**/auth.json)");
   expect(await preToolUse(calls[0], "notes.md")).toMatchObject({

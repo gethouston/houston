@@ -17,15 +17,6 @@ import { cachedFallbackTranscript, seedFromCache } from "./history-cache";
 import { loadOlderPage } from "./load-older";
 import type { BaseCtor } from "./mixin";
 
-/**
- * Single-flight for OBSERVED chat-open reads (HOU-819): opening a chat fires
- * this read twice — the board's hydrate call and the chat-history query's
- * fetch land in the same tick — and both want the identical windowed read +
- * VM seed. Sharing the in-flight promise halves the open traffic; bulk reads
- * (`observe: false`) never join it — they read a different window and take a
- * different path through the cache. Joining after a send is safe: the read in
- * flight reads again past the turn (see `readPastOwnTurnsOn`).
- */
 const openLoadsInFlight = new Map<string, Promise<ChatHistoryEntry[]>>();
 
 export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
@@ -54,7 +45,6 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
       opts: { observe?: boolean } = {},
     ): Promise<ChatHistoryEntry[]> {
       const observing = opts.observe !== false;
-      // Cache-first paint on an open; a bulk scan skips it (see seedFromCache).
       let cachedFrames: CachedFrame[] | null = null;
       if (this.ctx.cp && observing) {
         cachedFrames = await seedFromCache(agentPath, sessionKey);
@@ -63,25 +53,13 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
         const engine = this.ctx.cp
           ? this.ctx.sdk.clientFor(agentPath)
           : this.ctx.engine;
-        // Every read is windowed. A conversation OPEN reads the tail window
-        // (HOU-819) — long missions used to fetch and fold their entire
-        // transcript here, the main "chat hangs before opening" cost. A BULK
-        // read (mission search scanning every mission for the phrase) reads the
-        // wider scan window (HOU-941) — full transcripts, N missions at a time,
-        // were the "search takes 15 seconds" cost. A pre-windowing server
-        // ignores `limit` and returns everything — `offset`/`totalMessages`
-        // then default to the full-transcript shape.
         const read = () =>
           engine.getHistory(sessionKey, {
             limit: observing ? CHAT_OPEN_WINDOW : SEARCH_SCAN_WINDOW,
           });
-        // An open read a send overtook is taken again past that turn. A bulk
-        // scan never seeds, so its first answer is the one it wants.
         const { value: history, mark } = observing
           ? await readPastOwnTurnsOn(agentPath, sessionKey, read)
           : { value: await read(), mark: 0 };
-        // Torn down while it waited (`null`): neither cached, seeded nor
-        // observed.
         const current =
           mark !== null && historyReadMark(agentPath, sessionKey) === mark;
         const sdkFeed = sdkHistoryToFeed(history.messages);
@@ -89,31 +67,10 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
           earliestLoaded: history.offset ?? 0,
           total: history.totalMessages ?? history.messages.length,
         };
-        // Refresh the local copy on every successful OPEN, so the next cold
-        // open paints the freshest transcript we ever saw. Bulk scans are
-        // excluded (HOU-941): each write enumerates and prunes the whole store,
-        // which a board-wide search paid once per mission, and it would evict
-        // the conversations the user actually opens in favour of ones they only
-        // ever searched through.
         if (this.ctx.cp && observing && current) {
           void writeCachedConversation(agentPath, sessionKey, sdkFeed);
         }
-        // Observer mode: a loaded chat may have a turn in flight that THIS client
-        // isn't streaming (page reloaded mid-turn, or another client sent it).
-        // Attach a passive resumable stream: if the server's `sync` reports a
-        // running turn it surfaces (spinner + partial) and renders to completion;
-        // an idle conversation closes the stream right after that `sync`. No-op
-        // when the conversation is already streamed here. `observe: false` is
-        // for BULK history reads (mission search, board scans) that load N
-        // conversations at a time and must not spawn N streams — only a real
-        // conversation open observes (the default).
         if (observing && current) {
-          // Seed FIRST (the chat opens complete), then attach: the observer
-          // renders any in-flight turn live into the same VM. Seeding is a no-op
-          // when a live stream already owns this conversation (see
-          // seedConversationVm) — its feed IS the VM. The VM seed is the SDK's
-          // UNMAPPED fold: the VM carries engine provider ids uniformly (seeded
-          // and live alike); the app's binding hook owns the old-id remap.
           seedConversationVm(agentPath, sessionKey, sdkFeed, mark, window);
           observeConversation(
             engine,
@@ -127,21 +84,12 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
                 status,
                 pendingInteraction,
               ),
-            // The legacy settle guard compares against a FULL history reload,
-            // so hand it the transcript's total, not the window's length.
             window.total,
           );
         }
         return historyToFeed(history.messages);
       } catch (err) {
-        // A conversation with no persisted turns yet 404s — that IS an empty
-        // conversation (a fresh card opened before its first turn lands), not
-        // a failure. Anything else (network drop, auth, 5xx) propagates so the
-        // app's `call()` wrapper toasts it with the Report-bug affordance —
-        // returning [] would render a fake empty chat and swallow the error.
         if (isConversationNotFound(err)) {
-          // The local copy may be the user's only surviving transcript — see
-          // cachedFallbackTranscript.
           const fallback = this.ctx.cp
             ? await cachedFallbackTranscript(
                 agentPath,
@@ -158,10 +106,6 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
       }
     }
 
-    /**
-     * Prepend the previous transcript page before the loaded window — the
-     * scroll-up lazy-load (HOU-819). See {@link loadOlderPage}.
-     */
     loadOlderChatHistory(
       agentPath: string,
       sessionKey: string,

@@ -14,8 +14,6 @@ export const ToolContent = memo(({ tool }: { tool: ToolEntry }) => {
   const inp = tool.input as Record<string, unknown> | null | undefined;
   const result = tool.result;
 
-  // Two dialects: Claude tool names (PascalCase) and pi coding-agent names
-  // (lowercase). Same renderers for both (HOU-717).
   switch (short) {
     case "Bash":
     case "bash":
@@ -48,9 +46,6 @@ function BashContent({
   command?: string;
   result?: ToolEntry["result"];
 }) {
-  // A result with no text (a command with no stdout, or history from before
-  // outputs were persisted) renders the command line alone — never an empty
-  // output box (HOU-717).
   const output = result?.content ? result : undefined;
   if (!command && !output) return null;
   return (
@@ -98,11 +93,6 @@ function SearchContent({ result }: { result?: ToolEntry["result"] }) {
   return <CodeResult result={result} maxLines={12} />;
 }
 
-/**
- * Unknown tools: show the result text when there is one, else fall back to
- * the call's arguments — an opened row must show SOMETHING about the call,
- * never an empty box (HOU-717).
- */
 function GenericContent({ tool }: { tool: ToolEntry }) {
   if (tool.result?.content)
     return <CodeResult result={tool.result} maxLines={10} />;
@@ -115,7 +105,6 @@ function GenericContent({ tool }: { tool: ToolEntry }) {
   );
 }
 
-/** Pretty-print tool arguments; empty/absent args read as "nothing to show". */
 function formatArgs(input: unknown): string | null {
   if (input == null) return null;
   if (typeof input === "string") return input || null;

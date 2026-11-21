@@ -11,10 +11,6 @@ import {
 import type { ChoiceModalFrame } from "./choice-modal-frame";
 import { type PickerState, reconcilePick, startPick } from "./choice-picker";
 
-/**
- * The frame after Next: the notice's next intro page, then, after the last
- * one, the picker while the notice asks for a pick. Unchanged anywhere else.
- */
 export function nextChoicePage(frame: ChoiceModalFrame): ChoiceModalFrame {
   const { phase, shown } = frame;
   if (!frame.open || phase.step !== "intro" || !shown) return frame;
@@ -26,10 +22,6 @@ export function nextChoicePage(frame: ChoiceModalFrame): ChoiceModalFrame {
     : frame;
 }
 
-/**
- * The frame after Back: the previous intro page, or from the picker's first
- * step, the last one. Unchanged on the first page and on the success step.
- */
 export function previousChoicePage(frame: ChoiceModalFrame): ChoiceModalFrame {
   const { phase, shown } = frame;
   if (!frame.open || !shown || phase.step === "done") return frame;
@@ -42,10 +34,6 @@ export function previousChoicePage(frame: ChoiceModalFrame): ChoiceModalFrame {
     : frame;
 }
 
-/**
- * The picker's draft in the modal, valid against the latest choice: the
- * stored draft, else where the picker starts ({@link startPick}).
- */
 export function choiceFramePick(
   frame: ChoiceModalFrame,
   choice: BillingChoice,
@@ -53,7 +41,6 @@ export function choiceFramePick(
   return reconcilePick(choice, frame.pick ?? startPick(choice));
 }
 
-/** The frame holding the picker's new draft. */
 export function withChoicePick(
   frame: ChoiceModalFrame,
   pick: PickerState,
@@ -61,11 +48,6 @@ export function withChoicePick(
   return { ...frame, pick };
 }
 
-/**
- * The modal's flow: the shown notice's intro, then the picker over the
- * frame's draft, so a refused paid pick drops the paid step from every
- * count, Back and the success step alike.
- */
 export function choiceFrameFlow(
   frame: ChoiceModalFrame,
   choice: BillingChoice,
@@ -73,10 +55,6 @@ export function choiceFrameFlow(
   return pickFlow(choice, frame.shown?.notice ?? null, frame.pick);
 }
 
-/**
- * Where an intro page of the shown notice sits in the pick's progress, or
- * null for any notice but `pick`: a one-page notice shows no progress.
- */
 export function choiceIntroProgress(
   frame: ChoiceModalFrame,
   choice: BillingChoice,

@@ -54,9 +54,6 @@ describe("groupCounts", () => {
     ]);
   });
 
-  // A withheld operation must not even leak as a count: a group whose only
-  // member is withheld would otherwise advertise a group with nothing callable
-  // in it. `route: null` counts as withheld — the host cannot dispatch it.
   test.each([
     "internal",
     "billing",
@@ -103,8 +100,6 @@ describe("searchOperations", () => {
     ).toEqual(["listOrgs"]);
   });
 
-  // Hidden is policy; `route: null` is capability. Both are absent from the
-  // index for the same reason: the agent must not offer what it cannot do.
   test.each([
     "rotateSecret",
     "exportLedger",
@@ -125,8 +120,6 @@ describe("searchOperations", () => {
     ]);
   });
 
-  // A broad match over the real catalog would otherwise spend more context than
-  // the answer is worth, so the cap is part of the contract, not a detail.
   test("caps the returned list and says it trimmed", () => {
     const found = searchOperations(catalog, { query: "" }, 2);
     expect(found.operations).toHaveLength(2);

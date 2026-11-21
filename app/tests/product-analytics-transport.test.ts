@@ -1,7 +1,3 @@
-// The POST that ships one batch. `transport.ts` itself cannot be imported here
-// (posthog-js and the engine bootstrap come with it), so the policy lives in
-// `post.ts` — pure and injected — and this drives that; the last test reads
-// `transport.ts` as source to pin the one wiring decision a fake can't cover.
 import { ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -71,17 +67,11 @@ describe("the product-analytics POST", () => {
     const h = harness();
     strictEqual((await h.post({ final: true })).status, "ok");
     strictEqual(h.calls[0]?.path, PRODUCT_EVENTS_ROUTE);
-    // The quit-time flush (`sink.ts` onAppHidden) is the whole point of the
-    // goodbye: without keepalive the browser aborts it on pagehide.
     strictEqual(h.calls[0]?.init.keepalive, true);
     ok(h.calls[0]?.init.signal, "a hung POST must not own the pipe forever");
   });
 
   it("ships a normal flush without the keepalive body cap", async () => {
-    // keepalive caps the whole request body at 64 KiB — far below what this
-    // route accepts — and a browser refuses an oversized one as a network
-    // failure this pipe cannot tell from being offline, so the batch dies
-    // twice and is dropped. Only the goodbye is worth that price.
     const h = harness();
     strictEqual((await h.post()).status, "ok");
     strictEqual(h.calls[0]?.init.keepalive, undefined);
@@ -107,7 +97,6 @@ describe("the product-analytics POST", () => {
     );
     strictEqual((await h.post()).status, "failed");
     strictEqual(h.reports.length, 0, "the pipe's own guard is not a bug");
-    // The next flush proceeds: nothing is left in flight.
     h.reply(() => Promise.resolve(new Response("{}")));
     strictEqual((await h.post()).status, "ok");
     strictEqual(h.calls.length, 2);
@@ -116,8 +105,6 @@ describe("the product-analytics POST", () => {
   it("reports a missing ingest route once per launch", async () => {
     const h = harness();
     h.reply(() => Promise.resolve(new Response("", { status: 404 })));
-    // Retrying can never succeed, so the batch moves on — but a managed-cloud
-    // client is supposed to have this route, so we hear about it.
     strictEqual((await h.post()).status, "ok");
     strictEqual((await h.post()).status, "ok");
     strictEqual(h.reports.length, 1, "one report per launch, not per batch");
@@ -163,9 +150,6 @@ describe("the product-analytics POST", () => {
   });
 
   it("keeps quiet when the 202 body dies in transport or to the timeout", async () => {
-    // The events are stored once the 202 arrives; a connection that drops
-    // while the body streams (sleep, network switch) or the request timeout
-    // firing mid-read is connectivity, not a defect in this pipe.
     const h = harness();
     const dyingBody = (error: Error) =>
       Promise.resolve(
@@ -185,12 +169,8 @@ describe("the product-analytics POST", () => {
   });
 
   it("still sends on a webview without AbortSignal.timeout", async () => {
-    // macOS 10.15 is a supported desktop and its system WebKit (Safari 15)
-    // has no AbortSignal.timeout: building the signal must not throw there,
-    // or every batch fails before it is sent.
     const original = AbortSignal.timeout;
     Reflect.deleteProperty(AbortSignal, "timeout");
-    // The fallback arms a real 15 s timer; a fake clock keeps the run instant.
     mock.timers.enable({ apis: ["setTimeout"] });
     try {
       const calls: RequestInit[] = [];
@@ -240,8 +220,6 @@ describe("what transport.ts wires in", () => {
   );
 
   it("waits for the engine before reading the install id", () => {
-    // Reading it earlier mints one (`lib/install-id.ts`), and a fabricated id
-    // is worse than no id: it re-fires install_created on the next launch.
     ok(source.includes("createInstallIdReader"));
     ok(source.includes("whenEngineReady"));
   });
@@ -252,8 +230,6 @@ describe("what transport.ts wires in", () => {
   });
 
   it("looks for a visitor id on the web surface only", () => {
-    // Desktop lands on no link, so there is nothing to read there — and the
-    // same `osIsTauri` that decides the platform decides this.
     ok(source.includes("readWebVisitorId"));
     ok(
       /readVisitorId:\s*\(\)\s*=>\s*\(osIsTauri\(\)\s*\?\s*null\s*:\s*readWebVisitorId\(\)\)/.test(

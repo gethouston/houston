@@ -1,7 +1,6 @@
 import type { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
 import type { ClaudeQuery } from "./session";
 
-/** Thrown when the optional Claude Agent SDK is not present in this build. */
 export class ClaudeBackendUnavailableError extends Error {
   constructor(cause?: unknown) {
     super("Claude backend unavailable in this build");
@@ -10,7 +9,6 @@ export class ClaudeBackendUnavailableError extends Error {
   }
 }
 
-/** Optional Claude SDK slice used by the backend and its tests. */
 export interface ClaudeSdk {
   query: ClaudeQuery;
   createSdkMcpServer: typeof createSdkMcpServer;
@@ -22,7 +20,6 @@ export type ClaudeSdkLoadResult =
 
 let processSdkLoad: Promise<ClaudeSdkLoadResult> | undefined;
 
-/** Share one optional SDK import per process, retrying after a failed preload. */
 export function preloadClaudeSdk(
   sdk?: ClaudeSdk,
 ): Promise<ClaudeSdkLoadResult> {
@@ -45,7 +42,6 @@ export function preloadClaudeSdk(
   return load;
 }
 
-/** Recover the loaded SDK or raise its original import failure. */
 export async function loadedClaudeSdk(
   load: Promise<ClaudeSdkLoadResult>,
 ): Promise<ClaudeSdk> {

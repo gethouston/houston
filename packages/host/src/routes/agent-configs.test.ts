@@ -6,12 +6,6 @@ import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 
-/**
- * The installed agent-config library over the wire: listing merges-ready
- * entries (manifest + inlined CLAUDE.md) and installing a repo's houston.json
- * from GitHub — the HOU-662 successor of the Rust store remnants.
- */
-
 const verifier: TokenVerifier = {
   async verify(b) {
     return b.startsWith("tok:") ? { userId: b.slice(4) } : null;
@@ -31,7 +25,6 @@ const CAPS: Capabilities = {
 
 const vfs = new MemoryVfs();
 
-/** Serve fixture files as raw.githubusercontent.com would (main branch only). */
 const repoFiles = new Map<string, string>();
 const fetchImpl = (async (input: RequestInfo | URL) => {
   const url = String(input);
@@ -97,13 +90,11 @@ test("lists manifests and inlines a sibling CLAUDE.md", async () => {
     JSON.stringify({ id: "researcher", name: "Researcher" }),
   );
   await vfs.writeText(`${root}/researcher/CLAUDE.md`, "# Be thorough");
-  // An embedded claudeMd wins over the sibling file.
   await vfs.writeText(
     `${root}/writer/houston.json`,
     JSON.stringify({ id: "writer", name: "Writer", claudeMd: "# Write" }),
   );
   await vfs.writeText(`${root}/writer/CLAUDE.md`, "# ignored");
-  // A malformed manifest hides only its own entry.
   await vfs.writeText(`${root}/broken/houston.json`, "{nope");
 
   const res = await fetch(`${base}/v1/agent-configs`, { headers: auth });

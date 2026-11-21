@@ -1,17 +1,3 @@
-/**
- * The keys the MISSION BOARD and the shared chat panel own: the four arrows,
- * bare Enter, and Escape. Split out of `use-keyboard-shortcuts.ts`, which keeps
- * the ⌘-modified global bindings.
- *
- * All three are BARE keys, so unlike the ⌘ bindings they must hand the
- * keystroke back the moment they are not the right owner — off a board there
- * is no card to open and no highlight to move, and swallowing the key would
- * keep it from the control the user has focused. They gate on
- * `isMissionBoardSurface` (what is on the GLASS), never on
- * `isMissionBoardView`: the asymmetry with ⌘N and the
- * palette, which DO have a navigate-then-fire fallback, is deliberate.
- */
-
 import {
   isEmptyEditable,
   isOverlayTarget,
@@ -21,16 +7,6 @@ import {
 import { isMissionBoardSurface } from "../lib/top-level-views";
 import { useUIStore } from "../stores/ui";
 
-/**
- * Programmatic step-scroll of the chat message log. The conversation
- * has two nested divs: the outer carries role="log" (focus target on
- * Escape) but use-stick-to-bottom drives a SEPARATE inner pane as its
- * actual scroll container — outer's content exactly fills outer, so
- * scrollBy on outer is a no-op. We target the inner pane by its
- * stable marker class. The lib's "escapedFromLock" tracker picks the
- * scrollTop change up and stops auto-following the bottom while the
- * user reads.
- */
 function scrollChatLog(dir: "up" | "down"): boolean {
   const pane = document.querySelector(
     ".conversation-scroll-pane",
@@ -41,7 +17,6 @@ function scrollChatLog(dir: "up" | "down"): boolean {
   return true;
 }
 
-/** True when document.activeElement is the chat composer textarea. */
 function isComposerFocused(): boolean {
   const active = document.activeElement as HTMLElement | null;
   if (!active) return false;
@@ -49,7 +24,6 @@ function isComposerFocused(): boolean {
   return active.getAttribute("name") === "message";
 }
 
-/** The file preview panel marks its root; focus inside it owns the arrows. */
 export const FILE_PREVIEW_ATTR = "data-file-preview";
 
 function inFilePreview(e: KeyboardEvent): boolean {
@@ -68,15 +42,8 @@ function arrowDirection(e: KeyboardEvent): ArrowDir | null {
 }
 
 function handleArrow(e: KeyboardEvent, dir: ArrowDir): void {
-  // A dialog or popover over the board or the panel answers its own arrows
-  // (a color palette's radios, a menu's items), and the file preview scrolls
-  // its own pages.
   if (isOverlayTarget(e) || inFilePreview(e)) return;
   const ui = useUIStore.getState();
-  // Chat panel is open → arrows are a chat-reading affordance,
-  // BUT only when focus is in the composer or outside any
-  // editable. A different editable (e.g. the board toolbar's
-  // search input) keeps its own cursor motion.
   if (ui.missionPanelOpen) {
     if (isTypingTarget(e)) {
       if (!isComposerFocused()) return;
@@ -86,12 +53,6 @@ function handleArrow(e: KeyboardEvent, dir: ArrowDir): void {
     if (scrollChatLog(dir)) e.preventDefault();
     return;
   }
-  // Board view → arrows move the highlight. They do NOT open the panel; Enter
-  // does that. Yield to any editable so search inputs etc. keep their cursor
-  // motion. "Board" is an employee's Tasks surface: their
-  // Routines, Files or Settings section has no highlight to move, so it
-  // must leave the arrow key alone instead of preventing the page's own
-  // scrolling.
   if (isTypingTarget(e)) return;
   if (!isMissionBoardSurface(ui) || ui.paletteOpen || ui.cheatsheetOpen) return;
   e.preventDefault();
@@ -99,16 +60,9 @@ function handleArrow(e: KeyboardEvent, dir: ArrowDir): void {
 }
 
 function handleBoardOpen(e: KeyboardEvent): void {
-  // Bare Enter opens the highlighted card, even from the rail row or tab that
-  // led to the board: the highlight is where the user is. Yield to typing so
-  // the composer's own Enter-to-send keeps working, and to a dialog or popover
-  // over the board, whose controls Enter presses.
   if (isTypingTarget(e) || isOverlayTarget(e)) return;
   const ui = useUIStore.getState();
   if (ui.missionPanelOpen || ui.paletteOpen || ui.cheatsheetOpen) return;
-  // An employee's Tasks board. Off a board there is no card to open, and
-  // swallowing Enter would keep it from reaching the control the user has
-  // focused on Routines, Files or Settings.
   if (!isMissionBoardSurface(ui)) return;
   e.preventDefault();
   ui.onBoardOpen?.();
@@ -121,14 +75,10 @@ function isBareEscape(e: KeyboardEvent): boolean {
 }
 
 function handleEscape(e: KeyboardEvent): void {
-  // chat-input stops streaming on Escape with preventDefault; if
-  // that already ran, don't also collapse the panel.
   if (e.defaultPrevented) return;
   const ui = useUIStore.getState();
   if (!ui.missionPanelOpen) return;
   if (isComposerFocused()) {
-    // First Escape: leave the composer so arrows scroll the
-    // chat log and a second Escape can close the panel.
     const active = document.activeElement as HTMLElement | null;
     const log = document.querySelector('[role="log"]') as HTMLElement | null;
     active?.blur();
@@ -136,8 +86,6 @@ function handleEscape(e: KeyboardEvent): void {
     e.preventDefault();
     return;
   }
-  // Second Escape (or any Escape when the composer isn't focused): close
-  // the file preview beside the chat first, then the chat panel itself.
   e.preventDefault();
   if (ui.filePreview) {
     ui.setFilePreview(null);
@@ -146,11 +94,6 @@ function handleEscape(e: KeyboardEvent): void {
   ui.onPanelClose?.();
 }
 
-/**
- * Whether this keystroke is one of the board / panel keys. `true` means the
- * router stops here, whether or not the key ended up doing something: the
- * decision to yield is part of these handlers, not of the caller.
- */
 export function handleBoardKeys(e: KeyboardEvent): boolean {
   const dir = arrowDirection(e);
   if (dir) {

@@ -48,8 +48,6 @@ test("capturePodFence adopts a newer fencing token on an ok response", () => {
   expect(config.fence.token).toBe("5");
 });
 
-// A pod-store replica publishes its cached token, up to 2 s old: the boot's
-// own newer token must survive a read served from that cache.
 test("capturePodFence never moves the token back", () => {
   const config = gateway("5");
   capturePodFence(

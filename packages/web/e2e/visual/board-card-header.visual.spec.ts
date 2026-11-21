@@ -17,7 +17,6 @@ for (const width of [1280, 1440, 1920]) {
     for (const state of ["wide", "chat"] as const) {
       if (state === "chat") await card.click();
       await page.mouse.move(0, 0);
-      // Reduced motion leaves the panel's final width immediately available.
       await expect(async () => {
         const header = await card.evaluate((el) => {
           const row = el.firstElementChild;

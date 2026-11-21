@@ -1,10 +1,3 @@
-/**
- * Preferences contract: key/value preferences round-trip (null clears), and the
- * workspace-locale override persists as the `locale` preference (the gateway
- * stores locale in the same per-user store) — over both the typed facade and the
- * `dispatch` path.
- */
-
 import { type FakeHost, SEED_WORKSPACE_ID } from "@houston/fake-host";
 import { PreferencesCommand } from "@houston/sdk";
 import {
@@ -88,7 +81,6 @@ describe("workspace locale", () => {
   it("PATCHes the workspace and persists as the locale preference", async () => {
     const ws = await h.sdk.preferences.setLocale(SEED_WORKSPACE_ID, "pt");
     expect(ws).toMatchObject({ id: SEED_WORKSPACE_ID, locale: "pt" });
-    // Locale is stored in the same per-user preference store.
     expect(await h.sdk.preferences.get("locale")).toBe("pt");
   });
 

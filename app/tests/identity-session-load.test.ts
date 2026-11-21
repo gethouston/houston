@@ -12,11 +12,6 @@ import {
 } from "../src/lib/identity/session-load.ts";
 import type { ReadResult } from "../src/lib/identity/session-storage-kv.ts";
 
-// Pure orchestration tests: createSessionLoader is dependency-injected, so the
-// read-fault / ACL-rebind logic is exercised WITHOUT Tauri or keychain mode
-// (which the real singleton bakes in at build time and can't reach under
-// node:test). Mirrors the oauth-attempt.ts unit-test seam.
-
 const SESSION: Session = {
   idToken: "id-token-abc",
   refreshToken: "refresh-token-xyz",
@@ -59,7 +54,6 @@ function deps(
   };
 }
 
-/** Let the fire-and-forget rebind promise settle. */
 const settle = () => new Promise((r) => setImmediate(r));
 
 afterEach(() => setIdentityLogSink(null));
@@ -96,7 +90,6 @@ test("valid session → session + notify + ONE ACL rebind write of the same blob
   assert.deepEqual(rec.notified, [SESSION]);
   assert.deepEqual(rec.rewrites, [BLOB], "rebinds the ACL with the exact blob");
 
-  // The rebind is once-per-run: a second load must not rewrite again.
   await load();
   assert.deepEqual(rec.rewrites, [BLOB]);
 });
@@ -112,7 +105,6 @@ test("load resolves without waiting on the rebind write (fire-and-forget)", asyn
         }),
     },
   );
-  // A hung keychain WRITE must never pin boot: load resolves while pending.
   const state = await createSessionLoader(d)();
   assert.deepEqual(state, { kind: "session", session: SESSION });
   resolveWrite();
@@ -133,7 +125,7 @@ test("a sign-out racing the rebind write re-clears the blob", async () => {
   );
   const state = await createSessionLoader(d)();
   assert.deepEqual(state, { kind: "session", session: SESSION });
-  epoch += 1; // clearSession() lands while the maintenance write is in flight
+  epoch += 1;
   resolveWrite();
   await settle();
   assert.equal(rec.removes, 1, "the rebind must compensate a raced sign-out");
@@ -161,7 +153,6 @@ test("ACL rebind write failure is swallowed (session still returned) and logged"
     },
   );
   const state = await createSessionLoader(d)();
-  // The maintenance write failing must NOT affect the returned session.
   assert.deepEqual(state, { kind: "session", session: SESSION });
   await settle();
   assert.ok(

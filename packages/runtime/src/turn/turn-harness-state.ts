@@ -8,7 +8,6 @@ import {
 import { dirname, join } from "node:path";
 import { atomicTempPath } from "@houston/protocol";
 
-/** Provider harnesses whose native session histories cannot be interleaved. */
 export type TurnHarness = "claude" | "pi";
 
 export function turnHarnessFile(
@@ -24,9 +23,6 @@ export function readTurnHarness(
 ): TurnHarness | undefined {
   const file = turnHarnessFile(dataDir, conversationId);
   if (!existsSync(file)) return undefined;
-  // A corrupt marker (partial sync, prior crash) must degrade to "unknown" —
-  // the conversation then takes the pre-marker resume path — never fail the
-  // turn. Logged so the corruption is visible to us.
   try {
     const parsed = JSON.parse(readFileSync(file, "utf8")) as {
       backend?: unknown;

@@ -5,35 +5,14 @@ import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "../synthetic";
 import { colorOverlay, moveColor, setColor } from "./agent-color";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
-/**
- * The wire agent as the app renders it: the browser-local colour overlay
- * (`./agent-color`) layered onto the agent record `@houston/sdk` reads from the
- * host, plus the picker's own colour write.
- *
- * All of it is client-side branching the SDK deliberately does not do — colour
- * is a device pick mirrored up to the account's `agent_colors` preference
- * (`./agent-color-sync`), not a field the agent routes carry. The single-request
- * host leaf that writes a colour is `updateAgentColor` in the SDK's agents
- * module; both land in the SAME durable store, so a colour set by the assistant
- * is the colour the app renders, and vice versa.
- */
-
-/** Exported for unit tests (the color precedence is the load-bearing bit). */
 export function toUiAgent(a: WireAgent, colors = colorOverlay()): Agent {
   const iso = new Date(a.createdAt).toISOString();
   return {
     id: a.id,
     name: a.name,
-    folderPath: a.id, // the agent id IS the chat route key: /agents/${id}/conversations/...
-    // The REAL directory (local hosts only) — what OS reveal/open needs, since
-    // folderPath here is a route key, not a path (HOU-677).
+    folderPath: a.id,
     localDir: a.dir,
     configId: DEFAULT_AGENT_CONFIG_ID,
-    // Overlay (the user's current pick) → the host's legacy Rust-era color
-    // (`.houston/agent.json`) → the default. Before the wire fallback every
-    // pre-cutover color rendered as the default purple: the Rust engine stored
-    // colors server-side, so the overlay never held them (the reported
-    // everything-turned-purple migration bug).
     color: colors[a.id] ?? a.color ?? DEFAULT_AGENT_COLOR,
     role: a.role,
     timezone: a.timezone,
@@ -46,16 +25,11 @@ export function toUiAgent(a: WireAgent, colors = colorOverlay()): Agent {
   };
 }
 
-/** Map a freshly created wire agent to the UI shape, seeding its color overlay
- *  from the picker's choice (overlay-only; color never crosses the wire). */
 export function createdAgentToUi(agent: WireAgent, color?: string): Agent {
   if (color) setColor(agent.id, color);
   return toUiAgent(agent);
 }
 
-/** Map a renamed wire agent to the UI shape. The local store derives an agent's
- *  id from its on-disk path, so a rename changes the id — carry the color
- *  overlay across to the new id or the avatar reverts to the default color. */
 export function renamedAgentToUi(previousId: string, agent: WireAgent): Agent {
   moveColor(previousId, agent.id);
   return toUiAgent(agent);

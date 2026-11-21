@@ -4,7 +4,6 @@ import {
   assistantErrorResult,
 } from "./assistant-result";
 
-/** The host also checks the live turn mode before performing a write. */
 export function refusedInPlanMode(
   method: string,
   name: string,

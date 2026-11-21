@@ -13,13 +13,6 @@ const SHELL: Record<LineSize, string> = {
   dense: "h-14 border-t border-line px-2 hover:bg-hover",
 };
 
-/**
- * One AI Employee on the ledger: rank, helmet, name and role, the bar with
- * its figure, messages, and its people. The name is the button to its
- * board, stretched over the whole line, so the line opens the board from
- * anywhere while each face stays its own button above it (a button cannot
- * hold another).
- */
 export function OrgChartLine({
   line,
   rank,
@@ -107,7 +100,6 @@ export function OrgChartLine({
   );
 }
 
-/** The captions over a run of lines, in the same cells. */
 export function OrgChartLineHeader({
   size,
   columns,

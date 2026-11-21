@@ -24,7 +24,6 @@ import {
 Object.assign(globalThis, { React });
 const { createElement } = React;
 
-/** The header needs the dialog context for its title and close control. */
 function header(props: Parameters<typeof FlowSheetHeader>[0]): string {
   return renderToStaticMarkup(
     createElement(
@@ -70,8 +69,6 @@ const slotOrder = (html: string): string[] =>
 
 describe("the FlowSheet header", () => {
   it("renders its three slots in one fixed order, empty or not", () => {
-    // The frame must not move between steps: a header that re-centres itself
-    // when Back appears is the tell that a flow was assembled per-step.
     assert.deepEqual(
       slotOrder(header({ title: "Copy agent", closeLabel: "Close" })),
       [
@@ -119,8 +116,6 @@ describe("the FlowSheet header", () => {
   });
 
   it("keeps the title screen-reader-only unless the caller asks for it", () => {
-    // A wide step carries its own headline over its content; a second, smaller
-    // copy of the flow's name above it says nothing the user needed.
     const plain = header({ title: "Copy agent", closeLabel: "Close" });
     assert.match(
       plain,
@@ -172,8 +167,6 @@ describe("the FlowSheet header", () => {
   });
 
   it("closes with the dialog's own X, in the frame's one shape", () => {
-    // A circle in the wide header and a squircle in the compact corner read
-    // as two components; the header X is the corner X, moved into the row.
     const closeClass = (html: string): string =>
       (html.match(/data-slot="dialog-close" class="([^"]*)"/)?.[1] ?? "")
         .replaceAll("&amp;", "&")
@@ -185,12 +178,9 @@ describe("the FlowSheet header", () => {
       assert.ok(inHeader.includes(cls), `header X wears ${cls}`);
     }
     assert.doesNotMatch(inHeader, /rounded-full|size-8/);
-    // The only close control of a wide flow: a keyboard user must see it.
     assert.match(DIALOG_CLOSE_CLASS, /focus-visible:ring-/);
     assert.doesNotMatch(DIALOG_CLOSE_CLASS, /(^|\s)focus:outline-hidden/);
 
-    // The portal never renders on the server, so the corner X is read off
-    // the tree DialogContent returns: the same component, in the corner.
     const corner = findCloseButton(
       (DialogContent as (p: Record<string, unknown>) => React.ReactNode)({
         children: null,
@@ -206,8 +196,6 @@ describe("the FlowSheet frame", () => {
   it("wears the confirm dialog's frame when the step asks one short thing", () => {
     const compact = FLOW_SHEET_CONTENT_CLASSES.compact;
     assert.match(compact, /\bsm:max-w-md\b/);
-    // Height from the CONTENT, capped: a two-card choice must not be stretched
-    // down a screen-sized surface.
     assert.match(compact, /\bmax-h-\[85dvh\]/);
     assert.doesNotMatch(compact, /(?:^|\s)h-\[85dvh\]/);
     assert.match(compact, /\bp-6\b/);
@@ -215,8 +203,6 @@ describe("the FlowSheet frame", () => {
 
   it("wears the tall frame when the step is a catalog to scan", () => {
     const wide = FLOW_SHEET_CONTENT_CLASSES.wide;
-    // 42rem is `2xl`, wider than the `sm` edge the cap starts at: the gutter
-    // has to live inside the cap or the sheet runs edge to edge at 640px.
     assert.match(wide, /\bsm:max-w-\[min\(42rem,calc\(100%-2rem\)\)\]/);
     assert.doesNotMatch(wide, /sm:max-w-2xl/);
     assert.match(wide, /(?:^|\s)h-\[85dvh\]/);
@@ -230,17 +216,11 @@ describe("the FlowSheet frame", () => {
         assert.ok(classes.includes(cls), `${cls} missing from ${classes}`);
       }
     }
-    // The wide frame holds a fixed header over a scrolling body, so the sheet
-    // itself must never scroll. The compact one has no such parts: past the
-    // cap the whole dialog scrolls, title and all, rather than growing a box
-    // with its own bar inside a hand-sized surface.
     assert.match(FLOW_SHEET_CONTENT_CLASSES.wide, /\boverflow-hidden\b/);
     assert.match(FLOW_SHEET_CONTENT_CLASSES.compact, /\boverflow-y-auto\b/);
   });
 
   it("never animates the box it changes between steps", () => {
-    // The size switches as the flow walks. Animating a surface's width or
-    // height is layout animation; DESIGN.md allows transform and opacity only.
     for (const classes of Object.values(FLOW_SHEET_CONTENT_CLASSES)) {
       assert.doesNotMatch(classes, /\btransition/);
     }
@@ -253,24 +233,14 @@ describe("the FlowSheet frame", () => {
   });
 
   it("scrolls the wide body, and makes the compact one no box at all", () => {
-    // The wide body is the one element between a fixed header and a pinned
-    // bar, so it takes the slack and pays its own gutter.
     assert.match(FLOW_SHEET_BODY_CLASSES.wide, /\boverflow-y-auto\b/);
     assert.match(FLOW_SHEET_BODY_CLASSES.wide, /\bmin-h-0\b/);
     assert.match(FLOW_SHEET_BODY_CLASSES.wide, /\bflex-1\b/);
     assert.match(FLOW_SHEET_BODY_CLASSES.wide, /\bpx-5\b.*\bmd:px-8\b/);
-    // The compact body sits inside the dialog's own padding and grows with its
-    // content: no padding, no floor, and — above all — no overflow of its own.
-    // A scroll container there paints a bar down the side of a question that
-    // fits, and the step's 12px entrance scrolls it sideways on every move.
     assert.equal(FLOW_SHEET_BODY_CLASSES.compact, "");
   });
 
   it("stacks the pinned bar's padding on the home-indicator inset", () => {
-    // `pb-safe` alone REPLACES the design padding with an inset that is 0 on
-    // desktop, leaving the bar's buttons flush against the edge. Only the wide
-    // frame pins a bar; the compact one's actions sit inline in a dialog that
-    // is centred well clear of the indicator.
     assert.match(
       FLOW_SHEET_FOOTER_CLASSES.wide,
       /pb-\[calc\(env\(safe-area-inset-bottom\)\+theme\(spacing\.4\)\)\]/,
@@ -284,8 +254,6 @@ describe("the FlowSheet frame", () => {
 
 describe("the FlowSheet compact header", () => {
   it("makes the step's question the dialog's own title", () => {
-    // Not a small centred label over the content: the compact frame reads as a
-    // confirm dialog, so the question is the title and the cards sit under it.
     const html = compactHeader({ title: "What do you want to add?" });
     assert.match(
       html,
@@ -320,15 +288,12 @@ describe("the FlowSheet compact header", () => {
   });
 
   it("leaves the close X to the dialog, top right", () => {
-    // One X per surface: the compact frame keeps DialogContent's own rather
-    // than drawing a second one in a header row it does not have.
     assert.doesNotMatch(compactHeader({ title: "Create a team" }), /Close</);
   });
 });
 
 describe("FlowSheet renders", () => {
   it("mounts on its props and keeps everything inside the portal", () => {
-    // Radix portals mount in an effect, which server rendering never runs.
     const complaints: string[] = [];
     const consoleError = console.error;
     console.error = (...args: unknown[]) =>

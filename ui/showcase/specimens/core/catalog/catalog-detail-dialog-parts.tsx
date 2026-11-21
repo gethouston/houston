@@ -2,13 +2,6 @@ import { Check } from "lucide-react";
 
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * The pieces the {@link CatalogDetailDialog} specimen composes: the API table
- * read off the component's types, and one honest example of the `children`
- * slot — the extra detail a consumer stacks between the description and the
- * footer CTA.
- */
-
 export const detailProps: readonly SpecimenProp[] = [
   {
     name: "open",
@@ -48,7 +41,6 @@ export const detailProps: readonly SpecimenProp[] = [
   },
 ];
 
-/** Sample `children`: what the item can do, the way a store listing shows it. */
 export function DetailCapabilities() {
   return (
     <ul className="flex flex-col gap-2 text-ink-muted text-sm">

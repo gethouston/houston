@@ -23,14 +23,12 @@ test("a not-connected failure on an account the gateway signed out reads as a re
 });
 
 test("the reader's account speaks only for the same account and provider", () => {
-  // Someone else's routine runs on its creator's account, not the reader's.
   expect(
     failureCodeForReader(failure("creator_not_connected"), {
       ...signedOut,
       readerIsCreator: false,
     }),
   ).toBe("creator_not_connected");
-  // A member's personal account is not the space's single account.
   expect(
     failureCodeForReader(failure("team_not_connected"), {
       ...signedOut,

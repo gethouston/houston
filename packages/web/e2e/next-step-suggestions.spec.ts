@@ -58,7 +58,6 @@ test("a change made for the person elsewhere shows without a reload", async ({
     exact: true,
   });
   await expect(toggle).toBeChecked();
-  // What the AI Manager's write does: the same route, outside this window.
   await request.put(`${fakeHost.url}/v1/preferences/next_step_suggestions`, {
     data: { value: "false" },
   });

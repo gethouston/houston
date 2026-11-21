@@ -1,23 +1,6 @@
 import type { CredentialStore } from "../ports";
 import { MemoryTurnBus, type TurnBus } from "./bus";
 
-/**
- * CP-side device-code connect for cloudrun workspaces. Per-turn runtimes are
- * stateless, so the multi-request OAuth dance cannot live there — it lives
- * here, using pi's own OAuth login (the openai-codex provider's `auth.oauth`
- * flow: same client id, endpoints, and rotation semantics as the desktop
- * runtime; nothing reimplemented). The
- * credential lands DIRECTLY in the central store: no refresh token ever
- * touches an agent, which closes the connect-window left by the legacy
- * export/capture/scrub dance.
- *
- * Replica-safety: the poll loop runs on the replica that started the flow,
- * but every state transition is mirrored to the TurnBus — a status poll
- * landing on another replica reads the same state, and a second start() on
- * another replica returns the in-progress flow's device code instead of
- * racing a duplicate login.
- */
-
 export type ConnectInfo = {
   kind: "device_code";
   verificationUri: string;
@@ -30,13 +13,11 @@ export type ConnectState = {
 };
 
 const PROVIDER = "openai-codex";
-/** How long a flow's state survives on the bus (device codes expire well before). */
 const STATE_TTL_SEC = 1_800;
 const stateKey = (ws: string) => `connect:state:${ws}`;
 const lockKey = (ws: string) => `connect:lock:${ws}`;
 
 export class ConnectManager {
-  /** Flows THIS replica is polling (fast path; the bus is the shared truth). */
   private active = new Map<string, ConnectState>();
   private readonly bus: TurnBus;
 
@@ -54,7 +35,6 @@ export class ConnectManager {
     return raw ? (JSON.parse(raw) as ConnectState) : null;
   }
 
-  /** Mirror a transition to the bus so every replica's status() agrees. */
   private async setState(
     workspaceId: string,
     state: ConnectState,
@@ -67,7 +47,6 @@ export class ConnectManager {
     );
   }
 
-  /** Begin (or resume) a device-code connect for a workspace. */
   async start(workspaceId: string): Promise<ConnectInfo> {
     const existing = await this.status(workspaceId);
     if (
@@ -78,8 +57,6 @@ export class ConnectManager {
       return existing.info;
     }
 
-    // Cross-replica guard: exactly one replica owns the login poll loop. A
-    // loser polls the shared state until the owner publishes the device code.
     if (!(await this.bus.setNx(lockKey(workspaceId), "1", STATE_TTL_SEC))) {
       for (let waited = 0; waited < 15_000; waited += 500) {
         await new Promise((r) => setTimeout(r, 500));
@@ -94,14 +71,6 @@ export class ConnectManager {
     const state: ConnectState = { status: "starting" };
     await this.setState(workspaceId, state);
 
-    // The provider's OWN OAuth flow, driven directly. Deliberately NOT
-    // `ModelRuntime.login`: that wrapper needs a throwaway auth.json to
-    // capture the credential from AND follows the store write with a NETWORK
-    // catalog refresh (`refresh({allowNetwork: true})` whenever `PI_OFFLINE`
-    // is unset) — on a stalled network a SUCCESSFUL device-code approval
-    // would hold this workspace's connect lock (and the credential in a temp
-    // file) indefinitely. The direct login returns the credential in-process,
-    // so it lands ONLY in the central store — no file ever holds it.
     const { openaiCodexProvider } = await import(
       "@earendil-works/pi-ai/providers/openai-codex"
     );
@@ -112,9 +81,6 @@ export class ConnectManager {
     let resolveInfo!: (i: ConnectInfo) => void;
     const infoReady = new Promise<ConnectInfo>((r) => (resolveInfo = r));
     const mirror = (next: ConnectState) => {
-      // Sync callbacks can't await; the local map is updated immediately and
-      // the bus mirror failure is loud (another replica would serve stale
-      // status, but THIS flow still completes).
       this.setState(workspaceId, next).catch((err: unknown) =>
         console.error(`[connect:${workspaceId}] state mirror failed:`, err),
       );
@@ -122,14 +88,8 @@ export class ConnectManager {
 
     void oauth
       .login({
-        // pi ≥0.84 requires a concrete abort signal. Bound the poll loop to
-        // the bus state's TTL: the device code expires well before, and an
-        // orphaned flow (user never approves) must not poll forever.
         signal: AbortSignal.timeout(STATE_TTL_SEC * 1000),
         prompt: async (p) => {
-          // Headless: always the device-code path. The manual-code/text
-          // prompts exist for other providers' flows and must never fire
-          // here — failing loudly if they do.
           if (p.type === "select") return "device_code";
           throw new Error(
             `unexpected ${p.type} prompt during a device-code connect`,
@@ -138,8 +98,6 @@ export class ConnectManager {
         notify: (event) => {
           switch (event.type) {
             case "auth_url":
-              // Codex is device-code only; a browser-redirect flow must
-              // never start here — failing loudly if it does.
               state.status = "error";
               state.error =
                 "unexpected browser-redirect flow during a device-code connect";

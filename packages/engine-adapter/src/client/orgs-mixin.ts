@@ -4,32 +4,13 @@ import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
-/**
- * Org administration: who is in the active space, what role they hold, and the
- * account-level activity/usage reads the admin screens render. Every method
- * here delegates to `sdk.org` — the gateway's `/v1/org*` family — which is why
- * the audit/usage trio lives beside the roster rather than with the per-agent
- * settings in {@link TeamsMixin}.
- *
- * The SDK throws on every non-2xx, so the two degradations this family has
- * (an empty roster, empty profiles) are applied HERE, on the status: the SDK
- * is deployment-agnostic and its contract tests pin the un-softened status, so
- * turning one into an empty answer is web policy and belongs to the adapter.
- */
 export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
   class Orgs extends Base {
-    // ---- org / roles (multiplayer) — hosted gateway only ----
     async getOrg(): Promise<controlPlane.OrgInfo> {
       if (!this.ctx.cp)
         throw new Error("multiplayer requires the hosted gateway");
       return viaSdk("/v1/org", () => this.ctx.sdk.org.getOrg());
     }
-    // Teammate display profiles (name + photo) for a set of member ids. Off-cloud
-    // (`this.cp === null`) there is no roster to resolve, so this degrades to an
-    // empty map (faces fall back to initials) rather than throwing — a cosmetic
-    // read, unlike the org mutators above. Mirrors `getBilling`/`listOrgs`.
-    // A gateway that predates the route (404) is the same nothing-to-resolve
-    // answer; every other failure throws.
     async getOrgProfiles(
       ids: string[],
     ): Promise<controlPlane.UserProfilesResult> {
@@ -45,11 +26,6 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw err;
       }
     }
-    // The active space's co-member directory, backing the composer's @mention
-    // autocomplete (HOU-944). Off-cloud (`this.cp === null`) there is nobody to
-    // mention, so this degrades to an empty list — `@` types plainly and no
-    // popover ever opens — rather than throwing, exactly like `getOrgProfiles`,
-    // and a gateway that predates the route (404) reads the same way.
     async getOrgPeople(): Promise<controlPlane.OrgPerson[]> {
       if (!this.ctx.cp) return [];
       try {
@@ -61,9 +37,6 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw err;
       }
     }
-    // What adding one more person costs. A gateway that predates the quote
-    // (404) charges nothing up front, which is what `no_charge` says: the
-    // add then goes through as it always did.
     async quoteSeat(): Promise<SeatQuote> {
       if (!this.ctx.cp)
         throw new Error("multiplayer requires the hosted gateway");
@@ -109,8 +82,6 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
         this.ctx.sdk.org.removeOrgMember(userId),
       );
     }
-    // What removing this member would stop: the routines that run as them.
-    // Owner only; the remove confirmation reads it before asking.
     async listMemberRoutines(
       userId: string,
     ): Promise<controlPlane.MemberRoutines> {
@@ -132,7 +103,6 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
       );
     }
 
-    // ---- account activity + usage — hosted gateway only ----
     async orgAudit(
       opts: { before?: number; limit?: number } = {},
     ): Promise<controlPlane.AuditEntry[]> {
@@ -147,8 +117,6 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("multiplayer requires the hosted gateway");
       return viaSdk("/v1/org/usage", () => this.ctx.sdk.org.orgUsage(days));
     }
-    // Tripwire only: the UI gates the compute section (and its query) on
-    // `capabilities.computeUsage`, which no gateway-less deployment advertises.
     async computeUsage(days: number): Promise<controlPlane.ComputeUsage> {
       if (!this.ctx.cp)
         throw new Error("compute usage requires the hosted gateway");

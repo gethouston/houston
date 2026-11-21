@@ -8,7 +8,6 @@ import {
 } from "./payloads";
 import { ActivitiesCommand, type CreatedActivity } from "./types";
 
-/** The write/read handlers the `dispatch` path shares with the facade. */
 export interface ActivitiesCommandHandlers {
   refresh(agentId: string): Promise<void>;
   create(
@@ -21,10 +20,6 @@ export interface ActivitiesCommandHandlers {
   del(agentId: string, id: string): Promise<void>;
 }
 
-/**
- * Wire the five `activities/*` commands to the module handlers, so the
- * `dispatch` path and the typed facade share one implementation each.
- */
 export function registerActivitiesCommands(
   ctx: ModuleContext,
   { refresh, create, setStatus, rename, del }: ActivitiesCommandHandlers,

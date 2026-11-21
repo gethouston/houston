@@ -22,12 +22,6 @@ import { prepareTurnFilesystem, type TurnFilesystem } from "./turn-filesystem";
 import { handleTurnWriteRoute } from "./turn-sandbox-writes";
 import type { TurnRequest } from "./types";
 
-/**
- * A sleeping agent's store, the pod-store docs route, claimed turns and ops
- * over it: what the view-doc tests interleave to prove a publish never rolls
- * back a concurrent writer.
- */
-
 export const PREFIX = "ws/w1/agent-1";
 export const WORKSPACE_REL = "workspaces/W/A";
 export const ROUTINES_REL = `${WORKSPACE_REL}/.houston/routines/routines.json`;
@@ -41,7 +35,6 @@ export async function seed(root: string, rel: string, content: string) {
 export const skillMd = (slug: string, description: string) =>
   `---\nname: ${slug}\ndescription: ${description}\n---\n\nDo the ${slug}.\n`;
 
-/** A stored routine as the checked write path leaves it. */
 export const routine = (id: string, prompt: string, at = "2026-09-01") => ({
   id,
   name: `Routine ${id}`,
@@ -61,11 +54,9 @@ export const routine = (id: string, prompt: string, at = "2026-09-01") => ({
 type DocsOptions = {
   refusing?: string[];
   outOfScope?: string[];
-  /** Holds a GET (by family and claim conversation) until it resolves. */
   hold?: (family: string, conversation: string) => Promise<void> | undefined;
 };
 
-/** The pod-store docs route: per-family revisioned CAS (409 names the doc). */
 export function podDocs(
   initial: Record<string, unknown> = {},
   opts: DocsOptions = {},
@@ -121,11 +112,6 @@ export function podDocs(
 
 export type PodDocs = ReturnType<typeof podDocs>;
 
-/**
- * Holds one writer's first GET of `family` (by its claim conversation) until
- * the test releases it: the window between a writer landing its file and
- * reading the doc revision it publishes at.
- */
 export function holdFirstGet(family: string, conversation: string) {
   let reached!: () => void;
   const atGet = new Promise<void>((resolve) => {
@@ -146,14 +132,9 @@ export function holdFirstGet(family: string, conversation: string) {
 }
 
 export interface StoreHooks {
-  /** Runs before an upload of `key` lands: another writer can land first. */
   beforeUpload?: (key: string) => Promise<void> | undefined;
 }
 
-/**
- * Runs `race` once, before the first upload of a key ending in `suffix`:
- * the window between a writer's read of a document and its CAS write.
- */
 export function raceFirstUpload(
   hooks: StoreHooks,
   suffix: string,
@@ -166,11 +147,6 @@ export function raceFirstUpload(
   };
 }
 
-/**
- * LocalDirStore with the pool store's generations: every write bumps the
- * key's generation and a write whose `ifGenerationMatch` names another one is
- * a 412. Operations run one at a time, so the fake itself never loses a write.
- */
 export function generationalStore(
   root: string,
   hooks: StoreHooks = {},
@@ -207,7 +183,6 @@ export function generationalStore(
         return { generation: String(current(key)) };
       }),
     upload: async (source, key, opts) => {
-      // Outside the queue: the racing writer's own operations must run.
       const race = hooks.beforeUpload?.(key);
       if (race) await race;
       return serial(async () => {
@@ -226,8 +201,6 @@ export function generationalStore(
   };
 }
 
-/** A store holding a standing agent with one skill, one memory and, with
- *  `routines`, that routines file. */
 export async function agentStore(routines?: unknown[]) {
   const storeRoot = await mkdtemp(join(tmpdir(), "turn-views-store-"));
   const prefixRoot = join(storeRoot, ...PREFIX.split("/"));
@@ -265,7 +238,6 @@ export async function agentStore(routines?: unknown[]) {
 
 export type AgentStore = Awaited<ReturnType<typeof agentStore>>;
 
-/** One family's doc target on `docs`, under a turn claim. */
 export const docTargetFor = (docs: PodDocs, family: string) => ({
   family,
   baseUrl: "https://store.example",
@@ -285,7 +257,6 @@ export const docDeps = (docs: PodDocs) =>
     activityDocRetryDelaysMs: [],
   }) as unknown as TurnServerDeps;
 
-/** One claimed turn hydrated from `agent`, publishing to `docs`. */
 export async function claimedTurn(
   agent: AgentStore,
   docs: PodDocs,
@@ -328,12 +299,10 @@ export async function claimedTurn(
       ...(opts.limits ? { limits: opts.limits } : {}),
       timezone: opts.timezone,
     });
-  /** The agent's save_learning tool: a CAS write straight to the store. */
   const saveLearning = async (text: string) => {
     const response = await writeRoute("/sandbox/learnings/save", { text });
     expect(response?.status).toBe(201);
   };
-  /** The agent's save_routine tool (create without an id, else update). */
   const saveRoutine = async (body: Record<string, unknown>) => {
     const response = await writeRoute("/sandbox/routines/save", body);
     expect(response?.status).toBeLessThan(300);
@@ -341,7 +310,6 @@ export async function claimedTurn(
   return { filesystem, settle, saveLearning, saveRoutine, writeRoute };
 }
 
-/** The host's own GET skills answer over what the store now holds. */
 export async function podSkillsAnswer(agent: AgentStore) {
   return loadSkills(
     new FsVfs(join(agent.prefixRoot, "workspaces")),
@@ -365,13 +333,11 @@ export const skillNames = (docs: PodDocs) =>
     (item) => item.name,
   );
 
-/** The pod's own learnings read over what the store now holds. */
 export async function podLearnings(agent: AgentStore) {
   return (await loadLearnings(new FsVfs(agent.prefixRoot), WORKSPACE_REL))
     .items;
 }
 
-/** The routines the store holds now, normalized as the projector reads them. */
 export async function storedRoutines(agent: AgentStore) {
   const raw = await readFile(
     join(agent.prefixRoot, ...ROUTINES_REL.split("/")),

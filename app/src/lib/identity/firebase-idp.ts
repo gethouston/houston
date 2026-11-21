@@ -1,13 +1,7 @@
-// GCIP federated sign-in over REST: the desktop's Google, Microsoft and Apple
-// exchanges (web and mobile use firebase-js-sdk). An exchange either signs in
-// or, when the provider's email already belongs to an account GCIP will not
-// link on its own, answers `needConfirmation` with what a later link needs.
-
 import { IdentityError } from "./errors.ts";
 import { expiresAtFrom, reqString } from "./firebase-rest.ts";
 import { IDENTITY_TOOLKIT_BASE, postGcipJson } from "./rest-client.ts";
 
-/** Federated provider ids GCIP `signInWithIdp` accepts here. */
 export type IdpProviderId = "google.com" | "microsoft.com" | "apple.com";
 
 const IDP_PROVIDERS: readonly string[] = [
@@ -26,22 +20,15 @@ export interface IdpSignInResult {
   displayName: string | null;
   photoUrl: string | null;
   providerId: string;
-  /** True when THIS exchange created the GCIP account (first sign-in ever). */
   isNewUser: boolean;
 }
 
-/**
- * GCIP's answer when the provider's email already belongs to an account: no
- * session. `email` is absent when email enumeration protection strips it.
- */
 export interface IdpNeedConfirmation {
   providerId: IdpProviderId;
   email: string | null;
-  /** The uid of the account that holds the address. */
   localId: string | null;
   oauthIdToken: string | null;
   oauthAccessToken: string | null;
-  /** Prod GCIP's replayable handle on the provider sign-in, when it sends one. */
   pendingToken: string | null;
 }
 
@@ -49,15 +36,11 @@ export type IdpExchange =
   | { kind: "signed_in"; result: IdpSignInResult }
   | { kind: "need_confirmation"; confirmation: IdpNeedConfirmation };
 
-/** A provider credential `signInWithIdp` can replay: GCIP's pending token
- *  alone when it sent one, as firebase-js-sdk does, else the provider's own
- *  tokens. */
 export type IdpCredential = { pendingToken: string } | { postBody: string };
 
 const text = (body: Record<string, unknown>, key: string): string | null =>
   typeof body[key] === "string" && body[key] ? (body[key] as string) : null;
 
-/** The `postBody` GCIP reads a provider's OIDC / OAuth tokens from. */
 export function idpPostBody(
   providerId: IdpProviderId,
   idToken: string | null,
@@ -113,7 +96,6 @@ function exchangeFrom(
 const signInWithIdpUrl = (apiKey: string) =>
   `${IDENTITY_TOOLKIT_BASE}/accounts:signInWithIdp?key=${apiKey}`;
 
-/** Federated sign-in. Supply an OIDC `idToken` and/or OAuth `accessToken`. */
 export async function signInWithIdp(params: {
   apiKey: string;
   providerId: IdpProviderId;
@@ -136,15 +118,6 @@ export async function signInWithIdp(params: {
   return exchangeFrom(body, params.providerId);
 }
 
-/**
- * Session-based federated sign-in completion, the second half of the
- * GCIP-BROKERED flows (Apple via the gateway deep-link bridge, Microsoft via
- * the loopback): `createAuthUri` minted the authorize URL and a
- * `sessionId`; after the provider bounced through GCIP's handler back to the
- * loopback `continueUri`, the FULL callback URL goes back as `requestUri` and
- * GCIP redeems the pair itself — no provider token exchange on the client, no
- * provider secret anywhere near it.
- */
 export async function signInWithIdpSession(params: {
   apiKey: string;
   requestUri: string;
@@ -159,13 +132,6 @@ export async function signInWithIdpSession(params: {
   return exchangeFrom(body, "");
 }
 
-/**
- * Link a provider credential onto the account behind `idToken`. GCIP answers
- * with fresh tokens for that account, now carrying the provider, even when
- * the provider's email differs from the account's: the caller guards that.
- * An identity that already belongs to an account (this one or another)
- * throws `identity_already_linked`.
- */
 export async function linkIdpToSession(params: {
   apiKey: string;
   idToken: string;

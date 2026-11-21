@@ -19,13 +19,6 @@ import { usePortal } from "../../hooks/queries/use-billing";
 import type { ChargeDialog } from "./people-seat-flow";
 import { SeatChargeRefusal } from "./seat-charge-refusal";
 
-/**
- * Asks the payer of a yearly org to pay for one more seat before adding
- * someone: what is charged now (for the time left until renewal) and what
- * the plan costs at renewal with the seat. The confirm button names the
- * amount. A declined card or a bank check keeps the dialog up with nobody
- * added, Manage billing, and Try again. It cannot close while charging.
- */
 export function SeatChargeDialog({
   dialog,
   billing,

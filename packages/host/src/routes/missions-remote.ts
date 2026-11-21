@@ -3,18 +3,6 @@ import type { AssistantGateway } from "./assistant-forward";
 import { optionalTrimmed } from "./http";
 import type { RemoteMissionTarget } from "./missions-directory";
 
-/**
- * The cross-pod mission CONTRACT: what a start says, and where it came from.
- *
- * In managed cloud every agent is its own pod, so a mission the personal
- * assistant starts on another agent travels the user's own control plane —
- * `POST {gateway}/agents/{slug}/missions/start` (missions-remote-forward.ts),
- * dispatched by the gateway into that agent's pod, which serves it with the
- * SAME handlers a local start takes (missions-remote-inbound.ts). One payload
- * shape per call, parsed once here, so the two entries can never drift.
- */
-
-/** The route a resolved remote target is driven through. */
 export interface RemoteMissionRoute {
   target: RemoteMissionTarget;
   gateway: AssistantGateway;
@@ -22,13 +10,11 @@ export interface RemoteMissionRoute {
   actingAs?: string;
 }
 
-/** A board move, in the vocabulary both entries take it in. */
 export interface MissionStatusInput {
   id: string;
   status: "done" | "archived";
 }
 
-/** A start request, validated but not yet resolved against a target. */
 export interface MissionStartInput {
   title: string;
   prompt: string;
@@ -37,32 +23,14 @@ export interface MissionStartInput {
   model?: string;
 }
 
-/**
- * Where a cross-pod mission came from. The target pod stamps `session_key` as
- * the mission's `origin_session_key` (the agent-started marker the local path
- * writes), and refuses a `depth` past the first level — the same flat board
- * the local depth guard keeps, enforced on the side that owns the board.
- */
 export interface MissionOrigin {
   session_key: string;
-  /** The verified calling agent is absent for AI Manager starts. */
   agent?: string;
-  /** How deep the mission being started sits: 1 when a person's chat asked. */
   depth: number;
 }
 
-/**
- * The deepest a mission may sit. Depth 1 is work a PERSON asked for; a mission
- * started by another mission would be depth 2, which is refused - the board stays a flat
- * list and a spawn loop cannot run away.
- *
- * The number is carried rather than assumed because the caller's parent chat
- * can live in another pod, where the target has no way to look it up: the
- * caller counts it from its own board and the target enforces the ceiling.
- */
 export const MAX_MISSION_DEPTH = 1;
 
-/** The model reads this refusal, so it names no product as the actor. */
 export const MISSION_DEPTH_ERROR =
   "a mission started by another mission can't start further missions - ask in the original chat instead";
 
@@ -70,7 +38,6 @@ export type MissionParse<T> =
   | { ok: true; value: T }
   | { ok: false; error: string; code: string };
 
-/** The fields every start carries, wherever the call came from. */
 export function parseMissionStart(
   body: Record<string, unknown>,
 ): MissionParse<MissionStartInput> {
@@ -107,11 +74,6 @@ export function parseMissionStart(
   };
 }
 
-/**
- * The fields every board move carries. A move is the agent's ONE deliberate
- * board write, so its two entries — the runtime's own route and the leg from
- * another pod — must accept exactly the same thing.
- */
 export function parseMissionStatus(
   body: Record<string, unknown>,
 ): MissionParse<MissionStatusInput> {
@@ -127,11 +89,6 @@ export function parseMissionStatus(
   return { ok: true, value: { id, status } };
 }
 
-/**
- * The provenance envelope a cross-pod start must carry. Missing or past the
- * first level, the mission is refused: the target owns its board's flatness,
- * and a caller claiming a deeper origin is telling it the loop already ran.
- */
 export function parseMissionOrigin(
   body: Record<string, unknown>,
 ): MissionParse<MissionOrigin> {
@@ -157,15 +114,6 @@ export function parseMissionOrigin(
   return { ok: true, value: { session_key: sessionKey, agent, depth } };
 }
 
-/**
- * What a successful start answers with, on BOTH entries (the local route and
- * the inbound cross-pod leg, which run the same handler). `provider`/`model`
- * are the pins the mission actually runs on as the TARGET resolved them, which
- * is why they are echoed rather than assumed: a start that named a provider
- * the target clamps, or named none at all, still has to be reported truthfully
- * by the runtime's `start_mission`. Absent means the mission inherits the
- * target runtime's own defaults, which are not decided until the turn runs.
- */
 export interface MissionStartResponse {
   id: string;
   title: string;

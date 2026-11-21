@@ -61,8 +61,6 @@ test("a doc still contended after every round is reported, not claimed", async (
 });
 
 test("a derived doc reads the object only after the revision it lands at", async () => {
-  // The order is the whole guarantee: a writer whose object landed before
-  // this read is in the doc; one landing after meets this PUT's revision.
   const store = docStore([row("run-0", 0)]);
   const steps: string[] = [];
   const traced = (async (url: unknown, init?: RequestInit) => {
@@ -82,7 +80,6 @@ test("a derived doc reads the object only after the revision it lands at", async
 test("a derived doc that lost the race re-reads the object, never re-sends its copy", async () => {
   const store = docStore([row("run-0", 0)]);
   let object = [row("run-0", 0), row("mine", 1)];
-  // Another writer lands its object AND its doc between our read and PUT.
   store.raceNextPut([row("run-0", 0), row("other", 2)]);
   const raced = (async (url: unknown, init?: RequestInit) => {
     if (init?.method === "PUT" && object.length === 2)

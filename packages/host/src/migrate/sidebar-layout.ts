@@ -18,17 +18,11 @@ import {
 
 const LAYOUT_KEY = "sidebar_layout";
 
-/**
- * The v2 layout a stored document converts to, or null when the value is not
- * a document at all. Legacy and malformed documents are normalized rather
- * than rejected: every group they still name survives the conversion.
- */
 export function migrateStoredSidebarLayout(raw: unknown): SidebarLayout | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   return normalizeSidebarLayout(raw);
 }
 
-/** Convert the stored layout, recording its legacy notes in the SAME write. */
 function convertLayout(vfs: Vfs, ws: Workspace): Promise<void> {
   return withDocLock(prefDocKey(ws.id), async () => {
     const prefs = await loadPreferences(vfs, ws.id);
@@ -48,7 +42,6 @@ function convertLayout(vfs: Vfs, ws: Workspace): Promise<void> {
   });
 }
 
-/** Clear the marker unless a newer conversion replaced it meanwhile. */
 function clearMarker(vfs: Vfs, ws: Workspace, marker: string): Promise<void> {
   return withDocLock(prefDocKey(ws.id), async () => {
     const prefs = await loadPreferences(vfs, ws.id);
@@ -58,11 +51,6 @@ function clearMarker(vfs: Vfs, ws: Workspace, marker: string): Promise<void> {
   });
 }
 
-/**
- * Convert every stored layout to v2, then remove the GROUP.md notes a legacy
- * layout mirrored. Pending removals persist in the preferences document until
- * they all succeed, so an interrupted boot finishes on the next one.
- */
 export async function migrateSidebarLayout(opts: {
   store: WorkspaceStore;
   vfs: Vfs;

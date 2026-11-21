@@ -1,8 +1,3 @@
-/**
- * The last step of a queued warming send (`warming-sends.ts`): verify its
- * pin against the now-awake engine and put the turn on the wire.
- */
-
 import { getConversationFeed } from "../hooks/use-conversation-vm";
 import { isAgentGoneError } from "./agent-gone";
 import type {
@@ -25,14 +20,6 @@ import {
 } from "./warming-send-pin";
 import type { WarmingPromptChoice } from "./warming-send-prompt";
 
-/**
- * True when this refusal means the agent vanished between the readiness probe
- * and the write (deleted/unshared elsewhere, HOUSTON-APP-4ZF): every remaining
- * send is doomed to the same "agent not found" 404, so the flush stops and the
- * roster heals instead of surfacing a state the user cannot act on. The probe's
- * own gone-check catches this before the flush starts; this guards the
- * in-flight race.
- */
 export function abortsFlushAsAgentGone(e: unknown): boolean {
   if (!isAgentGoneError(e)) return false;
   logger.warn(`[warming-sends] agent gone mid-flush, aborting: ${e}`);
@@ -40,7 +27,6 @@ export function abortsFlushAsAgentGone(e: unknown): boolean {
   return true;
 }
 
-/** What the flush does after a send: carry on, or stop (the agent is gone). */
 export type WireOutcome = "next" | "abort";
 
 async function pinFor(
@@ -48,10 +34,6 @@ async function pinFor(
   send: PendingWarmingSend,
   activityId: string | undefined,
 ) {
-  // A parked follow-up (no row of its own) carries the composer's guess at
-  // the mission's pin — the pod answers now, so read the row's stored pin
-  // before verifying it (PRODUCT-1643). A failed read keeps the guess: the
-  // wrapper already reported it, and the message still delivers.
   let rowPin: RowPin | undefined;
   if (!send.row) {
     try {
@@ -91,7 +73,6 @@ async function pinFor(
   });
 }
 
-/** Sends one queued turn. */
 export async function wireWarmingSend(
   entry: ProvisioningEntry,
   send: PendingWarmingSend,
@@ -104,14 +85,9 @@ export async function wireWarmingSend(
       ? send.sessionKey.slice("activity-".length)
       : undefined);
   const pin = await pinFor(entry, send, activityId);
-  // The bubble is already on screen (pushed at queue time, or restored on
-  // rehydrate) — never double it. If the scope is somehow empty (renamed
-  // agent moved the VM scope), let the turn push it.
   const suppress = getConversationFeed(entry.agentPath, send.sessionKey).some(
     (f) => f.feed_type === "user_message",
   );
-  // The title this mission skipped at queue time (HOU-713). The card was
-  // created with the same fallback (create-mission-warming.ts).
   const titlePlan = missionTitlePlan(
     send.titleText
       ? { fallback: fallbackMissionTitle(send.titleText), text: send.titleText }
@@ -126,18 +102,12 @@ export async function wireWarmingSend(
       mentions: send.mentions,
       grants: send.grants,
       suppressUserBubble: suppress,
-      // A prompt from either hidden source (built now, or resolved at queue
-      // time) means the bubble must show the user's words instead.
       displayText: hiddenPromptDisplayText(send.text, wire.source !== "text"),
-      // Set only where the server titles the card after this first reply.
       missionTitle: titlePlan.send,
     });
-    // Everywhere else the client titles the card, once its row has landed.
     if (rowId) titleLandedMission(entry.agentPath, rowId, titlePlan);
   } catch (e) {
     if (abortsFlushAsAgentGone(e)) return "abort";
-    // tauriChat.send already toasted the real reason; keep flushing the
-    // rest — one refused turn must not strand the queue.
     logger.error(`[warming-sends] deferred send failed: ${e}`);
     return "next";
   }

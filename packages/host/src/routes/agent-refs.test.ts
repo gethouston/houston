@@ -7,13 +7,6 @@ import {
   qualifiedAgentRef,
 } from "./agent-refs";
 
-/**
- * The one ladder every agent-naming surface walks. What is pinned here is what
- * a written reference is allowed to mean — and, just as much, what it must
- * NEVER be allowed to mean: a bare name two spaces both use is two answers,
- * and picking one of them puts a user's work where they never look.
- */
-
 const ref = (
   id: string,
   name: string,
@@ -45,8 +38,6 @@ test("nothing matches an agent that is not a candidate", () => {
 });
 
 test("a reference whose space has no name still matches by name", () => {
-  // The shape an agent in another pod arrives in: a slug and a name, with no
-  // space the caller would recognize.
   const remote = ref("slug-1", "Dobby", "", "");
   expect(matchAgentRefs([remote], "dobby")).toEqual([remote]);
   expect(qualifiedAgentRef(remote)).toBe("Dobby");

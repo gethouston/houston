@@ -1,15 +1,3 @@
-// Reading a stored Academy record back: what makes a blob trustworthy.
-//
-// All-or-nothing, like the onboarding-survey parser: a wrong version, a
-// malformed entry or a negative award means the blob is not one of ours, and
-// starting the Academy over beats rendering a rank built on a half-trusted
-// record. The other copy (mirror or preference) usually still holds the truth.
-//
-// The economy fields are ADDITIVE: a record written before they existed simply
-// has none, and parses to their empty values. A field that IS present must be
-// well-formed — an absent field is a record from an older build, a corrupt one
-// is a record we cannot reason about.
-
 import {
   ACADEMY_RECORD_VERSION,
   type AcademyChapterProgress,
@@ -24,8 +12,6 @@ function isIsoTimestamp(value: unknown): value is string {
   return typeof value === "string" && !Number.isNaN(Date.parse(value));
 }
 
-/** A LOCAL calendar day, `YYYY-MM-DD`. The shape is checked before the value so
- *  `2026-8-1` and `2026-02-31` are both refused. */
 function isDayStamp(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value))
     return false;
@@ -41,7 +27,6 @@ function isChapterProgress(value: unknown): value is AcademyChapterProgress {
   return isIsoTimestamp(entry.completedAt) && isPointCount(entry.experience);
 }
 
-/** Chapters and lessons share one shape, so they share one parser. */
 function parseEntries(
   value: unknown,
 ): Partial<Record<string, AcademyChapterProgress>> | null {
@@ -58,18 +43,6 @@ function parseEntries(
   return entries;
 }
 
-/**
- * The per-install usage counters. A record written before they existed has a
- * `usagePoints` total instead, which is folded onto {@link LEGACY_DEVICE_ID} —
- * one more install, from the user's point of view, and one that never earns
- * again. The two are never read together: the total a new writer leaves beside
- * the counters is a compatibility field for older builds and would double the
- * user's points if it were counted as well.
- *
- * NEITHER present is a record from a build that had no economy at all, and
- * opens with an empty one — additive, like every other economy field. A present
- * total that is not a count is still a refusal: that record is corrupt.
- */
 function parseUsageByDevice(
   byDevice: unknown,
   total: unknown,
@@ -110,7 +83,6 @@ export function parseAcademyRecord(raw: string | null): AcademyRecord | null {
   if (!parsed || typeof parsed !== "object") return null;
   const record = parsed as Partial<AcademyRecord>;
   if (record.version !== ACADEMY_RECORD_VERSION) return null;
-  // Chapters predate every other field: a record without them is not ours.
   const chapters =
     record.chapters === undefined ? null : parseEntries(record.chapters);
   const lessons = parseEntries(record.lessons);
@@ -129,7 +101,6 @@ export function parseAcademyRecord(raw: string | null): AcademyRecord | null {
     version: ACADEMY_RECORD_VERSION,
     chapters,
     lessons,
-    // Tolerant, unlike every field above: see `parseLessonPositions`.
     lessonPositions: parseLessonPositions(record.lessonPositions),
     usageByDevice,
     usageDay,

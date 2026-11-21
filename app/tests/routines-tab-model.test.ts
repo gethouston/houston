@@ -156,10 +156,7 @@ describe("routines tab model — runChatActivity", () => {
   });
 
   it("reconstructs the session key when the run record is gone (pruned)", () => {
-    strictEqual(
-      runChatActivity(routine, "run9").session_key,
-      "routine-r1", // shared chat mode -> the routine's one conversation
-    );
+    strictEqual(runChatActivity(routine, "run9").session_key, "routine-r1");
     strictEqual(
       runChatActivity({ ...routine, chat_mode: "per_run" }, "run9").session_key,
       "routine-r1-run9",

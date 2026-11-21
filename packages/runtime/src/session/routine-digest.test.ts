@@ -31,7 +31,6 @@ function turn(
 
 const LONG_REPLY = `Run 6: ${"ticket waiting;\n".repeat(50)}`;
 
-/** Six fires, one failed, and a person's message between the last two. */
 const CHAT: ChatMessage[] = [
   ...[0, 1, 2].flatMap((n) =>
     turn(`r${n}`, at(8 + n), { content: `Run ${n}: ${n} new tickets.` }),
@@ -80,8 +79,6 @@ test("a fire's digest lists the newest five turns, each reply cut, then the poin
 });
 
 test("the digest drops its oldest lines to stay within its token budget", () => {
-  // CJK runs near one token a character: five 600-character excerpts are
-  // well over the budget, so the oldest go first.
   const chat = [
     ...Array.from({ length: 10 }, (_, n) =>
       turn(`r${n}`, at(n), {
@@ -160,7 +157,6 @@ test("the digest's pointer resolves, from the workspace, to the results file", (
   expect(text).toContain(`in the file ${POINTER},`);
   const file = readFileSync(join(workspaceDir, POINTER), "utf8");
   expect(file).toBe(renderRoutineResults(routineTurns(CHAT, "now")));
-  // The full replies the digest only excerpts, and the runs it left out.
   expect(file).toContain(LONG_REPLY.trim());
   expect(file).toContain("Run 0: 0 new tickets.");
 });

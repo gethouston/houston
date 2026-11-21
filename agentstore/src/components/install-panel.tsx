@@ -15,25 +15,16 @@ import {
 } from "@/lib/houston-launch";
 import { CopyButton } from "./copy-button";
 
-/** Where a visitor without the app goes to get it. */
 const HOUSTON_DOWNLOAD_URL = "https://gethouston.ai/#download";
 
-/** How long we wait for Houston to take focus before offering a fallback. */
 const LAUNCH_FALLBACK_MS = 1500;
 
 export interface InstallPanelProps {
   agentName: string;
-  /** Agent Store slug, used to build the "Open in Houston" deep link. */
   slug: string;
-  /** Pre-built, server-rendered copy-paste install instructions. */
   instructions: string;
 }
 
-/**
- * The detail-page install surface: ONE "Try it now" button opening a
- * two-item menu — launch Houston (existing deep-link + timed fallback) or
- * copy the coding-agent install instructions.
- */
 export function InstallPanel({
   agentName,
   slug,
@@ -71,11 +62,8 @@ function OpenInHouston({
     const deepLink = buildStoreInstallDeepLink(slug);
     if (!deepLink) return;
 
-    // A repeat click supersedes the previous attempt entirely.
     cleanupRef.current?.();
 
-    // If Houston opens, the browser tab loses focus or is hidden. Track that so
-    // a user who already has the app never sees the "don't have it?" fallback.
     let launched = false;
     const markLaunched = () => {
       launched = true;
@@ -83,8 +71,6 @@ function OpenInHouston({
     window.addEventListener("blur", markLaunched, { once: true });
     document.addEventListener("visibilitychange", markLaunched, { once: true });
 
-    // A hidden iframe navigates to the custom scheme without a top-level
-    // "unknown protocol" error page when Houston is not installed.
     if (iframeRef.current) iframeRef.current.src = deepLink;
 
     const timer = window.setTimeout(() => {

@@ -6,12 +6,6 @@ import { RosterEmployeeCard } from "./roster-employee-card";
 import type { RosterPatch } from "./team-roster-edit";
 import type { RosterMember } from "./team-roster-model";
 
-/**
- * On the basic team screen, the hires made one by one whose create or save
- * failed. They live on the roster, off this screen, yet the team only
- * finishes once they are tried again (or a failed create is let go), so they
- * are named here, each on its own card saying why.
- */
 export function TeamBasicAttention({
   members,
   takenNames,

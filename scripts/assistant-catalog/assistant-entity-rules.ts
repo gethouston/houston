@@ -1,64 +1,16 @@
 import type { AssistantEntityCollection } from "@houston/domain/assistant-catalog-types";
 import { FIELD_SOURCES } from "./assistant-field-rules.ts";
 
-/**
- * WHAT a parameter's value is, in one table.
- *
- * An identifier is never guessable. The catalog already says a parameter is a
- * string; what it could not say is that the string must be an agent that exists,
- * which operation would have listed it, and whether the host can check it
- * before the call leaves - so a model asked to rename an agent invented a slug
- * and the call 404'd with nothing to correct from. Each rule below answers all
- * three: the operation that enumerates the values (`discovery`), and either the
- * live `EntityDirectory` list the host resolves the value against
- * (`collection`) or the reason no live list backs it (`unlisted`).
- *
- * DECLARATIVE on purpose. The mapping is derived from the route the generator
- * already extracted - the literal segment a placeholder follows (`/agents/{x}`
- * -> an agent, `/routines/{x}` -> a routine) - so a new operation on an existing
- * collection is identified the day it is annotated, with nothing added here.
- * Only genuinely new collections, and the handful of body/query fields whose
- * route cannot say what they are, need a line.
- */
-
 export interface EntityRule {
-  /**
-   * The literal path segment a placeholder must directly follow for this rule
-   * to claim it. `/v1/org/invites/{inviteId}` -> `invites`.
-   */
   after?: string;
-  /**
-   * Parameter names this rule claims, matched against the parameter itself and
-   * against the body key or query key that carries it - for the values a path
-   * cannot describe.
-   */
   names?: readonly string[];
-  /**
-   * Narrows `names` to routes whose path contains this substring. A relative
-   * file path means one thing under `/files` (a document in the agent's
-   * workspace, which `listProjectFiles` enumerates) and another under
-   * `/agentfile` (a `.houston` document addressed by convention, which nothing
-   * lists), and the parameter is spelled `relPath` in both.
-   */
   pathContains?: string;
-  /** The operation whose result lists the accepted values. */
   discovery?: string;
-  /** The `EntityDirectory` list the host resolves the value against, live. */
   collection?: AssistantEntityCollection;
-  /** Why no live list backs this identifier. Every rule states one or the other. */
   unlisted?: string;
 }
 
-/**
- * The collections, in the order they are consulted. `after` beats `names`: the
- * route is the stronger evidence, because it is the path the value is actually
- * spliced into. The body-field rules come LAST, so a qualified `<param>.<field>`
- * name can never shadow a rule the path itself established.
- */
 export const ENTITY_SOURCES: readonly EntityRule[] = [
-  // Agents. Every `/agents/{…}` and `/v1/agents/{…}` segment, under all four
-  // spellings the adapter uses for the same value (`id`, `agentId`,
-  // `agentPath`, `agentSlugOrId`).
   {
     after: "agents",
     names: ["agentId", "agentPath", "agentSlugOrId"],
@@ -132,8 +84,6 @@ export const ENTITY_SOURCES: readonly EntityRule[] = [
     unlisted:
       "The directory lists the app's own things, so read a self-added app's slug from customIntegrations.",
   },
-  // A messaging connection (`/v1/channels/connections/{id}`) shares the segment
-  // with an app connection, so it is claimed first, by the path it sits under.
   {
     after: "connections",
     names: ["connectionId"],
@@ -149,10 +99,6 @@ export const ENTITY_SOURCES: readonly EntityRule[] = [
     unlisted:
       "A connection lives with the integration provider, so read its id from integrationConnections.",
   },
-  // A chat: it lives in the agent's own engine, which no directory collection
-  // covers, so the id comes from the `conversations.list` read. `after` claims
-  // the `{id}` the rename and delete routes carry; `names` claims the body and
-  // query spellings.
   {
     after: "conversations",
     names: ["conversationId"],
@@ -160,8 +106,6 @@ export const ENTITY_SOURCES: readonly EntityRule[] = [
     unlisted:
       "A chat lives in the agent's own engine, not in the directory, so read its id from conversations.list.",
   },
-  // The toolkit slug a trigger catalog is asked for: a query key, so the path
-  // says nothing about it.
   {
     names: ["toolkit"],
     discovery: "integrationToolkits",

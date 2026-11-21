@@ -39,9 +39,6 @@ test("entries new on either side both survive", () => {
 });
 
 test("an entry both sides changed goes whole to the newer side, never a mix", () => {
-  // One side moved the routine from its schedule to a trigger, the other
-  // changed the schedule later. A field mix would carry both wake mechanisms,
-  // which the routine reader drops, so the whole newer entry lands.
   const base = [r("a", { schedule: "0 9 * * *" })];
   const local = [
     r("a", {

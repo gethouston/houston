@@ -15,7 +15,6 @@ test("automatic publishes and rollbacks carry the live required floor, never the
   expect(select).toContain("required=$current_required");
   expect(select).not.toMatch(/required_native_build[^\n]*native-compat\.json/);
   expect(select).not.toContain("cp packages/mobile/native-compat.json");
-  // Only the explicit dispatch raises it, and only upward.
   expect(select).toContain("required=$RAISE_REQUIRED");
   expect(select).toContain('test "$RAISE_REQUIRED" -gt "$current_required"');
   expect(yaml).toContain("options: [rollback, raise-required-native-build]");
@@ -39,7 +38,6 @@ test("only cloud-v releases of main commits no older than the live bundle publis
   expect(yaml).toContain(
     'packages/mobile/scripts/ota-commit-guard.sh origin/main HEAD "$live_sha"',
   );
-  // The guard runs before the build, for every non-dispatch publish.
   expect(yaml.indexOf("- name: Refuse off-main or older commits")).toBeLessThan(
     yaml.indexOf("- name: Build mobile bundle"),
   );
@@ -51,7 +49,6 @@ test("an immutable bundle object is never overwritten with different bytes", () 
   expect(upload).toContain('if [ "$upload_zip" = true ]; then');
   expect(upload).toContain("--if-generation-match=0");
   expect(upload).toContain("max-age=31536000,immutable");
-  // A rerun signs the bytes already published under that name.
   expect(yaml).toContain(
     'gcloud storage cp "gs://houston-mobile-updates/$CHANNEL/$built.zip" packages/mobile/update.zip',
   );

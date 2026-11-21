@@ -82,7 +82,6 @@ test("a provider this process cannot warm answers 202 without warming", async ()
 });
 
 test("a prewarm passes the turn's own gates", async () => {
-  // A single-use worker, as in a sandbox: a missing incarnation is refused.
   const { base, warmer } = await serve({
     singleUse: { begin: async () => {}, settled: () => {} },
   });
@@ -142,7 +141,6 @@ test("a turn's arrival stops the warm before anything else", async () => {
   expect(warmer.stops).toBe(1);
 });
 
-// A process serves one sign-in or work, never both.
 function loginServe() {
   const start = vi.fn(async () => ({
     kind: "auth_code" as const,

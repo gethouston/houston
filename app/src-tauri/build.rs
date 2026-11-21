@@ -6,26 +6,6 @@ fn main() {
     configure_auth_storage(&dotenv_pairs);
     configure_sentry_env(&dotenv_pairs);
 
-    // Stage the two bundled externalBins from `target/host-sidecar/` into
-    // `app/src-tauri/binaries/…-<triple>` so tauri's `externalBin` picks them up:
-    //   houston-host-<triple>  → binaries/houston-engine-<triple>  (the host sidecar)
-    //   claude-<triple>        → binaries/claude-<triple>          (Claude Code CLI)
-    // Both are produced by `scripts/build-host-sidecar.sh` (CI wires this into the
-    // release workflow); the claude binary is staged next to the sidecar so the
-    // Bun-compiled runtime can resolve it as a sibling (see
-    // packages/runtime/src/backends/claude/binary-path.ts). NOTE: the claude
-    // binary is large (~232MB per arch; the macOS universal build lipos two
-    // slices into a ~470MB fat Mach-O), so it dominates the bundle size.
-    //
-    // Missing → depends on the profile. Debug builds warn + stage a harmless
-    // placeholder: the dev loop runs the app against an externally-run host
-    // (`pnpm dev:host` + VITE_NEW_ENGINE_URL) and never spawns the staged
-    // sidecar (nor `claude auth login`), so `pnpm tauri dev` must still compile
-    // without the bun-compiled host / claude binary on disk. Release builds
-    // FAIL: a signed, installable bundle whose sidecar is the placeholder can
-    // never serve, which is strictly worse than a failed build (release CI
-    // compiles the host + stages claude first; a local `pnpm tauri build` must
-    // too).
     if let Err(e) = stage_host_sidecar() {
         if release_profile() {
             panic!(
@@ -47,14 +27,6 @@ fn main() {
         println!("cargo:warning=claude binary staging skipped: {e}");
     }
 
-    // Stage the bundled whisper.cpp dictation sidecar into
-    // `binaries/whisper-cli-<triple>` for Tauri's `externalBin`. Unlike the host sidecar, a missing whisper-cli NEVER fails the build —
-    // not even a release build. It is deliberately kept OUT of the fail-closed
-    // host-sidecar stamp guard: a broken/absent whisper build must be caught by
-    // the release workflow's own `test -x` gate (scripts/build-whisper.sh runs
-    // there before `tauri build`), not by build.rs, so a local `pnpm tauri
-    // build` never hard-depends on having built whisper first. Missing → a
-    // placeholder that exits non-zero, so a dictation attempt fails loudly.
     if let Err(e) = stage_whisper_sidecar() {
         println!("cargo:warning=whisper staging skipped: {e}");
     }
@@ -117,16 +89,6 @@ fn configure_bug_report_env(dotenv_pairs: &[(String, String)]) {
 }
 
 fn configure_sentry_env(dotenv_pairs: &[(String, String)]) {
-    // Bake SENTRY_DSN + the SENTRY_SEND_IN_DEV dev opt-in into the binary the
-    // same way the frontend's Vite define reads them (shell env preferred over
-    // a dotenv file). The explicit `rerun-if-env-changed` is the point: it
-    // forces a recompile + re-bake when either var changes in the SHELL, so the
-    // native `option_env!` gate (lib.rs) can never go stale relative to the
-    // renderer's `__SENTRY_SEND_IN_DEV__` define (HOU-469). Without it a
-    // shell-only toggle could leave the renderer sending while the native
-    // client stayed suppressed for the same `pnpm tauri dev` session. We don't
-    // rely on rustc's implicit env tracking for `option_env!` — this is explicit
-    // and matches the LINEAR_* / auth-storage pattern above.
     for key in ["SENTRY_DSN", "SENTRY_SEND_IN_DEV"] {
         println!("cargo:rerun-if-env-changed={key}");
         if let Some(value) = env_value(key, dotenv_pairs) {
@@ -256,27 +218,15 @@ fn stage_external_bin(
     let triple = std::env::var("TARGET").unwrap_or_default();
     let ext = if cfg!(windows) { ".exe" } else { "" };
 
-    // The compile script names outputs by the same rust triple Tauri uses as the
-    // externalBin suffix, so for a given `cargo --target <triple>` invocation the
-    // source binary is at exactly this path.
     let host_dir = workspace.join("target").join("host-sidecar");
     let mut candidates: Vec<PathBuf> = Vec::new();
     if !triple.is_empty() {
         candidates.push(host_dir.join(format!("{source_stem}-{triple}{ext}")));
     }
-    // Fallback for a default-triple build where TARGET is unset.
     candidates.push(host_dir.join(format!("{source_stem}{ext}")));
 
-    // Watch every candidate source in BOTH arms. Cargo re-runs a build script
-    // whose watched file is missing, so after `build-host-sidecar.sh` produces
-    // the binary the next build re-runs this script and replaces a previously
-    // staged placeholder — without this, the placeholder is sticky until some
-    // unrelated input dirties the script.
     for candidate in &candidates {
         println!("cargo:rerun-if-changed={}", candidate.display());
-        // Re-stage when the freshness stamp changes too: rebuilding the sidecar
-        // rewrites `<binary>.stamp` with the new HEAD, so watching it re-runs
-        // this script and replaces a previously staged (now-stale) binary.
         if require_fresh {
             println!("cargo:rerun-if-changed={}.stamp", candidate.display());
         }
@@ -293,8 +243,6 @@ fn stage_external_bin(
 
     match candidates.iter().find(|p| p.exists()) {
         Some(src) => {
-            // Release builds must not ship a sidecar compiled against stale
-            // source (inputs changed since the stamp commit, or a dirty tree).
             if require_fresh && release_profile() {
                 verify_sidecar_fresh(src, workspace)?;
             }
@@ -306,8 +254,6 @@ fn stage_external_bin(
             );
         }
         None => {
-            // No staged binary on disk. Release builds must not ship the
-            // placeholder — surface the miss as a hard error (main panics).
             if release_profile() {
                 return Err(format!(
                     "no staged {label} binary found. Tried:\n  - {}",
@@ -318,15 +264,6 @@ fn stage_external_bin(
                         .join("\n  - ")
                 ));
             }
-            // Debug builds (typical for `pnpm tauri dev`, which talks to an
-            // externally-run host and never spawns this file): Tauri's
-            // externalBin bundling still requires the file to exist, so stage
-            // a placeholder. It EXITS NON-ZERO immediately (never `sleep`s): if
-            // something does spawn it — the engine supervisor, or the Claude
-            // Agent SDK handed this as its `claude` binary — the process must die
-            // loud so the failure surfaces, NOT hang forever waiting on a stub.
-            // (A `sleep`-forever stub here is exactly what hung every Claude turn
-            // on "mission in progress".) Matches the dictation placeholder below.
             let placeholder = if cfg!(windows) {
                 "@echo off\r\necho placeholder external bin (real binary not staged) - run scripts/build-host-sidecar.sh 1>&2\r\nexit /b 1\r\n"
             } else {
@@ -406,9 +343,6 @@ fn verify_sidecar_fresh(src: &Path, workspace: &Path) -> Result<(), String> {
         ));
     }
 
-    // 1. The stamp commit must still exist. A rebase or `git gc` can orphan the
-    //    commit the binary was stamped at, leaving us nothing to diff against —
-    //    fail closed rather than assume fresh.
     let commit_ref = format!("{stamp_sha}^{{commit}}");
     let out = run_git(workspace, &["cat-file", "-e", &commit_ref])?;
     if !out.status.success() {
@@ -419,9 +353,6 @@ fn verify_sidecar_fresh(src: &Path, workspace: &Path) -> Result<(), String> {
         ));
     }
 
-    // 2. No input path changed between the stamp commit and HEAD. This is the
-    //    over-fire fix: a docs-only or frontend-only commit made after compiling
-    //    touches no input, so it is NOT flagged stale.
     if sidecar_paths_differ(workspace, &[stamp_sha, "HEAD"])? {
         return Err(format!(
             "the staged host sidecar is STALE: sidecar inputs changed between the \
@@ -429,9 +360,6 @@ fn verify_sidecar_fresh(src: &Path, workspace: &Path) -> Result<(), String> {
         ));
     }
 
-    // 3. No staged or unstaged edits to tracked input files in the working tree.
-    //    This is the under-detect fix: editing sidecar source WITHOUT committing
-    //    leaves HEAD unchanged, so an equality-vs-HEAD check would miss it.
     if sidecar_paths_differ(workspace, &["HEAD"])? {
         return Err(format!(
             "the staged host sidecar is STALE: the working tree has uncommitted \
@@ -439,9 +367,6 @@ fn verify_sidecar_fresh(src: &Path, workspace: &Path) -> Result<(), String> {
         ));
     }
 
-    // 4. No untracked files under the input paths. `git diff` above ignores
-    //    untracked files, so a brand-new source file added but not yet committed
-    //    would slip past — `git status --porcelain` catches it.
     let mut status_args: Vec<&str> = vec!["status", "--porcelain", "--"];
     status_args.extend_from_slice(SIDECAR_INPUT_PATHS);
     let out = run_git(workspace, &status_args)?;
@@ -529,8 +454,6 @@ fn stage_whisper_sidecar() -> Result<(), String> {
     }
     candidates.push(src_dir.join(format!("whisper-cli{ext}")));
 
-    // Re-run when a built whisper-cli appears/changes so a staged placeholder is
-    // replaced on the next build (mirrors the host-sidecar staging).
     for candidate in &candidates {
         println!("cargo:rerun-if-changed={}", candidate.display());
     }

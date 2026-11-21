@@ -11,12 +11,6 @@ import { fileToolGuardOptions } from "../../session/coordinator-policy";
 import { learningsDocPath } from "../../session/learnings-context";
 import { fileGuardHook } from "./file-guard-hook";
 
-/**
- * The workspace guard as a PreToolUse hook. Claude Code auto-approves reads
- * inside `cwd` without asking `canUseTool`, so this hook is the wall every
- * built-in file call meets, the runtime's credential files included.
- */
-
 function workspace(): string {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "claude-guard-hook-")));
   const runtime = join(root, ".houston", "runtime");
@@ -91,14 +85,11 @@ test("an ordinary read passes with the proven absolute path", async () => {
     kind: "pass",
     updatedInput: { file_path: join(ws, "notes.md"), limit: 5 },
   });
-  // The raw string is never what opens: `@` is judged and opened as one path.
   expect(
     decision(await run(hook, "Read", { file_path: "@uploads/photo.png" })),
   ).toMatchObject({
     updatedInput: { file_path: join(ws, "uploads", "photo.png") },
   });
-  // A `:` names a stream of the file on Windows and is part of the name
-  // elsewhere; either way the path handed back is the file that opens.
   const colon =
     process.platform === "win32" ? "Standup 10" : "Standup 10:30.md";
   expect(
@@ -115,8 +106,6 @@ test("an ordinary read passes with the proven absolute path", async () => {
     kind: "pass",
     updatedInput: { pattern: "/api/", path: join(ws, "uploads") },
   });
-  // A search with no folder stays as asked; the credential deny rules keep
-  // its results off the runtime's files (credential-rules.ts).
   expect(decision(await run(hook, "Grep", { pattern: "/etc/x" }))).toEqual({
     kind: "pass",
   });
@@ -192,7 +181,6 @@ test("the coordinator is held to its allowlist", async () => {
     decision(await run(hook, "Write", { file_path: memory, content: "[]" }))
       .kind,
   ).toBe("pass");
-  // What people send it under uploads/ is readable, never writable.
   expect(
     decision(await run(hook, "Read", { file_path: "uploads/photo.png" })),
   ).toEqual({

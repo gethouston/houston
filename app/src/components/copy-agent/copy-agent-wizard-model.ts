@@ -3,12 +3,6 @@ import type {
   PortableInventoryPreview,
 } from "@houston/engine-adapter";
 
-/**
- * The pure rules behind the create dialog's "Copy an agent" path. Unit-tested
- * in `app/tests/copy-agent-wizard-model.test.ts`.
- */
-
-/** The pick steps' selection (Sets while the user toggles rows). */
 export interface WizardSelection {
   claudeMd: boolean;
   skillSlugs: Set<string>;
@@ -23,13 +17,6 @@ export type CopyWizardStep =
   | "skills"
   | "name";
 
-/**
- * The screens the wizard walks, for a chosen source. The "what should the
- * copy know" screen always shows: it carries the job description, the
- * learnings and the chats switch, and the chats choice exists for every
- * source. The routines and skills screens exist only when the source has
- * some, so no screen ever renders an empty list.
- */
 export function copyWizardSteps(
   preview: PortableInventoryPreview | null,
 ): CopyWizardStep[] {
@@ -41,7 +28,6 @@ export function copyWizardSteps(
   return steps;
 }
 
-/** Everything on: the copy starts faithful and the user opts things OUT. */
 export function fullCopySelection(
   preview: PortableInventoryPreview,
 ): WizardSelection {
@@ -53,7 +39,6 @@ export function fullCopySelection(
   };
 }
 
-/** The toggle Sets as the wire selection the portable package is built from. */
 export function toCopySelection(sel: WizardSelection): PortableExportSelection {
   return {
     includeClaudeMd: sel.claudeMd,

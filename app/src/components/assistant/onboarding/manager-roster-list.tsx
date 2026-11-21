@@ -7,25 +7,17 @@ import {
 import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-/** One AI Employee as the team cards list it. */
 export interface RosterRow {
   key: string;
   name: string;
   role: string;
   color: string | undefined;
-  /** `draft`: still to hire. */
   status: "draft" | "joining" | "hired" | "failed";
-  /** Why the hire or its last change did not land, in the person's words. */
   problem: string | null;
   onRetry?: () => void;
   onRemove?: () => void;
 }
 
-/**
- * The team being hired, one quiet row per AI Employee: the face, the name and
- * the job, and how the hire is going. A hire that failed says why and offers
- * Try again (and Remove, where the team can shrink), visible at rest.
- */
 export function ManagerRosterList({ rows }: { rows: readonly RosterRow[] }) {
   const { t } = useTranslation(["assistant", "common"]);
   return (
@@ -83,8 +75,6 @@ export function ManagerRosterList({ rows }: { rows: readonly RosterRow[] }) {
   );
 }
 
-/** How one hire is going, beside its name: joining, or ready. A draft and a
- *  failed hire show nothing here (a failure says why on its own line). */
 function HireStatus({ status }: { status: RosterRow["status"] }) {
   const { t } = useTranslation("assistant");
   if (status === "joining")

@@ -2,11 +2,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 
-// A missing tab icon fails silently: the browser asks for /favicon.ico, the
-// SPA rewrite answers with index.html, and the tab shows a blank globe. The
-// website, the web app (app. and preview.) and the Agent Store ship the same
-// SVG, which switches to white under a dark browser theme.
-
 const read = (rel: string) =>
   readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
 
@@ -24,7 +19,6 @@ describe("favicon", () => {
     expect(webIcon).toContain(
       "@media (prefers-color-scheme:dark){path,rect{fill:#fff}}",
     );
-    // An inline style beats the stylesheet and would pin the icon dark.
     expect(webIcon).not.toContain("style=");
   });
 

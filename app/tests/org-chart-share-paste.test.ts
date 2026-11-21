@@ -6,7 +6,6 @@ import {
   shareByPaste,
 } from "../src/components/organization/org-chart-share-paste.ts";
 
-/** A promise this test settles by hand. */
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((res) => {
@@ -18,7 +17,6 @@ function deferred<T>() {
 const PNG = new File(["png"], "acme-org-chart.png", { type: "image/png" });
 const URL_ = "https://www.linkedin.com/feed/?shareActive=true&text=Hello";
 
-/** Deps that record every call, in a browser unless overridden. */
 function harness(overrides: Partial<PasteDeps> = {}) {
   const calls: string[] = [];
   const reports: string[] = [];
@@ -55,8 +53,6 @@ describe("shareByPaste", () => {
       return copied.promise;
     };
     const running = shareByPaste(deps);
-    // Synchronously, before the drawing or the copy settles: both started,
-    // the copy first, and the copy was handed the drawing itself.
     deepStrictEqual(calls, ["copy", "open:www.linkedin.com"]);
     strictEqual(handed, drawing.promise);
     drawing.resolve(PNG);

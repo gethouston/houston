@@ -1,8 +1,6 @@
 import type { ApiKey, ChannelStatus } from "@houston/wire-types";
 import { withoutItems } from "./list-patch.ts";
 
-/** Optimistic edits of Settings' API keys and Channels caches. */
-
 export function apiKeysWithout(
   keys: ApiKey[] | undefined,
   id: string,

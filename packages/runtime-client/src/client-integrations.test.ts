@@ -9,7 +9,6 @@ interface Recorded {
   body?: unknown;
 }
 
-/** An {@link IntegrationsClient} over a mock `fetch` recording every call. */
 function makeClient() {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(

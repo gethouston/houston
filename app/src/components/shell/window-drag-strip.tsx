@@ -1,7 +1,6 @@
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
 
-/** Overlay title bars need a drag target on full-window gate surfaces. */
 export function WindowDragStrip() {
   if (!osIsTauri() || !isMac) return null;
   return (

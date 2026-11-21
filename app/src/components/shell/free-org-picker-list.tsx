@@ -27,11 +27,6 @@ const STATUS = {
   { label: `choice.done.status.${ChoiceOrgStatus}`; className: string }
 >;
 
-/**
- * Every org the person owns and what it is (or becomes at the cutover), as a
- * status pill. `meta` adds each org's members and activity under its name,
- * shorter than the picker's so a row and its pill share a phone's width.
- */
 export function ChoiceOrgList({
   orgs,
   meta = false,
@@ -60,8 +55,6 @@ export function ChoiceOrgList({
           <span className="truncate text-sm font-medium text-ink">
             {orgName(org)}
           </span>
-          {/* On a phone the pill sits beside the name so the activity line
-              keeps the row's width; the desktop gives it its own column. */}
           <span
             className={cn(
               "whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium",

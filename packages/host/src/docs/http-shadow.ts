@@ -13,13 +13,8 @@ import { canonicalJSON } from "./wire";
 
 export { canonicalJSON } from "./wire";
 
-/** The role an agent's job description names, derived from its `CLAUDE.md`
- *  (`agent-role/`): the gateway lists every agent's role from these documents
- *  instead of reading each job description through its pod. */
 export const AGENT_ROLE_FAMILY = "agent_role";
 
-/** Everything the shadow can hold: family files, engine-computed views, and
- *  the agent's role. */
 export type ShadowFamily =
   | HoustonFamily
   | ViewFamily
@@ -33,14 +28,7 @@ export interface DocShadow {
 export class HttpDocShadow implements DocShadow, DocPublisher {
   private readonly fetchImpl: typeof fetch;
   private readonly revisions = new Map<ShadowFamily, number>();
-  // Canonical (key-sorted) JSON of the last doc known to be durable, seeded
-  // from the GET and refreshed on every accepted PUT. What makes the boot
-  // content seed idempotent: an unchanged file costs one GET, never a PUT,
-  // so revisions do not churn on every pod boot.
   private readonly remote = new Map<ShadowFamily, string>();
-  // Families a skewed gateway rejected as unknown (engine ahead of its
-  // allow-list). Per-family, unlike the process-wide route skew latch: one
-  // new view family must not kill projection for the families it does know.
   private readonly unsupported = new Set<ShadowFamily>();
   private readonly retryDelaysMs: number[];
   private disabled = false;
@@ -60,8 +48,6 @@ export class HttpDocShadow implements DocShadow, DocPublisher {
     await Promise.all(FAMILIES.map((family) => this.seedFamily(family)));
   }
 
-  /** Fire-and-forget projection: a deferred doc is re-sent by the next
-   *  capture or warm tick. */
   async put(family: ShadowFamily, doc: unknown): Promise<void> {
     await this.publish(family, doc);
   }
@@ -69,9 +55,6 @@ export class HttpDocShadow implements DocShadow, DocPublisher {
   async publish(family: ShadowFamily, doc: unknown): Promise<ShadowPutResult> {
     if (this.latched(family)) return "unsupported";
     if (doc === undefined) {
-      // canonicalJSON(undefined) is not a string; comparing it against a
-      // missing cache entry would silently skip the write. No caller may
-      // pass undefined — surface the contract violation instead.
       throw new Error(`[doc-shadow] ${family} put called without a document`);
     }
     const seeded =
@@ -98,12 +81,9 @@ export class HttpDocShadow implements DocShadow, DocPublisher {
         this.markUnsupported(family, outcome.unsupported);
       }
       if (this.latched(family)) return "unsupported";
-      // A conflict yields to the file without storing this doc.
       return this.remote.get(family) === canonical ? "landed" : "deferred";
     } catch (error) {
       if (!(error instanceof ShadowUnavailableError)) throw error;
-      // Self-healing: the cached revision survives and the next capture or
-      // warm tick re-publishes. A warning breadcrumb, never a Sentry error.
       console.warn(`[doc-shadow] ${family} PUT deferred: ${error.message}`);
       return "deferred";
     }

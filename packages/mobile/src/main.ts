@@ -12,7 +12,6 @@ import {
 } from "./updates/ready";
 import { capgoReadyPorts } from "./updates/ready-ports";
 
-// These globals precede every shared-app module, including analytics bootstrap.
 publishMobileSurface(window, {
   platform: Capacitor.getPlatform(),
   deployEnvironment: __HOUSTON_MOBILE_DEPLOY_ENV__,
@@ -44,8 +43,6 @@ if (!mobilePush.available) {
 
 let starting = false;
 let clearOffline: (() => void) | null = null;
-// Settles once an offline launch has recorded (or skipped) its trial marker;
-// the online readiness watch must read the marker only after that.
 let provisionalReady: Promise<void> = Promise.resolve();
 async function reportBootError(error: unknown): Promise<void> {
   const { logAndReportError } = await import("@houston/app/lib/error-report");
@@ -61,8 +58,6 @@ async function start(): Promise<void> {
   clearOffline?.();
   clearOffline = null;
   await provisionalReady;
-  // Watch before loading anything: a bundle whose web entry throws must still
-  // be caught (and reset, if an offline launch only provisionally trusted it).
   const ready = declareReadyWhenShellRenders(
     capgoReadyPorts((error) => {
       void reportBootError(error);
@@ -91,8 +86,6 @@ if (navigator.onLine) {
   void import("./offline")
     .then(({ showOffline }) => {
       clearOffline = showOffline(launch);
-      // Offline cannot reach the app, so readiness is provisional: the next
-      // online launch resets the bundle if the real app fails to render.
       provisionalReady = declareProvisionalReady(
         capgoReadyPorts((error) => {
           void reportBootError(error);

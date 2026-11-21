@@ -37,7 +37,6 @@ test("finishing stops a running batch at its next event and drops the batches qu
   release();
   expect(await first).toEqual({});
   expect(await queued).toEqual({});
-  // "a" was already on its way to the page; nothing after the finish was.
   expect(cdp.sent).toEqual(["Input.insertText:a"]);
   expect(sessions).toHaveLength(1);
   await until(() => cdp.detached);
@@ -166,7 +165,6 @@ test("a viewer's frame window carries across a page switch; the old page's late 
     (_, i) => `B${i + 1}`,
   );
   for (const jpeg of [...fill, "C"]) sessions[1]?.paint(jpeg);
-  // A and the new page's frames fill the window; C waits for an ack.
   expect(frames()).toEqual(["A", ...fill]);
   expect(seen.filter((e) => e.type === "page").at(-1)).toMatchObject({
     url: "https://accounts.test/sign-in",

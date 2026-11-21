@@ -11,15 +11,6 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { handleTriggerStatus } from "./trigger-status";
 
-/**
- * Honest trigger status + the write gate on a deployment WITHOUT a trigger
- * backend (desktop / self-host, `triggersEnabled: false`): a trigger-bound
- * routine can never wake, so its write is refused and its status is a hard
- * error. Schedule routines are untouched. A shared store/vfs lets a
- * trigger-CAPABLE server seed a legacy trigger routine that the no-backend
- * server must still list (reads are ungated) and report as unable to wake.
- */
-
 const verifier: TokenVerifier = {
   async verify(bearer) {
     return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
@@ -79,8 +70,8 @@ const WEBHOOK = { kind: "webhook" as const };
 const NO_BACKEND_WRITE_ERROR =
   "Event triggers are not available here. Give this automation a schedule instead.";
 
-let cloud: Server; // triggersEnabled: true — seeds trigger routines
-let local: Server; // triggersEnabled: false — the deployment under test
+let cloud: Server;
+let local: Server;
 let cloudBase = "";
 let localBase = "";
 let agentId = "";
@@ -141,8 +132,6 @@ test("write gate: a trigger POST is refused with a relay-ready message; a schedu
 });
 
 test("write gate: a webhook trigger POST is refused off-backend, accepted shape-wise on a trigger-capable host", async () => {
-  // Same gate as a Composio trigger: no backend here → the webhook could never
-  // wake, so its write is refused with the relay-ready message.
   const rejected = await fetch(`${localBase}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth(),
@@ -155,8 +144,6 @@ test("write gate: a webhook trigger POST is refused off-backend, accepted shape-
   expect(rejected.status).toBe(400);
   expect((await rejected.json()).error).toBe(NO_BACKEND_WRITE_ERROR);
 
-  // On a trigger-capable host the webhook binding is accepted shape-wise (no
-  // key_prefix yet — minting stamps it later). The binding round-trips intact.
   const accepted = await fetch(`${cloudBase}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth(),
@@ -171,7 +158,6 @@ test("write gate: a webhook trigger POST is refused off-backend, accepted shape-
 });
 
 test("write gate: a PATCH keeping a trigger is refused; converting it to a schedule is accepted", async () => {
-  // Seed a legacy trigger routine via the trigger-capable server (same store).
   const seeded = await fetch(`${cloudBase}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth(),
@@ -202,7 +188,6 @@ test("write gate: a PATCH keeping a trigger is refused; converting it to a sched
 });
 
 test("trigger-status: each trigger routine reports error with a human detail; a schedule-only agent gets []", async () => {
-  // Fresh agent so this test owns its routine set.
   const createdAgent = await fetch(`${cloudBase}/agents`, {
     method: "POST",
     headers: auth(),
@@ -210,14 +195,12 @@ test("trigger-status: each trigger routine reports error with a human detail; a 
   });
   const watcherId = ((await createdAgent.json()) as { id: string }).id;
 
-  // Empty (no routines) → [].
   const empty = await fetch(`${localBase}/agents/${watcherId}/trigger-status`, {
     headers: auth(),
   });
   expect(empty.status).toBe(200);
   expect((await empty.json()).items).toEqual([]);
 
-  // Seed one trigger routine + one schedule routine via the capable server.
   const trg = await fetch(`${cloudBase}/agents/${watcherId}/routines`, {
     method: "POST",
     headers: auth(),
@@ -230,7 +213,6 @@ test("trigger-status: each trigger routine reports error with a human detail; a 
     body: JSON.stringify({ name: "Daily", prompt: "p", schedule: "0 9 * * *" }),
   });
 
-  // The no-backend server reports the trigger routine as error, schedule ignored.
   const status = await fetch(
     `${localBase}/agents/${watcherId}/trigger-status`,
     { headers: auth() },
@@ -253,7 +235,6 @@ test("trigger-status: a webhook routine reports error with a human detail like a
   });
   const hookedId = ((await createdAgent.json()) as { id: string }).id;
 
-  // Seed a webhook routine via the trigger-capable host.
   const wh = await fetch(`${cloudBase}/agents/${hookedId}/routines`, {
     method: "POST",
     headers: auth(),
@@ -261,7 +242,6 @@ test("trigger-status: a webhook routine reports error with a human detail like a
   });
   const whId = ((await wh.json()) as { id: string }).id;
 
-  // The no-backend host reports it as error, exactly like a Composio trigger.
   const status = await fetch(`${localBase}/agents/${hookedId}/trigger-status`, {
     headers: auth(),
   });
@@ -281,7 +261,6 @@ test("trigger-status: when triggers CAN fire, the host is not the authority and 
     agent: {} as Agent,
   };
   const noRes = {} as ServerResponse;
-  // triggersEnabled true → returns false without touching vfs/res.
   expect(
     await handleTriggerStatus(
       undefined,
@@ -293,7 +272,6 @@ test("trigger-status: when triggers CAN fire, the host is not the authority and 
       true,
     ),
   ).toBe(false);
-  // A non-matching subpath also falls through.
   expect(
     await handleTriggerStatus(
       undefined,

@@ -1,8 +1,6 @@
 import { Button, Spinner } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 
-/** The screen's one forward action: a button, or the submit of a form that
- *  lives in the body (the naming screen), reached by id from out here. */
 export type TeamCardPrimary =
   | {
       kind: "action";
@@ -19,14 +17,6 @@ export type TeamCardPrimary =
       busy?: boolean;
     };
 
-/**
- * The card's action row, in the same place on every screen: Back on the left
- * and the one way on to the right on a desktop; on a phone the two stack with
- * the primary on top, full width where the thumb lands.
- *
- * A busy primary keeps its label beside the spinner and refuses a second
- * press, and Back waits with it: leaving mid-hire would strand the result.
- */
 export function TeamCardFooter({
   onBack,
   primary,
@@ -34,7 +24,6 @@ export function TeamCardFooter({
 }: {
   onBack: (() => void) | null;
   primary: TeamCardPrimary | null;
-  /** A quieter second way on beside the primary ("Hire another"). */
   secondary?: { label: string; onClick: () => void };
 }) {
   const { t } = useTranslation("common");

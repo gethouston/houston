@@ -61,8 +61,6 @@ test("asks with exactly the headers a write would carry", async () => {
       "x-houston-boot-id": "boot-a",
     },
   });
-  // The token is read per ask: a capture after boot is what the next write
-  // would present, so it is what the check presents.
   fence.token = "8";
   await probe();
   expect(store.seen[1]?.headers["x-houston-fencing-token"]).toBe("8");
@@ -91,8 +89,6 @@ test("maps the pod-store's answers to verdicts", async () => {
   });
 
   expect(await probe()).toEqual({ state: "fenced", holder: "live" });
-  // A pod-store from before the check route: the POST-only mint path (405)
-  // or no route at all (404).
   status = 405;
   expect(await probe()).toEqual({ state: "unsupported" });
   status = 404;

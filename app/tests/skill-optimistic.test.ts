@@ -12,10 +12,6 @@ import {
 } from "../src/lib/skill-optimistic.ts";
 import type { SkillSummary } from "../src/lib/types.ts";
 
-/**
- * A skill removed, turned off or turned on for an employee paints before the
- * host answers, across the three caches the Skills surfaces read.
- */
 const skill = (name: string) => ({ name }) as SkillSummary;
 const manifest = (...enabled: string[]): SkillsManifest => ({
   version: 1,

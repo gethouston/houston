@@ -38,7 +38,6 @@ describe("isWysiwygSafe — the corruption guard", () => {
       isWysiwygSafe("| Don't say | Say |\n|---|---|\n| a | b |"),
       false,
     );
-    // GFM also admits headerless pipes with no leading `|`.
     strictEqual(isWysiwygSafe("Name | Value\n--- | ---\na | 1"), false);
   });
 
@@ -57,7 +56,6 @@ describe("isWysiwygSafe — the corruption guard", () => {
 
 describe("compactMinHeight", () => {
   it("floors at N real text lines plus the document's own padding", () => {
-    // 16px body at leading-relaxed = 1.625rem per line; py-4 = 2rem.
     strictEqual(compactMinHeight(6), "calc(9.75rem + 2rem)");
     strictEqual(compactMinHeight(12), "calc(19.5rem + 2rem)");
   });

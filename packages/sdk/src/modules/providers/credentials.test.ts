@@ -13,13 +13,6 @@ interface Recorded {
   body: string | null;
 }
 
-/**
- * An SDK over a mock `fetch` recording every credential-store call. These are
- * gateway CONTROL routes about an agent, so they must land on the base URL —
- * never on a `clientFor(agentId)` sub-client — and each must be exactly ONE
- * request: the web adapter owns its own read model, so a post-write refetch
- * here would be a second request it never asked for.
- */
 function makeSdk(respond: () => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(
@@ -91,8 +84,6 @@ describe("providers module — the workspace-central credential store", () => {
     await credentials.pushSetupClaudeOAuthCredential("{}");
 
     expect(calls).toEqual([
-      // No provider named means no body at all — the host reads the runtime's
-      // own freshest credential, and an empty JSON object would not say that.
       { method: "POST", path: "/setup-runtime/credential/capture", body: null },
       {
         method: "POST",
@@ -144,9 +135,6 @@ describe("providers module — the workspace-central credential store", () => {
       .forgetCredential(AGENT, "anthropic")
       .catch((err: unknown) => err);
 
-    // The web adapter translates this into its own HoustonEngineError and reads
-    // both back (`client/sdk-error.ts`), which is how a lapsed session shows as
-    // a sign-in prompt rather than a red "sign-out failed" toast.
     expect(failure).toBeInstanceOf(ProvidersHttpError);
     expect((failure as ProvidersHttpError).status).toBe(401);
     expect((failure as ProvidersHttpError).message).toBe(

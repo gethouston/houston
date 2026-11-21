@@ -63,7 +63,6 @@ describe("survey step plan", () => {
       surveyStepPlan("profile_completion", answered(true, true, true)),
       [],
     );
-    // An account that answered before the company size existed.
     assert.deepEqual(
       surveyStepPlan("profile_completion", answered(true, true, true, false)),
       ["companySize"],
@@ -112,9 +111,6 @@ describe("survey analytics vocabulary", () => {
   });
 
   it("tracks selection and confirmation as separate events", () => {
-    // `*_selected` is the answer given, `*_continued` the saved answer that
-    // carries the person property. Collapsing them would stamp an answer
-    // whose save never landed.
     const source = read("../src/components/onboarding/survey-analytics.ts");
     for (const event of [
       "onboarding_industry_selected",
@@ -132,9 +128,6 @@ describe("survey analytics vocabulary", () => {
   });
 
   it("sends the goal in the user's words only where the person prop reads it", () => {
-    // `goal_text` is stripped from the event payload by `track` (events stay
-    // content-free) and survives only as the truncated person property. The
-    // goal cannot be skipped, so it is always provided.
     const source = read("../src/components/onboarding/survey-analytics.ts");
     assert.match(source, /goalContinued: \(goal: string\)/);
     assert.match(source, /goal_provided: true/);
@@ -190,8 +183,6 @@ describe("the survey in the manager's chat", () => {
     assert.match(goal, /<Textarea\b/);
     assert.doesNotMatch(goal, /onAnswer\(null\)/);
     assert.doesNotMatch(goal, /goal\.skip/);
-    // An over-long paste is said, never cut short: a `maxLength` counts UTF-16
-    // units and would drop the person's words without a word of its own.
     assert.doesNotMatch(goal, /maxLength/);
     assert.match(goal, /onboarding\.goal\.tooLong/);
   });
@@ -202,8 +193,6 @@ describe("the survey in the manager's chat", () => {
 
   it("asks the company size with one tap per bucket, on the create sheet's chips", () => {
     assert.match(size, /ONBOARDING_COMPANY_SIZE_IDS\.map/);
-    // The same chips and frame as the industry and role steps, so every
-    // step in the slot reads as one family.
     assert.match(size, /<ChoiceChips/);
     assert.match(size, /role="radiogroup"/);
     assert.match(size, /<ManagerStepFrame/);
@@ -231,8 +220,6 @@ describe("survey locales", () => {
           completion: { notNow: string };
         };
       };
-      // The department question is retired, and the industry question reads
-      // the hire flow's own headline: neither keeps copy here to drift.
       assert.equal(setup.onboardingSegment, undefined);
       assert.equal(setup.onboardingSurvey.industry, undefined);
       assert.ok(setup.onboardingSurvey.goal.title.trim());
@@ -267,11 +254,9 @@ describe("survey locales", () => {
           companySize: Record<string, string>;
         };
       };
-      // The fixed goal answers are gone: the goal is the person's own words.
       assert.equal(assistant.onboarding.goals, undefined);
       assert.ok(assistant.onboarding.goal.placeholder.trim());
       assert.ok(assistant.onboarding.goal.hint.trim());
-      // The goal cannot be skipped: no Skip copy is left to drift.
       assert.equal(assistant.onboarding.goal.skip, undefined);
       assert.ok(assistant.onboarding.questions.companySize.trim());
       for (const id of ONBOARDING_COMPANY_SIZE_IDS) {

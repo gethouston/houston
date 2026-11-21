@@ -23,9 +23,7 @@ describe("collapsed rail item", () => {
     strictEqual(px(sidebarCollapsedItem.square), 36);
     const ring = sidebarCollapsedItem.avatarDiameter + sidebarRingClearance;
     ok(ring < 36, `a ${ring}px ring fills the 36px square`);
-    // Even air on every side, so the ring is centred on whole pixels.
     ok(Number.isInteger((36 - ring) / 2));
-    // Smaller than the expanded rail's portrait, which fills a 44px row.
     ok(sidebarCollapsedItem.avatarDiameter < sidebarPersonRow.avatarDiameter);
   });
 
@@ -40,9 +38,6 @@ describe("collapsed rail item", () => {
   });
 
   it("perches the needs-you chip on the avatar's shoulder", () => {
-    // The chip (h-5, min-w-7: 28 x 20) scales about its own centre, so its
-    // centre is where its box is anchored. The avatar's shoulder is the point
-    // of its circle at 45 degrees, up and right of the square's centre.
     const trailing = classes(sidebarCollapsedItemClasses.trailing);
     const top = trailing.find((c) => /^-?top-/.test(c));
     const right = trailing.find((c) => /^-?right-/.test(c));

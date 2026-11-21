@@ -8,11 +8,6 @@ import {
 import { afterEach, expect, test, vi } from "vitest";
 import { hedgedStream } from "./hedged-stream";
 
-/**
- * The hedge's race, on scripted attempts and fake timers: who wins, who is
- * cancelled, when another attempt goes out, and what the caller sees.
- */
-
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -24,7 +19,6 @@ interface Attempt {
   fail(message: string): void;
 }
 
-/** Opens attempts that say nothing until told to; an abort ends one as pi does. */
 function provider() {
   const attempts: Attempt[] = [];
   const open = (signal: AbortSignal) => {
@@ -91,7 +85,6 @@ test("a silent first attempt is hedged at the deadline and the hedge's answer wi
   await vi.advanceTimersByTimeAsync(1);
   expect(attempts).toHaveLength(2);
   expect(onAttempt).toHaveBeenCalledWith(2, 1000);
-  // The first still waits: a hedge never cancels what it races.
   expect(attempts[0]?.signal.aborted).toBe(false);
 
   attempts[1]?.answer("from the hedge");
@@ -100,7 +93,6 @@ test("a silent first attempt is hedged at the deadline and the hedge's answer wi
   expect(events.at(-1)?.type).toBe("done");
   expect(attempts[0]?.signal.aborted).toBe(true);
   expect(onAnswered).toHaveBeenCalledWith(2, 1000);
-  // Answered: no third attempt, ever.
   await vi.advanceTimersByTimeAsync(10_000);
   expect(attempts).toHaveLength(2);
 });
@@ -152,7 +144,6 @@ test("a failure with nothing else in flight is the answer, and no hedge follows 
   const events = await out;
   expect(events.map((e) => e.type)).toEqual(["error"]);
   await vi.advanceTimersByTimeAsync(10_000);
-  // pi's own retry, with its backoff, handles a 429: never a hedge.
   expect(attempts).toHaveLength(1);
 });
 

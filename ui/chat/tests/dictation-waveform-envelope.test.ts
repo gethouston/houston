@@ -9,9 +9,6 @@ describe("withAlpha", () => {
   });
 
   it("keeps a fully transparent stop transparent on an unparsable colour", () => {
-    // The gradient's first stop MUST vanish: handing the input back unchanged
-    // turned the fade-in stop into an opaque one, so the oldest slice of the
-    // waveform slammed to full colour instead of fading off the left edge.
     const unparsable = "oklab(0.5 0 0)";
     notEqual(withAlpha(unparsable, 0), unparsable);
     equal(withAlpha(unparsable, 0), "transparent");

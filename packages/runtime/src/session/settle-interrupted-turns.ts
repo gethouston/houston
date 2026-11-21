@@ -12,28 +12,6 @@ import {
   listInflightMarkers,
 } from "./turn-inflight-marker";
 
-/**
- * Boot-time settle of the turns the previous process died on (see
- * turn-inflight-marker.ts). For each survivor: persist the reply the dead
- * process never wrote — empty content, `interrupted` set — so a client that
- * reconnects (settle-from-history) or reloads (history replay) renders the
- * authored restart line instead of the generic dead-turn copy; report the
- * restart once, with the marker's fields, so Sentry can count them fleet-wide;
- * then drop the marker so the next boot is quiet. Runs BEFORE the server
- * listens: a client that reconnects the instant the engine is back must find
- * the reply already on disk.
- *
- * Cause inference: a marker survives only an UNCLEAN exit — every in-process
- * end of a turn clears it, and a drained shutdown lets the turn end first. So
- * "marker present at boot" IS "the process was killed mid-turn"; on a managed
- * pod that is the group OOM kill or an involuntary eviction.
- */
-
-/**
- * The name Sentry titles the issue by — one issue for every restart, the
- * marker's fields in the message and extras. Never merged into a generic
- * `[turn]` bucket: the count is the point.
- */
 export class EngineRestartedMidTurnError extends Error {
   constructor(
     readonly marker: InflightTurnMarker,
@@ -47,14 +25,6 @@ export class EngineRestartedMidTurnError extends Error {
   }
 }
 
-/**
- * What the dead turn had to load before it could speak: the live transcript
- * file and every pi session file of the conversation. Both are read whole
- * into the heap at turn start, so a restart that recurs at the same few
- * seconds into every turn with no tool running (HOUSTON-APP-5DX, 348 times
- * on one routine) is told apart from an eviction by these two numbers.
- * Stat-only: never parse anything while diagnosing a memory death.
- */
 export interface TurnFootprint {
   transcriptBytes: number;
   sessionBytes: number;
@@ -93,16 +63,10 @@ function dirBytes(dir: string, suffix: string): number {
 
 const mib = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)}MiB`;
 
-/**
- * Whether the fence should have caught this: a shell tool was running and the
- * cap was on. Any other survivor (no tool, a non-shell tool, no fence) is a
- * kill the fence never claimed to prevent.
- */
 export function fenceBypassed(marker: InflightTurnMarker): boolean {
   return marker.fenced && marker.tool !== undefined && isShellTool(marker.tool);
 }
 
-// pi registers its shell as `bash`; the Claude CLI names its tool `Bash`.
 const SHELL_TOOLS = new Set(["bash", "Bash"]);
 
 function isShellTool(name: string): boolean {
@@ -111,19 +75,11 @@ function isShellTool(name: string): boolean {
 
 export interface SettleInterruptedTurnsOptions {
   dataDir: string;
-  /** Test seam; defaults to the console error the Sentry capture feeds on. */
   report?: (error: EngineRestartedMidTurnError) => void;
-  /** Test seam; defaults to the control-plane mission settle. */
   settleMission?: (conversationId: string, turnId: string) => void;
   now?: () => number;
 }
 
-/**
- * What one boot settle produced: the markers it answered (the report count)
- * and, for the subset it judged resumable, the request the caller runs once
- * the server is listening (resume-interrupted-turns.ts). Both in directory
- * order.
- */
 export interface SettledInterruptedTurns {
   settled: InflightTurnMarker[];
   resumable: ResumeRequest[];
@@ -145,23 +101,10 @@ export function settleInterruptedTurns(
   const settled: InflightTurnMarker[] = [];
   const resumable: ResumeRequest[] = [];
   for (const marker of listInflightMarkers(opts.dataDir)) {
-    // A marker for a turn this conversation already carries an interrupted
-    // reply for is a re-delivery, not a second death: on a managed pod the
-    // replacement boots while the evicted pod is still draining the turn, and
-    // that pod's store sync re-ships the marker the replacement just cleared.
-    // The next boot found it again and wrote a second "had to restart" line
-    // for the one turn (PRODUCT-1778). Drop the marker, settle nothing twice.
     if (alreadySettled(conversationsDir, marker)) {
       clearInflightMarker(opts.dataDir, marker.conversationId);
       continue;
     }
-    // The reply first, the marker last: a crash between the two re-settles
-    // (a second `interrupted` reply) rather than losing the settle. A missing
-    // conversation (deleted while the turn ran) has nothing to settle into;
-    // appendAssistantMessageAt is a no-op on it and the marker still clears.
-    // Decided BEFORE the reply is written, because the reply says which of the
-    // two lines the user reads: "say continue" for a turn that is over for
-    // good, "picking up where it left off" for one this boot will run again.
     const resume = resumeRequestFor(conversationsDir, marker, now());
     appendAssistantMessageAt(conversationsDir, marker.conversationId, "", {
       interrupted: {
@@ -172,12 +115,6 @@ export function settleInterruptedTurns(
       turnId: marker.turnId,
     });
     if (resume) resumable.push(resume);
-    // An agent-started mission has no client to settle its card from the
-    // reply; the runtime reports its terminal state exactly as a thrown turn
-    // does (mission-settle.ts). Fire-and-forget there, never boot-fatal here.
-    // Skipped for a turn this boot is about to run again: the host applies at
-    // most ONE settle per mission, so an `error` reported now would be the
-    // card's final word and the resumed turn's real settle would be dropped.
     if (!resume) settleMission(marker.conversationId, marker.turnId);
     report(
       new EngineRestartedMidTurnError(

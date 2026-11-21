@@ -1,10 +1,5 @@
 import { Button, cn } from "@houston-ai/core";
 
-/**
- * A read the org chart could not make (the usage its numbers come from), said
- * once in a quiet line with the way to try it again, so a broken read never
- * degrades into a claim about the company ("0 messages").
- */
 export function OrgChartRetryLine({
   message,
   retryLabel,

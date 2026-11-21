@@ -1,54 +1,14 @@
 import type { ProviderStatus } from "./tauri";
 
-/**
- * Boot-time cache of the last provider-status scan, keyed PER ACTIVE SPACE.
- *
- * Provider probes shell out to CLIs and can take seconds each (up to a 5s
- * timeout per provider), so the settings screen seeds its cards from this
- * snapshot and paints instantly; the live probe still runs and reconciles.
- * Same philosophy as the i18n locale flash-cache: localStorage is never the
- * source of truth, only a first-paint hint.
- *
- * The snapshot is scoped by the active space (C8) because provider connections
- * are tenant data — a team's connected providers differ from the personal
- * space's. A single global key (the old `.v1`) leaked one space's connected
- * cards into another on a switch (HOU-906), because the seed is a localStorage
- * read that the query-cache reset can't reach. Scoping the key by the active
- * org slug (personal ⇒ the fixed `"personal"` scope, resolved the same way the
- * engine adapter pins `x-houston-org` — `window.__HOUSTON_ACTIVE_ORG__`) makes
- * the seed self-scope: a switch reads the new space's own snapshot (or none).
- */
 const CACHE_KEY_PREFIX = "houston.providerStatusCache.v2";
 
-/** The old un-scoped (cross-space-leaking) key. Orphaned by the `.v2` bump. */
 const LEGACY_CACHE_KEY = "houston.providerStatusCache.v1";
 
-/**
- * The active-space scope for the cache key: the team org slug pinned on
- * `window.__HOUSTON_ACTIVE_ORG__`, or the fixed `"personal"` scope when no
- * team is active (null/absent global — the same signal the engine adapter uses
- * to send no `x-houston-org` header).
- *
- * Exported so a probe can capture its scope when it STARTS and check it again
- * when it resolves — see {@link providerProbeScopeChanged}.
- */
 export function activeProviderStatusScope(): string {
   if (typeof window === "undefined") return "personal";
   return window.__HOUSTON_ACTIVE_ORG__ ?? "personal";
 }
 
-/**
- * Whether a probe that STARTED in `startedIn` has been overtaken by a space
- * switch (C8) — the active scope is no longer the one it was fired for.
- *
- * A probe describes exactly one space. If the user switched while it was in
- * flight, its answer describes a world they have left: painting it would stamp
- * the old space's connected cards onto the new one, and persisting it would put
- * them under the new space's cache key (HOU-979). So a probe that returns true
- * here is DROPPED WHOLE — not merely skipped on the persist. Dropping it is
- * safe because the switch itself re-seeds from the new scope's snapshot and
- * fires a fresh probe for it.
- */
 export function providerProbeScopeChanged(startedIn: string): boolean {
   return activeProviderStatusScope() !== startedIn;
 }
@@ -57,12 +17,6 @@ function scopedCacheKey(scope: string): string {
   return `${CACHE_KEY_PREFIX}.${scope}`;
 }
 
-/**
- * One-time removal of the orphaned un-scoped `.v1` snapshot, so a stale global
- * hint can never re-seed a card after the `.v2` scope bump. Runs once at module
- * load (idempotent — removing an absent key is a no-op); guarded so a
- * non-browser (test/SSR) import is a no-op.
- */
 export function purgeLegacyProviderStatusCache(
   storage: Pick<Storage, "removeItem"> | undefined = typeof localStorage !==
   "undefined"
@@ -71,10 +25,7 @@ export function purgeLegacyProviderStatusCache(
 ): void {
   try {
     storage?.removeItem(LEGACY_CACHE_KEY);
-  } catch {
-    // A blocked/absent store just means the orphan lingers harmlessly under its
-    // dead key — it is never read again.
-  }
+  } catch {}
 }
 
 purgeLegacyProviderStatusCache();
@@ -93,10 +44,6 @@ function isProviderStatus(value: unknown): value is ProviderStatus {
 
 type StatusStore = Pick<Storage, "getItem" | "setItem">;
 
-/**
- * Last-known statuses, keyed by provider id. Invalid or unparseable entries
- * are dropped rather than trusted — a bad hint is worse than no hint.
- */
 export function loadCachedProviderStatuses(
   storage: StatusStore = localStorage,
   scope: string = activeProviderStatusScope(),
@@ -112,8 +59,6 @@ export function loadCachedProviderStatuses(
     }
     return out;
   } catch {
-    // Cache read is a paint hint, not a user action — a broken/blocked
-    // localStorage just means we fall back to the probe-only path.
     return {};
   }
 }
@@ -125,7 +70,5 @@ export function saveCachedProviderStatuses(
 ): void {
   try {
     storage.setItem(scopedCacheKey(scope), JSON.stringify(statuses));
-  } catch {
-    // Same rationale as the read path: losing the hint is harmless.
-  }
+  } catch {}
 }

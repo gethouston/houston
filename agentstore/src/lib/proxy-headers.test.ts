@@ -3,9 +3,6 @@ import { clientIpFromHeaders } from "./proxy-headers";
 
 describe("clientIpFromHeaders", () => {
   it("reads the rightmost X-Forwarded-For hop (the IP the ingress appended)", () => {
-    // Traefik appends the real client IP to the RIGHT; entries to its left are
-    // client-supplied and forgeable. The gateway trusts the rightmost hop, so the
-    // store must forward the same one.
     const headers = new Headers({
       "x-forwarded-for": "6.6.6.6, 7.7.7.7, 203.0.113.9",
     });

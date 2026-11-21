@@ -4,11 +4,6 @@ import { Skeleton } from "@houston-ai/core";
 
 const BAR = "motion-reduce:animate-none";
 
-/**
- * The page before its first frame: a blank sheet in the page's place with a
- * login-shaped hint of content, so the wait reads as "the page is coming"
- * rather than an empty box. Purely decorative.
- */
 export function BrowserLiveSkeleton() {
   return (
     <div

@@ -18,25 +18,8 @@ import {
 import type { SandboxFetch } from "./sandbox-fetch";
 import { CONVERSATION_ID_HEADER } from "./save-learning";
 
-/**
- * `houston_call` — the one tool that PERFORMS a catalogued Houston operation.
- *
- * It holds no credential and it holds no approval: it carries only the
- * per-sandbox HMAC token to the host's `/sandbox/assistant/call`, and the host
- * is what knows the gateway URL, the gateway token, which operations it will
- * actually route, and whether the USER approved this exact call. Validation is
- * duplicated on purpose — here so the model gets a correctable answer, there so
- * a sandbox token alone can never reach an unrouted or unapproved operation.
- *
- * `confirm: true` operations go through `assistant-confirm.ts` first, which asks
- * the HOST for an exact-call receipt or card. There is deliberately NO "confirmed" input: an approval the
- * model could assert is not an approval, and a `requestId` is worthless until
- * the user's own reply turns it into a receipt in the host.
- */
-
 export const HOUSTON_CALL_TOOL_NAME = "houston_call";
 
-/** The host route the tool proxies through. */
 const CALL_PATH = "/sandbox/assistant/call";
 
 const CallParams = Type.Object({
@@ -58,7 +41,6 @@ const CallParams = Type.Object({
 type CallParams = Static<typeof CallParams>;
 
 export interface AssistantToolOptions {
-  /** The loaded operation catalog (absent catalog = no assistant family). */
   catalog: AssistantCatalog;
   call: SandboxFetch;
 }
@@ -78,9 +60,6 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
       signal: AbortSignal | undefined,
     ): Promise<AssistantOperationResult> {
       const name = params.operation;
-      // What the HOST told this runtime it cannot perform (spaces, teams and
-      // billing on a desktop). Answered before the catalog lookup, so the model
-      // hears "not here" once instead of an opaque gateway error it will retry.
       const unavailable = refusedUnavailableHere(opts.catalog, name);
       if (unavailable) return unavailable;
       const op = findVisibleOperation(opts.catalog, name);
@@ -90,9 +69,6 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
           message: `There is no operation called "${name}". Search for the right one with houston_capabilities.`,
         });
       }
-      // Unroutable operations are absent from houston_capabilities, so reaching
-      // one means the model addressed it from memory. The host would refuse it
-      // anyway; refusing here names the reason instead of spending a round trip.
       if (!isCallableOperation(op)) {
         return assistantErrorResult(name, {
           code: "operation_not_supported",
@@ -101,16 +77,10 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
       }
       const checked = checkCallParams(op, params.params);
       if (!checked.ok) return assistantErrorResult(name, checked.error);
-      // The user may switch this conversation to Plan mode WHILE the turn runs
-      // (Claude Code's shift+tab). The session's toolset is already built, so
-      // the LIVE mode is read here, at the moment the call would change
-      // something — a read stays allowed, everything else stops.
       const planned = refusedInPlanMode(op.route?.method ?? "GET", name);
       if (planned) return planned;
       const checkedOp = op;
       const callParams = checked.params;
-      // The confirmation gate. It runs on the CHECKED params, so the approval
-      // the user is asked for is bound to the bytes that would actually be sent.
       const acting = currentActingContext();
       const conversationId = currentConversationId();
       async function perform(
@@ -152,9 +122,6 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
               code: "confirmation_declined",
               message: declinedMessage(name),
             });
-          // The receipt is missing, spent, expired, or was minted for different
-          // arguments. Ask again rather than dead-end: the host raises a fresh
-          // card and the model waits, exactly as on a first ask.
           if (approval === "approval_required") return confirm();
           return assistantErrorResult(name, await errorFromResponse(res));
         }

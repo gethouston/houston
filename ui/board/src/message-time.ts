@@ -1,8 +1,6 @@
 export interface MessageTime {
   short: string;
   full: string;
-  /** Another year only: shorter forms for a card's narrow time slot, longest
-   *  first. The card shows the first that fits; rows with room use `short`. */
   compact?: string[];
 }
 
@@ -11,10 +9,6 @@ export type MessageTimeFormatter = (
   dateStyle?: "full" | "medium",
 ) => MessageTime;
 
-// A formatter fixes the default time zone when it is built, so the cached ones
-// format in UTC and are handed the local wall-clock time (`wallClock`). Cached
-// in the local zone, they kept printing the old zone's clock after the time
-// zone changed, while the day math below follows the live one.
 const formatters = new Map<string, Intl.DateTimeFormat>();
 function formatter(locale: string, options: Intl.DateTimeFormatOptions) {
   const key = JSON.stringify([locale, options]);
@@ -26,7 +20,6 @@ function formatter(locale: string, options: Intl.DateTimeFormatOptions) {
   return value;
 }
 
-/** Local calendar dates keep yesterday stable across daylight-saving changes. */
 export function formatMessageTime(
   iso: string,
   locale = "en-US",
@@ -54,8 +47,6 @@ export function formatMessageTime(
       day: "numeric",
       ...(sameYear ? {} : { year: "numeric" }),
     }).format(wallClock);
-    // A narrow card cannot hold a full date with its year (pt "31 de ago.
-    // de 2025" is 104px beside a 66px slot), so it steps down these.
     if (!sameYear)
       compact = [
         { month: "short", year: "numeric" } as const,

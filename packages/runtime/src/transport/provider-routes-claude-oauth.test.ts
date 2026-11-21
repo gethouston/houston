@@ -5,11 +5,6 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { afterAll, afterEach, beforeEach, expect, test, vi } from "vitest";
 
-// The route warms the connected signal via refreshAnthropicCredential (a real
-// `claude auth status` subprocess). Stub ONLY that export so the test is hermetic
-// and can assert the route actually calls it — the warming logic itself is
-// covered by credential-status.test.ts. The rest of the module (used by
-// auth/storage.ts) stays real.
 const { refreshSpy } = vi.hoisted(() => ({
   refreshSpy: vi.fn(async () => true),
 }));
@@ -20,9 +15,6 @@ vi.mock("../backends/claude/credential-status", async (importOriginal) => ({
   refreshAnthropicCredential: refreshSpy,
 }));
 
-// The auth store reads its data dir from the environment at import time, so pin
-// it to a throwaway BEFORE the modules under test load (dynamic imports below).
-// This keeps the pushed-credential persistence off the developer's ~/.houston-ts.
 const prevDataDir = process.env.HOUSTON_DATA_DIR;
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "claude-route-data-"),
@@ -80,9 +72,6 @@ const VALID = {
   },
 };
 
-// A fixture whose access token carries the real subscription-OAuth prefix
-// (`sk-ant-oat01…`), so read-token.ts classifies it as an oauth-token —
-// asserting the pushed credential reaches CLAUDE_CODE_OAUTH_TOKEN, not just disk.
 const VALID_OAT = {
   claudeAiOauth: {
     accessToken: "sk-ant-oat01-access",
@@ -111,7 +100,6 @@ afterEach(() => {
   else process.env.HOUSTON_HOME = prevHome;
   config.controlPlaneUrl = previousControlPlaneUrl;
   config.sandboxToken = previousSandboxToken;
-  // The store is a process singleton; a pushed entry must not leak between tests.
   authStorage.remove("anthropic");
 });
 
@@ -123,7 +111,6 @@ test("outside serve mode materializes the full credential and warms the signal",
 
   const path = claudeCredentialsFile(claudeLoginConfigDir());
   expect(JSON.parse(readFileSync(path, "utf8"))).toEqual(VALID);
-  // The connected signal is warmed exactly once on success.
   expect(refreshSpy).toHaveBeenCalledTimes(1);
 });
 
@@ -131,18 +118,14 @@ test("outside serve mode also persists a usable oauth token to the auth store", 
   const { out } = await post(VALID_OAT);
   expect(out.status).toBe(200);
 
-  // The pushed credential is now the pi auth store's `anthropic` oauth entry —
-  // the ONLY sink the SDK reads on macOS/Windows (keychain-backed there).
   const token = readAnthropicToken(authStorage);
   expect(token).toMatchObject({
     kind: "oauth-token",
     value: "sk-ant-oat01-access",
   });
-  // …and it lands as CLAUDE_CODE_OAUTH_TOKEN in the SDK subprocess env.
   expect(buildClaudeEnv(token, { configDir: "/tmp/cfg" })).toMatchObject({
     CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat01-access",
   });
-  // Desktop/self-host keeps the refresh token so the credential self-refreshes.
   expect(authStorage.get("anthropic")).toMatchObject({
     type: "oauth",
     access: "sk-ant-oat01-access",
@@ -177,8 +160,6 @@ test("in serve mode persists an access-only auth-store entry (no competing rotat
   const { out } = await post(VALID_OAT);
   expect(out.status).toBe(200);
 
-  // The stored entry drops the refresh token, so the empty-refresh guard masks
-  // it away from pi's refresh path — the gateway stays the family's sole rotator.
   const stored = authStorage.get("anthropic");
   expect(stored).toMatchObject({
     type: "oauth",
@@ -186,7 +167,6 @@ test("in serve mode persists an access-only auth-store entry (no competing rotat
     refresh: "",
   });
   expect(isAccessOnlyOAuth(stored)).toBe(true);
-  // The access token still authenticates a turn until it expires.
   expect(readAnthropicToken(authStorage)).toMatchObject({
     kind: "oauth-token",
     value: "sk-ant-oat01-access",

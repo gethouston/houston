@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { RoutinesHttpError } from "./http";
 import { isRoutineGone } from "./routine-gone";
 
-/** The adapter's error shape: status plus the parsed (or raw) body. */
 function engineError(status: number, payload: unknown): Error {
   return Object.assign(new Error("engine error"), { status, body: payload });
 }

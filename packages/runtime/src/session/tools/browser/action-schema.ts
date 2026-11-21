@@ -21,13 +21,6 @@ export type BrowserActionName = (typeof BROWSER_ACTION_NAMES)[number];
 const ACTIONS_LEAD =
   "open a url; snapshot the page's elements with their refs; text: read the page's text; click/fill/select an element by ref; press a key; wait for text or a pause; back; screenshot; dialog: answer a dialog the page opened; close the browser (saves sign-ins)";
 
-/**
- * Flat on purpose: a top-level union is not a valid function schema for most
- * providers, and the Claude bridge converts only object shapes. Which fields
- * each action needs is checked by `parseBrowserAction`. `handoff` is listed
- * only where a person can be shown the browser, so a model elsewhere never
- * sees an action it could not use.
- */
 export function browserParameters({ handoff }: { handoff: boolean }) {
   const names: readonly BrowserActionName[] = handoff
     ? BROWSER_ACTION_NAMES
@@ -106,10 +99,6 @@ export function browserParameters({ handoff }: { handoff: boolean }) {
   });
 }
 
-/**
- * The flat parameters as the tool receives them. Written out, not derived:
- * the action list is built per runtime, which TypeBox cannot type statically.
- */
 export interface BrowserParams {
   action: BrowserActionName;
   url?: string;

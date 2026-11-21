@@ -2,7 +2,6 @@ import { docKey, parseJsonDoc, saveJson, withDocLock } from "@houston/domain";
 import type { Workspace } from "../domain/types";
 import { type AgentRouteDeps, DEFAULT_PATHS } from "./agent-authz";
 
-/** Local ids can be reused, so stale provenance must not survive a delete. */
 export async function rewriteOriginAgent(
   deps: AgentRouteDeps,
   workspace: Workspace,
@@ -96,7 +95,6 @@ function entry(raw: string, objectStart: number, name: string) {
   return null;
 }
 
-// Keep neighbouring policy entries in their original bytes when editing one.
 export function editRawAgentEntry(
   raw: string,
   agentId: string,

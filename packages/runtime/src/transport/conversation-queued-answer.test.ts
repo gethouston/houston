@@ -12,13 +12,6 @@ import { Readable } from "node:stream";
 import { ROUTINE_FIRE_HEADER, type WireFrame } from "@houston/protocol";
 import { afterAll, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * While a card is live, only the person it is for may answer it. A send that
- * was admitted while another turn was still running is queued behind it, and
- * that turn may END on a card: the queued send is judged again against the
- * conversation as it stands when its turn is about to start.
- */
-
 const exec = vi.hoisted(() => ({
   recorded: [] as string[],
   executed: [] as string[],
@@ -58,8 +51,6 @@ vi.mock("../session/conversation-cache", async (original) => {
     getConversation: async (id: string) => {
       const conv = fake.get(id) ?? { queue: Promise.resolve(), pending: 0 };
       fake.set(id, conv);
-      // In the real cache too: a turn that fails before it builds a session
-      // finds the running turn's queue there.
       real.conversations.set(
         id,
         conv as unknown as Parameters<typeof real.conversations.set>[1],
@@ -114,7 +105,6 @@ const settled = [
   { role: "user", content: "hi", ts: 1, turnId: "t0", author: { userId: A } },
   { role: "assistant", content: "hello", ts: 2, turnId: "t0" },
 ];
-/** What A's running turn leaves behind: a question card for A. */
 const cardForA = [
   ...settled,
   {
@@ -167,7 +157,6 @@ function send(
   }).then(() => out);
 }
 
-/** A's first send is running; `second` is admitted behind it; A's turn then ends on A's card. */
 async function raceBehindCard(
   id: string,
   second: {
@@ -181,7 +170,6 @@ async function raceBehindCard(
   exec.first = new Promise<void>((resolve) => {
     release = resolve;
   });
-  // A's turn ends: its message and its card land after whatever is there.
   exec.onFirst = () =>
     write(id, [
       ...JSON.parse(readFileSync(file(id), "utf8")).messages,
@@ -218,7 +206,6 @@ test("a send queued behind a turn that ends on someone else's card is refused wh
 
   expect(exec.recorded).toEqual(["send it"]);
   expect(exec.executed).toEqual(["send it"]);
-  // The refused turn's only frame is its typed terminal error: no user echo.
   expect(
     frames
       .filter((frame) => frame.turnId === turnId)
@@ -232,11 +219,9 @@ test("a send queued behind a turn that ends on someone else's card is refused wh
       },
     },
   ]);
-  // Nothing of the refused send reached the transcript.
   expect(JSON.parse(readFileSync(file("q1"), "utf8")).messages).toEqual(
     cardForA,
   );
-  // Its nonce is released: the same send is judged afresh, not left uncertain.
   expect(await send("q1", B, "yes", "q1-2")).toMatchObject({
     status: 403,
     body: { code: "not_interaction_owner" },
@@ -260,9 +245,6 @@ test("a routine fire queued behind the card still runs", async () => {
 });
 
 test("a send that fails before it runs records nothing over someone else's card", async () => {
-  // B's turn is pinned to a provider this workspace has no credential for: a
-  // turn that fails before it runs writes its message and an error reply, and
-  // a reply written after A's card would retire it.
   serve.pinUnavailable = true;
   const { frames, turnId } = await raceBehindCard("q4", {
     sub: B,

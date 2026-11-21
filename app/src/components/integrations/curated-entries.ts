@@ -14,17 +14,6 @@ const CROMA: CuratedIntegration = {
   keyHelpKey: "curated.croma.keyHelp",
 };
 
-/**
- * HighLevel (GoHighLevel) through its official MCP server, paired with
- * Composio's `highlevel` app on deployments that have it. Token only, as
- * HighLevel's help center documents: a Private Integration Token created in
- * the sub-account, plus that sub-account's id as the `locationId` header
- * on every call. The server also advertises OAuth (the marketplace docs
- * even recommend it), but its consent page refuses eight of the scopes its
- * own app requests and the flow dies there — not offered until HighLevel
- * fixes it. Trailing slash on the endpoint matters: it is the resource the
- * server names.
- */
 const HIGHLEVEL: CuratedIntegration = {
   slug: "highlevel",
   name: "HighLevel",
@@ -50,15 +39,6 @@ const HIGHLEVEL: CuratedIntegration = {
   providerDescKey: "curated.highlevel.providerDesc",
 };
 
-/**
- * ManyChat over its public Page API, from a committed OpenAPI document
- * (`scripts/gen-manychat-openapi.mjs` bakes it from ManyChat's published
- * spec). Composio does list a `many_chat` toolkit, but it has carried zero
- * actions at every version, so it never reaches the catalog; and ManyChat's
- * own spec names operations by MD5 hash with no summary, which is why the
- * document is committed rather than fetched. Auth is the account's API key
- * as a bearer token (`<account id>:<secret>`), a Pro-plan feature.
- */
 const MANYCHAT: CuratedIntegration = {
   slug: "manychat",
   name: "ManyChat",

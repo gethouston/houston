@@ -24,11 +24,6 @@ import {
 import { MenuItemRow } from "./workspace-account";
 import { SignedInHeader } from "./workspace-switcher-face";
 
-/**
- * The signed-in person's round portrait at the phone row's 20px glyph size: their
- * photo, else their initials. Single-player desktop has no identity, so it
- * draws a plain person glyph instead, like any other icon in the card.
- */
 function AccountAvatar(props: { name: string; avatarUrl: string | null }) {
   return (
     <Avatar className="size-5">
@@ -46,8 +41,6 @@ function AccountAvatar(props: { name: string; avatarUrl: string | null }) {
   );
 }
 
-/** One thing the account offers, as data: the phone's account page draws
- *  these as sheet rows, the menus as menu items. */
 export interface AccountAction {
   id: "profile" | "aboutMe" | "signOut";
   icon: ReactNode;
@@ -56,41 +49,18 @@ export interface AccountAction {
   dataAttrs?: Record<string, string>;
 }
 
-/** The person's own menu, in the parts a host arranges (`useAccountMenu`). */
 export interface AccountMenuParts {
   label: string;
-  /** The portrait at the phone row's 20px glyph size. */
   avatar: ReactNode;
-  /** Who is signed in, then a separator; null without an identity. */
   header: ReactNode;
-  /** Profile (where served) and About me. */
   personal: ReactNode;
-  /** A separator, then Sign out; null without an identity. */
   signOut: ReactNode;
-  /** Who is signed in; null without an identity. */
   identity: { name: string; email: string } | null;
-  /** Profile, About me, then Sign out: what the phone's account page lists. */
   actions: AccountAction[];
 }
 
-/**
- * The person's own menu, shared by the rail's account row
- * (`sidebar-workspace-menu.tsx`, which sets its parts among the workspaces
- * and the destinations) and the phone's More card (`mobile-more-account.tsx`,
- * the account page its account row drills into, which lists `actions`), so
- * both breakpoints offer the same things.
- *
- * Headed by who is signed in, it holds what the account itself needs: the
- * person's Profile (name and picture, where the deployment serves it), About
- * me (what every AI Employee knows about them) and Sign out. It is the ONLY
- * door onto all three: Profile and About me are top-level screens of their
- * own (`account/`), and Settings carries none of them. Single-player desktop
- * has no identity: no header, no Profile, no Sign out, only About me.
- */
 export function useAccountMenu(opts: {
-  /** How a screen lands on the nav stack; the phone passes `reset`. */
   nav?: NavMode;
-  /** Runs after every navigation: closes the phone's More card. */
   onNavigate: () => void;
 }): AccountMenuParts {
   const { t } = useTranslation("shell");
@@ -128,8 +98,6 @@ export function useAccountMenu(opts: {
     label: t("accountMenu.signOut"),
     dataAttrs: { "data-testid": "account-sign-out" },
     onSelect: () => {
-      // `signOut` also surfaces its failure on the auth-error bus,
-      // which the sign-in screen replacing the app renders.
       void signOut().catch((e: unknown) =>
         logAndReportError("account-sign-out", e),
       );

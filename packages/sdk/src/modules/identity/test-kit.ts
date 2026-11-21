@@ -12,7 +12,6 @@ import {
 export const GATEWAY = "https://gw.test";
 export const GOOD_CODE = "123456";
 
-/** An unsigned JWT whose payload carries `claims`. */
 function jwt(claims: Record<string, unknown>): string {
   const part = (value: unknown) =>
     btoa(JSON.stringify(value))
@@ -31,13 +30,6 @@ type Attempt = (
   session: TestSession,
 ) => LinkAttempt<TestSession> | Promise<LinkAttempt<TestSession>>;
 
-/**
- * A gateway that mails codes and mints a custom token naming the address the
- * code was verified for, plus a platform port that records every call. The
- * session a custom token signs in to is `uid-a` naming `sessionEmail` (the
- * gateway's account for that address), so a test can model a server that
- * resolves an address to a different account.
- */
 export function identityKit(
   opts: {
     sessionEmail?: string;
@@ -133,7 +125,6 @@ export function identityKit(
         accountId,
       };
     },
-    /** `[quiet class or "error", reason]` for every report, in order. */
     reports: () =>
       calls.reported.map((r) => [r.quiet ?? "error", r.reason] as const),
     advance: (ms: number) => {
@@ -148,8 +139,6 @@ export function identityKit(
     mintFails: (error: unknown) => {
       mintFailure = error;
     },
-    /** Hold the custom-token exchange until `release`; `entered` resolves
-     *  once the flow is waiting on it. */
     holdMint() {
       let entered!: () => void;
       let release!: () => void;
@@ -171,10 +160,8 @@ export function identityKit(
   };
 }
 
-/** A link answer the test settles once the person has left. */
 type LinkAnswer = (session: TestSession) => LinkAttempt<TestSession>;
 
-/** A link request held in flight until the test settles it. */
 export function deferredLink() {
   let settle!: (answer: LinkAnswer) => void;
   let started!: () => void;

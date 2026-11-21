@@ -15,15 +15,12 @@ interface Options {
   desktop?: boolean;
   startFails?: boolean;
   cancelFails?: boolean;
-  /** The return the gateway takes; omitted, the one asked for. */
   accepted?: SlackConnectAnswer["accepted"];
   connectFails?: boolean;
   open?: "opened" | "refused" | "throws";
-  /** The person switches space while the skewed listener is being freed. */
   movesDuringCancel?: boolean;
 }
 
-/** Fake ports that record every step in order, and every report. */
 function harness(opts: Options = {}) {
   const steps: string[] = [];
   const reported: string[] = [];

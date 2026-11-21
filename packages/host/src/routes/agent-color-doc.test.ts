@@ -15,22 +15,6 @@ import {
   storeAgentColor,
 } from "./agent-color";
 
-/**
- * The `agent_colors` document: ONE map per account, written from several
- * places (the color route, agent create, rename, delete). Two properties keep
- * it coherent, and both are invisible in a single-writer test.
- *
- * 1. Every write is a load → modify → save of the WHOLE map, so two writers
- *    that overlap read the same base and the last save drops the other's
- *    entry. Colors are set in bursts (a template installs several agents, the
- *    assistant recolors a group), so this is an ordinary sequence, not a
- *    contrived one.
- * 2. Every writer must address the SAME document. The map is keyed by the
- *    caller's personal workspace because that is how `/v1/preferences/:key`
- *    resolves it; a writer that picked any other workspace would store a color
- *    nothing ever reads back.
- */
-
 const colors = (vfs: MemoryVfs, workspaceId: string) =>
   getPreference(vfs, workspaceId, AGENT_COLORS_PREF_KEY).then(
     parseAgentColorMap,
@@ -102,10 +86,6 @@ describe("concurrent writers keep every entry", () => {
   });
 });
 
-/**
- * The create route's color write, through the real server: an agent born with
- * a color must be readable through the very preference the app renders from.
- */
 describe("a create-time color lands in the document the app reads", () => {
   const verifier: TokenVerifier = {
     async verify(bearer) {
@@ -131,9 +111,6 @@ describe("a create-time color lands in the document the app reads", () => {
   beforeEach(async () => {
     vfs = new MemoryVfs();
     const store = new MemoryWorkspaceStore();
-    // A second account first, so the personal workspace under test is NOT the
-    // store's first or only one: a writer that reached for the wrong document
-    // would otherwise hit the right one by accident.
     await store.getOrCreatePersonalWorkspace("bob");
     const deps: ControlPlaneDeps = {
       store,

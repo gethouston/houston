@@ -2,16 +2,9 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { isOrgAdminRequiredError } from "../src/lib/org-admin-required-error.ts";
 
-// The surfacing-layer classifier that keeps the gateway's deliberate
-// owner/admin refusal of a plain member's org-level connect out of the red
-// bug-toast + Sentry pipeline. It must match exactly that (403, reason) pair on
-// every client error shape, and must NEVER match other 403s — a false positive
-// here silently drops a real bug report.
-
 const REASON =
   "only an org owner or admin can connect the organization's AI subscription";
 
-/** The shape `HoustonEngineError` mints (structural stand-in). */
 function engineError(status: number, body: unknown): Error {
   const reason = (body as { error?: unknown } | null)?.error;
   const err = new Error(
@@ -25,7 +18,6 @@ function engineError(status: number, body: unknown): Error {
   return err;
 }
 
-/** The shape `@houston/runtime-client`'s `EngineError` mints. */
 function runtimeError(status: number, body: string): Error {
   const err = new Error(
     `engine request failed (${status}): ${body}`,
@@ -39,7 +31,6 @@ function runtimeError(status: number, body: string): Error {
   return err;
 }
 
-/** The shape the SDK's `AgentsHttpError` mints (raw body as the message). */
 function agentsError(status: number, body: string): Error {
   const err = new Error(body) as Error & { status: number };
   err.name = "AgentsHttpError";

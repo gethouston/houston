@@ -57,8 +57,6 @@ test("unknown provider and model are values", async () => {
     },
   });
   if (!start) throw new Error("missing start");
-  // A bad PROVIDER and a bad MODEL are different corrections, so they carry
-  // different codes: re-pick a provider, or pick one of that provider's models.
   for (const { pin, code } of [
     { pin: { provider: "bogus" }, code: "invalid_provider" },
     { pin: { provider: "codex", model: "bogus" }, code: "invalid_model" },
@@ -109,9 +107,6 @@ test("start reports the effective response pin", async () => {
 });
 
 test("a 200 that is not a board is refused, never thrown", async () => {
-  // `{"missions": null}` used to reach `.length` and throw a TypeError, which
-  // pi surfaces as an opaque crashed turn - the one failure shape these tools
-  // exist to avoid.
   const tools = makeMissionTools({
     personalAssistant: false,
     providers,
@@ -127,10 +122,6 @@ test("a 200 that is not a board is refused, never thrown", async () => {
 });
 
 test("the host's turn-gate refusals reach the model with their own codes", async () => {
-  // /sandbox/missions answers 400 not_in_turn / 403 plan_mode. Flattened to
-  // `host_error` these read as "the server refused" - something to retry - when
-  // the correction is to act inside a turn, or to wait for the user to leave
-  // plan mode.
   for (const [status, code] of [
     [400, "not_in_turn"],
     [403, "plan_mode"],

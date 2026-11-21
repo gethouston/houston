@@ -1,19 +1,9 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import type { ReplyBeat } from "../types";
 
-/**
- * A per-subscription reader of pi's events into {@link ReplyBeat}s. pi
- * announces a tool call inside `message_update` (`toolcall_start`) long
- * before `tool_execution_start`, the event behind the `tool_start` frame. The
- * call's name is provider-specific at `toolcall_start` (an OpenAI stream can
- * name it only in a later delta), so each call is reported once, on the
- * first of its events that carries a name. An assistant `message_end` that
- * stopped cleanly with no tool call is an `answer_end`.
- */
 export function createReplyBeatReader(): (
   e: AgentSessionEvent,
 ) => ReplyBeat | null {
-  // The content indexes of the current message's calls already reported.
   let named = new Set<number>();
   return (e) => {
     if (e.type === "message_start" && e.message.role === "assistant") {

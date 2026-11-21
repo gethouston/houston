@@ -1,13 +1,5 @@
 import { beforeEach, expect, test, vi } from "vitest";
 
-/**
- * H-009 / HOUSTON-APP-5FT: with the Linear workspace at its plan's issue cap,
- * every bug report failed with a generic "try again" and was lost, while
- * Sentry filed one error per person with none of their words. `submitBugReport`
- * now delivers the report as Sentry user feedback when Linear refuses, and
- * reports the plan cap as ONE quiet class instead of a per-user bug.
- */
-
 const mocks = vi.hoisted(() => ({
   osReportBug: vi.fn(),
   osReadRecentLogs: vi.fn(async () => ({
@@ -87,7 +79,6 @@ test("the usage limit delivers the person's words as feedback, quietly", async (
       logs: { backend: "b-log", frontend: "f-log" },
     }),
   );
-  // One fingerprinted warning for the class, never a per-user error.
   expect(mocks.reportQuietError).toHaveBeenCalledWith(
     "bug_intake_unavailable",
     "manual_report",
@@ -95,7 +86,6 @@ test("the usage limit delivers the person's words as feedback, quietly", async (
     usageLimit,
   );
   expect(mocks.logAndReportError).not.toHaveBeenCalled();
-  // ...but it is logged.
   expect(warn).toHaveBeenCalledWith(
     expect.stringContaining("bug intake unavailable"),
   );

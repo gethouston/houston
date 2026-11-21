@@ -16,7 +16,6 @@ export function assistantLanding(search: string): AssistantLanding {
   return { kind: "assistant", slug: values[0] };
 }
 
-/** Invites and a synthetic personal row alone are never proof of membership. */
 export function assistantLandingWorkspace(
   slug: string,
   memberships: readonly Pick<OrgSummary, "slug" | "kind">[],

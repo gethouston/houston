@@ -14,7 +14,6 @@ import { InteractionModal, InteractionModalTitle } from "./interaction-modal";
 import { InteractionUploadArea } from "./interaction-upload-area";
 import type { CardAttach } from "./use-card-attachments";
 
-/** The already-translated copy a question step renders, resolved by the card. */
 export interface QuestionStepCopy {
   placeholder: string;
   escapePlaceholder: string;
@@ -22,13 +21,10 @@ export interface QuestionStepCopy {
   send: string;
   esc: string;
   recommended: string;
-  /** The upload area's label on a question answered with a file. */
   upload: string;
-  /** The answer field's placeholder under that upload area. */
   filePlaceholder: string;
 }
 
-/** The card's labels resolved to a question step's copy, English defaults. */
 export function questionStepCopy(
   labels: ChatInteractionCardLabels | undefined,
 ): QuestionStepCopy {
@@ -44,22 +40,6 @@ export function questionStepCopy(
   };
 }
 
-/**
- * A question step in the shared {@link InteractionModal} shell: the question
- * text in the modal TITLE, the option rows (LEFT number badge = keyboard
- * shortcut, regular-weight label, optional Recommended chip) as the scrollable
- * body, and the answer row (free-text escape field + the card-wide decline)
- * FIXED in the trailing slot so a long option list never scrolls it away.
- * Clicking an option answers and advances, so there is no primary CTA.
- *
- * A question carrying a `brand` (it concerns an integration) instead puts the
- * app's logo + NAME in the title, like the connect card, and moves the question
- * text into the body above the options — one asking system, branded when the app
- * resolved an identity.
- *
- * A question answered with a file (`wantsFiles`) puts a large upload area
- * above its options, and its answer field becomes the "or type it" path.
- */
 export function InteractionQuestionStep({
   step,
   chrome,
@@ -80,9 +60,7 @@ export function InteractionQuestionStep({
   draft: string;
   selectedId: string | null;
   attach: CardAttach | null;
-  /** The attached files alone can answer this step (see the card). */
   fileAnswer: boolean;
-  /** The attached files that answer this step, shown under its upload area. */
   stepFiles: readonly File[];
   onOption: (optionId: string) => void;
   onDraftChange: (value: string) => void;
@@ -92,10 +70,7 @@ export function InteractionQuestionStep({
   const { disabled } = chrome;
   const optionsPresent = hasSelectableOptions(step.options);
   const brand = step.brand;
-  // No panel list behind the card means nowhere to send a file, so no area.
   const upload = step.wantsFiles === true ? attach : null;
-  // The detail block sits ABOVE the options: it is what the question is about,
-  // so it must be read before the answer is picked.
   const body = (
     <div className="flex flex-col gap-2.5">
       {step.hire ? <HireApprovalDetails hire={step.hire} /> : null}
@@ -129,8 +104,6 @@ export function InteractionQuestionStep({
       onOpenChange={chrome.onOpenChange}
       open={chrome.open}
       pager={chrome.pager}
-      // A plain question's title IS the question, so only a branded question
-      // (app name in the title, question in the body) needs the collapsed hint.
       collapsedHint={brand ? step.question : undefined}
       title={
         brand ? (
@@ -168,7 +141,6 @@ export function InteractionQuestionStep({
           disabled={disabled}
           draft={draft}
           fileAnswer={fileAnswer}
-          // Files alone can only be sent from the field's send button.
           hideFreeText={
             optionsPresent &&
             step.hideFreeText === true &&

@@ -12,12 +12,6 @@ import {
   WORKSPACE_REL,
 } from "./turn-views.test-support";
 
-/**
- * The gateway serves a sleeping agent's board from the activity doc, and
- * every pooled turn that moved a card republishes it. A turn that publishes
- * late must never put its older board over a newer turn's.
- */
-
 const BOARD = ".houston/activity/activity.json";
 
 const card = (id: string, status: string, at: string) => ({

@@ -26,8 +26,6 @@ import {
   requestGatewayOnboarding,
 } from "../src/lib/onboarding-sync.ts";
 
-// The module logs every non-fatal degradation; the failure cases below are
-// deliberate, so keep the test output readable.
 console.warn = () => {};
 
 interface Sent {
@@ -47,7 +45,6 @@ function deps(
     baseUrl: "https://gw.example/",
     token: () => "tok-1",
     refresh: async () => null,
-    // A pinned team space, so every call below proves what it does with it.
     org: () => "fedcba9876543210",
     fetchFn: async (input, init) => {
       sent.push({
@@ -142,7 +139,6 @@ describe("parseGatewayOnboarding", () => {
     strictEqual(legacy?.segment, "operations");
     strictEqual(legacy?.role, null);
     strictEqual(legacy?.roleAnsweredAt, null);
-    // Answered before the company size existed.
     strictEqual(legacy?.companySize, null);
     strictEqual(legacy?.companySizeAnsweredAt, null);
   });
@@ -166,9 +162,6 @@ describe("requestGatewayOnboarding", () => {
   });
 
   it("asks as the USER, never as the pinned team space", async () => {
-    // The route is user-scoped, but the gateway resolves `x-houston-org`
-    // BEFORE the handler: a selector the caller is no longer a member of 403s
-    // `not_member`, and the account's own answers would read as missing.
     const sent: Sent[] = [];
     await requestGatewayOnboarding(deps([json(FULL_REMOTE)], sent));
     strictEqual(sent[0].org, null);
@@ -301,9 +294,6 @@ describe("putGatewayOnboarding", () => {
   });
 
   it("writes as the USER, never as the pinned team space", async () => {
-    // The write gate derives billing from the pinned team, so with the header
-    // on, a plain member of an expired team got a silent 403 storing their own
-    // onboarding answers — and it burned the once-per-account catch-up.
     const sent: Sent[] = [];
     strictEqual(
       await putGatewayOnboarding(
@@ -316,8 +306,6 @@ describe("putGatewayOnboarding", () => {
   });
 
   it("is not synced when the gateway's answer lacks a field it was sent", async () => {
-    // A gateway that predates `role` ignores it and still answers 200: the
-    // record must stay owed so the role is sent again once it is stored.
     const sent: Sent[] = [];
     const { role: _dropped, ...olderGateway } = FULL_REMOTE;
     strictEqual(
@@ -331,8 +319,6 @@ describe("putGatewayOnboarding", () => {
   });
 
   it("stores the rest when one field is refused, and stays owed", async () => {
-    // A role a newer build offers than this gateway knows: the other answers
-    // must not be held back by it.
     const sent: Sent[] = [];
     strictEqual(
       await putGatewayOnboarding(
@@ -410,14 +396,12 @@ describe("mergeGatewayOnboarding", () => {
       FULL_REMOTE,
     );
     ok(merged);
-    strictEqual(merged.role, "paralegal"); // the local answer wins
+    strictEqual(merged.role, "paralegal");
     strictEqual(merged.industry, "healthcare");
     strictEqual(merged.companySize, "11_50");
     strictEqual(merged.automationGoal, "chase overdue invoices");
     strictEqual(merged.goalSkipped, false);
     strictEqual(merged.updatedAt, "2026-08-05T09:00:00.000Z");
-    // Still ahead of the gateway (the role was never pushed) — the catch-up
-    // flush must still fire.
     strictEqual(merged.gatewaySyncedAt, null);
   });
 
@@ -450,9 +434,6 @@ describe("mergeGatewayOnboarding", () => {
   });
 
   it("lets a remote skip win over remote text that should have been cleared", () => {
-    // A contradictory row (text AND goal_skipped) means the user retracted the
-    // text; resurrecting it would put words back in their mouth. `goalSkipped`
-    // wins, and the text is dropped.
     const merged = mergeGatewayOnboarding(local({ role: "paralegal" }), {
       ...FULL_REMOTE,
       automationGoal: "chase overdue invoices",
@@ -527,9 +508,6 @@ describe("onboardingPatchFromSurvey", () => {
   });
 
   it("never pushes back a something-else read off the gateway without words", () => {
-    // A newer build stored a role or industry this build cannot name, which
-    // reads here as "something else" with no words of the person's. Pushing it
-    // back would overwrite the real answer.
     deepStrictEqual(
       onboardingPatchFromSurvey({
         ...createOnboardingSurveyPreference(),
@@ -579,9 +557,6 @@ describe("onboardingPatchFromSurvey", () => {
   });
 
   it("asks the goal question exactly once, even from a contradictory record", () => {
-    // Text and skip are mutually exclusive locally, but a record read off disk
-    // could hold both. Sending both fields would fight the server's own
-    // invariant; the text wins and the server clears goal_skipped for us.
     deepStrictEqual(
       onboardingPatchFromSurvey({
         ...createOnboardingSurveyPreference(),
@@ -625,8 +600,6 @@ describe("owesGatewayCatchUp", () => {
   });
 
   it("flushes again for the NEXT account signed in on this machine", () => {
-    // The guard used to be a bare boolean, so the second account's unsynced
-    // record was never caught up on this device.
     strictEqual(
       owesGatewayCatchUp({
         survey: unsynced(),
@@ -636,7 +609,6 @@ describe("owesGatewayCatchUp", () => {
       }),
       true,
     );
-    // Signed out is its own account slot, distinct from "never flushed".
     strictEqual(
       owesGatewayCatchUp({
         survey: unsynced(),
@@ -658,11 +630,6 @@ describe("owesGatewayCatchUp", () => {
   });
 
   it("leaves a record whose push a save already owns alone", () => {
-    // The session's FIRST save used to trip this: the save writes the new
-    // (unsynced) record into the query cache, the effect wakes on that write
-    // and fired a second concurrent PUT of the same answer — and spent the
-    // once-per-account latch doing it, so a genuinely failed push later in the
-    // session got no retry at all.
     const survey = unsynced();
     strictEqual(
       owesGatewayCatchUp({
@@ -673,7 +640,6 @@ describe("owesGatewayCatchUp", () => {
       }),
       false,
     );
-    // A DIFFERENT record is still owed its catch-up — the claim is per record.
     strictEqual(
       owesGatewayCatchUp({
         survey,
@@ -686,8 +652,6 @@ describe("owesGatewayCatchUp", () => {
   });
 
   it("still owes a catch-up once that save's push has failed", () => {
-    // The claim is released when the push settles, landed or not, and the
-    // latch was never spent — so the record is caught up as designed.
     strictEqual(
       owesGatewayCatchUp({
         survey: unsynced(),
@@ -732,12 +696,6 @@ describe("owesGatewayCatchUp", () => {
 
 describe("a save pushes the WHOLE record", () => {
   it("carries an earlier answer whose own push never landed", async () => {
-    // The scenario that loses an answer forever: the industry's PUT fails (the
-    // claim is released, and nothing re-renders, so this session's catch-up
-    // never wakes), then the role's PUT succeeds and stamps the WHOLE
-    // record as synced. With a per-save DELTA payload the industry is now
-    // neither at the gateway nor owed to it — `owesGatewayCatchUp` skips a
-    // stamped record and the gateway merge only ever fills local gaps.
     const sent: Sent[] = [];
     const gateway = deps(
       [new Response(null, { status: 503 }), json(FULL_REMOTE)],
@@ -763,7 +721,6 @@ describe("a save pushes the WHOLE record", () => {
     strictEqual(roleLanded, true);
     record = markGatewaySynced(record, "2026-08-08T12:00:00.000Z");
 
-    // The second body carries BOTH answers, so the stamp it earns is truthful.
     deepStrictEqual(JSON.parse(sent[1].body ?? ""), {
       role: "medical_receptionist",
       industry: "healthcare",
@@ -781,9 +738,6 @@ describe("a save pushes the WHOLE record", () => {
 });
 
 describe("flush ownership wiring", () => {
-  // The push rules themselves are driven end to end in
-  // `onboarding-survey-push.test.ts`; what is left here is the REACT wiring
-  // those rules depend on, which node:test cannot render.
   const read = (relativePath: string) =>
     readFileSync(new URL(relativePath, import.meta.url), "utf8");
   const hook = read("../src/hooks/use-onboarding-survey.ts");

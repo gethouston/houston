@@ -4,12 +4,6 @@ import { buildProviderCatalog } from "./pi-catalog";
 
 type ModelId = Parameters<typeof getModel>[1];
 
-/**
- * The GPT-6 line ships natively in pi-ai's baked OpenAI catalogs. Luna is the
- * Codex default every unpinned turn lands on and Astra is the headline tier, so
- * a pi bump that dropped or reshaped either entry would silently strip it from
- * `GET /v1/catalog`.
- */
 test("GET /v1/catalog advertises the GPT-6 line under openai-codex", () => {
   const codex = buildProviderCatalog().find((p) => p.id === "openai-codex");
   expect(codex).toBeDefined();
@@ -31,8 +25,6 @@ test("GET /v1/catalog advertises the GPT-6 line under openai-codex", () => {
     cacheRead: 0.01,
     cacheWrite: 0.125,
   });
-  // Luna maps `off` to the API's own `none` effort, so thinking can be turned
-  // all the way off — Astra below has no such row.
   expect(luna?.thinkingLevels).toContain("off");
   expect(luna?.thinkingLevels).toContain("max");
 });
@@ -74,8 +66,6 @@ test("GET /v1/catalog advertises GPT-6 Astra under openai-codex", () => {
   expect(astra?.name).toBe("GPT-6 Astra");
   expect(astra?.reasoning).toBe(true);
   expect(astra?.vision).toBe(true);
-  // 272k is the standard-price tier Codex sizes against; the protocol's
-  // MODEL_WINDOW_OVERRIDES snaps the usage bar up to the 1M window.
   expect(astra?.contextWindow).toBe(272_000);
   expect(astra?.maxTokens).toBe(128_000);
   expect(astra?.pricing).toMatchObject({
@@ -84,8 +74,6 @@ test("GET /v1/catalog advertises GPT-6 Astra under openai-codex", () => {
     cacheRead: 1,
     cacheWrite: 12.5,
   });
-  // The API rejects `reasoning.effort: "none"`, so there is no "off" level;
-  // the ladder runs low→max.
   expect(astra?.thinkingLevels).not.toContain("off");
   expect(astra?.thinkingLevels).toContain("xhigh");
   expect(astra?.thinkingLevels).toContain("max");

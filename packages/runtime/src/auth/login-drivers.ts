@@ -8,8 +8,6 @@ import { anthropicSharedLoginDir } from "./anthropic-login-dir";
 import { storeAnthropicOauth } from "./anthropic-oauth-store";
 import type { LoginState } from "./login-state";
 import { authStorage, modelRuntime } from "./storage";
-// ModelRuntime.login also refreshes the network catalog outside the login abort signal.
-// Auth completion depends only on the provider flow and credential write.
 export async function runProviderOAuthLogin(
   provider: ProviderId,
   interaction: ProviderAuthInteraction,

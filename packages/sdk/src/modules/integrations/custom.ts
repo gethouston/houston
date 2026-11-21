@@ -1,19 +1,3 @@
-/**
- * The user-scoped custom-integration routes (`/v1/integrations/custom/*`): the
- * outside apps a user adds themselves from a link — their own API or MCP
- * servers. The Composio-backed catalog of connectable providers is a different
- * family; see `reads.ts`.
- *
- * A non-2xx always throws (`modules/http.ts`), including the 404 a deployment
- * without this surface answers the definitions read with. Whether that 404 is
- * "feature absent" or a real failure is the CALLER's judgement (the web adapter
- * degrades it to an empty section), so it is decided at the surface, never
- * swallowed here.
- *
- * Assistant catalog: this file is the single source of truth for these eight
- * operations, so each carries its own `@assistant` block.
- */
-
 import { type HttpScope, httpRequest } from "../http";
 import type {
   AddCustomIntegrationInput,

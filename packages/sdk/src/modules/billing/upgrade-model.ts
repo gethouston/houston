@@ -5,7 +5,6 @@ export type PlanUpgradeView =
   | { status: "free"; percent: null }
   | { status: "nearLimit" | "limit"; percent: number };
 
-/** A free org's persistent upgrade entry: plain Free, the 80% warning, or the limit. */
 export function planUpgradeView(
   billing: OrgBilling | null | undefined,
 ): PlanUpgradeView | null {

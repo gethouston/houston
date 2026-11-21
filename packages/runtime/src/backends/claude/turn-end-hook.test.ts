@@ -7,13 +7,6 @@ import {
 import { makeSuggestActionsTool } from "../../session/tools/suggest-actions";
 import { buildTurnEndHooks, endTurnIfRequested } from "./turn-end-hook";
 
-/**
- * The Claude backend's answer to pi's `terminate` hint: a PostToolBatch hook
- * that stops the subprocess once a tool of the batch marked the turn ended.
- * These pin the hook's wiring and its decision: silent before the closing
- * message, silent outside a turn, `continue: false` after.
- */
-
 const input = {
   hook_event_name: "PostToolBatch",
   tool_calls: [],
@@ -49,7 +42,6 @@ test("stops the subprocess only after an offer tool ended the turn", async () =>
   holder.finish.noteAssistantMessageStart();
   holder.finish.noteAssistantText("All set.");
   await runWithInteractionCapture(holder, async () => {
-    // Before the tool ran: nothing to stop.
     expect(await fire()).toEqual({});
     await callTool();
     expect(await fire()).toMatchObject({ continue: false });

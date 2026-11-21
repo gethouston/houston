@@ -5,27 +5,6 @@ import { describe, expect, it } from "vitest";
 import { parseColor } from "../build/color.mjs";
 import legacy from "./legacy-resolved.json" with { type: "json" };
 
-/**
- * Zero-diff regression test.
- *
- * `legacy-resolved.json` pins the RESOLVED value of every --ht-* custom property
- * as it shipped BEFORE the design-tokens adoption — extracted directly from the
- * hand-written definitions in `ui/core/src/globals.css` +
- * `app/src/styles/futuristic.css` (the futuristic layer imported last, so its
- * overrides win). It was generated from those files at commit d3322e3, not typed
- * by hand.
- *
- * We compare the generated `dist/css/tokens.css` against that baseline by PARSED
- * colour (r,g,b,a), not raw string, so a cosmetic reformat that renders the same
- * pixels (e.g. the legacy `rgba(255,255,255,0.10)` vs a canonical `0.1`) passes,
- * while any real colour change fails. This is what proves the refactor is
- * visually identical. A deliberate visual change must update both the tokens and
- * this fixture in the same commit.
- *
- * A fixture (not `git show HEAD:`) is used on purpose: it stays correct after
- * this PR merges and keeps the test hermetic (no git, no working-tree state).
- */
-
 const cssPath = fileURLToPath(
   new URL("../dist/css/tokens.css", import.meta.url),
 );
@@ -40,7 +19,6 @@ function parseBlock(css: string, selector: string): Vars {
   const re = /--(ht-[a-z0-9-]+)\s*:\s*([^;]+);/g;
   let m: RegExpExecArray | null = re.exec(block[1]);
   while (m) {
-    // Elevation is not a colour and has no pre-adoption baseline to pin.
     if (!m[1].startsWith("ht-shadow-")) vars[m[1]] = m[2].trim();
     m = re.exec(block[1]);
   }

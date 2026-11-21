@@ -12,13 +12,6 @@ import { useUIStore } from "../../stores/ui";
 
 const skillMdPath = (slug: string) => `.agents/skills/${slug}/SKILL.md`;
 
-/**
- * The copy-based skill actions (HOU-792): every operation is N
- * calls to the existing per-agent routes (skills are stored ON each agent —
- * there is no shared store, and the hosted gateway only proxies agent-scoped
- * routes). Failures surface per the no-silent-failures rule: the `call`
- * wrapper toasts write/delete failures with the real reason.
- */
 export function useSkillsViewActions() {
   const { t } = useTranslation("skills");
   const qc = useQueryClient();
@@ -34,9 +27,6 @@ export function useSkillsViewActions() {
     [qc],
   );
 
-  /** One global save: write the canonical content to `writes`, remove the copy
-   *  from `deletes` (both agent folderPaths). Throws if anything failed so the
-   *  dialog stays open; the failed calls have already toasted their reason. */
   const applySkillChanges = useCallback(
     async (
       row: WorkspaceSkillRow,
@@ -59,12 +49,6 @@ export function useSkillsViewActions() {
     [addToast, invalidateSkills, t],
   );
 
-  /**
-   * Remove the skill from every agent that holds it. Optimistic: the row
-   * leaves every holder's list at once and the promise resolves before the
-   * host answers, so the editor can leave straight away. A refusal from ANY
-   * holder puts every list back and refetches the truth, with one toast.
-   */
   const deleteSkillEverywhere = useCallback(
     async (row: WorkspaceSkillRow): Promise<void> => {
       const paths = row.agents.map((a) => a.folderPath);

@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { capabilitiesOf, priceTier } from "./capabilities.ts";
 
-/** Build a minimal CatalogModel with the fields these helpers read. */
 function model(fields) {
   return {
     key: "k",
@@ -17,7 +16,6 @@ function model(fields) {
   };
 }
 
-/** A model priced at a single input cost per Mtok (one paid offer). */
 function priced(costInput) {
   return model({
     offers: [
@@ -102,9 +100,7 @@ test("priceTier: cheapest offer wins across offers", () => {
 });
 
 test("priceTier: missing pricing is undefined, not free", () => {
-  // No offers at all.
   assert.equal(priceTier(model()), undefined);
-  // A subscription-only offer carries no per-token price.
   assert.equal(
     priceTier(
       model({

@@ -7,7 +7,6 @@ import type { ManagerReach } from "../../../lib/manager-onboarding/script";
 import { useAgentStore } from "../../../stores/agents";
 import { useManagerHandoffStore } from "../../../stores/manager-handoff";
 
-/** Starts the person's goal once the scripted closing has been said. */
 export function useGoalHandoff({
   goal,
   about,

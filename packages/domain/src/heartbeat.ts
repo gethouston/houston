@@ -10,36 +10,19 @@ import { withDocLock } from "./doc-lock";
 import { PREFERENCES_NAMESPACE } from "./preferences";
 import { loadJson, saveJson, type TextStore } from "./store";
 
-/**
- * The daily heartbeat's one document per person: the settings they chose and
- * the host's record of the last run. It lives beside the preferences doc,
- * ABOVE the agent prefixes (`ws/<workspaceId>/heartbeat.json`) of the personal
- * workspace the AI Manager lives in, so deleting an agent never touches it.
- *
- * An absent document IS the default (on, 08:00, never run), so a user who
- * predates the feature needs no migration.
- */
 export const heartbeatDocKey = (workspaceId: string) =>
   `${PREFERENCES_NAMESPACE}/${workspaceId}/heartbeat.json`;
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** A briefing turn the runtime accepted and the host has not yet seen end. */
 export interface HeartbeatPending {
-  /** The nonce the turn was sent with: its user message carries it. */
   nonce: string;
   at: string;
-  /** `seen` once this briefing is confirmed delivered (heartbeat-news.ts). */
   seen: string[];
 }
 
-/**
- * The stored document: the wire state plus the host-owned record the "only
- * when there is news" rule reads (heartbeat-news.ts). Never on the wire.
- */
 export interface HeartbeatDoc extends HeartbeatState {
-  /** Keys of the items the person has been told about. */
   seen: string[];
   pending: HeartbeatPending | null;
 }
@@ -54,11 +37,6 @@ function normalizePending(raw: unknown): HeartbeatPending | null {
   return { nonce, at, seen: strings(seen) };
 }
 
-/**
- * Read field by field: a hand-edited bad `time` falls back to the default
- * time without also forgetting that today's briefing already ran (which would
- * fire it a second time).
- */
 export function normalizeHeartbeat(raw: unknown): HeartbeatDoc {
   const doc = isRecord(raw) ? raw : {};
   const time = HeartbeatTimeSchema.safeParse(doc.time);
@@ -75,7 +53,6 @@ export function normalizeHeartbeat(raw: unknown): HeartbeatDoc {
   };
 }
 
-/** The wire state, without the host-owned fields. */
 const toState = ({ enabled, time, last }: HeartbeatDoc): HeartbeatState => ({
   enabled,
   time,
@@ -98,11 +75,6 @@ export async function loadHeartbeat(
   return toState(await loadHeartbeatDoc(store, workspaceId));
 }
 
-/**
- * Read-modify-write under the doc lock: the person's settings write and the
- * daemon's run record land on the same document, and either one saving over
- * the other's base would lose a field.
- */
 export function updateHeartbeatDoc(
   store: TextStore,
   workspaceId: string,
@@ -126,7 +98,6 @@ async function updateHeartbeat(
   );
 }
 
-/** Apply the person's change. The patch is already validated by the caller. */
 export function setHeartbeatSettings(
   store: TextStore,
   workspaceId: string,
@@ -139,11 +110,6 @@ export function setHeartbeatSettings(
   }));
 }
 
-/**
- * Record a run that ended without a turn (quiet, or a turn that could not
- * start); host-owned, the person never writes it. An admitted turn goes
- * through heartbeat-briefing.ts instead.
- */
 export function recordHeartbeatRun(
   store: TextStore,
   workspaceId: string,

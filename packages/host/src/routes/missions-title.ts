@@ -10,14 +10,6 @@ import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
 import { fireActivityChanged, type MissionsCtx } from "./missions-sandbox";
 
-/**
- * The runtime's after-turn mission title (`POST /sandbox/missions/title`): a
- * new mission's first turn titles its card in the same runtime that ran it, and
- * this route writes it. Compare-and-set under the activity doc lock: the title
- * lands only while the card still shows the `fallback` it was created with, so a
- * rename the user made while the title was generating always wins. Arrives after
- * the turn's settle report, so it is deliberately not gated on a live turn.
- */
 export async function handleMissionTitle(
   ctx: MissionsCtx,
   req: IncomingMessage,

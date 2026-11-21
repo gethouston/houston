@@ -4,7 +4,6 @@ import { type FakeHost, startFakeHost } from "./server";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
-/** One `user` wire frame's payload, as the conversation stream serves it. */
 interface UserFrameData {
   content: string;
   ts: number;
@@ -12,11 +11,6 @@ interface UserFrameData {
   mentions?: Array<{ userId: string; name?: string }>;
 }
 
-/**
- * The payload of the first `user` frame on a conversation stream. Reads the SSE
- * body the way the real client does — split on `\n\n`, keep `data:` lines — and
- * aborts the connection once the frame is in hand.
- */
 async function readUserFrame(eventsUrl: string): Promise<UserFrameData> {
   const abort = new AbortController();
   try {
@@ -48,11 +42,6 @@ async function readUserFrame(eventsUrl: string): Promise<UserFrameData> {
   }
 }
 
-/**
- * Covers the package's new lifecycle surface — `startFakeHost` / `FakeHost.stop`
- * — and a few representative routes, so the exported API is exercised outside
- * the Playwright suite. Each test binds an ephemeral port (0) to stay hermetic.
- */
 describe("startFakeHost", () => {
   let host: FakeHost;
 
@@ -94,8 +83,6 @@ describe("startFakeHost", () => {
   });
 
   it("keeps the manager's address off the roster, so an empty roster still has one", async () => {
-    // A first run is an empty roster; the real host's manager lives on a
-    // hidden agent that emptying the roster never touches.
     await fetch(`${host.url}/agents/${SEED_AGENT_ID}`, { method: "DELETE" });
     const roster = (await (await fetch(`${host.url}/agents`)).json()) as {
       id: string;
@@ -111,10 +98,6 @@ describe("startFakeHost", () => {
   });
 
   it("refuses a rename onto a name already in use, like the real host", async () => {
-    // The real host 409s rather than clobbering the other file
-    // (`turn/files-ops.ts`), and the UI treats that as an expected state. A
-    // fake host that silently overwrote would make the collision untestable
-    // AND would lose a file in every e2e that renames.
     const files = `${host.url}/agents/${SEED_AGENT_ID}/files`;
     await fetch(`${files}/import`, {
       method: "POST",
@@ -135,7 +118,6 @@ describe("startFakeHost", () => {
       code: "name_taken",
     });
 
-    // Both files are still there, under their own names.
     const listed = (await (await fetch(files)).json()) as Array<{
       path: string;
     }>;
@@ -143,7 +125,6 @@ describe("startFakeHost", () => {
     expect(paths).toContain("notes.txt");
     expect(paths).toContain("Q3 report.pdf");
 
-    // A folder name is taken too: it exists only through its children's keys.
     await fetch(`${files}/folder`, {
       method: "POST",
       headers: JSON_HEADERS,
@@ -156,7 +137,6 @@ describe("startFakeHost", () => {
     });
     expect(ontoFolder.status).toBe(409);
 
-    // A free name still renames, and the name it already has is a no-op.
     const free = await fetch(`${files}/rename`, {
       method: "POST",
       headers: JSON_HEADERS,
@@ -172,8 +152,6 @@ describe("startFakeHost", () => {
   });
 
   it("refuses a folder or a move onto a name already in use, like the real host", async () => {
-    // Every op that could land on an occupied name refuses it, so the UI's
-    // one calm "that name is taken" surface is exercised for all three.
     const files = `${host.url}/agents/${SEED_AGENT_ID}/files`;
     const post = (sub: string, payload: Record<string, unknown>) =>
       fetch(`${files}/${sub}`, {
@@ -190,7 +168,6 @@ describe("startFakeHost", () => {
       files: [{ name: "notes.txt", contentBase64: "" }],
     });
 
-    // A folder cannot take a file's name…
     const folderOntoFile = await post("folder", { path: "notes.txt" });
     expect(folderOntoFile.status).toBe(409);
     expect(await folderOntoFile.json()).toEqual({
@@ -198,7 +175,6 @@ describe("startFakeHost", () => {
       code: "name_taken",
     });
 
-    // …nor can a drag-move land on one.
     const moveOntoFile = await post("move", {
       path: "notes.txt",
       toDir: "Papers",
@@ -209,7 +185,6 @@ describe("startFakeHost", () => {
       code: "name_taken",
     });
 
-    // Nothing was lost, and a free destination still moves.
     const listed = (await (await fetch(files)).json()) as Array<{
       path: string;
     }>;
@@ -221,9 +196,6 @@ describe("startFakeHost", () => {
   });
 
   it("refuses every write once a workspace is armed read-only", async () => {
-    // The real host's `probeKeyCase` fails first on an unwritable volume, so
-    // every write 403s with `read_only` while reads keep answering — the shape
-    // the Files tab's authored copy describes.
     const files = `${host.url}/agents/${SEED_AGENT_ID}/files`;
     const post = (sub: string, payload: Record<string, unknown>) =>
       fetch(`${files}/${sub}`, {
@@ -257,7 +229,6 @@ describe("startFakeHost", () => {
       expect((await write).status).toBe(403);
     }
 
-    // Reading is untouched, and nothing the writes asked for happened.
     const paths = (
       (await (await fetch(files)).json()) as Array<{ path: string }>
     ).map((f) => f.path);
@@ -266,7 +237,6 @@ describe("startFakeHost", () => {
     expect(paths).not.toContain("blocked.txt");
     expect(paths).not.toContain("Docs/Q3 report.pdf");
 
-    // Disarming restores the workspace, so one armed spec cannot poison another.
     await fetch(`${host.url}/__test__/workspace-read-only`, {
       method: "POST",
       headers: JSON_HEADERS,
@@ -280,10 +250,6 @@ describe("startFakeHost", () => {
   });
 
   it("serves the pi-ai provider catalog at /v1/catalog", async () => {
-    // Regression: the route was missing, so the app's `getCatalog()` 404-degraded
-    // to `[]` and the picker/AI-Models tab fell back to the override-only seed
-    // (all providers, zero models). It must serve the real `ProviderCatalog` the
-    // desktop host would — every runnable provider, each with its models.
     const res = await fetch(`${host.url}/v1/catalog`);
     expect(res.status).toBe(200);
     const catalog = (await res.json()) as Array<{
@@ -291,7 +257,6 @@ describe("startFakeHost", () => {
       auth: string;
       models: Array<{ id: string }>;
     }>;
-    // The local profile serves the full pi-ai set — many providers, real models.
     expect(catalog.length).toBeGreaterThan(20);
     const ids = catalog.map((p) => p.id);
     for (const id of ["anthropic", "openai-codex", "openrouter"])
@@ -301,12 +266,6 @@ describe("startFakeHost", () => {
   });
 
   it("serves the pre-agent connect surface at /setup-runtime/*", async () => {
-    // Regression: the WebApp gate probes /setup-runtime/auth/status (the real
-    // host serves no flat /auth/status — commit cfd61df0). The route was
-    // missing here, so global-setup timed out waiting for "Your Agents".
-    // The setup slot models FIRST-RUN: nothing connected yet — the gate is
-    // reachability-only, and onboarding's connect step renders a Connect pill
-    // per provider (onboarding-connect.spec asserts "Connect Anthropic").
     const status = await fetch(`${host.url}/setup-runtime/auth/status`);
     expect(status.status).toBe(200);
     const auth = (await status.json()) as {
@@ -325,7 +284,6 @@ describe("startFakeHost", () => {
     expect(list.length).toBeGreaterThan(0);
     expect(list.every((p) => !p.configured)).toBe(true);
 
-    // The OAuth login chain flips the slot both reads share.
     const login = await fetch(
       `${host.url}/setup-runtime/auth/openai-codex/login`,
       { method: "POST" },
@@ -351,19 +309,15 @@ describe("startFakeHost", () => {
       true,
     );
 
-    // reset() empties the setup slot again (what onboarding specs rely on).
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     const reseeded = (await (
       await fetch(`${host.url}/setup-runtime/auth/status`)
     ).json()) as { activeProvider: string | null };
     expect(reseeded.activeProvider).toBeNull();
 
-    // The real host serves no flat /auth/status — neither does the fake.
     const flat = await fetch(`${host.url}/auth/status`);
     expect(flat.status).toBe(404);
 
-    // Anything outside the connect surface stays agent-scoped — 404, like the
-    // real host's allowlist (packages/host/src/routes/setup-runtime.ts).
     const outside = await fetch(`${host.url}/setup-runtime/settings`);
     expect(outside.status).toBe(404);
     const noExport = await fetch(`${host.url}/setup-runtime/auth/export`);
@@ -371,7 +325,6 @@ describe("startFakeHost", () => {
   });
 
   it("gates the per-agent api-key connect on the real route's rules", async () => {
-    // Provider slots are process-global, so start from the seed.
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     const connect = (body: Record<string, unknown>) =>
       fetch(`${host.url}/agents/${SEED_AGENT_ID}/credential/api-key`, {
@@ -386,16 +339,11 @@ describe("startFakeHost", () => {
       return list.find((p) => p.id === provider)?.configured;
     };
 
-    // An api-key provider connects and reads back connected at once.
     const ok = await connect({ provider: "openrouter", apiKey: " sk-or-e2e " });
     expect(ok.status).toBe(200);
     expect(await ok.json()).toEqual({ ok: true, provider: "openrouter" });
     expect(await configured("openrouter")).toBe(true);
 
-    // Same 400s as `POST /agents/:id/credential/api-key` on the real host
-    // (packages/host/src/routes/agents.ts): an OAuth provider and an id no
-    // catalog knows are both "unknown API-key provider" — the fake accepted
-    // either and reported a connect the UI could never observe.
     for (const provider of ["anthropic", "github-copilot", "not-a-provider"]) {
       const res = await connect({ provider, apiKey: "sk-whatever" });
       expect(res.status).toBe(400);
@@ -408,7 +356,6 @@ describe("startFakeHost", () => {
       error: "unknown API-key provider",
     });
 
-    // A key that is only whitespace is no key.
     for (const apiKey of ["", "   \t ", 42]) {
       const res = await connect({ provider: "openrouter", apiKey });
       expect(res.status).toBe(400);
@@ -425,7 +372,6 @@ describe("startFakeHost", () => {
   it("serves + round-trips the per-workspace sidebar layout", async () => {
     const base = `${host.url}/v1/workspaces/${SEED_WORKSPACE_ID}/sidebar-layout`;
 
-    // Unset → the empty default (mirrors the real host's DEFAULT_SIDEBAR_LAYOUT).
     const initial = await fetch(base);
     expect(initial.status).toBe(200);
     expect(await initial.json()).toEqual({
@@ -433,7 +379,6 @@ describe("startFakeHost", () => {
       order: [],
     });
 
-    // A valid PUT persists and echoes the stored layout.
     const layout = {
       groups: [
         { id: "g1", name: "Work", collapsed: false, agentIds: ["a", "b"] },
@@ -559,8 +504,6 @@ describe("startFakeHost", () => {
       ],
     };
 
-    // Bind a conversation to the seeded activity and persist the question
-    // interaction VERBATIM (covers the kind-agnostic PATCH set path).
     const patched = await fetch(`${agentBase}/activities/act-1`, {
       method: "PATCH",
       headers: JSON_HEADERS,
@@ -574,7 +517,6 @@ describe("startFakeHost", () => {
     };
     expect(patchedBody.pending_interaction).toEqual(interaction);
 
-    // Dismiss: append the stop marker + retire the pending interaction.
     const dismissed = await fetch(
       `${agentBase}/conversations/conv-1/dismiss-interaction`,
       { method: "POST" },
@@ -582,7 +524,6 @@ describe("startFakeHost", () => {
     expect(dismissed.status).toBe(200);
     expect(await dismissed.json()).toEqual({ ok: true });
 
-    // The transcript ends on a stopped, empty assistant message.
     const messages = (await (
       await fetch(`${agentBase}/conversations/conv-1/messages`)
     ).json()) as { messages: Array<{ role: string; stopped?: boolean }> };
@@ -590,7 +531,6 @@ describe("startFakeHost", () => {
     expect(last?.role).toBe("assistant");
     expect(last?.stopped).toBe(true);
 
-    // The board card no longer waits on the user (pending_interaction cleared).
     const activities = (await (
       await fetch(`${agentBase}/activities`)
     ).json()) as {
@@ -612,7 +552,6 @@ describe("startFakeHost", () => {
       headers: JSON_HEADERS,
       body: JSON.stringify({ pending_interaction: interaction }),
     });
-    // Explicit null clears it — the key is DELETED, not stored as null.
     const cleared = await fetch(url, {
       method: "PATCH",
       headers: JSON_HEADERS,
@@ -646,10 +585,6 @@ describe("startFakeHost", () => {
       }),
     });
 
-    // Same rule as the real host: the user's move to Done answers the question,
-    // the clean-finish offer keeps rendering on the Done card. A MALFORMED
-    // interaction riding along on the same patch counts as absent — it must not
-    // block the strip (and must never be stored).
     const done = await fetch(url, {
       method: "PATCH",
       headers: JSON_HEADERS,
@@ -665,9 +600,6 @@ describe("startFakeHost", () => {
   it("serves the space directory at /v1/org/people in the gateway's order", async () => {
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
 
-    // No armed roster (personal space / single-player): an empty directory —
-    // the route EXISTS, so the client gets no autocomplete without taking the
-    // 404 degrade path.
     const empty = await fetch(`${host.url}/v1/org/people`);
     expect(empty.status).toBe(200);
     expect(await empty.json()).toEqual({ people: [] });
@@ -676,9 +608,6 @@ describe("startFakeHost", () => {
       method: "POST",
       headers: JSON_HEADERS,
       body: JSON.stringify({
-        // Deliberately shuffled, and none of it in the answer's order: the
-        // route must sort, not echo. A member the gateway has no GCIP profile
-        // for still appears, but AFTER everyone who has a name.
         members: [
           { userId: "u-ghost", email: "ghost@acme.test", role: "user" },
           {
@@ -694,15 +623,12 @@ describe("startFakeHost", () => {
             displayName: "Ada Lovelace",
             photoUrl: "https://img.test/ada.png",
           },
-          // Lower-cased on purpose: the sort folds case, so she lands between
-          // the two Adas and Bob, not ahead of every capital letter.
           {
             userId: "u-carol",
             email: "carol@acme.test",
             role: "user",
             displayName: "ada mendez",
           },
-          // Same display name as u-self: the userId breaks the tie.
           {
             userId: "u-aaa",
             email: "other.ada@acme.test",
@@ -716,9 +642,6 @@ describe("startFakeHost", () => {
 
     const res = await fetch(`${host.url}/v1/org/people`);
     expect(res.status).toBe(200);
-    // Exactly the gateway's order: named first, case-folded alphabetical,
-    // userId breaking a tie; then the unnamed, by userId. Sanitized too — the
-    // directory carries no email and no role.
     expect(await res.json()).toEqual({
       people: [
         { userId: "u-aaa", displayName: "Ada Lovelace" },
@@ -734,9 +657,6 @@ describe("startFakeHost", () => {
       ],
     });
 
-    // A plain member sees the whole directory — unlike `GET /v1/org`, whose
-    // roster the gateway hides from a `user`. Every teammate must be able to
-    // @mention their co-members.
     await fetch(`${host.url}/__test__/capabilities`, {
       method: "POST",
       headers: JSON_HEADERS,
@@ -751,7 +671,6 @@ describe("startFakeHost", () => {
     };
     expect(orgAsMember.members).toBeUndefined();
 
-    // Non-GET 404s, exactly like its neighbours.
     const post = await fetch(`${host.url}/v1/org/people`, { method: "POST" });
     expect(post.status).toBe(404);
   });
@@ -772,8 +691,6 @@ describe("startFakeHost", () => {
       return people.find((p) => p.userId === "u-self")?.displayName;
     };
 
-    // Arming the roster seeds the identity-provider profile: the caller's name
-    // is the one Google handed over, NOT one they chose (`custom` false).
     await fetch(`${host.url}/__test__/org`, {
       method: "POST",
       headers: JSON_HEADERS,
@@ -795,8 +712,6 @@ describe("startFakeHost", () => {
       custom: { displayName: false, photoUrl: false },
     });
 
-    // A save overrides it — and REPAINTS the directory the mission faces and
-    // the @mention popover read, on their very next request.
     const saved = await putProfile({ displayName: "New Name" });
     expect(saved.status).toBe(200);
     expect(await saved.json()).toEqual({
@@ -805,8 +720,6 @@ describe("startFakeHost", () => {
     });
     expect(await peopleName()).toBe("New Name");
 
-    // An explicit null clears the override back to the provider's value —
-    // "use my Google name again" — and the roster follows it back.
     const cleared = await putProfile({ displayName: null });
     expect(await cleared.json()).toEqual({
       displayName: "Ada Lovelace",
@@ -814,22 +727,17 @@ describe("startFakeHost", () => {
     });
     expect(await peopleName()).toBe("Ada Lovelace");
 
-    // Junk is refused with a reason, never coerced: a blank name, and a photo
-    // that is neither https nor an inline image data URL.
     const blank = await putProfile({ displayName: "   " });
     expect(blank.status).toBe(400);
     expect((await blank.json()) as { error: string }).toHaveProperty("error");
     const insecure = await putProfile({ photoUrl: "http://x" });
     expect(insecure.status).toBe(400);
-    // …and the refusals changed nothing.
     expect(await peopleName()).toBe("Ada Lovelace");
   });
 
   it("a send's mentions persist on history and ride the live user frame", async () => {
     await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     const convo = `${host.url}/agents/${SEED_AGENT_ID}/conversations/conv-mentions`;
-    // Slow the canned reply so the turn is still in flight — its replay buffer
-    // intact — when the stream attaches with `?after=0` below.
     await fetch(`${host.url}/__test__/chat-config`, {
       method: "POST",
       headers: JSON_HEADERS,
@@ -850,15 +758,12 @@ describe("startFakeHost", () => {
     });
     expect(sent.status).toBe(202);
 
-    // Persisted on the stored user message (a reloaded transcript chips the
-    // same teammates the live bubble did).
     const history = (await (await fetch(`${convo}/messages`)).json()) as {
       messages: Array<{ role: string; mentions?: unknown }>;
     };
     const userMessage = history.messages.find((m) => m.role === "user");
     expect(userMessage?.mentions).toEqual(mentions);
 
-    // …and published on the live `user` frame, replayed from seq 0.
     const frame = await readUserFrame(`${convo}/events?after=0`);
     expect(frame.content).toBe("@Bob Stone please confirm");
     expect(frame.mentions).toEqual(mentions);
@@ -898,10 +803,7 @@ describe("startFakeHost", () => {
       messages: Array<Record<string, unknown>>;
     };
     const users = history.messages.filter((m) => m.role === "user");
-    // Only the one well-formed entry survives, and a non-string `name` is dropped.
     expect(users[0]?.mentions).toEqual([{ userId: "u-ok" }]);
-    // A send with junk or no mentions stores the pre-feature message verbatim:
-    // the key is absent, never an empty array.
     expect("mentions" in (users[1] ?? {})).toBe(false);
     expect("mentions" in (users[2] ?? {})).toBe(false);
   });
@@ -909,7 +811,6 @@ describe("startFakeHost", () => {
   it("stops cleanly so the port stops accepting connections", async () => {
     const { url } = host;
     await host.stop();
-    // Re-start on the same ephemeral port for afterEach's stop() to close.
     host = await startFakeHost(0);
     await expect(fetch(url)).rejects.toThrow();
   });

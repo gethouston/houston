@@ -14,16 +14,6 @@ import { useTranslation } from "react-i18next";
 import { personDisplayName } from "../organization/people-tab-model";
 import type { ShareAction, SharePerson } from "./agent-access-model";
 
-/**
- * One row in the Share dialog's people list. The org owner renders as a static
- * "Owner, always has access" (non-editable). Everyone else gets a dropdown with
- * Manager / Can use / Remove; the Manager option is disabled with an inline
- * reason for teammates who don't hold a Manager seat (`canBeManager` false).
- *
- * `readOnly` renders every row as static text (access level, no controls) — the
- * shape a plain member sees in the read-only "who has access" view, where no
- * management is permitted. `onAction` is never called in that mode.
- */
 export function AgentSharePersonRow({
   person,
   avatarUrl,
@@ -32,11 +22,8 @@ export function AgentSharePersonRow({
   onAction,
 }: {
   person: SharePerson;
-  /** Resolved avatar photo (uploaded/provider), or null for initials-only. */
   avatarUrl?: string | null;
-  /** Locks the control while a write is in flight. */
   disabled?: boolean;
-  /** Render the access level as static text with no controls. */
   readOnly?: boolean;
   onAction?: (action: ShareAction) => void;
 }) {

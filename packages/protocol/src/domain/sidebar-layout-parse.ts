@@ -43,11 +43,6 @@ function parseEntry(value: unknown): SidebarRootEntry | null {
   return { kind, id };
 }
 
-/**
- * The strict wire check both writers of a stored layout apply: the host route
- * and the gateway accept exactly the documents this accepts. Unknown keys are
- * ignored and only the pinned shape is projected.
- */
 export function parseSidebarLayout(body: unknown): SidebarLayout | null {
   if (!isSidebarRecord(body)) return null;
   if (!Array.isArray(body.groups) || body.groups.length > SIDEBAR_GROUPS_MAX)

@@ -19,16 +19,6 @@ import { type MissionControlScope, useMcScope } from "./use-mc-scope.ts";
 import { useMcSearch } from "./use-mc-search.tsx";
 import { usePendingMissionTarget } from "./use-pending-mission-target";
 
-/**
- * Builds the {@link BoardSource} for cross-agent Mission Control: every
- * agent's missions on one board, a "which agent?" picker before a new
- * mission, a search + person filter toolbar, and bulk actions routed per
- * agent. The active agent that scopes the right panel is whichever the
- * selected card belongs to, or the one just picked for a new mission.
- *
- * `scope` narrows the rendered board to one employee. The conversation sweep
- * still spans the full roster, so every board reads one shared query.
- */
 export function useMissionControlSource(
   agents: Agent[],
   scope?: MissionControlScope,
@@ -38,11 +28,6 @@ export function useMissionControlSource(
 
   const mc = useMissionControl(agents);
 
-  // Every "open this mission" navigation lands on ONE of the board's two
-  // surfaces (notification, @mention row, palette, archived handoff). This is
-  // the ACTIVE one, so it claims only the targets the raw sweep rows say are
-  // active — an archived mission's id is left published for the archive, which
-  // the owner's surface router is about to swap in.
   const pendingId = useUIStore((s) => s.activityPanelId);
   const pendingSurface = pendingMissionSurface(mc.rawConversations, pendingId);
   usePendingMissionTarget({
@@ -57,15 +42,12 @@ export function useMissionControlSource(
     mc.selectedId,
   );
 
-  // The board reads its employee path from scope for the auto-open key.
   const { scopedAgents, paths, agentFilteredItems, visibleAgents, filterPath } =
     useMcScope(agents, mc.items, scope);
 
   const { filterUserId, setFilterUserId, personFilteredItems } =
     useMcPersonFilter(agentFilteredItems);
 
-  // The agent the board is NARROWED to, if any: "New task" on a pinned board
-  // must not ask a question the board already answered.
   const pinnedAgent = filteredScopeAgent(scopedAgents, filterPath);
   const newMission = useMcNewMission({
     agents: scopedAgents,
@@ -75,8 +57,6 @@ export function useMissionControlSource(
     selectedId: mc.selectedId,
     setSelectedId: mc.setSelectedId,
   });
-  // The first-day offer counts the pinned employee's tasks before any search
-  // or person filter: a search that hides every task has not emptied the board.
   const firstDay = useFirstDayPlacement({
     agents: visibleAgents,
     pinnedAgent,
@@ -102,9 +82,6 @@ export function useMissionControlSource(
     }
     return newMission.pendingAgent;
   }, [selectedItem, newMission.pendingAgent, agents]);
-  // Straight from the data hook, so the chat panel and the feed always name
-  // the same conversation — including the beat after a create, before the
-  // cross-agent sweep has returned the new mission's row.
   const selectedSessionKey = mc.activeSessionKey;
   const selectedAgentPath = mc.activeAgentPath;
 

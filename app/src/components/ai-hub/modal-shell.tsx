@@ -1,9 +1,3 @@
-/**
- * AI Hub details wear the shared Dialog frame, with a fixed header and footer
- * around a scrolling body. Dialog owns focus trapping, Escape, the scrim and
- * entry motion. Titles and labels arrive translated; parents own i18n.
- */
-
 import {
   cn,
   Dialog,
@@ -49,8 +43,6 @@ export function ModalShell({
       <DialogContent
         showCloseButton={false}
         className={cn(
-          // The wide flow sheet's width, minus the phone gutter the plain
-          // `sm:` cap would drop between 640px and the cap itself.
           "flex max-h-[85dvh] min-h-[60dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(42rem,calc(100%-2rem))]",
           className,
         )}
@@ -74,11 +66,6 @@ export function ModalShell({
           </div>
           <DialogCloseButton label={closeLabel} className="-mr-1.5" />
         </div>
-        {/* `min-h-0` lets the body in this flex column shrink below its content so it
-            becomes the SINGLE bounded scroll area. Without it the body's default
-            `min-height: auto` grows to the content, the modal overflows its
-            `max-h`, and the inner scroll never engages — the tall provider model
-            lists then read as a second, janky scroll. */}
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
         {footer ? (
           <div className="shrink-0 border-t border-line px-5 py-3">

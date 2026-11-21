@@ -18,12 +18,9 @@ import {
   usagePointsFor,
 } from "../src/lib/academy/usage-points.ts";
 
-/** Built from LOCAL parts on purpose: a user's day is their day, so every
- *  boundary in these tests must hold in whatever timezone CI runs in. */
 const at = (year: number, month: number, day: number, hour = 12): Date =>
   new Date(year, month - 1, day, hour, 0, 0, 0);
 
-/** The install earning the points — one `install_id`, as the app supplies. */
 const DEVICE = "install-1";
 
 const record = (patch: Partial<AcademyRecord> = {}): AcademyRecord => ({
@@ -50,8 +47,6 @@ describe("usagePointsFor", () => {
   });
 
   it("pays nothing for an event the economy never named", () => {
-    // The map IS the economy: adding an analytics event must never start
-    // paying points by accident.
     strictEqual(usagePointsFor("app_active"), 0);
     strictEqual(usagePointsFor("academy_opened"), 0);
     strictEqual(usagePointsFor("academy_lesson_completed"), 0);
@@ -141,15 +136,10 @@ describe("accrueUsage", () => {
   });
 
   it("refuses to credit points to nobody", () => {
-    // An unnamed install cannot be merged against, so the points would be
-    // indistinguishable from another device's and get thrown away.
     throws(() => accrueUsage(null, 1, now, "  "), RangeError);
   });
 
   it("refuses a day EARLIER than the one already counted", () => {
-    // Any day that merely DIFFERED used to clear the tally, so a clock moved
-    // back one day handed out a second cap — and alternating the two handed
-    // out an unlimited number.
     const capped = record({
       usageByDevice: { [DEVICE]: 20 },
       usageDay: "2026-08-10",
@@ -226,8 +216,6 @@ describe("accrueUsage", () => {
   });
 
   it("does not drag a streak backwards for a clock that ran ahead", () => {
-    // A record merged from a device further east can carry a day we have not
-    // reached yet; rewinding it would cost the user a run they really had.
     const ahead = record({
       streak: { current: 6, best: 6, lastActiveDay: "2026-08-11" },
     });
@@ -259,8 +247,6 @@ describe("liveStreak", () => {
   });
 
   it("reads a broken run as zero, without forgetting the best", () => {
-    // The stored `current` stands until it is next extended, so a run that
-    // ended on Saturday would otherwise still claim to be alive on Tuesday.
     const base = record({
       streak: { current: 5, best: 7, lastActiveDay: "2026-08-08" },
     });
@@ -272,10 +258,6 @@ describe("liveStreak", () => {
   });
 });
 
-/**
- * WHICH device a point is credited to. The counters only mean something if the
- * key is per DEVICE: a key the account carries makes every machine one machine.
- */
 describe("usageDeviceId", () => {
   function storage(seed: Record<string, string> = {}) {
     const values = new Map(Object.entries(seed));
@@ -296,8 +278,6 @@ describe("usageDeviceId", () => {
     const mint = () => `device-${++minted}`;
 
     strictEqual(usageDeviceId(store, mint), "device-1");
-    // Written where it was minted, so the next launch reads the same one and
-    // the device's counter goes on growing instead of starting over.
     strictEqual(values.get(USAGE_DEVICE_KEY), "device-1");
     strictEqual(usageDeviceId(store, mint), "device-1");
     strictEqual(minted, 1);
@@ -336,8 +316,6 @@ describe("usageDeviceId", () => {
         throw new Error("quota exceeded");
       },
     };
-    // An id that cannot be written is not this device's id: it would be a new
-    // one every launch, scattering the counters it exists to keep together.
     strictEqual(
       usageDeviceId(readOnly, () => "device-4"),
       UNKNOWN_DEVICE_ID,

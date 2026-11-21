@@ -13,7 +13,6 @@ import {
   type SidebarRootEntry,
 } from "./sidebar-layout";
 
-/** Legacy documents carry `ungroupedOrder` instead of `order`: groups first. */
 function rawOrder(raw: Record<string, unknown>, groups: SidebarGroup[]) {
   if (Array.isArray(raw.order)) return raw.order;
   if (!Array.isArray(raw.ungroupedOrder)) return [];
@@ -23,14 +22,6 @@ function rawOrder(raw: Record<string, unknown>, groups: SidebarGroup[]) {
   ];
 }
 
-/**
- * Coerce an untrusted value (a cache read, a server payload, a device copy, a
- * legacy or hand-edited stored document) into a layout `parseSidebarLayout`
- * accepts. Anything that still identifies a group keeps it: a duplicate group
- * id keeps the first, an agent in two places stays in the first, an overlong
- * name is clamped, and malformed entries and fields are dropped. A value with
- * no `groups`/`order` shape at all reads as the empty layout.
- */
 export function normalizeSidebarLayout(raw: unknown): SidebarLayout {
   if (!isSidebarRecord(raw)) return DEFAULT_SIDEBAR_LAYOUT;
   const groups: SidebarGroup[] = [];

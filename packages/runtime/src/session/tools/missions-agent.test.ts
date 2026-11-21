@@ -4,15 +4,6 @@ import { expect, test } from "vitest";
 import { makeMissionTools } from "./missions";
 import type { SandboxFetch } from "./sandbox-fetch";
 
-/**
- * WHERE an agent's mission tools act. Every agent works on its own board unless
- * it names another; the PERSONAL ASSISTANT must always name one — it keeps no
- * board of its own, so a mission it started for itself would sit somewhere the
- * user can never see (the incident this exists to make impossible).
- */
-
-// The tools take their request scope from AsyncLocalStorage and never read the
-// extension context, so an empty one is safe (same stance as the MCP bridge).
 const NOOP = {} as ExtensionToolContext;
 
 interface Recorded {
@@ -27,7 +18,6 @@ const REPLY = {
   missions: [],
 };
 
-/** The runtime's provider status, as the tools see it when they are built. */
 const PROVIDERS: ProviderOption[] = [
   {
     id: "openai-codex",
@@ -40,7 +30,6 @@ const PROVIDERS: ProviderOption[] = [
 
 function tools(
   personalAssistant: boolean,
-  /** What a given path answers, when the flat {@link REPLY} is not the point. */
   replyFor?: (path: string) => unknown,
 ) {
   const calls: Recorded[] = [];
@@ -87,8 +76,6 @@ test("the assistant cannot start a mission without naming an agent", async () =>
   });
   const first = out.content[0];
   expect(first?.type === "text" && first.text).toMatch(/agent/i);
-  // No board anywhere grew a hidden card: the only call made is the one that
-  // fetches the agents the refusal offers instead.
   expect(calls.map((c) => c.path)).toEqual(["/sandbox/assistant/call"]);
 });
 
@@ -114,8 +101,6 @@ test("the assistant must name an agent to read or move a board too", async () =>
     await move({ id: "m-1", status: "done" }),
   ] as const;
   for (const out of refusals) {
-    // A refusal the model READS and can act on, never a thrown exception it
-    // can only report — the same posture start_mission takes.
     expect(out.details).toMatchObject({
       ok: false,
       error: { code: "agent_required" },
@@ -123,8 +108,6 @@ test("the assistant must name an agent to read or move a board too", async () =>
     const first = out.content[0];
     expect(first?.type === "text" && first.text).toMatch(/agent/i);
   }
-  // No board was read or moved: the only calls made are the ones that fetch
-  // the agents each refusal offers instead.
   expect(calls.map((c) => c.path)).toEqual([
     "/sandbox/assistant/call",
     "/sandbox/assistant/call",
@@ -137,7 +120,6 @@ test("the assistant must name an agent to read or move a board too", async () =>
 });
 
 test("a refusal to read or move names the agents that would have worked", async () => {
-  // The point of the value: a model told only "name an agent" invents a name.
   const agents = (path: string) =>
     path === "/sandbox/assistant/call"
       ? [
@@ -152,7 +134,6 @@ test("a refusal to read or move names the agents that would have worked", async 
     const first = out.content[0];
     const text = first?.type === "text" ? first.text : "";
     expect(text).toContain("Dobby (id a-1)");
-    // Houston's own hidden agents keep no board and are never offered.
     expect(text).not.toContain(".assistant");
   }
 });
@@ -181,8 +162,6 @@ test("the assistant is told, in the tool itself, that an agent is required", () 
   expect(assistant.startDescription).toContain("name the agent");
   expect(tools(false).startDescription).not.toBe(assistant.startDescription);
 });
-
-// --- the provider/model pin is chosen from a list, never guessed -----------
 
 test("a friendly provider name reaches the host as the real id", async () => {
   const { start, calls } = tools(false);
@@ -254,7 +233,6 @@ test("the success message states the validated pin, never an unverified echo", a
     model: "gpt-5.5",
   });
 
-  // Nothing pinned and nothing inherited: no claim at all.
   const plain = await started({ title: "Draft", prompt: "Write it." });
   const plainText =
     plain.content[0]?.type === "text" ? plain.content[0].text : "";

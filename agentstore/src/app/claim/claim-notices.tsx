@@ -4,7 +4,6 @@ import { Alert, AlertDescription, AlertTitle } from "@houston-ai/core";
 import { AlertTriangle, ExternalLink, PartyPopper } from "lucide-react";
 import { CopyButton } from "@/components/copy-button";
 
-/** A destructive notice used for the missing/unconfigured/error claim states. */
 export function ClaimNotice({ title, body }: { title: string; body: string }) {
   return (
     <Alert variant="destructive">
@@ -15,7 +14,6 @@ export function ClaimNotice({ title, body }: { title: string; body: string }) {
   );
 }
 
-/** The published-and-live confirmation with the shareable public link. */
 export function ClaimSuccess({ shareUrl }: { shareUrl: string }) {
   return (
     <div className="flex flex-col gap-6">

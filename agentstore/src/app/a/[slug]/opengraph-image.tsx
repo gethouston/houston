@@ -3,12 +3,6 @@ import { taglineOrDescription } from "@/lib/export/shared";
 import { OG_SIZE, OgCard } from "@/lib/og-card";
 import { getAgentBySlug } from "@/lib/store-api";
 
-/**
- * Per-agent share card: the influencer-facing face of an agent link. Falls
- * back to the store's default card copy when the slug is unknown (the page
- * itself 404s; crawlers that still fetch the image get something branded).
- */
-
 export const alt = "Agent on the Houston Agent Store";
 export const size = OG_SIZE;
 export const contentType = "image/png";

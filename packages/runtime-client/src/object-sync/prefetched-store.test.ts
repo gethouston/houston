@@ -58,7 +58,6 @@ test("hydration reads inlined objects from memory and only misses from the store
   expect(readFileSync(join(dest, "notes.md"), "utf8")).toBe("from-store");
   expect(manifest.get("CLAUDE.md")?.generation).toBe("5");
   expect(calls).toEqual(["batch notes.md"]);
-  // The listing answers hydration once; later reads see the live store.
   await store.manifest();
   expect(calls).toEqual(["batch notes.md", "manifest"]);
 });

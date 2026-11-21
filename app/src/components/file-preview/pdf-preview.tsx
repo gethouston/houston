@@ -22,12 +22,6 @@ import { usePreviewComments } from "./use-preview-comments";
 
 const reportPdf = (error: unknown) => logAndReportError("pdf_preview", error);
 
-/**
- * A paged document in the panel: the continuous pages, the thumbnail rail
- * (a strip under the counter on the phone), and commenting. A selection asks
- * "what should the agent change?"; the answer becomes a chip in the chat's
- * composer and a numbered mark here, the two linked both ways.
- */
 export function PdfPreview({
   data,
   target,
@@ -44,11 +38,9 @@ export function PdfPreview({
   zoom: number;
   rail: boolean;
   strip: boolean;
-  /** The chat is out of sight (phone sheet, expanded panel). */
   chatHidden: boolean;
   onPager: (pager: { page: number; count: number }) => void;
   onBackToChat: () => void;
-  /** Shown when pdf.js cannot open the bytes at all. */
   fallback: ReactNode;
 }) {
   const { t } = useTranslation("agents");
@@ -69,8 +61,6 @@ export function PdfPreview({
   useEffect(() => {
     if (count) onPager({ page: active, count });
   }, [active, count, onPager]);
-  // A rewrite that drops pages flags the comments on them instead of
-  // silently losing them; a page that comes back unflags them.
   useEffect(() => {
     if (count && draftKey)
       citationsFacade.module().reconcile(draftKey, filePath, count);
@@ -89,7 +79,6 @@ export function PdfPreview({
 
   const slides = isPresentation(fileName);
   const editor = comments.editor;
-  // The closing popover keeps its anchor and copy through its exit.
   if (editor) lastEditor.current = editor;
   const shown = editor ?? lastEditor.current;
   const thumbs = (asStrip: boolean, className: string) => (

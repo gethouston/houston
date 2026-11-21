@@ -6,16 +6,6 @@ import {
   serializeThemeMirror,
 } from "../src/lib/theme-model.ts";
 
-/**
- * The boot mirror alone. The vocabulary it is written in — modes, palettes,
- * resolution, validation — belongs to the SDK's appearance module, and its rules
- * are pinned there (`packages/sdk/tests/appearance-model.test.ts`).
- *
- * What matters here is the WIRE form: the pre-paint script in both index.html
- * files reads this JSON before any module graph exists, so a shape it cannot read
- * is a flash of the wrong theme on every launch.
- */
-
 test("the mirror round-trips the resolved theme and its first-frame hexes", () => {
   const resolved = { mode: "dark", palette: "nord" } as const;
   const raw = serializeThemeMirror(resolved);
@@ -53,7 +43,6 @@ test("a mirror naming an unknown palette keeps its mode on the default", () => {
     mode: "dark",
     palette: DEFAULT_PALETTE.dark,
   });
-  // A light palette under a dark mode is the same unusable pairing.
   assert.deepEqual(
     parseThemeMirror('{"mode":"dark","palette":"flexoki-light"}'),
     { mode: "dark", palette: DEFAULT_PALETTE.dark },

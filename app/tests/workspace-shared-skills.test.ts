@@ -71,7 +71,6 @@ describe("aggregateSharedSkills", () => {
       ]),
     });
     strictEqual(rows.length, 1);
-    // Rex via manifest, Maya via her shadowing copy — both live.
     deepStrictEqual(rows[0]?.agents.map((a) => a.id).sort(), ["Maya", "Rex"]);
     deepStrictEqual(
       rows[0]?.overriddenBy.map((a) => a.id),

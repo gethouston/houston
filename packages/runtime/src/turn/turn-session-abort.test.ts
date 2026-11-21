@@ -18,8 +18,6 @@ vi.mock("../backends/pi/backend", () => ({
       getContextUsage: () => undefined,
       abort: () => {},
       prompt: async () => {
-        // The DOMException a caller's AbortSignal raises when the cancel
-        // lands mid-request (usually pi resolves an abort clean instead).
         throw new DOMException("This operation was aborted", "AbortError");
       },
     }),
@@ -44,9 +42,6 @@ test("an abort raised out of prompt() ends the turn quietly, not as an error", a
     },
   );
 
-  // A cancelled turn is not a failure: no outcome error (the per-turn server
-  // would send a generic error frame), no provider_error frame, no Sentry
-  // error (HOUSTON-APP-59E).
   expect(outcome).toEqual({});
   expect(frames.filter((frame) => frame.type === "provider_error")).toEqual([]);
   expect(error).not.toHaveBeenCalled();

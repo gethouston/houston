@@ -1,7 +1,3 @@
-// The shell pill's clock: the notice must change with time alone, across
-// many capped waits, with no new provider status (the status query stops
-// polling once it has an answer). Mounted in jsdom with mocked timers.
-
 import { strict as assert } from "node:assert";
 import { after, describe, it, mock } from "node:test";
 import "./support/dom-env.ts";
@@ -26,7 +22,6 @@ const statuses = {
     auth_state: "authenticated" as const,
     authenticated: true,
     cli_name: "anthropic",
-    // The window opens 2 days and 5 hours from now.
     reconnectBy: START + 7 * DAY + 5 * 60 * 60 * 1000,
   },
 };
@@ -45,7 +40,6 @@ describe("useReconnectNotice", () => {
     await act(async () => root.render(h(Probe)));
     assert.equal(shown.at(-1), "none");
 
-    // Fifty-three hours of capped one-hour waits, then the window opens.
     for (let hour = 0; hour < 53; hour++)
       await act(async () => mock.timers.tick(60 * 60 * 1000));
     assert.equal(shown.at(-1), "5");

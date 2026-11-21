@@ -6,12 +6,6 @@ import { expect, test } from "vitest";
 import { type FirstResponseEvent, subscribeFirstResponses } from "./index";
 import { streamTurn } from "./turn-stream";
 
-/**
- * Every turn the adapter sends reports its first response (the SDK's
- * `FirstResponse`) to the app's subscribers, keyed by the conversation it
- * belongs to. The perf spans pair a send with exactly this report.
- */
-
 function answeringEngine(text: string): HoustonEngineClient {
   return {
     async streamEvents(_id: string, o: EventStreamOptions) {

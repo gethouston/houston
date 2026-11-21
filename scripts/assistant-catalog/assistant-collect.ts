@@ -23,7 +23,6 @@ import {
 import { extractRoute, type RouteContext } from "./assistant-route.ts";
 import { isFallback, schemaForType } from "./assistant-schema.ts";
 
-/** Everything one pass accumulates, operation by operation. */
 export interface Collected {
   operations: AssistantOperation[];
   annotations: OperationAnnotation[];
@@ -46,27 +45,16 @@ export function emptyCollection(): Collected {
   };
 }
 
-/** One declaration read as an operation, before anything is recorded. */
 export interface ReadOperation {
   operation: AssistantOperation;
   annotation: OperationAnnotation;
-  /** `param` / `returns` names whose schema fell back to free-form. */
   unschematized: string[];
-  /** Why no route could be derived, or `null` when one was. */
   unroutable: string | null;
 }
 
-/** The route already published, so a second name for it can be recognized. */
 export const routeKey = (operation: AssistantOperation): string | null =>
   operation.route ? `${operation.route.method} ${operation.route.path}` : null;
 
-/**
- * The JSDoc that documents a declaration: the block above the declaration
- * itself, or above the property that publishes it. A module factory's member
- * is written both ways — a block above the entry in the returned object, and a
- * block above the local a shorthand entry names — so both are tried, nearest
- * first.
- */
 function docsFor(declaration: Declaration): string | undefined {
   for (const node of declaration.docs) {
     const source = node.getSourceFile();
@@ -79,14 +67,6 @@ function docsFor(declaration: Declaration): string | undefined {
   return undefined;
 }
 
-/**
- * Read one declaration as an operation, or `null` when it is not one.
- *
- * Route first, schemas second: a declaration that never reaches the wire is
- * not an operation, and typing its parameters would file coverage gaps against
- * a function the catalog does not contain. The route is also what identifies
- * each parameter — `/agents/{x}` says `x` is an agent.
- */
 export function readOperation(
   declaration: Declaration,
   source: ts.SourceFile,
@@ -108,9 +88,6 @@ export function readOperation(
       ? `the path names ${unpublished.join(", ")}, which the published signature does not declare`
       : routing.reason;
   const docs = parseAssistantDocs(docsFor(declaration));
-  // An unparseable card is left OFF the document and reported by the gate
-  // instead: the host dispatches nothing it cannot name, so half a card in the
-  // catalog would be a screen the app has no way to open.
   const hands = docs.handsCard
     ? parseAssistantHands(docs.handsCard)
     : undefined;
@@ -120,8 +97,6 @@ export function readOperation(
     source,
     { docs: docs.params, route, operation: declaration.name },
   );
-  // Only a derived route can answer with the CLIENT method's shape; once it is
-  // refused, what a caller gets back is whatever this declaration returns.
   const returnType =
     (route ? routing.returns : null) ?? returnsOf(declaration, checker);
   const returns = returnType
@@ -166,7 +141,6 @@ export function readOperation(
   };
 }
 
-/** Record an operation and everything the coverage gate reads off it. */
 export function recordOperation(
   read: ReadOperation,
   collected: Collected,

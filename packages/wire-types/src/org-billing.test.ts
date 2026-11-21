@@ -83,7 +83,6 @@ describe("parseOrgBilling", () => {
       seatPriceCents: null,
     };
     expect(parseOrgBilling(pending)).toEqual(pending);
-    // With no list prices either, no checkout price is known at all.
     const { seatPrices: _, ...bare } = pending;
     expect(parseOrgBilling(bare)?.seatPrices).toBeNull();
   });
@@ -104,7 +103,6 @@ describe("parseOrgBilling", () => {
       priceNotice: notice,
     };
     expect(parseOrgBilling(promo)).toEqual(promo);
-    // An older gateway omits both; a notice kind added later reads as none.
     const { renewsAt: _, priceNotice: __, ...older } = BILLING;
     expect(parseOrgBilling(older)).toEqual(BILLING);
     expect(

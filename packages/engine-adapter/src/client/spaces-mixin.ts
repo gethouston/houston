@@ -8,22 +8,8 @@ import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
-/**
- * Spaces (C8): the list of teams the user belongs to, their invitations, and
- * moving an agent between spaces — the gateway's `/v1/orgs*`,
- * `/v1/org-invites/*` and `/v1/agents/:id/move*` family, delegated whole to
- * `sdk.spaces` (`packages/sdk/src/modules/spaces`).
- *
- * The SDK never softens a failure, so the ONE degradation this family has lives
- * here: a gateway that predates spaces answers `GET /v1/orgs` with a 404, and
- * the switcher must show the personal workspace rather than an error.
- */
 export function SpacesMixin<TBase extends BaseCtor>(Base: TBase) {
   class Spaces extends Base {
-    // ---- spaces / teams (C8) — hosted gateway only ----
-    // Off-cloud (`this.cp === null`) there is no space concept: `listOrgs` reports
-    // an empty result (the switcher shows only the personal workspace), while the
-    // mutating calls throw — a create/move must reach the gateway.
     async listOrgs(): Promise<controlPlane.OrgsList> {
       if (!this.ctx.cp) return { orgs: [], invites: [], freeOrg: null };
       try {
@@ -35,8 +21,6 @@ export function SpacesMixin<TBase extends BaseCtor>(Base: TBase) {
         throw err;
       }
     }
-    // A taken free slot and a paid org awaiting checkout are outcomes, so
-    // only a real failure reaches `call()`'s report.
     async createOrg(input: {
       name: string;
       plan?: OrgPlan;
@@ -46,9 +30,6 @@ export function SpacesMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("Creating a team needs the hosted gateway.");
       return viaSdk("/v1/orgs", () => this.ctx.sdk.spaces.createOrg(input));
     }
-    // The invitee's own accept/decline (C8). Off-cloud there is no invite to
-    // act on, so both throw rather than degrade: a user who clicked Accept must
-    // never be told nothing happened.
     async acceptOrgInvite(inviteId: string): Promise<controlPlane.OrgSummary> {
       if (!this.ctx.cp)
         throw new Error("Joining a team needs the hosted gateway.");

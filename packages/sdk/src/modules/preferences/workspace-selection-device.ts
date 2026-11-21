@@ -6,7 +6,6 @@ export interface DeviceWorkspaceSelection {
   accountWriteSucceeded: boolean;
 }
 
-/** Account-scoped device data cannot follow a different person on this browser. */
 export function workspaceSelectionDevice(
   ctx: ModuleContext,
   identity: string | null,

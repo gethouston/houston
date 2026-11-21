@@ -3,12 +3,6 @@ import { useTranslation } from "react-i18next";
 
 export type HintKind = "pointer" | "touch" | "noChat";
 
-/**
- * The bars that float over the bottom of the pages, one at a time: the
- * one-time "how to comment" hint, the phone's "comment this selection" (the
- * native text handles own the gesture there), and "N comments ready · Back to
- * chat" whenever the chat is out of sight.
- */
 export function PreviewFloatBars({
   hint,
   onHintDone,
@@ -21,7 +15,6 @@ export function PreviewFloatBars({
   onHintDone: () => void;
   touchSelection: boolean;
   onCommentSelection: () => void;
-  /** Comments waiting in the draft, shown only while the chat is hidden. */
   ready: number;
   onReady: () => void;
 }) {

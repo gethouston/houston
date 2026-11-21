@@ -19,31 +19,14 @@ import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 
-/** Cross-instance dedupe: the claim can be observed by more than one mounted
- *  hook (the agent's Skills section + global chat) — the first observer runs
- *  the share,
- *  the rest see the key and skip. */
 const inFlight = new Set<string>();
 
-/**
- * Org skill by default (HOU-1192): returns the fire-and-forget callback the
- * claim sites invoke with a freshly agent-created skill's slug. On shared-
- * store deployments it moves the skill to the workspace store and installs
- * it to the ONE agent that built it (`lib/org-skill-share.ts` owns the flow
- * + ordering) — the other agents see it in the store, ready for the user to
- * enable. Where the store is absent or declines, the skill stays agent-local
- * exactly as before, so the callback is safe to call unconditionally.
- */
 export function useOrgSkillDefault(agent: Agent): (slug: string) => void {
   const { t } = useTranslation("skills");
   const queryClient = useQueryClient();
   const { capabilities } = useCapabilities();
   const workspaceId = useWorkspaceStore((s) => s.current?.id ?? null);
   const addToast = useUIStore((s) => s.addToast);
-  // Optimistic while capabilities are still loading (`null`): the claim is a
-  // one-shot signal, so deferring would drop it forever on a startup race.
-  // The wire's own answer closes the no-store path quietly (the classifier's
-  // 404/503 declines); only an explicit `sharedSkills: false` skips.
   const advertised =
     capabilities?.sharedSkills !== false && workspaceId !== null;
 
@@ -71,12 +54,6 @@ export function useOrgSkillDefault(agent: Agent): (slug: string) => void {
           enable: async (path, name) => {
             await tauriSkillsManifest.setEnabled(path, name, true);
           },
-          // The delete's SkillsChanged refetch drops the local row from the
-          // merged strip; the shared row must already be in cache by then, or
-          // the ghost-skill deselect closes the open setup chat. Refresh the
-          // two caches the merge reads BEFORE the compare + delete (not
-          // inside deleteLocal — the compare must sit directly against the
-          // delete so a concurrent agent edit has the narrowest window).
           beforeDelete: async () => {
             await Promise.all([
               queryClient.refetchQueries({
@@ -117,16 +94,12 @@ export function useOrgSkillDefault(agent: Agent): (slug: string) => void {
           if (result.creatorEnabled) {
             addToast({ title: t("global.createdShared"), variant: "success" });
           } else {
-            // The failed manifest write already toasted its real reason
-            // through call(); a success toast beside it would contradict it.
             logger.error(
               `[org-skill] '${slug}' creator manifest enable failed`,
             );
           }
         })
         .catch((err) =>
-          // Unexpected failures surfaced (toast + Sentry) through call()
-          // inside the deps; the skill stays agent-local and usable.
           logger.error(`[org-skill] share of '${slug}' failed: ${err}`),
         )
         .finally(() => inFlight.delete(key));

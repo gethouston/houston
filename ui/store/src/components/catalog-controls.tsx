@@ -68,11 +68,6 @@ export function CatalogControls({
   onCategoryChange: (category?: string) => void;
   onViewChange: (view: CatalogView) => void;
   onSortChange: (sort: CatalogSort) => void;
-  /**
-   * `row` is the site's full-width toolbar: the search grows to fill the
-   * measure and the cluster wraps. `strip` rides inside a host's header row
-   * beside other chrome, so the search holds a fixed width and nothing wraps.
-   */
   variant?: "row" | "strip";
   labels?: Partial<typeof defaults>;
 }) {
@@ -166,8 +161,6 @@ function Menu({
       <DropdownMenuTrigger asChild>
         <button type="button" aria-label={ariaLabel} className={pill}>
           {typeof trigger === "string" ? (
-            // A category name is user/vocabulary text ("Atención al cliente");
-            // the pill caps and truncates it instead of pushing the strip wide.
             <span className="max-w-36 truncate">{trigger}</span>
           ) : (
             trigger

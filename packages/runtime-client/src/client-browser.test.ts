@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { EngineError, HoustonEngineClient } from "./client";
 
-/**
- * The browser hand-off routes {@link EngineBrowserClient} contributes to
- * {@link HoustonEngineClient}, asserted through the concrete client.
- */
-
 const BASE = "http://127.0.0.1:4317";
 const ID = "chat 1/x";
 const ENC = `${BASE}/conversations/chat%201%2Fx`;

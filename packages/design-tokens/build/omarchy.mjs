@@ -3,21 +3,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatColor, mix, parseColor } from "./color.mjs";
 
-// The palette library's input: the vendored Omarchy `colors.toml` files
-// (vendor/omarchy/, unmodified copies — see the README there). Each file is a
-// flat `key = "value"` list, so a five-line reader beats a TOML dependency; a
-// line that is not that shape is a build error rather than a silent skip, which
-// is what makes "every palette carries all 25 hues" checkable.
-
 const VENDOR = fileURLToPath(new URL("../vendor/omarchy", import.meta.url));
 
-/**
- * The palette library, in the order the picker shows it: the two authored
- * Houston sets first, then the imported light palettes, then the dark ones.
- * `mode` here is the group the library places a palette in; a vendored file
- * whose own `mode` line disagrees is a build error, so a vendor refresh that
- * flips a theme's mode fails loudly instead of landing in the wrong group.
- */
 export const PALETTE_ORDER = [
   { id: "houston-light", name: "Houston Light", mode: "light", houston: true },
   { id: "houston-dark", name: "Houston Dark", mode: "dark", houston: true },
@@ -33,7 +20,6 @@ export const PALETTE_ORDER = [
   { id: "everforest", name: "Everforest", mode: "dark" },
 ];
 
-/** The hues Omarchy guarantees; the derivation reads only these. */
 const REQUIRED = [
   "accent",
   "selection",
@@ -60,7 +46,6 @@ const REQUIRED = [
   "bright_magenta",
 ];
 
-/** The two hues Omarchy itself treats as optional, with its own fallbacks. */
 const OPTIONAL = ["orange", "brown"];
 
 const LINE = /^([a-z_][a-z0-9_]*)\s*=\s*"([^"]*)"$/;
@@ -118,15 +103,12 @@ export function loadPalette(entry) {
   for (const key of REQUIRED) {
     if (raw[key] === undefined) throw new Error(`${source}: missing "${key}"`);
   }
-  // Omarchy's own fallbacks, which the `white` theme relies on: orange borrows
-  // yellow, brown is that orange taken halfway to black.
   const orange = raw.orange ?? raw.yellow;
   const brown = raw.brown ?? formatColor(mix(orange, "#000000", 0.5));
   /** @type {Record<string, string>} */
   const hues = { orange, brown };
   for (const key of REQUIRED) hues[key] = raw[key];
   for (const key of [...REQUIRED, ...OPTIONAL]) {
-    // Parse eagerly so a malformed hex is a build error, not a broken CSS block.
     parseColor(hues[key]);
   }
   return { id: entry.id, name: entry.name, mode: raw.mode, ...hues };

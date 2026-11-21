@@ -3,11 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 
-// Xiaomi endpoint probing (PRODUCT-1502): a Token Plan key (`tp-…`)
-// authenticates only on its plan's regional gateway, never on the general
-// endpoint (and vice versa for `sk-…` keys), so verification must try every
-// endpoint and persist the one that accepts the key.
-
 const previousDataDir = process.env.HOUSTON_DATA_DIR;
 
 afterEach(() => {
@@ -75,7 +70,6 @@ test("a `tp-` key probes the plan gateways FIRST — one round trip, not two", a
 });
 
 test("an endpoint answering a billing error → still verified (auth proven)", async () => {
-  // A garbage key can't be out of credit, so the endpoint is the key's home.
   const { verifyXiaomiEndpoints, persistedEndpoint } = await load();
   await verifyXiaomiEndpoints("xiaomi", "sk-abc", PROBE_MODEL, async (m) =>
     (m.baseUrl as string).includes("api.xiaomimimo") ? NO_BALANCE : REJECTED,
@@ -114,8 +108,6 @@ test("every endpoint rejects the credential → invalid_key, nothing persisted",
 });
 
 test("an endpoint with no verdict → provider_unavailable, never 'paste it again'", async () => {
-  // The others reject, China times out: the key may belong to the endpoint
-  // that gave no verdict, so burning it with invalid_key would be a lie.
   const { verifyXiaomiEndpoints, ApiKeyVerifyError } = await load();
   const err = await verifyXiaomiEndpoints(
     "xiaomi",
@@ -149,9 +141,7 @@ test("an injected persist (the pool-worker seam) lands in the AGENT's dir, not t
       (m.baseUrl as string).includes("token-plan-ams") ? null : REJECTED,
     (endpointId) => setXiaomiEndpointIn(agentDataDir, endpointId),
   );
-  // The worker's own data dir stays untouched...
   expect(persistedEndpoint()).toBeNull();
-  // ...and the hydrated agent root holds the verified endpoint.
   expect(
     (
       JSON.parse(readFileSync(xiaomiEndpointFileIn(agentDataDir), "utf8")) as {

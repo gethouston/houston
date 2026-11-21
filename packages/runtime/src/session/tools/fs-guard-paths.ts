@@ -3,34 +3,15 @@ import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/**
- * Path arithmetic shared by the workspace guard: resolving a model-supplied
- * path exactly the way pi does, and asking where the result really lands once
- * symlinks are followed. Nothing here decides anything — the rules live in
- * fs-guard-containment.ts — so a normalization change is reviewable on its own.
- */
-
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 
-/**
- * NTFS alternate-data-stream suffixes (`auth.json::$DATA`, `auth.json:hidden`).
- * On Windows they address the SAME file under a different name, so a rule that
- * matches path segments would see `auth.json::$DATA` and not `auth.json` while
- * the open call reads the credential all the same. The PATH drops the suffix
- * only on Windows: elsewhere `:` is an ordinary name character
- * (`Standup 10:30.md`), and the guard hands its resolved path to the tool to
- * open. The credential rule strips it from every segment on every platform
- * (fs-guard-containment.ts), so a rule holds the same on each OS.
- */
 const NTFS_STREAM = /:[^:\\/]*(?::\$[A-Za-z_]+)?$/;
 
-/** An allowed root in both the forms containment is judged against. */
 export interface RootBoundary {
   canonical: string;
   lexical: string;
 }
 
-/** Mirror pi's `expandPath` (normalizePath with unicode-space, @ and ~ handling). */
 export function normalizeLikePi(input: string): string {
   let p = input.replace(UNICODE_SPACES, " ");
   if (p.startsWith("@")) p = p.slice(1);
@@ -45,10 +26,6 @@ export function normalizeLikePi(input: string): string {
   return process.platform === "win32" ? stripStream(p) : p;
 }
 
-/**
- * `path::$DATA` / `path:stream` -> `path`, leaving a Windows drive letter
- * (`C:\dir`) and a bare drive-relative path alone.
- */
 export function stripStream(input: string): string {
   const start = input.length > 1 && input[1] === ":" ? 2 : 0;
   const head = input.slice(0, start);
@@ -56,10 +33,6 @@ export function stripStream(input: string): string {
   return tail.includes(":") ? head + tail.replace(NTFS_STREAM, "") : input;
 }
 
-/**
- * The absolute path pi would use for a model-supplied string: normalized its
- * way, then resolved against the workspace root when relative.
- */
 export function resolveLikePi(raw: string, root: string): string {
   const normalized = normalizeLikePi(raw);
   return isAbsolute(normalized)
@@ -67,13 +40,6 @@ export function resolveLikePi(raw: string, root: string): string {
     : resolve(root, normalized);
 }
 
-/**
- * A name as a case-insensitive filesystem compares it (APFS and NTFS by
- * default): `AUTH.JSON` and `auth.j\u017Fon` (long s) open `auth.json`
- * there, whether or not the file exists yet, so name rules compare this form.
- * NFKC over-folds a few names those filesystems keep apart, which only ever
- * refuses more.
- */
 export function foldName(name: string): string {
   return name.normalize("NFKC").toLowerCase();
 }
@@ -82,12 +48,6 @@ export function contains(abs: string, root: string): boolean {
   return abs === root || abs.startsWith(root + sep);
 }
 
-/**
- * Real (symlink-resolved) form of `abs`: realpath of its deepest existing
- * ancestor joined back with the not-yet-existing tail. Catches both a
- * symlinked file and a symlinked parent directory pointing outside the
- * workspace, while still allowing paths that don't exist yet (write/mkdir).
- */
 export function realNearest(abs: string): string {
   const tail: string[] = [];
   let current = abs;
@@ -105,7 +65,6 @@ export function realNearest(abs: string): string {
   }
 }
 
-/** The roots that exist, in both forms; a missing root is simply not a root. */
 export function existingBoundaries(roots: string[] = []): RootBoundary[] {
   return roots.flatMap((root): RootBoundary[] => {
     try {

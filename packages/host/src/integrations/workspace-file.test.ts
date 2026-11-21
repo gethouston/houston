@@ -11,11 +11,6 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { FileArgumentError } from "./file-staging";
 import { agentFileReader, workspaceRelFor } from "./workspace-file";
 
-/**
- * Only files that live in the agent's folder are read for an app: the path
- * string AND the file's real location must both be inside it.
- */
-
 const ROOT_KEY = "Personal/Asistente x";
 let root: string;
 let dir: string;

@@ -11,16 +11,9 @@ const AGENT = "ag_1";
 interface Recorded {
   method: string;
   path: string;
-  /** The body VERBATIM: the pinned `{ title }` is a byte assertion, not a shape one. */
   body: string | null;
 }
 
-/**
- * `renameMission` is an exported module function, not a facade member (a facade
- * twin would be shadowed by the route `updateActivity` already claims), so the
- * test binds it the way `createActivitiesHttp` does: `moduleScope` over a stub
- * `fetch`, with `ActivitiesHttpError` as the family failure.
- */
 function makeScope(respond: () => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(

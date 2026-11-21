@@ -18,14 +18,8 @@ import {
 } from "../src/lib/providers.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
-// Labels come from the hydrated pi catalog, so populate the cache first.
 before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
-/**
- * PRODUCT-1475 — the chat picker's trigger and the routine screen's model row
- * name the same pair, so they read it through ONE chain. These pin the chain's
- * order and the local-provider case that motivated it.
- */
 describe("modelDisplayLabel", () => {
   it("prefers the catalog's curated label", () => {
     const label = getModel("anthropic", "claude-opus-5-5")?.label;
@@ -34,8 +28,6 @@ describe("modelDisplayLabel", () => {
   });
 
   it("falls back to the engine-reported model for a catalog-less provider", () => {
-    // A local OpenAI-compatible model has no catalog entry; `active_model` is
-    // the only name it has.
     strictEqual(
       modelDisplayLabel("openai-compatible", "", "llama3.1"),
       "llama3.1",
@@ -43,17 +35,11 @@ describe("modelDisplayLabel", () => {
   });
 
   it("names a model that has no catalog row (B6)", () => {
-    // A Claude id retired from the lineup has no catalog row, yet older chats
-    // and activity rows still name it — the shared display table still knows
-    // its name.
     strictEqual(getModel("anthropic", "claude-opus-4-6"), undefined);
     strictEqual(modelDisplayLabel("anthropic", "claude-opus-4-6"), "Opus 4.6");
   });
 
   it("never renders a raw model id (B6: the reported bug)", () => {
-    // A dated snapshot pin: no catalog row, no curated name, and before the fix
-    // the quota card, the picker trigger and the routine screen all printed
-    // this string verbatim at the user.
     strictEqual(
       modelDisplayLabel("anthropic", "claude-sonnet-4-5-20250929"),
       "Claude Sonnet 4.5 (2025-09-29)",
@@ -69,11 +55,6 @@ describe("modelDisplayLabel", () => {
   });
 });
 
-/**
- * B6 — the picker labels and the shared display table used to be two hand-synced
- * copies of the same names. There is now ONE table, so the guard is that every
- * model the app curates resolves through it.
- */
 describe("curated picker labels come from the shared display table", () => {
   it("names every curated model, under its CANONICAL provider id", () => {
     for (const [displayId, override] of Object.entries(PROVIDER_OVERRIDES)) {
@@ -115,7 +96,6 @@ describe("providerForModel", () => {
 describe("providerOffersModel", () => {
   it("is true only for the provider that lists the id", () => {
     strictEqual(providerOffersModel("anthropic", "claude-opus-5-5"), true);
-    // OpenRouter's id for the same model is not Anthropic's (PRODUCT-1657).
     strictEqual(
       providerOffersModel("anthropic", "anthropic/claude-opus-5-5"),
       false,

@@ -5,7 +5,6 @@ import { type KeyboardEvent, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { paletteColumns, paletteKeyStep } from "./employee-card-model";
 
-/** Ten colors in two rows of five, with one tab stop and arrow selection. */
 export function EmployeeColorPalette({
   color,
   labelledBy,
@@ -13,8 +12,6 @@ export function EmployeeColorPalette({
   onColorChange,
 }: {
   color: string | undefined;
-  /** The id of a visible label naming the group; without one it is named
-   *  "Color" on its own. */
   labelledBy?: string;
   className?: string;
   onColorChange: (color: string) => void;

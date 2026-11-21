@@ -1,28 +1,9 @@
-/**
- * The account-scoped agent routes: the template library the create-agent picker
- * merges alongside the bundled templates, and the colour leaf that writes one
- * agent's palette pick.
- *
- * Kept out of `index.ts` so the module factory there stays within the file-size
- * budget, and out of `http.ts` because these are `/v1` account routes rather
- * than the agent-list CRUD — they share only the transport scope
- * (`agentsScope`), so a failure here is the same `AgentsHttpError` and a 401
- * reaches the same auth-expiry signal.
- *
- * Nothing degrades here: a 404 on the library route means "this deployment
- * keeps no account-level library", which is a disposition only the calling
- * surface can read (the hosted gateway runs one pod per agent and has no shared
- * disk). The SDK reports the status and the surface decides.
- */
-
 import { AGENT_COLOR_IDS, type AgentColorId } from "@houston/domain";
 import type { ModuleContext } from "../../module-context";
 import { type HttpScope, httpRequest } from "../http";
 import { requireString } from "../payload";
 import { AgentsCommand, type InstalledConfig } from "./types";
 
-// Agent-config library: user-scoped — a template belongs to the account, not
-// to any existing agent.
 /**
  * Lists the agent templates installed for this account.
  * @assistant group:agents
@@ -77,23 +58,16 @@ export async function updateAgentColor(
   });
 }
 
-/** The account's library of installed agent templates. */
 export interface AgentsLibrary {
-  /** Every template installed into the account. */
   list(): Promise<InstalledConfig[]>;
-  /** Install one from a GitHub repository; answers the new agent's id. */
   installFromGithub(githubUrl: string): Promise<{ agentId: string }>;
 }
 
-/** The account-scoped half of the agents facade. */
 export interface AgentsAccount {
   library: AgentsLibrary;
-  /** Set one agent's palette colour, in a single request. */
   setColor(agentId: string, color: AgentColorId): Promise<void>;
 }
 
-/** The palette id `value` names, or a throw — a command payload is untrusted,
- *  and the host rejects an unknown colour rather than clamping it. */
 function requireColor(payload: unknown, key: string): AgentColorId {
   const value = requireString(payload, key);
   if (!(AGENT_COLOR_IDS as readonly string[]).includes(value))

@@ -2,12 +2,6 @@ import type { ModelPickerModel, ModelPickerProvider } from "@houston-ai/core";
 
 import type { SpecimenProp } from "../../../src/specimen";
 
-/**
- * Sample catalog, taken from the shipped model catalog
- * (`app/src/lib/ai-hub/model-catalog.json`) so the rows read like the app's.
- * Google is mid-check and Mistral is disconnected — neither ever reaches the
- * list, which is the picker's one hard rule.
- */
 export const providers: ModelPickerProvider[] = [
   { id: "anthropic", name: "Anthropic", connection: "connected" },
   { id: "openai", name: "OpenAI", connection: "connected" },
@@ -43,7 +37,6 @@ export const models: ModelPickerModel[] = [
   { id: "openai/gpt-4o", name: "GPT-4o", providerId: "openai" },
 ];
 
-/** Nine Anthropic rows — one over the picker's search threshold of eight. */
 export const longCatalog: ModelPickerModel[] = [
   ...models.filter((model) => model.providerId === "anthropic"),
   {
@@ -95,7 +88,6 @@ export const stillChecking: ModelPickerProvider[] = [
   { id: "openai", name: "OpenAI", connection: "checking" },
 ];
 
-/** The picker's public API, read off `model-picker/types.ts`. */
 export const modelPickerProps: SpecimenProp[] = [
   {
     name: "models",
@@ -145,7 +137,6 @@ export const modelPickerProps: SpecimenProp[] = [
   { name: "className", type: "string", note: "Merged onto the Command root." },
 ];
 
-/** Every colour utility the picker and its rows paint with. */
 export const modelPickerTokens = [
   "text-ink",
   "text-ink-muted",

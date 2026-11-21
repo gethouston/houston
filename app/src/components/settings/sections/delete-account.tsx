@@ -36,12 +36,6 @@ function failureOf(err: unknown): Failure {
   return "generic";
 }
 
-/**
- * The account-wide row of the Danger zone (HOU-991): permanently delete the
- * hosted account and everything it owns, on every device. Guarded by a
- * type-to-confirm dialog; the request itself refuses (and deletes nothing)
- * while the user still belongs to team spaces.
- */
 export function DeleteAccountSection() {
   const { t } = useTranslation("settings");
   const available = useAccountDeletionAvailable();
@@ -63,13 +57,8 @@ export function DeleteAccountSection() {
   async function submit() {
     setFailure(null);
     try {
-      // On success the session goes null and the sign-in screen replaces this
-      // whole settings surface; nothing to navigate. Sign-out-side failures
-      // surface on the auth-error bus, which that screen renders.
       await deleteAccountAndSignOut();
     } catch (e) {
-      // Three states the user can act on, each explained under the field: the
-      // dialog stays with the typed word so the retry is one click.
       setFailure(failureOf(e));
       return stayOpen();
     }

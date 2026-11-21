@@ -29,8 +29,6 @@ function agent(
   };
 }
 
-// ── buildMigrationPlan ────────────────────────────────────────────────
-
 test("keeps plain names when nothing collides", () => {
   const plan = buildMigrationPlan([agent("Work", "Sales")], []);
   assert.equal(plan[0].targetName, "Sales");
@@ -38,8 +36,6 @@ test("keeps plain names when nothing collides", () => {
 });
 
 test("an employee named Houston moves in under its own name", () => {
-  // The AI Manager's name is reserved only for NEW employees; the move
-  // re-creates the person's own agent with `migration: true`.
   const plan = buildMigrationPlan([agent("Work", "Houston")], []);
   assert.equal(plan[0].targetName, "Houston");
   assert.deepEqual(migratedAgentCreate({ ...plan[0], color: "teal" }), {
@@ -73,7 +69,6 @@ test("color lands on the right task when names collide (per-agent, not shared)",
   const plan = buildMigrationPlan([a, b], []);
   assert.equal(plan[0].color, "#aa0000");
   assert.equal(plan[1].color, "#00bb00");
-  // The rename didn't disturb color threading.
   assert.equal(plan[1].targetName, "Sales (Personal)");
 });
 
@@ -109,8 +104,6 @@ test("collisions are case-insensitive", () => {
 });
 
 test("collisions compare names as the host does, whatever the Unicode form", () => {
-  // Same "José", decomposed (NFD) on one side and composed (NFC) on the other:
-  // the host's store refuses it as taken, so the plan must rename it too.
   const plan = buildMigrationPlan(
     [agent("Work", "Jose\u0301")],
     [{ name: "jos\u00e9" }],
@@ -137,10 +130,8 @@ test("a matching import marker resumes: task is alreadyDone, no rename churn", (
   );
   assert.equal(plan[0].alreadyDone, true);
   assert.equal(plan[0].targetName, "Sales");
-  // The second source agent still collides with the finished one's name.
   assert.equal(plan[1].alreadyDone, false);
   assert.equal(plan[1].targetName, "Sales (Personal)");
-  // And resume feeds the initial progress state machine.
   assert.equal(initialProgress(plan[0]).step, "done");
   assert.equal(initialProgress(plan[1]).step, "pending");
 });
@@ -154,17 +145,12 @@ test("a marker for a DIFFERENT source does not resume", () => {
   assert.equal(plan[0].targetName, "Sales (Work)");
 });
 
-// ── chunkPaths ────────────────────────────────────────────────────────
-
 const entry = (
   path: string,
   size: number,
   kind: "core" | "file" = "file",
 ): SourceManifestEntry => ({ path, size, kind });
 
-// The cloud ingress drops a request whose body takes over 60 s to arrive.
-// 2 Mbps is the slow end of home uplinks; a chunk must clear the deadline
-// there with margin, or the wizard fails the same chunk on every retry.
 test("a chunk uploads within the ingress body deadline on a 2 Mbps uplink", () => {
   const bytesPerSecondAt2Mbps = (2 * 1_000_000) / 8;
   const seconds = MAX_CHUNK_RAW_BYTES / bytesPerSecondAt2Mbps;
@@ -209,8 +195,6 @@ test("no entries → no chunks (nothing to upload)", () => {
   assert.deepEqual(chunkPaths([], 100), []);
 });
 
-// ── isPlausibleMigrationTarget ────────────────────────────────────────
-
 test("resume probes only agents whose name a migration could have produced", () => {
   const sources = [{ name: "Sales" }];
   assert.equal(isPlausibleMigrationTarget("Sales", sources), true);
@@ -218,8 +202,6 @@ test("resume probes only agents whose name a migration could have produced", () 
   assert.equal(isPlausibleMigrationTarget("Salesforce", sources), false);
   assert.equal(isPlausibleMigrationTarget("Marketing", sources), false);
 });
-
-// ── collectIntegrations ───────────────────────────────────────────────
 
 test("collects the sorted union of toolkit slugs across agents", () => {
   const slugs = collectIntegrations([
@@ -230,13 +212,10 @@ test("collects the sorted union of toolkit slugs across agents", () => {
 });
 
 test("account-level legacy Composio slugs union into the checklist", () => {
-  // The v0.4.x cohort: no per-agent records, connections only in the
-  // consumer account probed via ~/.composio.
   assert.deepEqual(collectIntegrations([], ["googledrive", "gmail"]), [
     "gmail",
     "googledrive",
   ]);
-  // Both sources present: dedupe across them.
   assert.deepEqual(
     collectIntegrations(
       [agent("Work", "Sales", ["gmail"])],
@@ -246,11 +225,7 @@ test("account-level legacy Composio slugs union into the checklist", () => {
   );
 });
 
-// ── hasReconnectAppsStep ──────────────────────────────────────────────
-
 test("the apps step is skipped when there is nothing to show", () => {
-  // The common v0.4.2x case: platform-mode integrations leave no per-agent
-  // record, and a clean migration has no leftovers → no empty-shell step.
   assert.equal(
     hasReconnectAppsStep({
       integrations: 0,
@@ -275,16 +250,11 @@ test("the apps step shows for integrations OR any leftover kind", () => {
   assert.equal(hasReconnectAppsStep({ ...none, rejectedFiles: 1 }), true);
 });
 
-// ── doneScreenOutcome ─────────────────────────────────────────────────
-
 test("a clean run stamps done — the wizard and Settings row both retire", () => {
   assert.equal(doneScreenOutcome(0), "done");
 });
 
 test("a run with failed agents stamps skipped so Settings keeps the retry", () => {
-  // Settings' "Continue migration" hides only on "done" (useMigrationAvailable);
-  // stamping "done" here used to strand Continue-anyway users with no UI path
-  // back to their failed agents.
   assert.equal(doneScreenOutcome(1), "skipped");
   assert.equal(doneScreenOutcome(5), "skipped");
 });

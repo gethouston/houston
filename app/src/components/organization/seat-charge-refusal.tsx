@@ -1,11 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { FallbackLink } from "../shell/fallback-link";
 
-/**
- * Why a seat charge added nobody: a declined card, or a bank that wants to
- * confirm the payment. Both say nothing was charged and point to Manage
- * billing; once the portal opened, a line says to come back after.
- */
 export function SeatChargeRefusal({
   phase,
   email,

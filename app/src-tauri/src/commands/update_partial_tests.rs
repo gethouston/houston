@@ -149,9 +149,6 @@ async fn a_second_open_of_the_same_partial_is_refused_until_the_first_is_gone() 
         PartialDownload::open(&dir, "1.0.0", URL),
         Err(OpenError::InProgress)
     ));
-    // A newer version opened while 1.0.0 still writes (a remounted hook on
-    // one side, a fresh check on the other) must not sweep it from under
-    // the writer.
     let other_version = PartialDownload::open(&dir, "1.0.1", URL);
     assert!(other_version.is_ok(), "the hold is per partial, not global");
     assert_eq!(std::fs::read(dir.join("1.0.0.part")).unwrap(), b"writing");
@@ -165,7 +162,6 @@ async fn a_second_open_of_the_same_partial_is_refused_until_the_first_is_gone() 
     drop(other_version);
     drop(first);
     assert!(PartialDownload::open(&dir, "1.0.0", URL).is_ok());
-    // With the hold gone, the next other-version open sweeps it.
     let _newer = PartialDownload::open(&dir, "1.0.2", URL).unwrap();
     assert!(!dir.join("1.0.0.part").exists());
 }
@@ -177,7 +173,6 @@ async fn the_startup_sweep_spares_a_partial_being_written() {
     held.restart(Some(sidecar(URL))).await.unwrap();
     held.append(b"live").await.unwrap();
     held.settle().await.unwrap();
-    // The running version's own partial would normally go at startup.
     prune_abandoned(&dir, "1.0.0", SystemTime::now());
     assert!(dir.join("1.0.0.part").exists(), "held, so spared");
 }
@@ -206,8 +201,6 @@ async fn a_restart_leaves_no_old_sidecar_vouching_for_the_new_file() {
 #[test]
 fn the_startup_sweep_drops_the_running_version_and_week_old_partials() {
     let dir = scratch_dir("abandoned");
-    // Written directly: an `open` of one version sweeps the others, and this
-    // is the one place three versions must coexist.
     for version in ["1.0.0", "1.0.1", "1.0.2"] {
         std::fs::write(dir.join(format!("{version}.part")), version).unwrap();
         let sidecar = serde_json::to_vec(&sidecar(URL)).unwrap();

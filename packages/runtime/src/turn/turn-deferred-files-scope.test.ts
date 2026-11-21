@@ -26,7 +26,6 @@ const CLAIM = {
   heartbeatUrl: "https://heartbeat.test",
 };
 
-/** A store holding an agent with runtime inputs and the person's own files. */
 function agentStore() {
   const storeRoot = mkdtempSync(join(tmpdir(), "deferred-scope-store-"));
   const agent = join(storeRoot, PREFIX, "workspaces", "Personal", "Bob");
@@ -73,7 +72,6 @@ function prepare(store: ObjectStore, timings: Record<string, number> = {}) {
   });
 }
 
-/** A read that never answers until its signal aborts: a stalled store. */
 function stalled(signal?: AbortSignal): Promise<void> {
   return new Promise((_resolve, reject) => {
     signal?.addEventListener("abort", () => reject(signal.reason), {
@@ -118,7 +116,6 @@ test("the prompt's inputs land before `hydrated`, the person's folders after", a
 
   release();
   await fs.workspaceReady;
-  // A tool runs only now (the gate): it edits one file and makes another.
   writeFileSync(at("reports", "q3.md"), "q3 v2\n");
   writeFileSync(at("reports", "summary.md"), "made by the turn\n");
   const synced = await syncTurnFilesystem({
@@ -185,7 +182,6 @@ test("a prompt that ends before its files land stops the download and syncs noth
   expect(readFileSync(join(agent, "reports", "q3.md"), "utf8")).toBe("q3 v1\n");
   expect(timings.t_files_abandoned).toBeDefined();
   expect(timings.t_files_ready).toBeUndefined();
-  // Expected, not a failure: nothing reaches the error log.
   expect(error).not.toHaveBeenCalled();
   error.mockRestore();
 });

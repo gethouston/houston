@@ -1,19 +1,3 @@
-/**
- * RoutinePlanSkipNotice — tells a person that a free org's rules refused some
- * of a trigger routine's runs, which never reach the history and would
- * otherwise leave the routine looking broken. Mounted on the routine screen
- * and at the top of its runs dialog, where people look for the missing run.
- *
- * This feeds the SDK the active org's billing, the creator, the signed-in
- * viewer and the routine's agent (`triggerPlanSkipNotice`); a teammate gets
- * the read-only variant.
- *
- * It reads the SAME per-agent trigger-status cache entry as the activation
- * chip (`agentTriggerStatusQueryOptions`), without the chip's error toast so a
- * failed read is reported once. Mounting it (opening the dialog) refetches a
- * stale entry and window focus refetches it, so no polling of its own.
- */
-
 import type { Routine } from "@houston/engine-adapter";
 import { triggerPlanSkipNotice } from "@houston/sdk";
 import { useQuery } from "@tanstack/react-query";
@@ -29,8 +13,6 @@ import { RoutinePlanSkipNoticeControls } from "./routine-plan-skip-notice-contro
 interface Props {
   agentId: string;
   routine: Routine;
-  /** Runs before an action that navigates away or opens another dialog, so a
-   *  hosting dialog can close first. */
   onLeave?: () => void;
   layout?: "row" | "stacked";
   surface?: "card" | "inline";
@@ -61,7 +43,6 @@ export function RoutinePlanSkipNotice({
     {
       createdBy: routine.created_by,
       viewerId: session?.uid,
-      // A hosted agent's client-side id IS its gateway slug.
       agentSlug: agentId,
       plusOffer: upgradeOffer,
     },
@@ -74,7 +55,6 @@ export function RoutinePlanSkipNotice({
       effects={{
         openBilling: () => openAdmin({ section: "billing" }),
         openKeepChooser: () => openKeepChooser(true),
-        // A failure is surfaced by the engine call itself (`tauriOrg`).
         resume: () => resume.mutate(),
         resuming: resume.isPending,
       }}

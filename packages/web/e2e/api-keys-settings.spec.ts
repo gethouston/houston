@@ -12,11 +12,6 @@ import { openAssistant, openSettings } from "./support/settings-nav";
 const PERSONAL_SLUG = "fedcba9876543210";
 const SECRET = `hst_${"9f2c1a7b4e8d0364".repeat(4)}`;
 
-/**
- * The fake host serves neither `/v1/keys` nor a personal org slug, so both are
- * answered here: one existing key, a mint that returns the secret once, and
- * the personal membership the Organization ID row reads its slug from.
- */
 async function mockGateway(page: Page) {
   const keys = [
     {
@@ -64,8 +59,6 @@ async function mockGateway(page: Page) {
 test("Settings lists API keys only where the public API is served", async ({
   page,
 }) => {
-  // The row is also absent while capabilities load, so the absence below
-  // only proves the gate once the answer has arrived.
   const capabilities = page.waitForResponse("**/v1/capabilities");
   await page.goto("/");
   await capabilities;
@@ -107,7 +100,6 @@ test("API keys shows the organization ID, mints a key once, and links the docs",
   await docs.click();
   expect((await popup).url()).toContain("gethouston.ai/developers");
 
-  // Phone width: the ID and its copy control stay on screen side by side.
   await page.setViewportSize({ width: 412, height: 915 });
   await expect(page.getByText(PERSONAL_SLUG, { exact: true })).toBeInViewport();
   await expect(page.getByRole("button", { name: "Copy" })).toBeInViewport();
@@ -129,7 +121,6 @@ test("an AI Employee's API access opens from its Settings and leads to the keys"
   ).toBeVisible();
   await expect(page.getByText("Agent ID", { exact: true })).toBeVisible();
   await expect(page.getByText(PERSONAL_SLUG, { exact: true })).toBeVisible();
-  // A ready request starts a task with this employee, key read from the env.
   await expect(
     page
       .locator("pre")
@@ -137,8 +128,6 @@ test("an AI Employee's API access opens from its Settings and leads to the keys"
       .filter({ hasText: "$HOUSTON_API_KEY" }),
   ).toBeVisible();
 
-  // The prompt carries both IDs and the key's env var, never a key, and
-  // copying it mints nothing.
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   let minted = false;
   page.on("request", (req) => {
@@ -152,8 +141,6 @@ test("an AI Employee's API access opens from its Settings and leads to the keys"
   expect(prompt).not.toMatch(/hst_[0-9a-f]/);
   expect(minted).toBe(false);
 
-  // Back returns to the Settings card, then in again for the keys door.
-  // The section strip also has a "Settings" tab; the way back lives in the body.
   await page
     .locator("[data-agent-section-body='manage']")
     .getByRole("button", { name: "Settings", exact: true })
@@ -211,8 +198,6 @@ test("the AI Manager's API access card shows that employee's details in the chat
   await expect(page.getByText(reason, { exact: true })).toBeVisible();
   const url = page.url();
 
-  // Everything is in the card: the title names the employee, and its IDs and
-  // the ready prompt sit right there, with nowhere to be sent.
   await expect(
     page.getByText(`API access for ${SEED_AGENT_NAME}`, { exact: true }),
   ).toBeVisible();

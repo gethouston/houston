@@ -31,7 +31,6 @@ test("resolves a bare slug against the configured gateway", () => {
 });
 
 test("a share link on any host resolves to the configured gateway", () => {
-  // The pasted host provides only the slug; the fetch always targets the gateway.
   const r = resolveStoreIrUrl("https://agents.example.com/a/foo", API);
   expect(r).toEqual({
     irUrl: "https://gateway.gethouston.ai/v1/agentstore/agents/foo",

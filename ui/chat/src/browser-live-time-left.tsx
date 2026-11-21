@@ -5,10 +5,6 @@ import { useEffect, useState } from "react";
 
 const MINUTE = 60_000;
 
-/**
- * Whole minutes left, rounded up, re-rendering exactly when that number
- * changes (one timer per minute, not a polling tick). Null while unknown.
- */
 export function useMinutesLeft(
   expiresAt: number,
   running: boolean,
@@ -22,7 +18,6 @@ export function useMinutesLeft(
       setNow(at);
       const left = expiresAt - at;
       if (left <= 0) return;
-      // The next whole-minute boundary, a hair after so ceil() has moved.
       timer = setTimeout(tick, ((left - 1) % MINUTE) + 1 + 50);
     };
     tick();
@@ -38,7 +33,6 @@ export interface BrowserLiveTimeLeftProps {
   lastMinuteLabel: string;
 }
 
-/** The countdown chip; its last minute turns to the attention colour. */
 export function BrowserLiveTimeLeft({
   minutes,
   label,

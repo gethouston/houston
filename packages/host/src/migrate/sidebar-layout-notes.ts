@@ -3,17 +3,8 @@ import type { WorkspacePaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 
-/**
- * The GROUP.md notes a legacy layout's group contexts were mirrored into.
- * Persisted as the `sidebar_layout_legacy_notes` preference in the same write
- * that converts the layout, so the removal survives a crash or a failed delete
- * and is retried on every boot until it completes.
- */
 export interface LegacyNotes {
-  /** Agent id to the context its group mirrored (the last group with a
-   *  context wins, as the mirror wrote it). */
   byAgent: Record<string, string>;
-  /** Agents in any legacy group, which the default context never reached. */
   grouped: string[];
   defaultContext: string | null;
 }
@@ -34,7 +25,6 @@ const strings = (value: unknown): string[] =>
     ? value.filter((item): item is string => typeof item === "string")
     : [];
 
-/** The notes a legacy stored layout left behind, or null when it left none. */
 export function legacyNotesOf(raw: unknown): LegacyNotes | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const value = raw as Record<string, unknown>;
@@ -52,7 +42,6 @@ export function legacyNotesOf(raw: unknown): LegacyNotes | null {
   return { byAgent, grouped, defaultContext };
 }
 
-/** Parse the persisted marker; a malformed one throws so boot reports it. */
 export function parseLegacyNotes(raw: string): LegacyNotes {
   const value: unknown = JSON.parse(raw);
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -75,11 +64,6 @@ export function parseLegacyNotes(raw: string): LegacyNotes {
   };
 }
 
-/**
- * Delete every agent's GROUP.md that still holds exactly the note its legacy
- * group mirrored; an edited note is the person's own and stays. Resolves true
- * only when every removal succeeded.
- */
 export async function removeLegacyNotes(opts: {
   store: WorkspaceStore;
   vfs: Vfs;

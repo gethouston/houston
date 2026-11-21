@@ -10,11 +10,6 @@ import {
 import { ART } from "./org-chart-share-card-art";
 import { FONT, fitText } from "./org-chart-share-card-text";
 
-/*
- * The small marks the share card's nodes wear: centred text, a person's
- * face, an AI Employee's helmet.
- */
-
 export function centred(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -31,7 +26,6 @@ export function centred(
   ctx.fillText(fitText(ctx, text, max), x, y);
 }
 
-/** A round face: the photo, or neutral initials on a soft disc. */
 export function face(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -64,7 +58,6 @@ export function face(
   ctx.stroke();
 }
 
-/** The share image is light, so the metal resolves against the light theme. */
 const METAL = {
   light: color.light["employee-metal-light"],
   shade: color.light["employee-metal-shade"],
@@ -72,11 +65,6 @@ const METAL = {
 
 let helmetPaths: Path2D[] | undefined;
 
-/**
- * An AI Employee's avatar, as `HoustonAvatar` draws it on screen: the
- * employee metal disc (a 135deg gradient with a faint light edge along its
- * top) and the helmet in relief, in the employee's own colour.
- */
 export function helmetAvatar(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -100,8 +88,6 @@ export function helmetAvatar(
   surface.addColorStop(1, metal.bottom);
   ctx.fillStyle = surface;
   ctx.fill(disc);
-  // `inset 0 1px 0`: the disc less itself one unit lower, so the edge
-  // grows with the avatar like the rest of it.
   const edge = new Path2D();
   edge.arc(x, y, r, 0, Math.PI * 2);
   edge.arc(x, y + 1, r, 0, Math.PI * 2);
@@ -109,8 +95,6 @@ export function helmetAvatar(
   ctx.fillStyle = METAL.light;
   ctx.fill(edge, "evenodd");
   ctx.globalAlpha = 1;
-  // The helmet fills a square of its own height, centred like the SVG's
-  // default `xMidYMid meet`.
   const size = avatarHelmetSize(d);
   const scale = size / HELMET_VIEWBOX.height;
   ctx.translate(x - (HELMET_VIEWBOX.width * scale) / 2, y - size / 2);

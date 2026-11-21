@@ -14,28 +14,9 @@ export interface SidebarItemRowProps {
   dragListeners?: DraggableSyntheticListeners;
   onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void;
   grouped?: boolean;
-  /** Default true: an agent row is a drag handle. A pinned row sits outside
-   *  every drag container and must not look like one. */
   draggable?: boolean;
 }
 
-/**
- * One AI Employee in the rail: a person row (its portrait, the name above its
- * role), whatever quiet signal it is carrying in the trailing slot, and the
- * host's optional "..." affordance beside the button.
- *
- * It is a {@link SidebarRowButton} like every other line in the rail, in the
- * `person` anatomy, so its paint, indent, states and affordance are the rail's
- * own and only its height, avatar and text block differ.
- *
- * The affordance is DATA, not behaviour: the host builds the trigger and the
- * menu it opens (`item.affordance`), and this row only places it in the shared
- * affordance slot. The library itself still knows nothing about renaming,
- * copying or deleting an agent.
- *
- * The one thing it still adds over a plain row: it is a drag handle, wearing
- * the sortable listeners and cursor on the row button.
- */
 export function SidebarItemRow({
   item,
   isActive,

@@ -16,23 +16,6 @@ import { useProviderBrowserData } from "../../provider-browser/use-provider-brow
 import { SuccessCheck } from "../success-check";
 import { WizardFrame } from "./wizard-frame";
 
-/**
- * Step 1 of the done-screen's two-step setup (HOU-719 redesign): reconnect
- * the AI. Reuses the SAME `<ProviderBrowser>` as onboarding's "Connect your
- * AI" card (`../connect-ai-card.tsx`), here in its `curated` mode: the featured
- * providers split into Subscription / API-key sections with a "see all" chip.
- * It owns the OAuth launch, dialogs, polling, and failure toasts.
- *
- * It passes NEITHER `onSelect` nor `selectOnMount`. The migration step must
- * not auto-advance — the user continues via the Continue button — and a
- * pre-connected provider (e.g. a dev machine with shared credentials) must
- * stay VISIBLE rather than collapse the step to a one-line "connected"
- * confirmation; the step is titled "Connect your AI", so the cards must
- * always show. Curated mode keeps pre-connected
- * providers on their cards (their connected state renders inline within the
- * sections), and the browser handles the missing `onSelect` cleanly — the
- * auto-select watcher and the local-connect dialog both no-op without it.
- */
 export function DoneStepAi() {
   const { providers, connections, catalog } = useProviderBrowserData();
   return (
@@ -45,14 +28,6 @@ export function DoneStepAi() {
   );
 }
 
-/**
- * The wizard's final beat (HOU-719): a short congrats screen shown after the
- * two setup steps, before closing into the app. The celebratory
- * {@link SuccessCheck} (onboarding's one colour-accent moment) over the space
- * backdrop, the shared setup confetti on mount (which honours reduced
- * motion), then a single "Start building" button hands control back to the
- * caller to close the wizard.
- */
 export function DoneCongrats({ onFinish }: { onFinish: () => void }) {
   const { t } = useTranslation("migration");
   useEffect(() => {
@@ -72,25 +47,9 @@ export function DoneCongrats({ onFinish }: { onFinish: () => void }) {
   );
 }
 
-/**
- * Step 2: the apps the legacy account had connected before, one row per
- * toolkit via the shared `<AppRow>` (real logo, real name, from the Composio
- * toolkit catalog). Connect is the REAL account-level OAuth hand-off — the
- * same `useConnectFlow` the Integrations page runs (mint link, open browser,
- * poll until active, invalidate, toast failures) with no agent context.
- *
- * Connects run TRULY in parallel: each row's Connect is gated only on ITS OWN
- * slug being in flight (`slug in flow.states`), never on any other app, so the
- * user can hand off several OAuth tabs at once. A row mid-flight shows a live
- * "Connecting…" line with a per-slug Cancel that bails out of that one flow.
- */
 export function DoneStepApps({ integrations }: { integrations: string[] }) {
   const { t } = useTranslation("migration");
 
-  // Toolkit catalog for real app names/logos, through the GATED hook: a raw
-  // fetch here 404-toasted ("unknown integration provider") on hosts with no
-  // Composio registered (dev/self-host with only the custom provider). The
-  // hook stays idle there and the raw slugs render instead.
   const toolkitCatalog = useIntegrationToolkits(
     "composio",
     integrations.length > 0,
@@ -99,8 +58,6 @@ export function DoneStepApps({ integrations }: { integrations: string[] }) {
     (toolkitCatalog.data ?? []).map((tk) => [tk.slug, tk]),
   );
 
-  // Live account connections, so a toolkit the user already reconnected (or
-  // connects right here) renders as Connected instead of a dead Connect.
   const connections = useIntegrationConnections(
     INTEGRATION_PROVIDER,
     integrations.length > 0,
@@ -126,17 +83,11 @@ export function DoneStepApps({ integrations }: { integrations: string[] }) {
               display={appDisplay(slug, bySlug.get(slug))}
               trailing={
                 isConnected ? (
-                  // Completed treatment, not a dimmed disabled button: a success
-                  // check + label reads as "done", so the row settles instead of
-                  // offering a dead action (design-system success token, no fill).
                   <span className="inline-flex items-center gap-1.5 pr-1 text-xs font-medium text-success">
                     <Check className="size-4" strokeWidth={2.5} />
                     {t("done.connected")}
                   </span>
                 ) : inFlight ? (
-                  // This app's OAuth is mid-flight: a live status line plus a
-                  // per-slug Cancel that stops ONLY this flow (silent, leaves any
-                  // other app still connecting untouched).
                   <span className="inline-flex items-center gap-2 pr-1 text-xs text-ink-muted">
                     <Loader2 className="size-4 animate-spin" aria-hidden />
                     {t("done.connecting")}

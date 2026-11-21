@@ -17,23 +17,13 @@ import {
   isReadOpRoute,
 } from "./op-route-allowlist";
 
-/**
- * The op grammar: every operation shape a pool worker will run for a
- * sleeping agent, and the strict parser that admits it (parse-op-request.ts
- * owns the surrounding claim/credential envelope). `route` ops run the
- * host's own route handlers against the hydrated workspace; the other kinds
- * are the runtime's own.
- */
 export type AgentOp =
   | {
       kind: "route";
       method: string;
       rest: string;
-      /** Raw query string without the `?` (files routes take `?path=`). */
       query?: string;
       body?: string;
-      /** Binary request body (a migration zip), base64 — a JSON envelope
-       *  cannot carry raw bytes. Mutually exclusive with `body`. */
       bodyBase64?: string;
       contentType?: string;
     }
@@ -44,7 +34,6 @@ export type AgentOp =
       action: "api-key";
       provider: string;
       apiKey: string;
-      /** Azure OpenAI's per-resource endpoint, arriving with the key. */
       endpoint?: string;
     }
   | ConversationOp
@@ -104,11 +93,6 @@ function parseRouteOp(raw: Record<string, unknown>): AgentOp {
   const rest = str(raw.rest, "op.rest");
   if (rest.includes("..") || rest.startsWith("/"))
     throw new Error("invalid 'op.rest'");
-  // Defense in depth: the worker accepts only the op-route shapes the
-  // gateway classifier dispatches — a valid-token caller cannot reach a
-  // handler surface (e.g. POST agentfile) the public path never exposes.
-  // Match the DECODED path: the handlers decode, so the allowlist must
-  // see what they see (`%2Ehouston` is `.houston`).
   let decoded: string;
   try {
     decoded = decodeURIComponent(rest);
@@ -121,15 +105,12 @@ function parseRouteOp(raw: Record<string, unknown>): AgentOp {
   if (!isOpRoute(decoded)) {
     throw new Error("op.rest is not an op route");
   }
-  // Reads run as ops only on the read shapes op-route-allowlist.ts names.
   if (method === "GET" && !isReadOpRoute(decoded)) {
     throw new Error("op.rest is not a read op route");
   }
   if (typeof raw.bodyBase64 === "string" && !isBinaryBodyOpRoute(decoded)) {
     throw new Error("op.bodyBase64 is not accepted for this route");
   }
-  // And the converse: a binary route must never smuggle its payload as a
-  // text body — a zip in a UTF-8 string is corrupt.
   if (
     isBinaryBodyOpRoute(decoded) &&
     typeof raw.body === "string" &&

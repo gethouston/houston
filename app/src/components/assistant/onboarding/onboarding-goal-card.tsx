@@ -16,7 +16,6 @@ interface Step {
   label: string;
 }
 
-/** The employee who took the goal, as the roster knows them now. */
 function staffAgent(
   staff: GoalStaff | null,
   agents: readonly Agent[],
@@ -30,13 +29,6 @@ function staffName(staff: GoalStaff, agent: Agent | undefined): string {
   return agent?.name ?? (staff.kind === "hired" ? staff.name : staff.agent);
 }
 
-/**
- * The person's goal getting started, drawn as three steps that tick as the
- * AI Manager works (staff it, assign it, get to work) instead of the
- * manager's words. Once the mission runs, one button opens the employee on
- * it; if the turn ended without a mission, the manager's one plain sentence
- * and Try again.
- */
 export function OnboardingGoalCard({
   goal,
   progress,
@@ -46,7 +38,6 @@ export function OnboardingGoalCard({
   goal: string;
   progress: GoalProgress;
   onOpen: (agent: Agent, missionId: string) => void;
-  /** Absent while the chat is busy: a retry would queue behind it. */
   onRetry?: () => void;
 }) {
   const { t } = useTranslation(["assistant", "common"]);

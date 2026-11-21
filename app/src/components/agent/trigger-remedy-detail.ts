@@ -1,12 +1,10 @@
 import type { TriggerStatusItem } from "@houston/engine-adapter";
 import { type TriggerRemedy, triggerRemedy } from "@houston/sdk";
 
-/** Authored copy for the remedies the host's English `detail` cannot name. */
 export type TriggerRemedyHintKey =
   | "trigger.statusTriggerGoneHint"
   | "trigger.statusConfigRejectedHint";
 
-/** The `routines` key that tells the person what to do, if the remedy has one. */
 export function remedyHintKey(
   remedy: TriggerRemedy,
 ): TriggerRemedyHintKey | null {
@@ -20,12 +18,6 @@ export function remedyHintKey(
   }
 }
 
-/**
- * The item with its `detail` replaced by the authored remedy copy when the
- * SDK's `triggerRemedy` has one, so every surface (the grid's badge reads
- * `detail` as is) shows the localized instruction instead of the host's
- * English. Returns the item untouched otherwise.
- */
 export function withRemedyDetail(
   item: TriggerStatusItem,
   translate: (key: TriggerRemedyHintKey) => string,
@@ -34,7 +26,6 @@ export function withRemedyDetail(
   return key ? { ...item, detail: translate(key) } : item;
 }
 
-/** `withRemedyDetail` over a per-row status map; the same map when unchanged. */
 export function withRemedyDetails(
   statuses: Record<string, TriggerStatusItem>,
   translate: (key: TriggerRemedyHintKey) => string,

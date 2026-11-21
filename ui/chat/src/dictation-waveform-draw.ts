@@ -1,32 +1,19 @@
-/**
- * Canvas orchestration for the dictation waveform. Composes the visual layers
- * per frame: the mirrored amplitude envelope (`dictation-waveform-envelope.ts`)
- * and a solid hairline leader over the not-yet-recorded remainder. The leading
- * edge (playhead) is a DOM overlay rocket owned by `dictation-waveform.tsx`, not
- * drawn on canvas. Handles the three states — recording (one solid live
- * envelope + leader), requesting (full-width hairline), transcribing (frozen
- * envelope dimmed under a scanning shimmer). Pure layout lives in
- * `dictation-waveform-math.ts`; color derives from the passed `currentColor`.
- */
-
 import { drawEnvelope, withAlpha } from "./dictation-waveform-envelope";
 import type { WaveformLayout } from "./dictation-waveform-math";
 
-const MAX_HALF_FRACTION = 0.44; // tallest half-envelope as a fraction of height
-const BODY_ALPHA = 0.82; // the one solid envelope body
-const LEADER_ALPHA = 0.28; // solid hairline leader
-const FROZEN_ALPHA = 0.5; // transcribing dim
-const SHIMMER_HALF_PX = 26; // half-width of the transcribing scan band
+const MAX_HALF_FRACTION = 0.44;
+const BODY_ALPHA = 0.82;
+const LEADER_ALPHA = 0.28;
+const FROZEN_ALPHA = 0.5;
+const SHIMMER_HALF_PX = 26;
 
 export type WaveformMode = "recording" | "requesting" | "transcribing";
 
 export interface DrawOpts {
   mode: WaveformMode;
-  /** 0..1 scan position for the transcribing shimmer. */
   shimmer: number;
 }
 
-/** Solid 1px hairline at the centerline over the not-yet-recorded remainder. */
 function drawLeader(
   ctx: CanvasRenderingContext2D,
   fromX: number,
@@ -62,7 +49,6 @@ export function drawWaveform(
   }
 
   if (opts.mode === "transcribing") {
-    // Frozen envelope dimmed, with a brightening band that scans across it.
     drawEnvelope(
       ctx,
       layout,
@@ -82,7 +68,6 @@ export function drawWaveform(
     return;
   }
 
-  // recording: one solid envelope + a solid hairline leader ahead of the head.
   drawEnvelope(ctx, layout, cssW, midY, maxHalf, color, BODY_ALPHA);
   drawLeader(ctx, layout.leaderFromX, cssW, midY, color);
 }

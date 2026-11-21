@@ -30,18 +30,10 @@ const STATE_KEY: Record<NotificationRowState, string> = {
 };
 
 const isWeb = !osIsTauri();
-// Only macOS + Windows expose a notification-settings pane we can open; web has
-// none and Linux reports the command unsupported, so we hide the button there.
 const canOpenSettings =
   osIsTauri() &&
   (currentPlatformOs === "macos" || currentPlatformOs === "windows");
 
-/**
- * The Settings notifications row: an in-app toggle (default ON, preference-
- * backed) plus a live label of the real delivery truth — On / Off / Off in the
- * OS / Blocked in the browser — refreshed whenever the window regains focus so
- * a permission change made in System Settings shows without a reload.
- */
 export function NotificationsSection() {
   const { t } = useTranslation(["settings", "common"]);
   const addToast = useUIStore((s) => s.addToast);
@@ -54,9 +46,7 @@ export function NotificationsSection() {
   const refreshOsGranted = useCallback(() => {
     readOsPermissionGranted()
       .then(setOsGranted)
-      .catch(() => {
-        // A failed probe is not a user action; leave the last known value.
-      });
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -70,9 +60,6 @@ export function NotificationsSection() {
     setInAppEnabled(next);
     try {
       await setSessionNotificationEnabled(next);
-      // Turning the toggle ON while delivery isn't granted is the user's cue to
-      // grant it: request permission right here (the contextual ask), then
-      // reflect the result.
       if (next && !osGranted) {
         const state = await requestOsPermission();
         setOsGranted(state === "granted");

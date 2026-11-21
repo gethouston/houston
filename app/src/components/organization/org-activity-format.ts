@@ -1,32 +1,5 @@
 import type { AuditEntry } from "@houston/engine-adapter";
 
-/**
- * Pure, DOM-free translation of an audit-log entry into a human sentence
- * template (Teams v2 Activity feed). Node:test-safe: it returns an i18n
- * `action` key + interpolation `vars`, never a literal string, so the copy
- * stays in the `teams` locale files while the mapping is exhaustively unit
- * tested. The component calls `t(\`activityTab.actions.${action}\`, vars)`.
- *
- * Subject shapes (contract §5, produced by the cloud audit writer) are read
- * DEFENSIVELY — every field is optional and every case degrades to a still-
- * readable sentence if the shape drifts. Assumed shapes:
- *   member.add        { email?, userId?, role }
- *   member.remove     { userId }
- *   member.role       { userId, role }        (role = the new role)
- *   invite.create     { email, role }
- *   invite.revoke     { email }
- *   invite.accept     { role }                (actor = the joining user)
- *   agent.create      agentSlug
- *   agent.rename      { from?, to? }
- *   agent.delete      agentSlug
- *   agent.assignments { count? }              (people with access, if known)
- *   agent.settings    agentSlug
- *   org.settings      —
- *   grants.set        { toolkits?: string[], toolkit?: string }
- *   agent.configure   agentSlug
- */
-
-/** Every sentence key the Activity feed can render (+ `unknown` fallback). */
 export type ActivityActionKey =
   | "memberAdd"
   | "memberRemove"
@@ -50,21 +23,11 @@ export interface ActivitySentence {
   vars: Record<string, string | number>;
 }
 
-/**
- * Callbacks the formatter uses to turn raw ids/slugs into display strings, so
- * ALL wording logic stays pure + testable (tests pass fakes; the component
- * passes roster + `t()`-backed resolvers).
- */
 export interface AuditResolvers {
-  /** Display name of the entry's actor. */
   actor: string;
-  /** Display name of the entry's agent (from `agentSlug`). */
   agent: string;
-  /** Display name for a user id found inside the subject. */
   member(userId: string): string;
-  /** Translated role label (Owner / Manager / Member) for a role slug. */
   role(role: string): string;
-  /** Humanized, joined app names for a set of toolkit slugs. */
   apps(toolkits: string[]): string;
 }
 
@@ -95,7 +58,6 @@ function toolkits(subject: unknown): string[] {
   return [];
 }
 
-/** Map one audit entry to its sentence key + interpolation variables. */
 export function formatAuditEntry(
   entry: AuditEntry,
   r: AuditResolvers,

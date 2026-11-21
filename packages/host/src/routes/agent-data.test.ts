@@ -11,13 +11,6 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { workspaceRoot } from "./agent-data";
 
-/**
- * The typed .houston families served by the HOST off the workspace vfs — the
- * P3 slice that un-fakes the web adapter's localStorage stubs. Covers: CRUD
- * lifecycles, schema seeding on agent create, ownership wall, agent-written
- * junk surfacing as diagnostics, and 503 when no vfs is wired.
- */
-
 const verifier: TokenVerifier = {
   async verify(bearer) {
     return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
@@ -63,9 +56,6 @@ const deps = (): ControlPlaneDeps => ({
   },
   vfs,
   capabilities: CAPS,
-  // A trigger-capable deployment (Houston Cloud): the write gate lets trigger
-  // bindings through here — the no-backend rejection is covered in
-  // trigger-gating.test.ts.
   triggersEnabled: true,
 });
 
@@ -178,7 +168,6 @@ test("activities: POST honors a client-generated id; a same-id retry is idempote
   expect(created.status).toBe(201);
   expect(((await created.json()) as Activity).id).toBe(id);
 
-  // Retry with the same id lands on the existing row, never a duplicate.
   const retried = await fetch(`${base}/agents/${agentId}/activities`, {
     method: "POST",
     headers: auth("alice"),
@@ -192,8 +181,6 @@ test("activities: POST honors a client-generated id; a same-id retry is idempote
   ).json()) as { items: Activity[] };
   expect(list.items.filter((a) => a.id === id)).toHaveLength(1);
 
-  // A DIFFERENT mission asking for a taken id is refused: taking it over would
-  // reset the live card's status and erase whose work it is.
   const stolen = await fetch(`${base}/agents/${agentId}/activities`, {
     method: "POST",
     headers: auth("alice"),
@@ -213,7 +200,6 @@ test("activities: POST honors a client-generated id; a same-id retry is idempote
     expect(rejected.status).toBe(400);
   }
 
-  // Clean up so later tests see only their own rows.
   await fetch(`${base}/agents/${agentId}/activities/${id}`, {
     method: "DELETE",
     headers: auth("alice"),
@@ -224,8 +210,6 @@ test("routines: created with schema defaults; a stray per-routine timezone is ig
   const created = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
-    // `timezone` is no longer a routine field (one account-wide zone); a client
-    // still sending it must be ignored, not written onto the routine.
     body: JSON.stringify({
       name: "Daily report",
       prompt: "Write it",
@@ -265,7 +249,6 @@ test("routines: a trigger routine is created without a schedule; both/neither wa
   expect(routine.trigger).toEqual(trigger);
   expect("schedule" in routine).toBe(false);
 
-  // Both wake mechanisms → 400 (normalizeRoutines would drop the ambiguous entry).
   const both = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
@@ -278,7 +261,6 @@ test("routines: a trigger routine is created without a schedule; both/neither wa
   });
   expect(both.status).toBe(400);
 
-  // Neither → 400 (a routine that could never wake).
   const neither = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
@@ -286,7 +268,6 @@ test("routines: a trigger routine is created without a schedule; both/neither wa
   });
   expect(neither.status).toBe(400);
 
-  // A malformed trigger binding → 400 (rejected before it can be silently dropped).
   const malformed = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
@@ -300,7 +281,6 @@ test("routines: a trigger routine is created without a schedule; both/neither wa
 });
 
 test("routines: a webhook trigger routine is created and its binding round-trips; a malformed webhook is rejected", async () => {
-  // Minted key_prefix stamped later; created without one (status pending).
   const created = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
@@ -315,7 +295,6 @@ test("routines: a webhook trigger routine is created and its binding round-trips
   expect(routine.trigger).toEqual({ kind: "webhook" });
   expect("schedule" in routine).toBe(false);
 
-  // A webhook binding carrying the display-only prefix round-trips intact.
   const withPrefix = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
@@ -331,7 +310,6 @@ test("routines: a webhook trigger routine is created and its binding round-trips
     key_prefix: "wh_abc123",
   });
 
-  // A malformed webhook binding (non-string key_prefix) → 400.
   const malformed = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
@@ -375,7 +353,6 @@ test("routines: PATCH switches a cron routine to a trigger wake, clearing the sc
   expect(next.trigger).toEqual(trigger);
   expect("schedule" in next).toBe(false);
 
-  // A PATCH carrying a malformed trigger is rejected, not persisted.
   const bad = await fetch(`${base}/agents/${agentId}/routines/${routine.id}`, {
     method: "PATCH",
     headers: auth("alice"),
@@ -385,9 +362,6 @@ test("routines: PATCH switches a cron routine to a trigger wake, clearing the sc
 });
 
 test("routines: the editor's cron save `{schedule, trigger: null}` keeps the routine alive (regression)", async () => {
-  // The routines editor pairs every cron save with `trigger: null`. This once
-  // deleted the schedule too, persisting a wake-less routine that vanished
-  // from every subsequent list and was purged from disk by the next write.
   const created = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
@@ -418,7 +392,6 @@ test("routines: the editor's cron save `{schedule, trigger: null}` keeps the rou
   expect(next.schedule).toBe("0 9 * * *");
   expect("trigger" in next).toBe(false);
 
-  // The routine is still in the list after the save (it used to vanish here).
   const list = (await (
     await fetch(`${base}/agents/${agentId}/routines`, {
       headers: auth("alice"),
@@ -429,8 +402,6 @@ test("routines: the editor's cron save `{schedule, trigger: null}` keeps the rou
   expect(found?.schedule).toBe("0 9 * * *");
   expect(list.diagnostics).toEqual([]);
 
-  // And a LATER unrelated PATCH must not purge it either (the old bug's
-  // cascade: every mutation rewrote the file without normalize-dropped rows).
   const toggled = await fetch(
     `${base}/agents/${agentId}/routines/${routine.id}`,
     {
@@ -462,8 +433,6 @@ test("routines: a PATCH that would leave no wake mechanism is rejected (400), ne
   expect(created.status).toBe(201);
   const routine = (await created.json()) as Routine;
 
-  // Clearing the only wake without supplying the other one → 400. Persisting
-  // it would silently lose the routine (normalizeRoutines drops wake-less rows).
   const cleared = await fetch(
     `${base}/agents/${agentId}/routines/${routine.id}`,
     {
@@ -477,7 +446,6 @@ test("routines: a PATCH that would leave no wake mechanism is rejected (400), ne
     "exactly one",
   );
 
-  // The routine is untouched by the rejected write.
   const list = (await (
     await fetch(`${base}/agents/${agentId}/routines`, {
       headers: auth("alice"),
@@ -528,7 +496,6 @@ test("routines: created_by is server-owned and cannot be spoofed", async () => {
   expect(next.created_by).toBe("alice");
 });
 
-/** A gateway-shaped acting-as token; the pod decodes the payload, never the sig. */
 const actingToken = (sub: string) =>
   `acting-v1.${Buffer.from(
     JSON.stringify({ sub, agent: "a1", exp: 4102444800 }),
@@ -552,8 +519,6 @@ test("routines: an inbound acting-as header is ignored when not gateway-fronted"
 });
 
 test("routines (gateway-fronted): created_by records the acting sub, PATCH re-stamps it, and a missing header stays creator-less (HOU-689)", async () => {
-  // A managed pod: same store/vfs, but the server trusts the gateway-minted
-  // acting-as header for routine identity instead of the pod-local user id.
   const fronted = createControlPlaneServer({ ...deps(), gatewayFronted: true });
   await new Promise<void>((r) => fronted.listen(0, "127.0.0.1", () => r()));
   const addr = fronted.address();
@@ -573,12 +538,8 @@ test("routines (gateway-fronted): created_by records the acting sub, PATCH re-st
     });
     expect(created.status).toBe(201);
     const routine = (await created.json()) as Routine;
-    // NOT the pod-local verifier id — the sub the gateway can re-authorize
-    // when the fired routine's integration calls present it (C1 auth mode 3).
     expect(routine.created_by).toBe("supabase-sub-1");
 
-    // Editing re-stamps to the current verified editor — which also heals
-    // routines recorded before pods stamped real subs.
     const patched = await fetch(
       `${frontedBase}/agents/${agentId}/routines/${routine.id}`,
       {
@@ -595,8 +556,6 @@ test("routines (gateway-fronted): created_by records the acting sub, PATCH re-st
       "supabase-sub-2",
     );
 
-    // No header (nothing the gateway vouched for) → creator-less, never the
-    // pod-local id (which would 401 at fire time — the HOU-689 failure mode).
     const bare = await fetch(`${frontedBase}/agents/${agentId}/routines`, {
       method: "POST",
       headers: auth("alice"),
@@ -614,9 +573,6 @@ test("routines (gateway-fronted): created_by records the acting sub, PATCH re-st
 });
 
 test("routines (gateway-fronted): a headerless write falls back to the org owner sub", async () => {
-  // A managed pod that knows its org owner: a request the gateway vouched no
-  // identity for still records a real, re-authorizable creator — an authorless
-  // routine is one the control-plane fire planner refuses to fire.
   const fronted = createControlPlaneServer({
     ...deps(),
     gatewayFronted: true,
@@ -638,7 +594,6 @@ test("routines (gateway-fronted): a headerless write falls back to the org owner
     expect(bare.status).toBe(201);
     expect(((await bare.json()) as Routine).created_by).toBe("owner-sub-9");
 
-    // A real acting header still outranks the owner fallback.
     const acted = await fetch(`${frontedBase}/agents/${agentId}/routines`, {
       method: "POST",
       headers: {
@@ -673,8 +628,6 @@ test("routines: an invalid cron is rejected at create (400), never saved to fail
     "invalid schedule",
   );
 
-  // A bad preference is refused at the write boundary, so it cannot stop
-  // otherwise valid routine writes.
   const badPreference = await fetch(`${base}/v1/preferences/timezone`, {
     method: "PUT",
     headers: auth("alice"),
@@ -697,7 +650,6 @@ test("routines: an invalid cron is rejected at create (400), never saved to fail
 });
 
 test("routines: an unknown provider pin is rejected (400), a Rust-era alias round-trips", async () => {
-  // A typo'd/unknown provider must not save — every fired run would error.
   const bad = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
@@ -713,10 +665,6 @@ test("routines: an unknown provider pin is rejected (400), a Rust-era alias roun
     "unknown provider: gemini-cli",
   );
 
-  // A migrated routines.json can still say "claude" (routinePin maps it at
-  // fire time and never rewrites the file) — the editor round-trips that
-  // stored value verbatim on ANY save, so validation must accept the alias or
-  // a legacy-pinned routine becomes uneditable.
   const created = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
@@ -785,7 +733,6 @@ test("another user is walled off from the data families (403)", async () => {
 });
 
 test("raw agentfile read/write — what the desktop board actually uses", async () => {
-  // Use learnings (untouched by other tests). Missing → "" (app falls back to []).
   const path = ".houston/learnings/learnings.json";
   const empty = await fetch(`${base}/agents/${agentId}/agentfile/${path}`, {
     headers: auth("alice"),
@@ -793,7 +740,6 @@ test("raw agentfile read/write — what the desktop board actually uses", async 
   expect(empty.status).toBe(200);
   expect(((await empty.json()) as { content: string }).content).toBe("");
 
-  // Write the whole doc, then read it back verbatim.
   const doc = JSON.stringify([
     { id: "l1", text: "remember this", created_at: "2026-06-15T00:00:00.000Z" },
   ]);
@@ -809,7 +755,6 @@ test("raw agentfile read/write — what the desktop board actually uses", async 
   });
   expect(((await read.json()) as { content: string }).content).toBe(doc);
 
-  // The typed route sees the SAME file (one store — the raw write and typed read agree).
   const typed = await fetch(`${base}/agents/${agentId}/learnings`, {
     headers: auth("alice"),
   });
@@ -817,10 +762,6 @@ test("raw agentfile read/write — what the desktop board actually uses", async 
     ((await typed.json()) as { items: { id: string }[] }).items[0]?.id,
   ).toBe("l1");
 });
-
-// (No HTTP traversal test: the URL spec normalizes `..`/`%2e%2e` path segments
-// away before the request is sent, so the handler's `..` guard — defense in
-// depth — is unreachable over HTTP. Asserting it via fetch would be meaningless.)
 
 test("CORS preflight allows PUT (writeAgentFile/preferences/saveSkill all PUT)", async () => {
   const r = await fetch(
@@ -861,7 +802,6 @@ test("skills: create → list → read → edit → delete, full lifecycle over 
   expect(detail.name).toBe("summarize-inbox");
   expect(detail.content).toContain("## Procedure");
 
-  // Duplicate create → 409, never a silent overwrite.
   const dup = await fetch(`${base}/agents/${agentId}/skills`, {
     method: "POST",
     headers: auth("alice"),
@@ -968,7 +908,6 @@ test("activities: a plain create records no starter, and neither body nor PATCH 
   expect("started_by" in plain).toBe(false);
   const forged = await createCard(base, {}, { started_by: "houston" });
   expect("started_by" in forged).toBe(false);
-  // Off the gateway an acting header is client input: its via claim is ignored.
   const spoofed = await createCard(base, {
     "x-houston-acting-as": viaToken("mallory"),
   });

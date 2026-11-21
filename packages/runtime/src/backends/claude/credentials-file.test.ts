@@ -24,7 +24,6 @@ const cred = {
 };
 
 test("writes the exact CLI envelope to <configDir>/.credentials.json at 0600", () => {
-  // A NESTED, not-yet-created dir → the writer must mkdir -p it.
   const configDir = join(
     mkdtempSync(join(tmpdir(), "claude-creds-")),
     "claude-login",
@@ -35,7 +34,6 @@ test("writes the exact CLI envelope to <configDir>/.credentials.json at 0600", (
   expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({
     claudeAiOauth: cred,
   });
-  // Owner-only on disk (the token must not be group/other readable).
   expect(statSync(path).mode & 0o777).toBe(0o600);
 });
 
@@ -71,12 +69,9 @@ test("claudeOAuthCredentialUsable: without a refresh token, expiry decides", () 
       NOW,
     ),
   ).toBe(true);
-  // The stale materialized file that showed "Connected" while the SDK said
-  // "Not logged in": expired access token, nothing to refresh with.
   expect(
     claudeOAuthCredentialUsable({ accessToken: "at", expiresAt: NOW - 1 }, NOW),
   ).toBe(false);
-  // No expiry recorded → usable (mirrors read-token.ts's expires=0 rule).
   expect(claudeOAuthCredentialUsable({ accessToken: "at" }, NOW)).toBe(true);
 });
 

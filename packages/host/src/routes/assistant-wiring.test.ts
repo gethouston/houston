@@ -5,15 +5,6 @@ import {
   resolveAssistantGateway,
 } from "./assistant-wiring";
 
-/**
- * The ONE decision about where Houston operations are performed. What these
- * pin: a gateway-fronted pod uses the pair the gateway stamped, an unfronted
- * host performs its own operations with nothing to configure, and a host that
- * is neither says so. What is resolved here stays with the HOST's dispatcher:
- * the runtimes it spawns are told a role, never this credential
- * (launcher/assistant-role.ts).
- */
-
 const SELF = { url: "http://127.0.0.1:4318", token: "boot-token" };
 
 test("the configured env pair wins — an operator who named a gateway meant it", () => {
@@ -25,7 +16,6 @@ test("the configured env pair wins — an operator who named a gateway meant it"
       },
       self: SELF,
     }),
-    // The trailing slash is trimmed so route paths never double up.
   ).toEqual({ url: "https://gateway.example", token: "pod" });
 });
 
@@ -40,7 +30,6 @@ test("both env halves are required — a half-configured pair is not a gateway",
 });
 
 test("an unfronted host is its own gateway — the family is on with nothing to configure", () => {
-  // Marked loopback: only a call to itself may carry the manager proof.
   expect(resolveAssistantGateway({ env: {}, self: SELF })).toEqual({
     ...SELF,
     loopback: true,
@@ -82,12 +71,6 @@ test("the boot line names the gateway, this host, or the missing env", () => {
   ).toContain("HOUSTON_ASSISTANT_TOKEN");
 });
 
-/**
- * WHOSE route table answers "what can this deployment do". Behind a real
- * gateway it is the gateway's, and the gateway serves the whole catalogued
- * surface — a pod that read its OWN routes would withdraw spaces, teams and
- * billing from a managed assistant that can perform every one of them.
- */
 test("only a host nothing fronts answers for the catalogued surface itself", () => {
   expect(assistantOperationsServedHere({ env: {}, self: SELF })).toBe(true);
   expect(assistantOperationsServedHere({ env: {} })).toBe(true);
@@ -103,11 +86,6 @@ test("only a host nothing fronts answers for the catalogued surface itself", () 
 });
 
 test("a fronted pod answers no even when its env pair never arrived", () => {
-  // BEING FRONTED IS THE FACT, not the env pair that usually proves it: a pod
-  // whose gateway stamped nothing (a rollout that dropped the variables, a
-  // half-applied manifest) still serves one agent's routes, and reading them
-  // as the catalogued surface would withdraw spaces, teams and billing from a
-  // managed AI Manager that can perform every one of them.
   expect(assistantOperationsServedHere({ env: {}, gatewayFronted: true })).toBe(
     false,
   );

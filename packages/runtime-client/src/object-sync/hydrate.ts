@@ -19,13 +19,6 @@ export {
 } from "./hydrate-excludes";
 export { HydrateLimitError } from "./hydrate-limit";
 
-/**
- * Durable engine state is materialized into a local cache, then synchronized
- * back by content hash. The hydration manifest is the ownership boundary: only
- * objects observed on hydrate may be interpreted as locally deleted later.
- * Authentication material and temporary files never cross this boundary.
- */
-
 import type {
   HydrateManifest,
   HydrateOptions,
@@ -41,7 +34,6 @@ export type {
   StartedHydration,
 } from "./hydrate-options";
 
-/** List once, hydrate priority inputs, then start the remaining downloads. */
 export async function startHydrate(
   store: ObjectStore,
   prefix: string,
@@ -166,15 +158,12 @@ export async function startHydrate(
     listed,
     skippedObjects: candidates.length - priority.length - remaining.length,
     done,
-    // After `done`, so a deferred object never takes bandwidth from the set
-    // the caller is blocked on.
     deferred: later.length || listedLater ? done.then(downloadLater) : done,
     abort: (reason) =>
       state.fail(reason ?? new Error("hydration aborted before cleanup")),
   };
 }
 
-/** Download everything under `prefix` into `destDir`. Returns the manifest. */
 export async function hydrate(
   store: ObjectStore,
   prefix: string,

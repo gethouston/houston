@@ -6,30 +6,14 @@ import { AddEmployee, BlockRollup, RailActions } from "./app-sidebar-stage";
 import { agentGroups, agentItems, managerItem, TeamIcon } from "./sample";
 
 export interface LiveSidebarProps {
-  /** Pass `groups` and the drag-and-drop grouped layout replaces the flat list. */
   grouped?: boolean;
-  /** Give every folder block its glyph. */
   teams?: boolean;
-  /** Start as the 56px icon rail. The toggle stays live either way. */
   startCollapsed?: boolean;
-  /** The full shell chrome: the top line's verbs and the foot (the connect
-   *  rows, the account). Houston pinned first and the shortcut closing the
-   *  list are always drawn: they are the list's own. */
   chrome?: boolean;
-  /** Reserve a top row for host window controls. */
   windowControlsInset?: boolean;
-  /** Which agent opens selected — how a row starts on an already-folded group. */
   initialSelectedId?: string | null;
 }
 
-/**
- * `AppSidebar` wired the way a host wires it: every callback moves real state,
- * so selecting, folding a group and dragging agents and groups anywhere in the
- * rail all behave here exactly as in the product.
- *
- * `onActivateGroup` FOLDS here, as it does in Houston's own rail. The library
- * takes no position: what activating a group heading does is the host's rule.
- */
 export function LiveSidebar({
   grouped = false,
   teams = false,
@@ -45,11 +29,6 @@ export function LiveSidebar({
   );
   const [collapsed, setCollapsed] = useState(startCollapsed);
 
-  /**
-   * Does this block hold the open view? Its HEADER paints active either way:
-   * a block carries no destination rows, so the header is the only row that
-   * can answer the question at all.
-   */
   const ownsOpenView = (_blockId: string, itemIds: readonly string[]) =>
     selectedId !== null && itemIds.includes(selectedId);
 
@@ -69,9 +48,6 @@ export function LiveSidebar({
                 ? {
                     ...group,
                     icon: <TeamIcon />,
-                    // The rollup a folded block carries on behalf of the rows
-                    // it is hiding. Open, it says nothing: those rows are on
-                    // screen saying it themselves.
                     ...(group.collapsed
                       ? {
                           trailing: (

@@ -14,13 +14,8 @@ export function ChatSystemMessage({
 }: ChatSystemMessageProps) {
   const custom = renderSystemMessage?.(message);
   if (custom !== undefined) return <div key={message.key}>{custom}</div>;
-  // A host card has no words of its own: a host that draws nothing for it
-  // leaves no row.
   if (message.hostCard) return null;
   if (message.compaction) {
-    // English defaults only: a host that wants localized copy replaces the
-    // whole row through `renderSystemMessage` (i18n stays out of `ui/`), which
-    // is what the Houston app does for every kind here.
     const label =
       message.compaction.kind === "context_cleared"
         ? "Context cleared"

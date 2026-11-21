@@ -9,11 +9,8 @@ import {
 export const HOUSTON_SKILL_SCHEMA_VERSION = 1;
 export const HOUSTON_WORKFLOW_MARKER = "<!-- houston-workflow:v1 -->";
 
-/** The workflow section ends at the next top-level heading. */
 const SECTION_END = /^#{1,2}\s/;
-/** A step of the ordered list: only at column 0 — an indented `1.` is a substep. */
 const STEP_LINE = /^(\d+)[.)]\s+(\S.*)$/;
-/** A subheading inside the section: a step title when the section has no list. */
 const SUBHEADING = /^#{3,6}\s+(\S.*)$/;
 const FENCE = /^\s*(```|~~~)/;
 
@@ -29,15 +26,6 @@ export function isHoustonSkillFrontmatter(
   );
 }
 
-/**
- * Reads the numbered procedure out of a Houston-authored SKILL.md so the app
- * can show it as steps instead of raw markdown. Only the section the agent
- * marked with {@link HOUSTON_WORKFLOW_MARKER} is read, up to the next top-level
- * heading; fenced code blocks are dropped (they are templates the agent fills,
- * not instructions the user reads). Two authored shapes are supported: the
- * ordered list (the common one) and, when the section carries no list, one
- * step per `###` subheading.
- */
 export function parseHoustonSkillWorkflow(body: string): SkillWorkflow | null {
   const lines = workflowSectionLines(body);
   if (lines === null) return null;
@@ -46,7 +34,6 @@ export function parseHoustonSkillWorkflow(body: string): SkillWorkflow | null {
   return resolved.length > 0 ? { version: 1, steps: resolved } : null;
 }
 
-/** The marked section's lines, fenced blocks removed. */
 function workflowSectionLines(body: string): string[] | null {
   const markerIndex = body.indexOf(HOUSTON_WORKFLOW_MARKER);
   if (markerIndex < 0) return null;
@@ -56,7 +43,6 @@ function workflowSectionLines(body: string): string[] | null {
   for (const line of after.split(/\r?\n/)) {
     const fenceMatch = line.match(FENCE);
     if (fenceMatch?.[1]) {
-      // A heading inside a fence is sample content, never the section's end.
       if (fence === null) fence = fenceMatch[1];
       else if (line.trimStart().startsWith(fence)) fence = null;
       continue;
@@ -68,7 +54,6 @@ function workflowSectionLines(body: string): string[] | null {
   return lines;
 }
 
-/** Steps from the ordered list; subheadings are group labels, not steps. */
 function listSteps(lines: string[]): SkillWorkflowStep[] {
   const steps: SkillWorkflowStep[] = [];
   let active: StepHead | null = null;
@@ -88,8 +73,6 @@ function listSteps(lines: string[]): SkillWorkflowStep[] {
   return steps;
 }
 
-/** One step per subheading, for sections written as `### Step 1: ...` blocks.
- *  A heading carries no connected-app tag: only a bold title does. */
 function headingSteps(lines: string[]): SkillWorkflowStep[] {
   const steps: SkillWorkflowStep[] = [];
   let title: string | null = null;

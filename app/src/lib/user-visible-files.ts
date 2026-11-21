@@ -1,9 +1,3 @@
-/**
- * Which paths in a turn name a file the USER would want to open — the rule
- * behind the chat's file cards and the turn-end summary's "New files" section.
- * Pure, so both surfaces answer identically.
- */
-
 import { fileNameOf } from "./agent-file-paths.ts";
 
 const USER_FILE_EXTENSIONS = new Set([
@@ -22,11 +16,6 @@ const USER_FILE_EXTENSIONS = new Set([
   "txt",
   "rtf",
   "csv",
-  // Plain-text formats agents routinely write as user-visible output. `md`
-  // is the one that prompted this: a real user reported a `perfil.md`
-  // from the agent never showed up in the "New files" section because md
-  // wasn't on this allowlist (it was rejected on every OS, the Windows
-  // separator bugs just made it harder to notice).
   "md",
   "markdown",
   "html",
@@ -43,12 +32,6 @@ export function isUserVisibleFilePath(path: string): boolean {
   return Boolean(ext && USER_FILE_EXTENSIONS.has(ext));
 }
 
-/**
- * Paths a shell command claims to have produced. A command tool reports no
- * structured file list, so the only evidence a file was written is what the
- * script printed: a labeled line ("Saved: out/report.pdf") or a bare absolute
- * path on a line of its own.
- */
 export function extractPathsFromBashOutput(output: string): string[] {
   const paths: string[] = [];
   const seen = new Set<string>();

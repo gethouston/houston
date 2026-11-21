@@ -49,7 +49,6 @@ test("spawn-to-init, then one call per Messages API response", () => {
         model: "claude-opus-5-5",
         ttfbMs: 2100,
         firstTokenMs: 1500,
-        // The thinking block opened first: the 1200 ms after it is thinking.
         firstBlockMs: 300,
         inputTokens: 3,
         cacheReadTokens: 18_000,
@@ -58,7 +57,6 @@ test("spawn-to-init, then one call per Messages API response", () => {
       },
     },
   ]);
-  // The tool runs; the next request goes out with its result.
   c.advance(4000);
   timer(toolResult());
   c.advance(1700);
@@ -118,7 +116,6 @@ test("a malformed stream event never throws into the turn", () => {
   expect(
     timer(msg({ type: "stream_event", parent_tool_use_id: null })),
   ).toEqual([]);
-  // A getter that throws stands in for any shape the reader cannot handle.
   const hostile = msg({
     type: "stream_event",
     parent_tool_use_id: null,
@@ -128,7 +125,6 @@ test("a malformed stream event never throws into the turn", () => {
   });
   expect(timer(hostile)).toEqual([]);
   expect(warn).toHaveBeenCalledTimes(1);
-  // Timings stay off for the rest of the query; the turn goes on.
   expect(timer(messageStart({ input_tokens: 1 }))).toEqual([]);
   expect(timer(stream({ type: "message_stop" }))).toEqual([]);
   warn.mockRestore();

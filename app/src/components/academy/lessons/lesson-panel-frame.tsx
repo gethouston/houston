@@ -1,11 +1,5 @@
 import type { ReactNode } from "react";
 
-/**
- * The words every panel beat opens with, set the way the note card sets them
- * (`lesson-note-card.tsx`), over whatever the panel asks the user to do. One
- * frame, so the lesson's docked beats read as one surface changing its
- * contents rather than as a different card per panel.
- */
 export function LessonPanelFrame({
   title,
   body,

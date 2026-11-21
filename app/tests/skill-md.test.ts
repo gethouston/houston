@@ -2,9 +2,6 @@ import { strictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
 import { skillBodyOf } from "../src/lib/skill-md.ts";
 
-// Skill previews show the SKILL.md BODY: the frontmatter block is plumbing
-// (slug, category, image) the user never reads as instructions.
-
 describe("skillBodyOf", () => {
   it("strips the frontmatter block and trims", () => {
     strictEqual(

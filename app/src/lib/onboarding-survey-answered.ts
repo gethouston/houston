@@ -1,7 +1,5 @@
 import type { OnboardingSurveyPreference } from "./onboarding-survey-record.ts";
 
-/** A department answered before the role question replaced it counts: an
- *  existing account is never asked its role. */
 export function isRoleAnswered(
   preference: OnboardingSurveyPreference | null,
 ): boolean {
@@ -32,12 +30,6 @@ export function isGoalAnswered(
   );
 }
 
-/**
- * The survey is resumable: an answered role with a gap re-opens it once. A
- * question added after the person answered the others (the company size) is
- * such a gap, so every existing account is asked it once, and "Not now" is
- * remembered for good.
- */
 export function needsCompletionPrompt(
   preference: OnboardingSurveyPreference | null,
 ): boolean {

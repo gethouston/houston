@@ -20,12 +20,6 @@ import { ManagerCompanySizeCard } from "./manager-company-size-card";
 import { ManagerGoalCard } from "./manager-goal-card";
 import type { ScriptCopy } from "./use-script-copy";
 
-/**
- * One survey question, saved before the manager moves on (the record is the
- * resume point). A failed save says so on the card and leaves the question
- * up. The `*_continued` events fire only once the save landed; the
- * `*_selected` ones on the answer itself.
- */
 export function ManagerSurveyCard({
   mode,
   question,
@@ -40,9 +34,7 @@ export function ManagerSurveyCard({
   survey: OnboardingSurveyState;
   copy: ScriptCopy;
   onAnswered: (question: SurveyQuestion) => void;
-  /** "Not now", where the questions can be put off. */
   onDecline?: () => void;
-  /** Reopens the answer before this question, where it can still change. */
   onBack?: (() => void) | null;
 }) {
   const track = useMemo(() => createSurveyAnalytics(mode), [mode]);
@@ -91,7 +83,6 @@ export function ManagerSurveyCard({
     return (
       <ManagerCompanySizeCard
         title={copy.question("companySize") ?? ""}
-        // A skip holds no bucket to mark.
         held={isOnboardingCompanySize(heldSize) ? heldSize : null}
         busy={saving}
         error={error}
@@ -108,8 +99,6 @@ export function ManagerSurveyCard({
 
   return (
     <ManagerAboutStep
-      // A new question starts from the record again, never from the last
-      // question's half-given answer.
       key={question}
       question={question}
       start={surveyRoleStart(

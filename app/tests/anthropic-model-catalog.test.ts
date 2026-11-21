@@ -18,11 +18,6 @@ import {
 } from "../src/lib/providers.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
-// The Anthropic card offers exactly the Claude lineup: Sonnet 5.5 (the
-// default, first), Opus 5.5, Fable 5.2, Haiku 5.5. Its models come from pi (windows +
-// effort) + the Houston override (labels, order); these lock in the hydrated
-// result the picker reads.
-
 const LINEUP = [
   "claude-sonnet-5-5",
   "claude-opus-5-5",
@@ -44,7 +39,6 @@ describe("the app's Anthropic curation is the domain's Claude lineup", () => {
   });
 });
 
-/** The Anthropic picker rows, in the order the picker renders them. */
 function anthropicPickerRows(): { id: string; name: string }[] {
   return buildPickerModels({
     visibleProviders: getVisibleProviders({ newEngine: true, desktop: true }),
@@ -138,13 +132,6 @@ describe("a stored retired Claude id reads as its family's lineup model", () => 
   });
 });
 
-/**
- * pi's patched `anthropic` catalog: every row, in pi's order, under pi's own
- * display names ("(latest)" suffixes included, which fold to the same
- * cross-provider key as their dated twins). The picker was reported missing
- * Sonnet 5.5 against a catalog that served it; this proves the data path keeps
- * it, first, against the catalog exactly as the host serves it.
- */
 const PI_ANTHROPIC: [string, string][] = [
   ["claude-fable-5", "Claude Fable 5"],
   ["claude-fable-5-1", "Claude Fable 5.1"],

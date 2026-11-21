@@ -1,24 +1,6 @@
-/**
- * The space-administration REST calls — the roster, the invitations, and the
- * roles — over the injected `fetch`.
- *
- * These are gateway-only routes (`/v1/org*`): the runtime client is scoped to
- * one agent's sandbox and serves none of them, so the module talks to them
- * through {@link httpRequest} with literal paths, which is also what keeps them
- * visible to the assistant's operation catalog.
- *
- * Nothing is swallowed here: a non-2xx always throws an {@link OrgHttpError}
- * carrying the HTTP `status`, so the `404` of a gateway that predates a route
- * reaches the caller and it — not this layer — decides whether that hides a
- * surface or is a failure. A `401` additionally fires
- * {@link HttpScope.onUnauthorized}, so a lapsed session token becomes a visible
- * `tokenExpired` signal.
- */
-
 import { type HttpScope, httpRequest, SdkHttpError } from "../http";
 import type { OrgInfo, OrgPerson, OrgRole, UserProfilesResult } from "./types";
 
-/** A failed `/v1/org*` request. `status` is the upstream HTTP status. */
 export class OrgHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "OrgHttpError");

@@ -5,15 +5,6 @@ import { labsInCatalog, type ProviderValue } from "../../ai-hub/facets.ts";
 import { labName } from "../../ai-hub/format.ts";
 import { FilterCombobox } from "../../shell/filter-combobox.tsx";
 
-/**
- * The allowed-models editor's "Filter by lab" control: the shared
- * {@link FilterCombobox} (Popover + cmdk Command, the house picker idiom) over
- * the labs present in the catalog, each option showing the lab's colorful brand
- * mark + proper-noun name, filterable by the in-dropdown search. This is purely
- * a VIEW filter over the model lists (via `filterModels`) — it never touches
- * saved data. Self-hides when the catalog is a single lab (a lone, useless
- * option), mirroring the AI-hub provider combobox.
- */
 export function LabFilter({
   models,
   value,

@@ -3,21 +3,9 @@ import { resolveAssistantGateway } from "../routes/assistant-wiring";
 import { assistantRuntimeRole } from "./assistant-role";
 import { runtimeSpawnEnv } from "./runtime-env";
 
-/**
- * What every spawned runtime is told. The load-bearing case: NO credential
- * crosses the process boundary. An unfronted desktop host is its own assistant
- * gateway and authorizes that gateway with the same per-boot token that
- * authorizes every one of its routes — so handing that pair to a runtime would
- * put a master credential in the environment of every agent on the machine,
- * readable with one `echo` from a bash tool. A runtime learns only its ROLE.
- */
-
 const SELF = { url: "http://127.0.0.1:4318", token: "boot-token" };
 
 test("the host's own gateway credential never reaches a spawned runtime", () => {
-  // The desktop wiring, end to end: this host resolves ITSELF as the gateway
-  // (that is where the credential belongs) and the runtime it spawns for an
-  // ordinary agent is told nothing about it.
   const gateway = resolveAssistantGateway({ env: {}, self: SELF });
   expect(gateway).toEqual({ ...SELF, loopback: true });
 

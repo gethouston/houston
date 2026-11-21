@@ -21,33 +21,6 @@ import { assertNotPlanMode } from "../live-mode-gate";
 import { WorkspaceGuard, type WorkspaceGuardOptions } from "./fs-guard";
 import { documentReadOperations } from "./read-documents";
 
-/**
- * Workspace-clamped file tools (cloud security Gate #1).
- *
- * pi's DEFAULT read/ls/grep/find/edit/write resolve absolute paths as-is, so a
- * prompt-injected agent could read any file the process can — including its
- * own auth.json — with no bash tool. These definitions shadow the builtins by
- * NAME (pi registers custom tools after built-ins, so same-name customs win)
- * and add two walls:
- *
- *  1. OUTER (load-bearing, all six tools): before pi's execute runs, the
- *     model-supplied `path` is resolved the way pi resolves it, validated
- *     lexically AND symlink-resolved, and rewritten to the clamped absolute
- *     path. The workspace and any configured shared roots (the org-shared
- *     mirror — agent-editable by design) are equally valid. grep/find spawn
- *     rg/fd subprocesses on that path, so this is the only wall that
- *     constrains them.
- *  2. INNER (defense in depth): edit/write/ls/grep run their filesystem access
- *     through guarded `operations` that re-validate every absolute path pi
- *     hands them. read extracts PDF/Word text before pi's paging, preserving
- *     pi's image detection; the outer wall constrains its one path param.
- *     find keeps its fd engine (an operations.glob override would replace
- *     the engine, not guard it).
- *
- * rg and fd are spawned without --follow, so neither traverses symlinks during
- * a search; a symlink given directly as `path` is rejected by the outer wall.
- */
-
 export const CLAMPED_FILE_TOOL_NAMES = [
   "read",
   "ls",
@@ -59,13 +32,6 @@ export const CLAMPED_FILE_TOOL_NAMES = [
 
 type AnyToolDefinition = ToolDefinition<TSchema, unknown, unknown>;
 
-/**
- * Live plan-mode gate for the two MUTATING file tools (edit/write): when the
- * user switches the Mode pill to Plan WHILE the agent works, the running turn
- * still carries the execute-built toolset, so the gate refuses at execute time
- * with the switch-to-planning instruction. A session BUILT in plan mode never
- * exposes edit/write at all, so this only ever fires on a mid-turn switch.
- */
 function withPlanGate(def: AnyToolDefinition): AnyToolDefinition {
   return {
     ...def,
@@ -110,7 +76,6 @@ export function makeClampedFileTools(
   const g = (path: string) => guard.assertInside(path);
   const writable = (path: string) => guard.assertWritable(path);
 
-  // Inner-wall operations mirror pi's defaults exactly, plus the guard.
   const editOps = {
     readFile: (p: string) => fsReadFile(g(p)),
     writeFile: (p: string, content: string) =>
@@ -125,7 +90,7 @@ export function makeClampedFileTools(
   };
   const lsOps = {
     exists: async (p: string) => {
-      const abs = g(p); // an escape THROWS — it must never read as "doesn't exist"
+      const abs = g(p);
       try {
         await fsStat(abs);
         return true;

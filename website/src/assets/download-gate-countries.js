@@ -1,4 +1,3 @@
-// Shared by the download gate's country-code dropdown and country select.
 window.HOUSTON_COUNTRIES = [
   ["Afghanistan", "AF", "+93"],
   ["Albania", "AL", "+355"],

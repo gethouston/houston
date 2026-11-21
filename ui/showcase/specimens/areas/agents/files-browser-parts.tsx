@@ -5,7 +5,6 @@ import { useState } from "react";
 
 import { agentFiles } from "./files-browser-sample";
 
-/** The browser is `h-full` — a specimen has to hand it a window. */
 export function FilesStage({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-[480px] w-full overflow-hidden rounded-2xl border border-line bg-gutter">
@@ -14,8 +13,6 @@ export function FilesStage({ children }: { children: ReactNode }) {
   );
 }
 
-/** Rename in place: the entry's own path moves, and so does everything under it
- *  when the renamed entry is a folder. */
 function renamed(files: FileEntry[], target: FileEntry, name: string) {
   const parent = target.path.includes("/")
     ? `${target.path.slice(0, target.path.lastIndexOf("/"))}/`
@@ -30,7 +27,6 @@ function renamed(files: FileEntry[], target: FileEntry, name: string) {
   });
 }
 
-/** Move one entry (and its subtree) into `folder`, or to the root on null. */
 function moved(files: FileEntry[], sourcePath: string, folder: string | null) {
   const source = files.find((file) => file.path === sourcePath);
   if (!source) return files;
@@ -46,19 +42,10 @@ function moved(files: FileEntry[], sourcePath: string, folder: string | null) {
 }
 
 export interface LiveFilesProps {
-  /** Seed content; `[]` gives the empty state. */
   initial?: FileEntry[];
-  /** Render the loading line instead of a body. */
   loading?: boolean;
 }
 
-/**
- * `FilesBrowser` wired the way one agent section wires it: selection, inline
- * rename, delete, new folder and internal drag-and-drop all move
- * real state, so every gesture here behaves as it does in the product. The
- * host-only actions (reveal in the OS, download) are deliberately absent —
- * see the page's note.
- */
 export function LiveFiles({ initial = agentFiles, loading }: LiveFilesProps) {
   const [files, setFiles] = useState(initial);
 

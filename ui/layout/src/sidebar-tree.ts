@@ -4,18 +4,10 @@ import type {
   SidebarSection,
 } from "./sidebar-groups";
 
-/**
- * The rail as ONE flat list, the model a sortable tree drags on: every visible
- * row in display order, each knowing whether it sits inside a group. A drag is
- * a reorder of this list plus the dragged row's depth, and the arrangement
- * written back is read straight off the result, so what the ghost shows while
- * dragging is exactly what the drop stores.
- */
 export type SidebarTreeRow =
   | { kind: "agent"; id: string; parentId: string | null }
   | { kind: "group"; id: string; collapsed: boolean };
 
-/** What a drop stores: the top-level sequence and every group's members. */
 export interface SidebarArrangement {
   order: SidebarRootEntry[];
   members: Record<string, string[]>;
@@ -23,11 +15,6 @@ export interface SidebarArrangement {
 
 export const treeRowKey = (row: SidebarTreeRow) => `${row.kind}:${row.id}`;
 
-/**
- * Flatten sections into rows. Members of a collapsed group are not rows (they
- * are not on screen). A dragged group's own members are hidden while its
- * header moves, keeping other groups' geometry stable.
- */
 export function flattenSidebar(
   sections: SidebarSection[],
   hideMembersForGroup: string | null = null,
@@ -51,15 +38,6 @@ export function flattenSidebar(
 const depthOf = (row: SidebarTreeRow | undefined) =>
   row?.kind === "agent" && row.parentId !== null ? 1 : 0;
 
-/**
- * The list after moving `activeKey` onto `overKey`'s slot, with the moved row's
- * depth decided by where it landed and how far it was dragged sideways
- * (`depthDelta`, whole indent steps). Neighbours bound the depth: under an open
- * group header or a member it MAY go inside, above a member it MUST (the member
- * run is contiguous), anywhere else it sits at the top level. A collapsed
- * header takes an agent only when it is dragged right onto it: stepping past a
- * fold must never hide the row. A group only reorders.
- */
 export function projectSidebarDrop(
   rows: SidebarTreeRow[],
   activeKey: string,
@@ -113,7 +91,6 @@ export function projectSidebarDrop(
 
 export type SidebarKeyboardDirection = "up" | "down" | "left" | "right";
 
-/** One keyboard action through the same slot and depth projection as a drop. */
 export function keyboardSidebarStep(
   rows: SidebarTreeRow[],
   activeKey: string,
@@ -143,12 +120,6 @@ export function keyboardSidebarStep(
   return projectSidebarDrop(rows, activeKey, treeRowKey(rows[target]), 0);
 }
 
-/**
- * Read the stored arrangement off a row list. Members that are not rows (a
- * collapsed group's, or the dragged group's) keep their
- * place: they come from `hiddenMembers`, followed by any agent dropped into
- * that group.
- */
 export function arrangementFromRows(
   rows: SidebarTreeRow[],
   hiddenMembers: Record<string, string[]>,
@@ -173,7 +144,6 @@ export function arrangementFromRows(
   return { order, members };
 }
 
-/** The group views a stored arrangement describes, identity untouched. */
 export function groupsWithArrangement(
   groups: SidebarGroupView[],
   arrangement: SidebarArrangement,

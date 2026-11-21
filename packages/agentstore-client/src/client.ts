@@ -1,16 +1,3 @@
-/**
- * The single HTTP client for the Houston gateway's Agent Store REST API,
- * mounted under `/v1/agentstore`. It replaces the hand-rolled `fetch` code in
- * `agentstore/src/lib/store-*.ts`,
- * `packages/engine-adapter/src/store-catalog.ts` and
- * `packages/engine-adapter/src/portable-store.ts`.
- *
- * The client is isomorphic: it reads no environment and touches no `window`,
- * `document`, or Node built-in. Consumer-specific concerns (which gateway origin
- * to hit, Next.js `next.revalidate` caching, forwarded XFF headers) are injected
- * per call — `baseUrl` at construction, and `StoreRequestOptions.init`/`headers`
- * on every method.
- */
 import { StoreApiError } from "./errors.ts";
 import type {
   AdminGrantHandleInput,
@@ -43,36 +30,19 @@ import type {
   StoreInstallTarget,
 } from "./types.ts";
 
-/** The Agent Store API path prefix on the gateway. */
 export const STORE_API_PREFIX = "/v1/agentstore";
 
-/** Construction options for {@link AgentStoreClient}. */
 export interface StoreClientOptions {
-  /** The gateway origin (e.g. `https://gateway.gethouston.ai`); path prefix is added. */
   baseUrl: string;
-  /** Fetch implementation to use; defaults to the global `fetch`. */
   fetchImpl?: typeof fetch;
-  /**
-   * Supplies the bearer token for authenticated calls. Returning `null` (or the
-   * option being absent) makes every authed method throw a 401-shaped
-   * {@link StoreApiError} before any request is sent.
-   */
   getToken?: () => string | null | Promise<string | null>;
 }
 
-/**
- * Per-call request options, the trailing optional argument on every method.
- * `init` is shallow-merged into the underlying `fetch` call (letting Next.js
- * callers pass `{ next: { revalidate } }` and server callers forward XFF via a
- * `signal`/`cache`), while `headers` is a convenience map merged on top of the
- * client-computed headers; `init.headers`, when present, wins over both.
- */
 export interface StoreRequestOptions {
   init?: RequestInit;
   headers?: Record<string, string>;
 }
 
-/** Internal shape describing one outgoing request. */
 interface SendSpec {
   query?: URLSearchParams;
   body?: unknown;
@@ -91,9 +61,6 @@ export class AgentStoreClient {
     this.getToken = options.getToken;
   }
 
-  // ── Anonymous ─────────────────────────────────────────────────────────────
-
-  /** One page of published, public agents for the browsable catalog. */
   async listAgents(
     query: StoreCatalogQuery = {},
     options?: StoreRequestOptions,
@@ -105,7 +72,6 @@ export class AgentStoreClient {
     return normalizeCatalogPage(page);
   }
 
-  /** A published agent by slug, with its full IR snapshot. */
   async getAgent(
     slug: string,
     options?: StoreRequestOptions,
@@ -118,7 +84,6 @@ export class AgentStoreClient {
     return { ...detail, agent: normalizeAgentSummary(detail.agent) };
   }
 
-  /** The controlled category vocabulary for the filter chips. */
   async listCategories(
     options?: StoreRequestOptions,
   ): Promise<StoreCategory[]> {
@@ -130,7 +95,6 @@ export class AgentStoreClient {
     return body.items;
   }
 
-  /** Record an anonymous install of a published agent. */
   async recordInstall(
     slug: string,
     target: StoreInstallTarget,
@@ -142,7 +106,6 @@ export class AgentStoreClient {
     });
   }
 
-  /** File an anonymous abuse report against a published agent. */
   async reportAgent(
     slug: string,
     input: ReportInput,
@@ -154,7 +117,6 @@ export class AgentStoreClient {
     });
   }
 
-  /** A creator's public page: their profile plus one page of public agents. */
   async getCreator(
     handle: string,
     query: { page?: number; sort?: StoreCatalogSort } = {},
@@ -171,7 +133,6 @@ export class AgentStoreClient {
     return { ...page, agents: normalizeCatalogPage(page.agents) };
   }
 
-  /** One page of creators with aggregate public-agent and install counts. */
   listCreators(
     page = 1,
     options?: StoreRequestOptions,
@@ -184,7 +145,6 @@ export class AgentStoreClient {
     });
   }
 
-  /** File an anonymous abuse report against a creator. */
   async reportCreator(
     handle: string,
     input: ReportInput,
@@ -196,9 +156,6 @@ export class AgentStoreClient {
     });
   }
 
-  // ── Authenticated ─────────────────────────────────────────────────────────
-
-  /** The caller's agents in every lifecycle state (`GET /me/agents`). */
   async listMyAgents(options?: StoreRequestOptions): Promise<MyAgent[]> {
     const body = await this.requestJson<{ items: MyAgent[] }>(
       "GET",
@@ -211,7 +168,6 @@ export class AgentStoreClient {
     return body.items.map(normalizeAgentSummary);
   }
 
-  /** Create (and optionally publish) an owned agent (`POST /agents`). */
   createAgent(
     body: CreateAgentRequest,
     options?: StoreRequestOptions,
@@ -223,7 +179,6 @@ export class AgentStoreClient {
     });
   }
 
-  /** Apply one edit intent to an owned agent (`PATCH /agents/{id}`). */
   async patchAgent(
     id: string,
     patch: AgentPatch,
@@ -237,7 +192,6 @@ export class AgentStoreClient {
     return { ...response, agent: normalizeAgentSummary(response.agent) };
   }
 
-  /** Soft-delete an owned agent (`DELETE /agents/{id}`). */
   async deleteAgent(id: string, options?: StoreRequestOptions): Promise<void> {
     await this.send("DELETE", `/agents/${encodeURIComponent(id)}`, {
       auth: true,
@@ -245,7 +199,6 @@ export class AgentStoreClient {
     });
   }
 
-  /** Claim an unclaimed agent with the code from the claim link (`POST /claim`). */
   claimAgent(
     input: ClaimInput,
     options?: StoreRequestOptions,
@@ -257,10 +210,6 @@ export class AgentStoreClient {
     });
   }
 
-  /**
-   * The caller's own creator profile, or `null` when they have never
-   * materialized one (unwraps the `{ profile }` envelope).
-   */
   async getMyProfile(
     options?: StoreRequestOptions,
   ): Promise<CreatorProfile | null> {
@@ -272,7 +221,6 @@ export class AgentStoreClient {
     return body.profile;
   }
 
-  /** Upsert the caller's creator profile (`PATCH /me/profile`). */
   async patchMyProfile(
     patch: CreatorProfilePatch,
     options?: StoreRequestOptions,
@@ -285,7 +233,6 @@ export class AgentStoreClient {
     return body.profile;
   }
 
-  /** Whether a handle is claimable by the caller (`GET /handles/{handle}/available`). */
   checkHandle(
     handle: string,
     options?: StoreRequestOptions,
@@ -297,11 +244,6 @@ export class AgentStoreClient {
     );
   }
 
-  /**
-   * Replace the caller's avatar with `blob` (`POST /me/avatar`, multipart field
-   * `file`). The boundary is set by `fetch` from the `FormData` body — the
-   * client never sets `Content-Type` itself.
-   */
   uploadAvatar(
     blob: Blob,
     options?: StoreRequestOptions,
@@ -315,16 +257,10 @@ export class AgentStoreClient {
     });
   }
 
-  /** Clear the caller's avatar (`DELETE /me/avatar`). Idempotent. */
   async deleteAvatar(options?: StoreRequestOptions): Promise<void> {
     await this.send("DELETE", "/me/avatar", { auth: true, options });
   }
 
-  /**
-   * Per-UTC-day install analytics over the caller's owned agents
-   * (`GET /me/analytics?days=`). `days` is clamped server-side to [1, 90]; an
-   * omitted value defaults to 90.
-   */
   getMyAnalytics(
     days?: number,
     options?: StoreRequestOptions,
@@ -338,9 +274,6 @@ export class AgentStoreClient {
     });
   }
 
-  // ── Admin ─────────────────────────────────────────────────────────────────
-
-  /** The public-visibility review queue (`GET /admin/queue`). */
   async adminListQueue(
     options?: StoreRequestOptions,
   ): Promise<AdminQueueItem[]> {
@@ -352,7 +285,6 @@ export class AgentStoreClient {
     return body.items.map(normalizeAgentSummary);
   }
 
-  /** Approve (make public) or reject a queued agent (`POST /admin/queue/{id}`). */
   async adminActOnQueueItem(
     id: string,
     action: "approve" | "reject",
@@ -365,7 +297,6 @@ export class AgentStoreClient {
     });
   }
 
-  /** The abuse reports, optionally filtered by status (`GET /admin/reports`). */
   async adminListReports(
     status?: ReportStatus,
     options?: StoreRequestOptions,
@@ -380,7 +311,6 @@ export class AgentStoreClient {
     return body.items;
   }
 
-  /** Resolve or dismiss a report (`POST /admin/reports/{id}`). */
   async adminActOnReport(
     id: string,
     action: "resolve" | "dismiss",
@@ -393,7 +323,6 @@ export class AgentStoreClient {
     });
   }
 
-  /** Run the retention purge of stale drafts and expired soft-deletes. */
   adminPurge(options?: StoreRequestOptions): Promise<PurgeResult> {
     return this.requestJson<PurgeResult>("POST", "/admin/purge", {
       auth: true,
@@ -401,7 +330,6 @@ export class AgentStoreClient {
     });
   }
 
-  /** Set or clear a creator's verified badge (`POST /admin/creators/{handle}/verify`). */
   async adminSetCreatorVerified(
     handle: string,
     verified: boolean,
@@ -414,13 +342,6 @@ export class AgentStoreClient {
     );
   }
 
-  /**
-   * Grant a creator handle to `input.userId`, materializing or moving the
-   * handle onto that user's profile (`POST /admin/creators/{handle}/grant`).
-   * Reserved handles are allowed — this is how official handles (e.g.
-   * `@houston`) are minted. Does not set the verified badge (that is
-   * {@link adminSetCreatorVerified}). Unwraps the `{ profile }` envelope.
-   */
   async adminGrantCreatorHandle(
     handle: string,
     input: AdminGrantHandleInput,
@@ -434,7 +355,6 @@ export class AgentStoreClient {
     return body.profile;
   }
 
-  /** Release (null) a creator's handle (`POST /admin/creators/{handle}/release`). */
   async adminReleaseHandle(
     handle: string,
     options?: StoreRequestOptions,
@@ -446,7 +366,6 @@ export class AgentStoreClient {
     );
   }
 
-  /** The creator abuse reports, optionally filtered by status. */
   async adminListCreatorReports(
     status?: ReportStatus,
     options?: StoreRequestOptions,
@@ -461,7 +380,6 @@ export class AgentStoreClient {
     return body.items;
   }
 
-  /** Resolve or dismiss a creator report (`POST /admin/creator-reports/{id}`). */
   async adminActOnCreatorReport(
     id: string,
     action: "resolve" | "dismiss",
@@ -474,15 +392,11 @@ export class AgentStoreClient {
     );
   }
 
-  // ── Internals ─────────────────────────────────────────────────────────────
-
-  /** Absolute URL for a store API path, with the query string appended. */
   private url(path: string, query?: URLSearchParams): string {
     const qs = query?.toString();
     return `${this.baseUrl}${STORE_API_PREFIX}${path}${qs ? `?${qs}` : ""}`;
   }
 
-  /** Resolve the `Authorization` header value, throwing 401-shaped when absent. */
   private async authorization(): Promise<string> {
     const token = this.getToken ? await this.getToken() : null;
     if (!token) {
@@ -491,7 +405,6 @@ export class AgentStoreClient {
     return `Bearer ${token}`;
   }
 
-  /** Issue a request, mapping every failure to a {@link StoreApiError}. */
   private async send(
     method: string,
     path: string,
@@ -500,8 +413,6 @@ export class AgentStoreClient {
     const headers = new Headers();
     let body: BodyInit | undefined;
     if (spec.body instanceof FormData) {
-      // Multipart: let fetch derive the Content-Type (with its boundary); setting
-      // it manually would break the parse on the gateway.
       body = spec.body;
     } else if (spec.body !== undefined) {
       headers.set("content-type", "application/json");
@@ -541,7 +452,6 @@ export class AgentStoreClient {
     return res;
   }
 
-  /** Issue a request and parse a JSON body, mapping a parse failure to an error. */
   private async requestJson<T>(
     method: string,
     path: string,
@@ -562,7 +472,6 @@ export class AgentStoreClient {
   }
 }
 
-/** Encode catalog list params into a query string, dropping empty values. */
 function catalogQuery(query: StoreCatalogQuery): URLSearchParams {
   const params = new URLSearchParams();
   if (query.q?.trim()) params.set("q", query.q.trim());
@@ -575,17 +484,14 @@ function catalogQuery(query: StoreCatalogQuery): URLSearchParams {
   return params;
 }
 
-/** Backfill additive summary fields when talking to an older gateway. */
 function normalizeAgentSummary(agent: StoreAgentSummary): StoreAgentSummary {
   return { ...agent, skills: agent.skills ?? [] };
 }
 
-/** Backfill every summary in a catalog-shaped response. */
 function normalizeCatalogPage(page: StoreCatalogPage): StoreCatalogPage {
   return { ...page, items: page.items.map(normalizeAgentSummary) };
 }
 
-/** Read a non-OK gateway response into a {@link StoreApiError}. */
 async function toStoreApiError(res: Response): Promise<StoreApiError> {
   const raw = await res.text().catch(() => "");
   let message = `Gateway request failed (${res.status}).`;
@@ -604,9 +510,7 @@ async function toStoreApiError(res: Response): Promise<StoreApiError> {
         if (typeof envelope.code === "string" && envelope.code)
           code = envelope.code;
       }
-    } catch {
-      // Non-JSON error bodies keep the status-based message and raw text body.
-    }
+    } catch {}
   }
   return new StoreApiError(res.status, message, code, body);
 }

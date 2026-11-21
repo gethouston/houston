@@ -1,7 +1,3 @@
-// A LinkedIn connect's return: the one-time ticket on the web callback or the
-// desktop deep link, handed over once, and only its authenticated redemption
-// binds the account.
-
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type {
@@ -195,9 +191,7 @@ describe("linkedInCompletionStep", () => {
   it("redeems where LinkedIn is served, and drops it where it is not", () => {
     strictEqual(read(true), "redeem");
     strictEqual(read(false), "drop");
-    // A refetch that failed over a read that landed still knows the answer.
     strictEqual(read(true, false, true), "redeem");
-    // No capabilities to read at all: the local host serves no LinkedIn.
     strictEqual(read(null), "drop");
   });
 });
@@ -206,11 +200,9 @@ describe("reportHoldOnce", () => {
   it("reports a held ticket once however often its page remounts", () => {
     let reports = 0;
     const queued: SlackCompletion = { kind: "ticket", ticket: "t-1" };
-    // Each call stands for a mount of the page holding the same queued ticket.
     reportHoldOnce(queued, () => reports++);
     reportHoldOnce(queued, () => reports++);
     strictEqual(reports, 1);
-    // A newer ticket held in turn still reports.
     reportHoldOnce({ kind: "ticket", ticket: "t-2" }, () => reports++);
     strictEqual(reports, 2);
   });

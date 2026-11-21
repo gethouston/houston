@@ -5,14 +5,6 @@ import { RoleStep } from "../../shell/role-step";
 import type { CreateAgentFlow } from "../../shell/use-create-agent-flow";
 import type { HireStep } from "./team-view-model";
 
-/**
- * One question of a hire, as the in-app create sheet asks it: the industry,
- * the job, then a name and a color. Only the frame differs, so the three
- * screens are the sheet's own components and read the same everywhere.
- *
- * The naming screen's headline is the sheet's TITLE in the app; the team
- * card has no title bar, so it is set above the employee card here.
- */
 export function TeamHireView({
   step,
   flow,

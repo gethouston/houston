@@ -1,9 +1,3 @@
-// The /data-partners estimator (markup: _includes/data-partners/estimator.njk).
-// Two sliders and the region pick feed the payout model the build embedded;
-// the range redraws on every move. The employees slider holds a log-scale
-// position, turned into a head count by employeesAt. Without JS the markup's
-// default range stands.
-
 import { employeesAt, estimatePayout } from "./payout-model.js";
 
 const root = document.querySelector("[data-estimator]");
@@ -23,7 +17,6 @@ if (root) {
     maximumFractionDigits: 0,
   });
 
-  // The filled part of each track, for the CSS gradient.
   const paint = (input) => {
     const span = Number(input.max) - Number(input.min);
     const share = ((Number(input.value) - Number(input.min)) / span) * 100;

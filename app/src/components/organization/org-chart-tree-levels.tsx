@@ -14,11 +14,6 @@ export interface TreeHandlers {
   onOpenPerson: (userId: string) => void;
 }
 
-/**
- * The tree's nodes, grouped the way both layouts read them: the root, then
- * each first-level column (a person with the AI Employees under them, or a
- * personal space's AI Employee, or a "+N"). The layouts only arrange these.
- */
 export function useTreeParts(tree: OrgTree, handlers: TreeHandlers) {
   const { t } = useTranslation("teams");
   const root =

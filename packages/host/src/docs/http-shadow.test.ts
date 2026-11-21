@@ -139,7 +139,6 @@ test("an unchanged doc costs one GET and no PUT, even key-reordered", async () =
   const fetchImpl = vi.fn(async (_url: string | URL, init?: RequestInit) => {
     requests.push(init ?? {});
     if (!init?.method) {
-      // jsonb returns keys in its own order; content is identical.
       return Response.json({
         doc: [{ title: "Say Hi", id: "m1", status: "needs_you" }],
         revision: 6,
@@ -175,9 +174,6 @@ test("an unchanged doc costs one GET and no PUT, even key-reordered", async () =
 });
 
 test("canonicalJSON keeps a parsed __proto__ key as content", () => {
-  // JSON.parse creates "__proto__" as an OWN property; the canonicalizer must
-  // not lose it to the prototype setter, else two docs differing only in that
-  // key compare equal and the skip-if-equal check suppresses a required PUT.
   const withProto = JSON.parse('{"__proto__":{"a":1},"b":2}') as unknown;
   const withoutProto = JSON.parse('{"b":2}') as unknown;
   expect(canonicalJSON(withProto)).not.toBe(canonicalJSON(withoutProto));
@@ -217,7 +213,6 @@ test("an unknown-family 400 latches that family only, at warning level", async (
   await expect(shadow.put("skills", [{ id: "s1" }])).resolves.toBeUndefined();
   await shadow.put("skills", [{ id: "s2" }]);
   const skillsRequests = requests.length;
-  // A family the gateway does know keeps projecting.
   await shadow.put("activity", [{ id: "a1" }]);
 
   expect(skillsRequests).toBe(1);
@@ -287,7 +282,6 @@ test("an exhausted 503 defers at warning and the next publish retries", async ()
 
   unavailable = false;
   await shadow.put("activity", [{ id: "a1" }]);
-  // The cached revision survived the deferral: no re-seed, straight to PUT.
   expect(requests.map((request) => request.method ?? "GET")).toEqual([
     "GET",
     "PUT",

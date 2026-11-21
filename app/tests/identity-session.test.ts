@@ -71,7 +71,6 @@ describe("identity/session (de)serialization", () => {
   });
 
   it("discards a legacy Supabase blob (unknown shape) as signed-out", () => {
-    // Shape a real supabase-js persisted session roughly resembles.
     const legacy = JSON.stringify({
       access_token: "sb-access",
       refresh_token: "sb-refresh",

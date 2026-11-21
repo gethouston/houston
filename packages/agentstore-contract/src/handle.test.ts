@@ -20,18 +20,18 @@ describe("HANDLE_REGEX", () => {
 
   it("rejects invalid handles", () => {
     for (const h of [
-      "", // empty
-      "a", // too short (1 char)
-      "a".repeat(31), // too long (31 chars)
-      "_ab", // leading underscore
-      "Ab", // uppercase
-      "aB", // uppercase
-      "ab c", // space
-      "ab-c", // hyphen
-      "@ab", // leading @ (must be normalized off first)
-      "ab.c", // dot
-      "ab!", // punctuation
-      "áb", // non-ascii
+      "",
+      "a",
+      "a".repeat(31),
+      "_ab",
+      "Ab",
+      "aB",
+      "ab c",
+      "ab-c",
+      "@ab",
+      "ab.c",
+      "ab!",
+      "áb",
     ]) {
       expect(HANDLE_REGEX.test(h)).toBe(false);
     }

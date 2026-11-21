@@ -14,14 +14,6 @@ import { ChannelAccountList } from "./channel-account-list";
 import type { ChannelCardState } from "./channel-provider-cards";
 import { CHANNEL_PROVIDER_DISPLAY } from "./channel-provider-display";
 
-/**
- * One messaging provider's card: its mark, whether it is connected, the
- * accounts it holds, and the way to connect one more. `children` is the
- * provider's own connect flow (Slack's hand-off, WhatsApp's code), shown only
- * while the provider can connect. The heading takes focus when a disconnect
- * removes the row whose button opened the confirmation. A locked org
- * connects nothing new but still disconnects.
- */
 export function ChannelProviderPanel({
   provider,
   name,
@@ -37,7 +29,6 @@ export function ChannelProviderPanel({
   name: string;
   state: ChannelCardState;
   busy: boolean;
-  /** Replaces the connect and add labels while the provider's flow is mid-way. */
   actionLabel?: string;
   onConnect: () => void;
   onDisconnect: (connection: ChannelConnection) => void;
@@ -50,7 +41,6 @@ export function ChannelProviderPanel({
   const headingId = useId();
   const connections = state.kind === "empty" ? [] : state.connections;
   const [seenIds] = useState(() => new Set(connections.map((c) => c.id)));
-  // After commit, so every row that rendered this pass read the set first.
   useEffect(() => {
     for (const connection of connections) seenIds.add(connection.id);
   }, [connections, seenIds]);

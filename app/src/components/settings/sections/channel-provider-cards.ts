@@ -10,12 +10,6 @@ export interface ChannelProviderCard {
   connections: ChannelConnection[];
 }
 
-/**
- * One card per provider the deployment can serve, in a stable order. A
- * provider this deployment has not set up shows no card until it is (its
- * credentials are the switch), unless the person already holds a connection
- * there, which stays listed so it can still be removed.
- */
 export function channelProviderCards(
   status: ChannelStatus,
 ): ChannelProviderCard[] {
@@ -31,10 +25,6 @@ export function channelProviderCards(
   });
 }
 
-/**
- * What one provider card shows. An unavailable provider still lists the
- * connections it holds, so they stay disconnectable after setup is undone.
- */
 export type ChannelCardState =
   | { kind: "unavailable"; connections: ChannelConnection[] }
   | { kind: "empty" }

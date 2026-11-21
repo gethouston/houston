@@ -19,25 +19,6 @@ import {
 import { FeaturedView } from "./connect-ai/featured-view";
 import { useOptimisticConnections } from "./connect-ai/use-optimistic-connections";
 
-/**
- * The AI Manager's "Connect your AI" step, in the frame every onboarding step
- * wears (the create sheet's, headline and all): two cards for the plans most people already pay for
- * (Claude, ChatGPT), and "View more" that swaps them for the full provider
- * browser, where an API key is pasted. The cards and the browser rows share
- * one `useProviderConnections` instance (its `connect` / `cancel`), and the
- * card mounts that instance's dialog stack once, so both start and finish a
- * sign-in identically. The shell mounts `ProviderLoginFallback` +
- * `ClaudeBrowserLogin`, so every sign-in can open.
- *
- * The card never advances itself: the first-run route reads the shared
- * provider statuses and moves on the moment one provider is confirmed
- * connected. The connect signal only refreshes those statuses so the move
- * happens without waiting for the next poll.
- *
- * It shows at once, before the first probe answers (a new account's AI home
- * can take seconds to start): its cards offer Connect right away, and a press
- * waits for the probe (`useOptimisticConnections`).
- */
 export function ConnectAiCard() {
   const { t } = useTranslation("setup");
   const queryClient = useQueryClient();
@@ -49,8 +30,6 @@ export function ConnectAiCard() {
   );
   const featured = useMemo(() => featuredProviders(providers), [providers]);
   const [requestedView, setRequestedView] = useState<ConnectAiView>("featured");
-  // The first render focuses nothing; after a swap, the new view focuses the
-  // control that swaps back.
   const [swapped, setSwapped] = useState(false);
   const view = resolveConnectAiView(requestedView, featured.length);
   const showView = (next: ConnectAiView) => {
@@ -94,8 +73,6 @@ export function ConnectAiCard() {
       </ManagerStepFrame>
       <ProviderConnectionDialogs
         {...probed.dialogProps}
-        // The local provider's model is typed in its dialog and never reaches
-        // the status snapshot, so its connect refreshes the statuses here.
         onLocalConnected={refreshStatuses}
       />
     </>

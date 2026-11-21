@@ -6,13 +6,6 @@ import { useEmailLessonStore } from "./email-lesson-store";
 import { EmailNoSender } from "./email-no-sender";
 import { useEmailSender } from "./use-email-sender";
 
-/**
- * Who sends the email: the current team's AI Employees, the first one already
- * picked, so a user with one AI Employee reads a confirmation rather than a
- * question.
- *
- * A team with nobody on it is offered a hire instead (`EmailNoSender`).
- */
 export function EmailSenderPanel({ copy, onNext }: LessonPanelProps) {
   const { candidates, sender } = useEmailSender();
   const pick = useEmailLessonStore((s) => s.pick);
@@ -57,8 +50,6 @@ export function EmailSenderPanel({ copy, onNext }: LessonPanelProps) {
         autoFocus
         className="self-end rounded-full active:scale-[0.96]"
         onClick={() => {
-          // The default is a real choice too: hold it, so the next beat sends
-          // from exactly the AI Employee this one showed.
           pick(sender.id);
           onNext();
         }}

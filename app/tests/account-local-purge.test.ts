@@ -5,10 +5,6 @@ import {
   purgeAccountLocalState,
 } from "../src/lib/houston-local-state.ts";
 
-// PRODUCT-1235: sign-out must erase every account-scoped houston.* localStorage
-// trace so the next sign-in (any account) starts clean — while keeping the
-// device-level keys (host connection, standalone local data).
-
 function keyedStorage(store: Map<string, string>): KeyedStorage {
   return {
     get length() {
@@ -25,7 +21,6 @@ function keyedStorage(store: Map<string, string>): KeyedStorage {
 
 test("purgeAccountLocalState removes account traces, keeps device keys", () => {
   const store = new Map<string, string>([
-    // Account-scoped — must go.
     ["houston.pref.last_agent_id", "agent-1"],
     ["houston.sidebar-layout", "{}"],
     ["houston.read-cursors.u1", "{}"],
@@ -35,7 +30,6 @@ test("purgeAccountLocalState removes account traces, keeps device keys", () => {
     ["houston.web.cp.agentColors", "{}"],
     ["houston.sdk.some-state", "{}"],
     ["houston.theme.cache", "dark"],
-    // Device-level / recovery — must survive sign-out.
     ["houston.web.engine.new", '{"url":"https://my-vps.example"}'],
     ["houston.web.engine", '{"url":"legacy"}'],
     ["houston.web.agents", "[]"],
@@ -47,7 +41,6 @@ test("purgeAccountLocalState removes account traces, keeps device keys", () => {
     ["houston.cloudMigration.outcome", "done"],
     ["houston.ota.sequence.production.12", "42"],
     ["houston.ota.native_builtin_sequence.production.12", "40"],
-    // Not ours — never touched.
     ["other-app.key", "keep"],
   ]);
 

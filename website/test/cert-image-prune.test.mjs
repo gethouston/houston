@@ -1,9 +1,3 @@
-// Pruning of stale certificate images (lib/certs/image-cache.mjs).
-//
-// The CI deploy restores `_site/c` from a cache between builds, so images for
-// certificates that are no longer issued would otherwise persist forever.
-// pruneStaleImages must delete exactly those, both the printable PNG and the
-// social card, and leave everything else (current codes, non-PNG files) alone.
 import assert from "node:assert/strict";
 import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -65,8 +59,6 @@ test("a missing directory is a no-op, not a crash", async () => {
   assert.equal(pruned, 0);
 });
 
-// The deploy keys its image cache on a hash of the manifest, so the same set of
-// images has to write the same bytes whatever order the renders finished in.
 test("the image manifest is the same bytes in any order", () => {
   const a = manifestText({ ZZ9: "d3", AB1: "d1", MM5: "d2" });
   const b = manifestText({ MM5: "d2", AB1: "d1", ZZ9: "d3" });

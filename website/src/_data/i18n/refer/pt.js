@@ -1,6 +1,3 @@
-// Cópia em português para /data-partners/refer. Espelho exato de en.js
-// (scripts/check-locales.mjs verifica). Português do Brasil, com você.
-
 export default {
   meta: {
     title: "Indique uma empresa à Houston Data Partners e ganhe até {amount}",

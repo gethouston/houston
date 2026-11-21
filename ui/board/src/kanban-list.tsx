@@ -15,19 +15,10 @@ export interface KanbanListProps {
   cardLabels?: KanbanCardLabels;
   formatTime?: MessageTimeFormatter;
   emptyState?: React.ReactNode;
-  /** Per-item matched body fragment, keyed by `KanbanItem.id`, shown below a row
-   *  when the search matched in the body rather than the title. */
   searchSnippets?: Record<string, BoardSearchSnippet>;
-  /** Sizing of the list rail. "center" (default) keeps a fixed-width column
-   *  centered; "left" fills the full pane width, left-aligned. */
   align?: "center" | "left";
 }
 
-/**
- * Compact, column-less list of board items (used by the Archived missions
- * tab). Rows reuse `KanbanListItem` — agent icon + name, title, delete — so
- * the list reads as short rectangles. Items are sorted newest-first.
- */
 export function KanbanList({
   items,
   selectedId,
@@ -57,14 +48,10 @@ export function KanbanList({
     <div
       className={cn(
         "flex-1 min-h-0 overflow-y-auto py-3",
-        // The wide (left) variant fills the pane, so the side padding is its
-        // only breathing room — give it more than the centered column needs.
         align === "left" ? "px-8" : "px-3",
       )}
     >
       <KanbanListRail align={align} className="space-y-1.5">
-        {/* No enter/exit animation — an agent switch swaps the whole list and
-            must repaint instantly (HOU-858); `layout` keeps reorder glides. */}
         {sorted.map((item) => (
           <motion.div
             key={item.id}

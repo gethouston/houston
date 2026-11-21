@@ -1,16 +1,3 @@
-/**
- * Which sentence an AI Employee's first-day hello says, and its English text.
- *
- * The chat renders the hello from `chat:setupGreeting.<variant>`; the hidden
- * first-day prompt (`first-day-prompt.ts`) quotes {@link englishSetupGreeting}
- * back to the model so it knows the user already read it. Both pick the
- * variant here, and the app's `tests/setup-greeting-copy.test.ts` pins the
- * English text to the en locale word for word, so the quote and the rendered
- * hello cannot drift apart. The host builds the prompt and the app renders the
- * hello, so this lives where both reach it.
- */
-
-/** The `chat:setupGreeting.*` key the hello renders. */
 export type SetupGreetingVariant = "text" | "textWithRole" | "textRoleAsName";
 
 export interface SetupGreetingCopy {
@@ -18,11 +5,6 @@ export interface SetupGreetingCopy {
   params: { name: string; role?: string };
 }
 
-/**
- * A job title as it reads mid-sentence: "Executive assistant" becomes
- * "executive assistant". A leading acronym ("CFO", "HR manager") keeps its
- * case, since lowercasing it would misspell it.
- */
 export function roleInSentence(role: string): string {
   const trimmed = role.trim();
   const firstWord = trimmed.split(/\s+/, 1)[0] ?? "";
@@ -32,11 +14,6 @@ export function roleInSentence(role: string): string {
   return trimmed.charAt(0).toLocaleLowerCase() + trimmed.slice(1);
 }
 
-/**
- * The hello's shape for this name and job. An AI Employee still named after its
- * job (a basic-team hire called "Executive assistant") introduces itself by the
- * job alone: "I'm Executive assistant, your executive assistant" repeats itself.
- */
 export function setupGreetingVariant(
   name: string,
   role: string | null,
@@ -48,7 +25,6 @@ export function setupGreetingVariant(
     : "textWithRole";
 }
 
-/** The locale key and interpolation values for the hello. */
 export function setupGreetingCopy(
   name: string,
   role: string | null,
@@ -67,7 +43,6 @@ const REST = [
 const FIRST_DAY =
   "Today is my *first day*, so help me learn how I can be most useful to you.";
 
-/** The hello exactly as the en locale renders it for this name and job. */
 export function englishSetupGreeting(
   name: string,
   role: string | null,

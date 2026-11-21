@@ -12,7 +12,6 @@ import {
 } from "@houston/runtime-client/object-sync";
 import type { TurnFilesystem } from "./turn-filesystem";
 
-/** One document a turn writes straight to the store. */
 export interface DocRefreshTarget {
   store: ObjectStore;
   prefix: string;
@@ -20,11 +19,6 @@ export interface DocRefreshTarget {
   relativePath: string;
 }
 
-/**
- * Bring the turn's copy of one document up to what the store holds now,
- * before a guarded write: merged three-way against the bytes the turn last
- * synced, with the manifest entry naming the store's bytes and generation.
- */
 export function remoteKey(prefix: string, relativePath: string): string {
   return prefix ? posix.join(prefix, relativePath) : relativePath;
 }
@@ -43,9 +37,6 @@ export async function refreshDocument(
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  // Another writer deleted the whole document: the entries this turn only
-  // hydrated go with it, its own additions stay (a local copy that will not
-  // merge recreates it, as before).
   const gone = async () => {
     const base = trustedBase(opts.filesystem.manifest.get(opts.relativePath));
     if (localBody !== undefined) {
@@ -90,9 +81,6 @@ export async function refreshDocument(
   try {
     remote = await readFile(remoteTemp);
     await mkdir(dirname(local), { recursive: true });
-    // Three-way against the bytes this turn last synced: an entry the turn
-    // never touched takes the store's copy, one another writer deleted stays
-    // deleted, and the turn's own unsynced changes stay on top.
     const merged =
       localBody === undefined
         ? undefined
@@ -106,8 +94,6 @@ export async function refreshDocument(
   } finally {
     await rm(remoteTemp, { force: true });
   }
-  // The entry names the STORE's bytes at `generation`, never the merged local
-  // copy: a lost upload retries from it, and only then is it a trusted base.
   opts.filesystem.manifest.set(opts.relativePath, {
     hash: createHash("sha256").update(remote).digest("hex"),
     generation,

@@ -12,16 +12,6 @@ import { useSession } from "@/lib/auth/session";
 import { launchStoreInstall } from "@/lib/houston-launch";
 import { getMyProfile } from "@/lib/store-client";
 
-/**
- * Client shell for the creator page: supplies the non-serializable seams
- * (Next Link, the Try action) so the server page passes data only.
- *
- * Ownership upgrade: there is ONE profile page per creator. When the signed-in
- * viewer turns out to BE this creator, the page swaps to the owner experience
- * (`MeClient` — the same `CreatorProfileScreen` in owner mode) in place, same
- * URL. Until that's established the public view renders, so anonymous and
- * other-creator visits are untouched.
- */
 export function CreatorProfileView({
   profile,
   agents,
@@ -50,9 +40,6 @@ export function CreatorProfileView({
         const mine = await getMyProfile(token);
         if (!cancelled && mine?.handle) setOwnHandle(mine.handle);
       } catch (err) {
-        // Passive enhancement only: the public page is already correct, so a
-        // failed ownership probe must not error it. Logged for diagnosis; the
-        // owner path (/me) surfaces the same failure loudly on navigation.
         console.error("[creator-profile] ownership probe failed:", err);
       }
     })();

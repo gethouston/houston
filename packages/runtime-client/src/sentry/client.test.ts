@@ -13,7 +13,6 @@ const CONFIG: EngineSentryConfig = {
   tags: { org_slug: "acme", agent_slug: "Workspace%2FMax" },
 };
 
-/** A sentry client whose envelopes land in `events` instead of the network. */
 function testSentry(config: EngineSentryConfig = CONFIG): {
   sentry: EngineSentry;
   events: Event[];
@@ -21,7 +20,6 @@ function testSentry(config: EngineSentryConfig = CONFIG): {
   const events: Event[] = [];
   const sentry = createEngineSentry("host", config, (options) =>
     createTransport(options, async (request) => {
-      // Envelope = newline-separated JSON: header, then (item header, item)*.
       const lines = (request.body as string).split("\n");
       for (let i = 1; i < lines.length; i += 2) {
         const header = JSON.parse(lines[i] ?? "{}");
@@ -93,24 +91,14 @@ describe("createEngineSentry", () => {
     sentry.captureLog("ERROR", ["stackless failure"]);
     await sentry.flush();
 
-    // The stack rides as a thread — NOT an exception — so the issue title
-    // stays the message instead of the top frame's function name.
     expect(events[0]?.exception).toBeUndefined();
     expect(events[0]?.message).toBe("stackless failure");
     const frames = events[0]?.threads?.values?.[0]?.stacktrace?.frames ?? [];
     expect(frames.length).toBeGreaterThan(0);
-    // The reporter's own frames (captureLog/guarded in client.ts) are trimmed
-    // so the innermost frame is the code that logged, not the crash reporter.
     expect(frames[frames.length - 1]?.filename).toMatch(/client\.test\.ts$/);
   });
 
   it("captureLog: [provider_error] lines fingerprint by (provider, kind, cause, sdk-slug) and tag the family", async () => {
-    // Without the fingerprint, every provider_error line groups on the
-    // identical synthetic thread stack at the log helper and Sentry shows ONE
-    // issue for every family (HOU-1156). Without the tags, the dashboard
-    // cannot filter "all disconnect events" across providers (PRODUCT-1302).
-    // A line with neither `error=` nor `cause=` keeps the stable 5-element
-    // array shape with "" placeholders.
     const { sentry, events } = testSentry();
     sentry.captureLog("ERROR", [
       "[provider_error] provider=openai-codex model=gpt-5.5 status=? kind=unknown :: WebSocket closed 1006",
@@ -132,18 +120,11 @@ describe("createEngineSentry", () => {
     });
     expect(events[0]?.tags?.provider_error_cause).toBeUndefined();
     expect(events[0]?.tags?.provider_error_sdk).toBeUndefined();
-    // Everything else keeps default grouping and gains no provider tags.
     expect(events[1]?.fingerprint).toBeUndefined();
     expect(events[1]?.tags?.provider).toBeUndefined();
   });
 
   it("captureLog: an unauthenticated provider_error line joins its cause into the fingerprint", async () => {
-    // `cause` is deliberately IN the fingerprint (PRODUCT-1393), reversing
-    // PRODUCT-1302's keep-accumulating choice: the (provider, kind) bucket
-    // merged token_revoked storms with a genuine oauth_org_not_allowed family
-    // under one misleading title. Re-splitting existing issues on deploy is
-    // intended. An old-format line with no `error=` slug still fingerprints,
-    // with "" in the slug slot.
     const { sentry, events } = testSentry();
     sentry.captureLog("ERROR", [
       "[provider_error] provider=anthropic model=claude-fable-5 status=401 kind=unauthenticated cause=token_revoked :: OAuth access token has been revoked",
@@ -167,11 +148,6 @@ describe("createEngineSentry", () => {
   });
 
   it("captureLog: a provider_error line with an SDK error slug fingerprints and tags all four fields", async () => {
-    // `error=` rides BEFORE `kind=` in the log line (see
-    // runtime ai/provider-error-log.ts — the format is a contract with
-    // PROVIDER_ERROR_LINE). The slug is what splits Anthropic's org-policy
-    // block (oauth_org_not_allowed) from ordinary auth failures sharing the
-    // same kind + cause space.
     const { sentry, events } = testSentry();
     sentry.captureLog("ERROR", [
       "[provider_error] provider=anthropic model=claude-fable-5 status=403 error=oauth_org_not_allowed kind=unauthenticated cause=org_policy_blocked :: Your organization has disabled Claude subscription access",
@@ -223,7 +199,6 @@ describe("createEngineSentry", () => {
     });
     sentry.captureException(new Error("who exactly?"));
     await sentry.flush();
-    // No explicit id → the org slug still fills it in; email/name ride along.
     expect(events[0]?.user).toEqual({
       id: "acme",
       email: "felipe@example.com",
@@ -238,8 +213,6 @@ describe("createEngineSentry", () => {
 
     const frames = events[0]?.threads?.values?.[0]?.stacktrace?.frames ?? [];
     const site = frames[frames.length - 1];
-    // The innermost frame is this test file — its context_line must be the
-    // actual captureLog call above, with surrounding lines on both sides.
     expect(site?.context_line).toContain("where is my snippet");
     expect(site?.pre_context?.length).toBeGreaterThan(0);
     expect(site?.post_context?.length).toBeGreaterThan(0);

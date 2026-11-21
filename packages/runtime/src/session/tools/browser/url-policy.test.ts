@@ -14,7 +14,6 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-/** The refusal code for `raw`, on the managed cloud unless told otherwise. */
 function code(raw: string, privateNetworks: PrivateNetworks = "blocked") {
   try {
     checkBrowserUrl(raw, privateNetworks);
@@ -97,8 +96,8 @@ describe("checkBrowserUrl", () => {
       "http://192.168.1.1/admin",
       "http://100.64.0.1/",
       "http://100.127.255.255/",
-      "http://3232235777/", // 192.168.1.1 as one number
-      "http://0xa000001/", // 10.0.0.1 in hex
+      "http://3232235777/",
+      "http://0xa000001/",
       "http://192.168.1.1./",
       "http://[::ffff:10.0.0.1]/",
       "http://[::ffff:c0a8:101]/",
@@ -173,7 +172,6 @@ describe("checkBrowserUrl", () => {
 });
 
 describe("a refusal", () => {
-  /** The message `raw` is refused with. */
   function refusal(raw: string): string {
     try {
       checkBrowserUrl(raw, "blocked");
@@ -199,7 +197,6 @@ describe("a refusal", () => {
   });
 
   test("leaves this machine's own addresses to the shell", () => {
-    // On desktop that is the person's own local server.
     for (const message of [
       refusal("http://127.0.0.1:3000/"),
       refusal("http://localhost:5173/"),

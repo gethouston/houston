@@ -1,14 +1,9 @@
-// Linear-side actions of the release stamp: finding the train's issues and
-// stamping each one (labels, state move, ship comment). Orchestrated by
-// scripts/linear-release-stamp.mjs; pure derivation lives in release-train.mjs.
-
 import { ISSUE_FIELDS } from "./release-stamp-api.mjs";
 import { reporterPhones, semver } from "./release-train.mjs";
 
 const USER_BUG_LABEL = "User Bug";
 const APP_REVIEW = "App Review";
 
-/** Find-or-create the Release label group and this tag's label under it. */
 export async function ensureTagLabel({ lin, teamId, releaseTag }) {
   const teamData = await lin(
     `query($t: String!) { team(id: $t) {
@@ -39,16 +34,8 @@ export async function ensureTagLabel({ lin, teamId, releaseTag }) {
   return { released, tagLabel };
 }
 
-/**
- * The train's issues: magic-word keys + the mode's Linear-side sweep.
- * Draft sweeps everything currently in App Review (App Review means "merged,
- * awaiting verification", so it ships in this build even when its PR forgot
- * the magic words). Publish sweeps the label carriers stamped at cut —
- * post-cut merges lack the label, so they wait for the next train instead of
- * being mis-released.
- */
 export async function fetchTargets({ lin, teamId, releaseTag, publish }, keys) {
-  const targets = new Map(); // issue id -> { issue, magic }
+  const targets = new Map();
   for (const key of keys) {
     try {
       const d = await lin(
@@ -73,18 +60,11 @@ export async function fetchTargets({ lin, teamId, releaseTag, publish }, keys) {
   return targets;
 }
 
-/**
- * Stamp one issue. Labels in both modes; in publish mode also moves it to
- * Released — magic-word issues from any open state, swept issues only from
- * App Review (an issue QA bounced back to In Progress stays put).
- */
 export async function stampOne(ctx, { issue, magic }, { released, tagLabel }) {
   const { lin, releaseTag, publish, releaseUrl } = ctx;
   const labelNames = issue.labels.nodes.map((l) => l.name);
   const actions = [];
 
-  // Release labels are an exclusive Linear group: swap a stale train's label
-  // (a draft that never shipped) for the current one instead of stacking.
   for (const stale of issue.labels.nodes.filter(
     (l) => semver(l.name) && l.name !== releaseTag,
   )) {

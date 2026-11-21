@@ -1,18 +1,4 @@
 #!/usr/bin/env node
-/**
- * Locale validator: PARITY and USAGE.
- *
- * Parity compares every non-English locale against English to catch structural
- * drift — missing keys, extra keys, or mismatched leaf types (string vs
- * object). It also bans em dashes in user-facing copy per product preference.
- *
- * Usage walks `app/src` and fails on a literal `t("...")` key that NO locale
- * defines. Parity alone could never see those: three skill-surface keys were
- * in sync across all three locales by being absent from all three, and each
- * rendered its own key at the user ("detail.savingChanges" on the save button).
- *
- * Exit 0 = clean, 1 = problems (with a human-readable report).
- */
 
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -78,7 +64,6 @@ function walk(ref, cand, pathPrefix, report) {
       walk(ref[i], cand[i], `${pathPrefix}[${i}]`, report);
     }
   } else if (refShape === "string") {
-    // Placeholder parity: {{name}} style vars must appear in both locales.
     const refVars = [...ref.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort();
     const candVars = [...cand.matchAll(/\{\{(\w+)\}\}/g)]
       .map((m) => m[1])
@@ -104,7 +89,6 @@ function validate() {
   }
   const reference = loadLocale(REFERENCE);
 
-  // English can't have em dashes either — scan the reference itself.
   const referenceReport = {
     missing: [],
     extra: [],

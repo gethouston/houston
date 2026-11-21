@@ -5,13 +5,6 @@ import {
 import { cpFetch } from "@houston/engine-adapter/cp/fetch";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-// HOU-1106 (Sentry HOUSTON-APP-515): a sleep-wake reconnect leaves every live
-// query holding an expired bearer. The gateway answers 401, and the session
-// refresh — racing the same settling network — can fail TRANSIENTLY. That
-// must read as connectivity (a transport-shaped TypeError the app's
-// classifier routes to the offline toast, retried for reads), never as the
-// terminal "invalid or expired token" auth error it used to surface as.
-
 const CFG = { baseUrl: "https://gateway.example", token: "stale" };
 
 const UNAUTHORIZED = () =>
@@ -26,7 +19,6 @@ const OK = () =>
     headers: { "Content-Type": "application/json" },
   });
 
-/** Gateway stub: 401 for the stale bearer, 200 once "fresh" is presented. */
 function stubGateway(): { bearers: (string | null)[] } {
   const bearers: (string | null)[] = [];
   vi.stubGlobal(
@@ -61,7 +53,6 @@ afterEach(() => {
 
 test("transient refresh failure on a read self-heals on the blind retry", async () => {
   const gw = stubGateway();
-  // First refresh attempt loses to the settling network; the retry succeeds.
   let calls = 0;
   installRefresher(() => {
     calls += 1;
@@ -74,16 +65,13 @@ test("transient refresh failure on a read self-heals on the blind retry", async 
   await vi.advanceTimersByTimeAsync(2_000);
   const res = await pending;
   expect(res.status).toBe(200);
-  // stale → (refresh threw, attempt dropped) → stale again → fresh replay.
   expect(gw.bearers).toEqual(["Bearer stale", "Bearer stale", "Bearer fresh"]);
 });
 
 test("persistent transient refresh failure surfaces as transport, not auth", async () => {
   stubGateway();
   installRefresher(() =>
-    Promise.reject(
-      Object.assign(new Error("network"), { code: "network" }), // desktop IdentityError shape
-    ),
+    Promise.reject(Object.assign(new Error("network"), { code: "network" })),
   );
   const pending = cpFetch(CFG, "/agents/a/skills").then(
     () => {
@@ -93,8 +81,6 @@ test("persistent transient refresh failure surfaces as transport, not auth", asy
   );
   await vi.advanceTimersByTimeAsync(5_000);
   const err = await pending;
-  // The exact message the app's isNetworkTransportError classifier keys on:
-  // this failure takes the connectivity path (info toast, no Sentry).
   expect(err).toBeInstanceOf(TypeError);
   expect((err as TypeError).message).toBe("Load failed (session refresh)");
   expect(isHoustonEngineError(err)).toBe(false);
@@ -134,10 +120,6 @@ test("terminal refresh (null) outside hosted mode surfaces the real 401", async 
 });
 
 test("terminal refresh (null) in hosted mode is the quiet signed-out 401 (HOUSTON-APP-4WR)", async () => {
-  // A real sign-out catches every live query holding the stale bearer: each
-  // gets a gateway 401, refreshes (single-flight), and learns the session is
-  // gone. That must fail the queries as signed-out — the state the error-toast
-  // layer recognizes and never reports — not as one Sentry event per query.
   const gw = stubGateway();
   installRefresher(() => Promise.resolve(null), { controlPlane: true });
   const pending = cpFetch(CFG, "/agents/a/skills").then(
@@ -149,7 +131,6 @@ test("terminal refresh (null) in hosted mode is the quiet signed-out 401 (HOUSTO
   await vi.advanceTimersByTimeAsync(5_000);
   const err = await pending;
   expect(isSignedOutEngineError(err)).toBe(true);
-  // No replay was attempted with a dead session: one gateway round trip only.
   expect(gw.bearers).toEqual(["Bearer stale"]);
 });
 

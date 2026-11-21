@@ -16,21 +16,6 @@ import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
-/**
- * The messaging accounts the personal assistant answers in — the gateway's
- * `/v1/channels*` family, delegated to `sdk.channels`.
- *
- * Every answer is parsed before it leaves this seam (`@houston/wire-types`):
- * an absent or mistyped field is a refusal rather than a silent default, and
- * external URLs are restricted to their providers' trusted destinations.
- * The SDK stays honest about the wire; the guard lives here, where
- * the value actually reaches a screen and a browser.
- *
- * Off the gateway (`this.ctx.cp === null`) there is no channels concept at
- * all, and the section reads a 501 as "this deployment has no channels" —
- * which is why nothing degrades to an empty listing a caller could not tell
- * from a real one.
- */
 export function ChannelsMixin<TBase extends BaseCtor>(Base: TBase) {
   class Channels extends Base {
     private requireGateway(): void {
@@ -73,12 +58,6 @@ export function ChannelsMixin<TBase extends BaseCtor>(Base: TBase) {
         ),
       );
     }
-    /**
-     * Redeem the callback ticket. This is what BINDS the Slack account to the
-     * signed-in user, so it runs on the app's own credential rather than off
-     * Slack's redirect, whose completer is nobody in particular. A mangled
-     * link never becomes a request.
-     */
     async completeSlack(
       ticket: string,
       signal?: AbortSignal,

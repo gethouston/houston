@@ -30,7 +30,6 @@ type Handler = (
   ctx: ExtensionContext,
 ) => Promise<{ compaction?: CompactionResult } | undefined>;
 
-/** A user message estimating to exactly `tokens` (pi's chars/4 heuristic). */
 const msg = (tokens: number): Msg =>
   ({
     role: "user",
@@ -38,7 +37,6 @@ const msg = (tokens: number): Msg =>
     timestamp: 1,
   }) as unknown as Msg;
 
-/** A user message with NO elidable text (image-only) at ~1200 tokens. */
 const imageMsg = (): Msg =>
   ({
     role: "user",
@@ -143,7 +141,6 @@ describe("boundMessages", () => {
     expect(keptContent.startsWith("xx")).toBe(true);
     expect(keptContent.endsWith("xx")).toBe(true);
     expect(estimateTokens(kept[0] as never)).toBeLessThanOrEqual(250);
-    // The original message is never mutated.
     expect((giant as unknown as { content: string }).content).toBe(
       "x".repeat(1200),
     );
@@ -183,8 +180,6 @@ describe("summarizerInputBudget", () => {
     expect(summarizerInputBudget(100_000_000)).toBe(
       SUMMARIZER_INPUT_MAX_TOKENS,
     );
-    // The ceiling, serialized at 4 chars/token, stays under OpenAI's
-    // 10,485,760-char per-string cap with room for prompt scaffolding.
     expect(SUMMARIZER_INPUT_MAX_TOKENS * 4).toBeLessThan(10_485_760);
   });
 });
@@ -212,7 +207,6 @@ describe("isInputSizeRejection", () => {
 });
 
 describe("makeCompactionGuard", () => {
-  // Window 1000 → budget 700 (at the 0.7 fraction).
   it("declines when the summarizer input fits (pi's default path runs on the untouched preparation)", async () => {
     const compactFn = vi.fn(async () => okCompaction);
     const handler = loadHandler(compactFn);
@@ -222,7 +216,6 @@ describe("makeCompactionGuard", () => {
     const result = await handler(event, ctx);
     expect(result).toBeUndefined();
     expect(compactFn).not.toHaveBeenCalled();
-    // Byte-identical pass-through: same message objects, untouched content.
     expect(event.preparation.messagesToSummarize[0]).toBe(messages[0]);
     expect((messages[0] as unknown as { content: string }).content).toBe(
       "x".repeat(1200),
@@ -233,7 +226,7 @@ describe("makeCompactionGuard", () => {
     const compactFn = vi.fn(async (..._args: unknown[]) => okCompaction);
     const handler = loadHandler(compactFn);
     const { ctx } = makeCtx({ contextWindow: 1000 });
-    const messages = [msg(300), msg(300), msg(300)]; // 900 > 700: drops oldest
+    const messages = [msg(300), msg(300), msg(300)];
     const result = await handler(makeEvent(messages), ctx);
     expect(compactFn).toHaveBeenCalledOnce();
     const bounded = boundedArg(compactFn);
@@ -256,8 +249,6 @@ describe("makeCompactionGuard", () => {
     const messages = [msg(300), msg(300), msg(300)];
     const result = await handler(makeEvent(messages), ctx);
     expect(compactFn).toHaveBeenCalledTimes(2);
-    // First attempt at budget 700 keeps 2 messages; the halved retry (350)
-    // keeps only the newest.
     expect(boundedArg(compactFn, 0).messagesToSummarize).toHaveLength(2);
     expect(boundedArg(compactFn, 1).messagesToSummarize).toHaveLength(1);
     expect(result?.compaction?.summary).toBe(`${droppedNotice(2)}\n\nS`);
@@ -329,7 +320,7 @@ describe("makeCompactionGuard", () => {
     const compactFn = vi.fn(async (..._args: unknown[]) => okCompaction);
     const handler = loadHandler(compactFn);
     const { ctx } = makeCtx({ contextWindow: 1000 });
-    const prefix = [msg(300), msg(300), msg(300)]; // 900 > 700: drops oldest
+    const prefix = [msg(300), msg(300), msg(300)];
     const result = await handler(makeEvent([msg(300)], { prefix }), ctx);
     expect(compactFn).toHaveBeenCalledOnce();
     const bounded = boundedArg(compactFn);
@@ -341,10 +332,7 @@ describe("makeCompactionGuard", () => {
   it("keeps the serialized request under OpenAI's 10 MiB string cap at any window", async () => {
     const compactFn = vi.fn(async (..._args: unknown[]) => okCompaction);
     const handler = loadHandler(compactFn);
-    // A window so large the 0.7 fraction alone would allow a >10 MiB string;
-    // the SUMMARIZER_INPUT_MAX_TOKENS ceiling must bind instead.
     const { ctx } = makeCtx({ contextWindow: 100_000_000 });
-    // A 40MB conversation, like the 31MB one behind PRODUCT-1394.
     const messages = Array.from({ length: 40 }, () => msg(250_000));
     await handler(makeEvent(messages), ctx);
     expect(compactFn).toHaveBeenCalledOnce();

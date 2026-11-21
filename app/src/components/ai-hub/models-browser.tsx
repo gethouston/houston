@@ -7,7 +7,6 @@ import { ModelFacets } from "./model-facets.tsx";
 import { ModelResults } from "./model-results.tsx";
 import { useModelFacetState } from "./use-model-facet-state.ts";
 
-/** Self-contained model browser used by modal and allowlist surfaces. */
 export function ModelsBrowser({
   models,
   onOpenModel,

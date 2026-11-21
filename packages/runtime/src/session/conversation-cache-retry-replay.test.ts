@@ -8,13 +8,6 @@ import type {
   ResolvedModel,
 } from "../backends/types";
 
-/**
- * A Claude resume that fails mid-turn reruns the prompt as a fresh session.
- * On the standing server that rerun must open with the conversation so far,
- * or the model answers a follow-up ("Give me three more.") with no idea what
- * came before.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-replay-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(join(tmpdir(), "houston-ws-"));
 
@@ -71,7 +64,6 @@ test("a fresh rerun on the standing server opens with the conversation so far, n
   appendAssistantMessage("offsite", "1. Site tour and build day.", {
     turnId: "t1",
   });
-  // The turn in flight appends its message before it prompts.
   appendUserMessage("offsite", "Give me three more.", { turnId: "t2" });
 
   await getConversation("offsite");
@@ -79,8 +71,6 @@ test("a fresh rerun on the standing server opens with the conversation so far, n
 
   expect(replay).toContain("Give me three ideas for a team offsite.");
   expect(replay).toContain("Site tour and build day.");
-  // The rerun sends the turn's own text after the replay; a copy inside it
-  // would show the model the question twice.
   expect(replay).not.toContain("Give me three more.");
 });
 

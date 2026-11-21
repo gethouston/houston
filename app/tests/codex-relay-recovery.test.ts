@@ -6,16 +6,6 @@ import {
   recoverFailedCodexRelay,
 } from "../src/lib/codex-relay-recovery.ts";
 
-// HOU-1113 / HOUSTON-APP-56B — the engine can drop a Codex sign-in before the
-// browser callback arrives (pod recycled mid-consent, abandoned-login timer,
-// app restarted mid-flow); the relayed code then answers `no active login for
-// openai-codex`. That is user timing, not a bug: the relay restarts the same
-// browser sign-in once per cooldown window behind an expected-state toast
-// (a breadcrumb, never a Sentry error), and dead-ends past the budget by
-// asking the user to start over. Every OTHER failure keeps the loud path.
-// These pin that policy.
-
-/** The runtime client's `EngineError` shape, as the classifier sees it. */
 function lostLogin(): Error {
   const err = new Error(
     'engine request failed (400): {"error":"no active login for openai-codex"}',
@@ -113,8 +103,6 @@ describe("recoverFailedCodexRelay", () => {
   });
 
   it("keeps a bare-message lookalike on the loud path", async () => {
-    // Only the runtime client's typed 400 is the expected state; a message
-    // match alone would silence a real error that merely quotes it.
     const err = new Error(
       'engine request failed (400): {"error":"no active login for openai-codex"}',
     );

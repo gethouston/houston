@@ -22,8 +22,6 @@ test("a pi provider warms the origin its turn calls", () => {
 });
 
 test("providers this process cannot warm answer nothing", () => {
-  // Claude dials from its own CLI process, Bedrock from the AWS SDK's pool,
-  // and a custom endpoint's address lives in files only the turn reads.
   for (const provider of [
     "anthropic",
     "amazon-bedrock",
@@ -77,7 +75,6 @@ test("a warm asks at once with OPTIONS, then every interval until its hold ends"
     { url: "https://chatgpt.com/backend-api", method: "OPTIONS" },
   ]);
   await vi.advanceTimersByTimeAsync(30_000);
-  // 0, 3, 6 and 9 s: a 12 s ask would fall past the 10 s hold.
   expect(calls).toHaveLength(4);
   expect(lines).toEqual([
     "[prewarm] provider warm ended: origin=https://chatgpt.com asked=4 failed=0",

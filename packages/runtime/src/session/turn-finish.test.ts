@@ -5,12 +5,10 @@ test("the closing-message mark follows the text of the CURRENT assistant message
   const marks = new TurnFinishMarks();
   expect(marks.closingMessageSeen).toBe(false);
   marks.noteAssistantMessageStart();
-  // Block separators and other whitespace-only deltas are not a message.
   marks.noteAssistantText("\n\n");
   expect(marks.closingMessageSeen).toBe(false);
   marks.noteAssistantText("Done.");
   expect(marks.closingMessageSeen).toBe(true);
-  // The next model round-trip starts over: earlier text never counts.
   marks.noteAssistantMessageStart();
   expect(marks.closingMessageSeen).toBe(false);
   marks.noteAssistantText("Here is the result.");
@@ -45,7 +43,6 @@ test("the reply completes once, on an offer opened after the closing message", (
       name: "mcp__houston__suggest_actions",
     }),
   ).toBe(true);
-  // At most once per turn, whatever follows.
   expect(
     marks.noteReplyBeat({ type: "tool_call_start", name: "suggest_reusable" }),
   ).toBe(false);
@@ -58,13 +55,11 @@ test("an offer opened before any closing text completes nothing (NEEDS_MESSAGE)"
   expect(
     marks.noteReplyBeat({ type: "tool_call_start", name: "suggest_actions" }),
   ).toBe(false);
-  // Text from an EARLIER round-trip never counts either.
   marks.noteAssistantText("Working on it.");
   marks.noteAssistantMessageStart();
   expect(
     marks.noteReplyBeat({ type: "tool_call_start", name: "suggest_actions" }),
   ).toBe(false);
-  // The model writes the reply, then offers again: now it is complete.
   marks.noteAssistantText("Done.");
   expect(
     marks.noteReplyBeat({ type: "tool_call_start", name: "suggest_actions" }),

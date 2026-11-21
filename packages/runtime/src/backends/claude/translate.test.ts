@@ -3,7 +3,6 @@ import type { WireEvent } from "@houston/runtime-client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createStreamTranslator, normalizeUsage } from "./translate";
 
-// vitest 4 hands back the existing spy when a method is spied again, so calls would pile up across tests.
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -11,8 +10,6 @@ afterEach(() => {
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
-
-// --- fixtures ---------------------------------------------------------------
 
 // biome-ignore lint/suspicious/noExplicitAny: test fixtures cast to SDKMessage.
 function streamEvent(event: any): SDKMessage {
@@ -114,7 +111,6 @@ function assistantUsage(
   } as unknown as SDKMessage;
 }
 
-/** The SDK's `assistant` message for one completed tool_use block. */
 function assistantToolUse(
   id: string,
   name: string,
@@ -130,7 +126,6 @@ function assistantToolUse(
     parent_tool_use_id: null,
   } as unknown as SDKMessage;
 }
-/** What the SDK puts in place of tool input the model streamed as invalid JSON. */
 function unparsedMarker(raw: string): unknown {
   return { __unparsedToolInput: { raw, len: raw.length } };
 }
@@ -143,10 +138,7 @@ function collect(msgs: SDKMessage[]): { events: WireEvent[]; ctx: number[] } {
   return { events, ctx };
 }
 
-// --- normalizeUsage ---------------------------------------------------------
-
 test("normalizeUsage matches the pi fixture (context = total - output)", () => {
-  // input 100 + output 20 + cacheRead 300 + cacheWrite 50 = 470 total; 450 fills.
   expect(
     normalizeUsage({
       input_tokens: 100,
@@ -161,15 +153,12 @@ test("normalizeUsage degrades to null with no input signal", () => {
   expect(normalizeUsage(undefined)).toBeNull();
   expect(normalizeUsage(null)).toBeNull();
   expect(normalizeUsage({})).toBeNull();
-  // context = total - output = input + caches (total is summed from the parts).
   expect(normalizeUsage({ input_tokens: 10, output_tokens: 99 })).toEqual({
     context_tokens: 10,
     output_tokens: 99,
     cached_tokens: 0,
   });
 });
-
-// --- streaming mappings -----------------------------------------------------
 
 test("text_delta / thinking_delta map to text / thinking frames", () => {
   const { events } = collect([textDelta("hello "), thinkingDelta("hmm")]);
@@ -180,9 +169,6 @@ test("text_delta / thinking_delta map to text / thinking frames", () => {
 });
 
 test("a follow-up text block gets a paragraph-break prefix on its first delta (HOU-857)", () => {
-  // The screenshot bug: text → tool call → text streams as distinct content
-  // blocks, but the bare deltas concatenate downstream into "…for you now.Go
-  // ahead…". The new block's first delta must carry the separator.
   const blockStart = (index: number, type: string) =>
     streamEvent({
       type: "content_block_start",
@@ -203,7 +189,6 @@ test("a follow-up text block gets a paragraph-break prefix on its first delta (H
     { type: "text", data: "I'll get that set up for you now." },
     { type: "tool_start", data: { name: "connect", args: {} } },
     { type: "tool_end", data: { name: "connect", isError: false } },
-    // Separator rides the follow-up block's FIRST delta only.
     { type: "text", data: "\n\nGo ahead and sign in." },
     { type: "text", data: " Once connected, I'll confirm." },
   ]);
@@ -221,7 +206,6 @@ test("thinking blocks separate independently; the first of each kind is never pr
     thinkingDelta("first thoughts"),
     blockStart(1, "thinking"),
     thinkingDelta("second thoughts"),
-    // First TEXT block after thinking-only content: text starts fresh.
     blockStart(2, "text"),
     textDelta("Hello"),
   ]);
@@ -248,8 +232,6 @@ test("tool_use: accumulated input_json_delta parses into tool_start args at stop
 });
 
 test("the SDK's assistant tool_use input is the tool_start args when it precedes the stop", () => {
-  // Observed order on every CLI: the assistant block (with the SDK's parse of
-  // the input) arrives BEFORE our content_block_stop.
   const { events } = collect([
     toolStart(0, "t1", "Read"),
     jsonDelta(0, '{"file_path":"a.txt"}'),
@@ -267,9 +249,6 @@ test("the SDK's assistant tool_use input is the tool_start args when it precedes
 test("invalid tool JSON: the SDK's unparsed marker yields args:{} + a warn breadcrumb, never an error (PRODUCT-1694)", () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const err = vi.spyOn(console, "error").mockImplementation(() => {});
-  // Real prod shape: the model closed the payload with one `}` too many. The
-  // CLI never runs the tool; it hands the model an InputValidationError
-  // tool_result and the model retries.
   const raw =
     '{"action": "GOOGLEDRIVE_EDIT_FILE", "params": {"file_id": "x"}}}';
   const { events } = collect([
@@ -350,7 +329,6 @@ test("a malformed unparsed marker (null payload) still settles to args:{}", () =
     assistantToolUse("t1", "Edit", { __unparsedToolInput: null }),
     blockStop(0),
   ]);
-  // Not the marker shape → the SDK's input is taken verbatim; nothing throws.
   expect(events).toEqual([
     {
       type: "tool_start",
@@ -405,8 +383,6 @@ test("a tool block whose stream broke before its stop is dropped at the next mes
       content_block: { type: "text", text: "" },
     });
   const { events } = collect([
-    // Message 1: the connection dropped mid-Bash input; the CLI retried, so no
-    // content_block_stop and no assistant block ever arrive for index 2.
     msgStart,
     textStart(0),
     textDelta("Running it. "),
@@ -417,8 +393,6 @@ test("a tool block whose stream broke before its stop is dropped at the next mes
     blockStop(1),
     toolStart(2, "bash1", "Bash"),
     jsonDelta(2, '{"command": "python3 check.py 2>&1 | head -30; echo \\"'),
-    // Message 2 (the next API call): three blocks, the third a plain text block
-    // at index 2. Its stop must not "complete" the dead Bash block.
     msgStart,
     textStart(0),
     textDelta("Done."),
@@ -501,8 +475,6 @@ test("a tool_result's text rides the tool_end as its content preview (HOU-717)",
   ]);
 });
 
-// --- result / usage / context ----------------------------------------------
-
 test("a success result yields a usage frame and updates context tokens", () => {
   const { events, ctx } = collect([
     result({
@@ -522,9 +494,6 @@ test("a success result yields a usage frame and updates context tokens", () => {
 });
 
 test("an agentic turn's usage frame is the LAST request's usage, never the result's turn aggregate", () => {
-  // Two API requests (a tool round-trip): the context is re-sent each time, so
-  // the result's aggregate (~sum of both) reads far above the real fill. The
-  // frame + context tokens must follow the per-request numbers.
   const { events, ctx } = collect([
     assistantUsage({
       input_tokens: 1_000,
@@ -572,8 +541,6 @@ test("subagent and errored assistant usage never count toward the context fill",
     errored,
     result({ input_tokens: 100, output_tokens: 5 }),
   ]);
-  // The errored assistant emits its provider_error; the usage frame falls back
-  // to the result (one clean request never happened this turn).
   expect(events.filter((e) => e.type === "usage")).toEqual([
     {
       type: "usage",
@@ -635,8 +602,6 @@ test("an error result classifies to a provider_error (with usage first when pres
   ]);
 });
 
-// --- assistant error / dedup ------------------------------------------------
-
 test("an assistant message with a typed error enum emits one provider_error", () => {
   const msg = {
     type: "assistant",
@@ -676,8 +641,6 @@ test("provider_error is emitted at most once across assistant + result errors", 
   expect(events.filter((e) => e.type === "provider_error")).toHaveLength(1);
 });
 
-// --- compact boundary / unmapped -------------------------------------------
-
 test("a compact_boundary updates context tokens with post_tokens, emits no frame", () => {
   const boundary = {
     type: "system",
@@ -713,7 +676,6 @@ test("a rate_limit_event carries retry seconds into a later rate_limit error", (
   const { events } = collect([event, err]);
   const pe = events.find((e) => e.type === "provider_error");
   expect(pe?.type === "provider_error" && pe.data.kind).toBe("rate_limited");
-  // ~60s out; allow a little slack for the clock between fixture + assertion.
   const secs =
     pe?.type === "provider_error" && pe.data.kind === "rate_limited"
       ? pe.data.retry_after_seconds

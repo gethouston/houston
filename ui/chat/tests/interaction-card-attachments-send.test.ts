@@ -1,7 +1,3 @@
-// PRODUCT-2132 review round: the files a question card hands over leave the
-// panel only once the reply is accepted, ride only an answered question, and
-// stay with the conversation they were attached in.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
@@ -42,8 +38,6 @@ const COMPANY: Step = {
   question: "What is your company name?",
 };
 
-/** A connect body whose app is already connected: it reports once, on
- *  mount, like the app's connect card. */
 function AlreadyConnected({ api }: { api: ConnectApi }) {
   useEffect(() => api.onConnected(), []);
   return null;
@@ -87,7 +81,6 @@ describe("question card completion with files", () => {
     assert.equal(sendButton().disabled, true);
     assert.equal((option("The owl") as HTMLButtonElement).disabled, true);
 
-    // A file added during the upload is not one the reply carried.
     const doc = file("doc.pdf", "application/pdf");
     attach([doc]);
     pending.resolve(true);
@@ -114,7 +107,6 @@ describe("question card completion with files", () => {
     );
     click(connected);
     assert.deepEqual(done, [{ answers: [], files: [] }]);
-    // The composer that returns still holds the file.
     render(panel(null));
     assert.equal(chips("photo.png"), 1);
   });

@@ -29,14 +29,6 @@ import { SAVE_ROUTINE_TOOL_NAME } from "./tools/save-routine";
 import { SUGGEST_ACTIONS_TOOL_NAME } from "./tools/suggest-actions";
 import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
 
-/**
- * The exec mode a stateless (turn-mode) worker may actually run. `local` is
- * only honored on a SINGLE-USE worker: that pod serves one claimed turn and is
- * recycled, so it is single-tenant for its whole life — the standing pod's
- * justification for in-container bash, restored. On a shared multi-turn worker
- * `local` degrades to `disabled`: one org's process tree, tmp residue, and env
- * must never be readable by the next org's turn.
- */
 export function turnCodeExecutionMode(
   configured: CodeExecutionMode,
   singleUse: boolean,
@@ -46,11 +38,6 @@ export function turnCodeExecutionMode(
   return "disabled";
 }
 
-/**
- * pi requires a name allowlist for both built-in and custom tools. Keep that
- * decision pure so managed pods can prove code execution is disabled without
- * spinning up a live model session.
- */
 export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
   const executable =
     input.codeExecution === "local"
@@ -60,32 +47,11 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
         : [];
   const toolNames = [
     ...CLAMPED_FILE_TOOL_NAMES,
-    // ask_user is available in EVERY mode/backend — any blocking question,
-    // choice, or approval goes through it instead of plain-text.
     ASK_USER_TOOL_NAME,
-    // suggest_reusable is available in execute AND auto — it holds no
-    // credential, takes no real-world action, and never blocks the turn (a
-    // clean finish offering to save the work as a Skill/Routine). It must
-    // NEVER reach plan mode, and it won't automatically: PLAN_MODE_TOOL_NAMES
-    // (the plan allowlist) doesn't list it, so `planToolNames` filters it out;
-    // and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES, so auto keeps it.
     SUGGEST_REUSABLE_TOOL_NAME,
     SUGGEST_ACTIONS_TOOL_NAME,
-    // save_routine reaches execute AND auto (it never blocks the turn) but not
-    // plan (plan is read-only): PLAN_MODE_TOOL_NAMES omits it so planToolNames
-    // filters it out, and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto
-    // keeps it — the same reach as suggest_reusable.
     ...(input.saveRoutine ? [SAVE_ROUTINE_TOOL_NAME] : []),
-    // save_learning has the SAME reach as save_routine — execute and auto,
-    // never plan (plan is read-only and saving a learning is a real write).
-    // PLAN_MODE_TOOL_NAMES omits it so planToolNames filters it out, and it
-    // isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps it.
     ...(input.saveLearning ? [SAVE_LEARNING_TOOL_NAME] : []),
-    // The mission-board tools share save_routine's reach: execute AND auto
-    // (an orchestrating turn is usually execute; an autopilot run may still
-    // check or start missions), never plan — PLAN_MODE_TOOL_NAMES omits them
-    // so planToolNames filters them out, and none are in
-    // AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
     ...(input.missions
       ? [
           START_MISSION_TOOL_NAME,
@@ -97,37 +63,18 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
             : [LIST_AGENTS_TOOL_NAME, READ_AGENT_TOOL_NAME]),
         ]
       : []),
-    // The assistant family shares save_routine's reach: execute AND auto,
-    // never plan. Searching the catalog is a read, but the family exists to
-    // ACT on the user's account (`houston_call`), and a plan turn that could
-    // list operations it cannot perform would just dead-end.
-    // PLAN_MODE_TOOL_NAMES omits all three so planToolNames filters them out;
-    // none is in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
-    // The coordinator gate is structural, not a second opinion about the same
-    // fact: whatever a deployment puts in an ordinary agent's environment, only
-    // the runtime the HOST named coordinator can act on the user's account.
     ...(input.assistant && input.personalAssistant
       ? [...ASSISTANT_TOOL_NAMES]
       : []),
     ...(input.providerConnections ||
     input.integrations ||
     (input.assistant && input.personalAssistant)
-      ? // request_hands_on shares this reach exactly: both are a REQUEST TO THE
-        // PERSON rendered as a card in their own session, never authority of
-        // the agent's own, so whoever may ask for a provider may ask for an
-        // errand on a screen. WHICH screens an agent may ask for is a second,
-        // narrower question the tool itself answers (`request-hands-on.ts`):
-        // Billing and the Danger zone are the AI Manager's alone.
-        [REQUEST_PROVIDER_CONNECTION_TOOL_NAME, REQUEST_HANDS_ON_TOOL_NAME]
+      ? [REQUEST_PROVIDER_CONNECTION_TOOL_NAME, REQUEST_HANDS_ON_TOOL_NAME]
       : []),
     ...(input.assistant && input.personalAssistant && !input.integrations
       ? [REQUEST_CONNECTION_TOOL_NAME, REQUEST_CREDENTIAL_TOOL_NAME]
       : []),
     ...executable,
-    // browser acts on the open web (signs in, submits forms), so it shares
-    // bash's reach: execute and auto, never plan (PLAN_MODE_TOOL_NAMES omits
-    // it), and never the coordinator (COORDINATOR_TOOL_NAMES omits it). It
-    // needs no grant: a missing browser is a named refusal at call time.
     BROWSER_TOOL_NAME,
     ...(input.integrations
       ? [...INTEGRATION_TOOL_NAMES, ...CUSTOM_INTEGRATION_TOOL_NAMES]
@@ -139,7 +86,6 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
           (name) => input.assistant || name !== REQUEST_CREDENTIAL_TOOL_NAME,
         )
       : toolNames,
-    // The coordinator never runs code, whatever the deployment offers.
     includeRunCode:
       input.codeExecution === "remote" && !input.personalAssistant,
   };

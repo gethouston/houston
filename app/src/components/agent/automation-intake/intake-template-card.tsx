@@ -10,28 +10,13 @@ import { availableTemplates, resolveTemplateWake } from "./templates";
 import type { IntakeResult } from "./types";
 
 interface IntakeTemplateCardProps {
-  /** Timezone applied to a schedule template's resolved pick. */
   accountTimezone: string;
-  /** Whether event triggers exist (offers the app-event template). */
   triggersAvailable: boolean;
-  /** The stepper chrome (pager + dismiss X) so this card renders the SAME shell
-   *  as a real ask_user card. */
   chrome: StepChrome;
-  /** Back to the fork question. */
   onBack: () => void;
-  /** Picking a template resolves its intent + wake and completes the intake. */
   onComplete: (result: IntakeResult) => void;
 }
 
-/**
- * The template picker card: clean rows of example routines (a name over a
- * one-line description), each a keyboard-friendly button. Picking one resolves
- * its wake with the same `cronSummary` util the schedule card uses (so the AI
- * restates the schedule in plain words) and completes the intake immediately
- * with `{ intent, wake, scheduleHint: null, templateId }` (templates resolve a
- * concrete schedule, so they carry no free-text hint) — the AI then confirms
- * and tailors it.
- */
 export function IntakeTemplateCard({
   accountTimezone,
   triggersAvailable,

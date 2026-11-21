@@ -35,29 +35,19 @@ export type {
   TurnFilesystemPreparation,
 } from "./turn-filesystem-types";
 
-/** Maximum bytes a pooled turn hydrates before its prompt starts. */
 export const TURN_HYDRATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 
-/** Maximum bytes of the agent's own files a pooled turn loads behind the
- *  prompt (turn-deferred-rule.ts). Apart from the startup cap: a person's
- *  documents never decide whether the agent can answer. Sized with the
- *  startup cap inside a pool sandbox's disk (22 GB, measured). */
 export const TURN_DEFERRED_MAX_BYTES = 8 * 1024 * 1024 * 1024;
 
-/** Hydrate an isolated store tree and resolve its layout. Claimed turns use
- *  the pool's 2 GiB cap; unclaimed turns keep hydrate's default. */
 export async function prepareTurnFilesystem(
   opts: TurnFilesystemOptions,
 ): Promise<TurnFilesystem> {
   return (await startTurnFilesystem(opts)).hydrated;
 }
 
-/** Resolve the listed layout, then hydrate runtime inputs before the bulk tree. */
 export async function startTurnFilesystem(
   opts: TurnFilesystemOptions & {
-    /** Eager trees only: keep these out of `hydrated` (`workspaceReady`). */
     defer?: HydrateOptions["defer"];
-    /** Claimed turns default to TURN_DEFERRED_MAX_BYTES. */
     deferredMaxBytes?: number;
     deferredReadTimeoutMs?: number;
     deferredParallel?: number;

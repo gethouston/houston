@@ -1,7 +1,6 @@
 import { expect, test } from "../support/fixtures";
 import { hireWithNoAiConnected } from "../support/no-ai";
 
-/** The phone twin of `e2e/first-day-no-ai.spec.ts`: same offer, same target. */
 test("with no AI connected a fresh hire's screen offers Connect AI, not a start", async ({
   page,
   request,

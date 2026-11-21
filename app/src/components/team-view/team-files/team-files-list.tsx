@@ -8,7 +8,6 @@ import type { Agent } from "../../../lib/types";
 import type { AgentFiles } from "../../agent/agent-files";
 import { AgentReadsFailed } from "../../agent-reads-failed";
 
-/** The employee's one file tree, with its read failure above it. */
 export function TeamFilesList({
   agent,
   files,

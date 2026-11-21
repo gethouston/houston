@@ -76,7 +76,6 @@ describe("resolveOpenConversation", () => {
       created: null,
       lastResolved: null,
     });
-    // A stale sweep settled and the card fell out of the list for a beat.
     deepStrictEqual(
       resolveOpenConversation({
         selectedId: "hola",

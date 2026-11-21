@@ -2,37 +2,19 @@ import type { HoustonEvent } from "@houston/protocol";
 import type { Vfs } from "../vfs";
 import { fileKey } from "./files-path";
 
-/**
- * Why a workspace file read answered 404, in one host log line (PRODUCT-1780).
- *
- * The frontend treats "file not found" as the user's state (the agent linked a
- * file it never wrote, renamed, or deleted) and no longer reports it, so the
- * host log is the only place left to tell the candidates apart: a missing
- * SIBLING listing means the parent folder itself is absent (never written, or
- * the link points somewhere else); siblings present with the name missing
- * means a rename or delete; a `FilesChanged` seconds earlier means the write
- * raced the click. The clock below is fed by every event the host itself
- * emits (its own mutations and the local FS watcher); a runtime-relayed event
- * that bypasses the hub shows as "none seen".
- */
-
 const lastFilesChanged = new Map<string, number>();
 
-/** Record the moment an agent's files changed, as seen by this host process. */
 export function noteFilesChanged(event: HoustonEvent, now = Date.now()): void {
   if (event.type === "FilesChanged") lastFilesChanged.set(event.agentPath, now);
 }
 
-/** Test seam: forget every recorded FilesChanged. */
 export function resetFilesChangedClock(): void {
   lastFilesChanged.clear();
 }
 
 export interface MissingFileDiagnostic {
   rel: string;
-  /** Names present in the parent folder, or null when the folder is absent. */
   siblings: string[] | null;
-  /** Seconds since the last FilesChanged for this agent, or null when none. */
   filesChangedAgoS: number | null;
 }
 
@@ -74,7 +56,6 @@ export function formatMissingFile(d: MissingFileDiagnostic): string {
   return `[files] not found: ${d.rel} (${siblings}; ${changed})`;
 }
 
-/** The one-liner the 404 branches log. Never throws: a broken listing must not turn a 404 into a 500. */
 export async function logMissingFile(
   vfs: Vfs,
   root: string,

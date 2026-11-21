@@ -9,7 +9,6 @@ import { usePromoFacts } from "./promo-ended-steps";
 const DONE_TITLE_CLASS =
   "mb-2 pr-8 text-balance text-2xl font-semibold leading-tight tracking-tight text-ink outline-none";
 
-/** Switched: what the org pays now, read off its billing after the switch. */
 export function PromoYearlyStep({
   view,
   org,
@@ -18,7 +17,6 @@ export function PromoYearlyStep({
 }: {
   view: PromoEndedView;
   org: string;
-  /** The yearly charge and its date, off the org's billing after the switch. */
   next: { totalCents: number; at: string };
   onClose: () => void;
 }) {
@@ -73,7 +71,6 @@ export function PromoYearlyStep({
   );
 }
 
-/** Stayed monthly: what the org pays from the next charge. */
 export function PromoMonthlyStep({
   view,
   org,

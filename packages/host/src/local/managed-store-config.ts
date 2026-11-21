@@ -18,11 +18,6 @@ function optionalPositiveNumber(name: string): number | undefined {
   return value;
 }
 
-/**
- * Both managed-pod caches ride the same gateway and bearer. Agent state uses
- * the read/write agent prefix; shared state uses the read/write org prefix and
- * binds every request to this pod's agent slug.
- */
 export async function managedStoreConfig(
   hostToken: string | undefined,
   houstonHome: string,
@@ -50,21 +45,8 @@ export async function managedStoreConfig(
     bootId,
     fence,
   });
-  // PRODUCT-1783: an evicted pod keeps draining its turn while this
-  // replacement boots, and its final sync is what lands that turn. Claiming
-  // the lease first would fence that sync (409) and lose the turn, so the
-  // claim waits the predecessor's published drain window out. Reads need no
-  // lease; the stamp read's captured token is the predecessor's, never ours.
   await waitForPredecessorDrain({ store, log: severityLog });
   fence.token = undefined;
-  // Claim the write lease for THIS boot before anything hydrates or syncs.
-  // Every legitimate new writer boots (kubelet container restarts and node
-  // reschedules included — neither passes through a control-plane wake), and
-  // a resumed zombie by definition does not re-run boot, so it cannot
-  // re-claim. A 404 is an old/unfenced gateway: proceed exactly as today and
-  // let the response-header capture pick up a token if one ever appears.
-  // Any other failure is fatal — syncing unfenced against a fencing gateway
-  // would 409 the first write anyway; die loudly and let the pod restart.
   try {
     const res = await fetchWithRetry(
       (input, init) =>
@@ -87,11 +69,6 @@ export async function managedStoreConfig(
       if (typeof body.token === "string" && body.token !== "") {
         fence.token = body.token;
       }
-      // The gateway's explicit generation-precondition capability. Known
-      // before the first hydrate, which is what lets an EMPTY prefix send
-      // create-only preconditions instead of last-writer-wins first creates.
-      // Old gateways omit the field: leave undefined and let the sync layers
-      // infer capability from observed generations, exactly as today.
       if (typeof body.generations === "boolean") {
         generations = body.generations;
       }
@@ -122,8 +99,6 @@ export async function managedStoreConfig(
         bootId,
         fence,
       }),
-      // A claim that answered 404 (fencing off) leaves no token: nothing can
-      // fence this boot until one is published, so nothing waits on the check.
       leaseClaimed: () => fence.token !== undefined,
       quietMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_QUIET_MS"),
       intervalMs: optionalPositiveNumber("HOUSTON_STORE_SYNC_INTERVAL_MS"),
@@ -138,8 +113,6 @@ export async function managedStoreConfig(
         agentSlug,
       }),
       mirrorDir: join(houstonHome, "shared-mirror"),
-      // Capability is a property of the deployment's blob backend, so the
-      // agent-prefix signal covers the shared prefix too.
       generations,
     },
   };

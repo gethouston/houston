@@ -25,7 +25,6 @@ export function createHostDaemons(
     transcriptShadow,
   } = base;
   const { channel } = runtime;
-  // The agent (or the user) editing files directly → reactivity, no host write.
   const watcher = new FsWatcher(opts.workspacesRoot, (event) => {
     events.emit(LOCAL_USER, event);
     docProjector?.onEvent(event);
@@ -43,8 +42,6 @@ export function createHostDaemons(
     dedupTtlSec: opts.gatewayFronted ? 86_400 : 3600,
     cronFireGraceMs: opts.externalRoutineFires ? EXTERNAL_FIRE_GRACE_MS : 0,
   });
-  // Managed pods sample their own busy state (the gateway can only see AWAKE
-  // from outside) and report per-day active totals to the compute-usage ingest.
   const usageSampler = opts.usageReporting
     ? new UsageSampler({
         report: opts.usageReporting,
@@ -57,8 +54,6 @@ export function createHostDaemons(
           }
           return out;
         },
-        // The activityStatus busy logic MINUS activeRequests: an open UI tab's
-        // SSE subscription keeps the pod awake but is not the agent working.
         turnBusy: (ctx) => channel.busy(ctx),
         runningRoutineRuns: async (ctx) => {
           const runs = await loadRoutineRuns(

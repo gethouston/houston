@@ -43,7 +43,6 @@ test("ensureAwake is idempotent and wakes a slept sandbox", async () => {
   await sb.ensureAwake(a);
   expect(await sb.status(a.id)).toBe("running");
 
-  // calling ensureAwake again keeps it running
   await sb.ensureAwake(a);
   expect(await sb.status(a.id)).toBe("running");
 });

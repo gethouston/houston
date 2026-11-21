@@ -81,15 +81,11 @@ pub mod win_job {
     /// process in the job. Created non-inheritable so no child keeps it open.
     pub struct KillOnCloseJob(HANDLE);
 
-    // A Win32 job handle is a process-wide kernel handle; supervisors own it
-    // across threads.
     unsafe impl Send for KillOnCloseJob {}
     unsafe impl Sync for KillOnCloseJob {}
 
     impl Drop for KillOnCloseJob {
         fn drop(&mut self) {
-            // Best-effort: closing the last handle is what triggers the kill,
-            // and there is no UI thread to surface a CloseHandle failure to.
             unsafe { CloseHandle(self.0) };
         }
     }
@@ -235,8 +231,6 @@ mod tests {
 
     #[test]
     fn resolver_reports_every_tried_path_when_missing() {
-        // A base that can't exist anywhere → Err listing candidates, never a
-        // panic. `HOUSTON_TEST_MISSING_BIN` is unset so the env arm is skipped.
         let err =
             resolve_bundled_binary("houston-nonexistent-xyz", None, "HOUSTON_TEST_MISSING_BIN")
                 .unwrap_err();
@@ -246,7 +240,6 @@ mod tests {
 
     #[test]
     fn resolver_honors_env_override() {
-        // Point the override at THIS test binary, which certainly exists.
         let me = std::env::current_exe().expect("current exe");
         std::env::set_var("HOUSTON_TEST_GUARD_BIN", &me);
         let hit = resolve_bundled_binary("whatever", None, "HOUSTON_TEST_GUARD_BIN")

@@ -1,7 +1,3 @@
-/**
- * The ScheduleBuilder's preset pills (every 30 minutes, hourly, daily, …).
- * The builder passes only the presets its floor allows.
- */
 import { cn } from "@houston-ai/core";
 import type { SchedulePreset } from "./types";
 

@@ -1,6 +1,3 @@
-// Placement math for the download gate's country / country-code dropdowns.
-// The asset is a browser IIFE that hangs its API off `window`, so it is read
-// and evaluated with a stub window rather than imported.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -18,14 +15,12 @@ const { fit, place, MIN_HEIGHT } = stub.HoustonDropdownPlacement;
 
 const GUTTER = 8;
 const OFFSET = 6;
-const MENU = 353; // what the 200-row menu measures at its CSS ceiling
+const MENU = 353;
 
-/** A toggle rect as getBoundingClientRect() would report it. */
 function anchor(top, { height = 44, left = 30, width = 330 } = {}) {
   return { top, bottom: top + height, left, width };
 }
 
-/** A visual viewport; `top` is its offset inside the layout viewport. */
 function view(width, height, { top = 0, left = 0 } = {}) {
   return { top, left, width, height };
 }
@@ -68,10 +63,6 @@ test("never places the menu outside the visual viewport", () => {
   }
 });
 
-// The regression PRODUCT-1240 was reported for: the software keyboard covers
-// the bottom half of the screen, so the layout viewport still says 844px tall
-// while only the top ~340px is visible. Measuring against the layout viewport
-// put the menu under the keyboard and the country was unreachable.
 test("keeps the menu above a software keyboard", () => {
   const keyboardView = view(390, 336);
   const spot = place(anchor(240), keyboardView, 0, MENU);

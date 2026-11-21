@@ -3,17 +3,6 @@ import { resolveAgentReference } from "./entity-agent-resolution";
 import type { EntityDirectory } from "./entity-directory";
 import { directoryEntries } from "./entity-resolution-directory";
 
-/**
- * ONE VALUE against ONE live list, and the shapes a value arrives in.
- *
- * Split from `entity-resolution.ts` because the same matching now answers three
- * questions: a parameter that names a thing, a parameter that names a LIST of
- * things (`assignments`), and a field one level inside a body object (a
- * manifest's enabled skills). All three end in the same refusal when the value
- * does not exist - carrying every value that does, so the next attempt is a
- * choice rather than a guess.
- */
-
 export type EntityResolutionCode =
   | "invalid_params"
   | "unknown_agent"
@@ -33,11 +22,6 @@ interface Entry {
   email?: string;
 }
 
-/**
- * The live lists one resolution reads, memoized for the CALL. A list-valued
- * parameter would otherwise refetch the same directory once per entry, and two
- * reads that disagree would refuse with values from neither.
- */
 export class DirectoryReader {
   private readonly cache = new Map<string, Promise<readonly Entry[]>>();
 
@@ -60,9 +44,7 @@ export class DirectoryReader {
   }
 }
 
-/** One value, or every entry of a list of them, resolved to real ids. */
 export async function resolveEntityValue(input: {
-  /** How the value is named in a refusal: `agentId`, or `manifest.enabled`. */
   label: string;
   value: unknown;
   collection: AssistantEntityCollection;
@@ -76,10 +58,6 @@ export async function resolveEntityValue(input: {
   }
   const entries: unknown[] = [];
   for (const entry of value) {
-    // An OBJECT entry is not this identifier: it is a record carrying its own
-    // declared fields (`assignments` is either a list of user ids or a list of
-    // {userId, access}), and the nested pass owns it. Resolving it here would
-    // refuse the whole call over a shape the catalog explicitly allows.
     if (isRecord(entry)) {
       entries.push(entry);
       continue;
@@ -126,11 +104,6 @@ async function resolveScalar(
   );
 }
 
-/**
- * One value against one live list: its id, or its exact name (an address for a
- * person or an invite), case-insensitively. Anything else is refused with every
- * value that exists.
- */
 function matchEntity(
   label: string,
   raw: string,

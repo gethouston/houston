@@ -45,7 +45,7 @@ describe("ScopeStore snapshots", () => {
     const off = store.subscribe("agents", cb);
     store.publish("agents", 1);
     off();
-    off(); // idempotent
+    off();
     store.publish("agents", 2);
     expect(cb).toHaveBeenCalledTimes(1);
   });
@@ -78,10 +78,8 @@ describe("ScopeStore re-entrancy", () => {
     );
 
     expect(() => store.publish("agents", 1)).not.toThrow();
-    // Both were in the set snapshot at publish time.
     expect(calls).toEqual(["self", "other"]);
 
-    // On the NEXT publish the self-removed subscriber is gone.
     calls.length = 0;
     store.publish("agents", 2);
     expect(calls).toEqual(["other"]);
@@ -96,8 +94,6 @@ describe("ScopeStore re-entrancy", () => {
       "agents",
       vi.fn(() => offSecond()),
     );
-    // `second` was added after the remover, so it is still in the snapshot; the
-    // guarantee under test is that the removal does not throw mid-iteration.
     expect(() => store.publish("agents", 1)).not.toThrow();
   });
 
@@ -108,7 +104,6 @@ describe("ScopeStore re-entrancy", () => {
       "agents",
       vi.fn(() => store.subscribe("agents", late)),
     );
-    // Adding mid-publish must not throw; the late one is not called this round.
     expect(() => store.publish("agents", 1)).not.toThrow();
     expect(late).not.toHaveBeenCalled();
     store.publish("agents", 2);
@@ -133,13 +128,10 @@ describe("ScopeStore listener isolation", () => {
       });
       store.subscribe("conversation/a", sibling);
 
-      // The publisher (the turn machinery mid-frame) must never see the error.
       expect(() => store.publish("conversation/a", { n: 1 })).not.toThrow();
       expect(store.getSnapshot("conversation/a")).toEqual({ n: 1 });
       expect(sibling).toHaveBeenCalledWith({ n: 1 });
 
-      // …but it is not swallowed: it resurfaces on its own microtask, where
-      // the host's uncaught-error handler reports it.
       expect(deferred).toHaveLength(1);
       expect(() => deferred[0]?.()).toThrow(boom);
     } finally {

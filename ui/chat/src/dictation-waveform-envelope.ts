@@ -1,16 +1,3 @@
-/**
- * The mirrored amplitude envelope — the audio-editor curve at the heart of the
- * dictation waveform. Given a `WaveformLayout`, it traces a smooth Catmull-Rom
- * curve through the level points, mirrors it about the centerline, and fills
- * one solid body (a single shape, no separate outline). Pure layout lives in
- * `dictation-waveform-math.ts`; the orchestration (leader, head, modes) lives in
- * `dictation-waveform-draw.ts`. All color derives from the passed `currentColor`
- * string — only alpha varies, so it themes without hardcoded hex.
- */
-
-// Imported by deep path, on the same rule as `action-labels.ts`: the core barrel
-// is the React component library, and this module stays loadable under
-// `node --test` (the colour maths is the part worth testing).
 import {
   formatColor,
   parseColor,
@@ -22,21 +9,10 @@ import {
   type WaveformLayout,
 } from "./dictation-waveform-math.ts";
 
-const MIN_HALF_PX = 0.75; // silence hairline (half-height)
-const OLDEST_FADE_FRACTION = 0.1; // gentle alpha falloff on the oldest slice
-export const EDGE_ALPHA = 0.9; // solid envelope body (one shape, one alpha)
+const MIN_HALF_PX = 0.75;
+const OLDEST_FADE_FRACTION = 0.1;
+export const EDGE_ALPHA = 0.9;
 
-/**
- * Replace the alpha of a CSS colour, through `@houston-ai/core`'s parser (the
- * repo's one colour maths). `parseColor` throws on a form it does not model
- * (`color-mix()`, a named colour): a canvas fill is not the place to fail a
- * frame, so the input is handed back unchanged and the stroke keeps its own
- * opacity.
- *
- * The one alpha that cannot fall back to the input is zero: a fully transparent
- * gradient stop handed back opaque inverts the fade it exists to draw, so the
- * oldest slice would slam to full colour instead of vanishing off the left edge.
- */
 export function withAlpha(color: string, alpha: number): string {
   try {
     return formatColor({ ...parseColor(color), a: alpha });
@@ -56,7 +32,6 @@ function topPoints(
   }));
 }
 
-/** Trace the closed mirrored-envelope path (top curve L→R, bottom curve R→L). */
 function tracePath(
   ctx: CanvasRenderingContext2D,
   top: readonly Point[],
@@ -86,11 +61,6 @@ function tracePath(
   ctx.closePath();
 }
 
-/**
- * Fill the mirrored envelope for `layout` at `bodyAlpha` — one solid shape.
- * A single point degrades to a small dot; while scrolling, the oldest slice
- * fades so buckets don't pop as they slide off the left edge.
- */
 export function drawEnvelope(
   ctx: CanvasRenderingContext2D,
   layout: WaveformLayout,

@@ -1,19 +1,7 @@
-/*
- * /data-partners/refer — the fold and the pieces every section shares. The
- * /enterprise hero statement (enterprise-hero.css .ent-h1 / .ent-sub) and
- * what a referral earns, over the /data-partners reel (enterprise-hero.css
- * .ent-reel), with the referral form card (refer-form.css) beside it. No new palette: white on black, hairlines, the white pill. The
- * sections live in refer-sections.css, the form in refer-form.css.
- */
-
-/* ── Fold ────────────────────────────────────────────────────────────────── */
 .rf-hero {
   overflow: hidden;
   background: var(--band-black);
 }
-/* The reel runs under the fold, so the statement carries the same feathered
-   dark pool as /enterprise's (.ent-fold .hero-intro::before): it reads over
-   the brightest frame. A gradient, not a blur (PERFORMANCE.md rule 2). */
 .rf-intro {
   position: relative;
   isolation: isolate;
@@ -48,8 +36,6 @@
   padding: 112px var(--gutter) 56px;
   align-content: center;
 }
-/* The form needs room for two fields a row, so it takes the wider column
-   once the fold splits. */
 @media (min-width: 960px) {
   .rf-fold {
     grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
@@ -57,8 +43,6 @@
     gap: clamp(40px, 5vw, 80px);
   }
 }
-/* The statement shares the row with the form, so it runs a step smaller than
-   /enterprise's; it keeps the hero's text shadow for the reel behind it. */
 .rf-h1 {
   font-size: clamp(38px, min(4.2vw, 7.5vh), 64px);
 }
@@ -66,15 +50,11 @@
   width: 15px;
   height: 15px;
 }
-/* The nav and every "Refer a company" land here, below the fixed bar. */
 .rf-hero-form {
   scroll-margin-top: 88px;
 }
 
 
-/* ── What a referral earns ───────────────────────────────────────────────── */
-/* Under the statement, on the reel: the figure large and light, the terms on
-   a hairline below it. */
 .rf-earn {
   margin-top: clamp(28px, 3.4vw, 40px);
   color: #fff;
@@ -84,7 +64,6 @@
   font-weight: 500;
   color: var(--on-ink-muted);
 }
-/* The figure: big, light, tabular, the hero's own voice. */
 .rf-earn-amount {
   margin-top: 8px;
   font-size: clamp(40px, 4.4vw, 60px);
@@ -136,8 +115,6 @@
   color: #fff;
 }
 
-/* ── Shared ──────────────────────────────────────────────────────────────── */
-/* A pill that follows the page's tone: ink on white, white on black. */
 .is-dark .rf-tone-btn {
   background: #fff;
   color: var(--ink-strong);
@@ -145,7 +122,6 @@
 .is-dark .rf-tone-btn:hover {
   background: #ececec;
 }
-/* The section leads keep their dark-band dress while the flow is dark. */
 .section.is-dark .sec-lead {
   color: var(--on-ink-muted);
 }

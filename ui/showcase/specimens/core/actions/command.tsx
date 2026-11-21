@@ -38,7 +38,6 @@ const AGENTS = [
   { name: "Weekly Report", icon: BarChart3 },
 ];
 
-/** The list every example on this page shares. */
 function PaletteBody({ query }: { query: string }) {
   return (
     <CommandList>
@@ -72,7 +71,6 @@ function PaletteBody({ query }: { query: string }) {
   );
 }
 
-/** Live: type in it. The frame is the page's, since Command paints no border. */
 function Palette({ initial = "" }: { initial?: string }) {
   const [query, setQuery] = useState(initial);
   return (
@@ -87,7 +85,6 @@ function Palette({ initial = "" }: { initial?: string }) {
   );
 }
 
-/** The ⌘K form: the same list, in a dialog. */
 function PaletteDialog() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -170,11 +167,6 @@ function CommandSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = [
   "Command",
   "CommandDialog",

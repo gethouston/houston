@@ -4,14 +4,6 @@ import type { FeedOutput } from "./feed-output";
 import { reloadAndSettle } from "./settle-from-history";
 import { newTurnState, type TurnState } from "./turn-settle";
 
-/**
- * A turn whose live frames were lost settles from its persisted reply. The
- * reply also records the tools the turn ran, and those rows must reach the
- * feed with it: the onboarding goal card reads a started mission from the
- * `start_mission` result, so a settle that dropped them showed "I couldn't
- * get this started" for a goal that had started.
- */
-
 type Item = {
   feed_type?: string;
   data?: unknown;
@@ -86,7 +78,6 @@ test("a turn settled from history keeps the tools it ran, a started mission incl
 
 test("tools the live frames already pushed are never pushed twice", async () => {
   const { s, items } = state();
-  // The first tool's call streamed live; its result and the second tool did not.
   s.toolsSeen = 1;
   await settle(
     s,

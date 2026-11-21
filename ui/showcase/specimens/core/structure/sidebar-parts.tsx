@@ -29,18 +29,12 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-/**
- * Every sidebar part reads `useSidebar()`, so each example needs a provider.
- * The provider's own frame is a full-viewport flex column; here it is clamped
- * to the row it sits in (`min-h-0 w-auto`) so a specimen row stays a row.
- */
 export function SidebarScope({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider className="min-h-0 w-auto">{children}</SidebarProvider>
   );
 }
 
-/** A sidebar-coloured plate to show loose menu parts on, at the real width. */
 export function SidebarPlate({ children }: { children: ReactNode }) {
   return (
     <SidebarScope>
@@ -57,11 +51,6 @@ const agents = [
   { name: "Weekly Report", icon: Bot, badge: "2" },
 ];
 
-/**
- * The whole composition, in a bounded frame. `collapsible="none"` is the one
- * mode that lays out in flow — the other two pin the sidebar to the viewport
- * with `position: fixed` and `h-dvh`, which only works in a real app shell.
- */
 export function ComposedSidebar() {
   return (
     <SidebarScope>

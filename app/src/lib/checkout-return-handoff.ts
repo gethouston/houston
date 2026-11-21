@@ -6,9 +6,7 @@ import {
   webReturnPath,
 } from "./checkout-return.ts";
 
-/** How long the return page waits for the web tab that opened checkout. */
 export const TAKEN_WAIT_MS = 600;
-/** How long a refused `window.close()` gets before the tab moves on. */
 export const CLOSE_GRACE_MS = 300;
 
 export interface ReturnChannel {
@@ -17,13 +15,11 @@ export interface ReturnChannel {
 }
 
 export interface ReturnPagePorts {
-  /** Null where the browser has no BroadcastChannel. */
   channel: ReturnChannel | null;
   close(): void;
   navigate(path: string): void;
   openDeepLink(link: string): void;
   wait(ms: number): Promise<void>;
-  /** Say where the person went, before this tab closes or moves. */
   show(where: "web" | "desktop"): void;
 }
 
@@ -47,13 +43,6 @@ function askWebTab(
   });
 }
 
-/**
- * Hand the person back, once per page load. The web tab that opened checkout
- * takes it and this tab closes (or, where the browser refuses to close it,
- * opens that org's Billing itself). With no such tab the person came from the
- * desktop app, which is tried with ONE deep link: a browser asks before it
- * opens an app, and repeating the attempt only repeats the prompt.
- */
 export async function handOffCheckoutReturn(
   r: OrgCheckoutReturn,
   ports: ReturnPagePorts,

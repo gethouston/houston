@@ -14,7 +14,6 @@ import {
 
 const BASE = "http://127.0.0.1:4317";
 
-// ── a controllable /v1/events SSE source ────────────────────────────────────
 interface Sse {
   response: Response;
   push(obj: unknown): void;
@@ -35,18 +34,15 @@ function makeSse(): Sse {
     close: () => controller.close(),
   };
 }
-/** An SSE response whose body ends immediately (drives a reconnect). */
 function closedSse(): Response {
   const sse = makeSse();
   sse.close();
   return sse.response;
 }
-/** An events fetch that never resolves — the stream stays "connecting". */
 function neverConnects(): Promise<Response> {
   return new Promise<Response>(() => {});
 }
 
-// ── a fake clock whose timers fire only when flushed ────────────────────────
 function makeClock() {
   let seq = 1;
   const timers = new Map<number, () => void>();
@@ -78,7 +74,6 @@ interface Harness {
     agents: WireAgent[];
     listCalls: number;
     posted: unknown[];
-    /** Every non-GET `/agents` call (POST/PATCH/DELETE): method + path + body. */
     mutations: { method: string; path: string; body?: unknown }[];
     eventsResponder: () => Response | Promise<Response>;
   };
@@ -89,8 +84,6 @@ function makeHarness(
     agents?: WireAgent[];
     agentsStatus?: number;
     eventsResponder?: () => Response | Promise<Response>;
-    /** `false` opens NO `/v1/events` stream (write-only host), so no background
-     *  refetch can confound a "does not refetch" assertion. Default: on. */
     reactivity?: boolean;
   } = {},
 ): Harness {
@@ -158,9 +151,6 @@ function makeHarness(
 
   const store = new Map<string, string>();
   const storage = memoryKv(store);
-  // Model a real host: `ports.fetch` IS the auth-fetch (token stamping + 401
-  // reporting with token identity) — a bare fetch would make every 401 look
-  // tokenless and be suppressed by the notifier.
   const ports: SdkPorts = {
     fetch: createAuthFetch(fetchImpl as unknown as typeof fetch, storage),
     storage,
@@ -213,10 +203,8 @@ describe("agents module — list", () => {
   });
 
   it("seeds a {loaded:false} snapshot asynchronously, not at construction", async () => {
-    // Stream never connects, so its onConnect refetch cannot pre-empt the seed.
     const h = makeHarness({ eventsResponder: neverConnects });
     disposeCurrent = h.sdk.agents.dispose;
-    // Synchronous: nothing published yet (kernel contract).
     expect(snapshot(h.sdk)).toBeUndefined();
     await vi.waitFor(() =>
       expect(snapshot(h.sdk)).toEqual({ loaded: false, items: [] }),
@@ -277,15 +265,12 @@ describe("agents module — mutations refetch", () => {
 
 describe("agents module — reactivity", () => {
   it("refetches on (re)connect after the stream drops and the backoff fires", async () => {
-    // Every /v1/events connection ends immediately, driving a reconnect.
     const h = makeHarness({ agents: [A("a1", "Ada")] });
     disposeCurrent = h.sdk.agents.dispose;
-    // First connect → onConnect refetch (#1).
     await vi.waitFor(() => expect(h.state.listCalls).toBe(1));
-    // The loop is now parked in the backoff sleep (a pending timer).
     await vi.waitFor(() => expect(h.clock.pending()).toBeGreaterThan(0));
-    expect(h.state.listCalls).toBe(1); // gated on the backoff, no early refetch
-    h.clock.flush(); // fire the backoff → reconnect
+    expect(h.state.listCalls).toBe(1);
+    h.clock.flush();
     await vi.waitFor(() => expect(h.state.listCalls).toBe(2));
   });
 
@@ -302,7 +287,6 @@ describe("agents module — reactivity", () => {
     await vi.waitFor(() =>
       expect(snapshot(h.sdk)?.items.map((i) => i.id)).toEqual(["a1"]),
     );
-    // A new agent appears server-side; the AgentsChanged frame must pull it in.
     h.state.agents = [A("a1", "Ada"), A("a2", "Boole")];
     sse.push({ type: "AgentsChanged", workspaceId: "w1" });
     await vi.waitFor(() =>
@@ -323,8 +307,6 @@ describe("agents module — reactivity", () => {
     await vi.waitFor(() =>
       expect(snapshot(h.sdk)?.items[0]?.role).toBe("Bookkeeper"),
     );
-    // The employee rewrote its own job description; the host names the new
-    // role on the listing and announces it with this frame.
     h.state.agents = [{ ...A("a1", "Ada"), role: "Controller" }];
     sse.push({ type: "AgentRoleChanged", agentPath: "a1" });
     await vi.waitFor(() =>
@@ -346,14 +328,11 @@ describe("agents module — reactivity", () => {
     sse.push({ type: "ActivityChanged", agentPath: "a1" });
     sse.push({ type: "AgentsChanged", workspaceId: "w1" });
     await vi.waitFor(() => expect(h.state.listCalls).toBe(2));
-    // The ActivityChanged frame did not add its own refetch.
     expect(h.state.listCalls).toBe(2);
   });
 });
 
 describe("agents module — no-refetch writes", () => {
-  // reactivity:false → no /v1/events stream, so `listCalls` (GET /agents) counts
-  // ONLY a facade refresh(). A write variant must leave it at 0.
   it("writes.create posts the full body, returns the agent, and does NOT refetch", async () => {
     const h = makeHarness({ agents: [], reactivity: false });
     disposeCurrent = h.sdk.agents.dispose;
@@ -370,9 +349,7 @@ describe("agents module — no-refetch writes", () => {
       },
     ]);
     expect(created).toMatchObject({ id: "id-1", name: "Newton" });
-    expect(h.state.listCalls).toBe(0); // no refresh() GET
-    // The write publishes NOTHING itself: any snapshot is only the module's
-    // async loading seed, never the created agent.
+    expect(h.state.listCalls).toBe(0);
     expect(snapshot(h.sdk)?.items ?? []).toEqual([]);
   });
 
@@ -407,18 +384,13 @@ describe("agents module — no-refetch writes", () => {
 
 describe("agents module — 401 → session tokenExpired", () => {
   it("emits a tokenExpired event and rejects the refresh on 401", async () => {
-    // Both /agents and /v1/events answer 401 → the stream connect never refetches.
     const h = makeHarness({
       agentsStatus: 401,
       eventsResponder: () => new Response("nope", { status: 401 }),
     });
     disposeCurrent = h.sdk.agents.dispose;
-    // A CURRENT token must be attached for a 401 to mean "expired" — the
-    // notifier suppresses tokenless and stale-token 401s by design.
     await h.sdk.session.setToken("tok-1");
     await expect(h.sdk.agents.refresh()).rejects.toMatchObject({ status: 401 });
-    // The shared notifier emits one canonical `session/tokenExpired` (no scope),
-    // deduped per token value across every module.
     expect(h.events.some((e) => e.type === TOKEN_EXPIRED_EVENT)).toBe(true);
   });
 

@@ -14,50 +14,11 @@ import {
   sdkProjectSlug,
 } from "./transcript-files";
 
-// NOTE on isolation: `sessions.json` (the conversationId → session_id map) lives
-// per-agent under `dataDir`, but the transcript `projects` tree is SHARED (it
-// sits under `CLAUDE_CONFIG_DIR` = `claudeLoginConfigDir()`, where the SDK
-// actually writes). Each agent's transcripts land in their own cwd-slug subdir
-// and every session_id is globally unique, so the per-conversation lookups below
-// (keyed by session_id filename) never cross agents.
-
-/**
- * The conversationId → Claude Agent SDK `session_id` map, persisted so a fresh
- * runtime process (a desktop restart, a cloud sandbox woken from sleep) resumes
- * each conversation's SDK session instead of silently starting over. Stored at
- * `<dataDir>/backends/claude/sessions.json`, written atomically with mode 0600
- * (same discipline as `auth/auth-file.ts`) since it sits beside credential data.
- *
- * The SDK writes each session's transcript JSONL under the SHARED config dir
- * (`<claudeLoginConfigDir>/projects/<cwd-slug>/<session_id>.jsonl`), and its
- * `resume` looks the id up ONLY under the CURRENT cwd's slug. So
- * `resolveResume` locates the transcript by its known filename and, when it
- * sits under another slug dir (the agent was renamed, which moved the
- * workspace cwd — HOU-892), RELOCATES it into the current cwd's slug dir so
- * the SDK resumes the conversation with its context intact. A transcript
- * that is gone entirely (config dir wiped), or that cannot be relocated,
- * drops the dangling mapping so we neither resume into nothing nor warn on
- * every subsequent turn — the session then starts fresh.
- */
 export interface SessionsStore {
-  /** The stored SDK session id for a conversation, if any. */
   getSessionId(conversationId: string): string | undefined;
-  /** Persist the SDK session id captured from a turn's system/init. */
   setSessionId(conversationId: string, sessionId: string): void;
-  /** Forget a conversation's mapping (leaves the transcript on disk). */
   remove(conversationId: string): void;
-  /**
-   * Fully drop a conversation's SDK state on delete: its mapping AND its
-   * transcript JSONL under the config dir's projects tree. Idempotent, and a
-   * no-op for a conversation that never ran on this backend (no mapping). Called
-   * from `disposeConversation` so a deleted anthropic chat leaves nothing behind.
-   */
   purge(conversationId: string): void;
-  /**
-   * The session to resume, or undefined when none / its transcript is gone.
-   * Clears the transcript's stale tool results on the way, and says how many
-   * tokens that took off the next request (0 once already cleared).
-   */
   resolveResume(conversationId: string): ClaudeResume | undefined;
 }
 
@@ -66,11 +27,6 @@ export interface ClaudeResume {
   clearedTokens: number;
 }
 
-/**
- * @param cwd The agent's working directory (the SDK session cwd). When given,
- * `resolveResume` can relocate a transcript stranded under a stale cwd slug;
- * without it (e.g. the purge-only cleanup path) relocation is skipped.
- */
 export function createSessionsStore(input: {
   configDir: string;
   sessionsFile: string;
@@ -97,7 +53,7 @@ export function createSessionsStore(input: {
   function write(map: Record<string, string>): void {
     mkdirSync(baseDir, { recursive: true });
     const tmp = atomicTempPath(filePath);
-    writeFileSync(tmp, JSON.stringify(map), { mode: 0o600 }); // atomic write
+    writeFileSync(tmp, JSON.stringify(map), { mode: 0o600 });
     renameSync(tmp, filePath);
   }
 
@@ -137,10 +93,6 @@ export function createSessionsStore(input: {
         remove(conversationId);
         return undefined;
       }
-      // The SDK resolves `resume` only under the CURRENT cwd's slug dir. A
-      // transcript that sits anywhere else (the agent was renamed → new cwd →
-      // new slug) is moved home so the conversation continues with its
-      // context, instead of the SDK rejecting the id.
       if (currentSlugDir && dirname(located) !== currentSlugDir) {
         try {
           mkdirSync(currentSlugDir, { recursive: true });
@@ -157,8 +109,6 @@ export function createSessionsStore(input: {
           return undefined;
         }
       }
-      // The resume re-sends this transcript, so its stale tool results are
-      // cleared first (./transcript-clearing.ts). Failing leaves it whole.
       let clearedTokens = 0;
       if (cwd) {
         try {

@@ -7,22 +7,6 @@ import { wakingStuckTracker } from "@houston/engine-adapter/waking-stuck-tracker
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { installLocalStorage, json } from "./support/wire-capture";
 
-/**
- * Every delegated SDK call wears `cpFetch`'s two observable behaviors, because
- * every one of them goes through `viaSdk` (`client/sdk-error.ts`).
- *
- * Both are invisible in the happy path and both were regressions the moment a
- * mixin called `this.ctx.sdk.*` directly:
- *
- *  - the SDK's own errors (`AgentsHttpError`, `EngineError`) are not
- *    `HoustonEngineError`, so `isSignedOutEngineError` read false and the app's
- *    error-toast layer red-toasted a plain sign-out and filed it to Sentry
- *    (`app/src/lib/error-toast.ts`);
- *  - a per-agent success no longer ended that agent's stuck-wake episode
- *    (PRODUCT-1640), so an agent that had been answering "waking" kept its
- *    episode open across calls the pod had plainly answered.
- */
-
 const BASE = "http://host";
 const AGENT = "a1";
 
@@ -39,7 +23,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** Answer every request with `make()`, recording the path asked for. */
 function stubFetch(make: () => Response) {
   globalThis.fetch = vi.fn(async (input: unknown) => {
     calls.push(new URL(String(input)).pathname);
@@ -50,8 +33,6 @@ function stubFetch(make: () => Response) {
 const client = () =>
   new HoustonClient({ baseUrl: BASE, token: "t", controlPlane: true });
 
-/** Every control-plane write the mixins hand to the SDK, with the path each
- *  one issues — the identity `viaSdk` translates the failure against. */
 const DELEGATED: readonly {
   name: string;
   path: string;
@@ -124,9 +105,6 @@ test.each(DELEGATED)("$name surfaces a sign-out the app can recognise", async ({
   expect(calls).toContain(path);
 });
 
-// `provider-agent-gone.ts` keys on the agent id the failure carries; the SDK's
-// errors know nothing but a status, so the path is the only place it can come
-// from.
 test.each(
   DELEGATED.filter((d) => d.path.startsWith("/agents/")),
 )("$name names the agent its failure belongs to", async ({ call }) => {

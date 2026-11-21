@@ -25,11 +25,6 @@ const card: Answer = () =>
     headers: { "content-type": "application/json" },
   });
 
-/**
- * A write-only SDK whose `fetch` plays `answers` in order (the last repeats)
- * and whose clock fires every timer at once, recording the pause it asked for,
- * so a ladder runs without waiting.
- */
 function makeSdk(answers: Answer[]) {
   const pauses: number[] = [];
   let attempts = 0;
@@ -89,8 +84,6 @@ describe("board-card writes retry a busy or waking refusal", () => {
     await expect(
       sdk.activities.writes.update(AGENT, "m1", { title: "x" }),
     ).rejects.toMatchObject({ status: 503 });
-    // 8 s + 8 s fit the 20 s budget, a third would not; the board's own
-    // busy retry does not run the ladder again on top.
     expect(pauses).toEqual([8_000, 8_000]);
     expect(attempts()).toBe(3);
     sdk.dispose();
@@ -200,7 +193,6 @@ describe("board-card writes retry a busy or waking refusal", () => {
     await expect(
       sdk.activities.writes.update(AGENT, "m1", { title: "x" }),
     ).rejects.toMatchObject({ name: "ActivitiesHttpError", status: 503 });
-    // 2 s pauses fill the 20 s budget exactly: ten pauses, eleven attempts.
     expect(pauses).toEqual(Array(10).fill(2_000));
     expect(pauses.reduce((a, b) => a + b, 0)).toBe(WRITE_RETRY_BUDGET_MS);
     expect(attempts()).toBe(11);

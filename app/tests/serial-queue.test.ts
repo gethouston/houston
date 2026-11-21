@@ -2,7 +2,6 @@ import { deepStrictEqual, rejects, strictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
 import { serialQueue } from "../src/lib/serial-queue.ts";
 
-/** A write that finishes only when the test says so. */
 function gate() {
   let open = () => {};
   const done = new Promise<void>((resolve) => {

@@ -4,34 +4,6 @@ import { Value } from "typebox/value";
 import { currentTurnFinish, recordSuggestActions } from "../interaction";
 import { unreadReplyInstruction } from "./unread-reply";
 
-/**
- * The follow-up-actions tool, available in execute AND auto after a mission
- * has finished. It records optional concrete next steps for the clean terminal
- * frame, which Houston renders as dismissible bubbles above the composer.
- *
- * The call ENDS the turn when the model has already written its closing
- * message: the reply and the bubbles then come from ONE model pass. Before
- * this, the result told the model "finish your final message normally", so
- * every clean turn paid a second model round-trip (a full context re-prefill)
- * whose only output was a filler closing line — the "Suggesting next steps"
- * spinner that hung under an already-complete reply, often followed by a
- * second message. pi honors the result's `terminate` hint directly (every
- * result in the batch must carry it — `suggest_reusable` does the same, so
- * the two offers may share the final message); the Claude backend mirrors it
- * with a PostToolBatch hook that reads the turn's ended mark
- * (backends/claude/turn-end-hook.ts).
- *
- * The guard: a model that calls this BEFORE writing anything visible in the
- * message carrying the call (its reply would be bubbles alone) gets the
- * non-ending result and is told to write its closing message, so a turn never
- * ends on bubbles without a reply.
- *
- * The call is mandatory on every turn that ends WITHOUT a blocking ask (the
- * product prompt requires it), yet the offer itself never blocks the user — it
- * rides the same terminal `done` frame as the blocking steps, but renders above
- * the composer instead of replacing it. It has no effect on the board status
- * (every settled turn lands `needs_you`; only the user moves a card to done).
- */
 const SuggestActionsParams = Type.Object({
   actions: Type.Array(
     Type.Object({
@@ -52,7 +24,6 @@ const SuggestActionsParams = Type.Object({
 type SuggestActionsParams = Static<typeof SuggestActionsParams>;
 type SuggestedAction = SuggestActionsParams["actions"][number];
 
-/** Why `actions` cannot become bubbles, or null when they can. */
 export function suggestActionsProblem(
   actions: readonly SuggestedAction[],
 ): string | null {
@@ -70,32 +41,18 @@ export function suggestActionsProblem(
   return null;
 }
 
-/**
- * Raw actions from a tool-free recovery response, checked against the same
- * schema and rules as an in-band call.
- */
 export function parseSuggestedActions(args: unknown): SuggestedAction[] | null {
   if (!Value.Check(SuggestActionsParams, args)) return null;
   return suggestActionsProblem(args.actions) ? null : args.actions;
 }
 
-/** The result when the closing message is already written: the turn ends here. */
 const ENDED_INSTRUCTION =
   "Your follow-up actions were recorded. The app shows them as clickable bubbles above the composer, under the message you already wrote. This ended your turn.";
 
-/**
- * The result when the model called the tool before writing anything visible.
- * A model can prepare the deliverable (a draft email, an answer) only in its
- * reasoning and go straight to this call, believing the user read it; asked
- * for a "short closing message" it answered "The draft is above", pointing at
- * nothing visible. A deliverable already written earlier in the turn (a
- * previous message) is visible and must not be pasted again.
- */
 function needsMessageInstruction(visibleText: string): string {
   return `Your follow-up actions were recorded. The app will show them as clickable bubbles above the composer. You called this before writing anything the user can read in this message, so this did NOT end your turn. Write your closing message now, then end. ${unreadReplyInstruction(visibleText)} Do not repeat the actions in plain text or ask a closing question.`;
 }
 
-/** Optional, concrete next steps for a mission that has already completed. */
 export function makeSuggestActionsTool() {
   return defineTool({
     name: "suggest_actions",
@@ -125,9 +82,6 @@ export function makeSuggestActionsTool() {
       return {
         content: [{ type: "text" as const, text: ENDED_INSTRUCTION }],
         details: { actions },
-        // pi's early-termination hint: the loop stops after this tool batch
-        // instead of calling the model again. Every result in the batch must
-        // set it; a sibling that does not simply costs one more round-trip.
         terminate: true,
       };
     },

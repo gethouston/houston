@@ -16,22 +16,8 @@ import { sweepAgentLegacySetup } from "./legacy-setup-directive";
 import { backfillAgentRoutineCreatedBy } from "./routine-created-by";
 import { migrateSidebarLayout } from "./sidebar-layout";
 
-/**
- * The host's boot migrations (local/host-migrations.ts) for ONE agent's
- * hydrated store tree: what a managed pod's boot did to the agent it served,
- * run by a pool worker's `migrate` op where no pod boots any more.
- *
- * Bump AGENT_STORE_MIGRATION_VERSION whenever a migration is added here or
- * changes what it writes: the gateway records the version each agent's store
- * reached and runs the op again for every agent behind it. Cloud mirrors the
- * number as pooldispatch.StoreMigrationVersion. A step that reads a new
- * path also adds it to AGENT_STORE_MIGRATION_PATHS, or a pool worker never
- * hydrates it.
- */
 export const AGENT_STORE_MIGRATION_VERSION = 1;
 
-/** The `../migrate/*` modules this runner covers (agent-store.test.ts holds
- *  host-migrations.ts to it, so a new boot migration cannot skip the op). */
 export const AGENT_STORE_MIGRATIONS = [
   "agent-layout",
   "agent-schemas",
@@ -41,19 +27,11 @@ export const AGENT_STORE_MIGRATIONS = [
   "sidebar-layout",
 ] as const;
 
-/** Boot migrations that never apply to a managed agent's store, and why. */
 export const HOST_ONLY_MIGRATIONS: Record<string, string> = {
   "chat-history":
     "imports the Rust-era desktop SQLite db, which no managed store holds",
 };
 
-/**
- * Every path in the agent's folder (agent-relative, `/`-joined) the steps
- * read or write; beyond it they read only the workspace preferences and the
- * folder listing. The pool's migrate op hydrates only these
- * (runtime op-migrate-tree.ts), so a store full of user files, chats or
- * backup tarballs migrates for the cost of a few small documents.
- */
 export const AGENT_STORE_MIGRATION_PATHS: ReadonlySet<string> = new Set([
   "CLAUDE.md",
   "GROUP.md",
@@ -67,30 +45,15 @@ export const AGENT_STORE_MIGRATION_PATHS: ReadonlySet<string> = new Set([
 ]);
 
 export interface AgentStoreMigrationReport {
-  /** Flat pre-v0.4 files copied into their family folders. */
   layoutFiles: number;
-  /** Family schemas rewritten to this build's. */
   schemaFiles: number;
-  /** CLAUDE.md files that lost the retired onboarding section. */
   setupSections: number;
-  /** Routines that gained the org owner as their creator. */
   routinesStamped: number;
 }
 
-/**
- * Migrate one agent, in the order a pod's boot runs the same steps. The
- * per-agent steps throw on any failure (the caller must not record the
- * version), except a routines doc that is not JSON: the boot leaves that one
- * to the read path's diagnostics, and so does this. The workspace-level steps
- * (sidebar layout, gateway GROUP.md notes) keep their boot posture: logged,
- * retried by their own markers.
- */
 export async function migrateAgentStore(opts: {
-  /** The hydrated `workspaces/` directory. */
   workspacesRoot: string;
-  /** The agent's directory under it. */
   agentRoot: string;
-  /** The org owner's user id, stamped on routines that name no creator. */
   ownerSub?: string;
   log: (message: string, error?: unknown) => void;
 }): Promise<AgentStoreMigrationReport> {
@@ -124,11 +87,6 @@ export async function migrateAgentStore(opts: {
   return report;
 }
 
-/**
- * The local store with every other folder of the workspace hidden: a stray
- * folder beside the agent (no agent, just files) is not this migration's to
- * touch, and its writes would fall outside what the migrate op may sync.
- */
 class OneAgentStore extends LocalWorkspaceStore {
   constructor(
     root: string,

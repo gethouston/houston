@@ -1,11 +1,5 @@
 import type { ClaudeInstallError } from "./types";
 
-/**
- * Events emitted from the Rust backend via houston-tauri.
- *
- * Mirrors the Rust `HoustonEvent` enum in `houston-tauri/src/events.rs`.
- * Apps can extend this with app-specific event types.
- */
 export type HoustonEvent =
   | {
       type: "FeedItem";
@@ -22,11 +16,8 @@ export type HoustonEvent =
         session_key: string;
         status: string;
         error: string | null;
-        /** Why an `error` status happened (SDK `TurnErrorClass`); additive. */
         error_class?: string;
-        /** `sent` by this client or `observed` (SDK `SessionStatusOrigin`); additive. */
         origin?: string;
-        /** Reply ceiling reached; distinct notification copy. */
         stop_reason?: "turn_time_limit" | "turn_time_limit_unsaved";
       };
     }
@@ -72,10 +63,8 @@ export type HoustonEvent =
       type: "EventProcessed";
       data: { event_id: string; status: string };
     }
-  // The AI Manager's morning briefing started (a ping) / its settings changed.
   | { type: "HeartbeatDelivered"; data: { agent_path: string } }
   | { type: "HeartbeatChanged"; data: { workspace_id: string } }
-  // An account preference changed (the person, or the AI Manager for them).
   | { type: "PreferencesChanged"; data: { workspace_id: string } }
   | {
       type: "HeartbeatFired";
@@ -163,18 +152,6 @@ export type HoustonEvent =
     }
   | {
       type: "ProviderLoginUrl";
-      // `user_code` is null for the paste-back flow (Claude): the UI shows a
-      // paste-code input. For codex's device-grant flow it carries the
-      // one-time code the user enters on the provider's verification page
-      // (no paste-back). The relay may emit twice for one device sign-in:
-      // first URL-only, then again with the code.
-      //
-      // `auth_code` is true for the setup-token paste flow (Claude/Anthropic):
-      // `url` is only a docs reference, NOT a page to auto-open, and the user
-      // finishes by pasting a token. The UI MUST show the paste dialog (never
-      // auto-open the URL) — see `shouldOpenLoginUrlDirectly`. `instructions`
-      // carries the runtime's step-by-step copy to render above the paste
-      // field (absent for the loopback `url` and device-code flows).
       data: {
         provider: string;
         url: string;
@@ -187,12 +164,5 @@ export type HoustonEvent =
       type: "ProviderLoginComplete";
       data: { provider: string; success: boolean; error: string | null };
     }
-  // HOU-550: a custom (API / MCP) integration was added, credentialed, or
-  // removed. Carries no payload — the whole user-level list is refetched.
   | { type: "CustomIntegrationsChanged" }
-  // HOU-981: the global reactivity stream RE-connected after a drop. Not a
-  // domain change — a transport fact. Everything that happened while the
-  // stream was down was never delivered (the feed has no replay cursor), so
-  // the consumer catches up by re-reading. Emitted only on a re-connect, never
-  // on the first one: the initial read is already happening.
   | { type: "EventStreamReconnected" };

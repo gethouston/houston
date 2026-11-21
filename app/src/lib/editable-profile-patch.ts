@@ -3,14 +3,6 @@ import type {
   EditableProfileUpdate,
 } from "@houston/engine-adapter";
 
-/**
- * The profile as it will read once `update` saves, painted before the host
- * answers. A string sets the field as the user's own; `null` clears the
- * override back to the identity provider's value, which only the host knows,
- * so the field empties until its answer lands (the screen falls back to the
- * session's name, and to initials for a picture). An omitted key is untouched.
- * Idempotent, and a profile never read stays unread.
- */
 export function patchEditableProfile(
   profile: EditableProfile | null | undefined,
   update: EditableProfileUpdate,

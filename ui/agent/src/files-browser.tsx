@@ -1,5 +1,3 @@
-/** List-only file tree for one filesystem boundary. */
-
 import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import { BgContextMenu } from "./bg-context-menu";
@@ -33,7 +31,6 @@ export interface FilesBrowserProps {
   footer?: ReactNode;
   expanded?: boolean;
   createFolderRequest?: number;
-  /** The team frame already owns the shared horizontal gutter. */
   inFrame?: boolean;
   locale?: string;
   loadPreview?: LoadFilePreview;

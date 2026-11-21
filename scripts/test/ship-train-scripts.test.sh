@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# Drives the Ship train helpers (scripts/ci/stamp-train-label.sh and
-# scripts/ci/write-train-json.sh) against throwaway git repos. Runs anywhere
-# bash, git and jq exist; nothing touches the real repo or GitHub.
-#
-# The case that matters most: a remote that REFUSES the label push (GitHub does
-# this when GITHUB_TOKEN lacks `workflows` permission and the labelled commit's
-# workflow files differ from main's). The stamp must warn and exit 0, never
-# turn a shipped train red.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -18,19 +10,17 @@ trap 'rm -rf "$TMP"' EXIT
 pass=0 fail=0
 ok()  { printf '  ok   %s\n' "$1"; pass=$((pass + 1)); }
 bad() { printf '  FAIL %s\n' "$1"; fail=$((fail + 1)); }
-assert_str() { # <label> <actual> <expected>
+assert_str() {
   if [ "$2" = "$3" ]; then ok "$1"; else bad "$1 (got '$2', want '$3')"; fi
 }
-assert_contains() { # <label> <haystack> <needle>
+assert_contains() {
   case "$2" in *"$3"*) ok "$1" ;; *) bad "$1 (no '$3' in: $2)" ;; esac
 }
-output_value() { # <output file> <key>
+output_value() {
   grep "^$2=" "$1" | tail -n 1 | cut -d= -f2-
 }
 
-# A bare remote plus a clone with two commits; the label target is the OLDER
-# one, the shape of every agentstore label (image commit behind main).
-make_repo() { # <name>
+make_repo() {
   local bare="$TMP/$1.git" work="$TMP/$1"
   git init -q --bare "$bare"
   git init -q "$work"
@@ -42,13 +32,12 @@ make_repo() { # <name>
   git -C "$work" push -q origin HEAD:refs/heads/main
 }
 
-run_stamp() { # <work dir> <output file> <label> <sha>
+run_stamp() {
   ( cd "$1" && GITHUB_OUTPUT="$2" bash "$STAMP" "$3" "$4" "train 9.9.9 label" ) 2>&1
 }
 
 echo "== stamp-train-label.sh =="
 
-# --- fresh label: pushed ---------------------------------------------------
 make_repo fresh
 OLD=$(git -C "$TMP/fresh" rev-parse HEAD~1)
 : > "$TMP/fresh.out"
@@ -62,7 +51,6 @@ assert_str "fresh label points at the image commit on the remote" \
   "$(git -C "$TMP/fresh.git" rev-parse 'refs/tags/label/agentstore-v9.9.9^{commit}')" "$OLD"
 assert_contains "fresh label notice" "$LOG" "::notice::Stamped label/agentstore-v9.9.9"
 
-# --- re-publish: same sha is a no-op ---------------------------------------
 : > "$TMP/fresh-again.out"
 if LOG=$(run_stamp "$TMP/fresh" "$TMP/fresh-again.out" label/agentstore-v9.9.9 "$OLD"); then
   ok "re-publish exits 0"
@@ -71,7 +59,6 @@ else
 fi
 assert_str "re-publish stamped=unchanged" "$(output_value "$TMP/fresh-again.out" stamped)" unchanged
 
-# --- label exists elsewhere: warn, leave it, exit 0 ------------------------
 NEW=$(git -C "$TMP/fresh" rev-parse HEAD)
 : > "$TMP/moved.out"
 if LOG=$(run_stamp "$TMP/fresh" "$TMP/moved.out" label/agentstore-v9.9.9 "$NEW"); then
@@ -85,7 +72,6 @@ assert_contains "moved label names both commits" "$(output_value "$TMP/moved.out
 assert_str "moved label left untouched on the remote" \
   "$(git -C "$TMP/fresh.git" rev-parse 'refs/tags/label/agentstore-v9.9.9^{commit}')" "$OLD"
 
-# --- push refused by the remote (the H-021 shape) --------------------------
 make_repo refused
 cat > "$TMP/refused.git/hooks/pre-receive" <<'EOF'
 #!/usr/bin/env bash
@@ -122,7 +108,6 @@ else
   ok "refused push removed the local tag"
 fi
 
-# --- usage error is the only non-zero exit --------------------------------
 if bash "$STAMP" only-one-arg >/dev/null 2>&1; then
   bad "usage error accepted"
 else
@@ -159,8 +144,6 @@ assert_str "agentstore label reason" "$(jq -r .agentstore.label.reason "$TMP/tra
 assert_str "recorded_at is UTC ISO-8601" \
   "$(jq -r .recorded_at "$TMP/train.json" | grep -cE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$')" 1
 
-# A resolved image whose dispatch step failed or never ran (job outputs
-# survive a failed job) must read dispatched=false, never as promoted.
 AGENTSTORE_DISPATCHED='' AGENTSTORE_LABEL_STAMPED='' AGENTSTORE_LABEL_REASON='' \
   bash "$WRITE" "$TMP/train-undispatched.json"
 assert_str "undispatched half keeps its resolved image" \
@@ -170,11 +153,9 @@ assert_str "undispatched half reads dispatched=false" \
 assert_str "a non-true dispatched value is false" \
   "$(AGENTSTORE_DISPATCHED=yes bash "$WRITE" "$TMP/train-yes.json" && jq -r .agentstore.dispatched "$TMP/train-yes.json")" false
 
-# An unchanged label (release re-published) still counts as stamped.
 ENGINE_LABEL_STAMPED=unchanged bash "$WRITE" "$TMP/train-unchanged.json"
 assert_str "unchanged label counts as stamped" "$(jq -r .engine.label.stamped "$TMP/train-unchanged.json")" true
 
-# A half whose image never resolved is null, not a half-filled object.
 AGENTSTORE_SHA='' AGENTSTORE_DIGEST='' AGENTSTORE_DISPATCHED='' AGENTSTORE_LABEL_STAMPED='' \
   AGENTSTORE_LABEL_REASON='' bash "$WRITE" "$TMP/train-half.json"
 assert_str "unresolved agentstore half is null" "$(jq -r .agentstore "$TMP/train-half.json")" null
@@ -182,7 +163,6 @@ assert_str "engine half survives" "$(jq -r .engine.digest "$TMP/train-half.json"
 assert_str "empty base sha is null" \
   "$(BASE_SHA='' bash "$WRITE" "$TMP/train-nobase.json" && jq -r .base_sha "$TMP/train-nobase.json")" null
 
-# Missing TAG/VERSION/REGISTRY is a usage error.
 if TAG='' bash "$WRITE" "$TMP/train-bad.json" >/dev/null 2>&1; then
   bad "empty TAG accepted"
 else

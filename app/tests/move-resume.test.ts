@@ -15,7 +15,6 @@ const PENDING: PendingAgentMove = {
 
 const instant = { pollIntervalMs: 1, sleep: async () => {} };
 
-/** A wire whose statuses play back per moveId; moveAgent yields `op-new`. */
 function wire(over: {
   statuses: Record<string, AgentMoveStatus[]>;
   moveAgent?: MoveWire["moveAgent"];
@@ -148,8 +147,6 @@ describe("resumePendingMove", () => {
   });
 
   it("yields refused, never rejected, when the team already holds the name", async () => {
-    // C8: `409 name_taken` is answered before anything starts, so no lock is
-    // held and a re-POST can only be refused again: the record is void.
     const w = wire({
       statuses: { "op-old": [{ status: "failed" }] },
       moveAgent: async () => {
@@ -163,8 +160,6 @@ describe("resumePendingMove", () => {
   });
 
   it("yields done when the agent already lives in the target (agent_moved)", async () => {
-    // The ticket expired after the move finished: the gateway answers the
-    // re-POST 409 agent_moved, so the record clears instead of resending.
     const w = wire({
       statuses: { "op-old": [{ status: "failed", error: "move not found" }] },
       moveAgent: async () => {
@@ -177,8 +172,6 @@ describe("resumePendingMove", () => {
   });
 
   it("yields gone when the agent is in neither space (agent_not_found)", async () => {
-    // Coded: no move holds the agent and it lives nowhere the move could
-    // reach, so nothing is left to resume and the record clears.
     const w = wire({
       statuses: { "op-old": [{ status: "failed", error: "move not found" }] },
       moveAgent: async () => {

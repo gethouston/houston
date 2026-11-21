@@ -15,9 +15,6 @@ import {
   writeFinishedChapter,
 } from "../src/lib/academy/academy-chapters.ts";
 
-// A lesson the deployment cannot teach is not offered: the email lesson's
-// connect beat can only end on a connected email app.
-
 const email = ACADEMY_LESSONS[EMPLOYEE_EMAIL_LESSON_ID];
 const tour = ACADEMY_LESSONS[HOUSTON_TOUR_LESSON_ID];
 
@@ -40,8 +37,6 @@ describe("lesson availability", () => {
   });
 
   it("closes a chapter on the lessons the path shows", () => {
-    // The chapter is finished when every lesson the path shows is: one the
-    // path hides must never keep it open.
     deepStrictEqual(chapterLessonIds(GETTING_STARTED_CHAPTER_ID, null), [
       HOUSTON_TOUR_LESSON_ID,
     ]);

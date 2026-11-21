@@ -187,7 +187,6 @@ describe("writeAgentPerson (set-replace write)", () => {
       userId: "u-bob",
       action: "remove",
     });
-    // Bob is dropped; the rest of the team becomes an explicit roster.
     strictEqual(
       next.some((a) => a.userId === "u-bob"),
       false,
@@ -276,9 +275,6 @@ describe("agentPeopleView (People tab render decision)", () => {
   });
 
   it("degrades an EMPTY read-only roster to the honest viewer line", () => {
-    // A plain member's `GET /org` omits the roster (owner/admin only), so a
-    // read-only viewer with zero rows sees the viewer line, not a misleading
-    // "no people" empty state.
     strictEqual(agentPeopleView(0, true), "viewerOnly");
   });
 

@@ -10,43 +10,23 @@ import type { EventLike } from "./translate-support";
 import { createUsageTracker } from "./translate-usage";
 import { isRejectedWindow } from "./usage-limit";
 
-// Re-exported for tests that assert the pi-parity usage math directly.
 export { normalizeUsage } from "./translate-support";
 
 type AssistantMsg = Extract<SDKMessage, { type: "assistant" }>;
 type ResultMsg = Extract<SDKMessage, { type: "result" }>;
 
-/** Callbacks + per-session context a translator carries beside the stream. */
 export interface TranslatorCallbacks {
-  /** Latest observed context fill (from usage frames + compact boundaries). */
   onContextTokens(tokens: number): void;
-  /**
-   * Digest of the OAuth access token the SDK subprocess authenticates with —
-   * threaded into every error classification so a revoked-token report names
-   * the token this turn actually ran on (PRODUCT-1319).
-   */
   usedAccessDigest?: string;
 }
 
-/**
- * A stateful translator: SDK stream/messages → `WireEvent`s, mirroring the pi
- * dialect (text / thinking / tool_start / tool_end / usage / provider_error;
- * never `done` — the orchestrator emits that). State is per-turn: content-block
- * kinds and tool-call input JSON accumulate across `stream_event` frames
- * (`includePartialMessages: true`), and a tool_use_id→name map lets a later
- * user-message `tool_result` resolve its tool_end. Unmapped messages drop to [].
- */
 export function createStreamTranslator(cb: TranslatorCallbacks) {
   const blocks = createContentBlockTracker();
   const usage = createUsageTracker((tokens) => {
     cb.onContextTokens(tokens);
   });
   let lastRateLimitRetry: number | null = null;
-  // The turn's latest rate_limit_event, whole: its `status: "rejected"` is
-  // what tells a used-up subscription window from a 429 (usage-limit.ts).
   let lastRateLimit: SDKRateLimitInfo | null = null;
-  // At most one provider_error per turn: an errored assistant message and an
-  // error result can both describe the same failure — never double-terminal.
   let emittedError = false;
 
   function translate(msg: SDKMessage): WireEvent[] {
@@ -76,17 +56,9 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
   }
 
   function onAssistant(msg: AssistantMsg): WireEvent[] {
-    // Per-request usage: each assistant message carries ITS API call's usage,
-    // whose input + cache reads/writes = the context size of that request —
-    // the live fill. Track the newest one so the turn's usage frame reports
-    // the real window occupancy. Skipped for subagent messages (a subagent
-    // fills its OWN context, not this conversation's) and for errored
-    // responses (pi likewise only trusts clean assistant usage).
     if (!msg.error && msg.parent_tool_use_id === null) {
       usage.noteRequestUsage(msg.message?.usage);
     }
-    // The message's tool_use blocks carry the SDK's own parse of each tool's
-    // input — the arguments the tool actually ran with (translate-blocks.ts).
     const content = msg.message?.content;
     const started = blocks.onAssistantMessage(content);
     if (!msg.error || emittedError) return started;
@@ -133,15 +105,9 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
   }
 
   function onRateLimit(info: SDKRateLimitInfo | null): void {
-    // Only a REJECTED window says when requests resume. An allowed or
-    // allowed_warning event's resetsAt is merely when the 5-hour or weekly
-    // window rolls over, days away for a weekly one: taken as a retry wait, it
-    // would turn an ordinary 429 into a multi-day usage limit. A rejection
-    // that overage carries past blocks nothing either (isRejectedWindow).
     lastRateLimitRetry = null;
     const resetsAt = info?.resetsAt;
     if (!isRejectedWindow(info) || typeof resetsAt !== "number") return;
-    // resetsAt is an epoch; values below 1e12 are seconds, above are milliseconds.
     const resetMs = resetsAt < 1e12 ? resetsAt * 1000 : resetsAt;
     lastRateLimitRetry = Math.max(0, Math.ceil((resetMs - Date.now()) / 1000));
   }

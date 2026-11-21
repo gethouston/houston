@@ -21,8 +21,6 @@ const CLAIM = {
   heartbeatUrl: "https://heartbeat.test",
 };
 
-/** A pod-store that never answers the listing of the agent's own folders
- *  until the request is aborted. */
 const stallFolders = (url: URL, init?: RequestInit) =>
   url.searchParams.get("prefix")?.endsWith("/.repo-site")
     ? new Promise<Response>((_resolve, reject) => {
@@ -32,8 +30,6 @@ const stallFolders = (url: URL, init?: RequestInit) =>
       })
     : undefined;
 
-/** The gateway's prefetch: the store's manifest without other
- *  conversations' transcripts and sessions, nothing inlined. */
 async function shortManifest(pool: ReturnType<typeof fakePoolStore>) {
   const response = await pool.fetchImpl(
     `${POOL_STORE_URL}/v1/pod/store/org/agent/manifest`,
@@ -165,7 +161,6 @@ test("a prefetched manifest without other conversations hydrates the turn's own 
   const { pool, manifests, filesystem, sync, local } = await claimedTurn({
     prefetch: true,
   });
-  // The prefetched manifest was the listing: the store was never listed.
   expect(manifests).toEqual([]);
   for (const own of [
     `${R}/conversations/c1.json`,

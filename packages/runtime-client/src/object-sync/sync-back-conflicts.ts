@@ -18,19 +18,14 @@ import type { LocalWriteLock } from "./sync-back-types";
 
 export type { RefreshManifest } from "./sync-back-merge-retry";
 
-/** Result of one upload plus its conflict retries. */
 export interface UploadChangeResult {
   entry?: HydrateManifestEntry;
   uploaded: boolean;
   skipped?: string;
   conflict?: string;
-  /** The source file was unlinked between the sync scan and the upload read. */
   vanished?: boolean;
-  /** Merge rounds a merged document needed after its first 412. */
   mergeAttempts?: number;
-  /** Board card ids the landed merge removed from the remote it merged into. */
   removedCards?: string[];
-  /** Why a side would not parse, so the local bytes overwrote the remote. */
   unmergeable?: string;
 }
 
@@ -45,12 +40,6 @@ function initialWriteOptions(
   return previous ? undefined : { ifGenerationMatch: "0" };
 }
 
-/**
- * Upload once. On a generation conflict a worker store (`workerMerge`) lands a
- * merged document through bounded merge rounds; everything else, and every
- * file of the standing store sync, retries once at the refreshed generation
- * (`sync-back-single-retry.ts`).
- */
 export async function uploadChangedObject(opts: {
   store: ObjectStore;
   abs: string;
@@ -60,7 +49,6 @@ export async function uploadChangedObject(opts: {
   previous?: HydrateManifestEntry;
   generationAware: boolean;
   refresh: RefreshManifest;
-  /** The per-turn worker's merge rounds and board merge base. */
   workerMerge?: boolean;
   backoff?: ConflictBackoff;
   localWriteLock?: LocalWriteLock;
@@ -99,14 +87,12 @@ export async function uploadChangedObject(opts: {
   }
 }
 
-/** Result of one delete plus its optional generation retry. */
 export interface DeleteObjectResult {
   deleted: boolean;
   entry?: HydrateManifestEntry;
   conflict?: string;
 }
 
-/** Delete once, refreshing and retrying one generation conflict. */
 export async function deleteOwnedObject(opts: {
   store: ObjectStore;
   key: string;

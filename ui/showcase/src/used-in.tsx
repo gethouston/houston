@@ -4,26 +4,12 @@ import { createContext, type ReactNode, useContext } from "react";
 
 import usage from "./usage.gen.json";
 
-/** `{ surfaces, fileCount }` for a specimen, or nothing if nothing uses it. */
 type Usage = { surfaces: string[]; fileCount: number };
 
-/**
- * The generated map, keyed by specimen id. Built from real import statements by
- * `scripts/gen-usage.mjs` and checked in, so it cannot drift into a lie — a
- * stale file fails `tests/usage.test.ts` rather than misinforming a reader.
- */
 const USAGE: Record<string, Usage> = usage;
 
-/**
- * The id of the specimen currently being rendered.
- *
- * The showcase provides it around `specimen.render()` so `SpecimenPage` can
- * find the page's usage without every one of the 50-odd pages repeating its own
- * id as a prop. Outside a provider the "Used in" row simply does not render.
- */
 const SpecimenIdContext = createContext<string | undefined>(undefined);
 
-/** Wraps a rendered specimen so its page can look its own usage up. */
 export function SpecimenIdProvider({
   id,
   children,
@@ -38,13 +24,6 @@ export function SpecimenIdProvider({
   );
 }
 
-/**
- * Where the product actually uses this component: one chip per surface, then
- * the file count. Deliberately quiet — it is provenance under the intro, not a
- * headline, so it borrows the chip and meta roles and adds no colour of its own.
- *
- * Renders nothing for a component no surface consumes yet.
- */
 export function UsedIn() {
   const id = useContext(SpecimenIdContext);
   const found = id ? USAGE[id] : undefined;

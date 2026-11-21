@@ -27,7 +27,6 @@ interface ConversationMapPanelProps {
   onSelectMoment: (moment: ConversationMoment) => void;
   query: string;
   rangesById: Record<string, HighlightRange[]>;
-  /** The header "Chat actions" trigger; focus returns there when the search closes. */
   returnFocusRef?: RefObject<HTMLButtonElement | null>;
 }
 

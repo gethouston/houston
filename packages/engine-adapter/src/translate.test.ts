@@ -10,15 +10,11 @@ import {
 } from "./translate";
 
 test("credentialSiblings fans an OpenCode key out to both gateways, others stay single", () => {
-  // OpenCode Zen + Go share one opencode.ai key (pi reads OPENCODE_API_KEY for
-  // both), so connecting or signing out of either id must touch both — that is
-  // what lets one "OpenCode" connect card light up (and clear) the whole account.
   expect(credentialSiblings("opencode")).toEqual(["opencode", "opencode-go"]);
   expect(credentialSiblings("opencode-go")).toEqual([
     "opencode",
     "opencode-go",
   ]);
-  // Every other provider stands for just itself — no fan-out.
   expect(credentialSiblings("anthropic")).toEqual(["anthropic"]);
   expect(credentialSiblings("openai-codex")).toEqual(["openai-codex"]);
   expect(credentialSiblings("deepseek")).toEqual(["deepseek"]);
@@ -28,8 +24,6 @@ test("credentialSiblings fans an OpenCode key out to both gateways, others stay 
 });
 
 test("turnErrorMessage unwraps the engine's plain message from a rejected send", () => {
-  // The runtime refuses a not-connected turn with 409 + a JSON body; the user must
-  // see the plain sentence, never the status code or the JSON wrapper.
   const err = new EngineError(
     409,
     JSON.stringify({
@@ -42,9 +36,6 @@ test("turnErrorMessage unwraps the engine's plain message from a rejected send",
 });
 
 test("turnErrorMessage hides developer speak behind the product-voice fallback", () => {
-  // Only engine-authored `{error}` copy may reach the chat (HOU-705, HOU-721):
-  // a non-JSON body, a thrown bug, or a bare string all resolve to the generic
-  // product sentence, never the raw internals.
   expect(turnErrorMessage(new EngineError(500, "upstream exploded"))).toBe(
     TURN_FAILED_MESSAGE,
   );
@@ -53,7 +44,6 @@ test("turnErrorMessage hides developer speak behind the product-voice fallback",
 });
 
 test("isNotConnectedError matches every runtime 'no provider connected' variant", () => {
-  // Both verbatim messages the runtime raises when the provider is logged out.
   expect(
     isNotConnectedError(
       "No provider connected. Log in with Claude or Codex first.",
@@ -64,15 +54,12 @@ test("isNotConnectedError matches every runtime 'no provider connected' variant"
       "No provider connected. Connect your subscription first.",
     ),
   ).toBe(true);
-  // A real turn failure is NOT treated as the handled reconnect state.
   expect(isNotConnectedError("upstream exploded")).toBe(false);
   expect(isNotConnectedError("rate limit exceeded")).toBe(false);
 });
 
 test("isStoppedByUser matches the verbatim stop message from the runtime + relay", () => {
-  // The exact string the runtime's cancelTurn and the relay's abort path emit.
   expect(isStoppedByUser("Stopped by user")).toBe(true);
-  // A real failure is never mistaken for an intentional stop.
   expect(isStoppedByUser("upstream exploded")).toBe(false);
   expect(isStoppedByUser("rate limit exceeded")).toBe(false);
 });
@@ -81,7 +68,6 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
   const CONFIG = ".houston/config/config.json";
 
   test("carries the reasoning effort through to the settings update", () => {
-    // opencode is an open-catalog gateway — its arbitrary model passes through.
     expect(
       configWriteToSettings(
         CONFIG,
@@ -96,8 +82,6 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
       model: "deepseek-v4-pro",
       effort: "high",
     });
-    // Provider-only write (no effort) omits effort; the model defaults to the
-    // provider's default (the runtime needs a concrete settings.models entry).
     expect(
       configWriteToSettings(CONFIG, JSON.stringify({ provider: "opencode" })),
     ).toEqual({ activeProvider: "opencode", model: "claude-sonnet-4-6" });
@@ -116,16 +100,12 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
         JSON.stringify({ provider: "deepseek", model: "deepseek-v4-pro" }),
       ),
     ).toEqual({ activeProvider: "deepseek", model: "deepseek-v4-pro" });
-    // The old desktop "openai" id is remapped to the engine's "openai-codex".
     expect(
       configWriteToSettings(
         CONFIG,
         JSON.stringify({ provider: "openai", model: "gpt-6-astra" }),
       ),
     ).toEqual({ activeProvider: "openai-codex", model: "gpt-6-astra" });
-    // GitHub Copilot shares one id across frontend and engine: a picked
-    // (non-default) Copilot model must mirror to the runtime, or every turn runs
-    // the provider default. Copilot uses DOTTED model ids (claude-opus-4.8).
     expect(
       configWriteToSettings(
         CONFIG,
@@ -153,14 +133,12 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
         JSON.stringify({ provider: "minimax", model: "MiniMax-M3" }),
       ),
     ).toEqual({ activeProvider: "minimax", model: "MiniMax-M3" });
-    // MiniMax retired the M2.7 line; a write naming it lands on M3.1 Flash.
     expect(
       configWriteToSettings(
         CONFIG,
         JSON.stringify({ provider: "minimax", model: "MiniMax-M2.7" }),
       ),
     ).toEqual({ activeProvider: "minimax", model: "MiniMax-M3.1-Flash" });
-    // A bare legacy tier name is migrated to a real pi id at the same tier.
     expect(
       configWriteToSettings(
         CONFIG,
@@ -170,12 +148,6 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
   });
 
   test("a new provider id passes through carrying NO other provider's model", () => {
-    // The pi-ai catalog is open: a provider id we don't know is NOT invalid and
-    // must not be rewritten to the default provider. With no stored model and
-    // no DEFAULT_MODEL entry there is no honest default, so the model is left
-    // unset and the runtime picks from THAT provider's own catalog — the
-    // engine's setSettings skips a falsy model rather than storing one. A
-    // universal floor here wrote Codex's id onto every uncurated provider.
     expect(
       configWriteToSettings(CONFIG, JSON.stringify({ provider: "newco" })),
     ).toEqual({ activeProvider: "newco", model: "" });
@@ -188,7 +160,7 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
     expect(configWriteToSettings("CLAUDE.md", "# hi")).toBeNull();
     expect(
       configWriteToSettings(CONFIG, JSON.stringify({ model: "x" })),
-    ).toBeNull(); // no provider
+    ).toBeNull();
     expect(configWriteToSettings(CONFIG, "not json")).toBeNull();
   });
 });
@@ -218,13 +190,11 @@ describe("historyToFeed (persisted history → feed replay)", () => {
 
     const idx = feed.findIndex((f) => f.feed_type === "provider_switched");
     expect(idx).toBeGreaterThan(-1);
-    // openai-codex → openai so the divider resolves the provider NAME.
     expect(feed[idx]?.data).toEqual({
       provider: "openai",
       summarized: true,
       pre_tokens: 300_000,
     });
-    // The divider precedes that turn's assistant text (it marks the boundary).
     const textIdx = feed.findIndex(
       (f, i) =>
         i > idx &&
@@ -260,7 +230,6 @@ describe("historyToFeed (persisted history → feed replay)", () => {
     const card = feed.find((f) => f.feed_type === "provider_error");
     expect(card?.data).toEqual({
       kind: "unauthenticated",
-      // openai-codex → openai so the card resolves the provider name.
       provider: "openai",
       cause: "token_revoked",
       message: "Your session has ended. Please log in again.",

@@ -1,14 +1,6 @@
 import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * `houston_onboarding_segment` and `houston_onboarding_survey` are
- * ACCOUNT_PREF_KEYs (config-prefs-mixin.ts): in hosted/cloud mode they must
- * round-trip through the host's `/v1/preferences/:key`, not this browser's
- * localStorage, so the onboarding questions are answered once per account, not
- * once per device.
- */
-
 const PREF_PATH = "/v1/preferences/houston_onboarding_segment";
 const SURVEY_PREF_PATH = "/v1/preferences/houston_onboarding_survey";
 

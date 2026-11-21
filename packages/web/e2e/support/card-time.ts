@@ -1,8 +1,3 @@
-/**
- * Seeds and measures for the board card's time label (HOU-165): one card per
- * label bucket and column, each bucket at its widest label, and the geometry
- * a fit or a layout shift shows up in.
- */
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Locator, Page } from "@playwright/test";
 import { BOOT_TIMEOUT } from "../config";
@@ -10,8 +5,6 @@ import { seedLocale } from "./billing-choice";
 import { expect } from "./fixtures";
 
 export const NOW = new Date("2026-10-28T23:30:00Z");
-// The widest clock, the widest date this year (pt "10 de ago.") and the widest
-// month and year (pt "ago. de 2025").
 export const BUCKETS = {
   now: "2026-10-28T23:29:50Z",
   clock: "2026-10-28T11:58:00Z",
@@ -23,7 +16,6 @@ export const BUCKETS = {
 export type Bucket = keyof typeof BUCKETS;
 export type Locale = "en" | "es" | "pt";
 export const BUCKET_NAMES = Object.keys(BUCKETS) as Bucket[];
-// A past-year card's label is the longest of these that fits its slot.
 export const LABELS: Record<Locale, Record<Bucket, string[]>> = {
   en: {
     now: ["Now"],
@@ -50,16 +42,12 @@ export const LABELS: Record<Locale, Record<Bucket, string[]>> = {
     pastYear: ["ago. de 2025", "08/2025", "2025"],
   },
 };
-/** Card widths on main before HOU-165 (measured with this seed at 900px tall),
- *  by window width and chat state. Cards must keep them: a narrower card wraps
- *  more titles. */
 export const MAIN_CARD_WIDTH: Record<number, { open: number; closed: number }> =
   {
     1280: { open: 168, closed: 302.671875 },
     1440: { open: 180.546875, closed: 356 },
     1920: { open: 268.546875, closed: 516 },
   };
-// Running cards carry rename + delete; Needs you adds approve, Done archive.
 export const STATUSES = ["running", "needs_you", "done"] as const;
 
 export interface Fit {
@@ -96,9 +84,6 @@ export function measure(card: Locator): Promise<Fit> {
   });
 }
 
-/** The label shows whole, and nothing about the card moved from `rest`.
- *  Sub-pixel tolerance: the running card's animated border lands its box a
- *  hair off a whole pixel between reads. */
 export function expectSteady(fit: Fit, rest: Fit, where: string) {
   const detail = `${where}: "${fit.text}" ${fit.textWidth.toFixed(1)}px in ${fit.boxWidth.toFixed(1)}px`;
   expect.soft(fit.scrollWidth, detail).toBeLessThanOrEqual(fit.clientWidth);
@@ -151,7 +136,6 @@ export async function openBoard(
     await expect(page.getByRole("textbox").last()).toBeVisible();
   }
   await page.mouse.move(0, 0);
-  // The board reflows a frame after the panel lands: wait for steady widths.
   let last = -1;
   await expect(async () => {
     const w = await card(page, "now-done").evaluate((el) => el.clientWidth);

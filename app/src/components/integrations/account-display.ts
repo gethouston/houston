@@ -1,12 +1,6 @@
 import type { IntegrationConnection } from "@houston/engine-adapter";
 import type { TFunction } from "i18next";
 
-/**
- * The one line naming an account in the accounts list: the identity the
- * provider knows (an email, a workspace name) when it exposes one, else the
- * connection date, else an ordinal — so two logins to one app always read as
- * two distinct rows, never twins.
- */
 export function accountRowLabel(
   account: IntegrationConnection,
   index: number,

@@ -1,13 +1,5 @@
 import type { ReactElement } from "react";
 
-/**
- * Shared layout for the store's OpenGraph share cards (the default site card
- * and the per-agent card under /a/[slug]). Rendered by next/og ImageResponse
- * (Satori), so only its CSS subset is used: flex layout, gradients, no
- * external assets — the space look is painted with gradients + star dots so
- * a card never depends on a network fetch.
- */
-
 export const OG_SIZE = { width: 1200, height: 630 } as const;
 
 const STARS: ReadonlyArray<{ x: number; y: number; s: number; o: number }> = [
@@ -27,13 +19,9 @@ const STARS: ReadonlyArray<{ x: number; y: number; s: number; o: number }> = [
 ];
 
 export interface OgCardProps {
-  /** Small uppercase line above the title (e.g. "Houston Agent Store"). */
   kicker: string;
-  /** The big line. Keep under ~60 chars; the card clamps to two lines. */
   title: string;
-  /** Supporting line under the title. */
   subtitle: string;
-  /** Optional right-aligned chip (e.g. the agent's category). */
   chip?: string;
 }
 

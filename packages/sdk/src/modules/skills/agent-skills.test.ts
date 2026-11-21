@@ -12,7 +12,6 @@ interface Recorded {
   body: string | null;
 }
 
-/** A skill summary as the HOST sends it — without the two legacy fields. */
 const HOST_SUMMARY = {
   name: "triage",
   title: "Triage",
@@ -35,11 +34,6 @@ const DETAIL = {
   content: "# Triage\n",
 };
 
-/**
- * A skills SDK over a mock `fetch` that records the whole wire. `reactivity` is
- * off, so every recorded call is one a skills operation made and nothing else —
- * which is what makes "exactly one request" an exact claim.
- */
 function makeSdk(answer: (path: string) => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(
@@ -184,13 +178,6 @@ describe("how an agent-skills request fails", () => {
   });
 });
 
-/**
- * A manifest PUT replaces the WHOLE enabled list, so switching one skill on is
- * a read then a write. Two of them in flight on the same agent — two Adds in
- * the same sitting — would both read the list before either wrote it, and the
- * second write would drop the first. The SDK serializes them per agent so
- * every surface gets that for free.
- */
 function manifestHost(options: { failFirstPut?: boolean } = {}) {
   const calls: Recorded[] = [];
   let enabled: string[] = [];
@@ -200,8 +187,6 @@ function manifestHost(options: { failFirstPut?: boolean } = {}) {
       const method = init?.method ?? "GET";
       const body = typeof init?.body === "string" ? init.body : null;
       calls.push({ method, url: String(input), body });
-      // A round trip the caller has to wait for: without it the read and the
-      // write of one toggle could never interleave with another's.
       await new Promise((resolve) => setTimeout(resolve, 1));
       if (method === "PUT") {
         puts += 1;
@@ -272,9 +257,6 @@ describe("switching one of an agent's skills on", () => {
   });
 
   it("lets a failed switch through without stalling the one behind it", async () => {
-    // ONE sdk, ONE agent, BOTH started before either settles: the claim is
-    // that the queue carries on past a rejection, and a second call awaited
-    // after the first already failed never joined a chain at all.
     const { sdk } = manifestHost({ failFirstPut: true });
 
     const failed = sdk.skills.agent.setSkillEnabled("a1", "triage", true);
@@ -309,8 +291,6 @@ describe("the dispatch path", () => {
       type: AgentSkillsCommand.PutManifest,
       payload: { agentId: "a1", manifest: { version: 1, enabled: [7] } },
     });
-    // Coercing would have switched that skill OFF for the agent, so nothing
-    // reaches the wire at all.
     expect(res.ok).toBe(false);
     expect(calls).toEqual([]);
   });

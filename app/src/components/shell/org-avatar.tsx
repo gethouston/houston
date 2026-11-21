@@ -1,7 +1,6 @@
 import { cn } from "@houston-ai/core";
 import type { CSSProperties } from "react";
 
-/** The `org` token family's tones, each a gradient to its `-deep` stop. */
 const ORG_TONES = [
   "teal",
   "purple",
@@ -14,7 +13,6 @@ const ORG_TONES = [
 
 export type OrgTone = (typeof ORG_TONES)[number];
 
-/** FNV-1a over the slug, so an org wears one tone on every screen. */
 export function orgTone(slug: string): OrgTone {
   let hash = 0x811c9dc5;
   for (let i = 0; i < slug.length; i++) {
@@ -24,7 +22,6 @@ export function orgTone(slug: string): OrgTone {
   return ORG_TONES[hash % ORG_TONES.length];
 }
 
-/** Split by code point, so an emoji is never cut in half. */
 function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   const letters =

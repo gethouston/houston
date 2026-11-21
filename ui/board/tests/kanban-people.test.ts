@@ -40,13 +40,8 @@ describe("initialsFor", () => {
     assert.equal(initialsFor("   "), "?");
   });
 
-  // The helper slices by code point, not by UTF-16 code unit: a label starting
-  // with an astral character (emoji, rare CJK) would otherwise be cut
-  // mid-surrogate-pair and render as "�".
   it("never splits an astral character", () => {
-    // Single word: the first TWO code points, both intact.
     assert.equal(initialsFor("🚀🛰️mission"), "🚀🛰");
-    // Multi-word: first code point of the first and last word.
     assert.equal(initialsFor("🚀 Lovelace"), "🚀L");
     assert.equal(initialsFor("Ada 🛰️"), "A🛰");
     assert.equal(initialsFor("𝒜lan 𝒯uring"), "𝒜𝒯");
@@ -90,11 +85,6 @@ describe("overflowCount", () => {
   });
 });
 
-// The card people overlay (bottom-right of the card body) renders faces up to
-// CARD_PEOPLE_MAX then an expandable "+N" chip. These assert the overlay's
-// partition (what renders as a face vs. behind the chip) and — the founder's
-// explicit ask — that the expansion still reaches EVERY contributor (faces +
-// overflow === all).
 describe("card people overlay partition (CARD_PEOPLE_MAX)", () => {
   it("uses a wider default than the inline stack (~5)", () => {
     assert.equal(CARD_PEOPLE_MAX, 5);
@@ -128,8 +118,6 @@ describe("card people overlay partition (CARD_PEOPLE_MAX)", () => {
   });
 });
 
-// The stack floats over the card body's bottom-right corner, so the body has to
-// reserve room for it or the description's last line runs under the faces.
 describe("stackSlots", () => {
   it("counts the visible faces when nothing overflows", () => {
     assert.equal(stackSlots(people(0), CARD_PEOPLE_MAX), 0);
@@ -158,9 +146,6 @@ describe("peopleGutterClass", () => {
     assert.equal(peopleGutterClass(6), "pr-24");
   });
 
-  // DESIGN.md §4 sanctions one spacing scale; a gutter is spacing like any
-  // other, so the ladder may only step through it (rounding up, never down —
-  // extra clearance is free, a short gutter puts text under a face).
   it("only uses steps on the sanctioned spacing scale", () => {
     const SPACING_SCALE = [2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64];
     for (let n = 1; n <= CARD_PEOPLE_MAX + 1; n++) {
@@ -170,7 +155,6 @@ describe("peopleGutterClass", () => {
   });
 
   it("saturates past the widest stack the card can paint", () => {
-    // CARD_PEOPLE_MAX faces + the "+N" chip is the most circles that exist.
     assert.equal(peopleGutterClass(CARD_PEOPLE_MAX + 1), peopleGutterClass(99));
   });
 
@@ -183,7 +167,6 @@ describe("peopleGutterClass", () => {
   });
 
   it("clears the stack it is sized against (18px circle, -6px overlap, 2px ring)", () => {
-    // Painted width of N ringed, overlapping circles.
     const painted = (slots: number) => slots * 12 + 10;
     const px = (cls: string) => Number(cls.slice("pr-".length)) * 4;
     for (let slots = 1; slots <= CARD_PEOPLE_MAX + 1; slots++) {

@@ -23,10 +23,6 @@ export function AgentDetailHeader({
   onBack: () => void;
 }) {
   const { t } = useTranslation(["teams", "agents"]);
-  // The BACK CHIP carries the agent's identity (avatar + name), so every
-  // lozenge is a plain section tab. The h1 follows the ACTIVE section
-  // (`DrilledHeader`); flagging the first lens only keeps a heading on the
-  // strip while the active id names no section, exactly as Admin's does.
   const items = sections.map((id) => ({
     id,
     heading: id === sections[0],

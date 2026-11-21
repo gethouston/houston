@@ -121,8 +121,6 @@ describe("normalizeAgentIr", () => {
   });
 
   it("derives a valid slug for a name with no Latin characters", () => {
-    // slugify() strips every non-[a-z0-9] char, so a fully non-Latin/emoji name
-    // yields "" and must fall back to a constant (else agentIrSchema 422s).
     for (const name of ["日本語エージェント", "北京助手", "🚀🎉"]) {
       const { ir } = normalizeAgentIr({ identity: { name } });
       const parsed = agentIrSchema.parse(ir);

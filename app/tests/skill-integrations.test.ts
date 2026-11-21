@@ -42,7 +42,6 @@ describe("skillIntegrationSlugs", () => {
   });
 
   it("skips non-string entries a YAML list can carry", () => {
-    // `integrations: [1, gmail]` parses the first entry as a number.
     const raw = [1, "gmail"] as unknown as string[];
     deepStrictEqual(skillIntegrationSlugs(raw), ["gmail"]);
   });

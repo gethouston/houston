@@ -3,12 +3,6 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { personDisplayName } from "../src/components/organization/people-tab-model.ts";
 
-/**
- * A person's row is the one place their identity is asserted, so a name the
- * gateway stored as blank must not win over the email that would actually name
- * them: a row rendering an empty line names nobody and looks like a bug.
- */
-
 const member = (displayName: string | undefined, email?: string) => ({
   displayName,
   email,
@@ -46,8 +40,6 @@ const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
 test("every surface naming a person spells it through the one rule", () => {
-  // Directly, or through `rosterPersonName` — the member row's wrapper for
-  // it, which supplies the row's own fallback (`org-members-tab.test.ts`).
   for (const rel of [
     "../src/components/organization/people-roster-row.tsx",
     "../src/components/organization/people-roster-confirm.tsx",

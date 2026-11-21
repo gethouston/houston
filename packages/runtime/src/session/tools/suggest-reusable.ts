@@ -3,30 +3,6 @@ import { type Static, Type } from "typebox";
 import { currentTurnFinish, recordSuggestReusable } from "../interaction";
 import { unreadReplyInstruction } from "./unread-reply";
 
-/**
- * The reusable-suggestion tool — the model's end-of-task REFLECTION STEP,
- * available in execute AND auto. When the model has FINISHED a task whose work
- * is clearly worth keeping (genuinely reusable, multi-step work, or a stable
- * fact worth remembering), it calls `suggest_reusable` right before its final message
- * INSTEAD OF asking the user about it in plain text or via `ask_user`. Executing
- * it records the single suggest-reusable step of this turn's interaction sequence
- * (carried on the terminal `done` frame + the persisted assistant message), and
- * Houston shows the user a dismissible card offering to save the work as a Skill,
- * a scheduled Routine, or a Learning the agent remembers for future sessions.
- *
- * CRITICALLY, this is NOT a turn-ending block like `plan_ready`: the task is
- * genuinely DONE, so the model wraps up its final message to the user as usual.
- * The suggestion is an optional offer, never something blocking completion: it
- * renders above the composer instead of replacing it (see `interaction.ts`'s
- * fallback-only precedence). It does not drive the board status — every settled
- * turn lands `needs_you` (`turn-settle.ts`'s `finishOk`) and only the user moves
- * a card to done, which the offer survives.
- *
- * It holds no credential and makes no network call, and it is name-gated OUT of
- * plan mode by `session/tool-selection.ts` (plan is read-only planning, not a
- * finished task). It reaches execute and auto because it never blocks the turn.
- */
-
 const SuggestReusableParams = Type.Object({
   reusableKind: Type.Union(
     [Type.Literal("skill"), Type.Literal("routine"), Type.Literal("learning")],
@@ -46,18 +22,13 @@ const SuggestReusableParams = Type.Object({
 });
 type SuggestReusableParams = Static<typeof SuggestReusableParams>;
 
-/** The result once the closing message is written: the offer ends the turn
- *  (with a next-step offer in the same message, both carry pi's terminate
- *  hint). No text here names `suggest_actions`, which a turn may not have. */
 const ENDED_INSTRUCTION =
   "Your suggestion was recorded. The app shows the user a dismissible card offering to save this work, under the message you already wrote. This ended your turn.";
 
-/** The result when the model called the tool before writing anything visible. */
 function needsMessageInstruction(visibleText: string): string {
   return `Your suggestion was recorded. The app will show the user a dismissible card offering to save this work. Do not repeat the suggestion in plain text and do not ask about it again. You called this before writing anything the user can read in this message, so this did NOT end your turn. Write your closing message now, then end, with any next-step offer in that same message. ${unreadReplyInstruction(visibleText)}`;
 }
 
-/** The reusable-suggestion tool (execute + auto; never plan). */
 export function makeSuggestReusableTool() {
   return defineTool({
     name: "suggest_reusable",
@@ -82,9 +53,6 @@ export function makeSuggestReusableTool() {
         rationale,
       });
       const details = { reusableKind: params.reusableKind, title, rationale };
-      // Same finish contract as suggest_actions (see its module comment): the
-      // offer ends the turn once the closing message is written, so the two
-      // offers in one final message end it together on both backends.
       const finish = currentTurnFinish();
       if (!finish?.closingMessageSeen)
         return {
@@ -106,5 +74,4 @@ export function makeSuggestReusableTool() {
   });
 }
 
-/** The tool name — pi's allowlist needs it alongside the object. */
 export const SUGGEST_REUSABLE_TOOL_NAME = "suggest_reusable";

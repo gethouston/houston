@@ -39,7 +39,6 @@ impl Target {
         {
             return Err(BridgeError::InvalidTarget);
         }
-        // URL parsers normalize noncanonical numeric hosts; require the original authority.
         let authority = config
             .target_base_url
             .split("://")
@@ -66,7 +65,6 @@ impl Target {
             .no_zstd()
             .connect_timeout(Duration::from_secs(5));
         if host == "localhost" {
-            // Pin both resolutions; never consult a mutable DNS/proxy environment.
             let port = url
                 .port_or_known_default()
                 .ok_or(BridgeError::InvalidTarget)?;
@@ -78,7 +76,6 @@ impl Target {
                 ],
             );
         }
-        // Detection and legacy descriptors store an origin, not an API prefix.
         if url.path() == "/" {
             url.set_path("/v1");
         }

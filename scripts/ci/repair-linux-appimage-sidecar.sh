@@ -1,13 +1,4 @@
 #!/usr/bin/env bash
-# Restore the Bun-compiled binaries after linuxdeploy mutates their ELF RUNPATH.
-#
-# Bun standalone executables append their bundled JavaScript payload to the ELF.
-# linuxdeploy's patchelf pass adds $ORIGIN/../lib to every dynamic executable,
-# and the rewritten binaries crash in ld.so (SIGSEGV in its symbol-version
-# check) before any of their code runs: the host sidecar never prints its
-# startup banner, and the bundled `claude` dies on every command, which broke
-# Claude sign-in on Linux ("exit signal 11"). Rebuild the AppImage's SquashFS
-# with both pristine, already-verified binaries.
 set -euo pipefail
 
 USAGE="usage: repair-linux-appimage-sidecar.sh <AppImage> <pristine-host-sidecar> <pristine-claude>"
@@ -17,7 +8,6 @@ PRISTINE_CLAUDE="${3:?$USAGE}"
 
 APPIMAGE="$(realpath "$APPIMAGE")"
 [ -x "$APPIMAGE" ] || { echo "ERROR: AppImage is not executable: $APPIMAGE" >&2; exit 1; }
-# AppDir path -> pristine binary.
 RESTORE=("usr/bin/houston-engine=$(realpath "$PRISTINE_HOST")" "usr/bin/claude=$(realpath "$PRISTINE_CLAUDE")")
 for pair in "${RESTORE[@]}"; do
   [ -x "${pair#*=}" ] || { echo "ERROR: pristine binary is not executable: ${pair#*=}" >&2; exit 1; }
@@ -57,8 +47,6 @@ cat "$FILESYSTEM" >>"$REPAIRED"
 chmod 755 "$REPAIRED"
 mv "$REPAIRED" "$APPIMAGE"
 
-# Read each binary back from the final artifact. This fails closed if repacking
-# changed a payload or placed it at the wrong AppImage offset.
 EXTRACTED="$TMP/repacked-binary"
 for pair in "${RESTORE[@]}"; do
   path="${pair%%=*}"

@@ -1,9 +1,6 @@
-// Types
-
 export type { EventEmptyProps } from "./event-empty";
 export { EventEmpty } from "./event-empty";
 export type { EventFeedProps } from "./event-feed";
-// Components
 export { EventFeed } from "./event-feed";
 export type { EventFilterProps } from "./event-filter";
 export { EventFilter } from "./event-filter";

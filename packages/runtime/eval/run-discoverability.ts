@@ -10,26 +10,6 @@ import {
   type DiscoverabilityCase,
 } from "./discoverability-cases";
 
-/**
- * THE MODEL HALF of the discoverability eval: `pnpm eval:assistant`.
- *
- * It asks a REAL model, with the coordinator's real always-on context in front
- * of it, which Houston operation each ordinary request needs - and whether it
- * refuses the four that Houston genuinely cannot do. That is the only way to
- * measure the failure this was written for: the model was not missing a tool,
- * it was answering from memory instead of reading its map.
- *
- * OPT-IN, never CI. It spends real tokens against the user's own connected
- * provider, so it runs when a person asks for it and exits with a named reason
- * when no provider is connected. The half that CAN run everywhere lives in
- * `discoverability.test.ts`.
- *
- * The model answers with a NAME, not a tool call: the question here is whether
- * the right operation is reachable from the map, and a name is what makes a
- * failure readable ("it answered renameAgent for a delete") instead of a
- * transcript to re-read.
- */
-
 const INSTRUCTION = [
   "A person just said the line below to you.",
   "Answer with ONE line and nothing else:",
@@ -92,9 +72,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  // A missing provider is the ordinary way to arrive here (this eval is opt-in
-  // and needs a real credential), so it is reported as the instruction it is
-  // rather than a stack trace.
   process.stderr.write(
     `${err instanceof Error ? err.message : String(err)}\nConnect an AI provider in Houston, then run pnpm eval:assistant again.\n`,
   );

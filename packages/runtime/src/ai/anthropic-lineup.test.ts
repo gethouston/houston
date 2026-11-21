@@ -12,13 +12,6 @@ import { piModelIds } from "./pi-catalog";
 import { ModelNotOfferedError } from "./provider-error";
 import { providerDefaultModel, safeGetModel, safeModelIds } from "./providers";
 
-/**
- * The `anthropic` provider runs exactly the Claude lineup, and every Claude id
- * stored before the lineup moved (agent configs, missions, routines, turn
- * bodies) runs on its own family's lineup model: an Opus agent never lands on
- * Sonnet.
- */
-
 const LINEUP = [
   "claude-sonnet-5-5",
   "claude-opus-5-5",
@@ -46,8 +39,6 @@ const idOf = (m: unknown) => (m as { id?: string }).id;
 
 test("the anthropic provider offers exactly the lineup, in picker order", () => {
   expect(safeModelIds(ANTHROPIC_PROVIDER_ID)).toEqual(LINEUP);
-  // pi really ships every lineup model, so the offer is not a promise pi
-  // cannot keep; and pi still ships the older rows the lineup leaves out.
   const pi = piModelIds(ANTHROPIC_PROVIDER_ID);
   for (const id of LINEUP) expect(pi).toContain(id);
   expect(pi).toContain("claude-opus-4-8");
@@ -102,7 +93,6 @@ test("an id with no family in the lineup fails naming Sonnet 5.5 as the switch",
       ? providerError.suggested_fallback
       : null,
   ).toBe("claude-sonnet-5-5");
-  // A SAVED unknown id falls back to the default instead of failing the turn.
   expect(idOf(safeGetModel(ANTHROPIC_PROVIDER_ID, "claude-2.1", false))).toBe(
     "claude-sonnet-5-5",
   );

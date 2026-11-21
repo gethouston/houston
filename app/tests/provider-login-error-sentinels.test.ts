@@ -2,8 +2,6 @@ import { ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-// Import the sentinel module directly (not the @houston-ai/core barrel): the
-// barrel's extension-less sibling imports don't resolve under bare node:test.
 import {
   PROVIDER_CONNECT_TIMEOUT_ERROR,
   PROVIDER_COPILOT_NO_ACCESS_ERROR,
@@ -11,11 +9,6 @@ import {
   PROVIDER_LOGIN_TIMEOUT_ERROR,
 } from "../../ui/core/src/provider-login.ts";
 
-// The engine adapter reports login failures as stable English sentinel strings
-// (`@houston-ai/core`), and `app/src/lib/provider-login-error.ts` localizes
-// them by VALUE match. Two things must hold or a user sees the wrong text:
-// every sentinel keeps a mapping line in the app module, and every mapped
-// toast key exists in all three locales (else i18next renders the bare key).
 const LOCALES = ["en", "es", "pt"] as const;
 const SENTINEL_TO_KEY: Record<string, string> = {
   [PROVIDER_CONNECT_TIMEOUT_ERROR]: "connectTimedOut",
@@ -31,12 +24,6 @@ describe("provider login error sentinels", () => {
   );
 
   it("the runtime mirrors the Copilot no-access sentinel by value", () => {
-    // The runtime is frontend-agnostic and cannot import @houston-ai/core, so
-    // COPILOT_NO_ACCESS_ERROR (packages/runtime/src/auth/login-state.ts)
-    // duplicates this sentinel by value, and loginFailureMessage in the same
-    // module is what every login path (a pod's runtime, a pool worker's login
-    // runner) reports a Copilot no-access failure through. Drift breaks the
-    // toast's value-match silently.
     const runtime = readFileSync(
       join(
         import.meta.dirname,

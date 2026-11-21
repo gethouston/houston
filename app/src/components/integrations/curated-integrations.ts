@@ -6,12 +6,6 @@ import type {
 import { CURATED_INTEGRATIONS } from "./curated-entries.ts";
 import type { CuratedAuthMode, CuratedIntegration } from "./curated-entry.ts";
 
-/**
- * The curated catalog's behavior: which entries show in Browse, how one
- * becomes a custom definition. The entries themselves live in
- * `curated-entries.ts`, their shape in `curated-entry.ts`; both are
- * re-exported here so every consumer keeps one import.
- */
 export { CURATED_INTEGRATIONS } from "./curated-entries.ts";
 export type {
   CuratedAuthMode,
@@ -25,15 +19,6 @@ export function curatedIntegrationOf(
   return CURATED_INTEGRATIONS.find((c) => c.slug === slug);
 }
 
-/**
- * The curated entries as browse-catalog toolkits, EXCLUDING any the user
- * already added (their row lives in the Installed strip, in whatever state) —
- * mirroring how a connected Composio app leaves "Available" — and any the
- * provider catalog already lists (that toolkit IS the card; the curated
- * dialog still opens for it). `describe` resolves the translated blurb where
- * `t()` lives and `logoOf` the bundled brand asset (`curated-logos.ts`,
- * Vite-only), keeping this module pure.
- */
 export function curatedToolkits(
   custom: readonly CustomIntegrationView[],
   describe: (integration: CuratedIntegration) => string,
@@ -53,11 +38,6 @@ export function curatedToolkits(
   }));
 }
 
-/**
- * The browse catalog once a curated entry's definition exists: the
- * provider's same-slug toolkit leaves "Available" exactly as a connected app
- * would, because the Installed strip already shows that service.
- */
 export function withoutAddedCurated(
   catalog: readonly IntegrationToolkit[],
   custom: readonly CustomIntegrationView[],
@@ -68,14 +48,6 @@ export function withoutAddedCurated(
   );
 }
 
-/**
- * The add-input that materializes one curated entry in the chosen auth mode.
- * `replace: true` makes connect idempotent: a leftover half-connected
- * definition (closed browser mid-sign-in, a concurrent add from chat) is
- * repaired in place instead of 409ing, and the host's service-origin check
- * still guards any stored credential. An OpenAPI source has no sign-in to
- * run, so it always lands in credential mode whatever was asked.
- */
 export function curatedAddInput(
   curated: CuratedIntegration,
   auth: CuratedAuthMode,

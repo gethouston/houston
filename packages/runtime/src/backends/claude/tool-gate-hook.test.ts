@@ -9,11 +9,6 @@ import { expect, test } from "vitest";
 import { buildSessionHooks, toolGateHook } from "./tool-gate-hook";
 import { endTurnIfRequested } from "./turn-end-hook";
 
-/**
- * The Claude backend's tool gate: a PreToolUse hook that holds every call,
- * built-in or MCP, until the pooled turn's deferred uploads are on disk.
- */
-
 const input = {
   hook_event_name: "PreToolUse",
   tool_name: "Read",

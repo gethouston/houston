@@ -20,34 +20,10 @@ import { useUIStore } from "../../../stores/ui";
 import { useWorkspaceStore } from "../../../stores/workspaces";
 import { SettingsControlRow } from "../settings-row";
 
-/**
- * Settings → Danger Zone: delete the ACTIVE team space for good (PRODUCT-1410).
- *
- * Shown on `showWorkspaceDanger`, which holds when all three do — the
- * deployment can delete a space at all (`capabilities.workspaceDelete`, the
- * gateway's feature-detect flag: absent on desktop/self-host, where the one
- * personal workspace is not deletable, and on gateways that predate the route),
- * the active space is a team (a personal space goes with the account, never on
- * its own), and the caller owns it
- * (PRODUCT-1247). Cosmetic gates all: the gateway is the sole enforcer, and
- * its two business rejections (`has_members`, `subscription_active`) come
- * back as plain informational toasts that say what to do first.
- *
- * Confirming pre-checks those two rejections against fresh active-org reads
- * (`GET /v1/org` roster + `GET /v1/org/billing`, PRODUCT-1426), and the
- * answer picks the UX shape, never the outcome:
- * a provably-deletable solo team switches the user to the default space with
- * the success toast immediately (the slow gateway delete finishes behind the
- * switch, with the store's rollback as the race net); anything the pre-check
- * can't prove waits for the gateway's verdict, so the user is never told
- * "deleted" about a space that still stands — rejections are fast, it's the
- * destruction that is slow.
- */
 export function DangerSection() {
   const { t } = useTranslation("settings");
   const { showWorkspaceDanger } = useSurfaceGates();
   const { capabilities } = useCapabilities();
-  // The danger zone only renders for a team, so the active space is one.
   const readsBilling = canReadTeamBillingSummary(capabilities, true);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const deleteWorkspace = useWorkspaceStore((s) => s.delete);
@@ -56,16 +32,8 @@ export function DangerSection() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   if (!currentWorkspace) return null;
-  // Read from the shared gates so that whatever SENDS a person here — the
-  // agent's hands-on errand card offers to open this very screen — asks the
-  // same question this block answers.
   if (!showWorkspaceDanger) return null;
 
-  // The active space switched under the user (the space they deleted owned
-  // this Settings screen), so land them on home to make the switch visible.
-  // The toast comes FIRST: the landing space's agent load can take seconds
-  // (in the worst case an engine wake), and the user must not stare at a
-  // silent screen wondering whether the delete took (PRODUCT-1426).
   const toastAndLandHome = async (name: string) => {
     addToast({
       title: t("dangerZone.deleted", { name }),
@@ -76,9 +44,6 @@ export function DangerSection() {
     openHome();
   };
 
-  // An expected refusal says what to do first; any other one was only
-  // reported by the wire layer, so this is where the person learns the
-  // workspace is still there.
   const refusedToast = (err: unknown, name: string): void => {
     const failure: WorkspaceDeleteFailure = classifyWorkspaceDeleteError(err);
     if (failure === "unknown") {
@@ -94,29 +59,17 @@ export function DangerSection() {
     );
   };
 
-  // Returned to ConfirmDialog, whose async-confirm affordance keeps the dialog
-  // open on a "Deleting…" spinner until this settles (or the optimistic switch
-  // unmounts it, at which instant the success toast is already up).
   const handleDelete = async () => {
     const { id, name } = currentWorkspace;
     try {
-      // Both reads address the ACTIVE space — still the doomed team here; the
-      // optimistic switch only re-pins the gateway after they resolve. Where
-      // the deployment bills no teams the billing read could only 503, and no
-      // Stripe object can exist, so it is skipped as `null`.
       const provablyDeletable = await Promise.all([
         tauriOrg.get(),
         readsBilling ? tauriOrg.getBilling() : null,
       ]).then(
         ([info, billing]) => canDeleteOptimistically(info.members, billing),
-        // Not swallowed: the wire layer reported the read failure, and the
-        // server-first path below gives the delete its own loud outcome.
         () => false,
       );
       if (provablyDeletable) {
-        // The rejection handler attaches NOW (an unobserved rejection during
-        // the navigation awaits would fire unhandledrejection); a refusal
-        // toasts after the switch, once the store restored the row.
         const settled = deleteWorkspace(
           id,
           { silence: isExpectedWorkspaceDeleteError },

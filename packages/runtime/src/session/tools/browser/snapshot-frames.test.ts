@@ -2,10 +2,6 @@ import { expect, test } from "vitest";
 import type { BrowserTab } from "./open-tab";
 import { pageSnapshot } from "./snapshot";
 
-/**
- * A frame whose password lookups answer `reads` in turn (the last repeats),
- * each a list of values or a failure. `detached` is read on failure.
- */
 function frame(reads: (string[] | Error)[], detached = false) {
   let calls = 0;
   const state = {
@@ -29,10 +25,8 @@ function tabWith(frames: ReturnType<typeof frame>[]): BrowserTab {
     ariaSnapshot: async () => '- textbox "Password" [ref=e4]: Secret1',
     title: async () => "Sign in",
     url: () => "https://site.test/login?password=Secret1",
-    // The document's identity (look-memory.ts).
     evaluate: async () => 1,
   };
-  // SAFETY: pageSnapshot reads only these members of the tab and its page.
   return { page, generation: 0 } as unknown as BrowserTab;
 }
 

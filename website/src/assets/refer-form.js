@@ -1,10 +1,3 @@
-// The /data-partners/refer form: checks the fields with refer-model.js,
-// shows each error under its field, and stores a valid referral through
-// refer-send.js, then swaps the form for the "received" panel. When it cannot
-// be stored, the form stays as filled with a line saying so above the button,
-// so the visitor can send again. Nothing is ever sent by email: the button
-// ships disabled and is enabled here, so without JS the form sends nothing.
-
 import { createCountryField } from "./refer-country.js";
 import { FIELDS, referralRow, validate } from "./refer-model.js";
 import { sendReferral } from "./refer-send.js";
@@ -27,8 +20,6 @@ if (form && done && copyNode) {
       FIELDS.map((name) => [name, form.elements[name]?.value ?? ""]),
     );
 
-  // The country is a hidden input behind a menu button: the button is what
-  // shows the error and takes focus.
   const countryToggle = document.getElementById("rf-country-toggle");
   const control = (name) =>
     name === "country" ? countryToggle : form.elements[name];
@@ -46,7 +37,6 @@ if (form && done && copyNode) {
     }
   };
 
-  // After the first attempt, errors clear as the visitor fixes them.
   const recheck = () => {
     if (tried) show(validate(values()));
   };
@@ -80,7 +70,6 @@ if (form && done && copyNode) {
       control(first).focus();
       return;
     }
-    // A filled trap is a bot: it sees success, nothing is stored.
     if (form.elements.trap?.value) {
       finish();
       return;
@@ -101,8 +90,6 @@ if (form && done && copyNode) {
     submit.focus();
   });
 
-  // Another referral from the same person: only the company starts over. The
-  // reset puts back the page's own industry and request, if it has them.
   done.querySelector("[data-again]")?.addEventListener("click", () => {
     const { yourName, yourEmail, yourPhone } = form.elements;
     const keep = [yourName.value, yourEmail.value, yourPhone.value];

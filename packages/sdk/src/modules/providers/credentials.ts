@@ -1,35 +1,3 @@
-/**
- * The per-agent credential writes the HOST serves — `/agents/:id/credential/*`
- * and `/agents/:id/provider/openai-compatible`.
- *
- * TWO PROVIDER WRITE SURFACES EXIST, and both are real. `./writes.ts` reaches
- * the agent's own RUNTIME through `clientFor(agentId)`
- * (`/agents/:id/auth/:provider/api-key`, `/agents/:id/providers/openai-compatible`):
- * those calls land on the pod's local `auth.json`, which is the surface the
- * dispatch-path caller drives, and the only one a LOCAL engine with no gateway
- * in front of it serves. The routes HERE are the gateway/host's connect-once
- * surface: the host stores the credential in the WORKSPACE's central store —
- * which every agent, existing and future, serves from — and pushes it into the
- * standing runtime as a side effect. The web app connects providers that way, so
- * these are the bytes it must keep sending; a write to the runtime twin would
- * leave the central store empty and the next turn would re-hydrate the agent
- * from it, undoing the sign-out or missing the key entirely.
- *
- * NO credential write below carries a scope, in any form (HOU-976). WHOSE
- * account a write lands on is the SERVER's call, decided from the space the
- * request is made in: a team space has no shared AI credential, so the write is
- * the acting member's own; a personal space has exactly one. A client-sent scope
- * could only ever restate what the gateway already knows, or contradict it —
- * `packages/web/tests/credential-write-urls.test.ts` pins these URLs
- * byte-for-byte so no query param can creep back in.
- *
- * Each secret travels in the BODY and never in the path or a query, so nothing
- * here can reach a log line or an error message that carries a URL. Nothing
- * degrades either: every non-2xx throws a `ProvidersHttpError` with the host's
- * reason, because a connect that reported success without storing anything is
- * the one failure the user cannot see.
- */
-
 import type { CustomEndpoint } from "@houston/runtime-client";
 import { type HttpScope, httpRequest } from "../http";
 

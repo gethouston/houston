@@ -23,8 +23,6 @@ export type {
   ToastItem,
 } from "./ui/types.ts";
 
-/** The initial data state, shared by the store's creator and `reset()` so the
- *  two can never drift. Excludes the action functions. */
 const initialUIState = {
   ...navInitialState,
   ...panelInitialState,
@@ -46,15 +44,10 @@ export const useUIStore = create<UIState>()(
       ...createLayoutActions(set, get, api),
 
       reset: () => {
-        // Cancel any live dismiss timers before dropping their toasts, so a
-        // pending timeout can't fire against the next account's store.
         clearToastTimers();
         set((s) => ({
           ...initialUIState,
-          // A fresh stack, not the shared initial array: a waiting nav watches
-          // the stack's identity to learn that the user moved (open-agent.ts).
           ...initialNavState(),
-          // Keep the per-machine layout prefs (not identity-scoped).
           sidebarCollapsed: s.sidebarCollapsed,
           chatWide: s.chatWide,
           previewWidth: s.previewWidth,
@@ -65,9 +58,6 @@ export const useUIStore = create<UIState>()(
     }),
     {
       name: "houston-ui",
-      // Only durable layout preferences are persisted. Everything else in this
-      // store is ephemeral (toasts, registered callbacks, dialog flags) and
-      // must NOT survive a reload.
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
         chatWide: state.chatWide,

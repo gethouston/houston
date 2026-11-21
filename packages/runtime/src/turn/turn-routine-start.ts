@@ -38,22 +38,6 @@ export async function answerRoutineStartFailure(
   await input.turnLog?.flush();
 }
 
-/**
- * Start a pooled routine run against the STORE's run history, not only the
- * hydrated copy: the runs gate reads the history refreshed and merged by run
- * id, and the running row is uploaded under its generation before the turn
- * runs, then projected into the run history doc. While the run executes the
- * app shows it (and its Stop button), and an overlapping fire of the routine
- * in another sandbox meets it at the gate. A sandbox that dies leaves the
- * row running; the control plane's reconcile op settles it once (the gate
- * ignores it past ROUTINE_RUN_TIMEOUT_MS meanwhile).
- *
- * Never from the hydrated copy when the store refuses: that copy may miss
- * another fire's running row or a cancel, and a refusal may mean this
- * worker lost its claim. A history that kept changing under every attempt
- * reads as busy (the dispatcher retries the fire); any other failure fails
- * the run's start.
- */
 export async function startRoutineRun(input: {
   deps: TurnServerDeps;
   turn: TurnRequest;
@@ -96,12 +80,6 @@ export async function startRoutineRun(input: {
   return phase;
 }
 
-/**
- * A run-now the gateway dispatched off its asleep routines mirror for a
- * routine the store lacks: re-project the routines doc under this turn's
- * claim BEFORE the error frame goes out, so the refetch that follows the
- * gateway's 404 reads the healed list instead of the same ghost.
- */
 async function healMissingRoutine(input: {
   deps: TurnServerDeps;
   turn: TurnRequest;
@@ -124,7 +102,6 @@ async function healMissingRoutine(input: {
   );
 }
 
-/** The turn a routine phase runs: its prompt, its pin, and Autopilot. */
 export function routinePhaseTurn(
   turn: TurnRequest,
   phase: RoutinePhase,

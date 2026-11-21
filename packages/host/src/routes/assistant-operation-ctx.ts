@@ -9,50 +9,28 @@ import type { AssistantGateway } from "./assistant-forward";
 import type { AssistantSandboxDeps } from "./assistant-sandbox-deps";
 import type { ReachableAgent } from "./reachable-agents";
 
-/**
- * What the two `/sandbox/assistant/*` handlers (assistant-operate.ts) and the
- * receipt gate (assistant-approval-gate.ts) both work from. Held here so the
- * gate and the handlers share one declaration instead of importing each other.
- */
-
-/** Everything both handlers need, resolved once by the route. */
 export interface AssistantOperationCtx {
   catalog: AssistantCatalog;
   approvals: ApprovalStore;
   agentId: string;
   gatewayFronted?: boolean;
-  /** Trusted pod identity, never an operation parameter. */
   gatewayAgentId?: string;
-  /** The calling turn's conversation. Absent = nowhere for an answer to arrive. */
   conversationId: string | undefined;
-  /**
-   * Operations this deployment cannot perform. Empty when a real gateway is in
-   * front of this host, which serves the whole catalogued surface.
-   *
-   * Required rather than optional: a handler assembled without it would carry
-   * a silently-open gate, and the failure it guards against is invisible until
-   * a user is told Houston broke.
-   */
   unserved: ReadonlySet<string>;
-  /** Every agent this caller may address, for resolving the identifiers an
-   *  operation's parameters name (`assistant/entity-resolution.ts`). */
   agents(): Promise<readonly ReachableAgent[]>;
   directory: EntityDirectory;
-  /** See `AssistantSandboxDeps.persistApprovals`. */
   persistApprovals?: () => Promise<void>;
 }
 
 export interface AssistantCallInput {
   operation: string;
   params: Record<string, unknown>;
-  /** The receipt the user minted for this exact call, when there is one. */
   requestId: string | undefined;
   actingAs: string | undefined;
   gateway: AssistantGateway;
   fetchImpl: typeof fetch;
 }
 
-/** Build one lazy directory for this authenticated call and deployment. */
 export function assistantOperationDirectory(
   deps: AssistantSandboxDeps,
   claim: AssistantClaim,

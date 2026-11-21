@@ -2,12 +2,6 @@ import type { KanbanItem } from "@houston-ai/board";
 import { useCallback, useState } from "react";
 import { selectAllIds } from "../../lib/mission-selection";
 
-/**
- * The multi-select set half of a {@link BoardSelectionModel}, identical for
- * the per-agent board and cross-agent Mission Control. Only the bulk dispatch
- * (move / archive / delete) differs, so each selection hook layers its own
- * mutations on top of this shared state.
- */
 export function useSelectionSet() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 

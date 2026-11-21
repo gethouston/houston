@@ -13,15 +13,6 @@ interface Recorded {
   body: string | null;
 }
 
-/**
- * An inert SDK (`reactivity:false`) over a mock `fetch` that records the whole
- * request and answers whatever the test queues. The shared-skill routes are
- * workspace-scoped, so every assertion here is about the exact URL, method and
- * body bytes that reach the wire — and about the fact that nothing is
- * swallowed: a 404 (an unknown workspace, an unknown slug) belongs to the
- * CALLER, never to this module, or a surface would be handed an empty library
- * it cannot tell from a real one.
- */
 function makeSdk(respond: (url: string) => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(

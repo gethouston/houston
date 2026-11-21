@@ -1,10 +1,3 @@
-/**
- * RoutineScreenHeader — the routine screen's top row (PRODUCT-1208): Back to
- * the list, the routine's name with an in-place rename (the pencil swaps the
- * title for an input; Enter/blur commits, Escape cancels), the trigger
- * activation chip, and the Runs / Open chat actions.
- */
-
 import type { Routine } from "@houston/engine-adapter";
 import { Button, Input } from "@houston-ai/core";
 import { ArrowLeft, History, MessageCircle, Pencil } from "lucide-react";
@@ -19,7 +12,6 @@ interface Props {
   onBackToList: () => void;
   onOpenRuns: () => void;
   onOpenChat: () => void;
-  /** Persist a new name (called only with a non-empty change). */
   onRename: (name: string) => void;
 }
 
@@ -32,7 +24,6 @@ export function RoutineScreenHeader({
   onRename,
 }: Props) {
   const { t } = useTranslation("routines");
-  // Null = viewing; a string = the rename draft being edited.
   const [nameDraft, setNameDraft] = useState<string | null>(null);
 
   const commitRename = () => {
@@ -44,8 +35,6 @@ export function RoutineScreenHeader({
 
   return (
     <div className="shrink-0 px-4 pt-6 pb-5 md:px-8">
-      {/* Phone: the actions wrap onto their own row under the title (indented
-          past the back glyph); desktop keeps the single row. */}
       <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-2 md:flex-nowrap">
         <button
           type="button"
@@ -71,7 +60,6 @@ export function RoutineScreenHeader({
           </div>
         ) : (
           <Input
-            // Focus lands in the input the user just asked for via the pencil.
             autoFocus
             value={nameDraft}
             onChange={(e) => setNameDraft(e.target.value)}

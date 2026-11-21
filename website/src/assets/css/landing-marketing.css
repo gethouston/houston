@@ -1,10 +1,3 @@
-/*
- * Editorial body — part 2: pricing + the grouped Q&A.
- * warm-light: warm cards, hairlines, warm ink type. Palette/type from
- * site-tokens.css.
- */
-
-/* ── Pricing ─────────────────────────────────────────────────────────────── */
 #pricing {
   padding-top: clamp(96px, 12vw, 160px);
 }
@@ -17,9 +10,6 @@
   max-width: none;
   margin: 0 auto;
 }
-/* Monthly / Yearly switch. Shown only once html.js is set (before first
-   paint): without JS the Team card keeps the default yearly price and no dead
-   switch appears. */
 .price-period {
   display: none;
   gap: 2px;
@@ -70,13 +60,9 @@ html.js .price-period {
     0 1px 2px rgba(13, 13, 13, 0.08),
     0 0 0 1px var(--line);
 }
-/* The Yearly badge wears the FAQ count pill (shared rule below). */
 .price-save {
   margin-left: 8px;
 }
-/* Both Team prices sit in one grid cell, so the card is always sized for the
-   larger and switching never moves anything. The hidden one is
-   visibility: hidden, which also drops it from the accessibility tree. */
 .price-swap {
   display: inline-grid;
 }
@@ -106,8 +92,6 @@ html.js .price-period {
   border-radius: 20px;
   padding: 30px 28px;
 }
-/* Featured plan: the ONE loud object — a full ink card on the light band,
-   white chrome inside, the same inversion the dark sections use. */
 .price-col.featured {
   background: var(--band-black);
   border-color: var(--band-black);
@@ -142,7 +126,6 @@ html.js .price-period {
   border-radius: 999px;
   padding: 4px 10px;
 }
-/* The checklist — one thin check per claim. */
 .price-list {
   list-style: none;
   margin: 20px 0 26px;
@@ -217,7 +200,6 @@ html.js .price-period {
   }
 }
 
-/* ── Q&A — grouped accordion, all the page's depth lives here ──────────────── */
 #faq {
   padding-top: clamp(72px, 9vw, 120px);
 }
@@ -299,7 +281,6 @@ html.js .price-period {
   }
 }
 
-/* ── FAQ group accordions — each section collapses, badge shows its size ── */
 details.faq-group > summary {
   list-style: none;
   cursor: pointer;
@@ -322,7 +303,6 @@ details.faq-group > summary .faq-chevron {
 details.faq-group[open] > summary .faq-chevron {
   transform: rotate(180deg);
 }
-/* Also the Yearly badge in the pricing switch (.price-save). */
 .faq-count,
 .price-save {
   min-width: 22px;
@@ -341,7 +321,6 @@ details.faq-group > .faq-list {
   padding: 6px 0 18px;
 }
 
-/* ── Stack grid (#stack) — four dark tiles with real logo walls ──────────── */
 .stack-grid {
   margin-top: clamp(36px, 4.5vw, 56px);
   display: grid;
@@ -370,7 +349,6 @@ details.faq-group > .faq-list {
   color: rgba(255, 255, 255, 0.6);
   max-width: 40ch;
 }
-/* Monochrome white marks — the one consistent way every brand sits on black. */
 .st-logos {
   margin-top: auto;
   padding-top: 22px;
@@ -386,14 +364,11 @@ details.faq-group > .faq-list {
   fill: rgba(255, 255, 255, 0.85);
 }
 .st-more {
-  /* Its own quiet line under the wall — never inside the icon row, so all
-     four tiles keep an identical mark rhythm. */
   display: block;
   margin-top: 12px;
   font-size: 12.5px;
   color: rgba(255, 255, 255, 0.5);
 }
-/* A brand with no vector mark ships as a wordmark chip in the same tone. */
 .st-word {
   font-size: 14px;
   font-weight: 700;
@@ -406,7 +381,6 @@ details.faq-group > .faq-list {
     grid-template-columns: 1fr;
   }
 }
-/* The integrations view's closing count row. */
 .feat-more .feat-note {
   color: var(--ink-subtle);
   font-weight: 500;

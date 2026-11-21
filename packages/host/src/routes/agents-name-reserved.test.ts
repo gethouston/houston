@@ -17,16 +17,6 @@ import { LocalWorkspaceStore } from "../store/local";
 import { FsVfs } from "../vfs";
 import { dispatchGroup } from "./registry/all";
 
-/**
- * "Houston" is the AI Manager's name (PRODUCT-1927), so no AI Employee may
- * newly take it: create, portable install and rename answer 400
- * `name_reserved` wherever this host is the user-facing edge. An employee that
- * already holds the name keeps it, the desktop-to-cloud move (`migration`)
- * keeps it, and behind the gateway the host never refuses it, because the
- * gateway enforces the rule itself and seeds each pod under its registered
- * name.
- */
-
 const CAPS: Capabilities = {
   profile: "local",
   revealInOs: true,
@@ -83,7 +73,6 @@ function res() {
   return out as unknown as ServerResponse & typeof out;
 }
 
-/** One request's routing context, and the response it will be answered on. */
 function request(method: string, path: string, body: unknown) {
   const response = res();
   const ctx = {

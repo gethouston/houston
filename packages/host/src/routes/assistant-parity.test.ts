@@ -17,28 +17,9 @@ import {
 } from "./assistant-parity-probes";
 import { buildBody, buildPath, buildQuery } from "./assistant-request-parts";
 
-/**
- * The decisive regression guard for the generated catalog: every routable
- * operation's address must resolve to a real handler on the SAME host the app
- * talks to. The catalog is derived from the engine adapter, and the adapter,
- * the local host and the hosted gateway all serve one surface — so a catalog
- * path the local host cannot address is a generator bug, not a variant.
- *
- * `/agents/:id/<anything>` is a CATCH-ALL that proxies whatever it does not
- * recognise to the agent's runtime, so "no 404" alone proves nothing. The
- * spawner below therefore serves a real sentinel, and an answer carrying it
- * came from the RUNTIME rather than from the host. For an operation the host
- * serves itself that is a failure — the address fell THROUGH the route table.
- * For the few whose route is a published member of the runtime-proxy family
- * (routes/agents-proxy-members.ts) it is the pass: `proxied()` marks those, and
- * the sentinel is the proof the host relayed them to the engine that owns them.
- */
-
-/** What the stand-in runtime answers, so a proxied request is unmistakable. */
 const SENTINEL_STATUS = 599;
 const SENTINEL_BODY = "assistant-parity-runtime-sentinel";
 
-/** The router's own terminal answer for a path no handler claimed. */
 const ROUTE_MISS = '{"error":"not found"}';
 
 function freePort(): Promise<number> {
@@ -56,12 +37,6 @@ const runtimes: Server[] = [];
 const sentinelSpawner: RuntimeSpawner = {
   spawn: (spec) => {
     const server = createHttpServer((req, res) => {
-      // `GET /health` answering 200 is what the launcher's boot contract means
-      // by awake (launcher/process-probes.ts). A runtime that sentinels its own
-      // health never becomes healthy, so every forwarded request would sit out
-      // the 60s boot budget instead of being answered — and a proxied write,
-      // which awaits the wake outright (channel/probe-wake.ts), would never
-      // reach the engine at all.
       if (req.method === "GET" && req.url?.split("?")[0] === "/health") {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end('{"ok":true}');
@@ -80,13 +55,6 @@ const loaded = processAssistantCatalog();
 if (!loaded) throw new Error("the embedded assistant catalog must load");
 const catalog: AssistantCatalog = loaded;
 
-/**
- * The request one catalog operation makes, built by the SAME code the
- * dispatcher builds it with. It resolves the operation by name rather than
- * through `findVisibleOperation` on purpose: whether an operation is withheld
- * from the agent is a policy question, and re-tagging one `hidden` must not
- * quietly retire the guard that its address still resolves.
- */
 function request(operation: string, params: Record<string, unknown>) {
   const op = catalog.operations.find((entry) => entry.name === operation);
   if (!op?.route) throw new Error(`${operation} carries no route`);
@@ -122,11 +90,6 @@ beforeAll(async () => {
   });
   base = `http://127.0.0.1:${port}`;
   await host.start();
-  // Wake the probe agent's runtime up front, so a proxied probe below meets a
-  // live engine instead of a boot in flight: the read-only probe routes race
-  // the wake against a 1.5s deadline (channel/probe-wake.ts) and would answer
-  // "still starting" rather than the sentinel if one of them triggered the
-  // spawn. `health` is a proxy member, so this arrives as the sentinel too.
   const wake = await fetch(
     `${base}/agents/${encodeURIComponent(PROBE_AGENT)}/health`,
     { headers: { Authorization: "Bearer boot-secret" } },
@@ -139,7 +102,6 @@ afterAll(async () => {
   for (const server of runtimes) server.close();
 });
 
-/** Drive one catalog operation against the running host. */
 async function call(operation: string, params: Record<string, unknown>) {
   const built = request(operation, params);
   const url = new URL(`${base}${built.path}`);
@@ -157,18 +119,6 @@ async function call(operation: string, params: Record<string, unknown>) {
   return { path: built.path, status: res.status, body: await res.text() };
 }
 
-/**
- * The claim this whole file rests on: EVERY routable operation's address is
- * exercised. Without this the tables could cover a quarter of the catalog and
- * still pass, which is exactly how an operation ships unexercised — the suite
- * would report a clean run over the operations somebody remembered.
- *
- * Hidden operations may be probed too, and several are: whether the assistant
- * is allowed to call one is a policy question, and re-tagging an operation
- * `hidden` must not quietly retire the guard that its address still resolves.
- * What is REQUIRED is the visible set, because those are the ones the agent
- * can actually dispatch.
- */
 describe("the probe tables cover the catalog", () => {
   const routable = catalog.operations.filter((op) => op.route !== null);
   const covered = [
@@ -182,16 +132,11 @@ describe("the probe tables cover the catalog", () => {
     const unprobed = routable
       .filter((op) => !op.hidden && !seen.has(op.name))
       .map((op) => op.name);
-    // Add each name to LOCAL_PROBES if this host serves it, to
-    // CLOUD_ONLY_PROBES with the reason it does not, or to
-    // WRITE_DRIVEN_OPERATIONS if the write suite drives it by its effect.
     expect(unprobed).toEqual([]);
   });
 
   test("no probe names an operation this catalog cannot dispatch", () => {
     const dispatchable = new Set(routable.map((op) => op.name));
-    // A probe left behind after an operation was renamed or lost its route
-    // asserts nothing, and reads as coverage that is not there.
     expect(covered.filter((name) => !dispatchable.has(name))).toEqual([]);
   });
 
@@ -208,15 +153,10 @@ describe("catalog operations address the local host's real routes", () => {
     LOCAL_PROBES.map((probe) => [probe.operation, probe] as const),
   )("%s resolves to a live route", async (_name, probe) => {
     const res = await call(probe.operation, probe.params);
-    // A route the host never claimed: the catalog and the host disagree.
     expect(`${res.path} -> ${res.status} ${res.body.slice(0, 120)}`).not.toBe(
       `${res.path} -> 404 ${ROUTE_MISS}`,
     );
     if (probe.runtimeProxied) {
-      // The host publishes this rest as the agent engine's own
-      // (routes/agents-proxy-members.ts) and relays it, so the stand-in
-      // runtime answering IS the proof: the address resolved into the proxy
-      // family and the request was forwarded verbatim.
       expect(`${res.status} ${res.body}`, probe.runtimeProxied.reason).toBe(
         `${SENTINEL_STATUS} ${SENTINEL_BODY}`,
       );
@@ -225,16 +165,11 @@ describe("catalog operations address the local host's real routes", () => {
     expect(res.body).not.toContain(SENTINEL_BODY);
     expect(res.status).not.toBe(SENTINEL_STATUS);
     if (probe.serviceState) {
-      // A handler that answers for itself with "this deployment cannot do
-      // that". The route resolved; the capability behind it is simply not
-      // wired in a host seeded with nothing.
       expect(res.status, probe.serviceState.reason).toBe(
         probe.serviceState.status,
       );
       return;
     }
-    // 5xx means the address landed nowhere serviceable (a proxy attempt, a
-    // crash); a real handler answers 2xx or a 4xx it authored itself.
     expect(res.status).toBeLessThan(500);
   });
 });
@@ -252,8 +187,6 @@ describe("cloud-only operations are absent locally, on purpose", () => {
 });
 
 describe("path escaping matches the adapter's", () => {
-  // The agent id is a workspace-relative PATH locally, so a segment parameter
-  // must arrive escaped whole; a relative file path must keep its separators.
   test("a segment parameter is escaped whole", () => {
     expect(request("listActivities", { agentId: PROBE_AGENT }).path).toBe(
       "/agents/Work%2FSales/activities",
@@ -276,17 +209,6 @@ describe("path escaping matches the adapter's", () => {
   });
 });
 
-/**
- * The four write operations the SDK owns, driven end to end against the real
- * host. Reads prove an address resolves; only a write proves the METHOD, the
- * body mapping and the id round-trip are right — and "create a mission" is the
- * assistant's headline capability, so it is guarded by its effect, not by a
- * status code. Everything created here is cleaned up by the operation under
- * test, which is what makes the delete probes meaningful.
- *
- * Ordered and last on purpose: these mutate the host the read probes above
- * share, so they run only once those have finished.
- */
 describe("the SDK write operations act on the real host", () => {
   const json = (body: string): Record<string, unknown> =>
     JSON.parse(body) as Record<string, unknown>;
@@ -330,7 +252,6 @@ describe("the SDK write operations act on the real host", () => {
     expect(listed.body).not.toContain("Parity probe mission");
   });
 
-  /** The color store as the app reads it back: `agent_colors`, parsed. */
   const storedColors = async (): Promise<Record<string, string>> => {
     const read = await call("getPreference", { key: "agent_colors" });
     const value = json(read.body).value;
@@ -356,12 +277,8 @@ describe("the SDK write operations act on the real host", () => {
       name: "Parity Probe Renamed",
     });
     expect(renamed.status).toBeLessThan(300);
-    // A local agent's id IS its workspace path, so a rename MOVES it; the
-    // delete below must follow the id the host answered with, not the old one.
     probeAgent = String(json(renamed.body).id ?? probeAgent);
     expect(probeAgent).toContain("Parity Probe Renamed");
-    // The id moved with the directory; the color must follow it, or the
-    // renamed agent silently reverts to the default.
     expect((await storedColors())[probeAgent]).toBe("forest");
   });
 
@@ -380,8 +297,6 @@ describe("the SDK write operations act on the real host", () => {
 
     const listed = await call("listAgents", {});
     expect(listed.body).not.toContain("Parity Probe Renamed");
-    // A future agent can reuse the path-derived id; it must not inherit this
-    // one's color.
     expect(probeAgent in (await storedColors())).toBe(false);
   });
 });

@@ -1,24 +1,3 @@
-/**
- * Stateful AI-provider credentials for the fake host — the per-agent-pod
- * provider model the SDK `providers` module and the hosted connect flow
- * exercise. Credentials are PER AGENT in hosted mode, so state is keyed by
- * agent id; the pre-agent `/setup-runtime/*` connect surface (the
- * WebApp gate + ConnectView) shares the {@link FLAT_KEY} slot.
- *
- * Two seeds: per-AGENT slots start with Claude connected + active (chat,
- * settings, and the AI hub read that), while the {@link FLAT_KEY} setup slot
- * starts EMPTY — on the real host the pre-agent setup runtime has no credential
- * until the user connects, and onboarding's "Connect your AI" step auto-advances
- * past an already-connected provider (`selectOnMount`), so a connected seed
- * would skip the screen the onboarding specs assert on. Mutations —
- * start/complete/cancel login, api-key, logout, settings — flip the slot so a
- * providers + auth/status refetch reflects them, exactly as the real runtime
- * does.
- *
- * Wire types come from the real packages so a contract change breaks the
- * typecheck here instead of silently drifting the mock.
- */
-
 import type {
   AuthStatus,
   LoginInfo,
@@ -31,7 +10,6 @@ import type {
 } from "@houston/runtime-client";
 import { CATALOG, SPEC } from "./provider-catalog";
 
-/** The slot the pre-agent `/setup-runtime/*` connect routes read. */
 export const FLAT_KEY = "__flat__";
 
 interface Slot {
@@ -57,19 +35,8 @@ function seedSlot(connected: boolean): Slot {
 
 let slots = new Map<string, Slot>();
 
-/**
- * The armed `GET /providers/usage` answer, or `null` for the default seed
- * below. Armed via `/__test__/provider-usage` when a spec needs a specific
- * shape (a credit balance, an unauthenticated account, an error row).
- */
 let providerUsageSeed: ProviderUsage[] | null = null;
 
-/**
- * The default per-account usage: the seeded Claude subscription reporting a
- * plan and both of its rolling windows. Reset instants are computed per read so
- * they are always in the future (a past instant renders no reset note, which
- * would silently drop the assertion it backs).
- */
 function seedProviderUsage(): ProviderUsage[] {
   const inHours = (h: number) =>
     new Date(Date.now() + h * 3_600_000).toISOString();
@@ -96,20 +63,15 @@ function slot(agentId: string): Slot {
   return s;
 }
 
-/** Restore the seed. Wired into the store's `reset()`. */
 export function resetProviders(): void {
   slots = new Map();
   providerUsageSeed = null;
 }
 
-/** `GET /providers/usage` (or `/agents/:id/providers/usage`) → live per-account
- *  usage: the armed rows, else the default Claude-subscription seed. */
 export function providerUsageList(): ProviderUsage[] {
   return providerUsageSeed ?? seedProviderUsage();
 }
 
-/** Arm the rows `GET /providers/usage` serves (`/__test__/provider-usage`);
- *  `null` restores the default seed. */
 export function setProviderUsage(
   rows: ProviderUsage[] | null,
 ): ProviderUsage[] {
@@ -117,7 +79,6 @@ export function setProviderUsage(
   return providerUsageList();
 }
 
-/** `GET /providers` (or `/agents/:id/providers`) → the rich `ProviderInfo[]`. */
 export function providerList(agentId: string): ProviderInfo[] {
   const s = slot(agentId);
   return CATALOG.map((spec) => ({
@@ -130,7 +91,6 @@ export function providerList(agentId: string): ProviderInfo[] {
   }));
 }
 
-/** `GET /auth/status` (or `/agents/:id/auth/status`) → the credential/login view. */
 export function authStatusFor(agentId: string): AuthStatus {
   const s = slot(agentId);
   const providers: ProviderAuth[] = CATALOG.map((spec) => {
@@ -147,8 +107,6 @@ export function authStatusFor(agentId: string): AuthStatus {
   return { providers, activeProvider: s.activeProvider };
 }
 
-/** Start an OAuth login: records the awaiting-user state, returns the kind the
- *  provider uses. `enterpriseDomain` (Copilot) is remembered for the credential. */
 export function startLogin(
   agentId: string,
   provider: ProviderId,
@@ -177,7 +135,6 @@ export function cancelLogin(agentId: string, provider: ProviderId): void {
   slot(agentId).login.delete(provider);
 }
 
-/** Mark a provider connected + clear its login; adopt it as active if none. */
 function connect(s: Slot, provider: ProviderId): void {
   s.configured.add(provider);
   s.login.delete(provider);
@@ -196,7 +153,6 @@ export function setApiKey(agentId: string, provider: ProviderId): void {
   connect(slot(agentId), provider);
 }
 
-/** Disconnect a provider; if it was active, fall back to another connected one. */
 export function logout(agentId: string, provider: ProviderId): void {
   const s = slot(agentId);
   s.configured.delete(provider);
@@ -206,7 +162,6 @@ export function logout(agentId: string, provider: ProviderId): void {
     s.activeProvider = [...s.configured][0] ?? null;
 }
 
-/** `PUT /settings` — apply an active-provider / model / effort switch. */
 export function setSettings(
   agentId: string,
   input: { activeProvider?: ProviderId; model?: string; effort?: string },

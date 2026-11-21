@@ -13,12 +13,6 @@ import { LocalPaths } from "../paths";
 import { createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 
-/**
- * The sandbox execute route stages file arguments from the CALLING agent's
- * workspace before the provider runs the action, over real HTTP: the runtime's
- * HMAC proxy in, a real PUT out to the slot the provider minted.
- */
-
 const CAPS: Capabilities = {
   profile: "cloud",
   revealInOs: false,

@@ -9,13 +9,6 @@ import { runWithTurnMode } from "../turn-mode-context";
 import { makeIntegrationTools } from "./integrations";
 import { httpSandboxFetch } from "./sandbox-fetch";
 
-/**
- * The agent's integration tools are thin proxies to the host's
- * /sandbox/integrations/* under the per-sandbox token. These pin: the right URL
- * + Authorization header, result formatting, and that failures surface (never a
- * silent success) — including the actionable "not connected" (409) case.
- */
-
 const realFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = realFetch;
@@ -55,8 +48,6 @@ const [search, execute, requestConnection] = makeIntegrationTools({
 if (!search || !execute || !requestConnection)
   throw new Error("expected three integration tools");
 
-// pi's tool.execute takes (id, params, signal, onUpdate, ctx); the last two are
-// irrelevant to these proxies, so one helper supplies them.
 const ctx = {} as unknown as ExtensionToolContext;
 const run = (tool: typeof search, params: unknown) =>
   tool.execute("id", params as never, undefined, undefined, ctx);
@@ -95,8 +86,6 @@ test("search leads with account descriptions and the account-selection rule; exe
   expect(text.indexOf("MULTIPLE accounts")).toBeLessThan(
     text.indexOf("GOOGLEDRIVE_LIST_FILES"),
   );
-  // A tagged skill step runs execute with no search, so the always-sent
-  // description carries the rule in one sentence.
   expect(execute.description).toContain(
     "always pass `account`; when the right one is unclear, ask the user before acting, and never guess.",
   );
@@ -127,7 +116,6 @@ test("search POSTs to the host proxy with the sandbox token + formats matches", 
   const text = (out.content[0] as { text: string }).text;
   expect(text).toContain("GMAIL_SEND_EMAIL");
   expect(text).toContain("Send an email");
-  // Everything matched is connected → no connect-card instruction noise.
   expect(text).not.toContain("NOT CONNECTED");
   expect(text).not.toContain("#houston_toolkit=");
 });
@@ -157,17 +145,12 @@ test("search marks not-connected matches and teaches request_connection", async 
   expect(text).toContain(
     "- GMAIL_SEND_EMAIL (gmail, NOT CONNECTED): Send an email",
   );
-  // The hand-off instruction rides with the results, at the moment the model
-  // actually faces a not-connected app — the request_connection tool, NOT the
-  // retired markdown-link hack.
   expect(text).toContain("request_connection tool");
   expect(text).not.toContain("#houston_toolkit=");
   expect(text).not.toContain("](https://");
 });
 
 test("a connectable toolkit-level entry names the slug and teaches request_connection", async () => {
-  // Catalog resolution surfaces the app itself (empty action) so the model
-  // learns the slug even when no action scored — the Google Sheets bug.
   mockFetch(() => ({
     body: {
       items: [
@@ -183,9 +166,7 @@ test("a connectable toolkit-level entry names the slug and teaches request_conne
   }));
   const out = await run(search, { query: "connect to google sheets" });
   const text = (out.content[0] as { text: string }).text;
-  // The app row (not an action row) names the slug.
   expect(text).toContain("- googlesheets (app, NOT CONNECTED): Google Sheets");
-  // And the connect hand-off is taught, naming the connectable slug.
   expect(text).toContain("not connected yet (googlesheets)");
   expect(text).toContain("request_connection tool");
 });
@@ -208,14 +189,10 @@ test("a blocked app points the user at the agent's Settings Apps section and nev
   const text = (out.content[0] as { text: string }).text;
   expect(text).toContain("- salesforce (app, TURNED OFF): Salesforce");
   expect(text).toContain("turned off for this agent");
-  // The new Settings-aware copy, never the old "ask your admin".
   expect(text).toContain("this agent's Settings, under Apps");
   expect(text).not.toContain("admin");
-  // The guidance explicitly forbids the connect card for a blocked app.
   expect(text).toContain("Do NOT call request_connection");
-  // A turned-off app is real: the model must never call it unsupported.
   expect(text).toContain("never imply they are unsupported");
-  // And it never offers to connect it (no "not connected yet" connect prompt).
   expect(text).not.toContain("not connected yet");
 });
 
@@ -271,7 +248,6 @@ test("an empty APP-SCOPED result says the app was not found, with one spelling r
   expect(text).toContain('No app matching "postohg"');
   expect(text).toContain("genuine not-found");
   expect(text).toContain("misspelled");
-  // The unscoped hint to retry with `app` set would be circular here.
   expect(text).not.toContain("search again with `app`");
 });
 
@@ -283,9 +259,6 @@ test("an empty UNSCOPED result tells the model to retry scoped before concluding
 });
 
 test("a scope-ignored result leads with the could-not-scope note, never the not-found claim", async () => {
-  // A gateway predating the scope contract served unscoped items: the model
-  // must not attribute them to the named app, and must not read the response
-  // as proof the app exists or lacks actions.
   mockFetch(() => ({
     body: {
       items: [
@@ -447,9 +420,6 @@ test("an exact MCP lookup recovers a required parameter beyond the broad signatu
 });
 
 test("a giant execute result is truncated with recovery guidance, never fed whole", async () => {
-  // A single Gmail fetch with full payloads exceeds 1 MB of JSON — enough to
-  // overflow a model context window on its own (HOU-893: every event-trigger
-  // run on a newsletter inbox died with a terminal context-window error).
   mockFetch(() => ({
     body: { successful: true, data: { html: "x".repeat(1_200_000) } },
   }));
@@ -458,8 +428,6 @@ test("a giant execute result is truncated with recovery guidance, never fed whol
     params: { include_payload: true },
   });
   const text = (out.content[0] as { text: string }).text;
-  // The stored ceiling + the recovery marker; the model itself only ever
-  // sees the first 8k characters (backends/*/ cap the result again).
   expect(text.length).toBeLessThan(514 * 1024);
   expect(text).toContain("[result truncated");
   expect(text).toContain("Re-run the action with tighter parameters");
@@ -504,7 +472,6 @@ test("a no-connected-account failure hands off to request_connection", async () 
   await expect(failure).rejects.not.toThrow(/#houston_toolkit=/);
   await expect(failure).rejects.not.toThrow(/integration_search/);
 
-  // An ordinary app rejection stays hint-free — no false connect offers.
   mockFetch(() => ({
     body: { successful: false, error: "quota exceeded" },
   }));
@@ -521,7 +488,6 @@ test("request_connection records a connect interaction with a normalized slug", 
       reason: "to send your email",
     }),
   );
-  // The slug is trimmed + lowercased so it matches the catalog/connection lists.
   expect(holder.pending).toEqual({
     steps: [
       {
@@ -532,7 +498,6 @@ test("request_connection records a connect interaction with a normalized slug", 
       },
     ],
   });
-  // The tool tells the model to end its turn without spelling out a slug/link.
   const text = (out.content[0] as { text: string }).text;
   expect(text).toMatch(/end your turn/i);
   expect(text).not.toContain("#houston_toolkit=");
@@ -555,8 +520,6 @@ test("request_connection omits an empty reason and rejects an empty slug", async
 });
 
 test("request_connection records nothing outside a turn (no ambient holder)", async () => {
-  // No runWithInteractionCapture wrapper → recordConnection is a no-op,
-  // so a direct call still succeeds and simply records nowhere.
   await expect(
     run(requestConnection, { toolkit: "gmail" }),
   ).resolves.toBeDefined();
@@ -573,11 +536,9 @@ test("a 409 (signed out) queues a signin step and tells the model to end its tur
   );
   await expect(failure).rejects.toThrow(/signed out of Houston/i);
   await expect(failure).rejects.toThrow(/end your turn/i);
-  // The guidance tells the model NOT to send the user to Settings.
   await expect(failure).rejects.toThrow(
     /Do NOT tell the user to open Settings/,
   );
-  // The signin step is queued in this turn's interaction flow, id "s1".
   expect(holder.pending).toEqual({
     steps: [
       {
@@ -617,17 +578,11 @@ test("a 503 (not set up) is an honest, closed message and queues nothing", async
   );
   await expect(failure).rejects.toThrow(/not set up in this Houston install/i);
   await expect(failure).rejects.toThrow(/COMPOSIO_API_KEY/);
-  // A closed state: no sign-in card, no connect offer, and never "workspace".
   await expect(failure).rejects.not.toThrow(/workspace/i);
   expect(holder.pending).toBeUndefined();
 });
 
 test("a RELAYED upstream 503 (transient outage) is NOT the not-set-up message", async () => {
-  // The host's sandbox proxy relays ANY non-ok upstream status verbatim. In
-  // gateway mode a transient Composio/gateway outage returns 503 with the
-  // upstream's body (NO integrations_not_configured code) — the key IS set, so
-  // the model must NOT tell the user "connected apps aren't set up here / set
-  // COMPOSIO_API_KEY". It is a generic transient failure.
   mockFetch(() => ({
     status: 503,
     body: { error: "upstream temporarily unavailable" },
@@ -645,9 +600,6 @@ test("a RELAYED upstream 503 (transient outage) is NOT the not-set-up message", 
 });
 
 test("a RELAYED upstream 409 (transient conflict) queues NO signin card", async () => {
-  // Symmetric to the 503 case: an upstream 409 the host relays verbatim lacks
-  // the signin_required code, so it must NOT record a sign-in step nor tell the
-  // model to end its turn.
   mockFetch(() => ({
     status: 409,
     body: { error: "conflict: resource busy" },
@@ -663,8 +615,6 @@ test("a RELAYED upstream 409 (transient conflict) queues NO signin card", async 
 });
 
 test("execute POSTs the action + params only (no confirmation intent)", async () => {
-  // The dedicated host approval gate is gone: execute no longer sends an
-  // `intent`, and a change action is confirmed up front by an ask_user question.
   const calls = mockFetch(() => ({ body: { successful: true } }));
   await run(execute, {
     action: "GMAIL_SEND_EMAIL",
@@ -681,8 +631,6 @@ test("execute POSTs the action + params only (no confirmation intent)", async ()
 });
 
 test("a 409 (approval_required) is no longer special: it surfaces as a generic error", async () => {
-  // The host no longer 409-gates actions. Any 409 it still emits flows through
-  // the generic error path — nothing is queued, nothing is returned as normal.
   mockFetch(() => ({
     status: 409,
     body: {
@@ -702,16 +650,11 @@ test("a 409 (approval_required) is no longer special: it surfaces as a generic e
   await expect(failure).rejects.toThrow(
     /integrations execute failed \(409, code approval_required\)/,
   );
-  // Unrecognized 4xx → the body (toolkit, action, params hash) is redacted.
   await expect(failure).rejects.not.toThrow(/paramsHash|h7f3a1/);
   expect(holder.pending).toBeUndefined();
 });
 
 test("a 403 (toolkit_not_allowed) returns Settings Apps guidance, not a raw error", async () => {
-  // The gateway walls off an execute whose app is outside this agent's
-  // allowlist (turned off in this agent's Settings, under Apps). The sandbox proxy relays the
-  // 403 body verbatim, so the runtime classifies it by its stable code and
-  // RETURNS guidance — being walled off is a user-fixable state, not a failure.
   mockFetch(() => ({
     status: 403,
     body: {
@@ -729,7 +672,6 @@ test("a 403 (toolkit_not_allowed) returns Settings Apps guidance, not a raw erro
   const text = (out.content[0] as { text: string }).text;
   expect(text).toContain("turned off for this agent");
   expect(text).toContain("this agent's Settings, under Apps");
-  // It tells the model NOT to retry, and never to call the app unsupported.
   expect(text).toContain("Do not retry");
   expect(text).toContain("never imply the app is unsupported");
   expect(text).not.toContain("admin");
@@ -737,15 +679,10 @@ test("a 403 (toolkit_not_allowed) returns Settings Apps guidance, not a raw erro
     action: "SALESFORCE_CREATE_LEAD",
     appTurnedOff: true,
   });
-  // No interaction card is queued — the fix lives in this agent's Settings.
   expect(holder.pending).toBeUndefined();
 });
 
 test("a 403 (not_assigned) returns access guidance on BOTH search and execute, never the gateway's words", async () => {
-  // HOU-967: the gateway refuses when the acting user isn't one of the people
-  // with access to this agent. Its body ("this agent isn't assigned to you")
-  // is internal jargon the model used to paraphrase at a non-technical user —
-  // so both tools classify the stable code and RETURN the human remedy.
   const notAssigned = () => ({
     status: 403,
     body: { error: "this agent isn't assigned to you", code: "not_assigned" },
@@ -764,12 +701,10 @@ test("a 403 (not_assigned) returns access guidance on BOTH search and execute, n
   for (const out of [found, ran]) {
     const text = (out.content[0] as { text: string }).text;
     expect(text).toContain("does not have access to this agent");
-    // The remedy names the exact place a manager fixes it.
     expect(text).toContain("Settings");
     expect(text).toContain("People");
     expect(text).toContain("Do not retry");
     expect(text).toContain("never imply the app they asked for is unsupported");
-    // Never the raw body, the gateway's jargon, or a connect offer.
     expect(text).not.toContain("not_assigned");
     expect(text).not.toContain("assigned");
     expect(text).not.toContain("{");
@@ -784,13 +719,10 @@ test("a 403 (not_assigned) returns access guidance on BOTH search and execute, n
     action: "GMAIL_SEND_EMAIL",
     noAgentAccess: true,
   });
-  // A permission state, not an interaction: nothing is queued for the user.
   expect(holder.pending).toBeUndefined();
 });
 
 test("an unrecognized 4xx redacts the response body, keeping only status + code", async () => {
-  // The model reads whatever we throw, so an unclassified refusal must not hand
-  // it gateway JSON to paraphrase — status + code survive for the logs.
   mockFetch(() => ({
     status: 422,
     body: {
@@ -803,12 +735,10 @@ test("an unrecognized 4xx redacts the response body, keeping only status + code"
     /integrations execute failed \(422, code seat_policy_violation\)/,
   );
   await expect(failure).rejects.toThrow(/never quote this message/);
-  // No trace of the body: no JSON, no upstream prose.
   await expect(failure).rejects.not.toThrow(/tenant xyz-9/);
   await expect(failure).rejects.not.toThrow(/seat_policy for org/);
   await expect(failure).rejects.not.toThrow(/[{}]/);
 
-  // Search redacts identically.
   mockFetch(() => ({ status: 400, body: { error: "bad query for org 41f" } }));
   const searchFailure = run(search, { query: "x" });
   await expect(searchFailure).rejects.toThrow(
@@ -818,9 +748,6 @@ test("an unrecognized 4xx redacts the response body, keeping only status + code"
 });
 
 test("a RELAYED upstream 403 (no code) stays a generic error, not the turned-off guidance", async () => {
-  // Symmetric to the transient 503/409 cases: an upstream 403 the proxy relays
-  // verbatim lacks the toolkit_not_allowed code, so it must NOT be read as the
-  // allowlist refusal — it surfaces as a generic error.
   mockFetch(() => ({ status: 403, body: { error: "forbidden by upstream" } }));
   await expect(run(execute, { action: "X" })).rejects.toThrow(
     /integrations execute failed \(403\)/,
@@ -828,13 +755,6 @@ test("a RELAYED upstream 403 (no code) stays a generic error, not the turned-off
 });
 
 test("a stale action slug (Tool_ToolNotFound via the gateway's 502) returns re-search guidance, not a raw failure", async () => {
-  // PRODUCT-1266: in a long chat the model reuses an action slug from its
-  // context (a search result from before Composio renamed/removed the action,
-  // or an invented name — GMAIL_SEARCH_EMAILS never existed; the real slug is
-  // GMAIL_FETCH_EMAILS). The gateway wraps Composio's 404 in a 502 whose body
-  // keeps the stable "Tool_ToolNotFound" slug verbatim; the tool classifies it
-  // and RETURNS the mechanical recovery — search again — so the task completes
-  // in THIS chat instead of teaching the user that only a new mission works.
   mockFetch(() => ({
     status: 502,
     body: {
@@ -850,7 +770,6 @@ test("a stale action slug (Tool_ToolNotFound via the gateway's 502) returns re-s
   expect(text).toContain('"GMAIL_SEARCH_EMAILS" does not exist');
   expect(text).toContain("Call integration_search now");
   expect(text).toContain("Do not retry this slug");
-  // Never the upstream jargon for the model to paraphrase at the user.
   expect(text).not.toContain("Tool_ToolNotFound");
   expect(text).not.toContain("502");
   expect(text).not.toContain("404");
@@ -858,13 +777,10 @@ test("a stale action slug (Tool_ToolNotFound via the gateway's 502) returns re-s
     action: "GMAIL_SEARCH_EMAILS",
     actionNotFound: true,
   });
-  // A recoverable model-side state: nothing is queued for the user.
   expect(holder.pending).toBeUndefined();
 });
 
 test("a stale action slug via the DIRECT adapter's 500 classifies identically", async () => {
-  // Self-host/dev: the direct adapter's ComposioApiError reaches the runtime
-  // as the host's generic 500 { error: message } — same stable slug inside.
   mockFetch(() => ({
     status: 500,
     body: {
@@ -880,9 +796,6 @@ test("a stale action slug via the DIRECT adapter's 500 classifies identically", 
 });
 
 test("a plain relayed 502 WITHOUT the Composio slug stays a generic transient error", async () => {
-  // Any other upstream 502 (gateway outage, provider down) must not be read as
-  // a stale slug — the classification keys on Composio's stable error slug,
-  // never the bare status.
   mockFetch(() => ({
     status: 502,
     body: { error: "upstream connect timeout" },
@@ -893,15 +806,12 @@ test("a plain relayed 502 WITHOUT the Composio slug stays a generic transient er
 });
 
 test("live mode gates: a turn switched to Plan refuses execute and the connect hand-off", async () => {
-  // The user flipped the Mode pill to Plan while the turn ran: acting on the
-  // user's apps refuses BEFORE any network call, with the planning instruction.
   const calls = mockFetch(() => ({ body: { successful: true } }));
   await expect(
     runWithTurnMode({ current: "plan" }, () => run(execute, { action: "X" })),
   ).rejects.toThrow(/Plan mode/);
   expect(calls).toHaveLength(0);
 
-  // And Plan refuses the connect hand-off too (setup while planning).
   await expect(
     runWithTurnMode({ current: "plan" }, () =>
       run(requestConnection, { toolkit: "gmail" }),
@@ -910,10 +820,6 @@ test("live mode gates: a turn switched to Plan refuses execute and the connect h
 });
 
 test("Autopilot does NOT gate request_connection: the connect step is recorded (HOU-853)", async () => {
-  // Auto never waits on the user's judgment, but a missing connection is the
-  // one thing autonomy cannot produce — the queued connect card ends the turn
-  // (it never holds it open) and the live connection auto-continues the run,
-  // so the hand-off works in Autopilot exactly as in Coworker.
   const holder = newInteractionHolder();
   await runWithTurnMode({ current: "auto" }, () =>
     runWithInteractionCapture(holder, () =>
@@ -928,7 +834,6 @@ test("Autopilot does NOT gate request_connection: the connect step is recorded (
 });
 
 test("C2: attaches the turn's acting-as header inside a turn, and nothing outside one", async () => {
-  // Inside a turn that received an acting-as token, the tool forwards it.
   const inTurn = mockFetch(() => ({ body: { items: [] } }));
   await runWithActingContext({ actingAs: "acting-v1.tok" }, () =>
     run(search, { query: "x" }),
@@ -936,7 +841,6 @@ test("C2: attaches the turn's acting-as header inside a turn, and nothing outsid
   expect(inTurn[0]?.headers["x-houston-acting-as"]).toBe("acting-v1.tok");
   expect(inTurn[0]?.headers["x-houston-acting-user"]).toBeUndefined();
 
-  // A routine turn forwards the acting-user instead.
   const routine = mockFetch(() => ({ body: { successful: true } }));
   await runWithActingContext({ actingUser: "sub-alice" }, () =>
     run(execute, { action: "X" }),
@@ -944,7 +848,6 @@ test("C2: attaches the turn's acting-as header inside a turn, and nothing outsid
   expect(routine[0]?.headers["x-houston-acting-user"]).toBe("sub-alice");
   expect(routine[0]?.headers["x-houston-acting-as"]).toBeUndefined();
 
-  // A call with NO turn context attaches neither header — today's behavior.
   const bare = mockFetch(() => ({ body: { items: [] } }));
   await run(search, { query: "x" });
   expect(bare[0]?.headers["x-houston-acting-as"]).toBeUndefined();

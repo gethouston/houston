@@ -1,16 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { type FakeHost, startFakeHost } from "./server";
 
-/**
- * The fake host refuses another agent's name the way the real host does
- * (packages/host/src/routes/agent-name-taken.ts): 409 `name_taken`, compared
- * trimmed and case-insensitively, for a create and for a rename, while a new
- * spelling of an agent's own name stays a rename. It refuses the AI Manager's
- * own name the same way too (routes/agent-name-reserved.ts): 400
- * `name_reserved`, except for the desktop-to-cloud move and an agent that
- * already holds the name.
- */
-
 const JSON_HEADERS = { "content-type": "application/json" };
 let host: FakeHost;
 

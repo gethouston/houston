@@ -4,22 +4,6 @@ import { type Static, Type } from "typebox";
 import { recordQuestions } from "../interaction";
 import { assertNotAutoMode } from "../live-mode-gate";
 
-/**
- * The blocking-question tool. Any time the model needs the user to answer,
- * choose, or approve before it can continue, it calls `ask_user` instead of
- * ending its turn with a question in plain text. It batches EVERYTHING it needs
- * — up to 3 questions — into ONE call: executing it records the question steps
- * of this turn's interaction sequence (carried on the terminal `done` frame),
- * and Houston walks the user through them one at a time in a single interactive
- * card in place of the chat input. The user's answers arrive as a normal user
- * message on the next turn. If the same turn also needs an app connected, the
- * model calls `request_connection` too — both feed ONE interaction flow.
- *
- * Available in EVERY mode/backend that can receive Houston's custom tools (i.e.
- * the pi backend) — it holds no credential and makes no network call.
- */
-
-/** The most questions one `ask_user` card may carry. A cap, not a norm. */
 const MAX_QUESTIONS = 3;
 
 const AskUserParams = Type.Object({
@@ -81,11 +65,9 @@ const AskUserParams = Type.Object({
 });
 type AskUserParams = Static<typeof AskUserParams>;
 
-/** The instruction returned to the model after the questions are recorded. */
 const ASK_USER_INSTRUCTION =
   "Your questions were added to the one interaction card the user sees in place of the chat input, walked one at a time. Queue everything you still need for this task now: if an app must be connected too, call request_connection in this SAME turn, then end your turn. Do not repeat the questions in your reply text, and do not ask anything else in plain text. The user's answers will arrive as a normal message.";
 
-/** The always-available blocking-question tool. */
 export function makeAskUserTool() {
   return defineTool({
     name: "ask_user",
@@ -96,8 +78,6 @@ export function makeAskUserTool() {
     parameters: AskUserParams,
     executionMode: "sequential",
     async execute(_id: string, params: AskUserParams) {
-      // Live gate for the mid-turn Mode-pill switch: a turn built with ask_user
-      // available may now be running in Autopilot — never wait on the user.
       assertNotAutoMode("ask the user questions or wait for their input");
       if (
         params.questions.length < 1 ||
@@ -113,8 +93,6 @@ export function makeAskUserTool() {
           id: `q${i + 1}`,
           question: q.question,
           ...(q.options && q.options.length > 0 ? { options: q.options } : {}),
-          // Passed through verbatim: brands the card with the app's logo when
-          // the question confirms a connected-app action.
           ...(q.toolkit ? { toolkit: q.toolkit } : {}),
           ...(q.wantsFiles === true ? { wantsFiles: true } : {}),
         }),
@@ -128,5 +106,4 @@ export function makeAskUserTool() {
   });
 }
 
-/** The tool name — pi's allowlist needs it alongside the object. */
 export const ASK_USER_TOOL_NAME = "ask_user";

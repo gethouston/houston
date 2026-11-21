@@ -12,17 +12,6 @@ interface Recorded {
   body: string | null;
 }
 
-/**
- * An inert SDK (`reactivity:false`) over a mock `fetch` that records the whole
- * request and answers whatever the test queues.
- *
- * Every assertion is about the exact URL, method and body bytes that reach the
- * wire, because these routes are the agent's REAL workspace: a path escaped one
- * character differently reads or deletes a different file. Nothing is swallowed
- * either — the "no workspace here" degradations belong to the CALLER (the web
- * adapter's mixin), never to this module, or a caller would be handed an empty
- * listing it cannot tell from a real one.
- */
 function makeSdk(respond: (url: string) => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(
@@ -85,8 +74,6 @@ describe("files module — reading an agent's workspace", () => {
   });
 
   it("decodes a base64-framed file to the bytes it carried", async () => {
-    // The host frames anything it cannot serve as text as base64; a caller that
-    // rendered the frame instead of the file would show mojibake.
     const { sdk } = makeSdk(() => json({ content: "SGVsbG8=", base64: true }));
 
     await expect(sdk.files.readProjectFile("a1", "logo.png")).resolves.toBe(

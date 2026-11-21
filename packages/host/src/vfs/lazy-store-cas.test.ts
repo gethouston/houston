@@ -14,12 +14,6 @@ import { LazyStoreVfs } from "./lazy-store";
 import { LazyReadRefusedError } from "./lazy-store-types";
 import { VfsExistsError } from "./vfs";
 
-/**
- * The CAS guard behind lazy ownership: a generation-minting store must see
- * `ifGenerationMatch` on every upload/delete of a key the op never read,
- * and create-only ("0") on a key the store never had.
- */
-
 const PREFIX = "ws/w1/agent-1";
 
 function generationStore(root: string) {
@@ -108,7 +102,6 @@ test("unread overwrite, unread delete and a move all write with the recorded gen
   expect(byKey["delete workspaces/P/Bob/dir/b.txt"]).toEqual({
     ifGenerationMatch: "7",
   });
-  // A key the store never had: create-only.
   expect(byKey["upload workspaces/P/Bob/b2.txt"]).toEqual({
     ifGenerationMatch: "0",
   });
@@ -141,7 +134,6 @@ test("a file where the store has a directory, or under a remote file, is refused
   await expect(
     vfs.move("workspaces/P/Bob/a.txt", "workspaces/P/Bob/dir"),
   ).rejects.toThrow(/EISDIR/);
-  // Deleting the remote file first makes the path a legal directory.
   await vfs.deleteKey("workspaces/P/Bob/a.txt");
   await vfs.writeText("workspaces/P/Bob/a.txt/child.txt", "x");
   expect(await vfs.readText("workspaces/P/Bob/a.txt/child.txt")).toBe("x");
@@ -214,7 +206,6 @@ test("a stale manifest size cannot smuggle an oversized object past the cap", as
     vfs.readBytes("workspaces/P/Bob/grown.bin"),
   ).rejects.toBeInstanceOf(LazyReadRefusedError);
   expect(manifest.size).toBe(0);
-  // Nothing partial left behind: a later read refuses again, not serves it.
   await expect(
     vfs.readBytes("workspaces/P/Bob/grown.bin"),
   ).rejects.toBeInstanceOf(LazyReadRefusedError);
@@ -268,7 +259,6 @@ test("a failed download leaves no partial file behind", async () => {
   );
   expect(manifest.size).toBe(0);
   fail = false;
-  // The retry reads the whole object, not the partial bytes.
   expect(await vfs.readText("workspaces/P/Bob/doc.txt")).toBe("whole");
 });
 

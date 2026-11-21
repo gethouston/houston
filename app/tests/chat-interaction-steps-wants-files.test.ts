@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 import { mapInteractionSteps } from "../src/components/chat-interaction-steps.ts";
 import type { ApprovalCardCopy } from "../src/lib/interaction-approval-labels.ts";
 
-// A plain question never reads the approval copy.
 const approvalCopy = {} as ApprovalCardCopy;
 
 function map(steps: Parameters<typeof mapInteractionSteps>[0]["steps"]) {

@@ -14,22 +14,8 @@ import { HeaderToolsRow } from "../shell/page-header/header-tools-row";
 import { PageHeaderTools } from "../shell/page-header/page-header-tools";
 import type { SkillsListState } from "./skills-list-model";
 
-/**
- * The states the Skills list owes beside its rows: nothing created yet, a
- * search that matched nothing, the read that did not answer, and the wait
- * before any of them is known.
- *
- * The failure state carries a retry and NO error text of its own: the engine
- * call already toasted and reported it (`lib/tauri`'s `call`), so repeating the
- * report here would double-count one failure, and a raw message is not copy.
- */
-
-/** How many rows the skeleton lays out — enough to read as a list without
- *  promising more than the preview cap ever shows at rest. */
 const SKELETON_ROWS = ["a", "b", "c", "d"] as const;
 
-/** One row's exact geometry: the same leading art, gaps and vertical padding
- *  `CatalogRow` paints, so the real rows land where the skeleton stood. */
 function SkeletonRow() {
   return (
     <div className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5">
@@ -42,9 +28,6 @@ function SkeletonRow() {
   );
 }
 
-/** The search field and the create button at rest, in whichever of the two
- *  forms `SkillsControls` takes: compact in the strip, full width in the body
- *  row. Same container, same heights, so nothing moves when they land. */
 function SkeletonControls({ inStrip }: { inStrip: boolean }) {
   const height = inStrip ? "h-8" : "h-9";
   return (
@@ -61,8 +44,6 @@ export function SkillsListSkeleton() {
   const { t } = useTranslation("skills");
   return (
     <div role="status" aria-label={t("grid.loading")}>
-      {/* The controls own the strip on a wide header and the body below its
-          one-row threshold; reserving the wrong one is the shift itself. */}
       <PageHeaderTools>
         {(inStrip) => <SkeletonControls inStrip={inStrip} />}
       </PageHeaderTools>
@@ -76,7 +57,6 @@ export function SkillsListSkeleton() {
   );
 }
 
-/** The list with no rows to show, in whichever of its two senses. */
 export function SkillsListEmpty({
   state,
   query,
@@ -104,8 +84,6 @@ export function SkillsListEmpty({
   );
 }
 
-/** A read that did not answer, said once with the way to try it again. Shared
- *  by the list and the editor's body, which fail the same way. */
 export function SkillsRetryEmpty({
   title,
   description,

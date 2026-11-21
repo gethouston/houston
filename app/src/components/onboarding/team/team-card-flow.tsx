@@ -25,15 +25,6 @@ import { useTeamRoster } from "./use-team-roster";
 export const HIRE_FORM_ID = "team-card-hire";
 export const BASIC_FORM_ID = "team-card-basic";
 
-/**
- * The card's content in the new-workspace dialog: the screen in hand,
- * scrolling on its own when it outgrows the dialog, over an action row that
- * never scrolls away.
- *
- * Every hook that holds an answer lives here, above the screens, so moving
- * between them (and back) never loses what was typed or picked, and both
- * paths hire into the one roster: switching between them keeps everyone.
- */
 export function TeamCardFlow({
   workspaceId,
   start,
@@ -64,8 +55,6 @@ export function TeamCardFlow({
   const facts = { hasIndustry: industry !== "", hiredCount };
   const view = nav.view;
   const answered = () => nav.go(nextTeamView(view));
-  // A fresh hire once someone is on the roster; before that, a hire the
-  // person backed out of keeps its answers.
   const hireNext = () => {
     if (hiredCount > 0) hire.startNextHire();
     nav.go(startHire());
@@ -86,12 +75,7 @@ export function TeamCardFlow({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div
-        // Bled to the frame's edge on a phone so the scrollbar rides the
-        // screen edge, not the content; the padding puts the content back.
-        // Never scrolls sideways: a step slides in from 12px off its edge.
-        className="-mx-5 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-5 md:mx-0 md:px-0"
-      >
+      <div className="-mx-5 flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-5 md:mx-0 md:px-0">
         <div
           key={teamViewKey(view)}
           data-direction={nav.direction}

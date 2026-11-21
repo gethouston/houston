@@ -25,8 +25,6 @@ export interface AgentGroup {
   reports: AdminReport[];
 }
 
-/** One agent's card in the reports feed: its reports, each with resolve/dismiss
- *  when still open. Presentational; the parent owns the decision requests. */
 export function ReportGroupCard({
   group,
   busyId,

@@ -2,10 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { activeMobileTab, phoneChromeHidden } from "../src/lib/mobile-tabs.ts";
 
-// The phone nav bar's classification rule — which of the two items the
-// current location lights up. Pure; the tap side is store-bound and covered
-// by the mobile Playwright suite.
-
 const at = (viewMode: string) => ({ viewMode });
 
 describe("activeMobileTab", () => {
@@ -37,8 +33,6 @@ describe("activeMobileTab", () => {
   });
 });
 
-// The bottom chrome's own rule: a chat is a push, so the bar leaves while one
-// is up, whichever door led there.
 describe("phoneChromeHidden", () => {
   const on = (viewMode: string) => ({
     viewMode,

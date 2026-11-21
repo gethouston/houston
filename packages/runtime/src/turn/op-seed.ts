@@ -15,7 +15,6 @@ import {
 import { RUNTIME_VIEW_SOURCES, type SeedViewSources } from "./op-seed-views";
 import type { OpRequest } from "./parse-op-request";
 
-/** The worker's HTTP answer to `/op` for a seed. */
 export interface SeedReply {
   status: number;
   body: unknown;
@@ -27,11 +26,8 @@ export interface SeedOpInput {
   turn: OpClaimTurn;
   store: ObjectStore;
   prefix: string;
-  /** Per-op temp directory, removed by the caller. */
   root: string;
-  /** Whether the claim was fenced (checked before anything is written). */
   fenced: () => Promise<boolean>;
-  /** Test seam: the provider baseline (default: this runtime's own). */
   views?: SeedViewSources;
 }
 
@@ -51,13 +47,6 @@ const relayed = (status: number, body: unknown): SeedReply => ({
   },
 });
 
-/**
- * The `seed` op: decide from the store listing alone (nothing downloaded),
- * then adopt the one agent tree, seed an empty prefix exactly as the pod's
- * `POST /agents` would, or refuse anything else as data a seed must never
- * write over. Every upload is create-only; a seeding race withdraws this
- * op's files and decides again once, which adopts the winner's tree.
- */
 export function executeSeedOp(input: SeedOpInput): Promise<SeedReply> {
   return seedOnce(input, true);
 }
@@ -68,8 +57,6 @@ async function seedOnce(
 ): Promise<SeedReply> {
   const { op, store, prefix } = input;
   const seeds = Object.keys(op.op.seeds ?? {});
-  // The agent-ops claim cannot write the runtime tree: such a seed is the
-  // pod's to create, never silently dropped here.
   if (seeds.some((key) => key.startsWith(".houston/runtime/")))
     return { status: 200, body: { ok: true, decline: true } };
   const { objects, rels } = await listPrefix(store, prefix);
@@ -93,8 +80,6 @@ async function seedOnce(
       views: input.views ?? RUNTIME_VIEW_SOURCES,
     });
   if (listing.kind === "adopt" && !payload) {
-    // A young agent's adopt may follow a first seed that crashed after its
-    // files landed and before its docs did: project them again.
     if (op.op.republish)
       await publishDocs(
         { id: listing.id, workspaceRel: listing.workspaceRel },
@@ -106,8 +91,6 @@ async function seedOnce(
   const actor = op.actingAs?.userId;
   let tree: SeedTree;
   if (listing.kind === "adopt") {
-    // A seed that crashed half-way is completed: the payload files the
-    // adopted tree lacks, never one it holds.
     const [workspaceId = "", name = ""] = listing.id.split("/");
     tree = await buildSeedTree(storeRoot, op.op, actor, { workspaceId, name });
     await pruneListed(storeRoot, tree, new Set(rels));
@@ -137,8 +120,6 @@ async function seedOnce(
     }
   }
   const wrote = synced.uploaded.length;
-  // An adopted tree that raced another writer is left to that writer's
-  // own projection: this op's listing no longer shows the store.
   if (
     listing.kind === "empty" ||
     (synced.conflicts.length === 0 && (wrote > 0 || op.op.republish))

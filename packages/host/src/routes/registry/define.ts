@@ -13,27 +13,22 @@ import type {
   RouteFamilyDef,
 } from "./types";
 
-/** One pattern the dispatcher tries, with the methods it answers for. */
 export interface RegisteredPattern {
   path: string;
-  /** null = every method (the runtime proxy family, which forwards them all). */
   methods: HttpMethod[] | null;
 }
 
-/** One `define*` call, as the dispatcher and the parity gate read it back. */
 export interface RegisteredRoute {
   group: GroupId;
   phase: Phase;
   methodMismatch: MethodMismatch;
   patterns: RegisteredPattern[];
-  /** What `listRoutes()` publishes for this entry — a family expands here. */
   descriptors: RouteDescriptor[];
   handler(ctx: DispatchCtx): unknown;
 }
 
 const registry = new Map<GroupId, RegisteredRoute[]>();
 
-/** Every registered route, grouped, in the order server.ts calls the groups. */
 export function registeredRoutes(): ReadonlyMap<GroupId, RegisteredRoute[]> {
   return registry;
 }
@@ -41,10 +36,6 @@ export function registeredRoutes(): ReadonlyMap<GroupId, RegisteredRoute[]> {
 const asArray = (method: HttpMethod | HttpMethod[]): HttpMethod[] =>
   Array.isArray(method) ? method : [method];
 
-/**
- * A route is registered once, at import time, so every check here fails the
- * process on boot rather than on the one request that would have exposed it.
- */
 function register(entry: RegisteredRoute): void {
   if (GROUP_PHASES[entry.group] !== entry.phase)
     throw new Error(
@@ -82,7 +73,6 @@ function describe(
   }));
 }
 
-/** One method (or method set) on one path. */
 export function defineRoute(def: RouteDef): void {
   const methods = asArray(def.method);
   register({
@@ -98,7 +88,6 @@ export function defineRoute(def: RouteDef): void {
   });
 }
 
-/** One handler serving an enumerated set of pairs it owns as a unit. */
 export function defineRouteFamily(def: RouteFamilyDef): void {
   const byPath = new Map<string, HttpMethod[] | null>();
   for (const member of def.members) {
@@ -106,9 +95,6 @@ export function defineRouteFamily(def: RouteFamilyDef): void {
     if (methods) methods.push(member.method);
     else byPath.set(member.path, [member.method]);
   }
-  // An owned path answers for EVERY method, so it widens the pattern a member
-  // already declared rather than adding a second one the matcher would reach
-  // only after that member had its say.
   for (const path of def.owns ?? []) byPath.set(path, null);
   register({
     group: def.group,
@@ -120,7 +106,6 @@ export function defineRouteFamily(def: RouteFamilyDef): void {
   });
 }
 
-/** The catch-all forward to the agent's runtime. Enumerable, not a wildcard. */
 export function defineProxyFamily(def: ProxyFamilyDef): void {
   register({
     group: def.group,

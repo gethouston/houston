@@ -13,16 +13,6 @@ import { tauriIntegrations } from "../../lib/tauri";
 import { connectFlowRegistry } from "../../stores/connect-flow";
 import { useCapabilities } from "../use-capabilities";
 
-/**
- * Per-provider readiness (usable now? needs a Houston sign-in?). User-level.
- *
- * Gated on the host-advertised `integrations` capability: a deployment with no
- * integration provider wired answers `/v1/integrations` with 503, so fetching
- * there would surface a red bug toast for a configuration that's perfectly
- * legitimate (dev host, self-host without a Composio key). The disabled query
- * stays idle with no data and the Integrations page renders its unavailable
- * state.
- */
 export function useIntegrationStatus() {
   const { capabilities } = useCapabilities();
   return useQuery({
@@ -33,20 +23,11 @@ export function useIntegrationStatus() {
   });
 }
 
-/**
- * Whether `provider` is REGISTERED on this host (present in the readiness
- * list, ready or not). Provider-scoped queries must AND-gate on this: a host
- * can serve the key-free `custom` provider with NO Composio at all (dev,
- * self-host without a key), and a Composio-scoped fetch there 404s ("unknown
- * integration provider") straight into a red toast — e.g. a transcript's old
- * connect card mounting its connections query.
- */
 function useProviderRegistered(provider: IntegrationProviderId): boolean {
   const status = useIntegrationStatus();
   return !!status.data?.some((p) => p.provider === provider);
 }
 
-/** The apps the user has connected through a provider. */
 export function useIntegrationConnections(
   provider: IntegrationProviderId,
   enabled: boolean,
@@ -60,11 +41,6 @@ export function useIntegrationConnections(
   });
 }
 
-/**
- * The provider's app catalog (name, logo, description per toolkit). Big and
- * near-static, so cache it for the session — the app surfaces use it to render
- * real app cards instead of machine slugs.
- */
 export function useIntegrationToolkits(
   provider: IntegrationProviderId,
   enabled: boolean,
@@ -78,20 +54,11 @@ export function useIntegrationToolkits(
   });
 }
 
-/**
- * Disconnect an app: the tile leaves on the click and the write follows
- * (`optimisticWrite`, which owns the refusal toast). `connectionId`
- * narrows the removal to ONE account of the toolkit (a toolkit can hold
- * several, two Gmail logins); omitted removes them all.
- */
 export function useDisconnectIntegration(provider: IntegrationProviderId) {
   const qc = useQueryClient();
   const { t } = useTranslation("integrations");
   return useCallback(
     ({ toolkit, connectionId }: { toolkit: string; connectionId?: string }) => {
-      // A connect poll waiting on the connection being removed must stop NOW,
-      // before the removal lands: otherwise its next read 404s on the id the
-      // user just took away (PRODUCT-1733).
       cancelFlowsForDisconnect(connectFlowRegistry, toolkit, connectionId);
       void optimisticWrite({
         qc,
@@ -118,6 +85,3 @@ export function useDisconnectIntegration(provider: IntegrationProviderId) {
     [qc, provider, t],
   );
 }
-
-// The custom (API / MCP) integration hooks live in
-// `use-custom-integrations.ts` (HOU-550 / HOU-823 / HOU-980).

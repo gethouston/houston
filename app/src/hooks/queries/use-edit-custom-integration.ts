@@ -7,8 +7,6 @@ import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations } from "../../lib/tauri";
 import { useCustomIntegrationScope } from "./use-custom-transport";
 
-/** Rename a custom integration / set its website: every list shows the new
- *  details on Save, and the write follows. */
 export function useEditCustomIntegration(agentId?: string) {
   const qc = useQueryClient();
   const { t } = useTranslation("integrations");

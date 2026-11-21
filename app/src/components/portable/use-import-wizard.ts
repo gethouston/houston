@@ -1,15 +1,3 @@
-/**
- * The "From a friend" flow: which steps exist and the arriving agent's
- * identity. The install press itself is `use-import-install-action.ts`.
- *
- * The step list is derived from the package, so one with no routines has no
- * routines step at all rather than an empty one.
- *
- * `reset()` deliberately leaves provider and model alone: they rehydrate from
- * the sticky last-used pair on the next open, and clearing them first would
- * flash the hardcoded fallback in the selector.
- */
-
 import { AGENT_COLORS } from "@houston-ai/core";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -40,8 +28,6 @@ export function useImportWizard() {
   const providerModel = useImportProviderModel(open);
 
   const pkg = useImportPackage({
-    // The friend's name for the agent is only a suggestion: a name the user has
-    // already typed wins.
     onPreview: useCallback((preview) => {
       setName((prev) =>
         !prev && preview.manifest.agentName ? preview.manifest.agentName : prev,
@@ -85,10 +71,6 @@ export function useImportWizard() {
     reset();
   }, [reset, setOpen]);
 
-  // Same pre-submit rule as the create dialog (HOU-1166), shown live under the
-  // name field: the package's own name arrives pre-filled, so one the host
-  // would refuse (the AI Manager's "Houston", a duplicate) says so before the
-  // person moves on, and Next stays off until it changes.
   const issueCopy = useEmployeeNameIssueCopy();
   const nameIssueText = issueCopy(
     agentNameIssue(

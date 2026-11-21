@@ -14,12 +14,6 @@ import { afterEach, expect, test } from "vitest";
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
-/**
- * Lazy hot-set on pool ops: a sleeping agent's Files tab and one-file reads
- * must cost the objects they touch, never the agent's size, and a
- * conversation op must hydrate only its own conversation.
- */
-
 const servers: Server[] = [];
 afterEach(() => {
   for (const s of servers.splice(0)) s.close();
@@ -50,7 +44,6 @@ function countingStore(root: string): ObjectStore & { downloads: string[] } {
   };
 }
 
-/** A busy agent: many user files, two conversations with sessions. */
 async function seedBusyAgent() {
   const storeRoot = mkdtempSync(join(tmpdir(), "op-lazy-store-"));
   const workspaces = join(storeRoot, PREFIX, "workspaces");
@@ -235,7 +228,6 @@ test("a conversation rename hydrates its own conversation only", async () => {
   expect(store.downloads).toEqual([
     `${agentRel}/.houston/runtime/conversations/c1.json`,
   ]);
-  // Nothing but the renamed file changed in the store.
   const keys = await store.list(PREFIX);
   expect(keys).toContain(
     `${PREFIX}/${agentRel}/.houston/runtime/conversations/c2.json`,
@@ -246,7 +238,6 @@ test("a conversation rename hydrates its own conversation only", async () => {
 
 test("a folder move that hits the read cap mid-way declines and leaves the store untouched", async () => {
   const { storeRoot, agentRel } = await seedBusyAgent();
-  // One oversized file among the forty: the per-child move refuses it.
   writeFileSync(
     join(storeRoot, PREFIX, agentRel, "reports", "huge.bin"),
     Buffer.alloc(MAX_UPLOAD_BYTES + 1),
@@ -276,8 +267,6 @@ test("a plain handler 5xx on a tree op declines before any sync-back", async () 
   const base = await listen(
     createTurnServer({ store, token: "", runTurn: noopTurn }),
   );
-  // A folder under a path the store holds as a FILE: a real tree fails the
-  // mkdir (ENOTDIR) and the handler 500s; the worker must not sync or relay.
   const json = await postOp(base, await heartbeatOK(), {
     kind: "route",
     method: "POST",
@@ -327,7 +316,6 @@ test("a conversation delete removes its file and unread session files, nothing e
     conversationId: "c1",
   });
   expect(json.status, JSON.stringify(json)).toBe(200);
-  // A delete needs no bytes: existence comes from the listing.
   expect(store.downloads).toEqual([]);
   const keys = await store.list(PREFIX);
   const runtime = `${PREFIX}/${agentRel}/.houston/runtime`;

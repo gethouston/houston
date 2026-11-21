@@ -7,8 +7,6 @@ import { logAndReportError } from "../../../lib/error-report";
 import { useUIStore } from "../../../stores/ui";
 import { useWorkspaceStore } from "../../../stores/workspaces";
 
-/** Under the fallback feedback's 6,000-char message bound, so a report
- *  never arrives cut. */
 const REPORT_MAX_CHARS = 5_000;
 
 export function ReportBugSection() {
@@ -20,7 +18,6 @@ export function ReportBugSection() {
 
   const canSend = description.trim().length > 0 && !sending;
 
-  // Keeps their text: they should never have to type it again.
   const showFailure = () =>
     addToast({
       title: t("reportBug.toasts.errorTitle"),
@@ -33,8 +30,6 @@ export function ReportBugSection() {
     if (!trimmed) return;
     setSending(true);
     try {
-      // `submitBugReport` never rejects for a channel failure and reports
-      // every one itself; `none` means Linear AND the fallback both failed.
       const outcome = await submitBugReport({
         command: "manual_report",
         error: "(no error: written by the person in Settings > Report bug)",
@@ -58,8 +53,6 @@ export function ReportBugSection() {
         variant: "success",
       });
     } catch (err) {
-      // Not a channel failure (those settle as `none`): a bug in the
-      // submit path itself, which must still reach us.
       logAndReportError("manual_report", err);
       showFailure();
     } finally {

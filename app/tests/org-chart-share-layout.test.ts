@@ -48,7 +48,6 @@ const layout = (agents: Agent[], members: OrgMember[], personal = false) =>
     },
   );
 
-/** Every coordinate a path visits. */
 const pathPoints = (d: string) =>
   [...d.matchAll(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g)].map((m) => [
     Number(m[1]),
@@ -68,10 +67,6 @@ function noOverlaps(boxes: CardBox[]) {
     }
 }
 
-/**
- * Whether any run of `path` passes through a card. Each `M` starts a new
- * edge; a rounded corner's control point stands in for its curve.
- */
 function crossesCard(path: string, boxes: Box[]): boolean {
   const inside = (box: Box, x: number, y: number) =>
     x > box.x + 0.5 &&
@@ -97,10 +92,8 @@ const many = (n: number, holders: number, offset = 0) =>
   Array.from({ length: n }, (_, i) =>
     agent(`a${i}`, holders ? `u${(i % holders) + offset}` : undefined),
   );
-/** Nine people holding 40 AI Employees, the owner first with none. */
 const big = () => layout(many(40, 9), roster(10));
 
-/** Whether every card sits inside the frame, between header and footer. */
 function insideRoom({ boxes, zoom }: ReturnType<typeof layout>, name: string) {
   for (const box of boxes.map((b) => ({ ...b, ...onCard(zoom, b) }))) {
     ok(box.x >= 0 && box.x + box.w <= CARD.width + 1e-9, `${name} x ${box.id}`);
@@ -152,7 +145,6 @@ describe("shareCardLayout", () => {
     const { boxes } = big();
     const people = boxes.filter((b) => b.node.kind === "person");
     strictEqual(people.length, 3);
-    // The owner is always on the card, and the people left out are counted.
     ok(
       people.some(
         (b) => b.node.kind === "person" && b.node.person.userId === "owner",
@@ -162,7 +154,6 @@ describe("shareCardLayout", () => {
     strictEqual(boxes.filter((b) => b.shape === "column").length, 4);
     const u0 = boxes.find((b) => b.id === "p:u0");
     const column = boxes.filter((b) => b.x === u0?.x);
-    // User 0 holds five: four shown, then the "+1".
     deepStrictEqual(
       column.map((b) => b.shape),
       ["column", "leaf", "leaf", "leaf", "leaf", "moreLeaf"],
@@ -230,7 +221,6 @@ describe("shareCardLayout", () => {
       };
     };
     strictEqual(rows(4).second.length, 0);
-    // 8 AI Employees show as six and a "+2": seven columns.
     for (const [agents, across, below] of [
       [5, 3, 2],
       [6, 4, 2],
@@ -242,8 +232,6 @@ describe("shareCardLayout", () => {
       noOverlaps(boxes);
       ok(!crossesCard(path, boxes), `${agents} line through a card`);
       const mid = (b: Box) => b.x + b.w / 2;
-      // Symmetric about the root, and every second-line card's line drops
-      // through a gap: clear of every card above it.
       const offsets = second.map((b) => mid(b) - 600);
       for (const offset of offsets)
         ok(

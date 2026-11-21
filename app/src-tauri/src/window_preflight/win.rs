@@ -64,8 +64,6 @@ pub(super) fn probe() -> Result<(), Failure> {
             lpszClassName: class_name.as_ptr(),
             hIconSm: null_mut(),
         };
-        // A class left behind by an earlier attempt whose window would not
-        // die is still ours: probe through it rather than fail on it.
         SetLastError(0);
         if RegisterClassExW(&class) == 0 && GetLastError() != ERROR_CLASS_ALREADY_EXISTS {
             return Err(failure(Step::RegisterClass));
@@ -95,8 +93,6 @@ unsafe fn probe_window(class_name: *const u16, instance: HINSTANCE) -> Result<()
     if window.is_null() {
         return Err(failure(Step::CreateWindow));
     }
-    // comctl32 documents only FALSE on failure, so clear the thread's error
-    // first: a stale code from an earlier call must not pose as the cause.
     SetLastError(0);
     let result = if SetWindowSubclass(window, Some(subclass_proc), SUBCLASS_ID, 0) != 0 {
         RemoveWindowSubclass(window, Some(subclass_proc), SUBCLASS_ID);

@@ -12,7 +12,6 @@ import {
 
 import { parseAcademyRecord } from "../src/lib/academy/academy-record-parse.ts";
 
-/** The install these records were earned on. */
 const DEVICE = "install-1";
 
 const record = (patch: Partial<AcademyRecord> = {}): AcademyRecord => ({
@@ -108,8 +107,6 @@ describe("parseAcademyRecord", () => {
       ),
       null,
     );
-    // JSON has no Infinity/NaN literal — they serialize to null, which is
-    // exactly what a corrupted writer would leave behind.
     strictEqual(
       parseAcademyRecord(
         JSON.stringify({
@@ -129,10 +126,6 @@ describe("parseAcademyRecord", () => {
   });
 
   it("reads a record written before the economy existed", () => {
-    // The fields are additive: a v1 record from an older build has no lessons,
-    // no usage day and no streak, and must still open at its full value. Its
-    // points were a single total, which becomes one more install — the one
-    // that earned everything up to here, and never earns again.
     const legacy = JSON.stringify({
       version: 1,
       chapters: {
@@ -148,9 +141,6 @@ describe("parseAcademyRecord", () => {
   });
 
   it("counts a record's points once, never the compatibility total too", () => {
-    // Every write leaves a `usagePoints` total beside the per-install counters
-    // so an older build can still read the record. Counting both would double
-    // the user's points on the very next read.
     const raw = serializeAcademyRecord(
       record({ usageByDevice: { [DEVICE]: 80, "install-2": 40 } }),
     );
@@ -168,10 +158,6 @@ describe("parseAcademyRecord", () => {
   });
 
   it("reads a record that carries no economy at all", () => {
-    // The economy fields are ADDITIVE: a record with neither the per-install
-    // counters nor the compatibility total is a record from a build that had
-    // no economy, and opens at its full value with an empty one. Refusing it
-    // would cost that user every chapter they had cleared.
     const raw = JSON.stringify({
       version: 1,
       chapters: {
@@ -328,9 +314,6 @@ describe("mergeAcademyRecords", () => {
   });
 
   it("adds up what two devices earned at the same time", () => {
-    // Both start the day at 100 and go offline; one earns 5, the other 7. A
-    // single total could only keep one of them — 107 — and the other five
-    // points would be gone. Per-install counters keep both.
     const base = record({
       usageByDevice: { "install-a": 60, "install-b": 40 },
     });
@@ -384,8 +367,6 @@ describe("mergeAcademyRecords", () => {
   });
 
   it("adds up to the larger count when both copies are on the same day", () => {
-    // Two devices spending the SAME day's cap: the bigger tally is the honest
-    // one, or the day would pay out twice.
     const merged = mergeAcademyRecords(
       record({ usageDay: "2026-08-02", usageToday: 4 }),
       record({ usageDay: "2026-08-02", usageToday: 11 }),

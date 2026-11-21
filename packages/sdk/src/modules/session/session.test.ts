@@ -22,10 +22,6 @@ import {
   SET_TOKEN_COMMAND,
 } from "./index";
 
-/**
- * A `fetch`-shaped mock. Typing the args (not `() => ...`) gives `mock.calls`
- * the `[input, init?]` tuple shape, so `calls[i]?.[1]?.headers` typechecks.
- */
 function fetchMock() {
   return vi.fn(
     async (
@@ -35,7 +31,6 @@ function fetchMock() {
   );
 }
 
-/** In-memory {@link KeyValueStore} plus its backing map for assertions. */
 function memStorage(seed?: Record<string, string>): {
   storage: KeyValueStore;
   map: Map<string, string>;
@@ -61,7 +56,6 @@ function ports(storage: KeyValueStore): SdkPorts {
   };
 }
 
-/** Build a bare {@link ModuleContext} for exercising the module in isolation. */
 function makeCtx(storage: KeyValueStore): {
   ctx: ModuleContext;
   store: ScopeStore;
@@ -75,7 +69,6 @@ function makeCtx(storage: KeyValueStore): {
   const ctx: ModuleContext = {
     config: { baseUrl: "http://127.0.0.1:4317", ports: ports(storage) },
     store,
-    // The session module never resolves an engine client.
     clientFor: () => {
       throw new Error("session module must not resolve a client");
     },
@@ -97,7 +90,6 @@ describe("createAuthFetch (live-token injection)", () => {
     expect(new Headers(init?.headers).get("Authorization")).toBe(
       "Bearer tok-1",
     );
-    // Ensure it reads from storage, not a captured constant.
     expect(map.get(SESSION_TOKEN_KEY)).toBe("tok-1");
   });
 
@@ -209,7 +201,6 @@ describe("setToken flow", () => {
   });
 
   it("an explicit setToken is not clobbered by a slower startup hydrate", async () => {
-    // Storage whose read resolves on a later microtask than the setToken write.
     const map = new Map<string, string>([[SESSION_TOKEN_KEY, "stale"]]);
     const storage: KeyValueStore = {
       get: (k) => Promise.resolve().then(() => map.get(k) ?? null),
@@ -254,25 +245,16 @@ describe("tokenExpired identity (token the failing request used)", () => {
     store.onEvent((e) => events.push(e));
   });
 
-  // FINDING 1 (refresh storm): a request stamped token A is in flight when the
-  // host proactively rotates to B (setToken B). A's late 401 must NOT be
-  // attributed to the fresh token B — doing so re-refreshes a good token and
-  // starts the exact storm this module exists to prevent.
   it("suppresses a stale 401 that lands after the token already rotated", () => {
     const n = createAuthExpiryNotifier(store);
-    n.setToken("A"); // request stamped A goes in flight
-    n.setToken("B"); // host proactively rotates while A is in flight
-    n.notifyExpired("A"); // A's late 401 surfaces, carrying its own token
+    n.setToken("A");
+    n.setToken("B");
+    n.notifyExpired("A");
     expect(events).toEqual([]);
   });
 
-  // FINDING 2 (spurious cold-start prompt): the agents /v1/events loop starts
-  // before hydrate() resolves, so its first requests go out tokenless. A 401 on
-  // a request that carried NO token is not an expiry — nothing was ever sent to
-  // expire — so it must not emit tokenExpired.
   it("suppresses a 401 for a request that carried no token", () => {
     const n = createAuthExpiryNotifier(store);
-    // no setToken: current token is null (pre-hydrate cold start)
     n.notifyExpired(null);
     expect(events).toEqual([]);
   });
@@ -281,31 +263,27 @@ describe("tokenExpired identity (token the failing request used)", () => {
     const n = createAuthExpiryNotifier(store);
     n.setToken("A");
 
-    n.notifyExpired("A"); // genuine expiry of the live token
-    n.notifyExpired("A"); // deduped
+    n.notifyExpired("A");
+    n.notifyExpired("A");
     expect(events).toEqual([{ type: TOKEN_EXPIRED_EVENT }]);
 
-    n.setToken("B"); // host refreshed to a new token
-    n.notifyExpired("B"); // a real 401 on the new token re-arms
+    n.setToken("B");
+    n.notifyExpired("B");
     expect(events).toEqual([
       { type: TOKEN_EXPIRED_EVENT },
       { type: TOKEN_EXPIRED_EVENT },
     ]);
   });
 
-  // A caller with no token identity (the agents module's `notifyExpired()`, and
-  // any other legacy path) cannot attribute the 401, so it must not emit — the
-  // auth-fetch layer, which knows the request's token, is authoritative.
   it("suppresses a report that carries no token identity", () => {
     const n = createAuthExpiryNotifier(store);
     n.setToken("A");
-    n.notifyExpired(); // no argument
+    n.notifyExpired();
     expect(events).toEqual([]);
   });
 });
 
 describe("auth-fetch 401 classification (token identity threading)", () => {
-  /** A `fetch` that returns `status` and, before responding, runs `onFlight`. */
   function respondingFetch(
     status: number,
     onFlight?: () => void | Promise<void>,
@@ -316,15 +294,12 @@ describe("auth-fetch 401 classification (token identity threading)", () => {
     }) as typeof fetch;
   }
 
-  /** Wire an auth-fetch to a notifier over the same storage, capturing events. */
   function wire(seed?: Record<string, string>, base?: typeof fetch) {
     const { storage, map } = memStorage(seed);
     const store = new ScopeStore();
     const events: SdkEvent[] = [];
     store.onEvent((e) => events.push(e));
     const notifier = createAuthExpiryNotifier(store);
-    // The notifier's current-token mirror tracks storage, as the session module
-    // keeps it via setToken.
     notifier.setToken(map.get(SESSION_TOKEN_KEY) ?? null);
     const authed = createAuthFetch(base ?? respondingFetch(401), storage);
     connectAuthExpiry(authed, (t) => notifier.notifyExpired(t));
@@ -334,29 +309,25 @@ describe("auth-fetch 401 classification (token identity threading)", () => {
   it("emits tokenExpired once when the live token's request 401s", async () => {
     const w = wire({ [SESSION_TOKEN_KEY]: "live" });
     await w.authed("http://x/a");
-    await w.authed("http://x/b"); // second 401 on the same token is deduped
+    await w.authed("http://x/b");
     expect(w.events).toEqual([{ type: TOKEN_EXPIRED_EVENT }]);
   });
 
-  // FINDING 1 end-to-end: the token rotates while the request is in flight, so
-  // the 401 belongs to the OLD token — it must not signal against the new one.
   it("suppresses a 401 when the token rotated mid-flight", async () => {
     const w = wire({ [SESSION_TOKEN_KEY]: "A" });
     const base = respondingFetch(401, async () => {
-      // Host proactively rotates while the A-stamped request is in flight.
       await w.storage.set(SESSION_TOKEN_KEY, "B");
       w.notifier.setToken("B");
     });
     const rotating = createAuthFetch(base, w.storage);
     connectAuthExpiry(rotating, (t) => w.notifier.notifyExpired(t));
 
-    await rotating("http://x/a"); // stamped A, but current is now B
+    await rotating("http://x/a");
     expect(w.events).toEqual([]);
   });
 
-  // FINDING 2 end-to-end: a tokenless request (cold start before hydrate) 401s.
   it("suppresses a 401 for a tokenless request", async () => {
-    const w = wire(); // no token stored
+    const w = wire();
     await w.authed("http://x/a");
     expect(w.events).toEqual([]);
   });
@@ -370,7 +341,6 @@ describe("auth-fetch 401 classification (token identity threading)", () => {
   it("connectAuthExpiry is a no-op on a plain (non-auth) fetch", () => {
     const plain = (async () =>
       new Response(null, { status: 401 })) as typeof fetch;
-    // Must not throw when the fetch carries no connect seam.
     expect(() => connectAuthExpiry(plain, () => {})).not.toThrow();
   });
 });
@@ -415,8 +385,6 @@ describe("session via HoustonSdk (dispatch + event wiring)", () => {
 });
 
 describe("session module wiring (auth-fetch -> notifier)", () => {
-  // Proves createSessionModule binds the auth-fetch's 401 classifier to the
-  // shared notifier, so a live-token 401 reaches the store's event channel.
   it("emits tokenExpired when a live-token request 401s", async () => {
     const { storage } = memStorage();
     const store = new ScopeStore();

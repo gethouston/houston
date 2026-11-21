@@ -1,31 +1,12 @@
-/**
- * Markdown-safe @mention injection (HOU-944).
- *
- * A hand-rolled rehype transform (no new dependency) that runs AFTER
- * Streamdown's own `raw` → `sanitize` → `harden` chain, so the spans it mints
- * are never stripped and the sanitizer stays fully in force. It splits text
- * nodes on their "@Name" runs and marks each with `data-mention-name`, which
- * the `span` component override in `ai-elements/message.tsx` turns into a
- * `MentionChip`.
- *
- * Nodes under `code`, `pre` or `a` are skipped: a mention must never appear
- * inside a code span, a code block, or a link's text.
- */
-
 import type { MentionTarget } from "./mention-spans.ts";
 import { findMentionSpans } from "./mention-spans.ts";
 import { normalizeMentionText } from "./mention-text.ts";
 
-/** Attribute the chip renderer keys off. */
 export const MENTION_NAME_ATTR = "data-mention-name";
-/** Present (empty string) when the mention points at the signed-in viewer. */
 export const MENTION_SELF_ATTR = "data-mention-self";
 
-/** Tags whose subtree is verbatim content, never prose. */
 const SKIP_TAGS = new Set(["code", "pre", "a"]);
 
-/** The slice of hast this transform needs. Declared structurally so `ui/chat`
- *  takes no `@types/hast` dependency. */
 interface HastNode {
   type: string;
   tagName?: string;
@@ -38,12 +19,6 @@ export interface MentionRehypeOptions {
   targets: readonly MentionTarget[];
 }
 
-/**
- * The rehype plugin. Always pass it in TUPLE form —
- * `[mentionRehypePlugin, { targets }]` — because Streamdown keys its compiled
- * processor cache on the plugin's name plus `JSON.stringify(options)`; a bare
- * closure would make two messages with different rosters share one processor.
- */
 export function mentionRehypePlugin(options: MentionRehypeOptions) {
   const targets = options.targets;
   return (tree: unknown) => {
@@ -83,13 +58,6 @@ function walk(
   if (changed) node.children = next;
 }
 
-/**
- * The text node's replacement nodes, or null when it holds no mention.
- *
- * Slices the NFC form, because that is what `findMentionSpans` returns offsets
- * into. The two forms render identically, so re-emitting the normalized text is
- * invisible to the reader and keeps every offset honest.
- */
 function splitText(
   raw: string,
   targets: readonly MentionTarget[],

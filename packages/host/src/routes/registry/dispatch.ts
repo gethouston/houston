@@ -19,22 +19,6 @@ import { GROUP_ORDER, type GroupId, type GroupsIn } from "./groups";
 import { matchPath, type PatternMatch } from "./match";
 import type { RouteDescriptor } from "./types";
 
-/**
- * The two functions that READ the registry, kept behind a different door from
- * the one route modules declare through (./index). Callers reach them through
- * ./all, the barrel that has imported every declaring module: read the
- * registry anywhere else and it holds whatever subset the importer happened to
- * pull in, which is a chain missing routes rather than an error.
- */
-
-/**
- * Run one group's routes in declaration order; true when one answered.
- *
- * A group occupies exactly one chain slot (registry/groups.ts), so calling the
- * groups in table order IS the chain order. The overloads bind each group to
- * the context its phase requires: a `phase: "user"` route is unreachable from
- * a caller with no user id.
- */
 export function dispatchGroup(
   group: GroupsIn<"public" | "sandbox">,
   ctx: PublicEntry,
@@ -65,20 +49,11 @@ export async function dispatchGroup(
         continue;
       }
       if (await run(entry, ctx, matched, userId)) return true;
-      // The handler looked and said the request is not its own, so the chain
-      // walks on — including past this entry's other patterns, which would
-      // reach the same handler for the same answer.
       declined = true;
       break;
     }
     if (declined) continue;
-    // The family owns its whole path set, so a wrong method anywhere in it is
-    // the family's answer to give — never the next route's request to claim.
     if (mismatched && entry.methodMismatch === "405") {
-      // An agent-phase family sits BEHIND the ownership check, so a caller who
-      // does not own the agent gets 403/404 and never learns which methods it
-      // serves — the order routes/agent-file.ts and routes/agent-data.ts have,
-      // their 405 being written after authorizeAgent.
       if (
         entry.phase === "agent" &&
         !(await authorize(entry, ctx, mismatched, userId))
@@ -91,10 +66,6 @@ export async function dispatchGroup(
   return false;
 }
 
-/**
- * The agent phase's ownership check. Null means the refusal is already written
- * to the response and the caller must stop.
- */
 async function authorize(
   entry: RegisteredRoute,
   ctx: PublicEntry | UserEntry | AgentEntry,
@@ -121,7 +92,6 @@ async function authorize(
   return null;
 }
 
-/** Run one matched route; false when its handler declined the request. */
 async function run(
   entry: RegisteredRoute,
   ctx: PublicEntry | UserEntry | AgentEntry,
@@ -143,7 +113,6 @@ async function run(
   const authz = await authorize(entry, ctx, matched, userId);
   if (!authz) return true;
   const events = ctx.deps.events;
-  // Reactivity emits target the workspace owner (the only member, personal tier).
   const emit = events
     ? (event: HoustonEvent) => events.emit(authz.workspace.ownerUserId, event)
     : undefined;
@@ -159,10 +128,6 @@ async function run(
   return answer !== false;
 }
 
-/**
- * Every registered `METHOD path` pair, in chain order. Pure data — no server,
- * no deps bag — so the SDK parity gate reads it without booting anything.
- */
 export function listRoutes(): RouteDescriptor[] {
   const routes: RouteDescriptor[] = [];
   for (const group of GROUP_ORDER)

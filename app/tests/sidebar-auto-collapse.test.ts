@@ -11,7 +11,6 @@ describe("resolveAutoCollapse", () => {
   });
 
   it("does nothing on the first run when the window is wide", () => {
-    // Respects a persisted choice on a wide window (no forced expand).
     strictEqual(resolveAutoCollapse(null, W + 200), null);
   });
 
@@ -32,9 +31,7 @@ describe("resolveAutoCollapse", () => {
   });
 
   it("treats exactly the threshold as wide at the boundary", () => {
-    // width === threshold counts as wide → crossing up expands…
     strictEqual(resolveAutoCollapse(W - 10, W), false);
-    // …and dropping just under it collapses.
     strictEqual(resolveAutoCollapse(W, W - 1), true);
   });
 

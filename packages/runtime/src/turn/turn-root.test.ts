@@ -50,7 +50,6 @@ test("a free conversation root is created private to its owner", async () => {
   const base = freshBase();
   const root = await createTurnRoot(conversation(), base);
   expect(root).toBe(conversationTurnRoot(conversation(), base));
-  // The root holds the turn's credential, exactly like the mkdtemp it replaced.
   expect(statSync(root).mode & 0o777).toBe(0o700);
 });
 
@@ -59,8 +58,6 @@ test("a runtime without a tool shell keeps the root private", async () => {
   expect(statSync(root).mode & 0o777).toBe(0o700);
 });
 
-// Model commands run as the tool user, a member of the root's group only.
-// Sticky: it may not rename this user's entries (home, credential store).
 test("with a tool shell the root is sticky and open to its group, whatever the umask", async () => {
   const root = await createTurnRoot(conversation(), freshBase(), true);
   expect(statSync(root).mode & 0o7777).toBe(0o1770);
@@ -88,7 +85,6 @@ test("a shared fallback root is open to its group too", async () => {
 test("an existing conversation root is never reused: the turn falls back to a fresh root and says why", async () => {
   const base = freshBase();
   const stable = conversationTurnRoot(conversation(), base);
-  // A concurrent turn of this conversation, or one that crashed, left it.
   mkdirSync(stable);
   writeFileSync(join(stable, "leftover.txt"), "previous turn");
   const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
@@ -99,7 +95,6 @@ test("an existing conversation root is never reused: the turn falls back to a fr
   expect(dirname(root)).toBe(base);
   expect(root.slice(base.length + 1).startsWith(TURN_ROOT_PREFIX)).toBe(true);
   expect(existsSync(join(root, "leftover.txt"))).toBe(false);
-  // The holder's tree is left alone: it may still be in use.
   expect(readFileSync(join(stable, "leftover.txt"), "utf8")).toBe(
     "previous turn",
   );
@@ -117,10 +112,6 @@ function writeSkill(workspaceDir: string, slug: string, description: string) {
   );
 }
 
-/**
- * One pooled turn's life as far as the prompt is concerned: claim the root,
- * hydrate the agent into it, build the Claude system prompt, clean up.
- */
 async function promptOfOneTurn(
   id: TurnRootIdentity,
   base: string,
@@ -132,7 +123,6 @@ async function promptOfOneTurn(
   writeFileSync(join(workspaceDir, "WORKSPACE.md"), "Acme Corp.");
   writeSkill(workspaceDir, "weekly-report", "Weekly sales report");
   writeSkill(workspaceDir, "lead-intake", "Qualify a new lead");
-  // No gateway context: the file-mode section names both files by path.
   const prompt = buildSystemPrompt(workspaceDir, "You are Houston.");
   await cleanupTurn({
     root,
@@ -149,13 +139,10 @@ test("the Claude system prompt is byte-identical across two turns of one convers
   const first = await promptOfOneTurn(conversation(), base);
   const second = await promptOfOneTurn(conversation(), base);
 
-  // The prompt really carries turn-root paths (file-mode context + skills),
-  // so equality below is the cache prefix holding, not an empty comparison.
   expect(first.prompt).toContain(join(first.root, "store"));
   expect(first.prompt).toContain("WORKSPACE.md");
   expect(first.prompt).toContain("<available_skills>");
   expect(second.prompt).toBe(first.prompt);
-  // Cleanup still removes the root after each turn.
   expect(existsSync(first.root)).toBe(false);
   expect(existsSync(second.root)).toBe(false);
 

@@ -9,8 +9,6 @@ import {
 } from "../agent-actions/agent-move-action";
 import { useMoveAgentTeam } from "../team-view/use-move-agent-team";
 
-/** The phone task list's Move to group flow: the group picker, then the
- *  confirmation that performs the move. */
 export function AgentMissionsMoveDialogs({
   agent,
   open,

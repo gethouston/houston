@@ -12,19 +12,6 @@ import { feedItemsToMessages, startedMissions } from "@houston-ai/chat";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { computeTurnEndSummary } from "../../../ui/chat/src/turn-tools";
 
-/**
- * loadChatHistory × the local conversation cache (HOU-712): opening a cloud
- * chat paints the VM from the cached transcript IMMEDIATELY — even while the
- * gateway holds the history read for an engine-pod cold start — and every
- * successful OPEN refreshes the cache. A BULK scan read (`observe: false`,
- * mission search) leaves the cache alone (HOU-941): its window is partial and
- * a board-wide scan must not churn/prune the store once per mission. A 404
- * with a cached transcript KEEPS
- * and serves the local copy (HOU-731): the pod may have lost or not yet
- * restored its data, and the cache is the user's only surviving transcript.
- * Deleting the chat (user intent) is what drops the cache entry.
- */
-
 function memoryBackend() {
   const map = new Map<string, CacheRecord>();
   const backend: ConversationCacheBackend = {
@@ -92,7 +79,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** A cloud client; its constructor installs the cache identity for GW+sub. */
 function cloudClient(): HoustonClient {
   return new HoustonClient({
     baseUrl: GW,
@@ -113,14 +99,12 @@ test("a held history read paints the chat from the cache immediately", async () 
   const sessionKey = `held-${convSeq++}`;
   const client = cloudClient();
   await seedCache(agentPath, sessionKey);
-  // The gateway holds the read for a cold pod: the fetch never resolves.
   globalThis.fetch = vi.fn(
     () => new Promise<Response>(() => {}),
   ) as unknown as typeof fetch;
 
   const pending = client.loadChatHistory(agentPath, sessionKey);
   await vi.waitFor(() => expect(vmFeed(agentPath, sessionKey)).toEqual(CACHED));
-  // The read is still held — nothing resolved, nothing threw.
   let settled = false;
   void pending.finally(() => {
     settled = true;
@@ -145,7 +129,6 @@ test("a successful open refreshes the cache and reseeds the VM", async () => {
     if (url.includes("/messages")) {
       return json(200, { id: sessionKey, title: "t", messages });
     }
-    // The post-load observer stream: an empty body ends it immediately.
     return new Response("", { status: 200 });
   }) as unknown as typeof fetch;
 
@@ -241,14 +224,11 @@ test("a bulk scan read leaves the cache untouched", async () => {
     return new Response("", { status: 200 });
   }) as unknown as typeof fetch;
 
-  // Mission search's transcript scan: the read itself works…
   const feed = await client.loadChatHistory(agentPath, sessionKey, {
     observe: false,
   });
   expect(feed).toHaveLength(4);
 
-  // …but its WINDOWED result is never written back over the cached
-  // transcript (HOU-941), and the VM of the unopened chat stays unseeded.
   await new Promise((r) => setTimeout(r, 50));
   const key = `${GW}|user-1|${encodeURIComponent(agentPath)}|${encodeURIComponent(sessionKey)}`;
   const record = await store.backend.get(key);
@@ -266,8 +246,6 @@ test("a 404 with a cached transcript keeps and serves the local copy", async () 
   ) as unknown as typeof fetch;
 
   const feed = await client.loadChatHistory(agentPath, sessionKey);
-  // The local copy is the answer AND stays painted + persisted: a pod that
-  // lost (or hasn't restored) its data must never erase the user's transcript.
   expect(feed).toEqual(CACHED);
   expect(vmFeed(agentPath, sessionKey)).toEqual(CACHED);
   expect((await store.backend.keysOldestFirst()).length).toBe(1);
@@ -312,6 +290,5 @@ test("a real failure still surfaces (cache-first never swallows the error)", asy
   ) as unknown as typeof fetch;
 
   await expect(client.loadChatHistory(agentPath, sessionKey)).rejects.toThrow();
-  // The cached paint survives the failure — the user keeps their transcript.
   expect(vmFeed(agentPath, sessionKey)).toEqual(CACHED);
 });

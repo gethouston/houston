@@ -1,11 +1,3 @@
-/**
- * The pooled runtime admits bounded work, hydrates a throwaway agent root,
- * publishes durable changes, then wipes the root. A login reserves the process
- * for one sign-in and cannot share it with turns or ops.
- *
- * Authorization is two-layered: deployment IAM protects the endpoint, while
- * X-Internal-Token is the application secret for dispatched work and logins.
- */
 import { createServer, type Server } from "node:http";
 import { handleBrowserLiveRoute } from "../transport/browser-live-route";
 import { AdmissionLimiter, turnConcurrency } from "./admission";
@@ -34,13 +26,10 @@ export function createTurnServer(deps: TurnServerDeps): Server {
   let loginBegin: Promise<void> | undefined;
   const login = makeLoginRunnerRoutes(deps.loginRunner);
   return createServer((req, res) => {
-    // Start before the body streams in so upload time is measured separately.
     const arrival: Record<string, number> = { t_arrived: performance.now() };
     (async () => {
       const path = (req.url || "/").split("?")[0];
       if (req.method === "GET" && path === "/health") {
-        // Report a spent worker as NOT-ready so probes mark it 0/1 READY while
-        // awaiting recycle, and the dispatcher cannot send it more work.
         if (use === "login" || deps.isDraining?.()) {
           return json(res, 503, { status: "draining", mode: "turn" });
         }
@@ -56,9 +45,6 @@ export function createTurnServer(deps: TurnServerDeps): Server {
         );
       }
       if (BROWSER_LIVE_PATH.test(path)) {
-        // The person's live view of a hand-off this worker's turn is waiting
-        // on. Inert until a gateway grants `browser-live` (no tool offers
-        // `handoff` without it); never takes the login/work latch.
         if (!authorized(req, deps.token)) {
           return json(res, 401, { error: "unauthorized" });
         }
@@ -111,7 +97,6 @@ export function createTurnServer(deps: TurnServerDeps): Server {
       if (path === "/op") {
         await serveOp(deps, admission, req, res);
       } else {
-        // The turn's own model request takes the warm connection from here.
         warmer.stop();
         await serveTurn(deps, admission, req, res, arrival);
       }

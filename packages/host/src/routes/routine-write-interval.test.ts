@@ -3,12 +3,6 @@ import { expect, test } from "vitest";
 import { MemoryVfs } from "../vfs";
 import { createRoutineChecked, updateRoutineChecked } from "./routine-write";
 
-/**
- * `@every` interval schedules through the shared write path: an even cadence is
- * stored as the cron every older reader knows, an uneven one keeps the interval
- * form, and a malformed interval is refused before it can never fire.
- */
-
 const ROOT = "ws1/agent1";
 const WS = "ws1";
 const OPTS = { triggersEnabled: false, nowIso: "2026-01-01T00:00:00.000Z" };

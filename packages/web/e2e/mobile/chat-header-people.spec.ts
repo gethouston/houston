@@ -4,12 +4,6 @@ import { AUTH_WEB_URL, E2E_VIEWER, signInAsViewer } from "../support/identity";
 import { openPhoneTeamSection } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
-/**
- * The phone twin of chat-header-people.spec.ts: the pushed mission chat's
- * header shows the people stack only when someone else is on the task, and
- * a TAP (no hover on a phone) opens the roster.
- */
-
 test.use({ baseURL: AUTH_WEB_URL });
 
 const PEOPLE_LABEL = "People on this task";

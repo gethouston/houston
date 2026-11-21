@@ -3,8 +3,6 @@ import { expect, test } from "vitest";
 import { readStoreText } from "./turn-store-read";
 
 test("a store read that stalls fails at its deadline instead of holding the turn's settle", async () => {
-  // The object GET starts and its body never arrives: only the read's own
-  // signal can end it.
   const stalled: ObjectStore = {
     list: async () => [],
     download: (_key, _dest, opts) =>

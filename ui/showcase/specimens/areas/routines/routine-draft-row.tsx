@@ -12,7 +12,6 @@ import {
 } from "../../../src/specimen";
 import { Listbox } from "./routine-row-states";
 
-/** Several setup chats at once — clicking one selects it, the X discards it. */
 function LiveDrafts() {
   const [drafts, setDrafts] = useState(["draft-1", "draft-2", "draft-3"]);
   const [selected, setSelected] = useState("draft-1");
@@ -120,11 +119,6 @@ function RoutineDraftRowSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["RoutineDraftRow"];
 
 export const specimen: Specimen = {

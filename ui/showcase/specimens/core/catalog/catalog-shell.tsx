@@ -96,7 +96,6 @@ function CatalogShellSpecimen() {
         <SpecimenRow label="Bare tabs — no headings">
           <ShellViewport>
             <CatalogShell
-              // Required by the type, unused without an `installed` slot.
               installedTitle="Your agents"
               tabs={[
                 {
@@ -170,11 +169,6 @@ function CatalogShellSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["CatalogShell"];
 
 export const specimen: Specimen = {

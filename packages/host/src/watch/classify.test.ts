@@ -1,14 +1,7 @@
 import { expect, test } from "vitest";
 import { classifyChange } from "./classify";
 
-/**
- * Path → reactivity event, matching engine/houston-file-watcher. The tricky bit
- * is routine_runs vs routines (prefix overlap) and that only files INSIDE an
- * agent produce events.
- */
-
 const cases: [string, string | null, string | null][] = [
-  // [relPath, expected type, expected agentPath]
   ["Work/.shared/skills/research/SKILL.md", "SharedSkillsChanged", "Work"],
   [
     "Work/Sales/.houston/activity/activity.json",
@@ -53,11 +46,10 @@ const cases: [string, string | null, string | null][] = [
   ["Work/Sales/USER.md", "ContextChanged", "Work/Sales"],
   ["Work/Sales/report.xlsx", "FilesChanged", "Work/Sales"],
   ["Work/Sales/subdir/notes.md", "FilesChanged", "Work/Sales"],
-  // Not classifiable:
   ["Work/Sales/.git/index", null, null],
   ["Work/Sales/.DS_Store", null, null],
-  ["Work", null, null], // not inside an agent
-  ["Work/Sales", null, null], // the agent dir itself, no file
+  ["Work", null, null],
+  ["Work/Sales", null, null],
 ];
 
 for (const [relPath, type, agentPath] of cases) {

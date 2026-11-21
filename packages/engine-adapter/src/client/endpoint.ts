@@ -1,27 +1,9 @@
-/**
- * Where this client points, and who it speaks as.
- *
- * The transport half of {@link AdapterContext}: the base URL, the bearer, the
- * one `authFetch` both the HoustonClient and the SDK ride, and the live
- * `ControlPlaneConfig` that routes hosted calls at a space. It owns the two
- * repoints the shell performs on a LIVE client — a new engine
- * ({@link EngineEndpoint.setEndpoint}) and a new space
- * ({@link EngineEndpoint.setActiveOrg}) — so every consequence of "we now talk
- * to something else" (which requesters rebuild, which caches are void, what the
- * agent list still means) is decided in one file. {@link AdapterContext} extends
- * it, so every member here is reached off the shared context like the rest.
- */
-
 import { HoustonEngineClient } from "@houston/runtime-client";
 import {
   type HoustonSdk,
   type WorkspacePreferenceReporter,
   WorkspaceSelectionState,
 } from "@houston/sdk";
-// Control-plane calls import from the barrel (`../control-plane`), never the
-// `cp/*` submodules directly: the web test suite mocks the barrel module
-// (`vi.mock("…/control-plane")`) and overrides `runtimeClientFor` /
-// `gatewayAuthFetch` etc. — a direct submodule import would bypass the mock.
 import type { Capabilities } from "@houston/wire-types";
 import type { ControlPlaneConfig } from "../control-plane";
 import {
@@ -39,36 +21,19 @@ import { AgentSelection } from "./agent-selection";
 export interface HoustonClientOptions {
   baseUrl: string;
   token: string;
-  /** When true, route agents + chat through the Houston control plane (cloud). */
   controlPlane?: boolean;
   onPreferenceError?: WorkspacePreferenceReporter;
 }
 
-/** The endpoint + auth state, mixed into the adapter context. */
 export abstract class EngineEndpoint extends AgentSelection {
-  // engine/sdk/baseUrl/token are mutable ONLY through setEndpoint below — the
-  // in-place repoint the desktop shell relies on when the sidecar restarts.
   engine: HoustonEngineClient;
   baseUrl: string;
   token: string;
-  /** The single web-side {@link HoustonSdk}, built over the shared `authFetch`
-   *  with reactivity off (web owns its read model). Every mixin's domain call
-   *  lands on one of its modules. */
   sdk: HoustonSdk;
   private readonly workspaceSelection = new WorkspaceSelectionState();
   private readonly preferenceErrors: HoustonClientOptions["onPreferenceError"];
-  /** Live-token auth fetch (not a pinned `token`): hosted mode rotates the
-   *  bearer mid-session and a 401 refreshes + replays (HOU-687). Shared by
-   *  `engine` and the SDK, so `x-houston-org` has one live source
-   *  (`setActiveOrg` mutates `_cp` in place; both re-read it). Rebuilt only by
-   *  `setEndpoint`, which keeps its fallback bearer current. */
   authFetch: typeof fetch;
-  /**
-   * Memo for `deploymentServes()` (host-capabilities.ts): the deployment's
-   * advertised capabilities, fetched once per endpoint. `null` = probe failed.
-   */
   deploymentCaps: Promise<Capabilities | null> | undefined;
-  /** Non-null in cloud mode: agents + chat go through the control plane. */
   private readonly _cp: ControlPlaneConfig | null;
 
   constructor(opts: HoustonClientOptions) {
@@ -83,10 +48,6 @@ export abstract class EngineEndpoint extends AgentSelection {
     this._cp = useCp
       ? { baseUrl: opts.baseUrl.replace(/\/+$/, ""), token: opts.token }
       : null;
-    // Local conversation cache (HOU-712) — cloud only, scoped per gateway +
-    // signed-in user. Reads the LIVE bearer so a token refresh keeps the same
-    // scope while a different account lands in different keys; local engines
-    // resolve null and never cache (their reads are local disk, never held).
     const cp = this._cp;
     setConversationCacheIdentity(() =>
       cp ? conversationCacheScope(cp.baseUrl, liveToken(cp.token)) : null,
@@ -100,10 +61,6 @@ export abstract class EngineEndpoint extends AgentSelection {
       baseUrl: opts.baseUrl,
       fetch: authFetch,
     });
-    // INERT: reactivity is off, so constructing the SDK opens NO stream and
-    // fires NO request — it only holds the write surface for later waves. It
-    // rides the SAME `authFetch`, so bearer/401-refresh/active-space match,
-    // under the SAME read retry (`createEngineSdk` wraps it).
     this.sdk = createEngineSdk({
       baseUrl: this.baseUrl,
       workspaceSelection: this.workspaceSelection,
@@ -111,8 +68,6 @@ export abstract class EngineEndpoint extends AgentSelection {
       fetch: authFetch,
       liveToken: () => liveToken(this.token),
     });
-    // Mark the new TS engine as the active backend so the frontend can surface
-    // new-engine-only capabilities (e.g. API-key providers like OpenCode).
     if (typeof window !== "undefined") {
       (
         window as unknown as { __HOUSTON_NEW_ENGINE__?: boolean }
@@ -120,18 +75,10 @@ export abstract class EngineEndpoint extends AgentSelection {
     }
   }
 
-  /** The live control-plane config (cloud), or null (local/self-host). */
   get cp(): ControlPlaneConfig | null {
     return this._cp;
   }
 
-  /**
-   * The SDK pinned to one space instead of following the active one: every
-   * request it makes (a 401 replay included) carries that space's
-   * `x-houston-org`, even if the person switches space mid-flight. `null` is
-   * the personal space. Off-cloud there is one space, so it is the shared
-   * {@link sdk}.
-   */
   sdkForSpace(orgSlug: string | null): HoustonSdk {
     if (!this._cp) return this.sdk;
     return createEngineSdk({
@@ -143,19 +90,14 @@ export abstract class EngineEndpoint extends AgentSelection {
     });
   }
 
-  /** Rebuild requesters on endpoint or bearer changes; retain same-user choice ordering. */
   setEndpoint(opts: { baseUrl: string; token: string }): void {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
-    // A repoint may land on a different deployment; re-probe its flags.
     this.deploymentCaps = undefined;
     this.token = opts.token;
     if (this._cp) {
       this._cp.baseUrl = this.baseUrl;
       this._cp.token = opts.token;
     }
-    // The new bearer may belong to a DIFFERENT account (this client is
-    // repointed in place, never rebuilt): the next agent list must re-merge
-    // that account's `agent_colors` preference (PRODUCT-1344).
     resetAgentColorSync();
     this.authFetch = gatewayAuthFetch(
       opts.token,
@@ -165,8 +107,6 @@ export abstract class EngineEndpoint extends AgentSelection {
       baseUrl: this.baseUrl,
       fetch: this.authFetch,
     });
-    // A bearer rotation lands while the person may be typing: the new SDK
-    // keeps the id a new chat's typing already prewarmed.
     const typing = this.sdk.turns.typingState();
     this.sdk = createEngineSdk({
       baseUrl: this.baseUrl,
@@ -178,7 +118,6 @@ export abstract class EngineEndpoint extends AgentSelection {
     this.sdk.turns.adoptTypingState(typing);
   }
 
-  /** Re-pin hosted requests and invalidate the previous space's agent list. */
   setActiveOrg(slug: string | null): void {
     if (!this._cp) return;
     if ((this._cp.activeOrgSlug ?? null) === (slug ?? null)) return;
@@ -186,8 +125,6 @@ export abstract class EngineEndpoint extends AgentSelection {
     this.forgetAgentList();
   }
 
-  /** The one config both deployments share: the gateway in cloud mode, the
-   *  local/self-host host otherwise — each serves `/v1/preferences/:key`. */
   prefConfig(): ControlPlaneConfig {
     return this._cp ?? { baseUrl: this.baseUrl, token: this.token };
   }

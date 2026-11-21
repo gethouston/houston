@@ -18,18 +18,9 @@ import { conversationKey, prefixFor } from "../turn/deps";
 import { MemoryVfs } from "../vfs";
 import { reconcileAgentRuns } from "./reconcile";
 
-/**
- * A run whose turn is KNOWN dead (its pool claim ended without settling it)
- * settles now, as an interruption, instead of waiting out the timeout that
- * stands in for "dead" when nothing else can tell.
- */
-
 const STARTED = new Date("2026-06-12T12:00:00.000Z");
-// Two minutes in: far inside ROUTINE_RUN_TIMEOUT_MS.
 const NOW = new Date("2026-06-12T12:02:00.000Z");
 
-// Edited a day before the runs below: every one of them counts toward a
-// streak (auto-pause only reads runs that started after the last edit).
 const EDITED = new Date(STARTED.getTime() - 24 * 60 * 60 * 1000);
 
 const routine = (over: Partial<Routine> = {}): Routine => ({
@@ -200,7 +191,6 @@ test("an interruption neither counts toward nor breaks an auto-pause streak", as
   const r = routines[0] as Routine;
   expect(r.enabled).toBe(true);
   expect(r.auto_paused).toBeUndefined();
-  // The next wall after it completes the streak straight through it.
   const later = outOfCredits("w-next", -1);
   expect(
     routineAutoPause(r, [later, ...(await env.runs())], NOW.toISOString())
@@ -368,7 +358,6 @@ test("an older dead run's interruption line never answers a newer run in the sha
   expect(rows.find((r) => r.id === "t1")?.summary).toBe(
     "The routine was interrupted before it finished.",
   );
-  // Twenty minutes in, with no reply of its own: timed out, never "surfaced".
   expect(rows.find((r) => r.id === "t2")).toMatchObject({
     status: "error",
     summary: "The routine timed out without a response.",

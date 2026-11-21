@@ -38,7 +38,6 @@ test("a routine create runs the REAL route handler against the hydrated tree", a
   expect(res.status).toBe(201);
   const created = JSON.parse(res.body) as { id: string; created_by?: string };
   expect(created.created_by).toBe("user-1");
-  // The file on the hydrated tree carries it — what sync-back uploads.
   const file = JSON.parse(
     readFileSync(
       join(root, "Personal", "Bob", ".houston", "routines", "routines.json"),

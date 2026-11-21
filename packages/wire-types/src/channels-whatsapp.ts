@@ -24,8 +24,6 @@ export function parseWhatsAppLink(value: unknown): WhatsAppLink {
   }
   const command = channelConnectCommand(link.code);
   const base = `https://wa.me/${data.phoneNumber.slice(1)}?text=`;
-  // Go's QueryEscape uses '+', while encodeURIComponent uses '%20'. Both
-  // represent the one command without admitting extra URL parameters.
   if (
     data.url !== `${base}${encodeURIComponent(command)}` &&
     data.url !== `${base}${encodeURIComponent(command).replaceAll("%20", "+")}`

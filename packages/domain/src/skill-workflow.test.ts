@@ -195,7 +195,6 @@ test("moves a too-long title's tail into the detail at a clause boundary", () =>
     "1. I pick the source. I ask ONE pointed question when it is not obvious, with a modality hint:",
   );
   expect(sentence?.title).toBe("I pick the source");
-  // The trailing colon goes with the title cleanup that ran before the cut.
   expect(sentence?.detail).toBe(
     "I ask ONE pointed question when it is not obvious, with a modality hint",
   );
@@ -328,12 +327,7 @@ function skillFiles(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-// The bundled catalog is the parser's real corpus: 350+ hand-written skills in
-// three languages. Every one of them must render as steps a person can read —
-// a regression here ships garbled titles into the app's built-in agents.
 test("every bundled Houston skill parses into readable steps", () => {
-  // The catalog is committed, so an absent directory is a broken checkout, not
-  // an optional extra: say so loudly rather than reporting green on no corpus.
   expect(existsSync(STORE), `bundled skill catalog missing: ${STORE}`).toBe(
     true,
   );
@@ -352,8 +346,6 @@ test("every bundled Houston skill parses into readable steps", () => {
       expect(step.title.length, where).toBeGreaterThanOrEqual(2);
       expect(step.title.length, where).toBeLessThanOrEqual(80);
       expect(step.title, where).not.toMatch(/[\n`]|\*\*/);
-      // The bundled skills carry no app tags: nothing in the catalog may be
-      // read as one by accident.
       expect(step.integration, where).toBeNull();
       if (step.detail !== null)
         expect(step.detail, where).not.toMatch(/^\s*[-–—:,;]/);

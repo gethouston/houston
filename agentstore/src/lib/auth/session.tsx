@@ -1,17 +1,5 @@
 "use client";
 
-/**
- * The store's sign-in session, modeled on packages/web's popup precedent: a
- * single React context owns the GCIP session, exposes the current user, and hands
- * out a fresh bearer for authed gateway calls. Server components never see a
- * token — only client components under this provider do, via `useSession`.
- *
- * Sign-in is a Google popup (`signInWithPopup` + `GoogleAuthProvider`). The token
- * is always read live through `getIdToken()` (the SDK silently refreshes it), so
- * a long-idle tab still sends a valid bearer. When the store is not configured
- * for auth, the provider reports `status: "unconfigured"` and sign-in is a no-op
- * that surfaces a clear error rather than crashing the tree.
- */
 import {
   signOut as firebaseSignOut,
   GoogleAuthProvider,
@@ -22,7 +10,6 @@ import {
 import * as React from "react";
 import { getFirebaseAuth, isAuthConfigured } from "./firebase";
 
-/** The signed-in user's display identity (a projection of the Firebase `User`). */
 export interface SessionUser {
   uid: string;
   displayName: string | null;
@@ -30,7 +17,6 @@ export interface SessionUser {
   photoURL: string | null;
 }
 
-/** Lifecycle of the session: still resolving, ready to sign in, or signed in. */
 export type SessionStatus =
   | "loading"
   | "signed-out"
@@ -40,11 +26,8 @@ export type SessionStatus =
 export interface SessionContextValue {
   status: SessionStatus;
   user: SessionUser | null;
-  /** Open the Google sign-in popup. Rejects on popup close or auth failure. */
   signIn: () => Promise<void>;
-  /** Sign out and clear the local session. */
   signOut: () => Promise<void>;
-  /** A fresh ID token for the bearer, or null when signed out. */
   getToken: () => Promise<string | null>;
 }
 
@@ -111,10 +94,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Access the session. Must be called under a `SessionProvider`. */
-/** Non-throwing variant for optional chrome (e.g. the nav's account
- *  control): null outside a provider instead of an error, so isolated
- *  renders (tests, previews) stay valid. */
 export function useOptionalSession(): SessionContextValue | null {
   return React.useContext(SessionContext);
 }

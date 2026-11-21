@@ -44,7 +44,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** A query that writes the CLI's startup report, as a profiled CLI does. */
 function profilingQuery(seen: Options[]): ClaudeQuery {
   return async function* ({ options }) {
     seen.push(options);
@@ -140,7 +139,6 @@ test("a folder that cannot be removed is reported and never fails the turn", asy
   const writable = state.deps.refreshAuth;
   state.deps.refreshAuth = () => {
     const auth = writable();
-    // The report lands, then the config dir turns read-only before cleanup.
     mkdirSync(join(configDir, "startup-perf"));
     writeFileSync(
       join(configDir, "startup-perf", "s1.json"),

@@ -29,7 +29,6 @@ test("any other token runs with no plan", () => {
     accessDigest: accessDigest("sk-ant-oat01-shared-login"),
   };
   expect(withServedPlan(other, claudePlanBinding(served))).toBe(other);
-  // A token with no digest (a shared-login read) is never assumed to match.
   const undigested = { kind: "oauth-token" as const, value: served.access };
   expect(withServedPlan(undigested, claudePlanBinding(served))).toBe(
     undigested,

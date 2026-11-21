@@ -5,10 +5,6 @@ import type { HoustonEvent } from "@houston/protocol";
 import { expect, test } from "vitest";
 import { FsWatcher } from "./watcher";
 
-/**
- * A real fs.watch over a temp tree: a file write surfaces as a classified,
- * debounced event. Timing-tolerant — we wait up to a budget for the event.
- */
 test("a write under an agent's .houston surfaces a debounced ActivityChanged", async () => {
   const root = mkdtempSync(join(tmpdir(), "houston-watch-"));
   const agentDir = join(root, "Work", "Sales", ".houston", "activity");
@@ -19,7 +15,6 @@ test("a write under an agent's .houston surfaces a debounced ActivityChanged", a
   watcher.start();
 
   try {
-    // Give the recursive watch a moment to arm, then write.
     await new Promise((r) => setTimeout(r, 100));
     writeFileSync(
       join(agentDir, "activity.json"),

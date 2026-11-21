@@ -12,7 +12,6 @@ import { osIsTauri } from "../lib/os-bridge";
 import { useAgentStore } from "../stores/agents";
 import { useWorkspaceStore } from "../stores/workspaces";
 
-/** Bind native connection lifetime to the application's selected identity. */
 export function useLocalBridgeAutoReconnect(userId: string | null): void {
   const [environment, setEnvironment] = useState(
     () => window.__HOUSTON_ENGINE__?.baseUrl,

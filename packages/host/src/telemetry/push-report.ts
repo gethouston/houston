@@ -17,7 +17,6 @@ export type PushReporter = (
   actingAs?: string,
 ) => Promise<void>;
 
-/** Push is advisory: every failure is reported locally and never fails a turn. */
 export function createPushReporter(opts: PushReporterOptions): PushReporter {
   const { url, orgSlug, agentSlug, podToken } = opts.report;
   const target = `${url.replace(/\/+$/, "")}/v1/pod/push/${encodeURIComponent(orgSlug)}/${encodeURIComponent(agentSlug)}`;

@@ -1,14 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { AgentNameConflictError, type WorkspaceStore } from "../ports";
 
-/**
- * The agent-name half of the WorkspaceStore contract (PRODUCT-1929): a name
- * belongs to ONE agent per workspace, compared the way the folder it becomes
- * is (`sameAgentName`: trimmed, NFC-normalized, case-insensitive). A create onto a taken name
- * must refuse rather than hand back the existing agent, because the create
- * route writes seeds into what it gets and rolls it back on failure. Run by
- * `runWorkspaceStoreContract` for every adapter.
- */
 export function runAgentNameContract(
   name: string,
   make: () => WorkspaceStore,

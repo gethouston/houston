@@ -13,15 +13,6 @@ import type { Vfs } from "../vfs";
 import { json, readJson } from "./http";
 import { defineRouteFamily } from "./registry";
 
-/**
- * The AI Manager's morning briefing (`/v1/heartbeat`): the person's settings,
- * the last run, and "brief me now". Scoped to the caller's personal workspace
- * (where the manager lives), so no id rides the path.
- *
- * Gateway-fronted, the gateway owns the manager and does not serve a
- * briefing yet, so 501 is the honest answer rather than a second, divergent
- * daemon inside one pod.
- */
 export const HEARTBEAT_PATH = "/v1/heartbeat";
 export const HEARTBEAT_RUN_PATH = "/v1/heartbeat/run";
 
@@ -30,7 +21,6 @@ export interface HeartbeatRouteDeps {
   vfs?: Vfs;
   events?: EventHub;
   gatewayFronted?: boolean;
-  /** The local profile's runner; absent → `POST …/run` answers 501. */
   heartbeat?: Pick<HeartbeatRunner, "runNow">;
 }
 
@@ -45,7 +35,6 @@ async function readPatch(req: IncomingMessage) {
   try {
     return HeartbeatSettingsPatchSchema.safeParse(await readJson(req));
   } catch {
-    // An unparseable body is the caller's mistake, never a 500.
     return HeartbeatSettingsPatchSchema.safeParse(null);
   }
 }
@@ -77,12 +66,10 @@ async function runNow(
       return refuse(res, 422, HeartbeatRefusalCode.Failed, outcome.reason);
     case "not_due":
     case "locked":
-      // A forced run skips both gates; reaching here is a host bug.
       throw new Error(`forced heartbeat answered ${outcome.kind}`);
   }
 }
 
-/** Returns true when the request was handled. */
 export async function handleHeartbeat(
   deps: HeartbeatRouteDeps,
   userId: UserId,
@@ -141,10 +128,6 @@ export async function handleHeartbeat(
   return true;
 }
 
-/**
- * Both paths are `owns`ed for every method: a wrong method answers 405 with
- * the `code` the clients classify on, not the dispatcher's generic refusal.
- */
 defineRouteFamily({
   group: "heartbeat",
   members: [

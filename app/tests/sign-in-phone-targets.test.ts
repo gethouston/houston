@@ -5,8 +5,6 @@ import { JSDOM } from "jsdom";
 import type { ReactElement } from "react";
 import auth from "../src/locales/en/auth.json" with { type: "json" };
 
-// lib/auth, lib/tauri and lib/logger read `import.meta.env` (Vite-only) when
-// they load, so the node runner stubs them; these specs only read classes.
 const STUBS: Record<string, string> = {
   "../../lib/auth":
     "export const sendEmailOtp = async () => {}; export const verifyEmailOtp = async () => {};",
@@ -60,9 +58,6 @@ const classesOf = (element: ReactElement, selector: string): string[][] =>
     ...new JSDOM(render(element)).window.document.querySelectorAll(selector),
   ].map((node) => (node.getAttribute("class") ?? "").split(/\s+/));
 
-/** A press scale must animate (Tailwind's `scale-*` is the CSS `scale`
- *  property, so `transform` in the transition list does not cover it) and
- *  must stop at md:, where desktop had no press scale. */
 function assertPhonePress(c: string[]): void {
   ok(c.includes("active:scale-[0.96]"), "press feedback");
   ok(c.includes("md:active:scale-100"), "desktop keeps no press scale");
@@ -73,8 +68,6 @@ function assertPhonePress(c: string[]): void {
   );
 }
 
-// The sign-in card is the first screen of the store apps: its controls are 44px
-// on a phone (the unprefixed layer) and keep their 40px desktop box at md:.
 describe("sign-in phone tap targets", () => {
   it("provider pills are 44px on a phone and 40px from md", () => {
     const pills = classesOf(
@@ -87,7 +80,6 @@ describe("sign-in phone tap targets", () => {
     ok(pills.length > 0);
     for (const c of pills) {
       ok(c.includes("h-11") && c.includes("md:h-10"), c.join(" "));
-      // flex-1 in the phone's column would collapse the 44px height.
       ok(!c.includes("flex-1") && c.includes("md:flex-1"), c.join(" "));
       assertPhonePress(c);
     }
@@ -110,8 +102,6 @@ describe("sign-in phone tap targets", () => {
     for (const button of buttons) {
       const label = button.getAttribute("aria-label") ?? "";
       const span = button.querySelector("span.md\\:hidden");
-      // Visible on the phone, the same words the icon pill names on desktop:
-      // Sign in with Apple stays exactly as prominent as the other two.
       ok(span?.textContent === label, `${label}: no phone label`);
       ok(/^Continue with (Google|Apple|Microsoft)$/.test(label));
       ok(button.getAttribute("class") === buttons[0]?.getAttribute("class"));
@@ -131,7 +121,6 @@ describe("sign-in phone tap targets", () => {
     const links = classesOf(h(mods.legal.LegalFooter), "button");
     ok(links.length === 2);
     for (const c of links) {
-      // text-xs renders a 16px line box: 16 + 2 x 14 = 44.
       ok(c.includes("after:-inset-y-3.5") && c.includes("md:after:hidden"));
       ok(c.includes("relative") && c.includes("after:absolute"));
     }

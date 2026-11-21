@@ -16,12 +16,6 @@ export type TranscriptPublishResult =
   | { error: string };
 
 export interface TurnTranscript {
-  /**
-   * Publish the user row as soon as the runtime persisted it (fired on the
-   * `user` frame). Idempotent; a failure is remembered and surfaced by the
-   * final publish(), never thrown here. This is what lets a gateway that
-   * restarts mid-turn rebuild and re-dispatch the turn from the transcript.
-   */
   publishUser(): Promise<void>;
   publish(): Promise<TranscriptPublishResult>;
 }
@@ -36,7 +30,6 @@ export interface TranscriptOptions {
   hostToken: string;
   claim: { token: string; bootId: string };
   fetchImpl?: typeof fetch;
-  /** Test seam: shrink the transient-status retry delays. */
   retryDelaysMs?: number[];
 }
 
@@ -63,19 +56,12 @@ class HttpTurnTranscript implements TurnTranscript {
         ? { conversation }
         : { error: "conversation file is missing" };
     } catch (error) {
-      // A corrupt file must still end in a terminal error frame, never a
-      // stream that closes with neither done nor error.
       return {
         error: `conversation file unreadable: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   }
 
-  // A hydrated conversation contains every earlier turn. The persisted turnId
-  // identifies the one idempotent pair this claim is allowed to PUT. LAST
-  // match: an adopted re-run of this turnId appends a second pair behind the
-  // dead worker's, and the reply the client just streamed is the one that
-  // must reach Postgres.
   private userIndex(messages: { role: string; turnId?: string }[]): number {
     return messages.findLastIndex(
       (message) =>
@@ -136,11 +122,6 @@ class HttpTurnTranscript implements TurnTranscript {
         return { ok: true };
       }
       if (response.status === 404 && this.landed === 0) {
-        // Older deployments may lack transcript routes: the FIRST PUT is the
-        // probe. Once a row has landed the routes exist, so a later 404 is a
-        // real miss (conversation gone) and must fail the publish below.
-        // Loud: a whole fleet silently publishing nothing would otherwise be
-        // invisible until the history fallback found empty tables.
         console.warn(
           `[turn] transcript routes absent at the pool store; skipping publish for ${this.opts.org}/${this.opts.agent}/${this.opts.conversationId}`,
         );
@@ -148,8 +129,6 @@ class HttpTurnTranscript implements TurnTranscript {
         return { disabled: true, reason: "route_absent" };
       }
       if (response.status === 409) return { fenced: true };
-      // Status only: response bodies are an HTTP seam, and this string ends
-      // up on the terminal frame and in the turn log.
       return { error: `${write.kind} row rejected (${response.status})` };
     } catch (error) {
       return { error: error instanceof Error ? error.message : String(error) };
@@ -157,12 +136,6 @@ class HttpTurnTranscript implements TurnTranscript {
   }
 }
 
-/**
- * Create a claim-authorized transcript publisher for one real pool turn. An
- * unconnected turn gets none: its echoed user frame has no persisted message
- * behind it, so publishing would fail its terminal frame on a transcript it
- * never wrote, or re-PUT a row an earlier attempt persisted.
- */
 export function createTurnTranscript(
   deps: TurnServerDeps,
   turn: TurnRequest & { turnId: string },

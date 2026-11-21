@@ -1,12 +1,3 @@
-/**
- * One level of the list tree: folder sections and file rows, in the order the
- * sort put them.
- *
- * This module and `folder-section.tsx` import each other, which is the honest
- * shape of a recursive tree: a level renders folders, and an open folder
- * renders a level. Neither reference is evaluated at module scope — both sit
- * inside a component body — so the cycle resolves the moment React renders.
- */
 import { FileRow } from "./file-row";
 import type { ListRowCallbacks } from "./files-list-chrome";
 import { FolderSection } from "./folder-section";

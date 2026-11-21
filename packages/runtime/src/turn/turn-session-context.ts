@@ -3,13 +3,6 @@ import { runWithConversationId } from "../session/conversation-context";
 import { runWithTurnMode } from "../session/turn-mode-context";
 import { runWithTurnModel } from "../session/turn-model-context";
 
-/**
- * The per-turn context a standing runtime holds around `session.prompt()`
- * (session/exec-turn.ts), for a pooled prompt: the conversation the turn runs
- * in, its live mode and the model it resolved onto. Tools read them as the
- * turn runs; without them a pooled tool cannot raise an approval card, pass
- * the host's live-turn gate, or default a mission to the parent's model.
- */
 export function runInTurnContext<T>(
   turn: {
     conversationId: string;

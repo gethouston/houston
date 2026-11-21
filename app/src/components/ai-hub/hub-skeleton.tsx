@@ -1,7 +1,3 @@
-/**
- * A calm placeholder while the local catalog resolves. It loads from bundled
- * JSON so this flashes only for a frame; nothing flashy, just catalog rows.
- */
 export function HubSkeleton({ loading }: { loading: boolean }) {
   if (!loading) return null;
   return (

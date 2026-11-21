@@ -1,18 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { HoustonEngineClient } from "./client";
 
-/**
- * The credential routes {@link EngineCredentialClient} contributes to
- * {@link HoustonEngineClient}. They are asserted THROUGH the concrete client,
- * because that is the only way anything calls them: the split is a file
- * boundary, never a surface a caller reaches on its own.
- *
- * Each case pins the exact outgoing {method, url, body} — several of these
- * routes differ only by their last path segment (`login` / `login/cancel` /
- * `login/complete` / `logout`), so a mistyped literal would quietly perform a
- * different action against the user's saved credentials.
- */
-
 const BASE = "http://127.0.0.1:4317";
 
 interface Recorded {
@@ -69,9 +57,6 @@ describe("the engine client's credential routes", () => {
   });
 
   it("escapes an arbitrary provider id instead of splicing the path", async () => {
-    // `ProviderId` widens to `(string & {})`, so the id is NOT a closed set of
-    // slugs: an unescaped `a/b` would POST to `/auth/a/b/login/cancel`, which is
-    // a different route from the one the caller asked for.
     const { client, calls } = makeClient();
     await client.cancelLogin("a/b?x");
     expect(calls[0]).toEqual({

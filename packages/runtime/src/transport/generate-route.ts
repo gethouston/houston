@@ -1,11 +1,6 @@
 import { generateAgentInstructions } from "../session/generate-agent";
 import { json, type RouteContext, readJson } from "./http-helpers";
 
-/**
- * `POST /generate-agent` — the Create-with-AI one-shot. Errors answer 400 with
- * the real reason (no provider connected, model reply unparseable, …) so the
- * create dialog can show it — user-initiated work, beta no-silent-failure.
- */
 export async function handleGenerateRoute(ctx: RouteContext): Promise<boolean> {
   if (ctx.method !== "POST" || ctx.path !== "/generate-agent") return false;
 

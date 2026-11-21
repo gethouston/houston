@@ -22,7 +22,6 @@ describe("markdownFilePath", () => {
     assert.equal(markdownFilePath("perfil.md"), "perfil.md");
     assert.equal(markdownFilePath("./out/report.pdf"), "./out/report.pdf");
     assert.equal(markdownFilePath("../shared/a.md"), "../shared/a.md");
-    // An engine-absolute path must survive intact for the app to strip roots.
     assert.equal(
       markdownFilePath("/Users/jo/.houston/workspaces/W/A/perfil.md"),
       "/Users/jo/.houston/workspaces/W/A/perfil.md",
@@ -48,7 +47,6 @@ describe("markdownFilePath", () => {
   });
 });
 
-/** A minimal hast tree holding one anchor. */
 function tree(href: string) {
   return {
     type: "root",
@@ -84,9 +82,6 @@ describe("fileLinkRehypePlugin", () => {
   };
 
   it("records the decoded path and makes a bare destination legible to harden", () => {
-    // rehype-harden only recognizes `/`, `./` and `../` as relative; a bare
-    // destination is BLOCKED outright, which is what turned an agent's own
-    // file link into inert " [blocked]" text (PRODUCT-1231).
     const props = run("Tropical%20Food%20-%20Plan.md");
     assert.equal(props[FILE_PATH_ATTR], "Tropical Food - Plan.md");
     assert.equal(props.href, "./Tropical%20Food%20-%20Plan.md");
@@ -153,15 +148,10 @@ describe("fileNameOf / extensionOf", () => {
     assert.equal(extensionOf("Plan 90 Dias.MD"), "md");
     assert.equal(extensionOf("informes/costos.xlsx"), "xlsx");
     assert.equal(extensionOf("Makefile"), "");
-    // A dotfile is not an extension.
     assert.equal(extensionOf(".gitignore"), "");
   });
 });
 
-// PRODUCT-1231: `[informe trimestral](informes/Q3 reporte.pdf)` is NOT a link
-// per CommonMark (unescaped spaces in the destination), so it reached the
-// reader as literal text. It is repaired on TEXT nodes, which is what keeps a
-// code span safe — that is already its own element by the time rehype runs.
 describe("splitFileLinks", () => {
   const props = (dest: string) => fileLinkProperties(dest);
   const run = (value: string) => splitFileLinks(value, props);
@@ -190,8 +180,6 @@ describe("splitFileLinks", () => {
     );
   });
 
-  // The guard that keeps this from rewriting the reader's prose: a
-  // destination must actually name a file.
   it("leaves prose alone when the destination has no extension", () => {
     assert.equal(run("ver [la nota](un aparte mas largo) aquí"), null);
     assert.equal(run("[texto](sin punto)"), null);

@@ -115,28 +115,17 @@ describe("parseSettingsSection", () => {
     strictEqual(parseSettingsSection("nope"), null);
     strictEqual(parseSettingsSection("integrations"), null);
     strictEqual(parseSettingsSection(""), null);
-    // Integrations owns connected accounts; a stale Settings deep link cannot land.
     strictEqual(parseSettingsSection("connectedAccounts"), null);
-    // Admin's People section owns the roster; a stale Settings link cannot land.
     strictEqual(parseSettingsSection("members"), null);
-    // Admin is a top-level screen, Time worked has no screen, and agent
-    // policy a team's focused agent screen. The company
-    // half of the standing context opens from Admin's header: a stale pin on any of
-    // them must fall back rather than land.
     strictEqual(parseSettingsSection("timeWorked"), null);
     strictEqual(parseSettingsSection("organization"), null);
     strictEqual(parseSettingsSection("workspace"), null);
-    // The shared Skills library is a TOP-LEVEL view, not a Settings section:
-    // neither the old section id nor the view id may resolve here, or a stale
-    // pin would open Settings on a section that does not exist.
     strictEqual(parseSettingsSection("skills"), null);
     strictEqual(parseSettingsSection("skills-home"), null);
     strictEqual(parseSettingsSection("permissions"), null);
     strictEqual(parseSettingsSection("workspaceContext"), null);
     strictEqual(parseSettingsSection("userContext"), null);
     strictEqual(parseSettingsSection("about-me"), null);
-    // Profile and About me are the account menu's own screens, so neither
-    // their view ids nor their retired section ids open Settings.
     strictEqual(parseSettingsSection("profile"), null);
     strictEqual(parseSettingsSection("aboutMe"), null);
   });
@@ -147,7 +136,6 @@ describe("parseSettingsSection", () => {
 });
 
 describe("useSettingsLanding source", () => {
-  // The node runner has no DOM, so the hook's wiring is guarded on its source.
   const src = readFileSync(
     new URL("../src/hooks/use-settings-landing.ts", import.meta.url),
     "utf8",
@@ -172,12 +160,10 @@ describe("keyboard shortcuts on a touch surface", () => {
       settingsSectionAvailable("shortcuts", null, { touch: false }),
       true,
     );
-    // A phone width or a store app at any width: no shortcuts row.
     strictEqual(
       settingsSectionAvailable("shortcuts", null, { touch: true }),
       false,
     );
-    // Touch hides only the shortcuts; the other rows keep their own rules.
     strictEqual(
       settingsSectionAvailable("reportBug", null, { touch: true }),
       true,

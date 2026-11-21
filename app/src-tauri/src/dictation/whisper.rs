@@ -38,17 +38,11 @@ pub async fn transcribe_audio(
             .and_then(|v| v.to_str().ok()),
     );
 
-    // Gate BEFORE spawning: on a pre-AVX2 x86-64 the sidecar dies with an
-    // illegal instruction (0xc000001d on Windows). Exact string — the
-    // frontend maps it to translated "this computer can't run voice typing"
-    // copy with no bug report: nothing in Houston broke.
     if !cpu::cpu_supported() {
         return Err("dictation-unsupported-cpu".into());
     }
 
     let model_path = model::model_path(&app)?;
-    // Exact string — the frontend maps it to the "download the model" flow,
-    // which also replaces a wrong-size file (see `model::is_ready`).
     if !model::is_ready(&model_path) {
         return Err("model-not-ready".into());
     }
@@ -113,8 +107,6 @@ async fn run_whisper(
         }
     };
 
-    // Drain both pipes on threads so a full pipe buffer can't deadlock the
-    // child (whisper logs its whole model load to stderr).
     let stdout = child.stdout.take().ok_or("dictation: no stdout")?;
     let stdout_reader = std::thread::spawn(move || {
         let mut buf = String::new();
@@ -137,8 +129,6 @@ async fn run_whisper(
                 child
                     .kill()
                     .map_err(|e| format!("dictation: kill on timeout: {e}"))?;
-                // Reap so the pipes close and the tail thread reaches EOF: what
-                // whisper printed before it hung is the only clue to why.
                 child
                     .wait()
                     .map_err(|e| format!("dictation: reap after timeout: {e}"))?;
@@ -158,8 +148,6 @@ async fn run_whisper(
         .map_err(|e| format!("dictation: read whisper stdout: {e}"))?;
     let tail = join_tail(stderr_reader);
     if !status.success() {
-        // Exact wording of the pre-existing message: the Sentry issue per exit
-        // flavor stays continuous, the tail is what is new (PRODUCT-1731).
         tracing::warn!("[dictation] whisper exited with {status}; stderr tail: {tail}");
         return Err(DictationError::sidecar(
             format!("dictation: whisper exited with {status}"),

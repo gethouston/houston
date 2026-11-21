@@ -72,8 +72,6 @@ fn sweep(dir: &Path, doomed: impl Fn(&str, &std::fs::Metadata) -> bool) {
         let Ok(metadata) = entry.metadata() else {
             continue;
         };
-        // A partial some download in this process is writing right now is
-        // never swept from under it, whatever its version.
         let held = InFlightClaim::holds(&dir.join(format!("{stem}{PART_SUFFIX}")));
         if !held && doomed(stem, &metadata) {
             if let Err(e) = remove_if_present(&path) {

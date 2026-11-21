@@ -3,20 +3,8 @@ import type { WorkspacePaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 
-/**
- * Cloud engine pods hydrate a GROUP.md at every agent root that the hosted
- * gateway wrote from a team's shared context. Nothing writes or reads those
- * files any more, so the pod deletes them once per workspace; the store sync
- * uploads the removal. The marker makes the sweep one-shot: a GROUP.md someone
- * writes afterwards is theirs and stays.
- */
 export const GATEWAY_NOTES_SWEPT_KEY = "gateway_group_notes_swept";
 
-/**
- * Only the gateway-fronted engine pod hydrates from the gateway's object store,
- * so only it can hold a gateway-written GROUP.md. Desktop and self-host have no
- * managed store, and a GROUP.md there is the person's own file.
- */
 export function isEnginePod(opts: {
   gatewayFronted?: boolean;
   storeSync?: unknown;
@@ -29,11 +17,6 @@ export function isEnginePod(opts: {
   );
 }
 
-/**
- * Delete every agent's GROUP.md in each workspace not yet swept. Never throws:
- * a failure is logged per agent (or per workspace), leaves the marker unset,
- * and is retried on the next boot.
- */
 export async function sweepGatewayGroupNotes(opts: {
   enginePod: boolean;
   store: WorkspaceStore;

@@ -6,16 +6,10 @@ import { openAdmin } from "../../../lib/open-admin";
 import { useUIStore } from "../../../stores/ui";
 import { FreeOrgChoiceRow } from "./free-org-choice-row";
 
-/**
- * Settings > Billing: the free-org pick while it is still open. What an org
- * costs lives in that org's Admin > Billing, so this screen points there for
- * whoever can see it (a link from the Stripe portal still lands here).
- */
 export function PlanSection() {
   const { t } = useTranslation("plan");
   const openSettings = useUIStore((s) => s.openSettings);
   const { showBilling } = useSurfaceGates();
-  // Where a closed free-org picker returns focus once its row is gone.
   const heading = useRef<HTMLHeadingElement>(null);
   return (
     <section className="space-y-5 py-6 text-ink md:space-y-6">

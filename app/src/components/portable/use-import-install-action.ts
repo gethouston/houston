@@ -1,10 +1,3 @@
-/**
- * The install press of "From a friend", bound to React: the effects the order
- * in `import-install-flow.ts` calls, plus the same-tick latch that makes a rage
- * burst one install. Split from the wizard's step machine so each file states
- * one thing.
- */
-
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toAgent } from "../../lib/agents-facade";
@@ -25,10 +18,8 @@ interface ImportInstallInput {
   name: string;
   color: string;
   selection: ImportSelection;
-  /** Authored copy for whatever makes the typed name unusable, or null. */
   nameProblem: () => string | null;
   resolveKickoffPin: () => KickoffPin;
-  /** Dismiss the sheet: the new agent's board is what the user lands on. */
   onInstalled: () => void;
 }
 
@@ -46,8 +37,6 @@ export function useImportInstallAction({
   const addToast = useUIStore((s) => s.addToast);
   const adoptAgent = useAgentStore((s) => s.adopt);
   const [installing, setInstalling] = useState(false);
-  // Held in a ref so the latch outlives every re-render and every change of
-  // `install`'s dependencies: a burst of clicks must meet the SAME latch.
   const installOnce = useRef(createSingleFlight());
 
   const install = useCallback(
@@ -71,10 +60,6 @@ export function useImportInstallAction({
           nameProblem,
           resolveKickoffPin,
           install: installImportedAgent,
-          // Reveal the agent NOW — the same optimistic contract as the
-          // create-agent dialog (HOU-710). `adopt` marks the agent provisioning
-          // (HOU-693): the sidebar shows it, chat parks sends behind the "being
-          // created" card, and a readiness probe clears the mark.
           reveal: (installed) => {
             adoptAgent(toAgent(installed.agent));
             addToast({

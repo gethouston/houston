@@ -14,8 +14,6 @@ printf 'mutated by patchelf\n' >"$TMP/source-root/usr/bin/houston-engine"
 printf 'claude mutated by patchelf\n' >"$TMP/source-root/usr/bin/claude"
 printf 'keep me\n' >"$TMP/source-root/other-file"
 
-# Synthetic AppImage runtime: report a fixed SquashFS offset and materialize an
-# AppDir when the repair script asks for extraction.
 cat >"$TMP/fake.AppImage" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
@@ -29,8 +27,6 @@ chmod +x "$TMP/fake.AppImage"
 truncate -s 4096 "$TMP/fake.AppImage"
 dd if="$TMP/fake.AppImage" of="$TMP/original-prefix" bs=4096 count=1 2>/dev/null
 
-# The fake SquashFS tools use tar as the payload format. They exercise the
-# repair algorithm without requiring Linux, FUSE, or a 200 MB fixture.
 cat >"$TMP/bin/mksquashfs" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail

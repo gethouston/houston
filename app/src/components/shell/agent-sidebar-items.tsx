@@ -9,17 +9,11 @@ import {
   NewAgentChip,
 } from "./agent-sidebar-status";
 
-/** Everything an agent row needs beyond the agents themselves. */
 export interface AgentItemArgs {
   summaries: Record<string, AgentActivitySummary>;
   runningLabel: (count: number) => string;
   needsYouLabel: (count: number) => string;
-  /** The badge on an employee that has never been given work. */
   newLabel: string;
-  /** Whether the row invites the person to start this employee's first day
-   *  (`first-day-invites.ts`: confirmed empty, first day pending, and this
-   *  caller may start it), so the row never invites a click the board then
-   *  has no button for. */
   invitesFirstDay: (agent: Agent) => boolean;
 }
 
@@ -34,17 +28,6 @@ const NO_ACTIVITY: AgentActivitySummary = {
   history: "unknown",
 };
 
-/**
- * The rail's agent rows, laid out like a message list: the name, then its
- * line (`agentRowLine`) with a badge at its end (the needs-you count, or "New"
- * on an employee whose first day is still ahead), and the running ring around
- * the avatar while the employee is at work. Copying, publishing and deleting an AI Employee
- * live in its Settings, so the row stays one quiet target.
- *
- * Everything here is already in hand (the conversation sweep the badges use,
- * the listing's role): no job description is read, so painting the rail never
- * wakes an employee's pod on its own.
- */
 export function buildAgentSidebarItems({
   agents,
   summaries,

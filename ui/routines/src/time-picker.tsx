@@ -1,21 +1,3 @@
-/**
- * TimePicker — a friendly clock-button time picker for the schedule builder.
- *
- * The trigger shows the time in the user's locale (12h for en, 24h for es/pt)
- * next to an always-visible clock icon; clicking opens a popover with scrollable
- * hour / minute (and AM/PM, for 12h locales) columns. The stored value stays
- * "HH:MM" 24-hour regardless of how it's displayed, so the cron logic upstream
- * is unaffected.
- *
- * Replaces the bare `<input type="time">`, which in the app's macOS webview
- * renders as a digit-only spinner with no pop-up picker — the user could only
- * type or nudge with arrow keys (HOU-456).
- *
- * i18n-agnostic per the library boundary: the field label + column names arrive
- * via props; AM/PM markers and the 12h-vs-24h choice come from `Intl` in the
- * given `locale`. The scroll columns live in time-picker-columns.tsx.
- */
-
 import { cn, Popover, PopoverContent, PopoverTrigger } from "@houston-ai/core";
 import { Clock } from "lucide-react";
 import { formatTime, parseTime } from "./schedule-format.ts";
@@ -32,7 +14,6 @@ import {
   to12Hour,
 } from "./time-picker-utils.ts";
 
-/** Accessible names for the picker's columns. */
 export interface TimePickerLabels {
   hour: string;
   minute: string;

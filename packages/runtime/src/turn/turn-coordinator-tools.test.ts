@@ -9,13 +9,6 @@ import { appendUserMessageAt } from "../store/conversation-file";
 import type { TurnSessionRequest } from "./turn-session";
 import { buildTurnCommonTools, buildTurnToolSelection } from "./turn-toolset";
 
-/**
- * A pool worker serves whatever turn arrives, so the AI Manager's surface is
- * decided by the TURN (the gateway marks it), never by the worker's process:
- * one worker builds the coordinator's tools for Houston's turn and an
- * ordinary agent's tools for the next.
- */
-
 const okCall: SandboxFetch = async () => Response.json({});
 
 function turn(
@@ -30,7 +23,6 @@ function turn(
     signal: undefined,
     turnId: "t1",
     role: "coordinator",
-    // What the gateway grants Houston's turn: no integrations, no code-run.
     grant: { scopes: ["agent-writes"] },
     sandbox: { call },
     ...overrides,

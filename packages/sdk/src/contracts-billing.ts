@@ -1,14 +1,3 @@
-/**
- * What an org pays and may use: its subscription and the hosted pages that
- * change it, the free slot, a free org's pool and routine rules, the checkout
- * an app has open, and the per-person plan the Plan screen still reads.
- *
- * Re-exported wholesale by the package barrel; import from `@houston/sdk`.
- */
-// ===== Billing module contract =========================================
-// `BillingSummary` and the org billing shapes are the spaces module's — every
-// space carries its billing on `OrgSummary.billing` — so they are exported
-// once, under Spaces.
 export {
   type BillingCheckout,
   type BillingChoiceSave,
@@ -60,7 +49,6 @@ export {
   type SeatUsageView,
   seatUsageView,
 } from "./modules/billing/seat-usage";
-// ===== Plan module contract ===========================================
 export { PlanCommand, PlanHttpError, type PlanModule } from "./modules/plan";
 export {
   formatLaunchDate,

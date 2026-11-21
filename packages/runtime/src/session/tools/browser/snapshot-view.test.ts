@@ -2,7 +2,6 @@ import { describe, expect, test } from "vitest";
 import { parseTree, renderTree, walk } from "./snapshot-tree";
 import { FULL_VIEW, viewTree } from "./snapshot-view";
 
-/** Shaped like Playwright 1.64's AI-mode output for a small page. */
 const TREE = [
   "- main [ref=e2]:",
   "  - generic [ref=e3]:",
@@ -53,11 +52,8 @@ describe("compact default", () => {
     expect(tree).not.toMatch(/- generic \[(?:active\] \[)?ref=e[34]\]/);
     expect(tree).not.toContain("[ref=e12]");
     expect(tree).not.toContain("/url");
-    // Clickable or valued wrappers stay.
     expect(tree).toContain("- generic [ref=e13] [cursor=pointer]: clicky div");
-    // The heading moved up to sit directly under main.
     expect(tree).toContain('\n  - heading "Hello" [level=1] [ref=e5]');
-    // A link whose only child was its address loses the dangling colon.
     expect(tree).toContain('- link "Pricing" [ref=e11] [cursor=pointer]\n');
   });
 
@@ -90,7 +86,6 @@ describe("query", () => {
   test("returns matching lines with their context and a count", () => {
     const { tree, notes } = view({ query: "PRICING" });
     expect(notes).toEqual(['1 line matches "PRICING".']);
-    // Only the three nearest enclosing lines: main is left out.
     expect(tree).toBe(
       [
         '- navigation "Main" [ref=e8]:',
@@ -137,7 +132,6 @@ describe("what changed", () => {
       pageUrl: "https://site.test/home",
       previous: first.refs,
     });
-    // The unnamed wrapper is dropped, so it is neither shown nor counted.
     expect(second.notes).toEqual(["2 new since the last look, marked [new]."]);
     expect(second.tree).toContain('- button "New one" [ref=e19] [new]');
     expect(second.tree).toContain("- paragraph [ref=e20] [new]: new para");

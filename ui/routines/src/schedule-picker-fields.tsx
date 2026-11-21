@@ -1,12 +1,3 @@
-/**
- * Picker fields used by ScheduleBuilder — day-of-month and the "On these days"
- * weekday multi-select. The friendly clock-button time picker lives in
- * time-picker.tsx and the "Repeat every N [unit]" control in
- * schedule-interval-picker.tsx; both reuse `labelClass` exported here.
- *
- * All visible text arrives via props so the package stays i18n-agnostic;
- * weekday names come from `Intl` in the given `locale`.
- */
 import { cn } from "@houston-ai/core";
 import { longWeekdayNames, narrowWeekdayNames } from "./schedule-format.ts";
 
@@ -53,12 +44,6 @@ const WEEKDAY_SHORTCUTS: {
   { key: "weekends", days: [0, 6] },
 ];
 
-/**
- * "On these days" — multi-select weekday toggle (single-letter glyphs,
- * Sunday-first) plus quick shortcuts (Every day / Weekdays / Weekends), used by
- * the Weekly preset to pick one or more days. Display glyphs (narrow) and the
- * full-name aria-labels both come from `Intl` in the given `locale`.
- */
 export function WeekdaysPicker({
   label,
   locale = "en-US",
@@ -86,8 +71,6 @@ export function WeekdaysPicker({
       <div className="flex gap-1.5">
         {narrow.map((glyph, d) => {
           const on = value.includes(d);
-          // `d` is the weekday number (0 = Sun … 6 = Sat), not a volatile list
-          // position, so it is a stable semantic key.
           const weekdayKey = `weekday-${d}`;
           return (
             <button

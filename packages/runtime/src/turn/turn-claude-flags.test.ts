@@ -23,7 +23,6 @@ const bobFlags = { cachedGrowthBookFeatures: { tengu_a: false } };
 
 afterEach(() => vi.restoreAllMocks());
 
-/** A turn root with members' stored caches hydrated into its data dir. */
 function turnRoot(stored: Record<string, unknown> = {}) {
   const root = mkdtempSync(join(tmpdir(), "turn-claude-flags-"));
   const dataDir = join(root, "store", ...dataRel.split("/"));
@@ -102,7 +101,6 @@ test("stores the refreshed cache under the acting member's name", async () => {
   expect(uploads).toEqual([
     {
       key: `ws/org/agent/${dataRel}/claude-flags/${claudeFlagsFileName("user-alice")}`,
-      // Only the flag keys: nothing else of the CLI's config leaves the turn.
       body: refreshed,
     },
   ]);
@@ -122,7 +120,7 @@ test("an unchanged cache, a flagless config, or no member stores nothing", async
       conversationId: "c1",
       userId,
     });
-  await persist("user-alice"); // the CLI never ran: no config at all
+  await persist("user-alice");
   writeFileSync(config, JSON.stringify({ ...aliceFlags, numStartups: 2 }));
   await persist("user-alice");
   await persist(undefined);
@@ -183,7 +181,6 @@ test("a stalled upload gives up at its deadline, reported", async () => {
     JSON.stringify(aliceFlags),
   );
   let signal: AbortSignal | undefined;
-  // A store that never answers and ignores cancellation.
   const store = {
     upload: (_src: string, _key: string, opts?: { signal?: AbortSignal }) => {
       signal = opts?.signal;

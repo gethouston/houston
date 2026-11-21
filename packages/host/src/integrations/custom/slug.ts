@@ -1,5 +1,3 @@
-/** A user-typed name → a slug valid for executor catalogs AND Houston grants
- *  (`CUSTOM_SLUG` in types.ts). */
 export function slugify(name: string): string {
   const slug = name
     .toLowerCase()

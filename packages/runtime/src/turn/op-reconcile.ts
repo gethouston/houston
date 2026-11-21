@@ -19,14 +19,6 @@ import { autoPauseRoutineTurn } from "./turn-routine-auto-pause";
 
 type Reply = { status: number; body: Record<string, unknown> };
 
-/**
- * POST /op `reconcile`: the pod's run reconciliation and its boot settle of
- * an interrupted turn, for a pooled turn that died where neither runs. The
- * conversation's claim scopes every write to what a turn of that conversation
- * may write. Safe to repeat: a retry writes nothing it already wrote, and
- * re-runs every projection, so an attempt that declines on a failed one is
- * finished by the next.
- */
 export async function executeReconcileOp(input: {
   deps: TurnServerDeps;
   op: OpRequest & { op: ReconcileOp };
@@ -63,13 +55,9 @@ export async function executeReconcileOp(input: {
       synced,
       `prefix=${resolved.prefix} kind=reconcile`,
     );
-    // Only a settlement that landed whole is "done": an attempt that left
-    // anything behind declines, and its retry is safe.
     if (partial) return decline("sync-back incomplete", resolved.prefix);
     landed = [...synced.uploaded];
   }
-  // Every attempt, from the durable history: a pause the attempt that
-  // settled the run never reached is owed still.
   const paused = await pauseAfterSync(input);
   if (paused.failed.length > 0) {
     return decline(
@@ -88,7 +76,6 @@ export async function executeReconcileOp(input: {
     landed,
   });
   if (projected.settle.length > 0) {
-    // The files are durable; the retry re-projects them.
     return decline(
       `projection failed: ${projected.settle.join("; ")}`,
       resolved.prefix,
@@ -111,13 +98,6 @@ export async function executeReconcileOp(input: {
   };
 }
 
-/**
- * The pooled auto-pause for each routine with a run in this conversation
- * that settled on a typed wall, read from the history the sync-back left on
- * disk (every row in it is durable): rebased on the store's routines, so a
- * concurrent edit survives, and a no-op once paused or when not earned. A
- * failed pause declines the attempt, so the control plane retries it.
- */
 async function pauseAfterSync(input: {
   op: OpRequest & { op: ReconcileOp };
   filesystem: TurnFilesystem;
@@ -127,9 +107,6 @@ async function pauseAfterSync(input: {
     fsTextStore(),
     input.filesystem.workspaceDir,
   );
-  // A usage limit is not snoozed here: a reconciled lost turn names no acting
-  // user, and only a run on the creator's own account may hold the schedule
-  // (domain snoozeAfterRun). The next fire that hits the limit snoozes it.
   const walled = runs.filter(
     (r) =>
       r.session_key === input.op.op.conversationId &&

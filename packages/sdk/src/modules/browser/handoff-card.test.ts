@@ -99,7 +99,6 @@ describe("browserHandoffCards", () => {
   });
 
   it("keeps waiting when the same message asked for another tool too", () => {
-    // Tools run one at a time: the second call waits behind the hand-off.
     const items = [
       user("go"),
       call(handoff()),
@@ -141,14 +140,12 @@ describe("browserHandoffCards", () => {
     const items = [
       user("a"),
       tagged(call(handoff("https://a.com"), "browser", "t1"), "T1", 0),
-      // T1 stopped mid hand-off: no result. Then T2 ran a browser open.
       user("b"),
       tagged(call({ action: "open", url: "https://c.com" }), "T2", 0),
       call(handoff("https://b.com"), "browser", "t2"),
       tagged(result("ERROR handoff_expired: late", true), "T2", 1),
       tagged(result("opened"), "T2", 0),
     ];
-    // The untagged hand-off call has no index; T2's index 1 is not T1's 0.
     items[4] = tagged(items[4], "T2", 1);
     expect(
       browserHandoffCards(items, true).map((c) => [c.key, c.state]),

@@ -8,16 +8,6 @@ import {
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
-/**
- * The AI Manager's morning briefing (`/v1/heartbeat*`), delegated to
- * `sdk.heartbeat`. Every answer is parsed before it leaves this seam
- * (`@houston/wire-types`), so a malformed host answer is a refusal rather
- * than a settings row rendering garbage.
- *
- * Served by the open host only (`capabilities.heartbeat`); the app hides the
- * row elsewhere, and a deployment that answers anyway with 501 surfaces as the
- * `HoustonEngineError` the SDK's classifier reads as "unavailable".
- */
 export function HeartbeatMixin<TBase extends BaseCtor>(Base: TBase) {
   class Heartbeat extends Base {
     async getHeartbeat(signal?: AbortSignal): Promise<HeartbeatState> {

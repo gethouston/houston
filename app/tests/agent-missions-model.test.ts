@@ -14,10 +14,6 @@ import {
 } from "../src/components/agents-home/agent-missions-target.ts";
 import type { AgentHomeConversation } from "../src/components/agents-home/agents-home-model.ts";
 
-// One agent's task list: the board's own status split, plus what the segmented
-// control and the search narrow it to. The promise: a task sits in the same
-// band here as the column it occupies on the board this screen pushes into.
-
 const mission = (
   over: Partial<AgentHomeConversation> & { id: string; agent_path: string },
 ): AgentHomeConversation => ({
@@ -34,13 +30,10 @@ describe("agentMissionSections", () => {
       [
         mission({ id: "r", agent_path: "/ws/a", status: "running" }),
         mission({ id: "n", agent_path: "/ws/a", status: "needs_you" }),
-        // An errored mission sits in Needs you, exactly as on the board.
         mission({ id: "e", agent_path: "/ws/a", status: "error" }),
         mission({ id: "d", agent_path: "/ws/a", status: "done" }),
         mission({ id: "arch", agent_path: "/ws/a", status: "archived" }),
-        // Another agent's row never leaks in.
         mission({ id: "other", agent_path: "/ws/b", status: "running" }),
-        // Setup chats are not missions.
         mission({
           id: "setup",
           agent_path: "/ws/a",
@@ -190,8 +183,6 @@ describe("isCreatedMissionOf", () => {
   });
 });
 
-// The phone task list is the employee's door to the rest of its screen: the
-// ⋯ menu lists every section the employee has beyond the list itself.
 describe("agentMissionsMenuSections", () => {
   it("offers Routines, Files and Settings to a manager", () => {
     assert.deepEqual(

@@ -1,4 +1,3 @@
-/** Replace client context with the scheduler zone, preserving absent-field bytes. */
 export function stampTurnTimezone(
   body: Buffer,
   timezone: string | null,

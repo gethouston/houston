@@ -6,9 +6,6 @@ import {
 import type { FeedOutput } from "./feed-output";
 import { TurnSink } from "./turn-sink";
 
-/** Test fixtures shared by the H-003 turn sink tests (setup errors, the
- *  404 bound). No test-runner import, so the SDK typecheck stays clean. */
-
 export type Item = {
   feed_type?: string;
   data?: unknown;

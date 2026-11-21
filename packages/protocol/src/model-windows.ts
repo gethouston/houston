@@ -1,71 +1,13 @@
-/**
- * The ONE source of truth for context-window sizing, shared by the frontend
- * usage indicator (the "context bar") and the runtime's autocompact + provider-
- * switch decisions. Both used to size the window independently — the bar divided
- * by Houston's per-model default (snapping up to a ceiling once observed usage
- * proved a larger window), while the runtime divided by pi-ai's RAW registry
- * window — so they disagreed: the runtime never compacted a 200k-real Claude
- * chat pi reports as 1M, and needlessly compacted a Gemini chat pi under-reports.
- *
- * This module lives in `@houston/protocol` (an OPEN, dependency-free leaf that
- * already owns the catalog wire shapes) so the runtime (`@houston/runtime`) and
- * the app catalog (`app/src/lib/providers.ts`) both import the SAME numbers and
- * the SAME snap-up rule. Option A of the context-bar fix: one table, no drift,
- * no cross-package parity test needed (the runtime tests pin these values).
- *
- * Keys are pi-ai PROVIDER ids (the runtime speaks these verbatim; the app looks
- * up by the pre-rename `piProvider.id`, so `openai-codex` — not the app's
- * post-rename `openai` — is the key here).
- *
- * Only models whose real window differs from pi-ai's raw registry value appear.
- * Notably ABSENT: the `google` provider's Gemini models — pi-ai already reports
- * their true 1,048,576 window, so no override is needed (the stale 128,000 some
- * research cited is `github-copilot`'s Gemini copy, a legitimately smaller cap
- * we do not touch).
- */
-
-/** A model's window sizing: the starting denominator and its snap-up ceiling. */
 export interface ModelWindow {
-  /** Starting denominator for the usage estimate. */
   default: number;
-  /** Ceiling the estimate snaps up to once observed usage exceeds `default`. */
   max: number;
 }
 
-/** A curated override entry; `max` defaults to `default` (no upward gating). */
 interface WindowOverride {
   default: number;
   max?: number;
 }
 
-/**
- * Per-model window overrides, keyed by pi-ai provider id then model id. Present
- * ONLY where Houston's real window differs from pi-ai's raw registry value:
- *
- * - `openai-codex` — Codex's `/status` reports a 95%-EFFECTIVE window (the
- *   number the user sees), so each row's default is 95% of pi's window for it:
- *   every 272k row (the gpt-6 line and the gpt-5.6 line) sits at
- *   272,000 × 0.95 = 258,400, and every row carries the ceiling of Codex's
- *   opt-in larger window: `max_context_window` 872,000 for every row of
- *   `GET chatgpt.com/backend-api/codex/models` (read 2026-11-17), × 0.95 =
- *   828,400. pi reports one window and one price tier for
- *   the whole line, so no row is singled out; the ceiling only ever applies
- *   once observed usage proves it (`effectiveModelWindow`), so a row without
- *   the variant loses nothing, while a served row WITHOUT the ceiling pins the
- *   bar at 100% and compacts at 258k on a chat the provider would carry on.
- *   gpt-6.2-astra sits on Codex's 272k default too (its models listing,
- *   2026-11-17), so it carries the same row. gpt-6.1-sol, gpt-6.1-terra and
- *   gpt-6.2-sol have no rows: pi reports a 500k window for them, and no
- *   `/status` reading backs a different number yet.
- *
- * `anthropic` carries no row: its lineup (Sonnet 5.5, Opus 5.5, Fable 5.2,
- * Haiku 5.5) runs a native 1M window on every plan, Pro included, with no
- * `[1m]` variant and no usage credits, so pi's flat 1M stands.
- *
- * Every row here names a model the domain catalog still lists
- * (`@houston/domain` `VALID_MODELS`); a model the catalog drops is a row no
- * turn can reach, and a stale ceiling is worse than none.
- */
 export const MODEL_WINDOW_OVERRIDES: Readonly<
   Record<string, Readonly<Record<string, WindowOverride>>>
 > = {
@@ -80,11 +22,6 @@ export const MODEL_WINDOW_OVERRIDES: Readonly<
   },
 };
 
-/**
- * The window sizing for a provider+model: the curated override when one exists,
- * else pi-ai's raw registry window as both default and ceiling (no snapping).
- * `piRawWindow` is what pi reports for THIS provider's copy of the model.
- */
 export function resolveModelWindow(
   providerId: string,
   modelId: string,
@@ -95,19 +32,6 @@ export function resolveModelWindow(
   return { default: def, max: override?.max ?? def };
 }
 
-/**
- * The window to divide by (tokens), given observed usage. Self-correcting:
- * starts at the model's default and snaps UP to the ceiling once observed usage
- * exceeds the default, which proves the larger (plan/credit-gated) window is
- * active — the provider auto-compacts before its limit, so observed usage can
- * never exceed the true window. Floored at the observed count so a mis-catalogued
- * ceiling can never read as over 100%.
- *
- * The frontend's `effectiveContextWindow` (app/src/lib/context-usage.ts)
- * applies this identical rule to a pre-resolved `{default,max}`, then cuts the
- * result to {@link compactionWindow} for display; the runtime compacts at
- * {@link autocompactPoint} of it instead (`needsAutocompact`).
- */
 export function effectiveModelWindow(
   providerId: string,
   modelId: string,
@@ -123,47 +47,21 @@ export function effectiveModelWindow(
   return Math.max(estimate, observedTokens);
 }
 
-/**
- * The fill a conversation on a window under {@link LONG_CONTEXT_WINDOW_TOKENS}
- * never grows past. Every request re-sends the whole context, so a large
- * window left to fill to 93% pays that fill in input tokens on every call.
- */
 export const AUTOCOMPACT_CEILING_TOKENS = 200_000;
 
-/** Percent-full at which a turn compacts. */
 export const AUTOCOMPACT_THRESHOLD_PERCENT = 93;
 
-/**
- * A window this large skips the ceiling and compacts at the threshold alone,
- * so a long chat on a 1M model keeps its history word for word, at the cost
- * of re-sending all of it on each call. The threshold rather than pi's
- * default (window minus 16,384): the Claude CLI compacts a 1M model at 967k
- * mid-turn, and 93% (930k) keeps Houston's between-turn compaction first.
- */
 export const LONG_CONTEXT_WINDOW_TOKENS = 1_000_000;
 
-/**
- * OpenAI caps INPUT at 922,000 tokens of the GPT-6 and GPT-5.6 lines'
- * 1,050,000 window (the rest is output room), on every path that serves them.
- * A window is not the room a conversation has when the input cap is lower:
- * compacting at 93% of 1.05M (976.5k) sends a request the provider refuses.
- */
 export const GPT_6_MAX_INPUT_TOKENS = 922_000;
 
-// Matches the bare id and every gateway spelling of it: `openai/gpt-6.1-sol`,
-// `global.openai.gpt-6-astra`, `openai/gpt-6-sol:batch`, `gpt-6-astra-fast`.
 const GPT_6_LINE =
   /(?:^|[./])gpt-(?:6(?:\.\d+)?|5\.6)-(?:luna|sol|terra|astra)(?:$|[-:])/;
 
-/** The model's input cap in tokens, when it is lower than its window. */
 export function modelInputLimit(modelId: string): number | undefined {
   return GPT_6_LINE.test(modelId) ? GPT_6_MAX_INPUT_TOKENS : undefined;
 }
 
-/**
- * The context fill at which a turn compacts before prompting: the window's
- * point, never past the threshold of the model's input cap.
- */
 export function autocompactPoint(window: number, inputLimit?: number): number {
   const atThreshold = (window * AUTOCOMPACT_THRESHOLD_PERCENT) / 100;
   const point =
@@ -175,14 +73,6 @@ export function autocompactPoint(window: number, inputLimit?: number): number {
     : Math.min(point, (inputLimit * AUTOCOMPACT_THRESHOLD_PERCENT) / 100);
 }
 
-/**
- * The room a conversation actually has, which the context bar divides by, so
- * 93% on the bar is where the runtime compacts for every model. A 1M window
- * is the whole window. Under 1M it is the window cut to where the ceiling
- * sits at 93% (a 400k chat compacts at 200k, which reads 93% of 215k, not 50%
- * of 400k). Never more than the model's input cap: a 1.05M GPT-6 window has
- * 922k of room.
- */
 export function compactionWindow(window: number, inputLimit?: number): number {
   const room =
     window >= LONG_CONTEXT_WINDOW_TOKENS

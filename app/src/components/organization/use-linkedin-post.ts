@@ -32,17 +32,9 @@ import type {
 import { connectionRead } from "./org-chart-share-step";
 import { useLinkedInConnect } from "./use-linkedin-connect";
 
-/** Who is signed in now, read when a post's step lands, not at render. */
 const signedIn = () =>
   queryClient.getQueryData<Session | null>(SESSION_QUERY_KEY)?.uid ?? null;
 
-/**
- * Posting from the share dialog: the connection read (polled while a connect
- * is under way), Connect LinkedIn (`useLinkedInConnect`), Post to LinkedIn
- * and Disconnect. A post is claimed and settled in the space's slot
- * (`linkedin-post-store.ts`), which outlives this page; the dialog on screen
- * shows its result, and the opening that made it opens it (`postAndOpen`).
- */
 export function useLinkedInPost(input: {
   enabled: boolean;
   state: ShareDialogState;
@@ -51,7 +43,6 @@ export function useLinkedInPost(input: {
   onPosted: () => void;
 }) {
   const { enabled, state, dispatch, session } = input;
-  // One post out per person and space, held outside the page that started it.
   const uid = useSession().data?.uid ?? null;
   const space = useWorkspaceStore((s) => s.current?.id ?? "");
   const postKey = linkedInPostKey(uid, space);
@@ -66,7 +57,6 @@ export function useLinkedInPost(input: {
     connected: query.data?.connected === true,
     recheck: actions.recheck,
   });
-  // Read when a post settles, after the page may have closed or gone.
   const onScreen = useRef<number | null>(null);
   useLayoutEffect(() => {
     onScreen.current = state.open ? state.session : null;
@@ -75,9 +65,6 @@ export function useLinkedInPost(input: {
     };
   });
 
-  // A post that went up, here or while this page was gone, is said once by
-  // the opening on screen; one that may be up, by every opening until the
-  // person checked. Before paint, so Post never flashes back.
   const { landed, unconfirmed } = slot;
   const saidUnconfirmed = state.line?.kind === "unconfirmed";
   useLayoutEffect(() => {
@@ -110,7 +97,6 @@ export function useLinkedInPost(input: {
             logAndReportError("org_chart_share_encode", error);
             throw error;
           }),
-        // tauriLinkedIn.postImage reports a failure that is not a refusal.
         send: (image) => tauriLinkedIn.postImage({ image, text, altText }),
       });
     const outcome = await postAndOpen(run, {
@@ -120,7 +106,6 @@ export function useLinkedInPost(input: {
       report: (error) => logAndReportError("linkedin_view_post", error),
       dispatch,
     });
-    // Signed out or in meanwhile: nothing of it reaches the next person.
     if (!outcome || outcome.kind === "unconfirmed") return;
     if (outcome.kind === "failed") return refused("quiet");
     if (outcome.kind === "posted") return input.onPosted();
@@ -139,7 +124,6 @@ export function useLinkedInPost(input: {
     connect,
     post,
     posting: slot.posting,
-    /** A post that may be up waits for the person to check LinkedIn. */
     held: isPostHeld(slot),
     dismissUnconfirmed: () => {
       useLinkedInPosts.getState().dismissUnconfirmed(postKey);

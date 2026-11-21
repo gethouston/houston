@@ -1,15 +1,3 @@
-/**
- * Shared Playwright fixtures.
- *
- * Every test gets a page that is (a) reset to the fake host's seed and (b) primed
- * with the boot seed, so specs start from a known shell with one connected agent.
- *
- * Each parallel WORKER runs its own in-process fake host: `FAKE_HOST_PORT` is
- * worker-slot-aware (see `@houston/fake-host` config.ts), and workers are
- * separate OS processes, so their in-memory host state is isolated for free.
- * That is what lets the suite run fully parallel; within a worker, state is
- * still reset per test.
- */
 import {
   FAKE_HOST_PORT,
   type FakeHost,
@@ -21,16 +9,12 @@ import { seedPage } from "./seed";
 import { seedSidebarLayout } from "./sidebar-layout";
 
 interface Fixtures {
-  /** Seed a named folder containing the seed agent for team-board specs. */
   teamBoard: boolean;
-  /** A page pre-seeded with engine config + skipped boot gates. */
   page: Page;
-  /** Push a domain reactivity event onto the host's `/v1/events` feed. */
   emitHostEvent: (type: string, agentPath?: string) => Promise<void>;
 }
 
 interface WorkerFixtures {
-  /** This worker's own fake host. In-worker, `FAKE_HOST_URL` resolves to it. */
   fakeHost: FakeHost;
 }
 
@@ -46,7 +30,6 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
     { scope: "worker", auto: true },
   ],
   page: async ({ page, request, fakeHost, teamBoard }, use) => {
-    // Server-to-server (no CORS): restore the seed before each test.
     await request.post(`${fakeHost.url}/__test__/reset`);
     if (teamBoard) {
       await seedSidebarLayout(request, {

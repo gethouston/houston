@@ -66,7 +66,6 @@ pub(crate) async fn run(
                     if packet.cancel.is_cancelled() { continue; }
                     if let Some(terminal) = &packet.terminal { terminal.store(true, std::sync::atomic::Ordering::SeqCst); }
                     if let Outgoing::ResponseChunk { data, .. } = &packet.message {
-                        // Base64 padding determines raw bytes without decoding or another allocation.
                         let padding = data.bytes().rev().take_while(|byte| *byte == b'=').count();
                         packet.outstanding.fetch_add(data.len() / 4 * 3 - padding, std::sync::atomic::Ordering::SeqCst);
                     }

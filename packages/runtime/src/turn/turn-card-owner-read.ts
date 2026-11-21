@@ -10,12 +10,9 @@ import { turnHydrationError } from "./turn-hydration-error";
 import type { ResolvedTurnStore } from "./turn-store";
 import type { TurnRequest } from "./types";
 
-/** The conversation the card is judged from, once hydration has landed. */
 export interface CardOwnerRead {
   messages: () => Promise<ChatMessage[]>;
-  /** Settles when the store read (if any) has; never rejects. */
   settled: Promise<unknown>;
-  /** Stop the store read; `settled` then settles promptly. */
   abort: () => void;
 }
 
@@ -25,18 +22,6 @@ type FreshRead =
   | { kind: "read" }
   | { kind: "failed"; error: unknown };
 
-/**
- * The conversation as the store holds it under this turn's claim. Hydration
- * read it under the claim unless the gateway inlined its bytes (read BEFORE
- * it held the claim, so the card the previous turn ended on can be missing
- * from them) or its prefetched listing did not name it (the card's turn may
- * have created it since). Only then is the object read again, conditioned on
- * the generation of the bytes the worker holds (the inlined object's, else
- * the listing's), so an unchanged one answers 304. It starts once the listing,
- * layout and priority inputs have landed and overlaps the bulk hydration, so
- * the 202 rarely waits for it. A read failure is answered like a failure
- * during hydration.
- */
 export function startCardOwnerRead(
   turn: TurnRequest,
   filesystem: TurnFilesystem,

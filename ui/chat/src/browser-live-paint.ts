@@ -13,12 +13,6 @@ function jpegBlob(base64: string): Blob {
   return new Blob([bytes], { type: "image/jpeg" });
 }
 
-/**
- * Paints the frame stream onto the canvas without touching React state per
- * frame. One decode at a time: a frame arriving mid-decode waits as the ONE
- * pending frame (a newer one replaces it), and a frame older than the last
- * painted one is dropped. Returns whether anything has been painted yet.
- */
 export function useBrowserLivePaint(
   canvasRef: RefObject<HTMLCanvasElement | null>,
   frames: BrowserLiveFrames,

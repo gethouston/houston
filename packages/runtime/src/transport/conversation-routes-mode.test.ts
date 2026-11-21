@@ -5,13 +5,6 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { afterAll, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * A conversation keeps its mode on its mission card (HOU-205). The turn route
- * is the one door every channel's message enters through, so it is where a
- * send that names no mode (a WhatsApp relay, an API follow-up, a client that
- * omits it) picks up the kept one instead of silently falling to Ask first.
- */
-
 const chat = vi.hoisted(() => ({
   runTurn: vi.fn(async () => {}),
   ensureProviderForTurn: vi.fn(async () => "openai" as string | null),
@@ -62,7 +55,6 @@ async function post(body: unknown) {
   return out;
 }
 
-/** The mode the accepted turn was pinned to. */
 function turnMode(): unknown {
   const call = chat.runTurn.mock.calls[0] as unknown[] | undefined;
   return (call?.[3] as { mode?: unknown } | undefined)?.mode;

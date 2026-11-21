@@ -32,11 +32,6 @@ export function ProviderReconnectCard({
   const [resolvedSignal, setResolvedSignal] = useState<string | null>(null);
   const [signalNeedsAuth, setSignalNeedsAuth] = useState(false);
 
-  // `authRequired` is a single global flag (set by whichever session last hit
-  // an auth error). Only let it drive THIS card when it names this chat's
-  // provider; otherwise fall back to this chat's own feed signal. This is what
-  // keeps a Claude logout from leaking a "Connect Claude" button into an
-  // OpenAI chat (HOU-410).
   const authMatchesChat = !!authRequired && authRequired === providerId;
   const shouldCheckSignal =
     !authMatchesChat &&
@@ -78,12 +73,6 @@ export function ProviderReconnectCard({
     };
   }, [providerId, shouldCheckSignal, signalKey]);
 
-  // Confirmation poll: the card clears the moment a FRESH probe reports the
-  // provider connected. The clear rule lives in the shared derivation
-  // (`reconnectCardShouldClear`) so this card, the hub badge and the picker all
-  // read one `ProviderStatus` the same way (HOU-979). A probe that fails is not
-  // evidence of anything: it is skipped, never latched, so a reconnect that
-  // succeeded across an errored tick still clears on the next tick.
   useEffect(() => {
     if (!activeProviderId) return;
     let cancelled = false;
@@ -94,9 +83,6 @@ export function ProviderReconnectCard({
         .catch(() => ({ ok: false }) as const);
       if (cancelled) return;
       if (reconnectCardShouldClear(probe)) {
-        // Only clear the global flag if it belongs to the provider we just
-        // confirmed — otherwise an OpenAI chat re-auth would wipe a pending
-        // Claude reconnect (or vice-versa).
         if (authRequired === activeProviderId) setAuthRequired(null);
         if (signalKey) setResolvedSignal(signalKey);
         setLoginLaunched(false);
@@ -112,9 +98,6 @@ export function ProviderReconnectCard({
 
   const handleSignIn = useCallback(async () => {
     if (!activeProviderId) return;
-    // A local OpenAI-compatible server has no OAuth flow — reconnect by
-    // re-entering its base URL + model in the dialog, not launchLogin (which
-    // would throw "does not use OAuth sign-in" and dead-end the card).
     if (activeProviderId === "openai-compatible") {
       setShowCustomDialog(true);
       return;
@@ -131,8 +114,6 @@ export function ProviderReconnectCard({
 
   if (!activeProviderId || !provider) return null;
 
-  // Two states keyed on loginLaunched: the launched button now names its
-  // action ("Sign in again"), not the ambiguous shared "Try again".
   const pres = resolveReconnectCardPresentation({ loginLaunched, loginError });
 
   return (

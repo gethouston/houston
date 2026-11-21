@@ -44,8 +44,6 @@ impl BridgeHandle {
     pub async fn shutdown(&mut self) -> Result<(), BridgeError> {
         self.cancel.cancel();
         if let Some(task) = self.task.take() {
-            // Transport failures already reached Offline. Shutdown succeeds once
-            // every socket/task is released, including a previously closed session.
             match task.await {
                 Ok(_) => {}
                 Err(_) => return Err(BridgeError::Closed),

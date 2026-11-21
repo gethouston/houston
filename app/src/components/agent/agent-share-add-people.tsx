@@ -14,18 +14,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { personDisplayName } from "../organization/people-tab-model";
 
-/**
- * The "Add people" row of the Share dialog: a searchable picker over org
- * members who don't yet have access. Mirrors the toolkit picker (Popover +
- * Command) so the two read as one system. Picking a member adds them with
- * "Can use" access; the parent owns the write.
- */
 export function AgentShareAddPeople({
   candidates,
   disabled,
   onAdd,
 }: {
-  /** Org members who do not yet have access. */
   candidates: OrgMember[];
   disabled?: boolean;
   onAdd: (member: OrgMember) => void;
@@ -58,8 +51,6 @@ export function AgentShareAddPeople({
                 { email: member.email, userId: member.userId },
                 t("people.roster.unnamedAccount"),
               );
-              // cmdk keys items by `value`, so two unnamed accounts sharing a
-              // label would collide; the visible name is the search keyword.
               return (
                 <CommandItem
                   key={member.userId}

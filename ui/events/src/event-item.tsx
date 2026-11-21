@@ -78,12 +78,10 @@ export function EventItem({ event, onClick }: EventItemProps) {
         isSuppressedHeartbeat && "opacity-50",
       )}
     >
-      {/* Type icon */}
       <div className="flex items-center justify-center w-4 shrink-0">
         <Icon className="size-4 text-ink-muted" />
       </div>
 
-      {/* Summary + source */}
       <div className="flex-1 min-w-0">
         <p
           className={cn(
@@ -99,7 +97,6 @@ export function EventItem({ event, onClick }: EventItemProps) {
         </p>
       </div>
 
-      {/* Timestamp + status */}
       <div className="flex items-center gap-2 shrink-0">
         <span className="text-[11px] text-ink-muted/60">
           {relativeTime(event.createdAt)}

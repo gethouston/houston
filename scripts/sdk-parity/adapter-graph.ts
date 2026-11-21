@@ -2,46 +2,20 @@ import ts from "typescript";
 import { unwrap } from "../assistant-catalog/assistant-ast.ts";
 import { importedFrom, localNames } from "./adapter-scope.ts";
 
-/**
- * The adapter's call graph, coarse on purpose.
- *
- * Classifying an adapter method (`adapter-methods.ts`) means reading what it
- * runs, and almost nothing runs only its own body: a mixin method delegates to
- * a private sibling, to a helper in a neighbouring module, or to a small class
- * it constructs. So every function-ish body in the adapter becomes a node, and
- * every call or `new` becomes an edge — resolved through the calling file's own
- * imports, so two helpers sharing a name stay distinct.
- *
- * A class also gets ONE aggregate node under its own name whose edges are all
- * its methods: `new SidebarLayoutStore(ctx)` then pulls in everything the
- * instance could run, without resolving what the caller does with it.
- * Over-reaching that way is the safe direction — it can only make a method look
- * like it does MORE, never hide what it does.
- */
 export interface GraphNode {
-  /** Body text, for the caller's marker scan. */
   text: string;
-  /** Keys of nodes this one may run. */
   edges: string[];
 }
 
 export const nodeKey = (file: string, name: string): string =>
   `${file}#${name}`;
 
-/** What one file's names resolve against while its edges are read. */
 interface FileScope {
   file: string;
   imports: Map<string, string>;
   locals: Set<string>;
 }
 
-/** Every node a body may run. `this.ctx.*` is deliberately NOT an edge: the
- *  context is the transport, and its members are read as markers instead.
- *
- *  A callee and the object it hangs off are both read through {@link unwrap}:
- *  `(helper as Fn)()` and `(await ready).refresh()` name the same helper as
- *  their bare spellings, and a wrapper that swallowed the edge would make a
- *  method look like it does LESS — the direction this graph must never err in. */
 function edgesOf(
   body: ts.Node,
   scope: FileScope,
@@ -76,7 +50,6 @@ function edgesOf(
   return edges;
 }
 
-/** The name and body a class member publishes, or null when it has neither. */
 export function classMethod(
   member: ts.ClassElement,
   source: ts.SourceFile,
@@ -130,7 +103,6 @@ function readFile(source: ts.SourceFile, nodes: Map<string, GraphNode>): void {
 
 export interface AdapterGraph {
   nodes: Map<string, GraphNode>;
-  /** The adapter's own sources, parsed. */
   sources: ts.SourceFile[];
 }
 
@@ -152,7 +124,6 @@ export function buildGraph(files: string[]): AdapterGraph {
   return { nodes, sources };
 }
 
-/** Every node reachable from `start`, itself included. */
 export function reachableFrom(graph: AdapterGraph, start: string): GraphNode[] {
   const seen = new Set<string>();
   const found: GraphNode[] = [];

@@ -1,11 +1,3 @@
-// The "Book a call" popup's two country menus: the country field and the
-// dial code beside the phone number. They are the download form's own
-// searchable menus (download-gate-dropdown.js) over the same country table
-// (download-gate-countries.js), so the two forms list countries the same way.
-//
-// Picking a country also picks its dial code, until the visitor chooses a
-// dial code themselves.
-
 const rowHtml = (row, withDial) =>
   `<span class="dl-dd-flag">${row.flag}</span>` +
   `<span class="dl-dd-name">${row.display}</span>` +
@@ -13,8 +5,6 @@ const rowHtml = (row, withDial) =>
 
 const byId = (id) => document.getElementById(id);
 
-// Returns null when the shared menu assets did not load: the page then keeps
-// its plain calendar links instead of a popup that could never send.
 export function createMenus({ locale, onCountry }) {
   const dropdowns = window.HoustonDropdown;
   if (!dropdowns || !window.HoustonDropdownAnchor) return null;
@@ -26,8 +16,6 @@ export function createMenus({ locale, onCountry }) {
   const countryValue = byId("dpc-country-value");
   const phoneCode = byId("dpc-phone-code");
   let codePicked = false;
-  // True while the script itself picks a dial code, so only the visitor's own
-  // picks count as chosen.
   let syncing = false;
 
   const menu = (prefix, root, items, onSelect, menuWidth) =>
@@ -43,7 +31,6 @@ export function createMenus({ locale, onCountry }) {
       onSelect,
     });
 
-  // The dial codes lead with the United States, then follow the country order.
   const dialRows = [
     ...rows.filter((row) => row.iso === "US"),
     ...rows.filter((row) => row.iso !== "US"),
@@ -76,7 +63,6 @@ export function createMenus({ locale, onCountry }) {
     syncing = false;
   };
 
-  // The stored value stays the English name, as the download form stores it.
   menu(
     "dpc-country",
     "dpc-country-dd",

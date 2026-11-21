@@ -8,7 +8,6 @@ import {
 } from "../../../src/specimen";
 import { erroredRun, inboxZero, runningRun, surfacedRun } from "./sample";
 
-/** One routine's full week — every outcome the run list can show, newest first. */
 const history: RoutineRun[] = [
   { ...runningRun, id: "run-d0" },
   { ...surfacedRun, id: "run-d1", routine_id: inboxZero.id },

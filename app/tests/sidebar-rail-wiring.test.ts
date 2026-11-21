@@ -2,11 +2,6 @@ import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-/**
- * The rail's list, its foot and the tour over them, guarded on SOURCE: the
- * modules are `.tsx` that mount stores and queries, so the node runner reads
- * them the way `sidebar-workspace-menu.test.ts` does.
- */
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
@@ -48,7 +43,6 @@ describe("the Houston tour", () => {
     assert.ok(
       TOUR.includes('target: onEitherScreen("nav-integrations", "mobileMenu")'),
     );
-    // The Academy lives in the account row's menu.
     assert.ok(
       TOUR.includes('target: onEitherScreen("workspaceMenu", "mobileMenu")'),
     );
@@ -59,8 +53,6 @@ describe("the connect rows' provider marks", () => {
   const LOGOS = read("../src/components/shell/use-connect-group-logos.tsx");
 
   it("read the person's connections only once the integrations provider is ready", () => {
-    // The rail is always mounted: an ungated read would hit a provider that
-    // is not set up on every boot, as the catalog read beside it never does.
     assert.ok(LOGOS.includes("const ready = useIntegrationProviderReady();"));
     assert.ok(
       LOGOS.includes("useIntegrationConnections(INTEGRATION_PROVIDER, ready)"),
@@ -68,8 +60,6 @@ describe("the connect rows' provider marks", () => {
   });
 
   it("follow the current theme's ink, so they read on the dark rail", () => {
-    // Each mark sits on its tile's themed surface: a mark pinned to one
-    // theme's ink vanishes on the other theme's tile.
     assert.ok(!LOGOS.includes("data-theme"));
     assert.ok(LOGOS.includes('className="flex text-ink"'));
   });

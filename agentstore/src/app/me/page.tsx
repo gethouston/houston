@@ -1,10 +1,3 @@
-/**
- * /me — the owner dashboard (your listings).
- *
- * Everything is client-side: the page requires a signed-in session and reads the
- * caller's agents through the gateway with a bearer, so nothing is server-rendered
- * and the route is never indexed.
- */
 import type { Metadata } from "next";
 import { StoreNav } from "@/components/store-nav";
 import { MeClient } from "./me-client";

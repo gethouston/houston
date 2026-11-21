@@ -1,5 +1,3 @@
-// Types
-
 export type {
   NextFireLabels,
   RoutineRowLabels,
@@ -9,7 +7,6 @@ export type {
   TriggerLabels,
   TriggerStatusLabels,
 } from "./labels";
-// Localization labels — the app builds these from `t()` and passes them in.
 export {
   DEFAULT_GRID_LABELS,
   DEFAULT_NEXT_FIRE_LABELS,
@@ -19,7 +16,6 @@ export {
   DEFAULT_TRIGGER_LABELS,
   interp,
 } from "./labels";
-// Routine execution history (PRODUCT-1208) — the run list + its helpers.
 export type { RoutineRunListLabels } from "./labels-details";
 export { DEFAULT_RUN_LIST_LABELS } from "./labels-details";
 export { nextFire } from "./next-fire";
@@ -37,7 +33,6 @@ export { RoutineRunList } from "./routine-run-list";
 export type { RoutineTriggerStatusProps } from "./routine-trigger-status";
 export { RoutineTriggerStatus } from "./routine-trigger-status";
 export type { RoutineDraft, RoutinesGridProps } from "./routines-grid";
-// Components
 export { RoutinesGrid } from "./routines-grid";
 export type { RoutinesGridEmptyProps } from "./routines-grid-empty";
 export { RoutinesGridEmpty } from "./routines-grid-empty";
@@ -49,7 +44,6 @@ export type { ScheduleFloor } from "./schedule-floor";
 export { cronSummary, presetSummary } from "./schedule-summary";
 export type { TimezonePickerProps } from "./timezone-picker";
 export { TimezonePicker } from "./timezone-picker";
-// Triggers (C9 event-driven routines) — pure pieces the app composes/wires.
 export type { TriggerStatusBadgeProps } from "./trigger-status-badge";
 export { TriggerStatusBadge } from "./trigger-status-badge";
 export type { TriggerBadgeState } from "./trigger-status-view";

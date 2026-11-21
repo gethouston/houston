@@ -91,8 +91,6 @@ fn signal_label(status: &ExitStatus) -> String {
             return format!("signal {sig}");
         }
     }
-    // Windows ExitStatus::code() is always Some, so this arm is unreachable
-    // there in practice; keep the fn total for any future target.
     #[cfg(not(unix))]
     let _ = status;
     "signal".to_string()

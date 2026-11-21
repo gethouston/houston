@@ -6,11 +6,7 @@ import type { AppDisplay } from "../../integrations/app-display";
 import { AppRow } from "../../integrations/app-row";
 import type { ConnectableApp } from "../use-usable-toolkits";
 
-/** Below this many connectable apps we show them all without a search; above it
- *  (an unrestricted host returns the whole catalog) the grid asks the user to
- *  search rather than render a thousand rows. */
 const CONNECTABLE_CAP = 12;
-/** How many search hits to render at most, so a broad query never floods. */
 const SEARCH_LIMIT = 30;
 
 interface TriggerAppGridProps {
@@ -22,8 +18,6 @@ interface TriggerAppGridProps {
   onSelectConnectable: (app: ConnectableApp) => void;
 }
 
-/** Map a trigger app's slim identity onto the shared integrations display shape
- *  so it renders through the SAME {@link AppRow} the Integrations page uses. */
 function toDisplay(app: {
   toolkit: string;
   name: string;
@@ -37,15 +31,6 @@ function toDisplay(app: {
   };
 }
 
-/**
- * The app grid the trigger step opens on: the agent's connected apps first, then
- * the allowed-but-unconnected apps, all rendered as the shared Integrations
- * {@link AppRow} (rounded-xl chip, size-8 logo, name) in the same single- /
- * two-column responsive grid the Integrations catalog uses. The connectable rows
- * carry a muted "Not connected" line — the Integrations way of saying an app is
- * one tap short of ready — so the two groups read as one list. A search field
- * filters both, and gates the connectable list when the catalog is large.
- */
 export function TriggerAppGrid({
   connected,
   connectable,
@@ -63,8 +48,6 @@ export function TriggerAppGrid({
     ? connectable.filter((a) => match(a.name)).slice(0, SEARCH_LIMIT)
     : connectable;
   const manyConnectable = connectable.length > CONNECTABLE_CAP;
-  // Without a query, only show the connectable grid when it is small enough to
-  // browse; a large catalog waits behind a search.
   const shownConnectable = q
     ? filteredConnectable
     : manyConnectable

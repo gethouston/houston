@@ -1,15 +1,5 @@
 import type { TokenUsage, WireEvent } from "@houston/runtime-client";
 
-/**
- * Normalize the Claude Agent SDK's token usage into Houston's `TokenUsage`,
- * BYTE-MATCHING the pi normalization (`backends/pi/wire.ts`): the prompt filling
- * the window is everything but output, so `context_tokens = total - output` where
- * `total = input + output + cache_read + cache_creation`, and `cached_tokens` is
- * the cache-read portion. Reads the SDK's snake_case `BetaUsage` fields; a missing
- * field counts as 0. Returns null when there is no input signal at all (no
- * misleading zero usage), and clamps a degenerate output > total to keep context
- * non-negative.
- */
 export function normalizeUsage(u: unknown): TokenUsage | null {
   const usage = u as
     | {
@@ -36,19 +26,10 @@ export function normalizeUsage(u: unknown): TokenUsage | null {
 export interface ToolBlock {
   id: string;
   name: string;
-  /** Accumulated `input_json_delta` fragments; parsed at content_block_stop. */
   json: string;
-  /** The start block's `input`, used when no json deltas arrived. */
   input: unknown;
 }
 
-/**
- * The Claude Agent SDK's stand-in for tool input the model streamed as invalid
- * JSON. The CLI never runs such a call: it hands the model an
- * `InputValidationError` tool_result and lets it retry, and its `assistant`
- * message carries this marker in place of the arguments (verified against
- * claude-agent-sdk 0.3.257 with a fake API — PRODUCT-1694).
- */
 export interface UnparsedToolInputMarker {
   __unparsedToolInput: { raw?: string; len?: number };
 }
@@ -66,7 +47,6 @@ export type DeltaParse =
   | { ok: true; args: unknown }
   | { ok: false; reason: string };
 
-/** Parse a tool call's accumulated `input_json_delta` fragments. */
 export function parseDeltaJson(tb: ToolBlock): DeltaParse {
   if (!tb.json) return { ok: true, args: tb.input ?? {} };
   try {
@@ -79,12 +59,6 @@ export function parseDeltaJson(tb: ToolBlock): DeltaParse {
   }
 }
 
-/**
- * The tool_start frame for a completed call, from the SDK's own parse of its
- * input. The unparsed marker means the CLI skipped the call and asked the model
- * to retry — an expected model glitch, logged as a breadcrumb (console.warn is
- * never a Sentry event) with the parse reason, and rendered as empty args.
- */
 export function toolStartFrame(tb: ToolBlock, sdkInput: unknown): WireEvent {
   let args = sdkInput;
   if (isUnparsedToolInput(sdkInput)) {
@@ -99,10 +73,6 @@ export function toolStartFrame(tb: ToolBlock, sdkInput: unknown): WireEvent {
   return { type: "tool_start", data: { name: tb.name, args } };
 }
 
-/**
- * A call whose deltas failed to parse and for which the SDK never delivered its
- * `assistant` block: an unexpected shape, so it IS a reported error.
- */
 export function unverifiedToolStart(tb: ToolBlock): WireEvent {
   const parsed = parseDeltaJson(tb);
   console.error(
@@ -113,17 +83,12 @@ export function unverifiedToolStart(tb: ToolBlock): WireEvent {
   return { type: "tool_start", data: { name: tb.name, args: {} } };
 }
 
-/**
- * A tool block still open when the next API response starts: its stream broke
- * before the stop (the CLI retries such a request itself). Breadcrumb only.
- */
 export function warnDroppedToolBlock(tb: ToolBlock): void {
   console.warn(
     `[claude] tool "${tb.name}" input stream ended before its stop (${tb.json.length} bytes); the CLI retried the request, dropping the partial call`,
   );
 }
 
-/** A `tool_use` block off an SDK `assistant` message (external `BetaContentBlock`). */
 export interface AssistantContentBlock {
   type?: string;
   id?: string;
@@ -131,11 +96,6 @@ export interface AssistantContentBlock {
   input?: unknown;
 }
 
-/**
- * Minimal structural view of the SDK's `BetaRawMessageStreamEvent` — a deep,
- * version-coupled external union. We read only the fields below and narrow
- * defensively by the `type` discriminant.
- */
 export interface EventLike {
   type?: string;
   index?: number;
@@ -153,19 +113,13 @@ export interface EventLike {
   };
 }
 
-/** A `tool_result` block off a user message (external `BetaContentBlockParam`). */
 export interface UserContentBlock {
   type?: string;
   tool_use_id?: string;
   is_error?: boolean;
-  /** Result payload: a plain string or text/image blocks. */
   content?: string | { type?: string; text?: string }[];
 }
 
-/**
- * The text a `tool_result` block returned to the model — a plain string, or
- * its `text` blocks joined. Image blocks have no text and are skipped.
- */
 export function toolResultText(content: UserContentBlock["content"]): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";

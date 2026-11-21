@@ -1,13 +1,3 @@
-/**
- * The Connected Apps section of the Houston product prompt. Byte-identical to
- * the desktop's `app/src-tauri/src/houston_prompt/integrations.rs` (pinned by
- * houston-prompt-mirrors.test.ts).
- *
- * Situational procedure lives where the workflow already passes: the search
- * result teaches the per-status speech acts and how to pick one of several
- * accounts, and `custom_integration_detect`'s result carries the custom setup
- * steps. This section keeps only what must hold before any tool runs.
- */
 export const INTEGRATIONS = `## How-To Guidance: Connected Apps (Integrations)
 
 You act on the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) with \`integration_search\`, which finds an action and its input parameters, and \`integration_execute\`, which runs it. The user's own account is used automatically; you never handle credentials.

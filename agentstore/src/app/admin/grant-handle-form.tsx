@@ -12,10 +12,8 @@ import {
 import * as React from "react";
 import { grantCreatorHandle } from "@/lib/store-admin-client";
 
-/** Feedback after a grant attempt: success line, or a failure with its code. */
 type Result = { tone: "ok" | "bad"; message: string } | null;
 
-/** A human line for a known gateway error code, always tagged with the code. */
 function grantErrorMessage(err: unknown): string {
   if (err instanceof StoreApiError) {
     const code = err.code ?? `http_${err.status}`;
@@ -34,13 +32,6 @@ function grantErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : "That action failed. Try again.";
 }
 
-/**
- * Grant a creator handle to a specific user id. Reserved handles are allowed
- * here (this is how official handles like @houston are minted), so only the
- * grammar is checked client-side; the gateway remains the authority. On success
- * the parent lookup is refreshed to the granted handle so the manage controls
- * target it immediately.
- */
 export function GrantHandleForm({
   getToken,
   onGranted,

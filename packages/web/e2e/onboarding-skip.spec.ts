@@ -14,23 +14,12 @@ import {
 } from "./support/manager-onboarding";
 import { openManagerOnboarding, resetToFirstRun } from "./support/onboarding";
 
-/**
- * First run is MANDATORY (Julian, Aug 2026): connecting an AI and the three
- * survey questions carry no way out of onboarding, neither a "Skip
- * onboarding" / "Not now" button nor Escape, and the chat offers no composer
- * to talk past them. The only way forward is answering, the goal included.
- * (The in-app profile-completion prompt
- * keeps its "Not now"; that dismisses the prompt, not onboarding, and
- * onboarding-profile.spec.ts covers it.)
- */
-
 async function expectNoWayOut(page: Page): Promise<void> {
   const prompt = onboardingPrompt(page);
   await expect(prompt).toBeVisible();
   await expect(
     prompt.getByRole("button", { name: /^(Not now|Skip onboarding)/ }),
   ).toHaveCount(0);
-  // The only field to type in is the goal's own: there is no composer.
   const goalFields = await managerStep(page, "survey-goal")
     .locator("textarea")
     .count();
@@ -50,7 +39,6 @@ test("no first-run step before the team offers a way out", async ({
   await expectNoWayOut(page);
   await connectAi(page);
 
-  // Escape declines nothing: the question stays in hand.
   await expectNoWayOut(page);
   await page.keyboard.press("Escape");
   await expect(managerStep(page, "survey-industry")).toBeVisible();

@@ -11,32 +11,8 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The WORKSPACE-CENTRAL credential writes — connect-once capture, the desktop's
- * Claude push, sign-out, the pasted API key and the OpenAI-compatible server,
- * each in its per-agent and its agentless (`/setup-runtime`) spelling — ride
- * `sdk.providers.credentials`.
- *
- * What these pin is the wire, because the routes are the host's connect-once
- * surface and the SDK also carries a RUNTIME provider surface
- * (`sdk.providers.writes`, `/agents/:id/auth/…`) that looks like it would do.
- * It would not: a write there touches one pod's `auth.json` and leaves the
- * central store — which every agent in the space serves from — untouched, so
- * the next turn re-hydrates the agent and undoes it. Sending the same bytes as
- * before is therefore the whole contract, and each assertion below states them
- * whole: the URL, the method, the body, and the three headers the gateway
- * routes on.
- *
- * SECRETS: every one of these calls carries a pasted key or a minted OAuth
- * credential, and each test asserts it appears in the BODY and nowhere in the
- * URL — the path carries only ids, so nothing reaches a log line that records
- * a request path. `credential-write-urls.test.ts` holds the matching rule that
- * no scope ever re-enters the URL.
- */
-
 const BASE = "http://host";
 const AGENT = "agent-1";
-/** A key shaped like a real one, so a leak into a URL is unmistakable. */
 const KEY = "sk-live-aaaabbbbcccc";
 
 const { calls, reset, restore, stubRouted } = createWireCapture();
@@ -51,12 +27,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/**
- * A hosted client whose active space has already listed `agents` — provider
- * writes refuse to route until that settles (HOU-979). Every request answers
- * `200 {}`; the recorder is emptied afterwards, so a test reads only its own
- * calls.
- */
 async function settled(agents: object[]): Promise<HoustonClient> {
   stubRouted((call) =>
     call.url.endsWith("/agents") ? json(200, agents) : json(200, {}),
@@ -72,11 +42,9 @@ async function settled(agents: object[]): Promise<HoustonClient> {
   return client;
 }
 
-/** The client of a space that HAS an agent, and of one that has none. */
 const withAgent = () => settled([wireAgent(AGENT)]);
 const withNoAgent = () => settled([]);
 
-/** The credential-store calls, isolated from the runtime calls beside them. */
 const credentialCalls = (): Call[] =>
   calls.filter(
     (call) =>
@@ -84,7 +52,6 @@ const credentialCalls = (): Call[] =>
       call.url.includes("/provider/openai-compatible"),
   );
 
-/** The events `run` put on the adapter's bus, in order. */
 async function busEvents(run: () => Promise<unknown>): Promise<unknown[]> {
   const events: unknown[] = [];
   const unsubscribe = bus.on((event) => events.push(event));
@@ -96,13 +63,11 @@ async function busEvents(run: () => Promise<unknown>): Promise<unknown[]> {
   return events;
 }
 
-/** The benign completion a sign-out announces, for `provider`. */
 const signedOut = (provider: string) => ({
   type: "ProviderLoginComplete",
   data: { provider, success: false, error: null },
 });
 
-/** Assert one credential write, whole: URL, method, body bytes, headers. */
 function expectWrite(url: string, body: string | null): Call {
   const written = credentialCalls();
   expect(written).toHaveLength(1);
@@ -183,8 +148,6 @@ describe("sign-out", () => {
       `${BASE}/agents/${AGENT}/credential/forget`,
       JSON.stringify({ provider: "anthropic" }),
     );
-    // The central store is cleared BEFORE the pod's own auth.json, so no
-    // in-flight turn can re-serve the credential the sign-out just dropped.
     expect(calls.map((call) => call.url)).toEqual([
       `${BASE}/agents/${AGENT}/credential/forget`,
       `${BASE}/agents/${AGENT}/auth/anthropic/logout`,
@@ -202,13 +165,6 @@ describe("sign-out", () => {
     );
   });
 
-  /**
-   * The credential is gone, so every CACHED answer that says otherwise is now
-   * wrong — the chat model picker's statuses and the create-agent dialog's pin
-   * both read one shared query that only `ProviderLoginComplete` invalidates.
-   * The announcement is therefore part of sign-out's contract on every profile
-   * and every routing path, not a courtesy of the screen that asked for it.
-   */
   test("announces the connection change on the per-agent path", async () => {
     const client = await withAgent();
 
@@ -239,8 +195,6 @@ describe("sign-out", () => {
   });
 
   test("names the provider the CARD holds, once, for a multi-gateway sign-out", async () => {
-    // OpenCode clears two gateways; the user pressed one button on one card, so
-    // the app hears about that card exactly once.
     const client = await withAgent();
 
     const events = await busEvents(() => client.providerLogout("opencode"));
@@ -301,8 +255,6 @@ describe("the OpenAI-compatible server", () => {
       `${BASE}/agents/${AGENT}/provider/openai-compatible`,
       JSON.stringify(endpoint),
     );
-    // Not `/providers/openai-compatible`, which is the RUNTIME's own route
-    // (`sdk.providers.writes.setCustomEndpoint`) and a different host.
     expect(call.url).not.toContain("/providers/openai-compatible");
   });
 });

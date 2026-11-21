@@ -6,7 +6,6 @@ import type { BrowserTab } from "./open-tab";
 import { redactUrl } from "./redact-url";
 import { untrusted } from "./untrusted";
 
-/** How long a dialog waits for the model before it is dismissed. */
 export const DIALOG_ANSWER_MS = 2 * 60_000;
 
 export type DialogKind = "alert" | "confirm" | "prompt";
@@ -20,9 +19,7 @@ export interface PendingDialog {
 interface DialogState {
   pending: PendingDialog | null;
   timer: NodeJS.Timeout | null;
-  /** Actions racing the page: told the moment a dialog opens. */
   waiters: Set<(dialog: PendingDialog) => void>;
-  /** A person is driving the page (hand-off): nothing is held for the model. */
   personDriving: boolean;
 }
 
@@ -42,13 +39,6 @@ function stateOf(tab: BrowserTab): DialogState {
   return state;
 }
 
-/**
- * Hold every dialog the tab's pages open for the model to answer, instead of
- * Playwright's silent dismiss (a `confirm("Delete?")` answered Cancel without
- * the model knowing). `beforeunload` is accepted: the tool navigating away or
- * closing is the model's own decision. During a hand-off the person's page
- * never stalls: an alert is accepted, anything else dismissed, at once.
- */
 export function watchDialogs(
   tab: BrowserTab,
   answerMs = DIALOG_ANSWER_MS,
@@ -82,7 +72,6 @@ function clear(state: DialogState): void {
   state.pending = null;
 }
 
-/** An answer to a dialog whose page closed meanwhile has nothing to answer. */
 function settle(answer: Promise<void>): void {
   answer.catch(warnUnlessClosed("answering a dialog"));
 }
@@ -91,11 +80,6 @@ export function pendingDialog(tab: BrowserTab): PendingDialog | null {
   return states.get(tab)?.pending ?? null;
 }
 
-/**
- * A dialog held for the model when the person takes over (one a hand-off's
- * own page load opened) is answered for the person at once, as one arriving
- * during the hand-off would be: otherwise their page stays frozen.
- */
 export function setPersonDriving(tab: BrowserTab, driving: boolean): void {
   const state = stateOf(tab);
   state.personDriving = driving;
@@ -105,7 +89,6 @@ export function setPersonDriving(tab: BrowserTab, driving: boolean): void {
   settle(held.kind === "alert" ? held.dialog.accept() : held.dialog.dismiss());
 }
 
-/** Answer the dialog the model was shown; a prompt takes `text`. */
 export async function answerDialog(
   tab: BrowserTab,
   accept: boolean,
@@ -125,7 +108,6 @@ export async function answerDialog(
   return pending;
 }
 
-/** Dismiss a held dialog so the tab can be saved and closed. */
 export async function dismissPending(tab: BrowserTab): Promise<void> {
   const state = states.get(tab);
   const pending = state?.pending;
@@ -140,12 +122,6 @@ export type Raced<T> =
   | { done: true; value: T }
   | { done: false; dialog: PendingDialog };
 
-/**
- * Run `work` until it finishes or the page opens a dialog, whichever is
- * first. A page with a dialog open freezes: a click waits for the answer, a
- * snapshot never finishes. So the model hears about the dialog now, and the
- * interrupted work completes (or fails) once the dialog is answered.
- */
 export async function raceDialog<T>(
   tab: BrowserTab,
   work: () => Promise<T>,
@@ -175,11 +151,6 @@ export async function raceDialog<T>(
   }
 }
 
-/**
- * What the model reads while a dialog is open; its message is the page's.
- * The page cannot be read behind it (its title reads empty, a snapshot
- * never finishes), so the address is all that is shown of it.
- */
 export function dialogNotice(pending: PendingDialog): string {
   const how =
     pending.kind === "prompt"

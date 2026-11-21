@@ -27,14 +27,8 @@ export type {
   ProviderConnections,
 } from "./provider-connections/types";
 
-/**
- * Shared provider connection actions, event ownership and secure dialog state.
- * Embedded flows explicitly bind visibility; the AI hub follows its active view.
- */
 export function useProviderConnections(options?: {
-  /** Non-top-level flows unmount when hidden, so they own login events while mounted. */
   alwaysActive?: boolean;
-  /** Explicit ownership for a kept-alive embedded connection surface. */
   active?: boolean;
   onConnectionCancelled?: () => void;
 }): ProviderConnections {
@@ -51,9 +45,6 @@ export function useProviderConnections(options?: {
   const providerCapabilities =
     capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
 
-  // API-key providers run only on the new TS engine; the merged OpenCode card
-  // stands in for both its gateways. Computed once — the engine doesn't change
-  // mid-session.
   const visibleProviders = useMemo(
     () =>
       getConnectProviders({
@@ -67,8 +58,6 @@ export function useProviderConnections(options?: {
   const { statuses, loading, probed, loadStatuses, patchAuthState } =
     useProviderStatuses(visibleProviders);
 
-  // Only one provider is ever mid-flight; `mode` distinguishes a connect spinner
-  // from a sign-out spinner for the `busy` map.
   const [pending, setPending] = useState<ProviderPending | null>(null);
   const [confirmSignOutFor, setConfirmSignOutFor] =
     useState<ProviderInfo | null>(null);
@@ -87,11 +76,6 @@ export function useProviderConnections(options?: {
     loadStatuses();
   }, [loadStatuses]);
 
-  // While a connect is pending on its visible owner, poll so the card flips to
-  // connected once the credential lands (ProviderLoginComplete is primary).
-  // The AI Models hub (the one top-level provider surface since HOU-789) stays
-  // mounted while hidden, so its local backstop must not keep issuing reads
-  // after the user leaves it.
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (pending && providerSurfaceActive) {
@@ -105,8 +89,6 @@ export function useProviderConnections(options?: {
   useEffect(() => {
     if (!pending) return;
     const status = statuses[pending.id];
-    // Confirmed-only: an "unknown" probe (engine unreachable mid-poll) must
-    // not clear a pending connect as if it had completed.
     if (status && providerIsAuthenticated(status)) {
       setPending(null);
     }
@@ -135,10 +117,8 @@ export function useProviderConnections(options?: {
     setCustomEndpointDialog,
   });
 
-  // The ONE connection reader, from the ONE shared derivation (HOU-979).
   const { connectionState } = useConnectionReaders(statuses, loading);
 
-  // `signOut` opens the confirm; the actual logout runs on confirm.
   const signOut = useCallback((p: ProviderInfo) => setConfirmSignOutFor(p), []);
 
   const busy = useMemo<Record<string, "connecting" | "signingOut" | undefined>>(
@@ -179,9 +159,6 @@ export function useProviderConnections(options?: {
 
   return {
     statuses,
-    // `loading` is true until the first full status probe resolves; the hub
-    // gates its actionable Connect affordances on `ready` so a slow probe can't
-    // flash a live Connect button on an already-connected provider.
     ready: !loading,
     probed,
     refresh: loadStatuses,

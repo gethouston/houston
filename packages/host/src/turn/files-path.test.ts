@@ -5,14 +5,6 @@ import { MemoryVfs } from "../vfs";
 import { handleFiles } from "./files";
 import { FilePathError, safeRel, workspaceRel } from "./files-path";
 
-/**
- * `workspaceRel`: the host-side strip of engine-emitted ABSOLUTE paths down to
- * workspace-relative. Agents drop their own working directory's absolute path
- * into chat links (`/data/workspaces/W/A/x.md` on pods); cloud clients can't
- * strip it (their agent key is an opaque id), so the host must (PRODUCT-1575).
- */
-
-// The pod/local layout root the strip keys on (`<Workspace>/<Agent>`).
 const ROOT = "Personal/Marketing Manager";
 
 test("strips a pod absolute path down to workspace-relative", () => {
@@ -22,7 +14,6 @@ test("strips a pod absolute path down to workspace-relative", () => {
       "/data/workspaces/Personal/Marketing Manager/uploads/report.html",
     ),
   ).toBe("uploads/report.html");
-  // Desktop macOS shape.
   expect(
     workspaceRel(
       ROOT,
@@ -38,7 +29,6 @@ test("strips Windows absolute paths, with or without a mangled leading slash", (
       "C:\\Users\\jo\\.houston\\workspaces\\Personal\\Marketing Manager\\plan.md",
     ),
   ).toBe("plan.md");
-  // Markdown href normalization can prefix the drive with a slash.
   expect(
     workspaceRel(
       ROOT,

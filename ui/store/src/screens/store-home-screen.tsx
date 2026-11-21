@@ -30,19 +30,7 @@ const defaults = {
 
 export interface StoreHomeScreenProps {
   rows: StoreHomeRows;
-  /**
-   * Controlled mode: the host owns the browse state and renders the search
-   * and filter controls in its own chrome (Houston's app puts them in its
-   * page header), so the screen renders results only — no hero, no
-   * `CatalogControls`. Absent, the screen is the site's self-contained page.
-   */
   state?: StoreHomeState;
-  /**
-   * Lead the unfiltered agents view with the featured pair. An explicit
-   * host opt-in, NOT inferred: a server-paginated surface (the website) must
-   * not present page N's two biggest rows as curated picks, and only the
-   * surface knows whether it is on the one true first page.
-   */
   featured?: boolean;
   initialState?: Partial<StoreHomeState>;
   onStateChange?: (state: StoreHomeState) => void;

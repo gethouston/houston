@@ -55,8 +55,6 @@ impl FileOpFailure {
     }
 }
 
-// ERROR_SHARING_VIOLATION / ERROR_LOCK_VIOLATION: only Windows locks a file
-// against other writers while it is open. Unix code 32 is EPIPE.
 #[cfg(windows)]
 const SHARING_CODES: &[i32] = &[32, 33];
 #[cfg(not(windows))]

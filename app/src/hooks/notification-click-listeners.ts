@@ -10,28 +10,6 @@ import {
   listenForNotificationFocus,
 } from "./session-notifications";
 
-/**
- * Every path by which a notification CLICK reaches the app, wired in one place.
- *
- * There is no single cross-platform click event, which is the whole reason this
- * is fiddly enough to deserve its own module:
- *  - **mobile only** — the plugin's Actions API (`onAction`). A no-op on every
- *    desktop OS; kept for when Houston ships a mobile shell.
- *  - **macOS** — no desktop click event exists, so app ACTIVATION is the click
- *    proxy (`app-activated`, plus a Tauri window-focus fallback).
- *  - **Linux/Windows** — a genuine, distinct `notification-clicked` event from
- *    `notification.rs`. On those platforms activation must NOT navigate, or
- *    refocusing Houston for any reason would yank the user back to a finished
- *    mission.
- * `shouldNavigateOnAppActivation` is the pure rule that keeps those apart.
- *
- * `app-activated` additionally drives an unconditional silent agent-list
- * refresh, so external changes (a Finder delete) are picked up when the window
- * comes forward. Silent on purpose: flipping `loading:true` would unmount the
- * whole tree and wipe open modals, sub-tabs and panels.
- *
- * Returns a disposer that detaches everything.
- */
 export function listenForNotificationClicks(): () => void {
   const navigate = (source: string) => {
     logger.debug(
@@ -70,7 +48,6 @@ export function listenForNotificationClicks(): () => void {
     navigate("notification-clicked");
   });
 
-  // macOS-only window-focus fallback (see listenForNotificationFocus).
   const unlistenFocus = listenForNotificationFocus();
 
   return () => {

@@ -2,8 +2,6 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { describeError } from "../src/lib/describe-error.ts";
 
-// HOUSTON-APP-53A: a typed shell rejection ({kind, message}) reached
-// `String(err)` and every report read "save_download: [object Object]".
 describe("describeError", () => {
   it("reads an Error's message and a string as itself", () => {
     strictEqual(describeError(new Error("boom")), "boom");

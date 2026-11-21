@@ -85,14 +85,6 @@ test("appendLearningChecked rejects empty text without writing", async () => {
   expect((await loadLearnings(vfs, ROOT)).items).toEqual([]);
 });
 
-/**
- * The size cap exists ONLY for the personal assistant, whose whole memory is
- * injected into every system prompt. Every other agent recalls learnings on
- * demand, so its file stays uncapped — byte-identical behavior to an agent that
- * has never heard of the cap.
- */
-
-/** A learnings doc serializing to EXACTLY the cap, so any append goes over. */
 function docAtCap(): Learning[] {
   const base: Learning = {
     id: "seed",
@@ -123,7 +115,6 @@ test("an over-cap append under the assistant root is rejected and writes NOTHING
 });
 
 test("the rejection tells the agent to consolidate and to stay quiet about it", async () => {
-  // Pinned: this text reaches the model verbatim (route → 400 → save_learning).
   expect(ASSISTANT_LEARNINGS_FULL_MESSAGE).toBe(
     "Your memory is full, so this memory was NOT saved. Consolidate first: read " +
       ".houston/learnings/learnings.json, merge related entries into fewer and " +
@@ -146,8 +137,6 @@ test("the identical over-cap append under a normal agent root succeeds", async (
 
 test("a first write under an unseeded assistant tree creates the doc (mkdir -p)", async () => {
   const dir = mkdtempSync(join(tmpdir(), "houston-learnwrite-"));
-  // The assistant gets NO `.houston` seeding (routes/assistant.ts): its agent
-  // directory is bare until the first memory is saved.
   mkdirSync(join(dir, "Personal", ASSISTANT_AGENT_NAME), { recursive: true });
   const vfs = new FsVfs(dir);
 
@@ -168,7 +157,6 @@ test("a first write under an unseeded assistant tree creates the doc (mkdir -p)"
   ).toBe(true);
 });
 
-/** A fake IncomingMessage: an async byte stream carrying the JSON body. */
 function fakeReq(body: unknown): IncomingMessage {
   const buf = Buffer.from(JSON.stringify(body));
   return {
@@ -179,7 +167,6 @@ function fakeReq(body: unknown): IncomingMessage {
   } as unknown as IncomingMessage;
 }
 
-/** A fake ServerResponse capturing the status `json()` writes. */
 function fakeRes() {
   const captured: { status: number } = { status: 0 };
   const res = {
@@ -201,8 +188,6 @@ const WORKSPACE: Workspace = {
   runtime: "local",
   createdAt: 0,
 };
-// The assistant is SYNTHETIC — `createAgent` refuses a leading dot, so the
-// record is built the way discovery addresses it.
 const ASSISTANT: Agent = {
   id: ASSISTANT_ROOT,
   workspaceId: WORKSPACE.id,
@@ -217,9 +202,6 @@ test("consolidation clears the cap: the doc is replaced, then an append fits aga
     error: ASSISTANT_LEARNINGS_FULL_MESSAGE,
   });
 
-  // What the agent does after reading that message: rewrite the whole doc with
-  // a merged, trimmed list. Same whole-file PUT the Memory UI uses, under the
-  // same per-doc lock as the append.
   const merged: Learning[] = [
     {
       id: "seed",

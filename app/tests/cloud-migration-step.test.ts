@@ -8,8 +8,6 @@ import {
   taskFailureOutcome,
 } from "../src/lib/cloud-migration-step.ts";
 
-// ── runStep ────────────────────────────────────────────────────────────
-
 test("runStep resolves the work's value while the run is live", async () => {
   const value = await runStep(
     "uploading",
@@ -35,9 +33,6 @@ test("runStep tags a raw failure with the step it failed in", async () => {
   );
 });
 
-// The envelope must not hide the browser's TypeError: the quiet connectivity
-// classifier keys on it, and a wrapper without `cause` filed every upload cut
-// by the network as a bug (HOUSTON-APP-4PQ / 4PG).
 test("runStep keeps the wrapped failure on cause", async () => {
   const inner = new TypeError("Failed to fetch (gateway.gethouston.ai)");
   await assert.rejects(
@@ -75,8 +70,6 @@ test("runStep passes an already-tagged failure through unchanged", async () => {
   );
 });
 
-// "Migrate later" mid-run: the source host is already stopped, so the step
-// must never start (the export would only produce a phantom transport error).
 test("runStep refuses to start once the run is abandoned", async () => {
   let started = false;
   await assert.rejects(
@@ -110,8 +103,6 @@ test("runStep re-reads the abandon flag at every step", async () => {
   );
 });
 
-// ── taskFailureOutcome ─────────────────────────────────────────────────
-
 test("an abandoned step settles as abandoned", () => {
   assert.deepEqual(taskFailureOutcome(new MigrationAbandonedError(), true), {
     kind: "abandoned",
@@ -119,8 +110,6 @@ test("an abandoned step settles as abandoned", () => {
 });
 
 test("a transport error racing the source-host stop is abandoned, not failed", () => {
-  // The fetch left before the guard saw `deferred`; the store reads the flag
-  // at settle time, so the phantom "Load failed" never becomes an error row.
   const err = new MigrationStepError(
     "uploading",
     new TypeError("Load failed (127.0.0.1:60003)"),
@@ -140,10 +129,6 @@ test("the same transport error on a live run is a real failure", () => {
   });
 });
 
-// A 48 MB chunk cut by the ingress's 60 s body deadline arrives exactly like
-// this: Chromium's bare "Failed to fetch" with no response. The row gets
-// authored copy and Sentry the quiet connectivity class, both keyed on
-// `transport`.
 test("an upload cut mid-flight is a transport failure of the uploading step", () => {
   const cause = new TypeError("Failed to fetch (gateway.gethouston.ai)");
   const outcome = taskFailureOutcome(

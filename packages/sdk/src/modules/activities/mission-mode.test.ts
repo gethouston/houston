@@ -14,7 +14,6 @@ interface Recorded {
   body: string | null;
 }
 
-/** Bound like `renameMission`: `moduleScope` over a stub `fetch`. */
 function makeScope(respond: () => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(

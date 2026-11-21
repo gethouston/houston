@@ -1,17 +1,3 @@
-/**
- * The preferences module — per-user key/value preferences plus the
- * workspace-locale override (the desktop's boot + language-settings path).
- *
- * Preferences are read on demand, with no reactive scope to publish. Workspace
- * selection also owns its device mirror, legacy migration and ordered write queue.
- * The same handlers back the typed facade and the `dispatch` path.
- *
- * SEAM — user-scoped, NOT per-agent. Preferences are keyed by the caller's
- * session `sub`, so this module talks to the flat {@link PreferencesClient}
- * (rooted at the base URL), never `clientFor(agentId)`. A 401 routes through the
- * shared {@link ModuleContext.authExpiry} notifier.
- */
-
 import {
   EngineError,
   PreferencesClient,
@@ -39,7 +25,6 @@ import {
 export type { TimezoneSeedInput, TimezoneSeedResult } from "./timezone";
 export { TIMEZONE_PREFERENCE } from "./timezone";
 
-/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const PreferencesCommand = {
   ...NextStepSuggestionsCommand,
   Get: "preferences/get",
@@ -51,25 +36,17 @@ export const PreferencesCommand = {
 export type PreferencesCommandType =
   (typeof PreferencesCommand)[keyof typeof PreferencesCommand];
 
-/** The typed facade for preference reads/writes + the workspace locale. */
 export interface PreferencesModule extends NextStepSuggestionsPreference {
-  /** Resolve boot selection and record the space this device displays. */
   resolveWorkspace<
     T extends Pick<SelectionWorkspace, "id" | "isDefault" | "kind">,
   >(workspaces: readonly T[] | Promise<readonly T[]>): Promise<T | null>;
-  /** Mirror the displayed space on this device without changing the account. */
   rememberWorkspace(value: string | null): Promise<void>;
-  /** Read a preference value, or `null` when unset. */
   get(key: string): Promise<string | null>;
-  /** Write (or, with `null`, clear) a preference; echoes the stored value. */
   set(key: string, value: string | null): Promise<string | null>;
-  /** Set (or clear, with `null`) the workspace's UI-locale override. */
   setLocale(workspaceId: string, locale: string | null): Promise<Workspace>;
-  /** Save the device's zone as `timezone` when the person has none (./timezone). */
   seedTimezone(input: TimezoneSeedInput): Promise<TimezoneSeedResult>;
 }
 
-/** A nullable-string field off an untrusted command payload. */
 function optionalString(payload: unknown, key: string): string | null {
   const value =
     typeof payload === "object" && payload !== null
@@ -88,7 +65,6 @@ export function createPreferencesModule(ctx: ModuleContext): PreferencesModule {
   const workspaceSelection = workspaceSelectionPreference(ctx);
   const emitTokenExpired = () => authExpiry.notifyExpired();
 
-  /** Run a client call, surfacing a 401 as the shared token-expiry signal. */
   async function run<T>(fn: () => Promise<T>): Promise<T> {
     try {
       return await fn();

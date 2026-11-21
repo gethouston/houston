@@ -8,22 +8,14 @@ import type { WorkspaceStore } from "../ports";
 import { DEFAULT_PATHS } from "./agent-authz";
 import { providerForAction } from "./integrations-fanout";
 
-/** One stager per process, so its action-schema cache is shared. */
 const stageFiles = createFileStager();
 
 export interface SandboxFileDeps {
   store: WorkspaceStore;
   paths?: WorkspacePaths;
-  /** The agent's folder on disk; absent where the host is not beside the
-   *  files, which then executes file arguments as the agent passed them. */
   agentDir?: (ws: Workspace, agent: Agent) => string;
 }
 
-/**
- * The execute's params with every file argument uploaded from the calling
- * agent's folder (integrations/file-staging.ts). Untouched when the host is
- * not beside the agent's files or the owning provider cannot stage files.
- */
 export async function stageSandboxFiles(
   deps: SandboxFileDeps,
   input: {
@@ -50,7 +42,6 @@ export async function stageSandboxFiles(
     action: input.action,
     params: input.params,
     acting: input.acting,
-    // The agent is looked up only once a file argument actually needs reading.
     readFile: async (path) => {
       if (!read) {
         const agent = await deps.store.getAgent(input.agentId);

@@ -1,10 +1,3 @@
-// The chat's small chrome controls (composer send and attach, the header's
-// overflow menu, the suggested-actions dismiss) keep their desktop boxes but
-// must reach a 44px touch target on a phone. They do it with an ::after
-// hit-slop that moves no pixel and is dropped at the md: (desktop) edge. This
-// suite reads the rendered classes and checks the arithmetic, so a later
-// resize of a box (or a trimmed inset) cannot silently shrink the target.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";
@@ -36,9 +29,6 @@ function buttonClasses(element: React.ReactElement, label: string): string[] {
   return classList(button);
 }
 
-/** Tailwind's `scale-*` is the CSS `scale` property, so a transition list
- *  naming `transform` leaves the press snapping; desktop had no press scale
- *  and keeps none (`md:active:scale-100`). */
 function assertPhonePress(classes: string[]): void {
   assert.ok(classes.includes("active:scale-[0.96]"), "no press feedback");
   assert.ok(
@@ -52,7 +42,6 @@ function assertPhonePress(classes: string[]): void {
   );
 }
 
-/** The smaller side of the rendered box, from `size-N` or `h-N`/`w-N`. */
 function boxPx(classes: string[]): number {
   const units = (prefix: string) =>
     classes

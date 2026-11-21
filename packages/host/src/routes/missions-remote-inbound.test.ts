@@ -25,14 +25,6 @@ import type { MissionOrigin } from "./missions-remote";
 import { handleAgentMissions } from "./missions-remote-inbound";
 import type { MissionsDeps } from "./missions-sandbox";
 
-/**
- * The pod side of a cross-pod mission: `/agents/{id}/missions…` served for the
- * agent in the path. It is the SAME start a local caller runs — the cap, the
- * row, the event and the first turn — with the provenance the caller could not
- * write itself: the agent-started marker, and a depth this side enforces
- * because the parent chat lives in a pod this one cannot read.
- */
-
 const paths = new LocalPaths();
 
 let store: MemoryWorkspaceStore;
@@ -48,7 +40,6 @@ let fired: {
   pin?: TurnPin;
   limits?: TurnLimits;
 }[];
-/** Whether the call arrives behind the gateway (the managed pod). */
 let fronted: boolean;
 
 const channel = {
@@ -342,16 +333,10 @@ test("a start from another pod lands on this agent's board and fires its turn", 
   const created = (await board())[0];
   expect(created?.title).toBe("Roast the website");
   expect(created?.status).toBe("running");
-  // The marker the caller could not write itself: what makes the runtime's
-  // turn-end report settle this card (missions-manage.ts).
   expect(created?.origin_session_key).toBe("conv-parent");
-  // An unverified body cannot name the mission's starter, while the validated
-  // depth remains available when the parent pod is out of reach.
   expect(created?.origin_agent).toBeUndefined();
   expect(created?.origin_depth).toBe(1);
-  // Attribution comes from the gateway-verified acting identity, not the body.
   expect(created?.created_by).toBe("u-1");
-  // The mode it was started in is the one its chat keeps (HOU-205).
   expect(created?.mode).toBe("auto");
   expect(fired).toEqual([
     {
@@ -389,8 +374,6 @@ test("provenance is required, and a deeper origin is refused", async () => {
   expect(await board()).toEqual([]);
   expect(fired).toEqual([]);
 
-  // A depth that is not a real level at all: zero, negative, fractional. The
-  // ceiling is a range check, not an equality test, so none of these slips past.
   for (const depth of [0, -1, 1.5, Number.NaN]) {
     const bogus = await call("POST", "missions/start", {
       title: "t",
@@ -507,7 +490,6 @@ test("the family owns its whole subtree; other paths fall through", async () => 
   expect(wrongVerb.handled).toBe(true);
   expect(wrongVerb.status).toBe(405);
 
-  // Never a fall-through to the agent's runtime, which has no mission routes.
   const unknown = await call("GET", "missions/nope");
   expect(unknown.handled).toBe(true);
   expect(unknown.status).toBe(404);
@@ -517,9 +499,6 @@ test("the family owns its whole subtree; other paths fall through", async () => 
 });
 
 test("the server's own deps satisfy this route, so the mount passes them through", () => {
-  // Compile-time guard on the seam: routes/agents.ts hands its own `deps` bag
-  // straight in (agents.ts, the /agents/:id/... dispatch), and server.ts hands
-  // that route the control plane's.
   const mountable = (deps: AgentRouteDeps): MissionsDeps => deps;
   const served = (deps: ControlPlaneDeps): AgentRouteDeps => deps;
   expect([typeof mountable, typeof served]).toEqual(["function", "function"]);
@@ -547,7 +526,6 @@ test("the inbound start echoes resolved provider and model", async () => {
   });
 });
 
-/** A start carrying exactly `headers`, on a pod fronted or not. */
 async function startWith(
   headers: Record<string, string>,
   opts: { gatewayFronted: boolean; callingAgent?: string },

@@ -17,11 +17,9 @@ const site = createServer((req, res) => {
   const step = Number(/^\/chain\/(\d+)$/.exec(req.url ?? "")?.[1] ?? -1);
   res.end(
     req.url === "/many"
-      ? // Windows opened with no click at all: popup blocking stops them.
-        `<title>Many</title><script>for (let i = 0; i < 6; i++) setTimeout(() => window.open("/p" + i), 20 * i)</script>`
+      ? `<title>Many</title><script>for (let i = 0; i < 6; i++) setTimeout(() => window.open("/p" + i), 20 * i)</script>`
       : step >= 0
-        ? // Each popup's button opens the next: a chain of openers.
-          `<title>Chain ${step}</title><button onclick="window.open('/chain/${step + 1}')">Next</button>`
+        ? `<title>Chain ${step}</title><button onclick="window.open('/chain/${step + 1}')">Next</button>`
         : "<title>Popup</title><h1>Popup</h1>",
   );
 });
@@ -51,8 +49,6 @@ describe.skipIf(!available)("the page cap in a real Chromium", () => {
     );
 
   test("windows a page opens with no click never pass the cap", async () => {
-    // Full Chrome's popup blocker stops them outright; the headless shell
-    // has no popup blocker, so there the cap is what holds.
     const tab = await openTab("/many");
     await new Promise((resolve) => setTimeout(resolve, 600));
     await expect
@@ -66,7 +62,6 @@ describe.skipIf(!available)("the page cap in a real Chromium", () => {
   test("a click-opened popup chain is capped: only the newest page and its direct opener are kept", async () => {
     const tab = await openTab("/chain/0");
     for (let step = 1; step <= 5; step++) {
-      // A real click (as the model's is): popup blocking lets it through.
       await tab.page.getByRole("button", { name: "Next" }).click();
       await expect
         .poll(() => tab.page.url(), { timeout: 5_000 })

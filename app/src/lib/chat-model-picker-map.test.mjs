@@ -11,13 +11,11 @@ import {
   rankCuratedFirst,
 } from "./chat-model-picker-map.ts";
 
-// ── id encode / decode ────────────────────────────────────────────────────
-
 test("encode/decode round-trips ids that contain single colons and slashes", () => {
   for (const [p, m] of [
     ["anthropic", "claude-sonnet-4-6"],
-    ["amazon-bedrock", "amazon.nova-pro-v1:0"], // single colon in the model id
-    ["openrouter", "anthropic/claude-sonnet-4.6"], // slash + dot
+    ["amazon-bedrock", "amazon.nova-pro-v1:0"],
+    ["openrouter", "anthropic/claude-sonnet-4.6"],
   ]) {
     const id = encodeModelPickerId(p, m);
     assert.deepEqual(decodeModelPickerId(id), { provider: p, model: m });
@@ -31,12 +29,9 @@ test("decode of a separator-less id yields an empty model", () => {
   });
 });
 
-// ── selected-id resolution ────────────────────────────────────────────────
-
 test("resolveSelectedModelId: catalog-less provider resolves to the runtime model", () => {
   const local = { id: "openai-compatible", models: [], subtitle: "Local" };
   assert.equal(resolveSelectedModelId(local, "", "llama3.1"), "llama3.1");
-  // A catalogued provider keeps its stored model, ignoring any runtime value.
   const anthropic = { id: "anthropic", models: [{ id: "x" }], subtitle: "" };
   assert.equal(
     resolveSelectedModelId(anthropic, "claude", "ignored"),
@@ -44,17 +39,12 @@ test("resolveSelectedModelId: catalog-less provider resolves to the runtime mode
   );
 });
 
-// ── model list building ───────────────────────────────────────────────────
-
 const testProv = {
   id: "testprov",
   name: "Test",
   subtitle: "sub",
   models: [{ id: "m1", label: "M1 label", description: "curated desc" }],
 };
-// OpenRouter is no longer special: `PROVIDERS` carries its full runnable set as
-// ordinary rows (hydrated from the pi-ai catalog), built by the SAME path as
-// every other provider.
 const orProv = {
   id: "openrouter",
   name: "OpenRouter",
@@ -75,7 +65,7 @@ test("buildPickerModels: a provider row carries only id, provider, name, descrip
   assert.deepEqual(m, {
     id: "testprov::m1",
     providerId: "testprov",
-    name: "M1 label", // the PROVIDERS label, not any catalog name
+    name: "M1 label",
     description: "curated desc",
   });
 });
@@ -89,7 +79,6 @@ test("buildPickerModels: every provider is built by one uniform path, in order",
     models.map((m) => m.id),
     ["testprov::m1", "openrouter::vendor/or-1"],
   );
-  // openrouter-native id preserved through the codec.
   assert.equal(decodeModelPickerId(models[1].id).model, "vendor/or-1");
   assert.equal(models[1].name, "OR One label");
 });
@@ -121,12 +110,6 @@ test("buildPickerModels: the describe callback localizes a provider row's descri
   assert.equal(m.description, "t:m1:curated desc");
 });
 
-// The per-provider account label (HOU-976 §6) is covered in
-// `app/tests/picker-account-label.test.ts` — the GATED suite. Do not add cases
-// here: nothing runs `src/lib/*.test.mjs`.
-
-// ── curated-first ranking ─────────────────────────────────────────────────
-
 test("rankCuratedFirst: curated ids lead in curation order, rest keep input order", () => {
   const rows = [
     { id: "legacy-1" },
@@ -144,7 +127,7 @@ test("rankCuratedFirst: no curated ids is an order-preserving copy", () => {
   const rows = [{ id: "b" }, { id: "a" }];
   const out = rankCuratedFirst(rows, []);
   assert.deepEqual(out, rows);
-  assert.notEqual(out, rows); // fresh array, input not aliased
+  assert.notEqual(out, rows);
 });
 
 test("rankCuratedFirst: curated ids missing from the rows are simply skipped", () => {
@@ -156,7 +139,6 @@ test("rankCuratedFirst: curated ids missing from the rows are simply skipped", (
 });
 
 test("buildPickerModels: a real provider's rows rank curated-first", () => {
-  // Raw pi-catalog order: legacy models first — the defect this ranking fixes.
   const anthropic = {
     id: "anthropic",
     name: "Anthropic",
@@ -174,9 +156,6 @@ test("buildPickerModels: a real provider's rows rank curated-first", () => {
     visibleProviders: [anthropic],
     statuses: {},
   });
-  // Curated (PROVIDER_OVERRIDES.anthropic.models key order: sonnet-5 [absent
-  // from this provider's rows, so skipped], fable-5, opus-4-8, opus-4-7,
-  // sonnet-4-6) first, then the uncurated legacy rows in catalog order.
   assert.deepEqual(
     models.map((m) => decodeModelPickerId(m.id).model),
     [
@@ -190,8 +169,6 @@ test("buildPickerModels: a real provider's rows rank curated-first", () => {
   );
 });
 
-// ── provider list building ────────────────────────────────────────────────
-
 test("buildPickerProviders: keeps only providers that own models, with connection state", () => {
   const providers = buildPickerProviders({
     visibleProviders: [testProv, orProv, localProv],
@@ -199,14 +176,12 @@ test("buildPickerProviders: keeps only providers that own models, with connectio
       testprov: { cli_installed: true, authenticated: true },
     },
     isLoading: false,
-    withModels: new Set(["testprov", "openrouter"]), // localProv dropped
+    withModels: new Set(["testprov", "openrouter"]),
   });
   assert.deepEqual(
     providers.map((p) => [p.id, p.connection]),
     [
       ["testprov", "connected"],
-      // No status + not loading → disconnected (the picker hides it; the only
-      // path to it is the "Connect another AI…" footer).
       ["openrouter", "disconnected"],
     ],
   );

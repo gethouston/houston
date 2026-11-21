@@ -12,15 +12,6 @@ import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 
-/**
- * The plan floor on the app's and the AI Manager's routine writes (`POST
- * /agents/:id/routines`, `PATCH /agents/:id/routines/:rid`). The gateway
- * stamps `x-houston-routine-floor` for a person on a plan with a floor and
- * strips any client copy; the host trusts it only behind the gateway, and
- * refuses a save under it with the same `400 plan_min_interval` an agent's
- * own save gets.
- */
-
 const verifier: TokenVerifier = {
   async verify(bearer) {
     return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
@@ -117,7 +108,6 @@ const patch = (base: string, id: string, body: object, floor?: string) =>
     body: JSON.stringify(body),
   });
 
-/** The refusal body, which must be exactly what the client's parser reads. */
 const refusalOf = async (res: Response): Promise<unknown> => {
   const body = await res.json();
   expect(parsePlanMinIntervalRefusal(body)).toEqual(body);
@@ -135,7 +125,6 @@ test("behind the gateway, a create under the stamped floor is refused", async ()
 });
 
 test("a step that restarts under the floor at the top of the hour is refused", async () => {
-  // */16 fires :48 then :00, 12 minutes apart.
   const res = await create(fronted, "*/16 * * * *", "15");
   expect(res.status).toBe(400);
   expect(await refusalOf(res)).toMatchObject({ code: "plan_min_interval" });
@@ -149,7 +138,6 @@ test("an interval under the floor is refused; an uneven one at or above it saves
     code: "plan_min_interval",
     minIntervalMinutes: 15,
   });
-  // @every 16m runs exactly 16 minutes apart, unlike */16.
   const saved = await create(fronted, "@every 16m", "15");
   expect(saved.status).toBe(201);
   expect(((await saved.json()) as Routine).schedule).toBe("@every 16m");

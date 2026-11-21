@@ -26,21 +26,10 @@ import { BriefingStep } from "./plan-briefing-swap";
 const TITLE_CLASS =
   "mb-2 pr-8 text-2xl font-semibold leading-tight tracking-tight text-balance text-ink outline-none";
 
-/** Changes the picker's draft from the latest one, reconciled. */
 export type PickDraftUpdate = (
   update: (draft: PickerState) => PickerState,
 ) => void;
 
-/**
- * The picker's steps over a draft its frame holds (`draft`, already valid
- * against `choice`), so the pricing-change modal keeps it while the person
- * steps back into the intro. A Plus or comp payer first picks the org their
- * subscription covers, then the free one, in the same frame. Renders inside a
- * {@link PlanBriefingFrame}: the Settings entry's own, or the pricing-change
- * modal's after its intro, whose page Back returns to from the first step
- * (`onBack`). Every save's answer goes to `onAnswer`, whose SDK frame moves a
- * stored pick to the success step.
- */
 export function PickerBody({
   choice,
   flow,
@@ -59,7 +48,6 @@ export function PickerBody({
   const save = useSetBillingChoice();
   const { step, free, paid } = draft;
   const title = (text: string, id: string) => (
-    // The id rides an inner span: Radix names the frame by the title's own id.
     <DialogTitle tabIndex={-1} className={TITLE_CLASS}>
       <span id={id}>{text}</span>
     </DialogTitle>
@@ -117,11 +105,6 @@ export function PickerBody({
   );
 }
 
-/**
- * The picker on its own, opened from Settings > Billing, then its success
- * step until the person closes it. The row that opens it holds the frame,
- * and the frame holds the draft for one open ({@link choicePickerPick}).
- */
 export function FreeOrgPicker({
   choice,
   frame,
@@ -131,7 +114,6 @@ export function FreeOrgPicker({
   choice: BillingChoice;
   frame: ChoicePickerFrame;
   setFrame: (next: (frame: ChoicePickerFrame) => ChoicePickerFrame) => void;
-  /** Where focus lands on close: the frame has no trigger of its own. */
   returnFocus: () => void;
 }) {
   const { t } = useTranslation("plan");

@@ -1,11 +1,3 @@
-// Real-DOM mount of the shell every "connect something" step renders through,
-// for the one behavior its free-text row owns: a decline WITH an instruction
-// relays the text and then empties the row. The step's draft is parked by the
-// stepper and a decline commits nothing, so text left behind would sit in the
-// row again when the user walks back onto the step.
-//
-// The DOM-mounting pattern is ui/chat's (`tests/interaction-card-mount.test.ts`).
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";
@@ -52,8 +44,6 @@ g.React = React;
 const { createRoot } = await import("react-dom/client");
 const i18next = (await import("i18next")).default;
 const { initReactI18next } = await import("react-i18next");
-// The shell's copy comes through `t()`; an empty catalog echoes the key back,
-// which is all these assertions need to find the controls.
 await i18next.use(initReactI18next).init({
   defaultNS: "chat",
   fallbackLng: "en",
@@ -66,7 +56,6 @@ const { ChatConnectStepShell } = await import(
   "../src/components/chat-connect-step-shell.tsx"
 );
 
-/** The shell with its draft parked by the caller, as the stepper parks it. */
 function Harness({ onDecline }: { onDecline: (message?: string) => void }) {
   const [draft, setDraft] = useState("");
   return h(ChatConnectStepShell, {

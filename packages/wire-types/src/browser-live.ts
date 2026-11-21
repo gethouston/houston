@@ -1,12 +1,3 @@
-/**
- * The browser hand-off wire shapes: while the agent's `browser` tool waits on
- * a `handoff`, the person drives the same page through a live view. Frames come
- * down an SSE stream (`BROWSER_LIVE_REST`), input goes up in POST batches
- * (`BROWSER_INPUT_REST`). Both are runtime-proxy members under
- * `/agents/:agentId/`, served by standing engines only.
- */
-
-/** Per-agent rests under `/agents/:agentId/` (runtime-proxy members, STANDING only). */
 export const BROWSER_LIVE_REST = "conversations/:conversationId/browser/live";
 export const BROWSER_INPUT_REST = "conversations/:conversationId/browser/input";
 
@@ -19,10 +10,8 @@ export const BROWSER_HANDOFF_STATES = [
 export type BrowserHandoffState = (typeof BROWSER_HANDOFF_STATES)[number];
 export type BrowserHandoffEnd = Exclude<BrowserHandoffState, "waiting">;
 
-/** How long the person has from the moment the agent hands over. */
 export const BROWSER_HANDOFF_LIMIT_MS = 10 * 60_000;
 
-/** The `browser` tool's handoff refusals, carried in tool_end content as `ERROR <code>: …`. */
 export const BROWSER_HANDOFF_FAILURES = [
   "handoff_cancelled",
   "handoff_expired",
@@ -31,27 +20,12 @@ export const BROWSER_HANDOFF_FAILURES = [
 export type BrowserHandoffFailure = (typeof BROWSER_HANDOFF_FAILURES)[number];
 
 export type BrowserLiveLayout = "desktop" | "phone";
-/**
- * GET query: `viewer` (required, /^[A-Za-z0-9_-]{8,64}$/), `layout` (default
- * desktop), and `handoff` (optional, {@link BROWSER_LIVE_HANDOFF}): the
- * hand-off the viewer is watching, once its first status named it.
- *
- * - No `handoff`: the chat's current hand-off (`404 no_handoff` when none).
- * - `handoff` names the current one: served as usual.
- * - `handoff` names an earlier one still retained (60 s after it ended): one
- *   terminal `status` of THAT hand-off, then the stream closes.
- * - `handoff` names one no longer known: `409 handoff_ended` (no `state`)
- *   while the chat has a newer hand-off, `404 no_handoff` when it has none.
- */
 export const BROWSER_LIVE_VIEWER = /^[A-Za-z0-9_-]{8,64}$/;
-/** A hand-off id as the runtime mints it (a UUID) and the client echoes it. */
 export const BROWSER_LIVE_HANDOFF = /^[A-Za-z0-9_-]{8,64}$/;
 
-// server → client (SSE `data:` JSON; `type` is the discriminant)
 export interface BrowserLiveFrame {
   type: "frame";
   seq: number;
-  /** Base64 JPEG, no data-URL prefix. */
   jpeg: string;
   width: number;
   height: number;
@@ -63,27 +37,14 @@ export interface BrowserLivePage {
 }
 export interface BrowserLiveStatus {
   type: "status";
-  /**
-   * This hand-off's unguessable id. A chat may hand over again after one
-   * ends; the client stamps this id on everything it sends so nothing from an
-   * earlier hand-off's view (a late Done, a retry) acts on a newer one.
-   */
   handoffId: string;
   state: BrowserHandoffState;
   text: string;
-  /** Epoch ms the hand-off expires at. */
   expiresAt: number;
-  /**
-   * The frame window this runtime keeps per viewer. Optional/additive: a
-   * runtime that predates it keeps {@link BROWSER_LIVE_LEGACY_WINDOW}.
-   */
   window?: BrowserLiveWindow;
 }
-/** How much a runtime sends a viewer before it waits for an ack. */
 export interface BrowserLiveWindow {
-  /** Unacked frames. */
   frames: number;
-  /** Unacked frame bytes, counted as the frames' base64 `jpeg` length. */
   bytes: number;
 }
 export type BrowserLiveEvent =
@@ -91,7 +52,6 @@ export type BrowserLiveEvent =
   | BrowserLivePage
   | BrowserLiveStatus;
 
-// client → server (POST body)
 export const BROWSER_LIVE_KEYS = [
   "Enter",
   "Tab",
@@ -108,7 +68,6 @@ export const BROWSER_LIVE_KEYS = [
   "PageDown",
 ] as const;
 export type BrowserLiveKey = (typeof BROWSER_LIVE_KEYS)[number];
-/** CDP modifier bits. */
 export const BROWSER_LIVE_MODIFIER = {
   alt: 1,
   ctrl: 2,
@@ -118,7 +77,6 @@ export const BROWSER_LIVE_MODIFIER = {
 
 export type BrowserLiveMouseAction = "move" | "down" | "up" | "click";
 
-/** x, y are 0..1 of the frame; the runtime scales by the page's own viewport. */
 export type BrowserLiveInput =
   | {
       type: "mouse";
@@ -137,49 +95,26 @@ export type BrowserLiveInput =
 export const BROWSER_LIVE_MAX_EVENTS = 64;
 export const BROWSER_LIVE_MAX_TEXT = 10_000;
 export const BROWSER_LIVE_MAX_BODY_BYTES = 64 * 1024;
-/** Unacked frames the runtime keeps in flight per viewer. */
 export const BROWSER_LIVE_FRAME_WINDOW = 8;
-/**
- * Unacked frame bytes (base64 length) the runtime keeps in flight per viewer:
- * eight full frames would queue over a megabyte, seconds of lag on a slow
- * link. A single frame larger than this still goes when nothing is unacked.
- */
 export const BROWSER_LIVE_FRAME_WINDOW_BYTES = 320 * 1024;
-/** The window a runtime that advertises none keeps: two frames, no byte cap. */
 export const BROWSER_LIVE_LEGACY_WINDOW: BrowserLiveWindow = {
   frames: 2,
   bytes: Number.POSITIVE_INFINITY,
 };
-/** The client's per-POST timeout for an input batch; a retry reuses its `batch`. */
 export const BROWSER_LIVE_INPUT_TIMEOUT_MS = 15_000;
 
 export interface BrowserLiveInputRequest {
-  /**
-   * The hand-off this request is for (its status's `handoffId`). One naming
-   * any other hand-off than the chat's waiting one gets `409 handoff_ended`
-   * (with that hand-off's `state` while it is retained) and changes nothing.
-   * REQUIRED with `events`, `ack` or `finish` (`400 invalid_input` without it).
-   */
   handoff?: string;
   events?: BrowserLiveInput[];
-  /** The highest frame `seq` this viewer has received. */
   ack?: { viewer: string; seq: number };
-  /**
-   * Makes `events` idempotent across retries: `seq` starts at 1 and strictly
-   * increases per viewer. The runtime remembers the highest seq it applied
-   * per viewer; a request whose `seq` is not above it gets the current state
-   * WITHOUT its events being applied again (its `ack` and `finish` still are).
-   */
   batch?: { viewer: string; seq: number };
   finish?: "done" | "cancel";
 }
 export interface BrowserLiveInputAnswer {
   state: BrowserHandoffState;
-  /** A `navigate` the URL policy refused; the rest of the batch still ran. */
   refused?: "url_refused";
 }
 
-/** Error bodies `{ error: code, code, state? }`. */
 export const BROWSER_LIVE_REFUSALS = [
   "no_handoff",
   "handoff_ended",

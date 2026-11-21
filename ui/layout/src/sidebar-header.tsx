@@ -6,18 +6,6 @@ import {
 } from "./sidebar-frame";
 import { SidebarCollapseToggle } from "./sidebar-rail-chrome";
 
-/**
- * The rail's top line. With windowControlsInset, the host draws its own window
- * controls over the rail's top-left, so the first row is a drag region that
- * reserves their zone: expanded it carries the collapse toggle after the
- * controls, and collapsed it stays empty with the expand toggle on the next
- * row. Without the inset, the expanded line has the same order (toggle, then
- * the actions at its end) and the collapsed toggle leads.
- *
- * `actions` (the host's search and create buttons) close the top line when
- * expanded, at its right edge, so the rail's own verbs sit on the line the
- * window chrome already spends. Collapsed, they stack under the toggle.
- */
 export function SidebarHeader({
   actions,
   collapsed,
@@ -92,8 +80,6 @@ export function SidebarHeader({
       {stackedActions}
     </>
   ) : (
-    // The inset line's order without the window controls: the toggle leads,
-    // the actions close the line.
     <div className="flex shrink-0 items-center gap-0.5 px-2 pt-3 pb-1">
       {toggle}
       <div className="min-w-0 flex-1" />

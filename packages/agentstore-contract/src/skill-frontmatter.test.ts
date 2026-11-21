@@ -32,7 +32,6 @@ title: The Real Title
 body`;
     const result = parseSkillFrontmatter(body);
     expect(result.title).toBe("The Real Title");
-    // The frontmatter `name:` must not surface anywhere in the parsed output.
     expect(JSON.stringify(result)).not.toContain("Drifted");
   });
 

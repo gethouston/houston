@@ -20,7 +20,6 @@ import {
   type OnboardingSurveyPreference,
 } from "../src/lib/onboarding-survey-record.ts";
 
-/** Copy that names what each line is, so the transcript reads as its script. */
 const copy: TranscriptCopy = {
   manager: (line) => `say:${line.id}${line.name ? `(${line.name})` : ""}`,
   receipt: (line) =>
@@ -37,13 +36,11 @@ const answered: OnboardingSurveyPreference = {
   automationGoal: "Answer my emails",
 };
 
-/** The starter team, hired: it closes the team. */
 const HIRED = {
   question: "teamBasic",
   value: "Avery, Jordan and Riley",
 } as const;
 
-/** A first run carried all the way through: `team`, then its team hired. */
 function finishedFirstRun(
   team: TeamConversation = TEAM_CONVERSATION_START,
 ): ScriptLine[] {
@@ -60,10 +57,8 @@ function finishedFirstRun(
   }).lines;
 }
 
-/** The body the model reads, with the card's marker set aside. */
 const flat = (content: string) => content.split("\n\n").slice(1).join("\n\n");
 
-/** A manager message as the chat shows it: a card or its words. */
 const said = (content: string) =>
   decodeTeamCard(content) ? `card> ${flat(content)}` : content;
 
@@ -75,8 +70,6 @@ describe("onboardingTranscript", () => {
       copy,
     );
     strictEqual(transcript.importId, "onboarding:first_run");
-    // First run was said before anything else in the chat, so one that lands
-    // late still reads first; a profile round lands where it happened, last.
     strictEqual(transcript.at, "start");
     strictEqual(
       onboardingTranscript("profile_completion", finishedFirstRun(), copy).at,
@@ -170,8 +163,6 @@ describe("onboardingTranscript", () => {
       onboardingImportId("first_run", [receipt("industry")]),
       "onboarding:first_run",
     );
-    // A profile round is named by the questions it answered, in the import
-    // id's own alphabet: a later round asking something new is a new import.
     const round = [receipt("companySize"), receipt("goal")];
     strictEqual(
       onboardingImportId("profile_completion", round),

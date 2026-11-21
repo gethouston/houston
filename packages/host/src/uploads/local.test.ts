@@ -258,7 +258,6 @@ test("an aborted chunk reports persisted bytes and resumes at that offset", asyn
   const session = await open(granule * 2);
   const settled = Promise.withResolvers<void>();
   const sink = createServer((req, res) => {
-    // A dropped connection is an expected state, never a handler failure.
     serveUploadSink(sessions, session.uploadId, req, res).then(
       () => settled.resolve(),
       (error) => settled.reject(error),

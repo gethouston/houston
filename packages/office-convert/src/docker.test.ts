@@ -9,7 +9,6 @@ async function convert(
   ext: "xlsx" | "pptx" | "odp",
   source: Uint8Array,
 ): Promise<unknown> {
-  // Internal-only compose networks accept requests through docker exec.
   if (container) {
     const result = execFileSync(
       "docker",

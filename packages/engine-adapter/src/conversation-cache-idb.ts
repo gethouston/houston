@@ -1,14 +1,3 @@
-/**
- * IndexedDB backend for the local conversation cache (HOU-712).
- *
- * Transcripts are too big for localStorage (a busy conversation folds to
- * hundreds of KB), so the cache lives in IndexedDB: one object store, records
- * `{k, frames, updatedAt}` keyed on `k` (the cache module's scoped key) with
- * an `updatedAt` index so the prune sweep reads KEYS ONLY — it runs on every
- * write and must never load transcripts. Plumbing only — validation, scoping,
- * and prune policy live in conversation-cache.ts.
- */
-
 import type {
   CacheRecord,
   ConversationCacheBackend,
@@ -29,8 +18,6 @@ function req<T>(r: IDBRequest<T>): Promise<T> {
 }
 
 export function createIdbBackend(idb: IDBFactory): ConversationCacheBackend {
-  // One connection per session, opened lazily; dropped on close/error so the
-  // next operation reopens instead of failing forever.
   let dbPromise: Promise<IDBDatabase> | null = null;
 
   function open(): Promise<IDBDatabase> {
@@ -83,8 +70,6 @@ export function createIdbBackend(idb: IDBFactory): ConversationCacheBackend {
     },
     async keysOldestFirst() {
       const s = await store("readonly");
-      // The index orders by updatedAt ascending; getAllKeys returns the
-      // records' PRIMARY keys in that order, loading no values.
       const keys = await req(s.index(BY_UPDATED_AT).getAllKeys());
       return keys.map(String);
     },

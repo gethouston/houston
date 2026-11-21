@@ -3,35 +3,10 @@ import type { FeedItem, TokenUsage } from "@houston-ai/chat";
 import type { ContextWindowConfig } from "./providers";
 
 export interface SessionContextUsage {
-  /** Current fill: usage from the most recent completed turn, or null when no
-   *  turn has reported usage yet. */
   latest: TokenUsage | null;
-  /** Session high-water mark of `context_tokens`. Proves a LOWER BOUND on the
-   *  real context window: Claude Code / Codex auto-compact before the limit,
-   *  so observed usage can never exceed the true window. Used to snap the
-   *  estimated window up when a plan/credit-gated larger window is in play. */
   peakContextTokens: number;
 }
 
-/**
- * Fold a session's feed into the current fill + observed peak. `final_result`
- * items are persisted and replayed into the feed store, so this is stable
- * across a history reload. Scans forward so `latest` ends as the last turn.
- *
- * A `provider_switched` divider RESETS both the fill and the peak: a mid-session
- * provider switch starts a fresh context window on a DIFFERENT provider, and
- * usage observed under the previous provider says nothing about the new one's
- * window. Without the reset, a large peak under one provider (e.g. an Opus 1M
- * conversation) bleeds into the next provider's window estimate and wrongly
- * snaps it up (e.g. GPT-5.5's 258k default jumping to its opt-in-1M 950k
- * ceiling), so the indicator reads a wrong window and a tiny percentage.
- * `context_compacted` is NOT a reset: it's the same provider, so the
- * pre-compaction peak still proves that provider's window.
- *
- * `context_cleared` resets the FILL only: the user emptied the model's context,
- * so the gauge must read empty again, but the same provider is still in play
- * and its observed peak still proves its window.
- */
 export function sessionContextUsage(
   items: FeedItem[] | undefined,
 ): SessionContextUsage {
@@ -59,26 +34,6 @@ export function sessionContextUsage(
   return { latest, peakContextTokens };
 }
 
-/**
- * The window to divide by, given the model's catalogued config and the
- * session's observed peak. Self-correcting: starts at the per-model default
- * and snaps UP to the ceiling once observed usage exceeds the default, which
- * proves the real (plan/credit-gated) window is the larger one. Then cut to
- * the room the runtime lets a conversation fill before it compacts
- * (`compactionWindow`), so the bar reads full where compaction happens, not at
- * half of a 400k window. Returns null when the model has no catalogued
- * window, so the caller falls back to a raw token count.
- *
- * The peak only resolves which catalogued window is real; it never floors the
- * result. A 400k chat that peaked at 380k before the ceiling existed compacts
- * at the same room as any other, so flooring would read its next compaction
- * point as ~53%. Usage above the room reads 100% through `contextFillPercent`'s clamp.
- *
- * The snap-up rule here is mirrored by `effectiveModelWindow` in
- * `@houston/protocol`, which the runtime's autocompact uses — same table of
- * `{ default, max }` numbers (see `getContextWindowConfig`), same math, so the
- * gauge and the engine's compaction point stay in lockstep.
- */
 export function effectiveContextWindow(
   cfg: ContextWindowConfig | undefined,
   peakContextTokens: number,
@@ -88,14 +43,6 @@ export function effectiveContextWindow(
   return compactionWindow(estimate, cfg.inputLimit);
 }
 
-/**
- * How full the context window is, 0-100, or `null` when usage or the window
- * isn't known. Rounded and clamped for the displayed gauge (`ContextIndicator`).
- * The runtime owns the autocompact TRIGGER (`needsAutocompact` in
- * `packages/runtime`); both size the window from the shared
- * `@houston/protocol` table and its compaction rule, so the compaction point
- * reads 93% on this gauge for every model.
- */
 export function contextFillPercent(
   usage: TokenUsage | null,
   windowTokens: number | null | undefined,

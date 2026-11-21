@@ -27,13 +27,6 @@ import { ASSISTANT_VIEW_ID } from "../../assistant/id";
 import { OrgLockedFieldset } from "../../shell/org-locked-fieldset";
 import { SettingsCard, SettingsControlRow } from "../settings-row";
 
-/**
- * The AI Manager's morning briefing screen: on/off, the time it arrives, and
- * "brief me now". Opened from its Settings row only where the deployment serves
- * it (`capabilities.heartbeat`). The copy promises Slack or WhatsApp delivery
- * only under the same gate the Channels row uses. The gateway refuses its
- * writes while the active org is locked, so they turn off with the reason.
- */
 export function MorningBriefingSection() {
   const { t, i18n } = useTranslation("settings");
   const channels = useChannels();
@@ -50,14 +43,11 @@ export function MorningBriefingSection() {
     try {
       const result = await runNow.mutateAsync();
       if (result.status === "delivered") {
-        // The briefing is being written in the manager's chat: go read it.
         useUIStore.getState().setViewMode(ASSISTANT_VIEW_ID);
         return;
       }
       addToast({ title: t("morningBriefing.quiet"), variant: "info" });
     } catch (err) {
-      // The engine call already surfaced every kind but these two, which it
-      // leaves to us because the person can act on them.
       const { kind } = classifyHeartbeatFailure(err);
       if (kind === "turn_running")
         showExpectedStateToast(

@@ -74,14 +74,6 @@ test("include still deletes an in-scope object the turn removed", async () => {
   expect(await store.list("")).toEqual([]);
 });
 
-/**
- * Houston's scratch files — every atomic write's temp target across host,
- * runtime and runtime-client, plus the one-off volume probe, all named with
- * `ATOMIC_TMP_SUFFIX` (`@houston/protocol`) — exist for milliseconds inside
- * the very directory a sync pass walks. Uploading one would publish a
- * half-written file, a probe artifact, or a credential mid-rewrite, as
- * workspace content.
- */
 test("Houston's scratch files never reach the store", async () => {
   const storeRoot = await mkdtemp(join(tmpdir(), "sync-store-"));
   const workRoot = await mkdtemp(join(tmpdir(), "sync-work-"));
@@ -96,9 +88,6 @@ test("Houston's scratch files never reach the store", async () => {
     join(workRoot, "workspace", "houston-case-probe-ñ.4821.k3x9f2.houston.tmp"),
     "",
   );
-  // The shape that matters most: a credential caught mid-rewrite. The
-  // destination is excluded by name; its scratch sibling must be excluded by
-  // suffix, or the secret rides the store under a name nobody excluded.
   await writeFile(join(workRoot, "credentials.json"), "{}");
   await writeFile(join(workRoot, "credentials.json.houston.tmp"), "{secret}");
 
@@ -110,12 +99,6 @@ test("Houston's scratch files never reach the store", async () => {
   expect(await store.list("")).toEqual(["workspace/report.txt"]);
 });
 
-/**
- * The other half of the same rule: `.tmp` is a name PEOPLE give their files,
- * and a blanket `.tmp` exclusion listed `notes.tmp` in the Files tab while
- * never syncing it — the user's work vanished at the next pod teardown with no
- * error anywhere. Only Houston's own suffix is scratch.
- */
 test("a user's own .tmp file syncs back like any other file", async () => {
   const storeRoot = await mkdtemp(join(tmpdir(), "sync-store-"));
   const workRoot = await mkdtemp(join(tmpdir(), "sync-work-"));

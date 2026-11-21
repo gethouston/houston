@@ -31,21 +31,10 @@ export interface HandoffOptions {
   owner?: string;
   signal?: AbortSignal;
   registry: HandoffRegistry;
-  /**
-   * How long the person gets, read once the page is loaded, so the wait in
-   * the queue and the page load come off it; `null` means too little is left.
-   */
   budget: () => number | null;
-  /** Keeps the pool from sweeping the tab while the person uses it. */
   touch?: () => void;
 }
 
-/**
- * The person a hand-off is for: the gateway-signed acting-as, else the person
- * a pooled turn's verified record names. Never `actingUser`: a standing
- * runtime takes that from an unsigned header (the desktop's first-day turn
- * sends one), and a hand-off owned by it would refuse the desktop app itself.
- */
 export function handoffOwner(
   acting: ActingContext | undefined,
 ): string | undefined {
@@ -55,12 +44,6 @@ export function handoffOwner(
 export const NO_TIME_LEFT =
   "This task has run too long to hand the browser over now. Tell the person what they need to sign in to, and that sending a new message gives them time to do it.";
 
-/**
- * Hand the tab to the person and wait (up to the budget) until they finish,
- * cancel, or the turn is stopped; then save what they signed in to and give
- * the model a fresh look at the page. The person's typing never reaches the
- * model: only the page they leave behind does, passwords masked.
- */
 export async function runHandoff(
   tab: BrowserTab,
   action: Extract<BrowserAction, { action: "handoff" }>,
@@ -68,8 +51,6 @@ export async function runHandoff(
 ): Promise<AgentToolResult<BrowserDetails>> {
   const held = pendingDialog(tab);
   if (held) throw dialogOpenError(held);
-  // From the hand-off's own page load until its sign-ins are saved, the page
-  // is the person's: a dialog held for the model there would freeze it.
   setPersonDriving(tab, true);
   try {
     return await handOver(tab, action, options);
@@ -123,7 +104,6 @@ async function handOver(
     );
   await restoreLayout(tab);
   await saveState(tab);
-  // The person may have changed the page: refs from before are stale either way.
   tab.generation = nextGeneration();
   setPersonDriving(tab, false);
   return handoffResult(tab, action.text, end, options.signal);
@@ -135,7 +115,6 @@ async function handoffResult(
   end: BrowserHandoffEnd,
   signal: AbortSignal | undefined,
 ): Promise<AgentToolResult<BrowserDetails>> {
-  // A stopped turn reads nothing more; it only needed the sign-ins saved.
   if (end === "cancelled" || signal?.aborted)
     return browserFailure(
       "handoff_cancelled",
@@ -147,7 +126,6 @@ async function handoffResult(
       "Nobody finished in time. Tell the person what is still needed and offer to try again when they are ready.",
     );
   await settle(tab.page);
-  // Held for the model again: a dialog now must not freeze the look.
   const held = pendingDialog(tab);
   const look = held
     ? { done: false as const, dialog: held }

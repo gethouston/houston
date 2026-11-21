@@ -1,8 +1,4 @@
 #!/usr/bin/env node
-// The `pnpm dev` preflight doctor. Validates tools, env, and ports for the
-// full dev stack (see mprocs.yaml), collects EVERY failure with a precise
-// remedy, and prints the feature matrix — what this run enables — so nobody
-// discovers a silently-missing feature an hour in. Exit 1 on any failure.
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -17,11 +13,6 @@ import {
 } from "./dev/doctor-lib.mjs";
 
 const root = process.cwd();
-// .env.local is parsed here (not only in the env section below) because
-// CLOUD_DIR may live there: the panes source .env.local via scripts/dev/env.sh,
-// so the doctor must resolve the SAME cloud checkout they will run, or it
-// fails the sibling-default path the panes never use. Precedence mirrors the
-// shell: an inline env var outranks the file, the file outranks the default.
 const local = parseEnvFile(path.join(root, ".env.local"));
 const expandHome = (p) =>
   p?.startsWith("~/") ? path.join(homedir(), p.slice(2)) : p;
@@ -32,7 +23,6 @@ const cloudDir =
 const fails = [];
 const warns = [];
 
-// ── tools ────────────────────────────────────────────────────────────────────
 const nodeMajor = Number(process.versions.node.split(".")[0]);
 if (nodeMajor < 22)
   fails.push(
@@ -90,15 +80,12 @@ if (!tryRun("docker info"))
     "Docker daemon not reachable (needed ONLY for the dev Postgres container). Start Docker Desktop, then re-run.",
   );
 
-// ── env: the two-file contract (`local` parsed above for CLOUD_DIR) ──────────
 const committed = parseEnvFile(path.join(root, ".env.development"));
 if (Object.keys(committed).length === 0)
   fails.push(
     ".env.development missing or empty — it is committed; restore it (git checkout .env.development).",
   );
 
-// Committed keys whose value is inherently per developer. .env.local may
-// override exactly these; every other overlap is a drift and fails below.
 const PER_DEVELOPER = {
   GW_PUBLIC_BASE_URL:
     "a public https tunnel to the local gateway, for Slack and WhatsApp channel testing",
@@ -133,7 +120,6 @@ if (!env.FIREBASE_API_KEY)
     `FIREBASE_API_KEY is required (Google sign-in for the web app's cloud profile). cp .env.example .env.local, then set it — get the key from a teammate or the GCIP console (project ${paint.bold(env.FIREBASE_PROJECT_ID || "gethouston")}).`,
   );
 
-// ── ports ────────────────────────────────────────────────────────────────────
 const PORTS = [
   [5433, "postgres"],
   [9080, "gateway"],
@@ -144,9 +130,6 @@ const PORTS = [
   [1430, "web app"],
   [1420, "desktop app dev server"],
 ];
-// Busy ports HARD-FAIL: booting anyway guarantees a mid-stack bind error a
-// few seconds later, in whichever pane loses the race (learned the hard way —
-// an orphaned gateway held :9080/:8082 and the next boot died confusingly).
 for (const [port, who] of PORTS) {
   if (!(await portFree(port)))
     fails.push(
@@ -154,7 +137,6 @@ for (const [port, who] of PORTS) {
     );
 }
 
-// ── report ───────────────────────────────────────────────────────────────────
 for (const w of warns) console.log(`  ${paint.warn("!")} ${w}`);
 if (fails.length > 0) {
   console.error(`\n${paint.fail(`Doctor found ${fails.length} issue(s):`)}`);

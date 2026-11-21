@@ -27,8 +27,6 @@ const row = (id: string, agent_path: string) => ({
   type: "activity",
 });
 
-/** Every cache that paints a card: the agent's list and two roster variants
- *  of the aggregate (a drifted roster leaves its rows under a key of its own). */
 function seeded(): QueryClient {
   const qc = new QueryClient();
   qc.setQueryData(queryKeys.activity(ALICE), [activity("a1"), activity("a2")]);
@@ -202,7 +200,6 @@ describe("a refused mission write undoes only its own rows", () => {
       },
       () => {},
     );
-    // Bob's event refreshes his slice of the aggregate (`patchAgentSlice`).
     qc.setQueryData(ALL, [row("a2", ALICE), row("b1", BOB), row("b2", BOB)]);
     host.reject(new Error("pod asleep"));
     await done;
@@ -250,7 +247,6 @@ describe("a refused mission write undoes only its own rows", () => {
       },
       () => {},
     );
-    // A rename of the same card lands from the host meanwhile.
     qc.setQueryData(ALL, [
       { ...row("a1", ALICE), status: "done", title: "Renamed" },
       row("a2", ALICE),
@@ -266,7 +262,6 @@ describe("a refused mission write undoes only its own rows", () => {
 
 const failure = { title: "", description: "" };
 
-/** A write the test refuses by hand, after arranging what landed mid-write. */
 function pending(
   qc: QueryClient,
   patches: ReturnType<typeof missionEditPatches>,

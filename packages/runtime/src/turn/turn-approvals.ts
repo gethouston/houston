@@ -10,22 +10,6 @@ import { AdmittedMessages } from "./turn-admitted-messages";
 import { mutateTurnDocument } from "./turn-doc-cas";
 import type { TurnFilesystem } from "./turn-filesystem";
 
-/**
- * Houston's approval records for ONE conversation, kept between single-use
- * sandboxes.
- *
- * A standing host keeps them in memory. A pool worker lives for one turn, and
- * a card is raised in one turn and answered by the message that starts the
- * next, so the records live beside the agent's runtime state, one file per
- * conversation, written with the same generation-guarded write every other
- * tool-time document uses. Only this harness writes the file: Houston's file
- * tools reach its memory document alone and it runs no code.
- *
- * Opening applies the arriving message's answers and grants (`receive`)
- * BEFORE the model can call anything, and writes the result, exactly where a
- * standing host's message route applies them. Every later change is written
- * by {@link TurnApprovals.save} while the turn's claim still holds.
- */
 export interface TurnApprovals {
   readonly approvals: ApprovalStore;
   save(): Promise<void>;
@@ -39,12 +23,6 @@ export interface TurnApprovalsInput {
   conversationId: string;
 }
 
-/**
- * Where one conversation's records live: in that conversation's own runtime
- * session directory, the only place a claimed turn may write besides its
- * transcript (cloud pod-store `claimIDFromKey`). Not a `.jsonl`, so neither
- * harness mistakes it for a session file.
- */
 export function approvalsDocRel(
   filesystem: Pick<TurnFilesystem, "dataRel">,
   conversationId: string,
@@ -62,7 +40,6 @@ export async function openTurnApprovals(
   receive: (
     approvals: ApprovalStore,
     admitted: AdmittedMessages,
-    /** The record existed but could not be read: nothing it held is known. */
     damaged: boolean,
   ) => void,
 ): Promise<TurnApprovals> {
@@ -87,7 +64,6 @@ export async function openTurnApprovals(
   await mutateTurnDocument({
     ...input,
     relativePath,
-    // Rebuilt on every attempt: a generation conflict re-reads the file.
     apply: async () => {
       const read = await readCarry(local);
       const carried = read === DAMAGED ? null : read;
@@ -102,8 +78,6 @@ export async function openTurnApprovals(
       await write(approvals, admitted);
     },
   });
-  // One save at a time: each reads, writes and uploads the same local file,
-  // and an overlapping one could upload another's stale bytes.
   let saving: Promise<void> = Promise.resolve();
   const saveOnce = () =>
     mutateTurnDocument({
@@ -123,8 +97,6 @@ export async function openTurnApprovals(
   };
 }
 
-/** The carried records, or nothing when the file is absent or unreadable. */
-/** A record file that exists but does not parse. */
 const DAMAGED = Symbol("damaged approval record");
 
 async function readCarry(path: string): Promise<unknown> {

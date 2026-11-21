@@ -18,8 +18,6 @@ import { listTarEntries } from "./tar-entries.mjs";
 const root = mkdtempSync(join(tmpdir(), "tar-entries-"));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
-// Builds X.app with the system tar (bsdtar on macOS, GNU tar on Linux) and
-// returns its listing. `extra` adds files before archiving.
 const archive = (name, extra = () => {}) => {
   const dir = join(root, name);
   const app = join(dir, "X.app");
@@ -47,7 +45,6 @@ describe("listTarEntries", () => {
     expect(entries).toContain("dir\t0755\tX.app\t");
     expect(entries).toContain("file\t0755\tX.app/Contents/MacOS/x\t");
     expect(entries).toContain("file\t0644\tX.app/Contents/Info.plist\t");
-    // Symlink modes differ by platform (bsdtar 0755, GNU tar 0777).
     expect(entries).toContainEqual(
       expect.stringMatching(
         /^symlink\t\d{4}\tX\.app\/Contents\/link\tMacOS\/x$/,
@@ -66,8 +63,6 @@ describe("listTarEntries", () => {
     const hardlinks = entries.filter((entry) => entry.startsWith("hardlink"));
     expect(hardlinks).toHaveLength(1);
     expect(hardlinks[0]).toMatch(/\tX\.app\/Contents\/(copy|Info\.plist)$/);
-    // Exactly one more entry than the same tree without the link: the parser
-    // stayed aligned on the headers after the hardlink.
     expect(entries).toHaveLength(plain.length + 1);
   });
 });

@@ -10,23 +10,6 @@ import { EmailCodeFooter } from "./email-code-footer";
 
 type Step = "email" | "code";
 
-/**
- * Passwordless email sign-in: enter an address, receive a 6-digit code, type
- * it back. Stays entirely in the app (no browser, no redirect) — the desktop
- * counterpart to the loopback OAuth flow. On success the parent SignInScreen
- * unmounts as soon as the session lands in the query cache.
- *
- * Compact inline shape: a rounded email field with a send button on its right.
- * The code step swaps it for the six-box {@link EmailCodeEntry}.
- *
- * `submitFilled` controls whether the send/verify button is the screen's single
- * filled action: it is by default, but steps down to secondary when the returning
- * user's {@link ContinueLastSignIn} button is showing and owns the filled slot.
- *
- * `autoSubmit` lets the "Continue with your email" button drive this form: a new
- * token prefills the stored address and fires the code send in one click, so the
- * returning user lands straight on the 6-digit entry.
- */
 export function EmailSignIn({
   submitFilled = true,
   autoSubmit,
@@ -42,8 +25,6 @@ export function EmailSignIn({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Takes the value explicitly so the "Continue with your email" auto-submit can
-  // send the just-prefilled address without racing the `email` state update.
   const sendCode = async (value: string = email) => {
     const trimmed = value.trim();
     if (!trimmed) return;
@@ -60,9 +41,6 @@ export function EmailSignIn({
     }
   };
 
-  // One-click return path: when the continue button hands over a fresh token,
-  // prefill the stored address and send the code immediately. The ref guards
-  // against re-firing on unrelated re-renders (a given token sends exactly once).
   const sentToken = useRef<number | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: autoSubmit.token is the intentional trigger; sendCode/setEmail are stable enough and re-running on their identity would resend the code.
   useEffect(() => {
@@ -72,8 +50,6 @@ export function EmailSignIn({
     void sendCode(autoSubmit.email);
   }, [autoSubmit]);
 
-  // Takes the value explicitly so the pin input's `onComplete` can submit the
-  // just-completed code without racing the `code` state update.
   const verifyCode = async (value: string = code) => {
     const trimmedCode = value.trim();
     if (!trimmedCode) return;
@@ -81,7 +57,6 @@ export function EmailSignIn({
     setError(null);
     try {
       await verifyEmailOtp(email.trim(), trimmedCode);
-      // Success: the session write flips the auth gate and unmounts us.
     } catch (err) {
       logger.error(`[auth] email otp verify failed: ${err}`);
       setError(t(authErrorKey(err)));
@@ -144,8 +119,6 @@ export function EmailSignIn({
           variant={submitFilled ? "default" : "secondary"}
           disabled={pending || email.trim().length === 0}
           aria-label={tAuth("email.sendCode")}
-          // The address row is the phone's primary sign-in field: 44px there,
-          // 40px from md:.
           className="size-11 shrink-0 rounded-full border-none! active:scale-[0.96] md:size-10 md:active:scale-100"
         >
           {pending ? (

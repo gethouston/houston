@@ -14,11 +14,6 @@ import { specimen } from "../specimens/foundations/colors.tsx";
 import { EFFECT_DISCLAIMER } from "../specimens/foundations/effects-parts.ts";
 import { displayValue } from "../specimens/foundations/use-live-theme.ts";
 
-/**
- * Every `--ht-*` token, read straight out of the token JSON rather than out of
- * the page's own flattener — so this file and the page have to agree by
- * arriving at the same answer independently, not by sharing the mistake.
- */
 function tokenNames(file: unknown): string[] {
   const found: string[] = [];
   const walk = (node: Record<string, unknown>, prefix: string[]) => {
@@ -38,9 +33,6 @@ function tokenNames(file: unknown): string[] {
 const LIGHT = tokenNames(lightTokens);
 
 describe("the Colors page", () => {
-  // The whole promise of the page: the palette can grow, shrink or be renamed
-  // in `packages/design-tokens`, and this page tells the truth about it the
-  // next time it renders — no second list to remember to update.
   it("shows every semantic colour token the design tokens declare", () => {
     const html = renderToStaticMarkup(specimen.render());
     for (const name of LIGHT) {
@@ -74,8 +66,6 @@ describe("the Colors page", () => {
   it("names the tokens a designer actually says out loud", () => {
     assert.equal(describeToken("base").label, "Gutter");
     assert.equal(describeToken("line").label, "Line");
-    // The vocabulary may lag the palette, but it may never lead it: a word for
-    // a token that no longer exists is a word nobody will ever read again.
     for (const name of Object.keys(COLOR_VOCABULARY)) {
       assert.ok(LIGHT.includes(name), `${name} is not a semantic colour token`);
     }
@@ -97,9 +87,6 @@ describe("the Colors page", () => {
 });
 
 describe("the live value", () => {
-  // What a browser hands back for a resolved colour is `rgb(...)`; what a
-  // designer reads, types and pastes is a hex. Everything else is left exactly
-  // as the stylesheet wrote it — the alpha in a glass token is information.
   it("converts an opaque rgb to hex and leaves everything else alone", () => {
     assert.equal(displayValue("rgb(238, 241, 247)"), "#eef1f7");
     assert.equal(displayValue("  rgb(20 20 22)  "), "#141416");

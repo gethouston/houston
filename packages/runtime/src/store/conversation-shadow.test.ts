@@ -58,7 +58,6 @@ test("user and assistant shadow only after the atomic file write", () => {
     title: "hello",
     expectedCount: 0,
   });
-  // Message-only enqueue: the hot append path never clones the conversation.
   expect(seen.some((operation) => "conversation" in operation)).toBe(false);
 });
 

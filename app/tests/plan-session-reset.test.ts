@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { test } from "node:test";
 import type { OrgsList } from "@houston/engine-adapter";
 
-// The tracker's clock is the browser window's; node's globals stand in.
 Object.assign(globalThis, { window: globalThis });
 
 const {

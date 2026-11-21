@@ -4,13 +4,6 @@ import { buildClaudeEnv } from "./claude-env";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import type { SessionsStore } from "./sessions-store";
 
-/**
- * A session the standing server rebuilds after a restart has measured nothing
- * yet. The autocompact check runs before its first turn, so the session must
- * report the fill its conversation's last reply recorded, or a chat already
- * past its compaction point runs one more turn uncompacted.
- */
-
 function session(input: {
   recorded?: number;
   clearedTokens?: number;
@@ -60,8 +53,6 @@ test("a conversation with no recorded fill stays unknown", () => {
 });
 
 test("a session that starts fresh ignores the old recorded fill", () => {
-  // A backend switch, a routine reset or edit-and-resend drops the SDK
-  // session: the next prompt replays far less, and there is nothing to compact.
   expect(
     session({ recorded: 190_000, resumes: false }).getContextUsage(),
   ).toBeUndefined();

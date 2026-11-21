@@ -27,7 +27,6 @@ test("writeFileFrom refuses a key outside the root, also through a prefix", asyn
   const source = join(dir, "staged.bin");
   await writeFile(source, "x");
   const vfs = new FsVfs(join(dir, "root"));
-  // The key check throws before any I/O, exactly as writeBytes does.
   expect(() => vfs.writeFileFrom("../escape.bin", source)).toThrow(
     /unsafe vfs key/,
   );

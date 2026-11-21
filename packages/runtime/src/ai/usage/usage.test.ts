@@ -15,7 +15,6 @@ function jsonResponse(body: unknown, status = 200): typeof fetch {
 }
 
 const someToken = async () => "tok-123";
-/** A clock BEFORE every fixture's reset instant, so live windows stay live. */
 const beforeFixtures = () => Date.parse("2026-07-01T00:00:00Z");
 
 describe("fetchAnthropicUsage", () => {
@@ -64,9 +63,6 @@ describe("fetchAnthropicUsage", () => {
   });
 
   it("settles a window the API still reports past its own reset", async () => {
-    // The stuck-strip shape: hours after the 5h window reset, the API keeps
-    // answering with the previous window (49%, a reset instant in the past)
-    // until the account's next request. The weekly lane is still live.
     const now = Date.parse("2026-09-10T13:46:00Z");
     const row = await fetchAnthropicUsage(
       jsonResponse({
@@ -146,8 +142,6 @@ describe("fetchCodexUsage", () => {
   });
 
   it("settles an exhausted session window whose reset has passed", async () => {
-    // "100% used" with a reset instant behind us is the previous window; the
-    // next request opens a fresh one, so the honest reading is empty.
     const now = 1_784_100_000_000;
     const row = await fetchCodexUsage(
       jsonResponse({
@@ -274,14 +268,11 @@ describe("fetchCopilotUsage", () => {
     expect(row.windows).toEqual([]);
   });
 
-  // Serve mode (Gate #2): the runtime's credential is access-only — the GitHub
-  // token was scrubbed after login — so the probe must delegate to the host's
-  // central endpoint instead of reporting "sign in again" forever.
   const scrubbedStore = {
     get: () => ({
       type: "oauth" as const,
       access: "copilot-session",
-      refresh: "", // scrubbed by POST /auth/scrub-refresh
+      refresh: "",
       expires: 0,
     }),
   };
@@ -308,7 +299,7 @@ describe("fetchCopilotUsage", () => {
     expect(url).toBe(
       "http://host.test/sandbox/provider-usage?provider=github-copilot",
     );
-    expect(auth).toBe("Bearer sbx"); // the sandbox token, never a GitHub one
+    expect(auth).toBe("Bearer sbx");
     expect(row.status).toBe("ok");
     expect(row.plan).toBe("pro");
     expect(row.windows).toEqual([
@@ -399,7 +390,7 @@ describe("listProviderUsage", () => {
           throw new Error("network down");
         },
       },
-      () => null, // nothing metered locally
+      () => null,
     );
     expect(rows).toHaveLength(3);
     expect(rows[0].status).toBe("ok");
@@ -431,7 +422,6 @@ describe("listProviderUsage", () => {
       tokens: spend,
     });
     expect(rows[0].fetchedAt).toEqual(expect.any(String));
-    // Never metered → still the honest `unsupported` row.
     expect(rows[1]).toEqual({
       provider: "amazon-bedrock",
       status: "unsupported",

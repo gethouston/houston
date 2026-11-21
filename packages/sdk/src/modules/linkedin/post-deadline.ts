@@ -1,24 +1,8 @@
 import type { Clock } from "../../ports";
 import type { LinkedInPostResult } from "./types";
 
-/**
- * How long a post may stay unanswered before the surface stops saying
- * Posting. The gateway finishes a post it took even when nobody waits, so
- * running out says nothing about LinkedIn: the post may be up.
- */
 export const LINKEDIN_POST_DEADLINE_MS = 3 * 60_000;
 
-/**
- * Runs `post` under {@link LINKEDIN_POST_DEADLINE_MS}. Past it the request is
- * abandoned (aborted on this device only) and the answer is `unknown`, never
- * a refusal: a blind retry could post the same picture twice. Raced rather
- * than awaited, so a transport that ignores the abort still settles. An abort
- * by the caller still rejects with the caller's reason.
- *
- * The deadline covers the wait for an answer only: once `post` calls
- * `answered` (the 2xx headers arrived, so the post is up) the clock stops,
- * and reading the rest is bounded by the post itself.
- */
 export function withPostDeadline(
   clock: Clock,
   callerSignal: AbortSignal | undefined,
@@ -38,8 +22,6 @@ export function withPostDeadline(
       controller.abort();
     }, LINKEDIN_POST_DEADLINE_MS);
   });
-  // The race subscribes to both, so the abandoned request's late rejection
-  // is handled, not unhandled.
   const answered = () => clock.clearTimeout(timer);
   return Promise.race([post(controller.signal, answered), deadline]).finally(
     () => {

@@ -13,21 +13,6 @@ import { osRevealPath } from "../lib/os-bridge";
 import { saveBlob } from "../lib/save-blob";
 import { useUIStore } from "../stores/ui";
 
-/**
- * Save a downloaded Blob to the user's machine and toast the outcome.
- *
- * Browser builds stay silent on success (the browser shows its own download
- * UI); the desktop shell writes the file natively and gets a "Saved" toast
- * with a reveal action. Never rejects — a failure surfaces as a toast (beta
- * policy: no silent failures), a cancelled save dialog stays quiet.
- *
- * The shell rejects typed (`file-op-failure.ts`): the destination open in
- * another program, a protected folder, a full disk, a folder that is gone
- * are states the user can fix and read as informational copy with no report;
- * only `other` is a bug (PRODUCT-1732). The raw OS diagnostic always reaches
- * the frontend log, and the report title reads `kind: message`
- * (HOUSTON-APP-53A was "[object Object]").
- */
 export function useSaveDownload(): (name: string, blob: Blob) => Promise<void> {
   const { t } = useTranslation("agents");
   const addToast = useUIStore((s) => s.addToast);
@@ -95,10 +80,6 @@ export function useSaveDownload(): (name: string, blob: Blob) => Promise<void> {
   );
 }
 
-/** Report a failure the user cannot act on and return the generic toast
- *  body. The title is the typed failure, readable; the raw rejection stays
- *  the original error so stacks, quiet classes and the reported-once mark
- *  still see the real object. The caller already wrote the log line. */
 function reportFailure(
   command: string,
   plan: FileOpFailurePlan,

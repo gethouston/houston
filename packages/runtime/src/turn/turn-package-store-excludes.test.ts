@@ -21,11 +21,6 @@ const PREFIX = "ws/org/agent";
 const AGENT = "workspaces/Personal/Bob";
 const PNPM_STORE = ".pnpm-store/v3/files/00/abc-index.json";
 
-/**
- * A stuck agent's store, one object per row of its listing breakdown, each
- * listed at that row's size: 2,779 MiB, over a pooled turn's 2 GiB cap.
- * Without the store-root package store it lists 1,600 MiB.
- */
 const LISTING: [rel: string, mib: number][] = [
   [PNPM_STORE, 1178.9],
   [`${AGENT}/webstudio/node_modules/react/index.js`, 556.0],
@@ -97,15 +92,11 @@ test("the store sync, a pooled turn and a settings op share the package-store li
       expect.arrayContaining([...STORE_ROOT_PACKAGE_EXCLUDES]),
     );
   }
-  // The gateway's prefetch skips exactly this prefix (cloud
-  // prefetch_package_store.go); widening it is a change in both repos.
   expect(STORE_ROOT_PACKAGE_EXCLUDES).toEqual([".pnpm-store/"]);
 });
 
 test("the package store counts toward the startup cap; the agent's own files do not", async () => {
   const { store } = listedStore();
-  // Startup set: the package store and .houston, 1,191 MiB. The agent's own
-  // files (1,588 MiB) load behind the prompt on their own budget.
   await expect(
     startTurnFilesystem({
       store,
@@ -136,12 +127,9 @@ test("a pooled turn hydrates the listed store without its package store", async 
   expect(fs.manifest.has(PNPM_STORE)).toBe(false);
   expect(existsSync(join(fs.storeRoot, ...PNPM_STORE.split("/")))).toBe(false);
   expect(downloads).not.toContain(`${PREFIX}/${PNPM_STORE}`);
-  // The agent's own toolchains still hydrate: the sandbox is discarded after
-  // the turn, and the store is the only place they survive to the next one.
   for (const [rel] of LISTING.slice(1))
     expect(fs.manifest.has(rel), rel).toBe(true);
 
-  // pnpm refills its store at the root; the turn also writes a real file.
   const made = [
     ".pnpm-store/v3/files/01/x",
     `${AGENT}/webstudio/node_modules/vite/index.js`,

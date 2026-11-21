@@ -1,10 +1,3 @@
-/**
- * VerifiedBadge — the verified-creator indicator glyph (a scalloped badge check).
- *
- * Props-only and i18n-agnostic per the ui/ library boundary: the consumer passes
- * a translated `label` (used as the accessible name and tooltip); it defaults to
- * English "Verified". Color comes from design tokens only.
- */
 import { BadgeCheck } from "lucide-react";
 
 import { cn } from "../utils";

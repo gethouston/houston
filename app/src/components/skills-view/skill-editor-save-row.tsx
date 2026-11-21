@@ -2,7 +2,6 @@ import { AsyncButton, Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type { SkillEditorState } from "./use-skill-editor";
 
-/** Discard and Save under the skill's body; a locked org saves nothing. */
 export function SkillEditorSaveRow({
   editor,
   locked,

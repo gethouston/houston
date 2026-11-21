@@ -2,7 +2,6 @@ import type { AdminReport } from "@houston/agentstore-client";
 import { describe, expect, it } from "vitest";
 import { groupByAgent } from "./reports-tab";
 
-/** A report in the gateway's flat wire shape (no nested agent object). */
 function report(overrides: Partial<AdminReport> = {}): AdminReport {
   return {
     id: "r1",

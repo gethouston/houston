@@ -12,14 +12,11 @@ import {
   UNLISTED_ROOT_DIRS,
 } from "./turn-store-scope";
 
-/** The store, listed by store-relative directory. */
 export interface StoreLister {
-  /** Undefined: the store answered without levels (an older pod-store). */
   level(rel: string, signal?: AbortSignal): Promise<DirListing | undefined>;
   tree(rel: string, signal?: AbortSignal): Promise<ObjectMetadata[]>;
   relOf(key: string): string;
   keyOf(rel: string): string;
-  /** The agent's own folders, listed whole (`ClaimedStoreScope.later`). */
   listLater(
     scope: ClaimedStoreScope,
     dirs: readonly string[] | undefined,
@@ -66,16 +63,8 @@ const LEGACY_ROOT_DIRS = new Set(["data", "workspace"]);
 
 const name = (rel: string) => rel.slice(rel.lastIndexOf("/") + 1);
 
-/** Hidden folders and the preferences namespace are never agents
- *  (turn-layout-agents.ts standingTree). */
 const agentShaped = (rel: string) => !name(rel).startsWith(".");
 
-/**
- * Walk a store holding exactly one standing agent and list its critical set
- * (ClaimedStoreScope.critical): a handful of rounds of one-level listings
- * instead of one listing of the whole store. Undefined for any other shape,
- * so its layout resolves exactly as from the whole listing.
- */
 export async function listClaimedTree(
   list: StoreLister,
   conversationId: string,

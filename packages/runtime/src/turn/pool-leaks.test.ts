@@ -181,8 +181,6 @@ test("alternating agents leave no credential, conversation, auth, root, or confi
   await run("s", 0);
   await run("s", 1);
 
-  // One request per turn: a custom endpoint gets no follow-up pass
-  // (backends/pi/follow-up-models.ts).
   expect(seen.map(({ token }) => token)).toEqual([
     "token-a",
     "token-b",
@@ -220,8 +218,6 @@ test("alternating agents leave no credential, conversation, auth, root, or confi
   expect(await store.list("ws/w1")).not.toContainEqual(
     expect.stringMatching(/auth\.json$/),
   );
-  // Six real runtime spawns: the default 5 s budget trips under machine load
-  // (parallel e2e), never on a leak. The leak assertions above are what matter.
 }, 30_000);
 
 function treeText(root: string): string {

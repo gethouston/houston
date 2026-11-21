@@ -1,11 +1,3 @@
-/**
- * RoutineRunList — one routine's execution history (PRODUCT-1208), n8n-style:
- * every recorded run as a row with a status glyph + plain-language outcome,
- * its start stamp and elapsed time, and the summary the run left behind. With
- * `onOpenRun` each row is a button that opens that run's chat (the result);
- * without it the list is read-only (showcase, compact embeds).
- */
-
 import { cn } from "@houston-ai/core";
 import { Ban, Check, ChevronRight, CircleAlert, Loader2 } from "lucide-react";
 import {
@@ -16,24 +8,13 @@ import { formatRunDuration, formatRunStart } from "./run-history";
 import type { RoutineRun, RunStatus } from "./types";
 
 export interface RoutineRunListProps {
-  /** Newest-first run records (the store's native order). */
   runs: RoutineRun[];
-  /** Opens the run's chat (its result). Omit for a read-only list. */
   onOpenRun?: (run: RoutineRun) => void;
-  /** BCP-47 locale for the start-time stamps. */
   locale?: string;
-  /**
-   * Overrides a run's second line. The stored `run.summary` is the agent's own
-   * words, but a run that never reached the agent (its AI account was
-   * disconnected, or out of credits) carries a typed failure instead — and
-   * naming a provider in the user's language is app work, not `ui/` work. Return
-   * `undefined` to keep `run.summary`.
-   */
   summaryFor?: (run: RoutineRun) => string | undefined;
   labels?: Partial<RoutineRunListLabels>;
 }
 
-/** Status → glyph + tone. Color is semantic only; the label carries the meaning. */
 const STATUS_GLYPH: Record<
   RunStatus,
   { Icon: typeof Check; className: string }

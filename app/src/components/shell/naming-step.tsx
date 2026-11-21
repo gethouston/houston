@@ -4,7 +4,6 @@ import { AgentIdentityForm } from "./agent-identity-form";
 
 interface NamingStepProps {
   formId: string;
-  /** The source agent's name, as the screen's own headline. */
   heading: string;
   name: string;
   color: string | undefined;
@@ -15,12 +14,6 @@ interface NamingStepProps {
   onSubmit: (e: FormEvent) => void;
 }
 
-/**
- * The last screen of the copy-an-agent wizard: the copy's own face, color and
- * name. Its job already exists (it comes from the agent being copied), so this
- * asks for nothing else: the same identity form an import from a friend ends
- * on.
- */
 export function NamingStep({ heading, ...identity }: NamingStepProps) {
   const { t } = useTranslation("shell");
 

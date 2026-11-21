@@ -27,13 +27,6 @@ interface StoredFile {
   archived?: { segments?: number[] };
 }
 
-/**
- * The briefing turn's messages, found by the nonce it was sent with: the user
- * message carries it and the replies carry its `turnId`. Read from the live
- * transcript, else from its archive segments newest first (the runtime never
- * splits a turn across files, conversation-archive.ts), stopping at a segment
- * that ends before the briefing started. Null when the turn is nowhere.
- */
 export async function readBriefingTurn(
   read: (key: string) => Promise<string | null>,
   liveKey: string,
@@ -71,11 +64,6 @@ function turnIn(
   return next === -1 ? after : after.slice(0, next);
 }
 
-/**
- * How a finished turn ended, from the outcome the runtime persisted on its
- * replies: a provider error, a stop, an engine-restart interruption, or no
- * words at all is a failed briefing; otherwise it was delivered.
- */
 export function briefingOutcome(
   turn: readonly ChatMessage[] | null,
 ): { kind: "completed" } | { kind: "failed"; reason: string } {
@@ -103,12 +91,6 @@ export function briefingOutcome(
   return { kind: "completed" };
 }
 
-/**
- * Settle an admitted briefing once its turn is over: `seen` moves and the
- * person is told only for a turn that finished with a reply. Nothing is read
- * while the manager is busy (the turn, or the person's next one, is still
- * running). Returns the document as it now stands.
- */
 export async function settlePendingBriefing(
   deps: SettleDeps,
   ws: Workspace,
@@ -139,8 +121,6 @@ export async function settlePendingBriefing(
       ? { kind: "completed", nonce, at }
       : { kind: "failed", nonce, at, reason: outcome.reason };
   const settled = await settleHeartbeatRun(deps.vfs, ws.id, end);
-  // Settled elsewhere first (it told the person), or a newer briefing
-  // replaced this one: the outcome read is not this document's to apply.
   if (!settled) return loadHeartbeatDoc(deps.vfs, ws.id);
   const first = await deps.lock.setNx(
     `heartbeat:settled:${ws.id}:${pending.nonce}`,

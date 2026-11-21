@@ -1,14 +1,3 @@
-/**
- * Pure edits of an agent's file listing (`queryKeys.files`), painted before
- * the host answers a delete / rename / move / new folder. Each tolerates a
- * listing that never loaded and is idempotent: it is re-run over every
- * refetch that lands while its write is in flight, so a listing that already
- * reflects the change comes back unchanged (the same array).
- *
- * The host's listing is flat and recursive (`files-list.ts`): a folder row
- * plus a row for everything beneath it, so a folder edit carries its
- * descendants with it.
- */
 import type { FileEntry } from "@houston-ai/agent";
 import { type RowRevert, revertRows } from "./row-revert.ts";
 
@@ -17,13 +6,11 @@ const isUnder = (path: string, root: string) =>
 
 const lastSegment = (path: string) => path.split("/").pop() ?? path;
 
-/** Same rule as the host's `extOf`: a leading dot is a name, not a type. */
 function extensionOf(name: string): string {
   const dot = name.lastIndexOf(".");
   return dot > 0 ? name.slice(dot + 1) : "";
 }
 
-/** The listing without `paths` and everything nested under them. */
 export function withoutFileEntries(
   files: FileEntry[] | undefined,
   paths: readonly string[],
@@ -33,7 +20,6 @@ export function withoutFileEntries(
   return next.length === files.length ? files : next;
 }
 
-/** Re-home `from` (and its descendants) at `to`. */
 export function relocateFileEntry(
   files: FileEntry[] | undefined,
   from: string,
@@ -56,11 +42,6 @@ export function relocateFileEntry(
   });
 }
 
-/**
- * Move `from` onto `occupant`'s place, dropping the occupant. A listing whose
- * `from` is already gone has had the move applied: left untouched, so the
- * moved entry (now AT the occupant's path) is never dropped as the occupant.
- */
 export function replaceFileEntry(
   files: FileEntry[] | undefined,
   from: string,
@@ -74,13 +55,11 @@ export function replaceFileEntry(
   );
 }
 
-/** Where a rename of `path` to `newName` lands: same folder, new name. */
 export function renamedPath(path: string, newName: string): string {
   const slash = path.lastIndexOf("/");
   return slash === -1 ? newName : `${path.slice(0, slash)}/${newName}`;
 }
 
-/** The listing with an empty folder at `path`, unless one is already there. */
 export function withFolderEntry(
   files: FileEntry[] | undefined,
   path: string,
@@ -101,11 +80,6 @@ export function withFolderEntry(
 
 type Listing = FileEntry[] | undefined;
 
-/**
- * One optimistic listing edit: the paint, and the undo a refusal runs. The
- * undo puts back only the entries this edit moved or dropped, so entries that
- * landed while it was in flight (another write, the agent's own) survive.
- */
 export interface FileListEdit {
   apply: (files: Listing) => Listing;
   revert: (files: Listing, before: Listing) => Listing;

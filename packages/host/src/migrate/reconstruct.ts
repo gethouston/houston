@@ -1,19 +1,6 @@
 import type { Message } from "@earendil-works/pi-ai";
 import type { ChatFeedRow, SessionPair, TranscriptMessage } from "./types";
 
-/**
- * Rust `chat_feed` rows → the two migration artifacts, plus the pi-ai Message
- * synthesis the agent-memory side needs.
- *
- * Fidelity split (the honest, unavoidable cross-engine tradeoff):
- *  - The TRANSCRIPT renders the FULL feed (user / assistant / tool calls / tool
- *    results / thinking / file changes / final result), read-only.
- *  - The agent's MEMORY (the pi session) gets plain user/assistant TEXT pairs
- *    only — tool-call and thinking blocks can't transfer between engines.
- */
-
-/** Decode a `data_json` that is a JSON-encoded string (user/assistant/thinking
- * chunks). Returns "" for anything unexpected rather than throwing. */
 function decodeJsonString(json: string): string {
   try {
     const v = JSON.parse(json);
@@ -32,22 +19,11 @@ function decodeObject<T>(json: string): T | null {
   }
 }
 
-/** Parse a row timestamp to epoch ms; falls back to 0 (caller breaks ties on the
- * row id) when the string is unparseable so a conversation never loses order. */
 export function rowTs(row: ChatFeedRow): number {
   const t = Date.parse(row.timestamp);
   return Number.isNaN(t) ? 0 : t;
 }
 
-/**
- * One conversation's chat_feed rows (already ordered) → `{ transcript,
- * sessionPairs }`.
- *
- * A "turn" boundary is a `final_result` (the clean, complete assistant text) or,
- * lacking one, the concatenation of the `assistant_text` streaming chunks since
- * the last user message. Tool/thinking/file/error items render in the transcript
- * but never enter the session.
- */
 export function reconstruct(rows: ChatFeedRow[]): {
   transcript: TranscriptMessage[];
   sessionPairs: SessionPair[];
@@ -55,7 +31,6 @@ export function reconstruct(rows: ChatFeedRow[]): {
   const transcript: TranscriptMessage[] = [];
   const sessionPairs: SessionPair[] = [];
 
-  // Buffer assistant streaming chunks for the no-final_result fallback.
   let pendingAssistant = "";
   let pendingAssistantTs = 0;
   const flushPendingAssistant = () => {
@@ -74,7 +49,6 @@ export function reconstruct(rows: ChatFeedRow[]): {
     const ts = rowTs(row);
     switch (row.feed_type) {
       case "user_message": {
-        // A new user turn closes any buffered (final_result-less) assistant turn.
         flushPendingAssistant();
         const text = decodeJsonString(row.data_json);
         transcript.push({ role: "user", content: text, ts });
@@ -92,7 +66,6 @@ export function reconstruct(rows: ChatFeedRow[]): {
         const obj = decodeObject<{ result?: unknown }>(row.data_json);
         const result = obj && typeof obj.result === "string" ? obj.result : "";
         transcript.push({ role: "assistant", content: result, ts });
-        // final_result wins over the streamed chunks for the agent's memory.
         pendingAssistant = "";
         pendingAssistantTs = 0;
         if (result)
@@ -174,8 +147,6 @@ export function reconstruct(rows: ChatFeedRow[]): {
         break;
       }
       default:
-        // Unknown feed_type: keep it in the transcript so nothing is silently
-        // dropped, but never feed it to the session.
         transcript.push({
           role: "assistant",
           content: `[${row.feed_type}]`,
@@ -188,13 +159,6 @@ export function reconstruct(rows: ChatFeedRow[]): {
   return { transcript, sessionPairs };
 }
 
-/**
- * The FINAL user message of every synthesized (imported) session, so the next
- * live turn cannot mistake old imperatives for pending work. Real incident: a
- * migrated "delete all of your routines" thread made the agent verify the
- * filesystem on its first post-import turn and wipe the freshly migrated
- * routines.json ("Sorry — one routine was still there. I've now removed it.").
- */
 export const IMPORTED_HISTORY_NOTE =
   "[Imported history] The messages above were imported from my previous " +
   "Houston installation. They are a read-only record of past conversations, " +
@@ -202,8 +166,6 @@ export const IMPORTED_HISTORY_NOTE =
   "(deleting routines or files, sending anything, changing settings) unless " +
   "I ask again in a new message after this one.";
 
-/** The imported-history boundary as a pi user message. `ts` should be the last
- * imported message's timestamp so session ordering stays monotonic. */
 export function importedHistoryNote(ts: number): Message {
   return {
     role: "user",
@@ -212,11 +174,6 @@ export function importedHistoryNote(ts: number): Message {
   };
 }
 
-/**
- * A pi-ai Message for one user/assistant pair. The literals mirror exactly what
- * packages/runtime/src/session/resume.test.ts proves restores via
- * continueRecent() (same field set the SDK persists for a real turn).
- */
 export function messageFor(p: SessionPair): Message {
   if (p.role === "user") {
     return { role: "user", content: p.content, timestamp: p.ts || Date.now() };
@@ -240,7 +197,6 @@ export function messageFor(p: SessionPair): Message {
   };
 }
 
-/** First non-empty user line, trimmed + collapsed, as the conversation title. */
 export function titleFor(transcript: TranscriptMessage[]): string {
   const firstUser = transcript.find(
     (m) => m.role === "user" && m.content.trim().length > 0,

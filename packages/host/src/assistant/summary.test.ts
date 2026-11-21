@@ -2,17 +2,6 @@ import { expect, test } from "vitest";
 import type { AssistantOperation } from "./catalog";
 import { confirmationSummary } from "./summary";
 
-/**
- * A3 — what the user reads is what would happen.
- *
- * Arguments are shown WHOLE: approving a file write must never mean approving
- * bytes the person never saw, and two different writes must never read
- * identically. Short arguments fit the one-line `title`; anything long or
- * multi-line moves to `detail`, which the card renders as its own scrollable
- * block. The one case that is not shown whole says so in words, with the exact
- * size of what is still coming.
- */
-
 const op = (
   name: string,
   description: string,
@@ -69,7 +58,6 @@ test("a long value is shown in full, out of the sentence and into the detail blo
     op("writeAgentFile", "Write a file inside an agent."),
     { agentId: "Personal/Dobby", relPath: "notes.md", content },
   );
-  // The title stays one line: it is what the card asks.
   expect(summary.title).toBe(
     'Write a file inside an agent. This affects agent id "Personal/Dobby", rel path "notes.md".',
   );
@@ -78,10 +66,6 @@ test("a long value is shown in full, out of the sentence and into the detail blo
   expect(summary.detail).toContain(content);
 });
 
-/**
- * The reproduction: two writes that differ only past the old 120-character cut
- * produced the SAME card text, so one approval could be spent on either.
- */
 test("two values differing late produce different cards", () => {
   const write = op("writeAgentFile", "Write a file.");
   const a = confirmationSummary(write, { content: `${"a".repeat(200)}KEEP` });
@@ -111,11 +95,6 @@ test("argument names are humanized, never shown as code", () => {
   expect(summary.detail).toBeUndefined();
 });
 
-/**
- * The card's account of the call is STRUCTURAL, so the surface can say it in
- * the reader's language while the host stays the authority on what is being
- * approved: same operation, same bytes, whatever language reads them.
- */
 test("every argument travels structurally, with the host's own wording beside it", () => {
   const content = `line one\nline two\n${"x".repeat(500)}`;
   const summary = confirmationSummary(op("writeAgentFile", "Write a file."), {
@@ -138,8 +117,6 @@ test("a value past the limit says how much it cut, structurally too", () => {
   expect(summary.args).toHaveLength(1);
   expect(summary.args[0]?.value).toHaveLength(2_000);
   expect(summary.args[0]?.truncated).toBe(500);
-  // The host's English rendering says the same thing in words, for the
-  // surfaces that have no wording of their own.
   expect(summary.detail).toContain("and 500 more characters");
 });
 
@@ -187,7 +164,6 @@ test("two different calls never read identically", () => {
     read({ field: { a: { b: { c: 1 } } } }),
   );
   expect(read({ field: "none" })).not.toEqual(read({ field: '"none"' }));
-  // No limit is not an empty allowed list.
   expect(read({ allowedModels: null })).not.toEqual(
     read({ allowedModels: [] }),
   );

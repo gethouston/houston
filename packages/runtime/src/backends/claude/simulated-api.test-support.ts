@@ -3,38 +3,18 @@ import { join } from "node:path";
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { ClaudeQuery } from "./session";
 
-/**
- * A stand-in for the Anthropic API behind the Claude Agent SDK, sized in
- * tokens, for tests about what a resumed session costs.
- *
- * Every SDK session id carries the tokens its transcript holds. A query that
- * resumes one pays that whole transcript again, plus the system prompt and its
- * own prompt (4 characters ≈ 1 token), and is refused the way the CLI reports
- * it — an `invalid_request` assistant message reading "Prompt is too long: N
- * tokens > W maximum" — when the request exceeds `windowTokens`. A refused
- * query does not grow its session, exactly like the real API: nothing new was
- * said. A query that fits grows its session by its prompt, a short reply and
- * `runGrowthTokens` (the tool output a routine run reads while it works).
- *
- * Like the real SDK, each session leaves a transcript file under
- * `<CLAUDE_CONFIG_DIR>/projects/<cwd slug>/`, which is what Houston's sessions
- * store checks before it resumes one.
- */
 export interface SimulatedClaudeCall {
   prompt: string;
   resume: string | undefined;
   requestTokens: number;
   refused: boolean;
-  /** The CLI's first-byte deadline the call's env carried. */
   apiTimeoutMs: string | undefined;
 }
 
 export interface SimulatedClaudeApi {
   query: ClaudeQuery;
   calls: SimulatedClaudeCall[];
-  /** Give an existing session id a transcript of `tokens` tokens. */
   seedSession(id: string, tokens: number): void;
-  /** The tokens a session's transcript holds now. */
   sessionTokens(id: string): number | undefined;
 }
 
@@ -146,9 +126,6 @@ export function simulatedClaudeApi(opts: {
   };
 }
 
-/** The SDK message union is far wider than a simulation needs to fill in. */
 function sdk(message: Record<string, unknown>): SDKMessage {
-  // SAFETY: each literal above carries every field Houston's translator reads
-  // for its message type; the SDK's remaining fields are unused here.
   return message as unknown as SDKMessage;
 }

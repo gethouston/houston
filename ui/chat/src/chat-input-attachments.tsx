@@ -12,9 +12,6 @@ import {
 } from "./attachment-progress";
 import { fileIdentityKey } from "./clipboard-files";
 
-// Non-standard attribute (WebKit lineage, supported by every engine we ship
-// on): turns the picker into a directory picker. Unknown to React's typings,
-// hence the cast; engines without it fall back to a plain file picker.
 const FOLDER_INPUT_PROPS = {
   webkitdirectory: "",
 } as InputHTMLAttributes<HTMLInputElement>;
@@ -25,14 +22,10 @@ interface ChatInputAttachmentsProps {
   files: File[];
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemoveFiles: (indices: readonly number[]) => void;
-  /** Localized "N files" line for a folder chip. English default. */
   folderCountLabel?: (count: number) => string;
-  /** A chip's remove button name for `name`. English default. */
   removeLabel?: (name: string) => string;
 }
 
-/** One chip per plain file; a whole attached folder collapses into ONE chip
- *  (removing it removes every file inside). */
 interface ChipGroup {
   key: string;
   name: string;

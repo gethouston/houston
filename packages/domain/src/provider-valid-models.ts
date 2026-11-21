@@ -1,39 +1,12 @@
-/**
- * The models Houston runs per provider — pi's catalog (captured from
- * `getModels(...)`), narrowed where a row must not run — the set a stored model
- * id is checked against before a migration keeps it.
- *
- * Providers with finite catalogs are enumerated: `getModel` returns undefined
- * for an unlisted id on these, so a stored model MUST be checked against this
- * set. Providers whose catalogs move too often for this domain table are left
- * absent on purpose and their stored model passes through untouched — the
- * runtime's read-time `safeGetModel` guard is the backstop for stale ids.
- * openai-compatible has no catalog at all, and github-copilot is left open here
- * because its dotted ids change with the gateway.
- *
- * A dependency-free LEAF (see `provider-dialect.ts`).
- */
-
 import type { ProviderId } from "./provider-ids";
 
 export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
-  // The Claude lineup Houston offers (`ANTHROPIC_LINEUP` in
-  // model-aliases.ts, one model per family), a SUBSET of pi's catalog. pi still
-  // lists older Claude rows, and each one resolves to its own family's lineup
-  // model instead of running as itself.
   anthropic: new Set([
     "claude-fable-5-2",
     "claude-haiku-5-5",
     "claude-opus-5-5",
     "claude-sonnet-5-5",
   ]),
-  // pi's Codex catalog MINUS the rows OpenAI refuses a ChatGPT subscription:
-  // gpt-5.3-codex-spark answers `400 not supported when using Codex with a
-  // ChatGPT account` (probed live against the responses endpoint —
-  // packages/runtime/src/ai/codex-offered.ts holds the method and the
-  // verdicts). Keeping it "valid" is what let a stored id survive migration
-  // into a turn that could only fail. gpt-5.5 got the same 400 on 2026-10-22
-  // and pi 1.4.0 dropped it.
   "openai-codex": new Set([
     "gpt-5.6-luna",
     "gpt-5.6-sol",
@@ -46,8 +19,6 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
     "gpt-6.1-sol",
     "gpt-6.2-sol",
   ]),
-  // Only what MiniMax serves today; its retired ids (`./minimax-retired.ts`)
-  // fall back to the default here.
   minimax: new Set(["MiniMax-M3.1-Flash", "MiniMax-M3"]),
   deepseek: new Set(["deepseek-flash", "deepseek-v4-pro"]),
 };

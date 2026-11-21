@@ -1,8 +1,3 @@
-/**
- * The Slack connect's return target off an untrusted command payload, and the
- * one gateway answer that means "the gateway refused the loopback return".
- */
-
 import {
   SLACK_LOOPBACK_MAX_PORT,
   SLACK_LOOPBACK_MIN_PORT,
@@ -18,7 +13,6 @@ function record(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-/** A return target off an untrusted command payload. Absent or null is web. */
 export function parseSlackConnectReturn(
   value: unknown,
 ): SlackConnectReturn | undefined {
@@ -45,13 +39,6 @@ export function parseSlackConnectReturn(
   return { kind: "loopback", port, state };
 }
 
-/**
- * The gateway refused the loopback return: a plain
- * `400 {"code":"invalid_request"}` to a loopback request. A gateway that
- * predates `loopback` answers that, and so does one that rejects this body.
- * Only that answer earns the one `app` retry: any other refusal is real, and
- * an aborted connect is the caller's own decision.
- */
 export function gatewayRefusedLoopback(
   returnTo: SlackConnectReturn | undefined,
   error: unknown,

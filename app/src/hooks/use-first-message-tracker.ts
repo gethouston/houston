@@ -16,8 +16,6 @@ import { useSession } from "./use-session";
 const readFirstMessageState = async (): Promise<FirstMessageState> =>
   parseFirstMessageState(await tauriPreferences.get(FIRST_MESSAGE_SENT_KEY));
 
-/** Arms `first_message_sent` for the signed-in account. Called on every
- *  mount of the first-run onboarding (`first-run-start.ts`). */
 export function armFirstMessageTracking(): Promise<void> {
   return armFirstMessage({
     readState: readFirstMessageState,
@@ -26,13 +24,6 @@ export function armFirstMessageTracking(): Promise<void> {
   });
 }
 
-/**
- * Reports `first_message_sent` once per account that started the first-run
- * onboarding, on the first message the user sends to any AI Employee (see
- * {@link createFirstMessageTracker}). A new tracker per signed-in account, so
- * an account switch starts from that account's own stored state and drops
- * the previous account's reads still in flight.
- */
 export function useFirstMessageTracker(): void {
   const { data: session } = useSession();
   const uid = session?.uid ?? null;

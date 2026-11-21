@@ -3,23 +3,12 @@ import type { BrowserTab } from "./open-tab";
 import type { Slot } from "./pool-slot";
 import { closeContext } from "./tab-pages";
 
-/**
- * How long one browser action may take, start to finish. Playwright bounds
- * navigation (30 s) and element waits, but not `page.evaluate` or a renderer
- * that freezes mid-load: a frozen page held a turn's `open` for 6 minutes.
- */
 export const ACTION_DEADLINE_MS = 60_000;
 
-/** How long closing a stuck context may take before it is left behind. */
 export const CLOSE_GRACE_MS = 10_000;
 
 class DeadlineExceeded extends Error {}
 
-/**
- * `work` within `ms`, or the slot's context closed and a refusal the model can
- * act on. Closing the context is what ends the stuck call: it holds the page,
- * and the queue behind it would otherwise wait for it forever.
- */
 export async function withinDeadline<T>(
   slot: Slot,
   work: Promise<T>,
@@ -33,7 +22,6 @@ export async function withinDeadline<T>(
     return await Promise.race([work, expired]);
   } catch (error) {
     if (!(error instanceof DeadlineExceeded)) throw error;
-    // The stuck call rejects once its context closes; that end is expected.
     work.catch((reason: unknown) =>
       console.warn("[browser] a stuck action ended", String(reason)),
     );
@@ -47,11 +35,6 @@ export async function withinDeadline<T>(
   }
 }
 
-/**
- * Whether `work` succeeded within `ms`. A failure is logged and a step that
- * never settles is left behind, both as `what`: used where a frozen page
- * must not block a close.
- */
 export async function settledWithin(
   work: Promise<unknown>,
   ms: number,
@@ -76,19 +59,12 @@ export async function settledWithin(
   return settled === true;
 }
 
-/**
- * Drop the slot's tab without saving: a frozen page cannot hand over its
- * storage. Bounded as a whole, since the stuck step may be the tab's own
- * opening; a context that will not close is left to the browser's exit.
- */
 async function abandon(slot: Slot): Promise<void> {
-  // A backup tab still being tried is a paid session: it goes too.
   const pending = [slot.tab, slot.spare];
   slot.tab = null;
   slot.spare = null;
   slot.epoch += 1;
   const close = async (opening: Promise<BrowserTab> | null) => {
-    // A failed open already reached its caller; here it means nothing to close.
     const tab = await opening?.catch(() => undefined);
     if (tab) await closeContext(tab);
   };

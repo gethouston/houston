@@ -8,14 +8,6 @@ import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { afterAdd, type ChargeDialog, chargeDialog } from "./people-seat-flow";
 import type { AddOutcome } from "./people-tab-model";
 
-/**
- * The add-someone flow with a seat that may cost money. Add re-reads the
- * quote, then adds straight away, opens the charge dialog, or does nothing
- * while only the payer can add a seat. Unexpected failures (the quote, the
- * add) already surfaced and reported through `call()`; the seat refusals come
- * back as outcomes and land in the dialog. A locked org takes no one new, so
- * it is never quoted. One add runs at a time, whatever starts it.
- */
 export function useSeatAdd(onDone: (outcome: AddOutcome) => void) {
   const { billing, isLoading } = useActiveOrgBilling();
   const { locked } = useOrgWriteLock();
@@ -45,7 +37,6 @@ export function useSeatAdd(onDone: (outcome: AddOutcome) => void) {
             : undefined,
       });
     } catch {
-      // `call()` already surfaced and reported it; the dialog asks again.
       if (current) setDialog({ ...current, phase: "ask" });
       return;
     }
@@ -59,7 +50,6 @@ export function useSeatAdd(onDone: (outcome: AddOutcome) => void) {
       purchasable,
     });
     if (next.kind === "dialog") return setDialog(next.dialog);
-    // Once, with no dialog: a second change closes rather than loops.
     if (next.kind === "resend") return send(email, role, next.quote, null);
     setDialog(null);
     if (next.kind === "done") onDone(next.outcome);
@@ -81,13 +71,11 @@ export function useSeatAdd(onDone: (outcome: AddOutcome) => void) {
       try {
         fresh = (await quote.refetch({ throwOnError: true })).data;
       } catch {
-        // `call()` already surfaced and reported it; nothing is added unpriced.
         return;
       }
       if (!fresh) return;
       const step = seatAddStep(fresh);
       if (step.kind === "ask_payer") return;
-      // The store apps never show a price, so they never take a charge.
       if (step.kind === "confirm_charge") {
         if (purchasable) setDialog(chargeDialog(email, role, step.quote));
         return;

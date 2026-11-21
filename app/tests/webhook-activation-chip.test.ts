@@ -11,17 +11,9 @@ import es from "../src/locales/es/routines.json" with { type: "json" };
 import pt from "../src/locales/pt/routines.json" with { type: "json" };
 import { useUIStore } from "../src/stores/ui.ts";
 
-/**
- * Only a routine's creator may create or rotate its webhook key (the gateway
- * answers everyone else `403 not_creator`). The chip offers the actions to
- * the creator alone, tells everyone else who can, and the refusal itself is
- * an expected state: an info toast with authored copy and no report.
- */
-
 const SRC = join(import.meta.dirname, "../src");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
 
-/** The adapter's `HoustonEngineError` shape for the refusal. */
 function refusal(): Error {
   return Object.assign(new Error("HTTP 403"), {
     name: "HoustonEngineError",
@@ -59,7 +51,6 @@ describe("webhookChipView: who sees which action", () => {
       [active.active, active.showRotate, active.notice],
       [true, false, "creator_only"],
     );
-    // A routine naming no creator is the space owner's: the line says so.
     strictEqual(webhookChipView("needs_key", "not_owner").notice, "owner_only");
     strictEqual(webhookChipView("active", "not_owner").notice, "owner_only");
   });
@@ -173,7 +164,6 @@ describe("the chip binds the SDK's rule and the three locales carry the copy", (
       hook.includes("webhookKeyAccess({") &&
         hook.includes("webhookKeyOwnership({"),
     );
-    // The parent chip hands the webhook chip the routine's creator.
     ok(
       read("components/agent/routine-activation-chip.tsx").includes(
         "createdBy={routine.created_by}",
@@ -212,7 +202,6 @@ describe("the not_creator refusal is a quiet expected class", () => {
     const toasts = useUIStore.getState().toasts;
     strictEqual(toasts.length, 1);
     strictEqual(toasts[0]?.variant, "info");
-    // The authored copy, not the gateway's error text.
     ok(
       toasts[0]?.title === en.webhook.creatorOnlyTitle ||
         toasts[0]?.title === "routines:webhook.creatorOnlyTitle",

@@ -4,12 +4,6 @@ import {
 } from "@houston/wire-types";
 import { type AgentContextId, isAgentContextId } from "./agent-role-catalog.ts";
 
-/**
- * The survey asks the person's industry from the hire catalog's own contexts,
- * so the answer is an id the create flow can preselect when onboarding hires
- * their first AI Employee. "Something else" is the door out of the catalog,
- * captured with the person's own words (`industryOther`).
- */
 export const ONBOARDING_INDUSTRY_SOMETHING_ELSE =
   ONBOARDING_ANSWER_SOMETHING_ELSE;
 
@@ -17,19 +11,12 @@ export type OnboardingIndustry =
   | AgentContextId
   | typeof ONBOARDING_INDUSTRY_SOMETHING_ELSE;
 
-// A dismissal is a first-class stored answer, so the survey never re-asks
-// someone who declined.
 export const ONBOARDING_INDUSTRY_SKIPPED = ONBOARDING_ANSWER_SKIPPED;
 
 export type OnboardingIndustryChoice =
   | OnboardingIndustry
   | typeof ONBOARDING_INDUSTRY_SKIPPED;
 
-/**
- * The survey's own twelve ids, which accounts that answered before the survey
- * spoke the catalog's vocabulary still hold, each folded into the context
- * nearest to it.
- */
 export const LEGACY_ONBOARDING_INDUSTRY_CONTEXTS = {
   technology: "software_it",
   finance: "finance",
@@ -52,8 +39,6 @@ export function isOnboardingIndustry(
   );
 }
 
-/** Strict: the current vocabulary alone. Stored answers go through
- *  `normalizeOnboardingIndustryChoice`, which also reads the legacy ids. */
 export function isOnboardingIndustryChoice(
   value: unknown,
 ): value is OnboardingIndustryChoice {
@@ -66,13 +51,6 @@ function isLegacyIndustry(
   return Object.hasOwn(LEGACY_ONBOARDING_INDUSTRY_CONTEXTS, value);
 }
 
-/**
- * A stored industry answer in the current vocabulary. A legacy survey id maps
- * to its nearest catalog context. Any other non-empty string is an industry
- * this build cannot name (a context a newer build added, or one the catalog
- * retired): the person DID answer, so it reads as "Something else" rather than
- * as a question to ask again. Anything that is not a string is not an answer.
- */
 export function normalizeOnboardingIndustryChoice(
   value: unknown,
 ): OnboardingIndustryChoice | null {

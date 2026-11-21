@@ -21,15 +21,6 @@ interface RecordedCall {
   body: unknown;
 }
 
-/**
- * A tiny in-memory engine keyed by agent id, exposed as a `fetch` stub. It
- * serves exactly the runtime-client conversation surface this module uses:
- *   GET    /agents/<id>/conversations
- *   PATCH  /agents/<id>/conversations/<cid>   { title }
- *   DELETE /agents/<id>/conversations/<cid>
- * Mutations update the backing store, so a refetch observes the new state —
- * this is what proves "refetch-after-mutation".
- */
 function makeEngine(seed: Record<string, ConversationSummary[]>) {
   const db = new Map<string, ConversationSummary[]>(
     Object.entries(seed).map(([id, rows]) => [id, [...rows]]),
@@ -92,7 +83,6 @@ function makeCtx(fetchImpl: typeof fetch) {
   const ctx: ModuleContext = {
     config,
     store,
-    // The kernel's per-agent resolver: `${BASE}/agents/<id>` (empty id → base).
     clientFor: (agentId) =>
       new HoustonEngineClient({
         baseUrl: agentId
@@ -145,7 +135,6 @@ describe("conversations module — list", () => {
         { id: "c2", title: "Second", createdAt: 3, updatedAt: 4 },
       ],
     });
-    // c2 has no lastMessage: the field must be absent, not `undefined`.
     expect("lastMessage" in vm.items[1]).toBe(false);
     expect(snap(store, "alice")).toEqual(vm);
     expect(calls[calls.length - 1].url).toBe(
@@ -199,7 +188,6 @@ describe("conversations module — mutations refetch", () => {
     expect(snap(store, "alice")?.items[0].title).toBe("New name");
 
     const methods = calls.map((c) => c.method);
-    // PATCH first, then a GET refetch after the mutation.
     expect(methods).toEqual(["PATCH", "GET"]);
     expect(calls[0].url).toBe(`${BASE}/agents/alice/conversations/c1`);
     expect(calls[0].body).toEqual({ title: "New name" });
@@ -220,12 +208,6 @@ describe("conversations module — mutations refetch", () => {
   });
 });
 
-/**
- * A `fetch` stub whose GET responses stay pending until the test resolves them
- * by hand — the tool for forcing two in-flight loads to settle OUT OF ORDER.
- * Each GET pushes a `{ url, resolve }` onto `pending`; calling `resolve(rows)`
- * fulfils that specific request with those conversation rows.
- */
 function deferredEngine() {
   const pending: Array<{
     url: string;
@@ -246,20 +228,14 @@ describe("conversations module — concurrent loads (last-intent-wins)", () => {
     const { ctx, store } = makeCtx(fetchImpl);
     const mod = createConversationsModule(ctx);
 
-    // Two loads issued back-to-back on the SAME agent — the shape of a
-    // rename/delete (each ends in a load) racing a manual refresh.
-    const first = mod.refresh("alice"); // issued first  → STALE intent
-    const second = mod.refresh("alice"); // issued second → FRESH intent
+    const first = mod.refresh("alice");
+    const second = mod.refresh("alice");
     expect(pending).toHaveLength(2);
 
-    // Responses settle OUT OF ORDER: the newer request resolves first, then the
-    // older one lands late carrying pre-mutation rows.
     pending[1].resolve([conv({ id: "fresh", title: "Fresh" })]);
     pending[0].resolve([conv({ id: "stale", title: "Stale" })]);
     await Promise.all([first, second]);
 
-    // The newest-issued intent must win; the late stale response is dropped and
-    // never flushed over the fresh snapshot.
     expect(snap(store, "alice")?.items.map((i) => i.id)).toEqual(["fresh"]);
   });
 
@@ -270,7 +246,6 @@ describe("conversations module — concurrent loads (last-intent-wins)", () => {
 
     const first = mod.refresh("alice");
     const second = mod.refresh("alice");
-    // Natural order: older resolves first, newer second.
     pending[0].resolve([conv({ id: "old", title: "Old" })]);
     pending[1].resolve([conv({ id: "new", title: "New" })]);
     await Promise.all([first, second]);
@@ -283,7 +258,6 @@ describe("conversations module — concurrent loads (last-intent-wins)", () => {
     const { ctx, store } = makeCtx(fetchImpl);
     const mod = createConversationsModule(ctx);
 
-    // Per-agent sequences are independent: alice's second load must not gate bob.
     const aliceFirst = mod.refresh("alice");
     const aliceSecond = mod.refresh("alice");
     const bob = mod.refresh("bob");
@@ -318,7 +292,6 @@ describe("conversations module — scope isolation", () => {
     expect(urls).toContain(`${BASE}/agents/alice/conversations`);
     expect(urls).toContain(`${BASE}/agents/bob/conversations`);
 
-    // A delete on bob must not disturb alice's scope.
     await mod.delete("bob", "b1");
     expect(snap(store, "alice")?.items.map((i) => i.id)).toEqual(["a1"]);
     expect(snap(store, "bob")?.items.map((i) => i.id)).toEqual(["b2"]);
@@ -383,7 +356,6 @@ describe("conversations module — the dispatch path", () => {
     expect(missingAgent.error.message).toMatch(/agentId/);
     expect(badPayload.error.message).toMatch(/payload must be an object/);
     expect(missingTitle.error.message).toMatch(/title/);
-    // Nothing hit the network on a rejected payload.
     expect(calls).toHaveLength(0);
   });
 });
@@ -420,7 +392,6 @@ describe("conversations module — facade surface", () => {
       },
     ]);
 
-    // The dispatch path lands on the same function, so nothing exists twice.
     const dispatched = await registry.dispatch({
       id: "1",
       type: "conversations/suggestTitle",

@@ -8,7 +8,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** The agent palette, straight off the `--ht-agent-*` tokens. */
 const AGENT_COLORS = [
   { name: "charcoal", color: "var(--ht-agent-charcoal)" },
   { name: "forest", color: "var(--ht-agent-forest)" },
@@ -156,11 +155,6 @@ function HoustonAvatarSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["HoustonAvatar", "HoustonHelmet"];
 
 export const specimen: Specimen = {

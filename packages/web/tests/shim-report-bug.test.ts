@@ -1,17 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { invoke } from "../src/shims/tauri-core";
 
-/**
- * HOU-818: in cloud mode the web build files bug reports through the gateway's
- * `POST /feedback`. It used to do that with a raw fetch pinning
- * `Authorization: Bearer <token captured at boot>`, so a report typed after the
- * tab idled past token expiry died on a 401 the user only saw as a generic
- * "couldn't send" toast. It now rides the same `gatewayAuthFetch` transport as
- * every other control-plane call: live bearer, one single-flight refresh +
- * replay on 401, and the build-identity header. NOT the active-space header:
- * feedback must survive a stale space selector.
- */
-
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
 const originalFetch = globalThis.fetch;
 
@@ -52,7 +41,6 @@ function json(status: number, body: unknown = {}): Response {
   });
 }
 
-/** Stub fetch with a queue of responses; records every (url, init) call. */
 function stubFetch(...responses: Response[]) {
   const calls: { url: string; init: RequestInit | undefined }[] = [];
   globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
@@ -102,9 +90,6 @@ test("report_bug carries the live bearer and the build header", async () => {
 });
 
 test("report_bug never pins the active space, even with one selected", async () => {
-  // The gateway's ResolveOrg 403s `not_member` on a stale selector and
-  // `/feedback` never reads the org, so sending `x-houston-org` would gag
-  // exactly the user who was just removed from their team.
   setCloudWindow({ token: "live-token", org: "0123456789abcdef" });
   const calls = stubFetch(json(200, { id: "HOU-4" }));
 
@@ -145,16 +130,10 @@ test("report_bug with no token yet still reaches the gateway after a refresh", a
   const id = await invoke<string | null>("report_bug", { payload: {} });
 
   expect(id).toBe("HOU-3");
-  // No bearer yet → the transport asks the refresher BEFORE sending, so no
-  // unauthenticated request goes out at all and the single attempt already
-  // carries the minted token (HOU-1014).
   expect(calls.map((c) => bearer(c.init))).toEqual(["Bearer minted"]);
 });
 
 test("report_bug fails as quiet signed-out when the refresher declares the session gone", async () => {
-  // Refresher installed and answering null = terminal sign-out: the sign-in
-  // screen is the surface, so the failure carries the recognized signed_out
-  // marker instead of the gateway's raw reason (HOUSTON-APP-4WR).
   setCloudWindow({ token: "stale", refresh: async () => null });
   stubFetch(json(401, { error: "session expired" }));
 
@@ -181,9 +160,6 @@ test("report_bug falls back to the status when the gateway sends no reason", asy
   );
 });
 
-// H-009 / HOUSTON-APP-5FT: Linear at its plan's issue cap. The gateway answers
-// a typed 503 and the shim rethrows the SAME `{kind}` shape the desktop shell
-// rejects with, so the app delivers the report through its fallback.
 test("report_bug rethrows the gateway's intake refusal typed", async () => {
   setCloudWindow({ token: "live-token" });
   stubFetch(

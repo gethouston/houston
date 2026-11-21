@@ -5,7 +5,6 @@ import {
 
 export { MINIMAX_PROVIDER };
 
-/** `modelId`, or `fallback` when it is a MiniMax id the API no longer serves. */
 export function minimaxServedModelId(
   provider: string,
   modelId: string,
@@ -16,7 +15,6 @@ export function minimaxServedModelId(
     : modelId;
 }
 
-/** pi's `minimax` catalog minus the retired ids, so no choice list offers one. */
 export function minimaxOfferedModelIds(
   catalogIds: readonly string[],
 ): string[] {

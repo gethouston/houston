@@ -3,16 +3,6 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { MACHINE_ARGUMENTS } from "../src/lib/interaction-approval-labels.ts";
 
-/**
- * The approval card is the last thing a person reads before something
- * destructive happens, so it is worded in THEIR language for EVERY operation
- * that can raise one. A confirm operation with no sentence here would fall back
- * to the host's English, which is the bug this namespace exists to end.
- *
- * The catalog is generated from the live engine adapter, so a new destructive
- * operation lands in it automatically and fails here until it is worded.
- */
-
 const read = (rel: string) =>
   JSON.parse(readFileSync(new URL(rel, import.meta.url), "utf8"));
 

@@ -30,16 +30,13 @@ import { managerContext } from "./manager";
 import { settlePendingBriefing } from "./settle";
 
 export interface HeartbeatDeps extends CollectDeps {
-  /** Cross-replica dedup: one briefing per workspace per local date. */
   lock: FireLock;
   channel: RuntimeChannel;
   events?: EventHub;
-  /** Materialize the manager's synthetic directory (routes/assistant.ts). */
   ensureAgentDir: (agentId: AgentId) => void;
   now?: () => Date;
 }
 
-/** How one attempt ended. Only quiet, delivered and error are recorded. */
 export type HeartbeatOutcome =
   | { kind: "not_due" }
   | { kind: "busy" }
@@ -48,19 +45,11 @@ export type HeartbeatOutcome =
   | { kind: typeof HeartbeatRunStatus.Delivered }
   | { kind: typeof HeartbeatRunStatus.Error; reason: string };
 
-/** Outlives the local day in any zone, so a date is never fired twice. */
 const LOCK_TTL_SEC = 2 * 86_400;
 
 const reasonOf = (err: unknown) =>
   (err instanceof Error ? err.message : String(err)).slice(0, 300);
 
-/**
- * The AI Manager's daily briefing runs on its own `assistant` conversation.
- * Empty snapshots, or no news on a scheduled tick, record "quiet" without
- * calling the model. Admission records "delivered"; a later tick settles
- * the finished turn, advances the news baseline, and notifies the person.
- * Attempts run one at a time so a manual run cannot race the daily tick.
- */
 export class HeartbeatRunner {
   private queue: Promise<unknown> = Promise.resolve();
   private readonly now: () => Date;
@@ -69,12 +58,10 @@ export class HeartbeatRunner {
     this.now = deps.now ?? (() => new Date());
   }
 
-  /** The daemon's path: only when due, and only once per local date. */
   tick(): Promise<HeartbeatOutcome> {
     return this.once(false);
   }
 
-  /** "Brief me now": ignores the time and the date, still never mid-turn. */
   runNow(): Promise<HeartbeatOutcome> {
     return this.once(true);
   }
@@ -92,7 +79,6 @@ export class HeartbeatRunner {
     const now = this.now();
     const ws = await deps.store.getOrCreatePersonalWorkspace(deps.userId);
     let state = await loadHeartbeatDoc(deps.vfs, ws.id);
-    // An admitted briefing counts once its turn finishes (settle.ts).
     if (state.pending)
       state = await settlePendingBriefing(
         deps,
@@ -109,10 +95,7 @@ export class HeartbeatRunner {
       return { kind: "not_due" };
 
     const ctx = await managerContext(deps, ws);
-    // Never into a running turn: retried on the next tick, nothing recorded.
     if (await deps.channel.busy(ctx)) return { kind: "busy" };
-    // Read before the date is burned: a snapshot that throws leaves today
-    // unclaimed, so the next tick retries instead of losing the day.
     const snapshot = await collectHeartbeatSnapshot(
       deps,
       heartbeatWindowStart(now.getTime()),
@@ -145,7 +128,6 @@ export class HeartbeatRunner {
         deps.userId,
       )(),
     });
-    // The nonce rides the persisted user message: settle.ts finds the turn by it.
     const nonce = `heartbeat-${randomUUID()}`;
     try {
       await deps.channel.fireTurn(

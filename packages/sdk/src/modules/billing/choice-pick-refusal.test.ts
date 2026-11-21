@@ -30,7 +30,6 @@ const ctx = {
   otherDialogOpen: false,
 };
 const payer = choice({ payer: "plus" });
-// A non-payer's draft: the same shape a refusal used to leave behind.
 const unmarked: PickerState = {
   step: "free",
   free: INNOVA.slug,
@@ -117,7 +116,6 @@ describe("a modal frame whose stored non-payer draft turns payer", () => {
 });
 
 describe("the modal after a refused paid pick", () => {
-  // The refetch lags: the choice still names a payer.
   const refusedFrame = () => {
     const opened = nextChoiceModalFrame(
       CLOSED_CHOICE_FRAME,

@@ -2,13 +2,6 @@ import { deepStrictEqual } from "node:assert";
 import { test } from "node:test";
 import { headingItems } from "../src/components/shell/page-header/drilled-header-heading.ts";
 
-/**
- * The drilled header's `<h1>` must name the screen the user is ON, at every
- * width: the phone's folded form reads the active lozenge as its heading, so
- * the wide cluster that headed a different lozenge would announce one screen
- * and show another.
- */
-
 const items = [
   { id: "context", label: "Context" },
   { id: "agents", label: "Agents" },

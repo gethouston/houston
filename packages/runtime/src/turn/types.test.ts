@@ -10,7 +10,6 @@ const BASE = {
 };
 
 test("parseTurnRequest leaves an absent mode absent, for the conversation's kept one", () => {
-  // The worker reads the kept mode off the hydrated board (HOU-205).
   expect(parseTurnRequest(BASE).mode).toBeUndefined();
   expect(parseTurnRequest({ ...BASE, mode: "" }).mode).toBeUndefined();
 });
@@ -29,7 +28,6 @@ test("parseTurnRequest carries the gateway's plan limits, and only valid ones", 
       .limits,
   ).toEqual({ routineMinIntervalMinutes: 15 });
   expect(parseTurnRequest(BASE).limits).toBeUndefined();
-  // A garbled stamp is no limit, never a failed turn.
   for (const limits of ["15", { routineMinIntervalMinutes: 0 }, [15]])
     expect(parseTurnRequest({ ...BASE, limits }).limits).toBeUndefined();
 });

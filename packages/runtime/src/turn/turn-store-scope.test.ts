@@ -15,7 +15,6 @@ test.each([
   [`${R}/claude-flags/u1.json`, true],
   [`${R}/conversations/chat%201.archive/3.json`, true],
   [`${R}/sessions/chat 1/1.jsonl`, true],
-  // The turn's own transcript is read by key, not listed.
   [`${R}/conversations/chat%201.json`, false],
   [`${R}/conversations/routine-r1.json`, false],
   [`${R}/conversations/routine-r1.archive/1.json`, false],

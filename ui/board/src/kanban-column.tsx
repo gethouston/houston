@@ -6,8 +6,6 @@ import type { MessageTimeFormatter } from "./message-time";
 import type { KanbanItem } from "./types";
 
 export interface KanbanColumnProps {
-  /** This column's id. Exposed on the DOM (`data-kanban-column`) so the board's
-   *  pointer drag can hit-test which column a card is dropped on. */
   columnId?: string;
   label: string;
   items: KanbanItem[];
@@ -15,7 +13,6 @@ export interface KanbanColumnProps {
   highlightedId?: string | null;
   onAdd?: () => void;
   addLabel?: string;
-  /** Spread onto the add button; see `KanbanColumnConfig.addAttrs`. */
   addAttrs?: Record<string, string>;
   onSelect: (item: KanbanItem) => void;
   onDelete?: (item: KanbanItem) => void;
@@ -31,24 +28,13 @@ export interface KanbanColumnProps {
   avatar?: React.ReactNode;
   cardLabels?: KanbanCardLabels;
   formatTime?: MessageTimeFormatter;
-  /** Node rendered on the right of the column header (e.g. archive-all). */
   headerAction?: React.ReactNode;
-  /** Enable per-card multi-select checkboxes. */
   selectable?: boolean;
-  /** Ids currently in the multi-select set. */
   selectedIds?: ReadonlySet<string>;
-  /** Toggle a card's membership in the multi-select set. */
   onToggleSelect?: (item: KanbanItem) => void;
-  /** Make this column's cards draggable. */
   dndEnabled?: boolean;
-  /** Whether this column accepts the card currently being dragged. Drives the
-   *  faint "drop here" ring during a drag. */
   isDropTarget?: boolean;
-  /** Whether the dragged card is currently over this (drop-target) column.
-   *  Drives the stronger highlight. */
   isOver?: boolean;
-  /** Id of the card being dragged anywhere on the board (null when idle), used
-   *  to dim the dragged card. */
   draggingId?: string | null;
 }
 
@@ -91,15 +77,9 @@ export function KanbanColumn({
 
   return (
     <div
-      // Name must match board-drag-dom's COLUMN_ID_ATTR (drop hit-testing).
       data-kanban-column={columnId}
       className={cn(
-        // Desktop-only chrome: below the breakpoint the board is not rendered
-        // at all (the phone shows a grouped task list instead), so there is no
-        // phone layer to carry here.
         "min-w-[180px] flex-1 flex flex-col h-full min-h-0 rounded-xl bg-chip transition-[box-shadow,background-color] duration-150",
-        // Valid drop target during a drag: a faint inset ring hints "drop here".
-        // The column the pointer is over gets a stronger ring + tint.
         isDropTarget &&
           (isOver
             ? "ring-2 ring-inset ring-action/40 bg-hover"
@@ -112,19 +92,7 @@ export function KanbanColumn({
         action={headerAction}
       />
 
-      {/* Cards. The styled scrollbar takes layout width, so its 6px is
-          always reserved, in place of the right padding: a card
-          is the same width whether or not its column scrolls.
-          `overflow-y-scroll` for WebKit (the desktop app), which reports
-          `scrollbar-gutter` support but reserves nothing for a styled
-          scrollbar; the gutter for Chromium with hidden scrollbars. The track
-          is transparent and no thumb draws until the list overflows. Firefox
-          ignores the styled scrollbar, so it keeps the right padding. */}
       <div className="flex-1 pl-1.5 pt-1 pb-1.5 space-y-1.5 overflow-y-scroll [scrollbar-gutter:stable] supports-[not_selector(::-webkit-scrollbar)]:pr-1.5">
-        {/* Cards mount/unmount with NO enter/exit animation: switching agents
-            swaps the whole item set, and any fade would cross-blend the
-            previous agent's cards with the next one's (HOU-858). `layout`
-            stays so a card gliding between columns still animates. */}
         {items.map((item) => (
           <motion.div
             key={item.id}

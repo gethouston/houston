@@ -1,25 +1,12 @@
-// Decode a Firebase ID token's claims WITHOUT verifying its signature.
-//
-// The client never verifies (the gateway does, against Google's JWKS). We only
-// read claims the REST response omits: `accounts:signInWithCustomToken` (the
-// email-OTP path) returns an idToken + refreshToken but NO uid/email, so Wave 2
-// reads `sub` / `email` / `email_verified` / `name` from the token to assemble
-// a `Session`. Decode-only, shape-tolerant: a malformed token yields `null` +
-// a structured log, never a throw.
-
 import { identityLog } from "./log.ts";
 
 export interface IdTokenClaims {
-  /** Firebase UID. */
   sub: string;
   email?: string;
   email_verified?: boolean;
   name?: string;
-  /** Provider avatar URL, when the token carries one. */
   picture?: string;
-  /** `firebase.sign_in_provider`, e.g. "custom", "google.com". */
   firebase?: { sign_in_provider?: string };
-  /** Expiry, epoch SECONDS (JWT convention). */
   exp?: number;
 }
 
@@ -27,14 +14,11 @@ function base64UrlDecode(segment: string): string {
   const pad =
     segment.length % 4 === 0 ? "" : "=".repeat(4 - (segment.length % 4));
   const base64 = segment.replace(/-/g, "+").replace(/_/g, "/") + pad;
-  // `atob` exists in the webview and in modern Node; both are used at runtime.
   const binary = atob(base64);
-  // Reconstruct UTF-8 from the byte string atob produced.
   const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
   return new TextDecoder().decode(bytes);
 }
 
-/** Decode (not verify) an ID token's payload. Returns `null` if malformed. */
 export function decodeIdTokenClaims(idToken: string): IdTokenClaims | null {
   const payload = idToken.split(".")[1];
   if (!payload) {

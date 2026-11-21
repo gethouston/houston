@@ -7,19 +7,6 @@ import { AppLogo } from "../integrations/app-logo";
 import { INTEGRATION_PROVIDER } from "../integrations/model";
 import { routineLeadingIcon } from "./routine-leading-icon-model";
 
-/**
- * Builds the Routines grid's per-row leading glyph — the routine's identity
- * at a glance. Schedule routines return `null` so the grid keeps its default
- * clock; a trigger routine shows what wakes it: the triggering app's real logo
- * for a Composio binding (resolved from the toolkits catalog, favicon fallback
- * when the toolkit is missing, exactly like every other integrations surface),
- * or a webhook glyph for an incoming-webhook binding. The kind decision is the
- * pure `routineLeadingIcon` model; this hook only renders it.
- *
- * `triggersEnabled` gates the catalog fetch (no trigger surface, no query); a
- * routine bound before the fetch resolves simply shows the favicon fallback
- * until the real logo lands.
- */
 export function useRoutineLeadingIcon(
   triggersEnabled: boolean,
 ): (routine: Routine) => ReactNode {

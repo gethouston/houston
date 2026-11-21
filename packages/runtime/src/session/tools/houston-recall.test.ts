@@ -5,14 +5,6 @@ import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import type { ChatMessage } from "@houston/runtime-client";
 import { expect, test } from "vitest";
 
-/**
- * `houston_recall` reads the LIVE transcript store, so the data dir has to be a
- * throwaway before the module graph loads (store/conversations binds
- * `config.dataDir` at import). Fixtures are written through the store's own
- * dir-parameterized writer, which is also what lets a case pin an exact `ts`
- * (or omit it, as pre-`ts` transcripts do).
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "houston-recall-data-"),
 );
@@ -33,7 +25,6 @@ const tool = makeHoustonRecallTool();
 const CTX = {} as unknown as ExtensionToolContext;
 
 let seq = 0;
-/** Seed one conversation and answer with its id. */
 function seed(messages: ChatMessage[]): string {
   const id = `assistant-${seq++}`;
   const now = Date.now();
@@ -95,11 +86,9 @@ test("returns matching messages newest first, with role, ISO time and context", 
     totalMessages: 3,
   });
   expect(text.indexOf("#m2")).toBeLessThan(text.indexOf("#m0"));
-  // The role, an ISO instant, and the words around the match all survive.
   expect(text).toContain("[user - 2026-03-04T18:45:00.000Z]");
   expect(text).toContain("Book the dentist again #m2");
   expect(text).toContain("The dentist is Dr Ruiz #m0");
-  // The assistant reply mentions Dr Ruiz but not the query word.
   expect(text).not.toContain("#m1");
 });
 
@@ -169,7 +158,6 @@ test("the total budget drops the OLDEST hits, never the newest", async () => {
   expect(details).toMatchObject({ matched: 50 });
   if (!("outcome" in details) || details.outcome !== "searched")
     throw new Error("expected a search");
-  // The cap really bit, and it bit the old end.
   expect(details.returned).toBeGreaterThan(0);
   expect(details.returned).toBeLessThan(50);
   expect(textOf(out)).toContain("#m49");
@@ -189,7 +177,6 @@ test("long messages are ellipsised around the match, not returned whole", async 
 });
 
 test("a message stored before timestamps says so instead of Invalid Date", async () => {
-  // Pre-`ts` transcripts really exist on disk; the type cannot express them.
   const legacy = { role: "user", content: "the old dentist" } as ChatMessage;
   const id = seed([legacy]);
   const text = textOf(await run({ query: "dentist" }, id));
@@ -206,8 +193,6 @@ test("outside a turn there is no conversation to search", async () => {
 test("an empty query is a correctable error value, not a throw", async () => {
   const id = seed([msg("user", "hello")]);
   const out = await run({ query: "   " }, id);
-  // A VALUE with a code: the model can fix its own call from it, which a
-  // thrown exception gives it nothing to do.
   expect(detailsOf(out)).toEqual({
     ok: false,
     error: {
@@ -219,8 +204,6 @@ test("an empty query is a correctable error value, not a throw", async () => {
 });
 
 test("still reaches what a /clear put out of the model's context", async () => {
-  // `/clear` empties the MODEL's context, never the transcript — so recall is
-  // exactly how the assistant answers "what did I tell you about X?" after one.
   const id = seed([
     msg(
       "user",

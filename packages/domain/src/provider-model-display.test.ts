@@ -7,16 +7,7 @@ import {
   resolveSpokenModel,
 } from "./provider-model-display";
 
-/**
- * The spoken half of the identifier ladder. The incident: asked to "use Luna"
- * or "use Sonnet", the assistant sent the PROVIDER only — nothing anywhere
- * turned the name the user says into the id a pin carries — and every mission
- * silently ran the provider's default instead of what was asked for.
- */
-
 test("a spoken name only ever resolves to a model the provider runs", () => {
-  // The table keeps names for models a provider no longer runs (older chats
-  // and activity rows still name them), but a name must never resolve to one.
   for (const [provider, rows] of Object.entries(MODEL_DISPLAY)) {
     const valid = VALID_MODELS[provider];
     if (!valid) continue;
@@ -61,8 +52,6 @@ test("an anthropic display name resolves to the exact lineup id it names", () =>
   for (const [spoken, id] of Object.entries(cases)) {
     expect(resolveSpokenModel("anthropic", spoken)?.id).toBe(id);
   }
-  // A retired model's name resolves to nothing: the caller refuses with the
-  // lineup rather than pinning a model the provider no longer runs.
   for (const spoken of ["Opus 4.8", "Sonnet 4.6", "Haiku 4.5"])
     expect(resolveSpokenModel("anthropic", spoken)).toBeNull();
 });
@@ -78,8 +67,6 @@ test("a bare family name lands on that family's one lineup model", () => {
     name: "Opus 5.5",
     ambiguous: false,
   });
-  // Codex codenames repeat across generations: a bare "Sol", "Astra" or "Luna"
-  // lands on the newest row and says so.
   expect(resolveSpokenModel("openai-codex", "Sol")).toEqual({
     id: "gpt-6.2-sol",
     name: "GPT-6.2 Sol",
@@ -133,7 +120,6 @@ test("the listing pairs each id with the name the user would say", () => {
   ]);
   expect(text).toContain("gpt-6-astra = GPT-6 Astra");
   expect(text).toContain("gpt-5.6-luna = GPT-5.6 Luna");
-  // An id with no display name is still listed — bare, never invented.
   expect(text).toContain("some/gateway-id");
   expect(text).not.toContain("some/gateway-id =");
 });
@@ -146,8 +132,6 @@ test("the listing is capped and counts what it left out", () => {
 });
 
 test("a name resolves only among the models the caller actually offers", () => {
-  // The provider serves one GPT row, and it is not the newest one: "gpt" must
-  // land on what it CAN run, never on a row this caller does not offer.
   expect(resolveSpokenModel("openai-codex", "gpt", ["gpt-5.6-luna"])).toEqual({
     id: "gpt-5.6-luna",
     name: "GPT-5.6 Luna",

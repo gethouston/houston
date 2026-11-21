@@ -14,20 +14,6 @@ import {
 import { loadPalette } from "../build/omarchy.mjs";
 import { palettes } from "../dist/ts/tokens.ts";
 
-/**
- * The palette library's contract.
- *
- * A palette is a COMPLETE set, never a patch: `[data-palette="<id>"]` must
- * re-declare every single variable its mode's base block declares, because it
- * overrides that block on the same element. One missing name and the palette
- * silently keeps a Houston hex in the middle of someone else's colour scheme;
- * one extra name and the derivation has invented a role nothing consumes.
- *
- * The derived roles worn AS TEXT are then re-measured here against the surfaces
- * they are actually painted on, from the generated CSS rather than the build's
- * own maths — so a derivation change that loses a contrast floor fails here.
- */
-
 const CSS = readFileSync(
   fileURLToPath(new URL("../dist/css/tokens.css", import.meta.url)),
   "utf8",
@@ -52,7 +38,6 @@ const base = {
   dark: block('[data-theme="dark"]'),
 } as const;
 
-/** The contracted library: order, ids and names are the picker's own vocabulary. */
 const EXPECTED = [
   ["houston-light", "Houston Light", "light"],
   ["houston-dark", "Houston Dark", "dark"],
@@ -70,12 +55,6 @@ const EXPECTED = [
 
 const imported = palettes.filter((p) => !p.id.startsWith("houston-"));
 
-/**
- * The primary button as Houston ships it: a near-ink solid with no rim in light,
- * a white frost with a hairline rim in dark. Pinned as literals because this
- * pair IS the Houston identity the palette library is measured against — a
- * derivation rule must never reach the base blocks and repaint it.
- */
 const HOUSTON_CTA = {
   light: {
     "ht-cta": "#1b1b1e",
@@ -93,32 +72,10 @@ const HOUSTON_CTA = {
   },
 } as const;
 
-/**
- * How far a status hue may drift from Houston's while the ladder walks it toward
- * a palette's own ink. Twenty degrees is a shade of the same colour; a hue that
- * travels further is a different colour, and a gray is no colour at all
- * (`hueDistance` answers `Infinity` for one).
- */
 const HUE_TOLERANCE = 20;
 
-/**
- * How much colour a nudged status role must still carry, as HSL saturation.
- *
- * A hue angle alone does not say a colour is coloured: channels one eight-bit
- * step apart carry a perfectly well-defined hue, so `#3a3a3b` is "blue" and would
- * pass the tolerance above while a "Delete forever" pill read as plain gray. The
- * floor is what makes the hue check mean something. Every shipped role clears
- * 0.29 (Everforest's link is the closest), so 0.25 leaves the ladder room to walk
- * a role toward a palette's ink without letting it arrive at a gray.
- */
 const CHROMA_FLOOR = 0.25;
 
-/**
- * The status roles the ladder NUDGES: the three inks, the link and the highlight
- * label, each printed as text and therefore re-measured on this palette's own
- * surfaces. They may drift, so they get the hue-and-chroma pair; everything else
- * in the family is inherited verbatim and gets pinned as an exact colour.
- */
 const NUDGED_HUES = [
   "ht-danger-ink",
   "ht-success-ink",
@@ -127,11 +84,6 @@ const NUDGED_HUES = [
   "ht-highlight-text",
 ] as const;
 
-/**
- * The status roles inherited UNCHANGED: every fill, the destructive ring and the
- * highlight wash. Nothing measures them against a palette surface, so a drift of
- * one step here is a derivation reaching a family it has no say in.
- */
 const INHERITED = [
   "ht-danger",
   "ht-danger-fill",
@@ -141,24 +93,12 @@ const INHERITED = [
   "ht-highlight",
 ] as const;
 
-/** A nudged role: the floor it owes, and the wash it is printed on. */
 type Nudged = {
   name: string;
   floor: number;
   wash?: { hue: string; alphas: number[] };
 };
 
-/**
- * Every role the derivation nudges, with the floor it owes and, when the role is
- * printed on a wash of a hue, the token that wash is made of and the alphas it
- * wears. A wash is not a neutral surface: it tints the backdrop TOWARDS the ink
- * sitting on it, so a role measured only on the plain rows is measured against
- * the easiest case. Body text owes 4.5:1; `ink-muted` is secondary and owes 3:1.
- *
- * `--ht-link` washes ITSELF (`bg-link/10`, the chat link chip), the status inks
- * wash their own hue (`bg-success/15`, `bg-danger/10`), and `--ht-highlight` is
- * already translucent, so it washes at full strength.
- */
 const NUDGED: Nudged[] = [
   { name: "ht-ink-muted", floor: 3 },
   { name: "ht-link", floor: 4.5, wash: { hue: "ht-link", alphas: [0.1] } },
@@ -209,10 +149,6 @@ describe("the palette library", () => {
     });
   }
 
-  // An import wears its own accent as the action colour, the focus ring and the
-  // primary button; Houston's own two sets keep the monochrome action and their
-  // authored buttons, so the accent rule must never leak into the base blocks it
-  // is derived alongside.
   for (const mode of ["light", "dark"] as const) {
     it(`Houston ${mode} keeps a monochrome action and focus`, () => {
       const action = parseColor(base[mode]["ht-action"]) as Rgba;
@@ -225,11 +161,6 @@ describe("the palette library", () => {
     });
 
     it(`Houston ${mode} swatches the link, the one colour it spends`, () => {
-      // Houston's action is ink by doctrine, so its primary button is near-ink
-      // in light and white frost in dark: a tile painted from that would be a
-      // fourth gray beside three others. The link is the one place these two
-      // sets spend colour on content, so it is what the tile shows. An import
-      // has an accent and shows that instead.
       const houston = palettes.find((p) => p.id === `houston-${mode}`);
       expect(houston).toBeDefined();
       expect(parseColor(houston?.swatch.accent ?? "")).toEqual(
@@ -263,8 +194,6 @@ describe.each(imported)("palette $id", (palette) => {
     }
   });
 
-  // The ladder must bottom out on an opaque gutter, or every ratio below is
-  // measured against a colour that does not exist.
   const gutter = parseColor(vars["ht-base"]) as Rgba;
   const screen = composite(vars["ht-background"], gutter) as Rgba;
   const surfaces: [string, Rgba][] = [
@@ -279,9 +208,6 @@ describe.each(imported)("palette $id", (palette) => {
     expect(screen.a).toBe(1);
   });
 
-  // Every composite the derivation guards, re-measured from the CSS: the four
-  // plain rows, plus each wash over each of those rows. A regression at any one
-  // of them is a role the user cannot read on a surface Houston paints it on.
   for (const { name, floor, wash } of NUDGED) {
     const washes: [string, Rgba][] = wash
       ? wash.alphas.flatMap((alpha) =>
@@ -302,10 +228,6 @@ describe.each(imported)("palette $id", (palette) => {
     }
   }
 
-  // The primary button is the palette's loudest surface, and it speaks its mode's
-  // grammar: a solid accent pill in light, Houston dark's frost pill tinted with
-  // the accent in dark. Either way a Houston near-ink fill surviving here is the
-  // bug this pair exists for.
   if (palette.mode === "light") {
     it("fills the primary button with its own accent, rimless", () => {
       const accent = parseColor(loadPalette(palette).accent) as Rgba;
@@ -352,8 +274,6 @@ describe.each(imported)("palette $id", (palette) => {
       ).toBeGreaterThan(rim.a);
     });
 
-    // The frost is translucent, so what it sits on is part of its colour: the
-    // label owes the body floor on both surfaces a primary button sits on.
     for (const [name, under] of [
       ["field", "ht-input"],
       ["gutter", "ht-base"],
@@ -371,20 +291,11 @@ describe.each(imported)("palette $id", (palette) => {
   }
 
   it("swatches the colour its primary button paints", () => {
-    // The picker paints a tile from these four hexes and a filled pill from the
-    // fourth, so that fourth hex has to be the colour the real button wears: the
-    // accent, which IS `--ht-cta` in light and the hue the frost pill and its rim
-    // carry in dark. Reading it off the palette's ACTION role instead let a
-    // monochrome import (the `white` theme, whose accent is a gray) fall through
-    // to Houston's blue link and show a blue pill over a gray button.
     const accent = parseColor(loadPalette(palette).accent) as Rgba;
     expect(parseColor(palette.swatch.accent)).toEqual(accent);
   });
 
   it("wears its own accent as the action colour and the focus ring", () => {
-    // Read from the vendored file, not from the build's own maths: the palette
-    // IS its accent, and a derivation that quietly substituted another hue
-    // would still be self-consistent.
     const accent = parseColor(loadPalette(palette).accent) as Rgba;
     expect(parseColor(vars["ht-action"])).toEqual(accent);
     expect(parseColor(vars["ht-focus"])).toEqual(accent);
@@ -399,20 +310,6 @@ describe.each(imported)("palette $id", (palette) => {
     ).toBeGreaterThanOrEqual(4.5);
   });
 
-  /**
-   * Status is SEMANTICS, not surface, so the whole family and the link are
-   * Houston's own, taken from the set of the same mode. A terminal palette's
-   * red, green and yellow are what a shell prints error text in, and in the
-   * `white` theme they are three grays: derived from those, a "Delete forever"
-   * pill would be indistinguishable from a normal button and a resting link
-   * would be plain black text.
-   *
-   * So the fills are inherited verbatim, and pinned here as the exact colours
-   * they are. Only the roles worn AS TEXT climb THIS palette's ladder: they may
-   * drift, but never off their family and never into a gray, which is what the
-   * chroma floor is for. That the nudge kept them readable is what the contrast
-   * matrix above proves.
-   */
   it("inherits Houston's status fills unchanged", () => {
     for (const name of INHERITED) {
       expect(

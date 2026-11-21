@@ -1,13 +1,3 @@
-/**
- * RoutineScreen — a routine's own page (PRODUCT-1208), REPLACING the tab's
- * main content (the list) when a row is clicked; never a side panel, never a
- * popover. The user can read AND edit here: the name (in-place rename), the
- * description (the routine's prompt, in a plain textarea) and the run
- * frequency (the same schedule builder the rows use). "Runs" opens the
- * execution history in a modal; "Open chat" continues to the setup chat in
- * the shell panel. Layout only — the header and sections own their pieces.
- */
-
 import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import type { RoutineRun } from "@houston-ai/routines";
 import { useEffect, useState } from "react";
@@ -25,15 +15,10 @@ import { RoutineSnoozeBanner } from "./routine-snooze-banner";
 interface Props {
   agent: Agent;
   routine: Routine;
-  /** ALL of the agent's runs (the tab's cached query); filtered here. */
   allRuns: RoutineRun[] | undefined;
   runsLoading: boolean;
-  /** Humanized event summary for a trigger routine (useRoutineTriggers). */
   triggerSummary?: string;
-  /** The account-wide zone cron schedules fire in. */
   accountTimezone: string;
-  /** Whether Escape should leave the screen (false while a chat panel is the
-   *  active surface — its own Escape handler owns the key then). */
   escapeActive: boolean;
   onBackToList: () => void;
   onOpenChat: () => void;
@@ -57,7 +42,6 @@ export function RoutineScreen({
   const [runsOpen, setRunsOpen] = useState(false);
   const readerFor = useRoutineReader(routine.created_by);
 
-  // A refusal's toast comes from the hook (one per write, even after unmount).
   const save = (updates: RoutineUpdate) =>
     updateRoutine.mutate({
       agentPath: agent.folderPath,
@@ -65,8 +49,6 @@ export function RoutineScreen({
       updates,
     });
 
-  // Escape leaves the screen (back to the list) — same key convention as the
-  // panes — but only while this screen is the active surface.
   useEffect(() => {
     if (!escapeActive) return;
     const onKeyDown = (e: KeyboardEvent) => {

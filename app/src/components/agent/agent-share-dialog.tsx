@@ -31,13 +31,6 @@ import { AgentShareAddPeople } from "./agent-share-add-people";
 import { AgentSharePersonRow } from "./agent-share-person-row";
 import { useShareAgent } from "./use-share-agent";
 
-/**
- * Google Drive-style Share sheet for an agent. Lists the people with access,
- * each with a Manager / Can use / Remove control, plus a member picker to add
- * someone. Backed by `setAgentAssignments` v2 (`{userId, access}[]`) with an
- * optimistic store patch + rollback (see `useShareAgent`). Render is gated by
- * the caller (`canShowAgentShareBlock`); the gateway is the real enforcer.
- */
 export function AgentShareDialog({
   agent,
   open,
@@ -52,7 +45,6 @@ export function AgentShareDialog({
   const { data: session } = useSession();
   const org = useOrg(isMultiplayer(capabilities) && open);
   const share = useShareAgent("share_dialog");
-  // A self-lockout action (remove/demote yourself) held for confirmation.
   const [pending, setPending] = useState<{
     person: SharePerson;
     action: ShareAction;

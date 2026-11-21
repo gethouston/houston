@@ -21,14 +21,10 @@ import {
 } from "./login";
 import { modelRuntime } from "./storage";
 
-// startLogin("anthropic") resolves the Claude CLI at this seam; a test host has
-// the real SDK binary installed, and spawning it would open a browser. Null =
-// the token paste flow, which is what these tests exercise.
 vi.mock("./anthropic-cli-binary", () => ({
   resolveClaudeCliBinary: () => null,
 }));
 
-/** Occupy the fixed Codex callback port, like a running Codex CLI would. */
 function occupyCodexCallbackPort(): Promise<Server> {
   return new Promise<Server>((resolve, reject) => {
     const s = createServer();
@@ -37,12 +33,6 @@ function occupyCodexCallbackPort(): Promise<Server> {
   });
 }
 
-/**
- * Stub the provider's OAuth login (reached via `modelRuntime.getProvider`) so
- * no real OAuth/network runs: it resolves the `info` (via the auth_url notify)
- * so startLogin returns, then hangs until cancelLogin tears it down. The mock
- * being CALLED is the signal that startLogin got past the port preflight.
- */
 function stubPiLogin(
   login: (
     interaction: import("@earendil-works/pi-ai").AuthInteraction,
@@ -69,9 +59,6 @@ function stubPiLogin(
 }
 
 test("openai-codex browser login preflights the callback port and fails fast when it is busy (no pi call, slot free)", async () => {
-  // A real Codex CLI holding 1455 used to leave the user on a 5-min spinner:
-  // pi swallows the bind error. The preflight turns it into an instant,
-  // actionable error BEFORE pi is even invoked, and never wedges the slot.
   const squatter = await occupyCodexCallbackPort();
   const piLogin = stubPiLogin();
   try {
@@ -82,16 +69,13 @@ test("openai-codex browser login preflights the callback port and fails fast whe
     expect(Date.now() - started).toBeLessThan(2_000);
     expect(err).toBeInstanceOf(CodexCallbackPortInUseError);
     expect((err as Error).message).toContain("Close other AI coding tools");
-    // Short-circuited BEFORE handing off to pi.
     expect(piLogin).not.toHaveBeenCalled();
-    // No state was added, so the slot is free for an immediate retry.
     expect(
       (await getAuthStatus()).providers.find(
         (p) => p.provider === "openai-codex",
       )?.login,
     ).toBeNull();
 
-    // Release the port; the retry now proceeds PAST the preflight into pi.
     await new Promise<void>((r) => squatter.close(() => r()));
     const info = await startLogin("openai-codex", false);
     expect(info.kind).toBe("url");
@@ -106,15 +90,8 @@ test("openai-codex browser login preflights the callback port and fails fast whe
 });
 
 test("a retry click during an in-flight codex browser login reuses the flow instead of reporting its own port busy", async () => {
-  // pi binds 1455 the moment the browser flow starts. The preflight used to run
-  // BEFORE the idempotent reuse check, so a second connect click (user's
-  // browser tab hung / opened behind the window) tripped over Houston's OWN
-  // callback server: "Another app on this computer is using the sign-in port"
-  // on every retry for the whole 10-min abandonment window (Sentry issue
-  // 7639120568). Reuse must win: same info back, no error, pi invoked once.
   const pi: { server: Server | null } = { server: null };
   const piLogin = stubPiLogin(async (interaction) => {
-    // Simulate pi's in-process callback server holding the fixed port.
     pi.server = await occupyCodexCallbackPort();
     interaction.notify({ type: "auth_url", url: "https://auth.example/codex" });
     return new Promise<never>(() => {});
@@ -123,7 +100,6 @@ test("a retry click during an in-flight codex browser login reuses the flow inst
     const first = await startLogin("openai-codex", false);
     expect(first.kind).toBe("url");
 
-    // The retry click, with 1455 held by our own in-flight flow.
     const second = await startLogin("openai-codex", false);
     expect(second).toBe(first);
     expect(piLogin.oauthLogin).toHaveBeenCalledTimes(1);
@@ -137,8 +113,6 @@ test("a retry click during an in-flight codex browser login reuses the flow inst
 });
 
 test("openai-codex device-code login does NOT preflight the callback port", async () => {
-  // The device-code flow (deviceAuth:true) binds no loopback server, so a
-  // squatter on 1455 must not block it: it goes straight to pi.
   const squatter = await occupyCodexCallbackPort();
   const piLogin = stubPiLogin();
   try {
@@ -154,92 +128,58 @@ test("openai-codex device-code login does NOT preflight the callback port", asyn
 });
 
 test("codexLoginMethod: browser login for any client that can catch/relay the loopback callback", () => {
-  // The desktop app sends deviceAuth:false: the user approves in their own
-  // browser, the client catches the fixed localhost:1455 redirect and relays
-  // code+state, and the runtime finishes the token exchange.
   expect(codexLoginMethod({ deviceAuth: false })).toBe(
     OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   );
 });
 
 test("codexLoginMethod: device code for any remote client (deviceAuth) — cloud and self-host", () => {
-  // A remote webapp (cloud OR self-host) sends deviceAuth:true: the user types a
-  // one-time code while the runtime polls.
   expect(codexLoginMethod({ deviceAuth: true })).toBe(
     OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
   );
 });
 
 test("codexLoginMethod: browser login for a headless/remote runtime whose client relays the callback", () => {
-  // Cloud-relay scenario: the runtime is headless but the desktop client still
-  // catches http://localhost:1455/auth/callback and relays code+state via
-  // completeLogin. The browser flow races its local callback server against that
-  // manually-relayed code, so headless no longer forces the device code — only
-  // deviceAuth decides, and deviceAuth:false means the client CAN relay.
   expect(codexLoginMethod({ deviceAuth: false })).toBe(
     OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   );
 });
 
 test("autoPromptAnswer: github-copilot auto-answers the enterprise-domain prompt", () => {
-  // pi-ai's Copilot login OPENS with an optional "GitHub Enterprise URL/domain"
-  // question before emitting the device code; leaving it unanswered deadlocks
-  // the flow. With no domain (individual Copilot) we answer "" => github.com
-  // (and never surface enterprise jargon to a non-technical user).
   expect(autoPromptAnswer("github-copilot")).toBe("");
 });
 
 test("autoPromptAnswer: github-copilot forwards the Enterprise company domain", () => {
-  // Copilot Enterprise: the domain the user typed on the Enterprise card becomes
-  // the prompt answer, so pi-ai runs the device-code flow against the company's
-  // GitHub instead of github.com. The empty answer above is the individual case.
   expect(autoPromptAnswer("github-copilot", "acme.ghe.com")).toBe(
     "acme.ghe.com",
   );
-  // A domain is meaningless for any other provider (their onPrompt is the paste).
   expect(autoPromptAnswer("anthropic", "acme.ghe.com")).toBeNull();
 });
 
 test("autoPromptAnswer: other providers defer to the user (null => paste promise)", () => {
-  // Every other provider's onPrompt is a manual code paste, which MUST wait for
-  // the user — null tells startLogin to hand back the paste promise.
   expect(autoPromptAnswer("anthropic")).toBeNull();
   expect(autoPromptAnswer("openai-codex")).toBeNull();
 });
 
 test("the OpenAI-compatible provider rejects the OAuth and api-key connect paths", async () => {
-  // It connects via its own /providers/openai-compatible route (base URL +
-  // model), so the OAuth and pasted-key paths must turn it away rather than
-  // start a sign-in pi has no provider for.
   await expect(startLogin("openai-compatible")).rejects.toThrow(/OAuth/);
   expect(() => setApiKey("openai-compatible", "k")).toThrow(/API key/);
 });
 
 test("setApiKey rejects an OAuth provider and an id pi-ai doesn't know", () => {
-  // An OAuth pi provider (curated OR uncurated) must NOT accept a pasted key —
-  // it connects via startLogin, so setApiKey turns it away with a clear reason.
   expect(() => setApiKey("openai-codex", "sk-x")).toThrow(/API key/);
   expect(() => setApiKey("anthropic", "sk-x")).toThrow(/API key/);
-  // An id pi-ai has never heard of isn't a provider at all: rejected up front so
-  // a typo can't silently persist a dead credential.
   expect(() => setApiKey("not-a-real-provider", "sk-x")).toThrow(
     /unknown provider/,
   );
 });
 
 test("cancelLogin: benign with nothing in flight, throws on an unknown provider", () => {
-  // The client fires cancel on dialog dismiss regardless of flow state, so a
-  // no-op cancel must never error; a typo'd provider id is a caller bug.
   expect(() => cancelLogin("anthropic")).not.toThrow();
   expect(() => cancelLogin("not-a-provider")).toThrow(/unknown provider/);
 });
 
 test("cancelLogin: tears down the in-flight flow so a retry starts clean (HOU-664)", async () => {
-  // Anthropic now uses the sanctioned setup-token paste flow (`auth_code`, no
-  // loopback server). Independent of the flow shape, the old cosmetic cancel
-  // left the flow alive and the slot pending, so a retry collided with the
-  // stale login (the HOU-438 failure class). A real cancel frees the slot
-  // immediately so a retry builds a fresh login.
   const first = await startLogin("anthropic");
   expect(first.kind).toBe("auth_code");
   expect(
@@ -249,16 +189,12 @@ test("cancelLogin: tears down the in-flight flow so a retry starts clean (HOU-66
 
   cancelLogin("anthropic");
 
-  // Slot freed at once: status no longer reports a pending login.
   expect(
     (await getAuthStatus()).providers.find((p) => p.provider === "anthropic")
       ?.login,
   ).toBeNull();
 
-  // Let the rejected paste promise unwind the flow...
   await new Promise((r) => setTimeout(r, 100));
-  // ...then a retry yields a FRESH login (idempotent reuse of a live login
-  // returns the same info object; a fresh start builds a new one).
   const second = await startLogin("anthropic");
   expect(second.kind).toBe("auth_code");
   expect(second).not.toBe(first);
@@ -267,20 +203,11 @@ test("cancelLogin: tears down the in-flight flow so a retry starts clean (HOU-66
 });
 
 test("LOCAL_PLACEHOLDER_KEY exists for keyless local servers", () => {
-  // Ollama/LM Studio ignore the Authorization header, but pi requires SOME key,
-  // so a blank key becomes this placeholder.
   expect(LOCAL_PLACEHOLDER_KEY.length).toBeGreaterThan(0);
 });
 
 test("an abandoned login expires: reports 'Login timed out' and frees the flow for a retry", async () => {
-  // An abandoned flow held pi's OAuth callback server bound to the provider's
-  // fixed port (Codex: 1455) FOREVER, blocking every future sign-in for that
-  // provider machine-wide. The expiry tears the flow down like cancelLogin but
-  // records the attempt as a failure so status polls surface it.
   vi.useFakeTimers({ shouldAdvanceTime: true });
-  // Abandonment is expected user behavior, so the expiry must log at WARN
-  // (crash-feed breadcrumb), never ERROR (a Sentry error event per walked-away
-  // sign-in).
   const warnSpy = vi.spyOn(console, "warn");
   const errorSpy = vi.spyOn(console, "error");
   try {
@@ -300,8 +227,6 @@ test("an abandoned login expires: reports 'Login timed out' and frees the flow f
     expect(abandoned(warnSpy.mock.calls)).toBe(true);
     expect(abandoned(errorSpy.mock.calls)).toBe(false);
 
-    // The paste promise was rejected (flow unwound, port freed), so a retry
-    // builds a FRESH login instead of reusing the dead one.
     const second = await startLogin("anthropic");
     expect(second).not.toBe(first);
     cancelLogin("anthropic");
@@ -314,9 +239,6 @@ test("an abandoned login expires: reports 'Login timed out' and frees the flow f
 });
 
 test("reusing an in-flight login re-arms the abandonment clock", async () => {
-  // A second connect click near the deadline idempotently reuses the live flow
-  // — the user just asked to sign in, so they get the FULL window again, not
-  // the stale remainder of the first click's.
   vi.useFakeTimers({ shouldAdvanceTime: true });
   try {
     const first = await startLogin("anthropic");
@@ -324,14 +246,12 @@ test("reusing an in-flight login re-arms the abandonment clock", async () => {
     const again = await startLogin("anthropic");
     expect(again).toBe(first);
 
-    // Crossing the ORIGINAL deadline must not kill the refreshed flow…
     await vi.advanceTimersByTimeAsync(4_000);
     let row = (await getAuthStatus()).providers.find(
       (p) => p.provider === "anthropic",
     );
     expect(row?.login?.status).toBe("awaiting_user");
 
-    // …but the refreshed window still expires on its own schedule.
     await vi.advanceTimersByTimeAsync(LOGIN_TIMEOUT_MS);
     row = (await getAuthStatus()).providers.find(
       (p) => p.provider === "anthropic",
@@ -343,9 +263,6 @@ test("reusing an in-flight login re-arms the abandonment clock", async () => {
   }
 });
 
-// GitHub's real 403 for an account with no Copilot subscription (device flow
-// SUCCEEDED; the copilot_internal token exchange refused). Synthetic handle —
-// the body always carries the signed-in user's, which must never reach a toast.
 const NO_ACCESS_403 =
   '403 Forbidden: {"error_details":{"message":"No access to GitHub Copilot found. You are currently logged in as octocat.","notification_id":"no_copilot_access","title":"Sign up for GitHub Copilot","url":"https://github.com/github-copilot/signup?editor={EDITOR}"},"message":"Resource not accessible by integration","can_signup_for_limited":true}';
 
@@ -353,23 +270,15 @@ test("loginFailureMessage: copilot no_copilot_access collapses to the friendly s
   expect(loginFailureMessage("github-copilot", NO_ACCESS_403)).toBe(
     COPILOT_NO_ACCESS_ERROR,
   );
-  // An unrelated Copilot failure keeps its real message (beta policy).
   expect(
     loginFailureMessage("github-copilot", "Device flow failed: expired_token"),
   ).toBe("Device flow failed: expired_token");
-  // Another provider never matches, even with a lookalike body.
   expect(loginFailureMessage("openai-codex", NO_ACCESS_403)).toBe(
     NO_ACCESS_403,
   );
 });
 
 test("github-copilot: a no-Copilot-subscription 403 surfaces the sentinel in auth status, never the raw GitHub body", async () => {
-  // The user authorized the device flow, then GitHub's token exchange answered
-  // 403 no_copilot_access. The raw JSON (with the user's GitHub handle) used to
-  // land verbatim in the failure toast; status must now carry the sentinel.
-  // The refusal is also an EXPECTED business state: it must log as a WARN
-  // breadcrumb without the handle, never a console.error that mints a Sentry
-  // error event per subscription-less user (Sentry issue 7623743057).
   const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   const piLogin = stubPiLogin((interaction) => {
@@ -394,7 +303,6 @@ test("github-copilot: a no-Copilot-subscription 403 surfaces the sentinel in aut
       calls.map((args) => args.join(" ")).join("\n");
     expect(logged(warnSpy.mock.calls)).toContain("no_copilot_access");
     expect(logged(errorSpy.mock.calls)).not.toContain("no_copilot_access");
-    // The GitHub handle from the raw body never reaches any log line.
     expect(logged(warnSpy.mock.calls)).not.toContain("octocat");
   } finally {
     piLogin.mockRestore();
@@ -405,8 +313,6 @@ test("github-copilot: a no-Copilot-subscription 403 surfaces the sentinel in aut
 });
 
 test("a cancelled login's expiry never resurrects an error row", async () => {
-  // Cancel frees the slot (login: null). The expiry firing later must stand
-  // down — not overwrite the clean slate with a phantom timeout error.
   vi.useFakeTimers({ shouldAdvanceTime: true });
   try {
     await startLogin("anthropic");

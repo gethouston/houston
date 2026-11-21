@@ -48,7 +48,6 @@ test("an absent or garbled floor header is no floor", () => {
     "-5",
     "15m",
     "abc",
-    // How Node joins a repeated custom header: never a floor.
     "1, 15",
     [],
   ])

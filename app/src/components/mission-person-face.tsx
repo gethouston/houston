@@ -13,20 +13,9 @@ import {
 import { ChevronDown, Users } from "lucide-react";
 import type * as React from "react";
 
-/** The minimal face shape both the trigger and the menu rows render. */
 export type FilterFace = Pick<KanbanPerson, "label" | "imageUrl"> &
   Partial<Pick<KanbanPerson, "id">>;
 
-/**
- * A compact avatar face for a human, used by the person filter, the chat
- * sender line, and the learnings provenance line. When the person's stable
- * `id` is known the initials fallback wears their opaque `person.*` tone
- * (one person = one tone everywhere, same rule as the board face stacks);
- * without an id it stays on the neutral fallback fill. Defaults to the 20px
- * filter-row size; a consumer needing another (the chat sender column's 32px)
- * overrides `className` + `initialsClassName` together so the type scales
- * with the disc.
- */
 export function PersonFace({
   person,
   className,
@@ -58,16 +47,6 @@ export function PersonFace({
   );
 }
 
-/**
- * The person-filter trigger button, shared by the teaser and the real filter.
- * Shows the active face (or a generic Users glyph) plus, when expanded, the
- * active label and a chevron.
- *
- * Rendered under `<DropdownMenuTrigger asChild>`, so Radix's Slot injects the
- * open-toggle `onClick`, `ref`, and `aria-*` as props on THIS component — they
- * must be forwarded to the underlying `Button` (spread `...props`) or the menu
- * would never open.
- */
 export function FilterTrigger({
   face,
   text,

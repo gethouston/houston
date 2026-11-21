@@ -1,13 +1,3 @@
-/**
- * The host's pre-agent connect surface (`/setup-runtime/*`) — what the WebApp
- * connect gate and ConnectView speak BEFORE any agent exists. Mirrors
- * `packages/host/src/routes/setup-runtime.ts`: only the connect surface is
- * exposed (providers, auth status, login/complete/cancel, credential capture /
- * api-key / claude-oauth); anything else under the prefix is a 404, exactly
- * like the real host. Backed by the same {@link state.FLAT_KEY} slot the old
- * flat routes used, so the seed (Claude connected + active) clears the gate.
- */
-
 import { parseClaudeOAuthEnvelope } from "@houston/protocol";
 import type { ProviderId } from "@houston/runtime-client";
 import { json } from "./http";
@@ -16,7 +6,6 @@ import * as state from "./state";
 const PREFIX = "/setup-runtime";
 const LOGIN = /^auth\/([^/]+)\/login(?:\/(complete|cancel))?$/;
 
-/** Handle a `/setup-runtime/*` request; null when the path isn't ours. */
 export function handleSetupRuntime(
   method: string,
   path: string,
@@ -31,8 +20,6 @@ export function handleSetupRuntime(
   if (method === "GET" && rest === "auth/status")
     return json(state.authStatusFor(state.FLAT_KEY));
 
-  // Connect-once capture: the real host pulls the setup runtime's credential
-  // into the workspace-central store. Here: mark the provider connected.
   if (method === "POST" && rest === "credential/capture") {
     const provider = (
       typeof body?.provider === "string" ? body.provider : "anthropic"
@@ -51,7 +38,6 @@ export function handleSetupRuntime(
     return json({ ok: true });
   }
 
-  // Same validation as the real route: a malformed envelope is a clean 400.
   if (method === "POST" && rest === "credential/claude-oauth") {
     const parsed = parseClaudeOAuthEnvelope(body ?? {});
     if (!parsed.ok) return json({ error: parsed.error }, 400);

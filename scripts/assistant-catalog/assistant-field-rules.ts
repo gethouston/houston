@@ -1,17 +1,5 @@
 import type { EntityRule } from "./assistant-entity-rules.ts";
 
-/**
- * FIELDS INSIDE A BODY OBJECT, matched as `<parameter>.<field>` (the nested walk
- * offers the bare field name too, so a rule can claim either).
- *
- * Qualified on purpose: `provider` at the top level of the integration
- * operations is the app-integration provider, a different thing entirely from
- * the AI provider these pin. A bare rule would claim both.
- *
- * Kept beside the path rules rather than among them because they answer a
- * different question - the path says nothing about a body field, so the only
- * evidence here is the name and the parameter carrying it.
- */
 export const FIELD_SOURCES: readonly EntityRule[] = [
   {
     names: ["choice.provider", "input.provider", "updates.provider"],
@@ -45,9 +33,6 @@ export const FIELD_SOURCES: readonly EntityRule[] = [
     unlisted:
       "Toolkits belong to the integration provider, so read the slugs from integrationToolkits.",
   },
-  // The people an agent is assigned to, as a LIST of user ids. The object form
-  // of the same parameter carries `userId` per entry, which the nested walk
-  // claims through the `userId` rule above.
   {
     names: ["assignments"],
     discovery: "getOrgPeople",

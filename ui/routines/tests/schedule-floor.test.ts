@@ -16,12 +16,6 @@ import {
 } from "../src/schedule-floor.ts";
 import type { SchedulePreset } from "../src/types.ts";
 
-/**
- * A stand-in for the plan rule the app binds (the SDK's real-gap rule): a
- * minute step restarts at the top of the hour, so `*\/16` fires :48 then :00,
- * while `@every 16m` runs exactly 16 apart. The builder only ever asks the
- * rule; it never judges a cadence itself.
- */
 function realGap(schedule: string): number | null {
   const every = schedule.match(/^@every (\d+)(m|h)$/);
   if (every) return Number(every[1]) * (every[2] === "h" ? 60 : 1);
@@ -64,7 +58,6 @@ function pick(patch: Partial<BuilderPick>): BuilderPick {
   };
 }
 
-/** Run one stepper action and return where it landed, or null for none. */
 function step(every: string, act: "down" | "up" | "commit"): number | null {
   let landed: number | null = null;
   const stepper = floorStepper(every, "minutes", MINIMUM, (to) => {
@@ -139,7 +132,6 @@ describe("schedule floor: the minutes stepper", () => {
   });
 
   it("steps from a typed count below the minimum onto it", () => {
-    // The press keeps focus, so no blur snap runs first.
     assert.equal(step("5", "up"), 15);
     assert.equal(step("5", "down"), null);
     assert.equal(step("", "up"), 15);
@@ -176,7 +168,6 @@ describe("schedule floor: what the builder emits", () => {
       const refused = builderOutput(pick({ intervalEvery: n, floor: FREE }));
       assert.equal(refused.floorOk, false, n);
       assert.equal(refused.schedule, "", n);
-      // The pick itself still reads honestly in the summary.
       assert.equal(refused.picked, spelled, n);
     }
   });

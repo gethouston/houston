@@ -14,14 +14,8 @@ import { SentRequests } from "../backends/pi/model-phase";
 import { PiSession } from "../backends/pi/session";
 import { hedgedModelRuntime } from "./hedged-runtime";
 
-/**
- * A REAL pi AgentSession, built the way the pi backend builds one
- * (backends/pi/backend.ts wraps its model runtime the same way), over the
- * scripted faux provider, with a hedge deadline of `deadlineMs`.
- */
 export const DEADLINE_MS = 60;
 
-/** A request that never opens its response, until it is cancelled. */
 export const neverAnswers: FauxResponseStep = (_context, options) =>
   new Promise((_resolve, reject) => {
     options?.signal?.addEventListener("abort", () =>

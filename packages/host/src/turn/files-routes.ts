@@ -4,15 +4,6 @@ import { defineRouteFamily } from "../routes/registry";
 import { stagedUploads } from "../uploads/commit";
 import { handleFiles } from "./files";
 
-/**
- * The Files tab as ROUTES. The handler itself lives in files.ts, which is at
- * the file-size cap; this module is only its declaration.
- *
- * `owns` carries the boundary the handler has always kept: EVERY `files*` path
- * is answered here, unknown subpath and wrong method included, because the
- * agent's runtime has no files route either — forwarding one would turn a
- * plain "not found" into a runtime error about something else entirely.
- */
 const FILES = "/agents/:agentId/files";
 
 defineRouteFamily({

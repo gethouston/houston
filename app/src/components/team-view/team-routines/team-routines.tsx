@@ -13,7 +13,6 @@ import { useTeamRoutineActions } from "./use-team-routine-actions";
 import { useTeamRoutineHost } from "./use-team-routine-host";
 import { useTeamRoutinesData } from "./use-team-routines-data";
 
-/** One employee's routines, with the selected routine's chat in the shell panel. */
 export function TeamRoutines({ agent }: { agent: Agent }) {
   const { t } = useTranslation(["teams", "routines"]);
   const tz = useTimezonePreference();
@@ -25,14 +24,8 @@ export function TeamRoutines({ agent }: { agent: Agent }) {
     accountTimezone: tz.timezone ?? "UTC",
     triggerSummaries: data.triggers.triggerSummaries,
   });
-  // The leading glyph depends on whether this host supports triggers.
   const leadingIcon = useRoutineLeadingIcon(data.triggers.triggersEnabled);
 
-  // Hooks may not run conditionally, so both honest non-list states come after
-  // every hook above.
-
-  // Schedule rows render against the real account zone, so the list waits for
-  // the timezone roundtrip once per open.
   if (!tz.loaded || !tz.timezone) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -44,10 +37,6 @@ export function TeamRoutines({ agent }: { agent: Agent }) {
   }
 
   const count = data.list.routines.length;
-  // Genuinely nothing to show: the grid renders ONLY its empty state, which
-  // carries the create button, so the header lets go of it. One draft row is
-  // enough to end that — the grid has rows again, and the header takes the
-  // button back.
   const listEmpty = count === 0 && data.drafts.length === 0;
 
   const createButton = (
@@ -73,8 +62,6 @@ export function TeamRoutines({ agent }: { agent: Agent }) {
             )}
           </PageHeaderTools>
 
-          {/* The strip pays the list's own gutter, so its left edge lands on the
-            rows' rather than four pixels inside them. */}
           <div className="px-3">
             <AgentReadsFailed
               failures={data.failures}
@@ -93,14 +80,10 @@ export function TeamRoutines({ agent }: { agent: Agent }) {
             createButton={createButton}
           />
 
-          {/* The zone every schedule above is read in, and the one place to
-            change it. Drops with the list: an empty state has no schedules. */}
           {!listEmpty && <TeamRoutinesFooter tz={tz} />}
         </div>
       )}
 
-      {/* The selected routine's chat, portaled into the shared shell panel. It
-          adds no layout here. */}
       {host.node}
     </div>
   );

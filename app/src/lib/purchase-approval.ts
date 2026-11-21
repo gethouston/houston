@@ -8,10 +8,6 @@ import { canPurchaseInApp, isPurchaseOperation } from "./purchase-policy";
 type QuestionStep = Extract<InteractionStep, { kind: "question" }>;
 type ChatQuestionStep = Extract<ChatInteractionStep, { kind: "question" }>;
 
-/**
- * True when the AI Manager's approval card asks to start a purchase (a
- * checkout or a billing portal) inside a store app, which never sells.
- */
 export function refusesPurchaseApproval(
   operation: string | undefined,
 ): boolean {
@@ -22,12 +18,6 @@ export function refusesPurchaseApproval(
   );
 }
 
-/**
- * The purchase approval card a store app draws: it cannot approve, so it says
- * where the plan is managed and offers one answer, the decline. The host then
- * refuses the call, and the manager reads the same sentence in the reply
- * (`"<question>: <answer>"`) and can relay it.
- */
 export function storeRefusalQuestion(
   step: QuestionStep,
   options: ChatInteractionOption[] | undefined,

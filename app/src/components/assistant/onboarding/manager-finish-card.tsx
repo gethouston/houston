@@ -1,11 +1,6 @@
 import { Button, Spinner } from "@houston-ai/core";
 import { CARD_PRIMARY_ACTION_CLASS, CardActions } from "./card-actions";
 
-/**
- * The conversation's last step, under the manager's thanks: one primary
- * button that hands the view over.
- * While `saving`, it holds a spinner and takes no second press.
- */
 export function ManagerFinishCard({
   action,
   saving = false,

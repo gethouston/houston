@@ -13,7 +13,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/** A panel's filling: a label plus one line of realistic content. */
 function Pane({ title, body }: { title: string; body: string }) {
   return (
     <div className="flex h-full flex-col justify-center gap-1 p-4">
@@ -159,11 +158,6 @@ function ResizableSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = [
   "ResizableHandle",
   "ResizablePanel",

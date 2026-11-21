@@ -12,23 +12,9 @@ import {
   WorkspaceKeys,
 } from "./files-ops";
 
-/**
- * The names a VOLUME considers equal that JavaScript does not. `toLowerCase()`
- * is not APFS's fold table (`STRASSE.txt` opens a stored `straße.txt` there)
- * and byte equality is not its Unicode normalization (macOS stores a name
- * DECOMPOSED while the rename box sends it COMPOSED) — so the pre-check can
- * wave through a rename, a move or an upload that `rename(2)` then completes
- * by unlinking the user's other file.
- *
- * Every expectation below is taken from the volume the test is actually
- * running on, asked through the adapter's own `exists`/`keyCase`: a
- * case-sensitive APFS volume and a case-folding exFAT mount on Linux both
- * exist, and Linux CI runs the exact-compare half of each case for real.
- */
-
-const ROOT = "Houston/Bo"; // local layout: the agent dir IS the workspace root
-const NFD = "informe-españa.pdf"; // n + U+0303, the spelling macOS stores
-const NFC = NFD.normalize("NFC"); // ñ, the spelling a browser sends
+const ROOT = "Houston/Bo";
+const NFD = "informe-españa.pdf";
+const NFC = NFD.normalize("NFC");
 
 const freshVfs = () =>
   new FsVfs(mkdtempSync(join(tmpdir(), "houston-volume-")));
@@ -39,7 +25,6 @@ const taken = (err: unknown) =>
 test("a rename onto a neighbour the VOLUME folds is refused, never completed", async () => {
   const vfs = freshVfs();
   await vfs.writeText(`${ROOT}/straße.txt`, "kept");
-  // The volume's own answer: no string compare in JS agrees with it.
   const foldsSharpS = await vfs.exists(`${ROOT}/STRASSE.txt`);
   await vfs.writeText(`${ROOT}/notes.txt`, "moved");
 
@@ -54,7 +39,6 @@ test("a rename onto a neighbour the VOLUME folds is refused, never completed", a
   } else {
     expect(await rename).toBe("renamed");
   }
-  // The neighbour is intact either way — that is the whole point.
   expect(await readWorkspaceFile(vfs, ROOT, "straße.txt")).toEqual({
     content: "kept",
     base64: false,
@@ -81,9 +65,6 @@ test("a rename onto a neighbour spelled NFD is refused when the volume normalize
 });
 
 test("re-spelling the file ITSELF still renames, however the volume folds", async () => {
-  // The inode, not the name, decides: a destination that resolves to the
-  // source is the same file, and refusing it would make `straße.txt` and the
-  // decomposed `informe-españa.pdf` impossible to re-spell on macOS.
   const vfs = freshVfs();
   await vfs.writeText(`${ROOT}/straße.txt`, "doc");
   expect(
@@ -148,8 +129,6 @@ test("an upload the VOLUME would land on an existing file is deduped, not merged
 });
 
 test("a folded store refuses the move even when the key set said the name was free", async () => {
-  // The key set is a pre-check and can be wrong (here: built by a caller that
-  // did not carry the fold). The store is the door, and the door holds.
   const vfs = new MemoryVfs({ keyCase: { fold: "folded", normalize: true } });
   await vfs.writeText(`${ROOT}/readme.md`, "kept");
   await vfs.writeText(`${ROOT}/notes.md`, "moved");
@@ -168,10 +147,6 @@ test("a folded store refuses the move even when the key set said the name was fr
 });
 
 test("the composed spelling finds the file a normalizing volume stored decomposed", async () => {
-  // What the key set's own normalization is for: the listing hands back what
-  // `readdir` said (NFD on macOS) while agents and pasted paths arrive
-  // composed, and a key set that compared the bytes answered "file not found"
-  // about a file sitting right there.
   const vfs = freshVfs();
   await vfs.writeText(`${ROOT}/${NFD}`, "doc");
   const { normalize } = await vfs.keyCase();
@@ -184,7 +159,6 @@ test("the composed spelling finds the file a normalizing volume stored decompose
       base64: false,
     });
   } else {
-    // On an exact volume the composed spelling really is another name.
     await expect(rename).rejects.toMatchObject({ status: 404 });
   }
 });

@@ -5,13 +5,6 @@ import {
   runCodexDeviceCodeFallback,
 } from "../src/lib/codex-device-code-fallback.ts";
 
-// HOU-1063 — with OpenAI's fixed local callback port (1455) owned by another
-// process, the desktop loopback relay cannot run and the connect click used
-// to dead-end: no browser, an error toast, then the 5-minute connect timeout.
-// During onboarding that was a wall. The relay now restarts the sign-in as a
-// device-code grant (no local port needed); these pin the sequencing that
-// makes the fallback correct.
-
 function recordingOps(overrides: Partial<CodexDeviceCodeFallbackOps> = {}) {
   const calls: string[] = [];
   const failures: unknown[] = [];
@@ -35,16 +28,12 @@ function recordingOps(overrides: Partial<CodexDeviceCodeFallbackOps> = {}) {
 
 describe("runCodexDeviceCodeFallback", () => {
   it("reports the relay failure, then cancels BEFORE relaunching as device code", async () => {
-    // Cancel-first is load-bearing: the runtime's startLogin idempotently
-    // reuses an in-flight login, so relaunching without cancelling would hand
-    // back the same dead loopback URL instead of a device code.
     const { ops, calls } = recordingOps();
     await runCodexDeviceCodeFallback(new Error("port 1455 unavailable"), ops);
     deepStrictEqual(calls, ["report", "cancel", "launch"]);
   });
 
   it("reports a taken port as the machine's state, not a Houston error", async () => {
-    // HOUSTON-APP-5EV: the native listener's refusal arrives as a bare string.
     const { ops, calls } = recordingOps();
     await runCodexDeviceCodeFallback(
       "Could not start the Codex sign-in listener: port 1455 is unavailable (os error 10048). OpenAI requires this exact port, so close other AI coding tools (or wait a few minutes) and try again.",
@@ -72,8 +61,6 @@ describe("runCodexDeviceCodeFallback", () => {
   });
 
   it("skips the relaunch and surfaces the failure when cancel fails", async () => {
-    // Launching over an uncancelled login would reuse the dead loopback flow;
-    // better to fail loudly than to re-show a sign-in that cannot complete.
     const boom = new Error("cancel rejected");
     const { ops, calls, failures } = recordingOps({
       cancelLogin: async () => {
@@ -91,8 +78,6 @@ describe("runCodexDeviceCodeFallback", () => {
         throw new Error("cancel died");
       },
     });
-    // A rejection here would be an unhandled rejection in the event handler
-    // that drives the relay — resolving is part of the contract.
     await runCodexDeviceCodeFallback(new Error("port busy"), ops);
   });
 });

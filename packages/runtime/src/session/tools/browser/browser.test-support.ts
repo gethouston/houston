@@ -14,24 +14,15 @@ import { type HandoffBudget, makeBrowserTool } from "./tool";
 
 export const PASSWORD = "Password123";
 
-/** A fresh agent workspace: like every real one, it has its `.houston/` dir. */
 export function agentWorkspace(prefix = "browser-it-"): string {
   const dir = mkdtempSync(join(tmpdir(), prefix));
   mkdirSync(join(dir, ".houston"));
   return dir;
 }
 
-/**
- * The fixture site's name. The fence proxy refuses loopback, so the fixture
- * is reached the way a public site is: its name resolves (in the fixture's
- * DNS) to a public documentation address, which the proxy's connect then
- * carries to the server on 127.0.0.1.
- */
 export const SITE_HOST = "site.test";
 const SITE_ADDRESS = "198.51.100.7";
-/** A public-looking name whose DNS answer is this machine. */
 export const LOOPBACK_NAME_HOST = "loop.test";
-/** A name with one public and one private answer. */
 export const MIXED_NAME_HOST = "mixed.test";
 
 const FIXTURE_DNS: Record<string, readonly string[]> = {
@@ -40,7 +31,6 @@ const FIXTURE_DNS: Record<string, readonly string[]> = {
   [MIXED_NAME_HOST]: [SITE_ADDRESS, "10.0.0.7"],
 };
 
-/** The fixture's network: its own names, and the site's address on loopback. */
 export const FIXTURE_NET: FenceNet = {
   lookup: async (host) => {
     const answers = FIXTURE_DNS[host];
@@ -59,7 +49,6 @@ const LOGIN = `<!doctype html><title>Sign in</title><form method="post" action="
 <label>Password <input name="password" type="password"></label>
 <button>Sign in</button></form>`;
 
-/** A service on this machine the browser must never reach; it counts hits. */
 export function localService(): { server: Server; hits: string[] } {
   const hits: string[] = [];
   const server = createServer((req, res) => {
@@ -69,7 +58,6 @@ export function localService(): { server: Server; hits: string[] } {
   return { server, hits };
 }
 
-/** A sign-in site whose pages also try to reach `local` behind the page's back. */
 export function site(local: () => string): Server {
   return createServer((req, res) => {
     const signedIn = /(?:^|; )sid=ok/.test(req.headers.cookie ?? "");
@@ -98,7 +86,6 @@ export function site(local: () => string): Server {
       res.end();
       return;
     }
-    // A parser-blocking script that answers long after any test is over.
     if (req.url === "/never") {
       setTimeout(() => res.end(), 60_000).unref();
       return;
@@ -115,8 +102,6 @@ export function site(local: () => string): Server {
           : "<title>Account</title><h1>Please sign in</h1>",
       );
     else if (req.url === "/popup")
-      // A "Sign in with ..." button: the popup opens on a click (popup
-      // blocking is on, so a window opened without one never appears).
       res.end(`<title>Opener</title><h1>Opener</h1><button>Stay</button>
 <button onclick="window.open('/login')">Open sign-in</button>`);
     else if (req.url === "/sneaky")
@@ -140,7 +125,6 @@ export async function browserAvailable(): Promise<boolean> {
     return true;
   } catch (error) {
     if (process.env.CI) throw error;
-    // Local machines without a Chromium-family browser can skip these suites.
     return false;
   }
 }
@@ -149,15 +133,10 @@ export function fixturePool(options: BrowserPoolOptions = {}): BrowserPool {
   return new BrowserPool({ launch: fixtureLaunch, ...options });
 }
 
-/** The tool's execute, flattened to its text and details. */
 export function tool(workspaceDir: string, pool: BrowserPool) {
   return liveTool(workspaceDir, pool);
 }
 
-/**
- * The tool with the live view on, running in conversation `chat`; `signal`
- * stands in for a stopped turn.
- */
 export function handoffTool(
   workspaceDir: string,
   pool: BrowserPool,
@@ -186,7 +165,6 @@ function liveTool(
     ...live,
   });
   return async (params: BrowserParams, signal?: AbortSignal) => {
-    // SAFETY: the browser tool never reads its ExtensionContext.
     const result = await browser.execute(
       "t",
       params,

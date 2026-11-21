@@ -1,19 +1,10 @@
 import type { ComposioHttp } from "./composio-http";
 import type { RawToolkit } from "./composio-wire";
 
-/** Composio caps a toolkits page at 1000 whatever `limit` says. */
 const PAGE_SIZE = "1000";
 
-/** Upper bound on catalog pages walked per fetch (1000 toolkits each). */
 const MAX_CATALOG_PAGES = 10;
 
-/**
- * The whole toolkits catalog, every page. The catalog outgrew one page (1502
- * toolkits, 2026-09): reading only the first silently dropped telegram, odoo,
- * quickbooks… so this walks `next_cursor` until it is null. The seen-cursor
- * and page-count guards keep a misbehaving upstream from looping forever; a
- * failing page throws (no partial catalog served as if complete).
- */
 export async function fetchAllRawToolkits(
   http: ComposioHttp,
 ): Promise<RawToolkit[]> {

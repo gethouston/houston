@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { flatSidebarOrder, resolveSidebarSections } from "./agent-order.ts";
 
-/** Minimal Agent factory; only the fields the ordering reads. */
 function agent(id, extra = {}) {
   return {
     id,
@@ -40,7 +39,6 @@ test("new root agents lead stored entries in natural order", () => {
       ],
     }),
   );
-  // b,d are absent from the stored order and lead in input order.
   assert.deepEqual(
     res.ungrouped.map((x) => x.id),
     ["b", "d", "c", "a"],

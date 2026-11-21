@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest";
 import { FILE_PARAM_NOTE, presentFileParams } from "./integrations-file-params";
 import { renderSearchItems, schemaSignature } from "./integrations-render";
 
-/**
- * File arguments read to the model as workspace paths, never as Composio's
- * `{ name, mimetype, s3key }` object (agents filled s3key with their own path
- * and every Gmail attachment and Drive upload failed).
- */
-
 const FILE_UPLOADABLE = {
   type: "object",
   title: "FileUploadable",

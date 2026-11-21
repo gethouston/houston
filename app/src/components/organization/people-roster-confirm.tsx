@@ -4,20 +4,10 @@ import { useTranslation } from "react-i18next";
 import { PeopleRemoveConfirm } from "./people-remove-confirm";
 import { rosterPersonName } from "./people-tab-model";
 
-/** The two roster actions that ask before they happen. */
 export type PendingAction =
   | { kind: "remove"; member: OrgMember }
   | { kind: "makeOwner"; member: OrgMember };
 
-/**
- * The roster's confirm gates, worn by both actions that cannot be taken back
- * from the UI: removing somebody, and handing out OWNER authority (full org
- * control, membership and billing included). Removal has its own dialog
- * because it also lists the routines the person set up, which stop with them.
- *
- * Every other role change applies directly — the gateway guards the only
- * dangerous one (`last_owner`), which surfaces as a plain informational toast.
- */
 export function PeopleRosterConfirm({
   pending,
   onCancel,

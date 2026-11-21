@@ -20,10 +20,6 @@ import {
 } from "../../../src/specimen";
 import { AGENT_TURN, PEER_TURN, USER_TURN } from "./sample-chat";
 
-/**
- * The log is `flex-1` and sticks to the bottom of whatever it is given, so
- * every row hands it a fixed frame — the panel it lives in, at review size.
- */
 function Pane({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-72 w-full max-w-md flex-col overflow-hidden rounded-2xl border border-line bg-card">
@@ -32,7 +28,6 @@ function Pane({ children }: { children: ReactNode }) {
   );
 }
 
-/** The mission, long enough that the pane actually has somewhere to scroll. */
 function SampleTurns() {
   return (
     <>
@@ -163,7 +158,6 @@ function ChatConversationSpecimen() {
   );
 }
 
-/** The `@houston-ai/*` symbols this page documents. */
 export const sources: string[] = [
   "Conversation",
   "ConversationContent",

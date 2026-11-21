@@ -16,10 +16,6 @@ const member = (over: Partial<OrgMember> & { userId: string }): OrgMember => ({
 });
 
 describe("people tab model — rosterPersonName", () => {
-  // A row's aria-labels ("Change role for X", "Remove X") are built from this
-  // same helper as its visible line, so the two can never name one person two
-  // different ways — the roster showing "Ada Lovelace" while a screen reader
-  // announces "ada@x.io" is two people as far as the listener can tell.
   const row = member({
     userId: "u1",
     email: "ada@x.io",

@@ -13,12 +13,6 @@ import {
 } from "./op-seed.test-support";
 import type { OpRequest } from "./parse-op-request";
 
-/**
- * The migrate op's failure edges: whatever goes wrong, nothing another
- * writer landed is replaced and the agent is left for its fallback and a
- * later run, never marked migrated.
- */
-
 const AGENT = "workspaces/Personal/Ledger";
 const FLAT = JSON.stringify([
   { id: "r1", name: "Old", prompt: "p", schedule: "0 9 * * *" },
@@ -87,11 +81,6 @@ test("a family file another writer lands mid-migration stays theirs, and the run
   expect(fake.read(`${AGENT}/.houston/routines.json`)).toBe(FLAT);
 });
 
-/**
- * A store the migration can never run over answers its stable code (the
- * gateway stops retrying it until the store changes), never a bare 500 that
- * reads as a transient failure and costs a sandbox per retry.
- */
 test("two complete agent trees under one prefix are refused as layout_unexpected", async () => {
   const fake = legacy();
   fake.put("workspaces/Personal/Old/CLAUDE.md", "# Old\n");
@@ -128,8 +117,6 @@ test("a custody store that refuses the secrets keeps the plaintext and the run i
 
   const { status, answer } = await run(fake, { fetchImpl: refusing });
 
-  // Never a failure (a failure sends the agent to a pod, whose boot would
-  // move the same secrets): the files land, the version waits.
   expect(status).toBe(200);
   expect(answer.complete).toBe(false);
   expect(await fake.keys()).toContain("custom-integration-secrets.json");
@@ -206,8 +193,6 @@ test("a family file with trailing junk projects what the pod's read salvages", a
   ]);
 });
 
-/** A revisioned doc route whose answer to a family's next PUT can be
- *  scripted: `beforePut` runs first and may answer instead. */
 function scriptedDocs(
   beforePut?: (
     family: string,
@@ -255,8 +240,6 @@ test("a projection that loses its revision race checks the doc again", async () 
   const { state, docs } = scriptedDocs((family, docState) => {
     if (family !== "activity" || raced) return undefined;
     raced = true;
-    // A late writer lands an OLDER board between the revision read and
-    // this PUT.
     docState.set("activity", {
       doc: [{ id: "old", title: "Old", status: "done" }],
       revision: 1,
@@ -281,7 +264,6 @@ test("a doc route that refuses a family leaves the projection unconfirmed", asyn
   expect(answer.complete).toBe(false);
 });
 
-/** The gateway's custody route, scripted: `create` answers each POST. */
 function custodyRoute(create: () => Response, confirm?: string) {
   const calls: string[] = [];
   const fetchImpl = (async (url: unknown, init?: RequestInit) => {
@@ -290,8 +272,6 @@ function custodyRoute(create: () => Response, confirm?: string) {
     const method = init?.method ?? "GET";
     calls.push(method);
     if (method === "POST") return create();
-    // The first read finds nothing; a read after a refused create finds
-    // `confirm` (undefined: a read that has not caught up yet).
     const value =
       calls.filter((c) => c === "GET").length > 1 ? confirm : undefined;
     return value === undefined

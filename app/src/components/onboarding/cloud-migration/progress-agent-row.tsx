@@ -6,13 +6,6 @@ import type { MigrationTask } from "../../../lib/cloud-migration";
 import type { AgentMigrationProgress } from "../../../lib/cloud-migration-progress";
 import { MigrationUploadProgress } from "./migration-upload-progress";
 
-/**
- * One agent's row in the migration attention panel (HOU-719) — shown only when
- * a run needs the user (a failed agent): status icon, live step label, and the
- * per-row Retry. The happy path renders the aggregate wait screen instead
- * (see `progress-screen.tsx`).
- */
-
 function stepLabel(
   t: TFunction<"migration">,
   p: AgentMigrationProgress,
@@ -38,7 +31,6 @@ function stepLabel(
   }
 }
 
-/** The steps that mean "work is actively happening on this agent". */
 export const RUNNING: ReadonlySet<AgentMigrationProgress["step"]> = new Set([
   "creating",
   "warming",

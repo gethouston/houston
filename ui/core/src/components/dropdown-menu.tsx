@@ -227,11 +227,6 @@ function DropdownMenuSubContent({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
   return (
-    // Portalled like DropdownMenuContent, NOT rendered inline: inline puts the
-    // submenu's fixed-position popper inside the parent content's
-    // overflow-x-hidden/overflow-y-auto box, and WebKit (the desktop WKWebView,
-    // Safari) clips it there — the submenu paints but no click can reach it
-    // (HOU-708). Chromium doesn't clip, which is why this only broke on desktop.
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.SubContent
         data-slot="dropdown-menu-sub-content"

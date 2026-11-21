@@ -1,14 +1,3 @@
-// The routine schedule editor writes only real edits, and never "":
-// - opening it on a legacy schedule the picker now spells differently (`*/16`
-//   is written `@every 16m` today) and saving without edits writes nothing;
-// - an agent changing the schedule while it is open is not overwritten by a
-//   no-edit Save;
-// - an invalid pick (cleared count) cannot be saved;
-// - re-clicking the current preset/unit or retyping the same count is not an
-//   edit, while typing `05` over `5` is one and writes.
-// Mounted in a real (jsdom) DOM so the popover, the builder's effects and the
-// Save path are the shipped ones.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import "./support/dom-env.ts";
@@ -69,7 +58,6 @@ async function click(name: string) {
   });
 }
 
-/** Types into the interval count the way a person does (React's onChange). */
 async function typeCount(text: string) {
   const input = document.getElementById("interval-picker-every");
   if (!(input instanceof win.HTMLInputElement)) throw new Error("no count");
@@ -83,7 +71,6 @@ async function typeCount(text: string) {
   });
 }
 
-/** Mounts `element` in a fresh container; returns rerender and unmount. */
 async function mount(element: ReturnType<typeof h>) {
   const container = document.createElement("div");
   document.body.append(container);
@@ -99,7 +86,6 @@ async function mount(element: ReturnType<typeof h>) {
   };
 }
 
-/** Mounts the editor on `cron`; `setCron` re-renders it with a new live one. */
 async function mountEditor(cron: string) {
   const writes: string[] = [];
   const editor = (live: string) =>
@@ -163,7 +149,6 @@ describe("Save in the schedule editor", () => {
     const editor = await mountEditor("0 9 * * *");
     try {
       await click(DEFAULT_ROW_LABELS.editSchedule);
-      // The agent moves the routine while the editor is open.
       await editor.setCron("0 10 * * *");
       await click(DEFAULT_ROW_LABELS.save);
       assert.deepEqual(editor.writes, []);

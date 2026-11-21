@@ -4,36 +4,6 @@ import { describe, expect, it } from "vitest";
 // @ts-expect-error -- plain .mjs build helper, no type declarations needed here.
 import { parseColor } from "../build/color.mjs";
 
-/**
- * WCAG guard for every colour Houston paints as INFORMATION, where a
- * washed-out hue is not a style slip but something the user cannot read: the
- * two families that carry a sender's NAME in chat, the file-type tints the
- * Files list paints its icon glyphs with, the status hues set as text, the
- * initials on an organization avatar, and the label on the primary button,
- * whose dark fill is a frost the surface below shows through.
- *
- * Chat attributes every message to its sender WhatsApp-group style: the name
- * renders inside the bubble in that sender's stable tone. Text has to clear
- * 4.5:1, and a fill tuned to carry white initials does not automatically do so
- * — the `person.*` avatar fills measure 2.9-3.1:1 as dark-mode text, which is
- * exactly why the `person.name-*` variants exist.
- *
- * The surfaces are composited from the REAL tokens rather than pinned to a
- * literal, so if the bubble or canvas ever moves, this test re-measures against
- * the new surface instead of quietly guarding a stale one:
- *
- *   name surface (agent names)  light: background
- *                               dark:  background over base
- *   bubble surface (person)     light: chip over background
- *                               dark:  chip over background over base
- *
- *   content surfaces            both:  input, page, recessed-row fill
- *   (file-type glyphs, status inks)
- *
- * Values are read from the generated CSS (the same artifact the app ships), so
- * a token edit that regresses contrast fails here rather than in someone's eyes.
- */
-
 const CONTRAST_FLOOR = 4.5;
 const NON_TEXT_CONTRAST_FLOOR = 3;
 
@@ -58,7 +28,6 @@ function parseBlock(css: string, selector: string): Vars {
   return vars;
 }
 
-/** Source-over alpha compositing in sRGB space, matching how a browser paints. */
 function over(fg: Rgba, bg: Rgba): Rgba {
   const a = fg.a + bg.a * (1 - fg.a);
   const mix = (f: number, b: number) =>
@@ -66,14 +35,12 @@ function over(fg: Rgba, bg: Rgba): Rgba {
   return { r: mix(fg.r, bg.r), g: mix(fg.g, bg.g), b: mix(fg.b, bg.b), a };
 }
 
-/** WCAG 2.x relative luminance from sRGB components in [0, 1]. */
 function relativeLuminance({ r, g, b }: Rgba): number {
   const lin = (c: number) =>
     c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 
-/** WCAG 2.x contrast ratio; both colours must already be opaque. */
 function contrastRatio(a: Rgba, b: Rgba): number {
   const la = relativeLuminance(a);
   const lb = relativeLuminance(b);
@@ -97,12 +64,10 @@ function token(theme: Theme, name: string): Rgba {
   return parseColor(raw) as Rgba;
 }
 
-/** The canvas an agent name sits on: the screen surface, flattened onto the gutter. */
 function nameSurface(theme: Theme): Rgba {
   return over(token(theme, "ht-background"), token(theme, "ht-base"));
 }
 
-/** The chat bubble a teammate's name sits in: the chip recess over that canvas. */
 function bubbleSurface(theme: Theme): Rgba {
   return over(token(theme, "ht-chip"), nameSurface(theme));
 }
@@ -127,26 +92,10 @@ const FILETYPE_FAMILIES = [
   "generic",
 ] as const;
 
-/**
- * The status hues worn AS TEXT. `-text` is the label printed ON a status fill;
- * these are the hue itself set on a normal surface (a "2 failed" count, a
- * warning line under a field), which is body text and owes 4.5:1. The fills
- * (`success` / `warning` / `danger`) do not clear it in light: amber on white
- * measures ~2:1, which is exactly why the ink variants exist.
- */
 const STATUS_INKS = ["success", "warning", "danger"] as const;
 
-/**
- * The alphas a status chip washes its own hue at (`bg-success/15`,
- * `bg-danger/10`). A wash is NOT a neutral surface: it tints the backdrop
- * TOWARDS the ink sitting on it, so an ink measured only against `input` /
- * `background` / `chip` is measured against the easiest case. The densest wash
- * on the most recessed row is the real floor, and it is where the "Connected"
- * chip used to land at 4.31:1.
- */
 const STATUS_WASH_ALPHAS = [0.15, 0.1] as const;
 
-/** The status chip's own fill: the hue at `alpha` over the row it sits in. */
 function washSurface(
   theme: Theme,
   status: (typeof STATUS_INKS)[number],
@@ -160,12 +109,6 @@ function washSurface(
   );
 }
 
-/**
- * The two places a primary button sits: on a field-tone pane and on the bare
- * window gutter. Houston's dark button is a white FROST, so what is behind it
- * is part of its fill and its label is measured on the composite, never on the
- * token alone.
- */
 function buttonSurfaces(theme: Theme): [string, Rgba][] {
   return [
     ["pane", contentSurface(theme, "ht-input")],
@@ -173,11 +116,6 @@ function buttonSurfaces(theme: Theme): [string, Rgba][] {
   ];
 }
 
-/**
- * The organization avatar tones. Each is a gradient between two stops carrying
- * white initials, and a straight sRGB blend of two colours is never lighter than
- * its lighter end, so both stops clearing the floor means every pixel does.
- */
 const ORG_TONES = [
   "teal",
   "purple",
@@ -188,7 +126,6 @@ const ORG_TONES = [
   "crimson",
 ] as const;
 
-/** A recessed row inside a modal: the chip wash over the dialog's own fill. */
 function dialogChipSurface(theme: Theme): Rgba {
   return over(token(theme, "ht-chip"), token(theme, "ht-dialog"));
 }
@@ -211,8 +148,6 @@ describe.each([
   "dark",
 ] as const)("name text contrast (%s)", (theme) => {
   it("composites both surfaces to fully opaque colours", () => {
-    // The ladder bottoms out at an opaque gutter; if it ever stops doing so,
-    // every ratio below would be measured against a colour that does not exist.
     expect(token(theme, "ht-base").a).toBe(1);
     expect(nameSurface(theme).a).toBe(1);
     expect(bubbleSurface(theme).a).toBe(1);
@@ -233,9 +168,6 @@ describe.each([
 
   for (const family of FILETYPE_FAMILIES) {
     it(`file-type tint "${family}" clears ${CONTRAST_FLOOR}:1 on its tile`, () => {
-      // The Files icon tile is filled with --ht-input in both themes, and the
-      // glyph is the only thing inside it: a tint that fails here is a file
-      // type the user cannot read at a glance.
       const surface = contentSurface(theme, "ht-input");
       const ratio = contrastRatio(
         over(token(theme, `ht-filetype-${family}`), surface),
@@ -308,8 +240,6 @@ describe.each([
   for (const status of STATUS_INKS) {
     for (const alpha of STATUS_WASH_ALPHAS) {
       it(`status ink "${status}" clears ${CONTRAST_FLOOR}:1 on its own ${alpha * 100}% wash over a row in a dialog`, () => {
-        // The plan briefing's "Free" pill: a status chip in a chip-filled list
-        // on the dialog, which sits on no canvas of its own.
         const hue = token(theme, `ht-${status}`);
         const surface = over(
           { ...hue, a: hue.a * alpha },
@@ -342,9 +272,6 @@ describe.each([
     }
   }
 
-  // The link colour worn AS TEXT: every URL in chat and every link in a rendered
-  // markdown document. It sits on the page, in a field, on a recessed row and
-  // inside a teammate's chip bubble, and it owes body text's floor on each.
   for (const [surfaceName, surface] of [
     ["field", contentSurface(theme, "ht-input")],
     ["page", contentSurface(theme, "ht-background")],

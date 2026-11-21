@@ -8,7 +8,6 @@ interface GuardEntry {
   expiresAt: number;
 }
 
-/** One message reservation as a pool worker carries it (`approval-carry.ts`). */
 export interface GuardReservation {
   nonce: string;
   fingerprint: string;
@@ -19,7 +18,6 @@ export type MessageGuardResult =
   | { kind: "new"; release: () => void }
   | { kind: "duplicate" | "conflict" | "full" };
 
-/** Protect host-owned approval mutation while its short-lived receipts exist. */
 export class ApprovalMessageGuard {
   private readonly entries = new Map<string, GuardEntry>();
 
@@ -45,8 +43,6 @@ export class ApprovalMessageGuard {
       return {
         kind: previous.fingerprint === fingerprint ? "duplicate" : "conflict",
       };
-    // Never evict a live guard to admit a new one: that would let a retry
-    // mutate the receipt it was supposed to leave alone.
     if (this.entries.size >= this.capacity) return { kind: "full" };
     const entry = {
       agentId,
@@ -63,7 +59,6 @@ export class ApprovalMessageGuard {
     };
   }
 
-  /** One conversation's live reservations, copied out. */
   reservationsFor(agentId: string, conversationId: string): GuardReservation[] {
     const now = this.now();
     return [...this.entries]
@@ -80,7 +75,6 @@ export class ApprovalMessageGuard {
       }));
   }
 
-  /** Take back a reservation {@link reservationsFor} copied out. */
   adopt(agentId: string, conversationId: string, held: GuardReservation): void {
     if (held.expiresAt <= this.now() || this.entries.size >= this.capacity)
       return;

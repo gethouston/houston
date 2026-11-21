@@ -1,17 +1,3 @@
-/**
- * The provider-scoped integration READS, plus the trigger catalog.
- *
- * The gateway keys these routes on a provider segment — composio for the app
- * catalogue, custom for the user's own connectors — so a caller that asks for
- * ONE provider comes through here and the path literal names `{provider}`
- * exactly as the route does. The reactive facade's own reads fold three
- * composio requests into one view-model and stay on
- * {@link IntegrationsClient}, which welds `composio` into the path.
- *
- * Assistant catalog: this file is the single source of truth for these five
- * operations, so each carries its own `@assistant` block.
- */
-
 import type { IntegrationProviderId } from "@houston/protocol";
 import type {
   IntegrationConnection,
@@ -20,15 +6,6 @@ import type {
 } from "@houston/runtime-client";
 import { type HttpScope, httpRequest } from "../http";
 
-/**
- * One entry in a toolkit's trigger catalog (C9), from
- * `GET /v1/integrations/composio/trigger-types?toolkit=<slug>`: an event a
- * routine can wake on. `type` splits latency classes — `webhook` is
- * near-realtime, `poll` carries minutes of inherent delay (surfaced in UI copy).
- * `config` is the JSON schema for the instance filters the user fills in (e.g.
- * GitHub's owner/repo); `payload` (when present) is the JSON schema of the event
- * body Composio delivers. Both are opaque schemas the client never interprets.
- */
 export interface TriggerType {
   slug: string;
   name: string;
@@ -102,11 +79,6 @@ export async function integrationConnections(
   );
   return ((await res.json()) as { items: IntegrationConnection[] }).items;
 }
-
-// ---- triggers (C9 event-driven routines) ----
-// The trigger catalog the routine editor's picker reads — the events a routine
-// can wake on for one toolkit. Read-only, served by the cloud edge; the
-// per-routine provisioning status lives in `agentTriggerStatus`.
 
 /**
  * Lists the events from an outside app that a routine can wake up on.

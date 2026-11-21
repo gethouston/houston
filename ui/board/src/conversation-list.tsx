@@ -5,11 +5,7 @@ import type { ConversationEntry } from "./types";
 export interface ConversationListProps {
   entries: ConversationEntry[];
   onSelect: (entry: ConversationEntry) => void;
-  /** Status id → shown text. Falls back to the English defaults, then to the
-   *  raw status for ids the map doesn't know. */
   statusLabels?: Record<string, string>;
-  /** Renders an entry's `updatedAt` as an age. Defaults to English shorthand
-   *  ("just now", "5m ago"); the app passes a localized formatter. */
   formatRelativeTime?: (iso: string) => string;
 }
 

@@ -20,20 +20,9 @@ import { fsTextStore } from "./turn-fs-store";
 import { lastAssistantReply, routineRunError } from "./turn-routine-reply";
 import type { TurnRequest } from "./types";
 
-/**
- * The routine phases of a pooled turn. A routine fire dispatched to a worker
- * must behave exactly like the standing host's fireRoutineRun + reconcile:
- * the routine file is the prompt authority, a running row gates double-fires,
- * and the terminal reply classifies the run silent vs surfaced (surfaced runs
- * get their board activity). All of it happens inside the hydrated tree so the
- * claimed sync-back uploads the same files the pod would have written.
- */
-
 export type RoutineTurnFailure = "no_routine" | "routine_busy";
 
 export class RoutineTurnError extends Error {
-  /** The domain events the failure still implies (a healed routines doc),
-   *  carried on the error frame for the gateway to fan out. */
   changed: readonly string[] = [];
   constructor(
     readonly code: RoutineTurnFailure,
@@ -47,23 +36,13 @@ export class RoutineTurnError extends Error {
 export interface RoutinePhase {
   routine: Routine;
   run: RoutineRun;
-  /** The adjusted turn the pi session should execute. */
   text: string;
   model?: string;
   effort?: string;
   provider: string | null;
-  /** The claim's acting user, null when none: only the creator's own run
-   *  snoozes or lifts the routine's schedule (domain snoozeAfterRun). */
   actingSub?: string | null;
 }
 
-/**
- * Validate the routine, gate on an in-flight run, persist the running row,
- * and derive the prompt + pins — the worker-side twin of fireRoutineRun.
- * The runs write needs no cross-process lock: the conversation claim is the
- * exclusivity domain (one open claim per conversation fleet-wide), narrower
- * than the pod's per-agent runs-file queue.
- */
 export async function prepareRoutineTurn(
   workspaceDir: string,
   turn: TurnRequest,
@@ -82,11 +61,6 @@ export async function prepareRoutineTurn(
   }
   const expected = routineConversationId(routine, turnId);
   if (expected !== turn.conversationId) {
-    // The dispatcher derived the conversation from a stale routines doc (for
-    // example a chat_mode edit that has not projected yet). The claim is for
-    // the WRONG conversation; running anyway would write history where no
-    // reader looks. Busy semantics give the dispatcher a clean retry: the
-    // next fire re-derives against the refreshed doc.
     throw new RoutineTurnError(
       "routine_busy",
       `conversation ${turn.conversationId} does not match the routine's ${expected}`,
@@ -94,14 +68,6 @@ export async function prepareRoutineTurn(
   }
   const { items: runs } = await loadRoutineRuns(store, workspaceDir);
   const nowMs = Date.parse(nowIso);
-  // An abandoned `running` row stops blocking past the timeout but stays as
-  // it is here: settling it is reconcile's job, by the pod's scheduler while
-  // the agent is awake, and otherwise by the control plane's reconcile op
-  // (op-reconcile.ts) once no claim holds its conversation.
-  // The row under this turn's own id is this run's, published by an
-  // earlier attempt of the same turn (a follower re-dispatching it after
-  // its sandbox died). Still running, it never holds the run back and the
-  // new row replaces it; settled, the run is over and never runs twice.
   const own = runs.find((r) => r.id === turnId);
   if (own && own.status !== "running") {
     throw new RoutineTurnError(
@@ -144,15 +110,6 @@ export async function prepareRoutineTurn(
   };
 }
 
-/**
- * Terminal bookkeeping, written into the hydrated tree BEFORE sync-back: the
- * run row leaves "running" (silent/surfaced from the reply, error otherwise),
- * and a surfaced run upserts its board activity — the same rows the pod's
- * reconcile would have produced. A reply that carries a typed provider error
- * is an error run with the same typed `failure` reconcile stamps; `failure`
- * comes from the caller when the turn never reached a provider at all.
- * Resolves to the terminal row, or null when a cancel owned the row.
- */
 export async function settleRoutineTurn(opts: {
   workspaceDir: string;
   phase: RoutinePhase;
@@ -165,10 +122,7 @@ export async function settleRoutineTurn(opts: {
   const store = fsTextStore();
   const { items: runs } = await loadRoutineRuns(store, opts.workspaceDir);
   const row = runs.find((r) => r.id === opts.phase.run.id);
-  // Missing or already-terminal row: a cancel raced the turn — keep what the
-  // canceller wrote.
   if (row?.status !== "running") return null;
-  // The pooled run's id IS its turn id (prepareRoutineTurn).
   const reply = await lastAssistantReply(
     opts.workspaceDir,
     opts.conversationId,

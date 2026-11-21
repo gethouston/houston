@@ -30,7 +30,6 @@ async function listen(server: Server): Promise<string> {
   return `http://127.0.0.1:${address.port}`;
 }
 
-/** A standing agent with a job description and a skill, as the pool stores it. */
 function seedAgentStore(): LocalDirStore {
   const storeRoot = mkdtempSync(join(tmpdir(), "turn-root-store-"));
   const agent = join(storeRoot, "ws", "w1", "agent-1", "workspaces", "W", "A");
@@ -89,7 +88,6 @@ async function runTurn(base: string, conversationId: string): Promise<void> {
 }
 
 test("every turn of a conversation runs in one root, removed after each turn", async () => {
-  // Unique per run: a root another run left behind must not decide this test.
   const conversationId = `c-${randomUUID()}`;
   const seen: SeenTurn[] = [];
   const base = await listen(

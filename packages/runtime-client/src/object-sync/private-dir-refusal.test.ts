@@ -17,7 +17,6 @@ import { closePrivateDir, mkdirForLanding } from "./private-paths";
 
 const posixOnly = process.platform === "win32" ? describe.skip : describe;
 
-/** An agent folder whose `.houston/browser` the test arranges. */
 function agent() {
   const root = mkdtempSync(join(tmpdir(), "houston-private-"));
   const houston = join(root, ".houston");
@@ -47,7 +46,6 @@ posixOnly("a private directory the tool user could have planted", () => {
     expect(() => statSync(join(elsewhere, "state.json"))).toThrow();
     expect(statSync(elsewhere).mode & 0o777).toBe(0o775);
     expect(error.mock.calls[0]?.[0]).toMatch(
-      // Linux says ELOOP, macOS ENOTDIR: refused either way.
       /refusing.*browser (is a symlink|is not a directory)/,
     );
   });

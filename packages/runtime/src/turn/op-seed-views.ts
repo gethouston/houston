@@ -9,13 +9,6 @@ import { listProviderUsage } from "../ai/usage";
 import { config } from "../config";
 import type { SeedTree } from "./op-seed-tree";
 
-/**
- * The provider answers a brand-new agent's pod gives: the runtime's baseline
- * (no settings, no credential, no custom endpoint). Both read the worker's
- * own `dataDir`, which a pool worker never writes an agent's state into; the
- * gateway overlays the connected set and active provider on every asleep
- * serve, so the baseline's unconfigured rows are the right ones.
- */
 export interface SeedViewSources {
   providers: () => unknown;
   providerUsage: () => Promise<unknown>;
@@ -34,8 +27,6 @@ const AGENT_STATE_FILES = [
   "custom-endpoint.json",
 ];
 
-/** What the seed's views are captured from: the agent as the store now
- *  holds it (its listing plus what this op wrote under `storeRoot`). */
 export interface SeedViewInput {
   prefix: string;
   objects: ObjectMetadata[];
@@ -44,17 +35,11 @@ export interface SeedViewInput {
   views: SeedViewSources;
 }
 
-/**
- * The views a new pod would capture: the skills list (the host's own `GET
- * skills`) and, when nothing says the agent has its own, the provider
- * baseline.
- */
 export async function computeSeedViews(
   input: SeedViewInput,
   vfs: LazyStoreVfs,
 ): Promise<[string, unknown][]> {
   const out: [string, unknown][] = [];
-  // The host resolves the agent from its folder; an adopt wrote nothing.
   await mkdir(join(input.storeRoot, ...input.tree.workspaceRel.split("/")), {
     recursive: true,
   });
@@ -73,7 +58,6 @@ export async function computeSeedViews(
     existsSync(join(input.views.dataDir, file)),
   );
   if (state.length > 0) {
-    // A reused worker's config dir would publish another agent's providers.
     console.warn(
       `[op] seed provider views skipped: worker data dir holds ${state.join(", ")} prefix=${input.prefix}`,
     );
@@ -89,8 +73,6 @@ export async function computeSeedViews(
     input.objects.some((o) => o.key === posix.join(runtime, file)),
   );
   if (own.length > 0) {
-    // An adopted agent with its own provider state: the baseline would be
-    // wrong for it, and its pod keeps its own view current.
     console.warn(
       `[op] seed provider views skipped: the agent holds ${own.join(", ")} prefix=${input.prefix}`,
     );

@@ -2,14 +2,12 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { TurnFilesystem } from "./turn-filesystem";
 
-/** Local bytes and sync bookkeeping restored when a guarded write fails. */
 export interface TurnDocumentSnapshot {
   bytes?: Buffer;
   entry?: { hash: string; generation?: string };
   immediate: boolean;
 }
 
-/** Capture a document before a mutation or retry attempt. */
 export async function snapshotTurnDocument(
   filesystem: TurnFilesystem,
   relativePath: string,
@@ -29,7 +27,6 @@ export async function snapshotTurnDocument(
   };
 }
 
-/** Restore a captured document and its sync bookkeeping exactly. */
 export async function restoreTurnDocument(
   filesystem: TurnFilesystem,
   relativePath: string,

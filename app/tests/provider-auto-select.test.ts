@@ -47,7 +47,7 @@ describe("resolveAutoSelect", () => {
   });
 
   it("falls back to the engine active_model when the card has no defaultModel", () => {
-    const local = provider("openai-compatible"); // no static defaultModel
+    const local = provider("openai-compatible");
     const prev: StatusSnapshot = {};
     const next: StatusSnapshot = {
       "openai-compatible": connected("openai-compatible", "llama-3.3-70b"),
@@ -110,11 +110,6 @@ describe("resolveAutoSelect", () => {
     );
   });
 
-  // The local-connect double-fire guard: the LocalModelDialog hands the typed
-  // model to onSelect directly, then patchAuthState commits a connected status
-  // WITHOUT active_model (skipped above), and the later loadStatuses reconcile
-  // fills active_model in on an ALREADY-connected card. That reconcile must not
-  // read as a second transition.
   it("does not fire when the reconcile adds active_model to an already-connected card", () => {
     const local = provider("openai-compatible");
     const prev: StatusSnapshot = {
@@ -129,9 +124,6 @@ describe("resolveAutoSelect", () => {
     );
   });
 
-  // "unknown" = the engine was unreachable (cold pod waking after a
-  // relaunch/update). Auto-select needs a CONFIRMED authenticated state: an
-  // unknown probe must never advance onboarding as if the provider connected.
   function unknown(id: string): ProviderStatus {
     return {
       provider: id,

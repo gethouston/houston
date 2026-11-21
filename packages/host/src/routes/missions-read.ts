@@ -14,33 +14,15 @@ import {
 import type { MissionsCtx } from "./missions-sandbox";
 import { refuseMissionRoute, resolveMissionRoute } from "./missions-target";
 
-/**
- * The READ half of the agent's mission tools: the board snapshot
- * (`GET /sandbox/missions`) and one mission's transcript
- * (`GET /sandbox/missions/read`). Both take an optional `agent` — the board a
- * caller reads is its own unless it names another.
- *
- * The transcript read exists for CROSS-agent review only. An agent reviewing
- * its OWN mission reads its runtime's in-process store (tools/read-mission.ts);
- * another agent's transcript lives in another runtime, so the host serves it
- * from the file store — the same conversation key the routine reconciler reads
- * (schedule/reconcile.ts). A named agent that lives in ANOTHER POD is asked
- * for its own answer (missions-remote-forward.ts) and it is relayed unchanged,
- * so a review reads the same shape wherever the mission runs.
- */
-
-/** Most messages one read returns (the tail), and the per-message transport clip. */
 const DEFAULT_TAIL = 20;
 const MAX_TAIL = 100;
 const MAX_MESSAGE_CHARS = 4_000;
 
-/** The transcript file's shape — the runtime's StoredConversation, as read. */
 interface StoredConversation {
   title?: string;
   messages?: ChatMessage[];
 }
 
-/** The board snapshot, newest first, in the compact shape the agent reads. */
 export async function handleList(
   callerCtx: MissionsCtx,
   url: URL,
@@ -74,7 +56,6 @@ export async function handleList(
   json(res, 200, { missions });
 }
 
-/** One mission's recent messages, read from the owning agent's file store. */
 export async function handleMissionRead(
   callerCtx: MissionsCtx,
   url: URL,
@@ -110,8 +91,6 @@ export async function handleMissionRead(
       error: "that mission is no longer on the board",
       code: "mission_not_found",
     });
-  // The convention id covers every mission this feature starts; an explicit
-  // `session_key` covers a mission whose chat was keyed differently.
   const candidates = [
     missionConversationId(id),
     missionConversationKey(mission),

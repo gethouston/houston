@@ -4,13 +4,6 @@ import type {
 } from "./assistant-catalog-types.ts";
 import { violationsFor } from "./assistant-gate-rules.ts";
 
-/**
- * The coverage gate: a user-facing adapter operation is either a properly
- * annotated, routable assistant tool, or it carries a written acknowledgement
- * of why it is not. Anything else fails the build - a silent `route: null` or a
- * bare `hidden` used to drop an operation out of automation with nobody
- * noticing.
- */
 export type CoverageRule =
   | "unconfirmed-mutation"
   | "confirm-unstated"
@@ -32,9 +25,7 @@ export interface CoverageViolation {
   name: string;
   location: string;
   rule: CoverageRule;
-  /** What is wrong, in one sentence. */
   problem: string;
-  /** The exact edit that clears it. */
   fix: string;
 }
 
@@ -53,7 +44,6 @@ export function acknowledgementOf(
   };
 }
 
-/** Every stated exception, operation by operation, in catalog order. */
 export function acknowledgements(
   annotations: readonly OperationAnnotation[],
 ): Acknowledgement[] {

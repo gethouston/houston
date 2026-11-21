@@ -16,25 +16,14 @@ import {
 } from "./turn-store-listing";
 import type { TurnRequest } from "./types";
 
-/**
- * Store objects no claimed turn path reads or owns for writeback. Exclusions
- * never enter the hydration manifest, so their absence cannot become a delete.
- * The store-root package store is outside every turn's write scope, so no
- * turn uploads it either; the agent's own toolchains (node_modules, .venv)
- * still hydrate, because a pooled sandbox is discarded after every turn and
- * the store is the only place an installed tool survives to the next one.
- */
 export const CLAIMED_TURN_EXCLUDES: readonly string[] = [
   ...STORE_ROOT_PACKAGE_EXCLUDES,
   "workspaces/*/*/.houston/runtime/runtime.log",
   "claude-login/",
-  // Houston's approval records: read and written only through their own
-  // generation-guarded path (turn-approvals.ts), never by the bulk hydrate.
   "workspaces/*/*/.houston/runtime/sessions/*/assistant-approvals.json",
   "data/sessions/*/assistant-approvals.json",
 ];
 
-/** Start hydration with the claimed conversation's read and ownership scope. */
 export async function startTurnRequestFilesystem(input: {
   store: ObjectStore;
   prefix: string;

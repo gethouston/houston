@@ -25,16 +25,6 @@ export function PageHeaderSwitcher<Id extends string>({
 }) {
   return (
     <DropdownMenu>
-      {/* The heading stays on the identity trigger at every width. The lone
-          pill keeps its track: without it, the white active fill would float
-          invisibly on a light page.
-
-          The trigger takes its accessible name from the identity it SHOWS, so
-          the screen's h1 names the screen in this form exactly as it does in
-          the wide cluster, and the control a user says out loud ("Workspace",
-          "Integrations") is the one voice control activates. An `aria-label`
-          here would override both with the menu's name. The MENU is what that
-          name belongs to, and it wears it below. */}
       <h1 className={headerLozengeTrack("min-w-0")}>
         <DropdownMenuTrigger
           {...dataAttrs}

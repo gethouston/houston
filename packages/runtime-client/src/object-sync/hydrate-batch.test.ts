@@ -5,12 +5,6 @@ import { expect, test } from "vitest";
 import { HttpObjectStore } from "./http-store";
 import { hydrate } from "./hydrate";
 
-/**
- * A far-away worker hydrates through the store's batch route: one POST lands
- * every small object, a listed-then-deleted object is skipped, and an object
- * the store will not inline falls back to its own GET.
- */
-
 function frame(key: string, status: number, body = "", generation?: string) {
   const header = Buffer.from(
     JSON.stringify({
@@ -118,7 +112,6 @@ test("a store without the batch route hydrates one object at a time", async () =
 });
 
 test("a store that did not opt into batch reads never asks the batch route", async () => {
-  // Every standing pod's store sync: hydration stays one GET per object.
   const { store, calls } = fakeStore(true, false);
   const dest = mkdtempSync(join(tmpdir(), "houston-batch-"));
 
@@ -137,7 +130,6 @@ test("a store that did not opt into batch reads never asks the batch route", asy
 });
 
 test("a batched worker hydration keeps the board's bytes as its merge base", async () => {
-  // The per-turn worker's store batches, so this is the board's real path.
   const board = "workspaces/W/A/.houston/activity/activity.json";
   const body = '[{"id":"a","title":"A","status":"running"}]';
   const { store, calls } = fakeStore(true, true, { [board]: body });

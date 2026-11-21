@@ -14,7 +14,6 @@ const conversations = [
   { id: "d4", session_key: "routine-r9-run7" },
 ];
 
-/** The install re-minted the source's routine r9 as q9 (PRODUCT-1808). */
 const routineIds = { r9: "q9" };
 
 describe("planChatIdMap", () => {
@@ -32,7 +31,6 @@ describe("planChatIdMap", () => {
         ["d4", "n4"],
       ],
     );
-    // A routine chat follows the routine's re-minted id, per-run keys too.
     deepStrictEqual(
       [...map.session],
       [
@@ -72,8 +70,6 @@ describe("remapChatArchive", () => {
         session_key: "routine-r9",
         routine_id: "r9",
       },
-      // Started by the agent from A's chat: the parent link follows, and
-      // who started it (PRODUCT-1928) travels with the copy.
       {
         id: "c3",
         title: "C",
@@ -106,16 +102,13 @@ describe("remapChatArchive", () => {
     deepStrictEqual(
       rows.map((r) => [r.id, r.session_key, r.origin_session_key, r.status]),
       [
-        // A running task cannot be running in the copy; it waits for the user.
         ["n1", undefined, undefined, "needs_you"],
         ["n2", "routine-q9", undefined, "done"],
         ["n3", undefined, "activity-n1", "done"],
       ],
     );
-    // Native session and routine-run references name things only the source has.
     ok(!("claude_session_id" in (rows[0] as object)));
     ok(!("routine_run_id" in (rows[0] as object)));
-    // The routine link on a run's task follows the re-minted id.
     strictEqual(rows[1]?.routine_id, "q9");
     strictEqual(rows[2]?.started_by, "employee");
     const moved = JSON.parse(
@@ -124,8 +117,6 @@ describe("remapChatArchive", () => {
       ),
     );
     strictEqual(moved.id, "activity-n1");
-    // Every copied transcript asks its first turn to replay the history: the
-    // copy has no backend session for it, on any provider.
     strictEqual(moved.needsSessionReplay, true);
     const routineChat = JSON.parse(
       strFromU8(
@@ -135,8 +126,6 @@ describe("remapChatArchive", () => {
     strictEqual(routineChat.needsSessionReplay, true);
     strictEqual(routineChat.id, "routine-q9");
     strictEqual(strFromU8(out["notes/keep.txt"] as Uint8Array), "untouched");
-    // The row the conversation list never named still got a fresh id, and the
-    // map remembers it for a later batch.
     ok(map.activity.has("c3"));
     notStrictEqual(map.activity.get("c3"), "c3");
   });

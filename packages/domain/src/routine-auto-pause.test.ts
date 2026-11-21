@@ -42,7 +42,6 @@ type Outcome =
   | "cancelled"
   | "undelivered";
 
-/** Runs of r1, OLDEST first, one minute apart after the routine's edit. */
 function history(outcomes: Outcome[], routineId = "r1"): RoutineRun[] {
   const base = Date.parse(EDITED) + 60_000;
   return outcomes
@@ -58,7 +57,6 @@ function history(outcomes: Outcome[], routineId = "r1"): RoutineRun[] {
       if (outcome === "cancelled") return { ...run, status: "cancelled" };
       if (outcome === "transient")
         return { ...run, status: "error", summary: "timed out" };
-      // Exactly the row cloud records for a fire it could not deliver in time.
       if (outcome === "undelivered")
         return {
           ...run,
@@ -107,11 +105,9 @@ test("transient errors and stopped runs neither count nor reset the streak", () 
 });
 
 test("delivery failures are our capacity problem: they never pause, count or reset", () => {
-  // A routine whose every fire expired must never be paused for it.
   expect(
     routineAutoPause(routine(), history(times(3 * N, "undelivered")), NOW),
   ).toBeNull();
-  // Expired fires between account failures neither add to nor break the streak.
   const interleaved = times(N, NO_CREDITS).flatMap((f) => [
     f,
     "undelivered" as const,
@@ -192,7 +188,6 @@ test("resuming clears the pause and restarts the count; an update never writes i
   const resumed = applyRoutineUpdate(paused, { enabled: true }, resumeAt);
   expect(resumed).toMatchObject({ enabled: true, updated_at: resumeAt });
   expect(resumed.auto_paused).toBeUndefined();
-  // The failures that earned the pause predate the resume.
   expect(
     routineAutoPause(resumed, history(times(N, NO_CREDITS)), NOW),
   ).toBeNull();

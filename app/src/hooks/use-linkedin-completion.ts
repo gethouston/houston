@@ -16,13 +16,6 @@ import { takeSlackCompletion } from "../lib/slack-completion";
 import { useUIStore } from "../stores/ui";
 import { useCapabilities } from "./use-capabilities";
 
-/**
- * Redeem a LinkedIn connect's return wherever the app is when it lands: the
- * tab the web click claimed (which then says it can be closed), the desktop
- * app the loopback or deep link focused. The connection goes into the cache the share dialog reads, so its
- * button turns to Post at once; an answer that comes back after sign-out, or
- * to another account, is dropped (`redeemLinkedIn`).
- */
 export function useLinkedInCompletion() {
   const qc = useQueryClient();
   const queued = useUIStore((s) => s.pendingLinkedInCompletion);
@@ -36,7 +29,6 @@ export function useLinkedInCompletion() {
   useEffect(() => {
     if (!queued || step === "wait") return;
     if (step === "hold") {
-      // The ticket stays queued for the capabilities read's next try.
       return reportHoldOnce(queued, () =>
         reportError(
           "linkedin_completion",
@@ -48,8 +40,6 @@ export function useLinkedInCompletion() {
       () => useUIStore.getState().pendingLinkedInCompletion,
       () => clear(null),
     );
-    // Dropped unasked where LinkedIn is not served, as a Slack return there
-    // lands on the Settings index with no Channels to take it.
     if (!pending || step === "drop") return;
     void redeemLinkedIn(pending, {
       identity: () =>

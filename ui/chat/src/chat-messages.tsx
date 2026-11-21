@@ -1,5 +1,3 @@
-/** Internal scrollable message-list body of ChatPanel. */
-
 import { useEffect, useMemo, useState } from "react";
 import {
   Conversation,
@@ -67,11 +65,6 @@ export function ChatMessages({
   const [highlightedMessageKey, setHighlightedMessageKey] = useState<
     string | null
   >(null);
-  // A shared conversation attributes EVERY turn (`showSenders`) — sender
-  // identity is a property of the deployment, not of how many people have
-  // written. Without that signal, fall back to the historical heuristic: label
-  // user bubbles only once the thread holds ≥2 distinct authors (C5), and never
-  // label the agent.
   const showAuthorLabels = useMemo(
     () => showSenders ?? distinctAuthorCount(messages) >= 2,
     [showSenders, messages],
@@ -88,9 +81,6 @@ export function ChatMessages({
     () => deriveConversationMoments(displayItems),
     [displayItems],
   );
-  // Name + face print once per change of speaker, not once per message
-  // (HOU-960). Computed over the DISPLAY items so a process block between two
-  // agent turns cannot fake a change of speaker.
   const runStarts = useMemo(
     () => senderRunStarts(displayItems),
     [displayItems],
@@ -105,9 +95,6 @@ export function ChatMessages({
     return () => window.clearTimeout(timeout);
   }, [highlightedMessageKey]);
 
-  // HOU-471: show the standalone thinking indicator only when no active process
-  // block is already surfacing progress (see the helper) — otherwise the two
-  // would duplicate while the agent runs tools.
   const showThinkingIndicator = shouldShowThinkingIndicator(
     displayItems,
     status,

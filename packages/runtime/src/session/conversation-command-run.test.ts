@@ -5,13 +5,6 @@ import type { WireEvent } from "@houston/runtime-client";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { HarnessSession } from "../backends/types";
 
-/**
- * The conversation commands end-to-end against the REAL transcript store: what
- * a `/clear` must leave behind is precisely a transcript that still has
- * everything (the user's record, `houston_recall`'s search space) and a model
- * that can no longer see any of it. Faking the store would test neither half.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-cmd-data-"));
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-cmd-ws-"),
@@ -28,10 +21,6 @@ const session = {
   getContextUsage: () => ({ tokens: 90_000 }),
 } satisfies HarnessSession;
 
-/**
- * The live Conversation the cache hands back: a command joins its queue and
- * pins it exactly as a turn does, so the test owns both fields.
- */
 const conv = {
   session,
   queue: Promise.resolve() as Promise<unknown>,
@@ -68,7 +57,6 @@ const { ASSISTANT_CONVERSATION_ID } = await import(
 );
 
 let counter = 0;
-/** A conversation with one prior exchange already on disk. */
 function seeded(id: string): string {
   appendUserMessage(id, "my dentist is Dr. Salgado", { turnId: "t0" });
   appendAssistantMessage(id, "noted", { turnId: "t0" });
@@ -81,7 +69,6 @@ function collect(id: string): { events: WireEvent[]; stop: () => void } {
   return { events, stop };
 }
 
-/** Await microtasks until `ready` holds (the queue + workdir lock hops). */
 async function until(ready: () => boolean): Promise<void> {
   for (let i = 0; i < 100 && !ready(); i++) await Promise.resolve();
 }
@@ -103,18 +90,13 @@ test("/clear keeps the transcript, resets the session, and marks the boundary", 
   await runConversationCommand(id, "clear", "/clear", "nonce-1");
   stop();
 
-  // The model never sees a command as a prompt.
   expect(session.prompt).not.toHaveBeenCalled();
-  // The backend-native session AND its on-disk history are gone: that is what
-  // makes the next turn start with an empty context.
   expect(disposeConversation).toHaveBeenCalledWith(id, {
     deleteSessions: true,
   });
-  // ...and NO replay is stamped, so nothing carries the old turns back in.
   expect(consumeSessionReplay(id)).toBe(false);
 
   const messages = getHistory(id)?.messages ?? [];
-  // The transcript is intact (the audit trail + what houston_recall searches).
   expect(messages[0]?.content).toBe("my dentist is Dr. Salgado");
   expect(messages.at(-2)?.content).toBe("/clear");
   expect(messages.at(-1)?.contextCleared).toBe(true);
@@ -135,11 +117,7 @@ test("a rebuilt session after /clear carries nothing from before the marker", as
   const messages = getHistory(id)?.messages ?? [];
   const preamble = renderReplayPreamble(messages, "t9", 100_000, "reset");
 
-  // A cross-backend rebuild renders the canonical transcript into the prompt.
-  // Everything the user cleared must be absent from it, or the model would
-  // remember exactly what it was told to forget.
   expect(preamble?.text ?? "").not.toContain("Dr. Salgado");
-  // And the transcript itself still has it, for the user and for recall.
   expect(messages.some((m) => m.content.includes("Dr. Salgado"))).toBe(true);
 });
 
@@ -153,7 +131,6 @@ test("/clear harvests the assistant's durable facts before wiping the session", 
     session,
     ASSISTANT_CONVERSATION_ID,
   );
-  // Order matters: facts are extracted while the turns are still in context.
   expect(
     vi.mocked(compactWithFactHarvest).mock.invocationCallOrder[0],
   ).toBeLessThan(vi.mocked(disposeConversation).mock.invocationCallOrder[0]);
@@ -179,8 +156,6 @@ test("a failed fact harvest never costs the user the clear", async () => {
 });
 
 test("a session too small to harvest is noted, never warned about", async () => {
-  // pi refuses to summarize a short session. That is the NORMAL state of a
-  // fresh chat, not a failure: warning about it trains us to ignore warnings.
   vi.mocked(compactWithFactHarvest).mockRejectedValueOnce(
     new Error("Nothing to compact (session too small)"),
   );
@@ -220,7 +195,6 @@ test("/compact compacts through the fact harvest and marks it manual", async () 
 
   expect(session.prompt).not.toHaveBeenCalled();
   expect(compactWithFactHarvest).toHaveBeenCalledWith(session, id);
-  // The session is NOT torn down: compaction keeps the summarized context.
   expect(disposeConversation).not.toHaveBeenCalled();
 
   expect(events.map((e) => e.type)).toEqual([
@@ -252,11 +226,6 @@ test("a compaction that fails settles the turn instead of hanging the chat", asy
   });
 });
 
-// ── The command's place in the turn lifecycle ───────────────────────────────
-// A command rewrites the context turns run in, so it takes the SAME two locks
-// a turn does — the conversation's queue and the workspace lock — and marks the
-// conversation held for its whole life so the route refuses new turns onto it.
-
 test("a command waits for the turn already queued on the conversation", async () => {
   const id = seeded(`queued-${counter}`);
   let releaseTurn = () => {};
@@ -267,8 +236,6 @@ test("a command waits for the turn already queued on the conversation", async ()
 
   const command = runConversationCommand(id, "clear", "/clear");
   await Promise.resolve();
-  // Nothing yet — not even the user echo: the queued turn owns the
-  // conversation, and a clear that ran here would dispose its session.
   expect(events).toEqual([]);
   expect(disposeConversation).not.toHaveBeenCalled();
 
@@ -297,11 +264,6 @@ test("a command waits for the workspace lock, like every turn does", async () =>
   const command = runConversationCommand(id, "compact", "/compact");
   await Promise.resolve();
   await Promise.resolve();
-  // The user's message is durable and echoed the instant the command is
-  // accepted (a client must see its own bubble), but the work waits. Recorded
-  // BEFORE the lock as well as echoed: another conversation's turn can hold the
-  // workspace for minutes, and a composer spinning against a transcript that
-  // does not yet carry the message loses it on any reload in between.
   expect(events.map((e) => e.type)).toEqual(["user"]);
   expect(getHistory(id)?.messages.at(-1)?.content).toBe("/compact");
   expect(compactWithFactHarvest).not.toHaveBeenCalled();
@@ -333,12 +295,8 @@ test("the conversation is held for the command's whole life", async () => {
     "/clear",
   );
   await until(() => vi.mocked(compactWithFactHarvest).mock.calls.length > 0);
-  // The window the bug lived in: the harvest is a model call, and a turn
-  // accepted during it would be disposed mid-flight when the clear lands.
   expect(conversationCommandInFlight(ASSISTANT_CONVERSATION_ID)).toBe(true);
-  // Pinned like a queued turn, so no eviction sweep can take the session.
   expect(conv.pending).toBe(1);
-  // ...and counted like one, so the runtime reads busy while it works.
   expect(turnsInFlight()).toBe(1);
 
   releaseHarvest();
@@ -357,6 +315,5 @@ test("a failed command releases the conversation instead of wedging it", async (
   expect(conversationCommandInFlight(id)).toBe(false);
   expect(conv.pending).toBe(0);
   expect(turnsInFlight()).toBe(0);
-  // The queue chain survives its failure: the next turn still runs.
   await expect(conv.queue).resolves.toBeUndefined();
 });

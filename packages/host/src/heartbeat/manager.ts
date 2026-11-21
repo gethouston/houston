@@ -2,7 +2,6 @@ import type { AgentId, Workspace } from "../domain/types";
 import type { ChannelCtx, WorkspaceStore } from "../ports";
 import { ASSISTANT_AGENT_NAME } from "../routes/assistant";
 
-/** The AI Manager's channel context, its synthetic directory made first. */
 export async function managerContext(
   deps: {
     store: WorkspaceStore;

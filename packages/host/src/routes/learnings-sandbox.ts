@@ -12,9 +12,6 @@ import { appendLearningChecked } from "./learning-write";
 import { authorizeTurnWrite } from "./plan-gate";
 import { defineRoute } from "./registry";
 
-/** The header the runtime's `save_learning` tool carries the turn's conversation
- *  id on, so the mission a learning came from can be resolved. Provenance only —
- *  never authorization (the sandbox token is what authenticates the call). */
 export const CONVERSATION_ID_HEADER = "x-houston-conversation-id";
 
 defineRoute({
@@ -30,38 +27,6 @@ defineRoute({
     handleSandboxLearnings(deps, method, path, url, req, res),
 });
 
-/**
- * The RUNTIME-facing memory write route (`POST /sandbox/learnings/save`, authed
- * by the per-sandbox HMAC token). The agent's `save_learning` tool calls THIS
- * instead of editing `.houston/learnings/learnings.json` with file tools.
- *
- * WHY it exists (two reasons, mirroring routines-sandbox.ts):
- *  1. MERGE SAFETY. A wholesale file write drops every entry the model did not
- *     happen to read back. This route read-modify-writes (loadLearnings →
- *     append → saveLearnings), so a save never clobbers existing memory.
- *  2. PROVENANCE. Every learning should say who taught it and which mission it
- *     came from — facts the agent cannot know and must not be trusted to write.
- *     They are derived HERE from the host's own record of the running turn
- *     (routes/live-turn.ts): the person the gateway vouched for when the turn
- *     began, and the mission that turn's conversation belongs to.
- *
- * Stamping semantics:
- *  - `taught_by` ONLY when `deps.gatewayFronted`. Off the gateway (desktop /
- *    self-host) there is only one human anyway — so no identity key is written
- *    at all and a single-player learnings.json keeps exactly the shape it has
- *    today. ON the gateway with no acting-as token (a FIRED ROUTINE has no
- *    driving human) the routine creator's sub, recorded by the fire that started
- *    the turn, is the author, so a routine-taught learning is never anonymous in
- *    Teams.
- *  - `mission_id` + `mission_title` whenever the conversation matches a mission,
- *    on EVERY deployment: a mission is not an identity, and "from the Q3
- *    pipeline mission" is the more useful half of provenance for a solo user.
- *    No conversation id, or no matching mission (a routine run, a chat with no
- *    board row) → no mission keys.
- *  - Everything is best-effort metadata: a failure to resolve the mission must
- *    never cost the user their learning, so the mission lookup is swallowed and
- *    the learning is saved without it.
- */
 export async function handleSandboxLearnings(
   deps: {
     vault: CredentialVault;
@@ -69,12 +34,6 @@ export async function handleSandboxLearnings(
     vfs?: Vfs;
     paths?: WorkspacePaths;
     events?: EventHub;
-    /**
-     * True only when a trusted gateway fronts every request (the managed pod).
-     * Then the acting-as header names the human who taught the learning; on the
-     * desktop the header is untrusted client input and nothing is stamped.
-     * Mirrors routes/routines-sandbox.ts.
-     */
     gatewayFronted?: boolean;
   },
   method: string,
@@ -85,7 +44,6 @@ export async function handleSandboxLearnings(
 ): Promise<boolean> {
   if (path !== "/sandbox/learnings/save" || method !== "POST") return false;
 
-  // Authenticate the sandbox (NOT a user JWT) — same gate as /sandbox/credential.
   const sbToken = bearer(req, url);
   const claim = sbToken ? deps.vault.validateSandboxToken(sbToken) : null;
   if (!claim) {
@@ -94,8 +52,6 @@ export async function handleSandboxLearnings(
   }
   const vfs = deps.vfs;
   if (!vfs) {
-    // Same stable code the generic sandbox proxies use, so the runtime tool
-    // renders the honest "not available in this install" speech act.
     json(res, 503, {
       error: "agent data not configured",
       code: "agent_data_not_configured",
@@ -109,11 +65,6 @@ export async function handleSandboxLearnings(
     return true;
   }
 
-  // A memory write happens during a turn, in the chat the turn runs in: the
-  // runtime names the conversation and the host matches it against its own
-  // record (routes/plan-gate.ts). That record is also WHO the turn acts as, so a
-  // learning cannot be written in a person's name the runtime chose, and a turn
-  // the user asked to PLAN writes nothing at all.
   const authorized = authorizeTurnWrite(
     claim.agentId,
     header(req, CONVERSATION_ID_HEADER),
@@ -133,12 +84,6 @@ export async function handleSandboxLearnings(
 
   const paths = deps.paths ?? DEFAULT_PATHS;
   const root = paths.agentRoot(ws, agent);
-  // WHO taught this, same two-rung ladder the integrations sandbox route walks,
-  // read off the turn: the gateway-minted acting-as human, else the routine
-  // creator's sub (a FIRED ROUTINE has no live human). Off the gateway: nobody
-  // at all. NOT the workspace owner — on a managed pod that is the placeholder
-  // "local-owner", which resolves to no profile and would only put a junk id in
-  // the file.
   const taughtBy = deps.gatewayFronted
     ? (actingAuthorFromHeader(turn.actingAs) ??
       (turn.actingUser ? { user_id: turn.actingUser } : null))
@@ -154,8 +99,6 @@ export async function handleSandboxLearnings(
     json(res, 400, { error: result.error });
     return true;
   }
-  // React on the SAME channel a UI or file-watcher write does; scope to the
-  // workspace owner, exactly as the agent-data learnings PUT does.
   const event: HoustonEvent = { type: "LearningsChanged", agentPath: agent.id };
   deps.events?.emit(ws.ownerUserId, event);
 

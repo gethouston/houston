@@ -1,8 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { ChatInteractionAnswer } from "@houston-ai/chat";
-// Imported from source (not the barrel) so node's --experimental-strip-types
-// runner needn't resolve the package's extensionless .tsx re-exports.
 import { decodeInteractionAnswersMessage } from "../../ui/chat/src/interaction-answers-message.ts";
 import { isAutoContinueMessage } from "../src/lib/auto-continue-message.ts";
 import { encodeInteractionAnswersMessage } from "../src/lib/interaction-answers-marker.ts";
@@ -19,7 +17,6 @@ const answers: ChatInteractionAnswer[] = [
   { stepId: "q2", question: "Saying what?", answer: "Running late" },
 ];
 
-/** The i18n line factories plus empty accumulators; tests spread overrides. */
 const base = {
   answers: [] as ChatInteractionAnswer[],
   connectedNames: [] as string[],
@@ -83,16 +80,13 @@ describe("composeInteractionReply", () => {
     );
   });
 
-  // The claim this locks: a connect-only sequence must NOT resume the agent
-  // per-connect (which tore the card down mid-sequence). It walks EVERY connect
-  // step, then sends ONE hidden auto-continue message naming all of them.
   it("names every connection in ONE hidden message for a connect-only sequence", () => {
     const reply = composeInteractionReply({
       ...base,
       connectedNames: ["Gmail", "Slack"],
     });
     strictEqual(isAutoContinueMessage(reply), true);
-    strictEqual(reply.split("\n").length, 4); // marker + blank + two lines
+    strictEqual(reply.split("\n").length, 4);
     strictEqual(reply.includes("Connected Gmail."), true);
     strictEqual(reply.includes("Connected Slack."), true);
   });
@@ -106,7 +100,6 @@ describe("composeInteractionReply", () => {
     strictEqual(reply.endsWith("Connected Gmail."), true);
   });
 
-  // ── Sign-in composition ────────────────────────────────────────────────
   it("adds the signed-in line before Connected lines in a question+signin+connect sequence", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -144,9 +137,6 @@ describe("composeInteractionReply", () => {
     strictEqual(reply.includes("Signed in to Houston."), false);
   });
 
-  // ── Skip composition ───────────────────────────────────────────────────
-  // A skipped connect step is a fact the agent MUST hear (or it re-requests the
-  // same app forever): it joins the visible reply after the Connected lines.
   it("appends a Skipped line per skipped connect step in a mixed sequence", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -162,8 +152,6 @@ describe("composeInteractionReply", () => {
     );
   });
 
-  // A fully-skipped connect-only sequence still resumes the agent (hidden),
-  // telling it the user declined — never a silent dead end.
   it("hides a skipped connect-only sequence but names the declined app", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -173,8 +161,6 @@ describe("composeInteractionReply", () => {
     strictEqual(reply.endsWith("Skipped connecting Gmail."), true);
   });
 
-  // A skipped sign-in is NOT a sign-in: the followup shortcut must not fire,
-  // and the skip line rides the hidden resume instead.
   it("resumes a skipped signin-only sequence with the skip line, not the followup", () => {
     const reply = composeInteractionReply({ ...base, signinSkipped: true });
     strictEqual(isAutoContinueMessage(reply), true);
@@ -182,8 +168,6 @@ describe("composeInteractionReply", () => {
     strictEqual(reply.includes("I've signed in."), false);
   });
 
-  // Signed in for real, then skipped the connect: the followup shortcut is for
-  // a signin-ONLY sequence — a skipped connect is a fact that must survive.
   it("keeps the skip line when a signin succeeded but the connect was skipped", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -196,8 +180,6 @@ describe("composeInteractionReply", () => {
     strictEqual(reply.includes("I've signed in. Please continue."), false);
   });
 
-  // A connect step declined WITH typed text carries the user's instruction, so
-  // the sequence resumes VISIBLY (not the hidden connect-only auto-continue).
   it("resumes a connect decline-with-text VISIBLY naming the instruction", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -210,7 +192,6 @@ describe("composeInteractionReply", () => {
     );
   });
 
-  // A sign-in step declined WITH typed text resumes visibly too.
   it("resumes a sign-in decline-with-text VISIBLY", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -224,8 +205,6 @@ describe("composeInteractionReply", () => {
     );
   });
 
-  // A credential decline-with-text overrides the credential-only hidden followup:
-  // one key saved + one redirected must resume VISIBLY and keep BOTH lines.
   it("keeps a saved key AND a credential redirect, resuming VISIBLY", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -241,9 +220,6 @@ describe("composeInteractionReply", () => {
 });
 
 describe("credential composition", () => {
-  // ── Credential composition (HOU-550) ───────────────────────────────────
-  // A credential-only sequence mirrors signin-only: no factual line to relay,
-  // so it resumes with the dedicated hidden followup naming the integration.
   it("resumes a credential-only sequence with the hidden followup", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -257,8 +233,6 @@ describe("credential composition", () => {
     strictEqual(reply.includes("Added the Acme key."), false);
   });
 
-  // A mixed sequence (questions + credential) keeps the visible answers and
-  // appends an "Added the X key." line, exactly like Connected lines.
   it("appends an Added-key line per credential in a mixed sequence", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -273,8 +247,6 @@ describe("credential composition", () => {
     );
   });
 
-  // A SKIPPED credential is a fact the agent MUST hear (or it waits on a key
-  // that never comes): a skip-only sequence resumes HIDDEN naming the decline.
   it("hides a credential-skip-only sequence but names the decline", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -285,8 +257,6 @@ describe("credential composition", () => {
     strictEqual(reply.includes("Please continue."), false);
   });
 
-  // A save + a skip in the same sequence keeps BOTH facts (the credentialed
-  // followup shortcut must NOT swallow the skip): saved line then skipped line.
   it("names both a saved and a skipped credential when they mix", () => {
     const reply = composeInteractionReply({
       ...base,
@@ -318,11 +288,8 @@ describe("finalConnectNames", () => {
     deepStrictEqual(skippedConnectNames, ["Slack"]);
   });
 
-  // The reconsider fix: a step skipped then connected records connected LAST, so
-  // it names "Connected", never a stale "Skipped connecting". One line per step.
   it("reports Connected for a step skipped then reconsidered (last write wins)", () => {
     const map = outcomes([["c1", { name: "Slack", connected: false }]]);
-    // The user walked Back and connected after all — the panel overwrites.
     map.set("c1", { name: "Slack", connected: true });
     const { connectedNames, skippedConnectNames } = finalConnectNames(
       ["c1"],
@@ -332,7 +299,6 @@ describe("finalConnectNames", () => {
     deepStrictEqual(skippedConnectNames, []);
   });
 
-  // Skip -> Back -> skip again: the key overwrite keeps exactly ONE skip line.
   it("keeps a single skip line when a step is skipped more than once", () => {
     const map = outcomes([["c1", { name: "Gmail", connected: false }]]);
     map.set("c1", { name: "Gmail", connected: false });
@@ -353,9 +319,6 @@ describe("finalConnectNames", () => {
     deepStrictEqual(skippedConnectNames, []);
   });
 
-  // A decline WITH typed text lands in connectRedirects (carries user text, so
-  // the sequence resumes visibly), never the plain skipped list. A bare skip
-  // (no message, or whitespace-only) stays a plain skip.
   it("routes a decline-with-text into connectRedirects, not skipped", () => {
     const { connectedNames, skippedConnectNames, connectRedirects } =
       finalConnectNames(
@@ -404,8 +367,6 @@ describe("finalCredentialNames", () => {
     deepStrictEqual(skippedCredentialNames, ["Globex"]);
   });
 
-  // The reconsider fix: a step skipped then saved records saved LAST, so it
-  // names "Added", never a stale "Skipped adding". One line per step.
   it("reports saved for a step skipped then reconsidered (last write wins)", () => {
     const map = outcomes([["k1", { name: "Acme", saved: false }]]);
     map.set("k1", { name: "Acme", saved: true });
@@ -426,7 +387,6 @@ describe("finalCredentialNames", () => {
     deepStrictEqual(skippedCredentialNames, []);
   });
 
-  // A decline WITH typed text lands in credentialRedirects (mirrors connect).
   it("routes a decline-with-text into credentialRedirects, not skipped", () => {
     const { credentialedNames, skippedCredentialNames, credentialRedirects } =
       finalCredentialNames(
@@ -482,8 +442,6 @@ describe("encodeInteractionAnswersMessage", () => {
     });
   });
 
-  // A decline-with-instruction rides the VISIBLE structured payload too — the
-  // connect/credential/signin redirect lines read the same for model and user.
   it("carries the decline-with-instruction lines in the payload, in order", () => {
     const encoded = encodeInteractionAnswersMessage({
       ...base,
@@ -538,8 +496,6 @@ describe("encodeInteractionAnswersMessage", () => {
     strictEqual(decodeInteractionAnswersMessage(encoded), null);
   });
 
-  // A mixed question + credential-skip sequence surfaces the skipped-key line
-  // in the VISIBLE payload too, aligned with the "Skipped connecting" pattern.
   it("humanizes a skipped credential in the visible payload", () => {
     const encoded = encodeInteractionAnswersMessage({
       ...base,

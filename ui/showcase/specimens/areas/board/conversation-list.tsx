@@ -11,17 +11,14 @@ import {
 } from "../../../src/specimen";
 import { CONVERSATIONS } from "./sample";
 
-/** `updatedAt` is rendered as an offset from now, so the fixture is one too. */
 const ago = (minutes: number) =>
   new Date(Date.now() - minutes * 60_000).toISOString();
 
-/** The agent's main chat plus two of its missions, freshly stamped. */
 const ENTRIES: ConversationEntry[] = CONVERSATIONS.map((entry, index) => ({
   ...entry,
   updatedAt: ago([2, 95, 3 * 24 * 60][index]),
 }));
 
-/** Every status the list words, plus one it has never heard of. */
 const STATUSES: ConversationEntry[] = [
   "running",
   "needs_you",

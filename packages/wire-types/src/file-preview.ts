@@ -73,7 +73,6 @@ export const officePdfMetadataSchema = z.object({
   version: z.string().min(1),
 });
 
-/** The converter generates only these locales; equivalent tags share cached bytes. */
 export function officePreviewLanguage(lang: string): "en" | "es" | "pt" {
   switch (lang.toLowerCase().split("-")[0]) {
     case "es":

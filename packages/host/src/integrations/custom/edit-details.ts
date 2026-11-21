@@ -1,6 +1,5 @@
 import { type CustomIntegrationDef, CustomIntegrationError } from "./types";
 
-/** Cosmetic edits never replace the connection or its stable tool/credential IDs. */
 export function editDetails(
   def: CustomIntegrationDef,
   input: unknown,

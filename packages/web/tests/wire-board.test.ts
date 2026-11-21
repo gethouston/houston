@@ -9,22 +9,6 @@ import {
   ORG,
 } from "./support/wire-capture";
 
-/**
- * The board READS delegated to `@houston/sdk`: `listActivities` and the
- * generic `updateActivity` PATCH (create and delete are pinned in
- * `wire-writes.test.ts`).
- *
- * These assertions ARE the record of what those calls put on the wire: same
- * method, whole URL, body bytes, and
- * headers (`Content-Type`, the `Authorization` bearer, the live `x-houston-org`)
- * over the ONE shared gateway fetch. A read publishes no SDK scope and a write
- * never refetches, so each call is exactly one request.
- *
- * The 404 disposition is asserted too: neither operation degrades — the board
- * read failing is what `listAllConversations` reports as a failed agent, and a
- * swallowed PATCH would leave a settled mission stuck on "running".
- */
-
 const BASE = "http://host";
 
 const {
@@ -58,21 +42,18 @@ const mission = {
   updated_at: "2026-01-01T00:00:00.000Z",
 };
 
-// ---- listActivities ----
-
 test("listActivities delegates a byte-identical single GET /agents/:id/activities", async () => {
   stubFetch(json(200, { items: [mission] }));
 
   const rows = await client().listActivities("a1");
 
-  expect(calls).toHaveLength(1); // the read publishes no scope: one request
+  expect(calls).toHaveLength(1);
   const [get] = calls;
   expect(get.method).toBe("GET");
   expect(get.url).toBe(`${BASE}/agents/a1/activities`);
   expect(get.body).toBeNull();
   expect(get.headers.get("Content-Type")).toBe("application/json");
   expect(get.headers.get("Authorization")).toBe("Bearer t");
-  // The `{ items }` envelope is unwrapped exactly as the cp copy unwrapped it.
   expect(rows).toEqual([mission]);
 });
 
@@ -98,8 +79,6 @@ test("a failed board read propagates as the adapter's engine error", async () =>
   });
 });
 
-// ---- updateActivity ----
-
 test("updateActivity delegates a byte-identical single PATCH of the WHOLE update", async () => {
   stubFetch(json(200, { ...mission, status: "done" }));
 
@@ -108,12 +87,10 @@ test("updateActivity delegates a byte-identical single PATCH of the WHOLE update
     pending_interaction: null,
   });
 
-  expect(calls).toHaveLength(1); // no post-write refetch
+  expect(calls).toHaveLength(1);
   const [patch] = calls;
   expect(patch.method).toBe("PATCH");
   expect(patch.url).toBe(`${BASE}/agents/a1/activities/m1`);
-  // One request carries every field the caller changed — a settle writes its
-  // status and clears its interaction together, or the card publishes half-done.
   expect(patch.body).toBe(
     JSON.stringify({ status: "done", pending_interaction: null }),
   );
@@ -123,8 +100,6 @@ test("updateActivity delegates a byte-identical single PATCH of the WHOLE update
 });
 
 test("keeping a conversation's mode is one PATCH whose body is only the mode", async () => {
-  // The Mode pill's write (HOU-205): the card keeps the mode, so the next
-  // visit, every surface and a send that pins no mode all read it back.
   stubFetch(json(200, { ...mission, mode: "auto" }));
 
   const updated = await client().updateActivity("a1", "m1", { mode: "auto" });

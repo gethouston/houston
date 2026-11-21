@@ -34,19 +34,6 @@ interface SettingsIndexProps {
   onSelect: (id: SettingsSectionId) => void;
 }
 
-/**
- * The settings landing page: the standing setup a person adjusts, about their
- * own app and preferences.
- *
- * The page holds ONE general group (plan, channels, appearance, language,
- * notifications, the morning briefing, and the API-key, shortcut, bug-report and migration rows), plus
- * Danger. Admin is its own screen; an AI Employee's Skills live in that
- * employee's settings. The person themselves (who is signed in, Sign out,
- * their Profile and About me) is the account menu's, not a row here.
- *
- * Simple settings are resolved inline as control rows; the heavier ones
- * (shortcuts, bug report) are navigable rows that drill into their own screen.
- */
 export function SettingsIndex({
   migrationAvailable,
   onSelect,
@@ -54,9 +41,7 @@ export function SettingsIndex({
   const { t } = useTranslation("settings");
   const channels = useChannels();
   const { capabilities } = useCapabilities();
-  // Billing is per org now (Admin > Billing); Settings keeps only the pick.
   const choiceOpen = useFreeOrgChoiceOpen();
-  // A structural fork, not a layout tweak: a phone has no keyboard shortcuts.
   const surface = { touch: useIsMobile() || osIsNativeMobile() };
   const channelsAvailable =
     !!channels.data ||

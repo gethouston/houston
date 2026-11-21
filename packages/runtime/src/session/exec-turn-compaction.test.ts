@@ -5,13 +5,6 @@ import type { WireEvent } from "@houston/runtime-client";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { HarnessSession } from "../backends/types";
 
-/**
- * execTurn's TWO compaction call sites both go through the fact harvest, and
- * both hand it the conversation id — the harvest cannot read one from ambient
- * context (compaction runs outside `runWithConversationId`), so a call site that
- * forgot it would silently extract nothing for the assistant forever.
- */
-
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "houston-comp-data-"),
 );
@@ -36,8 +29,6 @@ vi.mock("../ai/providers", async (importOriginal) => {
   };
 });
 
-// Both compaction TRIGGERS are decisions of their own pure modules (tested
-// there); forcing them true is what puts this turn on the compaction path.
 vi.mock("./autocompact", () => ({ needsAutocompact: () => true }));
 vi.mock("./provider-switch", () => ({ switchNeedsCompaction: () => true }));
 vi.mock("./durable-facts-harvest", () => ({
@@ -118,8 +109,6 @@ test("autocompact harvests facts for the conversation it compacts", async () => 
 
 test("the provider-switch compaction harvests facts too", async () => {
   vi.mocked(compactWithFactHarvest).mockClear();
-  // The turn resolves onto a DIFFERENT provider than the cached session's, so
-  // the switch compacts before the prompt and autocompact then no-ops.
   const conv = fakeConv("google");
   const events: WireEvent[] = [];
   const unsub = subscribe(ASSISTANT_CONVERSATION_ID, (e) => events.push(e));
@@ -132,8 +121,6 @@ test("the provider-switch compaction harvests facts too", async () => {
     conv.session,
     ASSISTANT_CONVERSATION_ID,
   );
-  // The ONE call came from the switch (it announced a summarized switch), not
-  // from autocompact — which this turn skipped for exactly that reason.
   expect(
     events.find((e) => e.type === "provider_switched")?.data,
   ).toMatchObject({ summarized: true });
@@ -141,10 +128,6 @@ test("the provider-switch compaction harvests facts too", async () => {
 });
 
 test("a compaction that REFUSES never wedges the conversation", async () => {
-  // The wedge: the fill only drops when compaction SUCCEEDS, so an unguarded
-  // await killed this turn AND every later one at the same step — the Claude
-  // backend's summarize-and-restart throws on a provider failure, an empty
-  // summary, or a session too small (backends/claude/compact.ts).
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
   vi.mocked(compactWithFactHarvest).mockRejectedValue(
     new Error("Summarization failed"),
@@ -156,15 +139,11 @@ test("a compaction that REFUSES never wedges the conversation", async () => {
   await expect(
     execTurn(conv, ASSISTANT_CONVERSATION_ID, "turn-3", "hi", recorded),
   ).resolves.not.toThrow();
-  // The SECOND turn is the one the wedge showed up on: it must run too, and it
-  // must not re-pay the doomed summarization.
   await execTurn(conv, ASSISTANT_CONVERSATION_ID, "turn-4", "again", recorded);
   unsub();
 
   expect(compactWithFactHarvest).toHaveBeenCalledTimes(1);
-  // No divider is drawn for a compaction that never happened.
   expect(events.some((e) => e.type === "context_compacted")).toBe(false);
-  // Both turns reached the model.
   expect(events.filter((e) => e.type === "done")).toHaveLength(2);
   expect(error).toHaveBeenCalledTimes(1);
   error.mockRestore();

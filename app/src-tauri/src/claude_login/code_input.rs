@@ -105,7 +105,6 @@ pub async fn complete_claude_login_from_clipboard(
     }) else {
         return Ok(false);
     };
-    // arboard is blocking; keep it off the async runtime's core threads.
     let text = tokio::task::spawn_blocking(|| {
         arboard::Clipboard::new().and_then(|mut c| c.get_text())
     })
@@ -113,8 +112,6 @@ pub async fn complete_claude_login_from_clipboard(
     let text = match text {
         Ok(Ok(t)) => t,
         Ok(Err(e)) => {
-            // Empty/non-text clipboard lands here too — expected, stay quiet
-            // beyond a debug trace (contents are never logged, only the error).
             tracing::debug!("[claude-login] clipboard read unavailable: {e}");
             return Ok(false);
         }
@@ -132,8 +129,6 @@ pub async fn complete_claude_login_from_clipboard(
             Ok(true)
         }
         Err(e) => {
-            // The child may have just exited (hand-off won the race) — treat as
-            // "nothing consumed" and let the dialog fall back.
             tracing::warn!("[claude-login] clipboard code relay failed: {e}");
             Ok(false)
         }
@@ -154,22 +149,20 @@ mod tests {
     #[test]
     fn looks_like_login_code_accepts_only_code_hash_state_shapes() {
         let state43 = "dC6jOHpzMnxqFPzlziDLuI2idI8uGWL0RlAg1HQ5l78";
-        // Real shape: opaque code, '#', 43-char base64url state (whitespace trimmed).
         let ok = format!("  ac_7GhK2mPq-x9_zW#{state43}  ");
         assert_eq!(
             looks_like_login_code(&ok).map(str::trim),
             Some(format!("ac_7GhK2mPq-x9_zW#{state43}").trim())
         );
-        // Ordinary clipboard content must never match.
         for junk in [
             "",
             "hello world",
-            "https://claude.ai/oauth#section",       // short tail
-            "password#hunter2",                      // short tail
-            &format!("has space#{state43}"),         // whitespace inside
-            &format!("multi\nline#{state43}"),       // newline inside
-            state43,                                 // no '#'
-            &format!("a#b#{state43}"),               // '#' in the tail charset? ('#' not allowed)
+            "https://claude.ai/oauth#section",
+            "password#hunter2",
+            &format!("has space#{state43}"),
+            &format!("multi\nline#{state43}"),
+            state43,
+            &format!("a#b#{state43}"),
         ] {
             assert_eq!(looks_like_login_code(junk), None, "matched junk: {junk:?}");
         }

@@ -1,16 +1,3 @@
-// Which characters the bundled fonts can actually draw.
-//
-// satori silently substitutes `.notdef` — an empty box — for any code point the
-// loaded fonts do not carry, and the result is a PERMANENT public credential
-// with boxes where somebody's name should be. The three TTFs here are Latin
-// cuts of Hanken Grotesk, so a name in Chinese, Arabic, Devanagari, Greek or
-// Cyrillic renders as boxes with no error anywhere.
-//
-// There is no satori API for "did every glyph resolve", so we read the font's
-// own `cmap` table and check the strings before rendering. This module is pure
-// parsing: it reports, `render.mjs` decides what to say about it.
-
-/** Characters that never need a glyph, so never count as missing. */
 const IGNORED = /^[\s​-‏ ⁠﻿]$/u;
 
 /**
@@ -65,7 +52,6 @@ export function uncoveredCharacters(text, covered) {
   return missing;
 }
 
-/** Byte offset of a table in the font file, or `null` when it has none. */
 function findTable(view, tag) {
   const tableCount = view.getUint16(4);
   for (let i = 0; i < tableCount; i += 1) {
@@ -81,13 +67,11 @@ function findTable(view, tag) {
   return null;
 }
 
-/** Unicode cmap encodings: platform 0 (Unicode) and 3/1 + 3/10 (Windows). */
 function isUnicode(platformId, encodingId) {
   if (platformId === 0) return true;
   return platformId === 3 && (encodingId === 1 || encodingId === 10);
 }
 
-/** Format 4: segmented mapping, the Basic Multilingual Plane. */
 function readFormat4(view, start, covered) {
   const segCount = view.getUint16(start + 6) / 2;
   const endCodes = start + 14;
@@ -105,8 +89,6 @@ function readFormat4(view, start, covered) {
         covered.add(cp);
         continue;
       }
-      // The glyph id lives in the array that starts at this entry, offset by
-      // the segment's rangeOffset — the one genuinely odd corner of format 4.
       const at = idRangeOffsets + seg * 2 + rangeOffset + (cp - first) * 2;
       if (at + 1 >= view.byteLength) continue;
       if (view.getUint16(at) !== 0) covered.add(cp);
@@ -114,7 +96,6 @@ function readFormat4(view, start, covered) {
   }
 }
 
-/** Format 12: grouped mapping, full Unicode range. */
 function readFormat12(view, start, covered) {
   const groupCount = view.getUint32(start + 12);
   for (let i = 0; i < groupCount; i += 1) {

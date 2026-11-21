@@ -6,15 +6,11 @@ export interface ObjectMetadata {
   generation?: string;
 }
 
-/** One directory level: the objects directly inside it and its
- *  subdirectories, both as keys relative to the store root (no trailing
- *  slash). */
 export interface DirListing {
   objects: ObjectMetadata[];
   dirs: string[];
 }
 
-/** Manifest + object seam used by read/write shared-prefix mirrors. */
 export interface ManifestObjectStore {
   manifest(prefix?: string): Promise<ObjectMetadata[]>;
   download(
@@ -61,7 +57,6 @@ export function parseObjectManifest(
   return objects.map((object) => normalizeObjectMetadata(object));
 }
 
-/** Normalize the gateway's wire `gen` (JSON number or string) for int64 safety. */
 export function normalizeObjectMetadata(value: ObjectMetadata): ObjectMetadata {
   const { gen: wireGeneration, ...metadata } = value as ObjectMetadata & {
     gen?: unknown;
@@ -70,19 +65,10 @@ export function normalizeObjectMetadata(value: ObjectMetadata): ObjectMetadata {
     typeof wireGeneration === "string" || typeof wireGeneration === "number"
       ? String(wireGeneration)
       : value.generation;
-  // Generation 0 means "the backend has no generations" (GCS never mints 0;
-  // 0 is only the DoesNotExist precondition). Treating it as real would flip
-  // syncBack into conditional mode against a store that 501s every guarded
-  // write — found by the cross-repo e2e against the dir blob backend.
   const generation = raw === undefined || raw === "0" ? undefined : raw;
   return generation === undefined ? metadata : { ...metadata, generation };
 }
 
-/**
- * A `?delimiter=/` manifest body, or undefined when the body has no `dirs`:
- * a pod-store that predates the delimiter answers with the recursive
- * listing, which is not one level.
- */
 export function parseDirManifest(
   value: unknown,
   source: string,

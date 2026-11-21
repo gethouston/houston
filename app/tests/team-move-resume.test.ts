@@ -191,7 +191,6 @@ describe("team move resume", () => {
       ),
       { key: "moveFailedNextNameTaken", moved: 1, total: 2, name: "Bee" },
     );
-    // The person may have renamed it since: the retry stays offered.
     strictEqual(canRetryTeamMove(state), true);
   });
 

@@ -65,7 +65,6 @@ describe("resolvePendingSkillActivity", () => {
   });
 
   it("drops an id no loaded row claims, instead of keeping it for the session", () => {
-    // A lingering id hijacks the NEXT skill chat the user opens.
     deepStrictEqual(
       resolvePendingSkillActivity({
         rows: [row("other", "a9")],
@@ -81,8 +80,6 @@ describe("the Skills library consumes the pending id itself", () => {
   const src = read("../src/components/skills-view/use-skills-editor-nav.ts");
 
   it("clears the id the moment it resolves one, mounted chat or not", () => {
-    // Only a mounted chat cleared it before. A phone does not auto-mount the
-    // chat, so Back re-ran the effect and reopened the editor forever.
     ok(src.includes("resolvePendingSkillActivity"), "uses the pure decision");
     ok(
       src.includes("setPendingSkillChatActivityId(null)"),

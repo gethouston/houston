@@ -11,16 +11,6 @@ import {
   useConnectFlowStore,
 } from "../src/stores/connect-flow.ts";
 
-/**
- * The identity guard on the shared connect flow. A poll deliberately outlives
- * the surface that started it — but NOT the identity: after an active-space
- * switch or a sign-out its next tick would carry the new `x-houston-org` and
- * answer for the wrong tenant (a red toast about an app the new space never
- * connected, a success toast across spaces, an invalidation into a cache that
- * was just wiped).
- */
-
-/** A waker that records wakes instead of sleeping. */
 function countingWaker(): Waker & { wakes: number } {
   const w = {
     wakes: 0,
@@ -55,8 +45,6 @@ describe("cancelAllConnectFlows", () => {
 
     strictEqual(slackEntry?.cancelled, true);
     strictEqual(notionEntry?.cancelled, true);
-    // Woken, not merely flagged: the loop must observe the flag NOW rather than
-    // after the next poll interval under the new identity.
     strictEqual(slack.wakes, 1);
     strictEqual(notion.wakes, 1);
   });
@@ -94,7 +82,6 @@ describe("connect-flow origins", () => {
   it("a settled flow keeps its origin, so the row that started it confirms", () => {
     store().setOrigin("slack", "integrations:communication:slack");
     store().setStep("slack", "waiting");
-    // The runner's settle order: publish the outcome, THEN clear the phase.
     store().setNotice("slack", "connected");
     store().setStep("slack", null);
 

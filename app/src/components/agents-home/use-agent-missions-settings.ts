@@ -2,11 +2,6 @@ import { useEffect, useState } from "react";
 import type { AgentSettingsSection } from "../agent-settings/agent-settings-nav";
 import { useAgentSettingsNav } from "../team-view/agent-settings-nav-store";
 
-/**
- * The employee's Settings, opened in place over its phone task list: from the
- * list's own menu, or from a settings deep link requested for this employee
- * (consumed once), so the Settings back chip returns to the list.
- */
 export function useAgentMissionsSettings(agentId: string) {
   const requestedAgentId = useAgentSettingsNav(
     (store) => store.requestedAgentId,

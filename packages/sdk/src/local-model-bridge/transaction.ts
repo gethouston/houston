@@ -68,7 +68,6 @@ export async function prepareBridge(
       await ports.storage.clear(identity);
       throw new BridgeRegistrationRefusedError(error);
     }
-    // Keep the prepared idempotency key durable if this write fails. Resume can recover the descriptor.
     journal = { ...journal, descriptor, phase: "registered" };
     await ports.storage.save(identity, journal);
     signal.throwIfAborted();
@@ -95,7 +94,6 @@ export async function commitBridge(
   try {
     await ports.management.saveEndpoint(bridgeEndpoint(journal), signal);
   } catch (error) {
-    // An aborted/ambiguous network result is reconciled through the same idempotent endpoint save.
     if (
       !signal.aborted &&
       (isAuthorizationFailure(error) || isPermanentBridgeFailure(error))

@@ -4,18 +4,8 @@ import { ExternalLink, KeyRound, Loader2, LogIn } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CustomCredentialForm } from "./integrations/custom-credential-form";
 
-/**
- * The credential step's identity glyph and body fields, split out of
- * `chat-credential-interaction-card.tsx` so every file stays under the size
- * limit (the step's filled CTA is `chat-credential-step-cta.tsx`). The card
- * owns every decision (which mode, what's in flight); these render it.
- */
-
-/** Which shape the step takes: a secure key form, or the service's own sign-in. */
 export type CredentialStepMode = "key" | "oauth";
 
-/** The favicon the Integrations card already wears (PRODUCT-1172); the LogIn /
- *  KeyRound glyph is the no-icon (or failed-image) fallback. */
 export function CredentialStepIcon({
   iconUrl,
   mode,
@@ -39,8 +29,6 @@ export function CredentialStepIcon({
   return <Glyph className="size-4 shrink-0 text-ink-muted" />;
 }
 
-/** The body fields under the reason line. A step whose slug resolves to no
- *  registered integration renders nothing here: the reason IS the dead end. */
 export function CredentialStepFields({
   mode,
   missing,
@@ -58,11 +46,8 @@ export function CredentialStepFields({
   missing: boolean;
   authMethod: CustomAuthMethod | null;
   formId: string;
-  /** The browser sign-in was opened from here and the grant hasn't landed yet. */
   awaitingGrant: boolean;
-  /** The browser refused the sign-in window; this URL opens it on a click. */
   blockedUrl: string | null;
-  /** The sign-in never started (mint refused, pod never woke). */
   signInFailed: boolean;
   submitting: boolean;
   onOpenBlocked: () => void;

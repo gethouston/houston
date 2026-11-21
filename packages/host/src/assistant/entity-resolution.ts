@@ -17,7 +17,6 @@ export type EntityResolution =
 
 export type EntityResolutionDeps = EntityDirectory;
 
-/** The scope a child collection is listed under, once that parent resolved. */
 const PARENT: Partial<
   Record<AssistantEntityCollection, AssistantEntityCollection>
 > = {
@@ -28,19 +27,16 @@ const PARENT: Partial<
 };
 
 interface Reference {
-  /** How the value is named in a refusal: `agentId`, or `manifest.enabled`. */
   label: string;
   collection: AssistantEntityCollection;
 }
 
-/** Resolve parent scopes before children regardless of declaration order. */
 function ordered(refs: Reference[]): Reference[] {
   return [...refs].sort(
     (a, b) => (PARENT[a.collection] ? 1 : 0) - (PARENT[b.collection] ? 1 : 0),
   );
 }
 
-/** The parameters that name a thing, top level. */
 function identifiers(op: AssistantOperation): Reference[] {
   return ordered(
     op.params.flatMap((param) =>
@@ -49,23 +45,6 @@ function identifiers(op: AssistantOperation): Reference[] {
   );
 }
 
-/**
- * Turn every identifier the model passed into the real one, or refuse with the
- * values that exist.
- *
- * Which parameters name a thing is the catalog's own answer (`resolver`, put
- * there by the generator from the route the value is spliced into), so a new
- * operation on a known collection is checked the day it is annotated. Directory
- * failures propagate to the host reporting path: an unavailable list must never
- * become an empty list, and an empty list must never authorize an unchecked
- * identifier.
- *
- * THREE shapes, because an identifier does not only arrive as a top-level
- * string: a parameter can carry a LIST of them, and a body object can carry
- * them one level in (`manifest.enabled`, `assignments[].userId`). Those were
- * invisible here while the catalog said `string`, so the model's guess went
- * straight through the approval card and into the request.
- */
 export async function resolveEntityParams(
   op: AssistantOperation,
   params: Record<string, unknown>,
@@ -96,7 +75,6 @@ export async function resolveEntityParams(
     : { ok: true, params: nested.params };
 }
 
-/** The already-resolved parent id a child collection is listed under. */
 function scopeFor(
   label: string,
   collection: AssistantEntityCollection,
@@ -121,13 +99,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/**
- * The identifiers a body object carries one level in, resolved in place. The
- * fields are the catalog's declaration (`AssistantFieldDocument`), and the
- * VALUE decides which shape they apply to: an object's property, the same
- * property of every element of a list of objects, or every entry of a list the
- * field itself holds.
- */
 async function resolveNestedFields(
   op: AssistantOperation,
   params: Record<string, unknown>,

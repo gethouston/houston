@@ -1,50 +1,14 @@
-/**
- * Harness-local constants for the Playwright run.
- *
- * These describe the vite web server the browser is pointed at — pure e2e glue,
- * so they live with the harness. The fake host's own constants (its port, token,
- * seeded agent) come from `@houston/fake-host`.
- */
-
 import { WORKTREE_PORT_STRIDE, worktreePortOffset } from "@houston/fake-host";
 
-/** Vite dev server (packages/web). HOUSTON_E2E_WEB_PORT when set, else derived
- *  per worktree in 20000..23960 (disjoint from the fake host's derived range) —
- *  distinct ports per parallel worktree keep e2e runs from silently reusing a
- *  foreign worktree's server. playwright.config passes the resolved value to
- *  vite explicitly, so the two processes cannot disagree. */
 export const WEB_PORT = Number(
   process.env.HOUSTON_E2E_WEB_PORT ||
     20000 + worktreePortOffset() * WORKTREE_PORT_STRIDE,
 );
 export const WEB_URL = `http://localhost:${WEB_PORT}`;
 
-/**
- * How long a spec waits for its boot anchor, the first thing it expects on
- * screen after `page.goto`. On the vite dev server (the visual job) a boot
- * fetches and runs about 3,000 unbundled modules before the app's first host
- * request; on a slow CI runner that alone takes 11 to 12 s, past the 10 s
- * expect default. Only the boot anchor gets this budget; every later
- * assertion keeps the default.
- */
 export const BOOT_TIMEOUT = 20_000;
 
-/**
- * A SECOND vite dev server, five ports up, baked with a (fake) Firebase API key
- * so `isIdentityConfigured()` is true and the GCIP `SignInScreen` renders. The
- * default server bakes NO key (identity off), so the whole existing suite still
- * boots straight to the shell — only the `auth` Playwright project points here.
- * Offset from WEB_PORT so per-worktree `HOUSTON_E2E_WEB_PORT` overrides stay
- * collision-free (mirrors the fake-host port offset rationale).
- */
 export const AUTH_WEB_PORT = WEB_PORT + 5;
 export const AUTH_WEB_URL = `http://localhost:${AUTH_WEB_PORT}`;
 
-/**
- * A syntactically-valid but non-functional Firebase Web API key. It only has to
- * make `identityConfigured()` return true (apiKey + projectId present) and let
- * `initializeApp`/`onIdTokenChanged` resolve a null user WITHOUT a network call —
- * the sign-in spec never completes a real Firebase exchange (OTP is mocked, the
- * OAuth buttons are only asserted-rendered, never clicked).
- */
 export const FAKE_FIREBASE_API_KEY = "AIzaSyE2E-fake-key-for-signin-spec-00000";

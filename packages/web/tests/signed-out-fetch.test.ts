@@ -4,17 +4,6 @@ import { cpFetch } from "@houston/engine-adapter/cp/fetch";
 import { EngineError } from "@houston/runtime-client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * HOU-1014: a hosted gateway call attempted with NO session must not go to the
- * network — the sign-out / account-switch window used to fire every mounted
- * query with an empty bearer, producing a storm of real 401s, red toasts, and
- * Sentry reports for an expected lifecycle state. The transport now answers a
- * synthetic signed-out 401 locally (after giving the refresher one chance to
- * bridge the boot race), and the error is marked so the toast layer stays
- * quiet. Local (non-control-plane) hosts are exempt — their token handling is
- * unchanged.
- */
-
 type TestWindow = {
   __HOUSTON_CP__?: boolean;
   __HOUSTON_SESSION_REFRESH__?: () => Promise<string | null>;

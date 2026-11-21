@@ -1,11 +1,3 @@
-// The download modal: every trigger, the backdrop, the close button and Escape.
-// The asset is a browser IIFE, so it is read and evaluated against stub window
-// and document objects rather than imported.
-//
-// What these pin is the gate's independence from its neighbours: the buttons
-// inside the download step ship as a SEPARATE asset (download-gate-buttons.js),
-// and a browser that never ran it must still open the modal — an inert download
-// button on every page is the one failure this gate cannot afford.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -48,7 +40,6 @@ function element(id) {
   };
 }
 
-/** A trigger as the markup declares it: `data-dl-source` + `data-dl-os`. */
 function trigger(source, os) {
   const el = element("trigger");
   el.getAttribute = (name) =>
@@ -56,11 +47,6 @@ function trigger(source, os) {
   return el;
 }
 
-/**
- * Evaluates the gate against a stub page. `buttons` left out, or `form: false`,
- * stands for that neighbouring asset never having run (blocked, 404, a syntax
- * error in a browser the bundle does not target).
- */
 function openPage({
   buttons,
   form = true,
@@ -86,7 +72,6 @@ function openPage({
       style: { setProperty: () => {} },
     },
     getElementById: (id) => elements.get(id) ?? null,
-    // No dropdown is ever open in these cases.
     querySelector: () => null,
     querySelectorAll: (selector) =>
       selector === "[data-dl-trigger]" ? triggers : [],
@@ -136,7 +121,6 @@ function openPage({
   };
 }
 
-/** A stub of the handle `window.HoustonDLButtons.init` returns. */
 function fakeButtons() {
   let current = "other";
   const applied = [];
@@ -162,8 +146,6 @@ test("opens the modal from a trigger when the buttons asset never loaded", () =>
     page.tracked.map((event) => event.name),
     ["app_download_clicked", "download_clicked"],
   );
-  // The OS still reaches analytics: it is the page's own detection, not the
-  // missing asset's, that answers it.
   assert.equal(page.tracked[0].props.os, "mac");
   assert.equal(page.tracked[1].props.source, "nav");
 });
@@ -192,9 +174,6 @@ test("still gates the form, and shows the download step on submit", () => {
 });
 
 test("keeps the modal working when the form asset never loaded", () => {
-  // download-gate-form.js is the registration step's own asset. Without it
-  // there is nothing to submit — but the modal, the OS detection and every way
-  // out of it are this file's job and must not go down with it.
   const page = openPage({ form: false });
   page.triggers[0].fire("click", { preventDefault: () => {} });
   assert.equal(page.open(), true);
@@ -214,15 +193,11 @@ test("keeps the modal working when the form asset never loaded", () => {
 });
 
 test("still honours the #download deep link without the form asset", () => {
-  // The deep link is the LAST thing this file runs, so anything that throws
-  // above it takes the link with it — silently, for every /?#download visitor.
   assert.equal(openPage({ hash: "#download" }).open(), true);
   assert.equal(openPage({ hash: "#download", form: false }).open(), true);
 });
 
 test("a returning visitor still reaches the download step with no form asset", () => {
-  // Registration is remembered in localStorage, so this visitor never needed
-  // the form asset at all — they must land straight on the buttons.
   const buttons = fakeButtons();
   const page = openPage({ buttons, form: false, registered: true });
   page.triggers[0].fire("click", { preventDefault: () => {} });
@@ -240,6 +215,5 @@ test("drives the buttons asset when it is there", () => {
   assert.deepEqual(buttons.applied, ["windows"]);
   assert.equal(page.tracked[0].props.os, "windows");
   page.window.formOpts.onSubmitted({ email: "ada@example.com" });
-  // applyOs() with no argument re-pins the group as the download step appears.
   assert.deepEqual(buttons.applied, ["windows", undefined]);
 });

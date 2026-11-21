@@ -2,16 +2,6 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { isEngineWakingError } from "../src/lib/engine-waking-error.ts";
 
-// HOU-1114 / PRODUCT-1403: the surfacing-layer classifier that keeps the
-// gateway's two pod-not-reachable answers — "engine unavailable" 503 (agent pod
-// provisioning / cold-starting) and "engine proxy failed" 502 (the proxy could
-// not connect to a pod restarting under an engine roll) — out of the red
-// bug-toast + Sentry pipeline. It must match exactly those (status, reason)
-// pairs, and must NEVER match other 502/503s — a false positive here silently
-// drops a real bug report.
-
-/** The shape `HoustonEngineError` mints (structural stand-in, keeps the test
- *  dependency-free like the classifier itself). */
 function engineError(status: number, reason?: string): Error {
   const err = new Error(
     reason ? `${reason} (engine error ${status})` : `engine error ${status}`,
@@ -38,8 +28,6 @@ describe("isEngineWakingError", () => {
   });
 
   it("matches the gateway's engine-proxy-failed 502 (PRODUCT-1403)", () => {
-    // The proxy's answer carries the dial error as detail; HoustonEngineError
-    // keeps only the reason in the message, so the prefix is what's matched.
     strictEqual(
       isEngineWakingError(engineError(502, "engine proxy failed")),
       true,
@@ -88,9 +76,6 @@ describe("isEngineWakingError", () => {
   });
 });
 
-/** The shape the SDK agent-write path throws (`AgentsHttpError`): the message
- *  is the gateway's raw response body, verbatim. Structural stand-in, same as
- *  above. */
 function agentsHttpError(status: number, body: string): Error {
   const err = new Error(body) as Error & { status: number };
   err.name = "AgentsHttpError";
@@ -98,9 +83,6 @@ function agentsHttpError(status: number, body: string): Error {
   return err;
 }
 
-// HOUSTON-APP-536: renaming an asleep agent goes through the SDK write path,
-// whose error carries the gateway body raw — the wake answers must classify
-// quiet there too, including the rename route's transport-failure 502.
 describe("isEngineWakingError (SDK agent-write shape)", () => {
   it("matches the wake 503 body", () => {
     strictEqual(
@@ -195,9 +177,6 @@ describe("isEngineWakingError (SDK agent-write shape)", () => {
   });
 });
 
-/** The shape `@houston/runtime-client` throws (`EngineError`): the message is
- *  `engine request failed (<status>): <body>` and `body` carries the raw
- *  response text. Structural stand-in, same as above. */
 function runtimeEngineError(status: number, body: string): Error {
   const err = new Error(
     `engine request failed (${status}): ${body}`,
@@ -211,10 +190,6 @@ function runtimeEngineError(status: number, body: string): Error {
   return err;
 }
 
-// PRODUCT-1612 / HOUSTON-APP-4VN: first-run provider login runs in the hidden
-// setup runtime through `@houston/runtime-client`, whose error carries the raw
-// gateway body in `body` — the wake answers must classify quiet on this third
-// shape too (a setup pod still provisioning showed the red bug pair + Sentry).
 describe("isEngineWakingError (runtime-client shape)", () => {
   it("matches the setup-pod wake 503 body (PRODUCT-1612)", () => {
     strictEqual(
@@ -292,11 +267,6 @@ describe("isEngineWakingError (runtime-client shape)", () => {
   });
 });
 
-// PRODUCT-1666: the HOST's own "not there yet" answer — probe-wake.ts answers
-// the read-only probe routes `503 {"error":"the agent's runtime is still
-// starting, try again shortly"}` while the runtime boots. Same waking state as
-// the gateway's "engine unavailable", a different reason string; it escaped
-// into the red toast + Sentry pipeline on every shape (HOUSTON-APP-54Q).
 const STILL_STARTING =
   "the agent's runtime is still starting, try again shortly";
 
@@ -340,13 +310,6 @@ describe("isEngineWakingError (runtime still starting)", () => {
   });
 });
 
-// PRODUCT-1777 (HOUSTON-APP-56Z): the HOST refusing because it is draining.
-// probe-wake.ts answered every per-agent route `503 {"error":"the host is
-// shutting down; retry shortly"}` once the launcher latched closed for a roll
-// or an eviction; the same read answers against the replacement pod. A chat
-// opened in that window escaped into the red toast + Sentry pipeline. The
-// host now answers the `engine unavailable` pair; the raw reason stays
-// matched for pods on the older host during the roll.
 const HOST_SHUTTING_DOWN = "the host is shutting down; retry shortly";
 
 describe("isEngineWakingError (host shutting down)", () => {
@@ -400,8 +363,6 @@ describe("isEngineWakingError (host shutting down)", () => {
   });
 });
 
-/** The shape the SDK activity-write path throws (`ActivitiesHttpError`): the
- *  same raw-body-as-message contract as `AgentsHttpError`. */
 function activitiesHttpError(status: number, body: string): Error {
   const err = new Error(body) as Error & { status: number };
   err.name = "ActivitiesHttpError";
@@ -409,11 +370,6 @@ function activitiesHttpError(status: number, body: string): Error {
   return err;
 }
 
-// PRODUCT-1736 (HOUSTON-APP-5CJ/5CF): the gateway's wake hold gave up on a
-// control plane that never answered its ensure-awake, and the 503 it minted
-// carries the cpclient transport error as detail — with Go's sorted map keys
-// putting "detail" BEFORE "error". The body is the wake 503 and must classify
-// quiet through both shapes a mission-row write can throw.
 const CPCLIENT_ENSURE_AWAKE_503 =
   '{"detail":"cpclient: POST /internal/v1/agents/b095cb5c018ca652/82a19c02c0bd0c5b:ensure-awake: Post \\"http://control-plane.houston-gateway.svc.cluster.local:8081/internal/v1/agents/b095cb5c018ca652/82a19c02c0bd0c5b:ensure-awake\\": context deadline exceeded","error":"engine unavailable"}';
 
@@ -426,8 +382,6 @@ describe("isEngineWakingError (control-plane stall body, PRODUCT-1736)", () => {
   });
 
   it("classifies the same answer quiet on the engine-adapter shape", () => {
-    // `HoustonEngineError` keeps the parsed reason in its message; the
-    // cpclient detail lives on `body` and must not change the verdict.
     const err = engineError(503, "engine unavailable") as Error & {
       body: unknown;
     };
@@ -448,9 +402,6 @@ describe("isEngineWakingError (control-plane stall body, PRODUCT-1736)", () => {
   });
 });
 
-// HOUSTON-APP-51X: a mission created against a pod mid-roll answered the
-// proxy-failed 502 through the SDK activities module, which carries the body
-// exactly like the agents module but was not in the classifier's name list.
 describe("isEngineWakingError (SDK activity-write shape)", () => {
   it("matches the proxy-failed 502 body", () => {
     strictEqual(

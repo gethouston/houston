@@ -19,13 +19,6 @@ import {
 import { expectAdminSections, openAdmin } from "./support/settings-nav";
 import { workspaceMenuTrigger } from "./support/workspace-menu";
 
-/**
- * Org billing per reader on a team org: the billing owner pays, other owners
- * and admins see the state and seats and are told to ask the owner, and plain
- * members never see Billing but read where the shared pool stands. Creating
- * an org while the free slot is taken offers a paid org and its checkout.
- */
-
 const TEAM = { slug: "00000000000000ab", name: "Acme Team" };
 
 function teamBilling(patch: Partial<OrgBilling>): OrgBilling {
@@ -65,7 +58,6 @@ async function arm(path: string, data: unknown): Promise<void> {
   expect(res.ok).toBe(true);
 }
 
-/** A Spaces caller with `role` in one team whose billing is `billing`. */
 async function armTeam(
   role: "owner" | "admin" | "user",
   billing: OrgBilling,
@@ -256,16 +248,13 @@ test("a refused yearly checkout says so, drops Yearly and pays monthly next", as
   const billing = await openOrgBilling(page);
   await expect(billing.getByRole("radio", { name: /^Yearly/ })).toBeChecked();
 
-  // The gateway stops selling yearly after the app read the prices.
   await stopSellingYearly();
   await billing.getByRole("button", { name: "Upgrade" }).click();
   await expect(
     page.getByText("Yearly billing isn't available right now"),
   ).toBeVisible();
-  // An expected state: nothing opened and nothing reported as a bug.
   await expect(page.getByRole("alert")).toHaveCount(0);
   expect(await openedUrls(page)).toEqual([]);
-  // The refetched prices sell monthly alone, so the choice is gone.
   await expect(billing.getByRole("radiogroup")).toHaveCount(0);
   await expect(
     billing.getByText("$20 per member a month, $60 a month for 3 members"),
@@ -315,7 +304,6 @@ test("creating an org while the free slot is taken offers a paid org and its che
     spaces: true,
     role: "owner",
   });
-  // The armed plan lists the Personal org as the one holding the free slot.
   await armPlan({ summary: freePlan() });
   await page.goto("/");
   await workspaceMenuTrigger(page).click();
@@ -340,7 +328,6 @@ test("creating an org while the free slot is taken offers a paid org and its che
       "You'll pay for Labs in your browser, and it unlocks once the payment goes through.",
     ),
   ).toBeVisible();
-  // An expected state: nothing reports it as a bug.
   await expect(page.getByRole("alert")).toHaveCount(0);
 
   const create = page.waitForRequest(
@@ -357,7 +344,6 @@ test("creating an org while the free slot is taken offers a paid org and its che
   await expect.poll(() => openedUrls(page)).toEqual([CHECKOUT_URL]);
   await expect(page.getByText('Finish paying for "Labs"')).toBeVisible();
   await expect(workspaceMenuTrigger(page)).toContainText("Labs");
-  // The new org waits on its payment: its Billing offers the checkout again.
   const billing = await openOrgBilling(page);
   await expect(billing.getByRole("button", { name: "Upgrade" })).toBeVisible();
   await expect(orgBilling(page).getByText("Locked")).toBeVisible();
@@ -388,7 +374,6 @@ test("a paid create refused yearly stays open on monthly, then creates monthly",
     page.getByText("Yearly billing isn't available right now"),
   ).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
-  // Nothing was created: the offer stays, now monthly alone.
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("radiogroup")).toHaveCount(0);
   await expect(

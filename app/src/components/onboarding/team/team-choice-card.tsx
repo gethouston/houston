@@ -1,16 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 
-/**
- * One way forward from the team card's choice, built to be unmistakably a
- * button: a raised tile on the card (surface, border, a soft shadow in light),
- * a picture of what it leads to, and a filled arrow that says "go". The whole
- * tile is the target; hover firms the border and nudges the arrow, a press
- * sinks it, and focus draws the app's ring.
- *
- * The picture is decorative, so the button's name is its label and
- * description alone.
- */
 export function TeamChoiceCard({
   visual,
   label,

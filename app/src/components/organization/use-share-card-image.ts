@@ -9,24 +9,19 @@ import type { OrgTree } from "./org-chart-tree";
 
 export type Translate = ReturnType<typeof useTranslation<"teams">>["t"];
 
-/** One drawing of the share PNG. `ready` and `url` are set once it lands. */
 export interface ShareImageDraw {
   png: Promise<File>;
   ready: File | null;
-  /** An object URL of the PNG for the preview, revoked when replaced. */
   url: string | null;
   failed: boolean;
-  /** Replaced by a newer drawing: it never makes an object URL. */
   stale: boolean;
 }
 
-/** What the dialog's preview shows. */
 export type SharePreview =
   | { status: "drawing" }
   | { status: "failed" }
   | { status: "ready"; url: string };
 
-/** The words on the share image and the link card, all authored copy. */
 export function shareCardText(tree: OrgTree, t: Translate): ShareCardText {
   const agents = t("orgChart.agentCount", { count: tree.counts.agents });
   return {
@@ -43,7 +38,6 @@ export function shareCardText(tree: OrgTree, t: Translate): ShareCardText {
   };
 }
 
-/** The words the layout writes on its "+N" cards. */
 export function shareCardWords(t: Translate): CardWords {
   return {
     morePeople: (count) => t("orgChart.tree.morePeople", { count }),
@@ -82,14 +76,6 @@ function release(entry: ShareImageDraw | undefined) {
   if (entry.url) URL.revokeObjectURL(entry.url);
 }
 
-/**
- * The share PNG for `tree`, drawn ahead of the click: as soon as the chart
- * is on screen, and again whenever what it draws changes (`tree` keeps its
- * identity across identical reloads), so the dialog opens on a finished
- * image. `current()` is the latest drawing, still under way or done; one
- * that failed is drawn again on the next call or on `retry()`. `preview`
- * follows the latest drawing for the dialog.
- */
 export function useShareCardImage(tree: OrgTree) {
   const { t } = useTranslation("teams");
   const latest = useRef<{ tree: OrgTree; draw: ShareImageDraw } | null>(null);
@@ -129,7 +115,6 @@ export function useShareCardImage(tree: OrgTree) {
       : held.url
         ? { status: "ready", url: held.url }
         : { status: "drawing" };
-  /** The drawn PNG, once the preview shows it. */
   const file = preview.status === "ready" ? (held?.ready ?? null) : null;
   return { current, preview, file, retry: start };
 }

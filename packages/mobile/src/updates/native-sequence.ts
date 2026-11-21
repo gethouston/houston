@@ -1,6 +1,5 @@
 const PREFIX = "houston.ota.native_builtin_sequence.";
 
-/** The store bundle records its native baseline before any OTA code can run. */
 export function nativeBuiltinSequence(
   channel: "production" | "preview",
   nativeBuild: string,
@@ -17,7 +16,6 @@ export function nativeBuiltinSequence(
   return value;
 }
 
-/** Highest OTA sequence applied on one native build of one channel. */
 export function otaSequenceKey(
   channel: "production" | "preview",
   nativeBuild: string,
@@ -25,17 +23,10 @@ export function otaSequenceKey(
   return `houston.ota.sequence.${channel}.${nativeBuild}`;
 }
 
-/** Newest authenticated required-update policy of one channel. */
 export function otaPolicyKey(channel: "production" | "preview"): string {
   return `houston.ota.policy.${channel}`;
 }
 
-/**
- * Builds before per-build sequences kept one `houston.ota.sequence.<channel>`.
- * Its value is the newest manifest that install accepted, so it seeds the
- * policy floor once (no native requirement known: 1) and is then removed;
- * without it the first check after the update would accept an older replay.
- */
 export function migrateLegacyOtaSequence(
   channel: "production" | "preview",
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">,

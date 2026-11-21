@@ -1,5 +1,3 @@
-// Spanish copy for /data-partners. Mirrors en.js key for key (LatAm neutral, tú).
-
 export default {
   meta: {
     title:

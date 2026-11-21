@@ -1,5 +1,3 @@
-/** The "Build your team" card's opening headline, centered over its
- *  subtitle. */
 export function TeamCardHeading({
   title,
   subtitle,

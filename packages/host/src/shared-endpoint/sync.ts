@@ -92,7 +92,6 @@ async function clearRuntime(
   }
 }
 
-/** Synchronize one freshly spawned runtime without making pod startup fatal. */
 export async function syncSharedEndpoint(
   opts: SyncSharedEndpointOptions,
 ): Promise<void> {
@@ -104,11 +103,6 @@ export async function syncSharedEndpoint(
     ]);
     if (!shared) {
       if (status.orgShared) {
-        // Loud on purpose: this clear LOGS OUT the runtime's openai-compatible
-        // provider (wiping custom-endpoint.json). It must only ever remove an
-        // org-hydrated endpoint after the share was withdrawn — if an endpoint
-        // vanishes and this line isn't in the log, the wipe came through the
-        // logout route instead (see the runtime's [auth] logout line).
         console.log(
           "[shared-endpoint] org share gone → clearing this runtime's org-hydrated endpoint",
         );
@@ -117,11 +111,6 @@ export async function syncSharedEndpoint(
       return;
     }
     if (status.configured && !status.orgShared) return;
-    // Always re-seed an org-hydrated endpoint, even when the visible
-    // descriptor is identical: the status deliberately never exposes the api
-    // key, and the owner's guided RECONNECT mints a fresh proxyKey under the
-    // SAME tunnel URL — a descriptor-equality skip would strand teammates on
-    // the dead key. One small write per runtime spawn is the cheap side.
     await seedRuntime(opts.runtime, shared, fetchImpl);
   } catch (error) {
     (opts.log ?? console.error)(

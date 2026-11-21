@@ -9,7 +9,6 @@ const SCHEDULES = [
   { value: "weekly", label: "Mondays at 09:00" },
 ];
 
-/** The list most of the page's triggers open onto. */
 export function ScheduleItems() {
   return SCHEDULES.map((schedule) => (
     <SelectItem key={schedule.value} value={schedule.value}>
@@ -18,7 +17,6 @@ export function ScheduleItems() {
   ));
 }
 
-/** Twelve items: enough to make the content scroll and show its arrows. */
 export function HourItems() {
   return Array.from({ length: 12 }, (_, hour) => {
     const at = `${String(hour * 2).padStart(2, "0")}:00`;
@@ -30,11 +28,6 @@ export function HourItems() {
   });
 }
 
-/**
- * The select page's tables, split out so the page stays under the 200-line
- * rule. Read off `ui/core/src/components/select.tsx`. The parts wrap Radix,
- * so the behavioural props are Radix's and the styling props are ours.
- */
 export const selectProps: readonly SpecimenProp[] = [
   {
     name: "Select.value / defaultValue",

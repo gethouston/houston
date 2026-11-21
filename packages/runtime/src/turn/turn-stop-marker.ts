@@ -9,7 +9,6 @@ import { loadConversation, saveConversation } from "../store/conversation-file";
 import type { TurnDurabilityOptions } from "./turn-durability";
 import { appendDurabilityError } from "./turn-durability-error";
 
-/** The row publisher reads this file; its marker must agree with the terminal. */
 export async function writeTurnStopMarker(
   opts: TurnDurabilityOptions,
   stopReason: TurnErrorCode,
@@ -43,7 +42,6 @@ export async function writeTurnStopMarker(
   saveConversation(dir, conversation);
 }
 
-/** Keep a valid local row publishable even when its object correction fails. */
 export async function reconcileTurnStopMarker(
   opts: TurnDurabilityOptions,
   syncedManifest?: HydrateManifest,
@@ -66,8 +64,6 @@ export async function reconcileTurnStopMarker(
     const store = opts.resolved.live ?? opts.resolved.store;
     let generation = syncedManifest?.get(conversationKey)?.generation;
     if (!syncedManifest && opts.filesystem.generationAware) {
-      // A sync exception discards its partial manifest. Read the generation
-      // that actually landed, rather than the pre-sync create-only condition.
       const objects = await store.manifest?.(opts.resolved.prefix, { signal });
       if (!objects) throw new Error("wind-down marker generation unavailable");
       const object = objects.find((object) => object.key === key);

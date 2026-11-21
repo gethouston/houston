@@ -5,16 +5,6 @@ import type { ResolvedModel } from "../types";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import type { SessionsStore } from "./sessions-store";
 
-/**
- * ClaudeSession is the Claude Agent SDK implementation of the HarnessSession
- * seam. These tests pin the same contract `backend-contract.test.ts` requires —
- * ordered delivery, unsubscribe, prompt-resolves-after-terminal, abort-before-
- * prompt safe, dispose idempotent, no double terminal on abort — plus the
- * backend's own guarantees: a provider failure rides the stream (never a throw),
- * model/thinking apply to the next query, resume is passed, session_id persists.
- * Driven entirely by a scripted `query` generator — no binary, no network.
- */
-
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -49,7 +39,6 @@ function arrayQuery(msgs: SDKMessage[]): ClaudeQuery {
   };
 }
 
-/** An async iterable that yields nothing (a turn that produced no messages). */
 function emptyIterable(): AsyncIterable<SDKMessage> {
   return {
     [Symbol.asyncIterator]: () => ({
@@ -58,7 +47,6 @@ function emptyIterable(): AsyncIterable<SDKMessage> {
   };
 }
 
-/** A query that records the options it was called with, then yields nothing. */
 function capturingQuery(onOptions: (o: Options) => void): ClaudeQuery {
   return (params) => {
     onOptions(params.options);
@@ -66,7 +54,6 @@ function capturingQuery(onOptions: (o: Options) => void): ClaudeQuery {
   };
 }
 
-/** A query whose iterator rejects (an unexpected transport failure). */
 function throwingQuery(err: unknown): ClaudeQuery {
   return () => ({
     [Symbol.asyncIterator]: () => ({
@@ -152,7 +139,6 @@ test("prompt resolves only after the whole script has been delivered", async () 
   session.subscribe((e) => seen.push(e));
 
   await session.prompt("go");
-  // The terminal (usage) frame is the last thing delivered before settlement.
   expect(seen.at(-1)).toEqual({
     type: "usage",
     data: { context_tokens: 100, output_tokens: 20, cached_tokens: 0 },
@@ -232,7 +218,6 @@ test("abort mid-stream: the post-abort throw is swallowed, no second terminal", 
   release();
   await expect(p).resolves.toBeUndefined();
 
-  // Only the pre-abort frame; NO provider_error / second terminal for the stop.
   expect(seen).toEqual([{ type: "text", data: "hi" }]);
 });
 
@@ -283,10 +268,6 @@ test("no resume id → the option is omitted (fresh session)", async () => {
 });
 
 test("a resume the SDK rejects as unknown retries fresh: mapping dropped, no phantom error (HOU-892)", async () => {
-  // After an agent rename the transcript survives under the OLD cwd slug, so
-  // resolveResume still hands out the id but the SDK's cwd-scoped lookup
-  // rejects it — without the retry, every future turn of the conversation
-  // errors permanently (observed live: a weekly routine failing on every fire).
   const store = fakeStore("sess-gone");
   const removed: string[] = [];
   store.remove = (c) => {
@@ -310,9 +291,9 @@ test("a resume the SDK rejects as unknown retries fresh: mapping dropped, no pha
   session.subscribe((e) => events.push(e));
   await session.prompt("go");
 
-  expect(removed).toEqual(["c1"]); // stale mapping dropped
+  expect(removed).toEqual(["c1"]);
   expect(optionsSeen[0]?.resume).toBe("sess-gone");
-  expect(optionsSeen[1] && "resume" in optionsSeen[1]).toBe(false); // fresh retry
+  expect(optionsSeen[1] && "resume" in optionsSeen[1]).toBe(false);
   expect(events.some((e) => e.type === "provider_error")).toBe(false);
   expect(events.some((e) => e.type === "text")).toBe(true);
   expect(store.setCalls).toContainEqual(["c1", "sess-new"]);
@@ -368,9 +349,6 @@ test("the captured session_id is persisted after the turn", async () => {
 });
 
 test("every prompt spawns with the env refreshAuth returns AT THAT PROMPT — a rotated token is adopted, never the build-time env (PRODUCT-1355)", async () => {
-  // The live incident: the gateway rotates the family mid-conversation, so the
-  // token the session was built with is invalid on every later turn. Each
-  // query() spawns its own subprocess, so the env must be re-read per prompt.
   let current = { token: "sk-ant-oat01-first", digest: "digest-first" };
   const optionsSeen: Options[] = [];
   const session = make({
@@ -393,8 +371,6 @@ test("every prompt spawns with the env refreshAuth returns AT THAT PROMPT — a 
   expect(optionsSeen[1]?.env?.CLAUDE_CODE_OAUTH_TOKEN).toBe(
     "sk-ant-oat01-rotated",
   );
-  // The digest follows the env, so a revoked-token report (and the cache's
-  // rotation check) names the token the CURRENT turn actually ran on.
   expect(session.getUsedAccessDigest()).toBe("digest-rotated");
 });
 
@@ -449,7 +425,6 @@ test("clearing stale results takes what it freed off the fill the next check rea
   };
   const session = make({ query: arrayQuery([usageMsg()]), store });
   await session.prompt("go");
-  // The prompt's own resume cleared the first batch; a new one went stale.
   cleared = 60;
   expect(session.clearStaleToolResults()).toBe(60);
   expect(session.getContextUsage()).toEqual({ tokens: 40 });
@@ -485,7 +460,6 @@ test("subscribeLiveness ticks per SDK message, including tool-input deltas the w
 
   await session.prompt("write it");
 
-  // Two input deltas produced no wire frame at all; the text delta produced one.
   expect(wire).toEqual([{ type: "text", data: "ok" }]);
   expect(ticks).toBe(3);
 
@@ -521,7 +495,6 @@ test("subscribeAssistantMessageStart fires per main-thread message_start, never 
 
   await session.prompt("go");
 
-  // The boundary rides its own channel: no wire frame for it.
   expect(wire.map((e) => e.type)).toEqual(["text", "text", "usage"]);
   expect(starts).toBe(2);
 
@@ -556,7 +529,7 @@ test("subscribeReplyBeats reports main-thread tool-call opens and clean stops, a
       messageStartMsg(null),
       textMsg("Done."),
       toolOpen("mcp__houston__suggest_actions"),
-      toolOpen("Bash", "toolu_sub"), // a subagent's call is not this reply
+      toolOpen("Bash", "toolu_sub"),
       stop("tool_use"),
       messageStartMsg(null),
       textMsg("All set."),
@@ -583,9 +556,6 @@ test("subscribeReplyBeats reports main-thread tool-call opens and clean stops, a
   ]);
 });
 
-// PRODUCT-1706: a resumed session that comes up without Houston's tool server
-// reruns fresh (with the canonical history) instead of letting the model finish
-// a tool-less turn and report the integrations as "missing".
 function initMsg(servers: unknown, sessionId = "s"): SDKMessage {
   return {
     type: "system",
@@ -649,12 +619,10 @@ test("a resume whose init lacks the houston server reruns fresh with the history
   expect(optionsSeen[0]?.resume).toBe("sess-old");
   expect(optionsSeen[1] && "resume" in optionsSeen[1]).toBe(false);
   expect(optionsSeen[0]?.abortController?.signal.aborted).toBe(true);
-  // The abandoned attempt's answer never reaches the wire; the fresh one does.
   expect(events.filter((e) => e.type === "text")).toEqual([
     { type: "text", data: "recovered" },
   ]);
   expect(events.some((e) => e.type === "provider_error")).toBe(false);
-  // The dropped mapping is not re-stored from the abandoned attempt.
   expect(store.setCalls).toEqual([["c1", "sess-new"]]);
 });
 
@@ -716,7 +684,6 @@ test("a resume that calls a houston tool this turn left out keeps going, without
   const session = make({
     query,
     store,
-    // Next-step suggestions are off this turn: suggest_actions is not offered.
     baseOptions: {
       allowedTools: ["mcp__houston__ask_user"],
     } as Options,

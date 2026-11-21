@@ -1,8 +1,3 @@
-// Real-DOM mount of the briefing's step swap: a changed step mounts fresh
-// content with the swap entrance, and focus follows the control that moved
-// it, which unmounted with the old step. The step it opens on keeps whatever
-// focus the dialog gave it.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";
@@ -34,7 +29,6 @@ const { BriefingStep } = await import(
 
 type Step = "intro" | "pick" | "done";
 
-/** What each step shows: a title, and on the pick step a checked radio. */
 function content(step: Step) {
   if (step === "pick") {
     return h(

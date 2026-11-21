@@ -15,9 +15,6 @@ const locale = (lang: string) =>
 
 describe("composer context commands", () => {
   it("sends exactly the text the runtime parses as a command", () => {
-    // A typo here would not fail: it would quietly send the agent a PROMPT
-    // about compacting instead of compacting. The literals are the contract
-    // with packages/runtime/src/session/conversation-command.ts.
     deepStrictEqual(
       CONTEXT_COMMANDS.map((c) => c.text),
       ["/compact", "/clear"],
@@ -67,10 +64,7 @@ describe("context usage across a cleared boundary", () => {
       usage(400_000, "t1"),
       { feed_type: "context_cleared", data: null, id: "c1" },
     ]);
-    // The model's context really is empty now, so the gauge must say so...
     strictEqual(latest, null);
-    // ...but the peak still proves this provider's window is at least that
-    // big, and the provider did not change.
     strictEqual(peakContextTokens, 400_000);
   });
 

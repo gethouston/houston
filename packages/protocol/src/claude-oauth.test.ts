@@ -75,9 +75,6 @@ describe("parseClaudeOAuthEnvelope", () => {
     if (!r.ok) expect(r.error).toBeTruthy();
   });
 
-  // The ONE hard requirement is accessToken; a real minted credential must never
-  // be rejected over an absent optional field (that would strand every user on
-  // the paste fallback). Absent optionals are omitted, not defaulted.
   test.each([
     ["missing refreshToken", "refreshToken"],
     ["missing expiresAt", "expiresAt"],

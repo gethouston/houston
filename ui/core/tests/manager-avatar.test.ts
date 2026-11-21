@@ -15,7 +15,6 @@ const render = (size: number, className?: string) =>
 const idsOf = (html: string) =>
   [...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
 
-/** The primary Button's paint, as canvas.css §4 declares it. */
 function buttonPaint(): { fill: string; rim: string; label: string } {
   const css = readFileSync(
     new URL("../src/canvas.css", import.meta.url),
@@ -51,7 +50,6 @@ describe("ManagerAvatar", () => {
   it("is a disc filling its box, round like every employee avatar", () => {
     const html = render(32);
     const disc = '<circle cx="50" cy="50" r="50"';
-    // The clip, the fill and the rim are all the same full-box circle.
     assert.equal(html.split(disc).length - 1, 3);
     assert.match(html, /<clipPath[^>]*><circle cx="50" cy="50" r="50"/);
   });
@@ -64,13 +62,11 @@ describe("ManagerAvatar", () => {
     );
     assert.ok(halo, "the halo");
     const px = (units: number) => (Number(units) * 24) / 100;
-    // At 24px: 1.5px of air, then a 1px line, 29px across in all.
     assert.equal(Number(px(Number(halo[2])).toFixed(2)), 1);
     const inner = px(Number(halo[1]) - Number(halo[2]) / 2);
     assert.equal(Number((inner - 12).toFixed(2)), 1.5);
     const outer = px(Number(halo[1]) + Number(halo[2]) / 2) * 2;
     assert.equal(Number(outer.toFixed(2)), 29);
-    // At the rail row's 40px the line steps to 1.5px, 2.25px clear.
     const big = render(40).match(
       /r="([\d.]+)" fill="none" stroke-width="([\d.]+)"/,
     );
@@ -81,7 +77,6 @@ describe("ManagerAvatar", () => {
       Number((px40(Number(big[1]) - Number(big[2]) / 2) - 20).toFixed(2)),
       2.25,
     );
-    // Drawn before the disc, so it can never cover the helmet.
     assert.ok(html.indexOf("data-manager-halo") < html.indexOf("<g transform"));
   });
 
@@ -165,7 +160,6 @@ describe("ManagerAvatar", () => {
 });
 
 describe("managerAvatarSizeWithin", () => {
-  /** The halo's outer reach in pixels, read off the rendered markup. */
   const extent = (size: number) => {
     const halo = render(size).match(
       /r="([\d.]+)" fill="none" stroke-width="([\d.]+)"/,
@@ -180,7 +174,6 @@ describe("managerAvatarSizeWithin", () => {
       assert.ok(extent(size) <= slot + 0.01, `${slot}px slot`);
       assert.ok(extent(size + 1) > slot, `${slot}px: one more overflows`);
     }
-    // A 52px phone slot, the employees' own avatar diameter, holds a 42px disc.
     assert.equal(managerAvatarSizeWithin(52), 42);
   });
 });

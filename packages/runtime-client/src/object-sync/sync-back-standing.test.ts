@@ -8,15 +8,6 @@ import type { ObjectMetadata } from "./object-manifest";
 import { type ObjectStore, StoreConflictError } from "./object-store";
 import { syncBack } from "./sync-back";
 
-/**
- * The standing store sync (a pod's daemon, which never sets `workerMerge`)
- * handles a generation conflict exactly as it did before the per-turn
- * worker's merge rounds: the board re-uploads over the refreshed generation
- * (last writer wins, no local rewrite, no merge base kept), routines merge
- * once, and a second conflict is recorded after one retry. Every spec here
- * also passes against origin/main's object-sync.
- */
-
 const BOARD = "workspaces/P/Bob/.houston/activity/activity.json";
 const ROUTINES = "workspaces/P/Bob/.houston/routines/routines.json";
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");

@@ -34,7 +34,6 @@ export function createHostBase(opts: LocalHostOptions) {
   const store = new LocalWorkspaceStore(opts.workspacesRoot, LOCAL_USER);
   const { vfs, syncDaemon } = createHostFiles(opts);
   const paths = new LocalPaths();
-  // Managed pods commit gateway staging; their sink URLs cannot reach the pod.
   const uploadSessions = opts.gatewayFronted
     ? undefined
     : new LocalUploadSessions(
@@ -73,26 +72,10 @@ export function createHostBase(opts: LocalHostOptions) {
       })
     : undefined;
   const controlPlaneUrl = `http://127.0.0.1:${opts.port}`;
-  // The ONE assistant wiring decision for this host, and it is the HOST's
-  // alone. Unfronted (desktop, self-host) THIS host serves the routes the
-  // operation catalog names and already accepts `opts.token` on every one of
-  // them — so it is its own gateway and the family is on with nothing for the
-  // user to configure. A gateway-fronted pod passes no self: its gateway stamps
-  // the env pair, and its own routes answer for one agent only. Either way the
-  // credential stays in this process: a runtime is told its ROLE and reaches
-  // operations through `/sandbox/assistant/call` with its own sandbox token.
   const assistantWiring: AssistantWiring = opts.gatewayFronted
     ? { gatewayFronted: true }
     : { self: { url: controlPlaneUrl, token: opts.token } };
   const assistantGateway = resolveAssistantGateway(assistantWiring);
-  // WHAT THIS DEPLOYMENT CANNOT DO, worked out ONCE from this host's own route
-  // table (`assistant/served-operations.ts`) — the desktop has no spaces, no
-  // teams, no billing, and the AI Manager must be told so rather than
-  // discovering it as a 404 mid-sentence. Behind a real gateway the question
-  // belongs to the gateway, which serves the whole catalogued surface, so
-  // nothing is withheld. It reaches the dispatcher as a deps seam and the
-  // coordinator's runtime as one environment variable, both from here, so the
-  // two can never disagree about what this Houston can do.
   const catalog = processAssistantCatalog();
   const assistantUnserved: ReadonlySet<string> = new Set(
     catalog && assistantOperationsServedHere(assistantWiring)

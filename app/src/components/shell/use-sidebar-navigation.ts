@@ -2,7 +2,6 @@ import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 
-/** Rail navigation closes the phone's More menu after a selection. */
 export function useSidebarNavigation(args: { closeMobileMenu: () => void }) {
   const { closeMobileMenu } = args;
   const workspaces = useWorkspaceStore((s) => s.workspaces);
@@ -22,7 +21,6 @@ export function useSidebarNavigation(args: { closeMobileMenu: () => void }) {
     await loadAgents(ws.id);
   };
 
-  /** Keep the current-agent store aligned with the focused Tasks screen. */
   const selectAgent = (agentId: string) => {
     const agent = agents.find((a) => a.id === agentId);
     if (!agent) return;

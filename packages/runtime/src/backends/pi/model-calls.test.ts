@@ -3,7 +3,6 @@ import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
 import { createPiCallTimer } from "./model-calls";
 
-/** A fake clock the test advances between events. */
 function clock() {
   let t = 1000;
   return { now: () => t, advance: (ms: number) => (t += ms) };
@@ -73,7 +72,7 @@ test("a tool call is a first answer token; each turn_start opens a new call", ()
   expect(
     timer(ev({ type: "message_end", message: assistant() })),
   ).toMatchObject({ firstTokenMs: 50, firstBlockMs: 50 });
-  c.advance(700); // the tool runs: not request time
+  c.advance(700);
   timer(ev({ type: "turn_start" }));
   c.advance(2500);
   timer(ev({ type: "message_start", message: assistant() }));

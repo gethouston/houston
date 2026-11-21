@@ -1,42 +1,7 @@
-/**
- * The name a user READS for a model — the ONE table, keyed by pi's CANONICAL
- * provider id.
- *
- * Every surface that names a model reads it here: the chat picker's rows and
- * trigger, the routine screen, the provider-error cards, the assistant's
- * spoken-name ladder (`provider-model-display.ts`) and the mission tools. The
- * app used to carry a second copy on its picker overrides, hand-synced with
- * this one, so the name a user read on screen and the name an agent could
- * resolve were two independently maintained lists.
- *
- * A model with no row here is not nameless: `humanizedModelName` derives a
- * readable name from the id, so a preserved-but-hidden pin (a dated Anthropic
- * snapshot, a gateway id) never reaches the user as a raw string.
- *
- * A dependency-free LEAF (see `provider-dialect.ts`): exposed as the
- * `@houston/domain/model-display-names` subpath and re-exported by
- * `@houston/sdk/provider-catalog`, so surface code loads it under plain
- * `node --experimental-strip-types`, where a barrel's extensionless internal
- * imports do not resolve.
- */
-
 import type { ProviderId } from "./provider-ids";
 
-// Reached through the package's own subpath, not `./model-humanized-name`: an
-// extensionless relative specifier does not resolve under plain
-// `node --experimental-strip-types` (see `model-aliases.ts`).
 export { humanizedModelName } from "@houston/domain/model-humanized-name";
 
-/**
- * `model id → the name the user reads`, per provider, NEWEST FIRST within a
- * family — a bare family name ("opus") resolves to the first row that carries
- * it, so this order IS the "newest of that family" rule
- * (`resolveSpokenModel`).
- *
- * Curated rows only: the models Houston puts in front of a user, plus the ones
- * a user still asks for by name. Every other id a provider serves stays
- * runnable and is named by `humanizedModelName`.
- */
 export const MODEL_DISPLAY: Partial<
   Record<ProviderId, Record<string, string>>
 > = {
@@ -67,8 +32,6 @@ export const MODEL_DISPLAY: Partial<
     "gpt-5.6-terra": "GPT-5.6 Terra",
     "gpt-5.6-luna": "GPT-5.6 Luna",
   },
-  // Copilot serves several labs through one plan, so its rows name the lab
-  // too — "Sonnet 5" alone would not say whose model it is on that card.
   "github-copilot": {
     "gpt-6-luna": "GPT-6 Luna",
     "gpt-5.6-terra": "GPT-5.6 Terra",
@@ -104,8 +67,6 @@ export const MODEL_DISPLAY: Partial<
     "deepseek-flash": "DeepSeek V4.1 Flash",
     "deepseek-v4-pro": "DeepSeek V4 Pro",
   },
-  // A bare "Gemini" lands on 3.8 Flash, the default a free key runs: Neon
-  // follows the Flash rows because Google serves it on paid keys only.
   google: {
     "gemini-3.8-flash": "Gemini 3.8 Flash",
     "gemini-3.7-flash": "Gemini 3.7 Flash",
@@ -135,7 +96,6 @@ export const MODEL_DISPLAY: Partial<
   },
 };
 
-/** The curated name for `id`, or undefined for a model with no row. */
 export function modelDisplayName(
   provider: ProviderId,
   id: string,

@@ -17,40 +17,12 @@ import { useSidebarNavigation } from "./use-sidebar-navigation";
 import { useWorkspaceCreate, WorkspaceSwitchItems } from "./workspace-account";
 import { useWorkspaceSwitcherFace } from "./workspace-switcher-face";
 
-/**
- * The phone's "More": a floating card raised by the nav bar, holding the
- * desktop rail's foot. It is headed by the workspace switcher (whose menu,
- * headed by who is signed in, switches or creates a workspace: the rail keeps
- * the same choices in its account row's menu) and holds the rest of the
- * rail's destinations.
- *
- * A card and not a full bottom sheet, because it is a MENU: it answers "where
- * else can I go" and then gets out of the way, so it hovers over the bar that
- * raised it rather than taking the screen. It is a Radix dialog under the
- * restyle, so it isolates the app on its own while open.
- *
- * The destinations are the RAIL's, built by the same components and row
- * builders (`connect-group.tsx`, `sidebar-account-menu.tsx`,
- * `sidebar-nav-rows.tsx`), so the phone can never drift from the desktop on
- * what exists, what a gate hides, or which element a tour anchor names. They
- * navigate with `nav: "reset"`: reaching a destination from the menu is a
- * tab-level move, not a level pushed onto the tree the user was in.
- *
- * Under the switcher: the org's plan entry, then the connect group (apps, then AI behind
- * `showAiModels`), as at the rail's foot; then the account row opening the
- * person's menu, Admin behind the org gate, the Academy and Settings, which
- * the rail keeps inside its account menu and the card has the room to show
- * as rows. Every row is the card's own 48px row (`sheet`), its content on one
- * 16px left edge at one 16px type size.
- */
 export function MobileMoreMenu() {
   const { t } = useTranslation(["shell", "common", "teams"]);
   const { showOrganization } = useSurfaceGates();
   const open = useUIStore((s) => s.mobileMoreOpen);
   const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
-  // "Your account" drills in inside the card; reopening starts at its root.
   const [page, setPage] = useState<"root" | "account">("root");
-  // Back from the account page hands focus to the row that opened it.
   const accountRow = useRef<HTMLButtonElement>(null);
   const backFromAccount = useRef(false);
   useEffect(() => {
@@ -118,8 +90,6 @@ export function MobileMoreMenu() {
             />
           ) : (
             <>
-              {/* Every row is a sheet row: one 16px left edge, one 16px type
-              size, 48px tall, whichever component draws it. */}
               <div className="pt-2">
                 <SidebarWorkspaceSwitcher
                   title={face.title}
@@ -130,7 +100,6 @@ export function MobileMoreMenu() {
                     onSwitch={switchWorkspace}
                     createLabel={create.label}
                     onCreate={() => {
-                      // The create dialog stands on its own: the card steps aside.
                       close();
                       create.onCreate();
                     }}
@@ -163,8 +132,6 @@ export function MobileMoreMenu() {
           )}
         </SheetContent>
       </Sheet>
-      {/* Outside the sheet on purpose: picking "Create workspace" closes the
-          menu, and a dialog mounted inside it would unmount with it. */}
       <SidebarDialogs
         createWorkspaceOpen={createWsOpen}
         onCreateWorkspaceOpenChange={setCreateWsOpen}

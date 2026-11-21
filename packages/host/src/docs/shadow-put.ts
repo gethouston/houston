@@ -6,19 +6,10 @@ import {
 } from "./wire";
 
 export interface PutOutcome {
-  /** The doc route itself is gone: the whole shadow must latch off. */
   skew?: boolean;
-  /** The gateway rejected the family as unknown (deploy skew). */
   unsupported?: string;
 }
 
-/**
- * One conditional PUT plus a single adopt-and-retry on a revision conflict.
- * The caches are refreshed exactly like the seed path: an accepted PUT records
- * the new revision and canonical content; a conflict yields to the file as
- * authoritative. Unavailability (ShadowUnavailableError) propagates for the
- * caller to defer.
- */
 export async function publishDoc<F extends string>(opts: {
   family: F;
   doc: unknown;

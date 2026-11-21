@@ -33,8 +33,6 @@ function temp(name: string) {
   return dir;
 }
 
-/** What the prompt needs: context file, runtime input, skills, the agent's
- *  state, harness settings and the turn's own conversation. */
 const STARTUP_SET = [
   `${AGENT}/CLAUDE.md`,
   `${AGENT}/.houston/runtime/settings.json`,
@@ -50,8 +48,6 @@ function put(storeRoot: string, rel: string, body: string) {
   writeFileSync(path, body);
 }
 
-/** A large agent: git clones and a toolchain in hidden folders, a routine's
- *  pile of per-run conversations, documents and Claude login sessions. */
 function largeStore(): string {
   const storeRoot = temp("startup-set-store-");
   for (const rel of STARTUP_SET) put(storeRoot, rel, "{}");
@@ -69,7 +65,6 @@ function largeStore(): string {
   return storeRoot;
 }
 
-/** Hold every download outside the startup set until `release()`. */
 function holdingStore(inner: LocalDirStore) {
   let release: () => void = () => undefined;
   const released = new Promise<void>((resolve) => {
@@ -121,7 +116,6 @@ test("a claimed turn on a large store reaches its prompt with only the startup s
       setTimeout(() => resolve("waiting"), 2_000),
     ),
   ]);
-  // Before the fix the clones sat on the critical path, so this hung.
   expect(outcome).toBe("hydrated");
   const fs = preparation.filesystem;
   for (const rel of STARTUP_SET) {
@@ -139,8 +133,6 @@ test("a claimed turn on a large store reaches its prompt with only the startup s
   );
   expect(existsSync(join(fs.workspaceDir, ".venv", "bin", "tool"))).toBe(true);
   expect(existsSync(join(fs.workspaceDir, "reports", "q3.md"))).toBe(true);
-  // The deferred set is the clone, the toolchain and the documents: other
-  // conversations and Claude login sessions never download at all.
   expect(held.size).toBe(CLONE_OBJECTS + 4);
   const synced = await syncTurnFilesystem({
     store: inner,

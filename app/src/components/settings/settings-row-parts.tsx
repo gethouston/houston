@@ -2,8 +2,6 @@ import { Badge } from "@houston-ai/core";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-/** The leading mark and the title/description stack every settings row
- *  shares (`settings-row.tsx`). */
 export function Leading({
   icon: Icon,
   leading,

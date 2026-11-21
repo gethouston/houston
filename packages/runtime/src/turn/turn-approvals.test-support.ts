@@ -7,7 +7,6 @@ import {
   StoreConflictError,
 } from "@houston/runtime-client/object-sync";
 
-/** A generation-checked bucket, shared by every "worker" in a test. */
 export function bucket() {
   const objects = new Map<string, { body: string; generation: number }>();
   let failing = false;
@@ -44,7 +43,6 @@ export function bucket() {
   return {
     store,
     objects,
-    /** Every later write fails, as a store outage would. */
     failWrites: () => {
       failing = true;
     },

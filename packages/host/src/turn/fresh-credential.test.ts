@@ -5,13 +5,6 @@ import type { CredentialStore, WorkspaceCredential } from "../ports";
 import type { TurnDeps } from "./deps";
 import { freshCredential } from "./fresh-credential";
 
-/**
- * The per-turn credential comes from the SAME coalescer the serve route uses.
- * A second, uncoalesced rotator would spend the workspace's rotating refresh
- * token concurrently with the serve path — the first exchange wins and the
- * loser's `invalid_grant` disconnects the user.
- */
-
 const FRESH = () => Date.now() + 3_600_000;
 
 beforeEach(() => sharedCredentialRefresher.reset());

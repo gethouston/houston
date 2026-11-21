@@ -19,65 +19,24 @@ import type { SandboxFetch } from "./sandbox-fetch";
 import { makeStartMissionTool } from "./start-mission";
 import { type SessionToolErrorDetails, toolErrorResult } from "./tool-error";
 
-/**
- * The agent's mission-board tools (PRODUCT-1244): start a new mission, see a
- * board, and move a finished mission — so a "planning" chat can fan work out
- * into separate missions and review them, all through the SAME board the user
- * watches. Each tool acts on the calling agent's own board unless it names
- * another agent; the personal assistant, which keeps no board of its own, must
- * always name one (mission-params.ts).
- *
- * Same trust posture as `save_routine` / `save_learning`: the tools hold no
- * secret and carry only the per-sandbox HMAC token; the host owns the
- * merge-safe writes, stamps what the agent must not author (the agent-started
- * marker, attribution), resolves the named agent, fires the child turn through
- * the routine-firing channel, and enforces the guards (depth 1, running cap,
- * never the current conversation, never a running mission).
- *
- * Every refusal is a RESULT, never a throw (tool-error.ts): a missing target is
- * something the model fixes on its own turn, and only a value can hand it the
- * agents it could have named.
- */
-
-/** What one board read returned, or why it was refused. */
 export type ListMissionsDetails =
   | { ok: true; count: number }
   | SessionToolErrorDetails;
 
-/** The move that landed, or why it was refused. */
 export type UpdateMissionStatusDetails =
   | { ok: true; id: string; status: string }
   | SessionToolErrorDetails;
 
 export interface MissionToolOptions {
   call: SandboxFetch;
-  /**
-   * True when this runtime IS the user's personal assistant (the hidden
-   * coordinator agent). It keeps no board, so every call must name the agent
-   * whose board the work belongs on — and the tools say so to the model.
-   */
   personalAssistant: boolean;
-  /**
-   * The providers the `provider` param offers as accepted values, snapshotted
-   * as the tool defs are built (default: the runtime's own provider status), so
-   * the model picks from a list instead of inventing an id. A schema hint: what
-   * a pin is judged against comes from {@link resolveProviders}.
-   */
   providers?: readonly ProviderOption[];
-  /**
-   * The provider status a mission pin is validated against, read afresh on
-   * every `start_mission` call (default: the runtime's own status, resolved in
-   * the acting member's scope because a tool executes inside the turn). Inject
-   * it to drive that status from a test.
-   */
   resolveProviders?: () => readonly ProviderOption[];
 }
 
 export function makeMissionTools(opts: MissionToolOptions) {
   const assistant = opts.personalAssistant;
   const providers = opts.providers ?? connectedProviderChoices();
-  // An injected snapshot with no resolver describes a runtime whose provider
-  // status never moves — the shape a test wants when it is not about drift.
   const resolveProviders =
     opts.resolveProviders ??
     (opts.providers ? () => providers : connectedProviderChoices);
@@ -118,10 +77,6 @@ export function makeMissionTools(opts: MissionToolOptions) {
         signal,
       );
       if (!result.ok) return toolErrorResult(result.error);
-      // A 200 whose body is not a board is still a failure, and it has to reach
-      // the model as one: reading `.length` off it threw a TypeError that pi
-      // surfaces as an opaque crash, ending the turn where a named refusal
-      // would have let the model try the other agent.
       const missions = result.data?.missions;
       if (!Array.isArray(missions)) {
         return toolErrorResult({
@@ -141,10 +96,6 @@ export function makeMissionTools(opts: MissionToolOptions) {
 
   const MOVE_DESCRIPTION =
     "Move a finished mission on the user's board to 'done' (reviewed and complete) or 'archived' (put away). Only works on missions that already finished - never one still running, and never the mission this chat belongs to. Move a mission only when the user asked you to manage it, or you started it yourself and reviewed its outcome with read_mission first. On another AI Employee's board you can only move missions you started.";
-  // Moving is the ONLY thing this tool does, and a model that reads it as the
-  // whole of mission management answers that a mission cannot be deleted - the
-  // exact failure this cross-reference ends. Only the assistant gets it: an
-  // ordinary agent has no Houston operations to be pointed at.
   const updateStatus = defineTool({
     name: UPDATE_MISSION_STATUS_TOOL_NAME,
     label: "Move a mission",

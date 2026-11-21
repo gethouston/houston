@@ -11,22 +11,6 @@ import { runWithTurnMode } from "../turn-mode-context";
 import { makeAssistantCallTool } from "./assistant-call";
 import { httpSandboxFetch } from "./sandbox-fetch";
 
-/**
- * The confirmation gate as the RUNTIME sees it — the ONE thing standing between
- * a model that decided to delete something and the delete happening.
- *
- * The incident these pin (Sep 2026): asked to "make Dobby blue", the model
- * called `houston_call({operation:"deleteAgent", confirmed:true})` and Houston
- * deleted the agent. `confirmed` was a tool PARAM the model set itself, so the
- * gate was a sentence in a prompt, not a gate.
- *
- * What replaced it: the runtime holds no approval at all. It asks the HOST to
- * raise a card (`POST /sandbox/assistant/pending`), shows exactly the wording
- * the host authored, and repeats the host's `requestId` on the next call. The
- * host matches that id against the receipt the USER's own reply minted, so a
- * runtime that lied about every step of this still performs nothing.
- */
-
 const CTX = {} as ExtensionToolContext;
 
 const catalog: AssistantCatalog = {
@@ -81,11 +65,6 @@ interface HostCall {
   body: Record<string, unknown> | undefined;
 }
 
-/**
- * A host that answers `/pending` with a fresh request id and `/call` with
- * whatever `callReply` says. Every request is recorded, so "never forwarded"
- * and "carried the id back" are both provable.
- */
 function mockHost(
   callReply: () => { status?: number; body?: unknown } = () => ({ body: null }),
 ) {
@@ -127,7 +106,6 @@ interface CallResult {
   details: unknown;
 }
 
-/** One `houston_call`, inside a turn of `conversationId`. */
 async function call(
   conversationId: string | undefined,
   params: Record<string, unknown>,
@@ -152,7 +130,6 @@ const code = (r: CallResult) =>
 const paths = (calls: HostCall[]) =>
   calls.map((c) => c.url.replace("http://host", ""));
 
-/** The one question step the gate raised, as the app would render it. */
 function raisedQuestion(holder: InteractionHolder) {
   const step = holder.pending?.steps[0];
   if (step?.kind !== "question")
@@ -165,12 +142,9 @@ test("the incident: a delete the model 'confirmed' itself is never performed", a
   const { result, holder } = await call("conv-1", {
     operation: "deleteAgent",
     params: { id: "Personal/Dobby" },
-    // What the model actually sent on the day. There is no such input any more,
-    // and an ignored extra key must not read as approval.
     confirmed: true,
   });
 
-  // It asked for a card. It did NOT perform anything.
   expect(paths(calls)).toEqual(["/sandbox/assistant/pending"]);
   expect(code(result)).toBe("needs_confirmation");
   expect(text(result)).toContain("ERROR needs_confirmation");
@@ -204,7 +178,6 @@ test("the tool result orders the model to end its turn and never work around the
   const message = text(result);
   expect(message).toMatch(/end your turn/i);
   expect(message).toMatch(/do not retry/i);
-  // The delete-then-recreate dodge, named so the model cannot invent it.
   expect(message).toMatch(/recreat/i);
   expect(message).toContain("req-1");
 });
@@ -334,10 +307,6 @@ test("a host preapproval performs the operation in the same tool call without a 
   expect(holder.pending).toBeUndefined();
 });
 
-/**
- * A6: the Mode pill can move to Plan WHILE the turn runs. The session's toolset
- * is already built, so the live mode is what has to stop the next mutation.
- */
 test("switching to Plan mode mid-turn stops the next mutation, reads still run", async () => {
   const calls = mockHost(() => ({ body: [] }));
   const blocked = await call(

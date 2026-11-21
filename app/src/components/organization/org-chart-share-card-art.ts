@@ -1,14 +1,5 @@
 import { AGENT_COLORS } from "@houston-ai/core";
 
-/**
- * The share image's art direction: a rendered PNG with its own look, drawn
- * on a canvas that cannot read CSS variables, so its paper, ink and shadows
- * are authored here (the sanctioned raw-hex exception in DESIGN.md §3.1,
- * like the Agent Store's og-card). Clean and light on purpose: it lands in
- * a white feed. AI Employees still wear their own token colour, on their
- * helmet avatar.
- */
-
 export const ART = {
   paper: "#fafaf9",
   dot: "rgba(17, 17, 16, 0.075)",
@@ -26,7 +17,6 @@ export const ART = {
   shadowFar: "rgba(17, 17, 16, 0.06)",
 } as const;
 
-/** The dot grid's pitch and dot radius. */
 const GRID = { step: 24, r: 1.1 } as const;
 
 export function paintPaper(
@@ -45,18 +35,15 @@ export function paintPaper(
     }
 }
 
-/** An AI Employee's accent: its agent colour, or a custom stored hex. */
 export function agentAccent(stored: string | undefined): string {
   const entry = AGENT_COLORS.find(
     (c) => c.id === stored || c.light === stored || c.dark === stored,
   );
   if (entry) return entry.light;
-  // Opaque hex only: the helmet metal mixes it channel by channel.
   if (stored && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(stored)) return stored;
   return AGENT_COLORS[0].light;
 }
 
-/** Tighten tracking where the canvas supports it (no-op elsewhere). */
 export function track(ctx: CanvasRenderingContext2D, px: number): void {
   if ("letterSpacing" in ctx) ctx.letterSpacing = `${px}px`;
 }
@@ -78,19 +65,12 @@ export function roundRect(
   ctx.closePath();
 }
 
-/**
- * A white card: two soft shadow layers (a close contact shadow and a wide
- * ambient one), then a hairline edge. `quiet` cards (the "+N") sit flat on
- * a light fill with the edge only.
- */
 export function paintCard(
   ctx: CanvasRenderingContext2D,
   box: { x: number; y: number; w: number; h: number },
   quiet = false,
 ): void {
   const r = 16;
-  // Shadows ignore the canvas transform, so a zoomed chart scales them by
-  // hand; the hairline stays a hairline at any zoom.
   const zoom = ctx.getTransform().a;
   ctx.save();
   if (!quiet)

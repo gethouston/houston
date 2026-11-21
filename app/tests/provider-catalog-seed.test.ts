@@ -7,10 +7,6 @@ import {
   getProvider,
 } from "../src/lib/providers.ts";
 
-// This file NEVER hydrates, so it observes the pristine override-only seed.
-// (node:test runs each file in its own process, so hydration in a sibling file
-// can't leak in.)
-
 describe("deriveEffortLevels (pure pi thinkingLevels → EffortLevel mapping)", () => {
   it("drops pi's off + minimal, passes low/medium/high/xhigh through in order", () => {
     deepStrictEqual(
@@ -43,7 +39,6 @@ describe("deriveEffortLevels (pure pi thinkingLevels → EffortLevel mapping)", 
   });
 
   it("ignores unknown levels pi has no Houston mapping for (e.g. a stray 'max')", () => {
-    // pi never emits `max`; if it ever did it is dropped — `max` is override-only.
     deepStrictEqual(deriveEffortLevels(["low", "max", "high"], true), [
       "low",
       "high",
@@ -58,17 +53,12 @@ describe("override-only seed (before the pi catalog loads)", () => {
     strictEqual(anthropic?.auth, "oauth");
     strictEqual(anthropic?.subtitle, "Claude Code");
     strictEqual(anthropic?.models.length, 0);
-    // The curated default is seeded from the override so it is stable pre-load.
     strictEqual(anthropic?.defaultModel, "claude-sonnet-5-5");
   });
 
   it("seeds the OpenAI card under the `openai` id, reachable in either dialect", () => {
     strictEqual(getProvider("openai")?.name, "OpenAI");
     strictEqual(getProvider("openai")?.auth, "oauth");
-    // The catalog is keyed by the DISPLAY id, but a lookup by pi's canonical
-    // id resolves to the same card: a config/activity/routine read carries
-    // `openai-codex`, and `undefined` there is what made those surfaces print
-    // the raw id and inherit another provider's default model.
     strictEqual(getProvider("openai-codex")?.id, "openai");
   });
 
@@ -79,12 +69,8 @@ describe("override-only seed (before the pi catalog loads)", () => {
   });
 
   it("never fabricates a default model it cannot know (B4)", () => {
-    // The seed carries NO models, so a provider without a curated default has
-    // no default to seed — `""` says exactly that, and every caller reads it as
-    // "no model to pin" rather than pinning an empty string.
     strictEqual(getDefaultModel("groq"), "");
     strictEqual(getDefaultModel("openai-compatible"), "");
-    // A curated default is still answered, in either dialect.
     strictEqual(getDefaultModel("openai-codex"), "gpt-6-luna");
   });
 
@@ -94,7 +80,6 @@ describe("override-only seed (before the pi catalog loads)", () => {
       getDefaultModel("anthropic");
       getProvider("groq");
     });
-    // No models yet, so a model lookup is simply undefined (never a throw).
     strictEqual(getModel("anthropic", "claude-sonnet-5"), undefined);
   });
 });

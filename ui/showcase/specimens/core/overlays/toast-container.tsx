@@ -11,11 +11,6 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
-/**
- * The container is `fixed bottom-4 right-4`, so there is exactly one on the
- * page and every row pushes into the same queue — which is also the only
- * honest way to review how the stack behaves.
- */
 function useToastQueue() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(0);
@@ -188,11 +183,6 @@ function ToastContainerSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["ToastContainer"];
 
 export const specimen: Specimen = {

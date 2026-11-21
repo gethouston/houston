@@ -10,14 +10,9 @@ export interface CreatorPaginationProps {
   handle: string;
   sort: StoreCatalogSort;
   page: number;
-  /** Whether another page of results exists after the current one. */
   hasMore: boolean;
 }
 
-/**
- * Prev/next pagination for a creator's public agents, rendered as real links
- * (`/@handle?page=`), so results stay crawlable and work without JavaScript.
- */
 export function CreatorPagination({
   handle,
   sort,

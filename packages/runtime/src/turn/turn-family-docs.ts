@@ -16,27 +16,17 @@ type FamilyEvent =
   | "RoutineRunsChanged"
   | "LearningsChanged";
 
-/**
- * Project every family file a claimed turn landed (`landed` = uploaded plus
- * immediate writes) into its doc: the routine run history, the routines and
- * the memories (also when the turn deleted that file). Resolves to the errors to append to the turn's outcome and
- * the events that must not be announced: an event promises the refetch can
- * be served asleep, which a doc that did not land breaks.
- */
 export async function publishLandedFamilyDocs(input: {
   deps: TurnServerDeps;
   turn: Turn;
   filesystem: TurnFilesystem;
   source: ActivityDocSource;
   landed: readonly string[];
-  /** Keys sync-back deleted: a memories file the turn removed projects []. */
   deleted: readonly string[];
 }): Promise<{ errors: string[]; stale: FamilyEvent[] }> {
   const { deps, turn, filesystem } = input;
   const errors: string[] = [];
   const stale: FamilyEvent[] = [];
-  // A doc the store refused (403/404) stays stale, so its event is not
-  // promised; the file is durable, so the turn did not fail.
   const settle = (
     event: FamilyEvent,
     label: string,
@@ -47,16 +37,12 @@ export async function publishLandedFamilyDocs(input: {
     if (!result || docNotLandedReason(result)) stale.push(event);
   };
   if (input.landed.includes(turnRoutineRunsKey(filesystem.workspaceRel))) {
-    // The runs doc is projected for routine fires only; any other turn that
-    // touched it has no doc to point other tabs at.
     const runs =
       turn.claim && turn.routine
         ? await publishTurnRunsDoc(deps, turn, filesystem)
         : null;
     settle("RoutineRunsChanged", "runs", runs);
   }
-  // No doc system to project into (unclaimed, no pool store): these events
-  // stand as they always have, since reads there never come from the doc.
   if (input.landed.includes(docKey(filesystem.workspaceRel, "routines"))) {
     const routines = turn.claim
       ? await publishTurnRoutinesDoc(deps, turn, filesystem, input.source)
@@ -74,8 +60,6 @@ export async function publishLandedFamilyDocs(input: {
       filesystem,
       input.source,
     );
-    // A pod-store whose turn-claim scope predates the learnings doc refuses
-    // it (403).
     if (learnings && "disabled" in learnings)
       console.warn(
         `[turn] learnings doc refused by the store (${learnings.reason}); asleep memories lag until the next projection`,

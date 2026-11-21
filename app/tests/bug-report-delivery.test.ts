@@ -6,9 +6,6 @@ import {
 } from "../src/lib/bug-report-delivery.ts";
 import type { BugReportFailure } from "../src/lib/bug-report-failure.ts";
 
-// H-009 / HOUSTON-APP-5FT: Linear at its plan's issue cap lost every report
-// for days. A report now goes Linear first, the fallback on any refusal, and
-// is only "not sent" when every channel failed.
 function channels(over: Partial<BugReportChannels>) {
   const calls = {
     fallback: [] as BugReportFailure[],

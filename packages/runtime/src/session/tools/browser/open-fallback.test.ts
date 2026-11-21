@@ -104,7 +104,6 @@ test("Kernel's proxy refusing the site keeps the local page and logs the code", 
   expect(acted.tab).toBe(local);
   expect(texts(acted.outcome)[0]).toBe(BLOCKED_NOTE);
   expect(swap.dropBackup).toHaveBeenCalled();
-  // Logged as a warning: a site Kernel refuses too is no fault of ours.
   expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).toContain(
     "provider_blacklisted",
   );

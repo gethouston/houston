@@ -1,8 +1,3 @@
-/**
- * One pass at a time. A request while a pass runs joins it and schedules
- * exactly one more pass after it (the tree may have changed mid-pass), as
- * long as `mayRerun` still allows it.
- */
 export class CoalescedRun {
   private running: Promise<void> | undefined;
   private rerun = false;
@@ -12,12 +7,10 @@ export class CoalescedRun {
     private readonly mayRerun: () => boolean,
   ) {}
 
-  /** The pass in flight, if any. */
   get inFlight(): Promise<void> | undefined {
     return this.running;
   }
 
-  /** Drop a scheduled extra pass (the work it would do is moot). */
   cancelRerun(): void {
     this.rerun = false;
   }

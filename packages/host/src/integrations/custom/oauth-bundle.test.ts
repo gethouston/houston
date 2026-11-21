@@ -117,7 +117,6 @@ describe("resolveOAuthValue", () => {
     const store = new MemoryCustomSecretStore();
     const stale = bundle({ expiresAt: Date.now() - 1 });
     const raw = JSON.stringify(stale);
-    // A new grant (or a delete) already replaced the stored value.
     await store.set("id-cas", "the-newer-grant");
     const calls: URLSearchParams[] = [];
     await expect(

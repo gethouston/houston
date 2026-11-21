@@ -12,15 +12,6 @@ import { HoustonAuthStore } from "../auth/credential-store";
 import { probePath } from "../auth/serve-probe";
 import { piApiKeyProviderIds, piModelIds } from "./pi-catalog";
 
-/**
- * pi 1.0.3 renamed its Azure provider from `azure-openai-responses` to `azure`.
- * Houston keeps the old id everywhere (the wire, the gateway's credential rows
- * and model ceilings, settings.json, pins, routines, older desktop clients), so
- * the pi-ai patch (patches/@earendil-works__pi-ai@<version>.patch) reverts the
- * rename inside pi: the provider id, its catalog rows, the env-key table and
- * the Responses tool-call provider set. With it, nothing in Houston translates.
- * A pi bump must carry that hunk forward; these guards fail if it is dropped.
- */
 type ModelId = Parameters<typeof getModel>[1];
 type Provider = Parameters<typeof getModel>[0];
 
@@ -61,7 +52,6 @@ test("a key stored under azure-openai-responses is the one pi authenticates with
 });
 
 test("serve mode asks the gateway for the azure-openai-responses row", () => {
-  // runServedSync probes exactly these ids (curated + pi's api-key providers).
   expect(piApiKeyProviderIds()).toContain("azure-openai-responses");
   expect(piApiKeyProviderIds()).not.toContain("azure");
   expect(probePath("azure-openai-responses", false)).toBe(

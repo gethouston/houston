@@ -20,40 +20,23 @@ import {
   oauthBlocked,
 } from "./custom-add-model";
 
-/**
- * The manual add form (HOU-980): pick API or MCP server, paste the URL (an
- * optional "Check" pre-classifies it and fills the name), name it, and say
- * whether it needs a key. Submit registers through the host, which compiles
- * first — a bad URL or duplicate name rejects with the real reason (toasted
- * once by the `call()` wrapper; the form stays open for a correction). A
- * definition added with "needs a key" lands `pending`, and the parent opens
- * the secure key dialog right away.
- */
 export function CustomAddForm({
   agentId,
   onBack,
   onAdded,
 }: {
-  /** The TRANSPORT agent (HOU-823): both writes ride `/agents/:id/…`, the
-   *  only custom route family the hosted gateway proxies. Resolved by
-   *  `useCustomTransportAgentId`, so the global page has one too. */
   agentId?: string;
   onBack: () => void;
   onAdded: (view: CustomIntegrationView) => void;
 }) {
   const { t } = useTranslation("integrations");
   const [form, setForm] = useState<FormState>(EMPTY_CUSTOM_ADD_FORM);
-  // The verdict remembers WHICH URL it judged: editing the field mid-probe
-  // must not let a late result claim (or auto-fill) the wrong address.
   const [verdict, setVerdict] = useState<{
     url: string;
     result: CustomDetectResult;
   } | null>(null);
   const detect = useDetectCustomIntegration(agentId);
   const add = useAddCustomIntegration(agentId);
-  // Latest check wins, locally: today `canCheck` (disabled while pending)
-  // already serializes probes, but the verdict's correctness must not hang on
-  // the button's disabled state — a late result may never clobber a newer one.
   const checkSeq = useRef(0);
 
   const canCheck = isServiceUrl(form.url) && !detect.isPending;
@@ -66,13 +49,10 @@ export function CustomAddForm({
     if (!canCheck) return;
     const url = form.url.trim();
     const seq = ++checkSeq.current;
-    // A transport failure is toasted by `call()`; the stale verdict clears so
-    // the line never claims a check that did not run.
     setVerdict(null);
     const result = await detect.mutateAsync(url).catch(() => null);
     if (!result || seq !== checkSeq.current) return;
     setVerdict({ url, result });
-    // Guarded per-field: only apply while the form still holds the checked URL.
     setForm((f) => (f.url.trim() === url ? applyDetect(f, result) : f));
   };
 
@@ -156,8 +136,6 @@ export function CustomAddForm({
         />
       </div>
 
-      {/* A supported OAuth verdict makes the key switch moot — the add rides
-          auth "oauth" and the user signs in instead of pasting anything. */}
       {!(
         form.kind === "mcp" &&
         shownVerdict?.requiresOAuth &&

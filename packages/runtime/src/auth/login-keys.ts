@@ -18,16 +18,6 @@ import { authStorage } from "./storage";
 
 const known = (id: string): id is ProviderId => isProvider(id);
 
-/**
- * Store a pasted API key for an api-key provider. The store persists it as
- * pi's `api_key` credential variant; auth resolution then returns it for any
- * request against the provider's built-in OpenAI-compatible gateway. There is
- * no OAuth dance and nothing to refresh or scrub.
- *
- * Azure OpenAI (PRODUCT-1477) additionally requires the resource `endpoint`,
- * persisted FIRST (its own file, ai/azure-openai.ts) so a bad URL never
- * leaves a stored key aimed at nothing — mirroring setCustomEndpoint's order.
- */
 export function setApiKey(
   providerId: string,
   key: string,
@@ -42,12 +32,6 @@ export function setApiKey(
   active.delete(slot);
 }
 
-/**
- * The cheap, offline preconditions of an API-key connect (known provider,
- * api-key auth method, non-empty key) — split out so the connect route can
- * fail fast on these BEFORE spending a live verification request
- * (`verifyApiKey`). Returns the trimmed key.
- */
 export function assertApiKeyConnectable(
   providerId: string,
   key: string,
@@ -62,19 +46,8 @@ export function assertApiKeyConnectable(
   return trimmed;
 }
 
-/**
- * Placeholder key for keyless local servers. Ollama / LM Studio / vLLM ignore
- * the Authorization header, but pi requires SOME key to resolve a request (it
- * throws "No API key for provider" otherwise), so a blank key becomes this.
- */
 export const LOCAL_PLACEHOLDER_KEY = "houston-local";
 
-/**
- * Connect an OpenAI-compatible (local) server: persist its base URL + model (and
- * display options) and store the optional key in auth.json — a placeholder when
- * the server is keyless. LOCAL profile only; the host gates this on its
- * capability, never serving it from a cloud runtime that can't reach localhost.
- */
 export function setCustomEndpoint(
   input: CustomEndpointInput & { apiKey?: string },
 ): void {

@@ -6,15 +6,8 @@ import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 import { SidebarLayoutStore } from "./sidebar-layout-store";
 
-/** Exactly `org:` + 16 lowercase hex chars — the C8 team-space id grammar. */
 const TEAM_WORKSPACE_ID = /^org:([a-f0-9]{16})$/;
 
-/**
- * The org slug behind a team workspace id, or `null` for the personal row (the
- * synthetic "default" or any opaque non-`org:` id). Mirrors the app's
- * `orgSlugFromWorkspaceId` (`app/src/lib/space-id.ts`); the adapter keeps its
- * own copy because `packages/web` never imports from `app/`.
- */
 export function teamSlugFromWorkspaceId(id: string): string | null {
   const match = TEAM_WORKSPACE_ID.exec(id);
   return match ? match[1] : null;
@@ -25,25 +18,6 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
     #sidebarLayout: SidebarLayoutStore | undefined;
     async listWorkspaces(): Promise<Workspace[]> {
       const personal = syntheticWorkspace();
-      // C8 §Workspaces bridge: the host returns one row per membership — a
-      // personal row plus one `org:<slug>` row per team. The synthetic
-      // personal row REPLACES the served one (its "default" id is load-bearing
-      // for prefs, caches, and the desktop boot path); ONLY the `org:*` team
-      // rows bridge through, so a local/self-host list (never `org:`-prefixed)
-      // stays byte-identical.
-      //
-      // A 404 is CAPABILITY negotiation, not a failure: a host that predates
-      // the surface has no teams to bridge, so personal-only is the honest and
-      // complete answer.
-      //
-      // Every other failure THROWS (HOU-981). The old blanket
-      // `catch { return [personal] }` turned one transient gateway blip into a
-      // silent, session-long lie: a Teams user's `org:*` spaces vanished,
-      // `resolveActiveWorkspace` fell back to personal, and every mission they
-      // owned looked gone. A throw lands on the workspace store's `loadError`
-      // — a visible failed state with a retry (plus the `call()` toast) — and
-      // leaves the persisted `last_workspace_id` untouched, so the next
-      // successful load restores the right space.
       try {
         const rows = await retryTransientRead(() =>
           viaSdk("/v1/workspaces", () =>
@@ -63,13 +37,6 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
     async createWorkspace(req: { name?: string }): Promise<Workspace> {
       return { ...syntheticWorkspace(), name: req?.name || "Personal" };
     }
-    // Delete a team space (PRODUCT-1410). Only an `org:<slug>` row is
-    // deletable, and only through the gateway: the personal workspace is the
-    // synthetic row every deployment keeps (a hosted personal space goes away
-    // with the account, never on its own), and a local/self-host list holds
-    // nothing but that row. Off-cloud, or asked for the personal row, this
-    // THROWS — the old empty stub let the UI drop the row locally and call it
-    // deleted while the space lived on and re-listed on the next refresh.
     async deleteWorkspace(id: string): Promise<void> {
       const slug = teamSlugFromWorkspaceId(id);
       if (slug === null)
@@ -80,13 +47,6 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
         this.ctx.sdk.spaces.deleteOrg(slug),
       );
     }
-    // Persist the language pick as the account-level `locale` preference. The
-    // workspace id is ignored on purpose: the personal row is the synthetic
-    // "default" (no server workspace behind the gateway to PATCH), and on the
-    // host the workspace PATCH writes the same `locale` preference key this PUT
-    // does — one preference either way. Writing it here (instead of the old
-    // return-only stub) is what makes the pick survive a restart: the boot path
-    // reads `/v1/preferences/locale` (PRODUCT-1564).
     async setWorkspaceLocale(
       _id: string,
       locale: string | null,
@@ -99,7 +59,6 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
     async setWorkspaceProvider(): Promise<Workspace> {
       return syntheticWorkspace();
     }
-    // The host or gateway stores each person's sidebar folders.
     private sidebarLayoutStore(): SidebarLayoutStore {
       this.#sidebarLayout ??= new SidebarLayoutStore(this.ctx);
       return this.#sidebarLayout;

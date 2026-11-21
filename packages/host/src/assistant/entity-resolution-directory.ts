@@ -7,7 +7,6 @@ interface Entry {
   email?: string;
 }
 
-/** Adapt the pinned directory's identity fields without losing display names. */
 export async function directoryEntries(
   collection: Exclude<AssistantEntityCollection, "agents">,
   directory: EntityDirectory,

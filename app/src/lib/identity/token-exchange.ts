@@ -1,15 +1,5 @@
-// The provider token-endpoint POST, shared by the Google (confidential
-// installed-app secret) and Microsoft (public PKCE) code exchanges.
-//
-// Split out of desktop-oauth.ts — it is pure HTTP with no attempt lifecycle in
-// it — so that module stays inside the 200-line limit. Every failure throws
-// typed; nothing here is swallowed.
-
 import { IdentityError } from "./errors.ts";
 
-/**
- * POST a form body to a provider token endpoint and return the parsed JSON.
- */
 export async function postTokenForm(
   url: string,
   form: Record<string, string>,
@@ -25,8 +15,6 @@ export async function postTokenForm(
     throw new IdentityError("network", { cause: e });
   }
   if (!res.ok) {
-    // Best-effort extraction of the provider's error token for diagnostics;
-    // we throw regardless (never swallow the failure).
     let rawCode: string | undefined;
     try {
       const err = (await res.json()) as { error?: unknown };

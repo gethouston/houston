@@ -12,12 +12,6 @@ interface Recorded {
   body: string | null;
 }
 
-/**
- * An inert SDK (`reactivity:false`) over a mock `fetch` that records the whole
- * request and answers whatever the test queues. The account routes are
- * gateway-only, so every assertion here is about the exact URL, method and body
- * bytes that reach the wire — and about the fact that nothing is swallowed.
- */
 function makeSdk(respond: (url: string) => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(

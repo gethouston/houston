@@ -1,12 +1,3 @@
-// Desktop stub for the web-only Firebase Auth surface.
-//
-// The desktop bundle resolves `@houston/web-identity` to THIS module (Vite alias
-// in app/vite.config.ts) so firebase-js-sdk never ships to desktop. Desktop
-// sign-in goes through the REST + loopback path instead; the web module
-// (packages/web/src/identity/firebase-popup.ts) is its counterpart. Every symbol
-// here mirrors that module's signature but throws `operation_not_allowed` — none
-// is ever called on desktop (the flows are `osIsTauri()`-guarded in auth.ts).
-
 import type {
   LinkAttempt,
   PendingLink,
@@ -14,9 +5,6 @@ import type {
 } from "@houston/sdk/identity";
 import { IdentityError, type Session, type SignInOutcome } from "./index.ts";
 
-// A firebase-free structural view of the fields `toSession` reads from a
-// Firebase user. The desktop bundle has no firebase types, so the seam's
-// signature is expressed structurally; a real Firebase `User` satisfies it.
 interface FirebaseUserLike {
   uid: string;
   email: string | null;

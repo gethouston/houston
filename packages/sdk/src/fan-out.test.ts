@@ -5,7 +5,6 @@ import {
   FAN_OUT_SLOT_LEASE_MS,
 } from "./fan-out";
 
-/** A read that resolves (or rejects) only when the test says so. */
 function controlledReads() {
   let inFlight = 0;
   let peak = 0;
@@ -22,8 +21,6 @@ function controlledReads() {
         },
       });
     });
-  // Reads start a few microtasks after they are queued, so settle in rounds
-  // until a full tick passes with nothing new in flight.
   const settleAll = async () => {
     await new Promise((r) => setTimeout(r, 0));
     while (pending.length > 0) {
@@ -94,7 +91,6 @@ describe("createFanOutGate", () => {
         throw new Error("boom");
       }),
     ).rejects.toThrow("boom");
-    // A rejected read frees its slot.
     await expect(gate.run(async () => "next")).resolves.toBe("next");
   });
 
@@ -157,8 +153,6 @@ describe("slot lease", () => {
     });
 
     await vi.advanceTimersByTimeAsync(FAN_OUT_SLOT_LEASE_MS);
-    // The held read gave its slot to `second`; it finishing now must not
-    // also let `third` in while `second` still holds the slot.
     releaseHeld();
     await held;
     await vi.advanceTimersByTimeAsync(0);

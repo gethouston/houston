@@ -8,19 +8,6 @@ import { LOCAL_PLACEHOLDER_KEY } from "../auth/login";
 import { type OpAnswer, pushApiKeyCredential } from "./op-credential";
 import type { OpRequest } from "./parse-op-request";
 
-/**
- * Connect an OpenAI-compatible endpoint for a SLEEPING agent, on a pool
- * worker — the pod handler's own steps against the hydrated root: validate
- * the URL against the managed-cloud egress policy, persist the endpoint
- * config (`custom-endpoint.json`, riding the settings sync-back), push the
- * key (placeholder for a keyless server) to the gateway's credential store —
- * auth.json never syncs, and turn workers fetch this provider's key from the
- * store like any other — then publish/withdraw the org share.
- *
- * Ops exist only behind the managed gateway, so the public-HTTPS egress
- * check always applies here; the dev launcher's loopback "pods" keep the
- * proxy path for their localhost endpoints (a worker would 400 them).
- */
 export async function applyEndpointConnect(
   op: OpRequest & {
     op: Extract<OpRequest["op"], { kind: "settings"; action: "endpoint" }>;
@@ -34,11 +21,7 @@ export async function applyEndpointConnect(
   },
 ): Promise<OpAnswer> {
   const input = op.op.input;
-  // Trimmed at the boundary, exactly as the pod route trims before
-  // validating — the org share must never carry pasted whitespace.
   const baseUrl = input.baseUrl.trim();
-  // The descriptor both the config file and the org share persist — built
-  // once so the two writes can never diverge on a field.
   const descriptor = {
     ...(input.bridge ? { bridge: input.bridge } : {}),
     baseUrl,
@@ -49,8 +32,6 @@ export async function applyEndpointConnect(
       : {}),
     ...(input.reasoning !== undefined ? { reasoning: input.reasoning } : {}),
   };
-  // The pod route's own boundary validation, verbatim (message parity), then
-  // the managed-cloud egress guard.
   let parsed: URL;
   try {
     parsed = new URL(baseUrl);
@@ -66,8 +47,6 @@ export async function applyEndpointConnect(
   const check = checkPublicHttpsEndpoint(parsed);
   if (!check.ok) return { status: 400, body: { error: check.reason } };
 
-  // Endpoint FIRST (the pod's own order): a bad config must never leave a
-  // stored key aimed at nothing.
   try {
     setCustomEndpointConfigIn(deps.dataDir, descriptor);
   } catch (e) {
@@ -107,8 +86,6 @@ export async function applyEndpointConnect(
       await shared.remove({ ownerOnly: true });
     }
   } catch (e) {
-    // The endpoint config is already written (the pod logs and answers 502
-    // the same way when its share sync fails after the save).
     console.error("[shared-endpoint] save synchronization failed:", e);
     return {
       status: 502,

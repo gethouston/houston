@@ -1,12 +1,3 @@
-/**
- * RoutineSnoozeBanner — the routine screen's notice for a routine the engine
- * is holding until the creator's plan usage limit resets (the SDK's
- * `routineSnoozeNotice` decides whether one is in force). It names the limit
- * and the moment runs continue by themselves; the one way to run sooner is
- * another model, chosen in the Model section below, so it carries no button.
- * Renders nothing when no hold is in force.
- */
-
 import type { Routine } from "@houston/engine-adapter";
 import { formatLocalDateTime, routineSnoozeNotice } from "@houston/sdk";
 import { useTranslation } from "react-i18next";

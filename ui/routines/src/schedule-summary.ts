@@ -1,13 +1,3 @@
-/**
- * Human-readable summaries for ScheduleBuilder — turns a preset or a raw cron
- * expression into plain language for non-technical users. The cron building and
- * classification live in `./schedule-cron-utils`; this file only describes.
- *
- * Every user-visible string arrives via `labels` and localizes through the pure
- * formatters in `./schedule-format` (which use `Intl.*Format(locale)` for day
- * names and clock time). The package itself stays i18n-agnostic — see `./labels`.
- */
-
 import {
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
   interp,
@@ -28,7 +18,6 @@ import {
 import { parseEverySchedule } from "./schedule-interval-form.ts";
 import type { SchedulePreset } from "./types";
 
-/** Generate a human-readable summary of a schedule preset */
 export function presetSummary(
   preset: SchedulePreset,
   options: ScheduleOptions,
@@ -72,13 +61,6 @@ export function presetSummary(
   }
 }
 
-/**
- * Human-readable summary of any schedule (cron or an `@every` interval),
- * written for non-technical users. Recognizes the presets and the common
- * interval patterns (every N minutes / hours / days, weekly on chosen days,
- * every N months) so a `*​/5 * * * *` reads as "Runs every 5 minutes"
- * instead of raw cron, and otherwise falls back to a generic label.
- */
 export function cronSummary(
   cron: string,
   labels: ScheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
@@ -87,7 +69,6 @@ export function cronSummary(
   const trimmed = cron.trim();
   if (!trimmed) return labels.noSchedule;
 
-  // A true interval ("@every 16m") reads exactly like its cron twin.
   const interval = parseEverySchedule(trimmed);
   if (interval) {
     const n = interval.every;
@@ -117,7 +98,6 @@ export function cronSummary(
     const [min, hour, dom, month, dow] = parts;
     const everyDay = dom === "*" && month === "*" && dow === "*";
     if (everyDay) {
-      // Every N minutes: "*/N * * * *" (and "* * * * *" = every minute).
       const minStep = min.match(/^\*\/(\d+)$/);
       if (hour === "*" && (min === "*" || minStep)) {
         const n = minStep ? Number(minStep[1]) : 1;
@@ -125,14 +105,12 @@ export function cronSummary(
           ? labels.everyMinute
           : interp(labels.everyNMinutes, { n });
       }
-      // Every N hours on the hour: "M */N * * *".
       const hourStep = hour.match(/^\*\/(\d+)$/);
       if (/^\d+$/.test(min) && hourStep) {
         const n = Number(hourStep[1]);
         return n === 1 ? labels.everyHour : interp(labels.everyNHours, { n });
       }
     }
-    // Every N days at a fixed time: "M H */N * *".
     const domStep = dom.match(/^\*\/(\d+)$/);
     if (
       month === "*" &&
@@ -148,8 +126,6 @@ export function cronSummary(
         : interp(labels.everyNDays, { n, time: t });
     }
 
-    // On a day-of-month, every N months: "M H D */N *" (every 1 month is the
-    // Monthly preset, handled above).
     const monthStep = month.match(/^\*\/(\d+)$/);
     if (
       dow === "*" &&

@@ -5,12 +5,6 @@ import { openMoreMenu } from "../support/mobile-nav";
 import { screen } from "../support/nav-common";
 import { openAdminSection } from "../support/settings-nav";
 
-/**
- * Yearly seats on the phone: the desktop twin (`../org-seat-charge.spec.ts`)
- * covers the flows; this proves the add row, the note and the charge dialog
- * fit the phone, with the dialog's buttons stacked full width.
- */
-
 const TEAM = { slug: "00000000000000ab", name: "Acme Team" };
 
 async function arm(path: string, data: unknown): Promise<void> {
@@ -71,7 +65,6 @@ test("the charge dialog fits the phone and adds the person", async ({
   const menu = await openMoreMenu(page);
   await menu.getByTestId("more-workspace-switcher").tap();
   await page.getByRole("menuitemcheckbox", { name: TEAM.name }).tap();
-  // Switching leaves the More card open; Admin is reached through it again.
   await page.keyboard.press("Escape");
   await expect(page.locator("[data-slot='sheet-overlay']")).toHaveCount(0);
   await openAdminSection(page, "People");
@@ -91,7 +84,6 @@ test("the charge dialog fits the phone and adds the person", async ({
     await cancel.boundingBox(),
   ];
   if (!payBox || !cancelBox) throw new Error("the dialog is not laid out");
-  // Stacked: the same width, the primary action on top.
   expect(Math.round(payBox.width)).toBe(Math.round(cancelBox.width));
   expect(payBox.y).toBeLessThan(cancelBox.y);
   await expectNoOverflow(page);

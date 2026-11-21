@@ -38,7 +38,6 @@ describe("an agent row's second line", () => {
   });
 
   it("keeps the role while the history is unconfirmed", () => {
-    // A waking pod's empty list must not make a veteran read as brand new.
     deepStrictEqual(agentRowLine(AGENT, summary({}), true), {
       kind: "role",
       role: "Email assistant",
@@ -46,9 +45,6 @@ describe("an agent row's second line", () => {
   });
 
   it("never invites when the first day is not pending", () => {
-    // Pending is decided by the caller: the employee's first day is pending
-    // AND this caller may start it. Anything else would land on a board with
-    // no start button.
     deepStrictEqual(agentRowLine(AGENT, summary({ history: "none" }), false), {
       kind: "role",
       role: "Email assistant",

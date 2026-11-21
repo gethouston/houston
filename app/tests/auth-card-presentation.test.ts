@@ -7,12 +7,6 @@ import {
 import { unhealableCause } from "../src/components/shell/provider-error-cards/auth-unhealable.ts";
 import { reconnectSurface } from "../src/components/shell/provider-error-cards/reconnect-surface.ts";
 
-// The card once labeled two opposite actions "Try again". These assert the
-// state -> title/body/button mapping so each phase names its real action:
-// idle/failed -> Reconnect, waiting -> Cancel, done -> a disabled "Signed in"
-// badge (the resume auto-fired: the refused send's prompt, or the hidden
-// auto-continue nudge for a mid-turn failure — HOU-718).
-
 const CAUSE = "providerError.unauthenticated.bodyTokenExpired";
 
 describe("authCauseBodyKey", () => {
@@ -45,7 +39,6 @@ describe("authCauseBodyKey", () => {
 
   it("falls back to the unknown body for any other cause", () => {
     strictEqual(
-      // deliberately outside the union
       authCauseBodyKey("mystery" as never),
       "providerError.unauthenticated.bodyUnknown",
     );
@@ -53,10 +46,6 @@ describe("authCauseBodyKey", () => {
 });
 
 describe("reconnectSurface", () => {
-  // Reconnect once sent EVERY provider through launchLogin, which the engine
-  // 400s for non-OAuth providers ("nvidia does not use OAuth sign-in") — the
-  // card flipped to failed with no way out (HOU-1077). API-key providers must
-  // reconnect through the key paste dialog instead.
   it("api-key providers open the key dialog, never the OAuth login", () => {
     strictEqual(reconnectSurface("nvidia", "apiKey"), "api_key_dialog");
     strictEqual(reconnectSurface("google", "apiKey"), "api_key_dialog");
@@ -83,7 +72,6 @@ describe("reconnectSurface", () => {
   });
 
   it("an id the catalog cannot resolve falls back to the OAuth login", () => {
-    // Only the engine knows the method then; its launch keeps the non-OAuth guard.
     strictEqual(reconnectSurface("mystery", undefined), "oauth_login");
   });
 });
@@ -216,10 +204,6 @@ describe("resolveAuthCardPresentation", () => {
   });
 });
 
-// PRODUCT-1393: Anthropic's org/policy block (`oauth_org_not_allowed`) cannot
-// be healed by reconnecting — Anthropic's remedy is an API key — so the card
-// must never offer Reconnect. Its action is a distinct `open_ai_hub` tag the
-// component maps to opening the AI Hub (where an API key can be connected).
 describe("resolveAuthCardPresentation for an org-policy block", () => {
   const ORG = "providerError.unauthenticated.bodyOrgPolicyBlocked";
 
@@ -317,10 +301,6 @@ describe("resolveAuthCardPresentation for an org-policy block", () => {
   });
 });
 
-// An unauthenticated error can arrive with NO provider (nothing connected at
-// all). Every string above interpolates `{{provider}}`, so the whole card has
-// to switch to provider-free copy: naming an empty provider read as broken, and
-// the guess it replaced ("anthropic") named a provider the user never had.
 describe("resolveAuthCardPresentation without a provider", () => {
   it("idle: generic title + body, and the button says Connect a provider", () => {
     deepStrictEqual(

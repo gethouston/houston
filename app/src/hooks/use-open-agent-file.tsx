@@ -14,28 +14,11 @@ import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useCapabilities } from "./use-capabilities";
 
-/**
- * Open a workspace file the agent mentioned in chat (file cards, turn
- * summaries, prose file pills). Same gating as the Files section (HOU-677):
- *
- *   - Co-located desktop engine → hand the file to the OS's default app,
- *     rooted at the host-reported REAL directory (on the TS engine
- *     `folderPath` is a route key, never a path).
- *   - Everything else (web build, cloud pods, remote hosts) → the preview
- *     panel beside the chat (a full-screen sheet on the phone), which offers
- *     Download and, opened from a chat, comments for the agent.
- *
- * Accepts every path shape the engine emits (absolute native, workspace-
- * relative, bare) — see lib/agent-file-paths.ts.
- */
 export function useOpenAgentFile(
   agentPath: string | null,
-  /** The conversation the file is opened from: comments on it go to this
-   *  draft. Omitted outside a chat. */
   draftKey?: string | null,
 ): {
   openFile: (rawPath: string) => void;
-  /** True when clicks hand off to the OS (used to pick the card affordance icon). */
   opensLocally: boolean;
 } {
   const { t } = useTranslation("agents");
@@ -94,19 +77,6 @@ export function useOpenAgentFile(
   return useMemo(() => ({ openFile, opensLocally }), [openFile, opensLocally]);
 }
 
-/**
- * Open a link the agent emitted in chat prose. Two shapes land here:
- *
- *   1. Absolute URLs (`https://…`, `mailto:…`, `houston://…`) → the system
- *      browser.
- *   2. Relative or bare file paths (`perfil.md`, `./report.pdf`) — the
- *      agent's prompt structure encourages dropping these right after
- *      writing a file → `useOpenAgentFile` (OS open or in-app preview).
- *
- * Shape 2 is percent-DECODED first (PRODUCT-1231): markdown normalizes link
- * destinations, so a name with a space arrives as `Tropical%20Food.md` and no
- * such file exists. URLs keep their encoding — that is what the browser wants.
- */
 export function useOpenAgentHref(
   agentPath: string | null,
   draftKey?: string | null,

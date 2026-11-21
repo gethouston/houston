@@ -19,8 +19,6 @@ type Load =
   | { status: "error"; message: string }
   | { status: "ready"; profile: CreatorProfile | null };
 
-/** The web profile editor: session + gateway wiring around the SHARED
- *  ProfileEditorScreen (composition and copy live in @houston-ai/store). */
 export function ProfileClient() {
   const { status: sessionStatus, signIn, getToken } = useSession();
   const [load, setLoad] = React.useState<Load>({ status: "loading" });

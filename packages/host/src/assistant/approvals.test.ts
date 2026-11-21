@@ -3,12 +3,6 @@ import { approvalKey } from "./approval-key";
 import { APPROVAL_TTL_MS } from "./approval-record";
 import { ApprovalStore } from "./approvals";
 
-/**
- * The store's own contract. The end-to-end binding is pinned where it matters
- * (`routes/assistant-sandbox.test.ts` for the route, `receipts.test.ts` for the
- * user's reply); these are the rules that make it unforgeable.
- */
-
 const AGENT = "Personal/.assistant";
 const CONV = "assistant";
 
@@ -35,7 +29,6 @@ function approved(
 
 test("the key changes with anything that changes what the call would do", () => {
   expect(approvalKey("del", { id: "a" })).toBe(approvalKey("del", { id: "a" }));
-  // Argument ORDER is not meaning; array order is.
   expect(approvalKey("del", { a: 1, b: 2 })).toBe(
     approvalKey("del", { b: 2, a: 1 }),
   );
@@ -48,7 +41,6 @@ test("the key changes with anything that changes what the call would do", () => 
   expect(approvalKey("del", { id: "a" })).not.toBe(
     approvalKey("archive", { id: "a" }),
   );
-  // An undefined value is the same as an absent one, in both spellings.
   expect(approvalKey("del", { id: "a", note: undefined })).toBe(
     approvalKey("del", { id: "a" }),
   );
@@ -188,7 +180,6 @@ test("pendingCount counts this agent's unexpired records in every conversation",
   raise(AGENT, CONV);
   const answered = raise(AGENT, "whatsapp");
   raise("Personal/other", CONV);
-  // An answer not yet spent is still held here.
   store.decide({
     requestId: answered.requestId,
     agentId: AGENT,

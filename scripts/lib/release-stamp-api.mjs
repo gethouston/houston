@@ -1,6 +1,3 @@
-// Thin GitHub REST + Linear GraphQL clients for the release stamp. Kept apart
-// from the pure train logic (release-train.mjs) so that logic stays testable.
-
 export function makeGithubClient(token) {
   return async function gh(path, init = {}) {
     const res = await fetch(`https://api.github.com${path}`, {

@@ -6,8 +6,6 @@ import type { AccountLinkPort } from "@houston/sdk/identity";
 import { IdentityError } from "../src/lib/identity/errors.ts";
 import type { Session } from "../src/lib/identity/session.ts";
 
-// The binding's neighbours read `import.meta.env` or render, so the node
-// runner stubs them and each stub records into `world`.
 interface World {
   port?: AccountLinkPort<Session>;
   tauri: boolean;

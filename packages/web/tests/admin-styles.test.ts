@@ -5,14 +5,6 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { btn, C, ghostBtn, secondaryBtn } from "../src/admin/styles";
 
-/**
- * The /admin chunk's stylesheet contract. The operator dashboard renders
- * OUTSIDE the app tree, painting itself with inline `var(--ht-*)` styles, so it
- * needs the token variables and nothing else. Pulling the app's globals.css
- * instead dragged in `body { overflow: hidden }` — the app shell scrolls inside
- * its panes — and the dashboard, which has no scroll container of its own, left
- * every row below the fold unreachable.
- */
 const adminDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../src/admin",
@@ -42,7 +34,6 @@ describe("/admin stylesheet", () => {
   });
 
   it("nothing in the admin's CSS locks the page's scroll", () => {
-    // Comments stripped: this file's own prose explains the rule it forbids.
     const rules = (read("admin.css") + tokensCss).replaceAll(
       /\/\*[\s\S]*?\*\//g,
       "",
@@ -84,8 +75,6 @@ describe("/admin palette", () => {
   it("labels the quieter buttons with ink, never the CTA's inverted label", () => {
     expect(ghostBtn.background).toBe("transparent");
     expect(ghostBtn.color).toBe(C.text);
-    // On a panel the secondary button carries the control fill, a step above the
-    // panel, so it is a button and not a hairline drawn on the card.
     expect(secondaryBtn.background).toBe(C.field);
     expect(secondaryBtn.background).not.toBe(C.panel);
     expect(secondaryBtn.color).toBe(C.text);

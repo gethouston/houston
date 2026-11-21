@@ -1,9 +1,3 @@
-/*
- * /data-partners/refer — the request board: industry tabs and a search on
- * one row, then a grid of request cards. Light dress by default, .is-dark
- * while the page's tone flow (enterprise-flow.js) has the section dark.
- */
-
 .rf-board {
   margin-top: clamp(40px, 6vw, 72px);
 }
@@ -16,7 +10,6 @@
   border-bottom: 1px solid var(--line);
 }
 
-/* ── Industry tabs: a glyph over a name, the chosen one underlined ───── */
 .rf-tabs {
   display: flex;
   gap: clamp(18px, 2.6vw, 34px);
@@ -59,7 +52,6 @@
   border-radius: 6px;
 }
 
-/* ── Search ─────────────────────────────────────────────────────────── */
 .rf-search {
   position: relative;
   display: flex;
@@ -95,7 +87,6 @@
   color: var(--ink-subtle);
 }
 
-/* ── Request cards ──────────────────────────────────────────────────── */
 .rf-listings {
   list-style: none;
   display: grid;
@@ -240,7 +231,6 @@
   display: none;
 }
 
-/* ── On the black band ──────────────────────────────────────────────── */
 .is-dark .rf-board-bar {
   border-color: var(--line-on-ink);
 }
@@ -303,7 +293,6 @@
   }
 }
 @media (max-width: 640px) {
-  /* minmax(0, ...): a card's one-line meta must not widen the column. */
   .rf-listings {
     grid-template-columns: minmax(0, 1fr);
   }

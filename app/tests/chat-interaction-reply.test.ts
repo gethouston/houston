@@ -10,8 +10,6 @@ import {
 import { isAutoContinueMessage } from "../src/lib/auto-continue-message.ts";
 import type { NonPlanReadyStep } from "../src/lib/plan-ready.ts";
 
-/** Echoes the key and its interpolations, so a test asserts WHICH line each
- *  outcome composed and in WHAT order — not the English wording. */
 const t = ((key: string, vars?: Record<string, unknown>) =>
   vars === undefined
     ? key
@@ -19,8 +17,6 @@ const t = ((key: string, vars?: Record<string, unknown>) =>
         .map(([k, v]) => `${k}=${String(v)}`)
         .join(",")})`) as unknown as InteractionT;
 
-/** The flat body the agent reads: both the structured-answers marker and the
- *  auto-continue marker are leading HTML comments the model ignores. */
 function bodyLines(message: string): string[] {
   return message
     .replace(/<!--[\s\S]*?-->/g, "")
@@ -42,7 +38,6 @@ describe("interactionReplyMessage", () => {
   it("names every step's FINAL outcome, in the composer's clause order", () => {
     const outcomes = createInteractionOutcomes();
     outcomes.connects.set("p1", { name: "Claude", connected: true });
-    // A decline WITH text is a redirection, not a bare skip.
     outcomes.connects.set("c1", {
       name: "Gmail",
       connected: false,
@@ -98,7 +93,6 @@ describe("interactionReplyMessage", () => {
     const oauth = createInteractionOutcomes();
     oauth.credentials.set("k1", { name: "Stripe", saved: true });
     oauth.credentialModes.set("Stripe", "oauth");
-    // Credential-only and all saved → the hidden followup, not a status line.
     const message = interactionReplyMessage({
       steps: [steps[2] as NonPlanReadyStep],
       answers: [],
@@ -138,7 +132,6 @@ describe("interactionReplyMessage", () => {
       hasQuestionSteps: false,
       t,
     });
-    // No user bubble for a connect the user never narrated.
     strictEqual(isAutoContinueMessage(hidden), true);
 
     const visible = interactionReplyMessage({

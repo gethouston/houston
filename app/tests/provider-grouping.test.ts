@@ -80,11 +80,6 @@ describe("groupProviders", () => {
     );
   });
 
-  // HOU-979: `Available` is the ONLY section whose rows carry a live Connect
-  // button, so an unconfirmable provider must never land there — offering
-  // Connect for an account that may already be signed in is exactly the guess
-  // the tri-state exists to prevent. It rides the "yours" side instead, where
-  // the row renders its own neutral Checking treatment.
   it("keeps an unconfirmable provider out of Available and on the owned side", () => {
     const groups = groupProviders([provider("a")], () => "checking");
     deepStrictEqual(groups.available, []);
@@ -96,8 +91,6 @@ describe("groupProviders", () => {
   });
 
   it("never claims an unconfirmable provider is connected", () => {
-    // The owned side is a RENDER order, not a claim: `connected` — the bucket
-    // the green dot and the usage rows read — stays confirmed-only.
     const groups = groupProviders([provider("a"), provider("b")], (p) =>
       p.id === "a" ? "connected" : "checking",
     );
@@ -316,7 +309,6 @@ describe("filterToFeatured", () => {
 });
 
 describe("curatedDisplay", () => {
-  // anthropic is featured; deepseek is not (see FEATURED_PROVIDER_IDS).
   const filtered = [provider("anthropic"), provider("deepseek")];
 
   it("uncurated: shows the full set and never a chip", () => {
@@ -411,9 +403,6 @@ describe("searchProviders", () => {
 });
 
 describe("filterByQuickFilter", () => {
-  // anthropic → subscription; google/openrouter/deepseek → apiKey (payg);
-  // openai-compatible → local (no billing, matches neither button); opencode
-  // → the merged card, matches BOTH (Zen payg + Go subscription).
   const list = [
     provider("anthropic", { auth: "oauth" }),
     provider("google", { auth: "apiKey" }),

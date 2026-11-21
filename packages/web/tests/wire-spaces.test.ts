@@ -7,21 +7,6 @@ import {
   ORG as ORG_SLUG,
 } from "./support/wire-capture";
 
-/**
- * The spaces family rides `sdk.spaces`. What this file pins is the WIRE: the
- * seven gateway routes, their methods, their bodies, the headers that carry auth and the active space, and
- * the percent-encoding of every id spliced into a path.
- *
- * Each case drives the composed `HoustonClient` (what the app holds), not the
- * SDK, and asserts the whole recorded request — a substring match would let a
- * stray `/v1/org/invites/:id` (the OWNER's revoke) pass for the invitee's
- * `/v1/org-invites/:id`.
- *
- * The one degradation this family has stays in the mixin, so it is pinned here
- * too: a 404 from `GET /v1/orgs` is a gateway that predates spaces, and nothing
- * else softens.
- */
-
 const BASE = "https://gw.example";
 
 const { calls, reset, restore, stubFetch } = createWireCapture();
@@ -35,7 +20,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** Local: this family answers its mutations `204`, with no body and no type. */
 const json = (status: number, body: unknown = {}): Response =>
   new Response(status === 204 ? null : JSON.stringify(body), {
     status,
@@ -53,7 +37,6 @@ const ORG = {
   billing: null,
 };
 
-/** A cloud client with a team space active, so `x-houston-org` is live. */
 function client(): HoustonClient {
   const c = new HoustonClient({
     baseUrl: BASE,
@@ -64,7 +47,6 @@ function client(): HoustonClient {
   return c;
 }
 
-/** The single request the call made, with the shared headers already checked. */
 function soleCall(): Call {
   expect(calls).toHaveLength(1);
   const [call] = calls;
@@ -204,9 +186,6 @@ describe("the delegated spaces requests", () => {
 });
 
 describe("every id spliced into a path is percent-encoded", () => {
-  // The space slug cannot reach the wire unencoded from here — `deleteWorkspace`
-  // only accepts the `org:[a-f0-9]{16}` grammar — so its encoding is pinned on
-  // the SDK twin instead (`packages/sdk/src/modules/spaces/spaces.test.ts`).
   test("the invite id, the agent slug and the move id", async () => {
     stubFetch(() => json(200, { org: ORG, moveId: "m", status: "done" }));
     const c = client();

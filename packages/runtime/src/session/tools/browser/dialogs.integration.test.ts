@@ -29,7 +29,6 @@ afterAll(async () => {
   server.close();
 });
 
-/** Well under the tool's 5 s element timeout: the click did not wait it out. */
 const PROMPTLY_MS = 3_000;
 
 describe.skipIf(!available)(
@@ -47,7 +46,6 @@ describe.skipIf(!available)(
       expect(Date.now() - started).toBeLessThan(PROMPTLY_MS);
       expect(clicked.details.ok).toBe(true);
       expect(clicked.text).toContain("A dialog is open (confirm)");
-      // The message is the page's words, inside the fence.
       expect(clicked.text).toMatch(
         /Dialog message: Delete everything\?\n<<<end website content>>>/,
       );
@@ -89,7 +87,6 @@ describe.skipIf(!available)(
         expect(seen.text).toContain("A dialog is open (confirm)");
         expect(seen.text).toContain(`Address: ${origin}/confirm`);
       }
-      // Closing never hangs on the frozen page.
       expect((await browse({ action: "close" })).details.ok).toBe(true);
     });
 
@@ -122,7 +119,6 @@ describe.skipIf(!available)(
       expect(opened.text).toContain("Welcome!");
       const after = await browse({ action: "dialog", accept: true });
       expect(after.text).toContain("Behind an alert");
-      // The look after answering holds; later refs from it still resolve.
       expect((await browse({ action: "snapshot" })).text).not.toContain(
         "A dialog is open",
       );

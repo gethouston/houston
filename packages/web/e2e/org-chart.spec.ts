@@ -10,25 +10,12 @@ import { AUTH_WEB_URL, signInAsViewer } from "./support/identity";
 import { openAdminSection } from "./support/settings-nav";
 import { screen } from "./support/team-nav";
 
-/**
- * Admin > Org chart: the hero's month over a ledger of every AI Employee.
- *
- * Time worked is read from `GET /v1/org/compute-usage` only where the gateway
- * advertises `capabilities.computeUsage` (armed with the fake host's
- * `/__test__/compute-usage`); messages come from `GET /v1/org/usage`, which
- * the fake host does not serve, so the spec answers it in the browser where a
- * test needs messages. See `@houston/fake-host` README +
- * `packages/web/e2e/README.md`.
- */
-
 const OWNER_CAPS = { multiplayer: true, teams: true, role: "owner" };
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
 const day = (daysAgo: number) =>
   new Date(Date.now() - daysAgo * DAY_MS).toISOString().slice(0, 10);
 
-// Time worked is `activeMs`; `awakeMs` rides along larger so a regression to
-// drawing awake time would double every asserted number.
 const work = (agentSlug: string, daysAgo: number, activeMs: number) => ({
   agentSlug,
   day: day(daysAgo),
@@ -52,10 +39,6 @@ async function arm(
   });
 }
 
-/**
- * The org chart's body, and one AI Employee's line in its ledger (the tree
- * above it lists the same AI Employees, so the line is found in the ledger).
- */
 const chart = (page: Page) =>
   screen(page).locator("[data-admin-section-body='orgChart']");
 const line = (page: Page, name: string): Locator =>
@@ -126,7 +109,6 @@ test("the hours come from the gateway's rows for the caller's own AI Employees",
     rows: [
       work(SEED_AGENT_ID, 0, 2 * HOUR_MS),
       work(SEED_AGENT_ID, 1, HOUR_MS),
-      // A since-removed agent and a system pod: real rows, never counted.
       work("sales-bot", 1, 5 * HOUR_MS),
       work("5e70000000000000", 0, 9 * HOUR_MS),
     ],
@@ -135,14 +117,12 @@ test("the hours come from the gateway's rows for the caller's own AI Employees",
   await page.goto("/");
   await openAdminSection(page, "Org chart");
 
-  // Only the seed agent's three hours count, in the sentence and the figure.
   await expect(
     chart(page).getByText("Hours of work", { exact: true }),
   ).toBeVisible();
   await expect(chart(page).getByText("3 hours", { exact: true })).toBeVisible();
   await expect(chart(page).getByText("Ranked by hours")).toBeVisible();
   await expect(line(page, SEED_AGENT_NAME)).toContainText(/3\s*h/);
-  // An AI Employee with no rows yet is on the ledger at zero, not missing.
   await expect(line(page, "Scout")).toContainText(/0\s*h/);
   for (const ghost of ["sales-bot", "Sales bot", "5e70000000000000"])
     await expect(chart(page).getByText(ghost)).toHaveCount(0);
@@ -206,11 +186,6 @@ test("an admin's chart is theirs: people hidden where they only use an AI Employ
   await expect(line(page, "Scout")).not.toContainText("People hidden");
 });
 
-/**
- * Records the PNG every clipboard write carries (the first 24 bytes, enough
- * for the signature and the IHDR size) before handing the write on, so the
- * spec sees the image whether or not the browser lets the write land.
- */
 const RECORD_CLIPBOARD = () => {
   const w = window as unknown as { __copiedPng?: number[] };
   const clipboard = navigator.clipboard;
@@ -224,7 +199,6 @@ const RECORD_CLIPBOARD = () => {
   };
 };
 
-/** A PNG, 1200 x 1500 portrait (IHDR width and height, big-endian). */
 function expectSharePng(bytes: Buffer) {
   expect(bytes.subarray(1, 4).toString("ascii")).toBe("PNG");
   expect(bytes.readUInt32BE(16)).toBe(1200);
@@ -288,7 +262,6 @@ test("the org chart draws its people and AI Employees, and shares an image from 
   await openAdminSection(page, "Org chart");
 
   const tree = chart(page).getByRole("region", { name: "Org chart" });
-  // Faces and names only: no counts, roles or section caption on the chart.
   await expect(tree.getByText("3 people, 3 AI Employees")).toHaveCount(0);
   await expect(tree.getByText("Owner", { exact: true })).toHaveCount(0);
   await expect(chart(page).getByText("Who works here")).toHaveCount(0);
@@ -300,8 +273,6 @@ test("the org chart draws its people and AI Employees, and shares an image from 
     await expect(
       tree.getByRole("button", { name: `Open ${name}'s board` }),
     ).toBeVisible();
-  // The lines are drawn from the cards themselves: they exist, and the one
-  // across the people ends at the outermost people, never past them.
   const reach = await tree.evaluate((section) => {
     const svg = section.querySelector("svg[data-reveal-lines]");
     const d = svg?.querySelector("path")?.getAttribute("d") ?? "";
@@ -321,12 +292,10 @@ test("the org chart draws its people and AI Employees, and shares an image from 
       undershoot: Math.min(...people) - Math.min(...xs),
     };
   });
-  // root to 3 people, plus each person's AI Employee.
   expect(reach.segments).toBe(6);
   expect(reach.overshoot).toBeLessThan(1);
   expect(reach.undershoot).toBeLessThan(1);
 
-  // The ledger is still there under the chart.
   await expect(line(page, "Scout")).toBeVisible();
 
   await tree.getByRole("button", { name: "Share", exact: true }).click();
@@ -334,12 +303,10 @@ test("the org chart draws its people and AI Employees, and shares an image from 
   await expect(
     dialog.getByRole("img", { name: "Your org chart as an image" }),
   ).toBeVisible();
-  // Copy and paste leaves the words to LinkedIn: no API terms, no notice.
   await expect(dialog.getByText(/subject to our Privacy Policy/)).toHaveCount(
     0,
   );
 
-  // Share on LinkedIn: the composer opens with the post written in.
   const opening = page.waitForEvent("popup");
   const saving = page
     .waitForEvent("download", { timeout: 20_000 })
@@ -354,9 +321,6 @@ test("the org chart draws its people and AI Employees, and shares an image from 
   );
   await linkedIn.close();
 
-  // The image went on the clipboard (always on Chromium, where the spec
-  // grants the clipboard), or was saved where the browser refused it, and
-  // the dialog's line says which.
   const status = dialog.getByRole("status");
   await expect(status).toHaveText(/^Image (copied|saved)\. /);
   if (browserName === "chromium")
@@ -378,7 +342,6 @@ test("the org chart draws its people and AI Employees, and shares an image from 
     expectSharePng(await readFile(png));
   }
 
-  // Download image hands over the same 1200 x 1500 PNG.
   const downloading = page.waitForEvent("download");
   await dialog.getByRole("button", { name: "Download image" }).click();
   const download = await downloading;

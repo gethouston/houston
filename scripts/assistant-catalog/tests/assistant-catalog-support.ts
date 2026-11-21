@@ -9,7 +9,6 @@ import { assistantPaths } from "../assistant-paths.ts";
 const fixture = (name: string): string =>
   resolve(import.meta.dirname, "fixtures", name);
 
-/** Precedence order matters: `assistant-dedup.ts` republishes `listThings`. */
 export const fixtureOptions = {
   operationSources: [
     fixture("assistant-operations.ts"),
@@ -33,7 +32,6 @@ export const realOptions = {
   resolverSources: assistantPaths.resolverSources,
 };
 
-/** An expected route, spelled as its difference from the plain GET default. */
 export const route = (path: string, extra: Partial<AssistantRoute> = {}) => ({
   method: "GET",
   path,
@@ -48,7 +46,6 @@ export const route = (path: string, extra: Partial<AssistantRoute> = {}) => ({
 export const segments = (...names: string[]): AssistantPathParam[] =>
   names.map((name) => ({ name, encoding: "segment" }));
 
-/** A clean annotation: every gate rule satisfied, one field at a time bent. */
 export const annotation = (
   overrides: Partial<OperationAnnotation> = {},
 ): OperationAnnotation => ({

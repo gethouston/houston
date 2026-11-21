@@ -1,9 +1,3 @@
-// The firebase-js-sdk half of the account-exists link, for web and mobile. A
-// provider sign-in whose email already belongs to an account fails with
-// `auth/account-exists-with-different-credential`; its credential waits here,
-// in memory only, until the SDK's identity flow holds a session an email code
-// minted.
-
 import { decodeIdTokenClaims, type Session } from "@houston/app/lib/identity";
 import {
   type LinkAttempt,
@@ -23,7 +17,6 @@ const held = new Map<
   { provider: LinkProvider; credential: OAuthCredential }
 >();
 
-/** The identity belongs to an account, or this account already has one. */
 const IDENTITY_TAKEN: ReadonlySet<string> = new Set([
   "auth/credential-already-in-use",
   "auth/provider-already-linked",
@@ -39,12 +32,6 @@ export function isAccountExists(error: unknown): error is FirebaseError {
 const text = (value: unknown): string | null =>
   typeof value === "string" && value ? value : null;
 
-/**
- * Hold the credential behind an account-exists refusal and name the address
- * the provider asserted, and the account Identity Platform said holds it.
- * Without a credential there is nothing to link, so the address is dropped
- * too: the flow then asks for the email code instead.
- */
 export function holdAccountExists(
   error: FirebaseError,
   provider: LinkProvider,
@@ -70,9 +57,6 @@ export function webDiscardPending(handle: PendingLinkHandle): void {
   held.delete(handle);
 }
 
-/** Link the held credential onto `session`, the one the email code minted.
- *  A provider that refuses the credential throws: that is a failure to
- *  report, not an expiry. */
 export async function webLinkPending(
   handle: PendingLinkHandle,
   session: Session,

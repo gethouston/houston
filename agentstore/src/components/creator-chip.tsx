@@ -7,7 +7,6 @@ import {
   VerifiedBadge,
 } from "@houston-ai/core";
 
-/** First letter of a name/handle for the avatar fallback glyph. */
 function initial(creator: StoreCreator): string {
   const source = creator.handle || creator.displayName || "";
   return source.trim().charAt(0).toUpperCase() || "?";
@@ -15,18 +14,10 @@ function initial(creator: StoreCreator): string {
 
 export interface CreatorChipProps {
   creator: StoreCreator;
-  /** Larger treatment for the agent detail header vs. the compact card line. */
   size?: "sm" | "md";
   className?: string;
 }
 
-/**
- * The creator credit: a small avatar, `@handle`, and the verified badge when the
- * creator is verified. Presentational only (never an anchor of its own) so it can
- * sit inside a card that is already one big link, or be wrapped in a `<Link>` to
- * `/@handle` by a caller that wants it clickable. Renders the plain display name
- * when the creator has no handle (an unclaimed/legacy listing).
- */
 export function CreatorChip({
   creator,
   size = "sm",

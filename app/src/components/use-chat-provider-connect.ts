@@ -22,26 +22,18 @@ import { tauriProvider } from "../lib/tauri";
 import { useWorkspaceStore } from "../stores/workspaces";
 import { useIsActiveView } from "./shell/keep-alive-views";
 
-/** Secure dialogs own credentials; the SDK observes only fresh auth evidence. */
 export function useChatProviderConnect({
   stepKey,
   providerId,
   revisited,
   onConnected,
 }: {
-  /** WHICH request this card renders (`provider-connect-step-memory.ts`): the
-   *  unit a cancel and a resume are remembered by, across every rebuild. */
   stepKey: string;
   providerId: string;
   revisited: boolean;
   onConnected: (name: string) => void;
 }) {
   const active = useIsActiveView();
-  // Resolve through the GATED connect list, never the raw catalog: a raw lookup
-  // gave the card a live Connect that opened the local-model dialog on a host
-  // with nowhere to point it. A miss here is simply unavailable, which is what
-  // the card already renders. Gateway ids resolve too, so a request for
-  // `opencode-go` lands on the merged OpenCode account card.
   const connectProviders = useConnectProviders();
   const provider = useMemo(
     () =>
@@ -52,8 +44,6 @@ export function useChatProviderConnect({
   );
   const workspaceId = useWorkspaceStore((s) => s.current?.id);
   const [state, setState] = useState<ConnectionEvidence>("checking");
-  // Whether ANY answer about this provider has landed yet. The card spins only
-  // until the first one, never on the `"checking"` a failed probe reports back.
   const [evidenceSeen, setEvidenceSeen] = useState(false);
   const monitor = useRef<ReturnType<
     typeof createProviderConnectionMonitor
@@ -75,13 +65,7 @@ export function useChatProviderConnect({
         setEvidenceSeen((seen) => providerConnectEvidenceSeen(seen, next));
       },
       autoContinue: !revisited,
-      // The cancel lives with the REQUEST, not with this mount: a sign-in that
-      // lands after the user cancelled must not resume the conversation just
-      // because the card was rebuilt in between.
       initiallyPaused: providerConnectStepCancelled(stepKey),
-      // The resume lives with the REQUEST, not with this mount: the interaction
-      // is persisted, so the card is rebuilt after the very turn this nudge starts
-      // — and a second nudge would start another turn, and another card.
       onConnected: () => {
         if (!claimProviderConnectStepResume(stepKey)) return;
         resumeProviderConnectStep(stepKey);

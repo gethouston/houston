@@ -1,17 +1,8 @@
-/**
- * Per-user table of the admin dashboard: one row per workspace, expandable to
- * the user's agents and their pod detail. Rows stay `<tr>` elements (a
- * `<button>` is invalid inside `<tbody>`), so keyboard activation is wired by
- * hand. Billed cost is shown beside the estimate only when the BigQuery
- * actuals are connected and carry a figure for that namespace.
- */
-
 import { useState } from "react";
 import type { AgentView, BillingReport, Overview, UserView } from "./api";
 import { usd } from "./api";
 import { C, card, pill, stateColor, td, th } from "./styles";
 
-/** Per-user rows; click to expand the user's agents + pod detail. */
 export function UsersTable({
   overview,
   billing,
@@ -19,7 +10,6 @@ export function UsersTable({
   overview: Overview;
   billing: BillingReport | null;
 }) {
-  // Authoritative billed cost per namespace, when BigQuery actuals are connected.
   const actualByNs = new Map<string, number>();
   if (billing?.actuals) {
     for (const u of billing.estimate.byUser) {

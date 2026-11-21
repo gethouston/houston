@@ -45,7 +45,6 @@ describe("settlePick", () => {
   it("keeps a refusal while the choice still names a Plus or comp payer", () => {
     expect(settlePick(refused, choice({ payer: "plus" }))).toBe(refused);
     expect(settlePick(refused, choice({ payer: "comp" }))).toBe(refused);
-    // One org left gives no paid step, but the payer still stands.
     const single = choice({ payer: "plus", orgs: [INNOVA] });
     expect(settlePick(refused, single)).toBe(refused);
   });
@@ -78,7 +77,6 @@ describe.each([
   "comp",
 ] as const)("a %s payer refused in one open", (kind) => {
   const payer = choice({ payer: kind });
-  // One render: the modal's frame for the latest choice, its draft settled.
   const render = (frame: ChoiceModalFrame, latest: BillingChoice) =>
     settleChoicePick(
       nextChoiceModalFrame(frame, choiceModal(latest, ctx)),

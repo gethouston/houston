@@ -11,7 +11,6 @@ import { needsAutocompact } from "./autocompact";
 
 type Provider = Parameters<typeof getModels>[0];
 
-// Every GPT-6 and GPT-5.6 chat row pi ships, on every provider path.
 const ROWS = getProviders().flatMap((provider) =>
   getModels(provider as Provider)
     .filter((m) => modelInputLimit(m.id) !== undefined)
@@ -55,7 +54,6 @@ test("pi ships GPT-6 rows on the 1.05M paths this cap exists for", () => {
 });
 
 test.each(ROWS)("$provider $id compacts before its input cap", (row) => {
-  // The largest window the row resolves to: its snap-up ceiling.
   const { max } = resolveModelWindow(row.provider, row.id, row.window);
   const limit = modelInputLimit(row.id);
   const point = autocompactPoint(max, limit);
@@ -64,7 +62,6 @@ test.each(ROWS)("$provider $id compacts before its input cap", (row) => {
     GPT_6_MAX_INPUT_TOKENS,
   );
   if (max >= 1_000_000) {
-    // A long window keeps its long-context behavior, just inside the cap.
     expect(point).toBe(CAP_POINT);
     expect(needsAutocompact(point - 1, max, undefined, limit)).toBe(false);
     expect(needsAutocompact(point, max, undefined, limit)).toBe(true);

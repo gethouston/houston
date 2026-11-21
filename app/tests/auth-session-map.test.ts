@@ -50,7 +50,7 @@ describe("identity/session-from-idp — sessionFromIdp", () => {
       displayName: null,
       photoUrl: null,
       providerId: "microsoft.com",
-      isNewUser: true, // moment-in-time flag: the mapper must NOT leak it into Session
+      isNewUser: true,
     };
     const session = sessionFromIdp(result, "microsoft.com");
     deepStrictEqual(session.provider, "microsoft.com");

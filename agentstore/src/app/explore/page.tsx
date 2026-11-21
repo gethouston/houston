@@ -9,7 +9,6 @@ function first(value: string | string[] | undefined): string | undefined {
   return raw?.trim() || undefined;
 }
 
-/** Compatibility redirect for old catalog links. Next's redirect is HTTP 307. */
 export default async function ExplorePage({ searchParams }: ExplorePageProps) {
   const legacy = await searchParams;
   const query = new URLSearchParams();

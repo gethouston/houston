@@ -16,25 +16,7 @@ import {
 import { installForeignDomSafetyNet } from "./foreign-dom-report";
 import { isNetworkTransportError } from "./network-transport-error";
 
-/**
- * Install the process-wide `window.onerror` / `window.onunhandledrejection`
- * handlers that surface uncaught errors as toasts + analytics/Sentry reports.
- *
- * Shared by BOTH app entries — the desktop `app/src/main.tsx` and the web
- * `packages/web/src/app-tree.tsx` render the same tree and must report errors
- * identically, so the handler body lives here instead of being copy-pasted into
- * each (the two copies previously drifted; the benign Web Locks guard below is
- * exactly the kind of fix that otherwise has to be applied twice).
- *
- * Call this AFTER `initFrontendLogging()`: that patch wraps `console.error` to
- * also write the log file, so the `console.error` calls below land in the log,
- * while the benign branch's `console.debug` (intentionally NOT patched) stays
- * out of both the log file and the user's face.
- */
 export function installGlobalErrorHandlers(): void {
-  // The DOM safety net belongs with the error handlers: it is what keeps a
-  // page rewritten by a browser translator (or a translating extension) from
-  // ever reaching the crash boundary below, and both app entries must get it.
   installForeignDomSafetyNet();
   setAdapterErrorSink(logAndReportError);
   window.onerror = (_event, _source, _line, _col, error) => {
@@ -50,11 +32,6 @@ export function installGlobalErrorHandlers(): void {
 
   window.onunhandledrejection = (event: PromiseRejectionEvent) => {
     const message = event.reason?.message ?? String(event.reason);
-    // Supabase's cross-context auth-refresh lock gets stolen as a normal part
-    // of its own recovery; the displaced promise rejects from a timer we can't
-    // catch. Not a real error — swallow it instead of toasting + reporting
-    // (HOU-435). console.debug only (not the patched console.error) so it never
-    // reaches the log file as an error or the user as a toast.
     if (isBenignLockRejection(event.reason)) {
       event.preventDefault();
       console.debug(
@@ -63,9 +40,6 @@ export function installGlobalErrorHandlers(): void {
       );
       return;
     }
-    // WebKit rejects an unreachable internal promise when a locked fetch body
-    // is aborted — fired by our own deliberate stream teardown (PRODUCT-1436).
-    // Not a failure: same posture as the lock guard above, console.debug only.
     if (isBenignAbortRejection(event.reason)) {
       event.preventDefault();
       console.debug(
@@ -74,17 +48,10 @@ export function installGlobalErrorHandlers(): void {
       );
       return;
     }
-    // A form dialog saying "stay open" after a failure the user is already
-    // reading under the field (`dialog-stay-open.ts`). A control signal, not an
-    // error: nothing to log, and the layer that produced the real failure
-    // reported whatever was worth reporting.
     if (isStayOpenSignal(event.reason)) {
       event.preventDefault();
       return;
     }
-    // A write blocked while the agent's engine warms up (HOU-693) already
-    // surfaced as the "almost ready" dialog; most submit handlers don't catch,
-    // so the typed rejection lands here — handled, not a bug.
     if (isAgentWarmingError(event.reason)) {
       event.preventDefault();
       console.debug(
@@ -93,31 +60,12 @@ export function installGlobalErrorHandlers(): void {
       );
       return;
     }
-    // A transport-level network failure whose rejected promise nobody caught
-    // (PRODUCT-1392: the `/v1/events` global stream dropping on device
-    // offline / sleep-wake). Same HOU-1085 policy as the engine-call and
-    // caller-toast layers — ONE deduped connectivity toast, and only the
-    // low-noise fingerprinted `offline` warning in Sentry (PRODUCT-1640):
-    // nothing in Houston broke. This handler was the last ungated surface, and
-    // it kept the `unhandled_rejection: Load failed` Sentry family alive after
-    // both other layers were gated. console.error (patched) so the drop still
-    // reaches the log file; the toast fires the analytics event past dedupe.
     if (isNetworkTransportError(event.reason)) {
       event.preventDefault();
       console.error("[global:unhandledrejection] connectivity drop:", message);
       showConnectivityErrorToast("unhandled_rejection", message, event.reason);
       return;
     }
-    // A gateway "the agent's pod is not there right now" answer whose rejected
-    // promise nobody caught (HOUSTON-APP-51C: the mission-approve write hitting
-    // a pod mid engine-roll). The engine-call layer classifies the same failure
-    // as a waking state and shows the deduped waking toast, but `call` rethrows
-    // and card handlers deliberately don't catch — so it landed here, the last
-    // ungated surface, and was re-captured as `unhandled_rejection: engine
-    // proxy failed (engine error 502)`. Same policy as tauri.ts: one waking
-    // notice and only the low-noise fingerprinted `engine_waking` warning in
-    // Sentry (PRODUCT-1640) — nothing in Houston broke, the write succeeds on
-    // retry once the pod listens again.
     if (isEngineWakingError(event.reason)) {
       event.preventDefault();
       console.error("[global:unhandledrejection] engine waking:", message);

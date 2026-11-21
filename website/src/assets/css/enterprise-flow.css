@@ -1,13 +1,3 @@
-/*
- * /enterprise — the page's tone flow (enterprise-flow.js): one ground under
- * every section after the hero, black or white by whichever section holds
- * the middle of the screen, and everything on it fading to the new tone
- * together. Only while html.ent-flow is set; without it the page stands in
- * its authored black and white bands.
- */
-
-/* The ground. The sections that flow lose their own band, so the page is
-   the one surface that changes. */
 html.ent-flow,
 html.ent-flow body {
   background-color: var(--ground);
@@ -21,9 +11,6 @@ html.ent-flow main .section.is-dark[data-tone]:not([data-tone-fixed]) {
   background: transparent;
 }
 
-/* Everything on it follows at the same pace. :where() keeps this at zero
-   weight, so any element with a transition of its own (reveals, the tiles,
-   the arrows) keeps it. */
 html.ent-flow main :where(*) {
   transition-property: color, background-color, border-color, fill, stroke,
     filter;
@@ -31,7 +18,6 @@ html.ent-flow main :where(*) {
   transition-timing-function: var(--ease-standard);
 }
 
-/* Lenis owns the scroll: the native smooth behavior must step aside. */
 html.lenis,
 html.lenis body {
   height: auto;

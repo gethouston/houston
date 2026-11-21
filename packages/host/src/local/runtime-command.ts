@@ -9,13 +9,6 @@ interface RuntimeCommandDeps {
   exists?: (path: string) => boolean;
 }
 
-/**
- * Resolve the pi-runtime command for local-profile hosts.
- *
- * Order matters: explicit deployment env wins, packaged desktop sidecars spawn
- * themselves, bundled Docker hosts spawn the sibling runtime bundle, and dev
- * falls back to source through tsx.
- */
 export function runtimeCommand(deps: RuntimeCommandDeps = {}): string[] {
   const env = deps.env ?? process.env;
   const explicit = env.HOUSTON_RUNTIME_COMMAND;

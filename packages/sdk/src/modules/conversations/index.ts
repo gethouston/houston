@@ -1,28 +1,3 @@
-/**
- * Conversation-LIST module.
- *
- * Owns one reactive scope per agent, `conversations/<agentId>`, holding a
- * {@link ConversationListVM} — the agent's list of conversations. Writes
- * (rename/delete) refetch the list so the snapshot always reflects the engine.
- *
- * SEAM — history/feed is NOT here. Message transcripts and the derived feed
- * (`getHistory` + `streamEvents`) are owned by the turns/feed module. This
- * module never touches history; it is the LIST only. Keep it that way.
- *
- * SEAM — `listConversations` is spelled twice, for two different things. The
- * engine adapter's method of that name
- * (`packages/engine-adapter/src/client/activities-mixin.ts`) builds the
- * BOARD out of an agent's missions; this module's `list` is the agent's chats,
- * off the runtime. Neither calls the other.
- *
- * SEAM — per-agent client. Protocol v3 nests conversations under agents
- * (`/v1/agents/:id/conversations/*`), while `@houston/runtime-client` speaks the
- * flat runtime shape. The kernel resolves the per-agent client (rooted at
- * `${baseUrl}/agents/<id>`) through {@link ModuleContext.clientFor} — one
- * memoized cache shared with the turns module — so this module never constructs
- * a client itself.
- */
-
 import type { ConversationSummary } from "@houston/runtime-client";
 import type { ModuleContext } from "../../module-context";
 import { retryComputeRefusals } from "../compute-retry";
@@ -41,11 +16,6 @@ import {
 export type { ConversationListItem, ConversationListVM } from "./types";
 export { conversationListScope } from "./types";
 
-/**
- * Wire the conversation-list module: register its command handlers and return
- * the typed facade. The facade methods and the `dispatch` path share ONE code
- * path per operation, so there is no drift between them.
- */
 export function createConversationsModule(ctx: ModuleContext) {
   const { store, clientFor, registerCommand } = ctx;
 
@@ -54,24 +24,15 @@ export function createConversationsModule(ctx: ModuleContext) {
       | ConversationListVM
       | undefined;
 
-  // Monotonic per-agent request sequence. Loads have no in-flight guard of their
-  // own, so concurrent ones (a rename/delete — each ends in a load — racing a
-  // manual refresh) would otherwise resolve last-RESPONSE-wins: if the
-  // earlier-issued fetch lands later, its pre-mutation rows flush over the fresh
-  // snapshot. Stamping each load with the next sequence and publishing only when
-  // it is still the newest makes it last-INTENT-wins — a stale late response is
-  // dropped, never published.
   const loadSeq = new Map<string, number>();
 
   const list = (agentId: string): Promise<ConversationSummary[]> =>
     clientFor(agentId).listConversations();
 
-  /** Fetch the agent's conversations and publish the resulting VM. */
   const loadList = async (agentId: string): Promise<ConversationListVM> => {
     const scope = conversationListScope(agentId);
     const seq = (loadSeq.get(agentId) ?? 0) + 1;
     loadSeq.set(agentId, seq);
-    // Signal loading while keeping any prior items to avoid a flush-to-empty.
     const prior = currentVm(agentId);
     store.publish(scope, { loaded: false, items: prior?.items ?? [] });
     const summaries = await list(agentId);
@@ -79,13 +40,10 @@ export function createConversationsModule(ctx: ModuleContext) {
       loaded: true,
       items: summaries.map(toListItem),
     };
-    // Only the newest-issued load may publish; a superseded one is stale.
     if (loadSeq.get(agentId) === seq) store.publish(scope, vm);
     return vm;
   };
 
-  // Both are pool ops on an asleep cloud agent: a typed nothing-ran refusal
-  // is sent again, never surfaced as a failed rename.
   const rename = (
     agentId: string,
     id: string,
@@ -137,7 +95,6 @@ export function createConversationsModule(ctx: ModuleContext) {
   });
 
   return {
-    /** Scope string for `sdk.subscribe(...)` / `sdk.getSnapshot(...)`. */
     scope: conversationListScope,
     /**
      * Lists an agent's chats.
@@ -146,7 +103,6 @@ export function createConversationsModule(ctx: ModuleContext) {
      * @assistant group:chat
      */
     list,
-    /** Fetch + publish the agent's conversation list. */
     refresh: (agentId: string): Promise<ConversationListVM> =>
       loadList(agentId),
     /**

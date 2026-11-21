@@ -1,8 +1,3 @@
-// Guard for retired run commands. Muscle memory (`pnpm start`, `pnpm
-// dev:cloud`, `cd app && pnpm start`) must hit a signpost, not a silently
-// different app — divergent local stacks are the exact bug the unified loop
-// removed. Deliberately kept as scripts that FAIL LOUDLY instead of deleted
-// entries, whose "ERR_PNPM_NO_SCRIPT" says nothing about where to go.
 const attempted = process.argv[2] ?? "that command";
 
 process.stderr.write(

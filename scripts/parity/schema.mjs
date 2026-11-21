@@ -1,8 +1,3 @@
-/**
- * Shared predicates + schema constants for the parity validators
- * (validate.mjs for the inventory, manifest.mjs for the surface manifests).
- */
-
 export const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const COMPONENT_KEYS = [
   "id",

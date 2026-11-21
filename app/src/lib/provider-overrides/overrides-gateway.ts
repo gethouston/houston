@@ -1,9 +1,5 @@
 import type { ProviderOverride } from "./types.ts";
 
-/**
- * The GATEWAY cards: one key that routes to many labs' models, billed by the
- * gateway rather than the lab.
- */
 export const GATEWAY_OVERRIDES: Record<string, ProviderOverride> = {
   opencode: {
     name: "OpenCode Zen",
@@ -19,8 +15,6 @@ export const GATEWAY_OVERRIDES: Record<string, ProviderOverride> = {
       "claude-opus-4-8": {
         description: "Most capable Claude, slower.",
       },
-      // OpenCode Zen's own gateway, not the ChatGPT subscription — gpt-5.5
-      // stays runnable here (see the `openai` set above).
       "gpt-5.5": {
         description: "OpenAI's frontier model.",
       },

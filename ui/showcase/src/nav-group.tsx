@@ -4,7 +4,6 @@ import { ChevronRight } from "lucide-react";
 
 import type { SpecimenGroup } from "./registry";
 
-/** One collapsible subgroup: its heading, then its pages. */
 export function NavGroup({
   group,
   open,
@@ -16,7 +15,6 @@ export function NavGroup({
   group: SpecimenGroup;
   open: boolean;
   onToggle: () => void;
-  /** While filtering the group cannot be shut — the chevron goes quiet. */
   lockedOpen: boolean;
   activeId: string | undefined;
   onSelect: (id: string) => void;

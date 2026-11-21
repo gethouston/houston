@@ -16,27 +16,15 @@ import type { BoardSearchSnippet, KanbanItem } from "./types";
 
 export interface KanbanListItemProps {
   item: KanbanItem;
-  /** Small agent icon shown at the leading edge. Falls back to the item's own
-   *  `icon` when omitted, so a cross-agent list can show a per-row avatar. */
   avatar?: React.ReactNode;
-  /** Marks the row whose chat is currently open in the right panel. */
   selected?: boolean;
   onSelect: () => void;
   onDelete?: () => void;
   labels?: KanbanCardLabels;
   formatTime?: MessageTimeFormatter;
-  /** Matched body/history fragment shown below the title when the search match
-   *  was found there rather than in the title (the title is never highlighted). */
   snippet?: BoardSearchSnippet;
 }
 
-/**
- * Compact row for the Archived missions list: agent icon + name, mission title,
- * the mission's tag pills (the board card's own chip), and a delete button.
- * The title is shown plainly; when a search matched only in the body/history,
- * a short highlighted fragment appears below so the user sees why the mission
- * surfaced.
- */
 export function KanbanListItem({
   item,
   avatar,
@@ -56,8 +44,6 @@ export function KanbanListItem({
         tabIndex={0}
         onClick={onSelect}
         onKeyDown={(e) => {
-          // Only the row itself opens on Enter/Space; key events from a focused
-          // inner control bubble here but carry a different target.
           if (
             e.target === e.currentTarget &&
             (e.key === "Enter" || e.key === " ")
@@ -68,8 +54,6 @@ export function KanbanListItem({
         }}
         className={cn(
           "group/row flex gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors",
-          // Compact single-line row when there's no snippet (the default
-          // archived list); top-align only when a snippet pushes it taller.
           snippet ? "items-start" : "items-center",
           selected
             ? "border-transparent bg-hover shadow-sm"
@@ -92,9 +76,6 @@ export function KanbanListItem({
             <span className="text-[13px] font-medium text-ink flex-1 truncate">
               {item.title}
             </span>
-            {/* The card's tag pills, at the end of the title line: the row
-               stays one line, and the tag is capped so the title keeps most
-               of it on a narrow pane. */}
             {item.tags?.length ? (
               <span className="flex min-w-0 max-w-[40%] shrink-0 items-center gap-1">
                 {item.tags.map((tag) => (

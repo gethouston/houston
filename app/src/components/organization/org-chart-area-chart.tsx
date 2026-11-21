@@ -3,8 +3,6 @@ import { useId, useRef } from "react";
 import { areaChart } from "./org-chart-format";
 import { useElementSize } from "./use-element-size";
 
-/** The hero's soft area, baseline, line and end dot at an explicit size.
- * The SVG holds no text and follows the caller's `text-*` through currentColor. */
 export function OrgChartAreaDrawing({
   values,
   label,
@@ -16,7 +14,6 @@ export function OrgChartAreaDrawing({
   width: number;
   height: number;
 }) {
-  // An SVG `url(#id)` reference breaks on the punctuation React puts in ids.
   const fade = `area${useId().replace(/[^\w-]/g, "")}`;
   const geometry = areaChart(values, width, height);
   return (
@@ -62,7 +59,6 @@ export function OrgChartAreaDrawing({
   );
 }
 
-/** Measures the drawing box and keeps its date labels in HTML beside the SVG. */
 export function OrgChartAreaChart({
   values,
   label,
@@ -71,11 +67,9 @@ export function OrgChartAreaChart({
   className,
 }: {
   values: readonly number[];
-  /** What the chart shows, for assistive technology. */
   label: string;
   from: string;
   to: string;
-  /** Sizes the drawing box; the chart fills it. */
   className?: string;
 }) {
   const box = useRef<HTMLDivElement>(null);

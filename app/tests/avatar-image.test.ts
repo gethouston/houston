@@ -7,17 +7,9 @@ import {
   isAvatarImageFile,
 } from "../src/lib/avatar-image.ts";
 
-// The crop geometry is `centerSquareCrop` from `lib/image-crop.ts`, covered by
-// `image-crop.test.ts`.
-
-/** A real 1x1 fully transparent PNG: 96 base64 chars, 2 of them padding. */
 const TINY_PNG_DATA_URL =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
-/**
- * An encoder that records every quality it is asked for and returns a string of
- * the length the caller declared for that step, so the cap search is observable.
- */
 const recordingEncoder = (lengthFor: (quality: number) => number) => {
   const asked: number[] = [];
   return {
@@ -41,7 +33,6 @@ describe("dataUrlByteLength", () => {
   });
 
   it("does not count padding as bytes", () => {
-    // "TWFu" -> "Man" (3 bytes), "TWE=" -> "Ma" (2), "TQ==" -> "M" (1).
     strictEqual(dataUrlByteLength("data:image/webp;base64,TWFu"), 3);
     strictEqual(dataUrlByteLength("data:image/webp;base64,TWE="), 2);
     strictEqual(dataUrlByteLength("data:image/webp;base64,TQ=="), 1);
@@ -62,7 +53,6 @@ describe("encodeUnderCap", () => {
   });
 
   it("descends the quality steps and returns the first one under the cap", () => {
-    // 0.9 and 0.8 are too heavy; 0.7 is the first that fits.
     const { asked, encode } = recordingEncoder((quality) =>
       quality > 0.75 ? 200 : 50,
     );

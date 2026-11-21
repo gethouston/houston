@@ -4,8 +4,6 @@ import { type ProviderWarmer, providerWarmUrl } from "./turn-provider-warm";
 
 const PREWARM_BODY_MAX_BYTES = 16 * 1024;
 
-/** What the gateway names when it holds this sandbox for a person's coming
- *  send. Never a credential: the turn brings its own. */
 export interface PrewarmRequest {
   provider: string;
   model?: string;
@@ -42,12 +40,6 @@ export function parsePrewarmRequest(body: unknown): PrewarmRequest {
   };
 }
 
-/**
- * POST /prewarm, behind the turn's own token, incarnation and draining gates.
- * It takes no admission slot (a single-use worker admits exactly one request,
- * its turn), writes no file and never spends the worker: it only opens the
- * provider connection the turn will use.
- */
 export async function servePrewarm(
   warmer: ProviderWarmer,
   req: IncomingMessage,

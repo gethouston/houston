@@ -3,10 +3,6 @@ import { formatLocalDateTime, usagePercent } from "@houston/sdk";
 import { Card, cn, Progress } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 
-/**
- * A free org's weekly pool: how much of the week everyone in the org has used,
- * and when it resets. A share, never a message count.
- */
 export function BillingUsageCard({ billing }: { billing: OrgBilling }) {
   const { t, i18n } = useTranslation("teams");
   const percent = usagePercent(billing) ?? 0;

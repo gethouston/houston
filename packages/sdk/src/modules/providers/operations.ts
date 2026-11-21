@@ -1,15 +1,3 @@
-/**
- * The providers module's operations — the read/merge + credential-mutation
- * functions the typed facade and the dispatch command handlers both call. Kept
- * out of `index.ts` so the factory there stays a thin wiring layer.
- *
- * Every call is routed through `ctx.clientFor(agentId)` (`/agents/<id>/…`, the
- * per-agent-pod credential scope). Writes mutate then refetch, so the published
- * snapshot always reflects the runtime. See `index.ts` for the login-polling
- * contract (the SURFACE polls {@link ProviderOps.refreshStatus}; the SDK owns no
- * timer) and the 401 seam (the shared auth-fetch surfaces it automatically).
- */
-
 import type { ModuleContext } from "../../module-context";
 import { mergeProviders, overlayStatus, signInFinished } from "./merge";
 import {
@@ -48,11 +36,7 @@ export function createProviderOps(
 ): ProviderOps {
   const { store } = ctx;
 
-  // Monotonic per-agent request sequence: a slow full refresh that resolves
-  // after a newer one never flushes a stale snapshot over the fresh one
-  // (last-intent wins). Mirrors the activities module's guard.
   const loadSeq = new Map<string, number>();
-  // Agents whose provider list predates a finished sign-in (refreshStatus).
   const listOwed = new Set<string>();
 
   /**
@@ -67,7 +51,6 @@ export function createProviderOps(
     const scope = providersScope(agentId);
     const seq = (loadSeq.get(agentId) ?? 0) + 1;
     loadSeq.set(agentId, seq);
-    // Signal loading while keeping any prior providers to avoid a flush-to-empty.
     const prior = store.getSnapshot(scope) as ProvidersViewModel | undefined;
     store.publish(scope, {
       loaded: false,
@@ -83,7 +66,6 @@ export function createProviderOps(
     ]);
     if (loadSeq.get(agentId) !== seq) return;
     store.publish(scope, mergeProviders(infos, auth));
-    // A full read settles any list a finished sign-in left owed.
     listOwed.delete(agentId);
   }
 
@@ -99,18 +81,10 @@ export function createProviderOps(
     const prior = store.getSnapshot(scope) as ProvidersViewModel | undefined;
     const next = overlayStatus(prior, auth);
     store.publish(scope, next);
-    // A sign-in that just finished started a new login: its deadline
-    // (`reconnectBy`) rides the provider list, which this poll does not read.
     if (signInFinished(prior, next)) listOwed.add(agentId);
     if (listOwed.has(agentId)) await readOwedList(agentId, auth);
   }
 
-  /**
-   * The provider list a finished sign-in left stale. The debt clears only when
-   * a read's snapshot is published (here or by a full refresh), so a failed
-   * or superseded read leaves it for the next poll. A failed read rejects,
-   * after the poll's own answer is already published: the caller reports it.
-   */
   async function readOwedList(agentId: string, auth: AuthStatus) {
     const seq = (loadSeq.get(agentId) ?? 0) + 1;
     loadSeq.set(agentId, seq);
@@ -134,9 +108,6 @@ export function createProviderOps(
     const info = await ctx
       .clientFor(agentId)
       .startLogin(provider, opts?.deviceAuth ?? true, opts?.enterpriseDomain);
-    // Reflect the now-awaiting login state so a surface can paint "Connecting…"
-    // — best-effort: the login already started, so a status hiccup must not mask
-    // the LoginInfo the user needs to proceed.
     try {
       await refreshStatus(agentId);
     } catch (err) {
@@ -177,8 +148,6 @@ export function createProviderOps(
     await refresh(agentId);
   }
 
-  // Credential writes delegate to the no-refetch primitives (`writes.ts`) and
-  // then refresh — one implementation of each underlying call, no drift.
   async function setApiKey(
     agentId: string,
     provider: ProviderId,

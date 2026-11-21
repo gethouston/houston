@@ -2,9 +2,6 @@ import { setAdapterErrorSink } from "@houston/engine-adapter";
 import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-// A layout read that degrades still answers, but the degrade itself must reach
-// the app's reporting path (frontend log + Sentry), not only the console.
-
 const originalFetch = globalThis.fetch;
 const empty = { groups: [], order: [] };
 const device = {

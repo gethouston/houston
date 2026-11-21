@@ -1,37 +1,12 @@
-/**
- * Web shim for `@tauri-apps/api/core`.
- *
- * packages/web composes the desktop app's React tree (app/src) but runs in a
- * plain browser tab against the Houston host or legacy engine. There is no Tauri runtime,
- * so `invoke` can't reach native commands. Vite + tsconfig alias
- * `@tauri-apps/api/core` to this module (see vite.config.ts / tsconfig.json).
- *
- * Every `invoke(cmd)` reachable from app/src is handled here:
- *  - actions with a clean browser equivalent are implemented (open_url ->
- *    window.open, notifications -> Notification API, portable agent IO ->
- *    Blob download / <input type=file>);
- *  - logging / log-reads / handshake become harmless no-ops;
- *  - the rest throw a clear, user-facing "desktop-only" error that the app's
- *    existing toast pipeline surfaces (beta policy: no silent failures).
- *
- * The set of handled commands is asserted complete by
- * scripts/check-desktop-native.mjs (every command declared in
- * app/src/lib/desktop-native-commands.ts must appear here, keychain aside).
- */
-
 import { reportBugViaGateway } from "../report-bug-intake";
 import { nativeShell } from "./native-shell";
 
-/** Mirror of `@tauri-apps/api`'s `isTauri()` — always false in the web build. */
 export function isTauri(): boolean {
   return false;
 }
 
 type InvokeArgs = Record<string, unknown> | Uint8Array | undefined;
 
-/** Mirror of `@tauri-apps/api`'s `Channel`: a native command's progress
- * stream. The web build never invokes a command that takes one (the
- * updater's download is desktop-only), so it only has to type-check. */
 export class Channel<T = unknown> {
   onmessage: (response: T) => void = () => {};
   constructor(onmessage?: (response: T) => void) {
@@ -42,8 +17,6 @@ export class Channel<T = unknown> {
   }
 }
 
-/** Mirror of `@tauri-apps/api`'s InvokeOptions (headers ride the raw-payload
- * IPC on desktop). The web shim has no native IPC, so they're ignored. */
 type InvokeOptions = { headers?: Record<string, string> };
 
 function notAvailable(cmd: string): never {
@@ -63,7 +36,6 @@ function downloadBytes(name: string, bytes: number[]): void {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  // Revoke once the download has had time to start.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
@@ -81,10 +53,6 @@ function pickFileBytes(accept: string): Promise<number[] | null> {
       input.remove();
       resolve(value);
     };
-    // Cancel detection: the `cancel` event isn't emitted by Safari / older
-    // Chromium, so also treat "window regained focus but no file was chosen"
-    // as a cancel. Without this the Promise (and import-wizard's await) would
-    // hang forever on those browsers.
     const onFocus = () => {
       setTimeout(() => {
         if (!input.files || input.files.length === 0) done(null);
@@ -113,22 +81,14 @@ export async function invoke<T = unknown>(
   rawArgs?: InvokeArgs,
   _options?: InvokeOptions,
 ): Promise<T> {
-  // Raw-payload invokes (desktop's binary IPC) carry bytes, not a record.
   const payload = rawArgs instanceof Uint8Array ? rawArgs : undefined;
   const args = rawArgs instanceof Uint8Array ? undefined : rawArgs;
   switch (cmd) {
-    // ── Implemented with a browser-native equivalent ────────────────────
     case "open_url": {
       const url = typeof args?.url === "string" ? args.url : "";
       if (!url) return false as T;
       const shell = nativeShell();
       if (shell) return (await shell.openUrl(url)) as T;
-      // Returns whether the browser TOOK the URL. A null handle is the popup
-      // blocker refusing the open (Safari/Firefox after an async hop) — the
-      // caller turns that into an explicit "open it yourself" click. No
-      // `noopener` feature: it makes window.open return null unconditionally,
-      // so the opener link is severed on the handle instead, which gives the
-      // same tabnabbing protection.
       const tab = window.open(url, "_blank");
       if (tab) tab.opener = null;
       return (tab !== null) as T;
@@ -143,16 +103,12 @@ export async function invoke<T = unknown>(
           Notification.permission === "granted"
         ) {
           const n = new Notification(title, { body });
-          // Desktop uses window-focus as the click->navigate proxy; replicate
-          // it so the app's existing onFocusChanged nav path fires on web too.
           n.onclick = () => {
             window.focus();
             n.close();
           };
         }
-      } catch {
-        /* notifications blocked / unavailable */
-      }
+      } catch {}
       return undefined as T;
     }
     case "open_portable_agent": {
@@ -160,49 +116,27 @@ export async function invoke<T = unknown>(
       return bytes as T;
     }
     case "save_download": {
-      // Unreachable in practice: `saveBlob` checks isTauri() (false here) and
-      // uses the anchor download directly. Keep an honest fallback anyway —
-      // returning null means "the browser manages the download", so the
-      // caller shows no desktop-style saved toast.
       if (payload) downloadBytes("download", Array.from(payload));
       return null as T;
     }
 
     case "report_bug": {
-      // Cloud mode: the control plane fronts the same Linear intake the desktop
-      // reaches via Tauri. Outside cloud mode there is nowhere to send it, so
-      // fall through to the desktop-only error.
       const cp = window.__HOUSTON_CP__ ? window.__HOUSTON_ENGINE__ : undefined;
       if (!cp?.baseUrl) return notAvailable(cmd);
       return (await reportBugViaGateway(cp, args?.payload)) as T;
     }
 
-    // ── Harmless no-ops (feature simply absent on web) ──────────────────
     case "write_frontend_log":
-      // Browser devtools already shows console output; nothing to persist.
       return undefined as T;
     case "read_recent_logs":
-      // No local log files in a browser; bug-report bundles empty tails.
       return { backend: "", frontend: "" } as T;
     case "focus_main_window":
-      // The web build is a single browser tab; there's no OS window to raise.
       return undefined as T;
     case "open_notification_settings":
-      // No OS notification-settings pane to open from a browser tab. `false`
-      // means "unsupported", which the caller reads as "hide the button" — the
-      // same contract the native Linux arm returns. `osOpenNotificationSettings`
-      // already short-circuits off-Tauri; this keeps shim parity intact.
       return false as T;
     case "saved_bridge_target":
-      // The web app never runs a native local-model bridge, so it can
-      // never own a saved target. Returning null is the honest answer and keeps
-      // the tunnel-vs-direct pill rule correct: a connected openai-compatible
-      // endpoint on web reads as normally connected, not as a bridge.
       return null as T;
     case "detect_legacy_houston":
-      // A browser tab has no local `~/.houston` tree to migrate — "nothing
-      // found" is the honest answer and keeps the cloud-migration wizard
-      // (HOU-719) permanently closed on web.
       return {
         hasWorkspaces: false,
         hasChatDb: false,
@@ -210,30 +144,22 @@ export async function invoke<T = unknown>(
         agentDirCount: 0,
       } as T;
 
-    // No shell process on the web — perf spans fall back to the webview's
-    // own performance.timeOrigin (osLaunchT0Ms treats null exactly so).
     case "launch_t0_ms":
       return null as T;
 
-    // ── Desktop-only: surface a clear error if a user triggers them ─────
-    case "start_oauth_loopback": // desktop uses a native loopback listener; web uses the firebase-js-sdk popup
-    case "cancel_oauth_loopback": // frees the desktop loopback port; web has no local listener to cancel
-    case "start_channels_loopback": // desktop catches the Slack connect's return; web gets the gateway's redirect itself
-    case "cancel_channels_loopback": // frees that desktop listener; web has none
-    case "start_codex_oauth_loopback": // desktop relays the Codex 1455 callback; web stays on device-code
-    case "start_claude_login": // desktop runs `claude auth login`; web uses the setup-token paste flow
-    case "cancel_claude_login": // desktop-only sign-in helper; no web counterpart
-    case "submit_claude_login_code": // relays a pasted code to the desktop `claude` child's stdin
-    case "complete_claude_login_from_clipboard": // desktop clipboard probe for the sign-in auto-finish
-    case "read_claude_credential": // reads this machine's Keychain/cred file; web has neither
-    case "discard_claude_handoff_credential": // destroys the desktop's handed-off credential copy; web never minted one
+    case "start_oauth_loopback":
+    case "cancel_oauth_loopback":
+    case "start_channels_loopback":
+    case "cancel_channels_loopback":
+    case "start_codex_oauth_loopback":
+    case "start_claude_login":
+    case "cancel_claude_login":
+    case "submit_claude_login_code":
+    case "complete_claude_login_from_clipboard":
+    case "read_claude_credential":
+    case "discard_claude_handoff_credential":
 
-    case "get_engine_handshake": // web injects window.__HOUSTON_ENGINE__ directly
-    // The guided "connect a local model" bridge scans localhost and runs an
-    // an outbound model connection in the native desktop shell. The browser build
-    // gates the guided flow on isTauri() and shows the manual endpoint form
-    // instead, so these are never reached here; surface a clear error if they
-    // somehow are (no silent failure).
+    case "get_engine_handshake":
     case "detect_local_models":
     case "start_local_bridge":
     case "local_bridge_device":
@@ -243,20 +169,11 @@ export async function invoke<T = unknown>(
     case "local_bridge_legacy_candidate":
     case "local_bridge_complete_migration":
     case "stop_local_bridge":
-    // On-device dictation runs a bundled whisper.cpp sidecar — desktop-only,
-    // no browser equivalent. `useDictation` gates on `osIsTauri()` so the web
-    // build never triggers these; surface a clear error if it somehow does.
     case "transcribe_audio":
     case "dictation_model_status":
     case "download_dictation_model":
-    // The cloud-migration wizard's source host is a native subprocess spawned
-    // against the old local install — meaningless in a browser, and the
-    // detect shim above guarantees the wizard never asks for it on web.
     case "start_migration_source_host":
     case "stop_migration_source_host":
-    // Backing up the local `~/.houston` tree needs native filesystem access; a
-    // browser tab has no such folder (detect_legacy_houston returns empty, so
-    // the wizard never reaches the backup step on web).
     case "backup_houston_data":
     case "reveal_file":
     case "reveal_agent":
@@ -264,16 +181,11 @@ export async function invoke<T = unknown>(
     case "open_file":
     case "current_app_bundle_path":
     case "relaunch_app_from_path":
-    // The shell's resumable release download + staged install; the web tab has
-    // no bundle to update and the updater shim's check() never finds one.
     case "download_update":
     case "install_update":
     case "sentry_native_stack_smoke_test":
       return notAvailable(cmd);
 
-    // auth_get_item / auth_set_item / auth_remove_item are keychain-only; the
-    // web build forces browser (localStorage) storage, so they never run and
-    // fall through to the default guard below.
     default:
       return notAvailable(cmd);
   }

@@ -1,98 +1,46 @@
 import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
 import type { ASSISTANT_UNAVAILABLE_HERE } from "@houston/domain/assistant-deployment";
 
-/**
- * The assistant family's failure taxonomy and the tool results it is reported in.
- *
- * `houston_call` is a generic dispatcher over hundreds of operations, so the
- * model must be able to tell "I addressed this wrong" (fix the call) from "the
- * user has to decide" (ask) from "the server refused" (report it). A raw thrown
- * exception collapses all three into one opaque string, so every failure comes
- * back as a RESULT carrying a named code instead.
- */
-
 export type AssistantErrorCode =
-  /** The catalog offers it, but THIS deployment cannot perform it — a desktop
-   *  has no spaces, no teams and no billing. Final: nothing retries into it. */
   | typeof ASSISTANT_UNAVAILABLE_HERE
-  /** No such operation, or it is withheld from the agent. */
   | "unknown_operation"
-  /** A param the operation does not take. */
   | "unknown_param"
-  /** A required param was omitted. */
   | "missing_param"
-  /** A param was present but failed the catalog's schema for it. */
   | "invalid_param"
-  /** `params` was not an object of param values. */
   | "invalid_params"
-  /** The operation is `confirm: true` and no approval from the user exists for
-   *  this exact call. Houston is showing them the approval card. */
   | "needs_confirmation"
-  /** The user was shown the approval card for this exact call and said no. */
   | "confirmation_declined"
-  /** Nothing in this build can perform it: no route in the catalog, or the host refused. */
   | "operation_not_supported"
-  /** The chat is in Plan mode, so the host performed nothing. The user asked
-   *  for a proposal; only they can move the turn to Execute. */
   | "plan_mode"
-  /** The host has no live turn recorded for this agent and conversation, so it
-   *  performed nothing. The correction is to act inside a turn, never to retry
-   *  the same call. */
   | "not_in_turn"
-  /** The chat named is the one this turn is running in, or one a mission card
-   *  or a routine owns. Final: it is renamed and deleted where it belongs, and
-   *  the host's sentence says where that is. */
   | "protected_conversation"
-  /** The gateway answered a 4xx/5xx. */
   | "gateway_error"
-  /** The host could not be reached, or answered something unreadable. */
   | "transport_error";
 
 export interface AssistantError {
   code: AssistantErrorCode;
   message: string;
-  /** The upstream HTTP status, when the failure came from a response. */
   status?: number;
 }
 
-/** What the user is being asked to approve, alongside a `needs_confirmation`
- *  refusal: the plain-language sentence on their card and the exact arguments
- *  the approval will be bound to. Structured so the model can restate the ask
- *  without re-deriving it — never so it can act on it. */
 export interface AssistantConfirmationRequest {
   summary: string;
   params: Record<string, unknown>;
-  /** The HOST-issued id of the approval card now in front of the user. The
-   *  model presents it back on its next `houston_call` for this same call; the
-   *  host matches it against the receipt the user's own reply minted. It
-   *  authorizes nothing on its own. */
   requestId: string;
 }
 
-/**
- * What every operation-addressed tool (`houston_describe`, `houston_call`)
- * hands back. A UNION rather than an `ok: boolean` with an optional error, so
- * the failure path cannot compile without its code.
- */
 export type AssistantOperationDetails =
   | { ok: true; operation: string }
   | {
       ok: false;
       operation: string;
       error: AssistantError;
-      /** Set only on `needs_confirmation`: the ask now in front of the user. */
       confirmation?: AssistantConfirmationRequest;
     };
 
 export type AssistantOperationResult =
   AgentToolResult<AssistantOperationDetails>;
 
-/**
- * A failure, reported as a result rather than a throw. The text leads with
- * `ERROR` so a model skimming the transcript cannot read a refusal as a
- * success, and carries the machine-readable code so it can react to the
- * specific cause.
- */
 export function assistantErrorResult(
   operation: string,
   error: AssistantError,
@@ -103,11 +51,6 @@ export function assistantErrorResult(
   };
 }
 
-/**
- * The refusal that raises a real approval card: the operation is destructive
- * and no approval for THIS exact call exists. Carries the ask in structured
- * form so the model can wait on it intelligently instead of guessing.
- */
 export function assistantNeedsConfirmationResult(
   operation: string,
   message: string,
@@ -124,7 +67,6 @@ export function assistantNeedsConfirmationResult(
   };
 }
 
-/** A success carrying the operation's JSON payload verbatim (`null` when empty). */
 export function assistantOkResult(
   operation: string,
   payload: unknown,
@@ -135,7 +77,6 @@ export function assistantOkResult(
   };
 }
 
-/** A success carrying already-composed text (what `houston_describe` answers). */
 export function assistantTextResult(
   operation: string,
   text: string,
@@ -146,13 +87,6 @@ export function assistantTextResult(
   };
 }
 
-/**
- * A tool result whose details say the work was NOT done (`ok: false`): an
- * operation refused, awaiting approval, or failed. Such a tool answers with a
- * result rather than throwing (so the model reads a named code), which the
- * agent loop reports as a success; the backends mark it an error on the wire
- * from this, so every surface sees the call did not happen.
- */
 export function reportsNotDone(details: unknown): boolean {
   return (
     typeof details === "object" &&

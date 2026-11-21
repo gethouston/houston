@@ -21,15 +21,10 @@ import {
 export type { MountAdmin } from "./admin-seam";
 export type { RuntimeProxy } from "./channel/proxy";
 export type { ControlPlaneDeps } from "./control-plane-deps";
-// `/health`'s body shape is part of this server's published surface; the route
-// that serves it now lives in routes/meta.ts.
 export { healthBody } from "./routes/meta";
 
 function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", deps.corsOrigin || "*");
-  // X-Houston-App-Version: the desktop app's build-identity header — sent by
-  // its shared gateway transport to this host too, so the preflight must
-  // allow it even though the host ignores it.
   res.setHeader(
     "Access-Control-Allow-Headers",
     "Authorization, Content-Type, X-Houston-App-Version, Content-Range, X-GUploader-No-308",
@@ -38,19 +33,12 @@ function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   );
-  // Retry-After is NOT a CORS-safelisted response header: without this a
-  // cross-origin caller (the Tauri webview, the dev web app on vite's port, any
-  // web build pointed at a host on another origin) cannot read the "ask me
-  // again in N seconds" hint this host attaches to its 503s (channel/
-  // probe-wake.ts, local/host.ts's drain). The client captures it as
-  // `HoustonEngineError.retryAfterMs` and schedules its retry on it.
   res.setHeader(
     "Access-Control-Expose-Headers",
     "Retry-After, X-Houston-Page-Count, Range, X-HTTP-Status-Code-Override",
   );
 }
 
-/** Resolve the caller to a verified user id, or null if unauthenticated. */
 async function principal(
   deps: ControlPlaneDeps,
   req: IncomingMessage,
@@ -62,11 +50,6 @@ async function principal(
   return verified?.userId ?? null;
 }
 
-/**
- * The request pipeline: CORS, the pre-auth segment, the 401 wall, then the two
- * authenticated segments. WHICH routes each segment holds, and in what order,
- * is registry/groups.ts's table alone (server-phases.ts walks it).
- */
 async function handle(
   deps: ControlPlaneDeps,
   req: IncomingMessage,
@@ -85,7 +68,6 @@ async function handle(
   const entry = { deps, method, path, url, req, res };
   if (await dispatchPreAuth(entry)) return;
 
-  // Everything past here is authenticated.
   const userId = await principal(deps, req, url);
   if (!userId) return json(res, 401, { error: "unauthorized" });
   if (await handleStoreFenceGate(deps, method, path, res, "authenticated")) {
@@ -100,19 +82,9 @@ async function handle(
   return json(res, 404, { error: "not found" });
 }
 
-/** Methods that cannot change agent state; every other one is a write. */
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-/** Build the frontend-facing host API server. */
 export function createControlPlaneServer(deps: ControlPlaneDeps): Server {
-  // Live count of /agents/* requests, long-lived SSE streams included — the
-  // /activity busy probe reads it so the gateway's idle sweep never sleeps a
-  // pod with an open per-agent stream. `close` fires on both completion and a
-  // severed connection (and always after `finish` on modern Node), so every
-  // increment has exactly one decrement. Writes are also counted on their
-  // own, until the response closes AND the handler settles: a waker that
-  // ignores open reads must still never sleep one, and a handler can keep
-  // writing files after its client hangs up.
   let agentRequests = 0;
   let agentWrites = 0;
   const counted: ControlPlaneDeps = {
@@ -137,9 +109,6 @@ export function createControlPlaneServer(deps: ControlPlaneDeps): Server {
         res.once("close", writeDone);
       }
     }
-    // Tee the view routes' successful answers into the managed doc store so
-    // the gateway can serve them while this pod is asleep. Transparent to the
-    // client; only 200 JSON bodies under the cap publish.
     if (deps.viewSink && (req.method ?? "GET").toUpperCase() === "GET") {
       const view = viewForPath(path);
       if (view) {
@@ -150,13 +119,6 @@ export function createControlPlaneServer(deps: ControlPlaneDeps): Server {
     }
     handle(counted, req, res)
       .catch((err) => {
-        // An over-cap body maps to 413 (Payload Too Large) with its own clean
-        // message; a host mid-shutdown refusing to wake a runtime, or a rename
-        // latch refusing the old id for the few seconds the directory moves
-        // (PRODUCT-1804), answers the gateway's waking shape (503 + Retry-After)
-        // so the client re-sends instead of rendering a bug; everything else is
-        // a 500. Close the connection on 413: capping the body leaves unread
-        // bytes on the socket that would poison keep-alive.
         const tooLarge = err instanceof BodyTooLargeError;
         const unavailable =
           err instanceof LauncherClosedError ||
@@ -180,10 +142,7 @@ export function createControlPlaneServer(deps: ControlPlaneDeps): Server {
               );
             }
           } else if (!res.writableEnded) res.end();
-        } catch {
-          // The socket was already torn down while aborting the oversized body —
-          // there is nothing left to respond on.
-        }
+        } catch {}
       })
       .finally(() => writeDone?.());
   });

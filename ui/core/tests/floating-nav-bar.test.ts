@@ -18,7 +18,6 @@ describe("floatingNavItemClasses", () => {
     const inactive = floatingNavItemClasses(false);
     assert.ok(!inactive.includes("bg-tab-active"));
     assert.ok(inactive.includes("text-ink-muted"));
-    // Icon-only, so the target has to be squared up to stay tappable.
     assert.ok(inactive.includes("min-w-11"));
   });
 
@@ -43,7 +42,6 @@ describe("the bar's surfaces", () => {
     ]) {
       assert.ok(classes.includes("rounded-full"));
       assert.ok(classes.includes("bg-chip"));
-      // Depth is the hairline ring, never a drop shadow (dark mode has none).
       assert.ok(classes.includes("ht-hairline"));
       assert.ok(!classes.includes("shadow"));
     }

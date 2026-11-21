@@ -1,21 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * Write-through invalidation echo (the hosted "instant status flip" fix).
- *
- * In hosted (control-plane) mode the board/config/routine/skill/learnings caches
- * invalidate ONLY on events from the host's global `/v1/events` stream, which the
- * gateway historically never forwarded for pod events — so after the adapter's
- * OWN write the UI stuck (a settled turn's card hung on "running"). The adapter
- * now echoes the matching invalidation event locally, in the EXACT shape a real
- * server frame produces (`control-plane.toInvalidationEvent`). These tests assert
- * the echo fires on the settle path and on other writes, with the correct keys,
- * and that its shape is byte-identical to a server frame's.
- *
- * Every write here goes through `@houston/sdk` and is served by a stubbed
- * `fetch`; only the global `/v1/events` subscription is mocked away, so the bus
- * carries nothing but the echoes the client itself pushed.
- */
 vi.mock("@houston/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
     await importOriginal<
@@ -51,7 +35,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** Serve the board read the settle path matches on, and accept every write. */
 function stubHostFetch() {
   const row = {
     id: "a1",
@@ -62,8 +45,6 @@ function stubHostFetch() {
     updated_at: 0,
   };
   globalThis.fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
-    // The Stop answers "nothing was in flight" — the orphan the settle path is
-    // about. Everything else echoes the row back.
     const body = String(url).endsWith("/cancel")
       ? { ok: true, cancelled: false }
       : (init?.method ?? "GET") === "GET"
@@ -77,9 +58,6 @@ function stubHostFetch() {
 }
 
 test("the settle path echoes ActivityChanged with the agent key", async () => {
-  // cancelSession is a settle-and-PATCH: the runtime reports no live turn
-  // (`cancelled: false`), so the client writes the board status itself — the
-  // same setActivityStatus write a turn's own settle performs.
   stubHostFetch();
   const client = hostedClient();
   const { events, off } = capture();
@@ -123,10 +101,6 @@ test("a files-first write echoes its classified event (learnings)", async () => 
 });
 
 test("emitLocalEcho is byte-identical to the server frame the gateway will send", () => {
-  // Shape parity: the invalidation hook keys off `data.agent_path`; a locally
-  // synthesized echo and a real `/v1/events` frame must be indistinguishable, or
-  // one silently no-ops. Assert the echo the client emits equals what the ONE
-  // server-frame translator produces for the same event.
   const { events, off } = capture();
   emitLocalEcho("ActivityChanged", { agentPath: "W/A" });
   off();

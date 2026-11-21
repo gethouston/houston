@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { verifyUpdaterSignature } from "./updater-signature.mjs";
 
-// Made with `tauri signer generate` (throwaway keys, private halves discarded)
-// and `tauri signer sign` (CLI 2.11.4) over DATA.
 const PUBKEY =
   "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY5RERDMDJGNkMwMTVBNkEKUldScVdnRnNMOERkYVFZeU5ZM2tZdnN6NEVMaU5vSFNya3FLb25FMjE5QWRIdmhoelJiWG9BSFMK";
 const OTHER_PUBKEY =

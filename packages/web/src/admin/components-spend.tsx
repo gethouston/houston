@@ -1,15 +1,7 @@
-/**
- * Spend panel of the admin dashboard: the live cost estimate, the flat cluster
- * fee, and the BigQuery actuals when the export is connected (otherwise the
- * hint naming what to enable). The day-range pills are controlled by the
- * dashboard, which owns the query; this module only renders what it is handed.
- */
-
 import type { BillingReport } from "./api";
 import { usd } from "./api";
 import { C, card, pill, tint } from "./styles";
 
-/** Spend: live estimate total + the BigQuery actuals (or how to enable them). */
 export function SpendPanel({
   billing,
   days,

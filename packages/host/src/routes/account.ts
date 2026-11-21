@@ -16,16 +16,8 @@ import { type AccountDeps, ownedWorkspace } from "./account-access";
 import { json, readJson } from "./http";
 import { defineRoute } from "./registry";
 
-/**
- * User-level resources the host owns: workspaces (the tenancy container) and
- * preferences (timezone / locale). Personal tier → one
- * workspace per user, so these are scoped to the caller's own workspace and
- * need no agent. The sidebar layout rides the same ownership seam and lives in
- * account-sidebar.ts.
- */
 const SOURCE = "packages/host/src/routes/account.ts";
 
-/** Map the tenancy-store workspace to the wire shape (UI never sees slug/runtime). */
 async function toWire(
   deps: AccountDeps,
   ws: Workspace,
@@ -42,8 +34,6 @@ async function toWire(
   };
 }
 
-// The user's workspaces — cloud personal-tier returns one (auto-provisioned on
-// first touch), the local profile returns every workspace on disk.
 defineRoute({
   group: "account",
   method: "GET",
@@ -52,14 +42,12 @@ defineRoute({
   classification: "sdk",
   source: SOURCE,
   handler: async ({ deps, userId, res }) => {
-    await deps.store.getOrCreatePersonalWorkspace(userId); // ensure ≥1 exists (cloud)
+    await deps.store.getOrCreatePersonalWorkspace(userId);
     const owned = await deps.store.listWorkspacesForUser(userId);
     json(res, 200, await Promise.all(owned.map((ws) => toWire(deps, ws))));
   },
 });
 
-// Update a workspace's UI settings. Only the owner; only locale is mutable in
-// cloud (name is fixed, provider/model live on each agent's config).
 defineRoute({
   group: "account",
   method: "PATCH",
@@ -84,8 +72,6 @@ defineRoute({
   },
 });
 
-// Preferences key-value (boot-path reads: locale, timezone).
-// Scoped to the caller's own personal workspace, so no id rides the path.
 defineRoute({
   group: "account",
   method: ["GET", "PUT"],
@@ -115,9 +101,6 @@ defineRoute({
       return json(res, 400, {
         error: "invalid timezone: expected an IANA name",
       });
-    // Create-only (`onlyIfAbsent`, @houston/protocol preference-create): the
-    // flag holds whatever the value, null included, and the check and the
-    // write share the preferences doc lock (createPreference).
     const changed = () =>
       deps.events?.emit(userId, {
         type: "PreferencesChanged",

@@ -11,21 +11,6 @@ import { withXiaomiBaseUrl, XIAOMI_PROVIDER_ID } from "../ai/xiaomi-endpoint";
 
 type Settings = { activeProvider?: string; models?: Record<string, string> };
 
-/**
- * Model for a cloud per-turn run. Precedence: an explicit per-turn override (a
- * routine's pinned model) beats the agent's settings.json, which beats the env
- * default. A bad PIN surfaces as the turn's error; a stale SAVED model id (a
- * legacy id the migration didn't reach, e.g. a hand-edited settings.json)
- * falls back to the provider's default with a logged diagnostic (safeGetModel)
- * instead of hard-failing the turn.
- *
- * The OpenAI-compatible (custom endpoint) provider is NOT a pi KnownProvider, so
- * — exactly as the long-lived `resolveModel` does — its model is hand-built from
- * the turn's hydrated `custom-endpoint.json` (read from THIS turn's `dataDir`,
- * not `config.dataDir`) via `buildActiveCustomModel`. An active custom provider
- * with no (or a malformed) endpoint file throws a clear error there, so the turn
- * fails loudly rather than silently falling back to a catalog default.
- */
 export function resolveTurnModel(
   dataDir: string,
   provider: string,
@@ -44,23 +29,13 @@ export function resolveTurnModel(
   }
   const modelId =
     override || settings.models?.[provider] || providerDefaultModel(provider);
-  // The qwen extension provider's endpoint is REGION-scoped per verified key,
-  // so its model must carry THIS turn's hydrated region file — same
-  // per-dataDir rule as the custom endpoint above (qwen-dashscope, HOU-1077).
   if (provider === QWEN_PROVIDER_ID)
     return resolveQwenModel(modelId, !!override, dataDir);
-  // Xiaomi's endpoint is scoped per verified key (general vs Token Plan
-  // gateway), so its model must carry THIS turn's hydrated endpoint file —
-  // same per-dataDir rule as qwen above (ai/xiaomi-endpoint.ts).
   if (provider === XIAOMI_PROVIDER_ID)
     return withXiaomiBaseUrl(
       safeGetModel(provider, modelId, !!override),
       dataDir,
     );
-  // Azure's per-resource endpoint is likewise a per-dataDir file: safeGetModel's
-  // built-in overlay reads config.dataDir — the WORKER's own root, never a
-  // hydrated turn root — so without this the turn throws "base URL is
-  // required" before any HTTP (PRODUCT-1532).
   if (provider === AZURE_OPENAI)
     return withAzureBaseUrl(
       safeGetModel(provider, modelId, !!override),

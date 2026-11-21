@@ -3,17 +3,10 @@ import { type Block, pageBlock } from "./block-detect";
 import { isClosedError } from "./live/page-errors";
 import type { BrowserTab } from "./open-tab";
 
-/** Enough of the document for any wall's markers; walls are small pages. */
 const HTML_LIMIT = 200_000;
 
-/** Kernel's egress proxy names why it refused a site in this header. */
 const KERNEL_PROXY_ERROR = "x-kernel-proxy-error";
 
-/**
- * The wall the tab's page shows after an `open`, or null. Only a backup tab
- * reads Kernel's proxy header: from any other site it is just a header, and
- * a page could send it to look blocked.
- */
 export async function readBlock(
   tab: BrowserTab,
   response: Response | null,
@@ -33,8 +26,6 @@ export async function readBlock(
     ]);
     return pageBlock({ status: response?.status() ?? null, title, html });
   } catch (error) {
-    // A page that will not be read is no evidence of a wall; the open
-    // already answered with what the snapshot saw.
     if (!isClosedError(error))
       console.warn("[browser] reading the page for a block failed", {
         name: error instanceof Error ? error.name : "unknown",

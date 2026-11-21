@@ -9,12 +9,8 @@ import esTeams from "../src/locales/es/teams.json" with { type: "json" };
 import pt from "../src/locales/pt/shell.json" with { type: "json" };
 import ptTeams from "../src/locales/pt/teams.json" with { type: "json" };
 
-// The group rail's copy must speak the product's own words in every locale:
-// "empleados de IA" / "funcionários de IA", and the "space" the folder moves to.
 describe("sidebar group copy", () => {
   it("names AI Employees, never agents, in the drag instructions", () => {
-    // The library is product-agnostic: its default speaks of items, like its
-    // "Add item" default.
     doesNotMatch(DEFAULT_SIDEBAR_LABELS.dragInstructions, /\bagent\b/);
     match(en.sidebar.drag.instructions, /AI Employee/);
     match(es.sidebar.drag.instructions, /empleado de IA/);
@@ -33,7 +29,6 @@ describe("sidebar group copy", () => {
     doesNotMatch(JSON.stringify([es, esTeams]), /\b[Ii]conos?\b/);
   });
 
-  // The limit is inclusive: a 60-character name saves.
   it("states the group name limit as a maximum, not a bound to stay under", () => {
     match(enTeams.agentTeams.form.tooLong, /up to \{\{max\}\}/);
     match(esTeams.agentTeams.form.tooLong, /hasta \{\{max\}\}/);

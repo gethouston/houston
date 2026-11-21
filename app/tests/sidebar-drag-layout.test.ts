@@ -24,7 +24,6 @@ const initial: SidebarLayout = {
   ],
 };
 
-/** The rail's drop, end to end: layout → rows → drop → stored layout. */
 function drop(
   layout: SidebarLayout,
   active: string,

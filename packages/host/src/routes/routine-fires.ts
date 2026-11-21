@@ -42,14 +42,6 @@ function parseBody(raw: unknown): RoutineFireBody | null {
   return { routineId: body.routineId, fireAt, actingAs: body.actingAs };
 }
 
-/**
- * What the pod answers the control plane for one delivered instant, always
- * with HTTP 200. `busy` and `failed` are terminal. `deduped` marks the replay
- * of an instant this host already settled: it carries the recorded outcome
- * (and, for `fired`, when that attempt started), or plain `fired` when there
- * is none to replay. Every `result` here is one an older control plane
- * already settles correctly; the extra fields are ignored there.
- */
 type RoutineFireReply =
   | { result: "no_routine" }
   | { result: "fired"; deduped?: true; startedAt?: string }
@@ -59,7 +51,6 @@ type RoutineFireReply =
 const reply = (res: ServerResponse, body: RoutineFireReply) =>
   json(res, 200, body);
 
-/** The drain shape (server.ts): the control plane retries a 503. */
 const unavailable = (res: ServerResponse, detail: string) =>
   json(
     res,
@@ -68,21 +59,10 @@ const unavailable = (res: ServerResponse, detail: string) =>
     { "Retry-After": "2" },
   );
 
-/** A fresh fire's answer: a fired one's start is only for replays. */
 function freshReply(outcome: FireOutcome): RoutineFireReply {
   return outcome.result === "fired" ? { result: "fired" } : outcome;
 }
 
-/**
- * POST /agents/:agentId/routine-fires — the control plane delivers ONE
- * scheduled instant to the pod, which fires the routine. Matches BEFORE the
- * generic per-agent runtime dispatch, which has no routine-fire routes.
- *
- * `phase: "user"`, not "agent", for the same reason as trigger-events: the
- * acting-as refusal must answer before ownership is evaluated, so a proxied
- * user request gets a flat 404 rather than an authz relay that confirms whose
- * agent it is.
- */
 defineRoute({
   group: "routine-fires",
   method: "POST",
@@ -93,9 +73,6 @@ defineRoute({
     "Server-to-server delivery: the control plane posts a scheduled instant to the pod, never a client.",
   source: "packages/host/src/routes/routine-fires.ts",
   handler: async ({ deps, userId, params, req, res }) => {
-    // As with trigger-events, a proxied user request carries this header. The
-    // internal delivery uses the pod token and carries its minted C2 token only
-    // in the body, so reject externally reachable requests in depth.
     if (req.headers[ACTING_AS_HEADER] !== undefined)
       return json(res, 404, { error: "not found" });
 
@@ -118,10 +95,6 @@ defineRoute({
     );
     if (!routine) return reply(res, { result: "no_routine" });
 
-    // Pods do not hold the gateway HMAC key. On this pod-token-authenticated
-    // internal route, match the strongest existing trusted-gateway pattern:
-    // decode the minted payload and require its subject to equal created_by
-    // (or, on an AI Manager pod, the manager's own person).
     const actingSub = actingSubFromHeader(body.actingAs);
     if (!actingMayRunRoutine(actingSub, routine))
       return json(res, 400, {
@@ -145,9 +118,6 @@ defineRoute({
     );
     if (!burned) {
       const recorded = decodeFireOutcome(await ledger.get(key));
-      // The first delivery is still firing (a slow cold boot outlasts the
-      // control plane's call; a second replica can deliver the same row):
-      // its outcome is unknown, so the redelivery waits rather than settle.
       if (recorded?.result === "pending")
         return unavailable(
           res,
@@ -182,8 +152,6 @@ defineRoute({
       const deferred = isRetryableFireError(error);
       reportUnfiredFire(routine.id, error, deferred);
       if (deferred) {
-        // Unburn so the redelivery (to this host, its replacement pod, or the
-        // agent's new id) fires the instant instead of replaying a miss.
         await ledger.del(key);
         return unavailable(
           res,

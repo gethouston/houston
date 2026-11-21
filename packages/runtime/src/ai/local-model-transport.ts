@@ -36,7 +36,6 @@ export function bridgeFetch(
   model: string,
   fetchImpl: typeof fetch = fetch,
 ): typeof fetch {
-  // Capture credentials inside the turn's async subtree, never at provider registration.
   const context = trustedContext();
   const actingAs = currentActingContext()?.actingAs;
   if (!actingAs) throw new Error("local model bridge authorization required");

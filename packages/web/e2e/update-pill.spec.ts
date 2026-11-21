@@ -2,18 +2,6 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { workspaceMenuTrigger } from "./support/workspace-menu";
 
-/**
- * The "Restart to update" pill: the one surface a mid-session update find
- * ends in. It sits on the window gutter, so it has to be the high-contrast
- * element there in BOTH themes: it wears the primary action fill, never the
- * gutter-coloured dialog surface that made it disappear in dark mode.
- *
- * Driven through the dev-only preview harness (`__HOUSTON_UPDATE_PREVIEW__`,
- * `app/src/components/shell/update-preview.ts`): the real updater only runs
- * in packaged builds, and the harness renders the same component with a
- * simulated status.
- */
-
 const footer = (page: Page) => page.getByTestId("sidebar-footer");
 const pill = (page: Page) => footer(page).getByTestId("update-pill");
 const restartButton = (page: Page) =>
@@ -30,9 +18,6 @@ async function showScene(page: Page, scene: PreviewScene) {
   }, scene);
 }
 
-/** The `action` role's fill under the CURRENT theme, read off a throwaway
- *  `bg-action` probe so the spec pins the role, not a value that the token
- *  files own. */
 async function actionFill(page: Page): Promise<string> {
   return page.evaluate(() => {
     const probe = document.createElement("div");
@@ -75,13 +60,10 @@ test("names the restart, the version it lands on, and wears the action fill in b
   await setTheme(page, "dark");
   const darkFill = await actionFill(page);
   await expect(button).toHaveCSS("background-color", darkFill);
-  // The two themes flip the fill (dark ink on light, light ink on dark), so
-  // the pill is never the gutter's own colour in either.
   expect(darkFill).not.toBe(lightFill);
 
   const box = await button.boundingBox();
   const footerBox = await footer(page).boundingBox();
-  // The pill leads the foot, above the account row.
   const accountBox = await workspaceMenuTrigger(page).boundingBox();
   expect(box).not.toBeNull();
   expect(footerBox).not.toBeNull();

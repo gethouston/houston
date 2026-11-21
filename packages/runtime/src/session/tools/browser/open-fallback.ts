@@ -18,13 +18,11 @@ export const BACKUP_NOTE =
 export const BLOCKED_NOTE =
   "This site blocks automated browsers, and the backup browser could not open it either. Tell the person in the chat that the site blocked the browser; do not hand the browser over for it.";
 
-/** The tab the action ended on (the backup's, after a move) and its result. */
 export interface Acted {
   tab: BrowserTab;
   outcome: ActionOutcome;
 }
 
-/** Run one page action; an `open` may move the conversation (below). */
 export async function actOn(
   tab: BrowserTab,
   action: PageAction,
@@ -36,14 +34,6 @@ export async function actOn(
   return { tab, outcome: await runBrowserAction(tab, action, signal) };
 }
 
-/**
- * Open a page here, and when the site's anti-bot wall blocks this browser,
- * open it again on the backup browser (Kernel) and move the conversation
- * there. A conversation on the backup stays there for that site; an `open`
- * of another site brings it back here first, since the backup is paid and
- * its proxy refuses some sites this browser reaches (government sites).
- * With no backup (no KERNEL_API_KEY), this is exactly a plain `open`.
- */
 export async function openWithFallback(
   tab: BrowserTab,
   action: OpenAction,
@@ -77,11 +67,6 @@ export async function openWithFallback(
   return moved ?? { tab: current, outcome: withNote(local, BLOCKED_NOTE) };
 }
 
-/**
- * The page on a backup tab, adopted as the conversation's; null (logged)
- * when the backup refused, failed, or was blocked too: the local result
- * stands. A stopped turn is passed on, not counted as a refusal.
- */
 async function tryBackup(
   action: OpenAction,
   swap: TabSwap,
@@ -94,9 +79,6 @@ async function tryBackup(
   );
   try {
     if (!swap.openBackup) return null;
-    // Not saved first: what the blocked visit added is the wall's own
-    // marking of this browser, and it gets the backup blocked too. Earlier
-    // sign-ins were already saved after the action that made them.
     const backup = await swap.openBackup(host);
     const outcome = await runBrowserAction(backup, action, signal, true);
     if (outcome.blocked) throw new StillBlocked(outcome.blocked);
@@ -105,8 +87,6 @@ async function tryBackup(
   } catch (error) {
     await swap.dropBackup();
     if (signal?.aborted) throw error;
-    // A site that walls Kernel too is the web, and an abandoned call already
-    // reached the model as its deadline: neither is a fault (no Sentry event).
     const expected =
       error instanceof StillBlocked || error instanceof SlotAbandoned;
     const log = expected ? console.warn : console.error;
@@ -137,7 +117,6 @@ function withNote(outcome: ActionOutcome, note: string): ActionOutcome {
   };
 }
 
-/** A site's name for staying on the backup: `www.` is the same site. */
 function siteOf(host: string): string {
   return host.replace(/^www\./, "");
 }

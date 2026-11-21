@@ -1,16 +1,6 @@
 import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * HOU-732: account-level preferences must reach the ENGINE, not this browser's
- * localStorage. The adapter used to keep every preference device-local, so the
- * host scheduler never learned the user's timezone — hosted agents fired
- * routines in the pod's zone (UTC) while the UI rendered the browser's, an
- * hours-off "next run". These tests pin the split: account keys ride
- * `/v1/preferences/:key` (gateway AND local host serve it), device keys stay
- * in localStorage, and a pre-fix local copy is migrated up once.
- */
-
 const originalFetch = globalThis.fetch;
 
 let store: Map<string, string>;
@@ -55,7 +45,7 @@ const client = (controlPlane: boolean) =>
   new HoustonClient({ baseUrl: "http://host", token: "t", controlPlane });
 
 test("timezone reads come from the engine, not localStorage", async () => {
-  store.set("houston.pref.timezone", "America/New_York"); // stale device copy
+  store.set("houston.pref.timezone", "America/New_York");
   stubFetch(json(200, { value: "America/Bogota" }));
 
   const value = await client(true).getPreference("timezone");
@@ -120,7 +110,7 @@ test("an engine failure propagates — never a silent localStorage fallback", as
 });
 
 test("device keys never touch the network", async () => {
-  stubFetch(); // any fetch would throw "no responses left"
+  stubFetch();
   const c = client(true);
 
   await c.setPreference("theme", "dark");
@@ -130,11 +120,6 @@ test("device keys never touch the network", async () => {
   expect(calls).toEqual([]);
 });
 
-// PRODUCT-1282: sign-out purges every account-scoped localStorage key, so a
-// device-local `onboarding_completed` died with the session and the next
-// sign-in re-onboarded a returning user. As an account key it lives behind
-// `/v1/preferences/:key`, survives sign-out, and follows the account across
-// devices; the mixin's legacy lift migrates a pre-fix device copy up once.
 test("onboarding_completed is an account key — sign-out must not erase it", async () => {
   stubFetch(json(200, { value: "1" }));
 
@@ -178,9 +163,6 @@ test("locale and the migration flag are account keys", async () => {
   ]);
 });
 
-// `first_message_sent` is armed when an account starts the first-run
-// onboarding and closed when it reports; a device-local copy would re-arm (or
-// lose) the beat on every new device.
 test("first_message_sent is an account key", async () => {
   stubFetch(json(200, { value: "armed" }));
 
@@ -192,11 +174,6 @@ test("first_message_sent is an account key", async () => {
   ]);
 });
 
-// PRODUCT-1564: the Settings language pick goes through `setWorkspaceLocale`.
-// The adapter used to return a synthetic workspace WITHOUT persisting anything,
-// so the language reverted to the engine's stored preference on the next boot.
-// The pick must land on the account `locale` preference — the key the boot
-// path (`useLocalePreference`) reads back.
 test("setWorkspaceLocale persists the pick as the account locale preference", async () => {
   stubFetch(json(200, { value: "pt" }));
 

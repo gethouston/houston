@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { AgentsHttpError } from "./http";
 import { isAgentNameReserved, isAgentNameTaken } from "./refusals";
 
-/** The adapter's `HoustonEngineError` shape: status plus the parsed body. */
 function adapterError(status: number, body: unknown): Error {
   return Object.assign(new Error(`engine error ${status}`), { status, body });
 }

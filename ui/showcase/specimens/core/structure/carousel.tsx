@@ -24,7 +24,6 @@ const agents = [
   { name: "Contract Reader", meta: "Drive · 1.4k installs" },
 ];
 
-/** One slide: a store card, so the slide is a real thing and not a grey box. */
 function Slide({ name, meta }: { name: string; meta: string }) {
   return (
     <div className="flex h-28 flex-col justify-center gap-1 rounded-2xl border border-line bg-card p-6">
@@ -34,11 +33,6 @@ function Slide({ name, meta }: { name: string; meta: string }) {
   );
 }
 
-/**
- * The arrows are absolutely positioned OUTSIDE the carousel root (`-left-12` /
- * `-right-12` horizontally, `-top-12` / `-bottom-12` vertically), so the gutter
- * they need belongs to a wrapper around the root — never to the root itself.
- */
 function Rail({
   orientation = "horizontal",
   opts,
@@ -104,11 +98,6 @@ const props: SpecimenProp[] = [
   },
 ];
 
-/**
- * The carousel paints nothing itself — its own classes are layout only. The
- * colour on the page comes from the two arrows, which are `Button`s in the
- * `outline` variant.
- */
 const tokens = [
   "bg-input",
   "border-line-input",
@@ -161,11 +150,6 @@ function CarouselSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = [
   "Carousel",
   "CarouselContent",

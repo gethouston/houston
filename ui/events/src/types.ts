@@ -1,5 +1,3 @@
-// Generic event types — no app-specific coupling.
-
 export type EventType =
   | "message"
   | "heartbeat"
@@ -16,20 +14,20 @@ export type EventStatus =
   | "error";
 
 export interface EventSource {
-  channel: string; // "slack", "telegram", "desktop", "system", "webhook", "agent"
-  identifier: string; // channel ID, cron job name, etc.
+  channel: string;
+  identifier: string;
 }
 
 export interface EventEntry {
   id: string;
   type: EventType;
   source: EventSource;
-  summary: string; // human-readable description
+  summary: string;
   status: EventStatus;
   payload?: Record<string, unknown>;
   sessionKey?: string;
   projectId?: string;
-  createdAt: string; // ISO 8601
+  createdAt: string;
   processedAt?: string;
 }
 

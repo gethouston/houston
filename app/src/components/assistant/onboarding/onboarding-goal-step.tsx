@@ -3,8 +3,6 @@ import { Check, Circle, X } from "lucide-react";
 
 export type GoalStepState = "waiting" | "active" | "done" | "failed";
 
-/** One step of the goal card: its mark (a ring still to come, a spinner at
- *  work, a check, a cross) beside what it says. */
 export function GoalStep({
   state,
   label,

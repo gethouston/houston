@@ -25,19 +25,9 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
         try {
           list = await readAgentList(this.ctx.sdk, this.ctx.cp);
         } catch (e) {
-          // A FAILED list is not "not loaded yet" (HOU-979). Left as the latter
-          // it never resolves, so the provider probe skipped itself forever
-          // (a permanent "Loading providers…") and every connect / sign-out
-          // threw "still loading" with no way back. Record that no list is
-          // coming so provider routing degrades to the pref-based path, and
-          // rethrow — the caller still surfaces the failure.
           this.ctx.noteAgentsUnavailable();
           throw e;
         }
-        // CP agent ids are global (the list ignores workspaceId), so this list is
-        // the full truth the selection pref must exist in. Pruning here heals a
-        // stale pref at boot, before the first-run connect surface mounts; the
-        // noted id set is what `providerAgentId()` validates against.
         this.ctx.dropLastAgentPref((id) => !list.some((a) => a.id === id));
         this.ctx.noteAgentList(list.map((a) => a.id));
         return list;
@@ -70,15 +60,10 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
     }
     async deleteAgent(workspaceId: string, agentId: string): Promise<void> {
       if (this.ctx.cp) {
-        // SDK delegates the DELETE /agents/:id write; web forgets the deleted
-        // agent's color overlay (was cp.deleteAgent's clearColor) after.
         await viaSdk(controlPlane.agentPath(agentId), () =>
           this.ctx.sdk.agents.writes.delete(agentId),
         );
         controlPlane.clearColor(agentId);
-        // Neither the selection pref nor the known list may outlive the agent:
-        // provider connects fall back to the next known agent, or the setup
-        // runtime when it was the last one.
         this.ctx.noteAgentGone(agentId);
         return;
       }
@@ -123,8 +108,6 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
       return {
         name: r.name,
         instructions: r.instructions,
-        // Nothing renders these yet on the new engine; keep the wire shape so the
-        // create dialog can start consuming them without an adapter change.
         suggestedIntegrations: r.suggestedIntegrations.map((slug) => ({
           slug: slug.toLowerCase(),
           displayName: slug,
@@ -132,21 +115,9 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
         suggestedRoutine: r.suggestedRoutine ?? null,
       };
     }
-    // Agent-config library: templates the user installed (GitHub) that the
-    // create-agent picker merges alongside the bundled ones. Standalone web has
-    // no host to keep a library — nothing installed there is the honest answer.
     async listInstalledConfigs(): Promise<InstalledConfig[]> {
       if (!this.ctx.cp) return [];
-      // A deployment that advertises `agentConfigLibrary: false` (the hosted
-      // gateway) is skipped outright; the 404 fallback below stays for
-      // deployments that predate the flag (PRODUCT-1474).
       if (!(await deploymentServes(this.ctx, "agentConfigLibrary"))) return [];
-      // SDK delegates the byte-identical GET /v1/agent-configs. It PROPAGATES
-      // the 404; web keeps swallowing it — the hosted gateway keeps no
-      // account-level config library (one pod per agent, no shared disk) and
-      // answers 404 for the route, the same honest answer as standalone web:
-      // nothing installed, the picker shows the bundled templates (HOU-688).
-      // Every other failure still propagates.
       try {
         return await viaSdk("/v1/agent-configs", () =>
           this.ctx.sdk.agents.library.list(),
@@ -161,8 +132,6 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<{ agentId: string }> {
       if (!this.ctx.cp)
         throw new Error("Installing agents needs a cloud workspace.");
-      // SDK delegates the byte-identical POST /v1/agents/install-from-github
-      // with the `{ githubUrl }` body.
       return viaSdk("/v1/agents/install-from-github", () =>
         this.ctx.sdk.agents.library.installFromGithub(req.githubUrl),
       );

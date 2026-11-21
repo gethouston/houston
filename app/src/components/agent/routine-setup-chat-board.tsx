@@ -1,11 +1,3 @@
-/**
- * The routine chat's actual AIBoard mount, split out of `routine-setup-chat.tsx`
- * to keep that file focused on layout/chrome. Rendered inside a `hidden` wrapper
- * by the caller: the board's own list never shows, only its portaled detail
- * panel (into the shell-level panel container) — it fills the big right-hand
- * panel, the SAME one the Activity mission board opens, for a routine's chat.
- */
-
 import type { KanbanItem } from "@houston-ai/board";
 import { AIBoard } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
@@ -50,9 +42,6 @@ export function RoutineSetupChatBoard({
     agent,
     selectedSessionKey: sessionKey,
     onSelectSession: noop,
-    // The setup chat's kickoff turn runs Ask first (execute) — the interview
-    // needs ask_user and must never open read-only in Planner — so the live
-    // composer opens on Ask first too. The user can still switch modes here.
     initialTurnMode: "execute",
   });
   const attachmentValidation = useAttachmentRejectionDialog({
@@ -89,13 +78,6 @@ export function RoutineSetupChatBoard({
     [path],
   );
 
-  // Stable identity: AIBoard folds `sessionKeyFor` into its `hydrateSession`
-  // callback, and its composer-autofocus effect is keyed on that callback. An
-  // inline arrow gave it a fresh identity every render, re-firing the effect
-  // and re-focusing the composer on EVERY chat re-render (a streaming/settling
-  // reply, an activity refetch) instead of once on open — the composer would
-  // yank focus back from wherever the user clicked. useCallback makes the
-  // autofocus one-shot, matching every other AIBoard consumer.
   const keyForSession = useCallback(() => sessionKey ?? "", [sessionKey]);
 
   const items: KanbanItem[] = useMemo(
@@ -105,8 +87,6 @@ export function RoutineSetupChatBoard({
 
   const running = activity.status === "running";
 
-  // The panel's close X clears the board's selection (`onSelect(null)`) — route
-  // that to deselect (non-null selects, from the hidden card, are ignored).
   const handlePanelSelect = useCallback(
     (id: string | null) => id === null && onPanelClose?.(),
     [onPanelClose],
@@ -120,7 +100,6 @@ export function RoutineSetupChatBoard({
         selectedId={activity.id}
         onSelect={onPanelClose ? handlePanelSelect : noop}
         panelContainer={panelContainer}
-        // The close X shows only when a deselect handler is wired (`onPanelClose`).
         hidePanelClose={onPanelClose ? undefined : true}
         disableComposerAutoFocus={disableComposerAutoFocus}
         feedItems={feedItems}
@@ -135,9 +114,6 @@ export function RoutineSetupChatBoard({
         onStopSession={send.stopSession}
         onOpenLink={panel.openHref}
         onNotice={(message) => addToast({ title: message })}
-        // The ask_user question card that replaces the composer when the
-        // turn settles needs_you — the interview IS this card, so dropping
-        // it turns the guided setup into a dead chat.
         composerOverride={panel.composerOverride}
         composerOverrideMode={panel.composerOverrideMode}
         labels={labels}

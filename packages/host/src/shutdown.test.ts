@@ -1,12 +1,6 @@
 import { expect, test } from "vitest";
 import { installGracefulShutdown } from "./shutdown";
 
-/**
- * The drain semantics zero-downtime deploys depend on: stop accepting, finish
- * in-flight, force-exit when long-lived SSE streams would otherwise hold the
- * process open, and never double-close on a second signal.
- */
-
 function fakeServer() {
   const calls = { close: 0, closeIdle: 0 };
   let finishClose: (() => void) | null = null;
@@ -37,7 +31,7 @@ test("drains cleanly: close + idle-close, exits 0 when in-flight work finishes",
   drain("SIGTERM");
   expect(calls.close).toBe(1);
   expect(calls.closeIdle).toBe(1);
-  expect(exits).toEqual([]); // still draining
+  expect(exits).toEqual([]);
   finish();
   expect(exits).toEqual([0]);
 });
@@ -55,7 +49,7 @@ test("a second signal is a no-op (no double close)", () => {
 });
 
 test("force-exits after the grace window when streams never end", async () => {
-  const { server } = fakeServer(); // close() callback never fires
+  const { server } = fakeServer();
   const exits: number[] = [];
   const drain = installGracefulShutdown(server, {
     graceMs: 30,

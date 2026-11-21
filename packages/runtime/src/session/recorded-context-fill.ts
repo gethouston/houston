@@ -1,12 +1,5 @@
 import type { ChatMessage } from "@houston/runtime-client";
 
-/**
- * The context fill a conversation's last reply recorded: the size of the last
- * request it sent. A compaction, a provider switch or a `/clear` with no reply
- * after it leaves the fill unknown, exactly as pi answers after compacting. A
- * reply whose request failed records zero usage, which says nothing about the
- * fill.
- */
 export function recordedContextFill(
   messages: readonly ChatMessage[],
 ): number | undefined {

@@ -15,7 +15,6 @@ import { nextChoicePage } from "./choice-modal-pages";
 import { appliedPick, canChangeChoice, choiceNotice } from "./choice-model";
 import { orgLocked } from "./recovery";
 
-/** Two days after the cutover, inside the 14-day change window. */
 const AFTER = Date.parse("2026-10-25T12:00:00.000Z");
 const WINDOW_END = "2026-11-06T05:00:00Z";
 const CLOSED = Date.parse("2026-11-07T00:00:00.000Z");
@@ -23,7 +22,6 @@ const LOCK_AT = "2026-11-06T05:00:00Z";
 
 const locked = (o: typeof LA_FILA) => ({ ...o, lockAt: LOCK_AT });
 
-/** What C4 left a Plus payer who never picked: La Fila free, Innova paid. */
 const provisional = choice({
   payer: "plus",
   state: "applied",
@@ -33,7 +31,6 @@ const provisional = choice({
   paidOrgSlug: INNOVA.slug,
   orgs: [locked(PERSONAL), INNOVA, LA_FILA],
 });
-/** An owner who picked before the cutover, the pick now applied. */
 const picked = choice({
   state: "applied",
   changeableUntil: WINDOW_END,

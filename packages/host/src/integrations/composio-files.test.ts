@@ -2,12 +2,6 @@ import { expect, test } from "vitest";
 import { ComposioProvider } from "./composio";
 import { RemoteIntegrationProvider } from "./remote";
 
-/**
- * The file leg on both adapters, against an injected fetch: the direct adapter
- * makes the Composio calls itself (self-host), the remote one asks the cloud
- * gateway (cloud C1 "File arguments"). Same answers either way.
- */
-
 interface Call {
   url: URL;
   method: string;

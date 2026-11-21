@@ -4,15 +4,6 @@ import type { SandboxFetch } from "./sandbox-fetch";
 import { CONVERSATION_ID_HEADER } from "./save-learning";
 import { hostErrorFrom, type SessionToolErrorDetails } from "./tool-error";
 
-/**
- * The mission tools' one authed call to the host, shared by every tool in the
- * family so they cannot disagree about what a request carries.
- *
- * The acting identity and this conversation's id ride the headers, taken from
- * the turn's async scope rather than the tool's arguments: the host stamps
- * attribution from them and enforces the self/depth guards, neither of which an
- * agent may author.
- */
 export interface MissionCall {
   <T>(
     method: "GET" | "POST",
@@ -20,13 +11,6 @@ export interface MissionCall {
     body: unknown,
     signal: AbortSignal | undefined,
   ): Promise<{ ok: true; data: T } | SessionToolErrorDetails>;
-  /**
-   * The sandbox transport underneath. A mission tool's REFUSAL has to reach a
-   * sibling route to name the agents the caller could have used
-   * (mission-agents.ts), and that route is not under `/sandbox/missions` — so
-   * the transport rides along rather than being threaded separately through
-   * every tool's options.
-   */
   readonly sandbox: SandboxFetch;
 }
 

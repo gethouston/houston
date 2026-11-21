@@ -7,16 +7,6 @@ import { createState, reset, shoot, steer, step } from "./space-invaders-model";
 
 const BEST_KEY = "houston.migration.invaders.best";
 
-/**
- * A tiny Space Invaders on a <canvas> — a quiet easter egg to pass the time
- * during a long cloud migration. Emoji sprites (👾🛸👽🤖 vs 🚀, 💥 on kills)
- * over ink-colored HUD/shots that inherit the surrounding text colour; one
- * life, no audio, no levels: the swarm just speeds up as it thins. Game rules
- * live in `space-invaders-model.ts`, frame rendering in `space-invaders-draw.ts`;
- * this shell wires input, the rAF loop, and the persisted best score. Keyboard
- * input is window-scoped but yields to any focused field, so it never steals
- * typing. Reduced motion → null.
- */
 export function SpaceInvaders({ className }: { className?: string }) {
   const reduce = useReducedMotion() ?? false;
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,7 +19,6 @@ export function SpaceInvaders({ className }: { className?: string }) {
     if (!canvasEl) return;
     const ctx2d = canvasEl.getContext("2d");
     if (!ctx2d) return;
-    // Non-null aliases so the hoisted inner functions keep the narrowing.
     const canvas = canvasEl;
     const ctx = ctx2d;
 
@@ -38,20 +27,14 @@ export function SpaceInvaders({ className }: { className?: string }) {
     let best = bestRef.current ?? 0;
     let recordedOver = false;
     let elapsed = 0;
-    // Read from the canvas's resolved `color` (the `text-ink` utility) on every
-    // resize, so the sprites track the theme. `resize()` below runs
-    // synchronously before the first frame, so this empty start is never drawn.
     let color = "";
     if (bestRef.current === null) {
       try {
         best = Number(localStorage.getItem(BEST_KEY)) || 0;
-      } catch {
-        /* storage disabled — best just starts at 0 */
-      }
+      } catch {}
       bestRef.current = best;
     }
 
-    // Backing store follows the CSS size and devicePixelRatio.
     function resize() {
       const dpr = window.devicePixelRatio || 1;
       const cssW = canvas.clientWidth || W;
@@ -70,7 +53,6 @@ export function SpaceInvaders({ className }: { className?: string }) {
       } else shoot(state);
     }
 
-    // ── Input: window-scoped, but never steals typing from a focused field ──
     const typing = () => {
       const el = document.activeElement as HTMLElement | null;
       return (
@@ -107,7 +89,6 @@ export function SpaceInvaders({ className }: { className?: string }) {
     canvas.addEventListener("pointermove", onSteer);
     canvas.addEventListener("pointerdown", onPointerDown);
 
-    // ── ~60fps rAF loop ──
     let raf = 0;
     let last = performance.now();
     function frame(now: number) {
@@ -122,9 +103,7 @@ export function SpaceInvaders({ className }: { className?: string }) {
           bestRef.current = best;
           try {
             localStorage.setItem(BEST_KEY, String(best));
-          } catch {
-            /* storage disabled — the run's best just isn't remembered */
-          }
+          } catch {}
         }
       }
       drawGame(ctx, canvas, state, {

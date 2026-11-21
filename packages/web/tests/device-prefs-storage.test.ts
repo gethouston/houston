@@ -1,25 +1,6 @@
 import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-/**
- * A DEVICE preference lives in this browser's localStorage, so a store that is
- * blocked (hardened webview, third-party-cookie blocking) or full (quota) is the
- * only way one can fail to persist. The adapter used to suppress both halves:
- * `setPreference` resolved having stored nothing, so Settings kept the palette
- * the user had just picked on screen, the next boot lost it, and neither the
- * caller's optimistic revert nor any reporting path ever ran.
- *
- * These tests pin the rejection, and its boundary: an ACCOUNT key's pre-fix
- * device copy is a best-effort cleanup behind a host that already answered, so
- * a store refusing to give it up can never fail a preference that DID land.
- *
- * The last block pins the READ side's one hard rule at the other end of the
- * wire: a boot reader takes an unreadable device preference as UNSET and reports
- * it, never as a failed load. A blocked store would otherwise cost a user their
- * whole workspace list — the load and the preference read resolve together, so
- * the rejection reached the list's catch and painted the failure screen.
- */
-
 const appMocks = vi.hoisted(() => ({
   prefGet: vi.fn<(key: string) => Promise<string | null>>(),
   list: vi.fn(),
@@ -48,7 +29,6 @@ vi.mock("../../../app/src/lib/error-report", () => ({
 
 const originalFetch = globalThis.fetch;
 
-/** A store whose three operations can each be made to throw. */
 class FakeStorage {
   private readonly entries = new Map<string, string>();
   blockRead = false;
@@ -81,7 +61,6 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
-  // vitest 4's restoreAllMocks leaves vi.fn() mocks alone; reset them so calls never carry over.
   vi.resetAllMocks();
   vi.restoreAllMocks();
 });
@@ -164,8 +143,6 @@ test("an account read the host answers survives a device copy the store will not
   expect(warn).toHaveBeenCalledOnce();
 });
 
-// ── The boot readers: unreadable is UNSET, and it is reported ─────────
-
 const personal = {
   id: "ws-default",
   name: "Personal",
@@ -210,13 +187,11 @@ test("loadWorkspaces still fails loudly when the LIST is what rejected", async (
   const { useWorkspaceStore } = await import(
     "../../../app/src/stores/workspaces"
   );
-  // The store is a module singleton shared with the test above.
   useWorkspaceStore.setState({ workspaces: [], current: null });
   await useWorkspaceStore.getState().loadWorkspaces();
 
   const state = useWorkspaceStore.getState();
   expect(state.loadError).toBe(true);
   expect(state.current).toBeNull();
-  // The wire layer (`call`) already logged, toasted and captured that one.
   expect(appMocks.report).not.toHaveBeenCalled();
 });

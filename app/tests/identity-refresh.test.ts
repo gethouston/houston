@@ -2,10 +2,6 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import type { Session } from "../src/lib/identity/session.ts";
 
-// refresh.ts persists through session-store, which resolves to BROWSER mode
-// under node:test — so a fake `localStorage` makes the whole flow hermetic. The
-// securetoken refresh call is `fetch`, stubbed per test. No Tauri, no network.
-
 class FakeLocalStorage {
   store = new Map<string, string>();
   getItem(key: string): string | null {
@@ -56,7 +52,6 @@ test("refreshNow collapses concurrent calls into ONE refresh request", async () 
   let calls = 0;
   globalThis.fetch = (async () => {
     calls += 1;
-    // Resolve on a later tick so both callers observe the same in-flight run.
     await new Promise((r) => setTimeout(r, 5));
     return new Response(
       JSON.stringify({
@@ -156,20 +151,13 @@ test("refreshNow returns null when there is no stored session", async () => {
 });
 
 test("refreshNow RETHROWS a transient network failure and keeps the session", async () => {
-  // The three-valued contract (HOU-1106) the hosted-session seam depends on:
-  // null is reserved for a TERMINAL sign-out, so a transient failure (identity
-  // service unreachable while a sleep-wake reconnect settles) must throw
-  // IdentityError("network") — and the installer (engine-gate) must pass that
-  // throw through to the adapter's connectivity classifier. Flattening it to
-  // null made the stale-token 401 stand and every live query reported a bogus
-  // "invalid or expired token" storm (PRODUCT-1531).
   await seedSession();
   const { refreshNow } = await import("../src/lib/identity/refresh.ts");
   const { loadSession } = await import("../src/lib/identity/session-store.ts");
   const { isIdentityError } = await import("../src/lib/identity/errors.ts");
 
   globalThis.fetch = (async () => {
-    throw new TypeError("Load failed"); // transport rejection, no HTTP response
+    throw new TypeError("Load failed");
   }) as typeof fetch;
 
   await assert.rejects(refreshNow(), (e: unknown) => {
@@ -177,16 +165,12 @@ test("refreshNow RETHROWS a transient network failure and keeps the session", as
     assert.equal(e.code, "network");
     return true;
   });
-  // Transient ≠ sign-out: the stored session must survive for the retry.
   assert.deepEqual(await loadSession(), SESSION);
 });
 
 test("proactive refresh backs off on a transient failure near expiry (no hot loop)", async () => {
-  // A session already inside the skew window: the expiry-based delay is 0, so
-  // without backoff a failing refresh would reschedule at 0 and hammer the
-  // network. With backoff it must fire at most once in a short window.
   const { saveSession } = await import("../src/lib/identity/session-store.ts");
-  await saveSession({ ...SESSION, expiresAt: Date.now() }); // past the skew
+  await saveSession({ ...SESSION, expiresAt: Date.now() });
 
   const { startProactiveRefresh, stopProactiveRefresh } = await import(
     "../src/lib/identity/refresh-timer.ts"
@@ -195,23 +179,17 @@ test("proactive refresh backs off on a transient failure near expiry (no hot loo
   let calls = 0;
   globalThis.fetch = (async () => {
     calls += 1;
-    throw new TypeError("network down"); // transient → IdentityError("network")
+    throw new TypeError("network down");
   }) as typeof fetch;
 
   startProactiveRefresh();
-  // Let the immediate (delay-0) first fire run and its backoff arm the next.
   await new Promise((r) => setTimeout(r, 80));
   stopProactiveRefresh();
 
-  // Exactly one attempt in the window — the 30s backoff prevents a hot loop.
   assert.ok(calls <= 1, `expected <=1 refresh attempt, got ${calls}`);
 });
 
 test("the post-save compensation never deletes a NEWER account's session", async () => {
-  // The dangerous half of the compensation: a stale refresh whose write landed
-  // after a sign-out must NOT clear the store blindly. By the time it looks, a
-  // DIFFERENT account may already have signed in — clearing then signs the new
-  // user straight back out (and they cannot log in again without a relaunch).
   await seedSession();
   const { refreshNow, setSessionSink } = await import(
     "../src/lib/identity/refresh.ts"
@@ -239,17 +217,14 @@ test("the post-save compensation never deletes a NEWER account's session", async
       { status: 200, headers: { "content-type": "application/json" } },
     )) as typeof fetch;
 
-  // The interleaving: the stale refresh's write lands, and while it settles the
-  // user signs out and a different account signs in. Both storage ops below run
-  // synchronously inside the browser adapter, so the sequence is deterministic.
   let armed = true;
   const realSetItem = fake.setItem.bind(fake);
   fake.setItem = (key: string, value: string) => {
     realSetItem(key, value);
     if (armed && String(value).includes("stale-id")) {
       armed = false;
-      void clearSession(); // sign-out: bumps the epoch, drops the blob
-      void saveSession(NEW_ACCOUNT); // a different account signs in
+      void clearSession();
+      void saveSession(NEW_ACCOUNT);
     }
   };
 
@@ -264,11 +239,6 @@ test("the post-save compensation never deletes a NEWER account's session", async
 });
 
 test("refreshNow abandons the save when clearSession lands DURING the stored-session read", async () => {
-  // The narrower half of the sign-out race: `loadSession()` is itself async (a
-  // keychain round-trip), so a sign-out can land while the READ is in flight.
-  // Sampling the epoch after the read would miss that clear entirely and the
-  // refresh would re-save the session sign-out just deleted — the "logged back
-  // into the last account" bug. The epoch must be sampled BEFORE the read.
   await seedSession();
   const { refreshNow, setSessionSink } = await import(
     "../src/lib/identity/refresh.ts"
@@ -280,14 +250,13 @@ test("refreshNow abandons the save when clearSession lands DURING the stored-ses
   const sinkUpdates: (Session | null)[] = [];
   setSessionSink((s) => sinkUpdates.push(s));
 
-  // A read that returns the pre-clear blob while the clear runs underneath it.
   let armed = true;
   const realGetItem = fake.getItem.bind(fake);
   fake.getItem = (key: string) => {
     const value = realGetItem(key);
     if (armed) {
       armed = false;
-      void clearSession(); // bumps the epoch mid-read
+      void clearSession();
     }
     return value;
   };
@@ -326,11 +295,9 @@ test("refreshNow abandons the save when clearSession fired mid-flight (sign-out 
     "../src/lib/identity/session-store.ts"
   );
 
-  // Track the refresh sink: it must NOT receive a session on the abandon path.
   const sinkUpdates: (Session | null)[] = [];
   setSessionSink((s) => sinkUpdates.push(s));
 
-  // Gate the securetoken response so sign-out can win the race deterministically.
   let releaseFetch: () => void = () => {};
   globalThis.fetch = (async () => {
     await new Promise<void>((r) => {
@@ -347,25 +314,18 @@ test("refreshNow abandons the save when clearSession fired mid-flight (sign-out 
   }) as typeof fetch;
 
   const pending = refreshNow();
-  // Let doRefresh read the session and reach the awaiting fetch.
   await new Promise((r) => setTimeout(r, 5));
-  // Sign-out clears the session while the refresh is in flight.
   await clearSession();
-  sinkUpdates.length = 0; // ignore the clear's own notify; watch what refresh does
-  // Now let the (stale) refresh response arrive.
+  sinkUpdates.length = 0;
   releaseFetch();
 
   assert.equal(await pending, null);
-  // Storage must stay empty — the refresh must not resurrect the cleared session.
   assert.equal(await loadSession(), null);
-  // The refresh sink must not have pushed a session back into the cache.
   assert.deepEqual(sinkUpdates, []);
 
   setSessionSink(() => {});
 });
 
-// The client's clock, steerable per test: a sleep is a jump of the wall clock
-// while a request is in flight, and nothing else about the machine changes.
 const realNow = Date.now;
 let clockOffsetMs = 0;
 beforeEach(() => {
@@ -387,9 +347,6 @@ function tokenResponse(idToken: string, expiresIn = "3600"): Response {
   );
 }
 
-/** A securetoken answer shaped like the real one: a JWT whose `exp` claim is
- *  `expOffsetS` from the real clock. The app never reads it; it is here so the
- *  clock-skew test carries the token a skewed client actually holds. */
 function jwtExpiringIn(expOffsetS: number, tag: string): string {
   const nowS = Math.floor(realNow() / 1000);
   const enc = (o: unknown) =>
@@ -403,13 +360,6 @@ function jwtExpiringIn(expOffsetS: number, tag: string): string {
 }
 
 test("refreshNow never hands out a token that outlived its lifetime in flight: it mints again", async () => {
-  // Field shape (HOUSTON-APP-5HZ): the proactive timer's securetoken request
-  // went out, the laptop slept 87 minutes, and the webview delivered the
-  // buffered answer on wake. `expires_in` is counted from the moment the
-  // answer is READ, so the session looked an hour fresh while the token had
-  // expired 27 minutes earlier. Every joiner of that in-flight run replayed
-  // it and the gateway refused each one. The run must notice and mint again,
-  // with the refresh token the stale answer carried.
   await seedSession();
   const { refreshNow, setSessionSink } = await import(
     "../src/lib/identity/refresh.ts"
@@ -423,7 +373,7 @@ test("refreshNow never hands out a token that outlived its lifetime in flight: i
   globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
     calls += 1;
     bodies.push(String(init?.body));
-    if (calls === 1) clockOffsetMs += 5_221_000; // the sleep, mid-request
+    if (calls === 1) clockOffsetMs += 5_221_000;
     return tokenResponse(calls === 1 ? "slept" : "fresh");
   }) as typeof fetch;
 
@@ -458,10 +408,10 @@ test("joiners of a pre-sleep in-flight refresh receive the re-minted token (one 
     return tokenResponse("fresh");
   }) as typeof fetch;
 
-  const timerRun = refreshNow(); // the proactive timer, before the sleep
+  const timerRun = refreshNow();
   await new Promise((r) => setTimeout(r, 5));
-  clockOffsetMs += 5_221_000; // the sleep
-  const wakeReplay = refreshNow(); // the 401 recovery on wake, joining it
+  clockOffsetMs += 5_221_000;
+  const wakeReplay = refreshNow();
   releaseFirst();
 
   assert.equal(await timerRun, "fresh");
@@ -470,9 +420,6 @@ test("joiners of a pre-sleep in-flight refresh receive the re-minted token (one 
 });
 
 test("a second mint that fails offline rethrows as network and keeps the stored session", async () => {
-  // Wake with the radio still down: the stale answer is discarded, the
-  // re-mint cannot reach securetoken. That is the transient contract
-  // (HOU-1106): rethrow, keep the session, no sign-out, no stuck in-flight.
   await seedSession();
   const { refreshNow } = await import("../src/lib/identity/refresh.ts");
   const { loadSession } = await import("../src/lib/identity/session-store.ts");
@@ -495,14 +442,11 @@ test("a second mint that fails offline rethrows as network and keeps the stored 
   });
   assert.equal(calls, 2);
   assert.deepEqual(await loadSession(), SESSION, "old token kept for retry");
-  // The latch released: the next call starts a fresh run, not a dead promise.
   globalThis.fetch = (async () => tokenResponse("later")) as typeof fetch;
   assert.equal(await refreshNow(), "later");
 });
 
 test("the stored expiresAt is dated from the request's send, never its read", async () => {
-  // A 10-minute request (no sleep-out: 50 minutes remain) must not be stored
-  // as a full hour: the timer would otherwise plan 10 minutes past expiry.
   await seedSession();
   const { refreshNow } = await import("../src/lib/identity/refresh.ts");
   const { loadSession } = await import("../src/lib/identity/session-store.ts");
@@ -523,13 +467,8 @@ test("the stored expiresAt is dated from the request's send, never its read", as
 });
 
 test("a client clock an hour ahead of Google's refreshes once, not in a loop", async () => {
-  // The token this client holds reads as expired by its own `exp` (the
-  // reviewer's repro: +3400 s). Staleness is judged by the client's own clock
-  // and the request duration only, so the timer sees a full lifetime and
-  // waits; the 30 s reschedule floor backs that up. Exactly one mint in the
-  // window, where judging by claims produced dozens.
   const { saveSession } = await import("../src/lib/identity/session-store.ts");
-  await saveSession({ ...SESSION, expiresAt: Date.now() }); // due now
+  await saveSession({ ...SESSION, expiresAt: Date.now() });
   const { startProactiveRefresh, stopProactiveRefresh } = await import(
     "../src/lib/identity/refresh-timer.ts"
   );
@@ -552,7 +491,6 @@ test("expiresAtFromSend and isSleptOut judge by wall-clock duration only", async
     "../src/lib/identity/refresh-mint.ts"
   );
   const minted = { idToken: "t", refreshToken: "r", expiresAt: 0 };
-  // Read 5221 s after send, lifetime 3600 s from the read.
   const readAt = 5_221_000;
   const slept = expiresAtFromSend(
     0,
@@ -561,14 +499,12 @@ test("expiresAtFromSend and isSleptOut judge by wall-clock duration only", async
   );
   assert.equal(slept, 3_600_000);
   assert.equal(isSleptOut(slept, readAt), true, "expired 1621 s before read");
-  // Read 200 ms after send: a full lifetime less 200 ms.
   const quick = expiresAtFromSend(
     0,
     { ...minted, expiresAt: 200 + 3_600_000 },
     200,
   );
   assert.equal(isSleptOut(quick, 200), false);
-  // The margin is inclusive.
   assert.equal(isSleptOut(MIN_REMAINING_MS, 0), true);
   assert.equal(isSleptOut(MIN_REMAINING_MS + 1, 0), false);
 });

@@ -1,4 +1,3 @@
-/** The learning and community worlds and the jobs each one hires for (ids only; labels live in `agentOnboarding:roleSetup`). */
 export const LEARNING_AND_COMMUNITY_WORLDS = {
   education: [
     "school_admissions_counselor",

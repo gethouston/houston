@@ -54,7 +54,6 @@ describe("sweepGatewayGroupNotes", () => {
     expect(await vfs.readText(note(ada))).toBeNull();
     expect(await vfs.readText(note(bo))).toBeNull();
     expect(await getPreference(vfs, ws.id, GATEWAY_NOTES_SWEPT_KEY)).toBe("1");
-    // A note written after the sweep belongs to whoever wrote it.
     await vfs.writeText(note(ada), "my own note");
     await sweep(true);
     expect(await vfs.readText(note(ada))).toBe("my own note");

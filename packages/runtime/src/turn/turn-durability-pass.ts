@@ -14,7 +14,6 @@ import { type TurnSyncReport, turnSyncReport } from "./turn-sync-report";
 import type { TranscriptPublishResult } from "./turn-transcript";
 import { publishTurnViews } from "./turn-view-publish";
 
-/** A fenced worker no longer owns the conversation: nothing it did is done. */
 const claimFenced = (
   poolWritesOutOfScope = 0,
   changed: TurnDurabilityResult["changed"] = [],
@@ -36,8 +35,6 @@ export async function finishTurnDurabilityPass(
 
   let synced: Awaited<ReturnType<typeof syncTurnFilesystem>>;
   try {
-    // Failed provider work may still have durable tool writes. Only a fence
-    // may skip sync because a fenced worker no longer owns this conversation.
     if (opts.timings) opts.timings.t_sync_start = performance.now();
     synced = await syncTurnFilesystem({
       store: opts.resolved.store,
@@ -47,8 +44,6 @@ export async function finishTurnDurabilityPass(
       claimed: Boolean(opts.turn.claim),
     });
   } catch (error) {
-    // A fenced object write means the claim was adopted mid-sync: report it
-    // as exactly that, not as a generic sync failure.
     if (error instanceof StoreFencedError) {
       return claimFenced();
     }
@@ -94,8 +89,6 @@ export async function finishTurnDurabilityPass(
     ...opts.filesystem.immediateWrites,
   ]);
 
-  // Sync objects before publishing rows for history fallback. An unsaved
-  // reply still publishes its locally corrected row if object repair failed.
   let published: TranscriptPublishResult | undefined;
   try {
     published = await transcript?.publish();
@@ -107,8 +100,6 @@ export async function finishTurnDurabilityPass(
   if (published && "fenced" in published) {
     return claimFenced(poolWritesOutOfScope, changed, sync);
   }
-  // An event is a promise that the refetch can be served asleep: a family
-  // whose projection failed is left out (the read would fall to the pod).
   const without = (type: (typeof changed)[number]) => {
     changed = changed.filter((t) => t !== type);
   };
@@ -167,9 +158,6 @@ export async function finishTurnDurabilityPass(
   });
   for (const error of familyDocs.errors) outcome = appendError(outcome, error);
   for (const type of familyDocs.stale) without(type);
-  // The claim may have been adopted while sync/publish were in flight (the
-  // heartbeat loop learns it asynchronously). A last checkpoint keeps a stale
-  // worker from ever announcing a clean done.
   await opts.heartbeat?.checkpoint();
   if (opts.heartbeat?.fenced) {
     return claimFenced(poolWritesOutOfScope, changed, sync);

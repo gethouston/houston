@@ -1,43 +1,27 @@
-/** Bundle id an offline launch marked ready before it was ever confirmed online. */
 export const PROVISIONAL_READY_KEY = "houston.ota.provisional_ready";
-/** The mounted app must stay up, crash-free, this long to count as good. */
 export const SHELL_SETTLE_MS = 2000;
-/** Matches Capgo's `appReadyTimeout`: the web app must at least mount by then. */
 export const MOUNT_DEADLINE_MS = 30000;
 
 export interface ReadyPorts {
   root: HTMLElement;
   notifyAppReady(): Promise<unknown>;
-  /** Capgo's current bundle; `status` is "success" once confirmed ready. */
   currentBundle(): Promise<{ id: string; status: string }>;
-  /** Returns to the store's builtin bundle and reloads. */
   resetToBuiltin(): Promise<void>;
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   report(error: unknown): void;
 }
 
 export interface ReadyWatch {
-  /** The boot itself failed (e.g. the web entry threw while loading). */
   fail(error: unknown): void;
 }
 
 type ShellState = "pending" | "mounted" | "crashed";
 
-/** Any mounted UI counts, the boot splash included: a slow network or engine
- *  wake must never roll a healthy bundle back. Only the crash screen fails. */
 function shellState(root: HTMLElement): ShellState {
   if (root.querySelector("[data-houston-boot-crashed]")) return "crashed";
   return root.firstElementChild ? "mounted" : "pending";
 }
 
-/**
- * Online boot. Start it BEFORE loading the web entry so a bundle whose entry
- * throws is still caught. The bundle is good once the web app has mounted and
- * stayed up without crashing; until then Capgo's `appReadyTimeout` rolls back a
- * fresh bundle that never mounts. A bundle an offline launch marked ready
- * provisionally is already "good" to Capgo, so a crash or a failed mount resets
- * it to the builtin bundle here instead.
- */
 export function declareReadyWhenShellRenders(ports: ReadyPorts): ReadyWatch {
   const provisional = ports.storage.getItem(PROVISIONAL_READY_KEY);
   let settle: ReturnType<typeof setTimeout> | null = null;
@@ -101,14 +85,6 @@ async function rollBackProvisional(
   }
 }
 
-/**
- * Offline launch: the offline screen proves only that the bundle boots, so
- * Capgo is told it is ready (its timeout would otherwise roll back a healthy
- * update). A bundle not yet confirmed online is remembered as provisional until
- * an online launch mounts the app; a confirmed bundle is never put on trial.
- * Resolves once the marker is recorded; `notifyAppReady` runs on its own and
- * reports, so a hanging native call never holds up the online launch.
- */
 export async function declareProvisionalReady(
   ports: ReadyPorts,
 ): Promise<void> {

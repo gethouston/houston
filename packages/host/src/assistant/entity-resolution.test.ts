@@ -13,14 +13,6 @@ import {
   resolveEntityParams,
 } from "./entity-resolution";
 
-/**
- * FIXTURE operations, never the generated catalog: these pin the resolution and
- * the refusals, which must not move when the adapter's operations do. Which
- * parameter carries which `resolver` is the generator's half of the contract
- * (scripts/assistant-catalog/tests/assistant-entity-sources.spec.ts); here it is stated
- * on the fixture, exactly as the catalog states it on a real operation.
- */
-
 const workspace = (id: string, name: string): Workspace => ({
   id,
   ownerUserId: "u1",
@@ -59,7 +51,6 @@ const deps = (agents: readonly ReachableAgent[] = REACHABLE) =>
     activities: async () => [],
   }) satisfies EntityResolutionDeps;
 
-/** A parameter, optionally naming the live list its value is resolved against. */
 type ParamSpec = string | [string, AssistantEntityCollection];
 
 const param = (spec: ParamSpec): AssistantOperationParam => ({
@@ -192,8 +183,6 @@ describe("resolveEntityParams", () => {
   });
 
   test("never resolves the assistant's own hidden agent", async () => {
-    // `.assistant` is absent from the reachable set by construction, so both
-    // its name and its id read as an agent that does not exist.
     for (const ref of [".assistant", "a-assistant"]) {
       const out = await resolveEntityParams(deleteAgent, { id: ref }, deps());
       expect(out.ok).toBe(false);

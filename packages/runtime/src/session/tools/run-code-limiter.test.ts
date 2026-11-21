@@ -20,9 +20,9 @@ test("rolling minute cap: refills as old runs age out", () => {
   limiter.acquire()();
   limiter.acquire()();
   expect(() => limiter.acquire()).toThrow(RunCodeLimitError);
-  t += 59_000; // still within the window of the first three
+  t += 59_000;
   expect(() => limiter.acquire()).toThrow(RunCodeLimitError);
-  t += 2_000; // first three are now older than 60s
+  t += 2_000;
   expect(() => limiter.acquire()).not.toThrow();
 });
 
@@ -30,8 +30,8 @@ test("double release is a no-op, not a budget leak", () => {
   const limiter = new RunCodeLimiter({ maxConcurrent: 1, maxPerMinute: 100 });
   const release = limiter.acquire();
   release();
-  release(); // must not decrement below zero...
-  const r2 = limiter.acquire(); // ...which this acquire would mask
+  release();
+  const r2 = limiter.acquire();
   expect(() => limiter.acquire()).toThrow(RunCodeLimitError);
   r2();
 });

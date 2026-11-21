@@ -20,7 +20,6 @@ import {
   saveState,
 } from "./state-store";
 
-/** An agent workspace: it always has its `.houston/` dir. */
 const workspace = () => {
   const dir = mkdtempSync(join(tmpdir(), "browser-state-"));
   mkdirSync(join(dir, ".houston"));
@@ -40,10 +39,8 @@ function cookie(name: string, value: string) {
   };
 }
 
-/** A holder whose context reports `state` (saveState reads nothing else). */
 function holder(statePath: string, state: () => StorageState): StateHolder {
   const asked: unknown[] = [];
-  // SAFETY: saveState reads only storageState from the context.
   const context = {
     storageState: async (options: unknown) => {
       asked.push(options);
@@ -66,17 +63,13 @@ test("saving writes the merged state atomically, owner-only", async () => {
   await saveState(h);
   expect(await readState(path)).toEqual(state);
   expect(statSync(path).mode & 0o777).toBe(0o600);
-  // The next save diffs against what this context just wrote.
   expect(h.base).toEqual(state);
-  // No half-written scratch file is left for the store sync to find.
   expect(readdirSync(dirname(path))).toEqual(["state.json"]);
 });
 
 const posixTest = process.platform === "win32" ? test.skip : test;
 
 posixTest("a save closes a hydrated, group-open state owner-only", async () => {
-  // A pooled turn's worker runs with umask 002 and hydration of an older
-  // build could leave the directory and file group read-write.
   const previous = process.umask(0o002);
   try {
     const path = browserStatePath(workspace());
@@ -141,7 +134,6 @@ test("a workspace that is gone is never recreated by a save", async () => {
   await saveState(h);
   expect(existsSync(gone)).toBe(false);
   expect(h.base).toEqual(EMPTY_STATE);
-  // Nor is a workspace without `.houston/` given one.
   const bare = mkdtempSync(join(tmpdir(), "browser-state-"));
   await saveState(holder(browserStatePath(bare), () => EMPTY_STATE));
   expect(readdirSync(bare)).toEqual([]);
@@ -161,7 +153,6 @@ posixTest(
     await saveState(h);
     expect(readdirSync(catcher)).toEqual([]);
     expect(h.base).toEqual(EMPTY_STATE);
-    // Refused twice: the merge's read of the saved state, then the write.
     expect(error.mock.calls.map(([line]) => line)).toEqual([
       expect.stringMatching(/not reading sign-in state/),
       expect.stringMatching(/refusing to write sign-in state/),

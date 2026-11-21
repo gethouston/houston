@@ -14,7 +14,6 @@ import { TeamStatusClaimDialog } from "./team-status-claim-dialog";
 
 type Shown = Exclude<TeamStatusView, { kind: "none" }>;
 
-/** The first sentence: the state, worded by why the org locks. */
 function leadKey(view: Shown, hasDate: boolean) {
   if (view.kind === "scheduled")
     return view.lockReason === "canceled"
@@ -33,19 +32,6 @@ const ASK_OWNER = {
   locked: "status.askOwner.locked",
 } as const;
 
-/**
- * The org-status strip at the top of the workspace, for the ACTIVE org (the
- * Personal row included): a lock scheduled, a payment that failed, or a lock.
- * It says what the state means, what the reader can still do, and offers the
- * way out the SDK allows them (`orgRecovery`): the billing owner pays,
- * swaps the free slot, changes the pick or deletes; everyone else is told to
- * ask the owner. The store apps never sell, so there the owner reads the
- * managed-on-the-web note instead of a pay button.
- *
- * Locked is the danger tone; a scheduled lock and a failed payment, which
- * still work, are calmer. On the phone the strip runs full width with its
- * actions on their own row; on the desktop it is one line.
- */
 export function TeamStatusBanner() {
   const { t, i18n } = useTranslation("teams");
   const { view, org, orgs, billing, checkout } = useTeamStatus(

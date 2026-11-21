@@ -5,14 +5,6 @@ import { it } from "node:test";
 
 import { REPO, sourceRoots, walk } from "./token-discipline-rules.ts";
 
-/**
- * Tailwind's production `optimize()` (lightningcss) keeps only the LAST of a
- * standard property and its `-webkit-` spelling in one block. Written
- * standard-first, the build ships WebKit's spelling alone, so every Chromium
- * surface (Android, Chrome on a phone, Windows WebView2) silently loses the
- * effect while Safari and the dev server still show it. Prefixed first keeps
- * both. Only these two properties lose the standard spelling that way.
- */
 const PAIRED = ["backdrop-filter", "filter"];
 
 function misordered(css: string): string[] {

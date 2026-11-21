@@ -6,13 +6,11 @@ import type { ReviewItemData } from "./types";
 export interface ReviewSplitProps {
   items: ReviewItemData[];
   initialSelectedId?: string | null;
-  /** Render prop: the host app provides its own chat panel for the detail view */
   renderChat: (props: {
     sessionKey: string;
     placeholder: string;
     item: ReviewItemData;
   }) => ReactNode;
-  /** Shown when no item is selected */
   emptyMessage?: string;
 }
 
@@ -33,7 +31,6 @@ export function ReviewSplit({
 
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden">
-      {/* Left panel -- fixed width sidebar */}
       <div className="w-[270px] shrink-0">
         <ReviewSidebar
           items={items}
@@ -42,7 +39,6 @@ export function ReviewSplit({
         />
       </div>
 
-      {/* Right panel -- detail or empty */}
       <div className="flex-1 min-w-0 flex flex-col min-h-0">
         {selectedItem ? (
           <ReviewDetailPanel item={selectedItem} renderChat={renderChat} />

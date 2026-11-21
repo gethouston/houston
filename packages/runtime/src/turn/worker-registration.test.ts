@@ -32,8 +32,6 @@ test("partial registration fails with every missing variable", async () => {
 test("registration loads this worker's token from its single file and dev token wins", async () => {
   const tokenDir = await mkdtemp(join(tmpdir(), "worker-token-"));
   await mkdir(tokenDir, { recursive: true });
-  // The pod projects ONLY its own ordinal as one file (subPathExpr); the
-  // runtime reads that file, never a directory of every worker's token.
   const tokenFile = join(tokenDir, "token");
   await writeFile(tokenFile, " pool-token\n");
   const config = await loadWorkerRegistrationConfig({

@@ -12,9 +12,6 @@ import {
   integrationsSupported,
 } from "../integrations/model";
 
-/** A not-yet-connected app the agent is allowed to build a trigger on. Offered
- *  in the chat-first stepper's app grid so the user can connect it inline, then
- *  pick an event on it, without leaving the flow. */
 export interface ConnectableApp {
   toolkit: string;
   name: string;
@@ -22,29 +19,11 @@ export interface ConnectableApp {
 }
 
 export interface UsableToolkits {
-  /** Apps with an ACTIVE connection the agent may use (connection ∩ allowlist). */
   apps: TriggerApp[];
-  /** Allowed apps the agent has NOT connected yet (catalog ∩ allowlist − connected).
-   *  Empty unless the caller opts in via `{ connectable: true }`. On an
-   *  unrestricted host this is the whole catalog, so the grid gates it behind a
-   *  search field rather than rendering every row. */
   connectable: ConnectableApp[];
   loading: boolean;
 }
 
-/**
- * The apps THIS agent can build an event trigger on (C9): the user's active
- * connections, narrowed to the agent's effective allowlist on a Teams host
- * (single-player has no ceiling → every connected app is usable). "Usable" means
- * exactly what it means on the Integrations page now — connection ∩ effective
- * allowlist (the per-agent grants layer is gone). Returns the shape
- * `@houston-ai/routines`' TriggerPicker takes, with an account per connection so
- * a multi-account app can be pinned.
- *
- * With `{ connectable: true }` it ALSO returns the allowed-but-unconnected apps,
- * so the chat-first stepper can offer an inline "connect a new app" path — the
- * agent's allowlist ∩ the integrations catalog, minus what is already connected.
- */
 export function useUsableToolkits(
   agentId: string,
   opts?: { connectable?: boolean },
@@ -57,15 +36,12 @@ export function useUsableToolkits(
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, enabled);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, enabled);
   const settingsQuery = useAgentSettings(agentId, enabled && teams);
-  // `null` = unrestricted (single-player, or Teams with no ceiling) → every
-  // connected app is usable. The agent's own ceiling is the whole allowlist.
   const allowlist = settingsQuery.data?.allowedToolkits ?? null;
 
   const apps = useMemo<TriggerApp[]>(() => {
     const bySlug = new Map((catalog.data ?? []).map((tk) => [tk.slug, tk]));
     const allowed = allowlist ? new Set(allowlist) : null;
 
-    // One entry per toolkit, gathering its active connections as accounts.
     const byToolkit = new Map<string, TriggerApp>();
     for (const conn of connections.data ?? []) {
       if (conn.status !== "active") continue;

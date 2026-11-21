@@ -10,21 +10,12 @@ import { useMissionSearch } from "../use-mission-search";
 export interface McSearch {
   query: string;
   setQuery: (query: string) => void;
-  /** The items the board renders: `items` narrowed by the query. */
   items: KanbanItem[];
   hasQuery: boolean;
-  /** A transcript scan is still running behind the current query. */
   isSearchingText: boolean;
-  /** What the board shows with nothing to show. `undefined` outside a search:
-   *  an empty board with no query keeps its columns and their own CTA. */
   emptyState: ReactNode | undefined;
 }
 
-/**
- * The text-search half of {@link useMissionControlSource}: the query, the
- * transcript scan behind it (whose failures must reach the user as a toast, per
- * the no-silent-failures rule), and the empty state a fruitless search shows.
- */
 export function useMcSearch({
   items,
   loadHistory,

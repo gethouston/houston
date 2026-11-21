@@ -15,7 +15,6 @@ import {
 } from "../../../src/specimen";
 import { TAB_BAR_PROPS } from "./tab-bar-api";
 
-/** The tab bar owns no fill of its own — it sits on whatever surface mounts it. */
 function Stage({ children }: { children: ReactNode }) {
   return (
     <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-line bg-gutter pb-4">
@@ -24,12 +23,6 @@ function Stage({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * A representative set, kept from the deleted per-agent tab strip so the
- * specimen shows a realistic label mix. These are NOT live product surfaces:
- * the tab shell is gone (those screens are team sections and agent-settings
- * sections now) and no app code mounts `TabBar` any more.
- */
 const agentTabs: TabBarProps["tabs"] = [
   { id: "activity", label: "Activity", badge: 3 },
   { id: "context", label: "Context" },
@@ -167,11 +160,6 @@ function TabBarSpecimen() {
   );
 }
 
-/**
- * The `@houston-ai/*` symbols this page documents. `scripts/gen-usage.mjs`
- * reads them to build the "Used in" map, so they are the exported names
- * exactly as a consumer imports them.
- */
 export const sources: string[] = ["TabBar"];
 
 export const specimen: Specimen = {

@@ -7,13 +7,6 @@ import {
   tourSelector,
 } from "../src/components/shell/workspace-tour-steps.ts";
 
-/**
- * The anchor vocabulary is the contract between the elements that CARRY a
- * `data-tour-target` and the spotlights that QUERY one. Both sides derive from
- * the same union, so these pin that the two derivations agree: a selector must
- * match the attribute the anchor renders, or a step points at nothing.
- */
-
 test("the selector is the attribute selector the DOM renders", () => {
   assert.equal(
     tourSelector("nav-integrations"),
@@ -37,7 +30,6 @@ test("every target name is unique", () => {
 });
 
 test("a composer's send is found inside the anchor that holds it", () => {
-  // `ui/chat`'s PromptInputSubmit renders `data-composer-submit`.
   assert.equal(
     composerSendSelector("taskChat"),
     "[data-tour-target='taskChat'] [data-composer-submit]",

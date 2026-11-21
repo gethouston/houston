@@ -1,8 +1,3 @@
-/**
- * Shown when a drag-move would land on an existing name: offer Replace
- * (delete the occupant, then move) or Keep both (move under a "name (n)"),
- * instead of surfacing the host's 409 as an error toast.
- */
 import {
   Button,
   Dialog,
@@ -15,7 +10,6 @@ import {
 import { useTranslation } from "react-i18next";
 
 interface Props {
-  /** The colliding file/folder name, or null when the dialog is closed. */
   name: string | null;
   onReplace: () => void;
   onKeepBoth: () => void;

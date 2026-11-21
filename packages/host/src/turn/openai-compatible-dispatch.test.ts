@@ -13,16 +13,6 @@ import { TurnQuota } from "./quota";
 import { TurnRelay } from "./relay";
 import { dispatchTurn } from "./start-turn";
 
-/**
- * The cloud per-turn dispatch seam for the BYO openai-compatible provider. The
- * bug: the cloudrun runtime never dispatched to a configured endpoint and
- * silently substituted Codex, and — even resolved — no credential was served so
- * the runtime hard-errored "No provider connected". These tests drive the REAL
- * dispatchTurn (not resolveTurnModel alone) and inspect the POST /turn body the
- * fake runtime captures: the served credential IS the proof of both the
- * dispatched provider (credential.provider) and its auth (credential.access).
- */
-
 const ws: Workspace = {
   id: "w1",
   ownerUserId: "alice",
@@ -41,7 +31,6 @@ const agent: Agent = {
 const ctx = { workspace: ws, agent };
 const prefix = "ws/w1/agent-1";
 
-// Fake turn runtime: records the request body, streams user→text→done.
 let turnBodies: Record<string, unknown>[] = [];
 let fakeRuntime: Server;
 let runtimeUrl = "";
@@ -81,7 +70,6 @@ function makeDeps(): { deps: TurnDeps; objects: MemoryVfs } {
   return { deps, objects };
 }
 
-/** Mark the agent's saved active provider (settings.json the runtime reads). */
 async function setActiveProvider(objects: MemoryVfs, provider: string) {
   await objects.writeText(
     `${prefix}/data/settings.json`,
@@ -89,7 +77,6 @@ async function setActiveProvider(objects: MemoryVfs, provider: string) {
   );
 }
 
-/** Drive one turn and resolve once its terminal frame lands on the relay. */
 async function driveTurn(deps: TurnDeps): Promise<void> {
   const done = new Promise<void>((r) => {
     deps.relay.subscribe("agent-1/c1", (e) => {
@@ -117,11 +104,9 @@ test("active openai-compatible + configured endpoint dispatches with that provid
   const sent = turnBodies[0];
   if (sent === undefined) throw new Error("expected a POST /turn body");
   const cred = sent.credential as Record<string, unknown> | null;
-  // The runtime derives the turn's provider from credential.provider — proving
-  // openai-compatible dispatched, NOT the silent Codex substitution.
   expect(cred).not.toBeNull();
   expect(cred?.provider).toBe("openai-compatible");
-  expect(cred?.access).toBe("sk-user-key"); // the user's key reaches auth.json
+  expect(cred?.access).toBe("sk-user-key");
   expect(cred?.kind).toBe("api_key");
 });
 
@@ -133,7 +118,6 @@ test("active openai-compatible with NO endpoint fails LOUDLY — never a silent 
   await expect(
     dispatchTurn(deps, ws, agent, "c1", "hi", undefined),
   ).rejects.toThrow(/endpoint/i);
-  // No turn was dispatched at all — not to Codex, not to anything.
   expect(turnBodies).toHaveLength(0);
 });
 

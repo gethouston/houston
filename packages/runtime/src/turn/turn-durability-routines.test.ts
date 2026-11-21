@@ -12,22 +12,12 @@ import {
 } from "./turn-views.test-support";
 import { landOp } from "./turn-views-op.test-support";
 
-/**
- * The gateway serves a sleeping agent's Routines tab from the routines doc.
- * Every pooled writer (a turn's save_routine, the user's edit through an op)
- * republishes it, so these pin that no publish ever puts an older copy of the
- * routines over a concurrent writer's newer one.
- */
-
 const prompts = (doc: unknown) =>
   Object.fromEntries(
     (doc as { id: string; prompt: string }[]).map((r) => [r.id, r.prompt]),
   );
 
 test("a turn that publishes late never rolls back a routine the user edited after its save", async () => {
-  // The turn lands its new routine, then stalls before its doc GET. The
-  // user's edit of another routine lands and projects in that window. The
-  // turn's own copy predates the edit and must not be what lands.
   const gate = holdFirstGet("routines", "c1");
   const agent = await agentStore([routine("r1", "Morning brief")]);
   const docs = podDocs(
@@ -60,9 +50,6 @@ test("a turn that publishes late never rolls back a routine the user edited afte
 });
 
 test("an op that projects after a turn keeps the turn's routine", async () => {
-  // The user's edit lands from a tree listed before the turn's save_routine,
-  // then the turn lands and publishes. The op's own copy lacks the turn's
-  // routine, so projecting it would drop that routine from the tab.
   const agent = await agentStore([routine("r1", "Morning brief")]);
   const docs = podDocs({ routines: await storedRoutines(agent) });
   const edit = await landOp(agent, docs, {
@@ -92,8 +79,6 @@ const newRoutine = {
 };
 
 test("a turn's routine save never resurrects a routine the user deleted mid-turn", async () => {
-  // The turn hydrated both routines. The user deletes one; the turn's
-  // save_routine then refreshes the file from the store before its write.
   const agent = await agentStore([
     routine("r1", "Morning brief"),
     routine("r0", "Old digest"),
@@ -134,9 +119,6 @@ test("a turn's routine save never puts its stale copy back over the user's edit"
 });
 
 test("a routine the user deletes stays deleted when a turn lands a routine during the op", async () => {
-  // The op read the file, removed r0, and lost its upload race to the
-  // turn's save_routine. Merging into the store's copy must not bring r0
-  // back, and must keep the turn's routine.
   const agent = await agentStore([
     routine("r1", "Morning brief"),
     routine("r0", "Old digest"),
@@ -159,8 +141,6 @@ test("a routine the user deletes stays deleted when a turn lands a routine durin
 });
 
 test("a user's routine edit never reverts the routine a turn paused during the op", async () => {
-  // The op hydrated r1 and r2, edited r1, and lost its upload race to the
-  // turn pausing r2. The op's untouched copy of r2 must not land.
   const agent = await agentStore([
     routine("r1", "Morning brief"),
     routine("r2", "Inbox sweep"),
@@ -183,9 +163,6 @@ test("a user's routine edit never reverts the routine a turn paused during the o
 });
 
 test("an op projecting a routines file another writer left salvageable never publishes it empty", async () => {
-  // Another writer's raw write left trailing bytes after valid JSON. Every
-  // other reader salvages it; the op's projection must too, not put [] over
-  // the routines.
   const agent = await agentStore([routine("r1", "Morning brief")]);
   const docs = podDocs({ routines: await storedRoutines(agent) });
   const edit = await landOp(agent, docs, {

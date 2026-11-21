@@ -1,11 +1,3 @@
-/**
- * Extracts the latest update_progress tool call from the feed.
- *
- * Agents call update_progress({ steps: [{ title, status }] }) to communicate
- * high-level goals. Each call replaces the previous — the last call in the
- * feed is the authoritative state.
- */
-
 import { useMemo } from "react";
 import type { FeedItem } from "./types";
 

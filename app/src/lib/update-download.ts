@@ -6,12 +6,6 @@ import {
 } from "./update-download-progress";
 import { downloadAttemptBudget, type UpdateOrigin } from "./update-policy";
 
-/**
- * Fetch a release's bytes into the shell's staging buffer with the attempt
- * budget its origin affords, folding the shell's byte events into the one
- * progress figure the surfaces show. Resolves to the staged bytes' resource
- * id; rejects with the shell's typed failure (`update-download-failure.ts`).
- */
 export function downloadReleaseBytes(
   updateRid: number,
   origin: UpdateOrigin,

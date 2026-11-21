@@ -78,7 +78,6 @@ export function httpOfficeConverter(baseUrl: string): OfficeConverter {
       try {
         if (!res.ok) {
           const body: unknown = await res.json();
-          // The service's refusal has no sentence; the host owns the client-facing message.
           const refusal = parseFilePreviewRefusal({
             ...(typeof body === "object" && body !== null ? body : {}),
             error: "Office preview conversion refused",

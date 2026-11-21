@@ -5,7 +5,6 @@ import {
 import type { CoverageViolation } from "./assistant-gate.ts";
 import { handsViolations } from "./assistant-hands-rules.ts";
 
-/** One rule's verdict, before the operation it belongs to is stamped on it. */
 type Finding = Omit<CoverageViolation, "name" | "location">;
 
 function groupViolations(annotation: OperationAnnotation): Finding[] {
@@ -29,10 +28,6 @@ function groupViolations(annotation: OperationAnnotation): Finding[] {
 }
 
 function reachViolations(annotation: OperationAnnotation): Finding[] {
-  // A hidden operation is not automated at all, so how it would have been
-  // routed, typed or confirmed is moot - but ONLY once hiding itself is
-  // justified. Its own reason is the statement; a second one restating it
-  // would be noise the next author copies.
   const found: Finding[] = [];
   if (annotation.hidden && annotation.hiddenReason) return found;
   if (
@@ -46,10 +41,6 @@ function reachViolations(annotation: OperationAnnotation): Finding[] {
       problem: `${annotation.method} changes something and dispatches with no approval card and no authored reason.`,
       fix: "add `@assistant confirm: <what the person loses if it goes wrong>` (the user answers a card first) or `@assistant unconfirmed: <why this one needs no approval>`.",
     });
-  // The other half of the same decision. Every card ends the agent's turn and
-  // asks the person a question, so a `confirm` nobody justified is how the
-  // surface drifts into asking about everything - and a person who is asked
-  // about everything stops reading the cards that matter.
   if (annotation.confirm && !annotation.confirmed?.trim())
     found.push({
       rule: "confirm-unstated",
@@ -81,12 +72,6 @@ function reachViolations(annotation: OperationAnnotation): Finding[] {
   return found;
 }
 
-/**
- * An exception that no longer applies. Judged OUTSIDE reachViolations, so a
- * hidden operation is not exempt: the whole point of a written acknowledgement
- * is that it stops being written the day the thing it excuses is fixed, and a
- * stale one tells the next reader a refactor is still owed when it has landed.
- */
 function staleExceptions(annotation: OperationAnnotation): Finding[] {
   return annotation.routable && annotation.unroutableReason
     ? [
@@ -99,7 +84,6 @@ function staleExceptions(annotation: OperationAnnotation): Finding[] {
     : [];
 }
 
-/** Everything wrong with ONE operation, rule by rule, in report order. */
 export function violationsFor(annotation: OperationAnnotation): Finding[] {
   return [
     ...annotation.unknownTags.map(
@@ -119,10 +103,6 @@ export function violationsFor(annotation: OperationAnnotation): Finding[] {
           },
         ]),
     ...groupViolations(annotation),
-    // Outside reachViolations on purpose: a hidden operation is exempt from how
-    // it would have been routed, but NOT from an undecidable claim on a route -
-    // two hidden twins leave the catalog's entry for that route up to source
-    // order, which is exactly what this rule exists to refuse.
     ...(annotation.routeConflict
       ? [
           {
@@ -142,8 +122,6 @@ export function violationsFor(annotation: OperationAnnotation): Finding[] {
         ]
       : []),
     ...staleExceptions(annotation),
-    // Outside reachViolations too: hiding an operation is exactly what raises
-    // the hands question, so a stated `hidden:` reason must not excuse it.
     ...handsViolations(annotation),
     ...reachViolations(annotation),
   ];

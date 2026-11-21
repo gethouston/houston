@@ -3,14 +3,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-// The machine hook pulls the tauri bridge, analytics and Sentry, none of
-// which load under this suite's runner, so the wiring is asserted against
-// the source: the decision itself is `shouldSkipDownload`, tested in
-// update-policy.test.ts. What this pins is that the hook hands the decision
-// the right trigger: the person's Retry on the launch overlay (which nothing
-// else dismisses) reaches `download` as "user", so a release the disk
-// refused is downloaded again once they have freed space, while the
-// checker's automatic path stays latched.
 const machine = readFileSync(
   join(import.meta.dirname, "../src/hooks/use-update-machine.ts"),
   "utf8",

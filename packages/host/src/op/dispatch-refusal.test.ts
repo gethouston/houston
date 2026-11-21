@@ -6,7 +6,6 @@ import { LocalWorkspaceStore } from "../store/local";
 import { FsVfs, LazyReadRefusedError, type Vfs } from "../vfs";
 import { dispatchAgentOp } from "./dispatch";
 
-/** The real tree, except every read refuses for `reason`. */
 function refusingVfs(root: string, reason: LazyReadRefusedError["reason"]) {
   const inner = new FsVfs(root);
   const refuse = async (key: string): Promise<never> => {

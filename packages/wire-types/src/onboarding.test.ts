@@ -8,8 +8,6 @@ import {
   type OnboardingUpdateWire,
 } from "./onboarding.ts";
 
-// The gateway (cloud repo) accepts and answers these exact values: a change
-// here is a wire change on both sides.
 describe("onboarding wire contract", () => {
   it("pins the two answers outside a catalog and the role refusal", () => {
     expect(ONBOARDING_ANSWER_SKIPPED).toBe("skipped");

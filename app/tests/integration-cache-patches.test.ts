@@ -151,7 +151,6 @@ describe("integration cache patches", () => {
     const qc = new QueryClient();
     qc.setQueryData(queryKeys.customIntegrations(), [custom("acme")]);
     qc.setQueryData(queryKeys.agentCustomIntegrations("ag1"), [custom("acme")]);
-    // Another agent's pod holds its OWN "acme": it must stay listed.
     qc.setQueryData(queryKeys.agentCustomIntegrations("ag2"), [custom("acme")]);
     const rows = [conn("acme", "acme")];
     qc.setQueryData(queryKeys.integrationConnections("custom"), rows);

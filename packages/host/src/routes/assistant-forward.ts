@@ -4,33 +4,12 @@ import { assistantCallHeaders } from "../auth/assistant-call";
 import type { AssistantUpstreamRequest } from "./assistant-dispatch";
 import { json } from "./http";
 
-/**
- * The gateway leg of the assistant dispatcher: one built request out, the
- * gateway's own answer back. Kept apart from the route so the route reads as
- * the decisions it makes (authenticate, configure, resolve) and this reads as
- * the single place a Houston operation actually leaves the pod.
- */
-
-/** Where user-facing operations are performed, and the credential to do it. */
 export interface AssistantGateway {
-  /** Base URL of the gateway, no trailing slash. */
   url: string;
   token: string;
-  /** This host calling itself (desktop, self-host): only then does the
-   *  request carry the in-process manager proof (`auth/assistant-call.ts`). */
   loopback?: true;
 }
 
-/**
- * The address this request actually reaches, or null when parsing it moves it.
- *
- * `new URL(...)` RESOLVES `.` and `..` segments (percent-encoded spellings
- * included) before any request is made, so a path carrying them addresses a
- * DIFFERENT operation than the one it spells — performed here with the gateway
- * credential, and the withheld operations are reachable that way. The built
- * path is refused upstream in `buildPath`; this is the same invariant asserted
- * where the URL is finally made, so no future caller can reintroduce it.
- */
 function upstreamUrl(
   gateway: AssistantGateway,
   request: AssistantUpstreamRequest,
@@ -50,15 +29,6 @@ function upstreamUrl(
   return url.toString();
 }
 
-/**
- * Perform one operation and answer the caller with what the gateway said.
- * `actingAs` is the caller's already-verified acting identity, relayed so the
- * gateway authorizes the real person rather than the pod.
- */
-/**
- * What became of a forwarded call: done, refused by the app (a 4xx: nothing
- * happened), or unknown (lost, unreadable or a 5xx: it may have happened).
- */
 export type ForwardOutcome = "performed" | "refused" | "unknown";
 
 export async function forwardAssistantCall(
@@ -93,15 +63,11 @@ export async function forwardAssistantCall(
           ? { "Content-Type": "application/json" }
           : {}),
         ...(actingAs ? { [ACTING_AS_HEADER]: actingAs } : {}),
-        // The proof never leaves the process: a configured gateway is another
-        // machine, and only this host's own routes may be told it.
         ...(gateway.loopback ? assistantCallHeaders() : {}),
       },
       ...(request.body !== undefined
         ? { body: JSON.stringify(request.body) }
         : {}),
-      // Fetch re-sends custom headers across a redirect, so a followed 3xx
-      // would carry the proof off this host; a 3xx answers as a refusal.
       ...(gateway.loopback ? { redirect: "manual" as const } : {}),
     });
   } catch (err) {
@@ -118,20 +84,14 @@ export async function forwardAssistantCall(
     console.error(
       `[assistant] ${operation} refused by the gateway (${upstream.status}): ${text.slice(0, 300)}`,
     );
-    // A refused redirect (loopback 3xx) has no target the caller could use.
     const status =
       upstream.status >= 300 && upstream.status < 400 ? 502 : upstream.status;
     json(res, status, {
       error: text.slice(0, 300) || `gateway returned ${upstream.status}`,
       code: "gateway_error",
     });
-    // A 4xx is the app refusing the call; a 5xx may come after the work was
-    // done (a timeout in front of it), so it proves nothing.
     return upstream.status < 500 ? "refused" : "unknown";
   }
-  // Relay the gateway's own JSON verbatim (an empty body stays empty — the
-  // caller reads that as "no payload"). A 2xx that is NOT JSON means something
-  // other than the gateway answered, which must not read as success.
   if (text !== "") {
     try {
       JSON.parse(text);

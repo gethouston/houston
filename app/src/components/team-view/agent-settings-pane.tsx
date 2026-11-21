@@ -23,9 +23,7 @@ export function AgentSettingsPane({ agent }: { agent: Agent }) {
     (section: AgentSettingsSection) => setShown({ agentId: agent.id, section }),
     [agent.id, setShown],
   );
-  // Nothing is shown once the pane leaves.
   useEffect(() => () => setShown(null), [setShown]);
-  // The phone's Tasks is the employee's task list, never this screen's board.
   const back = () => {
     if (isMobileViewport()) openPhoneTaskList(agent.id);
     else openAgentView(agent.id, "mission-control");

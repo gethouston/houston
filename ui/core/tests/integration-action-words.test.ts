@@ -2,9 +2,6 @@ import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { actionWordsWithoutToolkit } from "../src/integration-action-words.ts";
 
-// The one reading of an action slug both naming surfaces spend. Anything that
-// changes here changes the workflow chip AND the chat's action rows together,
-// which is the point of it living in one place.
 describe("actionWordsWithoutToolkit", () => {
   it("drops a single-word toolkit prefix", () => {
     deepStrictEqual(actionWordsWithoutToolkit("GMAIL_SEND_EMAIL", "gmail"), [
@@ -14,9 +11,6 @@ describe("actionWordsWithoutToolkit", () => {
   });
 
   it("drops a multi-word toolkit however either side spells it", () => {
-    // The divergence this module was extracted to end: the chat's old
-    // string-prefix match left every word standing for a toolkit spelled
-    // without its separator.
     for (const toolkit of ["googlemaps", "google_maps", "Google Maps"]) {
       deepStrictEqual(
         actionWordsWithoutToolkit("GOOGLE_MAPS_SEARCH", toolkit),

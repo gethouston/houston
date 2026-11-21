@@ -25,11 +25,6 @@ const ORG = {
 };
 const BILLED = { ...ORG, billing: freeOrgBilling() };
 
-/**
- * A spaces SDK over a mock `fetch` that records the whole wire. `reactivity` is
- * off, so every recorded call is one a spaces operation made and nothing else —
- * which is what makes "exactly one request" an exact claim.
- */
 function makeSdk(answer: (path: string) => Response) {
   const calls: Recorded[] = [];
   const fetchImpl = vi.fn(
@@ -156,7 +151,6 @@ describe("the spaces requests", () => {
     expect(calls[1].body).toBe(
       JSON.stringify({ name: "Acme", plan: "paid", interval: "year" }),
     );
-    // A free create starts no checkout, so it never names an interval.
     await sdk.spaces.createOrg({ name: "Acme", interval: "year" });
     expect(calls[2].body).toBe(JSON.stringify({ name: "Acme", plan: "free" }));
   });
@@ -252,8 +246,6 @@ describe("what the module refuses to soften", () => {
     const err = await sdk.spaces.listOrgs().catch((e: unknown) => e);
     expect(err).toBeInstanceOf(SpacesHttpError);
     expect((err as SpacesHttpError).status).toBe(404);
-    // The body travels as the message, which is what the web adapter parses
-    // back into a HoustonEngineError.
     expect((err as SpacesHttpError).message).toBe(
       JSON.stringify({ error: "no orgs here" }),
     );

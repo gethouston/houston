@@ -1,5 +1,3 @@
-// Installs the jsdom globals react-dom needs. Import it BEFORE any dynamic
-// `react-dom/client` import: React reads `window`/`document` at module load.
 import { JSDOM } from "jsdom";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {

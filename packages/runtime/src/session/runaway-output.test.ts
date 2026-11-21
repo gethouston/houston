@@ -5,13 +5,6 @@ import {
   LOOP_WINDOW_CHARS,
 } from "./runaway-output";
 
-/**
- * The loop detector cuts a reply that degenerated into a short repeating unit.
- * The loops below are the four runaway replies from the 2026-10-03 staging
- * load test (RL2, model space-bunny-free), rebuilt from their repeating units;
- * the legit samples are the content shapes most likely to look repetitive.
- */
-
 const repeat = (unit: string, chars: number) =>
   unit.repeat(Math.ceil(chars / unit.length)).slice(0, chars);
 
@@ -27,10 +20,8 @@ const prose = (chars: number) => {
 };
 
 test("the staging runaway loops are loops", () => {
-  // "SymbolSymbol…", "AnchorAnchor…", "LetterLetter…", " 묶 묶…".
   for (const unit of ["Symbol", "Anchor", "Letter", " 묶"])
     expect(isRepetitionLoop(repeat(unit, LOOP_WINDOW_CHARS))).toBe(true);
-  // "@\t@\t…" with NULs scattered through it, which breaks strict periodicity.
   let noisy = "";
   for (let i = 0; noisy.length < LOOP_WINDOW_CHARS; i++)
     noisy += i % 7 === 3 ? "\u0000@\t" : "@\t";
@@ -66,16 +57,12 @@ test("the detector trips once a stream's window fills with a loop", () => {
       break;
     }
   }
-  // The loop starts at 1000 and fills a whole window by 5096; the next
-  // judgement after that is at most 512 characters later.
   expect(trippedAt).toBeGreaterThanOrEqual(1000 + LOOP_WINDOW_CHARS);
   expect(trippedAt).toBeLessThanOrEqual(1000 + LOOP_WINDOW_CHARS + 512);
 });
 
 test("text and thinking are judged apart, and reset forgets both", () => {
   const detector = createRunawayDetector();
-  // Interleaved with prose thinking, the text loop still fills its own window
-  // (one shared buffer would hold half prose and never trip).
   const thinking = prose(6000);
   let tripped = false;
   for (let i = 0; i < 50 && !tripped; i++) {
@@ -85,7 +72,6 @@ test("text and thinking are judged apart, and reset forgets both", () => {
     tripped = detector.feed("text", repeat("Anchor", 120));
   }
   expect(tripped).toBe(true);
-  // After a reset the loop must fill a whole window again.
   detector.reset();
   expect(detector.feed("text", repeat("Anchor", 4000))).toBe(false);
   expect(detector.feed("text", repeat("Anchor", 600))).toBe(true);
@@ -103,7 +89,6 @@ test("a code block is never judged, so requested repetition survives", () => {
   const square = Array.from({ length: 64 }, () => "#".repeat(64)).join("\n");
   const zeros = `[${Array.from({ length: 3000 }, () => "0").join(", ")}]`;
   const reply = `Here is your square:\n\n\`\`\`\n${square}\n\`\`\`\n\nAnd the array:\n\`\`\`json\n${zeros}\n\`\`\`\nDone.`;
-  // Streamed in 7-character deltas, so fences split across them.
   for (let i = 0; i < reply.length; i += 7)
     expect(detector.feed("text", reply.slice(i, i + 7))).toBe(false);
 });
@@ -119,13 +104,11 @@ test("a loop after a closed code block still trips", () => {
 
 test("four backticks are one fence, not two", () => {
   const detector = createRunawayDetector();
-  // "````" opens a block; if it counted twice, the loop inside would be judged.
   detector.feed("text", "``");
   detector.feed("text", "``\n");
   expect(detector.feed("text", repeat("#", 6000))).toBe(false);
 });
 
-/** Whether `reply`, streamed in deltas of `size`, ever trips. */
 function trips(reply: string, size: number): boolean {
   const detector = createRunawayDetector();
   for (let i = 0; i < reply.length; i += size)
@@ -139,11 +122,9 @@ const art = Array.from({ length: 80 }, () => "#".repeat(64)).join("\n");
 
 test("fences are lines of 3+ backticks or tildes, however the deltas split", () => {
   for (const size of [1, 3, 7, 64, 100_000]) {
-    // Longer openers, tildes, an info string: all code blocks.
     expect(trips(`Here:\n${block("``````", art)}Done.`, size)).toBe(false);
     expect(trips(`Here:\n${block("~~~", art, "text")}Done.`, size)).toBe(false);
     expect(trips(`Here:\n${block("```", art, "json")}Done.`, size)).toBe(false);
-    // A shorter run inside a longer block does not close it.
     expect(trips(`Here:\n${block("````", `\`\`\`\n${art}`)}Done.`, size)).toBe(
       false,
     );
@@ -158,7 +139,6 @@ test("a backtick run mid-sentence opens no block, so a loop after it trips", () 
         size,
       ),
     ).toBe(true);
-    // Nor does inline code at the start of a line.
     expect(
       trips(`\`\`\` x \`\`\`\n${prose(200)}${repeat("Symbol", 6000)}`, size),
     ).toBe(true);
@@ -194,23 +174,19 @@ test("a fence ends with its quote or list item, so a loop after it trips", () =>
 });
 
 test("only a line in the opener's own container closes it", () => {
-  // Quoted or indented backticks inside a top-level block are its content.
   const loop = repeat("Symbol", 6000);
   expect(trips(`\`\`\`text\n> \`\`\`\n${loop}\n\`\`\`\n`, 7)).toBe(false);
   expect(trips(`\`\`\`text\n    \`\`\`\n${loop}\n\`\`\`\n`, 7)).toBe(false);
-  // Trailing spaces do not stop a closer, however many.
   expect(
     trips(`\`\`\`text\nsample\n\`\`\`${" ".repeat(510)}\n${loop}`, 7),
   ).toBe(true);
 });
 
 test("a line that only looks like a fence opener is judged as text", () => {
-  // Inline code longer than any fence line, then a loop.
   const inline = `\`\`\`${"x".repeat(253)}\`\`\`\n`;
   expect(trips(`${inline}${prose(200)}${repeat("Symbol", 10_000)}`, 7)).toBe(
     true,
   );
-  // A line that never ends is never a fence, even one that starts like it.
   expect(trips(`\n\n\`\`\`${repeat("Symbol", 10_000)}`, 7)).toBe(true);
 });
 

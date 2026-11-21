@@ -6,14 +6,6 @@ const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 const has = (rel: string) => existsSync(new URL(rel, import.meta.url));
 
-/**
- * The unfinished-creation-chat policy is the SDK's (`@houston/sdk/skill-drafts`,
- * covered by its own vitest): every surface — desktop, iOS, the AI Manager —
- * answers "resume or start fresh", "which rows", "what discarding means" the
- * same way. These pins guard the one thing a unit test of the rules cannot:
- * that this surface CALLS them instead of keeping its own copy.
- */
-
 const draftsHook = read(
   "../src/components/skills-view/use-unfinished-skill-drafts.ts",
 );

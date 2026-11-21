@@ -18,24 +18,8 @@ import { ProviderList } from "./provider-list";
 import { DEFAULT_MODEL_PICKER_LABELS, type ModelPickerProps } from "./types";
 import { useModelPicker } from "./use-model-picker";
 
-/** Show screen 2's in-dropdown search once the provider's model count clears
- *  this, matching `FilterCombobox`'s heuristic. */
 const SEARCH_THRESHOLD = 8;
 
-/**
- * Two-level model picker in the app's shared dropdown idiom (the same Popover +
- * cmdk `Command` chrome as `FilterCombobox`). Level 1 lists the connected
- * providers; clicking one drills into its models (level 2), reached back via the
- * always-visible back header. On level 2 an in-dropdown search appears once the
- * provider's list runs long (> 8 rows) and filters it via cmdk's built-in
- * scorer; short lists omit it. Disconnected providers never appear — the paths
- * to them are the "Connect another AI…" footer and, when NOTHING is
- * connected, level 1's explained empty state (which carries the same action).
- *
- * cmdk provides the accessible input, list semantics, and ↑↓/Enter roving; this
- * component owns which rows show. All data comes in as props and all actions go
- * out as callbacks — no store, no i18n.
- */
 export function ModelPicker({
   models,
   providers,
@@ -69,7 +53,6 @@ export function ModelPicker({
   );
 
   const view = nav.view;
-  // The empty state carries its own action, so the footer is suppressed there.
   const showEmptyState =
     view.level === "providers" && providerListEmpty(providers, catalogState);
   const providerModels = useMemo(
@@ -86,22 +69,13 @@ export function ModelPicker({
       : undefined;
   const showBack = activeProvider !== undefined;
 
-  // Search only on screen 2, once the provider's list runs long — screen 1's
-  // connected-provider list stays a short plain menu (FilterCombobox heuristic).
   const withSearch =
     view.level === "models" && providerModels.length > SEARCH_THRESHOLD;
   const ariaLabel =
     view.level === "models" ? labels.modelsLabel : labels.providersLabel;
 
-  // Remount the Command per screen so cmdk's internal search/highlight state
-  // never leaks across levels (a stale query would otherwise keep filtering
-  // after the input unmounts on back-navigation).
   const commandKey = view.level === "models" ? view.providerId : "providers";
 
-  // cmdk's ↑↓/Enter handler lives on the Command root, so focus must sit inside
-  // it: the search input when the screen shows one, else the root itself. Runs
-  // per screen (the keyed Command remounts); the host popover must not
-  // auto-focus over this (`onOpenAutoFocus` prevented by the consumer).
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: commandKey/withSearch key the remount + input mount this re-focuses after.
@@ -114,13 +88,7 @@ export function ModelPicker({
       key={commandKey}
       ref={rootRef}
       onKeyDown={handleKeyDown}
-      className={cn(
-        // `h-auto` overrides the wrapper's `h-full` so the picker sizes to its
-        // content (the list caps itself at max-h and scrolls). The popover
-        // supplies the border/shadow/radius, matching `FilterCombobox`.
-        "h-auto w-full flex-col outline-none",
-        className,
-      )}
+      className={cn("h-auto w-full flex-col outline-none", className)}
     >
       {showBack && activeProvider && (
         <button
@@ -167,11 +135,6 @@ export function ModelPicker({
           <ConnectMore label={labels.connectMore} onSelect={onConnectMore} />
         )}
 
-        {/* Informative footer (e.g. a workspace-policy note). A plain div, not a
-            cmdk `CommandItem`, so it is never focusable/selectable and — since
-            cmdk only filters registered items — survives the search filter
-            untouched. Pinned last inside the scrollable list, matching the
-            `ConnectMore` footer look but non-interactive. */}
         {footer && (
           <div className="mt-1 border-t border-line/60 px-2 py-1.5 text-xs text-ink-muted">
             {footer}

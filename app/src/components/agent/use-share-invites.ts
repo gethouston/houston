@@ -11,12 +11,6 @@ import {
   sendableInvites,
 } from "../../lib/share-via-team";
 
-/**
- * The invite step of the share pipeline: add emails to the roster and send
- * each one, so a partial failure retries only its own rows. `addOrgMember`
- * targets the ACTIVE space, so nothing is sent before the move and the switch
- * completed (`assertInviteReady`).
- */
 export function useShareInvites(
   open: boolean,
   state: ShareViaTeamState,
@@ -46,15 +40,11 @@ export function useShareInvites(
         invites: markInviteSending(s.invites, invite.email),
       }));
       try {
-        // `already_member` is expected: the badge renders it inline as the
-        // sole surface, so `call()` must not also show its bug toast.
         const outcome = await addMember.mutateAsync({
           email: invite.email,
           role: "user",
           options: { silence: isExpectedShareError },
         });
-        // A seat this flow cannot pay for (it shows no price) fails the row;
-        // the People tab is where a seat is bought.
         patch((s) => ({
           ...s,
           invites:

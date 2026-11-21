@@ -18,7 +18,6 @@ const PRIME = [
   "workspaces/Personal/prime/CLAUDE.md",
   "workspaces/Personal/prime/.houston/activity/activity.json",
 ];
-// What a standing pod wrote at `workspaces/ws/Personal/` on staging.
 const STRAY = [
   "workspaces/ws/Personal/preferences.json",
   "workspaces/ws/Personal/.houston/runtime/models-store.json",
@@ -137,9 +136,6 @@ test("a setup failure posts a terminal error frame to the turnlog first", async 
 
 test("a claimed turn over a flat-layout agent fails setup before any provider work", async () => {
   const runTurn = vi.fn<TurnRunner>();
-  // A pre-v0.4 agent: its board is still the flat file the boot migration
-  // copies only into a MISSING family file. A turn that wrote the board
-  // first would hide the old cards from that migration for good.
   const { frames } = await claimedTurn(
     [
       "workspaces/Personal/prime/CLAUDE.md",
@@ -161,9 +157,6 @@ test("a claimed turn over a flat-layout agent fails setup before any provider wo
 test("a pooled routine run over a flat-layout agent writes no running row", async () => {
   const runTurn = vi.fn<TurnRunner>();
   const routines = "workspaces/Personal/prime/.houston/routines/routines.json";
-  // The routines folder is migrated, the run history is still the flat
-  // file: a running row written first would create the family file the
-  // migration copies the flat history into, hiding it for good.
   const { frames, storeRoot, fetched } = await claimedTurn(
     [
       "workspaces/Personal/prime/CLAUDE.md",

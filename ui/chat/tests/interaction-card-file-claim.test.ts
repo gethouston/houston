@@ -1,7 +1,3 @@
-// PRODUCT-2132 review round 2: the step that files alone answered holds them
-// only while that answer stands and the same files are still attached, and
-// the panel releases exactly the files a send carried.
-
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
@@ -27,7 +23,6 @@ import {
 } from "./support/card-attachments-harness.ts";
 
 const { act, createElement: h } = await import("react");
-// The composer reads its form through FormData, which must be jsdom's.
 (globalThis as { FormData: unknown }).FormData = win.FormData;
 
 type StepperState = NonNullable<CardProps["state"]>;

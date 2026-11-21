@@ -1,12 +1,3 @@
-/**
- * Dictation state machine hook: mic capture + transcription, exposed as a
- * `DictationControl` the composer hands straight to `ChatPanel`
- * (`@houston-ai/chat`). Model-download consent is a sibling concern, split
- * out to `use-dictation-model-setup.ts`.
- *
- * The capture/transcribe phases are the pure `dictationReducer`
- * (`dictation-reducer.ts`); this hook drives it and layers on the I/O.
- */
 import type { DictationControl, DictationLabels } from "@houston-ai/chat";
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -29,16 +20,11 @@ import {
 
 export type { DictationModelSetup };
 
-/** Shared empty history so the getLevels accessor never allocates when idle. */
 const EMPTY_LEVELS: readonly number[] = Object.freeze([]);
 
 export interface UseDictationArgs {
-  /** Called with the recognized text once a transcription succeeds and is
-   *  non-empty. Never called for a discarded (cancelled) capture. */
   onTranscript: (text: string) => void;
   langHint: DictationLangHint;
-  /** False on web (no native mic capture) — `dictation` stays undefined so
-   *  ChatPanel hides the mic entirely. */
   enabled: boolean;
 }
 
@@ -69,10 +55,6 @@ export function useDictation({
     langHintRef.current = langHint;
   }, [langHint]);
 
-  // Forward reference so `runStop`/`beginCapture` and the model-setup hook's
-  // `onReady` callback can name each other despite the declaration order
-  // (the setup hook must exist before `runStop`, but its `onReady` is
-  // `beginCapture`, which is declared after `runStop`).
   const beginCaptureRef = useRef<() => void>(() => {});
   const {
     modelSetup,
@@ -100,19 +82,11 @@ export function useDictation({
         if (errorText(err) === "model-not-ready") {
           void reopen();
         } else if (errorText(err) === DICTATION_UNSUPPORTED_CPU) {
-          // Expected machine limit (the CPU can't run the sidecar — normally
-          // caught by ensureReady, this covers a model downloaded before the
-          // gate existed): explain, no bug report.
           showExpectedStateToast(
             t("composer.dictation.unsupportedTitle"),
             t("composer.dictation.unsupportedBody"),
           );
         } else {
-          // Report-only path first, then authored copy: the user spoke and
-          // pressed stop, so a silent drop reads as "it sent nothing"
-          // (PRODUCT-1448) — retrying is a real action they can take. A
-          // sidecar crash rides with whisper's stderr tail (PRODUCT-1731):
-          // the exit code alone (0xc0000409) names nothing.
           showErrorToast("dictation_transcribe", errorText(err), err, {
             extra: dictationErrorExtra(err),
           });
@@ -164,15 +138,11 @@ export function useDictation({
     dispatch({ type: "cancel" });
   }, []);
 
-  // Stable poll accessor for the composer's rAF-driven waveform. Reads the live
-  // recorder each call (returns [] before capture / after stop), so the control
-  // object can be rebuilt each render without churning this reference.
   const getLevels = useCallback(
     (): readonly number[] => recordingRef.current?.getLevels() ?? EMPTY_LEVELS,
     [],
   );
 
-  // Disabled mid-flow, or unmounting: never leak a live mic stream/context.
   useEffect(() => {
     if (!enabled) {
       recordingRef.current?.cancel();

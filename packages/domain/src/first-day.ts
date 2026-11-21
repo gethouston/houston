@@ -3,11 +3,6 @@ import { CONFIG_SEED_KEY } from "./first-day-config";
 import { toCanonicalProviderId } from "./provider-dialect";
 import { jsonDoc } from "./store";
 
-/**
- * How a new agent is born with its config: the create's seed map carries it
- * as the config document (`first-day-config.ts` holds the rules that keep it).
- */
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -21,13 +16,6 @@ function parsedObject(raw: string | undefined): Record<string, unknown> {
   }
 }
 
-/**
- * The create-time seed map with the agent's initial config folded into its
- * config document, so the config lands in the SAME request that creates the
- * agent: the host writes seeds before it answers, and the hosted gateway
- * seeds the new pod with them before the pod serves anything. A template that
- * seeds its own config keeps every field the initial config does not name.
- */
 export function withInitialConfigSeed(
   seeds: Record<string, string> | undefined,
   config: AgentInitialConfig | undefined,

@@ -23,26 +23,6 @@ import { useIntakeQuestions } from "./use-intake-questions";
 
 const noRender = () => null;
 
-/**
- * The scripted intake that opens the moment the user starts a new scheduled
- * task, floating ABOVE the always-mounted chat composer (the caller keeps the
- * composer mounted; typing in it is the escape hatch). It runs a phased sequence
- * of cards that look exactly like the agent's real ask_user cards — the SAME
- * {@link ChatInteractionCard}/InteractionModal shell — but locally driven with
- * zero model calls:
- *
- *   fork ("How do you want to start?")
- *     ├─ "From scratch" → wake question → the matching step: a text schedule
- *     │    question (idea options + a free-text row), or the app-pick / webhook
- *     │    re-hosted detail cards
- *     └─ "Start from a template" → the template picker
- *
- * Skipping the fork, wake, or schedule question completes with `{ intent: null,
- * wake: null, scheduleHint: null }` (the AI interviews from scratch); the modal X
- * calls `onDismiss` (back to the list, nothing created). Completing hands the
- * collected result to `onComplete`, after which the real model-backed chat takes
- * over the same view.
- */
 export function AutomationIntake({
   agent,
   accountTimezone,
@@ -73,15 +53,12 @@ export function AutomationIntake({
       if (dest === "aiLed") aiLed();
       else setPhase(dest);
     } else if (phase === "schedule") {
-      // The picked-option label or typed cadence IS the hint; skipping goes AI-led.
       const hint = answers[0]?.answer.trim();
       if (hint) onComplete({ intent: null, wake: null, scheduleHint: hint });
       else aiLed();
     }
   };
 
-  // Short fallback title for a re-hosted detail step (the card owns the real
-  // modal title; this only fills the custom step's `title` slot).
   const detailTitle =
     phase === "trigger"
       ? t("triggerStep.title")
@@ -110,8 +87,6 @@ export function AutomationIntake({
           id: phase,
           question: questionTitle,
           options: questionOptions,
-          // The schedule step keeps the free-text row (typing a cadence is the
-          // point); fork and wake are option-only.
           hideFreeText: phase !== "schedule",
         },
       ]

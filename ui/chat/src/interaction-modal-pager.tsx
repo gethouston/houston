@@ -2,10 +2,6 @@ import { Button } from "@houston-ai/core";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { InteractionModalPager } from "./interaction-modal";
 
-/**
- * The compact `‹ N of M ›` step navigator in an interaction header.
- * It is shell chrome: Back/Forward are the only cross-kind step navigation.
- */
 export function InteractionPager({
   pager,
   disabled,

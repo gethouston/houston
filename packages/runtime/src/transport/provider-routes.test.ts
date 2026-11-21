@@ -25,7 +25,6 @@ function mockRes(): {
   return { res, out };
 }
 
-/** A POST req whose async iteration yields one JSON body chunk (readJson's shape). */
 function mockPostReq(body: unknown): IncomingMessage {
   return {
     headers: {},
@@ -57,24 +56,18 @@ test("POST /settings/claim claims a fresh agent but never moves a saved provider
       return out;
     };
 
-    // Fresh agent: nothing saved, nothing connected → the first connect claims,
-    // so the first chat runs without a manual model pick (#483).
     let out = await claim("google");
     expect(out.status).toBe(200);
     expect((out.body as { activeProvider?: string }).activeProvider).toBe(
       "google",
     );
 
-    // A later connect must NOT move the saved pick — pasting an OpenCode key
-    // while the agent chats on another provider used to flip every open chat
-    // onto OpenCode (and its quota errors). The claim is a no-op.
     out = await claim("opencode");
     expect(out.status).toBe(200);
     expect((out.body as { activeProvider?: string }).activeProvider).toBe(
       "google",
     );
 
-    // Junk provider ids fail loudly, exactly like PUT /settings.
     out = await claim("gemini-cli");
     expect(out.status).toBe(400);
     expect((out.body as { error?: string }).error).toMatch(/unknown provider/);
@@ -90,9 +83,6 @@ test("GET /providers/usage answers one row per connected provider", async () => 
   const prevFetch = globalThis.fetch;
   const dataDir = mkdtempSync(join(tmpdir(), "houston-usage-route-"));
   process.env.HOUSTON_DATA_DIR = dataDir;
-  // Pin HOUSTON_HOME to the same empty dir so the anthropic shared-login-dir
-  // probe can't read a real credential off the developer machine — the batch
-  // must stay empty and offline.
   process.env.HOUSTON_HOME = dataDir;
   globalThis.fetch = (async () => {
     throw new Error("network must not be touched with nothing connected");
@@ -100,9 +90,6 @@ test("GET /providers/usage answers one row per connected provider", async () => 
 
   try {
     vi.resetModules();
-    // Nothing is connected in this fresh dataDir, so the route answers an
-    // empty batch — the contract under test is routing + shape, not fetchers
-    // (those have their own suite in ../ai/usage/usage.test.ts).
     const { handleProviderRoute } = await import("./provider-routes");
     const { res, out } = mockRes();
 
@@ -136,8 +123,6 @@ test("GET /providers hydrates served credentials before listing providers", asyn
   process.env.HOUSTON_DATA_DIR = dataDir;
   process.env.HOUSTON_CONTROL_PLANE_URL = "http://control-plane.test";
   process.env.HOUSTON_SANDBOX_TOKEN = "sbx-token";
-  // A served access token is short-TTL but FRESH — `configured` only counts a
-  // usable credential, so the fixture's expiry must sit in the future.
   const servedExpires = Date.now() + 3_600_000;
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
@@ -201,11 +186,6 @@ test("GET /providers hydrates served credentials before listing providers", asyn
 });
 
 test("POST /auth/azure-openai-responses/api-key requires the endpoint and persists both (PRODUCT-1477)", async () => {
-  // Azure is the one catalog provider whose base URL is per-user: the connect
-  // body carries `endpoint` alongside `key`. Verification is mocked — this
-  // test pins the ROUTE contract: endpoint validated as a cheap 400 before
-  // any probe, the probe aimed at the PASTED endpoint, and nothing persisted
-  // until the probe passes.
   const prevDataDir = process.env.HOUSTON_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), "houston-azure-route-"));
   process.env.HOUSTON_DATA_DIR = dataDir;
@@ -237,8 +217,6 @@ test("POST /auth/azure-openai-responses/api-key requires the endpoint and persis
       return out;
     };
 
-    // No endpoint / a non-https endpoint: a clean 400 BEFORE any live probe,
-    // and nothing stored.
     let out = await connect({ key: "azure-key" });
     expect(out.status).toBe(400);
     out = await connect({
@@ -250,7 +228,6 @@ test("POST /auth/azure-openai-responses/api-key requires the endpoint and persis
     expect(authStorage.get("azure-openai-responses")).toBeUndefined();
     expect(azureBaseUrl()).toBe("");
 
-    // The good case: probe aimed at the pasted endpoint, then both persisted.
     out = await connect({
       key: "azure-key",
       endpoint: "https://acme.openai.azure.com/",
@@ -267,7 +244,6 @@ test("POST /auth/azure-openai-responses/api-key requires the endpoint and persis
     });
     expect(azureBaseUrl()).toBe("https://acme.openai.azure.com");
 
-    // Non-azure providers keep the endpoint-less contract untouched.
     const { res, out: orOut } = mockRes();
     await handleProviderRoute({
       method: "POST",
@@ -323,8 +299,6 @@ test("POST /auth/azure-openai-responses/api-key persists NOTHING when the probe 
       }),
       res,
     });
-    // The typed reason survives to the dialog; neither the key NOR the
-    // endpoint is left behind (a failed connect has no residue).
     expect(out.status).toBe(401);
     expect((out.body as { reason?: string }).reason).toBe("invalid_key");
     expect(authStorage.get("azure-openai-responses")).toBeUndefined();
@@ -337,10 +311,6 @@ test("POST /auth/azure-openai-responses/api-key persists NOTHING when the probe 
 });
 
 test("DELETE /auth/:provider/api-key rolls back only the exact just-connected key (PRODUCT-1321)", async () => {
-  // The host calls this when its central store rejected a key the POST had
-  // already verified + persisted: the runtime entry must go (a failed connect
-  // leaves no local residue), but ONLY when it still holds that exact key —
-  // a concurrent connect's newer key survives.
   const prevDataDir = process.env.HOUSTON_DATA_DIR;
   const dataDir = mkdtempSync(join(tmpdir(), "houston-rollback-route-"));
   process.env.HOUSTON_DATA_DIR = dataDir;
@@ -366,7 +336,6 @@ test("DELETE /auth/:provider/api-key rolls back only the exact just-connected ke
       return out;
     };
 
-    // A different key (a concurrent connect already replaced ours): untouched.
     let out = await del({ key: "sk-or-OTHER" });
     expect(out.status).toBe(200);
     expect(out.body).toEqual({ ok: true, removed: false });
@@ -375,18 +344,15 @@ test("DELETE /auth/:provider/api-key rolls back only the exact just-connected ke
       key: "sk-or-KEEP",
     });
 
-    // A keyless rollback is a clear 400, never a blind delete.
     out = await del({});
     expect(out.status).toBe(400);
 
-    // The exact key: removed from auth.json AND the in-memory store.
     out = await del({ key: "sk-or-KEEP" });
     expect(out.status).toBe(200);
     expect(out.body).toEqual({ ok: true, removed: true });
     expect(readAuthFile(join(dataDir, "auth.json")).openrouter).toBeUndefined();
     expect(authStorage.get("openrouter")).toBeUndefined();
 
-    // Idempotent: a second rollback of the same key is a clean no-op.
     out = await del({ key: "sk-or-KEEP" });
     expect(out.body).toEqual({ ok: true, removed: false });
   } finally {

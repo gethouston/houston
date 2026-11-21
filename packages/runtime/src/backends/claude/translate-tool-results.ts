@@ -32,8 +32,6 @@ export function translateToolResults(
       out.push(unverifiedToolStart(waiting));
     }
     const preview = toolResultText(block.content);
-    // The SDK's structured result is message-wide; do not attach it to an
-    // arbitrary tool when a message contains more than one result block.
     const mission =
       !block.is_error &&
       (name === "start_mission" || name.endsWith("__start_mission"))

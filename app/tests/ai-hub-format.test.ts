@@ -50,7 +50,6 @@ describe("formatPrice", () => {
   it("keeps sub-cent prices legible (the old formatCost collapsed these to $0.00)", () => {
     strictEqual(formatPrice(0.002), "$0.002");
     strictEqual(formatPrice(0.014), "$0.014");
-    // A whole-dollar price the old formatCost padded to "$3.00".
     strictEqual(formatPrice(3), "$3");
   });
 

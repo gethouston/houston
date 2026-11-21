@@ -19,102 +19,25 @@ import type { LocalUploadSessions } from "../uploads/local";
 import type { Vfs } from "../vfs";
 import { json } from "./http";
 
-/**
- * Shared plumbing for the per-agent route families (routes/agents.ts,
- * routes/routine-runs.ts): the dependency bag, the one-place ownership check,
- * and the workspace→channel lookup.
- */
-
 export interface AgentRouteDeps {
   pushReports?: PushReporter;
   store: WorkspaceStore;
-  /** RuntimeChannel per workspace hosting model; a missing entry answers 503. */
   channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
-  /** Workspace file store backing the typed .houston families; absent → those routes 503. */
   vfs?: Vfs;
   uploadSessions?: LocalUploadSessions;
   officePreview?: OfficePreview;
-  /** Where agent files live in the vfs (cloud prefixes vs local tree). Default: cloud. */
   paths?: WorkspacePaths;
-  /** Global reactivity fan-out; absent → mutations succeed but emit nothing. */
   events?: EventHub;
-  /** Deployment capabilities; gates local-only routes (OpenAI-compatible connect). */
   capabilities?: Capabilities;
-  /** Managed gateway store for the active organization's shared local endpoint. */
   sharedEndpoints?: SharedEndpointStore;
-  /**
-   * The agent's absolute on-disk directory, when this deployment is co-located
-   * with the files (local profile). Serialized as `dir` on agent payloads so
-   * the desktop shell can reveal/open the folder in the OS file manager — the
-   * agent id is a route key, not a path (HOU-677). Cloud deployments omit it.
-   */
   agentDir?: (ws: Workspace, agent: Agent) => string;
-  /**
-   * True only when a trusted gateway fronts EVERY request (the managed cloud
-   * pod) — mirrors ControlPlaneDeps.gatewayFronted. Routine writes then take
-   * their recorded identity from the gateway-minted acting-as header instead
-   * of this host's single local user id.
-   */
   gatewayFronted?: boolean;
-  /**
-   * The org owner's canonical user id (mirrors ControlPlaneDeps.ownerSub):
-   * the routine-write fallback creator on a gateway-fronted host whose request
-   * carries no decodable acting-as header, so no routine is born authorless
-   * (an authorless routine is not fireable by the control-plane planner).
-   */
   ownerSub?: string;
-  /**
-   * True when this deployment's egress can reach loopback/private addresses
-   * even though it is gateway-fronted. Only the DEV LAUNCHER sets it: its
-   * "pods" are processes on the developer's machine, so the managed-cloud
-   * public-HTTPS-:443 endpoint validation would enforce a NetworkPolicy that
-   * does not exist there — and block connecting a local model in `pnpm dev`
-   * entirely. Real managed pods never set this; the validation models their
-   * actual egress.
-   */
   loopbackEgress?: boolean;
-  /**
-   * Push the pod's tree to object storage now (managed pods only). A write
-   * the gateway reads back immediately — the local-model endpoint file its
-   * bridge binding check validates against — must not wait for the periodic
-   * sync pass (PRODUCT-1807). Absent where nothing syncs (desktop/self-host).
-   */
   storeSyncFlush?: () => Promise<void>;
-  /**
-   * How many /agents/* requests this server currently holds open, the asking
-   * /activity probe included (server.ts counts them; the reader subtracts
-   * itself). Long-lived per-agent SSE streams — a turn reply, a conversation
-   * events subscription — stay counted for their whole life, which is the
-   * point: an open stream means someone is watching, and the gateway's idle
-   * sweep must not sleep the pod under them. Deliberately scoped to /agents/*:
-   * the top-level /v1/events is held by the gateway's reactivity fan-in for
-   * EVERY awake pod whenever the app is open anywhere, and counting it would
-   * defeat idle-sleep wholesale.
-   */
   agentRequestCount?: () => number;
-  /**
-   * The writes among those held requests (any method but GET, HEAD and
-   * OPTIONS). The cloud waker can sleep a pod on turns and writes alone, so
-   * an open chat stream does not pin it; a write in flight still must.
-   */
   agentWriteCount?: () => number;
-  /**
-   * Custom-integration manager (mirrors ControlPlaneDeps.customIntegrations) —
-   * the dispatch-surface user routes (`/agents/:id/integrations/custom/*`)
-   * serve off it (HOU-823: the hosted gateway proxies only this per-agent
-   * form). Absent → those requests fall through toward the runtime channel.
-   */
   customIntegrations?: CustomIntegrationManager;
-  /**
-   * Whether this deployment can fire event-driven routines: a trigger backend
-   * (a Composio project key + a public webhook URL) exists, so a routine's
-   * `trigger` binding can actually wake. True on Houston Cloud only; false on
-   * desktop and self-host (absent = false). Gates the routine write path
-   * (reject a trigger binding where it could never fire) and the trigger-status
-   * route (report those routines as a hard error instead of fabricating health).
-   * Distinct from the CLIENT-facing `capabilities.triggers`, which the managed
-   * gateway advertises at its edge and this host never sets on itself.
-   */
   triggersEnabled?: boolean;
 }
 
@@ -124,7 +47,6 @@ export type AgentAuthz =
   | { ok: true; agent: Agent; workspace: Workspace }
   | { ok: false; status: number; reason: string };
 
-/** Load an agent + its workspace and run the ownership check in one place. */
 export async function authorizeAgent(
   deps: AgentRouteDeps,
   userId: UserId,
@@ -143,11 +65,10 @@ export async function authorizeAgent(
     };
   }
   if (!agent || !workspace)
-    return { ok: false, status: 404, reason: "agent not found" }; // narrows the type
+    return { ok: false, status: 404, reason: "agent not found" };
   return { ok: true, agent, workspace };
 }
 
-/** The workspace's channel, or null (route answers 503 — hosting model not wired). */
 export function channelFor(
   deps: AgentRouteDeps,
   workspace: Workspace,
@@ -158,18 +79,6 @@ export function channelFor(
 export const noChannel = (res: ServerResponse, runtime: WorkspaceRuntime) =>
   json(res, 503, { error: `${runtime} runtime not configured` });
 
-/**
- * The acting identity a per-agent route may act on (C2/C5) — the ONE gate the
- * credential routes and the run-now route share, so no route can reopen the
- * hole by reading the header itself. The gateway is the trust boundary: it
- * mints `x-houston-acting-as`, and no pod can verify the signature. Off the
- * gateway (desktop / self-host) clients reach this host directly, so an
- * inbound header is untrusted client input — honoring it would let any client
- * file the user's credential into a per-user scope (`auth-users/<hash>.json`)
- * instead of the workspace's shared `auth.json`, leaving every agent reading
- * as disconnected. Same stance as the routine actor (auth/acting.ts) and as
- * ProxyChannel's relay (channel/proxy.ts).
- */
 export function trustedActingAs(
   deps: AgentRouteDeps,
   req: IncomingMessage,

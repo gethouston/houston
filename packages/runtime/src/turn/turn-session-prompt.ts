@@ -14,15 +14,8 @@ import { collectTurnFrames, type TurnFrames } from "./turn-session-frames";
 import type { TurnSessionRequest } from "./turn-session-types";
 import { guardTurnStall } from "./turn-stall-guard";
 
-/**
- * Run the turn's prompt to its end: frames collected and forwarded, the
- * user's cancel wired to the session, and the stall watchdog armed for the
- * model round-trip (turn-stall-guard.ts). A turn the watchdog cut settles on
- * the typed card for its trip in `frames.providerError`.
- */
 export async function promptTurnSession(input: {
   session: HarnessSession;
-  /** The harness backend's id, naming the report's backend. */
   backendId: string;
   turn: TurnSessionRequest;
   prompt: string;
@@ -34,8 +27,6 @@ export async function promptTurnSession(input: {
   emit: (frame: WireFrame) => void;
 }): Promise<void> {
   const { session, turn, frames, emit } = input;
-  // A cancel that landed while the session was opening (or compacting) would
-  // never fire the listener below: the prompt must not start at all.
   turn.signal?.throwIfAborted();
   const stall = guardTurnStall({
     session,
@@ -59,8 +50,6 @@ export async function promptTurnSession(input: {
   const onAbort = () => void session.abort();
   turn.signal?.addEventListener("abort", onAbort, { once: true });
   try {
-    // The used-token capture spans the prompt so the streamed error path
-    // (pi/wire.ts) reads THIS turn's seeded token when it reports.
     if (turn.timings) turn.timings.t_prompt_start = performance.now();
     stall.arm();
     await runWithInteractionCapture(input.interaction, () =>
@@ -68,13 +57,10 @@ export async function promptTurnSession(input: {
         session.prompt(input.prompt),
       ),
     ).catch((error: unknown) => {
-      // A prompt that throws after the watchdog cut it is that abort's
-      // echo: the turn settles on the stall card below instead.
       if (!stall.stalled()) throw error;
     });
     frames.stopReason = turn.stopReason?.();
     stall.disarm();
-    // Inside the try so the call report still collects the pass's request.
     await recoverFollowUpActions({
       session,
       interaction: input.interaction,
@@ -96,8 +82,6 @@ export async function promptTurnSession(input: {
     unsubscribe();
     modelCalls.stop();
   }
-  // A user's cancel wins over the watchdog: the claim's release is that
-  // turn's terminal surface, and a stall card on top would double-settle it.
   if (stall.stalled() && !frames.providerError && !turn.signal?.aborted) {
     frames.providerError = stall.failure(turn.provider);
     emit({ type: "provider_error", data: frames.providerError });

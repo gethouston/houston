@@ -3,32 +3,8 @@ import { readFileSync } from "node:fs";
 import { afterEach, describe, it } from "node:test";
 import { systemPrefersDarkAfterRelease } from "../src/lib/theme-boot.ts";
 
-/**
- * `system` follows the OS only while the NATIVE WINDOW does.
- *
- * WKWebView derives `prefers-color-scheme` from the Tauri window's appearance,
- * so a window pinned to light or dark makes `matchMedia` answer that pinned mode
- * and stops the OS change event arriving: `system` then wears whichever mode was
- * picked last instead of following macOS. Two halves prevent it, one test group
- * each:
- *
- *  - the OS appearance is read only AFTER the window has been handed back
- *    (`systemPrefersDarkAfterRelease`, exercised against a fake webview);
- *  - the apply path passes `null` to release it, reaches the window through the
- *    serialized slot alone (`theme-native.test.ts` drives that slot's ordering),
- *    and reports either native call failing. That module reaches
- *    `@tauri-apps/api/window` and the Sentry / PostHog reporters, which only the
- *    bundler resolves, so it is asserted on source text, the same reason
- *    `os-bridge-barrel.test.ts` reads source.
- */
-
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
-/**
- * A `matchMedia` standing in for the webview: it answers whatever the native
- * window is pinned to, and tells the truth about the OS only once released. Every
- * answer is recorded, so a read taken before the release is visible to the test.
- */
 class FakeWebview {
   readonly reads: boolean[] = [];
   private released = false;
@@ -43,7 +19,6 @@ class FakeWebview {
       return { matches } as MediaQueryList;
     }) as typeof globalThis.matchMedia;
   }
-  /** The native release: a round trip, so the window follows the OS a tick later. */
   release = async (): Promise<void> => {
     await Promise.resolve();
     this.released = true;
@@ -98,16 +73,6 @@ describe("resolving the system appearance", () => {
   });
 });
 
-/**
- * The surface half of the preference: who paints, and who waits for the read.
- *
- * `theme.ts` reaches the engine adapter and the reporters, which only the bundler
- * resolves, so this asserts on its source with comments stripped (the same reason
- * `os-bridge-barrel.test.ts` reads source). What it pins is a pair of rules the
- * Appearance row depends on and neither the compiler nor a render test can see:
- * the write path never paints, and the boot read's answer is available to a row
- * that mounted while it was still in flight.
- */
 describe("the surface half of the preference", () => {
   const src = readFileSync(
     new URL("../src/lib/theme.ts", import.meta.url),
@@ -141,8 +106,6 @@ describe("the surface half of the preference", () => {
 });
 
 describe("the native window the apply path asks for", () => {
-  // CODE only: the module's own comments spell these calls out, so asserting on
-  // the raw file would pass on a comment while the call said something else.
   const src = readFileSync(
     new URL("../src/lib/theme-apply.ts", import.meta.url),
     "utf8",

@@ -31,9 +31,6 @@ describe("connect flow scope", () => {
   });
 
   it("lets an agent connect run beside the manager's account-scoped one", () => {
-    // The manager connects Slack for the ACCOUNT (the gateway skips the agent
-    // allowlist); an agent's chat card must start its OWN hand-off so its
-    // allowlist is consulted, instead of joining a flow that never checks it.
     const reg = createRegistry();
     const managerEntry = beginFlow(
       reg,

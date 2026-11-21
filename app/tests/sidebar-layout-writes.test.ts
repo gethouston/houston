@@ -39,7 +39,6 @@ const report = (command: string) => {
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-/** A server holding one document, whose PUTs complete only when released. */
 function harness(initial: SidebarLayout, rolledBack?: (err: unknown) => void) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   let stored = initial;

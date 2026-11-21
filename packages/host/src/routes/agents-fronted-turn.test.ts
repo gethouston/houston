@@ -19,18 +19,6 @@ import type { AgentRouteDeps } from "./agent-authz";
 import { liveTurns } from "./live-turn";
 import { dispatchGroup } from "./registry/all";
 
-/**
- * THE SEND ITSELF, on the deployment where the most reads it: a managed
- * assistant pod, where the gateway stamps an acting-as header on EVERY request
- * and the one agent is the coordinator.
- *
- * The turn body is drained by the host on its way through - for the mode pin,
- * for the @mentions, for the approval receipts - and an HTTP request body can
- * only be read ONCE. So each of those seams must reuse the buffer the first one
- * took; a second `readBody` on the same request returns nothing, and what
- * reaches the runtime is an empty message.
- */
-
 const paths = new LocalPaths();
 
 afterEach(() => {
@@ -38,7 +26,6 @@ afterEach(() => {
   assistantApprovals.clear();
 });
 
-/** The gateway's acting-as stamp for the person driving the pod. */
 const ACTING = `acting-v1.${Buffer.from(
   JSON.stringify({ sub: "alice-sub", name: "Alice" }),
   "utf8",
@@ -83,10 +70,6 @@ class RecordingChannel implements RuntimeChannel {
 async function boot(fronted = true) {
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const workspace = await store.getOrCreatePersonalWorkspace("alice");
-  // The coordinator on a POD: an ordinarily-named single agent, told apart by
-  // the identity the gateway stamped into the pod's environment
-  // (launcher/assistant-role.ts). Its send is the one the host reads a mode
-  // pin out of.
   vi.stubEnv("HOUSTON_MANAGED_CLOUD", "1");
   vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "alice-sub");
   const agent = await store.createAgent({
@@ -162,18 +145,14 @@ test("a fronted coordinator send reaches the runtime whole", async () => {
     );
     expect(res.status).toBe(202);
 
-    // 1. The runtime got the message, not an empty body.
     expect(fx.channel.bodies).toHaveLength(1);
     expect(JSON.parse(fx.channel.bodies[0] ?? "{}")).toMatchObject({
       text: "Book the venue",
       mode: "plan",
     });
 
-    // 2. The mode pin was read from that same buffer, so the host's own plan
-    //    gate sees what the user asked for.
     expect(liveTurns.get(fx.agent.id, "conv-1")?.mode).toBe("plan");
 
-    // 3. So were the mentions, and the acting human recorded with the turn.
     const { items } = await loadActivities(fx.vfs, fx.root);
     expect(items[0]?.contributors).toEqual([
       { user_id: "alice-sub", name: "Alice" },
@@ -205,9 +184,6 @@ async function send(
 }
 
 test("a desktop send is read and stripped by the host too, gateway or not", async () => {
-  // Approvals are host-owned wherever the host runs, so the turn body is
-  // drained on EVERY deployment - only the Teams attribution that follows is
-  // gated on a gateway having vouched for the actor.
   const fx = await boot(false);
   try {
     const request = assistantApprovals.issue({
@@ -396,7 +372,6 @@ test.each([
     );
     expect(res.status).toBe(202);
     expect(liveTurns.get(fx.agent.id, "conv-1")?.limits).toEqual(expected);
-    // The runtime still gets the body the client sent.
     expect(JSON.parse(fx.channel.bodies.at(-1) ?? "{}")).toMatchObject({
       text: "Check my inbox",
     });
@@ -417,7 +392,6 @@ test("a later send the gateway did not stamp clears the earlier limits", async (
     expect(liveTurns.get(fx.agent.id, "conv-1")?.limits).toEqual({
       routineMinIntervalMinutes: 15,
     });
-    // The person moved to Plus between the two sends: no stamp, no floor.
     await send(fx, { text: "second" });
     expect(liveTurns.get(fx.agent.id, "conv-1")?.limits).toBeUndefined();
   } finally {
@@ -427,9 +401,6 @@ test("a later send the gateway did not stamp clears the earlier limits", async (
 });
 
 test("a coordinator send that names no mode is gated by its chat's kept mode", async () => {
-  // The runtime runs a pin-less send on the mode the card keeps (HOU-205); the
-  // host's plan gate must read the same answer, or the two disagree on what
-  // the turn may do.
   const fx = await boot(true);
   try {
     liveTurns.forget(fx.agent.id);
@@ -438,7 +409,6 @@ test("a coordinator send that names no mode is gated by its chat's kept mode", a
     await saveActivities(fx.vfs, fx.root, [{ ...card, mode: "plan" }]);
     await send(fx, { text: "what would you do?" });
     expect(liveTurns.get(fx.agent.id, "conv-1")?.mode).toBe("plan");
-    // The send's own pin still wins.
     await send(fx, { text: "go", nonce: "n2", mode: "execute" });
     expect(liveTurns.get(fx.agent.id, "conv-1")?.mode).toBe("execute");
   } finally {

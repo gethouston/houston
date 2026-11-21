@@ -1,10 +1,7 @@
-/** Schemes the OS hands to its own app (Mail, Phone, Messages). */
 const SYSTEM_SCHEMES = new Set(["mailto:", "tel:", "sms:"]);
 
 export type OpenUrlPorts = {
-  /** In-app browser; iOS SFSafariViewController only accepts http(s). */
   browser(url: string): Promise<void>;
-  /** Capacitor's WebView delegates non-web navigations to the OS on both platforms. */
   system(url: string): void;
 };
 

@@ -17,8 +17,6 @@ test("captures without a client, batches frames, and flushes terminal immediatel
     headers: Headers;
   }[] = [];
   const fetchImpl: typeof fetch = async (input, init) => {
-    // The ingest wire shape: a BARE array of {seq, frame}, frame verbatim
-    // (seq inline) so replayed frames are byte-equivalent to live ones.
     const body = JSON.parse(String(init?.body)) as {
       seq: number;
       frame: SequencedFrame;
@@ -49,7 +47,6 @@ test("captures without a client, batches frames, and flushes terminal immediatel
     retryDelaysMs: [],
   });
   const forwarder = new FrameForwarder({ bus, sender, batchMs: 10_000 });
-  // No SSE/client subscriber exists: this unconditional capture is the only one.
   forwarder.capture("routine/c1", "helper/routine/c1");
 
   await bus.publish(

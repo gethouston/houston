@@ -13,14 +13,12 @@ import {
   SpecimenSection,
 } from "../../../src/specimen";
 
-/** The group is `w-full`; this is the form column it normally sits in. */
 export function Field({ children }: { children: ReactNode }) {
   return <div className="w-80 max-w-full">{children}</div>;
 }
 
 const BUTTON_SIZES = ["xs", "sm", "icon-xs", "icon-sm"] as const;
 
-/** The second cva on this page: the sizes `InputGroupButton` declares. */
 export function InputGroupSizes() {
   return (
     <SpecimenSection
@@ -48,10 +46,6 @@ export function InputGroupSizes() {
   );
 }
 
-/**
- * The input-group page's tables, split out so the page itself stays under the
- * 200-line rule. Read off `ui/core/src/components/input-group.tsx`.
- */
 export const inputGroupProps: readonly SpecimenProp[] = [
   {
     name: "InputGroup",

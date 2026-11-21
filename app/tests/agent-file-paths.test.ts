@@ -6,8 +6,6 @@ import {
   toWorkspaceRelative,
 } from "../src/lib/agent-file-paths.ts";
 
-// The TS engine's folderPath is a route key (`Workspace/Agent`); the legacy
-// engine's is the real absolute directory.
 const TS_ENGINE = { folderPath: "Personal/Assistant" };
 const TS_ENGINE_LOCAL = {
   folderPath: "Personal/Assistant",
@@ -107,9 +105,6 @@ describe("fileNameOf", () => {
   });
 });
 
-// PRODUCT-1231: micromark normalizes every markdown link destination through
-// `normalizeUri`, so the href React sees is percent-encoded. Undoing that is
-// what makes a file with a space or an accent in its name previewable at all.
 describe("decodeMarkdownHref", () => {
   it("decodes the spaces micromark escaped in a destination", () => {
     strictEqual(
@@ -135,7 +130,6 @@ describe("decodeMarkdownHref", () => {
   });
 
   it("leaves malformed escapes alone rather than throwing", () => {
-    // A file genuinely named "100%.md", and a stray trailing escape.
     strictEqual(decodeMarkdownHref("100%.md"), "100%.md");
     strictEqual(decodeMarkdownHref("a%2.md"), "a%2.md");
     strictEqual(decodeMarkdownHref("bad%E0%A4%A.md"), "bad%E0%A4%A.md");

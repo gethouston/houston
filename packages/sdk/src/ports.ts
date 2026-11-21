@@ -1,65 +1,24 @@
-/**
- * Injected capability ports for the Houston SDK.
- *
- * The SDK is deployment-agnostic: it never reaches for a global (`fetch`,
- * `localStorage`, `Date.now`, `console`) directly. Every side-effecting
- * capability arrives through {@link SdkPorts}, so the SAME kernel runs
- * unchanged in a browser, a desktop webview, an SSR worker, or a test — the
- * host wires the concrete implementations.
- *
- * Nothing here imports `node:*`; the SDK is browser-safe.
- */
-
 import type { FanOutGate } from "./fan-out";
 import type {
   WorkspacePreferenceReporter,
   WorkspaceSelectionState,
 } from "./modules/preferences/workspace-selection-state";
 
-/**
- * A minimal string-keyed persistent store (e.g. `localStorage`, the desktop
- * keychain, an in-memory map in tests). Async so keychain-backed
- * implementations fit without adaptation. Values are opaque strings — callers
- * serialize.
- */
 export interface KeyValueStore {
-  /** Resolve the stored value for `key`, or `null` when absent. */
   get(key: string): Promise<string | null>;
-  /** Store `value` under `key`, overwriting any existing value. */
   set(key: string, value: string): Promise<void>;
-  /** Remove `key`. A no-op when the key is absent. */
   delete(key: string): Promise<void>;
 }
 
-/**
- * The SDK's sense of time and scheduling. Abstracted so tests can drive timers
- * deterministically and a host can supply its own timer primitives. Timer ids
- * are plain numbers to stay portable across runtimes.
- */
 export interface Clock {
-  /** Current wall-clock time in milliseconds since the Unix epoch. */
   now(): number;
-  /**
-   * Milliseconds on a clock that never goes back (`performance.now()`), for
-   * spans a wall clock set back or forward would misstate. It may stop while
-   * the machine sleeps, so a span that must END on time reads both clocks.
-   * One timebase per process. Absent, {@link now} stands in.
-   */
   monotonic?(): number;
-  /** Schedule `fn` to run after `ms` milliseconds; returns a cancellation id. */
   setTimeout(fn: () => void, ms: number): number;
-  /** Cancel a timer previously scheduled with {@link setTimeout}. */
   clearTimeout(id: number): void;
 }
 
-/** Structured fields attached to a log line. Must be JSON-serializable. */
 export type LogFields = Record<string, unknown>;
 
-/**
- * Leveled structured logger. The SDK emits diagnostics through this port
- * instead of `console` so hosts can route logs (Sentry, a log file, silence in
- * tests) without the kernel knowing.
- */
 export interface SdkLogger {
   debug(msg: string, fields?: LogFields): void;
   info(msg: string, fields?: LogFields): void;
@@ -67,112 +26,29 @@ export interface SdkLogger {
   error(msg: string, fields?: LogFields): void;
 }
 
-/**
- * Whether the page the SDK runs in is going away, and when it is back. A
- * browser aborts every in-flight request when its document unloads (a reload,
- * a navigation), and those rejections look like a dead network: a `TypeError`
- * with no response. The SDK reads this port to tell "the host never answered
- * because we left" from "the host never answered", holds such a write, and
- * sends it again when the page turns out to be live after all (see
- * `turns.importMessages`). A host with no page (an SSR worker, a test) omits
- * it, and no request is ever an unload.
- */
 export interface PageLifecycle {
-  /** True once the page started to leave (`beforeunload` or `pagehide`),
-   *  false again if it stayed or came back. */
   isUnloading(): boolean;
-  /**
-   * Call `listener` each time a page that looked like it was leaving is live
-   * again: the same document restored from the back/forward cache, or a
-   * `beforeunload` that no unload followed (a download, a `mailto:` link, a
-   * prompt the person declined). Never for a page that was not leaving.
-   * Returns the way to stop listening.
-   */
   onLive(listener: () => void): () => void;
 }
 
-/**
- * The full set of capabilities the SDK depends on. The host constructs these
- * once and hands them to {@link SdkConfig}. `fetch` matches the platform
- * `fetch` signature exactly so the runtime-client can be driven by it.
- */
 export interface SdkPorts {
-  /** Keep ordered workspace choices across same-user SDK rebuilds. */
   workspaceSelection?: WorkspaceSelectionState;
-  /** Reports a recoverable preference failure without discarding account data. */
   reportPreferenceError?: WorkspacePreferenceReporter;
-  /** Current authenticated user; null disables account-specific device caches. */
   userId?: () => string | null;
-  /** HTTP transport, shaped exactly like the global `fetch`. */
   fetch: typeof fetch;
-  /** Unauthenticated transport for upload sinks. Never decorate with auth or retries. */
   rawFetch?: typeof fetch;
-  /** Uniform sample in [0, 1) for retry jitter; required with rawFetch for uploads. */
   random?: () => number;
-  /** Persistent key/value storage the SDK keeps its OWN state in (the session
-   *  token). Namespaced by the host, so nothing here collides with the app's
-   *  state, and a store that is unavailable may degrade to memory. */
   storage: KeyValueStore;
-  /**
-   * This device's own UI preferences — the store the surrounding app already
-   * keeps them in, under the key names it has always used, so a capability moved
-   * into the SDK reads back what the user picked before the move. Separate from
-   * {@link SdkPorts.storage} on purpose, and in two ways:
-   *
-   * - the KEY NAMES are the app's, not the SDK's, because these values are read
-   *   by the app's own pre-paint path as well as by an SDK module;
-   * - a failure REJECTS rather than degrading to memory. A device preference is
-   *   a user action ("use this appearance"), so a store that is blocked or full
-   *   has to surface: a write that resolved having stored nothing is how a pick
-   *   survives on screen and is gone on the next launch.
-   *
-   * Device state only — never account state. Anything that must follow the user
-   * to their other devices is a user-scoped preference and belongs on the
-   * gateway (`modules/preferences`), not here.
-   */
   devicePreferences: KeyValueStore;
-  /** Time + scheduling. */
   clock: Clock;
-  /** Structured logging sink. */
   logger: SdkLogger;
-  /** The page's unload signal, when there is a page. See {@link PageLifecycle}. */
   pageLifecycle?: PageLifecycle;
-  /**
-   * The bound on roster-wide reads (`./fan-out`). A host that rebuilds its SDK
-   * (every bearer rotation, one per space) passes one shared gate so the bound
-   * holds across them; omitted, each SDK gets its own.
-   */
   fanOut?: FanOutGate;
 }
 
-/**
- * Everything needed to construct a `HoustonSdk`: where the engine lives and
- * the capability ports to reach it.
- */
 export interface SdkConfig {
-  /** Base URL of the Houston engine/host, e.g. `"http://127.0.0.1:4317"`. */
   baseUrl: string;
-  /** Injected capabilities. */
   ports: SdkPorts;
-  /**
-   * Max conversations whose folded transcripts are retained in memory at once
-   * (the reactive `conversation/<id>` VM cache). Settled, un-viewed
-   * conversations past this bound are evicted and re-hydrated from history on
-   * re-open. Defaults to `DEFAULT_CONVERSATION_CACHE_MAX`; raise it for a client
-   * that keeps many chats hot, lower it under tight memory.
-   */
   conversationCacheMax?: number;
-  /**
-   * Whether the reactive modules (agents, activities) open their own long-lived
-   * `GET /v1/events` streams at construction to keep their scope snapshots live.
-   *
-   * Default `true` — the path where the SDK is the single source of truth for
-   * reads. A host that owns its OWN read model and cache invalidation — the web
-   * engine-adapter keeps TanStack Query plus its existing `/v1/events` bus —
-   * sets this `false` to get a WRITE-ONLY SDK: the same command/mutation
-   * handlers, but no module-started streams, so no duplicate subscriptions or
-   * refetches. With reactivity off, `getSnapshot`/`subscribe` for those scopes
-   * stay empty (the host reads its own model instead).
-   */
   reactivity?: boolean;
 }

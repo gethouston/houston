@@ -7,15 +7,6 @@ import {
   updateAgentColor,
 } from "./library";
 
-/**
- * The account-scoped agent routes, at the wire.
- *
- * `updateAgentColor` is the single-request host leaf the personal assistant
- * dispatches, and the generated operation catalog derives its route from this
- * exact call shape — so the path, the verb, the per-segment escaping and the
- * body are all load-bearing, not incidental.
- */
-
 interface Call {
   url: string;
   method: string;
@@ -84,9 +75,6 @@ test("listInstalledConfigs reads the account library", async () => {
 });
 
 test("the library read never degrades — a 404 is the caller's to read", async () => {
-  // A deployment with no account-level library answers 404; the SDK reports the
-  // status and the surface decides what it means (web shows the bundled
-  // templates). Swallowing it here would hide a real outage from every caller.
   const { scope: s } = scope(() => new Response("not found", { status: 404 }));
 
   await expect(listInstalledConfigs(s)).rejects.toMatchObject({ status: 404 });

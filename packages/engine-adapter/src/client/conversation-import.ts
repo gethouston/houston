@@ -14,14 +14,6 @@ import { runtimeScope } from "./chat-scope";
 import type { AdapterContext } from "./context";
 import { toHoustonEngineError, viaSdk } from "./sdk-error";
 
-/**
- * Lines said elsewhere, landed as a conversation's real history
- * (`sdk.turns.importMessages`), and the local fold that follows: the chat's
- * conversation VM is re-seeded from the host's own transcript, so a chat
- * opening right after the import shows the lines at once instead of an empty
- * beat while its history loads.
- */
-
 const importPath = (agentPath: string, conversationId: string): string =>
   `/agents/${encodeURIComponent(agentPath)}/conversations/${encodeURIComponent(conversationId)}/import`;
 
@@ -30,11 +22,7 @@ async function reseed(
   agentPath: string,
   conversationId: string,
 ): Promise<void> {
-  // A turn this client sent holds the chat: its stream owns the feed and
-  // would refuse the seed. The chat's next read brings the lines in.
   if (ownTurnHolds(agentPath, conversationId)) return;
-  // One plain read: the caller's save never waits on a turn. A send that
-  // starts while it is out moves the mark, and the seed then refuses it.
   const mark = historyReadMark(agentPath, conversationId);
   const history = await ctx.sdk
     .clientFor(runtimeScope(ctx, agentPath))
@@ -69,12 +57,6 @@ export async function importConversation(
   return result;
 }
 
-/**
- * Send again every import this device still owes the agent at `agentPath`,
- * re-seeding each chat one landed in. Resolves with the failures, each as the
- * `HoustonEngineError` the app classifies: one still owed is sent again on
- * the next call.
- */
 export async function retryPendingImports(
   ctx: AdapterContext,
   agentPath: string,
@@ -83,8 +65,6 @@ export async function retryPendingImports(
     runtimeScope(ctx, agentPath || DEFAULT_AGENT_PATH),
   );
   for (const entry of landed) {
-    // An empty scope is the flat local runtime, whose chats this client keys
-    // by a path the owed entry never held: its next open reads the history.
     if (entry.imported === 0 || entry.agentId === "") continue;
     await reseed(ctx, entry.agentId, entry.conversationId);
   }

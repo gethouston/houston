@@ -23,12 +23,6 @@ import type { TurnFilesystem } from "./turn-filesystem";
 import { finishRoutineTurn } from "./turn-routine-finish";
 import type { TurnRequest } from "./types";
 
-/**
- * Overlapping failing runs of one routine each see only the run history they
- * hydrated. The auto-pause decides after the sync-back merged the history, so
- * a streak completed by a run another sandbox landed still pauses.
- */
-
 const WS = "workspaces/Personal/Bob";
 const ROUTINES = docKey(WS, "routines");
 const RUNS = docKey(WS, "routine_runs");
@@ -37,7 +31,6 @@ const START = Date.parse("2026-09-29T11:00:00.000Z");
 
 let root: string;
 let objects: Map<string, { body: string; generation: number }>;
-/** Keys the store refuses as over its cap: the upload never lands. */
 let refused: Set<string>;
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "pause-after-sync-"));
@@ -93,7 +86,6 @@ const failed = (id: string, minutesBefore: number): RoutineRun => ({
   completed_at: new Date(START - minutesBefore * 60_000 + 1).toISOString(),
 });
 
-/** Hydrate `hydrated` at generation 1, then let a sibling land `landed`. */
 async function sandbox(hydrated: RoutineRun[], landed: RoutineRun[]) {
   const put = async (key: string, body: string) => {
     objects.set(key, { body, generation: 1 });

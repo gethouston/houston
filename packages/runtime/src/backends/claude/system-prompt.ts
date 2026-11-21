@@ -18,28 +18,8 @@ import {
 } from "../../session/workspace-context";
 import { HOUSTON_MCP_SERVER_NAME } from "./custom-tools";
 
-/**
- * Build the full-replace `systemPrompt` string for a Claude session: Houston's
- * own prompt followed by the workspace-root context file when present.
- *
- * This mirrors `session/resource-loader.ts` (which builds the equivalent for pi):
- * the context file is read ONLY from the workspace root, never from an ancestor
- * directory, so a CLAUDE.md/AGENTS.md sitting OUTSIDE the workspace can't leak in
- * past the file-tool clamp. The result is passed as a plain string to the SDK
- * (not the `claude_code` preset), so the agent sees exactly this and nothing the
- * SDK would otherwise discover on disk.
- *
- * `resource-loader.ts` keeps its loader private (it hands pi a `ResourceLoader`,
- * not a string), so the root-only candidate list is mirrored here rather than
- * imported — the two must stay in step.
- */
 const CONTEXT_CANDIDATES = ["AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"];
 
-/**
- * Houston's tools reach this backend through an MCP server, so the model sees
- * them namespaced while the shared prompt names them bare. Said once here
- * rather than in every tool description.
- */
 const TOOL_NAMES_NOTE = `Houston's own tools reach you as \`mcp__${HOUSTON_MCP_SERVER_NAME}__<name>\`, for example \`mcp__${HOUSTON_MCP_SERVER_NAME}__ask_user\`; these instructions call each one by its plain name.`;
 
 export function buildSystemPrompt(
@@ -47,52 +27,23 @@ export function buildSystemPrompt(
   systemPrompt: string,
   mode?: TurnMode,
   provided?: ProvidedContext,
-  /** Absent = the process's own role; a pooled turn passes the turn's. */
   role?: AssistantRuntimeRole | null,
 ): string {
   const context = loadWorkspaceContextFile(cwd);
   const product = `${systemPrompt}\n\n${TOOL_NAMES_NOTE}`;
   const base = context ? `${product}\n\n${context}` : product;
-  // Workspace + user context section next (HOU-711), injected exactly as the pi
-  // backend does (session/resource-loader.ts) so both engines see the same slots.
-  // `provided` is the gateway's Supabase copy (cloud), else the cwd files (local).
   const section = buildWorkspaceContextSection(cwd, provided);
   const withContext = section ? `${base}\n\n${section}` : base;
-  // The personal assistant's saved MEMORY next, exactly where the pi backend
-  // puts it (session/resource-loader.ts). Null for every other agent — the
-  // coordinator-role gate lives inside buildLearningsSection.
   const learnings = buildLearningsSection(cwd, role);
   const withLearnings = learnings
     ? `${withContext}\n\n${learnings}`
     : withContext;
-  // The assistant's OPERATING RULES immediately after its memory, same order as
-  // the pi backend. Null for every other agent (the same role gate).
   const rules = buildAssistantRulesSection(role);
   const withRules = rules ? `${withLearnings}\n\n${rules}` : withLearnings;
-  // Skills index (HOU-894): the SAME <available_skills> section pi appends for
-  // every other provider — name + description + the SKILL.md path to Read. The
-  // SDK's own skill discovery is off (`settingSources: []`, `Skill` disallowed),
-  // so without this an Anthropic session had NO idea what skills exist or where
-  // their files live, and a "Use the <skill> skill." turn ran blind.
   const withSkills = withRules + buildSkillsSection(cwd);
-  // Mode overlay LAST — after Houston's prompt, the context file, workspace and user
-  // sections, the assistant's memory + rules, AND the skills index — so the plan
-  // (read-only) or auto (Autopilot) mandate is the final word the model reads.
-  // Execute passes through unchanged.
   return withModeOverlay(withSkills, mode);
 }
 
-/**
- * The `<available_skills>` index for the workspace's skills dir, or "" when
- * there are none. Reuses pi's own loader + formatter so both backends surface
- * the IDENTICAL section from the IDENTICAL directory (`HOUSTON_SKILLS_DIR`
- * override, else `<cwd>/.agents/skills` — mirroring `makeAgentLoader`), with
- * the same rules: a skill with no `description:` is dropped, entries follow
- * the same name order (session/prompt-skills.ts), and every entry
- * carries the absolute SKILL.md `<location>` for the Read tool. Skill paths sit
- * inside the workspace, so the Gate #1 clamp lets the model read them. Plan
- * mode keeps the section — Read stays available there.
- */
 function buildSkillsSection(cwd: string): string {
   const dir = config.skillsDirOverride || join(cwd, ".agents", "skills");
   if (!existsSync(dir)) return "";
@@ -100,12 +51,6 @@ function buildSkillsSection(cwd: string): string {
   return formatSkillsForPrompt(skillsForPrompt(skills));
 }
 
-/**
- * The first workspace-root context file, or null when none exists. The job
- * description is structured (`industry`/`role` frontmatter + the free
- * description): the model reads those two as plain lines, never YAML — the
- * same rendering the pi backend applies (session/resource-loader.ts).
- */
 function loadWorkspaceContextFile(cwd: string): string | null {
   for (const name of CONTEXT_CANDIDATES) {
     const path = join(cwd, name);

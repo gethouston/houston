@@ -1,13 +1,6 @@
 import { createServer, type Server } from "node:http";
 import { afterEach, expect, test, vi } from "vitest";
 
-/**
- * The /run gate end to end, over a real socket, for each of the three
- * configurations a deploy can be in. Every case re-imports ./server with the
- * env it is about (config reads the environment once, at import), so no case
- * can be influenced by another file's process env.
- */
-
 const OWNED = ["SANDBOX_TOKEN", "SANDBOX_ALLOW_UNAUTHENTICATED"] as const;
 const prior = new Map(OWNED.map((key) => [key, process.env[key]]));
 const servers: Server[] = [];
@@ -41,7 +34,6 @@ async function listen(env: Record<string, string | undefined>) {
   return `http://127.0.0.1:${addr.port}`;
 }
 
-/** A body the executor would reject, so a 2xx can never mean "it ran". */
 const post = (base: string, headers: Record<string, string> = {}) =>
   fetch(`${base}/run`, {
     method: "POST",
@@ -58,7 +50,6 @@ test("no SANDBOX_TOKEN refuses /run: an unset secret is not an open service", as
 
 test("SANDBOX_ALLOW_UNAUTHENTICATED=1 is the explicit local-dev opt-out", async () => {
   const base = await listen({ SANDBOX_ALLOW_UNAUTHENTICATED: "1" });
-  // Past the gate: the request reaches the executor, which refuses the language.
   const res = await post(base);
   expect(res.status).toBe(400);
 });

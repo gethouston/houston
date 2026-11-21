@@ -6,18 +6,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-/**
- * The status a task row wears, and the glyph that says it. Pure, so the
- * mapping is unit-testable without a DOM and so no surface can invent a fifth
- * state or a second colour for one of these four.
- *
- * The four are the board's own sections plus the archive: a row's leading
- * glyph is the ONLY thing that names its state, because the phone lists group
- * by section already and a second badge on the row would repeat the heading.
- */
 export type TaskRowStatus = "needs_you" | "running" | "done" | "archived";
 
-/** English defaults; an app passes its own translations in. */
 export interface TaskRowLabels {
   needsYou?: string;
   running?: string;
@@ -27,11 +17,8 @@ export interface TaskRowLabels {
 
 export interface TaskRowGlyph {
   Icon: LucideIcon;
-  /** The glyph's semantic tone class (a token utility, never a literal). */
   tone: string;
-  /** The state, spoken: the glyph is the row's only state affordance. */
   label: string;
-  /** Running is the one LIVE state, so it is the one glyph that moves. */
   spin: boolean;
 }
 
@@ -41,8 +28,6 @@ const GLYPHS: Record<
 > = {
   needs_you: {
     Icon: CircleAlert,
-    // Amber, not red: a task waiting on the user is a prompt, and red reads
-    // as something having gone wrong.
     tone: "text-warning",
     spin: false,
     fallback: "Needs you",

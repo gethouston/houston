@@ -15,29 +15,17 @@ import {
 import { useAgentStore } from "../../stores/agents";
 import { everyReadAnswered } from "./workspace-skill-acts";
 
-/**
- * The shared-store skills model when the deployment
- * serves it (`capabilities.sharedSkills`, ADR 0003): ONE store query plus one
- * host-local manifest query per agent — no per-agent pod fan-out for the list
- * itself. Same fetch-once-then-event-driven discipline as the copy-based hook
- * (`SharedSkillsChanged` / `SkillsChanged` invalidate these keys).
- */
 export function useSharedSkills(args: {
   enabled: boolean;
   workspaceId: string | null;
   agents: Agent[];
-  /** folderPath → agent-local skill list, from `useWorkspaceSkills`. */
   listsByPath: Map<string, SkillSummary[] | undefined>;
 }): {
   rows: SharedSkillRow[];
   sharedSlugs: Set<string>;
   loading: boolean;
-  /** The store and every agent's manifest answered. */
   complete: boolean;
-  /** The store read (or an agent's manifest) did not answer. Already toasted
-   *  and reported at the call — the surface only says it. */
   failed: boolean;
-  /** Read the store and every manifest again. */
   retry: () => void;
 } {
   const { enabled, workspaceId, agents, listsByPath } = args;
@@ -49,11 +37,6 @@ export function useSharedSkills(args: {
     refetchOnWindowFocus: false,
   });
 
-  // Gated on the roster having settled for the current space, and with the
-  // agent-gone 404 / not-readable 403 silenced: a space switch or a stale
-  // roster must not turn this fan-out into a storm of red "agent not found"
-  // toasts (HOUSTON-APP-544). A gone agent's row simply carries no manifest,
-  // and the heal below removes it from the roster.
   const rosterSettled = useAgentStore(agentRosterSettled);
   const {
     manifests,
@@ -117,8 +100,6 @@ export function useSharedSkills(args: {
   return {
     rows,
     sharedSlugs,
-    // An unsettled roster has asked for no manifest yet: still loading, not a
-    // store whose employees all hold nothing.
     loading:
       enabled && (shared.isLoading || !rosterSettled || manifestsLoading),
     complete:

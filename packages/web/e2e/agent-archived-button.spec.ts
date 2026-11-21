@@ -8,21 +8,6 @@ import {
 } from "./support/team-nav";
 import { openNavRow } from "./support/workspace-menu";
 
-/**
- * The board's archived-mission control and its reset contract. There is ONE
- * archive — the cross-agent one every board renders — and every board belongs
- * to an employee, so all three tests drive the employee's. It is a MODE of
- * Tasks: the active toolbar's "Archived" button swaps it in, its own "Back to
- * tasks" swaps it out, and no lozenge of the employee's strip names it.
- *
- * They pin two different exits. Leaving for another SECTION of the same
- * employee unmounts the archive (the sections swap), so coming back has to
- * start on the ACTIVE board. Leaving for another TOP-LEVEL view does not: the
- * employee screen is KEPT ALIVE, so it comes back exactly as it was left,
- * archive and all, unless the surface router puts the active board back
- * (`useBoardSurfaceOnNav`). The archive is somewhere you go; it is never
- * somewhere a navigation returns you to.
- */
 test.use({ teamBoard: true });
 
 test("the Activity archived button swaps to archived missions and back", async ({
@@ -46,11 +31,6 @@ test("the Activity archived button swaps to archived missions and back", async (
   await openArchivedTasks(page);
   await expect(page.getByText("Quarterly review")).toBeVisible();
 
-  // HOU-1043's rule, satisfied by the shape that replaced its controls: the
-  // way in and the way out are both readable at a glance, never an icon whose
-  // meaning hides in a tooltip. The archive is a MODE of Tasks, so exactly one
-  // of the two labelled buttons is on the toolbar at a time and it names where
-  // the click goes.
   await expect(wayBack).toBeVisible();
   await expect(openArchive).toHaveCount(0);
 
@@ -68,10 +48,6 @@ test("a team's sections SWAP, so the archive leaves no rows behind", async ({
   });
   await page.goto("/");
 
-  // Sections swap rather than hide, so only the section on screen runs its
-  // hooks and holds its rows. An archive still mounted behind Files would keep
-  // its sweep warm and its rows in the DOM, where the next spec's
-  // `screen`-scoped lookup would find them.
   await openArchivedTasks(page);
   await expect(screen(page).getByText("Reset me")).toBeVisible();
   await openTeamSection(page, "Files");
@@ -92,10 +68,6 @@ test("leaving the board for another TOP-LEVEL view resets its archived board too
   await openArchivedTasks(page);
   await expect(screen(page).getByText("Left open")).toBeVisible();
 
-  // A genuine TOP-LEVEL navigation and back — the case a section swap cannot
-  // reach. The employee screen is kept alive, so nothing unmounts and nothing
-  // resets on its own: without the surface router the user returns to the
-  // archive they walked away from.
   await openNavRow(page, "integrations");
   await openTeamSection(page, "Tasks");
   await expect(screen(page).getByText("Left open")).toHaveCount(0);
@@ -106,9 +78,6 @@ test("leaving the board for another TOP-LEVEL view resets its archived board too
     screen(page).getByRole("button", { name: "Back to tasks" }),
   ).toHaveCount(0);
 
-  // In-view switching is untouched: the reset fires only on the way back onto
-  // the glass, never while the user is standing on the screen moving between
-  // its tabs.
   await openArchivedTasks(page);
   await expect(screen(page).getByText("Left open")).toBeVisible();
 });

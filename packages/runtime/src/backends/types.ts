@@ -8,29 +8,8 @@ import type { ReplyBeat } from "./reply-beat";
 export type { CreateSessionOptions } from "./create-session-options";
 export type { ReplyBeat } from "./reply-beat";
 
-/**
- * The HarnessBackend seam: turn execution abstracted behind a provider-agnostic
- * port so a provider can plug in its own harness. pi (`./pi`) is the default and
- * only implementation today; both the long-lived server (session/) and the
- * per-request cloud runtime (turn/) drive turns through this interface, never a
- * pi type. The wire dialect they emit stays identical — a `HarnessSession`
- * delivers `WireEvent`s, the same union the web client and the control-plane
- * relay speak.
- */
-
-/**
- * pi's reasoning levels, re-exported under a provider-neutral name. Aliased (not
- * renamed) from `../ai/effort` so the seam speaks in its own vocabulary while the
- * pi-flavored literal keeps its home next to the effort mapping.
- */
 export type ThinkingLevel = PiThinkingLevel;
 
-/**
- * The minimal, provider-agnostic view of a resolved model a backend needs to run
- * and size a turn. A pi `Model<Api>` is structurally assignable to this, so the
- * server / cloud call sites pass their resolved pi model straight through with no
- * pi import leaking into the seam.
- */
 export interface ResolvedModel {
   readonly provider: string;
   readonly id: string;
@@ -38,123 +17,40 @@ export interface ResolvedModel {
   readonly reasoning?: boolean;
 }
 
-/**
- * What a compaction produced, when the backend produced anything readable. Only
- * the summary text is modeled: pi's own `CompactionResult` is structurally
- * assignable to this, so the pi session returns it verbatim without the seam
- * ever naming a pi type (the rule this whole module exists for). A backend
- * whose compaction is internal (the Claude SDK auto-compacts) returns nothing.
- */
 export interface CompactionOutcome {
   summary: string;
 }
 
-/**
- * A timing the harness observed: one finished model call, or (Claude only) the
- * CLI's spawn-to-init cost for the query that runs the turn.
- */
 export type HarnessTimingEvent =
   | { type: "call"; call: ModelCallTiming }
   | { type: "harness_init"; ms: number };
 
-/**
- * One live conversation session against a backend. `prompt` resolves at turn end;
- * a provider failure arrives as a `provider_error` WireEvent on the stream, never
- * a throw. `dispose` is idempotent.
- */
 export interface HarnessSession {
-  /** Subscribe to this session's wire events. Returns an unsubscribe fn. */
   subscribe(listener: (e: WireEvent) => void): () => void;
-  /**
-   * Subscribe to the backend's RAW liveness: fired for every event the harness
-   * receives from the model stream, including the ones the wire dialect drops.
-   * The wire stream is not a liveness signal — a tool call's input streams as
-   * partial-JSON deltas that map to NO WireEvent (the tool only surfaces as
-   * `tool_start` once its input is complete), so a model writing a large file
-   * is wire-silent for minutes while very much alive. The stall watchdog
-   * (session/stall-watchdog.ts) listens here so it never aborts such a turn.
-   * Optional so test fakes stay minimal; a backend without it leaves the
-   * watchdog on wire events alone.
-   */
   subscribeLiveness?(listener: () => void): () => void;
-  /**
-   * Subscribe to the START of each assistant message the model streams — a
-   * model round-trip boundary the wire dialect does not carry (a turn's text
-   * and tool frames run together across round-trips). The turn's finish marks
-   * (session/turn-finish.ts) reset on it, so "did the model already write its
-   * closing message" is answered for the message carrying the tool now
-   * executing, never for text from an earlier round-trip. Optional so test
-   * fakes stay minimal; without it no tool can end the turn early.
-   */
   subscribeAssistantMessageStart?(listener: () => void): () => void;
-  /**
-   * Subscribe to the reply's {@link ReplyBeat}s, which tell the finish marks
-   * the closing message is done the moment the model moves on to its offers
-   * (or simply stops), seconds before `done`. Optional so test fakes stay
-   * minimal; without it no `reply_complete` frame is emitted.
-   */
   subscribeReplyBeats?(listener: (beat: ReplyBeat) => void): () => void;
-  /**
-   * Subscribe to where the model round-trip stands (`ModelPhase`). The stall
-   * watchdog bounds a request that has not started answering far tighter
-   * than a quiet response: a provider that never opens its response is not
-   * thinking. Optional so test fakes stay minimal; without it only the
-   * quiet-stream window applies.
-   */
   subscribeModelPhase?(listener: (phase: ModelPhase) => void): () => void;
-  /**
-   * Subscribe to per-call timings (`HarnessTimingEvent`), the source of the
-   * turn's model-call report. Optional: a backend without it reports no calls.
-   */
   subscribeModelCalls?(
     listener: (event: HarnessTimingEvent) => void,
   ): () => void;
-  /** Run one turn; resolves at turn end. Provider errors surface as WireEvents. */
   prompt(text: string): Promise<void>;
-  /**
-   * Take stale tool results out of what the next request sends, when the
-   * backend does that between turns (Claude's transcript); returns the tokens
-   * freed. pi clears inside every request, so its fill already reflects it.
-   */
   clearStaleToolResults?(): number;
-  /** Whether the current model is one the follow-up pass asks (pi/follow-up-models.ts). */
   followUpPassServed?(): boolean;
-  /** A tool-free request on the current model, outside conversation history. */
   oneShotText?(request: {
     systemPrompt: string;
     prompt: string;
     signal: AbortSignal;
   }): Promise<string>;
-  /** Abort the in-flight turn (the user's Stop), then settle. */
   abort(): Promise<void>;
-  /** Tear down the session and its listeners. Idempotent. */
   dispose(): void;
-  /** Re-point the live session at a different model (cross-provider allowed). */
   setModel(model: ResolvedModel): Promise<void>;
-  /**
-   * Summarize the conversation so it fits a smaller window. `customInstructions`
-   * ride the summarization request, so a caller can ask the summarizer for more
-   * than prose — the assistant's compaction asks it to also list the durable
-   * facts the conversation revealed (session/durable-facts.ts). The returned
-   * summary is what makes that readable; a backend that compacts internally
-   * returns nothing and simply yields no facts.
-   */
   compact(customInstructions?: string): Promise<CompactionOutcome | undefined>;
-  /** Set the reasoning level for subsequent turns (clamped to the model). */
   setThinkingLevel(level: ThinkingLevel): void;
-  /** The current context fill, or undefined when unknown. */
   getContextUsage(): { tokens: number | null } | undefined;
-  /**
-   * Digest of the provider access token this session's next turn runs on, when
-   * the backend pins one into the session (the Claude Agent SDK backend). The
-   * conversation cache compares it against the CURRENTLY stored credential to
-   * rebuild a cached session left on a rotated-out token (PRODUCT-1355).
-   * Backends that read credentials per request (pi) leave this unimplemented.
-   */
   getUsedAccessDigest?(): string | undefined;
 }
 
-/** A pluggable turn-execution backend for a provider. */
 export interface HarnessBackend {
   readonly id: string;
   createSession(opts: CreateSessionOptions): Promise<HarnessSession>;

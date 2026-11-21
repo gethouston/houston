@@ -15,16 +15,6 @@ import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { BuildTeamCard } from "../onboarding/team/build-team-card";
 
-/**
- * A new workspace: name it, then build its team.
- *
- * AI is connected once for the whole app, so naming is the only question
- * before the workspace exists. The moment it does, the app switches to it
- * behind the dialog, which is what lets the team card hire straight into it:
- * every hire is adopted by the roster of the CURRENT workspace, and the
- * sidebar fills in as the team is built. Closing the dialog at any point
- * leaves the person in the workspace they just made.
- */
 export function CreateWorkspaceDialog({
   open,
   onOpenChange,
@@ -51,14 +41,10 @@ export function CreateWorkspaceDialog({
           <WorkspaceNameForm onCreated={setWorkspaceId} />
         </DialogContent>
       ) : (
-        // Top padding clears the close corner: every screen of the card opens
-        // on its own headline, which would otherwise run under it.
         <DialogContent
           closeLabel={closeLabel}
           className="flex h-[min(44rem,88dvh)] flex-col gap-0 pt-12 sm:max-w-[min(var(--container-6xl),calc(100%-2rem))]"
         >
-          {/* The card sets its own headline on every screen; the dialog's
-              accessible name is the task the whole card is. */}
           <DialogTitle className="sr-only">
             {t("setup:team.choice.title")}
           </DialogTitle>
@@ -75,8 +61,6 @@ export function CreateWorkspaceDialog({
   );
 }
 
-/** The one question before the workspace exists. A name already in use is
- *  said inline while typing, rather than refused after the round trip. */
 function WorkspaceNameForm({
   onCreated,
 }: {
@@ -112,17 +96,12 @@ function WorkspaceNameForm({
     try {
       ws = await createWorkspace(trimmed);
     } catch {
-      // The engine call already logged, reported and toasted the failure
-      // (`tauriWorkspaces.create` → `call`); what is left is to say so here
-      // and keep the name, so trying again is one press.
       setFailed(true);
       inFlight.current = false;
       setCreating(false);
       return;
     }
     setCurrentWorkspace(ws);
-    // Settles on its own either way (a failed list is reported upstream and
-    // reads as empty), and an empty roster is right for a new workspace.
     await loadAgents(ws.id);
     onCreated(ws.id);
   };

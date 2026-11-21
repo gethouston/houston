@@ -9,12 +9,6 @@ import {
 } from "./browser-live-keys";
 import type { BrowserLiveViewInput } from "./browser-live-types";
 
-/**
- * Wires the stage's hidden text field to page input with NATIVE listeners:
- * React's synthetic `onBeforeInput` carries no `inputType`, and the field must
- * see composition and paste exactly as the platform sends them. Shift+Escape
- * calls `onLeave` instead of reaching the page.
- */
 export function useBrowserLiveKeyboard(
   fieldRef: RefObject<HTMLTextAreaElement | null>,
   send: (event: BrowserLiveViewInput) => void,
@@ -58,7 +52,6 @@ export function useBrowserLiveKeyboard(
     const onInput = (e: Event) => {
       if (!(e as InputEvent).isComposing) flush();
     };
-    // Pasting is typing into the page: never blocked, sent as text.
     const onPaste = (e: ClipboardEvent) => {
       e.preventDefault();
       emit(textInput(e.clipboardData?.getData("text/plain") ?? ""));
