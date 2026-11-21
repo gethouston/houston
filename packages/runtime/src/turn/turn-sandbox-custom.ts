@@ -8,10 +8,10 @@ const oauthDecline = (): Response =>
   Response.json(
     {
       error:
-        "This connection uses browser sign-in. Ask the user to open this assistant in the Houston app and keep it awake while they connect the service. Do not ask for an API key.",
-      code: "oauth_requires_awake_assistant",
+        "This service signs in through its own website, and that sign-in cannot start from this chat here. Ask the user to open Integrations in the Houston app, add a custom integration, and paste the same address you tried; they sign in from there, and it is ready for you afterwards. Do not retry this, and do not ask for an API key.",
+      code: "oauth_connect_from_integrations",
     },
-    { status: 503 },
+    { status: 409 },
   );
 
 /** Build custom-integration routes over signal-scoped executor contexts. */
@@ -31,10 +31,9 @@ export function makeTurnCustomRoutes(
       if (typeof body.url !== "string" || !body.url.trim()) {
         return Response.json({ error: "missing 'url'" }, { status: 400 });
       }
-      const result = await (await getCustom(signal)).manager.detect(
-        body.url.trim(),
-      );
-      return result.requiresOAuth
+      const { manager } = await getCustom(signal);
+      const result = await manager.detect(body.url.trim());
+      return result.requiresOAuth && !manager.oauthSupported
         ? oauthDecline()
         : Response.json(result, { status: 200 });
     }
@@ -57,7 +56,12 @@ export function makeTurnCustomRoutes(
     if (typeof input === "string") {
       return Response.json({ error: input }, { status: 400 });
     }
-    if (action === "add" && input?.auth === "oauth") return oauthDecline();
+    if (
+      action === "add" &&
+      input?.auth === "oauth" &&
+      !(await getCustom(signal)).manager.oauthSupported
+    )
+      return oauthDecline();
     if (
       action === "remove" &&
       (typeof body.slug !== "string" || !body.slug.trim())
