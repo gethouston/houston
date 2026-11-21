@@ -38,7 +38,7 @@ function limitRowId(row: LimitRow): WindowId | null {
   if (
     row.kind === "weekly_scoped" &&
     typeof model === "string" &&
-    /^opus\b/i.test(model)
+    /\bopus\b/i.test(model)
   )
     return "week_opus";
   return null;

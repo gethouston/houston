@@ -102,7 +102,19 @@ describe("anthropicWindows", () => {
             kind: "weekly_scoped",
             percent: 41,
             resets_at: weekReset,
-            scope: { model: { display_name: "Opus" } },
+            scope: { model: { display_name: "Claude Opus 4" } },
+          },
+          {
+            kind: "weekly_scoped",
+            percent: 3,
+            resets_at: weekReset,
+            scope: { model: { display_name: 5 } },
+          },
+          {
+            kind: "weekly_scoped",
+            percent: 55,
+            resets_at: weekReset,
+            scope: { model: { display_name: "Opusculum" } },
           },
           { kind: "something_new", percent: 90, resets_at: weekReset },
         ],
@@ -111,6 +123,32 @@ describe("anthropicWindows", () => {
     );
     expect(windows.map((w) => [w.id, w.usedPercent])).toEqual([
       ["week_opus", 41],
+    ]);
+  });
+
+  it("keeps a row whose scope has an unexpected shape", () => {
+    const windows = anthropicWindows(
+      {
+        limits: [
+          {
+            kind: "weekly_all",
+            percent: 22,
+            resets_at: weekReset,
+            scope: "all",
+          },
+          {
+            kind: "session",
+            percent: 50,
+            resets_at: sessionReset,
+            scope: { model: { display_name: 5 } },
+          },
+        ],
+      },
+      now,
+    );
+    expect(windows.map((w) => [w.id, w.usedPercent])).toEqual([
+      ["session", 50],
+      ["week", 22],
     ]);
   });
 
