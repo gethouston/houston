@@ -6,6 +6,7 @@ export const EXECUTABLE_HEADER = "X-Houston-Object-Executable";
 
 const MAX_LINK_TARGET_BYTES = 4096;
 const EXECUTE_BITS = 0o111;
+const SYSTEM_INTERPRETER = /^\/usr(\/local)?\/bin\/python(3(\.\d{1,2})?)?$/;
 
 export function linkTargetProblem(rel: string, target: string): string | null {
   if (
@@ -15,11 +16,17 @@ export function linkTargetProblem(rel: string, target: string): string | null {
     target.includes("\\")
   )
     return "has an unusable target";
-  if (target.startsWith("/")) return "points outside the agent folder";
   const segments = rel.split("/");
   if (segments.length < 4 || segments[0] !== "workspaces")
     return "is outside an agent folder";
   const root = segments.slice(0, 3).join("/");
+  if (target.startsWith("/")) {
+    if (!SYSTEM_INTERPRETER.test(target))
+      return "points outside the agent folder";
+    return rel.startsWith(`${root}/.houston/`)
+      ? "is in Houston's own folder"
+      : null;
+  }
   const resolved = posix.normalize(posix.join(posix.dirname(rel), target));
   if (!resolved.startsWith(`${root}/`))
     return "points outside the agent folder";

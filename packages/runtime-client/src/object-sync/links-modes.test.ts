@@ -95,7 +95,7 @@ test("a link out of the agent folder is reported, never uploaded, and holds no d
   const { store, storeRoot, dest } = await seeded();
   const manifest = await hydrate(store, "", dest);
   await mkdir(at(dest, ".venv/bin"), { recursive: true });
-  await symlink("/usr/bin/python3", at(dest, ".venv/bin/python"));
+  await symlink("/etc/passwd", at(dest, ".venv/bin/python"));
   await rm(at(dest, "CLAUDE.md"));
   const result = await syncBack(store, "", dest, manifest, {
     holdDeletesOnFailure: true,
@@ -108,6 +108,26 @@ test("a link out of the agent folder is reported, never uploaded, and holds no d
   ]);
   expect(result.deleted).toEqual([`${agent}/CLAUDE.md`]);
   await expect(lstat(at(storeRoot, ".venv/bin/python"))).rejects.toThrow();
+});
+
+test("a virtualenv's link to the system interpreter survives the next turn", async () => {
+  const { store, dest } = await seeded();
+  const manifest = await hydrate(store, "", dest);
+  await mkdir(at(dest, ".venv/bin"), { recursive: true });
+  await symlink("/usr/bin/python3", at(dest, ".venv/bin/python3"));
+  await symlink("python3", at(dest, ".venv/bin/python"));
+  const result = await syncBack(store, "", dest, manifest);
+  expect(result.skipped).toEqual([]);
+  expect(result.uploaded.sort()).toEqual([
+    `${agent}/.venv/bin/python`,
+    `${agent}/.venv/bin/python3`,
+  ]);
+  const next = await mkdtemp(join(tmpdir(), "venv-next-"));
+  await hydrate(store, "", next);
+  expect(await readlink(at(next, ".venv/bin/python3"))).toBe(
+    "/usr/bin/python3",
+  );
+  expect(await readlink(at(next, ".venv/bin/python"))).toBe("python3");
 });
 
 test("a store without attributes keeps skipping links", async () => {

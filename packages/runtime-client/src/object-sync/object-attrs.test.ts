@@ -10,6 +10,9 @@ test("a link inside its agent folder may sync", () => {
     [`${agent}/web/node_modules/react`, ".pnpm/react@19/node_modules/react"],
     [`${agent}/.claude/skills`, "../.agents/skills"],
     [`${agent}/tools/run`, "run.sh"],
+    [`${agent}/.venv/bin/python3`, "/usr/bin/python3"],
+    [`${agent}/.venv/bin/python`, "/usr/bin/python"],
+    [`${agent}/env/bin/python3.11`, "/usr/local/bin/python3.11"],
   ]) {
     expect(linkTargetProblem(rel as string, target as string), rel).toBeNull();
   }
@@ -17,7 +20,14 @@ test("a link inside its agent folder may sync", () => {
 
 test("a link that leaves its agent folder or reaches Houston's own is refused", () => {
   for (const [rel, target] of [
-    [`${agent}/.venv/bin/python`, "/usr/bin/python3"],
+    [`${agent}/.venv/bin/python`, "/usr/bin/env"],
+    [
+      `${agent}/.venv/bin/python`,
+      "/usr/bin/python3/../../../proc/self/environ",
+    ],
+    [`${agent}/secrets`, "/proc/self/environ"],
+    [`${agent}/.houston/python`, "/usr/bin/python3"],
+    ["data/python", "/usr/bin/python3"],
     [`${agent}/up`, "../Alice/notes.md"],
     [`${agent}/self`, "."],
     [`${agent}/deep/up`, "../../../../data/auth.json"],
