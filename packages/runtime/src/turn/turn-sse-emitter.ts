@@ -23,9 +23,11 @@ export function createTurnEmitter(
   sandbox: ReturnType<typeof makeTurnSandboxFetch> | null,
   log: ReturnType<typeof createTurnLog>,
   transcript: ReturnType<typeof createTurnTranscript>,
+  taps?: ReadonlySet<(frame: WireFrame) => void>,
 ): (frame: WireFrame) => void {
   return (raw) => {
     const frame = sandbox ? sandbox.present(raw) : raw;
+    for (const tap of taps ?? []) tap(frame);
     send(log ? log.record(frame) : frame);
     // The runtime persists the user message before this frame. Publish it now
     // so a gateway restart can reconstruct the turn from its transcript.

@@ -1,8 +1,5 @@
 import { agentFileEventType } from "@houston/domain";
-import type { HoustonEvent } from "@houston/protocol";
-
-type AgentEventType = Extract<HoustonEvent, { agentPath: string }>["type"];
-type TurnChangedEventType = AgentEventType | "CustomIntegrationsChanged";
+import type { HoustonEvent, TurnLandedEventType } from "@houston/protocol";
 
 /**
  * The domain events a pool turn's durable writes imply, derived from the
@@ -24,10 +21,10 @@ type TurnChangedEventType = AgentEventType | "CustomIntegrationsChanged";
 export function changedEventTypes(
   layout: { workspaceRel: string; dataRel: string },
   keys: readonly string[],
-): TurnChangedEventType[] {
+): TurnLandedEventType[] {
   const workspacePrefix = `${layout.workspaceRel}/`;
   const dataPrefix = `${layout.dataRel}/`;
-  const out = new Set<TurnChangedEventType>();
+  const out = new Set<TurnLandedEventType>();
   for (const key of keys) {
     if (key === "custom-integrations.json") {
       out.add("CustomIntegrationsChanged");
@@ -52,9 +49,9 @@ export function changedEventTypes(
 export function announcedOpEvents(
   events: readonly HoustonEvent[],
   projectionFailures: readonly string[],
-): (AgentEventType | "CustomIntegrationsChanged")[] {
+): TurnLandedEventType[] {
   if (projectionFailures.length > 0) return [];
-  const out = new Set<AgentEventType | "CustomIntegrationsChanged">();
+  const out = new Set<TurnLandedEventType>();
   for (const event of events) {
     // CustomIntegrationsChanged is the one agent-scoped event the protocol
     // ships without an agentPath (clients invalidate globally).

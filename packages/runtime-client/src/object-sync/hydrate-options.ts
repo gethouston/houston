@@ -24,6 +24,7 @@ export interface StartedHydration {
   done: Promise<void>;
   /** Resolves after `done` and every `opts.defer` object has landed. */
   deferred: Promise<void>;
+  prioritize: (rels: readonly string[]) => void;
   /** Stop admitting downloads and cancel adapters that support AbortSignal.
    *  `reason` becomes the rejection of whatever has not landed yet. */
   abort: (reason?: unknown) => void;
@@ -103,6 +104,8 @@ export interface HydrateOptions {
    * started on `done`, so a lower cap bounds the buffered batch bytes.
    */
   deferredParallel?: number;
+  onDeferredListed?: (rels: readonly string[]) => void;
+  onDeferredSettled?: (rel: string) => void;
   /**
    * Keep the board's hydrated bytes in the manifest as its three-way merge
    * base (`SyncBackOptions.workerMerge`). Off for the standing store sync.

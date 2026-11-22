@@ -90,7 +90,7 @@ export async function runTurn(
     // this request, so the diff is attributable by construction. Best-effort.
     const beforeFiles = snapshotWhenReady(
       workspaceDir,
-      directories.workspaceReady,
+      directories.deferredGate,
     );
 
     // A fresh per-turn holder for whatever the model ends up waiting on the user
