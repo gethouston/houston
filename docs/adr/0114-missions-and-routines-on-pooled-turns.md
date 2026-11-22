@@ -12,6 +12,8 @@ The fix answers each of those:
 - The turn signs with its `turn-v1` host token plus the acting token minted for the same claim. The gateway accepts that pair only while the claim is live and names the same org, agent and claim. Both tokens die with the claim.
 - Transcript reads (`read_mission`) also go to the gateway. The board list and status moves stay on the hydrated board and its sync-back merge.
 
+Known limits: a mission the turn starts on its own board is not on that turn's hydrated board, so `list_missions` and `update_mission_status` see it only from the next turn. The per-caller fan-out cap lives in worker memory and resets with each single-use sandbox; the gateway's per-board cap of 20 running missions still holds.
+
 A start on the agent's own board is not delegation. It writes no delegation ledger row, puts no delegator on the acting token and skips the Teamwork check, the same as a pod's own-board start. The gateway allows an agent onto its own board only for `missions/start` and `missions/read`. Mission depth stays capped at 1. The host checks the card's `origin_session_key`, and the gateway checks origin depth plus delegator.
 
 The missions prompt section has three variants, chosen from what the turn actually mounts. `full` is the desktop and pod text. `nested` adds that this chat cannot start missions. `none` says missions cannot be started here. A turn cannot read the Teamwork setting, so that stays a conditional sentence, and the gateway's `delegation_off` refusal reaches the model as it is.
@@ -32,7 +34,7 @@ Re-following live claims at startup was rejected. A rolling deploy boots new rep
 
 ## Title ops run on the agent's own provider
 
-An Anthropic agent's title op goes through the Claude Agent SDK in the op sandbox, the same seam the in-turn title uses, never through pi. When the gateway cannot title an asleep agent it answers `503` with `code: "title_unavailable"`, and the client's truncated-title fallback covers it.
+An Anthropic agent's title op goes through the Claude Agent SDK in the op sandbox, the same seam the in-turn title uses, never through pi. The gateway names the Claude plan on the op's credential as it does on a turn's, and the op gives the CLI 45 seconds, inside the gateway's one-minute op deadline. When the gateway cannot title an asleep agent it answers `503` with `code: "title_unavailable"`, and the client's truncated-title fallback covers it.
 
 ## Routines pause on an untyped provider failure that persists
 
