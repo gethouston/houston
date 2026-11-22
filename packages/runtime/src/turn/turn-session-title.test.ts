@@ -159,6 +159,7 @@ test("a provider failure after the response opened drops the title", async () =>
   expect(order).toContain("title_start");
   expect(signals[0]?.aborted).toBe(true);
   expect(result.missionTitle).toBeUndefined();
+  expect(result.providerError?.kind).toBe("rate_limited");
   expect(await cardTitle(dirs)).toBe(FALLBACK);
   // Dropping the title is not a title failure.
   expect(

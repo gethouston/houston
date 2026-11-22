@@ -96,7 +96,7 @@ export function handleTurnSessionFailure(input: {
         },
       );
       input.emit({ type: "provider_error", data: thrown });
-      return {};
+      return { providerError: thrown };
     }
   }
   if (input.assistantText || input.providerError)

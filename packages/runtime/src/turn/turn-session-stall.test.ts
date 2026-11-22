@@ -203,6 +203,7 @@ test("a silent provider stream ends the pooled turn with the stopped-responding 
     http_status: null,
   });
   expect(outcome.error).toBeUndefined();
+  expect(outcome.providerError?.kind).toBe("provider_internal");
   const last = loadConversation(
     join(dirs.dataDir, "conversations"),
     "c1",

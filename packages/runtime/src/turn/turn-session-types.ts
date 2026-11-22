@@ -1,6 +1,10 @@
 import type { AssistantRuntimeRole } from "@houston/domain/assistant-role";
 import type { MissionGuidance } from "@houston/host/src/houston-prompt-missions";
-import type { ModelCallReport, TurnMode } from "@houston/protocol";
+import type {
+  ModelCallReport,
+  ProviderError,
+  TurnMode,
+} from "@houston/protocol";
 import type {
   ChatMessage,
   PendingInteraction,
@@ -29,6 +33,7 @@ export interface TurnOutcome {
   spend?: { provider: string; usage: TokenUsage };
   /** Per-call timings for the terminal frame (turn-terminal.ts). */
   modelCalls?: ModelCallReport;
+  providerError?: ProviderError;
 }
 
 /** Per-turn model/effort pin. Absent means inherit the agent setting. */
