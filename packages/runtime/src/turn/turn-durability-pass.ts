@@ -12,6 +12,7 @@ import { syncTurnFilesystem } from "./turn-filesystem";
 import { reconcileTurnStopMarker } from "./turn-stop-marker";
 import { type TurnSyncReport, turnSyncReport } from "./turn-sync-report";
 import type { TranscriptPublishResult } from "./turn-transcript";
+import { recordUnsavedFiles } from "./turn-unsaved-row";
 import { publishTurnViews } from "./turn-view-publish";
 
 /** A fenced worker no longer owns the conversation: nothing it did is done. */
@@ -70,6 +71,13 @@ export async function finishTurnDurabilityPass(
   if (opts.timings) opts.timings.t_sync_done = performance.now();
   const poolWritesOutOfScope = synced.outOfScope;
   const sync = turnSyncReport(synced, opts.filesystem.workspaceRel);
+  const recorded = await recordUnsavedFiles(
+    opts,
+    sync.unsavedFiles,
+    synced.manifest,
+    !(opts.outcome.stopReason && sync.incomplete),
+  );
+  if (recorded === "fenced") return claimFenced(poolWritesOutOfScope, [], sync);
   let outcome = opts.outcome;
   let transcript = opts.transcript;
   if (outcome.stopReason && sync.incomplete) {
@@ -91,6 +99,7 @@ export async function finishTurnDurabilityPass(
   let changed = changedEventTypes(opts.filesystem, [
     ...synced.uploaded,
     ...synced.deleted,
+    ...synced.conflictCopies.map(({ copy }) => copy),
     ...opts.filesystem.immediateWrites,
   ]);
 

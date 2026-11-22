@@ -11,6 +11,7 @@ import { walkFiles } from "./sync-back-walk";
 
 const isLink = (source: unknown) =>
   typeof source === "object" && source !== null && "link" in source;
+const MAX_OUT_OF_SCOPE_KEYS = 100;
 
 export type {
   LocalWriteLock,
@@ -46,6 +47,13 @@ export async function syncBack(
   const merges: SyncResult["merges"] = [];
   const nextManifest: HydrateManifest = new Map();
   let outOfScope = 0;
+  const outOfScopeKeys: string[] = [];
+  const scopeMiss = (rel: string) => {
+    outOfScope += 1;
+    if (outOfScopeKeys.length < MAX_OUT_OF_SCOPE_KEYS) outOfScopeKeys.push(rel);
+  };
+  const conflictCopies: SyncResult["conflictCopies"] = [];
+  const deletesKept: SyncResult["deletesKept"] = [];
   // The worker's tree is one turn's: it pays a read of the conflicting
   // object rather than a listing of the whole store. The standing sync keeps
   // its one listing per pass.
@@ -91,7 +99,7 @@ export async function syncBack(
       if (opts.include && !opts.include(rel)) {
         // Out of the caller's write scope: never uploaded, but still counted
         // toward the next hydration and kept in the manifest as it was.
-        if (previous?.hash !== hash) outOfScope += 1;
+        if (previous?.hash !== hash) scopeMiss(rel);
         if (previous) nextManifest.set(rel, previous);
         continue;
       }
@@ -111,6 +119,7 @@ export async function syncBack(
         generationAware,
         refresh,
         ...(opts.workerMerge ? { workerMerge: true } : {}),
+        ...(opts.conflictCopies?.(rel) ? { conflictCopy: true } : {}),
         ...(opts.conflictBackoff ? { backoff: opts.conflictBackoff } : {}),
         ...(opts.localWriteLock ? { localWriteLock: opts.localWriteLock } : {}),
       });
@@ -133,6 +142,8 @@ export async function syncBack(
       if (result.skipped) skipped.push({ key: rel, reason: result.skipped });
       if (result.conflict)
         conflicts.push({ key: rel, reason: result.conflict });
+      if (result.conflictCopy)
+        conflictCopies.push({ key: rel, copy: result.conflictCopy });
     } finally {
       await source.dispose();
     }
@@ -151,7 +162,7 @@ export async function syncBack(
     }
     if (opts.include && !opts.include(rel)) {
       nextManifest.set(rel, previous);
-      outOfScope += 1;
+      scopeMiss(rel);
       continue;
     }
     // Sign-in state is never deleted by a sync pass: a missing or swapped
@@ -172,7 +183,10 @@ export async function syncBack(
     });
     if (result.deleted) deleted.push(rel);
     if (result.entry) nextManifest.set(rel, result.entry);
-    if (result.conflict) conflicts.push({ key: rel, reason: result.conflict });
+    if (result.kept)
+      deletesKept.push({ key: rel, reason: result.conflict ?? "" });
+    else if (result.conflict)
+      conflicts.push({ key: rel, reason: result.conflict });
   }
   return {
     uploaded,
@@ -181,6 +195,9 @@ export async function syncBack(
     conflicts,
     merges,
     outOfScope,
+    outOfScopeKeys,
+    conflictCopies,
+    deletesKept,
     manifest: nextManifest,
     totalBytes,
   };

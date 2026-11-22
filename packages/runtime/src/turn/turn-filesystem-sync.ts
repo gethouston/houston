@@ -3,6 +3,7 @@ import {
   type SyncResult,
   syncBack,
 } from "@houston/runtime-client/object-sync";
+import { agentScopeIncludes } from "./turn-agent-scope";
 import { deferredWorkspaceFile } from "./turn-deferred-files";
 import { DeferredFilesAbandonedError } from "./turn-deferred-watch";
 import type { TurnFilesystem } from "./turn-filesystem";
@@ -28,6 +29,9 @@ export async function syncTurnFilesystem(opts: {
   uploaded: string[];
   deleted: string[];
   outOfScope: number;
+  outOfScopeKeys: string[];
+  conflictCopies: SyncResult["conflictCopies"];
+  deletesKept: SyncResult["deletesKept"];
   skipped: { key: string; reason: string }[];
   conflicts: { key: string; reason: string }[];
   merges: SyncResult["merges"];
@@ -51,6 +55,10 @@ export async function syncTurnFilesystem(opts: {
         );
     }
   }
+  const { workspaceRel, dataRel } = opts.filesystem;
+  const scope = opts.claimed
+    ? claimedTurnIncludes(dataRel, workspaceRel, opts.conversationId)
+    : undefined;
   const result = await syncBack(
     opts.store,
     opts.prefix,
@@ -64,18 +72,10 @@ export async function syncTurnFilesystem(opts: {
       // Concurrent turns and the gateway's own card writes share one board:
       // merge it over bounded rounds (the standing daemon never sets this).
       workerMerge: true,
-      ...(opts.claimed
-        ? {
-            include: withoutDeferred(
-              claimedTurnIncludes(
-                opts.filesystem.dataRel,
-                opts.filesystem.workspaceRel,
-                opts.conversationId,
-              ),
-              deferredFailed,
-            ),
-          }
-        : {}),
+      conflictCopies: (rel) =>
+        agentScopeIncludes(rel, workspaceRel) &&
+        !rel.startsWith(`${workspaceRel}/.houston/`),
+      ...(scope ? { include: withoutDeferred(scope, deferredFailed) } : {}),
     },
   );
   if (result.outOfScope > 0) {
@@ -92,6 +92,15 @@ export async function syncTurnFilesystem(opts: {
     uploaded: result.uploaded,
     deleted: result.deleted,
     outOfScope: result.outOfScope,
+    outOfScopeKeys: result.outOfScopeKeys.filter(
+      (rel) =>
+        scope !== undefined &&
+        !scope(rel) &&
+        rel.startsWith(`${workspaceRel}/`) &&
+        !rel.startsWith(`${dataRel}/`),
+    ),
+    conflictCopies: result.conflictCopies,
+    deletesKept: result.deletesKept,
     skipped: result.skipped,
     conflicts: result.conflicts,
     merges: result.merges,

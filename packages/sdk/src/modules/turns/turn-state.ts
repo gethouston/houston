@@ -160,6 +160,7 @@ const NOTICE_CLASS: Record<EngineNoticeKind, TurnErrorClass | null> = {
   agent_too_large: "agent_too_large",
   agent_setup_failed: "agent_setup_failed",
   turn_unconfirmed: "turn_unconfirmed",
+  files_not_saved: null,
 };
 
 /**

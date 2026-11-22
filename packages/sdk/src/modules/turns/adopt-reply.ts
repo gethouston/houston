@@ -1,5 +1,6 @@
 import { isCompactionSummary, isPendingInteraction } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
+import { parseUnsavedFiles } from "@houston/wire-types";
 import { finishResumed } from "./finish-resumed";
 import {
   ENGINE_RESTART_MESSAGE,
@@ -14,6 +15,7 @@ import {
   settleProviderErrorCard,
   type TurnState,
 } from "./turn-settle";
+import { filesNotSavedNotice } from "./turn-unsaved-notice";
 
 /**
  * Settle a turn from the persisted record that concludes it
@@ -21,6 +23,18 @@ import {
  * live terminal frame (settle-from-history.ts).
  */
 export function adoptReply(
+  s: TurnState,
+  reply: ChatMessage,
+  onAdoptTurnId?: (turnId: string) => void,
+): void {
+  settleReply(s, reply, onAdoptTurnId);
+  const unsaved = filesNotSavedNotice(
+    parseUnsavedFiles({ unsavedFiles: reply.unsavedFiles }),
+  );
+  if (unsaved) push(s, unsaved);
+}
+
+function settleReply(
   s: TurnState,
   reply: ChatMessage,
   onAdoptTurnId?: (turnId: string) => void,

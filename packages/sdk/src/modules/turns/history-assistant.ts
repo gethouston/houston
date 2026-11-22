@@ -1,5 +1,6 @@
 import { isCompactionSummary } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
+import { parseUnsavedFiles } from "@houston/wire-types";
 import type { FeedFrame } from "./history";
 import {
   ENGINE_RESTART_MESSAGE,
@@ -7,6 +8,7 @@ import {
   STOPPED_BY_USER,
 } from "./turn-errors";
 import { timeLimitNotice } from "./turn-notices";
+import { filesNotSavedNotice } from "./turn-unsaved-notice";
 
 /** Assistant records replay in the same order as their live feed. */
 export function assistantHistory(
@@ -155,5 +157,9 @@ export function assistantHistory(
       ...turn,
     });
   }
+  const unsaved = filesNotSavedNotice(
+    parseUnsavedFiles({ unsavedFiles: m.unsavedFiles }),
+  );
+  if (unsaved) out.push({ ...unsaved, ts, ...turn });
   return out;
 }

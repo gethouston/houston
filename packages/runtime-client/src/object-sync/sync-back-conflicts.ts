@@ -5,6 +5,7 @@ import {
   StoreConflictError,
   type WriteOptions,
 } from "./object-store";
+import { keepRemoteBesideLocal } from "./sync-back-conflict-copy";
 import { isMergedDocument } from "./sync-back-doc-merge";
 import { withMergeBase } from "./sync-back-merge-base";
 import {
@@ -32,6 +33,7 @@ export interface UploadChangeResult {
   removedCards?: string[];
   /** Why a side would not parse, so the local bytes overwrote the remote. */
   unmergeable?: string;
+  conflictCopy?: string;
 }
 
 function initialWriteOptions(
@@ -62,6 +64,7 @@ export async function uploadChangedObject(opts: {
   refresh: RefreshManifest;
   /** The per-turn worker's merge rounds and board merge base. */
   workerMerge?: boolean;
+  conflictCopy?: boolean;
   backoff?: ConflictBackoff;
   localWriteLock?: LocalWriteLock;
 }): Promise<UploadChangeResult> {
@@ -95,18 +98,19 @@ export async function uploadChangedObject(opts: {
       });
       return { ...merged, mergeAttempts: attempts };
     }
+    if (opts.workerMerge && opts.conflictCopy)
+      return keepRemoteBesideLocal({ ...opts, conflict: error.message });
     return retryAtRefreshedGeneration(opts, error.message);
   }
 }
 
-/** Result of one delete plus its optional generation retry. */
 export interface DeleteObjectResult {
   deleted: boolean;
   entry?: HydrateManifestEntry;
   conflict?: string;
+  kept?: boolean;
 }
 
-/** Delete once, refreshing and retrying one generation conflict. */
 export async function deleteOwnedObject(opts: {
   store: ObjectStore;
   key: string;
@@ -123,27 +127,7 @@ export async function deleteOwnedObject(opts: {
     return { deleted: true };
   } catch (error) {
     if (!(error instanceof StoreConflictError)) throw error;
-    const current = await opts.refresh(opts.key);
-    if (current === undefined) {
-      return { deleted: false, entry: opts.previous, conflict: error.message };
-    }
-    if (current === null) return { deleted: true };
-    const retryGeneration = current.generation;
-    try {
-      await opts.store.delete(
-        opts.key,
-        retryGeneration === undefined
-          ? undefined
-          : { ifGenerationMatch: retryGeneration },
-      );
-      return { deleted: true };
-    } catch (retryError) {
-      if (!(retryError instanceof StoreConflictError)) throw retryError;
-      return {
-        deleted: false,
-        entry: { ...opts.previous, generation: retryGeneration },
-        conflict: retryError.message,
-      };
-    }
+    if ((await opts.refresh(opts.key)) === null) return { deleted: true };
+    return { deleted: false, kept: true, conflict: error.message };
   }
 }

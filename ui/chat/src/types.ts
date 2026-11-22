@@ -60,7 +60,8 @@ export type SystemNoticeKind =
   | "compute_busy"
   | "agent_too_large"
   | "agent_setup_failed"
-  | "turn_unconfirmed";
+  | "turn_unconfirmed"
+  | "files_not_saved";
 
 /**
  * A row the host draws itself, placed in the log like any message. `kind`
@@ -126,6 +127,7 @@ type FeedItemVariant =
        * `renderSystemMessage` instead of matching the text.
        */
       notice?: SystemNoticeKind;
+      noticeData?: unknown;
     }
   | {
       /**
