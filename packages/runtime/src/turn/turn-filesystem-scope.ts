@@ -32,6 +32,19 @@ export function claimedTurnIncludes(
     agentScopeIncludes(relativePath, workspaceRel);
 }
 
+export function claimedTurnKeepsWrite(
+  layout: { workspaceRel: string; dataRel: string },
+  conversationId: string,
+): (workspaceRelative: string) => boolean {
+  const includes = claimedTurnIncludes(
+    layout.dataRel,
+    layout.workspaceRel,
+    conversationId,
+  );
+  return (workspaceRelative) =>
+    includes(posix.join(layout.workspaceRel, workspaceRelative));
+}
+
 /** Keep ordinary session state, but only durable files from the Claude CLI. */
 export function turnSessionScopeIncludes(
   sessionRel: string,

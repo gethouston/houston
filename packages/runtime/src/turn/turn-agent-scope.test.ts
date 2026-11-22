@@ -1,42 +1,24 @@
 import { expect, test } from "vitest";
 import { agentScopeIncludes } from "./turn-agent-scope";
+import vectors from "./turn-agent-scope.vectors.json";
 
 const ROOT = "workspaces/Personal/Bob";
 
-test.each([
-  `${ROOT}/.houston/routines/routines.json`,
-  `${ROOT}/.houston/learnings/learnings.json`,
-  "custom-integrations.json",
-  `${ROOT}/.agents/skills/example/SKILL.md`,
-  `${ROOT}/notes.md`,
-  // The agent's own state: a routine's dedupe watermark must survive the
-  // sandbox or the next run repeats every post.
-  `${ROOT}/.houston/state/signup_slack_alerts.json`,
-  `${ROOT}/.houston/cache/seen.json`,
-])("agent scope includes %s", (path) => {
-  expect(agentScopeIncludes(path, ROOT)).toBe(true);
+const workspaceOf = (path: string) =>
+  path.startsWith("workspace/") ? "workspace" : ROOT;
+
+test.each(vectors.allow)("agent scope includes %s", (path) => {
+  expect(agentScopeIncludes(path, workspaceOf(path))).toBe(true);
+});
+
+test.each(vectors.deny)("agent scope excludes %s", (path) => {
+  expect(agentScopeIncludes(path, workspaceOf(path))).toBe(false);
 });
 
 test.each([
-  `${ROOT}/.houston/runtime/settings.json`,
-  `${ROOT}/.houston/runtime/conversations/c1.json`,
-  `${ROOT}/.houston/docs/activity/activity.json`,
-  `${ROOT}/.houston/routines/other.json`,
-  `${ROOT}/.houston/learnings/other.json`,
-  `${ROOT}/.houston/config/config.json`,
-  `${ROOT}/.houston/activity/activity.json`,
-  `${ROOT}/.houston/routine_runs/routine_runs.json`,
-  `${ROOT}/.houston/skills/x/SKILL.md`,
-  `${ROOT}/.houston/skills-manifest/skills-manifest.json`,
-  `${ROOT}/.houston/sessions/claude/x.sid`,
-  `${ROOT}/.houston/memory/learnings.md`,
-  `${ROOT}/.houston/prompts/system.md`,
-  `${ROOT}/.houston/migration/state.json`,
-  `${ROOT}/.houston/agent.json`,
-  `${ROOT}/.houston/state//x.json`,
-  `${ROOT}/.houston/state/../runtime/auth.json`,
   "workspaces/Personal/Alice/notes.md",
   "workspaces/Personal/Alice/.houston/state/x.json",
-])("agent scope excludes %s", (path) => {
+  "workspaces/Personal/Alice/.houston/state.json",
+])("agent scope excludes another agent's %s", (path) => {
   expect(agentScopeIncludes(path, ROOT)).toBe(false);
 });

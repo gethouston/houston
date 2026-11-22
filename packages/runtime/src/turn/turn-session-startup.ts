@@ -8,6 +8,7 @@ import { turnCodeExecutionMode } from "../session/tool-selection";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import { sandboxFetchRunCodeTransport } from "../session/tools/run-code-transport";
 import { createTurnBackend, type TurnBackendDeps } from "./turn-backend";
+import { claimedTurnKeepsWrite } from "./turn-filesystem-scope";
 import { turnRunCodeLimiter } from "./turn-run-code-limiter";
 import { createTurnModelRuntime } from "./turn-runtime";
 import { TURN_CODE_RUN_PATH } from "./turn-sandbox-code";
@@ -110,6 +111,19 @@ async function prepareTurnSession(
       workspaceDir: directories.workspaceDir,
       sharedSkillsDir: config.sharedSkillsDir,
       sharedSkillsSnapshot: turnSharedSkillsDir(directories.turnRoot),
+      ...(turn.claimed &&
+      directories.workspaceRel !== undefined &&
+      directories.dataRel !== undefined
+        ? {
+            keepsWrite: claimedTurnKeepsWrite(
+              {
+                workspaceRel: directories.workspaceRel,
+                dataRel: directories.dataRel,
+              },
+              turn.conversationId,
+            ),
+          }
+        : {}),
     }),
     claudeSdk: deps.claudeSdk,
     claudeSdkLoad: sdkLoad,

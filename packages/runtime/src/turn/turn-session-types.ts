@@ -63,6 +63,7 @@ export interface TurnSessionRequest {
    * (session/routine-context.ts).
    */
   routineFire?: boolean;
+  claimed?: boolean;
   /** Fresh read of the stored board doc, for a card hydration missed. */
   readRemoteActivity?: RemoteActivityReader;
   author?: MessageAuthor;
@@ -94,6 +95,8 @@ export interface TurnDirectories {
   workspaceDir: string;
   dataDir: string;
   turnRoot: string;
+  workspaceRel?: string;
+  dataRel?: string;
   /** Hydration deferred past the prompt (turn-deferred-files.ts). */
   workspaceReady?: Promise<void>;
   /** Called once the prompt ends or is stopped (turn-deferred-watch.ts). */

@@ -25,12 +25,23 @@ const HOUSTON_OWNED_DIRS: ReadonlySet<string> = new Set([
   "skills-manifest",
 ]);
 
+const HOUSTON_OWNED_FILES: ReadonlySet<string> = new Set([
+  "activity.json",
+  "agent.json",
+  "config.json",
+  "integrations.json",
+  "learnings.json",
+  "routine_runs.json",
+  "routines.json",
+  "skills-manifest.json",
+]);
+
 /**
  * Files an agent-level mutation may own from a claimed turn. Mirrors the
  * store's turn-claim object scope EXACTLY — any path admitted here but
  * rejected server-side would be attempted at sync and 403'd (a silent
  * partial sync), so the two rules must not drift: ordinary workspace files,
- * the two turn-owned doc files, the agent's own `.houston/<dir>/` state, and
+ * the two turn-owned doc files, the agent's own `.houston/` state, and
  * the store-root custom-integration definitions.
  *
  * The agent's own state matters because a pooled turn's tree is thrown away:
@@ -45,13 +56,14 @@ export function agentScopeIncludes(
   const root = `${workspaceRel}/`;
   if (!relativePath.startsWith(root)) return false;
   const internal = `${posix.join(workspaceRel, ".houston")}/`;
+  if (`${relativePath}/` === internal) return false;
   if (!relativePath.startsWith(internal)) return true;
   const rest = relativePath.slice(internal.length);
   if (rest === "routines/routines.json" || rest === "learnings/learnings.json")
     return true;
   const segments = rest.split("/");
-  if (segments.length < 2 || HOUSTON_OWNED_DIRS.has(segments[0] ?? "")) {
-    return false;
-  }
-  return segments.every((s) => s !== "" && s !== "." && s !== "..");
+  if (!segments.every((s) => s !== "" && s !== "." && s !== "..")) return false;
+  const [first = ""] = segments;
+  if (HOUSTON_OWNED_DIRS.has(first)) return false;
+  return segments.length > 1 || !HOUSTON_OWNED_FILES.has(first);
 }
