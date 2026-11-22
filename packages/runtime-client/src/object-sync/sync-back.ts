@@ -9,6 +9,9 @@ import { SOURCE_GONE, SOURCE_REFUSED, syncSource } from "./sync-back-source";
 import type { SyncBackOptions, SyncResult } from "./sync-back-types";
 import { walkFiles } from "./sync-back-walk";
 
+const isLink = (source: unknown) =>
+  typeof source === "object" && source !== null && "link" in source;
+
 export type {
   LocalWriteLock,
   SyncBackOptions,
@@ -38,6 +41,7 @@ export async function syncBack(
     [...manifest.values()].some(({ generation }) => generation !== undefined);
   const uploaded: string[] = [];
   const skipped: SyncResult["skipped"] = [];
+  const refusedLinks: SyncResult["skipped"] = [];
   const conflicts: SyncResult["conflicts"] = [];
   const merges: SyncResult["merges"] = [];
   const nextManifest: HydrateManifest = new Map();
@@ -54,8 +58,9 @@ export async function syncBack(
   // neither uploaded nor deleted: its manifest entry stays as it was. A cheap
   // first check only: each file is checked again where it is read.
   const syncable = privateDirGate();
+  const links = store.fileAttrs === true;
 
-  for (const rel of await walkFiles(dir, dir)) {
+  for (const rel of await walkFiles(dir, dir, true)) {
     if (excluded(rel, excludes)) continue;
     const abs = join(dir, ...rel.split("/"));
     if (!(await syncable(abs))) {
@@ -69,9 +74,12 @@ export async function syncBack(
     // leave it out of the next manifest and let the delete pass reconcile the
     // store, instead of aborting the whole pass mid-upload. Sign-in state is
     // checked per file and uploaded from a checked copy (sync-back-source.ts).
-    const source = await syncSource(abs);
+    const source = await syncSource(abs, rel);
     if (source === SOURCE_GONE) continue;
-    if (source === SOURCE_REFUSED) {
+    const refused = source !== SOURCE_REFUSED && "refusedLink" in source;
+    if (source === SOURCE_REFUSED || refused || (!links && isLink(source))) {
+      if (refused && links && opts.include?.(rel) !== false)
+        refusedLinks.push({ key: rel, reason: source.refusedLink });
       const kept = manifest.get(rel);
       if (kept) nextManifest.set(rel, kept);
       continue;
@@ -169,7 +177,7 @@ export async function syncBack(
   return {
     uploaded,
     deleted,
-    skipped,
+    skipped: [...skipped, ...refusedLinks],
     conflicts,
     merges,
     outOfScope,

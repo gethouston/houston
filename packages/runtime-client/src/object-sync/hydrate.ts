@@ -83,6 +83,7 @@ export async function startHydrate(
   const priorityRels = new Set(priorityCandidates.map(({ rel }) => rel));
   const state: HydrateDownloadState = {
     failed: false,
+    links: new Set(),
     fail(error) {
       if (this.failed) return;
       this.failed = true;
