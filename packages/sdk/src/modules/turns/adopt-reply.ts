@@ -1,5 +1,6 @@
 import { isCompactionSummary, isPendingInteraction } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
+import { parseUnsavedFiles } from "@houston/wire-types";
 import { finishResumed } from "./finish-resumed";
 import {
   ENGINE_RESTART_MESSAGE,
@@ -27,7 +28,9 @@ export function adoptReply(
   onAdoptTurnId?: (turnId: string) => void,
 ): void {
   settleReply(s, reply, onAdoptTurnId);
-  const unsaved = filesNotSavedNotice(reply.unsavedFiles);
+  const unsaved = filesNotSavedNotice(
+    parseUnsavedFiles({ unsavedFiles: reply.unsavedFiles }),
+  );
   if (unsaved) push(s, unsaved);
 }
 

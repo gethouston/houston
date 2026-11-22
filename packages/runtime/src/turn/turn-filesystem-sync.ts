@@ -55,6 +55,10 @@ export async function syncTurnFilesystem(opts: {
         );
     }
   }
+  const { workspaceRel, dataRel } = opts.filesystem;
+  const scope = opts.claimed
+    ? claimedTurnIncludes(dataRel, workspaceRel, opts.conversationId)
+    : undefined;
   const result = await syncBack(
     opts.store,
     opts.prefix,
@@ -69,19 +73,9 @@ export async function syncTurnFilesystem(opts: {
       // merge it over bounded rounds (the standing daemon never sets this).
       workerMerge: true,
       conflictCopies: (rel) =>
-        agentScopeIncludes(rel, opts.filesystem.workspaceRel),
-      ...(opts.claimed
-        ? {
-            include: withoutDeferred(
-              claimedTurnIncludes(
-                opts.filesystem.dataRel,
-                opts.filesystem.workspaceRel,
-                opts.conversationId,
-              ),
-              deferredFailed,
-            ),
-          }
-        : {}),
+        agentScopeIncludes(rel, workspaceRel) &&
+        !rel.startsWith(`${workspaceRel}/.houston/`),
+      ...(scope ? { include: withoutDeferred(scope, deferredFailed) } : {}),
     },
   );
   if (result.outOfScope > 0) {
@@ -98,7 +92,13 @@ export async function syncTurnFilesystem(opts: {
     uploaded: result.uploaded,
     deleted: result.deleted,
     outOfScope: result.outOfScope,
-    outOfScopeKeys: result.outOfScopeKeys,
+    outOfScopeKeys: result.outOfScopeKeys.filter(
+      (rel) =>
+        scope !== undefined &&
+        !scope(rel) &&
+        rel.startsWith(`${workspaceRel}/`) &&
+        !rel.startsWith(`${dataRel}/`),
+    ),
     conflictCopies: result.conflictCopies,
     deletesKept: result.deletesKept,
     skipped: result.skipped,

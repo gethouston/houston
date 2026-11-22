@@ -11,7 +11,6 @@ export interface UnsavedSyncInput {
   skipped: readonly { key: string }[];
   conflictCopies?: readonly { key: string; copy: string }[];
   deletesKept?: readonly { key: string }[];
-  outOfScope?: number;
   outOfScopeKeys?: readonly string[];
 }
 
@@ -53,8 +52,6 @@ export function turnUnsavedFiles(
   ];
   const counts: UnsavedFilesReport["counts"] = {};
   for (const { reason } of all) counts[reason] = (counts[reason] ?? 0) + 1;
-  const outOfScope = Math.max(synced.outOfScope ?? 0, counts.out_of_scope ?? 0);
-  if (outOfScope > 0) counts.out_of_scope = outOfScope;
   const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
   if (total === 0) return undefined;
   const files = [

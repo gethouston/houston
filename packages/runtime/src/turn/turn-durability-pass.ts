@@ -99,6 +99,7 @@ export async function finishTurnDurabilityPass(
   let changed = changedEventTypes(opts.filesystem, [
     ...synced.uploaded,
     ...synced.deleted,
+    ...synced.conflictCopies.map(({ copy }) => copy),
     ...opts.filesystem.immediateWrites,
   ]);
 

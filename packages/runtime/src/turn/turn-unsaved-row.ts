@@ -27,8 +27,10 @@ export async function recordUnsavedFiles(
       .findLast((m) => m.role === "assistant" && m.turnId === opts.turn.turnId);
     if (userIndex < 0 || !reply) return undefined;
     reply.unsavedFiles = report;
+    const archived = JSON.stringify(conversation.archived);
     saveConversation(dir, conversation);
-    if (!upload) return undefined;
+    if (!upload || JSON.stringify(conversation.archived) !== archived)
+      return undefined;
     const conversationKey = posix.join(
       opts.filesystem.dataRel,
       "conversations",

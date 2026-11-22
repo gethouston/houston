@@ -7,6 +7,7 @@ import type { HydrateManifestEntry } from "./hydrate";
 import {
   ObjectNotFoundError,
   type ObjectStore,
+  ObjectTooLargeError,
   type ReadResult,
   StoreConflictError,
 } from "./object-store";
@@ -14,6 +15,10 @@ import { sourceVanished } from "./sync-back-merge-retry";
 
 const ROUNDS = 3;
 const COPY_NAMES = 5;
+const MAX_NAME_BYTES = 255;
+const MAX_EXT_BYTES = 64;
+
+const bytes = (text: string) => Buffer.byteLength(text, "utf8");
 
 export interface ConflictCopyResult {
   entry?: HydrateManifestEntry;
@@ -21,6 +26,7 @@ export interface ConflictCopyResult {
   conflict?: string;
   vanished?: boolean;
   conflictCopy?: string;
+  skipped?: string;
 }
 
 export function conflictCopyName(
@@ -33,10 +39,16 @@ export function conflictCopyName(
   const tag =
     attempt === 1 ? `(conflict ${date})` : `(conflict ${date} ${attempt})`;
   const dot = base.lastIndexOf(".");
-  const name =
-    dot <= 0
-      ? `${base} ${tag}`
-      : `${base.slice(0, dot)} ${tag}${base.slice(dot)}`;
+  const split = dot > 0 && bytes(base.slice(dot)) <= MAX_EXT_BYTES;
+  const ext = split ? base.slice(dot) : "";
+  const stem = [...(split ? base.slice(0, dot) : base)];
+  const suffix = ` ${tag}${ext}`;
+  while (
+    stem.length > 1 &&
+    bytes(stem.join("")) + bytes(suffix) > MAX_NAME_BYTES
+  )
+    stem.pop();
+  const name = `${stem.join("")}${suffix}`;
   return dir === "." ? name : posix.join(dir, name);
 }
 
@@ -138,6 +150,12 @@ export async function keepRemoteBesideLocal(opts: {
     return { entry: opts.previous, uploaded: false, conflict: opts.conflict };
   } catch (error) {
     if (sourceVanished(error)) return { uploaded: false, vanished: true };
+    if (error instanceof ObjectTooLargeError)
+      return {
+        entry: { hash: opts.hash },
+        uploaded: false,
+        skipped: error.message,
+      };
     throw error;
   }
 }

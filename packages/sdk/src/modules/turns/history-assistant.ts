@@ -1,5 +1,6 @@
 import { isCompactionSummary } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
+import { parseUnsavedFiles } from "@houston/wire-types";
 import type { FeedFrame } from "./history";
 import {
   ENGINE_RESTART_MESSAGE,
@@ -156,7 +157,9 @@ export function assistantHistory(
       ...turn,
     });
   }
-  const unsaved = filesNotSavedNotice(m.unsavedFiles);
+  const unsaved = filesNotSavedNotice(
+    parseUnsavedFiles({ unsavedFiles: m.unsavedFiles }),
+  );
   if (unsaved) out.push({ ...unsaved, ts, ...turn });
   return out;
 }

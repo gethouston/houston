@@ -57,10 +57,13 @@ export async function syncMigratedTree(input: {
     // The first pass leaves the preferences changed on purpose; a change
     // outside the scope is still changed in the last pass, and counted there.
     const stray = last ? synced.outOfScope : 0;
-    if (synced.conflicts.length + synced.skipped.length + stray > 0)
+    const kept = synced.deletesKept.length;
+    if (synced.conflicts.length + synced.skipped.length + stray + kept > 0)
       return {
         durable: false,
-        conflicts: synced.conflicts.map((c) => c.key),
+        conflicts: [...synced.conflicts, ...synced.deletesKept].map(
+          (c) => c.key,
+        ),
         skipped: synced.skipped.map((s) => s.key),
       };
     uploaded.push(...synced.uploaded);

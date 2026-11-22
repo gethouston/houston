@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { MAX_UNSAVED_FILES, MAX_UNSAVED_PATH } from "@houston/protocol";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -32,7 +32,6 @@ test("every un-landed path is reported workspace-relative, internals last", () =
         { key: `${W}/notes.md`, copy: `${W}/notes (conflict D).md` },
       ],
       deletesKept: [{ key: `${W}/old.txt` }],
-      outOfScope: 7,
       outOfScopeKeys: [`${W}/.houston/config/config.json`],
     },
     W,
@@ -49,13 +48,13 @@ test("every un-landed path is reported workspace-relative, internals last", () =
       { path: ".houston/config/config.json", reason: "out_of_scope" },
       { path: "data/sessions/c1/x.json", reason: "conflict", internal: true },
     ],
-    total: 11,
+    total: 5,
     counts: {
       conflict_copy: 1,
       conflict: 1,
       delete_kept: 1,
       too_large: 1,
-      out_of_scope: 7,
+      out_of_scope: 1,
     },
   });
 });
@@ -156,4 +155,60 @@ test("overlapping turns keep both versions and the later one says so", async () 
   const conversationKey = `${second.filesystem.dataRel}/conversations/c2.json`;
   const remote = JSON.parse(await stored(conversationKey));
   expect(remote.messages.at(-1).unsavedFiles.files).toEqual([expected]);
+});
+
+test("the copy fires a file change so the Files tab shows it", async () => {
+  const agent = await agentStore();
+  await seed(agent.prefixRoot, NOTES, "original");
+  const docs = podDocs({});
+  const first = await claimedTurn(agent, docs, "c1");
+  const second = await claimedTurn(agent, docs, "c2");
+  await editNotes(first, "first turn");
+  await first.settle();
+  const settled = await second.settle();
+  expect(settled.changed).not.toContain("FilesChanged");
+
+  const third = await claimedTurn(agent, docs, "c3");
+  const fourth = await claimedTurn(agent, docs, "c4");
+  await editNotes(third, "third");
+  await editNotes(fourth, "fourth");
+  await third.settle();
+  expect((await fourth.settle()).changed).toContain("FilesChanged");
+});
+
+test("the agent's own state keeps the refreshed write, never a copy", async () => {
+  const agent = await agentStore();
+  const state = `${W}/.houston/state/watermark.json`;
+  await seed(agent.prefixRoot, state, "0");
+  const docs = podDocs({});
+  const first = await claimedTurn(agent, docs, "c1");
+  const second = await claimedTurn(agent, docs, "c2");
+  const write = (turn: typeof first, body: string) =>
+    writeFile(
+      join(turn.filesystem.workspaceDir, ".houston/state/watermark.json"),
+      body,
+    );
+  await write(first, "1");
+  await write(second, "2");
+  await first.settle();
+  const settled = await second.settle();
+  expect(
+    await readFile(join(agent.prefixRoot, ...state.split("/")), "utf8"),
+  ).toBe("2");
+  expect(settled.sync?.unsavedFiles).toBeUndefined();
+});
+
+test("only writes the scope refuses are reported, never the runtime's own scratch", async () => {
+  const agent = await agentStore();
+  const turn = await claimedTurn(agent, podDocs({}), "c1");
+  const config = join(turn.filesystem.workspaceDir, ".houston/config");
+  await mkdir(config, { recursive: true });
+  await writeFile(join(config, "config.json"), "{}");
+  const scratch = join(turn.filesystem.dataDir, "sessions/c1/claude/todos");
+  await mkdir(scratch, { recursive: true });
+  await writeFile(join(scratch, "t.json"), "[]");
+  const settled = await turn.settle();
+  expect(settled.sync?.unsavedFiles?.files).toEqual([
+    { path: ".houston/config/config.json", reason: "out_of_scope" },
+  ]);
 });

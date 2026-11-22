@@ -154,3 +154,14 @@ test("the notice reports reasons and counts, never file names", () => {
   });
   expect(JSON.stringify(reported?.error)).not.toContain("notes");
 });
+
+test("a malformed saved report replays nothing instead of throwing", () => {
+  const broken = [
+    messages[0],
+    { ...messages[1], unsavedFiles: { files: "x", total: 1 } },
+  ] as ChatMessage[];
+  expect(() => historyToFeed(broken)).not.toThrow();
+  expect(
+    historyToFeed(broken).filter((f) => f.notice === "files_not_saved"),
+  ).toEqual([]);
+});

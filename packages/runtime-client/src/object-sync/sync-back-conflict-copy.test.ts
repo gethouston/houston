@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { HydrateManifest } from "./hydrate";
 import { memoryStore } from "./memory-store.test-support";
+import { ObjectTooLargeError } from "./object-store";
 import { syncBack } from "./sync-back";
 import { conflictCopyName } from "./sync-back-conflict-copy";
 
@@ -158,4 +159,26 @@ test("the turn's local bytes stay as they were", async () => {
   expect(await readFile(join(root, ...NOTES.split("/")), "utf8")).toBe(
     "turn edit",
   );
+});
+
+test("a long name is trimmed so the copy still fits one file name", () => {
+  const stem = "é".repeat(120);
+  const copy = conflictCopyName(`a/${stem}.md`, "2026-11-22", 1);
+  const name = copy.slice(2);
+  expect(Buffer.byteLength(name, "utf8")).toBeLessThanOrEqual(255);
+  expect(name.endsWith(" (conflict 2026-11-22).md")).toBe(true);
+  expect(copy.startsWith("a/éé")).toBe(true);
+});
+
+test("a copy the store refuses as too large is recorded, not thrown", async () => {
+  const mem = memoryStore({ [NOTES]: "their edit" });
+  const upload = mem.store.upload;
+  mem.store.upload = async (source, key, options) => {
+    if (key === COPY) throw new ObjectTooLargeError(key, "too large");
+    return upload(source, key, options);
+  };
+  const root = await tree({ [NOTES]: "turn edit" });
+  const result = await syncBack(mem.store, "", root, stale(NOTES), workerOpts);
+  expect(result.skipped).toEqual([{ key: NOTES, reason: "too large" }]);
+  expect(mem.body(NOTES)).toBe("their edit");
 });
