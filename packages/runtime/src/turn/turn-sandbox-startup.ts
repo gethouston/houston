@@ -3,6 +3,7 @@ import type { TurnServerDeps } from "./server-types";
 import { startTurnCoordinator } from "./turn-coordinator";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { TurnSetupError } from "./turn-layout";
+import { startTurnMissions } from "./turn-missions";
 import { turnProvider } from "./turn-request";
 import { makeTurnSandboxFetch } from "./turn-sandbox";
 import type { poolIdentity, resolveTurnStore } from "./turn-store";
@@ -41,6 +42,18 @@ export function createTurnSandbox(input: {
           ...(input.deps.fetchImpl ? { fetchImpl: input.deps.fetchImpl } : {}),
         })
       : undefined;
+  const missions =
+    !turn.coordinator &&
+    turn.actingToken &&
+    input.filesystem.kind === "standing"
+      ? startTurnMissions({
+          turn,
+          actingToken: turn.actingToken,
+          gateway: { url: turn.grant.url, token: turn.hostToken },
+          agentSlug: identity.agent,
+          filesystem: input.filesystem,
+        })
+      : undefined;
   return makeTurnSandboxFetch({
     grant: turn.grant,
     hostToken: turn.hostToken,
@@ -57,5 +70,6 @@ export function createTurnSandbox(input: {
     agentSlug: identity.agent,
     ...(input.deps.fetchImpl ? { fetchImpl: input.deps.fetchImpl } : {}),
     ...(coordinator ? { coordinator } : {}),
+    ...(missions ? { missions } : {}),
   });
 }

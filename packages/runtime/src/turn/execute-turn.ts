@@ -109,7 +109,14 @@ export async function executeTurn(
           turnId,
           earlyEmit,
           abort.signal,
-          turnSandbox ? { call: turnSandbox.call } : undefined,
+          turnSandbox
+            ? {
+                call: turnSandbox.call,
+                ...(turnSandbox.missionGuidance
+                  ? { missionGuidance: turnSandbox.missionGuidance }
+                  : {}),
+              }
+            : undefined,
           timings,
         ),
         deps.turnSessionDeps,

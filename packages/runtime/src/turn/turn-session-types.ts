@@ -1,4 +1,5 @@
 import type { AssistantRuntimeRole } from "@houston/domain/assistant-role";
+import type { MissionGuidance } from "@houston/host/src/houston-prompt-missions";
 import type { ModelCallReport, TurnMode } from "@houston/protocol";
 import type {
   ChatMessage,
@@ -84,7 +85,10 @@ export interface TurnSessionRequest {
    */
   role?: AssistantRuntimeRole;
   /** Turn-local routing closure; it owns all grant-bearing calls. */
-  sandbox?: { call: SandboxFetch };
+  sandbox?: {
+    call: SandboxFetch;
+    missionGuidance?: Promise<MissionGuidance>;
+  };
   timings?: Record<string, number>;
   /** Setup begun after layout resolution and before bulk hydration completes. */
   startup?: TurnSessionStartupTask;
