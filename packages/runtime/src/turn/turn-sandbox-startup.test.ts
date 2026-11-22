@@ -39,6 +39,8 @@ const turn = {
   coordinator: { token: "assistant-turn-v1.x.y", expires: 4102444800 },
 } as TurnRequest;
 
+const READY = Promise.resolve();
+
 test("Houston's turn on a non-standing tree fails at setup", () => {
   expect(() =>
     createTurnSandbox({
@@ -53,6 +55,7 @@ test("Houston's turn on a non-standing tree fails at setup", () => {
         workspaceRel: "workspace",
         dataRel: "data",
       } as TurnFilesystem,
+      hydrated: READY,
     }),
   ).toThrow(TurnSetupError);
 });
@@ -70,6 +73,7 @@ test("the turn's plan limits reach its sandbox's routine writes", () => {
       typeof resolveTurnStore
     >,
     filesystem: { kind: "cloudrun" } as TurnFilesystem,
+    hydrated: READY,
   });
   expect(makeTurnSandboxFetch).toHaveBeenCalledWith(
     expect.objectContaining({ limits: { routineMinIntervalMinutes: 15 } }),
@@ -96,6 +100,7 @@ test("an ordinary turn on its own tree mounts its mission family over the gatewa
     identity,
     resolved,
     filesystem: standing,
+    hydrated: READY,
   });
   expect(startTurnMissions).toHaveBeenLastCalledWith({
     turn: ordinary,
@@ -103,6 +108,7 @@ test("an ordinary turn on its own tree mounts its mission family over the gatewa
     gateway: { url: "https://gateway.test", token: "turn-v1.x.y" },
     agentSlug: "a551abc",
     filesystem: standing,
+    hydrated: READY,
   });
   expect(mount()).toBeDefined();
 
@@ -117,6 +123,7 @@ test("an ordinary turn on its own tree mounts its mission family over the gatewa
       identity,
       resolved,
       filesystem,
+      hydrated: READY,
     });
   expect(startTurnMissions).not.toHaveBeenCalled();
   expect(mount()).toBeUndefined();

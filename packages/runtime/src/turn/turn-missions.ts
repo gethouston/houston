@@ -32,6 +32,7 @@ export interface TurnMissionsInput {
   gateway: AssistantGateway;
   agentSlug: string;
   filesystem: TurnFilesystem;
+  hydrated: Promise<unknown>;
 }
 
 export interface TurnMissionsSession {
@@ -110,6 +111,7 @@ async function missionGuidance(
   input: TurnMissionsInput,
 ): Promise<MissionGuidance> {
   if (actingDelegatorFromHeader(input.actingToken)) return "nested";
+  await input.hydrated;
   const { items } = await loadActivities(
     input.filesystem.vfs,
     input.filesystem.workspaceRel,

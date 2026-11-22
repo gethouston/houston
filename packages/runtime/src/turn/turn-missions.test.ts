@@ -98,6 +98,7 @@ async function session(opts: {
   filesystem?: TurnFilesystem;
   turn?: TurnRequest;
   actingToken?: string;
+  hydrated?: Promise<unknown>;
 }) {
   const started = startTurnMissions({
     turn: opts.turn ?? turn(),
@@ -105,6 +106,7 @@ async function session(opts: {
     gateway: { url: opts.gateway, token: HOST_TOKEN },
     agentSlug: SLUG,
     filesystem: opts.filesystem ?? (await hydrated()),
+    hydrated: opts.hydrated ?? Promise.resolve(),
   });
   sessions.push(started);
   return started;
@@ -183,6 +185,25 @@ test("a chat that is itself an agent-started mission cannot start another", asyn
   expect(res.status).toBe(409);
   expect(((await res.json()) as { code: string }).code).toBe("mission_depth");
   expect(gateway.seen).toHaveLength(0);
+});
+
+test("the nested check waits for the board to hydrate", async () => {
+  const gateway = await fakeGateway();
+  const filesystem = await hydrated();
+  let landed: () => void = () => undefined;
+  const board = new Promise<void>((resolve) => {
+    landed = resolve;
+  });
+  const s = await session({
+    gateway: gateway.url,
+    filesystem,
+    hydrated: board,
+  });
+  await saveActivities(filesystem.vfs, WORKSPACE_REL, [
+    card("m-parent", { session_key: "c-parent", origin_session_key: "c-up" }),
+  ]);
+  landed();
+  expect(await s.guidance).toBe("nested");
 });
 
 test("a delegated turn reads as nested and its start is refused before the gateway", async () => {

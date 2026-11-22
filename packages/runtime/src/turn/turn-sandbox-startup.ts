@@ -16,6 +16,7 @@ export function createTurnSandbox(input: {
   identity: ReturnType<typeof poolIdentity> | undefined;
   resolved: ReturnType<typeof resolveTurnStore>;
   filesystem: TurnFilesystem;
+  hydrated: Promise<unknown>;
 }): ReturnType<typeof makeTurnSandboxFetch> | null {
   const { turn, identity } = input;
   if (!turn.grant || !turn.hostToken || !identity) return null;
@@ -52,6 +53,7 @@ export function createTurnSandbox(input: {
           gateway: { url: turn.grant.url, token: turn.hostToken },
           agentSlug: identity.agent,
           filesystem: input.filesystem,
+          hydrated: input.hydrated,
         })
       : undefined;
   return makeTurnSandboxFetch({

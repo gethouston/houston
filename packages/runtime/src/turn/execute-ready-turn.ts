@@ -13,6 +13,7 @@ import { reportPooledSettle } from "./turn-push";
 import {
   turnIsUnconnected,
   turnSessionRequest,
+  turnSessionSandbox,
   unconnectedTurnOutcome,
 } from "./turn-request";
 import { finishRoutineTurn } from "./turn-routine-finish";
@@ -88,7 +89,7 @@ export async function executeReadyTurn(input: {
               input.turnId,
               input.emit,
               input.signal,
-              input.sandbox ? { call: input.sandbox.call } : undefined,
+              turnSessionSandbox(input.sandbox),
               input.timings,
               input.startup,
             );
