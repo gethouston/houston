@@ -35,6 +35,9 @@ export interface SyncResult {
   merges: SyncMerge[];
   /** Changed paths rejected by the caller's write scope. */
   outOfScope: number;
+  outOfScopeKeys: string[];
+  conflictCopies: { key: string; copy: string }[];
+  deletesKept: { key: string; reason: string }[];
   /** Bytes the next hydration must materialize, excluding local-only paths. */
   totalBytes: number;
 }
@@ -70,6 +73,7 @@ export interface SyncBackOptions {
    * refreshed generation and never merges the board.
    */
   workerMerge?: boolean;
+  conflictCopies?: (relativePath: string) => boolean;
   /** Delay between merge rounds of a contended document (tests pass 0). */
   conflictBackoff?: ConflictBackoff;
   /** The standing daemon's hold on the host's writers of a merged document. */

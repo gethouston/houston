@@ -71,6 +71,11 @@ export function logSyncResult(
       `[store-sync] sync completed with ${result.conflicts.length} write conflicts`,
     );
   }
+  if (result.deletesKept.length > 0) {
+    opts.log(
+      `[store-sync] kept ${result.deletesKept.length} files another writer changed instead of deleting them`,
+    );
+  }
   const cap = opts.maxHydrateBytes ?? DEFAULT_MAX_HYDRATE_BYTES;
   if (result.totalBytes > cap * 0.8) {
     const mb = (bytes: number) => Math.round(bytes / 1024 / 1024);

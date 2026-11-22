@@ -7,6 +7,7 @@ import {
   STOPPED_BY_USER,
 } from "./turn-errors";
 import { timeLimitNotice } from "./turn-notices";
+import { filesNotSavedNotice } from "./turn-unsaved-notice";
 
 /** Assistant records replay in the same order as their live feed. */
 export function assistantHistory(
@@ -155,5 +156,7 @@ export function assistantHistory(
       ...turn,
     });
   }
+  const unsaved = filesNotSavedNotice(m.unsavedFiles);
+  if (unsaved) out.push({ ...unsaved, ts, ...turn });
   return out;
 }

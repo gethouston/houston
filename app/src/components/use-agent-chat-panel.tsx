@@ -179,6 +179,7 @@ import { DictationSetupDialog } from "./dictation-setup-dialog";
 import { submitWithCitations } from "./file-preview/cited-submit";
 import { CitedUserMessage } from "./file-preview/cited-user-message";
 import { useCitationComposer } from "./file-preview/use-citation-composer";
+import { FilesNotSavedNote } from "./files-not-saved-note";
 import { IntegrationConnectCard } from "./integration-connect-card";
 import { parseToolkitFromHref } from "./integration-connect-card-state";
 import { integrationsSupported } from "./integrations/model";
@@ -2103,6 +2104,8 @@ export function useAgentChatPanel({
         );
       }
       if (isProviderAuthMessage(msg.content)) return null;
+      if (msg.notice === "files_not_saved")
+        return <FilesNotSavedNote data={msg.noticeData} />;
       // Typed system lines (restart, busy, setup) render by kind.
       if (msg.notice) return <SystemNote text={t(NOTICE_COPY[msg.notice])} />;
       return undefined;

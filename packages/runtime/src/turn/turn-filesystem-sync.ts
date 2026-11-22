@@ -3,6 +3,7 @@ import {
   type SyncResult,
   syncBack,
 } from "@houston/runtime-client/object-sync";
+import { agentScopeIncludes } from "./turn-agent-scope";
 import { deferredWorkspaceFile } from "./turn-deferred-files";
 import { DeferredFilesAbandonedError } from "./turn-deferred-watch";
 import type { TurnFilesystem } from "./turn-filesystem";
@@ -28,6 +29,9 @@ export async function syncTurnFilesystem(opts: {
   uploaded: string[];
   deleted: string[];
   outOfScope: number;
+  outOfScopeKeys: string[];
+  conflictCopies: SyncResult["conflictCopies"];
+  deletesKept: SyncResult["deletesKept"];
   skipped: { key: string; reason: string }[];
   conflicts: { key: string; reason: string }[];
   merges: SyncResult["merges"];
@@ -64,6 +68,8 @@ export async function syncTurnFilesystem(opts: {
       // Concurrent turns and the gateway's own card writes share one board:
       // merge it over bounded rounds (the standing daemon never sets this).
       workerMerge: true,
+      conflictCopies: (rel) =>
+        agentScopeIncludes(rel, opts.filesystem.workspaceRel),
       ...(opts.claimed
         ? {
             include: withoutDeferred(
@@ -92,6 +98,9 @@ export async function syncTurnFilesystem(opts: {
     uploaded: result.uploaded,
     deleted: result.deleted,
     outOfScope: result.outOfScope,
+    outOfScopeKeys: result.outOfScopeKeys,
+    conflictCopies: result.conflictCopies,
+    deletesKept: result.deletesKept,
     skipped: result.skipped,
     conflicts: result.conflicts,
     merges: result.merges,
