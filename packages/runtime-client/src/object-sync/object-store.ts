@@ -14,6 +14,7 @@ export {
  * LocalDirStore keeps the synchronization contract testable against real files.
  */
 export interface ObjectStore extends Partial<UploadStore> {
+  readonly fileAttrs?: boolean;
   /** All keys under a directory prefix, recursively (`object-prefix.ts`). */
   list(prefix: string): Promise<string[]>;
   manifest?(

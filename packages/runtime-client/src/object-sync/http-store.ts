@@ -34,6 +34,7 @@ export class HttpObjectStore implements ObjectStore {
   private readonly fetchImpl: typeof fetch;
   /** Present only with `batchReads`: hydration batches iff the store has it. */
   readonly downloadMany?: ObjectStore["downloadMany"];
+  fileAttrs: boolean | undefined;
 
   readonly copyUpload: UploadStore["copyUpload"];
   readonly readUpload: UploadStore["readUpload"];
@@ -68,6 +69,7 @@ export class HttpObjectStore implements ObjectStore {
     return readHttpManifest(
       this.manifestRequest(prefix, false),
       (response) => this.captureFence(response),
+      this.noteAttrs,
       prefix,
       opts?.signal,
     );
@@ -80,6 +82,7 @@ export class HttpObjectStore implements ObjectStore {
     return readHttpDirManifest(
       this.manifestRequest(prefix, true),
       (response) => this.captureFence(response),
+      this.noteAttrs,
       opts?.signal,
     );
   }
@@ -117,20 +120,19 @@ export class HttpObjectStore implements ObjectStore {
     opts?: WriteOptions,
     // biome-ignore lint/suspicious/noConfusingVoidType: ObjectStore preserves void-returning adapters.
   ): Promise<WriteResult | void> {
-    const url = this.objectUrl(key);
-    const headers = this.writeHeaders(opts);
-    // Fenced unconditional writes are idempotent and retry-safe: a superseded
-    // writer is rejected by its token. Generation-guarded writes cannot retry
-    // because a lost success is indistinguishable from a failed attempt.
-    const retryable = opts?.ifGenerationMatch === undefined;
     return uploadHttpObject({
       fetchRequest: this.fetch.bind(this),
-      url,
+      url: this.objectUrl(key),
       srcFile,
       key,
-      headers,
-      retryable,
+      headers: this.writeHeaders(opts),
+      // Fenced unconditional writes are idempotent and retry-safe: a superseded
+      // writer is rejected by its token. Generation-guarded writes cannot retry
+      // because a lost success is indistinguishable from a failed attempt.
+      retryable: opts?.ifGenerationMatch === undefined,
       capture: (response) => this.captureFence(response),
+      fileAttrs: this.fileAttrs === true,
+      discard: (gen) => this.delete(key, { ifGenerationMatch: gen }),
       ...(opts?.signal ? { signal: opts.signal } : {}),
     });
   }
@@ -181,13 +183,12 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   private writeHeaders(opts?: WriteOptions): Record<string, string> {
-    const { bootId, fence, claim } = this.opts;
-    return storeWriteHeaders(this.authHeaders(), opts, {
-      bootId,
-      fence,
-      claim,
-    });
+    return storeWriteHeaders(this.authHeaders(), opts, this.opts);
   }
+
+  private readonly noteAttrs = (fileAttrs: boolean) => {
+    this.fileAttrs = fileAttrs;
+  };
 
   private captureFence(res: Response): void {
     if (!res.ok || !this.opts.fence) return;
