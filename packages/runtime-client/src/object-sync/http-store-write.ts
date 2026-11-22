@@ -19,7 +19,6 @@ export async function uploadHttpObject(input: {
   headers: Record<string, string>;
   retryable: boolean;
   capture: (response: Response) => void;
-  fileAttrs: boolean;
   discard: (generation: string) => Promise<void>;
   signal?: AbortSignal;
 }): Promise<WriteResult | undefined> {
@@ -47,8 +46,6 @@ async function send(
       link: false,
     };
   }
-  if (!input.fileAttrs)
-    throw new Error(`object store PUT ${input.key}: the store keeps no links`);
   const target = await readlink(input.srcFile, { encoding: "buffer" });
   const response = await input.fetchRequest(
     input.url,
@@ -69,6 +66,10 @@ async function upload(
 ): Promise<WriteResult | undefined> {
   const { response, link } = await send(input, signal);
   input.capture(response);
+  if (link && (response.status === 400 || response.status === 501)) {
+    const refusal = await objectStoreResponseError(response, "PUT", input.key);
+    throw new ObjectAttrsRefusedError(input.key, refusal.message);
+  }
   if (!response.ok) {
     throw await objectStoreResponseError(response, "PUT", input.key);
   }
@@ -100,6 +101,10 @@ async function discardOwnWrite(
   try {
     await input.discard(generation);
   } catch (error) {
-    if (!(error instanceof StoreConflictError)) throw error;
+    if (error instanceof StoreConflictError) return;
+    throw new ObjectAttrsRefusedError(
+      input.key,
+      `object store PUT ${input.key} did not keep the link, and its plain copy could not be removed: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }

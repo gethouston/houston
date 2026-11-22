@@ -112,6 +112,7 @@ export interface DeleteObjectResult {
   entry?: HydrateManifestEntry;
   conflict?: string;
   kept?: boolean;
+  refused?: boolean;
 }
 
 export async function deleteOwnedObject(opts: {
@@ -130,7 +131,12 @@ export async function deleteOwnedObject(opts: {
     return { deleted: true };
   } catch (error) {
     if (error instanceof ObjectWriteRefusedError)
-      return { deleted: false, kept: true, conflict: error.message };
+      return {
+        deleted: false,
+        kept: true,
+        refused: true,
+        conflict: error.message,
+      };
     if (!(error instanceof StoreConflictError)) throw error;
     if ((await opts.refresh(opts.key)) === null) return { deleted: true };
     return { deleted: false, kept: true, conflict: error.message };

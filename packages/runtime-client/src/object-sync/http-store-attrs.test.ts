@@ -1,6 +1,7 @@
 import {
   chmod,
   lstat,
+  mkdir,
   mkdtemp,
   readlink,
   symlink,
@@ -11,6 +12,7 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import { HttpObjectStore } from "./http-store";
 import { landHttpBatch } from "./http-store-batch";
+import { hydrate, syncBack } from "./hydrate";
 import { ObjectAttrsRefusedError } from "./object-store-errors";
 import {
   PrefetchedObjectStore,
@@ -103,13 +105,71 @@ test("a link the store wrote as a plain file is removed again", async () => {
   ).toBe("9");
 });
 
-test("a store that keeps no links never gets one", async () => {
+test("a plain copy that cannot be removed still skips only that link", async () => {
   const dir = await mkdtemp(join(tmpdir(), "http-attrs-"));
   await symlink("x", join(dir, "tsc"));
-  const { store } = recording(() => listing());
-  await store.manifest("");
-  await expect(store.upload(join(dir, "tsc"), key)).rejects.toThrow(
-    "keeps no links",
+  const { store } = recording((init) =>
+    init.method === "DELETE"
+      ? Response.json({ error: "boom" }, { status: 500 })
+      : Response.json(body(key)),
+  );
+  await expect(store.upload(join(dir, "tsc"), key)).rejects.toBeInstanceOf(
+    ObjectAttrsRefusedError,
+  );
+});
+
+test("a store that refuses a link PUT skips that one link", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "http-attrs-"));
+  await symlink("x", join(dir, "tsc"));
+  for (const status of [400, 501]) {
+    const { store } = recording(() =>
+      Response.json({ error: "refused" }, { status }),
+    );
+    await expect(store.upload(join(dir, "tsc"), key)).rejects.toBeInstanceOf(
+      ObjectAttrsRefusedError,
+    );
+  }
+});
+
+test("a turn with a gateway prefetch uploads a new link and keeps syncing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "http-attrs-"));
+  const agentDir = join(root, "workspaces", "Personal", "Bob", "bin");
+  await mkdir(agentDir, { recursive: true });
+  await symlink("run.sh", join(agentDir, "run"));
+  await writeFile(join(agentDir, "run.sh"), "echo\n");
+  const { store, requests } = recording((init, url) =>
+    Response.json(
+      body(decodeURIComponent(url.pathname.split("/objects/")[1] ?? "")),
+      {
+        headers:
+          init.method === "PUT" &&
+          (init.headers as Record<string, string>)["X-Houston-Object-Link"]
+            ? { "X-Houston-Object-Link": "1" }
+            : {},
+      },
+    ),
+  );
+  const prefetched = parsePrefetchedObjects({
+    manifest: [],
+    links: [],
+    objects: {},
+  });
+  const turnStore = new PrefetchedObjectStore(
+    store,
+    prefetched ?? { manifest: [], objects: new Map() },
+  );
+  const manifest = await hydrate(turnStore, "", root);
+  const result = await syncBack(turnStore, "", root, manifest, {
+    generations: true,
+    workerMerge: true,
+  });
+  expect(result.skipped).toEqual([]);
+  expect(result.uploaded.sort()).toEqual([
+    "workspaces/Personal/Bob/bin/run",
+    "workspaces/Personal/Bob/bin/run.sh",
+  ]);
+  expect(requests.some(({ url }) => url.pathname.endsWith("/manifest"))).toBe(
+    false,
   );
 });
 

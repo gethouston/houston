@@ -37,7 +37,7 @@ export interface SyncResult {
   outOfScope: number;
   outOfScopeKeys: string[];
   conflictCopies: { key: string; copy: string }[];
-  deletesKept: { key: string; reason: string }[];
+  deletesKept: { key: string; reason: string; refused?: true }[];
   /** Bytes the next hydration must materialize, excluding local-only paths. */
   totalBytes: number;
 }

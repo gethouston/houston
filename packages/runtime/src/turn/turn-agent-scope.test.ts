@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import {
   agentScopeIncludes,
@@ -39,4 +41,13 @@ test.each([
   ...vectors.ownedFiles.map((name) => `${ROOT}/.houston/${name}`),
 ])("agent scope excludes the owned %s", (path) => {
   expect(agentScopeIncludes(path, ROOT)).toBe(false);
+});
+
+test("the vectors match cloud internal/podstore/testdata/turn-agent-scope.vectors.json byte for byte", () => {
+  const bytes = readFileSync(
+    new URL("./turn-agent-scope.vectors.json", import.meta.url),
+  );
+  expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+    "17c6287f586f34936c2137efd3e4f27c31a7624b3f2575b717fdcf8f3b10c59c",
+  );
 });

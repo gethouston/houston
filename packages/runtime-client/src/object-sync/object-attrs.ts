@@ -16,6 +16,10 @@ export function linkTargetProblem(rel: string, target: string): string | null {
     target.includes("\\")
   )
     return "has an unusable target";
+  const steps = target.split("/");
+  const climb = steps.findIndex((step) => step !== "..");
+  if (climb !== -1 && steps.slice(climb).includes(".."))
+    return "has an unusable target";
   const segments = rel.split("/");
   if (segments.length < 4 || segments[0] !== "workspaces")
     return "is outside an agent folder";

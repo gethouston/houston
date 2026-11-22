@@ -47,7 +47,11 @@ export async function syncDeletes(opts: {
     if (result.deleted) deleted.push(rel);
     if (result.entry) nextManifest.set(rel, result.entry);
     if (result.kept)
-      opts.deletesKept.push({ key: rel, reason: result.conflict ?? "" });
+      opts.deletesKept.push({
+        key: rel,
+        reason: result.conflict ?? "",
+        ...(result.refused ? { refused: true as const } : {}),
+      });
     else if (result.conflict)
       opts.conflicts.push({ key: rel, reason: result.conflict });
   }

@@ -351,10 +351,11 @@
   "filesNotSaved": {
     "title": "Algunos archivos de esta respuesta no se pudieron guardar como siempre:",
     "conflict_copy": "{{file}} se modificó en otro lugar mientras tu agente trabajaba. Se conservan las dos versiones: la de tu agente se guardó como {{copy}}.",
+    "conflict_copy_unnamed": "{{file}} se modificó en otro lugar mientras tu agente trabajaba. Se conservan las dos versiones, y la de tu agente se guardó junto a ese archivo.",
     "conflict": "{{file}} se modificó en otro lugar mientras tu agente trabajaba, así que los cambios de tu agente en ese archivo no se guardaron.",
     "delete_kept": "{{file}} se modificó en otro lugar mientras tu agente trabajaba, así que se conservó en lugar de borrarse.",
     "too_large": "{{file}} es demasiado grande para guardarse, así que los cambios de tu agente no se guardaron.",
-    "out_of_scope": "{{file}} no se pudo guardar desde esta respuesta."
+    "out_of_scope": "Los cambios de tu agente en {{file}} no se pudieron guardar desde esta respuesta."
   },
   "replyTimeLimit": "Tu agente trabajó durante 4 horas, el límite de una respuesta. Su avance está guardado. Dile \"continúa\" y retomará donde se quedó.",
   "replyTimeLimitUnsaved": "Tu agente llegó al límite de 4 horas de una respuesta y se detuvo antes de guardar sus últimos pasos. Dile \"continúa\" para retomar desde el último punto guardado.",

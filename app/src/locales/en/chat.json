@@ -351,10 +351,11 @@
   "filesNotSaved": {
     "title": "Some files from this reply could not be saved as usual:",
     "conflict_copy": "{{file}} was changed somewhere else while your agent worked. Both versions are kept: your agent's version is saved as {{copy}}.",
+    "conflict_copy_unnamed": "{{file}} was changed somewhere else while your agent worked. Both versions are kept, with your agent's version saved next to it.",
     "conflict": "{{file}} was changed somewhere else while your agent worked, so your agent's changes to it were not saved.",
     "delete_kept": "{{file}} was changed somewhere else while your agent worked, so it was kept instead of deleted.",
     "too_large": "{{file}} is too large to save, so your agent's changes to it were not saved.",
-    "out_of_scope": "{{file}} could not be saved from this reply."
+    "out_of_scope": "Your agent's changes to {{file}} could not be saved from this reply."
   },
   "replyTimeLimit": "Your agent worked for 4 hours, the limit for one reply. Its progress is saved. Say \"continue\" and it will pick up where it left off.",
   "replyTimeLimitUnsaved": "Your agent reached the 4-hour limit for one reply and stopped before it could save its last steps. Say \"continue\" to pick up from the last saved point.",

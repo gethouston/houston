@@ -10,7 +10,7 @@ export interface UnsavedSyncInput {
   conflicts: readonly { key: string }[];
   skipped: readonly { key: string; refused?: true }[];
   conflictCopies?: readonly { key: string; copy: string }[];
-  deletesKept?: readonly { key: string }[];
+  deletesKept?: readonly { key: string; refused?: true }[];
   outOfScopeKeys?: readonly string[];
 }
 
@@ -46,7 +46,9 @@ export function turnUnsavedFiles(
       entry(key, "conflict_copy", copy),
     ),
     ...synced.conflicts.map(({ key }) => entry(key, "conflict")),
-    ...(synced.deletesKept ?? []).map(({ key }) => entry(key, "delete_kept")),
+    ...(synced.deletesKept ?? []).map(({ key, refused }) =>
+      entry(key, refused ? "out_of_scope" : "delete_kept"),
+    ),
     ...synced.skipped.map(({ key, refused }) =>
       entry(key, refused ? "out_of_scope" : "too_large"),
     ),

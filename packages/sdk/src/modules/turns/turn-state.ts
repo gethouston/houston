@@ -22,6 +22,7 @@ import {
 
 /** One streamed turn's accumulation + settle state (owned by TurnSink). */
 export interface TurnState extends TurnReplyState {
+  filesNotSavedShown?: true;
   agentPath: string;
   sessionKey: string;
   /** Where every FeedItem / SessionStatus for this turn is emitted. */

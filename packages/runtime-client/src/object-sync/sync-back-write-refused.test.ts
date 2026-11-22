@@ -20,18 +20,29 @@ async function tree(files: Record<string, string>): Promise<string> {
   return root;
 }
 
-test("a refused write or delete is typed, a refused read is not", async () => {
-  const refused = (method: string, key: string) =>
+test("a write refused for its key is typed, a refused claim or read is not", async () => {
+  const refused = (method: string, error: string) =>
     objectStoreResponseError(
-      new Response("key outside claim scope", { status: 403 }),
+      Response.json({ error }, { status: 403 }),
       method,
-      key,
+      "k",
     );
-  expect(await refused("PUT", "k")).toBeInstanceOf(ObjectWriteRefusedError);
-  expect(await refused("POST", "k")).toBeInstanceOf(ObjectWriteRefusedError);
-  expect(await refused("DELETE", "k")).toBeInstanceOf(ObjectWriteRefusedError);
-  expect(await refused("GET", "k")).not.toBeInstanceOf(ObjectWriteRefusedError);
-  expect(await refused("POST", "batch")).not.toBeInstanceOf(
+  for (const method of ["PUT", "POST", "DELETE"])
+    expect(await refused(method, "key outside claim scope")).toBeInstanceOf(
+      ObjectWriteRefusedError,
+    );
+  expect(await refused("PUT", "family outside claim scope")).toBeInstanceOf(
+    ObjectWriteRefusedError,
+  );
+  for (const error of [
+    "write outside the turn's claim",
+    "claim conversation required",
+    "route not available to a pooled turn",
+  ])
+    expect(await refused("PUT", error)).not.toBeInstanceOf(
+      ObjectWriteRefusedError,
+    );
+  expect(await refused("GET", "key outside claim scope")).not.toBeInstanceOf(
     ObjectWriteRefusedError,
   );
 });
@@ -71,7 +82,7 @@ test("one refused file is reported and the rest of the pass still lands", async 
     },
   ]);
   expect(result.deletesKept).toEqual([
-    { key: `${W}/gone.md`, reason: "key outside claim scope" },
+    { key: `${W}/gone.md`, reason: "key outside claim scope", refused: true },
   ]);
   expect(mem.body(`${W}/gone.md`)).toBe("old");
 });

@@ -34,5 +34,7 @@ export function filesNotSavedNotice(
 
 export function pushFilesNotSaved(s: TurnState, data: unknown): void {
   const notice = filesNotSavedNotice(parseUnsavedFiles(data));
-  if (notice) push(s, notice);
+  if (!notice || s.filesNotSavedShown) return;
+  s.filesNotSavedShown = true;
+  push(s, notice);
 }

@@ -53,7 +53,17 @@ test("a stale turn copy lands beside the newer remote, never over it", async () 
     key: COPY,
     ifGenerationMatch: "0",
   });
-  expect(result.manifest.get(NOTES)?.generation).toBe(mem.generation(NOTES));
+  expect(result.manifest.get(NOTES)?.generation).toBe("1");
+});
+
+test("a conflict copy of a file both sides created leaves the original unowned", async () => {
+  const mem = memoryStore({ [NOTES]: "their new file" });
+  const root = await tree({ [NOTES]: "turn new file" });
+  const result = await syncBack(mem.store, "", root, new Map(), workerOpts);
+
+  expect(result.conflictCopies).toEqual([{ key: NOTES, copy: COPY }]);
+  expect(result.manifest.has(NOTES)).toBe(false);
+  expect(mem.body(NOTES)).toBe("their new file");
 });
 
 test("a remote that already holds the turn's bytes is adopted", async () => {
@@ -67,15 +77,20 @@ test("a remote that already holds the turn's bytes is adopted", async () => {
   expect(result.manifest.get(NOTES)?.generation).toBe(mem.generation(NOTES));
 });
 
-test("an executable file whose bytes the remote already holds is adopted", async () => {
+test("an executable file whose bytes the remote holds is rewritten to keep its bit", async () => {
   const mem = memoryStore({ [NOTES]: "#!/bin/sh\n" });
   const root = await tree({ [NOTES]: "#!/bin/sh\n" });
   await chmod(join(root, ...NOTES.split("/")), 0o755);
+  const remoteAt = mem.generation(NOTES);
   const result = await syncBack(mem.store, "", root, stale(NOTES), workerOpts);
 
   expect(result.conflictCopies).toEqual([]);
   expect(result.uploaded).toEqual([NOTES]);
-  expect(mem.writes).toHaveLength(1);
+  expect(mem.writes.at(-1)).toEqual({
+    op: "put",
+    key: NOTES,
+    ifGenerationMatch: remoteAt,
+  });
 });
 
 test("a remote another writer removed is created again, create-only", async () => {

@@ -32,7 +32,11 @@ describe("files not saved note", () => {
   it("has copy for every reason in every shipped language", () => {
     for (const bundle of [en, es, pt]) {
       const copy = bundle.filesNotSaved as Record<string, string>;
-      for (const key of ["title", ...UNSAVED_FILE_REASONS]) {
+      for (const key of [
+        "title",
+        "conflict_copy_unnamed",
+        ...UNSAVED_FILE_REASONS,
+      ]) {
         strictEqual(typeof copy[key], "string", key);
         strictEqual(copy[key].includes("—"), false, key);
       }
@@ -61,6 +65,22 @@ describe("files not saved note", () => {
     ok(html.includes(en.filesNotSaved.title), html);
     ok(html.includes("plans/q3 (conflict 2026-11-22).md"), html);
     ok(html.includes("big.zip is too large to save"), html);
+  });
+
+  it("says both versions are kept when the copy has no name to show", () => {
+    const html = render(
+      h(note.FilesNotSavedNote, {
+        data: {
+          unsavedFiles: {
+            files: [{ path: "plans/q3.md", reason: "conflict_copy" }],
+            total: 1,
+            counts: { conflict_copy: 1 },
+          },
+        },
+      }),
+    );
+    ok(html.includes("Both versions are kept"), html);
+    strictEqual(html.includes("were not saved"), false, html);
   });
 
   it("draws nothing without files", () => {

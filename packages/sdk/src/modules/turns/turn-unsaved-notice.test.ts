@@ -134,6 +134,31 @@ test("a settle from history after a lost terminal shows the notice", () => {
   expect(notices(vm)).toHaveLength(1);
 });
 
+test("a live notice and a later history settle report once", () => {
+  const pushed: unknown[] = [];
+  const output = new ConversationVmOutput(new ScopeStore());
+  const forward = output.pushFeedItem.bind(output);
+  output.pushFeedItem = (agentPath, sessionKey, item) => {
+    pushed.push(item);
+    forward(agentPath, sessionKey, item);
+  };
+  const state = newTurnState("a", "c", output);
+  state.turnId = "t";
+  applyTurnFrame(
+    state,
+    {
+      type: "done",
+      data: { unsavedFiles: report },
+      turnId: "t",
+    } as unknown as WireFrame,
+    () => {},
+  );
+  settleFromHistory(state, messages, "t", () => true);
+  expect(
+    pushed.filter((item) => turnFailureReport(item) !== null),
+  ).toHaveLength(1);
+});
+
 test("the notice reports reasons and counts, never file names", () => {
   const item = {
     feed_type: "system_message",

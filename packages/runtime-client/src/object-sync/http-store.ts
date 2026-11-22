@@ -131,7 +131,6 @@ export class HttpObjectStore implements ObjectStore {
       // because a lost success is indistinguishable from a failed attempt.
       retryable: opts?.ifGenerationMatch === undefined,
       capture: (response) => this.captureFence(response),
-      fileAttrs: this.fileAttrs === true,
       discard: (gen) => this.delete(key, { ifGenerationMatch: gen }),
       ...(opts?.signal ? { signal: opts.signal } : {}),
     });

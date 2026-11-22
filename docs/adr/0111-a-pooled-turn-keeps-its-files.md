@@ -18,7 +18,8 @@ These files did not land as usual: a conflict copy, a lost conflict, a kept dele
 
 - A per-file refusal skips that one file. It never aborts the rest of the pass.
 - The gateway logs the report on the settled line, warns with the entries, and counts `houston_pool_turn_unsaved_files_total{kind,reason}`.
-- The gateway has no Sentry client, so the client sends the Sentry report: the SDK reports `turn_files_not_saved` with the counts and total only, never file names.
+- The gateway has no Sentry client, so the client sends the Sentry report: the SDK reports `turn_files_not_saved` once per turn, with the counts and total only, never file names. A report that names only `.houston/` or internal paths shows nothing in the chat and is not reported from the client. The gateway's log line and counter carry it.
+- Only a per-file refusal from the store (the key or its doc family is outside the claim scope, or the store would not keep a link) skips one file. A refusal of the claim itself still fails the sync, as before.
 - The chat shows one line per file under the reply, live and after a reload. The person's own files appear by name. `.houston/` and internal paths never do.
 
 ## Links and the executable bit survive
@@ -26,8 +27,8 @@ These files did not land as usual: a conflict copy, a lost conflict, a kept dele
 A turn's `node_modules`, `.venv` and `chmod +x` scripts need their links and modes. Object metadata carries both (`houston-link-target`, `houston-executable`).
 
 - Manifests list link objects in their own `links` array, never in `objects`, so a reader that predates attributes never sees a link as a file. The array's presence is the capability signal. A link PUT must be echoed by the server, or the writer deletes it and reports the path.
-- A link is kept only when its target resolves below its own agent folder and outside that folder's `.houston/`, and hydration never lands anything under another link. The runtime and pod-store apply the same rule.
-- The one absolute target kept is the sandbox's own Python interpreter (`/usr/bin/python3` and its versioned names, or the same under `/usr/local/bin`). A virtualenv's `bin/python` points at it. Every other absolute target is refused, because host-side readers follow links (to `/proc/self/environ`, for example).
+- A link is kept only when its target resolves below its own agent folder and outside that folder's `.houston/`, with `..` steps only at the start of the target, and hydration never lands anything under another link. The runtime and pod-store apply the same rule.
+- The one absolute target kept is the sandbox's own Python interpreter (`/usr/bin/python3` and its versioned names, or the same under `/usr/local/bin`). A virtualenv's `bin/python` points at it. Every other absolute target is refused: a link that leaves the agent folder would let later readers of the agent's files reach files that are not the agent's.
 
 ## The claim scope admits what the agent makes
 

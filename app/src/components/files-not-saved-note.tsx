@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 function lineKey(file: UnsavedFile) {
   if (file.reason === "conflict_copy" && !file.copyPath)
-    return "filesNotSaved.conflict" as const;
+    return "filesNotSaved.conflict_copy_unnamed" as const;
   return `filesNotSaved.${file.reason}` as const;
 }
 

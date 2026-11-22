@@ -9,6 +9,7 @@ import {
   ObjectNotFoundError,
   type ObjectStore,
   ObjectTooLargeError,
+  ObjectWriteRefusedError,
   type ReadResult,
   StoreConflictError,
 } from "./object-store";
@@ -28,6 +29,7 @@ export interface ConflictCopyResult {
   vanished?: boolean;
   conflictCopy?: string;
   skipped?: string;
+  refused?: boolean;
 }
 
 export function conflictCopyName(
@@ -86,13 +88,16 @@ async function readRemote(
 
 const TAKEN = Symbol("taken");
 
-async function createOnly(
+async function writeAt(
   store: ObjectStore,
   abs: string,
   key: string,
+  generation = "0",
 ): Promise<string | undefined | typeof TAKEN> {
   try {
-    const result = await store.upload(abs, key, { ifGenerationMatch: "0" });
+    const result = await store.upload(abs, key, {
+      ifGenerationMatch: generation,
+    });
     return result?.generation;
   } catch (error) {
     if (error instanceof StoreConflictError) return TAKEN;
@@ -123,13 +128,29 @@ export async function keepRemoteBesideLocal(opts: {
           uploaded: false,
           conflict: opts.conflict,
         };
+      if (remote.kind === "same" && opts.hash.endsWith(":x")) {
+        if (remote.generation === undefined)
+          return {
+            entry: opts.previous,
+            uploaded: false,
+            conflict: opts.conflict,
+          };
+        const generation = await writeAt(
+          opts.store,
+          opts.abs,
+          opts.key,
+          remote.generation,
+        );
+        if (generation === TAKEN) continue;
+        return { entry: { hash: opts.hash, generation }, uploaded: true };
+      }
       if (remote.kind === "same")
         return {
           entry: { hash: opts.hash, generation: remote.generation },
           uploaded: true,
         };
       if (remote.kind === "gone") {
-        const generation = await createOnly(opts.store, opts.abs, opts.key);
+        const generation = await writeAt(opts.store, opts.abs, opts.key);
         if (generation === TAKEN) continue;
         return { entry: { hash: opts.hash, generation }, uploaded: true };
       }
@@ -137,10 +158,16 @@ export async function keepRemoteBesideLocal(opts: {
       for (let attempt = 1; attempt <= COPY_NAMES; attempt += 1) {
         const copy = conflictCopyName(opts.relativePath, date, attempt);
         const copyKey = conflictCopyName(opts.key, date, attempt);
-        if ((await createOnly(opts.store, opts.abs, copyKey)) === TAKEN)
-          continue;
+        if ((await writeAt(opts.store, opts.abs, copyKey)) === TAKEN) continue;
         return {
-          entry: { hash: opts.hash, generation: remote.generation },
+          ...(opts.previous
+            ? {
+                entry: {
+                  hash: opts.hash,
+                  generation: opts.previous.generation,
+                },
+              }
+            : {}),
           uploaded: false,
           conflictCopy: copy,
         };
@@ -159,6 +186,7 @@ export async function keepRemoteBesideLocal(opts: {
         entry: { hash: opts.hash },
         uploaded: false,
         skipped: error.message,
+        ...(error instanceof ObjectWriteRefusedError ? { refused: true } : {}),
       };
     throw error;
   }
