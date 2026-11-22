@@ -106,3 +106,24 @@ test("an anthropic title runs through the Claude SDK on the served token", async
     value: access,
   });
 });
+
+test("an anthropic title carries the served plan and a deadline", async () => {
+  const access = "sk-ant-oat01-served";
+  const { op, filesystem } = titleOp({
+    provider: "anthropic",
+    access,
+    expires: Date.now() + 3_600_000,
+    subscriptionType: "max",
+  });
+  mocks.titleWithClaude.mockResolvedValue("Weekly sales report");
+
+  await applyOp(op, filesystem);
+
+  const params = mocks.titleWithClaude.mock.calls[0]?.[0];
+  expect(params.readToken()).toMatchObject({
+    kind: "oauth-token",
+    value: access,
+    subscriptionType: "max",
+  });
+  expect(params.signal).toBeInstanceOf(AbortSignal);
+});

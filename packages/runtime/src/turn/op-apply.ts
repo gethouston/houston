@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { applyServedCredential } from "../auth/auth-file";
+import { claudePlanBinding } from "../auth/claude-plan";
 import { generateTitle } from "../session/summarize";
 import { applyConversationOp } from "./op-conversation";
 import { applyApiKeyConnect, credentialOpFiles } from "./op-credential";
@@ -22,6 +23,8 @@ import { poolIdentity } from "./turn-store";
 export type { OpResult } from "./op-result";
 
 import type { OpResult } from "./op-result";
+
+const TITLE_OP_TIMEOUT_MS = 45_000;
 
 const json = (
   status: number,
@@ -139,10 +142,12 @@ export async function applyOp(
       );
       const excerpt = op.op.text.trim().slice(0, 2400);
       if (op.credential.provider === "anthropic") {
+        const claudePlan = claudePlanBinding(op.credential);
         const title = await claudeTitleRunner({
           model,
           directories: filesystem,
-        })(excerpt);
+          ...(claudePlan ? { claudePlan } : {}),
+        })(excerpt, AbortSignal.timeout(TITLE_OP_TIMEOUT_MS));
         return { ...json(200, { title }), events: [], include: none };
       }
       assertWorkerOpProvider(model.provider);
