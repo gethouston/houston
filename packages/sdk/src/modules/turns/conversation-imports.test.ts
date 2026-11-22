@@ -203,6 +203,36 @@ describe("importMessages", () => {
     expect(h.stored.has(PENDING_IMPORTS_KEY)).toBe(false);
   });
 
+  test.each([
+    "conversation_too_large_asleep",
+    "conversation_op_refused",
+  ])("drops an import refused for good with %s", async (code) => {
+    const h = harness();
+    h.answers.push(
+      new EngineError(503, JSON.stringify({ error: "refused", code })),
+    );
+    await expect(
+      h.imports.importMessages("assistant", "ws/.assistant", request),
+    ).rejects.toBeInstanceOf(EngineError);
+    expect(h.stored.has(PENDING_IMPORTS_KEY)).toBe(false);
+  });
+
+  test("keeps an import the gateway answered compute_busy, for the next load", async () => {
+    const h = harness();
+    h.answers.push(
+      new EngineError(
+        503,
+        '{"error":"engine unavailable","code":"compute_busy"}',
+      ),
+    );
+    await expect(
+      h.imports.importMessages("assistant", "ws/.assistant", request),
+    ).rejects.toBeInstanceOf(EngineError);
+    expect(h.owed()).toEqual([
+      { agentId: "ws/.assistant", conversationId: "assistant", request },
+    ]);
+  });
+
   test("an import the page left mid-flight is held: pending, still owed, sent once more when the page is live", async () => {
     // A reload aborts the fetch; the browser reports it like a dead network.
     const h = harness({ unloading: true });

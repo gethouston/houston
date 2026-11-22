@@ -4,6 +4,7 @@ import { runWithConversationScope } from "../session/bus";
 import type { startClaimHeartbeat } from "./claim-heartbeat";
 import type { TurnServerDeps } from "./server-types";
 import { turnActingContext } from "./turn-acting-context";
+import { saveTurnBrowser } from "./turn-cleanup";
 import { finishTurnDurability } from "./turn-durability";
 import type { TurnFilesystem } from "./turn-filesystem";
 import type { createTurnLog } from "./turn-log";
@@ -116,6 +117,7 @@ export async function executeReadyTurn(input: {
 
   // Any path that never prompted (unconnected, a setup failure) is over too.
   input.filesystem.abandonDeferred?.();
+  await saveTurnBrowser(input.root, input.turn.conversationId);
   let afterSync: Awaited<ReturnType<typeof finishRoutineTurn>>["afterSync"];
   if (routinePhase) {
     const finished = await finishRoutineTurn({

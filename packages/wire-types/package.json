@@ -35,6 +35,10 @@
     "./upload-session": {
       "types": "./src/upload-session.ts",
       "import": "./src/upload-session.ts"
+    },
+    "./conversation-refusal": {
+      "types": "./src/conversation-refusal.ts",
+      "import": "./src/conversation-refusal.ts"
     }
   },
   "files": [
