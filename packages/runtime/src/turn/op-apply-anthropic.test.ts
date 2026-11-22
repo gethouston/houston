@@ -7,7 +7,10 @@ import { WorkerOpDeclinedError } from "./op-provider-guard";
 import { parseOpRequest } from "./parse-op-request";
 import type { TurnFilesystem } from "./turn-filesystem";
 
-const mocks = vi.hoisted(() => ({ generateTitle: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  generateTitle: vi.fn(),
+  titleWithClaude: vi.fn(),
+}));
 
 vi.mock("./turn-runtime", () => ({
   createTurnModelRuntime: async () => ({
@@ -24,11 +27,16 @@ vi.mock("../session/summarize", () => ({
   generateTitle: mocks.generateTitle,
 }));
 
+vi.mock("../backends/claude/title", () => ({
+  titleWithClaude: mocks.titleWithClaude,
+}));
+
 beforeEach(() => {
   mocks.generateTitle.mockReset();
+  mocks.titleWithClaude.mockReset();
 });
 
-test("a resolved anthropic title declines before pi is invoked", async () => {
+function titleOp(credential: Record<string, unknown>) {
   const root = mkdtempSync(join(tmpdir(), "op-provider-guard-"));
   const dataDir = join(root, "data");
   const workspaceDir = join(root, "workspace");
@@ -45,13 +53,8 @@ test("a resolved anthropic title declines before pi is invoked", async () => {
       token: "claim-token",
       heartbeatUrl: "https://gateway.test/heartbeat",
     },
-    credential: {
-      provider: "google",
-      access: "served-key",
-      expires: 0,
-      kind: "api_key",
-    },
-    op: { kind: "title", text: "Conversation excerpt" },
+    credential,
+    op: { kind: "title", text: "  Conversation excerpt  " },
   });
   const filesystem = {
     dataDir,
@@ -59,7 +62,47 @@ test("a resolved anthropic title declines before pi is invoked", async () => {
     workspaceDir,
     workspaceRel: "workspace",
   } as TurnFilesystem;
+  return { op, filesystem };
+}
+
+test("a resolved anthropic title declines before pi is invoked", async () => {
+  const { op, filesystem } = titleOp({
+    provider: "google",
+    access: "served-key",
+    expires: 0,
+    kind: "api_key",
+  });
 
   await expect(applyOp(op, filesystem)).rejects.toThrow(WorkerOpDeclinedError);
   expect(mocks.generateTitle).not.toHaveBeenCalled();
+  expect(mocks.titleWithClaude).not.toHaveBeenCalled();
+});
+
+test("an anthropic title runs through the Claude SDK on the served token", async () => {
+  const access = "sk-ant-oat01-served";
+  const { op, filesystem } = titleOp({
+    provider: "anthropic",
+    access,
+    expires: Date.now() + 3_600_000,
+  });
+  mocks.titleWithClaude.mockResolvedValue("Weekly sales report");
+
+  const result = await applyOp(op, filesystem);
+
+  expect(result.status).toBe(200);
+  expect(JSON.parse(String(result.body))).toEqual({
+    title: "Weekly sales report",
+  });
+  expect(mocks.generateTitle).not.toHaveBeenCalled();
+  const params = mocks.titleWithClaude.mock.calls[0]?.[0];
+  expect(params).toMatchObject({
+    excerpt: "Conversation excerpt",
+    workspaceDir: filesystem.workspaceDir,
+    dataDir: filesystem.dataDir,
+    modelId: "claude-sonnet-4-6",
+  });
+  expect(params.readToken()).toMatchObject({
+    kind: "oauth-token",
+    value: access,
+  });
 });

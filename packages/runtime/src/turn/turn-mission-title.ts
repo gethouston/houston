@@ -42,23 +42,8 @@ export function turnTitleRunner(input: {
   claudeQuery?: ClaudeQuery;
   claudePlan?: ClaudePlanBinding;
 }): MissionTitleRunner {
-  const { workspaceDir, dataDir } = input.directories;
-  if (input.provider === "anthropic")
-    return (excerpt, signal) =>
-      titleWithClaude({
-        excerpt,
-        titlePrompt: TITLE_PROMPT,
-        workspaceDir,
-        readToken: () =>
-          withServedPlan(
-            readAnthropicToken(turnAuthStore(dataDir)),
-            input.claudePlan,
-          ),
-        dataDir,
-        modelId: input.model.id,
-        signal,
-        ...(input.claudeQuery ? { query: input.claudeQuery } : {}),
-      });
+  if (input.provider === "anthropic") return claudeTitleRunner(input);
+  const { workspaceDir } = input.directories;
   return (excerpt, signal) =>
     oneShotText({
       cwd: workspaceDir,
@@ -68,6 +53,30 @@ export function turnTitleRunner(input: {
       prompt: excerpt,
       signal,
       transport: POOLED_TURN_TRANSPORT,
+    });
+}
+
+export function claudeTitleRunner(input: {
+  model: { id: string };
+  directories: Pick<TurnDirectories, "workspaceDir" | "dataDir">;
+  claudeQuery?: ClaudeQuery;
+  claudePlan?: ClaudePlanBinding;
+}): (excerpt: string, signal?: AbortSignal) => Promise<string> {
+  const { workspaceDir, dataDir } = input.directories;
+  return (excerpt, signal) =>
+    titleWithClaude({
+      excerpt,
+      titlePrompt: TITLE_PROMPT,
+      workspaceDir,
+      readToken: () =>
+        withServedPlan(
+          readAnthropicToken(turnAuthStore(dataDir)),
+          input.claudePlan,
+        ),
+      dataDir,
+      modelId: input.model.id,
+      ...(signal ? { signal } : {}),
+      ...(input.claudeQuery ? { query: input.claudeQuery } : {}),
     });
 }
 

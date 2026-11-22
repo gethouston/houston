@@ -15,6 +15,7 @@ import {
 } from "./op-settings";
 import type { OpRequest } from "./parse-op-request";
 import type { TurnFilesystem } from "./turn-filesystem";
+import { claudeTitleRunner } from "./turn-mission-title";
 import { createTurnModelRuntime } from "./turn-runtime";
 import { poolIdentity } from "./turn-store";
 
@@ -130,28 +131,26 @@ export async function applyOp(
           include: none,
         };
       }
-      if (op.credential.provider === "anthropic") {
-        // COMPLIANCE GATE: anthropic titles must go through the Claude SDK
-        // (never pi in-process); that path is pod-only, so a cold anthropic
-        // agent keeps the client's truncated-title fallback.
-        return {
-          ...json(503, { error: "anthropic titles run on the pod" }),
-          events: [],
-          include: none,
-        };
-      }
       const { dataDir, workspaceDir } = filesystem;
       applyServedCredential(join(dataDir, "auth.json"), op.credential);
       const { modelRuntime, model } = await createTurnModelRuntime(
         dataDir,
         op.credential.provider,
       );
+      const excerpt = op.op.text.trim().slice(0, 2400);
+      if (op.credential.provider === "anthropic") {
+        const title = await claudeTitleRunner({
+          model,
+          directories: filesystem,
+        })(excerpt);
+        return { ...json(200, { title }), events: [], include: none };
+      }
       assertWorkerOpProvider(model.provider);
       const title = await generateTitle({
         cwd: workspaceDir,
         model,
         modelRuntime,
-        excerpt: op.op.text.trim().slice(0, 2400),
+        excerpt,
       });
       return { ...json(200, { title }), events: [], include: none };
     }
