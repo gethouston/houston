@@ -1,4 +1,29 @@
 {
+  "ownedDirs": [
+    "activity",
+    "config",
+    "docs",
+    "learnings",
+    "memory",
+    "migration",
+    "prompts",
+    "routine_runs",
+    "routines",
+    "runtime",
+    "sessions",
+    "skills",
+    "skills-manifest"
+  ],
+  "ownedFiles": [
+    "activity.json",
+    "agent.json",
+    "config.json",
+    "integrations.json",
+    "learnings.json",
+    "routine_runs.json",
+    "routines.json",
+    "skills-manifest.json"
+  ],
   "allow": [
     "workspaces/Personal/Bob/notes.md",
     "workspaces/Personal/Bob/.agents/skills/example/SKILL.md",

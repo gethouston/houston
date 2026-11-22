@@ -9,7 +9,7 @@ import { posix } from "node:path";
  * claimAllowsTurnAgentKey (cloud internal/podstore/claims.go) holds the same
  * list.
  */
-const HOUSTON_OWNED_DIRS: ReadonlySet<string> = new Set([
+export const HOUSTON_OWNED_DIRS: ReadonlySet<string> = new Set([
   "activity",
   "config",
   "docs",
@@ -25,7 +25,7 @@ const HOUSTON_OWNED_DIRS: ReadonlySet<string> = new Set([
   "skills-manifest",
 ]);
 
-const HOUSTON_OWNED_FILES: ReadonlySet<string> = new Set([
+export const HOUSTON_OWNED_FILES: ReadonlySet<string> = new Set([
   "activity.json",
   "agent.json",
   "config.json",

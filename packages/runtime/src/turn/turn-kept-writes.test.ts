@@ -31,7 +31,20 @@ test.each([
   [".houston/agent.json", false],
   [".houston/skills-manifest/skills-manifest.json", false],
 ])("a claimed turn keeps %s: %s", (rel, kept) => {
-  expect(claimedTurnKeepsWrite(LAYOUT, "c1")(rel)).toBe(kept);
+  const keeps = claimedTurnKeepsWrite(LAYOUT, {
+    claimed: true,
+    conversationId: "c1",
+  });
+  expect(keeps?.(rel)).toBe(kept);
+});
+
+test("an unclaimed turn judges nothing; a claimed one without its layout fails loudly", () => {
+  expect(
+    claimedTurnKeepsWrite(LAYOUT, { conversationId: "c1" }),
+  ).toBeUndefined();
+  expect(() =>
+    claimedTurnKeepsWrite({}, { claimed: true, conversationId: "c1" }),
+  ).toThrow();
 });
 
 async function fileGuardFor(claimed: boolean) {

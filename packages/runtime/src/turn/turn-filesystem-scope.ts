@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import { docKey } from "@houston/domain";
+import type { KeepsWrite } from "../session/tools/fs-guard-protected";
 import { agentScopeIncludes } from "./turn-agent-scope";
 
 /** Build the object scope owned by one claimed conversation turn. */
@@ -33,16 +34,20 @@ export function claimedTurnIncludes(
 }
 
 export function claimedTurnKeepsWrite(
-  layout: { workspaceRel: string; dataRel: string },
-  conversationId: string,
-): (workspaceRelative: string) => boolean {
+  layout: { workspaceRel?: string; dataRel?: string },
+  turn: { claimed?: boolean; conversationId: string },
+): KeepsWrite | undefined {
+  if (!turn.claimed) return undefined;
+  const { workspaceRel, dataRel } = layout;
+  if (workspaceRel === undefined || dataRel === undefined)
+    throw new Error("a claimed turn needs its store layout to judge writes");
   const includes = claimedTurnIncludes(
-    layout.dataRel,
-    layout.workspaceRel,
-    conversationId,
+    dataRel,
+    workspaceRel,
+    turn.conversationId,
   );
   return (workspaceRelative) =>
-    includes(posix.join(layout.workspaceRel, workspaceRelative));
+    includes(posix.join(workspaceRel, workspaceRelative));
 }
 
 /** Keep ordinary session state, but only durable files from the Claude CLI. */

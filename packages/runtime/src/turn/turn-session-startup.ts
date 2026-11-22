@@ -82,6 +82,7 @@ async function prepareTurnSession(
     turn.timings,
   );
   if (sdkLoad) await sdkLoad;
+  const keepsWrite = claimedTurnKeepsWrite(directories, turn);
   // The worker holds no sandbox URL, app token or GCP identity: the call rides
   // this turn's sandbox facade, which relays it under the grant.
   const codeSandbox =
@@ -93,6 +94,7 @@ async function prepareTurnSession(
           }),
           workspaceDir: directories.workspaceDir,
           limiter: turnRunCodeLimiter,
+          ...(keepsWrite ? { keepsWrite } : {}),
         })
       : null;
   const backend = (deps.createBackend ?? createTurnBackend)(turn.provider, {
@@ -111,19 +113,7 @@ async function prepareTurnSession(
       workspaceDir: directories.workspaceDir,
       sharedSkillsDir: config.sharedSkillsDir,
       sharedSkillsSnapshot: turnSharedSkillsDir(directories.turnRoot),
-      ...(turn.claimed &&
-      directories.workspaceRel !== undefined &&
-      directories.dataRel !== undefined
-        ? {
-            keepsWrite: claimedTurnKeepsWrite(
-              {
-                workspaceRel: directories.workspaceRel,
-                dataRel: directories.dataRel,
-              },
-              turn.conversationId,
-            ),
-          }
-        : {}),
+      ...(keepsWrite ? { keepsWrite } : {}),
     }),
     claudeSdk: deps.claudeSdk,
     claudeSdkLoad: sdkLoad,
