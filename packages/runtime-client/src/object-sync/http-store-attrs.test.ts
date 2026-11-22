@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import { HttpObjectStore } from "./http-store";
 import { landHttpBatch } from "./http-store-batch";
+import { ObjectAttrsRefusedError } from "./object-store-errors";
 import {
   PrefetchedObjectStore,
   parsePrefetchedObjects,
@@ -52,6 +53,12 @@ test("the manifest says whether the store keeps links", async () => {
   const older = recording(() => listing());
   await older.store.manifest("");
   expect(older.store.fileAttrs).toBe(false);
+  const rolling = recording((_init, url) =>
+    url.searchParams.has("prefix") ? listing() : listing([]),
+  );
+  await rolling.store.manifest("");
+  await rolling.store.manifest("a");
+  expect(rolling.store.fileAttrs).toBe(true);
 });
 
 test("a link uploads its target with the link header", async () => {
@@ -84,7 +91,9 @@ test("a link the store wrote as a plain file is removed again", async () => {
     return Response.json(body(key));
   });
   await store.manifest("");
-  expect(await store.upload(join(dir, "tsc"), key)).toBeUndefined();
+  await expect(store.upload(join(dir, "tsc"), key)).rejects.toBeInstanceOf(
+    ObjectAttrsRefusedError,
+  );
   const remove = requests[2];
   expect(remove?.init.method).toBe("DELETE");
   expect(

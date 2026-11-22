@@ -51,3 +51,10 @@ export class StoreConflictError extends Error {
     this.name = "StoreConflictError";
   }
 }
+
+export class ObjectAttrsRefusedError extends ObjectTooLargeError {
+  constructor(key: string, message: string) {
+    super(key, message);
+    this.name = "ObjectAttrsRefusedError";
+  }
+}

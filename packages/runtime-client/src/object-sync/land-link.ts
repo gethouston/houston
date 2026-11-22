@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, rename, rm, symlink } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join, sep } from "node:path";
 import { atomicTempPath } from "@houston/protocol";
 import { linkTargetProblem } from "./object-attrs";
 import { privateDirOf } from "./private-paths";
@@ -14,6 +14,36 @@ export function skipLink(rel: string, problem: string): void {
   console.error(`[object-sync] link not synced: ${line}`);
 }
 
+const MISSING = new Set(["ENOENT"]);
+const BLOCKED = new Set(["ENOTDIR", "EEXIST"]);
+
+async function lstatOrMissing(path: string) {
+  try {
+    return await lstat(path);
+  } catch (error) {
+    if (MISSING.has((error as NodeJS.ErrnoException).code ?? ""))
+      return undefined;
+    throw error;
+  }
+}
+
+async function parentProblem(
+  rel: string,
+  destFile: string,
+): Promise<string | null> {
+  const relPath = rel.split("/").join(sep);
+  if (!destFile.endsWith(`${sep}${relPath}`)) return null;
+  let folder = destFile.slice(0, -relPath.length - 1);
+  for (const segment of rel.split("/").slice(0, -1)) {
+    folder = join(folder, segment);
+    const info = await lstatOrMissing(folder);
+    if (!info) return null;
+    if (info.isSymbolicLink()) return "is inside another link";
+    if (!info.isDirectory()) return "is inside a file";
+  }
+  return null;
+}
+
 export async function landLink(
   rel: string,
   target: string,
@@ -21,27 +51,25 @@ export async function landLink(
 ): Promise<boolean> {
   const problem = privateDirOf(destFile)
     ? "is in Houston's own folder"
-    : linkTargetProblem(rel, target);
+    : (linkTargetProblem(rel, target) ?? (await parentProblem(rel, destFile)));
   if (problem) {
     skipLink(rel, problem);
     return false;
   }
-  const existing = await lstat(destFile).catch((error: unknown) => {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-    throw error;
-  });
-  if (existing?.isDirectory()) {
+  if ((await lstatOrMissing(destFile))?.isDirectory()) {
     skipLink(rel, "would replace a folder");
     return false;
   }
-  await mkdir(dirname(destFile), { recursive: true });
   const temp = atomicTempPath(destFile, randomUUID());
   try {
+    await mkdir(dirname(destFile), { recursive: true });
     await symlink(target, temp);
     await rename(temp, destFile);
   } catch (error) {
     await rm(temp, { force: true });
-    throw error;
+    if (!BLOCKED.has((error as NodeJS.ErrnoException).code ?? "")) throw error;
+    skipLink(rel, "is inside a file");
+    return false;
   }
   return true;
 }

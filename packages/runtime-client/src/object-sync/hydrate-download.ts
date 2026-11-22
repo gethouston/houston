@@ -4,7 +4,7 @@ import type { HydrateManifest } from "./hydrate";
 import { landedHash } from "./hydrate-attrs";
 import { hydrateBatched, skipRefusedLanding } from "./hydrate-batch";
 import { unowned } from "./hydrate-candidates";
-import { landListedLinks } from "./hydrate-links";
+import { landListedLinks, outsideLinks } from "./hydrate-links";
 import { ObjectNotFoundError, type ObjectStore } from "./object-store";
 import { keepsMergeBase } from "./sync-back-doc-merge";
 
@@ -38,6 +38,7 @@ export interface HydrateDownloadState {
   failed: boolean;
   firstError?: unknown;
   fail: (error: unknown) => void;
+  links?: Set<string>;
 }
 
 /** Landed bytes counted against one cap. A deferring hydration keeps one for
@@ -66,7 +67,10 @@ export async function downloadHydrationEntries(opts: {
   // A store that batches reads lands most of the batch in a few round trips;
   // only what it will not inline (large objects) goes one by one below.
   const batched = opts.store.downloadMany?.bind(opts.store);
-  const files = opts.entries.filter((entry) => entry.link === undefined);
+  const landedLinks = opts.state.links ?? new Set<string>();
+  const files = outsideLinks(opts.entries, landedLinks).filter(
+    (entry) => entry.link === undefined,
+  );
   const entries =
     batched && files.length > 1
       ? await hydrateBatched({ ...opts, entries: files, downloadMany: batched })
@@ -114,5 +118,11 @@ export async function downloadHydrationEntries(opts: {
     Array.from({ length: Math.min(opts.concurrency, entries.length) }, worker),
   );
   if (opts.state.failed) throw opts.state.firstError;
-  await landListedLinks(opts.entries, opts.destDir, opts.manifest, opts.signal);
+  await landListedLinks(
+    opts.entries,
+    opts.destDir,
+    opts.manifest,
+    opts.signal,
+    landedLinks,
+  );
 }

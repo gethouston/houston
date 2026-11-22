@@ -4,7 +4,10 @@ import { uploadFile } from "./http-store-upload";
 import { EXECUTABLE_HEADER, isExecutable, LINK_HEADER } from "./object-attrs";
 import { parseObjectManifest } from "./object-manifest";
 import type { WriteResult } from "./object-store";
-import { StoreConflictError } from "./object-store-errors";
+import {
+  ObjectAttrsRefusedError,
+  StoreConflictError,
+} from "./object-store-errors";
 import { withOperationSignal } from "./operation-signal";
 
 /** Upload one object and normalize its generation response. */
@@ -46,13 +49,13 @@ async function send(
   }
   if (!input.fileAttrs)
     throw new Error(`object store PUT ${input.key}: the store keeps no links`);
-  const target = await readlink(input.srcFile);
+  const target = await readlink(input.srcFile, { encoding: "buffer" });
   const response = await input.fetchRequest(
     input.url,
     {
       method: "PUT",
       headers: { ...input.headers, [LINK_HEADER]: "1" },
-      body: Buffer.from(target),
+      body: target,
       signal,
     },
     { retryable: input.retryable },
@@ -81,11 +84,11 @@ async function upload(
   const generation =
     metadata.generation ?? (header && header !== "0" ? header : undefined);
   if (link && response.headers.get(LINK_HEADER) !== "1") {
-    console.error(
-      `[object-sync] ${input.key}: the store wrote the link as a file; removing it`,
-    );
     if (generation !== undefined) await discardOwnWrite(input, generation);
-    return undefined;
+    throw new ObjectAttrsRefusedError(
+      input.key,
+      `object store PUT ${input.key} did not keep the link`,
+    );
   }
   return generation === undefined ? undefined : { generation };
 }

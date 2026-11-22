@@ -14,7 +14,10 @@ export async function linkSource(
 ): Promise<SyncSource | RefusedLink | "gone"> {
   let target: string;
   try {
-    target = await readlink(abs);
+    const raw = await readlink(abs, { encoding: "buffer" });
+    target = raw.toString("utf8");
+    if (!Buffer.from(target).equals(raw))
+      return { refusedLink: "link has an unusable target" };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return "gone";
     throw error;

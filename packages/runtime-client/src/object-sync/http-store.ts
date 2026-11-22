@@ -187,7 +187,7 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   private readonly noteAttrs = (fileAttrs: boolean) => {
-    this.fileAttrs = fileAttrs;
+    this.fileAttrs = this.fileAttrs === true || fileAttrs;
   };
 
   private captureFence(res: Response): void {

@@ -60,7 +60,7 @@ export async function syncBack(
   const syncable = privateDirGate();
   const links = store.fileAttrs === true;
 
-  for (const rel of await walkFiles(dir, dir, links)) {
+  for (const rel of await walkFiles(dir, dir, true)) {
     if (excluded(rel, excludes)) continue;
     const abs = join(dir, ...rel.split("/"));
     if (!(await syncable(abs))) {
@@ -75,9 +75,10 @@ export async function syncBack(
     // store, instead of aborting the whole pass mid-upload. Sign-in state is
     // checked per file and uploaded from a checked copy (sync-back-source.ts).
     const source = await syncSource(abs, rel);
-    if (source === SOURCE_GONE || (isLink(source) && !links)) continue;
-    if (source === SOURCE_REFUSED || "refusedLink" in source) {
-      if (source !== SOURCE_REFUSED && opts.include?.(rel) !== false)
+    if (source === SOURCE_GONE) continue;
+    const refused = source !== SOURCE_REFUSED && "refusedLink" in source;
+    if (source === SOURCE_REFUSED || refused || (!links && isLink(source))) {
+      if (refused && links && opts.include?.(rel) !== false)
         refusedLinks.push({ key: rel, reason: source.refusedLink });
       const kept = manifest.get(rel);
       if (kept) nextManifest.set(rel, kept);

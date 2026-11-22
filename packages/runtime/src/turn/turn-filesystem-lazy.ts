@@ -31,12 +31,11 @@ export async function startLazyTurnFilesystem(opts: {
   timings?: Record<string, number>;
 }): Promise<TurnFilesystem> {
   const admit = opts.admit;
-  const files = opts.listed.filter(({ link }) => link === undefined);
   const objects = admit
-    ? files.filter(({ key }) =>
+    ? opts.listed.filter(({ key }) =>
         admit(opts.prefix ? key.slice(opts.prefix.length + 1) : key),
       )
-    : files;
+    : opts.listed;
   const manifest: HydrateManifest = new Map();
   const vfs = new LazyStoreVfs({
     store: opts.store,
