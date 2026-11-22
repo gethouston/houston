@@ -104,6 +104,7 @@ test("a link out of the agent folder is reported, never uploaded, and holds no d
     {
       key: `${agent}/.venv/bin/python`,
       reason: "link points outside the agent folder",
+      refused: true,
     },
   ]);
   expect(result.deleted).toEqual([`${agent}/CLAUDE.md`]);

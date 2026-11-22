@@ -2,6 +2,7 @@ import type { HydrateManifestEntry } from "./hydrate";
 import {
   type ObjectStore,
   ObjectTooLargeError,
+  ObjectWriteRefusedError,
   StoreConflictError,
   type WriteOptions,
 } from "./object-store";
@@ -24,6 +25,7 @@ export interface UploadChangeResult {
   entry?: HydrateManifestEntry;
   uploaded: boolean;
   skipped?: string;
+  refused?: boolean;
   conflict?: string;
   /** The source file was unlinked between the sync scan and the upload read. */
   vanished?: boolean;
@@ -87,6 +89,7 @@ export async function uploadChangedObject(opts: {
         entry: { hash: opts.hash },
         uploaded: false,
         skipped: error.message,
+        ...(error instanceof ObjectWriteRefusedError ? { refused: true } : {}),
       };
     }
     if (sourceVanished(error)) return { uploaded: false, vanished: true };
@@ -126,6 +129,8 @@ export async function deleteOwnedObject(opts: {
     await opts.store.delete(opts.key, writeOptions);
     return { deleted: true };
   } catch (error) {
+    if (error instanceof ObjectWriteRefusedError)
+      return { deleted: false, kept: true, conflict: error.message };
     if (!(error instanceof StoreConflictError)) throw error;
     if ((await opts.refresh(opts.key)) === null) return { deleted: true };
     return { deleted: false, kept: true, conflict: error.message };

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -65,6 +65,17 @@ test("a remote that already holds the turn's bytes is adopted", async () => {
   expect(result.conflictCopies).toEqual([]);
   expect(mem.writes).toHaveLength(1);
   expect(result.manifest.get(NOTES)?.generation).toBe(mem.generation(NOTES));
+});
+
+test("an executable file whose bytes the remote already holds is adopted", async () => {
+  const mem = memoryStore({ [NOTES]: "#!/bin/sh\n" });
+  const root = await tree({ [NOTES]: "#!/bin/sh\n" });
+  await chmod(join(root, ...NOTES.split("/")), 0o755);
+  const result = await syncBack(mem.store, "", root, stale(NOTES), workerOpts);
+
+  expect(result.conflictCopies).toEqual([]);
+  expect(result.uploaded).toEqual([NOTES]);
+  expect(mem.writes).toHaveLength(1);
 });
 
 test("a remote another writer removed is created again, create-only", async () => {

@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { rm, stat } from "node:fs/promises";
+import { lstat, readlink, rm } from "node:fs/promises";
 import { posix } from "node:path";
 import { atomicTempPath } from "@houston/protocol";
 import { fileSha256 } from "./file-hash";
 import type { HydrateManifestEntry } from "./hydrate";
+import { linkHash } from "./object-attrs";
 import {
   ObjectNotFoundError,
   type ObjectStore,
@@ -69,8 +70,11 @@ async function readRemote(
       ? await store.downloadVersioned(key, temp)
       : ((await store.download(key, temp)) ?? {});
     if (read.refused) return { kind: "refused" };
-    const { size } = await stat(temp);
-    const same = (await fileSha256(temp, size)) === hash;
+    const info = await lstat(temp);
+    const remoteHash = info.isSymbolicLink()
+      ? linkHash(await readlink(temp))
+      : await fileSha256(temp, info.size);
+    const same = remoteHash === hash.replace(/:x$/, "");
     return { kind: same ? "same" : "different", generation: read.generation };
   } catch (error) {
     if (error instanceof ObjectNotFoundError) return { kind: "gone" };

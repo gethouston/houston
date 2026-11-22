@@ -4,6 +4,7 @@ export { LocalDirStore } from "./local-dir-store";
 export {
   ObjectNotFoundError,
   ObjectTooLargeError,
+  ObjectWriteRefusedError,
   StoreConflictError,
   StoreFencedError,
 } from "./object-store-errors";

@@ -2,8 +2,8 @@ import { join, posix } from "node:path";
 import { DEFAULT_EXCLUDES, excluded, type HydrateManifest } from "./hydrate";
 import type { ObjectStore } from "./object-store";
 import { privateDirGate } from "./private-dir-gate";
-import { privateDirOf } from "./private-paths";
-import { deleteOwnedObject, uploadChangedObject } from "./sync-back-conflicts";
+import { uploadChangedObject } from "./sync-back-conflicts";
+import { syncDeletes } from "./sync-back-deletes";
 import { keyedRefresh, listingRefresh } from "./sync-back-refresh";
 import { SOURCE_GONE, SOURCE_REFUSED, syncSource } from "./sync-back-source";
 import type { SyncBackOptions, SyncResult } from "./sync-back-types";
@@ -87,7 +87,11 @@ export async function syncBack(
     const refused = source !== SOURCE_REFUSED && "refusedLink" in source;
     if (source === SOURCE_REFUSED || refused || (!links && isLink(source))) {
       if (refused && links && opts.include?.(rel) !== false)
-        refusedLinks.push({ key: rel, reason: source.refusedLink });
+        refusedLinks.push({
+          key: rel,
+          reason: source.refusedLink,
+          refused: true,
+        });
       const kept = manifest.get(rel);
       if (kept) nextManifest.set(rel, kept);
       continue;
@@ -139,7 +143,12 @@ export async function syncBack(
       }
       if (result.entry) nextManifest.set(rel, result.entry);
       if (result.uploaded) uploaded.push(rel);
-      if (result.skipped) skipped.push({ key: rel, reason: result.skipped });
+      if (result.skipped)
+        skipped.push({
+          key: rel,
+          reason: result.skipped,
+          ...(result.refused ? { refused: true as const } : {}),
+        });
       if (result.conflict)
         conflicts.push({ key: rel, reason: result.conflict });
       if (result.conflictCopy)
@@ -149,45 +158,22 @@ export async function syncBack(
     }
   }
 
-  const deleted: string[] = [];
-  const holdDeletes =
-    opts.holdDeletesOnFailure === true &&
-    (skipped.length > 0 || conflicts.length > 0);
-  for (const [rel, previous] of manifest) {
-    if (nextManifest.has(rel)) continue;
-    if (holdDeletes) {
-      // Keep the prior entry so the object stays owned and durable.
-      nextManifest.set(rel, previous);
-      continue;
-    }
-    if (opts.include && !opts.include(rel)) {
-      nextManifest.set(rel, previous);
-      scopeMiss(rel);
-      continue;
-    }
-    // Sign-in state is never deleted by a sync pass: a missing or swapped
-    // `.houston/browser` (the tool user can rename one of the worker's own
-    // folders to it) would otherwise wipe the person's remote sign-ins.
-    // Forgetting them is an explicit store delete (private-dir-gate.ts).
-    if (privateDirOf(join(dir, ...rel.split("/")))) {
-      nextManifest.set(rel, previous);
-      continue;
-    }
-    const key = prefix ? posix.join(prefix, rel) : rel;
-    const result = await deleteOwnedObject({
-      store,
-      key,
-      previous,
-      generationAware,
-      refresh,
-    });
-    if (result.deleted) deleted.push(rel);
-    if (result.entry) nextManifest.set(rel, result.entry);
-    if (result.kept)
-      deletesKept.push({ key: rel, reason: result.conflict ?? "" });
-    else if (result.conflict)
-      conflicts.push({ key: rel, reason: result.conflict });
-  }
+  const deleted = await syncDeletes({
+    store,
+    prefix,
+    dir,
+    manifest,
+    nextManifest,
+    generationAware,
+    refresh,
+    include: opts.include,
+    hold:
+      opts.holdDeletesOnFailure === true &&
+      (skipped.length > 0 || conflicts.length > 0),
+    scopeMiss,
+    conflicts,
+    deletesKept,
+  });
   return {
     uploaded,
     deleted,

@@ -21,7 +21,7 @@ export interface SyncResult {
    * completes and the upload is re-attempted only when the file changes —
    * never as an every-tick retry of a deterministic verdict.
    */
-  skipped: { key: string; reason: string }[];
+  skipped: { key: string; reason: string; refused?: true }[];
   /**
    * Per-object generation conflicts (typed 412) that survived one refreshed
    * retry. The pass continues past them; a FENCE rejection (409) aborts it

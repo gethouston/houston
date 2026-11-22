@@ -8,7 +8,7 @@ import {
 
 export interface UnsavedSyncInput {
   conflicts: readonly { key: string }[];
-  skipped: readonly { key: string }[];
+  skipped: readonly { key: string; refused?: true }[];
   conflictCopies?: readonly { key: string; copy: string }[];
   deletesKept?: readonly { key: string }[];
   outOfScopeKeys?: readonly string[];
@@ -47,7 +47,9 @@ export function turnUnsavedFiles(
     ),
     ...synced.conflicts.map(({ key }) => entry(key, "conflict")),
     ...(synced.deletesKept ?? []).map(({ key }) => entry(key, "delete_kept")),
-    ...synced.skipped.map(({ key }) => entry(key, "too_large")),
+    ...synced.skipped.map(({ key, refused }) =>
+      entry(key, refused ? "out_of_scope" : "too_large"),
+    ),
     ...(synced.outOfScopeKeys ?? []).map((key) => entry(key, "out_of_scope")),
   ];
   const counts: UnsavedFilesReport["counts"] = {};

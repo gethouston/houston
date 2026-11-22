@@ -212,3 +212,25 @@ test("only writes the scope refuses are reported, never the runtime's own scratc
     { path: ".houston/config/config.json", reason: "out_of_scope" },
   ]);
 });
+
+test("a file the store refused reads as not saved from this reply", () => {
+  expect(
+    turnUnsavedFiles(
+      {
+        conflicts: [],
+        skipped: [
+          { key: `${W}/state.json`, refused: true },
+          { key: `${W}/big.zip` },
+        ],
+      },
+      W,
+    ),
+  ).toEqual({
+    files: [
+      { path: "state.json", reason: "out_of_scope" },
+      { path: "big.zip", reason: "too_large" },
+    ],
+    total: 2,
+    counts: { out_of_scope: 1, too_large: 1 },
+  });
+});
