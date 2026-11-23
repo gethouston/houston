@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { HydrateListedObject } from "@houston/runtime-client/object-sync";
+import { CONVERSATION_MARK_FILES } from "../session/conversation-marks";
 import { ROUTINE_RESULTS_FILE } from "../store/routine-results";
 import { CLAUDE_FLAGS_DIR, claudeFlagsFileName } from "./claude-flags-path";
 import { newestArchiveSegments } from "./turn-hot-set-archive";
@@ -143,7 +144,8 @@ export function ownConversationOnly(
         tail.length === 1 &&
         (tail[0] === "harness.json" ||
           tail[0] === "autocompact.json" ||
-          tail[0] === ROUTINE_RESULTS_FILE)
+          tail[0] === ROUTINE_RESULTS_FILE ||
+          CONVERSATION_MARK_FILES.has(tail[0] ?? ""))
       )
         return true;
       if (tail.length === 1 && tail[0]?.endsWith(".jsonl")) {

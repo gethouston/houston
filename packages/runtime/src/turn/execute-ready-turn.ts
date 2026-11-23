@@ -1,4 +1,7 @@
 import type { WireFrame } from "@houston/runtime-client";
+import { reportDeadServedApiKey } from "../auth/served-key-guard";
+import { currentTurnCredentialChannel } from "../auth/turn-credential-channel";
+import { settleTurnCredentialReports } from "../auth/turn-credential-report";
 import { runWithActingContext } from "../session/acting-context";
 import { runWithConversationScope } from "../session/bus";
 import type { startClaimHeartbeat } from "./claim-heartbeat";
@@ -67,6 +70,7 @@ export async function executeReadyTurn(input: {
   }
 
   let outcome: TurnOutcome;
+  let credentialChannel: ReturnType<typeof currentTurnCredentialChannel>;
   if (turnIsUnconnected(input.turn)) {
     outcome = unconnectedTurnOutcome(input.turn, input.turnId, input.emit);
   } else {
@@ -79,6 +83,9 @@ export async function executeReadyTurn(input: {
             input.deps.poolStoreUrl,
           ),
           () => {
+            credentialChannel = currentTurnCredentialChannel();
+            if (credentialChannel && input.turn.credential)
+              reportDeadServedApiKey(input.turn.credential);
             const directories = {
               ...input.filesystem,
               turnRoot: input.root,
@@ -163,6 +170,7 @@ export async function executeReadyTurn(input: {
       userId: input.turn.actingAs?.userId,
       spend: outcome.spend,
     }),
+    settleTurnCredentialReports(credentialChannel),
   ]);
   input.timings.t_durable = performance.now();
   await reportPooledSettle(input, durable, input.mentionReport);
