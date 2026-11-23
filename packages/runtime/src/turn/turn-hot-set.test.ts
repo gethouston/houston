@@ -92,6 +92,8 @@ test("hydrates the conversation's own markers, never another's", () => {
     "harness.json",
     "autocompact.json",
     "routine-results.md",
+    "codex-refusals.json",
+    "reconnect-offered.json",
   ]) {
     expect(admit(`${session}/${marker}`, listed(), root)).toBe(true);
     expect(admit(`${standing}/sessions/c2/${marker}`, listed(), root)).toBe(

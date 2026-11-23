@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import type { LocalModelTransportContext } from "../ai/local-model-transport";
+import type { TurnCredentialChannel } from "../auth/turn-credential-channel";
 import { decodeActingAuthor } from "./attribution";
 
 /**
@@ -43,6 +44,7 @@ export interface ActingContext {
   credentialScopeKey?: string;
   /** Explicit auth.json for a throwaway turn root. */
   authPath?: string;
+  credentialChannel?: TurnCredentialChannel;
 }
 
 /** The credential scope of a request with no acting identity: the shared file. */
@@ -102,7 +104,8 @@ export function runWithActingContext<T>(
       !ctx.verifiedOwner &&
       !ctx.credentialScopeKey &&
       !ctx.authPath &&
-      !ctx.localModelTransport)
+      !ctx.localModelTransport &&
+      !ctx.credentialChannel)
   )
     return fn();
   return store.run(

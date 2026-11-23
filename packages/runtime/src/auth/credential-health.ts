@@ -5,6 +5,7 @@ import {
   readProviderMarks,
   writeProviderMarks,
 } from "./provider-marks";
+import { reportTurnCredentialHealth } from "./turn-credential-report";
 
 /**
  * Turn-time truth fed back into provider status.
@@ -81,6 +82,7 @@ export function noteQuotaExhausted(
     expiresAt: Number.isNaN(parsed) ? Date.now() + QUOTA_MARK_TTL_MS : parsed,
   });
   writeProviderMarks(marks);
+  reportTurnCredentialHealth("out_of_credits", id, { resetsAt });
 }
 
 /** Heal both marks without a credential change — a turn that COMPLETED on this
@@ -88,6 +90,7 @@ export function noteQuotaExhausted(
  *  (exec-turn / turn-session call this on every clean turn; cheap no-op when
  *  nothing is marked). */
 export function clearProviderMarks(id: string): void {
+  reportTurnCredentialHealth("connected", id);
   const marks = readProviderMarks();
   const mark = markFor(id);
   // Both deletes must run (no short-circuit): a turn can heal an auth mark and
