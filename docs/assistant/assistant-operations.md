@@ -14,7 +14,6 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `createAgent` | POST | confirmed: host approval required | visible | name: free text; color: enum; seed: free text |
 | `createMigratedAgent` | unroutable | unconfirmed: withheld from dispatch | it keeps a desktop agent's name even when that name is Houston, which the AI Manager may never give an employee; createAgent is the create to dispatch. | name: free text; color: enum; seed: free text |
 | `deleteAgent` | DELETE | confirmed: host approval required | visible | id: resolved:agents |
-| `generateAgentInstructions` | unroutable | unconfirmed: withheld from dispatch | a one-shot generation turn on a runtime, not an app operation; an assistant writes the instructions itself and saves them with writeAgentFile. | description: free text; opts: free text |
 | `getAgentDelegation` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `getAgentModelChoice` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents |
 | `installAgentFromGithub` | POST | confirmed: host approval required | visible | githubUrl: free text |

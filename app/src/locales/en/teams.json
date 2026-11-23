@@ -380,7 +380,7 @@
     },
     "confirm": {
       "body": "{{agent}} will move to {{team}}. You and your teammates will find it there.",
-      "downtime": "The AI Employee restarts during the move, so it may be unavailable for a moment.",
+      "downtime": "The AI Employee may be unavailable for a moment while it moves.",
       "cancel": "Cancel",
       "move": "Move AI Employee"
     },
