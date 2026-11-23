@@ -7,6 +7,7 @@ import type { WriteResult } from "./object-store";
 import {
   ObjectAttrsRefusedError,
   StoreConflictError,
+  StoreFencedError,
 } from "./object-store-errors";
 import { withOperationSignal } from "./operation-signal";
 
@@ -102,6 +103,7 @@ async function discardOwnWrite(
     await input.discard(generation);
   } catch (error) {
     if (error instanceof StoreConflictError) return;
+    if (error instanceof StoreFencedError) throw error;
     throw new ObjectAttrsRefusedError(
       input.key,
       `object store PUT ${input.key} did not keep the link, and its plain copy could not be removed: ${error instanceof Error ? error.message : String(error)}`,

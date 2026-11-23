@@ -13,7 +13,10 @@ import { expect, test } from "vitest";
 import { HttpObjectStore } from "./http-store";
 import { landHttpBatch } from "./http-store-batch";
 import { hydrate, syncBack } from "./hydrate";
-import { ObjectAttrsRefusedError } from "./object-store-errors";
+import {
+  ObjectAttrsRefusedError,
+  StoreFencedError,
+} from "./object-store-errors";
 import {
   PrefetchedObjectStore,
   parsePrefetchedObjects,
@@ -115,6 +118,19 @@ test("a plain copy that cannot be removed still skips only that link", async () 
   );
   await expect(store.upload(join(dir, "tsc"), key)).rejects.toBeInstanceOf(
     ObjectAttrsRefusedError,
+  );
+});
+
+test("a fenced claim while removing a plain copy still fails the pass", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "http-attrs-"));
+  await symlink("x", join(dir, "tsc"));
+  const { store } = recording((init) =>
+    init.method === "DELETE"
+      ? Response.json({ error: "fenced" }, { status: 409 })
+      : Response.json(body(key)),
+  );
+  await expect(store.upload(join(dir, "tsc"), key)).rejects.toBeInstanceOf(
+    StoreFencedError,
   );
 });
 
