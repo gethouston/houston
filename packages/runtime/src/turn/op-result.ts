@@ -28,4 +28,5 @@ export interface OpResult {
   /** A lazy read of sign-in state was refused (its private directory is not
    *  this process's own): the overlay may be partial, as with `tooLarge`. */
   privateRefused?: true;
+  untouched?: true;
 }

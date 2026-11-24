@@ -30,3 +30,16 @@ test("absent means not connected; a broken credential is rejected", () => {
     "invalid 'credential'",
   );
 });
+
+test("the served row and its live health mark ride the parsed credential", () => {
+  expect(
+    parseTurnCredential({
+      ...base,
+      scope: "personal",
+      health: "out_of_credits",
+    }),
+  ).toMatchObject({ scope: "personal", health: "out_of_credits" });
+  const unknown = parseTurnCredential({ ...base, scope: "org", health: "x" });
+  expect(unknown).not.toHaveProperty("scope");
+  expect(unknown).not.toHaveProperty("health");
+});

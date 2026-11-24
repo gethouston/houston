@@ -2,15 +2,15 @@ import { completeSimple, getModel } from "@earendil-works/pi-ai/compat";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 /**
- * Guards the carried pi-ai patch (patches/@earendil-works__pi-ai@*.patch,
- * google-generative-ai.js): Gemini 3.7 Flash and later reject
- * `thinkingLevel: MINIMAL` with a 400, yet pi sends exactly that whenever a
- * call carries no reasoning level (the key-verify probe, one-shot helpers) or
- * asks for `minimal`. The patch floors those at LOW for 3.7+ Flash only; the
- * older Flash rows and Flash-Lite keep MINIMAL, which they accept.
+ * Gemini 3.7 Flash and later reject `thinkingLevel: MINIMAL` with a 400, and
+ * a call that carries no reasoning level (the key-verify probe, one-shot
+ * helpers) or asks for `minimal` must still go out as LOW on 3.7+ Flash only;
+ * the older Flash rows and Flash-Lite keep MINIMAL, which they accept. pi
+ * floors these itself now, and this guards that on every pi bump.
  *
- * The Google adapter refuses a custom `fetch`, so the request is captured off
- * the global one. A 400 reply is enough: only the outgoing body matters.
+ * The request is captured off the global `fetch`, which the Google adapter
+ * uses when the call passes none. A 400 reply is enough: only the outgoing
+ * body matters.
  */
 type Captured = { thinkingLevel?: string; includeThoughts?: boolean };
 

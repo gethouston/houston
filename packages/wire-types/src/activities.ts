@@ -3,7 +3,7 @@
  * create and update it, and the cross-agent conversation sweep that lists them.
  */
 
-import type { MissionStarter } from "@houston/protocol";
+import type { MissionStarter, TurnMode } from "@houston/protocol";
 import type { PendingInteraction } from "./interactions";
 
 export interface Activity {
@@ -23,6 +23,8 @@ export interface Activity {
   last_message_at?: string;
   provider?: string;
   model?: string;
+  /** The conversation's turn mode; absent means "execute" (HOU-205). */
+  mode?: TurnMode;
   /** The conversation this mission was started from, present only when the
    *  agent created the mission itself (PRODUCT-1244). Server-stamped. */
   origin_session_key?: string;
@@ -71,6 +73,8 @@ export interface ActivityUpdate {
   skill_slug?: string;
   provider?: string | null;
   model?: string | null;
+  /** The conversation's mode; "execute" is the default, so it never clears. */
+  mode?: TurnMode;
   /** Set to record a new pending interaction; `null` clears it explicitly. */
   pending_interaction?: PendingInteraction | null;
 }
@@ -88,6 +92,8 @@ export interface NewActivity {
   agent?: string;
   provider?: string;
   model?: string;
+  /** The mode the composer had picked when the mission was created. */
+  mode?: TurnMode;
 }
 
 // ---------- Conversations ----------
@@ -110,6 +116,8 @@ export interface ConversationEntry {
    *  pin-less (PRODUCT-1771). Absent on rows that were never pinned. */
   provider?: string;
   model?: string;
+  /** The row's turn mode, carried for the same reason (HOU-205). */
+  mode?: TurnMode;
   /** The conversation this mission was started from, present only when the
    *  agent created the mission itself (PRODUCT-1244). Server-stamped. */
   origin_session_key?: string;

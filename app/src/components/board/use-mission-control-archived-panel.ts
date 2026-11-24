@@ -64,6 +64,7 @@ export function useMissionControlArchivedPanel(
     activeAgent,
     selectedItem,
     resolveSendPin: panel.resolveSendPin,
+    turnMode: panel.turnMode,
     onHandoff: handoff,
   });
 

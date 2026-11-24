@@ -120,7 +120,20 @@ export type InteractionStep =
       approval?: { operation: string; args: ApprovalArg[] };
     }
   | { kind: "signin"; id: string; reason?: string }
-  | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  | {
+      kind: "connect";
+      id: string;
+      toolkit: string;
+      reason?: string;
+      /** The app IS connected but its login stopped working (an action was
+       *  refused as expired, revoked or missing a permission): the card asks
+       *  to reconnect and never counts the existing connection as done. */
+      reconnect?: boolean;
+      /** With `reconnect`: ISO time the app refused the login. Only a
+       *  connection created after it counts as the reconnect, wherever the
+       *  user made it (this card or the Integrations page). */
+      refusedAt?: string;
+    }
   | { kind: "provider_connect"; id: string; provider: string; reason?: string }
   | { kind: "credential"; id: string; toolkit: string; reason?: string }
   | {

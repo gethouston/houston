@@ -18,13 +18,10 @@ vi.mock("../../session/resource-loader", () => ({
 vi.mock("./session-files", () => ({ resumeSessionManager: vi.fn() }));
 vi.mock("./transport-settings", () => ({ piTransportSettings: () => ({}) }));
 
-type ModelId = Parameters<typeof getModel>[1];
-
 const terra = getModel("openai-codex", "gpt-6.1-terra");
 const astra = getModel("openai-codex", "gpt-6-astra");
-// Backported by the pi-ai 1.5.2 patch, so absent from pi's typed id union.
-const sol62 = getModel("openai-codex", "gpt-6.2-sol" as ModelId);
-const astra62 = getModel("openai-codex", "gpt-6.2-astra" as ModelId);
+const sol62 = getModel("openai-codex", "gpt-6.2-sol");
+const astra62 = getModel("openai-codex", "gpt-6.2-astra");
 
 test.each([
   ["Terra max", terra, "max", "max"],

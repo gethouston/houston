@@ -107,5 +107,4 @@ export const AGENT_PROBES: string[] = [
   "POST /agents/:agentId/conversations/:conversationId/messages",
   "GET /agents/:agentId/conversations/:conversationId/browser/live",
   "POST /agents/:agentId/conversations/:conversationId/browser/input",
-  "POST /agents/:agentId/generate-agent",
 ];

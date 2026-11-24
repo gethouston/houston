@@ -466,7 +466,11 @@
     "updateStuckTitle": "As atualizações não estão chegando",
     "updateStuckDescription": "Não conseguimos verificar atualizações. Sua rede pode estar bloqueando. Você sempre pode baixar a versão mais recente em gethouston.ai.",
     "noAgentTitle": "Você precisa de um funcionário de IA primeiro",
-    "noAgentDescription": "Crie um funcionário de IA e depois conecte pelas configurações dele. Esta conexão fica em um funcionário de IA."
+    "noAgentDescription": "Crie um funcionário de IA e depois conecte pelas configurações dele. Esta conexão fica em um funcionário de IA.",
+    "computeBusyTitle": "Seu funcionário de IA está ocupado",
+    "computeBusyDescription": "Ele não conseguiu começar isso agora, então nada mudou. Tente de novo em alguns minutos.",
+    "conversationEditRefusedTitle": "Não dá para alterar esta conversa agora",
+    "conversationEditRefusedDescription": "Nada mudou. Tente mais tarde ou comece uma conversa nova para continuar."
   },
   "openUrl": {
     "noBrowserTitle": "Não encontramos um navegador web",

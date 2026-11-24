@@ -5,6 +5,7 @@ import {
   type ActivityUpdate,
   isPendingInteraction,
   type NewActivity,
+  normalizeTurnMode,
   resolveInteractionPatch,
 } from "@houston/protocol";
 import { sanitizeActivityStamps } from "./activity-stamps";
@@ -127,6 +128,10 @@ export function createActivity(
       ? { provider: toCanonicalProviderId(input.provider) }
       : {}),
     ...(input.model !== undefined ? { model: input.model } : {}),
+    // A create body is untrusted at runtime: an unknown mode is the default.
+    ...(input.mode !== undefined
+      ? { mode: normalizeTurnMode(input.mode) }
+      : {}),
     ...(input.origin_session_key !== undefined
       ? { origin_session_key: input.origin_session_key }
       : {}),

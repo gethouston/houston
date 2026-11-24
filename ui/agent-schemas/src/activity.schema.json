@@ -28,6 +28,11 @@
       "last_message_at": { "type": "string", "format": "date-time" },
       "provider": { "type": "string" },
       "model": { "type": "string" },
+      "mode": {
+        "type": "string",
+        "enum": ["execute", "plan", "auto"],
+        "description": "The conversation's turn mode, picked by the person. Set by Houston, not by the agent."
+      },
       "origin_session_key": {
         "type": "string",
         "description": "The conversation this mission was started from, present only when the agent created the mission itself. Set by Houston, not by the agent."
@@ -121,6 +126,8 @@
                 },
                 "toolkit": { "type": "string" },
                 "wantsFiles": { "type": "boolean" },
+                "reconnect": { "type": "boolean" },
+                "refusedAt": { "type": "string" },
                 "provider": { "type": "string", "minLength": 1 },
                 "surface": {
                   "type": "string",

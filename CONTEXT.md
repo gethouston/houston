@@ -26,6 +26,10 @@ _Avoid_: duplicate message
 The turn-lifecycle decisions applied when a message is sent. Queue-while-running belongs to the client's engine adapter; Autocompact and Provider switch belong to the runtime (ADR-0002). A surface supplies only genuine inputs (text, overrides).
 _Avoid_: send flags, send options
 
+**Turn mode**:
+How the agent works in a turn: Ask first (`execute`), Planner (`plan`) or Autopilot (`auto`). A conversation keeps its mode on its mission card, picked with the composer's Mode pill; a send may pin its own, and a send that pins none runs on the kept one, else Ask first (Autopilot for an API-started mission). Every new mission starts in the mode its composer showed.
+_Avoid_: agent mode (the card's `agent` field is a different thing), permission mode
+
 **Provider switch**:
 The runtime moving a conversation to a different provider mid-session, detected per turn from the persisted settings and announced with a boundary divider. Never staged or requested by the client.
 _Avoid_: provider handoff (the deleted client-staged mechanism)

@@ -37,13 +37,14 @@ async function hydrationIsQuiet(
   return quiet;
 }
 
-/**
- * Close the browser contexts this turn opened in its workspace, saving their
- * sign-ins first, before the root is removed: the browser process is shared,
- * so a context left open would outlive the turn and its idle sweep would
- * write into a deleted workspace. A hand-off still waiting would hold the
- * context's queue for minutes, so it ends first. Never throws (the pool logs).
- */
+export async function saveTurnBrowser(
+  root: string,
+  conversationId: string,
+): Promise<void> {
+  sharedHandoffs.end(conversationId, "cancelled");
+  await sharedBrowserPool.saveUnder(root);
+}
+
 async function closeTurnBrowser(
   root: string,
   conversationId: string,
