@@ -128,3 +128,23 @@ test("a createAgent named Houston reads as the host's reserved-name sentence", a
     ),
   });
 });
+
+test("compute_busy is a named busy state, never a gateway error", async () => {
+  const error = await refusal(503, {
+    error: "engine unavailable",
+    code: "compute_busy",
+  });
+  expect(error.code).toBe("compute_busy");
+  expect(error.status).toBe(503);
+  expect(error.message).not.toContain("engine unavailable");
+  expect(error.message).toContain("try again in a few minutes");
+});
+
+test("pod_wake_refused is operation_unavailable_here with no retry", async () => {
+  const error = await refusal(503, {
+    error: "engine unavailable",
+    code: "pod_wake_refused",
+  });
+  expect(error.code).toBe("operation_unavailable_here");
+  expect(error.message).toContain("Do not retry");
+});

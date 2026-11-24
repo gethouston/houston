@@ -146,6 +146,7 @@ export async function createMission(
     opts.agentMode,
     rowPin.provider,
     rowPin.model,
+    opts.modeOverride,
   );
   const conversationId = item.id;
   const sessionKey = sessionKeyForActivity(conversationId);

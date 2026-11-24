@@ -1,6 +1,6 @@
-import { rmSync } from "node:fs";
 import { join } from "node:path";
 import type { ChatMessage } from "@houston/runtime-client";
+import { clearSessionDirKeepingMarks } from "../session/conversation-marks";
 import { isRoutineConversation } from "../session/routine-context";
 import { ROUTINE_REPLAY_TAIL } from "../session/routine-replay";
 import { ArchiveSegmentMissingError } from "../store/conversation-archive-missing";
@@ -24,17 +24,17 @@ export function resetPooledRoutineSession(input: {
   fire: boolean;
 }): boolean {
   if (!input.fire || !isRoutineConversation(input.conversationId)) return false;
-  rmSync(join(input.dataDir, "sessions", input.conversationId), {
-    recursive: true,
-    force: true,
-  });
+  clearSessionDirKeepingMarks(
+    join(input.dataDir, "sessions", input.conversationId),
+  );
   return true;
 }
 
 /**
  * Fetch whatever part of a routine chat's replay tail the hot set left remote
  * (turn-archive-fetch.ts), before `routineReplayHistory` reads it: usually
- * nothing, as the newest segments hydrate with the turn. A segment the store
+ * nothing, as the live file keeps at least ARCHIVE_TAIL_BYTES after a
+ * rotation. A segment the store
  * lost (already reported) only shortens the digest: failing here would fail
  * every run of the routine for good. Any other failure fails this turn.
  */

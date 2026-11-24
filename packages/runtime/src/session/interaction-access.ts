@@ -21,17 +21,26 @@ export function recordSignin(input: { reason?: string }): void {
 /**
  * Append a connect step for this turn, deduped by toolkit: a first mention gets
  * the next `c1`..`cN` id; a repeat for the same toolkit updates its reason in
- * place (keeping its id and position). A no-op outside a turn.
+ * place (keeping its id and position). A reconnect (`refusedAt`, the time the
+ * app refused the login) sticks once set: a later plain request for the app
+ * must not turn the card back into one that counts the dead connection as
+ * done. A no-op outside a turn.
  */
 export function recordConnection(input: {
   toolkit: string;
   reason?: string;
+  refusedAt?: string;
 }): void {
   const holder = currentInteractionHolder();
   if (!holder) return;
+  const reconnect = input.refusedAt
+    ? { reconnect: true, refusedAt: input.refusedAt }
+    : {};
   const existing = holder.connects.find((c) => c.toolkit === input.toolkit);
   if (existing) {
     if (input.reason) existing.reason = input.reason;
+    if (input.refusedAt && !existing.reconnect)
+      Object.assign(existing, reconnect);
     return;
   }
   holder.connects.push({
@@ -39,7 +48,17 @@ export function recordConnection(input: {
     id: `c${holder.connects.length + 1}`,
     toolkit: input.toolkit,
     ...(input.reason ? { reason: input.reason } : {}),
+    ...reconnect,
   });
+}
+
+/** Whether this turn already queued a reconnect step for `toolkit`. */
+export function reconnectQueued(toolkit: string): boolean {
+  return (
+    currentInteractionHolder()?.connects.some(
+      (c) => c.toolkit === toolkit && c.reconnect === true,
+    ) ?? false
+  );
 }
 
 /**

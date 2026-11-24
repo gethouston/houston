@@ -1,5 +1,5 @@
 import { deepStrictEqual, match, ok, rejects, strictEqual } from "node:assert";
-import { afterEach, describe, it } from "node:test";
+import { afterEach, before, describe, it } from "node:test";
 import {
   type GatewayFetchDeps,
   gatewayFetch,
@@ -9,6 +9,7 @@ import {
   resetRejectedBearers,
   resetRejectedMints,
 } from "../src/lib/gateway-refresh.ts";
+import { snapshotGlobals } from "./support/restore-globals.ts";
 
 interface Sent {
   url: string;
@@ -378,6 +379,7 @@ describe("gatewayFetch active space", () => {
     // whole point: `/agents/:slug/migration/*` is org-scoped, and without the
     // header the gateway resolved the personal space and 404'd every
     // team-space agent.
+    const restoreWindow = snapshotGlobals(["window"]);
     (globalThis as { window?: Record<string, unknown> }).window = {
       __HOUSTON_ACTIVE_ORG__: "abcdef0123456789",
     };
@@ -390,7 +392,7 @@ describe("gatewayFetch active space", () => {
       await gatewayFetch(noOrgDeps, "/agents/a1/migration/import");
       strictEqual(sent[0].org, "abcdef0123456789");
     } finally {
-      (globalThis as { window?: unknown }).window = undefined;
+      restoreWindow();
     }
   });
 
@@ -652,7 +654,11 @@ describe("liveGatewayDeps", () => {
   const setWindow = (value: Record<string, unknown> | undefined) => {
     (globalThis as { window?: Record<string, unknown> }).window = value;
   };
-  afterEach(() => setWindow(undefined));
+  let restoreWindow = () => {};
+  before(() => {
+    restoreWindow = snapshotGlobals(["window"]);
+  });
+  afterEach(() => restoreWindow());
 
   it("is null with no window and with no gateway configured", () => {
     strictEqual(liveGatewayDeps(), null);

@@ -35,10 +35,10 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   // than a "free" one. Copilot uses DOTTED model ids, unlike native Anthropic.
   "github-copilot": "gpt-6-luna",
   opencode: "claude-sonnet-4-6",
-  // The GLM row that holds glm-5.1's tier (same price, same plan) — pi 0.99.1
-  // dropped glm-5.1, and a default the catalog no longer carries fails every
-  // provider-only pin on its first turn.
-  "opencode-go": "glm-5.2",
+  // The GLM row that holds glm-5.1's tier (same price, same plan). pi 0.99.1
+  // dropped glm-5.1 and pi 1.6.0 glm-5.2, and a default the catalog no longer
+  // carries fails every provider-only pin on its first turn.
+  "opencode-go": "glm-5.3",
   openrouter: "anthropic/claude-sonnet-4.6",
   deepseek: "deepseek-flash",
   // 3.8 Flash (GA 2026-09-02): 1M context, 64K output, and cheaper than 3.5
@@ -57,12 +57,13 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   // NVIDIA serves each hosted model per ACCOUNT (HOU-890), so pi's
   // alphabetically-first rows (gemma, deepseek) answer `404 Function not found
   // for account` for many accounts — and the default is what the key VERIFIER
-  // probes, so a dead pick breaks connect itself. openai/gpt-oss-20b is the last
-  // survivor of the families our partially-gated live key was served (NVIDIA
-  // retired the llama-3.x NIM rows in pi 0.84.4 and gpt-oss-120b in 0.85.0).
-  // Keep in sync with the runtime classifier's NVIDIA_BROAD_FALLBACK and the
-  // verifier's NVIDIA_VERIFY_FALLBACKS.
-  nvidia: "openai/gpt-oss-20b",
+  // probes, so a dead pick breaks connect itself. Of the families our
+  // partially-gated live key was served (llama / gpt-oss / minimax), only
+  // MiniMax is left: pi 0.84.4 retired the llama-3.x NIM rows, 0.85.0
+  // gpt-oss-120b and 1.6.0 gpt-oss-20b. Keep in sync with the runtime
+  // classifier's NVIDIA_BROAD_FALLBACK and the verifier's
+  // NVIDIA_VERIFY_FALLBACKS.
+  nvidia: "minimaxai/minimax-m3.1-flash",
   // pi lists Alibaba's multi-vendor Token Plan catalogs alphabetically, which
   // would make MiniMax the default on a card named Qwen.
   qwen: "qwen3.7-max",

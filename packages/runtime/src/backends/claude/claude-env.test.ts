@@ -23,6 +23,11 @@ test("an explicit home overrides the ambient HOME", () => {
   expect(env.CLAUDE_CONFIG_DIR).toBe("/config");
 });
 
+test("every env lets the CLI trim the transcript after it compacts", () => {
+  const env = buildClaudeEnv(undefined, { configDir: "/config" });
+  expect(env.CLAUDE_CODE_TRANSCRIPT_LOCAL_GC).toBe("1");
+});
+
 test("the credential store remains optional and must be absolute", () => {
   expect(
     buildClaudeEnv(undefined, {

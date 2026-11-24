@@ -102,6 +102,22 @@ test("a bare family name lands on that family's one lineup model", () => {
   });
 });
 
+test("a bare Gemini stays on the free-key Flash; Neon answers to its own name", () => {
+  for (const provider of ["google", "github-copilot"] as const) {
+    expect(resolveSpokenModel(provider, "gemini")).toEqual({
+      id: "gemini-3.8-flash",
+      name: "Gemini 3.8 Flash",
+      ambiguous: true,
+    });
+    expect(resolveSpokenModel(provider, "Neon")).toEqual({
+      id: "gemini-4-neon",
+      name: "Gemini 4 Neon",
+      ambiguous: false,
+    });
+    expect(resolveSpokenModel(provider, "Gemini 4")?.id).toBe("gemini-4-neon");
+  }
+});
+
 test("a name no row carries resolves to nothing at all", () => {
   expect(resolveSpokenModel("anthropic", "Luna")).toBeNull();
   expect(resolveSpokenModel("openai-codex", "Sonnet")).toBeNull();

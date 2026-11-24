@@ -17,6 +17,7 @@ import type {
   ActivityUpdate,
   NewActivity,
   PendingInteraction,
+  TurnMode,
 } from "@houston/protocol";
 import type { MissionStartedBy } from "./started-by";
 
@@ -61,6 +62,8 @@ export interface ActivityItem {
   worktreePath?: string | null;
   provider?: string;
   model?: string;
+  /** The conversation's turn mode; absent means "execute". Additive VM field. */
+  mode?: TurnMode;
 }
 
 /**

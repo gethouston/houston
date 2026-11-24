@@ -9,9 +9,14 @@ import { I18nextProvider } from "react-i18next";
 import { AgentMissionRow } from "../src/components/agents-home/agent-mission-row.tsx";
 
 Object.assign(globalThis, { React });
-process.env.TZ = "UTC";
 
 it("phone mission rows show last-message time, falling back only for an older row", async (t) => {
+  const originalTimezone = process.env.TZ;
+  t.after(() => {
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
+  });
+  process.env.TZ = "UTC";
   t.mock.timers.enable({
     apis: ["Date"],
     now: new Date("2026-10-27T17:00:00.000Z"),

@@ -41,48 +41,26 @@ test("admits the turn's own conversation state, nothing of the others", () => {
   expect(ownConversationOnly("a b")(encoded, listed(encoded), root)).toBe(true);
 });
 
-test("admits the turn's own archive segments, never another conversation's", () => {
-  // A shared routine chat's archive grows without bound (54+ MiB of
-  // segments); a turn in any OTHER chat of the agent must not download it.
+test("admits no archive segment, the turn's own or another conversation's", () => {
   const root = rootWithSessions();
   const admit = ownConversationOnly("c1");
   for (const runtime of [standing, "data"]) {
-    const own = `${runtime}/conversations/c1.archive/1.json`;
-    const other = `${runtime}/conversations/routine-r1.archive/7.json`;
-    const prefixTwin = `${runtime}/conversations/c10.archive/1.json`;
-    const listing = listed(own, other, prefixTwin);
-    expect(admit(own, listing, root)).toBe(true);
-    expect(admit(other, listing, root)).toBe(false);
-    expect(admit(prefixTwin, listing, root)).toBe(false);
+    const segment = (n: number) =>
+      `${runtime}/conversations/c1.archive/${n}.json`;
+    const listing = listed(
+      ...[1, 2, 9, 10, 11].map(segment),
+      `${runtime}/conversations/routine-r1.archive/7.json`,
+    );
+    for (const { rel } of listing)
+      expect(admit(rel, listing, root)).toBe(false);
   }
   const encoded = `${standing}/conversations/a%20b.archive/2.json`;
-  expect(ownConversationOnly("a b")(encoded, listed(encoded), root)).toBe(true);
-  // Anything deeper or oddly named under conversations/ is not a segment of
-  // this chat either.
-  expect(
-    admit(`${standing}/conversations/c1.archive/deep/2.json`, listed(), root),
-  ).toBe(false);
+  expect(ownConversationOnly("a b")(encoded, listed(encoded), root)).toBe(
+    false,
+  );
   expect(admit(`${standing}/conversations/c1/1.json`, listed(), root)).toBe(
     false,
   );
-});
-
-test("hydrates only the two newest of the turn's own archive segments", () => {
-  // The rest stay remote: a routine digest reads ROUTINE_REPLAY_TAIL
-  // messages, and an older segment is fetched only when a reader reaches
-  // back (turn-archive-fetch.ts).
-  const root = rootWithSessions();
-  for (const runtime of [standing, "data"]) {
-    const segment = (n: number) =>
-      `${runtime}/conversations/c1.archive/${n}.json`;
-    const listing = listed(...[1, 2, 9, 10, 11].map(segment));
-    const admit = ownConversationOnly("c1");
-    // Numeric order, not lexical: 10 and 11 are newer than 9.
-    for (const n of [10, 11])
-      expect(admit(segment(n), listing, root)).toBe(true);
-    for (const n of [1, 2, 9])
-      expect(admit(segment(n), listing, root)).toBe(false);
-  }
 });
 
 test("hydrates the conversation's own markers, never another's", () => {
@@ -92,6 +70,8 @@ test("hydrates the conversation's own markers, never another's", () => {
     "harness.json",
     "autocompact.json",
     "routine-results.md",
+    "codex-refusals.json",
+    "reconnect-offered.json",
   ]) {
     expect(admit(`${session}/${marker}`, listed(), root)).toBe(true);
     expect(admit(`${standing}/sessions/c2/${marker}`, listed(), root)).toBe(

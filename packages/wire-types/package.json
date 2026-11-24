@@ -16,6 +16,10 @@
       "types": "./src/first-day-refusal.ts",
       "import": "./src/first-day-refusal.ts"
     },
+    "./integration-connect-refusal": {
+      "types": "./src/integration-connect-refusal.ts",
+      "import": "./src/integration-connect-refusal.ts"
+    },
     "./provider-refusal": {
       "types": "./src/provider-refusal.ts",
       "import": "./src/provider-refusal.ts"
@@ -35,6 +39,10 @@
     "./upload-session": {
       "types": "./src/upload-session.ts",
       "import": "./src/upload-session.ts"
+    },
+    "./conversation-refusal": {
+      "types": "./src/conversation-refusal.ts",
+      "import": "./src/conversation-refusal.ts"
     }
   },
   "files": [

@@ -47,10 +47,11 @@ export interface SendOptions {
   /** Per-turn reasoning-effort pin. */
   effort?: string;
   /**
-   * Per-turn execution mode. "execute" (the default for an unpinned turn) =
-   * full read/write/act; "plan" = read-only tools plus a planning overlay;
-   * "auto" (Autopilot) = acts with everything except the blocking tools, never
-   * waiting on the user. Omitted, the runtime runs the turn as "execute".
+   * Per-turn execution mode. "execute" = full read/write/act; "plan" =
+   * read-only tools plus a planning overlay; "auto" (Autopilot) = acts with
+   * everything except the blocking tools, never waiting on the user. Omitted,
+   * the runtime runs the turn on the mode its conversation keeps (the mission
+   * card's `mode`), else "execute".
    * Mirrors the protocol's `TurnMode` (kept inline — this package stays zero-dep,
    * like `effort`).
    */

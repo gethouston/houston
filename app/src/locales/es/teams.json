@@ -380,7 +380,7 @@
     },
     "confirm": {
       "body": "{{agent}} se moverá a {{team}}. Tú y tus compañeros lo encontrarán ahí.",
-      "downtime": "El empleado de IA se reinicia durante el traslado, así que puede no estar disponible por un momento.",
+      "downtime": "Es posible que el empleado de IA no esté disponible por un momento mientras se traslada.",
       "cancel": "Cancelar",
       "move": "Mover empleado de IA"
     },

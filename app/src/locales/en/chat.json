@@ -120,6 +120,8 @@
     "signin": "Sign in",
     "connectTitle": "Connect {{app}}",
     "connectReasonFallback": "The AI Employee needs {{app}} to continue.",
+    "reconnectTitle": "Reconnect {{app}}",
+    "reconnectReasonFallback": "{{app}} stopped working. Reconnect it so the AI Employee can continue.",
     "declinePlaceholder": "Or tell it what to do instead...",
     "recommended": "Recommended",
     "skip": "Skip",
@@ -303,6 +305,14 @@
       "gemma-4-26b-a4b-it": "Google's open Gemma model. Fast and efficient.",
       "gemma-4-31b-it": "Google's open Gemma model. More capable.",
       "mistral-large-4": "Mistral's most capable model. Long context, reasoning."
+    },
+    "providerModelDescriptions": {
+      "google": {
+        "gemini-4-neon": "Google's balanced Gemini 4, strong for agents and coding. Needs a paid API key."
+      },
+      "github-copilot": {
+        "gemini-4-neon": "Google's balanced Gemini 4, strong for agents and coding. Needs Copilot Pro+."
+      }
     },
     "connectMore": "Connect another AI…"
   },
