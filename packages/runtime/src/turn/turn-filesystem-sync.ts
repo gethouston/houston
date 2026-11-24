@@ -82,6 +82,9 @@ export async function syncTurnFilesystem(opts: {
       conflictCopies: (rel) =>
         agentScopeIncludes(rel, workspaceRel) &&
         !rel.startsWith(`${workspaceRel}/.houston/`),
+      ...(opts.filesystem.conflictCopies
+        ? { keptCopies: opts.filesystem.conflictCopies }
+        : {}),
       ...(scope
         ? {
             include: narrowed(
@@ -113,9 +116,7 @@ export async function syncTurnFilesystem(opts: {
         rel.startsWith(`${workspaceRel}/`) &&
         !rel.startsWith(`${dataRel}/`),
     ),
-    conflictCopies: opts.narrow
-      ? result.conflictCopies
-      : [...(opts.filesystem.checkpointCopies ?? []), ...result.conflictCopies],
+    conflictCopies: result.conflictCopies,
     deletesKept: result.deletesKept,
     skipped: result.skipped,
     conflicts: result.conflicts,

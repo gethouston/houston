@@ -45,7 +45,9 @@ test("a stale turn copy lands beside the newer remote, never over it", async () 
 
   expect(mem.body(NOTES)).toBe("their edit");
   expect(mem.body(COPY)).toBe("turn edit");
-  expect(result.conflictCopies).toEqual([{ key: NOTES, copy: COPY }]);
+  expect(result.conflictCopies).toEqual([
+    { key: NOTES, copy: COPY, generation: mem.generation(COPY) },
+  ]);
   expect(result.conflicts).toEqual([]);
   expect(result.uploaded).toEqual([]);
   expect(mem.writes.at(-1)).toEqual({
@@ -61,7 +63,9 @@ test("a conflict copy of a file both sides created leaves the original unowned",
   const root = await tree({ [NOTES]: "turn new file" });
   const result = await syncBack(mem.store, "", root, new Map(), workerOpts);
 
-  expect(result.conflictCopies).toEqual([{ key: NOTES, copy: COPY }]);
+  expect(result.conflictCopies).toEqual([
+    { key: NOTES, copy: COPY, generation: mem.generation(COPY) },
+  ]);
   expect(result.manifest.has(NOTES)).toBe(false);
   expect(mem.body(NOTES)).toBe("their new file");
 });
@@ -111,7 +115,9 @@ test("a taken conflict name moves on to the next one", async () => {
 
   expect(mem.body(COPY)).toBe("older copy");
   expect(mem.body(second)).toBe("turn edit");
-  expect(result.conflictCopies).toEqual([{ key: NOTES, copy: second }]);
+  expect(result.conflictCopies).toEqual([
+    { key: NOTES, copy: second, generation: mem.generation(second) },
+  ]);
 });
 
 test("files outside the caller's copy scope keep the refreshed retry", async () => {
@@ -207,4 +213,46 @@ test("a copy the store refuses as too large is recorded, not thrown", async () =
   const result = await syncBack(mem.store, "", root, stale(NOTES), workerOpts);
   expect(result.skipped).toEqual([{ key: NOTES, reason: "too large" }]);
   expect(mem.body(NOTES)).toBe("their edit");
+});
+
+test("a later conflict on the same file rewrites its copy, never a new name", async () => {
+  const mem = memoryStore({ [NOTES]: "their edit" });
+  const root = await tree({ [NOTES]: "turn edit" });
+  const keptCopies = new Map();
+  const opts = { ...workerOpts, keptCopies };
+  const first = await syncBack(mem.store, "", root, stale(NOTES), opts);
+  await writeFile(join(root, ...NOTES.split("/")), "turn edit again");
+  const second = await syncBack(mem.store, "", root, first.manifest, opts);
+
+  expect(mem.body(NOTES)).toBe("their edit");
+  expect(mem.body(COPY)).toBe("turn edit again");
+  expect(mem.writes.filter(({ key }) => key.includes("(conflict"))).toEqual([
+    { op: "put", key: COPY, ifGenerationMatch: "0" },
+    {
+      op: "put",
+      key: COPY,
+      ifGenerationMatch: first.conflictCopies[0]?.generation,
+    },
+  ]);
+  const copy = { key: NOTES, copy: COPY, generation: mem.generation(COPY) };
+  expect(second.conflictCopies).toEqual([copy]);
+  expect([...keptCopies.values()]).toEqual([copy]);
+});
+
+test("a kept copy another writer changed moves on to a new name", async () => {
+  const mem = memoryStore({ [NOTES]: "their edit", [COPY]: "their copy" });
+  const root = await tree({ [NOTES]: "turn edit" });
+  const keptCopies = new Map([
+    [NOTES, { key: NOTES, copy: COPY, generation: "1" }],
+  ]);
+  const result = await syncBack(mem.store, "", root, stale(NOTES), {
+    ...workerOpts,
+    keptCopies,
+  });
+  const second = "workspaces/Personal/Bob/notes (conflict 2026-11-22 2).txt";
+
+  expect(mem.body(COPY)).toBe("their copy");
+  expect(mem.body(second)).toBe("turn edit");
+  expect(keptCopies.get(NOTES)?.copy).toBe(second);
+  expect(result.conflictCopies.map(({ copy }) => copy)).toEqual([second]);
 });

@@ -127,7 +127,9 @@ export async function syncBack(
         generationAware,
         refresh,
         ...(opts.workerMerge ? { workerMerge: true } : {}),
-        ...(opts.conflictCopies?.(rel) ? { conflictCopy: true } : {}),
+        ...(opts.conflictCopies?.(rel)
+          ? { conflictCopy: true, keptCopy: opts.keptCopies?.get(rel) }
+          : {}),
         ...(opts.conflictBackoff ? { backoff: opts.conflictBackoff } : {}),
         ...(opts.localWriteLock ? { localWriteLock: opts.localWriteLock } : {}),
       });
@@ -155,8 +157,10 @@ export async function syncBack(
         });
       if (result.conflict)
         conflicts.push({ key: rel, reason: result.conflict });
-      if (result.conflictCopy)
-        conflictCopies.push({ key: rel, copy: result.conflictCopy });
+      if (result.conflictCopy) {
+        conflictCopies.push(result.conflictCopy);
+        opts.keptCopies?.set(rel, result.conflictCopy);
+      }
     } finally {
       await source.dispose();
     }

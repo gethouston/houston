@@ -34,6 +34,7 @@ export function startTurnCheckpoints(input: {
   intervalMs?: number;
 }): TurnCheckpoints {
   const { filesystem } = input;
+  filesystem.conflictCopies ??= new Map();
   const interval = input.intervalMs ?? TURN_CHECKPOINT_INTERVAL_MS;
   let ready = filesystem.workspaceReady === undefined;
   filesystem.workspaceReady?.then(
@@ -80,10 +81,6 @@ export function startTurnCheckpoints(input: {
         )
           filesystem.manifest.set(rel, entry);
       for (const rel of synced.uploaded) filesystem.immediateWrites.add(rel);
-      filesystem.checkpointCopies = [
-        ...(filesystem.checkpointCopies ?? []),
-        ...synced.conflictCopies,
-      ];
       input.landed.add(synced.uploaded);
     } catch (error) {
       if (error instanceof StoreFencedError) {

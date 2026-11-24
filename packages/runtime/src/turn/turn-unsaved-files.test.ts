@@ -59,6 +59,32 @@ test("every un-landed path is reported workspace-relative, internals last", () =
   });
 });
 
+test("a path is reported once per reason, with its newest copy", () => {
+  const report = turnUnsavedFiles(
+    {
+      conflicts: [{ key: `${W}/a.md` }, { key: `${W}/a.md` }],
+      skipped: [],
+      conflictCopies: [
+        { key: `${W}/report.md`, copy: `${W}/report (conflict D).md` },
+        { key: `${W}/report.md`, copy: `${W}/report (conflict D 2).md` },
+      ],
+    },
+    W,
+  );
+  expect(report).toEqual({
+    files: [
+      {
+        path: "report.md",
+        reason: "conflict_copy",
+        copyPath: "report (conflict D 2).md",
+      },
+      { path: "a.md", reason: "conflict" },
+    ],
+    total: 2,
+    counts: { conflict_copy: 1, conflict: 1 },
+  });
+});
+
 test("nothing un-landed reports nothing", () => {
   expect(turnUnsavedFiles({ conflicts: [], skipped: [] }, W)).toBeUndefined();
 });

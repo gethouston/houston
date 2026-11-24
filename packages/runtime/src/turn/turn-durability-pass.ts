@@ -61,7 +61,13 @@ export async function finishTurnDurabilityPass(
   }
   if (opts.timings) opts.timings.t_sync_done = performance.now();
   const poolWritesOutOfScope = synced.outOfScope;
-  const sync = turnSyncReport(synced, opts.filesystem.workspaceRel);
+  const copies = new Map(opts.filesystem.conflictCopies);
+  for (const copy of synced.conflictCopies) copies.set(copy.key, copy);
+  const conflictCopies = [...copies.values()];
+  const sync = turnSyncReport(
+    { ...synced, conflictCopies },
+    opts.filesystem.workspaceRel,
+  );
   const recorded = await recordUnsavedFiles(
     opts,
     sync.unsavedFiles,
@@ -94,7 +100,7 @@ export async function finishTurnDurabilityPass(
   ];
   let changed = changedEventTypes(opts.filesystem, [
     ...landed,
-    ...synced.conflictCopies.map(({ copy }) => copy),
+    ...conflictCopies.map(({ copy }) => copy),
   ]);
 
   // Sync objects before publishing rows for history fallback. An unsaved

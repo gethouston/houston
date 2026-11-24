@@ -18,7 +18,7 @@ export function FilesNotSavedNote({ data }: { data: unknown }) {
         <p>{t("filesNotSaved.title")}</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-4">
           {files.map((file) => (
-            <li key={`${file.reason}:${file.path}`}>
+            <li key={`${file.reason}:${file.path}:${file.copyPath ?? ""}`}>
               {t(lineKey(file), { file: file.path, copy: file.copyPath ?? "" })}
             </li>
           ))}

@@ -14,6 +14,7 @@ import {
   StoreConflictError,
 } from "./object-store";
 import { sourceVanished } from "./sync-back-merge-retry";
+import type { ConflictCopy } from "./sync-back-types";
 
 const ROUNDS = 3;
 const COPY_NAMES = 5;
@@ -27,7 +28,7 @@ export interface ConflictCopyResult {
   uploaded: boolean;
   conflict?: string;
   vanished?: boolean;
-  conflictCopy?: string;
+  conflictCopy?: ConflictCopy;
   skipped?: string;
   refused?: boolean;
 }
@@ -112,8 +113,23 @@ export async function keepRemoteBesideLocal(opts: {
   relativePath: string;
   hash: string;
   previous?: HydrateManifestEntry;
+  keptCopy?: ConflictCopy;
   conflict: string;
 }): Promise<ConflictCopyResult> {
+  const keyOf = (copy: string) =>
+    `${opts.key.slice(0, opts.key.length - opts.relativePath.length)}${copy}`;
+  const beside = (copy: string, generation: string | undefined) => ({
+    ...(opts.previous
+      ? { entry: { hash: opts.hash, generation: opts.previous.generation } }
+      : {}),
+    uploaded: false,
+    conflictCopy: { key: opts.relativePath, copy, generation },
+  });
+  const lost = {
+    entry: opts.previous,
+    uploaded: false,
+    conflict: opts.conflict,
+  };
   try {
     for (let round = 0; round < ROUNDS; round += 1) {
       const remote = await readRemote(
@@ -122,19 +138,9 @@ export async function keepRemoteBesideLocal(opts: {
         opts.abs,
         opts.hash,
       );
-      if (remote.kind === "refused")
-        return {
-          entry: opts.previous,
-          uploaded: false,
-          conflict: opts.conflict,
-        };
+      if (remote.kind === "refused") return lost;
       if (remote.kind === "same" && opts.hash.endsWith(":x")) {
-        if (remote.generation === undefined)
-          return {
-            entry: opts.previous,
-            uploaded: false,
-            conflict: opts.conflict,
-          };
+        if (remote.generation === undefined) return lost;
         const generation = await writeAt(
           opts.store,
           opts.abs,
@@ -154,23 +160,22 @@ export async function keepRemoteBesideLocal(opts: {
         if (generation === TAKEN) continue;
         return { entry: { hash: opts.hash, generation }, uploaded: true };
       }
+      const kept = opts.keptCopy;
+      if (kept?.generation !== undefined) {
+        const at = keyOf(kept.copy);
+        const generation = await writeAt(
+          opts.store,
+          opts.abs,
+          at,
+          kept.generation,
+        );
+        if (generation !== TAKEN) return beside(kept.copy, generation);
+      }
       const date = new Date().toISOString().slice(0, 10);
       for (let attempt = 1; attempt <= COPY_NAMES; attempt += 1) {
         const copy = conflictCopyName(opts.relativePath, date, attempt);
-        const copyKey = conflictCopyName(opts.key, date, attempt);
-        if ((await writeAt(opts.store, opts.abs, copyKey)) === TAKEN) continue;
-        return {
-          ...(opts.previous
-            ? {
-                entry: {
-                  hash: opts.hash,
-                  generation: opts.previous.generation,
-                },
-              }
-            : {}),
-          uploaded: false,
-          conflictCopy: copy,
-        };
+        const generation = await writeAt(opts.store, opts.abs, keyOf(copy));
+        if (generation !== TAKEN) return beside(copy, generation);
       }
       return {
         entry: opts.previous,
@@ -178,7 +183,7 @@ export async function keepRemoteBesideLocal(opts: {
         conflict: `${opts.relativePath}: every conflict copy name is taken`,
       };
     }
-    return { entry: opts.previous, uploaded: false, conflict: opts.conflict };
+    return lost;
   } catch (error) {
     if (sourceVanished(error)) return { uploaded: false, vanished: true };
     if (error instanceof ObjectTooLargeError)

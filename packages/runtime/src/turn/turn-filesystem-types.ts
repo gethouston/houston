@@ -4,6 +4,7 @@ import type {
   HydrateManifest,
   HydrateOptions,
   ObjectStore,
+  SyncResult,
 } from "@houston/runtime-client/object-sync";
 import type { ArchiveLoader } from "./turn-archive-fetch";
 import type { DeferredGate } from "./turn-deferred-gate";
@@ -28,7 +29,7 @@ export interface TurnFilesystem extends TurnLayout {
   /** Writes already durable before the final sync pass: tool-call-time CAS
    *  writes and workspace checkpoints (turn-checkpoint.ts). */
   immediateWrites: Set<string>;
-  checkpointCopies?: { key: string; copy: string }[];
+  conflictCopies?: Map<string, SyncResult["conflictCopies"][number]>;
   landed?: {
     add(landed: readonly string[], deleted?: readonly string[]): void;
   };

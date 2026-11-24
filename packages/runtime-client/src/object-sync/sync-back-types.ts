@@ -11,6 +11,12 @@ export interface SyncMerge {
   unmergeable?: string;
 }
 
+export interface ConflictCopy {
+  key: string;
+  copy: string;
+  generation?: string;
+}
+
 export interface SyncResult {
   uploaded: string[];
   deleted: string[];
@@ -36,7 +42,7 @@ export interface SyncResult {
   /** Changed paths rejected by the caller's write scope. */
   outOfScope: number;
   outOfScopeKeys: string[];
-  conflictCopies: { key: string; copy: string }[];
+  conflictCopies: ConflictCopy[];
   deletesKept: { key: string; reason: string; refused?: true }[];
   /** Bytes the next hydration must materialize, excluding local-only paths. */
   totalBytes: number;
@@ -74,6 +80,7 @@ export interface SyncBackOptions {
    */
   workerMerge?: boolean;
   conflictCopies?: (relativePath: string) => boolean;
+  keptCopies?: Map<string, ConflictCopy>;
   /** Delay between merge rounds of a contended document (tests pass 0). */
   conflictBackoff?: ConflictBackoff;
   /** The standing daemon's hold on the host's writers of a merged document. */

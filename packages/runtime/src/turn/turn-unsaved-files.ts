@@ -41,19 +41,18 @@ export function turnUnsavedFiles(
       ...(inside ? {} : { internal: true as const }),
     };
   };
-  const all: UnsavedFile[] = [
-    ...(synced.conflictCopies ?? []).map(({ key, copy }) =>
-      entry(key, "conflict_copy", copy),
-    ),
-    ...synced.conflicts.map(({ key }) => entry(key, "conflict")),
-    ...(synced.deletesKept ?? []).map(({ key, refused }) =>
-      entry(key, refused ? "out_of_scope" : "delete_kept"),
-    ),
-    ...synced.skipped.map(({ key, refused }) =>
-      entry(key, refused ? "out_of_scope" : "too_large"),
-    ),
-    ...(synced.outOfScopeKeys ?? []).map((key) => entry(key, "out_of_scope")),
-  ];
+  const unique = new Map<string, UnsavedFile>();
+  const add = (key: string, reason: UnsavedFileReason, copy?: string) =>
+    unique.set(`${reason}:${key}`, entry(key, reason, copy));
+  for (const { key, copy } of synced.conflictCopies ?? [])
+    add(key, "conflict_copy", copy);
+  for (const { key } of synced.conflicts) add(key, "conflict");
+  for (const { key, refused } of synced.deletesKept ?? [])
+    add(key, refused ? "out_of_scope" : "delete_kept");
+  for (const { key, refused } of synced.skipped)
+    add(key, refused ? "out_of_scope" : "too_large");
+  for (const key of synced.outOfScopeKeys ?? []) add(key, "out_of_scope");
+  const all = [...unique.values()];
   const counts: UnsavedFilesReport["counts"] = {};
   for (const { reason } of all) counts[reason] = (counts[reason] ?? 0) + 1;
   const total = Object.values(counts).reduce((sum, n) => sum + n, 0);

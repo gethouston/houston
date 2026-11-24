@@ -124,3 +124,38 @@ test("a deferred link settles like a deferred file", async () => {
   expect(settled.sort()).toEqual([`${root}/files/a.md`, `${root}/files/up`]);
   expect(await readlink(join(dest, root, "files/up"))).toBe("../sub");
 });
+
+test("a prioritized deferred link never lands ahead of the files below it", async () => {
+  const dest = await mkdtemp(join(tmpdir(), "chain-"));
+  await mkdir(join(dest, root, "a/sub"), { recursive: true });
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let reading = () => {};
+  const read = new Promise<void>((resolve) => {
+    reading = resolve;
+  });
+  const store = listedStore([
+    meta(`${root}/a/up`, "sub"),
+    meta(`${root}/a/up/f.md`),
+  ]);
+  const download = store.download;
+  store.download = async (key, target, options) => {
+    if (key.endsWith("f.md")) {
+      reading();
+      await held;
+    }
+    return download(key, target, options);
+  };
+  const started = await startHydrate(store, "", dest, {
+    defer: (rel) => rel.startsWith(`${root}/a/`),
+  });
+  await read;
+  started.prioritize([`${root}/a/up`]);
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  release();
+  await started.deferred;
+
+  await expect(lstat(join(dest, root, "a/sub/f.md"))).rejects.toThrow();
+});

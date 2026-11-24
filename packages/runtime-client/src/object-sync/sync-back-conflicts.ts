@@ -16,7 +16,7 @@ import {
   uploadMergedDocument,
 } from "./sync-back-merge-retry";
 import { retryAtRefreshedGeneration } from "./sync-back-single-retry";
-import type { LocalWriteLock } from "./sync-back-types";
+import type { ConflictCopy, LocalWriteLock } from "./sync-back-types";
 
 export type { RefreshManifest } from "./sync-back-merge-retry";
 
@@ -35,7 +35,7 @@ export interface UploadChangeResult {
   removedCards?: string[];
   /** Why a side would not parse, so the local bytes overwrote the remote. */
   unmergeable?: string;
-  conflictCopy?: string;
+  conflictCopy?: ConflictCopy;
 }
 
 function initialWriteOptions(
@@ -67,6 +67,7 @@ export async function uploadChangedObject(opts: {
   /** The per-turn worker's merge rounds and board merge base. */
   workerMerge?: boolean;
   conflictCopy?: boolean;
+  keptCopy?: ConflictCopy;
   backoff?: ConflictBackoff;
   localWriteLock?: LocalWriteLock;
 }): Promise<UploadChangeResult> {
