@@ -128,6 +128,16 @@
       "body": "Your AI Employee needs an AI like Claude or ChatGPT to work. Connect one, then start the first day.",
       "action": "Connect AI"
     },
+    "providerUnavailable": {
+      "title": "Your AI isn't answering right now",
+      "body": "We couldn't reach your AI to start the first day. Wait a minute, then start it again."
+    },
+    "accountBlocked": {
+      "title": "Your {{provider}} account is blocked",
+      "body": "Your AI Employee can't start the first day on {{provider}}. Fix it at {{provider}} or connect another AI, then start the first day again.",
+      "titleAny": "Your AI account is blocked",
+      "bodyAny": "Your AI Employee can't start the first day on this AI. Fix it with your AI provider or connect another AI, then start the first day again."
+    },
     "bannerNeedsAiTitle": "Connect an AI to get your team started",
     "reconnect": {
       "title": "Reconnect {{provider}}",

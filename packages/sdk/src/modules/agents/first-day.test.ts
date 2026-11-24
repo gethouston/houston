@@ -4,9 +4,11 @@ import { HoustonSdk } from "../../sdk";
 import { memoryKv } from "../../test-ports";
 import {
   AgentsCommand,
+  firstDayAccountBlocked,
   firstDayRefusal,
   isFirstDayNoProvider,
   isFirstDayNotPending,
+  isFirstDayProviderUnavailable,
 } from "./index";
 
 const BASE = "http://127.0.0.1:4317";
@@ -115,6 +117,7 @@ describe("startFirstDay", () => {
     "first_day_not_pending",
     "first_day_not_started",
     "first_day_no_provider",
+    "first_day_provider_unavailable",
   ])("the %s refusal throws once with the host's 409, never retried", async (code) => {
     const h = harness({ status: 409, body: { error: "refused", code } });
     dispose = h.sdk.agents.dispose;
@@ -158,6 +161,51 @@ describe("the first-day refusal classifiers", () => {
     expect(isFirstDayNoProvider(err)).toBe(true);
     expect(isFirstDayNotPending(err)).toBe(false);
     expect(h.calls).toHaveLength(1);
+  });
+
+  it("name the provider-unavailable refusal, never retried", async () => {
+    const h = harness({
+      status: 409,
+      body: {
+        error: "the AI provider could not be reached; try again in a minute",
+        code: "first_day_provider_unavailable",
+      },
+    });
+    dispose = h.sdk.agents.dispose;
+    const err = await h.sdk.agents.startFirstDay("a1").catch((e: unknown) => e);
+    expect(isFirstDayProviderUnavailable(err)).toBe(true);
+    expect(isFirstDayNoProvider(err)).toBe(false);
+    expect(isFirstDayNotPending(err)).toBe(false);
+    expect(h.calls).toHaveLength(1);
+    expect(
+      isFirstDayProviderUnavailable({
+        status: 409,
+        body: { error: "x", code: "first_day_not_started" },
+      }),
+    ).toBe(false);
+  });
+
+  it("read the send route's account-blocked refusal, never retried", async () => {
+    const body = {
+      error:
+        "Your GitHub Copilot account is blocked by the provider. Fix it there, or connect another AI.",
+      code: "provider_account_blocked",
+      provider: "github-copilot",
+    };
+    const h = harness({ status: 409, body });
+    dispose = h.sdk.agents.dispose;
+    const err = await h.sdk.agents.startFirstDay("a1").catch((e: unknown) => e);
+    expect(firstDayAccountBlocked(err)).toEqual(body);
+    expect(isFirstDayNoProvider(err)).toBe(false);
+    expect(isFirstDayProviderUnavailable(err)).toBe(false);
+    expect(h.calls).toHaveLength(1);
+    expect(
+      firstDayAccountBlocked({
+        status: 409,
+        body: { error: "x", code: "no_provider" },
+      }),
+    ).toBeNull();
+    expect(firstDayAccountBlocked({ status: 502, body })).toBeNull();
   });
 
   it("read the adapter's parsed body and keep the provider it names", () => {

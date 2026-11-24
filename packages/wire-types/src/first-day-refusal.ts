@@ -6,6 +6,7 @@ const CODES: readonly string[] = [
   "first_day_not_pending",
   "first_day_not_started",
   "first_day_no_provider",
+  "first_day_provider_unavailable",
 ] satisfies readonly FirstDayRefusalCode[];
 
 export function parseFirstDayRefusal(body: unknown): FirstDayRefusal | null {

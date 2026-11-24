@@ -1,4 +1,8 @@
-import { isFirstDayNoProvider } from "@houston/sdk/agents/first-day-refusal";
+import {
+  firstDayAccountBlocked,
+  isFirstDayNoProvider,
+  isFirstDayProviderUnavailable,
+} from "@houston/sdk/agents/first-day-refusal";
 import {
   isComputeBusyRefusal,
   isConversationEditRefused,
@@ -23,6 +27,9 @@ export function classifyQuietError(err: unknown): QuietErrorClass | null {
   if (isWebhookKeyNotCreatorRefusal(err)) return "webhook_not_creator";
   if (isRoutineGone(err)) return "routine_gone";
   if (isFirstDayNoProvider(err)) return "first_day_no_provider";
+  if (isFirstDayProviderUnavailable(err))
+    return "first_day_provider_unavailable";
+  if (firstDayAccountBlocked(err)) return "first_day_account_blocked";
   if (isBugIntakeUnavailable(err)) return "bug_intake_unavailable";
   const bridge = bridgeQuietClass(err);
   if (bridge) return bridge;

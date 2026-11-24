@@ -11,10 +11,16 @@ import {
   wasReportedToSentry,
 } from "./sentry-reported-mark";
 
+export interface ReportDetail {
+  tags?: Record<string, string>;
+  fingerprint?: string[];
+}
+
 export function reportError(
   command: string,
   message: string,
   originalError?: unknown,
+  detail?: ReportDetail,
 ): void {
   if (isAgentWarmingRefusal(originalError)) {
     console.debug(`[report:${command}] write blocked while the agent warms up`);
@@ -39,19 +45,29 @@ export function reportError(
   }
   markReportedToSentry(originalError);
   const error = createSentryReportError(command, message, originalError);
-  void sentryCapture(error, {
-    source: command,
-    error_kind: classifyAnalyticsError(message),
-  }).catch((flushErr: unknown) => {
+  void sentryCapture(
+    error,
+    {
+      ...detail?.tags,
+      source: command,
+      error_kind: classifyAnalyticsError(message),
+    },
+    undefined,
+    detail?.fingerprint,
+  ).catch((flushErr: unknown) => {
     console.error("[sentry] failed to flush captured error", flushErr);
   });
 }
 
-export function logAndReportError(command: string, err: unknown): void {
+export function logAndReportError(
+  command: string,
+  err: unknown,
+  detail?: ReportDetail,
+): void {
   const raw = describeError(err);
   console.error(`[${command}] ${raw}`);
   if (wasReportedToSentry(err)) return;
-  reportError(command, raw, err);
+  reportError(command, raw, err, detail);
 }
 
 export function genericErrorDescription(command: string, err: unknown): string {

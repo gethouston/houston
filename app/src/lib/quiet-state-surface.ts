@@ -1,8 +1,10 @@
+import { firstDayAccountBlocked } from "@houston/sdk/agents/first-day-refusal";
 import { useUIStore } from "../stores/ui";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import { showFirstDayNoProviderToast } from "./first-day-no-provider-toast";
 import i18n from "./i18n";
 import { surfacePlanMinInterval } from "./plan-min-interval";
+import { providerName } from "./providers";
 import type { QuietErrorClass } from "./quiet-error-class";
 import { reportQuietError } from "./quiet-error-report";
 import { surfaceRoutineGone } from "./routine-gone-surface";
@@ -37,6 +39,30 @@ export function surfaceQuietState(
       console.info(`[toast:${command}] ${message}`);
       showFirstDayNoProviderToast(originalError);
       return true;
+    case "first_day_provider_unavailable":
+      console.warn(`[toast:${command}] ${message}`);
+      reportQuietError(quiet, command, message, originalError);
+      useUIStore.getState().addToast({
+        title: i18n.t("board:firstDay.providerUnavailable.title"),
+        description: i18n.t("board:firstDay.providerUnavailable.body"),
+        variant: "info",
+      });
+      return true;
+    case "first_day_account_blocked": {
+      console.info(`[toast:${command}] ${message}`);
+      const provider = firstDayAccountBlocked(originalError)?.provider;
+      const name = provider ? providerName(provider) : null;
+      useUIStore.getState().addToast({
+        title: name
+          ? i18n.t("board:firstDay.accountBlocked.title", { provider: name })
+          : i18n.t("board:firstDay.accountBlocked.titleAny"),
+        description: name
+          ? i18n.t("board:firstDay.accountBlocked.body", { provider: name })
+          : i18n.t("board:firstDay.accountBlocked.bodyAny"),
+        variant: "info",
+      });
+      return true;
+    }
     case "no_url_handler":
       console.error(`[toast:${command}] ${message}`);
       reportQuietError("no_url_handler", command, message, originalError);

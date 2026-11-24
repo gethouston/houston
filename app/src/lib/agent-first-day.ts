@@ -1,7 +1,9 @@
 import type { FirstDayStartResult } from "@houston/engine-adapter";
 import {
+  firstDayAccountBlocked,
   isFirstDayNoProvider,
   isFirstDayNotPending,
+  isFirstDayProviderUnavailable,
 } from "@houston/sdk/agents/first-day-refusal";
 import { registerSetupGreeting } from "../hooks/use-setup-greeting";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
@@ -36,7 +38,12 @@ export async function startEmployeeFirstDay(
       title: i18n.t("agentOnboarding:setupMission.title"),
     });
   } catch (err) {
-    if (isFirstDayNotPending(err)) engineAnswered(agent.folderPath);
+    if (
+      isFirstDayNotPending(err) ||
+      isFirstDayProviderUnavailable(err) ||
+      firstDayAccountBlocked(err)
+    )
+      engineAnswered(agent.folderPath);
     if (isFirstDayNoProvider(err)) {
       engineAnswered(agent.folderPath);
       void queryClient.invalidateQueries({

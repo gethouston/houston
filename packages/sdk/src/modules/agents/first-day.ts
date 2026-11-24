@@ -23,7 +23,11 @@ export type { FirstDayStartInput, FirstDayStartResult };
  * The first day runs on an AI the person has connected (Claude, ChatGPT and
  * the like): with none connected the start is refused with
  * `first_day_no_provider` and the first day stays waiting, so connect an AI
- * first, then start it again.
+ * first, then start it again. When the connected AI cannot be reached right
+ * now the start is refused with `first_day_provider_unavailable` and the first
+ * day stays waiting: start it again after about a minute. When the provider
+ * blocks the person's account the start is refused with
+ * `provider_account_blocked`: fix it at that provider or connect another AI.
  *
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.

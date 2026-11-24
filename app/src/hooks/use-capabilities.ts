@@ -9,6 +9,7 @@ export function useCapabilities(): {
   capabilities: Capabilities | null;
   isLoading: boolean;
   isError: boolean;
+  failureReason: unknown;
 } {
   const enabled = newEngineActive();
   const query = useQuery({
@@ -30,5 +31,6 @@ export function useCapabilities(): {
     capabilities: query.data ?? null,
     isLoading: enabled && query.isLoading,
     isError: enabled && query.isError,
+    failureReason: query.failureReason,
   };
 }

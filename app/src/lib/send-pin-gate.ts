@@ -1,3 +1,5 @@
+import { classifyQuietError } from "./quiet-error-class.ts";
+
 export interface SendPinSignals {
   agentConfigSettled: boolean;
   activitySettled: boolean;
@@ -65,4 +67,37 @@ export function createSendPinGate<T>(
       });
     },
   };
+}
+
+const PIN_INPUTS: readonly (keyof SendPinSignals)[] = [
+  "agentConfigSettled",
+  "activitySettled",
+  "capabilitiesSettled",
+  "choiceSettled",
+  "statusesSettled",
+];
+
+export function unsettledPinInputs(signals: SendPinSignals): string[] {
+  return PIN_INPUTS.filter((key) => !signals[key]).map((key) =>
+    key.replace(/Settled$/, ""),
+  );
+}
+
+export type PinInputFailures = Partial<Record<keyof SendPinSignals, unknown>>;
+
+export function pinStallQuietClass(
+  signals: SendPinSignals,
+  input: {
+    online: boolean;
+    engineWarming: boolean;
+    failures: PinInputFailures;
+  },
+): "offline" | "engine_waking" | null {
+  if (!input.online) return "offline";
+  for (const key of PIN_INPUTS) {
+    if (signals[key]) continue;
+    const quiet = classifyQuietError(input.failures[key]);
+    if (quiet === "offline" || quiet === "engine_waking") return quiet;
+  }
+  return input.engineWarming ? "engine_waking" : null;
 }

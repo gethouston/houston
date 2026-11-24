@@ -29,6 +29,7 @@ export interface ProviderStatusScan {
 
 export interface ProviderStatusesState extends ProviderStatusScan {
   refetch: () => Promise<ProviderStatusScan>;
+  failureReason: unknown;
 }
 
 export function useProviderStatuses(): ProviderStatusesState {
@@ -88,5 +89,6 @@ export function useProviderStatuses(): ProviderStatusesState {
     }),
     isError: query.isError,
     refetch,
+    failureReason: query.failureReason,
   };
 }

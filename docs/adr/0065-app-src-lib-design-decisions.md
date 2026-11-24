@@ -1086,7 +1086,9 @@ Lives in `lib/send-error-toast.ts`, `lib/send-failure-explained.ts`.
 
 The pin is assembled from several async reads; a send waits for them to settle, and the open conversation's real row supersedes the pin-less placeholder from the aggregate.
 
-Lives in `lib/send-pin-gate.ts`.
+A send that gives up waiting goes out with the current pin and reports the inputs still unsettled, in the message, a tag and the fingerprint, so each cause is its own Sentry issue (HOUSTON-APP-5EX). Each input carries its own query's last failure, and only unsettled inputs count: a stall while the device is offline or the engine is waking (tracked, or an unsettled input last failed with a waking or transport answer) is that quiet class's warning, any other stall a real report. The stall report carries no agent context, so it never feeds an agent's `waking_stuck` escalation. The failure reason is read at timeout time, so the report names what was pending then.
+
+Lives in `lib/send-pin-gate.ts`, `lib/send-pin-stall-report.ts`.
 
 ## Sentry
 

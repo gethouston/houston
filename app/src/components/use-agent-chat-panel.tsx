@@ -115,7 +115,12 @@ import {
 import { blocksPurchaseUrl } from "../lib/purchase-policy";
 import { queryKeys } from "../lib/query-keys";
 import { reportRejection } from "../lib/report-rejection";
-import { sendPinSettled } from "../lib/send-pin-gate";
+import {
+  type PinInputFailures,
+  type SendPinSignals,
+  sendPinSettled,
+} from "../lib/send-pin-gate";
+import { reportSendPinStall } from "../lib/send-pin-stall-report";
 import {
   buildSkillClaudePrompt,
   decodeSkillMessage,
@@ -136,7 +141,10 @@ import {
 } from "../lib/tauri";
 import type { TurnMode } from "../lib/turn-mode";
 import type { Agent, SkillSummary } from "../lib/types";
-import { useAgentProvisioningStore } from "../stores/agent-provisioning";
+import {
+  isAgentProvisioning,
+  useAgentProvisioningStore,
+} from "../stores/agent-provisioning";
 import { useDraftStore, useNewConversationDraftKey } from "../stores/drafts";
 import { useInteractionDraftStore } from "../stores/interaction-drafts";
 import { useUIStore } from "../stores/ui";
@@ -361,12 +369,19 @@ export function useAgentChatPanel({
     enabled: osIsTauri(),
   });
 
-  const { capabilities, isLoading: capabilitiesLoading } = useCapabilities();
+  const {
+    capabilities,
+    isLoading: capabilitiesLoading,
+    failureReason: capabilitiesFailure,
+  } = useCapabilities();
   const integrationsEnabled = integrationsSupported(capabilities);
 
   const modelDecision = modelSelectorDecision(capabilities, agent);
-  const { data: modelChoiceInfo, isFetched: modelChoiceFetched } =
-    useAgentModelChoice(agent?.id ?? "", modelDecision.personal);
+  const {
+    data: modelChoiceInfo,
+    isFetched: modelChoiceFetched,
+    failureReason: modelChoiceFailure,
+  } = useAgentModelChoice(agent?.id ?? "", modelDecision.personal);
   const setModelChoice = useSetAgentModelChoice(agent?.id ?? "");
   const allowedModels = modelDecision.personal
     ? (modelChoiceInfo?.allowedModels ?? null)
@@ -456,6 +471,7 @@ export function useAgentChatPanel({
     statuses: providerStatuses,
     isLoading: providerStatusesLoading,
     isError: providerStatusesError,
+    failureReason: providerStatusesFailure,
   } = useProviderStatuses();
   const authedProviders = useMemo(
     () =>
@@ -605,17 +621,37 @@ export function useAgentChatPanel({
     };
   }, [rawDisplayModelPin]);
 
-  const pinSettled = sendPinSettled({
+  const pinSignals: SendPinSignals = {
     agentConfigSettled,
     activitySettled,
     capabilitiesSettled: !capabilitiesLoading,
     choiceSettled: !modelDecision.personal || modelChoiceFetched,
     statusesSettled: !providerStatusesLoading,
+  };
+  const pinSettled = sendPinSettled(pinSignals);
+  const pinFailures: PinInputFailures = {
+    agentConfigSettled: agentConfigQuery.failureReason,
+    activitySettled: activityQuery.failureReason,
+    capabilitiesSettled: capabilitiesFailure,
+    choiceSettled: modelChoiceFailure,
+    statusesSettled: providerStatusesFailure,
+  };
+  const pinStallRef = useRef({
+    signals: pinSignals,
+    agentId,
+    failures: pinFailures,
   });
+  pinStallRef.current = { signals: pinSignals, agentId, failures: pinFailures };
   const reportPinTimeout = useCallback(() => {
-    logAndReportError(
-      "chat.send-pin-settle",
-      new Error("composer pin never settled; sent the current pin"),
+    const { signals, agentId: stalledAgent, failures } = pinStallRef.current;
+    reportSendPinStall(
+      signals,
+      {
+        online: typeof navigator === "undefined" || navigator.onLine !== false,
+        engineWarming: stalledAgent ? isAgentProvisioning(stalledAgent) : false,
+        failures,
+      },
+      stalledAgent,
     );
   }, []);
   const resolveSendPin = useSendPin(

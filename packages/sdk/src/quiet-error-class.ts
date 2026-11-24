@@ -11,6 +11,8 @@ export type QuietErrorClass =
   | "plan_min_interval"
   | "webhook_not_creator"
   | "first_day_no_provider"
+  | "first_day_provider_unavailable"
+  | "first_day_account_blocked"
   | "bug_intake_unavailable"
   | "upload_interrupted"
   | "routine_gone"

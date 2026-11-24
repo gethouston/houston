@@ -21,7 +21,8 @@ export interface FirstDayStartResult {
 export type FirstDayRefusalCode =
   | "first_day_not_pending"
   | "first_day_not_started"
-  | "first_day_no_provider";
+  | "first_day_no_provider"
+  | "first_day_provider_unavailable";
 
 export interface FirstDayRefusal {
   code: FirstDayRefusalCode;
