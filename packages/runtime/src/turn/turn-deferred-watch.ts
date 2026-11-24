@@ -1,4 +1,5 @@
 import { HydrateLimitError } from "@houston/runtime-client/object-sync";
+import type { DeferredGate } from "./turn-deferred-gate";
 import { turnHydrationError } from "./turn-hydration-error";
 
 export class DeferredFilesAbandonedError extends Error {
@@ -15,7 +16,15 @@ export function watchDeferredFiles(
   deferred: Promise<void>,
   abort: (reason: unknown) => void,
   timings?: Record<string, number>,
-): { workspaceReady: Promise<void>; abandonDeferred: () => void } {
+  gate?: {
+    gate: DeferredGate;
+    started: Parameters<DeferredGate["observe"]>[1];
+  },
+): {
+  workspaceReady: Promise<void>;
+  abandonDeferred: () => void;
+  deferredGate?: DeferredGate;
+} {
   let landed = false;
   let abandoned = false;
   const workspaceReady = deferred.then(
@@ -40,8 +49,10 @@ export function watchDeferredFiles(
       throw turnHydrationError(error);
     },
   );
+  gate?.gate.observe(workspaceReady, gate.started);
   return {
     workspaceReady,
+    ...(gate ? { deferredGate: gate.gate } : {}),
     abandonDeferred() {
       if (landed || abandoned) return;
       abandoned = true;

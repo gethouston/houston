@@ -48,6 +48,10 @@ export async function syncBack(
       if (kept) nextManifest.set(rel, kept);
       continue;
     }
+    if (opts.include && !manifest.has(rel) && !opts.include(rel)) {
+      outOfScope += 1;
+      continue;
+    }
     const source = await syncSource(abs);
     if (source === SOURCE_GONE) continue;
     if (source === SOURCE_REFUSED) {

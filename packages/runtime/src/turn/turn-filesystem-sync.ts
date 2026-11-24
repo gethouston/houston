@@ -11,10 +11,20 @@ import { claimedTurnIncludes } from "./turn-filesystem-scope";
 function withoutDeferred(
   include: (rel: string) => boolean,
   deferredFailed: boolean,
+  filesystem: TurnFilesystem,
 ): (rel: string) => boolean {
-  return deferredFailed
-    ? (rel) => !deferredWorkspaceFile(rel) && include(rel)
-    : include;
+  const gate = filesystem.deferredGate;
+  if (!deferredFailed) return include;
+  return gate
+    ? (rel) => !gate.unsynced(rel, filesystem.manifest) && include(rel)
+    : (rel) => !deferredWorkspaceFile(rel) && include(rel);
+}
+
+function narrowed(
+  include: (rel: string) => boolean,
+  narrow: ((rel: string) => boolean) | undefined,
+): (rel: string) => boolean {
+  return narrow ? (rel) => narrow(rel) && include(rel) : include;
 }
 
 export async function syncTurnFilesystem(opts: {
@@ -23,6 +33,7 @@ export async function syncTurnFilesystem(opts: {
   filesystem: TurnFilesystem;
   conversationId: string;
   claimed: boolean;
+  narrow?: (rel: string) => boolean;
 }): Promise<{
   uploaded: string[];
   deleted: string[];
@@ -55,19 +66,23 @@ export async function syncTurnFilesystem(opts: {
       workerMerge: true,
       ...(opts.claimed
         ? {
-            include: withoutDeferred(
-              claimedTurnIncludes(
-                opts.filesystem.dataRel,
-                opts.filesystem.workspaceRel,
-                opts.conversationId,
+            include: narrowed(
+              withoutDeferred(
+                claimedTurnIncludes(
+                  opts.filesystem.dataRel,
+                  opts.filesystem.workspaceRel,
+                  opts.conversationId,
+                ),
+                deferredFailed,
+                opts.filesystem,
               ),
-              deferredFailed,
+              opts.narrow,
             ),
           }
         : {}),
     },
   );
-  if (result.outOfScope > 0) {
+  if (result.outOfScope > 0 && !opts.narrow) {
     console.info(
       `[turn] pool_writes_out_of_scope=${result.outOfScope} prefix=${opts.prefix || opts.filesystem.dataRel} conversation=${opts.conversationId}`,
     );

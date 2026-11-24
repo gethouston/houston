@@ -9,11 +9,11 @@ import { expect, test } from "vitest";
 import type { PiBackendDeps } from "../backends/pi/backend";
 import { startTurnRequestFilesystem } from "./turn-claimed-hydration";
 import {
-  awaitDeferredFiles,
   deferredWorkspaceFile,
   gateTurnTools,
   snapshotWhenReady,
 } from "./turn-deferred-files";
+import { createDeferredGate } from "./turn-deferred-gate";
 import { syncTurnFilesystem } from "./turn-filesystem";
 
 type TurnTool = PiBackendDeps["customTools"][number];
@@ -30,7 +30,7 @@ function deferred() {
 
 function fakeTool(run: () => void): TurnTool {
   return {
-    name: "write",
+    name: "read",
     execute: async () => {
       run();
       return { content: [], details: undefined };
@@ -38,8 +38,14 @@ function fakeTool(run: () => void): TurnTool {
   } as unknown as TurnTool;
 }
 
-function callTool(tool: TurnTool, signal?: AbortSignal) {
-  return tool.execute("call-1", {} as never, signal, undefined, {} as never);
+function callTool(tool: TurnTool, params: object = {}) {
+  return tool.execute(
+    "call-1",
+    params as never,
+    undefined,
+    undefined,
+    {} as never,
+  );
 }
 
 test("files in the agent's folders other than the startup ones are deferred", () => {
@@ -141,70 +147,87 @@ test("a claimed turn is hydrated before its files land, and syncs after them", a
   expect(await preparation.settled).toMatchObject({ ok: true });
 });
 
-test("a gated tool runs only once the deferred files land", async () => {
-  const ready = deferred();
-  let ran = false;
-  const [tool] = gateTurnTools(
+test("in a claimed turn a tool waits only for the deferred file it names", async () => {
+  const storeRoot = mkdtempSync(join(tmpdir(), "deferred-path-store-"));
+  const prefix = "ws/w1/agent-1";
+  const agent = join(storeRoot, prefix, "workspaces", "Personal", "Bob");
+  mkdirSync(join(agent, ".houston", "runtime", "conversations"), {
+    recursive: true,
+  });
+  mkdirSync(join(agent, "uploads"), { recursive: true });
+  writeFileSync(join(agent, "CLAUDE.md"), "# Bob\n");
+  writeFileSync(join(agent, "uploads", "photo.png"), "png");
+  writeFileSync(join(agent, "uploads", "notes.md"), "notes");
+  const inner = new LocalDirStore(storeRoot);
+  const landing = deferred();
+  const gated: ObjectStore = {
+    list: (p) => inner.list(p),
+    manifest: (p) => inner.manifest(p),
+    download: async (key, destination, options) => {
+      if (key.endsWith("/uploads/photo.png")) await landing.promise;
+      await inner.download(key, destination, options);
+    },
+    upload: (source, key, options) => inner.upload(source, key, options),
+    delete: (key, options) => inner.delete(key, options),
+  };
+  const preparation = await startTurnRequestFilesystem({
+    store: gated,
+    prefix,
+    root: mkdtempSync(join(tmpdir(), "deferred-path-root-")),
+    turn: {
+      claim: {
+        id: "claim-1",
+        token: "token-1",
+        bootId: "boot-1",
+        heartbeatUrl: "https://heartbeat.test",
+      },
+      conversationId: "c1",
+    },
+    timings: {},
+  });
+  const fs = await preparation.hydrated;
+  const ran: string[] = [];
+  const tools = gateTurnTools(
     [
-      fakeTool(() => {
-        ran = true;
-      }),
+      fakeTool(() => ran.push("read")),
+      { ...fakeTool(() => ran.push("search")), name: "integration_search" },
     ],
-    ready.promise,
+    fs.deferredGate,
+    fs.workspaceDir,
   );
-  if (!tool) throw new Error("gate dropped the tool");
-  const call = callTool(tool);
-  await new Promise((resolve) => setTimeout(resolve, 5));
-  expect(ran).toBe(false);
-  ready.resolve();
-  await call;
-  expect(ran).toBe(true);
-});
-
-test("a failed or stopped deferred hydration refuses the tool", async () => {
-  const failed = deferred();
-  const [tool] = gateTurnTools([fakeTool(() => undefined)], failed.promise);
-  if (!tool) throw new Error("gate dropped the tool");
-  failed.reject(new Error("store unreachable"));
-  await expect(callTool(tool)).rejects.toThrow(/store unreachable/);
-
-  const pending = deferred();
-  const abort = new AbortController();
-  const waiting = awaitDeferredFiles(pending.promise, abort.signal);
-  abort.abort();
-  await expect(waiting).rejects.toThrow(/stopped/);
-});
-
-test("the file-change snapshot sees landed files but never a tool's write", async () => {
-  const workspace = mkdtempSync(join(tmpdir(), "deferred-snapshot-"));
-  const ready = deferred();
-  const before = snapshotWhenReady(workspace, ready.promise);
-  const [tool] = gateTurnTools(
-    [fakeTool(() => writeFileSync(join(workspace, "report.md"), "made"))],
-    ready.promise,
-  );
-  if (!tool) throw new Error("gate dropped the tool");
-  const call = callTool(tool);
-  mkdirSync(join(workspace, "uploads"));
-  writeFileSync(join(workspace, "uploads", "photo.png"), "png");
-  ready.resolve();
-  await call;
-  const snapshot = await before;
-  expect(snapshot?.has("uploads/photo.png")).toBe(true);
-  expect(snapshot?.has("report.md")).toBe(false);
+  const [read, search] = tools;
+  if (!read || !search) throw new Error("gate dropped a tool");
+  await callTool(search);
+  await callTool(read, { path: "uploads/notes.md" });
+  expect(ran).toEqual(["search", "read"]);
+  const photo = callTool(read, { path: "uploads/photo.png" });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  expect(ran).toEqual(["search", "read"]);
+  landing.resolve();
+  await photo;
+  expect(ran).toEqual(["search", "read", "read"]);
+  expect(existsSync(join(fs.workspaceDir, "uploads", "photo.png"))).toBe(true);
+  await fs.workspaceReady;
 });
 
 test("without deferred objects the snapshot and the tools run at once", async () => {
   const workspace = mkdtempSync(join(tmpdir(), "deferred-none-"));
   writeFileSync(join(workspace, "a.md"), "a");
   const tools = [fakeTool(() => undefined)];
-  expect(gateTurnTools(tools, undefined)).toBe(tools);
+  expect(gateTurnTools(tools, undefined, workspace)).toBe(tools);
   expect((await snapshotWhenReady(workspace, undefined))?.has("a.md")).toBe(
     true,
   );
 });
 
 test("a gated call leaves no abort listener behind on the shared signal", async () => {
+  const storeRoot = mkdtempSync(join(tmpdir(), "deferred-listeners-"));
+  const gate = createDeferredGate(storeRoot);
+  gate.observe(new Promise<void>(() => undefined), {
+    prioritize: () => undefined,
+    manifest: new Map(),
+  });
+  gate.hooks.onDeferredListed([]);
   const abort = new AbortController();
   let listeners = 0;
   const add = abort.signal.addEventListener.bind(abort.signal);
@@ -217,8 +240,9 @@ test("a gated call leaves no abort listener behind on the shared signal", async 
     listeners--;
     remove(...args);
   }) as typeof remove;
+  const file = join(storeRoot, "workspaces", "P", "Bob", "docs", "a.md");
   for (let i = 0; i < 20; i++)
-    await awaitDeferredFiles(Promise.resolve(), abort.signal);
+    await gate.waitForPaths([file], abort.signal, 60_000);
   expect(listeners).toBe(0);
 });
 
@@ -270,11 +294,4 @@ test("a failed deferral syncs no upload that landed outside the manifest", async
   });
   expect(synced.uploaded).toEqual([]);
   expect(synced.deleted).toEqual([]);
-});
-
-test("a tool still waiting at the deadline is refused, as on Claude", async () => {
-  const never = new Promise<void>(() => undefined);
-  await expect(awaitDeferredFiles(never, undefined, 20)).rejects.toThrow(
-    /still loading/,
-  );
 });

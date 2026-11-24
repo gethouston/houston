@@ -1,12 +1,8 @@
 import { isCompactionSummary, isPendingInteraction } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import { finishResumed } from "./finish-resumed";
-import {
-  ENGINE_RESTART_MESSAGE,
-  ENGINE_RESUMED_MESSAGE,
-  STOPPED_BY_USER,
-} from "./turn-errors";
-import { timeLimitNotice } from "./turn-notices";
+import { ENGINE_RESUMED_MESSAGE, STOPPED_BY_USER } from "./turn-errors";
+import { interruptionNotice, timeLimitNotice } from "./turn-notices";
 import {
   finishErr,
   finishOk,
@@ -37,7 +33,10 @@ export function adoptReply(
   }
   if (reply.interrupted) {
     if (reply.interrupted.resumed) finishResumed(s, ENGINE_RESUMED_MESSAGE);
-    else finishErr(s, ENGINE_RESTART_MESSAGE, "engine_restart");
+    else {
+      const line = interruptionNotice(reply.interrupted);
+      finishErr(s, line.message, line.kind);
+    }
     return;
   }
   s.text = isCompactionSummary(reply) ? "" : reply.content;

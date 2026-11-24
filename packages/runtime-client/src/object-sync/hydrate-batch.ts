@@ -5,6 +5,7 @@ import type { HydrateManifest } from "./hydrate";
 import { unowned } from "./hydrate-candidates";
 import type {
   HydrateBudget,
+  HydrateClaims,
   HydrateDownloadState,
   HydrateEntry,
 } from "./hydrate-download";
@@ -31,6 +32,8 @@ export async function hydrateBatched(opts: {
   signal: AbortSignal;
   limitError: (observedBytes: number) => Error;
   batchParallel?: number;
+  claims?: HydrateClaims;
+  onSettled?: (rel: string) => void;
 }): Promise<HydrateEntry[]> {
   const chunks: HydrateEntry[][] = [];
   for (let index = 0; index < opts.entries.length; index += BATCH_KEYS) {
@@ -64,9 +67,12 @@ export async function hydrateBatched(opts: {
 
 async function landChunk(
   opts: Parameters<typeof hydrateBatched>[0],
-  chunk: HydrateEntry[],
+  listed: HydrateEntry[],
   fallback: HydrateEntry[],
 ) {
+  const claims = opts.claims;
+  const chunk = claims ? listed.filter(({ rel }) => claims.take(rel)) : listed;
+  if (chunk.length === 0) return;
   const dest = (rel: string) => join(opts.destDir, ...rel.split("/"));
   const outcomes = await opts.downloadMany(
     chunk.map(({ key, rel }) => ({ key, destFile: dest(rel) })),
@@ -76,15 +82,18 @@ async function landChunk(
     if (opts.signal.aborted) return;
     const outcome = outcomes.get(entry.key);
     if (!outcome || outcome.status === "fallback") {
+      opts.claims?.release(entry.rel);
       fallback.push(entry);
       continue;
     }
     if (outcome.status === "missing") {
       await rm(dest(entry.rel), { force: true });
+      opts.onSettled?.(entry.rel);
       continue;
     }
     if (outcome.status === "refused") {
       skipRefusedLanding(entry.key);
+      opts.onSettled?.(entry.rel);
       continue;
     }
     const { size } = await stat(dest(entry.rel));
@@ -92,13 +101,14 @@ async function landChunk(
     if (opts.budget.landed > opts.budget.maxBytes) {
       throw opts.limitError(opts.budget.landed);
     }
-    if (unowned(entry, outcome.generation)) continue;
-    opts.manifest.set(entry.rel, {
-      hash: await fileSha256(dest(entry.rel), size),
-      generation: entry.fromRead ? outcome.generation : entry.generation,
-      ...(opts.keepMergeBase && keepsMergeBase(entry.rel)
-        ? { mergeBase: await readFile(dest(entry.rel), "utf8") }
-        : {}),
-    });
+    if (!unowned(entry, outcome.generation))
+      opts.manifest.set(entry.rel, {
+        hash: await fileSha256(dest(entry.rel), size),
+        generation: entry.fromRead ? outcome.generation : entry.generation,
+        ...(opts.keepMergeBase && keepsMergeBase(entry.rel)
+          ? { mergeBase: await readFile(dest(entry.rel), "utf8") }
+          : {}),
+      });
+    opts.onSettled?.(entry.rel);
   }
 }

@@ -88,6 +88,8 @@ export function reduceSnapshot(
         ...(tools.length ? { tools } : {}),
       };
     }
+    case "landed":
+      return { ...prev, seq };
     case "usage":
     case "file_changes":
     case "reply_complete":

@@ -19,6 +19,7 @@ type FeedItemIdentity = { id?: string };
 export type SystemNoticeKind =
   | "engine_restart"
   | "engine_resumed"
+  | "sandbox_lost"
   | "turn_time_limit"
   | "turn_time_limit_unsaved"
   | "send_busy"

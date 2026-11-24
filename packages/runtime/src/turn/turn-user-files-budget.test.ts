@@ -13,7 +13,7 @@ import {
 } from "@houston/runtime-client/object-sync";
 import { afterEach, expect, test, vi } from "vitest";
 import { startTurnRequestFilesystem } from "./turn-claimed-hydration";
-import { awaitDeferredFiles } from "./turn-deferred-files";
+import { awaitDeferredNeed, WHOLE_TREE_WAIT_MS } from "./turn-deferred-files";
 import {
   syncTurnFilesystem,
   TURN_DEFERRED_MAX_BYTES,
@@ -104,9 +104,23 @@ test("user files over their own budget refuse only the tools, and sync touches n
   );
   error.mockRestore();
   info.mockRestore();
-  const refusal = awaitDeferredFiles(fs.workspaceReady);
-  await expect(refusal).rejects.toThrow(/too large/);
+  const gate = fs.deferredGate;
+  if (!gate) throw new Error("no deferred gate");
+  const refusal = gate.waitForPaths(
+    [join(fs.workspaceDir, "Documents", "scan.pdf")],
+    undefined,
+    WHOLE_TREE_WAIT_MS,
+  );
+  await expect(refusal).rejects.toThrow(
+    /larger than one conversation can load: Documents\/scan\.pdf/,
+  );
   await expect(refusal).rejects.not.toThrow(/again/);
+  await expect(awaitDeferredNeed(gate, { kind: "all" })).rejects.toThrow(
+    /Some of the agent's files could not be loaded/,
+  );
+  await expect(
+    awaitDeferredNeed(gate, { kind: "all" }),
+  ).resolves.toBeUndefined();
   expect(existsSync(join(fs.workspaceDir, "Documents", "scan.pdf"))).toBe(
     false,
   );

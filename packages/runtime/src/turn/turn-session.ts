@@ -63,7 +63,7 @@ export async function runTurn(
 
     const beforeFiles = snapshotWhenReady(
       workspaceDir,
-      directories.workspaceReady,
+      directories.deferredGate,
     );
 
     const interaction = newInteractionHolder();

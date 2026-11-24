@@ -186,7 +186,7 @@ export interface ChatMessage {
   stopReason?: import("./turn-error").TurnErrorCode;
 }
 
-export type TurnInterruptionCause = "engine_restart";
+export type TurnInterruptionCause = "engine_restart" | "sandbox_lost";
 
 export interface TurnInterruption {
   cause: TurnInterruptionCause;

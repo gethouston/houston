@@ -219,7 +219,7 @@ test("a routine fire whose sandbox died settles its run and its chat once, and a
     role: "assistant",
     content: "",
     turnId: "t1",
-    interrupted: { cause: "engine_restart" },
+    interrupted: { cause: "sandbox_lost" },
   });
   expect(w.assistantPuts()).toHaveLength(1);
   expect(w.assistantPuts()[0]?.path).toBe(
@@ -311,7 +311,7 @@ test("the first message of a chat that never synced creates the chat with its re
   const messages = w.chat("c2");
   expect(messages).toHaveLength(2);
   expect(messages[0]).toEqual(userOf("t2", STARTED));
-  expect(messages[1]?.interrupted).toEqual({ cause: "engine_restart" });
+  expect(messages[1]?.interrupted).toEqual({ cause: "sandbox_lost" });
 });
 
 test("a turn that finished before its claim was lost is never touched", async () => {
@@ -470,7 +470,7 @@ test("a chat whose file already ends with the dead turn's message settles from t
   expect(json.events, JSON.stringify(json)).toEqual(["ConversationsChanged"]);
   const tail = w.chat("c3").slice(-2);
   expect(tail[0]).toEqual(userOf("t3", STARTED));
-  expect(tail[1]?.interrupted).toEqual({ cause: "engine_restart" });
+  expect(tail[1]?.interrupted).toEqual({ cause: "sandbox_lost" });
 });
 
 test("a pause that fails declines the attempt, and the retry pauses", async () => {

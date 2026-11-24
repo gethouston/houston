@@ -66,7 +66,7 @@ export async function settleAbandonedChat(
     saveConversation(dir, conversation);
   }
   const written = appendAssistantMessageAt(dir, conversationId, "", {
-    interrupted: { cause: "engine_restart" },
+    interrupted: { cause: "sandbox_lost" },
     turnId,
   });
   if (!written) throw new Error(`conversation ${conversationId} vanished`);

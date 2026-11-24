@@ -4,14 +4,13 @@ import { healRoutinesMirror } from "./op-routine-heal";
 import type { TurnServerDeps } from "./server-types";
 import { mutateTurnDocument, TurnDocConflictError } from "./turn-doc-cas";
 import { type TurnFilesystem, turnRoutineRunsKey } from "./turn-filesystem";
+import type { TurnLanded } from "./turn-landed";
 import type { createTurnLog } from "./turn-log";
 import {
   prepareRoutineTurn,
   type RoutinePhase,
   RoutineTurnError,
 } from "./turn-routine";
-import { publishTurnRunsDoc } from "./turn-runs-doc";
-import { docNotLandedReason } from "./turn-view-publish";
 import type { TurnRequest } from "./types";
 
 export async function answerRoutineStartFailure(
@@ -45,6 +44,7 @@ export async function startRoutineRun(input: {
   filesystem: TurnFilesystem;
   resolved: { store: ObjectStore; prefix: string };
   nowIso: string;
+  landed: Pick<TurnLanded, "settled">;
 }): Promise<RoutinePhase> {
   const { filesystem, turn, turnId, nowIso } = input;
   let phase: RoutinePhase;
@@ -67,16 +67,7 @@ export async function startRoutineRun(input: {
       error.changed = await healMissingRoutine(input);
     throw error;
   }
-  const published = await publishTurnRunsDoc(
-    input.deps,
-    { ...turn, turnId },
-    filesystem,
-  );
-  const failed = published ? docNotLandedReason(published) : null;
-  if (failed)
-    console.warn(
-      `[turn] routine run ${turnId} row is in the store, its doc lags until the run ends: ${failed}`,
-    );
+  await input.landed.settled();
   return phase;
 }
 

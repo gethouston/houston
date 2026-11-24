@@ -6,6 +6,7 @@ import type {
   ObjectStore,
 } from "@houston/runtime-client/object-sync";
 import type { ArchiveLoader } from "./turn-archive-fetch";
+import type { DeferredGate } from "./turn-deferred-gate";
 import type { TurnLayout } from "./turn-layout";
 
 export interface TurnFilesystem extends TurnLayout {
@@ -16,8 +17,12 @@ export interface TurnFilesystem extends TurnLayout {
   skippedObjects: number;
   generationAware: boolean;
   immediateWrites: Set<string>;
+  landed?: {
+    add(landed: readonly string[], deleted?: readonly string[]): void;
+  };
   workspaceReady?: Promise<void>;
   abandonDeferred?: () => void;
+  deferredGate?: DeferredGate;
   loadArchive?: ArchiveLoader;
 }
 

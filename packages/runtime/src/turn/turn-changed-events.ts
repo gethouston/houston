@@ -1,16 +1,13 @@
 import { agentFileEventType } from "@houston/domain";
-import type { HoustonEvent } from "@houston/protocol";
-
-type AgentEventType = Extract<HoustonEvent, { agentPath: string }>["type"];
-type TurnChangedEventType = AgentEventType | "CustomIntegrationsChanged";
+import type { HoustonEvent, TurnLandedEventType } from "@houston/protocol";
 
 export function changedEventTypes(
   layout: { workspaceRel: string; dataRel: string },
   keys: readonly string[],
-): TurnChangedEventType[] {
+): TurnLandedEventType[] {
   const workspacePrefix = `${layout.workspaceRel}/`;
   const dataPrefix = `${layout.dataRel}/`;
-  const out = new Set<TurnChangedEventType>();
+  const out = new Set<TurnLandedEventType>();
   for (const key of keys) {
     if (key === "custom-integrations.json") {
       out.add("CustomIntegrationsChanged");
@@ -30,9 +27,9 @@ export function changedEventTypes(
 export function announcedOpEvents(
   events: readonly HoustonEvent[],
   projectionFailures: readonly string[],
-): (AgentEventType | "CustomIntegrationsChanged")[] {
+): TurnLandedEventType[] {
   if (projectionFailures.length > 0) return [];
-  const out = new Set<AgentEventType | "CustomIntegrationsChanged">();
+  const out = new Set<TurnLandedEventType>();
   for (const event of events) {
     if ("agentPath" in event || event.type === "CustomIntegrationsChanged")
       out.add(event.type);

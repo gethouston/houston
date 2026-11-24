@@ -62,7 +62,7 @@ Decisions and external constraints of the pooled per-turn runtime (`packages/run
 ## Deferred file performance (packages/runtime/src/turn/turn-deferred-rule.ts, packages/runtime/src/turn/turn-deferred-watch.ts)
 
 - `deferredWorkspaceFile` must stay identical to the gateway's prefetch predicate. Deferred files must also be omitted from the inlined upload, or their transfer still delays the worker's acceptance response.
-- `DEFERRED_PARALLEL` is four, matching the critical hydration path's batch parallelism and allowing four batch bodies beside the running backend. Halving that pace would make the first tool wait longer than the previous full-tree hydration before prompting.
+- `DEFERRED_PARALLEL` is four, matching the critical hydration path's batch parallelism and allowing four batch bodies beside the running backend. Shell tools wait for the whole deferred set (`turn-deferred-tools.ts`), so halving that pace would make a turn's first shell call wait longer than the previous full-tree hydration before prompting.
 - `watchDeferredFiles` logs an exceeded file budget as a size condition rather than an engine fault. The same files exceed the budget on every send until their size changes.
 
 ## Claude startup profiling (packages/runtime/src/turn/turn-claude-startup.ts)

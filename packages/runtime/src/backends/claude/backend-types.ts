@@ -9,6 +9,7 @@ import type { CompactionCheckpoints } from "../../store/conversation-compaction"
 import type { BridgedPiTool } from "./custom-tools";
 import type { ClaudeLayout } from "./paths";
 import type { ClaudeSdk, ClaudeSdkLoadResult } from "./sdk-loader";
+import type { ToolGate } from "./tool-gate-hook";
 
 export type ClaudeToken =
   | {
@@ -35,5 +36,5 @@ export interface ClaudeBackendDeps {
   sdk?: ClaudeSdk;
   sdkLoad?: Promise<ClaudeSdkLoadResult>;
   compactions?: CompactionCheckpoints;
-  beforeTool?: () => Promise<void>;
+  beforeTool?: ToolGate;
 }

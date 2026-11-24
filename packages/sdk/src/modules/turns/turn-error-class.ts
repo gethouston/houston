@@ -7,6 +7,7 @@ export type TurnErrorClass =
 const TURN_ERROR_CLASSES = [
   "stopped",
   "engine_restart",
+  "sandbox_lost",
   "send_busy",
   "compute_busy",
   "turn_died",
@@ -59,6 +60,7 @@ export function turnErrorDisposition(
   if (cls === "provider_unknown") return "failure";
   if (
     cls === "engine_restart" ||
+    cls === "sandbox_lost" ||
     cls === "send_busy" ||
     cls === "compute_busy" ||
     cls.startsWith(PROVIDER_PREFIX)

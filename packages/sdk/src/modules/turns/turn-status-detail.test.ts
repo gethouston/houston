@@ -194,9 +194,17 @@ test("the history settles class a dead turn and an engine restart", () => {
     turnId: "t-2",
     interrupted: { cause: "engine_restart" },
   });
+  adoptReply(newTurnState("Houston/Bo", "c3", output), {
+    role: "assistant",
+    content: "",
+    ts: 3,
+    turnId: "t-3",
+    interrupted: { cause: "sandbox_lost" },
+  });
   expect(statuses.map((s) => [s[0], s[2]?.errorClass])).toEqual([
     ["error", "turn_died"],
     ["error", "engine_restart"],
+    ["error", "sandbox_lost"],
   ]);
 });
 

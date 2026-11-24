@@ -18,6 +18,7 @@ export interface StartedHydration {
   skippedObjects: number;
   done: Promise<void>;
   deferred: Promise<void>;
+  prioritize: (rels: readonly string[]) => void;
   abort: (reason?: unknown) => void;
 }
 
@@ -48,6 +49,8 @@ export interface HydrateOptions {
   deferredMaxBytes?: number;
   deferredReadTimeoutMs?: number;
   deferredParallel?: number;
+  onDeferredListed?: (rels: readonly string[]) => void;
+  onDeferredSettled?: (rel: string) => void;
   keepMergeBase?: boolean;
   capListed?: boolean;
 }

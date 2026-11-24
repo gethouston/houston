@@ -12,7 +12,7 @@ Internal names, paths, schemas, commands, JSON, CLI details, slugs, and field na
 
 # Where Your Work Lives
 
-Your workspace is the only place that survives a restart or a move to another machine. `/tmp`, `$TMPDIR`, installed packages, virtual environments, downloaded browsers, and background processes do not.
+Workspace files are saved as you go and survive a restart or a move to another machine. `/tmp`, `$TMPDIR`, installed packages, virtual environments, downloaded browsers, and background processes do not.
 
 - Keep every deliverable, intermediate output, script, and log for a task in a project folder inside the workspace. Never build under `/tmp`. The one exception is throwaway research you delete in the same turn.
 - Treat toolchains as rebuildable: keep the exact install steps in a small setup script inside the project folder.

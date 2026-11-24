@@ -7,6 +7,7 @@ import {
   startHydrate,
 } from "@houston/runtime-client/object-sync";
 import { turnArchiveLoader } from "./turn-archive-fetch";
+import { createDeferredGate } from "./turn-deferred-gate";
 import { watchDeferredFiles } from "./turn-deferred-watch";
 import { startLazyTurnFilesystem } from "./turn-filesystem-lazy";
 import type {
@@ -87,8 +88,10 @@ export async function startTurnFilesystem(
     };
   }
   let layout: TurnLayout | undefined;
+  const gate = opts.defer ? createDeferredGate(storeRoot) : undefined;
   try {
     const started = await startHydrate(opts.store, opts.prefix, storeRoot, {
+      ...gate?.hooks,
       ...(maxBytes !== undefined ? { maxBytes } : {}),
       excludes,
       keepMergeBase: true,
@@ -131,7 +134,12 @@ export async function startTurnFilesystem(
     }
     if (opts.timings) opts.timings.t_startup_files = performance.now();
     const watched = opts.defer
-      ? watchDeferredFiles(started.deferred, started.abort, opts.timings)
+      ? watchDeferredFiles(
+          started.deferred,
+          started.abort,
+          opts.timings,
+          gate && { gate, started },
+        )
       : undefined;
     const workspaceReady = watched?.workspaceReady;
     const filesystem: TurnFilesystem = {

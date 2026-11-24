@@ -23,9 +23,11 @@ export function createTurnEmitter(
   sandbox: ReturnType<typeof makeTurnSandboxFetch> | null,
   log: ReturnType<typeof createTurnLog>,
   transcript: ReturnType<typeof createTurnTranscript>,
+  taps?: ReadonlySet<(frame: WireFrame) => void>,
 ): (frame: WireFrame) => void {
   return (raw) => {
     const frame = sandbox ? sandbox.present(raw) : raw;
+    for (const tap of taps ?? []) tap(frame);
     send(log ? log.record(frame) : frame);
     if (frame.type === "user") void transcript?.publishUser();
   };
