@@ -11,12 +11,16 @@ export type MessageTimeFormatter = (
   dateStyle?: "full" | "medium",
 ) => MessageTime;
 
+// A formatter fixes the default time zone when it is built, so the cached ones
+// format in UTC and are handed the local wall-clock time (`wallClock`). Cached
+// in the local zone, they kept printing the old zone's clock after the time
+// zone changed, while the day math below follows the live one.
 const formatters = new Map<string, Intl.DateTimeFormat>();
 function formatter(locale: string, options: Intl.DateTimeFormatOptions) {
   const key = JSON.stringify([locale, options]);
   let value = formatters.get(key);
   if (!value) {
-    value = new Intl.DateTimeFormat(locale, options);
+    value = new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" });
     formatters.set(key, value);
   }
   return value;
@@ -32,13 +36,14 @@ export function formatMessageTime(
 ): MessageTime {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return { short: "", full: "" };
+  const wallClock = new Date(at.getTime() - at.getTimezoneOffset() * 60_000);
   const day = (date: Date) =>
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
   const days = (day(now) - day(at)) / 86_400_000;
   const full = formatter(locale, {
     dateStyle,
     timeStyle: "short",
-  }).format(at);
+  }).format(wallClock);
   let short: string;
   let compact: string[] | undefined;
   const elapsed = now.getTime() - at.getTime();
@@ -48,7 +53,7 @@ export function formatMessageTime(
       month: "short",
       day: "numeric",
       ...(sameYear ? {} : { year: "numeric" }),
-    }).format(at);
+    }).format(wallClock);
     // A narrow card cannot hold a full date with its year (pt "31 de ago.
     // de 2025" is 104px beside a 66px slot), so it steps down these.
     if (!sameYear)
@@ -56,17 +61,17 @@ export function formatMessageTime(
         { month: "short", year: "numeric" } as const,
         { month: "numeric", year: "numeric" } as const,
         { year: "numeric" } as const,
-      ].map((options) => formatter(locale, options).format(at));
+      ].map((options) => formatter(locale, options).format(wallClock));
   } else if (elapsed < 60_000) short = words.now;
   else if (days === 0)
     short = formatter(locale, {
       hour: "numeric",
       minute: "2-digit",
-    }).format(at);
+    }).format(wallClock);
   else if (days === 1) short = words.yesterday;
   else
     short = formatter(locale, { weekday: "short" })
-      .format(at)
+      .format(wallClock)
       .replace(/\.$/, "");
   return compact ? { short, full, compact } : { short, full };
 }

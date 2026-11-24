@@ -77,6 +77,11 @@ export const LOCAL_PROBES: readonly Probe[] = [
     id: "no-such-activity",
     title: "Parity probe",
   }),
+  probe("setMissionMode", {
+    ...AGENT,
+    id: "no-such-activity",
+    mode: "auto",
+  }),
   probe("listRoutines", AGENT),
   probe("listRoutineRuns", AGENT),
   probe("createRoutine", { ...AGENT, input: {} }),

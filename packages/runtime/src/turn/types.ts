@@ -7,6 +7,7 @@ import type {
 import type { PrefetchedObjects } from "@houston/runtime-client/object-sync";
 import type { ServedCredential } from "../auth/auth-file";
 import type { ClaudeSubscriptionType } from "../auth/claude-plan";
+import type { TurnCredentialHealthMark } from "../auth/turn-credential-channel";
 import type { MissionTitleRequest } from "../session/mission-title";
 
 /**
@@ -47,6 +48,7 @@ export interface TurnCoordinator {
 export type TurnCredential = ServedCredential & {
   /** A Claude login's plan (auth/claude-plan.ts). Never written to auth.json. */
   subscriptionType?: ClaudeSubscriptionType;
+  health?: TurnCredentialHealthMark;
 };
 
 /**
@@ -168,6 +170,7 @@ export interface TurnRequest {
   };
   /** Secret turn-local authority. Never log, export, persist, or put in env. */
   grant?: TurnGrant;
+  customOAuthCallbackUrl?: string;
   /** Present only on Houston's own turn (parse-turn-coordinator.ts). */
   coordinator?: TurnCoordinator;
   /** The person's answers to approval cards, raw as their message sent them. */

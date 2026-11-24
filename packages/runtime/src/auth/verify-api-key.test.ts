@@ -82,6 +82,19 @@ test("a 401 rejection reads as an invalid key", async () => {
   });
 });
 
+test("xAI's 400 'Incorrect API key' reads as an invalid key, not an outage", async () => {
+  completeSimple.mockResolvedValue(
+    reply({
+      stopReason: "error",
+      errorMessage:
+        'xai API error (400): 400 "Incorrect API key provided. You can obtain an API key from https://console.x.ai."',
+    }),
+  );
+  await expect(verifyApiKey("xai", "xai-typo")).rejects.toMatchObject({
+    reason: "invalid_key",
+  });
+});
+
 test("a rate limit proves the key authenticated — verified", async () => {
   completeSimple.mockResolvedValue(
     reply({
@@ -191,7 +204,7 @@ test("nvidia: a gated probe model retries a broadly-served fallback — key veri
   expect(completeSimple).toHaveBeenCalledTimes(2);
   // The fallback probe ran against a model NVIDIA serves broadly.
   const fallbackModel = completeSimple.mock.calls[1][0] as { id: string };
-  expect(fallbackModel.id).toBe("openai/gpt-oss-20b");
+  expect(fallbackModel.id).toBe("minimaxai/minimax-m3.1-flash");
 });
 
 test("nvidia: every probe gated rejects as key_restricted", async () => {

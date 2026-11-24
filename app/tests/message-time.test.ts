@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { describe, it } from "node:test";
+import { after, before, describe, it } from "node:test";
 import { formatLastMessageTime } from "../src/lib/message-time.ts";
 
-process.env.TZ = "UTC";
 const now = new Date("2026-10-27T17:00:00.000Z");
 const cases = [
   {
@@ -47,130 +46,162 @@ const dates = [
   "2025-10-12T16:25:00.000Z",
 ];
 
-for (const {
-  lang,
-  expected,
-  pastCompact,
-  yearBoundary,
-  full,
-  monday,
-} of cases) {
-  describe(`last message time in ${lang}`, () => {
-    const locale: { time: { now: string; yesterday: string } } = JSON.parse(
-      readFileSync(
-        new URL(`../src/locales/${lang}/board.json`, import.meta.url),
-        "utf8",
-      ),
-    );
-    it("uses translated words, today's clock, weekdays and dates", () => {
-      assert.deepEqual(
-        dates.map(
-          (iso) => formatLastMessageTime(iso, lang, locale.time, now).short,
+describe("message time", () => {
+  let originalTimezone: string | undefined;
+  before(() => {
+    originalTimezone = process.env.TZ;
+    process.env.TZ = "UTC";
+  });
+  after(() => {
+    if (originalTimezone === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTimezone;
+  });
+  for (const {
+    lang,
+    expected,
+    pastCompact,
+    yearBoundary,
+    full,
+    monday,
+  } of cases) {
+    describe(`last message time in ${lang}`, () => {
+      const locale: { time: { now: string; yesterday: string } } = JSON.parse(
+        readFileSync(
+          new URL(`../src/locales/${lang}/board.json`, import.meta.url),
+          "utf8",
         ),
-        expected,
       );
-      assert.equal(
-        formatLastMessageTime(
-          "2026-10-26T16:25:00.000Z",
-          lang,
-          locale.time,
-          new Date("2026-10-28T17:00:00.000Z"),
-        ).short,
-        monday,
-      );
-    });
-    it("gives another year's date shorter card forms, longest first", () => {
-      const past = formatLastMessageTime(
-        "2025-10-12T16:25:00.000Z",
-        lang,
-        locale.time,
-        now,
-      );
-      assert.deepEqual(past.compact, pastCompact);
-      for (const iso of dates.slice(0, 5))
-        assert.equal(
-          formatLastMessageTime(iso, lang, locale.time, now).compact,
-          undefined,
+      it("uses translated words, today's clock, weekdays and dates", () => {
+        assert.deepEqual(
+          dates.map(
+            (iso) => formatLastMessageTime(iso, lang, locale.time, now).short,
+          ),
+          expected,
         );
-    });
-    it("switches to the year-bearing forms at the year boundary", () => {
-      const january = new Date("2027-01-20T12:00:00.000Z");
-      const [thisYear, lastYear] = [
-        "2027-01-02T12:00:00.000Z",
-        "2026-12-31T12:00:00.000Z",
-      ].map((iso) => formatLastMessageTime(iso, lang, locale.time, january));
-      assert.deepEqual([thisYear.short, lastYear.short], yearBoundary);
-      assert.equal(thisYear.compact, undefined);
-      assert.equal(lastYear.compact?.at(-1), "2026");
-    });
-    it("provides the full date and short clock time for tooltips and detail", () => {
-      assert.equal(
-        formatLastMessageTime(
-          "2026-10-27T16:25:00.000Z",
+        assert.equal(
+          formatLastMessageTime(
+            "2026-10-26T16:25:00.000Z",
+            lang,
+            locale.time,
+            new Date("2026-10-28T17:00:00.000Z"),
+          ).short,
+          monday,
+        );
+      });
+      it("gives another year's date shorter card forms, longest first", () => {
+        const past = formatLastMessageTime(
+          "2025-10-12T16:25:00.000Z",
           lang,
           locale.time,
           now,
-        ).full,
-        full,
-      );
+        );
+        assert.deepEqual(past.compact, pastCompact);
+        for (const iso of dates.slice(0, 5))
+          assert.equal(
+            formatLastMessageTime(iso, lang, locale.time, now).compact,
+            undefined,
+          );
+      });
+      it("switches to the year-bearing forms at the year boundary", () => {
+        const january = new Date("2027-01-20T12:00:00.000Z");
+        const [thisYear, lastYear] = [
+          "2027-01-02T12:00:00.000Z",
+          "2026-12-31T12:00:00.000Z",
+        ].map((iso) => formatLastMessageTime(iso, lang, locale.time, january));
+        assert.deepEqual([thisYear.short, lastYear.short], yearBoundary);
+        assert.equal(thisYear.compact, undefined);
+        assert.equal(lastYear.compact?.at(-1), "2026");
+      });
+      it("provides the full date and short clock time for tooltips and detail", () => {
+        assert.equal(
+          formatLastMessageTime(
+            "2026-10-27T16:25:00.000Z",
+            lang,
+            locale.time,
+            now,
+          ).full,
+          full,
+        );
+      });
     });
-  });
-}
-
-it("changes from Now at exactly a minute and from weekday at seven calendar days", () => {
-  const words = { now: "Now", yesterday: "Yesterday" };
-  assert.equal(
-    formatLastMessageTime("2026-10-27T16:59:00.000Z", "en", words, now).short,
-    "4:59 PM",
-  );
-  assert.equal(
-    formatLastMessageTime("2026-10-21T16:25:00.000Z", "en", words, now).short,
-    "Wed",
-  );
-  assert.equal(
-    formatLastMessageTime("2026-10-20T16:25:00.000Z", "en", words, now).short,
-    "Oct 20",
-  );
-  assert.equal(
-    formatLastMessageTime(
-      "2026-10-26T23:59:00.000Z",
-      "en",
-      words,
-      new Date("2026-10-27T00:01:00.000Z"),
-    ).short,
-    "Yesterday",
-  );
-});
-
-it("uses local calendar days across a daylight-saving transition", () => {
-  process.env.TZ = "America/New_York";
-  try {
-    for (const [at, today] of [
-      ["2026-11-01T23:30:00-05:00", "2026-11-02T00:15:00-05:00"],
-      ["2026-03-08T00:30:00-05:00", "2026-03-09T00:15:00-04:00"],
-    ]) {
-      assert.equal(
-        formatLastMessageTime(
-          at,
-          "en",
-          { now: "Now", yesterday: "Yesterday" },
-          new Date(today),
-        ).short,
-        "Yesterday",
-      );
-    }
-  } finally {
-    process.env.TZ = "UTC";
   }
-});
 
-it("bounds the future clock-skew allowance at five minutes", () => {
-  const words = { now: "Now", yesterday: "Yesterday" };
-  for (const [iso, expected] of [
-    ["2026-10-27T17:05:00.000Z", "Now"],
-    ["2026-10-27T17:05:01.000Z", "Oct 27"],
-    ["2026-10-28T17:00:00.000Z", "Oct 28"],
-    ["2027-10-27T17:00:00.000Z", "Oct 27, 2027"],
-  ])
-    assert.equal(formatLastMessageTime(iso, "en", words, now).short, expected);
+  it("changes from Now at exactly a minute and from weekday at seven calendar days", () => {
+    const words = { now: "Now", yesterday: "Yesterday" };
+    assert.equal(
+      formatLastMessageTime("2026-10-27T16:59:00.000Z", "en", words, now).short,
+      "4:59 PM",
+    );
+    assert.equal(
+      formatLastMessageTime("2026-10-21T16:25:00.000Z", "en", words, now).short,
+      "Wed",
+    );
+    assert.equal(
+      formatLastMessageTime("2026-10-20T16:25:00.000Z", "en", words, now).short,
+      "Oct 20",
+    );
+    assert.equal(
+      formatLastMessageTime(
+        "2026-10-26T23:59:00.000Z",
+        "en",
+        words,
+        new Date("2026-10-27T00:01:00.000Z"),
+      ).short,
+      "Yesterday",
+    );
+  });
+
+  it("uses local calendar days across a daylight-saving transition", () => {
+    process.env.TZ = "America/New_York";
+    try {
+      for (const [at, today] of [
+        ["2026-11-01T23:30:00-05:00", "2026-11-02T00:15:00-05:00"],
+        ["2026-03-08T00:30:00-05:00", "2026-03-09T00:15:00-04:00"],
+      ]) {
+        assert.equal(
+          formatLastMessageTime(
+            at,
+            "en",
+            { now: "Now", yesterday: "Yesterday" },
+            new Date(today),
+          ).short,
+          "Yesterday",
+        );
+      }
+    } finally {
+      process.env.TZ = "UTC";
+    }
+  });
+
+  it("formats in the current time zone, not the first call's", () => {
+    const words = { now: "Now", yesterday: "Yesterday" };
+    const at = "2026-10-27T16:25:00.000Z";
+    process.env.TZ = "America/New_York";
+    try {
+      assert.equal(
+        formatLastMessageTime(at, "en", words, now).full,
+        "Tuesday, October 27, 2026 at 12:25 PM",
+      );
+    } finally {
+      process.env.TZ = "UTC";
+    }
+    assert.equal(
+      formatLastMessageTime(at, "en", words, now).full,
+      "Tuesday, October 27, 2026 at 4:25 PM",
+    );
+  });
+
+  it("bounds the future clock-skew allowance at five minutes", () => {
+    const words = { now: "Now", yesterday: "Yesterday" };
+    for (const [iso, expected] of [
+      ["2026-10-27T17:05:00.000Z", "Now"],
+      ["2026-10-27T17:05:01.000Z", "Oct 27"],
+      ["2026-10-28T17:00:00.000Z", "Oct 28"],
+      ["2027-10-27T17:00:00.000Z", "Oct 27, 2027"],
+    ])
+      assert.equal(
+        formatLastMessageTime(iso, "en", words, now).short,
+        expected,
+      );
+  });
 });

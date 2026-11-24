@@ -51,38 +51,35 @@ export async function liveTab(
   return opened;
 }
 
-/**
- * Save the slot's sign-ins and close its context; the browser stays up.
- * False when the save failed or ran out of time.
- */
-export async function disposeSlot(slot: Slot): Promise<boolean> {
+export async function saveSlot(slot: Slot): Promise<boolean> {
+  const tab = await slot.tab?.catch(() => undefined);
+  return tab?.context.browser()?.isConnected() ? saveTab(tab) : true;
+}
+
+export async function disposeSlot(slot: Slot, save = true): Promise<boolean> {
   const pending = slot.tab;
   slot.tab = null;
   const tab = await pending?.catch(() => undefined);
-  return tab ? disposeTab(tab) : true;
+  return tab ? disposeTab(tab, save) : true;
 }
 
-/** Save one tab's sign-ins and close it; false when the save did not finish. */
-async function disposeTab(tab: BrowserTab): Promise<boolean> {
+async function disposeTab(tab: BrowserTab, save: boolean): Promise<boolean> {
   if (!tab.context.browser()?.isConnected()) {
     // Nothing left to save, but a backup session may still be billing.
     await tab.backup?.dispose();
     return true;
   }
-  // A page frozen behind a dialog cannot hand over its storage; a page that
-  // stopped answering cannot either, so the save is bounded and the close
-  // happens regardless (sign-ins were already saved after each change).
+  try {
+    return save ? await saveTab(tab) : true;
+  } finally {
+    await closeContext(tab);
+  }
+}
+
+function saveTab(tab: BrowserTab): Promise<boolean> {
   const save = async () => {
     await dismissPending(tab);
     await saveState(tab);
   };
-  try {
-    return await settledWithin(
-      save(),
-      CLOSE_GRACE_MS,
-      "saving sign-ins on close",
-    );
-  } finally {
-    await closeContext(tab);
-  }
+  return settledWithin(save(), CLOSE_GRACE_MS, "saving sign-ins");
 }

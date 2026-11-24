@@ -40,7 +40,12 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
     );
   if (v.kind === "signin")
     return v.reason === undefined || typeof v.reason === "string";
-  if (v.kind === "connect") return typeof v.toolkit === "string";
+  if (v.kind === "connect")
+    return (
+      typeof v.toolkit === "string" &&
+      (v.reconnect === undefined || typeof v.reconnect === "boolean") &&
+      (v.refusedAt === undefined || typeof v.refusedAt === "string")
+    );
   if (v.kind === "provider_connect")
     return (
       typeof v.provider === "string" &&
