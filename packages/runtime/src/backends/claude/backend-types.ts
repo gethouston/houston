@@ -9,6 +9,7 @@ import type { CompactionCheckpoints } from "../../store/conversation-compaction"
 import type { BridgedPiTool } from "./custom-tools";
 import type { ClaudeLayout } from "./paths";
 import type { ClaudeSdk, ClaudeSdkLoadResult } from "./sdk-loader";
+import type { ToolGate } from "./tool-gate-hook";
 
 /**
  * A resolved Anthropic credential for one SDK subprocess environment. An
@@ -66,7 +67,5 @@ export interface ClaudeBackendDeps {
    * summary would land outside the conversation it summarizes.
    */
   compactions?: CompactionCheckpoints;
-  /** Every tool call waits for this first (tool-gate-hook.ts); a rejection
-   *  denies the call. A pooled turn's deferred workspace files. */
-  beforeTool?: () => Promise<void>;
+  beforeTool?: ToolGate;
 }

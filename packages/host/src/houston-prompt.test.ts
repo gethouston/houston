@@ -311,7 +311,7 @@ test("the prompt keeps task work in the workspace, never /tmp, in BOTH mirrors (
   const ts = norm(houstonSystemPrompt());
   const rs = norm(rust);
   for (const phrase of [
-    "Your workspace is the only place that survives a restart or a move to another machine.",
+    "Workspace files are saved as you go and survive a restart or a move to another machine.",
     "Never build under `/tmp`.",
     "keep the exact install steps in a small setup script inside the project folder",
     "When the task is delivered, remove what the user did not ask for",
