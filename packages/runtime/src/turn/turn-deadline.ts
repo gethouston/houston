@@ -1,10 +1,6 @@
 import { BROWSER_HANDOFF_LIMIT_MS } from "@houston/wire-types";
 import type { HandoffBudget } from "../session/tools/browser/tool";
 
-/**
- * The gateway's turn token TTL (cloud `internal/turntoken`): a pooled turn's
- * host token, and the E2B sandbox it runs in, last 30 minutes from dispatch.
- */
 export const TURN_TOKEN_TTL_MS = 30 * 60_000;
 
 /**
@@ -12,7 +8,7 @@ export const TURN_TOKEN_TTL_MS = 30 * 60_000;
  * reading the page, and the final durability sync, which needs the token. A
  * sync past it fails, and the transcript and the saved sign-ins go with it.
  */
-export const TURN_END_RESERVE_MS = 3 * 60_000;
+export const TURN_END_RESERVE_MS = 10 * 60_000;
 
 /** Less than this is no time for a person to sign in to anything. */
 export const MIN_HANDOFF_MS = 60_000;
@@ -25,9 +21,9 @@ const PREFIX = "turn-v1.";
  * shortens its own wait). Wire form `turn-v1.<base64url(json)>.<sig>` with
  * `exp` (and, when the gateway stamps it, `iat`) in Unix seconds. Anything
  * else (a standing host token, a malformed one) falls back to `arrivedAt` +
- * the TTL, which also caps the result. Both count from arrival, later than
- * the dispatch the token's clock started at, so they run a dispatch delay
- * late; the end reserve is what keeps that harmless.
+ * the TTL. Both count from arrival, later than the dispatch the token's clock
+ * started at, so they run a dispatch delay late; the end reserve is what
+ * keeps that harmless.
  */
 export function turnTokenExpiry(
   hostToken: string | undefined,
@@ -44,10 +40,9 @@ export function turnTokenExpiry(
   // snapshot-restored sandbox can run behind OR ahead). The token was minted
   // at dispatch, before arrival, so this overstates the expiry by the
   // dispatch delay (seconds); TURN_END_RESERVE_MS absorbs it. Without `iat`,
-  // `exp` is read on this clock, still never past arrival + TTL.
-  if (iat !== undefined && iat <= exp)
-    return Math.min(arrivedAt + (exp - iat) * 1000, fallback);
-  return Math.min(exp * 1000, fallback);
+  // `exp` is read on this clock.
+  if (iat !== undefined && iat <= exp) return arrivedAt + (exp - iat) * 1000;
+  return exp * 1000;
 }
 
 /** The token's claims object, or undefined for anything not a turn token. */

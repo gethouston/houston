@@ -206,6 +206,40 @@ describe("classifyQuietError", () => {
   });
 });
 
+describe("classifyQuietError (typed compute and conversation refusals)", () => {
+  const refusal = (body: Record<string, string>) =>
+    named("AgentsHttpError", JSON.stringify(body), { status: 503 });
+
+  it("names compute_busy its own class, never waking", () => {
+    strictEqual(
+      classifyQuietError(
+        refusal({ error: "engine unavailable", code: "compute_busy" }),
+      ),
+      "compute_busy",
+    );
+  });
+
+  it("leaves pod_wake_refused to the normal report path", () => {
+    strictEqual(
+      classifyQuietError(
+        refusal({ error: "engine unavailable", code: "pod_wake_refused" }),
+      ),
+      null,
+    );
+  });
+
+  it("names both conversation edit refusals one class", () => {
+    for (const code of [
+      "conversation_too_large_asleep",
+      "conversation_op_refused",
+    ])
+      strictEqual(
+        classifyQuietError(refusal({ error: "x", code })),
+        "conversation_edit_refused",
+      );
+  });
+});
+
 describe("quietErrorDetails", () => {
   it("serializes the parsed gateway JSON a HoustonEngineError keeps", () => {
     const body = { error: "engine proxy failed", detail: dial };
@@ -340,5 +374,18 @@ describe("showErrorToast routes the quiet classes to their own surfaces", () => 
     ok(
       rest.includes("reportQuietError(quiet, command, message, originalError)"),
     );
+  });
+});
+
+describe("the engine-call and rejection layers take waking from the quiet classifier", () => {
+  it("never shows the waking toast for a coded compute refusal", () => {
+    for (const file of ["tauri.ts", "global-error-handlers.ts"]) {
+      const source = readFileSync(
+        join(import.meta.dirname, `../src/lib/${file}`),
+        "utf8",
+      );
+      ok(!source.includes("isEngineWakingError("), `${file} reads the class`);
+      ok(source.includes('=== "engine_waking"'), `${file} gates on the class`);
+    }
   });
 });

@@ -214,3 +214,31 @@ async function listen(
       ),
   };
 }
+
+describe("a typed compute refusal keeps its code", () => {
+  test("compute_busy and pod_wake_refused reach the caller as themselves", async () => {
+    for (const code of ["compute_busy", "pod_wake_refused"]) {
+      const { res, captured } = fakeRes();
+      const outcome = await forwardAssistantCall(
+        gateway,
+        { method: "POST", path: "/agents/A/missions", query: {} },
+        {
+          operation: "startMission",
+          actingAs: "user-1",
+          fetchImpl: (async () =>
+            new Response(
+              JSON.stringify({ error: "engine unavailable", code }),
+              { status: 503 },
+            )) as unknown as typeof fetch,
+        },
+        res,
+      );
+      expect(outcome).toBe("refused");
+      expect(captured.status).toBe(503);
+      expect(JSON.parse(captured.body)).toEqual({
+        error: "engine unavailable",
+        code,
+      });
+    }
+  });
+});

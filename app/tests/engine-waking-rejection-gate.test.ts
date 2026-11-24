@@ -29,15 +29,15 @@ const read = (rel: string): string =>
 describe("global rejection handler declines engine-waking failures", () => {
   const source = read("../src/lib/global-error-handlers.ts");
 
-  it("gates capture + red toast on isEngineWakingError", () => {
+  it("gates capture + red toast on the engine_waking quiet class", () => {
     ok(
-      source.includes('from "./engine-waking-error"'),
-      "global-error-handlers.ts must import the waking classifier",
+      source.includes('from "./quiet-error-class"'),
+      "global-error-handlers.ts must import the quiet classifier",
     );
     const body = source.slice(source.indexOf("window.onunhandledrejection ="));
-    const guard = body.indexOf("if (isEngineWakingError(event.reason))");
+    const guard = body.indexOf('if (quiet === "engine_waking")');
     const capture = body.indexOf("analytics.captureException");
-    const redToast = body.indexOf("showErrorToast(");
+    const redToast = body.lastIndexOf("showErrorToast(");
     ok(guard !== -1, "the rejection handler must gate on engine waking");
     ok(
       body.indexOf(
