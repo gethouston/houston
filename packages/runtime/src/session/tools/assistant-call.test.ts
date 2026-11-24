@@ -257,6 +257,40 @@ test("any other gateway status becomes a gateway_error carrying the status", asy
   expect(text(result)).toContain("forbidden");
 });
 
+test("a compute_busy answer is sent once more and the second answer wins", async () => {
+  const replies = [
+    {
+      status: 503,
+      body: {
+        error: "engine unavailable",
+        code: "compute_busy",
+        retryAfterMs: 0,
+      },
+    },
+    { body: [{ id: "r1" }] },
+  ];
+  const calls = mockFetch(() => replies.shift() ?? { status: 500 });
+  const result = await run({
+    operation: "listRoutines",
+    params: { agentPath: "Work/Ada" },
+  });
+  expect(calls).toHaveLength(2);
+  expect(result.details).toEqual({ ok: true, operation: "listRoutines" });
+});
+
+test("a pod_wake_refused answer is operation_unavailable_here, sent once", async () => {
+  const calls = mockFetch(() => ({
+    status: 503,
+    body: { error: "engine unavailable", code: "pod_wake_refused" },
+  }));
+  const result = await run({
+    operation: "listRoutines",
+    params: { agentPath: "Work/Ada" },
+  });
+  expect(calls).toHaveLength(1);
+  expect(errorCode(result)).toBe("operation_unavailable_here");
+});
+
 test("an unreachable host is a transport_error, not an exception", async () => {
   globalThis.fetch = (async () => {
     throw new Error("ECONNREFUSED");

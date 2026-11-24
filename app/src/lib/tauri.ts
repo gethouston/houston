@@ -58,7 +58,6 @@ import {
   isLoopbackHostUrl,
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
-import { isEngineWakingError } from "./engine-waking-error";
 import { isNameTakenError } from "./file-conflicts";
 import { isFileGoneError } from "./file-gone";
 import { isUploadTooLargeError } from "./files-upload-limits";
@@ -78,6 +77,7 @@ import { isProviderLoginSessionLostError } from "./provider-login-session-lost";
 import { toDisplayProviderIdOrNull } from "./provider-overrides";
 import { normalizeLegacyModel } from "./providers";
 import { canPurchaseInApp } from "./purchase-policy";
+import { classifyQuietError } from "./quiet-error-class";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
 import { isStaleAttachmentError } from "./stale-attachment";
@@ -229,7 +229,7 @@ async function surfaceError(
     return true;
   }
 
-  if (isEngineWakingError(err)) {
+  if (classifyQuietError(err) === "engine_waking") {
     const { showEngineWakingToast } = await import("./error-toast");
     showEngineWakingToast(label, message, err, context);
     return true;

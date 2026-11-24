@@ -41,29 +41,34 @@ export async function liveTab(
   return opened;
 }
 
-export async function disposeSlot(slot: Slot): Promise<boolean> {
+export async function saveSlot(slot: Slot): Promise<boolean> {
+  const tab = await slot.tab?.catch(() => undefined);
+  return tab?.context.browser()?.isConnected() ? saveTab(tab) : true;
+}
+
+export async function disposeSlot(slot: Slot, save = true): Promise<boolean> {
   const pending = slot.tab;
   slot.tab = null;
   const tab = await pending?.catch(() => undefined);
-  return tab ? disposeTab(tab) : true;
+  return tab ? disposeTab(tab, save) : true;
 }
 
-async function disposeTab(tab: BrowserTab): Promise<boolean> {
+async function disposeTab(tab: BrowserTab, save: boolean): Promise<boolean> {
   if (!tab.context.browser()?.isConnected()) {
     await tab.backup?.dispose();
     return true;
   }
+  try {
+    return save ? await saveTab(tab) : true;
+  } finally {
+    await closeContext(tab);
+  }
+}
+
+function saveTab(tab: BrowserTab): Promise<boolean> {
   const save = async () => {
     await dismissPending(tab);
     await saveState(tab);
   };
-  try {
-    return await settledWithin(
-      save(),
-      CLOSE_GRACE_MS,
-      "saving sign-ins on close",
-    );
-  } finally {
-    await closeContext(tab);
-  }
+  return settledWithin(save(), CLOSE_GRACE_MS, "saving sign-ins");
 }

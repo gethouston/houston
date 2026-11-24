@@ -1,4 +1,9 @@
 import { isFirstDayNoProvider } from "@houston/sdk/agents/first-day-refusal";
+import {
+  isComputeBusyRefusal,
+  isConversationEditRefused,
+  isPodWakeRefused,
+} from "@houston/sdk/compute-quiet";
 import { isUploadInterruptedError } from "@houston/sdk/files/upload-interrupted";
 import { bridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
 import type { QuietErrorClass } from "@houston/sdk/quiet-error-class";
@@ -21,6 +26,9 @@ export function classifyQuietError(err: unknown): QuietErrorClass | null {
   if (isBugIntakeUnavailable(err)) return "bug_intake_unavailable";
   const bridge = bridgeQuietClass(err);
   if (bridge) return bridge;
+  if (isComputeBusyRefusal(err)) return "compute_busy";
+  if (isConversationEditRefused(err)) return "conversation_edit_refused";
+  if (isPodWakeRefused(err)) return null;
   if (isEngineWakingError(err)) return "engine_waking";
   if (isUploadInterruptedError(err)) return "upload_interrupted";
   if (isNetworkTransportError(err)) return "offline";

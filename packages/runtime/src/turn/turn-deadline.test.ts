@@ -28,9 +28,37 @@ test("the expiry is the token's exp, in ms", () => {
   );
 });
 
-test("an exp later than arrival plus the TTL is capped there (a sandbox clock behind the gateway's)", () => {
-  expect(turnTokenExpiry(expiringIn(45 * MIN), NOW)).toBe(
-    NOW + TURN_TOKEN_TTL_MS,
+test("a 4 hour turn token keeps its whole lifetime, past the 30 minute fallback", () => {
+  const HOUR = 60 * MIN;
+  const expiresAt = turnTokenExpiry(expiringIn(4 * HOUR), NOW);
+  expect(expiresAt).toBe(NOW + 4 * HOUR);
+  const at = (elapsed: number) =>
+    turnHandoffBudget(expiresAt, () => NOW + elapsed)();
+  expect(at(3 * HOUR)).toBe(BROWSER_HANDOFF_LIMIT_MS);
+  const lastStart = 4 * HOUR - TURN_END_RESERVE_MS - MIN_HANDOFF_MS;
+  expect(at(lastStart)).toBe(MIN_HANDOFF_MS);
+  expect(at(lastStart + 1)).toBeNull();
+  const iatToken = turnToken({
+    iat: (NOW - MIN) / 1000,
+    exp: (NOW + 4 * HOUR - MIN) / 1000,
+  });
+  expect(turnTokenExpiry(iatToken, NOW)).toBe(NOW + 4 * HOUR);
+});
+
+test("a hand-off ends before the gateway's wind-down, with time left to finish", () => {
+  const HOUR = 60 * MIN;
+  const settle = 2 * MIN;
+  const windDown = 5 * MIN;
+  const exp = 4 * HOUR + settle;
+  const windDownAt = 4 * HOUR - windDown;
+  const budget = turnHandoffBudget(
+    NOW + exp,
+    () => NOW + windDownAt - 10 * MIN,
+  );
+  const left = budget();
+  expect(left).not.toBeNull();
+  expect(windDownAt - 10 * MIN + (left ?? 0)).toBeLessThanOrEqual(
+    windDownAt - 3 * MIN,
   );
 });
 
@@ -45,8 +73,6 @@ test("with iat the lifetime counts from arrival, whatever this sandbox's clock s
     exp: (NOW - 5 * MIN) / 1000,
   });
   expect(turnTokenExpiry(ahead, NOW)).toBe(NOW + 15 * MIN);
-  const long = turnToken({ iat: NOW / 1000, exp: (NOW + 45 * MIN) / 1000 });
-  expect(turnTokenExpiry(long, NOW)).toBe(NOW + TURN_TOKEN_TTL_MS);
   const inverted = turnToken({
     iat: (NOW + 9 * MIN) / 1000,
     exp: (NOW + 8 * MIN) / 1000,
@@ -83,7 +109,7 @@ test("the budget is the full limit while the token has room, then its remainder"
 
 test("the budget is read at each hand-off, not when the turn started", () => {
   let now = NOW;
-  const budget = turnHandoffBudget(NOW + 20 * MIN, () => now);
+  const budget = turnHandoffBudget(NOW + 27 * MIN, () => now);
   expect(budget()).toBe(BROWSER_HANDOFF_LIMIT_MS);
   now += 12 * MIN;
   expect(budget()).toBe(5 * MIN);

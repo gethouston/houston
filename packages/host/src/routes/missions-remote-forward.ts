@@ -1,5 +1,6 @@
 import type { ServerResponse } from "node:http";
 import { isAgentDelegationRefusalCode } from "@houston/protocol";
+import { parseComputeRefusal } from "@houston/wire-types";
 import { json } from "./http";
 import { delegationRefusal } from "./mission-delegation-refusals";
 import type {
@@ -116,6 +117,14 @@ async function forward(
   if (upstream.ok) {
     onSuccess?.(payload);
     json(res, upstream.status, payload);
+    return upstream.status;
+  }
+  const refusal = parseComputeRefusal(payload);
+  if (refusal) {
+    console.error(
+      `[missions] ${target.name} refused the call (${upstream.status}): ${refusal.code}`,
+    );
+    json(res, upstream.status, refusal);
     return upstream.status;
   }
   const reason = errorText(payload);

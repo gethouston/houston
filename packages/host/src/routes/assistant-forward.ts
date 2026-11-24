@@ -1,4 +1,5 @@
 import type { ServerResponse } from "node:http";
+import { parseComputeRefusalText } from "@houston/wire-types";
 import { ACTING_AS_HEADER } from "../auth/acting";
 import { assistantCallHeaders } from "../auth/assistant-call";
 import type { AssistantUpstreamRequest } from "./assistant-dispatch";
@@ -84,6 +85,11 @@ export async function forwardAssistantCall(
     console.error(
       `[assistant] ${operation} refused by the gateway (${upstream.status}): ${text.slice(0, 300)}`,
     );
+    const refusal = parseComputeRefusalText(text);
+    if (refusal) {
+      json(res, upstream.status, refusal);
+      return "refused";
+    }
     const status =
       upstream.status >= 300 && upstream.status < 400 ? 502 : upstream.status;
     json(res, status, {

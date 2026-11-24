@@ -51,12 +51,11 @@ Decisions and external constraints of runtime config and boot, the transcript st
 
 `handleClaudeOAuthCredential` needs both credential sinks because the SDK reads them differently across operating systems. On Linux, `<CLAUDE_CONFIG_DIR>/.credentials.json` is the SDK and `claude auth status` source, and the shared directory carries the pushed credential to every agent runtime. On macOS and Windows, the SDK reads the OS credential store rather than that pushed file. The runtime therefore also stores the token in `auth.json` so `readAnthropicToken` and `buildClaudeEnv` can supply `CLAUDE_CODE_OAUTH_TOKEN`. That environment token takes precedence over file and OS stores on all three systems.
 
-## Credential rollback and actionable errors (packages/runtime/src/transport/api-key-rollback.ts, packages/runtime/src/transport/auth-action-route.ts, packages/runtime/src/transport/generate-route.ts)
+## Credential rollback and actionable errors (packages/runtime/src/transport/api-key-rollback.ts, packages/runtime/src/transport/auth-action-route.ts)
 
 - `handleApiKeyRollback` is necessary because runtime verification and persistence precede the host's central credential write. If that central write fails, the local key has no `served-providers.json` provenance, so an authoritative central not-connected response cannot remove it. Without rollback, the key works locally until the pod recycles, then disappears.
 - `handleAuthAction` preserves a typed login error's `kind`, such as a busy Codex callback port, because the frontend uses it to select an actionable sign-in message. Flattening the error to text loses that routing information.
 - The logout branch of `handleAuthAction` records when an OpenAI-compatible sign-out also removes custom endpoint configuration. That attribution distinguishes an explicit sign-out from an unexplained endpoint disappearance.
-- `handleGenerateRoute` returns generation failures as HTTP 400 with their reason because the Create-with-AI dialog must explain why the requested creation failed, including an unparseable model response.
 
 ## Conversation request contracts (packages/runtime/src/transport/conversation-routes.ts, packages/runtime/src/transport/conversation-start-turn.ts, packages/runtime/src/transport/interaction-owner-gate.ts)
 

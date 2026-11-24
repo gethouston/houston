@@ -36,6 +36,7 @@ export interface TurnSandboxDeps {
   authoringPin?: LiveTurnPin;
   orgSlug: string;
   agentSlug: string;
+  customOAuthCallbackUrl?: string;
   fetchImpl?: typeof fetch;
   coordinator?: TurnCoordinatorSession;
 }

@@ -1,9 +1,16 @@
 import type { ProviderError } from "@houston/runtime-client";
 import { quotaExhaustedActive } from "../auth/credential-health";
 import { currentCredentialScope } from "../session/acting-context";
+import {
+  CODEX_PROVIDER,
+  MEMORY_CAP,
+  persistedRefusals,
+  persistRefusal,
+  type Remembered,
+  type RememberedRefusal,
+  refusalExpired,
+} from "./codex-refusal-persisted";
 import { classifyProviderError, stampCredentialScope } from "./provider-error";
-
-const CODEX_PROVIDER = "openai-codex";
 
 const REASON_PHRASES: ReadonlySet<string> = new Set([
   "bad request",
@@ -34,16 +41,7 @@ export function isCodexTerseRefusal(
   }
 }
 
-type RememberedRefusal = Extract<
-  ProviderError,
-  { kind: "model_unavailable" | "quota_exhausted" }
->;
-
-const MEMORY_TTL_MS = 30 * 60 * 1000;
-
-const MEMORY_CAP = 64;
-
-const remembered = new Map<string, { error: RememberedRefusal; at: number }>();
+const remembered = new Map<string, Remembered>();
 
 function gateKey(model: string): string {
   return `${currentCredentialScope().key}:gate:${model}`;
@@ -59,8 +57,10 @@ export function noteCodexRefusal(error: ProviderError): void {
     return;
   const key =
     error.kind === "model_unavailable" ? gateKey(error.model) : quotaKey();
-  remembered.set(key, { error, at: Date.now() });
+  const entry = { error, at: Date.now() };
+  remembered.set(key, entry);
   pruneMemory();
+  persistRefusal(key, entry);
 }
 
 function pruneMemory(): void {
@@ -71,19 +71,21 @@ function pruneMemory(): void {
   }
 }
 
-function recall(key: string): RememberedRefusal | null {
-  const entry = remembered.get(key);
-  if (!entry) return null;
-  const expired =
-    Date.now() - entry.at > MEMORY_TTL_MS ||
-    (entry.error.kind === "quota_exhausted" &&
-      entry.error.resets_at !== null &&
-      Date.parse(entry.error.resets_at) <= Date.now());
-  if (expired) {
+function recall(
+  key: string,
+  persisted: () => Map<string, Remembered>,
+): RememberedRefusal | null {
+  const now = Date.now();
+  const live = [remembered.get(key), persisted().get(key)].filter(
+    (entry): entry is Remembered =>
+      entry !== undefined && !refusalExpired(entry, now),
+  );
+  const freshest = live.toSorted((a, b) => b.at - a.at)[0];
+  if (!freshest) {
     remembered.delete(key);
     return null;
   }
-  return entry.error;
+  return freshest.error;
 }
 
 export interface TerseRefusalInput {
@@ -122,9 +124,14 @@ function fromRetryAttempt(input: TerseRefusalInput): RememberedRefusal | null {
 }
 
 function fromMemory(input: TerseRefusalInput): RememberedRefusal | null {
-  const gate = input.model ? recall(gateKey(input.model)) : null;
+  let persisted: Map<string, Remembered> | undefined;
+  const loadPersisted = () => {
+    persisted ??= persistedRefusals();
+    return persisted;
+  };
+  const gate = input.model ? recall(gateKey(input.model), loadPersisted) : null;
   if (gate) return gate;
-  const quota = recall(quotaKey());
+  const quota = recall(quotaKey(), loadPersisted);
   if (quota?.kind === "quota_exhausted")
     return { ...quota, model: input.model };
   if (quotaExhaustedActive(input.provider)) {

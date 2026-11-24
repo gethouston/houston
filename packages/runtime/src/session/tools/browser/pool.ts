@@ -1,11 +1,17 @@
-import { sep } from "node:path";
 import type { Browser } from "playwright-core";
 import { ACTION_DEADLINE_MS, withinDeadline } from "./action-deadline";
 import { type BackupBrowser, backupFromEnv } from "./kernel-tab";
 import { launchBrowser } from "./launch";
 import { LocalBrowser } from "./local-browser";
 import { type BrowserTab, openTab } from "./open-tab";
-import { disposeSlot, liveTab, newSlot, type Slot } from "./pool-slot";
+import {
+  disposeSlot,
+  liveTab,
+  newSlot,
+  type Slot,
+  saveSlot,
+} from "./pool-slot";
+import { eachSlotUnder } from "./pool-under";
 import { maxTabPages } from "./tab-pages";
 import { slotSwap, type TabSwap } from "./tab-swap";
 
@@ -76,24 +82,23 @@ export class BrowserPool {
     return slot ? this.enqueue(slot, () => disposeSlot(slot)) : true;
   }
 
+  async saveUnder(dir: string): Promise<void> {
+    await eachSlotUnder(this.slots, dir, "saving a turn's sign-ins", (slot) =>
+      this.enqueue(slot, () => saveSlot(slot)),
+    );
+  }
+
   async closeUnder(dir: string): Promise<void> {
-    const prefix = dir.endsWith(sep) ? dir : `${dir}${sep}`;
-    const keys = [...this.slots]
-      .filter(([, slot]) => slot.statePath.startsWith(prefix))
-      .map(([key]) => key);
-    const results = await Promise.allSettled(
-      keys.map((key) => this.closeTab(key)),
+    const keys = await eachSlotUnder(
+      this.slots,
+      dir,
+      "closing a turn's browser",
+      (slot) => this.enqueue(slot, () => disposeSlot(slot, false)),
     );
     for (const key of keys) {
       const slot = this.slots.get(key);
       if (slot?.pending === 0 && !slot.tab) this.slots.delete(key);
     }
-    for (const result of results)
-      if (result.status === "rejected")
-        console.error(
-          "[browser] closing a turn's browser failed",
-          result.reason,
-        );
   }
 
   async shutdown(): Promise<void> {

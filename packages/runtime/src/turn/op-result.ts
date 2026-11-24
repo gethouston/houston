@@ -17,4 +17,5 @@ export interface OpResult {
   decline?: boolean;
   tooLarge?: true;
   privateRefused?: true;
+  untouched?: true;
 }

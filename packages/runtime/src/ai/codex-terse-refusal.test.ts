@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
@@ -206,5 +206,63 @@ test("refusals from other providers are never remembered", () => {
       model: "gpt-5.4-mini",
       message: BAD_REQUEST,
     }),
+  ).toBeNull();
+});
+
+const { runWithConversationId } = await import(
+  "../session/conversation-context"
+);
+
+test("the conversation's persisted refusal outlives this process, for half an hour", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(Date.parse("2026-11-22T10:00:00Z"));
+  const dataDir = mkdtempSync(join(tmpdir(), "houston-terse-turn-"));
+  const inTurn = <T>(fn: () => T) => runWithConversationId("c1", fn, dataDir);
+  inTurn(() =>
+    noteCodexRefusal({
+      kind: "quota_exhausted",
+      provider: "openai-codex",
+      model: "gpt-6-astra",
+      scope: "unknown",
+      resets_at: null,
+      message: USAGE_LIMIT,
+    }),
+  );
+  resetCodexRefusalMemory();
+  const terse = () =>
+    resolveCodexTerseRefusal({
+      provider: "openai-codex",
+      model: "gpt-5.4-mini",
+      message: BAD_REQUEST,
+    });
+  expect(inTurn(terse)).toMatchObject({
+    kind: "quota_exhausted",
+    model: "gpt-5.4-mini",
+  });
+  expect(terse()).toBeNull();
+  vi.setSystemTime(Date.parse("2026-11-22T10:31:00Z"));
+  expect(inTurn(terse)).toBeNull();
+});
+
+test("a persisted refusal of the wrong shape is ignored", () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "houston-terse-bad-"));
+  mkdirSync(join(dataDir, "sessions", "c1"), { recursive: true });
+  writeFileSync(
+    join(dataDir, "sessions", "c1", "codex-refusals.json"),
+    JSON.stringify({
+      "team:quota": { at: Date.now(), error: { kind: "quota_exhausted" } },
+    }),
+  );
+  expect(
+    runWithConversationId(
+      "c1",
+      () =>
+        resolveCodexTerseRefusal({
+          provider: "openai-codex",
+          model: "gpt-5.4-mini",
+          message: BAD_REQUEST,
+        }),
+      dataDir,
+    ),
   ).toBeNull();
 });

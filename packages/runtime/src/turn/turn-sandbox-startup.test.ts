@@ -63,3 +63,20 @@ test("the turn's plan limits reach its sandbox's routine writes", () => {
     expect.objectContaining({ limits: { routineMinIntervalMinutes: 15 } }),
   );
 });
+
+test("the gateway's custom sign-in callback reaches the turn's sandbox", () => {
+  const customOAuthCallbackUrl =
+    "https://gateway.test/v1/integrations/custom/oauth/callback";
+  createTurnSandbox({
+    deps: {} as TurnServerDeps,
+    turn: { ...turn, coordinator: undefined, customOAuthCallbackUrl },
+    identity: { org: "acme", agent: "a551abc" },
+    resolved: { store: {}, prefix: "ws/acme/a551abc" } as ReturnType<
+      typeof resolveTurnStore
+    >,
+    filesystem: { kind: "cloudrun" } as TurnFilesystem,
+  });
+  expect(makeTurnSandboxFetch).toHaveBeenCalledWith(
+    expect.objectContaining({ customOAuthCallbackUrl }),
+  );
+});

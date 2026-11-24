@@ -15,7 +15,6 @@ import { turnsInFlight } from "../session/turn-inflight-count";
 import { handleBrowserLiveRoute } from "./browser-live-route";
 import { handleConversationRoute } from "./conversation-routes";
 import { applyCors } from "./cors";
-import { handleGenerateRoute } from "./generate-route";
 import {
   authorized,
   json,
@@ -55,7 +54,6 @@ async function handle(ctx: RouteContext) {
   if (await handleProviderRoute(ctx)) return;
   if (await handleConversationRoute(ctx)) return;
   if (await handleBrowserLiveRoute(ctx)) return;
-  if (await handleGenerateRoute(ctx)) return;
 
   json(ctx.res, 404, { error: "not found" });
 }

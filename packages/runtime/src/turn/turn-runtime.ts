@@ -8,6 +8,7 @@ import {
   ensureQwenRuntimeProvider,
   type QwenProviderRegistrar,
 } from "../ai/qwen-dashscope";
+import { TurnCredentialStore } from "./turn-credential-store";
 import { resolveTurnModel } from "./turn-model";
 
 const TURN_RUNTIME_INPUTS = new Set([
@@ -51,7 +52,7 @@ export async function createTurnModelRuntime(
   timings?: Record<string, number>,
 ) {
   const modelRuntime = await ModelRuntime.create({
-    authPath: join(dataDir, "auth.json"),
+    credentials: new TurnCredentialStore(join(dataDir, "auth.json")),
     modelsPath: join(dataDir, "models.json"),
   });
   registerTurnProviders(modelRuntime, dataDir);

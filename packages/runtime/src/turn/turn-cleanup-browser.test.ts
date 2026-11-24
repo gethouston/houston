@@ -46,14 +46,18 @@ describe.skipIf(!available)(
   "a pooled turn's browser against a real Chromium",
   { timeout: 30_000 },
   () => {
-    test("closing a turn's workspace saves and forgets its context; the idle sweep never recreates it", async () => {
+    test("saving a turn's workspace keeps its context; closing it saves nothing and forgets it; the idle sweep never recreates it", async () => {
       const pool = fixturePool({ idleMs: 100 });
       const { root, workspaceDir } = turnRoot();
       const statePath = browserStatePath(workspaceDir);
       const tab = await pool.run("k", statePath, async (t) => t);
+      await pool.saveUnder(root);
+      expect(existsSync(statePath)).toBe(true);
+      expect(tab.context.pages().length).toBeGreaterThan(0);
+      rmSync(statePath);
       await pool.closeUnder(root);
       expect(tab.context.pages()).toHaveLength(0);
-      expect(existsSync(statePath)).toBe(true);
+      expect(existsSync(statePath)).toBe(false);
       rmSync(root, { recursive: true, force: true });
       await sleep(400);
       expect(existsSync(root)).toBe(false);
@@ -61,7 +65,7 @@ describe.skipIf(!available)(
       expect(existsSync(root)).toBe(false);
     });
 
-    test("cleanup ends a waiting hand-off and saves sign-ins before the root goes", async () => {
+    test("cleanup ends a waiting hand-off, whose own save lands before the root goes", async () => {
       const { root, workspaceDir } = turnRoot();
       const chat = "turn-cleanup-chat";
       const run = handoffTool(workspaceDir, sharedBrowserPool, sharedHandoffs, {

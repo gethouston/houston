@@ -241,16 +241,3 @@ export interface ConversationHistory {
   offset?: number;
   totalMessages?: number;
 }
-
-export interface SuggestedRoutine {
-  name: string;
-  prompt: string;
-  schedule: string;
-}
-
-export interface GenerateAgentResponse {
-  name: string;
-  instructions: string;
-  suggestedIntegrations: string[];
-  suggestedRoutine: SuggestedRoutine | null;
-}

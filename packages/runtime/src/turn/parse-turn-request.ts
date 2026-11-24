@@ -9,6 +9,7 @@ import {
   TurnTimezoneSchema,
 } from "@houston/wire-types";
 import { parseMissionTitle } from "../session/mission-title";
+import { customOAuthCallbackUrl } from "./op-grammar-custom-oauth";
 import { assertRoutineEventBounds } from "./parse-routine-events";
 import { parseTurnCoordinator } from "./parse-turn-coordinator";
 import { parseTurnCredential } from "./parse-turn-credential";
@@ -182,6 +183,13 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     routine,
     claim,
     grant,
+    ...(grant && b.customOAuthCallbackUrl !== undefined
+      ? {
+          customOAuthCallbackUrl: customOAuthCallbackUrl(
+            b.customOAuthCallbackUrl,
+          ),
+        }
+      : {}),
     ...coordinator,
     ...(claim && b.prefetch !== undefined
       ? { prefetch: parsePrefetchedObjects(b.prefetch) }

@@ -98,7 +98,6 @@ export const PROXY_MEMBERS: ProxyMember[] = [
     rest: "conversations/:conversationId/browser/input",
     engines: STANDING,
   },
-  { method: "POST", rest: "generate-agent", engines: STANDING },
 ];
 
 export const HOST_SERVED_RESTS: string[] = [];

@@ -7,6 +7,7 @@ import type {
 import type { PrefetchedObjects } from "@houston/runtime-client/object-sync";
 import type { ServedCredential } from "../auth/auth-file";
 import type { ClaudeSubscriptionType } from "../auth/claude-plan";
+import type { TurnCredentialHealthMark } from "../auth/turn-credential-channel";
 import type { MissionTitleRequest } from "../session/mission-title";
 
 export type TurnGrantScope =
@@ -29,6 +30,7 @@ export interface TurnCoordinator {
 
 export type TurnCredential = ServedCredential & {
   subscriptionType?: ClaudeSubscriptionType;
+  health?: TurnCredentialHealthMark;
 };
 
 export interface TurnRequest {
@@ -69,6 +71,7 @@ export interface TurnRequest {
     heartbeatUrl: string;
   };
   grant?: TurnGrant;
+  customOAuthCallbackUrl?: string;
   coordinator?: TurnCoordinator;
   approvals?: unknown;
   grants?: GrantableOperation[];

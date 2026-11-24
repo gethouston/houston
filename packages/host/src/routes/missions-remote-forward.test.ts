@@ -233,3 +233,30 @@ test("agent-caller forwarding carries acting identity and typed gateway refusals
       "Dobby isn't taking new missions from other AI Employees right now. You can still read its instructions and missions. The user can turn this on in Dobby's settings under Teamwork, or you can do the work yourself.",
   });
 });
+
+test("a typed compute refusal is relayed with its own code", async () => {
+  for (const code of ["compute_busy", "pod_wake_refused"]) {
+    const { res, captured } = fakeRes();
+    await forwardMissionStart(
+      route(
+        answers(
+          503,
+          JSON.stringify({
+            error: "engine unavailable",
+            code,
+            retryAfterMs: 3000,
+          }),
+        ),
+      ),
+      { title: "t", prompt: "p" },
+      { session_key: "c", agent: "a", depth: 1 },
+      res,
+    );
+    expect(captured.status).toBe(503);
+    expect(captured.body).toEqual({
+      error: "engine unavailable",
+      code,
+      retryAfterMs: 3000,
+    });
+  }
+});

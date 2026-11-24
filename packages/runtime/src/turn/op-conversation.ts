@@ -1,10 +1,13 @@
 import { join, posix } from "node:path";
-import { PRIVATE_REFUSED_CODE } from "@houston/host/src/op/dispatch-relay";
 import { LazyReadRefusedError } from "@houston/host/src/vfs";
 import {
   CONVERSATION_IMPORT_INVALID,
   parseConversationImportRequest,
 } from "@houston/protocol";
+import {
+  CONVERSATION_OP_REFUSED,
+  CONVERSATION_TOO_LARGE_ASLEEP,
+} from "@houston/wire-types";
 import {
   appendAssistantMessageAt,
   deleteConversationAt,
@@ -90,11 +93,14 @@ export async function applyConversationOp(
         error.reason === "private"
           ? {
               error: "conversation could not be read asleep",
-              code: PRIVATE_REFUSED_CODE,
+              code: CONVERSATION_OP_REFUSED,
             }
-          : { error: "conversation too large to edit asleep" },
+          : {
+              error: "conversation too large to edit asleep",
+              code: CONVERSATION_TOO_LARGE_ASLEEP,
+            },
       ),
-      decline: true,
+      untouched: true,
     };
   }
   if (

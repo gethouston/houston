@@ -33,8 +33,11 @@ describe("a refused lazy read is named for why it was refused", () => {
       fs,
     );
     expect(conversation.status).toBe(503);
+    expect(conversation.decline).toBeUndefined();
+    expect(conversation.untouched).toBe(true);
     expect(JSON.parse(conversation.body)).toEqual({
       error: "conversation too large to edit asleep",
+      code: "conversation_too_large_asleep",
     });
     expect(
       await settleAbandonedChat(fs, CID, {
@@ -52,10 +55,11 @@ describe("a refused lazy read is named for why it was refused", () => {
       fs,
     );
     expect(conversation.status).toBe(503);
-    expect(conversation).toMatchObject({ decline: true });
+    expect(conversation.decline).toBeUndefined();
+    expect(conversation.untouched).toBe(true);
     expect(JSON.parse(conversation.body)).toEqual({
       error: "conversation could not be read asleep",
-      code: "private_state_refused",
+      code: "conversation_op_refused",
     });
     expect(
       await settleAbandonedChat(fs, CID, {

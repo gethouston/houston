@@ -21,6 +21,10 @@ export function parseTurnCredential(value: unknown): TurnCredential | null {
     ...(typeof c.enterpriseUrl === "string" && c.enterpriseUrl
       ? { enterpriseUrl: c.enterpriseUrl }
       : {}),
+    ...(c.scope === "personal" || c.scope === "team" ? { scope: c.scope } : {}),
+    ...(c.health === "needs_reconnect" || c.health === "out_of_credits"
+      ? { health: c.health }
+      : {}),
     ...(subscriptionType ? { subscriptionType } : {}),
   };
 }

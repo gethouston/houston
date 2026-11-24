@@ -76,11 +76,12 @@ Decisions and external constraints of the pooled per-turn runtime (`packages/run
 - `DOC_MERGE_ROUNDS` allows ten PUT attempts to accommodate ten runs of one agent finishing together. Writers racing in lockstep can land only one per round; jitter breaks that lockstep.
 - `refreshDocument` records the remote bytes, hash and generation in the manifest, even when the local file contains merged changes. A failed upload must retry against the store's actual version. Unsaved merged bytes cannot become a trusted merge base.
 
-## Hydration budgets and archive coordination (`packages/runtime/src/turn/turn-filesystem.ts`, `packages/runtime/src/turn/turn-hot-set-archive.ts`, `packages/runtime/src/turn/turn-hot-set.ts`)
+## Hydration budgets and archive coordination (`packages/runtime/src/turn/turn-filesystem.ts`, `packages/runtime/src/turn/turn-hot-set.ts`, `packages/runtime/src/turn/turn-archive-fetch.ts`, `packages/runtime/src/turn/turn-routine-context.ts`)
 
 - `TURN_DEFERRED_MAX_BYTES` is 8 GiB. Together with the 2 GiB startup cap, it fits within the pool sandbox's measured 22 GB disk capacity.
-- `EAGER_ARCHIVE_SEGMENTS` is two and must match the gateway's prefetch count in `internal/pooldispatch/prefetch.go`. The live transcript plus these newest segments nearly always contains `ROUTINE_REPLAY_TAIL`, avoiding another read before routine replay.
-- `ownConversationOnly` must keep archive hydration bounded. A shared routine conversation adds a segment approximately every 6 MiB of runs and never shrinks, so downloading its complete archive on every fire produces unbounded transfer growth.
+- `ownConversationOnly` admits no archive segment (ADR 0116). A shared routine conversation adds a segment approximately every 6 MiB of runs and never shrinks, so hydrating its archive on every fire produces unbounded transfer growth.
+- `turnArchiveLoader` enters a fetched segment in the turn's manifest with the bytes' hash, exactly like a hydrated one: the sync never re-uploads it, and a local delete of it reaches the store. A segment the store lacks too is reported and fails the fetch (`ArchiveSegmentMissingError`); the caller decides whether its read can go on past the hole.
+- `loadRoutineReplayArchive` treats a segment the store lost as a shorter digest, not a failure: failing there would fail every run of the routine for good. Any other fetch failure fails the turn.
 
 ## Store-backed reads (`packages/runtime/src/turn/turn-filesystem-types.ts`, `packages/runtime/src/turn/turn-filesystem.ts`, `packages/runtime/src/turn/turn-store-read.ts`, `packages/runtime/src/turn/turn-mission-title-remote.ts`)
 

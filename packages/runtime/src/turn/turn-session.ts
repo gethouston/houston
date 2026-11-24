@@ -84,6 +84,7 @@ export async function runTurn(
         mode: mode ?? "execute",
         liveMode: turn.liveMode,
         model,
+        dataDir,
       },
       () =>
         promptTurnSession({
@@ -118,6 +119,7 @@ export async function runTurn(
       compaction,
       provider,
       turnId,
+      usedTokens,
       emit,
     });
     if (frames.usage)

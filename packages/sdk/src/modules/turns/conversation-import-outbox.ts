@@ -3,7 +3,9 @@ import {
   parseConversationImportRequest,
 } from "@houston/protocol";
 import { EngineError } from "@houston/runtime-client";
+import { isConversationEditRefusalCode } from "@houston/wire-types";
 import type { ModuleContext } from "../../module-context";
+import { refusalCode } from "../refusal-code";
 
 export interface PendingConversationImport {
   agentId: string;
@@ -16,7 +18,10 @@ export const PENDING_IMPORTS_KEY = "turns.pendingImports";
 function isFinalRefusal(err: unknown): boolean {
   return (
     err instanceof EngineError &&
-    (err.status === 400 || err.status === 403 || err.status === 404)
+    (err.status === 400 ||
+      err.status === 403 ||
+      err.status === 404 ||
+      isConversationEditRefusalCode(refusalCode(err)))
   );
 }
 

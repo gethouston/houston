@@ -313,3 +313,41 @@ test("the envelope's plan limits ride the op, and only valid ones", () => {
     parseOpRequest({ ...base, limits: { routineMinIntervalMinutes: "15" } }),
   ).not.toHaveProperty("limits");
 });
+
+test("an op's credential keeps every served field the turn envelope keeps", () => {
+  const base = {
+    workspaceId: "w1",
+    agentId: "a1",
+    gcsPrefix: "ws/w1/a1",
+    hostToken: "ht",
+    claim: { id: "c", bootId: "b", token: "t", heartbeatUrl: "http://x/hb" },
+    op: { kind: "title", text: "hello" },
+  };
+  const parsed = parseOpRequest({
+    ...base,
+    credential: {
+      provider: "github-copilot",
+      access: "tok",
+      expires: 123,
+      accountId: "acct",
+      kind: "oauth",
+      enterpriseUrl: "ghe.example.com",
+      scope: "personal",
+      subscriptionType: "max",
+    },
+  });
+  expect(parsed.credential).toEqual({
+    provider: "github-copilot",
+    access: "tok",
+    expires: 123,
+    accountId: "acct",
+    kind: "oauth",
+    enterpriseUrl: "ghe.example.com",
+    scope: "personal",
+    subscriptionType: "max",
+  });
+  expect(parseOpRequest(base).credential).toBeNull();
+  expect(() =>
+    parseOpRequest({ ...base, credential: { provider: "openai-codex" } }),
+  ).toThrow("invalid 'credential'");
+});

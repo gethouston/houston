@@ -8,6 +8,7 @@ import {
   readServedProvidersAt,
   servedProvidersPathIn,
 } from "./auth-file";
+import { reportTurnAuthFailure } from "./report-revoked-turn";
 import { revocationConfirmed } from "./revocation-markers";
 import { servedScopeFor } from "./served-scope";
 
@@ -15,6 +16,7 @@ export function reportRevokedServedToken(
   err: ProviderError,
   usedAccessDigest: string | undefined,
 ): void {
+  if (reportTurnAuthFailure(err, usedAccessDigest)) return;
   void reportRevoked(err, usedAccessDigest).catch(() => {});
 }
 
@@ -45,19 +47,18 @@ async function reportRevoked(
     );
     return;
   }
-  const digest = usedAccessDigest;
   const stored = readAuthFile(authPathIn(config.dataDir, key))[provider];
   if (
     stored?.type === "oauth" &&
     stored.access &&
-    accessDigest(stored.access) !== digest
+    accessDigest(stored.access) !== usedAccessDigest
   ) {
     console.log(
       `[serve] stored ${provider} token differs from the one the failed turn ran on; reporting the failed token's digest`,
     );
   }
   const scope = servedScopeFor(provider) ?? "team";
-  const dedupe = `${key}:${provider}:${digest}`;
+  const dedupe = `${key}:${provider}:${usedAccessDigest}`;
   if (reported.has(dedupe)) {
     console.log(
       `[serve] suppressed a duplicate revoked-token report for ${provider} (already reported this token)`,
@@ -65,7 +66,6 @@ async function reportRevoked(
     return;
   }
   reported.add(dedupe);
-
   try {
     const res = await fetch(
       `${config.controlPlaneUrl}/sandbox/credential/revoked`,
@@ -77,7 +77,7 @@ async function reportRevoked(
         },
         body: JSON.stringify({
           provider,
-          accessSha256: digest,
+          accessSha256: usedAccessDigest,
           scope,
           ...(actingAs ? { actingAs } : {}),
         }),

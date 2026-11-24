@@ -14,6 +14,7 @@ export type AssistantErrorCode =
   | "plan_mode"
   | "not_in_turn"
   | "protected_conversation"
+  | "compute_busy"
   | "gateway_error"
   | "transport_error";
 

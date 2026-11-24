@@ -24,9 +24,10 @@ export async function syncOp(input: {
   if (!isRead) {
     const treeOp = op.op.kind === "route" || op.op.kind === "conversation";
     if (
-      result.tooLarge ||
-      result.privateRefused ||
-      (treeOp && result.status >= 500)
+      !result.untouched &&
+      (result.tooLarge ||
+        result.privateRefused ||
+        (treeOp && result.status >= 500))
     ) {
       console.error(
         `[op] handler failed before sync: status=${result.status} tooLarge=${result.tooLarge === true} privateRefused=${result.privateRefused === true} prefix=${resolved.prefix} kind=${op.op.kind}`,

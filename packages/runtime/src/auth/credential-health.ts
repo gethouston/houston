@@ -5,6 +5,7 @@ import {
   readProviderMarks,
   writeProviderMarks,
 } from "./provider-marks";
+import { reportTurnCredentialHealth } from "./turn-credential-report";
 
 const QUOTA_MARK_TTL_MS = 60 * 60 * 1000;
 
@@ -30,9 +31,11 @@ export function noteQuotaExhausted(
     expiresAt: Number.isNaN(parsed) ? Date.now() + QUOTA_MARK_TTL_MS : parsed,
   });
   writeProviderMarks(marks);
+  reportTurnCredentialHealth("out_of_credits", id, { resetsAt });
 }
 
 export function clearProviderMarks(id: string): void {
+  reportTurnCredentialHealth("connected", id);
   const marks = readProviderMarks();
   const mark = markFor(id);
   const hadAuth = marks.authFailed.delete(mark);

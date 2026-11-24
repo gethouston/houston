@@ -3,7 +3,7 @@ import type { HandoffBudget } from "../session/tools/browser/tool";
 
 export const TURN_TOKEN_TTL_MS = 30 * 60_000;
 
-export const TURN_END_RESERVE_MS = 3 * 60_000;
+export const TURN_END_RESERVE_MS = 10 * 60_000;
 
 export const MIN_HANDOFF_MS = 60_000;
 
@@ -19,9 +19,8 @@ export function turnTokenExpiry(
   const exp = seconds(claims.exp);
   if (exp === undefined) return fallback;
   const iat = seconds(claims.iat);
-  if (iat !== undefined && iat <= exp)
-    return Math.min(arrivedAt + (exp - iat) * 1000, fallback);
-  return Math.min(exp * 1000, fallback);
+  if (iat !== undefined && iat <= exp) return arrivedAt + (exp - iat) * 1000;
+  return exp * 1000;
 }
 
 function readClaims(

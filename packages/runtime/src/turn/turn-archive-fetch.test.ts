@@ -83,7 +83,7 @@ function fixture() {
   return { storeRoot, agent, tree, reads, manifest, load, conversations };
 }
 
-test("a window inside the hydrated segments touches the store not at all", async () => {
+test("a window inside the segments on disk touches the store not at all", async () => {
   const { load, reads, conversations } = fixture();
   await load("routine-r1", { limit: 8 });
   expect(reads).toEqual([]);

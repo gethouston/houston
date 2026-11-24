@@ -7,6 +7,10 @@ import type {
 } from "@houston/runtime-client";
 import { clearProviderMarks } from "../auth/credential-health";
 import {
+  type newUsedTokenCapture,
+  runWithUsedTokenCapture,
+} from "../auth/used-token";
+import {
   diffSnapshots,
   type FileSnapshot,
   snapshotWorkspace,
@@ -46,6 +50,7 @@ export function finishSuccessfulTurn(input: {
   compaction?: ChatMessage["compaction"];
   provider: string;
   turnId: string;
+  usedTokens: ReturnType<typeof newUsedTokenCapture>;
   emit: (frame: WireFrame) => void;
 }): TurnOutcome {
   let fileChanges: { created: string[]; modified: string[] } | undefined;
@@ -86,6 +91,9 @@ export function finishSuccessfulTurn(input: {
     },
   );
   if (fileChanges) input.emit({ type: "file_changes", data: fileChanges });
-  if (!input.providerError) clearProviderMarks(input.provider);
+  if (!input.providerError)
+    runWithUsedTokenCapture(input.usedTokens, () =>
+      clearProviderMarks(input.provider),
+    );
   return input.providerError ? {} : { pendingInteraction };
 }

@@ -35,6 +35,14 @@ async function hydrationIsQuiet(
   return quiet;
 }
 
+export async function saveTurnBrowser(
+  root: string,
+  conversationId: string,
+): Promise<void> {
+  sharedHandoffs.end(conversationId, "cancelled");
+  await sharedBrowserPool.saveUnder(root);
+}
+
 async function closeTurnBrowser(
   root: string,
   conversationId: string,

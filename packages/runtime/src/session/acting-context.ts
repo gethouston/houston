@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import type { LocalModelTransportContext } from "../ai/local-model-transport";
+import type { TurnCredentialChannel } from "../auth/turn-credential-channel";
 import { decodeActingAuthor } from "./attribution";
 
 export interface ActingContext {
@@ -10,6 +11,7 @@ export interface ActingContext {
   verifiedOwner?: string;
   credentialScopeKey?: string;
   authPath?: string;
+  credentialChannel?: TurnCredentialChannel;
 }
 
 export const TEAM_CREDENTIAL_SCOPE = "team";
@@ -47,7 +49,8 @@ export function runWithActingContext<T>(
       !ctx.verifiedOwner &&
       !ctx.credentialScopeKey &&
       !ctx.authPath &&
-      !ctx.localModelTransport)
+      !ctx.localModelTransport &&
+      !ctx.credentialChannel)
   )
     return fn();
   return store.run(

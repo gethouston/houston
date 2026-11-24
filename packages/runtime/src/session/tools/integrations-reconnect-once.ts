@@ -1,5 +1,10 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { currentConversationId } from "../conversation-context";
+import {
+  RECONNECT_OFFERED_FILE,
+  readConversationMark,
+  writeConversationMark,
+} from "../conversation-marks";
 
 export function reconnectCardMarker(toolkit: string): string {
   return `A reconnect step for ${toolkit} was added`;
@@ -21,6 +26,23 @@ export function rememberReconnectOffered(toolkit: string): void {
     if (oldest !== undefined) offered.delete(oldest);
   }
   offered.add(key);
+  const persisted = persistedToolkits();
+  if (!persisted.includes(toolkit))
+    writeConversationMark(RECONNECT_OFFERED_FILE, {
+      toolkits: [...persisted, toolkit],
+    });
+}
+
+function persistedToolkits(): string[] {
+  const raw = readConversationMark(RECONNECT_OFFERED_FILE);
+  if (typeof raw !== "object" || raw === null || !("toolkits" in raw))
+    return [];
+  const { toolkits } = raw;
+  return Array.isArray(toolkits)
+    ? toolkits.filter(
+        (toolkit): toolkit is string => typeof toolkit === "string",
+      )
+    : [];
 }
 
 export function reconnectOfferedBefore(
@@ -29,6 +51,7 @@ export function reconnectOfferedBefore(
 ): boolean {
   const key = memoryKey(toolkit);
   if (key && offered.has(key)) return true;
+  if (persistedToolkits().includes(toolkit)) return true;
   const entries = ctx?.sessionManager?.getBranch?.() ?? [];
   const marker = reconnectCardMarker(toolkit);
   return entries.some(
@@ -40,4 +63,8 @@ export function reconnectOfferedBefore(
         (part) => part.type === "text" && part.text.includes(marker),
       ),
   );
+}
+
+export function resetReconnectOfferedMemory(): void {
+  offered.clear();
 }

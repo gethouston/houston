@@ -47,6 +47,9 @@ export function createTurnSandbox(input: {
     timezone: turn.timezone,
     ...(turn.actingAs ? { actingAs: turn.actingAs } : {}),
     ...(turn.limits ? { limits: turn.limits } : {}),
+    ...(turn.customOAuthCallbackUrl
+      ? { customOAuthCallbackUrl: turn.customOAuthCallbackUrl }
+      : {}),
     authoringPin: liveTurnPin({ ...turn, provider: turnProvider(turn) }),
     orgSlug: identity.org,
     agentSlug: identity.agent,

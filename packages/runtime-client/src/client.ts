@@ -9,7 +9,6 @@ import { createRequester, EngineError, type Requester } from "./requester";
 import { readEventStream } from "./sse-read";
 import type {
   EngineClientConfig,
-  GenerateAgentResponse,
   HealthResponse,
   ProviderId,
   ProviderInfo,
@@ -70,22 +69,6 @@ export class HoustonEngineClient extends EngineBrowserClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ provider }),
-    });
-  }
-
-  generateAgent(
-    description: string,
-    opts: { provider?: string; model?: string; signal?: AbortSignal } = {},
-  ) {
-    return this.json<GenerateAgentResponse>("/generate-agent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        description,
-        provider: opts.provider,
-        model: opts.model,
-      }),
-      signal: opts.signal,
     });
   }
 

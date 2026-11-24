@@ -174,7 +174,7 @@ Only the product-authored `<next_step_suggestions>` section is conditional; agen
 
 ## One-shot prompts (one-shot.ts)
 
-Title and Create-with-AI generation run through a throwaway pi session so every provider and OAuth flavor behaves like a normal turn without per-provider completion code. Its settings are in-memory so a throwaway request never persists retry or model settings in the workspace.
+Title generation runs through a throwaway pi session so every provider and OAuth flavor behaves like a normal turn without per-provider completion code. Its settings are in-memory so a throwaway request never persists retry or model settings in the workspace.
 
 ## Acting identity and credential scope (packages/runtime/src/session/acting-context.ts)
 
@@ -228,11 +228,6 @@ Title and Create-with-AI generation run through a throwaway pi session so every 
 ## Turn completion ownership (packages/runtime/src/session/exec-turn.ts)
 
 A clean `execTurn` settles the mission as `needs_you`, regardless of whether it carries a question, connection request, or optional offer. Only the user moves a mission to done. The interaction describes what the reply offers or requests, not whether the mission is complete.
-
-## Create-with-AI generation (packages/runtime/src/session/generate-agent-parse.ts, packages/runtime/src/session/generate-agent.ts)
-
-- `buildRoutine` constructs cron expressions from the constrained daily, weekday, and weekly schedule choices. It never accepts raw model-authored cron because a fabricated expression could schedule work every minute.
-- `generateAgentInstructions` propagates failures so the route reports why the requested generation failed. Generation is user-initiated work. The quiet fallback used for cosmetic title generation is inappropriate here.
 
 ## Interaction ordering (packages/runtime/src/session/interaction-access.ts, packages/runtime/src/session/interaction-holder.ts)
 

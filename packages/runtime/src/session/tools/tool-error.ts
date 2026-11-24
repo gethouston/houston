@@ -3,6 +3,10 @@ import {
   type AgentDelegationRefusalCode,
   isAgentDelegationRefusalCode,
 } from "@houston/protocol";
+import {
+  COMPUTE_BUSY_TOOL_MESSAGE,
+  POD_WAKE_REFUSED_TOOL_MESSAGE,
+} from "./compute-busy-retry";
 
 export type SessionToolErrorCode =
   | "agent_required"
@@ -21,6 +25,8 @@ export type SessionToolErrorCode =
   | "invalid_model"
   | "agent_unreachable"
   | "agent_refused"
+  | "compute_busy"
+  | "operation_unavailable_here"
   | AgentDelegationRefusalCode;
 
 export interface SessionToolError {
@@ -64,6 +70,18 @@ export async function hostErrorFrom(
   }
   if (typeof payload === "object" && payload !== null) {
     const { code, error } = payload as { code?: unknown; error?: unknown };
+    if (code === "compute_busy")
+      return {
+        code: "compute_busy",
+        message: COMPUTE_BUSY_TOOL_MESSAGE,
+        status: res.status,
+      };
+    if (code === "pod_wake_refused")
+      return {
+        code: "operation_unavailable_here",
+        message: POD_WAKE_REFUSED_TOOL_MESSAGE,
+        status: res.status,
+      };
     if (isActionableCode(code) && typeof error === "string")
       return { code, message: error, status: res.status };
   }

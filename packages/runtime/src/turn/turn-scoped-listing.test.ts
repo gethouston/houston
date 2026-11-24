@@ -164,12 +164,14 @@ test("a prefetched manifest without other conversations hydrates the turn's own 
   expect(manifests).toEqual([]);
   for (const own of [
     `${R}/conversations/c1.json`,
-    `${R}/conversations/c1.archive/1.json`,
     `${R}/sessions/c1/1.jsonl`,
   ]) {
     expect(existsSync(local(own))).toBe(true);
     expect(filesystem.manifest.get(own)?.generation).toBe("1");
   }
+  const segment = `${R}/conversations/c1.archive/1.json`;
+  expect(existsSync(local(segment))).toBe(false);
+  expect(filesystem.manifest.has(segment)).toBe(false);
   expect(existsSync(local(`${R}/conversations/routine-3.json`))).toBe(false);
   expect(existsSync(local(`${A}/.repo-site/README.md`))).toBe(true);
 
@@ -197,6 +199,7 @@ test("a prefetched manifest without other conversations hydrates the turn's own 
   expect(result.deleted).toEqual([]);
   expect(result.outOfScope).toBe(2);
   expect(pool.read(`${R}/conversations/routine-3.json`)).toBe("{}");
+  expect(pool.read(segment)).toBe("{}");
   expect(
     (await pool.keys()).filter((key) => key.includes("routine-")),
   ).toHaveLength(60);

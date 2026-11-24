@@ -1,10 +1,10 @@
 import { ACTING_VIA_ASSISTANT } from "@houston/host/src/auth/acting";
 import { validDisplayName } from "@houston/host/src/auth/agent-name-header";
 import { parseTurnLimits, type TurnLimits } from "@houston/protocol";
-import type { ServedCredential } from "../auth/auth-file";
 import { type AgentOp, ID, parseAgentOp, str } from "./op-grammar";
 import { customOAuthCallbackUrl } from "./op-grammar-custom-oauth";
-import type { TurnRequest } from "./types";
+import { parseTurnCredential } from "./parse-turn-credential";
+import type { TurnCredential, TurnRequest } from "./types";
 
 export type { AgentOp } from "./op-grammar";
 
@@ -21,7 +21,7 @@ export interface OpRequest {
   claim: NonNullable<TurnRequest["claim"]>;
   actingAs?: OpActingAs;
   actingToken?: string;
-  credential: ServedCredential | null;
+  credential: TurnCredential | null;
   triggersEnabled: boolean;
   customOAuthCallbackUrl?: string;
   limits?: TurnLimits;
@@ -53,24 +53,7 @@ export function parseOpRequest(body: unknown): OpRequest {
   }
   const agentId = str(b.agentId, "agentId");
   if (!ID.test(agentId)) throw new Error("invalid 'agentId'");
-  let credential: ServedCredential | null = null;
-  if (b.credential != null) {
-    const c = b.credential as Record<string, unknown>;
-    if (
-      typeof c.provider !== "string" ||
-      typeof c.access !== "string" ||
-      typeof c.expires !== "number"
-    ) {
-      throw new Error("invalid 'credential'");
-    }
-    credential = {
-      provider: c.provider,
-      access: c.access,
-      expires: c.expires,
-      accountId: typeof c.accountId === "string" ? c.accountId : null,
-      kind: c.kind === "api_key" ? "api_key" : "oauth",
-    };
-  }
+  const credential = parseTurnCredential(b.credential);
   const raw = b.op as Record<string, unknown> | undefined;
   if (!raw || typeof raw !== "object") throw new Error("invalid 'op'");
   const agentName = validDisplayName(b.agentName);

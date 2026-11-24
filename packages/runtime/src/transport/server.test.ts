@@ -23,7 +23,7 @@ function close(server: Server): Promise<void> {
   });
 }
 
-test("generate-agent without a description is a 400, not a model call", async () => {
+test("POST /generate-agent is gone: a 404, never a model call", async () => {
   const server = createRuntimeServer();
   const baseUrl = await listen(server);
   try {
@@ -33,12 +33,9 @@ test("generate-agent without a description is a 400, not a model call", async ()
         "Content-Type": "application/json",
         ...(config.token ? { Authorization: `Bearer ${config.token}` } : {}),
       },
-      body: JSON.stringify({ description: "   " }),
+      body: JSON.stringify({ description: "a bookkeeper" }),
     });
-    expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({
-      error: "missing 'description'",
-    });
+    expect(res.status).toBe(404);
   } finally {
     await close(server);
   }

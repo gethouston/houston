@@ -12,7 +12,10 @@ import {
 import { logProviderError } from "../ai/provider-error-log";
 import { noteAuthFailure, noteQuotaExhausted } from "../auth/credential-health";
 import { reportRevokedServedToken } from "../auth/report-revoked";
-import type { newUsedTokenCapture } from "../auth/used-token";
+import {
+  type newUsedTokenCapture,
+  runWithUsedTokenCapture,
+} from "../auth/used-token";
 import { appendAssistantMessageAt } from "../store/conversation-file";
 import { TurnBackendProviderError } from "./turn-backend";
 import type { TurnOutcome } from "./turn-session-types";
@@ -80,7 +83,9 @@ export function handleTurnSessionFailure(input: {
       );
     }
     if (thrown.kind === "quota_exhausted")
-      noteQuotaExhausted(thrown.provider, thrown.resets_at);
+      runWithUsedTokenCapture(input.usedTokens, () =>
+        noteQuotaExhausted(thrown.provider, thrown.resets_at),
+      );
     if (thrown.kind !== "unknown") {
       appendAssistantMessageAt(
         input.conversationsDir,
