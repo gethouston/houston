@@ -4,6 +4,7 @@ import { finishAccountBlocked } from "./account-blocked-refusal";
 import type { FeedOutput, PendingInteraction } from "./feed-output";
 import { settleFromHistory, TURN_DIED_MESSAGE } from "./settle-from-history";
 import { ENGINE_RESTART_MESSAGE, ENGINE_RESUMED_MESSAGE } from "./turn-errors";
+import { SANDBOX_LOST_MESSAGE } from "./turn-notices";
 import {
   finishErr,
   finishOk,
@@ -385,6 +386,33 @@ test("an `interrupted` reply for our turnId settles as the ENGINE RESTART error,
   expect(items.some((i) => i.feed_type === "final_result")).toBe(false);
   expect(items.some((i) => i.feed_type === "provider_error")).toBe(false);
   expect(statuses).toEqual([["error", ENGINE_RESTART_MESSAGE]]);
+});
+
+test("a lost-sandbox reply settles as its own error line, never the restart promise", () => {
+  const { s, items, statuses } = run(
+    [
+      { role: "user", content: "export it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        turnId: "t-1",
+        interrupted: { cause: "sandbox_lost" },
+      },
+    ],
+    "t-1",
+    { streamed: "half a repl" },
+  );
+  expect(s.settled).toBe(true);
+  expect(s.terminal).toBe("error");
+  expect(items).toContainEqual({
+    feed_type: "system_message",
+    data: SANDBOX_LOST_MESSAGE,
+    notice: "sandbox_lost",
+    turnId: "t-1",
+  });
+  expect(items.some((i) => i.data === ENGINE_RESTART_MESSAGE)).toBe(false);
+  expect(statuses).toEqual([["error", SANDBOX_LOST_MESSAGE]]);
 });
 
 test("a RESUMED interruption settles neutrally: the pause line, no error, no terminal card", () => {

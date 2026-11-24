@@ -1,24 +1,17 @@
 import type { WireFrame } from "@houston/runtime-client";
-import { reportDeadServedApiKey } from "../auth/served-key-guard";
-import { currentTurnCredentialChannel } from "../auth/turn-credential-channel";
+import type { currentTurnCredentialChannel } from "../auth/turn-credential-channel";
 import { settleTurnCredentialReports } from "../auth/turn-credential-report";
-import { runWithActingContext } from "../session/acting-context";
-import { runWithConversationScope } from "../session/bus";
 import type { startClaimHeartbeat } from "./claim-heartbeat";
+import { runReadyTurnSession } from "./execute-ready-session";
 import type { TurnServerDeps } from "./server-types";
-import { turnActingContext } from "./turn-acting-context";
 import { saveTurnBrowser } from "./turn-cleanup";
 import { finishTurnDurability } from "./turn-durability";
 import type { TurnFilesystem } from "./turn-filesystem";
 import type { createTurnLog } from "./turn-log";
 import { landedMissionTitle } from "./turn-mission-title-outcome";
-import { remoteActivityReader } from "./turn-mission-title-remote";
+import { startTurnProgress } from "./turn-progress";
 import { reportPooledSettle } from "./turn-push";
-import {
-  turnIsUnconnected,
-  turnSessionRequest,
-  unconnectedTurnOutcome,
-} from "./turn-request";
+import { turnIsUnconnected, unconnectedTurnOutcome } from "./turn-request";
 import { finishRoutineTurn } from "./turn-routine-finish";
 import {
   answerRoutineStartFailure,
@@ -27,7 +20,7 @@ import {
 } from "./turn-routine-start";
 import { unconnectedRoutineTurn } from "./turn-routine-unconnected";
 import type { makeTurnSandboxFetch } from "./turn-sandbox";
-import { runTurn, type TurnOutcome } from "./turn-session";
+import type { TurnOutcome } from "./turn-session";
 import type { TurnSessionStartupTask } from "./turn-session-startup";
 import { landTurnSideWrites } from "./turn-side-writes";
 import type { resolveTurnStore } from "./turn-store";
@@ -35,8 +28,7 @@ import { durableTerminalFrame } from "./turn-terminal";
 import type { createTurnTranscript } from "./turn-transcript";
 import type { TurnRequest } from "./types";
 
-/** Run a fully hydrated non-shadow turn, then make its writes durable. */
-export async function executeReadyTurn(input: {
+export type ReadyTurnInput = {
   deps: TurnServerDeps;
   turn: TurnRequest;
   turnId: string;
@@ -51,148 +43,120 @@ export async function executeReadyTurn(input: {
   startup?: TurnSessionStartupTask;
   timings: Record<string, number>;
   emit: (frame: WireFrame) => void;
+  frameTaps?: Set<(frame: WireFrame) => void>;
   turnLog: ReturnType<typeof createTurnLog>;
   transcript: ReturnType<typeof createTurnTranscript>;
   mentionReport?: Promise<void>;
-}): Promise<void> {
+};
+
+/** Run a fully hydrated non-shadow turn, then make its writes durable. */
+export async function executeReadyTurn(input: ReadyTurnInput): Promise<void> {
+  const progress = startTurnProgress(input);
   let routinePhase = null;
   let effectiveTurn = input.turn;
   if (input.turn.routine) {
     try {
       routinePhase = await startRoutineRun({
         ...input,
+        landed: progress.landed,
         nowIso: new Date().toISOString(),
       });
       effectiveTurn = routinePhaseTurn(input.turn, routinePhase);
     } catch (error) {
+      await progress.end();
       await answerRoutineStartFailure(input, error);
       return;
     }
   }
 
-  let outcome: TurnOutcome;
-  let credentialChannel: ReturnType<typeof currentTurnCredentialChannel>;
-  if (turnIsUnconnected(input.turn)) {
-    outcome = unconnectedTurnOutcome(input.turn, input.turnId, input.emit);
-  } else {
-    try {
-      outcome = await runWithConversationScope(input.scope, () =>
-        runWithActingContext(
-          turnActingContext(
-            input.turn,
-            input.authPath,
-            input.deps.poolStoreUrl,
-          ),
-          () => {
-            credentialChannel = currentTurnCredentialChannel();
-            if (credentialChannel && input.turn.credential)
-              reportDeadServedApiKey(input.turn.credential);
-            const directories = {
-              ...input.filesystem,
-              turnRoot: input.root,
-            };
-            const request = turnSessionRequest(
-              effectiveTurn,
-              input.turnId,
-              input.emit,
-              input.signal,
-              input.sandbox ? { call: input.sandbox.call } : undefined,
-              input.timings,
-              input.startup,
-            );
-            request.stopReason = () => input.heartbeat?.stopReason;
-            // The card may postdate hydration: its title rebases the tree's
-            // board onto a fresh store read (turn-mission-title-remote.ts).
-            if (request.missionTitle)
-              request.readRemoteActivity = remoteActivityReader(
-                input.resolved.store,
-                input.resolved.prefix,
-                input.filesystem,
-              );
-            return input.deps.runTurn
-              ? input.deps.runTurn(directories, request)
-              : runTurn(directories, request, input.deps.turnSessionDeps);
-          },
-        ),
-      );
-    } catch (error) {
-      outcome = {
-        error: error instanceof Error ? error.message : String(error),
-      };
+  try {
+    let outcome: TurnOutcome;
+    let credentialChannel: ReturnType<typeof currentTurnCredentialChannel>;
+    if (turnIsUnconnected(input.turn)) {
+      outcome = unconnectedTurnOutcome(input.turn, input.turnId, input.emit);
+    } else {
+      ({ outcome, credentialChannel } = await runReadyTurnSession(
+        input,
+        effectiveTurn,
+      ));
     }
-  }
 
-  // Any path that never prompted (unconnected, a setup failure) is over too.
-  input.filesystem.abandonDeferred?.();
-  await saveTurnBrowser(input.root, input.turn.conversationId);
-  let afterSync: Awaited<ReturnType<typeof finishRoutineTurn>>["afterSync"];
-  if (routinePhase) {
-    const finished = await finishRoutineTurn({
-      store: input.resolved.store,
-      prefix: input.resolved.prefix,
-      filesystem: input.filesystem,
-      phase: routinePhase,
-      conversationId: input.turn.conversationId,
-      ...(outcome.error ? { turnError: outcome.error } : {}),
-      unconnected: unconnectedRoutineTurn(
-        input.turn,
-        effectiveTurn.provider,
-        input.filesystem.dataDir,
+    // Any path that never prompted (unconnected, a setup failure) is over too.
+    input.filesystem.abandonDeferred?.();
+    await progress.checkpoints?.stop();
+    await saveTurnBrowser(input.root, input.turn.conversationId);
+    let afterSync: Awaited<ReturnType<typeof finishRoutineTurn>>["afterSync"];
+    if (routinePhase) {
+      const finished = await finishRoutineTurn({
+        store: input.resolved.store,
+        prefix: input.resolved.prefix,
+        filesystem: input.filesystem,
+        phase: routinePhase,
+        conversationId: input.turn.conversationId,
+        ...(outcome.error ? { turnError: outcome.error } : {}),
+        unconnected: unconnectedRoutineTurn(
+          input.turn,
+          effectiveTurn.provider,
+          input.filesystem.dataDir,
+        ),
+      });
+      const failed = finished.error;
+      if (failed)
+        outcome = {
+          ...outcome,
+          error: outcome.error ? `${outcome.error}; ${failed}` : failed,
+        };
+      afterSync = finished.afterSync;
+    }
+
+    input.timings.t_run_done = performance.now();
+    const [durable] = await Promise.all([
+      finishTurnDurability({
+        deps: input.deps,
+        turn: { ...input.turn, turnId: input.turnId },
+        filesystem: input.filesystem,
+        resolved: input.resolved,
+        heartbeat: input.heartbeat,
+        outcome,
+        timings: input.timings,
+        transcript: input.transcript,
+        ...(input.sandbox ? { views: input.sandbox.views() } : {}),
+        ...(afterSync ? { afterSync } : {}),
+      }),
+      landTurnSideWrites({
+        store: input.resolved.store,
+        prefix: input.resolved.prefix,
+        filesystem: input.filesystem,
+        root: input.root,
+        conversationId: input.turn.conversationId,
+        userId: input.turn.actingAs?.userId,
+        spend: outcome.spend,
+      }),
+      settleTurnCredentialReports(credentialChannel),
+    ]);
+    input.timings.t_durable = performance.now();
+    await reportPooledSettle(input, durable, input.mentionReport);
+    if (input.heartbeat?.stopReceivedAt !== undefined)
+      input.timings.t_stop_received = input.heartbeat.stopReceivedAt;
+    await progress.landed.close();
+    input.timings.t_terminal = performance.now();
+    input.emit(
+      durableTerminalFrame(
+        durable,
+        input.turnId,
+        input.timings,
+        {
+          hydratedObjects: input.filesystem.manifest.size,
+          skippedObjects: input.filesystem.skippedObjects,
+        },
+        input.turn.missionTitle
+          ? landedMissionTitle(outcome.missionTitle, durable.sync)
+          : undefined,
+        outcome.modelCalls,
       ),
-    });
-    const failed = finished.error;
-    if (failed)
-      outcome = {
-        ...outcome,
-        error: outcome.error ? `${outcome.error}; ${failed}` : failed,
-      };
-    afterSync = finished.afterSync;
+    );
+  } finally {
+    await progress.end();
   }
-
-  input.timings.t_run_done = performance.now();
-  const [durable] = await Promise.all([
-    finishTurnDurability({
-      deps: input.deps,
-      turn: { ...input.turn, turnId: input.turnId },
-      filesystem: input.filesystem,
-      resolved: input.resolved,
-      heartbeat: input.heartbeat,
-      outcome,
-      timings: input.timings,
-      transcript: input.transcript,
-      ...(input.sandbox ? { views: input.sandbox.views() } : {}),
-      ...(afterSync ? { afterSync } : {}),
-    }),
-    landTurnSideWrites({
-      store: input.resolved.store,
-      prefix: input.resolved.prefix,
-      filesystem: input.filesystem,
-      root: input.root,
-      conversationId: input.turn.conversationId,
-      userId: input.turn.actingAs?.userId,
-      spend: outcome.spend,
-    }),
-    settleTurnCredentialReports(credentialChannel),
-  ]);
-  input.timings.t_durable = performance.now();
-  await reportPooledSettle(input, durable, input.mentionReport);
-  if (input.heartbeat?.stopReceivedAt !== undefined)
-    input.timings.t_stop_received = input.heartbeat.stopReceivedAt;
-  input.timings.t_terminal = performance.now();
-  input.emit(
-    durableTerminalFrame(
-      durable,
-      input.turnId,
-      input.timings,
-      {
-        hydratedObjects: input.filesystem.manifest.size,
-        skippedObjects: input.filesystem.skippedObjects,
-      },
-      input.turn.missionTitle
-        ? landedMissionTitle(outcome.missionTitle, durable.sync)
-        : undefined,
-      outcome.modelCalls,
-    ),
-  );
   await input.turnLog?.flush();
 }
