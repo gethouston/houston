@@ -26,11 +26,22 @@ export interface KanbanBoardProps {
   avatar?: React.ReactNode;
   cardLabels?: KanbanCardLabels;
   formatTime?: MessageTimeFormatter;
+  /** Enable per-card multi-select checkboxes. */
   selectable?: boolean;
+  /** Ids currently in the multi-select set. */
   selectedIds?: ReadonlySet<string>;
+  /** Toggle a card's membership in the multi-select set. */
   onToggleSelect?: (item: KanbanItem) => void;
+  /** When set, only this column's cards stay selectable — others hide their
+   *  checkbox so a multi-selection can't span sections. */
   selectionLockColumnId?: string | null;
+  /** Called when a card is dropped onto a different column. Receives the
+   *  dragged item and the target column id. Providing this enables drag-and-
+   *  drop on the board. */
   onItemMove?: (item: KanbanItem, toColumnId: string) => void;
+  /** Override which columns accept a given dragged item. Defaults to "any
+   *  column whose statuses don't already include the item's status". Return
+   *  false to reject the column (it won't highlight or accept a drop). */
   canDropItem?: (item: KanbanItem, toColumnId: string) => boolean;
 }
 

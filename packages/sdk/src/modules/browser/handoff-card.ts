@@ -16,14 +16,18 @@ export type BrowserHandoffCardState =
   | "ended";
 
 export interface BrowserHandoffCardModel {
+  /** `${callItem.id ?? index}:handoff` */
   key: string;
+  /** Insert the card AFTER this item: the result if present, else the call. */
   anchorIndex: number;
   text: string;
   url: string | null;
+  /** Hostname of `url`, else of the turn's latest browser `open`/`handoff` url. */
   site: string | null;
   state: BrowserHandoffCardState;
 }
 
+/** The `browser` tool, bare (pi) or MCP-prefixed (Claude: `mcp__houston__browser`). */
 export function isBrowserToolName(name: string): boolean {
   return name === "browser" || name.endsWith("__browser");
 }
@@ -89,6 +93,12 @@ function movedOn(
     );
 }
 
+/**
+ * One card per hand-off call, in feed order. An unanswered call is `waiting`
+ * only while a turn runs and nothing after it shows the turn moved on; a
+ * person's message written while it waits does not end it, because the turn
+ * queues that message behind the hand-off.
+ */
 export function browserHandoffCards(
   items: readonly BrowserHandoffFeedItem[],
   turnRunning: boolean,

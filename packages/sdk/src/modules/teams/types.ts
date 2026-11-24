@@ -1,3 +1,4 @@
+/** The write vocabulary — the same handlers back the facade and `dispatch`. */
 export const TeamsCommand = {
   SetAssignments: "teams/setAssignments",
   GetSettings: "teams/getSettings",

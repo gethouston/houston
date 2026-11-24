@@ -20,6 +20,7 @@ export interface BrowserWatchOptions {
   signal: AbortSignal;
   onEvent: (event: BrowserLiveEvent) => void;
   onActivity?: () => void;
+  /** A known message type with a broken shape; skipped. Absent: it rejects. */
   onMalformed?: (error: unknown) => void;
 }
 

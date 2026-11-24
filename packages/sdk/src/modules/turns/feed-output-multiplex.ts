@@ -9,6 +9,12 @@ import type { FirstResponse } from "./first-response";
 import type { SendWaitReason } from "./send-busy";
 import type { SessionStatusDetail } from "./turn-error-class";
 
+/**
+ * Fan every push out to several {@link FeedOutput}s at once. The turn machinery
+ * folds each frame ONCE and calls a single output; wrapping N outputs in one
+ * multiplexer runs them all with no re-processing — e.g. the SDK's conversation
+ * VM plus a host's own sink. `persistBoardStatus` awaits every child.
+ */
 export class MultiplexFeedOutput implements FeedOutput {
   constructor(private readonly outputs: readonly FeedOutput[]) {}
 

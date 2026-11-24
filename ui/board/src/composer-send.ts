@@ -1,5 +1,12 @@
 import type { MessageMention } from "@houston-ai/chat";
 
+/**
+ * What a submit interceptor answers. `true` means it sent the message itself;
+ * `false` lets the board route the typed text; a rewrite lets the board route
+ * `text` in its place (context gathered outside the text box) and runs
+ * `onUnsent` when that send fails or goes nowhere, so the context can be put
+ * back.
+ */
 export type ComposerSubmitOutcome =
   | boolean
   | { text: string; onUnsent: () => void };

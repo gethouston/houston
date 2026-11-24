@@ -1,5 +1,6 @@
 import type { FileNode, FolderNode } from "./tree";
 
+/** Format bytes like Finder (SI units: 1000, not 1024). */
 export function formatSize(bytes: number): string {
   if (bytes === 0) return "Zero bytes";
   if (bytes < 1000) return `${bytes} bytes`;
@@ -8,6 +9,7 @@ export function formatSize(bytes: number): string {
   return `${(bytes / 1000000000).toFixed(1)} GB`;
 }
 
+/** The three sortable columns — the same three the list view shows. */
 export type SortKey = "name" | "dateModified" | "size";
 export type SortDirection = "asc" | "desc";
 

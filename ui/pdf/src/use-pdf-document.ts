@@ -4,6 +4,8 @@ import { firstPaintSizes, measureAll } from "./page-sizes";
 import { openPdf } from "./pdfjs";
 import type { PdfPageSize } from "./types";
 
+/** A loaded document. `version` counts the loads of this viewer, so a page
+ *  rendered from an older version knows to render again. */
 export interface PdfDocumentHandle {
   doc: PDFDocumentProxy;
   pageCount: number;
@@ -22,6 +24,12 @@ async function open(data: Blob, version: number): Promise<PdfDocumentHandle> {
   return { doc, pageCount: doc.numPages, sizes, version };
 }
 
+/**
+ * Load `data` as a PDF. A new blob for a document already on screen (the agent
+ * rewrote the file) loads in the background and swaps in when ready, so the
+ * reader never sees the pages blank out; a failed reload keeps the old pages.
+ * Pages paint at page 1's size first; the rest are measured behind them.
+ */
 export function usePdfDocument(
   data: Blob | null,
   onError: (error: unknown) => void,

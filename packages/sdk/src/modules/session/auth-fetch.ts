@@ -8,6 +8,7 @@ type Connectable = {
   [CONNECT_AUTH_EXPIRY]?: (report: UnauthorizedReporter) => void;
 };
 
+/** Storage key under which the session's auth token is persisted. */
 export const SESSION_TOKEN_KEY = "houston.sdk.session.token";
 
 export function normalizeToken(token: string | null): string | null {
@@ -29,6 +30,17 @@ export async function writeToken(
   else await storage.set(SESSION_TOKEN_KEY, next);
 }
 
+/**
+ * Wrap `baseFetch` so every request carries the currently-persisted bearer
+ * token. When no token is stored the request passes through untouched (the
+ * pre-login / self-host-no-auth case). Existing request headers are preserved.
+ *
+ * A 401 response is reported to the bound {@link UnauthorizedReporter} (see
+ * {@link connectAuthExpiry}) carrying the token this wrapper stamped — or `null`
+ * when the request went out tokenless — so the notifier can tell a genuine
+ * current-token expiry from a stale or tokenless 401. The response is returned
+ * untouched; only its status is read, so the body stays intact for the caller.
+ */
 export function createAuthFetch(
   baseFetch: typeof fetch,
   storage: KeyValueStore,

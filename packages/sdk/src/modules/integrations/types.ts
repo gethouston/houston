@@ -9,24 +9,45 @@ export type {
   IntegrationToolkit,
 } from "@houston/runtime-client";
 
+/**
+ * A failed integrations request. `status` is the upstream HTTP status, so the
+ * `503` of a deployment with no Composio key reaches the caller intact and the
+ * tab renders "unavailable" instead of an error.
+ */
 export class IntegrationsHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "IntegrationsHttpError");
   }
 }
 
+/** The single scope the integrations VM is published under. */
 export const INTEGRATIONS_SCOPE = "integrations";
 
+/**
+ * Why integrations are not usable, when `ready` is false:
+ *  - `"unavailable"` — the gateway has no Composio key (503); the tab shows the
+ *    "not available in this setup" message. Never crashes the tab.
+ *  - `"signin"` — the provider reports it needs a Houston sign-in first.
+ * A 401 (expired session) is NOT a reason here — it routes through the shared
+ * `tokenExpired` signal instead.
+ */
 export type IntegrationsUnavailableReason = "unavailable" | "signin";
 
+/** Snapshot published under {@link INTEGRATIONS_SCOPE}. */
 export interface IntegrationsViewModel {
+  /** `true` once a refresh has resolved; `false` while loading / never fetched. */
   loaded: boolean;
+  /** Whether integrations are usable (a Composio key is configured + ready). */
   ready: boolean;
+  /** Present only when `ready` is false — why. */
   reason?: IntegrationsUnavailableReason;
+  /** The connectable-app catalog (empty until ready). */
   toolkits: IntegrationToolkit[];
+  /** The user's connected accounts (empty until ready). */
   connections: IntegrationConnection[];
 }
 
+/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const IntegrationsCommand = {
   Refresh: "integrations/refresh",
   Connect: "integrations/connect",

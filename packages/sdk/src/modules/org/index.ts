@@ -74,23 +74,40 @@ export type {
   UsageRow,
 } from "./usage";
 
+/** The typed facade for space administration. */
 export interface OrgModule {
+  /** The active space, with the caller's own role (roster + invites for admins). */
   getOrg(): Promise<OrgInfo>;
+  /** Display profiles for the given member ids; an empty list asks nothing. */
   getOrgProfiles(ids: string[]): Promise<UserProfilesResult>;
+  /** The sanitized co-member directory of the active space. */
   getOrgPeople(): Promise<OrgPerson[]>;
+  /** What adding one more person costs; ask before every add. */
   quoteSeat(): Promise<SeatQuote>;
+  /**
+   * Add someone by email, or create a pending invite when they are not a user
+   * yet. `prorationDate` and `quotedAmountCents` are the `charge` quote's,
+   * when the add pays a seat.
+   */
   addOrgMember(
     email: string,
     role: OrgRole,
     prorationDate?: number,
     quotedAmountCents?: number,
   ): Promise<AddOrgMemberOutcome>;
+  /** Cancel a pending invitation by id. */
   deleteOrgInvite(inviteId: string): Promise<void>;
+  /** Remove a member from the active space by user id. */
   removeOrgMember(userId: string): Promise<void>;
+  /** The routines a member created that removing them would stop (owner only). */
   listMemberRoutines(userId: string): Promise<MemberRoutines>;
+  /** Change what a member may do in the active space. */
   setOrgMemberRole(userId: string, role: OrgRole): Promise<void>;
+  /** The audit trail, newest first; both bounds optional. */
   orgAudit(before?: number, limit?: number): Promise<AuditEntry[]>;
+  /** Per (agent, user, day) message counts over the last `days` days. */
   orgUsage(days: number): Promise<UsageRow[]>;
+  /** Per (agent, day) engine running time over the last `days` days. */
   computeUsage(days: number): Promise<ComputeUsage>;
 }
 

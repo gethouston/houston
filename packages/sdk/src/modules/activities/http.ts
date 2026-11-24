@@ -14,6 +14,7 @@ import {
 import { retryWriteWhileRefused, WAKING_CREATE_RETRY_MS } from "./busy-retry";
 import type { ActivitiesWrites, CreateActivityOptions } from "./types";
 
+/** A failed `/activities` request. `status` is the upstream HTTP status. */
 export class ActivitiesHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "ActivitiesHttpError");

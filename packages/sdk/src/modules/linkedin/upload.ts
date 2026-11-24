@@ -26,6 +26,12 @@ export function linkedInPostText(text: string): string {
     .trim();
 }
 
+/**
+ * Whether the gateway takes the post's words: `empty` once trimmed, or
+ * `tooLong` by `over` characters as the gateway counts them (after escaping
+ * LinkedIn's reserved characters, `linkedInCommentaryLength`), so a post full
+ * of `#`, `@` or `_` is refused here rather than by the gateway.
+ */
 export type LinkedInTextCheck =
   | { kind: "ok" }
   | { kind: "empty" }
@@ -38,6 +44,7 @@ export function checkLinkedInText(text: string): LinkedInTextCheck {
   return over > 0 ? { kind: "tooLong", over } : { kind: "ok" };
 }
 
+/** Whether the post's words are something the gateway takes. */
 export function isPostableLinkedInText(text: string): boolean {
   return checkLinkedInText(text).kind === "ok";
 }

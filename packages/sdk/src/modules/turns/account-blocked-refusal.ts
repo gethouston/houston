@@ -5,6 +5,7 @@ import {
 } from "@houston/wire-types";
 import { settleProviderErrorCard, type TurnState } from "./turn-settle";
 
+/** The typed refusal behind a failed send (a `409` carrying the code), or null. */
 export function providerAccountBlockedRefusal(
   error: unknown,
 ): ProviderRefusal | null {

@@ -6,6 +6,15 @@ import type {
 } from "@houston/runtime-client";
 import { type HttpScope, httpRequest } from "../http";
 
+/**
+ * One entry in a toolkit's trigger catalog (C9), from
+ * `GET /v1/integrations/composio/trigger-types?toolkit=<slug>`: an event a
+ * routine can wake on. `type` splits latency classes — `webhook` is
+ * near-realtime, `poll` carries minutes of inherent delay (surfaced in UI copy).
+ * `config` is the JSON schema for the instance filters the user fills in (e.g.
+ * GitHub's owner/repo); `payload` (when present) is the JSON schema of the event
+ * body Composio delivers. Both are opaque schemas the client never interprets.
+ */
 export interface TriggerType {
   slug: string;
   name: string;

@@ -10,8 +10,13 @@ const FILE_CHIP_CLASS = cn(
 );
 
 export interface FileChipProps {
+  /** Workspace-relative path — the tooltip, and what picks the type glyph. */
   path: string;
+  /** Opens the file (in-app preview, or the OS on a co-located desktop). */
   onOpen: () => void;
+  /** The agent's own label, or the file name when it wrote the path as the
+   *  label. The glyph already says "file", so the text is free to read as
+   *  prose. */
   children: ReactNode;
 }
 

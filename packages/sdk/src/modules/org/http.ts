@@ -1,6 +1,7 @@
 import { type HttpScope, httpRequest, SdkHttpError } from "../http";
 import type { OrgInfo, OrgPerson, OrgRole, UserProfilesResult } from "./types";
 
+/** A failed `/v1/org*` request. `status` is the upstream HTTP status. */
 export class OrgHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "OrgHttpError");

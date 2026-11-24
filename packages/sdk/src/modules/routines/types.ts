@@ -8,12 +8,20 @@ import { field } from "../payload";
 
 export type { NewRoutine, Routine, RoutineRun, RoutineUpdate };
 
+/**
+ * The one-time reveal from minting (or rotating) a routine's incoming-webhook
+ * key. `url` is the public ingress the outside system POSTs to; `secret` is
+ * shown to the user EXACTLY once and is never stored in routine data;
+ * `key_prefix` is the display-only "wh_xxxxxxxx" label the UI persists onto the
+ * routine's webhook binding. Calling again rotates: the old secret dies.
+ */
 export interface WebhookKeyReveal {
   url: string;
   secret: string;
   key_prefix: string;
 }
 
+/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const RoutinesCommand = {
   List: "routines/list",
   ListRuns: "routines/listRuns",

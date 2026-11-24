@@ -7,7 +7,9 @@ export interface TabBarProps {
     id: string;
     label: string;
     badge?: number;
+    /** Disable the tab (non-clickable, muted). */
     disabled?: boolean;
+    /** Optional text chip shown next to the label (e.g. "Soon"). */
     chip?: string;
   }[];
   activeTab: string;

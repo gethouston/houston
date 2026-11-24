@@ -6,11 +6,13 @@ import type { ReviewItemData } from "./types";
 export interface ReviewSplitProps {
   items: ReviewItemData[];
   initialSelectedId?: string | null;
+  /** Render prop: the host app provides its own chat panel for the detail view */
   renderChat: (props: {
     sessionKey: string;
     placeholder: string;
     item: ReviewItemData;
   }) => ReactNode;
+  /** Shown when no item is selected */
   emptyMessage?: string;
 }
 

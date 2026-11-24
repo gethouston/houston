@@ -23,10 +23,17 @@ export interface FileChangeEntry {
   status: "created" | "modified";
 }
 
+/** Marks a `from: "system"` message as a boundary divider — a context
+ *  compaction, a mid-session provider switch, or a cleared context. */
 export interface ChatCompactionInfo {
+  /** What produced this divider. */
   kind: "compacted" | "provider_switch" | "context_cleared";
+  /** Compaction trigger. Set only when `kind === "compacted"`. */
   trigger?: "native" | "proactive" | "manual";
+  /** Provider switched TO. Set only when `kind === "provider_switch"`. */
   provider?: string;
+  /** Whether a switch summarized prior context (`true`) or carried the full
+   *  conversation verbatim (`false`). Set only when `kind === "provider_switch"`. */
   summarized?: boolean;
   preTokens?: number;
 }
@@ -38,15 +45,47 @@ export interface ChatMessage {
   isStreaming: boolean;
   reasoning?: { content: string; isStreaming: boolean };
   tools: ToolEntry[];
+  /**
+   * Typed provider failure (rate-limited, auth-expired, quota-exhausted,
+   * etc). When set, the consumer should render a variant-specific card
+   * instead of plain text.
+   */
   providerError?: ProviderError;
   fileChanges: FileChangeEntry[];
+  /** Source channel if the message came from an external channel. */
   source?: string;
+  /**
+   * Multiplayer only: who wrote this user message (C5). Present on
+   * `from: "user"` messages in a shared conversation; absent in single-player
+   * mode. The renderer shows a label only when the thread has ≥2 distinct
+   * authors — see `distinctAuthorCount`.
+   */
   author?: MessageAuthor;
+  /**
+   * Multiplayer only: the teammates this USER message @mentioned.
+   * The renderer chips each "@Name" run it still finds in `content`; absent
+   * when the message mentioned nobody.
+   */
   mentions?: MessageMention[];
+  /**
+   * Set on `from: "system"` messages that mark a context-compaction boundary.
+   * The renderer shows a subtle divider instead of plain system text.
+   */
   compaction?: ChatCompactionInfo;
+  /**
+   * Set on `from: "system"` messages the engine authored for a known reason
+   * (a restart, a resume). The renderer picks copy by kind; `content` is the
+   * English default.
+   */
   notice?: SystemNoticeKind;
   noticeData?: unknown;
+  /** Set on `from: "system"` rows the host draws itself. */
   hostCard?: HostCard;
+  /**
+   * The wire id of the turn a `from: "user"` message started.
+   * The edit-and-resend affordance anchors on it; absent on a still-optimistic
+   * send and on pre-turn-id transcripts, which are not editable.
+   */
   turnId?: string;
 }
 
@@ -317,6 +356,12 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
   return messages;
 }
 
+/**
+ * How many DISTINCT authors (by userId) wrote user messages in this thread.
+ * The renderer shows author labels only when this is ≥2 — a single-author
+ * conversation stays label-free (C5). Authorless user messages don't count.
+ * Pure, so the threshold is unit-tested without rendering.
+ */
 export function distinctAuthorCount(messages: ChatMessage[]): number {
   const ids = new Set<string>();
   for (const m of messages) {

@@ -8,6 +8,11 @@ const CHECKOUT_REFUSALS = {
 
 export type PlusCheckoutRefusal = keyof typeof CHECKOUT_REFUSALS;
 
+/**
+ * The refusal behind a failed `POST /v1/me/plus/checkout`, or null for every
+ * other error. Reads the adapter's parsed `body`, a raw text `body`, or the
+ * SDK's own error, whose message is the response text.
+ */
 export function plusCheckoutRefusal(
   error: unknown,
 ): PlusCheckoutRefusal | null {

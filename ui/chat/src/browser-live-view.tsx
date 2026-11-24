@@ -20,23 +20,34 @@ import {
 
 export interface BrowserLiveViewProps {
   state: BrowserLiveViewState;
+  /** What the agent asked the person to do. */
   task: string;
   url: string;
   title: string;
   frames: BrowserLiveFrames;
+  /** Epoch ms the hand-off expires at; 0 while unknown. */
   expiresAt: number;
   onInput: (events: BrowserLiveViewInput[]) => void;
   onDone: () => void;
   onCancel: () => void;
+  /** Hides the view; the hand-off keeps waiting. */
   onClose: () => void;
   onRetry: () => void;
+  /** A frame that could not be drawn: not the person's problem, report it. */
   onPaintError?: (error: unknown) => void;
+  /** The last address typed was not a website. */
   addressRefused?: boolean;
   labels?: Partial<BrowserLiveViewLabels>;
 }
 
 const PRESS = "active:scale-[0.97]";
 
+/**
+ * The body of the live browser: the person drives the agent's own browser page
+ * (sign in, a code, a captcha) and hands it back. Phone first: one column of
+ * header, address bar, page, and the two answers at the bottom where a thumb
+ * reaches them. The frame around it (dialog or sheet) belongs to the caller.
+ */
 export function BrowserLiveView({
   state,
   task,

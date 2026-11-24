@@ -24,26 +24,33 @@ export type {
   MigrationSource,
 } from "./types";
 
+/** The typed facade for the migration family. Every call throws on a non-2xx. */
 export interface MigrationModule {
+  /** Zip the given agent-root-relative paths of one agent into one archive. */
   migrationExport(agentId: string, paths: string[]): Promise<ArrayBuffer>;
+  /** Unpack one archive into an agent; answers what landed and what did not. */
   migrationImport(
     agentId: string,
     bytes: ArrayBuffer | MigrationImportCommit,
     opts?: MigrationImportOptions,
   ): Promise<MigrationImportResult>;
+  /** Transfer a device archive through a resumable session, then commit it. */
   importArchive(
     agentId: string,
     bytes: ArrayBuffer,
     opts?: MigrationImportOptions,
   ): Promise<MigrationImportResult>;
+  /** Stamp the server-authoritative import marker on the target agent. */
   migrationComplete(
     agentId: string,
     source: MigrationSource,
     counts: MigrationCounts,
   ): Promise<void>;
+  /** The target agent's import marker; `null` when the server has none. */
   migrationStatus(agentId: string): Promise<MigrationMarker | null>;
 }
 
+/** A failed migration request. `status` is the upstream HTTP status. */
 export class MigrationHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "MigrationHttpError");

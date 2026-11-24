@@ -1,24 +1,39 @@
 import type { ChannelProviderId } from "./types";
 
+/**
+ * The shortest watch. A code that lives longer (a WhatsApp code, ten minutes)
+ * stretches the watch to its expiry: that code is scanned on ANOTHER device, so
+ * the window that shows it never regains focus to refetch on its own.
+ */
 export const CHANNEL_WATCH_MS = 3 * 60_000;
 
+/** How often the connections list is read while a watch is outstanding. */
 export const CHANNEL_WATCH_POLL_MS = 5_000;
 
+/** The fields of a connection a watch reads. */
 export interface WatchedConnection {
   id: string;
   provider: ChannelProviderId;
 }
 
+/** A hand-off in progress: whose, what was already there, and when to stop. */
 export interface ChannelWatch {
   provider: ChannelProviderId;
+  /** The provider's connection ids when the hand-off started. */
   known: readonly string[];
+  /** Epoch ms after which the watch stops polling. */
   until: number;
 }
 
+/** The outstanding hand-offs, at most one per provider. */
 export type ChannelWatches = Readonly<
   Partial<Record<ChannelProviderId, ChannelWatch>>
 >;
 
+/**
+ * Start watching for `provider`'s next connection. `expiresAt` is the code the
+ * hand-off minted, when it minted one; an unparseable expiry keeps the default.
+ */
 export function startChannelWatch(
   provider: ChannelProviderId,
   connections: readonly WatchedConnection[],
@@ -35,6 +50,7 @@ export function startChannelWatch(
   return { provider, known, until };
 }
 
+/** A connection of the watched provider it did not start with: landed. */
 export function channelWatchLanded(
   watch: ChannelWatch | undefined,
   connections: readonly WatchedConnection[],
@@ -46,6 +62,7 @@ export function channelWatchLanded(
   );
 }
 
+/** Still waiting: nothing has landed and the window is open. */
 export function channelWatchActive(
   watch: ChannelWatch | undefined,
   connections: readonly WatchedConnection[],
@@ -55,6 +72,7 @@ export function channelWatchActive(
   return !channelWatchLanded(watch, connections) && now < watch.until;
 }
 
+/** The list's poll interval: on while any watch is outstanding, else off. */
 export function channelWatchPollMs(
   watches: ChannelWatches,
   connections: readonly WatchedConnection[],
@@ -67,6 +85,7 @@ export function channelWatchPollMs(
     : false;
 }
 
+/** The record with `provider`'s watch (re)started; the others untouched. */
 export function watchChannel(
   watches: ChannelWatches,
   provider: ChannelProviderId,
@@ -80,6 +99,11 @@ export function watchChannel(
   };
 }
 
+/**
+ * End every watch whose connection landed, and name those providers so the
+ * surface can clear what each hand-off left on screen. Nothing landed returns
+ * the SAME record, so a surface storing it re-renders for nothing.
+ */
 export function pruneLandedWatches(
   watches: ChannelWatches,
   connections: readonly WatchedConnection[],

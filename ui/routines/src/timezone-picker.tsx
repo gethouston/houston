@@ -27,12 +27,22 @@ function filterZones(
 }
 
 export interface TimezonePickerProps {
+  /** The persisted account-wide IANA zone. */
   accountTimezone: string;
+  /** Persist a newly chosen zone. */
   onTimezoneChange: (tz: string) => void;
+  /** Card title + accessible name for the trigger. */
   label: string;
+  /** One-line hint shown beside the title. */
   hint: string;
+  /** Placeholder for the in-popover search field. */
   searchPlaceholder: string;
+  /** Shown when no zone matches the query. */
   noResults: string;
+  /**
+   * `"card"` (default) wraps the trigger in the titled gray panel; `"bare"`
+   * renders only the trigger button for inline/toolbar placement.
+   */
   variant?: "card" | "bare";
   className?: string;
 }

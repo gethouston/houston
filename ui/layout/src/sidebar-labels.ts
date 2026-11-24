@@ -1,3 +1,11 @@
+/**
+ * Every word the sidebar can render, supplied by the host.
+ *
+ * `ui/` is i18n-agnostic by rule: the library never imports a translation
+ * runtime, it takes labels as props with English defaults and the app hands
+ * `t()` results in. That is why this is one flat bag rather than strings spread
+ * through the components.
+ */
 export interface SidebarLabels {
   collapseSidebar?: string;
   expandSidebar?: string;
@@ -6,10 +14,15 @@ export interface SidebarLabels {
   dragDropped?: string;
   dragCancelled?: string;
   dragInstructions?: string;
+  /** A keyboard move at the top level: `%name%`, `%position%`. */
   dragKeyboardMoved?: string;
+  /** A keyboard move inside a group: `%name%`, `%position%`, `%group%`. */
   dragKeyboardMovedInGroup?: string;
+  /** A keyboard move into a group: `%name%`, `%group%`. */
   dragKeyboardEnteredGroup?: string;
+  /** A keyboard move out of a group to the top level: `%name%`, `%group%`. */
   dragKeyboardLeftGroup?: string;
+  /** The line under an open group with no members. */
   emptyGroup?: string;
 }
 

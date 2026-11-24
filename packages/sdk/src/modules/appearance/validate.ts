@@ -6,6 +6,16 @@ import {
   type ThemePreference,
 } from "./model";
 
+/**
+ * A patch naming an appearance this build cannot wear: an unknown id, or a
+ * palette of the other mode (a dark palette under `light` would paint dark
+ * colours in light mode).
+ *
+ * It throws rather than correcting the value: every picker offers exactly what
+ * `listPalettes` returns, so a refused patch is a caller bug or a stale dispatch,
+ * and quietly saving a corrected pick would leave the user looking at an
+ * appearance nobody chose.
+ */
 export class InvalidThemeError extends Error {
   readonly field: keyof ThemePreference;
   readonly value: string;

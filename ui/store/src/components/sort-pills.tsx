@@ -2,6 +2,11 @@
 
 import { cn } from "@houston-ai/core";
 
+/**
+ * The owner dashboard's sort pills (Recent / Most installed). One shared
+ * composition so the web and app owner views cannot drift; the surface
+ * supplies the options (with translated labels) and the selection state.
+ */
 export function SortPills<T extends string>({
   value,
   options,

@@ -17,6 +17,7 @@ export function personToneIndex(id: string): number {
   return hash % PERSON_TONE_CLASSES.length;
 }
 
+/** The background utility this person's initials avatar wears, everywhere. */
 export function personToneClass(id: string): PersonToneClass {
   return PERSON_TONE_CLASSES[personToneIndex(id)];
 }
@@ -31,6 +32,7 @@ export const PERSON_NAME_TONE_CLASSES = [
 
 export type PersonNameToneClass = (typeof PERSON_NAME_TONE_CLASSES)[number];
 
+/** The text utility this person's NAME wears wherever it is attributed. */
 export function personNameToneClass(id: string): PersonNameToneClass {
   return PERSON_NAME_TONE_CLASSES[personToneIndex(id)];
 }

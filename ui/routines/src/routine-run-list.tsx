@@ -8,9 +8,19 @@ import { formatRunDuration, formatRunStart } from "./run-history";
 import type { RoutineRun, RunStatus } from "./types";
 
 export interface RoutineRunListProps {
+  /** Newest-first run records (the store's native order). */
   runs: RoutineRun[];
+  /** Opens the run's chat (its result). Omit for a read-only list. */
   onOpenRun?: (run: RoutineRun) => void;
+  /** BCP-47 locale for the start-time stamps. */
   locale?: string;
+  /**
+   * Overrides a run's second line. The stored `run.summary` is the agent's own
+   * words, but a run that never reached the agent (its AI account was
+   * disconnected, or out of credits) carries a typed failure instead — and
+   * naming a provider in the user's language is app work, not `ui/` work. Return
+   * `undefined` to keep `run.summary`.
+   */
   summaryFor?: (run: RoutineRun) => string | undefined;
   labels?: Partial<RoutineRunListLabels>;
 }

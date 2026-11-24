@@ -1,3 +1,5 @@
+/** Built-in English fallback so ui/chat works standalone; the app overrides it
+ *  with the full localized list via the `phrases` prop. */
 export const DEFAULT_THINKING_PHRASES = [
   "Houston, we have a solution!",
   "Aligning the satellites...",

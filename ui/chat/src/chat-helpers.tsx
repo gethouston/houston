@@ -11,8 +11,18 @@ export { feedItemsToMessages } from "./feed-to-messages";
 export interface ToolsAndCardsProps {
   tools: ToolEntry[];
   isStreaming: boolean;
+  /** Custom tool name → human label mappings */
   toolLabels?: Record<string, string>;
+  /**
+   * Predicate to identify "special" tools that should be rendered via
+   * renderToolResult instead of the default ToolBlock.
+   * Defaults to returning false (all tools shown as ToolBlocks).
+   */
   isSpecialTool?: (toolName: string) => boolean;
+  /**
+   * Render prop for special tool results. Called for each tool where
+   * isSpecialTool returns true and the tool has a result.
+   */
   renderToolResult?: (tool: ToolEntry, index: number) => ReactNode;
 }
 

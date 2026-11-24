@@ -41,6 +41,11 @@ function DialogClose({
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
 
+/**
+ * The close X, in the frame's one shape. `DialogContent` floats it in its
+ * corner; a recipe with a header row of its own (the wide FlowSheet) places
+ * it in that row instead, and passes nothing else.
+ */
 function DialogCloseButton({
   label,
   className,

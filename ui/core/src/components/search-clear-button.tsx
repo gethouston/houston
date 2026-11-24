@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 
+/** A compact clear affordance for search fields. */
 export function SearchClearButton({
   label = "Clear search",
   onClear,

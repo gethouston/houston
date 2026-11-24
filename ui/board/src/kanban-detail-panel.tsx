@@ -23,18 +23,31 @@ export interface KanbanDetailPanelProps {
   lastMessageLabel?: (time: string) => string;
   subtitle?: string;
   status?: string;
+  /** Omit to render a panel with no close button (a non-dismissable companion panel). */
   onClose?: () => void;
   children: React.ReactNode;
   actions?: React.ReactNode;
+  /** Rendered before the avatar (e.g. a Back button for a full-page panel). */
   leading?: React.ReactNode;
+  /** Drop the header row entirely: the chat starts at the panel's top edge.
+      The caller owns every affordance the header carried (close, actions). */
   hideHeader?: boolean;
+  /** Large avatar shown in the header */
   avatar?: React.ReactNode;
+  /** Name displayed next to the avatar (e.g. "Houston") */
   agentName?: string;
+  /** Replaces the auto-generated "Mission: {title}" subtitle line verbatim. */
   missionLabelOverride?: string;
+  /** Human contributors shown as an avatar face stack in the header. */
   people?: KanbanPerson[];
+  /** The viewer. A stack that holds nobody BUT the viewer is not rendered:
+   *  "who is on this task" only says something when someone else is. */
   selfId?: string;
+  /** Accessible group label for the people face stack (English default "People"). */
   peopleLabel?: string;
+  /** Accessible label for the people stack's expandable "+N" chip. */
   peopleExpandLabel?: string;
+  /** Accessible label for the icon-only close button (English default). */
   closeLabel?: string;
   runningStatuses?: string[];
   statusLabels?: Record<string, string>;

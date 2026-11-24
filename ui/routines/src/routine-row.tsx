@@ -24,25 +24,48 @@ import type { Routine, RoutineRun, TriggerStatusItem } from "./types";
 export interface RoutineRowProps {
   routine: Routine;
   lastRun?: RoutineRun;
+  /** The account-wide IANA timezone every routine fires in. */
   accountTimezone: string;
+  /** Marks the row whose chat is open in the right pane (selected state). */
   selected?: boolean;
+  /** Open the routine's chat — fired by a row click. */
   onOpenChat?: () => void;
   onToggle?: (enabled: boolean) => void;
+  /** Delete the routine — the menu confirms first. */
   onDelete?: () => void;
+  /** Fire the routine immediately — offered only when no run is in flight. */
   onRunNow?: () => void;
+  /** Stop the in-flight run — offered only while one is running. */
   onStopRun?: () => void;
+  /** The leading IDENTITY icon slot: the triggering app's logo for a trigger
+   *  routine (`ui/` cannot resolve logos); absent or `null` falls back to a
+   *  clock for a schedule, a bell for a trigger. */
   leadingIcon?: (routine: Routine) => ReactNode;
+  /** WARNING chip beside the name: the surface says this routine cannot run as
+   *  configured (e.g. its AI account is disconnected). Omit for none. */
   warningChip?: ReactNode;
+  /** Edit a schedule routine's cron inline. Supplied + a schedule present turns
+   *  the summary line into an always-visible edit affordance. */
   onScheduleChange?: (routineId: string, cron: string) => void;
+  /** Localized row labels. English defaults so standalone callers still work. */
   labels?: RoutineRowLabels;
+  /** Schedule-builder labels, threaded to the inline schedule editor. */
   scheduleLabels?: ScheduleLabels;
+  /** A plan's minimum interval for the inline schedule editor, with its rule
+   *  (memoized). Absent = no limit. */
   scheduleFloor?: ScheduleFloor;
+  /** Schedule-summary + next-run labels, threaded to the cron/time formatters. */
   scheduleSummaryLabels?: ScheduleSummaryLabels;
   nextFireLabels?: NextFireLabels;
+  /** Trigger (event-driven) copy for the row summary and status badge. */
   triggerLabels?: TriggerLabels;
+  /** Live provisioning status for an event-driven routine (badge + reconnect). */
   triggerStatus?: TriggerStatusItem;
+  /** Human summary of a trigger routine's event, shown after the status chip. */
   triggerSummary?: string;
+  /** Reconnect the disconnected account behind a `paused_disconnected` routine. */
   onReconnectTrigger?: () => void;
+  /** BCP-47 locale for day names + time formatting. */
   locale?: string;
 }
 

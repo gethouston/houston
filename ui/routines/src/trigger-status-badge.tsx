@@ -8,9 +8,14 @@ import { triggerBadgeState, triggerStatusDetail } from "./trigger-status-view";
 import type { TriggerStatusItem } from "./types";
 
 export interface TriggerStatusBadgeProps {
+  /** Live status. Absent renders the muted "checking" (`unknown`) chip. */
   status?: TriggerStatusItem;
+  /** Override the chip's text while keeping the state's dot + tone — used for
+   *  the "Active. Waiting for the first event." idle line. */
   statusLabel?: string;
+  /** Reconnect the disconnected account (only wired for `paused_disconnected`). */
   onReconnect?: () => void;
+  /** Editor mode: show the explanatory line + the Reconnect button. */
   withDetail?: boolean;
   labels?: TriggerLabels;
   className?: string;

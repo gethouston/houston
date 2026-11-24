@@ -2,10 +2,16 @@ import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
 
 export interface SidebarConnectLogo {
+  /** Stable key: the app or provider id. */
   id: string;
+  /** Any element: the tile's logo box sizes it, whatever it is (an `<img>`,
+   *  an `<svg>`, a wrapper), so every row's logos are the same size. A mark
+   *  with no colour of its own inherits the tile's ink, so it reads in both
+   *  themes. */
   element: ReactNode;
 }
 
+/** A stack says "these and more" at three; a fourth only crowds it. */
 export const SIDEBAR_CONNECT_LOGO_MAX = 3;
 
 const TILE = {
@@ -15,6 +21,12 @@ const TILE = {
 
 export type SidebarConnectLogoSize = keyof typeof TILE;
 
+/**
+ * One logo on its own tile, the way an app icon sits on a home screen: an
+ * opaque popover-surface square with the hairline edge and no shadow, so a
+ * tile resting on the one behind it covers it cleanly, every logo stays
+ * whole, and the stack stays as quiet as the rows around it.
+ */
 export function SidebarConnectLogoMark({
   children,
   size = "row",
@@ -42,6 +54,14 @@ export function SidebarConnectLogoMark({
   );
 }
 
+/**
+ * Up to {@link SIDEBAR_CONNECT_LOGO_MAX} logo tiles stacked into ONE mark,
+ * each overlapping the next by 6px, the first on top: the row's icon
+ * expanded and the whole control on the icon rail, so both rail states show
+ * the same thing. Decorative: the control that carries it is named by its
+ * own label, and a logo's alt text would only repeat app names into that
+ * name.
+ */
 export function SidebarConnectLogos({
   logos,
   size = "row",

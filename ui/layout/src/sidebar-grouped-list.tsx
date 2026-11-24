@@ -35,10 +35,19 @@ export interface SidebarGroupedListProps {
   order?: SidebarRootEntry[];
   rowCtx: SidebarBaseRowContext;
   onActivateGroup?: (groupId: string) => void;
+  /** A drop landed: the whole arrangement the rail now shows. Answers whether
+   *  it was stored; absent, nothing can be dragged. */
   onArrange?: (arrangement: SidebarArrangement) => boolean;
   labels?: SidebarLabels;
 }
 
+/**
+ * The grouped rail: top-level agents and groups interleaved, each open group's
+ * members under its header, and one drag model for all of it (a sortable tree
+ * over the flat row list, `sidebar-tree.ts`). The pointer stays free on both
+ * axes while the overlay follows it vertically: the sideways offset is what
+ * moves the ghost in or out of a group.
+ */
 export function SidebarGroupedList({
   items,
   groups,

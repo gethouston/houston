@@ -8,10 +8,18 @@ import type { SidebarBaseRowContext } from "./sidebar-row-context";
 
 export interface SidebarFlatListProps {
   items: SidebarItem[];
+  /** Icon-only rail (ignores groups) vs. the expanded flat list. */
   collapsed: boolean;
   ctx: SidebarBaseRowContext;
 }
 
+/**
+ * The ungrouped item list: the collapsed icon rail, or the expanded flat list.
+ * It renders whenever `groups` is absent, and always on the collapsed rail
+ * (grouping is an expanded-rail idea). Both branches reuse the shared row
+ * components and hold rows and nothing else: creating lives in the host's
+ * header actions.
+ */
 export function SidebarFlatList({
   items,
   collapsed,

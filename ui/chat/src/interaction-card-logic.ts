@@ -29,9 +29,14 @@ export type DraftMap = Record<string, string>;
 
 export interface StepperState {
   current: number;
+  /** The furthest step the user has advanced to (the live frontier). Steps
+   *  before it are already completed, so the user may walk forward through them
+   *  again — critical for a revisited connect step, whose card never re-fires
+   *  onConnected once the app is connected, leaving no other way forward. */
   reached: number;
   answers: AnswerMap;
   drafts: DraftMap;
+  /** Which steps the attached files answer (`interaction-file-claim`). */
   fileClaims?: FileClaims;
 }
 

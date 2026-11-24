@@ -9,6 +9,10 @@ interface ChannelAvatarProps {
   className?: string;
 }
 
+/**
+ * Small branded avatar for messaging channel sources.
+ * Shows the platform logo in a circular badge.
+ */
 export function ChannelAvatar({
   source,
   size = "sm",

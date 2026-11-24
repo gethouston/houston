@@ -5,9 +5,13 @@ import { sidebarAddRow, sidebarRowType, sidebarSeat } from "./sidebar-geometry";
 import { sidebarRowButtonClasses as c, sidebarRowState } from "./sidebar-paint";
 
 export interface SidebarAddRowProps {
+  /** What the row does, e.g. "Add new AI Employee". */
   label: string;
   onClick: () => void;
+  /** Icon rail: the seat alone, named by a tooltip. */
   collapsed?: boolean;
+  /** DOM attributes (test ids, tour anchors): the expanded row's root, the
+   *  icon rail's button. */
   dataAttrs?: Record<string, string>;
 }
 
@@ -34,6 +38,15 @@ function Seat({
   );
 }
 
+/**
+ * The shortcut closing the list: the next seat on the team, not yet filled.
+ * It keeps the person row's columns (the Plus centred on the portraits above
+ * it, the label on the names' left edge) and its full-width pill, at the
+ * shorter {@link sidebarAddRow} height, with no hairline: it is a way to add
+ * someone, not one more member. Its label is muted like the Plus and
+ * strengthens with it. The icon rail shows the seat alone at the avatars'
+ * size, in the avatars' column.
+ */
 export function SidebarAddRow({
   label,
   onClick,

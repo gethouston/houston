@@ -51,6 +51,7 @@ function build(base: ProviderInfoLike[], auth: AuthStatus): ProvidersViewModel {
   };
 }
 
+/** Full merge of `GET /providers` + `GET /auth/status`. */
 export function mergeProviders(
   infos: ProviderInfo[],
   auth: AuthStatus,
@@ -58,6 +59,12 @@ export function mergeProviders(
   return build(infos, auth);
 }
 
+/**
+ * Status-only overlay for the cheap login poll: keep the model info the prior
+ * snapshot already holds, refresh every credential/login/active field from
+ * `GET /auth/status`. With no prior snapshot it degrades to an auth-only VM
+ * (empty model lists) so a first poll before any full refresh still publishes.
+ */
 export function overlayStatus(
   prior: ProvidersViewModel | undefined,
   auth: AuthStatus,

@@ -20,11 +20,17 @@ export type {
 } from "./types";
 export { AccountCommand, type AccountCommandType } from "./types";
 
+/** The typed facade for the caller's own profile + API keys. */
 export interface AccountModule {
+  /** The caller's effective display profile. Throws on any non-2xx, 404 included. */
   getMyProfile(): Promise<EditableProfile>;
+  /** Set or clear the caller's own name/photo overrides; echoes the effective profile. */
   setMyProfile(update: EditableProfileUpdate): Promise<EditableProfile>;
+  /** The caller's active API keys, newest first — display prefixes, no secrets. */
   listApiKeys(): Promise<ApiKey[]>;
+  /** Mint a personal API key; the FULL secret is in this one answer and nowhere else. */
   createApiKey(name: string): Promise<ApiKeyCreated>;
+  /** Revoke one of the caller's keys by id. */
   revokeApiKey(id: string): Promise<void>;
 }
 

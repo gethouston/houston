@@ -1,6 +1,7 @@
 import { type HttpScope, httpRequest, SdkHttpError } from "../http";
 import type { ProjectFile } from "./types";
 
+/** A failed `/agents/:id/files*` request. `status` is the upstream HTTP status. */
 export class FilesHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "FilesHttpError");

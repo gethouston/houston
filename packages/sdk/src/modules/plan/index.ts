@@ -22,6 +22,7 @@ export class PlanHttpError extends SdkHttpError {
   }
 }
 
+/** The per-person plan, bound to `/v1/me/plan*` and `/v1/me/plus/*` only. */
 export interface PlanModule {
   getPlan(): Promise<PlanSummary>;
   dismissPlanAnnouncement(): Promise<void>;

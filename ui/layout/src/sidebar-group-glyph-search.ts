@@ -8,6 +8,17 @@ function fold(value: string): string {
     .toLocaleLowerCase();
 }
 
+/**
+ * Case- and accent-insensitive substring matching across the glyph's key words,
+ * its curated concepts, and whatever else the caller offers as `extraHaystack`.
+ *
+ * The key words and concepts are ENGLISH, which is all this package can know:
+ * it holds no translations. The caller passes the localized name of the mark
+ * AND its localized concepts (`sidebarGroupGlyphConcepts`, translated) in
+ * `extraHaystack`. That is what makes a Spanish reader's "dinero" find the
+ * money marks instead of an empty grid, while the English words kept here mean
+ * "money" still finds them too.
+ */
 export function matchesSidebarGroupGlyph(
   name: SidebarGroupGlyphName,
   query: string,
@@ -49,6 +60,22 @@ export const SIDEBAR_GROUP_GLYPH_CONCEPT_VOCABULARY: ReadonlySet<string> =
     ...NAME_WORD_CONCEPTS,
   ]);
 
+/**
+ * The English words that DESCRIBE a mark, for a consumer that means to
+ * translate them: the curated tags, plus the words of the mark's own name that
+ * the vocabulary knows.
+ *
+ * The name words matter because the generator leaves a word out of a mark's
+ * tags when the name already carries it: `money-stack` is tagged finance and
+ * banking but NOT money. The matcher reads that name in English and needs no
+ * help, but a Spanish reader typing "dinero" would miss the mark the whole set
+ * is named after unless the concept it is named for is translated too.
+ *
+ * Name words the vocabulary does not know ("stack", "airplane") are left out:
+ * each is a word the mark's own English label already says, so the localized
+ * labels carry its translation and a key here would ask for the same word
+ * twice.
+ */
 export function sidebarGroupGlyphConcepts(
   name: SidebarGroupGlyphName,
 ): string[] {

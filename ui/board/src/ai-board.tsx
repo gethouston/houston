@@ -47,79 +47,149 @@ export interface AIBoardProps {
   items: KanbanItem[];
   columns?: KanbanColumn[];
   selectedId?: string | null;
+  /** Keyboard focus ring (arrow-nav highlight). Separate from selection so
+   *  the user can preview the next card without auto-opening the chat. */
   highlightedId?: string | null;
   onSelect?: (id: string | null) => void;
   onDelete?: (item: KanbanItem) => void;
   onApprove?: (item: KanbanItem) => void;
+  /** One-click archive on the cards whose status is in `archiveStatuses`. */
   onArchive?: (item: KanbanItem) => void;
+  /** Called when user sends the first message in a new conversation. Should
+   *  return the created activity ID. `mentions` are the teammates the
+   *  composer named and whose "@Name" text survived into the sent message. */
   onCreateConversation?: (
     text: string,
     files: File[],
     mentions?: MessageMention[],
   ) => Promise<string>;
+  /** Called when user sends a follow-up message in an existing conversation.
+   *  `mentions` as on {@link onCreateConversation}. */
   onSendMessage?: (
     sessionKey: string,
     text: string,
     files: File[],
     mentions?: MessageMention[],
   ) => Promise<void>;
+  /** Feed items keyed by session key (e.g. "activity-{id}"). */
   feedItems?: Record<string, FeedItem[]>;
+  /** Whether a message is currently being processed, keyed by session key. */
   isLoading?: Record<string, boolean>;
+  /** Custom empty state when the board has no items. */
   emptyState?: ReactNode;
+  /** Maps an activity ID to its session key. Defaults to `activity-${id}`. */
   sessionKeyFor?: (activityId: string) => string;
   runningStatuses?: string[];
   approveStatuses?: string[];
   archiveStatuses?: string[];
   errorStatuses?: string[];
+  /** Load persisted chat history for a session. Called once per session key when selected. */
   onLoadHistory?: (sessionKey: string) => Promise<FeedItem[]>;
+  /** Called with the loaded history so the parent can merge it into its
+   * own feed store, so a live item another client (e.g. phone) pushed
+   * into a session the user hadn't yet hydrated is kept. */
   onHistoryLoaded?: (sessionKey: string, items: FeedItem[]) => void;
+  /** Called with the openNewPanel function so the parent can trigger it externally (e.g. from a header button). */
   onNewPanelOpenerReady?: (opener: NewPanelOpener) => void;
+  /** Called with a panel-close function so the parent can dismiss the
+   *  detail panel from outside (e.g. global Escape handler). Necessary
+   *  for the empty new-mission panel where the parent has no
+   *  `selectedId` to clear — `closePanel` here also resets AIBoard's
+   *  internal `newPanelOpen` state, which `setSelectedId(null)` does
+   *  not touch. */
   onPanelCloserReady?: (close: () => void) => void;
+  /** Scroll-up lazy-load for the OPEN chat: the parent resolves it
+   *  for the active conversation; prepends the previous transcript page. */
   onLoadOlderMessages?: () => Promise<unknown>;
+  /** Older messages exist beyond the open chat's loaded window. */
   hasOlderMessages?: boolean;
+  /** Custom empty state for the chat panel when no messages exist. */
   chatEmptyState?: ReactNode;
+  /** Custom thinking indicator for the chat panel. */
   thinkingIndicator?: ReactNode;
+  /** Avatar element shown on every kanban card (e.g. small agent icon). */
   cardAvatar?: ReactNode;
+  /** Avatar element shown in the detail panel header. */
   panelAvatar?: ReactNode;
+  /** Rendered before the avatar (e.g. a Back button for a full-page panel). */
   panelLeading?: ReactNode;
+  /** Name shown next to the avatar in the panel header (e.g. "Houston"). */
   panelAgentName?: string;
+  /** Replaces the panel header's auto "Mission: {title}" line verbatim. */
   panelMissionLabel?: string;
+  /** Called when the detail panel opens or closes. */
   onPanelOpenChange?: (open: boolean) => void;
+  /** Called when the user clicks Stop in the chat panel. Receives the active session key. */
   onStopSession?: (sessionKey: string) => void;
+  /** Queued follow-up messages keyed by session key. */
   queuedMessages?: Record<
     string,
     NonNullable<ChatPanelProps["queuedMessages"]>
   >;
+  /** Called when the user removes a queued follow-up. */
   onRemoveQueuedMessage?: (sessionKey: string, id: string) => void;
+  /** Translated labels for queued follow-ups. */
   queuedLabels?: ChatPanelProps["queuedLabels"];
+  /** Predicate to identify tools that should use custom rendering. */
   isSpecialTool?: ToolsAndCardsProps["isSpecialTool"];
+  /** Custom renderer for special tool results. */
   renderToolResult?: ToolsAndCardsProps["renderToolResult"];
+  /** Translated labels for the collapsed process/details block. */
   processLabels?: ChatPanelProps["processLabels"];
+  /** Translated reasoning text inside the process/details block. */
   getThinkingMessage?: ChatPanelProps["getThinkingMessage"];
+  /** Custom tool name → human label mappings. */
   toolLabels?: ToolsAndCardsProps["toolLabels"];
+  /** Render prop for an end-of-turn summary (e.g., list of edited files). Forwarded to ChatPanel. */
   renderTurnSummary?: import("@houston-ai/chat").ChatPanelProps["renderTurnSummary"];
+  /** Custom renderer for system messages. Forwarded to ChatPanel. */
   renderSystemMessage?: import("@houston-ai/chat").ChatPanelProps["renderSystemMessage"];
+  /** Map active feed items before rendering. */
   mapFeedItems?: (ctx: { sessionKey: string; items: FeedItem[] }) => FeedItem[];
+  /** Node rendered after the last chat message. */
   afterMessages?:
     | ReactNode
     | ((ctx: { sessionKey: string; feedItems: FeedItem[] }) => ReactNode);
+  /** Custom renderer for user messages. Forwarded to ChatPanel. */
   renderUserMessage?: import("@houston-ai/chat").ChatPanelProps["renderUserMessage"];
+  /** Edit-and-resend. Forwarded to ChatPanel. */
   onEditMessage?: import("@houston-ai/chat").ChatPanelProps["onEditMessage"];
   canEditMessage?: import("@houston-ai/chat").ChatPanelProps["canEditMessage"];
   editMessageLabel?: import("@houston-ai/chat").ChatPanelProps["editMessageLabel"];
+  /** Copy-message affordance (both sides). Forwarded to ChatPanel. */
   enableMessageCopy?: import("@houston-ai/chat").ChatPanelProps["enableMessageCopy"];
   canCopyMessage?: import("@houston-ai/chat").ChatPanelProps["canCopyMessage"];
   copyMessageLabel?: import("@houston-ai/chat").ChatPanelProps["copyMessageLabel"];
+  /** In-place editing state + callbacks. Forwarded to ChatPanel. */
   messageEditing?: import("@houston-ai/chat").ChatPanelProps["messageEditing"];
+  /** Props-only configuration for long-conversation navigation. */
   conversationMap?: ChatPanelProps["conversationMap"];
+  /** Emitted by ChatPanel to surface short notices to the user
+   *  (e.g. duplicate-file drop). Forwarded as-is; app decides display. */
   onNotice?: (message: string) => void;
+  /** Lets apps reject unsupported files before they enter the composer draft. */
   prepareAttachments?: import("@houston-ai/chat").ChatPanelProps["prepareAttachments"];
+  /** Emitted when `prepareAttachments` rejects any incoming files. */
   onAttachmentRejections?: import("@houston-ai/chat").ChatPanelProps["onAttachmentRejections"];
+  /** Called when the user clicks the open button on an inline link. Forwarded to ChatPanel. */
   onOpenLink?: import("@houston-ai/chat").ChatPanelProps["onOpenLink"];
+  /** Custom renderer for markdown links. Forwarded to ChatPanel. */
   renderLink?: import("@houston-ai/chat").ChatPanelProps["renderLink"];
+  /** Transform an assistant message's content before render, optionally
+   *  appending an `extra` node after it. Forwarded to ChatPanel. */
   transformContent?: import("@houston-ai/chat").ChatPanelProps["transformContent"];
+  /**
+   * Composer footer content. When a function, called with `{ hasMessages }` so
+   * the consumer can lock the provider for active conversations.
+   */
   footer?: ReactNode | ((ctx: { hasMessages: boolean }) => ReactNode);
+  /** Content rendered inside the composer above the textarea. */
   composerHeader?: ReactNode | ((ctx: { hasMessages: boolean }) => ReactNode);
+  /** Popover menu anchored to the composer's paperclip button. When a
+   *  function, called with `{ hasMessages, openFilePicker, openFolderPicker,
+   *  close }` — the consumer can lock the provider for active conversations,
+   *  trigger the file or folder picker from inside the menu, and close the
+   *  popover. */
   attachMenu?:
     | ReactNode
     | ((ctx: {
@@ -128,43 +198,135 @@ export interface AIBoardProps {
         openFolderPicker: () => void;
         close: () => void;
       }) => ReactNode);
+  /** Enables submit even when the composer has no text or files. */
   canSendEmpty?: boolean;
+  /** Lets consumers take over a submit, or rewrite its text, before the
+   *  board creates or sends a normal chat message (`ComposerSubmitOutcome`). */
   onComposerSubmit?: ComposerSendRoutes["onComposerSubmit"];
+  /** Called when the user renames a card. */
   onRename?: (item: KanbanItem, newTitle: string) => void;
+  /** Render prop for extra action buttons on each card (e.g. "Run" button). */
   actions?: (item: KanbanItem) => React.ReactNode;
+  /** Render prop for action buttons in the detail panel header (e.g. worktree info, run button). */
   panelActions?: (item: KanbanItem) => React.ReactNode;
+  /**
+   * Panel chrome rendered in the header's action area on EVERY panel, item
+   * or not (the new-conversation composer included) — the host's own controls
+   * over the panel itself, e.g. a width toggle. `panelActions` is per item.
+   */
   panelTrailing?: ReactNode;
+  /**
+   * DOM element to portal the detail panel into. When provided, the panel
+   * renders via createPortal into this element (for app-level layout).
+   * When not provided, falls back to SplitView within AIBoard.
+   */
   panelContainer?: HTMLElement | null;
+  /**
+   * Chat-only presentation: render ONLY the detail panel, filling the host
+   * (no columns, no portal, no split). For a full-screen pushed chat (the
+   * phone's mission-chat screen) where the board itself is another screen.
+   * With no `selectedId` the panel is the new-conversation composer, so a
+   * draft chat can create its mission on first send.
+   */
   panelOnly?: boolean;
+  /**
+   * Skip the automatic composer focus when a selection hydrates. The board
+   * bumps the composer focus token so keyboard users can type immediately —
+   * but when the panel is a side companion of a form (the routine editor's
+   * chat), that late bump steals focus MID-TYPING from the form's inputs
+   * (the user's keystrokes suddenly land in the chat composer). Explicit
+   * focus requests (openNewPanel with focusComposer) still work.
+   */
   disableComposerAutoFocus?: boolean;
+  /**
+   * Hide the detail panel's close button. For a panel that is a permanent
+   * part of its host view (the routine editor's chat), there is nothing for
+   * an X to mean.
+   */
   hidePanelClose?: boolean;
+  /** Drop the detail panel's header row (see KanbanDetailPanel.hideHeader). */
   hidePanelHeader?: boolean;
+  /**
+   * Composer text keyed by session key, so what the user typed survives
+   * navigation. The key "new-conversation" is the new-mission panel's. A
+   * store, not a map: only the composer subscribes, so a keystroke never
+   * re-renders the board or the message list.
+   */
   draftStore?: ComposerDraftStore;
+  /** Translated label overrides for per-card copy (the card's action tooltips + delete confirm). */
   cardLabels?: KanbanCardLabels;
   formatTime?: MessageTimeFormatter;
+  /** Translated overrides for the copy the board renders itself (composer
+   *  placeholders, the uncreated conversation's panel title). */
   labels?: AIBoardLabels;
+  /** Read the composer's "follow-up" wording off the loaded feed instead of
+   *  the open conversation: for a permanent conversation (the assistant) an
+   *  empty chat asks its opening question. Off by default: a mission opened
+   *  from its card is history whether or not the feed has loaded. */
   composerAsksOpeningWhenEmpty?: boolean;
+  /**
+   * When set, replaces the chat composer with this node. Forwarded to
+   * ChatPanel. Apps use it to take over the composer space with a
+   * focused interaction surface (e.g. an action-input form).
+   */
   composerOverride?: ReactNode;
+  /** How `composerOverride` composes with the input. `"above"` (default) keeps
+   *  the input mounted below the card; `"replace"` hides it while the override is
+   *  present. Forwarded to ChatPanel. */
   composerOverrideMode?: ChatPanelProps["composerOverrideMode"];
+  /** Translated labels for the file-drop overlay and composer notices. Forwarded to ChatPanel. */
   composerLabels?: ChatPanelProps["composerLabels"];
+  /** Multiplayer only (C5): the signed-in viewer's user id. Forwarded to
+   *  ChatPanel so a shared conversation attributes teammates' bubbles. */
   currentUserId?: ChatPanelProps["currentUserId"];
+  /** Localized author-attribution labels. Forwarded to ChatPanel. */
   authorLabels?: ChatPanelProps["authorLabels"];
+  /** Force sender identity onto every turn (a shared conversation). Forwarded
+   *  to ChatPanel — see `ChatMessagesProps.showSenders`. */
   showSenders?: ChatPanelProps["showSenders"];
+  /** The agent's display name for its sender line. Forwarded to ChatPanel. */
   agentLabel?: ChatPanelProps["agentLabel"];
+  /** Sender avatar (teammate face / agent mark) for the sender line. Forwarded
+   *  to ChatPanel. */
   renderSenderAvatar?: ChatPanelProps["renderSenderAvatar"];
+  /** Text-colour utility for a row's sender name (teammate tone / agent
+   *  colour). Forwarded to ChatPanel. */
   senderNameClass?: ChatPanelProps["senderNameClass"];
+  /** Teammates the composer can @mention (the viewer excluded).
+   *  Forwarded to ChatPanel; empty/absent means "@" just types plainly. */
   mentionPeople?: ChatPanelProps["mentionPeople"];
+  /** The roster an agent reply's "@Name" runs are chipped against (the same
+   *  people INCLUDING the viewer). Forwarded to ChatPanel. */
   messageMentionPeople?: ChatPanelProps["messageMentionPeople"];
+  /** Avatar for a row in the @mention list. Forwarded to ChatPanel. */
   renderMentionAvatar?: ChatPanelProps["renderMentionAvatar"];
+  /** Localized labels for the @mention list. Forwarded to ChatPanel. */
   mentionLabels?: ChatPanelProps["mentionLabels"];
+  /** Prop-driven dictation control for the composer mic. Forwarded to
+   *  ChatPanel; omit (or ChatPanel's own default) hides the mic entirely. */
   dictation?: ChatPanelProps["dictation"];
+  /** Left-pane layout. "board" = kanban columns (default); "list" = a single
+   *  column-less vertical list (used by the Archived missions tab). */
   layout?: "board" | "list";
+  /** Sizing of the "list" layout rail. "center" (default) keeps the list as a
+   *  fixed-width centered column; "left" fills the full pane width, left-aligned
+   *  (the wide Archived views). Ignored in "board" layout. */
   listAlign?: "center" | "left";
+  /** Per-item matched body fragment (keyed by `KanbanItem.id`) shown below a row
+   *  when the search matched in the body/history rather than the title. Applied
+   *  in the "list" layout. */
   searchSnippets?: Record<string, BoardSearchSnippet>;
+  /** Enable per-card multi-select checkboxes (board layout only). */
   selectable?: boolean;
+  /** Ids currently in the multi-select set. */
   selectedIds?: ReadonlySet<string>;
+  /** Toggle a card's membership in the multi-select set. */
   onToggleSelect?: (item: KanbanItem) => void;
+  /** When a selection is active, locks selection to this column id — cards in
+   *  other columns hide their checkbox so a selection can't span sections. */
   selectionLockColumnId?: string | null;
+  /** Floating bulk-action bar config. Rendered when `selectable` and at
+   *  least one card is selected. */
   bulkActions?: {
     moveTargets: BulkMoveTarget[];
     onMove: (status: string) => void;
@@ -173,7 +335,12 @@ export interface AIBoardProps {
     onClear: () => void;
     labels: BulkActionBarLabels;
   };
+  /** Called when a card is dropped onto a different column (board layout
+   *  only). Receives the dragged item and the target column id. Providing
+   *  this enables drag-and-drop between columns. */
   onItemMove?: (item: KanbanItem, toColumnId: string) => void;
+  /** Override which columns accept a given dragged item. See
+   *  `KanbanBoardProps.canDropItem`. */
   canDropItem?: (item: KanbanItem, toColumnId: string) => boolean;
 }
 

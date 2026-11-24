@@ -41,6 +41,13 @@ export interface EditListingDialogProps {
   labels?: Partial<EditListingDialogLabels>;
 }
 
+/**
+ * THE listing editor — the store-facing metadata of an owned agent (name,
+ * tagline, description, category, tags), saved as one `PATCH {identity}`.
+ * One shared composition so web and app cannot drift. Content (skills,
+ * instructions) is deliberately absent: it comes from the agent in Houston
+ * via re-publish.
+ */
 export function EditListingDialog({
   agent,
   open,

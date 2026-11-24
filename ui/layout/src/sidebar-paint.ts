@@ -44,6 +44,11 @@ export const sidebarRowButtonClasses = {
     "size-4 shrink-0 fill-current text-ink-muted transition-transform duration-150 group-hover/row:text-ink motion-reduce:transition-none",
 } as const;
 
+/**
+ * A control on the rail's top line: the collapse toggle and the host's header
+ * actions beside it (search, create). One class, so the line reads as one set
+ * of buttons rather than a toggle with lookalikes parked next to it.
+ */
 export const sidebarHeaderControlClasses =
   "flex size-7 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus data-[state=open]:bg-hover data-[state=open]:text-ink";
 
@@ -56,6 +61,21 @@ export const sidebarListEnd =
 export const sidebarPinnedNeighbour =
   "[&:has(+*_[data-sidebar-root-list]>[data-sidebar-row]:first-of-type:hover)_[data-sidebar-row]:last-child_[data-person-text]]:border-transparent [&:has(+*_[data-sidebar-root-list]>[data-sidebar-row]:first-of-type_[aria-current=page])_[data-sidebar-row]:last-child_[data-person-text]]:border-transparent [&:not(:has(+*_[data-sidebar-row]))_[data-sidebar-row]:last-child_[data-person-text]]:border-transparent";
 
+/**
+ * A row's trailing control: the "..." menu on a group. A SIBLING of the row
+ * button, never a child, because a button may not nest inside a button.
+ *
+ * Always rendered, muted at rest, strengthening on hover / focus / open.
+ * Houston forbids hover-GATED affordances: a control that only exists under the
+ * cursor is unreachable by touch and invisible to anyone scanning the rail.
+ *
+ * `relative` for one reason only: the row's pill is an absolutely positioned
+ * `::before`, and a static sibling would paint underneath it.
+ *
+ * Exported from the package because `app/` mounts its own menus into a row's
+ * affordance slot, and a hand-copied class string is how two triggers on the
+ * same row end up looking like two different controls.
+ */
 export const sidebarRowAffordanceClasses = `relative ${sidebarRowEndMargin} flex size-6 shrink-0 items-center justify-center rounded-md text-ink-muted/60 transition-[background-color,color] duration-100 hover:bg-hover hover:text-ink focus-visible:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus data-[state=open]:bg-hover data-[state=open]:text-ink`;
 
 export const sidebarCollapsedItemClasses = {

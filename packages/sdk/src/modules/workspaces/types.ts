@@ -2,8 +2,18 @@ import { parseSidebarLayout, type SidebarLayout } from "@houston/protocol";
 import type { Workspace as WorkspaceCore } from "@houston/runtime-client";
 import { requireString } from "../payload";
 
+/**
+ * Which kind of space a workspace row bridges (C8 §Workspaces bridge). Present
+ * on hosts that serve spaces; ABSENT on single-player/self-host hosts (read as
+ * `"personal"`), so every pre-C8 profile stays valid.
+ */
 export type WorkspaceKind = "personal" | "org";
 
+/**
+ * One row of the workspace list. The conversation core's `Workspace` carries
+ * the identity and the locale override; the list route adds the space `kind`,
+ * which is what tells a team row (`org:<slug>`) from the personal one.
+ */
 export interface Workspace extends WorkspaceCore {
   kind?: WorkspaceKind;
 }
@@ -14,6 +24,7 @@ export type {
   SidebarRootEntry,
 } from "@houston/protocol";
 
+/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const WorkspacesCommand = {
   List: "workspaces/list",
   ReadAgentFile: "workspaces/readAgentFile",

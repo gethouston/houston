@@ -9,6 +9,7 @@ import {
 } from "../http";
 import type { AgentCreateInput, WireAgent } from "./types";
 
+/** A failed `/agents` request. `status` is the upstream HTTP status. */
 export class AgentsHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "AgentsHttpError");

@@ -5,6 +5,22 @@ import { ArrowUp } from "lucide-react";
 import { useState } from "react";
 import { normalizeAnswer } from "./interaction-card-model.ts";
 
+/**
+ * The always-visible single-line free-text row every non-question interaction
+ * card carries: under a connect / sign-in / credential step, and the
+ * plan-approval card, it's "or tell it what to do instead". It's a MINIATURE of the real composer (rounded
+ * pill, hairline border, a circular arrow-up send that turns on the moment there
+ * is text), so nothing about it needs learning. Never hover-gated: present at
+ * rest on every live step.
+ *
+ * Owns its own draft unless the consumer supplies `value` + `onValueChange`, in
+ * which case the text lives wherever the consumer parks it — how a non-question
+ * step's typed instruction survives the card being remounted.
+ * `onSubmit` fires with the trimmed text (never empty) via {@link normalizeAnswer};
+ * the consuming card turns that into its decline-with-instruction / redirection.
+ * Enter or the arrow sends. Props-only, i18n-agnostic: the consumer passes the
+ * placeholder + the send button's aria-label already translated.
+ */
 export function InlineTextRow({
   placeholder,
   sendLabel,

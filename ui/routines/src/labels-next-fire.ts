@@ -1,3 +1,4 @@
+/** Relative + absolute "next run" phrasing. `{m}`/`{h}`/`{d}`/`{day}`/`{time}`. */
 export interface NextFireLabels {
   lessThanMinute: string;
   inMinutes: string;

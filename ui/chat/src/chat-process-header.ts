@@ -4,17 +4,44 @@ import { commandActivityOf } from "./command-activity.ts";
 import type { ToolEntry } from "./feed-to-messages";
 import { getToolActionLabel, toolShortName } from "./tool-labels.ts";
 
+/**
+ * A resolved integration action for the header's branded row: the app's display
+ * NAME, its LOGO (when the catalog carried one), and the humanized action in
+ * present tense ("Sending email"). Resolved by the app — `ui/chat` stays
+ * Composio-unaware — and rendered as the logo (in the helmet's icon slot)
+ * followed by `{name} · {actionLabel}`. A missing `logoUrl` falls back to the
+ * Houston helmet, never a broken image.
+ */
 export interface ChatActionBrand {
   name: string;
   logoUrl?: string;
+  /** A glyph standing in for a brand logo when the integration has none:
+   *  `"tool"` renders a wrench (custom API/MCP integrations).
+   *  Takes precedence over `logoUrl`; absent → logo, else the helmet. */
   icon?: "tool";
   actionLabel: string;
+  /** The past-tense counterpart of `actionLabel` ("Sent email"), for surfaces
+   *  that report a COMPLETED action — the turn-end "Updates made" rows.
+   *  Optional and additive; absent falls back to
+   *  `actionLabel`. */
   doneLabel?: string;
 }
 
 export interface ChatProcessLabels {
+  /**
+   * Shimmer label while the mission runs but hasn't reached its first tool yet
+   * (the opening planning / reasoning). e.g. "Thinking..."
+   */
   active?: string;
+  /** Settled label once the mission ends and the log collapses. e.g. "Mission log". */
   complete?: string;
+  /**
+   * Resolves a Composio action slug (e.g. `GMAIL_SEND_EMAIL`) to the app's
+   * presentational brand for the branded header row. App-supplied (the catalog
+   * lives app-side); returns `undefined` when the current tool isn't a
+   * resolvable integration action, and the header falls back to the plain tool
+   * verb. Read-only — no connect side effects.
+   */
   resolveActionBrand?: (action: string) => ChatActionBrand | undefined;
 }
 

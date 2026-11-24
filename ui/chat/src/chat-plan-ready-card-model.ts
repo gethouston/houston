@@ -1,3 +1,7 @@
+/** English defaults live in the app; consumers pass `t()` results in. This
+ *  constant is the fallback for apps that don't localize the card yet. Each
+ *  option carries a title (icon sits inline with it in the .tsx) and a
+ *  one-line description on its own line, matching the composer mode menu. */
 export interface ChatPlanReadyLabels {
   title: string;
   collapse: string;
@@ -11,6 +15,8 @@ export interface ChatPlanReadyLabels {
   send: string;
 }
 
+/** English fallbacks for apps that don't localize the plan-ready card yet.
+ *  No em dashes. */
 export const DEFAULT_PLAN_READY_LABELS: ChatPlanReadyLabels = {
   title: "Plan ready",
   collapse: "Collapse plan approval",
@@ -29,8 +35,11 @@ export const PLAN_READY_LEDE_CLASS_NAME = "line-clamp-2";
 export const hasPlanReadySummary = (summary: string): boolean =>
   summary.trim().length > 0;
 
+/** Stable key for each action, so the .tsx wires the right callback + icon. */
 export type PlanReadyActionKey = "startWorking" | "runAutopilot";
 
+/** One resolved row descriptor: its stable key, its localized title +
+ *  description, and whether it is disabled. Icons are internal to the .tsx. */
 export interface PlanReadyAction {
   key: PlanReadyActionKey;
   title: string;
@@ -38,6 +47,15 @@ export interface PlanReadyAction {
   disabled: boolean;
 }
 
+/**
+ * The two options in render order: Continue in Ask first mode (execute) ->
+ * Continue in Autopilot mode (auto). Rendered as
+ * full-width mode-menu rows (icon inline with the title, description below).
+ * Primary emphasis comes from row order + title weight, not a filled button.
+ * `disabled` gates both uniformly, so the whole card reads as inert while
+ * another turn is active. Pure so the ordering/content/disabled mapping is
+ * unit-tested without a DOM.
+ */
 export function resolvePlanReadyActions(
   labels: ChatPlanReadyLabels,
   disabled: boolean,

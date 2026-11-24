@@ -3,6 +3,7 @@ import type { ReviewItemData } from "./types";
 
 export interface ReviewDetailPanelProps {
   item: ReviewItemData;
+  /** Render prop: the host app provides its own chat panel implementation */
   renderChat: (props: {
     sessionKey: string;
     placeholder: string;

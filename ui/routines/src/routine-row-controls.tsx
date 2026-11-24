@@ -7,7 +7,9 @@ export interface RoutineRowControlsProps {
   enabled: boolean;
   labels: RoutineRowLabels;
   onToggle?: (enabled: boolean) => void;
+  /** Fire the routine immediately — offered only when no run is in flight. */
   runNow?: () => void;
+  /** Stop the in-flight run — offered only while one is running. */
   stopRun?: () => void;
   onDelete?: () => void;
 }

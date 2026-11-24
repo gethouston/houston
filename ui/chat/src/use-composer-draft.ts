@@ -1,8 +1,15 @@
 import { useCallback, useSyncExternalStore } from "react";
 
+/**
+ * A store of composer drafts, read and written by draft key. Only the composer
+ * subscribes to it, so a keystroke re-renders the composer and nothing around
+ * it: a `value` held by the board would re-render the whole board, the
+ * message list and every card on each key.
+ */
 export interface ComposerDraftStore {
   get(key: string): string;
   set(key: string, text: string): void;
+  /** Called on every store change; `get` decides whether this key moved. */
   subscribe(onChange: () => void): () => void;
 }
 

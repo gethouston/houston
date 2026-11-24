@@ -12,9 +12,12 @@ import { useRef } from "react";
 import type { BrowserHandoffCardState } from "./browser-live-types";
 
 export interface BrowserHandoffCardLabels {
+  /** The heading when the hand-off names a site. */
   heading: (site: string) => string;
+  /** The heading when it does not. */
   headingNoSite: string;
   open: string;
+  /** The Open button's accessible name. */
   openLabel: (site: string | null) => string;
   done: string;
   cancelled: string;
@@ -36,6 +39,7 @@ export const DEFAULT_BROWSER_HANDOFF_CARD_LABELS: BrowserHandoffCardLabels = {
 
 export interface BrowserHandoffCardProps {
   site: string | null;
+  /** What the agent asked the person to do, in its own words. */
   task: string;
   state: BrowserHandoffCardState;
   onOpen?: () => void;
@@ -70,6 +74,12 @@ function OutcomeChip({
   );
 }
 
+/**
+ * The in-chat card for a browser hand-off: the agent is waiting for the person
+ * to do something on a website themselves (sign in, a code, a captcha). Open
+ * shows only while it waits; afterwards the same slot keeps the outcome, so
+ * the card keeps its height and the chat under it never jumps.
+ */
 export function BrowserHandoffCard({
   site,
   task,

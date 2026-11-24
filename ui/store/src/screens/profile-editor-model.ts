@@ -1,5 +1,6 @@
 import type { CreatorLinkMap } from "../components/social-links";
 
+/** The editable fields, seeded from the loaded profile (or blank to claim). */
 export interface ProfileEditorForm {
   handle: string;
   displayName: string;
@@ -7,6 +8,7 @@ export interface ProfileEditorForm {
   links: CreatorLinkMap;
 }
 
+/** What the editor persists on save. */
 export interface ProfileEditorPatch extends ProfileEditorForm {}
 
 export const SAVE_ERROR: Record<string, string> = {

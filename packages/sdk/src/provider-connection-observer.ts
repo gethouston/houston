@@ -1,5 +1,11 @@
+/** Fresh connection evidence only: callers must probe the host, never a cache. */
 export type ConnectionEvidence = "connected" | "disconnected" | "checking";
 
+/**
+ * Observe one requested connection. A settled success advances once; cancellation
+ * invalidates even an in-flight probe so a dismissed chat cannot resume later.
+ * Surfaces supply transport and rendering; this owns retry and completion.
+ */
 export function observeProviderConnection(options: {
   probe: () => Promise<ConnectionEvidence>;
   onState: (state: ConnectionEvidence) => void;
@@ -35,6 +41,7 @@ export function observeProviderConnection(options: {
   };
 }
 
+/** A user's Cancel invalidates outstanding evidence until an explicit retry. */
 export function createProviderConnectionMonitor(
   options: Parameters<typeof observeProviderConnection>[0] & {
     initiallyPaused?: boolean;

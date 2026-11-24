@@ -33,6 +33,7 @@ export interface ConversationMomentSearchResult {
   rangesById: Record<string, HighlightRange[]>;
 }
 
+/** Derives searchable navigation moments from every message currently rendered. */
 export function deriveConversationMoments(
   displayItems: ChatDisplayItem[],
 ): ConversationMoment[] {
@@ -57,6 +58,11 @@ export function deriveConversationMoments(
   return moments;
 }
 
+/**
+ * True when at least one message can anchor the chat search. Lets the header
+ * menu (rendered outside ChatMessages) decide whether "Find" is actionable
+ * without waiting on the map's own derivation.
+ */
 export function hasConversationMoments(messages: ChatMessage[]): boolean {
   return (
     deriveConversationMoments(

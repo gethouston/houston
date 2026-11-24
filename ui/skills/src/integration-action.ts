@@ -1,5 +1,18 @@
 import { actionWordsWithoutToolkit } from "@houston-ai/core/src/integration-action-words.ts";
 
+/**
+ * A readable name for the action a workflow step runs on its connected app.
+ * Action slugs arrive as the integration layer stores them —
+ * `GMAIL_SEND_EMAIL` — which is machine vocabulary a non-technical owner
+ * should never read. The toolkit is already shown beside the action (as a logo
+ * or the slug), so its prefix is dropped: `GMAIL_SEND_EMAIL` + `gmail` reads
+ * "Send email". The stripping itself is the shared
+ * {@link actionWordsWithoutToolkit}, so this chip and the chat's action rows
+ * can never disagree about which words belonged to the app.
+ *
+ * Returns null when there is no action to name, so a caller renders the app
+ * alone instead of an empty label.
+ */
 export function humanizeIntegrationAction(
   toolkit: string,
   action: string | null,

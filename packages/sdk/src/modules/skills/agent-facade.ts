@@ -24,23 +24,44 @@ import {
   type SkillsManifest,
 } from "./types-agent";
 
+/** One agent's own skills and its manifest. Every call throws on a non-2xx. */
 export interface AgentSkillsFacade {
+  /** The skills this agent can follow, summaries only. */
   listSkills(agentId: string): Promise<SkillSummary[]>;
+  /** One skill's full detail, including its instructions. */
   loadSkill(agentId: string, slug: string): Promise<SkillDetail>;
+  /** Add a skill to this agent. No body on success. */
   createSkill(agentId: string, body: NewSkill): Promise<void>;
+  /** Overwrite a skill's instructions in place — no earlier copy is kept. */
   saveSkill(agentId: string, slug: string, content: string): Promise<void>;
+  /** Remove a skill from this agent. */
   deleteSkill(agentId: string, slug: string): Promise<void>;
+  /** Which of this agent's skills are switched on. */
   getSkillsManifest(agentId: string): Promise<SkillsManifest>;
+  /** Replace the whole enabled list; echoes what the host stored. */
   putSkillsManifest(
     agentId: string,
     manifest: SkillsManifest,
   ): Promise<SkillsManifest>;
+  /**
+   * Switch ONE skill on or off, leaving the rest of the manifest as it is.
+   * Calls for the same agent run one after another, so two switches started
+   * together both land instead of the second dropping the first.
+   */
   setSkillEnabled(
     agentId: string,
     slug: string,
     enabled: boolean,
   ): Promise<SkillsManifest>;
+  /**
+   * Put this agent back on the workspace's version of a skill: switch the
+   * manifest entry on, then drop the agent's own copy that was shadowing it.
+   */
   revertSkillOverride(agentId: string, slug: string): Promise<void>;
+  /**
+   * Stop this agent loading a workspace skill: switch the manifest entry off,
+   * then drop the agent's own copy of it, which would otherwise keep loading.
+   */
   disableSkillForAgent(agentId: string, slug: string): Promise<void>;
 }
 

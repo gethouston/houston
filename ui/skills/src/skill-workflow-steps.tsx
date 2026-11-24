@@ -4,16 +4,31 @@ import { humanizeIntegrationAction } from "./integration-action";
 import type { SkillStepIntegration, SkillWorkflowStepItem } from "./types";
 
 export interface SkillWorkflowStepsLabels {
+  /** Heading above the list. */
   heading?: string;
 }
 
 export interface SkillWorkflowStepsProps {
   steps: SkillWorkflowStepItem[];
+  /**
+   * Draws the app a step acts on, as a chip beside the step's title. Optional
+   * because resolving a toolkit slug to a real app name + logo is a Composio
+   * catalog concern owned by `app/`; without it the step shows the slug and
+   * the action's plain name.
+   */
   renderIntegration?: (integration: SkillStepIntegration) => ReactNode;
   labels?: SkillWorkflowStepsLabels;
   className?: string;
 }
 
+/**
+ * SkillWorkflowSteps — a Houston-authored skill read as the numbered procedure
+ * it is, instead of as the SKILL.md markdown it is stored as. Each step is an
+ * index chip, a short action, the app that action runs on, and the detail
+ * underneath; the detail keeps its own line breaks so a step's nested lines
+ * stay a list. Nothing renders for a skill Houston didn't write (an imported
+ * skill has no parsed steps, and its raw instructions stay the primary body).
+ */
 export function SkillWorkflowSteps({
   steps,
   renderIntegration,

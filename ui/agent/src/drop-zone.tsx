@@ -28,6 +28,10 @@ export interface DropZoneOptions {
   onDropError?: (error: unknown) => void;
 }
 
+/** Container-level drop zone. Handles ALL drop events (both external and
+ *  internal). Dropped folders are walked recursively; each produced File
+ *  carries its folder-relative path (`webkitRelativePath`), hidden entries
+ *  skipped — same behavior as the chat composer. */
 export function useDropZone({
   onFilesDropped,
   onMove,
@@ -104,6 +108,7 @@ export function useDropZone({
   };
 }
 
+/** Folder-level highlight only — does NOT handle the drop (container does). */
 export function useFolderDropTarget(dragScope?: string) {
   const [isOver, setIsOver] = useState(false);
   const counter = useRef(0);

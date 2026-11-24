@@ -21,6 +21,7 @@ const AUTO_CLOSE_DELAY = 800;
 
 export interface ToolBlockProps {
   tool: ToolEntry;
+  /** True when this is the currently executing tool. */
   isActive: boolean;
   toolLabels?: Record<string, string>;
 }

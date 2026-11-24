@@ -1,6 +1,8 @@
 export interface MessageTime {
   short: string;
   full: string;
+  /** Another year only: shorter forms for a card's narrow time slot, longest
+   *  first. The card shows the first that fits; rows with room use `short`. */
   compact?: string[];
 }
 
@@ -20,6 +22,7 @@ function formatter(locale: string, options: Intl.DateTimeFormatOptions) {
   return value;
 }
 
+/** Local calendar dates keep yesterday stable across daylight-saving changes. */
 export function formatMessageTime(
   iso: string,
   locale = "en-US",

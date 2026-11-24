@@ -7,8 +7,11 @@ import {
   parseColor,
 } from "./color-contrast.ts";
 
+/** WCAG 2.x minimum for body-size text. Below this the name falls back to ink. */
 export const AGENT_NAME_CONTRAST_MIN = 4.5;
 
+/** The class emitted when an agent colour is illegible in a given theme: the
+ *  ordinary primary-text token, which is legible in both themes by definition. */
 export const AGENT_NAME_FALLBACK_CLASS = "text-ink";
 
 interface ToneVariants {
@@ -70,13 +73,16 @@ const AGENT_NAME_TONE_CLASSES = {
   },
 } as const satisfies Record<string, ToneVariants>;
 
+/** The palette ids this module knows how to colour a name with. */
 export type AgentNameToneId = keyof typeof AGENT_NAME_TONE_CLASSES;
 
+/** Per-theme legibility of one agent colour against that theme's chat surface. */
 export interface AgentNameLegibility {
   lightOk: boolean;
   darkOk: boolean;
 }
 
+/** Measured contrast of one agent colour against each theme's chat surface. */
 export interface AgentNameContrast {
   light: number;
   dark: number;
@@ -103,12 +109,19 @@ const MEASURED: Record<string, AgentNameContrast> = Object.fromEntries(
   ]),
 );
 
+/**
+ * The measured contrast ratios behind every decision this module makes, so
+ * tests (and a curious reviewer) can assert the actual numbers rather than
+ * trust the branch that consumed them. Returns a fresh object — the internal
+ * table is the source of truth and must not be mutable from outside.
+ */
 export function agentNameContrast(): Record<string, AgentNameContrast> {
   return Object.fromEntries(
     Object.entries(MEASURED).map(([id, ratios]) => [id, { ...ratios }]),
   );
 }
 
+/** Whether an agent colour clears the text minimum in each theme. */
 export function agentNameLegibility(id: string): AgentNameLegibility {
   const ratios = MEASURED[id];
   if (!ratios) return { lightOk: false, darkOk: false };
@@ -118,6 +131,16 @@ export function agentNameLegibility(id: string): AgentNameLegibility {
   };
 }
 
+/**
+ * The pure branch selection, split out so every outcome — including the ones
+ * today's palette never reaches — is directly testable with injected
+ * legibility instead of by mutating the palette.
+ *
+ * An id outside the table falls back to plain ink: the caller resolved it
+ * through `agentColorId`, so this can only be reached if the token palette
+ * grew a colour this table has not learned yet, and an unstyled-but-readable
+ * name beats an invented class Tailwind never generated.
+ */
 export function nameToneClassFor(
   id: string,
   { lightOk, darkOk }: AgentNameLegibility,
@@ -130,6 +153,12 @@ export function nameToneClassFor(
   return AGENT_NAME_FALLBACK_CLASS;
 }
 
+/**
+ * The text-colour class for an agent's name in chat. `stored` is whatever the
+ * agent has on record — a palette id, or a light/dark hex from an older write
+ * — and is resolved through `agentColorId`, so an unknown or missing value
+ * lands on the first palette colour exactly like every other agent surface.
+ */
 export function agentNameToneClass(stored: string | undefined): string {
   const id = agentColorId(stored);
   return nameToneClassFor(id, agentNameLegibility(id));

@@ -8,10 +8,12 @@ import {
 import { type HttpScope, httpRequest } from "../http";
 import { refusalCode, refusalStatus } from "../refusal-code";
 
+/** What a switch answered: the org's billing after it, or a state it is in. */
 export type SwitchToYearlyResult =
   | { kind: "switched"; billing: OrgBilling | null }
   | { kind: SwitchToYearlyRefusal };
 
+/** The refusal behind a failed switch, or null for every other error. */
 export function switchToYearlyRefusal(
   error: unknown,
 ): SwitchToYearlyRefusal | null {
@@ -70,14 +72,24 @@ export async function dismissPriceNotice(scope: HttpScope): Promise<void> {
   });
 }
 
+/** What the promo-ended modal says, off the org's billing. */
 export interface PromoEndedView {
+  /** The promotional seat price the org pays today, a month. */
   previousCents: number;
+  /** The monthly seat price from the next charge. */
   nextCents: number;
+  /** The next charge, when the monthly price changes. */
   renewsAt: string;
+  /** Every member is a seat; at least one. */
   seats: number;
+  /** A new checkout's list prices: yearly is offered only where sold. */
   prices: SeatPrices | null;
 }
 
+/**
+ * The promo-ended notice for the caller, or null: shown only to the billing
+ * owner (the gateway sets it for them alone) of a paid org.
+ */
 export function promoEndedView(
   billing: OrgBilling | null | undefined,
 ): PromoEndedView | null {
@@ -93,6 +105,11 @@ export function promoEndedView(
   };
 }
 
+/**
+ * Whether the promo-ended modal opens on its own: the notice is set, the
+ * owner did not close it this session, and no other plan dialog (the
+ * pricing-change modal first) is up. One modal at a time.
+ */
 export function promoEndedModalOpens(
   view: PromoEndedView | null,
   options: { closedThisSession: boolean; otherDialogOpen: boolean },

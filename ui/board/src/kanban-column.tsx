@@ -6,6 +6,8 @@ import type { MessageTimeFormatter } from "./message-time";
 import type { KanbanItem } from "./types";
 
 export interface KanbanColumnProps {
+  /** This column's id. Exposed on the DOM (`data-kanban-column`) so the board's
+   *  pointer drag can hit-test which column a card is dropped on. */
   columnId?: string;
   label: string;
   items: KanbanItem[];
@@ -13,6 +15,7 @@ export interface KanbanColumnProps {
   highlightedId?: string | null;
   onAdd?: () => void;
   addLabel?: string;
+  /** Spread onto the add button; see `KanbanColumnConfig.addAttrs`. */
   addAttrs?: Record<string, string>;
   onSelect: (item: KanbanItem) => void;
   onDelete?: (item: KanbanItem) => void;
@@ -28,13 +31,24 @@ export interface KanbanColumnProps {
   avatar?: React.ReactNode;
   cardLabels?: KanbanCardLabels;
   formatTime?: MessageTimeFormatter;
+  /** Node rendered on the right of the column header (e.g. archive-all). */
   headerAction?: React.ReactNode;
+  /** Enable per-card multi-select checkboxes. */
   selectable?: boolean;
+  /** Ids currently in the multi-select set. */
   selectedIds?: ReadonlySet<string>;
+  /** Toggle a card's membership in the multi-select set. */
   onToggleSelect?: (item: KanbanItem) => void;
+  /** Make this column's cards draggable. */
   dndEnabled?: boolean;
+  /** Whether this column accepts the card currently being dragged. Drives the
+   *  faint "drop here" ring during a drag. */
   isDropTarget?: boolean;
+  /** Whether the dragged card is currently over this (drop-target) column.
+   *  Drives the stronger highlight. */
   isOver?: boolean;
+  /** Id of the card being dragged anywhere on the board (null when idle), used
+   *  to dim the dragged card. */
   draggingId?: string | null;
 }
 

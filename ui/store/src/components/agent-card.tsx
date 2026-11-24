@@ -22,6 +22,17 @@ const defaults: AgentCardLabels = {
   tryNow: "Try it now",
 };
 
+/**
+ * THE agent card. A div with a full-card link OVERLAY (never a button nested
+ * in an anchor), so the visible corner affordance can sit above it validly.
+ * Hover shifts colour and reveals the hairline — never position.
+ *
+ * Deliberately quiet: the tile and ONE bordered corner affordance up top —
+ * the install `+`, or whatever the surface passes as `action` (the owner grid
+ * puts its pencil menu there; two circles in one corner is how the pencil
+ * ends up painted over the plus). Then air, name, two lines of description,
+ * the integrations it uses, and a creator-plus-installs baseline.
+ */
 export function AgentCard({
   agent,
   href,

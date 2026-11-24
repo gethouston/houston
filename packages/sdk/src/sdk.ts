@@ -17,6 +17,7 @@ import type { SdkConfig } from "./ports";
 import { moduleFactories, type SdkModules } from "./sdk-modules";
 import { ScopeStore, type SdkEvent } from "./store";
 
+/** The client every Houston surface binds. See the module header. */
 export class HoustonSdk implements SdkModules {
   private readonly store: ScopeStore;
   private readonly authExpiry: AuthExpiryNotifier;
@@ -50,7 +51,10 @@ export class HoustonSdk implements SdkModules {
   readonly citations: SdkModules["citations"];
   readonly migration: SdkModules["migration"];
   readonly browser: SdkModules["browser"];
+  /** The per-agent engine client every module resolves its calls through — the
+   *  seam a host binds when it drives the re-exported turn machinery itself. */
   readonly clientFor: (agentId: string) => HoustonEngineClient;
+  /** The one bound on this client's roster-wide reads (`./fan-out`). */
   readonly fanOut: FanOutGate;
 
   constructor(config: SdkConfig) {
@@ -112,18 +116,26 @@ export class HoustonSdk implements SdkModules {
     this.browser = moduleFactories.createBrowserModule(ctx);
   }
 
+  /** Latest snapshot for `scope`, or `undefined` if none has been published. */
   getSnapshot(scope: string): unknown | undefined {
     return this.store.getSnapshot(scope);
   }
 
+  /** Subscribe to a scope's snapshots. Returns an unsubscribe function. */
   subscribe(scope: string, cb: (snapshot: unknown) => void): () => void {
     return this.store.subscribe(scope, cb);
   }
 
+  /** Subscribe to the global event channel. Returns an unsubscribe function. */
   on(cb: (event: SdkEvent) => void): () => void {
     return this.store.onEvent(cb);
   }
 
+  /**
+   * The dispatch path. Validate an untrusted envelope and route it to the same
+   * handler the typed facade uses. Never throws: a malformed envelope or an
+   * unknown/failing command resolves to an `ok: false` {@link CommandResult}.
+   */
   async dispatch(envelope: CommandEnvelope): Promise<CommandResult> {
     if (!isCommandEnvelope(envelope)) {
       return {
@@ -135,6 +147,13 @@ export class HoustonSdk implements SdkModules {
     return this.commands.dispatch(envelope);
   }
 
+  /**
+   * Tear down every long-lived resource the SDK holds: the agents + activities
+   * reactivity streams and all in-flight turn/observer streams. Call it when the SDK is
+   * being discarded (logout, teardown) so no background fetch loop outlives it.
+   * Idempotent-friendly at the module level; the SDK instance is single-use
+   * after disposal.
+   */
   dispose(): void {
     this.agents.dispose();
     this.turns.dispose();

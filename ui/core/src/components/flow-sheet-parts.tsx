@@ -6,6 +6,18 @@ import type { ReactNode } from "react";
 import { Button } from "./button";
 import { DialogCloseButton, DialogTitle } from "./dialog";
 
+/**
+ * The two frames a flow may wear, chosen per STEP.
+ *
+ * `compact` is the ConfirmDialog/FormDialog frame — one hand-sized width, its
+ * height taken from the content — and it is what a step asking ONE short thing
+ * wears: a two-card choice, a name and a colour, a short form. `wide` is the
+ * tall frame, for a step that is a catalog to scan.
+ *
+ * One size for every step was the defect: a question with two answers was
+ * forced into a screen-sized surface and its cards floated in the middle of
+ * nothing.
+ */
 export type FlowSheetSize = "compact" | "wide";
 
 export const FLOW_SHEET_CONTENT_CLASSES: Record<FlowSheetSize, string> = {

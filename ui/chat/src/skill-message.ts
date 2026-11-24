@@ -12,16 +12,32 @@ export interface SkillInvocationField {
 }
 
 export interface SkillInvocation {
+  /** Skill machine name (slug). */
   skill: string;
+  /** Title-cased display name shown on the card. */
   displayName: string;
+  /**
+   * Either a full image URL or a Microsoft Fluent Emoji slug. The
+   * renderer is responsible for resolving slugs to URLs.
+   */
   image: string | null;
+  /** Optional muted description for the card. */
   description: string;
+  /** Composio toolkit slugs (e.g. "gmail", "slack") for the logo row. */
   integrations: string[];
+  /** Ordered field labels + values the user filled. */
   fields: SkillInvocationField[];
+  /** Optional text the user typed alongside the Skill. */
   message: string;
+  /** Files uploaded with the Skill. Paths are for model context, not UI display. */
   attachments: AttachmentReference[];
 }
 
+/**
+ * Try to extract a Skill-invocation payload from a user-message body.
+ * Returns `null` when the message is plain text. Tolerant of trailing
+ * whitespace.
+ */
 export function decodeSkillMessage(body: string): SkillInvocation | null {
   const match = body.match(MARKER_RE) ?? body.match(LEGACY_MARKER_RE);
   if (!match) return null;
@@ -44,6 +60,12 @@ export function decodeSkillMessage(body: string): SkillInvocation | null {
   }
 }
 
+/**
+ * Resolve an `image` value (full URL or Fluent slug) to a renderable URL.
+ * Slugs hit the jsDelivr mirror of `microsoft/fluentui-emoji@main/assets`.
+ * Used by both the desktop and mobile renderers so the visual stays
+ * consistent.
+ */
 export function resolveSkillImage(
   value: string | null | undefined,
 ): string | null {

@@ -6,6 +6,8 @@ import { useCallback } from "react";
 
 export type SuggestionsProps = ComponentProps<"div">;
 
+/** The chips wrap onto more lines instead of scrolling sideways: a hidden
+ *  horizontal scroll cut the last chip mid-word with no sign there was more. */
 export const Suggestions = ({ className, ...props }: SuggestionsProps) => (
   <div
     className={cn("flex min-w-0 flex-wrap items-center gap-2", className)}

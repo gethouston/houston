@@ -1,5 +1,6 @@
 import type { Clock } from "./ports";
 
+/** Roster-wide reads started at once, per gate. */
 export const AGENT_FAN_OUT_LIMIT = 8;
 
 export const FAN_OUT_SLOT_LEASE_MS = 2_000;
@@ -9,7 +10,12 @@ export interface FanOutSettleOptions {
 }
 
 export interface FanOutGate {
+  /** Run one read once a slot is free. Resolves or rejects as the read does. */
   run<T>(read: () => Promise<T>, opts?: FanOutSettleOptions): Promise<T>;
+  /**
+   * Read every item through the gate. Never rejects: each outcome is settled
+   * in input order, like `Promise.allSettled`.
+   */
   settle<I, T>(
     items: readonly I[],
     read: (item: I) => Promise<T>,

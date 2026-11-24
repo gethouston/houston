@@ -39,16 +39,32 @@ export {
 } from "./upload";
 
 export interface LinkedInModule {
+  /** Whether the person's LinkedIn is connected, and as whom. */
   connection(signal?: AbortSignal): Promise<LinkedInConnection>;
+  /**
+   * LinkedIn's authorization page, for the person's browser to open, and the
+   * return it leads back to (`returnTo`; omitted, the web app).
+   */
   connect(
     returnTo?: LinkedInConnectReturn,
     signal?: AbortSignal,
   ): Promise<LinkedInConnectAnswer>;
+  /** Redeem the one-time ticket the callback returned with. */
   complete(ticket: string, signal?: AbortSignal): Promise<LinkedInCompletion>;
+  /** Forget the person's LinkedIn token. */
   disconnect(signal?: AbortSignal): Promise<void>;
+  /**
+   * Post the picture with its words. Refusals are typed, including the ones
+   * earned before any request (words or a picture the gateway would refuse).
+   * No answer within three minutes, a connection cut after the request left,
+   * or a bare 502 or 504 is `unknown`: the post may be up. Once the 2xx
+   * headers arrive it is posted, whatever its body does. An abort through
+   * `input.signal` before any answer rejects with its reason.
+   */
   postImage(input: LinkedInPostInput): Promise<LinkedInPostResult>;
 }
 
+/** A failed linkedin request. `status` is the upstream HTTP status. */
 export class LinkedInHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "LinkedInHttpError");

@@ -74,6 +74,13 @@ export interface OwnedAgentCardProps {
   LinkComponent?: StoreLinkComponent;
 }
 
+/**
+ * THE owner's agent card: the PUBLIC AgentCard verbatim, with the pencil
+ * menu — Edit listing… · Share… · Delete — as ITS corner affordance (the
+ * card's `action` slot, so it sits exactly where a visitor's `+` would, never
+ * stacked on top of one) and a state badge beside it while the listing is
+ * not publicly visible. Visibility lives in the Share dialog.
+ */
 export function OwnedAgentCard({
   agent,
   href,

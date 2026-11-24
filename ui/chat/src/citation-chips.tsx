@@ -2,17 +2,23 @@ import { cn } from "@houston-ai/core";
 import { TriangleAlert, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+/** One comment pinned to a file region, as a chip or a pill shows it. */
 export interface CitationChipData {
   id: string;
+  /** The number its mark on the page shows. */
   n: number;
+  /** Where it points: "Slide 3 · “quote”", "Slide 5 · Selected area". */
   context: string;
   comment: string;
   thumbnailSrc?: string;
+  /** Set when the page it points at no longer exists. */
   warning?: string;
 }
 
 export interface CitationChipRowLabels {
+  /** The row's accessible name. */
   region?: string;
+  /** Shown for a comment left empty. */
   noComment?: string;
   open?: (chip: CitationChipData) => string;
   remove?: (chip: CitationChipData) => string;
@@ -38,6 +44,12 @@ export function CitationNumber({
   );
 }
 
+/**
+ * The comments waiting in the composer: one fixed-height row that scrolls
+ * sideways, so adding a comment never grows the composer past one row.
+ * Hovering or focusing a chip lights its mark on the page; pressing it brings
+ * the mark into view.
+ */
 export function CitationChipRow({
   chips,
   hotId,

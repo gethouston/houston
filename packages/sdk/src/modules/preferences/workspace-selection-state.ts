@@ -6,6 +6,7 @@ export type WorkspacePreferenceReporter = (
   error: unknown,
 ) => void;
 
+/** Shared across SDK rebuilds; an identity change invalidates queued work. */
 export class WorkspaceSelectionState {
   choice = 0;
   private identity: string | null | undefined;

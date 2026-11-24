@@ -2,18 +2,31 @@ import type { ReactNode } from "react";
 import { cn } from "../utils";
 
 export interface HighlightRange {
+  /** Inclusive start index into `text` (UTF-16 code units). */
   start: number;
+  /** Exclusive end index into `text`. */
   end: number;
 }
 
 export interface HighlightedTextProps {
   text: string;
+  /** Spans of `text` to wrap in a highlight `<mark>`. Out-of-bounds, empty,
+   *  unsorted, or overlapping ranges are all tolerated. */
   ranges?: HighlightRange[];
+  /** Extra classes merged onto each `<mark>`. */
   markClassName?: string;
 }
 
 const MARK_CLASS = "rounded-[3px] bg-highlight px-0.5 text-highlight-text";
 
+/**
+ * Renders `text`, wrapping the given character `ranges` in a `<mark>` so search
+ * matches stand out (e.g. the matched keyword in archived-mission search).
+ *
+ * Pure presentation: the caller decides which spans match (fold-aware search
+ * lives app-side). Returns a Fragment, so it drops straight into a truncating
+ * or line-clamping parent without introducing a wrapper element.
+ */
 export function HighlightedText({
   text,
   ranges,

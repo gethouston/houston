@@ -1,3 +1,4 @@
+/** The public developer docs (`website/src/developers/*`), one page per face. */
 export const HOUSTON_API_DOCS = {
   overview: "https://gethouston.ai/developers",
   missions: "https://gethouston.ai/developers/missions",
@@ -5,12 +6,16 @@ export const HOUSTON_API_DOCS = {
   a2a: "https://gethouston.ai/developers/a2a",
 } as const;
 
+/** The environment variable the prompt tells the agent to read. */
 export const HOUSTON_API_KEY_ENV = "HOUSTON_API_KEY";
 
 export interface ApiSetupPromptInput {
+  /** The gateway origin the person's code calls, e.g. `https://gateway.gethouston.ai`. */
   baseUrl: string;
+  /** The employee's public slug (its client-side id on the hosted gateway). */
   agentId: string;
   agentName: string;
+  /** The organization the employee lives in, sent as `x-houston-org`. */
   orgId: string;
 }
 

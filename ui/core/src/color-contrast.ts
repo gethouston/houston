@@ -1,3 +1,4 @@
+/** An sRGB colour with straight (non-premultiplied) alpha in 0..1. */
 export interface ContrastColor {
   r: number;
   g: number;
@@ -12,6 +13,12 @@ const RGB_PATTERN =
 const CHANNEL_MAX = 255;
 const SUPPORTED = "#rgb, #rrggbb, #rrggbbaa, rgb(r, g, b), rgba(r, g, b, a)";
 
+/**
+ * Parse the colour shapes the design tokens actually emit (`#rrggbb` and
+ * `rgba(...)`) plus the shorthands authors reach for. Throws on anything else
+ * — including named colours and `color-mix()` — because a half-understood
+ * colour would quietly produce a wrong contrast number.
+ */
 export function parseColor(css: string): ContrastColor {
   const value = css.trim();
 
@@ -57,11 +64,19 @@ function numeric(raw: string, css: string): number {
   return n;
 }
 
+/** Serialize back to CSS — the inverse of `parseColor`, for round-tripping a
+ *  composited surface into `contrastRatio`, which speaks CSS strings. */
 export function formatColor(color: ContrastColor): string {
   const { r, g, b, a } = color;
   return a === 1 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
+/**
+ * Alpha-composite `fg` over an opaque `bg` (source-over), returning the opaque
+ * colour the eye actually sees. Houston's dark `background` token is glass
+ * (`rgba(38, 38, 40, 0.55)`) over the `base` gutter, so measuring text against
+ * the raw token would measure a colour that never reaches a screen.
+ */
 export function flattenColor(
   fg: ContrastColor,
   bg: ContrastColor,
@@ -80,6 +95,10 @@ export function flattenColor(
   };
 }
 
+/**
+ * WCAG 2.x relative luminance of an sRGB colour. Alpha is IGNORED — luminance
+ * is only defined for an opaque colour, so composite with `flattenColor` first.
+ */
 export function relativeLuminance(color: ContrastColor): number {
   const r = linearize(color.r);
   const g = linearize(color.g);
@@ -92,6 +111,12 @@ function linearize(channel: number): number {
   return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 }
 
+/**
+ * WCAG 2.x contrast ratio between two CSS colours, in 1..21. Order does not
+ * matter. BOTH colours must be opaque: composite translucent surfaces with
+ * `flattenColor` before calling, otherwise the number is a fiction and this
+ * throws rather than returning it.
+ */
 export function contrastRatio(a: string, b: string): number {
   const first = requireOpaque(parseColor(a), a);
   const second = requireOpaque(parseColor(b), b);

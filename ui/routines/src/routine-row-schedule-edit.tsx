@@ -17,13 +17,22 @@ import type { ScheduleFloor } from "./schedule-floor";
 
 export interface RoutineRowScheduleEditProps {
   routineId: string;
+  /** The routine's current cron expression — seeds the builder on open. */
   cron: string;
+  /** Plain-language summary of `cron`, shown as the button's visible label. */
   summary: string;
   onScheduleChange: (routineId: string, cron: string) => void;
   labels: RoutineRowLabels;
+  /** Schedule-builder labels; English defaults keep standalone callers working. */
   scheduleLabels?: ScheduleLabels;
   locale?: string;
+  /**
+   * Trigger presentation: `row` (default) is the list row's quiet inline
+   * summary; `field` is the routine screen's obviously-editable control — a
+   * bordered field with the summary and a visible pencil.
+   */
   variant?: "row" | "field";
+  /** A plan's minimum interval and its rule (memoized). Absent = no limit. */
   scheduleFloor?: ScheduleFloor;
 }
 

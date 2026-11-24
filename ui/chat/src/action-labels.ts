@@ -72,10 +72,19 @@ function humanizeAction(
   return [head, ...tail.map((w) => w.toLowerCase())].join(" ");
 }
 
+/** A present-tense human label for a Composio action slug, for the process-block
+ *  header's branded row ("GMAIL_SEND_EMAIL" + toolkit "gmail" -> "Sending
+ *  email"). Strips the toolkit prefix, turns the leading verb into its gerund,
+ *  and lowercases the rest. An unmapped verb (or a slug that is all prefix)
+ *  falls back to the capitalized de-underscored remainder without conjugation
+ *  ("GMAIL_SYNC_CONTACTS" -> "Sync contacts"). Pure, node-tested. */
 export function humanizeActionGerund(action: string, toolkit: string): string {
   return humanizeAction(action, toolkit, ACTION_GERUNDS);
 }
 
+/** The past-tense counterpart of {@link humanizeActionGerund}
+ *  ("GMAIL_SEND_EMAIL" + "gmail" -> "Sent email"), for surfaces that report a
+ *  completed action — the turn-end "Updates made" rows. */
 export function humanizeActionDone(action: string, toolkit: string): string {
   return humanizeAction(action, toolkit, ACTION_DONE);
 }

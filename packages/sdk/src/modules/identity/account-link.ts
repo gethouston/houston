@@ -20,6 +20,7 @@ import type {
 
 export const ACCOUNT_LINK_SCOPE = "accountLink";
 
+/** A held provider sign-in older than this restarts instead of linking. */
 export const LINK_TTL_MS = 10 * 60_000;
 
 interface Flow {

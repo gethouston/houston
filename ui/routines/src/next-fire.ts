@@ -119,6 +119,10 @@ function matchDay(fields: CronFields, dom: number, dow: number): boolean {
   return fields.dom.has(dom) || fields.dow.has(dow);
 }
 
+/**
+ * Next time the schedule (cron or `@every` interval) fires after `from`
+ * (defaults to now).
+ */
 export function nextFire(
   cron: string,
   timeZone: string,

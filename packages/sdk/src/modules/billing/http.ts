@@ -74,10 +74,15 @@ export async function createPortal(scope: HttpScope): Promise<BillingCheckout> {
   return (await res.json()) as BillingCheckout;
 }
 
+/** What the free-slot swap answered: done, or a state the caller is in. */
 export type ClaimFreeSlotResult =
   | { kind: "claimed" }
   | { kind: ClaimFreeRefusal };
 
+/**
+ * The refusal behind a failed swap, or null for every other error. A code is
+ * recognized only with the status the contract pairs it with.
+ */
 export function claimFreeSlotRefusal(error: unknown): ClaimFreeRefusal | null {
   if (!(error instanceof Error)) return null;
   const code = refusalCode(error);

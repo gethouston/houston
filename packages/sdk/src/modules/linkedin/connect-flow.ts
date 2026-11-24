@@ -1,31 +1,52 @@
 import type { LinkedInConnectAnswer, LinkedInConnectReturn } from "./types";
 
+/** A tab claimed in the click (`reserveBrowserTab`), not yet pointed anywhere. */
 export interface LinkedInConnectTab {
+  /** `false` when the person already closed the empty tab. */
   navigate(url: string): boolean | Promise<boolean>;
+  /** Close the tab if it never got a page. */
   discard(): void;
 }
 
+/** The desktop shell's return listener. */
 export interface LinkedInReturnListener {
   start(state: string): Promise<{ port: number; attemptId: number }>;
+  /** A no-op for an attempt that already ended. */
   cancel(attemptId: number): Promise<void>;
 }
 
+/** The effects a LinkedIn connect needs, bound by the surface. */
 export interface LinkedInConnectPorts {
+  /** The bound `linkedin.connect`. */
   connect(
     returnTo: LinkedInConnectReturn | undefined,
   ): Promise<LinkedInConnectAnswer>;
+  /** Null where nothing can listen on the device (web). */
   listener: LinkedInReturnListener | null;
+  /** A fresh base64url nonce for the loopback `state`. */
   newState(): string;
+  /** The tab the click claimed, or null where none was (or could be). */
   tab: LinkedInConnectTab | null;
+  /** Opens the page outside the app; `false` when it was refused. */
   open(url: string): Promise<boolean>;
+  /** Reports what the person never sees. */
   report(command: string, error: unknown): void;
 }
 
+/**
+ * How the connect landed:
+ *  - `opened`: LinkedIn's page is in front of the person.
+ *  - `blocked`: the browser refused to open it; the surface offers `url`
+ *    behind a click, which a popup blocker honors.
+ *  - `abandoned`: the person closed the tab the click claimed before the page
+ *    came: they left, so nothing else opens.
+ */
 export type LinkedInConnectStarted =
   | { kind: "opened" }
   | { kind: "blocked"; url: string }
   | { kind: "abandoned" };
 
+/** Raised to the report path when a gateway refused the loopback return. */
 export class LinkedInLoopbackRefusedError extends Error {
   constructor() {
     super("the gateway refused the loopback return; fell back to app");
@@ -33,6 +54,7 @@ export class LinkedInLoopbackRefusedError extends Error {
   }
 }
 
+/** A failed mint frees the listener, discards the tab and rejects with it. */
 export async function startLinkedInConnect(
   ports: LinkedInConnectPorts,
 ): Promise<LinkedInConnectStarted> {

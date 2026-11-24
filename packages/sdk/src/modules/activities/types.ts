@@ -8,6 +8,13 @@ import type {
 } from "@houston/protocol";
 import type { MissionStartedBy } from "./started-by";
 
+/**
+ * The canonical activity statuses (`packages/domain/src/activities.ts`,
+ * `ui/agent-schemas/activity.schema.json`). `status` is typed `string`, not this
+ * union: the domain PRESERVES unknown statuses (forward-compat), so a surface
+ * renders an unrecognized one neutrally. This constant is the known vocabulary
+ * for a surface that maps statuses to columns, not a validation gate.
+ */
 export const ACTIVITY_STATUSES = [
   "running",
   "needs_you",
@@ -16,65 +23,132 @@ export const ACTIVITY_STATUSES = [
   "archived",
 ] as const;
 
+/** One board item inside the `activities/<agentId>` scope snapshot. */
 export interface ActivityItem {
   id: string;
   title: string;
+  /** The user's first message (raw; a surface decodes the `houston:` marker). */
   description?: string;
+  /** Canonical status incl. `archived`; unknown values pass through unchanged. */
   status: string;
+  /** Server times: last write, then last user or agent message. */
   updatedAt?: string;
   lastMessageAt?: string;
+  /** The chat/session address — the wire's `session_key`, or `activity-<id>`. */
   sessionKey: string;
+  /** Present when this activity is a routine's chat. */
   routineId?: string;
+  /** The parent conversation, present only when the agent started this
+   *  mission itself. Additive VM field. */
   originSessionKey?: string;
+  /** Who started this mission, by `missionStartedBy`:
+   *  the one answer every surface labels a card with. Additive VM field. */
   startedBy: MissionStartedBy;
+  /** The agent-mode/config the mission runs under, when set. */
   agent?: string;
   worktreePath?: string | null;
   provider?: string;
   model?: string;
+  /** The conversation's turn mode; absent means "execute". Additive VM field. */
   mode?: TurnMode;
 }
 
+/**
+ * The `activities/<agentId>` scope view-model: the WHOLE snapshot, republished
+ * on any change. `loaded` is false until the first list resolves.
+ */
 export interface ActivitiesViewModel {
   loaded: boolean;
   items: ActivityItem[];
 }
 
+/** The result of creating a mission: its id + the chat session to open. */
 export interface CreatedActivity {
   id: string;
   sessionKey: string;
 }
 
+/**
+ * No-refetch board writes for a host that owns its own read model (the web
+ * engine-adapter under `reactivity:false`): each performs the SAME
+ * `POST`/`PATCH`/`DELETE` as its {@link ActivitiesModule} sibling but does NOT
+ * call `refresh()` afterward, and RETURNS the raw wire {@link Activity}
+ * (`create`/`setStatus`/`rename`) so the host updates its cache without an extra
+ * `GET /agents/:id/activities`. The refetching facade methods stay the default
+ * for a host with no read model of its own.
+ */
 export interface ActivitiesWrites {
+  /** `POST /agents/:id/activities`; returns the created wire activity. */
   create(
     agentId: string,
     input: NewActivity,
     opts?: CreateActivityOptions,
   ): Promise<Activity>;
+  /**
+   * `PATCH …/:id` with the caller's own {@link ActivityUpdate}; returns the
+   * updated wire activity. The general form the two narrow writes below are
+   * shorthands for — a caller that changes several fields at once (a turn
+   * settling writes `status` AND `pending_interaction` in ONE request) needs it,
+   * and splitting that into two PATCHes would publish a half-settled card.
+   */
   update(
     agentId: string,
     id: string,
     updates: ActivityUpdate,
     stamp?: ActivityStamp,
   ): Promise<Activity>;
+  /** `PATCH …/:id` with `{ status }`; returns the updated wire activity. */
   setStatus(agentId: string, id: string, status: string): Promise<Activity>;
+  /** `PATCH …/:id` with `{ title }`; returns the updated wire activity. */
   rename(agentId: string, id: string, title: string): Promise<Activity>;
+  /** `DELETE …/:id`. */
   delete(agentId: string, id: string): Promise<void>;
 }
 
+/** How a board-card create rides out an agent that is not there yet. */
 export interface CreateActivityOptions {
+  /**
+   * Re-issue an id-bearing create the pod refuses as waking, along the
+   * mission-row ladder (`busy-retry.ts`). The optimistic mission row sets it:
+   * its turn is already on screen and the card must not be lost to a wake
+   * that ran long. Every other create surfaces a waking refusal at once.
+   */
   retryWhileWaking?: boolean;
 }
 
+/** The typed facade for board/missions reads + writes. */
 export interface ActivitiesModule {
+  /** Scope string for `sdk.subscribe(...)` / `sdk.getSnapshot(...)`. */
   scope(agentId: string): string;
+  /** Refetch the agent's activities and republish its scope snapshot. */
   refresh(agentId: string): Promise<void>;
+  /**
+   * Read an agent's board rows and return them, publishing NOTHING. The read
+   * twin of {@link ActivitiesWrites}: a host that owns its own read model (the
+   * web engine-adapter under `reactivity:false`) wants the wire rows without a
+   * snapshot it never subscribes to. Reactive surfaces use {@link refresh}.
+   */
   list(agentId: string): Promise<Activity[]>;
+  /** Create a mission (status `running`), then refetch. Returns id + sessionKey. */
   create(
     agentId: string,
     title: string,
     description?: string,
   ): Promise<CreatedActivity>;
+  /** Transition a mission's status (approve→done, archive, reactivate), then refetch. */
   setStatus(agentId: string, id: string, status: string): Promise<void>;
+  /**
+   * PATCH the board-card status for the activity addressed by `sessionKey` (the
+   * turn machinery's board persist on the SDK path — it knows a chat's session
+   * key, not the activity id). Resolves the id via
+   * {@link matchesActivitySessionKey}, then reuses {@link setStatus}'s write +
+   * silent refetch. `pendingInteraction` rides the same PATCH — the interaction
+   * the turn ended on (drives `needs_you`), or `null` to clear it (turn start,
+   * and every settle carrying none) — so a `needs_you` card survives reload. A
+   * `sessionKey` with no matching card (a transient chat with no board mission)
+   * is logged via the injected logger and skipped — a live turn must never crash
+   * on a missing card, so this never throws for that case.
+   */
   setStatusBySessionKey(
     agentId: string,
     sessionKey: string,
@@ -82,15 +156,26 @@ export interface ActivitiesModule {
     pendingInteraction: PendingInteraction | null,
     stamp?: ActivityStamp,
   ): Promise<void>;
+  /** Rename a mission, then refetch. */
   rename(agentId: string, id: string, title: string): Promise<void>;
+  /** Delete a mission, then refetch. */
   delete(agentId: string, id: string): Promise<void>;
+  /**
+   * No-refetch write variants for a host that owns its own reads (web under
+   * `reactivity:false`): same wire writes, no post-write `refresh()`, and they
+   * return the wire entity. A host without one uses the refetching methods
+   * above.
+   */
   writes: ActivitiesWrites;
+  /** Stop the reactivity stream. Module-local; the kernel calls it on dispose. */
   dispose(): void;
 }
 
+/** The reactive scope this module owns, per agent. */
 export const activitiesScope = (agentId: string): string =>
   `activities/${agentId}`;
 
+/** The command types this module registers. Typed to defeat string drift. */
 export const ActivitiesCommand = {
   Refresh: "activities/refresh",
   Create: "activities/create",
@@ -101,4 +186,5 @@ export const ActivitiesCommand = {
 export type ActivitiesCommandType =
   (typeof ActivitiesCommand)[keyof typeof ActivitiesCommand];
 
+/** The host wire-event `type` that means an agent's activities changed. */
 export const ACTIVITY_CHANGED_EVENT = "ActivityChanged";

@@ -7,7 +7,9 @@ export interface CommentFormLabels {
   add: string;
   save: string;
   remove: string;
+  /** The submit shortcut, as the platform writes it ("⌘↵", "Ctrl+↵"). */
   shortcut: string;
+  /** Shown once the comment reaches `maxLength`. */
   tooLong?: string;
 }
 

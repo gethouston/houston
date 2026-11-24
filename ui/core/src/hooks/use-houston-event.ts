@@ -20,6 +20,13 @@ function importTauriEvents(): Promise<TauriEventModule | null> {
   return import(/* @vite-ignore */ mod).catch(() => null);
 }
 
+/**
+ * Subscribe to a Tauri event with automatic cleanup.
+ *
+ * Uses dynamic import of @tauri-apps/api/event so @houston-ai/core has no
+ * build-time dependency on Tauri. In non-Tauri environments the import
+ * fails silently and no listener is registered.
+ */
 export function useHoustonEvent<T>(
   eventName: string,
   handler: (payload: T) => void,

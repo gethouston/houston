@@ -7,12 +7,20 @@ import {
 } from "./floating-nav-bar-styles";
 
 export interface FloatingNavBarItem {
+  /** Stable React key. Never rendered. */
   id: string;
+  /** Names the item for a screen reader, and is the visible word while the
+   *  item is active. */
   label: string;
   icon: ReactNode;
   active?: boolean;
+  /** For an item that opens a MENU rather than a place: lit like an active
+   *  item while the menu is up, but announced as expanded, never as the
+   *  current page — the screen behind the menu keeps that. */
   expanded?: boolean;
+  /** Count chip drawn over the icon's top-right corner. */
   badge?: ReactNode;
+  /** Extra DOM attributes (e.g. `data-tour-target`) on the rendered button. */
   dataAttrs?: Record<string, string>;
   onSelect: () => void;
 }
@@ -25,13 +33,31 @@ export interface FloatingNavBarAction {
 }
 
 export interface FloatingNavBarProps {
+  /** Names the `<nav>` landmark. */
   label: string;
   items: FloatingNavBarItem[];
+  /** The round button beside the pill — a create action, not a destination,
+   *  which is why it sits OUTSIDE the pill and carries no active state. */
   action?: FloatingNavBarAction;
+  /** Extra DOM attributes on the `<nav>` (e.g. a test id). */
   dataAttrs?: Record<string, string>;
   className?: string;
 }
 
+/**
+ * A floating pill navigation bar for small viewports: a rounded bar of
+ * icon-only destinations that lifts off the bottom edge, plus an optional
+ * round action button beside it.
+ *
+ * Only the active item shows its label, inside a darker inner pill. Three
+ * labels side by side would either wrap or shrink the type below the readable
+ * floor on a narrow phone, and the active one is the only label that answers
+ * a question the user actually has.
+ *
+ * The wrapper pads `pb-safe` so the home indicator never covers the targets;
+ * that padding is on the landmark and the visual inset is on the row inside
+ * it, because a single element cannot carry two padding-bottoms.
+ */
 export function FloatingNavBar({
   label,
   items,

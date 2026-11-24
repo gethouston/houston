@@ -58,22 +58,31 @@ export {
   webhookKeyAccess,
 } from "./webhook-key-access";
 
+/** The typed facade for an agent's scheduled work. */
 export interface RoutinesModule {
+  /** Every routine defined on an agent. */
   listRoutines(agentId: string): Promise<Routine[]>;
+  /** The agent's routine-run history, newest state included. */
   listRoutineRuns(agentId: string): Promise<RoutineRun[]>;
+  /** Define a new routine; it starts firing on its own wake mechanism. */
   createRoutine(agentId: string, input: NewRoutine): Promise<Routine>;
+  /** Change a routine's instructions, wake mechanism or overrides. */
   updateRoutine(
     agentId: string,
     id: string,
     updates: RoutineUpdate,
   ): Promise<Routine>;
+  /** Delete a routine so it stops firing. */
   deleteRoutine(agentId: string, id: string): Promise<void>;
+  /** Fire a routine now instead of waiting for its next scheduled time. */
   runRoutineNow(agentId: string, id: string): Promise<void>;
+  /** Stop a routine run that is currently under way. */
   cancelRoutineRun(
     agentId: string,
     routineId: string,
     runId: string,
   ): Promise<RoutineRun>;
+  /** Mint (or rotate) the routine's incoming-webhook key; the secret is shown once. */
   mintRoutineWebhookKey(
     agentId: string,
     routineId: string,

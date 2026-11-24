@@ -8,10 +8,20 @@ import { Spinner } from "./spinner";
 type BaseButtonProps = React.ComponentProps<typeof Button>;
 
 export interface AsyncButtonProps extends Omit<BaseButtonProps, "onClick"> {
+  /**
+   * Click handler that may kick off async work. While the returned promise is
+   * in flight the button disables itself, so rapid ("rage") clicks can't fire
+   * the action more than once. Return the promise — don't `void` it —
+   * or the button can't tell when the work settles.
+   */
   onClick?: (
     event: React.MouseEvent<HTMLButtonElement>,
     // biome-ignore lint/suspicious/noConfusingVoidType: sync handlers return void, async ones return a Promise
   ) => void | Promise<unknown>;
+  /**
+   * Render a leading spinner while the action is pending. Defaults to `true`.
+   * Set `false` when the button already shows its own pending affordance.
+   */
   spinner?: boolean;
 }
 

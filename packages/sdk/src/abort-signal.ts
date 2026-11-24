@@ -2,6 +2,7 @@ function timeoutError(): DOMException {
   return new DOMException("signal timed out", "TimeoutError");
 }
 
+/** A signal that aborts with a `TimeoutError` after `ms`. */
 export function timeoutSignal(ms: number): AbortSignal {
   if (typeof AbortSignal.timeout === "function") {
     return AbortSignal.timeout(ms);
@@ -11,6 +12,7 @@ export function timeoutSignal(ms: number): AbortSignal {
   return controller.signal;
 }
 
+/** A signal that aborts, with the same reason, as soon as any input does. */
 export function anySignal(signals: readonly AbortSignal[]): AbortSignal {
   if (typeof AbortSignal.any === "function") {
     return AbortSignal.any([...signals]);
@@ -29,6 +31,8 @@ export function anySignal(signals: readonly AbortSignal[]): AbortSignal {
   return controller.signal;
 }
 
+/** The abort a signal above raises (or a caller's own), whatever the runtime
+ *  names it. */
 export function isAbortError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
   const { name } = error as { name?: unknown };

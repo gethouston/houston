@@ -12,13 +12,19 @@ import type {
   ShareVisibility,
 } from "./share-agent-dialog";
 
+/** The owner seam: when present, THE SAME profile page grows its edit
+ *  affordances — pencils on the hero, a manage menu on each card. There is
+ *  no separate owner screen; one page, two viewer modes. */
 export interface CreatorProfileOwner {
   editHref: string;
   busyId?: string | null;
   onShareSelect: (id: string, visibility: ShareVisibility) => void;
   onDelete: (id: string) => void;
+  /** Persist an Edit-listing save; absent hides the menu item. */
   onEditIdentity?: (id: string, identity: OwnedAgentIdentity) => Promise<void>;
+  /** The store's category vocabulary for the Edit-listing dialog. */
   categories?: StoreCategoryRow[];
+  /** The agent's public link, for the Share dialog's copy affordance. */
   shareHrefFor?: (agent: OwnedAgentRow) => string | null;
   cardLabels?: Partial<OwnedAgentCardLabels>;
   shareLabels?: Partial<ShareAgentDialogLabels>;
@@ -27,6 +33,7 @@ export interface CreatorProfileOwner {
   editProfileLabel?: string;
 }
 
+/** The owner mode's card grid: the public grid geometry, owner cards inside. */
 export function OwnedAgentGrid({
   agents,
   owner,

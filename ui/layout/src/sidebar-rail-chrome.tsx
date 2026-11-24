@@ -2,6 +2,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { sidebarHeaderControlClasses } from "./sidebar-paint";
 
+/** The rail's visible collapse or expand control in both sidebar states. */
 export function SidebarCollapseToggle({
   label,
   onToggle,

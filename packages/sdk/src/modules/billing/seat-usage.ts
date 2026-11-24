@@ -1,5 +1,11 @@
 import type { OrgBilling } from "@houston/wire-types";
 
+/**
+ * The paid seats of a live yearly org against the seats in use. A yearly org
+ * keeps a removed person's seat paid until renewal, so `free` seats are paid
+ * for and unused: the next person added takes one at no charge. Null on every
+ * other org (the wire sends no counts there).
+ */
 export interface SeatUsageView {
   paidSeats: number;
   inUse: number;
@@ -19,6 +25,10 @@ export function seatUsageView(
   };
 }
 
+/**
+ * When a paid org is next billed: a yearly plan `renews` on that day, a
+ * monthly one sends its `next_bill`. Null without a live subscription date.
+ */
 export type BillingRenewal =
   | { kind: "renews"; at: string }
   | { kind: "next_bill"; at: string };

@@ -1,10 +1,16 @@
 import type { SidebarGroupGlyphName } from "./sidebar-group-glyphs";
 
+/** One offerable mark. `name` indexes the glyph set; `label` names it aloud. */
 export interface SidebarGroupGlyphChoice {
   name: SidebarGroupGlyphName;
   label: string;
 }
 
+/**
+ * One offerable colour. The `id` is what a group STORES and `value` is only how
+ * it is painted here, so a palette can be retuned per theme without rewriting
+ * anybody's stored choice.
+ */
 export interface SidebarGroupSwatch {
   id: string;
   value: string;
@@ -12,9 +18,14 @@ export interface SidebarGroupSwatch {
 }
 
 export interface SidebarGroupIdentityLabels {
+  /** Names the picker's trigger, e.g. "Change icon & name". */
   trigger: string;
+  /** Accessible group name for the glyph grid. */
   icons: string;
+  /** Accessible group name for the swatch row. */
   colors: string;
+  /** Placeholder and accessible name for icon search. */
   search: string;
+  /** Honest result shown when a search matches no icon. */
   emptySearch: string;
 }

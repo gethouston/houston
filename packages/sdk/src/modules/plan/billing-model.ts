@@ -1,6 +1,10 @@
 import type { PlanSummary, PlusInvoice } from "@houston/wire-types";
 import { formatPlanAmount } from "./format";
 
+/**
+ * The per-person summary's usage, for the settings Plan screen alone; every
+ * other surface reads the active org's pool (`../billing/model`).
+ */
 export function planSummaryPercent(
   plan: PlanSummary | undefined,
 ): number | null {
@@ -65,6 +69,7 @@ export function planPriceAmounts(plan: PlanSummary, locale?: string) {
   };
 }
 
+/** The beta tester gift as display values, or null when the person has none. */
 export function planOffer(plan: PlanSummary, locale?: string) {
   const offer = plan.plan === "free" ? plan.plus.offer : undefined;
   if (!offer) return null;

@@ -57,7 +57,7 @@ function shellTooling(text: string): boolean {
   return lineBodies(text, /^#+/).some((body) => /^shellcheck\s/.test(body));
 }
 
-const DOC_SCOPE = /^(?:ui\/|packages\/sdk\/src\/)/;
+const DOC_SCOPE = /^(?:ui\/(?!showcase\/)|packages\/sdk\/src\/)/;
 const TEST_FILE =
   /(?:^|\/)(?:tests?|__tests__)\/|\.(?:test|spec)\.[cm]?[jt]sx?$/;
 

@@ -1,9 +1,13 @@
 import type { HighlightRange } from "@houston-ai/core";
 import type React from "react";
 
+/** A human contributor shown as a face in a card/panel avatar stack. Generic,
+ *  store-agnostic: the app maps its own user/attribution model into this. */
 export interface KanbanPerson {
   id: string;
+  /** Display name used for initials, `title`, and accessible labels. */
   label: string;
+  /** Optional avatar image URL; falls back to initials when absent/broken. */
   imageUrl?: string;
 }
 
@@ -12,27 +16,37 @@ export interface KanbanItem {
   title: string;
   description?: string;
   subtitle?: string;
+  /** Grouping label displayed above the title (e.g. agent name). */
   group?: string;
+  /** Small pill labels shown at the bottom of the card. */
   tags?: string[];
   status: string;
   lastMessageAt: string;
   icon?: React.ReactNode;
   metadata?: Record<string, unknown>;
+  /** Human contributors shown as an avatar face stack on the card. */
   people?: KanbanPerson[];
 }
 
+/** A matched body fragment shown below a board item during search. `text` is
+ *  the display string; `ranges` index into it for highlighting. Keyed by
+ *  `KanbanItem.id` and passed to the list via `searchSnippets`. */
 export interface BoardSearchSnippet {
   text: string;
   ranges: HighlightRange[];
 }
 
+/** A unified conversation entry — either the primary chat or an activity conversation. */
 export interface ConversationEntry {
   id: string;
   title: string;
   status?: string;
+  /** `"primary"` for the agent's main chat, `"activity"` for activity conversations. */
   type: "primary" | "activity";
+  /** Session key used to address this conversation (e.g. `"main"`, `"activity-{id}`). */
   sessionKey: string;
   updatedAt?: string;
+  /** Absolute path to the agent folder this conversation belongs to. */
   agentPath: string;
   agentName: string;
 }
@@ -41,8 +55,15 @@ export interface KanbanColumn {
   id: string;
   label: string;
   statuses: string[];
+  /** Show a "+" button after the column's cards. */
   onAdd?: () => void;
+  /** Accessible label for the add button. */
   addLabel?: string;
+  /** Extra attributes spread onto the add button (a consumer's guided-tour
+   *  anchor, a test id). The library never reads them. */
   addAttrs?: Record<string, string>;
+  /** Node rendered on the right of the column header (e.g. an
+   *  "archive all" icon button). Fully owned by the consumer so any
+   *  confirm dialog / i18n stays out of the library. */
   headerAction?: React.ReactNode;
 }

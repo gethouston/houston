@@ -24,6 +24,11 @@ interface ConversationActionsMenuProps {
   triggerRef?: RefObject<HTMLButtonElement | null>;
 }
 
+/**
+ * The chat header's overflow menu: find-in-chat plus the mission actions.
+ * Lives in the detail-panel header row (left of the people stack), so the
+ * trigger mirrors the plain close button beside it rather than a pill Button.
+ */
 export function ConversationActionsMenu({
   actions,
   canFind,

@@ -28,16 +28,31 @@ export { CARD_PEOPLE_MAX, initialsFor, overflowCount, visiblePeople };
 
 export interface KanbanPeopleProps {
   people?: KanbanPerson[];
+  /** Max faces before collapsing into a "+N" chip. */
   max?: number;
+  /** `sm` (~18px) matches dense card rows; `md` (~24px) suits the detail panel. */
   size?: FaceSize;
+  /** Surface the stack is drawn on — decides the ring colour. Default `input`. */
   surface?: KanbanPeopleSurface;
+  /** Accessible group label (English default "People"). */
   label?: string;
+  /** When set, the "+N" overflow chip becomes a button that opens a popover
+   *  listing EVERY person (face + label) so no contributor is unreachable. Off
+   *  by default (a static, non-interactive chip). */
   expandable?: boolean;
+  /** Accessible label for the expandable "+N" trigger / popover (e.g. "All
+   *  people"). Only used when `expandable` or `roster`. */
   expandLabel?: string;
+  /** The WHOLE stack is a button opening the roster popover. The stack has no
+   *  visible label of its own and a hover tooltip is dead on touch, so a
+   *  stack that must work on the phone (the chat header) needs this. */
   roster?: boolean;
   className?: string;
 }
 
+/** An overlapping face stack: up to `max` avatars + a "+N" overflow chip.
+ *  Props-only, i18n-agnostic (labels passed in). Renders nothing when empty.
+ *  With `expandable`, the "+N" chip opens a popover of every person. */
 export function KanbanPeople({
   people,
   max = 3,

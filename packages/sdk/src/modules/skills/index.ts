@@ -31,7 +31,9 @@ export {
 } from "./types-agent";
 
 export interface SkillsModule extends SkillDraftWrites {
+  /** One agent's own skills (`.agents/skills/`) and its manifest. */
   agent: AgentSkillsFacade;
+  /** The workspace-wide library every agent in a space can draw from. */
   shared: SharedSkillsModule;
 }
 

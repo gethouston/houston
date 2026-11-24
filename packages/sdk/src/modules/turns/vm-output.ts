@@ -18,11 +18,23 @@ import {
   replyPhaseField,
 } from "./vm-reply-phase";
 
+/**
+ * Who wrote a feed entry, in a MULTIPLAYER deployment: the protocol's
+ * `ChatMessage.author`, stamped by the gateway from the acting user. Absent
+ * single-player (desktop / self-host never stamp one).
+ */
 export interface FeedAuthor {
   userId: string;
   name?: string;
 }
 
+/**
+ * One @mention of a human inside a chat message: the protocol's
+ * `ChatMessage.mentions[]` entry. The model only ever saw the plain `@Name`
+ * text the user typed — this is the structure the composer resolved alongside
+ * it, so a surface can chip the name and a later notifications feature can scan
+ * a transcript for its own user id. User turns only.
+ */
 export interface FeedMention {
   userId: string;
   name?: string;
@@ -40,38 +52,138 @@ interface HistoryFrame {
   toolIndex?: number;
 }
 
+/** A single reactive feed entry: a stable id plus the machinery's push payload. */
 export interface FeedItemVM {
   id: string;
   feed_type: string;
   data: unknown;
+  /**
+   * Multiplayer only: who wrote this `user_message`. Carried verbatim from the
+   * history fold (`FeedFrame.author`) when a transcript is seeded/prepended,
+   * and from `StreamTurnOptions.author` on the optimistic send — so a shared
+   * conversation attributes EVERY turn identically on reload and live.
+   * Optional/additive: absent in single-player and on every non-user entry; a
+   * surface that does not render it simply ignores it.
+   */
   author?: FeedAuthor;
+  /**
+   * The teammates this `user_message` @mentions. Carried verbatim
+   * from the history fold (`FeedFrame.mentions`) when a transcript is
+   * seeded/prepended, and from `StreamTurnOptions.mentions` on the optimistic
+   * send — so a shared conversation chips the same names live and on reload.
+   * Optional/additive: absent when the message mentioned nobody and on every
+   * non-user entry; a surface that does not render it simply ignores it.
+   */
   mentions?: FeedMention[];
+  /**
+   * Epoch-ms timestamp of this entry. A seeded history frame carries its source
+   * `ChatMessage.ts`; a LIVE push that lacks one is stamped `Date.now()` at push
+   * time, and a streaming/finalizing update keeps the entry's ORIGINAL `ts` (the
+   * bubble is timed by when it opened, not each delta). Optional/additive: absent
+   * for a pre-`ts` seeded frame; every consumer treats it as optional.
+   */
   ts?: number;
+  /**
+   * Optimistic-send flag: `true` while this entry is a locally-pushed prompt the
+   * engine has NOT yet confirmed (`pending === true` -> render a clock,
+   * WhatsApp-style; absent/false -> confirmed, render a single check). It is set
+   * ONLY on the one optimistic `user_message` push and cleared — stripped, same
+   * id, a normal reactive snapshot update — on the FIRST subsequent server
+   * evidence for the turn: any later pushed feed item, or a `sessionStatus`
+   * transition to `completed`/`error`, whichever comes first. A seeded history
+   * frame NEVER carries it. Optional/additive, exactly like `ts`: every consumer
+   * treats it as optional and a surface that does not render it simply ignores it.
+   */
   pending?: boolean;
+  /**
+   * Failed-send flag: `true` when this optimistic `user_message` provably never
+   * reached the engine — the turn settled as a send failure (lost / rejected /
+   * refused / a double-send loser) with NO server evidence. Mutually exclusive
+   * with {@link pending} (a failure strips `pending`): render a failed/error
+   * tick, NEVER the "Sent" check a cleared `pending` implies. Any real server
+   * frame confirms the bubble first, so a delivered-then-errored turn never sets
+   * this. Optional/additive like `pending`: absent means delivered (or older
+   * data); a surface that does not render it simply ignores it.
+   */
   failed?: boolean;
+  /**
+   * The turn this entry belongs to — the dedup identity. Carried
+   * from the history fold's `FeedFrame.turnId` on seeded entries and from the
+   * turn state on live pushes, so a re-delivered copy of a turn's content (a
+   * running-sync replay over a seeded feed, a settle re-push after a resync)
+   * UPDATES the entry already on screen instead of appending a duplicate.
+   * Optional/additive: absent on pre-turn-id transcripts and optimistic sends;
+   * entries without it keep the append-only fold.
+   */
   turnId?: string;
+  /**
+   * Why the engine authored this `system_message`, when it did: a surface
+   * renders its own copy by kind, `data` being the English default (a restart,
+   * a send refused for good). Optional/additive: absent on every other entry.
+   */
   notice?: EngineNoticeKind;
   noticeData?: FilesNotSavedData;
+  /**
+   * This entry's index among its turn's `tool_call`s / `tool_result`s — with
+   * {@link turnId}, the identity that pairs a replayed tool row with the entry
+   * it duplicates (tool rows are many-per-turn). Optional/additive, tool rows
+   * only.
+   */
   toolIndex?: number;
 }
 
+/** A message queued while a turn runs — rendered in the composer, removable. */
 export interface QueuedMessageVM {
   id: string;
   text: string;
   attachmentNames?: string[];
 }
 
+/** The reactive snapshot published to the `conversation/<id>` scope. */
 export interface ConversationVM extends ReplyPhaseVM {
   feed: FeedItemVM[];
+  /** Derived: `sessionStatus === "running"`. The spinner/loading flag. */
   running: boolean;
   sessionStatus: SessionStatusValue | "idle";
+  /**
+   * The persisted board-card status (the `persistBoardStatus` seam), or `null`
+   * before any turn ran. Handled-vs-error lives HERE: `needs_you` = handled /
+   * attention (EVERY settled turn that is not a real failure — a clean finish,
+   * a turn that ended asking the user for something, a user Stop), `error` = a
+   * real failure. A turn never writes `done`; only the user moves a card there.
+   */
   boardStatus: BoardStatus | null;
+  /**
+   * The interaction a clean turn settled on (ask_user / request_connection),
+   * mirrored from the terminal board persist so a surface can render the
+   * composer-replacing card; `null` when the turn is not waiting on the user
+   * (cleared on turn start and on every settle that carries no interaction).
+   */
   pendingInteraction: PendingInteraction | null;
+  /**
+   * Messages queued while a turn runs (additive; absent when none). The sender
+   * flushes them as ONE combined send when the turn settles.
+   */
   queued?: QueuedMessageVM[];
+  /**
+   * The server-transcript window this feed was seeded from (additive; absent
+   * until a WINDOWED history read seeds it — a cache paint or a full-history
+   * seed carries none). `earliestLoaded` is the absolute index of the oldest
+   * loaded message; `> 0` means older messages exist server-side and a surface
+   * may offer/trigger load-older. `total` is the transcript's full
+   * message count at the last read.
+   */
   historyWindow?: HistoryWindowVM;
+  /**
+   * A message this client sent is still waiting to start, and why (additive;
+   * absent when nothing waits). `busy`: the cloud's shared compute has had no
+   * room for it for a while, and the SDK keeps re-sending it. A surface says
+   * so in place of its usual thinking line; the turn is still in flight.
+   */
   sendWaiting?: SendWaitReason;
 }
 
+/** See {@link ConversationVM.historyWindow}. */
 export interface HistoryWindowVM {
   earliestLoaded: number;
   total: number;
@@ -126,6 +238,12 @@ const isConvLive = (s: ConvState): boolean =>
   s.queued.length > 0 ||
   s.feed.some((f) => f.pending === true);
 
+/**
+ * The scope a conversation's VM is published on. Agent-qualified: session keys
+ * are unique only within one agent — the same identity `streamKey` uses — so
+ * the scope carries BOTH, and the encoding stays in here so no caller ever
+ * builds or parses it (ADR-0001).
+ */
 export const conversationScope = (
   agentPath: string,
   sessionKey: string,
@@ -165,12 +283,30 @@ export class ConversationVmOutput implements FeedOutput {
     return s;
   }
 
+  /**
+   * Explicitly drop a conversation's folded state and its retained snapshot —
+   * the eviction seam a surface calls when it closes/deletes a conversation, so
+   * its transcript is released immediately rather than waiting for the LRU to
+   * age it out. Unlike automatic eviction this is unconditional: the caller owns
+   * the decision. A later {@link observe} re-hydrates it from history.
+   */
   forget(agentPath: string, sessionKey: string): void {
     const key = conversationScope(agentPath, sessionKey);
     this.convs.delete(key);
     this.store.clear(key);
   }
 
+  /**
+   * Replace a conversation's feed with a folded history transcript (fresh ids),
+   * the hydration seam `observe` uses so a chat opens COMPLETE before any live
+   * frame. History frames are all final, so the streaming map is reset — a live
+   * observer attaching next starts its running turn's bubble cleanly, never
+   * extending a seeded one. `sessionStatus`/`boardStatus` are untouched: the
+   * attaching observer owns those. The double-render guard is by construction —
+   * the running turn's reply is NOT yet in history (unsettled), so seeding it
+   * plus observing it live cannot duplicate; the caller only seeds when it is
+   * not already streaming this conversation.
+   */
   seedHistory(
     agentPath: string,
     sessionKey: string,
@@ -184,6 +320,13 @@ export class ConversationVmOutput implements FeedOutput {
     this.publish(agentPath, sessionKey, s);
   }
 
+  /**
+   * Prepend an OLDER transcript window before the current feed — the
+   * scroll-up lazy-load seam. The existing entries (including any
+   * open streaming bubble) keep their ids and order; only the new frames are
+   * minted. The caller is the same windowed-history reader that seeds, so the
+   * frames are final history — never streaming state.
+   */
   prependHistory(
     agentPath: string,
     sessionKey: string,
@@ -426,6 +569,12 @@ export class ConversationVmOutput implements FeedOutput {
     this.publish(agentPath, sessionKey, s);
   }
 
+  /**
+   * Fold the board-card status into the VM (NOT a no-op — this is the handled-
+   * vs-error signal a surface reads alongside `sessionStatus`). The board is a
+   * separate SCOPE, so nothing is written there; only the conversation VM's
+   * `boardStatus` is updated and republished.
+   */
   async persistBoardStatus(
     agentPath: string,
     sessionKey: string,
@@ -441,6 +590,13 @@ export class ConversationVmOutput implements FeedOutput {
     this.publish(agentPath, sessionKey, s);
   }
 
+  /**
+   * The server confirmed this conversation is idle. A VM still saying
+   * "running" is STALE — its stream died without a settle (external teardown
+   * keeps live state by design) — so clear the flag; a settled/idle VM is
+   * left untouched (the truth is already terminal, and re-publishing would
+   * churn subscribers for nothing).
+   */
   confirmIdle(agentPath: string, sessionKey: string): void {
     const s = this.state(agentPath, sessionKey);
     if (s.sessionStatus !== "running") return;
@@ -449,6 +605,12 @@ export class ConversationVmOutput implements FeedOutput {
     this.publish(agentPath, sessionKey, s);
   }
 
+  /**
+   * Record the server-transcript window WITHOUT reseeding the feed — the
+   * identical-content revalidation path: the windowed read's fold
+   * matched what is already on screen, so replacing would only churn entry
+   * ids, but load-older still needs to know where the loaded feed starts.
+   */
   stampHistoryWindow(
     agentPath: string,
     sessionKey: string,
@@ -465,6 +627,13 @@ export class ConversationVmOutput implements FeedOutput {
     this.publish(agentPath, sessionKey, s);
   }
 
+  /**
+   * The engine echoed our send: give the optimistic user bubble its turn's
+   * wire id. The LAST id-less user_message is the one this turn's send pushed
+   * (sends are serialized per conversation), so turn-anchored affordances —
+   * the edit-and-resend rewind — work on a live conversation
+   * without waiting for a history reload to re-fold the transcript.
+   */
   stampUserTurn(agentPath: string, sessionKey: string, turnId: string): void {
     const s = this.state(agentPath, sessionKey);
     const bubble = findLast(
@@ -476,6 +645,17 @@ export class ConversationVmOutput implements FeedOutput {
     this.publish(agentPath, sessionKey, s);
   }
 
+  /**
+   * Drop the feed tail from the FIRST entry of `turnId` onward — the
+   * edit-and-resend rewind, folded optimistically after the
+   * server accepted the truncation. Explicit (never left to the next history
+   * reseed) because the seed decision deliberately SKIPS a shorter incoming
+   * fold — the guard that protects loaded pages would otherwise swallow the
+   * rewind and leave the dropped turns on screen. The window stamp is cleared:
+   * the feed no longer maps to the last-read server window, so load-older must
+   * re-arm from the next authoritative read. Returns false (no publish) when
+   * the turn is not in the folded feed.
+   */
   truncateFromTurn(
     agentPath: string,
     sessionKey: string,
@@ -503,6 +683,7 @@ export class ConversationVmOutput implements FeedOutput {
     this.publish(agentPath, sessionKey, s);
   }
 
+  /** Replace the conversation's queued-message list (the send queue's seam). */
   setQueued(
     agentPath: string,
     sessionKey: string,

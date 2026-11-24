@@ -22,7 +22,9 @@ export interface ConversationMapProps {
   moments: ConversationMoment[];
   conversationLength: number;
   labels?: ConversationMapLabels;
+  /** Increment to open the search popover from outside (the header menu's "Find"). */
   findToken?: number;
+  /** The header trigger; the search returns focus there when it closes. */
   returnFocusRef?: RefObject<HTMLButtonElement | null>;
   onOpenChange?: (open: boolean, conversationLength: number) => void;
   onMomentClick?: (
@@ -40,6 +42,7 @@ export interface ConversationMapActions {
   deleteDescription?: string;
 }
 
+/** A props-only, current-DOM conversation index. It intentionally keeps no history. */
 export function ConversationMap({
   moments,
   conversationLength,

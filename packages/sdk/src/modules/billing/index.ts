@@ -55,24 +55,43 @@ export {
 export type { BillingCheckout, BillingCommandType } from "./types";
 export { BillingCommand } from "./types";
 
+/** The typed facade for the billing family. Every call throws on a non-2xx. */
 export interface BillingModule {
+  /** The active org's C8 subscription summary. Throws a 404/403/503 like
+   *  any other status — the not-entitled reading is the surface's. */
   getBilling(): Promise<BillingSummary>;
+  /**
+   * Start a per-seat checkout for the active org, monthly unless `interval`
+   * says `year` (billing owner only). An interval refusal is an outcome.
+   */
   createCheckout(input?: {
     interval?: BillingInterval;
   }): Promise<SeatCheckoutOutcome>;
+  /** Open the Stripe customer portal for the active org (billing owner only). */
   createPortal(): Promise<BillingCheckout>;
+  /** Make the active org the free one; the caller's states are outcomes. */
   claimFreeSlot(): Promise<ClaimFreeSlotResult>;
+  /** The person's free-org pick, account-wide; null where the change is not run. */
   getChoice(): Promise<BillingChoice | null>;
+  /** Store the pick. The person's own states are outcomes, never throws. */
   setChoice(pick: BillingChoicePick): Promise<BillingChoiceSave>;
+  /** Hide the announcement on every device. */
   dismissChoiceNotice(): Promise<void>;
+  /** The active org's enabled routines. */
   listPlanRoutines(): Promise<{ routines: PlanRoutine[] }>;
+  /** Choose the one routine a free org keeps firing. */
   keepRoutine(key: PlanRoutineKey): Promise<void>;
+  /** Resume the active org's routines paused while nobody was around. */
   resumeRoutines(): Promise<void>;
+  /** Report that the active org is open in the foreground. */
   reportPresence(): Promise<void>;
+  /** Move the active org's monthly subscription to yearly; refusals are outcomes. */
   switchToYearly(): Promise<SwitchToYearlyResult>;
+  /** Hide the active org's promo-ended notice everywhere. */
   dismissPriceNotice(): Promise<void>;
 }
 
+/** A failed billing request. `status` is the upstream HTTP status. */
 export class BillingHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "BillingHttpError");

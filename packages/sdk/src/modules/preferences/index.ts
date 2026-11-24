@@ -25,6 +25,7 @@ import {
 export type { TimezoneSeedInput, TimezoneSeedResult } from "./timezone";
 export { TIMEZONE_PREFERENCE } from "./timezone";
 
+/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const PreferencesCommand = {
   ...NextStepSuggestionsCommand,
   Get: "preferences/get",
@@ -36,14 +37,21 @@ export const PreferencesCommand = {
 export type PreferencesCommandType =
   (typeof PreferencesCommand)[keyof typeof PreferencesCommand];
 
+/** The typed facade for preference reads/writes + the workspace locale. */
 export interface PreferencesModule extends NextStepSuggestionsPreference {
+  /** Resolve boot selection and record the space this device displays. */
   resolveWorkspace<
     T extends Pick<SelectionWorkspace, "id" | "isDefault" | "kind">,
   >(workspaces: readonly T[] | Promise<readonly T[]>): Promise<T | null>;
+  /** Mirror the displayed space on this device without changing the account. */
   rememberWorkspace(value: string | null): Promise<void>;
+  /** Read a preference value, or `null` when unset. */
   get(key: string): Promise<string | null>;
+  /** Write (or, with `null`, clear) a preference; echoes the stored value. */
   set(key: string, value: string | null): Promise<string | null>;
+  /** Set (or clear, with `null`) the workspace's UI-locale override. */
   setLocale(workspaceId: string, locale: string | null): Promise<Workspace>;
+  /** Save the device's zone as `timezone` when the person has none (./timezone). */
   seedTimezone(input: TimezoneSeedInput): Promise<TimezoneSeedResult>;
 }
 

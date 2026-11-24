@@ -31,6 +31,7 @@ export interface FilesBrowserProps {
   footer?: ReactNode;
   expanded?: boolean;
   createFolderRequest?: number;
+  /** The team frame already owns the shared horizontal gutter. */
   inFrame?: boolean;
   locale?: string;
   loadPreview?: LoadFilePreview;

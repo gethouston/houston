@@ -16,6 +16,8 @@ function textWidth(text: string, font: string): number {
   return context.measureText(text).width;
 }
 
+/** The rounded catalog search field. `label` is both its full placeholder and
+ * accessible name, so consumers pass localized copy. */
 export function CatalogSearchField({
   value,
   onChange,

@@ -70,6 +70,7 @@ const DONE_LABELS: Record<string, string> = {
   update_mission_status: "Updated the board",
 };
 
+/** The bare tool name with any MCP `server__tool` prefix stripped. */
 export function toolShortName(name: string): string {
   return name.includes("__") ? (name.split("__").at(-1) ?? name) : name;
 }

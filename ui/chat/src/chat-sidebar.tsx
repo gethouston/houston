@@ -17,7 +17,9 @@ interface SidebarStep {
 }
 
 export interface ChatSidebarProps {
+  /** Progress steps to display (explicit). */
   progressSteps?: SidebarStep[];
+  /** Feed items for extracting tool-based progress (used if progressSteps not provided). */
   feedItems?: FeedItem[];
   className?: string;
 }

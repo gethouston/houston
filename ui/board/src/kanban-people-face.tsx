@@ -11,6 +11,10 @@ import { initialsFor } from "./kanban-people-logic";
 import { personToneClass } from "./kanban-people-tone";
 import type { KanbanPerson } from "./types";
 
+/** The surface a face stack sits on. The 2px ring around every face is painted
+ *  in that surface's colour, so an overlapped face reads as a CUTOUT rather
+ *  than a halo band. `input` (the default) is the card tier; `background` is
+ *  the floating screen the mission detail panel wears. */
 export type KanbanPeopleSurface = "input" | "background";
 
 export const FACE_SIZE = {

@@ -35,8 +35,11 @@ import {
 } from "./profile-editor-model";
 
 export interface ProfileEditorScreenProps {
+  /** The loaded profile fields, or null when claiming for the first time. */
   initial: (ProfileEditorForm & { avatarUrl: string | null }) | null;
   currentHandle: string | null;
+  /** Persist edits; resolve with the saved profile, reject with an Error that
+   *  may carry a gateway `code` for the shared copy map. */
   onSave: (
     patch: ProfileEditorPatch,
   ) => Promise<ProfileEditorForm & { avatarUrl: string | null }>;

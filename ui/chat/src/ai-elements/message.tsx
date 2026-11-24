@@ -56,7 +56,14 @@ const MessageAvatarContext = createContext<React.ReactNode | undefined>(
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
+  /** Optional badge avatar shown on the message bubble (e.g., channel logo). */
   avatar?: React.ReactNode;
+  /**
+   * A user turn written by SOMEONE ELSE. Alignment stops following
+   * the role and follows the WRITER: the viewer's own turns keep the
+   * right-aligned near-ink bubble (`is-user`), a teammate's mirrors to the left
+   * as a recessed, hairlined bubble (`is-peer`) with room for their face.
+   */
   peer?: boolean;
 };
 
@@ -389,7 +396,20 @@ export type RenderLinkFn = (props: RenderLinkProps) => ReactNode | undefined;
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
   onOpenLink?: (url: string) => void;
+  /**
+   * Optional custom renderer for markdown links. When provided, it
+   * replaces the default button for every `<a>` tag rendered by
+   * Streamdown. The default button behavior is exposed to the custom
+   * renderer as `onOpen` so it can fall back when it doesn't want to
+   * handle a particular link. Pure generic — the chat package stays
+   * Composio-unaware; the app layer is responsible for detecting
+   * special URL patterns.
+   */
   renderLink?: RenderLinkFn;
+  /**
+   * People whose "@Name" occurrences in this message should render as chips.
+   * Empty/absent leaves the markdown pipeline exactly as it was.
+   */
   mentions?: readonly MentionTarget[];
 };
 

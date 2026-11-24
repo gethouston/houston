@@ -6,10 +6,13 @@ import {
 
 export * from "./handoff-card";
 
+/** One row of the chat in display order: a feed item (by index) or a card. */
 export type BrowserHandoffFeedRow =
   | {
       kind: "item";
       index: number;
+      /** Draw this streaming reply as finished: it was moved under a card,
+       *  so it is not where the turn's output lands. */
       settled?: true;
     }
   | { kind: "card"; card: BrowserHandoffCardModel };
@@ -52,6 +55,10 @@ function lastToolRow(
   return last;
 }
 
+/**
+ * The feed with its hand-off cards, in display order. Every feed item appears
+ * exactly once; after an item come its cards, then any reply moved there.
+ */
 export function browserHandoffFeedRows(
   items: readonly BrowserHandoffFeedItem[],
   turnRunning: boolean,

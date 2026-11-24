@@ -16,15 +16,27 @@ import type { BoardSearchSnippet, KanbanItem } from "./types";
 
 export interface KanbanListItemProps {
   item: KanbanItem;
+  /** Small agent icon shown at the leading edge. Falls back to the item's own
+   *  `icon` when omitted, so a cross-agent list can show a per-row avatar. */
   avatar?: React.ReactNode;
+  /** Marks the row whose chat is currently open in the right panel. */
   selected?: boolean;
   onSelect: () => void;
   onDelete?: () => void;
   labels?: KanbanCardLabels;
   formatTime?: MessageTimeFormatter;
+  /** Matched body/history fragment shown below the title when the search match
+   *  was found there rather than in the title (the title is never highlighted). */
   snippet?: BoardSearchSnippet;
 }
 
+/**
+ * Compact row for the Archived missions list: agent icon + name, mission title,
+ * the mission's tag pills (the board card's own chip), and a delete button.
+ * The title is shown plainly; when a search matched only in the body/history,
+ * a short highlighted fragment appears below so the user sees why the mission
+ * surfaced.
+ */
 export function KanbanListItem({
   item,
   avatar,

@@ -11,8 +11,11 @@ import {
   normalizeQuery,
 } from "./search-text";
 
+/** Where in a mission the query matched. Ranked in this order. */
 export type MatchedIn = "title" | "description" | "content";
 
+/** One ranked mission match. `snippet` is omitted for a title match (the title
+ *  already shows the phrase and is never highlighted, per the desktop). */
 export interface MissionMatch {
   agentId: string;
   activityId: string;
@@ -23,6 +26,7 @@ export interface MissionMatch {
 }
 
 export interface MissionsSearchModule {
+  /** Search `query` across `agentId`'s missions, or every agent's when omitted. */
   search(query: string, agentId?: string): Promise<MissionMatch[]>;
 }
 

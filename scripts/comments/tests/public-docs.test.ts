@@ -69,6 +69,7 @@ describe("public API doc comments", () => {
 
   it.each([
     "app/src/components/board.tsx",
+    "ui/showcase/src/specimens/board.tsx",
     "packages/host/src/server.ts",
     "ui/core/tests/board.test.tsx",
     "packages/sdk/src/modules/turns/turn-vm.test.ts",

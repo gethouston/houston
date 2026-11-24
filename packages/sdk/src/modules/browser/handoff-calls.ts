@@ -1,8 +1,20 @@
+/**
+ * The tool calls of a chat feed, each paired with the result that answers it.
+ *
+ * A result carrying the turn's tool identity (`turnId` + `toolIndex`, stamped
+ * by both the live sink and the history fold) answers exactly that call. One
+ * without it falls back to the chat's rule (`attachToolResult` in ui/chat):
+ * the first open call of that name in the current turn, else the most recent
+ * open one before it. Either way a call a stop, a provider error or a restart
+ * left unanswered never shifts the pairing of the calls after it.
+ */
 export interface BrowserHandoffFeedItem {
   id?: string;
   feed_type: string;
   data: unknown;
+  /** The turn this row belongs to, when known. */
   turnId?: string;
+  /** The row's position among its turn's tool calls (or results). */
   toolIndex?: number;
 }
 

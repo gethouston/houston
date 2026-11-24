@@ -3,6 +3,7 @@ import { MessageCircle, X } from "lucide-react";
 import { DEFAULT_GRID_LABELS, type RoutinesGridLabels } from "./labels";
 
 export interface RoutineDraftRowProps {
+  /** Marks the draft whose chat is open in the right pane (selected state). */
   selected?: boolean;
   onResume: () => void;
   onDiscard: () => void;

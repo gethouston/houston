@@ -1,5 +1,11 @@
 import type { ClaudeInstallError } from "./types";
 
+/**
+ * Events emitted from the Rust backend via houston-tauri.
+ *
+ * Mirrors the Rust `HoustonEvent` enum in `houston-tauri/src/events.rs`.
+ * Apps can extend this with app-specific event types.
+ */
 export type HoustonEvent =
   | {
       type: "FeedItem";
@@ -16,8 +22,11 @@ export type HoustonEvent =
         session_key: string;
         status: string;
         error: string | null;
+        /** Why an `error` status happened (SDK `TurnErrorClass`); additive. */
         error_class?: string;
+        /** `sent` by this client or `observed` (SDK `SessionStatusOrigin`); additive. */
         origin?: string;
+        /** Reply ceiling reached; distinct notification copy. */
         stop_reason?: "turn_time_limit" | "turn_time_limit_unsaved";
       };
     }

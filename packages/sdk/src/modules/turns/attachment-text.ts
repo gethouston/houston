@@ -2,11 +2,22 @@ const MARKER_PREFIX = "<!--houston:attachments ";
 const MARKER_SUFFIX = "-->";
 const MARKER_RE = /^<!--houston:attachments (\{[\s\S]*?\})-->\s*\n?\n?/;
 
+/**
+ * One attached file on the wire: the workspace-relative `path` the agent's Read
+ * tool opens, plus the original display `name`. Key order (path, name) is
+ * load-bearing — it is what the desktop encoder serializes, and
+ * `buildAttachmentText` reproduces those exact bytes.
+ */
 export interface AttachmentRef {
   path: string;
   name: string;
 }
 
+/**
+ * The decoded marker shaped for feed rendering: the user's original text and
+ * the attachment names. Paths are intentionally dropped from the render (they
+ * are model-facing only).
+ */
 export interface DecodedAttachmentText {
   displayText: string;
   attachments: { name: string }[];
@@ -24,6 +35,16 @@ function withAttachmentPaths(text: string, paths: readonly string[]): string {
   return text.length > 0 ? `${text}\n\n${block}` : block;
 }
 
+/**
+ * Build the full message text for a turn carrying attachments: a hidden
+ * `<!--houston:attachments {json}-->` marker (display metadata for feed
+ * rendering) followed by the user's text and the visible path block the model
+ * reads. Byte-for-byte identical to the desktop composer's output. With no
+ * `paths` it returns `text` unchanged.
+ *
+ * `names[i]` pairs with `paths[i]`; a missing name falls back to the path's
+ * basename (matching the desktop encoder).
+ */
 export function buildAttachmentText(
   text: string,
   paths: readonly string[],
@@ -42,6 +63,12 @@ export function buildAttachmentText(
   return `${MARKER_PREFIX}${json}${MARKER_SUFFIX}\n\n${prompt}`;
 }
 
+/**
+ * Decode a persisted message's leading attachment marker into the display text
+ * and attachment names for feed rendering. Returns `null` when there is no
+ * marker, its JSON is malformed, or it carries no files (nothing to render
+ * specially). Never throws.
+ */
 export function decodeAttachmentText(
   text: string,
 ): DecodedAttachmentText | null {

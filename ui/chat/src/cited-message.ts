@@ -9,9 +9,11 @@ import {
 import { decodeSkillMessage, type SkillInvocation } from "./skill-message.ts";
 
 export interface CitedMessage {
+  /** The words the person typed, without any marker or comment list. */
   text: string;
   citations: SentCitation[];
   attachments: AttachmentReference[];
+  /** The Skill the message ran, when it ran one. */
   skill: SkillInvocation | null;
 }
 
@@ -39,6 +41,7 @@ function sends(
   });
 }
 
+/** Decode a sent message's comments, or `null` when it carried none. */
 export function decodeCitedMessage(body: string): CitedMessage | null {
   const decoded = sends(body);
   const texts: string[] = [];

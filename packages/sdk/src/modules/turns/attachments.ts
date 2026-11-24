@@ -4,18 +4,35 @@ import type { FileUpload } from "../files/types";
 import { saveAttachments } from "../files/uploads";
 import { moduleScope } from "../http";
 
+/** One file to upload: original name, base64 bytes, and its folder path. */
 export type AttachmentUpload = FileUpload;
 
+/** Payload for the `turns/attachments/save` command. */
 export interface TurnAttachmentsSaveInput {
+  /** The agent whose workspace the files land in; the route exists only under one. */
   agentId: string;
+  /**
+   * Legacy per-conversation storage key. The current host ignores it (uploads
+   * are durable workspace files), but clients still send it so a
+   * not-yet-updated cloud pod keeps accepting the request.
+   */
   scopeId: string;
+  /** The files to upload; must be non-empty, each with a non-empty name. */
   files: AttachmentUpload[];
 }
 
+/** Result of a save: the workspace-relative paths the agent's Read tool opens. */
 export interface TurnAttachmentsSaveResult {
   paths: string[];
 }
 
+/**
+ * The upload exceeded the host's request cap (HTTP 413). Typed so a surface can
+ * show a "files too large" message instead of a generic failure; the numeric
+ * `status` rides the dispatch command result's `error.status` (see
+ * `CommandRegistry.dispatch` → `toCommandError`). No silent failure — the op
+ * throws this, never swallows an oversized upload.
+ */
 export class AttachmentTooLargeError extends Error {
   readonly status = 413;
   constructor(message = "Attachments exceed the upload size limit.") {
@@ -24,6 +41,8 @@ export class AttachmentTooLargeError extends Error {
   }
 }
 
+/** Untrusted-envelope guard for the `turns/attachments/save` payload. Throws on
+ *  any bad shape (the registry turns the throw into `ok: false`). */
 export function asAttachmentsSaveInput(
   payload: unknown,
 ): TurnAttachmentsSaveInput {
@@ -53,6 +72,8 @@ export function asAttachmentsSaveInput(
   return { agentId: p.agentId, scopeId: p.scopeId, files };
 }
 
+/** The typed attachments operation — the SAME function backs the
+ *  `turns/attachments/save` command and `sdk.turns.saveAttachments`. */
 export interface AttachmentsOperation {
   save(input: TurnAttachmentsSaveInput): Promise<TurnAttachmentsSaveResult>;
 }

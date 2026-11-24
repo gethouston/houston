@@ -6,6 +6,8 @@ import type { InstallsDayBar } from "../types";
 
 const compact = new Intl.NumberFormat("en", { notation: "compact" });
 
+/** Roll per-(agent, day) rows up to per-day totals, ascending by day, each
+ *  carrying its height fraction relative to the busiest day in the window. */
 export function toInstallsDayBars(
   rows: ReadonlyArray<{ day: string; installs: number }>,
 ): InstallsDayBar[] {
@@ -21,6 +23,7 @@ export function toInstallsDayBars(
   }));
 }
 
+/** The three ranges the owner analytics offers, in display order. */
 export const INSTALLS_RANGES = [7, 30, 90] as const;
 export type InstallsRange = (typeof INSTALLS_RANGES)[number];
 
@@ -53,6 +56,10 @@ export interface InstallsPanelProps {
   labels?: Partial<InstallsPanelLabels>;
 }
 
+/**
+ * The owner's install analytics: range toggle, total, per-day bars. Pure —
+ * the surface fetches; this renders. Fixed content so web and app match.
+ */
 export function InstallsPanel({
   status,
   errorMessage,

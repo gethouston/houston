@@ -7,7 +7,9 @@ import {
 import type { SchedulePreset } from "./types.ts";
 
 export interface ScheduleFloor {
+  /** The minimum, in minutes: what the hint under the minutes count names. */
   minutes: number;
+  /** Whether a schedule fires no more often than the floor allows. */
   allows: (schedule: string) => boolean;
 }
 

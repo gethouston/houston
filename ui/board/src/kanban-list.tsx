@@ -15,10 +15,19 @@ export interface KanbanListProps {
   cardLabels?: KanbanCardLabels;
   formatTime?: MessageTimeFormatter;
   emptyState?: React.ReactNode;
+  /** Per-item matched body fragment, keyed by `KanbanItem.id`, shown below a row
+   *  when the search matched in the body rather than the title. */
   searchSnippets?: Record<string, BoardSearchSnippet>;
+  /** Sizing of the list rail. "center" (default) keeps a fixed-width column
+   *  centered; "left" fills the full pane width, left-aligned. */
   align?: "center" | "left";
 }
 
+/**
+ * Compact, column-less list of board items (used by the Archived missions
+ * tab). Rows reuse `KanbanListItem` — agent icon + name, title, delete — so
+ * the list reads as short rectangles. Items are sorted newest-first.
+ */
 export function KanbanList({
   items,
   selectedId,

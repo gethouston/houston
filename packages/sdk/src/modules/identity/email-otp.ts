@@ -7,6 +7,7 @@ import {
 } from "@houston/wire-types";
 import type { AccountLinkCodeError } from "./types";
 
+/** Every way an email-code request fails, refusals first. */
 export type EmailOtpFailure =
   | EmailOtpRefusal
   | "network"

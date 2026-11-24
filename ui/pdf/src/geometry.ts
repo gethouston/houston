@@ -115,6 +115,14 @@ interface Point {
 const overlaps = (a: PdfBox, b: PdfBox) =>
   a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
+/**
+ * Where a mark's number pin sits, as its center in percent of the page.
+ *
+ * An area's pin straddles its top-left corner. A text pin never covers the
+ * words it quotes: it tries beside the first line, then the page margins on
+ * that line, then above and below the selection, preferring a spot that
+ * covers no other text either (`obstacles`, the page's text boxes).
+ */
 export function placePin(
   anchor: PdfAnchor,
   page: { width: number; height: number },

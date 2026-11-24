@@ -12,6 +12,7 @@ import type {
   EditableProfileUpdate,
 } from "./types";
 
+/** A failed account request. `status` is the upstream HTTP status. */
 export class AccountHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "AccountHttpError");

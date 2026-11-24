@@ -18,6 +18,7 @@ import {
 import { parseEverySchedule } from "./schedule-interval-form.ts";
 import type { SchedulePreset } from "./types";
 
+/** Generate a human-readable summary of a schedule preset */
 export function presetSummary(
   preset: SchedulePreset,
   options: ScheduleOptions,
@@ -61,6 +62,13 @@ export function presetSummary(
   }
 }
 
+/**
+ * Human-readable summary of any schedule (cron or an `@every` interval),
+ * written for non-technical users. Recognizes the presets and the common
+ * interval patterns (every N minutes / hours / days, weekly on chosen days,
+ * every N months) so a `*​/5 * * * *` reads as "Runs every 5 minutes"
+ * instead of raw cron, and otherwise falls back to a generic label.
+ */
 export function cronSummary(
   cron: string,
   labels: ScheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,

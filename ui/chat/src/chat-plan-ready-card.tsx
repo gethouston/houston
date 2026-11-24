@@ -31,6 +31,9 @@ const ACTION_ICONS: Record<PlanReadyActionKey, LucideIcon> = {
   runAutopilot: Rocket,
 };
 
+/** The compact next-step chooser after a plan. The complete plan stays in the
+ * assistant transcript; the shared shell keeps the lede and the only text input
+ * together in the card. */
 export function ChatPlanReadyCard({
   summary,
   disabled = false,

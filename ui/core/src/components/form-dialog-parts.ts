@@ -1,9 +1,15 @@
+/**
+ * `FormDialog`'s logic, split from its JSX so the parts that can actually go
+ * wrong — the promise state machine and the secondary's default — are unit
+ * tested. Not re-exported from the package index: the recipe is the API.
+ */
 export interface FormDialogAction {
   label: string;
   // biome-ignore lint/suspicious/noConfusingVoidType: sync handlers return void, async ones return a Promise
   onClick?: () => void | boolean | Promise<unknown>;
   disabled?: boolean;
   variant?: "default" | "destructive";
+  /** Label worn while the promise is in flight. Falls back to `label`. */
   pendingLabel?: string;
 }
 

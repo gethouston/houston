@@ -31,6 +31,7 @@ import {
 import type { IntegrationsViewModel } from "./types";
 import type { IntegrationsWrites } from "./writes";
 
+/** The result of a connect: the URL the surface opens, plus the id to poll. */
 export interface ConnectResult {
   redirectUrl: string;
   connectionId: string;
@@ -103,20 +104,36 @@ export function createAgentCustomIntegrations(scope: HttpScope) {
   };
 }
 
+/** The typed facade for integration reads + writes. */
 export interface IntegrationsModule {
+  /** Scope string for `sdk.subscribe(...)` / `sdk.getSnapshot(...)`. */
   readonly scope: string;
+  /** Refetch readiness + catalog + connections and republish the VM. */
   refresh(): Promise<IntegrationsViewModel>;
+  /** Start an OAuth connect against one provider; the surface opens
+   *  `redirectUrl`, then polls. `agent` scopes it to one agent slug. */
   connect(
     provider: IntegrationProviderId,
     toolkit: string,
     agent?: string,
   ): Promise<ConnectResult>;
+  /** Poll one connection until its OAuth finishes (status flips to active). */
   pollConnection(connectionId: string): Promise<IntegrationConnection>;
+  /** Disconnect a toolkit everywhere, then refetch the VM. */
   disconnect(toolkit: string): Promise<IntegrationsViewModel>;
+  /** Push the caller's Supabase token to the gateway adapter (`null` on sign-out). */
   setSession(token: string | null): Promise<void>;
+  /** Dismiss the one-time "reconnect your integrations" notice (idempotent). */
   dismissReconnectNotice(): Promise<void>;
+  /** No-refetch write variants for a host that owns its own reads (web under
+   *  `reactivity:false`). The refetching methods above stay the default for a
+   *  host with no read model of its own. */
   writes: IntegrationsWrites;
+  /** The provider-scoped gateway reads (`/v1/integrations/{provider}/…`). */
   reads: ReturnType<typeof createIntegrationsReads>;
+  /** The user's own added connectors (`/v1/integrations/custom/…`). */
   custom: ReturnType<typeof createCustomIntegrations>;
+  /** The same connectors through one agent's pod — the form a hosted
+   *  deployment serves (`/agents/{agentSlugOrId}/integrations/custom/…`). */
   agentCustom: ReturnType<typeof createAgentCustomIntegrations>;
 }

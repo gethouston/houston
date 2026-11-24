@@ -6,7 +6,9 @@ export interface AttachmentReference {
 }
 
 export interface AttachmentInvocation {
+  /** Text the user typed alongside the uploaded files. */
   message: string;
+  /** Absolute paths are intentionally decodeable but not rendered. */
   files: AttachmentReference[];
 }
 

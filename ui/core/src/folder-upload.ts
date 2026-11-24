@@ -1,3 +1,6 @@
+/** Hard ceiling on files attachable at once — a dropped `node_modules` must
+ *  fail fast and loudly, not upload for an hour. Shared by the drop traversal
+ *  (aborts early) and the intake (caps picker selections the same way). */
 export const MAX_ATTACHMENT_FILES = 1000;
 
 export class TooManyAttachmentFilesError extends Error {
@@ -7,6 +10,11 @@ export class TooManyAttachmentFilesError extends Error {
   }
 }
 
+/**
+ * The folder-relative path (`docs/guide/a.md`) of a folder-derived file, or
+ * null for a plain attachment. Normalized to forward slashes, no leading
+ * slash; a value without a `/` carries no structure and reads as plain.
+ */
 export function attachmentRelativePath(file: File): string | null {
   const raw = file.webkitRelativePath;
   if (!raw) return null;
@@ -14,6 +22,7 @@ export function attachmentRelativePath(file: File): string | null {
   return normalized.includes("/") ? normalized : null;
 }
 
+/** The dropped/picked folder's name — the first path segment — or null. */
 export function attachmentFolderRoot(file: File): string | null {
   return attachmentRelativePath(file)?.split("/", 1)[0] ?? null;
 }
@@ -22,6 +31,13 @@ function isHiddenRelativePath(relPath: string): boolean {
   return relPath.split("/").some((segment) => segment.startsWith("."));
 }
 
+/**
+ * Drop the hidden files a folder pick sweeps in (`.DS_Store`, `.git/**`) —
+ * the host refuses dot-named upload segments, and silently failing the whole
+ * send over an invisible file would be worse than skipping it. Plain files
+ * (no relative path) pass through untouched: explicitly picking a dotfile
+ * keeps its existing loud-rejection behavior.
+ */
 export function visibleAttachmentFiles(files: readonly File[]): File[] {
   return files.filter((file) => {
     const rel = attachmentRelativePath(file);
@@ -37,6 +53,11 @@ function tagRelativePath(file: File, relPath: string): File {
   return file;
 }
 
+/**
+ * What a drop handed us, captured SYNCHRONOUSLY inside the drop event — the
+ * DataTransfer is neutered once the handler returns, so `webkitGetAsEntry()` /
+ * `getAsFile()` must both run before any await.
+ */
 export type DroppedItem =
   | { kind: "file"; file: File }
   | { kind: "entry"; entry: FileSystemEntry };
@@ -65,6 +86,13 @@ export function collectDroppedItems(dataTransfer: DataTransfer): DroppedItem[] {
   return collected;
 }
 
+/**
+ * Expand the captured drop into attachable Files: plain files pass through,
+ * directory entries are walked recursively with each file tagged by its
+ * folder-relative path. Hidden entries are skipped once INSIDE a folder (same
+ * rationale as visibleAttachmentFiles); a top-level file keeps its loud
+ * host-side rejection. Throws TooManyAttachmentFilesError past the ceiling.
+ */
 export async function resolveDroppedFiles(
   items: readonly DroppedItem[],
 ): Promise<File[]> {

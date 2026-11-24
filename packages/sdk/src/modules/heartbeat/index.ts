@@ -20,6 +20,7 @@ export type {
 } from "./types";
 export { classifyHeartbeatFailure, HeartbeatCommand } from "./types";
 
+/** The typed facade for the heartbeat family. Every call throws on a non-2xx. */
 export interface HeartbeatModule {
   getHeartbeat(signal?: AbortSignal): Promise<HeartbeatState>;
   setHeartbeat(
@@ -29,6 +30,7 @@ export interface HeartbeatModule {
   runHeartbeatNow(signal?: AbortSignal): Promise<HeartbeatRunResult>;
 }
 
+/** A failed heartbeat request. `status` is the upstream HTTP status. */
 export class HeartbeatHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "HeartbeatHttpError");

@@ -14,6 +14,7 @@ export type {
   HeartbeatState,
 } from "@houston/protocol";
 
+/** The write vocabulary — the same handlers back the facade and `dispatch`. */
 export const HeartbeatCommand = {
   Get: "heartbeat/get",
   Set: "heartbeat/set",
@@ -23,6 +24,13 @@ export const HeartbeatCommand = {
 export type HeartbeatCommandType =
   (typeof HeartbeatCommand)[keyof typeof HeartbeatCommand];
 
+/**
+ * Why a heartbeat call failed, decided once here so no surface re-reads the
+ * host's codes. `turn_running`: the manager is mid-turn, ask again shortly.
+ * `failed`: the briefing turn could not start (usually no AI account is
+ * connected), today's run is spent. `unavailable`: this deployment does not
+ * serve the briefing. `unexpected`: anything else, a defect to report.
+ */
 export type HeartbeatFailure =
   | { kind: "turn_running" }
   | { kind: "failed" }

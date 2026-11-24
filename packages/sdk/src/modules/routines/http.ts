@@ -2,6 +2,7 @@ import { type HttpScope, httpRequest, SdkHttpError } from "../http";
 import { isRoutineGone } from "./routine-gone";
 import type { NewRoutine, Routine, RoutineUpdate } from "./types";
 
+/** A failed routine request. `status` is the upstream HTTP status. */
 export class RoutinesHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "RoutinesHttpError");

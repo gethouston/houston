@@ -2,6 +2,7 @@ import type { OrgBilling } from "@houston/wire-types";
 
 type Billing = OrgBilling | null | undefined;
 
+/** How much of a free org's weekly pool is used, as a whole percentage. */
 export function usagePercent(billing: Billing): number | null {
   const usage = billing?.tier === "free" ? billing.usage : null;
   if (!usage) return null;
@@ -12,6 +13,12 @@ export function usagePercent(billing: Billing): number | null {
   );
 }
 
+/**
+ * The shell dialog to open: resume a free org's paused routines, choose the
+ * one it keeps, or the per-person launch announcement (`announcement`, the
+ * plan module's `planAnnouncementDue`) when no routine dialog is due. A locked
+ * org refuses both routine writes, so it is never asked either.
+ */
 export function planDialog(
   billing: Billing,
   state: {
@@ -32,6 +39,7 @@ export function planDialog(
   return state.announcement ? "announcement" : null;
 }
 
+/** The composer's plan line: nothing, the usage hint from 80%, or the limit. */
 export function planComposerMode(billing: Billing): "none" | "hint" | "limit" {
   const percent = usagePercent(billing);
   if (percent === null || percent < 80) return "none";
@@ -41,6 +49,13 @@ export function planComposerMode(billing: Billing): "none" | "hint" | "limit" {
 const MAX_TIMER_MS = 2_147_483_647;
 const MIN_REFRESH_MS = 30_000;
 
+/**
+ * Refetch at the next instant the org's billing changes on its own: the
+ * weekly reset that unblocks the composer, and a scheduled lock. Once the
+ * gateway reports the org locked, the lock is settled and schedules nothing;
+ * before that, a lock this clock already sees as past keeps the floor's poll,
+ * since a clock running ahead may have asked before the lock took effect.
+ */
 export function planLaunchRefreshDelay(
   billing: Billing,
   now: number,

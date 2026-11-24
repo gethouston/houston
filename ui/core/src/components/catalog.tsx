@@ -3,6 +3,10 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "../utils";
 
+/** The quiet count chip the catalog family shares (section headers, shell
+ *  tabs): a small muted pill carrying how many items live in that group. A
+ *  string is rendered verbatim — a preformatted display label (e.g. `"9000+"`)
+ *  for catalogs whose true total isn't cheaply known. */
 export function CatalogCount({
   count,
   className,
@@ -22,6 +26,15 @@ export function CatalogCount({
   );
 }
 
+/** A section label — heading with an optional trailing count chip. No fake
+ *  affordance. `size="lg"` marks the page's top-level sections (Installed /
+ *  Available), sitting directly under the page's h1; the default `sm` is for the
+ *  sub-groupings inside them (categories / Featured). Both are deliberately
+ *  QUIET — 14px and 13px medium, not display type: on a page whose identity
+ *  already lives in the header's lozenge, a bold section title competes with
+ *  the rows it introduces. Renders `<h2>` by default; pass `as="h3"` for an sm
+ *  sub-group nested UNDER an lg section header so the document outline never
+ *  skips a level (page h1 → section h2 → sub-group h3). */
 export function CatalogSectionHeader({
   title,
   count,
@@ -49,8 +62,28 @@ export function CatalogSectionHeader({
   );
 }
 
+/** The catalog plane's natural full width: two capped cells plus their gap
+ *  (2 × 23rem + 0.25rem). A surface that wants the plane CENTERED on a wide
+ *  page caps its whole catalog column to this and lets the margins take the
+ *  rest — capping only the grid would leave the slack piled on the right,
+ *  with the rows sitting left of the headings' column. Derived here, beside
+ *  the cell cap, so the two can never drift apart. */
 export const CATALOG_PLANE_MAX_W = "max-w-[46.25rem]";
 
+/** The responsive section grid: one column narrow, TWO at most — and each
+ *  cell caps at 23rem, the width a row's logo + name + one-line description
+ *  actually earn. Both limits are deliberate: three columns read as crowded,
+ *  and two uncapped columns on a wide page stretch every row into a bar of
+ *  whitespace. So past ~two-caps-wide the grid stops growing and the page's
+ *  margin takes the rest ({@link CATALOG_PLANE_MAX_W} is how a surface
+ *  centers that remainder). Container-measured, not viewport-measured: a
+ *  catalog inside a narrow pane (an agent's Apps section beside an open chat
+ *  panel) must never inherit the window's column count and squeeze.
+ *
+ *  The two-column switch (`@2xl`, 42rem) MUST sit below
+ *  {@link CATALOG_PLANE_MAX_W} (46.25rem): a plane capped to that width is
+ *  itself the container, and a higher threshold would mean the centered
+ *  plane can never earn the second column it was sized for. */
 export function CatalogGrid({
   children,
   className,
@@ -75,6 +108,7 @@ export function CatalogGrid({
   );
 }
 
+/** The quiet "Show all N" expander under a capped section. */
 export function CatalogShowMore({
   className,
   children,

@@ -12,13 +12,34 @@ import type {
 } from "./choice-modal";
 import type { PickerState } from "./choice-picker";
 
+/**
+ * Which step the modal's frame shows: one of the notice's intro pages
+ * ({@link choiceIntroPages}), the picker (only ever while the notice is
+ * `pick` or `confirm`), or the success step after a stored pick.
+ */
 export type ChoiceModalPhase =
   | { step: "intro"; page: ChoiceIntroPage }
   | { step: "picking" }
   | { step: "done"; done: ChoiceDone };
 
+/**
+ * What keeps the frame's step past the modal. `none`: the frame follows the
+ * modal. `until_answer`: the modal closed under an open picker, or a `confirm`
+ * notice turned `applied` under the frame, as the stored pick's cache write
+ * does before or after the save's own answer lands; the step stays until
+ * {@link finishPicking}, {@link finishConfirming} or a close settles it.
+ * `behind_dialog`: a plan dialog hides the success step, which shows again
+ * once that dialog is gone.
+ */
 export type ChoiceFrameHold = "none" | "until_answer" | "behind_dialog";
 
+/**
+ * What the pricing-change modal's frame shows, carried from one render to the
+ * next. `shown` is the last open modal: it keeps the frame's content through
+ * the close animation, after the notice itself has gone. `pick` is the
+ * picker's draft, kept while the person steps back into the intro and out
+ * again, null until they change it ({@link choiceFramePick}).
+ */
 export interface ChoiceModalFrame {
   open: boolean;
   shown: ShownChoiceModal | null;
@@ -37,6 +58,18 @@ export const CLOSED_CHOICE_FRAME: ChoiceModalFrame = {
   pick: null,
 };
 
+/**
+ * The frame for the latest {@link ChoiceModal}. It reopens on the first intro
+ * page, so a modal hidden behind a plan dialog comes back where it started; a
+ * notice that stops being a pick (a refusal's refetch shows the person cannot
+ * pick) drops the picker, and any intro page it no longer has, back to the
+ * first page. A modal that closes for any other reason than a plan dialog
+ * leaves an open picker open (`until_answer`). An open success step ignores
+ * the modal, which a stored pick closes, except to step aside for a plan
+ * dialog; only the person closes it ({@link closeChoiceFrame}). Answers
+ * `frame` itself when nothing changed, so a surface that stores the frame can
+ * tell when to store it again.
+ */
 export function nextChoiceModalFrame(
   frame: ChoiceModalFrame,
   modal: ChoiceModal,
@@ -92,6 +125,12 @@ function doneFrame(
   return behind ? frame : { ...frame, open: true, hold: "none" };
 }
 
+/**
+ * The frame after Confirm on a `confirm` intro answers, and whether the modal
+ * is now closed for the session (`closed`). A stored pick closes the frame; a
+ * refusal keeps it, which shows the refusal's own copy. The save itself
+ * settles the notice on the server ({@link saveSettlesNotice}).
+ */
 export function finishConfirming(
   frame: ChoiceModalFrame,
   outcome: BillingChoiceSave,
@@ -105,10 +144,21 @@ export function finishConfirming(
   return { frame: closeChoiceFrame(frame), closed: true };
 }
 
+/**
+ * Whether closing the frame stores the dismissal on the server: only a
+ * read-only notice (`everywhere`). A stored pick after the cutover settled its
+ * own notice when it saved ({@link saveSettlesNotice}).
+ */
 export function closeDismisses(frame: ChoiceModalFrame): boolean {
   return frame.shown?.close === "everywhere";
 }
 
+/**
+ * The frame after a save answers. A stored pick moves an open picker to the
+ * success step; a refusal keeps the picker, which shows the refusal's own
+ * copy, and never reaches the success step. A refusal for a picker the modal
+ * closed under closes it: the notice no longer asks.
+ */
 export function finishPicking(
   frame: ChoiceModalFrame,
   outcome: BillingChoiceSave,
@@ -123,6 +173,11 @@ export function finishPicking(
   return { ...frame, phase: { step: "done", done }, hold: "none" };
 }
 
+/**
+ * The frame once the person closes it: the X, Escape, a click outside, or a
+ * button. It keeps its content through the close animation; whether it may
+ * open again is the modal's call (a closed session, a stored pick).
+ */
 export function closeChoiceFrame(frame: ChoiceModalFrame): ChoiceModalFrame {
   return frame.open ? { ...frame, open: false, hold: "none" } : frame;
 }

@@ -4,6 +4,7 @@ import type { ProgressStep } from "./use-progress-steps";
 
 export interface ProgressPanelProps {
   steps: ProgressStep[];
+  /** Header title. Defaults to "Working on". */
   title?: string;
 }
 

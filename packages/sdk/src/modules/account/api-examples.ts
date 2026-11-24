@@ -2,6 +2,7 @@ import { HOUSTON_API_KEY_ENV } from "./api-setup-prompt";
 
 const origin = (baseUrl: string) => baseUrl.replace(/\/+$/, "");
 
+/** Lists the person's AI Employees: the smallest call that proves a key works. */
 export function apiTryKeyRequest(input: {
   baseUrl: string;
   key: string;
@@ -10,6 +11,7 @@ export function apiTryKeyRequest(input: {
   -H "Authorization: Bearer ${input.key}"`;
 }
 
+/** Starts a task with one employee, in the organization it lives in. */
 export function apiStartMissionRequest(input: {
   baseUrl: string;
   agentId: string;

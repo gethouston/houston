@@ -11,15 +11,32 @@ export type { ChatSuggestReusableLabels } from "./chat-suggest-reusable-card-mod
 export { DEFAULT_SUGGEST_REUSABLE_LABELS } from "./chat-suggest-reusable-card-model";
 
 export interface ChatSuggestReusableCardProps {
+  /** Whether the work is offered as a reusable Skill, a scheduled Routine, or a Learning. */
   reusableKind: "skill" | "routine" | "learning";
+  /** The model's proposed name for the Skill/Routine/Learning, shown as the prominent head. */
   title: string;
+  /** The model's one-line rationale for saving it (model-generated, passed through). */
   rationale: string;
+  /** Gates both actions uniformly (another turn is active). */
   disabled?: boolean;
+  /** Send the follow-up message that asks the agent to write the Skill/Routine/Learning. */
   onSave: () => void;
+  /** Dismiss the offer locally and return the composer. */
   onDismiss: () => void;
   labels: ChatSuggestReusableLabels;
 }
 
+/**
+ * The in-chat surface shown when the agent finishes cleanly and calls
+ * `suggest_reusable`: an optional, dismissible offer to save the just-completed
+ * work as a reusable Skill, a scheduled Routine, or a Learning. It REPLACES the composer, so
+ * it borrows the plan-ready card's vocabulary (rounded-[28px] grey
+ * `bg-chip` surface) with the proposed title raised as the prominent head
+ * and the rationale below it. The two actions (Save / Not now) render as
+ * full-width rows using the SAME row button classes as the plan-ready card, so
+ * the card family reads as one system. Everything is visible at rest (no hover
+ * gate). `disabled` gates both rows.
+ */
 export function ChatSuggestReusableCard({
   reusableKind,
   title,

@@ -17,6 +17,20 @@ import {
 import { turnErrorMessage } from "./turn-errors";
 import { TurnSink } from "./turn-sink";
 
+/**
+ * Passively observe a conversation this client did not (or no longer does)
+ * stream — the reload-mid-turn fix. Opened when a chat's history loads: if the
+ * server's `sync` reports a turn in flight, surface it (running indicator +
+ * partial text) and render live frames to completion, settling exactly like a
+ * turn we sent; if the conversation is idle, the stream closes immediately.
+ * No-op when the conversation is already streamed (live turn or observer).
+ *
+ * Failure posture: a fatal stream refusal (401/403/404/410) or an exhausted
+ * reconnect budget disposes SILENTLY while nothing is mid-render — a passive
+ * background attach has nothing user-initiated to surface — but settles the
+ * observed card visibly when a turn was already on screen (it must never
+ * freeze). A throwing frame handler is a bug and surfaces as a system message.
+ */
 export function observeConversation(
   engine: HoustonEngineClient,
   agentPath: string,

@@ -6,19 +6,30 @@ import {
   type ThemePreference,
 } from "./model";
 
+/** The device keys a preference is stored under, one per field. */
 export const THEME_KEYS = {
   mode: "theme",
   light: "theme.light",
   dark: "theme.dark",
 } as const;
 
+/** One of the three keys above. */
 export type ThemeKey = (typeof THEME_KEYS)[keyof typeof THEME_KEYS];
 
+/** A stored value this build cannot wear, kept with the key that held it. */
 export interface UnusableThemeValue {
   key: ThemeKey;
   raw: string;
 }
 
+/**
+ * What was read: the preference in force, plus every key whose stored value was
+ * unusable and therefore fell back to its default.
+ *
+ * The list is returned rather than swallowed because a preference we cannot read
+ * is a bug we want to see: the SDK logs it as a diagnostic, and the surface —
+ * which owns the reporting paths — reports it where we will read it.
+ */
 export interface ThemeReading {
   pref: ThemePreference;
   unusable: readonly UnusableThemeValue[];

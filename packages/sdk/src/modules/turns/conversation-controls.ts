@@ -10,6 +10,16 @@ import {
 } from "./turn-inputs";
 import { isTurnRunningRejection } from "./turn-running";
 
+/**
+ * What a dismiss came to. `turn_running`: the runtime refused because a turn
+ * is accepted, queued or running on the chat, so the card the caller showed was
+ * already retired by that turn. The caller catches its view up to the running
+ * turn (the interaction is gone either way) and must NOT clear a persisted
+ * copy of the card, which would race the running turn's own settle write.
+ * `not_interaction_owner`: on a shared agent the card is for the member whose
+ * message raised it, and only they may dismiss it (403). Nothing changed; the
+ * card stays for its person.
+ */
 export type DismissInteractionOutcome =
   | { ok: true }
   | { ok: false; refusal: "turn_running" | "not_interaction_owner" };

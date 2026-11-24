@@ -19,15 +19,24 @@ export interface KanbanCardLabels {
    *  the action is now an icon-only button with `approveTooltip`. */
   approve?: string;
   approveTooltip?: string;
+  /** Tooltip + accessible label for the archive action (the icon carries no
+   *  text, so this is its only non-visual form). */
   archiveTooltip?: string;
   renameTooltip?: string;
   deleteTooltip?: string;
+  /** Delete confirm title, `{name}` substituted with `item.title`. */
   deleteTitle?: (name: string) => string;
   deleteDescription?: string;
+  /** Accessible label for the multi-select checkbox. */
   selectTooltip?: string;
+  /** Accessible group label for the card's people face stack. */
   people?: string;
+  /** Accessible label for the people overlay's expandable "+N" chip. */
   peopleExpand?: string;
+  /** Accessible label for the detail panel's icon-only close button. */
   closePanel?: string;
+  /** Tooltip + accessible label for the narrow card's "more" button, which
+   *  holds rename and delete when they don't fit inline. */
   moreActions?: string;
   lastMessage?: (time: string) => string;
 }
@@ -53,23 +62,40 @@ export interface KanbanCardProps {
   onSelect: () => void;
   onDelete?: () => void;
   onApprove?: () => void;
+  /** One-click "file this away". Mirrors {@link KanbanCardProps.onApprove}:
+   *  the consumer decides what archiving means, the card only offers it. */
   onArchive?: () => void;
   onRename?: (newTitle: string) => void;
   runningStatuses?: string[];
   approveStatuses?: string[];
+  /** Statuses whose cards offer the archive action. */
   archiveStatuses?: string[];
   errorStatuses?: string[];
   actions?: React.ReactNode;
   avatar?: React.ReactNode;
   labels?: KanbanCardLabels;
   formatTime?: MessageTimeFormatter;
+  /** Mark this card as the currently-open one in the right panel. */
   selected?: boolean;
+  /** Mark this card as keyboard-focused (highlighted via arrow nav, not yet
+   *  opened). Renders a focus ring distinct from `selected`. */
   highlighted?: boolean;
+  /** Enable the multi-select checkbox. */
   selectable?: boolean;
+  /** Whether this card is part of the current multi-select set. */
   selectedForBulk?: boolean;
+  /** Whether ANY card is currently multi-selected (keeps every checkbox
+   *  visible without hover so the affordance isn't hover-gated). */
   anySelected?: boolean;
+  /** Toggle this card's membership in the multi-select set. */
   onToggleSelect?: () => void;
+  /** Make the card draggable so it can be dropped onto another column.
+   *  Suppressed while renaming or during a multi-select so it doesn't
+   *  collide with those interactions. The board reads the resulting
+   *  `data-kanban-draggable` marker to start its pointer drag. */
   enableDrag?: boolean;
+  /** True while THIS card is the one being dragged — dims it. Driven by the
+   *  board's drag state. */
   dragging?: boolean;
 }
 

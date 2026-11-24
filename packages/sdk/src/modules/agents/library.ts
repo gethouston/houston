@@ -58,13 +58,18 @@ export async function updateAgentColor(
   });
 }
 
+/** The account's library of installed agent templates. */
 export interface AgentsLibrary {
+  /** Every template installed into the account. */
   list(): Promise<InstalledConfig[]>;
+  /** Install one from a GitHub repository; answers the new agent's id. */
   installFromGithub(githubUrl: string): Promise<{ agentId: string }>;
 }
 
+/** The account-scoped half of the agents facade. */
 export interface AgentsAccount {
   library: AgentsLibrary;
+  /** Set one agent's palette colour, in a single request. */
   setColor(agentId: string, color: AgentColorId): Promise<void>;
 }
 

@@ -1,27 +1,39 @@
 import type { SlackConnectReturn } from "@houston/wire-types";
 import type { SlackConnectAnswer } from "./types";
 
+/** The desktop shell's Slack return listener. */
 export interface SlackReturnListener {
   start(state: string): Promise<{ port: number; attemptId: number }>;
+  /** A no-op for an attempt that already ended. */
   cancel(attemptId: number): Promise<void>;
 }
 
+/** The effects a Slack connect needs, bound by the surface that starts it. */
 export interface SlackConnectPorts {
+  /** The bound `channels.connectSlack`, with the surface's own guards. */
   connect(
     returnTo: SlackConnectReturn | undefined,
   ): Promise<SlackConnectAnswer>;
+  /** Null where nothing can listen on the device (web). */
   listener: SlackReturnListener | null;
+  /** A fresh base64url nonce for the loopback `state`. */
   newState(): string;
+  /** Throws when the surface moved on (another space, another person) since
+   *  the connect began. Checked right before the page opens. */
   assertCurrent(): void;
+  /** Opens the page outside the app; false when the browser refused it. */
   open(url: string): Promise<boolean>;
+  /** Reports what the person never sees: a failure, or a gateway skew. */
   report(command: string, error: unknown): void;
 }
 
+/** The page a connect produced, and whether the browser opened it. */
 export interface SlackConnectStarted {
   url: string;
   opened: boolean;
 }
 
+/** Raised to the report path when a gateway refused the loopback return. */
 export class SlackLoopbackRefusedError extends Error {
   constructor() {
     super("the gateway refused the loopback return; fell back to app");

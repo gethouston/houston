@@ -39,18 +39,30 @@ export type {
 } from "./types";
 export { CHANNEL_PROVIDER_IDS, ChannelsCommand } from "./types";
 
+/** The typed facade for the channels family. Every call throws on a non-2xx. */
 export interface ChannelsModule {
+  /** The deployment's providers and the active space's connections. */
   getChannels(signal?: AbortSignal): Promise<ChannelStatus>;
+  /**
+   * Slack's hosted authorization URL; `returnTo` is where the browser returns.
+   * A gateway that refuses `loopback` gets one retry as `app`, and `accepted`
+   * names the return the URL leads back to.
+   */
   connectSlack(
     returnTo?: SlackConnectReturn,
     signal?: AbortSignal,
   ): Promise<SlackConnectAnswer>;
+  /** An expiring code that pairs an already-installed Slack workspace. */
   linkSlack(signal?: AbortSignal): Promise<ChannelLink>;
+  /** An expiring code and prefilled message for WhatsApp pairing. */
   linkWhatsApp(signal?: AbortSignal): Promise<WhatsAppLink>;
+  /** Redeem the one-time ticket a Slack callback returned with. */
   completeSlack(ticket: string, signal?: AbortSignal): Promise<SlackCompletion>;
+  /** Remove one connection, by the id `getChannels` returns. */
   disconnectChannel(connectionId: string, signal?: AbortSignal): Promise<void>;
 }
 
+/** A failed channels request. `status` is the upstream HTTP status. */
 export class ChannelsHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "ChannelsHttpError");

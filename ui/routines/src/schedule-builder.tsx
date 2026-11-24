@@ -14,8 +14,12 @@ export interface ScheduleBuilderProps {
   value: string;
   onChange: (cronExpression: string) => void;
   presets?: SchedulePreset[];
+  /** Localized labels. Defaults to English so standalone callers still work. */
   labels?: ScheduleLabels;
+  /** BCP-47 locale for day names + time formatting in the live summary. */
   locale?: string;
+  /** A plan's minimum interval and the rule that judges a cron against it.
+   *  Keep it stable across renders (memoized). Absent = no limit. */
   floor?: ScheduleFloor;
 }
 

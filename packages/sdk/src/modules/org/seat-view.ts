@@ -4,6 +4,11 @@ import type {
   SeatQuote,
 } from "@houston/wire-types";
 
+/**
+ * What pressing Add does with the latest quote: ask the payer to confirm a
+ * charge first, add straight away (nothing is charged), or nothing at all
+ * because only the person who pays can add a seat.
+ */
 export type SeatAddStep =
   | { kind: "confirm_charge"; quote: ChargeSeatQuote }
   | { kind: "add" }
@@ -15,6 +20,18 @@ export function seatAddStep(quote: SeatQuote): SeatAddStep {
   return { kind: "add" };
 }
 
+/**
+ * The line under the add form, before anything is sent:
+ * - `year_full`: the payer, every paid seat in use; the price comes before
+ *   any charge;
+ * - `year_free` / `other_free`: `free` paid seats are unused, so the add costs
+ *   nothing (said to the payer, or to another owner);
+ * - `other_full`: another owner, every paid seat in use; only the payer
+ *   (`ownerName`, when the gateway names them) can add a seat, so Add is off;
+ * - `month`: the payer of a monthly org; each person costs `seatPriceCents` a
+ *   month from the next bill on `nextBillAt`.
+ * Null when there is nothing to say.
+ */
 export type SeatNote =
   | { kind: "year_full" }
   | { kind: "year_free"; free: number }
@@ -49,10 +66,16 @@ export function seatNote(
   }
 }
 
+/** Whether Add is off: every paid seat is in use and the caller does not pay. */
 export function seatAddBlocked(quote: SeatQuote | null | undefined): boolean {
   return quote?.kind === "billing_owner_only";
 }
 
+/**
+ * The charge dialog: what is charged now, until when, and what the plan costs
+ * at renewal with the new seat. `renewalCents` is null when the org's yearly
+ * seat price is not on the wire, and no renewal figure is shown.
+ */
 export interface SeatChargeView {
   amountCents: number;
   currency: string;
@@ -79,6 +102,12 @@ export function seatChargeView(
   };
 }
 
+/**
+ * The line after a successful add, beside "added" / "invited": what was
+ * charged for the seat (`charged`), that a free paid seat took them (`free`
+ * to the payer, `free_other` to another owner), or what the next monthly bill
+ * covers. Null when there is nothing to say.
+ */
 export type SeatAddedNote =
   | { kind: "charged"; amountCents: number; currency: string }
   | { kind: "free" }
@@ -112,6 +141,12 @@ export function seatAddedNote(
   }
 }
 
+/**
+ * The seat line in the remove dialog. A yearly org gives no refund: the seat
+ * stays paid until `renewsAt` and the next person added takes it at no charge
+ * (said to every owner). A monthly org's next bill covers one seat fewer (said
+ * to the payer). Null on a free org or with no renewal date.
+ */
 export type SeatRemoveNote =
   | { kind: "year"; renewsAt: string }
   | { kind: "month"; nextBillAt: string };

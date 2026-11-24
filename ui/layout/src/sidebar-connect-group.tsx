@@ -13,17 +13,27 @@ import {
 import { type SidebarSurface, sidebarSheetRowClasses } from "./sidebar-surface";
 
 export interface SidebarConnectRow {
+  /** Stable key: the destination's id. */
   id: string;
+  /** What connecting brings, e.g. "Connect your apps". The row's name. */
   label: string;
+  /** What it connects; the first three are overlapped into the row's mark,
+   *  the first on top. */
   logos: SidebarConnectLogo[];
   onClick: () => void;
+  /** Its destination is the open view: the rail's selected fill and
+   *  `aria-current="page"`. */
   selected?: boolean;
+  /** DOM attributes (test ids, tour anchors) on the row's button. */
   dataAttrs?: Record<string, string>;
 }
 
 export interface SidebarConnectGroupProps {
   rows: SidebarConnectRow[];
+  /** Icon rail: each row is a control showing its logo cluster alone, named
+   *  by a tooltip. */
   collapsed?: boolean;
+  /** Default `rail`. `sheet` draws the rows as a phone card's own rows. */
   surface?: SidebarSurface;
 }
 
@@ -59,6 +69,18 @@ function ConnectRowButton({
   );
 }
 
+/**
+ * The rail's invitation to plug Houston into the rest of a person's work, as
+ * plain nav rows on the rail, painted only under the pointer or while their
+ * destination is open. Each row is the overlapped logos of what it
+ * connects, then a label, so it says what the page behind it is about before
+ * anyone opens it. Always drawn, never hover-gated.
+ *
+ * On the rail it carries the rail inset itself, so it belongs in the rail's
+ * `footer`, never inside the list. On a sheet it
+ * spans the card with no inset of its own. The host sets the vertical rhythm
+ * around it.
+ */
 export function SidebarConnectGroup({
   rows,
   collapsed = false,

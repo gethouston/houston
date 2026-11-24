@@ -3,12 +3,30 @@ import { Pencil } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 export interface EditableSkillTitleProps {
+  /** The current display name (a pending rename included, if any). */
   title: string;
+  /** Commit a new display name. Omit to render a plain, pencil-less title. */
   onRename?: (title: string) => void;
+  /** Accessible label for the pencil button and the name input. */
   renameLabel?: string;
+  /** Where the name sits in the page's outline. `1` is a skill that owns the
+   *  screen; `2` is one opened inside a frame whose own title is the `h1`. */
   level?: 1 | 2;
 }
 
+/**
+ * EditableSkillTitle — a skill page's heading with a rename pencil at the end
+ * of the name. The pencil swaps the title for an inline input;
+ * Enter or blur commits the trimmed name (unchanged or empty commits are a
+ * plain cancel), Escape cancels. Committing only reports the name upward —
+ * persisting it is the caller's concern, so a skill surface can ride its
+ * existing save path.
+ *
+ * The heading stays mounted (visually hidden while editing) so the page always
+ * carries its accessible name. It reads as the screen's `h1` by default and
+ * steps down to an `h2` for a frame that already has one — two `h1`s on one
+ * screen leave a screen-reader user with two answers to "where am I".
+ */
 export function EditableSkillTitle({
   title,
   onRename,

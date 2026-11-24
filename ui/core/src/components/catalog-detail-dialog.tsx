@@ -10,6 +10,13 @@ import {
   DialogTitle,
 } from "./dialog";
 
+/**
+ * The catalog item's "more info" modal — what a {@link CatalogRow} body click
+ * opens: the item's art + name (with optional tag chips beside it), its full
+ * untruncated description, any extra `children`, and the install CTA in the
+ * footer. Domain-blind like the rest of the family: the consumer owns the
+ * icon, the tags, the action button, and every string.
+ */
 export function CatalogDetailDialog({
   open,
   onOpenChange,

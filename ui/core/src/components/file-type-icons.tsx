@@ -43,6 +43,11 @@ const TINTS: Record<FileCategory, string> = {
   other: "text-filetype-generic",
 };
 
+/**
+ * Text-sized glyph for a file named INLINE in prose (chat's file chip). Keeps
+ * its type tint. At 14px the tint is a hint of hue on a hairline mark, not
+ * colour poured onto a content surface.
+ */
 export function FileTypeGlyphInline({
   extension,
   className,
@@ -61,6 +66,7 @@ export function FileTypeGlyphInline({
   );
 }
 
+/** Folder glyph: the same outline style in the grid and the list. */
 export function FolderGlyph({
   small,
   className,

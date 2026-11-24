@@ -6,6 +6,7 @@ import {
 } from "@houston/wire-types";
 import { field, requireString } from "../payload";
 
+/** The write vocabulary — the same handlers back the facade and `dispatch`. */
 export const BillingCommand = {
   Get: "billing/get",
   CreateCheckout: "billing/createCheckout",
@@ -25,6 +26,12 @@ export const BillingCommand = {
 export type BillingCommandType =
   (typeof BillingCommand)[keyof typeof BillingCommand];
 
+/**
+ * A Stripe-hosted URL to redirect the owner to (C8 §Billing wire surface).
+ * Returned by `POST /v1/org/billing/checkout` (contextual card capture) and
+ * `POST /v1/org/billing/portal` (card, invoices, cancel). The
+ * client opens it via the OS external-open path — never inline.
+ */
 export interface BillingCheckout {
   url: string;
 }

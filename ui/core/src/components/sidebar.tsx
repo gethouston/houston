@@ -536,6 +536,13 @@ function SidebarMenuButton({
   );
 }
 
+/**
+ * The trailing control on a menu row.
+ *
+ * Always visible: DESIGN.md bans hover-only affordances, so there is no
+ * `showOnHover` — an action a mouse has to find is an action a keyboard and a
+ * touch screen never find at all.
+ */
 function SidebarMenuAction({
   className,
   asChild = false,

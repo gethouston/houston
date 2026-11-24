@@ -1,5 +1,7 @@
 import { employeeMetal } from "@houston/design-tokens";
 
+/** Mixes `amount` (0 to 1) of `color` into `base`. The CSS form paints; a
+ *  numeric form lets tests measure the exact same recipe. */
 export type EmployeeMetalMix = (
   color: string,
   amount: number,
@@ -21,6 +23,9 @@ function hexChannels(hex: string): [number, number, number] {
   ];
 }
 
+/** {@link cssColorMix} worked out for opaque hex colours (`#rgb` or
+ *  `#rrggbb`), for surfaces that cannot resolve CSS, like a canvas. Throws
+ *  on anything else. */
 export const hexColorMix: EmployeeMetalMix = (color, amount, base) => {
   const a = hexChannels(color);
   const b = hexChannels(base);
@@ -36,6 +41,11 @@ export const hexColorMix: EmployeeMetalMix = (color, amount, base) => {
 export const EMPLOYEE_METAL_LIGHT = "var(--ht-employee-metal-light)";
 export const EMPLOYEE_METAL_SHADE = "var(--ht-employee-metal-shade)";
 
+/**
+ * The AI Employee metal: one recipe for the badge header and every avatar
+ * disc, so the two can never drift. The surface mixes the employee's colour
+ * into the shade, the relief (the helmet) mixes it into the light.
+ */
 export function employeeMetalColors(
   paint: string,
   light = EMPLOYEE_METAL_LIGHT,
@@ -55,6 +65,9 @@ export function employeeMetalColors(
   };
 }
 
+/** The avatar disc's paint: the badge surface as a 135deg gradient, the helmet
+ *  in relief, and a faint light edge along the top (an inset line, never a
+ *  drop shadow, so it holds in dark mode). */
 export function employeeAvatarPaint(paint: string) {
   const metal = employeeMetalColors(paint);
   return {

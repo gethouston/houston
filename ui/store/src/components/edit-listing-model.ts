@@ -1,5 +1,11 @@
 import type { OwnedAgentIdentity, StoreAgentRow } from "../types";
 
+/**
+ * Pure state for the Edit-listing dialog: seed a draft from the listing row,
+ * validate it, and shape the identity patch the gateway accepts — kept out of
+ * the component so both surfaces (and tests) share the exact same rules the
+ * publish wizard applies.
+ */
 export interface EditListingDialogLabels {
   title: (name: string) => string;
   nameLabel: string;
@@ -35,6 +41,7 @@ export const EDIT_LISTING_DIALOG_LABELS: EditListingDialogLabels = {
   saveFailed: "The changes could not be saved. Please try again.",
 };
 
+/** The dialog's working copy of the listing's editable fields. */
 export interface ListingDraft {
   name: string;
   tagline: string;
@@ -43,8 +50,10 @@ export interface ListingDraft {
   tags: string[];
 }
 
+/** Mirrors the publish wizard's cap (store seed contract). */
 export const MAX_LISTING_TAGS = 6;
 
+/** Trim, drop blanks, de-dupe (case-insensitive), and cap at MAX_LISTING_TAGS. */
 export function normalizeListingTags(raw: string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
@@ -60,6 +69,7 @@ export function normalizeListingTags(raw: string[]): string[] {
   return out;
 }
 
+/** Seed the dialog's draft from the listing row as the catalog serves it. */
 export function listingDraftOf(agent: StoreAgentRow): ListingDraft {
   return {
     name: agent.name,
@@ -70,6 +80,7 @@ export function listingDraftOf(agent: StoreAgentRow): ListingDraft {
   };
 }
 
+/** Name, description, and category are required — same bar as publishing. */
 export function listingDraftValid(draft: ListingDraft): boolean {
   return (
     draft.name.trim() !== "" &&
@@ -78,6 +89,11 @@ export function listingDraftValid(draft: ListingDraft): boolean {
   );
 }
 
+/**
+ * The identity patch a valid draft implies. Values are trimmed; a cleared
+ * tagline is sent as an empty string so the gateway drops it rather than
+ * keeping the old one.
+ */
 export function listingIdentityOf(draft: ListingDraft): OwnedAgentIdentity {
   return {
     name: draft.name.trim(),

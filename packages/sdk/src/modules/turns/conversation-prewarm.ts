@@ -7,13 +7,16 @@ import type { ModuleContext } from "../../module-context";
 import { httpRequest, moduleScope, SdkHttpError } from "../http";
 import { asConversationInput, type TurnConversationInput } from "./turn-inputs";
 
+/** A non-2xx from a turns route the module reaches over the HTTP seam. */
 export class TurnsHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "TurnsHttpError");
   }
 }
 
+/** The `turns/prewarm` command payload. */
 export interface TurnPrewarmInput extends TurnConversationInput {
+  /** The provider and model the composer would send with. */
   input?: ConversationPrewarmInput;
 }
 

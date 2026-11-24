@@ -38,23 +38,37 @@ export type {
 } from "./types";
 export { SpacesCommand } from "./types";
 
+/** The typed facade for the spaces family. Every call throws on a non-2xx. */
 export interface SpacesModule {
+  /** The caller's spaces plus the invitations waiting for them. */
   listOrgs(): Promise<OrgsList>;
+  /**
+   * Create an org, free unless `plan` is `paid`; a paid one bills monthly
+   * unless `interval` says `year`. The caller's states (the free slot taken, a
+   * paid org awaiting checkout) are outcomes, never throws. NOT idempotent —
+   * reconcile with `listOrgs`.
+   */
   createOrg(input: {
     name: string;
     plan?: OrgPlan;
     interval?: BillingInterval;
   }): Promise<CreateOrgOutcome>;
+  /** Delete a team space the caller owns, and everything inside it. */
   deleteOrg(slug: string): Promise<void>;
+  /** Accept a pending invite; answers the space that was joined. */
   acceptOrgInvite(inviteId: string): Promise<OrgSummary>;
+  /** Decline a pending invite addressed to the caller. */
   declineOrgInvite(inviteId: string): Promise<void>;
+  /** Start moving an agent into `toSlug`; answers the id to poll. */
   moveAgent(agentSlugOrId: string, toSlug: string): Promise<AgentMoveStart>;
+  /** Poll one agent move — the ONLY completion signal for it. */
   getMoveStatus(
     agentSlugOrId: string,
     moveId: string,
   ): Promise<AgentMoveStatus>;
 }
 
+/** A failed spaces request. `status` is the upstream HTTP status. */
 export class SpacesHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "SpacesHttpError");

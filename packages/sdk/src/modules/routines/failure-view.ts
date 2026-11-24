@@ -4,9 +4,12 @@ import type {
   RoutineRunFailureCode,
 } from "@houston/protocol";
 
+/** What the reader's own account says about one provider. */
 export interface RoutineReaderAccount {
   provider: string;
+  /** Live health of the reader's own account for `provider`. */
   health?: ProviderHealth;
+  /** Whose credential answered the reader's probe; absent = the only one. */
   credentialScope?: "personal" | "team";
   readerIsCreator: boolean;
 }

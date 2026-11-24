@@ -10,6 +10,21 @@ export type {
   TriggerPlanSkipped,
 } from "@houston/wire-types";
 
+/**
+ * Why a routine's runs were skipped, as the person needs to hear it.
+ *
+ * - The inactivity pause splits in two because the remedy differs: while
+ *   routines are still paused, resuming fixes it; once they run again,
+ *   nothing is left to fix and the notice only explains the gap.
+ * - The routine limit splits the same way: while routines are paused the
+ *   plan's own dialog answers Resume before it lets anyone choose a routine
+ *   to keep, so resuming comes first.
+ * - `org_locked`: the org is locked, so its routines wait for it to be paid
+ *   for; no routine write is offered, since a locked org refuses them.
+ * - `creator_plan`: the read-only notice for a viewer who did not create the
+ *   routine; only its creator is offered the remedies. A routine naming no
+ *   creator is the viewer's (`viewerIsRoutineCreator`).
+ */
 export type TriggerPlanSkipReason =
   | "min_interval"
   | "routine_limit"
@@ -19,6 +34,13 @@ export type TriggerPlanSkipReason =
   | "creator_plan"
   | "org_locked";
 
+/**
+ * What the person can do about it. `upgrade` opens Billing (only where Plus
+ * pays for the org), `keep_routine` opens the free org's "choose a routine to
+ * keep" chooser, `resume` resumes routines paused while away
+ * (`resumeRoutines`). Listed in the order a surface offers them, primary
+ * first.
+ */
 export type TriggerPlanSkipAction = "resume" | "keep_routine" | "upgrade";
 
 interface NoticeBase {
@@ -31,15 +53,34 @@ export type TriggerPlanSkipNotice =
   | (NoticeBase & { reason: "min_interval"; minIntervalMinutes: number })
   | (NoticeBase & { reason: Exclude<TriggerPlanSkipReason, "min_interval"> });
 
+/** Who is looking at which routine: the routine's creator and agent. */
 export interface TriggerPlanSkipViewer {
+  /** The routine's `created_by`; absent when the routine names no creator. */
   createdBy: string | undefined;
+  /** The signed-in user's id; null while the session is still loading. */
   viewerId: string | null | undefined;
+  /** The agent's slug (a hosted agent's client-side id). */
   agentSlug: string;
+  /** Buying Plus would pay for this org (`plusOfferApplies`). */
   plusOffer: boolean;
 }
 
 const DEFAULT_MIN_INTERVAL_MINUTES = 15;
 
+/**
+ * The notice for a routine whose trigger runs the active free org refused, or
+ * null when there is nothing to say. Webhook and app events the org's rules
+ * refuse are dropped before they become runs, so without this the person sees
+ * a routine that silently ignored them.
+ *
+ * A viewer who is not the creator gets the read-only `creator_plan` notice.
+ * The creator (the viewer,
+ * too, for a routine naming no creator, as an Agent Store install or an
+ * import leaves it: the same rule the routine's connection badge uses) sees
+ * it only while the org is free: on a paid org (or before its billing has
+ * loaded, or on a legacy org) the old refusals describe nothing they can act
+ * on, and the routine the org now keeps says nothing about the routine limit.
+ */
 export function triggerPlanSkipNotice(
   item: TriggerStatusItem | undefined,
   billing: OrgBilling | null | undefined,

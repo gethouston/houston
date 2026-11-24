@@ -12,9 +12,16 @@ import { ChevronDown, XIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { InteractionPager } from "./interaction-modal-pager";
 
+/**
+ * The compact `‹ N of M ›` pager pinned top-right of the modal header.
+ * It belongs to the shared shell so every step kind uses one navigation contract.
+ */
 export interface InteractionModalPager {
+  /** 1-based current step index (for a11y / callers that need it). */
   current: number;
+  /** Total steps; the pager renders only for a multi-step sequence. */
   total: number;
+  /** Precomposed progress copy, e.g. "1 of 3". */
   label: string;
   onBack: (() => void) | null;
   onForward: (() => void) | null;
@@ -23,22 +30,42 @@ export interface InteractionModalPager {
 }
 
 export interface InteractionModalProps {
+  /** Header title (left). A node so a question passes its text and a
+   *  signin/connect step passes its `(icon) name` identity lockup. Style it with
+   *  {@link InteractionModalTitle} so the whole family shares one title tone. */
   title?: ReactNode;
+  /** The `‹ N of M ›` pager cluster (top-right). `null`/omitted renders none. */
   pager?: InteractionModalPager | null;
+  /** Dismiss X (top-right). Omitted renders no X. */
   onDismiss?: () => void;
   dismissLabel?: string;
   collapseLabel?: string;
   expandLabel?: string;
+  /** A muted one-line explanation retained in the header while collapsed. */
   collapsedHint?: ReactNode;
+  /** The step content (option rows, the reason body, etc.). */
   body: ReactNode;
+  /** The right-aligned footer actions row (the unified decline, plus a CTA for
+   *  signin/connect). Omitted renders no footer. */
   footer?: ReactNode;
+  /** Optional content rendered after the footer, such as a free-text escape
+   *  row. Keeps secondary input below the card-wide actions. The node owns
+   *  its own top spacing (no wrapper margin is added). */
   trailing?: ReactNode;
+  /** Fades the body region on change so a step swap reads as "content changed,
+   *  chrome stayed" (gated by the motion-safe media query). */
   contentKey?: string;
   disabled?: boolean;
+  /** Controlled collapse state. Omit both props for an initially expanded card. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
+/** The shared modal title, so a question, a sign-in step, and a connect step all
+ *  read at the SAME weight and tone: an optional leading icon (the app/brand
+ *  logo) beside REGULAR-weight foreground text (never bold — color carries the
+ *  hierarchy). A question passes `text-balance` to let its text wrap; a
+ *  signin/connect name passes `truncate` to keep the identity to one line. */
 export function InteractionModalTitle({
   icon,
   className,

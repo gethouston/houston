@@ -9,16 +9,30 @@ export type TauriListenFn = <T>(
 ) => Promise<() => void>;
 
 export interface SessionEventsHandlers {
+  /** The Tauri `listen` function — import from `@tauri-apps/api/event`. */
   listen: TauriListenFn;
+  /** Called for every FeedItem event. Receives (agentPath, sessionKey, item). */
   onFeedItem: (
     agentPath: string,
     sessionKey: string,
     item: { feed_type: string; data: unknown },
   ) => void;
+  /** Returns the active (agentPath, sessionKey) pair for desktop-dupe filtering. */
   getActiveSession?: () => { agentPath: string; sessionKey: string } | null;
+  /** Called for app-specific events not handled by the base hook. */
   onEvent?: (event: HoustonEvent) => void;
 }
 
+/**
+ * Subscribe to "houston-event" from the Rust backend.
+ *
+ * Core events handled:
+ * - FeedItem → calls `onFeedItem(agent_path, session_key, item)`, with desktop-dupe filtering
+ * - SessionStatus → pushes system_message on error
+ * - Toast → console.log
+ *
+ * All other events forwarded to `onEvent` if provided.
+ */
 export function useSessionEvents(handlers: SessionEventsHandlers): void {
   const ref = useRef(handlers);
   ref.current = handlers;

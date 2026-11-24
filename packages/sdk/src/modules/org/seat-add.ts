@@ -8,6 +8,11 @@ import { type HttpScope, httpRequest } from "../http";
 import { refusalCode, refusalStatus } from "../refusal-code";
 import type { AddOrgMemberResult, OrgRole } from "./types";
 
+/**
+ * What an add answered: the person added (or invited), a refusal the person
+ * acts on (nobody was added and nothing was charged), or a fresh quote because
+ * the one the add carried no longer holds.
+ */
 export type AddOrgMemberOutcome =
   | { kind: "added"; member: AddOrgMemberResult }
   | { kind: "seat_payment_failed" }
@@ -19,6 +24,7 @@ export type AddOrgMemberOutcome =
 export const SEAT_CHARGE_IN_APP_HINT =
   "Every paid seat is in use, so adding this person needs a new paid seat. Ask the person to add them from People in Admin, where they will see the price before anything is charged.";
 
+/** The seat refusal behind a failed add, or null for every other error. */
 export function seatAddRefusal(error: unknown): SeatAddRefusal | null {
   if (!(error instanceof Error)) return null;
   const code = refusalCode(error);

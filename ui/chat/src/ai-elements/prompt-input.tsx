@@ -168,6 +168,7 @@ export interface TextInputContext {
 export interface PromptInputControllerProps {
   textInput: TextInputContext;
   attachments: AttachmentsContext;
+  /** INTERNAL: Allows PromptInput to register its file textInput + "open" callback */
   __registerFileInput: (
     ref: RefObject<HTMLInputElement | null>,
     open: () => void,
@@ -211,6 +212,10 @@ export type PromptInputProviderProps = PropsWithChildren<{
   initialInput?: string;
 }>;
 
+/**
+ * Optional global provider that lifts PromptInput state outside of PromptInput.
+ * If you don't use it, PromptInput stays fully self-managed.
+ */
 export const PromptInputProvider = ({
   initialInput: initialTextInput = "",
   children,
@@ -900,6 +905,8 @@ export const PromptInputBody = ({
 export type PromptInputTextareaProps = ComponentProps<
   typeof InputGroupTextarea
 > & {
+  /** The size the user dragged the composer to (null or absent = auto-grow);
+   *  see `composerTextareaBounds`. */
   manualHeight?: number | null;
 };
 
@@ -1191,6 +1198,7 @@ export const PromptInputActionMenuItem = ({
 export type PromptInputSubmitProps = ComponentProps<typeof InputGroupButton> & {
   status?: ChatStatus;
   onStop?: () => void;
+  /** Accessible names; English defaults. The app passes its own `t()`. */
   labels?: { submit?: string; stop?: string };
 };
 

@@ -1,32 +1,66 @@
 import type * as React from "react";
 
+/** Freshness of the model catalog the picker is showing. */
 export type ModelPickerCatalogState = "ready" | "loading";
 
+/** Whether the app is authenticated with a given provider. */
 export type ModelPickerConnection = "connected" | "checking" | "disconnected";
 
+/**
+ * Generic view-model of one selectable model. The app maps its own provider/model
+ * records into this shape; the picker never sees app types. Minimal by design —
+ * the picker renders only the name, an optional one-line description, and a check
+ * on the selected row.
+ */
 export interface ModelPickerModel {
+  /** Opaque stable id passed back to `onSelect`. */
   id: string;
   name: string;
+  /** Groups rows + resolves the brand icon via `renderProviderIcon`. */
   providerId: string;
+  /** A subtle one-line description, shown under the name when present. */
   description?: string;
 }
 
+/** A provider that owns one or more models in the catalog. */
 export interface ModelPickerProvider {
   id: string;
   name: string;
   connection: ModelPickerConnection;
 }
 
+/**
+ * Every user-facing string, so the component stays i18n-agnostic. The consumer
+ * passes translated values; each field falls back to the English default.
+ */
 export interface ModelPickerLabels {
   searchPlaceholder: string;
+  /** Footer affordance that opens the provider-connection surface. */
   connectMore: string;
+  /** Back affordance out of a provider's model list. */
   back: string;
+  /** Accessible name for the connected-provider list (level 1). */
   providersLabel: string;
+  /** Accessible name for a provider's model list (level 2). */
   modelsLabel: string;
+  /** Neutral loading state while provider statuses / catalog resolve. */
   loading: string;
+  /** Empty state when the in-dropdown search matches nothing. */
   empty: string;
+  /** Empty state when no provider is connected yet. */
   noProviders: string;
+  /**
+   * One line under {@link noProviders} explaining what to do about it. The
+   * consumer owns the wording, which differs by context (a personal space, a
+   * team space the caller can connect for, a team space where only an admin
+   * can) — the picker only renders it.
+   */
   noProvidersHint: string;
+  /**
+   * Label for the empty state's primary action, which calls `onConnectMore`.
+   * Omit `onConnectMore` when the viewer has no way to connect, and the action
+   * is not rendered at all.
+   */
   noProvidersAction: string;
 }
 
@@ -47,16 +81,33 @@ export const DEFAULT_MODEL_PICKER_LABELS: ModelPickerLabels = {
 export interface ModelPickerProps {
   models: ModelPickerModel[];
   providers: ModelPickerProvider[];
+  /** The currently selected model's id, for the check marker. */
   selectedId?: string;
+  /** Catalog freshness; default `"ready"`. Drives the neutral loading state. */
   catalogState?: ModelPickerCatalogState;
   onSelect: (id: string) => void;
+  /** Opens the app's provider-connection surface (the footer affordance). */
   onConnectMore?: () => void;
+  /**
+   * The empty state's primary action (labelled `noProvidersAction`). Omit to
+   * reuse `onConnectMore`; pass `null` for an empty state with no action. For
+   * an empty list that connecting another AI would not fix (the consumer
+   * filtered every connected provider out), so the button never misleads.
+   */
   onEmptyStateAction?: (() => void) | null;
+  /** App-supplied branded logo for a provider (falls back to an initial). */
   renderProviderIcon?: (
     providerId: string,
     className?: string,
   ) => React.ReactNode;
   labels?: Partial<ModelPickerLabels>;
+  /**
+   * Non-interactive informational block rendered after the rows (e.g. a
+   * workspace-policy note such as "N more models are turned off in your
+   * workspace"). Pinned inside the scrollable list, after the "Connect more"
+   * affordance, and never focusable/selectable/filterable. The consumer owns
+   * its content and copy — the picker stays i18n-agnostic and store-free.
+   */
   footer?: React.ReactNode;
   className?: string;
 }

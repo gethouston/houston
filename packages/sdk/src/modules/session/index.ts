@@ -10,24 +10,33 @@ import {
 
 export { createAuthFetch, SESSION_TOKEN_KEY };
 
+/** Scope of the connection view-model snapshot. */
 export const CONNECTION_SCOPE = "connection";
+/** Command type that sets or clears the auth token. */
 export const SET_TOKEN_COMMAND = "session/setToken";
 
+/** `idle` until the persisted token has been read; `ready` thereafter. */
 export type ConnectionStatus = "idle" | "ready";
 
+/** Reactive snapshot published on the `connection` scope. Plain JSON. */
 export interface ConnectionViewModel {
   status: ConnectionStatus;
   baseUrl: string;
   hasToken: boolean;
 }
 
+/** The `session/setToken` command payload. */
 export interface SetTokenPayload {
   token: string | null;
 }
 
+/** Typed facade returned by {@link createSessionModule} (surfaced as `sdk.session`). */
 export interface SessionModule {
+  /** Set or clear the auth token: persists it and republishes `connection`. */
   setToken(token: string | null): Promise<void>;
+  /** Current connection view-model, or `undefined` before the first publish. */
   getConnection(): ConnectionViewModel | undefined;
+  /** Resolves once the persisted token has been hydrated on startup. */
   whenReady(): Promise<void>;
 }
 

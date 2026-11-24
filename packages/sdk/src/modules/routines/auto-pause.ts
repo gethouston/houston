@@ -8,6 +8,7 @@ import {
 } from "./failure-view";
 import type { Routine } from "./types";
 
+/** The one thing a person does before resuming an auto-paused routine. */
 export type RoutinePauseRemedy =
   | "connect_account"
   | "reconnect_account"
@@ -15,6 +16,7 @@ export type RoutinePauseRemedy =
   | "change_model"
   | "choose_model";
 
+/** Whose account the remedy is about. */
 export type RoutinePauseAccount = "creator" | "team";
 
 interface PauseCounts {
@@ -26,7 +28,9 @@ export type RoutinePauseNotice = PauseCounts &
   (
     | {
         remedy: Exclude<RoutinePauseRemedy, "choose_model">;
+        /** Present for the connect and reconnect remedies; the other two name no account. */
         account?: RoutinePauseAccount;
+        /** The provider id the failed runs needed (e.g. "anthropic"). */
         provider: string;
       }
     | { remedy: "choose_model" }
@@ -47,6 +51,13 @@ const REMEDY: Record<
   model_unavailable: { remedy: "change_model" },
 };
 
+/**
+ * The notice for an auto-paused routine, or null when the routine is running
+ * or a person paused it (a hand pause carries no reason and needs no notice).
+ * `reader` is what the reader's own account says about the pause's provider:
+ * a "not connected" pause on an account the gateway signed out asks to sign
+ * in again (`./failure-view`).
+ */
 export function routinePauseNotice(
   routine: Pick<Routine, "enabled"> & { auto_paused?: RoutineAutoPause },
   reader?: RoutineReaderAccount,

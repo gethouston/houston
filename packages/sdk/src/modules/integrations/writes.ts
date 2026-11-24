@@ -1,7 +1,12 @@
 import type { IntegrationProviderId } from "@houston/protocol";
 import type { IntegrationsClient } from "@houston/runtime-client";
 
+/** No-refetch integration writes for a host that owns its own reads. */
 export interface IntegrationsWrites {
+  /** Disconnect a toolkit for the user everywhere; no refetch. `opts.provider`
+   *  defaults to composio (the only provider today). `opts.connectionId`
+   *  narrows the removal to ONE account of the toolkit (a toolkit can hold
+   *  several — two Gmail logins); omitted removes them all. */
   disconnect(
     toolkit: string,
     opts?: { provider?: IntegrationProviderId; connectionId?: string },
