@@ -182,6 +182,7 @@ export const ENGINE_RESUMED_MESSAGE =
 export type EngineNoticeKind =
   | "engine_restart"
   | "engine_resumed"
+  | "sandbox_lost"
   | "turn_time_limit"
   | "turn_time_limit_unsaved"
   | "send_busy"

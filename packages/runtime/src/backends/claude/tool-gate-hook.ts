@@ -17,12 +17,23 @@ export const TOOL_GATE_DENY_AFTER_MS = (TOOL_GATE_TIMEOUT_S - 10) * 1000;
  * `canUseTool` does not see. A rejection, an aborted turn or the deadline
  * denies the call with its reason instead of running it early.
  */
-export function toolGateHook(beforeTool: () => Promise<void>): HookCallback {
-  return async (_input, _toolUseId, { signal }) => {
+export type ToolGate = (
+  toolName: string,
+  toolInput: unknown,
+  signal: AbortSignal,
+) => Promise<void>;
+
+export function toolGateHook(beforeTool: ToolGate): HookCallback {
+  return async (input, _toolUseId, { signal }) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const stop = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(
-        () => reject(new Error("the agent's files are still loading")),
+        () =>
+          reject(
+            new Error(
+              "The agent's files are still loading. Try this tool again in a moment, or continue without it.",
+            ),
+          ),
         TOOL_GATE_DENY_AFTER_MS,
       );
       const stopped = () => reject(new Error("the turn was stopped"));
@@ -30,7 +41,11 @@ export function toolGateHook(beforeTool: () => Promise<void>): HookCallback {
       else signal.addEventListener("abort", stopped, { once: true });
     });
     try {
-      await Promise.race([beforeTool(), stop]);
+      const call =
+        "tool_name" in input
+          ? beforeTool(input.tool_name, input.tool_input, signal)
+          : Promise.resolve();
+      await Promise.race([call, stop]);
       return {};
     } catch (error) {
       return denyToolUse(
@@ -46,7 +61,7 @@ export interface SessionHookOptions {
   workspaceDir: string;
   /** The SAME policy object `canUseTool` is built from. */
   fileGuard?: WorkspaceGuardOptions;
-  beforeTool?: () => Promise<void>;
+  beforeTool?: ToolGate;
 }
 
 /**

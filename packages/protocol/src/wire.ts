@@ -6,8 +6,13 @@
 
 import type { TokenUsage } from "./conversation";
 import type { PendingInteraction } from "./domain/interaction";
+import type { HoustonEvent } from "./events";
 import type { ProviderError } from "./provider-error";
 import type { TurnErrorData } from "./turn-error";
+
+export type TurnLandedEventType =
+  | Extract<HoustonEvent, { agentPath: string }>["type"]
+  | "CustomIntegrationsChanged";
 
 /**
  * Live conversation events (SSE), one stream per conversation, strictly
@@ -211,6 +216,7 @@ export type WireEvent =
       type: "reply_complete";
       data: null;
     }
+  | { type: "landed"; data: { changed: TurnLandedEventType[] } }
   | {
       /**
        * The turn ended normally. `pendingInteraction` is present when the model

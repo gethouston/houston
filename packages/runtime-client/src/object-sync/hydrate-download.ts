@@ -44,6 +44,42 @@ export interface HydrateBudget {
   readonly maxBytes: number;
 }
 
+export function hydrateDownloadState(
+  controller: AbortController,
+): HydrateDownloadState {
+  return {
+    failed: false,
+    fail(error) {
+      if (this.failed) return;
+      this.failed = true;
+      this.firstError = error;
+      controller.abort(error);
+    },
+  };
+}
+
+export class HydrateClaims {
+  private readonly taken = new Set<string>();
+  private readonly wanted = new Set<string>();
+
+  constructor(private readonly onWanted?: (rel: string) => void) {}
+
+  take(rel: string): boolean {
+    if (this.taken.has(rel)) return false;
+    this.taken.add(rel);
+    return true;
+  }
+
+  want(rel: string): void {
+    this.wanted.add(rel);
+  }
+
+  release(rel: string): void {
+    this.taken.delete(rel);
+    if (this.wanted.delete(rel)) this.onWanted?.(rel);
+  }
+}
+
 /** Download one hydration batch while sharing a budget and the failure latch. */
 export async function downloadHydrationEntries(opts: {
   store: Pick<ObjectStore, "download" | "downloadMany">;
@@ -59,6 +95,8 @@ export async function downloadHydrationEntries(opts: {
   limitError: (observedBytes: number) => Error;
   /** Batched reads in flight at once (hydrate-batch.ts default otherwise). */
   batchParallel?: number;
+  claims?: HydrateClaims;
+  onSettled?: (rel: string) => void;
 }): Promise<void> {
   // A store that batches reads lands most of the batch in a few round trips;
   // only what it will not inline (large objects) goes one by one below.
@@ -72,6 +110,7 @@ export async function downloadHydrationEntries(opts: {
     while (!opts.state.failed && opts.budget.landed <= opts.budget.maxBytes) {
       const entry = entries[next++];
       if (!entry) return;
+      if (opts.claims && !opts.claims.take(entry.rel)) continue;
       const { generation, key, rel } = entry;
       try {
         const dest = join(opts.destDir, ...rel.split("/"));
@@ -81,6 +120,7 @@ export async function downloadHydrationEntries(opts: {
         if (opts.signal.aborted) return;
         if (read?.refused) {
           skipRefusedLanding(key);
+          opts.onSettled?.(rel);
           continue;
         }
         const { size } = await stat(dest);
@@ -88,17 +128,19 @@ export async function downloadHydrationEntries(opts: {
         if (opts.budget.landed > opts.budget.maxBytes) {
           throw opts.limitError(opts.budget.landed);
         }
-        if (unowned(entry, read?.generation)) continue;
-        opts.manifest.set(rel, {
-          hash: await fileSha256(dest, size),
-          generation: entry.fromRead ? read?.generation : generation,
-          ...(opts.keepMergeBase && keepsMergeBase(rel)
-            ? { mergeBase: await readFile(dest, "utf8") }
-            : {}),
-        });
+        if (!unowned(entry, read?.generation))
+          opts.manifest.set(rel, {
+            hash: await fileSha256(dest, size),
+            generation: entry.fromRead ? read?.generation : generation,
+            ...(opts.keepMergeBase && keepsMergeBase(rel)
+              ? { mergeBase: await readFile(dest, "utf8") }
+              : {}),
+          });
+        opts.onSettled?.(rel);
       } catch (error) {
         if (!opts.signal.aborted && error instanceof ObjectNotFoundError) {
           await rm(join(opts.destDir, ...rel.split("/")), { force: true });
+          opts.onSettled?.(rel);
           continue;
         }
         opts.state.fail(error);
