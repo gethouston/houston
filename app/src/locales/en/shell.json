@@ -466,7 +466,11 @@
     "updateStuckTitle": "Updates can't reach you",
     "updateStuckDescription": "We haven't been able to check for updates. Your network may be blocking them. You can always get the latest version at gethouston.ai.",
     "noAgentTitle": "You need an AI Employee first",
-    "noAgentDescription": "Create an AI Employee, then connect from its settings. This connection lives on an AI Employee."
+    "noAgentDescription": "Create an AI Employee, then connect from its settings. This connection lives on an AI Employee.",
+    "computeBusyTitle": "Your AI Employee is busy",
+    "computeBusyDescription": "It couldn't start this right now, so nothing changed. Try again in a few minutes.",
+    "conversationEditRefusedTitle": "This conversation can't be changed right now",
+    "conversationEditRefusedDescription": "Nothing changed. Try again later, or start a new conversation to keep going."
   },
   "openUrl": {
     "noBrowserTitle": "We couldn't find a web browser",

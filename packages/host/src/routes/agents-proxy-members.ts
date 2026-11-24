@@ -122,8 +122,6 @@ export const PROXY_MEMBERS: ProxyMember[] = [
     rest: "conversations/:conversationId/browser/input",
     engines: STANDING,
   },
-  // Create-with-AI's one-shot (generate-route.ts).
-  { method: "POST", rest: "generate-agent", engines: STANDING },
 ];
 
 /**

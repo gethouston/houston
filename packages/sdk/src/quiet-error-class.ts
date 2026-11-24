@@ -54,6 +54,9 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  whose provider identity already belongs to another account
  *  (`modules/identity`): the person stays signed in by email code and sees
  *  a notice. Support can join the accounts, so it is one counted warning.
+ *  `codex_port_taken` is another process on the person's machine holding
+ *  the fixed port OpenAI's desktop sign-in redirects to (HOUSTON-APP-5EV):
+ *  the sign-in falls back to a device code, so it is one counted warning.
  *  `agent_data_busy` is the gateway's read-only "agent data temporarily
  *  unavailable" 503 outliving the read's retries: nothing is waking (reads
  *  never wake the agent), so the person sees nothing and it is one counted
@@ -73,7 +76,10 @@ export type QuietErrorClass =
   | "bug_intake_unavailable"
   | "upload_interrupted"
   | "routine_gone"
-  | "link_identity_taken";
+  | "link_identity_taken"
+  | "codex_port_taken"
+  | "compute_busy"
+  | "conversation_edit_refused";
 
 /**
  * The burst-gate key a quiet-class report collapses on.

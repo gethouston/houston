@@ -90,7 +90,7 @@ test("an OAuth pi provider stays OAuth, and a non-pi id is rejected", () => {
 
 test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("opencode")).toBe("claude-sonnet-4-6");
-  expect(providerDefaultModel("opencode-go")).toBe("glm-5.2");
+  expect(providerDefaultModel("opencode-go")).toBe("glm-5.3");
   expect(providerDefaultModel("deepseek")).toBe("deepseek-flash");
   expect(providerDefaultModel("amazon-bedrock")).toBe(
     "global.anthropic.claude-sonnet-4-6",
@@ -127,9 +127,9 @@ test("uncurated providers with a hand-picked default skip pi's dead first row (P
   expect(m.provider).toBe("moonshotai");
   expect(m.id).toBe("kimi-k3");
   // NVIDIA (HOU-890) rides the same table — the turn path used to ignore it
-  // and default to the per-account-gated first row. gpt-oss-20b since pi
-  // 0.84.4 retired the llama-3.x rows and 0.85.0 retired gpt-oss-120b.
-  expect(providerDefaultModel("nvidia")).toBe("openai/gpt-oss-20b");
+  // and default to the per-account-gated first row. MiniMax M3.1 Flash since
+  // pi 1.6.0 retired gpt-oss-20b, the last gpt-oss row.
+  expect(providerDefaultModel("nvidia")).toBe("minimaxai/minimax-m3.1-flash");
 });
 
 test("MiniMax uses pi-ai's global minimax provider and model catalog", () => {

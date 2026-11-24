@@ -24,9 +24,10 @@ export async function syncOp(input: {
   if (!isRead) {
     const treeOp = op.op.kind === "route" || op.op.kind === "conversation";
     if (
-      result.tooLarge ||
-      result.privateRefused ||
-      (treeOp && result.status >= 500)
+      !result.untouched &&
+      (result.tooLarge ||
+        result.privateRefused ||
+        (treeOp && result.status >= 500))
     ) {
       // A tree-mutating handler failed part-way (a refused lazy read, a
       // 5xx): the overlay may hold HALF a multi-key mutation. Nothing has

@@ -68,6 +68,7 @@ export function activityToConversation(
     // The pin rides along so a placeholder seeded from this sweep keeps it.
     ...(a.provider !== undefined && { provider: a.provider }),
     ...(a.model !== undefined && { model: a.model }),
+    ...(a.mode !== undefined && { mode: a.mode }),
     // Agent-started marker (PRODUCT-1244): drives the card's tag.
     ...(a.origin_session_key !== undefined && {
       origin_session_key: a.origin_session_key,
@@ -96,6 +97,7 @@ export function createActivity(
     agent: input.agent,
     provider: input.provider,
     model: input.model,
+    ...(input.mode !== undefined && { mode: input.mode }),
     updated_at: new Date().toISOString(),
   };
   write(agentPath, [...read(agentPath), activity]);

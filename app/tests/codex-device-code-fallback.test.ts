@@ -17,6 +17,7 @@ function recordingOps(overrides: Partial<CodexDeviceCodeFallbackOps> = {}) {
   const failures: unknown[] = [];
   const ops: CodexDeviceCodeFallbackOps = {
     report: () => calls.push("report"),
+    reportPortTaken: () => calls.push("reportPortTaken"),
     cancelLogin: async () => {
       calls.push("cancel");
     },
@@ -40,6 +41,16 @@ describe("runCodexDeviceCodeFallback", () => {
     const { ops, calls } = recordingOps();
     await runCodexDeviceCodeFallback(new Error("port 1455 unavailable"), ops);
     deepStrictEqual(calls, ["report", "cancel", "launch"]);
+  });
+
+  it("reports a taken port as the machine's state, not a Houston error", async () => {
+    // HOUSTON-APP-5EV: the native listener's refusal arrives as a bare string.
+    const { ops, calls } = recordingOps();
+    await runCodexDeviceCodeFallback(
+      "Could not start the Codex sign-in listener: port 1455 is unavailable (os error 10048). OpenAI requires this exact port, so close other AI coding tools (or wait a few minutes) and try again.",
+      ops,
+    );
+    deepStrictEqual(calls, ["reportPortTaken", "cancel", "launch"]);
   });
 
   it("does not toast when the fallback succeeds — the code dialog is the surface", async () => {

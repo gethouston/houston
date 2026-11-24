@@ -12,9 +12,9 @@ import { LruCache } from "../lru";
  *   transcript repair replaces the remote copy) must never ship that hole as
  *   the transcript.
  *
- * A pool turn's tree holds only a chat's newest segments; its readers fetch
- * the rest first (turn/turn-archive-fetch.ts), and that fetch throws when the
- * store itself lacks one.
+ * A pool turn's tree holds none of a chat's segments; its readers fetch the
+ * ones they reach first (turn/turn-archive-fetch.ts), and that fetch throws
+ * when the store itself lacks one.
  */
 export type MissingSegment = "report" | "throw";
 

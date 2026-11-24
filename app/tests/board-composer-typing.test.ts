@@ -7,23 +7,11 @@
 // The DOM-mounting pattern is ui/chat's (`tests/interaction-card-mount.test.ts`).
 
 import { strict as assert } from "node:assert";
-import { afterEach, beforeEach, describe, it } from "node:test";
+import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import { JSDOM } from "jsdom";
+import { snapshotGlobals } from "./support/restore-globals.ts";
 
-const dom = new JSDOM("<!doctype html><html><body></body></html>", {
-  pretendToBeVisual: true,
-  url: "http://localhost/",
-});
-const win = dom.window;
-const g = globalThis as unknown as Record<string, unknown>;
-const w = win as unknown as Record<string, unknown>;
-g.window = win;
-g.document = win.document;
-Object.defineProperty(g, "navigator", {
-  configurable: true,
-  value: win.navigator,
-});
-for (const key of [
+const DOM_GLOBALS = [
   "CSSStyleDeclaration",
   "DOMRect",
   "Element",
@@ -40,14 +28,7 @@ for (const key of [
   "cancelAnimationFrame",
   "getComputedStyle",
   "requestAnimationFrame",
-]) {
-  g[key] = w[key];
-}
-w.matchMedia = () => ({
-  matches: false,
-  addEventListener() {},
-  removeEventListener() {},
-});
+];
 // The split view and the log observe their panes; jsdom has neither observer
 // and the geometry they would report is irrelevant here.
 class NoopObserver {
@@ -55,22 +36,66 @@ class NoopObserver {
   unobserve() {}
   disconnect() {}
 }
-for (const key of ["ResizeObserver", "IntersectionObserver"]) {
-  g[key] = NoopObserver;
-  w[key] = NoopObserver;
-}
-g.IS_REACT_ACT_ENVIRONMENT = true;
+const OBSERVERS = ["ResizeObserver", "IntersectionObserver"];
 
-const React = await import("react");
-const { act, createElement: h } = React;
-g.React = React;
-const { createRoot } = await import("react-dom/client");
-const { AIBoard } = await import("@houston-ai/board");
-const { TooltipProvider } = await import("@houston-ai/core");
-const { useBoardDrafts } = await import(
-  "../src/components/board/use-board-drafts.ts"
-);
-const { useDraftStore } = await import("../src/stores/drafts.ts");
+let win: JSDOM["window"];
+let restoreGlobals: () => void;
+let act: typeof import("react").act;
+let h: typeof import("react").createElement;
+let createRoot: typeof import("react-dom/client").createRoot;
+let AIBoard: typeof import("@houston-ai/board").AIBoard;
+let TooltipProvider: typeof import("@houston-ai/core").TooltipProvider;
+let useBoardDrafts: typeof import("../src/components/board/use-board-drafts.ts").useBoardDrafts;
+let useDraftStore: typeof import("../src/stores/drafts.ts").useDraftStore;
+
+// Runs inside the describe's `before`: the file shares its process with every
+// other app test, so the DOM exists only while this file's tests run. React
+// DOM is imported after it because it probes `window` when the module loads.
+async function installDom() {
+  restoreGlobals = snapshotGlobals([
+    "window",
+    "document",
+    "navigator",
+    "React",
+    "IS_REACT_ACT_ENVIRONMENT",
+    ...DOM_GLOBALS,
+    ...OBSERVERS,
+  ]);
+  win = new JSDOM("<!doctype html><html><body></body></html>", {
+    pretendToBeVisual: true,
+    url: "http://localhost/",
+  }).window;
+  const g = globalThis as unknown as Record<string, unknown>;
+  const w = win as unknown as Record<string, unknown>;
+  g.window = win;
+  g.document = win.document;
+  Object.defineProperty(g, "navigator", {
+    configurable: true,
+    value: win.navigator,
+  });
+  for (const key of DOM_GLOBALS) g[key] = w[key];
+  w.matchMedia = () => ({
+    matches: false,
+    addEventListener() {},
+    removeEventListener() {},
+  });
+  for (const key of OBSERVERS) {
+    g[key] = NoopObserver;
+    w[key] = NoopObserver;
+  }
+  g.IS_REACT_ACT_ENVIRONMENT = true;
+
+  const React = await import("react");
+  ({ act, createElement: h } = React);
+  g.React = React;
+  ({ createRoot } = await import("react-dom/client"));
+  ({ AIBoard } = await import("@houston-ai/board"));
+  ({ TooltipProvider } = await import("@houston-ai/core"));
+  ({ useBoardDrafts } = await import(
+    "../src/components/board/use-board-drafts.ts"
+  ));
+  ({ useDraftStore } = await import("../src/stores/drafts.ts"));
+}
 
 const SESSION = "activity-m0";
 const feed = Array.from({ length: 40 }, (_, i) =>
@@ -115,10 +140,6 @@ function Board({ selectedId }: { selectedId: string | null }) {
 }
 
 let unmount: (() => void) | undefined;
-afterEach(() => {
-  unmount?.();
-  unmount = undefined;
-});
 
 function mount(selectedId: string | null = "m0") {
   const container = win.document.createElement("div");
@@ -141,13 +162,12 @@ function mount(selectedId: string | null = "m0") {
   return { render, textarea };
 }
 
-const setValue = Object.getOwnPropertyDescriptor(
-  win.HTMLTextAreaElement.prototype,
-  "value",
-)?.set;
-
 /** Type `text` one key at a time, the way React's onChange sees keystrokes. */
 function type(textarea: HTMLTextAreaElement, text: string) {
+  const setValue = Object.getOwnPropertyDescriptor(
+    win.HTMLTextAreaElement.prototype,
+    "value",
+  )?.set;
   for (let i = 1; i <= text.length; i++) {
     act(() => {
       setValue?.call(textarea, text.slice(0, i));
@@ -159,6 +179,15 @@ function type(textarea: HTMLTextAreaElement, text: string) {
 const draftAt = (key: string) => useDraftStore.getState().drafts[key]?.text;
 
 describe("typing in a board's composer", () => {
+  before(installDom);
+  after(() => {
+    restoreGlobals();
+    win.close();
+  });
+  afterEach(() => {
+    unmount?.();
+    unmount = undefined;
+  });
   beforeEach(() => {
     useDraftStore.getState().reset();
     sent.length = 0;
