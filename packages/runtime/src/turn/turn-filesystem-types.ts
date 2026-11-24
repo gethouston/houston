@@ -28,6 +28,7 @@ export interface TurnFilesystem extends TurnLayout {
   /** Writes already durable before the final sync pass: tool-call-time CAS
    *  writes and workspace checkpoints (turn-checkpoint.ts). */
   immediateWrites: Set<string>;
+  checkpointCopies?: { key: string; copy: string }[];
   landed?: {
     add(landed: readonly string[], deleted?: readonly string[]): void;
   };

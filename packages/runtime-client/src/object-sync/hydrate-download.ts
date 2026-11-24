@@ -168,4 +168,8 @@ export async function downloadHydrationEntries(opts: {
     opts.signal,
     landedLinks,
   );
+  if (opts.signal.aborted) return;
+  const landedFiles = new Set(files);
+  for (const entry of opts.entries)
+    if (!landedFiles.has(entry)) opts.onSettled?.(entry.rel);
 }

@@ -17,6 +17,8 @@ Two turns on one agent often overlap: in three days of production, 151 turn pair
 These files did not land as usual: a conflict copy, a lost conflict, a kept delete, a file over the store's object cap, and a write the store refused (outside the claim scope, a link it would not keep, a store that predates a rule). The turn's terminal frame and its reply row carry them as `unsavedFiles`: workspace-relative paths, at most 20 entries, with a total and per-reason counts.
 
 - A per-file refusal skips that one file. It never aborts the rest of the pass.
+- A conflict copy made by a mid-turn checkpoint (ADR 0113) is kept on the turn's tree and reported by the final pass. The checkpoint already settled that file's manifest entry, so the final pass would not see the conflict again.
+- A deferred link settles like a deferred file, so a tool waiting on its path stops waiting once it lands. A link is never promoted ahead of the rest of its set: the link-or-folder check needs the whole listing.
 - The gateway logs the report on the settled line, warns with the entries, and counts `houston_pool_turn_unsaved_files_total{kind,reason}`.
 - The gateway has no Sentry client, so the client sends the Sentry report: the SDK reports `turn_files_not_saved` once per turn, with the counts and total only, never file names. A report that names only `.houston/` or internal paths shows nothing in the chat and is not reported from the client. The gateway's log line and counter carry it.
 - Only a per-file refusal from the store (the key or its doc family is outside the claim scope, or the store would not keep a link) skips one file. A refusal of the claim itself still fails the sync, as before.

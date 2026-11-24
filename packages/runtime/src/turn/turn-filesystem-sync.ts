@@ -113,7 +113,9 @@ export async function syncTurnFilesystem(opts: {
         rel.startsWith(`${workspaceRel}/`) &&
         !rel.startsWith(`${dataRel}/`),
     ),
-    conflictCopies: result.conflictCopies,
+    conflictCopies: opts.narrow
+      ? result.conflictCopies
+      : [...(opts.filesystem.checkpointCopies ?? []), ...result.conflictCopies],
     deletesKept: result.deletesKept,
     skipped: result.skipped,
     conflicts: result.conflicts,

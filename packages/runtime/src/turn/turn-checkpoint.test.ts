@@ -256,3 +256,26 @@ test("a file a checkpoint could not store is still reported by the final pass", 
   });
   expect(final.skipped.map(({ key }) => key)).toEqual([`${WS}/huge.bin`]);
 });
+
+test("a conflict copy a checkpoint made is still reported by the final pass", async () => {
+  const filesystem = filesystemWith();
+  const rel = `${WS}/report.md`;
+  objects.set(rel, { body: "theirs", generation: 2 });
+  filesystem.manifest.set(rel, { hash: "stale", generation: "1" });
+  await put(rel, "mine");
+  const checkpoints = start(filesystem);
+  checkpoints.observe(toolEnd as never);
+  await until(() => landedCalls.length > 0);
+  await checkpoints.stop();
+  const copy = [...objects.keys()].find((key) => key.includes("(conflict"));
+  expect(copy).toBeDefined();
+  const final = await syncTurnFilesystem({
+    store,
+    prefix: "",
+    filesystem,
+    conversationId: "c1",
+    claimed: true,
+  });
+  expect(final.conflictCopies).toEqual([{ key: rel, copy }]);
+  expect(objects.get(rel)?.body).toBe("theirs");
+});

@@ -9,7 +9,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { expect, test } from "vitest";
-import { hydrate, syncBack } from "./hydrate";
+import { hydrate, startHydrate, syncBack } from "./hydrate";
 import type { ObjectMetadata } from "./object-manifest";
 import type { ObjectStore } from "./object-store";
 import { ObjectNotFoundError } from "./object-store-errors";
@@ -103,4 +103,24 @@ test("a hydrated link stays owned when a later listing says the store keeps no l
   expect(deletes).toEqual([]);
   expect(result.manifest.has(`${root}/latest`)).toBe(true);
   expect(result.uploaded).toEqual([]);
+});
+
+test("a deferred link settles like a deferred file", async () => {
+  const dest = await mkdtemp(join(tmpdir(), "chain-"));
+  const settled: string[] = [];
+  const started = await startHydrate(
+    listedStore([
+      meta(`${root}/files/up`, "../sub"),
+      meta(`${root}/files/a.md`),
+    ]),
+    "",
+    dest,
+    {
+      defer: (rel) => rel.includes("/files/"),
+      onDeferredSettled: (rel) => settled.push(rel),
+    },
+  );
+  await started.deferred;
+  expect(settled.sort()).toEqual([`${root}/files/a.md`, `${root}/files/up`]);
+  expect(await readlink(join(dest, root, "files/up"))).toBe("../sub");
 });
