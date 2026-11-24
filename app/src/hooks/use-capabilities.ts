@@ -19,6 +19,8 @@ export function useCapabilities(): {
   isLoading: boolean;
   /** True once the fetch failed for real (retries exhausted, no data). */
   isError: boolean;
+  /** The last failed attempt's error, while it retries too. */
+  failureReason: unknown;
 } {
   const enabled = newEngineActive();
   const query = useQuery({
@@ -41,5 +43,6 @@ export function useCapabilities(): {
     capabilities: query.data ?? null,
     isLoading: enabled && query.isLoading,
     isError: enabled && query.isError,
+    failureReason: query.failureReason,
   };
 }
