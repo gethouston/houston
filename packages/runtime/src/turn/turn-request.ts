@@ -58,6 +58,7 @@ export function turnSessionRequest(
     mentions: turn.mentions,
     ...(turn.missionTitle ? { missionTitle: turn.missionTitle } : {}),
     ...(turn.routine ? { routineFire: true } : {}),
+    ...(turn.claim ? { claimed: true } : {}),
     author: turn.actingAs,
     ...(claudePlan ? { claudePlan } : {}),
     tokenExpiresAt: turnTokenExpiry(turn.hostToken, Date.now()),

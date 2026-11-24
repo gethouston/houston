@@ -1,9 +1,10 @@
 import { readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { fileSha256 } from "./file-hash";
 import type { HydrateManifest } from "./hydrate";
+import { landedHash } from "./hydrate-attrs";
 import { hydrateBatched, skipRefusedLanding } from "./hydrate-batch";
 import { unowned } from "./hydrate-candidates";
+import { landListedLinks, outsideLinks } from "./hydrate-links";
 import { ObjectNotFoundError, type ObjectStore } from "./object-store";
 import { keepsMergeBase } from "./sync-back-doc-merge";
 
@@ -16,6 +17,8 @@ export interface HydrateEntry {
   /** A point read in a store whose listing carries generations: owned only
    *  when the read names one (hydrate-candidates.ts `unowned`). */
   requireGeneration?: true;
+  link?: string;
+  executable?: true;
 }
 
 const DEFAULT_HYDRATE_CONCURRENCY = 16;
@@ -35,6 +38,7 @@ export interface HydrateDownloadState {
   failed: boolean;
   firstError?: unknown;
   fail: (error: unknown) => void;
+  links: Set<string>;
 }
 
 /** Landed bytes counted against one cap. A deferring hydration keeps one for
@@ -49,6 +53,7 @@ export function hydrateDownloadState(
 ): HydrateDownloadState {
   return {
     failed: false,
+    links: new Set(),
     fail(error) {
       if (this.failed) return;
       this.failed = true;
@@ -101,10 +106,14 @@ export async function downloadHydrationEntries(opts: {
   // A store that batches reads lands most of the batch in a few round trips;
   // only what it will not inline (large objects) goes one by one below.
   const batched = opts.store.downloadMany?.bind(opts.store);
+  const landedLinks = opts.state.links;
+  const files = outsideLinks(opts.entries, landedLinks).filter(
+    (entry) => entry.link === undefined,
+  );
   const entries =
-    batched && opts.entries.length > 1
-      ? await hydrateBatched({ ...opts, downloadMany: batched })
-      : opts.entries;
+    batched && files.length > 1
+      ? await hydrateBatched({ ...opts, entries: files, downloadMany: batched })
+      : files;
   let next = 0;
   const worker = async () => {
     while (!opts.state.failed && opts.budget.landed <= opts.budget.maxBytes) {
@@ -130,7 +139,7 @@ export async function downloadHydrationEntries(opts: {
         }
         if (!unowned(entry, read?.generation))
           opts.manifest.set(rel, {
-            hash: await fileSha256(dest, size),
+            hash: await landedHash(dest, size, entry),
             generation: entry.fromRead ? read?.generation : generation,
             ...(opts.keepMergeBase && keepsMergeBase(rel)
               ? { mergeBase: await readFile(dest, "utf8") }
@@ -152,4 +161,15 @@ export async function downloadHydrationEntries(opts: {
     Array.from({ length: Math.min(opts.concurrency, entries.length) }, worker),
   );
   if (opts.state.failed) throw opts.state.firstError;
+  await landListedLinks(
+    opts.entries,
+    opts.destDir,
+    opts.manifest,
+    opts.signal,
+    landedLinks,
+  );
+  if (opts.signal.aborted) return;
+  const landedFiles = new Set(files);
+  for (const entry of opts.entries)
+    if (!landedFiles.has(entry)) opts.onSettled?.(entry.rel);
 }

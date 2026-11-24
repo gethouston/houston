@@ -34,6 +34,7 @@ export function startTurnCheckpoints(input: {
   intervalMs?: number;
 }): TurnCheckpoints {
   const { filesystem } = input;
+  filesystem.conflictCopies ??= new Map();
   const interval = input.intervalMs ?? TURN_CHECKPOINT_INTERVAL_MS;
   let ready = filesystem.workspaceReady === undefined;
   filesystem.workspaceReady?.then(

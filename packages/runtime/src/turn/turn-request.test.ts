@@ -159,3 +159,11 @@ test("every session request built from a turn sandbox keeps its mission guidance
   });
   expect(turnSessionSandbox(null)).toBeUndefined();
 });
+
+test("only a claimed turn is marked claimed for its file wall", () => {
+  const claim = { id: "k1", bootId: "b1", token: "tok", heartbeatUrl: "u" };
+  expect(
+    turnSessionRequest({ ...base, claim }, "t1", emit, signal).claimed,
+  ).toBe(true);
+  expect(turnSessionRequest(base, "t1", emit, signal).claimed).toBeUndefined();
+});

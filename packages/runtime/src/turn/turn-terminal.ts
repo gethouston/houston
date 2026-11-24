@@ -65,6 +65,7 @@ export function turnTerminalFrame(
     ...(providerFailure ? { providerFailure } : {}),
     ...(sync?.incomplete ? { syncIncomplete: sync.incomplete } : {}),
     ...(sync?.merges ? { syncMerges: sync.merges } : {}),
+    ...(sync?.unsavedFiles ? { unsavedFiles: sync.unsavedFiles } : {}),
     ...(modelCalls
       ? {
           modelCalls:
