@@ -51,6 +51,12 @@ export function hydrateCandidates(opts: {
       key,
       rel,
       generation: object.generation,
+      ...("link" in object && object.link !== undefined
+        ? { link: object.link }
+        : {}),
+      ...("executable" in object && object.executable
+        ? { executable: true as const }
+        : {}),
       ...("updated" in object && object.updated
         ? { updated: object.updated }
         : {}),

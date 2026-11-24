@@ -1,42 +1,53 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { agentScopeIncludes } from "./turn-agent-scope";
+import {
+  agentScopeIncludes,
+  HOUSTON_OWNED_DIRS,
+  HOUSTON_OWNED_FILES,
+} from "./turn-agent-scope";
+import vectors from "./turn-agent-scope.vectors.json";
 
 const ROOT = "workspaces/Personal/Bob";
 
-test.each([
-  `${ROOT}/.houston/routines/routines.json`,
-  `${ROOT}/.houston/learnings/learnings.json`,
-  "custom-integrations.json",
-  `${ROOT}/.agents/skills/example/SKILL.md`,
-  `${ROOT}/notes.md`,
-  // The agent's own state: a routine's dedupe watermark must survive the
-  // sandbox or the next run repeats every post.
-  `${ROOT}/.houston/state/signup_slack_alerts.json`,
-  `${ROOT}/.houston/cache/seen.json`,
-])("agent scope includes %s", (path) => {
-  expect(agentScopeIncludes(path, ROOT)).toBe(true);
+const workspaceOf = (path: string) =>
+  path.startsWith("workspace/") ? "workspace" : ROOT;
+
+test.each(vectors.allow)("agent scope includes %s", (path) => {
+  expect(agentScopeIncludes(path, workspaceOf(path))).toBe(true);
+});
+
+test.each(vectors.deny)("agent scope excludes %s", (path) => {
+  expect(agentScopeIncludes(path, workspaceOf(path))).toBe(false);
 });
 
 test.each([
-  `${ROOT}/.houston/runtime/settings.json`,
-  `${ROOT}/.houston/runtime/conversations/c1.json`,
-  `${ROOT}/.houston/docs/activity/activity.json`,
-  `${ROOT}/.houston/routines/other.json`,
-  `${ROOT}/.houston/learnings/other.json`,
-  `${ROOT}/.houston/config/config.json`,
-  `${ROOT}/.houston/activity/activity.json`,
-  `${ROOT}/.houston/routine_runs/routine_runs.json`,
-  `${ROOT}/.houston/skills/x/SKILL.md`,
-  `${ROOT}/.houston/skills-manifest/skills-manifest.json`,
-  `${ROOT}/.houston/sessions/claude/x.sid`,
-  `${ROOT}/.houston/memory/learnings.md`,
-  `${ROOT}/.houston/prompts/system.md`,
-  `${ROOT}/.houston/migration/state.json`,
-  `${ROOT}/.houston/agent.json`,
-  `${ROOT}/.houston/state//x.json`,
-  `${ROOT}/.houston/state/../runtime/auth.json`,
   "workspaces/Personal/Alice/notes.md",
   "workspaces/Personal/Alice/.houston/state/x.json",
-])("agent scope excludes %s", (path) => {
+  "workspaces/Personal/Alice/.houston/state.json",
+])("agent scope excludes another agent's %s", (path) => {
   expect(agentScopeIncludes(path, ROOT)).toBe(false);
+});
+
+test("the owned names match the vectors the store's rule reads", () => {
+  expect([...HOUSTON_OWNED_DIRS].sort()).toEqual([...vectors.ownedDirs].sort());
+  expect([...HOUSTON_OWNED_FILES].sort()).toEqual(
+    [...vectors.ownedFiles].sort(),
+  );
+});
+
+test.each([
+  ...vectors.ownedDirs.map((name) => `${ROOT}/.houston/${name}/x.json`),
+  ...vectors.ownedFiles.map((name) => `${ROOT}/.houston/${name}`),
+])("agent scope excludes the owned %s", (path) => {
+  expect(agentScopeIncludes(path, ROOT)).toBe(false);
+});
+
+test("the vectors match cloud internal/podstore/testdata/turn-agent-scope.vectors.json byte for byte", () => {
+  const bytes = readFileSync(
+    new URL("./turn-agent-scope.vectors.json", import.meta.url),
+  );
+  expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+    "17c6287f586f34936c2137efd3e4f27c31a7624b3f2575b717fdcf8f3b10c59c",
+  );
 });

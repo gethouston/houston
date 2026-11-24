@@ -23,11 +23,13 @@ async function deleteAfterRemoteChange(workerMerge: boolean) {
 test("a worker's delete conflict refreshes the one key, not the whole store", async () => {
   const { remote, result } = await deleteAfterRemoteChange(true);
   expect(remote.calls).toEqual(["get notes.md"]);
-  expect(result.deleted).toEqual(["notes.md"]);
+  expect(result.deleted).toEqual([]);
+  expect(remote.body("notes.md")).toBe("v2");
 });
 
 test("the standing sync keeps its one listing per pass", async () => {
   const { remote, result } = await deleteAfterRemoteChange(false);
   expect(remote.calls).toEqual(["manifest "]);
-  expect(result.deleted).toEqual(["notes.md"]);
+  expect(result.deleted).toEqual([]);
+  expect(remote.body("notes.md")).toBe("v2");
 });

@@ -10,6 +10,7 @@ import {
   sep,
 } from "node:path";
 import { ProtectedWriteDeniedError, WorkspaceGuard } from "./fs-guard";
+import type { KeepsWrite } from "./fs-guard-protected";
 
 /**
  * Artifact write-back for `run_code`, kept apart from the tool itself.
@@ -73,6 +74,7 @@ export async function saveArtifacts(
   workspaceDir: string,
   artifacts: SandboxArtifact[],
   declared: Set<string>,
+  keepsWrite?: KeepsWrite,
 ): Promise<SavedArtifacts> {
   const out: SavedArtifacts = {
     saved: [],
@@ -81,7 +83,10 @@ export async function saveArtifacts(
     skipped: [],
     refused: [],
   };
-  const guard = new WorkspaceGuard(workspaceDir);
+  const guard = new WorkspaceGuard(
+    workspaceDir,
+    keepsWrite ? { keepsWrite } : undefined,
+  );
   for (const a of artifacts) {
     try {
       let abs = safeJoin(workspaceDir, a.path);
