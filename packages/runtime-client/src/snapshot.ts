@@ -131,6 +131,8 @@ export function reduceSnapshot(
         ...(tools.length ? { tools } : {}),
       };
     }
+    case "landed":
+      return { ...prev, seq };
     case "usage":
     case "file_changes":
     // Not terminal: the turn is still running its wrap-up.

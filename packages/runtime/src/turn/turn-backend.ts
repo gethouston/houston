@@ -18,7 +18,7 @@ import type { WorkspaceGuardOptions } from "../session/tools/fs-guard";
 import { makeScrubbedBashTool } from "../session/tools/scrubbed-bash";
 import { turnAuthStore } from "./turn-auth-store";
 import { turnCompactions } from "./turn-compactions";
-import { awaitDeferredFiles, gateTurnTools } from "./turn-deferred-files";
+import { deferredToolGate, gateTurnTools } from "./turn-deferred-files";
 import { POOLED_TURN_TRANSPORT } from "./turn-pi-transport";
 import type { TurnDirectories, TurnSessionRequest } from "./turn-session";
 import { turnSharedSkillsDir } from "./turn-shared-skills";
@@ -88,7 +88,7 @@ export function createTurnBackend(
   provider: string,
   deps: TurnBackendDeps,
 ): HarnessBackend {
-  const { workspaceDir, dataDir, turnRoot, workspaceReady, loadArchive } =
+  const { workspaceDir, dataDir, turnRoot, deferredGate, loadArchive } =
     deps.directories;
   const commonTools = [
     ...buildTurnCommonTools(deps.turn, deps.codeSandbox, dataDir, loadArchive),
@@ -114,8 +114,8 @@ export function createTurnBackend(
       role: deps.turn.role ?? null,
       layout: turnClaudeLayout(turnRoot, dataDir, deps.turn.conversationId),
       compactions: turnCompactions(dataDir),
-      ...(workspaceReady
-        ? { beforeTool: () => awaitDeferredFiles(workspaceReady) }
+      ...(deferredGate
+        ? { beforeTool: deferredToolGate(deferredGate, workspaceDir) }
         : {}),
       // SAFETY: these are the same pi ToolDefinition objects the MCP bridge
       // accepts; only their heterogeneous schema generics need widening.
@@ -177,7 +177,8 @@ export function createTurnBackend(
           ? [makeScrubbedBashTool(workspaceDir)]
           : []),
       ],
-      workspaceReady,
+      deferredGate,
+      workspaceDir,
     ),
   });
 }

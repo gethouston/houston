@@ -137,7 +137,11 @@ export async function finishTurnDurabilityPass(
     filesystem: opts.filesystem,
     views: opts.views,
     source: opts.resolved,
-    landed: [...synced.uploaded, ...synced.deleted],
+    landed: [
+      ...synced.uploaded,
+      ...synced.deleted,
+      ...opts.filesystem.immediateWrites,
+    ],
   });
   for (const type of staleViews) without(type);
 
