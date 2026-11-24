@@ -146,8 +146,12 @@ describe("the engine-call layer routes the busy answer report-only", () => {
     "utf8",
   );
   const body = source.slice(source.indexOf("async function surfaceError("));
-  const busy = body.indexOf("if (isAgentDataBusyError(err))");
-  const waking = body.indexOf("if (isEngineWakingError(err))");
+  const busy = body.indexOf(
+    'if (classifyQuietError(err) === "agent_data_busy")',
+  );
+  const waking = body.indexOf(
+    'if (classifyQuietError(err) === "engine_waking")',
+  );
   const branch = body.slice(busy, waking);
 
   it("reports the quiet class before the waking branch, with no toast", () => {
