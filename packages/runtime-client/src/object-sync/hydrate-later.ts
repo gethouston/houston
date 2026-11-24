@@ -1,5 +1,4 @@
 import { type HydrateCandidate, hydrateCandidates } from "./hydrate-candidates";
-import { HydrateLimitError, listedBytes } from "./hydrate-limit";
 import type {
   HydrateListedObject,
   HydrateListing,
@@ -8,7 +7,7 @@ import type {
 import type { ObjectMetadata } from "./object-manifest";
 import { StoreReadTimeoutError } from "./read-timeout";
 
-type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
+export type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
 /** `promise`, or the signal's reason as soon as it aborts. */
 function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -52,13 +51,8 @@ export function startLater(
   );
 }
 
-/**
- * The later listing's admitted objects, every one deferred. They share the
- * deferred budget with the deferred objects of the first listing, checked
- * from the listed sizes before any of them downloads.
- */
 export function admitLater(
-  settled: Settled<readonly ObjectMetadata[]>,
+  objects: readonly ObjectMetadata[],
   opts: {
     prefix: string;
     excludes: string[];
@@ -66,24 +60,17 @@ export function admitLater(
     filter?: HydrateOptions["filter"];
     filterListing: readonly HydrateListedObject[];
     destDir: string;
-    deferredMaxBytes: number;
-    later: readonly HydrateCandidate[];
   },
 ): HydrateCandidate[] {
-  if (!settled.ok) throw settled.error;
   const { candidates } = hydrateCandidates({
-    objects: settled.value,
+    objects,
     prefix: opts.prefix,
     excludes: opts.excludes,
     sizes: opts.sizes,
   });
-  const admitted = opts.filter
+  return opts.filter
     ? candidates.filter(({ rel }) =>
         opts.filter?.(rel, opts.filterListing, opts.destDir),
       )
     : candidates;
-  const bytes = listedBytes([...opts.later, ...admitted], opts.sizes);
-  if (bytes > opts.deferredMaxBytes)
-    throw new HydrateLimitError(opts.deferredMaxBytes, bytes);
-  return admitted;
 }

@@ -1,4 +1,5 @@
 import { HydrateLimitError } from "@houston/runtime-client/object-sync";
+import type { DeferredGate } from "./turn-deferred-gate";
 import { turnHydrationError } from "./turn-hydration-error";
 
 /** Why the deferred set stopped when the prompt no longer needed it. */
@@ -15,25 +16,24 @@ export const DEFERRED_READ_TIMEOUT_MS = 120_000;
  *  (hydrate-batch.ts), so up to four batch bodies are buffered beside the
  *  harness, as the critical path already buffers while a send's harness
  *  starts. A large agent's bulk (git clones, toolchains, documents) lands
- *  here and every tool waits for it; at half that pace, a turn's first tool
- *  call would wait longer than the whole tree used to take before the
- *  prompt. */
+ *  here, and shell tools wait for all of it (turn-deferred-tools.ts); at
+ *  half that pace, a turn's first shell call would wait longer than the
+ *  whole tree used to take before the prompt. */
 export const DEFERRED_PARALLEL = 4;
 
-/**
- * Watch the deferred files of one turn: mark when they land (`t_files_ready`)
- * or fail (`t_deferred_failed`, reported once), and let the end of the prompt
- * abandon them. Abandoning is a no-op once they landed; before that, no tool
- * can have run (every tool waits for `workspaceReady`), so stopping the
- * download and syncing as after a failed one touches nothing of the person's.
- * The `landed` reaction is the first one on `deferred`, so it is set before
- * any tool's gate can pass.
- */
 export function watchDeferredFiles(
   deferred: Promise<void>,
   abort: (reason: unknown) => void,
   timings?: Record<string, number>,
-): { workspaceReady: Promise<void>; abandonDeferred: () => void } {
+  gate?: {
+    gate: DeferredGate;
+    started: Parameters<DeferredGate["observe"]>[1];
+  },
+): {
+  workspaceReady: Promise<void>;
+  abandonDeferred: () => void;
+  deferredGate?: DeferredGate;
+} {
   let landed = false;
   let abandoned = false;
   const workspaceReady = deferred.then(
@@ -60,8 +60,10 @@ export function watchDeferredFiles(
       throw turnHydrationError(error);
     },
   );
+  gate?.gate.observe(workspaceReady, gate.started);
   return {
     workspaceReady,
+    ...(gate ? { deferredGate: gate.gate } : {}),
     abandonDeferred() {
       if (landed || abandoned) return;
       abandoned = true;

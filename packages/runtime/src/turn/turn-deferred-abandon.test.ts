@@ -2,6 +2,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, vi } from "vitest";
+import { createDeferredGate } from "./turn-deferred-gate";
 import { runTurn } from "./turn-session";
 
 /**
@@ -43,6 +44,11 @@ async function runWithPendingFiles(stop: boolean) {
   const abandonDeferred = vi.fn(() =>
     fail(new Error("the turn ended before its files were needed")),
   );
+  const deferredGate = createDeferredGate(workspaceDir);
+  deferredGate.observe(workspaceReady, {
+    prioritize: () => undefined,
+    manifest: new Map(),
+  });
   const outcome = await runTurn(
     {
       workspaceDir,
@@ -50,6 +56,7 @@ async function runWithPendingFiles(stop: boolean) {
       turnRoot: workspaceDir,
       workspaceReady,
       abandonDeferred,
+      deferredGate,
     },
     {
       conversationId: "c1",

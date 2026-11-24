@@ -12,6 +12,7 @@ import type { MissionTitleRequest } from "../session/mission-title";
 import type { SandboxFetch } from "../session/tools/sandbox-fetch";
 import type { ProvidedContext } from "../session/workspace-context";
 import type { ArchiveLoader } from "./turn-archive-fetch";
+import type { DeferredGate } from "./turn-deferred-gate";
 import type { InTreeMissionTitle } from "./turn-mission-title-outcome";
 import type { RemoteActivityReader } from "./turn-mission-title-remote";
 import type { TurnSessionStartupTask } from "./turn-session-startup";
@@ -98,6 +99,7 @@ export interface TurnDirectories {
   workspaceReady?: Promise<void>;
   /** Called once the prompt ends or is stopped (turn-deferred-watch.ts). */
   abandonDeferred?: () => void;
+  deferredGate?: DeferredGate;
   /** Archive segments left remote, fetched on demand (turn-archive-fetch.ts). */
   loadArchive?: ArchiveLoader;
 }

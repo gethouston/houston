@@ -1,5 +1,6 @@
+import type { TurnInterruption } from "@houston/protocol";
 import { parseTurnSetupFailure, TurnErrorCode } from "@houston/wire-types";
-import type { EngineNoticeKind } from "./turn-errors";
+import { ENGINE_RESTART_MESSAGE, type EngineNoticeKind } from "./turn-errors";
 import { finishErr, type TurnState } from "./turn-settle";
 
 /**
@@ -40,6 +41,18 @@ export const TURN_TIME_LIMIT_MESSAGE =
 /** The forced fallback cannot promise that the last steps were saved. */
 export const TURN_TIME_LIMIT_UNSAVED_MESSAGE =
   'Your agent reached the 4-hour limit for one reply and stopped before it could save its last steps. Say "continue" to pick up from the last saved point.';
+
+export const SANDBOX_LOST_MESSAGE =
+  "Your agent stopped unexpectedly before it could save its last steps. Everything saved before that is kept, so you can ask again to finish the rest.";
+
+export function interruptionNotice(interrupted: TurnInterruption): {
+  kind: Extract<EngineNoticeKind, "engine_restart" | "sandbox_lost">;
+  message: string;
+} {
+  return interrupted.cause === "sandbox_lost"
+    ? { kind: "sandbox_lost", message: SANDBOX_LOST_MESSAGE }
+    : { kind: "engine_restart", message: ENGINE_RESTART_MESSAGE };
+}
 
 export function timeLimitNotice(
   code: unknown,

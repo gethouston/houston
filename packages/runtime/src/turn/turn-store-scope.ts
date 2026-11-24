@@ -21,7 +21,8 @@ export const UNLISTED_ROOT_DIRS: ReadonlySet<string> = new Set([
  *   turn neither reads (ownConversationOnly) nor writes (claimedTurnIncludes).
  *   The turn's own archive and session folder stay.
  * - `later`: the agent's own folders (turn-deferred-rule.ts), listed and
- *   downloaded behind the prompt. Every tool waits for them.
+ *   downloaded behind the prompt. A tool waits only for the ones it names
+ *   (turn-deferred-tools.ts).
  * - `conversation`: the turn's own transcript, read by key: its folder holds
  *   every conversation, too many to list for one file.
  *
