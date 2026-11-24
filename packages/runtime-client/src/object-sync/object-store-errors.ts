@@ -51,3 +51,17 @@ export class StoreConflictError extends Error {
     this.name = "StoreConflictError";
   }
 }
+
+export class ObjectWriteRefusedError extends ObjectTooLargeError {
+  constructor(key: string, message: string) {
+    super(key, message);
+    this.name = "ObjectWriteRefusedError";
+  }
+}
+
+export class ObjectAttrsRefusedError extends ObjectWriteRefusedError {
+  constructor(key: string, message: string) {
+    super(key, message);
+    this.name = "ObjectAttrsRefusedError";
+  }
+}

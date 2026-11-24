@@ -2,9 +2,9 @@ import type { WriteOptions } from "./object-store";
 
 /** The lease (boot id + fencing token) or claim a store write carries. */
 export interface WriteAuthority {
-  bootId: string | undefined;
-  fence: { token?: string } | undefined;
-  claim: { token: string; bootId: string; conversationId: string } | undefined;
+  bootId?: string;
+  fence?: { token?: string };
+  claim?: { token: string; bootId: string; conversationId: string };
 }
 
 /** A write's headers: auth, its generation precondition, its authority. */

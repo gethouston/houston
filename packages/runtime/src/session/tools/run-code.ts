@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { assertNotPlanMode } from "../live-mode-gate";
+import type { KeepsWrite } from "./fs-guard-protected";
 import {
   type SandboxArtifact,
   type SandboxResult,
@@ -108,6 +109,7 @@ export interface RunCodeOptions {
    * in here would be a per-turn budget and bound nothing.
    */
   limiter: RunCodeLimiter;
+  keepsWrite?: KeepsWrite;
 }
 
 export function makeRunCodeTool(opts: RunCodeOptions) {
@@ -173,6 +175,7 @@ export function makeRunCodeTool(opts: RunCodeOptions) {
         opts.workspaceDir,
         result.artifacts ?? [],
         declared,
+        opts.keepsWrite,
       );
       return {
         content: [{ type: "text" as const, text: summarizeRun(result, saved) }],

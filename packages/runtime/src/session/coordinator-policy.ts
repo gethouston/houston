@@ -4,6 +4,7 @@ import { UPLOADS_DIR } from "@houston/domain/uploads-dir";
 import { learningsDocPath } from "./learnings-context";
 import { SPILL_DIR } from "./tool-results/spill";
 import type { WorkspaceGuardOptions } from "./tools/fs-guard";
+import type { KeepsWrite } from "./tools/fs-guard-protected";
 
 /**
  * What the COORDINATOR runtime is allowed to touch on disk.
@@ -38,6 +39,7 @@ export interface RuntimeFilePolicyInput {
    * (turn/turn-shared-skills.ts): readable like the mirror, never writable.
    */
   sharedSkillsSnapshot?: string;
+  keepsWrite?: KeepsWrite;
 }
 
 /** The shared (writable) roots this runtime's file tools get. */
@@ -50,8 +52,10 @@ export function sharedRootsFor(input: RuntimeFilePolicyInput): string[] {
 export function fileToolGuardOptions(
   input: RuntimeFilePolicyInput,
 ): WorkspaceGuardOptions {
+  const kept = input.keepsWrite ? { keepsWrite: input.keepsWrite } : {};
   if (input.role === "coordinator") {
     return {
+      ...kept,
       allowedFiles: [learningsDocPath(input.workspaceDir)],
       readableDirs: [
         join(input.workspaceDir, UPLOADS_DIR),
@@ -60,6 +64,7 @@ export function fileToolGuardOptions(
     };
   }
   return {
+    ...kept,
     sharedRoots: sharedRootsFor(input),
     ...(input.sharedSkillsSnapshot
       ? { readOnlyRoots: [input.sharedSkillsSnapshot] }

@@ -8,6 +8,7 @@ import { turnCodeExecutionMode } from "../session/tool-selection";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import { sandboxFetchRunCodeTransport } from "../session/tools/run-code-transport";
 import { createTurnBackend, type TurnBackendDeps } from "./turn-backend";
+import { claimedTurnKeepsWrite } from "./turn-filesystem-scope";
 import { turnRunCodeLimiter } from "./turn-run-code-limiter";
 import { createTurnModelRuntime } from "./turn-runtime";
 import { TURN_CODE_RUN_PATH } from "./turn-sandbox-code";
@@ -81,6 +82,7 @@ async function prepareTurnSession(
     turn.timings,
   );
   if (sdkLoad) await sdkLoad;
+  const keepsWrite = claimedTurnKeepsWrite(directories, turn);
   // The worker holds no sandbox URL, app token or GCP identity: the call rides
   // this turn's sandbox facade, which relays it under the grant.
   const codeSandbox =
@@ -92,6 +94,7 @@ async function prepareTurnSession(
           }),
           workspaceDir: directories.workspaceDir,
           limiter: turnRunCodeLimiter,
+          ...(keepsWrite ? { keepsWrite } : {}),
         })
       : null;
   const backend = (deps.createBackend ?? createTurnBackend)(turn.provider, {
@@ -110,6 +113,7 @@ async function prepareTurnSession(
       workspaceDir: directories.workspaceDir,
       sharedSkillsDir: config.sharedSkillsDir,
       sharedSkillsSnapshot: turnSharedSkillsDir(directories.turnRoot),
+      ...(keepsWrite ? { keepsWrite } : {}),
     }),
     claudeSdk: deps.claudeSdk,
     claudeSdkLoad: sdkLoad,
