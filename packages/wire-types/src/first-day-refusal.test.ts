@@ -5,15 +5,16 @@ import {
 } from "./first-day-refusal";
 
 describe("parseFirstDayRefusal", () => {
-  it.each(["first_day_not_pending", "first_day_not_started"])(
-    "reads the %s refusal",
-    (code) => {
-      expect(parseFirstDayRefusal({ code, error: "refused" })).toEqual({
-        code,
-        error: "refused",
-      });
-    },
-  );
+  it.each([
+    "first_day_not_pending",
+    "first_day_not_started",
+    "first_day_provider_unavailable",
+  ])("reads the %s refusal", (code) => {
+    expect(parseFirstDayRefusal({ code, error: "refused" })).toEqual({
+      code,
+      error: "refused",
+    });
+  });
 
   it("reads the no-provider refusal and the provider it names", () => {
     expect(

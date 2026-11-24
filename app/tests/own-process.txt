@@ -82,6 +82,7 @@ tests/provider-login-dialect.test.ts
 tests/providers.test.ts
 tests/purchase-policy.test.ts
 tests/purchase-surfaces.test.ts
+tests/quiet-state-surface.test.ts
 tests/routine-auto-pause-banner.test.ts
 tests/routine-gone.test.ts
 tests/routine-plan-floor-refusal.test.ts
@@ -89,6 +90,7 @@ tests/routine-plan-skip-notice-wiring.test.ts
 tests/routine-plan-skip-notice.test.ts
 tests/routine-runs-history.test.ts
 tests/routine-schedule-edit.test.ts
+tests/send-pin-stall-report.test.ts
 tests/sentry-quiet.test.ts
 tests/settings-landing.test.ts
 tests/sign-in-phone-targets.test.ts
