@@ -82,6 +82,10 @@ export async function syncBack(
     // leave it out of the next manifest and let the delete pass reconcile the
     // store, instead of aborting the whole pass mid-upload. Sign-in state is
     // checked per file and uploaded from a checked copy (sync-back-source.ts).
+    if (opts.include && !manifest.has(rel) && !opts.include(rel)) {
+      scopeMiss(rel);
+      continue;
+    }
     const source = await syncSource(abs, rel);
     if (source === SOURCE_GONE) continue;
     const refused = source !== SOURCE_REFUSED && "refusedLink" in source;

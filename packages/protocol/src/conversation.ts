@@ -467,7 +467,7 @@ export interface ChatMessage {
  * discriminated field rather than a boolean so the next cause (a drain
  * deadline, a host-initiated kill) is a value, not another flag.
  */
-export type TurnInterruptionCause = "engine_restart";
+export type TurnInterruptionCause = "engine_restart" | "sandbox_lost";
 
 /** How a turn was cut short (see {@link ChatMessage.interrupted}). */
 export interface TurnInterruption {

@@ -1,13 +1,15 @@
 import { hydrateCandidates, listWhole } from "./hydrate-candidates";
+import { startDeferredPhase } from "./hydrate-deferred";
 import {
   downloadHydrationEntries,
   type HydrateBudget,
-  type HydrateDownloadState,
+  type HydrateClaims,
   type HydrateEntry,
   hydrateConcurrency,
+  hydrateDownloadState,
 } from "./hydrate-download";
 import { DEFAULT_EXCLUDES } from "./hydrate-excludes";
-import { admitLater, startLater } from "./hydrate-later";
+import { startLater } from "./hydrate-later";
 import { HydrateLimitError, splitDeferred } from "./hydrate-limit";
 import type { ObjectStore } from "./object-store";
 import { withReadTimeout } from "./read-timeout";
@@ -81,22 +83,17 @@ export async function startHydrate(
     ? candidates.filter((entry) => opts.priority?.(entry.rel))
     : [];
   const priorityRels = new Set(priorityCandidates.map(({ rel }) => rel));
-  const state: HydrateDownloadState = {
-    failed: false,
-    links: new Set(),
-    fail(error) {
-      if (this.failed) return;
-      this.failed = true;
-      this.firstError = error;
-      controller.abort(error);
-    },
-  };
+  const state = hydrateDownloadState(controller);
   const critical: HydrateBudget = { landed: 0, maxBytes };
   const deferredBudget: HydrateBudget = {
     landed: 0,
     maxBytes: opts.deferredMaxBytes ?? maxBytes,
   };
-  const download = (batch: HydrateEntry[], later = false) =>
+  const download = (
+    batch: HydrateEntry[],
+    later = false,
+    claims?: HydrateClaims,
+  ) =>
     downloadHydrationEntries({
       store:
         later && opts.deferredReadTimeoutMs !== undefined
@@ -120,6 +117,10 @@ export async function startHydrate(
           later ? deferredBudget.maxBytes : maxBytes,
           observedBytes,
         ),
+      ...(claims ? { claims } : {}),
+      ...(later && opts.onDeferredSettled
+        ? { onSettled: opts.onDeferredSettled }
+        : {}),
     });
   const filter = opts.filter;
   const priority = filter
@@ -146,22 +147,24 @@ export async function startHydrate(
     ...(opts.capListed ? { capListed: true } : {}),
   });
   const done = download(now);
-  const downloadLater = async () => {
-    if (deferredRefusal) throw deferredRefusal;
-    const extra = listedLater
-      ? admitLater(await listedLater, {
-          prefix,
-          excludes,
-          sizes,
-          filterListing,
-          destDir,
-          ...(filter ? { filter } : {}),
-          deferredMaxBytes: deferredBudget.maxBytes,
-          later,
-        })
-      : [];
-    return download([...later, ...extra], true);
-  };
+  const deferredPhase = startDeferredPhase({
+    later,
+    ...(listedLater ? { listedLater } : {}),
+    admit: {
+      prefix,
+      excludes,
+      sizes,
+      filterListing,
+      destDir,
+      ...(filter ? { filter } : {}),
+    },
+    ...(deferredRefusal ? { refusal: deferredRefusal } : {}),
+    sizes,
+    maxBytes: deferredBudget.maxBytes,
+    state,
+    download: (entries, claims) => download(entries, true, claims),
+    ...(opts.onDeferredListed ? { onListed: opts.onDeferredListed } : {}),
+  });
   return {
     manifest,
     listed,
@@ -169,7 +172,8 @@ export async function startHydrate(
     done,
     // After `done`, so a deferred object never takes bandwidth from the set
     // the caller is blocked on.
-    deferred: later.length || listedLater ? done.then(downloadLater) : done,
+    deferred: later.length || listedLater ? done.then(deferredPhase.run) : done,
+    prioritize: deferredPhase.prioritize,
     abort: (reason) =>
       state.fail(reason ?? new Error("hydration aborted before cleanup")),
   };

@@ -359,6 +359,7 @@
   },
   "replyTimeLimit": "Your agent worked for 4 hours, the limit for one reply. Its progress is saved. Say \"continue\" and it will pick up where it left off.",
   "replyTimeLimitUnsaved": "Your agent reached the 4-hour limit for one reply and stopped before it could save its last steps. Say \"continue\" to pick up from the last saved point.",
+  "sandboxLost": "Your agent stopped unexpectedly before it could save its last steps. Everything saved before that is kept, so you can ask again to finish the rest.",
   "engineRestart": {
     "sayContinue": "Your agent had to restart. Say continue and it will pick up where it left off.",
     "resuming": "Your agent was interrupted by a restart and is picking up where it left off."

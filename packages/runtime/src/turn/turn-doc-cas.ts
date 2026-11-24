@@ -75,6 +75,7 @@ export async function mutateTurnDocument<T>(
           }),
         );
         opts.filesystem.immediateWrites.add(opts.relativePath);
+        opts.filesystem.landed?.add([opts.relativePath]);
         return result;
       } catch (error) {
         if (!(error instanceof StoreConflictError)) throw error;

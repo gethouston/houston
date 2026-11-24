@@ -338,11 +338,12 @@ and the gutter background on `<html>` (`visual/support.ts` `pinTheme`) — NOT t
 web entry reads that preference only after it mounts (`loadThemePreference` in
 `app-tree.tsx`), which would race the screenshot; the attribute is deterministic.
 
-The visual scripts cap parallelism at `--workers=2`: full-page screenshots are
-CPU-heavy, and at higher worker counts the pinned CI container starves renders
-past the expect budget (a first-paint anchor missed its 10s window at 4
-workers). Two workers keep the 8-shot suite fast without contention; the
-determinism rules below outrank raw speed here.
+The visual scripts cap parallelism at `--workers=3`, the functional shards'
+count: full-page screenshots are CPU-heavy, and against the dev server the
+pinned CI container starved renders past the expect budget at 4 workers (a
+first-paint anchor missed its 10s window). CI serves the visual suite the
+prebuilt bundle, which leaves the cores to the browsers. The determinism rules
+below outrank raw speed here.
 
 **Determinism rules** (a flaky baseline is worse than none — skip a screen you
 can't make deterministic rather than commit one):

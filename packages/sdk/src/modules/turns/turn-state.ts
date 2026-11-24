@@ -152,6 +152,7 @@ export function emitStatus(
 const NOTICE_CLASS: Record<EngineNoticeKind, TurnErrorClass | null> = {
   engine_restart: "engine_restart",
   engine_resumed: null,
+  sandbox_lost: "sandbox_lost",
   turn_time_limit: null,
   turn_time_limit_unsaved: null,
   send_busy: "send_busy",
