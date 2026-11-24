@@ -2,6 +2,7 @@ import { AUTO_CONTINUE_MARKER, encodeHeartbeat } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import { describe, expect, it } from "vitest";
 import { historyToFeed } from "./history";
+import { SANDBOX_LOST_MESSAGE } from "./turn-notices";
 
 describe("historyToFeed", () => {
   it("replays structured mission receipts from persisted tool calls", () => {
@@ -529,6 +530,41 @@ describe("historyToFeed", () => {
         turnId: "t-1",
       },
     ]);
+  });
+
+  it("replays the lost-sandbox line for a pooled turn whose sandbox died", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "export it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        turnId: "t-1",
+        interrupted: { cause: "sandbox_lost" },
+      },
+    ]);
+    expect(feed.at(-1)).toEqual({
+      feed_type: "system_message",
+      data: SANDBOX_LOST_MESSAGE,
+      notice: "sandbox_lost",
+      ts: 2,
+      turnId: "t-1",
+    });
+    expect(SANDBOX_LOST_MESSAGE).not.toMatch(/continue/i);
+  });
+
+  it("replays an unknown interruption cause as the restart line", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "export it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        turnId: "t-1",
+        interrupted: JSON.parse('{"cause":"drain_deadline"}'),
+      },
+    ]);
+    expect(feed.at(-1)).toMatchObject({ notice: "engine_restart" });
   });
 
   it("omits the stop line for a turn that ran to completion (no regression)", () => {

@@ -133,3 +133,12 @@ test("a failed gate or a stopped turn denies the call with its reason", async ()
     hookSpecificOutput: { permissionDecision: "deny" },
   });
 });
+
+test("the gate is told which tool is asking and with what input", async () => {
+  const asked: unknown[] = [];
+  const output = await toolGateHook(async (name, toolInput) => {
+    asked.push(name, toolInput);
+  })(input, "tool-1", { signal: new AbortController().signal });
+  expect(output).toEqual({});
+  expect(asked).toEqual(["Read", { file_path: "uploads/photo.png" }]);
+});

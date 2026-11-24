@@ -16,8 +16,7 @@ export interface AgentFiles {
    *  path from another root of the same agent (an earlier turn's
    *  `/work/houston-turn-…/store/workspaces/<key>/…`) is found by it. */
   rootKey: string;
-  /** Resolves once every file of the agent is on disk (deferred hydration). */
-  ready?: Promise<void>;
+  ready?: (rel: string) => Promise<void>;
   /** Reads a path relative to `dir` that is not on disk: a lazy turn tree
    *  fetches it from the store. */
   fallback?: (rel: string, maxBytes: number) => Promise<Buffer | null>;
@@ -72,7 +71,7 @@ export function agentFileReader(files: AgentFiles) {
   let realDir: Promise<string> | undefined;
   return async (path: string): Promise<WorkspaceFile | null> => {
     const rel = workspaceRelFor(files, path);
-    await files.ready;
+    await files.ready?.(rel);
     const name = posix.basename(rel);
     const target = join(files.dir, ...rel.split("/"));
     const linkStat = await lstat(target).catch((err: unknown) => {

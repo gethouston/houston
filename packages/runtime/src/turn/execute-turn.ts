@@ -147,7 +147,14 @@ export async function executeTurn(
       turnId,
       filesystem,
     );
-    const emit = createTurnEmitter(sse.send, turnSandbox, turnLog, transcript);
+    const frameTaps = new Set<(frame: WireFrame) => void>();
+    const emit = createTurnEmitter(
+      sse.send,
+      turnSandbox,
+      turnLog,
+      transcript,
+      frameTaps,
+    );
     sendFrame = emit;
 
     if (turn.shadow)
@@ -168,6 +175,7 @@ export async function executeTurn(
         startup,
         timings,
         emit,
+        frameTaps,
         turnLog,
         transcript,
         mentionReport,
