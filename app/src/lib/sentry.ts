@@ -146,12 +146,15 @@ export async function captureException(
   error: unknown,
   context?: Record<string, string>,
   extra?: Record<string, unknown>,
+  fingerprint?: string[],
 ): Promise<string> {
   if (!initialized) return "";
   const normalized = error instanceof Error ? error : new Error(String(error));
   const eventId = Sentry.captureException(
     normalized,
-    context || extra ? { tags: context, extra } : undefined,
+    context || extra || fingerprint
+      ? { tags: context, extra, fingerprint }
+      : undefined,
   );
   return confirmDelivery(eventId);
 }

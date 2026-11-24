@@ -48,12 +48,14 @@ export {
   type AgentsModule,
   type AgentsViewModel,
   type AgentsWrites,
+  firstDayAccountBlocked,
   firstDayRefusal,
   type InstalledConfig,
   isAgentNameReserved,
   isAgentNameTaken,
   isFirstDayNoProvider,
   isFirstDayNotPending,
+  isFirstDayProviderUnavailable,
   type WireAgent,
 } from "./modules/agents";
 // ===== Files module contract ===========================================
