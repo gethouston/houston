@@ -20,4 +20,18 @@ describe("engine-restart chat copy", () => {
       }
     }
   });
+
+  it("authors the lost-sandbox line without the restart promise", () => {
+    for (const bundle of [en, es, pt]) {
+      strictEqual(typeof bundle.sandboxLost, "string");
+      strictEqual(bundle.sandboxLost === "", false);
+      strictEqual(
+        bundle.sandboxLost === bundle.engineRestart.sayContinue,
+        false,
+      );
+    }
+    strictEqual(/continue/i.test(en.sandboxLost), false);
+    strictEqual(es.sandboxLost === en.sandboxLost, false);
+    strictEqual(pt.sandboxLost === en.sandboxLost, false);
+  });
 });

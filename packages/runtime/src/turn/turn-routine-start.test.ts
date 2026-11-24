@@ -16,6 +16,7 @@ import { ROUTINE_HEAL_BUDGET_MS } from "./op-routine-heal";
 import { fakePoolStore, POOL_STORE_URL } from "./pool-store.test-support";
 import type { TurnServerDeps } from "./server-types";
 import type { TurnFilesystem } from "./turn-filesystem";
+import { createTurnLanded } from "./turn-landed";
 import { RoutineTurnError } from "./turn-routine";
 import {
   answerRoutineStartFailure,
@@ -47,6 +48,7 @@ beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "routine-start-"));
   objects = new Map();
   uploadError = undefined;
+  landedFrames = [];
 });
 afterEach(async () => rm(root, { recursive: true, force: true }));
 
@@ -157,15 +159,28 @@ const turn = {
   credential: null,
 } as unknown as TurnRequest;
 
-const start = (filesystem: TurnFilesystem, deps: TurnServerDeps) =>
-  startRoutineRun({
+let landedFrames: WireFrame[] = [];
+
+const start = (filesystem: TurnFilesystem, deps: TurnServerDeps) => {
+  const resolved = { store, prefix: "" };
+  const landed = createTurnLanded({
+    deps,
+    turn: { ...turn, turnId: "t1" },
+    filesystem,
+    source: resolved,
+    emit: (frame) => landedFrames.push(frame),
+  });
+  filesystem.landed = landed;
+  return startRoutineRun({
     deps,
     turn,
     turnId: "t1",
     filesystem,
-    resolved: { store, prefix: "" },
+    resolved,
     nowIso: NOW,
+    landed,
   });
+};
 
 const stored = () =>
   JSON.parse(objects.get(RUNS)?.body ?? "[]") as RoutineRun[];
@@ -179,6 +194,9 @@ test("a pooled run's running row reaches the store and its doc before the turn r
   expect(phase.run).toMatchObject({ id: "t1", status: "running" });
   expect(stored()).toEqual([phase.run]);
   expect(docs.puts).toEqual([[phase.run]]);
+  expect(landedFrames).toEqual([
+    { type: "landed", data: { changed: ["RoutineRunsChanged"] }, turnId: "t1" },
+  ]);
   // The final sync-back builds on the generation it uploaded.
   expect(filesystem.manifest.get(RUNS)?.generation).toBe("2");
 });
@@ -206,6 +224,7 @@ test("a store that cannot take the row fails the start instead of running from a
   );
   expect(stored()).toEqual([]);
   expect(docs.puts).toEqual([]);
+  expect(landedFrames).toEqual([]);
   const local = JSON.parse(
     await readFile(join(root, RUNS), "utf8"),
   ) as RoutineRun[];
