@@ -150,6 +150,10 @@
     "./notice-ends-turn": {
       "types": "./src/modules/turns/notice-ends-turn.ts",
       "import": "./src/modules/turns/notice-ends-turn.ts"
+    },
+    "./compute-quiet": {
+      "types": "./src/modules/compute-quiet.ts",
+      "import": "./src/modules/compute-quiet.ts"
     }
   },
   "files": [

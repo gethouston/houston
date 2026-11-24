@@ -77,7 +77,9 @@ export type QuietErrorClass =
   | "routine_gone"
   | "link_identity_taken"
   | "outside_workspace"
-  | "codex_port_taken";
+  | "codex_port_taken"
+  | "compute_busy"
+  | "conversation_edit_refused";
 
 /**
  * The burst-gate key a quiet-class report collapses on.

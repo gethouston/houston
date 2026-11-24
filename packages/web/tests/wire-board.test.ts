@@ -122,6 +122,23 @@ test("updateActivity delegates a byte-identical single PATCH of the WHOLE update
   expect(updated.status).toBe("done");
 });
 
+test("keeping a conversation's mode is one PATCH whose body is only the mode", async () => {
+  // The Mode pill's write (HOU-205): the card keeps the mode, so the next
+  // visit, every surface and a send that pins no mode all read it back.
+  stubFetch(json(200, { ...mission, mode: "auto" }));
+
+  const updated = await client().updateActivity("a1", "m1", { mode: "auto" });
+
+  expect(calls).toHaveLength(1);
+  const [patch] = calls;
+  expect(patch.method).toBe("PATCH");
+  expect(patch.url).toBe(`${BASE}/agents/a1/activities/m1`);
+  expect(patch.body).toBe('{"mode":"auto"}');
+  expect(patch.headers.get("Content-Type")).toBe("application/json");
+  expect(patch.headers.get("Authorization")).toBe("Bearer t");
+  expect(updated.mode).toBe("auto");
+});
+
 test("updateActivity carries the live x-houston-org", async () => {
   stubFetch(json(200, mission));
   const c = client();

@@ -1,12 +1,14 @@
+import { conversationTurnMode, loadActivities } from "@houston/domain";
 import {
   normalizeTurnMode,
   parseMentions,
+  parseTurnModePin,
   pushMissionTitle,
   type TurnMode,
 } from "@houston/protocol";
 import { assistantRuntimeRole } from "../launcher/assistant-role";
 import { stampTurnAttribution } from "./activity-attribution";
-import type { TurnSeam } from "./agents-turn-seams";
+import type { TurnSeam, TurnSeamCtx } from "./agents-turn-seams";
 import { liveTurns } from "./live-turn";
 import { turnLimitsOf, turnModeOf, turnPinOf } from "./turn-body";
 
@@ -48,8 +50,14 @@ export const recordLiveTurn: TurnSeam = async (ctx) => {
   if (ctx.turnConversationId === undefined || ctx.message.duplicate) return;
   const body = await ctx.body.read();
   let mode: TurnMode = "execute";
+  // A send that names no mode runs on its conversation's kept mode, exactly
+  // as the runtime resolves it (session/conversation-mode.ts), so this gate
+  // and the runtime never disagree on what the turn may do.
   if (assistantRuntimeRole({ agentId: ctx.agent.id }))
-    mode = normalizeTurnMode(turnModeOf(body));
+    mode =
+      parseTurnModePin(turnModeOf(body)) ??
+      (await keptConversationMode(ctx, ctx.turnConversationId)) ??
+      "execute";
   liveTurns.start(
     ctx.agent.id,
     ctx.turnConversationId,
@@ -61,6 +69,23 @@ export const recordLiveTurn: TurnSeam = async (ctx) => {
     turnPinOf(body),
   );
 };
+
+/** The mode the conversation's card keeps. An unreadable board is reported
+ *  and reads as none: the person's message still has to travel. */
+async function keptConversationMode(
+  ctx: TurnSeamCtx,
+  conversationId: string,
+): Promise<TurnMode | undefined> {
+  if (!ctx.vfs) return undefined;
+  try {
+    const root = ctx.paths.agentRoot(ctx.workspace, ctx.agent);
+    const { items } = await loadActivities(ctx.vfs, root);
+    return conversationTurnMode(items, conversationId);
+  } catch (error) {
+    console.error("[turn] conversation mode: board unreadable", error);
+    return undefined;
+  }
+}
 
 /**
  * The Mode pill moved WHILE the assistant works (`POST …/mode`, the route the

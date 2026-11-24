@@ -1,5 +1,9 @@
 import { ASSISTANT_UNAVAILABLE_HERE } from "@houston/domain/assistant-deployment";
 import type { AssistantError } from "./assistant-result";
+import {
+  COMPUTE_BUSY_TOOL_MESSAGE,
+  POD_WAKE_REFUSED_TOOL_MESSAGE,
+} from "./compute-busy-retry";
 
 /**
  * Reading the host's answer when it is not a success.
@@ -61,6 +65,20 @@ export async function errorFromResponse(
       code: ASSISTANT_UNAVAILABLE_HERE,
       status: res.status,
       message: detail,
+    };
+  }
+  if (code === "compute_busy") {
+    return {
+      code: "compute_busy",
+      status: res.status,
+      message: COMPUTE_BUSY_TOOL_MESSAGE,
+    };
+  }
+  if (code === "pod_wake_refused") {
+    return {
+      code: ASSISTANT_UNAVAILABLE_HERE,
+      status: res.status,
+      message: POD_WAKE_REFUSED_TOOL_MESSAGE,
     };
   }
   if (code === "operation_not_supported") {

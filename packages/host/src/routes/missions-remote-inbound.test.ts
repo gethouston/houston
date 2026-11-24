@@ -351,6 +351,8 @@ test("a start from another pod lands on this agent's board and fires its turn", 
   expect(created?.origin_depth).toBe(1);
   // Attribution comes from the gateway-verified acting identity, not the body.
   expect(created?.created_by).toBe("u-1");
+  // The mode it was started in is the one its chat keeps (HOU-205).
+  expect(created?.mode).toBe("auto");
   expect(fired).toEqual([
     {
       agentId: agent.id,

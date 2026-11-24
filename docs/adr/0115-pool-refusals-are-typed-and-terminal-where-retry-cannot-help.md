@@ -1,0 +1,23 @@
+# Pool refusals are typed, and terminal where a retry cannot help
+
+In managed cloud a request for an asleep agent runs in an E2B sandbox or the gateway answers it from the store (ADR 0005). When neither can serve it, the gateway answers a typed refusal. Each refusal says whether sending the same request again can succeed, and every client reads that the same way.
+
+## Codes
+
+| Code | Status | Meaning | Who sends it again |
+|---|---|---|---|
+| `compute_busy` | 503 | No sandbox room now, a worker blip, or a standing claim that is not stale yet. Nothing ran. | The SDK, within its budget. The AI Manager's tools send it once more after `retryAfterMs` (at most 15 s), then report `compute_busy` to the model. |
+| `pod_wake_refused` | 503 | Only the agent's pod could answer, and nothing named a reason to wake it. Nothing ran. | The SDK still re-sends it, because a store or pool path may answer the retry. The AI Manager does not: it reads it as `operation_unavailable_here`. |
+| `conversation_too_large_asleep` | 503 | The worker's lazy tree refused to read the conversation (over its byte cap). | Nobody. An owed import with this code is crossed off. |
+| `conversation_op_refused` | 503 | The worker declined a conversation edit (truncate, import, dismiss) for any other reason, or its lazy tree refused a private directory. | Nobody. An owed import with this code is crossed off. |
+
+Both compute codes keep the `engine unavailable` error string, and `isEngineWakingError` still matches them: retry and suppress paths (a board-status persist, a copy's chat import, Stop) keep treating them as a state that passes. Only the person-facing surface reads the code. `classifyQuietError` names `compute_busy` before it checks for waking, and the engine-call and unhandled-rejection layers take "waking" from that class, never from `isEngineWakingError`. The person sees `compute_busy` as a "busy, try again in a few minutes" notice. `pod_wake_refused` is reported to us as an error and shows the person nothing. The two conversation codes share one notice that says nothing changed.
+
+## Decisions
+
+- **A lazy-read refusal on a conversation op is the worker's own answer, not a decline.** A size refusal answers `conversation_too_large_asleep`, and a private-directory refusal answers `conversation_op_refused`. Before this, the worker marked it `decline`. The gateway read that as `op_declined`, and for a conversation edit it answered `compute_busy`, so the client re-sent an edit that could never land. The refusal comes before any write, so the result is marked `untouched` and the sync step relays it instead of declining. A gateway that still sees a declined conversation edit answers `conversation_op_refused`, never `compute_busy`.
+- **The AI Manager gets no unserved list from the gateway.** Whether the gateway refuses a request with `pod_wake_refused` depends on whether a store or pool path answered that request at that moment. The route alone does not decide it. A static list on the turn envelope would hide operations that usually work, or would list too few. Mapping the refusal to `operation_unavailable_here` at the moment it happens is exact. `HOUSTON_ASSISTANT_UNSERVED` stays the host's own list on desktop and self-host.
+- **The host relays a compute refusal unchanged** to the runtime's tools, in both the assistant forward and the mission forward. It does not wrap it as `gateway_error` or `agent_refused`, so the tools can read the code.
+- **A stale standing claim is reaped where the send meets it.** The dispatcher releases a conversation's standing claim when it is as stale as the reaper's rule says (no heartbeat for TTL plus grace), then attaches again. It does not wait for the reaper's next tick. A standing claim is never heartbeated, so a long turn on an awake pod would look stale. The inline reap therefore runs only while the registry wants the agent asleep. A claim that is not stale yet answers `compute_busy` for an asleep agent. An awake pod still answers "turn running".
+- **A turn's browser sign-ins are saved before the final sync.** Closing a browser after the sync saved into a root that was about to be deleted. The turn now saves every browser context under its root before `finishTurnDurability`. The cleanup close no longer saves.
+- **The browser hand-off budget follows the turn token's `exp`**, minus `TURN_END_RESERVE_MS`. The 30-minute cap applies only to a token with no readable `exp`. A turn may run up to 4 hours. The token's `exp` is the 4-hour ceiling plus a 2-minute settle allowance, and the gateway asks for wind-down 5 minutes before the ceiling. The reserve is 10 minutes: those 7 minutes, plus 3 for the model to read the page and for the final sync.

@@ -1,6 +1,7 @@
 // Explicit `.ts` extension: `node --test --experimental-strip-types` loads this
 // module directly (app/tests/mission-row.test.ts).
 import { activityRowPin } from "./agent-model-overrides.ts";
+import type { TurnMode } from "./turn-mode.ts";
 
 /** What a new mission is called, before anything hits the wire. */
 export interface MissionRowIdentity {
@@ -14,6 +15,7 @@ export interface MissionRowPins {
   agentMode?: string;
   providerOverride?: string;
   modelOverride?: string;
+  modeOverride?: TurnMode;
 }
 
 /** The create-route payload for one board row. */
@@ -24,6 +26,7 @@ export interface MissionRowInput {
   agent?: string;
   provider?: string;
   model?: string;
+  mode?: TurnMode;
 }
 
 /**
@@ -35,6 +38,9 @@ export interface MissionRowInput {
  * reads a row back in (`activityRowPin`, `preferRowPin`) — and a model the
  * catalog could not resolve is left OFF the row rather than written as an empty
  * string, which reads downstream as a mission pinned to no model at all.
+ *
+ * The composer's mode rides along, so the mission keeps the mode it was
+ * started in (HOU-205).
  */
 export function missionRowInput(
   mission: MissionRowIdentity,
@@ -46,5 +52,6 @@ export function missionRowInput(
     description: mission.description,
     agent: opts.agentMode,
     ...activityRowPin(opts),
+    ...(opts.modeOverride ? { mode: opts.modeOverride } : {}),
   };
 }

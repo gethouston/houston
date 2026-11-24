@@ -9,8 +9,10 @@ const BASE = {
   gcsPrefix: "ws/w1/a1",
 };
 
-test("parseTurnRequest defaults mode to execute when absent", () => {
-  expect(parseTurnRequest(BASE).mode).toBe("execute");
+test("parseTurnRequest leaves an absent mode absent, for the conversation's kept one", () => {
+  // The worker reads the kept mode off the hydrated board (HOU-205).
+  expect(parseTurnRequest(BASE).mode).toBeUndefined();
+  expect(parseTurnRequest({ ...BASE, mode: "" }).mode).toBeUndefined();
 });
 
 test("parseTurnRequest accepts an explicit plan mode", () => {
@@ -36,7 +38,6 @@ test("parseTurnRequest never trusts the wire — an unknown mode is execute", ()
   expect(parseTurnRequest({ ...BASE, mode: "execute" }).mode).toBe("execute");
   expect(parseTurnRequest({ ...BASE, mode: "PLAN" }).mode).toBe("execute");
   expect(parseTurnRequest({ ...BASE, mode: "AUTO" }).mode).toBe("execute");
-  expect(parseTurnRequest({ ...BASE, mode: "" }).mode).toBe("execute");
   expect(parseTurnRequest({ ...BASE, mode: 1 }).mode).toBe("execute");
 });
 

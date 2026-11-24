@@ -75,7 +75,6 @@ import {
   isLoopbackHostUrl,
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
-import { isEngineWakingError } from "./engine-waking-error";
 import { isNameTakenError } from "./file-conflicts";
 import { fileReadRefusal, surfaceFileReadRefusal } from "./file-gone";
 import { isUploadTooLargeError } from "./files-upload-limits";
@@ -95,6 +94,7 @@ import { isProviderLoginSessionLostError } from "./provider-login-session-lost";
 import { toDisplayProviderIdOrNull } from "./provider-overrides";
 import { normalizeLegacyModel } from "./providers";
 import { canPurchaseInApp } from "./purchase-policy";
+import { classifyQuietError } from "./quiet-error-class";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
 import { isStaleAttachmentError } from "./stale-attachment";
@@ -364,7 +364,7 @@ async function surfaceError(
   // `engine_waking` issue carrying the raw gateway body, and the answer feeds
   // the per-agent stuck-wake escalation (PRODUCT-1640) — `context` supplies
   // the agent for the `call()` sites that pass one.
-  if (isEngineWakingError(err)) {
+  if (classifyQuietError(err) === "engine_waking") {
     const { showEngineWakingToast } = await import("./error-toast");
     showEngineWakingToast(label, message, err, context);
     return true;
@@ -506,7 +506,8 @@ export const tauriChat = {
       /**
        * Per-turn mode pin (composer "Mode" selector). `"plan"` pins a read-only
        * planning turn; `"auto"` (Autopilot) drops the blocking tools so the turn
-       * runs fire-and-forget; `"execute"` (or omitted) is a normal turn.
+       * runs fire-and-forget; `"execute"` is a normal turn. Omitted, the turn
+       * runs on the mode its conversation keeps (HOU-205), else `"execute"`.
        */
       modeOverride?: "execute" | "plan" | "auto";
       /** Resend of a prompt whose bubble is already in the feed (see SessionStartRequest). */
@@ -1081,6 +1082,7 @@ import type {
 } from "@houston/engine-adapter";
 import * as activityData from "../data/activity";
 import * as configData from "../data/config";
+import type { TurnMode } from "./turn-mode";
 
 export const tauriRoutines = {
   list: (agentPath: string) =>
@@ -1154,6 +1156,7 @@ export const tauriActivity = {
     agent?: string,
     provider?: string,
     model?: string,
+    mode?: TurnMode,
   ) =>
     activityData.create(
       agentPath,
@@ -1162,6 +1165,7 @@ export const tauriActivity = {
       agent,
       provider,
       model,
+      mode,
     ),
   /**
    * Create the row through the host's single POST (which honors a
@@ -1205,6 +1209,15 @@ export const tauriActivity = {
     activityId: string,
     update: activityData.ActivityUpdate,
   ) => activityData.update(agentPath, activityId, update).then(() => undefined),
+  /**
+   * Keep a mission's turn mode (the Mode pill) on its card, through the SDK's
+   * board PATCH, so it survives leaving the chat and reaches every surface
+   * and every send that pins no mode (HOU-205).
+   */
+  setMode: (agentPath: string, activityId: string, mode: TurnMode) =>
+    getEngine()
+      .updateActivity(agentPath, activityId, { mode })
+      .then(() => undefined),
   /** The SDK's client mission-title pass (`mission-title.ts`); never rejects. */
   titleFromClient: (
     agentPath: string,
