@@ -15,6 +15,7 @@ import {
   assistantErrorResult,
   assistantOkResult,
 } from "./assistant-result";
+import { retryComputeBusyOnce } from "./compute-busy-retry";
 import type { SandboxFetch } from "./sandbox-fetch";
 import { CONVERSATION_ID_HEADER } from "./save-learning";
 
@@ -118,27 +119,31 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
       ): Promise<AssistantOperationResult> {
         let res: Response;
         try {
-          res = await opts.call(CALL_PATH, {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              ...(conversationId
-                ? { [CONVERSATION_ID_HEADER]: conversationId }
-                : {}),
-              ...(acting?.actingAs
-                ? { "x-houston-acting-as": acting.actingAs }
-                : {}),
-              ...(acting?.actingUser
-                ? { "x-houston-acting-user": acting.actingUser }
-                : {}),
-            },
-            body: JSON.stringify({
-              operation: name,
-              params: callParams,
-              ...(requestId ? { requestId } : {}),
-            }),
+          res = await retryComputeBusyOnce(
+            () =>
+              opts.call(CALL_PATH, {
+                method: "POST",
+                headers: {
+                  "content-type": "application/json",
+                  ...(conversationId
+                    ? { [CONVERSATION_ID_HEADER]: conversationId }
+                    : {}),
+                  ...(acting?.actingAs
+                    ? { "x-houston-acting-as": acting.actingAs }
+                    : {}),
+                  ...(acting?.actingUser
+                    ? { "x-houston-acting-user": acting.actingUser }
+                    : {}),
+                },
+                body: JSON.stringify({
+                  operation: name,
+                  params: callParams,
+                  ...(requestId ? { requestId } : {}),
+                }),
+                signal,
+              }),
             signal,
-          });
+          );
         } catch (err) {
           return assistantErrorResult(name, {
             code: "transport_error",

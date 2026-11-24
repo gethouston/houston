@@ -50,6 +50,7 @@
  */
 
 export {
+  reconnectQueued,
   recordConnection,
   recordCredentialRequest,
   recordHandsOn,

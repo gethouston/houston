@@ -17,16 +17,19 @@ import { ApiKeyVerifyError } from "./verify-errors";
 type Probe = (model: ReturnType<typeof safeGetModel>) => Promise<string | null>;
 
 /**
- * Models served to every NVIDIA account we have evidence from. The retired
- * llama-3.x rows (the old small non-reasoning probes) left pi's catalog in
- * 0.84.4 and gpt-oss-120b in 0.85.0; of the families our partially-gated live
- * key was served (llama / gpt-oss / minimax), gpt-oss-20b survives (MoE-fast)
- * with minimax-m3 as a second family so a gpt-oss-wide gate still can't
- * produce a false `key_restricted`. The first is also NVIDIA's entry in the
- * domain default-model table (`@houston/domain/provider-default-models`, what
- * a first chat runs on) and the classifier's suggested fallback.
+ * Models served to every NVIDIA account we have evidence from. Of the families
+ * our partially-gated live key was served (llama / gpt-oss / minimax), pi
+ * retired the llama-3.x rows in 0.84.4, gpt-oss-120b in 0.85.0 and gpt-oss-20b
+ * in 1.6.0, so MiniMax M3.1 Flash leads. NVIDIA's own Nemotron 3.5 Super VL is
+ * a second family, so a MiniMax-wide gate still can't produce a false
+ * `key_restricted`. The first is also NVIDIA's entry in the domain
+ * default-model table (`@houston/domain/provider-default-models`, what a first
+ * chat runs on) and the classifier's suggested fallback.
  */
-const NVIDIA_VERIFY_FALLBACKS = ["openai/gpt-oss-20b", "minimaxai/minimax-m3"];
+const NVIDIA_VERIFY_FALLBACKS = [
+  "minimaxai/minimax-m3.1-flash",
+  "nvidia/nemotron-3.5-super-vl-120b-a12b",
+];
 
 export function nvidiaGated(providerId: string, message: string): boolean {
   return isNvidiaFunctionGated(

@@ -85,7 +85,7 @@ export function effectiveContextWindow(
 ): number | null {
   if (!cfg) return null;
   const estimate = peakContextTokens > cfg.default ? cfg.max : cfg.default;
-  return compactionWindow(estimate);
+  return compactionWindow(estimate, cfg.inputLimit);
 }
 
 /**

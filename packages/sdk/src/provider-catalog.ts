@@ -35,6 +35,7 @@ export {
   toDisplayProviderId,
   toDisplayProviderIdOrNull,
 } from "@houston/domain/provider-dialect";
+export { VALID_MODELS } from "@houston/domain/provider-valid-models";
 export {
   DROP_PI_PROVIDERS,
   isHiddenProviderId,

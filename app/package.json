@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "typecheck": "tsgo --noEmit",
-    "test": "node --import tsx --experimental-test-module-mocks --test tests/*.test.ts",
+    "test": "node scripts/run-tests.mjs",
     "check-locales": "node scripts/check-locales.mjs"
   },
   "dependencies": {

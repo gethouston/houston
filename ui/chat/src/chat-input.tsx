@@ -8,6 +8,7 @@ import type { ChatInputProps } from "./chat-input-types";
 import { isDictationActive, isDictationCapturing } from "./dictation-types";
 import { QueuedMessageList } from "./queued-message-list";
 import { useComposerAttachments } from "./use-composer-attachments";
+import { useComposerDraft } from "./use-composer-draft";
 import { useComposerKeyDown } from "./use-composer-key-down";
 import { useDictationHotkeys } from "./use-dictation-hotkeys.ts";
 import { useControllable } from "./use-file-drop-zone";
@@ -44,9 +45,16 @@ export function ChatInput({
   renderMentionAvatar,
   mentionLabels,
   draftKey,
+  draftStore,
 }: ChatInputProps) {
-  const [text, setText] = useControllable(value, onValueChange, "");
-  const isTextControlled = value !== undefined;
+  const draft = useComposerDraft(draftStore, draftKey);
+  const controlledText = draft ? draft.text : value;
+  const [text, setText] = useControllable(
+    controlledText,
+    draft ? draft.set : onValueChange,
+    "",
+  );
+  const isTextControlled = controlledText !== undefined;
   const {
     files,
     setFiles,

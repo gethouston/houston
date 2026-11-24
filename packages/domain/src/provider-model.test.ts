@@ -46,6 +46,8 @@ const PI_MODELS: Record<string, Set<string>> = {
     "gpt-6.1-terra",
     "gpt-6-sol",
     "gpt-6.1-sol",
+    "gpt-6.2-sol",
+    "gpt-6.2-astra",
   ]),
   minimax: new Set([
     "MiniMax-M3.1-Flash",
@@ -275,7 +277,7 @@ test("an open-catalog gateway's curated rename is applied, with no diagnostic", 
 
 test("an OpenCode Go row pi 0.99.1 dropped maps to its same-tier successor", () => {
   for (const [stale, successor] of [
-    ["glm-5.1", "glm-5.2"],
+    ["glm-5.1", "glm-5.3"],
     ["kimi-k2.6", "kimi-k2.7-code"],
     ["qwen3.7-max", "qwen3.8-max"],
   ] as const) {

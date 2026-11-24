@@ -428,3 +428,24 @@ test("a later send the gateway did not stamp clears the earlier limits", async (
     fx.close();
   }
 });
+
+test("a coordinator send that names no mode is gated by its chat's kept mode", async () => {
+  // The runtime runs a pin-less send on the mode the card keeps (HOU-205); the
+  // host's plan gate must read the same answer, or the two disagree on what
+  // the turn may do.
+  const fx = await boot(true);
+  try {
+    liveTurns.forget(fx.agent.id);
+    const [card] = (await loadActivities(fx.vfs, fx.root)).items;
+    if (!card) throw new Error("the fixture board has a card");
+    await saveActivities(fx.vfs, fx.root, [{ ...card, mode: "plan" }]);
+    await send(fx, { text: "what would you do?" });
+    expect(liveTurns.get(fx.agent.id, "conv-1")?.mode).toBe("plan");
+    // The send's own pin still wins.
+    await send(fx, { text: "go", nonce: "n2", mode: "execute" });
+    expect(liveTurns.get(fx.agent.id, "conv-1")?.mode).toBe("execute");
+  } finally {
+    liveTurns.forget(fx.agent.id);
+    fx.close();
+  }
+});

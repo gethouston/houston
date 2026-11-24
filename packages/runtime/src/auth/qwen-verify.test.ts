@@ -126,3 +126,15 @@ test("an injected persist (the pool-worker seam) lands the region in the AGENT's
     ).region,
   ).toBe("us");
 });
+
+test("US answers the model is not activated → verified, region persisted", async () => {
+  // AccessDenied.Unpurchased comes after authentication: the key is good and
+  // the account must activate the model, which re-pasting the key never fixes.
+  const { verifyQwenRegions, persistedRegion } = await load();
+  await verifyQwenRegions("qwen", async (m) =>
+    m.baseUrl.includes("dashscope-us")
+      ? '403: {"message":"Access to model denied. Please make sure you are eligible for using the model.","type":"AccessDenied.Unpurchased","param":null,"code":"AccessDenied.Unpurchased"}'
+      : SG_REJECTED,
+  );
+  expect(persistedRegion()).toBe("us");
+});

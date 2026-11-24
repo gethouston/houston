@@ -1,5 +1,6 @@
 import type {
   ChatPanelProps,
+  ComposerDraftStore,
   ConversationMapActions,
   FeedItem,
   MessageMention,
@@ -254,13 +255,12 @@ export interface AIBoardProps {
   /** Drop the detail panel's header row (see KanbanDetailPanel.hideHeader). */
   hidePanelHeader?: boolean;
   /**
-   * Draft text keyed by session key. Used to persist composer text across
-   * navigation so users don't lose what they've typed. The key
-   * "new-conversation" is used for the new-mission panel.
+   * Composer text keyed by session key, so what the user typed survives
+   * navigation. The key "new-conversation" is the new-mission panel's. A
+   * store, not a map: only the composer subscribes, so a keystroke never
+   * re-renders the board or the message list.
    */
-  drafts?: Record<string, string>;
-  /** Called when the user types in the panel's chat input. */
-  onDraftChange?: (sessionKey: string, text: string) => void;
+  draftStore?: ComposerDraftStore;
   /** Translated label overrides for per-card copy (the card's action tooltips + delete confirm). */
   cardLabels?: KanbanCardLabels;
   formatTime?: MessageTimeFormatter;
@@ -406,8 +406,7 @@ export function AIBoard({
   disableComposerAutoFocus,
   hidePanelClose,
   hidePanelHeader,
-  drafts,
-  onDraftChange,
+  draftStore,
   isSpecialTool,
   renderToolResult,
   processLabels,
@@ -645,7 +644,7 @@ export function AIBoard({
           },
         );
         if (result.kind === "dropped") return;
-        onDraftChange?.(activeDraftKey, "");
+        draftStore?.set(activeDraftKey, "");
         // Select the new activity so the feed renders. The freshly-created
         // activity may take a while to appear in `items` (the parent
         // invalidates the activity query asynchronously; against a warming
@@ -661,7 +660,7 @@ export function AIBoard({
       activeSessionKey,
       activeFeed.length,
       activeDraftKey,
-      onDraftChange,
+      draftStore,
       onSendMessage,
       effectiveNewPanelOpen,
       onCreateConversation,
@@ -896,12 +895,7 @@ export function AIBoard({
           onLoadOlder={activeSessionKey ? onLoadOlderMessages : undefined}
           hasOlderMessages={hasOlderMessages}
           thinkingIndicator={thinkingIndicator}
-          value={drafts ? (drafts[activeDraftKey] ?? "") : undefined}
-          onValueChange={
-            onDraftChange
-              ? (text: string) => onDraftChange(activeDraftKey, text)
-              : undefined
-          }
+          draftStore={draftStore}
           composerFocusToken={
             composerFocusToken !== null ? composerFocusToken : undefined
           }

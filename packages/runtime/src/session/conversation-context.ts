@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { join } from "node:path";
 
 /**
  * WHICH conversation the current turn belongs to, made available to the tools
@@ -19,19 +20,27 @@ import { AsyncLocalStorage } from "node:async_hooks";
  * attach nothing and behavior is unchanged.
  */
 
-const store = new AsyncLocalStorage<string>();
+const store = new AsyncLocalStorage<{ id: string; dataDir?: string }>();
 
 /** Run `fn` with `id` as the ambient conversation id for its whole async subtree. */
 export function runWithConversationId<T>(
   id: string | undefined,
   fn: () => T,
+  dataDir?: string,
 ): T {
   // No id to carry: run plainly so tools see `undefined` and attach nothing.
   if (!id) return fn();
-  return store.run(id, fn);
+  return store.run(dataDir ? { id, dataDir } : { id }, fn);
 }
 
 /** The current turn's conversation id, or undefined outside a turn. */
 export function currentConversationId(): string | undefined {
-  return store.getStore();
+  return store.getStore()?.id;
+}
+
+export function currentConversationSessionDir(): string | undefined {
+  const current = store.getStore();
+  return current?.dataDir
+    ? join(current.dataDir, "sessions", current.id)
+    : undefined;
 }

@@ -166,9 +166,9 @@ describe("capabilities map through the pi → hub pipeline", () => {
   });
 
   it("leaves a non-vision model without the image modality", () => {
-    const spark = all.byKey.get("gpt 5.6 luna");
-    ok(spark, "expected 'gpt 5.6 luna'");
-    ok(!spark?.inputModalities.includes("image"));
+    const terra = all.byKey.get("gpt 6.1 terra");
+    ok(terra, "expected 'gpt 6.1 terra'");
+    ok(!terra?.inputModalities.includes("image"));
   });
 });
 

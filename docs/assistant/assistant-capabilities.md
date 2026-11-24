@@ -85,6 +85,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `listActivities`: Lists the missions on an agent's board, including last_message_at when the last user or agent message time is recorded.
 - `missions.search`: Finds missions whose title, description or chat mentions a phrase. (not callable yet)
 - `renameMission`: Renames a mission on an agent's board.
+- `setMissionMode`: Sets how an agent works in one mission's chat. Every later message in that mission runs in this mode unless the message names its own.
 
 ## org
 

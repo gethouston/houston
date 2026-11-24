@@ -30,8 +30,9 @@ test("a spoken name only ever resolves to a model the provider runs", () => {
 
 test("the codex codenames a user speaks resolve to their ids", () => {
   const cases: Record<string, string> = {
-    Astra: "gpt-6-astra",
-    astra: "gpt-6-astra",
+    "GPT-6 Astra": "gpt-6-astra",
+    "GPT-6.2 Astra": "gpt-6.2-astra",
+    "GPT-6.2 Sol": "gpt-6.2-sol",
     "GPT-5.6 Terra": "gpt-5.6-terra",
     "GPT-5.6 Luna": "gpt-5.6-luna",
     "GPT-5.6 Sol": "gpt-5.6-sol",
@@ -77,11 +78,16 @@ test("a bare family name lands on that family's one lineup model", () => {
     name: "Opus 5.5",
     ambiguous: false,
   });
-  // Codex codenames repeat across generations: a bare "Sol" or "Luna" lands on
-  // the newest row and says so, while "Astra" names one row.
+  // Codex codenames repeat across generations: a bare "Sol", "Astra" or "Luna"
+  // lands on the newest row and says so.
   expect(resolveSpokenModel("openai-codex", "Sol")).toEqual({
-    id: "gpt-6.1-sol",
-    name: "GPT-6.1 Sol",
+    id: "gpt-6.2-sol",
+    name: "GPT-6.2 Sol",
+    ambiguous: true,
+  });
+  expect(resolveSpokenModel("openai-codex", "astra")).toEqual({
+    id: "gpt-6.2-astra",
+    name: "GPT-6.2 Astra",
     ambiguous: true,
   });
   expect(resolveSpokenModel("openai-codex", "luna")).toEqual({
@@ -94,7 +100,22 @@ test("a bare family name lands on that family's one lineup model", () => {
     name: "GPT-6.1 Terra",
     ambiguous: true,
   });
-  expect(resolveSpokenModel("openai-codex", "Astra")?.ambiguous).toBe(false);
+});
+
+test("a bare Gemini stays on the free-key Flash; Neon answers to its own name", () => {
+  for (const provider of ["google", "github-copilot"] as const) {
+    expect(resolveSpokenModel(provider, "gemini")).toEqual({
+      id: "gemini-3.8-flash",
+      name: "Gemini 3.8 Flash",
+      ambiguous: true,
+    });
+    expect(resolveSpokenModel(provider, "Neon")).toEqual({
+      id: "gemini-4-neon",
+      name: "Gemini 4 Neon",
+      ambiguous: false,
+    });
+    expect(resolveSpokenModel(provider, "Gemini 4")?.id).toBe("gemini-4-neon");
+  }
 });
 
 test("a name no row carries resolves to nothing at all", () => {

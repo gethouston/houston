@@ -1,0 +1,83 @@
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { currentConversationId } from "../conversation-context";
+import {
+  RECONNECT_OFFERED_FILE,
+  readConversationMark,
+  writeConversationMark,
+} from "../conversation-marks";
+
+/**
+ * At most ONE reconnect card per app per conversation. A client that predates
+ * the step's `reconnect` flag shows a plain connect card, and Composio still
+ * reports the dead connection as active, so that card answers "connected" at
+ * once, the agent retries, the app refuses again, and a new card follows,
+ * forever. After the first card the agent sends the user to the Integrations
+ * page instead.
+ */
+
+/** Stable phrase in the card guidance; the transcript scan looks for it. */
+export function reconnectCardMarker(toolkit: string): string {
+  return `A reconnect step for ${toolkit} was added`;
+}
+
+const MAX_REMEMBERED = 500;
+const offered = new Set<string>();
+
+function memoryKey(toolkit: string): string | undefined {
+  const conversation = currentConversationId();
+  return conversation ? `${conversation}\u0000${toolkit}` : undefined;
+}
+
+/** Remember that this conversation got a reconnect card for `toolkit`. */
+export function rememberReconnectOffered(toolkit: string): void {
+  const key = memoryKey(toolkit);
+  if (!key) return;
+  if (offered.size >= MAX_REMEMBERED) {
+    const oldest = offered.values().next().value;
+    if (oldest !== undefined) offered.delete(oldest);
+  }
+  offered.add(key);
+  const persisted = persistedToolkits();
+  if (!persisted.includes(toolkit))
+    writeConversationMark(RECONNECT_OFFERED_FILE, {
+      toolkits: [...persisted, toolkit],
+    });
+}
+
+function persistedToolkits(): string[] {
+  const raw = readConversationMark(RECONNECT_OFFERED_FILE);
+  if (typeof raw !== "object" || raw === null || !("toolkits" in raw))
+    return [];
+  const { toolkits } = raw;
+  return Array.isArray(toolkits)
+    ? toolkits.filter(
+        (toolkit): toolkit is string => typeof toolkit === "string",
+      )
+    : [];
+}
+
+/** Did an earlier turn of this conversation already offer the card? */
+export function reconnectOfferedBefore(
+  toolkit: string,
+  ctx: ExtensionContext | undefined,
+): boolean {
+  const key = memoryKey(toolkit);
+  if (key && offered.has(key)) return true;
+  if (persistedToolkits().includes(toolkit)) return true;
+  // The bridge's no-op context has no session manager.
+  const entries = ctx?.sessionManager?.getBranch?.() ?? [];
+  const marker = reconnectCardMarker(toolkit);
+  return entries.some(
+    (entry) =>
+      entry.type === "message" &&
+      entry.message.role === "toolResult" &&
+      entry.message.toolName === "integration_execute" &&
+      entry.message.content.some(
+        (part) => part.type === "text" && part.text.includes(marker),
+      ),
+  );
+}
+
+export function resetReconnectOfferedMemory(): void {
+  offered.clear();
+}

@@ -199,9 +199,10 @@ test("an open-catalog provider still resolves a name it has a table for", () => 
     name: "ChatGPT / Codex (Plus / Pro)",
     connected: true,
   };
+  // A bare codename lands on the newest row of that name.
   expect(resolveModelChoice("Astra", codex, OP)).toEqual({
     ok: true,
-    id: "gpt-6-astra",
+    id: "gpt-6.2-astra",
   });
   // Anything the table does not know still rides through untouched.
   expect(resolveModelChoice("some-new-id", codex, OP)).toEqual({

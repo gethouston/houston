@@ -412,6 +412,9 @@ test.each(["manifest", "upload"])(
     let syncFailed = false;
     let aborted = false;
     const { frames, pool } = await realCeiling({
+      // The product budget (5 s) equals vitest's default test timeout. Any
+      // budget proves the stalled request is aborted.
+      stopMarkerTimeoutMs: 500,
       intercept: async (url, init) => {
         if (init?.method === "PUT" && url.endsWith("/result.txt")) {
           syncFailed = true;

@@ -20,11 +20,17 @@ vi.mock("./transport-settings", () => ({ piTransportSettings: () => ({}) }));
 
 const terra = getModel("openai-codex", "gpt-6.1-terra");
 const astra = getModel("openai-codex", "gpt-6-astra");
+const sol62 = getModel("openai-codex", "gpt-6.2-sol");
+const astra62 = getModel("openai-codex", "gpt-6.2-astra");
 
 test.each([
   ["Terra max", terra, "max", "max"],
   ["Terra low", terra, "low", "low"],
   ["Astra max", astra, "max", "xhigh"],
+  // The 2026-11-17 Codex probe served xhigh and max for both GPT-6.2 rows.
+  ["GPT-6.2 Sol max", sol62, "max", "xhigh"],
+  ["GPT-6.2 Sol low", sol62, "low", "low"],
+  ["GPT-6.2 Astra max", astra62, "max", "xhigh"],
   [
     "max-only catalog model",
     { ...astra, thinkingLevelMap: { xhigh: null, max: "max" } },

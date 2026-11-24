@@ -82,6 +82,7 @@ A packaged build, or `pnpm tauri dev` with no host URL, spawns the staged sideca
 - Tests are mandatory for every feature, and they don't count toward the line limit. Test observable behavior. Don't write tests that mirror the implementation or only assert that a callback was wired.
 - Proof for a bug fix depends on the bug. A logic, state or protocol bug gets a test that fails on `main` first, then the fix. A purely visual bug gets before/after screenshots instead of a test.
 - A test that needs a sleep or a longer timeout to pass is wrong. Await the event or promise that marks the milestone.
+- Test isolation. `app` runs its test files in one shared process, in random order (`app/scripts/run-tests.mjs`), so a file leaves the process as it found it. Put back every global you set (`window`, `document`, `navigator`, `localStorage`, `process.env.*`, `console.*`) in an `after` hook inside the file's `describe`, never at the top level. Keep `before`/`after` hooks inside a `describe`: a top-level hook attaches to every file in the process. Don't stub imports with `registerHooks` or `mock.module`, and don't leave a module-level catalog hydrated; pass the dependency in instead. A file that cannot follow these yet is listed in `app/tests/own-process.txt`, which only shrinks.
 - Debugging: never guess. Read the logs first (`/debug`).
 
 ## Hit every surface
