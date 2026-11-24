@@ -41,6 +41,7 @@ export interface TurnSandboxDeps {
   authoringPin?: LiveTurnPin;
   orgSlug: string;
   agentSlug: string;
+  customOAuthCallbackUrl?: string;
   fetchImpl?: typeof fetch;
   /** Present on Houston's own turn: its operation and mission routes. */
   coordinator?: TurnCoordinatorSession;

@@ -25,7 +25,7 @@ const msg = (n: number): ChatMessage => ({
 });
 
 /** The store holds 4 segments of 3 messages and a 2-message tail; the turn's
- *  tree hydrated the tail and the two newest segments only. */
+ *  tree holds the tail and segments 3 and 4 only. */
 function fixture() {
   const storeRoot = mkdtempSync(join(tmpdir(), "archive-store-"));
   const agent = join(storeRoot, ...PREFIX.split("/"));
@@ -85,7 +85,7 @@ function fixture() {
   return { storeRoot, agent, tree, reads, manifest, load, conversations };
 }
 
-test("a window inside the hydrated segments touches the store not at all", async () => {
+test("a window inside the segments on disk touches the store not at all", async () => {
   const { load, reads, conversations } = fixture();
   await load("routine-r1", { limit: 8 });
   expect(reads).toEqual([]);

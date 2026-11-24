@@ -14,14 +14,14 @@ A pod that woke for an allowed reason should sleep as soon as its busy probe is 
 
 ## Allowed reasons
 
-This list is the state on 2026-10-02. An org outside the serve scope, `GW_POOL_SERVE_ORGS`, has no pool path yet, so any reason may wake its pods until it joins. That is all of production today. In a served org only these reasons may wake a pod:
+This list is the state on 2026-10-02, amended on 2026-11-22 for the AI Manager (HOU-233). An org outside the serve scope, `GW_POOL_SERVE_ORGS`, has no pool path yet, so any reason may wake its pods until it joins. That is all of production today. In a served org only these reasons may wake a pod:
 
 | Reason | Why it still needs a pod | Leaves the list when |
 |---|---|---|
-| `assistant` | Houston's own agent. Its chat turns move to E2B with cloud #459, on top of houston #1670 and #1674, which are merged. Its routine and trigger fires, its channel messages, the ops on its own agent, and its first provision and seed still run on its pod. | All of those run in E2B or against the store. |
+| `assistant` | Houston's own agent, only for its discovery where the pool does not serve it: a channel link with no object store for its history, and the repair of a pod whose objects vanished under a wake some other reason already allowed. Every turn on it runs in E2B as its coordinator (see "The AI Manager on the pool" below), and so do its first provision and seed. | A channel link reads the history of an asleep manager without the object store, and a repair seeds it on the pool. |
 | `provider_login` | A sign-in in progress keeps its state in runtime memory: the CLI child process, the paste resolver, the timers. | A login sandbox or the store holds that state. |
 | `setup_runtime` | The hidden setup pod connects a provider before the org's first agent exists. It holds the same login state. | The login state moves as for `provider_login`, and the gateway answers the setup reads and credential routes. |
-| `custom_oauth` | The PKCE verifier and the pending attempt live in host memory for 10 minutes, and the browser callback has to reach that process. | The store holds the sealed attempt, and start and callback run as ops. |
+| `custom_oauth` | Sign-in legs the pool cannot take. A start falls back to the pod for a worker template older than the `custom-oauth` op, or for an agent mid-move. A gateway with no attempt store sends no `customOAuthCallbackUrl` on ops either, so the worker declines the add and the request goes to the pod. The browser callback for an attempt the gateway does not hold still wakes the pod (`oauthcb` `awaitReady`). Where the gateway seals attempts in Postgres, start and callback run as ops. A chat turn adds a sign-in MCP server itself when its envelope carries `customOAuthCallbackUrl`, and the person signs in from the chat's sign-in card. Without that field the turn tells the person to add the server manually from Integrations. | No worker in service predates the `custom-oauth` op, every gateway has the attempt store, and the callback for an unheld attempt answers without a pod. |
 | `sleep_undo` | Fresh activity raced our own sleep, so the pod comes back for work already sent to it. | Stays. |
 | `operator` | A person calling the control API by hand. | Stays. |
 
@@ -44,8 +44,14 @@ The rows below shrink as their routes leave `podrequired.go`.
 | `pod_route` | Any other route only the pod serves. | An op, or a 404 before any wake for a route the pod does not serve. |
 | `agent_unseeded` | The worker could not seed a new agent, so the gateway seeds it through its pod. | The seed op retries in the background. |
 | `agent_create`, `agent_rename` | An org outside the serve scope. Agents in a served org are born asleep since cloud #460 and rename without a pod since cloud #458. A create there names `agent_create` only when something already woke the new agent's pod, so its seed scales nothing. | The org joins the serve scope. |
-| `routine_fire`, `trigger_fire` | A fire the pool stood down. Houston's own fires count here too. | Pool fires that retry or fail with a typed reason. |
+| `routine_fire`, `trigger_fire` | A fire the pool stood down. For Houston's own agent that is only a fire on a store no worker hydrates: no readable routine, or a store its migrations have not run on. | Pool fires that retry or fail with a typed reason. |
 | `routine_alarm` | The waker's pre-wake for an org whose fires do not run on the pool. | Putting the org in the routine serve scope. |
+
+## The AI Manager on the pool
+
+Every turn on Houston's own agent runs in E2B with its owner's coordinator authority, never another person's. A turn has no person typing when a channel message, a routine, the daily briefing or the manager itself drives it, so the gateway names the authority the same way for all of them: the owner whose manager it is. A channel message acts as the person its verified binding names, and the gateway serves it only when that person owns the manager. A routine acts as the owner whatever its file's `created_by` says, and a fire acting as anyone else is refused. The manager driving itself, with its own key or one of its coordinator turns, acts as the owner with `via: assistant`, so the work it starts reads as Houston's. Its Run now and run Stop follow the same rule. Agent callers never reach the manager.
+
+A coordinator turn's grant carries only `agent-writes`. The coordinator never runs an integration or code, on its pod or on E2B (`COORDINATOR_TOOL_NAMES` in `packages/runtime`), so the other scopes would admit no tool its turn has. Where it acts for the owner, its per-turn bearer resolves as the owner.
 
 ## Considered Options
 

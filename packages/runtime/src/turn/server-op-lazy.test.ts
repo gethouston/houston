@@ -338,7 +338,7 @@ test("a conversation delete removes its file and unread session files, nothing e
   expect(keys).toHaveLength(43);
 });
 
-test("renaming a conversation over the read cap declines to the pod instead of failing", async () => {
+test("renaming a conversation over the read cap answers a terminal refusal, never a decline", async () => {
   const { storeRoot, agentRel } = await seedBusyAgent();
   writeFileSync(
     join(storeRoot, PREFIX, agentRel, ".houston/runtime/conversations/c1.json"),
@@ -354,7 +354,12 @@ test("renaming a conversation over the read cap declines to the pod instead of f
     conversationId: "c1",
     title: "x",
   });
-  expect(json.decline, JSON.stringify(json)).toBe(true);
+  expect(json.decline, JSON.stringify(json)).toBeUndefined();
+  expect(json.status, JSON.stringify(json)).toBe(503);
+  expect(JSON.parse(json.body as string)).toEqual({
+    error: "conversation too large to edit asleep",
+    code: "conversation_too_large_asleep",
+  });
   expect(store.downloads).toEqual([]);
 });
 
