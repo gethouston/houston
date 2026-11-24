@@ -50,6 +50,7 @@ export interface TurnSessionRequest {
   mentions?: ChatMessage["mentions"];
   missionTitle?: MissionTitleRequest;
   routineFire?: boolean;
+  claimed?: boolean;
   readRemoteActivity?: RemoteActivityReader;
   author?: MessageAuthor;
   claudePlan?: ClaudePlanBinding;
@@ -66,6 +67,8 @@ export interface TurnDirectories {
   workspaceDir: string;
   dataDir: string;
   turnRoot: string;
+  workspaceRel?: string;
+  dataRel?: string;
   workspaceReady?: Promise<void>;
   abandonDeferred?: () => void;
   deferredGate?: DeferredGate;

@@ -3,6 +3,7 @@ import {
   type SyncResult,
   syncBack,
 } from "@houston/runtime-client/object-sync";
+import { agentScopeIncludes } from "./turn-agent-scope";
 import { deferredWorkspaceFile } from "./turn-deferred-files";
 import { DeferredFilesAbandonedError } from "./turn-deferred-watch";
 import type { TurnFilesystem } from "./turn-filesystem";
@@ -38,6 +39,9 @@ export async function syncTurnFilesystem(opts: {
   uploaded: string[];
   deleted: string[];
   outOfScope: number;
+  outOfScopeKeys: string[];
+  conflictCopies: SyncResult["conflictCopies"];
+  deletesKept: SyncResult["deletesKept"];
   skipped: { key: string; reason: string }[];
   conflicts: { key: string; reason: string }[];
   merges: SyncResult["merges"];
@@ -55,6 +59,10 @@ export async function syncTurnFilesystem(opts: {
         );
     }
   }
+  const { workspaceRel, dataRel } = opts.filesystem;
+  const scope = opts.claimed
+    ? claimedTurnIncludes(dataRel, workspaceRel, opts.conversationId)
+    : undefined;
   const result = await syncBack(
     opts.store,
     opts.prefix,
@@ -64,18 +72,16 @@ export async function syncTurnFilesystem(opts: {
       generations: opts.filesystem.generationAware,
       holdDeletesOnFailure: opts.claimed,
       workerMerge: true,
-      ...(opts.claimed
+      conflictCopies: (rel) =>
+        agentScopeIncludes(rel, workspaceRel) &&
+        !rel.startsWith(`${workspaceRel}/.houston/`),
+      ...(opts.filesystem.conflictCopies
+        ? { keptCopies: opts.filesystem.conflictCopies }
+        : {}),
+      ...(scope
         ? {
             include: narrowed(
-              withoutDeferred(
-                claimedTurnIncludes(
-                  opts.filesystem.dataRel,
-                  opts.filesystem.workspaceRel,
-                  opts.conversationId,
-                ),
-                deferredFailed,
-                opts.filesystem,
-              ),
+              withoutDeferred(scope, deferredFailed, opts.filesystem),
               opts.narrow,
             ),
           }
@@ -96,6 +102,15 @@ export async function syncTurnFilesystem(opts: {
     uploaded: result.uploaded,
     deleted: result.deleted,
     outOfScope: result.outOfScope,
+    outOfScopeKeys: result.outOfScopeKeys.filter(
+      (rel) =>
+        scope !== undefined &&
+        !scope(rel) &&
+        rel.startsWith(`${workspaceRel}/`) &&
+        !rel.startsWith(`${dataRel}/`),
+    ),
+    conflictCopies: result.conflictCopies,
+    deletesKept: result.deletesKept,
     skipped: result.skipped,
     conflicts: result.conflicts,
     merges: result.merges,

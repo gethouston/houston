@@ -1,15 +1,18 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { fileSha256 } from "./file-hash";
+import { contentHash, isExecutable } from "./object-attrs";
 import { readPrivateFile } from "./private-file";
 import { PRIVATE_FILE_MODE, privateDirOf } from "./private-paths";
+import { linkSource, type RefusedLink } from "./sync-back-link-source";
 
 export interface SyncSource {
   hash: string;
   size: number;
   path: string;
+  link?: true;
   dispose(): Promise<void>;
 }
 
@@ -24,12 +27,17 @@ const kept = async () => {};
 
 export async function syncSource(
   abs: string,
-): Promise<SyncSource | typeof SOURCE_GONE | typeof SOURCE_REFUSED> {
+  rel: string,
+): Promise<
+  SyncSource | RefusedLink | typeof SOURCE_GONE | typeof SOURCE_REFUSED
+> {
   if (privateDirOf(abs)) return privateSource(abs);
   try {
-    const info = await stat(abs);
+    const info = await lstat(abs);
+    if (info.isSymbolicLink()) return linkSource(abs, rel);
     if (!info.isFile()) return SOURCE_GONE;
-    const hash = await fileSha256(abs, info.size);
+    const sha = await fileSha256(abs, info.size);
+    const hash = contentHash(sha, isExecutable(info.mode));
     return { hash, size: info.size, path: abs, dispose: kept };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return SOURCE_GONE;

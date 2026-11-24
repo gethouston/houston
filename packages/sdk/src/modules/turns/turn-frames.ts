@@ -8,6 +8,7 @@ import {
   settleProviderErrorCard,
   type TurnState,
 } from "./turn-settle";
+import { pushFilesNotSaved } from "./turn-unsaved-notice";
 
 export function applyTurnFrame(
   s: TurnState,
@@ -75,12 +76,14 @@ export function applyTurnFrame(
       const notice = timeLimitNotice(ev.data.code);
       if (notice) finishOk(s, notice);
       else if (!finishSetupError(s, ev.data)) finishErr(s, ev.data.message);
+      pushFilesNotSaved(s, ev.data);
       stop();
       break;
     }
     case "done":
       if (ev.pendingInteraction) s.pendingInteraction = ev.pendingInteraction;
       finishOk(s);
+      pushFilesNotSaved(s, ev.data);
       stop();
       break;
     case "reply_complete":

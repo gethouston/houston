@@ -1,5 +1,5 @@
 import { writeAtomically } from "./http-store-batch";
-import { type ObjectMetadata, parseObjectManifest } from "./object-manifest";
+import { type ObjectMetadata, parseObjectListing } from "./object-manifest";
 import { underObjectPrefix } from "./object-prefix";
 import type {
   BatchReadEntry,
@@ -14,16 +14,21 @@ import type {
 export interface PrefetchedObjects {
   manifest: ObjectMetadata[];
   objects: Map<string, { data: Buffer; generation?: string }>;
+  fileAttrs?: boolean;
 }
 
 export function parsePrefetchedObjects(
   value: unknown,
 ): PrefetchedObjects | undefined {
   if (!value || typeof value !== "object") return undefined;
-  const raw = value as { manifest?: unknown; objects?: unknown };
+  const raw = value as {
+    manifest?: unknown;
+    objects?: unknown;
+    links?: unknown;
+  };
   try {
-    const manifest = parseObjectManifest(
-      { objects: raw.manifest },
+    const { objects: manifest, fileAttrs } = parseObjectListing(
+      { objects: raw.manifest, links: raw.links },
       "turn prefetch",
     );
     const objects = new Map<string, { data: Buffer; generation?: string }>();
@@ -39,7 +44,7 @@ export function parsePrefetchedObjects(
         });
       }
     }
-    return { manifest, objects };
+    return { manifest, objects, ...(fileAttrs ? { fileAttrs } : {}) };
   } catch {
     return undefined;
   }
@@ -64,6 +69,10 @@ export class PrefetchedObjectStore implements ObjectStore {
     this.readUpload = inner.readUpload?.bind(inner);
     const dir = inner.manifestDir?.bind(inner);
     if (dir) this.manifestDir = dir;
+  }
+
+  get fileAttrs(): boolean | undefined {
+    return this.prefetched.fileAttrs || this.inner.fileAttrs;
   }
 
   get servesListing(): boolean {

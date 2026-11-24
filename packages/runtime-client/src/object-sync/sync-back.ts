@@ -2,12 +2,16 @@ import { join, posix } from "node:path";
 import { DEFAULT_EXCLUDES, excluded, type HydrateManifest } from "./hydrate";
 import type { ObjectStore } from "./object-store";
 import { privateDirGate } from "./private-dir-gate";
-import { privateDirOf } from "./private-paths";
-import { deleteOwnedObject, uploadChangedObject } from "./sync-back-conflicts";
+import { uploadChangedObject } from "./sync-back-conflicts";
+import { syncDeletes } from "./sync-back-deletes";
 import { keyedRefresh, listingRefresh } from "./sync-back-refresh";
 import { SOURCE_GONE, SOURCE_REFUSED, syncSource } from "./sync-back-source";
 import type { SyncBackOptions, SyncResult } from "./sync-back-types";
 import { walkFiles } from "./sync-back-walk";
+
+const isLink = (source: unknown) =>
+  typeof source === "object" && source !== null && "link" in source;
+const MAX_OUT_OF_SCOPE_KEYS = 100;
 
 export type {
   LocalWriteLock,
@@ -29,18 +33,27 @@ export async function syncBack(
     [...manifest.values()].some(({ generation }) => generation !== undefined);
   const uploaded: string[] = [];
   const skipped: SyncResult["skipped"] = [];
+  const refusedLinks: SyncResult["skipped"] = [];
   const conflicts: SyncResult["conflicts"] = [];
   const merges: SyncResult["merges"] = [];
   const nextManifest: HydrateManifest = new Map();
   let outOfScope = 0;
+  const outOfScopeKeys: string[] = [];
+  const scopeMiss = (rel: string) => {
+    outOfScope += 1;
+    if (outOfScopeKeys.length < MAX_OUT_OF_SCOPE_KEYS) outOfScopeKeys.push(rel);
+  };
+  const conflictCopies: SyncResult["conflictCopies"] = [];
+  const deletesKept: SyncResult["deletesKept"] = [];
   const refresh =
     opts.workerMerge && store.downloadVersioned
       ? keyedRefresh(store.downloadVersioned.bind(store), dir)
       : listingRefresh(store, prefix);
   let totalBytes = 0;
   const syncable = privateDirGate();
+  const links = store.fileAttrs === true;
 
-  for (const rel of await walkFiles(dir, dir)) {
+  for (const rel of await walkFiles(dir, dir, true)) {
     if (excluded(rel, excludes)) continue;
     const abs = join(dir, ...rel.split("/"));
     if (!(await syncable(abs))) {
@@ -49,12 +62,19 @@ export async function syncBack(
       continue;
     }
     if (opts.include && !manifest.has(rel) && !opts.include(rel)) {
-      outOfScope += 1;
+      scopeMiss(rel);
       continue;
     }
-    const source = await syncSource(abs);
+    const source = await syncSource(abs, rel);
     if (source === SOURCE_GONE) continue;
-    if (source === SOURCE_REFUSED) {
+    const refused = source !== SOURCE_REFUSED && "refusedLink" in source;
+    if (source === SOURCE_REFUSED || refused || (!links && isLink(source))) {
+      if (refused && links && opts.include?.(rel) !== false)
+        refusedLinks.push({
+          key: rel,
+          reason: source.refusedLink,
+          refused: true,
+        });
       const kept = manifest.get(rel);
       if (kept) nextManifest.set(rel, kept);
       continue;
@@ -64,7 +84,7 @@ export async function syncBack(
       totalBytes += size;
       const previous = manifest.get(rel);
       if (opts.include && !opts.include(rel)) {
-        if (previous?.hash !== hash) outOfScope += 1;
+        if (previous?.hash !== hash) scopeMiss(rel);
         if (previous) nextManifest.set(rel, previous);
         continue;
       }
@@ -84,6 +104,9 @@ export async function syncBack(
         generationAware,
         refresh,
         ...(opts.workerMerge ? { workerMerge: true } : {}),
+        ...(opts.conflictCopies?.(rel)
+          ? { conflictCopy: true, keptCopy: opts.keptCopies?.get(rel) }
+          : {}),
         ...(opts.conflictBackoff ? { backoff: opts.conflictBackoff } : {}),
         ...(opts.localWriteLock ? { localWriteLock: opts.localWriteLock } : {}),
       });
@@ -100,52 +123,49 @@ export async function syncBack(
       }
       if (result.entry) nextManifest.set(rel, result.entry);
       if (result.uploaded) uploaded.push(rel);
-      if (result.skipped) skipped.push({ key: rel, reason: result.skipped });
+      if (result.skipped)
+        skipped.push({
+          key: rel,
+          reason: result.skipped,
+          ...(result.refused ? { refused: true as const } : {}),
+        });
       if (result.conflict)
         conflicts.push({ key: rel, reason: result.conflict });
+      if (result.conflictCopy) {
+        conflictCopies.push(result.conflictCopy);
+        opts.keptCopies?.set(rel, result.conflictCopy);
+      }
     } finally {
       await source.dispose();
     }
   }
 
-  const deleted: string[] = [];
-  const holdDeletes =
-    opts.holdDeletesOnFailure === true &&
-    (skipped.length > 0 || conflicts.length > 0);
-  for (const [rel, previous] of manifest) {
-    if (nextManifest.has(rel)) continue;
-    if (holdDeletes) {
-      nextManifest.set(rel, previous);
-      continue;
-    }
-    if (opts.include && !opts.include(rel)) {
-      nextManifest.set(rel, previous);
-      outOfScope += 1;
-      continue;
-    }
-    if (privateDirOf(join(dir, ...rel.split("/")))) {
-      nextManifest.set(rel, previous);
-      continue;
-    }
-    const key = prefix ? posix.join(prefix, rel) : rel;
-    const result = await deleteOwnedObject({
-      store,
-      key,
-      previous,
-      generationAware,
-      refresh,
-    });
-    if (result.deleted) deleted.push(rel);
-    if (result.entry) nextManifest.set(rel, result.entry);
-    if (result.conflict) conflicts.push({ key: rel, reason: result.conflict });
-  }
+  const deleted = await syncDeletes({
+    store,
+    prefix,
+    dir,
+    manifest,
+    nextManifest,
+    generationAware,
+    refresh,
+    include: opts.include,
+    hold:
+      opts.holdDeletesOnFailure === true &&
+      (skipped.length > 0 || conflicts.length > 0),
+    scopeMiss,
+    conflicts,
+    deletesKept,
+  });
   return {
     uploaded,
     deleted,
-    skipped,
+    skipped: [...skipped, ...refusedLinks],
     conflicts,
     merges,
     outOfScope,
+    outOfScopeKeys,
+    conflictCopies,
+    deletesKept,
     manifest: nextManifest,
     totalBytes,
   };

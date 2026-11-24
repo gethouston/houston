@@ -71,9 +71,11 @@ async function listArchive(
 ): Promise<LazyStoreVfs> {
   if (!opts.store.manifest)
     throw new Error("this store cannot list an archive to fetch from");
-  const objects = await opts.store.manifest(
-    opts.prefix ? `${opts.prefix}/${archiveRel}` : archiveRel,
-  );
+  const objects = (
+    await opts.store.manifest(
+      opts.prefix ? `${opts.prefix}/${archiveRel}` : archiveRel,
+    )
+  ).filter(({ link }) => link === undefined);
   return new LazyStoreVfs({
     store: opts.store,
     prefix: opts.prefix,

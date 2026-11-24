@@ -128,3 +128,11 @@ test("a turn preserves the planner's IANA timezone", () => {
     expect(() => parseTurnRequest({ ...base, timezone })).toThrow(/timezone/);
   }
 });
+
+test("only a claimed turn is marked claimed for its file wall", () => {
+  const claim = { id: "k1", bootId: "b1", token: "tok", heartbeatUrl: "u" };
+  expect(
+    turnSessionRequest({ ...base, claim }, "t1", emit, signal).claimed,
+  ).toBe(true);
+  expect(turnSessionRequest(base, "t1", emit, signal).claimed).toBeUndefined();
+});

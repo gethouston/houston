@@ -75,6 +75,7 @@ export function makeClampedFileTools(
   const guard = new WorkspaceGuard(workspaceDir, options);
   const g = (path: string) => guard.assertInside(path);
   const writable = (path: string) => guard.assertWritable(path);
+  const writableDir = (path: string) => guard.assertWritableDir(path);
 
   const editOps = {
     readFile: (p: string) => fsReadFile(g(p)),
@@ -86,7 +87,7 @@ export function makeClampedFileTools(
     writeFile: (p: string, content: string) =>
       fsWriteFile(writable(p), content, "utf-8"),
     mkdir: (dir: string) =>
-      fsMkdir(writable(dir), { recursive: true }).then(() => {}),
+      fsMkdir(writableDir(dir), { recursive: true }).then(() => {}),
   };
   const lsOps = {
     exists: async (p: string) => {

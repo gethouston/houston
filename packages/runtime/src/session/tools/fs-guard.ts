@@ -1,26 +1,24 @@
 import { realpathSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { assertContained } from "./fs-guard-containment";
 import {
-  BoardWriteDeniedError,
-  RoutineWriteDeniedError,
-  SharedSkillReadOnlyError,
-} from "./fs-guard-errors";
-import {
   assertNarrowed,
-  assertNotReadOnly,
   type Narrowing,
   narrowingFor,
 } from "./fs-guard-narrow";
 import {
-  contains,
   existingBoundaries,
-  foldName,
   type RootBoundary,
   resolveLikePi,
 } from "./fs-guard-paths";
+import {
+  assertKept,
+  assertProtected,
+  type KeepsWrite,
+} from "./fs-guard-protected";
 
 export {
+  AgentSettingsWriteDeniedError,
   BoardWriteDeniedError,
   PathDeniedError,
   PathEscapeError,
@@ -29,18 +27,15 @@ export {
   ReadOnlyFolderError,
   RoutineWriteDeniedError,
   SharedSkillReadOnlyError,
+  UnsavedWriteError,
 } from "./fs-guard-errors";
-
-const PROTECTED_WRITES = [
-  { family: "activity", refusal: BoardWriteDeniedError },
-  { family: "routines", refusal: RoutineWriteDeniedError },
-] as const;
 
 export interface WorkspaceGuardOptions {
   sharedRoots?: string[];
   readOnlyRoots?: string[];
   allowedFiles?: string[];
   readableDirs?: string[];
+  keepsWrite?: KeepsWrite;
 }
 
 export class WorkspaceGuard {
@@ -50,6 +45,7 @@ export class WorkspaceGuard {
   private readonly sharedBoundaries: RootBoundary[];
   private readonly readOnlyBoundaries: RootBoundary[];
   private readonly narrowing: Narrowing | null;
+  private readonly keepsWrite: KeepsWrite | undefined;
 
   constructor(root: string, options?: WorkspaceGuardOptions) {
     this.workspaceBoundary = {
@@ -74,6 +70,7 @@ export class WorkspaceGuard {
       options?.allowedFiles,
       options?.readableDirs,
     );
+    this.keepsWrite = options?.keepsWrite;
   }
 
   clamp(raw: string | undefined): string {
@@ -84,6 +81,7 @@ export class WorkspaceGuard {
   clampWrite(raw: string | undefined): string {
     const proven = this.clamp(raw);
     this.assertProtectedWritable(proven);
+    assertKept(proven, this.root, this.keepsWrite);
     return proven;
   }
 
@@ -92,23 +90,23 @@ export class WorkspaceGuard {
   }
 
   assertWritable(absolutePath: string): string {
+    const proven = this.assertWritableDir(absolutePath);
+    assertKept(proven, this.root, this.keepsWrite);
+    return proven;
+  }
+
+  assertWritableDir(absolutePath: string): string {
     const proven = this.assertInside(absolutePath);
     this.assertProtectedWritable(proven);
     return proven;
   }
 
   private assertProtectedWritable(proven: string): void {
-    for (const { family, refusal } of PROTECTED_WRITES) {
-      const store = foldName(join(this.root, ".houston", family));
-      const target = foldName(proven);
-      if (contains(target, store) || target === `${store}.json`)
-        throw new refusal();
-    }
-    for (const { canonical, lexical } of this.readOnlyBoundaries) {
-      if (contains(proven, canonical) || contains(proven, lexical))
-        throw new SharedSkillReadOnlyError();
-    }
-    assertNotReadOnly(proven, this.root, this.narrowing);
+    assertProtected(proven, {
+      root: this.root,
+      readOnly: this.readOnlyBoundaries,
+      narrowing: this.narrowing,
+    });
   }
 
   private judge(raw: string, abs: string): string {

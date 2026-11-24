@@ -82,7 +82,8 @@ export type EngineNoticeKind =
   | "compute_busy"
   | "agent_too_large"
   | "agent_setup_failed"
-  | "turn_unconfirmed";
+  | "turn_unconfirmed"
+  | "files_not_saved";
 
 export function isStoppedByUser(message: string): boolean {
   return message.includes(STOPPED_BY_USER);

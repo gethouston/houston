@@ -4,6 +4,7 @@ import type {
   HydrateManifest,
   HydrateOptions,
   ObjectStore,
+  SyncResult,
 } from "@houston/runtime-client/object-sync";
 import type { ArchiveLoader } from "./turn-archive-fetch";
 import type { DeferredGate } from "./turn-deferred-gate";
@@ -17,6 +18,7 @@ export interface TurnFilesystem extends TurnLayout {
   skippedObjects: number;
   generationAware: boolean;
   immediateWrites: Set<string>;
+  conflictCopies?: Map<string, SyncResult["conflictCopies"][number]>;
   landed?: {
     add(landed: readonly string[], deleted?: readonly string[]): void;
   };

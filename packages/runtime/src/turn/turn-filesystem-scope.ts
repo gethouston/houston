@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import { docKey } from "@houston/domain";
+import type { KeepsWrite } from "../session/tools/fs-guard-protected";
 import { agentScopeIncludes } from "./turn-agent-scope";
 
 export function claimedTurnIncludes(
@@ -27,6 +28,23 @@ export function claimedTurnIncludes(
     relativePath === activity ||
     relativePath === runs ||
     agentScopeIncludes(relativePath, workspaceRel);
+}
+
+export function claimedTurnKeepsWrite(
+  layout: { workspaceRel?: string; dataRel?: string },
+  turn: { claimed?: boolean; conversationId: string },
+): KeepsWrite | undefined {
+  if (!turn.claimed) return undefined;
+  const { workspaceRel, dataRel } = layout;
+  if (workspaceRel === undefined || dataRel === undefined)
+    throw new Error("a claimed turn needs its store layout to judge writes");
+  const includes = claimedTurnIncludes(
+    dataRel,
+    workspaceRel,
+    turn.conversationId,
+  );
+  return (workspaceRelative) =>
+    includes(posix.join(workspaceRel, workspaceRelative));
 }
 
 export function turnSessionScopeIncludes(

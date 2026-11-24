@@ -1,8 +1,9 @@
-import { mkdir, readFile, rm, stat } from "node:fs/promises";
+import { lstat, mkdir, readFile, readlink, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
-  fileSha256,
   keepsMergeBase,
+  landedHash,
+  linkHash,
   type ObjectMetadata,
 } from "@houston/runtime-client/object-sync";
 import {
@@ -40,14 +41,17 @@ export async function fetchObject(
     if (read?.refused) {
       throw new LazyReadRefusedError("private", key, meta.size, maxObjectBytes);
     }
-    const { size } = await stat(dest);
+    const landed = await lstat(dest);
+    const { size } = landed;
     if (size > maxObjectBytes) {
       throw new LazyReadRefusedError("object", key, size, maxObjectBytes);
     }
     if (budget.materializedBytes + size > maxBytes) {
       throw new LazyReadRefusedError("total", key, size, maxBytes);
     }
-    const hash = await fileSha256(dest, size);
+    const hash = landed.isSymbolicLink()
+      ? linkHash(await readlink(dest))
+      : await landedHash(dest, size, meta);
     opts.manifest.set(key, {
       hash,
       ...(meta.generation !== undefined ? { generation: meta.generation } : {}),

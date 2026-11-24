@@ -1,8 +1,10 @@
 import { isCompactionSummary } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
+import { parseUnsavedFiles } from "@houston/wire-types";
 import type { FeedFrame } from "./history";
 import { ENGINE_RESUMED_MESSAGE, STOPPED_BY_USER } from "./turn-errors";
 import { interruptionNotice, timeLimitNotice } from "./turn-notices";
+import { filesNotSavedNotice } from "./turn-unsaved-notice";
 
 export function assistantHistory(
   m: ChatMessage,
@@ -122,5 +124,9 @@ export function assistantHistory(
       ...turn,
     });
   }
+  const unsaved = filesNotSavedNotice(
+    parseUnsavedFiles({ unsavedFiles: m.unsavedFiles }),
+  );
+  if (unsaved) out.push({ ...unsaved, ts, ...turn });
   return out;
 }

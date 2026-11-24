@@ -1,6 +1,7 @@
 import type { PendingInteraction } from "./domain/interaction";
 import type { ManagedBridgeEndpoint } from "./local-model-bridge";
 import type { ProviderError } from "./provider-error";
+import type { UnsavedFilesReport } from "./turn-unsaved-files";
 
 export type ProviderId =
   | "anthropic"
@@ -179,6 +180,7 @@ export interface ChatMessage {
   compactionSummary?: true;
   contextCleared?: true;
   fileChanges?: { created: string[]; modified: string[] };
+  unsavedFiles?: UnsavedFilesReport;
   providerError?: ProviderError;
   pendingInteraction?: PendingInteraction;
   stopped?: true;

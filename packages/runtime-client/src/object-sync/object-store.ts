@@ -4,11 +4,13 @@ export { LocalDirStore } from "./local-dir-store";
 export {
   ObjectNotFoundError,
   ObjectTooLargeError,
+  ObjectWriteRefusedError,
   StoreConflictError,
   StoreFencedError,
 } from "./object-store-errors";
 
 export interface ObjectStore extends Partial<UploadStore> {
+  readonly fileAttrs?: boolean;
   list(prefix: string): Promise<string[]>;
   manifest?(
     prefix?: string,

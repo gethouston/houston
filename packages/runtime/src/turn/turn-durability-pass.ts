@@ -6,24 +6,17 @@ import type {
   TurnDurabilityOptions,
   TurnDurabilityResult,
 } from "./turn-durability";
-import { appendDurabilityError as appendError } from "./turn-durability-error";
+import {
+  appendDurabilityError as appendError,
+  claimFenced,
+} from "./turn-durability-error";
 import { publishLandedFamilyDocs } from "./turn-family-docs";
 import { syncTurnFilesystem } from "./turn-filesystem";
 import { reconcileTurnStopMarker } from "./turn-stop-marker";
-import { type TurnSyncReport, turnSyncReport } from "./turn-sync-report";
+import { turnSyncReport } from "./turn-sync-report";
 import type { TranscriptPublishResult } from "./turn-transcript";
+import { recordUnsavedFiles } from "./turn-unsaved-row";
 import { publishTurnViews } from "./turn-view-publish";
-
-const claimFenced = (
-  poolWritesOutOfScope = 0,
-  changed: TurnDurabilityResult["changed"] = [],
-  sync?: TurnSyncReport,
-): TurnDurabilityResult => ({
-  outcome: { error: "claim_fenced" },
-  poolWritesOutOfScope,
-  changed,
-  ...(sync ? { sync } : {}),
-});
 
 export async function finishTurnDurabilityPass(
   opts: TurnDurabilityOptions,
@@ -64,7 +57,20 @@ export async function finishTurnDurabilityPass(
   }
   if (opts.timings) opts.timings.t_sync_done = performance.now();
   const poolWritesOutOfScope = synced.outOfScope;
-  const sync = turnSyncReport(synced, opts.filesystem.workspaceRel);
+  const copies = new Map(opts.filesystem.conflictCopies);
+  for (const copy of synced.conflictCopies) copies.set(copy.key, copy);
+  const conflictCopies = [...copies.values()];
+  const sync = turnSyncReport(
+    { ...synced, conflictCopies },
+    opts.filesystem.workspaceRel,
+  );
+  const recorded = await recordUnsavedFiles(
+    opts,
+    sync.unsavedFiles,
+    synced.manifest,
+    !(opts.outcome.stopReason && sync.incomplete),
+  );
+  if (recorded === "fenced") return claimFenced(poolWritesOutOfScope, [], sync);
   let outcome = opts.outcome;
   let transcript = opts.transcript;
   if (outcome.stopReason && sync.incomplete) {
@@ -83,10 +89,14 @@ export async function finishTurnDurabilityPass(
   }
   const afterSyncError = await opts.afterSync?.(synced.uploaded);
   if (afterSyncError) outcome = appendError(outcome, afterSyncError);
-  let changed = changedEventTypes(opts.filesystem, [
+  const landed = [
     ...synced.uploaded,
     ...synced.deleted,
     ...opts.filesystem.immediateWrites,
+  ];
+  let changed = changedEventTypes(opts.filesystem, [
+    ...landed,
+    ...conflictCopies.map(({ copy }) => copy),
   ]);
 
   let published: TranscriptPublishResult | undefined;
@@ -128,11 +138,7 @@ export async function finishTurnDurabilityPass(
     filesystem: opts.filesystem,
     views: opts.views,
     source: opts.resolved,
-    landed: [
-      ...synced.uploaded,
-      ...synced.deleted,
-      ...opts.filesystem.immediateWrites,
-    ],
+    landed,
   });
   for (const type of staleViews) without(type);
 

@@ -50,6 +50,7 @@ export function turnTerminalFrame(
     ...(missionTitle ? { missionTitle } : {}),
     ...(sync?.incomplete ? { syncIncomplete: sync.incomplete } : {}),
     ...(sync?.merges ? { syncMerges: sync.merges } : {}),
+    ...(sync?.unsavedFiles ? { unsavedFiles: sync.unsavedFiles } : {}),
     ...(modelCalls
       ? {
           modelCalls:

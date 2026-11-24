@@ -45,10 +45,13 @@ export async function syncMigratedTree(input: {
       },
     );
     const stray = last ? synced.outOfScope : 0;
-    if (synced.conflicts.length + synced.skipped.length + stray > 0)
+    const kept = synced.deletesKept.length;
+    if (synced.conflicts.length + synced.skipped.length + stray + kept > 0)
       return {
         durable: false,
-        conflicts: synced.conflicts.map((c) => c.key),
+        conflicts: [...synced.conflicts, ...synced.deletesKept].map(
+          (c) => c.key,
+        ),
         skipped: synced.skipped.map((s) => s.key),
       };
     uploaded.push(...synced.uploaded);

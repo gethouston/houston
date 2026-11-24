@@ -10,8 +10,18 @@ import {
   settleProviderErrorCard,
   type TurnState,
 } from "./turn-settle";
+import { pushFilesNotSaved } from "./turn-unsaved-notice";
 
 export function adoptReply(
+  s: TurnState,
+  reply: ChatMessage,
+  onAdoptTurnId?: (turnId: string) => void,
+): void {
+  settleReply(s, reply, onAdoptTurnId);
+  pushFilesNotSaved(s, { unsavedFiles: reply.unsavedFiles });
+}
+
+function settleReply(
   s: TurnState,
   reply: ChatMessage,
   onAdoptTurnId?: (turnId: string) => void,

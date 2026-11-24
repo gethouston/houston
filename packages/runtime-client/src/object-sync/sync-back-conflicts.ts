@@ -2,9 +2,11 @@ import type { HydrateManifestEntry } from "./hydrate";
 import {
   type ObjectStore,
   ObjectTooLargeError,
+  ObjectWriteRefusedError,
   StoreConflictError,
   type WriteOptions,
 } from "./object-store";
+import { keepRemoteBesideLocal } from "./sync-back-conflict-copy";
 import { isMergedDocument } from "./sync-back-doc-merge";
 import { withMergeBase } from "./sync-back-merge-base";
 import {
@@ -14,7 +16,7 @@ import {
   uploadMergedDocument,
 } from "./sync-back-merge-retry";
 import { retryAtRefreshedGeneration } from "./sync-back-single-retry";
-import type { LocalWriteLock } from "./sync-back-types";
+import type { ConflictCopy, LocalWriteLock } from "./sync-back-types";
 
 export type { RefreshManifest } from "./sync-back-merge-retry";
 
@@ -22,11 +24,13 @@ export interface UploadChangeResult {
   entry?: HydrateManifestEntry;
   uploaded: boolean;
   skipped?: string;
+  refused?: boolean;
   conflict?: string;
   vanished?: boolean;
   mergeAttempts?: number;
   removedCards?: string[];
   unmergeable?: string;
+  conflictCopy?: ConflictCopy;
 }
 
 function initialWriteOptions(
@@ -50,6 +54,8 @@ export async function uploadChangedObject(opts: {
   generationAware: boolean;
   refresh: RefreshManifest;
   workerMerge?: boolean;
+  conflictCopy?: boolean;
+  keptCopy?: ConflictCopy;
   backoff?: ConflictBackoff;
   localWriteLock?: LocalWriteLock;
 }): Promise<UploadChangeResult> {
@@ -72,6 +78,7 @@ export async function uploadChangedObject(opts: {
         entry: { hash: opts.hash },
         uploaded: false,
         skipped: error.message,
+        ...(error instanceof ObjectWriteRefusedError ? { refused: true } : {}),
       };
     }
     if (sourceVanished(error)) return { uploaded: false, vanished: true };
@@ -83,6 +90,8 @@ export async function uploadChangedObject(opts: {
       });
       return { ...merged, mergeAttempts: attempts };
     }
+    if (opts.workerMerge && opts.conflictCopy)
+      return keepRemoteBesideLocal({ ...opts, conflict: error.message });
     return retryAtRefreshedGeneration(opts, error.message);
   }
 }
@@ -91,6 +100,8 @@ export interface DeleteObjectResult {
   deleted: boolean;
   entry?: HydrateManifestEntry;
   conflict?: string;
+  kept?: boolean;
+  refused?: boolean;
 }
 
 export async function deleteOwnedObject(opts: {
@@ -108,28 +119,15 @@ export async function deleteOwnedObject(opts: {
     await opts.store.delete(opts.key, writeOptions);
     return { deleted: true };
   } catch (error) {
-    if (!(error instanceof StoreConflictError)) throw error;
-    const current = await opts.refresh(opts.key);
-    if (current === undefined) {
-      return { deleted: false, entry: opts.previous, conflict: error.message };
-    }
-    if (current === null) return { deleted: true };
-    const retryGeneration = current.generation;
-    try {
-      await opts.store.delete(
-        opts.key,
-        retryGeneration === undefined
-          ? undefined
-          : { ifGenerationMatch: retryGeneration },
-      );
-      return { deleted: true };
-    } catch (retryError) {
-      if (!(retryError instanceof StoreConflictError)) throw retryError;
+    if (error instanceof ObjectWriteRefusedError)
       return {
         deleted: false,
-        entry: { ...opts.previous, generation: retryGeneration },
-        conflict: retryError.message,
+        kept: true,
+        refused: true,
+        conflict: error.message,
       };
-    }
+    if (!(error instanceof StoreConflictError)) throw error;
+    if ((await opts.refresh(opts.key)) === null) return { deleted: true };
+    return { deleted: false, kept: true, conflict: error.message };
   }
 }

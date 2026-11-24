@@ -26,7 +26,8 @@ export type SystemNoticeKind =
   | "compute_busy"
   | "agent_too_large"
   | "agent_setup_failed"
-  | "turn_unconfirmed";
+  | "turn_unconfirmed"
+  | "files_not_saved";
 
 export interface HostCard {
   kind: string;
@@ -64,6 +65,7 @@ type FeedItemVariant =
       feed_type: "system_message";
       data: string;
       notice?: SystemNoticeKind;
+      noticeData?: unknown;
     }
   | {
       feed_type: "context_compacted";

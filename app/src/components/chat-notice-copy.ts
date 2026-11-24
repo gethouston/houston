@@ -12,6 +12,7 @@ export const NOTICE_COPY = {
   agent_too_large: "chat:agentSetup.tooLarge",
   agent_setup_failed: "chat:agentSetup.failed",
   turn_unconfirmed: "chat:agentSetup.unconfirmed",
+  files_not_saved: "chat:filesNotSaved.title",
 } as const satisfies Record<EngineNoticeKind & SystemNoticeKind, string>;
 
 type SameKinds = [EngineNoticeKind] extends [SystemNoticeKind]

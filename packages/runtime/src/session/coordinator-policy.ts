@@ -4,12 +4,14 @@ import { UPLOADS_DIR } from "@houston/domain/uploads-dir";
 import { learningsDocPath } from "./learnings-context";
 import { SPILL_DIR } from "./tool-results/spill";
 import type { WorkspaceGuardOptions } from "./tools/fs-guard";
+import type { KeepsWrite } from "./tools/fs-guard-protected";
 
 export interface RuntimeFilePolicyInput {
   role: AssistantRuntimeRole | null;
   workspaceDir: string;
   sharedSkillsDir: string;
   sharedSkillsSnapshot?: string;
+  keepsWrite?: KeepsWrite;
 }
 
 export function sharedRootsFor(input: RuntimeFilePolicyInput): string[] {
@@ -20,8 +22,10 @@ export function sharedRootsFor(input: RuntimeFilePolicyInput): string[] {
 export function fileToolGuardOptions(
   input: RuntimeFilePolicyInput,
 ): WorkspaceGuardOptions {
+  const kept = input.keepsWrite ? { keepsWrite: input.keepsWrite } : {};
   if (input.role === "coordinator") {
     return {
+      ...kept,
       allowedFiles: [learningsDocPath(input.workspaceDir)],
       readableDirs: [
         join(input.workspaceDir, UPLOADS_DIR),
@@ -30,6 +34,7 @@ export function fileToolGuardOptions(
     };
   }
   return {
+    ...kept,
     sharedRoots: sharedRootsFor(input),
     ...(input.sharedSkillsSnapshot
       ? { readOnlyRoots: [input.sharedSkillsSnapshot] }

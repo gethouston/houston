@@ -323,6 +323,22 @@ describe("context boundaries", () => {
     strictEqual(messages[0]?.notice, "engine_restart");
     strictEqual("notice" in (messages[1] ?? {}), false);
   });
+
+  it("hands a notice's data to the host untouched", () => {
+    const noticeData = { files: ["a.md"] };
+    const messages = feedItemsToMessages([
+      {
+        feed_type: "system_message",
+        data: "Some files could not be saved",
+        notice: "files_not_saved",
+        noticeData,
+        id: "s1",
+      },
+      { feed_type: "system_message", data: "Stopped by user", id: "s2" },
+    ]);
+    strictEqual(messages[0]?.noticeData, noticeData);
+    strictEqual("noticeData" in (messages[1] ?? {}), false);
+  });
 });
 
 describe("host cards", () => {

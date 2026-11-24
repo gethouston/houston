@@ -4,7 +4,7 @@ import {
   type DirListing,
   type ObjectMetadata,
   parseDirManifest,
-  parseObjectManifest,
+  parseObjectListing,
 } from "./object-manifest";
 import {
   InvalidObjectPrefixError,
@@ -15,6 +15,7 @@ import type { ReadOptions, ReadResult } from "./object-store";
 import { withOperationSignal } from "./operation-signal";
 
 type CaptureResponse = (response: Response) => void;
+type NoteAttrs = (fileAttrs: boolean) => void;
 type SignalledRequest = (signal?: AbortSignal) => Promise<Response>;
 
 export function manifestUrl(
@@ -33,6 +34,7 @@ export function manifestUrl(
 export function readHttpManifest(
   request: SignalledRequest,
   capture: CaptureResponse,
+  noteAttrs: NoteAttrs,
   prefix: string,
   signal?: AbortSignal,
 ): Promise<ObjectMetadata[]> {
@@ -42,16 +44,19 @@ export function readHttpManifest(
     if (!response.ok) {
       throw await objectStoreResponseError(response, "GET", "manifest");
     }
-    return parseObjectManifest(
+    const { objects, fileAttrs } = parseObjectListing(
       await response.json(),
       "object store GET manifest",
-    ).filter((object) => underObjectPrefix(object.key, prefix));
+    );
+    noteAttrs(fileAttrs);
+    return objects.filter((object) => underObjectPrefix(object.key, prefix));
   });
 }
 
 export function readHttpDirManifest(
   request: SignalledRequest,
   capture: CaptureResponse,
+  noteAttrs: NoteAttrs,
   signal?: AbortSignal,
 ): Promise<DirListing | undefined> {
   return withOperationSignal(signal, async (own) => {
@@ -60,10 +65,14 @@ export function readHttpDirManifest(
     if (!response.ok) {
       throw await objectStoreResponseError(response, "GET", "manifest");
     }
-    return parseDirManifest(
+    const listing = parseDirManifest(
       await response.json(),
       "object store GET manifest?delimiter=/",
     );
+    if (!listing) return undefined;
+    const { fileAttrs, ...level } = listing;
+    noteAttrs(fileAttrs);
+    return level;
   });
 }
 

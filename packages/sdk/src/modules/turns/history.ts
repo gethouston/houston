@@ -2,6 +2,7 @@ import { isAutoContinue } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import { assistantHistory } from "./history-assistant";
 import type { EngineNoticeKind } from "./turn-errors";
+import type { FilesNotSavedData } from "./turn-unsaved-notice";
 import type { FeedAuthor, FeedMention } from "./vm-output";
 
 export interface FeedFrame {
@@ -10,6 +11,7 @@ export interface FeedFrame {
   author?: FeedAuthor;
   mentions?: FeedMention[];
   notice?: EngineNoticeKind;
+  noticeData?: FilesNotSavedData;
   ts?: number;
   turnId?: string;
   toolIndex?: number;

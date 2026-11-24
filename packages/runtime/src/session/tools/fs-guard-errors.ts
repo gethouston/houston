@@ -49,9 +49,27 @@ export class RoutineWriteDeniedError extends ProtectedWriteDeniedError {
 export class SharedSkillReadOnlyError extends ProtectedWriteDeniedError {
   constructor() {
     super(
-      "Shared skills belong to the whole team and cannot be changed from this conversation. Use the skill as it is.",
+      "Shared skills cannot be changed from this conversation. Use the skill as it is. If it needs a change, tell the person it can be edited on the Skills page, where a team's owners and admins edit shared skills.",
     );
     this.name = "SharedSkillReadOnlyError";
+  }
+}
+
+export class AgentSettingsWriteDeniedError extends ProtectedWriteDeniedError {
+  constructor() {
+    super(
+      "Your settings, such as your name and the AI model you work with, cannot be changed from this conversation. If they need a change, tell the person they can change them in your settings in the app.",
+    );
+    this.name = "AgentSettingsWriteDeniedError";
+  }
+}
+
+export class UnsavedWriteError extends ProtectedWriteDeniedError {
+  constructor(path: string) {
+    super(
+      `Houston manages this file itself, so a change made from this conversation would not be kept: ${path}. To keep notes or state of your own, write them to a file or folder of your own, for example .houston/state.json or .houston/state/.`,
+    );
+    this.name = "UnsavedWriteError";
   }
 }
 

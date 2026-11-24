@@ -392,42 +392,7 @@ test("a fenced upload aborts the sync pass immediately", async () => {
   );
 });
 
-test("a delete conflict refreshes the generation and retries successfully", async () => {
-  const { storeRoot, store, work } = setup();
-  seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
-  let manifestCalls = 0;
-  const preconditions: Array<string | undefined> = [];
-  const conflicting: ObjectStore = {
-    list: (prefix) => store.list(prefix),
-    manifest: async () => {
-      manifestCalls += 1;
-      return [
-        metadata(`${PREFIX}/workspace/a.txt`, manifestCalls === 1 ? "5" : "6"),
-      ];
-    },
-    download: (key, dest) => store.download(key, dest),
-    upload: (src, key, opts) => store.upload(src, key, opts),
-    delete: async (key, opts) => {
-      preconditions.push(opts?.ifGenerationMatch);
-      if (opts?.ifGenerationMatch === "5") {
-        throw new StoreConflictError(key, "stale generation");
-      }
-      await store.delete(key);
-    },
-  };
-  const manifest = await hydrate(conflicting, PREFIX, work);
-  rmSync(join(work, "workspace", "a.txt"));
-
-  const result = await syncBack(conflicting, PREFIX, work, manifest);
-
-  expect(preconditions).toEqual(["5", "6"]);
-  expect(manifestCalls).toBe(2);
-  expect(result.deleted).toEqual(["workspace/a.txt"]);
-  expect(result.manifest.has("workspace/a.txt")).toBe(false);
-  expect(result.conflicts).toEqual([]);
-});
-
-test("a second delete conflict preserves refreshed ownership for the next pass", async () => {
+test("a delete conflict keeps the changed remote and forgets it", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
   let manifestCalls = 0;
@@ -455,13 +420,15 @@ test("a second delete conflict preserves refreshed ownership for the next pass",
 
   const result = await syncBack(conflicting, PREFIX, work, manifest);
 
-  expect(preconditions).toEqual(["5", "6"]);
+  expect(preconditions).toEqual(["5"]);
   expect(manifestCalls).toBe(2);
   expect(result.deleted).toEqual([]);
-  expect(result.manifest.get("workspace/a.txt")?.generation).toBe("6");
-  expect(result.conflicts).toEqual([
-    { key: "workspace/a.txt", reason: "conflict at 6" },
+  expect(result.manifest.has("workspace/a.txt")).toBe(false);
+  expect(result.conflicts).toEqual([]);
+  expect(result.deletesKept).toEqual([
+    { key: "workspace/a.txt", reason: "conflict at 5" },
   ]);
+  expect(await store.list(PREFIX)).toContain(`${PREFIX}/workspace/a.txt`);
 });
 
 test("a delete conflict whose refresh finds no object is already deleted", async () => {
@@ -490,43 +457,6 @@ test("a delete conflict whose refresh finds no object is already deleted", async
   const result = await syncBack(conflicting, PREFIX, work, manifest);
 
   expect(deleteCalls).toBe(1);
-  expect(result.deleted).toEqual(["workspace/a.txt"]);
-  expect(result.manifest.has("workspace/a.txt")).toBe(false);
-  expect(result.conflicts).toEqual([]);
-});
-
-test("a delete conflict retries unconditionally after a generation-less refresh", async () => {
-  const { storeRoot, store, work } = setup();
-  seed(storeRoot, PREFIX, { "workspace/a.txt": "a" });
-  let manifestCalls = 0;
-  const preconditions: Array<string | undefined> = [];
-  const conflicting: ObjectStore = {
-    list: (prefix) => store.list(prefix),
-    manifest: async () => {
-      manifestCalls += 1;
-      return [
-        {
-          ...metadata(`${PREFIX}/workspace/a.txt`, "5"),
-          generation: manifestCalls === 1 ? "5" : undefined,
-        },
-      ];
-    },
-    download: (key, dest) => store.download(key, dest),
-    upload: (src, key, opts) => store.upload(src, key, opts),
-    delete: async (key, opts) => {
-      preconditions.push(opts?.ifGenerationMatch);
-      if (opts?.ifGenerationMatch === "5") {
-        throw new StoreConflictError(key, "stale generation");
-      }
-      await store.delete(key);
-    },
-  };
-  const manifest = await hydrate(conflicting, PREFIX, work);
-  rmSync(join(work, "workspace", "a.txt"));
-
-  const result = await syncBack(conflicting, PREFIX, work, manifest);
-
-  expect(preconditions).toEqual(["5", undefined]);
   expect(result.deleted).toEqual(["workspace/a.txt"]);
   expect(result.manifest.has("workspace/a.txt")).toBe(false);
   expect(result.conflicts).toEqual([]);

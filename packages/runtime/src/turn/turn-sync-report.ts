@@ -1,20 +1,21 @@
+import type { UnsavedFilesReport } from "@houston/protocol";
 import type {
   HydrateManifest,
   SyncMerge,
 } from "@houston/runtime-client/object-sync";
 import { turnActivityKey } from "./turn-filesystem-scope";
+import { turnUnsavedFiles, type UnsavedSyncInput } from "./turn-unsaved-files";
 
 export interface TurnSyncReport {
   incomplete?: { conflicts: string[]; skipped: string[] };
   merges?: SyncMerge[];
   board: { landed: boolean; mergeAttempts?: number; body?: string };
+  unsavedFiles?: UnsavedFilesReport;
 }
 
 export function turnSyncReport(
-  synced: {
+  synced: UnsavedSyncInput & {
     uploaded: readonly string[];
-    conflicts: readonly { key: string }[];
-    skipped: readonly { key: string }[];
     merges: readonly SyncMerge[];
     manifest?: HydrateManifest;
   },
@@ -31,6 +32,7 @@ export function turnSyncReport(
   const boardMerge = synced.merges.find(({ key }) => key === boardKey);
   const landed = synced.uploaded.includes(boardKey);
   const body = landed ? synced.manifest?.get(boardKey)?.mergeBase : undefined;
+  const unsavedFiles = turnUnsavedFiles(synced, workspaceRel);
   return {
     ...(incomplete ? { incomplete } : {}),
     ...(synced.merges.length > 0 ? { merges: [...synced.merges] } : {}),
@@ -39,5 +41,6 @@ export function turnSyncReport(
       ...(boardMerge ? { mergeAttempts: boardMerge.attempts } : {}),
       ...(body === undefined ? {} : { body }),
     },
+    ...(unsavedFiles ? { unsavedFiles } : {}),
   };
 }

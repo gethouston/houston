@@ -45,6 +45,7 @@ export interface ChatMessage {
   mentions?: MessageMention[];
   compaction?: ChatCompactionInfo;
   notice?: SystemNoticeKind;
+  noticeData?: unknown;
   hostCard?: HostCard;
   turnId?: string;
 }
@@ -234,6 +235,9 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           tools: [],
           fileChanges: [],
           ...(item.notice ? { notice: item.notice } : {}),
+          ...(item.noticeData !== undefined
+            ? { noticeData: item.noticeData }
+            : {}),
         });
         break;
       }

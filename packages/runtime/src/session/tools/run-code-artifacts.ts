@@ -10,6 +10,7 @@ import {
   sep,
 } from "node:path";
 import { ProtectedWriteDeniedError, WorkspaceGuard } from "./fs-guard";
+import type { KeepsWrite } from "./fs-guard-protected";
 
 export interface SandboxArtifact {
   path: string;
@@ -57,6 +58,7 @@ export async function saveArtifacts(
   workspaceDir: string,
   artifacts: SandboxArtifact[],
   declared: Set<string>,
+  keepsWrite?: KeepsWrite,
 ): Promise<SavedArtifacts> {
   const out: SavedArtifacts = {
     saved: [],
@@ -65,7 +67,10 @@ export async function saveArtifacts(
     skipped: [],
     refused: [],
   };
-  const guard = new WorkspaceGuard(workspaceDir);
+  const guard = new WorkspaceGuard(
+    workspaceDir,
+    keepsWrite ? { keepsWrite } : undefined,
+  );
   for (const a of artifacts) {
     try {
       let abs = safeJoin(workspaceDir, a.path);

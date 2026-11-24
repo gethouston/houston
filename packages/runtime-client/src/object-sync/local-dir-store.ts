@@ -1,9 +1,19 @@
 import { createHash } from "node:crypto";
 import { createReadStream, createWriteStream, existsSync } from "node:fs";
-import { mkdir, readdir, rm, stat } from "node:fs/promises";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  readdir,
+  readlink,
+  rm,
+  symlink,
+} from "node:fs/promises";
 import { dirname, join, posix, relative, resolve, sep } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { landStream } from "./land-file";
+import { landLink } from "./land-link";
+import { isExecutable } from "./object-attrs";
 import type { DirListing, ObjectMetadata } from "./object-manifest";
 import type {
   ObjectStore,
@@ -15,6 +25,7 @@ import { ObjectNotFoundError } from "./object-store-errors";
 
 export class LocalDirStore implements ObjectStore {
   private readonly resolvedRoot: string;
+  readonly fileAttrs = true;
 
   constructor(root: string) {
     this.resolvedRoot = resolve(root);
@@ -72,14 +83,21 @@ export class LocalDirStore implements ObjectStore {
 
   private async stat(key: string): Promise<ObjectMetadata> {
     const file = this.fileFor(key);
-    const info = await stat(file);
+    const info = await lstat(file);
+    const updated = info.mtime.toISOString();
+    if (info.isSymbolicLink()) {
+      const link = await readlink(file);
+      const md5 = createHash("md5").update(link).digest("base64");
+      return { key, size: Buffer.byteLength(link), md5, updated, link };
+    }
     const hash = createHash("md5");
     for await (const chunk of createReadStream(file)) hash.update(chunk);
     return {
       key,
       size: info.size,
       md5: hash.digest("base64"),
-      updated: info.mtime.toISOString(),
+      updated,
+      ...(isExecutable(info.mode) ? { executable: true as const } : {}),
     };
   }
 
@@ -89,6 +107,11 @@ export class LocalDirStore implements ObjectStore {
     opts?: ReadOptions,
   ): Promise<ReadResult> {
     try {
+      const source = this.fileFor(key);
+      if ((await lstat(source)).isSymbolicLink())
+        return (await landLink(key, await readlink(source), destFile))
+          ? {}
+          : { refused: true };
       const landed = await landStream(
         () => createReadStream(this.fileFor(key)),
         destFile,
@@ -111,12 +134,19 @@ export class LocalDirStore implements ObjectStore {
   ): Promise<void> {
     const dest = this.fileFor(key);
     await mkdir(dirname(dest), { recursive: true });
+    await rm(dest, { force: true });
+    const source = await lstat(srcFile);
+    if (source.isSymbolicLink()) {
+      await symlink(await readlink(srcFile), dest);
+      return;
+    }
     await pipeline(createReadStream(srcFile), createWriteStream(dest));
+    if (isExecutable(source.mode)) await chmod(dest, source.mode & 0o777);
   }
 
   async delete(key: string, _opts?: WriteOptions): Promise<void> {
     const file = this.fileFor(key);
-    const existing = await stat(file).catch(() => null);
+    const existing = await lstat(file).catch(() => null);
     if (existing) await rm(file);
   }
 }

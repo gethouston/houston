@@ -4,6 +4,8 @@ export interface ObjectMetadata {
   md5: string;
   updated: string;
   generation?: string;
+  link?: string;
+  executable?: true;
 }
 
 export interface DirListing {
@@ -57,6 +59,32 @@ export function parseObjectManifest(
   return objects.map((object) => normalizeObjectMetadata(object));
 }
 
+export interface ObjectListing {
+  objects: ObjectMetadata[];
+  fileAttrs: boolean;
+}
+
+export function parseObjectListing(
+  value: unknown,
+  source: string,
+): ObjectListing {
+  const objects = parseObjectManifest(value, source);
+  const links = (value as { links?: unknown }).links;
+  if (links === undefined) return { objects, fileAttrs: false };
+  if (!Array.isArray(links))
+    throw new Error(`${source} returned a malformed body`);
+  for (const link of links) {
+    const target = (link as { target?: unknown } | null)?.target;
+    if (!isObjectMetadata(link) || typeof target !== "string")
+      throw new Error(`${source} returned a malformed body`);
+    const { target: _target, ...metadata } = link as ObjectMetadata & {
+      target: string;
+    };
+    objects.push({ ...normalizeObjectMetadata(metadata), link: target });
+  }
+  return { objects, fileAttrs: true };
+}
+
 export function normalizeObjectMetadata(value: ObjectMetadata): ObjectMetadata {
   const { gen: wireGeneration, ...metadata } = value as ObjectMetadata & {
     gen?: unknown;
@@ -66,18 +94,25 @@ export function normalizeObjectMetadata(value: ObjectMetadata): ObjectMetadata {
       ? String(wireGeneration)
       : value.generation;
   const generation = raw === undefined || raw === "0" ? undefined : raw;
-  return generation === undefined ? metadata : { ...metadata, generation };
+  const { exec, ...rest } = metadata as ObjectMetadata & { exec?: unknown };
+  const shaped: ObjectMetadata =
+    exec === true ? { ...rest, executable: true } : rest;
+  return generation === undefined ? shaped : { ...shaped, generation };
 }
 
 export function parseDirManifest(
   value: unknown,
   source: string,
-): DirListing | undefined {
-  const objects = parseObjectManifest(value, source);
+): (DirListing & { fileAttrs: boolean }) | undefined {
+  const { objects, fileAttrs } = parseObjectListing(value, source);
   const dirs = (value as { dirs?: unknown }).dirs;
   if (dirs === undefined) return undefined;
   if (!Array.isArray(dirs) || !dirs.every((dir) => typeof dir === "string")) {
     throw new Error(`${source} returned a malformed body`);
   }
-  return { objects, dirs: dirs.map((dir) => dir.replace(/\/+$/, "")) };
+  return {
+    objects,
+    dirs: dirs.map((dir) => dir.replace(/\/+$/, "")),
+    fileAttrs,
+  };
 }

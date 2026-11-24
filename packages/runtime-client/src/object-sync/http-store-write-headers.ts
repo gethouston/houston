@@ -1,9 +1,9 @@
 import type { WriteOptions } from "./object-store";
 
 export interface WriteAuthority {
-  bootId: string | undefined;
-  fence: { token?: string } | undefined;
-  claim: { token: string; bootId: string; conversationId: string } | undefined;
+  bootId?: string;
+  fence?: { token?: string };
+  claim?: { token: string; bootId: string; conversationId: string };
 }
 
 export function storeWriteHeaders(
