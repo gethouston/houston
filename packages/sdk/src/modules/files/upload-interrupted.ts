@@ -1,4 +1,4 @@
-export type UploadRoute = "attachments" | "files_import";
+export type UploadRoute = "attachments" | "files_import" | "migration_import";
 
 export const UPLOAD_INTERRUPTED_NAME = "UploadInterruptedError";
 
