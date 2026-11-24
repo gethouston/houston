@@ -1,3 +1,8 @@
+import {
+  TOOLKIT_NO_AUTH,
+  TOOLKIT_NOT_FOUND,
+  TOOLKIT_OAUTH_UNAVAILABLE,
+} from "@houston/wire-types";
 import { ComposioApiError, type ComposioHttp } from "./composio-http";
 import type { RawAuthConfig } from "./composio-wire";
 import { IntegrationUpstreamError } from "./types";
@@ -103,9 +108,8 @@ const OAUTH_MODES = new Set(["OAUTH1", "OAUTH1A", "OAUTH2"]);
  *  as a 400 the route relays verbatim, so the frontend can key friendly copy on
  *  the code (HOU-1110: highlevel surfaced this as a raw 500 with the operator
  *  remedy shown to an end user). The `.message` keeps the remedy for logs and
- *  self-host operators; `body.error` is the fallback a generic surface shows. */
-export const TOOLKIT_OAUTH_UNAVAILABLE = "toolkit_oauth_unavailable";
-
+ *  self-host operators; `body.error` is the fallback a generic surface shows.
+ *  The codes are the wire's `IntegrationConnectRefusalCode`. */
 function oauthOnlyError(toolkit: string): Error {
   return new IntegrationUpstreamError(
     400,
@@ -129,8 +133,18 @@ async function candidateSpecs(
 ): Promise<Record<string, unknown>[]> {
   const detail = await http.call<RawToolkitDetail>(
     `/api/v3/toolkits/${encodeURIComponent(toolkit)}`,
+    { nullStatuses: [404] },
   );
-  const modes = (detail?.auth_config_details ?? []).flatMap((d) =>
+  // Composio has no app by this slug: an agent-authored connect card named an
+  // app the catalog does not carry (HOUSTON-APP-5M0: "etsy"). Nothing to set
+  // up on either side, so a typed 400 the connect flow explains, not a 502.
+  if (!detail) {
+    throw new IntegrationUpstreamError(400, {
+      error: `${toolkit} is not an app Houston can connect`,
+      code: TOOLKIT_NOT_FOUND,
+    });
+  }
+  const modes = (detail.auth_config_details ?? []).flatMap((d) =>
     d.mode ? [d.mode] : [],
   );
   const connectable = modes.filter((m) => m.toUpperCase() !== "NO_AUTH");
@@ -139,7 +153,7 @@ async function candidateSpecs(
   );
 
   const specs: Record<string, unknown>[] = [];
-  if ((detail?.composio_managed_auth_schemes ?? []).length > 0) {
+  if ((detail.composio_managed_auth_schemes ?? []).length > 0) {
     specs.push({ type: "use_composio_managed_auth" });
   }
   if (collectible) {
@@ -154,7 +168,7 @@ async function candidateSpecs(
   if (modes.length > 0 && connectable.length === 0) {
     throw new IntegrationUpstreamError(400, {
       error: `${toolkit} does not need connecting; its tools work without an account`,
-      code: "toolkit_no_auth",
+      code: TOOLKIT_NO_AUTH,
     });
   }
   throw connectable.length > 0

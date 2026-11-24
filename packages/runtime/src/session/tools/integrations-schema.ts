@@ -1,3 +1,4 @@
+import { FILE_PARAM_TYPE } from "./integrations-file-params";
 import {
   schemaNode,
   schemaObject,
@@ -12,6 +13,7 @@ export function schemaType(
   node: Record<string, unknown>,
   enumLimit = 12,
 ): string {
+  if (node.file_uploadable === true) return FILE_PARAM_TYPE;
   if ("const" in node) return JSON.stringify(node.const);
   if (Array.isArray(node.enum)) {
     const literals = node.enum.filter((v) => v !== null);

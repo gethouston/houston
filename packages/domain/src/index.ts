@@ -6,6 +6,7 @@ export * from "./assistant-catalog-types";
 export * from "./config";
 export * from "./contributors";
 export * from "./conversation-keys";
+export * from "./conversation-mode";
 export * from "./doc-lock";
 export * from "./first-day";
 export * from "./first-day-config";

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test } from "node:test";
+import { afterEach, beforeEach, describe, test } from "node:test";
 import {
   DEFAULT_PALETTE,
   paletteSwatch,
@@ -91,171 +91,175 @@ function installMatchMedia(matches: boolean): FakeMediaQueryList {
   return query;
 }
 
-let fake: FakeLocalStorage;
-let root: FakeElement;
-let themeColorMeta: FakeElement;
-beforeEach(() => {
-  fake = new FakeLocalStorage();
-  globalThis.localStorage = fake as unknown as Storage;
-  root = new FakeElement();
-  themeColorMeta = new FakeElement();
-  globalThis.document = {
-    documentElement: root,
-    // theme-boot only ever looks up the theme-color meta (shipped in
-    // index.html); anything else resolving to null matches a real document.
-    querySelector: (selector: string) =>
-      selector === 'meta[name="theme-color"]' ? themeColorMeta : null,
-  } as unknown as Document;
-});
-afterEach(() => {
-  // @ts-expect-error — tear down the fakes between tests.
-  globalThis.localStorage = undefined;
-  // @ts-expect-error — tear down the fakes between tests.
-  globalThis.document = undefined;
-  // @ts-expect-error — tear down the fakes between tests.
-  globalThis.matchMedia = undefined;
-});
-
-test("dark sets data-theme, light removes it", () => {
-  applyThemeAttribute(HOUSTON_DARK);
-  assert.equal(root.attrs.get("data-theme"), "dark");
-  applyThemeAttribute(HOUSTON_LIGHT);
-  assert.equal(root.attrs.has("data-theme"), false);
-});
-
-test("the palette is always on the document, Houston's ids included", () => {
-  applyThemeAttribute(HOUSTON_LIGHT);
-  assert.equal(root.attrs.get("data-palette"), DEFAULT_PALETTE.light);
-  applyThemeAttribute(NORD);
-  assert.equal(root.attrs.get("data-palette"), "nord");
-});
-
-test("the inline background tracks the palette's own gutter", () => {
-  applyThemeAttribute(NORD);
-  assert.equal(root.style.background, paletteSwatch("nord").base);
-  applyThemeAttribute(HOUSTON_LIGHT);
-  assert.equal(
-    root.style.background,
-    paletteSwatch(DEFAULT_PALETTE.light).base,
-  );
-});
-
-test("the theme-color meta tracks the applied palette's frame surface", () => {
-  applyThemeAttribute(HOUSTON_DARK);
-  assert.equal(
-    themeColorMeta.attrs.get("content"),
-    paletteSwatch(DEFAULT_PALETTE.dark).base,
-  );
-  applyThemeAttribute(HOUSTON_LIGHT);
-  assert.equal(
-    themeColorMeta.attrs.get("content"),
-    paletteSwatch(DEFAULT_PALETTE.light).background,
-  );
-});
-
-test("a document without the theme-color meta still themes cleanly", () => {
-  (
-    globalThis.document as { querySelector: (s: string) => null }
-  ).querySelector = () => null;
-  assert.doesNotThrow(() => applyThemeAttribute(HOUSTON_DARK));
-  assert.equal(root.attrs.get("data-theme"), "dark");
-});
-
-test("the mirror round-trips mode and palette through storage", () => {
-  writeCachedTheme(NORD);
-  assert.deepEqual(JSON.parse(fake.store.get(KEY) ?? "null"), {
-    mode: "dark",
-    palette: "nord",
-    base: paletteSwatch("nord").base,
-    screen: paletteSwatch("nord").background,
+describe("theme boot", () => {
+  let fake: FakeLocalStorage;
+  let root: FakeElement;
+  let themeColorMeta: FakeElement;
+  const originals = new Map<string, PropertyDescriptor | undefined>();
+  beforeEach(() => {
+    for (const key of ["localStorage", "document", "matchMedia"]) {
+      originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+    }
+    fake = new FakeLocalStorage();
+    globalThis.localStorage = fake as unknown as Storage;
+    root = new FakeElement();
+    themeColorMeta = new FakeElement();
+    globalThis.document = {
+      documentElement: root,
+      // theme-boot only ever looks up the theme-color meta (shipped in
+      // index.html); anything else resolving to null matches a real document.
+      querySelector: (selector: string) =>
+        selector === 'meta[name="theme-color"]' ? themeColorMeta : null,
+    } as unknown as Document;
   });
-  assert.deepEqual(readCachedTheme(), NORD);
-  writeCachedTheme(HOUSTON_LIGHT);
-  assert.deepEqual(readCachedTheme(), HOUSTON_LIGHT);
-});
+  afterEach(() => {
+    for (const [key, descriptor] of originals) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else Reflect.deleteProperty(globalThis, key);
+    }
+  });
 
-test("no mirror yet reads as null", () => {
-  assert.equal(readCachedTheme(), null);
-});
+  test("dark sets data-theme, light removes it", () => {
+    applyThemeAttribute(HOUSTON_DARK);
+    assert.equal(root.attrs.get("data-theme"), "dark");
+    applyThemeAttribute(HOUSTON_LIGHT);
+    assert.equal(root.attrs.has("data-theme"), false);
+  });
 
-test("a junk mirror value is discarded", () => {
-  fake.store.set(KEY, "solarized");
-  assert.equal(readCachedTheme(), null);
-});
+  test("the palette is always on the document, Houston's ids included", () => {
+    applyThemeAttribute(HOUSTON_LIGHT);
+    assert.equal(root.attrs.get("data-palette"), DEFAULT_PALETTE.light);
+    applyThemeAttribute(NORD);
+    assert.equal(root.attrs.get("data-palette"), "nord");
+  });
 
-test("the legacy bare-mode mirror still paints, then gets rewritten", () => {
-  fake.store.set(KEY, "dark");
-  assert.deepEqual(readCachedTheme(), HOUSTON_DARK);
-  writeCachedTheme(HOUSTON_DARK);
-  assert.deepEqual(JSON.parse(fake.store.get(KEY) ?? "null").mode, "dark");
-});
+  test("the inline background tracks the palette's own gutter", () => {
+    applyThemeAttribute(NORD);
+    assert.equal(root.style.background, paletteSwatch("nord").base);
+    applyThemeAttribute(HOUSTON_LIGHT);
+    assert.equal(
+      root.style.background,
+      paletteSwatch(DEFAULT_PALETTE.light).base,
+    );
+  });
 
-test("boot applies the mirrored dark theme before any engine read", () => {
-  writeCachedTheme(NORD);
-  assert.deepEqual(applyBootTheme(), NORD);
-  assert.equal(root.attrs.get("data-theme"), "dark");
-  assert.equal(root.attrs.get("data-palette"), "nord");
-});
+  test("the theme-color meta tracks the applied palette's frame surface", () => {
+    applyThemeAttribute(HOUSTON_DARK);
+    assert.equal(
+      themeColorMeta.attrs.get("content"),
+      paletteSwatch(DEFAULT_PALETTE.dark).base,
+    );
+    applyThemeAttribute(HOUSTON_LIGHT);
+    assert.equal(
+      themeColorMeta.attrs.get("content"),
+      paletteSwatch(DEFAULT_PALETTE.light).background,
+    );
+  });
 
-test("boot leaves the light default in place when the mirror says light", () => {
-  writeCachedTheme(HOUSTON_LIGHT);
-  assert.deepEqual(applyBootTheme(), HOUSTON_LIGHT);
-  assert.equal(root.attrs.has("data-theme"), false);
-});
+  test("a document without the theme-color meta still themes cleanly", () => {
+    (
+      globalThis.document as { querySelector: (s: string) => null }
+    ).querySelector = () => null;
+    assert.doesNotThrow(() => applyThemeAttribute(HOUSTON_DARK));
+    assert.equal(root.attrs.get("data-theme"), "dark");
+  });
 
-test("boot is a no-op on a first launch, leaving the light default", () => {
-  assert.equal(applyBootTheme(), null);
-  assert.equal(root.attrs.has("data-theme"), false);
-  assert.equal(root.attrs.has("data-palette"), false);
-});
+  test("the mirror round-trips mode and palette through storage", () => {
+    writeCachedTheme(NORD);
+    assert.deepEqual(JSON.parse(fake.store.get(KEY) ?? "null"), {
+      mode: "dark",
+      palette: "nord",
+      base: paletteSwatch("nord").base,
+      screen: paletteSwatch("nord").background,
+    });
+    assert.deepEqual(readCachedTheme(), NORD);
+    writeCachedTheme(HOUSTON_LIGHT);
+    assert.deepEqual(readCachedTheme(), HOUSTON_LIGHT);
+  });
 
-test("unavailable storage degrades to no mirror instead of throwing", () => {
-  fake.throwOn = "get";
-  assert.equal(readCachedTheme(), null);
-  assert.equal(applyBootTheme(), null);
-  assert.equal(root.attrs.has("data-theme"), false);
-  fake.throwOn = "set";
-  assert.doesNotThrow(() => writeCachedTheme(HOUSTON_DARK));
-});
+  test("no mirror yet reads as null", () => {
+    assert.equal(readCachedTheme(), null);
+  });
 
-test("the OS appearance reads false where matchMedia does not exist", () => {
-  assert.equal(systemPrefersDark(), false);
-  assert.doesNotThrow(() => watchSystemTheme(() => {})());
-});
+  test("a junk mirror value is discarded", () => {
+    fake.store.set(KEY, "solarized");
+    assert.equal(readCachedTheme(), null);
+  });
 
-test("the OS appearance is read from the dark colour-scheme query", () => {
-  installMatchMedia(true);
-  assert.equal(systemPrefersDark(), true);
-  installMatchMedia(false);
-  assert.equal(systemPrefersDark(), false);
-});
+  test("the legacy bare-mode mirror still paints, then gets rewritten", () => {
+    fake.store.set(KEY, "dark");
+    assert.deepEqual(readCachedTheme(), HOUSTON_DARK);
+    writeCachedTheme(HOUSTON_DARK);
+    assert.deepEqual(JSON.parse(fake.store.get(KEY) ?? "null").mode, "dark");
+  });
 
-test("the watcher reports changes and stops on unsubscribe", () => {
-  const query = installMatchMedia(false);
-  const seen: boolean[] = [];
-  const stop = watchSystemTheme((prefersDark) => seen.push(prefersDark));
-  query.flip(true);
-  query.flip(false);
-  stop();
-  query.flip(true);
-  assert.deepEqual(seen, [true, false]);
-});
+  test("boot applies the mirrored dark theme before any engine read", () => {
+    writeCachedTheme(NORD);
+    assert.deepEqual(applyBootTheme(), NORD);
+    assert.equal(root.attrs.get("data-theme"), "dark");
+    assert.equal(root.attrs.get("data-palette"), "nord");
+  });
 
-test("an OS change re-applies only while the preference follows the system", () => {
-  const query = installMatchMedia(false);
-  let preference: ThemePreference = {
-    mode: "light",
-    light: DEFAULT_PALETTE.light,
-    dark: "nord",
-  };
-  const applied: ThemePreference[] = [];
-  startSystemThemeSync(
-    () => preference,
-    (pref) => applied.push(pref),
-  );
-  query.flip(true);
-  assert.deepEqual(applied, [], "an explicit choice ignores the OS");
-  preference = { ...preference, mode: "system" };
-  query.flip(false);
-  assert.deepEqual(applied, [preference]);
+  test("boot leaves the light default in place when the mirror says light", () => {
+    writeCachedTheme(HOUSTON_LIGHT);
+    assert.deepEqual(applyBootTheme(), HOUSTON_LIGHT);
+    assert.equal(root.attrs.has("data-theme"), false);
+  });
+
+  test("boot is a no-op on a first launch, leaving the light default", () => {
+    assert.equal(applyBootTheme(), null);
+    assert.equal(root.attrs.has("data-theme"), false);
+    assert.equal(root.attrs.has("data-palette"), false);
+  });
+
+  test("unavailable storage degrades to no mirror instead of throwing", () => {
+    fake.throwOn = "get";
+    assert.equal(readCachedTheme(), null);
+    assert.equal(applyBootTheme(), null);
+    assert.equal(root.attrs.has("data-theme"), false);
+    fake.throwOn = "set";
+    assert.doesNotThrow(() => writeCachedTheme(HOUSTON_DARK));
+  });
+
+  test("the OS appearance reads false where matchMedia does not exist", () => {
+    assert.equal(systemPrefersDark(), false);
+    assert.doesNotThrow(() => watchSystemTheme(() => {})());
+  });
+
+  test("the OS appearance is read from the dark colour-scheme query", () => {
+    installMatchMedia(true);
+    assert.equal(systemPrefersDark(), true);
+    installMatchMedia(false);
+    assert.equal(systemPrefersDark(), false);
+  });
+
+  test("the watcher reports changes and stops on unsubscribe", () => {
+    const query = installMatchMedia(false);
+    const seen: boolean[] = [];
+    const stop = watchSystemTheme((prefersDark) => seen.push(prefersDark));
+    query.flip(true);
+    query.flip(false);
+    stop();
+    query.flip(true);
+    assert.deepEqual(seen, [true, false]);
+  });
+
+  test("an OS change re-applies only while the preference follows the system", () => {
+    const query = installMatchMedia(false);
+    let preference: ThemePreference = {
+      mode: "light",
+      light: DEFAULT_PALETTE.light,
+      dark: "nord",
+    };
+    const applied: ThemePreference[] = [];
+    startSystemThemeSync(
+      () => preference,
+      (pref) => applied.push(pref),
+    );
+    query.flip(true);
+    assert.deepEqual(applied, [], "an explicit choice ignores the OS");
+    preference = { ...preference, mode: "system" };
+    query.flip(false);
+    assert.deepEqual(applied, [preference]);
+  });
 });

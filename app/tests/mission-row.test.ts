@@ -79,4 +79,12 @@ describe("both mission creation paths route their row through it", () => {
       true,
     );
   });
+
+  it("keeps the composer's mode on the new card, and only when one is set", () => {
+    strictEqual(
+      missionRowInput(MISSION, { modeOverride: "auto" }).mode,
+      "auto",
+    );
+    strictEqual("mode" in missionRowInput(MISSION, {}), false);
+  });
 });

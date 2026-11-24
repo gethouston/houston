@@ -79,12 +79,18 @@ export function usePickerViewModels(opts: {
   /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Localize a curated row's description via the same `modelDescriptions` key
-  // scheme the old dropdown used, falling back to the catalog English.
+  // scheme the old dropdown used, falling back to the catalog English. A model
+  // whose copy differs per card (the plan it needs) reads its card's
+  // `providerModelDescriptions` entry first.
   const describe = useCallback(
-    (_providerId: string, modelId: string, fallback: string) =>
-      t(`modelSelector.modelDescriptions.${modelId.replace(/\./g, "_")}`, {
-        defaultValue: fallback,
-      }),
+    (providerId: string, modelId: string, fallback: string) => {
+      const key = modelId.replace(/\./g, "_");
+      return t(`modelSelector.providerModelDescriptions.${providerId}.${key}`, {
+        defaultValue: t(`modelSelector.modelDescriptions.${key}`, {
+          defaultValue: fallback,
+        }),
+      });
+    },
     [t],
   );
 

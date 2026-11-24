@@ -14,7 +14,6 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `createAgent` | POST | confirmed: host approval required | visible | name: free text; color: enum; seed: free text |
 | `createMigratedAgent` | unroutable | unconfirmed: withheld from dispatch | it keeps a desktop agent's name even when that name is Houston, which the AI Manager may never give an employee; createAgent is the create to dispatch. | name: free text; color: enum; seed: free text |
 | `deleteAgent` | DELETE | confirmed: host approval required | visible | id: resolved:agents |
-| `generateAgentInstructions` | unroutable | unconfirmed: withheld from dispatch | a one-shot generation turn on a runtime, not an app operation; an assistant writes the instructions itself and saves them with writeAgentFile. | description: free text; opts: free text |
 | `getAgentDelegation` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `getAgentModelChoice` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents |
 | `installAgentFromGithub` | POST | confirmed: host approval required | visible | githubUrl: free text |
@@ -109,6 +108,7 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `listActivities` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `missions.search` | unroutable | unconfirmed: no callable route | visible | query: free text; agentId: resolved:agents |
 | `renameMission` | PATCH | unconfirmed: Retitles a card on the person's own board; what the mission did is untouched, and the title is changed back the same way. | visible | agentId: resolved:agents; id: resolved:activities; title: free text |
+| `setMissionMode` | PATCH | unconfirmed: Changes how the agent works in a chat the person owns; nothing already done changes, and the mode is switched back the same way. | visible | agentId: resolved:agents; id: resolved:activities; mode: enum |
 | `updateActivity` | PATCH | confirmed: host approval required | its updates parameter also carries the lineage the runtime owns - session keys, routine run ids, and the pending interaction that authors an approval card - so a dispatched edit could rewrite far more than the mission's own words; a status move belongs to the coordinator's update_mission_status tool. | agentId: resolved:agents; id: resolved:activities; updates: free text |
 | `addOrgMember` | POST | confirmed: host approval required | visible | email: free text; role: enum; prorationDate: free text; quotedAmountCents: free text |
 | `completeLinkedIn` | POST | unconfirmed: withheld from dispatch | redeems a one-time bearer ticket that only the browser returning from LinkedIn holds, and passing one through a chat turn is how it leaks. | ticket: free text |

@@ -64,7 +64,11 @@ export default defineConfig({
   // HOUSTON_E2E_WORKERS overrides either default.
   workers: Number(process.env.HOUSTON_E2E_WORKERS || (process.env.CI ? 3 : 4)),
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // No retries, CI included. `--fail-on-flaky-tests` already failed a test
+  // that passed on its retry, so a retry only re-ran a failure: a 30 s
+  // timeout cost a shard 60 s before it went red. The trace, video and
+  // screenshot of the one attempt are kept (`retain-on-failure`).
+  retries: 0,
   timeout: 30_000,
   expect: {
     timeout: 10_000,

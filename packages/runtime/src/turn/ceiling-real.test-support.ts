@@ -29,6 +29,7 @@ export async function realCeiling(
     ) => Promise<Response | undefined>;
     writeWorkspace?: (workspaceDir: string) => void;
     beforeAbort?: (signal: AbortSignal | undefined) => void;
+    stopMarkerTimeoutMs?: number;
   } = {},
 ) {
   const pool = fakePoolStore("ws/org/agent");
@@ -45,6 +46,7 @@ export async function realCeiling(
     heartbeatIntervalMs: 5,
     transcriptRetryDelaysMs: [],
     activityDocRetryDelaysMs: [],
+    stopMarkerTimeoutMs: input.stopMarkerTimeoutMs,
     fetchImpl: async (url, init) => {
       if (String(url) === HEARTBEAT_URL) {
         if (stopping) stopped = true;

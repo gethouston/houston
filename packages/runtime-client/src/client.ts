@@ -9,7 +9,6 @@ import { createRequester, EngineError, type Requester } from "./requester";
 import { readEventStream } from "./sse-read";
 import type {
   EngineClientConfig,
-  GenerateAgentResponse,
   HealthResponse,
   ProviderId,
   ProviderInfo,
@@ -109,28 +108,6 @@ export class HoustonEngineClient extends EngineBrowserClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ provider }),
-    });
-  }
-
-  /**
-   * Create-with-AI: generate an agent name + CLAUDE.md instructions (+ an
-   * optional routine suggestion) from a plain-language description, via one
-   * one-shot turn on the runtime. `provider` / `model` are pi ids; omitted,
-   * the runtime uses its active provider — same resolution as a chat turn.
-   */
-  generateAgent(
-    description: string,
-    opts: { provider?: string; model?: string; signal?: AbortSignal } = {},
-  ) {
-    return this.json<GenerateAgentResponse>("/generate-agent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        description,
-        provider: opts.provider,
-        model: opts.model,
-      }),
-      signal: opts.signal,
     });
   }
 

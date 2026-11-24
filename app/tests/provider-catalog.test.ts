@@ -2,6 +2,10 @@ import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { before, describe, it } from "node:test";
 import { DEFAULT_MODEL } from "@houston/sdk/provider-catalog";
 import {
+  contextFillPercent,
+  effectiveContextWindow,
+} from "../src/lib/context-usage.ts";
+import {
   EFFORT_ORDER,
   getContextWindowConfig,
   getDefaultModel,
@@ -74,16 +78,43 @@ describe("hydrateProviderCatalog: model metadata", () => {
 
   it("takes the model window from pi, and the snap-up ceiling from the override", () => {
     // GPT-6 Astra: the override starts at Codex's 95%-effective 272k tier and
-    // snaps up to its opt-in 1M variant (× 95%).
+    // snaps up to Codex's 872k max_context_window (× 95%).
     deepStrictEqual(getContextWindowConfig("openai", "gpt-6-astra"), {
       default: 258_400,
-      max: 950_000,
+      max: 828_400,
+      inputLimit: 922_000,
     });
     // Sonnet 5.5: flat 1M from pi, no override ceiling → default === max.
     deepStrictEqual(getContextWindowConfig("anthropic", "claude-sonnet-5-5"), {
       default: 1_000_000,
       max: 1_000_000,
     });
+  });
+
+  it("sizes a 1.05M GPT-6 window's bar by its 922k input cap", () => {
+    const cfg = getContextWindowConfig("opencode", "gpt-6.1-sol");
+    deepStrictEqual(cfg, {
+      default: 1_050_000,
+      max: 1_050_000,
+      inputLimit: 922_000,
+    });
+    const room = effectiveContextWindow(cfg, 0);
+    strictEqual(room, 922_000);
+    // The runtime compacts at 93% of the cap (857,460): the bar reads 93% there.
+    const usage = {
+      context_tokens: 857_460,
+      output_tokens: 0,
+      cached_tokens: 0,
+    };
+    strictEqual(contextFillPercent(usage, room), 93);
+    // A Codex row stays on the 200k ceiling's room; the cap never widens it.
+    strictEqual(
+      effectiveContextWindow(
+        getContextWindowConfig("openai", "gpt-6-astra"),
+        0,
+      ),
+      215_054,
+    );
   });
 
   it("derives the effort set straight from pi (no hand-curated per-model list)", () => {

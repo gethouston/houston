@@ -49,6 +49,7 @@ export function useIntegrationConnect({
   accountScope = false,
   onConnected,
   autoContinueWhenConnected = false,
+  connectedAfter,
 }: {
   toolkit: string;
   agentId: string;
@@ -68,6 +69,9 @@ export function useIntegrationConnect({
    * markdown-link card leaves this off and stays a passive badge.
    */
   autoContinueWhenConnected?: boolean;
+  /** A reconnect step's refusal time: only a connection created after it
+   *  counts as connected (the refused one still reads active). */
+  connectedAfter?: string;
 }): {
   app: AppDisplay;
   isConnected: boolean;
@@ -88,6 +92,7 @@ export function useIntegrationConnect({
     connections.data,
     toolkit,
     catalogEntry,
+    connectedAfter,
   );
   const resolved = appDisplay(slug, catalogEntry);
   const app: AppDisplay = {
