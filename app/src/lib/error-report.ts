@@ -12,6 +12,16 @@ import {
 } from "./sentry-reported-mark";
 
 /**
+ * Extra Sentry context for one report: tags to filter on, and a fingerprint
+ * when one call site's failures have causes that must not share an issue
+ * (they share a stack, which is what Sentry groups on by default).
+ */
+export interface ReportDetail {
+  tags?: Record<string, string>;
+  fingerprint?: string[];
+}
+
+/**
  * Capture an error to Sentry WITHOUT showing a toast. For engine-call paths
  * that surface the failure with their own inline UI (a toast would be
  * redundant) but must still reach Sentry — the report is what lets us fix it.
@@ -36,6 +46,7 @@ export function reportError(
   command: string,
   message: string,
   originalError?: unknown,
+  detail?: ReportDetail,
 ): void {
   // The app's own warming-guard refusal: the "almost ready" dialog is already
   // open and nothing failed, so there is no bug to report (HOUSTON-APP-53K).
@@ -68,10 +79,16 @@ export function reportError(
   }
   markReportedToSentry(originalError);
   const error = createSentryReportError(command, message, originalError);
-  void sentryCapture(error, {
-    source: command,
-    error_kind: classifyAnalyticsError(message),
-  }).catch((flushErr: unknown) => {
+  void sentryCapture(
+    error,
+    {
+      ...detail?.tags,
+      source: command,
+      error_kind: classifyAnalyticsError(message),
+    },
+    undefined,
+    detail?.fingerprint,
+  ).catch((flushErr: unknown) => {
     console.error("[sentry] failed to flush captured error", flushErr);
   });
 }
@@ -88,11 +105,15 @@ export function reportError(
  * is still logged here — this handler's `command` is the context the engine
  * label lacks — but NOT captured again: one failure, one Sentry issue.
  */
-export function logAndReportError(command: string, err: unknown): void {
+export function logAndReportError(
+  command: string,
+  err: unknown,
+  detail?: ReportDetail,
+): void {
   const raw = describeError(err);
   console.error(`[${command}] ${raw}`);
   if (wasReportedToSentry(err)) return;
-  reportError(command, raw, err);
+  reportError(command, raw, err, detail);
 }
 
 /**
