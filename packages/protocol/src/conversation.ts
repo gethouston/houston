@@ -9,6 +9,7 @@ import type { ManagedBridgeEndpoint } from "./local-model-bridge";
 
 import type { PendingInteraction } from "./domain/interaction";
 import type { ProviderError } from "./provider-error";
+import type { UnsavedFilesReport } from "./turn-unsaved-files";
 
 /**
  * Connectable AI providers.
@@ -420,6 +421,7 @@ export interface ChatMessage {
    * reload. Mirrors the `file_changes` wire frame.
    */
   fileChanges?: { created: string[]; modified: string[] };
+  unsavedFiles?: UnsavedFilesReport;
   /**
    * Set when this turn's model request failed with a typed provider error
    * (auth / rate-limit / 5xx / network). Persisted so the inline reconnect /

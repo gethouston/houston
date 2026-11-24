@@ -86,6 +86,7 @@ export interface ChatMessage {
    * English default.
    */
   notice?: SystemNoticeKind;
+  noticeData?: unknown;
   /** Set on `from: "system"` rows the host draws itself. */
   hostCard?: HostCard;
   /**
@@ -339,6 +340,9 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           tools: [],
           fileChanges: [],
           ...(item.notice ? { notice: item.notice } : {}),
+          ...(item.noticeData !== undefined
+            ? { noticeData: item.noticeData }
+            : {}),
         });
         break;
       }

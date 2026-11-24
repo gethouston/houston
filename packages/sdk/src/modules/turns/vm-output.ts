@@ -10,6 +10,7 @@ import type {
 } from "./feed-output";
 import type { SendWaitReason } from "./send-busy";
 import type { EngineNoticeKind } from "./turn-errors";
+import type { FilesNotSavedData } from "./turn-unsaved-notice";
 import {
   foldReplyPhase,
   type ReplyPhaseState,
@@ -69,6 +70,7 @@ interface HistoryFrame {
   feed_type: string;
   data: unknown;
   notice?: EngineNoticeKind;
+  noticeData?: FilesNotSavedData;
   ts?: number;
   author?: FeedAuthor;
   mentions?: FeedMention[];
@@ -146,6 +148,7 @@ export interface FeedItemVM {
    * a send refused for good). Optional/additive: absent on every other entry.
    */
   notice?: EngineNoticeKind;
+  noticeData?: FilesNotSavedData;
   /**
    * This entry's index among its turn's `tool_call`s / `tool_result`s — with
    * {@link turnId}, the identity that pairs a replayed tool row with the entry
@@ -416,6 +419,7 @@ export class ConversationVmOutput implements FeedOutput {
       ...(f.mentions !== undefined ? { mentions: f.mentions } : {}),
       ...(f.turnId !== undefined ? { turnId: f.turnId } : {}),
       ...(f.notice !== undefined ? { notice: f.notice } : {}),
+      ...(f.noticeData !== undefined ? { noticeData: f.noticeData } : {}),
       ...(f.toolIndex !== undefined ? { toolIndex: f.toolIndex } : {}),
     };
   }
@@ -433,10 +437,12 @@ export class ConversationVmOutput implements FeedOutput {
       turnId,
       toolIndex,
       notice,
+      noticeData,
     } = item as {
       feed_type: string;
       data: unknown;
       notice?: EngineNoticeKind;
+      noticeData?: FilesNotSavedData;
       ts?: number;
       pending?: boolean;
       fails_pending?: boolean;
@@ -468,7 +474,15 @@ export class ConversationVmOutput implements FeedOutput {
       if (turnId !== undefined) run.turnId ??= turnId;
       s.streaming.delete(finalOf);
     } else if (
-      !this.upsertByTurn(s, feed_type, data, turnId, toolIndex, notice)
+      !this.upsertByTurn(
+        s,
+        feed_type,
+        data,
+        turnId,
+        toolIndex,
+        notice,
+        noticeData,
+      )
     ) {
       // A fresh entry: carry a supplied `ts`, else stamp the wall clock now; an
       // optimistic push carries `pending: true` until server evidence clears it,
@@ -486,6 +500,7 @@ export class ConversationVmOutput implements FeedOutput {
         ...(turnId !== undefined ? { turnId } : {}),
         ...(toolIndex !== undefined ? { toolIndex } : {}),
         ...(notice !== undefined ? { notice } : {}),
+        ...(noticeData !== undefined ? { noticeData } : {}),
       });
     }
     this.publish(agentPath, sessionKey, s);
@@ -508,6 +523,7 @@ export class ConversationVmOutput implements FeedOutput {
     turnId: string | undefined,
     toolIndex: number | undefined,
     notice: EngineNoticeKind | undefined,
+    noticeData?: FilesNotSavedData,
   ): boolean {
     if (turnId === undefined) return false;
     if (feed_type === "system_message" && notice !== undefined) {
@@ -525,6 +541,7 @@ export class ConversationVmOutput implements FeedOutput {
       if (!entry) return false;
       entry.data = data;
       entry.notice = notice;
+      if (noticeData !== undefined) entry.noticeData = noticeData;
       return true;
     }
     if (SINGLETON_TYPES.has(feed_type)) {

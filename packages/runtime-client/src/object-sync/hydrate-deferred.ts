@@ -38,7 +38,7 @@ export function startDeferredPhase(opts: {
   const prioritize = (rels: readonly string[]) => {
     for (const rel of rels) {
       const entry = entries?.get(rel);
-      if (!entry || opts.state.failed) continue;
+      if (!entry || entry.link !== undefined || opts.state.failed) continue;
       if (!claims.take(rel)) {
         claims.want(rel);
         continue;

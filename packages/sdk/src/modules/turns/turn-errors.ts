@@ -189,7 +189,8 @@ export type EngineNoticeKind =
   | "compute_busy"
   | "agent_too_large"
   | "agent_setup_failed"
-  | "turn_unconfirmed";
+  | "turn_unconfirmed"
+  | "files_not_saved";
 
 /**
  * Whether a turn's terminal error is the user pressing Stop — the verbatim

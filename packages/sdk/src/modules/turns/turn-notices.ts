@@ -101,6 +101,7 @@ const REPORTED: Partial<Record<EngineNoticeKind, string>> = {
   agent_too_large: "turn_setup_failed",
   agent_setup_failed: "turn_setup_failed",
   turn_unconfirmed: "turn_gone_after_accept",
+  files_not_saved: "turn_files_not_saved",
 };
 
 /**
@@ -118,19 +119,27 @@ export function turnFailureReport(
     notice?: EngineNoticeKind;
     cause?: unknown;
     turnId?: unknown;
+    noticeData?: { unsavedFiles?: { counts?: object; total?: unknown } };
   };
   if (it.feed_type !== "system_message" || it.notice === undefined) return null;
   const source = REPORTED[it.notice];
   if (!source) return null;
   const cause = typeof it.cause === "string" ? it.cause : it.notice;
+  const unsaved = it.noticeData?.unsavedFiles;
+  const reasons = Object.keys(unsaved?.counts ?? {}).sort();
   const error = new Error(
     source === "turn_gone_after_accept"
       ? "turn conversation still not found after its 202"
-      : `turn setup failed: ${cause}`,
+      : source === "turn_files_not_saved"
+        ? `turn files not saved: ${reasons.join(",")}`
+        : `turn setup failed: ${cause}`,
   );
   return {
     source,
     error: Object.assign(error, {
+      ...(unsaved
+        ? { unsavedCounts: unsaved.counts, unsavedTotal: unsaved.total }
+        : {}),
       ...(typeof it.turnId === "string" ? { turnId: it.turnId } : {}),
       ...(sessionKey ? { sessionKey } : {}),
     }),
