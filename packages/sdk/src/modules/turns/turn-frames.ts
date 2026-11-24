@@ -8,6 +8,7 @@ import {
   settleProviderErrorCard,
   type TurnState,
 } from "./turn-settle";
+import { pushFilesNotSaved } from "./turn-unsaved-notice";
 
 /**
  * Fold ONE of our turn's wire frames into the turn state + feed — content
@@ -96,6 +97,7 @@ export function applyTurnFrame(
       const notice = timeLimitNotice(ev.data.code);
       if (notice) finishOk(s, notice);
       else if (!finishSetupError(s, ev.data)) finishErr(s, ev.data.message);
+      pushFilesNotSaved(s, ev.data);
       stop();
       break;
     }
@@ -107,6 +109,7 @@ export function applyTurnFrame(
       // always settles `needs_you` (the engine never writes `done`).
       if (ev.pendingInteraction) s.pendingInteraction = ev.pendingInteraction;
       finishOk(s);
+      pushFilesNotSaved(s, ev.data);
       stop();
       break;
     case "reply_complete":
