@@ -16,6 +16,7 @@ const CODES: readonly string[] = [
   "first_day_not_pending",
   "first_day_not_started",
   "first_day_no_provider",
+  "first_day_provider_unavailable",
 ] satisfies readonly FirstDayRefusalCode[];
 
 /** Parse only a typed first-day refusal body; anything else is null. */
