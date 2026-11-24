@@ -1,5 +1,6 @@
 import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
+import { retryComputeBusyOnce } from "./compute-busy-retry";
 import type { SandboxFetch } from "./sandbox-fetch";
 import { CONVERSATION_ID_HEADER } from "./save-learning";
 import { hostErrorFrom, type SessionToolErrorDetails } from "./tool-error";
@@ -40,23 +41,27 @@ export function missionCall(fetchSandbox: SandboxFetch): MissionCall {
     try {
       const acting = currentActingContext();
       const conversationId = currentConversationId();
-      const res = await fetchSandbox(`/sandbox/missions${path}`, {
-        method,
-        headers: {
-          "content-type": "application/json",
-          ...(acting?.actingAs
-            ? { "x-houston-acting-as": acting.actingAs }
-            : {}),
-          ...(acting?.actingUser
-            ? { "x-houston-acting-user": acting.actingUser }
-            : {}),
-          ...(conversationId
-            ? { [CONVERSATION_ID_HEADER]: conversationId }
-            : {}),
-        },
-        ...(method === "POST" ? { body: JSON.stringify(body) } : {}),
+      const res = await retryComputeBusyOnce(
+        () =>
+          fetchSandbox(`/sandbox/missions${path}`, {
+            method,
+            headers: {
+              "content-type": "application/json",
+              ...(acting?.actingAs
+                ? { "x-houston-acting-as": acting.actingAs }
+                : {}),
+              ...(acting?.actingUser
+                ? { "x-houston-acting-user": acting.actingUser }
+                : {}),
+              ...(conversationId
+                ? { [CONVERSATION_ID_HEADER]: conversationId }
+                : {}),
+            },
+            ...(method === "POST" ? { body: JSON.stringify(body) } : {}),
+            signal,
+          }),
         signal,
-      });
+      );
       if (!res.ok)
         return {
           ok: false,

@@ -82,6 +82,32 @@ export function surfaceQuietState(
       });
       return true;
     }
+    case "compute_busy":
+    case "conversation_edit_refused": {
+      console.error(`[toast:${command}] ${message}`);
+      reportQuietError(quiet, command, message, originalError);
+      analytics.track("app_error_shown", {
+        source: command,
+        error_kind: classifyAnalyticsError(message),
+      });
+      const copy =
+        quiet === "compute_busy"
+          ? ({
+              title: "shell:errorToast.computeBusyTitle",
+              description: "shell:errorToast.computeBusyDescription",
+            } as const)
+          : ({
+              title: "shell:errorToast.conversationEditRefusedTitle",
+              description:
+                "shell:errorToast.conversationEditRefusedDescription",
+            } as const);
+      useUIStore.getState().addToast({
+        title: i18n.t(copy.title),
+        description: i18n.t(copy.description),
+        variant: "info",
+      });
+      return true;
+    }
     default:
       return false;
   }

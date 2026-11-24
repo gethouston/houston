@@ -50,7 +50,7 @@ export const PROVIDERS: readonly HostProvider[] = [
     auth: "apiKey",
     cloud: true,
     models: [
-      "glm-5.2",
+      "glm-5.3",
       "kimi-k2.7-code",
       "minimax-m3",
       "qwen3.8-max",
@@ -95,6 +95,7 @@ export const PROVIDERS: readonly HostProvider[] = [
       "gemini-3.7-flash",
       "gemini-3.5-flash",
       "gemini-3.1-flash-lite",
+      "gemini-4-neon",
       "gemma-4-26b-a4b-it",
       "gemma-4-31b-it",
     ],

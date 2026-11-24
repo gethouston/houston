@@ -526,3 +526,25 @@ test("a question step's wantsFiles flag is optional and must be a boolean", () =
     parsePendingInteraction({ steps: [{ ...question, wantsFiles: true }] }),
   ).toEqual({ steps: [{ ...question, wantsFiles: true }] });
 });
+
+test("a connect step may carry a boolean reconnect flag, nothing else", () => {
+  const step = (reconnect: unknown) => ({
+    steps: [{ kind: "connect", id: "c1", toolkit: "apify", reconnect }],
+  });
+  expect(isPendingInteraction(step(true))).toBe(true);
+  expect(isPendingInteraction(step(undefined))).toBe(true);
+  expect(isPendingInteraction(step("yes"))).toBe(false);
+  const refused = (refusedAt: unknown) => ({
+    steps: [
+      {
+        kind: "connect",
+        id: "c1",
+        toolkit: "apify",
+        reconnect: true,
+        refusedAt,
+      },
+    ],
+  });
+  expect(isPendingInteraction(refused("2026-11-18T21:00:00Z"))).toBe(true);
+  expect(isPendingInteraction(refused(1))).toBe(false);
+});

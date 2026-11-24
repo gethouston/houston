@@ -30,7 +30,8 @@ import { reportQuietError } from "./quiet-error-report";
  * shows its own copy for it and the boot-time resume stays silent to the user,
  * so it reports only as the quiet `bridge_unsupported` class instead of one
  * bug per desktop boot. The other bridge quiet classes (`bridge_no_agent`,
- * `bridge_state`) are the toast layer's gate. Whatever stays loud keeps its
+ * `bridge_state`) report the same way, with the cause as `extra`. Whatever
+ * stays loud keeps its
  * cause: the report error carries only the stack, so the status, gateway body
  * and message ride as `extra` (every event used to arrive with `extra: null`,
  * PRODUCT-1833).
@@ -50,6 +51,18 @@ export function reportLocalBridgeError(error: unknown): void {
       "local_model_bridge",
       "Local model bridge not offered by this server",
       error,
+    );
+    return;
+  }
+  if (plan.kind === "quiet") {
+    console.warn(`[local_model_bridge] ${plan.quiet}: ${plan.cause}`);
+    reportQuietError(
+      plan.quiet,
+      "local_model_bridge",
+      "Local model connection failed",
+      error,
+      undefined,
+      { cause: plan.cause },
     );
     return;
   }

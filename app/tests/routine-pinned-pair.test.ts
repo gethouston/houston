@@ -57,7 +57,7 @@ describe("routinePinnedPair", () => {
     );
     deepStrictEqual(
       routinePinnedPair({ provider: "opencode-go", model: "glm-5.1" }),
-      { provider: "opencode-go", model: "glm-5.2" },
+      { provider: "opencode-go", model: "glm-5.3" },
     );
   });
 

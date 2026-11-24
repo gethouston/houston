@@ -1897,17 +1897,6 @@
       "POST /conversations/c1/browser/input"
     ]
   },
-  "POST /agents/:agentId/generate-agent": {
-    "status": 200,
-    "contentType": "application/json",
-    "errorCode": null,
-    "bodyKeys": [
-      "ok"
-    ],
-    "forwarded": [
-      "POST /generate-agent"
-    ]
-  },
   "POST /health": {
     "status": 401,
     "contentType": "application/json; charset=utf-8",
@@ -18567,133 +18556,6 @@
       "POST /conversations/c1/browser/input/"
     ]
   },
-  "GET /agents/:agentId/generate-agent": {
-    "status": 200,
-    "contentType": "application/json",
-    "errorCode": null,
-    "bodyKeys": [
-      "ok"
-    ],
-    "forwarded": [
-      "GET /generate-agent"
-    ]
-  },
-  "GET /agents/:agentId/generate-agent [anon]": {
-    "status": 401,
-    "contentType": "application/json; charset=utf-8",
-    "errorCode": "unauthorized",
-    "bodyKeys": [
-      "error"
-    ],
-    "forwarded": []
-  },
-  "GET /agents/:agentId/generate-agent [other]": {
-    "status": 403,
-    "contentType": "application/json; charset=utf-8",
-    "errorCode": "not your agent",
-    "bodyKeys": [
-      "error"
-    ],
-    "forwarded": []
-  },
-  "PUT /agents/:agentId/generate-agent": {
-    "status": 200,
-    "contentType": "application/json",
-    "errorCode": null,
-    "bodyKeys": [
-      "ok"
-    ],
-    "forwarded": [
-      "PUT /generate-agent"
-    ]
-  },
-  "PUT /agents/:agentId/generate-agent [anon]": {
-    "status": 401,
-    "contentType": "application/json; charset=utf-8",
-    "errorCode": "unauthorized",
-    "bodyKeys": [
-      "error"
-    ],
-    "forwarded": []
-  },
-  "PUT /agents/:agentId/generate-agent [other]": {
-    "status": 403,
-    "contentType": "application/json; charset=utf-8",
-    "errorCode": "not your agent",
-    "bodyKeys": [
-      "error"
-    ],
-    "forwarded": []
-  },
-  "PATCH /agents/:agentId/generate-agent": {
-    "status": 200,
-    "contentType": "application/json",
-    "errorCode": null,
-    "bodyKeys": [
-      "ok"
-    ],
-    "forwarded": [
-      "PATCH /generate-agent"
-    ]
-  },
-  "PATCH /agents/:agentId/generate-agent [anon]": {
-    "status": 401,
-    "contentType": "application/json; charset=utf-8",
-    "errorCode": "unauthorized",
-    "bodyKeys": [
-      "error"
-    ],
-    "forwarded": []
-  },
-  "PATCH /agents/:agentId/generate-agent [other]": {
-    "status": 403,
-    "contentType": "application/json; charset=utf-8",
-    "errorCode": "not your agent",
-    "bodyKeys": [
-      "error"
-    ],
-    "forwarded": []
-  },
-  "DELETE /agents/:agentId/generate-agent": {
-    "status": 200,
-    "contentType": "application/json",
-    "errorCode": null,
-    "bodyKeys": [
-      "ok"
-    ],
-    "forwarded": [
-      "DELETE /generate-agent"
-    ]
-  },
-  "DELETE /agents/:agentId/generate-agent [anon]": {
-    "status": 401,
-    "contentType": "application/json; charset=utf-8",
-    "errorCode": "unauthorized",
-    "bodyKeys": [
-      "error"
-    ],
-    "forwarded": []
-  },
-  "DELETE /agents/:agentId/generate-agent [other]": {
-    "status": 403,
-    "contentType": "application/json; charset=utf-8",
-    "errorCode": "not your agent",
-    "bodyKeys": [
-      "error"
-    ],
-    "forwarded": []
-  },
-  "POST /agents/:agentId/generate-agent/": {
-    "status": 200,
-    "contentType": "application/json",
-    "errorCode": null,
-    "bodyKeys": [
-      "ok"
-    ],
-    "forwarded": [
-      "POST /generate-agent/"
-    ]
-  },
   "HEAD /health": {
     "status": 401,
     "contentType": "application/json; charset=utf-8",
@@ -21890,24 +21752,6 @@
     "forwarded": []
   },
   "POST /agents/:agentId/conversations/:conversationId/browser/input [other]": {
-    "status": 403,
-    "contentType": "application/json; charset=utf-8",
-    "errorCode": "not your agent",
-    "bodyKeys": [
-      "error"
-    ],
-    "forwarded": []
-  },
-  "POST /agents/:agentId/generate-agent [anon]": {
-    "status": 401,
-    "contentType": "application/json; charset=utf-8",
-    "errorCode": "unauthorized",
-    "bodyKeys": [
-      "error"
-    ],
-    "forwarded": []
-  },
-  "POST /agents/:agentId/generate-agent [other]": {
     "status": 403,
     "contentType": "application/json; charset=utf-8",
     "errorCode": "not your agent",

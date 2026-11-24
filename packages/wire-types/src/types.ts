@@ -1183,24 +1183,6 @@ export interface SummarizeOptions {
   model?: string;
 }
 
-export interface SuggestedIntegration {
-  slug: string;
-  displayName: string;
-}
-
-export interface SuggestedRoutine {
-  name: string;
-  prompt: string;
-  schedule: string;
-}
-
-export interface GenerateInstructionsResult {
-  name: string;
-  instructions: string;
-  suggestedIntegrations: SuggestedIntegration[];
-  suggestedRoutine?: SuggestedRoutine | null;
-}
-
 // ---------- Attachments ----------
 
 export interface AttachmentUploadRequest {

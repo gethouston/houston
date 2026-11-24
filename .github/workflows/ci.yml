@@ -22,6 +22,20 @@ concurrency:
 permissions:
   contents: read
 
+# Job budgets are 1.5x the p95 of the latest 60 main runs, rounded up to
+# whole minutes, with a two-minute floor; a matrix takes its slowest leg's
+# p95. A budget sits above real p95 so it only trips on a hang, and a
+# timeout fails the job. A PR that makes a job faster or slower re-measures
+# and moves its budget in the same PR.
+
+# Every job runs on `vars.CI_RUNNER` (a repo variable; unset = GitHub's
+# ubuntu-latest), the same switch the cloud repo uses. Hosted jobs share the
+# org's concurrent-job limit with the cloud repo, and a full run here is 13
+# jobs, so two PRs at once queue: 2 s p50 but 6 to 12 min p95 of waiting per
+# job over the 150 runs before this. A runner label with its own capacity
+# (Blacksmith's `blacksmith-4vcpu-ubuntu-2404`, the same 4 vCPU) removes the
+# queue without touching a job; unsetting the variable rolls back.
+
 jobs:
   changes:
     # Decides whether the Playwright jobs below (the web shards and the
@@ -49,8 +63,8 @@ jobs:
     # event (if a merge queue is ever enabled) is not a pull_request, so it
     # would need a checkout plus `base` for the action, or to run everything.
     name: Changed paths
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 2
     permissions:
       contents: read
       pull-requests: read
@@ -95,8 +109,8 @@ jobs:
     name: TS checks (lint · typecheck · contract tests)
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -170,12 +184,16 @@ jobs:
     name: Unit tests (${{ matrix.package }})
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
       matrix:
-        package: [runtime, host]
+        include:
+          - package: runtime
+            timeout: 10
+          - package: host
+            timeout: 4
     steps:
       # Same actions the sibling jobs run, at the commits their `v4` tags
       # resolve to today, pinned. The suites never push, so the token is not
@@ -192,6 +210,43 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # The browser integration suites launch the first browser the runtime
+      # finds: Playwright's headless shell (what the cloud image bakes,
+      # selfhost/Dockerfile), else the runner's full Google Chrome. Chrome
+      # launches about 3x slower warm and took 4.6 s cold, so a fresh pool per
+      # test crossed the hand-off suite's 5 s wait in 7 of 143 runs
+      # (run 44096457588). Cached per playwright-core version.
+      - name: playwright-core version
+        if: matrix.package == 'runtime'
+        id: playwright-core
+        run: echo "version=$(node -p "require('./packages/runtime/package.json').dependencies['playwright-core']")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the headless shell
+        if: matrix.package == 'runtime'
+        id: headless-shell-cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-headless-shell-${{ runner.os }}-${{ steps.playwright-core.outputs.version }}
+
+      - name: Install the headless shell
+        if: matrix.package == 'runtime' && steps.headless-shell-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @houston/runtime exec playwright-core install --no-progress chromium-headless-shell
+
+      # The browser runs sandboxed, as in the cloud. Ubuntu 24.04's AppArmor
+      # refuses unprivileged user namespaces to any binary without a profile;
+      # Google Chrome's package ships one, a downloaded headless shell does
+      # not, so its sandbox cannot start and the launch falls back to Chrome.
+      - name: Let the headless shell's sandbox start
+        if: matrix.package == 'runtime'
+        working-directory: packages/runtime
+        run: |
+          set -euo pipefail
+          launch="require('playwright-core').chromium.launch({ chromiumSandbox: true }).then((b) => { console.log('headless shell', b.version()); return b.close(); })"
+          node -e "$launch" || echo "::notice::headless shell refused before the sysctl (expected)"
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          node -e "$launch"
 
       - name: Vitest
         env:
@@ -223,8 +278,8 @@ jobs:
     name: Web (UI tests)
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -303,8 +358,8 @@ jobs:
     # packages/web/e2e/README.md → Visual regression → Platforms).
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 25
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
     steps:
@@ -350,8 +405,8 @@ jobs:
     name: App · Web unit · Agent Store (typecheck · tests · builds)
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 11
     steps:
       - uses: actions/checkout@v6
 
@@ -403,8 +458,8 @@ jobs:
     name: Website (lint · tests · locales · build)
     needs: changes
     if: needs.changes.outputs.site == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 2
     steps:
       - uses: actions/checkout@v6
         with:

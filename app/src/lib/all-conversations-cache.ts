@@ -59,6 +59,7 @@ interface CachedConversationRow {
   routine_id?: string;
   provider?: string;
   model?: string;
+  mode?: "execute" | "plan" | "auto";
 }
 
 /** A board activity recovered from a cached conversation row. */
@@ -73,6 +74,7 @@ export interface CachedBoardActivity {
   routine_id?: string;
   provider?: string;
   model?: string;
+  mode?: "execute" | "plan" | "auto";
 }
 
 /**
@@ -134,5 +136,7 @@ export function latestCachedAgentActivities(
     // pin-less; the chat panel treats a placeholder's pin as unknown anyway.
     ...(row.provider !== undefined && { provider: row.provider }),
     ...(row.model !== undefined && { model: row.model }),
+    // The kept mode rides along for the same reason (HOU-205).
+    ...(row.mode !== undefined && { mode: row.mode }),
   }));
 }

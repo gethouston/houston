@@ -542,6 +542,25 @@ test("connect refuses an OAuth-only toolkit with no managed app, naming the reme
   expect(err.message).toMatch(/only offers OAuth.*Composio dashboard/);
 });
 
+test("connect on a toolkit Composio does not carry is a typed 400, not a 502", async () => {
+  // HOUSTON-APP-5M0: an agent-authored card offered "etsy"; Composio answers
+  // its detail read with 404 Toolkit_ToolkitNotFound.
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth_configs" && method === "GET") {
+      return { body: { items: [] } };
+    }
+    return {
+      status: 404,
+      body: { error: { slug: "Toolkit_ToolkitNotFound", status: 404 } },
+    };
+  });
+  const err = await provider.connect(USER, "etsy").catch((e) => e);
+  expect(err).toBeInstanceOf(IntegrationUpstreamError);
+  expect(err.status).toBe(400);
+  expect(err.body).toMatchObject({ code: "toolkit_not_found" });
+  expect(calls.some((c) => c.method === "POST")).toBe(false);
+});
+
 test("connect on a NO_AUTH toolkit is a clean 400, not a doomed Composio POST", async () => {
   // Prod repro (Sentry): connecting the "composio" meta-toolkit forwarded a
   // create-auth-config POST that Composio 400s (Auth_Config_NoAuthApp) and

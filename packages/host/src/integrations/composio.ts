@@ -1,5 +1,9 @@
 import { resolveAuthConfig } from "./composio-auth-config";
 import { fetchAllRawToolkits } from "./composio-catalog";
+import {
+  describeComposioAction,
+  reserveComposioUpload,
+} from "./composio-files";
 import { ComposioHttp } from "./composio-http";
 import { ComposioIdentityCache } from "./composio-identity-cache";
 import { searchComposio } from "./composio-search";
@@ -12,6 +16,11 @@ import {
   type RawExecute,
   type RawTool,
 } from "./composio-wire";
+import type {
+  ActionDescription,
+  FileUploadRequest,
+  FileUploadSlot,
+} from "./file-args";
 import type {
   ActingContext,
   IntegrationProvider,
@@ -377,5 +386,20 @@ export class ComposioProvider implements IntegrationProvider {
       },
     );
     return mapExecute(body);
+  }
+
+  // File leg (file-staging.ts); identity is the verified userId, as in execute.
+  describeAction(
+    _userId: string,
+    action: string,
+  ): Promise<ActionDescription | null> {
+    return describeComposioAction(this.http, action, TOOL_VERSION);
+  }
+
+  reserveFileUpload(
+    _userId: string,
+    req: FileUploadRequest,
+  ): Promise<FileUploadSlot> {
+    return reserveComposioUpload(this.http, req);
   }
 }

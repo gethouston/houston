@@ -32,6 +32,8 @@
     "unavailable": "A equipe do Houston ainda precisa terminar de configurar este app. Tente de novo em breve.",
     "noAuthTitle": "O {{app}} já está pronto para usar",
     "noAuth": "Este app funciona sem conta, então não há nada para conectar.",
+    "notFoundTitle": "{{app}} não está disponível",
+    "notFound": "O Houston não consegue conectar este app. Peça ao seu agente outra forma de fazer isso.",
     "failedTitle": "Não foi possível conectar o {{app}}",
     "failed": "Algo deu errado ao entrar. Tente conectar novamente."
   },

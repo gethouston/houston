@@ -278,9 +278,8 @@ compile inside its 10s assertion budget — that cold start used to time out the
 first test, which then passed on retry: a "flaky" green that silently hid a real
 failure. In `bundle` mode the same boots take seconds and double as a smoke that
 both bundles serve a working app. `test:e2e` also runs with
-`--fail-on-flaky-tests`, so a test that only passes on retry fails the run
-(non-zero exit) instead of going green. Locally `retries: 0`, so a failure is
-just a failure and the flag is a no-op.
+`retries: 0` everywhere, CI included, so a failure is just a failure, and
+`--fail-on-flaky-tests` keeps it that way if a retry is ever added back.
 
 **Two vite servers, two dep-optimizer caches (`dev` mode).** The run boots TWO
 vite servers from this same package — the identity-off shell (`:1430`) and the

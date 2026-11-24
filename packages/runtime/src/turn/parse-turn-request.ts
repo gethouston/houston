@@ -1,7 +1,7 @@
 import {
-  normalizeTurnMode,
   parseMentions,
   parseTurnLimits,
+  parseTurnModePin,
 } from "@houston/protocol";
 import { parsePrefetchedObjects } from "@houston/runtime-client/object-sync";
 import {
@@ -9,6 +9,7 @@ import {
   TurnTimezoneSchema,
 } from "@houston/wire-types";
 import { parseMissionTitle } from "../session/mission-title";
+import { customOAuthCallbackUrl } from "./op-grammar-custom-oauth";
 import { assertRoutineEventBounds } from "./parse-routine-events";
 import { parseTurnCoordinator } from "./parse-turn-coordinator";
 import { parseTurnCredential } from "./parse-turn-credential";
@@ -162,9 +163,10 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     provider: nonEmpty(b.provider) ? b.provider : undefined,
     model: typeof b.model === "string" ? b.model : undefined,
     effort: typeof b.effort === "string" ? b.effort : undefined,
-    // Never trust the wire: only the known mode literals ("plan", "auto") pass;
-    // anything else normalizes to "execute".
-    mode: normalizeTurnMode(b.mode),
+    // Never trust the wire: only the known mode literals pass, and garbage
+    // normalizes to "execute". Absent stays absent: the worker reads the
+    // conversation's own mode once its tree is hydrated (execute-turn.ts).
+    mode: parseTurnModePin(b.mode),
     nextStepSuggestions: NextStepSuggestionsSchema.parse(b.nextStepSuggestions),
     timezone: TurnTimezoneSchema.parse(b.timezone),
     displayText: typeof b.displayText === "string" ? b.displayText : undefined,
@@ -190,6 +192,13 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     routine,
     claim,
     grant,
+    ...(grant && b.customOAuthCallbackUrl !== undefined
+      ? {
+          customOAuthCallbackUrl: customOAuthCallbackUrl(
+            b.customOAuthCallbackUrl,
+          ),
+        }
+      : {}),
     ...coordinator,
     ...(claim && b.prefetch !== undefined
       ? { prefetch: parsePrefetchedObjects(b.prefetch) }

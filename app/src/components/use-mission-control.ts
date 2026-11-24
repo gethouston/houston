@@ -40,7 +40,7 @@ import {
   tauriAttachments,
   tauriChat,
 } from "../lib/tauri";
-import { DEFAULT_TURN_MODE } from "../lib/turn-mode";
+import { DEFAULT_TURN_MODE, type TurnMode } from "../lib/turn-mode";
 import type { Agent } from "../lib/types";
 import { mergeWarmingRows } from "../lib/warming-board-rows";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
@@ -267,7 +267,7 @@ export function useMissionControl(agents: Agent[]) {
             provider: overrides.providerOverride,
             model: overrides.modelOverride,
             effort: overrides.effortOverride,
-            mode: DEFAULT_TURN_MODE,
+            mode: overrides.modeOverride,
             mentions: overrides.mentions,
           })
         : false;
@@ -331,6 +331,8 @@ export function useMissionControl(agents: Agent[]) {
         providerOverride?: string;
         modelOverride?: string;
         effortOverride?: string;
+        /** The composer's Mode pill, kept on the new mission's card. */
+        modeOverride?: TurnMode;
         /** Teammates the first message @mentions (HOU-944). */
         mentions?: MessageMention[];
         /** The id the composer's typing prewarmed (`CreateMissionOptions`). */
@@ -357,7 +359,7 @@ export function useMissionControl(agents: Agent[]) {
             effortOverride: opts?.effortOverride,
             mentions: opts?.mentions,
             conversationId: opts?.conversationId,
-            modeOverride: DEFAULT_TURN_MODE,
+            modeOverride: opts?.modeOverride ?? DEFAULT_TURN_MODE,
             titleText: visible,
             buildPrompt: async (activityId) => {
               const saved = await tauriAttachments.save(

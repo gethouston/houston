@@ -28,6 +28,26 @@ export class ComposioApiError extends Error {
   }
 }
 
+/** Codes a connection that died mid-request carries: undici wraps them in the
+ *  `fetch failed` TypeError's `cause`, Bun sets them on the error itself. DNS
+ *  failures and refused connections are not here; resending those only
+ *  doubles the wait. */
+const DROPPED_CODES = new Set(["ECONNRESET", "UND_ERR_SOCKET"]);
+
+function droppedConnection(err: unknown): boolean {
+  const codeOf = (e: unknown) =>
+    typeof e === "object" && e !== null
+      ? (e as { code?: unknown }).code
+      : undefined;
+  const cause =
+    typeof err === "object" && err !== null
+      ? (err as { cause?: unknown }).cause
+      : undefined;
+  return [codeOf(err), codeOf(cause)].some(
+    (code) => typeof code === "string" && DROPPED_CODES.has(code),
+  );
+}
+
 export class ComposioHttp {
   constructor(
     private readonly apiKey: string,
@@ -47,10 +67,18 @@ export class ComposioHttp {
     const headers: Record<string, string> = { "x-api-key": this.apiKey };
     if (opts.body !== undefined) headers["content-type"] = "application/json";
 
-    const res = await this.fetchImpl(url.toString(), {
-      method: opts.method ?? "GET",
-      headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    const method = opts.method ?? "GET";
+    const send = () =>
+      this.fetchImpl(url.toString(), {
+        method,
+        headers,
+        body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      });
+    // Composio drops an idle connection now and then; a read is safe to send
+    // once more, a write is not (the first attempt may have landed).
+    const res = await send().catch((err: unknown) => {
+      if (method === "GET" && droppedConnection(err)) return send();
+      throw err;
     });
 
     if (opts.nullStatuses?.includes(res.status)) return null;
@@ -58,7 +86,7 @@ export class ComposioHttp {
       const detail = await res.text().catch(() => "");
       throw new ComposioApiError(
         res.status,
-        `composio ${opts.method ?? "GET"} ${path} → ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ""}`,
+        `composio ${method} ${path} → ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ""}`,
       );
     }
     if (res.status === 204) return null;

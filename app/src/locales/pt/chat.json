@@ -120,6 +120,8 @@
     "signin": "Entrar",
     "connectTitle": "Conectar o {{app}}",
     "connectReasonFallback": "O funcionário de IA precisa do {{app}} para continuar.",
+    "reconnectTitle": "Reconectar o {{app}}",
+    "reconnectReasonFallback": "O {{app}} parou de funcionar. Conecte de novo para o funcionário de IA continuar.",
     "declinePlaceholder": "Ou diga o que fazer em vez disso...",
     "recommended": "Recomendado",
     "skip": "Pular",
@@ -276,8 +278,10 @@
       "gpt-6-luna": "A opção padrão. O GPT-6 mais leve para a sua cota.",
       "gpt-6_1-terra": "O GPT-6 equilibrado mais novo. Mais profundidade que o Luna, consome sua cota na metade da velocidade do Sol.",
       "gpt-6-sol": "Nível médio do GPT-6. Mais profundidade que o Luna para trabalhos difíceis.",
-      "gpt-6_1-sol": "O Sol mais novo. Mesmo nível do GPT-6 Sol, lida com conversas mais longas.",
-      "gpt-6-astra": "O GPT-6 mais capaz. Consome sua cota 5 vezes mais rápido que o Sol.",
+      "gpt-6_1-sol": "O Sol anterior. Mesmo nível do GPT-6 Sol, lida com conversas mais longas.",
+      "gpt-6_2-sol": "O Sol mais novo. Consome sua cota como o GPT-6.1 Sol e lida com conversas do mesmo tamanho.",
+      "gpt-6-astra": "O Astra anterior. Consome sua cota 5 vezes mais rápido que o Sol.",
+      "gpt-6_2-astra": "O GPT-6 mais capaz. Consome sua cota 4 vezes mais rápido que o Sol.",
       "gpt-5_5": "Nível completo da geração anterior, de antes do GPT-5.6.",
       "gpt-5_6-sol": "Modelo de fronteira anterior. Forte em trabalho complexo.",
       "gpt-5_6-terra": "Modelo intermediário equilibrado.",
@@ -301,6 +305,14 @@
       "gemma-4-26b-a4b-it": "Modelo aberto Gemma do Google. Rápido e eficiente.",
       "gemma-4-31b-it": "Modelo aberto Gemma do Google. Mais capaz.",
       "mistral-large-4": "O modelo mais capaz da Mistral. Contexto longo e raciocínio."
+    },
+    "providerModelDescriptions": {
+      "google": {
+        "gemini-4-neon": "O Gemini 4 equilibrado do Google, bom para agentes e programação. Precisa de uma chave de API paga."
+      },
+      "github-copilot": {
+        "gemini-4-neon": "O Gemini 4 equilibrado do Google, bom para agentes e programação. Precisa do Copilot Pro+."
+      }
     },
     "connectMore": "Conectar outra IA…"
   },
