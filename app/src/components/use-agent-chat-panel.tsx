@@ -155,7 +155,7 @@ import {
   tauriProvider,
   withAttachmentPaths,
 } from "../lib/tauri";
-import { DEFAULT_TURN_MODE, type TurnMode } from "../lib/turn-mode";
+import type { TurnMode } from "../lib/turn-mode";
 import type { Agent, SkillSummary } from "../lib/types";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { useDraftStore, useNewConversationDraftKey } from "../stores/drafts";
@@ -203,6 +203,7 @@ import { SystemNote } from "./system-note";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
 import { type ChatMentionProps, useChatMentions } from "./use-chat-mentions";
 import { useChatSenderAvatars } from "./use-chat-sender-avatars";
+import { useConversationTurnMode } from "./use-conversation-turn-mode";
 import { usePersistedInteraction } from "./use-persisted-interaction";
 import { useSendInteractionMessage } from "./use-send-interaction-message";
 import { useToolkitBrandResolver } from "./use-toolkit-brand-resolver";
@@ -220,12 +221,9 @@ interface UseAgentChatPanelArgs {
   /** New-conversation draft scope — must match the board's `useBoardDrafts`
    *  scope so dictation lands in the composer the user sees (HOU-730). */
   draftScope?: string;
-  /** Seeds the composer's turn mode for THIS surface and suppresses the
-   *  per-agent config mode from overwriting it, so the surface opens on the
-   *  given mode and keeps it until the user changes it in-session. The routine
-   *  setup chat passes `"execute"` (Ask first) — its kickoff turn runs Ask first,
-   *  so the live composer must match. Omit to keep today's behavior exactly
-   *  (seed the global default, then load the agent's remembered mode). */
+  /** The mode a fresh composer, and a mission whose card keeps none, opens
+   *  on. The routine setup chat passes `"execute"` (Ask first): its kickoff
+   *  turn runs Ask first, so the live composer must match. Omit for Ask first. */
   initialTurnMode?: TurnMode;
   /** Fires after a send THIS HOOK owns LANDS — every one that bypasses the
    *  surface's own `onSendMessage`: an interaction offer (suggested-action
@@ -328,8 +326,9 @@ interface AgentChatPanelProps {
   effectiveEffort: string | undefined;
   /** The pin a send must carry, settled at send time (PRODUCT-1771). */
   resolveSendPin: () => Promise<ModelPin>;
-  /** The composer's turn mode (execute | plan); consumers forward it as
-   *  `modeOverride` on user-typed sends — an unpinned turn is execute. */
+  /** The composer's turn mode: the open mission's kept mode, or the fresh
+   *  composer's pick. Consumers forward it as `modeOverride` on every
+   *  user-typed send. */
   turnMode: TurnMode;
   /** Multiplayer only (C5): the signed-in viewer's user id, for attributing
    *  teammates' messages. Undefined when signed out / single-player. */
@@ -448,7 +447,7 @@ export function useAgentChatPanel({
 
   // ── Dictation (desktop-only voice typing) ──────────────────────────────
   // Transcript text is appended to the SAME draft store AIBoard's
-  // `drafts`/`onDraftChange` read from (`useBoardDrafts` in mission-board.tsx)
+  // `draftStore` reads from (`useBoardDrafts` in use-board-chat-wiring.tsx)
   // — the key mirrors the board's own derivation (AIBoard's plain
   // "new-conversation" translated through `useBoardDrafts`'s scope), so
   // dictating into a fresh composer lands in the same draft the user would
@@ -554,25 +553,6 @@ export function useAgentChatPanel({
     },
     [path, queryClient],
   );
-  // Composer "Mode" pin (execute/plan/auto). It is session-local and every new
-  // mission resets to `initialTurnMode` or Ask First. Existing mission switches
-  // keep the current per-send pin until the user changes it.
-  const [turnMode, setTurnMode] = useState<TurnMode>(
-    initialTurnMode ?? DEFAULT_TURN_MODE,
-  );
-  useEffect(() => {
-    if (!path) setTurnMode(initialTurnMode ?? DEFAULT_TURN_MODE);
-  }, [path, initialTurnMode]);
-
-  const previousSessionKeyRef = useRef(selectedSessionKey);
-  useEffect(() => {
-    const previousSessionKey = previousSessionKeyRef.current;
-    previousSessionKeyRef.current = selectedSessionKey;
-    if (previousSessionKey && !selectedSessionKey) {
-      setTurnMode(initialTurnMode ?? DEFAULT_TURN_MODE);
-    }
-  }, [selectedSessionKey, initialTurnMode]);
-
   // Last-used provider preference (`default_provider`, written by setLastUsed
   // on every provider pick). The fallback when neither the activity nor the
   // agent config names a provider, so an OpenAI-only user opening a no-provider
@@ -707,6 +687,15 @@ export function useAgentChatPanel({
   // Plain boolean so callbacks can depend on "is a turn running" without
   // re-creating on every VM tick (the VM reference churns while streaming).
   const turnRunning = conversationVm?.running ?? false;
+  // Composer "Mode" pin (execute/plan/auto), kept on the mission's card.
+  const { turnMode, selectTurnMode: handleModeSelect } =
+    useConversationTurnMode({
+      path,
+      sessionKey: selectedSessionKey,
+      card: selectedActivity,
+      initialTurnMode,
+      turnRunning,
+    });
 
   // Whether the open conversation already has turns. Once it does, the chat's
   // provider is frozen (see resolveEffectiveProvider): a provider that logs out
@@ -1073,38 +1062,6 @@ export function useAgentChatPanel({
     },
     [path, addToast, t, setAgentTier],
   );
-  const handleModeSelect = useCallback(
-    (mode: TurnMode) => {
-      // Mode is session-local. Flip the picker optimistically and pin the pick
-      // on each send.
-      //
-      // A pick while a turn is STREAMING also applies to that turn (Claude
-      // Code's shift+tab): the runtime mutates the executing turn's live-mode
-      // ref, so the agent adopts the new mode at its next tool decision.
-      // `applied: false` (the turn settled while the request flew) is benign —
-      // the next send pins the mode anyway — but a transport failure is
-      // surfaced, with the honest "your next message still gets it" note.
-      setTurnMode(mode);
-      if (turnRunning && path && selectedSessionKey && mode !== turnMode) {
-        const modeLabels: Record<TurnMode, string> = {
-          execute: t("chat:modeSelector.askFirst"),
-          plan: t("chat:modeSelector.planner"),
-          auto: t("chat:modeSelector.autopilot"),
-        };
-        tauriChat.setLiveTurnMode(path, selectedSessionKey, mode).catch(() => {
-          addToast({
-            title: t("chat:modeSelector.liveApplyFailedTitle", {
-              mode: modeLabels[mode],
-            }),
-            description: t("chat:modeSelector.liveApplyFailedBody"),
-            variant: "error",
-          });
-        });
-      }
-    },
-    [path, selectedSessionKey, addToast, t, turnRunning, turnMode],
-  );
-
   // In personal (Teams) mode, a fresh-composer model pick updates the user's
   // default. A pick inside an open mission follows the activity-pin path,
   // including provider-switch consent, and can never write agent config.

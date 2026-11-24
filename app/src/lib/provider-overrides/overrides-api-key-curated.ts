@@ -28,10 +28,14 @@ export const CURATED_API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Free tier on your Google account",
     installUrl: "https://ai.google.dev",
     apiKeyUrl: "https://aistudio.google.com/apikey",
-    // Effort rows for 3.7/3.8 derive to low/medium/high; Google rejects
-    // `minimal` on both (pi-ai's per-model thinking map drops it, so the
-    // no-effort path floors at LOW).
+    // Effort rows for 3.7/3.8 derive to low/medium/high, and Neon's to
+    // low/medium/high/xhigh; Google rejects `minimal` on all three (pi-ai's
+    // per-model thinking map drops it, so the no-effort path floors at LOW).
     models: {
+      "gemini-4-neon": {
+        description:
+          "Google's balanced Gemini 4, strong for agents and coding. Needs a paid API key.",
+      },
       "gemini-3.8-flash": {
         description: "Google's newest Flash. Best for agents and coding.",
       },

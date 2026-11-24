@@ -8,6 +8,7 @@ import {
   readServedProvidersAt,
   servedProvidersPathIn,
 } from "./auth-file";
+import { reportTurnAuthFailure } from "./report-revoked-turn";
 import { revocationConfirmed } from "./revocation-markers";
 import { servedScopeFor } from "./served-scope";
 
@@ -64,6 +65,7 @@ export function reportRevokedServedToken(
   err: ProviderError,
   usedAccessDigest: string | undefined,
 ): void {
+  if (reportTurnAuthFailure(err, usedAccessDigest)) return;
   void reportRevoked(err, usedAccessDigest).catch(() => {});
 }
 
@@ -121,7 +123,6 @@ async function reportRevoked(
     );
     return;
   }
-  const digest = usedAccessDigest;
   // Diagnostic only — the decision above never depends on the file. When the
   // stored token already rotated past the failed one, say so: the gateway's
   // compare-and-delete will no-op on the rotated row, which is the safety this
@@ -130,7 +131,7 @@ async function reportRevoked(
   if (
     stored?.type === "oauth" &&
     stored.access &&
-    accessDigest(stored.access) !== digest
+    accessDigest(stored.access) !== usedAccessDigest
   ) {
     console.log(
       `[serve] stored ${provider} token differs from the one the failed turn ran on; reporting the failed token's digest`,
@@ -139,7 +140,7 @@ async function reportRevoked(
   // WHICH row the gateway served us. Unknown (a pre-HOU-976 gateway sends no
   // scope) reads as the team row — the only thing it could have been.
   const scope = servedScopeFor(provider) ?? "team";
-  const dedupe = `${key}:${provider}:${digest}`;
+  const dedupe = `${key}:${provider}:${usedAccessDigest}`;
   if (reported.has(dedupe)) {
     console.log(
       `[serve] suppressed a duplicate revoked-token report for ${provider} (already reported this token)`,
@@ -147,7 +148,6 @@ async function reportRevoked(
     return;
   }
   reported.add(dedupe);
-
   try {
     const res = await fetch(
       `${config.controlPlaneUrl}/sandbox/credential/revoked`,
@@ -161,7 +161,7 @@ async function reportRevoked(
           provider,
           // The token is named, never shipped: the control plane holds its own
           // copy and compares digests.
-          accessSha256: digest,
+          accessSha256: usedAccessDigest,
           scope,
           // The scope alone says "a member's row", not WHOSE: the gateway keys
           // personal credentials by (org, user, provider) and answers 400

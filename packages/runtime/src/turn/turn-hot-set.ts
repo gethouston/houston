@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { HydrateListedObject } from "@houston/runtime-client/object-sync";
+import { CONVERSATION_MARK_FILES } from "../session/conversation-marks";
 import { ROUTINE_RESULTS_FILE } from "../store/routine-results";
 import { CLAUDE_FLAGS_DIR, claudeFlagsFileName } from "./claude-flags-path";
-import { newestArchiveSegments } from "./turn-hot-set-archive";
 
 export const PI_SESSION_FALLBACK_MAX_BYTES = 1024 * 1024;
 
@@ -80,12 +80,11 @@ function mappedClaudeTranscript(
 }
 
 /**
- * Hot-set admission for one conversation: its canonical conversation and the
- * newest of its own archive segments, harness markers, the newest Pi tail and
- * a size-capped predecessor for a torn newest header, the Claude
- * transcript named by sessions.json, and the acting member's Claude flag
- * cache. Other
- * conversations, older session files, and other members' caches stay remote.
+ * Hot-set admission for one conversation: its canonical conversation, harness
+ * markers, the newest Pi tail and a size-capped predecessor for a torn newest
+ * header, the Claude transcript named by sessions.json, and the acting
+ * member's Claude flag cache. Every archive segment, other conversations,
+ * older session files, and other members' caches stay remote.
  * Matches both layouts: `workspaces/<ws>/<agent>/.houston/runtime/…` and
  * the per-turn `data/…`.
  *
@@ -101,10 +100,8 @@ export function ownConversationOnly(
   hydratedRoot: string,
 ) => boolean {
   const file = `${encodeURIComponent(conversationId)}.json`;
-  const archive = `${encodeURIComponent(conversationId)}.archive`;
   const ownFlags = actingUserId ? claudeFlagsFileName(actingUserId) : null;
   let claudeSelection: { file: string | null } | undefined;
-  const eagerSegments = new Map<string, Set<string>>();
   return (rel, listing, hydratedRoot) => {
     const segments = rel.split("/");
     const runtimeAt = runtimeIndex(segments);
@@ -114,22 +111,8 @@ export function ownConversationOnly(
     // Another member's flag cache is theirs alone: never on this turn's disk.
     if (kind === CLAUDE_FLAGS_DIR)
       return ownFlagsFile(segments, runtimeAt, ownFlags);
-    if (kind === "conversations" && segments.length === runtimeAt + 2) {
-      return own === file;
-    }
-    // Archive segments (store/conversation-archive.ts) ride with their own
-    // conversation only, and only the newest of them. A shared routine
-    // chat's archive grows by a segment every ~6 MiB of runs and never
-    // shrinks, so every run downloading all of them grew without bound.
     if (kind === "conversations") {
-      if (segments.length !== runtimeAt + 3 || own !== archive) return false;
-      const archiveRel = segments.slice(0, runtimeAt + 2).join("/");
-      let newest = eagerSegments.get(archiveRel);
-      if (!newest) {
-        newest = newestArchiveSegments(listing, archiveRel);
-        eagerSegments.set(archiveRel, newest);
-      }
-      return newest.has(rel);
+      return segments.length === runtimeAt + 2 && own === file;
     }
     if (kind === "sessions" && segments.length > runtimeAt + 1) {
       if (own !== conversationId) return false;
@@ -143,7 +126,8 @@ export function ownConversationOnly(
         tail.length === 1 &&
         (tail[0] === "harness.json" ||
           tail[0] === "autocompact.json" ||
-          tail[0] === ROUTINE_RESULTS_FILE)
+          tail[0] === ROUTINE_RESULTS_FILE ||
+          CONVERSATION_MARK_FILES.has(tail[0] ?? ""))
       )
         return true;
       if (tail.length === 1 && tail[0]?.endsWith(".jsonl")) {

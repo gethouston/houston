@@ -181,7 +181,7 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
         modelOverride: "claude-opus-5-5",
         // A row stores no effort: the picker's effort rides the row's model.
         effortOverride: "high",
-        modeOverride: "execute",
+        modeOverride: "plan",
       },
     );
   });
@@ -200,7 +200,7 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
         providerOverride: "github-copilot",
         modelOverride: "gpt-4.1",
         effortOverride: undefined,
-        modeOverride: "execute",
+        modeOverride: "plan",
       },
     );
   });
@@ -215,7 +215,7 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
         providerOverride: "openai",
         modelOverride: "gpt-6-astra",
         effortOverride: "high",
-        modeOverride: "execute",
+        modeOverride: "plan",
       },
     );
   });
@@ -227,7 +227,7 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
         providerOverride: "openai",
         modelOverride: "gpt-6-astra",
         effortOverride: "high",
-        modeOverride: "execute",
+        modeOverride: "plan",
       },
     );
   });
@@ -241,21 +241,30 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
         providerOverride: "openai",
         modelOverride: "gpt-6-astra",
         effortOverride: "high",
-        modeOverride: "execute",
+        modeOverride: "plan",
       },
     );
   });
 
-  it("always pins Mission Control follow-ups to Ask First", () => {
-    // The composer's mode is not honored here (Mission Control never was);
-    // the row's pin and the composer's fallback both carry execute.
-    deepStrictEqual(
-      resolveFollowUpOverrides(
-        `activity-${legacyOpusActivity.id}`,
-        [legacyOpusActivity],
-        composer,
-      ).modeOverride,
-      "execute",
-    );
+  it("runs a Mission Control follow-up in the conversation's mode", () => {
+    // The composer's mode is the conversation's kept one (HOU-205): forcing
+    // Ask first here dropped the person's Autopilot on every follow-up.
+    for (const modeOverride of ["auto", "plan", "execute"] as const) {
+      deepStrictEqual(
+        resolveFollowUpOverrides(
+          `activity-${legacyOpusActivity.id}`,
+          [legacyOpusActivity],
+          { ...composer, modeOverride },
+        ).modeOverride,
+        modeOverride,
+      );
+      deepStrictEqual(
+        resolveFollowUpOverrides("activity-missing", undefined, {
+          ...composer,
+          modeOverride,
+        }).modeOverride,
+        modeOverride,
+      );
+    }
   });
 });

@@ -22,6 +22,12 @@ concurrency:
 permissions:
   contents: read
 
+# Job budgets are 1.5x the p95 of the latest 60 main runs, rounded up to
+# whole minutes, with a two-minute floor; a matrix takes its slowest leg's
+# p95. A budget sits above real p95 so it only trips on a hang, and a
+# timeout fails the job. A PR that makes a job faster or slower re-measures
+# and moves its budget in the same PR.
+
 # Every job runs on `vars.CI_RUNNER` (a repo variable; unset = GitHub's
 # ubuntu-latest), the same switch the cloud repo uses. Hosted jobs share the
 # org's concurrent-job limit with the cloud repo, and a full run here is 13
@@ -58,7 +64,7 @@ jobs:
     # would need a checkout plus `base` for the action, or to run everything.
     name: Changed paths
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 5
+    timeout-minutes: 2
     permissions:
       contents: read
       pull-requests: read
@@ -104,7 +110,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 20
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -179,11 +185,15 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 15
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
       matrix:
-        package: [runtime, host]
+        include:
+          - package: runtime
+            timeout: 10
+          - package: host
+            timeout: 4
     steps:
       # Same actions the sibling jobs run, at the commits their `v4` tags
       # resolve to today, pinned. The suites never push, so the token is not
@@ -200,6 +210,43 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # The browser integration suites launch the first browser the runtime
+      # finds: Playwright's headless shell (what the cloud image bakes,
+      # selfhost/Dockerfile), else the runner's full Google Chrome. Chrome
+      # launches about 3x slower warm and took 4.6 s cold, so a fresh pool per
+      # test crossed the hand-off suite's 5 s wait in 7 of 143 runs
+      # (run 44096457588). Cached per playwright-core version.
+      - name: playwright-core version
+        if: matrix.package == 'runtime'
+        id: playwright-core
+        run: echo "version=$(node -p "require('./packages/runtime/package.json').dependencies['playwright-core']")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the headless shell
+        if: matrix.package == 'runtime'
+        id: headless-shell-cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-headless-shell-${{ runner.os }}-${{ steps.playwright-core.outputs.version }}
+
+      - name: Install the headless shell
+        if: matrix.package == 'runtime' && steps.headless-shell-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @houston/runtime exec playwright-core install --no-progress chromium-headless-shell
+
+      # The browser runs sandboxed, as in the cloud. Ubuntu 24.04's AppArmor
+      # refuses unprivileged user namespaces to any binary without a profile;
+      # Google Chrome's package ships one, a downloaded headless shell does
+      # not, so its sandbox cannot start and the launch falls back to Chrome.
+      - name: Let the headless shell's sandbox start
+        if: matrix.package == 'runtime'
+        working-directory: packages/runtime
+        run: |
+          set -euo pipefail
+          launch="require('playwright-core').chromium.launch({ chromiumSandbox: true }).then((b) => { console.log('headless shell', b.version()); return b.close(); })"
+          node -e "$launch" || echo "::notice::headless shell refused before the sysctl (expected)"
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          node -e "$launch"
 
       - name: Vitest
         env:
@@ -232,7 +279,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 30
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -312,7 +359,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 20
+    timeout-minutes: 25
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
     steps:
@@ -328,12 +375,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Browsers ship in the image (PLAYWRIGHT_BROWSERS_PATH) — no install step.
-      # The committed `-linux` baselines were recorded against the vite dev
-      # server, so this job keeps serving from it (the functional shards
-      # moved to the prebuilt bundle; packages/web/e2e/support/serve-mode.ts).
+      # Served from the prebuilt development-mode bundle, like the functional
+      # shards (packages/web/e2e/support/serve-mode.ts): the same CSS and
+      # React tree the dev server produces, without one vite process
+      # transforming every module for every page boot.
+      - name: Build web bundles (e2e)
+        run: pnpm --filter houston-web e2e:build
+
       - name: Visual tests (Playwright)
-        env:
-          HOUSTON_E2E_SERVE: dev
         run: pnpm --filter houston-web test:visual
 
       - name: Upload Playwright report
@@ -357,7 +406,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 20
+    timeout-minutes: 11
     steps:
       - uses: actions/checkout@v6
 
@@ -410,7 +459,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.site == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 10
+    timeout-minutes: 2
     steps:
       - uses: actions/checkout@v6
         with:

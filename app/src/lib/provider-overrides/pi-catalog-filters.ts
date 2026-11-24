@@ -53,7 +53,9 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   "azure-openai-responses": new Set([
     "gpt-6-luna",
     "gpt-6-sol",
+    "gpt-6.2-sol",
     "gpt-6-astra",
+    "gpt-6.2-astra",
     "gpt-5.5",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
@@ -67,16 +69,16 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   // documented source and carries the live-probe evidence;
   // `codex-models.test.ts` pins this set to it. An id that probe answered `400
   // not supported when using Codex with a ChatGPT account` can only produce a
-  // dead turn.
+  // dead turn. The served GPT-5.6 rows are hidden to keep the picker to the
+  // GPT-6 line; pins on them still run (`ProviderInfo.hiddenModels`).
   openai: new Set([
     "gpt-6-luna",
     "gpt-6.1-terra",
     "gpt-6-sol",
     "gpt-6.1-sol",
+    "gpt-6.2-sol",
     "gpt-6-astra",
-    "gpt-5.6-sol",
-    "gpt-5.6-terra",
-    "gpt-5.6-luna",
+    "gpt-6.2-astra",
   ]),
   // The Claude lineup, one model per family (`ANTHROPIC_LINEUP` in
   // @houston/domain model-aliases.ts; `anthropic-model-catalog.test.ts` pins
@@ -95,6 +97,7 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   // NOTE: pi-ai ships no plain `gemini-3.1-flash` (only the Lite tier), so the
   // 3.1 line is represented by Flash Lite here.
   google: new Set([
+    "gemini-4-neon",
     "gemini-3.8-flash",
     "gemini-3.7-flash",
     "gemini-3.6-flash",

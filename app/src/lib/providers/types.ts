@@ -80,7 +80,14 @@ export interface ProviderInfo {
   subtitle: string;
   installUrl: string;
   cost: string;
+  /** What the picker offers. */
   models: readonly ModelOption[];
+  /**
+   * Rows curation hides from the picker that the provider still runs (the
+   * domain's `VALID_MODELS`), so an existing pin on one resolves through
+   * `getModel` instead of reverting to the default. Never listed in a picker.
+   */
+  hiddenModels?: readonly ModelOption[];
   defaultModel: string;
   /**
    * How the user connects this provider. Default (absent) is subscription OAuth
@@ -120,4 +127,6 @@ export interface ContextWindowConfig {
   default: number;
   /** Snap-up ceiling once observed usage proves a larger window. */
   max: number;
+  /** The model's input cap when it sits below the window (`modelInputLimit`). */
+  inputLimit?: number;
 }

@@ -22,6 +22,17 @@ describe("activityUpdateSchema", () => {
     });
   });
 
+  test("keeps a conversation's mode, and only a known one", () => {
+    expect(activityUpdateSchema.parse({ mode: "auto" })).toEqual({
+      mode: "auto",
+    });
+    // "execute" is the default a card falls back to, so there is no clear.
+    expect(activityUpdateSchema.safeParse({ mode: null }).success).toBe(false);
+    expect(activityUpdateSchema.safeParse({ mode: "autopilot" }).success).toBe(
+      false,
+    );
+  });
+
   test("rejects invalid pin values and unknown fields", () => {
     expect(activityUpdateSchema.safeParse({ provider: 3 }).success).toBe(false);
     expect(activityUpdateSchema.safeParse({ surprise: true }).success).toBe(

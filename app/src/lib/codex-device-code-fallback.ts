@@ -31,12 +31,29 @@ export interface CodexDeviceCodeFallbackOps {
    *  works, the code dialog is the user-facing surface — a "sign-in failed"
    *  toast under a working dialog reads as a contradiction. */
   report(cause: unknown): void;
+  /** The port-taken cause instead: the user's machine state, not a Houston
+   *  failure, so one counted warning rather than an error per attempt. */
+  reportPortTaken(cause: unknown): void;
   /** Cancel the in-flight loopback login (runtime slot + client poll). */
   cancelLogin(): Promise<void>;
   /** Relaunch the sign-in as a device-code grant (`deviceAuth: true`). */
   launchDeviceCodeLogin(): Promise<void>;
   /** Dead-end failure toast — only when the fallback itself failed. */
   fail(cause: unknown): void;
+}
+
+/** The native listener's own refusal when another process holds port 1455
+ *  (`codex_oauth_loopback.rs`). Tauri rejects with the bare string. */
+const PORT_TAKEN_PREFIX = "Could not start the Codex sign-in listener:";
+
+export function isCodexPortTaken(cause: unknown): boolean {
+  const message =
+    typeof cause === "string"
+      ? cause
+      : cause instanceof Error
+        ? cause.message
+        : "";
+  return message.startsWith(PORT_TAKEN_PREFIX);
 }
 
 /**
@@ -47,7 +64,8 @@ export async function runCodexDeviceCodeFallback(
   cause: unknown,
   ops: CodexDeviceCodeFallbackOps,
 ): Promise<void> {
-  ops.report(cause);
+  if (isCodexPortTaken(cause)) ops.reportPortTaken(cause);
+  else ops.report(cause);
   try {
     await ops.cancelLogin();
     await ops.launchDeviceCodeLogin();

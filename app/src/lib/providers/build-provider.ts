@@ -9,6 +9,7 @@ import {
   DEFAULT_MODEL,
   modelDisplayName,
   toCanonicalProviderId,
+  VALID_MODELS,
 } from "@houston/sdk/provider-catalog";
 import { normalizeKey } from "../ai-hub/catalog-key.ts";
 import { isModelVisible } from "../provider-overrides/pi-catalog-filters.ts";
@@ -132,36 +133,43 @@ export function buildProvider(
   const visibleEntries = piProvider.models.filter((entry) =>
     isModelVisible(finalId, entry.id),
   );
-  const models: ModelOption[] = dedupeModelEntries(visibleEntries).map(
-    (entry) => {
-      const mo = override?.models?.[entry.id];
-      const effort =
-        mo?.effortLevels ??
-        deriveEffortLevels(entry.thinkingLevels, entry.reasoning);
-      // Window sizing comes from the SHARED `@houston/protocol` table (keyed by
-      // pi's provider id — pre-rename, so Codex is `openai-codex` here), the same
-      // source the runtime's autocompact reads, so the bar and the engine divide
-      // by identical numbers. Falls back to pi's raw window when uncurated.
-      const window = resolveModelWindow(
-        piProvider.id,
-        entry.id,
-        entry.contextWindow,
-      );
-      return {
-        id: entry.id,
-        label: modelDisplayName(canonicalId, entry.id) ?? entry.name,
-        description: mo?.description ?? "",
-        acceptsImages: entry.vision === true,
-        contextWindow: window.default,
-        // Omit when there is no upward gating, matching the "absent = no snap"
-        // contract `getContextWindowConfig` reads.
-        contextWindowMax:
-          window.max !== window.default ? window.max : undefined,
-        // Empty → omit, so `getEffortLevels`/the picker treat it as no effort row.
-        effortLevels: effort.length > 0 ? effort : undefined,
-      };
-    },
-  );
+  const toOption = (entry: CatalogModelEntry): ModelOption => {
+    const mo = override?.models?.[entry.id];
+    const effort =
+      mo?.effortLevels ??
+      deriveEffortLevels(entry.thinkingLevels, entry.reasoning);
+    // Window sizing comes from the SHARED `@houston/protocol` table (keyed by
+    // pi's provider id — pre-rename, so Codex is `openai-codex` here), the same
+    // source the runtime's autocompact reads, so the bar and the engine divide
+    // by identical numbers. Falls back to pi's raw window when uncurated.
+    const window = resolveModelWindow(
+      piProvider.id,
+      entry.id,
+      entry.contextWindow,
+    );
+    return {
+      id: entry.id,
+      label: modelDisplayName(canonicalId, entry.id) ?? entry.name,
+      description: mo?.description ?? "",
+      acceptsImages: entry.vision === true,
+      contextWindow: window.default,
+      // Omit when there is no upward gating, matching the "absent = no snap"
+      // contract `getContextWindowConfig` reads.
+      contextWindowMax: window.max !== window.default ? window.max : undefined,
+      // Empty → omit, so `getEffortLevels`/the picker treat it as no effort row.
+      effortLevels: effort.length > 0 ? effort : undefined,
+    };
+  };
+  const models = dedupeModelEntries(visibleEntries).map(toOption);
+  // Hidden from every picker but still in the domain's runnable set: a chat,
+  // agent or routine already pinned to one keeps running it, with its own
+  // window and effort ladder, instead of falling back to the default.
+  const runnable = (VALID_MODELS as Record<string, ReadonlySet<string>>)[
+    canonicalId
+  ];
+  const hiddenModels = piProvider.models
+    .filter((e) => !isModelVisible(finalId, e.id) && runnable?.has(e.id))
+    .map(toOption);
   return {
     id: finalId,
     name: override?.name ?? piProvider.name,
@@ -169,6 +177,7 @@ export function buildProvider(
     installUrl: override?.installUrl ?? "",
     cost: override?.cost ?? "",
     models,
+    hiddenModels,
     defaultModel: defaultModelFor(finalId, models),
     auth: override?.auth ?? (piProvider.auth === "oauth" ? "oauth" : "apiKey"),
     apiKeyUrl: override?.apiKeyUrl,

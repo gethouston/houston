@@ -9,22 +9,25 @@ export async function readBytes(
     if (maxBytes === undefined) return await readFile(path);
     const file = await open(path, "r");
     try {
-      if ((await file.stat()).size > maxBytes) throw new VfsReadLimitError();
-      // The extra byte detects a file growing after stat without an unbounded read.
-      const bytes = Buffer.alloc(maxBytes + 1);
+      const { size } = await file.stat();
+      if (size > maxBytes) throw new VfsReadLimitError();
+      // The cap is a limit, not an allocation: size the first read from stat,
+      // then keep reading (a file growing after stat) until EOF or past the cap.
+      const chunks: Buffer[] = [];
       let length = 0;
-      while (length < bytes.length) {
-        const { bytesRead } = await file.read(
-          bytes,
-          length,
-          bytes.length - length,
-          null,
-        );
+      let next = size + 1;
+      while (length <= maxBytes) {
+        const chunk = Buffer.alloc(Math.min(next, maxBytes + 1 - length));
+        const { bytesRead } = await file.read(chunk, 0, chunk.length, null);
         if (bytesRead === 0) break;
+        chunks.push(chunk.subarray(0, bytesRead));
         length += bytesRead;
+        next = 64 * 1024;
       }
       if (length > maxBytes) throw new VfsReadLimitError();
-      return bytes.subarray(0, length);
+      return chunks.length === 1
+        ? (chunks[0] as Buffer)
+        : Buffer.concat(chunks, length);
     } finally {
       await file.close();
     }

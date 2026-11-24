@@ -104,5 +104,5 @@ test("an open-catalog gateway's dropped row is pinned to its successor", () => {
   // fails the run on every fire; the same-tier successor keeps it alive.
   expect(
     routinePin(routine({ provider: "opencode-go", model: "glm-5.1" })).model,
-  ).toBe("glm-5.2");
+  ).toBe("glm-5.3");
 });

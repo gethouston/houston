@@ -63,6 +63,10 @@
       "types": "./src/provider-default-models.ts",
       "import": "./src/provider-default-models.ts"
     },
+    "./provider-valid-models": {
+      "types": "./src/provider-valid-models.ts",
+      "import": "./src/provider-valid-models.ts"
+    },
     "./provider-visibility": {
       "types": "./src/provider-visibility.ts",
       "import": "./src/provider-visibility.ts"
@@ -74,6 +78,10 @@
     "./model-aliases": {
       "types": "./src/model-aliases.ts",
       "import": "./src/model-aliases.ts"
+    },
+    "./model-aliases-gateways": {
+      "types": "./src/model-aliases-gateways.ts",
+      "import": "./src/model-aliases-gateways.ts"
     },
     "./agent-color-ids": {
       "types": "./src/agent-color-ids.ts",
