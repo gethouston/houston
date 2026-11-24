@@ -322,7 +322,7 @@ Lives in `lib/codex-loopback.ts`, `lib/codex-loopback-failures.ts`, `lib/codex-d
 
 ## Compatibility gate tests run the shipped artifact
 
-`public/compat-gate.js` is tested directly so the gate cannot drift, and it must run after `#root` exists.
+`app/public/compat-gate.js` is tested directly so the gate cannot drift, and it must run after `#root` exists.
 
 Lives in `lib/compat-gate.test.mjs`.
 
@@ -442,7 +442,7 @@ Lives in `lib/engine-error-code.ts`, `lib/engine-call-policy.ts`.
 
 ## Engine mode and co-location
 
-Provider OAuth loopback works only when browser and runtime share a machine, because pi binds the provider's fixed localhost callback port in process. The desktop Codex relay is on only for a truly remote engine. Hosted auth method defaults to OAuth; `VITE_HOSTED_ENGINE_AUTH` is the switch. URL flags are trimmed like the shell's read in `lib.rs`, so a blank but set URL behaves the same on both sides.
+Provider OAuth loopback works only when browser and runtime share a machine, because pi binds the provider's fixed localhost callback port in process. The desktop Codex relay is on only for a truly remote engine. Hosted auth method defaults to OAuth; `VITE_HOSTED_ENGINE_AUTH` is the switch. URL flags are trimmed like the shell's read in `app/src-tauri/src/lib.rs`, so a blank but set URL behaves the same on both sides.
 
 Lives in `lib/engine-mode.ts`.
 
@@ -526,7 +526,7 @@ Lives in `lib/foreign-dom-guard.ts`, `lib/foreign-dom-report.ts`.
 
 ## Gateway fetch
 
-One way for app code to reach the gateway. Requests carry the active space's `x-houston-org` pin by default, re-read per attempt so a mid-flight switch is honoured. No bearer during boot is not always signed out. A refresh that returns a bearer the gateway already rejected is not replayed; a refused fresh bearer gets one verification re-send after a wait, mirroring the canonical transport's `cp/rejected-mint.ts`. One in-flight refresh is shared so a 401 storm mints once. A refresher failure reaching no identity service rejects instead of reading as sign-out. The refresh wrapper is `async` so a synchronous throw becomes the same rejection.
+One way for app code to reach the gateway. Requests carry the active space's `x-houston-org` pin by default, re-read per attempt so a mid-flight switch is honoured. No bearer during boot is not always signed out. A refresh that returns a bearer the gateway already rejected is not replayed; a refused fresh bearer gets one verification re-send after a wait, mirroring the canonical transport's `packages/engine-adapter/src/cp/rejected-mint.ts`. One in-flight refresh is shared so a 401 storm mints once. A refresher failure reaching no identity service rejects instead of reading as sign-out. The refresh wrapper is `async` so a synchronous throw becomes the same rejection.
 
 Lives in `lib/gateway-fetch.ts`, `lib/gateway-refresh.ts`.
 

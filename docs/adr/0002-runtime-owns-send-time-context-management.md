@@ -1,6 +1,6 @@
 # The runtime owns send-time context management
 
-Autocompact (summarize + reseed a near-full conversation before a turn) and mid-session provider switching are decided and executed by the runtime inside the turn (`exec-turn.ts`), not by the client. The runtime holds the ground truth — the session's live token fill and the active model's context window — so the decision lives there and every surface (desktop, web, routines, cloud) inherits it identically, with `context_compacted` / `provider_switched` boundary frames as the only client-visible trace.
+Autocompact (summarize + reseed a near-full conversation before a turn) and mid-session provider switching are decided and executed by the runtime inside the turn (`packages/runtime/src/session/exec-turn.ts`), not by the client. The runtime holds the ground truth — the session's live token fill and the active model's context window — so the decision lives there and every surface (desktop, web, routines, cloud) inherits it identically, with `context_compacted` / `provider_switched` boundary frames as the only client-visible trace.
 
 ## Considered Options
 

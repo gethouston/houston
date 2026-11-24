@@ -22,7 +22,7 @@ Lives in `use-pending-mission-target.ts`, `use-board-surface-on-nav.ts`, `use-mi
 
 ## Open conversation identity
 
-On a cross-agent board the session key and agent path come from the selected card. Two cases have no card: a mission just created whose row the sweep has not returned (held by `useJustCreatedMission`, including missions created outside the board and published through `lib/created-mission-handoff.ts`, dropped once the real row lands), and a card transiently missing from an older sweep snapshot, where the identity last resolved for the same selection keeps the chat painted. Deletes and archives clear the selection explicitly, so the fallback never resurrects a closed card. The panel's task line is blank, not "New task", while a selected card resolves.
+On a cross-agent board the session key and agent path come from the selected card. Two cases have no card: a mission just created whose row the sweep has not returned (held by `useJustCreatedMission`, including missions created outside the board and published through `app/src/lib/created-mission-handoff.ts`, dropped once the real row lands), and a card transiently missing from an older sweep snapshot, where the identity last resolved for the same selection keeps the chat painted. Deletes and archives clear the selection explicitly, so the fallback never resurrects a closed card. The panel's task line is blank, not "New task", while a selected card resolves.
 
 Lives in `use-mc-open-conversation.ts`, `open-conversation-identity.ts`, `use-just-created-mission.ts`, `panel-task-label.ts`.
 

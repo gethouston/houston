@@ -12,13 +12,13 @@ Lives in `packages/agentstore-client/src/client.ts`, `index.ts`.
 
 `init` is shallow-merged into the `fetch` call, `headers` is merged on top of the client-computed headers, and `init.headers`, when present, wins over both.
 
-Lives in `client.ts` (`RequestOptions`).
+Lives in `client.ts` (`StoreRequestOptions`).
 
 ## Missing token fails before the request
 
 When `getToken` is absent or returns `null`, every authenticated method throws a 401-shaped `StoreApiError` without sending anything.
 
-Lives in `client.ts` (`authHeader`).
+Lives in `client.ts` (`authorization`).
 
 ## Multipart uploads never set Content-Type
 
@@ -30,7 +30,7 @@ Lives in `client.ts` (`uploadAvatar`, request builder).
 
 Every consumer imports `StoreApiError` from one module so `instanceof` holds across bundles; a duplicated class breaks identity. It carries `status` (`0` for a network failure), the gateway's `{error}` machine token as `code`, and the parsed `body` (raw text for non-JSON bodies, which keep the status-based message). On a network failure the thrown error is also the standard `cause`, so the app's offline classifier sees the transport `TypeError` instead of reporting an offline device as a bug.
 
-Lives in `packages/agentstore-client/src/errors.ts`, `client.ts` (`readError`).
+Lives in `packages/agentstore-client/src/errors.ts`, `client.ts` (`toStoreApiError`).
 
 ## Wire types follow the Go handlers
 

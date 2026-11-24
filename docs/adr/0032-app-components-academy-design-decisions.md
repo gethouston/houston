@@ -40,7 +40,7 @@ Lives in `lessons/use-lesson-run.ts`, `lessons/use-lesson-award.ts`.
 
 ## Escape is trusted-only and owned by the runner
 
-Escape leaves the lesson on every beat, captured on `window` so the docked dialog never closes on its own and the whisper beat exits the same way. Only trusted keys count, because the app dispatches synthetic Escapes at open modals when leaving kept-alive screens (`keep-alive-views.tsx`). The docked panel also ignores outside clicks so a stray click beside a playing video does not abandon the beat.
+Escape leaves the lesson on every beat, captured on `window` so the docked dialog never closes on its own and the whisper beat exits the same way. Only trusted keys count, because the app dispatches synthetic Escapes at open modals when leaving kept-alive screens (`app/src/components/shell/keep-alive-views.tsx`). The docked panel also ignores outside clicks so a stray click beside a playing video does not abandon the beat.
 
 Lives in `lessons/use-lesson-run.ts`, `lessons/lesson-arming.ts`, `lessons/lesson-docked-panel.tsx`.
 

@@ -12,7 +12,7 @@ Lives in `packages/agentstore-contract/src/index.ts`.
 
 AgentIR carries identity, the agent's CLAUDE.md as `instructions` (may be empty), skills as verbatim SKILL.md text (frontmatter plus body), learnings, expected Composio toolkits and provenance. It is validated before any version snapshot is stored. The version literal is pinned: a MINOR bump adds optional fields with no migration, a MAJOR bump prepends a step to `IR_MIGRATIONS`. Migrations run on read; v2.0.0 is the floor because v1 never shipped, so the chain is empty and `migrateAgentIr` is a validating passthrough.
 
-Lives in `packages/agentstore-contract/src/ir.ts` (`IR_VERSION`, `IR_MIGRATIONS`, `migrateAgentIr`).
+Lives in `packages/agentstore-contract/src/ir.ts` (`AGENT_IR_VERSION`, `IR_MIGRATIONS`, `migrateAgentIr`).
 
 ## Hand-maintained JSON Schema
 
@@ -30,7 +30,7 @@ Lives in `packages/agentstore-contract/src/normalize.ts` (`normalizeAgentIr`).
 
 Deduplicating slugs and learning ids appends `-2`, `-3` and so on, trimming the base so the suffix survives the 64-character cap. Without the trim a 64-character base loops forever, because slicing `${base}-2` to 64 gives back `base`.
 
-Lives in `normalize.ts` (`uniqueWithin`).
+Lives in `normalize.ts` (`disambiguate`).
 
 ## Slug and frontmatter rules mirror the domain package
 

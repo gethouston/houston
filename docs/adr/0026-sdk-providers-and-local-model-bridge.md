@@ -56,7 +56,7 @@ A hosted Claude subscription login ends about 28 days after sign-in, however oft
 ### Durable, idempotent writes
 
 - `transaction.ts` keeps the prepared idempotency key in the journal if the write fails, and reconciles an aborted or ambiguous result through the same idempotent save. `retirement.ts` recovers a lost registration response with its original key, never a new intent, and a manual retirement replaces any pending endpoint-clear intent.
-- `observeBridgeJournal` (`journal.ts`) publishes only durable state this scope owns, including writes that finish after cancellation. Cleanup stays durable, and a cleanup failure never replaces the caller's `AbortError` (`cancellation.ts`).
+- `observeBridgeJournal` (`journal.ts`) publishes only durable state this scope owns, including writes that finish after cancellation. Cleanup stays durable, and a cleanup failure never replaces the caller's abort error: `cancelPreparedBridge` (`cancellation.ts`) reports it instead.
 - `lifecycle.ts` drains pending writes and logout before replacing a connection, and a healthy committed connection stays live, renewal included, until the new settings succeed.
 - `bootstrapLocalModelBridge` retries only discovery and port construction. The factory never starts inference or a bridge.
 

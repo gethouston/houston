@@ -30,7 +30,7 @@ The catalog document types are declared once in `@houston/domain`, which the hos
 
 ## Which sources are read
 
-`assistant-paths.ts`: the control-plane modules that issue requests, the cluster mixins the app calls them through, and the whole SDK module tree with no per-file allowlist (a file whose functions never reach the wire contributes nothing; only tests are excluded because a fixture is not a surface). The SDK tree is last on purpose: names collide where the SDK implements writes the mixins delegate to, first source wins, so the control-plane copy stays canonical and the SDK contributes only operations nothing else implements. `cp/fetch.ts` is read only for shared path helpers such as `agentPath`. `sdk.ts` (the facade) and the runtime-client sub-clients are read to resolve requests, never to publish operations, and are hashed too, so a path moved inside a sub-client is drift.
+`assistant-paths.ts`: the control-plane modules that issue requests, the cluster mixins the app calls them through, and the whole SDK module tree with no per-file allowlist (a file whose functions never reach the wire contributes nothing; only tests are excluded because a fixture is not a surface). The SDK tree is last on purpose: names collide where the SDK implements writes the mixins delegate to, first source wins, so the control-plane copy stays canonical and the SDK contributes only operations nothing else implements. `packages/engine-adapter/src/cp/fetch.ts` is read only for shared path helpers such as `agentPath`. `sdk.ts` (the facade) and the runtime-client sub-clients are read to resolve requests, never to publish operations, and are hashed too, so a path moved inside a sub-client is drift.
 
 ## SDK facade walk
 

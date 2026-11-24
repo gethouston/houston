@@ -28,7 +28,7 @@ Lives in `lib/os-bridge/os.ts`.
 
 ## A refused browser open resolves false
 
-The web build's browser can refuse; the shell rejects typed (`url_open_failure.rs`) so the report layer can classify a browserless machine.
+The web build's browser can refuse; the shell rejects typed (`app/src-tauri/src/commands/url_open_failure.rs`) so the report layer can classify a browserless machine.
 
 Lives in `lib/os-bridge/os.ts`.
 

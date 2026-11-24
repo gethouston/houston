@@ -41,4 +41,5 @@ export interface Config {
   excludedDirNames: string[];
   excluded: Excluded[];
   pinned: Pinned[];
+  retiredPaths: Excluded[];
 }

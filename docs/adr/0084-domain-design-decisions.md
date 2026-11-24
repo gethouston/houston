@@ -12,7 +12,7 @@ Lives in `packages/domain/src/store.ts`, `layout.ts`.
 
 Every reader of a `.houston` doc (pod read paths, doc-shadow projection, pooled-turn doc publish) parses through one function so doc-served and pod-served answers never drift. A missing file returns the fallback. A leading byte-order mark is stripped, since agents, users and editors write files and `JSON.parse` rejects a BOM. A file that exists but does not parse throws with the key named instead of resetting, because a silent reset destroys the user's data on the next save. Writes are pretty-printed with a trailing newline because people and agents read these files directly.
 
-Lives in `store.ts` (`readJsonDoc`, `parseDocText`, `writeJsonDoc`).
+Lives in `store.ts` (`loadJson`, `parseJsonDoc`, `jsonDoc`, `saveJson`).
 
 ## Lossless JSON salvage
 
@@ -42,7 +42,7 @@ Lives in `doc-lock.ts`, `preferences.ts`, `heartbeat.ts`.
 
 Preferences live at `ws/<workspaceId>/preferences.json` and the heartbeat at `ws/<workspaceId>/heartbeat.json`, above agent prefixes, so deleting an agent never touches them. Locally the FsVfs roots at the workspaces directory, so this segment is a real folder beside workspaces and anything enumerating workspaces must skip it. An absent heartbeat doc is the default (on, 08:00, never run), so no migration is needed. A bad `time` falls back to the default without forgetting that today's briefing ran.
 
-Lives in `preferences.ts` (`PREFERENCES_SEGMENT`), `heartbeat.ts`.
+Lives in `preferences.ts` (`PREFERENCES_NAMESPACE`), `heartbeat.ts`.
 
 ## Morning briefing: seen keys, not timestamps
 
@@ -178,7 +178,7 @@ Lives in `portable.ts`, `portable-edit.ts`, `portable-strip.ts`, `portable-insta
 
 ## Package scan
 
-The scan of uploaded packages is a pattern-based port of the Rust engine's `portable/scan.rs`. The disclaimer field stays on the wire for protocol compatibility while the app renders its localized copy, so both must say the same. The curl pattern stops at the next `curl` to avoid rescanning the rest of the body.
+The scan of uploaded packages is a pattern-based port of the retired Rust engine's portable scan. The disclaimer field stays on the wire for protocol compatibility while the app renders its localized copy, so both must say the same. The curl pattern stops at the next `curl` to avoid rescanning the rest of the body.
 
 Lives in `scan.ts`.
 

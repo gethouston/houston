@@ -25,7 +25,12 @@ describe("file scope", () => {
     git("add", ".");
     write("src/untracked.ts");
     write("ignored/skip.ts");
-    const config = { excludedDirNames: ["vendor"], excluded: [], pinned: [] };
+    const config = {
+      excludedDirNames: ["vendor"],
+      excluded: [],
+      pinned: [],
+      retiredPaths: [],
+    };
     expect(scopedFiles(config, [], root)).toEqual([
       "src/tracked.ts",
       "src/untracked.ts",

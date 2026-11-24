@@ -69,7 +69,7 @@ A packaged build, or `pnpm tauri dev` with no host URL, spawns the staged sideca
 
 | Area | Check / test |
 |------|--------------|
-| Any TS/JS/JSON change | `pnpm check:fix` after every change; done means `pnpm check` exits 0 (Biome + `check:desktop-native` + `check:assistant-catalog` + `check:assistant-coverage` + `check:sdk-parity` + `check:comments`) |
+| Any TS/JS/JSON change | `pnpm check:fix` after every change; done means `pnpm check` exits 0 (Biome + `check:desktop-native` + `check:assistant-catalog` + `check:assistant-coverage` + `check:sdk-parity` + `check:comments` + `check:adr-refs`) |
 | Comments | `pnpm check:comments` (in `pnpm check`); `pnpm comments:verify` after a sweep; `pnpm test:comments` for the tooling itself |
 | Types, all packages | `pnpm typecheck` (the pre-commit hook runs it after lint-staged) |
 | host / runtime / domain | `pnpm --filter @houston/host --filter @houston/runtime --filter @houston/domain test` (vitest) |
@@ -167,7 +167,7 @@ Users and agents are equal writers. Every `.houston/` read goes through TanStack
 - 200 lines per file max (CSS 500). Never compress code to fit; extract a module.
 - Read files in full before wide-ranging changes. Don't edit from search snippets.
 - Search before building: shadcn/ui registry, the `@houston-ai` showcase, existing components, npm.
-- Default to no comment. Besides tooling comments (`@assistant` and `@deprecated` JSDoc, `biome-ignore`, `@ts-expect-error`, rustdoc, `// SAFETY:` and the rest `scripts/comments/classify.ts` lists), two kinds are allowed: a `// WHY:` comment of at most 3 lines right above the code, for an external quirk, protocol or platform constraint or non-obvious invariant, citing `ADR-NNNN` (an existing record in `docs/adr/`) or an external URL but never an issue id; and JSDoc on an exported declaration in `ui/` or `packages/sdk/src` that says more than its name. Everything else goes into an ADR or into names, types and tests; `pnpm check:comments` enforces it against `scripts/comments/baseline.json`, a baseline that only shrinks, and `/delete-comment` is the sweep. Moving or renaming a file listed in the baseline means sweeping it in the same change or carrying its entry over to the new path.
+- Default to no comment. Besides tooling comments (`@assistant` and `@deprecated` JSDoc, `biome-ignore`, `@ts-expect-error`, rustdoc, `// SAFETY:` and the rest `scripts/comments/classify.ts` lists), two kinds are allowed: a `// WHY:` comment of at most 3 lines right above the code, for an external quirk, protocol or platform constraint or non-obvious invariant, citing `ADR-NNNN` (an existing record in `docs/adr/`) or an external URL but never an issue id; and JSDoc on an exported declaration in `ui/` or `packages/sdk/src` that says more than its name. Everything else goes into an ADR or into names, types and tests; `pnpm check:comments` enforces it against `scripts/comments/baseline.json`, a baseline that only shrinks, `pnpm check:adr-refs` keeps every file and symbol an ADR names real, and `/delete-comment` is the sweep. Moving or renaming a file listed in the baseline means sweeping it in the same change or carrying its entry over to the new path.
 - No hover-only affordances. Interactive elements are visible without hovering.
 - Before adding complexity for an unlikely race or security edge case, state the concrete failure, its likelihood and its cost, and get a yes.
 - Be critical, not agreeable. If a better approach exists, say so. When you answer review feedback, say whether you agree before you say what you changed.

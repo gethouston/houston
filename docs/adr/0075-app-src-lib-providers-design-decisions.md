@@ -34,7 +34,7 @@ Lives in `lib/providers/build-provider.ts`.
 
 ## Shared tables
 
-Default models come from `@houston/domain` `provider-default-models.ts`, model names from shared vocabulary, window sizing from the shared `@houston/protocol` table keyed by pi's pre-rename ids.
+Default models come from `@houston/domain` `packages/domain/src/provider-default-models.ts`, model names from shared vocabulary, window sizing from the shared `@houston/protocol` table keyed by pi's pre-rename ids.
 
 Lives in `lib/providers/build-provider.ts`.
 

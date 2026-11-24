@@ -153,6 +153,6 @@ The poll is conclusive-only: `presettleFromHistory` settles only on a reply for 
 ## Attachments and controls
 
 - `attachment-text.ts` is the SDK's copy of the attachment marker, byte for byte the desktop encoder (`app/src/lib/attachment-message.ts`) and decoder (`ui/chat/src/attachment-message.ts`), pinned by its test. Key order `path, name` is part of the bytes. No `>` may reach the marker JSON, because nested `-->` would close the comment early. Decoding never throws.
-- The upload request belongs to the files module (`files/uploads.ts`), so `relPath` reaches the host the same way from both paths. `AttachmentTooLargeError` types the 413.
+- The upload request belongs to the files module (`packages/sdk/src/modules/files/uploads.ts`), so `relPath` reaches the host the same way from both paths. `AttachmentTooLargeError` types the 413.
 - `conversation-controls.ts` holds the one-shot controls (stop, mode, dismiss, rewind, import, prewarm): each one request, no stream or VM fold, so the web adapter binds them unchanged. A dismiss answered `409 turn running` returns `turn_running` instead of throwing: the card was already retired by a running turn, and the caller must not clear a persisted copy that the turn's own settle will write. `not_interaction_owner` (403) means only the member whose message raised the card may dismiss it.
 - `noticeEndsTurn` (`notice-ends-turn.ts`, its own subpath): a restart notice does not end the turn; every other line does.

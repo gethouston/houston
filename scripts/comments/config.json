@@ -55,5 +55,11 @@
       "startsWith": "/**\n * The brand mark for a provider id",
       "reason": "app/tests/card-unification.test.ts asserts the `?? <Monogram` text this comment carries"
     }
+  ],
+  "retiredPaths": [
+    {
+      "path": "packages/host-cloud",
+      "reason": "the retired multi-tenant control plane; ADRs name it to say it must never come back (BOUNDARY.md)"
+    }
   ]
 }

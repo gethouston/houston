@@ -22,7 +22,7 @@ Lives in `copy-agent-wizard-model.ts`.
 
 ## The wizard is screens only, inside the sheet's chrome
 
-The way back, progress and Continue belong to the create sheet's header and bottom bar (`add-to-workspace-sheet.tsx`); the wizard renders only its screens. A wizard with its own chrome inside the sheet read as two products stitched together. Because the sheet keeps the wizard state alive across its other screens, leaving the copy path resets the wizard explicitly, or coming back would show a progress bar counting the previous source's screens. The copy itself runs the same portable pipeline as the Settings "Copy agent" row.
+The way back, progress and Continue belong to the create sheet's header and bottom bar (`app/src/components/shell/add-to-workspace-sheet.tsx`); the wizard renders only its screens. A wizard with its own chrome inside the sheet read as two products stitched together. Because the sheet keeps the wizard state alive across its other screens, leaving the copy path resets the wizard explicitly, or coming back would show a progress bar counting the previous source's screens. The copy itself runs the same portable pipeline as the Settings "Copy agent" row.
 
 Lives in `copy-agent-wizard.tsx`, `use-copy-agent-wizard.ts`.
 

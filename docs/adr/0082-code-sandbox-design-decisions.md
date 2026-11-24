@@ -6,7 +6,7 @@ Covers `packages/code-sandbox/`: the stateless code execution service. Short fil
 
 The sandbox is a stateless HTTP service on Cloud Run (gen2, `--concurrency=1`). One request runs one program in a fresh working directory that is removed in `finally`, so request N+1 never sees request N's files. It holds no secrets and no persistent state. Runs are kept apart by Cloud Run's per-instance microVM; the service only provides in-instance hygiene so a warm instance can be reused. Submitted code is written by an agent, so the service assumes nothing about what it does.
 
-Lives in `packages/code-sandbox/src/config.ts`, `packages/code-sandbox/src/run.ts` (`runCode`).
+Lives in `packages/code-sandbox/src/config.ts`, `packages/code-sandbox/src/run.ts` (`runInSandbox`).
 
 ## Two gates, two headers
 
@@ -30,7 +30,7 @@ Lives in `server.ts` (`readJson`, `/run` handler), `config.ts` (body cap).
 
 The child is spawned `detached` so it leads its own process group. On timeout and after exit the whole group gets SIGKILL, because submitted code can fork grandchildren (`subprocess.Popen`, `sleep &`). Completion is taken from `exit`, not `close`, because a grandchild that inherited stdout can hold the pipe open forever. Killing an already-gone group is the success case. Non-interactive bash puts `&` jobs in the shell's process group, which is why the group kill reaches them.
 
-Lives in `packages/code-sandbox/src/exec.ts` (`killGroup`, `execProgram`).
+Lives in `packages/code-sandbox/src/exec.ts` (`killGroup`, `runProcess`).
 
 ## Minimal environment
 

@@ -23,7 +23,7 @@ Each shape below was taken from a verbatim provider response; the pattern exists
 - Context overflow uses pi-ai's per-provider patterns plus OpenAI's hard 10,485,760-character cap on a single content string.
 
 ### Status extraction from error text
-Status is pulled from the two shapes pi emits, parenthesized (`OpenAI API error (429)`) and leading (Anthropic SDK `401 {...}`), plus the OpenAI SDK's `<status> status code (no body)` even when pi's compaction prefixes it, the Claude Agent SDK's "API Error: 401" text, and as a last resort a JSON `"code"` field (Google, often double-encoded). A three-digit number that is not a plausible HTTP status is ignored. `src/ai/provider-error.ts` (`extractStatus`).
+Status is pulled from the two shapes pi emits, parenthesized (`OpenAI API error (429)`) and leading (Anthropic SDK `401 {...}`), plus the OpenAI SDK's `<status> status code (no body)` even when pi's compaction prefixes it, the Claude Agent SDK's "API Error: 401" text, and as a last resort a JSON `"code"` field (Google, often double-encoded). A three-digit number that is not a plausible HTTP status is ignored. `src/ai/provider-error.ts` (`extractHttpStatus`).
 
 ### Retry-after parsing
 Reads an echoed `retry-after` value and the human phrasings providers emit ("try again in 2.5s", "resets in 30 seconds", millisecond forms). Sub-second waits round up to 1 s; values are capped at 24 h so a bogus value cannot drive an absurd countdown. `src/ai/provider-error.ts` (`extractRetryAfterSeconds`).
@@ -350,7 +350,7 @@ Each turn resumes the CLI from its transcript JSONL and the request is rebuilt f
 With an empty GrowthBook cache in `.claude.json` the CLI blocks startup on a network fetch; a stored cache is seeded into config dirs that have no `.claude.json` yet (an existing one is the CLI's own state). An empty feature map is no cache; corruption costs only the one boot. `src/backends/claude/flag-cache.ts`.
 
 ### Bun-compiled desktop sidecar binary
-Only inside the Bun-compiled sidecar (modules served from `/$bunfs/` or a `~BUN` root) is the `claude` path passed explicitly; the Node path lets the SDK resolve its platform package. A present placeholder staged by `build.rs` (detected by leading bytes, not a native image) is worse than a missing binary because the historic stub sleeps forever, so it throws a typed error. `src/backends/claude/binary-path.ts`.
+Only inside the Bun-compiled sidecar (modules served from `/$bunfs/` or a `~BUN` root) is the `claude` path passed explicitly; the Node path lets the SDK resolve its platform package. A present placeholder staged by `app/src-tauri/build.rs` (detected by leading bytes, not a native image) is worse than a missing binary because the historic stub sleeps forever, so it throws a typed error. `src/backends/claude/binary-path.ts`.
 
 ### System prompt assembly parity
 Order: Houston prompt, workspace-root context file (frontmatter answers rendered as text), workspace and user context, the coordinator's memory and rules (role gated), the skills index (same `<available_skills>` section pi builds, via pi's own loader, sorted for stable order across filesystems), and the mode overlay last. The title instruction also rides the prompt because the CLI has been seen running its full preset despite a custom system prompt. `src/backends/claude/system-prompt.ts`, `src/backends/claude/title.ts`.

@@ -48,7 +48,7 @@ Lives in `src/routes/http.ts`. One byte-capped body reader for all routes. `opti
 
 ### Meta routes
 
-Lives in `src/routes/meta.ts`. Health and the v3 descriptors are public because the UI reads them before sign-in and capabilities are not secrets (`infra`, not SDK). The host version is a build-time constant from `package.json`, inlined by esbuild, so it cannot drift; the cloud update manager compares pods against it. `build` is `BUILD_SHA` baked by `engine-pod-image.yml`, null elsewhere. `/health` is the engine pod's readiness probe; a pod that lost its store lease answers 503 so it leaves the Service and retires or stands down (`local/fence-retire.ts`).
+Lives in `src/routes/meta.ts`. Health and the v3 descriptors are public because the UI reads them before sign-in and capabilities are not secrets (`infra`, not SDK). The host version is a build-time constant from `package.json`, inlined by esbuild, so it cannot drift; the cloud update manager compares pods against it. `build` is `BUILD_SHA` baked by `.github/workflows/engine-pod-image.yml`, null elsewhere. `/health` is the engine pod's readiness probe; a pod that lost its store lease answers 503 so it leaves the Service and retires or stands down (`local/fence-retire.ts`).
 
 ### Request body cap
 
@@ -426,7 +426,7 @@ The app posts cards optimistically with a client id against a warming engine and
 
 Attribution (`created_by` plus contributors) is stamped only under a gateway-verified actor.
 
-Rows always leave through `hostOwnedApprovals` (`activity-approval-cards.ts`).
+Rows always leave through `hostOwnedApprovalCards` (`activity-approval-cards.ts`).
 
 ### Typed family boundary
 
@@ -964,7 +964,7 @@ The unserved check runs after `findVisibleOperation`, so a hidden operation read
 
 ### Assistant operation context and deps
 
-Lives in `src/routes/assistant-operation-ctx.ts` and `assistant-sandbox-deps.ts`. One shared declaration so the gate and handlers do not import each other. `gatewayAgentId` is trusted pod identity, never a parameter. `unserved` is required, so a handler assembled without it cannot carry a silently open gate. The agent directory is lazy. `local/host.ts` assembles the deps at boot from the one wiring resolver. `unservedOperations` comes from the host's route table at boot; absent means nothing is withheld, the honest answer behind a real gateway. `persistApprovals` exists for pool workers, which live one turn and keep approvals in the agent's store, so a spent receipt is durable before the operation leaves (`turn/turn-coordinator.ts`); a host keeps them in memory.
+Lives in `src/routes/assistant-operation-ctx.ts` and `assistant-sandbox-deps.ts`. One shared declaration so the gate and handlers do not import each other. `gatewayAgentId` is trusted pod identity, never a parameter. `unserved` is required, so a handler assembled without it cannot carry a silently open gate. The agent directory is lazy. `local/host.ts` assembles the deps at boot from the one wiring resolver. `unservedOperations` comes from the host's route table at boot; absent means nothing is withheld, the honest answer behind a real gateway. `persistApprovals` exists for pool workers, which live one turn and keep approvals in the agent's store, so a spent receipt is durable before the operation leaves (`packages/runtime/src/turn/turn-coordinator.ts`); a host keeps them in memory.
 
 ### Assistant operation guards
 
@@ -1430,7 +1430,7 @@ Lives in `src/routes/portable-preview.ts`. The share wizard's pick screen: instr
 
 ### Approval carry
 
-Lives in `src/assistant/approval-carry.ts`. A pool worker carries one conversation's requests (with expiry) and message reservations between the turn that raised a card and the turn the answer starts (kept with the agent's state, `turn/turn-approvals.ts`). Grants do not travel. Adoption drops malformed, expired or foreign-scoped entries, so a damaged file can at worst ask again. Spent means gone.
+Lives in `src/assistant/approval-carry.ts`. A pool worker carries one conversation's requests (with expiry) and message reservations between the turn that raised a card and the turn the answer starts (kept with the agent's state, `packages/runtime/src/turn/turn-approvals.ts`). Grants do not travel. Adoption drops malformed, expired or foreign-scoped entries, so a damaged file can at worst ask again. Spent means gone.
 
 ### Approval presentation
 
@@ -1810,7 +1810,7 @@ Lives in `src/integrations/custom/icon.ts` (`iconUrlOf`, `faviconDomain`). Deriv
 
 ### Legacy secret custody migration
 
-Lives in `src/integrations/custom/legacy-custody.ts` (`moveLegacyToCustody`). Shared by a managed pod's boot and a pool worker's store migration (`op-migrate-custody.ts`). A value custody already holds always stays, since pool ops may have written custody while the plaintext file sat in the store. Each absent secret is created, decided by the gateway under the secret's lock, never from a possibly lagging read; a refused create counts only once a read finds the value. Answers: created, exists (412), or unsupported (405 from an older gateway). The plaintext file goes only when custody holds every value.
+Lives in `src/integrations/custom/legacy-custody.ts` (`moveLegacyToCustody`). Shared by a managed pod's boot and a pool worker's store migration (`packages/runtime/src/turn/op-migrate-custody.ts`). A value custody already holds always stays, since pool ops may have written custody while the plaintext file sat in the store. Each absent secret is created, decided by the gateway under the secret's lock, never from a possibly lagging read; a refused create counts only once a read finds the value. Answers: created, exists (412), or unsupported (405 from an older gateway). The plaintext file goes only when custody holds every value.
 
 ### Custom integration manager
 
@@ -2140,7 +2140,7 @@ Store the runtime's credential centrally, then remove its refresh token, scoped 
 
 Settlement is idempotent: a replay after an ambiguous response finds nothing exportable (a scrubbed entry exports as `{}`) and settles against the central store; with no central row it answers not connected. A probe failure reads as not settled.
 
-After the central PUT lands, a failed scrub settles as success with a loud error; the runtime's serve sync finishes the scrub (`auth/capture-settlement.ts`). Failing it made clients replay a tombstone-clearing PUT while the pod kept rotating the family beside the gateway.
+After the central PUT lands, a failed scrub settles as success with a loud error; the runtime's serve sync finishes the scrub (`packages/runtime/src/auth/capture-settlement.ts`). Failing it made clients replay a tombstone-clearing PUT while the pod kept rotating the family beside the gateway.
 
 `localOriginOnly` (the healer): OAuth exports are refresh-bearing only, so serve-written projections (access-only) are excluded structurally; for API keys the flag rides to `/auth/export` as `excludeServed=1` and the runtime's served-providers manifest proves origin. That heals a pasted Anthropic setup token without re-pasting, and never resurrects a disconnected served key.
 
@@ -2204,7 +2204,7 @@ Capture (user-initiated connect): pull the credential, store it for the workspac
 
 Forget drops the central credential, because every runtime re-pulls it before each turn.
 
-API keys: pushed to the runtime first, which live-verifies the key (`verify-api-key.ts`), then stored centrally; storing first left bad keys connected everywhere. The typed verification reason (`invalid_key`, `key_restricted`, `provider_unavailable`) survives to the dialog. Azure's per-resource endpoint rides the row's `enterpriseUrl`, since a runtime that never ran the connect needs it. A central PUT failure rolls the runtime entry back (only if it still holds this exact key), because a key the central store never learned is absent from the served manifest and would vanish at the next recycle; a rollback failure is logged, never masking the central error. A verified key clears tombstones.
+API keys: pushed to the runtime first, which live-verifies the key (`packages/runtime/src/auth/verify-api-key.ts`), then stored centrally; storing first left bad keys connected everywhere. The typed verification reason (`invalid_key`, `key_restricted`, `provider_unavailable`) survives to the dialog. Azure's per-resource endpoint rides the row's `enterpriseUrl`, since a runtime that never ran the connect needs it. A central PUT failure rolls the runtime entry back (only if it still holds this exact key), because a key the central store never learned is absent from the served manifest and would vanish at the next recycle; a rollback failure is logged, never masking the central error. A verified key clears tombstones.
 
 Claude subscription push: stored centrally (access and refresh; the control plane is the single refresher) and pushed to the runtime, which writes the SDK's `.credentials.json` and warms the probe. From the next serve, a managed pod uses the access-only per-turn path like every provider, and a recycled pod reconnects from the store; the file stays the fallback, outranked by the served env token. On desktop and self-host the central entry is an inert durability marker. The per-turn Cloud Run channel refuses this credential. The push is skipped for an attributed connect (the shared file is team material and a second self-refreshing holder would fork the rotator); the store put is the whole connect there, and the tombstone is cleared before that early return. Fill-only pushes do nothing when a central credential exists (its refresh token may have rotated) and are refused while a revocation tombstone stands; a probe failure throws rather than guess. An overwrite with an already-expired access token is a cached snapshot and is rejected (a fresh mint is always future-dated); missing expiry metadata passes. `STALE_SKEW_MS` (60 seconds) allows a slightly fast clock. The put also passes `ifAbsent` under the gateway's row lock. The provider id is `anthropic`; missing refresh token or expiry store cleanly. The token is never logged.
 
@@ -2606,7 +2606,7 @@ An object deleted by another writer between listing and first read is absent (dr
 
 A keyed document replaced unread still fetches the bytes it replaces as the merge base for a lost upload race; only bytes provably at the listed generation are kept as the base.
 
-Per-object and aggregate caps are checked from the manifest before download and from the landed bytes after; a refused or partial download leaves nothing on disk (the store adapter need not replace atomically). A refused private directory (`private-paths.ts`) lands nothing. Refusals map to "unavailable while asleep" for reads and a decline for writes, never a partial result. Concurrent reads of one key share one fetch, and local writes wait out a landing download.
+Per-object and aggregate caps are checked from the manifest before download and from the landed bytes after; a refused or partial download leaves nothing on disk (the store adapter need not replace atomically). A refused private directory (`packages/runtime-client/src/object-sync/private-paths.ts`) lands nothing. Refusals map to "unavailable while asleep" for reads and a decline for writes, never a partial result. Concurrent reads of one key share one fetch, and local writes wait out a landing download.
 
 ### Memory vfs
 
@@ -2614,7 +2614,7 @@ Lives in `src/vfs/memory.ts`. A folded MemoryVfs really resolves `README.md` to 
 
 ### Prefixed vfs
 
-Lives in `src/vfs/prefixed.ts`. Re-roots keys under a prefix of another vfs, bridging op handlers that address agents relative to `workspaces/` with a store vfs rooted one level up. Re-rooting never changes key comparison or weakens any guarantee (the cloud op path, `runtime/src/turn/op-route.ts`, runs every file through it).
+Lives in `src/vfs/prefixed.ts`. Re-roots keys under a prefix of another vfs, bridging op handlers that address agents relative to `workspaces/` with a store vfs rooted one level up. Re-rooting never changes key comparison or weakens any guarantee (the cloud op path, `packages/runtime/src/turn/op-route.ts`, runs every file through it).
 
 ### Vfs port
 
@@ -2808,7 +2808,7 @@ Lives in `src/migrate/agent-schemas.ts`. Seeded schemas are app data, and every 
 
 ### Agent store migrations (pool worker)
 
-Lives in `src/migrate/agent-store.ts` (`migrateAgentStore`, `AGENT_STORE_MIGRATION_VERSION`, `AGENT_STORE_MIGRATION_PATHS`). The boot migrations for one agent's hydrated store tree, run by a pool worker's `migrate` op where no pod boots. Bump the version whenever a migration is added or changes what it writes; the gateway records each agent's version and reruns the op for agents behind it, and the cloud mirrors the number as `pooldispatch.StoreMigrationVersion`. The test fails when a boot migration is neither covered nor listed in `HOST_ONLY_MIGRATIONS` with a reason. Every path a step reads or writes is in `AGENT_STORE_MIGRATION_PATHS`, the only files the op hydrates (`op-migrate-tree.ts`), and the migration over those files alone must equal the migration over the whole agent. Steps run in boot order; per-agent steps throw so the version is not recorded, except a routines doc that is not JSON (left to the read path). Workspace-level steps keep their boot posture. `OneAgentStore` hides every other folder in the workspace.
+Lives in `src/migrate/agent-store.ts` (`migrateAgentStore`, `AGENT_STORE_MIGRATION_VERSION`, `AGENT_STORE_MIGRATION_PATHS`). The boot migrations for one agent's hydrated store tree, run by a pool worker's `migrate` op where no pod boots. Bump the version whenever a migration is added or changes what it writes; the gateway records each agent's version and reruns the op for agents behind it, and the cloud mirrors the number as `pooldispatch.StoreMigrationVersion`. The test fails when a boot migration is neither covered nor listed in `HOST_ONLY_MIGRATIONS` with a reason. Every path a step reads or writes is in `AGENT_STORE_MIGRATION_PATHS`, the only files the op hydrates (`packages/runtime/src/turn/op-migrate-tree.ts`), and the migration over those files alone must equal the migration over the whole agent. Steps run in boot order; per-agent steps throw so the version is not recorded, except a routines doc that is not JSON (left to the read path). Workspace-level steps keep their boot posture. `OneAgentStore` hides every other folder in the workspace.
 
 ### Rust-era chat history migration
 

@@ -4,7 +4,7 @@ Covers `app/src/components/account/`: the Profile and About me screens opened fr
 
 ## Account screens are top-level views
 
-Profile and About me open only from the account menu (`shell/sidebar-account-menu.tsx`), on both breakpoints, as top-level screens with no back bar. They share the Settings index page shape (`AccountPage`). The menu offers Profile only once the profile read succeeded (`useProfileAvailable`).
+Profile and About me open only from the account menu (`app/src/components/shell/sidebar-account-menu.tsx`), on both breakpoints, as top-level screens with no back bar. They share the Settings index page shape (`AccountPage`). The menu offers Profile only once the profile read succeeded (`useProfileAvailable`).
 
 Lives in `app/src/components/account/id.ts`, `account-page.tsx`, `profile-view.tsx`.
 

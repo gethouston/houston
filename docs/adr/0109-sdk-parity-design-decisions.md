@@ -10,7 +10,7 @@ Covers `scripts/sdk-parity/`, `scripts/check-sdk-parity.ts` and `scripts/sdk-par
 
 R1: a route a signed-in person can reach with no SDK method behind it.
 
-R2: an SDK method no server answers. Any one of its keys answering is enough, because a method whose path parameter is closed to a set issues one call per call site, not one per member. A literal key also meets an any-key route (`ANY_KEY_PATHS`: the host's `routes/account.ts` and the gateway's `prefs.go` store whatever preference key they are given).
+R2: an SDK method no server answers. Any one of its keys answering is enough, because a method whose path parameter is closed to a set issues one call per call site, not one per member. A literal key also meets an any-key route (`ANY_KEY_PATHS`: the host's `packages/host/src/routes/account.ts` and the gateway's `prefs.go` store whatever preference key they are given).
 
 R3: the same key declared twice on one server. Host and gateway overlap is legal. The gateway mounts `/x` and `/x/` on one handler on purpose (Go's mux would redirect otherwise), so the pair is collapsed before counting.
 

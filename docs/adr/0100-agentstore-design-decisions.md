@@ -12,7 +12,7 @@ Creator pages and the sitemap render dynamically so `next build` never calls the
 
 ## Build output
 
-The standalone output bundles `server.js` with minimal node_modules for the Docker image; the tracer root is the pnpm workspace root so workspace packages are traced and the entry lands at `agentstore/server.js`. Workspace UI and contract packages ship TypeScript source, so Next transpiles them. Lives in `agentstore/next.config.ts`.
+The standalone output bundles the server entry with minimal node_modules for the Docker image; the tracer root is the pnpm workspace root so workspace packages are traced and the entry lands at `.next/standalone/agentstore/server.js` (the image runs `node agentstore/server.js` from the standalone root). Workspace UI and contract packages ship TypeScript source, so Next transpiles them. Lives in `agentstore/next.config.ts`.
 
 ## Response headers
 

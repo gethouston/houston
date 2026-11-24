@@ -8,9 +8,9 @@ Covers `app/tests/`: the node test suite for app logic and its source-reading gu
 
 Lives in `app/tests/*.test.ts` (for example `card-unification.test.ts`, `credential-scope-ui.test.ts`, `agent-admin-a11y.test.ts`), `app/tests/jsx-tags.ts`.
 
-## `analytics.ts` is read as source
+## `app/src/lib/analytics.ts` is read as source
 
-`analytics.ts` pulls posthog-js and the engine adapter, so the analytics contract tests slice its source between anchors through one fixture, and a separate test guards those anchors so the downstream tests stay meaningful.
+`app/src/lib/analytics.ts` pulls posthog-js and the engine adapter, so the analytics contract tests slice its source between anchors through one fixture, and a separate test guards those anchors so the downstream tests stay meaningful.
 
 Lives in `app/tests/fixtures/analytics-source.ts`, `app/tests/analytics-vocabulary.test.ts`.
 

@@ -46,7 +46,7 @@ Decisions and external constraints of `packages/runtime/src/auth`. Complements A
 
 - `runEmptyRefreshServeSync` uses a bound callback because a dynamic import of `serve.ts` would still close the initialization cycle through `storage.ts`, whose top-level await prevents the bundler from ordering that cycle. An unbound read during boot is legitimate: `ModelRuntime.create` reads credentials before `serve.ts` can finish loading. Turn-start synchronization supplies the credential before the first request, while the modify mask remains active during boot.
 
-- `recordServedScope` and `servedScopeFor` remain outside `serve.ts` because `ai/providers.ts` consumes their verdicts and `serve.ts` imports `ai/providers.ts`. Moving the verdict store into serve would close the storage, providers and serve initialization cycle.
+- `recordServedScope` and `servedScopeFor` remain outside `serve.ts` because `packages/runtime/src/ai/providers.ts` consumes their verdicts and `serve.ts` imports `packages/runtime/src/ai/providers.ts`. Moving the verdict store into serve would close the storage, providers and serve initialization cycle.
 
 - `servedApiKeyIsDead` and `reportDeadServedApiKey` use protocol subpath imports so serve initialization does not load the protocol barrel's zod-heavy wire modules. Those modules are unnecessary on the runtime's credential hot paths.
 

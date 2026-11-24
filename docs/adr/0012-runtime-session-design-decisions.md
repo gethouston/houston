@@ -186,7 +186,7 @@ Title generation runs through a throwaway pi session so every provider and OAuth
 ## Child-process memory limits (packages/runtime/src/session/child-memory-fence.ts)
 
 - `bashMemoryFencePrefix` uses `RLIMIT_DATA` because the pod's group OOM policy kills the whole container when its combined memory exceeds the limit. A per-process limit makes an oversized script fail in its tool result instead of ending the conversation. The observed failure was an exporter growing past approximately 1 GB in a 2 GiB pod, causing three restarts in one session on 2026-09-09.
-- `RLIMIT_DATA` covers private writable memory, including heap and anonymous mappings, and children inherit it. `RLIMIT_AS` is unsuitable because it also counts reserved, uncommitted address space, which V8 reserves in gigabytes before using it.
+- The data-segment limit (`RLIMIT_DATA`) covers private writable memory, including heap and anonymous mappings, and children inherit it. `RLIMIT_AS` is unsuitable because it also counts reserved, uncommitted address space, which V8 reserves in gigabytes before using it.
 - `bashMemoryFencePrefix` suppresses `ulimit` diagnostics so the command still runs when an existing hard limit prevents applying the requested cap. A lower hard limit already imposes a stricter cap.
 
 ## Claude CLI shell contract (packages/runtime/src/session/claude-shell-fence.ts)

@@ -12,7 +12,7 @@ pdf.js (about 1.3 MB) loads on first use to stay out of the entry chunk. The leg
 
 ## Text layer
 
-The text layer is trimmed from pdf.js 6's `pdf_viewer.css` to what selection needs, with width and height forced to the page box because pdf.js uses CSS `round()`, which older Android WebViews cannot parse. It is built at scale 1 and sized by `--total-scale-factor`, so zooming never rebuilds it. Lives in `ui/pdf/src/styles.css` and `ui/pdf/src/page-render.ts`.
+The text layer is trimmed from pdf.js 6's viewer stylesheet to what selection needs, with width and height forced to the page box because pdf.js uses CSS `round()`, which older Android WebViews cannot parse. It is built at scale 1 and sized by `--total-scale-factor`, so zooming never rebuilds it. Lives in `ui/pdf/src/styles.css` and `ui/pdf/src/page-render.ts`.
 
 ## Canvas memory
 
