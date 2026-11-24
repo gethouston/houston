@@ -26,6 +26,12 @@ describe("comments:verify tooling comments", () => {
     expect(problems[0]).toMatch(/tooling comment 0 differs/);
   });
 
+  it("passes when a WHY pointer or a public doc comment is added or dropped", () => {
+    const base = "/** Board. */\nexport function a() {}\n";
+    const work = "// WHY: quirk. ADR-0010\nexport function a() {}\n";
+    expect(verify("ui/core/src/a.ts", base, work)).toEqual([]);
+  });
+
   it("fails when tooling comments change order or text", () => {
     const base = "// @ts-expect-error a\nf();\n// @ts-ignore\ng();\n";
     const swapped = "// @ts-ignore\nf();\n// @ts-expect-error a\ng();\n";

@@ -65,8 +65,10 @@ export function planDeletions(decisions: unknown, input: PlanInput): Plan {
         plan.errors.push(
           `${id}: no comment starts here; run pnpm comments:list again`,
         );
-      else if (comment.tooling)
-        plan.errors.push(`${id} is a tooling comment and is never deleted`);
+      else if (comment.role !== "prose")
+        plan.errors.push(
+          `${id} is a ${comment.role} comment and is never deleted`,
+        );
       else return [comment];
       return [];
     });

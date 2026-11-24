@@ -5,7 +5,7 @@ import { requireLang, scanSource } from "../scan.ts";
 const strip = (file: string, lines: readonly string[]): string => {
   const text = lines.join("\n");
   const prose = scanSource(file, text, []).filter(
-    (comment) => !comment.tooling,
+    (comment) => comment.role === "prose",
   );
   return deleteComments(text, prose, requireLang(file));
 };

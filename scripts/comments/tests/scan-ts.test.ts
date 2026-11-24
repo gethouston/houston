@@ -68,7 +68,7 @@ describe("TS/JS scanning", () => {
       "// why this is ignored",
       "// biome-ignore lint/style/noNonNullAssertion: checked above",
       "const a = b!;",
-    ]).map((comment) => [comment.text, comment.tooling]);
+    ]).map((comment) => [comment.text, comment.role === "tooling"]);
     expect(found).toEqual([
       ["// why this is ignored", false],
       ["// biome-ignore lint/style/noNonNullAssertion: checked above", true],

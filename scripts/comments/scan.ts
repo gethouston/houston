@@ -1,4 +1,4 @@
-import { isTooling, RUST_SAFETY } from "./classify.ts";
+import { RUST_SAFETY, roleOf } from "./classify.ts";
 import { lexCss } from "./lex-css.ts";
 import { lexRust } from "./lex-rust.ts";
 import { lexShell, shellTokens } from "./lex-shell.ts";
@@ -6,6 +6,7 @@ import type { Comment, Lang, Pinned, RawComment, Token } from "./model.ts";
 import { tsComments } from "./scan-ts.ts";
 import { lineStarts, positionOf } from "./text.ts";
 import { tsTokens } from "./tokens-ts.ts";
+import { isWhy, startsWhy } from "./why.ts";
 
 export function langOf(file: string): Lang | null {
   if (file.endsWith(".d.ts") || /\.generated\./.test(file)) return null;
@@ -43,8 +44,10 @@ function ownLine(text: string, starts: readonly number[], at: number): boolean {
 }
 
 function sameClass(lang: Lang, previous: Comment, next: Comment): boolean {
-  if (next.tooling === previous.tooling) return true;
-  return lang === "rust" && !next.tooling && RUST_SAFETY.test(previous.text);
+  if (next.role === previous.role) return true;
+  if (next.role !== "prose") return false;
+  if (startsWhy(lang, previous.text, previous.kind)) return true;
+  return lang === "rust" && RUST_SAFETY.test(previous.text);
 }
 
 function joins(
@@ -82,7 +85,7 @@ export function scanSource(
       col,
       endLine: positionOf(starts, Math.max(raw.start, raw.end - 1)).line,
       text: body,
-      tooling: isTooling(lang, file, body, raw.kind, pinned),
+      role: roleOf(lang, file, body, raw.kind, raw.attached ?? false, pinned),
     };
     const previous = out.at(-1);
     if (
@@ -94,6 +97,10 @@ export function scanSource(
       previous.end = comment.end;
       previous.endLine = comment.endLine;
       previous.text = text.slice(previous.start, previous.end);
+      if (startsWhy(lang, previous.text, previous.kind))
+        previous.role = isWhy(lang, previous.text, previous.kind)
+          ? "why"
+          : "prose";
     } else out.push(comment);
   }
   return out;

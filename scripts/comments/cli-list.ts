@@ -20,7 +20,7 @@ const entries: Entry[] = scans
   .map(({ file, comments }) => ({
     file,
     lines: readRepoFile(file).split("\n"),
-    prose: comments.filter((comment) => !comment.tooling),
+    prose: comments.filter((comment) => comment.role === "prose"),
   }))
   .filter((entry) => entry.prose.length > 0)
   .sort(

@@ -1,6 +1,7 @@
 import ts from "typescript";
 import type { RawComment } from "./model.ts";
 import { isJsxChild, parseTs } from "./parse-ts.ts";
+import { publicDocStarts } from "./public-docs.ts";
 
 type Span = [number, number];
 
@@ -84,7 +85,8 @@ function foldJsx(comments: RawComment[], jsx: Span[]): RawComment[] {
 }
 
 export function tsComments(file: string, text: string): RawComment[] {
-  const { opaque, jsx } = collect(parseTs(file, text));
+  const source = parseTs(file, text);
+  const { opaque, jsx } = collect(source);
   const comments: RawComment[] = [];
   let cursor = text.startsWith("#!")
     ? text.indexOf("\n") + 1 || text.length
@@ -94,5 +96,8 @@ export function tsComments(file: string, text: string): RawComment[] {
     cursor = Math.max(cursor, end);
   }
   scanGap(file, text, cursor, text.length, comments);
+  const docs = publicDocStarts(source);
+  for (const comment of comments)
+    if (docs.has(comment.start)) comment.attached = true;
   return foldJsx(comments, jsx);
 }

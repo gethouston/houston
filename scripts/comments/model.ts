@@ -2,10 +2,13 @@ export type Lang = "ts" | "rust" | "css" | "shell";
 
 export type CommentKind = "line" | "block" | "jsx";
 
+export type CommentRole = "tooling" | "why" | "doc" | "prose";
+
 export interface RawComment {
   start: number;
   end: number;
   kind: CommentKind;
+  attached?: boolean;
 }
 
 export interface Comment extends RawComment {
@@ -15,7 +18,7 @@ export interface Comment extends RawComment {
   col: number;
   endLine: number;
   text: string;
-  tooling: boolean;
+  role: CommentRole;
 }
 
 export interface Token {

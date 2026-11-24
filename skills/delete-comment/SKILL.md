@@ -5,9 +5,9 @@ description: Remove prose comments from a part of the repo and keep the shrink-o
 
 # /delete-comment
 
-Code carries no prose comments. `pnpm check:comments` fails when a file has more prose comments than `scripts/comments/baseline.json` allows, and the baseline only goes down. This is the procedure that takes it down.
+Code carries no prose comments. Two kinds are allowed: a `// WHY:` comment of at most 3 lines that cites `ADR-NNNN` (an existing record) or an external URL, placed right above the code it explains, and JSDoc on an exported declaration in `ui/` or `packages/sdk/src`. `pnpm check:comments` fails when a file has more prose comments than `scripts/comments/baseline.json` allows, and the baseline only goes down. This is the procedure that takes it down.
 
-Tooling comments are never touched and never counted: `@assistant` and `@deprecated` JSDoc, `biome-ignore*`, `@ts-*` directives, `eslint-*`, triple-slash references, bundler and coverage hints, license blocks, JSDoc type tags in plain JS, Rust doc comments, Rust `// SAFETY:` justifications (with their continuation lines), `shellcheck` directives, and the pinned lines in `scripts/comments/config.json`. The full list is `scripts/comments/classify.ts`. Paths in `config.json` `excluded` are out of scope.
+Tooling comments are never touched and never counted: `@assistant` and `@deprecated` JSDoc, `biome-ignore*`, `@ts-*` directives, `eslint-*`, triple-slash references, bundler and coverage hints, license blocks, JSDoc type tags in plain JS, Rust doc comments, Rust `// SAFETY:` justifications (with their continuation lines), `// WHY:` comments with an ADR or URL reference (with their continuation lines, 3 lines at most), JSDoc attached to an exported declaration in `ui/` and `packages/sdk/src`, `shellcheck` directives, and the pinned lines in `scripts/comments/config.json`. The full list is `scripts/comments/classify.ts`. Paths in `config.json` `excluded` are out of scope.
 
 ## 1. Pick paths
 
@@ -32,7 +32,7 @@ Each comment has an id `file:line:col`. Consecutive `//` lines are one comment. 
 | **Tautology** | Repeats what the code already says: the name, the type, the next line, the control flow. | Delete. |
 | **Stale** | Refers to code, behavior, files or flags that no longer exist or no longer hold. Check with a grep before you call it stale. | Delete. |
 | **Excuse** | Justifies a hack: a workaround, "for now", "until X lands", a TODO, a known-wrong shortcut. | Delete, and file one issue per module in the team tracker naming the file, the symbol, the hack and the fix. Refer to it by ID only. Never name the tracker in the repo. |
-| **Decision Record** | A non-obvious decision, constraint or external quirk the code cannot show: why this and not the obvious alternative, an upstream bug, a protocol or platform requirement, an invariant other code relies on. | Move it into the module's ADR under `docs/adr/`, then delete. |
+| **Decision Record** | A non-obvious decision, constraint or external quirk the code cannot show: why this and not the obvious alternative, an upstream bug, a protocol or platform requirement, an invariant other code relies on. | Move it into the module's ADR under `docs/adr/`. If it is an external quirk, a protocol or platform constraint or an invariant a maintainer would break, replace it with a one-line `// WHY: <short reason>. ADR-NNNN` above the symbol; otherwise delete it. |
 
 The test for a Decision Record: it is one if a maintainer would get the code wrong without it and no existing name, type or test already says it. Otherwise it is a Tautology. If a rename would carry the meaning, the comment is still a Decision Record today: record it in the ADR now and leave the rename for a later change.
 

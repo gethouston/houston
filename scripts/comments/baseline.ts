@@ -62,7 +62,7 @@ export function scanAll(
 export function proseCounts(scans: readonly Scan[]): Counts {
   const counts: Counts = {};
   for (const { file, comments } of scans) {
-    const prose = comments.filter((comment) => !comment.tooling).length;
+    const prose = comments.filter((comment) => comment.role === "prose").length;
     if (prose > 0) counts[file] = prose;
   }
   return counts;

@@ -11,6 +11,6 @@ export function texts(file: string, lines: readonly string[]): string[] {
 
 export function prose(file: string, lines: readonly string[]): string[] {
   return scan(file, lines)
-    .filter((comment) => !comment.tooling)
+    .filter((comment) => comment.role === "prose")
     .map((comment) => comment.text);
 }

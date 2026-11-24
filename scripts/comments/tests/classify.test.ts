@@ -4,7 +4,7 @@ import { scan } from "./support.ts";
 
 const toolingFor = (file: string, comment: string): boolean => {
   const [found] = scan(file, [comment, "export const x = 1;"]);
-  return found.tooling;
+  return found.role === "tooling";
 };
 
 describe("tooling classification", () => {
@@ -74,7 +74,7 @@ describe("tooling classification", () => {
       "// ─── Marker ───\nconst a = 1;\n",
       pinned,
     );
-    expect(found.tooling).toBe(true);
+    expect(found.role).toBe("tooling");
   });
 
   it.each([
@@ -90,7 +90,9 @@ describe("tooling classification", () => {
     ["/* SAFETY: the buffer is live */", true],
     ["// The SAFETY: note sits mid-line", false],
   ])("Rust %j is tooling: %s", (comment, tooling) => {
-    expect(scan("a.rs", [comment, "fn a() {}"])[0].tooling).toBe(tooling);
+    expect(scan("a.rs", [comment, "fn a() {}"])[0].role === "tooling").toBe(
+      tooling,
+    );
   });
 
   it("reads a Rust SAFETY justification and its continuation as one tooling comment", () => {
@@ -103,22 +105,30 @@ describe("tooling classification", () => {
       "    // Prose after it.",
       "}",
     ]);
-    expect(found.map((c) => [c.line, c.endLine, c.tooling])).toEqual([
-      [2, 2, false],
-      [3, 4, true],
-      [6, 6, false],
-    ]);
+    expect(found.map((c) => [c.line, c.endLine, c.role === "tooling"])).toEqual(
+      [
+        [2, 2, false],
+        [3, 4, true],
+        [6, 6, false],
+      ],
+    );
   });
 
   it("keeps shellcheck directives and CSS license blocks", () => {
     expect(
-      scan("a.sh", ["# shellcheck disable=SC2086", "echo $a"])[0].tooling,
+      scan("a.sh", ["# shellcheck disable=SC2086", "echo $a"])[0].role ===
+        "tooling",
     ).toBe(true);
-    expect(scan("a.sh", ["# plain", "echo"])[0].tooling).toBe(false);
-    expect(scan("a.css", ["/*! license */", "a {}"])[0].tooling).toBe(true);
+    expect(scan("a.sh", ["# plain", "echo"])[0].role === "tooling").toBe(false);
     expect(
-      scan("a.css", ["/* biome-ignore lint: x */", "a {}"])[0].tooling,
+      scan("a.css", ["/*! license */", "a {}"])[0].role === "tooling",
     ).toBe(true);
-    expect(scan("a.css", ["/* plain */", "a {}"])[0].tooling).toBe(false);
+    expect(
+      scan("a.css", ["/* biome-ignore lint: x */", "a {}"])[0].role ===
+        "tooling",
+    ).toBe(true);
+    expect(scan("a.css", ["/* plain */", "a {}"])[0].role === "tooling").toBe(
+      false,
+    );
   });
 });

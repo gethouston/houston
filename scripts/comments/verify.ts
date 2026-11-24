@@ -56,7 +56,7 @@ export function describeMismatch(file: string, mismatch: Mismatch): string {
 
 function toolingOf(file: string, text: string, pinned: readonly Pinned[]) {
   return scanSource(file, text, pinned)
-    .filter((comment) => comment.tooling)
+    .filter((comment) => comment.role === "tooling")
     .map((comment) => ({
       comment,
       key: comment.text
