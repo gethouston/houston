@@ -17,6 +17,7 @@ interface BatchFrameHeader {
   status: number;
   size: number;
   generation?: string;
+  link?: boolean;
 }
 
 /** POST the keys and land the framed answer. A GET-shaped read: retry-safe. */
@@ -70,7 +71,9 @@ export async function landHttpBatch(
     offset += header.size;
     const entry = destByKey.get(header.key);
     if (!entry) throw new Error(`object store batch returned ${header.key}`);
-    if (header.status === 200) {
+    if (header.status === 200 && header.link === true) {
+      outcomes.set(header.key, { status: "fallback" });
+    } else if (header.status === 200) {
       if (!(await writeAtomically(entry.destFile, content))) {
         outcomes.set(header.key, { status: "refused" });
         continue;
