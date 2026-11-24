@@ -43,6 +43,7 @@ export type AssistantErrorCode =
    *  or a routine owns. Final: it is renamed and deleted where it belongs, and
    *  the host's sentence says where that is. */
   | "protected_conversation"
+  | "compute_busy"
   /** The gateway answered a 4xx/5xx. */
   | "gateway_error"
   /** The host could not be reached, or answered something unreadable. */

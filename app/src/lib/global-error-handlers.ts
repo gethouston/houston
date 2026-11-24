@@ -6,7 +6,6 @@ import {
   isBenignLockRejection,
 } from "./benign-rejections";
 import { isStayOpenSignal } from "./dialog-stay-open";
-import { isEngineWakingError } from "./engine-waking-error";
 import { logAndReportError } from "./error-report";
 import {
   showConnectivityErrorToast,
@@ -15,6 +14,7 @@ import {
 } from "./error-toast";
 import { installForeignDomSafetyNet } from "./foreign-dom-report";
 import { isNetworkTransportError } from "./network-transport-error";
+import { classifyQuietError } from "./quiet-error-class";
 
 /**
  * Install the process-wide `window.onerror` / `window.onunhandledrejection`
@@ -118,7 +118,13 @@ export function installGlobalErrorHandlers(): void {
     // notice and only the low-noise fingerprinted `engine_waking` warning in
     // Sentry (PRODUCT-1640) — nothing in Houston broke, the write succeeds on
     // retry once the pod listens again.
-    if (isEngineWakingError(event.reason)) {
+    const quiet = classifyQuietError(event.reason);
+    if (quiet === "compute_busy" || quiet === "conversation_edit_refused") {
+      event.preventDefault();
+      showErrorToast("unhandled_rejection", message, event.reason);
+      return;
+    }
+    if (quiet === "engine_waking") {
       event.preventDefault();
       console.error("[global:unhandledrejection] engine waking:", message);
       showEngineWakingToast("unhandled_rejection", message, event.reason);

@@ -55,7 +55,6 @@ export const PUBLISHED_OPERATION_FLOOR: readonly string[] = [
   "downloadProjectFile",
   "forgetCredential",
   "forgetSetupCredential",
-  "generateAgentInstructions",
   "getAgentModelChoice",
   "getAgentSettings",
   "getAssistant",

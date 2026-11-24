@@ -124,7 +124,6 @@ export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> =
   downloadProjectFile: { group: "files", confirm: false, hidden: true, route: "GET /agents/{agentPath}/files/download", rawResponse: true },
   forgetCredential: { group: "providers", confirm: true, hidden: false, route: "POST /agents/{agentId}/credential/forget", rawResponse: false },
   forgetSetupCredential: { group: "providers", confirm: false, hidden: true, route: "POST /setup-runtime/credential/forget", rawResponse: false },
-  generateAgentInstructions: { group: "agents", confirm: false, hidden: true, route: null, rawResponse: null },
   getAgentDelegation: { group: "agents", confirm: false, hidden: false, route: "GET /v1/agents/{agentId}/delegation", rawResponse: true },
   getAgentModelChoice: { group: "agents", confirm: false, hidden: false, route: "GET /v1/agents/{agentSlugOrId}/model-choice", rawResponse: true },
   getAgentSettings: { group: "teams", confirm: false, hidden: false, route: "GET /v1/agents/{agentSlugOrId}/settings", rawResponse: true },

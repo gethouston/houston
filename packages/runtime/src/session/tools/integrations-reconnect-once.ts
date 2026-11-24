@@ -1,5 +1,10 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { currentConversationId } from "../conversation-context";
+import {
+  RECONNECT_OFFERED_FILE,
+  readConversationMark,
+  writeConversationMark,
+} from "../conversation-marks";
 
 /**
  * At most ONE reconnect card per app per conversation. A client that predates
@@ -8,11 +13,6 @@ import { currentConversationId } from "../conversation-context";
  * once, the agent retries, the app refuses again, and a new card follows,
  * forever. After the first card the agent sends the user to the Integrations
  * page instead.
- *
- * Earlier turns are found two ways: the conversation's persisted transcript
- * (pi keeps every turn's tool results in the session), and, for a backend
- * that hands tools no session (the Claude SDK bridge), this process's memory
- * of the conversations it already offered a card in.
  */
 
 /** Stable phrase in the card guidance; the transcript scan looks for it. */
@@ -37,6 +37,23 @@ export function rememberReconnectOffered(toolkit: string): void {
     if (oldest !== undefined) offered.delete(oldest);
   }
   offered.add(key);
+  const persisted = persistedToolkits();
+  if (!persisted.includes(toolkit))
+    writeConversationMark(RECONNECT_OFFERED_FILE, {
+      toolkits: [...persisted, toolkit],
+    });
+}
+
+function persistedToolkits(): string[] {
+  const raw = readConversationMark(RECONNECT_OFFERED_FILE);
+  if (typeof raw !== "object" || raw === null || !("toolkits" in raw))
+    return [];
+  const { toolkits } = raw;
+  return Array.isArray(toolkits)
+    ? toolkits.filter(
+        (toolkit): toolkit is string => typeof toolkit === "string",
+      )
+    : [];
 }
 
 /** Did an earlier turn of this conversation already offer the card? */
@@ -46,6 +63,7 @@ export function reconnectOfferedBefore(
 ): boolean {
   const key = memoryKey(toolkit);
   if (key && offered.has(key)) return true;
+  if (persistedToolkits().includes(toolkit)) return true;
   // The bridge's no-op context has no session manager.
   const entries = ctx?.sessionManager?.getBranch?.() ?? [];
   const marker = reconnectCardMarker(toolkit);
@@ -58,4 +76,8 @@ export function reconnectOfferedBefore(
         (part) => part.type === "text" && part.text.includes(marker),
       ),
   );
+}
+
+export function resetReconnectOfferedMemory(): void {
+  offered.clear();
 }
