@@ -10,6 +10,11 @@
  * report keeps how long the request ran and how big it was, the two numbers
  * that tell a proxy timeout from a dropped connection.
  *
+ * A resumable transfer whose retry budget ran out on transport cuts alone
+ * (the sink never answered) is the same state and throws this too, with the
+ * whole transfer's elapsed time and the last transport message
+ * (HOUSTON-APP-5N2).
+ *
  * Deliberately NOT chained to the transport `TypeError` as its `cause`: every
  * client's offline classifier unwraps one level of `cause`, and this must not
  * read as offline. The raw transport message rides in this error's message.
@@ -19,7 +24,7 @@
  */
 
 /** Which upload route the interrupted request was posting to. */
-export type UploadRoute = "attachments" | "files_import";
+export type UploadRoute = "attachments" | "files_import" | "migration_import";
 
 export const UPLOAD_INTERRUPTED_NAME = "UploadInterruptedError";
 
