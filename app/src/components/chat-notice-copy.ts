@@ -10,6 +10,7 @@ import type { EngineNoticeKind } from "@houston/sdk";
 export const NOTICE_COPY = {
   engine_restart: "chat:engineRestart.sayContinue",
   engine_resumed: "chat:engineRestart.resuming",
+  sandbox_lost: "chat:sandboxLost",
   turn_time_limit: "chat:replyTimeLimit",
   turn_time_limit_unsaved: "chat:replyTimeLimitUnsaved",
   send_busy: "chat:sendBusy",

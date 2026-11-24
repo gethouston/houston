@@ -20,6 +20,7 @@ import {
   searchIntegrations,
 } from "@houston/host/src/routes/integrations-fanout";
 import type { TurnCustomContext } from "./turn-custom-context";
+import { deferredFileReady } from "./turn-deferred-files";
 import type { TurnSandboxDeps } from "./turn-sandbox";
 import { fetchWithTurnSignal } from "./turn-sandbox-signal";
 
@@ -157,9 +158,7 @@ export function makeTurnIntegrationRoutes(
         readFile: agentFileReader({
           dir: filesystem.workspaceDir,
           rootKey: filesystem.workspaceRel.replace(/^workspaces\//, ""),
-          ...(filesystem.workspaceReady
-            ? { ready: filesystem.workspaceReady }
-            : {}),
+          ...deferredFileReady(filesystem, signal ?? undefined),
           // A lazy tree holds on disk only what this turn touched.
           fallback: (rel, maxBytes) =>
             filesystem.vfs.readBytes(
