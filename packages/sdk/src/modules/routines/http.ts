@@ -89,6 +89,10 @@ export async function createRoutine(
  *   (`auto_paused`); fix what `auto_paused.reason` names first, or the next
  *   runs fail the same way. When `auto_paused.cause` is `no_model`, the
  *   routine has no model: set its `provider` and `model` to a connected one.
+ *   When `auto_paused.cause` is `provider_error`, its runs kept failing
+ *   with the same error the engine does not recognize: read the latest run's
+ *   summary (listRoutineRuns) and fix what it says before resuming; the
+ *   model may be fine.
  *   A routine with `snoozed` is enabled but held until `snoozed.until`
  *   because its account's plan usage limit is reached; it resumes by itself
  *   then, and setting another `model` (or `provider`) lets it run sooner.
