@@ -1,5 +1,10 @@
 import type { AssistantRuntimeRole } from "@houston/domain/assistant-role";
-import type { ModelCallReport, TurnMode } from "@houston/protocol";
+import type { MissionGuidance } from "@houston/host/src/houston-prompt-missions";
+import type {
+  ModelCallReport,
+  ProviderError,
+  TurnMode,
+} from "@houston/protocol";
 import type {
   ChatMessage,
   PendingInteraction,
@@ -29,6 +34,7 @@ export interface TurnOutcome {
   spend?: { provider: string; usage: TokenUsage };
   /** Per-call timings for the terminal frame (turn-terminal.ts). */
   modelCalls?: ModelCallReport;
+  providerError?: ProviderError;
 }
 
 /** Per-turn model/effort pin. Absent means inherit the agent setting. */
@@ -86,7 +92,10 @@ export interface TurnSessionRequest {
    */
   role?: AssistantRuntimeRole;
   /** Turn-local routing closure; it owns all grant-bearing calls. */
-  sandbox?: { call: SandboxFetch };
+  sandbox?: {
+    call: SandboxFetch;
+    missionGuidance?: Promise<MissionGuidance>;
+  };
   timings?: Record<string, number>;
   /** Setup begun after layout resolution and before bulk hydration completes. */
   startup?: TurnSessionStartupTask;

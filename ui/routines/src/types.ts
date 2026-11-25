@@ -112,7 +112,8 @@ export type RoutineRunFailure =
       provider: string;
       model: string | null;
       resets_at: string | null;
-    };
+    }
+  | { code: "provider_error"; provider: string };
 
 export interface RoutineRun {
   id: string;

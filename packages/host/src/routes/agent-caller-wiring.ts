@@ -28,6 +28,18 @@ export function resolveMissionGateway(
         : null,
     };
   }
+  const pooled = ctx.deps.pooledTurn;
+  if (pooled) {
+    if (!ctx.actingAs) return { ok: false, code: "no_acting_person" };
+    return {
+      ok: true,
+      value: {
+        gateway: pooled.gateway,
+        actingAs: ctx.actingAs,
+        kind: "agent-caller",
+      },
+    };
+  }
   const url = env.HOUSTON_INTEGRATIONS_URL?.trim();
   const token = env.HOUSTON_HOST_TOKEN?.trim();
   if (!url || !token || !/^[0-9a-f]{64}$/.test(token)) {

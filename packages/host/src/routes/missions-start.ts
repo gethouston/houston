@@ -8,6 +8,7 @@ import {
   readRemoteMissionStatus,
 } from "./mission-fanout";
 import { callerMissionStarter } from "./mission-starter";
+import { ownBoardViaGateway } from "./missions-own-board";
 import {
   MAX_MISSION_DEPTH,
   MISSION_DEPTH_ERROR,
@@ -68,7 +69,10 @@ export async function handleMissionStart(
       code: "mission_depth",
     });
   }
-  const route = await resolveMissionRoute(ctx, body.agent, {}, "start");
+  const route = ownBoardViaGateway(
+    ctx,
+    await resolveMissionRoute(ctx, body.agent, {}, "start"),
+  );
   if (!route.ok) return refuseMissionRoute(route, res);
   // The parent chat is on the CALLER's board, hence this read is not the
   // target's. A parent that is itself a mission carries the depth it was

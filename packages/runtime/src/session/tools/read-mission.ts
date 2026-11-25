@@ -33,6 +33,7 @@ export interface ReadMissionToolOptions {
   call: SandboxFetch;
   /** True when this runtime is the user's personal assistant — see missions.ts. */
   personalAssistant: boolean;
+  inProcess?: boolean;
 }
 
 /** What one read did: the mission it read, or the named reason it could not. */
@@ -110,7 +111,8 @@ export function makeReadMissionTool(opts: ReadMissionToolOptions) {
         if (!read.ok) return toolErrorResult(read.error);
         transcript = read.transcript;
       } else {
-        transcript = ownTranscript(params.id, limit);
+        transcript =
+          opts.inProcess === false ? null : ownTranscript(params.id, limit);
         if (!transcript) {
           const read = await targetTranscript(
             opts.call,
