@@ -1,49 +1,11 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { checkAdr, type RepoView } from "./adr-refs.ts";
-import { git, loadConfig, repoRoot } from "./files.ts";
-
-const tracked = git(["ls-files", "-z"]).split("\0").filter(Boolean);
-const files = new Set(tracked);
-const dirs = new Set<string>();
-for (const file of tracked) {
-  const parts = file.split("/");
-  for (let i = 1; i < parts.length; i++) dirs.add(parts.slice(0, i).join("/"));
-}
-const roots = new Set(
-  [...dirs]
-    .filter((dir) => !dir.includes("/") && dir !== ".houston")
-    .concat([...files]),
-);
-const sources = new Map<string, string>();
+import { checkAdr } from "./adr-refs.ts";
+import { workingTreeRepo } from "./adr-repo.ts";
+import { loadConfig, repoRoot } from "./files.ts";
 
 const retired = new Set(loadConfig().retiredPaths.map((entry) => entry.path));
-
-const repo: RepoView = {
-  roots,
-  retired,
-  under: (dir, suffix) =>
-    [...files, ...dirs].filter(
-      (path) =>
-        path.startsWith(`${dir}/`) &&
-        (path === `${dir}/${suffix}` || path.endsWith(`/${suffix}`)),
-    ),
-  isFile: (path) => files.has(path),
-  isDir: (path) => dirs.has(path),
-  source(path) {
-    const cached = sources.get(path);
-    if (cached !== undefined) return cached;
-    const text = files.has(path)
-      ? readFileSync(join(repoRoot, path), "utf8")
-      : tracked
-          .filter((file) => file.startsWith(`${path}/`))
-          .filter((file) => statSync(join(repoRoot, file)).size < 1 << 20)
-          .map((file) => readFileSync(join(repoRoot, file), "utf8"))
-          .join("\n");
-    sources.set(path, text);
-    return text;
-  },
-};
+const repo = workingTreeRepo(repoRoot, retired);
 
 const adrDir = join(repoRoot, "docs/adr");
 let count = 0;

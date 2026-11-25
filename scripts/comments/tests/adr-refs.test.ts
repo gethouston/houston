@@ -18,6 +18,8 @@ const dirs = new Set(
   ),
 );
 
+const codeWords = new Set(["refresh_token_invalidated", "COMPOSIO_API_KEY"]);
+
 const repo: RepoView = {
   roots: new Set(["app", "packages", "docs"]),
   retired: new Set(["packages/host-cloud"]),
@@ -33,6 +35,7 @@ const repo: RepoView = {
       .filter(([file]) => file.startsWith(`${path}/`))
       .map(([, text]) => text)
       .join("\n"),
+  inCode: (word) => codeWords.has(word),
 };
 
 const messages = (text: string): string[] =>
@@ -112,6 +115,33 @@ describe("check:adr-refs", () => {
       ),
     ).toEqual([
       "4: names `renamedAway` next to packages/runtime/src/backends/pi/wire.ts, which do not contain renamedAway",
+    ]);
+  });
+
+  it("skips any path under a retired prefix", () => {
+    expect(
+      messages(
+        "`packages/host-cloud/src/server.ts` and packages/host-cloud/src/db.ts are gone.",
+      ),
+    ).toEqual([]);
+  });
+
+  it("checks env names and error codes under a heading against all code", () => {
+    expect(
+      messages(
+        [
+          "## Refresh (packages/runtime/src/backends/pi/wire.ts)",
+          "",
+          "- `refresh_token_invalidated` is terminal.",
+          "- `COMPOSIO_API_KEY` turns it on.",
+          "- `none` is plain prose.",
+          "- `invalid_client` is never terminal.",
+          "- `HOUSTON_GONE` was removed.",
+        ].join("\n"),
+      ),
+    ).toEqual([
+      "6: names `invalid_client`, which no code in the repo contains",
+      "7: names `HOUSTON_GONE`, which no code in the repo contains",
     ]);
   });
 });

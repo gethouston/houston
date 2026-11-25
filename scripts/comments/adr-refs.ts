@@ -4,6 +4,7 @@ import {
   mentionsOf,
   type RepoView,
   resolveMention,
+  retiredPath,
 } from "./adr-mentions.ts";
 
 export type { RepoView } from "./adr-mentions.ts";
@@ -25,6 +26,10 @@ const FILE_NAME = /\.(?:[cm]?[jt]sx?|rs|css|sh|json|md|toml|ya?ml|html)$/;
 function symbolsIn(list: string[]): string[] {
   return list.filter((item) => SYMBOL.test(item) && !FILE_NAME.test(item));
 }
+
+const CONSTANT = /^[A-Z][A-Z\d]*(?:_[A-Z\d]+)*$/;
+const SNAKE = /^[a-z][a-z\d]*(?:_[a-z\d]+)+$/;
+const CAMEL = /[a-z\d][A-Z]|(?:^|\.)[A-Z][a-z]/;
 
 function listedAfter(line: string, mention: Mention): string[] {
   if (!mention.ticked) return [];
@@ -66,7 +71,7 @@ interface Resolved {
 export function checkAdr(text: string, repo: RepoView): AdrProblem[] {
   const lines = text.split("\n");
   const mentions = mentionsOf(lines, repo).filter(
-    (mention) => !repo.retired.has(mention.text),
+    (mention) => !retiredPath(mention.text, repo),
   );
   const bases = basesOf(mentions, repo);
   const problems: AdrProblem[] = [];
@@ -113,7 +118,16 @@ export function checkAdr(text: string, repo: RepoView): AdrProblem[] {
       return;
     }
     const lead = LEADING_SYMBOL.exec(text);
-    if (lead && section.length > 0) check(line, symbolsIn([lead[1]]), section);
+    if (!lead || section.length === 0 || symbolsIn([lead[1]]).length === 0)
+      return;
+    const token = lead[1].replace(/\(\)$/, "");
+    if (CONSTANT.test(token) || SNAKE.test(token)) {
+      if (!repo.inCode(token))
+        problems.push({
+          line,
+          message: `names \`${token}\`, which no code in the repo contains`,
+        });
+    } else if (CAMEL.test(token)) check(line, [token], section);
   });
   return problems.sort((a, b) => a.line - b.line);
 }

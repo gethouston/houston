@@ -7,6 +7,7 @@ export interface RepoView {
   isDir(path: string): boolean;
   under(dir: string, suffix: string): string[];
   source(path: string): string;
+  inCode(word: string): boolean;
 }
 
 export interface Mention {
@@ -27,6 +28,12 @@ function clean(raw: string): string {
   while (path.endsWith(")") && path.split(")").length > path.split("(").length)
     path = path.slice(0, -1).replace(/[.,;:]+$/, "");
   return path.replace(/\/+$/, "");
+}
+
+export function retiredPath(path: string, repo: RepoView): boolean {
+  return [...repo.retired].some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
 }
 
 export function absolute(path: string, repo: RepoView): boolean {
