@@ -1,5 +1,5 @@
 /**
- * One-time consent dialog for the dictation model download (~181 MB,
+ * One-time consent dialog for the dictation model download (~190 MB,
  * whisper.cpp `ggml-small-q5_1`). Shown by `useDictation` the first time the
  * user hits the mic and the model isn't on disk yet; download progress
  * streams in via `onDictationModelProgress` (`use-dictation.ts` owns the
