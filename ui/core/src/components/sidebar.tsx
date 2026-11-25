@@ -83,7 +83,7 @@ function SidebarProvider({
       }
 
       // This sets the cookie to keep the sidebar state.
-      // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API is async and not yet universally supported; synchronous document.cookie is required for SSR-compatible sidebar persistence.
+      // oxlint-disable-next-line unicorn/no-document-cookie -- Cookie Store API is async and not yet universally supported; synchronous document.cookie is required for SSR-compatible sidebar persistence.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
     },
     [setOpenProp, open],
@@ -285,6 +285,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
 
   return (
     <button
+      type="button"
       data-sidebar="rail"
       data-slot="sidebar-rail"
       aria-label="Toggle Sidebar"

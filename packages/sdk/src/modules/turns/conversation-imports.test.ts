@@ -203,19 +203,19 @@ describe("importMessages", () => {
     expect(h.stored.has(PENDING_IMPORTS_KEY)).toBe(false);
   });
 
-  test.each([
-    "conversation_too_large_asleep",
-    "conversation_op_refused",
-  ])("drops an import refused for good with %s", async (code) => {
-    const h = harness();
-    h.answers.push(
-      new EngineError(503, JSON.stringify({ error: "refused", code })),
-    );
-    await expect(
-      h.imports.importMessages("assistant", "ws/.assistant", request),
-    ).rejects.toBeInstanceOf(EngineError);
-    expect(h.stored.has(PENDING_IMPORTS_KEY)).toBe(false);
-  });
+  test.each(["conversation_too_large_asleep", "conversation_op_refused"])(
+    "drops an import refused for good with %s",
+    async (code) => {
+      const h = harness();
+      h.answers.push(
+        new EngineError(503, JSON.stringify({ error: "refused", code })),
+      );
+      await expect(
+        h.imports.importMessages("assistant", "ws/.assistant", request),
+      ).rejects.toBeInstanceOf(EngineError);
+      expect(h.stored.has(PENDING_IMPORTS_KEY)).toBe(false);
+    },
+  );
 
   test("keeps an import the gateway answered compute_busy, for the next load", async () => {
     const h = harness();

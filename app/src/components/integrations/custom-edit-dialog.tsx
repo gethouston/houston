@@ -1,5 +1,5 @@
-import type { CustomIntegrationView } from "@houston/engine-adapter";
 import { FormDialog, Input } from "@houston-ai/core";
+import type { CustomIntegrationView } from "@houston/engine-adapter";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useEditCustomIntegration } from "../../hooks/queries/use-edit-custom-integration";

@@ -14,6 +14,8 @@ import { SidebarPinnedList } from "./sidebar-pinned-list";
 import type { SidebarProps } from "./sidebar-props";
 import type { SidebarBaseRowContext } from "./sidebar-row-context";
 
+const DEFAULT_PINNED_ITEMS: never[] = [];
+
 export type { SidebarLabels } from "./sidebar-labels";
 export type { SidebarItem, SidebarProps } from "./sidebar-props";
 
@@ -30,7 +32,7 @@ export function AppSidebar({
   headerActions,
   headerBelow,
   items,
-  pinnedItems = [],
+  pinnedItems = DEFAULT_PINNED_ITEMS,
   selectedId,
   onSelect,
   groups,

@@ -36,7 +36,7 @@ export function killRunningTurns(): number {
 export function dropChatStreams(): number {
   let dropped = 0;
   for (const ch of channels.values()) {
-    for (const sink of [...ch.sinks]) {
+    for (const sink of Array.from(ch.sinks)) {
       sink.close();
       dropped++;
     }
@@ -62,7 +62,7 @@ export function turnBoundary(nextText: string): number {
     const pending = ch.pending;
     if (!pending || !ch.channel.snapshot.running) continue;
     const [agentId = "", cid = ""] = key.split(":");
-    for (const sink of [...ch.sinks]) sink.close();
+    for (const sink of Array.from(ch.sinks)) sink.close();
     ch.sinks.clear();
     ch.epoch++; // stop the live producer loop
     releaseHeldTurn(); // a held producer wakes, sees the new epoch, and stops

@@ -76,7 +76,7 @@ export class TranscriptShadowQueue implements TranscriptShadow {
   }
 
   async flush(): Promise<void> {
-    await Promise.all([...this.drains.values()]);
+    await Promise.all(this.drains.values());
   }
 
   /**
@@ -87,7 +87,7 @@ export class TranscriptShadowQueue implements TranscriptShadow {
    * holds the process past the deadline.
    */
   async drainForShutdown(timeoutMs: number): Promise<void> {
-    for (const id of [...this.dirty]) {
+    for (const id of Array.from(this.dirty)) {
       const lane = this.lane(id);
       if (lane.pending.length === 0 && !lane.repairPending && !lane.draining) {
         lane.repairPending = true;
@@ -103,7 +103,7 @@ export class TranscriptShadowQueue implements TranscriptShadow {
         );
         return;
       }
-      await Promise.race([Promise.all([...this.drains.values()]), sleep(left)]);
+      await Promise.race([Promise.all(this.drains.values()), sleep(left)]);
     }
   }
 

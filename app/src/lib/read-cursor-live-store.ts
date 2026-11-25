@@ -1,10 +1,4 @@
 import { actingUser } from "./acting-user.ts";
-import {
-  cursorKey,
-  markMentionNotified,
-  markRead,
-  type ReadCursorStore,
-} from "./read-cursors.ts";
 import { mergeReadCursorStores } from "./read-cursors-merge.ts";
 import {
   type CursorStorage,
@@ -13,6 +7,12 @@ import {
   readCursorStorageKey,
   saveReadCursors,
 } from "./read-cursors-storage.ts";
+import {
+  cursorKey,
+  markMentionNotified,
+  markRead,
+  type ReadCursorStore,
+} from "./read-cursors.ts";
 
 /**
  * The app's ONE live read-cursor store (HOU-945): the singleton the "viewed"

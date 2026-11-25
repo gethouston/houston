@@ -73,24 +73,23 @@ async function turnEnv(
   return built[0]?.baseOptions.env ?? {};
 }
 
-test.each([
-  "pro",
-  "max",
-] as const)("a served %s plan reaches the CLI with its token", async (plan) => {
-  const env = await turnEnv(served(plan));
-  expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBe("sk-ant-oat01-served");
-  expect(env.CLAUDE_CODE_SUBSCRIPTION_TYPE).toBe(plan);
-});
+test.each(["pro", "max"] as const)(
+  "a served %s plan reaches the CLI with its token",
+  async (plan) => {
+    const env = await turnEnv(served(plan));
+    expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBe("sk-ant-oat01-served");
+    expect(env.CLAUDE_CODE_SUBSCRIPTION_TYPE).toBe(plan);
+  },
+);
 
-test.each([
-  "team",
-  "enterprise",
-  undefined,
-] as const)("a %s plan leaves the CLI fetching its organization policy", async (plan) => {
-  const env = await turnEnv(served(plan));
-  expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBe("sk-ant-oat01-served");
-  expect(env).not.toHaveProperty("CLAUDE_CODE_SUBSCRIPTION_TYPE");
-});
+test.each(["team", "enterprise", undefined] as const)(
+  "a %s plan leaves the CLI fetching its organization policy",
+  async (plan) => {
+    const env = await turnEnv(served(plan));
+    expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBe("sk-ant-oat01-served");
+    expect(env).not.toHaveProperty("CLAUDE_CODE_SUBSCRIPTION_TYPE");
+  },
+);
 
 test("a plan never follows the turn onto a token it was not served with", async () => {
   const env = await turnEnv(served("max"), {

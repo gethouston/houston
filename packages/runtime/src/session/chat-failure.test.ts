@@ -12,9 +12,8 @@ process.env.HOUSTON_WORKSPACE_DIR = process.env.HOUSTON_DATA_DIR;
 const { runTurn } = await import("./chat");
 const { getHistory } = await import("../store/conversations");
 const { subscribe } = await import("./bus");
-const { recordServedScope, resetServedScopes } = await import(
-  "../auth/served-scope"
-);
+const { recordServedScope, resetServedScopes } =
+  await import("../auth/served-scope");
 const { runWithActingContext } = await import("./acting-context");
 
 /**
@@ -39,9 +38,9 @@ test("a turn failing before execution persists the user message + typed provider
     kind: "unknown",
     provider: "gemini-cli",
   });
-  expect(
-    (assistant?.providerError as { raw_excerpt?: string }).raw_excerpt,
-  ).toContain("unknown provider: gemini-cli");
+  expect(assistant?.providerError).toMatchObject({
+    raw_excerpt: expect.stringContaining("unknown provider: gemini-cli"),
+  });
 });
 
 /**
@@ -64,9 +63,9 @@ test("a disconnected-local-model failure persists a typed unauthenticated error 
     cause: "no_credentials",
     undelivered_prompt: "everything is okey?",
   });
-  expect((assistant?.providerError as { message?: string }).message).toContain(
-    "No local model configured",
-  );
+  expect(assistant?.providerError).toMatchObject({
+    message: expect.stringContaining("No local model configured"),
+  });
 });
 
 /**

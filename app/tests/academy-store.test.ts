@@ -6,6 +6,7 @@ import {
   createAcademyQueues,
   UNKNOWN_DEVICE_ID,
 } from "../src/lib/academy/academy-mutations.ts";
+import { parseAcademyRecord } from "../src/lib/academy/academy-record-parse.ts";
 import {
   ACADEMY_PREF_KEY,
   type AcademyRecord,
@@ -14,7 +15,6 @@ import {
   totalExperience,
   totalUsagePoints,
 } from "../src/lib/academy/academy-record.ts";
-import { parseAcademyRecord } from "../src/lib/academy/academy-record-parse.ts";
 import {
   type AcademyDevice,
   type AcademyStorePorts,

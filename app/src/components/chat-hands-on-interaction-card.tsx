@@ -1,7 +1,7 @@
-import type { HandsOnSurface } from "@houston/protocol";
-import { isHandsOnSurface } from "@houston/protocol";
 import type { StepChrome } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
+import type { HandsOnSurface } from "@houston/protocol";
+import { isHandsOnSurface } from "@houston/protocol";
 import { Check, CornerDownLeft, Hand } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";

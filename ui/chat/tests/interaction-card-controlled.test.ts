@@ -7,11 +7,11 @@ import { describe, it } from "node:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import type { StepperState } from "../src/interaction-card-logic.ts";
 import {
   ChatInteractionCard,
   type ChatInteractionCardProps,
 } from "../src/interaction-card.tsx";
-import type { StepperState } from "../src/interaction-card-logic.ts";
 
 Object.assign(globalThis, { React });
 const { createElement } = React;

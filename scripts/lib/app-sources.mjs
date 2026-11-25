@@ -22,7 +22,7 @@ import { join } from "node:path";
 export function stripComments(src) {
   let out = "";
   let quote = null;
-  for (let i = 0; i < src.length; ) {
+  for (let i = 0; i < src.length;) {
     const c = src[i];
     const d = src[i + 1];
     if (quote) {

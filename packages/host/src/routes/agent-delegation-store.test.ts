@@ -33,45 +33,45 @@ test("an absent policy defaults on and a default write deletes its entry", async
   expect(await vfs.readText(key)).toBeNull();
 });
 
-test.each([
-  "{broken",
-  '{"version":2,"agents":{}}',
-])("corrupt document %s recovers without opening neighbouring agents", async (contents) => {
-  const vfs = new MemoryVfs();
-  const key = delegationDocKey("Personal");
-  await vfs.writeText(key, contents);
-  const report = vi.spyOn(console, "error").mockImplementation(() => {});
-  try {
-    expect(await readAgentDelegation(vfs, "Personal", "Scout")).toEqual({
-      mode: "off",
-      agents: [],
-      acceptsMissions: false,
-    });
-    await writeAgentDelegation(vfs, "Personal", "Scout", picked(["Writer"]), [
-      "Scout",
-      "Writer",
-    ]);
-    expect(await readAgentDelegation(vfs, "Personal", "Scout")).toEqual(
-      picked(["Writer"]),
-    );
-    expect(await readAgentDelegation(vfs, "Personal", "Writer")).toEqual({
-      mode: "off",
-      agents: [],
-      acceptsMissions: false,
-    });
-    const backup = (await vfs.list("Personal")).find((item) =>
-      item.includes(".agent-delegation.corrupt-"),
-    );
-    expect(backup).toBeDefined();
-    expect(await vfs.readText(backup ?? "missing")).toBe(contents);
-    expect(report).toHaveBeenCalledWith(
-      expect.stringContaining(key),
-      expect.any(Error),
-    );
-  } finally {
-    report.mockRestore();
-  }
-});
+test.each(["{broken", '{"version":2,"agents":{}}'])(
+  "corrupt document %s recovers without opening neighbouring agents",
+  async (contents) => {
+    const vfs = new MemoryVfs();
+    const key = delegationDocKey("Personal");
+    await vfs.writeText(key, contents);
+    const report = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await readAgentDelegation(vfs, "Personal", "Scout")).toEqual({
+        mode: "off",
+        agents: [],
+        acceptsMissions: false,
+      });
+      await writeAgentDelegation(vfs, "Personal", "Scout", picked(["Writer"]), [
+        "Scout",
+        "Writer",
+      ]);
+      expect(await readAgentDelegation(vfs, "Personal", "Scout")).toEqual(
+        picked(["Writer"]),
+      );
+      expect(await readAgentDelegation(vfs, "Personal", "Writer")).toEqual({
+        mode: "off",
+        agents: [],
+        acceptsMissions: false,
+      });
+      const backup = (await vfs.list("Personal")).find((item) =>
+        item.includes(".agent-delegation.corrupt-"),
+      );
+      expect(backup).toBeDefined();
+      expect(await vfs.readText(backup ?? "missing")).toBe(contents);
+      expect(report).toHaveBeenCalledWith(
+        expect.stringContaining(key),
+        expect.any(Error),
+      );
+    } finally {
+      report.mockRestore();
+    }
+  },
+);
 
 test("move and prune preserve untouched policy bytes", async () => {
   const vfs = new MemoryVfs();

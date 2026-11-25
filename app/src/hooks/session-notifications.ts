@@ -62,9 +62,8 @@ export async function sendSessionNotification(
       // macOS + web: the JS notification plugin (shimmed to the browser
       // Notification API on web) whose click activates the app, firing the
       // focus event the listener below consumes.
-      const { sendNotification: notify } = await import(
-        "@tauri-apps/plugin-notification"
-      );
+      const { sendNotification: notify } =
+        await import("@tauri-apps/plugin-notification");
       notify({ title, body, sound: "Glass" });
     } else {
       // Linux/Windows desktop: the plugin is fire-and-forget (no click event)

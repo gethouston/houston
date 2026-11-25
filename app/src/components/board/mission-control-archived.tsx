@@ -93,11 +93,12 @@ export function MissionControlArchived({
   // with a mission open keeps portaling its chat into that panel after the
   // user navigates away.
   const isActive = useIsActiveView();
+  const dataSetSelectedId = data.setSelectedId;
   useEffect(() => {
     if (isActive) return;
-    data.setSelectedId(null);
+    dataSetSelectedId(null);
     setPanelOpen(false);
-  }, [isActive, data.setSelectedId, setPanelOpen]);
+  }, [isActive, dataSetSelectedId, setPanelOpen]);
 
   const handleSearchError = useCallback(() => {
     addToast({

@@ -117,18 +117,21 @@ test("a failed agent create propagates — never swallowed", async () => {
 test.each([
   ["the host's 409 name_taken", { error: "taken", code: "name_taken" }],
   ["a code-less 409", { error: "an agent with this name already exists" }],
-])("a create refused with %s reaches the surface as a taken name", async (_label, body) => {
-  stubFetch(json(409, body));
-  const refusal = await client()
-    .createAgent("w", { name: "Ada" })
-    .catch((err: unknown) => err);
-  // One byte-identical POST, never retried: a taken name is the user's to fix.
-  expect(calls).toHaveLength(1);
-  expect(calls[0].method).toBe("POST");
-  expect(calls[0].url).toBe(`${BASE}/agents`);
-  expect(calls[0].body).toBe(JSON.stringify({ name: "Ada" }));
-  expect(isAgentNameTaken(refusal)).toBe(true);
-});
+])(
+  "a create refused with %s reaches the surface as a taken name",
+  async (_label, body) => {
+    stubFetch(json(409, body));
+    const refusal = await client()
+      .createAgent("w", { name: "Ada" })
+      .catch((err: unknown) => err);
+    // One byte-identical POST, never retried: a taken name is the user's to fix.
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].url).toBe(`${BASE}/agents`);
+    expect(calls[0].body).toBe(JSON.stringify({ name: "Ada" }));
+    expect(isAgentNameTaken(refusal)).toBe(true);
+  },
+);
 
 test("a rename refused as name_taken reaches the surface as a taken name", async () => {
   stubFetch(json(409, { error: "taken", code: "name_taken" }));
@@ -208,26 +211,25 @@ test.each([
     method: "PATCH",
     url: `${BASE}/agents/a1`,
   },
-])("a $label refused as name_reserved reaches the surface as the reserved name", async ({
-  write,
-  method,
-  url,
-}) => {
-  stubFetch(
-    json(400, {
-      error: "Houston is taken by the manager",
-      code: "name_reserved",
-    }),
-  );
-  const refusal = await write().catch((err: unknown) => err);
-  // One byte-identical request, never retried: the name is the user's to change.
-  expect(calls).toHaveLength(1);
-  expect(calls[0].method).toBe(method);
-  expect(calls[0].url).toBe(url);
-  expect(calls[0].body).toBe(JSON.stringify({ name: "Houston" }));
-  expect(isAgentNameReserved(refusal)).toBe(true);
-  expect(isAgentNameTaken(refusal)).toBe(false);
-});
+])(
+  "a $label refused as name_reserved reaches the surface as the reserved name",
+  async ({ write, method, url }) => {
+    stubFetch(
+      json(400, {
+        error: "Houston is taken by the manager",
+        code: "name_reserved",
+      }),
+    );
+    const refusal = await write().catch((err: unknown) => err);
+    // One byte-identical request, never retried: the name is the user's to change.
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe(method);
+    expect(calls[0].url).toBe(url);
+    expect(calls[0].body).toBe(JSON.stringify({ name: "Houston" }));
+    expect(isAgentNameReserved(refusal)).toBe(true);
+    expect(isAgentNameTaken(refusal)).toBe(false);
+  },
+);
 
 // ---- activities ----
 

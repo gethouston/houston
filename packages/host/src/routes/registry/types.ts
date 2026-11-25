@@ -70,7 +70,6 @@ export type Classified =
 // `void` is the point: a handler that answered by writing to the response
 // returns nothing, and only `void` accepts the `Promise<void>` an async
 // handler with no return statement has — `undefined` would reject every one.
-// biome-ignore lint/suspicious/noConfusingVoidType: see above.
 export type Answer = Promise<boolean | void> | boolean | void;
 
 export type Phased =

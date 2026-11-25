@@ -5,11 +5,11 @@ import type {
   TokenSignInResult,
 } from "../src/lib/identity/firebase-rest.ts";
 import type { IdTokenClaims } from "../src/lib/identity/id-token.ts";
-import type { Session } from "../src/lib/identity/session.ts";
 import {
   sessionFromCustomToken,
   sessionFromIdp,
 } from "../src/lib/identity/session-from-idp.ts";
+import type { Session } from "../src/lib/identity/session.ts";
 
 describe("identity/session-from-idp — sessionFromIdp", () => {
   it("maps a Google IdpSignInResult to a Session verbatim", () => {

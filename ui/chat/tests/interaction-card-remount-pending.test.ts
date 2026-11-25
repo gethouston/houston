@@ -28,6 +28,7 @@ const CONNECT: Step = { kind: "connect", id: "c-gmail", toolkit: "gmail" };
  *  card, and records whether the card handed it a disabled chrome. */
 function AlreadyConnected({ api, seen }: { api: ConnectApi; seen: boolean[] }) {
   seen.push(api.disabled);
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- This fixture connects once on mount; later card updates must not repeat the connection.
   useEffect(() => api.onConnected(), []);
   return null;
 }

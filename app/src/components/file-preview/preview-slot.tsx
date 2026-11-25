@@ -121,7 +121,7 @@ function PreviewGrip({ share }: { share: number }) {
     panel.style.width = "";
   };
   return (
-    // biome-ignore lint/a11y/useSemanticElements: a focusable splitter has no element of its own
+    // a focusable splitter has no element of its own
     <div
       role="separator"
       tabIndex={0}

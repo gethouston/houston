@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { NAME_TAKEN, READ_ONLY } from "@houston/protocol/file-refusal";
 import type { FileEntry } from "@houston-ai/agent";
+import { NAME_TAKEN, READ_ONLY } from "@houston/protocol/file-refusal";
 import {
   detectMoveConflict,
   detectRenameConflict,

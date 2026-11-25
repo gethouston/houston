@@ -138,76 +138,77 @@ for (const purpose of [
   "files_import",
   "migration_import",
 ] as const) {
-  test.each([
-    "upload_not_found",
-    "upload_incomplete",
-  ] as const)(`${purpose} recovers once from commit-time %s`, async (code) => {
-    const s = setup(purpose, code);
-    await s.run();
-    expect(s.commits()).toBe(2);
-    const stagedCount = purpose === "migration_import" ? 1 : 2;
-    expect(s.opens()).toBe(
-      code === "upload_not_found" ? 2 * stagedCount : stagedCount,
-    );
-    const commits = s.requests.filter(
-      (request) => !request.url.endsWith("/uploads"),
-    );
-    expect(commits[1].url).toBe(commits[0].url);
-    const first = JSON.parse(String(commits[0].init.body));
-    const second = JSON.parse(String(commits[1].init.body));
-    if (purpose === "migration_import") {
-      expect(commits[1].url).toContain("?overwrite=1&sessions=0");
-      expect(first.uploadId === second.uploadId).toBe(
-        code === "upload_incomplete",
+  test.each(["upload_not_found", "upload_incomplete"] as const)(
+    `${purpose} recovers once from commit-time %s`,
+    async (code) => {
+      const s = setup(purpose, code);
+      await s.run();
+      expect(s.commits()).toBe(2);
+      const stagedCount = purpose === "migration_import" ? 1 : 2;
+      expect(s.opens()).toBe(
+        code === "upload_not_found" ? 2 * stagedCount : stagedCount,
       );
-    } else {
-      expect(second.files[1]).toEqual(first.files[1]);
-      expect(second.files[0].relPath).toBe("folder/file.bin");
-      expect(second.files[0].uploadId === first.files[0].uploadId).toBe(
-        code === "upload_incomplete",
+      const commits = s.requests.filter(
+        (request) => !request.url.endsWith("/uploads"),
       );
-      expect(second.files[2].uploadId === first.files[2].uploadId).toBe(
-        code === "upload_incomplete",
-      );
-      if (purpose === "attachment") expect(second.scopeId).toBe("conversation");
-      else expect(second.dir).toBe("docs");
-    }
-    const firstSaving = s.progress.findIndex((p) => p.phase === "saving");
-    const lastSaving = s.progress.map((p) => p.phase).lastIndexOf("saving");
-    expect(lastSaving).toBeGreaterThan(firstSaving);
-    expect(
-      s.progress
-        .slice(firstSaving + 1, lastSaving)
-        .every((p) => p.phase === "reconnecting"),
-    ).toBe(true);
-    expect(
-      s.progress.slice(firstSaving + 1, lastSaving).length,
-    ).toBeGreaterThan(0);
-    expect(s.progress.filter((p) => p.phase === "done")).toEqual([
-      { sentBytes: s.size, totalBytes: s.size, phase: "done" },
-    ]);
-    if (code === "upload_incomplete") {
-      const query = s.sinkRequests.findIndex(
-        (request) => request.range === `bytes */${s.size}`,
-      );
-      expect(query).toBeGreaterThan(-1);
-      expect(s.sinkRequests[query].bytes).toBe(0);
-      expect(s.sinkRequests[query + 1].range).toBe(
-        `bytes ${purpose === "migration_import" ? 2 : CHUNK}-${s.size - 1}/${s.size}`,
-      );
-    }
-  });
+      expect(commits[1].url).toBe(commits[0].url);
+      const first = JSON.parse(String(commits[0].init.body));
+      const second = JSON.parse(String(commits[1].init.body));
+      if (purpose === "migration_import") {
+        expect(commits[1].url).toContain("?overwrite=1&sessions=0");
+        expect(first.uploadId === second.uploadId).toBe(
+          code === "upload_incomplete",
+        );
+      } else {
+        expect(second.files[1]).toEqual(first.files[1]);
+        expect(second.files[0].relPath).toBe("folder/file.bin");
+        expect(second.files[0].uploadId === first.files[0].uploadId).toBe(
+          code === "upload_incomplete",
+        );
+        expect(second.files[2].uploadId === first.files[2].uploadId).toBe(
+          code === "upload_incomplete",
+        );
+        if (purpose === "attachment")
+          expect(second.scopeId).toBe("conversation");
+        else expect(second.dir).toBe("docs");
+      }
+      const firstSaving = s.progress.findIndex((p) => p.phase === "saving");
+      const lastSaving = s.progress.map((p) => p.phase).lastIndexOf("saving");
+      expect(lastSaving).toBeGreaterThan(firstSaving);
+      expect(
+        s.progress
+          .slice(firstSaving + 1, lastSaving)
+          .every((p) => p.phase === "reconnecting"),
+      ).toBe(true);
+      expect(
+        s.progress.slice(firstSaving + 1, lastSaving).length,
+      ).toBeGreaterThan(0);
+      expect(s.progress.filter((p) => p.phase === "done")).toEqual([
+        { sentBytes: s.size, totalBytes: s.size, phase: "done" },
+      ]);
+      if (code === "upload_incomplete") {
+        const query = s.sinkRequests.findIndex(
+          (request) => request.range === `bytes */${s.size}`,
+        );
+        expect(query).toBeGreaterThan(-1);
+        expect(s.sinkRequests[query].bytes).toBe(0);
+        expect(s.sinkRequests[query + 1].range).toBe(
+          `bytes ${purpose === "migration_import" ? 2 : CHUNK}-${s.size - 1}/${s.size}`,
+        );
+      }
+    },
+  );
 
-  test.each([
-    "upload_not_found",
-    "upload_incomplete",
-  ] as const)(`${purpose} surfaces a second commit-time %s`, async (code) => {
-    const s = setup(purpose, code, true);
-    await expect(s.run()).rejects.toMatchObject({
-      name: "UploadRefusalError",
-      code,
-    });
-    expect(s.commits()).toBe(2);
-    expect(s.progress.some((p) => p.phase === "done")).toBe(false);
-  });
+  test.each(["upload_not_found", "upload_incomplete"] as const)(
+    `${purpose} surfaces a second commit-time %s`,
+    async (code) => {
+      const s = setup(purpose, code, true);
+      await expect(s.run()).rejects.toMatchObject({
+        name: "UploadRefusalError",
+        code,
+      });
+      expect(s.commits()).toBe(2);
+      expect(s.progress.some((p) => p.phase === "done")).toBe(false);
+    },
+  );
 }

@@ -46,7 +46,7 @@ export function EditTeamIdentityDialog({
   // Seed the form from the team each time the dialog OPENS for one — never
   // while it is open, so a concurrent edit cannot yank the fields mid-type.
   const openedTeamId = team.id;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-seed on the OPENED TEAM changing, deliberately not on every refetch of its fields
+  /* oxlint-disable react-hooks/exhaustive-deps -- re-seed on the OPENED TEAM changing, deliberately not on every refetch of its fields */
   useEffect(() => {
     const draft: TeamIdentityDraft = {
       name: teamDisplayName(team),
@@ -58,6 +58,7 @@ export function EditTeamIdentityDialog({
     setIcon(draft.icon);
     setColor(draft.colorId);
   }, [openedTeamId]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   if (!seeded) return null;
 

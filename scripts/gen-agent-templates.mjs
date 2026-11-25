@@ -21,7 +21,7 @@
 // identifiers verbatim); this script is the single place tokens are renamed,
 // so cross-references can never drift per-file.
 //
-// The JSON payloads are Biome-ignored (see biome.json) and lazily loaded per
+// The JSON payloads are formatter-ignored (see .oxfmtrc.json) and lazily loaded per
 // agent at create time; only the light catalog ships in the initial bundle.
 
 import {

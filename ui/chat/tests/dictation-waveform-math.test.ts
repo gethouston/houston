@@ -79,7 +79,11 @@ describe("headScreenX", () => {
     // Same elapsed time must give the same head regardless of bucket arrival.
     const elapsed = WAVEFORM_BUCKET_MS * 8 + 30;
     const a = computeWaveformLayout([0.5, 0.5, 0.5], WIDTH, elapsed);
-    const b = computeWaveformLayout(new Array(9).fill(0.5), WIDTH, elapsed);
+    const b = computeWaveformLayout(
+      Array.from({ length: 9 }, () => 0.5),
+      WIDTH,
+      elapsed,
+    );
     equal(a.headX, b.headX);
   });
 

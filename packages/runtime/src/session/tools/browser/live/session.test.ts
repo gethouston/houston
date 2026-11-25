@@ -168,7 +168,7 @@ test("a viewer's frame window carries across a page switch; the old page's late 
   for (const jpeg of [...fill, "C"]) sessions[1]?.paint(jpeg);
   // A and the new page's frames fill the window; C waits for an ack.
   expect(frames()).toEqual(["A", ...fill]);
-  expect(seen.filter((e) => e.type === "page").at(-1)).toMatchObject({
+  expect(seen.findLast((e) => e.type === "page")).toMatchObject({
     url: "https://accounts.test/sign-in",
   });
   session.ack("viewer-0001", BROWSER_LIVE_FRAME_WINDOW);

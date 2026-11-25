@@ -28,7 +28,7 @@ interface RowCardButtonProps {
    * Return the promise from async work to get the rage-click guard; a
    * synchronous handler can just return nothing. Typed `unknown` (not
    * `void | Promise`) so a fire-and-forget sync action and async work share
-   * one prop without tripping Biome's confusing-void-union rule.
+   * one prop while retaining the synchronous callback type.
    */
   onClick: () => unknown;
   icon?: ReactNode;

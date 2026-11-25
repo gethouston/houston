@@ -135,26 +135,29 @@ test("files outside the caller's copy scope keep the refreshed retry", async () 
 test.each([
   ["worker", workerOpts],
   ["standing", { generations: true }],
-])("a %s delete of a file another writer changed keeps the remote", async (_name, opts) => {
-  const mem = memoryStore({ [NOTES]: "their edit" });
-  const root = await tree({});
-  const first = await syncBack(mem.store, "", root, stale(NOTES), opts);
+])(
+  "a %s delete of a file another writer changed keeps the remote",
+  async (_name, opts) => {
+    const mem = memoryStore({ [NOTES]: "their edit" });
+    const root = await tree({});
+    const first = await syncBack(mem.store, "", root, stale(NOTES), opts);
 
-  expect(mem.body(NOTES)).toBe("their edit");
-  expect(first.deleted).toEqual([]);
-  expect(first.deletesKept).toEqual([
-    { key: NOTES, reason: expect.any(String) },
-  ]);
-  expect(first.conflicts).toEqual([]);
-  expect(first.manifest.has(NOTES)).toBe(false);
-  expect(mem.writes).toEqual([
-    { op: "delete", key: NOTES, ifGenerationMatch: "1" },
-  ]);
+    expect(mem.body(NOTES)).toBe("their edit");
+    expect(first.deleted).toEqual([]);
+    expect(first.deletesKept).toEqual([
+      { key: NOTES, reason: expect.any(String) },
+    ]);
+    expect(first.conflicts).toEqual([]);
+    expect(first.manifest.has(NOTES)).toBe(false);
+    expect(mem.writes).toEqual([
+      { op: "delete", key: NOTES, ifGenerationMatch: "1" },
+    ]);
 
-  const writes = mem.writes.length;
-  await syncBack(mem.store, "", root, first.manifest, opts);
-  expect(mem.writes).toHaveLength(writes);
-});
+    const writes = mem.writes.length;
+    await syncBack(mem.store, "", root, first.manifest, opts);
+    expect(mem.writes).toHaveLength(writes);
+  },
+);
 
 test("a delete whose remote is already gone counts as deleted", async () => {
   const mem = memoryStore({ [NOTES]: "x" });

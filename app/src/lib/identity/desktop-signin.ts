@@ -25,8 +25,8 @@ import {
 import { authorizeGoogleDesktop } from "./google-authorize.ts";
 import { decodeIdTokenClaims } from "./id-token.ts";
 import { authorizeMicrosoftDesktop } from "./microsoft-authorize.ts";
-import type { SignInOutcome } from "./session.ts";
 import { sessionFromCustomToken, sessionFromIdp } from "./session-from-idp.ts";
+import type { SignInOutcome } from "./session.ts";
 
 /**
  * Backfill the GCIP account record from the provider identity when the record

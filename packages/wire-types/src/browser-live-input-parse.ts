@@ -20,18 +20,18 @@ import {
   unit,
 } from "./browser-live-fields";
 
-const MOUSE_ACTIONS: readonly BrowserLiveMouseAction[] = [
+const MOUSE_ACTIONS: ReadonlySet<BrowserLiveMouseAction> = new Set([
   "move",
   "down",
   "up",
   "click",
-];
+]);
 /** All four CDP modifier bits set. */
 const MODIFIER_MASK = 15;
 
 function parseMouse(body: Body): BrowserLiveInput {
   const action = body.action as BrowserLiveMouseAction;
-  if (!MOUSE_ACTIONS.includes(action))
+  if (!MOUSE_ACTIONS.has(action))
     throw new Error("Invalid browser input mouse action");
   const { buttons, clickCount } = body;
   if (buttons !== undefined && buttons !== 0 && buttons !== 1)

@@ -239,10 +239,19 @@ test("suggested action pills settle the card in Needs you, prefill the composer,
       interaction: {
         steps: [
           {
-            ...{ kind: "suggest_actions", id: "a2" },
+            kind: "suggest_actions",
+            id: "a2",
             actions: [
-              { id: "one", label: "One", message: "One." },
-              { id: "two", label: "Two", message: "Two." },
+              {
+                id: "one",
+                label: "One",
+                message: "One.",
+              },
+              {
+                id: "two",
+                label: "Two",
+                message: "Two.",
+              },
             ],
           },
         ],

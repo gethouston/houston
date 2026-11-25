@@ -7,9 +7,8 @@ import { afterEach, expect, test, vi } from "vitest";
 // config.dataDir, which reads HOUSTON_DATA_DIR at import time — pin it first.
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-terse-"));
 
-const { noteQuotaExhausted, resetAuthFailures } = await import(
-  "../auth/credential-health"
-);
+const { noteQuotaExhausted, resetAuthFailures } =
+  await import("../auth/credential-health");
 const {
   isCodexTerseRefusal,
   noteCodexRefusal,
@@ -218,9 +217,8 @@ test("refusals from other providers are never remembered", () => {
   ).toBeNull();
 });
 
-const { runWithConversationId } = await import(
-  "../session/conversation-context"
-);
+const { runWithConversationId } =
+  await import("../session/conversation-context");
 
 test("the conversation's persisted refusal outlives this process, for half an hour", () => {
   vi.useFakeTimers();

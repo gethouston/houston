@@ -14,8 +14,4 @@ export {
 export type { GroupId } from "./groups";
 export { GROUP_ORDER, GROUP_PHASES } from "./groups";
 export { generalises, matchPath, patternParams } from "./match";
-export type {
-  Classification,
-  HttpMethod,
-  RouteDescriptor,
-} from "./types";
+export type { Classification, HttpMethod, RouteDescriptor } from "./types";

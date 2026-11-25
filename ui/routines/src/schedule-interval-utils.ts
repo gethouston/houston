@@ -27,7 +27,7 @@ export interface ScheduleInterval {
 /**
  * The largest count each unit takes: minutes and hours stop at the 7-day
  * interval cap; days and months at the largest cron step their field accepts
- * (croner refuses `*​/32` days and `*​/13` months).
+ * (croner refuses `star/32` days and `star/13` months).
  */
 export function intervalCountMax(unit: IntervalUnit): number {
   switch (unit) {
@@ -51,10 +51,10 @@ export function intervalCountAllowed(every: number, unit: IntervalUnit) {
 
 /**
  * Build a schedule string from a friendly interval.
- * - minutes/hours: a true interval around the clock; cron `*​/N` when N divides
+ * - minutes/hours: a true interval around the clock; cron `star/N` when N divides
  *   the hour (or day), else `@every Nm` / `@every Nh`.
- * - days: `*​/N` in the day-of-month field, at a fixed time.
- * - months: a fixed day-of-month, every N months (`*​/N` in the month field).
+ * - days: `star/N` in the day-of-month field, at a fixed time.
+ * - months: a fixed day-of-month, every N months (`star/N` in the month field).
  */
 export function intervalToSchedule(
   interval: ScheduleInterval,
@@ -86,7 +86,7 @@ export function intervalToSchedule(
  * Parse a schedule (cron or `@every`) back into a friendly interval, when it
  * maps cleanly onto one. Returns `null` for anything the picker can't
  * represent, so the caller can keep the raw schedule untouched instead of
- * misrepresenting it. A legacy `*​/16` still reads back as 16 minutes.
+ * misrepresenting it. A legacy `star/16` still reads back as 16 minutes.
  */
 export function scheduleToInterval(schedule: string): ScheduleInterval | null {
   const every = parseEverySchedule(schedule);

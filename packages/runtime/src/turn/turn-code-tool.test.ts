@@ -138,37 +138,37 @@ async function startupDeps(input: {
   return startTurnOn(await loadStartup(input.codeExecution), input);
 }
 
-test.each([
-  "anthropic",
-  "openai-codex",
-])("remote + the code-run scope gives a %s turn run_code bound to its own facade", async (provider) => {
-  const deps = await startupDeps({
-    codeExecution: "remote",
-    provider,
-    scopes: ["code-run"],
-  });
-  expect(deps.toolSelection.toolNames).toContain("run_code");
-  expect(deps.codeSandbox?.name).toBe("run_code");
-  // The prompt must agree with the allowlist, or the model claims an ability
-  // it does not have.
-  expect(deps.systemPrompt).toContain("run commands");
-  // ...and it is the product prompt, not the engine's bare fallback.
-  expect(deps.systemPrompt).toContain("# Houston Context");
-});
+test.each(["anthropic", "openai-codex"])(
+  "remote + the code-run scope gives a %s turn run_code bound to its own facade",
+  async (provider) => {
+    const deps = await startupDeps({
+      codeExecution: "remote",
+      provider,
+      scopes: ["code-run"],
+    });
+    expect(deps.toolSelection.toolNames).toContain("run_code");
+    expect(deps.codeSandbox?.name).toBe("run_code");
+    // The prompt must agree with the allowlist, or the model claims an ability
+    // it does not have.
+    expect(deps.systemPrompt).toContain("run commands");
+    // ...and it is the product prompt, not the engine's bare fallback.
+    expect(deps.systemPrompt).toContain("# Houston Context");
+  },
+);
 
-test.each([
-  "anthropic",
-  "openai-codex",
-])("remote WITHOUT the scope leaves a %s turn with no run_code and a matching prompt", async (provider) => {
-  const deps = await startupDeps({
-    codeExecution: "remote",
-    provider,
-    scopes: ["integrations"],
-  });
-  expect(deps.toolSelection.toolNames).not.toContain("run_code");
-  expect(deps.codeSandbox).toBeNull();
-  expect(deps.systemPrompt).toContain("You cannot run shell commands");
-});
+test.each(["anthropic", "openai-codex"])(
+  "remote WITHOUT the scope leaves a %s turn with no run_code and a matching prompt",
+  async (provider) => {
+    const deps = await startupDeps({
+      codeExecution: "remote",
+      provider,
+      scopes: ["integrations"],
+    });
+    expect(deps.toolSelection.toolNames).not.toContain("run_code");
+    expect(deps.codeSandbox).toBeNull();
+    expect(deps.systemPrompt).toContain("You cannot run shell commands");
+  },
+);
 
 test("code execution disabled leaves run_code off even with the scope", async () => {
   const deps = await startupDeps({

@@ -1,5 +1,5 @@
-import type { MessageApproval } from "@houston/protocol/approval";
 import type { ChatInteractionAnswer } from "@houston-ai/chat";
+import type { MessageApproval } from "@houston/protocol/approval";
 
 /**
  * A destructive Houston operation's approval, read off the card the person

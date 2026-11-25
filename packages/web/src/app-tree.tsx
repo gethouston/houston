@@ -16,6 +16,7 @@
  * account's stored locale applies after auth (see AppTree below, HOU-1014).
  */
 
+import { TooltipProvider } from "@houston-ai/core";
 import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { QueryPersistenceProvider } from "@houston/app/components/shell/query-persistence-provider";
 import { WorkspaceLoading } from "@houston/app/components/shell/workspace-loading";
@@ -31,7 +32,6 @@ import { initFrontendLogging } from "@houston/app/lib/logger";
 import { queryClient } from "@houston/app/lib/query-client";
 import { initSentry } from "@houston/app/lib/sentry";
 import { loadThemePreference } from "@houston/app/lib/theme";
-import { TooltipProvider } from "@houston-ai/core";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useState } from "react";
 import { I18nextProvider } from "react-i18next";

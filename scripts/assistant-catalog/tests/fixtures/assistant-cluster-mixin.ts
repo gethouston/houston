@@ -6,7 +6,7 @@ interface MixinBase {
 
 // Mirrors `engine-adapter/client/mixin.ts`: TS accepts only `any[]` as a mixin
 // base constructor's rest parameter (TS2545).
-// biome-ignore lint/suspicious/noExplicitAny: mixin constructors are variadic by construction.
+// mixin constructors are variadic by construction.
 type MixinCtor = new (...args: any[]) => MixinBase;
 
 interface AgentFile {

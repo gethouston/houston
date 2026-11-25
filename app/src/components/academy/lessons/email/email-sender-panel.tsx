@@ -29,7 +29,7 @@ export function EmailSenderPanel({ copy, onNext }: LessonPanelProps) {
         {candidates.map((agent) => {
           const selected = agent.id === sender.id;
           return (
-            // biome-ignore lint/a11y/useSemanticElements: a styled row list, announced as the radio group it is.
+            // a styled row list, announced as the radio group it is.
             <button
               key={agent.id}
               type="button"

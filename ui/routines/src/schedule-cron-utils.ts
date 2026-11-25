@@ -42,7 +42,7 @@ export function presetToCron(
  * Classify a cron expression for the schedule builder. Three-way result, and
  * the distinction is load-bearing:
  *   - a known preset slug  → the matching preset UI is shown
- *   - `"custom"`           → a valid-but-non-preset cron (e.g. `*​/5 * * * *`);
+ *   - `"custom"`           → a valid-but-non-preset cron (e.g. `star/5 * * * *`);
  *                            the raw-cron input is shown, seeded with the value
  *   - `null`               → no schedule at all (empty string)
  *

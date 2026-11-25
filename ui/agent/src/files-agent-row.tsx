@@ -37,7 +37,7 @@ export function FilesAgentRow({
   folderClassName?: string;
 }) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: CSS grid layout requires a div; role="row" preserves the list semantics.
+    // CSS grid layout requires a div; role="row" preserves the list semantics.
     <div
       role="row"
       tabIndex={0}
@@ -85,7 +85,7 @@ export function FilesAgentRow({
       <span className={META_CELL} />
       {/* The action cell intercepts bubbled menu gestures so they never fold
           the owning folder row. Its child remains the semantic control. */}
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: propagation boundary around the nested action control */}
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- propagation boundary around the nested action control */}
       <span
         className={ACTIONS_CELL}
         onClick={(event) => event.stopPropagation()}

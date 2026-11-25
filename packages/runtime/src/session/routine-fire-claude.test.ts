@@ -49,14 +49,12 @@ const { runTurn, disposeConversation } = await import("./chat");
 const { registerBackend } = await import("../backends/registry");
 const { createClaudeBackend } = await import("../backends/claude/backend");
 const { serverClaudeLayout } = await import("../backends/claude/paths");
-const { SIMULATED_REPLY, simulatedClaudeApi } = await import(
-  "../backends/claude/simulated-api.test-support"
-);
+const { SIMULATED_REPLY, simulatedClaudeApi } =
+  await import("../backends/claude/simulated-api.test-support");
 const { toolSelection } = await import("./session-tools");
 const { config } = await import("../config");
-const { appendAssistantMessage, appendUserMessage, getHistory } = await import(
-  "../store/conversations"
-);
+const { appendAssistantMessage, appendUserMessage, getHistory } =
+  await import("../store/conversations");
 const { estimateTokens } = await import("./token-estimate");
 
 const WINDOW = 200_000;
@@ -130,9 +128,7 @@ function seedSdkSession(
 }
 
 const lastAssistant = (id: string) =>
-  getHistory(id)
-    ?.messages.filter((m) => m.role === "assistant")
-    .at(-1);
+  getHistory(id)?.messages.findLast((m) => m.role === "assistant");
 
 /** A routine fire, as the host's firer sends it (ROUTINE_FIRE_HEADER). */
 const fireRoutine = (id: string) =>

@@ -12,12 +12,12 @@
 // install id, so all of this is driven from `app/tests` with no engine.
 
 import { mergeAcademyRecords } from "./academy-merge.ts";
+import { parseAcademyRecord } from "./academy-record-parse.ts";
 import {
   ACADEMY_PREF_KEY,
   type AcademyRecord,
   serializeAcademyRecord,
 } from "./academy-record.ts";
-import { parseAcademyRecord } from "./academy-record-parse.ts";
 import {
   type AcademyStorePorts,
   loadAcademyRecord,

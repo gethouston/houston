@@ -11,6 +11,8 @@ import { feedItemsToMessages } from "./feed-to-messages";
 import type { FeedItem } from "./types";
 import { useProgressSteps } from "./use-progress-steps";
 
+const DEFAULT_FEED_ITEMS: never[] = [];
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -35,7 +37,7 @@ export interface ChatSidebarProps {
 
 export function ChatSidebar({
   progressSteps,
-  feedItems = [],
+  feedItems = DEFAULT_FEED_ITEMS,
   className,
 }: ChatSidebarProps) {
   return (
@@ -83,7 +85,7 @@ function ProgressCard({
               <ScrollArea viewportClassName="max-h-[300px]">
                 <div className="space-y-0.5">
                   {steps.map((step, i) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: SidebarStep has no stable id; steps derive from tool-call order and are never reordered
+                    // oxlint-disable-next-line react/no-array-index-key -- SidebarStep has no stable id; steps derive from tool-call order and are never reordered
                     <StepRow key={i} step={step} />
                   ))}
                 </div>

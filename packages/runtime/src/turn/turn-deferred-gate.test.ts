@@ -67,7 +67,7 @@ function tool(
 }
 
 async function pending(promise: Promise<unknown>): Promise<boolean> {
-  const marker = Symbol();
+  const marker = Symbol("pending");
   const winner = await Promise.race([
     promise.then(
       () => undefined,

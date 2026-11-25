@@ -11,6 +11,8 @@ import type {
 } from "../types";
 import { StoreScreenError, StoreScreenLoading } from "./screen-state";
 
+const DEFAULT_MORE_AGENTS: never[] = [];
+
 const defaults = {
   newAgent: "New",
   installs: "installs",
@@ -32,7 +34,7 @@ export function AgentDetailScreen({
   actions,
   renderBio,
   renderSkills,
-  moreAgents = [],
+  moreAgents = DEFAULT_MORE_AGENTS,
   agentHref,
   LinkComponent,
   footer,

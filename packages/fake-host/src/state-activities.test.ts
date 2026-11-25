@@ -97,36 +97,39 @@ it.each([
   ["dismiss", "2023-10-26T10:00:00.000Z"],
   ["patch", undefined],
   ["dismiss", undefined],
-] as const)("backfills a legacy card before a non-message %s, previous time %s", async (operation, previous) => {
-  const { writeAgentFile } = await import("./state");
-  const { updateActivity, clearActivityInteraction, listActivities } =
-    await import("./state-activities");
-  const agent = `legacy-${operation}`;
-  const created = createActivity(agent, { title: "Old" });
-  writeAgentFile(
-    agent,
-    ".houston/activity/activity.json",
-    JSON.stringify([
-      {
-        ...created,
-        updated_at: previous,
-        pending_interaction: {
-          steps: [
-            {
-              kind: "suggest_actions",
-              id: "s1",
-              actions: [{ id: "a1", label: "Again", message: "Again" }],
-            },
-          ],
+] as const)(
+  "backfills a legacy card before a non-message %s, previous time %s",
+  async (operation, previous) => {
+    const { writeAgentFile } = await import("./state");
+    const { updateActivity, clearActivityInteraction, listActivities } =
+      await import("./state-activities");
+    const agent = `legacy-${operation}`;
+    const created = createActivity(agent, { title: "Old" });
+    writeAgentFile(
+      agent,
+      ".houston/activity/activity.json",
+      JSON.stringify([
+        {
+          ...created,
+          updated_at: previous,
+          pending_interaction: {
+            steps: [
+              {
+                kind: "suggest_actions",
+                id: "s1",
+                actions: [{ id: "a1", label: "Again", message: "Again" }],
+              },
+            ],
+          },
         },
-      },
-    ]),
-  );
-  if (operation === "patch")
-    updateActivity(agent, created.id, { status: "done" });
-  else clearActivityInteraction(agent, `activity-${created.id}`);
-  expect(listActivities(agent)[0]).toMatchObject({
-    updated_at: "2024-01-01T00:00:00.000Z",
-    last_message_at: previous ?? "2024-01-01T00:00:00.000Z",
-  });
-});
+      ]),
+    );
+    if (operation === "patch")
+      updateActivity(agent, created.id, { status: "done" });
+    else clearActivityInteraction(agent, `activity-${created.id}`);
+    expect(listActivities(agent)[0]).toMatchObject({
+      updated_at: "2024-01-01T00:00:00.000Z",
+      last_message_at: previous ?? "2024-01-01T00:00:00.000Z",
+    });
+  },
+);

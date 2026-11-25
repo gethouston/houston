@@ -7,9 +7,8 @@ import { beforeEach, expect, test } from "vitest";
 // file its own module registry — so point the data dir at a tmpdir BEFORE the
 // dynamic import to keep the endpoint writes out of the real ~/.houston-ts.
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-reach-"));
-const { clearCustomEndpointConfig, setCustomEndpointConfig } = await import(
-  "./openai-compatible"
-);
+const { clearCustomEndpointConfig, setCustomEndpointConfig } =
+  await import("./openai-compatible");
 const {
   endpointReachableCached,
   refreshEndpointReachability,

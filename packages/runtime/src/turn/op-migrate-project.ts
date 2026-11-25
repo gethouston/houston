@@ -96,7 +96,7 @@ export async function projectMigratedStore(input: {
       maxBytes: TURN_HYDRATE_MAX_BYTES,
     });
     const listed = new Set(vfs.remoteKeys);
-    for (const family of [...families]) {
+    for (const family of Array.from(families)) {
       if (!target) break;
       try {
         const done = await projectFamily(

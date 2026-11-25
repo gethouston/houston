@@ -160,7 +160,7 @@ export function SpecimenProps({ items }: { items: readonly SpecimenProp[] }) {
                 // position IS its identity. Keying by `name` instead collides
                 // the moment a family table lists two components' `children`,
                 // and React drops one of the rows.
-                // biome-ignore lint/suspicious/noArrayIndexKey: position is the row's identity here
+                // oxlint-disable-next-line react/no-array-index-key -- position is the row's identity here
                 key={`${row}-${item.name}`}
                 className="border-line border-b last:border-b-0"
               >

@@ -17,8 +17,8 @@ import {
   resolveAssistantGateway,
 } from "../routes/assistant-wiring";
 import { listRoutes } from "../routes/registry/all";
-import { LocalWorkspaceStore } from "../store/local";
 import { SharedMirrorController } from "../store-sync";
+import { LocalWorkspaceStore } from "../store/local";
 import { BootTelemetry } from "../telemetry/boot";
 import { HttpTranscriptShadow } from "../transcripts/http-shadow";
 import { MemoryTurnBus } from "../turn/bus";

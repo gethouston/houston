@@ -1,5 +1,5 @@
-import { checkLinkedInText } from "@houston/sdk";
 import { Button, cn, Spinner } from "@houston-ai/core";
+import { checkLinkedInText } from "@houston/sdk";
 import type { TFunction } from "i18next";
 import { ExternalLink, Linkedin } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";

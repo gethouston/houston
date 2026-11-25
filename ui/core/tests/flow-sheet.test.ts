@@ -4,15 +4,14 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import {
+  DIALOG_CLOSE_CLASS,
+  DIALOG_CLOSE_CORNER_CLASS,
+} from "../src/components/dialog-frame.ts";
+import {
   Dialog,
   DialogCloseButton,
   DialogContent,
 } from "../src/components/dialog.tsx";
-import {
-  DIALOG_CLOSE_CLASS,
-  DIALOG_CLOSE_CORNER_CLASS,
-} from "../src/components/dialog-frame.ts";
-import { FlowSheet } from "../src/components/flow-sheet.tsx";
 import { FlowSheetCompactHeader } from "../src/components/flow-sheet-compact-header.tsx";
 import {
   FLOW_SHEET_BODY_CLASSES,
@@ -20,6 +19,7 @@ import {
   FLOW_SHEET_FOOTER_CLASSES,
   FlowSheetHeader,
 } from "../src/components/flow-sheet-parts.tsx";
+import { FlowSheet } from "../src/components/flow-sheet.tsx";
 
 Object.assign(globalThis, { React });
 const { createElement } = React;

@@ -1,5 +1,3 @@
-import type { OrgRole } from "@houston/engine-adapter";
-import { seatAddBlocked } from "@houston/sdk";
 import {
   AsyncButton,
   ConfirmDialog,
@@ -10,6 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@houston-ai/core";
+import type { OrgRole } from "@houston/engine-adapter";
+import { seatAddBlocked } from "@houston/sdk";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GRANTABLE_ROLES } from "../../lib/org-roles";

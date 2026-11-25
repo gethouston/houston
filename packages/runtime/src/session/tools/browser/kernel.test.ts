@@ -112,13 +112,16 @@ test.each([
   [401, '{"code":"unauthorized"}', "401:unauthorized"],
   [502, "<html>bad gateway</html>", "502:unknown"],
   [400, '{"code":"has spaces and <b>"}', "400:unknown"],
-])("a %i is refused by Kernel's code only, never its text", async (status, body, code) => {
-  const { kernel } = fakeApi(() => new Response(body, { status }));
-  const refused = await createKernelSession(kernel).catch((e: unknown) => e);
-  expect(refused).toBeInstanceOf(KernelError);
-  expect(refused).toMatchObject({ code });
-  expect(String(refused)).not.toContain("sk_");
-});
+])(
+  "a %i is refused by Kernel's code only, never its text",
+  async (status, body, code) => {
+    const { kernel } = fakeApi(() => new Response(body, { status }));
+    const refused = await createKernelSession(kernel).catch((e: unknown) => e);
+    expect(refused).toBeInstanceOf(KernelError);
+    expect(refused).toMatchObject({ code });
+    expect(String(refused)).not.toContain("sk_");
+  },
+);
 
 test("an unreachable or slow API is a code, not a crash", async () => {
   const down: Kernel = {

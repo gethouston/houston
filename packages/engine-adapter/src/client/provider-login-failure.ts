@@ -1,5 +1,5 @@
-import { EngineError } from "@houston/runtime-client";
 import { PROVIDER_LOGIN_PORT_BUSY_ERROR } from "@houston-ai/core";
+import { EngineError } from "@houston/runtime-client";
 import { emitEvent } from "../bus";
 
 /** Typed runtime failure kinds the app localizes: the raw runtime message is

@@ -73,9 +73,8 @@ export async function readOsPermissionGranted(): Promise<boolean> {
     return (await nativeShell()?.push.permissionState()) === "granted";
   if (osIsTauri()) {
     if (!isMac) return true;
-    const { isPermissionGranted } = await import(
-      "@tauri-apps/plugin-notification"
-    );
+    const { isPermissionGranted } =
+      await import("@tauri-apps/plugin-notification");
     return isPermissionGranted();
   }
   return (
@@ -96,9 +95,8 @@ export async function requestOsPermission(): Promise<NotificationPermissionState
   }
   if (osIsTauri()) {
     if (!isMac) return "granted";
-    const { requestPermission } = await import(
-      "@tauri-apps/plugin-notification"
-    );
+    const { requestPermission } =
+      await import("@tauri-apps/plugin-notification");
     const result = await requestPermission();
     return result === "granted"
       ? "granted"

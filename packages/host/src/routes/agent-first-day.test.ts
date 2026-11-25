@@ -191,18 +191,21 @@ test("a malformed start is refused before anything runs", async () => {
 test.each([
   [true, { routineMinIntervalMinutes: 15 }],
   [false, undefined],
-])("the gateway's plan stamp rides the first turn, only behind it (fronted: %s)", async (fronted, expected) => {
-  const own = await bootFirstDayHost({ gatewayFronted: fronted });
-  try {
-    const id = await own.hire(PENDING);
-    const res = await own.start(id, {
-      locale: "en",
-      limits: { routineMinIntervalMinutes: 15 },
-    });
-    expect(res.status).toBe(201);
-    expect(own.channel.fired).toHaveLength(1);
-    expect(own.channel.fired[0]?.limits).toEqual(expected);
-  } finally {
-    await own.close();
-  }
-});
+])(
+  "the gateway's plan stamp rides the first turn, only behind it (fronted: %s)",
+  async (fronted, expected) => {
+    const own = await bootFirstDayHost({ gatewayFronted: fronted });
+    try {
+      const id = await own.hire(PENDING);
+      const res = await own.start(id, {
+        locale: "en",
+        limits: { routineMinIntervalMinutes: 15 },
+      });
+      expect(res.status).toBe(201);
+      expect(own.channel.fired).toHaveLength(1);
+      expect(own.channel.fired[0]?.limits).toEqual(expected);
+    } finally {
+      await own.close();
+    }
+  },
+);

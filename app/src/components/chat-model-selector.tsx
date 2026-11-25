@@ -1,10 +1,10 @@
-import type { Agent } from "@houston/engine-adapter";
 import {
   ModelPicker,
   ResponsivePopover,
   ResponsivePopoverContent,
   ResponsivePopoverTrigger,
 } from "@houston-ai/core";
+import type { Agent } from "@houston/engine-adapter";
 import { ChevronDown, Lock } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";

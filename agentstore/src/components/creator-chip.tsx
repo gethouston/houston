@@ -1,4 +1,3 @@
-import type { StoreCreator } from "@houston/agentstore-client";
 import {
   Avatar,
   AvatarFallback,
@@ -6,6 +5,7 @@ import {
   cn,
   VerifiedBadge,
 } from "@houston-ai/core";
+import type { StoreCreator } from "@houston/agentstore-client";
 
 /** First letter of a name/handle for the avatar fallback glyph. */
 function initial(creator: StoreCreator): string {

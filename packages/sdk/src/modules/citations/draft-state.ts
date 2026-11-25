@@ -157,6 +157,6 @@ export class DraftCitations {
     this.generation++;
     this.claims = [];
     this.crops.clear();
-    for (const draftKey of [...this.drafts]) this.write(draftKey, EMPTY);
+    for (const draftKey of Array.from(this.drafts)) this.write(draftKey, EMPTY);
   }
 }

@@ -87,9 +87,8 @@ seedScope("u:sub-alice", { openrouter: "sk-alice-openrouter" });
 seedScope("u:sub-bob", { google: "sk-bob-gemini" });
 
 const { config } = await import("../config");
-const { noteAuthFailure, resetAuthFailures } = await import(
-  "../auth/credential-health"
-);
+const { noteAuthFailure, resetAuthFailures } =
+  await import("../auth/credential-health");
 const { runWithActingContext } = await import("../session/acting-context");
 const { createRuntimeServer } = await import("./server");
 const { resetServedScopes } = await import("../auth/served-scope");

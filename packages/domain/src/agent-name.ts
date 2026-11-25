@@ -18,7 +18,7 @@ export type AgentNameValidation =
 // Path separators and ".." would escape the workspace directory; control
 // characters corrupt listings; a leading dot creates a folder the store's
 // directory scan deliberately skips, i.e. an invisible agent.
-// biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting them is the point
+// rejecting them is the point
 const FORBIDDEN = /[/\\\u0000-\u001f\u007f]/;
 
 /**

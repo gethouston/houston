@@ -17,8 +17,12 @@ test("concurrent cap per workspace; other workspaces unaffected", async () => {
 test("per-hour cap refills in the next hour window", async () => {
   let t = 0;
   const q = new TurnQuota({ maxConcurrent: 100, perHour: 2 }, { now: () => t });
-  await (await q.acquire("ws-1"))();
-  await (await q.acquire("ws-1"))();
+  await (
+    await q.acquire("ws-1")
+  )();
+  await (
+    await q.acquire("ws-1")
+  )();
   await expect(q.acquire("ws-1")).rejects.toThrow(/per hour/);
   t += 3_600_001;
   const release = await q.acquire("ws-1");
@@ -31,8 +35,12 @@ test("a rejected attempt does not consume the hourly budget", async () => {
   await expect(q.acquire("ws-1")).rejects.toThrow(TurnQuotaError); // concurrent reject — no hourly cost
   await r1();
   // Slots 2 and 3 must still be claimable (the reject above didn't burn one).
-  await (await q.acquire("ws-1"))();
-  await (await q.acquire("ws-1"))();
+  await (
+    await q.acquire("ws-1")
+  )();
+  await (
+    await q.acquire("ws-1")
+  )();
   await expect(q.acquire("ws-1")).rejects.toThrow(/per hour/);
 });
 

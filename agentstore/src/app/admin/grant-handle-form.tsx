@@ -1,7 +1,5 @@
 "use client";
 
-import { StoreApiError } from "@houston/agentstore-client";
-import { HANDLE_REGEX, normalizeHandle } from "@houston/agentstore-contract";
 import {
   Alert,
   AlertDescription,
@@ -9,6 +7,8 @@ import {
   Input,
   Spinner,
 } from "@houston-ai/core";
+import { StoreApiError } from "@houston/agentstore-client";
+import { HANDLE_REGEX, normalizeHandle } from "@houston/agentstore-contract";
 import * as React from "react";
 import { grantCreatorHandle } from "@/lib/store-admin-client";
 

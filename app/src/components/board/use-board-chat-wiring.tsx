@@ -98,6 +98,9 @@ export function useBoardChatWiring(source: BoardSource) {
 
   // The first message of a NEW conversation stamps its row with the pin it
   // ran on, so it waits for the settled pin like a follow-up (PRODUCT-1771).
+  const panelResolveSendPin = panel.resolveSendPin;
+  const sourceCreateConversation = source.createConversation;
+  const prewarmClaimNewConversationId = prewarm.claimNewConversationId;
   const handleCreateConversation = useCallback(
     async (text: string, files: File[], mentions?: MessageMention[]) => {
       // Same exemption as the follow-up queue: a warming pod parks the send.
@@ -105,21 +108,21 @@ export function useBoardChatWiring(source: BoardSource) {
       const pinned =
         agentPath && isAgentPathWarming(agentPath)
           ? overrides
-          : settleOnPin(overrides, await panel.resolveSendPin());
-      return source.createConversation({
+          : settleOnPin(overrides, await panelResolveSendPin());
+      return sourceCreateConversation({
         text,
         files,
         ...pinned,
         mentions,
-        conversationId: prewarm.claimNewConversationId(),
+        conversationId: prewarmClaimNewConversationId(),
       });
     },
     [
-      source.createConversation,
+      sourceCreateConversation,
       source.activeAgent?.folderPath,
       overrides,
-      panel.resolveSendPin,
-      prewarm.claimNewConversationId,
+      panelResolveSendPin,
+      prewarmClaimNewConversationId,
     ],
   );
   const handleNotice = useCallback(

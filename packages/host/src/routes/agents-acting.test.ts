@@ -161,44 +161,44 @@ function post(fx: Fixture, path: string, body: unknown, actingAs?: string) {
   });
 }
 
-describe.each(ROUTES)("POST /agents/:id/$path — acting-as trust", ({
-  path,
-  body,
-}) => {
-  test("desktop profile: a forged acting-as header is IGNORED", async () => {
-    const fx = await boot({ gatewayFronted: false });
-    try {
-      const res = await post(fx, path, body, FORGED);
-      expect(res.status).toBe(200);
-      expect(fx.channel.seen).toHaveLength(1);
-      // The credential must land in the workspace's shared scope, exactly as it
-      // would with no header at all.
-      expect(fx.channel.seen[0]?.actingAs).toBeUndefined();
-    } finally {
-      fx.close();
-    }
-  });
+describe.each(ROUTES)(
+  "POST /agents/:id/$path — acting-as trust",
+  ({ path, body }) => {
+    test("desktop profile: a forged acting-as header is IGNORED", async () => {
+      const fx = await boot({ gatewayFronted: false });
+      try {
+        const res = await post(fx, path, body, FORGED);
+        expect(res.status).toBe(200);
+        expect(fx.channel.seen).toHaveLength(1);
+        // The credential must land in the workspace's shared scope, exactly as it
+        // would with no header at all.
+        expect(fx.channel.seen[0]?.actingAs).toBeUndefined();
+      } finally {
+        fx.close();
+      }
+    });
 
-  test("desktop profile: a forged header changes nothing vs no header", async () => {
-    const fx = await boot({ gatewayFronted: false });
-    try {
-      expect((await post(fx, path, body)).status).toBe(200);
-      expect((await post(fx, path, body, FORGED)).status).toBe(200);
-      const [withoutHeader, withHeader] = fx.channel.seen;
-      expect(withHeader?.actingAs).toBe(withoutHeader?.actingAs);
-    } finally {
-      fx.close();
-    }
-  });
+    test("desktop profile: a forged header changes nothing vs no header", async () => {
+      const fx = await boot({ gatewayFronted: false });
+      try {
+        expect((await post(fx, path, body)).status).toBe(200);
+        expect((await post(fx, path, body, FORGED)).status).toBe(200);
+        const [withoutHeader, withHeader] = fx.channel.seen;
+        expect(withHeader?.actingAs).toBe(withoutHeader?.actingAs);
+      } finally {
+        fx.close();
+      }
+    });
 
-  test("gateway-fronted profile: the minted header reaches the channel verbatim", async () => {
-    const fx = await boot({ gatewayFronted: true });
-    try {
-      const res = await post(fx, path, body, FORGED);
-      expect(res.status).toBe(200);
-      expect(fx.channel.seen[0]?.actingAs).toBe(FORGED);
-    } finally {
-      fx.close();
-    }
-  });
-});
+    test("gateway-fronted profile: the minted header reaches the channel verbatim", async () => {
+      const fx = await boot({ gatewayFronted: true });
+      try {
+        const res = await post(fx, path, body, FORGED);
+        expect(res.status).toBe(200);
+        expect(fx.channel.seen[0]?.actingAs).toBe(FORGED);
+      } finally {
+        fx.close();
+      }
+    });
+  },
+);

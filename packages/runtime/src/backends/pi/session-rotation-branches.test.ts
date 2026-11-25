@@ -65,47 +65,51 @@ test("an off-path branch straddling the cut preserves active context and leaf", 
   );
 });
 
-test.each([
-  false,
-  true,
-])("a last pi-virtual assistant preserves context and selection, registered=%s", (registered) => {
-  const { cwd, dir } = setup();
-  const { manager } = seedRotatableSession(cwd, dir);
-  manager.appendMessage({
-    ...assistant("virtual-response"),
-    api: "pi-virtual",
-  });
-  const kept = manager.appendMessage({
-    role: "user",
-    content: "kept",
-    timestamp: 2,
-  });
-  manager.appendCompaction("latest summary", kept, 100_000);
-  manager.appendMessage({ role: "user", content: "continue", timestamp: 3 });
-  const virtual: Model<Api> = {
-    provider: "anthropic",
-    id: "selected-model",
-    name: "Virtual model",
-    api: "pi-virtual",
-    baseUrl: "",
-    reasoning: false,
-    input: ["text"],
-    contextWindow: 100_000,
-    maxTokens: 1000,
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-  };
-  const selection = (session: SessionManager) =>
-    getBranchSelection(session.getBranch(), (_provider, modelId) =>
-      registered && modelId === virtual.id ? virtual : undefined,
+test.each([false, true])(
+  "a last pi-virtual assistant preserves context and selection, registered=%s",
+  (registered) => {
+    const { cwd, dir } = setup();
+    const { manager } = seedRotatableSession(cwd, dir);
+    manager.appendMessage({
+      ...assistant("virtual-response"),
+      api: "pi-virtual",
+    });
+    const kept = manager.appendMessage({
+      role: "user",
+      content: "kept",
+      timestamp: 2,
+    });
+    manager.appendCompaction("latest summary", kept, 100_000);
+    manager.appendMessage({ role: "user", content: "continue", timestamp: 3 });
+    const virtual: Model<Api> = {
+      provider: "anthropic",
+      id: "selected-model",
+      name: "Virtual model",
+      api: "pi-virtual",
+      baseUrl: "",
+      reasoning: false,
+      input: ["text"],
+      contextWindow: 100_000,
+      maxTokens: 1000,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    };
+    const selection = (session: SessionManager) =>
+      getBranchSelection(session.getBranch(), (_provider, modelId) =>
+        registered && modelId === virtual.id ? virtual : undefined,
+      );
+    expect(selection(manager)).toEqual({
+      provider: "anthropic",
+      modelId: registered ? "selected-model" : "physical-model",
+    });
+    expect(manager.buildSessionContext().model?.modelId).toBe(
+      "virtual-response",
     );
-  expect(selection(manager)).toEqual({
-    provider: "anthropic",
-    modelId: registered ? "selected-model" : "physical-model",
-  });
-  expect(manager.buildSessionContext().model?.modelId).toBe("virtual-response");
-  const resumed = resumeSessionManager(cwd, dir, false);
-  expect(resumed.getSessionFile()).not.toBe(manager.getSessionFile());
-  expect(resumed.buildSessionContext()).toEqual(manager.buildSessionContext());
-  expect(resumed.getLeafId()).toBe(manager.getLeafId());
-  expect(selection(resumed)).toEqual(selection(manager));
-});
+    const resumed = resumeSessionManager(cwd, dir, false);
+    expect(resumed.getSessionFile()).not.toBe(manager.getSessionFile());
+    expect(resumed.buildSessionContext()).toEqual(
+      manager.buildSessionContext(),
+    );
+    expect(resumed.getLeafId()).toBe(manager.getLeafId());
+    expect(selection(resumed)).toEqual(selection(manager));
+  },
+);

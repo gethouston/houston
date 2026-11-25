@@ -1,7 +1,7 @@
 "use client";
 
-import type { AgentSkill } from "@houston/agentstore-contract";
 import { SkillList as StoreSkillList } from "@houston-ai/store";
+import type { AgentSkill } from "@houston/agentstore-contract";
 import { Markdown } from "@/components/markdown";
 
 /**
