@@ -5,7 +5,7 @@
 //! `scripts/build-whisper.sh`. On an older x86-64 CPU the child dies instantly
 //! with an illegal-instruction fault (`0xc000001d` on Windows), which read to
 //! the user as an unexplained "didn't work, try again" toast they retried in
-//! vain. Detect the gap BEFORE offering the 181 MB model download or spawning
+//! vain. Detect the gap BEFORE offering the 190 MB model download or spawning
 //! the sidecar, so the frontend can show honest "this computer can't run voice
 //! typing" copy instead (same pattern as `crate::claude_login`'s helper gate).
 //!

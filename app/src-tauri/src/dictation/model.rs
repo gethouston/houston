@@ -1,7 +1,7 @@
 //! The pinned dictation model: manifest, on-disk status, and a verified,
 //! resumable-safe download.
 //!
-//! One model is shipped — whisper.cpp's `ggml-small-q5_1` (~181 MB). The
+//! One model is shipped — whisper.cpp's `ggml-small-q5_1` (~190 MB). The
 //! sha256 was taken from Hugging Face's file tree API (the LFS `oid`) WITHOUT
 //! pulling the blob:
 //!   `curl https://huggingface.co/api/models/ggerganov/whisper.cpp/tree/main`
@@ -41,7 +41,7 @@ pub fn model_path(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 /// Ready = the file exists AND is exactly the expected size. A size check is a
-/// cheap corruption guard that avoids re-hashing 181 MB on every status poll;
+/// cheap corruption guard that avoids re-hashing 190 MB on every status poll;
 /// the full sha256 is enforced once, at download time. `transcribe_audio`
 /// gates on the same predicate: a wrong-size file at the final path (a
 /// partial copy from an older layout, disk trouble) answers "model-not-ready"

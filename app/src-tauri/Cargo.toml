@@ -66,7 +66,7 @@ rand = "0.9"
 futures-util = "0.3"
 # sha256 verification of the downloaded whisper.cpp dictation model
 # (src/dictation/model.rs). Streamed into the hasher during download so the
-# 181 MB file is never read twice.
+# 190 MB file is never read twice.
 sha2 = "0.10"
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
