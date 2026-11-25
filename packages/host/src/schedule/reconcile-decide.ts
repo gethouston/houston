@@ -1,10 +1,6 @@
 import { completeRoutineRun, ROUTINE_RUN_TIMEOUT_MS } from "@houston/domain";
 import type { ChatMessage, Routine, RoutineRun } from "@houston/protocol";
-import {
-  providerErrorSummary,
-  routineRunFailure,
-  routineRunFailureSummary,
-} from "./run-failure";
+import { routineRunErrorSummary, routineRunFailure } from "./run-failure";
 
 /** The run-row sentence for a run whose turn died before it finished. */
 export const INTERRUPTED_RUN_SUMMARY =
@@ -119,9 +115,7 @@ export function decideRun(input: {
     return end({
       ...run,
       status: "error",
-      summary: failure
-        ? routineRunFailureSummary(failure)
-        : providerErrorSummary(reply.providerError),
+      summary: routineRunErrorSummary(failure, reply.providerError),
       ...(failure ? { failure } : {}),
       completed_at: nowIso,
     });

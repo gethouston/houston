@@ -107,4 +107,5 @@ test("a pooled turn that threw keeps what it measured", async () => {
   // The failure path settles on its typed provider_error frame.
   const outcome = await run(true);
   expect(outcome.modelCalls?.calls).toEqual([CALL]);
+  expect(outcome.providerError).toBeDefined();
 });

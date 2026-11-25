@@ -156,6 +156,7 @@ export async function runTurn(
     );
     return {
       ...outcome,
+      ...(frames.providerError ? { providerError: frames.providerError } : {}),
       ...(frames.stopReason ? { stopReason: frames.stopReason } : {}),
       ...(missionTitle ? { missionTitle } : {}),
       ...modelCallsOutcome(frames, turnId),
@@ -181,6 +182,7 @@ export async function runTurn(
     });
     const stopReason = frames.stopReason ?? turn.stopReason?.();
     return {
+      ...(frames.providerError ? { providerError: frames.providerError } : {}),
       ...failed,
       ...(stopReason ? { stopReason } : {}),
       ...modelCallsOutcome(frames, turnId),
