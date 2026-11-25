@@ -6,7 +6,7 @@ import type { Comment, Lang, Pinned, RawComment, Token } from "./model.ts";
 import { tsComments } from "./scan-ts.ts";
 import { lineStarts, positionOf } from "./text.ts";
 import { tsTokens } from "./tokens-ts.ts";
-import { isWhy, startsWhy } from "./why.ts";
+import { contentLines, isWhy, startsWhy, WHY_MAX_LINES } from "./why.ts";
 
 export function langOf(file: string): Lang | null {
   if (file.endsWith(".d.ts") || /\.generated\./.test(file)) return null;
@@ -41,6 +41,41 @@ export function tokensOf(file: string, text: string): Token[] {
 function ownLine(text: string, starts: readonly number[], at: number): boolean {
   const { line } = positionOf(starts, at);
   return /^[ \t]*$/.test(text.slice(starts[line - 1], at));
+}
+
+function endsLine(text: string, at: number): boolean {
+  return /^[ \t]*(?:\r?\n|$)/.test(text.slice(at));
+}
+
+function settleWhy(
+  lang: Lang,
+  text: string,
+  starts: readonly number[],
+  comments: Comment[],
+): void {
+  let group: Comment[] = [];
+  const close = (): void => {
+    const lines = group.reduce(
+      (sum, c) => sum + contentLines(lang, c.text, c.kind).length,
+      0,
+    );
+    if (lines > WHY_MAX_LINES) for (const c of group) c.role = "prose";
+    group = [];
+  };
+  for (const comment of comments) {
+    const previous = group.at(-1);
+    if (previous && text.slice(previous.end, comment.start).trim() !== "")
+      close();
+    if (comment.role !== "why") close();
+    else if (
+      !ownLine(text, starts, comment.start) ||
+      !endsLine(text, comment.end)
+    ) {
+      comment.role = "prose";
+      close();
+    } else group.push(comment);
+  }
+  close();
 }
 
 function sameClass(lang: Lang, previous: Comment, next: Comment): boolean {
@@ -103,5 +138,6 @@ export function scanSource(
           : "prose";
     } else out.push(comment);
   }
+  settleWhy(lang, text, starts, out);
   return out;
 }

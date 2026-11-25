@@ -31,7 +31,7 @@ if (lines.length === 0) {
   for (const line of lines) console.error(line);
   if (over.length > 0)
     console.error(
-      "Code carries no prose comments: a non-obvious decision goes into an ADR in docs/adr/, and an external quirk or invariant may keep a `// WHY: <reason>. ADR-NNNN` line (3 lines at most, an existing ADR or an external URL). Remove the rest with the /delete-comment skill (skills/delete-comment/SKILL.md).",
+      "Code carries no prose comments: a non-obvious decision goes into an ADR in docs/adr/, and an external quirk or invariant may keep a `// WHY: <reason>. ADR-NNNN` line above the code (3 lines of 140 characters at most, an existing ADR or a public https URL, no issue ids). Remove the rest with the /delete-comment skill (skills/delete-comment/SKILL.md).",
     );
   process.exitCode = 1;
 }
