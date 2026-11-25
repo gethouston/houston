@@ -28,7 +28,6 @@ export function FilesColumnBand({
   onSort: (key: SortKey) => void;
 }) {
   return (
-    // CSS grid preserves the shared column geometry; the sortable buttons remain the focusable controls.
     <div
       role="row"
       className={cn("min-w-0 items-center", HEADER_ROW, LIST_INSET)}

@@ -2309,7 +2309,10 @@ test("HOU-1214: observing a turn already seeded from history duplicates nothing"
   expect(texts.map((f) => f.data)).toEqual([reply]);
   // The seeded final_result kept its persisted usage (the context indicator).
   const final = feedOf().find((f) => f.feed_type === "final_result");
-  expect(final?.data).toMatchObject({
+  expect(final?.data).toEqual({
+    result: reply,
+    cost_usd: null,
+    duration_ms: null,
     usage: { context_tokens: 10, output_tokens: 5, cached_tokens: 0 },
   });
 });

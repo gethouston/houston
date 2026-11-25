@@ -129,4 +129,5 @@ defect — `tests/primitives.test.ts` fails the build on one.
   is wired into a consumer — `ui/showcase/specimens/store/`, group `Store`. Run
   `pnpm --filter @houston-ai/showcase dev` → <http://localhost:5199>.
 - **Checks:** `pnpm --filter @houston-ai/store typecheck`,
-  `pnpm --filter @houston-ai/store test`, `pnpm exec oxlint --deny-warnings ui/store` and `pnpm exec oxfmt --check ui/store`.
+  `pnpm --filter @houston-ai/store test`, `pnpm lint ui/store`,
+  `pnpm format:check ui/store`.

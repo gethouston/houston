@@ -42,6 +42,9 @@
         "jsdoc",
         "nextjs",
       ],
+      "rules": {
+        "nextjs/no-img-element": "error",
+      },
     },
   ],
   "ignorePatterns": [
@@ -94,6 +97,25 @@
     "radix": "error",
     "symbol-description": "error",
     "react/rules-of-hooks": "error",
+    "react/button-has-type": "error",
+    "react/no-danger": "error",
+    "unicorn/no-document-cookie": "error",
+    "no-sequences": [
+      "error",
+      {
+        "allowInParentheses": false,
+      },
+    ],
+    "typescript/no-empty-interface": "error",
+    "typescript/no-non-null-assertion": "error",
+    // Matches Biome's useConst: a destructuring stays `let` while any binding is reassigned, and a closure that reads the binding before its single assignment keeps it `let`.
+    "prefer-const": [
+      "error",
+      {
+        "destructuring": "all",
+        "ignoreReadBeforeAssign": true,
+      },
+    ],
     "react/checked-requires-onchange-or-readonly": "error",
     "react/jsx-no-target-blank": "error",
     "typescript/ban-ts-comment": "error",

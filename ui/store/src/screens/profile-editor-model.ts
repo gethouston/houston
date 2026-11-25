@@ -12,7 +12,7 @@ export interface ProfileEditorForm {
 }
 
 /** What the editor persists on save. */
-export interface ProfileEditorPatch extends ProfileEditorForm {}
+export type ProfileEditorPatch = ProfileEditorForm;
 
 /** Reader-facing copy keyed by the gateway's PATCH /me/profile error code. */
 export const SAVE_ERROR: Record<string, string> = {
