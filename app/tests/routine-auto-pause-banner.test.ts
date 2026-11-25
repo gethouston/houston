@@ -112,6 +112,25 @@ describe("RoutineAutoPauseBanner", () => {
     ok(!html.includes("undefined"), html);
   });
 
+  it("asks to check the runs of a routine that kept failing on a provider error", () => {
+    const html = text(
+      render({
+        ...base,
+        enabled: false,
+        auto_paused: {
+          reason: "model_unavailable",
+          provider: "anthropic",
+          cause: "provider_error",
+          failures: 5,
+          at: "2026-09-29T11:00:00.000Z",
+        },
+      }),
+    );
+    ok(html.includes("Paused after 5 failed runs in a row"), html);
+    ok(html.includes("the same error from Anthropic"), html);
+    ok(!html.includes("Pick a model"), html);
+  });
+
   it("asks to sign in again when the gateway signed the reader's account out", () => {
     const html = text(
       render(paused("creator_not_connected"), "needs_reconnect"),

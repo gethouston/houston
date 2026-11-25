@@ -54,6 +54,7 @@ async function fixture(
     identity: { org: "w1", agent: "agent-1" },
     resolved: { store: agent.store, prefix: PREFIX },
     filesystem,
+    hydrated: Promise.resolve(filesystem),
   });
   if (!sandbox) throw new Error("turn sandbox was not created");
   const save = (body: Record<string, unknown>) =>

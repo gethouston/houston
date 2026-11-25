@@ -75,7 +75,7 @@ export function buildTurnCoordinatorTools(
  * against its own credentials and endpoint settings, exactly as when Houston
  * runs on its pod.
  */
-function missionProviders(): ProviderOption[] {
+export function missionProviders(): ProviderOption[] {
   const curated = connectedProviderChoices().map((option) => ({
     ...option,
     connected: true,

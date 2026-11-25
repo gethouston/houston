@@ -1,6 +1,7 @@
 import type { WireFrame } from "@houston/runtime-client";
 import { claudePlanBinding } from "../auth/claude-plan";
 import { turnTokenExpiry } from "./turn-deadline";
+import type { makeTurnSandboxFetch } from "./turn-sandbox";
 import type { TurnSessionRequest } from "./turn-session";
 import type { TurnSessionStartupTask } from "./turn-session-startup";
 import type { TurnOutcome } from "./turn-session-types";
@@ -15,6 +16,18 @@ export function turnProvider(
   turn: Pick<TurnRequest, "provider" | "credential">,
 ): string {
   return turn.provider || turn.credential?.provider || "";
+}
+
+export function turnSessionSandbox(
+  sandbox: ReturnType<typeof makeTurnSandboxFetch> | null | undefined,
+): TurnSessionRequest["sandbox"] {
+  if (!sandbox) return undefined;
+  return {
+    call: sandbox.call,
+    ...(sandbox.missionGuidance
+      ? { missionGuidance: sandbox.missionGuidance }
+      : {}),
+  };
 }
 
 /** Project the accepted envelope onto the provider-agnostic turn session. */

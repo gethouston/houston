@@ -62,3 +62,22 @@ test("a reason this client does not know reads as no notice, never a throw", () 
   } as never;
   expect(routinePauseNotice(future)).toBeNull();
 });
+
+test("a routine paused for an untyped provider error asks to check its runs, naming the provider", () => {
+  const notice = routinePauseNotice({
+    enabled: false,
+    auto_paused: {
+      reason: "model_unavailable",
+      provider: "nvidia",
+      cause: "provider_error",
+      failures: 5,
+      at,
+    },
+  });
+  expect(notice).toEqual({
+    remedy: "check_runs",
+    provider: "nvidia",
+    failures: 5,
+    pausedAt: at,
+  });
+});

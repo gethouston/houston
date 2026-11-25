@@ -6,7 +6,7 @@ import {
   unconnectedRoutineFailure,
   upsertById,
 } from "@houston/domain";
-import type { Routine, RoutineRun, RoutineRunFailure } from "@houston/protocol";
+import type { Routine, RoutineRun } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
@@ -126,7 +126,7 @@ export async function fireRoutineRun(
     // (PRODUCT-1475). It blames the routine's pin, else the agent's saved
     // provider the refusal names; with neither it reads as "no model chosen"
     // (PRODUCT-1982). Typed every way, so all of them stop at the pause.
-    const failure: RoutineRunFailure | undefined = isUnconnectedRefusal(err)
+    const failure = isUnconnectedRefusal(err)
       ? unconnectedRoutineFailure(routine.provider || err.provider)
       : undefined;
     await markRunErrored(root, err, async () => {
