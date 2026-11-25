@@ -292,14 +292,17 @@ describe("postImage", () => {
     "Load failed",
     "Failed to fetch",
     "The request timed out.",
-  ])("answers unknown when the connection broke after sending: %s", async (message) => {
-    const { sdk } = makeSdk(() => {
-      throw new TypeError(message);
-    });
-    await expect(
-      sdk.linkedin.postImage({ image: png(), text: "Hi" }),
-    ).resolves.toEqual({ kind: "unknown" });
-  });
+  ])(
+    "answers unknown when the connection broke after sending: %s",
+    async (message) => {
+      const { sdk } = makeSdk(() => {
+        throw new TypeError(message);
+      });
+      await expect(
+        sdk.linkedin.postImage({ image: png(), text: "Hi" }),
+      ).resolves.toEqual({ kind: "unknown" });
+    },
+  );
 
   it.each([
     [504, ""],

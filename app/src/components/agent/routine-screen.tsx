@@ -8,8 +8,8 @@
  * the shell panel. Layout only — the header and sections own their pieces.
  */
 
-import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import type { RoutineRun } from "@houston-ai/routines";
+import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import { useEffect, useState } from "react";
 import { useRoutineWritesForAnyAgent } from "../../hooks/queries";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";

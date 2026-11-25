@@ -106,10 +106,7 @@ export { PROFILE_EDITOR_LABELS } from "./screens/profile-editor-model";
 export type { ProfileEditorScreenProps } from "./screens/profile-editor-screen";
 export { ProfileEditorScreen } from "./screens/profile-editor-screen";
 export { ProfileEditorSignedOut } from "./screens/profile-editor-signed-out";
-export type {
-  StoreHomeRows,
-  StoreHomeState,
-} from "./screens/store-home-model";
+export type { StoreHomeRows, StoreHomeState } from "./screens/store-home-model";
 export {
   filterStoreAgents,
   filterStoreCreators,

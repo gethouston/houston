@@ -95,9 +95,10 @@ export function scanMappings(
   sources: readonly (string | null)[],
   needles: readonly GeneratedPosition[],
 ): (OriginalPosition | undefined)[] {
-  const found: (OriginalPosition | undefined)[] = new Array(
-    needles.length,
-  ).fill(undefined);
+  const found: (OriginalPosition | undefined)[] = Array.from(
+    { length: needles.length },
+    () => undefined,
+  );
   const order = needles
     .map((_, index) => index)
     .sort((a, b) => compareNeedles(needles, a, b));

@@ -15,6 +15,8 @@ import { OrgLockedFieldset } from "../../shell/org-locked-fieldset";
 import { PageHero } from "../../shell/page-shell";
 import { LearningsContent } from "../learnings-content";
 
+const NO_ENTRIES: never[] = [];
+
 /** Memory (learnings) section. */
 export function AgentAdminKnowledge({ agent }: AgentSectionProps) {
   const { t } = useTranslation(["teams", "agents"]);
@@ -22,7 +24,7 @@ export function AgentAdminKnowledge({ agent }: AgentSectionProps) {
   const { data } = useLearnings(path);
   const writes = useLearningWrites(path);
 
-  const entries = data?.entries ?? [];
+  const entries = data?.entries ?? NO_ENTRIES;
   // Faces for whoever taught these learnings. The hook is multiplayer-gated, so
   // single player / desktop resolves nothing and the line falls back to the name
   // stored on the learning itself.

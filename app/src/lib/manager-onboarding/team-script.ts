@@ -83,13 +83,11 @@ export function teamFinished(
  *  receipt, only the latest open to change until the team is hired. */
 export function teamLines(state: TeamConversation): ScriptLine[] {
   const undoable = canUndoTeam(state);
-  return state.entries.map(
-    (entry, index): ScriptLine => ({
-      kind: "receipt",
-      key: `team:${index}:${entry.question}`,
-      question: entry.question,
-      value: entry.value,
-      editable: undoable && index === state.entries.length - 1,
-    }),
-  );
+  return state.entries.map((entry, index): ScriptLine => ({
+    kind: "receipt",
+    key: `team:${index}:${entry.question}`,
+    question: entry.question,
+    value: entry.value,
+    editable: undoable && index === state.entries.length - 1,
+  }));
 }

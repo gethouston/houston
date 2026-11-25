@@ -31,9 +31,8 @@ vi.mock("../backends/claude/credential-status", async (importOriginal) => ({
 }));
 
 const { config } = await import("../config");
-const { connectedProviderForTurn, pinnedProviderUnavailable } = await import(
-  "./provider-gate"
-);
+const { connectedProviderForTurn, pinnedProviderUnavailable } =
+  await import("./provider-gate");
 
 const saveActiveProvider = (provider: string) =>
   writeFileSync(

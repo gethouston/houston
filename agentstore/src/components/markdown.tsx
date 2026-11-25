@@ -68,7 +68,7 @@ function renderBlock(block: MarkdownBlock, key: number): React.ReactNode {
     case "list": {
       const cls = "flex flex-col gap-1 pl-5 text-ink/90";
       const items = block.items.map((item, idx) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: static, non-reordering list
+        // oxlint-disable-next-line react/no-array-index-key -- static, non-reordering list
         <li key={idx} className="list-item">
           {renderInline(item)}
         </li>
@@ -96,7 +96,6 @@ function renderInline(text: string): React.ReactNode[] {
   let match: RegExpExecArray | null;
   INLINE.lastIndex = 0;
 
-  // biome-ignore lint/suspicious/noAssignInExpressions: canonical regex-exec loop
   while ((match = INLINE.exec(text)) !== null) {
     if (match.index > last) nodes.push(text.slice(last, match.index));
     const [token] = match;

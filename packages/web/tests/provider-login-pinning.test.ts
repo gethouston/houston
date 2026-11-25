@@ -36,12 +36,10 @@ beforeEach(() => {
   mocks.runtimeClientFor.mockClear();
 });
 
-const { pinnedLoginAgentId, loginKey } = await import(
-  "@houston/engine-adapter/client/provider-login-poll"
-);
-const { ProviderLoginMixin } = await import(
-  "@houston/engine-adapter/client/provider-login-mixin"
-);
+const { pinnedLoginAgentId, loginKey } =
+  await import("@houston/engine-adapter/client/provider-login-poll");
+const { ProviderLoginMixin } =
+  await import("@houston/engine-adapter/client/provider-login-mixin");
 
 type Ctx = {
   cp: { baseUrl: string; token: string };

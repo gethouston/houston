@@ -35,56 +35,58 @@ function setup() {
   return { cwd, dir: join(cwd, "sessions") };
 }
 
-test.each([
-  "prefix",
-  "live",
-])("an unknown %s entry skips rotation, reports and still resumes", async (position) => {
-  const { cwd, dir } = setup();
-  const { manager } = seedRotatableSession(cwd, dir);
-  const file = sessionFile(manager);
-  const original = readFileSync(file, "utf8");
-  const future = JSON.stringify({
-    type: "future_setting",
-    id: "future",
-    parentId: position === "live" ? manager.getLeafId() : null,
-    timestamp: new Date().toISOString(),
-  });
-  const newline = original.indexOf("\n") + 1;
-  writeFileSync(
-    file,
-    position === "live"
-      ? `${original}${future}\n`
-      : `${original.slice(0, newline)}${future}\n${original.slice(newline).replace('"parentId":null', '"parentId":"future"')}`,
-  );
-  const before = SessionManager.open(file, dir, cwd);
-  expect(before.buildSessionContext()).toEqual(manager.buildSessionContext());
-  const logs: string[] = [];
-  const captures: { level: string; values: unknown[] }[] = [];
-  const logging = installRuntimeLogging({
-    sinks: [{ write: (line) => logs.push(line) }],
-    capture: (level, values) => captures.push({ level, values }),
-  });
-  try {
-    const resumed = resumeSessionManager(cwd, dir, false);
-    expect(resumed.getSessionFile()).toBe(file);
-    expect(resumed.buildSessionContext()).toEqual(before.buildSessionContext());
-    expect(resumed.getLeafId()).toBe(before.getLeafId());
-    expect(
-      logs.some(
-        (line) =>
-          line.includes("level=ERROR") && line.includes("future_setting"),
-      ),
-    ).toBe(true);
-    expect(
-      captures.some(
-        ({ level, values }) =>
-          level === "ERROR" && values.some((value) => value instanceof Error),
-      ),
-    ).toBe(true);
-  } finally {
-    await logging.restore();
-  }
-});
+test.each(["prefix", "live"])(
+  "an unknown %s entry skips rotation, reports and still resumes",
+  async (position) => {
+    const { cwd, dir } = setup();
+    const { manager } = seedRotatableSession(cwd, dir);
+    const file = sessionFile(manager);
+    const original = readFileSync(file, "utf8");
+    const future = JSON.stringify({
+      type: "future_setting",
+      id: "future",
+      parentId: position === "live" ? manager.getLeafId() : null,
+      timestamp: new Date().toISOString(),
+    });
+    const newline = original.indexOf("\n") + 1;
+    writeFileSync(
+      file,
+      position === "live"
+        ? `${original}${future}\n`
+        : `${original.slice(0, newline)}${future}\n${original.slice(newline).replace('"parentId":null', '"parentId":"future"')}`,
+    );
+    const before = SessionManager.open(file, dir, cwd);
+    expect(before.buildSessionContext()).toEqual(manager.buildSessionContext());
+    const logs: string[] = [];
+    const captures: { level: string; values: unknown[] }[] = [];
+    const logging = installRuntimeLogging({
+      sinks: [{ write: (line) => logs.push(line) }],
+      capture: (level, values) => captures.push({ level, values }),
+    });
+    try {
+      const resumed = resumeSessionManager(cwd, dir, false);
+      expect(resumed.getSessionFile()).toBe(file);
+      expect(resumed.buildSessionContext()).toEqual(
+        before.buildSessionContext(),
+      );
+      expect(resumed.getLeafId()).toBe(before.getLeafId());
+      expect(
+        logs.some(
+          (line) =>
+            line.includes("level=ERROR") && line.includes("future_setting"),
+        ),
+      ).toBe(true);
+      expect(
+        captures.some(
+          ({ level, values }) =>
+            level === "ERROR" && values.some((value) => value instanceof Error),
+        ),
+      ).toBe(true);
+    } finally {
+      await logging.restore();
+    }
+  },
+);
 
 test("rotation preserves the tool loadout replayed from branch system messages", () => {
   const { cwd, dir } = setup();
@@ -126,24 +128,24 @@ test("rotation preserves the tool loadout replayed from branch system messages",
   expect(resumed.buildSessionContext()).toEqual(before.buildSessionContext());
 });
 
-test.each([
-  false,
-  true,
-])("a large live file with compaction=%s is fully parsed only by pi", (compacted) => {
-  const { cwd, dir } = setup();
-  const manager = SessionManager.create(cwd, dir);
-  const kept = manager.appendMessage({
-    role: "user",
-    content: "x".repeat(SESSION_LOG_ROTATION_BYTES + 1024),
-    timestamp: 0,
-  });
-  if (compacted) manager.appendCompaction("summary", kept, 100_000);
-  const fullRotationParse = vi.spyOn(SessionManager, "inMemory");
-  expect(resumeSessionManager(cwd, dir, false).getSessionFile()).toBe(
-    manager.getSessionFile(),
-  );
-  expect(fullRotationParse).not.toHaveBeenCalled();
-});
+test.each([false, true])(
+  "a large live file with compaction=%s is fully parsed only by pi",
+  (compacted) => {
+    const { cwd, dir } = setup();
+    const manager = SessionManager.create(cwd, dir);
+    const kept = manager.appendMessage({
+      role: "user",
+      content: "x".repeat(SESSION_LOG_ROTATION_BYTES + 1024),
+      timestamp: 0,
+    });
+    if (compacted) manager.appendCompaction("summary", kept, 100_000);
+    const fullRotationParse = vi.spyOn(SessionManager, "inMemory");
+    expect(resumeSessionManager(cwd, dir, false).getSessionFile()).toBe(
+      manager.getSessionFile(),
+    );
+    expect(fullRotationParse).not.toHaveBeenCalled();
+  },
+);
 
 test("a non-ISO newest filename stays authoritative across appends", () => {
   const { cwd, dir } = setup();

@@ -1,8 +1,8 @@
+import { Button } from "@houston-ai/core";
 import type {
   ChannelConnection,
   ChannelProviderId,
 } from "@houston/engine-adapter";
-import { Button } from "@houston-ai/core";
 import { Plus } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 import { useEffect, useId, useState } from "react";
@@ -13,6 +13,8 @@ import { SettingsCard } from "../settings-row";
 import { ChannelAccountList } from "./channel-account-list";
 import type { ChannelCardState } from "./channel-provider-cards";
 import { CHANNEL_PROVIDER_DISPLAY } from "./channel-provider-display";
+
+const NO_CONNECTIONS: ChannelConnection[] = [];
 
 /**
  * One messaging provider's card: its mark, whether it is connected, the
@@ -48,7 +50,8 @@ export function ChannelProviderPanel({
   const { locked } = useOrgWriteLock();
   const display = CHANNEL_PROVIDER_DISPLAY[provider];
   const headingId = useId();
-  const connections = state.kind === "empty" ? [] : state.connections;
+  const connections =
+    state.kind === "empty" ? NO_CONNECTIONS : state.connections;
   const [seenIds] = useState(() => new Set(connections.map((c) => c.id)));
   // After commit, so every row that rendered this pass read the set first.
   useEffect(() => {

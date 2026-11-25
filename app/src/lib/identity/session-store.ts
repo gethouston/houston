@@ -20,13 +20,13 @@
 import { queryKeys } from "../query-keys.ts";
 import { IdentityError } from "./errors.ts";
 import { identityLog } from "./log.ts";
+import { createSessionLoader, type SessionLoadState } from "./session-load.ts";
+import { isKeychainMode, storage, storageKey } from "./session-storage-kv.ts";
 import {
   deserializeSession,
   type Session,
   serializeSession,
 } from "./session.ts";
-import { createSessionLoader, type SessionLoadState } from "./session-load.ts";
-import { isKeychainMode, storage, storageKey } from "./session-storage-kv.ts";
 
 export type { SessionLoadState } from "./session-load.ts";
 

@@ -40,17 +40,15 @@ test.each([
   expect(items[0]?.schedule).toBe(stored);
 });
 
-test.each([
-  "@every 1h30m",
-  "@every 0m",
-  "@every 10081m",
-  "@every 169h",
-])("create refuses %s", async (schedule) => {
-  const vfs = new MemoryVfs();
-  const result = await create(vfs, schedule);
-  expect("error" in result && result.error).toMatch(/^invalid schedule: /);
-  expect((await loadRoutines(vfs, ROOT)).items).toEqual([]);
-});
+test.each(["@every 1h30m", "@every 0m", "@every 10081m", "@every 169h"])(
+  "create refuses %s",
+  async (schedule) => {
+    const vfs = new MemoryVfs();
+    const result = await create(vfs, schedule);
+    expect("error" in result && result.error).toMatch(/^invalid schedule: /);
+    expect((await loadRoutines(vfs, ROOT)).items).toEqual([]);
+  },
+);
 
 test("update canonicalizes the applied schedule and refuses a bad interval", async () => {
   const vfs = new MemoryVfs();

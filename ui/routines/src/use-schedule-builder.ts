@@ -40,7 +40,11 @@ const DEFAULT_OPTIONS: ScheduleOptions = {
   dayOfMonth: 1,
 };
 
-const NEEDS_TIME: SchedulePreset[] = ["daily", "weekly", "monthly"];
+const NEEDS_TIME: ReadonlySet<SchedulePreset> = new Set([
+  "daily",
+  "weekly",
+  "monthly",
+]);
 
 export interface ScheduleBuilderState {
   activePreset: SchedulePreset;
@@ -119,11 +123,12 @@ export function useScheduleBuilder(
 
   // Emit the schedule when the pick changes. An invalid pick emits "" so the
   // parent's save validation can block saving.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `value` gates only the very first emit (an empty seed) and `edits` is the re-emit trigger; re-running on `value` would echo every keystroke back
+  /* oxlint-disable react-hooks/exhaustive-deps -- `value` gates only the very first emit (an empty seed) and `edits` is the re-emit trigger; re-running on `value` would echo every keystroke back */
   useEffect(() => {
     if (!builderEmits(touched, value)) return;
     onChangeRef.current(output.schedule);
   }, [output.schedule, edits]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Setters mark the builder touched only on a real change, so re-clicking the
   // current preset or unit is not an edit and Save stays a no-op.
@@ -180,7 +185,7 @@ export function useScheduleBuilder(
     floorOk: output.floorOk,
     stepper,
     isCustom: activePreset === "custom",
-    showTime: NEEDS_TIME.includes(activePreset),
+    showTime: NEEDS_TIME.has(activePreset),
     summary: builderSummary(pick, output, { touched, value }, labels, locale),
   };
 }

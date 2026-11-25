@@ -1,4 +1,3 @@
-import type { AgentAssignment, OrgMember } from "@houston/engine-adapter";
 import {
   ConfirmDialog,
   Dialog,
@@ -8,6 +7,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@houston-ai/core";
+import type { AgentAssignment, OrgMember } from "@houston/engine-adapter";
 import { Users } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

@@ -6,12 +6,12 @@ import * as React from "react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { initReactI18next } from "react-i18next";
+import { OrgChartTreeView } from "../src/components/organization/org-chart-tree-view.tsx";
 import {
   buildOrgTree,
   type OrgTreeCaps,
   SCREEN_TREE_CAPS,
 } from "../src/components/organization/org-chart-tree.ts";
-import { OrgChartTreeView } from "../src/components/organization/org-chart-tree-view.tsx";
 import teams from "../src/locales/en/teams.json" with { type: "json" };
 
 // tsx compiles `ui/` sources against their own tsconfig, which names no JSX

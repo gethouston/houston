@@ -1,6 +1,6 @@
+import { ConfirmDialog } from "@houston-ai/core";
 import type { OrgSummary, OrgsList } from "@houston/engine-adapter";
 import type { ClaimFreeSlotResult } from "@houston/sdk";
-import { ConfirmDialog } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { useClaimFreeSlot } from "../../hooks/queries/use-billing";
 import { showExpectedStateToast } from "../../lib/error-toast";

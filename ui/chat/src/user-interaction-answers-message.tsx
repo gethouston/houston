@@ -25,7 +25,7 @@ export function UserInteractionAnswersMessage({
           <div
             // Lines are an ordered, stable list rebuilt only on new messages;
             // there is no better key than position for these pass-through rows.
-            // biome-ignore lint/suspicious/noArrayIndexKey: order-stable render list
+            // oxlint-disable-next-line react/no-array-index-key -- order-stable render list
             key={index}
             className="flex flex-col gap-0.5 py-2.5"
           >

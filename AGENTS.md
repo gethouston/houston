@@ -69,7 +69,7 @@ A packaged build, or `pnpm tauri dev` with no host URL, spawns the staged sideca
 
 | Area | Check / test |
 |------|--------------|
-| Any TS/JS/JSON change | `pnpm check:fix` after every change; done means `pnpm check` exits 0 (Biome + `check:desktop-native` + `check:assistant-catalog` + `check:assistant-coverage` + `check:sdk-parity`) |
+| Any TS/JS/JSON change | `pnpm check:fix` after every change; done means `pnpm check` exits 0 (oxlint + oxfmt + `check:desktop-native` + `check:assistant-catalog` + `check:assistant-coverage` + `check:sdk-parity`) |
 | Types, all packages | `pnpm typecheck` (the pre-commit hook runs it after lint-staged) |
 | host / runtime / domain | `pnpm --filter @houston/host --filter @houston/runtime --filter @houston/domain test` (vitest) |
 | engine adapter | `pnpm --filter @houston/engine-adapter test`; its wire specs (`packages/web/tests/wire-*`) run with `pnpm --filter houston-web test` |

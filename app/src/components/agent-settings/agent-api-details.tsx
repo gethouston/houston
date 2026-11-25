@@ -1,5 +1,5 @@
-import { apiSetupPrompt, apiStartMissionRequest } from "@houston/sdk";
 import { Button, cn } from "@houston-ai/core";
+import { apiSetupPrompt, apiStartMissionRequest } from "@houston/sdk";
 import { Bot, Building2, Check, Copy } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";

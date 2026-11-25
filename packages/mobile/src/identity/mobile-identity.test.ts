@@ -28,9 +28,8 @@ vi.mock("../../../web/src/identity/firebase-session", () => ({
 }));
 vi.mock("./native-config", () => ({ nativeIdentity: { providers: {} } }));
 
-const { NATIVE_SIGN_OUT_TIMEOUT_MS, webSignOut } = await import(
-  "./mobile-identity"
-);
+const { NATIVE_SIGN_OUT_TIMEOUT_MS, webSignOut } =
+  await import("./mobile-identity");
 
 beforeEach(() => {
   native.signOut.mockReset();

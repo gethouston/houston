@@ -1,3 +1,4 @@
+import { Card, StatusBadge, type StatusKind } from "@houston-ai/core";
 import type { OrgBilling } from "@houston/engine-adapter";
 import {
   billingRenewal,
@@ -6,7 +7,6 @@ import {
   orgBillingPrice,
   seatUsageView,
 } from "@houston/sdk";
-import { Card, StatusBadge, type StatusKind } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { canPurchaseInApp } from "../../lib/purchase-policy.ts";
 import { BillingPlanAction } from "./billing-plan-action.tsx";

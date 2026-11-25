@@ -149,7 +149,7 @@ export const useConnectFlowStore = create<ConnectFlowState>()((set) => ({
     // Silent, like the per-flow Cancel: each loop observes the flag on its next
     // tick and unwinds through its own `finally` (clearing its `states` entry),
     // so no request is ever issued under the new identity.
-    for (const toolkit of [...connectFlowRegistry.keys()]) {
+    for (const toolkit of Array.from(connectFlowRegistry.keys())) {
       cancelFlow(connectFlowRegistry, toolkit);
     }
     for (const handle of noticeTimers.values()) clearTimeout(handle);

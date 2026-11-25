@@ -102,9 +102,8 @@ export class ConnectManager {
     // would hold this workspace's connect lock (and the credential in a temp
     // file) indefinitely. The direct login returns the credential in-process,
     // so it lands ONLY in the central store — no file ever holds it.
-    const { openaiCodexProvider } = await import(
-      "@earendil-works/pi-ai/providers/openai-codex"
-    );
+    const { openaiCodexProvider } =
+      await import("@earendil-works/pi-ai/providers/openai-codex");
     const oauth = openaiCodexProvider().auth.oauth;
     if (!oauth)
       throw new Error("pi-ai openai-codex provider exposes no OAuth flow");

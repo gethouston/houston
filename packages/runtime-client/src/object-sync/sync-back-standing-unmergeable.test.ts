@@ -79,11 +79,14 @@ test("a run history deleted from the store is recreated from the pod's copy", as
 test.each([
   ["not JSON", "{ truncated"],
   ["not an array", JSON.stringify({ runs: [] })],
-])("a remote run history that is %s is replaced, never wedging the pass", async (_label, remote) => {
-  const sync = await standing(remote);
+])(
+  "a remote run history that is %s is replaced, never wedging the pass",
+  async (_label, remote) => {
+    const sync = await standing(remote);
 
-  expect(sync.preconditions).toEqual(["6", "7"]);
-  expect(sync.landed.get(RUNS)).toBe(LOCAL);
-  expect(sync.landed.get("zz-later.md")).toBe("later file");
-  expect(sync.result.conflicts).toEqual([]);
-});
+    expect(sync.preconditions).toEqual(["6", "7"]);
+    expect(sync.landed.get(RUNS)).toBe(LOCAL);
+    expect(sync.landed.get("zz-later.md")).toBe("later file");
+    expect(sync.result.conflicts).toEqual([]);
+  },
+);

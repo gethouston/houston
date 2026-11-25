@@ -56,7 +56,9 @@ export interface PreferencesModule extends NextStepSuggestionsPreference {
   /** Resolve boot selection and record the space this device displays. */
   resolveWorkspace<
     T extends Pick<SelectionWorkspace, "id" | "isDefault" | "kind">,
-  >(workspaces: readonly T[] | Promise<readonly T[]>): Promise<T | null>;
+  >(
+    workspaces: readonly T[] | Promise<readonly T[]>,
+  ): Promise<T | null>;
   /** Mirror the displayed space on this device without changing the account. */
   rememberWorkspace(value: string | null): Promise<void>;
   /** Read a preference value, or `null` when unset. */

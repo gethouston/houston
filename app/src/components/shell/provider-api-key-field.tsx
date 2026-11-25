@@ -37,7 +37,7 @@ export function ProviderApiKeyField({
           id="provider-api-key"
           type={show ? "text" : "password"}
           autoComplete="off"
-          // biome-ignore lint/a11y/noAutofocus: only ever rendered inside the api-key dialog, which exists to receive this one value; the inline field it replaced autofocused too (the rule tolerated it there because the <input> sat lexically inside <Dialog>).
+          // only ever rendered inside the api-key dialog, which exists to receive this one value; the inline field it replaced autofocused too (the rule tolerated it there because the <input> sat lexically inside <Dialog>).
           autoFocus
           value={value}
           onChange={(e) => onChange(e.target.value)}

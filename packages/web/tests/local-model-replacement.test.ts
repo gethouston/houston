@@ -52,16 +52,16 @@ afterEach(async () => bridge.dispose());
 const connect = () =>
   bridge.connect({ targetBaseUrl: "http://localhost:1234/v1", model: "local" });
 
-test.each([
-  false,
-  true,
-])("ordinary endpoint disconnect does not require bridge capability (desktop=%s)", async (desktop) => {
-  mocks.desktop.mockReturnValue(desktop);
-  mocks.controller.mockRejectedValue(new Error("bridge_not_supported"));
-  await disconnectLocalModel();
-  expect(mocks.controller).not.toHaveBeenCalled();
-  expect(mocks.logout).toHaveBeenCalledExactlyOnceWith("openai-compatible");
-});
+test.each([false, true])(
+  "ordinary endpoint disconnect does not require bridge capability (desktop=%s)",
+  async (desktop) => {
+    mocks.desktop.mockReturnValue(desktop);
+    mocks.controller.mockRejectedValue(new Error("bridge_not_supported"));
+    await disconnectLocalModel();
+    expect(mocks.controller).not.toHaveBeenCalled();
+    expect(mocks.logout).toHaveBeenCalledExactlyOnceWith("openai-compatible");
+  },
+);
 
 test("owned bridge disconnect uses SDK teardown", async () => {
   await connect();
@@ -72,15 +72,15 @@ test("owned bridge disconnect uses SDK teardown", async () => {
   expect(mocks.logout).not.toHaveBeenCalled();
 });
 
-test.each([
-  false,
-  true,
-])("manual endpoints remain available without bridge discovery (desktop=%s)", async (desktop) => {
-  mocks.desktop.mockReturnValue(desktop);
-  await connectManualEndpoint(endpoint);
-  expect(mocks.controller).not.toHaveBeenCalled();
-  expect(mocks.save).toHaveBeenCalledExactlyOnceWith(endpoint, "inline");
-});
+test.each([false, true])(
+  "manual endpoints remain available without bridge discovery (desktop=%s)",
+  async (desktop) => {
+    mocks.desktop.mockReturnValue(desktop);
+    await connectManualEndpoint(endpoint);
+    expect(mocks.controller).not.toHaveBeenCalled();
+    expect(mocks.save).toHaveBeenCalledExactlyOnceWith(endpoint, "inline");
+  },
+);
 
 test("manual replacement retires the owned bridge after the new endpoint is accepted", async () => {
   await connect();

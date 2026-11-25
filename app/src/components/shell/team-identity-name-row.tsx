@@ -1,5 +1,5 @@
-import { SIDEBAR_GROUP_NAME_MAX_CODE_POINTS } from "@houston/protocol";
 import { Input } from "@houston-ai/core";
+import { SIDEBAR_GROUP_NAME_MAX_CODE_POINTS } from "@houston/protocol";
 import { useTranslation } from "react-i18next";
 
 import type { TeamIdentityChoices } from "./team-identity";

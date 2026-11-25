@@ -1,6 +1,6 @@
+import { cn } from "@houston-ai/core";
 import type { StoreCatalogSort } from "@houston/agentstore-client";
 import { HANDLE_REGEX, normalizeHandle } from "@houston/agentstore-contract";
-import { cn } from "@houston-ai/core";
 
 import type { Metadata } from "next";
 import Link from "next/link";

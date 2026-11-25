@@ -108,24 +108,27 @@ test.each([
   ["owner", { owner: "different" }, 404, "upload_not_found"],
   ["workspace", { workspace: "different" }, 404, "upload_not_found"],
   ["incomplete", {}, 409, "upload_incomplete"],
-])("%s mismatch refuses the whole mixed batch before writing", async (kind, values, status, code) => {
-  const uploadId = await stage(
-    "purpose" in values ? values.purpose : "attachment",
-    Buffer.from("staged"),
-    "purpose" in values ? {} : values,
-    kind !== "incomplete",
-  );
-  const response = await post("attachments", {
-    files: [
-      { name: "inline.txt", contentBase64: "aGk=" },
-      { name: "file.txt", uploadId },
-    ],
-  });
-  expect(response.status).toBe(status);
-  expect(await response.json()).toMatchObject({ code });
-  expect(await host.deps.vfs?.list(root())).toEqual([]);
-  expect(events).toEqual([]);
-});
+])(
+  "%s mismatch refuses the whole mixed batch before writing",
+  async (kind, values, status, code) => {
+    const uploadId = await stage(
+      "purpose" in values ? values.purpose : "attachment",
+      Buffer.from("staged"),
+      "purpose" in values ? {} : values,
+      kind !== "incomplete",
+    );
+    const response = await post("attachments", {
+      files: [
+        { name: "inline.txt", contentBase64: "aGk=" },
+        { name: "file.txt", uploadId },
+      ],
+    });
+    expect(response.status).toBe(status);
+    expect(await response.json()).toMatchObject({ code });
+    expect(await host.deps.vfs?.list(root())).toEqual([]);
+    expect(events).toEqual([]);
+  },
+);
 
 test("invalid paths and staged entries validate before destination writes", async () => {
   const uploadId = await stage("attachment");
@@ -215,23 +218,26 @@ test.each([
   ["application/jsonp", false],
   ["application/json+zip", false],
   ["application/zip; note=application/json", false],
-])("migration dispatches media type %s exactly", async (contentType, staged) => {
-  const bytes = zipSync({ "docs/media.txt": Buffer.from("media") });
-  const uploadId = await stage("migration_import", bytes);
-  const response = await fetch(
-    `${base}/agents/${host.ids.agentId}/migration/import?sessions=0`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer tok:alice",
-        "Content-Type": contentType,
+])(
+  "migration dispatches media type %s exactly",
+  async (contentType, staged) => {
+    const bytes = zipSync({ "docs/media.txt": Buffer.from("media") });
+    const uploadId = await stage("migration_import", bytes);
+    const response = await fetch(
+      `${base}/agents/${host.ids.agentId}/migration/import?sessions=0`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer tok:alice",
+          "Content-Type": contentType,
+        },
+        body: staged ? JSON.stringify({ uploadId }) : new Uint8Array(bytes),
       },
-      body: staged ? JSON.stringify({ uploadId }) : new Uint8Array(bytes),
-    },
-  );
-  expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({ written: 1 });
-  expect(await host.deps.vfs?.readText(`${root()}/docs/media.txt`)).toBe(
-    "media",
-  );
-});
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ written: 1 });
+    expect(await host.deps.vfs?.readText(`${root()}/docs/media.txt`)).toBe(
+      "media",
+    );
+  },
+);

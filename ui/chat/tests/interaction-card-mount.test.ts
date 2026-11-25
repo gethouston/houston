@@ -15,11 +15,11 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { JSDOM } from "jsdom";
-import type { ChatInteractionCardProps } from "../src/interaction-card.tsx";
 import type {
   ChatInteractionAnswer,
   StepperState,
 } from "../src/interaction-card-logic.ts";
+import type { ChatInteractionCardProps } from "../src/interaction-card.tsx";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
   pretendToBeVisual: true,

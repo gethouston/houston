@@ -51,10 +51,10 @@ function harness(hosted: boolean) {
     finals,
     stop,
     track: (name: string) => {
-      for (const listener of [...busListeners]) listener(name);
+      for (const listener of Array.from(busListeners)) listener(name);
     },
     goodbye: () => {
-      for (const handler of [...hiddenHandlers]) handler();
+      for (const handler of Array.from(hiddenHandlers)) handler();
     },
     counts: () => ({
       subscribe: subscribeCalls,

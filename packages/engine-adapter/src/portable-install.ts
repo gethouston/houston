@@ -9,6 +9,7 @@
  * filters the parked package and hands the seed to the create it is given.
  */
 
+import { agentColorId } from "@houston-ai/core";
 import {
   type AgentColorId,
   filterPackage,
@@ -21,7 +22,6 @@ import type {
   PortableInstalledAgent,
   PortableInstallRequest,
 } from "@houston/wire-types";
-import { agentColorId } from "@houston-ai/core";
 import { dropUpload, parkedUpload } from "./portable";
 import { toWireSelection } from "./portable-map";
 

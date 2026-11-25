@@ -11,6 +11,8 @@ import * as React from "react";
 
 import type { StoreSkillRow } from "../types";
 
+const DEFAULT_LABELS = {};
+
 const VISIBLE = 4;
 function frontmatterTitle(body: string) {
   const block = /^---\n([\s\S]*?)\n---/.exec(body)?.[1];
@@ -39,7 +41,7 @@ function bodyContent(body: string) {
 export function SkillList({
   skills,
   renderContent,
-  labels = {},
+  labels = DEFAULT_LABELS,
 }: {
   skills: StoreSkillRow[];
   renderContent: (content: string) => React.ReactNode;

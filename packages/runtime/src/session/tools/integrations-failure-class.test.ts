@@ -64,12 +64,15 @@ describe("classifyIntegrationFailure", () => {
     ["odoo", BODY.odoo],
     ["facebook", BODY.facebook],
     ["googlecalendar", BODY.googleCalendar401],
-  ])("%s dead login → needs_reconnect carrying the toolkit", (toolkit, body) => {
-    expect(classifyIntegrationFailure(body, toolkit)).toEqual({
-      kind: "needs_reconnect",
-      toolkit,
-    });
-  });
+  ])(
+    "%s dead login → needs_reconnect carrying the toolkit",
+    (toolkit, body) => {
+      expect(classifyIntegrationFailure(body, toolkit)).toEqual({
+        kind: "needs_reconnect",
+        toolkit,
+      });
+    },
+  );
 
   test.each([
     BODY.notionQuery,
@@ -94,11 +97,12 @@ describe("classifyIntegrationFailure", () => {
     });
   });
 
-  test.each(
-    Object.entries(RETRYABLE),
-  )("%s stays unclassified (a retry or new input can fix it)", (_name, body) => {
-    expect(classifyIntegrationFailure(body, "any")).toBeUndefined();
-  });
+  test.each(Object.entries(RETRYABLE))(
+    "%s stays unclassified (a retry or new input can fix it)",
+    (_name, body) => {
+      expect(classifyIntegrationFailure(body, "any")).toBeUndefined();
+    },
+  );
 });
 
 describe("toolkitForAction", () => {

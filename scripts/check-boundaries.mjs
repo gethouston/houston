@@ -231,7 +231,7 @@ function walk(dir) {
       // exactly like a *.test.ts file. Convention: *-harness, *.test-helper,
       // *.fixture, *.mock. Documented in BOUNDARY.md.
       !/[.-](harness|test-helper|fixture|mock)\.[jt]sx?$/.test(entry) &&
-      !/\.d\.ts$/.test(entry)
+      !entry.endsWith(".d.ts")
     ) {
       out.push(full);
     }

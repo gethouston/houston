@@ -288,7 +288,7 @@ export function createEngineSentry(
               // (provider, kind, cause, sdk-slug) so each family is its own
               // countable issue (PRODUCT-1393), and tag them so the dashboard
               // can filter across families.
-              ...(providerErrorMeta(message) ?? {}),
+              ...providerErrorMeta(message),
               threads: {
                 values: [
                   {

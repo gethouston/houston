@@ -77,30 +77,30 @@ async function setup() {
   };
 }
 
-test.each([
-  "download",
-  "size",
-])("a %s failure removes the copied generation so retry can succeed", async (failure) => {
-  const s = await setup();
-  if (failure === "download")
-    s.download.mockRejectedValueOnce(new Error("download failed"));
-  else
-    s.download.mockImplementationOnce(async (_key, dest) => {
-      await writeFile(dest, "short");
-      return { generation: "21" };
+test.each(["download", "size"])(
+  "a %s failure removes the copied generation so retry can succeed",
+  async (failure) => {
+    const s = await setup();
+    if (failure === "download")
+      s.download.mockRejectedValueOnce(new Error("download failed"));
+    else
+      s.download.mockImplementationOnce(async (_key, dest) => {
+        await writeFile(dest, "short");
+        return { generation: "21" };
+      });
+    await expect(
+      s.files.copyUpload("upload_session_0001", s.key, "10"),
+    ).rejects.toThrow();
+    expect(s.deleteObject).toHaveBeenCalledWith(s.key, {
+      ifGenerationMatch: "21",
     });
-  await expect(
-    s.files.copyUpload("upload_session_0001", s.key, "10"),
-  ).rejects.toThrow();
-  expect(s.deleteObject).toHaveBeenCalledWith(s.key, {
-    ifGenerationMatch: "21",
-  });
-  expect(s.objects.has(s.key)).toBe(false);
-  expect(s.files.manifest.has(s.key)).toBe(false);
-  await s.files.copyUpload("upload_session_0001", s.key, "10");
-  expect(await readFile(join(s.root, s.key))).toEqual(s.bytes);
-  expect(s.files.manifest.get(s.key)?.generation).toBe("22");
-});
+    expect(s.objects.has(s.key)).toBe(false);
+    expect(s.files.manifest.has(s.key)).toBe(false);
+    await s.files.copyUpload("upload_session_0001", s.key, "10");
+    expect(await readFile(join(s.root, s.key))).toEqual(s.bytes);
+    expect(s.files.manifest.get(s.key)?.generation).toBe("22");
+  },
+);
 
 test("a failed cleanup preserves the deletion failure as cause", async () => {
   const s = await setup();

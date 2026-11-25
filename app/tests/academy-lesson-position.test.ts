@@ -7,12 +7,12 @@ import {
 } from "../src/components/academy/lessons/registry.ts";
 import { mergeAcademyRecords } from "../src/lib/academy/academy-merge.ts";
 import { createAcademyMutationQueue } from "../src/lib/academy/academy-mutations.ts";
+import { parseAcademyRecord } from "../src/lib/academy/academy-record-parse.ts";
 import {
   type AcademyRecord,
   completeLessonRecord,
   serializeAcademyRecord,
 } from "../src/lib/academy/academy-record.ts";
-import { parseAcademyRecord } from "../src/lib/academy/academy-record-parse.ts";
 import { academyPortsFor } from "../src/lib/academy/academy-store.ts";
 import {
   lessonStartIndex,

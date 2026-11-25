@@ -1,5 +1,5 @@
-import type { EngineNoticeKind } from "@houston/sdk";
 import type { SystemNoticeKind } from "@houston-ai/chat";
+import type { EngineNoticeKind } from "@houston/sdk";
 
 /**
  * The chat's copy for every typed system line, by kind: the same centered

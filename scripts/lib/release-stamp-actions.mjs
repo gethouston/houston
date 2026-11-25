@@ -80,7 +80,7 @@ export async function fetchTargets({ lin, teamId, releaseTag, publish }, keys) {
  */
 export async function stampOne(ctx, { issue, magic }, { released, tagLabel }) {
   const { lin, releaseTag, publish, releaseUrl } = ctx;
-  const labelNames = issue.labels.nodes.map((l) => l.name);
+  const labelNames = new Set(issue.labels.nodes.map((l) => l.name));
   const actions = [];
 
   // Release labels are an exclusive Linear group: swap a stale train's label
@@ -94,7 +94,7 @@ export async function stampOne(ctx, { issue, magic }, { released, tagLabel }) {
     );
     actions.push(`unlabeled ${stale.name}`);
   }
-  if (!labelNames.includes(releaseTag)) {
+  if (!labelNames.has(releaseTag)) {
     await lin(
       `mutation($id: String!, $l: String!) { issueAddLabel(id: $id, labelId: $l) { success } }`,
       { id: issue.id, l: tagLabel.id },
@@ -122,7 +122,7 @@ export async function stampOne(ctx, { issue, magic }, { released, tagLabel }) {
   }
   console.log(`${issue.identifier}: ${actions.join(" + ") || "no-op"}`);
 
-  const isUserBug = labelNames.includes(USER_BUG_LABEL);
+  const isUserBug = labelNames.has(USER_BUG_LABEL);
   return {
     key: issue.identifier,
     title: issue.title,

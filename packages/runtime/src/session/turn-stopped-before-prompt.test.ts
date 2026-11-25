@@ -7,9 +7,8 @@ vi.mock("../store/conversations", () => ({
   stampSessionReplay: vi.fn(),
 }));
 
-const { settleStoppedBeforePrompt } = await import(
-  "./turn-stopped-before-prompt"
-);
+const { settleStoppedBeforePrompt } =
+  await import("./turn-stopped-before-prompt");
 
 beforeEach(() => settle.mockClear());
 

@@ -107,7 +107,6 @@ function realTreeFingerprint(): string {
       });
       expect(res2.totalMigrated).toBe(0);
 
-      // eslint-disable-next-line no-console
       console.log(
         `[real-smoke] migrated=${res.totalMigrated} skipped=${res.totalSkipped} orphans=${res.orphanSessionIds} agents=${res.agents.length}`,
       );

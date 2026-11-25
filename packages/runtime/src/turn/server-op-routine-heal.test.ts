@@ -113,24 +113,27 @@ async function postRoute(
 test.each([
   ["PATCH", JSON.stringify({ name: "x" })],
   ["DELETE", ""],
-])("a %s of a routine the store lacks heals the routines doc", async (method, body) => {
-  const { base, pool } = await worker();
-  const json = await postRoute(base, method, "routines/r-ghost", body);
-  expect(json.status, JSON.stringify(json)).toBe(404);
-  expect(JSON.parse(json.body as string)).toEqual({
-    error: "routine not found",
-    code: "routine_not_found",
-  });
-  expect(json.events).toEqual(["RoutinesChanged"]);
-  const puts = pool.docPuts.filter((p) => p.family === "routines");
-  expect(puts).toHaveLength(1);
-  expect(puts[0]?.claim).toBe("agent-ops");
-  expect(JSON.stringify(puts[0]?.doc)).toContain("r-live");
-  expect(JSON.stringify(puts[0]?.doc)).not.toContain("r-ghost");
-  // Nothing was written: the store tree is untouched.
-  expect(pool.writes).toEqual([]);
-  expect(JSON.parse(pool.read(ROUTINES_KEY))).toEqual([LIVE]);
-});
+])(
+  "a %s of a routine the store lacks heals the routines doc",
+  async (method, body) => {
+    const { base, pool } = await worker();
+    const json = await postRoute(base, method, "routines/r-ghost", body);
+    expect(json.status, JSON.stringify(json)).toBe(404);
+    expect(JSON.parse(json.body as string)).toEqual({
+      error: "routine not found",
+      code: "routine_not_found",
+    });
+    expect(json.events).toEqual(["RoutinesChanged"]);
+    const puts = pool.docPuts.filter((p) => p.family === "routines");
+    expect(puts).toHaveLength(1);
+    expect(puts[0]?.claim).toBe("agent-ops");
+    expect(JSON.stringify(puts[0]?.doc)).toContain("r-live");
+    expect(JSON.stringify(puts[0]?.doc)).not.toContain("r-ghost");
+    // Nothing was written: the store tree is untouched.
+    expect(pool.writes).toEqual([]);
+    expect(JSON.parse(pool.read(ROUTINES_KEY))).toEqual([LIVE]);
+  },
+);
 
 test("a heal whose doc never lands announces nothing", async () => {
   const { base, pool } = await worker({ failDocs: true });

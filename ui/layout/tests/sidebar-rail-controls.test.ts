@@ -31,9 +31,8 @@ const { createRoot } = await import("react-dom/client");
 const { TooltipProvider } = await import("@houston-ai/core");
 const { AppSidebar } = await import("../src/sidebar.tsx");
 const { SidebarAddRow } = await import("../src/sidebar-add-row.tsx");
-const { SidebarConnectGroup } = await import(
-  "../src/sidebar-connect-group.tsx"
-);
+const { SidebarConnectGroup } =
+  await import("../src/sidebar-connect-group.tsx");
 
 /** Mounts `element`, hands its container to `inspect`, then unmounts. */
 function withMounted(

@@ -75,7 +75,7 @@ export function useSkillChatWrites(agent: Agent) {
     } finally {
       setPending(false);
     }
-  }, [agent, path, pending, queryClient, missionTitle]);
+  }, [agent, path, pending, queryClient, missionTitle, mode]);
 
   /**
    * Start the persistent chat for a skill that doesn't have one yet, and
@@ -133,7 +133,7 @@ export function useSkillChatWrites(agent: Agent) {
         setPending(false);
       }
     },
-    [agent, path, pending, queryClient],
+    [agent, path, pending, queryClient, mode],
   );
 
   /**

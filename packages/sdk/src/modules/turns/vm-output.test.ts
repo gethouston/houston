@@ -725,7 +725,12 @@ test("final_result keeps its FIRST data — a re-settle's empty final never clob
     turnId: "t-1",
   });
   expect(snap().feed).toHaveLength(1);
-  expect((snap().feed[0]?.data as { usage: unknown }).usage).toEqual(usage);
+  expect(snap().feed[0]?.data).toEqual({
+    result: "done",
+    cost_usd: null,
+    duration_ms: null,
+    usage,
+  });
 });
 
 test("pushes without a turnId keep the append-only fold (legacy servers)", () => {

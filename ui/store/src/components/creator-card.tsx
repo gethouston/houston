@@ -3,7 +3,11 @@ import { VerifiedBadge } from "@houston-ai/core";
 import type { CreatorDirectoryRow, StoreLinkComponent } from "../types";
 import { CreatorFace } from "./creator-face";
 
-const PlainLink: StoreLinkComponent = (props) => <a {...props} />;
+const DEFAULT_LABELS = {};
+
+const PlainLink: StoreLinkComponent = ({ children, ...props }) => (
+  <a {...props}>{children}</a>
+);
 const compactNumber = new Intl.NumberFormat("en", { notation: "compact" });
 
 export interface CreatorCardLabels {
@@ -18,7 +22,7 @@ export function CreatorCard({
   creator,
   href,
   LinkComponent = PlainLink,
-  labels = {},
+  labels = DEFAULT_LABELS,
 }: {
   creator: CreatorDirectoryRow;
   href: string;

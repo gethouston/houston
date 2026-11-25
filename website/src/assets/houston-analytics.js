@@ -31,8 +31,8 @@
     download_started: ["os"],
     welcome_bridged: ["install_id"],
   };
-  const LOCALES = ["en", "es", "pt"];
-  const PLATFORMS = ["mac", "windows", "linux", "other"];
+  const LOCALES = new Set(["en", "es", "pt"]);
+  const PLATFORMS = new Set(["mac", "windows", "linux", "other"]);
   const MAX_PATH = 256;
   const MAX_HOST = 128;
   const MAX_UTM = 128;
@@ -81,7 +81,7 @@
     const lang = doc.documentElement?.getAttribute("lang");
     // <html lang> carries region tags ("pt-BR"); the column holds the language.
     const code = lang ? String(lang).slice(0, 2).toLowerCase() : "";
-    return LOCALES.includes(code) ? code : null;
+    return LOCALES.has(code) ? code : null;
   }
 
   // text/plain, not application/json: that keeps this a CORS simple request, so
@@ -143,7 +143,7 @@
       const lang = pageLocale();
       if (lang) event.locale = lang;
       if (name === "landing_viewed") addEntryContext(event, loc.search);
-      if (allowed.includes("os") && PLATFORMS.includes(input.os)) {
+      if (allowed.includes("os") && PLATFORMS.has(input.os)) {
         event.os = input.os;
       }
       if (allowed.includes("install_id") && isInstallId(input.install_id)) {

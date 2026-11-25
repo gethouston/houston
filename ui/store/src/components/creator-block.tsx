@@ -3,7 +3,9 @@ import { VerifiedBadge } from "@houston-ai/core";
 import type { StoreCreatorRow, StoreLinkComponent } from "../types";
 import { CreatorFace } from "./creator-face";
 
-const PlainLink: StoreLinkComponent = (props) => <a {...props} />;
+const PlainLink: StoreLinkComponent = ({ children, ...props }) => (
+  <a {...props}>{children}</a>
+);
 
 export function CreatorBlock({
   creator,

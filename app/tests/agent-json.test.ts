@@ -1,8 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import learningsSchema from "@houston-ai/agent-schemas/learnings.schema.json" with {
-  type: "json",
-};
+import learningsSchema from "@houston-ai/agent-schemas/learnings.schema.json" with { type: "json" };
 import { parseAgentJson } from "../src/data/agent-json.ts";
 
 const schema = learningsSchema as Parameters<typeof parseAgentJson>[2];

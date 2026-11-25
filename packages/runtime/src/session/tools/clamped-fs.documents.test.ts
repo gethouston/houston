@@ -16,20 +16,20 @@ afterEach(async () => {
   await rm(workspace, { recursive: true, force: true });
 });
 
-test.each([
-  "attachment.pdf",
-  "renamed.bin",
-])("extracts accented PDF text by magic bytes: %s", async (path) => {
-  await writeFile(
-    join(workspace, path),
-    pdfWithPages([spanishSentence, "Segunda página"]),
-  );
-  const result = await readDocument(workspace, path);
-  expect(result.structuredContent).toContain(spanishSentence);
-  expect(result.structuredContent).toContain("--- Page 1 ---");
-  expect(result.structuredContent).toContain("--- Page 2 ---");
-  expect(JSON.stringify(result.content)).not.toContain("%PDF");
-});
+test.each(["attachment.pdf", "renamed.bin"])(
+  "extracts accented PDF text by magic bytes: %s",
+  async (path) => {
+    await writeFile(
+      join(workspace, path),
+      pdfWithPages([spanishSentence, "Segunda página"]),
+    );
+    const result = await readDocument(workspace, path);
+    expect(result.structuredContent).toContain(spanishSentence);
+    expect(result.structuredContent).toContain("--- Page 1 ---");
+    expect(result.structuredContent).toContain("--- Page 2 ---");
+    expect(JSON.stringify(result.content)).not.toContain("%PDF");
+  },
+);
 
 test("pages through extracted PDF text using pi offset and limit", async () => {
   await writeFile(

@@ -6,11 +6,11 @@ import {
   createMissionHistoryScanner,
   type MissionHistoryScanner,
 } from "./mission-history-scan-wave.ts";
-import { buildMissionHistorySearchText } from "./mission-search.ts";
 import {
   type SearchableText,
   toSearchableText,
 } from "./mission-search-text.ts";
+import { buildMissionHistorySearchText } from "./mission-search.ts";
 
 /** Loaded transcripts are committed in windows of this long, so results stream
  *  onto the board as they land without re-rendering it once per mission. */

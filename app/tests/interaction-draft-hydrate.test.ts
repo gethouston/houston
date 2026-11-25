@@ -1,7 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { InteractionStep } from "@houston/protocol";
 import type { StepperState } from "@houston-ai/chat";
+import type { InteractionStep } from "@houston/protocol";
 import { hydrateParkedState } from "../src/lib/interaction-draft-hydrate.ts";
 
 const APPROVAL: InteractionStep = {

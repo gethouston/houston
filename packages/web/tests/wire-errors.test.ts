@@ -109,37 +109,38 @@ const DELEGATED: readonly {
   },
 ];
 
-test.each(DELEGATED)("$name surfaces a sign-out the app can recognise", async ({
-  path,
-  call,
-}) => {
-  stubFetch(() => json(401, { error: "signed_out" }));
+test.each(DELEGATED)(
+  "$name surfaces a sign-out the app can recognise",
+  async ({ path, call }) => {
+    stubFetch(() => json(401, { error: "signed_out" }));
 
-  const err = await call(client()).then(
-    () => null,
-    (e: unknown) => e,
-  );
+    const err = await call(client()).then(
+      () => null,
+      (e: unknown) => e,
+    );
 
-  expect(isSignedOutEngineError(err)).toBe(true);
-  expect(calls).toContain(path);
-});
+    expect(isSignedOutEngineError(err)).toBe(true);
+    expect(calls).toContain(path);
+  },
+);
 
 // `provider-agent-gone.ts` keys on the agent id the failure carries; the SDK's
 // errors know nothing but a status, so the path is the only place it can come
 // from.
-test.each(
-  DELEGATED.filter((d) => d.path.startsWith("/agents/")),
-)("$name names the agent its failure belongs to", async ({ call }) => {
-  stubFetch(() => json(503, { error: "engine unavailable" }));
+test.each(DELEGATED.filter((d) => d.path.startsWith("/agents/")))(
+  "$name names the agent its failure belongs to",
+  async ({ call }) => {
+    stubFetch(() => json(503, { error: "engine unavailable" }));
 
-  const err = await call(client()).then(
-    () => null,
-    (e: unknown) => e,
-  );
+    const err = await call(client()).then(
+      () => null,
+      (e: unknown) => e,
+    );
 
-  expect(err).toBeInstanceOf(HoustonEngineError);
-  expect((err as HoustonEngineError).agentId).toBe(AGENT);
-});
+    expect(err).toBeInstanceOf(HoustonEngineError);
+    expect((err as HoustonEngineError).agentId).toBe(AGENT);
+  },
+);
 
 test("a per-agent write landing ends that agent's stuck-wake episode", async () => {
   const noteSuccess = vi.spyOn(wakingStuckTracker, "noteSuccess");

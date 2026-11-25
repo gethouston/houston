@@ -80,12 +80,10 @@ export function customRemovalPatches(
   slug: string,
   target: CustomWriteTarget,
 ): OptimisticPatch[] {
-  const lists = customListKeys(target).map(
-    (queryKey): OptimisticPatch => ({
-      queryKey,
-      apply: (list: CustomList) => customWithout(list, slug),
-    }),
-  );
+  const lists = customListKeys(target).map((queryKey): OptimisticPatch => ({
+    queryKey,
+    apply: (list: CustomList) => customWithout(list, slug),
+  }));
   if (target.scope !== "host") return lists;
   return [
     ...lists,

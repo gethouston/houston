@@ -30,9 +30,8 @@ vi.mock("./conversation-backends", () => ({
   serverBackendFor: () => backends.next,
 }));
 
-const { conversationCompactions } = await import(
-  "../store/conversation-compaction"
-);
+const { conversationCompactions } =
+  await import("../store/conversation-compaction");
 const { saveConversation } = await import("../store/conversation-file");
 const { disposeConversation } = await import("./conversation-control");
 const { switchBackendIfNeeded } = await import("./conversation-switch");

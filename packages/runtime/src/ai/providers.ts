@@ -405,8 +405,7 @@ export function pickClaimedProvider(
   connectedSiblings: ProviderId[],
 ): ProviderId | null {
   if (saved) return null;
-  const others = authedIds.filter((id) => !connectedSiblings.includes(id));
-  return others[0] ?? connected;
+  return authedIds.find((id) => !connectedSiblings.includes(id)) ?? connected;
 }
 
 /**

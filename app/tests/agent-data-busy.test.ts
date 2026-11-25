@@ -53,9 +53,8 @@ mock.module(href("../src/lib/sentry-quiet.ts"), {
 const { showErrorToast } = await import("../src/lib/error-toast.ts");
 const { reportError } = await import("../src/lib/error-report.ts");
 const { classifyQuietError } = await import("../src/lib/quiet-error-class.ts");
-const { isAgentDataBusyError, isEngineWakingError } = await import(
-  "../src/lib/engine-waking-error.ts"
-);
+const { isAgentDataBusyError, isEngineWakingError } =
+  await import("../src/lib/engine-waking-error.ts");
 
 const BUSY = "agent data temporarily unavailable; retrying";
 
@@ -152,16 +151,16 @@ describe("the engine-call layer routes the busy answer report-only", () => {
   const waking = body.indexOf(
     'if (classifyQuietError(err) === "engine_waking")',
   );
-  const branch = body.slice(busy, waking);
+  const branch = new Set(body.slice(busy, waking));
 
   it("reports the quiet class before the waking branch, with no toast", () => {
     ok(busy !== -1 && busy < waking, "busy guard must precede waking");
     ok(
-      branch.includes(
+      branch.has(
         'reportQuietError("agent_data_busy", label, message, err, context)',
       ),
     );
-    ok(!branch.includes("Toast"), "the busy answer shows nothing");
-    ok(branch.includes("return false"), "nothing was told to the user");
+    ok(!branch.has("Toast"), "the busy answer shows nothing");
+    ok(branch.has("return false"), "nothing was told to the user");
   });
 });
