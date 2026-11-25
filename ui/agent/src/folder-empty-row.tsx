@@ -33,7 +33,6 @@ export function FolderEmptyRow({
   newFolderLabel?: string;
 }) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements lint/a11y/useFocusableInteractive: CSS-grid row with focusable inline actions; the empty row itself has no action.
     <div
       role="row"
       className={cn(ROW_CLASS, "hover:bg-transparent", META_TEXT)}

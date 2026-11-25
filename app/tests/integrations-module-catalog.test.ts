@@ -133,14 +133,16 @@ describe("browseCatalog hides no-auth apps", () => {
   ];
 
   it("excludes every no-auth app from the browse list", () => {
-    const all = browseCatalog({
-      catalog: NOAUTH_CATALOG,
-      query: "",
-      category: "all",
-      connected: new Set(),
-    }).map((t) => t.slug);
-    strictEqual(all.includes("weathermap"), false);
-    strictEqual(all.includes("test_app"), false);
+    const all = new Set(
+      browseCatalog({
+        catalog: NOAUTH_CATALOG,
+        query: "",
+        category: "all",
+        connected: new Set(),
+      }).map((t) => t.slug),
+    );
+    strictEqual(all.has("weathermap"), false);
+    strictEqual(all.has("test_app"), false);
   });
 });
 

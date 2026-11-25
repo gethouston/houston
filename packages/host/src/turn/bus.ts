@@ -57,7 +57,7 @@ export class MemoryTurnBus implements TurnBus {
 
   async publish(channel: string, message: string): Promise<void> {
     // Synchronous fan-out preserves the pre-bus single-replica timing.
-    for (const h of [...(this.handlers.get(channel) ?? [])]) h(message);
+    for (const h of Array.from(this.handlers.get(channel) ?? [])) h(message);
   }
 
   subscribe(channel: string, handler: (message: string) => void): () => void {

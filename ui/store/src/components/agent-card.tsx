@@ -7,7 +7,9 @@ import type { StoreAgentRow, StoreLinkComponent } from "../types";
 import { AgentTile } from "./agent-tile";
 import { IntegrationMark } from "./integration-mark";
 
-const PlainLink: StoreLinkComponent = (props) => <a {...props} />;
+const PlainLink: StoreLinkComponent = ({ children, ...props }) => (
+  <a {...props}>{children}</a>
+);
 const compactNumber = new Intl.NumberFormat("en", { notation: "compact" });
 
 export interface AgentCardLabels {

@@ -45,7 +45,7 @@ export function useFirstRunOnboarding(args: {
   // A ref, not an empty-deps effect alone: StrictMode replays mount effects,
   // and a run must report exactly one start.
   const started = useRef(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: whether this run is a resume is decided once, at mount.
+  /* oxlint-disable react-hooks/exhaustive-deps -- whether this run is a resume is decided once, at mount. */
   useEffect(() => {
     if (started.current) return;
     started.current = true;
@@ -58,6 +58,7 @@ export function useFirstRunOnboarding(args: {
       onError: logAndReportError,
     });
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Set by the finish, which clears the stage in the same render that routes
   // into the app: the latch must never record it again on the way out.
@@ -71,7 +72,7 @@ export function useFirstRunOnboarding(args: {
 
   const previous = useRef<OnboardingStep | null>(null);
   const viewed = useRef(new Set<OnboardingStep>());
-  // biome-ignore lint/correctness/useExhaustiveDependencies: beats fire on screen changes only; the provider id is read at that transition.
+  /* oxlint-disable react-hooks/exhaustive-deps -- beats fire on screen changes only; the provider id is read at that transition. */
   useEffect(() => {
     if (shown === null || shown === previous.current) return;
     for (const beat of onboardingBeats({
@@ -89,6 +90,7 @@ export function useFirstRunOnboarding(args: {
     }
     previous.current = shown;
   }, [shown]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   return () => {
     finished.current = true;

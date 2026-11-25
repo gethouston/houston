@@ -44,7 +44,7 @@ export function useProviderBrowserData(): ProviderBrowserData {
   const providerCapabilities =
     capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: updatedAt keys the in-place PROVIDERS hydration.
+  /* oxlint-disable react-hooks/exhaustive-deps -- updatedAt keys the in-place PROVIDERS hydration. */
   const providers = useMemo(
     () =>
       getConnectProviders({
@@ -54,6 +54,7 @@ export function useProviderBrowserData(): ProviderBrowserData {
       }),
     [newEngine, providerCapabilities, updatedAt],
   );
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   return { providers, connections, catalog };
 }

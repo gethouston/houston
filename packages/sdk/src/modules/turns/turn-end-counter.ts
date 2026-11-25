@@ -13,7 +13,7 @@ export class TurnEndCounter {
 
   bump(): void {
     this.n++;
-    for (const wake of [...this.waiters]) wake();
+    for (const wake of Array.from(this.waiters)) wake();
   }
 
   /** Resolves once the count exceeds `mark`, or `signal` aborts. */

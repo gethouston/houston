@@ -58,7 +58,6 @@ export function RoutineScreenSections({
   // outside edits (the agent rewrote it in chat) only while untouched.
   const [draft, setDraft] = useState(routine.prompt);
   const dirty = draft !== routine.prompt;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reseed only on the routine's own change
   useEffect(() => setDraft(routine.prompt), [routine.id, routine.prompt]);
 
   const next =

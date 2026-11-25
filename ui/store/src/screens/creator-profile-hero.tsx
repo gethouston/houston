@@ -10,7 +10,9 @@ import type { ReactNode } from "react";
 import type { CreatorProfileOwner } from "../components/owned-agent-grid";
 import type { StoreCreatorProfile, StoreLinkComponent } from "../types";
 
-const PlainLink: StoreLinkComponent = (props) => <a {...props} />;
+const PlainLink: StoreLinkComponent = ({ children, ...props }) => (
+  <a {...props}>{children}</a>
+);
 
 /** The hero's countable-noun labels, provided by the screen. */
 export interface CreatorProfileHeroLabels {

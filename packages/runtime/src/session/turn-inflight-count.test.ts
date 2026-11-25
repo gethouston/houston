@@ -68,7 +68,7 @@ const { config } = await import("../config");
 function cachedConv(id: string, stoppable: boolean) {
   const listeners = new Set<(e: WireEvent) => void>();
   const emit = (e: WireEvent) => {
-    for (const l of [...listeners]) l(e);
+    for (const l of Array.from(listeners)) l(e);
   };
   const aborted = Promise.withResolvers<void>();
   const prompted = Promise.withResolvers<void>();

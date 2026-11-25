@@ -6,12 +6,13 @@
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck && tsgo -p scripts/tsconfig.json && tsgo -p scripts/assistant-catalog/tsconfig.json",
-    "format": "biome format --write",
-    "format:check": "biome format",
-    "lint": "biome lint --error-on-warnings",
-    "lint:fix": "biome lint --write --error-on-warnings",
-    "check": "biome check --error-on-warnings && pnpm check:desktop-native && pnpm check:assistant-catalog && pnpm check:assistant-coverage && pnpm check:sdk-parity",
-    "check:fix": "biome check --write --error-on-warnings",
+    "format": "biome check --write --error-on-warnings",
+    "format:check": "biome check --error-on-warnings",
+    "lint": "oxlint --deny-warnings --report-unused-disable-directives-severity=error",
+    "lint:fix": "oxlint --fix --deny-warnings --report-unused-disable-directives-severity=error",
+    "check": "pnpm lint && pnpm format:check && pnpm check:gates",
+    "check:fix": "pnpm lint:fix && pnpm format",
+    "check:gates": "pnpm check:desktop-native && pnpm check:assistant-catalog && pnpm check:assistant-coverage && pnpm check:sdk-parity",
     "eval:assistant": "pnpm --filter @houston/runtime exec tsx eval/run-discoverability.ts",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:desktop-native": "node scripts/check-desktop-native.mjs",
@@ -47,13 +48,18 @@
     "husky": "9.1.7",
     "lint-staged": "17.0.8",
     "mprocs": "0.9.6",
+    "oxlint": "1.93.0",
     "tsx": "4.23.0",
     "typescript": "6.0.3",
     "vitest": "4.1.12",
     "yaml": "2.9.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc}": "biome check --write --no-errors-on-unmatched --error-on-warnings"
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "oxlint --fix --deny-warnings --report-unused-disable-directives-severity=error --no-error-on-unmatched-pattern",
+      "biome check --write --no-errors-on-unmatched --error-on-warnings"
+    ],
+    "*.{json,jsonc}": "biome check --write --no-errors-on-unmatched --error-on-warnings"
   },
   "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be"
 }

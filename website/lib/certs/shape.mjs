@@ -113,7 +113,7 @@ function isRenderableName(name) {
   if (trimmed.length === 0 || [...trimmed].length > 80) return false;
   // C0/C1 controls, bidi embedding/override/isolate marks, zero-width + BOM.
   const forbidden =
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting them is the point
+    // rejecting them is the point
     /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\u200b\u2060\ufeff]/;
   if (forbidden.test(trimmed)) return false;
   // At least one letter or digit — rejects punctuation/whitespace-only names.

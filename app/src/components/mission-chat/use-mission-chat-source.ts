@@ -32,9 +32,10 @@ export function useMissionChatSource(
 
   // Mirror the nav-owned selection into the data hook so the open
   // conversation's feed, session key and VM subscription track the screen.
+  const mcSetSelectedId = mc.setSelectedId;
   useEffect(() => {
-    if (mc.selectedId !== missionId) mc.setSelectedId(missionId);
-  }, [mc.selectedId, mc.setSelectedId, missionId]);
+    if (mc.selectedId !== missionId) mcSetSelectedId(missionId);
+  }, [mc.selectedId, mcSetSelectedId, missionId]);
 
   const paths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const actions = useMcActions({ mc, activeAgent: agent, paths });
@@ -67,19 +68,21 @@ export function useMissionChatSource(
     },
     [missionId],
   );
+  const mcHandleDelete = mc.handleDelete;
   const onDelete = useCallback(
     (item: KanbanItem) => {
-      mc.handleDelete(item);
+      mcHandleDelete(item);
       closeIfOpen(item);
     },
-    [mc.handleDelete, closeIfOpen],
+    [mcHandleDelete, closeIfOpen],
   );
+  const mcHandleArchive = mc.handleArchive;
   const onArchive = useCallback(
     (item: KanbanItem) => {
-      mc.handleArchive(item);
+      mcHandleArchive(item);
       closeIfOpen(item);
     },
-    [mc.handleArchive, closeIfOpen],
+    [mcHandleArchive, closeIfOpen],
   );
 
   const selectedItem = missionId

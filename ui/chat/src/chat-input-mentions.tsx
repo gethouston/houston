@@ -97,8 +97,7 @@ export function ChatInputMentions({
           role="listbox"
         >
           {people.map((person, index) => (
-            // biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard path is the combobox's, not the row's — Arrow/Enter/Tab/Escape are handled on the textarea that owns focus (`mention-keys.ts`), which is exactly what the pattern prescribes.
-            // biome-ignore lint/a11y/useFocusableInteractive: same reason — under aria-activedescendant the option is referenced by id from the focused textarea and must never take focus itself.
+            // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- The owning combobox handles keyboard input and keeps focus while aria-activedescendant selects this option.
             <div
               aria-selected={index === highlighted}
               className={ROW_CLASS}

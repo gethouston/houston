@@ -162,10 +162,12 @@ describe("peopleGutterClass", () => {
   // other, so the ladder may only step through it (rounding up, never down —
   // extra clearance is free, a short gutter puts text under a face).
   it("only uses steps on the sanctioned spacing scale", () => {
-    const SPACING_SCALE = [2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64];
+    const SPACING_SCALE = new Set([
+      2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64,
+    ]);
     for (let n = 1; n <= CARD_PEOPLE_MAX + 1; n++) {
       const step = Number(peopleGutterClass(n).slice("pr-".length));
-      assert.ok(SPACING_SCALE.includes(step), `pr-${step} is off the scale`);
+      assert.ok(SPACING_SCALE.has(step), `pr-${step} is off the scale`);
     }
   });
 

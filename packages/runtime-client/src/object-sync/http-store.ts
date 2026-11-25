@@ -118,7 +118,7 @@ export class HttpObjectStore implements ObjectStore {
     srcFile: string,
     key: string,
     opts?: WriteOptions,
-    // biome-ignore lint/suspicious/noConfusingVoidType: ObjectStore preserves void-returning adapters.
+    // ObjectStore preserves void-returning adapters.
   ): Promise<WriteResult | void> {
     return uploadHttpObject({
       fetchRequest: this.fetch.bind(this),

@@ -65,7 +65,7 @@ export function EditableSkillTitle({
       </Heading>
       {editing ? (
         <input
-          // biome-ignore lint/a11y/noAutofocus: the input replaces the title the user just clicked to edit.
+          // the input replaces the title the user just clicked to edit.
           autoFocus
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

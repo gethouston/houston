@@ -64,13 +64,14 @@ export function EmailSignIn({
   // prefill the stored address and send the code immediately. The ref guards
   // against re-firing on unrelated re-renders (a given token sends exactly once).
   const sentToken = useRef<number | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: autoSubmit.token is the intentional trigger; sendCode/setEmail are stable enough and re-running on their identity would resend the code.
+  /* oxlint-disable react-hooks/exhaustive-deps -- autoSubmit.token is the intentional trigger; sendCode/setEmail are stable enough and re-running on their identity would resend the code. */
   useEffect(() => {
     if (!autoSubmit || autoSubmit.token === sentToken.current) return;
     sentToken.current = autoSubmit.token;
     setEmail(autoSubmit.email);
     void sendCode(autoSubmit.email);
   }, [autoSubmit]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Takes the value explicitly so the pin input's `onComplete` can submit the
   // just-completed code without racing the `code` state update.

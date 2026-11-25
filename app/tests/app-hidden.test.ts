@@ -27,7 +27,7 @@ function fakePage() {
   return {
     source,
     fire: (type: string) => {
-      for (const handler of [...(listeners.get(type) ?? [])]) handler();
+      for (const handler of Array.from(listeners.get(type) ?? [])) handler();
     },
     setHidden: (value: boolean) => {
       hidden = value;

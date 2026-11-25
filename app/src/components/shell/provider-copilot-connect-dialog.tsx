@@ -125,7 +125,7 @@ export function ProviderCopilotConnectDialog({
             id="copilot-enterprise-domain"
             type="text"
             autoComplete="off"
-            // biome-ignore lint/a11y/noAutofocus: the company plan asks for exactly this one value, and the field appears because the user just chose it; the rule tolerated the same autofocus before only because the <input> sat lexically inside <Dialog>.
+            // the company plan asks for exactly this one value, and the field appears because the user just chose it; the rule tolerated the same autofocus before only because the <input> sat lexically inside <Dialog>.
             autoFocus
             value={domain}
             onChange={(e) => {

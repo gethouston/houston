@@ -84,7 +84,7 @@ export class AgentRoleTracker {
   }
 
   async flush(): Promise<void> {
-    await Promise.all([...this.tails.values()]);
+    await Promise.all(this.tails.values());
   }
 
   private async sync(agentId: string): Promise<void> {

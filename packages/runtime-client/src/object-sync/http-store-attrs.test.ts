@@ -80,7 +80,9 @@ test("a link uploads its target with the link header", async () => {
   ).toEqual({ generation: "9" });
   const put = requests[1];
   expect(
-    (put?.init.headers as Record<string, string>)["X-Houston-Object-Link"],
+    (put?.init.headers as Record<string, string> | undefined)?.[
+      "X-Houston-Object-Link"
+    ],
   ).toBe("1");
   expect(Buffer.from(put?.init.body as Buffer).toString()).toBe(
     "../typescript/bin/tsc",
@@ -102,7 +104,7 @@ test("a link the store wrote as a plain file is removed again", async () => {
   const remove = requests[2];
   expect(remove?.init.method).toBe("DELETE");
   expect(
-    (remove?.init.headers as Record<string, string>)[
+    (remove?.init.headers as Record<string, string> | undefined)?.[
       "X-Houston-If-Generation-Match"
     ],
   ).toBe("9");

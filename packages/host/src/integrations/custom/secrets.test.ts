@@ -127,9 +127,9 @@ test("remote store uses the scoped pod route and never echoes writes locally", a
   expect(calls[0]?.url).toContain(
     "/v1/pod/custom-secrets/0123456789abcdef/aaaaaaaaaaaaaaaa/ci_acme_token",
   );
-  expect(
-    (calls[0]?.init?.headers as Record<string, string>).Authorization,
-  ).toBe("Bearer host-token");
+  expect(new Headers(calls[0]?.init?.headers).get("Authorization")).toBe(
+    "Bearer host-token",
+  );
 });
 
 test("remote store serves repeated reads from a short write-through cache", async () => {

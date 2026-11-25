@@ -29,11 +29,22 @@
     "indentWidth": 2
   },
   "linter": {
-    "enabled": true,
-    "rules": {
-      "preset": "recommended"
-    }
+    "enabled": false
   },
+  "overrides": [
+    {
+      "includes": ["**/*.json", "**/*.jsonc"],
+      "linter": {
+        "enabled": true,
+        "rules": {
+          "recommended": false,
+          "suspicious": {
+            "noDuplicateObjectKeys": "error"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "double",

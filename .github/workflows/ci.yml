@@ -127,8 +127,15 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Biome check
-        run: pnpm check
+      # The three steps are `pnpm check`, split so each tool's time shows on its own.
+      - name: Lint
+        run: time pnpm lint
+
+      - name: Format
+        run: time pnpm format:check
+
+      - name: Repository gates
+        run: pnpm check:gates
 
       - name: Boundary check
         run: pnpm check:boundaries
@@ -453,7 +460,7 @@ jobs:
     # tests and build, none of which the jobs above run. The tests build the
     # whole site (test/social-tags.test.mjs), so a template or data error
     # fails here; the deploy workflow runs the same tests again before it
-    # ships. Biome is the root's pinned version, read from package.json, so
+    # ships. Lint and format use the root's pinned versions from package.json, so
     # website code keeps its lint when the TS checks job is skipped.
     name: Website (lint · tests · locales · build)
     needs: changes
@@ -471,9 +478,11 @@ jobs:
           cache: npm
           cache-dependency-path: website/package-lock.json
 
-      - name: Biome (website)
+      - name: Lint and format (website)
         run: |
           set -euo pipefail
+          lint_version="$(node -p "require('./package.json').devDependencies.oxlint")"
+          npx --yes "oxlint@${lint_version}" --deny-warnings --report-unused-disable-directives-severity=error website
           version="$(node -p "require('./package.json').devDependencies['@biomejs/biome']")"
           npx --yes "@biomejs/biome@${version}" check --error-on-warnings website
 

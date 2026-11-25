@@ -50,7 +50,6 @@ export function ProviderReconnectCard({
   });
   const provider = activeProviderId ? getProvider(activeProviderId) : null;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: activeProviderId is a render-derived variable; the effect only calls stable setState setters but must re-run whenever the resolved provider changes — an empty dep array would run only once, which is wrong
   useEffect(() => {
     setLoginLaunched(false);
     setLoginError(false);

@@ -45,7 +45,7 @@ export function AgentCopyDialog({
 
   // Re-seed per opening: the free name and the home team both move under the
   // dialog while it is closed.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: seed only per opening
+  /* oxlint-disable react-hooks/exhaustive-deps -- seed only per opening */
   useEffect(() => {
     if (!open) return;
     setName(
@@ -58,6 +58,7 @@ export function AgentCopyDialog({
     );
     setTeamId(currentTeamId);
   }, [open]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   const issue = agentNameIssue(name, [...existingNames]);
   const issueText = issueCopy(issue, name);

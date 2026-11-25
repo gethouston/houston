@@ -24,10 +24,11 @@ afterEach(async () => {
  *  hold 1455); returns the port the squatter owns. */
 function occupyEphemeralPort(): Promise<number> {
   return new Promise<number>((resolve, reject) => {
-    squatter = createServer();
-    squatter.once("error", reject);
-    squatter.listen(0, "127.0.0.1", () => {
-      resolve((squatter?.address() as AddressInfo).port);
+    const server = createServer();
+    squatter = server;
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      resolve((server.address() as AddressInfo).port);
     });
   });
 }
