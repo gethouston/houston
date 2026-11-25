@@ -17,6 +17,7 @@ export function canShowAgentShareBlock(
 
 export type AgentShareSurface = "manage" | "inviteTeam" | "view" | "none";
 
+// WHY: inviteTeam beats manage: addOrgMember 403s personal_space. ADR-0034
 export function agentShareSurface(
   caps: Capabilities | null | undefined,
   agent: Pick<Agent, "access">,

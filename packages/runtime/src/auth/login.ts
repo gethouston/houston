@@ -74,6 +74,7 @@ export function loginPending(): boolean {
   return false;
 }
 
+// WHY: Abort stops device-code pollers; rejecting the paste closes loopback servers; do both. ADR-0008
 export function cancelLogin(providerId: string): void {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   const key = activeKey(providerId);

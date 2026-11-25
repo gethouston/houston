@@ -9,6 +9,7 @@ export const MIN_HANDOFF_MS = 60_000;
 
 const PREFIX = "turn-v1.";
 
+// WHY: A restored sandbox's clock is unreliable; count exp - iat from arrival. ADR-0015
 export function turnTokenExpiry(
   hostToken: string | undefined,
   arrivedAt: number,

@@ -65,6 +65,7 @@ export type PiCred =
       refresh: string;
       expires: number;
       accountId?: string;
+      // WHY: Copilot Enterprise refreshes at api.<domain>; dropping the domain breaks refresh. ADR-0008
       enterpriseUrl?: string;
     }
   | { type: "api_key"; key: string };

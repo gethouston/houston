@@ -7,6 +7,7 @@ export function sessionKeyOf(a: Activity): string {
   return missionConversationKey(a);
 }
 
+// WHY: Must match the web adapter's resolver so a status write lands on the same card everywhere. ADR-0021
 export function matchesActivitySessionKey(
   a: Activity,
   sessionKey: string,

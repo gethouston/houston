@@ -38,6 +38,7 @@ export type { GroupId } from "./groups";
 
 export type RouteDef = RouteCommon & Classified & Phased;
 
+// WHY: Not Omit<RouteDef>: RouteDef is a union and Omit over it erases the per-phase handler type. ADR-0016
 export type RouteFamilyDef = Omit<RouteCommon, "method" | "path"> &
   Classified &
   Phased & {

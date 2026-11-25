@@ -6,6 +6,7 @@ import { COMPUTE_RETRY_BUDGET_MS } from "./http";
 const DEFAULT_PAUSE_MS = 2_000;
 const MIN_PAUSE_MS = 500;
 
+// WHY: The gateway sends these codes only when nothing ran, so a same-request resend is safe. ADR-0019
 export async function retryComputeRefusals<T>(
   clock: Clock,
   call: () => Promise<T>,

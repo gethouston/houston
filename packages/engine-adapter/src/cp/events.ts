@@ -4,6 +4,7 @@ import { type ControlPlaneConfig, liveToken } from "./fetch";
 
 const streamedGateways = new Set<string>();
 
+// WHY: Cross-origin EventSource never connects in the Tauri webview; streams cannot carry headers. ADR-0030
 export function subscribeEvents(
   cfg: ControlPlaneConfig,
   onEvent: (event: unknown) => void,

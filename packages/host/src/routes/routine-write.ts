@@ -34,6 +34,7 @@ export interface RoutineWriteOptions {
 
 export type RoutineWriteError = { error: string } | PlanMinIntervalRefusal;
 
+// WHY: Merge-safe write: each setup chat knows only its own routine and must not delete the others. ADR-0016
 export async function createRoutineChecked(
   vfs: Vfs,
   root: string,

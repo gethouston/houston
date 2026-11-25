@@ -24,6 +24,7 @@ export async function loadJson<T>(
   return parseJsonDoc(raw, key) as T;
 }
 
+// WHY: JSON.parse rejects a BOM; an unparsable doc throws, since a reset destroys data on next save. ADR-0084
 export function parseJsonDoc(raw: string, key: string): unknown {
   const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
   try {

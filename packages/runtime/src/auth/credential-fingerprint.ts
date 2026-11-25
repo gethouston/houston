@@ -23,6 +23,7 @@ function fileFingerprint(path: string): string {
   }
 }
 
+// WHY: Reads files, not storage.ts, to avoid an init cycle; shared Claude file counts in team scope only. ADR-0008
 export function credentialFingerprint(id: string): string {
   const { key } = currentCredentialScope();
   const activeAuthPath = currentActingContext()?.authPath;

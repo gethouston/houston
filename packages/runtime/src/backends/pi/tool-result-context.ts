@@ -20,6 +20,7 @@ import {
 type AgentMessage = AgentSession["messages"][number];
 type ToolResult = Extract<AgentMessage, { role: "toolResult" }>;
 
+// WHY: Clear stale results in batches so the cached prompt prefix changes only per batch. ADR-0010
 export function makeToolResultContext(
   target: SpillTarget,
 ): (messages: AgentMessage[]) => Promise<AgentMessage[]> {

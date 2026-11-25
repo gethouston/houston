@@ -2,10 +2,12 @@ import { AZURE_OPENAI } from "../ai/azure-openai";
 import { providerDefaultModel, safeGetModel } from "../ai/providers";
 import { untrackedFetch } from "./turn-network-marks";
 
+// WHY: Node's global fetch pool closes connections after 4 idle seconds. ADR-0015
 export const PROVIDER_WARM_EVERY_MS = 3_000;
 export const PROVIDER_WARM_MAX_MS = 3 * 60_000;
 const PROVIDER_WARM_REQUEST_MS = 5_000;
 
+// WHY: Claude CLI and the AWS SDK use their own pools; warming Node fetch cannot help. ADR-0015
 const NOT_WARMED = new Set([
   "anthropic",
   "amazon-bedrock",
@@ -51,6 +53,7 @@ export interface ProviderWarmerOptions {
   log?: (line: string) => void;
 }
 
+// WHY: Node 22 HEAD replies carry connection: close; OPTIONS keeps it, drain to reuse it. ADR-0015
 export class ProviderWarmer {
   private readonly fetchImpl: () => typeof fetch;
   private readonly everyMs: number;

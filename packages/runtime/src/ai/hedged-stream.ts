@@ -11,6 +11,7 @@ export interface HedgeOptions {
   onAnswered?(attempt: number, afterMs: number): void;
 }
 
+// WHY: pi runs a tool only after its response finishes, so a hedge never runs one twice. ADR-0007
 export function hedgedStream(
   open: (signal: AbortSignal) => AssistantMessageEventStream,
   options: HedgeOptions,

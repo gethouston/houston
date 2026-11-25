@@ -84,6 +84,7 @@ async function handle(
 
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
+// WHY: Retry-After is not CORS-safelisted, so it must be exposed for clients to read 503 retry hints. ADR-0016
 export function createControlPlaneServer(deps: ControlPlaneDeps): Server {
   let agentRequests = 0;
   let agentWrites = 0;

@@ -20,6 +20,7 @@ export interface HoustonMcpInput extends BridgedToolSetInput {
   spill?: SpillTarget;
 }
 
+// WHY: Leave the SDK server timeout unset; a limit under 11 min kills a waiting browser hand-off. ADR-0014
 export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
   const tools = buildBridgedToolSet(input).map((tool) =>
     adaptTool(tool, input.spill),

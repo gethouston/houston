@@ -52,6 +52,7 @@ export interface FirstResponse {
  */
 export const FIRST_RESPONSE_TIMEOUT_MS = 600_000;
 
+// WHY: FIRST_RESPONSE_TIMEOUT_MS matches the gateway latency ingest clamp. ADR-0029
 export class FirstResponseClock {
   readonly sentAt: number;
   private done = false;

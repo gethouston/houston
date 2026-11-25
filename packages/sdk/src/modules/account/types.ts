@@ -37,6 +37,7 @@ export interface EditableProfile {
   custom: EditableProfileCustom;
 }
 
+// WHY: null clears to the provider value and omitted leaves it; never default a key to null. ADR-0020
 /**
  * Body of `PUT /v1/me/profile`. The three states of each key are distinct and
  * load-bearing: a string SETS the override, `null` CLEARS it back to the

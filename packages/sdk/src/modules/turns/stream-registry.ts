@@ -138,6 +138,7 @@ export class StreamRegistry {
     for (const check of [...this.leaving]) check();
   }
 
+  // WHY: Claimed synchronously before any await, or two near-simultaneous sends both go out. ADR-0029
   /**
    * Claim the per-key send lock. Returns `true` if this caller now owns the
    * in-flight send, `false` if one is already running for `key` — closing the

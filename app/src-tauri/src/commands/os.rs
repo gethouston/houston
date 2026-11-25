@@ -36,6 +36,7 @@ pub fn launch_t0_ms() -> Option<u64> {
     LAUNCH_T0_MS.get().copied().filter(|&ms| ms > 0)
 }
 
+// WHY: cmd /C start splits URLs at & and expands %VAR%; AppImage env crashes xdg-open's browser. ADR-0105
 /// Spawn the OS-native "open this in the default app" command. Path-or-URL
 /// flavor — caller passes either a URL or a filesystem path; on every
 /// platform the same shell verb opens both. Rejects typed so `open_url` can

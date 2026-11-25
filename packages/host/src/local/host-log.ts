@@ -2,6 +2,7 @@ import type { LocalHostOptions } from "./host-options";
 
 export const LOCAL_USER = "local-owner";
 
+// WHY: console.error lines become Sentry events; plain messages stay info breadcrumbs. ADR-0016
 export function severityLog(message: string, err?: unknown): void {
   if (err === undefined) console.info(message);
   else console.error(message, err);

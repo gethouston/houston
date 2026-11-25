@@ -1,3 +1,4 @@
+// WHY: randomUUID throws in an insecure context and some embedded runtimes lack crypto. ADR-0029
 export function randomNonce(): string {
   const c: Partial<Crypto> | undefined =
     typeof crypto !== "undefined" ? crypto : undefined;

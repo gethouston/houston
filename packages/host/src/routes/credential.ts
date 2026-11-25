@@ -15,6 +15,7 @@ import { refreshedForServe } from "./credential-refresh";
 import { bearer, json } from "./http";
 import { defineRoute } from "./registry";
 
+// WHY: The only 404 writer, so the not-connected marker is never lost; a bare 404 must not read as logout. ADR-0016
 function notConnected(res: ServerResponse, error: string): true {
   json(res, 404, { error }, { "x-houston-not-connected": "1" });
   return true;

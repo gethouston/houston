@@ -43,6 +43,7 @@ function writeTranscript(dir: string, conv: StoredConversation): void {
   renameSync(tmp, f);
 }
 
+// WHY: pi persists a session only once it holds an assistant message. ADR-0016
 function synthesizeSession(
   workspaceDir: string,
   sessionDir: string,

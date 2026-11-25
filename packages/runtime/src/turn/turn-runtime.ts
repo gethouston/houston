@@ -11,6 +11,7 @@ import {
 import { TurnCredentialStore } from "./turn-credential-store";
 import { resolveTurnModel } from "./turn-model";
 
+// WHY: pi's ModelRuntime reads models-store.json at create; it must hydrate before that. ADR-0015
 const TURN_RUNTIME_INPUTS = new Set([
   "azure-endpoint.json",
   "custom-endpoint.json",

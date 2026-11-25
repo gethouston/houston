@@ -9,6 +9,7 @@ import { publishDerived } from "./turn-doc-merge-publish";
 import { readStoreText } from "./turn-store-read";
 import { docNotLandedReason } from "./turn-view-publish";
 
+// WHY: Must fit the gateway's 5 s run-now window with dispatch and hydration. ADR-0015
 export const ROUTINE_HEAL_BUDGET_MS = 1_500;
 
 const ROUTINE_ITEM = /^routines\/([^/]+)$/;

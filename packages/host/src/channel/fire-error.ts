@@ -62,6 +62,7 @@ const DIAL_FAILURE_CODES: ReadonlySet<string> = new Set([
   "UND_ERR_CONNECT_TIMEOUT",
 ]);
 
+// WHY: Only dial-time codes prove the POST never left; later failures may have started a turn. ADR-0016
 export function isDialFailure(err: unknown): boolean {
   const code = (err as { cause?: { code?: unknown } } | null)?.cause?.code;
   return (

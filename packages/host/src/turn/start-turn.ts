@@ -17,6 +17,7 @@ export type TurnStart =
   | { status: "duplicate" }
   | { status: "quota"; message: string };
 
+// WHY: Resolve provider and effort before claiming quota, so a bad pin leaks no slot. ADR-0016
 export async function dispatchTurn(
   deps: TurnDeps,
   ws: Workspace,

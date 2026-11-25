@@ -27,6 +27,7 @@ export const HOUSTON_OWNED_FILES: ReadonlySet<string> = new Set([
   "skills-manifest.json",
 ]);
 
+// WHY: Agent-owned .houston state must sync; a dropped routine watermark repeats finished work. ADR-0015
 export function agentScopeIncludes(
   relativePath: string,
   workspaceRel: string,

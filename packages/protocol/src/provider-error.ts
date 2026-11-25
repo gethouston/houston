@@ -14,6 +14,7 @@ export type {
   QuotaScope,
 } from "./provider-error-parts";
 
+// WHY: opencode.ai sends quota_exhausted as 401 CreditsError; it must not render a reconnect card. ADR-0017
 export type ProviderError =
   | {
       kind: "plan_message_limit";

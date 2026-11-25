@@ -2,6 +2,7 @@ import { deadGoogleApiKey } from "@houston/protocol/google-key";
 import type { CaptureResult, CredentialStore, RuntimeEndpoint } from "../ports";
 import { scrubRuntimeRefreshToken } from "./scrub-refresh";
 
+// WHY: Under the runtime's 10 s serve probe; undici would otherwise wait 300 s for headers. ADR-0016
 const RUNTIME_EXPORT_TIMEOUT_MS = 8_000;
 
 type ExportedCredential = {
@@ -15,6 +16,7 @@ type ExportedCredential = {
   enterpriseUrl?: string;
 };
 
+// WHY: The scrub must name the provider; an unscoped scrub erases every refresh token. ADR-0016
 export async function captureRuntimeCredential(args: {
   endpoint: RuntimeEndpoint;
   credentials: CredentialStore;

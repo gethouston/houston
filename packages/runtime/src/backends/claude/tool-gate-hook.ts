@@ -56,6 +56,7 @@ export interface SessionHookOptions {
   beforeTool?: ToolGate;
 }
 
+// WHY: Claude Code runs a matcher's hooks in parallel; one callback keeps the gate before the guard. ADR-0009
 export function buildSessionHooks({
   workspaceDir,
   fileGuard,

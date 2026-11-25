@@ -21,6 +21,7 @@ export interface ProviderReconnectNotice {
   daysLeft: number;
 }
 
+// WHY: A hosted Claude login ends about 28 days after sign-in however often it refreshes. ADR-0026
 /**
  * The notice for one provider, or null: not connected (the sign-out already
  * happened and the reconnect card says so), no known deadline, or more than

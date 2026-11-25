@@ -37,6 +37,7 @@ function isNetworkFailure(error: unknown): boolean {
   );
 }
 
+// WHY: Keyed per acting identity too; a shared slot would capture one member's credential onto another. ADR-0016
 export class CredentialServeHealer {
   private readonly inFlight = new Map<string, Promise<boolean>>();
   private readonly attemptedAt = new Map<string, number>();

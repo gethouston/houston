@@ -39,6 +39,7 @@ export function parseSlackConnectReturn(
   return { kind: "loopback", port, state };
 }
 
+// WHY: A gateway predating loopback answers a plain 400 invalid_request; only that earns a retry. ADR-0024
 export function gatewayRefusedLoopback(
   returnTo: SlackConnectReturn | undefined,
   error: unknown,

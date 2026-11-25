@@ -4,6 +4,7 @@ import {
   messageAdmissionIdentity,
 } from "./message-retry";
 
+// WHY: Runtime writes and host reads this path; a byte of drift makes every retry run twice. ADR-0017
 export function messageAdmissionFileName(
   conversationId: string,
   nonce: string,

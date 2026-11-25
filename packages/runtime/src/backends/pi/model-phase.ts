@@ -22,6 +22,7 @@ export class SentRequests {
   }
 }
 
+// WHY: pi emits turn_start before appending the prompt; size comes from the send. ADR-0010
 export function subscribePiModelPhase(
   session: AgentSession,
   requests: SentRequests,

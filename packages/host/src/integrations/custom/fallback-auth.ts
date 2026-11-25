@@ -2,6 +2,7 @@ import type { ApiKeyAuthTemplate } from "@executor-js/plugin-openapi/core";
 import { variable } from "@executor-js/plugin-openapi/core";
 import type { CustomIntegrationDef } from "./types";
 
+// WHY: Persisted as the credential template; renaming it orphans stored connections. ADR-0016
 export const FALLBACK_AUTH_SLUG = "houston_fallback";
 
 const KEY_NAMES = new Set([

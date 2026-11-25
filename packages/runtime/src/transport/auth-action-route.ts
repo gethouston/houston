@@ -1,6 +1,7 @@
 import { cancelLogin, completeLogin, logout, startLogin } from "../auth/login";
 import { json, type RouteContext, readJson } from "./http-helpers";
 
+// WHY: Keep the login error's kind; the frontend picks the actionable sign-in message from it. ADR-0011
 export async function handleAuthAction(
   ctx: RouteContext,
   provider: string,

@@ -1,3 +1,4 @@
+// WHY: The setup runtime is torn down at the first agent, so a write there would be lost. ADR-0019
 /**
  * A provider WRITE that has to land on a specific agent's runtime, attempted
  * in a space whose agent list is settled and EMPTY.

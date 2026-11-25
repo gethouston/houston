@@ -1,3 +1,4 @@
+// WHY: Claude CLI .credentials.json verbatim; no re-encoding or extra keys so the SDK reads it as is. ADR-0017
 export interface ClaudeOAuthCredential {
   accessToken: string;
   refreshToken?: string;

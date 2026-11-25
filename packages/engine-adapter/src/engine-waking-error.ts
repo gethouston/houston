@@ -34,6 +34,7 @@ function isWakingAnswer(
   return status === 502 && matches(ENGINE_PROXY_FAILED_502);
 }
 
+// WHY: Match exact status and reason pairs; a bare 502 or 503 is a real failure. ADR-0030
 export function isEngineWakingError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const status = (err as { status?: unknown }).status;

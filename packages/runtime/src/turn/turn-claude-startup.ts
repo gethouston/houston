@@ -52,6 +52,7 @@ export function parseClaudeStartupProfile(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+// WHY: Only after the CLI stream ends; on early return the CLI may still write its report. ADR-0015
 export function collectClaudeStartupProfile(configDir: string | undefined) {
   if (!armed || !configDir) return;
   const dir = join(configDir, PERF_DIR);

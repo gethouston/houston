@@ -11,6 +11,7 @@ import { FileOpError, FilePathError, fileKey, safeRel } from "./files-path";
 
 export type { UploadFile } from "../uploads/commit";
 
+// WHY: Mirrored by MAX_UPLOAD_FILE_BYTES and MAX_COMPOSER_ATTACHMENT_BYTES in app/src/lib; change all three. ADR-0065
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 export const MAX_UPLOAD_BODY_BYTES =

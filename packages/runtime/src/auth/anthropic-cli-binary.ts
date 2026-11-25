@@ -45,12 +45,14 @@ function logNoCliBinary(probes: string[]): void {
   );
 }
 
+// WHY: The SDK exports map blocks resolving its package.json; anchor at the main export. ADR-0008
 function sdkScopedResolve(spec: string): string {
   const here = createRequire(import.meta.url);
   const sdkMain = here.resolve("@anthropic-ai/claude-agent-sdk");
   return createRequire(sdkMain).resolve(spec);
 }
 
+// WHY: auth login uses plain readline so pipes work; setup-token is an Ink TUI needing a real TTY. ADR-0008
 export function spawnCli(binary: string, configDir: string): LoginChild {
   return spawn(binary, ["auth", "login", "--claudeai"], {
     env: { ...process.env, CLAUDE_CONFIG_DIR: configDir },

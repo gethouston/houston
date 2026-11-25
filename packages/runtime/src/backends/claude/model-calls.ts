@@ -32,6 +32,7 @@ type OpenCall = Omit<
 const count = (v: number | null | undefined, fallback: number) =>
   typeof v === "number" && Number.isFinite(v) ? v : fallback;
 
+// WHY: The inferred span includes CLI prompt assembly and retry backoff; prefer ttft_ms. ADR-0009
 export function createClaudeCallTimer(
   now: () => number = () => performance.now(),
 ): (msg: SDKMessage) => HarnessTimingEvent[] {

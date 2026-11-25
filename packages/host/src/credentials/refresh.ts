@@ -38,6 +38,7 @@ export function isExpiring(
   return Date.now() >= cred.expiresAt - skewMs;
 }
 
+// WHY: Retry only pre-connect errors; any later failure may follow a consumed grant. ADR-0016
 export async function refreshCredential(
   cred: WorkspaceCredential,
   opts: RefreshOptions = {},

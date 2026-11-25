@@ -23,6 +23,7 @@ export function parseTurnLimits(value: unknown): TurnLimits | undefined {
 
 export const ROUTINE_FLOOR_HEADER = "x-houston-routine-floor";
 
+// WHY: Node joins repeated headers into one string; a garbled stamp is no floor, never a stricter one. ADR-0017
 export function parseRoutineFloorHeader(
   value: string | string[] | undefined,
 ): number | undefined {

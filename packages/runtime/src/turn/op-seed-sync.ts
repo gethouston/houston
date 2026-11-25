@@ -6,6 +6,7 @@ import {
 } from "@houston/runtime-client/object-sync";
 import type { SeedTree } from "./op-seed-tree";
 
+// WHY: No metadata-manifest method, so a 412 stays a conflict instead of retrying stale bytes. ADR-0015
 export function syncSeedTree(
   store: ObjectStore,
   prefix: string,

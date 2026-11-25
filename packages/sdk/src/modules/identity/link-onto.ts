@@ -24,6 +24,7 @@ export interface LinkStep<S extends IdentitySession> {
   linked(): VerifyLinkOutcome;
 }
 
+// WHY: Identity Platform links onto any session given; both checks keep a credential on its owner. ADR-0028
 export async function linkOnto<S extends IdentitySession>(
   step: LinkStep<S>,
   minted: MintedSession<S>,

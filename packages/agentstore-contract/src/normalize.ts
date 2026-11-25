@@ -9,6 +9,7 @@ const DEFAULT_SLUG = "agent";
 
 const MAX_ID_LEN = 64;
 
+// WHY: Trim the base before the suffix or a 64-char base loops forever. ADR-0081
 const disambiguate = (base: string, seen: Set<string>): string => {
   let uniq = base;
   let n = 2;

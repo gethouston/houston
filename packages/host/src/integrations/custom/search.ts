@@ -61,6 +61,7 @@ function scoreTools(
     .map(({ tool }) => toMatch(tool, nameOf));
 }
 
+// WHY: A curated scope for an unadded app resolves to its connect row; unresolved would trigger the retry. ADR-0016
 export function searchCustomTools(
   query: string,
   tools: CustomToolRow[],

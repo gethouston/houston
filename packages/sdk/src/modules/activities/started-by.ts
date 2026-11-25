@@ -23,6 +23,7 @@ export interface MissionStartFacts {
   started_by?: MissionStarter | null;
 }
 
+// WHY: Must stay node-safe: node --test loads app modules that import it. ADR-0021
 /**
  * First match wins: a routine's run, then the setup task, then Houston, then
  * the API, then an AI Employee, else the person's own mission. A row with no

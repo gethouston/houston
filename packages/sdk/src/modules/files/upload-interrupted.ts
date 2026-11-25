@@ -3,6 +3,7 @@ export type UploadRoute = "attachments" | "files_import" | "migration_import";
 
 export const UPLOAD_INTERRUPTED_NAME = "UploadInterruptedError";
 
+// WHY: No cause chain: offline classifiers unwrap cause; name is a literal since bundling mangles classes. ADR-0027
 export class UploadInterruptedError extends Error {
   readonly route: UploadRoute;
   /** Decoded size of the files the request carried. */

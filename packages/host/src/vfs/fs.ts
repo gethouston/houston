@@ -29,6 +29,7 @@ export class FsVfs implements Vfs {
     if (!root) throw new Error("FsVfs requires a root directory");
   }
 
+  // WHY: Case folding belongs to the volume, not process.platform; a failed probe is not cached. ADR-0016
   keyCase(): Promise<KeyCase> {
     this.probe ??= writable(this.root, () => probeKeyCase(this.root))
       .then((result) => {
@@ -96,6 +97,7 @@ export class FsVfs implements Vfs {
     return writable(key, () => rm(this.pathFor(key), { force: true }));
   }
 
+  // WHY: lstat both sides: rename(2) moves links, so following them misreads the destination. ADR-0016
   async move(fromKey: string, toKey: string): Promise<void> {
     const from = this.pathFor(fromKey);
     const to = this.pathFor(toKey);

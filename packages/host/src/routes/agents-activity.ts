@@ -90,6 +90,7 @@ defineRoute({
   },
 });
 
+// WHY: The control plane reads anything but a literal busy: false as busy; false must mean provably idle. ADR-0016
 export async function podActivityStatus(deps: AgentRouteDeps): Promise<{
   busy: boolean;
   activeRequests: number;

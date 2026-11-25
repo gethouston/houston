@@ -3,6 +3,7 @@ import type { LinkedInPostResult } from "./types";
 
 export const LINKEDIN_POST_DEADLINE_MS = 3 * 60_000;
 
+// WHY: The gateway finishes a taken post with nobody waiting; a timeout says nothing about LinkedIn. ADR-0024
 export function withPostDeadline(
   clock: Clock,
   callerSignal: AbortSignal | undefined,

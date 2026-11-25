@@ -15,6 +15,7 @@ export type ExecResult = {
   truncated: boolean;
 };
 
+// WHY: Kill the whole group: submitted code forks grandchildren; a gone group is success. ADR-0082
 function killGroup(pid: number | undefined) {
   if (!pid) return;
   try {
@@ -26,6 +27,7 @@ function killGroup(pid: number | undefined) {
   }
 }
 
+// WHY: Finish on exit, not close: a grandchild holding stdout keeps the pipe open forever. ADR-0082
 export function runProcess(
   language: Language,
   programPath: string,

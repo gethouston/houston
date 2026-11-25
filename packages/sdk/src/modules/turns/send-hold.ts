@@ -45,6 +45,7 @@ export function turnRunningDelay(
   return delays[Math.min(attempt, delays.length - 1)] ?? 0;
 }
 
+// WHY: Resend the same request with the same nonce so a late acceptance never doubles it. ADR-0029
 export async function sendHolding(
   send: () => Promise<SendAccepted | undefined>,
   evidence: TurnEndEvidence,

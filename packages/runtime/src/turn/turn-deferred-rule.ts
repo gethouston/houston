@@ -5,6 +5,7 @@ export const STARTUP_FOLDERS: ReadonlySet<string> = new Set([
   ".pi",
 ]);
 
+// WHY: Must stay identical to the gateway's prefetch predicate. ADR-0015
 export function deferredWorkspaceFile(rel: string): boolean {
   const segments = rel.split("/");
   const dir = segments[3];

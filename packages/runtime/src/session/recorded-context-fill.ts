@@ -1,5 +1,6 @@
 import type { ChatMessage } from "@houston/runtime-client";
 
+// WHY: pi answers after compacting with no fill; a failed request records zero usage. ADR-0012
 export function recordedContextFill(
   messages: readonly ChatMessage[],
 ): number | undefined {

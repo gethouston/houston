@@ -12,6 +12,7 @@ import {
 type Preparation = SessionBeforeCompactEvent["preparation"];
 type CompactFn = typeof piCompact;
 
+// WHY: chars/4 undercounts dense text; a Codex request overflowed 272k, two halvings cover it. ADR-0012
 export const MAX_BOUNDED_ATTEMPTS = 3;
 
 export function droppedNotice(dropped: number, elided = 0): string {

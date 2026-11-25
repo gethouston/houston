@@ -3,6 +3,7 @@ import type { CredentialActing } from "../ports";
 
 export const TEAM_SCOPE_KEY = "team";
 
+// WHY: Must match the runtime's credentialScopeKeyFor so one identity hits one row. ADR-0016
 export function credentialScopeKey(
   acting: CredentialActing | undefined,
 ): string {

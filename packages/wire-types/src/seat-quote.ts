@@ -43,6 +43,7 @@ export type SeatQuote = z.infer<typeof seatQuoteSchema>;
 export type SeatQuoteKind = SeatQuote["kind"];
 export type ChargeSeatQuote = Extract<SeatQuote, { kind: "charge" }>;
 
+// WHY: Unreadable means no_charge: no prorationDate is sent, so nothing unseen gets charged. ADR-0018
 export function parseSeatQuote(value: unknown): SeatQuote {
   const parsed = seatQuoteSchema.safeParse(value);
   if (parsed.success) return parsed.data;

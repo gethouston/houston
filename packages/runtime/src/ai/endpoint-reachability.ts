@@ -11,6 +11,7 @@ const PROBE_TIMEOUT_MS = 2_000;
 
 export type EndpointProbe = (baseUrl: string) => Promise<boolean>;
 
+// WHY: Any HTTP answer, 401 and 404 included, means reachable; only connect errors do not. ADR-0007
 async function fetchProbe(baseUrl: string): Promise<boolean> {
   try {
     await fetch(`${baseUrl.replace(/\/+$/, "")}/models`, {

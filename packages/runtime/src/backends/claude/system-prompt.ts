@@ -44,6 +44,7 @@ export function buildSystemPrompt(
   return withModeOverlay(withSkills, mode);
 }
 
+// WHY: settingSources: [] and the disabled Skill tool turn off the SDK's skill discovery. ADR-0009
 function buildSkillsSection(cwd: string): string {
   const dir = config.skillsDirOverride || join(cwd, ".agents", "skills");
   if (!existsSync(dir)) return "";

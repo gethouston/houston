@@ -34,6 +34,7 @@ export function newSetupTask(
   );
 }
 
+// WHY: Refusals are 409: the transport retries 5xx on this write and would fire the turn again. ADR-0016
 export function fireFirstTurn(
   deps: FirstDayStartDeps,
   task: Activity,

@@ -1,5 +1,6 @@
 import type { ChatMessage } from "./conversation";
 
+// WHY: Also matches older summaries by shape; cloud conversations hold them and no migration runs. ADR-0017
 export function isCompactionSummary(
   m: ChatMessage,
   next?: ChatMessage,

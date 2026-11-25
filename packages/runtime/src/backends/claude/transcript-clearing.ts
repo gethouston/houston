@@ -38,6 +38,7 @@ interface Entry {
   message?: { id?: unknown; content?: unknown };
 }
 
+// WHY: CLI clearing needs a server flag and an idle hour; rewrite only between turns. ADR-0009
 export function clearStaleTranscriptResults(
   transcript: string,
   spill: SpillTarget,

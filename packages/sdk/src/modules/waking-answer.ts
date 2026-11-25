@@ -1,3 +1,4 @@
+// WHY: Exact (status, reason) pairs only; a provider quota page can also be a bare 502 or 503. ADR-0019
 export function isWakingAnswer(status: number, reason: string): boolean {
   if (status === 503) {
     return (

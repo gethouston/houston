@@ -11,6 +11,7 @@ function shellWord(value: string): string {
   return `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
+// WHY: Claude CLI passes the command as one arg; its env scrub is off on Linux, so unset creds. ADR-0012
 export function claudeShellFenceScript(
   capBytes: number | null,
   toolShell: string | null = null,
@@ -33,10 +34,12 @@ export function claudeShellFenceScript(
   ].join("\n");
 }
 
+// WHY: The CLI also runs this prefix unsplit for stdio MCP servers; add -c only for " -" paths. ADR-0012
 export function claudeShellPrefix(fencePath: string): string {
   return fencePath.includes(" -") ? `${fencePath} -c` : fencePath;
 }
 
+// WHY: The CLI runs the wrapper as the runtime user; the tool user must not be able to replace it. ADR-0012
 export function ensureClaudeShellFence(
   dir: string,
   capBytes: number | null,

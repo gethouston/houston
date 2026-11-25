@@ -1,6 +1,7 @@
 import { restoreArchivedTurn } from "./conversation-archive-cut";
 import { loadConversation, saveConversation } from "./conversation-file";
 
+// WHY: Edits the file only; callers must also tear down the session or native context goes stale. ADR-0011
 export function truncateConversationMutationAt(
   dir: string,
   id: string,

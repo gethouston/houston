@@ -12,6 +12,7 @@ export interface FileOpFailure {
   message: string;
 }
 
+// WHY: Must match the kind strings the Tauri file_failure module serializes. ADR-0105
 const KINDS: ReadonlySet<string> = new Set([
   "locked",
   "permission",

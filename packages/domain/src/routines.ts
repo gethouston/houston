@@ -29,6 +29,7 @@ export const isValidTriggerBinding = (v: unknown): boolean => {
   );
 };
 
+// WHY: Saves write back only survivors; dropping schedule-less entries deletes trigger routines. ADR-0084
 export function normalizeRoutines(
   raw: unknown,
   key: string,

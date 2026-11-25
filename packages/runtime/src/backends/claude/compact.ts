@@ -35,6 +35,7 @@ export function compactedPreamble(summary: string): string {
   return `[Summary of the conversation so far]\n${summary.trim()}\n[End of summary. Continue the conversation from here.]\n\n`;
 }
 
+// WHY: The SDK has no compaction control request; fact harvesting reads the summary text. ADR-0009
 export async function compactClaudeSession(
   deps: ClaudeCompactionDeps,
   customInstructions?: string,

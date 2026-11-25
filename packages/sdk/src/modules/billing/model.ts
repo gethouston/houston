@@ -49,6 +49,7 @@ export function planComposerMode(billing: Billing): "none" | "hint" | "limit" {
 const MAX_TIMER_MS = 2_147_483_647;
 const MIN_REFRESH_MS = 30_000;
 
+// WHY: setTimeout overflows past 2^31-1 ms; the floor stops a fast client clock refetch loop. ADR-0022
 /**
  * Refetch at the next instant the org's billing changes on its own: the
  * weekly reset that unblocks the composer, and a scheduled lock. Once the

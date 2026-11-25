@@ -33,6 +33,7 @@ export interface BridgedPiTool {
 
 const NOOP_CTX = {} as ExtensionContext;
 
+// WHY: The CLI saves results over ~50k chars under its config dir, which the model cannot read. ADR-0009
 export function adaptTool(
   tool: BridgedPiTool,
   spill?: SpillTarget,

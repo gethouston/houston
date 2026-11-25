@@ -1,3 +1,4 @@
+// WHY: A denylist: the runtime reads env vars nobody can enumerate, an allowlist would strip them. ADR-0016
 export const HOST_ONLY: ReadonlySet<string> = new Set([
   "COMPOSIO_API_KEY",
   "HOUSTON_WORKSPACES_ROOT",

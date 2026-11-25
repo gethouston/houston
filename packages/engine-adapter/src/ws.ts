@@ -4,6 +4,7 @@ import { disposeAllStreams } from "./stream-registry";
 
 type EventHandler = (event: unknown) => void;
 
+// WHY: Defer teardown a tick: token rotation disconnects and reconnects and must not kill a turn. ADR-0030
 export class EngineWebSocket {
   private eventHandlers = new Set<EventHandler>();
   private offBus: (() => void) | null = null;

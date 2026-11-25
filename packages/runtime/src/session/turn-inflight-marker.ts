@@ -21,6 +21,7 @@ export interface InflightTurnMarker {
   resumeOf?: string;
 }
 
+// WHY: Keep out of conversations/; the lister reads every JSON there as a transcript. ADR-0012
 export const INFLIGHT_DIR = join("turns", "inflight");
 
 export function inflightDir(dataDir: string): string {

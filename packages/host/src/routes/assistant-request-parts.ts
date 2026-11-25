@@ -47,6 +47,7 @@ function resolvesToItself(path: string): boolean {
   }
 }
 
+// WHY: new URL resolves .. and %2e%2e, and encoding keeps ..; the built path must resolve to itself. ADR-0016
 export function buildPath(
   route: AssistantRoute,
   params: Record<string, unknown>,

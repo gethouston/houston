@@ -8,6 +8,7 @@ export interface ActingContext {
   localModelTransport?: LocalModelTransportContext;
   actingAs?: string;
   actingUser?: string;
+  // WHY: Only the verified pooled-turn record may set this; actingUser is an unsigned header. ADR-0012
   verifiedOwner?: string;
   credentialScopeKey?: string;
   authPath?: string;
@@ -21,6 +22,7 @@ export interface CredentialScope {
   actingAs?: string;
 }
 
+// WHY: Must match the host's credentialScopeKey so one identity hits one row. ADR-0016
 export function credentialScopeKeyFor(actingAs: string | undefined): string {
   if (!actingAs) return TEAM_CREDENTIAL_SCOPE;
   const sub = decodeActingAuthor(actingAs)?.userId;
@@ -38,6 +40,7 @@ export function isPersonalScope(key: string): boolean {
 
 const store = new AsyncLocalStorage<ActingContext>();
 
+// WHY: Tool callbacks must stay in prompt()'s async subtree; a global would mix identities. ADR-0012
 export function runWithActingContext<T>(
   ctx: ActingContext | undefined,
   fn: () => T,

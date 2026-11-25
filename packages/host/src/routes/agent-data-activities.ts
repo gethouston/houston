@@ -22,6 +22,7 @@ import { retirePendingFirstDay } from "./agent-first-day-retire";
 import { withDocLock } from "./doc-lock";
 import { json, methodNotAllowed, readJson } from "./http";
 
+// WHY: status stays out of the repeat-create comparison; the board owns it after create. ADR-0016
 const CREATE_FIELDS = [
   "title",
   "description",

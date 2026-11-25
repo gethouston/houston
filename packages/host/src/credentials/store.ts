@@ -53,6 +53,7 @@ export class MemoryCredentialStore implements CredentialStore {
   }
 }
 
+// WHY: Team key must stay byte-identical to the pre-scope form or desktop users are signed out. ADR-0016
 export function scopedKey(
   workspaceId: string,
   provider: string,

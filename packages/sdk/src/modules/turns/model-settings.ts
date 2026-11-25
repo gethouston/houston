@@ -7,6 +7,7 @@ export interface ModelSettings {
   mode?: "execute" | "plan" | "auto";
 }
 
+// WHY: The runtime refuses a model under another provider; never persist the pick via setSettings. ADR-0029
 export async function resolveModelSettings(
   client: HoustonEngineClient,
   model: string | undefined,

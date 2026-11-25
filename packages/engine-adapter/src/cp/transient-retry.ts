@@ -49,6 +49,7 @@ function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
   });
 }
 
+// WHY: Writes never blind-retry: a POST that threw may have reached the gateway. ADR-0030
 export function transientRetryFetch(inner: typeof fetch): typeof fetch {
   return async (input, init) => {
     const method = (init?.method ?? "GET").toUpperCase();

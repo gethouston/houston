@@ -6,6 +6,7 @@ import { writeClaudeOAuthCredentialFile } from "../backends/claude/credentials-f
 import { claudeLoginConfigDir } from "../backends/claude/paths";
 import { json, type RouteContext, readJson } from "./http-helpers";
 
+// WHY: Linux SDK reads .credentials.json; macOS and Windows read the OS store, so also write auth.json. ADR-0011
 export async function handleClaudeOAuthCredential(ctx: RouteContext) {
   const parsed = parseClaudeOAuthEnvelope(
     await readJson(ctx.req).catch(() => ({})),

@@ -15,6 +15,7 @@ export type OpActingAs = NonNullable<TurnRequest["actingAs"]> & {
 export interface OpRequest {
   workspaceId: string;
   agentId: string;
+  // WHY: A cloud rename keeps the stored folder; never derive the display name from it. ADR-0015
   agentName?: string;
   gcsPrefix: string;
   hostToken: string;

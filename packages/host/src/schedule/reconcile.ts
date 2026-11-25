@@ -33,6 +33,7 @@ export interface ReconcileScope {
   abandoned?: ReadonlySet<string>;
 }
 
+// WHY: A repaired routines.json cannot prove an id missing, so orphans wait for a clean read. ADR-0016
 export async function reconcileAgentRuns(
   deps: ReconcileDeps,
   ws: Workspace,

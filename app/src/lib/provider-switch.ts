@@ -2,6 +2,7 @@ import type { FeedItem } from "@houston-ai/chat";
 
 export type ProviderHandoffMode = "replay" | "summarize";
 
+// WHY: Must match REPLAY_FIT_FRACTION in packages/runtime/src/session/provider-switch.ts. ADR-0012
 export const REPLAY_FIT_FRACTION = 0.8;
 
 export function estimateConversationTokens(

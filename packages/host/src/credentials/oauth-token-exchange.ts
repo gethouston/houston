@@ -1,5 +1,6 @@
 import type { WorkspaceCredential } from "../ports";
 
+// WHY: Never add invalid_client: a retired shared client id would delete every credential. ADR-0016
 const TERMINAL_ERROR_CODES = [
   "invalid_grant",
   "refresh_token_invalidated",

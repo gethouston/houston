@@ -8,6 +8,7 @@ export interface ObjectStat {
 
 export type KeyFold = "exact" | "folded";
 
+// WHY: APFS folds by its own table and merges NFC/NFD; toLowerCase cannot predict it. ADR-0016
 export interface KeyCase {
   fold: KeyFold;
   normalize: boolean;
@@ -53,6 +54,7 @@ export class VfsReadLimitError extends Error {
   }
 }
 
+// WHY: Node keeps a UTF-8 BOM and JSON.parse rejects it; Windows editors write one. ADR-0016
 export function decodeText(bytes: Buffer): string {
   const text = bytes.toString("utf8");
   return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;

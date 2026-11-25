@@ -12,6 +12,7 @@ import type { TurnSeam, TurnSeamCtx } from "./agents-turn-seams";
 import { liveTurns } from "./live-turn";
 import { turnLimitsOf, turnModeOf, turnPinOf } from "./turn-body";
 
+// WHY: A retry the runtime already took records nothing, or mode and depth move onto a turn nobody sent. ADR-0016
 export const recordLiveTurn: TurnSeam = async (ctx) => {
   if (ctx.turnConversationId === undefined || ctx.message.duplicate) return;
   const body = await ctx.body.read();

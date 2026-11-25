@@ -15,6 +15,7 @@ function joinUrl(baseUrl: string, path: string): string {
   return `${baseUrl.replace(/\/+$/, "")}${path}`;
 }
 
+// WHY: Under Bun, pipe buffers SSE and the done frame never arrives; write each chunk. ADR-0016
 export async function forward(
   endpoint: RuntimeEndpoint,
   request: ForwardRequest,

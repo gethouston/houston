@@ -4,6 +4,7 @@ interface HeaderReader {
 
 const HTTP_DATE_START = /^(mon|tue|wed|thu|fri|sat|sun)/i;
 
+// WHY: V8 Date.parse accepts "-5" and "NaN"; require a weekday before parsing a date. ADR-0018
 export function parseRetryAfterMs(
   value: string | null | undefined,
   now: number = Date.now(),

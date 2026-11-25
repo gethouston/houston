@@ -22,6 +22,7 @@ export interface ProviderLogin {
   openAiHub: () => void;
 }
 
+// WHY: launchLogin resolves when sign-in starts; wait for ProviderLoginComplete. ADR-0058
 export function useProviderLogin(
   error: Extract<ProviderError, { kind: "unauthenticated" }>,
   onRetry?: () => Promise<void> | void,

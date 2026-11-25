@@ -23,6 +23,7 @@ export const invisibleFinal = (s: TurnState) =>
     data: { result: "", cost_usd: null, duration_ms: null, usage: null },
   });
 
+// WHY: A turn never writes done; only the person closes a mission. ADR-0029
 export function finishOk(
   s: TurnState,
   notice?: {

@@ -55,6 +55,7 @@ impl FileOpFailure {
     }
 }
 
+// WHY: Only Windows locks open files against writers; on Unix code 32 is EPIPE. ADR-0105
 #[cfg(windows)]
 const SHARING_CODES: &[i32] = &[32, 33];
 #[cfg(not(windows))]

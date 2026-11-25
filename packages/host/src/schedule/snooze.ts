@@ -20,6 +20,7 @@ interface SettleDeps {
   now: () => Date;
 }
 
+// WHY: Callers must not hold the runs queue, which is not reentrant. ADR-0016
 export async function settleRoutineRuns(
   deps: SettleDeps,
   ws: Workspace,

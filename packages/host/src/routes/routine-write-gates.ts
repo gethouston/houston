@@ -26,6 +26,7 @@ export const wakeMechanismError = (
   return null;
 };
 
+// WHY: Shares routinePin's canonical mapping so Rust-era aliases (claude, codex) survive an edit. ADR-0016
 export const providerPinError = (
   body: Record<string, unknown>,
 ): string | null => {
@@ -36,6 +37,7 @@ export const providerPinError = (
     : `unknown provider: ${body.provider}`;
 };
 
+// WHY: error comes first and stays short: save-routine.ts keeps only the first 300 characters. ADR-0016
 export function planFloorRefusal(
   schedule: unknown,
   floor: number | undefined,

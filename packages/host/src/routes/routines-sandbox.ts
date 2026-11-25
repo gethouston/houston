@@ -31,6 +31,7 @@ defineRoute({
     handleSandboxRoutines(deps, method, path, url, req, res),
 });
 
+// WHY: created_by comes from the host's turn record; a loopback acting header is the runtime's word. ADR-0016
 export async function handleSandboxRoutines(
   deps: {
     vault: CredentialVault;

@@ -12,6 +12,7 @@ import { type TreeWatch, watchTree } from "../watch/watch-tree";
 
 export const DEFAULT_QUIET_MS = 3_000;
 export const DEFAULT_INTERVAL_MS = 300_000;
+// WHY: Leaves headroom in the pod's 10 GiB emptyDir for excluded scratch data. ADR-0016
 export const DEFAULT_MAX_HYDRATE_BYTES = 9 * 1024 * 1024 * 1024;
 
 export const STORE_SYNC_EXCLUDES = [

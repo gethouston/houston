@@ -4,6 +4,7 @@ import { WorkerOpDeclinedError } from "./op-provider-guard";
 import type { OpRequest } from "./parse-op-request";
 import { TurnSetupError } from "./turn-layout";
 
+// WHY: OAuth library errors can carry the code or verifier; log only the action. ADR-0015
 export function answerOpFailure(
   res: ServerResponse,
   op: OpRequest,

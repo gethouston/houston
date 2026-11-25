@@ -3,6 +3,7 @@ import { loadJson, saveJson, type TextStore } from "./store";
 
 export type Preferences = Record<string, string | null>;
 
+// WHY: Locally a real folder beside workspaces; anything listing workspaces must skip it. ADR-0084
 export const PREFERENCES_NAMESPACE = "ws";
 
 export const prefDocKey = (workspaceId: string) =>

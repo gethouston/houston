@@ -17,10 +17,12 @@ export function activeKey(provider: ProviderId): string {
   return `${currentCredentialScope().key}:${provider}`;
 }
 
+// WHY: An abandoned loopback login holds the provider's fixed callback port for every instance. ADR-0008
 export const LOGIN_TIMEOUT_MS = 10 * 60_000;
 
 export const LOGIN_TIMEOUT_ERROR = "Login timed out";
 
+// WHY: Matched by value in ui/core provider-login.ts; replaces GitHub's body, which holds the handle. ADR-0090
 export const COPILOT_NO_ACCESS_ERROR =
   "Your GitHub account doesn't have Copilot access yet. Enable GitHub Copilot on github.com (the Free plan works), then try connecting again.";
 

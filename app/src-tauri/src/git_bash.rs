@@ -23,6 +23,7 @@ use std::path::Path;
 /// launcher rather than Git for Windows.
 const WSL_BASH_DIRS: [&str; 3] = ["windowsapps", "system32", "sysnative"];
 
+// WHY: System32 and app-alias bash.exe start WSL, not Git Bash. ADR-0105
 /// True when `path` names a WSL `bash.exe` (a Windows app-execution alias or
 /// the System32 launcher). Pure string logic over the path shape; both `\`
 /// and `/` separators are accepted, comparison is case-insensitive.

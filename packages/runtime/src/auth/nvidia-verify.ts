@@ -4,6 +4,7 @@ import { ApiKeyVerifyError } from "./verify-errors";
 
 type Probe = (model: ReturnType<typeof safeGetModel>) => Promise<string | null>;
 
+// WHY: Two model families so one family-wide gate cannot yield a false key_restricted. ADR-0008
 const NVIDIA_VERIFY_FALLBACKS = [
   "minimaxai/minimax-m3.1-flash",
   "nvidia/nemotron-3.5-super-vl-120b-a12b",

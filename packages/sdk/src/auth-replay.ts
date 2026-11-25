@@ -6,6 +6,7 @@ type Marked = RequestInit & {
   [REQUEST_GUARD]?: () => void;
 };
 
+// WHY: A symbol key survives object spreads and fetch ignores it; replay only for the same person. ADR-0019
 /** `init` marked so it never goes out under another person's bearer. */
 export function withoutAuthReplay(
   init: RequestInit | undefined,

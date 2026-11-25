@@ -7,8 +7,10 @@ import {
 type Preparation = SessionBeforeCompactEvent["preparation"];
 export type AgentMessage = Preparation["messagesToSummarize"][number];
 
+// WHY: Headroom for pi's chars/4 error, prompt scaffolding and summary output. ADR-0012
 export const SUMMARIZER_INPUT_FRACTION = 0.7;
 
+// WHY: Keeps serialized input under OpenAI's 10,485,760-character request limit. ADR-0012
 export const SUMMARIZER_INPUT_MAX_TOKENS = 2_000_000;
 
 export function summarizerInputBudget(contextWindow: number): number {

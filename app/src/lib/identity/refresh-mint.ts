@@ -5,6 +5,7 @@ import { identityLog } from "./log.ts";
 
 export const MIN_REMAINING_MS = 60_000;
 
+// WHY: expires_in counts from read time; date expiry from the send so a slept answer is not fresh. ADR-0070
 export function expiresAtFromSend(
   startedAtMs: number,
   minted: TokenSignInResult,

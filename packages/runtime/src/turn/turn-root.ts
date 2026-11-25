@@ -13,6 +13,7 @@ export type TurnRootIdentity = Pick<
   "workspaceId" | "agentId" | "conversationId"
 >;
 
+// WHY: Absolute paths enter model input; a random root breaks prompt-cache reuse each turn. ADR-0015
 export function conversationTurnRoot(
   id: TurnRootIdentity,
   base: string = tmpdir(),

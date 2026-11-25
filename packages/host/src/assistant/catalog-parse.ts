@@ -65,6 +65,7 @@ const CatalogEnvelope = Type.Object({
       hidden: Type.Boolean(),
       hiddenReason: Type.Optional(Type.String()),
       unconfirmed: Type.Optional(Type.String()),
+      // WHY: Card and screen lists come from domain and protocol; a local copy would turn the assistant off. ADR-0016
       hands: Type.Optional(HandsEnvelope),
       params: Type.Array(
         Type.Object({

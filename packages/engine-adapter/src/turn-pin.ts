@@ -1,5 +1,6 @@
 import { canonicalModelId, canonicalProviderId } from "@houston/domain";
 
+// WHY: Never drop an unknown model; a model-less pin lets the gateway substitute the stored provider. ADR-0030
 export function wireTurnPin(req: {
   provider?: string;
   model?: string;

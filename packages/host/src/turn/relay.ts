@@ -65,6 +65,7 @@ export class TurnRelay {
     return true;
   }
 
+  // WHY: Running with no lease means the owner died; start takes the lease before any frame. ADR-0016
   async reapIfDead(agentId: string, conversationKey: string): Promise<boolean> {
     if (this.inflightLocal.has(agentId)) return false;
     const snap = await this.channels.snapshot(conversationKey);

@@ -8,6 +8,7 @@ interface WindowOverride {
   max?: number;
 }
 
+// WHY: Follows Codex /status: 95% of 272k standard, 95% of 872k ceiling, not pi's catalog. ADR-0014
 export const MODEL_WINDOW_OVERRIDES: Readonly<
   Record<string, Readonly<Record<string, WindowOverride>>>
 > = {

@@ -15,6 +15,7 @@ const sessions = new Map<string, WatchdogSession>();
 const provesIdle = (messages: ChatMessage[]): boolean =>
   messages.length === 0 || messages[messages.length - 1]?.role === "assistant";
 
+// WHY: 90 s grace outlasts the gateway's 75 s claim reap; cloud saves the reply before the terminal frame. ADR-0030
 export function armQueueWatchdog(
   scope: string,
   agentPath: string,

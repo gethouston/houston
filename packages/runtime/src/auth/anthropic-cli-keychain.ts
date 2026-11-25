@@ -20,6 +20,7 @@ export function keychainServiceFor(configDir: string): string {
   return `${KEYCHAIN_SERVICE_BASE}-${digest.slice(0, 8)}`;
 }
 
+// WHY: Never read bare Claude Code-credentials; sharing the user's CLI token family signs both out. ADR-0008
 export async function readKeychainCredential(
   configDir: string,
   deps: KeychainDeps = {},

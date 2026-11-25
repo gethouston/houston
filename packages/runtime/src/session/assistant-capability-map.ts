@@ -3,6 +3,7 @@ import { renderAssistantCapabilityIndex } from "@houston/domain/assistant-capabi
 import { readUnservedOperations } from "@houston/domain/assistant-deployment";
 import { processAssistantCatalog } from "@houston/host/src/assistant/catalog-source";
 
+// WHY: Host and runtime can be a release apart; ignore unserved names not in the catalog. ADR-0014
 export function assistantCapabilityMap(
   env: NodeJS.ProcessEnv = process.env,
 ): string {

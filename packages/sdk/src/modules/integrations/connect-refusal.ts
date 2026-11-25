@@ -6,6 +6,7 @@ import { refusalCode } from "../refusal-code";
 
 const LEGACY_OAUTH_DETAIL = "only offers OAuth";
 
+// WHY: Loaded by the app's node:test via a subpath; stay dependency-free with erasable syntax. ADR-0024
 /**
  * The typed refusal behind a failed connect (`toolkit_oauth_unavailable`,
  * `toolkit_no_auth`, `toolkit_not_found`), or null for every other error.

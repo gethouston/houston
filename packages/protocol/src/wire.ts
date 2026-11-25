@@ -99,4 +99,5 @@ export function clipToolResult(text: string): string {
     : `${text.slice(0, TOOL_RESULT_PREVIEW_MAX)}\n… (truncated)`;
 }
 
+// WHY: seq is stamped by the one fan-out authority, never passed through, not reset at turn end. ADR-0017
 export type WireFrame = WireEvent & { seq?: number; turnId?: string };

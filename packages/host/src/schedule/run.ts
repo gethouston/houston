@@ -45,6 +45,7 @@ export class RoutineRunUnrecordedError extends Error {
   }
 }
 
+// WHY: Start the turn outside the runs queue so a cold start never blocks a cancel. ADR-0016
 export async function fireRoutineRun(
   deps: FireRoutineDeps,
   ws: Workspace,

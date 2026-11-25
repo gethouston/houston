@@ -21,6 +21,7 @@ function envAssistantGateway(env: NodeJS.ProcessEnv): AssistantGateway | null {
   return url && token ? normalize({ url, token }) : null;
 }
 
+// WHY: fetch re-sends custom headers across redirects, so loopback calls use manual redirects. ADR-0016
 export function resolveAssistantGateway(
   wiring: AssistantWiring = {},
 ): AssistantGateway | null {

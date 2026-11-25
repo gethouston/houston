@@ -13,6 +13,7 @@ export interface SharedLogin {
   expiresAt: number;
 }
 
+// WHY: A pushed login updates one agent's auth.json, not the Keychain the other agents read. ADR-0009
 export function readSharedLogin(
   now: number = Date.now(),
 ): SharedLogin | undefined {
@@ -36,6 +37,7 @@ export interface StoredLogin {
   expires: number;
 }
 
+// WHY: Anthropic tokens have a fixed lifetime, so later expiry means later issuance. ADR-0009
 export function sharedLoginSupersedes(
   shared: SharedLogin,
   stored: StoredLogin,

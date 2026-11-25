@@ -7,6 +7,7 @@ import { spawnClaudeLogout } from "./auth-cli";
 import { resetAnthropicCredentialCache } from "./credential-probe-cache";
 import { claudeCredentialsFile } from "./paths";
 
+// WHY: SDK resumes from the materialized file if only auth.json goes; reset the probe only after removal. ADR-0009
 export function clearGhostClaudeCredential(): boolean {
   if (isPersonalScope(currentCredentialScope().key)) return false;
   const path = claudeCredentialsFile();

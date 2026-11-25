@@ -33,6 +33,7 @@ function isSchemaValueFallback(value: unknown): boolean {
   );
 }
 
+// WHY: Well-known symbol names embed a per-checker id that changes between runs. ADR-0102
 function isSymbolNamed(property: ts.Symbol): boolean {
   return property.escapedName.toString().startsWith("__@");
 }

@@ -43,6 +43,7 @@ export const runTurn = (
   ...args: Parameters<typeof runAcceptedTurn>
 ): Promise<void> => withTurnInFlight(() => runAcceptedTurn(...args));
 
+// WHY: A cached session skips resolveModel's guard; without a recheck it prompts with no credential. ADR-0012
 async function runAcceptedTurn(
   id: string,
   text: string,

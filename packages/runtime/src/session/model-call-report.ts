@@ -22,6 +22,7 @@ export function reportBackend(backendId: string): ModelCallBackend {
   return backendId === "pi" ? "pi" : "claude";
 }
 
+// WHY: A refused Claude resume spawns twice; only the latest harness_init served the calls. ADR-0012
 export function collectModelCalls(
   session: HarnessSession,
   backendId: string,

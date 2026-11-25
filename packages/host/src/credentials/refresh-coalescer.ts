@@ -27,6 +27,7 @@ export class CredentialGoneError extends Error {
   }
 }
 
+// WHY: Rotate-on-use providers reject concurrent refreshes as invalid_grant; one flight per key. ADR-0016
 export class CredentialRefreshCoalescer {
   private readonly inFlight = new Map<string, Promise<WorkspaceCredential>>();
   private readonly results = new Map<

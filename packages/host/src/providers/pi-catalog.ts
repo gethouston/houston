@@ -70,6 +70,7 @@ function providerDisplayName(
     .join(" ");
 }
 
+// WHY: Uses pi-ai/compat reads; the new collection API needs an instantiated registry. ADR-0016
 export function buildProviderCatalog(): ProviderCatalog {
   const oauthProviders = piOAuthProviders();
   const oauthIds = new Set(oauthProviders.map((p) => p.id));

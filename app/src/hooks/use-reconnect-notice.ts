@@ -8,6 +8,7 @@ import type { ProviderStatus } from "../lib/tauri";
 
 export const RECONNECT_NOTICE_MAX_WAIT_MS = 60 * 60 * 1000;
 
+// WHY: setTimeout caps at 2^31-1 ms and fires late after sleep; re-read the clock and re-arm. ADR-0064
 export function useReconnectNotice(
   statuses: Record<string, ProviderStatus>,
 ): ProviderReconnectNotice | null {

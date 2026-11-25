@@ -13,6 +13,7 @@ export type { FireLock } from "./fire-lock";
 
 export type RoutineSchedulerMode = "local" | "external";
 
+// WHY: Keep well under the dedup TTL and above the delivery's ~15 s top-of-hour lag. ADR-0016
 export const EXTERNAL_FIRE_GRACE_MS = 120_000;
 
 export interface SchedulerDeps {
@@ -71,6 +72,7 @@ export class Scheduler {
     }
   }
 
+  // WHY: lastTick advances before the scan, so an escaping throw drops the window for all agents. ADR-0016
   async tick(now: Date): Promise<void> {
     const since = this.lastTick;
     this.lastTick = now;

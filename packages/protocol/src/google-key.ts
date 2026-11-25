@@ -1,3 +1,4 @@
+// WHY: Denylist, not allowlist: Google ships new key prefixes like AQ.; unknown shapes fail open. ADR-0017
 export function deadGoogleApiKey(cred: {
   provider: string;
   kind?: "oauth" | "api_key";

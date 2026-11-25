@@ -11,6 +11,7 @@ export interface CreateSessionOptions {
   mode?: TurnMode;
   context?: ProvidedContext;
   fresh?: boolean;
+  // WHY: Lazy: building history reads archived segments; a native resume must pay none of it. ADR-0010
   freshRetryPromptPrefix?: () => string;
   recordedContextTokens?: () => number | undefined;
 }

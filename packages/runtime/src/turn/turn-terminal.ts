@@ -137,6 +137,7 @@ export function durableTerminalFrame(
   );
 }
 
+// WHY: Old clients show these verbatim and cloud stores them as mission errors. ADR-0015
 export const TURN_SETUP_MESSAGES: Record<TurnSetupCode, string> = {
   hydrate_over_cap: "This agent has too much saved to start right now.",
   layout_unexpected:

@@ -66,6 +66,7 @@ export function createPageLifecycle(
 
 let shared: PageLifecycle | null = null;
 
+// WHY: Page-wide singleton; the SDK is rebuilt per bearer rotation and fresh listeners would leak. ADR-0030
 export function sharedPageLifecycle(): PageLifecycle {
   shared ??= createPageLifecycle();
   return shared;

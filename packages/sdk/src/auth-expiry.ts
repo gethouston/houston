@@ -17,6 +17,7 @@ export function isUnauthorized(err: unknown): boolean {
   return false;
 }
 
+// WHY: Fires once per token value; repeats on a stale token drive the host into a refresh loop. ADR-0019
 /** Classifies engine 401s and emits `session/tokenExpired`, deduped by token value. */
 export interface AuthExpiryNotifier {
   /**

@@ -28,6 +28,7 @@ import {
 } from "./turn-session-startup";
 import type { TurnDirectories, TurnSessionRequest } from "./turn-session-types";
 
+// WHY: Pooled ModelRuntime uses pi's file auth store, which never records usedTokens. ADR-0015
 export async function openTurnBackendSession(input: {
   directories: TurnDirectories;
   turn: TurnSessionRequest;

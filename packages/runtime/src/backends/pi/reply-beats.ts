@@ -1,6 +1,7 @@
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import type { ReplyBeat } from "../types";
 
+// WHY: OpenAI can leave the tool name empty at toolcall_start; report on the first named event. ADR-0010
 export function createReplyBeatReader(): (
   e: AgentSessionEvent,
 ) => ReplyBeat | null {

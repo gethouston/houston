@@ -36,6 +36,7 @@ export function isAuthorizationFailure(error: unknown) {
   );
 }
 
+// WHY: 403/400/422 mean nothing registered; keeping the attempt blocks every later model change. ADR-0026
 /**
  * The gateway refused to register a connection for good: a 403 (the agent's
  * model ceiling, the person's role, the agent gone) or a request it will never

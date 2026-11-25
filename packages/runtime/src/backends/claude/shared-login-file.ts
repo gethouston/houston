@@ -16,6 +16,7 @@ export function forgetSharedLoginCacheForTest(): void {
   cached = undefined;
 }
 
+// WHY: Writers replace via atomic rename; size and mtime can match, so the inode is in the key. ADR-0009
 export function readSharedLoginFile(
   path: string,
 ): ClaudeOAuthCredential | undefined {

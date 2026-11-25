@@ -10,6 +10,7 @@ import { authorizesApprovalCall, inApprovalScope } from "./approval-scope";
 import { GrantStore } from "./grants";
 import { ApprovalMessageGuard } from "./message-guard";
 
+// WHY: In memory on purpose: a restart drops pending approvals and fails closed. ADR-0016
 export class ApprovalStore {
   private readonly byId = new Map<string, ApprovalRequest>();
   readonly messages: ApprovalMessageGuard;

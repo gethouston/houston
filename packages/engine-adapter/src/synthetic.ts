@@ -43,6 +43,7 @@ export type NewProviderId = string;
 
 const OPENCODE_GATEWAYS: readonly NewProviderId[] = ["opencode", "opencode-go"];
 
+// WHY: OpenCode Zen and Go share one key; writes and clears go to both ids. ADR-0030
 export function credentialSiblings(pid: NewProviderId): NewProviderId[] {
   return OPENCODE_GATEWAYS.includes(pid) ? [...OPENCODE_GATEWAYS] : [pid];
 }

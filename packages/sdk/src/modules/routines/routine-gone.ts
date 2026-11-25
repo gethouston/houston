@@ -1,6 +1,7 @@
 import { isRoutineNotFoundBody } from "@houston/wire-types/routine-refusal";
 import { refusalStatus } from "../refusal-code";
 
+// WHY: Only 404 routine_not_found counts as gone, never agent not found. ADR-0027
 /**
  * Whether a failed routine write or run-now was refused because the routine
  * no longer exists (`404 routine_not_found`): deleted elsewhere, or picked

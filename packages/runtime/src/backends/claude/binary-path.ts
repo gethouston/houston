@@ -38,6 +38,7 @@ export function isBunCompiled(moduleUrl: string = import.meta.url): boolean {
   return moduleUrl.includes("$bunfs") || moduleUrl.includes("~BUN");
 }
 
+// WHY: Bun's $bunfs hides the SDK platform package; a staged sibling also gets notarized. ADR-0009
 export function resolveClaudeExecutable(
   deps: ResolveClaudeExecutableDeps = {},
 ): string | undefined {

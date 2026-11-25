@@ -27,6 +27,7 @@ interface ScopeState {
   readonly chains: Map<string, Promise<unknown>>;
 }
 
+// WHY: In-process promise chains serialize writes; safe only with one process per data dir. ADR-0008
 export class HoustonAuthStore implements CredentialStore {
   private readonly scopes = new Map<string, ScopeState>();
   private readonly dataDir: string;

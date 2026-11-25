@@ -23,6 +23,7 @@ const processTarget = (): FactHarvestTarget => ({
   workspaceDir: config.workspaceDir,
 });
 
+// WHY: Compaction runs outside runWithConversationId; the ambient id would lose provenance. ADR-0012
 export async function compactWithFactHarvest(
   session: HarnessSession,
   conversationId: string,
@@ -34,6 +35,7 @@ export async function compactWithFactHarvest(
   await harvestDurableFacts(conversationId, outcome, target);
 }
 
+// WHY: The host append dedupes by record id, not text; known facts must be dropped here. ADR-0012
 async function harvestDurableFacts(
   conversationId: string,
   outcome: CompactionOutcome | undefined,

@@ -9,6 +9,7 @@ import { reportsNotDone } from "../../session/tools/assistant-result";
 import { startedMissionFromDetails } from "../../session/tools/start-mission-receipt";
 import { classifyTurnFailure, type TurnHints } from "./turn-failure";
 
+// WHY: Gemini via pi omits totalTokens; sum the parts. ADR-0010
 export function normalizeUsage(u: unknown): TokenUsage | null {
   const usage = u as
     | {

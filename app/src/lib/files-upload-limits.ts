@@ -1,3 +1,4 @@
+// WHY: Mirrors host MAX_UPLOAD_BYTES; compare with >= since the host measures the decoded payload. ADR-0065
 export const MAX_UPLOAD_FILE_BYTES = 100 * 1024 * 1024;
 
 export interface UploadCandidate {

@@ -13,6 +13,7 @@ export const CODEX_PICKER_HIDDEN_MODEL_IDS: readonly string[] = [
   "gpt-5.6-luna",
 ];
 
+// WHY: Codex /models lists models whose completions 404; only a probe proves one runs. ADR-0007
 export function codexOfferedModelIds(catalogIds: readonly string[]): string[] {
   return catalogIds.filter((id) => !CODEX_UNSERVED_MODEL_IDS.has(id));
 }

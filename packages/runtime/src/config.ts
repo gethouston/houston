@@ -99,6 +99,7 @@ export const config = {
   runCodePerMinute: Number(env.HOUSTON_RUN_CODE_PER_MINUTE || 10),
   toolShell: parseToolShell(env.HOUSTON_TOOL_SHELL),
 
+  // WHY: Silent reasoning can exceed 5 minutes without output; a shorter stall kills a billed turn. ADR-0011
   turnStallTimeoutMs: stallTimeoutMs(
     env.HOUSTON_TURN_STALL_TIMEOUT_MS,
     600_000,
@@ -108,6 +109,7 @@ export const config = {
     15_000,
   ),
 
+  // WHY: pi SessionManager keeps every JSONL entry in memory; a session costs 2-3x its file size. ADR-0011
   sessionCacheMax: Number(env.HOUSTON_SESSION_CACHE_MAX || 8),
   sessionCacheIdleMs: Number(env.HOUSTON_SESSION_CACHE_IDLE_MS || 1_800_000),
   conversationParseCacheBytes:

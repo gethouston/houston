@@ -42,6 +42,7 @@ const PASSTHROUGH_ENV_VARS: ReadonlySet<string> = new Set(
   ].map((k) => k.toUpperCase()),
 );
 
+// WHY: Claude Code retries on API_TIMEOUT_MS before the response opens; it never cuts a live stream. ADR-0009
 export function buildClaudeEnv(
   token: ClaudeToken | undefined,
   opts: {

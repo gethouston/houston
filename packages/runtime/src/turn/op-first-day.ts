@@ -10,6 +10,7 @@ import type { OpResult } from "./op-apply";
 import type { OpRequest } from "./parse-op-request";
 import type { TurnFilesystem } from "./turn-filesystem";
 
+// WHY: Bad JSON must be 400; a worker 500 makes the gateway fast-fail every op for the agent. ADR-0015
 export async function prepareFirstDayOp(
   op: OpRequest,
   fs: TurnFilesystem,

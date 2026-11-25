@@ -42,6 +42,7 @@ export type {
 const fileFor = (dir: string, id: string) =>
   join(dir, `${encodeURIComponent(id)}.json`);
 
+// WHY: May return the parse cache's object; a mutation must go through saveConversation. ADR-0011
 export function loadConversation(
   dir: string,
   id: string,

@@ -2,6 +2,7 @@ import type { ProviderError, WireEvent } from "@houston/runtime-client";
 import type { ModelPhase } from "../backends/model-phase";
 import { createRunawayDetector } from "./runaway-output";
 
+// WHY: pi ends an aborted response as stopReason error "This operation was aborted". ADR-0012
 export function isAbortEcho(error: ProviderError): boolean {
   return (
     error.kind === "unknown" &&

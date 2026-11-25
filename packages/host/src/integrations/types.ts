@@ -32,6 +32,7 @@ export const INTEGRATION_APP_STATUSES = [
   "blocked",
   "unknown",
 ] as const;
+// WHY: Nothing here produces blocked; the cloud gateway owns the allowlist and may send it. ADR-0016
 export type IntegrationAppStatus = (typeof INTEGRATION_APP_STATUSES)[number];
 
 export function isIntegrationAppStatus(v: unknown): v is IntegrationAppStatus {

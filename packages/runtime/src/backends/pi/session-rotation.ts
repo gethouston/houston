@@ -13,6 +13,7 @@ import { sessionLogLines } from "./session-log-lines";
 
 export const SESSION_LOG_ROTATION_BYTES = 8 * 1024 * 1024;
 
+// WHY: Quick scan relies on pi putting id right after type; anything else takes the full parse. ADR-0010
 export function rotateSessionLog(file: string, workspaceDir: string): string {
   const size = statSync(file).size;
   if (size <= SESSION_LOG_ROTATION_BYTES) return file;

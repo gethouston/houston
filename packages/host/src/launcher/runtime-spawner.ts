@@ -90,6 +90,7 @@ export class RuntimeProcessSpawner implements RuntimeSpawner {
           child.kill("SIGKILL");
         } catch {}
       },
+      // WHY: A missing binary emits error and close but never exit; fire once on the first. ADR-0016
       onExit: (cb) => {
         let fired = false;
         let graceTimer: ReturnType<typeof setTimeout> | undefined;

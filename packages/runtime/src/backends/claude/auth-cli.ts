@@ -39,6 +39,7 @@ export function readProbeOutcome(
   return { known: true, loggedIn: parsed.loggedIn };
 }
 
+// WHY: Built without a token: an ambient ANTHROPIC_API_KEY would answer for another credential. ADR-0009
 export function spawnStatusProbe(): Promise<ProbeAnswer> {
   const env = buildClaudeEnv(undefined, {
     configDir: claudeLoginConfigDir(),

@@ -4,6 +4,7 @@ export const FIRST_BYTE_EXTRA_ATTEMPTS = 2;
 
 const MS_PER_PROMPT_TOKEN = 50 / 1000;
 
+// WHY: Providers open the response only after reading the prompt; scale by prompt size. ADR-0007
 export function firstByteDeadlineMs(
   provider: string,
   configuredMs: number,

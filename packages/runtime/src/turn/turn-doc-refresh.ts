@@ -23,6 +23,7 @@ export function remoteKey(prefix: string, relativePath: string): string {
   return prefix ? posix.join(prefix, relativePath) : relativePath;
 }
 
+// WHY: Manifest keeps the remote bytes as base; unsaved merged bytes must never become one. ADR-0015
 export async function refreshDocument(
   opts: DocRefreshTarget,
 ): Promise<{ generation?: string; refreshable: boolean }> {

@@ -12,6 +12,7 @@ import { appendLearningChecked } from "./learning-write";
 import { authorizeTurnWrite } from "./plan-gate";
 import { defineRoute } from "./registry";
 
+// WHY: Provenance only, never authorization; writes go through authorizeTurnWrite. ADR-0016
 export const CONVERSATION_ID_HEADER = "x-houston-conversation-id";
 
 defineRoute({

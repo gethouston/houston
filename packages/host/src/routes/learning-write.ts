@@ -10,6 +10,7 @@ import type { Learning } from "@houston/protocol";
 import { ASSISTANT_AGENT_NAME } from "./assistant";
 import { withDocLock } from "./doc-lock";
 
+// WHY: The assistant's whole memory goes into every system prompt; measure the bytes saveLearnings writes. ADR-0016
 export const ASSISTANT_LEARNINGS_MAX_BYTES = 12_000;
 
 export const ASSISTANT_LEARNINGS_FULL_MESSAGE =

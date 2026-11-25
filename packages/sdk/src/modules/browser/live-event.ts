@@ -9,6 +9,7 @@ const KNOWN: ReadonlySet<string> = new Set<BrowserLiveEvent["type"]>([
   "status",
 ]);
 
+// WHY: Protocol v3 grows additively; skip unknown types, report a broken known one once. ADR-0023
 export function readLiveEvent(
   raw: unknown,
   onMalformed?: (error: unknown) => void,

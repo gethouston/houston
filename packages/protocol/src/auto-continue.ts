@@ -8,6 +8,7 @@ export function isAutoContinue(content: string): boolean {
   return content.startsWith(AUTO_CONTINUE_MARKER);
 }
 
+// WHY: Host and gateway both mint this; drift shows the person a prompt they never wrote. ADR-0017
 export const HEARTBEAT_MARKER = "<!--houston:heartbeat-->";
 
 const HEARTBEAT_PREFIX = `${AUTO_CONTINUE_MARKER}\n\n${HEARTBEAT_MARKER}\n`;

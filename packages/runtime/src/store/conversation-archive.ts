@@ -62,6 +62,7 @@ export function tailCutIndex(
   return fits;
 }
 
+// WHY: Write the segment before the live transcript so a crash duplicates history, never loses it. ADR-0011
 export function archiveOlderMessages(
   dir: string,
   conv: StoredConversation,

@@ -22,6 +22,7 @@ export interface TurnStartFailure {
 const errMessage = (err: unknown) =>
   err instanceof Error ? err.message : String(err);
 
+// WHY: The client adopts the turn id from this echo; an error sent first is dropped as foreign. ADR-0012
 function recordRefusedUserTurn(turn: TurnStartFailure): void {
   appendUserMessage(turn.id, turn.text, {
     turnId: turn.turnId,

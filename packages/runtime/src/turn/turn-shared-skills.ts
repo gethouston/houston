@@ -35,6 +35,7 @@ export function turnSharedSkillsStore(
   });
 }
 
+// WHY: Older pod stores match the skills prefix as a raw string and return siblings like skills-old. ADR-0014
 function skillOf(key: string): string | null {
   if (!key.startsWith(`${SKILLS_DIR}/`)) return null;
   const segments = key.slice(SKILLS_DIR.length + 1).split("/");
@@ -43,6 +44,7 @@ function skillOf(key: string): string | null {
   return segments[0] ?? null;
 }
 
+// WHY: The pod-store refuses the prefix skills/ with a trailing slash. ADR-0015
 export async function snapshotTurnSharedSkills(
   store: ObjectStore | null,
   dest: string,

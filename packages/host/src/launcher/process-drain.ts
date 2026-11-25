@@ -3,6 +3,7 @@ import type { Running, RuntimeHandle } from "./process-types";
 
 export const DEFAULT_SHUTDOWN_DRAIN_MS = 5_000;
 
+// WHY: Throw if the child outlives SIGKILL; a rename would move its live dir (Windows locks cwd). ADR-0016
 export async function drainUntilExit(
   running: Map<AgentId, Running>,
   agentId: AgentId,

@@ -19,6 +19,7 @@ export function resetPooledRoutineSession(input: {
   return true;
 }
 
+// WHY: Tolerate only a missing segment; failing on it would fail every later fire for good. ADR-0015
 export async function loadRoutineReplayArchive(
   loadArchive: ArchiveLoader | undefined,
   conversationId: string,

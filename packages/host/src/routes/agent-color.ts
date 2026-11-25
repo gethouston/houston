@@ -8,6 +8,7 @@ export const AGENT_COLORS_PREF_KEY = "agent_colors";
 
 const MAX_COLOR_LENGTH = 64;
 
+// WHY: Must match the app's parseAccountColors; both parse the same bytes. ADR-0016
 export function parseAgentColorMap(raw: string | null): Record<string, string> {
   if (!raw) return {};
   let parsed: unknown;
@@ -30,6 +31,7 @@ export function parseAgentColorMap(raw: string | null): Record<string, string> {
   return out;
 }
 
+// WHY: Shape check only; users still hold raw hex colors, and the catalog schema enforces the palette. ADR-0016
 export function agentColorOrNull(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();

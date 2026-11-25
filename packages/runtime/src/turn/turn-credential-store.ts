@@ -19,6 +19,7 @@ export type TurnReserve = (
   authPath: string,
 ) => Promise<unknown>;
 
+// WHY: pi refreshes access-only tokens with an empty refresh token; mask them and re-serve. ADR-0112
 export class TurnCredentialStore implements CredentialStore {
   private readonly chains = new Map<string, Promise<unknown>>();
   private readonly reserves = new Map<string, Promise<unknown>>();

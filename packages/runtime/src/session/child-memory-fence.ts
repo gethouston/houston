@@ -51,6 +51,7 @@ export function childMemoryCapBytes(
   return Math.max(CHILD_MEMORY_CAP_FLOOR_BYTES, limitBytes - reserveBytes);
 }
 
+// WHY: Pod OOM kills the whole container; RLIMIT_DATA fails just the script, quietly. ADR-0012
 export function bashMemoryFencePrefix(capBytes: number): string {
   return `ulimit -d ${Math.floor(capBytes / 1024)} 2>/dev/null`;
 }

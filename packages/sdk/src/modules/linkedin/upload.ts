@@ -49,6 +49,7 @@ export function isPostableLinkedInText(text: string): boolean {
   return checkLinkedInText(text).kind === "ok";
 }
 
+// WHY: The gateway counts length after backslash-prefixing LinkedIn's reserved characters. ADR-0024
 export function linkedInUpload(input: LinkedInPostInput): FormData | Refused {
   const { image, altText } = input;
   if (!isPostableLinkedInText(input.text))

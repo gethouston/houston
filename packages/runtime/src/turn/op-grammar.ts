@@ -85,6 +85,7 @@ export function parseAgentOp(raw: Record<string, unknown>): AgentOp {
   }
 }
 
+// WHY: Host handlers decode the route, so check the decoded form: %2Ehouston is .houston. ADR-0015
 function parseRouteOp(raw: Record<string, unknown>): AgentOp {
   const method = str(raw.method, "op.method").toUpperCase();
   if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {

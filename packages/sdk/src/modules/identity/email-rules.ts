@@ -1,3 +1,4 @@
+// WHY: Only trim and lowercase; folding dots or plus tags would link a different inbox. ADR-0028
 export function normalizeAddress(address: string): string {
   return address.trim().toLowerCase();
 }

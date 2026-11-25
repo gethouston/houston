@@ -35,6 +35,7 @@ export interface AgentRouteDeps {
   ownerSub?: string;
   loopbackEgress?: boolean;
   storeSyncFlush?: () => Promise<void>;
+  // WHY: Skips /v1/events: the gateway fan-in holds it open on every awake pod and would block idle sleep. ADR-0016
   agentRequestCount?: () => number;
   agentWriteCount?: () => number;
   customIntegrations?: CustomIntegrationManager;
@@ -79,6 +80,7 @@ export function channelFor(
 export const noChannel = (res: ServerResponse, runtime: WorkspaceRuntime) =>
   json(res, 503, { error: `${runtime} runtime not configured` });
 
+// WHY: Only gateway-fronted pods honor the acting header; the gateway mints it and pods cannot verify it. ADR-0016
 export function trustedActingAs(
   deps: AgentRouteDeps,
   req: IncomingMessage,

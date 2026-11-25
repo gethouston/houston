@@ -18,6 +18,7 @@ export type ProviderResolution =
   | { ok: true; id: string }
   | { ok: false; error: string };
 
+// WHY: The runtime's start_mission enum is frozen per session, so the host checks connects live. ADR-0016
 export async function resolveMissionProvider(
   ctx: MissionsCtx,
   raw: string,
@@ -40,6 +41,7 @@ export async function resolveMissionProvider(
     : { ok: false, error: resolved.message };
 }
 
+// WHY: Model ids are not validated: the host's per-provider models are a curated subset, not the catalog. ADR-0016
 export function resolveMissionModel(
   provider: string | undefined,
   raw: string,

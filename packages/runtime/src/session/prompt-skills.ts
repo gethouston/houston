@@ -5,6 +5,7 @@ import type { LoadSkillsResult, Skill } from "@earendil-works/pi-coding-agent";
 const byCodeUnit = (a: string, b: string): number =>
   a < b ? -1 : a > b ? 1 : 0;
 
+// WHY: Dir order and localeCompare vary by worker; reordering breaks the prompt cache. ADR-0012
 export function skillsForPrompt<
   T extends Pick<Skill, "name" | "filePath" | "description">,
 >(skills: readonly T[]): T[] {

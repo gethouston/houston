@@ -22,6 +22,7 @@ export function autoToolNames(all: readonly string[]): string[] {
   return all.filter((name) => !AUTO_MODE_EXCLUDED_TOOL_NAMES.includes(name));
 }
 
+// WHY: Claude's built list may already hold plan_ready; strip it before the plan branch adds it. ADR-0012
 export function toolNamesForMode(
   mode: TurnMode | undefined,
   all: readonly string[],

@@ -13,6 +13,7 @@ import type {
   WorkspaceCredential,
 } from "../ports";
 
+// WHY: pi refreshes OAuth entries within 5 minutes of expiry and served entries carry no refresh token. ADR-0016
 const SERVE_VALIDITY_SKEW_MS = 6 * 60 * 1000;
 
 export type ServeCandidate =

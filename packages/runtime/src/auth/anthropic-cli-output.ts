@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 export type AnthropicLoginCallbacks = {
+  // WHY: Presence of instructions selects token paste; absent means open the URL and paste its code. ADR-0008
   onAuth: (info: { url: string; instructions?: string }) => void;
   onManualCodeInput: () => Promise<string>;
 };

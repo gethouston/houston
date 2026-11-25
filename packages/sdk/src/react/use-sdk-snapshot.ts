@@ -21,6 +21,7 @@ export interface SnapshotStoreAdapter<T> {
   getSnapshot: () => T | undefined;
 }
 
+// WHY: Per-publish sync renders trip React 19 "Maximum update depth"; notify on a macrotask. ADR-0019
 /**
  * Build the external-store adapter that binds `scope` to `source`'s reactive
  * store. Framework-agnostic on purpose: the hook wraps it, tests drive it

@@ -36,6 +36,7 @@ export const RoutinesCommand = {
 export type RoutinesCommandType =
   (typeof RoutinesCommand)[keyof typeof RoutinesCommand];
 
+// WHY: Host enforces schedule/trigger exclusivity; a client check would refuse newer gateway bindings. ADR-0027
 export function requireNewRoutine(payload: unknown): NewRoutine {
   const value = field(payload, "input");
   if (typeof value !== "object" || value === null)

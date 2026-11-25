@@ -28,6 +28,7 @@ function parseText(text: string): ProviderRefusal | null {
   }
 }
 
+// WHY: provider_account_blocked keeps the credential valid (Copilot billing lock); offer no sign-in. ADR-0029
 export function accountBlockedCard(
   refusal: ProviderRefusal,
   provider: string | null | undefined,

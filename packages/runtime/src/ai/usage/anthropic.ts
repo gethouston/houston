@@ -17,6 +17,7 @@ const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const USER_AGENT = "claude-code/2.1.0";
 const KEYCHAIN_SERVICE = "Claude Code-credentials";
 
+// WHY: Shared file and Keychain hold team credentials; a personal scope reads only its auth.json. ADR-0007
 export async function resolveAnthropicToken(
   keychain: () => Promise<string | null> = readKeychainCredential,
 ): Promise<string | null> {

@@ -16,6 +16,7 @@ export function patternParams(pattern: string): string[] {
     .map((segment) => segment.slice(1));
 }
 
+// WHY: Nothing is normalized; folding the trailing slash would make /agents/ start proxying. ADR-0016
 export function matchPath(pattern: string, path: string): PatternMatch | null {
   const patternSegments = pattern.split("/");
   const pathSegments = path.split("/");

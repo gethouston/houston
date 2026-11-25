@@ -25,6 +25,7 @@ export interface AssistantAccess extends AssistantDiscovery {
   retry: () => Promise<void>;
 }
 
+// WHY: call() reports every rejection, so retries live here and the query keeps retry false. ADR-0064
 export function discoverAssistant(
   signal?: AbortSignal,
 ): Promise<AssistantHandle> {

@@ -29,6 +29,7 @@ export interface MissionOrigin {
   depth: number;
 }
 
+// WHY: Depth is carried, not looked up, because the parent chat may live in another pod. ADR-0016
 export const MAX_MISSION_DEPTH = 1;
 
 export const MISSION_DEPTH_ERROR =

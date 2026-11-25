@@ -8,6 +8,7 @@ export type Conversation = {
   queue: Promise<unknown>;
   provider: string;
   model: string;
+  // WHY: Never setModel a foreign model; pi would run an anthropic turn, Claude an openai id. ADR-0012
   backendId: string;
   mode: TurnMode;
   nextStepSuggestions?: boolean;
@@ -15,7 +16,9 @@ export type Conversation = {
   liveMode?: TurnModeRef;
   context?: ProvidedContext;
   turnId?: string;
+  // WHY: pi resolves an aborted prompt clean with no error; this is the only stop trace. ADR-0012
   stoppedTurnId?: string;
+  // WHY: turnId misses a turn parked behind the workdir lock; pending pins against eviction. ADR-0012
   pending: number;
   sessionRebuildPending?: true;
 };

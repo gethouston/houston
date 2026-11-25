@@ -6,6 +6,7 @@ const RETRYABLE = new Set([502, 503, 504]);
 const STALL_MS = 100;
 const MAX_STALL_WINDOWS = 2;
 
+// WHY: After an event-loop stall a plain timeout fires before an arrived response is read. ADR-0015
 export function liveDeadline(
   ms: number,
   now: () => number = () => performance.now(),

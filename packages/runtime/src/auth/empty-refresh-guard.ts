@@ -1,6 +1,7 @@
 import type { Credential } from "@earendil-works/pi-ai";
 import { serveModeOn } from "./serve-context";
 
+// WHY: Mirrors pi's five-minute OAuth refresh floor; the gateway serves with the same margin. ADR-0008
 export const PI_OAUTH_MIN_VALIDITY_MS = 5 * 60 * 1000;
 
 export function isAccessOnlyOAuth(cred: Credential | undefined): boolean {
@@ -37,6 +38,7 @@ export function bindEmptyRefreshServeSync(
   }
 }
 
+// WHY: Bound callback, not import: storage.ts top-level await leaves a serve.ts cycle unorderable. ADR-0008
 export async function runEmptyRefreshServeSync(): Promise<void> {
   if (servedSync) {
     await servedSync();
