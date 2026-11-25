@@ -31,6 +31,20 @@
   "linter": {
     "enabled": false
   },
+  "overrides": [
+    {
+      "includes": ["**/*.json", "**/*.jsonc"],
+      "linter": {
+        "enabled": true,
+        "rules": {
+          "recommended": false,
+          "suspicious": {
+            "noDuplicateObjectKeys": "error"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "double",
