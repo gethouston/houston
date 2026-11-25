@@ -30,7 +30,7 @@ Re-following live claims at startup was rejected. A rolling deploy boots new rep
 
 ## Mission reads never wake for file transcripts
 
-`missions/read` is off cloud's `podrequired.go`. The gateway reads the file the host's `missions-read.ts` would read: `activity-<id>` first, then the card's `session_key`, live file only. The response is byte-identical to the pod's. Only the store-level grants can still hand the read to a pod: `store_not_migrated`, `doc_layout`, and `file_transcript` for a file that does not parse or is past the read cap.
+`missions/read` is off cloud's `podrequired.go`. The gateway reads the file the host's `packages/host/src/routes/missions-read.ts` would read: `activity-<id>` first, then the card's `session_key`, live file only. The response is byte-identical to the pod's. Only the store-level grants can still hand the read to a pod: `store_not_migrated`, `doc_layout`, and `file_transcript` for a file that does not parse or is past the read cap.
 
 ## Title ops run on the agent's own provider
 

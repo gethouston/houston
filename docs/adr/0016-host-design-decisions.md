@@ -2462,7 +2462,7 @@ Pinned by `src/schedule/firer.test.ts`, `snooze.test.ts`, `auto-pause*.test.ts`,
 
 Lives in `src/schedule/snooze.ts` (`settleRoutineRuns`), `auto-pause.ts` (`pauseFailingRoutines`), `run-failure.ts`.
 
-After runs settle: a plan usage limit snoozes its routine until the reset at once (one run is proof enough), an answered run lifts a snooze, and every other typed wall feeds the auto-pause streak. Snooze lands first so the pause reads what it wrote. Callers must not hold the runs queue, which is not reentrant. Manual rows neither snooze nor lift, since they ran as the presser.
+After runs settle: a plan usage limit snoozes its routine until the reset at once (one run is proof enough), an answered run lifts a snooze, and every other typed wall feeds the auto-pause streak, including `provider_error` for an untyped provider failure (ADR 0114). Snooze lands first so the pause reads what it wrote. Callers must not hold the runs queue, which is not reentrant. Manual rows neither snooze nor lift, since they ran as the presser.
 
 Writes take the same per-document lock as every routine write, so a concurrent edit is never lost, and an edit that landed first (a resume, a model change) moves the streak's start past the failures. Lock order is the runs queue first, then the routines document, so no run settles between the streak read and the pause save.
 
