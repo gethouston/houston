@@ -65,7 +65,7 @@ export function usePickerViewModels(opts: {
   // Memoized on stable inputs (`capabilities` is a stable query ref, the frozen
   // EMPTY constant otherwise), plus `catalogUpdatedAt` so the list rebuilds off
   // the freshly-hydrated `PROVIDERS` the moment the pi-ai catalog resolves —
-  // `getVisibleProviders` reads the mutated-in-place cache, invisible to biome.
+  // `getVisibleProviders` reads the mutated-in-place cache, invisible to static dependency analysis.
   /* oxlint-disable react-hooks/exhaustive-deps -- catalogUpdatedAt keys the in-place PROVIDERS hydration. */
   const visibleProviders = useMemo(
     () =>

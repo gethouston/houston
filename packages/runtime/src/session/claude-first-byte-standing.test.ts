@@ -39,14 +39,12 @@ const { runTurn, disposeConversation } = await import("./chat");
 const { registerBackend } = await import("../backends/registry");
 const { createClaudeBackend } = await import("../backends/claude/backend");
 const { serverClaudeLayout } = await import("../backends/claude/paths");
-const { simulatedClaudeApi } = await import(
-  "../backends/claude/simulated-api.test-support"
-);
+const { simulatedClaudeApi } =
+  await import("../backends/claude/simulated-api.test-support");
 const { toolSelection } = await import("./session-tools");
 const { config } = await import("../config");
-const { appendAssistantMessage, appendUserMessage } = await import(
-  "../store/conversations"
-);
+const { appendAssistantMessage, appendUserMessage } =
+  await import("../store/conversations");
 
 const PIN = {
   provider: "anthropic",

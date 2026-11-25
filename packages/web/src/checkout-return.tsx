@@ -10,7 +10,9 @@ import {
   type ReturnPagePorts,
 } from "@houston/app/lib/checkout-return-handoff";
 import i18n from "@houston/app/lib/i18n";
+
 import "@houston/app/styles/globals.css";
+
 import { Button, Card } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { I18nextProvider, useTranslation } from "react-i18next";

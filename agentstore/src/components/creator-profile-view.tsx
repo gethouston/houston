@@ -1,10 +1,10 @@
 "use client";
 
-import type { StoreAgentSummary } from "@houston/agentstore-client";
 import {
   CreatorProfileScreen,
   type StoreCreatorProfile,
 } from "@houston-ai/store";
+import type { StoreAgentSummary } from "@houston/agentstore-client";
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 import { MeClient } from "@/app/me/me-client";

@@ -126,11 +126,10 @@ function toCallToolResult(
   isError?: true;
   structuredContent?: { mission: { id: string; title: string; agent: string } };
 } {
-  const content = result.content.map(
-    (c): McpContent =>
-      c.type === "text"
-        ? { type: "text", text: c.text }
-        : { type: "image", data: c.data, mimeType: c.mimeType },
+  const content = result.content.map((c): McpContent =>
+    c.type === "text"
+      ? { type: "text", text: c.text }
+      : { type: "image", data: c.data, mimeType: c.mimeType },
   );
   const details = result.details;
   if (reportsNotDone(details)) return { content, isError: true };

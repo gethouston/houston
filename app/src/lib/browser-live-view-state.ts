@@ -1,9 +1,9 @@
-import type { BrowserLiveConnectionState } from "@houston/engine-adapter";
 import type {
   BrowserLiveFrames,
   BrowserLiveViewFrame,
   BrowserLiveViewState,
 } from "@houston-ai/chat";
+import type { BrowserLiveConnectionState } from "@houston/engine-adapter";
 
 /** The live view's state for the SDK connection's state. */
 export function browserLiveViewState(

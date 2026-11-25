@@ -16,8 +16,7 @@ export interface AgentActivitySummaryInput {
  * `created_by`/`contributors`/`mentioned` attribution) so the two can never
  * drift into disagreeing about what a mission is.
  */
-export interface ActivityConversationSummaryInput
-  extends UnreadConversationInput {
+export interface ActivityConversationSummaryInput extends UnreadConversationInput {
   status?: string | null;
   title?: string;
 }

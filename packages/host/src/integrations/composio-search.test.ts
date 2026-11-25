@@ -295,25 +295,27 @@ test("actionSlugOf: only an UPPER_SNAKE slug prefixed by the toolkit counts", ()
   );
 });
 
-test.each([
-  "google_maps",
-  "google-maps",
-  "google maps",
-])("exact lookup accepts compact and underscored action prefixes for %s", async (toolkit) => {
-  for (const action of ["GOOGLE_MAPS_SEARCH", "GOOGLEMAPS_SEARCH"]) {
-    expect(actionSlugOf(action, toolkit)).toBe(action);
-    const target = { action, toolkit, description: "Search places" };
-    const { deps, calls } = fakeDeps({
-      catalog: [{ slug: toolkit, name: "Google Maps" }],
-      reply: (q) => (q.tool_slugs === action ? [target] : []),
-    });
-    const result = await searchComposio(deps, action, toolkit);
-    expect(calls).toContainEqual({ tool_slugs: action, toolkit_slug: toolkit });
-    expect(result.items[0]?.action).toBe(action);
-  }
-  expect(actionSlugOf("GOOGLE_MAPS_", toolkit)).toBeNull();
-  expect(actionSlugOf("GOOGLE_MAPS_OTHER_SEARCH", "google-map")).toBeNull();
-});
+test.each(["google_maps", "google-maps", "google maps"])(
+  "exact lookup accepts compact and underscored action prefixes for %s",
+  async (toolkit) => {
+    for (const action of ["GOOGLE_MAPS_SEARCH", "GOOGLEMAPS_SEARCH"]) {
+      expect(actionSlugOf(action, toolkit)).toBe(action);
+      const target = { action, toolkit, description: "Search places" };
+      const { deps, calls } = fakeDeps({
+        catalog: [{ slug: toolkit, name: "Google Maps" }],
+        reply: (q) => (q.tool_slugs === action ? [target] : []),
+      });
+      const result = await searchComposio(deps, action, toolkit);
+      expect(calls).toContainEqual({
+        tool_slugs: action,
+        toolkit_slug: toolkit,
+      });
+      expect(result.items[0]?.action).toBe(action);
+    }
+    expect(actionSlugOf("GOOGLE_MAPS_", toolkit)).toBeNull();
+    expect(actionSlugOf("GOOGLE_MAPS_OTHER_SEARCH", "google-map")).toBeNull();
+  },
+);
 
 test("explicit app scope with no action match still returns the app row", async () => {
   const { deps } = fakeDeps({

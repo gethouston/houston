@@ -1,5 +1,5 @@
-import type { PaletteId, ResolvedMode } from "@houston/sdk/appearance";
 import { cn } from "@houston-ai/core";
+import type { PaletteId, ResolvedMode } from "@houston/sdk/appearance";
 import type { KeyboardEvent } from "react";
 import {
   arrowStep,

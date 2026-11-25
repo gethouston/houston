@@ -43,9 +43,8 @@ vi.mock("../session/conversation-cache", () => ({
   conversations: new Map<string, { pending: number }>(),
 }));
 
-const { beginConversationCommand } = await import(
-  "../session/conversation-command-gate"
-);
+const { beginConversationCommand } =
+  await import("../session/conversation-command-gate");
 const { handleConversationRoute } = await import("./conversation-routes");
 
 function post(path: string, raw: string) {

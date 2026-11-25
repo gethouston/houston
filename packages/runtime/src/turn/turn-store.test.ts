@@ -43,14 +43,13 @@ test("ordinary turn stores keep the envelope prefix unchanged", () => {
   ).toEqual({ store: fallback, prefix: "ws/w/a" });
 });
 
-test.each([
-  "other/acme/helper",
-  "ws/acme",
-  "ws/acme/helper/extra",
-])("a claimed pool turn rejects malformed prefix %s", (gcsPrefix) => {
-  expect(() =>
-    resolveTurnStore({ ...turn, gcsPrefix }, fallback, {
-      poolStoreUrl: "https://gateway.test",
-    }),
-  ).toThrow("gcsPrefix");
-});
+test.each(["other/acme/helper", "ws/acme", "ws/acme/helper/extra"])(
+  "a claimed pool turn rejects malformed prefix %s",
+  (gcsPrefix) => {
+    expect(() =>
+      resolveTurnStore({ ...turn, gcsPrefix }, fallback, {
+        poolStoreUrl: "https://gateway.test",
+      }),
+    ).toThrow("gcsPrefix");
+  },
+);

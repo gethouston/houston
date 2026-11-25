@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  channelUnavailableReason,
+  slackCompletionFailure,
+} from "./channels-refusals.ts";
+import {
   channelConnectCommand,
   channelConnectionSegment,
   parseChannelConnection,
@@ -10,10 +14,6 @@ import {
   slackAuthorizationUrl,
   slackTicket,
 } from "./channels.ts";
-import {
-  channelUnavailableReason,
-  slackCompletionFailure,
-} from "./channels-refusals.ts";
 
 const status = {
   providers: [{ id: "slack", name: "Slack", configured: true }],

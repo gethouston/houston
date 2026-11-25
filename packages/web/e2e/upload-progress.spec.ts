@@ -153,7 +153,9 @@ for (const [layout, viewport] of [
       await page
         .getByRole("menuitem", { name: "Upload files", exact: true })
         .click();
-      await (await chooser).setFiles({
+      await (
+        await chooser
+      ).setFiles({
         name: "recording.mp4",
         mimeType: "video/mp4",
         buffer: Buffer.alloc(SIZE, 2),

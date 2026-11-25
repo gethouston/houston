@@ -1,9 +1,4 @@
 import {
-  parseThemeMode,
-  type ResolvedMode,
-  type ThemePreference,
-} from "@houston/sdk/appearance";
-import {
   Button,
   Select,
   SelectContent,
@@ -11,6 +6,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@houston-ai/core";
+import {
+  parseThemeMode,
+  type ResolvedMode,
+  type ThemePreference,
+} from "@houston/sdk/appearance";
 import { Palette } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";

@@ -1,5 +1,5 @@
-import type { InteractionStep } from "@houston/protocol";
 import type { StepperState } from "@houston-ai/chat";
+import type { InteractionStep } from "@houston/protocol";
 import { create } from "zustand";
 import type { InteractionOutcomes } from "../components/chat-interaction-reply.ts";
 import { canonicalJson } from "../lib/canonical-json.ts";

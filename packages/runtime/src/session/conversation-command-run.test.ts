@@ -51,9 +51,8 @@ const { subscribe } = await import("./bus");
 const { disposeConversation } = await import("./chat");
 const { compactWithFactHarvest } = await import("./durable-facts-harvest");
 const { renderReplayPreamble } = await import("./replay-transcript");
-const { conversationCommandInFlight } = await import(
-  "./conversation-command-gate"
-);
+const { conversationCommandInFlight } =
+  await import("./conversation-command-gate");
 const { withWorkdirLock } = await import("./workdir-lock");
 const { turnsInFlight } = await import("./turn-inflight-count");
 const { config } = await import("../config");
@@ -63,9 +62,8 @@ const {
   consumeSessionReplay,
   getHistory,
 } = await import("../store/conversations");
-const { ASSISTANT_CONVERSATION_ID } = await import(
-  "@houston/host/src/routes/assistant"
-);
+const { ASSISTANT_CONVERSATION_ID } =
+  await import("@houston/host/src/routes/assistant");
 
 let counter = 0;
 /** A conversation with one prior exchange already on disk. */

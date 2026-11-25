@@ -1,7 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { encodeHeartbeat } from "@houston/protocol/auto-continue";
 import type { FeedItem } from "@houston-ai/chat";
+import { encodeHeartbeat } from "@houston/protocol/auto-continue";
 import {
   encodeAutoContinueMessage,
   filterAutoContinueFeedItems,

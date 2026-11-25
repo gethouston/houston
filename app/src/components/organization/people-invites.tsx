@@ -1,5 +1,5 @@
-import type { OrgInvite, OrgMember } from "@houston/engine-adapter";
 import { Avatar, AvatarFallback, Button } from "@houston-ai/core";
+import type { OrgInvite, OrgMember } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import { useDeleteInvite } from "../../hooks/queries";
 import { memberLabel } from "./org-roster";

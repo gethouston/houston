@@ -1,5 +1,5 @@
-import { durationMs, easing } from "@houston/design-tokens";
 import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import { durationMs, easing } from "@houston/design-tokens";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowUpRight,

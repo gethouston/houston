@@ -1,5 +1,5 @@
-import type { Activity } from "@houston/engine-adapter";
 import { Button, Spinner } from "@houston-ai/core";
+import type { Activity } from "@houston/engine-adapter";
 import { X } from "lucide-react";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";

@@ -57,7 +57,7 @@ const fileFor = (url) => {
 };
 
 const jpegSize = (bytes) => {
-  for (let i = 2; i < bytes.length; ) {
+  for (let i = 2; i < bytes.length;) {
     const marker = bytes[i + 1];
     if (marker >= 0xc0 && marker <= 0xc2) {
       return {

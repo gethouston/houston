@@ -102,13 +102,11 @@ function staleExceptions(annotation: OperationAnnotation): Finding[] {
 /** Everything wrong with ONE operation, rule by rule, in report order. */
 export function violationsFor(annotation: OperationAnnotation): Finding[] {
   return [
-    ...annotation.unknownTags.map(
-      (tag): Finding => ({
-        rule: "unknown-tag",
-        problem: `\`@assistant ${tag}\` is not a tag the grammar defines.`,
-        fix: "use `group:<slug>`, `confirm: <reason>`, `unconfirmed: <reason>`, `hidden: <reason>`, `hands: <card>`, `unroutable: <reason>`, or `unschematized: <reason>`.",
-      }),
-    ),
+    ...annotation.unknownTags.map((tag): Finding => ({
+      rule: "unknown-tag",
+      problem: `\`@assistant ${tag}\` is not a tag the grammar defines.`,
+      fix: "use `group:<slug>`, `confirm: <reason>`, `unconfirmed: <reason>`, `hidden: <reason>`, `hands: <card>`, `unroutable: <reason>`, or `unschematized: <reason>`.",
+    })),
     ...(annotation.documented
       ? []
       : [

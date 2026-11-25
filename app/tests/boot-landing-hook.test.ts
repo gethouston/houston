@@ -5,9 +5,8 @@ import type { BootGuardInput } from "../src/components/shell/view-guard-rules.ts
 
 const { act, createElement: h } = await import("react");
 const { createRoot } = await import("react-dom/client");
-const { useBootLanding } = await import(
-  "../src/components/shell/use-boot-landing.ts"
-);
+const { useBootLanding } =
+  await import("../src/components/shell/use-boot-landing.ts");
 
 const opened: string[] = [];
 const openAgent = (agentId: string) => opened.push(agentId);

@@ -36,9 +36,8 @@ mock.module(
   new URL("../src/lib/agent-model-overrides.ts", import.meta.url).href,
   { namedExports: { readAgentModelOverrides: async () => ({}) } },
 );
-const { useAnalyticsSubscriber } = await import(
-  "../src/hooks/use-analytics-subscriber.ts"
-);
+const { useAnalyticsSubscriber } =
+  await import("../src/hooks/use-analytics-subscriber.ts");
 
 test("reliability counts a time-limited reply as ended with its typed reason, never as a failed task or app error", () => {
   useAnalyticsSubscriber();

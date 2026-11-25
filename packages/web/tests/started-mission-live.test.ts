@@ -1,5 +1,5 @@
-import { conversationScope } from "@houston/sdk";
 import { feedItemsToMessages, startedMissions } from "@houston-ai/chat";
+import { conversationScope } from "@houston/sdk";
 import { expect, test } from "vitest";
 import { computeTurnEndSummary } from "../../../ui/chat/src/turn-tools";
 import { conversationStore, conversationVm } from "../../engine-adapter/src/vm";

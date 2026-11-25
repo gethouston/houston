@@ -3,12 +3,12 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { extractCatalog } from "./assistant-extractor.ts";
 import { assistantOutputs, assistantPaths } from "./assistant-paths.ts";
+import { renderCoverage, renderOperations } from "./assistant-render-docs.ts";
 import {
   renderCapabilities,
   renderCapabilityIndex,
   renderCatalog,
 } from "./assistant-render.ts";
-import { renderCoverage, renderOperations } from "./assistant-render-docs.ts";
 
 /** The generated file names, so a missing body is a compile error. */
 type AssistantOutputFile = (typeof assistantOutputs)[number]["file"];
@@ -19,15 +19,11 @@ type AssistantOutputFile = (typeof assistantOutputs)[number]["file"];
  * this the drift check and the formatter disagree forever.
  */
 function format(file: AssistantOutputFile, body: string): string {
-  return execFileSync(
-    assistantPaths.biome,
-    ["format", "--stdin-file-path", file],
-    {
-      cwd: assistantPaths.repo,
-      encoding: "utf8",
-      input: body,
-    },
-  );
+  return execFileSync(assistantPaths.formatter, ["--stdin-filepath", file], {
+    cwd: assistantPaths.repo,
+    encoding: "utf8",
+    input: body,
+  });
 }
 
 /**

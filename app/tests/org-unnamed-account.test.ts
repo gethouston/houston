@@ -10,11 +10,11 @@ import { AgentPersonRow } from "../src/components/agent-settings/agent-person-ro
 import { chartPerson } from "../src/components/organization/org-chart-people.ts";
 import { shareCardLayout } from "../src/components/organization/org-chart-share-layout.ts";
 import { shareCardCaps } from "../src/components/organization/org-chart-share-model.ts";
+import { OrgChartTreeView } from "../src/components/organization/org-chart-tree-view.tsx";
 import {
   buildOrgTree,
   SCREEN_TREE_CAPS,
 } from "../src/components/organization/org-chart-tree.ts";
-import { OrgChartTreeView } from "../src/components/organization/org-chart-tree-view.tsx";
 import { buildLedger } from "../src/components/organization/org-chart-view-model.ts";
 import { PeopleRosterRow } from "../src/components/organization/people-roster-row.tsx";
 import {

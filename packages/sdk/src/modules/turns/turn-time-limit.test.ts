@@ -148,27 +148,27 @@ test("an active reply can run for four hours without a client timer settling it"
   sink.dispose();
 });
 
-test.each([
-  "turn",
-  "observer",
-] as const)("%s: a forced ceiling stop settles ok with an unsaved notice and no app-error report", async (mode) => {
-  const { sink, snap, status, board } = harness(mode);
-  sink.onFrame(terminal("turn_time_limit_unsaved"));
-  await board.settled;
-  expect(snap().sessionStatus).toBe("completed");
-  expect(snap().boardStatus).toBe("needs_you");
-  expect(snap().pendingInteraction).toBeNull();
-  const notice = snap().feed.find(
-    (item) => item.feed_type === "system_message",
-  );
-  expect(notice).toMatchObject({
-    notice: "turn_time_limit_unsaved",
-    turnId: "t1",
-  });
-  expect(notice?.data).toContain("last saved point");
-  expect(turnFailureReport(notice, "c")).toBeNull();
-  expect(status.mock.calls.at(-1)?.[4]).toMatchObject({
-    stopReason: "turn_time_limit_unsaved",
-  });
-  sink.dispose();
-});
+test.each(["turn", "observer"] as const)(
+  "%s: a forced ceiling stop settles ok with an unsaved notice and no app-error report",
+  async (mode) => {
+    const { sink, snap, status, board } = harness(mode);
+    sink.onFrame(terminal("turn_time_limit_unsaved"));
+    await board.settled;
+    expect(snap().sessionStatus).toBe("completed");
+    expect(snap().boardStatus).toBe("needs_you");
+    expect(snap().pendingInteraction).toBeNull();
+    const notice = snap().feed.find(
+      (item) => item.feed_type === "system_message",
+    );
+    expect(notice).toMatchObject({
+      notice: "turn_time_limit_unsaved",
+      turnId: "t1",
+    });
+    expect(notice?.data).toContain("last saved point");
+    expect(turnFailureReport(notice, "c")).toBeNull();
+    expect(status.mock.calls.at(-1)?.[4]).toMatchObject({
+      stopReason: "turn_time_limit_unsaved",
+    });
+    sink.dispose();
+  },
+);

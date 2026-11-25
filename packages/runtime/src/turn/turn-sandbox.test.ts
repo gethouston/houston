@@ -333,16 +333,19 @@ test.each([
   [413, { error: "too big", code: "body_too_large" }],
   [502, { error: "upstream", code: "sandbox_unavailable" }],
   [400, { error: "unsupported language: cobol" }],
-])("a %s from the gateway relays status and body as-is", async (status, body) => {
-  const sandbox = await fixture(
-    async () => Response.json(body, { status }),
-    ["code-run"],
-  );
-  const response = await post(sandbox.call, CODE_RUN, RUN_REQUEST);
-  expect(response.status).toBe(status);
-  expect(await response.json()).toEqual(body);
-  await sandbox.dispose();
-});
+])(
+  "a %s from the gateway relays status and body as-is",
+  async (status, body) => {
+    const sandbox = await fixture(
+      async () => Response.json(body, { status }),
+      ["code-run"],
+    );
+    const response = await post(sandbox.call, CODE_RUN, RUN_REQUEST);
+    expect(response.status).toBe(status);
+    expect(await response.json()).toEqual(body);
+    await sandbox.dispose();
+  },
+);
 
 test("a 401 on the relay becomes grant_expired, like the integration routes", async () => {
   const warning = vi.spyOn(console, "error").mockImplementation(() => {});

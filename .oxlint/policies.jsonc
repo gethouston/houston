@@ -88,6 +88,6 @@
     // Effects intentionally reconcile external stores and browser events with rendered state.
     "react/set-state-in-effect": "off",
     // External state reconciliation belongs in effects; changing lifecycle behavior is outside lint migration.
-    "react/no-deriving-state-in-effects": "off"
-  }
+    "react/no-deriving-state-in-effects": "off",
+  },
 }

@@ -1,10 +1,10 @@
-import type { ReadCursorStore } from "./read-cursors.ts";
 import { mergeReadCursorStores } from "./read-cursors-merge.ts";
 import {
   parseLastTouched,
   parseReadCursorStore,
   READ_CURSOR_SCHEMA_VERSION,
 } from "./read-cursors-parse.ts";
+import type { ReadCursorStore } from "./read-cursors.ts";
 
 /**
  * Where a user's read cursors live on this device, and the two rules that make

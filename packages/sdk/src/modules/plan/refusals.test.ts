@@ -14,11 +14,14 @@ describe("a Plus checkout refusal is an expected state", () => {
     [409, "already_plus"],
     [410, "account_deleted"],
     [503, "not_configured"],
-  ] as const)("recognizes %i %s from the adapter's parsed body", (status, code) => {
-    expect(
-      plusCheckoutRefusal(adapterError(status, { error: "refused", code })),
-    ).toBe(code);
-  });
+  ] as const)(
+    "recognizes %i %s from the adapter's parsed body",
+    (status, code) => {
+      expect(
+        plusCheckoutRefusal(adapterError(status, { error: "refused", code })),
+      ).toBe(code);
+    },
+  );
 
   it("recognizes the SDK's own error carrying the body as its message", () => {
     const error = new PlanHttpError(

@@ -60,17 +60,19 @@ test("first-day uses the host input validation", async () => {
 
 // A worker 500 is the one failure that fast-fails every op of the agent for
 // a window on the gateway; a body the pod's parser throws on answers 400.
-test.each([
-  "{",
-  "null",
-])("a body the pod cannot read (%s) answers 400, never a worker failure", async (body) => {
-  const { pool, post } = await opWorker();
-  const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
-  const out = await post({ kind: "first-day", body });
-  expect(out.status, JSON.stringify(out)).toBe(400);
-  expect(JSON.parse(out.body ?? "null")).toEqual({
-    error: "invalid JSON body",
-  });
-  expect(pool.writes).toEqual([]);
-  expect(error).not.toHaveBeenCalled();
-});
+test.each(["{", "null"])(
+  "a body the pod cannot read (%s) answers 400, never a worker failure",
+  async (body) => {
+    const { pool, post } = await opWorker();
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const out = await post({ kind: "first-day", body });
+    expect(out.status, JSON.stringify(out)).toBe(400);
+    expect(JSON.parse(out.body ?? "null")).toEqual({
+      error: "invalid JSON body",
+    });
+    expect(pool.writes).toEqual([]);
+    expect(error).not.toHaveBeenCalled();
+  },
+);

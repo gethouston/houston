@@ -39,37 +39,36 @@ function setup() {
   };
 }
 
-it.each([
-  "403",
-  "timeout",
-  "success",
-])("discards an obsolete account %s resolution", async (outcome) => {
-  const h = setup();
-  let finish: ((response: Response) => void) | undefined;
-  h.answer.mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve;
-      }),
-  );
-  await h.sdk.preferences.rememberWorkspace(team.id);
-  const boot = h.sdk.preferences
-    .resolveWorkspace([personal, team])
-    .catch((error) => error);
-  await vi.advanceTimersByTimeAsync(0);
-  h.changeUser();
-  if (outcome === "timeout") await vi.advanceTimersByTimeAsync(10_000);
-  else
-    finish?.(
-      outcome === "403"
-        ? Response.json({ error: "denied" }, { status: 403 })
-        : Response.json({ value: team.id }),
+it.each(["403", "timeout", "success"])(
+  "discards an obsolete account %s resolution",
+  async (outcome) => {
+    const h = setup();
+    let finish: ((response: Response) => void) | undefined;
+    h.answer.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
     );
-  expect(await boot).toMatchObject({
-    name: "WorkspacePreferenceIdentityChanged",
-  });
-  expect(h.report).not.toHaveBeenCalled();
-});
+    await h.sdk.preferences.rememberWorkspace(team.id);
+    const boot = h.sdk.preferences
+      .resolveWorkspace([personal, team])
+      .catch((error) => error);
+    await vi.advanceTimersByTimeAsync(0);
+    h.changeUser();
+    if (outcome === "timeout") await vi.advanceTimersByTimeAsync(10_000);
+    else
+      finish?.(
+        outcome === "403"
+          ? Response.json({ error: "denied" }, { status: 403 })
+          : Response.json({ value: team.id }),
+      );
+    expect(await boot).toMatchObject({
+      name: "WorkspacePreferenceIdentityChanged",
+    });
+    expect(h.report).not.toHaveBeenCalled();
+  },
+);
 
 it("starts the account read before the list resolves", async () => {
   const h = setup();

@@ -81,16 +81,15 @@ describe("generated CSS elevation", () => {
 
   // A tier missing from one block is a component with no depth under that
   // theme, which is exactly what the Tailwind bridge cannot fall back from.
-  it.each([
-    ":root",
-    '[data-theme="light"]',
-    '[data-theme="dark"]',
-  ])("defines every tier in %s", (selector) => {
-    const defined = [
-      ...block(selector).matchAll(/--ht-shadow-([a-z-]+)\s*:\s*[^;]+;/g),
-    ].map((m) => m[1]);
-    expect(defined).toEqual(TIERS);
-  });
+  it.each([":root", '[data-theme="light"]', '[data-theme="dark"]'])(
+    "defines every tier in %s",
+    (selector) => {
+      const defined = [
+        ...block(selector).matchAll(/--ht-shadow-([a-z-]+)\s*:\s*[^;]+;/g),
+      ].map((m) => m[1]);
+      expect(defined).toEqual(TIERS);
+    },
+  );
 
   it("keeps the dark focused field wearing the two layers focus already wore", () => {
     // The composer spelled its focus depth as

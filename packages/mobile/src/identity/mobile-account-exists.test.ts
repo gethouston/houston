@@ -45,9 +45,8 @@ vi.mock("../../../web/src/identity/firebase-session", () => ({
   toSession: async () => ({ uid: "uid-a", idToken: "linked" }),
 }));
 
-const { webLinkPending, webSignInWithGoogle } = await import(
-  "./mobile-identity"
-);
+const { webLinkPending, webSignInWithGoogle } =
+  await import("./mobile-identity");
 
 test("a native sign-in that meets an existing account holds the native credential", async () => {
   fb.signInWithCredential.mockRejectedValue(

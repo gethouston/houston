@@ -5,30 +5,32 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
-it.each([
-  "GET",
-  "PUT",
-])("a selection %s uses the normal transient retry ladder", async (method) => {
-  vi.useFakeTimers();
-  const answer = vi
-    .fn()
-    .mockResolvedValueOnce(Response.json({ error: "handoff" }, { status: 503 }))
-    .mockResolvedValue(Response.json({ value: "default" }));
-  vi.stubGlobal("fetch", answer);
-  const client = new HoustonClient({
-    baseUrl: "http://host",
-    token: "t",
-    controlPlane: true,
-  });
-  const result = (
-    method === "GET"
-      ? client.getPreference("last_workspace_id")
-      : client.setPreference("last_workspace_id", "default")
-  ).catch((error) => error);
-  await vi.advanceTimersByTimeAsync(2000);
-  expect(await result).not.toBeInstanceOf(Error);
-  expect(answer).toHaveBeenCalledTimes(2);
-});
+it.each(["GET", "PUT"])(
+  "a selection %s uses the normal transient retry ladder",
+  async (method) => {
+    vi.useFakeTimers();
+    const answer = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({ error: "handoff" }, { status: 503 }),
+      )
+      .mockResolvedValue(Response.json({ value: "default" }));
+    vi.stubGlobal("fetch", answer);
+    const client = new HoustonClient({
+      baseUrl: "http://host",
+      token: "t",
+      controlPlane: true,
+    });
+    const result = (
+      method === "GET"
+        ? client.getPreference("last_workspace_id")
+        : client.setPreference("last_workspace_id", "default")
+    ).catch((error) => error);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(await result).not.toBeInstanceOf(Error);
+    expect(answer).toHaveBeenCalledTimes(2);
+  },
+);
 
 it("a transient retry never sends a choice under a replacement account", async () => {
   vi.useFakeTimers();

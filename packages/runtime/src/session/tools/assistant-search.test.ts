@@ -57,12 +57,12 @@ describe("groupCounts", () => {
   // A withheld operation must not even leak as a count: a group whose only
   // member is withheld would otherwise advertise a group with nothing callable
   // in it. `route: null` counts as withheld — the host cannot dispatch it.
-  test.each([
-    "internal",
-    "billing",
-  ])("a group holding only withheld operations (%s) does not appear", (group) => {
-    expect(groupCounts(catalog).map((g) => g.group)).not.toContain(group);
-  });
+  test.each(["internal", "billing"])(
+    "a group holding only withheld operations (%s) does not appear",
+    (group) => {
+      expect(groupCounts(catalog).map((g) => g.group)).not.toContain(group);
+    },
+  );
 });
 
 describe("searchOperations", () => {
@@ -105,15 +105,15 @@ describe("searchOperations", () => {
 
   // Hidden is policy; `route: null` is capability. Both are absent from the
   // index for the same reason: the agent must not offer what it cannot do.
-  test.each([
-    "rotateSecret",
-    "exportLedger",
-  ])("never returns the withheld operation %s, whatever the query", (name) => {
-    expect(searchOperations(catalog, { query: name }).matched).toBe(0);
-    expect(
-      searchOperations(catalog, { query: "" }).operations.map((o) => o.name),
-    ).not.toContain(name);
-  });
+  test.each(["rotateSecret", "exportLedger"])(
+    "never returns the withheld operation %s, whatever the query",
+    (name) => {
+      expect(searchOperations(catalog, { query: name }).matched).toBe(0);
+      expect(
+        searchOperations(catalog, { query: "" }).operations.map((o) => o.name),
+      ).not.toContain(name);
+    },
+  );
 
   test("the summary withholds schemas — houston_describe is what has them", () => {
     const [first] = searchOperations(catalog, { query: "listOrgs" }).operations;

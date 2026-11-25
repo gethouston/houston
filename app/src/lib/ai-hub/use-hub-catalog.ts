@@ -7,8 +7,8 @@ import {
   EMPTY_PROVIDER_CAPABILITIES,
   getVisibleProviders,
 } from "../providers.ts";
-import { loadHubCatalog } from "./catalog.ts";
 import type { HubCatalog } from "./catalog-types.ts";
+import { loadHubCatalog } from "./catalog.ts";
 
 /**
  * The catalog's data state, for the picker to reflect:

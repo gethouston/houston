@@ -1,7 +1,7 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { loadHubCatalog } from "../src/lib/ai-hub/catalog.ts";
 import type { CatalogModel } from "../src/lib/ai-hub/catalog-types.ts";
+import { loadHubCatalog } from "../src/lib/ai-hub/catalog.ts";
 import { filterModels, searchModels } from "../src/lib/ai-hub/search.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 

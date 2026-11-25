@@ -93,38 +93,39 @@ const ROWS: ReadonlyArray<{
   },
 ];
 
-test.each(
-  ROWS,
-)("$provider $id carries the published shape on every read path", (row) => {
-  const model = getModel(row.provider, row.id as ModelId);
-  const sibling = getModel(row.provider, row.sibling as ModelId);
-  expect(model).toBeDefined();
-  expect(model).toMatchObject({
-    id: row.id,
-    provider: sibling.provider,
-    api: sibling.api,
-    baseUrl: sibling.baseUrl,
-    contextWindow: row.contextWindow,
-    maxTokens: 128_000,
-    reasoning: true,
-    input: ["text", "image"],
-    cost: row.cost,
-    compat: sibling.compat,
-  });
-  // Neither model accepts reasoning.effort none, so thinking cannot be off.
-  expect(getSupportedThinkingLevels(model)).not.toContain("off");
-  expect(getSupportedThinkingLevels(model)).toEqual(
-    getSupportedThinkingLevels(sibling),
-  );
-  expect(getModels(row.provider).find((m) => m.id === row.id)).toEqual(model);
-  expect(
-    builtinProviders()
-      .find((p) => p.id === row.provider)
-      ?.getModels()
-      .find((m) => m.id === row.id),
-  ).toEqual(model);
-  expect(piModelIds(row.provider)).toContain(row.id);
-});
+test.each(ROWS)(
+  "$provider $id carries the published shape on every read path",
+  (row) => {
+    const model = getModel(row.provider, row.id as ModelId);
+    const sibling = getModel(row.provider, row.sibling as ModelId);
+    expect(model).toBeDefined();
+    expect(model).toMatchObject({
+      id: row.id,
+      provider: sibling.provider,
+      api: sibling.api,
+      baseUrl: sibling.baseUrl,
+      contextWindow: row.contextWindow,
+      maxTokens: 128_000,
+      reasoning: true,
+      input: ["text", "image"],
+      cost: row.cost,
+      compat: sibling.compat,
+    });
+    // Neither model accepts reasoning.effort none, so thinking cannot be off.
+    expect(getSupportedThinkingLevels(model)).not.toContain("off");
+    expect(getSupportedThinkingLevels(model)).toEqual(
+      getSupportedThinkingLevels(sibling),
+    );
+    expect(getModels(row.provider).find((m) => m.id === row.id)).toEqual(model);
+    expect(
+      builtinProviders()
+        .find((p) => p.id === row.provider)
+        ?.getModels()
+        .find((m) => m.id === row.id),
+    ).toEqual(model);
+    expect(piModelIds(row.provider)).toContain(row.id);
+  },
+);
 
 test("the Codex rows send minimal as low, the lowest effort the probe served", () => {
   for (const id of ["gpt-6.2-sol", "gpt-6.2-astra"]) {

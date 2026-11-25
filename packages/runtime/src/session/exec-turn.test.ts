@@ -94,9 +94,8 @@ vi.mock("../store/conversations", () => ({
 
 const { execTurn, recordUserTurn } = await import("./exec-turn");
 const { subscribe } = await import("./bus");
-const { recordQuestions, recordConnection, recordConfirmation } = await import(
-  "./interaction"
-);
+const { recordQuestions, recordConnection, recordConfirmation } =
+  await import("./interaction");
 const { appendAssistantMessage, appendUserMessage, consumeSessionReplay } =
   await import("../store/conversations");
 const { getHistory } = await import("../store/conversations");

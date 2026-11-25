@@ -1,5 +1,5 @@
-import { isInteractionStep } from "@houston/protocol";
 import activitySchema from "@houston-ai/agent-schemas/activity.schema.json";
+import { isInteractionStep } from "@houston/protocol";
 import Ajv from "ajv";
 import { expect, test } from "vitest";
 
@@ -27,12 +27,11 @@ test("the activity schema and wire parser accept secure provider handoffs", () =
   expect(isInteractionStep(step)).toBe(true);
 });
 
-test.each([
-  undefined,
-  "",
-  42,
-])("a provider connection cannot be persisted without a provider (%s)", (provider) => {
-  const step = { kind: "provider_connect", id: "p1", provider };
-  expect(validate(activity(step))).toBe(false);
-  expect(isInteractionStep(step)).toBe(false);
-});
+test.each([undefined, "", 42])(
+  "a provider connection cannot be persisted without a provider (%s)",
+  (provider) => {
+    const step = { kind: "provider_connect", id: "p1", provider };
+    expect(validate(activity(step))).toBe(false);
+    expect(isInteractionStep(step)).toBe(false);
+  },
+);

@@ -15,6 +15,7 @@ import {
   onboardingSegmentLocalKey,
   parseLegacySegmentPreference,
 } from "./onboarding-legacy-segment.ts";
+import { reconcileSurveyCopies } from "./onboarding-survey-reconcile.ts";
 import {
   ONBOARDING_SURVEY_PREF_KEY,
   type OnboardingSurveyPreference,
@@ -22,7 +23,6 @@ import {
   parseOnboardingSurveyPreference,
   serializeOnboardingSurveyPreference,
 } from "./onboarding-survey.ts";
-import { reconcileSurveyCopies } from "./onboarding-survey-reconcile.ts";
 import {
   type GatewayOnboardingRecord,
   mergeGatewayOnboarding,

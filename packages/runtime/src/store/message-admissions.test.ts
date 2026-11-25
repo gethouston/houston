@@ -91,21 +91,21 @@ test("process restart adopts completed canonical history without executing again
   );
 });
 
-test.each([
-  false,
-  true,
-])("process restart never replays uncertain work (user persisted: %s)", (persistUser) => {
-  const first = receipts().accept("assistant", "nonce", fingerprint);
-  if (persistUser)
-    appendUserMessageAt(directory, "assistant", "hello", {
+test.each([false, true])(
+  "process restart never replays uncertain work (user persisted: %s)",
+  (persistUser) => {
+    const first = receipts().accept("assistant", "nonce", fingerprint);
+    if (persistUser)
+      appendUserMessageAt(directory, "assistant", "hello", {
+        turnId: first.turnId,
+        nonce: "nonce",
+      });
+    expect(receipts().accept("assistant", "nonce", fingerprint)).toEqual({
+      kind: "interrupted",
       turnId: first.turnId,
-      nonce: "nonce",
     });
-  expect(receipts().accept("assistant", "nonce", fingerprint)).toEqual({
-    kind: "interrupted",
-    turnId: first.turnId,
-  });
-});
+  },
+);
 
 test("a nonce cannot be reused for a changed request, including after restart", () => {
   const first = receipts().accept("assistant", "nonce", fingerprint);

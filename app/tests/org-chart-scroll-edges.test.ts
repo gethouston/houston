@@ -16,9 +16,8 @@ const React = await import("react");
 const { act, createElement: h } = React;
 (globalThis as Record<string, unknown>).React = React;
 const { createRoot } = await import("react-dom/client");
-const { useScrollEdges } = await import(
-  "../src/components/organization/use-scroll-edges.ts"
-);
+const { useScrollEdges } =
+  await import("../src/components/organization/use-scroll-edges.ts");
 
 describe("scrollEdges", () => {
   it("reads which sides hide content", () => {

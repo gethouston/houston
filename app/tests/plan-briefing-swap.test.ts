@@ -28,9 +28,8 @@ const React = await import("react");
 const { act, createElement: h } = React;
 g.React = React;
 const { createRoot } = await import("react-dom/client");
-const { BriefingStep } = await import(
-  "../src/components/shell/plan-briefing-swap.tsx"
-);
+const { BriefingStep } =
+  await import("../src/components/shell/plan-briefing-swap.tsx");
 
 type Step = "intro" | "pick" | "done";
 

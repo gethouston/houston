@@ -1,7 +1,7 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { AGENT_NAME_MAX_LENGTH } from "../src/lib/agent-name.ts";
 import { prefilledAgentName } from "../src/lib/agent-name-prefill.ts";
+import { AGENT_NAME_MAX_LENGTH } from "../src/lib/agent-name.ts";
 
 describe("prefilledAgentName", () => {
   it("names a new hire for its job, trimmed", () => {

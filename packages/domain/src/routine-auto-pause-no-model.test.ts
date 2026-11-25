@@ -28,18 +28,14 @@ const routine = (over: Partial<Routine> = {}): Routine => ({
 /** `failures` newest first, one minute apart after the routine's edit. */
 const runs = (failures: RoutineRun["failure"][]): RoutineRun[] =>
   failures
-    .map(
-      (failure, i): RoutineRun => ({
-        id: `run-${i}`,
-        routine_id: "r1",
-        status: "error",
-        session_key: "routine-r1",
-        started_at: new Date(
-          Date.parse(EDITED) + (i + 1) * 60_000,
-        ).toISOString(),
-        ...(failure ? { failure } : {}),
-      }),
-    )
+    .map((failure, i): RoutineRun => ({
+      id: `run-${i}`,
+      routine_id: "r1",
+      status: "error",
+      session_key: "routine-r1",
+      started_at: new Date(Date.parse(EDITED) + (i + 1) * 60_000).toISOString(),
+      ...(failure ? { failure } : {}),
+    }))
     .reverse();
 
 test("an unconnected fire blames the pinned provider, or names no model", () => {

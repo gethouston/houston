@@ -6,8 +6,8 @@
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck && tsgo -p scripts/tsconfig.json && tsgo -p scripts/assistant-catalog/tsconfig.json",
-    "format": "biome check --write --error-on-warnings",
-    "format:check": "biome check --error-on-warnings",
+    "format": "oxfmt --write",
+    "format:check": "oxfmt --check",
     "lint": "oxlint --deny-warnings --report-unused-disable-directives-severity=error",
     "lint:fix": "oxlint --fix --deny-warnings --report-unused-disable-directives-severity=error",
     "check": "pnpm lint && pnpm format:check && pnpm check:gates",
@@ -23,7 +23,7 @@
     "check:sdk-parity": "tsx scripts/check-sdk-parity.ts",
     "test:assistant-catalog": "vitest run scripts/assistant-catalog/tests",
     "vendor:gateway-routes": "tsx scripts/sdk-parity/vendor.ts",
-    "generate:team-icons": "node scripts/generate-team-icons.mjs && biome format --write ui/layout/src/sidebar-group-glyph-data-*.ts ui/layout/src/sidebar-group-glyph-tags.ts",
+    "generate:team-icons": "node scripts/generate-team-icons.mjs && oxfmt --write ui/layout/src/sidebar-group-glyph-data-*.ts ui/layout/src/sidebar-group-glyph-tags.ts",
     "prepare": "husky || true",
     "test": "pnpm -r --if-present --no-bail test",
     "start": "node scripts/dev/wrong-entry.mjs start",
@@ -36,7 +36,6 @@
     "dev:app": "scripts/dev/app.sh"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.0",
     "@houston/agentstore-contract": "workspace:*",
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",
@@ -48,6 +47,7 @@
     "husky": "9.1.7",
     "lint-staged": "17.0.8",
     "mprocs": "0.9.6",
+    "oxfmt": "0.78.0",
     "oxlint": "1.93.0",
     "tsx": "4.23.0",
     "typescript": "6.0.3",
@@ -55,11 +55,11 @@
     "yaml": "2.9.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+    "*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}": [
       "oxlint --fix --deny-warnings --report-unused-disable-directives-severity=error --no-error-on-unmatched-pattern",
-      "biome check --write --no-errors-on-unmatched --error-on-warnings"
+      "oxfmt --write --no-error-on-unmatched-pattern"
     ],
-    "*.{json,jsonc}": "biome check --write --no-errors-on-unmatched --error-on-warnings"
+    "*.{json,jsonc,webmanifest}": "oxfmt --write --no-error-on-unmatched-pattern"
   },
   "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be"
 }

@@ -32,52 +32,53 @@ test("the worker probe rejects a non-file path", () => {
   ).toThrow("Claude Agent SDK binary is not a file");
 });
 
-test.each([
-  "single-use",
-  "multi-turn",
-] as const)("%s boot probes and warms exactly once", async (profile) => {
-  const probe = vi.fn(() => "/app/sdk/claude");
-  const preload = vi.fn(async () => undefined);
-  const warm = vi.fn(async () => undefined);
-  const report = vi.fn();
+test.each(["single-use", "multi-turn"] as const)(
+  "%s boot probes and warms exactly once",
+  async (profile) => {
+    const probe = vi.fn(() => "/app/sdk/claude");
+    const preload = vi.fn(async () => undefined);
+    const warm = vi.fn(async () => undefined);
+    const report = vi.fn();
 
-  startClaudeWorkerBoot({
-    profile,
-    root: "/data",
-    probe,
-    preload,
-    warm,
-    report,
-  });
-  await vi.waitFor(() => expect(warm).toHaveBeenCalledTimes(1));
+    startClaudeWorkerBoot({
+      profile,
+      root: "/data",
+      probe,
+      preload,
+      warm,
+      report,
+    });
+    await vi.waitFor(() => expect(warm).toHaveBeenCalledTimes(1));
 
-  expect(preload).toHaveBeenCalledTimes(1);
-  expect(probe).toHaveBeenCalledTimes(1);
-  expect(warm).toHaveBeenCalledWith("/data", "/app/sdk/claude");
-  expect(report).not.toHaveBeenCalled();
-});
+    expect(preload).toHaveBeenCalledTimes(1);
+    expect(probe).toHaveBeenCalledTimes(1);
+    expect(warm).toHaveBeenCalledWith("/data", "/app/sdk/claude");
+    expect(report).not.toHaveBeenCalled();
+  },
+);
 
-test.each([
-  "server",
-] as const)("%s boot never probes or warms Claude", async (profile) => {
-  const probe = vi.fn(() => "/app/sdk/claude");
-  const preload = vi.fn(async () => undefined);
-  const warm = vi.fn(async () => undefined);
+test.each(["server"] as const)(
+  "%s boot never probes or warms Claude",
+  async (profile) => {
+    const probe = vi.fn(() => "/app/sdk/claude");
+    const preload = vi.fn(async () => undefined);
+    const warm = vi.fn(async () => undefined);
 
-  startClaudeWorkerBoot({
-    profile,
-    root: "/data",
-    probe,
-    preload,
-    warm,
-    report: vi.fn(),
-  });
-  await Promise.resolve();
+    startClaudeWorkerBoot({
+      profile,
+      root: "/data",
+      probe,
+      preload,
+      warm,
+      report: vi.fn(),
+    });
+    await Promise.resolve();
 
-  expect(probe).not.toHaveBeenCalled();
-  expect(preload).not.toHaveBeenCalled();
-  expect(warm).not.toHaveBeenCalled();
-});
+    expect(probe).not.toHaveBeenCalled();
+    expect(preload).not.toHaveBeenCalled();
+    expect(warm).not.toHaveBeenCalled();
+  },
+);
 
 test("a module preload failure is reported without rejecting boot", async () => {
   const report = vi.fn();

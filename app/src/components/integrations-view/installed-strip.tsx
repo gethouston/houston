@@ -1,7 +1,3 @@
-import type {
-  CustomIntegrationView,
-  IntegrationConnection,
-} from "@houston/engine-adapter";
 import {
   CATALOG_INSTALLED_PREVIEW_CAP,
   CatalogGrid,
@@ -9,6 +5,10 @@ import {
   CatalogShowMore,
   StatusDot,
 } from "@houston-ai/core";
+import type {
+  CustomIntegrationView,
+  IntegrationConnection,
+} from "@houston/engine-adapter";
 import { ChevronRight } from "lucide-react";
 import { Fragment, type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";

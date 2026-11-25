@@ -1,6 +1,6 @@
-import type { GrantableOperation } from "@houston/protocol";
 import type { KanbanItem, NewPanelOpener } from "@houston-ai/board";
 import type { FeedItem, MessageMention } from "@houston-ai/chat";
+import type { GrantableOperation } from "@houston/protocol";
 import type { ReactNode } from "react";
 import type { HistoryLoadOptions } from "../../lib/tauri";
 import type { TurnMode } from "../../lib/turn-mode";

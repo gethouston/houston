@@ -1,6 +1,5 @@
 "use client";
 
-import { StoreApiError } from "@houston/agentstore-client";
 import {
   Alert,
   AlertDescription,
@@ -15,6 +14,7 @@ import {
   Spinner,
   Textarea,
 } from "@houston-ai/core";
+import { StoreApiError } from "@houston/agentstore-client";
 import { Flag } from "lucide-react";
 import * as React from "react";
 import { reportAgent } from "@/lib/store-client";

@@ -14,8 +14,8 @@ import {
   holdAgentPaint,
   overlayHeldAgentWrites,
 } from "./agent-roster-holds";
-import type { AgentState } from "./agents/state";
 import { invalidateAgentLoads, startAgentSideEffects } from "./agents-loading";
+import type { AgentState } from "./agents/state";
 
 type SetState = StoreApi<AgentState>["setState"];
 type GetState = StoreApi<AgentState>["getState"];

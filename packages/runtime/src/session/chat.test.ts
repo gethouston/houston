@@ -70,9 +70,8 @@ function fakeCachedConv(turnId?: string): {
   return { conv, aborted: () => aborted };
 }
 const { subscribe } = await import("./bus");
-const { createSessionsStore } = await import(
-  "../backends/claude/sessions-store"
-);
+const { createSessionsStore } =
+  await import("../backends/claude/sessions-store");
 const { serverClaudeLayout } = await import("../backends/claude/paths");
 
 afterAll(() => vi.restoreAllMocks());

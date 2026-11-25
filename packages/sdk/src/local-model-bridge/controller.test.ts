@@ -380,43 +380,43 @@ test("cancellation interrupts a pending native dial before waiting for its resul
   await h.controller.dispose();
 });
 
-test.each([
-  "reconnecting",
-  "model_unavailable",
-] as const)("native %s stays distinct in SDK status", async (status) => {
-  const h = harness();
-  await h.controller.connect(input);
-  h.event({
-    bridgeId,
-    generation: h.controller.getSnapshot().generation ?? 0,
-    status,
-  });
-  expect(h.controller.getSnapshot().status).toBe(status);
-  await h.controller.dispose();
-});
+test.each(["reconnecting", "model_unavailable"] as const)(
+  "native %s stays distinct in SDK status",
+  async (status) => {
+    const h = harness();
+    await h.controller.connect(input);
+    h.event({
+      bridgeId,
+      generation: h.controller.getSnapshot().generation ?? 0,
+      status,
+    });
+    expect(h.controller.getSnapshot().status).toBe(status);
+    await h.controller.dispose();
+  },
+);
 
-test.each([
-  false,
-  true,
-])("retire preserves replacement and retains failed cleanup: %s", async (fails) => {
-  const h = harness();
-  await h.controller.connect(input);
-  if (fails)
-    vi.mocked(h.ports.management.revoke).mockRejectedValueOnce(
-      new Error("offline"),
-    );
-  const retiring = h.controller.retire();
-  if (fails) await expect(retiring).rejects.toThrow("offline");
-  else await retiring;
-  expect(h.ports.management.clearEndpoint).not.toHaveBeenCalled();
-  if (fails) expect(h.journal()?.phase).toBe("retiring");
-  else expect(h.journal()).toBeNull();
-  expect(h.controller.getSnapshot()).toMatchObject({
-    status: "disabled",
-    journal: h.journal(),
-  });
-  await h.controller.dispose();
-});
+test.each([false, true])(
+  "retire preserves replacement and retains failed cleanup: %s",
+  async (fails) => {
+    const h = harness();
+    await h.controller.connect(input);
+    if (fails)
+      vi.mocked(h.ports.management.revoke).mockRejectedValueOnce(
+        new Error("offline"),
+      );
+    const retiring = h.controller.retire();
+    if (fails) await expect(retiring).rejects.toThrow("offline");
+    else await retiring;
+    expect(h.ports.management.clearEndpoint).not.toHaveBeenCalled();
+    if (fails) expect(h.journal()?.phase).toBe("retiring");
+    else expect(h.journal()).toBeNull();
+    expect(h.controller.getSnapshot()).toMatchObject({
+      status: "disabled",
+      journal: h.journal(),
+    });
+    await h.controller.dispose();
+  },
+);
 test("scope disposal rejects a pending explicit connection", async () => {
   const h = harness();
   let rejectDial: ((error: unknown) => void) | undefined;
@@ -439,49 +439,52 @@ test("scope disposal rejects a pending explicit connection", async () => {
   expect(h.ports.management.saveEndpoint).not.toHaveBeenCalled();
   expect(h.ports.report).not.toHaveBeenCalled();
 });
-test.each([
-  "busy",
-  "model_unavailable",
-] as const)("online wake leaves inference intact on %s", async (failure) => {
-  const h = harness();
-  await h.controller.connect(input);
-  const stops = vi.mocked(h.ports.native.stop).mock.calls.length;
-  if (failure === "busy")
-    vi.mocked(h.ports.management.status).mockRejectedValueOnce({ status: 503 });
-  else
-    vi.mocked(h.ports.management.status).mockResolvedValueOnce({
-      ...descriptor,
-      status: "model_unavailable",
-    });
-  await h.controller.wake();
-  expect(h.controller.getSnapshot().status).toBe("online");
-  expect(h.ports.native.stop).toHaveBeenCalledTimes(stops);
-  expect(h.ports.native.start).toHaveBeenCalledTimes(1);
-  await h.controller.dispose();
-});
-test.each([
-  "offline",
-  "revoked",
-  "authorization_required",
-] as const)("wake handles confirmed %s", async (status) => {
-  const h = harness();
-  await h.controller.connect(input);
-  if (status === "authorization_required")
-    vi.mocked(h.ports.management.status).mockRejectedValueOnce({ status: 401 });
-  else
-    vi.mocked(h.ports.management.status).mockResolvedValueOnce({
-      ...descriptor,
-      status,
-    });
-  await h.controller.wake();
-  expect(h.controller.getSnapshot().status).toBe(
-    status === "offline" ? "online" : status,
-  );
-  expect(h.ports.native.start).toHaveBeenCalledTimes(
-    status === "offline" ? 2 : 1,
-  );
-  await h.controller.dispose();
-});
+test.each(["busy", "model_unavailable"] as const)(
+  "online wake leaves inference intact on %s",
+  async (failure) => {
+    const h = harness();
+    await h.controller.connect(input);
+    const stops = vi.mocked(h.ports.native.stop).mock.calls.length;
+    if (failure === "busy")
+      vi.mocked(h.ports.management.status).mockRejectedValueOnce({
+        status: 503,
+      });
+    else
+      vi.mocked(h.ports.management.status).mockResolvedValueOnce({
+        ...descriptor,
+        status: "model_unavailable",
+      });
+    await h.controller.wake();
+    expect(h.controller.getSnapshot().status).toBe("online");
+    expect(h.ports.native.stop).toHaveBeenCalledTimes(stops);
+    expect(h.ports.native.start).toHaveBeenCalledTimes(1);
+    await h.controller.dispose();
+  },
+);
+test.each(["offline", "revoked", "authorization_required"] as const)(
+  "wake handles confirmed %s",
+  async (status) => {
+    const h = harness();
+    await h.controller.connect(input);
+    if (status === "authorization_required")
+      vi.mocked(h.ports.management.status).mockRejectedValueOnce({
+        status: 401,
+      });
+    else
+      vi.mocked(h.ports.management.status).mockResolvedValueOnce({
+        ...descriptor,
+        status,
+      });
+    await h.controller.wake();
+    expect(h.controller.getSnapshot().status).toBe(
+      status === "offline" ? "online" : status,
+    );
+    expect(h.ports.native.start).toHaveBeenCalledTimes(
+      status === "offline" ? 2 : 1,
+    );
+    await h.controller.dispose();
+  },
+);
 
 // The gateway's error body as `HoustonEngineError` carries it: the top-level
 // `code` sits on `body`, and the error's own `code` getter reads only the
