@@ -127,14 +127,15 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Lint timing
+      # The three steps are `pnpm check`, split so each tool's time shows on its own.
+      - name: Lint
         run: time pnpm lint
 
-      - name: Format timing
+      - name: Format
         run: time pnpm format:check
 
-      - name: Repository checks
-        run: pnpm check
+      - name: Repository gates
+        run: pnpm check:gates
 
       - name: Boundary check
         run: pnpm check:boundaries
