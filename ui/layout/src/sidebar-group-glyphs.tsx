@@ -48,7 +48,7 @@ export function SidebarGroupGlyph({
       aria-hidden="true"
       focusable="false"
       className={className}
-      // build-generated markup from the checked-in, trusted SVG asset; generator strips fill and accepts symbol bodies only
+      // oxlint-disable-next-line react/no-danger -- build-generated markup from the checked-in, trusted SVG asset; generator strips fill and accepts symbol bodies only
       dangerouslySetInnerHTML={{ __html: glyph.body }}
     />
   );
