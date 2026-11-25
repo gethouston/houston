@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scanSource } from "../scan.ts";
+import { langOf, scanSource } from "../scan.ts";
 import { scan } from "./support.ts";
 
 const toolingFor = (file: string, comment: string): boolean => {
@@ -30,6 +30,14 @@ describe("tooling classification", () => {
     ["a.tsx", "/** @jsx h */"],
     ["a.tsx", "/** @jsxRuntime classic */"],
     ["a.ts", "// prettier-ignore"],
+    ["a.ts", "// oxlint-disable-next-line no-console -- the CLI prints"],
+    ["a.ts", "// oxlint-disable-next-line no-console"],
+    ["a.ts", "// oxlint-disable-line no-console -- the CLI prints"],
+    ["a.tsx", "/* oxlint-disable react/no-danger */"],
+    ["a.ts", "/* oxlint-disable no-console -- a CLI entry */"],
+    ["a.ts", "/* oxlint-enable no-console */"],
+    ["a.ts", "// oxlint-enable no-console"],
+    ["a.ts", "// prettier-ignore -- the table reads better aligned"],
     ["a.ts", "/* c8 ignore next */"],
     ["a.ts", "/* v8 ignore start */"],
     ["a.ts", "/* istanbul ignore next */"],
@@ -130,5 +138,16 @@ describe("tooling classification", () => {
     expect(scan("a.css", ["/* plain */", "a {}"])[0].role === "tooling").toBe(
       false,
     );
+  });
+});
+
+describe("files the comment tools read", () => {
+  it.each([
+    ".oxlintrc.jsonc",
+    ".oxlint/rules.jsonc",
+    "biome.json",
+    "tsconfig.json",
+  ])("never scans %s", (file) => {
+    expect(langOf(file)).toBeNull();
   });
 });

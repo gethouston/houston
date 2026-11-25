@@ -1,8 +1,8 @@
 import type { CommentKind, CommentRole, Lang, Pinned } from "./model.ts";
 import { isWhy } from "./why.ts";
 
-const TS_DIRECTIVE =
-  /^(?:biome-ignore|@ts-(?:expect-error|ignore|nocheck|check)\b|eslint[-\s]|prettier-ignore|(?:c8|v8|istanbul) ignore|@vitest-environment|[#@]\s*source(?:Mapping)?URL=|[#@]__(?:PURE|NO_SIDE_EFFECTS)__|@vite-ignore|webpack[A-Z]|@jsx|@refresh\b|@license|@preserve|SPDX-License-Identifier)/;
+export const TS_DIRECTIVE =
+  /^(?:biome-ignore|oxlint-|@ts-(?:expect-error|ignore|nocheck|check)\b|eslint[-\s]|prettier-ignore|(?:c8|v8|istanbul) ignore|@vitest-environment|[#@]\s*source(?:Mapping)?URL=|[#@]__(?:PURE|NO_SIDE_EFFECTS)__|@vite-ignore|webpack[A-Z]|@jsx|@refresh\b|@license|@preserve|SPDX-License-Identifier)/;
 
 const CSS_DIRECTIVE =
   /^(?:biome-ignore|stylelint-|[#@]\s*source(?:Mapping)?URL=|@license|@preserve|SPDX-License-Identifier)/;

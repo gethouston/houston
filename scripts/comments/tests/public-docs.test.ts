@@ -31,7 +31,92 @@ describe("public API doc comments", () => {
         "  read(): void {}",
         "}",
       ]),
-    ).toEqual(["doc", "doc", "doc", "doc", "doc", "doc", "doc"]);
+    ).toEqual(["doc", "doc", "doc", "prose", "doc", "doc", "doc"]);
+  });
+
+  it("allows JSDoc above tooling directives", () => {
+    expect(
+      roles("ui/core/src/board.tsx", [
+        "/** Renders the board. */",
+        "// biome-ignore lint/style/noDefaultExport: the router loads it",
+        "// oxlint-disable-next-line no-default-export",
+        "export function Board() {}",
+        "/** A wire shape. */",
+        "// @ts-expect-error the fake has no type",
+        "export const shape = 1;",
+      ]),
+    ).toEqual(["doc", "tooling", "doc", "tooling"]);
+  });
+
+  it.each([
+    [
+      "a default function",
+      ["/** The board. */", "export default function Board() {}"],
+    ],
+    ["a default class", ["/** The store. */", "export default class Store {}"]],
+    ["a default object", ["/** The config. */", "export default { gap: 4 };"]],
+    [
+      "a declaration exported as default",
+      ["/** The board. */", "function Board() {}", "export default Board;"],
+    ],
+  ])("allows JSDoc on %s", (_, lines) => {
+    expect(roles("ui/core/src/board.tsx", lines)).toEqual(["doc"]);
+  });
+
+  it.each([
+    [
+      "a module header above the first export",
+      ["/** The board module. */", "", "export function Board() {}"],
+    ],
+    [
+      "a doc split from a directive by a blank line",
+      [
+        "/** The board. */",
+        "",
+        "// biome-ignore lint: x",
+        "export function Board() {}",
+      ],
+    ],
+    [
+      "a doc above prose above the export",
+      ["/** The board. */", "// Prose.", "export function Board() {}"],
+    ],
+    [
+      "a member of a nested type literal",
+      [
+        "export type Props = {",
+        "  tabs: {",
+        "    /** Muted. */",
+        "    disabled?: boolean;",
+        "  }[];",
+        "};",
+      ],
+    ],
+  ])("counts %s as prose", (_, lines) => {
+    expect(
+      scan("ui/core/src/board.tsx", lines)
+        .filter((comment) => comment.text.startsWith("/**"))
+        .map((comment) => comment.role),
+    ).toEqual(["prose"]);
+  });
+
+  it("allows JSDoc on members of a type alias union of literals", () => {
+    expect(
+      roles("ui/core/src/board.tsx", [
+        "export type Event =",
+        "  | {",
+        "      /** The kind. */",
+        "      type: 'a';",
+        "    }",
+        "  | ({",
+        "      /** The id. */",
+        "      id: string;",
+        "    } & {",
+        "      /** The name. */",
+        "      name: string;",
+        "    });",
+      ]),
+    ).toEqual(["doc", "doc", "doc"]);
   });
 
   it("allows JSDoc on a declaration exported by name", () => {
