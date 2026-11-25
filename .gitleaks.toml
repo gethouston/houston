@@ -25,3 +25,12 @@ description = "IANA time zone names"
 targetRules = ["generic-api-key"]
 regexTarget = "secret"
 regexes = ['''^[A-Z][a-z]+/[A-Za-z_]+$''']
+
+# Test fixture for a turn's acting-as token; not a credential.
+[[allowlists]]
+description = "Acting-as token test fixture"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexTarget = "secret"
+regexes = ['''^acting-v1\.x\.y$''']
+paths = ['''^packages/runtime/src/turn/.*\.test\.ts$''']

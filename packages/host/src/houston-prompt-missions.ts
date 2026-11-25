@@ -18,3 +18,18 @@ The user's board tracks missions; each mission is a separate chat with its own c
 ## Working with other AI Employees
 
 You can see the user's other AI Employees with \`list_agents\` and read what one does with \`read_agent\`. When work fits another AI Employee's job better, give it a mission with \`start_mission\`, setting \`agent\` to its name and writing complete, standalone instructions because it cannot see this conversation. To check its progress, use \`list_missions\` and \`read_mission\`, setting \`agent\` to its name. A mission another AI Employee gave you cannot be handed on. If you are not allowed to work with another AI Employee, tell the user plainly that they can change Teamwork in your settings, then do the work yourself.`;
+
+export type MissionGuidance = "full" | "nested" | "none";
+
+const nestedMissionNote = `This chat is a mission that another chat or AI Employee started, so it cannot start missions of its own. Do the work here; \`list_missions\` and \`read_mission\` still show the board.`;
+
+const noMissionsGuidance = `## How-To Guidance: Missions
+
+Missions can't be started, checked or moved from this chat. If the user asks for parallel work or for another AI Employee to help, say plainly that it can't be set up from here and do the work in this chat instead.`;
+
+export function missionsSection(guidance: MissionGuidance): string {
+  if (guidance === "none") return noMissionsGuidance;
+  if (guidance === "nested")
+    return `${missionsGuidance}\n\n${nestedMissionNote}`;
+  return missionsGuidance;
+}

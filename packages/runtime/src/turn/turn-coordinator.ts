@@ -94,6 +94,11 @@ export function startTurnCoordinator(
     // A message the host would have refused starts nothing: no operation and
     // no mission, whatever route the call names.
     if ((await admitted).kind !== "admitted" || !opened) return unavailable();
+    liveTurns.setMode(
+      agentId,
+      conversationId,
+      turn.liveMode?.current ?? turn.mode ?? "execute",
+    );
     const records = opened;
     const { origin, token } = await listen();
     const headers = new Headers(init?.headers);
