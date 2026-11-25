@@ -23,7 +23,7 @@
         "description": "Human-readable reset hint while the provider CLI is sleeping on a usage-limit window. Only meaningful when status is 'running'."
       },
       "failure": {
-        "description": "Typed reason an error run never reached the agent. Account failures name the provider; 'no_model' means the routine names no model and nothing is connected to fall back on; 'usage_limit' means the account's plan used up its usage window and the routine is held until 'resets_at'.",
+        "description": "Typed reason an error run never reached the agent. Account failures name the provider; 'no_model' means the routine names no model and nothing is connected to fall back on; 'usage_limit' means the account's plan used up its usage window and the routine is held until 'resets_at'; 'provider_error' means the provider failed the run with an error Houston does not recognize.",
         "oneOf": [
           {
             "type": "object",
@@ -37,7 +37,8 @@
                   "creator_needs_reconnect",
                   "team_needs_reconnect",
                   "out_of_credits",
-                  "model_unavailable"
+                  "model_unavailable",
+                  "provider_error"
                 ]
               },
               "provider": { "type": "string" }

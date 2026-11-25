@@ -1,3 +1,4 @@
+import type { MissionGuidance } from "@houston/host/src/houston-prompt-missions";
 import { CustomIntegrationError } from "@houston/host/src/integrations/custom/types";
 import { IntegrationUpstreamError } from "@houston/host/src/integrations/types";
 import type { LiveTurnPin } from "@houston/host/src/routes/live-turn-pin";
@@ -13,6 +14,7 @@ import {
 } from "./turn-custom-definitions-doc";
 import { TurnDocConflictError } from "./turn-doc-cas";
 import type { TurnFilesystem } from "./turn-filesystem";
+import type { TurnMissionsSession } from "./turn-missions";
 import { makeTurnCodeRoute, TURN_CODE_RUN_PATH } from "./turn-sandbox-code";
 import { makeTurnCustomRoutes } from "./turn-sandbox-custom";
 import {
@@ -43,6 +45,7 @@ export interface TurnSandboxDeps {
   fetchImpl?: typeof fetch;
   /** Present on Houston's own turn: its operation and mission routes. */
   coordinator?: TurnCoordinatorSession;
+  missions?: TurnMissionsSession;
 }
 
 /** Mutation-derived views published after the turn's object sync lands. */
@@ -84,6 +87,7 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
   present: (frame: WireFrame) => WireFrame;
   /** Why the person's message may not start this turn, or null. */
   admission: () => Promise<string | null>;
+  missionGuidance?: Promise<MissionGuidance>;
 } {
   const fetchImpl = deps.fetchImpl ?? fetch;
   const views: TurnSandboxViews = {};
@@ -110,7 +114,8 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
 
   const call: SandboxFetch = async (path, init) => {
     // Houston's own routes first: its mission reads are GETs.
-    const coordinated = deps.coordinator?.route(path, init);
+    const coordinated =
+      deps.coordinator?.route(path, init) ?? deps.missions?.route(path, init);
     if (coordinated) return coordinated;
     if ((init?.method ?? "GET") !== "POST")
       return json(405, { error: "method not allowed" });
@@ -165,6 +170,7 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
       await resetCustom();
     } finally {
       await deps.coordinator?.dispose();
+      await deps.missions?.dispose();
     }
   };
   return {
@@ -173,5 +179,6 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
     views: () => ({ ...views }),
     present: (frame) => deps.coordinator?.present(frame) ?? frame,
     admission: async () => (await deps.coordinator?.admission()) ?? null,
+    ...(deps.missions ? { missionGuidance: deps.missions.guidance } : {}),
   };
 }

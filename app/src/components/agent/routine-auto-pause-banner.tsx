@@ -57,6 +57,8 @@ export function RoutineAutoPauseBanner({
         return t("details.autoPause.addCredits", { provider });
       case "change_model":
         return t("details.autoPause.changeModel", { provider });
+      case "check_runs":
+        return t("details.autoPause.keepsFailing", { provider });
     }
   };
 
