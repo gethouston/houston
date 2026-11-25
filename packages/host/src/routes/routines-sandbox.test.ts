@@ -148,42 +148,48 @@ const TRIGGER = {
 test.each([
   ["schedule", BASE],
   ["event trigger", { ...BASE, schedule: undefined, trigger: TRIGGER }],
-])("a delegated gateway turn cannot create a %s routine", async (_kind, body) => {
-  const r = await save(body, {
-    gatewayFronted: true,
-    triggersEnabled: true,
-    actingAs: actingToken("delegator"),
-  });
-  expect(r).toMatchObject({
-    status: 409,
-    body: { code: "mission_depth", error: REFUSAL },
-  });
-  expect(await onDisk()).toEqual([]);
-  expect(events).toEqual([]);
-});
+])(
+  "a delegated gateway turn cannot create a %s routine",
+  async (_kind, body) => {
+    const r = await save(body, {
+      gatewayFronted: true,
+      triggersEnabled: true,
+      actingAs: actingToken("delegator"),
+    });
+    expect(r).toMatchObject({
+      status: 409,
+      body: { code: "mission_depth", error: REFUSAL },
+    });
+    expect(await onDisk()).toEqual([]);
+    expect(events).toEqual([]);
+  },
+);
 
 test.each([
   ["schedule", { prompt: "Changed" }],
   ["event trigger", { schedule: null, trigger: TRIGGER }],
-])("a delegated gateway turn cannot update a %s routine", async (_kind, update) => {
-  const created = await save(BASE);
-  const original = await onDisk();
-  events = [];
-  const r = await save(
-    { id: (created.body as Routine).id, ...update },
-    {
-      gatewayFronted: true,
-      triggersEnabled: true,
-      actingAs: actingToken("delegator"),
-    },
-  );
-  expect(r).toMatchObject({
-    status: 409,
-    body: { code: "mission_depth", error: REFUSAL },
-  });
-  expect(await onDisk()).toEqual(original);
-  expect(events).toEqual([]);
-});
+])(
+  "a delegated gateway turn cannot update a %s routine",
+  async (_kind, update) => {
+    const created = await save(BASE);
+    const original = await onDisk();
+    events = [];
+    const r = await save(
+      { id: (created.body as Routine).id, ...update },
+      {
+        gatewayFronted: true,
+        triggersEnabled: true,
+        actingAs: actingToken("delegator"),
+      },
+    );
+    expect(r).toMatchObject({
+      status: 409,
+      body: { code: "mission_depth", error: REFUSAL },
+    });
+    expect(await onDisk()).toEqual(original);
+    expect(events).toEqual([]);
+  },
+);
 
 test("a local delegated mission cannot create or update a routine", async () => {
   const created = await save(BASE);
@@ -402,16 +408,19 @@ test.each([
   ["xhigh", "max"],
   ["max", "max"],
   ["low", "low"],
-])("a Codex routine uses Terra with valid effort instead of Astra's %s", async (effort, expected) => {
-  await save(BASE, {
-    pin: { provider: "openai-codex", model: "gpt-6-astra", effort },
-  });
-  expect((await onDisk())[0]).toMatchObject({
-    provider: "openai-codex",
-    model: "gpt-6.1-terra",
-    effort: expected,
-  });
-});
+])(
+  "a Codex routine uses Terra with valid effort instead of Astra's %s",
+  async (effort, expected) => {
+    await save(BASE, {
+      pin: { provider: "openai-codex", model: "gpt-6-astra", effort },
+    });
+    expect((await onDisk())[0]).toMatchObject({
+      provider: "openai-codex",
+      model: "gpt-6.1-terra",
+      effort: expected,
+    });
+  },
+);
 
 test("another provider keeps its authoring model and effort", async () => {
   await save(BASE, {
@@ -551,26 +560,35 @@ test.each([
     "llama-3.3-70b-versatile",
     "high",
   ],
-])("an unpinned chat uses configured %s/%s at %s for routine creation", async (provider, model, effort, expectedProvider, expectedModel, expectedEffort) => {
-  await saveConfig(vfs, root, { provider, model, effort });
-  const result = await save(BASE);
-  expect(result.status).toBe(201);
-  expect((await onDisk())[0]).toMatchObject({
-    provider: expectedProvider,
-    model: expectedModel,
-    effort: expectedEffort,
-  });
-  expect(events).toEqual([{ type: "RoutinesChanged", agentPath: agent.id }]);
-});
+])(
+  "an unpinned chat uses configured %s/%s at %s for routine creation",
+  async (
+    provider,
+    model,
+    effort,
+    expectedProvider,
+    expectedModel,
+    expectedEffort,
+  ) => {
+    await saveConfig(vfs, root, { provider, model, effort });
+    const result = await save(BASE);
+    expect(result.status).toBe(201);
+    expect((await onDisk())[0]).toMatchObject({
+      provider: expectedProvider,
+      model: expectedModel,
+      effort: expectedEffort,
+    });
+    expect(events).toEqual([{ type: "RoutinesChanged", agentPath: agent.id }]);
+  },
+);
 
-test.each([
-  "qwen",
-  "xai",
-  "groq",
-])("a turn pinned to %s can create a routine", async (provider) => {
-  expect((await save(BASE, { pin: { provider } })).status).toBe(201);
-  expect((await onDisk())[0]?.provider).toBe(provider);
-});
+test.each(["qwen", "xai", "groq"])(
+  "a turn pinned to %s can create a routine",
+  async (provider) => {
+    expect((await save(BASE, { pin: { provider } })).status).toBe(201);
+    expect((await onDisk())[0]?.provider).toBe(provider);
+  },
+);
 
 test("an explicit typo provider is refused without saving or emitting", async () => {
   const response = await save({ ...BASE, provider: "anthorpic" });
@@ -585,15 +603,18 @@ test("an explicit typo provider is refused without saving or emitting", async ()
 test.each([
   ["anthropic", "claude-opus-5-5"],
   ["openai-codex", "gpt-6-astra"],
-])("an explicit model wins over the configured %s routine default", async (provider, model) => {
-  await saveConfig(vfs, root, { provider, model, effort: "high" });
-  expect((await save({ ...BASE, model })).status).toBe(201);
-  expect((await onDisk())[0]).toMatchObject({
-    provider,
-    model,
-    effort: "high",
-  });
-});
+])(
+  "an explicit model wins over the configured %s routine default",
+  async (provider, model) => {
+    await saveConfig(vfs, root, { provider, model, effort: "high" });
+    expect((await save({ ...BASE, model })).status).toBe(201);
+    expect((await onDisk())[0]).toMatchObject({
+      provider,
+      model,
+      effort: "high",
+    });
+  },
+);
 
 test("an explicit provider or turn pin takes precedence over the configured agent", async () => {
   await saveConfig(vfs, root, {

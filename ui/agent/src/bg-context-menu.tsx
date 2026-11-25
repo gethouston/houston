@@ -20,8 +20,7 @@ export function BgContextMenu({
   useEscapeDismiss(onClose);
   return createPortal(
     <>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: full-screen backdrop that closes the context menu on pointer interaction; no keyboard role applies */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss is a pointer-only pattern; Escape is handled at the document level (useEscapeDismiss) */}
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- full-screen backdrop that closes the context menu on pointer interaction; no keyboard role applies */}
       <div
         className="fixed inset-0 z-50"
         onClick={onClose}

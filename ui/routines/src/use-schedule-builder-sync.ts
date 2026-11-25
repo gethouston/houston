@@ -34,7 +34,7 @@ export function useOutsideScheduleSync(
   emitted: string,
   apply: (pick: OutsidePick) => void,
 ): void {
-  // biome-ignore lint/correctness/useExhaustiveDependencies: sync on the incoming value only — `emitted` is derived from the state this effect sets, and reacting to it would fight the user's edits
+  /* oxlint-disable react-hooks/exhaustive-deps -- sync on the incoming value only — `emitted` is derived from the state this effect sets, and reacting to it would fight the user's edits */
   useEffect(() => {
     if (!value.trim() || value === emitted) return;
     const preset = cronToPreset(value);
@@ -48,6 +48,7 @@ export function useOutsideScheduleSync(
       interval,
     });
   }, [value]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 }
 
 /**
@@ -74,11 +75,12 @@ export function useLateFloorDefault(
   countIsDefault: MutableRefObject<boolean>,
   setEvery: (update: (every: string) => string) => void,
 ): void {
-  // biome-ignore lint/correctness/useExhaustiveDependencies: react to the floor arriving; the ref and setter are stable
+  /* oxlint-disable react-hooks/exhaustive-deps -- react to the floor arriving; the ref and setter are stable */
   useEffect(() => {
     if (!countIsDefault.current || minimum == null) return;
     setEvery((every) =>
       Number(every) >= minimum ? every : String(defaultMinutesCount(minimum)),
     );
   }, [minimum]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 }

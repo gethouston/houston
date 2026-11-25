@@ -79,18 +79,18 @@ for (const controlPlane of [true, false]) {
         expect(stored).toBeNull();
         expect(methods).toEqual(["GET"]);
       });
-      it.each([
-        null,
-        team,
-      ])("keeps device behaviour when the account read fails: %s", async (legacy) => {
-        if (legacy) device.set(localKey, legacy);
-        failRead = true;
-        expect((await client().resolveWorkspaceSelection(spaces))?.id).toBe(
-          team,
-        );
-        expect(methods).toEqual(["GET"]);
-        expect(device.has(localKey)).toBe(false);
-      });
+      it.each([null, team])(
+        "keeps device behaviour when the account read fails: %s",
+        async (legacy) => {
+          if (legacy) device.set(localKey, legacy);
+          failRead = true;
+          expect((await client().resolveWorkspaceSelection(spaces))?.id).toBe(
+            team,
+          );
+          expect(methods).toEqual(["GET"]);
+          expect(device.has(localKey)).toBe(false);
+        },
+      );
       it("remembers this device's last choice for a later account outage", async () => {
         const c = client();
         await c.setPreference(key, team);

@@ -1,0 +1,195 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // react-perf bans ordinary inline callback/JSX/object props; React's targeted context/default-prop rules check unstable values instead.
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc",
+    "import",
+    "react",
+    "jsx-a11y",
+    "promise",
+    "node",
+    "vitest",
+    "jsdoc",
+  ],
+  // Style/restriction rules prescribe incompatible bans on async/await, optional chaining, named exports and null.
+  // Pedantic rules are selected below for defect checks rather than code-style preferences.
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error",
+  },
+  // Type-aware rules are deferred to per-package cleanup: no-floating-promises 9,379; unsafe member access 4,115;
+  // unsafe type assertions 3,665; unsafe calls 3,260; unsafe assignments 1,728 in the initial audit.
+  "options": {
+    "typeAware": false,
+  },
+  // Next.js rules apply to the Agent Store; the desktop and web clients use Vite.
+  "overrides": [
+    {
+      "files": ["agentstore/**/*"],
+      "plugins": [
+        "typescript",
+        "unicorn",
+        "oxc",
+        "import",
+        "react",
+        "jsx-a11y",
+        "promise",
+        "node",
+        "vitest",
+        "jsdoc",
+        "nextjs",
+      ],
+      "rules": {
+        "nextjs/no-img-element": "error",
+      },
+    },
+  ],
+  "ignorePatterns": [
+    "**/*.css",
+    "**/*.svg",
+    "**/*.html",
+    "**/gen",
+    "**/*.gen.json",
+    ".houston",
+    "packages/design-tokens/dist",
+    "app/src/agents/builtin/store-templates",
+    "app/src/lib/ai-hub/model-catalog.json",
+    "packages/host/src/routes/routes.golden.json",
+    "scripts/sdk-parity/gateway-routes.generated.json",
+    "website/src/assets/vendor",
+  ],
+  "env": {
+    "browser": true,
+    "node": true,
+  },
+  "rules": {
+    "array-callback-return": "error",
+    "eqeqeq": [
+      "error",
+      "always",
+      {
+        "null": "ignore",
+      },
+    ],
+    "no-restricted-globals": ["error", "isNaN", "isFinite"],
+    "oxc/no-const-enum": "error",
+    "no-label-var": "error",
+    "no-template-curly-in-string": "error",
+    "vitest/no-duplicate-hooks": "error",
+    "default-case-last": "error",
+    "no-case-declarations": "error",
+    "no-constructor-return": "error",
+    "no-fallthrough": [
+      "error",
+      {
+        "allowEmptyCase": true,
+      },
+    ],
+    "no-new-wrappers": "error",
+    "no-object-constructor": "error",
+    "no-prototype-builtins": "error",
+    "no-self-compare": "error",
+    "no-throw-literal": "error",
+    "prefer-promise-reject-errors": "error",
+    "radix": "error",
+    "symbol-description": "error",
+    "react/rules-of-hooks": "error",
+    "react/button-has-type": "error",
+    "react/no-danger": "error",
+    "unicorn/no-document-cookie": "error",
+    "no-sequences": [
+      "error",
+      {
+        "allowInParentheses": false,
+      },
+    ],
+    "typescript/no-empty-interface": "error",
+    "typescript/no-non-null-assertion": "error",
+    // Matches Biome's useConst: a destructuring stays `let` while any binding is reassigned, and a closure that reads the binding before its single assignment keeps it `let`.
+    "prefer-const": [
+      "error",
+      {
+        "destructuring": "all",
+        "ignoreReadBeforeAssign": true,
+      },
+    ],
+    "react/checked-requires-onchange-or-readonly": "error",
+    "react/jsx-no-target-blank": "error",
+    "typescript/ban-ts-comment": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "typescript/no-wrapper-object-types": "error",
+    "typescript/no-explicit-any": "error",
+    "unicorn/no-new-buffer": "error",
+    "unicorn/no-instanceof-array": "error",
+    "unicorn/no-this-assignment": "error",
+    "unicorn/no-negation-in-equality-check": "error",
+    "unicorn/no-unreadable-iife": "error",
+    "unicorn/require-number-to-fixed-digits-argument": "error",
+    "no-unsafe-optional-chaining": [
+      "error",
+      {
+        "disallowArithmeticOperators": true,
+      },
+    ],
+    "no-unused-expressions": [
+      "error",
+      {
+        "allowTernary": true,
+        "allowShortCircuit": true,
+      },
+    ],
+    "no-unused-vars": [
+      "error",
+      {
+        "args": "all",
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "ignoreRestSiblings": true,
+        "caughtErrorsIgnorePattern": "^_",
+      },
+    ],
+    "vitest/valid-expect": [
+      "error",
+      {
+        "maxArgs": 2,
+        "alwaysAwait": false,
+      },
+    ],
+    "jsx-a11y/control-has-associated-label": [
+      "error",
+      {
+        "depth": 5,
+      },
+    ],
+    "jsx-a11y/label-has-associated-control": [
+      "error",
+      {
+        "depth": 5,
+      },
+    ],
+    "react/no-unstable-nested-components": [
+      "error",
+      {
+        "allowAsProps": true,
+      },
+    ],
+    "jsdoc/check-tag-names": [
+      "error",
+      {
+        "definedTags": [
+          "assistant",
+          "internal",
+          "vitest-environment",
+          "vitest-environment-options",
+          "jest-environment",
+          "mention",
+          "mentions",
+        ],
+      },
+    ],
+  },
+  "extends": ["./.oxlint/policies.jsonc", "./.oxlint/overrides.jsonc"],
+}

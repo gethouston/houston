@@ -131,7 +131,7 @@ export function createConversationImportHold(
   };
 
   const onLive = () => {
-    for (const h of [...held.values()]) {
+    for (const h of Array.from(held.values())) {
       // The page is known live: back to the short wait.
       h.delayMs = RESEND_AFTER_MS;
       void resend(h);

@@ -49,20 +49,19 @@ test("the lazy runner validates and probes the normalized Azure endpoint", async
   });
 });
 
-test.each([
-  "invalid_key",
-  "key_restricted",
-  "provider_unavailable",
-] as const)("verification preserves %s", async (reason) => {
-  const runner = await loadLoginRunner();
-  const failure = new ApiKeyVerifyError("verification refused", reason);
-  mocks.verify.mockRejectedValue(failure);
-  await expect(runner.apiKey("google", "key-fixture")).rejects.toBe(failure);
-  expect(runner.failure("google", failure)).toEqual({
-    error: "verification refused",
-    reason,
-  });
-});
+test.each(["invalid_key", "key_restricted", "provider_unavailable"] as const)(
+  "verification preserves %s",
+  async (reason) => {
+    const runner = await loadLoginRunner();
+    const failure = new ApiKeyVerifyError("verification refused", reason);
+    mocks.verify.mockRejectedValue(failure);
+    await expect(runner.apiKey("google", "key-fixture")).rejects.toBe(failure);
+    expect(runner.failure("google", failure)).toEqual({
+      error: "verification refused",
+      reason,
+    });
+  },
+);
 
 test("typed login refusals retain their kind", async () => {
   const runner = await loadLoginRunner();

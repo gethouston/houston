@@ -18,20 +18,16 @@ test("a zone this device's time zone data lacks never rejects the agent", () => 
   ).toBe("Mars/Olympus");
 });
 
-test.each([
-  undefined,
-  "UTC",
-  "America/Bogota",
-])("turn timezone accepts %s", (zone) => {
-  expect(TurnTimezoneSchema.parse(zone)).toBe(zone);
-});
+test.each([undefined, "UTC", "America/Bogota"])(
+  "turn timezone accepts %s",
+  (zone) => {
+    expect(TurnTimezoneSchema.parse(zone)).toBe(zone);
+  },
+);
 
-test.each([
-  "Mars/Olympus",
-  "",
-  "+01:00",
-  null,
-  42,
-])("turn timezone refuses %s", (zone) => {
-  expect(TurnTimezoneSchema.safeParse(zone).success).toBe(false);
-});
+test.each(["Mars/Olympus", "", "+01:00", null, 42])(
+  "turn timezone refuses %s",
+  (zone) => {
+    expect(TurnTimezoneSchema.safeParse(zone).success).toBe(false);
+  },
+);

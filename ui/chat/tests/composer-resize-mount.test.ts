@@ -41,9 +41,8 @@ const React = await import("react");
 const { act, createElement: h } = React;
 g.React = React;
 const { createRoot } = await import("react-dom/client");
-const { ComposerResizeHandle } = await import(
-  "../src/composer-resize-handle.tsx"
-);
+const { ComposerResizeHandle } =
+  await import("../src/composer-resize-handle.tsx");
 const { FreeTextRow } = await import("../src/interaction-free-text-row.tsx");
 
 let cleanup: (() => void) | null = null;

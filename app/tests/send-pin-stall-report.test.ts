@@ -15,9 +15,8 @@ mock.module(new URL("../src/lib/quiet-error-report.ts", import.meta.url).href, {
       calls.push({ fn: "reportQuietError", args }),
   },
 });
-const { reportSendPinStall } = await import(
-  "../src/lib/send-pin-stall-report.ts"
-);
+const { reportSendPinStall } =
+  await import("../src/lib/send-pin-stall-report.ts");
 
 const signals = {
   agentConfigSettled: true,

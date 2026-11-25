@@ -41,7 +41,7 @@ export function normalizeLikePi(input: string): string {
   ) {
     return join(homedir(), p.slice(2));
   }
-  if (/^file:\/\//.test(p)) return fileURLToPath(p);
+  if (p.startsWith("file://")) return fileURLToPath(p);
   return process.platform === "win32" ? stripStream(p) : p;
 }
 

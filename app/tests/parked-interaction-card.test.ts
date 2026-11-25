@@ -15,12 +15,12 @@
 
 import { strict as assert } from "node:assert";
 import { beforeEach, describe, it } from "node:test";
-import type { InteractionStep } from "@houston/protocol";
 import type {
   ChatInteractionAnswer,
   ChatInteractionCardProps,
   ChatInteractionStep,
 } from "@houston-ai/chat";
+import type { InteractionStep } from "@houston/protocol";
 import { JSDOM } from "jsdom";
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", {
@@ -69,21 +69,16 @@ const { act, createElement: h, Fragment, useEffect } = React;
 g.React = React;
 const { createRoot } = await import("react-dom/client");
 const { ChatInteractionCard } = await import("@houston-ai/chat");
-const { createInteractionOutcomes } = await import(
-  "../src/components/chat-interaction-reply.ts"
-);
-const { useParkedInteractionCard } = await import(
-  "../src/components/use-parked-interaction-card.ts"
-);
-const { approvalsFromAnswers } = await import(
-  "../src/lib/interaction-approvals.ts"
-);
-const { finalConnectNames } = await import(
-  "../src/lib/interaction-outcomes.ts"
-);
-const { interactionDraftKey, useInteractionDraftStore } = await import(
-  "../src/stores/interaction-drafts.ts"
-);
+const { createInteractionOutcomes } =
+  await import("../src/components/chat-interaction-reply.ts");
+const { useParkedInteractionCard } =
+  await import("../src/components/use-parked-interaction-card.ts");
+const { approvalsFromAnswers } =
+  await import("../src/lib/interaction-approvals.ts");
+const { finalConnectNames } =
+  await import("../src/lib/interaction-outcomes.ts");
+const { interactionDraftKey, useInteractionDraftStore } =
+  await import("../src/stores/interaction-drafts.ts");
 type ParkedInteraction = Parameters<
   ReturnType<typeof useInteractionDraftStore.getState>["park"]
 >[1];

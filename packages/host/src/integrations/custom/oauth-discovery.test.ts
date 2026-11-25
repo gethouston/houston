@@ -95,42 +95,43 @@ describe("custom MCP OAuth discovery compatibility", () => {
     expect(calls).not.toContain(RESOURCE_METADATA);
   });
 
-  it.each([
-    'Bearer realm="mcp"',
-    'Bearer resource_metadata="not-a-url"',
-  ])("preserves legacy registration when no usable hint is provided: %s", async (challenge) => {
-    const { fetchFn, calls } = server("legacy", challenge);
-    const result = await beginCustomOAuth(DEF, REDIRECT, null, { fetchFn });
-    expect(new URL(result.authorizeUrl).pathname).toBe("/authorize");
-    expect(calls).toContain(`${ORIGIN}/register`);
-  });
+  it.each(['Bearer realm="mcp"', 'Bearer resource_metadata="not-a-url"'])(
+    "preserves legacy registration when no usable hint is provided: %s",
+    async (challenge) => {
+      const { fetchFn, calls } = server("legacy", challenge);
+      const result = await beginCustomOAuth(DEF, REDIRECT, null, { fetchFn });
+      expect(new URL(result.authorizeUrl).pathname).toBe("/authorize");
+      expect(calls).toContain(`${ORIGIN}/register`);
+    },
+  );
 
-  it.each([
-    200, 405,
-  ])("preserves legacy fallback on an MCP GET returning %s", async (status) => {
-    const original = server("legacy");
-    let cancelled = false;
-    const fetchFn: typeof fetch = async (input, init) => {
-      if (String(input) !== ENDPOINT) return original.fetchFn(input, init);
-      return new Response(
-        new ReadableStream({
-          cancel() {
-            cancelled = true;
+  it.each([200, 405])(
+    "preserves legacy fallback on an MCP GET returning %s",
+    async (status) => {
+      const original = server("legacy");
+      let cancelled = false;
+      const fetchFn: typeof fetch = async (input, init) => {
+        if (String(input) !== ENDPOINT) return original.fetchFn(input, init);
+        return new Response(
+          new ReadableStream({
+            cancel() {
+              cancelled = true;
+            },
+          }),
+          {
+            status,
+            headers: {
+              "WWW-Authenticate": `Bearer resource_metadata="${RESOURCE_METADATA}"`,
+            },
           },
-        }),
-        {
-          status,
-          headers: {
-            "WWW-Authenticate": `Bearer resource_metadata="${RESOURCE_METADATA}"`,
-          },
-        },
-      );
-    };
-    const result = await beginCustomOAuth(DEF, REDIRECT, null, { fetchFn });
-    expect(new URL(result.authorizeUrl).pathname).toBe("/authorize");
-    expect(cancelled).toBe(true);
-    expect(original.calls).not.toContain(RESOURCE_METADATA);
-  });
+        );
+      };
+      const result = await beginCustomOAuth(DEF, REDIRECT, null, { fetchFn });
+      expect(new URL(result.authorizeUrl).pathname).toBe("/authorize");
+      expect(cancelled).toBe(true);
+      expect(original.calls).not.toContain(RESOURCE_METADATA);
+    },
+  );
 
   it("uses configured headers on the probe and reports transport failures", async () => {
     const original = server("legacy");
@@ -155,13 +156,13 @@ describe("custom MCP OAuth discovery compatibility", () => {
 });
 
 describe("advertisesOAuth", () => {
-  it.each([
-    "challenge",
-    "standard",
-  ] as const)("is true whenever the sign-in flow finds authorization-server metadata (%s)", async (discovery) => {
-    const { fetchFn } = server(discovery);
-    expect(await advertisesOAuth(ENDPOINT, fetchFn)).toBe(true);
-  });
+  it.each(["challenge", "standard"] as const)(
+    "is true whenever the sign-in flow finds authorization-server metadata (%s)",
+    async (discovery) => {
+      const { fetchFn } = server(discovery);
+      expect(await advertisesOAuth(ENDPOINT, fetchFn)).toBe(true);
+    },
+  );
 
   // The SDK's legacy fallback GUESSES `/authorize` at the origin for a wall
   // with no metadata anywhere: that is a plain bearer wall (an API key), and

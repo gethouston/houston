@@ -1,9 +1,9 @@
-import type { ApprovalArg } from "@houston/protocol/approval";
-import type { InteractionStep } from "@houston/protocol/interaction";
 import type {
   ChatInteractionOption,
   ChatInteractionStep,
 } from "@houston-ai/chat";
+import type { ApprovalArg } from "@houston/protocol/approval";
+import type { InteractionStep } from "@houston/protocol/interaction";
 import {
   refusesPurchaseApproval,
   storeRefusalQuestion,

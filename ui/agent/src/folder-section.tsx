@@ -76,7 +76,7 @@ export function FolderSection({
 
   return (
     <>
-      {/* biome-ignore lint/a11y/useSemanticElements: CSS grid layout — <tr> would break column sizing; role="row" is correct ARIA but the element must stay a div */}
+      {/* CSS grid layout — <tr> would break column sizing; role="row" is correct ARIA but the element must stay a div */}
       <div
         role="row"
         aria-expanded={open}

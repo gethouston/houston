@@ -73,16 +73,17 @@ test("a claim-bound report makes one attempt with a two-second deadline", async 
   }
 });
 
-test.each([
-  401, 404, 503,
-])("status %s warns once then stays quiet", async (status) => {
-  const warn = vi.fn();
-  const fetchImpl = vi
-    .fn<typeof fetch>()
-    .mockResolvedValue(new Response(null, { status }));
-  const send = createPushReporter({ report: gateway, fetchImpl, warn });
-  await send(report);
-  await send(report);
-  expect(warn).toHaveBeenCalledTimes(1);
-  expect(fetchImpl).toHaveBeenCalledTimes(2);
-});
+test.each([401, 404, 503])(
+  "status %s warns once then stays quiet",
+  async (status) => {
+    const warn = vi.fn();
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status }));
+    const send = createPushReporter({ report: gateway, fetchImpl, warn });
+    await send(report);
+    await send(report);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  },
+);

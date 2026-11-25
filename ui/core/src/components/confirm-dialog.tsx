@@ -26,7 +26,7 @@ interface ConfirmDialogProps {
    * `confirmLabel`), and close requests (Esc, overlay) are refused — then
    * closes when it settles. A sync handler keeps the classic confirm-and-close.
    */
-  // biome-ignore lint/suspicious/noConfusingVoidType: sync handlers return void, async ones return a Promise
+  // sync handlers return void, async ones return a Promise
   onConfirm: () => void | Promise<unknown>;
   pendingLabel?: string;
   /**

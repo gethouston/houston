@@ -1,4 +1,3 @@
-import type { Agent } from "@houston/engine-adapter";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +8,7 @@ import {
   ResponsivePopoverTrigger,
   useIsMobile,
 } from "@houston-ai/core";
+import type { Agent } from "@houston/engine-adapter";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

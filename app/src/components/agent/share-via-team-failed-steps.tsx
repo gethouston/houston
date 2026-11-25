@@ -1,5 +1,5 @@
-import type { MoveErrorKind } from "@houston/sdk";
 import { Button } from "@houston-ai/core";
+import type { MoveErrorKind } from "@houston/sdk";
 import { AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { canPurchaseInApp } from "../../lib/purchase-policy";

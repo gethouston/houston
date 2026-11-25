@@ -9,9 +9,8 @@ import { afterEach, expect, test } from "vitest";
 // which exercises the pure mark/heal logic with injected fingerprints.
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-credfp-"));
 const { setCustomEndpointConfig } = await import("../ai/openai-compatible");
-const { authFailureActive, noteAuthFailure, resetAuthFailures } = await import(
-  "./credential-health"
-);
+const { authFailureActive, noteAuthFailure, resetAuthFailures } =
+  await import("./credential-health");
 const { runWithActingContext } = await import("../session/acting-context");
 
 afterEach(() => resetAuthFailures());

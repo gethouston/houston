@@ -1,0 +1,93 @@
+{
+  "$schema": "../node_modules/oxlint/configuration_schema.json",
+  "rules": {
+    // TypeScript schemas deliberately share their name with the inferred type; this rule flags those legal type/value pairs.
+    "no-redeclare": "off",
+    // Typed unary predicates and mappers intentionally pass function references; wrapping every reference is a style restriction.
+    "unicorn/no-array-callback-reference": "off",
+    // Tests assert through rejecting event milestones and shared helpers; static assertion counting misses these contracts.
+    "vitest/expect-expect": "off",
+    // The parser misreads prose such as "it (the stream)" as a commented-out test; comments are not executable tests.
+    "vitest/no-commented-out-tests": "off",
+    // Contract suites deliberately derive string titles from typed inputs and table entries.
+    "vitest/valid-title": "off",
+    // Requiring a yields tag is documentation style; generator signatures already state their yielded types.
+    "jsdoc/require-yields": "off",
+    // Block-scoped function declarations are valid in these ES modules; the legacy hoisting restriction does not apply.
+    "no-inner-declarations": "off",
+    // Existing public barrels intentionally form ESM cycles; graph cycles alone do not imply an initialization defect.
+    "import/no-cycle": "off",
+    // SDK and React snapshots require immutable map updates; in-place mutation would break their contracts.
+    "oxc/no-map-spread": "off",
+    // Awaited retry loops and synchronous iteration callbacks deliberately share mutable loop state.
+    "no-loop-func": "off",
+    // Adapter fixtures and static API namespaces intentionally use classes without instance state.
+    "typescript/no-extraneous-class": "off",
+    // User-opened editors and dialogs intentionally move focus to their first input.
+    "jsx-a11y/no-autofocus": "off",
+    // This deprecated rule rejects intentional string-and-empty-object intersections; dedicated TS rules catch unsafe function and wrapper types.
+    "typescript/ban-types": "off",
+    // React 19 uses the automatic JSX runtime; importing React for JSX is unnecessary.
+    "react/react-in-jsx-scope": "off",
+    // Nested callbacks deliberately reuse domain names; lexical shadowing is allowed.
+    "no-shadow": "off",
+    // Leading underscores identify intentionally unused parameters and private protocol fields.
+    "no-underscore-dangle": "off",
+    // Closures stay beside their sole caller; hoisting is a style decision.
+    "unicorn/consistent-function-scoping": "off",
+    // Single-owner browser handlers deliberately use assignable on-event properties.
+    "unicorn/prefer-add-event-listener": "off",
+    // In-place sorting of owned arrays is intentional; copying would change mutation contracts.
+    "unicorn/no-array-sort": "off",
+    // Owned arrays may be reversed in place; copying is not universally equivalent.
+    "unicorn/no-array-reverse": "off",
+    // Ordered writes, retries and bounded work intentionally await sequentially.
+    "no-await-in-loop": "off",
+    // CSS, polyfills and runtime registration require side-effect imports.
+    "import/no-unassigned-import": "off",
+    // Several dependencies intentionally expose both a default API and named helpers.
+    "import/no-named-as-default": "off",
+    // Dependency default exports intentionally expose named helpers as properties.
+    "import/no-named-as-default-member": "off",
+    // Painted custom controls intentionally use explicit roles and keyboard behavior.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // Vitest infers callback types; an explicit generic is not required for inferred mocks.
+    "vitest/require-mock-type-parameters": "off",
+    // Tests may assert the error type when its message is not part of the contract.
+    "vitest/require-to-throw-message": "off",
+    // Tests narrow result unions and exercise table-driven variants before asserting.
+    "vitest/no-conditional-expect": "off",
+    // Reusable assertion helpers run inside tests and preserve typed fixture checks.
+    "vitest/no-standalone-expect": "off",
+    // Live integration suites intentionally register tests only when credentials exist.
+    "vitest/no-conditional-tests": "off",
+    // Promise adapters must call callback-based framework and streaming ports.
+    "promise/no-callback-in-promise": "off",
+    // Callback-based framework ports intentionally bridge to asynchronous operations.
+    "promise/no-promise-in-callback": "off",
+    // Promise<void> completion callbacks intentionally return no value.
+    "promise/always-return": "off",
+    // react-hooks/exhaustive-deps owns dependency checks; running both duplicates conflicting advice.
+    "react/exhaustive-effect-dependencies": "off",
+    // react-hooks/exhaustive-deps also checks useMemo and useCallback dependencies.
+    "react/memo-dependencies": "off",
+    // React Compiler is not enabled; adopting its render-time ref constraints is a separate migration.
+    "react/refs": "off",
+    // React Compiler is not enabled; its compile-time purity constraints require a separate migration.
+    "react/purity": "off",
+    // React Compiler is not enabled; framework adapter writes require a separate compiler migration.
+    "react/globals": "off",
+    // React Compiler is not enabled; its alias analysis requires a separate migration.
+    "react/immutability": "off",
+    // React Compiler is not enabled; existing manual memoization remains authoritative.
+    "react/preserve-manual-memoization": "off",
+    // React Compiler is not enabled; component-hoisting constraints require a separate migration.
+    "react/static-components": "off",
+    // React Compiler is not enabled; compiler-only memo constraints do not apply.
+    "react/use-memo": "off",
+    // Effects intentionally reconcile external stores and browser events with rendered state.
+    "react/set-state-in-effect": "off",
+    // External state reconciliation belongs in effects; changing lifecycle behavior is outside lint migration.
+    "react/no-deriving-state-in-effects": "off",
+  },
+}

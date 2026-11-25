@@ -120,9 +120,10 @@ export function useBoardSendQueue({
     [selectedSessionKey, messageQueue.queuedMessages],
   );
 
+  const messageQueueRemoveQueuedMessage = messageQueue.removeQueuedMessage;
   const onRemoveQueuedMessage = useCallback(
-    (_sessionKey: string, id: string) => messageQueue.removeQueuedMessage(id),
-    [messageQueue.removeQueuedMessage],
+    (_sessionKey: string, id: string) => messageQueueRemoveQueuedMessage(id),
+    [messageQueueRemoveQueuedMessage],
   );
 
   return {

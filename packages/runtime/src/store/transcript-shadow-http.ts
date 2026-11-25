@@ -4,9 +4,7 @@ import type {
   TranscriptShadowTransport,
 } from "./transcript-shadow";
 
-export class SandboxTranscriptShadowTransport
-  implements TranscriptShadowTransport
-{
+export class SandboxTranscriptShadowTransport implements TranscriptShadowTransport {
   private readonly baseUrl: string;
 
   constructor(

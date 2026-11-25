@@ -1,5 +1,5 @@
-import type { CustomIntegrationView } from "@houston/engine-adapter";
 import { ConfirmDialog } from "@houston-ai/core";
+import type { CustomIntegrationView } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import { useCustomIntegrationScope } from "../../hooks/queries";
 

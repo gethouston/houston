@@ -41,9 +41,8 @@ const React = await import("react");
 const { act, createElement: h } = React;
 g.React = React;
 const { createRoot } = await import("react-dom/client");
-const { PromptInput, PromptInputTextarea } = await import(
-  "../src/ai-elements/prompt-input.tsx"
-);
+const { PromptInput, PromptInputTextarea } =
+  await import("../src/ai-elements/prompt-input.tsx");
 
 const proto = win.HTMLFormElement.prototype as unknown as Record<
   string,

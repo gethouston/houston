@@ -1,3 +1,4 @@
+import { DialogDescription, DialogTitle } from "@houston-ai/core";
 import type { BillingInterval } from "@houston/engine-adapter";
 import {
   formatCutoverDay,
@@ -5,7 +6,6 @@ import {
   type PromoEndedView,
   sellsYearly,
 } from "@houston/sdk";
-import { DialogDescription, DialogTitle } from "@houston-ai/core";
 import { Calendar } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 import { BILLING_CURRENCY } from "../organization/billing-tab-model";

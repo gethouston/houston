@@ -62,12 +62,10 @@ const { initReactI18next } = await import("react-i18next");
 const teams = (
   await import("../src/locales/en/teams.json", { with: { type: "json" } })
 ).default;
-const { PageHeaderToolsProvider, usePageHeaderSlotRef } = await import(
-  "../src/components/shell/page-header/page-header-tools.tsx"
-);
-const { CompanyContextTool } = await import(
-  "../src/components/organization/company-context-tool.tsx"
-);
+const { PageHeaderToolsProvider, usePageHeaderSlotRef } =
+  await import("../src/components/shell/page-header/page-header-tools.tsx");
+const { CompanyContextTool } =
+  await import("../src/components/organization/company-context-tool.tsx");
 
 await i18next.use(initReactI18next).init({
   lng: "en",

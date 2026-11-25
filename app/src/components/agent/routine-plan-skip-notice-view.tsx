@@ -10,11 +10,11 @@
  * Plus at all.
  */
 
+import { Button } from "@houston-ai/core";
 import type {
   TriggerPlanSkipAction,
   TriggerPlanSkipNotice,
 } from "@houston/sdk";
-import { Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { RoutineNoticeCard } from "./routine-notice-card";

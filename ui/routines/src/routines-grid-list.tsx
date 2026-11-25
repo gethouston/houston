@@ -20,10 +20,15 @@ import { RoutineRow } from "./routine-row";
 import type { RoutinesGridProps } from "./routines-grid";
 import type { Routine } from "./types";
 
+const DEFAULT_LAST_RUNS = {};
+const DEFAULT_DRAFT_ACTIVITIES: never[] = [];
+const DEFAULT_TRIGGER_STATUSES = {};
+const DEFAULT_TRIGGER_SUMMARIES = {};
+
 export function RoutinesGridList({
   sorted,
-  lastRuns = {},
-  draftActivities = [],
+  lastRuns = DEFAULT_LAST_RUNS,
+  draftActivities = DEFAULT_DRAFT_ACTIVITIES,
   accountTimezone,
   selectedRoutineId,
   selectedDraftId,
@@ -44,8 +49,8 @@ export function RoutinesGridList({
   scheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   triggerLabels = DEFAULT_TRIGGER_LABELS,
-  triggerStatuses = {},
-  triggerSummaries = {},
+  triggerStatuses = DEFAULT_TRIGGER_STATUSES,
+  triggerSummaries = DEFAULT_TRIGGER_SUMMARIES,
   onReconnectTrigger,
   locale = "en-US",
 }: RoutinesGridProps & { sorted: Routine[] }) {

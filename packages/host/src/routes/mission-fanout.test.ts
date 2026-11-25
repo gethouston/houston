@@ -98,36 +98,37 @@ test("unknown remote status releases its slot after the hold", async () => {
   );
 });
 
-test.each([
-  403, 404,
-])("remote refusal %i releases its slot after the hold", async (status) => {
-  const vfs = new MemoryVfs();
-  const started = Date.now();
-  const route = {
-    target: {
-      remote: true as const,
-      id: "target",
-      name: "Target",
-      workspace: "Space",
-      workspaceId: "ws",
-    },
-    gateway: { url: "https://gateway.test", token: "token" },
-    fetchImpl: (async () =>
-      Response.json({ error: "gone" }, { status })) as typeof fetch,
-  };
-  missionFanout.record(
-    CALLER,
-    {
-      missionId: "m-r",
-      boardRoot: null,
-      readStatus: async () => readRemoteMissionStatus(route, "m-r"),
-    },
-    started,
-  );
-  expect(await missionFanout.running(CALLER, vfs, started + 2 * 3600_000)).toBe(
-    0,
-  );
-});
+test.each([403, 404])(
+  "remote refusal %i releases its slot after the hold",
+  async (status) => {
+    const vfs = new MemoryVfs();
+    const started = Date.now();
+    const route = {
+      target: {
+        remote: true as const,
+        id: "target",
+        name: "Target",
+        workspace: "Space",
+        workspaceId: "ws",
+      },
+      gateway: { url: "https://gateway.test", token: "token" },
+      fetchImpl: (async () =>
+        Response.json({ error: "gone" }, { status })) as typeof fetch,
+    };
+    missionFanout.record(
+      CALLER,
+      {
+        missionId: "m-r",
+        boardRoot: null,
+        readStatus: async () => readRemoteMissionStatus(route, "m-r"),
+      },
+      started,
+    );
+    expect(
+      await missionFanout.running(CALLER, vfs, started + 2 * 3600_000),
+    ).toBe(0);
+  },
+);
 
 test("a missing remote row releases its slot after the hold", async () => {
   const started = Date.now();
@@ -303,29 +304,30 @@ test("a transient remote failure releases at the 24 hour ceiling and reports it"
   }
 });
 
-test.each([
-  502, 504,
-])("HTTP %i is a transient remote status failure", async (status) => {
-  const fetchImpl = vi.fn(async () =>
-    Response.json({ error: "unavailable" }, { status }),
-  );
-  await expect(
-    readRemoteMissionStatus(
-      {
-        target: {
-          remote: true,
-          id: "target",
-          name: "Target",
-          workspace: "Space",
-          workspaceId: "ws",
+test.each([502, 504])(
+  "HTTP %i is a transient remote status failure",
+  async (status) => {
+    const fetchImpl = vi.fn(async () =>
+      Response.json({ error: "unavailable" }, { status }),
+    );
+    await expect(
+      readRemoteMissionStatus(
+        {
+          target: {
+            remote: true,
+            id: "target",
+            name: "Target",
+            workspace: "Space",
+            workspaceId: "ws",
+          },
+          gateway: { url: "https://gateway.test", token: "token" },
+          fetchImpl: fetchImpl as typeof fetch,
         },
-        gateway: { url: "https://gateway.test", token: "token" },
-        fetchImpl: fetchImpl as typeof fetch,
-      },
-      "m-r",
-    ),
-  ).rejects.toThrow(String(status));
-});
+        "m-r",
+      ),
+    ).rejects.toThrow(String(status));
+  },
+);
 
 test("remote checks are cached between counts", async () => {
   const vfs = new MemoryVfs();

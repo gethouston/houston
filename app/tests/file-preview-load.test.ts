@@ -17,9 +17,8 @@ import "./support/dom-env.ts";
 const React = await import("react");
 const { act, createElement: h } = React;
 const { createRoot } = await import("react-dom/client");
-const { QueryClient, QueryClientProvider, notifyManager } = await import(
-  "@tanstack/react-query"
-);
+const { QueryClient, QueryClientProvider, notifyManager } =
+  await import("@tanstack/react-query");
 notifyManager.setScheduler(queueMicrotask);
 
 let enabled = true;
@@ -160,9 +159,8 @@ URL.revokeObjectURL = (url) => {
   revoked.push(url);
 };
 
-const { useFilePreviewLoad } = await import(
-  "../src/components/file-preview/use-file-preview-load.ts"
-);
+const { useFilePreviewLoad } =
+  await import("../src/components/file-preview/use-file-preview-load.ts");
 type Load = ReturnType<typeof useFilePreviewLoad>;
 
 let unmount: (() => Promise<void>) | undefined;

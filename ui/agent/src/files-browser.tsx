@@ -72,8 +72,7 @@ export function FilesBrowser(props: FilesBrowserProps) {
       {props.header}
       {props.expanded !== false && props.notice}
       {props.expanded !== false && (
-        // biome-ignore lint/a11y/noStaticElementInteractions: backdrop gestures only clear selection or open its pointer context menu
-        // biome-ignore lint/a11y/useKeyWithClickEvents: the backdrop itself has no keyboard action
+        // oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- backdrop gestures only clear selection or open its pointer context menu
         <div
           className={`${props.inFrame ? "w-full" : FILES_CONTENT_COLUMN} flex min-h-0 flex-col`}
           onClick={(event) => {

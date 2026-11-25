@@ -6,6 +6,13 @@ import { shadow } from "@houston/design-tokens";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
+  ALERT_DIALOG_CONTENT_CLASS,
+  ALERT_DIALOG_FOOTER_CLASS,
+  ALERT_DIALOG_HEADER_CLASS,
+  ALERT_DIALOG_MEDIA_CLASS,
+  ALERT_DIALOG_TITLE_CLASS,
+} from "../src/components/alert-dialog-parts.ts";
+import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogDescription,
@@ -13,14 +20,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../src/components/alert-dialog.tsx";
-import {
-  ALERT_DIALOG_CONTENT_CLASS,
-  ALERT_DIALOG_FOOTER_CLASS,
-  ALERT_DIALOG_HEADER_CLASS,
-  ALERT_DIALOG_MEDIA_CLASS,
-  ALERT_DIALOG_TITLE_CLASS,
-} from "../src/components/alert-dialog-parts.ts";
 import { Button } from "../src/components/button.tsx";
+import {
+  DIALOG_CONTENT_CLASS,
+  DIALOG_FOOTER_CLASS,
+  DIALOG_HEADER_FRAME_CLASS,
+  DIALOG_OVERLAY_CLASS,
+} from "../src/components/dialog-frame.ts";
 import {
   Dialog,
   DialogContent,
@@ -29,12 +35,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../src/components/dialog.tsx";
-import {
-  DIALOG_CONTENT_CLASS,
-  DIALOG_FOOTER_CLASS,
-  DIALOG_HEADER_FRAME_CLASS,
-  DIALOG_OVERLAY_CLASS,
-} from "../src/components/dialog-frame.ts";
 import { FormDialogForm } from "../src/components/form-dialog-form.tsx";
 import { resolveSecondary } from "../src/components/form-dialog-parts.ts";
 

@@ -1,13 +1,13 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  createOnboardingSurveyPreference,
-  type OnboardingSurveyPreference,
-} from "../src/lib/onboarding-survey.ts";
-import {
   createSurveyPusher,
   type SurveyPusher,
 } from "../src/lib/onboarding-survey-push.ts";
+import {
+  createOnboardingSurveyPreference,
+  type OnboardingSurveyPreference,
+} from "../src/lib/onboarding-survey.ts";
 import { owesGatewayCatchUp } from "../src/lib/onboarding-sync.ts";
 
 const STAMP = "2026-08-08T12:00:00.000Z";

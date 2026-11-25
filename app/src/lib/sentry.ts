@@ -100,26 +100,18 @@ export function initSentry(): void {
         flush: (timeout) => inner.flush(timeout),
       };
     },
-    integrations: (defaultIntegrations) => [
-      // - BrowserSession: app release-health sessions are tracked in Rust
-      //   (lib.rs auto_session_tracking), so drop the browser one to avoid
-      //   double counting.
-      // - GlobalHandlers: uncaught errors + unhandled rejections are captured
-      //   AND toasted explicitly in main.tsx (so the user gets the event id);
-      //   drop the SDK's auto-capture to avoid duplicate events.
-      // - BrowserApiErrors: it wraps timer, rAF, event-listener and XHR
-      //   callbacks to capture what they throw, then rethrows, and only
-      //   GlobalHandlers honors its "already captured" mark. With that gone,
-      //   the app's window.onerror (global-error-handlers.ts) captured every
-      //   callback error a second time (HOUSTON-APP-5KV counted each one
-      //   twice), so window.onerror stays the one capture path.
-      ...defaultIntegrations.filter(
+    // Rust tracks release-health sessions, and main.tsx reports uncaught errors.
+    // Keep browser auto-capture off to avoid duplicate sessions and events.
+    // BrowserApiErrors rethrows what it captures from timer, rAF, listener and
+    // XHR callbacks, and only GlobalHandlers honors its "already captured" mark,
+    // so window.onerror (global-error-handlers.ts) would capture each one twice.
+    integrations: (defaultIntegrations) =>
+      defaultIntegrations.filter(
         (integration) =>
           integration.name !== "BrowserSession" &&
           integration.name !== "GlobalHandlers" &&
           integration.name !== "BrowserApiErrors",
       ),
-    ],
     // Session Replay is deliberately OFF (no replayIntegration). Keep the
     // explicit zero rates so an SDK default can never silently re-enable it.
     replaysSessionSampleRate: 0,

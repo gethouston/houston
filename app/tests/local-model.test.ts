@@ -1,5 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import { connectFailureMode } from "../src/lib/local-model-connect-state.ts";
+import { looksLikeReasoningModel } from "../src/lib/local-model-reasoning.ts";
 import {
   appDisplayName,
   buildDirectEndpoint,
@@ -8,8 +10,6 @@ import {
   defaultEndpointName,
   defaultModelFor,
 } from "../src/lib/local-model.ts";
-import { connectFailureMode } from "../src/lib/local-model-connect-state.ts";
-import { looksLikeReasoningModel } from "../src/lib/local-model-reasoning.ts";
 
 function server(extra: Partial<DetectedServer> = {}): DetectedServer {
   return {

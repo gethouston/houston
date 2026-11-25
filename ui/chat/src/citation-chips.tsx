@@ -2,6 +2,8 @@ import { cn } from "@houston-ai/core";
 import { TriangleAlert, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+const DEFAULT_LABELS = {};
+
 /** One comment pinned to a file region, as a chip or a pill shows it. */
 export interface CitationChipData {
   id: string;
@@ -56,7 +58,7 @@ export function CitationChipRow({
   onHot,
   onOpen,
   onRemove,
-  labels = {},
+  labels = DEFAULT_LABELS,
 }: {
   chips: readonly CitationChipData[];
   hotId?: string | null;

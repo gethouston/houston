@@ -35,18 +35,18 @@ async function dispatchRefused(reason: LazyReadRefusedError["reason"]) {
   });
 }
 
-test.each([
-  "object",
-  "total",
-] as const)("a %s refusal answers 'too large' and flags tooLarge", async (reason) => {
-  const res = await dispatchRefused(reason);
-  expect(res.status).toBe(503);
-  expect(res.tooLarge).toBe(true);
-  expect(res.privateRefused).toBeUndefined();
-  expect(JSON.parse(res.body)).toEqual({
-    error: "file too large to fetch while the agent sleeps",
-  });
-});
+test.each(["object", "total"] as const)(
+  "a %s refusal answers 'too large' and flags tooLarge",
+  async (reason) => {
+    const res = await dispatchRefused(reason);
+    expect(res.status).toBe(503);
+    expect(res.tooLarge).toBe(true);
+    expect(res.privateRefused).toBeUndefined();
+    expect(JSON.parse(res.body)).toEqual({
+      error: "file too large to fetch while the agent sleeps",
+    });
+  },
+);
 
 test("a private refusal gets its own answer, never 'too large'", async () => {
   const res = await dispatchRefused("private");

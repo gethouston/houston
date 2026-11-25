@@ -134,23 +134,26 @@ test.each([
     'Summarization failed: 400 {"type":"error","error":{"type":"invalid_request_error","message":"This endpoint\'s maximum context length is 128000 tokens. However, you requested about 140000 tokens"}}',
     "context_overflow",
   ],
-])("a summarizer refusal that is the provider's own state is a warning, not an error (%s: %s)", async (provider, refusal, kind) => {
-  const error = vi.spyOn(console, "error").mockImplementation(() => {});
-  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-  vi.mocked(compactWithFactHarvest).mockRejectedValueOnce(new Error(refusal));
+])(
+  "a summarizer refusal that is the provider's own state is a warning, not an error (%s: %s)",
+  async (provider, refusal, kind) => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.mocked(compactWithFactHarvest).mockRejectedValueOnce(new Error(refusal));
 
-  expect(await runAutocompact(session, "c1", { provider, id: "m" })).toBe(
-    false,
-  );
+    expect(await runAutocompact(session, "c1", { provider, id: "m" })).toBe(
+      false,
+    );
 
-  expect(error).not.toHaveBeenCalled();
-  expect(warn).toHaveBeenCalledWith(
-    expect.stringContaining(`provider refused (kind=${kind})`),
-    refusal,
-  );
-  error.mockRestore();
-  warn.mockRestore();
-});
+    expect(error).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(`provider refused (kind=${kind})`),
+      refusal,
+    );
+    error.mockRestore();
+    warn.mockRestore();
+  },
+);
 
 test("a failure is reported ONCE, not on every later turn", async () => {
   const error = vi.spyOn(console, "error").mockImplementation(() => {});

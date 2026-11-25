@@ -1,5 +1,5 @@
-import type { OrgMember } from "@houston/engine-adapter";
 import { ConfirmDialog } from "@houston-ai/core";
+import type { OrgMember } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import { PeopleRemoveConfirm } from "./people-remove-confirm";
 import { rosterPersonName } from "./people-tab-model";

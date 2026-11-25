@@ -33,59 +33,59 @@ function setup() {
   return { cwd, dir: join(cwd, "sessions") };
 }
 
-test.each([
-  "local",
-  "pooled",
-])("%s resume preserves live context, state and leaf without touching the archive", (path) => {
-  const { cwd, dir } = setup();
-  const { manager, kept, response } = seedRotatableSession(cwd, dir);
-  const original = sessionFile(manager);
-  const bytes = readFileSync(original);
-  const context = manager.buildSessionContext();
-  expect(context.model).toEqual({
-    provider: "anthropic",
-    modelId: "physical-model",
-  });
-  expect(context.thinkingLevel).toBe("high");
-  const resumedCwd = path === "local" ? cwd : setup().cwd;
-  const successor = resumeSessionManager(resumedCwd, dir, false);
-  const file = sessionFile(successor);
-  expect(file).not.toBe(original);
-  expect(basename(file) > basename(original)).toBe(true);
-  expect(file).toMatch(/_test-session\.jsonl$/);
-  expect(statSync(file).size).toBeLessThan(SESSION_LOG_ROTATION_BYTES);
-  expect(readFileSync(original).equals(bytes)).toBe(true);
-  expect(successor.getHeader()).toEqual(manager.getHeader());
-  expect(successor.getCwd()).toBe(resumedCwd);
-  expect(successor.buildSessionContext()).toEqual(context);
-  expect(successor.getLeafId()).toBe(manager.getLeafId());
-  expect(successor.getEntry(kept)?.id).toBe(kept);
-  expect(successor.getSessionName()).toBe(manager.getSessionName());
-  expect(successor.getLabel(response)).toBe("checkpoint");
-  expect(successor.getBranch().filter((e) => e.type === "custom")).toEqual(
-    manager
-      .getBranch()
-      .filter((e) => e.type === "custom")
-      .map((e) => ({ ...e, parentId: successor.getEntry(e.id)?.parentId })),
-  );
-  expect(
-    successor
-      .getEntries()
-      .some(
-        (e) =>
-          e.type === "custom" && e.customType === VIRTUAL_MODEL_STATE_ENTRY,
-      ),
-  ).toBe(true);
+test.each(["local", "pooled"])(
+  "%s resume preserves live context, state and leaf without touching the archive",
+  (path) => {
+    const { cwd, dir } = setup();
+    const { manager, kept, response } = seedRotatableSession(cwd, dir);
+    const original = sessionFile(manager);
+    const bytes = readFileSync(original);
+    const context = manager.buildSessionContext();
+    expect(context.model).toEqual({
+      provider: "anthropic",
+      modelId: "physical-model",
+    });
+    expect(context.thinkingLevel).toBe("high");
+    const resumedCwd = path === "local" ? cwd : setup().cwd;
+    const successor = resumeSessionManager(resumedCwd, dir, false);
+    const file = sessionFile(successor);
+    expect(file).not.toBe(original);
+    expect(basename(file) > basename(original)).toBe(true);
+    expect(file).toMatch(/_test-session\.jsonl$/);
+    expect(statSync(file).size).toBeLessThan(SESSION_LOG_ROTATION_BYTES);
+    expect(readFileSync(original).equals(bytes)).toBe(true);
+    expect(successor.getHeader()).toEqual(manager.getHeader());
+    expect(successor.getCwd()).toBe(resumedCwd);
+    expect(successor.buildSessionContext()).toEqual(context);
+    expect(successor.getLeafId()).toBe(manager.getLeafId());
+    expect(successor.getEntry(kept)?.id).toBe(kept);
+    expect(successor.getSessionName()).toBe(manager.getSessionName());
+    expect(successor.getLabel(response)).toBe("checkpoint");
+    expect(successor.getBranch().filter((e) => e.type === "custom")).toEqual(
+      manager
+        .getBranch()
+        .filter((e) => e.type === "custom")
+        .map((e) => ({ ...e, parentId: successor.getEntry(e.id)?.parentId })),
+    );
+    expect(
+      successor
+        .getEntries()
+        .some(
+          (e) =>
+            e.type === "custom" && e.customType === VIRTUAL_MODEL_STATE_ENTRY,
+        ),
+    ).toBe(true);
 
-  // Unmodified pi can open it directly: no Houston-specific format or migration.
-  expect(SessionManager.open(file).buildSessionContext()).toEqual(context);
-  expect(resumeSessionManager(resumedCwd, dir, false).getSessionFile()).toBe(
-    file,
-  );
-  expect(readdirSync(dir).sort()).toEqual(
-    [basename(original), basename(file)].sort(),
-  );
-});
+    // Unmodified pi can open it directly: no Houston-specific format or migration.
+    expect(SessionManager.open(file).buildSessionContext()).toEqual(context);
+    expect(resumeSessionManager(resumedCwd, dir, false).getSessionFile()).toBe(
+      file,
+    );
+    expect(readdirSync(dir).sort()).toEqual(
+      [basename(original), basename(file)].sort(),
+    );
+  },
+);
 
 test("appending to the preserved leaf survives reopening", () => {
   const { cwd, dir } = setup();
@@ -101,37 +101,36 @@ test("appending to the preserved leaf survives reopening", () => {
   expect(reopened.buildSessionContext().model?.modelId).toBe("next-model");
 });
 
-test.each([
-  "under threshold",
-  "no compaction",
-  "large live segment",
-])("does not rotate with %s", (scenario) => {
-  const { cwd, dir } = setup();
-  const manager = SessionManager.create(cwd, dir);
-  manager.appendMessage({
-    role: "user",
-    content:
-      scenario === "no compaction"
-        ? "x".repeat(SESSION_LOG_ROTATION_BYTES + 1)
-        : "old",
-    timestamp: 0,
-  });
-  const kept = manager.appendMessage({
-    role: "user",
-    content:
-      scenario === "large live segment"
-        ? "x".repeat(SESSION_LOG_ROTATION_BYTES + 1)
-        : "kept",
-    timestamp: 1,
-  });
-  if (scenario !== "no compaction")
-    manager.appendCompaction("summary", kept, 100_000);
-  const file = sessionFile(manager);
-  const bytes = readFileSync(file);
-  expect(resumeSessionManager(cwd, dir, false).getSessionFile()).toBe(file);
-  expect(readFileSync(file).equals(bytes)).toBe(true);
-  expect(readdirSync(dir)).toEqual([basename(file)]);
-});
+test.each(["under threshold", "no compaction", "large live segment"])(
+  "does not rotate with %s",
+  (scenario) => {
+    const { cwd, dir } = setup();
+    const manager = SessionManager.create(cwd, dir);
+    manager.appendMessage({
+      role: "user",
+      content:
+        scenario === "no compaction"
+          ? "x".repeat(SESSION_LOG_ROTATION_BYTES + 1)
+          : "old",
+      timestamp: 0,
+    });
+    const kept = manager.appendMessage({
+      role: "user",
+      content:
+        scenario === "large live segment"
+          ? "x".repeat(SESSION_LOG_ROTATION_BYTES + 1)
+          : "kept",
+      timestamp: 1,
+    });
+    if (scenario !== "no compaction")
+      manager.appendCompaction("summary", kept, 100_000);
+    const file = sessionFile(manager);
+    const bytes = readFileSync(file);
+    expect(resumeSessionManager(cwd, dir, false).getSessionFile()).toBe(file);
+    expect(readFileSync(file).equals(bytes)).toBe(true);
+    expect(readdirSync(dir)).toEqual([basename(file)]);
+  },
+);
 
 test("full compaction with no kept messages preserves model and thinking settings", () => {
   const { cwd, dir } = setup();

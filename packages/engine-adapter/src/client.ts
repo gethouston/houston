@@ -117,9 +117,7 @@ export const MIXINS = [
 
 /** The classic union→intersection fold. */
 type UnionToIntersection<U> = (
-  U extends unknown
-    ? (x: U) => void
-    : never
+  U extends unknown ? (x: U) => void : never
 ) extends (x: infer I) => void
   ? I
   : never;
@@ -141,8 +139,6 @@ type ComposedClient = UnionToIntersection<
 const Composed = MIXINS.reduce<BaseCtor>(
   (Base, mixin) => mixin(Base),
   HoustonClientBase,
-) as new (
-  opts: HoustonClientOptions,
-) => ComposedClient;
+) as new (opts: HoustonClientOptions) => ComposedClient;
 
 export class HoustonClient extends Composed {}

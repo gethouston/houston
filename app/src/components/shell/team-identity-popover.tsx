@@ -107,7 +107,7 @@ export function TeamIdentityPopover({
       <PopoverContent align="start" className="w-[32.5rem] p-0">
         {/* `justify-between`, not a packed run: the swatches share the row's
             full width evenly, edge to edge, like the mark grid below them. */}
-        {/* biome-ignore lint/a11y/useSemanticElements: a run of toggle buttons,
+        {/* A run of toggle buttons,
             which is what role="group" names; a <fieldset> would announce a form
             field set and bring its own intrinsic sizing. */}
         <div
@@ -150,7 +150,6 @@ export function TeamIdentityPopover({
           style={tint ? { color: tint, ...tintVar } : undefined}
         >
           {shown.length > 0 ? (
-            // biome-ignore lint/a11y/useSemanticElements: see above.
             <div
               role="group"
               aria-label={choices.labels.icons}

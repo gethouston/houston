@@ -1,5 +1,5 @@
-import type { SeatUsageView } from "@houston/sdk";
 import { cn } from "@houston-ai/core";
+import type { SeatUsageView } from "@houston/sdk";
 import { useTranslation } from "react-i18next";
 
 /** More dots than this stop reading as seats; the line still counts them. */
@@ -25,7 +25,6 @@ export function BillingSeatUsage({
       <div aria-hidden="true" className="flex flex-wrap gap-1.5">
         {Array.from({ length: dots }, (_, seat) => (
           <span
-            // biome-ignore lint/suspicious/noArrayIndexKey: seats have no identity, only a position.
             key={seat}
             className={cn(
               "size-2.5 rounded-full",

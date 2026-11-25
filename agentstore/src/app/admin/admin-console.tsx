@@ -1,6 +1,5 @@
 "use client";
 
-import { StoreApiError } from "@houston/agentstore-client";
 import {
   Alert,
   AlertDescription,
@@ -12,6 +11,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@houston-ai/core";
+import { StoreApiError } from "@houston/agentstore-client";
 import { Brush, LogIn } from "lucide-react";
 import * as React from "react";
 import { useSession } from "@/lib/auth/session";

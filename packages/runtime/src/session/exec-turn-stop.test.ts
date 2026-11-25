@@ -68,7 +68,7 @@ async function runTurn(
 ): Promise<WireFrame[]> {
   const listeners = new Set<(e: WireEvent) => void>();
   const emit = (e: WireEvent) => {
-    for (const l of [...listeners]) l(e);
+    for (const l of Array.from(listeners)) l(e);
   };
   const aborted = Promise.withResolvers<void>();
   const streamed = Promise.withResolvers<void>();

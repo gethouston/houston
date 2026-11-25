@@ -338,73 +338,76 @@ test("a definite runtime refusal releases host nonce admission", async () => {
   }
 });
 
-test.each([
-  "expiry",
-  "restart",
-])("%s of the host memory guard still honors durable admission before touching a new card", async (reset) => {
-  const fx = await boot();
-  try {
-    const body = { text: "original", nonce: "old" };
-    await send(fx, body);
-    const digest = (value: string) =>
-      createHash("sha256").update(value).digest("hex");
-    await fx.vfs.writeText(
-      `${fx.agent.id}/.houston/runtime/${messageAdmissionFileName("conv-1", "old")}`,
-      JSON.stringify({
-        version: 1,
-        fingerprint: "a".repeat(64),
-        turnId: "accepted",
-        hostFingerprint: digest(messageRetryContent(body, "alice-sub")),
-      }),
-    );
-    if (reset === "expiry")
-      vi.spyOn(Date, "now").mockReturnValue(Date.now() + 11 * 60_000);
-    else assistantApprovals.clear();
-    const request = assistantApprovals.issue({
-      agentId: fx.agent.id,
-      conversationId: "conv-1",
-      operation: "deleteAgent",
-      params: {},
-      summary: "New approval",
-    });
-    expect((await send(fx, body)).status).toBe(202);
-    expect(
-      assistantApprovals.pending(request.requestId, fx.agent.id, "conv-1"),
-    ).toBeDefined();
-    expect((await send(fx, { ...body, text: "changed" })).status).toBe(409);
-    expect(
-      assistantApprovals.pending(request.requestId, fx.agent.id, "conv-1"),
-    ).toBeDefined();
-  } finally {
-    vi.restoreAllMocks();
-    liveTurns.forget(fx.agent.id);
-    fx.close();
-  }
-});
+test.each(["expiry", "restart"])(
+  "%s of the host memory guard still honors durable admission before touching a new card",
+  async (reset) => {
+    const fx = await boot();
+    try {
+      const body = { text: "original", nonce: "old" };
+      await send(fx, body);
+      const digest = (value: string) =>
+        createHash("sha256").update(value).digest("hex");
+      await fx.vfs.writeText(
+        `${fx.agent.id}/.houston/runtime/${messageAdmissionFileName("conv-1", "old")}`,
+        JSON.stringify({
+          version: 1,
+          fingerprint: "a".repeat(64),
+          turnId: "accepted",
+          hostFingerprint: digest(messageRetryContent(body, "alice-sub")),
+        }),
+      );
+      if (reset === "expiry")
+        vi.spyOn(Date, "now").mockReturnValue(Date.now() + 11 * 60_000);
+      else assistantApprovals.clear();
+      const request = assistantApprovals.issue({
+        agentId: fx.agent.id,
+        conversationId: "conv-1",
+        operation: "deleteAgent",
+        params: {},
+        summary: "New approval",
+      });
+      expect((await send(fx, body)).status).toBe(202);
+      expect(
+        assistantApprovals.pending(request.requestId, fx.agent.id, "conv-1"),
+      ).toBeDefined();
+      expect((await send(fx, { ...body, text: "changed" })).status).toBe(409);
+      expect(
+        assistantApprovals.pending(request.requestId, fx.agent.id, "conv-1"),
+      ).toBeDefined();
+    } finally {
+      vi.restoreAllMocks();
+      liveTurns.forget(fx.agent.id);
+      fx.close();
+    }
+  },
+);
 
 test.each([
   [true, { routineMinIntervalMinutes: 15 }],
   [false, undefined],
-])("a send's plan limits are recorded only behind the gateway (fronted: %s)", async (fronted, expected) => {
-  const fx = await boot(fronted);
-  try {
-    liveTurns.forget(fx.agent.id);
-    const res = await send(
-      fx,
-      { text: "Check my inbox", limits: { routineMinIntervalMinutes: 15 } },
-      fronted ? ACTING : null,
-    );
-    expect(res.status).toBe(202);
-    expect(liveTurns.get(fx.agent.id, "conv-1")?.limits).toEqual(expected);
-    // The runtime still gets the body the client sent.
-    expect(JSON.parse(fx.channel.bodies.at(-1) ?? "{}")).toMatchObject({
-      text: "Check my inbox",
-    });
-  } finally {
-    liveTurns.forget(fx.agent.id);
-    fx.close();
-  }
-});
+])(
+  "a send's plan limits are recorded only behind the gateway (fronted: %s)",
+  async (fronted, expected) => {
+    const fx = await boot(fronted);
+    try {
+      liveTurns.forget(fx.agent.id);
+      const res = await send(
+        fx,
+        { text: "Check my inbox", limits: { routineMinIntervalMinutes: 15 } },
+        fronted ? ACTING : null,
+      );
+      expect(res.status).toBe(202);
+      expect(liveTurns.get(fx.agent.id, "conv-1")?.limits).toEqual(expected);
+      // The runtime still gets the body the client sent.
+      expect(JSON.parse(fx.channel.bodies.at(-1) ?? "{}")).toMatchObject({
+        text: "Check my inbox",
+      });
+    } finally {
+      liveTurns.forget(fx.agent.id);
+      fx.close();
+    }
+  },
+);
 
 test("a later send the gateway did not stamp clears the earlier limits", async () => {
   const fx = await boot(true);

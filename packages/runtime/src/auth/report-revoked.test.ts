@@ -248,17 +248,20 @@ test.each([
   // is the wall), and the compare-and-delete would sign the whole workspace
   // out of a credential that other environments can still use.
   ["even when the text carries a confirmed marker", "403 has been revoked"],
-])("does NOT report an org_policy_blocked failure %s (PRODUCT-1393)", async (_label, message) => {
-  const captured = await withServeMode(
-    (dir) => servedAnthropic(dir),
-    () =>
-      reportRevokedServedToken(
-        { ...revoked, cause: "org_policy_blocked", message },
-        accessDigest("served-access"),
-      ),
-  );
-  expect(captured).toBeNull();
-});
+])(
+  "does NOT report an org_policy_blocked failure %s (PRODUCT-1393)",
+  async (_label, message) => {
+    const captured = await withServeMode(
+      (dir) => servedAnthropic(dir),
+      () =>
+        reportRevokedServedToken(
+          { ...revoked, cause: "org_policy_blocked", message },
+          accessDigest("served-access"),
+        ),
+    );
+    expect(captured).toBeNull();
+  },
+);
 
 test.each([
   [
@@ -270,21 +273,24 @@ test.each([
     "401 Unauthorized. Please login again to continue.",
   ],
   ["prose about a terminated session", "401 Unauthorized: session terminated"],
-])("does NOT report %s — loose copy, no confirmed revocation", async (_label, message) => {
-  // These phrasings legitimately produce the `token_revoked` CARD (both
-  // classifiers map them), but providers also reach for them on transient
-  // auth blips. Reporting one deletes the workspace's credential on a single
-  // failed turn, so the destructive half needs a machine-emitted marker.
-  const captured = await withServeMode(
-    (dir) => servedAnthropic(dir),
-    () =>
-      reportRevokedServedToken(
-        { ...revoked, message },
-        accessDigest("served-access"),
-      ),
-  );
-  expect(captured).toBeNull();
-});
+])(
+  "does NOT report %s — loose copy, no confirmed revocation",
+  async (_label, message) => {
+    // These phrasings legitimately produce the `token_revoked` CARD (both
+    // classifiers map them), but providers also reach for them on transient
+    // auth blips. Reporting one deletes the workspace's credential on a single
+    // failed turn, so the destructive half needs a machine-emitted marker.
+    const captured = await withServeMode(
+      (dir) => servedAnthropic(dir),
+      () =>
+        reportRevokedServedToken(
+          { ...revoked, message },
+          accessDigest("served-access"),
+        ),
+    );
+    expect(captured).toBeNull();
+  },
+);
 
 test.each([
   [
@@ -292,21 +298,24 @@ test.each([
     "401 Unauthorized: the token was checked and has not been revoked",
   ],
   ["an unrelated field that merely spells it", '401 {"revoked_scopes":[]}'],
-])("does NOT report %s — the marker must be anchored", async (_label, message) => {
-  // The bare substring "revoked" reads a NEGATION and a field name as a
-  // confirmed revocation, and this gate deletes the credential for every
-  // runtime in the workspace. The anchored phrases ("has been revoked",
-  // "access revoked", "token_revoked") survive neither.
-  const captured = await withServeMode(
-    (dir) => servedAnthropic(dir),
-    () =>
-      reportRevokedServedToken(
-        { ...revoked, message },
-        accessDigest("served-access"),
-      ),
-  );
-  expect(captured).toBeNull();
-});
+])(
+  "does NOT report %s — the marker must be anchored",
+  async (_label, message) => {
+    // The bare substring "revoked" reads a NEGATION and a field name as a
+    // confirmed revocation, and this gate deletes the credential for every
+    // runtime in the workspace. The anchored phrases ("has been revoked",
+    // "access revoked", "token_revoked") survive neither.
+    const captured = await withServeMode(
+      (dir) => servedAnthropic(dir),
+      () =>
+        reportRevokedServedToken(
+          { ...revoked, message },
+          accessDigest("served-access"),
+        ),
+    );
+    expect(captured).toBeNull();
+  },
+);
 
 test.each([
   [

@@ -10,10 +10,9 @@ test("worker one-shot ops decline instead of sending anthropic through pi", () =
   );
 });
 
-test.each([
-  "openai-codex",
-  "google",
-  "groq",
-])("worker one-shot ops admit %s", (provider) => {
-  expect(() => assertWorkerOpProvider(provider)).not.toThrow();
-});
+test.each(["openai-codex", "google", "groq"])(
+  "worker one-shot ops admit %s",
+  (provider) => {
+    expect(() => assertWorkerOpProvider(provider)).not.toThrow();
+  },
+);

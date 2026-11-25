@@ -41,7 +41,7 @@ export async function settleTurnCredentialReports(
   for (;;) {
     const inflight = pending.get(channel);
     if (!inflight?.size) return;
-    await Promise.all([...inflight]);
+    await Promise.all(inflight);
   }
 }
 

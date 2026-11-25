@@ -76,36 +76,37 @@ const ROWS: ReadonlyArray<{
   },
 ];
 
-test.each(
-  ROWS,
-)("$provider $id carries the published shape on every read path", (row) => {
-  const model = getModel(row.provider, row.id as ModelId);
-  const sibling = getModel(row.provider, row.sibling as ModelId);
-  expect(model).toBeDefined();
-  expect(model).toMatchObject({
-    id: row.id,
-    name: sibling.name.replace("Argon", "Neon"),
-    provider: sibling.provider,
-    api: sibling.api,
-    baseUrl: sibling.baseUrl,
-    contextWindow: row.contextWindow,
-    maxTokens: row.maxTokens,
-    reasoning: true,
-    input: ["text", "image"],
-    cost: NEON_COST,
-  });
-  expect(getSupportedThinkingLevels(model)).toEqual(
-    row.levels ?? getSupportedThinkingLevels(sibling),
-  );
-  expect(getModels(row.provider).find((m) => m.id === row.id)).toEqual(model);
-  expect(
-    builtinProviders()
-      .find((p) => p.id === row.provider)
-      ?.getModels()
-      .find((m) => m.id === row.id),
-  ).toEqual(model);
-  expect(piModelIds(row.provider)).toContain(row.id);
-});
+test.each(ROWS)(
+  "$provider $id carries the published shape on every read path",
+  (row) => {
+    const model = getModel(row.provider, row.id as ModelId);
+    const sibling = getModel(row.provider, row.sibling as ModelId);
+    expect(model).toBeDefined();
+    expect(model).toMatchObject({
+      id: row.id,
+      name: sibling.name.replace("Argon", "Neon"),
+      provider: sibling.provider,
+      api: sibling.api,
+      baseUrl: sibling.baseUrl,
+      contextWindow: row.contextWindow,
+      maxTokens: row.maxTokens,
+      reasoning: true,
+      input: ["text", "image"],
+      cost: NEON_COST,
+    });
+    expect(getSupportedThinkingLevels(model)).toEqual(
+      row.levels ?? getSupportedThinkingLevels(sibling),
+    );
+    expect(getModels(row.provider).find((m) => m.id === row.id)).toEqual(model);
+    expect(
+      builtinProviders()
+        .find((p) => p.id === row.provider)
+        ?.getModels()
+        .find((m) => m.id === row.id),
+    ).toEqual(model);
+    expect(piModelIds(row.provider)).toContain(row.id);
+  },
+);
 
 test("Argon still stops at high: Google answers 400 to XHIGH on it", () => {
   expect(

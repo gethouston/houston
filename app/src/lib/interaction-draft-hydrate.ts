@@ -1,5 +1,5 @@
-import type { InteractionStep } from "@houston/protocol";
 import type { StepperState } from "@houston-ai/chat";
+import type { InteractionStep } from "@houston/protocol";
 
 /**
  * Make a parked card safe to restore: an approval the user clicked before the

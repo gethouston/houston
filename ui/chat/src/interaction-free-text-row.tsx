@@ -74,7 +74,6 @@ export function FreeTextRow({
   const canSend = value.trim().length > 0 || fileAnswer;
   const plus = attachButton ? attach : null;
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: focus-delegation surface — the real widget is the <textarea> inside; clicking the field's padding focuses it (mirrors the composer). role="presentation" is correct, no widget role applies.
     <div
       className={cn(
         "mt-1.5 flex cursor-text items-end gap-2 rounded-[28px] border border-line-input bg-transparent pr-1.5 transition-colors dark:bg-line-input/30",

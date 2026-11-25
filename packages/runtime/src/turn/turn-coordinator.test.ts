@@ -359,7 +359,8 @@ test("the plan gate follows a mode switch made after the turn began", async () =
   liveMode.current = "plan";
   const planned = await start();
   expect(planned?.status).toBe(403);
-  expect(((await planned?.json()) as { code: string }).code).toBe("plan_mode");
+  const refusal = (await planned?.json()) as { code: string };
+  expect(refusal.code).toBe("plan_mode");
   liveMode.current = "execute";
   expect((await start())?.status).toBe(200);
   expect(

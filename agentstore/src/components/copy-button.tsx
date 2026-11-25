@@ -6,8 +6,10 @@ import * as React from "react";
 
 type ButtonProps = React.ComponentProps<typeof Button>;
 
-export interface CopyButtonProps
-  extends Omit<ButtonProps, "onClick" | "children"> {
+export interface CopyButtonProps extends Omit<
+  ButtonProps,
+  "onClick" | "children"
+> {
   /** The text placed on the clipboard. */
   value: string;
   /** Label shown in the idle state. */

@@ -7,7 +7,9 @@ import { useProductAnalyticsSink } from "./hooks/use-product-analytics-sink";
 import { useUsageAccrual } from "./hooks/use-usage-accrual";
 import { IdentityKeyedApp } from "./identity-keyed-app";
 import { queryClient } from "./lib/query-client";
+
 import "./styles/globals.css";
+
 import { EngineGate } from "./components/shell/engine-gate";
 import { LanguageGate } from "./components/shell/language-gate";
 import { QueryPersistenceProvider } from "./components/shell/query-persistence-provider";

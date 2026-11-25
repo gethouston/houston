@@ -1,12 +1,5 @@
 "use client";
 
-import type {
-  AgentIdentityPatch,
-  AgentPatch,
-  CreatorProfile,
-  StoreAgentSummary,
-  StoreCategory,
-} from "@houston/agentstore-client";
 import {
   ClaimProfileCard,
   CreatorProfileScreen,
@@ -16,6 +9,13 @@ import {
   SortPills,
   shareVisibilityOf,
 } from "@houston-ai/store";
+import type {
+  AgentIdentityPatch,
+  AgentPatch,
+  CreatorProfile,
+  StoreAgentSummary,
+  StoreCategory,
+} from "@houston/agentstore-client";
 import Link from "next/link";
 import * as React from "react";
 import { useSession } from "@/lib/auth/session";

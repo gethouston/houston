@@ -30,7 +30,7 @@ function isPageNavigation(request: Request): boolean {
     // Playwright throws for its frame: it is a page's own navigation.
     if (
       error instanceof Error &&
-      /^Frame for this navigation/.test(error.message)
+      error.message.startsWith("Frame for this navigation")
     )
       return true;
     console.error("[browser] reading a navigation's frame failed", error);

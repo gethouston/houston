@@ -6,6 +6,12 @@ import { hasPeopleBeyond } from "./kanban-people-logic";
 import { formatMessageTime, type MessageTimeFormatter } from "./message-time";
 import type { KanbanPerson } from "./types";
 
+const DEFAULT_RUNNING_STATUSES = ["running"];
+
+const DEFAULT_FORMAT_TIME: MessageTimeFormatter = (iso, dateStyle) =>
+  formatMessageTime(iso, undefined, undefined, undefined, dateStyle);
+const DEFAULT_LAST_MESSAGE_LABEL = (time: string) => `Last message: ${time}`;
+
 const STATUS_LABEL: Record<string, string> = {
   running: "Running",
   needs_you: "Needs You",
@@ -60,9 +66,8 @@ export const KanbanDetailPanel = forwardRef<
   {
     title,
     lastMessageAt,
-    formatTime = (iso, dateStyle) =>
-      formatMessageTime(iso, undefined, undefined, undefined, dateStyle),
-    lastMessageLabel = (time) => `Last message: ${time}`,
+    formatTime = DEFAULT_FORMAT_TIME,
+    lastMessageLabel = DEFAULT_LAST_MESSAGE_LABEL,
     subtitle,
     status,
     onClose,
@@ -78,7 +83,7 @@ export const KanbanDetailPanel = forwardRef<
     peopleLabel = "People",
     peopleExpandLabel,
     closeLabel = "Close panel",
-    runningStatuses = ["running"],
+    runningStatuses = DEFAULT_RUNNING_STATUSES,
     statusLabels,
   },
   ref,

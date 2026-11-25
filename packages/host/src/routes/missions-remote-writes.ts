@@ -48,9 +48,12 @@ export async function statusInbound(
   const parsed = parseMissionStatus(body);
   if (!parsed.ok)
     return json(res, 400, { error: parsed.error, code: parsed.code });
-  await applyMissionStatus(ctx, parsed.value, res, {
-    ...(ctx.callingAgent ? { requireOrigin: ctx.callingAgent } : {}),
-  });
+  await applyMissionStatus(
+    ctx,
+    parsed.value,
+    res,
+    ctx.callingAgent ? { requireOrigin: ctx.callingAgent } : {},
+  );
 }
 
 /** The start half: the same payload a local start parses, plus its origin. */

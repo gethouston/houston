@@ -172,7 +172,7 @@ export class PrefetchedObjectStore implements ObjectStore {
     srcFile: string,
     key: string,
     opts?: WriteOptions,
-    // biome-ignore lint/suspicious/noConfusingVoidType: ObjectStore preserves void-returning adapters.
+    // ObjectStore preserves void-returning adapters.
   ): Promise<WriteResult | void> {
     this.forgetInlined();
     return this.inner.upload(srcFile, key, opts);

@@ -1,10 +1,6 @@
 "use client";
 
 import {
-  type StoreAgentSummary,
-  StoreApiError,
-} from "@houston/agentstore-client";
-import {
   Alert,
   AlertDescription,
   AlertTitle,
@@ -13,6 +9,10 @@ import {
   Separator,
   Spinner,
 } from "@houston-ai/core";
+import {
+  type StoreAgentSummary,
+  StoreApiError,
+} from "@houston/agentstore-client";
 import { AlertTriangle } from "lucide-react";
 import * as React from "react";
 import { normalizeCreatorUrl } from "@/lib/agents/creator-url";

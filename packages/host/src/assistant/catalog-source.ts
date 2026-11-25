@@ -1,6 +1,4 @@
-import catalogDocument from "./assistant-catalog.generated.json" with {
-  type: "json",
-};
+import catalogDocument from "./assistant-catalog.generated.json" with { type: "json" };
 import {
   ASSISTANT_CATALOG_VERSION,
   type AssistantCatalog,

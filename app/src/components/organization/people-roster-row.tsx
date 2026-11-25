@@ -1,4 +1,3 @@
-import type { OrgMember, OrgRole } from "@houston/engine-adapter";
 import {
   Avatar,
   AvatarFallback,
@@ -11,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@houston-ai/core";
+import type { OrgMember, OrgRole } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import { GRANTABLE_ROLES } from "../../lib/org-roles";
 import { initialsFor, rosterPersonName } from "./people-tab-model";

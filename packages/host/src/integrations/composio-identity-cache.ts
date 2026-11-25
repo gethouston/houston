@@ -60,14 +60,12 @@ export class ComposioIdentityCache {
             undefined,
             id,
           )
-            .then(
-              (result): ProbeOutcome => ({
-                label: result.successful
-                  ? extractIdentity(result.data, probe.fields)
-                  : undefined,
-                cacheFailure: true,
-              }),
-            )
+            .then((result): ProbeOutcome => ({
+              label: result.successful
+                ? extractIdentity(result.data, probe.fields)
+                : undefined,
+              cacheFailure: true,
+            }))
             .catch((error: unknown): ProbeOutcome => {
               console.warn(
                 `[integrations] composio: identity probe failed for '${id}': ${String(error)}`,

@@ -1,7 +1,7 @@
+import { agentColorId } from "@houston-ai/core";
 import { packAgent } from "@houston/domain";
 import { HoustonClient } from "@houston/engine-adapter/client";
 import { previewUpload } from "@houston/engine-adapter/portable";
-import { agentColorId } from "@houston-ai/core";
 import { afterEach, expect, test, vi } from "vitest";
 
 /**

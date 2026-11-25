@@ -57,17 +57,18 @@ it.each([
   { account: "removed", device: second.id, expected: second },
   { account: null, device: "removed", expected: first },
   { account: null, device: null, expected: first },
-])("resolves accessible account $account then device $device", async ({
-  account,
-  device,
-  expected,
-}) => {
-  const h = setup();
-  h.remote(account);
-  if (device) await h.make().preferences.rememberWorkspace(device);
-  expect(await h.make().preferences.resolveWorkspace(spaces)).toEqual(expected);
-  expect(h.answer).toHaveBeenCalledTimes(1);
-});
+])(
+  "resolves accessible account $account then device $device",
+  async ({ account, device, expected }) => {
+    const h = setup();
+    h.remote(account);
+    if (device) await h.make().preferences.rememberWorkspace(device);
+    expect(await h.make().preferences.resolveWorkspace(spaces)).toEqual(
+      expected,
+    );
+    expect(h.answer).toHaveBeenCalledTimes(1);
+  },
+);
 
 it("a failed account read uses this device, and a different account gets the first team", async () => {
   const h = setup();

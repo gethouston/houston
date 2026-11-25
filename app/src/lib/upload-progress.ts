@@ -1,8 +1,8 @@
+import type { AttachmentUploadProgress } from "@houston-ai/chat";
 import type {
   FileUploadOptions,
   UploadProgress,
 } from "@houston/engine-adapter";
-import type { AttachmentUploadProgress } from "@houston-ai/chat";
 import { createStore } from "zustand/vanilla";
 
 export type UploadDisplayProgress = ReadonlyMap<File, AttachmentUploadProgress>;

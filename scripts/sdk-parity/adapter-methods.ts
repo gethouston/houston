@@ -122,11 +122,11 @@ function classesIn(source: ts.SourceFile): ts.ClassLikeDeclaration[] {
   return found;
 }
 
-const HIDDEN: ts.SyntaxKind[] = [
+const HIDDEN: ReadonlySet<ts.SyntaxKind> = new Set([
   ts.SyntaxKind.PrivateKeyword,
   ts.SyntaxKind.ProtectedKeyword,
   ts.SyntaxKind.StaticKeyword,
-];
+]);
 
 const isPublic = (member: ts.MethodDeclaration): boolean =>
-  !member.modifiers?.some((modifier) => HIDDEN.includes(modifier.kind));
+  !member.modifiers?.some((modifier) => HIDDEN.has(modifier.kind));

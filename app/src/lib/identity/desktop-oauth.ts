@@ -26,11 +26,11 @@ import {
 import { listenDeepLink } from "./deep-link-listen.ts";
 import { IdentityError, isIdentityError } from "./errors.ts";
 import { identityLog } from "./log.ts";
+import { withBrowserOpenDeadline } from "./oauth-attempt-contract.ts";
 import {
   awaitLoopbackCallback,
   cancelPendingAuthorize,
 } from "./oauth-attempt.ts";
-import { withBrowserOpenDeadline } from "./oauth-attempt-contract.ts";
 import {
   computeCodeChallenge,
   generateCodeVerifier,

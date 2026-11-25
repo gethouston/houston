@@ -44,7 +44,7 @@ export function EditContent({
     <div className="rounded-lg border border-line/50 overflow-hidden text-xs font-mono">
       {pairs.map((p, i) => (
         // Order is the render identity here: pairs are derived per render.
-        // biome-ignore lint/suspicious/noArrayIndexKey: static derived list
+        // oxlint-disable-next-line react/no-array-index-key -- static derived list
         <div key={i}>
           {p.old && <DiffLine sign="-" text={p.old} tone="red" />}
           {p.new && <DiffLine sign="+" text={p.new} tone="green" />}

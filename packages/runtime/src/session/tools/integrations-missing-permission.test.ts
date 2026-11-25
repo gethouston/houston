@@ -88,14 +88,17 @@ test.each([
   "GMAIL_CREATE_FILTER",
   "GMAIL_UPDATE_VACATION_SETTINGS",
   "GMAIL_PATCH_SEND_AS",
-])("%s missing its settings permission gets manual steps, no reconnect", async (action) => {
-  refuseWith(GOOGLE_SCOPE_403, action, "gmail");
-  const { message, steps } = await conversation()(action);
-  expect(message).toContain("can never include the permission");
-  expect(message).toContain("do not ask the user to reconnect");
-  expect(message).not.toContain("request_connection");
-  expect(steps).toEqual([]);
-});
+])(
+  "%s missing its settings permission gets manual steps, no reconnect",
+  async (action) => {
+    refuseWith(GOOGLE_SCOPE_403, action, "gmail");
+    const { message, steps } = await conversation()(action);
+    expect(message).toContain("can never include the permission");
+    expect(message).toContain("do not ask the user to reconnect");
+    expect(message).not.toContain("request_connection");
+    expect(steps).toEqual([]);
+  },
+);
 
 test.each([
   ["GMAIL_FETCH_EMAILS", "gmail"],
@@ -103,25 +106,30 @@ test.each([
   ["GMAIL_LIST_FILTERS", "gmail"],
   ["GMAIL_FORWARD_MESSAGE", "gmail"],
   ["GOOGLEDRIVE_FIND_FILE", "googledrive"],
-])("%s missing a permission queues one reconnect, then falls back to manual steps", async (action, toolkit) => {
-  refuseWith(GOOGLE_SCOPE_403, action, toolkit);
-  const turn = conversation();
-  const first = await turn(action);
-  expect(first.message).toContain(`A reconnect step for ${toolkit} was added`);
-  expect(first.message).toContain("tick every permission box");
-  expect(first.message).toContain(
-    "Do not retry this action until they reconnect",
-  );
-  expect(first.steps).toEqual([
-    { kind: "connect", id: "c1", toolkit, reconnect: true, refusedAt: "<t>" },
-  ]);
+])(
+  "%s missing a permission queues one reconnect, then falls back to manual steps",
+  async (action, toolkit) => {
+    refuseWith(GOOGLE_SCOPE_403, action, toolkit);
+    const turn = conversation();
+    const first = await turn(action);
+    expect(first.message).toContain(
+      `A reconnect step for ${toolkit} was added`,
+    );
+    expect(first.message).toContain("tick every permission box");
+    expect(first.message).toContain(
+      "Do not retry this action until they reconnect",
+    );
+    expect(first.steps).toEqual([
+      { kind: "connect", id: "c1", toolkit, reconnect: true, refusedAt: "<t>" },
+    ]);
 
-  // Refused again in a later turn: the reconnect did not help.
-  const again = await turn(action);
-  expect(again.message).toContain("a reconnect was already offered");
-  expect(again.message).toContain("do not ask for another reconnect");
-  expect(again.steps).toEqual([]);
-});
+    // Refused again in a later turn: the reconnect did not help.
+    const again = await turn(action);
+    expect(again.message).toContain("a reconnect was already offered");
+    expect(again.message).toContain("do not ask for another reconnect");
+    expect(again.steps).toEqual([]);
+  },
+);
 
 test("the reconnect guard is per app", async () => {
   const turn = conversation();

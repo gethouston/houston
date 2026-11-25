@@ -308,9 +308,7 @@ test("a vanished family file converges the doc back to empty", async () => {
   await projector.flush();
   // The first projection also back-fills the other families; only the
   // routines doc carries the file.
-  expect(
-    (puts.find((p) => p.family === "routines")?.doc as unknown[]).length,
-  ).toBe(1);
+  expect(puts.find((p) => p.family === "routines")?.doc).toHaveLength(1);
 
   await vfs.deleteKey(docKey(root, "routines"));
   projector.onEvent({ type: "RoutinesChanged", agentPath: agent.id });
@@ -366,9 +364,7 @@ test("a pod that boots before its agent hydrates binds on first projection", asy
     "routine_runs",
     "routines",
   ]);
-  expect(
-    (puts.find((p) => p.family === "routines")?.doc as unknown[]).length,
-  ).toBe(1);
+  expect(puts.find((p) => p.family === "routines")?.doc).toHaveLength(1);
 
   // Still refuses a foreign agent after the late bind.
   const stray = await store.createAgent({

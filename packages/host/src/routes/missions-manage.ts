@@ -46,12 +46,15 @@ export async function handleMissionStatus(
     await forwardMissionStatus(route.route, parsed.value, res);
     return;
   }
-  await applyMissionStatus(route.ctx, parsed.value, res, {
-    ...(route.ctx.agent.id !== callerCtx.agent.id &&
-    !assistantRuntimeRole({ agentId: callerCtx.agent.id })
+  await applyMissionStatus(
+    route.ctx,
+    parsed.value,
+    res,
+    route.ctx.agent.id !== callerCtx.agent.id &&
+      !assistantRuntimeRole({ agentId: callerCtx.agent.id })
       ? { requireOrigin: callerCtx.agent.id }
-      : {}),
-  });
+      : {},
+  );
 }
 
 /**

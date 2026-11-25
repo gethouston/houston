@@ -39,12 +39,12 @@ function useCropUrls(
     for (const error of failures)
       if (error && !fileReadRefusal(error))
         logAndReportError("citation_crop", error);
-    // biome-ignore lint/correctness/useExhaustiveDependencies: one report per error identity
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- one report per error identity
   }, failures);
   const blobs = results.map((r) => r.data);
   const urls = useMemo(
     () => blobs.map((blob) => (blob ? URL.createObjectURL(blob) : undefined)),
-    // biome-ignore lint/correctness/useExhaustiveDependencies: one URL per blob identity
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- one URL per blob identity
     blobs,
   );
   useEffect(

@@ -59,34 +59,34 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-test.each([
-  "manual",
-  "disconnect",
-])("%s cancels connection before the first durable journal", async (action) => {
-  const entered = deferred<void>();
-  const gate = deferred<void>();
-  const device = h.ports.native.device;
-  h.ports.native.device = vi.fn(async (...args) => {
-    entered.resolve();
-    await gate.promise;
-    return device(...args);
-  });
-  const connecting = connectDetectedModel(detected).catch(
-    (error: unknown) => error,
-  );
-  await entered.promise;
-  const replacing =
-    action === "manual"
-      ? connectManualEndpoint(manual)
-      : disconnectLocalModel();
-  await vi.advanceTimersByTimeAsync(0);
-  gate.resolve();
-  await Promise.all([connecting, replacing]);
-  await vi.advanceTimersByTimeAsync(60_000);
-  expect(h.endpoint()).toEqual(action === "manual" ? manual : null);
-  expect(h.journal()).toBeNull();
-  expect(h.live()).toBeNull();
-});
+test.each(["manual", "disconnect"])(
+  "%s cancels connection before the first durable journal",
+  async (action) => {
+    const entered = deferred<void>();
+    const gate = deferred<void>();
+    const device = h.ports.native.device;
+    h.ports.native.device = vi.fn(async (...args) => {
+      entered.resolve();
+      await gate.promise;
+      return device(...args);
+    });
+    const connecting = connectDetectedModel(detected).catch(
+      (error: unknown) => error,
+    );
+    await entered.promise;
+    const replacing =
+      action === "manual"
+        ? connectManualEndpoint(manual)
+        : disconnectLocalModel();
+    await vi.advanceTimersByTimeAsync(0);
+    gate.resolve();
+    await Promise.all([connecting, replacing]);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(h.endpoint()).toEqual(action === "manual" ? manual : null);
+    expect(h.journal()).toBeNull();
+    expect(h.live()).toBeNull();
+  },
+);
 
 test("disconnect publishes durable phase while immediate native stop is still pending", async () => {
   await connectDetectedModel(detected);
@@ -151,31 +151,33 @@ test("failed journal persistence keeps the last durable snapshot through manual 
   expect(h.journal()).toBeNull();
 });
 
-test.each([
-  "readiness",
-  "registration",
-])("manual replacement survives retry after initial %s failure", async (failure) => {
-  if (failure === "readiness")
-    vi.mocked(h.ports.native.start).mockRejectedValueOnce(new Error("offline"));
-  else {
-    const register = h.ports.management.register;
-    vi.mocked(h.ports.management.register).mockImplementationOnce(
-      async (...args) => {
-        // Preserve the remote registration while losing its response.
-        const result = await register(...args);
-        expect(result).toBeDefined();
-        throw new Error("offline");
-      },
-    );
-  }
-  await expect(connectDetectedModel(detected)).rejects.toThrow("offline");
-  expect(controller.getSnapshot().journal).toEqual(h.journal());
-  await connectManualEndpoint(manual);
-  await vi.advanceTimersByTimeAsync(60_000);
-  expect(h.endpoint()).toEqual(manual);
-  expect(h.journal()).toBeNull();
-  expect(h.live()).toBeNull();
-});
+test.each(["readiness", "registration"])(
+  "manual replacement survives retry after initial %s failure",
+  async (failure) => {
+    if (failure === "readiness")
+      vi.mocked(h.ports.native.start).mockRejectedValueOnce(
+        new Error("offline"),
+      );
+    else {
+      const register = h.ports.management.register;
+      vi.mocked(h.ports.management.register).mockImplementationOnce(
+        async (...args) => {
+          // Preserve the remote registration while losing its response.
+          const result = await register(...args);
+          expect(result).toBeDefined();
+          throw new Error("offline");
+        },
+      );
+    }
+    await expect(connectDetectedModel(detected)).rejects.toThrow("offline");
+    expect(controller.getSnapshot().journal).toEqual(h.journal());
+    await connectManualEndpoint(manual);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(h.endpoint()).toEqual(manual);
+    expect(h.journal()).toBeNull();
+    expect(h.live()).toBeNull();
+  },
+);
 
 test("disconnect cleans an initial readiness failure through the app", async () => {
   vi.mocked(h.ports.native.start).mockRejectedValueOnce(new Error("offline"));
@@ -187,35 +189,35 @@ test("disconnect cleans an initial readiness failure through the app", async () 
   expect(h.live()).toBeNull();
 });
 
-test.each([
-  "manual",
-  "disconnect",
-])("%s supersedes an initial in-flight registration", async (action) => {
-  const gate = deferred<void>();
-  const entered = deferred<void>();
-  const register = h.ports.management.register;
-  h.ports.management.register = vi.fn(async (...args) => {
-    const result = await register(...args);
-    entered.resolve();
-    await gate.promise;
-    return result;
-  });
-  const connecting = connectDetectedModel(detected).catch(
-    (error: unknown) => error,
-  );
-  await entered.promise;
-  const replacing =
-    action === "manual"
-      ? connectManualEndpoint(manual)
-      : disconnectLocalModel();
-  await vi.advanceTimersByTimeAsync(0);
-  gate.resolve();
-  await Promise.all([connecting, replacing]);
-  await vi.advanceTimersByTimeAsync(60_000);
-  expect(h.endpoint()).toEqual(action === "manual" ? manual : null);
-  expect(h.journal()).toBeNull();
-  expect(h.live()).toBeNull();
-});
+test.each(["manual", "disconnect"])(
+  "%s supersedes an initial in-flight registration",
+  async (action) => {
+    const gate = deferred<void>();
+    const entered = deferred<void>();
+    const register = h.ports.management.register;
+    h.ports.management.register = vi.fn(async (...args) => {
+      const result = await register(...args);
+      entered.resolve();
+      await gate.promise;
+      return result;
+    });
+    const connecting = connectDetectedModel(detected).catch(
+      (error: unknown) => error,
+    );
+    await entered.promise;
+    const replacing =
+      action === "manual"
+        ? connectManualEndpoint(manual)
+        : disconnectLocalModel();
+    await vi.advanceTimersByTimeAsync(0);
+    gate.resolve();
+    await Promise.all([connecting, replacing]);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(h.endpoint()).toEqual(action === "manual" ? manual : null);
+    expect(h.journal()).toBeNull();
+    expect(h.live()).toBeNull();
+  },
+);
 
 test("manual replacement drains logout that has already reached the endpoint port", async () => {
   await connectDetectedModel(detected);
@@ -278,37 +280,40 @@ test.each([
   ["connect", "gateway"],
   ["resume", "nested"],
   ["connect", "nested"],
-])("confirmed remote absence permits retirement after restart via %s (%s)", async (action, shape) => {
-  await connectDetectedModel(detected);
-  vi.mocked(h.ports.management.revoke).mockRejectedValueOnce(
-    new Error("offline"),
-  );
-  await expect(connectManualEndpoint(manual)).rejects.toThrow("offline");
-  const old = h.journal()?.descriptor?.bridgeId;
-  await controller.dispose();
-  h.cascade();
-  bind();
-  vi.mocked(h.ports.management.revoke).mockRejectedValueOnce(
-    new HoustonEngineError(
-      404,
-      shape === "gateway"
-        ? { code: "bridge_not_found", error: "missing" }
-        : { error: { code: "bridge_not_found", message: "missing" } },
-    ),
-  );
-  if (action === "resume") {
-    await controller.resume();
-    expect(h.endpoint()).toEqual(manual);
+])(
+  "confirmed remote absence permits retirement after restart via %s (%s)",
+  async (action, shape) => {
+    await connectDetectedModel(detected);
+    vi.mocked(h.ports.management.revoke).mockRejectedValueOnce(
+      new Error("offline"),
+    );
+    await expect(connectManualEndpoint(manual)).rejects.toThrow("offline");
+    const old = h.journal()?.descriptor?.bridgeId;
+    await controller.dispose();
+    h.cascade();
+    bind();
+    vi.mocked(h.ports.management.revoke).mockRejectedValueOnce(
+      new HoustonEngineError(
+        404,
+        shape === "gateway"
+          ? { code: "bridge_not_found", error: "missing" }
+          : { error: { code: "bridge_not_found", message: "missing" } },
+      ),
+    );
+    if (action === "resume") {
+      await controller.resume();
+      expect(h.endpoint()).toEqual(manual);
+      expect(h.journal()).toBeNull();
+    }
+    await connectDetectedModel(detected);
+    expect(h.live()?.bridgeId).not.toBe(old);
+    expect(h.journal()?.phase).toBe("committed");
+    await disconnectLocalModel();
+    expect(h.live()).toBeNull();
     expect(h.journal()).toBeNull();
-  }
-  await connectDetectedModel(detected);
-  expect(h.live()?.bridgeId).not.toBe(old);
-  expect(h.journal()?.phase).toBe("committed");
-  await disconnectLocalModel();
-  expect(h.live()).toBeNull();
-  expect(h.journal()).toBeNull();
-  expect(h.endpoint()).toBeNull();
-});
+    expect(h.endpoint()).toBeNull();
+  },
+);
 
 test.each([
   [404, "not_found", "nested"],
@@ -323,60 +328,63 @@ test.each([
   [503, "bridge_not_found", "gateway"],
   [404, undefined, "gateway"],
   [404, "bridge_request_failed", "gateway"],
-] as const)("unconfirmed absence (%s/%s, %s) retains durable retirement", async (status, code, shape) => {
-  await connectDetectedModel(detected);
-  const failure = new HoustonEngineError(
-    status,
-    shape === "gateway"
-      ? { code, error: "failed" }
-      : code
-        ? { error: { code, message: "failed" } }
-        : null,
-  );
-  vi.mocked(h.ports.management.revoke).mockRejectedValue(failure);
-  await expect(connectManualEndpoint(manual)).rejects.toBe(failure);
-  await controller.dispose();
-  bind();
-  await expect(controller.resume()).rejects.toBe(failure);
-  expect(h.journal()?.phase).toBe("retiring");
-  expect(h.endpoint()).toEqual(manual);
-  expect(h.ports.report).toHaveBeenCalledWith(failure);
-});
+] as const)(
+  "unconfirmed absence (%s/%s, %s) retains durable retirement",
+  async (status, code, shape) => {
+    await connectDetectedModel(detected);
+    const failure = new HoustonEngineError(
+      status,
+      shape === "gateway"
+        ? { code, error: "failed" }
+        : code
+          ? { error: { code, message: "failed" } }
+          : null,
+    );
+    vi.mocked(h.ports.management.revoke).mockRejectedValue(failure);
+    await expect(connectManualEndpoint(manual)).rejects.toBe(failure);
+    await controller.dispose();
+    bind();
+    await expect(controller.resume()).rejects.toBe(failure);
+    expect(h.journal()?.phase).toBe("retiring");
+    expect(h.endpoint()).toEqual(manual);
+    expect(h.ports.report).toHaveBeenCalledWith(failure);
+  },
+);
 
-test.each([
-  "disconnect",
-  "connect",
-])("a later %s keeps its intent while a manual save completes", async (action) => {
-  await connectDetectedModel(detected);
-  const entered = deferred<void>();
-  const gate = deferred<void>();
-  mocks.save.mockImplementationOnce(async (value) => {
-    entered.resolve();
-    await gate.promise;
-    await h.save(value);
-  });
-  const replacing = connectManualEndpoint(manual);
-  await entered.promise;
-  const later =
-    action === "disconnect"
-      ? disconnectLocalModel()
-      : connectDetectedModel({ ...detected, model: "new-model" });
-  const result = later.then(
-    () => null,
-    (error: unknown) => error,
-  );
-  await vi.advanceTimersByTimeAsync(0);
-  gate.resolve();
-  await replacing;
-  expect(await result).toBeNull();
-  if (action === "disconnect") {
-    expect(h.endpoint()).toBeNull();
-    expect(h.journal()).toBeNull();
-  } else {
-    expect(h.endpoint()?.model).toBe("new-model");
-    expect(h.journal()?.phase).toBe("committed");
-  }
-});
+test.each(["disconnect", "connect"])(
+  "a later %s keeps its intent while a manual save completes",
+  async (action) => {
+    await connectDetectedModel(detected);
+    const entered = deferred<void>();
+    const gate = deferred<void>();
+    mocks.save.mockImplementationOnce(async (value) => {
+      entered.resolve();
+      await gate.promise;
+      await h.save(value);
+    });
+    const replacing = connectManualEndpoint(manual);
+    await entered.promise;
+    const later =
+      action === "disconnect"
+        ? disconnectLocalModel()
+        : connectDetectedModel({ ...detected, model: "new-model" });
+    const result = later.then(
+      () => null,
+      (error: unknown) => error,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    gate.resolve();
+    await replacing;
+    expect(await result).toBeNull();
+    if (action === "disconnect") {
+      expect(h.endpoint()).toBeNull();
+      expect(h.journal()).toBeNull();
+    } else {
+      expect(h.endpoint()?.model).toBe("new-model");
+      expect(h.journal()?.phase).toBe("committed");
+    }
+  },
+);
 
 test("disposing a scope cancels queued manual saves before they reach the provider", async () => {
   await connectDetectedModel(detected);

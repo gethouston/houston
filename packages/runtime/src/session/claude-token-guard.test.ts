@@ -50,13 +50,11 @@ vi.mock("../backends/claude/read-token", () => ({
 
 await import("./conversation-cache");
 const { conversations, getConversation } = await import("./conversation-cache");
-const { evictClaudeSessionOnRevokedToken } = await import(
-  "./claude-token-guard"
-);
+const { evictClaudeSessionOnRevokedToken } =
+  await import("./claude-token-guard");
 const { execTurn } = await import("./exec-turn");
-const { registerBackend, setDefaultBackend } = await import(
-  "../backends/registry"
-);
+const { registerBackend, setDefaultBackend } =
+  await import("../backends/registry");
 type Conversation = import("./conversation-cache").Conversation;
 
 const CLAUDE: ResolvedModel = {
@@ -86,7 +84,8 @@ class FakeClaudeSession implements HarnessSession {
     };
   }
   async prompt(): Promise<void> {
-    for (const e of this.script) for (const l of [...this.listeners]) l(e);
+    for (const e of this.script)
+      for (const l of Array.from(this.listeners)) l(e);
   }
   async abort(): Promise<void> {}
   dispose(): void {

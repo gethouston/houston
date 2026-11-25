@@ -372,46 +372,46 @@ test("custom-integration definitions list runs on the worker over the store-root
   expect(JSON.parse(json.body as string)).toEqual({ items: [] });
 });
 
-test.each([
-  false,
-  true,
-])("adding an OAuth custom integration depends on gateway callback support=%s", async (supported) => {
-  const { storeRoot } = await seedAgent();
-  const base = await listen(
-    createTurnServer({
-      store: new LocalDirStore(storeRoot),
-      token: "",
-      runTurn: noopTurn,
-    }),
-  );
-  const { json } = await postOp(base, {
-    ...opBody(await heartbeatOK(), {
-      kind: "route",
-      method: "POST",
-      rest: "integrations/custom/definitions",
-      contentType: "application/json",
-      body: JSON.stringify({
-        kind: "mcp",
-        name: "Linear",
-        endpoint: "https://mcp.linear.app/mcp",
-        auth: "oauth",
+test.each([false, true])(
+  "adding an OAuth custom integration depends on gateway callback support=%s",
+  async (supported) => {
+    const { storeRoot } = await seedAgent();
+    const base = await listen(
+      createTurnServer({
+        store: new LocalDirStore(storeRoot),
+        token: "",
+        runTurn: noopTurn,
       }),
-    }),
-    ...(supported
-      ? {
-          customOAuthCallbackUrl:
-            "https://gateway.example/v1/integrations/custom/oauth/callback",
-        }
-      : {}),
-  });
-  expect(json.ok).toBe(true);
-  if (supported) {
-    expect(json.decline).toBeUndefined();
-    expect(json.status).toBe(200);
-    expect(JSON.parse(String(json.body)).auth).toBe("oauth");
-    expect(json.events).toContain("CustomIntegrationsChanged");
-  } else expect(json.decline).toBe(true);
-});
+    );
+    const { json } = await postOp(base, {
+      ...opBody(await heartbeatOK(), {
+        kind: "route",
+        method: "POST",
+        rest: "integrations/custom/definitions",
+        contentType: "application/json",
+        body: JSON.stringify({
+          kind: "mcp",
+          name: "Linear",
+          endpoint: "https://mcp.linear.app/mcp",
+          auth: "oauth",
+        }),
+      }),
+      ...(supported
+        ? {
+            customOAuthCallbackUrl:
+              "https://gateway.example/v1/integrations/custom/oauth/callback",
+          }
+        : {}),
+    });
+    expect(json.ok).toBe(true);
+    if (supported) {
+      expect(json.decline).toBeUndefined();
+      expect(json.status).toBe(200);
+      expect(JSON.parse(String(json.body)).auth).toBe("oauth");
+      expect(json.events).toContain("CustomIntegrationsChanged");
+    } else expect(json.decline).toBe(true);
+  },
+);
 
 // Minimal, valid OpenAPI 3.0 document — enough for the executor to compile
 // (title/servers/paths with operationIds). No security scheme, so

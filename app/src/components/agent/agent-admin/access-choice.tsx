@@ -86,7 +86,7 @@ export function AccessChoice({
         {options.map((opt) => {
           const checked = opt.value === value;
           return (
-            // biome-ignore lint/a11y/useSemanticElements: segments hold a sliding thumb a native radio input cannot; radio semantics come from role + aria-checked + roving tabindex.
+            // segments hold a sliding thumb a native radio input cannot; radio semantics come from role + aria-checked + roving tabindex.
             <button
               key={opt.value}
               ref={(el) => {

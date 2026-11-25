@@ -6,12 +6,12 @@
 // below are driven directly by `app/tests` with no engine and no browser storage.
 
 import { mergeAcademyRecords } from "./academy-merge.ts";
+import { parseAcademyRecord } from "./academy-record-parse.ts";
 import {
   ACADEMY_PREF_KEY,
   type AcademyRecord,
   serializeAcademyRecord,
 } from "./academy-record.ts";
-import { parseAcademyRecord } from "./academy-record-parse.ts";
 
 /** The two places progress is kept, as ports. The local key is baked in by the
  *  wiring (it is per-uid), so callers here never name it. */

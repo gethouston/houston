@@ -330,24 +330,27 @@ describe("an admitted briefing counts once its turn finishes", () => {
     ["provider_error", "overloaded"],
     ["stopped", "the briefing turn was stopped"],
     ["none", "the briefing turn ended without a reply"],
-  ] as const)("a turn that ends %s tells nobody and leaves seen alone", async (how, reason) => {
-    await seedWaitingMission();
-    reply = how;
-    const r = runner();
-    expect(await r.tick()).toEqual({ kind: "delivered" });
-    later(1);
-    expect(await r.tick()).toEqual({ kind: "not_due" });
-    const doc = await loadHeartbeatDoc(vfs, WS.id);
-    expect(doc.last).toMatchObject({ status: "error", reason });
-    expect(doc.seen).toEqual([]);
-    expect(doc.pending).toBeNull();
-    expect(events.map((e) => e.type)).not.toContain("HeartbeatDelivered");
-    // The same, unchanged mission is told the next morning.
-    reply = "ok";
-    nextMorning();
-    expect(await r.tick()).toEqual({ kind: "delivered" });
-    expect(channel.fireTurn).toHaveBeenCalledTimes(2);
-  });
+  ] as const)(
+    "a turn that ends %s tells nobody and leaves seen alone",
+    async (how, reason) => {
+      await seedWaitingMission();
+      reply = how;
+      const r = runner();
+      expect(await r.tick()).toEqual({ kind: "delivered" });
+      later(1);
+      expect(await r.tick()).toEqual({ kind: "not_due" });
+      const doc = await loadHeartbeatDoc(vfs, WS.id);
+      expect(doc.last).toMatchObject({ status: "error", reason });
+      expect(doc.seen).toEqual([]);
+      expect(doc.pending).toBeNull();
+      expect(events.map((e) => e.type)).not.toContain("HeartbeatDelivered");
+      // The same, unchanged mission is told the next morning.
+      reply = "ok";
+      nextMorning();
+      expect(await r.tick()).toEqual({ kind: "delivered" });
+      expect(channel.fireTurn).toHaveBeenCalledTimes(2);
+    },
+  );
 
   test("a turn still running stays pending, then settles once", async () => {
     await seedWaitingMission();
@@ -372,26 +375,26 @@ describe("an admitted briefing counts once its turn finishes", () => {
 });
 
 describe("brief me now", () => {
-  test.each([
-    "tick",
-    "runNow",
-  ] as const)("%s reads the suggestion setting for each briefing", async (method) => {
-    await seedWaitingMission();
-    await setPreference(vfs, WS.id, "next_step_suggestions", "false");
-    const r = runner();
-    expect(await r[method]()).toEqual({ kind: "delivered" });
-    expect(channel.fireTurn.mock.calls[0]?.[2]).not.toContain(
-      "suggest_actions",
-    );
-    expect(channel.fireTurn.mock.calls[0]?.[2]).toContain(
-      "5. End with a short closing line",
-    );
-    await setPreference(vfs, WS.id, "next_step_suggestions", "true");
-    expect(await r.runNow()).toEqual({ kind: "delivered" });
-    expect(channel.fireTurn.mock.calls[1]?.[2]).toContain(
-      "5. End with suggest_actions",
-    );
-  });
+  test.each(["tick", "runNow"] as const)(
+    "%s reads the suggestion setting for each briefing",
+    async (method) => {
+      await seedWaitingMission();
+      await setPreference(vfs, WS.id, "next_step_suggestions", "false");
+      const r = runner();
+      expect(await r[method]()).toEqual({ kind: "delivered" });
+      expect(channel.fireTurn.mock.calls[0]?.[2]).not.toContain(
+        "suggest_actions",
+      );
+      expect(channel.fireTurn.mock.calls[0]?.[2]).toContain(
+        "5. End with a short closing line",
+      );
+      await setPreference(vfs, WS.id, "next_step_suggestions", "true");
+      expect(await r.runNow()).toEqual({ kind: "delivered" });
+      expect(channel.fireTurn.mock.calls[1]?.[2]).toContain(
+        "5. End with suggest_actions",
+      );
+    },
+  );
 
   test("ignores the time, today's run and the news rule, still honours the busy guard", async () => {
     now = new Date("2026-10-10T03:00:00Z");

@@ -54,7 +54,7 @@ export async function moveLazyStoreEntry(
     } catch (error) {
       if (!(error instanceof ObjectNotFoundError)) throw error;
       state.remote.delete(fromKey);
-      throw new Error(`move: source not found: ${fromKey}`);
+      throw new Error(`move: source not found: ${fromKey}`, { cause: error });
     }
   }
   // The store's half is exact-keyed and invisible to the overlay's own

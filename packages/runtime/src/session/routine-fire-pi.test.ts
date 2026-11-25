@@ -21,9 +21,8 @@ process.env.HOUSTON_WORKSPACE_DIR = process.env.HOUSTON_DATA_DIR;
 
 const { runTurn } = await import("./chat");
 const { getHistory } = await import("../store/conversations");
-const { setCustomEndpointConfig, OPENAI_COMPATIBLE } = await import(
-  "../ai/openai-compatible"
-);
+const { setCustomEndpointConfig, OPENAI_COMPATIBLE } =
+  await import("../ai/openai-compatible");
 const { setSettings } = await import("../ai/providers");
 const { authStorage } = await import("../auth/storage");
 const { config } = await import("../config");

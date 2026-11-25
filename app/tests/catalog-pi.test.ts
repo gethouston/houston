@@ -62,8 +62,8 @@ describe("piCatalogToCandidates maps the pi-ai catalog to merge candidates", () 
   const candidates = piCatalogToCandidates(catalog);
 
   it("applies DROP_PI_PROVIDERS: pi's direct openai models never map", () => {
-    const ids = candidates.map((c) => c.raw.id);
-    ok(!ids.includes("gpt-4o") && !ids.includes("gpt-4o-mini"));
+    const ids = new Set(candidates.map((c) => c.raw.id));
+    ok(!ids.has("gpt-4o") && !ids.has("gpt-4o-mini"));
   });
 
   it("applies PROVIDER_ID_RENAME: openai-codex → openai, no raw codex id", () => {

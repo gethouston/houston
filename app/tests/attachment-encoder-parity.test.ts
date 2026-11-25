@@ -5,8 +5,8 @@
 
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { buildAttachmentText } from "@houston/sdk";
 import { decodeAttachmentMessage } from "@houston-ai/chat";
+import { buildAttachmentText } from "@houston/sdk";
 import { buildAttachmentPrompt } from "../src/lib/attachment-message.ts";
 
 describe("attachment marker encoders", () => {

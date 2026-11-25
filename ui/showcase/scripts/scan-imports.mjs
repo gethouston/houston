@@ -2,7 +2,7 @@
  * The lexical readers behind the "Used in" map: what a source file imports,
  * and what a `ui/*` package publishes.
  *
- * Text, not a parser, and deliberately so — every input is Biome-formatted, so
+ * Text, not a parser, and deliberately so — every input is consistently formatted, so
  * the shapes are stable, and keeping the generator dependency-free is what
  * lets it run as plain `node scripts/gen-usage.mjs` with no loader.
  */
