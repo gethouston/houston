@@ -7,8 +7,8 @@ import { integrationLogoUrl } from "../integrations";
 /**
  * One integration's brand mark: the favicon-service image with a letter-tile
  * fallback. The favicon service answers 404 for a domain it cannot resolve
- * (guessed `<slug>.com` domains often are not real), and the bare `<img>`s
- * this replaces rendered those as broken/blank squares on the store cards.
+ * (guessed `<slug>.com` domains often are not real), which a bare `<img>`
+ * renders as a broken/blank square on the store cards.
  * A failed load latches to a quiet letter tile instead — honest, and it keeps
  * the "works with" row's count truthful.
  */

@@ -19,11 +19,12 @@ import { TurnSink } from "./turn-sink";
 
 /**
  * Passively observe a conversation this client did not (or no longer does)
- * stream — the reload-mid-turn fix. Opened when a chat's history loads: if the
- * server's `sync` reports a turn in flight, surface it (running indicator +
- * partial text) and render live frames to completion, settling exactly like a
- * turn we sent; if the conversation is idle, the stream closes immediately.
- * No-op when the conversation is already streamed (live turn or observer).
+ * stream, such as a turn still running across a reload. Opened when a chat's
+ * history loads: if the server's `sync` reports a turn in flight, surface it
+ * (running indicator + partial text) and render live frames to completion,
+ * settling exactly like a turn we sent; if the conversation is idle, the
+ * stream closes immediately. No-op when the conversation is already streamed
+ * (live turn or observer).
  *
  * Failure posture: a fatal stream refusal (401/403/404/410) or an exhausted
  * reconnect budget disposes SILENTLY while nothing is mid-render — a passive

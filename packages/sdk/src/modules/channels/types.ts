@@ -14,7 +14,6 @@ export const ChannelsCommand = {
 export type ChannelsCommandType =
   (typeof ChannelsCommand)[keyof typeof ChannelsCommand];
 
-// WHY: Runtime mirror of the provider union; a new gateway provider must be added here. ADR-0024
 /**
  * The runtime mirror of the messaging providers a surface can render — a
  * command payload arrives untyped, and a union is not a value to check it

@@ -17,7 +17,7 @@ export interface FilesBrowserLabels {
   itemSingular?: string;
   itemPlural?: string;
   menuButton?: string;
-  /** Header action labels (promoted from the old status-bar footer). */
+  /** Header action labels. */
   uploadFiles?: string;
   /** Menu item / empty-state CTA for uploading a whole folder. */
   uploadFolder?: string;

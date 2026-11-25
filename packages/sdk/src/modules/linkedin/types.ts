@@ -43,7 +43,6 @@ export interface LinkedInPostInput {
   signal?: AbortSignal;
 }
 
-// WHY: Only a proven non-post is refused; anything uncertain is unknown so nobody posts twice. ADR-0024
 /**
  * A post either went up (`postUrl` is LinkedIn's page for it, `null` when
  * LinkedIn gave no readable id: it is up all the same), was refused with a

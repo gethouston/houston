@@ -11,7 +11,7 @@ export interface TriggerStatusLabels {
  * What an event-trigger routine says once it exists: the plain-language "wakes
  * on an event" summary fallback and the live status badge (incl. its one-click
  * recovery). All human, never "webhook"/"schema"/"instance". Picking the app and
- * choosing the exact event now happen in the setup chat, not a wizard form, so
+ * choosing the exact event happen in the setup chat, not a wizard form, so
  * this carries no picker/config-form copy.
  */
 export interface TriggerLabels {

@@ -21,7 +21,6 @@ export interface SnapshotStoreAdapter<T> {
   getSnapshot: () => T | undefined;
 }
 
-// WHY: Per-publish sync renders trip React 19 "Maximum update depth"; notify on a macrotask. ADR-0019
 /**
  * Build the external-store adapter that binds `scope` to `source`'s reactive
  * store. Framework-agnostic on purpose: the hook wraps it, tests drive it
@@ -35,7 +34,7 @@ export interface SnapshotStoreAdapter<T> {
  * with only microtask gaps (`await onEvent(frame)` per SSE frame, and a
  * reconnect replay hands over dozens in one chunk), so notifying per publish
  * runs 50+ sync commits inside one task and React throws "Maximum update
- * depth exceeded" (#185) INTO the publisher — failing the turn. Deferring the
+ * depth exceeded" INTO the publisher — failing the turn. Deferring the
  * notification to a macrotask coalesces the burst into one render; a
  * microtask would not (it interleaves with the stream's own microtasks).
  * `getSnapshot` stays synchronous, so any render in between already reads the

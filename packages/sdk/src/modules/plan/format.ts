@@ -1,4 +1,3 @@
-// WHY: The launch instant in the viewer's zone shows the wrong day west of it. ADR-0022
 /**
  * The zone that defines the C19 launch instant (`limitsStartAt`): midnight in
  * San Francisco. Formatting it in the viewer's zone would show "September 30"
@@ -27,7 +26,6 @@ const STRIPE_ZERO_DECIMAL = new Set([
 
 const STRIPE_THREE_DECIMAL = new Set(["bhd", "jod", "kwd", "omr", "tnd"]);
 
-// WHY: Stripe bills ISK, HUF, TWD and IDR in two decimals though ICU shows zero. ADR-0022
 /**
  * Decimal places Stripe uses for `currency`'s minor units. Everything outside
  * the two lists is two-decimal, INCLUDING currencies ICU formats with zero

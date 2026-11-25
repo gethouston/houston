@@ -55,13 +55,12 @@ export const SEND_TURN_RUNNING_MAX_HOLD_MS = (4 * 60 + 5) * 60_000;
 
 /**
  * Consecutive frameless connection attempts before a subscription gives up:
- * a turn settles as an error (the old dead-server UX, not an eternal
- * spinner); an observer disposes silently. Attempts that fail FAST (dead
+ * a turn settles as an error (never an eternal spinner); an observer disposes silently. Attempts that fail FAST (dead
  * local sidecar refusing the connection) spend it in ~45s of backoff; an
  * attempt that HANGS costs a full 45s idle watchdog, so the budget must
  * outlast the cloud gateway's cold-wake hold — ensureAwake keeps every
  * request open for up to 300s while the agent pod starts, and a budget of 6
- * used to give up at ~283s, moments before a slow wake would have delivered.
+ * gives up at ~283s, moments before a slow wake would deliver.
  * 8 hung attempts ≈ 6+ minutes, past the gateway's own verdict.
  */
 export const STREAM_FAILURE_BUDGET = 8;

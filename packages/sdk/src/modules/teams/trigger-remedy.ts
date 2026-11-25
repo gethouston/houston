@@ -21,7 +21,6 @@ export type TriggerRemedy =
   | "check_settings"
   | "none";
 
-// WHY: pick_another_event never offers Reconnect: reconnecting cannot bring the event back. ADR-0020
 /**
  * The remedy for one routine's trigger status. Every surface (the routine
  * screen's chip, the grid, the AI Manager) reads it from here so none decides

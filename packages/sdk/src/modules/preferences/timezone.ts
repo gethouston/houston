@@ -7,8 +7,8 @@ import { refusalCode, refusalStatus } from "../refusal-code";
  * signed-in person, not only on a screen that shows it.
  *
  * The rule, once, for every surface: read first, and a stored zone is the
- * answer, untouched. Only an empty key gets a write: the zone this device kept
- * before the preference moved to the account, else the device's detected
+ * answer, untouched. Only an empty key gets a write: the zone this device
+ * stores locally, else the device's detected
  * zone, sent CREATE-ONLY (`onlyIfAbsent: true`), so a server that has it
  * settles a race with an explicit choice in the choice's favour (412, the
  * stored value adopted). The read comes first so a gateway that predates

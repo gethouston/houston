@@ -23,15 +23,14 @@ export type PendingUserEcho = Record<string, number>;
  * The engine re-broadcasts every turn's prompt over the `session:{key}` WS topic
  * so other clients echo it. The client that SENT the turn already pushed the
  * prompt optimistically, so that echo is a duplicate — but only for that one
- * turn. The earlier fix (#363) dropped any WS `user_message` whose TEXT already
- * appeared in the feed, which wrongly collapsed DISTINCT turns that share text:
- * once a routine reuses a single chat across runs (#381), every run carries the
- * identical prompt, so a new run's prompt got swallowed by an earlier run's
- * (and prior runs sitting in hydrated history swallowed it too).
+ * turn. Matching on TEXT would collapse DISTINCT turns that share text: a
+ * routine that reuses a single chat across runs carries the identical prompt
+ * every run, so a new run's prompt would be swallowed by an earlier run's (or
+ * by prior runs sitting in hydrated history).
  *
- * Correlating echo→optimistic by a pending count fixes both: the sender's own
- * echo is dropped, while a background routine run (which never pushes
- * optimistically) and cross-client deliveries append. Mutates `pending`.
+ * Echoes are correlated to optimistic pushes by a pending count instead: the
+ * sender's own echo is dropped, while a background routine run (which never
+ * pushes optimistically) and cross-client deliveries append. Mutates `pending`.
  *
  * @returns `true` to append the item, `false` to drop it as a duplicate echo.
  */

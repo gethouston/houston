@@ -36,14 +36,13 @@ export function isAuthorizationFailure(error: unknown) {
   );
 }
 
-// WHY: 403/400/422 mean nothing registered; keeping the attempt blocks every later model change. ADR-0026
 /**
  * The gateway refused to register a connection for good: a 403 (the agent's
  * model ceiling, the person's role, the agent gone) or a request it will never
  * accept (400/422). Nothing was registered under the journal's key, so the SDK
- * forgets the attempt; kept, it was re-registered and refused again on every
- * boot, and the retirement every later connect or disconnect runs first was
- * refused the same way, so the agent's local model could never change.
+ * forgets the attempt; kept, it would be re-registered and refused again on
+ * every boot, and the retirement every later connect or disconnect runs first
+ * would be refused the same way, so the agent's local model could never change.
  * A 401 is a lost session, never this.
  */
 export function isRegistrationRefusal(error: unknown): boolean {

@@ -45,10 +45,10 @@ export interface FlowSheetProps {
 /**
  * The ONE multi-step surface.
  *
- * Every wizard in the app used to bring its own dialog: its own width, its own
- * header, its own idea of where Back lives — so moving between two steps of the
- * same flow shifted the frame under the user's hands. FlowSheet fixes the
- * frame and lets only the step change.
+ * A wizard that brings its own dialog brings its own width, its own header and
+ * its own idea of where Back lives, so moving between two steps of the same
+ * flow shifts the frame under the user's hands. FlowSheet fixes the frame and
+ * lets only the step change.
  *
  * ONE frame, in two sizes, and the step picks which: a question with two
  * answers gets the confirm dialog's hand-sized surface, and a catalog gets the

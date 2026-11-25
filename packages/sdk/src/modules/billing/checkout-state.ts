@@ -55,7 +55,6 @@ export function billingCheckoutOutstanding(
   return state.phase === "creating" || state.phase === "open";
 }
 
-// WHY: A failed payment keeps the paid tier and sets a lock; never read that as paid. ADR-0022
 /**
  * Whether an org is paid for: paid, active, and no lock scheduled. A paid tier
  * alone is not enough, since a payment that failed keeps the tier and sets a
