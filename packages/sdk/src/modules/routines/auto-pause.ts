@@ -14,7 +14,8 @@ export type RoutinePauseRemedy =
   | "reconnect_account"
   | "add_credits"
   | "change_model"
-  | "choose_model";
+  | "choose_model"
+  | "check_runs";
 
 /** Whose account the remedy is about. */
 export type RoutinePauseAccount = "creator" | "team";
@@ -27,19 +28,20 @@ interface PauseCounts {
 export type RoutinePauseNotice = PauseCounts &
   (
     | {
-        remedy: Exclude<RoutinePauseRemedy, "choose_model">;
+        remedy: Exclude<RoutinePauseRemedy, "choose_model" | "check_runs">;
         /** Present for the connect and reconnect remedies; the other two name no account. */
         account?: RoutinePauseAccount;
         /** The provider id the failed runs needed (e.g. "anthropic"). */
         provider: string;
       }
     | { remedy: "choose_model" }
+    | { remedy: "check_runs"; provider: string }
   );
 
 const REMEDY: Record<
   RoutineAccountFailureCode,
   {
-    remedy: Exclude<RoutinePauseRemedy, "choose_model">;
+    remedy: Exclude<RoutinePauseRemedy, "choose_model" | "check_runs">;
     account?: RoutinePauseAccount;
   }
 > = {
@@ -66,12 +68,16 @@ export function routinePauseNotice(
   if (routine.enabled || !pause) return null;
   const counts = { failures: pause.failures, pausedAt: pause.at };
   if (pause.cause === "no_model") return { remedy: "choose_model", ...counts };
+  if (pause.cause === "provider_error")
+    return { remedy: "check_runs", provider: pause.provider, ...counts };
   const reason = failureCodeForReader(
     { code: pause.reason, provider: pause.provider },
     reader,
   );
   const fix =
-    reason === "no_model" || reason === "usage_limit"
+    reason === "no_model" ||
+    reason === "usage_limit" ||
+    reason === "provider_error"
       ? undefined
       : REMEDY[reason];
   if (!fix) return null;

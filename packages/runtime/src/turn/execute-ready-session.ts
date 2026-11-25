@@ -5,7 +5,7 @@ import { runWithConversationScope } from "../session/bus";
 import type { ReadyTurnInput } from "./execute-ready-turn";
 import { turnActingContext } from "./turn-acting-context";
 import { remoteActivityReader } from "./turn-mission-title-remote";
-import { turnSessionRequest } from "./turn-request";
+import { turnSessionRequest, turnSessionSandbox } from "./turn-request";
 import { runTurn, type TurnOutcome } from "./turn-session";
 import type { TurnRequest } from "./types";
 
@@ -31,7 +31,7 @@ export async function runReadyTurnSession(
             input.turnId,
             input.emit,
             input.signal,
-            input.sandbox ? { call: input.sandbox.call } : undefined,
+            turnSessionSandbox(input.sandbox),
             input.timings,
             input.startup,
           );

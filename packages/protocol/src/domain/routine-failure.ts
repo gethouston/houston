@@ -9,7 +9,8 @@ export type RoutineAccountFailureCode =
 export type RoutineRunFailureCode =
   | RoutineAccountFailureCode
   | "no_model"
-  | "usage_limit";
+  | "usage_limit"
+  | "provider_error";
 
 export type RoutineRunFailure =
   | {
@@ -22,7 +23,8 @@ export type RoutineRunFailure =
       provider: string;
       model: string | null;
       resets_at: string | null;
-    };
+    }
+  | { code: "provider_error"; provider: string };
 
 export interface RoutineSnooze {
   reason: "usage_limit";
@@ -44,7 +46,7 @@ export interface RoutineDeliveryFailure {
 export interface RoutineAutoPause {
   reason: RoutineAccountFailureCode;
   provider: string;
-  cause?: "no_model";
+  cause?: "no_model" | "provider_error";
   failures: number;
   at: string;
 }

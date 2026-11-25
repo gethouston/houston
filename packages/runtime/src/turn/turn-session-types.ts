@@ -1,5 +1,10 @@
 import type { AssistantRuntimeRole } from "@houston/domain/assistant-role";
-import type { ModelCallReport, TurnMode } from "@houston/protocol";
+import type { MissionGuidance } from "@houston/host/src/houston-prompt-missions";
+import type {
+  ModelCallReport,
+  ProviderError,
+  TurnMode,
+} from "@houston/protocol";
 import type {
   ChatMessage,
   PendingInteraction,
@@ -25,6 +30,7 @@ export interface TurnOutcome {
   missionTitle?: InTreeMissionTitle;
   spend?: { provider: string; usage: TokenUsage };
   modelCalls?: ModelCallReport;
+  providerError?: ProviderError;
 }
 
 export interface TurnModelPin {
@@ -58,7 +64,10 @@ export interface TurnSessionRequest {
   tokenExpiresAt?: number;
   grant?: { scopes: TurnGrantScope[] };
   role?: AssistantRuntimeRole;
-  sandbox?: { call: SandboxFetch };
+  sandbox?: {
+    call: SandboxFetch;
+    missionGuidance?: Promise<MissionGuidance>;
+  };
   timings?: Record<string, number>;
   startup?: TurnSessionStartupTask;
 }

@@ -162,6 +162,7 @@
       "addCredits": "La cuenta de {{provider}} se quedó sin créditos. Agrega créditos o cambia de plan y luego reanuda la rutina.",
       "changeModel": "La cuenta de {{provider}} no puede usar el modelo de esta rutina. Elige un modelo que la cuenta pueda usar y luego reanuda la rutina.",
       "chooseModel": "Esta rutina no tiene un modelo elegido y la cuenta de IA que usaría no está conectada. Elige un modelo en la sección Modelo y luego reanuda la rutina.",
+      "keepsFailing": "Sus ejecuciones siguieron fallando con el mismo error de {{provider}}. Abre la última ejecución para ver qué pasó y luego reanuda la rutina.",
       "resume": "Reanudar"
     },
     "snooze": {

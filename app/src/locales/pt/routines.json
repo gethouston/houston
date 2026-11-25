@@ -162,6 +162,7 @@
       "addCredits": "A conta {{provider}} está sem créditos. Adicione créditos ou mude de plano e depois retome a rotina.",
       "changeModel": "A conta {{provider}} não pode usar o modelo desta rotina. Escolha um modelo que a conta possa usar e depois retome a rotina.",
       "chooseModel": "Esta rotina não tem um modelo escolhido e a conta de IA que ela usaria não está conectada. Escolha um modelo na seção Modelo e depois retome a rotina.",
+      "keepsFailing": "As execuções continuaram falhando com o mesmo erro do {{provider}}. Abra a última execução para ver o que aconteceu e depois retome a rotina.",
       "resume": "Retomar"
     },
     "snooze": {

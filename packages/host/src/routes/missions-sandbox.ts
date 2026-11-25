@@ -15,6 +15,7 @@ import type {
 } from "../ports";
 import type { PushReporter } from "../telemetry/push-report";
 import type { Vfs } from "../vfs";
+import type { AssistantGateway } from "./assistant-forward";
 import { bearer, json } from "./http";
 import { handleAgentDirectory, handleAgentProfile } from "./missions-agents";
 import { handleMissionSettle, handleMissionStatus } from "./missions-manage";
@@ -34,6 +35,12 @@ export interface MissionsDeps {
   credentials?: CredentialStore;
   modelCallReports?: (report: ModelCallReport) => void;
   pushReports?: PushReporter;
+  pooledTurn?: PooledTurnGateway;
+}
+
+export interface PooledTurnGateway {
+  gateway: AssistantGateway;
+  agentSlug: string;
 }
 
 export interface MissionsSandboxDeps extends MissionsDeps {

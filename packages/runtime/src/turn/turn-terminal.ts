@@ -4,6 +4,7 @@ import { takeClaudeStartupProfile } from "./turn-claude-startup";
 import type { TurnDurabilityResult } from "./turn-durability";
 import type { TurnSetupCode, TurnSetupError } from "./turn-layout";
 import type { MissionTitleReport } from "./turn-mission-title-outcome";
+import { providerFailureReport } from "./turn-provider-failure";
 import type { TurnOutcome } from "./turn-session";
 import type { TurnSyncReport } from "./turn-sync-report";
 
@@ -11,6 +12,7 @@ export interface TurnTerminalDiagnostics {
   missionTitle?: MissionTitleReport;
   sync?: TurnSyncReport;
   modelCalls?: ModelCallReport;
+  providerFailure?: ReturnType<typeof providerFailureReport>;
 }
 
 function timingDeltas(
@@ -36,7 +38,7 @@ export function turnTerminalFrame(
   extra: TurnTerminalDiagnostics = {},
 ): WireFrame {
   const timingsMs = timingDeltas(timings);
-  const { missionTitle, sync, modelCalls } = extra;
+  const { missionTitle, sync, modelCalls, providerFailure } = extra;
   const prePrompt = timingsMs?.prompt_start;
   const claudeStartupMs = takeClaudeStartupProfile();
   const fields = {
@@ -48,6 +50,7 @@ export function turnTerminalFrame(
     ...(activityDocSkipped ? { activityDocSkipped } : {}),
     ...hydration,
     ...(missionTitle ? { missionTitle } : {}),
+    ...(providerFailure ? { providerFailure } : {}),
     ...(sync?.incomplete ? { syncIncomplete: sync.incomplete } : {}),
     ...(sync?.merges ? { syncMerges: sync.merges } : {}),
     ...(sync?.unsavedFiles ? { unsavedFiles: sync.unsavedFiles } : {}),
@@ -133,6 +136,7 @@ export function durableTerminalFrame(
       ...(missionTitle ? { missionTitle } : {}),
       ...(durable.sync ? { sync: durable.sync } : {}),
       ...(modelCalls ? { modelCalls } : {}),
+      providerFailure: providerFailureReport(durable.outcome.providerError),
     },
   );
 }

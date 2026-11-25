@@ -6,7 +6,7 @@ import {
   unconnectedRoutineFailure,
   upsertById,
 } from "@houston/domain";
-import type { Routine, RoutineRun, RoutineRunFailure } from "@houston/protocol";
+import type { Routine, RoutineRun } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
@@ -85,7 +85,7 @@ export async function fireRoutineRun(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const failure: RoutineRunFailure | undefined = isUnconnectedRefusal(err)
+    const failure = isUnconnectedRefusal(err)
       ? unconnectedRoutineFailure(routine.provider || err.provider)
       : undefined;
     await markRunErrored(root, err, async () => {

@@ -334,3 +334,27 @@ test("a pinned provider travels to the agent that judges it", async () => {
   expect(JSON.parse(start?.body ?? "{}").provider).toBe("openai-codex");
   await houston.dispose();
 });
+
+test("the plan gate follows a mode switch made after the turn began", async () => {
+  const gateway = await fakeGateway();
+  const liveMode = { current: "execute" as "execute" | "plan" | "auto" };
+  const houston = await session(bucket().store, gateway.url, {
+    mode: undefined,
+    liveMode,
+  });
+  const start = () =>
+    houston.route(
+      "/sandbox/missions/start",
+      post({ agent: "Dobby", title: "Research", prompt: "Look" }),
+    );
+  liveMode.current = "plan";
+  const planned = await start();
+  expect(planned?.status).toBe(403);
+  expect(((await planned?.json()) as { code: string }).code).toBe("plan_mode");
+  liveMode.current = "execute";
+  expect((await start())?.status).toBe(200);
+  expect(
+    gateway.seen.filter((r) => r.url === "/agents/agent-dobby/missions/start"),
+  ).toHaveLength(1);
+  await houston.dispose();
+});

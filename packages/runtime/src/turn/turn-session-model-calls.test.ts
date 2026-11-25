@@ -101,4 +101,5 @@ test("a clean pooled turn returns its calls on the outcome", async () => {
 test("a pooled turn that threw keeps what it measured", async () => {
   const outcome = await run(true);
   expect(outcome.modelCalls?.calls).toEqual([CALL]);
+  expect(outcome.providerError).toBeDefined();
 });

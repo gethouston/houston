@@ -1,3 +1,4 @@
+import type { MissionGuidance } from "@houston/host/src/houston-prompt-missions";
 import { CustomIntegrationError } from "@houston/host/src/integrations/custom/types";
 import { IntegrationUpstreamError } from "@houston/host/src/integrations/types";
 import type { LiveTurnPin } from "@houston/host/src/routes/live-turn-pin";
@@ -13,6 +14,7 @@ import {
 } from "./turn-custom-definitions-doc";
 import { TurnDocConflictError } from "./turn-doc-cas";
 import type { TurnFilesystem } from "./turn-filesystem";
+import type { TurnMissionsSession } from "./turn-missions";
 import { makeTurnCodeRoute, TURN_CODE_RUN_PATH } from "./turn-sandbox-code";
 import { makeTurnCustomRoutes } from "./turn-sandbox-custom";
 import {
@@ -39,6 +41,7 @@ export interface TurnSandboxDeps {
   customOAuthCallbackUrl?: string;
   fetchImpl?: typeof fetch;
   coordinator?: TurnCoordinatorSession;
+  missions?: TurnMissionsSession;
 }
 
 export interface TurnSandboxViews {
@@ -75,6 +78,7 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
   views: () => TurnSandboxViews;
   present: (frame: WireFrame) => WireFrame;
   admission: () => Promise<string | null>;
+  missionGuidance?: Promise<MissionGuidance>;
 } {
   const fetchImpl = deps.fetchImpl ?? fetch;
   const views: TurnSandboxViews = {};
@@ -98,7 +102,8 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
   );
 
   const call: SandboxFetch = async (path, init) => {
-    const coordinated = deps.coordinator?.route(path, init);
+    const coordinated =
+      deps.coordinator?.route(path, init) ?? deps.missions?.route(path, init);
     if (coordinated) return coordinated;
     if ((init?.method ?? "GET") !== "POST")
       return json(405, { error: "method not allowed" });
@@ -150,6 +155,7 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
       await resetCustom();
     } finally {
       await deps.coordinator?.dispose();
+      await deps.missions?.dispose();
     }
   };
   return {
@@ -158,5 +164,6 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
     views: () => ({ ...views }),
     present: (frame) => deps.coordinator?.present(frame) ?? frame,
     admission: async () => (await deps.coordinator?.admission()) ?? null,
+    ...(deps.missions ? { missionGuidance: deps.missions.guidance } : {}),
   };
 }

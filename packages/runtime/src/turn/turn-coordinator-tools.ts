@@ -48,7 +48,7 @@ export function buildTurnCoordinatorTools(
   ];
 }
 
-function missionProviders(): ProviderOption[] {
+export function missionProviders(): ProviderOption[] {
   const curated = connectedProviderChoices().map((option) => ({
     ...option,
     connected: true,

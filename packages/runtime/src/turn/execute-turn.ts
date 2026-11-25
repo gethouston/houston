@@ -19,7 +19,7 @@ import { adoptKeptMode } from "./turn-kept-mode";
 import { TurnSetupError } from "./turn-layout";
 import { setActiveTurnTimings } from "./turn-network-marks";
 import { stampPooledTurn } from "./turn-push";
-import { turnSessionRequest } from "./turn-request";
+import { turnSessionRequest, turnSessionSandbox } from "./turn-request";
 import { prepareTurnRoot } from "./turn-root";
 import type { makeTurnSandboxFetch } from "./turn-sandbox";
 import { createTurnSandbox } from "./turn-sandbox-startup";
@@ -82,6 +82,7 @@ export async function executeTurn(
       identity: sandboxIdentity,
       resolved,
       filesystem,
+      hydrated: preparation.hydrated,
     });
     const authPath = join(dataDir, "auth.json");
     if (turn.credential) {
@@ -104,7 +105,7 @@ export async function executeTurn(
           turnId,
           earlyEmit,
           abort.signal,
-          turnSandbox ? { call: turnSandbox.call } : undefined,
+          turnSessionSandbox(turnSandbox),
           timings,
         ),
         deps.turnSessionDeps,

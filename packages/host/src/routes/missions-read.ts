@@ -7,6 +7,7 @@ import {
 import type { ChatMessage } from "@houston/protocol";
 import { conversationKey } from "../paths";
 import { json } from "./http";
+import { ownBoardViaGateway } from "./missions-own-board";
 import {
   forwardMissionList,
   forwardMissionRead,
@@ -61,9 +62,12 @@ export async function handleMissionRead(
   url: URL,
   res: ServerResponse,
 ): Promise<void> {
-  const route = await resolveMissionRoute(
+  const route = ownBoardViaGateway(
     callerCtx,
-    url.searchParams.get("agent") ?? undefined,
+    await resolveMissionRoute(
+      callerCtx,
+      url.searchParams.get("agent") ?? undefined,
+    ),
   );
   if (!route.ok) return refuseMissionRoute(route, res);
   const id = url.searchParams.get("id")?.trim() ?? "";

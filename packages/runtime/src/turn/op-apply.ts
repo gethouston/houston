@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { applyServedCredential } from "../auth/auth-file";
+import { claudePlanBinding } from "../auth/claude-plan";
 import { generateTitle } from "../session/summarize";
 import { applyConversationOp } from "./op-conversation";
 import { applyApiKeyConnect, credentialOpFiles } from "./op-credential";
@@ -15,12 +16,15 @@ import {
 } from "./op-settings";
 import type { OpRequest } from "./parse-op-request";
 import type { TurnFilesystem } from "./turn-filesystem";
+import { claudeTitleRunner } from "./turn-mission-title";
 import { createTurnModelRuntime } from "./turn-runtime";
 import { poolIdentity } from "./turn-store";
 
 export type { OpResult } from "./op-result";
 
 import type { OpResult } from "./op-result";
+
+const TITLE_OP_TIMEOUT_MS = 45_000;
 
 const json = (
   status: number,
@@ -125,25 +129,28 @@ export async function applyOp(
           include: none,
         };
       }
-      if (op.credential.provider === "anthropic") {
-        return {
-          ...json(503, { error: "anthropic titles run on the pod" }),
-          events: [],
-          include: none,
-        };
-      }
       const { dataDir, workspaceDir } = filesystem;
       applyServedCredential(join(dataDir, "auth.json"), op.credential);
       const { modelRuntime, model } = await createTurnModelRuntime(
         dataDir,
         op.credential.provider,
       );
+      const excerpt = op.op.text.trim().slice(0, 2400);
+      if (op.credential.provider === "anthropic") {
+        const claudePlan = claudePlanBinding(op.credential);
+        const title = await claudeTitleRunner({
+          model,
+          directories: filesystem,
+          ...(claudePlan ? { claudePlan } : {}),
+        })(excerpt, AbortSignal.timeout(TITLE_OP_TIMEOUT_MS));
+        return { ...json(200, { title }), events: [], include: none };
+      }
       assertWorkerOpProvider(model.provider);
       const title = await generateTitle({
         cwd: workspaceDir,
         model,
         modelRuntime,
-        excerpt: op.op.text.trim().slice(0, 2400),
+        excerpt,
       });
       return { ...json(200, { title }), events: [], include: none };
     }

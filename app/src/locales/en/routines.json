@@ -162,6 +162,7 @@
       "addCredits": "The {{provider}} account is out of credits. Add credits or change plan, then resume the routine.",
       "changeModel": "The {{provider}} account can't use this routine's model. Pick a model the account can run, then resume the routine.",
       "chooseModel": "This routine has no model chosen, and the AI account it would use isn't connected. Pick a model in the Model section, then resume the routine.",
+      "keepsFailing": "Its runs kept failing with the same error from {{provider}}. Open the latest run to see what went wrong, then resume the routine.",
       "resume": "Resume"
     },
     "snooze": {

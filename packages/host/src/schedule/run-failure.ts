@@ -8,7 +8,9 @@ export function isUnconnectedRefusal(err: unknown): err is TurnFireError {
   return err instanceof TurnFireError && err.code === "no_provider";
 }
 
-export function routineRunFailureSummary(failure: RoutineRunFailure): string {
+export function routineRunFailureSummary(
+  failure: Exclude<RoutineRunFailure, { code: "provider_error" }>,
+): string {
   if (failure.code === "no_model")
     return "This routine has no model chosen, and the AI account it would use isn't connected.";
   const name = sentenceProviderName(failure.provider);
@@ -33,4 +35,13 @@ export function routineRunFailureSummary(failure: RoutineRunFailure): string {
 export function providerErrorSummary(err: ProviderError): string {
   const text = err.kind === "unknown" ? err.raw_excerpt : err.message;
   return text.trim() || `provider error (${err.kind})`;
+}
+
+export function routineRunErrorSummary(
+  failure: RoutineRunFailure | undefined,
+  err: ProviderError,
+): string {
+  return failure && failure.code !== "provider_error"
+    ? routineRunFailureSummary(failure)
+    : providerErrorSummary(err);
 }

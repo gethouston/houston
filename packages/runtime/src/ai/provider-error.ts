@@ -246,13 +246,17 @@ function classify(input: ProviderErrorInput): ProviderError {
   }
   if (
     model &&
-    (isModelUnavailable(lower) || isCustomEndpoint404(provider, status))
+    (isModelUnavailable(lower) ||
+      isModelRetired(lower, status) ||
+      isCustomEndpoint404(provider, status))
   ) {
     return {
       kind: "model_unavailable",
       provider,
       model,
-      reason: modelUnavailableReason(lower),
+      reason: isModelRetired(lower, status)
+        ? "deprecated"
+        : modelUnavailableReason(lower),
       suggested_fallback:
         localServedFallback(message) ?? broadFallback(provider, model),
       message,
@@ -273,7 +277,9 @@ function broadFallback(provider: string, model: string): string | null {
             ? XIAOMI_BROAD_FALLBACK
             : provider === "amazon-bedrock"
               ? BEDROCK_BROAD_FALLBACK
-              : null;
+              : provider === "nvidia"
+                ? NVIDIA_BROAD_FALLBACK
+                : null;
   return fallback && fallback !== model ? fallback : null;
 }
 
@@ -364,6 +370,13 @@ function isNetwork(lower: string): boolean {
     lower.includes("network error") ||
     lower.includes("connection refused") ||
     lower.includes("connection reset")
+  );
+}
+
+function isModelRetired(lower: string, status: number | null): boolean {
+  return (
+    lower.includes("reached its end of life") ||
+    (status === 410 && lower.includes("model"))
   );
 }
 

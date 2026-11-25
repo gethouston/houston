@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { routineRunFailure } from "@houston/domain";
 import {
-  providerErrorSummary,
+  routineRunErrorSummary,
   routineRunFailureSummary,
 } from "@houston/host/src/schedule/run-failure";
 import type {
@@ -71,10 +71,10 @@ export function routineRunError(
   const failure =
     opts.failure ??
     (reply.providerError ? routineRunFailure(reply.providerError) : undefined);
-  const summary = failure
-    ? routineRunFailureSummary(failure)
-    : reply.providerError
-      ? providerErrorSummary(reply.providerError)
+  const summary = reply.providerError
+    ? routineRunErrorSummary(failure, reply.providerError)
+    : failure && failure.code !== "provider_error"
+      ? routineRunFailureSummary(failure)
       : opts.turnError;
   if (summary === undefined) return null;
   return {

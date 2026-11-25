@@ -23,6 +23,10 @@ import {
   turnAssistantOptions,
 } from "./turn-coordinator-tools";
 import { turnHandoffBudget, turnTokenExpiry } from "./turn-deadline";
+import {
+  buildTurnMissionTools,
+  turnHasMissionFamily,
+} from "./turn-mission-tools";
 import type { TurnSessionRequest } from "./turn-session";
 
 function capabilities(turn: TurnSessionRequest) {
@@ -57,7 +61,7 @@ export function buildTurnToolSelection(
     providerConnections: enabled.providerConnections,
     saveRoutine: enabled.agentWrites,
     saveLearning: enabled.agentWrites,
-    missions: coordinator,
+    missions: coordinator || turnHasMissionFamily(turn),
     assistant: coordinator,
     personalAssistant: turn.role === "coordinator",
   });
@@ -108,6 +112,7 @@ export function buildTurnCommonTools(
       makeSuggestActionsTool(),
       ...(codeSandbox ? [codeSandbox] : []),
       ...buildTurnHostTools(turn),
+      ...buildTurnMissionTools(turn),
       ...buildTurnCoordinatorTools(turn, dataDir, loadArchive),
     ],
     turn.nextStepSuggestions,

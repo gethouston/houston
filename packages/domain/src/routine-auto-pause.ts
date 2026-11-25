@@ -9,6 +9,8 @@ import type {
 
 export const ROUTINE_AUTO_PAUSE_AFTER = 10;
 
+export const ROUTINE_PROVIDER_ERROR_PAUSE_AFTER = 5;
+
 function isTeamCredential(err: ProviderError): boolean {
   return err.credential?.scope === "team";
 }
@@ -27,6 +29,8 @@ export function routineRunFailure(
     return { code: "out_of_credits", provider: err.provider };
   if (err.kind === "model_unavailable")
     return { code: "model_unavailable", provider: err.provider };
+  if (err.kind === "unknown")
+    return { code: "provider_error", provider: err.provider };
   if (err.kind !== "unauthenticated") return undefined;
   const team = isTeamCredential(err);
   const code: RoutineRunFailureCode =
@@ -42,7 +46,7 @@ export function routineRunFailure(
 
 export function unconnectedRoutineFailure(
   provider: string | null | undefined,
-): RoutineRunFailure {
+): Exclude<RoutineRunFailure, { code: "provider_error" | "usage_limit" }> {
   return provider
     ? { code: "creator_not_connected", provider }
     : { code: "no_model" };
@@ -51,7 +55,7 @@ export function unconnectedRoutineFailure(
 export function routineFailureProvider(
   failure: RoutineRunFailure | RoutineAutoPause,
 ): string | undefined {
-  if ("cause" in failure && failure.cause) return undefined;
+  if ("cause" in failure && failure.cause === "no_model") return undefined;
   return "provider" in failure ? failure.provider || undefined : undefined;
 }
 
@@ -88,17 +92,30 @@ export function routineAutoPause(
     if (!sameWall(run.failure, wall)) break;
     failures++;
   }
-  if (!wall || failures < ROUTINE_AUTO_PAUSE_AFTER) return null;
-  return wall.code === "no_model"
-    ? {
-        reason: "model_unavailable",
-        provider: "",
-        cause: "no_model",
-        failures,
-        at: nowIso,
-      }
-    : { reason: wall.code, provider: wall.provider, failures, at: nowIso };
+  if (!wall || failures < pauseAfter(wall)) return null;
+  if (wall.code === "no_model")
+    return {
+      reason: "model_unavailable",
+      provider: "",
+      cause: "no_model",
+      failures,
+      at: nowIso,
+    };
+  if (wall.code === "provider_error")
+    return {
+      reason: "model_unavailable",
+      provider: wall.provider,
+      cause: "provider_error",
+      failures,
+      at: nowIso,
+    };
+  return { reason: wall.code, provider: wall.provider, failures, at: nowIso };
 }
+
+const pauseAfter = (wall: RoutineRunFailure): number =>
+  wall.code === "provider_error"
+    ? ROUTINE_PROVIDER_ERROR_PAUSE_AFTER
+    : ROUTINE_AUTO_PAUSE_AFTER;
 
 export function autoPauseRoutine(
   routine: Routine,

@@ -22,6 +22,7 @@ const MAX_TOTAL_CHARS = 24_000;
 export interface ReadMissionToolOptions {
   call: SandboxFetch;
   personalAssistant: boolean;
+  inProcess?: boolean;
 }
 
 export type ReadMissionDetails =
@@ -95,7 +96,8 @@ export function makeReadMissionTool(opts: ReadMissionToolOptions) {
         if (!read.ok) return toolErrorResult(read.error);
         transcript = read.transcript;
       } else {
-        transcript = ownTranscript(params.id, limit);
+        transcript =
+          opts.inProcess === false ? null : ownTranscript(params.id, limit);
         if (!transcript) {
           const read = await targetTranscript(
             opts.call,

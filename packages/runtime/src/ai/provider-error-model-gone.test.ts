@@ -55,3 +55,42 @@ test.each([
   const err = classifyProviderError({ provider, model: "some-model", message });
   expect(err.kind).toBe("unknown");
 });
+
+test("NVIDIA 410 for a model past its end of life → model_unavailable, deprecated, with a served fallback", () => {
+  const message =
+    '410 {"type":"about:blank","title":"Gone","status":410,"detail":"The model \'openai/gpt-oss-20b\' has reached its end of life on 2026-11-18T08:00:00Z and is no longer available."}';
+  const err = classifyProviderError({
+    provider: "nvidia",
+    model: "openai/gpt-oss-20b",
+    message,
+  });
+  expect(err).toEqual({
+    kind: "model_unavailable",
+    provider: "nvidia",
+    model: "openai/gpt-oss-20b",
+    reason: "deprecated",
+    suggested_fallback: "minimaxai/minimax-m3.1-flash",
+    message,
+  });
+});
+
+test("a 410 that names a model is a retired model on any provider", () => {
+  const err = classifyProviderError({
+    provider: "openai-compatible",
+    model: "llama-3-70b",
+    message: '410 {"error":"model llama-3-70b was removed"}',
+  });
+  expect(err).toMatchObject({
+    kind: "model_unavailable",
+    reason: "deprecated",
+  });
+});
+
+test("a 410 that names no model stays unknown", () => {
+  const err = classifyProviderError({
+    provider: "openai-compatible",
+    model: "llama-3-70b",
+    message: "410 Gone",
+  });
+  expect(err.kind).toBe("unknown");
+});

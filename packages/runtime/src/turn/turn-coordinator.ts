@@ -81,6 +81,11 @@ export function startTurnCoordinator(
   };
   const forward = async (path: string, init?: RequestInit) => {
     if ((await admitted).kind !== "admitted" || !opened) return unavailable();
+    liveTurns.setMode(
+      agentId,
+      conversationId,
+      turn.liveMode?.current ?? turn.mode ?? "execute",
+    );
     const records = opened;
     const { origin, token } = await listen();
     const headers = new Headers(init?.headers);
