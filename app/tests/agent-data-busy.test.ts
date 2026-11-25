@@ -151,16 +151,16 @@ describe("the engine-call layer routes the busy answer report-only", () => {
   const waking = body.indexOf(
     'if (classifyQuietError(err) === "engine_waking")',
   );
-  const branch = new Set(body.slice(busy, waking));
+  const branch = body.slice(busy, waking);
 
   it("reports the quiet class before the waking branch, with no toast", () => {
     ok(busy !== -1 && busy < waking, "busy guard must precede waking");
     ok(
-      branch.has(
+      branch.includes(
         'reportQuietError("agent_data_busy", label, message, err, context)',
       ),
     );
-    ok(!branch.has("Toast"), "the busy answer shows nothing");
-    ok(branch.has("return false"), "nothing was told to the user");
+    ok(!branch.includes("Toast"), "the busy answer shows nothing");
+    ok(branch.includes("return false"), "nothing was told to the user");
   });
 });
