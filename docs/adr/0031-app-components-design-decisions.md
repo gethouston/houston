@@ -346,7 +346,7 @@ Lives in `mobile-new-mission-sheet.tsx`.
 
 ## Dictation consent
 
-The first mic use asks consent before downloading the roughly 181 MB whisper.cpp `ggml-small-q5_1` model; `useDictation` owns the progress subscription.
+The first mic use asks consent before downloading the roughly 190 MB whisper.cpp `ggml-small-q5_1` model; `useDictation` owns the progress subscription.
 
 Lives in `dictation-setup-dialog.tsx`.
 

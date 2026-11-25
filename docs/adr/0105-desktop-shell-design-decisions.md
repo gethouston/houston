@@ -286,7 +286,7 @@ The CPU and missing-model errors are exact strings the frontend maps to translat
 
 Both pipes are drained on threads because whisper logs its whole model load to stderr. A hung child is reaped so the stderr tail reaches EOF; that tail is the only clue. The non-zero exit message keeps its exact wording so the Sentry issue per exit flavor stays continuous.
 
-Model download: idempotent (a ready model returns a terminal Done tick), a guard removes the partial on early return, progress is throttled to about 4 ticks per second so a 181 MB stream cannot flood the webview, an error both emits an Error tick and returns `Err`, and a failed progress emit is logged only.
+Model download: idempotent (a ready model returns a terminal Done tick), a guard removes the partial on early return, progress is throttled to about 4 ticks per second so a 190 MB stream cannot flood the webview, an error both emits an Error tick and returns `Err`, and a failed progress emit is logged only.
 
 WAV duration parsing walks RIFF chunks (word-aligned: odd sizes carry a pad byte) to find the fmt byte rate, falling back to a fixed rate for non-RIFF input. The transcription timeout is four times the clip length with a 120 s floor.
 

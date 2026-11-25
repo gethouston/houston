@@ -40,9 +40,9 @@ Lives in `lib/dictation/types.ts`, `lib/dictation/use-dictation-model-setup.ts`,
 
 ## Model size hint mirrors the shell
 
-The size fallback matches `MODEL_SIZE_BYTES` in `app/src-tauri/src/dictation/model.rs`.
+The size fallback (`DICTATION_MODEL_FALLBACK_MB`) is `MODEL_SIZE_BYTES` in `app/src-tauri/src/dictation/model.rs` run through `dictationSizeMb`, so the dialog shows the same number before and after the status call answers. `app/tests/dictation-model-size.test.ts` pins it.
 
-Lives in `lib/dictation/use-dictation-model-setup.ts`.
+Lives in `lib/dictation/types.ts`, `lib/dictation/use-dictation-model-setup.ts`.
 
 ## 16 kHz PCM
 

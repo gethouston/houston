@@ -16,6 +16,8 @@ export interface DictationModelStatus {
 
 export const DICTATION_UNSUPPORTED_CPU = "dictation-unsupported-cpu";
 
+export const DICTATION_MODEL_FALLBACK_MB = 190;
+
 export interface DictationModelProgress {
   received: number;
   total: number;

@@ -4,11 +4,10 @@ import { showErrorToast, showExpectedStateToast } from "../error-toast";
 import { osDictationModelStatus } from "../os-bridge";
 import { downloadDictationModel } from "./model-download";
 import {
+  DICTATION_MODEL_FALLBACK_MB,
   dictationErrorText as errorText,
   dictationSizeMb as toMb,
 } from "./types";
-
-const DEFAULT_MODEL_SIZE_MB = 181;
 
 export interface DictationModelSetup {
   open: boolean;
@@ -33,7 +32,7 @@ export function useDictationModelSetup(
   const [open, setOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [progressPct, setProgressPct] = useState(0);
-  const [sizeMb, setSizeMb] = useState(DEFAULT_MODEL_SIZE_MB);
+  const [sizeMb, setSizeMb] = useState(DICTATION_MODEL_FALLBACK_MB);
 
   const reopen = useCallback(async () => {
     try {
