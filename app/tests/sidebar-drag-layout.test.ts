@@ -1,12 +1,12 @@
 import { deepStrictEqual, ok } from "node:assert";
 import { describe, it } from "node:test";
-import type { SidebarLayout } from "@houston/engine-adapter";
 import {
   arrangementFromRows,
   computeSidebarSections,
   flattenSidebar,
   projectSidebarDrop,
 } from "@houston-ai/layout";
+import type { SidebarLayout } from "@houston/engine-adapter";
 import { arrangeOp } from "../src/lib/sidebar-layout-ops.ts";
 
 const initial: SidebarLayout = {

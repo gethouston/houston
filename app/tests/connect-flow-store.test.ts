@@ -35,7 +35,7 @@ function countingWaker(): Waker & { wakes: number } {
 const store = () => useConnectFlowStore.getState();
 
 afterEach(() => {
-  for (const toolkit of [...connectFlowRegistry.keys()]) {
+  for (const toolkit of Array.from(connectFlowRegistry.keys())) {
     endFlow(connectFlowRegistry, toolkit);
   }
   cancelAllConnectFlows();

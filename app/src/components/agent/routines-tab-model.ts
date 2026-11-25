@@ -1,6 +1,6 @@
-import type { Activity, Routine } from "@houston/engine-adapter";
 import type { KanbanItem } from "@houston-ai/board";
 import type { RoutineRun } from "@houston-ai/routines";
+import type { Activity, Routine } from "@houston/engine-adapter";
 
 /**
  * Routines section selection state: which item, if any, owns the main-content

@@ -140,9 +140,8 @@ Body.
     "color",
     "seeded_by",
   ]);
-  expect(
-    composeJobDescription({ ...fields, role: "Coder", body }, previous),
-  ).toBe(`---
+  expect(composeJobDescription({ ...fields, role: "Coder", body }, previous))
+    .toBe(`---
 industry: Healthcare
 role: Coder
 color: blue

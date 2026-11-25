@@ -1,5 +1,5 @@
-import type { WhatsAppLink } from "@houston/engine-adapter";
 import { Button } from "@houston-ai/core";
+import type { WhatsAppLink } from "@houston/engine-adapter";
 import { isTauri } from "@tauri-apps/api/core";
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslation } from "react-i18next";

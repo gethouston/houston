@@ -1,10 +1,10 @@
+import { Button } from "@houston-ai/core";
 import type { BillingInterval, SeatPrices } from "@houston/engine-adapter";
 import {
   DEFAULT_CHECKOUT_INTERVAL,
   sellableInterval,
   sellsYearly,
 } from "@houston/sdk";
-import { Button } from "@houston-ai/core";
 import { Check } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

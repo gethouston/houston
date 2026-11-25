@@ -17,6 +17,7 @@ export function useBootLanding(
 ): BootLanding {
   const [boot, setBoot] = useState(INITIAL_BOOT_GUARD);
   const step = bootGuardStep(boot, input);
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- The boot guard advances after each commit until its state identity stops changing.
   useLayoutEffect(() => {
     if (boot === step.state) return;
     setBoot(step.state);

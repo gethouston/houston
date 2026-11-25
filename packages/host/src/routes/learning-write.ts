@@ -76,7 +76,7 @@ export async function appendLearningChecked(
  * hands out (routes/assistant.ts).
  */
 function isAssistantRoot(root: string): boolean {
-  return root.split("/").filter(Boolean).at(-1) === ASSISTANT_AGENT_NAME;
+  return root.split("/").findLast(Boolean) === ASSISTANT_AGENT_NAME;
 }
 
 /** Measured on the EXACT bytes `saveLearnings` would write, never an estimate. */

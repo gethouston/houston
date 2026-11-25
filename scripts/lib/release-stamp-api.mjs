@@ -8,7 +8,7 @@ export function makeGithubClient(token) {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: "application/vnd.github+json",
-        ...(init.headers || {}),
+        ...init.headers,
       },
     });
     if (!res.ok)

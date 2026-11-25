@@ -82,15 +82,16 @@ export function AddToWorkspaceSheet() {
     onDone: close,
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the wizard's reset is re-made every render; the sheet closing is the whole trigger.
+  /* oxlint-disable react-hooks/exhaustive-deps -- the wizard's reset is re-made every render; the sheet closing is the whole trigger. */
   useEffect(() => {
     if (open) return;
     setTrail(EMPTY_CREATE_FLOW_TRAIL);
     setEntrance("forward");
     copy.reset();
   }, [open]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the wizard's reset is re-made every render; the trail losing screens is the whole trigger.
+  /* oxlint-disable react-hooks/exhaustive-deps -- the wizard's reset is re-made every render; the trail losing screens is the whole trigger. */
   useEffect(() => {
     if (walked.trail === trail) return;
     if (walked.dropped.includes("copy")) copy.reset();
@@ -98,6 +99,7 @@ export function AddToWorkspaceSheet() {
     setEntrance("swap");
     setTrail(walked.trail);
   }, [walked.trail, walked.dropped, trail]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // The gates settled onto a user who may create neither thing: this run has no
   // screen left to stand on. Nothing says so — no control offers that state, so

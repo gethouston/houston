@@ -41,7 +41,7 @@ function makeSource(opts?: { delayReads?: () => Promise<void> }) {
     source,
     publish(event: WireFrame) {
       channel.publish(event, (frame) => {
-        for (const cb of [...subscribers]) cb(frame);
+        for (const cb of Array.from(subscribers)) cb(frame);
       });
     },
     /** Simulate a full authority restart: fresh channel, seq counter back to 0. */

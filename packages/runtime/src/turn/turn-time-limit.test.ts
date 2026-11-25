@@ -136,16 +136,16 @@ async function runWindDown(
   return { pool, frames, order, beatsAfterStop, turnRoot };
 }
 
-test.each([
-  false,
-  true,
-])("time-limit wind-down syncs, publishes the marker, emits one terminal and releases (empty=%s)", async (empty) => {
-  const { pool, frames, order, beatsAfterStop, turnRoot } = await runWindDown(
-    false,
-    empty,
-  );
-  expect(frames.filter((f) => f.type === "done" || f.type === "error")).toEqual(
-    [
+test.each([false, true])(
+  "time-limit wind-down syncs, publishes the marker, emits one terminal and releases (empty=%s)",
+  async (empty) => {
+    const { pool, frames, order, beatsAfterStop, turnRoot } = await runWindDown(
+      false,
+      empty,
+    );
+    expect(
+      frames.filter((f) => f.type === "done" || f.type === "error"),
+    ).toEqual([
       expect.objectContaining({
         type: "error",
         data: expect.objectContaining({
@@ -154,27 +154,27 @@ test.each([
             "This reply reached the 4-hour limit for one turn. Say continue and the agent picks up from what it saved.",
         }),
       }),
-    ],
-  );
-  expect(pool.read("workspaces/W/A/result.txt")).toBe("work survives");
-  expect(
-    pool.read("workspaces/W/A/.houston/runtime/conversations/c.json"),
-  ).toContain('"stopReason":"turn_time_limit"');
-  const assistant = pool.transcripts.find((call) =>
-    call.path.endsWith("/assistant"),
-  );
-  expect(JSON.parse(assistant?.body ?? "null")).toMatchObject({
-    message: {
-      role: "assistant",
-      stopReason: "turn_time_limit",
-      content: empty ? "" : "Saved progress",
-    },
-  });
-  expect(order.indexOf("sync")).toBeLessThan(order.indexOf("publish"));
-  expect(order.at(-1)).toBe("release");
-  expect(beatsAfterStop).toBeGreaterThan(1);
-  expect(existsSync(turnRoot)).toBe(false);
-});
+    ]);
+    expect(pool.read("workspaces/W/A/result.txt")).toBe("work survives");
+    expect(
+      pool.read("workspaces/W/A/.houston/runtime/conversations/c.json"),
+    ).toContain('"stopReason":"turn_time_limit"');
+    const assistant = pool.transcripts.find((call) =>
+      call.path.endsWith("/assistant"),
+    );
+    expect(JSON.parse(assistant?.body ?? "null")).toMatchObject({
+      message: {
+        role: "assistant",
+        stopReason: "turn_time_limit",
+        content: empty ? "" : "Saved progress",
+      },
+    });
+    expect(order.indexOf("sync")).toBeLessThan(order.indexOf("publish"));
+    expect(order.at(-1)).toBe("release");
+    expect(beatsAfterStop).toBeGreaterThan(1);
+    expect(existsSync(turnRoot)).toBe(false);
+  },
+);
 
 test("a 409 after the stop still fences instead of publishing saved progress", async () => {
   const { frames, pool } = await runWindDown(true);

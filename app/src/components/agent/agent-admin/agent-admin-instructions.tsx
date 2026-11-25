@@ -1,5 +1,5 @@
-import { parseJobDescription } from "@houston/sdk/job-description";
 import { Button, Spinner } from "@houston-ai/core";
+import { parseJobDescription } from "@houston/sdk/job-description";
 import { useTranslation } from "react-i18next";
 import { useInstructions, useSaveInstructions } from "../../../hooks/queries";
 import { useOrgWriteLock } from "../../../hooks/use-org-write-lock";

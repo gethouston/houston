@@ -3,6 +3,7 @@ import {
   type ReactNode,
   useContext,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -36,8 +37,9 @@ export function KeepAliveViews({
           .map((view) => view.id),
       ),
   );
-  const enabled = new Set(
-    views.filter((view) => view.enabled).map((view) => view.id),
+  const enabled = useMemo(
+    () => new Set(views.filter((view) => view.enabled).map((view) => view.id)),
+    [views],
   );
 
   const visible = new Set(visited);

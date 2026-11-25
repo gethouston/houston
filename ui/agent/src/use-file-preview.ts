@@ -48,7 +48,7 @@ export function useFilePreview(
   const [state, setState] = useState<PreviewState>({ kind: "pending" });
 
   const fileKey = `${file.path} ${file.dateModified ?? 0}`;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on fileKey (path + mtime) instead of the `file` object identity by design
+  /* oxlint-disable react-hooks/exhaustive-deps -- keyed on fileKey (path + mtime) instead of the `file` object identity by design */
   useEffect(() => {
     if (!visible) return;
     if (!loadPreview) {
@@ -81,6 +81,7 @@ export function useFilePreview(
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [visible, loadPreview, fileKey]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   return state;
 }

@@ -71,20 +71,23 @@ test.each([
   ["openai-codex", '{"detail":"Bad Request"}', 503],
   ["anthropic", "Invalid API key", 503],
   ["openai", "No API key found for openai.", 429],
-])("%s %j with a recorded %i classifies as without it", (provider, text, status) => {
-  const baseline = kindOf(toWire(failure(provider, text)));
-  resetCodexRefusalMemory();
-  const on = recorder();
-  const recorded = runWithProviderResponseCapture(() => {
-    on.after_provider_response?.({
-      type: "after_provider_response",
-      status,
-      headers: {},
+])(
+  "%s %j with a recorded %i classifies as without it",
+  (provider, text, status) => {
+    const baseline = kindOf(toWire(failure(provider, text)));
+    resetCodexRefusalMemory();
+    const on = recorder();
+    const recorded = runWithProviderResponseCapture(() => {
+      on.after_provider_response?.({
+        type: "after_provider_response",
+        status,
+        headers: {},
+      });
+      return kindOf(toWire(failure(provider, text)));
     });
-    return kindOf(toWire(failure(provider, text)));
-  });
-  expect(recorded).toBe(baseline);
-});
+    expect(recorded).toBe(baseline);
+  },
+);
 
 test("a stale 503 from an earlier attempt neither reclassifies nor tags the next failure", () => {
   const on = recorder();

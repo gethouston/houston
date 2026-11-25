@@ -32,10 +32,11 @@ export function FeaturedView({
 
   // Mount-only: the button that swapped the views is gone, so focus lands on
   // the control that swaps them back instead of falling to the page body.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once per view swap.
+  /* oxlint-disable react-hooks/exhaustive-deps -- runs once per view swap. */
   useEffect(() => {
     if (focusToggle) toggleRef.current?.focus();
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   return (
     <div className="flex flex-col gap-4">

@@ -10,8 +10,8 @@ import {
 } from "../src/components/organization/org-chart-share-card-geometry.ts";
 import { shareCardLayout } from "../src/components/organization/org-chart-share-layout.ts";
 import { shareCardCaps } from "../src/components/organization/org-chart-share-model.ts";
-import { buildOrgTree } from "../src/components/organization/org-chart-tree.ts";
 import type { Box } from "../src/components/organization/org-chart-tree-paths.ts";
+import { buildOrgTree } from "../src/components/organization/org-chart-tree.ts";
 
 const agent = (id: string, userId?: string): Agent => ({
   id,

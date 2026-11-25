@@ -129,7 +129,7 @@ export class DocShadowProjector {
 
   async flush(): Promise<void> {
     await this.ready;
-    await Promise.all([...this.tails.values()]);
+    await Promise.all(this.tails.values());
   }
 
   private async project(agentId: string, family: HoustonFamily): Promise<void> {

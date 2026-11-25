@@ -45,6 +45,7 @@ const COMPANY: Step = {
 /** A connect body whose app is already connected: it reports once, on
  *  mount, like the app's connect card. */
 function AlreadyConnected({ api }: { api: ConnectApi }) {
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- This fixture connects once on mount; later card updates must not repeat the connection.
   useEffect(() => api.onConnected(), []);
   return null;
 }

@@ -17,9 +17,8 @@ vi.mock("@houston/engine-adapter/control-plane", () => ({
   setupRuntimeClientFor: vi.fn(),
 }));
 
-const { pollProviderConnect } = await import(
-  "@houston/engine-adapter/client/provider-login-poll"
-);
+const { pollProviderConnect } =
+  await import("@houston/engine-adapter/client/provider-login-poll");
 
 beforeEach(() => {
   vi.useFakeTimers();

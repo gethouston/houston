@@ -1,11 +1,11 @@
 "use client";
 
+import { Input } from "@houston-ai/core";
 import {
   HANDLE_REGEX,
   normalizeHandle,
   RESERVED_HANDLES,
 } from "@houston/agentstore-contract";
-import { Input } from "@houston-ai/core";
 import { Check, Loader2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 

@@ -1,10 +1,10 @@
-import { type PlanUpgradeView, planUpgradeView } from "@houston/sdk";
 import { cn, Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
 import {
   type SidebarSurface,
   sidebarRowType,
   sidebarSheetRowClasses,
 } from "@houston-ai/layout";
+import { type PlanUpgradeView, planUpgradeView } from "@houston/sdk";
 import { CircleAlert, Gauge, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useActiveOrgBilling } from "../../hooks/queries/use-billing";

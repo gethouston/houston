@@ -14,7 +14,7 @@ import {
 
 export function deleteWorkspaceEntry(agentId: string, rel: string): void {
   state.workspace.delete(key(agentId, rel));
-  for (const k of [...state.workspace.keys()]) {
+  for (const k of Array.from(state.workspace.keys())) {
     if (k.startsWith(`${key(agentId, rel)}/`)) state.workspace.delete(k);
   }
   emitDomain("FilesChanged", agentId);
@@ -64,7 +64,7 @@ function moveKeys(agentId: string, from: string, to: string): void {
     state.workspace.delete(key(agentId, from));
     state.workspace.set(key(agentId, to), exact);
   }
-  for (const k of [...state.workspace.keys()]) {
+  for (const k of Array.from(state.workspace.keys())) {
     const prefix = `${key(agentId, from)}/`;
     if (k.startsWith(prefix)) {
       const v = state.workspace.get(k);

@@ -38,7 +38,7 @@ const Thumb = memo(function Thumb({
         (canvas) => {
           if (!canvas) return;
           canvas.className = "pdf-thumb-canvas";
-          for (const old of [...el.children]) releaseCanvas(old);
+          for (const old of Array.from(el.children)) releaseCanvas(old);
           el.replaceChildren(canvas);
         },
         onError,
@@ -53,7 +53,7 @@ const Thumb = memo(function Thumb({
   useEffect(() => {
     const el = host.current;
     return () => {
-      for (const old of [...(el?.children ?? [])]) releaseCanvas(old);
+      for (const old of Array.from(el?.children ?? [])) releaseCanvas(old);
     };
   }, []);
   useEffect(() => {

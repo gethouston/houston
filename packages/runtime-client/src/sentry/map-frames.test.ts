@@ -95,7 +95,7 @@ describe("bundle frame mapping", () => {
     // No frame is left at the bundle path; the test's own frame is untouched.
     expect(frames.every((f) => f.filename !== fixture.bundlePath)).toBe(true);
     expect(
-      frames.some((f) => /map-frames\.test\.ts$/.test(f.filename ?? "")),
+      frames.some((f) => (f.filename ?? "").endsWith("map-frames.test.ts")),
     ).toBe(true);
   });
 

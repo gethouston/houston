@@ -14,13 +14,13 @@ import {
   columnSlots,
   columnsOf,
 } from "./org-chart-share-columns.ts";
-import type { OrgTree } from "./org-chart-tree.ts";
 import {
   type Box,
   connectorPath,
   NODE_ID,
   treeEdges,
 } from "./org-chart-tree-paths.ts";
+import type { OrgTree } from "./org-chart-tree.ts";
 
 /**
  * Where everything sits on the share image. Pure and DOM-free: the painter

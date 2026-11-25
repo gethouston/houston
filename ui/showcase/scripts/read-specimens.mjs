@@ -17,8 +17,8 @@ const REPO = resolve(SHOWCASE, "../..");
 function specimenFiles() {
   const found = [];
   const walk = (dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true }).sort(
-      (a, b) => (a.name < b.name ? -1 : 1),
+    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+      a.name < b.name ? -1 : 1,
     )) {
       const path = join(dir, entry.name);
       if (entry.isDirectory()) walk(path);

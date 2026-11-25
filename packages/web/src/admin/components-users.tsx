@@ -65,7 +65,7 @@ function UserRow({ u, actual }: { u: UserView; actual?: number }) {
   const toggle = () => setOpen((v) => !v);
   return (
     <>
-      {/* biome-ignore lint/a11y/useSemanticElements: <tr> must stay a table row — converting to <button> produces invalid HTML inside <tbody>; keyboard handling is provided via onKeyDown */}
+      {/* <tr> must stay a table row — converting to <button> produces invalid HTML inside <tbody>; keyboard handling is provided via onKeyDown */}
       <tr
         onClick={toggle}
         onKeyDown={(e) => {

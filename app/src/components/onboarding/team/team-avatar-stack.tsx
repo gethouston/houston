@@ -22,7 +22,7 @@ export function TeamAvatarStack({
       {colors.map((color, index) => (
         <span
           // Faces are interchangeable and never reorder; position is identity.
-          // biome-ignore lint/suspicious/noArrayIndexKey: see above
+          // oxlint-disable-next-line react/no-array-index-key -- see above
           key={index}
           className="-ml-3 rounded-full bg-background p-0.5 first:ml-0"
         >

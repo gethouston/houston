@@ -9,7 +9,9 @@ import {
 } from "./agent-card";
 import { agentTone, agentToneBackground } from "./agent-tile";
 
-const PlainLink: StoreLinkComponent = (props) => <a {...props} />;
+const PlainLink: StoreLinkComponent = ({ children, ...props }) => (
+  <a {...props}>{children}</a>
+);
 
 const defaults: Pick<AgentCardLabels, "newAgent" | "installs"> = {
   newAgent: "New",

@@ -215,21 +215,24 @@ test("stamps setup_activity_id and created_by when supplied", async () => {
 test.each([
   ["anthropic", "claude-sonnet-5-5", "medium"],
   ["openai-codex", "gpt-6.1-terra", "low"],
-])("UI/SDK creation with %s and no explicit model uses the routine default", async (provider, model, effort) => {
-  const vfs = new MemoryVfs();
-  await createRoutineChecked(
-    vfs,
-    ROOT,
-    WS,
-    { ...daily("A"), provider, effort: "medium" },
-    OPTS,
-  );
-  expect((await loadRoutines(vfs, ROOT)).items[0]).toMatchObject({
-    provider,
-    model,
-    effort,
-  });
-});
+])(
+  "UI/SDK creation with %s and no explicit model uses the routine default",
+  async (provider, model, effort) => {
+    const vfs = new MemoryVfs();
+    await createRoutineChecked(
+      vfs,
+      ROOT,
+      WS,
+      { ...daily("A"), provider, effort: "medium" },
+      OPTS,
+    );
+    expect((await loadRoutines(vfs, ROOT)).items[0]).toMatchObject({
+      provider,
+      model,
+      effort,
+    });
+  },
+);
 
 test("UI/SDK creation preserves an explicit model and later model edits", async () => {
   const vfs = new MemoryVfs();

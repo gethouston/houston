@@ -7,8 +7,8 @@ import {
   EMPTY_PROVIDER_CAPABILITIES,
   getVisibleProviders,
 } from "../providers.ts";
-import { loadHubCatalog } from "./catalog.ts";
 import type { HubCatalog } from "./catalog-types.ts";
+import { loadHubCatalog } from "./catalog.ts";
 
 /**
  * The catalog's data state, for the picker to reflect:
@@ -52,7 +52,7 @@ export function useHubCatalog(): {
   // Rebuild only when the fetched catalog, the hydrated `PROVIDERS` set, or the
   // visibility inputs change. Scope the hub to the SAME providers the picker
   // shows (`getVisibleProviders`) so the AI Models tab and the picker never drift.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `piCatalog` and the mutated-in-place PROVIDERS `getVisibleProviders` reads both advance in lockstep with `updatedAt`, which keys the memo.
+  /* oxlint-disable react-hooks/exhaustive-deps -- `piCatalog` and the mutated-in-place PROVIDERS `getVisibleProviders` reads both advance in lockstep with `updatedAt`, which keys the memo. */
   const catalog = useMemo(
     () =>
       piCatalog
@@ -68,6 +68,7 @@ export function useHubCatalog(): {
         : undefined,
     [updatedAt, newEngine, desktop, providerCapabilities],
   );
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   const status: HubCatalogStatus = isLoading ? "loading" : "ready";
 

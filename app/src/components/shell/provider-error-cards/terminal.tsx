@@ -5,8 +5,8 @@
  * All render on the unified `RowCard` (HOU-467).
  */
 
-import { providerErrorReportTags } from "@houston/sdk/turns/provider-error-report";
 import type { ProviderError } from "@houston-ai/chat";
+import { providerErrorReportTags } from "@houston/sdk/turns/provider-error-report";
 import { CloudOffIcon, RefreshCwIcon, WrenchIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { RowCard } from "../../cards/row-card";

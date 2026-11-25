@@ -1,8 +1,8 @@
+import { Button, Input } from "@houston-ai/core";
 import {
   type ChannelLink,
   channelConnectCommand,
 } from "@houston/engine-adapter";
-import { Button, Input } from "@houston-ai/core";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

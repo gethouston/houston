@@ -91,9 +91,8 @@ async function installDom() {
   ({ createRoot } = await import("react-dom/client"));
   ({ AIBoard } = await import("@houston-ai/board"));
   ({ TooltipProvider } = await import("@houston-ai/core"));
-  ({ useBoardDrafts } = await import(
-    "../src/components/board/use-board-drafts.ts"
-  ));
+  ({ useBoardDrafts } =
+    await import("../src/components/board/use-board-drafts.ts"));
   ({ useDraftStore } = await import("../src/stores/drafts.ts"));
 }
 

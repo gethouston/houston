@@ -1,4 +1,3 @@
-import type { OrgMember } from "@houston/engine-adapter";
 import {
   Command,
   CommandEmpty,
@@ -9,6 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@houston-ai/core";
+import type { OrgMember } from "@houston/engine-adapter";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

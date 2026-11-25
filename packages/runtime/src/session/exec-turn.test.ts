@@ -94,9 +94,8 @@ vi.mock("../store/conversations", () => ({
 
 const { execTurn, recordUserTurn } = await import("./exec-turn");
 const { subscribe } = await import("./bus");
-const { recordQuestions, recordConnection, recordConfirmation } = await import(
-  "./interaction"
-);
+const { recordQuestions, recordConnection, recordConfirmation } =
+  await import("./interaction");
 const { appendAssistantMessage, appendUserMessage, consumeSessionReplay } =
   await import("../store/conversations");
 const { getHistory } = await import("../store/conversations");
@@ -146,7 +145,7 @@ function fakeConv(
     async prompt(text) {
       opts.onPrompt?.(text);
       await script((e) => {
-        for (const l of [...listeners]) l(e);
+        for (const l of Array.from(listeners)) l(e);
       });
     },
     async abort() {},
@@ -1163,9 +1162,8 @@ test("a thrown turn clears the in-flight marker too", async () => {
  * request's status and request id reach the turn's card.
  */
 test("a failed response's status and request id reach the card through execTurn", async () => {
-  const { failWithRecordedResponse } = await import(
-    "../backends/pi/provider-response.test-support"
-  );
+  const { failWithRecordedResponse } =
+    await import("../backends/pi/provider-response.test-support");
   vi.spyOn(console, "error").mockImplementation(() => {});
   const id = "exec-provider-response";
   const { events, unsub } = collect(id);

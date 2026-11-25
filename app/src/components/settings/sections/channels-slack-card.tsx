@@ -1,5 +1,5 @@
-import type { ChannelConnection, ChannelLink } from "@houston/engine-adapter";
 import { Button } from "@houston-ai/core";
+import type { ChannelConnection, ChannelLink } from "@houston/engine-adapter";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import type { SlackHandoff } from "../../../lib/channel-handoff";

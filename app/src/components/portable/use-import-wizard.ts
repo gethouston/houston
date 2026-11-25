@@ -72,13 +72,15 @@ export function useImportWizard() {
 
   const currentStep = steps[stepIndex] ?? "upload";
 
+  const pkgResetPackage = pkg.resetPackage;
+  const providerModelResetPreference = providerModel.resetPreference;
   const reset = useCallback(() => {
     setStepIndex(0);
     setName("");
     setColor(AGENT_COLORS[0].id);
-    pkg.resetPackage();
-    providerModel.resetPreference();
-  }, [pkg.resetPackage, providerModel.resetPreference]);
+    pkgResetPackage();
+    providerModelResetPreference();
+  }, [pkgResetPackage, providerModelResetPreference]);
 
   const close = useCallback(() => {
     setOpen(false);

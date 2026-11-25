@@ -18,8 +18,8 @@ import {
   linkIdpToSession,
 } from "./firebase-idp.ts";
 import { decodeIdTokenClaims } from "./id-token.ts";
-import type { Session } from "./session.ts";
 import { sessionFromIdp } from "./session-from-idp.ts";
+import type { Session } from "./session.ts";
 
 interface Held {
   providerId: IdpProviderId;

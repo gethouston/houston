@@ -1,5 +1,5 @@
-import { Capacitor } from "@capacitor/core";
 import { FirebaseMessaging } from "@capacitor-firebase/messaging";
+import { Capacitor } from "@capacitor/core";
 import type { NativeShell } from "../../web/src/shims/native-shell";
 
 declare const __HOUSTON_NATIVE_PUSH_IOS_AVAILABLE__: boolean;

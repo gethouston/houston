@@ -384,43 +384,46 @@ test("a body longer than its Content-Range keeps none of its bytes", async () =>
   expect(query.headers.get("range")).toBeNull();
 });
 
-test.each([
-  false,
-  true,
-])("evicts incomplete before complete sessions, all complete = %s", async (allComplete) => {
-  let now = Date.now();
-  sessions = new LocalUploadSessions(join(directory, "eviction"), () => now++);
-  host.deps.uploadSessions = sessions;
-  await close(server);
-  server = createControlPlaneServer(host.deps);
-  base = await listen(server);
-  const completed = await open(1);
-  expect(
-    (await put(completed, "bytes 0-0/1", new Uint8Array([1]))).status,
-  ).toBe(200);
-  const foreign = await sessions.open(
-    { name: "other", size: 1, purpose: "attachment" },
-    { agentId: "a", workspace: "w", owner: "someone-else" },
-  );
-  const remaining = [];
-  for (let n = 1; n < 16; n++) {
-    const session = await open(1);
-    if (allComplete)
-      expect(
-        (await put(session, "bytes 0-0/1", new Uint8Array([1]))).status,
-      ).toBe(200);
-    remaining.push(session);
-  }
-  await open(1);
-  const evicted = allComplete ? completed : remaining[0];
-  if (!evicted) throw new Error("missing eviction candidate");
-  expect(await sessions.meta(evicted.uploadId)).toBeNull();
-  if (!allComplete)
-    expect(await sessions.meta(completed.uploadId)).not.toBeNull();
-  expect(await sessions.meta(foreign.uploadId)).not.toBeNull();
-  expect(
-    (await readdir(sessions.directory)).filter((file) =>
-      file.endsWith(".json"),
-    ),
-  ).toHaveLength(17);
-});
+test.each([false, true])(
+  "evicts incomplete before complete sessions, all complete = %s",
+  async (allComplete) => {
+    let now = Date.now();
+    sessions = new LocalUploadSessions(
+      join(directory, "eviction"),
+      () => now++,
+    );
+    host.deps.uploadSessions = sessions;
+    await close(server);
+    server = createControlPlaneServer(host.deps);
+    base = await listen(server);
+    const completed = await open(1);
+    expect(
+      (await put(completed, "bytes 0-0/1", new Uint8Array([1]))).status,
+    ).toBe(200);
+    const foreign = await sessions.open(
+      { name: "other", size: 1, purpose: "attachment" },
+      { agentId: "a", workspace: "w", owner: "someone-else" },
+    );
+    const remaining = [];
+    for (let n = 1; n < 16; n++) {
+      const session = await open(1);
+      if (allComplete)
+        expect(
+          (await put(session, "bytes 0-0/1", new Uint8Array([1]))).status,
+        ).toBe(200);
+      remaining.push(session);
+    }
+    await open(1);
+    const evicted = allComplete ? completed : remaining[0];
+    if (!evicted) throw new Error("missing eviction candidate");
+    expect(await sessions.meta(evicted.uploadId)).toBeNull();
+    if (!allComplete)
+      expect(await sessions.meta(completed.uploadId)).not.toBeNull();
+    expect(await sessions.meta(foreign.uploadId)).not.toBeNull();
+    expect(
+      (await readdir(sessions.directory)).filter((file) =>
+        file.endsWith(".json"),
+      ),
+    ).toHaveLength(17);
+  },
+);

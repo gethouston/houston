@@ -5,8 +5,8 @@
 
 import { identityLog } from "./log.ts";
 import { refreshNow } from "./refresh.ts";
-import type { Session } from "./session.ts";
 import { loadSession } from "./session-store.ts";
+import type { Session } from "./session.ts";
 
 /** Refresh this long before `expiresAt` so a call never rides an expired token. */
 const REFRESH_SKEW_MS = 5 * 60_000;

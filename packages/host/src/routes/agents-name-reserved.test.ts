@@ -130,15 +130,14 @@ async function agentNames(): Promise<string[]> {
   return (await deps.store.listAgents(ws.id)).map((a) => a.name).sort();
 }
 
-test.each([
-  "Houston",
-  "houston",
-  "  HOUSTON ",
-])("a desktop create named %j answers 400 name_reserved and makes no folder", async (name) => {
-  expectReserved(await post({ name }));
-  expect(existsSync(join(root, "Personal", name.trim()))).toBe(false);
-  expect(await agentNames()).toEqual([]);
-});
+test.each(["Houston", "houston", "  HOUSTON "])(
+  "a desktop create named %j answers 400 name_reserved and makes no folder",
+  async (name) => {
+    expectReserved(await post({ name }));
+    expect(existsSync(join(root, "Personal", name.trim()))).toBe(false);
+    expect(await agentNames()).toEqual([]);
+  },
+);
 
 test("names that only contain Houston are ordinary names", async () => {
   expect((await post({ name: "Houston Sales" })).status).toBe(201);

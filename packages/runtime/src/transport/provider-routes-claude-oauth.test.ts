@@ -28,9 +28,8 @@ process.env.HOUSTON_DATA_DIR = mkdtempSync(
   join(tmpdir(), "claude-route-data-"),
 );
 
-const { claudeCredentialsFile, claudeLoginConfigDir } = await import(
-  "../backends/claude/paths"
-);
+const { claudeCredentialsFile, claudeLoginConfigDir } =
+  await import("../backends/claude/paths");
 const { config } = await import("../config");
 const { handleProviderRoute } = await import("./provider-routes");
 const { authStorage } = await import("../auth/storage");

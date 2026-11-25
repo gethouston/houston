@@ -1,9 +1,9 @@
+import { ConfirmDialog } from "@houston-ai/core";
 import type {
   ChannelConnection,
   ChannelProvider,
   ChannelProviderId,
 } from "@houston/engine-adapter";
-import { ConfirmDialog } from "@houston-ai/core";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 

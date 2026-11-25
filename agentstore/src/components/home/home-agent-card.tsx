@@ -1,5 +1,5 @@
-import type { StoreAgentSummary } from "@houston/agentstore-client";
 import { AgentCard, agentTone } from "@houston-ai/store";
+import type { StoreAgentSummary } from "@houston/agentstore-client";
 import Link from "next/link";
 
 export { agentTone };

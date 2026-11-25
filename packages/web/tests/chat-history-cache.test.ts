@@ -1,3 +1,4 @@
+import { feedItemsToMessages, startedMissions } from "@houston-ai/chat";
 import { HoustonClient } from "@houston/engine-adapter/client";
 import {
   type CachedFrame,
@@ -8,7 +9,6 @@ import {
 } from "@houston/engine-adapter/conversation-cache";
 import { conversationStore } from "@houston/engine-adapter/vm";
 import { conversationScope, historyToFeed } from "@houston/sdk";
-import { feedItemsToMessages, startedMissions } from "@houston-ai/chat";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { computeTurnEndSummary } from "../../../ui/chat/src/turn-tools";
 

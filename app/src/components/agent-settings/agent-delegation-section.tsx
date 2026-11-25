@@ -1,5 +1,3 @@
-import { delegationWithAccepts, delegationWithMode } from "@houston/sdk";
-import type { AgentDelegation, AgentDelegationMode } from "@houston/wire-types";
 import {
   Button,
   Select,
@@ -8,6 +6,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@houston-ai/core";
+import { delegationWithAccepts, delegationWithMode } from "@houston/sdk";
+import type { AgentDelegation, AgentDelegationMode } from "@houston/wire-types";
 import { useTranslation } from "react-i18next";
 import {
   useAgentDelegation,

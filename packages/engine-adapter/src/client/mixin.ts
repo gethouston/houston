@@ -8,7 +8,7 @@ import type { HoustonClientBase } from "./base";
  * while all shared state lives once on `this.ctx` ({@link AdapterContext}) —
  * there is no per-cluster copy of `cp`/`engine`/`sdk`.
  */
-// biome-ignore lint/suspicious/noExplicitAny: mixin constructors are variadic by construction.
+// mixin constructors are variadic by construction.
 export type Ctor<T = object> = new (...args: any[]) => T;
 
 /** The base every cluster mixin extends — carries the shared `ctx`. */

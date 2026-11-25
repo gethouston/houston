@@ -81,89 +81,95 @@ test.each([
     workspaceRel: "workspaces/W/A",
   },
   { name: "cloudrun", dataRel: "data", workspaceRel: "workspace" },
-])("a claimed turn syncs its conversation, session, granted docs, and workspace files on $name layout", async ({
-  dataRel,
-  workspaceRel,
-}) => {
-  const storeRoot = await mkdtemp(join(tmpdir(), "turn-store-"));
-  const prefixRoot = join(storeRoot, "ws", "w1", "agent-1");
-  await seed(prefixRoot, `${dataRel}/settings.json`, "{}");
-  await seed(prefixRoot, `${dataRel}/conversations/c1.json`, '{"before":1}');
-  const runTurn: TurnRunner = async (layout) => {
-    await seed(layout.dataDir, "conversations/c1.json", '{"after":1}');
-    await seed(layout.dataDir, "sessions/c1/state.json", "session");
-    await seed(
-      layout.workspaceDir,
-      ".houston/activity/activity.json",
-      '[{"id":"a1","title":"Plan","status":"running"}]',
+])(
+  "a claimed turn syncs its conversation, session, granted docs, and workspace files on $name layout",
+  async ({ dataRel, workspaceRel }) => {
+    const storeRoot = await mkdtemp(join(tmpdir(), "turn-store-"));
+    const prefixRoot = join(storeRoot, "ws", "w1", "agent-1");
+    await seed(prefixRoot, `${dataRel}/settings.json`, "{}");
+    await seed(prefixRoot, `${dataRel}/conversations/c1.json`, '{"before":1}');
+    const runTurn: TurnRunner = async (layout) => {
+      await seed(layout.dataDir, "conversations/c1.json", '{"after":1}');
+      await seed(layout.dataDir, "sessions/c1/state.json", "session");
+      await seed(
+        layout.workspaceDir,
+        ".houston/activity/activity.json",
+        '[{"id":"a1","title":"Plan","status":"running"}]',
+      );
+      await seed(
+        layout.workspaceDir,
+        ".houston/activity/activity.schema.json",
+        '{"type":"array"}',
+      );
+      await seed(layout.workspaceDir, "result.txt", "workspace");
+      await seed(layout.workspaceDir, ".houston/routines/routines.json", "[]");
+      return {};
+    };
+    const log = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const base = await listen(
+      createTurnServer({
+        store: new LocalDirStore(storeRoot),
+        token: "",
+        runTurn,
+        fetchImpl: async () => new Response(null, { status: 204 }),
+      }),
     );
-    await seed(
-      layout.workspaceDir,
-      ".houston/activity/activity.schema.json",
-      '{"type":"array"}',
+
+    const emitted = await post(base, request(claimed));
+    const keys = await new LocalDirStore(storeRoot).list("ws/w1/agent-1");
+
+    expect(
+      await readFile(
+        join(prefixRoot, dataRel, "conversations/c1.json"),
+        "utf8",
+      ),
+    ).toBe('{"after":1}');
+    expect(
+      await readFile(
+        join(prefixRoot, dataRel, "sessions/c1/state.json"),
+        "utf8",
+      ),
+    ).toBe("session");
+    expect(
+      await readFile(
+        join(prefixRoot, workspaceRel, ".houston/activity/activity.json"),
+        "utf8",
+      ),
+    ).toBe('[{"id":"a1","title":"Plan","status":"running"}]');
+    // Agent-owned files sync, including structured docs; only runtime state stays
+    // conversation-scoped.
+    expect(keys).toContain(`ws/w1/agent-1/${workspaceRel}/result.txt`);
+    // The schema sidecar is .houston-internal and NOT turn-owned: the store's
+    // turn-claim scope rejects it, so the sync must not attempt it.
+    expect(keys).not.toContain(
+      `ws/w1/agent-1/${workspaceRel}/.houston/activity/activity.schema.json`,
     );
-    await seed(layout.workspaceDir, "result.txt", "workspace");
-    await seed(layout.workspaceDir, ".houston/routines/routines.json", "[]");
-    return {};
-  };
-  const log = vi.spyOn(console, "info").mockImplementation(() => undefined);
-  const base = await listen(
-    createTurnServer({
-      store: new LocalDirStore(storeRoot),
-      token: "",
-      runTurn,
-      fetchImpl: async () => new Response(null, { status: 204 }),
-    }),
-  );
-
-  const emitted = await post(base, request(claimed));
-  const keys = await new LocalDirStore(storeRoot).list("ws/w1/agent-1");
-
-  expect(
-    await readFile(join(prefixRoot, dataRel, "conversations/c1.json"), "utf8"),
-  ).toBe('{"after":1}');
-  expect(
-    await readFile(join(prefixRoot, dataRel, "sessions/c1/state.json"), "utf8"),
-  ).toBe("session");
-  expect(
-    await readFile(
-      join(prefixRoot, workspaceRel, ".houston/activity/activity.json"),
-      "utf8",
-    ),
-  ).toBe('[{"id":"a1","title":"Plan","status":"running"}]');
-  // Agent-owned files sync, including structured docs; only runtime state stays
-  // conversation-scoped.
-  expect(keys).toContain(`ws/w1/agent-1/${workspaceRel}/result.txt`);
-  // The schema sidecar is .houston-internal and NOT turn-owned: the store's
-  // turn-claim scope rejects it, so the sync must not attempt it.
-  expect(keys).not.toContain(
-    `ws/w1/agent-1/${workspaceRel}/.houston/activity/activity.schema.json`,
-  );
-  expect(keys).toContain(
-    `ws/w1/agent-1/${workspaceRel}/.houston/routines/routines.json`,
-  );
-  // The landed writes name the events other tabs need: the conversation, the
-  // board doc, and the workspace file (result.txt at the workspace root now
-  // fires FilesChanged, not the old files/-subtree-only silence). Out-of-scope
-  // files and session state do not count.
-  expect(emitted.at(-1)).toMatchObject({
-    type: "done",
-    data: {
-      changed: [
-        "ActivityChanged",
-        "ConversationsChanged",
-        "FilesChanged",
-        "RoutinesChanged",
-      ],
-    },
-  });
-  // The out-of-scope schema write is skipped AND logged — silent to the user,
-  // never to us.
-  expect(log).toHaveBeenCalledWith(
-    expect.stringContaining("pool_writes_out_of_scope=1"),
-  );
-  log.mockRestore();
-});
+    expect(keys).toContain(
+      `ws/w1/agent-1/${workspaceRel}/.houston/routines/routines.json`,
+    );
+    // The landed writes name the events other tabs need: the conversation, the
+    // board doc, and the workspace file (result.txt at the workspace root now
+    // fires FilesChanged, not the old files/-subtree-only silence). Out-of-scope
+    // files and session state do not count.
+    expect(emitted.at(-1)).toMatchObject({
+      type: "done",
+      data: {
+        changed: [
+          "ActivityChanged",
+          "ConversationsChanged",
+          "FilesChanged",
+          "RoutinesChanged",
+        ],
+      },
+    });
+    // The out-of-scope schema write is skipped AND logged — silent to the user,
+    // never to us.
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("pool_writes_out_of_scope=1"),
+    );
+    log.mockRestore();
+  },
+);
 
 test("an unclaimed turn retains full sync-back", async () => {
   const storeRoot = await mkdtemp(join(tmpdir(), "turn-store-"));

@@ -115,7 +115,7 @@ export class Materializer {
 
   /** Same, for every download landing under `prefix/` (a prefix delete). */
   async settleUnder(prefix: string): Promise<void> {
-    for (const key of [...this.inflight.keys()]) {
+    for (const key of Array.from(this.inflight.keys())) {
       if (key.startsWith(`${prefix}/`)) await this.settle(key);
     }
   }

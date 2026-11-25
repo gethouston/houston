@@ -1,8 +1,8 @@
-import type { ProviderId } from "@houston/runtime-client";
 import {
   PROVIDER_CONNECT_TIMEOUT_ERROR,
   PROVIDER_LOGIN_TIMEOUT_ERROR,
 } from "@houston-ai/core";
+import type { ProviderId } from "@houston/runtime-client";
 import { emitEvent } from "../bus";
 import {
   agentPath,

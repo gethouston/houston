@@ -1,6 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { RoutineRun } from "@houston-ai/routines";
+import type { Routine } from "@houston/engine-adapter";
 import {
   adoptDraft,
   clearMissingRoutine,
@@ -125,8 +126,7 @@ describe("routines tab model — runChatActivity", () => {
     integrations: [],
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
-    // biome-ignore lint/suspicious/noExplicitAny: minimal fixture
-  } as any;
+  } as Routine;
 
   it("carries the run's real session key and a client-only id", () => {
     const activity = runChatActivity(routine, "run9", {

@@ -17,15 +17,12 @@ const { initReactI18next } = await import("react-i18next");
 const teams = (
   await import("../src/locales/en/teams.json", { with: { type: "json" } })
 ).default;
-const { useOrgNav } = await import(
-  "../src/components/organization/org-nav-store.ts"
-);
-const { usePersonFocus } = await import(
-  "../src/components/organization/use-person-focus.ts"
-);
-const { PeopleRosterRow } = await import(
-  "../src/components/organization/people-roster-row.tsx"
-);
+const { useOrgNav } =
+  await import("../src/components/organization/org-nav-store.ts");
+const { usePersonFocus } =
+  await import("../src/components/organization/use-person-focus.ts");
+const { PeopleRosterRow } =
+  await import("../src/components/organization/people-roster-row.tsx");
 
 await i18next.use(initReactI18next).init({
   lng: "en",

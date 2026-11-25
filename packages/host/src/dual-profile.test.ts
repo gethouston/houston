@@ -228,7 +228,7 @@ async function battery(base: string): Promise<Step[]> {
   ) => {
     const res = await fetch(`${base}${path}`, {
       ...init,
-      headers: { ...auth, ...(init?.headers ?? {}) },
+      headers: { ...auth, ...init?.headers },
     });
     const ct = res.headers.get("content-type") ?? "";
     if (ct.includes("application/json")) {

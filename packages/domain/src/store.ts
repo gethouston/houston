@@ -61,6 +61,7 @@ export function parseJsonDoc(raw: string, key: string): unknown {
     if (salvaged !== undefined) return salvaged;
     throw new Error(
       `${key} is not valid JSON (${err instanceof Error ? err.message : String(err)})`,
+      { cause: err },
     );
   }
 }

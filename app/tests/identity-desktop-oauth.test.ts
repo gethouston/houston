@@ -6,13 +6,13 @@ import {
 } from "../src/lib/identity/apple-return.ts";
 import { IdentityError } from "../src/lib/identity/errors.ts";
 import {
-  awaitLoopbackCallback,
-  cancelPendingAuthorize,
-} from "../src/lib/identity/oauth-attempt.ts";
-import {
   type DeepLinkListen,
   withBrowserOpenDeadline,
 } from "../src/lib/identity/oauth-attempt-contract.ts";
+import {
+  awaitLoopbackCallback,
+  cancelPendingAuthorize,
+} from "../src/lib/identity/oauth-attempt.ts";
 import {
   parseCallbackQuery,
   parseCallbackUrl,

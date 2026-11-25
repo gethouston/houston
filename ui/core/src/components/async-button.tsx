@@ -16,7 +16,7 @@ export interface AsyncButtonProps extends Omit<BaseButtonProps, "onClick"> {
    */
   onClick?: (
     event: React.MouseEvent<HTMLButtonElement>,
-    // biome-ignore lint/suspicious/noConfusingVoidType: sync handlers return void, async ones return a Promise
+    // sync handlers return void, async ones return a Promise
   ) => void | Promise<unknown>;
   /**
    * Render a leading spinner while the action is pending. Defaults to `true`.

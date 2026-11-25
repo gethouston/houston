@@ -45,21 +45,17 @@ async function start(): Promise<Server> {
     // the files this process hydrates and lets this process sync back what it
     // writes; files written with an explicit private mode (credentials) keep it.
     if (config.toolShell !== null) process.umask(0o002);
-    const { AdmissionLimiter, turnConcurrency } = await import(
-      "./turn/admission"
-    );
+    const { AdmissionLimiter, turnConcurrency } =
+      await import("./turn/admission");
     const { createTurnServer } = await import("./turn/server");
     const { GcsStore } = await import("./turn/gcs-store");
     const { poolOnlyFallbackStore } = await import("./turn/turn-store");
-    const { WorkerRegistration: Registration } = await import(
-      "./turn/worker-registration"
-    );
-    const { loadWorkerRegistrationConfig, turnServerToken } = await import(
-      "./turn/worker-registration-config"
-    );
-    const { LocalDirStore } = await import(
-      "@houston/runtime-client/object-sync"
-    );
+    const { WorkerRegistration: Registration } =
+      await import("./turn/worker-registration");
+    const { loadWorkerRegistrationConfig, turnServerToken } =
+      await import("./turn/worker-registration-config");
+    const { LocalDirStore } =
+      await import("@houston/runtime-client/object-sync");
     if (
       !config.gcsBucket &&
       !config.localStoreDir &&
@@ -132,9 +128,8 @@ async function start(): Promise<Server> {
     if (config.poolSingleUse && !spent) assertMarkerWritable();
     const registrationConfig = await loadWorkerRegistrationConfig();
     if (config.poolSingleUse) {
-      const { installTurnNetworkMarks } = await import(
-        "./turn/turn-network-marks"
-      );
+      const { installTurnNetworkMarks } =
+        await import("./turn/turn-network-marks");
       installTurnNetworkMarks([
         process.env.HOUSTON_POOL_STORE_URL ?? "",
         process.env.HOUSTON_TURNLOG_URL ?? "",
@@ -220,9 +215,8 @@ let workerDrain: Promise<void> = Promise.resolve();
 async function drainTranscriptShadow(): Promise<void> {
   if (config.mode === "turn") return;
   try {
-    const { drainTranscriptShadowForShutdown } = await import(
-      "./store/conversations"
-    );
+    const { drainTranscriptShadowForShutdown } =
+      await import("./store/conversations");
     await drainTranscriptShadowForShutdown(2_000);
   } catch (error) {
     logger.error("transcript shadow shutdown drain failed:", error);

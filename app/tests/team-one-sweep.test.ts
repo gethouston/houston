@@ -139,7 +139,11 @@ describe("the archive releases the shell detail panel", () => {
     );
     assert.match(
       missionControlArchived,
-      /if \(isActive\) return;\s*data\.setSelectedId\(null\);\s*setPanelOpen\(false\);/,
+      /const dataSetSelectedId = data\.setSelectedId/,
+    );
+    assert.match(
+      missionControlArchived,
+      /if \(isActive\) return;\s*dataSetSelectedId\(null\);\s*setPanelOpen\(false\);/,
     );
   });
 });

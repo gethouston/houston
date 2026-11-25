@@ -42,7 +42,7 @@ function fakeTimers() {
       timers.delete(id as unknown as number);
     },
     fire: () => {
-      for (const [id, cb] of [...timers]) {
+      for (const [id, cb] of Array.from(timers)) {
         timers.delete(id);
         cb();
       }

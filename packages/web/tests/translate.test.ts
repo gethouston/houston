@@ -251,9 +251,8 @@ test("a refused not-connected send surfaces the typed reconnect card with provid
 // `call()` wrapper so the user gets a toast + Report-bug, never a fake empty
 // chat. The classifier is the seam that decides which is which.
 test("isConversationNotFound: only an engine 404 reads as no-history-yet", async () => {
-  const { isConversationNotFound } = await import(
-    "@houston/engine-adapter/translate"
-  );
+  const { isConversationNotFound } =
+    await import("@houston/engine-adapter/translate");
   const { EngineError } = await import("@houston/runtime-client");
 
   expect(

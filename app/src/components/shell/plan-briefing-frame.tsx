@@ -1,5 +1,5 @@
-import { duration, easing, space } from "@houston/design-tokens";
 import { Dialog, DialogCloseButton, DialogContent } from "@houston-ai/core";
+import { duration, easing, space } from "@houston/design-tokens";
 import { type CSSProperties, type ReactNode, useState } from "react";
 import { createUserDismissal } from "./user-dismissal";
 import "./plan-announcement.css";

@@ -30,9 +30,8 @@ vi.mock("../ai/providers", async (importOriginal) => {
 
 const { getConversation, conversations } = await import("./conversation-cache");
 const { registerBackend } = await import("../backends/registry");
-const { appendAssistantMessage, appendUserMessage } = await import(
-  "../store/conversations"
-);
+const { appendAssistantMessage, appendUserMessage } =
+  await import("../store/conversations");
 
 function recordingBackend(created: CreateSessionOptions[]): HarnessBackend {
   return {

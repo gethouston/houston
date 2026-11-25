@@ -11,11 +11,11 @@ export type ApiKeyConnectReason =
   | "key_restricted"
   | "provider_unavailable";
 
-const REASONS: readonly string[] = [
+const REASONS: ReadonlySet<string> = new Set([
   "invalid_key",
   "key_restricted",
   "provider_unavailable",
-];
+]);
 
 /**
  * Read the typed reason off a thrown connect error, or null when none rode
@@ -36,7 +36,7 @@ export function apiKeyConnectReason(err: unknown): ApiKeyConnectReason | null {
     }
   }
   const reason = (body as { reason?: unknown } | null)?.reason;
-  return typeof reason === "string" && REASONS.includes(reason)
+  return typeof reason === "string" && REASONS.has(reason)
     ? (reason as ApiKeyConnectReason)
     : null;
 }

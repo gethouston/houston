@@ -39,9 +39,8 @@ mock.module(new URL("../src/lib/query-client.ts", import.meta.url).href, {
 mock.module(new URL("../src/lib/logger.ts", import.meta.url).href, {
   namedExports: { logger: { debug: () => {} } },
 });
-const { latchCompletionNotification } = await import(
-  "../src/hooks/completion-notification.ts"
-);
+const { latchCompletionNotification } =
+  await import("../src/hooks/completion-notification.ts");
 
 test("the time-limit completion sends its own body in every language and an ordinary finish keeps its body", async () => {
   const i18n = i18next.createInstance();
