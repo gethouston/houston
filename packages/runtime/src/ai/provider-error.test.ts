@@ -367,6 +367,24 @@ test("unclassifiable error → unknown, preserving the raw text", () => {
     kind: "unknown",
     provider: "anthropic",
     raw_excerpt: "something odd happened while streaming the response",
+    model: "claude-opus-4-8",
+  });
+});
+
+test("an unknown failure carries its model, structural status and body request id", () => {
+  const err = classifyProviderError({
+    provider: "anthropic",
+    model: "claude-opus-4-8",
+    status: 400,
+    message:
+      '{"type":"error","error":{"type":"invalid_request_error","message":"odd"},"request_id":"req_011CabcDEF"}',
+  });
+  expect(err).toMatchObject({
+    kind: "unknown",
+    provider: "anthropic",
+    model: "claude-opus-4-8",
+    http_status: 400,
+    request_id: "req_011CabcDEF",
   });
 });
 

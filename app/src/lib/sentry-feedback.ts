@@ -32,6 +32,8 @@ export interface BugReportFeedback {
   command: string;
   /** Why the primary intake did not take it (`intake_unavailable`, `other`). */
   reason: string;
+  /** Extra triage tags (a provider card's model, status, request id). */
+  tags?: Record<string, string>;
   /** Context lines (app version, workspace) that ride as `extra`. */
   context: Record<string, string | undefined>;
   logs: { backend: string; frontend: string };
@@ -57,6 +59,7 @@ export async function captureBugReportFeedback(
       email: feedback.email ?? undefined,
       source: "bug_report",
       tags: {
+        ...feedback.tags,
         source: feedback.command,
         bug_report_fallback: feedback.reason,
       },

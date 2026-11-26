@@ -1,4 +1,5 @@
 import type { WireFrame } from "@houston/runtime-client";
+import { runWithProviderResponseCapture } from "../ai/provider-response";
 import {
   type newUsedTokenCapture,
   runWithUsedTokenCapture,
@@ -65,7 +66,7 @@ export async function promptTurnSession(input: {
     stall.arm();
     await runWithInteractionCapture(input.interaction, () =>
       runWithUsedTokenCapture(input.usedTokens, () =>
-        session.prompt(input.prompt),
+        runWithProviderResponseCapture(() => session.prompt(input.prompt)),
       ),
     ).catch((error: unknown) => {
       // A prompt that throws after the watchdog cut it is that abort's
