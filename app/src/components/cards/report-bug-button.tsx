@@ -26,11 +26,14 @@ import { RowCardButton } from "./row-card-button";
 export function ReportBugButton({
   command,
   details,
+  tags,
   label,
 }: {
   command: string;
   /** The diagnostic that goes in the report body. */
   details: string;
+  /** Triage tags built by the SDK (`providerErrorReportTags`). */
+  tags?: Record<string, string>;
   label: string;
 }) {
   const { t } = useTranslation(["shell"]);
@@ -60,6 +63,7 @@ export function ReportBugButton({
       const outcome = await submitBugReport({
         command,
         error: details || "(no detail)",
+        tags,
         timestamp: new Date().toISOString(),
         appVersion: __APP_VERSION__,
         userEmail: getCurrentUserEmail(),

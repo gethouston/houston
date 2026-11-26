@@ -147,6 +147,10 @@
       "types": "./src/modules/turns/turn-error-class.ts",
       "import": "./src/modules/turns/turn-error-class.ts"
     },
+    "./turns/provider-error-report": {
+      "types": "./src/modules/turns/provider-error-report.ts",
+      "import": "./src/modules/turns/provider-error-report.ts"
+    },
     "./notice-ends-turn": {
       "types": "./src/modules/turns/notice-ends-turn.ts",
       "import": "./src/modules/turns/notice-ends-turn.ts"

@@ -1,8 +1,9 @@
 import { HoustonHelmet } from "@houston-ai/core";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAccountLink } from "../../hooks/use-account-link";
 import { describeLastSignIn, readLastSignIn } from "../../lib/last-sign-in";
+import { perfSpans } from "../../lib/perf-spans";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { FirstRunScreen } from "../onboarding/first-run-screen";
 import {
@@ -36,6 +37,7 @@ export function SignInScreen() {
   const { pending, error, handleSignIn } = useProviderSignIn();
   const link = useAccountLink();
   const linkNotice = useAccountLinkNotice(link);
+  useEffect(() => perfSpans.signInShown(), []);
   // The email code flow, once started from the continue button, collapses the
   // returning-user chrome (continue button + "another way" options) down to the
   // focused address/code entry. A rising token drives EmailSignIn's auto-send.

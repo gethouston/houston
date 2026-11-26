@@ -30,6 +30,11 @@ export interface DictationModelStatus {
  *  not a bug: mapped to translated copy, never a Sentry report. */
 export const DICTATION_UNSUPPORTED_CPU = "dictation-unsupported-cpu";
 
+/** `MODEL_SIZE_BYTES` in `app/src-tauri/src/dictation/model.rs` through
+ *  `dictationSizeMb`; the size hint shown when a status probe fails.
+ *  `app/tests/dictation-model-size.test.ts` keeps the two in step. */
+export const DICTATION_MODEL_FALLBACK_MB = 190;
+
 /** A single progress tick on the `dictation-model-progress` event, mirroring
  *  `ModelProgress` in the Rust shell (`download_dictation_model`). */
 export interface DictationModelProgress {

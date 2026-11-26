@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef } from "react";
 import { useCloudMigration } from "../../../hooks/use-cloud-migration";
 import { analytics } from "../../../lib/analytics";
 import type { LegacyDetection } from "../../../lib/cloud-migration";
+import { perfSpans } from "../../../lib/perf-spans";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
 import { useUIStore } from "../../../stores/ui";
 import { ClaudeBrowserLogin } from "../../shell/claude-browser-login";
@@ -27,6 +28,7 @@ export function CloudMigrationGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (trigger.status !== "show" || offered.current) return;
     offered.current = true;
+    perfSpans.landedOn("cloud_migration");
     analytics.track("cloud_migration_offered", {
       agent_count: trigger.detection?.agentDirCount ?? 0,
       workspace_count: trigger.detection?.workspaceDirs.length ?? 0,
