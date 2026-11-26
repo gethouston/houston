@@ -93,9 +93,14 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
       "claude-sonnet-5": {
         description: "Best balance of speed and quality. Needs Copilot Pro.",
       },
-      "claude-opus-4.8": {
+      "claude-opus-5.5": {
         description:
           "Anthropic's flagship. Most capable, slower. Needs Copilot Pro+.",
+      },
+      // GitHub retired Opus 4.8 on 2026-11-16 for all but annual individual
+      // plans; pi still lists it, so pins on it keep running there.
+      "claude-opus-4.8": {
+        description: "Previous Opus. Only on annual Copilot Pro+ plans.",
       },
       "claude-haiku-4.5": {
         description: "Anthropic's fastest, for quick tasks. Needs Copilot Pro.",
