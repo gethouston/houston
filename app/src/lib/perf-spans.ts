@@ -6,6 +6,8 @@
  * grafana.gethouston.ai) plus a PostHog mirror for per-user drill-down. Only
  * the mirror carries the hosted org slug and the send's outcome: the gateway
  * ingest rejects unknown fields, and its histograms stay without org labels.
+ * An `app_to_board` that sat through sign-in or a hidden tab is mirror-only
+ * (`perf-span-board.ts`).
  *
  * The send spans are not paired here: the SDK reports each sent turn's first
  * response (`FirstResponse`, from that turn's own frames), and this module
@@ -17,40 +19,23 @@
  * the web T0; the Tauri shell upgrades T0 to its process start).
  */
 
-import type { FirstResponse, FirstResponseOutcome } from "@houston/sdk";
+import type { FirstResponse } from "@houston/sdk";
+import { BoardLoad, type VisibilityDoc } from "./perf-span-board";
 import { turnSpans } from "./perf-span-marks";
 import { OrgHistory } from "./perf-span-org-history";
+import type {
+  PerfSpanName,
+  PerfSpanObservation,
+  PerfSpanTags,
+  PerfSpanTransport,
+} from "./perf-span-types";
 
-export type PerfSpanName =
-  | "app_to_board"
-  | "card_click_to_chat"
-  | "send_to_first_response"
-  | "send_to_first_activity";
-
-export interface PerfSpanObservation {
-  span: PerfSpanName;
-  ms: number;
-}
-
-/** What a mirrored span carries beyond its duration. */
-export interface PerfSpanTags {
-  /** The hosted org a send ran in; null on spans no send pairs and off the gateway. */
-  orgSlug: string | null;
-  /** How the turn behind a send span ended up; absent on the other spans. */
-  outcome?: FirstResponseOutcome;
-}
-
-export interface PerfSpanTransport {
-  /**
-   * POST a batch to the gateway; absent session → don't call configure yet.
-   * Omitted entirely when the build bakes no ingest URL (there is no default
-   * host to fall back to): spans are still measured and mirrored, just never
-   * shipped, and the queue is dropped instead of growing forever.
-   */
-  send?(spans: PerfSpanObservation[]): Promise<void>;
-  /** Per-span mirror (PostHog). Fire-and-forget. */
-  mirror?(span: PerfSpanName, ms: number, tags: PerfSpanTags): void;
-}
+export type {
+  PerfSpanName,
+  PerfSpanObservation,
+  PerfSpanTags,
+  PerfSpanTransport,
+} from "./perf-span-types";
 
 /** A card click older than this is stale (user wandered off) — never completed. */
 const PENDING_TTL_MS = 60_000;
@@ -65,9 +50,17 @@ export class PerfSpans {
   private transport: PerfSpanTransport | null = null;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly now: () => number;
+  private readonly boardLoad: BoardLoad;
 
-  constructor(opts?: { t0Ms?: number; now?: () => number }) {
+  constructor(opts?: {
+    t0Ms?: number;
+    now?: () => number;
+    doc?: VisibilityDoc;
+  }) {
     this.now = opts?.now ?? Date.now;
+    this.boardLoad = new BoardLoad(
+      opts?.doc ?? (typeof document !== "undefined" ? document : undefined),
+    );
     this.t0Ms =
       opts?.t0Ms ??
       (typeof performance !== "undefined"
@@ -86,9 +79,21 @@ export class PerfSpans {
     if (this.queue.length > 0) this.scheduleFlush();
   }
 
+  /** The sign-in screen showed: this session's board waits on a sign-in. */
+  signInShown(): void {
+    this.boardLoad.signedOut();
+  }
+
   /** Mission cards painted with resolved data. Once per app session. */
   boardRendered(): void {
-    this.observeOnce("app_to_board", this.now() - this.t0Ms);
+    const board = this.boardLoad.tags();
+    const ship = !board.firstRun && !board.wasHidden;
+    this.observeOnce(
+      "app_to_board",
+      this.now() - this.t0Ms,
+      { orgSlug: null, board },
+      ship,
+    );
   }
 
   /** The user opened a mission card (chat panel about to load). */
@@ -156,11 +161,12 @@ export class PerfSpans {
   private observeOnce(
     span: PerfSpanName,
     ms: number,
-    tags: PerfSpanTags = { orgSlug: null },
+    tags: PerfSpanTags,
+    ship: boolean,
   ): void {
     if (this.onceDone.has(span)) return;
     this.onceDone.add(span);
-    this.observe(span, ms, tags);
+    this.observe(span, ms, tags, ship);
   }
 
   /** `ship: false` mirrors the span to PostHog only (never the gateway histogram). */

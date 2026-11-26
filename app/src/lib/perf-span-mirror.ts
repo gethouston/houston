@@ -52,6 +52,9 @@ export interface PerfSpanEventProps {
   org_slug?: string;
   /** A send span's outcome: `first_text` is a time to first text, the rest a send that got none. */
   outcome?: FirstResponseOutcome;
+  /** `app_to_board` only, always both: whether sign-in or a hidden tab sat inside the span. */
+  first_run?: boolean;
+  was_hidden?: boolean;
 }
 
 /**
@@ -69,5 +72,8 @@ export function perfSpanEventProps(
     duration_ms: ms,
     ...(tags.orgSlug ? { org_slug: tags.orgSlug } : {}),
     ...(tags.outcome ? { outcome: tags.outcome } : {}),
+    ...(tags.board
+      ? { first_run: tags.board.firstRun, was_hidden: tags.board.wasHidden }
+      : {}),
   };
 }

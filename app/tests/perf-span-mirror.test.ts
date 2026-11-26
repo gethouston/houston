@@ -147,11 +147,32 @@ describe("perfSpanEventProps", () => {
     ok(!("outcome" in props), "outcome must be absent, not empty");
   });
 
+  it("carries both board tags on app_to_board, false ones included", () => {
+    deepStrictEqual(
+      perfSpanEventProps("app_to_board", 800, {
+        orgSlug: null,
+        board: { firstRun: false, wasHidden: false },
+      }),
+      {
+        span: "app_to_board",
+        duration_ms: 800,
+        first_run: false,
+        was_hidden: false,
+      },
+    );
+  });
+
   it("only sends properties the analytics allow-list keeps", () => {
-    const props = perfSpanEventProps("send_to_first_response", 5, {
-      orgSlug: "5f2b225f316c6079",
-      outcome: "timeout",
-    });
+    const props = {
+      ...perfSpanEventProps("send_to_first_response", 5, {
+        orgSlug: "5f2b225f316c6079",
+        outcome: "timeout",
+      }),
+      ...perfSpanEventProps("app_to_board", 5, {
+        orgSlug: null,
+        board: { firstRun: true, wasHidden: true },
+      }),
+    };
     for (const key of Object.keys(props)) {
       ok(TRACKED_ALLOWED_PROPS.has(key), `cleanProps would drop "${key}"`);
     }
