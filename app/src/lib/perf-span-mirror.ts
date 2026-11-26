@@ -2,6 +2,7 @@ import type { Capabilities, OrgsList } from "@houston/engine-adapter";
 import type { FirstResponseOutcome } from "@houston/sdk";
 import { activeSpaceOrgSlug } from "@houston/sdk";
 import { hasSpaces } from "./org-roles.ts";
+import type { BoardLoadTags } from "./perf-span-board.ts";
 import type { PerfSpanName, PerfSpanTags } from "./perf-spans.ts";
 import { orgSlugFromWorkspaceId } from "./space-id.ts";
 
@@ -52,9 +53,16 @@ export interface PerfSpanEventProps {
   org_slug?: string;
   /** A send span's outcome: `first_text` is a time to first text, the rest a send that got none. */
   outcome?: FirstResponseOutcome;
-  /** `app_to_board` only, always both: whether sign-in or a hidden tab sat inside the span. */
-  first_run?: boolean;
-  was_hidden?: boolean;
+  /**
+   * `app_to_board` only: whether the sign-in screen or the onboarding showed
+   * this session, how long of `duration_ms` the page was hidden, whether it
+   * opened hidden, and the first screen after launch (absent when unknown).
+   */
+  sign_in_shown?: boolean;
+  onboarding_shown?: boolean;
+  hidden_ms?: number;
+  opened_hidden?: boolean;
+  landing?: string;
 }
 
 /**
@@ -72,8 +80,16 @@ export function perfSpanEventProps(
     duration_ms: ms,
     ...(tags.orgSlug ? { org_slug: tags.orgSlug } : {}),
     ...(tags.outcome ? { outcome: tags.outcome } : {}),
-    ...(tags.board
-      ? { first_run: tags.board.firstRun, was_hidden: tags.board.wasHidden }
-      : {}),
+    ...(tags.board ? boardProps(tags.board) : {}),
+  };
+}
+
+function boardProps(board: BoardLoadTags): Partial<PerfSpanEventProps> {
+  return {
+    sign_in_shown: board.signInShown,
+    onboarding_shown: board.onboardingShown,
+    hidden_ms: board.hiddenMs,
+    opened_hidden: board.openedHidden,
+    ...(board.landing ? { landing: board.landing } : {}),
   };
 }

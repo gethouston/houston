@@ -87,14 +87,19 @@ export type AnalyticsProperty =
   // ran in, the key the gateway's per-org switches use; absent off the gateway.
   // `outcome` is how a send's turn answered: first_text, or no_text / error /
   // cancelled / interrupted / timeout for one that never showed text.
-  // `first_run` / `was_hidden` ride app_to_board: the session showed the
-  // sign-in screen, or the tab was hidden, before the board painted.
+  // `sign_in_shown` / `onboarding_shown` / `hidden_ms` / `opened_hidden` /
+  // `landing` ride app_to_board: the sign-in screen or the onboarding showed
+  // this session, how long the page was hidden before the board painted,
+  // whether it opened hidden, and the first screen after launch.
   | "span"
   | "org_slug"
   | "duration_ms"
   | "outcome"
-  | "first_run"
-  | "was_hidden"
+  | "sign_in_shown"
+  | "onboarding_shown"
+  | "hidden_ms"
+  | "opened_hidden"
+  | "landing"
   // Org chart sharing: how the image left, and the chart's people count
   // (its AI Employees ride `agent_count`).
   | "share_channel"
@@ -151,8 +156,11 @@ export const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "org_slug",
   "duration_ms",
   "outcome",
-  "first_run",
-  "was_hidden",
+  "sign_in_shown",
+  "onboarding_shown",
+  "hidden_ms",
+  "opened_hidden",
+  "landing",
   "share_channel",
   "people_count",
   "reason",
