@@ -68,14 +68,14 @@ test("an uncurated pi provider (groq) is accepted, api-key, and defaults to its 
   // (login.ts's setApiKey gate) rather than routed to an OAuth flow.
   expect(providerAuthMethod("groq")).toBe("apiKey");
   // No configured default → the first model pi lists for groq (never throws).
-  expect(providerDefaultModel("groq")).toBe("llama-3.1-8b-instant");
+  expect(providerDefaultModel("groq")).toBe("openai/gpt-oss-120b");
   // And that model actually resolves through the turn path (safeGetModel).
   const m = safeGetModel("groq", providerDefaultModel("groq"), false) as {
     provider?: string;
     id?: string;
   };
   expect(m.provider).toBe("groq");
-  expect(m.id).toBe("llama-3.1-8b-instant");
+  expect(m.id).toBe("openai/gpt-oss-120b");
 });
 
 test("an OAuth pi provider stays OAuth, and a non-pi id is rejected", () => {

@@ -49,18 +49,18 @@ test("setApiKey accepts an uncurated pi provider's key; it then selects and reso
   expect(providers.activeProvider()).toBe("groq");
 
   // modelFor falls back to groq's first pi model — no curated default, no throw.
-  expect(providers.modelFor("groq")).toBe("llama-3.1-8b-instant");
+  expect(providers.modelFor("groq")).toBe("openai/gpt-oss-120b");
 
   // And the live turn path resolves a real groq model.
   const m = providers.resolveModel() as { provider?: string; id?: string };
   expect(m.provider).toBe("groq");
-  expect(m.id).toBe("llama-3.1-8b-instant");
+  expect(m.id).toBe("openai/gpt-oss-120b");
 
   // The status batch reflects the connected pi provider with its runnable ids.
   const row = providers.listProviders().find((p) => p.id === "groq");
   expect(row?.configured).toBe(true);
   expect(row?.isActive).toBe(true);
-  expect(row?.models).toContain("llama-3.1-8b-instant");
+  expect(row?.models).toContain("openai/gpt-oss-120b");
 });
 
 test("a stored uncurated-provider credential is claimable as active", () => {
