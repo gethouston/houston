@@ -14,13 +14,10 @@ import { showErrorToast, showExpectedStateToast } from "../error-toast";
 import { osDictationModelStatus } from "../os-bridge";
 import { downloadDictationModel } from "./model-download";
 import {
+  DICTATION_MODEL_FALLBACK_MB,
   dictationErrorText as errorText,
   dictationSizeMb as toMb,
 } from "./types";
-
-/** Matches `MODEL_SIZE_BYTES` in `app/src-tauri/src/dictation/model.rs`;
- *  used only as a size-hint fallback if a status probe fails. */
-const DEFAULT_MODEL_SIZE_MB = 181;
 
 export interface DictationModelSetup {
   open: boolean;
@@ -51,7 +48,7 @@ export function useDictationModelSetup(
   const [open, setOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [progressPct, setProgressPct] = useState(0);
-  const [sizeMb, setSizeMb] = useState(DEFAULT_MODEL_SIZE_MB);
+  const [sizeMb, setSizeMb] = useState(DICTATION_MODEL_FALLBACK_MB);
 
   const reopen = useCallback(async () => {
     try {
@@ -66,7 +63,7 @@ export function useDictationModelSetup(
     try {
       const status = await osDictationModelStatus();
       // Expected machine limit (pre-AVX2 CPU can't run the sidecar): explain
-      // BEFORE offering the 181 MB download that could never be used.
+      // BEFORE offering the 190 MB download that could never be used.
       if (!status.cpuSupported) {
         showExpectedStateToast(
           t("composer.dictation.unsupportedTitle"),

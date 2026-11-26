@@ -26,6 +26,7 @@
       ],
       "rules": {
         // These values are source-text substrings, not arrays; converting them to character sets breaks substring checks.
+        // The rule's autofix makes that conversion, so lint:fix and lint-staged run it with this rule allowed and only `pnpm lint` reports it.
         "unicorn/prefer-set-has": "off",
       },
     },

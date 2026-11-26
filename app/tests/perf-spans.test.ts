@@ -20,6 +20,7 @@ function harness(startMs = 100_000) {
       mirroredOutcomes.push({ span, outcome: tags.outcome });
     },
   });
+  spans.landedOn("board");
   return {
     spans,
     sent,
@@ -102,6 +103,7 @@ describe("PerfSpans", () => {
         sent.push(batch);
       },
     });
+    spans.landedOn("board");
     now = 10;
     spans.boardRendered();
     await spans.flush(); // fails → re-queued
@@ -122,6 +124,7 @@ describe("PerfSpans", () => {
         sent.push(batch);
       },
     });
+    spans.landedOn("board");
     now = 900;
     spans.boardRendered();
     await spans.flush();

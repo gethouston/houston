@@ -19,6 +19,7 @@ tests/assistant-address-cache.test.ts
 tests/auth-error-bus.test.ts
 tests/board-keys.test.ts
 tests/boot-landing-hook.test.ts
+tests/bug-report-tags.test.ts
 tests/ceiling-match.test.ts
 tests/ceiling-minimax-retired.test.ts
 tests/chat-connect-step-shell.test.ts

@@ -9,7 +9,7 @@
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "lint": "oxlint --deny-warnings --report-unused-disable-directives-severity=error",
-    "lint:fix": "oxlint --fix --deny-warnings --report-unused-disable-directives-severity=error",
+    "lint:fix": "oxlint --fix -A unicorn/prefer-set-has --deny-warnings && pnpm lint",
     "check": "pnpm lint && pnpm format:check && pnpm check:gates",
     "check:fix": "pnpm lint:fix && pnpm format",
     "check:gates": "pnpm check:desktop-native && pnpm check:assistant-catalog && pnpm check:assistant-coverage && pnpm check:sdk-parity",
@@ -56,7 +56,8 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}": [
-      "oxlint --fix --deny-warnings --report-unused-disable-directives-severity=error --no-error-on-unmatched-pattern",
+      "oxlint --fix -A unicorn/prefer-set-has --deny-warnings --no-error-on-unmatched-pattern",
+      "oxlint --deny-warnings --report-unused-disable-directives-severity=error --no-error-on-unmatched-pattern",
       "oxfmt --write --no-error-on-unmatched-pattern"
     ],
     "*.{json,jsonc,webmanifest}": "oxfmt --write --no-error-on-unmatched-pattern"

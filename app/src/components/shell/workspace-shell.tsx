@@ -4,6 +4,7 @@ import { useAssistantLanding } from "../../hooks/use-assistant-landing";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { useLinkedInCompletion } from "../../hooks/use-linkedin-completion";
 import { useOrgCheckoutReturn } from "../../hooks/use-org-checkout-return";
+import { usePerfSpanLanding } from "../../hooks/use-perf-span-landing";
 import { useSettingsLanding } from "../../hooks/use-settings-landing";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
 import { phoneChromeHidden } from "../../lib/mobile-tabs";
@@ -79,6 +80,7 @@ export function WorkspaceShell({
     showOrganization,
     ready,
   });
+  usePerfSpanLanding(landing);
   useKeyboardShortcuts();
 
   const isMobile = useIsMobile();
