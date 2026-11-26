@@ -25,15 +25,9 @@ minimumReleaseAge: 10080
 ignoredOptionalDependencies:
   - "@napi-rs/canvas"
 
-# Drop the claude-agent-sdk entries after 2026-11-16, once Claude Agent SDK
-# 0.3.321 is seven days old. Drop the pi entry after 2026-12-02, once pi 1.6.1
-# is seven days old. pi-ai 1.6.1 pins openai 7.59.0 (published 2026-11-17):
-# drop that entry after 2026-11-25.
+# Drop the pi entry after 2026-12-02, once pi 1.6.1 is seven days old.
 minimumReleaseAgeExclude:
-  - "@anthropic-ai/claude-agent-sdk"
-  - "@anthropic-ai/claude-agent-sdk-*"
   - "@earendil-works/*"
-  - "openai@7.59.0"
 
 # Security override (uuid <11.1.1 advisory): gaxios 6 and teeny-request 9
 # (both pulled by @google-cloud/storage, which has no gaxios-7-based release
