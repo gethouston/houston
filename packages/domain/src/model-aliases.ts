@@ -92,15 +92,19 @@ export const MODEL_ALIASES: Partial<
   // dropped, each mapped to the successor GitHub's retirement table names when
   // it costs no more and stays on the same plan. GitHub names the latest Sol
   // for gpt-5.4 and gpt-5.5, but Sol needs Copilot Pro+ while both ran on Pro,
-  // so they land on gpt-5.6-terra (Pro, cheaper than either). kimi-k2.7-code
+  // so they land on the Terra tier (Pro, cheaper than either). pi 1.6.1
+  // dropped gpt-5.6-terra and claude-opus-5 as Copilot stopped serving them:
+  // gpt-6.1-terra and claude-opus-5.5 each cost less per token. kimi-k2.7-code
   // has no row: GitHub's successor, Kimi K3, costs about 3.5x more. Copilot is
   // open in VALID_MODELS, so each entry is a rename.
   "github-copilot": {
     "gpt-5-mini": "gpt-6-luna",
     "gpt-5.4-mini": "gpt-6-luna",
-    "gpt-5.4": "gpt-5.6-terra",
-    "gpt-5.5": "gpt-5.6-terra",
+    "gpt-5.4": "gpt-6.1-terra",
+    "gpt-5.5": "gpt-6.1-terra",
+    "gpt-5.6-terra": "gpt-6.1-terra",
     "claude-opus-4.7": "claude-opus-5.5",
+    "claude-opus-5": "claude-opus-5.5",
     "gemini-3.5-flash": "gemini-3.8-flash",
     "gemini-3.6-flash": "gemini-3.8-flash",
     "gemini-3.7-flash": "gemini-3.8-flash",
@@ -132,6 +136,15 @@ export const MODEL_ALIASES: Partial<
   // same plan. `deepseek-v3.2` gets no row: its successors are a newer family.
   "qwen-token-plan": { "deepseek-v4-flash": "deepseek-v4-flash-0731" },
   "qwen-token-plan-cn": { "deepseek-v4-flash": "deepseek-v4-flash-0731" },
+  // pi 1.6.1 dropped a dated Large 4 snapshot and the undated Medium 3.5 id;
+  // each successor is the same model at the same price. Devstral, Medium 3 and
+  // 3.1 get no row: Mistral retired them and Medium 3.5 costs 3.75x more.
+  mistral: {
+    "mistral-large-4-0-8": "mistral-large-4",
+    "mistral-medium-3.5": "mistral-medium-2604",
+  },
+  // The GA row of the same model at the same price.
+  google: { "gemini-3.1-flash-lite-preview": "gemini-3.1-flash-lite" },
   ...GATEWAY_MODEL_ALIASES,
 };
 

@@ -11,8 +11,9 @@ import {
 import { safeGetModel, safeModelIds } from "./providers";
 
 /**
- * Stored pins on NVIDIA and Qwen Token Plan rows pi 1.6.0 dropped. The
- * OpenCode gateways' drops live in ./opencode-catalog.test.ts.
+ * Stored pins on rows pi 1.6.0 (NVIDIA, Qwen Token Plan) and 1.6.1 (Copilot,
+ * Mistral, Google, Groq) dropped. The OpenCode gateways' drops live in
+ * ./opencode-catalog.test.ts.
  */
 
 test("a stored pin on a dropped row with a successor runs on it", () => {
@@ -21,6 +22,13 @@ test("a stored pin on a dropped row with a successor runs on it", () => {
     ["nvidia", "openai/gpt-oss-20b", "minimaxai/minimax-m3.1-flash"],
     ["qwen-token-plan", "deepseek-v4-flash", "deepseek-v4-flash-0731"],
     ["qwen-token-plan-cn", "deepseek-v4-flash", "deepseek-v4-flash-0731"],
+    // The curated Copilot Terra row, and the retired ids that pointed at it.
+    ["github-copilot", "gpt-5.6-terra", "gpt-6.1-terra"],
+    ["github-copilot", "gpt-5.5", "gpt-6.1-terra"],
+    ["github-copilot", "claude-opus-5", "claude-opus-5.5"],
+    ["mistral", "mistral-large-4-0-8", "mistral-large-4"],
+    ["mistral", "mistral-medium-3.5", "mistral-medium-2604"],
+    ["google", "gemini-3.1-flash-lite-preview", "gemini-3.1-flash-lite"],
   ] as const) {
     expect(piModelIds(provider), stale).not.toContain(stale);
     const pinned = canonicalModelId(provider, stale);
@@ -39,6 +47,10 @@ test("a stored pin on a dropped row with no successor gets a runnable switch tar
     ["nvidia", "moonshotai/kimi-k2.6"],
     ["nvidia", "deepseek-ai/deepseek-v4.1-flash"],
     ["qwen-token-plan", "deepseek-v3.2"],
+    // Retired by Mistral; Medium 3.5 costs 3.75x more.
+    ["mistral", "devstral-medium-latest"],
+    // Groq's old first row; every Groq row left costs more.
+    ["groq", "llama-3.1-8b-instant"],
   ] as const) {
     expect(canonicalModelId(provider, stale), stale).toBe(stale);
     let thrown: unknown;

@@ -46,10 +46,9 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   // The current OpenAI line, minus pi's 2023-era gpt-4 rows. Azure serves a
   // model only when the user DEPLOYED it under that name, so a short current
   // list also keeps the "deployment named after the model id" rule legible.
-  // Wider than the `openai` set below by gpt-5.5 / gpt-5.3-codex-spark /
-  // gpt-5.4 / gpt-5.4-mini: those are refused by the CODEX backend (a ChatGPT
-  // subscription), not by Azure, which runs whatever the user's own resource
-  // has deployed.
+  // Wider than the `openai` set below by gpt-5.5 / gpt-5.4 / gpt-5.4-mini:
+  // those are refused by the CODEX backend (a ChatGPT subscription), not by
+  // Azure, which runs whatever the user's own resource has deployed.
   "azure-openai-responses": new Set([
     "gpt-6-luna",
     "gpt-6-sol",
@@ -60,7 +59,6 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-5.6-luna",
-    "gpt-5.3-codex-spark",
     "gpt-5.4",
     "gpt-5.4-mini",
   ]),

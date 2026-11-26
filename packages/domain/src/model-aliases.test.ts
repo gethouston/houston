@@ -111,7 +111,10 @@ test("a Copilot row GitHub retired maps to the successor GitHub names", () => {
   const copilot = MODEL_ALIASES["github-copilot"] ?? {};
   expect(copilot["gpt-5-mini"]).toBe("gpt-6-luna");
   // Sol needs Copilot Pro+; gpt-5.5 ran on Pro, so its pin stays on a Pro row.
-  expect(copilot["gpt-5.5"]).toBe("gpt-5.6-terra");
+  expect(copilot["gpt-5.5"]).toBe("gpt-6.1-terra");
+  // pi 1.6.1 dropped both; each successor costs less per token.
+  expect(copilot["gpt-5.6-terra"]).toBe("gpt-6.1-terra");
+  expect(copilot["claude-opus-5"]).toBe("claude-opus-5.5");
   // Kimi K3 costs about 3.5x more, so the retired Kimi id is not moved up.
   expect(copilot["kimi-k2.7-code"]).toBeUndefined();
   expect(copilot["gemini-3.6-flash"]).toBe("gemini-3.8-flash");
@@ -152,6 +155,7 @@ test("an open-catalog gateway carries only its renames", () => {
     "nemotron-3-ultra-free",
     "glm-5.1",
     "glm-5.2",
+    "kimi-k2.6",
   ]);
   // Each OpenCode Go row is a model pi dropped, mapped to its successor.
   expect(MODEL_ALIASES["opencode-go"]).toEqual({
@@ -167,5 +171,9 @@ test("an open-catalog gateway carries only its renames", () => {
     "grok-4.6": "grok-4.7",
     "minimax-m3.1-flash-free": "minimax-m3.1-flash",
     "gemini-4-argon-contributor": "gemini-4-argon",
+    "longcat-2.0": "longcat-2.5",
+    "longcat-2.5-free": "longcat-2.5",
+    "mimo-v2.5": "mimo-v2.6-flash",
+    "mimo-v2.5-pro": "mimo-v2.6-pro",
   });
 });

@@ -16,13 +16,15 @@ export const GATEWAY_MODEL_ALIASES = {
   // NVIDIA's free successor with the same 1M window. Zen's `deepseek-v4-flash`
   // gets no row: V4.1 Flash costs 4.3x more per output token.
   // pi 1.6.0 dropped GLM-5.1 and GLM-5.2; GLM-5.3 has their exact price.
-  // `glm-5` gets no row: GLM-5.3 costs 1.4x more.
+  // `glm-5` gets no row: GLM-5.3 costs 1.4x more. pi 1.6.1 dropped Kimi K2.6
+  // for K2.7 Code at the same price; K2.5 gets no row (K2.7 Code costs 1.6x).
   opencode: {
     "mimo-v2.5-free": "mimo-v2.6-flash-free",
     "claude-sonnet-4": "claude-sonnet-4-6",
     "nemotron-3-ultra-free": "nemotron-3.5-super-vl-free",
     "glm-5.1": "glm-5.3",
     "glm-5.2": "glm-5.3",
+    "kimi-k2.6": "kimi-k2.7-code",
   },
   // Each row is a model pi dropped from OpenCode Go, mapped to its successor.
   // 0.99.1 dropped the glm, kimi and qwen rows, each to the same price tier.
@@ -38,6 +40,8 @@ export const GATEWAY_MODEL_ALIASES = {
   // Flash (now plan usage, like Space Bunny) and Gemini 4 Argon (half price).
   // 1.6.0 dropped GLM-5.2 for GLM-5.3 at the same price and window, so the
   // older GLM-5.1 pin moves on to it too.
+  // 1.6.1 dropped LongCat 2.0 and the free LongCat 2.5 for LongCat 2.5 at
+  // LongCat 2.0's price, and MiMo V2.5 for the same-price V2.6 rows.
   "opencode-go": {
     "glm-5.1": "glm-5.3",
     "glm-5.2": "glm-5.3",
@@ -51,5 +55,9 @@ export const GATEWAY_MODEL_ALIASES = {
     "grok-4.6": "grok-4.7",
     "minimax-m3.1-flash-free": "minimax-m3.1-flash",
     "gemini-4-argon-contributor": "gemini-4-argon",
+    "longcat-2.0": "longcat-2.5",
+    "longcat-2.5-free": "longcat-2.5",
+    "mimo-v2.5": "mimo-v2.6-flash",
+    "mimo-v2.5-pro": "mimo-v2.6-pro",
   },
 } satisfies Readonly<Record<string, Readonly<Record<string, string>>>>;

@@ -92,12 +92,13 @@ describe("the Codex default is the runtime's default", () => {
 });
 
 describe("Azure OpenAI keeps the rows Codex refuses", () => {
-  it("still offers gpt-5.3-codex-spark, gpt-5.4 and gpt-5.4-mini", () => {
+  it("still offers gpt-5.4 and gpt-5.4-mini", () => {
     // The refusals are a property of the CHATGPT SUBSCRIPTION, not of the
     // models: an Azure request hits the user's own resource and runs whatever
     // they deployed there. Pinned so the Codex curation is never mirrored onto
-    // Azure by a future sweep.
-    for (const modelId of [...REFUSED, "gpt-5.4", "gpt-5.4-mini"])
+    // Azure by a future sweep. pi 1.6.1 dropped gpt-5.3-codex-spark from its
+    // Azure catalog, so Azure can no longer offer it.
+    for (const modelId of ["gpt-5.4", "gpt-5.4-mini"])
       ok(VISIBLE_MODELS["azure-openai-responses"].has(modelId));
   });
 });
