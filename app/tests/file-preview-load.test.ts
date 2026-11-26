@@ -373,6 +373,25 @@ describe("file preview load", () => {
     assert.equal(reports.length, 0);
   });
 
+  it("a link outside the agent's files shows its own copy without an error report", async () => {
+    refusal = Object.assign(
+      new Error("invalid workspace path: .houston/activity.json"),
+      {
+        status: 400,
+        body: {
+          error: "invalid workspace path: .houston/activity.json",
+          code: "outside_workspace",
+        },
+      },
+    );
+    const { loaded } = await mount();
+    assert.deepEqual(loaded(), {
+      state: "error",
+      message: "files.outsideWorkspace.description",
+    });
+    assert.equal(reports.length, 0);
+  });
+
   it("exhausted capacity retries report quietly and offer Download", async () => {
     refusal = "conversion_unavailable";
     retryAfterMs = 2000;

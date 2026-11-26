@@ -163,7 +163,10 @@ export async function handleFiles(
       return true;
     }
     if (err instanceof FilePathError) {
-      json(res, 400, { error: err.message });
+      json(res, 400, {
+        error: err.message,
+        ...(err.code ? { code: err.code } : {}),
+      });
       return true;
     }
     // Storage that refuses every write reaches here from WHICHEVER op hit it

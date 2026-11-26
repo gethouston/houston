@@ -76,7 +76,7 @@ import {
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
 import { isNameTakenError } from "./file-conflicts";
-import { isFileGoneError } from "./file-gone";
+import { fileReadRefusal, surfaceFileReadRefusal } from "./file-gone";
 import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
 import { isIntegrationConnectionGoneError } from "./integration-connection-gone";
@@ -962,10 +962,10 @@ export const tauriFiles = {
   /** Raw bytes over HTTP — powers in-browser preview + download (web build).
    *  Pass `{ toast: false }` when the caller renders the failure inline.
    *
-   *  A 404 is the user's state, not a bug (PRODUCT-1780): the agent linked a
-   *  file that is not there (never written, renamed, deleted). It is silenced
-   *  for Sentry and, when this call owns the surface, shown as an authored
-   *  expected-state toast; inline callers read `isFileGoneError` themselves. */
+   *  A gone file or a link outside the agent's files is the user's state, not
+   *  a bug (`fileReadRefusal`): silenced as an error and, when this call owns
+   *  the surface, shown as an authored info toast; inline callers render the
+   *  same copy themselves. An outside link still sends one quiet warning. */
   download: (
     agentPath: string,
     relativePath: string,
@@ -987,15 +987,18 @@ export const tauriFiles = {
         ...options,
         silence: (error) =>
           options?.as === "pdf" ||
-          isFileGoneError(error) ||
+          fileReadRefusal(error) !== null ||
           error instanceof FilePreviewError,
       },
     ).catch(async (err: unknown) => {
-      if (options?.toast !== false && isFileGoneError(err)) {
-        const { showExpectedStateToast } = await import("./error-toast");
-        showExpectedStateToast(
-          i18n.t("agents:files.gone.title"),
-          i18n.t("agents:files.gone.description"),
+      if (fileReadRefusal(err)) {
+        const { reportQuietError } = await import("./quiet-error-report");
+        surfaceFileReadRefusal(
+          err,
+          "download_project_file",
+          { agentPath },
+          options?.toast !== false,
+          reportQuietError,
         );
       }
       throw err;

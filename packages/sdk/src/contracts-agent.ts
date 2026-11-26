@@ -66,6 +66,7 @@ export {
   FilesHttpError,
   type FilesModule,
   type FileUpload,
+  isOutsideWorkspaceRefusal,
   isUploadInterruptedError,
   type ProjectFile,
   type ResumableUploadOptions,

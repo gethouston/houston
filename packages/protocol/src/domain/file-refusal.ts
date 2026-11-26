@@ -12,7 +12,7 @@
  * copies of the union would reach that same failure one release later, which
  * is the whole reason there is only one here.
  */
-export type FileOpCode = "name_taken" | "read_only";
+export type FileOpCode = "name_taken" | "read_only" | "outside_workspace";
 
 /**
  * Why an agent create, install or rename refused its name: another agent holds
@@ -43,4 +43,15 @@ export const NAME_RESERVED: AgentNameRefusalCode = "name_reserved";
  * (a read-only mount, a folder whose permissions were revoked, a sync client
  * holding it). The person's storage, not their data — and reads keep working.
  */
-export const READ_ONLY: FileOpCode = "read_only";
+export const READ_ONLY = "read_only" satisfies FileOpCode;
+
+/**
+ * The path names no file of the agent's own: it climbs out with `..`, sits in
+ * an internal dot-directory (`.houston/`, `.agents/`), or is an absolute path
+ * outside the agent's workspace root (a turn sandbox's `/work/...` above all,
+ * HOUSTON-APP-5HK). Answered as a 400 by every files route that validates a
+ * path (`packages/host/src/turn/files-path.ts`); classified by the SDK's
+ * `isOutsideWorkspaceRefusal`. On a read it is an agent's link to a place the
+ * person's Files tab does not show, so it gets copy of its own.
+ */
+export const OUTSIDE_WORKSPACE = "outside_workspace" satisfies FileOpCode;
