@@ -7,6 +7,7 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 // accepts — narrower than `KnownProvider`, which since pi 0.82 also names
 // purely dynamic providers (radius) with no static catalog entry.
 import { type BuiltinProvider, getModel } from "@earendil-works/pi-ai/compat";
+import { canonicalModelId } from "@houston/domain";
 import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 import { toCanonicalProviderId } from "@houston/domain/provider-dialect";
 import type { ProviderHealth } from "@houston/protocol";
@@ -604,7 +605,18 @@ export function resolveModel(
   // provider default rather than hard-failing the turn.
   if (provider === OPENAI_COMPATIBLE)
     return buildActiveCustomModel(override || undefined);
-  return safeGetModel(provider, override || modelFor(provider), !!override);
+  // A pin the gateway injects from a stored ModelChoice, or a saved model,
+  // can name a row pi dropped; it runs on the same successor a pin sent by the
+  // app already carries (engine-adapter `wireTurnPin`).
+  return safeGetModel(
+    provider,
+    renamedModel(provider, override || modelFor(provider)),
+    !!override,
+  );
+}
+
+function renamedModel(provider: ProviderId, id: string): string {
+  return canonicalModelId(provider, id) ?? id;
 }
 
 export function safeModelIds(provider: ProviderId): string[] {
@@ -639,7 +651,7 @@ export function safeModelIds(provider: ProviderId): string[] {
  * turn would refuse.
  */
 function savedModelRuns(id: ProviderId): string {
-  const modelId = lineupModelId(id, modelFor(id));
+  const modelId = lineupModelId(id, renamedModel(id, modelFor(id)));
   const offered = safeModelIds(id);
   return offered.length > 0 && !offered.includes(modelId)
     ? providerDefaultModel(id)

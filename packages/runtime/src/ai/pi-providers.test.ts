@@ -48,13 +48,13 @@ test("setApiKey accepts an uncurated pi provider's key; it then selects and reso
   // fallback (nothing saved yet) reaches the pi extra and makes groq active.
   expect(providers.activeProvider()).toBe("groq");
 
-  // modelFor falls back to groq's first pi model — no curated default, no throw.
-  expect(providers.modelFor("groq")).toBe("openai/gpt-oss-120b");
+  // modelFor starts on the domain's Groq default, a row pi lists, no throw.
+  expect(providers.modelFor("groq")).toBe("openai/gpt-oss-20b");
 
   // And the live turn path resolves a real groq model.
   const m = providers.resolveModel() as { provider?: string; id?: string };
   expect(m.provider).toBe("groq");
-  expect(m.id).toBe("openai/gpt-oss-120b");
+  expect(m.id).toBe("openai/gpt-oss-20b");
 
   // The status batch reflects the connected pi provider with its runnable ids.
   const row = providers.listProviders().find((p) => p.id === "groq");
@@ -143,4 +143,54 @@ test("an agent saved on Haiku 4.5 runs and reports Haiku 5.5", () => {
   expect(m.id).toBe("claude-haiku-5-5");
   const row = providers.listProviders().find((p) => p.id === "anthropic");
   expect(row?.activeModel).toBe("claude-haiku-5-5");
+});
+
+test("a pin on a row pi dropped runs on its successor with no app rename", () => {
+  // Channels, API missions and the manager reach the runtime with the stored
+  // ModelChoice as-is; only the app's turn pin had applied the rename.
+  for (const [provider, stale, successor] of [
+    ["github-copilot", "gpt-5.6-terra", "gpt-6.1-terra"],
+    ["github-copilot", "claude-opus-5", "claude-opus-5.5"],
+    ["mistral", "mistral-large-4-0-8", "mistral-large-4"],
+    ["groq", "llama-3.3-70b-versatile", "openai/gpt-oss-120b"],
+  ] as const) {
+    const m = providers.resolveModel(stale, provider) as {
+      provider?: string;
+      id?: string;
+    };
+    expect(m.provider, stale).toBe(provider);
+    expect(m.id, stale).toBe(successor);
+  }
+});
+
+test("a saved model on a row pi dropped runs and reports its successor", () => {
+  // Without the rename the saved id was "not offered" and fell back to the
+  // provider default (GPT-6 Luna on Copilot) instead of the successor.
+  login.setApiKey("groq", "gsk_test_key");
+  providers.setSettings({
+    activeProvider: "groq",
+    model: "llama-3.3-70b-versatile",
+  });
+  const m = providers.resolveModel(null, "groq") as { id?: string };
+  expect(m.id).toBe("openai/gpt-oss-120b");
+  const row = providers.listProviders().find((p) => p.id === "groq");
+  expect(row?.activeModel).toBe("openai/gpt-oss-120b");
+
+  providers.setSettings({
+    activeProvider: "github-copilot",
+    model: "gpt-5.6-terra",
+  });
+  const copilot = providers.resolveModel(null, "github-copilot") as {
+    id?: string;
+  };
+  expect(copilot.id).toBe("gpt-6.1-terra");
+});
+
+test("a saved model on a dropped row with no successor still runs the default", () => {
+  providers.setSettings({
+    activeProvider: "groq",
+    model: "llama-3.1-8b-instant",
+  });
+  const m = providers.resolveModel(null, "groq") as { id?: string };
+  expect(m.id).toBe("openai/gpt-oss-20b");
 });
