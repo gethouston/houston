@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 155
+version: 157
 
 components:
   - id: agent-delegation-settings
@@ -343,12 +343,15 @@ components:
     title: System message / boundary
     purpose: Non-message feed events -- system notes and context/provider boundaries.
     anatomy: [divider-rule, centered-italic-label]
-    states: [system-note, reply-time-limit, context-compacted, provider-switched, context-cleared]
+    states: [system-note, reply-time-limit, files-not-saved, context-compacted, provider-switched, context-cleared]
     variants: [plain-note, divider-boundary]
     behavior: >-
       system_message renders a centered note. A typed reply-time-limit note says
       the agent reached 4 hours and can continue when asked. Graceful stops say
       progress is saved; forced stops say to resume from the last saved point.
+      A typed files-not-saved note lists, per file, what happened to the files a
+      reply could not save as usual (kept beside under a conflict name, kept
+      instead of deleted, too large, not saved).
       context_compacted,
       provider_switched and context_cleared render subtle dividers that keep the
       full chat visible. A compaction divider names whether the user asked for
@@ -487,7 +490,7 @@ components:
     title: Interaction card
     purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections, then action approvals), replacing the composer while pending.
     anatomy: [modal-shell, modal-header, step-title, step-title-icon, pager, collapse-chevron, dismiss-action, bounded-scroll-body, option-row, number-badge, recommended-chip, selected-arrow, free-text-escape-field, pencil-adornment, attach-action, attachment-chips, upload-area, footer-row, unified-decline, decline-esc-hint, step-cta, return-key-glyph, trailing-free-text-row, app-logo, integration-name, reason-line, explainer-line, connected-check, waiting-note, hire-color-dot, hire-role, hire-instructions-disclosure]
-    states: [single-step, multi-step, collapsed, with-options, single-option, recommended-option, free-text-only, with-attachments, wants-files, upload-drag-over, signin-step, connect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled, hire-instructions-collapsed, hire-instructions-expanded]
+    states: [single-step, multi-step, collapsed, with-options, single-option, recommended-option, free-text-only, with-attachments, wants-files, upload-drag-over, signin-step, connect-step, reconnect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled, hire-instructions-collapsed, hire-instructions-expanded]
     variants: [choice, open-ended, signin, connect, provider-connect, hands-on, hire-approval, mixed-sequence]
     behavior: >-
       Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
@@ -495,7 +498,11 @@ components:
       approvals land LAST, since approving an action happens after its toolkit is
       connected; the approval step's body is its own component,
       interaction-approval-card, injected via a `renderApproval` prop the way
-      signin/connect bodies are). Every step is composed in
+      signin/connect bodies are). A connect step flagged `reconnect` (the app's
+      login was refused at `refusedAt`) reads "Reconnect {app}" and counts only
+      a connection created after the refusal, made from the card or the
+      Integrations page; the refused one never finishes or advances it. Every
+      step is composed in
       ONE shared modal shell (InteractionModal) that owns the chrome — a white
       card with a hairline border and roomy padding (the reference "Coworker card"
       look; a card-surface same colour as the page, set apart by border + soft

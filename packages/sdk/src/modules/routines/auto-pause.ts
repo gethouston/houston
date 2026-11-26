@@ -29,7 +29,8 @@ export type RoutinePauseRemedy =
   | "change_model"
   /** The routine names no model and nothing it could fall back on is
    *  connected: choose a model for it. */
-  | "choose_model";
+  | "choose_model"
+  | "check_runs";
 
 /** Whose account the remedy is about. */
 export type RoutinePauseAccount = "creator" | "team";
@@ -44,7 +45,7 @@ interface PauseCounts {
 export type RoutinePauseNotice = PauseCounts &
   (
     | {
-        remedy: Exclude<RoutinePauseRemedy, "choose_model">;
+        remedy: Exclude<RoutinePauseRemedy, "choose_model" | "check_runs">;
         /** Present for the connect and reconnect remedies; the other two name no account. */
         account?: RoutinePauseAccount;
         /** The provider id the failed runs needed (e.g. "anthropic"). */
@@ -52,12 +53,13 @@ export type RoutinePauseNotice = PauseCounts &
       }
     /** The routine has no model to name a provider for. */
     | { remedy: "choose_model" }
+    | { remedy: "check_runs"; provider: string }
   );
 
 const REMEDY: Record<
   RoutineAccountFailureCode,
   {
-    remedy: Exclude<RoutinePauseRemedy, "choose_model">;
+    remedy: Exclude<RoutinePauseRemedy, "choose_model" | "check_runs">;
     account?: RoutinePauseAccount;
   }
 > = {
@@ -86,6 +88,8 @@ export function routinePauseNotice(
   // Read before `reason`: a no-model pause carries an account reason only so
   // older clients can render it (`RoutineAutoPause.cause`).
   if (pause.cause === "no_model") return { remedy: "choose_model", ...counts };
+  if (pause.cause === "provider_error")
+    return { remedy: "check_runs", provider: pause.provider, ...counts };
   const reason = failureCodeForReader(
     { code: pause.reason, provider: pause.provider },
     reader,
@@ -94,7 +98,9 @@ export function routinePauseNotice(
   // reading it as no notice beats a screen that throws. A usage limit is
   // never a pause reason (it snoozes, `./snooze`), so it has no remedy here.
   const fix =
-    reason === "no_model" || reason === "usage_limit"
+    reason === "no_model" ||
+    reason === "usage_limit" ||
+    reason === "provider_error"
       ? undefined
       : REMEDY[reason];
   if (!fix) return null;

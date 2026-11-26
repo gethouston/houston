@@ -15,7 +15,7 @@ src/
 
 It is a plain workspace package consumed as TypeScript source (`main` is
 `src/index.ts`). `app` and `packages/web` both declare it, and pnpm's symlink is
-the only thing that resolves it — vite, tsgo, node, biome and esbuild all agree
+the only thing that resolves it — Vite, tsgo, Node, oxlint and esbuild all agree
 on which package the specifier names, without a line of configuration.
 **There is no alias.** The specifier and the module are the same thing under
 every resolver, which is why a method the adapter does not implement is a

@@ -40,6 +40,7 @@ import type {
   FilesModule,
   TimezoneSeedResult,
 } from "@houston/sdk";
+import { integrationConnectRefusal } from "@houston/sdk/integrations/connect-refusal";
 import type {
   PushDeviceRegistration,
   SlackConnectReturn,
@@ -74,9 +75,8 @@ import {
   isLoopbackHostUrl,
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
-import { isEngineWakingError } from "./engine-waking-error";
 import { isNameTakenError } from "./file-conflicts";
-import { isFileGoneError } from "./file-gone";
+import { fileReadRefusal, surfaceFileReadRefusal } from "./file-gone";
 import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
 import { isIntegrationConnectionGoneError } from "./integration-connection-gone";
@@ -94,6 +94,7 @@ import { isProviderLoginSessionLostError } from "./provider-login-session-lost";
 import { toDisplayProviderIdOrNull } from "./provider-overrides";
 import { normalizeLegacyModel } from "./providers";
 import { canPurchaseInApp } from "./purchase-policy";
+import { classifyQuietError } from "./quiet-error-class";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
 import { isStaleAttachmentError } from "./stale-attachment";
@@ -102,10 +103,6 @@ import {
   isNeedsUpgradeError,
   isPersonalSpaceError,
 } from "./team-status-model";
-import {
-  isToolkitNoAuthError,
-  isToolkitOauthUnavailableError,
-} from "./toolkit-connect-refusals";
 import type { FileEntry, SkillDetail, SkillSummary, Workspace } from "./types";
 import { trackAttachmentUpload } from "./upload-progress";
 import { markToldUser } from "./user-told-mark";
@@ -357,6 +354,16 @@ async function surfaceError(
     return true;
   }
 
+  // A read of a sleeping agent's data the gateway cannot serve yet, past the
+  // read's retries (HOUSTON-APP-5HP). Reads never wake the agent, so the
+  // waking notice would be wrong: the user sees nothing, and Sentry gets one
+  // burst-collapsed warning in the fixed `agent_data_busy` issue.
+  if (classifyQuietError(err) === "agent_data_busy") {
+    const { reportQuietError } = await import("./quiet-error-report");
+    reportQuietError("agent_data_busy", label, message, err, context);
+    return false;
+  }
+
   // Expected environment state, not a bug: the gateway's "engine unavailable"
   // 503 — the agent's engine pod is provisioning or cold-starting (HOU-1114: a
   // just-installed store agent's background writes hit this and showed the red
@@ -367,7 +374,7 @@ async function surfaceError(
   // `engine_waking` issue carrying the raw gateway body, and the answer feeds
   // the per-agent stuck-wake escalation (PRODUCT-1640) — `context` supplies
   // the agent for the `call()` sites that pass one.
-  if (isEngineWakingError(err)) {
+  if (classifyQuietError(err) === "engine_waking") {
     const { showEngineWakingToast } = await import("./error-toast");
     showEngineWakingToast(label, message, err, context);
     return true;
@@ -509,7 +516,8 @@ export const tauriChat = {
       /**
        * Per-turn mode pin (composer "Mode" selector). `"plan"` pins a read-only
        * planning turn; `"auto"` (Autopilot) drops the blocking tools so the turn
-       * runs fire-and-forget; `"execute"` (or omitted) is a normal turn.
+       * runs fire-and-forget; `"execute"` is a normal turn. Omitted, the turn
+       * runs on the mode its conversation keeps (HOU-205), else `"execute"`.
        */
       modeOverride?: "execute" | "plan" | "auto";
       /** Resend of a prompt whose bubble is already in the feed (see SessionStartRequest). */
@@ -954,10 +962,10 @@ export const tauriFiles = {
   /** Raw bytes over HTTP — powers in-browser preview + download (web build).
    *  Pass `{ toast: false }` when the caller renders the failure inline.
    *
-   *  A 404 is the user's state, not a bug (PRODUCT-1780): the agent linked a
-   *  file that is not there (never written, renamed, deleted). It is silenced
-   *  for Sentry and, when this call owns the surface, shown as an authored
-   *  expected-state toast; inline callers read `isFileGoneError` themselves. */
+   *  A gone file or a link outside the agent's files is the user's state, not
+   *  a bug (`fileReadRefusal`): silenced as an error and, when this call owns
+   *  the surface, shown as an authored info toast; inline callers render the
+   *  same copy themselves. An outside link still sends one quiet warning. */
   download: (
     agentPath: string,
     relativePath: string,
@@ -979,15 +987,18 @@ export const tauriFiles = {
         ...options,
         silence: (error) =>
           options?.as === "pdf" ||
-          isFileGoneError(error) ||
+          fileReadRefusal(error) !== null ||
           error instanceof FilePreviewError,
       },
     ).catch(async (err: unknown) => {
-      if (options?.toast !== false && isFileGoneError(err)) {
-        const { showExpectedStateToast } = await import("./error-toast");
-        showExpectedStateToast(
-          i18n.t("agents:files.gone.title"),
-          i18n.t("agents:files.gone.description"),
+      if (fileReadRefusal(err)) {
+        const { reportQuietError } = await import("./quiet-error-report");
+        surfaceFileReadRefusal(
+          err,
+          "download_project_file",
+          { agentPath },
+          options?.toast !== false,
+          reportQuietError,
         );
       }
       throw err;
@@ -1081,6 +1092,7 @@ import type {
 } from "@houston/engine-adapter";
 import * as activityData from "../data/activity";
 import * as configData from "../data/config";
+import type { TurnMode } from "./turn-mode";
 
 export const tauriRoutines = {
   list: (agentPath: string) =>
@@ -1154,6 +1166,7 @@ export const tauriActivity = {
     agent?: string,
     provider?: string,
     model?: string,
+    mode?: TurnMode,
   ) =>
     activityData.create(
       agentPath,
@@ -1162,6 +1175,7 @@ export const tauriActivity = {
       agent,
       provider,
       model,
+      mode,
     ),
   /**
    * Create the row through the host's single POST (which honors a
@@ -1205,6 +1219,15 @@ export const tauriActivity = {
     activityId: string,
     update: activityData.ActivityUpdate,
   ) => activityData.update(agentPath, activityId, update).then(() => undefined),
+  /**
+   * Keep a mission's turn mode (the Mode pill) on its card, through the SDK's
+   * board PATCH, so it survives leaving the chat and reaches every surface
+   * and every send that pins no mode (HOU-205).
+   */
+  setMode: (agentPath: string, activityId: string, mode: TurnMode) =>
+    getEngine()
+      .updateActivity(agentPath, activityId, { mode })
+      .then(() => undefined),
   /** The SDK's client mission-title pass (`mission-title.ts`); never rejects. */
   titleFromClient: (
     agentPath: string,
@@ -1800,7 +1823,8 @@ export const tauriIntegrations = {
    *  per-agent surface so the gateway applies the agent's allowlist + auto-grant
    *  (Teams v2); omit it for the account-level Integrations page. The host's
    *  typed connect refusals — OAuth unavailable (a Houston-side setup gap,
-   *  HOU-1110) and no-auth (nothing to connect, its tools already work) — are
+   *  HOU-1110), no-auth (nothing to connect, its tools already work) and
+   *  not-found (no app by that slug, HOUSTON-APP-5M0) — are
    *  expected + explainable: the connect flow surfaces its own copy, so no raw
    *  toast and no bug report. */
   connect: (provider: IntegrationProviderId, toolkit: string, agent?: string) =>
@@ -1809,8 +1833,7 @@ export const tauriIntegrations = {
       () => getEngine().connectIntegration(provider, toolkit, agent),
       { provider, toolkit },
       {
-        silence: (err) =>
-          isToolkitOauthUnavailableError(err) || isToolkitNoAuthError(err),
+        silence: (err) => integrationConnectRefusal(err) !== null,
       },
     ),
   /** The connect poll's status read. A 404 means the pending connection is

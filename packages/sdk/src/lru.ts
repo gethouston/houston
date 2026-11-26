@@ -105,7 +105,7 @@ export class LruCache<K, V> {
     const { idleMs } = this.opts;
     if (idleMs === undefined) return;
     const cutoff = this.now() - idleMs;
-    for (const [k, v] of [...this.map]) {
+    for (const [k, v] of Array.from(this.map)) {
       if ((this.seen.get(k) ?? 0) > cutoff) continue;
       if (this.opts.isPinned?.(k, v)) continue;
       this.evictEntry(k, v);
@@ -114,7 +114,7 @@ export class LruCache<K, V> {
 
   private evictOverflow(): void {
     if (this.map.size <= this.opts.capacity) return;
-    for (const [k, v] of [...this.map]) {
+    for (const [k, v] of Array.from(this.map)) {
       if (this.map.size <= this.opts.capacity) break;
       if (this.opts.isPinned?.(k, v)) continue;
       this.evictEntry(k, v);

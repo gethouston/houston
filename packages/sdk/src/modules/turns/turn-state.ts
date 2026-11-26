@@ -22,6 +22,7 @@ import {
 
 /** One streamed turn's accumulation + settle state (owned by TurnSink). */
 export interface TurnState extends TurnReplyState {
+  filesNotSavedShown?: true;
   agentPath: string;
   sessionKey: string;
   /** Where every FeedItem / SessionStatus for this turn is emitted. */
@@ -151,6 +152,7 @@ export function emitStatus(
 const NOTICE_CLASS: Record<EngineNoticeKind, TurnErrorClass | null> = {
   engine_restart: "engine_restart",
   engine_resumed: null,
+  sandbox_lost: "sandbox_lost",
   turn_time_limit: null,
   turn_time_limit_unsaved: null,
   send_busy: "send_busy",
@@ -160,6 +162,7 @@ const NOTICE_CLASS: Record<EngineNoticeKind, TurnErrorClass | null> = {
   agent_too_large: "agent_too_large",
   agent_setup_failed: "agent_setup_failed",
   turn_unconfirmed: "turn_unconfirmed",
+  files_not_saved: null,
 };
 
 /**

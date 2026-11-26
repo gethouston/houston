@@ -18,7 +18,7 @@ export interface FormDialogAction {
    * would take the secret with it. Rejection says "that failed, correct it";
    * `false` says "that worked, and there is one more thing to see".
    */
-  // biome-ignore lint/suspicious/noConfusingVoidType: sync handlers return void, async ones return a Promise
+  // sync handlers return void, async ones return a Promise
   onClick?: () => void | boolean | Promise<unknown>;
   disabled?: boolean;
   variant?: "default" | "destructive";
@@ -42,7 +42,7 @@ export interface ResolvedSecondary {
   label: string;
   disabled?: boolean;
   variant: "outline" | "destructive";
-  // biome-ignore lint/suspicious/noConfusingVoidType: sync handlers return void, async ones return a Promise
+  // sync handlers return void, async ones return a Promise
   run: () => void | Promise<unknown>;
 }
 
@@ -167,7 +167,7 @@ const staysOpen = (value: unknown) => value === false;
  */
 export function runPendingAction(
   inFlight: { current: boolean },
-  // biome-ignore lint/suspicious/noConfusingVoidType: sync handlers return void, async ones return a Promise
+  // sync handlers return void, async ones return a Promise
   run: () => void | boolean | Promise<unknown>,
   handlers: PendingActionHandlers,
 ): Promise<unknown> | undefined {

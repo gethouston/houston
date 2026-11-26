@@ -72,7 +72,7 @@ export function createPageLifecycle(
     cancelTimer = null;
     if (!unloading) return;
     unloading = false;
-    for (const listener of [...listeners]) listener();
+    for (const listener of Array.from(listeners)) listener();
   };
   const leaving = (settled: boolean) => {
     unloading = true;

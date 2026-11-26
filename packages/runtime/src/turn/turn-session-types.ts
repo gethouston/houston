@@ -1,5 +1,10 @@
 import type { AssistantRuntimeRole } from "@houston/domain/assistant-role";
-import type { ModelCallReport, TurnMode } from "@houston/protocol";
+import type { MissionGuidance } from "@houston/host/src/houston-prompt-missions";
+import type {
+  ModelCallReport,
+  ProviderError,
+  TurnMode,
+} from "@houston/protocol";
 import type {
   ChatMessage,
   PendingInteraction,
@@ -12,6 +17,7 @@ import type { MissionTitleRequest } from "../session/mission-title";
 import type { SandboxFetch } from "../session/tools/sandbox-fetch";
 import type { ProvidedContext } from "../session/workspace-context";
 import type { ArchiveLoader } from "./turn-archive-fetch";
+import type { DeferredGate } from "./turn-deferred-gate";
 import type { InTreeMissionTitle } from "./turn-mission-title-outcome";
 import type { RemoteActivityReader } from "./turn-mission-title-remote";
 import type { TurnSessionStartupTask } from "./turn-session-startup";
@@ -28,6 +34,7 @@ export interface TurnOutcome {
   spend?: { provider: string; usage: TokenUsage };
   /** Per-call timings for the terminal frame (turn-terminal.ts). */
   modelCalls?: ModelCallReport;
+  providerError?: ProviderError;
 }
 
 /** Per-turn model/effort pin. Absent means inherit the agent setting. */
@@ -63,6 +70,7 @@ export interface TurnSessionRequest {
    * (session/routine-context.ts).
    */
   routineFire?: boolean;
+  claimed?: boolean;
   /** Fresh read of the stored board doc, for a card hydration missed. */
   readRemoteActivity?: RemoteActivityReader;
   author?: MessageAuthor;
@@ -84,7 +92,10 @@ export interface TurnSessionRequest {
    */
   role?: AssistantRuntimeRole;
   /** Turn-local routing closure; it owns all grant-bearing calls. */
-  sandbox?: { call: SandboxFetch };
+  sandbox?: {
+    call: SandboxFetch;
+    missionGuidance?: Promise<MissionGuidance>;
+  };
   timings?: Record<string, number>;
   /** Setup begun after layout resolution and before bulk hydration completes. */
   startup?: TurnSessionStartupTask;
@@ -94,10 +105,13 @@ export interface TurnDirectories {
   workspaceDir: string;
   dataDir: string;
   turnRoot: string;
+  workspaceRel?: string;
+  dataRel?: string;
   /** Hydration deferred past the prompt (turn-deferred-files.ts). */
   workspaceReady?: Promise<void>;
   /** Called once the prompt ends or is stopped (turn-deferred-watch.ts). */
   abandonDeferred?: () => void;
+  deferredGate?: DeferredGate;
   /** Archive segments left remote, fetched on demand (turn-archive-fetch.ts). */
   loadArchive?: ArchiveLoader;
 }

@@ -29,16 +29,16 @@ export type ProviderConnectDialogClose = "completed" | "dismissed";
  * `ProviderLoginComplete`), so every close the user drives there is a real
  * abandon.
  */
-const SELF_COMPLETING: readonly ProviderConnectDialogKind[] = [
+const SELF_COMPLETING: ReadonlySet<ProviderConnectDialogKind> = new Set([
   "apiKey",
   "copilot",
   "localModel",
-];
+]);
 
 /** Whether closing `kind` for `close` should cancel the connection observation. */
 export function closeMeansCancel(
   kind: ProviderConnectDialogKind,
   close: ProviderConnectDialogClose,
 ): boolean {
-  return !(close === "completed" && SELF_COMPLETING.includes(kind));
+  return !(close === "completed" && SELF_COMPLETING.has(kind));
 }

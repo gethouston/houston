@@ -21,7 +21,10 @@ export interface ComputeRefusal {
   retryAfterMs?: number;
 }
 
-const CODES: readonly string[] = ["compute_busy", "pod_wake_refused"];
+const CODES: ReadonlySet<string> = new Set([
+  "compute_busy",
+  "pod_wake_refused",
+]);
 
 /** Parse only a typed compute refusal body; anything else is null. */
 export function parseComputeRefusal(body: unknown): ComputeRefusal | null {
@@ -29,7 +32,7 @@ export function parseComputeRefusal(body: unknown): ComputeRefusal | null {
   const value = body as Record<string, unknown>;
   if (
     typeof value.code !== "string" ||
-    !CODES.includes(value.code) ||
+    !CODES.has(value.code) ||
     typeof value.error !== "string"
   )
     return null;

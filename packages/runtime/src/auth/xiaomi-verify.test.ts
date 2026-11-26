@@ -137,9 +137,8 @@ test("an endpoint with no verdict → provider_unavailable, never 'paste it agai
 
 test("an injected persist (the pool-worker seam) lands in the AGENT's dir, not the process's", async () => {
   const { verifyXiaomiEndpoints, persistedEndpoint } = await load();
-  const { setXiaomiEndpointIn, xiaomiEndpointFileIn } = await import(
-    "../ai/xiaomi-endpoint"
-  );
+  const { setXiaomiEndpointIn, xiaomiEndpointFileIn } =
+    await import("../ai/xiaomi-endpoint");
   const agentDataDir = mkdtempSync(join(tmpdir(), "houston-xiaomi-agent-"));
   await verifyXiaomiEndpoints(
     "xiaomi",

@@ -4,6 +4,7 @@ import { DefaultResourceLoader } from "@earendil-works/pi-coding-agent";
 import { renderJobDescriptionForPrompt } from "@houston/domain";
 import type { AssistantRuntimeRole } from "@houston/domain/assistant-role";
 import type { TurnMode } from "@houston/protocol";
+import { makeProviderResponseRecorder } from "../ai/provider-response";
 import { config } from "../config";
 import { buildAssistantRulesSection } from "./assistant-rules-context";
 import { makeCompactionGuard } from "./compaction-guard";
@@ -106,8 +107,10 @@ export function buildAgentLoader(opts: {
     noContextFiles: true,
     // Inline factories load even with noExtensions (that flag only gates
     // on-disk discovery). The guard keeps compaction's summarization request
-    // within the model's window — see compaction-guard.ts (HOU-709).
-    extensionFactories: [makeCompactionGuard()],
+    // within the model's window — see compaction-guard.ts (HOU-709). The
+    // recorder keeps each failed request's status and request id for its
+    // error card (ai/provider-response.ts).
+    extensionFactories: [makeCompactionGuard(), makeProviderResponseRecorder()],
     additionalSkillPaths,
     skillsOverride: agentSkillsOverride(sharedSkillsDir, enabledSharedSkills),
     agentsFilesOverride: () => ({

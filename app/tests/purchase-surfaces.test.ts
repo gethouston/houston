@@ -135,9 +135,7 @@ before(async () => {
   surfaces = {
     ...(await import("../src/components/organization/billing-plan-card.tsx")),
     ...(await import("../src/components/organization/billing-usage-card.tsx")),
-    ...(await import(
-      "../src/components/shell/provider-error-cards/plan-limit.tsx"
-    )),
+    ...(await import("../src/components/shell/provider-error-cards/plan-limit.tsx")),
     ...(await import("../src/components/shell/plan-upgrade-row.tsx")),
     ...(await import("../src/components/shell/plan-web-note.tsx")),
   };

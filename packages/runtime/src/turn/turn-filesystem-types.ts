@@ -4,8 +4,10 @@ import type {
   HydrateManifest,
   HydrateOptions,
   ObjectStore,
+  SyncResult,
 } from "@houston/runtime-client/object-sync";
 import type { ArchiveLoader } from "./turn-archive-fetch";
+import type { DeferredGate } from "./turn-deferred-gate";
 import type { TurnLayout } from "./turn-layout";
 
 /** Hydrated manifest paired with the resolved on-disk layout. */
@@ -24,15 +26,18 @@ export interface TurnFilesystem extends TurnLayout {
   /** The store's generation capability as the LISTING showed it. A filtered
    *  or lazy manifest may be empty and cannot answer this on its own. */
   generationAware: boolean;
-  /** Tool-call-time CAS writes already durable before the final sync pass. */
+  /** Writes already durable before the final sync pass: tool-call-time CAS
+   *  writes and workspace checkpoints (turn-checkpoint.ts). */
   immediateWrites: Set<string>;
-  /** Objects hydration deferred past `hydrated` (turn-deferred-files.ts).
-   *  Absent when nothing was deferred. Every tool, the turn's file-change
-   *  snapshot and the final sync wait for it. */
+  conflictCopies?: Map<string, SyncResult["conflictCopies"][number]>;
+  landed?: {
+    add(landed: readonly string[], deleted?: readonly string[]): void;
+  };
   workspaceReady?: Promise<void>;
   /** The prompt is over: stop the deferred download if it has not landed,
    *  and sync as after a failed one (turn-deferred-watch.ts). */
   abandonDeferred?: () => void;
+  deferredGate?: DeferredGate;
   /** Eager trees only: fetch the archive segments the hot set left remote
    *  before a reader reaches them (turn-archive-fetch.ts). */
   loadArchive?: ArchiveLoader;

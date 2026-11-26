@@ -22,10 +22,10 @@ export type ArchiveLoader = (
 ) => Promise<void>;
 
 /**
- * The lazy read behind a claimed turn's archive: the hot set hydrates only the
- * newest segments (turn-hot-set-archive.ts), and a reader that reaches further
- * back (a routine digest past them, houston_recall's full search) calls this
- * first. A missing segment is fetched from the store into the turn's tree and
+ * The lazy read behind a claimed turn's archive: the hot set hydrates no
+ * segment (turn-hot-set.ts), and a reader that reaches into one (a routine
+ * digest past the live tail, houston_recall's full search) calls this first.
+ * A missing segment is fetched from the store into the turn's tree and
  * entered in its manifest with the bytes' hash, exactly like a hydrated one:
  * the sync never re-uploads it, and a local delete of it reaches the store.
  * A segment the store does not have either is reported and fails the fetch
@@ -88,9 +88,11 @@ async function listArchive(
 ): Promise<LazyStoreVfs> {
   if (!opts.store.manifest)
     throw new Error("this store cannot list an archive to fetch from");
-  const objects = await opts.store.manifest(
-    opts.prefix ? `${opts.prefix}/${archiveRel}` : archiveRel,
-  );
+  const objects = (
+    await opts.store.manifest(
+      opts.prefix ? `${opts.prefix}/${archiveRel}` : archiveRel,
+    )
+  ).filter(({ link }) => link === undefined);
   return new LazyStoreVfs({
     store: opts.store,
     prefix: opts.prefix,

@@ -33,8 +33,8 @@ const ACTIONS = [
 
 function backend(calledInBand: boolean) {
   const wire = new Set<(e: WireEvent) => void>();
-  const oneShotText = vi.fn(
-    async (): Promise<string> => JSON.stringify({ actions: ACTIONS }),
+  const oneShotText = vi.fn(async (): Promise<string> =>
+    JSON.stringify({ actions: ACTIONS }),
   );
   const session = {
     subscribe(l: (e: WireEvent) => void) {

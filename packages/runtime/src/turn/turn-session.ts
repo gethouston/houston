@@ -57,17 +57,6 @@ export async function runTurn(
   );
 
   const frames = newTurnFrames();
-  /**
-   * WHICH access token this turn ran on, for the revoked-token report
-   * (auth/used-token.ts, PRODUCT-1319). This path's `ModelRuntime` uses pi's
-   * OWN file-backed store (not `HoustonAuthStore`), so nothing records at
-   * request time — instead the capture is SEEDED from the hydrated per-request
-   * auth.json below. That read is exact here: the root is a throwaway copy
-   * exclusive to this request, and its served entries are access-only (Gate
-   * #2, no refresh token), so no re-serve or refresh can rotate the token
-   * between the seed and a failure. Held outside the try so the catch can
-   * still name the failed token.
-   */
   const usedTokens = newUsedTokenCapture();
   // Set when the session autocompacted before the prompt: announced before
   // the prompt and persisted on the reply, like the standing server's.
@@ -90,7 +79,7 @@ export async function runTurn(
     // this request, so the diff is attributable by construction. Best-effort.
     const beforeFiles = snapshotWhenReady(
       workspaceDir,
-      directories.workspaceReady,
+      directories.deferredGate,
     );
 
     // A fresh per-turn holder for whatever the model ends up waiting on the user
@@ -117,6 +106,7 @@ export async function runTurn(
         mode: mode ?? "execute",
         liveMode: turn.liveMode,
         model,
+        dataDir,
       },
       () =>
         promptTurnSession({
@@ -152,6 +142,7 @@ export async function runTurn(
       compaction,
       provider,
       turnId,
+      usedTokens,
       emit,
     });
     // The spend a standing pod folds into its ledger after the same turn
@@ -165,6 +156,7 @@ export async function runTurn(
     );
     return {
       ...outcome,
+      ...(frames.providerError ? { providerError: frames.providerError } : {}),
       ...(frames.stopReason ? { stopReason: frames.stopReason } : {}),
       ...(missionTitle ? { missionTitle } : {}),
       ...modelCallsOutcome(frames, turnId),
@@ -190,6 +182,7 @@ export async function runTurn(
     });
     const stopReason = frames.stopReason ?? turn.stopReason?.();
     return {
+      ...(frames.providerError ? { providerError: frames.providerError } : {}),
       ...failed,
       ...(stopReason ? { stopReason } : {}),
       ...modelCallsOutcome(frames, turnId),

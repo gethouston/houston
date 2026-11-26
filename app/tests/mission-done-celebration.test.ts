@@ -1,5 +1,5 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
-import { afterEach, describe, it } from "node:test";
+import { afterEach, before, describe, it } from "node:test";
 import {
   buildMissionBoardColumns,
   MISSION_APPROVE_STATUSES,
@@ -20,6 +20,7 @@ import {
   DONE_STATUS,
   ERROR_STATUS,
 } from "../src/lib/mission-selection.ts";
+import { snapshotGlobals } from "./support/restore-globals.ts";
 
 /** A `confetti`-shaped spy: records every burst it is asked to fire. */
 function recorder() {
@@ -77,13 +78,18 @@ function stubBoard(
   return { lookups: () => lookups };
 }
 
-function clearDom() {
-  (globalThis as { window?: unknown }).window = undefined;
-  (globalThis as { document?: unknown }).document = undefined;
+/** Called inside a describe: puts back the `window` and `document` the stubs
+ *  replace, as the file found them, after every test. */
+function restoresDom() {
+  let restore = () => {};
+  before(() => {
+    restore = snapshotGlobals(["window", "document"]);
+  });
+  afterEach(() => restore());
 }
 
 describe("move-to-done celebration", () => {
-  afterEach(clearDom);
+  restoresDom();
 
   it("treats only `done` as the celebrated transition", () => {
     const settled = ["needs_you"];
@@ -151,7 +157,7 @@ describe("move-to-done celebration", () => {
 });
 
 describe("move-to-done celebration origin", () => {
-  afterEach(clearDom);
+  restoresDom();
 
   it("bursts from the centre of the card, in viewport fractions", () => {
     // 1000x800 viewport, card spanning x 200-440 and y 100-180: centre
@@ -279,6 +285,7 @@ describe("move-to-done checkmark coverage", () => {
 });
 
 describe("archive-box coverage", () => {
+  restoresDom();
   it("offers the archive box on exactly the Done column's cards", () => {
     // The counterpart to the checkmark: once the user has signed a mission
     // off, filing it away is the only move left, and it deserves the same one
@@ -338,6 +345,5 @@ describe("archive-box coverage", () => {
       ARCHIVED_STATUS,
     )();
     strictEqual(board.lookups(), 0);
-    clearDom();
   });
 });

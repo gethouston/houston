@@ -121,9 +121,9 @@ export function useChatProviderConnect({
   const dialogs = connections.dialogProps;
   const dialogOpen = Boolean(
     dialogs.apiKeyDialog ||
-      dialogs.loginDialog ||
-      dialogs.customEndpointDialog ||
-      dialogs.copilotDialogOpen,
+    dialogs.loginDialog ||
+    dialogs.customEndpointDialog ||
+    dialogs.copilotDialogOpen,
   );
   return {
     active,

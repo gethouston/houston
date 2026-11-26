@@ -8,7 +8,7 @@ use std::time::Duration;
 const FALLBACK_BYTE_RATE: u64 = 16_000 * 2;
 
 /// The floor a transcription is always allowed, regardless of clip length.
-/// Generous on purpose: the first run pays a cold 181 MB model load, and
+/// Generous on purpose: the first run pays a cold 190 MB model load, and
 /// CPU-only Windows machines (antivirus scan of the exe + model, slow disks,
 /// VMs) blew the previous 30s floor on even short clips (PRODUCT-1448). The
 /// timeout only exists to reap a genuinely hung sidecar, not to race a slow

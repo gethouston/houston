@@ -405,8 +405,7 @@ export function pickClaimedProvider(
   connectedSiblings: ProviderId[],
 ): ProviderId | null {
   if (saved) return null;
-  const others = authedIds.filter((id) => !connectedSiblings.includes(id));
-  return others[0] ?? connected;
+  return authedIds.find((id) => !connectedSiblings.includes(id)) ?? connected;
 }
 
 /**
@@ -560,7 +559,7 @@ export function safeGetModel(
  * the domain's (`@houston/domain/provider-dialect`, the same module the
  * frontend's `wireTurnPin` applies before send); this function is the runtime's
  * single pin-entry seam — every turn's provider override flows through it
- * (exec-turn, conversation-cache, generate-agent) — so NO caller (the hosted
+ * (exec-turn, conversation-cache) — so NO caller (the hosted
  * Teams model-choice path, a routine pin, a hand-crafted request body) can land
  * a turn on pi's raw `openai` provider and miss the `openai-codex` credential.
  */

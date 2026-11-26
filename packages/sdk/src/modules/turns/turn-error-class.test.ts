@@ -12,6 +12,7 @@ test("names every class and refuses anything else", () => {
   for (const cls of [
     "stopped",
     "engine_restart",
+    "sandbox_lost",
     "send_busy",
     "compute_busy",
     "turn_died",
@@ -41,6 +42,7 @@ test("disposes each class once, for every surface", () => {
   expect(turnErrorDisposition("stopped")).toBe("intended");
   for (const cls of [
     "engine_restart",
+    "sandbox_lost",
     "send_busy",
     "compute_busy",
     "provider_unauthenticated",

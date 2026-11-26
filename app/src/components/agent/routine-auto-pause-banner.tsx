@@ -6,13 +6,13 @@
  * Renders nothing for a running routine or one a person paused.
  */
 
+import { Button } from "@houston-ai/core";
 import type { Routine } from "@houston/engine-adapter";
 import {
   type RoutinePauseNotice,
   type RoutineReaderAccount,
   routinePauseNotice,
 } from "@houston/sdk";
-import { Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { providerName } from "../../lib/providers";
 import { RoutineNoticeCard } from "./routine-notice-card";
@@ -57,6 +57,8 @@ export function RoutineAutoPauseBanner({
         return t("details.autoPause.addCredits", { provider });
       case "change_model":
         return t("details.autoPause.changeModel", { provider });
+      case "check_runs":
+        return t("details.autoPause.keepsFailing", { provider });
     }
   };
 

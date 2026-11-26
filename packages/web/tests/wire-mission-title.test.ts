@@ -90,24 +90,27 @@ test.each([
   ["absent", {}],
   ["false", { missionTitleOnSend: false }],
   ["not loaded", null],
-])("capability %s: the send has no missionTitle, then POST /title and the PATCH", async (_label, caps) => {
-  stubEngine(() => json(200, { title: '"Weekly sales report."' }));
-  const plan = planMissionTitle(caps, TITLE);
+])(
+  "capability %s: the send has no missionTitle, then POST /title and the PATCH",
+  async (_label, caps) => {
+    stubEngine(() => json(200, { title: '"Weekly sales report."' }));
+    const plan = planMissionTitle(caps, TITLE);
 
-  const post = await send(plan);
-  expect(post.body).not.toContain("missionTitle");
-  await client().titleMissionFromClient(AGENT, "m1", plan.client);
+    const post = await send(plan);
+    expect(post.body).not.toContain("missionTitle");
+    await client().titleMissionFromClient(AGENT, "m1", plan.client);
 
-  const title = calls.find((c) => c.url.endsWith("/title"));
-  expect(title?.method).toBe("POST");
-  expect(title?.url).toBe(`${BASE}/agents/${AGENT}/title`);
-  expect(title?.body).toBe(JSON.stringify({ text: TEXT }));
-  if (title) expectGatewayHeaders(title);
-  const patch = calls.find((c) => c.method === "PATCH");
-  expect(patch?.url).toBe(`${BASE}/agents/${AGENT}/activities/m1`);
-  // Quotes and the trailing period trimmed, exactly as the app once did.
-  expect(patch?.body).toBe(JSON.stringify({ title: "Weekly sales report" }));
-});
+    const title = calls.find((c) => c.url.endsWith("/title"));
+    expect(title?.method).toBe("POST");
+    expect(title?.url).toBe(`${BASE}/agents/${AGENT}/title`);
+    expect(title?.body).toBe(JSON.stringify({ text: TEXT }));
+    if (title) expectGatewayHeaders(title);
+    const patch = calls.find((c) => c.method === "PATCH");
+    expect(patch?.url).toBe(`${BASE}/agents/${AGENT}/activities/m1`);
+    // Quotes and the trailing period trimmed, exactly as the app once did.
+    expect(patch?.body).toBe(JSON.stringify({ title: "Weekly sales report" }));
+  },
+);
 
 test("a runtime that cannot title falls back to truncation, PATCHed only when it differs", async () => {
   stubEngine(() => json(503, { error: "engine waking" }));

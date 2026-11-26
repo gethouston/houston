@@ -168,12 +168,15 @@ test("a refused journal no longer blocks disconnecting", async () => {
 test.each([
   ["a lost session", 401],
   ["an unreachable gateway", 503],
-])("%s at registration keeps the attempt for the next boot", async (_name, status) => {
-  const h = harness(wedged);
-  const failure = Object.assign(new Error("failed"), { status });
-  vi.mocked(h.ports.management.register).mockRejectedValueOnce(failure);
-  const controller = h.controller();
-  await expect(controller.resume()).rejects.toBe(failure);
-  expect(h.journal()).toEqual(wedged);
-  await controller.dispose();
-});
+])(
+  "%s at registration keeps the attempt for the next boot",
+  async (_name, status) => {
+    const h = harness(wedged);
+    const failure = Object.assign(new Error("failed"), { status });
+    vi.mocked(h.ports.management.register).mockRejectedValueOnce(failure);
+    const controller = h.controller();
+    await expect(controller.resume()).rejects.toBe(failure);
+    expect(h.journal()).toEqual(wedged);
+    await controller.dispose();
+  },
+);

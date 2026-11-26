@@ -6,8 +6,8 @@
  * one mutation per agent at a time (`activity-writes.ts`).
  */
 
-import type { PendingInteraction } from "@houston/protocol";
 import schema from "@houston-ai/agent-schemas/activity.schema.json";
+import type { PendingInteraction, TurnMode } from "@houston/protocol";
 import { activityWrites } from "./activity-writes";
 import { newId, now, readAgentJson, writeAgentJson } from "./agent-file";
 
@@ -39,6 +39,8 @@ export interface Activity {
   last_message_at?: string;
   provider?: string;
   model?: string;
+  /** The conversation's kept turn mode; absent means Ask first (HOU-205). */
+  mode?: TurnMode;
   /** The conversation this mission was started from, present only when the
    *  agent created the mission itself (PRODUCT-1244). Set by Houston. */
   origin_session_key?: string;
@@ -93,8 +95,17 @@ export function create(
   agent?: string,
   provider?: string,
   model?: string,
+  mode?: TurnMode,
 ): Promise<Activity> {
-  return writes.create(agentPath, title, description, agent, provider, model);
+  return writes.create(
+    agentPath,
+    title,
+    description,
+    agent,
+    provider,
+    model,
+    mode,
+  );
 }
 
 /** Merge `patch` into one mission; rejects when the id is unknown. */

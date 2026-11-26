@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { genericErrorDescription } from "../../lib/error-report";
+import { perfSpans } from "../../lib/perf-spans";
 import { useUIStore } from "../../stores/ui";
 import { ProviderBrowser } from "../provider-browser/provider-browser";
 import { useProviderBrowserData } from "../provider-browser/use-provider-browser-data";
@@ -35,6 +37,7 @@ export function MigrationReconnectScreen({
   const { t } = useTranslation("setup");
   const addToast = useUIStore((s) => s.addToast);
   const { providers, connections, catalog } = useProviderBrowserData();
+  useEffect(() => perfSpans.landedOn("migration_reconnect"), []);
 
   const finish = (source: "connected" | "skipped") => {
     analytics.track("migration_reconnect_completed", { source });

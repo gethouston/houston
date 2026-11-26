@@ -30,9 +30,8 @@ g.React = React;
 const { act, createElement: h } = React;
 const { createRoot } = await import("react-dom/client");
 const { AppSidebar } = await import("../src/sidebar.tsx");
-const { useSidebarAvatarDiameter } = await import(
-  "../src/sidebar-avatar-diameter.tsx"
-);
+const { useSidebarAvatarDiameter } =
+  await import("../src/sidebar-avatar-diameter.tsx");
 
 /** Prints the diameter the rail hands the avatar where it is mounted. */
 function Portrait() {

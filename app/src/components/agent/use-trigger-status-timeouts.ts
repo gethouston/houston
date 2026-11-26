@@ -60,7 +60,7 @@ export function useTriggerStatusTimeouts(
     return () => clearTimeout(timer);
   }, [triggerRowIds, statusItems]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: timeoutTick is a deliberate recompute trigger — the body reads firstSeenRef.current + Date.now() live, and the timer bumps timeoutTick so an elapsed timeout flips the routine to the error copy.
+  /* oxlint-disable react-hooks/exhaustive-deps -- timeoutTick is a deliberate recompute trigger — the body reads firstSeenRef.current + Date.now() live, and the timer bumps timeoutTick so an elapsed timeout flips the routine to the error copy. */
   return useMemo(() => {
     const base = toStatusMap(statusItems);
     const timedOut = timedOutTriggerIds(
@@ -71,4 +71,5 @@ export function useTriggerStatusTimeouts(
     );
     return withTriggerTimeouts(base, timedOut, t("trigger.statusTimeout"));
   }, [statusItems, triggerRowIds, timeoutTick, t]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 }

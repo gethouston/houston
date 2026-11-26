@@ -94,9 +94,8 @@ vi.mock("../store/conversations", () => ({
 
 const { execTurn, recordUserTurn } = await import("./exec-turn");
 const { subscribe } = await import("./bus");
-const { recordQuestions, recordConnection, recordConfirmation } = await import(
-  "./interaction"
-);
+const { recordQuestions, recordConnection, recordConfirmation } =
+  await import("./interaction");
 const { appendAssistantMessage, appendUserMessage, consumeSessionReplay } =
   await import("../store/conversations");
 const { getHistory } = await import("../store/conversations");
@@ -146,7 +145,7 @@ function fakeConv(
     async prompt(text) {
       opts.onPrompt?.(text);
       await script((e) => {
-        for (const l of [...listeners]) l(e);
+        for (const l of Array.from(listeners)) l(e);
       });
     },
     async abort() {},
@@ -551,6 +550,8 @@ test("a throw before the provider write is attributed to the RESOLVED provider, 
     kind: "unknown",
     provider: "openai-codex",
     raw_excerpt: "the flux capacitor came loose",
+    // The model the turn resolved onto rides along for the bug report.
+    model: "gpt-x",
   });
   // The stale cached provider never reaches the card.
   expect(conv.provider).toBe("google");
@@ -691,7 +692,7 @@ test("a thrown summarization failure classifies on the RESOLVED model when the t
     kind: "model_unavailable",
     provider: "nvidia",
     model: "meta/llama-3.1-70b-instruct",
-    suggested_fallback: "openai/gpt-oss-20b",
+    suggested_fallback: "minimaxai/minimax-m3.1-flash",
   });
   expect(persistedProviderError(id)).toMatchObject({
     kind: "model_unavailable",
@@ -1154,4 +1155,36 @@ test("a thrown turn clears the in-flight marker too", async () => {
   expect(readInflightMarker(config.dataDir, id)).not.toBeNull();
   await execTurn(conv, id, "turn-thrown", "go", recorded);
   expect(readInflightMarker(config.dataDir, id)).toBeNull();
+});
+
+/**
+ * execTurn wraps the prompt in the provider-response capture, so a failed
+ * request's status and request id reach the turn's card.
+ */
+test("a failed response's status and request id reach the card through execTurn", async () => {
+  const { failWithRecordedResponse } =
+    await import("../backends/pi/provider-response.test-support");
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const id = "exec-provider-response";
+  const { events, unsub } = collect(id);
+  const conv = fakeConv((emit) => {
+    const wire = failWithRecordedResponse();
+    if (wire) emit(wire);
+  });
+
+  await execTurn(conv, id, "turn-1", "hey", {
+    author: undefined,
+    priorAuthors: [],
+  });
+  unsub();
+
+  const frame = events.find(
+    (e): e is Extract<WireEvent, { type: "provider_error" }> =>
+      e.type === "provider_error",
+  );
+  expect(frame?.data).toMatchObject({
+    kind: "unknown",
+    http_status: 400,
+    request_id: "oai-wrap-1",
+  });
 });

@@ -1,3 +1,4 @@
+import { providerErrorReportLine } from "@houston/sdk/turns/provider-error-report";
 import { type BugReportOutcome, deliverBugReport } from "./bug-report-delivery";
 import { logAndReportError, reportError } from "./error-report";
 import { osReadRecentLogs, osReportBug } from "./os-bridge";
@@ -19,6 +20,10 @@ interface BugReportContext {
   /** Free-text the person typed (Settings > Report bug). Linear titles and
    *  leads the issue with it, and the fallback feedback's message is it. */
   userMessage?: string;
+  /** Triage tags (a provider card's facts, `providerErrorReportTags`). They
+   *  ride the intake payload and the fallback feedback as tags, and the
+   *  intake's issue body as one plain line after the error. */
+  tags?: Record<string, string>;
 }
 
 async function getRecentLogs(
@@ -48,15 +53,21 @@ export async function submitBugReport(
   context: BugReportContext,
 ): Promise<BugReportOutcome> {
   const logs = await getRecentLogs();
-  const { command } = context;
+  const { command, tags } = context;
+  // Tags never show on the intake's issue, and the gateway's `/feedback`
+  // drops fields it does not know, so the facts also ride the error text the
+  // issue body prints on both desktop and web.
+  const line = tags ? providerErrorReportLine(tags) : "";
+  const error = line ? `${context.error}\n\n${line}` : context.error;
   return deliverBugReport({
-    sendToIntake: () => osReportBug({ ...context, logs }),
+    sendToIntake: () => osReportBug({ ...context, error, logs }),
     sendFallback: (failure) =>
       captureBugReportFeedback({
         message: context.userMessage || context.error,
         email: context.userEmail,
         command,
         reason: failure.kind,
+        tags,
         context: {
           error: context.userMessage ? undefined : context.error,
           appVersion: context.appVersion,

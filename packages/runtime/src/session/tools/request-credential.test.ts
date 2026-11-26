@@ -39,11 +39,9 @@ test("is named request_credential", () => {
 });
 
 test("records the credential step for a slug the host knows (normalized to lower case)", async () => {
-  const status = vi.fn(
-    async (): Promise<CredentialTargetStatus | null> => ({
-      state: { status: "pending" },
-    }),
-  );
+  const status = vi.fn(async (): Promise<CredentialTargetStatus | null> => ({
+    state: { status: "pending" },
+  }));
   const run = toolWith(status);
   const holder = newInteractionHolder();
   const out = await runWithInteractionCapture(holder, () =>

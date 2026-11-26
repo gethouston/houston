@@ -63,6 +63,7 @@ import {
   useState,
 } from "react";
 import { composerTextareaBounds } from "../composer-resize";
+import { submitForm } from "../submit-form";
 import { applyTextareaFit } from "../textarea-fit";
 
 // ============================================================================
@@ -901,7 +902,6 @@ export const PromptInput = ({
         ref={formRef}
         {...props}
       >
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: focus-delegation surface; the real interactive widget is the <textarea> inside — role="presentation" is correct, no standalone widget role applies */}
         <div
           data-composer-surface="true"
           className="group/composer relative cursor-text overflow-clip rounded-[28px] border border-line bg-input p-2.5 md:data-[expanded]:pt-4 dark:bg-card/95 shadow-field focus-within:shadow-field-focus transition-shadow grid grid-cols-[auto_1fr_auto] [grid-template-areas:'header_header_header'_'leading_primary_trailing'_'._footer_.'] data-[expanded]:[grid-template-areas:'header_header_header'_'primary_primary_primary'_'leading_footer_trailing']"
@@ -1003,7 +1003,7 @@ export const PromptInputTextarea = ({
           return;
         }
 
-        form?.requestSubmit();
+        if (form) submitForm(form);
       }
 
       // Remove last attachment when Backspace is pressed and textarea is empty
@@ -1426,12 +1426,15 @@ export type PromptInputTabLabelProps = HTMLAttributes<HTMLHeadingElement>;
 
 export const PromptInputTabLabel = ({
   className,
+  children,
   ...props
 }: PromptInputTabLabelProps) => (
   <h3
     className={cn("mb-2 px-3 font-medium text-ink-muted text-xs", className)}
     {...props}
-  />
+  >
+    {children}
+  </h3>
 );
 
 export type PromptInputTabBodyProps = HTMLAttributes<HTMLDivElement>;

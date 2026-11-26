@@ -1,8 +1,8 @@
 "use client";
 
-import type { CreatorProfile } from "@houston/agentstore-client";
 import { Alert, AlertDescription, AlertTitle, Spinner } from "@houston-ai/core";
 import { ProfileEditorScreen, ProfileEditorSignedOut } from "@houston-ai/store";
+import type { CreatorProfile } from "@houston/agentstore-client";
 import { AlertTriangle } from "lucide-react";
 import * as React from "react";
 import { useSession } from "@/lib/auth/session";

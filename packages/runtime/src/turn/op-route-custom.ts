@@ -80,7 +80,9 @@ export async function customIntegrationContext(
           statePrefix: `${org}.${agent}`,
           ...(fetchImpl ? { fetchFn: fetchImpl } : {}),
         }
-      : { ...(fetchImpl ? { fetchFn: fetchImpl } : {}) },
+      : fetchImpl
+        ? { fetchFn: fetchImpl }
+        : {},
   );
   return {
     manager,

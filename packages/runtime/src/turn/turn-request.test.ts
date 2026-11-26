@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import { parseTurnRequest } from "./parse-turn-request";
-import { turnSessionRequest } from "./turn-request";
+import { turnSessionRequest, turnSessionSandbox } from "./turn-request";
+import type { makeTurnSandboxFetch } from "./turn-sandbox";
 import type { TurnRequest } from "./types";
 
 /**
@@ -142,4 +143,27 @@ test("a turn preserves the planner's IANA timezone", () => {
   for (const timezone of ["", "Mars/Olympus", 42, null]) {
     expect(() => parseTurnRequest({ ...base, timezone })).toThrow(/timezone/);
   }
+});
+
+test("every session request built from a turn sandbox keeps its mission guidance", async () => {
+  const call = async () => Response.json({});
+  const missionGuidance = Promise.resolve("nested" as const);
+  const sandbox = { call, missionGuidance } as unknown as ReturnType<
+    typeof makeTurnSandboxFetch
+  >;
+  const projected = turnSessionSandbox(sandbox);
+  expect(projected?.call).toBe(call);
+  expect(await projected?.missionGuidance).toBe("nested");
+  expect(turnSessionSandbox({ call } as unknown as typeof sandbox)).toEqual({
+    call,
+  });
+  expect(turnSessionSandbox(null)).toBeUndefined();
+});
+
+test("only a claimed turn is marked claimed for its file wall", () => {
+  const claim = { id: "k1", bootId: "b1", token: "tok", heartbeatUrl: "u" };
+  expect(
+    turnSessionRequest({ ...base, claim }, "t1", emit, signal).claimed,
+  ).toBe(true);
+  expect(turnSessionRequest(base, "t1", emit, signal).claimed).toBeUndefined();
 });

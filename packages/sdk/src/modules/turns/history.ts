@@ -16,6 +16,7 @@ import { isAutoContinue } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import { assistantHistory } from "./history-assistant";
 import type { EngineNoticeKind } from "./turn-errors";
+import type { FilesNotSavedData } from "./turn-unsaved-notice";
 import type { FeedAuthor, FeedMention } from "./vm-output";
 
 /**
@@ -42,6 +43,7 @@ export interface FeedFrame {
    * by kind. Optional/additive; plain JSON across the `dispatch` boundary.
    */
   notice?: EngineNoticeKind;
+  noticeData?: FilesNotSavedData;
   /**
    * Epoch-ms timestamp of the source `ChatMessage` this frame was folded from
    * (`ChatMessage.ts`). Carried on every frame attributable to a message so a

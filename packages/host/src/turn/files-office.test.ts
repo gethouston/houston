@@ -231,38 +231,39 @@ test("equivalent and unknown locale tags share one converted cache entry", async
   expect(s.probes()).toBe(1);
 });
 
-test.each([
-  "html",
-  "invalid-json",
-  "broken-stream",
-])("%s converter response becomes conversion_failed", async (kind) => {
-  const response =
-    kind === "broken-stream"
-      ? new Response(
-          new ReadableStream({
-            start(controller) {
-              controller.enqueue(new TextEncoder().encode("%PDF-"));
-              controller.error(new Error("connection closed"));
-            },
-          }),
-          { headers: { "x-page-count": "1", "x-converter-version": "v1" } },
-        )
-      : new Response(kind === "html" ? "<html>unavailable</html>" : "{", {
-          status: 502,
-        });
-  const request = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(response);
-  try {
-    await expect(
-      httpOfficeConverter("http://converter").convert(
-        Buffer.from("source"),
-        "pptx",
-        "en",
-      ),
-    ).rejects.toMatchObject({ code: "conversion_failed" });
-  } finally {
-    request.mockRestore();
-  }
-});
+test.each(["html", "invalid-json", "broken-stream"])(
+  "%s converter response becomes conversion_failed",
+  async (kind) => {
+    const response =
+      kind === "broken-stream"
+        ? new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode("%PDF-"));
+                controller.error(new Error("connection closed"));
+              },
+            }),
+            { headers: { "x-page-count": "1", "x-converter-version": "v1" } },
+          )
+        : new Response(kind === "html" ? "<html>unavailable</html>" : "{", {
+            status: 502,
+          });
+    const request = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(response);
+    try {
+      await expect(
+        httpOfficeConverter("http://converter").convert(
+          Buffer.from("source"),
+          "pptx",
+          "en",
+        ),
+      ).rejects.toMatchObject({ code: "conversion_failed" });
+    } finally {
+      request.mockRestore();
+    }
+  },
+);
 
 test("the converter client reads a chunked PDF without Content-Length", async () => {
   const service = await listen(

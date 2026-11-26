@@ -54,13 +54,15 @@ type FeedItemIdentity = { id?: string };
 export type SystemNoticeKind =
   | "engine_restart"
   | "engine_resumed"
+  | "sandbox_lost"
   | "turn_time_limit"
   | "turn_time_limit_unsaved"
   | "send_busy"
   | "compute_busy"
   | "agent_too_large"
   | "agent_setup_failed"
-  | "turn_unconfirmed";
+  | "turn_unconfirmed"
+  | "files_not_saved";
 
 /**
  * A row the host draws itself, placed in the log like any message. `kind`
@@ -126,6 +128,7 @@ type FeedItemVariant =
        * `renderSystemMessage` instead of matching the text.
        */
       notice?: SystemNoticeKind;
+      noticeData?: unknown;
     }
   | {
       /**
@@ -326,6 +329,11 @@ export type ProviderError =
       kind: "unknown";
       provider: string;
       raw_excerpt: string;
+      /** What the failed request ran on; mirrors `@houston/protocol`. */
+      model?: string;
+      effort?: string;
+      http_status?: number;
+      request_id?: string;
       credential?: ProviderErrorCredential;
     };
 

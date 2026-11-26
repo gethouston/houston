@@ -108,33 +108,38 @@ export function useBoardSelectionUI({
     [t],
   );
 
-  const doneHeaderAction =
-    selection && doneIds.length > 0 ? (
-      <ColumnActionsMenu
-        onSelectAll={() => handleSelectAll(doneIds)}
-        labels={menuLabels}
-      />
-    ) : undefined;
+  const columns = useMemo(() => {
+    const doneHeaderAction =
+      selection && doneIds.length > 0 ? (
+        <ColumnActionsMenu
+          onSelectAll={() => handleSelectAll(doneIds)}
+          labels={menuLabels}
+        />
+      ) : undefined;
 
-  const needsYouHeaderAction =
-    selection && needsYouIds.length > 0 ? (
-      <ColumnActionsMenu
-        onSelectAll={() => handleSelectAll(needsYouIds)}
-        labels={menuLabels}
-      />
-    ) : undefined;
+    const needsYouHeaderAction =
+      selection && needsYouIds.length > 0 ? (
+        <ColumnActionsMenu
+          onSelectAll={() => handleSelectAll(needsYouIds)}
+          labels={menuLabels}
+        />
+      ) : undefined;
 
-  const columns = useMemo(
-    () =>
-      baseColumns.map((c) =>
-        c.id === "done"
-          ? { ...c, headerAction: doneHeaderAction }
-          : c.id === "needs_you"
-            ? { ...c, headerAction: needsYouHeaderAction }
-            : c,
-      ),
-    [baseColumns, doneHeaderAction, needsYouHeaderAction],
-  );
+    return baseColumns.map((c) =>
+      c.id === "done"
+        ? { ...c, headerAction: doneHeaderAction }
+        : c.id === "needs_you"
+          ? { ...c, headerAction: needsYouHeaderAction }
+          : c,
+    );
+  }, [
+    baseColumns,
+    selection,
+    doneIds,
+    needsYouIds,
+    handleSelectAll,
+    menuLabels,
+  ]);
 
   const bulkActions = useBoardBulkActions({
     selection,

@@ -1,5 +1,5 @@
-import { durationMs } from "@houston/design-tokens";
 import { AGENT_COLORS, agentColorId, cn, colorValue } from "@houston-ai/core";
+import { durationMs } from "@houston/design-tokens";
 import { Check } from "lucide-react";
 import { type KeyboardEvent, useRef } from "react";
 import { useTranslation } from "react-i18next";
@@ -50,7 +50,7 @@ export function EmployeeColorPalette({
       {AGENT_COLORS.map((entry, index) => {
         const isSelected = entry.id === selected;
         return (
-          // biome-ignore lint/a11y/useSemanticElements: a swatch is a painted target larger than its dot, which a native radio cannot draw; radio semantics come from role + aria-checked + the roving tabindex the arrow keys walk.
+          // a swatch is a painted target larger than its dot, which a native radio cannot draw; radio semantics come from role + aria-checked + the roving tabindex the arrow keys walk.
           <button
             key={entry.id}
             ref={(node) => {

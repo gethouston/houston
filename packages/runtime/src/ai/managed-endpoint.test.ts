@@ -75,56 +75,56 @@ test("malformed persisted bridge metadata cannot downgrade into direct transport
     "No local model configured",
   );
 });
-test.each([
-  registerCustomProviderIfConfigured,
-  registerTurnProviders,
-])("warm and pooled registration use the bridge and disable HTTP retries", async (register) => {
-  const dir = fresh();
-  setCustomEndpointConfigIn(dir, input);
-  const runtime = registrar();
-  register(runtime, dir);
-  const cfg = runtime.configurations.get("openai-compatible");
-  expect(cfg?.streamSimple).toBeTypeOf("function");
-  let calls = 0;
-  let url = "";
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (request: Request) => {
-      calls++;
-      url = request.url;
-      return new Response(
-        JSON.stringify({ error: { message: "model unavailable" } }),
-        { status: 503, headers: { "content-type": "application/json" } },
-      );
-    }),
-  );
-  const token = `acting-v1.${Buffer.from(JSON.stringify({ sub: "member" })).toString("base64url")}.signature`;
-  await runWithActingContext(
-    {
-      actingAs: token,
-      localModelTransport: {
-        baseUrl: "https://trusted.gateway",
-        orgSlug: "org",
-        agentSlug: "agent",
-        hostToken: "host",
+test.each([registerCustomProviderIfConfigured, registerTurnProviders])(
+  "warm and pooled registration use the bridge and disable HTTP retries",
+  async (register) => {
+    const dir = fresh();
+    setCustomEndpointConfigIn(dir, input);
+    const runtime = registrar();
+    register(runtime, dir);
+    const cfg = runtime.configurations.get("openai-compatible");
+    expect(cfg?.streamSimple).toBeTypeOf("function");
+    let calls = 0;
+    let url = "";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (request: Request) => {
+        calls++;
+        url = request.url;
+        return new Response(
+          JSON.stringify({ error: { message: "model unavailable" } }),
+          { status: 503, headers: { "content-type": "application/json" } },
+        );
+      }),
+    );
+    const token = `acting-v1.${Buffer.from(JSON.stringify({ sub: "member" })).toString("base64url")}.signature`;
+    await runWithActingContext(
+      {
+        actingAs: token,
+        localModelTransport: {
+          baseUrl: "https://trusted.gateway",
+          orgSlug: "org",
+          agentSlug: "agent",
+          hostToken: "host",
+        },
       },
-    },
-    async () => {
-      const stream = cfg?.streamSimple?.(
-        buildActiveCustomModel(undefined, dir),
-        normalizeContext({ messages: [] }),
-        { apiKey: "placeholder" },
-      );
-      expect(stream).toBeDefined();
-      const result = await stream?.result();
-      expect(result?.stopReason).toBe("error");
-    },
-  );
-  expect(calls).toBe(1);
-  expect(url).toBe(
-    `https://trusted.gateway/v1/pod/local-model-bridges/org/agent/${bridge.id}/v1/chat/completions`,
-  );
-});
+      async () => {
+        const stream = cfg?.streamSimple?.(
+          buildActiveCustomModel(undefined, dir),
+          normalizeContext({ messages: [] }),
+          { apiKey: "placeholder" },
+        );
+        expect(stream).toBeDefined();
+        const result = await stream?.result();
+        expect(result?.stopReason).toBe("error");
+      },
+    );
+    expect(calls).toBe(1);
+    expect(url).toBe(
+      `https://trusted.gateway/v1/pod/local-model-bridges/org/agent/${bridge.id}/v1/chat/completions`,
+    );
+  },
+);
 test("ordinary direct endpoints keep pi's normal transport", () => {
   const dir = fresh();
   const { bridge: _bridge, ...direct } = input;

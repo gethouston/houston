@@ -15,11 +15,12 @@ const GATEWAY_REFUSALS = [
 ] as const;
 
 describe("emailOtpRefusalOf", () => {
-  it.each(
-    GATEWAY_REFUSALS,
-  )("reads the %i %s refusal by its code", (status, code, expected) => {
-    expect(emailOtpRefusalOf(status, refusal(code))).toBe(expected);
-  });
+  it.each(GATEWAY_REFUSALS)(
+    "reads the %i %s refusal by its code",
+    (status, code, expected) => {
+      expect(emailOtpRefusalOf(status, refusal(code))).toBe(expected);
+    },
+  );
 
   it("reads the merge refusal by its code, whatever else it carries", () => {
     expect(

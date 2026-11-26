@@ -5,12 +5,12 @@
 - Documented: 200
 - Undocumented: 0
 - Ungrouped: 0
-- Unschematized: 27
-- Hidden: 80
+- Unschematized: 26
+- Hidden: 79
 - Confirmed: 58
-- Routable: 178
-- Unroutable: 22
-- Raw-response routes: 126
+- Routable: 179
+- Unroutable: 21
+- Raw-response routes: 127
 - Acknowledged exceptions: 122
 - Acknowledged debt: 0
 
@@ -25,7 +25,6 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `createMigratedAgent` - hidden: it keeps a desktop agent's name even when that name is Houston, which the AI Manager may never give an employee; createAgent is the create to dispatch.
 - `createMigratedAgent` - unroutable: the migration flag is a constant this create always sends, not a parameter a route can map.
 - `createMigratedAgent` - unschematized: the seed's seeds map is an open record of file path to contents.
-- `generateAgentInstructions` - hidden: a one-shot generation turn on a runtime, not an app operation; an assistant writes the instructions itself and saves them with writeAgentFile.
 - `listInstalledConfigs` - unschematized: an installed template carries its raw config document, whose shape is the template's own.
 - `updateAgentColor` - unconfirmed: Reversible display preference; changes no agent behavior or access.
 - `createApiKey` - hidden: returns a secret; the full key is revealed once and must not pass through a chat turn.
@@ -82,6 +81,7 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `createActivity` - unconfirmed: Creates a board draft without starting work or spending model tokens.
 - `missions.search` - unroutable: it reads every agent's missions and then each unmatched mission's transcript, which is a search over many reads, not one route.
 - `renameMission` - unconfirmed: Retitles a card on the person's own board; what the mission did is untouched, and the title is changed back the same way.
+- `setMissionMode` - unconfirmed: Changes how the agent works in a chat the person owns; nothing already done changes, and the mode is switched back the same way.
 - `updateActivity` - hidden: its updates parameter also carries the lineage the runtime owns - session keys, routine run ids, and the pending interaction that authors an approval card - so a dispatched edit could rewrite far more than the mission's own words; a status move belongs to the coordinator's update_mission_status tool.
 - `completeLinkedIn` - hidden: redeems a one-time bearer ticket that only the browser returning from LinkedIn holds, and passing one through a chat turn is how it leaks.
 - `connectLinkedIn` - hidden: answers an authorization URL only the person's own browser may open, and whoever approves it in LinkedIn is whose account Houston would post as.
@@ -271,9 +271,8 @@ None.
 
 None.
 
-## Unschematized fields (27)
+## Unschematized fields (26)
 
-- `generateAgentInstructions.opts`
 - `downloadProjectFile.returns`
 - `downloadProjectArchive.returns`
 - `createAgent.seed`
@@ -301,11 +300,10 @@ None.
 - `browser.watch.options`
 - `browser.input.returns`
 
-## Hidden operations (80)
+## Hidden operations (79)
 
 - `applyAgentColor`
 - `createMigratedAgent`
-- `generateAgentInstructions`
 - `createApiKey`
 - `listApiKeys`
 - `revokeApiKey`
@@ -384,7 +382,7 @@ None.
 - `getHostSidebarLayout`
 - `putHostSidebarLayout`
 
-## Unroutable operations (22)
+## Unroutable operations (21)
 
 No HTTP route could be derived conservatively from the function body, so the operation is not callable.
 
@@ -392,7 +390,6 @@ No HTTP route could be derived conservatively from the function body, so the ope
 - `captureSetupCredential`: non-assignment request option
 - `createMigratedAgent`: body value is not a parameter
 - `downloadProjectArchive`: unescaped path interpolation
-- `generateAgentInstructions`: hop into HoustonEngineClient.generateAgent could not be resolved: the client comes from providerEngine(), which is not clientFor()
 - `getOrgProfiles`: unescaped path interpolation
 - `integrations.refresh`: multiple request calls
 - `integrations.writes.disconnect`: path segment depends on a value the caller may override

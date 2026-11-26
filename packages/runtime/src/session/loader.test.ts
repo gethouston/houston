@@ -151,17 +151,19 @@ test("no skills dir, no context file: loader stays empty (nothing discovered fro
   expect(loader.getSystemPrompt()).toBe("You are Houston.");
 });
 
-test("the compaction guard loads as an inline extension despite noExtensions (HOU-709)", async () => {
+test("the inline extensions load despite noExtensions (HOU-709)", async () => {
   const { ws } = freshWorkspace();
   const loader = loaderFor(ws);
   await loader.reload();
 
   const { extensions, errors } = loader.getExtensions();
   expect(errors).toHaveLength(0);
-  // The guard is the ONE inline factory; it must survive noExtensions (which
-  // only gates on-disk discovery) and register the compaction handler.
-  expect(extensions).toHaveLength(1);
+  // The compaction guard and the provider-response recorder are the inline
+  // factories; both must survive noExtensions (which only gates on-disk
+  // discovery) and register their handlers.
+  expect(extensions).toHaveLength(2);
   expect(extensions[0]?.handlers.has("session_before_compact")).toBe(true);
+  expect(extensions[1]?.handlers.has("after_provider_response")).toBe(true);
 });
 
 test("an enabled workspace-shared skill loads", async () => {

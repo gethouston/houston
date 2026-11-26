@@ -1,8 +1,10 @@
+import { firstDayAccountBlocked } from "@houston/sdk/agents/first-day-refusal";
 import { useUIStore } from "../stores/ui";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import { showFirstDayNoProviderToast } from "./first-day-no-provider-toast";
 import i18n from "./i18n";
 import { surfacePlanMinInterval } from "./plan-min-interval";
+import { providerName } from "./providers";
 import type { QuietErrorClass } from "./quiet-error-class";
 import { reportQuietError } from "./quiet-error-report";
 import { surfaceRoutineGone } from "./routine-gone-surface";
@@ -52,6 +54,35 @@ export function surfaceQuietState(
       console.info(`[toast:${command}] ${message}`);
       showFirstDayNoProviderToast(originalError);
       return true;
+    case "first_day_provider_unavailable":
+      // Transient: the provider failed a token refresh, and the first day
+      // stays pending. One counted warning, so an
+      // outage is still visible to us, and copy to try again.
+      console.warn(`[toast:${command}] ${message}`);
+      reportQuietError(quiet, command, message, originalError);
+      useUIStore.getState().addToast({
+        title: i18n.t("board:firstDay.providerUnavailable.title"),
+        description: i18n.t("board:firstDay.providerUnavailable.body"),
+        variant: "info",
+      });
+      return true;
+    case "first_day_account_blocked": {
+      // A business state: the provider blocks the person's account and only
+      // they can fix it there. The first day stays pending; nothing to report.
+      console.info(`[toast:${command}] ${message}`);
+      const provider = firstDayAccountBlocked(originalError)?.provider;
+      const name = provider ? providerName(provider) : null;
+      useUIStore.getState().addToast({
+        title: name
+          ? i18n.t("board:firstDay.accountBlocked.title", { provider: name })
+          : i18n.t("board:firstDay.accountBlocked.titleAny"),
+        description: name
+          ? i18n.t("board:firstDay.accountBlocked.body", { provider: name })
+          : i18n.t("board:firstDay.accountBlocked.bodyAny"),
+        variant: "info",
+      });
+      return true;
+    }
     case "no_url_handler":
       // Same remedy copy `openExternalUrl` shows; a rejection that reached
       // this surface skipped that seam (a raw `osOpenUrl` caller).
@@ -78,6 +109,32 @@ export function surfaceQuietState(
       useUIStore.getState().addToast({
         title: i18n.t("shell:errorToast.uploadInterruptedTitle"),
         description: i18n.t("shell:errorToast.uploadInterruptedDescription"),
+        variant: "info",
+      });
+      return true;
+    }
+    case "compute_busy":
+    case "conversation_edit_refused": {
+      console.error(`[toast:${command}] ${message}`);
+      reportQuietError(quiet, command, message, originalError);
+      analytics.track("app_error_shown", {
+        source: command,
+        error_kind: classifyAnalyticsError(message),
+      });
+      const copy =
+        quiet === "compute_busy"
+          ? ({
+              title: "shell:errorToast.computeBusyTitle",
+              description: "shell:errorToast.computeBusyDescription",
+            } as const)
+          : ({
+              title: "shell:errorToast.conversationEditRefusedTitle",
+              description:
+                "shell:errorToast.conversationEditRefusedDescription",
+            } as const);
+      useUIStore.getState().addToast({
+        title: i18n.t(copy.title),
+        description: i18n.t(copy.description),
         variant: "info",
       });
       return true;

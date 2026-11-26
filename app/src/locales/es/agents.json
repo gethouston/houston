@@ -175,6 +175,10 @@
       "title": "Ese archivo ya no está",
       "description": "Tu asistente pudo haberlo renombrado, movido o eliminado. Revisa su pestaña de Archivos para ver la versión más reciente."
     },
+    "outsideWorkspace": {
+      "title": "Ese enlace apunta fuera de los archivos de tu asistente",
+      "description": "Lleva a un lugar que tu asistente usa para su propio trabajo, no a su pestaña de Archivos. Pídele que guarde una copia en sus Archivos."
+    },
     "uploadingBusy": "Subiendo…",
     "searchPlaceholder": "Buscar archivos",
     "searchClear": "Borrar búsqueda",

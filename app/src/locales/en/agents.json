@@ -175,6 +175,10 @@
       "title": "That file is not there anymore",
       "description": "Your assistant may have renamed, moved, or removed it. Check its Files tab for the latest version."
     },
+    "outsideWorkspace": {
+      "title": "That link points outside your assistant's files",
+      "description": "It goes to a place your assistant uses for its own work, not its Files tab. Ask it to save a copy to its Files."
+    },
     "uploadingBusy": "Uploading…",
     "searchPlaceholder": "Search files",
     "searchClear": "Clear search",

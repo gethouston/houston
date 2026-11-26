@@ -22,10 +22,7 @@ export {
   classifyImportFailure,
   type ImportFailureKind,
 } from "./conversation-import-abort";
-export {
-  type TurnPrewarmInput,
-  TurnsHttpError,
-} from "./conversation-prewarm";
+export { type TurnPrewarmInput, TurnsHttpError } from "./conversation-prewarm";
 export {
   type ComposerDraft,
   PREWARM_REFRESH_MS,
@@ -103,6 +100,10 @@ export {
   streamTurn,
   type TurnWirePin,
 } from "./turn-stream";
+export {
+  FILES_NOT_SAVED_MESSAGE,
+  type FilesNotSavedData,
+} from "./turn-unsaved-notice";
 export {
   type ConversationVM,
   ConversationVmOutput,

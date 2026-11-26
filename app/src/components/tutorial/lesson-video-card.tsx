@@ -147,7 +147,7 @@ function LessonVideo(props: {
     // Caption tracks ship with the recordings themselves. An empty <track>
     // would advertise captions that do not exist, which serves a deaf viewer
     // worse than the honest absence.
-    // biome-ignore lint/a11y/useMediaCaption: captions arrive with the assets
+    // oxlint-disable-next-line jsx-a11y/media-has-caption -- captions arrive with the assets
     <video
       ref={ref}
       key={props.video.src}

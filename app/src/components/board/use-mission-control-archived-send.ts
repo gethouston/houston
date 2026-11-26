@@ -7,7 +7,7 @@ import { classifyFileKind } from "../../lib/file-kind";
 import type { ModelPin } from "../../lib/model-selector-lock";
 import { showSendFailedToast } from "../../lib/send-error-toast";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
-import { DEFAULT_TURN_MODE } from "../../lib/turn-mode";
+import type { TurnMode } from "../../lib/turn-mode";
 import type { Agent } from "../../lib/types";
 
 /**
@@ -21,12 +21,15 @@ export function useMissionControlArchivedSend({
   activeAgent,
   selectedItem,
   resolveSendPin,
+  turnMode,
   onHandoff,
 }: {
   activeAgent: Agent | null;
   selectedItem: KanbanItem | null;
   /** The chat panel's settled pin (PRODUCT-1771), read at send time. */
   resolveSendPin: () => Promise<ModelPin>;
+  /** The chat panel's mode: the mission's kept one (HOU-205). */
+  turnMode: TurnMode;
   /** The archived → active handoff (`useArchivedHandoff`), run once the send
    *  lands and the mission is no longer archived. */
   onHandoff: (missionId: string) => void;
@@ -55,7 +58,7 @@ export function useMissionControlArchivedSend({
           providerOverride: pin.provider,
           modelOverride: pin.model,
           effortOverride: pin.effort,
-          modeOverride: DEFAULT_TURN_MODE,
+          modeOverride: turnMode,
           mentions,
         });
         analytics.track("chat_message_sent", {
@@ -73,6 +76,6 @@ export function useMissionControlArchivedSend({
         throw err;
       }
     },
-    [activeAgent, selectedItem, resolveSendPin, onHandoff],
+    [activeAgent, selectedItem, resolveSendPin, turnMode, onHandoff],
   );
 }

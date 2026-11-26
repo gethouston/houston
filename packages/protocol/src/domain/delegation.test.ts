@@ -9,15 +9,20 @@ import {
 const selfId = "Personal/Scout";
 
 describe("parseAgentDelegation", () => {
-  test.each([
-    "all",
-    "picked",
-    "off",
-  ] as const)("accepts %s with an empty agent list", (mode) => {
-    expect(
-      parseAgentDelegation({ mode, agents: [], acceptsMissions: true }, selfId),
-    ).toEqual({ ok: true, value: { mode, agents: [], acceptsMissions: true } });
-  });
+  test.each(["all", "picked", "off"] as const)(
+    "accepts %s with an empty agent list",
+    (mode) => {
+      expect(
+        parseAgentDelegation(
+          { mode, agents: [], acceptsMissions: true },
+          selfId,
+        ),
+      ).toEqual({
+        ok: true,
+        value: { mode, agents: [], acceptsMissions: true },
+      });
+    },
+  );
 
   test("accepts picked agents and a disabled incoming switch", () => {
     expect(

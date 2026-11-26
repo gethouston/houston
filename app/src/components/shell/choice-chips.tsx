@@ -49,7 +49,7 @@ export function ChoiceChips({
       {options.map((option) => {
         const picked = option.id === selectedId;
         return (
-          // biome-ignore lint/a11y/useSemanticElements: a pill carrying its own label in a wrapping run needs a native <button>; radio semantics come from role + aria-checked + the roving tabindex the arrow grid walks.
+          // a pill carrying its own label in a wrapping run needs a native <button>; radio semantics come from role + aria-checked + the roving tabindex the arrow grid walks.
           <button
             key={option.id}
             type="button"

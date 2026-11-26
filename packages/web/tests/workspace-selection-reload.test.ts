@@ -68,62 +68,63 @@ test("reloading memberships preserves the displayed space without resolving the 
   expect(mocks.pin).not.toHaveBeenCalled();
 });
 
-test.each([
-  false,
-  true,
-])("a switch during reload survives its failed PUT: %s", async (refused) => {
-  const local = new Map<string, string>();
-  vi.stubGlobal("localStorage", {
-    getItem: (key: string) => local.get(key) ?? null,
-    setItem: (key: string, value: string) => local.set(key, value),
-    removeItem: (key: string) => local.delete(key),
-  });
-  const answer = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) =>
-    init?.method === "PUT" && refused
-      ? Response.json({ error: "needs_upgrade" }, { status: 403 })
-      : Response.json({ value: first.id }),
-  );
-  vi.stubGlobal("fetch", answer);
-  const client = new HoustonClient({
-    baseUrl: "http://host",
-    token: "t",
-    controlPlane: true,
-  });
-  let write: Promise<unknown> | undefined;
-  mocks.set.mockImplementation((key, value) => {
-    const pending = client.setPreference(key, value);
-    write = pending.catch((error) => error);
-    return pending;
-  });
-  mocks.resolve.mockImplementation((workspaces) =>
-    client.resolveWorkspaceSelection(workspaces),
-  );
-  let finishList: ((value: typeof spaces) => void) | undefined;
-  mocks.list.mockImplementation(
-    () =>
-      new Promise((resolve) => {
-        finishList = resolve;
-      }),
-  );
-  useWorkspaceStore.setState({
-    workspaces: spaces,
-    current: first,
-    loaded: true,
-  });
-  const reload = useWorkspaceStore.getState().loadWorkspaces();
-  useWorkspaceStore.getState().setCurrent(second);
-  await write;
-  finishList?.(spaces);
-  await reload;
-  expect(useWorkspaceStore.getState().current).toEqual(second);
-  expect(
-    JSON.parse(local.get("houston.pref.last_workspace_id.device") ?? "null"),
-  ).toEqual({
-    value: second.id,
-    accountWriteSucceeded: !refused,
-  });
-  expect(mocks.resolve).not.toHaveBeenCalled();
-});
+test.each([false, true])(
+  "a switch during reload survives its failed PUT: %s",
+  async (refused) => {
+    const local = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => local.get(key) ?? null,
+      setItem: (key: string, value: string) => local.set(key, value),
+      removeItem: (key: string) => local.delete(key),
+    });
+    const answer = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) =>
+        init?.method === "PUT" && refused
+          ? Response.json({ error: "needs_upgrade" }, { status: 403 })
+          : Response.json({ value: first.id }),
+    );
+    vi.stubGlobal("fetch", answer);
+    const client = new HoustonClient({
+      baseUrl: "http://host",
+      token: "t",
+      controlPlane: true,
+    });
+    let write: Promise<unknown> | undefined;
+    mocks.set.mockImplementation((key, value) => {
+      const pending = client.setPreference(key, value);
+      write = pending.catch((error) => error);
+      return pending;
+    });
+    mocks.resolve.mockImplementation((workspaces) =>
+      client.resolveWorkspaceSelection(workspaces),
+    );
+    let finishList: ((value: typeof spaces) => void) | undefined;
+    mocks.list.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishList = resolve;
+        }),
+    );
+    useWorkspaceStore.setState({
+      workspaces: spaces,
+      current: first,
+      loaded: true,
+    });
+    const reload = useWorkspaceStore.getState().loadWorkspaces();
+    useWorkspaceStore.getState().setCurrent(second);
+    await write;
+    finishList?.(spaces);
+    await reload;
+    expect(useWorkspaceStore.getState().current).toEqual(second);
+    expect(
+      JSON.parse(local.get("houston.pref.last_workspace_id.device") ?? "null"),
+    ).toEqual({
+      value: second.id,
+      accountWriteSucceeded: !refused,
+    });
+    expect(mocks.resolve).not.toHaveBeenCalled();
+  },
+);
 
 test("reset discards an older boot resolution before publishing or pinning", async () => {
   let finish: ((value: typeof first) => void) | undefined;

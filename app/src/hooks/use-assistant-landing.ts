@@ -30,6 +30,7 @@ export function useAssistantLanding() {
     return () => {
       alive.current = false;
       handled.current = false;
+      // oxlint-disable-next-line react-hooks/exhaustive-deps -- Cleanup invalidates the latest in-flight attempt, not the generation captured at mount.
       generation.current++;
     };
   }, []);

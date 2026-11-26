@@ -5,7 +5,6 @@
  * field, plus the next fire time), and the model pin.
  */
 
-import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import { Button, Textarea } from "@houston-ai/core";
 import {
   cronSummary,
@@ -13,6 +12,7 @@ import {
   nextFire,
   RoutineRowScheduleEdit,
 } from "@houston-ai/routines";
+import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
@@ -58,7 +58,6 @@ export function RoutineScreenSections({
   // outside edits (the agent rewrote it in chat) only while untouched.
   const [draft, setDraft] = useState(routine.prompt);
   const dirty = draft !== routine.prompt;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reseed only on the routine's own change
   useEffect(() => setDraft(routine.prompt), [routine.id, routine.prompt]);
 
   const next =

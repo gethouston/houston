@@ -21,13 +21,14 @@ export function useWatchedChannels(
   const connections = query.data?.connections ?? [];
   // One string, so the effect fires on the landing edge, not every render.
   const landed = pruneLandedWatches(watches, connections).landed.join(" ");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fires on the landing edge only; `onLanded` and `connections` are fresh each render.
+  /* oxlint-disable react-hooks/exhaustive-deps -- fires on the landing edge only; `onLanded` and `connections` are fresh each render. */
   useEffect(() => {
     if (!landed) return;
     for (const provider of pruneLandedWatches(watches, connections).landed)
       onLanded(provider);
     setWatches((current) => pruneLandedWatches(current, connections).watches);
   }, [landed]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
   /** Watch `provider` from now; `expiresAt` is the code it minted, if any. */
   const watch = (provider: ChannelProviderId, expiresAt?: string) =>
     setWatches((current) =>

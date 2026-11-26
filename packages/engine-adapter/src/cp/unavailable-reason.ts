@@ -91,6 +91,12 @@ const RUNTIME_STILL_STARTING =
  * reason is kept for pods still on the older host during a roll.
  */
 const HOST_SHUTTING_DOWN = "the host is shutting down; retry shortly";
+/**
+ * A read of a sleeping agent's data the gateway cannot serve yet. Reads never
+ * wake the agent, and the same read answers within a wake's time, not a
+ * handoff's (HOUSTON-APP-5HP).
+ */
+const AGENT_DATA_BUSY = "agent data temporarily unavailable; retrying";
 export const SHARED_SKILLS_UNCONFIGURED = "shared skills not configured";
 
 /** Why a read got no answer — the typed form of the gateway's 5xx body. */
@@ -152,6 +158,7 @@ export function classifyUnavailableBody(body: unknown): UnavailableReason {
   // A draining host: the read meets the replacement pod, which is a wake
   // away, not a second (PRODUCT-1777).
   if (b?.error === HOST_SHUTTING_DOWN) return "engine-waking";
+  if (b?.error === AGENT_DATA_BUSY) return "engine-waking";
   return "handoff";
 }
 

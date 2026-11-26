@@ -1,6 +1,7 @@
 import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { afterAll, describe, expect, test } from "vitest";
 import type { BrowserParams } from "./actions";
+import { pagesSite } from "./browser-pages.test-support";
 import {
   agentWorkspace,
   browserAvailable,
@@ -10,7 +11,6 @@ import {
   SITE_HOST,
   tool,
 } from "./browser.test-support";
-import { pagesSite } from "./browser-pages.test-support";
 import type { BrowserPool, BrowserPoolOptions } from "./pool";
 import { browserStatePath } from "./state-store";
 import { makeBrowserTool } from "./tool";

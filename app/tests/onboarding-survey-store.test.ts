@@ -1,5 +1,11 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import { reconcileSurveyCopies } from "../src/lib/onboarding-survey-reconcile.ts";
+import {
+  loadSurveyPreference,
+  persistSurveyPreference,
+  type SurveyStorePorts,
+} from "../src/lib/onboarding-survey-store.ts";
 import {
   applyCompletionDismissed,
   applyRole,
@@ -10,12 +16,6 @@ import {
   onboardingSurveyLocalKey,
   serializeOnboardingSurveyPreference,
 } from "../src/lib/onboarding-survey.ts";
-import { reconcileSurveyCopies } from "../src/lib/onboarding-survey-reconcile.ts";
-import {
-  loadSurveyPreference,
-  persistSurveyPreference,
-  type SurveyStorePorts,
-} from "../src/lib/onboarding-survey-store.ts";
 
 // The store logs the engine-write failures it deliberately swallows.
 console.error = () => {};

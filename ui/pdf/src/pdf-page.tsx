@@ -80,7 +80,7 @@ export const PdfPage = memo(function PdfPage({
   useEffect(() => {
     const el = host.current;
     if (near || !el) return;
-    for (const old of [...el.children]) releaseCanvas(old);
+    for (const old of Array.from(el.children)) releaseCanvas(old);
     el.replaceChildren();
     textLayer.current?.replaceChildren();
     setObstacles([]);
@@ -91,7 +91,7 @@ export const PdfPage = memo(function PdfPage({
   useEffect(() => {
     const el = host.current;
     return () => {
-      for (const old of [...(el?.children ?? [])]) releaseCanvas(old);
+      for (const old of Array.from(el?.children ?? [])) releaseCanvas(old);
     };
   }, []);
 

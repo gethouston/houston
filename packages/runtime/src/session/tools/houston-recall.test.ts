@@ -23,9 +23,8 @@ process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
 const { config } = await import("../../config");
 const { saveConversation } = await import("../../store/conversation-file");
 const { runWithConversationId } = await import("../conversation-context");
-const { HOUSTON_RECALL_TOOL_NAME, makeHoustonRecallTool } = await import(
-  "./houston-recall"
-);
+const { HOUSTON_RECALL_TOOL_NAME, makeHoustonRecallTool } =
+  await import("./houston-recall");
 type HoustonRecallDetails = import("./houston-recall").HoustonRecallDetails;
 
 const dir = join(config.dataDir, "conversations");

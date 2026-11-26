@@ -10,8 +10,10 @@ import {
 import { useRef, useState } from "react";
 import { CommentForm, type CommentFormProps } from "./comment-form";
 
-export interface CommentEditorProps
-  extends Omit<CommentFormProps, "onSubmit" | "onCancel" | "roomy"> {
+export interface CommentEditorProps extends Omit<
+  CommentFormProps,
+  "onSubmit" | "onCancel" | "roomy"
+> {
   open: boolean;
   /** Where the selection is on screen right now. */
   anchorRect: () => DOMRect;

@@ -206,184 +206,184 @@ const AGENT_TONES = [
   "umber",
 ] as const;
 
-describe.each([
-  "light",
-  "dark",
-] as const)("name text contrast (%s)", (theme) => {
-  it("composites both surfaces to fully opaque colours", () => {
-    // The ladder bottoms out at an opaque gutter; if it ever stops doing so,
-    // every ratio below would be measured against a colour that does not exist.
-    expect(token(theme, "ht-base").a).toBe(1);
-    expect(nameSurface(theme).a).toBe(1);
-    expect(bubbleSurface(theme).a).toBe(1);
-  });
-
-  for (const tone of PERSON_TONES) {
-    it(`person name tone "${tone}" clears ${CONTRAST_FLOOR}:1 on the bubble`, () => {
-      const ratio = contrastRatio(
-        token(theme, `ht-person-name-${tone}`),
-        bubbleSurface(theme),
-      );
-      expect(
-        ratio,
-        `--ht-person-name-${tone} (${theme}) measures ${ratio.toFixed(2)}:1 on the chat bubble, below the ${CONTRAST_FLOOR}:1 body-text floor`,
-      ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
-    });
-  }
-
-  for (const family of FILETYPE_FAMILIES) {
-    it(`file-type tint "${family}" clears ${CONTRAST_FLOOR}:1 on its tile`, () => {
-      // The Files icon tile is filled with --ht-input in both themes, and the
-      // glyph is the only thing inside it: a tint that fails here is a file
-      // type the user cannot read at a glance.
-      const surface = contentSurface(theme, "ht-input");
-      const ratio = contrastRatio(
-        over(token(theme, `ht-filetype-${family}`), surface),
-        surface,
-      );
-      expect(
-        ratio,
-        `--ht-filetype-${family} (${theme}) measures ${ratio.toFixed(2)}:1 on the icon tile, below the ${CONTRAST_FLOOR}:1 floor`,
-      ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
+describe.each(["light", "dark"] as const)(
+  "name text contrast (%s)",
+  (theme) => {
+    it("composites both surfaces to fully opaque colours", () => {
+      // The ladder bottoms out at an opaque gutter; if it ever stops doing so,
+      // every ratio below would be measured against a colour that does not exist.
+      expect(token(theme, "ht-base").a).toBe(1);
+      expect(nameSurface(theme).a).toBe(1);
+      expect(bubbleSurface(theme).a).toBe(1);
     });
 
-    for (const [surfaceName, tokenName] of [
-      ["page", "ht-background"],
-      ["checked row", "ht-chip-subtle"],
-    ] as const) {
-      it(`file-type tint "${family}" clears ${NON_TEXT_CONTRAST_FLOOR}:1 on the ${surfaceName}`, () => {
-        const surface = contentSurface(theme, tokenName);
+    for (const tone of PERSON_TONES) {
+      it(`person name tone "${tone}" clears ${CONTRAST_FLOOR}:1 on the bubble`, () => {
+        const ratio = contrastRatio(
+          token(theme, `ht-person-name-${tone}`),
+          bubbleSurface(theme),
+        );
+        expect(
+          ratio,
+          `--ht-person-name-${tone} (${theme}) measures ${ratio.toFixed(2)}:1 on the chat bubble, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+        ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
+      });
+    }
+
+    for (const family of FILETYPE_FAMILIES) {
+      it(`file-type tint "${family}" clears ${CONTRAST_FLOOR}:1 on its tile`, () => {
+        // The Files icon tile is filled with --ht-input in both themes, and the
+        // glyph is the only thing inside it: a tint that fails here is a file
+        // type the user cannot read at a glance.
+        const surface = contentSurface(theme, "ht-input");
         const ratio = contrastRatio(
           over(token(theme, `ht-filetype-${family}`), surface),
           surface,
         );
         expect(
           ratio,
-          `--ht-filetype-${family} (${theme}) measures ${ratio.toFixed(2)}:1 on the ${surfaceName}, below the ${NON_TEXT_CONTRAST_FLOOR}:1 non-text floor`,
-        ).toBeGreaterThanOrEqual(NON_TEXT_CONTRAST_FLOOR);
-      });
-    }
-  }
-
-  for (const status of STATUS_INKS) {
-    for (const [surfaceName, tokenName] of [
-      ["field", "ht-input"],
-      ["page", "ht-background"],
-      ["recessed row", "ht-chip-subtle"],
-    ] as const) {
-      it(`status ink "${status}" clears ${CONTRAST_FLOOR}:1 on the ${surfaceName}`, () => {
-        const surface = contentSurface(theme, tokenName);
-        const ratio = contrastRatio(
-          over(token(theme, `ht-${status}-ink`), surface),
-          surface,
-        );
-        expect(
-          ratio,
-          `--ht-${status}-ink (${theme}) measures ${ratio.toFixed(2)}:1 on the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+          `--ht-filetype-${family} (${theme}) measures ${ratio.toFixed(2)}:1 on the icon tile, below the ${CONTRAST_FLOOR}:1 floor`,
         ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
       });
+
+      for (const [surfaceName, tokenName] of [
+        ["page", "ht-background"],
+        ["checked row", "ht-chip-subtle"],
+      ] as const) {
+        it(`file-type tint "${family}" clears ${NON_TEXT_CONTRAST_FLOOR}:1 on the ${surfaceName}`, () => {
+          const surface = contentSurface(theme, tokenName);
+          const ratio = contrastRatio(
+            over(token(theme, `ht-filetype-${family}`), surface),
+            surface,
+          );
+          expect(
+            ratio,
+            `--ht-filetype-${family} (${theme}) measures ${ratio.toFixed(2)}:1 on the ${surfaceName}, below the ${NON_TEXT_CONTRAST_FLOOR}:1 non-text floor`,
+          ).toBeGreaterThanOrEqual(NON_TEXT_CONTRAST_FLOOR);
+        });
+      }
     }
 
-    for (const alpha of STATUS_WASH_ALPHAS) {
+    for (const status of STATUS_INKS) {
       for (const [surfaceName, tokenName] of [
         ["field", "ht-input"],
         ["page", "ht-background"],
-        ["chip row", "ht-chip"],
+        ["recessed row", "ht-chip-subtle"],
       ] as const) {
-        it(`status ink "${status}" clears ${CONTRAST_FLOOR}:1 on its own ${alpha * 100}% wash over the ${surfaceName}`, () => {
-          const surface = washSurface(theme, status, alpha, tokenName);
+        it(`status ink "${status}" clears ${CONTRAST_FLOOR}:1 on the ${surfaceName}`, () => {
+          const surface = contentSurface(theme, tokenName);
           const ratio = contrastRatio(
             over(token(theme, `ht-${status}-ink`), surface),
             surface,
           );
           expect(
             ratio,
-            `--ht-${status}-ink (${theme}) measures ${ratio.toFixed(2)}:1 on a ${alpha * 100}% --ht-${status} wash over the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+            `--ht-${status}-ink (${theme}) measures ${ratio.toFixed(2)}:1 on the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+          ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
+        });
+      }
+
+      for (const alpha of STATUS_WASH_ALPHAS) {
+        for (const [surfaceName, tokenName] of [
+          ["field", "ht-input"],
+          ["page", "ht-background"],
+          ["chip row", "ht-chip"],
+        ] as const) {
+          it(`status ink "${status}" clears ${CONTRAST_FLOOR}:1 on its own ${alpha * 100}% wash over the ${surfaceName}`, () => {
+            const surface = washSurface(theme, status, alpha, tokenName);
+            const ratio = contrastRatio(
+              over(token(theme, `ht-${status}-ink`), surface),
+              surface,
+            );
+            expect(
+              ratio,
+              `--ht-${status}-ink (${theme}) measures ${ratio.toFixed(2)}:1 on a ${alpha * 100}% --ht-${status} wash over the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+            ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
+          });
+        }
+      }
+    }
+
+    for (const status of STATUS_INKS) {
+      for (const alpha of STATUS_WASH_ALPHAS) {
+        it(`status ink "${status}" clears ${CONTRAST_FLOOR}:1 on its own ${alpha * 100}% wash over a row in a dialog`, () => {
+          // The plan briefing's "Free" pill: a status chip in a chip-filled list
+          // on the dialog, which sits on no canvas of its own.
+          const hue = token(theme, `ht-${status}`);
+          const surface = over(
+            { ...hue, a: hue.a * alpha },
+            dialogChipSurface(theme),
+          );
+          const ratio = contrastRatio(
+            over(token(theme, `ht-${status}-ink`), surface),
+            surface,
+          );
+          expect(
+            ratio,
+            `--ht-${status}-ink (${theme}) measures ${ratio.toFixed(2)}:1 on a ${alpha * 100}% --ht-${status} wash over a dialog row, below the ${CONTRAST_FLOOR}:1 body-text floor`,
           ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
         });
       }
     }
-  }
 
-  for (const status of STATUS_INKS) {
-    for (const alpha of STATUS_WASH_ALPHAS) {
-      it(`status ink "${status}" clears ${CONTRAST_FLOOR}:1 on its own ${alpha * 100}% wash over a row in a dialog`, () => {
-        // The plan briefing's "Free" pill: a status chip in a chip-filled list
-        // on the dialog, which sits on no canvas of its own.
-        const hue = token(theme, `ht-${status}`);
-        const surface = over(
-          { ...hue, a: hue.a * alpha },
-          dialogChipSurface(theme),
-        );
-        const ratio = contrastRatio(
-          over(token(theme, `ht-${status}-ink`), surface),
-          surface,
-        );
+    for (const tone of ORG_TONES) {
+      for (const stop of [tone, `${tone}-deep`]) {
+        it(`org avatar stop "${stop}" carries its initials at ${CONTRAST_FLOOR}:1`, () => {
+          const ratio = contrastRatio(
+            token(theme, "ht-org-initials"),
+            token(theme, `ht-org-${stop}`),
+          );
+          expect(
+            ratio,
+            `--ht-org-initials (${theme}) measures ${ratio.toFixed(2)}:1 on --ht-org-${stop}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+          ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
+        });
+      }
+    }
+
+    // The link colour worn AS TEXT: every URL in chat and every link in a rendered
+    // markdown document. It sits on the page, in a field, on a recessed row and
+    // inside a teammate's chip bubble, and it owes body text's floor on each.
+    for (const [surfaceName, surface] of [
+      ["field", contentSurface(theme, "ht-input")],
+      ["page", contentSurface(theme, "ht-background")],
+      ["recessed row", contentSurface(theme, "ht-chip-subtle")],
+      ["chat bubble", bubbleSurface(theme)],
+    ] as [string, Rgba][]) {
+      it(`the link colour clears ${CONTRAST_FLOOR}:1 on the ${surfaceName}`, () => {
+        const ratio = contrastRatio(token(theme, "ht-link"), surface);
         expect(
           ratio,
-          `--ht-${status}-ink (${theme}) measures ${ratio.toFixed(2)}:1 on a ${alpha * 100}% --ht-${status} wash over a dialog row, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+          `--ht-link (${theme}) measures ${ratio.toFixed(2)}:1 on the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
         ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
       });
     }
-  }
 
-  for (const tone of ORG_TONES) {
-    for (const stop of [tone, `${tone}-deep`]) {
-      it(`org avatar stop "${stop}" carries its initials at ${CONTRAST_FLOOR}:1`, () => {
+    for (const [surfaceName, surface] of buttonSurfaces(theme)) {
+      it(`the primary button's label clears ${CONTRAST_FLOOR}:1 over the ${surfaceName}`, () => {
+        const fill = over(token(theme, "ht-cta"), surface);
         const ratio = contrastRatio(
-          token(theme, "ht-org-initials"),
-          token(theme, `ht-org-${stop}`),
+          over(token(theme, "ht-cta-text"), fill),
+          fill,
         );
         expect(
           ratio,
-          `--ht-org-initials (${theme}) measures ${ratio.toFixed(2)}:1 on --ht-org-${stop}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+          `--ht-cta-text (${theme}) measures ${ratio.toFixed(2)}:1 on --ht-cta over the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
         ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
       });
     }
-  }
 
-  // The link colour worn AS TEXT: every URL in chat and every link in a rendered
-  // markdown document. It sits on the page, in a field, on a recessed row and
-  // inside a teammate's chip bubble, and it owes body text's floor on each.
-  for (const [surfaceName, surface] of [
-    ["field", contentSurface(theme, "ht-input")],
-    ["page", contentSurface(theme, "ht-background")],
-    ["recessed row", contentSurface(theme, "ht-chip-subtle")],
-    ["chat bubble", bubbleSurface(theme)],
-  ] as [string, Rgba][]) {
-    it(`the link colour clears ${CONTRAST_FLOOR}:1 on the ${surfaceName}`, () => {
-      const ratio = contrastRatio(token(theme, "ht-link"), surface);
-      expect(
-        ratio,
-        `--ht-link (${theme}) measures ${ratio.toFixed(2)}:1 on the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
-      ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
-    });
-  }
-
-  for (const [surfaceName, surface] of buttonSurfaces(theme)) {
-    it(`the primary button's label clears ${CONTRAST_FLOOR}:1 over the ${surfaceName}`, () => {
-      const fill = over(token(theme, "ht-cta"), surface);
-      const ratio = contrastRatio(
-        over(token(theme, "ht-cta-text"), fill),
-        fill,
-      );
-      expect(
-        ratio,
-        `--ht-cta-text (${theme}) measures ${ratio.toFixed(2)}:1 on --ht-cta over the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
-      ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
-    });
-  }
-
-  for (const tone of AGENT_TONES) {
-    it(`agent tone "${tone}" clears ${CONTRAST_FLOOR}:1 as a name`, () => {
-      const ratio = contrastRatio(
-        token(theme, `ht-agent-${tone}`),
-        nameSurface(theme),
-      );
-      expect(
-        ratio,
-        `--ht-agent-${tone} (${theme}) measures ${ratio.toFixed(2)}:1 on the name surface, below the ${CONTRAST_FLOOR}:1 body-text floor`,
-      ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
-    });
-  }
-});
+    for (const tone of AGENT_TONES) {
+      it(`agent tone "${tone}" clears ${CONTRAST_FLOOR}:1 as a name`, () => {
+        const ratio = contrastRatio(
+          token(theme, `ht-agent-${tone}`),
+          nameSurface(theme),
+        );
+        expect(
+          ratio,
+          `--ht-agent-${tone} (${theme}) measures ${ratio.toFixed(2)}:1 on the name surface, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+        ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
+      });
+    }
+  },
+);

@@ -1,12 +1,10 @@
 import { isCompactionSummary } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
+import { parseUnsavedFiles } from "@houston/wire-types";
 import type { FeedFrame } from "./history";
-import {
-  ENGINE_RESTART_MESSAGE,
-  ENGINE_RESUMED_MESSAGE,
-  STOPPED_BY_USER,
-} from "./turn-errors";
-import { timeLimitNotice } from "./turn-notices";
+import { ENGINE_RESUMED_MESSAGE, STOPPED_BY_USER } from "./turn-errors";
+import { interruptionNotice, timeLimitNotice } from "./turn-notices";
+import { filesNotSavedNotice } from "./turn-unsaved-notice";
 
 /** Assistant records replay in the same order as their live feed. */
 export function assistantHistory(
@@ -122,12 +120,13 @@ export function assistantHistory(
   // settle): the same authored restart line the lost-terminal settle shows,
   // so a reload reads exactly what the user saw when the engine came back.
   if (m.interrupted) {
+    const line = m.interrupted.resumed
+      ? { kind: "engine_resumed" as const, message: ENGINE_RESUMED_MESSAGE }
+      : interruptionNotice(m.interrupted);
     out.push({
       feed_type: "system_message",
-      data: m.interrupted.resumed
-        ? ENGINE_RESUMED_MESSAGE
-        : ENGINE_RESTART_MESSAGE,
-      notice: m.interrupted.resumed ? "engine_resumed" : "engine_restart",
+      data: line.message,
+      notice: line.kind,
       ts,
       ...turn,
     });
@@ -155,5 +154,9 @@ export function assistantHistory(
       ...turn,
     });
   }
+  const unsaved = filesNotSavedNotice(
+    parseUnsavedFiles({ unsavedFiles: m.unsavedFiles }),
+  );
+  if (unsaved) out.push({ ...unsaved, ts, ...turn });
   return out;
 }

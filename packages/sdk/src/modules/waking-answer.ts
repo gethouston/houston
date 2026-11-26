@@ -5,7 +5,9 @@
  * (PRODUCT-1804). The SAME request succeeds once the pod is back. Keyed on the
  * exact pairs, never on a bare 502/503: a provider quota page on the same
  * status is a real failure. The web adapter's `isEngineWakingError` reads the
- * same pairs across every client error shape.
+ * same pairs across every client error shape. The read-only "agent data
+ * temporarily unavailable" 503 is deliberately left out: it only arrives on
+ * reads, which these pairs do not cover, and it is not a wake.
  */
 export function isWakingAnswer(status: number, reason: string): boolean {
   if (status === 503) {

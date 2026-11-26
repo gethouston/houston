@@ -1,6 +1,6 @@
+import { DialogDescription, DialogTitle } from "@houston-ai/core";
 import type { BillingChoice, SeatPrices } from "@houston/engine-adapter";
 import type { ChoiceIntroPage, FlowProgress } from "@houston/sdk";
-import { DialogDescription, DialogTitle } from "@houston-ai/core";
 import { Calendar } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {

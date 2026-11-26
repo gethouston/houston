@@ -56,7 +56,7 @@ export function isCredential(abs: string, boundary: RootBoundary): boolean {
  * folder), so both are stripped until neither is left.
  */
 function windowsName(segment: string): string {
-  for (let name = segment; ; ) {
+  for (let name = segment; ;) {
     const next = stripStream(name).replace(/[. ]+$/, "");
     if (next === name) return name;
     name = next;

@@ -82,11 +82,10 @@ export function onboardingTranscript(
     // First run is said before anything else in the manager's chat: one that
     // lands late (a retry on the next load) still reads first.
     ...(conversation === "first_run" ? { at: "start" as const } : {}),
-    messages: lines.map(
-      (line): ConversationImportMessage =>
-        line.kind === "manager"
-          ? { role: "assistant", content: managerMessage(line, copy) }
-          : { role: "user", content: answerMessage(copy.receipt(line)) },
+    messages: lines.map((line): ConversationImportMessage =>
+      line.kind === "manager"
+        ? { role: "assistant", content: managerMessage(line, copy) }
+        : { role: "user", content: answerMessage(copy.receipt(line)) },
     ),
   };
 }

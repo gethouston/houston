@@ -1,0 +1,198 @@
+{
+  "$schema": "../node_modules/oxlint/configuration_schema.json",
+  "overrides": [
+    {
+      "files": ["packages/host/src/channel/contract.test.ts"],
+      "rules": {
+        // Separate hooks own the proxy and turn runtime fixtures, with independent teardown.
+        "vitest/no-duplicate-hooks": "off",
+      },
+    },
+    {
+      "files": ["packages/runtime-client/src/ring-buffer.ts"],
+      "rules": {
+        // The ring deliberately allocates sparse capacity and tracks logical length separately; eagerly filling changes its initialization cost.
+        "unicorn/no-new-array": "off",
+      },
+    },
+    {
+      "files": [
+        "app/tests/provider-connection-dialog-close.test.ts",
+        "app/tests/update-download-report.test.ts",
+        "app/tests/api-key-reason-copy.test.ts",
+        "app/tests/stale-attachment.test.ts",
+        "app/tests/open-agent.test.ts",
+        "app/tests/agent-data-busy.test.ts",
+      ],
+      "rules": {
+        // These values are source-text substrings, not arrays; converting them to character sets breaks substring checks.
+        // The rule's autofix makes that conversion, so lint:fix and lint-staged run it with this rule allowed and only `pnpm lint` reports it.
+        "unicorn/prefer-set-has": "off",
+      },
+    },
+    {
+      "files": [
+        "packages/sdk/src/modules/turns/turn-stream.ts",
+        "packages/sdk/src/modules/turns/settle-derived-turn.test.ts",
+        "packages/sdk/src/modules/turns/turn-stream.test.ts",
+      ],
+      "rules": {
+        // These SDK files target ES2022; findLast requires ES2023 and this rule has no option to exclude last-element suggestions.
+        "unicorn/prefer-array-find": "off",
+      },
+    },
+    {
+      "files": [
+        "packages/sdk/src/modules/preferences/workspace-selection.test.ts",
+        "packages/sdk/src/local-model-bridge/controller.test.ts",
+        "packages/sdk/src/local-model-bridge/retirement.test.ts",
+        "packages/sdk/src/local-model-bridge/bootstrap.test.ts",
+        "packages/host/src/local/managed-store-config.test.ts",
+        "packages/web/tests/wire-preferences.test.ts",
+        "packages/office-convert/src/server.test.ts",
+        "packages/web/tests/wire-files.test.ts",
+      ],
+      "rules": {
+        // These tests attach rejection assertions before advancing fake timers and await the saved promises afterward; this rule cannot follow that data flow.
+        "vitest/valid-expect": "off",
+      },
+    },
+    {
+      "files": ["agentstore/src/components/install-panel.tsx"],
+      "rules": {
+        // This hidden frame only invokes the Houston custom protocol; sandboxing prevents the native-app handoff.
+        "react/iframe-missing-sandbox": "off",
+      },
+    },
+    {
+      "files": ["ui/core/tests/*.test.ts"],
+      "rules": {
+        // React.createElement accepts children in its props object; these non-JSX render fixtures use that supported form.
+        "react/no-children-prop": "off",
+      },
+    },
+    {
+      "files": [
+        "packages/sdk/src/modules/turns/first-activity.test.ts",
+        "packages/runtime/src/turn/turn-session-stall.test.ts",
+        "website/src/assets/chat.js",
+      ],
+      "rules": {
+        // Cancellation and test event callbacks mutate this state outside the loop body.
+        "no-unmodified-loop-condition": "off",
+      },
+    },
+    {
+      "files": [
+        "packages/wire-types/src/turn-timezone.ts",
+        "packages/domain/src/heartbeat-clock.ts",
+        "packages/runtime/src/turn/worker-registration-config.ts",
+        "app/public/compat-gate.js",
+      ],
+      "rules": {
+        // Construction intentionally validates a timezone, endpoint or language feature by throwing on unsupported input.
+        "no-new": "off",
+      },
+    },
+    {
+      "files": [
+        "app/src/components/agent/agent-admin/access-choice.tsx",
+        "app/src/components/employee-card/employee-color-palette.tsx",
+        "app/src/components/settings/sections/appearance-tiles.tsx",
+        "ui/chat/src/chat-input-mentions.tsx",
+      ],
+      "rules": {
+        // Composite radios focus their radio children; aria-activedescendant options keep focus on the owning combobox.
+        "jsx-a11y/interactive-supports-focus": "off",
+      },
+    },
+    {
+      "files": [
+        "app/src/components/shell/provider-device-code.tsx",
+        "app/src/components/settings/sections/api-keys.tsx",
+      ],
+      "rules": {
+        // Trans supplies the authored translated button text at runtime.
+        "jsx-a11y/control-has-associated-label": "off",
+      },
+    },
+    {
+      "files": [
+        "ui/core/src/components/form-dialog-form.tsx",
+        "app/src/components/chat-model-selector.tsx",
+        "app/src/components/chat-mode-selector.tsx",
+      ],
+      "rules": {
+        // Container handlers delegate keyboard actions or stop propagation; they are not standalone controls.
+        "jsx-a11y/no-noninteractive-element-interactions": "off",
+      },
+    },
+    {
+      "files": ["packages/host/src/launcher/contract.test.ts"],
+      "rules": {
+        // The recorded cloud-launcher absence is an intentional contract divergence, not an unfinished implementation.
+        "vitest/warn-todo": "off",
+      },
+    },
+    {
+      "files": [
+        "packages/engine-adapter/src/client/mixin.ts",
+        "scripts/assistant-catalog/tests/fixtures/assistant-cluster-mixin.ts",
+      ],
+      "rules": {
+        // TypeScript mixin constructors require any[] under TS2545.
+        "typescript/no-explicit-any": "off",
+      },
+    },
+    {
+      "files": [
+        "app/tests/team-agent-move.test.ts",
+        "app/tests/move-resume.test.ts",
+        "packages/sdk/src/commands.test.ts",
+      ],
+      "rules": {
+        // These tests intentionally exercise non-Error failures at system boundaries.
+        "no-throw-literal": "off",
+      },
+    },
+    {
+      "files": [
+        "packages/web/e2e/support/fixtures.ts",
+        "packages/web/e2e/visual/board-card-time.visual.spec.ts",
+      ],
+      "rules": {
+        // Playwright requires destructuring in fixture and hook parameters.
+        "no-empty-pattern": "off",
+      },
+    },
+    {
+      "files": [
+        "packages/domain/src/agent-name.ts",
+        "website/lib/certs/shape.mjs",
+      ],
+      "rules": {
+        // These validators must reject control characters.
+        "no-control-regex": "off",
+      },
+    },
+    {
+      "files": [
+        "app/src/components/organization/org-chart-share-card-marks.ts",
+      ],
+      "rules": {
+        // CanvasRenderingContext2D.fill consumes Path2D, not an array fill value.
+        "unicorn/no-array-fill-with-reference-type": "off",
+      },
+    },
+    {
+      "files": [
+        "app/src/hooks/use-org-checkout-return.ts",
+        "packages/web/src/checkout-return.tsx",
+      ],
+      "rules": {
+        // BroadcastChannel.postMessage is already restricted to this origin and has no targetOrigin argument.
+        "unicorn/require-post-message-target-origin": "off",
+      },
+    },
+  ],
+}

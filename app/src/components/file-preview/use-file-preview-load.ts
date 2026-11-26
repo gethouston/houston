@@ -11,7 +11,7 @@ import {
   fetchFileBytes,
   sharedBytesKey,
 } from "../../lib/file-bytes-cache";
-import { isFileGoneError } from "../../lib/file-gone";
+import { FILE_READ_REFUSAL_COPY, fileReadRefusal } from "../../lib/file-gone";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriFiles } from "../../lib/tauri";
 import type { Loaded } from "./file-preview-body";
@@ -85,15 +85,20 @@ export function useFilePreviewLoad(
     if (!pdf.error || plan !== "pdf" || !filePath) return;
     const refusal = files.classifyPreviewRefusal(pdf.error, { officePreview });
     reportPreviewRefusal(refusal, agentPath);
+    const readRefusal = refusal.fallback
+      ? null
+      : fileReadRefusal(refusal.error);
     if (shown.current.state !== "pdf")
       show(
-        !refusal.fallback && isFileGoneError(refusal.error)
-          ? { state: "error", message: t("files.gone.description") }
+        readRefusal
+          ? {
+              state: "error",
+              message: t(FILE_READ_REFUSAL_COPY[readRefusal].description),
+            }
           : { state: "binary" },
       );
-  }, [pdf.error, plan, filePath, officePreview, agentPath, t, show]);
+  }, [pdf.error, plan, filePath, officePreview, agentPath, t, show, files]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` (the file was rewritten) and `attempt` (Try again) re-run the load
   useEffect(() => {
     if (!filePath || isLoading || listingPending) return;
     let cancelled = false;
@@ -140,12 +145,14 @@ export function useFilePreviewLoad(
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        // A gone file is the user's state (PRODUCT-1780): authored copy, no
-        // report. Anything else is a fault and keeps the generic + report path.
+        // A refused read is the user's state (`fileReadRefusal`): authored
+        // copy, and the download already reported it if it needed to.
+        // Anything else is a fault and keeps the generic + report path.
+        const readRefusal = fileReadRefusal(error);
         show({
           state: "error",
-          message: isFileGoneError(error)
-            ? t("files.gone.description")
+          message: readRefusal
+            ? t(FILE_READ_REFUSAL_COPY[readRefusal].description)
             : genericErrorDescription("preview_file", error),
         });
       });

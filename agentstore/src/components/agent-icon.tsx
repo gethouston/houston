@@ -1,5 +1,5 @@
-import type { AgentIdentity } from "@houston/agentstore-contract";
 import { cn } from "@houston-ai/core";
+import type { AgentIdentity } from "@houston/agentstore-contract";
 
 export interface AgentIconProps {
   icon: AgentIdentity["icon"];
@@ -20,7 +20,7 @@ export function AgentIcon({ icon, name, className }: AgentIconProps) {
 
   if (icon?.kind === "url") {
     return (
-      // biome-ignore lint/performance/noImgElement: agent icons are arbitrary remote https URLs, not build-time assets
+      // oxlint-disable-next-line nextjs/no-img-element -- agent icons are arbitrary remote https URLs, not build-time assets
       <img
         src={icon.url}
         alt={`${name} icon`}

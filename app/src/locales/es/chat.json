@@ -120,6 +120,8 @@
     "signin": "Iniciar sesión",
     "connectTitle": "Conectar {{app}}",
     "connectReasonFallback": "El empleado de IA necesita {{app}} para continuar.",
+    "reconnectTitle": "Reconectar {{app}}",
+    "reconnectReasonFallback": "{{app}} dejó de funcionar. Vuelve a conectarlo para que el empleado de IA pueda continuar.",
     "declinePlaceholder": "O dile qué hacer en vez de eso...",
     "recommended": "Recomendado",
     "skip": "Omitir",
@@ -304,6 +306,14 @@
       "gemma-4-31b-it": "Modelo abierto Gemma de Google. Más capaz.",
       "mistral-large-4": "El modelo más capaz de Mistral. Contexto largo y razonamiento."
     },
+    "providerModelDescriptions": {
+      "google": {
+        "gemini-4-neon": "El Gemini 4 equilibrado de Google, bueno para agentes y programación. Necesita una clave de API de pago."
+      },
+      "github-copilot": {
+        "gemini-4-neon": "El Gemini 4 equilibrado de Google, bueno para agentes y programación. Necesita Copilot Pro+."
+      }
+    },
     "connectMore": "Conectar otra IA…"
   },
   "reasoning": {
@@ -338,8 +348,18 @@
     "failed": "Tu agente no pudo prepararse para este mensaje. Envíalo de nuevo en un momento.",
     "unconfirmed": "No pudimos confirmar que tu agente recibió este mensaje. Vuelve a revisar en unos minutos y, si sigue sin responder, envíalo de nuevo."
   },
+  "filesNotSaved": {
+    "title": "Algunos archivos de esta respuesta no se pudieron guardar como siempre:",
+    "conflict_copy": "{{file}} se modificó en otro lugar mientras tu agente trabajaba. Se conservan las dos versiones: la de tu agente se guardó como {{copy}}.",
+    "conflict_copy_unnamed": "{{file}} se modificó en otro lugar mientras tu agente trabajaba. Se conservan las dos versiones, y la de tu agente se guardó junto a ese archivo.",
+    "conflict": "{{file}} se modificó en otro lugar mientras tu agente trabajaba, así que los cambios de tu agente en ese archivo no se guardaron.",
+    "delete_kept": "{{file}} se modificó en otro lugar mientras tu agente trabajaba, así que se conservó en lugar de borrarse.",
+    "too_large": "{{file}} es demasiado grande para guardarse, así que los cambios de tu agente no se guardaron.",
+    "out_of_scope": "Los cambios de tu agente en {{file}} no se pudieron guardar desde esta respuesta."
+  },
   "replyTimeLimit": "Tu agente trabajó durante 4 horas, el límite de una respuesta. Su avance está guardado. Dile \"continúa\" y retomará donde se quedó.",
   "replyTimeLimitUnsaved": "Tu agente llegó al límite de 4 horas de una respuesta y se detuvo antes de guardar sus últimos pasos. Dile \"continúa\" para retomar desde el último punto guardado.",
+  "sandboxLost": "Tu agente se detuvo de forma inesperada antes de poder guardar sus últimos pasos. Todo lo que guardó antes se conserva, así que puedes pedírselo de nuevo para terminar el resto.",
   "engineRestart": {
     "sayContinue": "Tu agente tuvo que reiniciarse. Dile que continúe y retomará donde se quedó.",
     "resuming": "Tu agente se interrumpió por un reinicio y está retomando donde se quedó."

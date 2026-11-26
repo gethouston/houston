@@ -285,27 +285,27 @@ test("an agent-started mission retires the target's pending first day", async ()
   });
 });
 
-test.each([
-  "started",
-  undefined,
-] as const)("an agent-started mission leaves firstDay %s untouched", async (firstDay) => {
-  await saveConfig(vfs, root, firstDay ? { firstDay } : { model: "sonnet" });
-  const write = vi.spyOn(vfs, "writeText");
-  const result = await call("POST", "missions/start", {
-    title: "Begin the work",
-    prompt: "Start now.",
-    origin: ORIGIN,
-  });
-  expect(result.status).toBe(201);
-  expect(write).not.toHaveBeenCalledWith(
-    docKey(root, "config"),
-    expect.anything(),
-  );
-  expect(events).not.toContainEqual({
-    type: "ConfigChanged",
-    agentPath: agent.id,
-  });
-});
+test.each(["started", undefined] as const)(
+  "an agent-started mission leaves firstDay %s untouched",
+  async (firstDay) => {
+    await saveConfig(vfs, root, firstDay ? { firstDay } : { model: "sonnet" });
+    const write = vi.spyOn(vfs, "writeText");
+    const result = await call("POST", "missions/start", {
+      title: "Begin the work",
+      prompt: "Start now.",
+      origin: ORIGIN,
+    });
+    expect(result.status).toBe(201);
+    expect(write).not.toHaveBeenCalledWith(
+      docKey(root, "config"),
+      expect.anything(),
+    );
+    expect(events).not.toContainEqual({
+      type: "ConfigChanged",
+      agentPath: agent.id,
+    });
+  },
+);
 
 test("a failed config write does not fail an agent-started mission", async () => {
   await saveConfig(vfs, root, { firstDay: "pending" });
@@ -351,6 +351,8 @@ test("a start from another pod lands on this agent's board and fires its turn", 
   expect(created?.origin_depth).toBe(1);
   // Attribution comes from the gateway-verified acting identity, not the body.
   expect(created?.created_by).toBe("u-1");
+  // The mode it was started in is the one its chat keeps (HOU-205).
+  expect(created?.mode).toBe("auto");
   expect(fired).toEqual([
     {
       agentId: agent.id,
@@ -523,14 +525,14 @@ test("the server's own deps satisfy this route, so the mount passes them through
   expect([typeof mountable, typeof served]).toEqual(["function", "function"]);
 });
 
-test.each([
-  "missions?agent=Other",
-  "missions/read?agent=Other&id=m-1",
-])("inbound %s refuses a second target", async (rest) => {
-  const result = await call("GET", rest);
-  expect(result.status).toBe(400);
-  expect(result.body).toMatchObject({ code: "invalid_agent" });
-});
+test.each(["missions?agent=Other", "missions/read?agent=Other&id=m-1"])(
+  "inbound %s refuses a second target",
+  async (rest) => {
+    const result = await call("GET", rest);
+    expect(result.status).toBe(400);
+    expect(result.body).toMatchObject({ code: "invalid_agent" });
+  },
+);
 test("the inbound start echoes resolved provider and model", async () => {
   const result = await call("POST", "missions/start", {
     title: "t",
@@ -621,15 +623,18 @@ test("off the gateway, the dispatcher's loopback proof marks the manager", async
 test.each([
   [true, { routineMinIntervalMinutes: 15 }],
   [false, undefined],
-])("the gateway's plan stamp on a start rides the child turn (fronted: %s)", async (behindGateway, expected) => {
-  fronted = behindGateway;
-  const r = await call("POST", "missions/start", {
-    title: "Watch the inbox",
-    prompt: "Set up a check.",
-    origin: ORIGIN,
-    limits: { routineMinIntervalMinutes: 15 },
-  });
-  expect(r.status).toBe(201);
-  expect(fired).toHaveLength(1);
-  expect(fired[0]?.limits).toEqual(expected);
-});
+])(
+  "the gateway's plan stamp on a start rides the child turn (fronted: %s)",
+  async (behindGateway, expected) => {
+    fronted = behindGateway;
+    const r = await call("POST", "missions/start", {
+      title: "Watch the inbox",
+      prompt: "Set up a check.",
+      origin: ORIGIN,
+      limits: { routineMinIntervalMinutes: 15 },
+    });
+    expect(r.status).toBe(201);
+    expect(fired).toHaveLength(1);
+    expect(fired[0]?.limits).toEqual(expected);
+  },
+);

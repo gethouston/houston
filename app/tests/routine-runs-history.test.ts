@@ -34,9 +34,8 @@ before(async () => {
       pt: { routines: pt },
     },
   });
-  const { RoutineRunsHistory } = await import(
-    "../src/components/agent/routine-runs-dialog.tsx"
-  );
+  const { RoutineRunsHistory } =
+    await import("../src/components/agent/routine-runs-dialog.tsx");
   render = async (runs, language) => {
     await i18next.changeLanguage(language);
     return renderToStaticMarkup(

@@ -116,7 +116,9 @@ describe("no dead theme tokens in the app or the ui packages", () => {
 describe("no raw visual values outside the sanctioned files", () => {
   it("guards every surface that renders Houston's UI", () => {
     // A guard that silently stopped matching anything would pass forever.
-    const roots = sourceRoots().map((root) => root.replace(`${REPO}/`, ""));
+    const roots = new Set(
+      sourceRoots().map((root) => root.replace(`${REPO}/`, "")),
+    );
     for (const expected of [
       "app/src",
       "packages/web/src",
@@ -126,7 +128,7 @@ describe("no raw visual values outside the sanctioned files", () => {
       "ui/core/src",
       "ui/chat/src",
     ]) {
-      ok(roots.includes(expected), `${expected} is not scanned`);
+      ok(roots.has(expected), `${expected} is not scanned`);
     }
     ok(guardedFiles().length > 800, "the walk found almost nothing");
   });

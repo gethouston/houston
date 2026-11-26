@@ -91,9 +91,8 @@ before(async () => {
     ns: ["plan"],
     resources: { en: { plan: en }, es: { plan: es }, pt: { plan: pt } },
   });
-  const { RoutinePlanSkipNoticeView } = await import(
-    "../src/components/agent/routine-plan-skip-notice-view.tsx"
-  );
+  const { RoutinePlanSkipNoticeView } =
+    await import("../src/components/agent/routine-plan-skip-notice-view.tsx");
   render = async (notice, language = "en") => {
     await i18next.changeLanguage(language);
     return text(

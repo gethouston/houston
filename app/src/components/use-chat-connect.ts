@@ -35,12 +35,15 @@ export function useChatConnect({
   accountScope,
   onConnected,
   autoContinueWhenConnected = false,
+  connectedAfter,
 }: {
   toolkit: string;
   agentId: string;
   accountScope?: boolean;
   onConnected?: (toolkit: string, appName: string) => void;
   autoContinueWhenConnected?: boolean;
+  /** See {@link useIntegrationConnect}'s `connectedAfter`. */
+  connectedAfter?: string;
 }): {
   app: AppDisplay;
   isConnected: boolean;
@@ -76,6 +79,7 @@ export function useChatConnect({
     toolkit,
     agentId,
     accountScope,
+    connectedAfter,
     ...(curated
       ? { onConnected: speakOnce, autoContinueWhenConnected: false }
       : { onConnected, autoContinueWhenConnected }),
@@ -86,8 +90,11 @@ export function useChatConnect({
     : undefined;
   // Connected through EITHER path: the MCP definition or the provider's own
   // app (Composio's HighLevel) — both make the agent's tools work.
+  // A reconnect step counts only the provider's fresh connection: the MCP
+  // definition carries no time to tell the refused login from a new one, and
+  // counting it would leave the card's Reconnect button opening nothing.
   const curatedConnected =
-    view?.state.status === "active" ||
+    (!connectedAfter && view?.state.status === "active") ||
     (curated !== undefined && composio.isConnected);
   const providerCatalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
   const providerHasCurated =

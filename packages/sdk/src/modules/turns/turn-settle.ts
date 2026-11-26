@@ -124,7 +124,7 @@ export function finishErr(
   s.firstResponse?.resolve(
     isStoppedByUser(msg)
       ? "cancelled"
-      : notice === "engine_restart"
+      : notice === "engine_restart" || notice === "sandbox_lost"
         ? "interrupted"
         : "error",
     s.turnId,

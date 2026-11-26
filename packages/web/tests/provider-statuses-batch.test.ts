@@ -123,10 +123,9 @@ test("an unreachable runtime reports every card UNKNOWN without throwing", async
   // signed-out state).
   listProviders.mockRejectedValue(new Error("sandbox unreachable"));
 
-  const statuses = await (await settledClient()).providerStatuses([
-    "anthropic",
-    "opencode",
-  ]);
+  const statuses = await (
+    await settledClient()
+  ).providerStatuses(["anthropic", "opencode"]);
 
   expect(statuses.map((s) => s.authState)).toEqual(["unknown", "unknown"]);
 });
@@ -149,10 +148,9 @@ test("the probe is bounded by an abort signal, so a wedged host cannot pend fore
 test("a reachable runtime still gives a confirmed unauthenticated for absent providers", async () => {
   listProviders.mockResolvedValue([{ id: "anthropic", configured: true }]);
 
-  const statuses = await (await settledClient()).providerStatuses([
-    "anthropic",
-    "opencode",
-  ]);
+  const statuses = await (
+    await settledClient()
+  ).providerStatuses(["anthropic", "opencode"]);
 
   expect(statuses.map((s) => s.authState)).toEqual([
     "authenticated",
@@ -169,9 +167,9 @@ test("the probe still runs on a webview without AbortSignal.timeout", async () =
   vi.useFakeTimers({ toFake: ["setTimeout"] });
   try {
     listProviders.mockResolvedValue([{ id: "anthropic", configured: true }]);
-    const statuses = await (await settledClient()).providerStatuses([
-      "anthropic",
-    ]);
+    const statuses = await (
+      await settledClient()
+    ).providerStatuses(["anthropic"]);
     expect(statuses.map((s) => s.authState)).toEqual(["authenticated"]);
     const [opts] = listProviders.mock.calls[0];
     vi.advanceTimersByTime(15_000);

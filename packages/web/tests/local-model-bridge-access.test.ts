@@ -45,14 +45,17 @@ test.each([
   ["http://127.0.0.1:4318", { profile: "cloud" }],
   ["http://localhost:4318", { profile: "local", multiplayer: true }],
   ["http://localhost:4318", { profile: "local", tunnel: true }],
-])("refuses unsupported remote or hosted deployment %s", async (url, capabilities) => {
-  responses(capabilities);
-  const refusal = localModelBridgeAccess(context(url), "owner", "agent-a");
-  await expect(refusal).rejects.toMatchObject({ status: 503 });
-  // The SDK's discovery stops (no 30s poll) and the app files it as the quiet
-  // bridge_unsupported class only if the thrown shape carries this code.
-  await expect(refusal).rejects.toSatisfy(isBridgeUnsupported);
-});
+])(
+  "refuses unsupported remote or hosted deployment %s",
+  async (url, capabilities) => {
+    responses(capabilities);
+    const refusal = localModelBridgeAccess(context(url), "owner", "agent-a");
+    await expect(refusal).rejects.toMatchObject({ status: 503 });
+    // The SDK's discovery stops (no 30s poll) and the app files it as the quiet
+    // bridge_unsupported class only if the thrown shape carries this code.
+    await expect(refusal).rejects.toSatisfy(isBridgeUnsupported);
+  },
+);
 
 test("a capability outage does not downgrade to a direct connection", async () => {
   vi.stubGlobal(
@@ -109,13 +112,16 @@ test.each([
   `wss://gateway.example/v1/local-model-bridges/${id}/connect?ticket=secret`,
   `wss://user@gateway.example/v1/local-model-bridges/${id}/connect`,
   `ws://gateway.example/v1/local-model-bridges/${id}/connect`,
-])("rejects a session ticket destination outside its exact trusted route: %s", async (connectUrl) => {
-  responses(caps, { id: "org-a" }, { ...session, connectUrl });
-  const access = await localModelBridgeAccess(context(), "owner", "agent-a");
-  await expect(access?.session(id, device)).rejects.toThrow(
-    "Invalid local model session destination",
-  );
-});
+])(
+  "rejects a session ticket destination outside its exact trusted route: %s",
+  async (connectUrl) => {
+    responses(caps, { id: "org-a" }, { ...session, connectUrl });
+    const access = await localModelBridgeAccess(context(), "owner", "agent-a");
+    await expect(access?.session(id, device)).rejects.toThrow(
+      "Invalid local model session destination",
+    );
+  },
+);
 
 test("does not accept another workspace's status descriptor", async () => {
   responses(

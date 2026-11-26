@@ -34,6 +34,14 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  has no AI connected (`@houston/sdk/agents/first-day-refusal`): an expected
  *  state whose surface offers the connect flow, skipped by every reporting
  *  path.
+ *  `first_day_provider_unavailable` is a first-day start refused because the
+ *  person's AI could not be reached right now (`agents/first-day-refusal`):
+ *  transient, with copy to try again, and one fingerprinted warning so a
+ *  provider outage still shows up as a count.
+ *  `first_day_account_blocked` is a first-day start refused because the
+ *  person's provider blocks their account (`agents/first-day-refusal`'s
+ *  `firstDayAccountBlocked`): a business state the person fixes at the
+ *  provider or by connecting another AI, with copy saying so and no report.
  *  `storage_full` is the device's disk refusing the updater's release
  *  download: the device's state, not a bug, named only by the download report
  *  path and never retried for that release in the session.
@@ -53,10 +61,22 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  `link_identity_taken` is a provider sign-in that met an existing account
  *  whose provider identity already belongs to another account
  *  (`modules/identity`): the person stays signed in by email code and sees
- *  a notice. Support can join the accounts, so it is one counted warning. */
+ *  a notice. Support can join the accounts, so it is one counted warning.
+ *  `outside_workspace` is a files read refused because the path points
+ *  outside the agent's files (`files/outside-workspace`): an agent's link
+ *  with its own copy, still one fingerprinted warning, since a burst of
+ *  them means agents keep linking such paths.
+ *  `codex_port_taken` is another process on the person's machine holding
+ *  the fixed port OpenAI's desktop sign-in redirects to (HOUSTON-APP-5EV):
+ *  the sign-in falls back to a device code, so it is one counted warning.
+ *  `agent_data_busy` is the gateway's read-only "agent data temporarily
+ *  unavailable" 503 outliving the read's retries: nothing is waking (reads
+ *  never wake the agent), so the person sees nothing and it is one counted
+ *  warning per burst (HOUSTON-APP-5HP). */
 export type QuietErrorClass =
   | "office_preview_capacity"
   | "engine_waking"
+  | "agent_data_busy"
   | "offline"
   | BridgeQuietClass
   | "release_host_unavailable"
@@ -65,10 +85,16 @@ export type QuietErrorClass =
   | "plan_min_interval"
   | "webhook_not_creator"
   | "first_day_no_provider"
+  | "first_day_provider_unavailable"
+  | "first_day_account_blocked"
   | "bug_intake_unavailable"
   | "upload_interrupted"
   | "routine_gone"
-  | "link_identity_taken";
+  | "link_identity_taken"
+  | "outside_workspace"
+  | "codex_port_taken"
+  | "compute_busy"
+  | "conversation_edit_refused";
 
 /**
  * The burst-gate key a quiet-class report collapses on.

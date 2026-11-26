@@ -2,6 +2,7 @@ import {
   autoPauseRoutine,
   createRoutine,
   ROUTINE_AUTO_PAUSE_AFTER,
+  ROUTINE_PROVIDER_ERROR_PAUSE_AFTER,
   routineAutoPause,
   unconnectedRoutineFailure,
 } from "@houston/domain";
@@ -80,4 +81,25 @@ test("an old client reads a creator-access row as an unnamed code", () => {
   });
   expect(() => main.routineFailureCode(refused)).not.toThrow();
   expect(main.routineFailureCode(refused)).toBe("creator_no_access");
+});
+
+test("an old client reads an untyped provider-error pause as 'change the model' and its rows as an unnamed code", () => {
+  const untyped = { code: "provider_error" as const, provider: "nvidia" };
+  const rows: RoutineRun[] = runs
+    .slice(0, ROUTINE_PROVIDER_ERROR_PAUSE_AFTER)
+    .map((run) => ({ ...run, failure: untyped }));
+  const earned = routineAutoPause(routine, rows, NOW);
+  if (!earned) throw new Error("the untyped streak should pause");
+  const old = wire<Parameters<typeof main.routinePauseNotice>[0]>(
+    autoPauseRoutine(routine, earned),
+  );
+  expect(() => main.routinePauseNotice(old)).not.toThrow();
+  expect(main.routinePauseNotice(old)).toMatchObject({
+    remedy: "change_model",
+    provider: "nvidia",
+    failures: ROUTINE_PROVIDER_ERROR_PAUSE_AFTER,
+  });
+  const row = wire<Parameters<typeof main.routineFailureCode>[0]>(rows[0]);
+  expect(() => main.routineFailureCode(row)).not.toThrow();
+  expect(main.routineFailureCode(row)).toBe("provider_error");
 });

@@ -55,16 +55,14 @@ const NO_CREDITS: RoutineRunFailure = {
 function errors(failures: RoutineRunFailure[]): RoutineRun[] {
   const base = Date.parse(EDITED) + 60_000;
   return failures
-    .map(
-      (failure, i): RoutineRun => ({
-        id: `run-${i}`,
-        routine_id: "r1",
-        status: "error",
-        session_key: "routine-r1",
-        started_at: new Date(base + i * 60_000).toISOString(),
-        failure,
-      }),
-    )
+    .map((failure, i): RoutineRun => ({
+      id: `run-${i}`,
+      routine_id: "r1",
+      status: "error",
+      session_key: "routine-r1",
+      started_at: new Date(base + i * 60_000).toISOString(),
+      failure,
+    }))
     .reverse();
 }
 

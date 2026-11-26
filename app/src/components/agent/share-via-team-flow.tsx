@@ -33,6 +33,8 @@ import { useAgentOrgMove } from "./use-agent-org-move";
 import { useShareCreateTeam } from "./use-share-create-team";
 import { useShareInvites } from "./use-share-invites";
 
+const DEFAULT_MODE = { kind: "share" } satisfies ShareViaTeamMode;
+
 /**
  * Where a flow can move its AI Employee. `share`: a team the caller runs, or
  * one they create on the spot, then teammates are invited. `move_out`: the
@@ -57,7 +59,7 @@ export function ShareViaTeamFlow({
   agent,
   open,
   onOpenChange,
-  mode = { kind: "share" },
+  mode = DEFAULT_MODE,
 }: {
   agent: Agent;
   open: boolean;

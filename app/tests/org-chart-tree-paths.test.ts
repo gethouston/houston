@@ -1,13 +1,13 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { OrgMember } from "@houston/engine-adapter";
-import { buildOrgTree } from "../src/components/organization/org-chart-tree.ts";
 import {
   type Box,
   connectorPath,
   roundedPath,
   treeEdges,
 } from "../src/components/organization/org-chart-tree-paths.ts";
+import { buildOrgTree } from "../src/components/organization/org-chart-tree.ts";
 
 const box = (x: number, y: number, w = 100, h = 40): Box => ({ x, y, w, h });
 const opts = { radius: 8, spineInset: 20 };

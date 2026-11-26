@@ -1,11 +1,11 @@
 import { match, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { color } from "@houston/design-tokens";
 import {
   AGENT_COLORS,
   employeeMetalColors,
   hexColorMix,
 } from "@houston-ai/core";
+import { color } from "@houston/design-tokens";
 import { agentAccent } from "../src/components/organization/org-chart-share-card-art.ts";
 
 const metal = (stored: string | undefined) =>

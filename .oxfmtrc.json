@@ -1,0 +1,48 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "useTabs": false,
+  "tabWidth": 2,
+  "printWidth": 80,
+  "singleQuote": false,
+  "jsxSingleQuote": false,
+  "quoteProps": "as-needed",
+  "trailingComma": "all",
+  "semi": true,
+  "arrowParens": "always",
+  "bracketSameLine": false,
+  "bracketSpacing": true,
+  "ignorePatterns": [
+    "**/*.css",
+    "**/*.svg",
+    "**/*.html",
+    "**/gen",
+    "**/*.gen.json",
+    ".houston",
+    "packages/design-tokens/dist",
+    "app/src/agents/builtin/store-templates",
+    "app/src/lib/ai-hub/model-catalog.json",
+    "packages/host/src/routes/routes.golden.json",
+    "scripts/sdk-parity/gateway-routes.generated.json",
+    "website/src/assets/vendor",
+    "**/*.{md,mdx,yaml,yml,toml,scss,less,vue,svelte,astro,hbs,handlebars}",
+    "**/package-lock.json",
+    "**/*.lock",
+    "**/*.gs"
+  ],
+  "endOfLine": "lf",
+  "sortPackageJson": false,
+  "sortImports": {
+    "groups": [
+      "builtin",
+      "external",
+      ["internal", "subpath"],
+      ["parent", "sibling", "index"],
+      "style",
+      "unknown"
+    ],
+    "newlinesBetween": false,
+    "partitionByComment": true,
+    "partitionByNewline": true,
+    "sortSideEffects": false
+  }
+}

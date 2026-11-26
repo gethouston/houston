@@ -161,18 +161,21 @@ test("a message without grants mints no hire authority", async () => {
 test.each([
   ["unknown value", agentId, ["deleteAgent"], "invalid_grants"],
   ["other agent", "Personal/Writer", ["createAgent"], "grants_not_allowed"],
-] as const)("%s grant is refused with 400", async (_label, agent, grants, code) => {
-  const result = await guardTurnMessage({
-    approvals: new ApprovalStore(),
-    vfs: new MemoryVfs(),
-    dataRoot,
-    agentId: agent,
-    conversationId,
-    actor: "user-a",
-    body: Buffer.from(JSON.stringify({ text: "hi", nonce: "n", grants })),
-  });
-  expect(result).toEqual({ kind: "refused", status: 400, code });
-});
+] as const)(
+  "%s grant is refused with 400",
+  async (_label, agent, grants, code) => {
+    const result = await guardTurnMessage({
+      approvals: new ApprovalStore(),
+      vfs: new MemoryVfs(),
+      dataRoot,
+      agentId: agent,
+      conversationId,
+      actor: "user-a",
+      body: Buffer.from(JSON.stringify({ text: "hi", nonce: "n", grants })),
+    });
+    expect(result).toEqual({ kind: "refused", status: 400, code });
+  },
+);
 
 test.each([
   ["an unusable nonce", { text: "hello", nonce: "" }, 400, "invalid_nonce"],

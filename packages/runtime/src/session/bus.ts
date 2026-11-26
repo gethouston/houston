@@ -59,7 +59,7 @@ export function publish(id: string, event: WireFrame): void {
   ch.publish(event, (frame) => {
     const subs = subscribers.get(key);
     // Iterate a copy: a callback may (un)subscribe while we fan out.
-    if (subs) for (const cb of [...subs]) cb(frame);
+    if (subs) for (const cb of Array.from(subs)) cb(frame);
   });
 }
 

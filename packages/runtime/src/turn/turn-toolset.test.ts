@@ -192,13 +192,13 @@ test("a code-run scope on a turn with no sandbox grants nothing", () => {
   expect(turnCodeExecution(turn, "remote")).toBe("disabled");
 });
 
-test.each([
-  "local",
-  "disabled",
-] as const)("%s is the worker's own answer — the scope does not change it", (mode) => {
-  const turn = base({ scopes: ["code-run"] });
-  expect(turnCodeExecution(turn, mode)).toBe(mode);
-  expect(turnCodeExecution(base({ scopes: ["integrations"] }), mode)).toBe(
-    mode,
-  );
-});
+test.each(["local", "disabled"] as const)(
+  "%s is the worker's own answer — the scope does not change it",
+  (mode) => {
+    const turn = base({ scopes: ["code-run"] });
+    expect(turnCodeExecution(turn, mode)).toBe(mode);
+    expect(turnCodeExecution(base({ scopes: ["integrations"] }), mode)).toBe(
+      mode,
+    );
+  },
+);

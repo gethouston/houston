@@ -1,5 +1,5 @@
-import type { SidebarLayout } from "@houston/engine-adapter";
 import type { SidebarGroupView, SidebarItem } from "@houston-ai/layout";
+import type { SidebarLayout } from "@houston/engine-adapter";
 import { flatSidebarOrder } from "../../lib/agent-order";
 import type { TeamView } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";

@@ -3,6 +3,7 @@ import {
   type SyncResult,
   syncBack,
 } from "@houston/runtime-client/object-sync";
+import { agentScopeIncludes } from "./turn-agent-scope";
 import { deferredWorkspaceFile } from "./turn-deferred-files";
 import { DeferredFilesAbandonedError } from "./turn-deferred-watch";
 import type { TurnFilesystem } from "./turn-filesystem";
@@ -11,10 +12,20 @@ import { claimedTurnIncludes } from "./turn-filesystem-scope";
 function withoutDeferred(
   include: (rel: string) => boolean,
   deferredFailed: boolean,
+  filesystem: TurnFilesystem,
 ): (rel: string) => boolean {
-  return deferredFailed
-    ? (rel) => !deferredWorkspaceFile(rel) && include(rel)
-    : include;
+  const gate = filesystem.deferredGate;
+  if (!deferredFailed) return include;
+  return gate
+    ? (rel) => !gate.unsynced(rel, filesystem.manifest) && include(rel)
+    : (rel) => !deferredWorkspaceFile(rel) && include(rel);
+}
+
+function narrowed(
+  include: (rel: string) => boolean,
+  narrow: ((rel: string) => boolean) | undefined,
+): (rel: string) => boolean {
+  return narrow ? (rel) => narrow(rel) && include(rel) : include;
 }
 
 /** Sync a turn, limiting a claimed writer to its granted turn-owned files. */
@@ -24,10 +35,14 @@ export async function syncTurnFilesystem(opts: {
   filesystem: TurnFilesystem;
   conversationId: string;
   claimed: boolean;
+  narrow?: (rel: string) => boolean;
 }): Promise<{
   uploaded: string[];
   deleted: string[];
   outOfScope: number;
+  outOfScopeKeys: string[];
+  conflictCopies: SyncResult["conflictCopies"];
+  deletesKept: SyncResult["deletesKept"];
   skipped: { key: string; reason: string }[];
   conflicts: { key: string; reason: string }[];
   merges: SyncResult["merges"];
@@ -40,10 +55,6 @@ export async function syncTurnFilesystem(opts: {
     try {
       await opts.filesystem.workspaceReady;
     } catch (error) {
-      // No tool ran (the gate refused them all, or the prompt ended before
-      // any asked), so nothing in the deferred folders is the turn's: one
-      // that landed before the stop but never reached the manifest must not
-      // read as a new file to upload. The failure itself was reported once.
       deferredFailed = true;
       if (!(error instanceof DeferredFilesAbandonedError))
         console.warn(
@@ -51,6 +62,10 @@ export async function syncTurnFilesystem(opts: {
         );
     }
   }
+  const { workspaceRel, dataRel } = opts.filesystem;
+  const scope = opts.claimed
+    ? claimedTurnIncludes(dataRel, workspaceRel, opts.conversationId)
+    : undefined;
   const result = await syncBack(
     opts.store,
     opts.prefix,
@@ -64,21 +79,23 @@ export async function syncTurnFilesystem(opts: {
       // Concurrent turns and the gateway's own card writes share one board:
       // merge it over bounded rounds (the standing daemon never sets this).
       workerMerge: true,
-      ...(opts.claimed
+      conflictCopies: (rel) =>
+        agentScopeIncludes(rel, workspaceRel) &&
+        !rel.startsWith(`${workspaceRel}/.houston/`),
+      ...(opts.filesystem.conflictCopies
+        ? { keptCopies: opts.filesystem.conflictCopies }
+        : {}),
+      ...(scope
         ? {
-            include: withoutDeferred(
-              claimedTurnIncludes(
-                opts.filesystem.dataRel,
-                opts.filesystem.workspaceRel,
-                opts.conversationId,
-              ),
-              deferredFailed,
+            include: narrowed(
+              withoutDeferred(scope, deferredFailed, opts.filesystem),
+              opts.narrow,
             ),
           }
         : {}),
     },
   );
-  if (result.outOfScope > 0) {
+  if (result.outOfScope > 0 && !opts.narrow) {
     console.info(
       `[turn] pool_writes_out_of_scope=${result.outOfScope} prefix=${opts.prefix || opts.filesystem.dataRel} conversation=${opts.conversationId}`,
     );
@@ -92,6 +109,15 @@ export async function syncTurnFilesystem(opts: {
     uploaded: result.uploaded,
     deleted: result.deleted,
     outOfScope: result.outOfScope,
+    outOfScopeKeys: result.outOfScopeKeys.filter(
+      (rel) =>
+        scope !== undefined &&
+        !scope(rel) &&
+        rel.startsWith(`${workspaceRel}/`) &&
+        !rel.startsWith(`${dataRel}/`),
+    ),
+    conflictCopies: result.conflictCopies,
+    deletesKept: result.deletesKept,
     skipped: result.skipped,
     conflicts: result.conflicts,
     merges: result.merges,

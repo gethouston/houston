@@ -8,6 +8,8 @@ import { turnCodeExecutionMode } from "../session/tool-selection";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import { sandboxFetchRunCodeTransport } from "../session/tools/run-code-transport";
 import { createTurnBackend, type TurnBackendDeps } from "./turn-backend";
+import { claimedTurnKeepsWrite } from "./turn-filesystem-scope";
+import { turnMissionGuidance } from "./turn-mission-tools";
 import { turnRunCodeLimiter } from "./turn-run-code-limiter";
 import { createTurnModelRuntime } from "./turn-runtime";
 import { TURN_CODE_RUN_PATH } from "./turn-sandbox-code";
@@ -65,7 +67,6 @@ async function prepareTurnSession(
     turn,
     turnCodeExecutionMode(config.codeExecution, config.poolSingleUse),
   );
-  const toolSelection = buildTurnToolSelection(turn, codeExecution);
   const sdkLoad =
     turn.provider === "anthropic"
       ? preloadClaudeSdk(deps.claudeSdk).then((result) => {
@@ -74,13 +75,18 @@ async function prepareTurnSession(
         })
       : undefined;
   const createRuntime = deps.createModelRuntime ?? createTurnModelRuntime;
-  const { modelRuntime, model } = await createRuntime(
-    directories.dataDir,
-    turn.provider,
-    turn.pin?.model,
-    turn.timings,
-  );
+  const [{ modelRuntime, model }, missions] = await Promise.all([
+    createRuntime(
+      directories.dataDir,
+      turn.provider,
+      turn.pin?.model,
+      turn.timings,
+    ),
+    turnMissionGuidance(turn),
+  ]);
+  const toolSelection = buildTurnToolSelection(turn, codeExecution);
   if (sdkLoad) await sdkLoad;
+  const keepsWrite = claimedTurnKeepsWrite(directories, turn);
   // The worker holds no sandbox URL, app token or GCP identity: the call rides
   // this turn's sandbox facade, which relays it under the grant.
   const codeSandbox =
@@ -92,6 +98,7 @@ async function prepareTurnSession(
           }),
           workspaceDir: directories.workspaceDir,
           limiter: turnRunCodeLimiter,
+          ...(keepsWrite ? { keepsWrite } : {}),
         })
       : null;
   const backend = (deps.createBackend ?? createTurnBackend)(turn.provider, {
@@ -100,7 +107,8 @@ async function prepareTurnSession(
     modelRuntime,
     toolSelection,
     codeSandbox,
-    systemPrompt: config.systemPrompt || turnSystemPrompt(codeExecution),
+    systemPrompt:
+      config.systemPrompt || turnSystemPrompt(codeExecution, missions),
     // The ROLE's file wall, the same policy the long-lived runtime builds
     // (session-tools.ts): a coordinator turn is held to its memory document
     // (plus read-only attachments), so the shared skills mirror it must never
@@ -110,6 +118,7 @@ async function prepareTurnSession(
       workspaceDir: directories.workspaceDir,
       sharedSkillsDir: config.sharedSkillsDir,
       sharedSkillsSnapshot: turnSharedSkillsDir(directories.turnRoot),
+      ...(keepsWrite ? { keepsWrite } : {}),
     }),
     claudeSdk: deps.claudeSdk,
     claudeSdkLoad: sdkLoad,

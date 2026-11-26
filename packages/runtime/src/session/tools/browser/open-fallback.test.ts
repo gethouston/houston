@@ -80,15 +80,18 @@ test("a blocked page moves the conversation to Kernel and says so in one line", 
 test.each([
   ["Kernel refuses", () => Promise.reject(new KernelError("429:concurrency"))],
   ["Kernel times out", () => Promise.reject(new KernelError("timeout"))],
-])("%s: the local page stands, and the model is told the site blocked it", async (_, open) => {
-  run.mockResolvedValueOnce(page("Just a moment", { reason: "cloudflare" }));
-  const swap = fakeSwap(open);
-  const acted = await openWithFallback(local, OPEN, swap);
-  expect(acted.tab).toBe(local);
-  expect(texts(acted.outcome)).toEqual([BLOCKED_NOTE, "Just a moment"]);
-  expect(swap.adopt).not.toHaveBeenCalled();
-  expect(swap.dropBackup).toHaveBeenCalled();
-});
+])(
+  "%s: the local page stands, and the model is told the site blocked it",
+  async (_, open) => {
+    run.mockResolvedValueOnce(page("Just a moment", { reason: "cloudflare" }));
+    const swap = fakeSwap(open);
+    const acted = await openWithFallback(local, OPEN, swap);
+    expect(acted.tab).toBe(local);
+    expect(texts(acted.outcome)).toEqual([BLOCKED_NOTE, "Just a moment"]);
+    expect(swap.adopt).not.toHaveBeenCalled();
+    expect(swap.dropBackup).toHaveBeenCalled();
+  },
+);
 
 test("Kernel's proxy refusing the site keeps the local page and logs the code", async () => {
   run

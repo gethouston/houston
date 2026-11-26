@@ -24,9 +24,8 @@ process.env.HOUSTON_SANDBOX_TOKEN = "sb-tok";
 const { compactWithFactHarvest } = await import("./durable-facts-harvest");
 const { DURABLE_FACTS_FENCE } = await import("./durable-facts");
 const { CONVERSATION_ID_HEADER } = await import("./tools/save-learning");
-const { ASSISTANT_CONVERSATION_ID } = await import(
-  "@houston/host/src/routes/assistant"
-);
+const { ASSISTANT_CONVERSATION_ID } =
+  await import("@houston/host/src/routes/assistant");
 
 const realFetch = globalThis.fetch;
 afterEach(() => {

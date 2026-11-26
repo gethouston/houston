@@ -40,6 +40,7 @@ export function useMcActions({
   const addToast = useUIStore((s) => s.addToast);
   const qc = useQueryClient();
 
+  const mcHandleCreateConversation = mc.handleCreateConversation;
   const createConversation = useCallback(
     async ({
       text,
@@ -47,6 +48,7 @@ export function useMcActions({
       providerOverride,
       modelOverride,
       effortOverride,
+      modeOverride,
       mentions,
       conversationId,
     }: NewConversationArgs) => {
@@ -62,29 +64,31 @@ export function useMcActions({
         });
         throw new Error("New mission submitted with no active agent");
       }
-      return mc.handleCreateConversation(plan.agent, text, files, {
+      return mcHandleCreateConversation(plan.agent, text, files, {
         providerOverride: plan.providerOverride,
         modelOverride: plan.modelOverride,
         effortOverride,
+        modeOverride,
         mentions,
         conversationId,
       });
     },
-    [activeAgent, mc.handleCreateConversation, addToast, t],
+    [activeAgent, mcHandleCreateConversation, addToast, t],
   );
 
   // Cross-agent: the composer's provider/model are the chat panel's pick for
   // the OPEN mission (its row's pin once loaded, the agent default until
   // then); useMissionControl prefers the cached row's own pin and otherwise
   // sends what the picker shows — never a pod read before the bubble.
+  const mcHandleSendMessage = mc.handleSendMessage;
   const sendMessageNow = useCallback(
     (
       sessionKey: string,
       text: string,
       files: File[],
       overrides: SendOverrides,
-    ) => mc.handleSendMessage(sessionKey, text, files, overrides),
-    [mc.handleSendMessage],
+    ) => mcHandleSendMessage(sessionKey, text, files, overrides),
+    [mcHandleSendMessage],
   );
 
   const stopSession = useCallback(

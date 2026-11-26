@@ -6,12 +6,12 @@
  * settings. Split from the component so it stays under the file-size budget.
  */
 
-import type { Agent } from "@houston/engine-adapter";
 import type {
   ModelPickerLabels,
   ModelPickerModel,
   ModelPickerProvider,
 } from "@houston-ai/core";
+import type { Agent } from "@houston/engine-adapter";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { agentSettingsSections } from "../components/agent-settings/agent-settings-nav.ts";

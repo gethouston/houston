@@ -9,6 +9,7 @@ import type { ManagedBridgeEndpoint } from "./local-model-bridge";
 
 import type { PendingInteraction } from "./domain/interaction";
 import type { ProviderError } from "./provider-error";
+import type { UnsavedFilesReport } from "./turn-unsaved-files";
 
 /**
  * Connectable AI providers.
@@ -253,8 +254,9 @@ export interface Settings {
  * approve; "auto" (Autopilot) = acts with everything EXCEPT the two
  * blocking/interactive tools (`ask_user`, `request_connection`) — it never waits
  * on the user, makes its own sensible choices, and reports back at the end.
- * Deliberately NOT part of `Settings`: mode rides the per-turn pin only, so an
- * unpinned turn is always "execute".
+ * Deliberately NOT part of `Settings`: a send pins its own mode, and a send
+ * that pins none runs on its conversation's mode (the mission card's `mode`,
+ * see `Activity.mode`), else "execute".
  */
 export type TurnMode = "execute" | "plan" | "auto";
 export const TURN_MODES: readonly TurnMode[] = ["execute", "plan", "auto"];
@@ -271,6 +273,17 @@ export function normalizeTurnMode(value: unknown): TurnMode {
   return TURN_MODES.includes(value as TurnMode)
     ? (value as TurnMode)
     : DEFAULT_TURN_MODE;
+}
+
+/**
+ * The mode a send body PINS, or `undefined` when it names none (absent, null,
+ * or the empty string a Go `omitempty` drops). A pin-less send runs on its
+ * conversation's stored mode; a garbage pin still normalizes to the default,
+ * never to a surprise.
+ */
+export function parseTurnModePin(value: unknown): TurnMode | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  return normalizeTurnMode(value);
 }
 
 export type ChatRole = "user" | "assistant";
@@ -408,6 +421,7 @@ export interface ChatMessage {
    * reload. Mirrors the `file_changes` wire frame.
    */
   fileChanges?: { created: string[]; modified: string[] };
+  unsavedFiles?: UnsavedFilesReport;
   /**
    * Set when this turn's model request failed with a typed provider error
    * (auth / rate-limit / 5xx / network). Persisted so the inline reconnect /
@@ -453,7 +467,7 @@ export interface ChatMessage {
  * discriminated field rather than a boolean so the next cause (a drain
  * deadline, a host-initiated kill) is a value, not another flag.
  */
-export type TurnInterruptionCause = "engine_restart";
+export type TurnInterruptionCause = "engine_restart" | "sandbox_lost";
 
 /** How a turn was cut short (see {@link ChatMessage.interrupted}). */
 export interface TurnInterruption {
@@ -555,29 +569,4 @@ export interface ConversationHistory {
    * returned. Absent on pre-windowing servers (treat as `messages.length`).
    */
   totalMessages?: number;
-}
-
-/**
- * A routine suggestion parsed out of Create-with-AI agent generation. The cron
- * is built and validated by the runtime from a constrained schedule set —
- * never taken raw from the model.
- */
-export interface SuggestedRoutine {
-  name: string;
-  prompt: string;
-  /** 5-field cron, built and validated by the runtime. */
-  schedule: string;
-}
-
-/**
- * `POST /generate-agent` — the Create-with-AI one-shot: a plain-language
- * description in; a generated agent name, CLAUDE.md instructions, suggested
- * Composio toolkit slugs, and an optional routine suggestion out.
- */
-export interface GenerateAgentResponse {
-  name: string;
-  instructions: string;
-  /** Composio toolkit slugs (e.g. "GMAIL") the agent would genuinely use. */
-  suggestedIntegrations: string[];
-  suggestedRoutine: SuggestedRoutine | null;
 }

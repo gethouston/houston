@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { OnboardingSurveyState } from "../../../hooks/use-onboarding-survey";
 import { useProviderStatuses } from "../../../hooks/use-provider-statuses";
 import type { OnboardingRoute } from "../../../lib/onboarding-route";
+import { perfSpans } from "../../../lib/perf-spans";
 import { useUIStore } from "../../../stores/ui";
 import { useWorkspaceStore } from "../../../stores/workspaces";
 import {
@@ -112,6 +113,7 @@ function FirstRunLifecycle({
   surveyLoading: boolean;
   finishRef: { current: () => void };
 }) {
+  useEffect(() => perfSpans.onboardingShown(), []);
   const providerScan = useProviderStatuses();
   const hasWorkspace = useWorkspaceStore(
     (s) => (s.current?.id ?? null) !== null,

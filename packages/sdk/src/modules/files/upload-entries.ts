@@ -61,6 +61,16 @@ export async function uploadEntries(
   return entries;
 }
 
+/**
+ * A macOS file name may hold a backslash (HOUSTON-APP-5MV: an attachment named
+ * after markdown text, `### 1\. package.txt`), and the host refuses every name
+ * with one as a path separator. It is swapped for `_` so the person's file
+ * still lands.
+ */
+function portableName(name: string): string {
+  return name.replaceAll("\\", "_");
+}
+
 export async function prepareUpload(
   scope: HttpScope,
   agentId: string,
@@ -71,6 +81,9 @@ export async function prepareUpload(
 ): Promise<PreparedUpload> {
   throwIfAborted(opts?.signal);
   if (!("blob" in file)) return { kind: "inline", entry: file };
+  const name = portableName(file.name);
+  const relPath =
+    file.relPath === undefined ? undefined : portableName(file.relPath);
   if (file.blob.size > RESUMABLE_UPLOAD_THRESHOLD_BYTES) {
     try {
       const session = await transferUpload(
@@ -78,7 +91,7 @@ export async function prepareUpload(
         agentId,
         file.blob,
         {
-          name: file.name,
+          name,
           purpose,
           signal: opts?.signal,
           onProgress: (progress) => opts?.onProgress?.(file, progress),
@@ -90,8 +103,8 @@ export async function prepareUpload(
         file,
         session,
         entry: {
-          name: file.name,
-          relPath: file.relPath,
+          name,
+          relPath,
           uploadId: session.uploadId,
         },
       };
@@ -109,9 +122,9 @@ export async function prepareUpload(
   return {
     kind: "inline",
     entry: {
-      name: file.name,
+      name,
       contentBase64: btoa(binary),
-      relPath: file.relPath,
+      relPath,
     },
   };
 }

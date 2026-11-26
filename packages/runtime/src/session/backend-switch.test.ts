@@ -48,13 +48,11 @@ vi.mock("../ai/providers", async (importOriginal) => {
 // dirs and the mocked resolveModel.
 await import("./conversation-cache");
 const { execTurn } = await import("./exec-turn");
-const { registerBackend, setDefaultBackend } = await import(
-  "../backends/registry"
-);
+const { registerBackend, setDefaultBackend } =
+  await import("../backends/registry");
 const { subscribe } = await import("./bus");
-const { appendAssistantMessage, appendUserMessage } = await import(
-  "../store/conversations"
-);
+const { appendAssistantMessage, appendUserMessage } =
+  await import("../store/conversations");
 type Conversation = import("./conversation-cache").Conversation;
 
 /** A session that records every prompt/setModel/dispose so the test can assert the

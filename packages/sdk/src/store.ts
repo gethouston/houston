@@ -85,7 +85,7 @@ export class ScopeStore {
     this.snapshots.set(scope, snapshot);
     const subs = this.subscribers.get(scope);
     if (!subs || subs.size === 0) return;
-    for (const listener of [...subs]) {
+    for (const listener of Array.from(subs)) {
       try {
         listener(snapshot);
       } catch (err) {
@@ -118,7 +118,7 @@ export class ScopeStore {
   /** Broadcast `event` to every global event listener. */
   emitEvent(event: SdkEvent): void {
     if (this.eventListeners.size === 0) return;
-    for (const listener of [...this.eventListeners]) {
+    for (const listener of Array.from(this.eventListeners)) {
       try {
         listener(event);
       } catch (err) {

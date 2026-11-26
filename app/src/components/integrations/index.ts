@@ -56,10 +56,7 @@ export {
   curatedIntegrationOf,
   curatedToolkits,
 } from "./curated-integrations";
-export {
-  curatedLogoUrl,
-  customIntegrationLogoUrl,
-} from "./curated-logos";
+export { curatedLogoUrl, customIntegrationLogoUrl } from "./curated-logos";
 export {
   CustomIntegrationDialogs,
   type CustomSelection,

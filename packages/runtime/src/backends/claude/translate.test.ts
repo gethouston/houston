@@ -14,8 +14,7 @@ beforeEach(() => {
 
 // --- fixtures ---------------------------------------------------------------
 
-// biome-ignore lint/suspicious/noExplicitAny: test fixtures cast to SDKMessage.
-function streamEvent(event: any): SDKMessage {
+function streamEvent(event: unknown): SDKMessage {
   return {
     type: "stream_event",
     event,

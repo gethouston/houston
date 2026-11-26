@@ -67,9 +67,8 @@ test("a non-custom provider still resolves through the pi catalog", () => {
 });
 
 test("azure resolves with the endpoint hydrated into THIS turn's data dir", async () => {
-  const { AZURE_OPENAI, setAzureEndpointIn } = await import(
-    "../ai/azure-openai"
-  );
+  const { AZURE_OPENAI, setAzureEndpointIn } =
+    await import("../ai/azure-openai");
   const dataDir = tmpDataDir();
   // The endpoint file arrives via hydration (a pool-op connect's sync-back or
   // the served credential's landing) — never via config.dataDir, which is the

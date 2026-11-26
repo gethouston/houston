@@ -16,6 +16,8 @@
  *    surfaces its own error card if that is wrong).
  */
 
+import { classifyQuietError } from "./quiet-error-class.ts";
+
 export interface SendPinSignals {
   /** The agent's config read has answered (success or failure). */
   agentConfigSettled: boolean;
@@ -99,4 +101,52 @@ export function createSendPinGate<T>(
       });
     },
   };
+}
+
+/** Every input the gate waits on, in report order. */
+const PIN_INPUTS: readonly (keyof SendPinSignals)[] = [
+  "agentConfigSettled",
+  "activitySettled",
+  "capabilitiesSettled",
+  "choiceSettled",
+  "statusesSettled",
+];
+
+/**
+ * The inputs still unsettled when a send gave up waiting, by the short name a
+ * report carries (`agentConfig`, `statuses`...). Sentry groups the stall by
+ * this list, so each cause is its own issue (HOUSTON-APP-5EX).
+ */
+export function unsettledPinInputs(signals: SendPinSignals): string[] {
+  return PIN_INPUTS.filter((key) => !signals[key]).map((key) =>
+    key.replace(/Settled$/, ""),
+  );
+}
+
+/** Each input's own query's last failure reason, when it has one. */
+export type PinInputFailures = Partial<Record<keyof SendPinSignals, unknown>>;
+
+/**
+ * Whether a stall is the environment, not a bug: the device offline, or the
+ * agent's engine waking (its warm-up is tracked, or an input the gate is still
+ * waiting on last failed with a waking or transport answer). Only unsettled
+ * inputs count: a settled input's old failure says nothing about why another
+ * one is stuck. Such a stall reports as the quiet class; any other stall is a
+ * real report.
+ */
+export function pinStallQuietClass(
+  signals: SendPinSignals,
+  input: {
+    online: boolean;
+    engineWarming: boolean;
+    failures: PinInputFailures;
+  },
+): "offline" | "engine_waking" | null {
+  if (!input.online) return "offline";
+  for (const key of PIN_INPUTS) {
+    if (signals[key]) continue;
+    const quiet = classifyQuietError(input.failures[key]);
+    if (quiet === "offline" || quiet === "engine_waking") return quiet;
+  }
+  return input.engineWarming ? "engine_waking" : null;
 }

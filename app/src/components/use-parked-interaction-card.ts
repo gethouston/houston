@@ -1,5 +1,5 @@
-import type { InteractionStep } from "@houston/protocol";
 import type { StepperState } from "@houston-ai/chat";
+import type { InteractionStep } from "@houston/protocol";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { hydrateParkedState } from "../lib/interaction-draft-hydrate";
 import { restoreInteractionOutcomes } from "../lib/interaction-outcomes-restore";
@@ -91,7 +91,7 @@ export function useParkedInteractionCard(args: {
     };
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only by design — the seed is what was parked when this card mounted, and this very effect writes the `parked` it would otherwise re-read.
+  /* oxlint-disable react-hooks/exhaustive-deps -- mount-only by design — the seed is what was parked when this card mounted, and this very effect writes the `parked` it would otherwise re-read. */
   useEffect(() => {
     if (!sessionKey || !seed.changed || !seed.state) return;
     // A child that parked during its own mount wrote the newer truth; its entry
@@ -102,6 +102,7 @@ export function useParkedInteractionCard(args: {
       .getState()
       .park(sessionKey, { key: identity, state: seed.state, outcomes });
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   const alive = useRef(true);
   useEffect(() => {

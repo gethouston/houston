@@ -1,6 +1,6 @@
+import { DialogDescription, DialogTitle } from "@houston-ai/core";
 import type { PromoEndedView } from "@houston/sdk";
 import { formatCutoverDay } from "@houston/sdk";
-import { DialogDescription, DialogTitle } from "@houston-ai/core";
 import { Check, CreditCard } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PlanBriefingCta } from "./plan-briefing-cta";

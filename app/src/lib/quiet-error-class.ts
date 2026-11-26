@@ -15,7 +15,16 @@
 
 // Dependency-free subpath: the app's node:test entry points cannot load the
 // SDK root (it pulls @houston/domain, whose extensionless imports node rejects).
-import { isFirstDayNoProvider } from "@houston/sdk/agents/first-day-refusal";
+import {
+  firstDayAccountBlocked,
+  isFirstDayNoProvider,
+  isFirstDayProviderUnavailable,
+} from "@houston/sdk/agents/first-day-refusal";
+import {
+  isComputeBusyRefusal,
+  isConversationEditRefused,
+  isPodWakeRefused,
+} from "@houston/sdk/compute-quiet";
 import { isUploadInterruptedError } from "@houston/sdk/files/upload-interrupted";
 import { bridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
 import type { QuietErrorClass } from "@houston/sdk/quiet-error-class";
@@ -23,7 +32,10 @@ import { isPlanMinIntervalRefusal } from "@houston/sdk/routines/plan-floor-quiet
 import { isRoutineGone } from "@houston/sdk/routines/routine-gone";
 import { isWebhookKeyNotCreatorRefusal } from "@houston/sdk/routines/webhook-key-access";
 import { isBugIntakeUnavailable } from "./bug-report-failure.ts";
-import { isEngineWakingError } from "./engine-waking-error.ts";
+import {
+  isAgentDataBusyError,
+  isEngineWakingError,
+} from "./engine-waking-error.ts";
 import { isNetworkTransportError } from "./network-transport-error.ts";
 import { isNoBrowserFailure } from "./url-open-failure.ts";
 
@@ -62,6 +74,15 @@ export type { QuietErrorClass } from "@houston/sdk/quiet-error-class";
  * the connect flow instead when it can tell, so this covers a stale provider
  * scan, with authored copy and no report.
  *
+ * `first_day_provider_unavailable` is a first-day start refused because the
+ * person's AI could not be reached right now (the SDK's
+ * `isFirstDayProviderUnavailable`): a toast asking to try again shortly, and
+ * one fingerprinted warning instead of a bug per press (HOUSTON-APP-5H4).
+ *
+ * `first_day_account_blocked` is a first-day start refused because the
+ * provider blocks the person's account (the SDK's `firstDayAccountBlocked`):
+ * a business state with copy naming the provider, and no report.
+ *
  * `bug_intake_unavailable` is the bug-report intake refusing everyone on our
  * side (Linear's plan cap, HOUSTON-APP-5FT). `submitBugReport` reports it
  * itself and delivers the report through the fallback; this catches any other
@@ -71,6 +92,10 @@ export type { QuietErrorClass } from "@houston/sdk/quiet-error-class";
  * SDK's `isUploadInterruptedError`). It used to read as offline while the
  * rest of the app answered fine (HOUSTON-APP-5CG: the edge proxy cut slow
  * uploads at 60 s), so it is checked before the offline class.
+ *
+ * `agent_data_busy` is a read of a sleeping agent's data the gateway cannot
+ * serve yet (HOUSTON-APP-5HP). Reads never wake the agent, so it is report-only:
+ * no waking notice, one fingerprinted warning per burst.
  */
 export function classifyQuietError(err: unknown): QuietErrorClass | null {
   if (isNoBrowserFailure(err)) return "no_url_handler";
@@ -78,9 +103,16 @@ export function classifyQuietError(err: unknown): QuietErrorClass | null {
   if (isWebhookKeyNotCreatorRefusal(err)) return "webhook_not_creator";
   if (isRoutineGone(err)) return "routine_gone";
   if (isFirstDayNoProvider(err)) return "first_day_no_provider";
+  if (isFirstDayProviderUnavailable(err))
+    return "first_day_provider_unavailable";
+  if (firstDayAccountBlocked(err)) return "first_day_account_blocked";
   if (isBugIntakeUnavailable(err)) return "bug_intake_unavailable";
   const bridge = bridgeQuietClass(err);
   if (bridge) return bridge;
+  if (isComputeBusyRefusal(err)) return "compute_busy";
+  if (isConversationEditRefused(err)) return "conversation_edit_refused";
+  if (isPodWakeRefused(err)) return null;
+  if (isAgentDataBusyError(err)) return "agent_data_busy";
   if (isEngineWakingError(err)) return "engine_waking";
   if (isUploadInterruptedError(err)) return "upload_interrupted";
   if (isNetworkTransportError(err)) return "offline";

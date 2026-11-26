@@ -78,7 +78,6 @@ export function FilePreviewPanel({
   const [strip, setStrip] = useState(false);
   const updated = useUpdatedFlash(loaded, filePath);
   const fileKey = `${agentPath}:${filePath}`;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: per file
   useEffect(() => {
     setZoom(1);
     setPager(null);

@@ -33,14 +33,14 @@ export function isCompactionSummary(
 function hasTurnOutput(m: ChatMessage): boolean {
   return Boolean(
     m.usage ||
-      m.tools?.length ||
-      m.thinking ||
-      m.providerError ||
-      m.providerSwitch ||
-      m.pendingInteraction ||
-      m.fileChanges ||
-      m.stopped ||
-      m.stopReason ||
-      m.interrupted,
+    m.tools?.length ||
+    m.thinking ||
+    m.providerError ||
+    m.providerSwitch ||
+    m.pendingInteraction ||
+    m.fileChanges ||
+    m.stopped ||
+    m.stopReason ||
+    m.interrupted,
   );
 }

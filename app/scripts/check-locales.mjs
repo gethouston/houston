@@ -18,6 +18,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { usageReport } from "./check-locale-usage.mjs";
+import { parseLocaleJson } from "./parse-locale-json.mjs";
 
 const ROOT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -34,7 +35,8 @@ function loadLocale(locale) {
   for (const file of readdirSync(dir)) {
     if (!file.endsWith(".json")) continue;
     const ns = file.replace(/\.json$/, "");
-    out[ns] = JSON.parse(readFileSync(join(dir, file), "utf8"));
+    const path = join(dir, file);
+    out[ns] = parseLocaleJson(readFileSync(path, "utf8"), path);
   }
   return out;
 }

@@ -19,8 +19,6 @@
 
 // Subpath import (like `lib/active-interaction.ts`): value imports from the
 // package index only resolve under bundler resolution.
-import { hasOnlySuggestionSteps } from "@houston/protocol/interaction";
-import { setupGreetingCopy } from "@houston/sdk/first-day";
 import type { AIBoardProps } from "@houston-ai/board";
 import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
@@ -43,6 +41,8 @@ import {
   UserInteractionAnswersMessage,
 } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
+import { hasOnlySuggestionSteps } from "@houston/protocol/interaction";
+import { setupGreetingCopy } from "@houston/sdk/first-day";
 import { useQueryClient } from "@tanstack/react-query";
 import { FolderUp, Paperclip, Play } from "lucide-react";
 import {
@@ -136,7 +136,12 @@ import {
 import { blocksPurchaseUrl } from "../lib/purchase-policy";
 import { queryKeys } from "../lib/query-keys";
 import { reportRejection } from "../lib/report-rejection";
-import { sendPinSettled } from "../lib/send-pin-gate";
+import {
+  type PinInputFailures,
+  type SendPinSignals,
+  sendPinSettled,
+} from "../lib/send-pin-gate";
+import { reportSendPinStall } from "../lib/send-pin-stall-report";
 import {
   buildSkillClaudePrompt,
   decodeSkillMessage,
@@ -155,9 +160,12 @@ import {
   tauriProvider,
   withAttachmentPaths,
 } from "../lib/tauri";
-import { DEFAULT_TURN_MODE, type TurnMode } from "../lib/turn-mode";
+import type { TurnMode } from "../lib/turn-mode";
 import type { Agent, SkillSummary } from "../lib/types";
-import { useAgentProvisioningStore } from "../stores/agent-provisioning";
+import {
+  isAgentProvisioning,
+  useAgentProvisioningStore,
+} from "../stores/agent-provisioning";
 import { useDraftStore, useNewConversationDraftKey } from "../stores/drafts";
 import { useInteractionDraftStore } from "../stores/interaction-drafts";
 import { useUIStore } from "../stores/ui";
@@ -179,6 +187,7 @@ import { DictationSetupDialog } from "./dictation-setup-dialog";
 import { submitWithCitations } from "./file-preview/cited-submit";
 import { CitedUserMessage } from "./file-preview/cited-user-message";
 import { useCitationComposer } from "./file-preview/use-citation-composer";
+import { FilesNotSavedNote } from "./files-not-saved-note";
 import { IntegrationConnectCard } from "./integration-connect-card";
 import { parseToolkitFromHref } from "./integration-connect-card-state";
 import { integrationsSupported } from "./integrations/model";
@@ -203,6 +212,7 @@ import { SystemNote } from "./system-note";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
 import { type ChatMentionProps, useChatMentions } from "./use-chat-mentions";
 import { useChatSenderAvatars } from "./use-chat-sender-avatars";
+import { useConversationTurnMode } from "./use-conversation-turn-mode";
 import { usePersistedInteraction } from "./use-persisted-interaction";
 import { useSendInteractionMessage } from "./use-send-interaction-message";
 import { useToolkitBrandResolver } from "./use-toolkit-brand-resolver";
@@ -220,12 +230,9 @@ interface UseAgentChatPanelArgs {
   /** New-conversation draft scope — must match the board's `useBoardDrafts`
    *  scope so dictation lands in the composer the user sees (HOU-730). */
   draftScope?: string;
-  /** Seeds the composer's turn mode for THIS surface and suppresses the
-   *  per-agent config mode from overwriting it, so the surface opens on the
-   *  given mode and keeps it until the user changes it in-session. The routine
-   *  setup chat passes `"execute"` (Ask first) — its kickoff turn runs Ask first,
-   *  so the live composer must match. Omit to keep today's behavior exactly
-   *  (seed the global default, then load the agent's remembered mode). */
+  /** The mode a fresh composer, and a mission whose card keeps none, opens
+   *  on. The routine setup chat passes `"execute"` (Ask first): its kickoff
+   *  turn runs Ask first, so the live composer must match. Omit for Ask first. */
   initialTurnMode?: TurnMode;
   /** Fires after a send THIS HOOK owns LANDS — every one that bypasses the
    *  surface's own `onSendMessage`: an interaction offer (suggested-action
@@ -328,8 +335,9 @@ interface AgentChatPanelProps {
   effectiveEffort: string | undefined;
   /** The pin a send must carry, settled at send time (PRODUCT-1771). */
   resolveSendPin: () => Promise<ModelPin>;
-  /** The composer's turn mode (execute | plan); consumers forward it as
-   *  `modeOverride` on user-typed sends — an unpinned turn is execute. */
+  /** The composer's turn mode: the open mission's kept mode, or the fresh
+   *  composer's pick. Consumers forward it as `modeOverride` on every
+   *  user-typed send. */
   turnMode: TurnMode;
   /** Multiplayer only (C5): the signed-in viewer's user id, for attributing
    *  teammates' messages. Undefined when signed out / single-player. */
@@ -483,7 +491,11 @@ export function useAgentChatPanel({
   // Integration connect cards are a new-engine feature: the host advertises
   // its wired providers in capabilities; the legacy Rust engine (null) and
   // unconfigured deployments fall back to plain markdown links.
-  const { capabilities, isLoading: capabilitiesLoading } = useCapabilities();
+  const {
+    capabilities,
+    isLoading: capabilitiesLoading,
+    failureReason: capabilitiesFailure,
+  } = useCapabilities();
   const integrationsEnabled = integrationsSupported(capabilities);
 
   // Teams E8: in a multiplayer Teams org the composer's model + effort pickers
@@ -492,8 +504,11 @@ export function useAgentChatPanel({
   // / self-host keeps the shared-config behavior (personal=false, no ceiling).
   // The gateway is the sole enforcer of the ceiling per turn.
   const modelDecision = modelSelectorDecision(capabilities, agent);
-  const { data: modelChoiceInfo, isFetched: modelChoiceFetched } =
-    useAgentModelChoice(agent?.id ?? "", modelDecision.personal);
+  const {
+    data: modelChoiceInfo,
+    isFetched: modelChoiceFetched,
+    failureReason: modelChoiceFailure,
+  } = useAgentModelChoice(agent?.id ?? "", modelDecision.personal);
   const setModelChoice = useSetAgentModelChoice(agent?.id ?? "");
   const allowedModels = modelDecision.personal
     ? (modelChoiceInfo?.allowedModels ?? null)
@@ -549,30 +564,11 @@ export function useAgentChatPanel({
       if (!path) return;
       queryClient.setQueryData<configData.Config>(
         queryKeys.config(path),
-        (prev) => ({ ...(prev ?? {}), ...patch }),
+        (prev) => ({ ...prev, ...patch }),
       );
     },
     [path, queryClient],
   );
-  // Composer "Mode" pin (execute/plan/auto). It is session-local and every new
-  // mission resets to `initialTurnMode` or Ask First. Existing mission switches
-  // keep the current per-send pin until the user changes it.
-  const [turnMode, setTurnMode] = useState<TurnMode>(
-    initialTurnMode ?? DEFAULT_TURN_MODE,
-  );
-  useEffect(() => {
-    if (!path) setTurnMode(initialTurnMode ?? DEFAULT_TURN_MODE);
-  }, [path, initialTurnMode]);
-
-  const previousSessionKeyRef = useRef(selectedSessionKey);
-  useEffect(() => {
-    const previousSessionKey = previousSessionKeyRef.current;
-    previousSessionKeyRef.current = selectedSessionKey;
-    if (previousSessionKey && !selectedSessionKey) {
-      setTurnMode(initialTurnMode ?? DEFAULT_TURN_MODE);
-    }
-  }, [selectedSessionKey, initialTurnMode]);
-
   // Last-used provider preference (`default_provider`, written by setLastUsed
   // on every provider pick). The fallback when neither the activity nor the
   // agent config names a provider, so an OpenAI-only user opening a no-provider
@@ -650,6 +646,7 @@ export function useAgentChatPanel({
     statuses: providerStatuses,
     isLoading: providerStatusesLoading,
     isError: providerStatusesError,
+    failureReason: providerStatusesFailure,
   } = useProviderStatuses();
   const authedProviders = useMemo(
     () =>
@@ -707,6 +704,15 @@ export function useAgentChatPanel({
   // Plain boolean so callbacks can depend on "is a turn running" without
   // re-creating on every VM tick (the VM reference churns while streaming).
   const turnRunning = conversationVm?.running ?? false;
+  // Composer "Mode" pin (execute/plan/auto), kept on the mission's card.
+  const { turnMode, selectTurnMode: handleModeSelect } =
+    useConversationTurnMode({
+      path,
+      sessionKey: selectedSessionKey,
+      card: selectedActivity,
+      initialTurnMode,
+      turnRunning,
+    });
 
   // Whether the open conversation already has turns. Once it does, the chat's
   // provider is frozen (see resolveEffectiveProvider): a provider that logs out
@@ -840,17 +846,38 @@ export function useAgentChatPanel({
   // must not carry a guess as the turn's pin: `resolveSendPin` holds the send
   // until the composer settles (bounded), then hands it the pin the picker
   // shows at that moment.
-  const pinSettled = sendPinSettled({
+  const pinSignals: SendPinSignals = {
     agentConfigSettled,
     activitySettled,
     capabilitiesSettled: !capabilitiesLoading,
     choiceSettled: !modelDecision.personal || modelChoiceFetched,
     statusesSettled: !providerStatusesLoading,
+  };
+  const pinSettled = sendPinSettled(pinSignals);
+  // Read at timeout time: the report names what was still pending THEN.
+  const pinFailures: PinInputFailures = {
+    agentConfigSettled: agentConfigQuery.failureReason,
+    activitySettled: activityQuery.failureReason,
+    capabilitiesSettled: capabilitiesFailure,
+    choiceSettled: modelChoiceFailure,
+    statusesSettled: providerStatusesFailure,
+  };
+  const pinStallRef = useRef({
+    signals: pinSignals,
+    agentId,
+    failures: pinFailures,
   });
+  pinStallRef.current = { signals: pinSignals, agentId, failures: pinFailures };
   const reportPinTimeout = useCallback(() => {
-    logAndReportError(
-      "chat.send-pin-settle",
-      new Error("composer pin never settled; sent the current pin"),
+    const { signals, agentId: stalledAgent, failures } = pinStallRef.current;
+    reportSendPinStall(
+      signals,
+      {
+        online: typeof navigator === "undefined" || navigator.onLine !== false,
+        engineWarming: stalledAgent ? isAgentProvisioning(stalledAgent) : false,
+        failures,
+      },
+      stalledAgent,
     );
   }, []);
   const resolveSendPin = useSendPin(
@@ -1073,38 +1100,6 @@ export function useAgentChatPanel({
     },
     [path, addToast, t, setAgentTier],
   );
-  const handleModeSelect = useCallback(
-    (mode: TurnMode) => {
-      // Mode is session-local. Flip the picker optimistically and pin the pick
-      // on each send.
-      //
-      // A pick while a turn is STREAMING also applies to that turn (Claude
-      // Code's shift+tab): the runtime mutates the executing turn's live-mode
-      // ref, so the agent adopts the new mode at its next tool decision.
-      // `applied: false` (the turn settled while the request flew) is benign —
-      // the next send pins the mode anyway — but a transport failure is
-      // surfaced, with the honest "your next message still gets it" note.
-      setTurnMode(mode);
-      if (turnRunning && path && selectedSessionKey && mode !== turnMode) {
-        const modeLabels: Record<TurnMode, string> = {
-          execute: t("chat:modeSelector.askFirst"),
-          plan: t("chat:modeSelector.planner"),
-          auto: t("chat:modeSelector.autopilot"),
-        };
-        tauriChat.setLiveTurnMode(path, selectedSessionKey, mode).catch(() => {
-          addToast({
-            title: t("chat:modeSelector.liveApplyFailedTitle", {
-              mode: modeLabels[mode],
-            }),
-            description: t("chat:modeSelector.liveApplyFailedBody"),
-            variant: "error",
-          });
-        });
-      }
-    },
-    [path, selectedSessionKey, addToast, t, turnRunning, turnMode],
-  );
-
   // In personal (Teams) mode, a fresh-composer model pick updates the user's
   // default. A pick inside an open mission follows the activity-pin path,
   // including provider-switch consent, and can never write agent config.
@@ -1215,7 +1210,6 @@ export function useAgentChatPanel({
   const [activeSkill, setActiveSkill] = useState<SkillSummary | null>(null);
   // Drop selected Skill when the agent / session changes so it doesn't
   // leak across contexts.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: path and selectedSessionKey are intentional change-triggers that reset activeSkill when the agent or session switches; they are reactive values derived from props and must remain in the dep list.
   useEffect(() => {
     setActiveSkill(null);
   }, [path, selectedSessionKey]);
@@ -1617,7 +1611,6 @@ export function useAgentChatPanel({
   const [abandonedInteractionKey, setAbandonedInteractionKey] = useState<
     string | null
   >(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSessionKey is the intentional change-trigger that clears all four suppression states when the open conversation switches, so a dismissed or abandoned card never suppresses a new chat's card. The effect body deliberately reads none of it.
   useEffect(() => {
     setDismissedPlanReady(null);
     setDismissedSuggestReusable(null);
@@ -2146,6 +2139,8 @@ export function useAgentChatPanel({
         );
       }
       if (isProviderAuthMessage(msg.content)) return null;
+      if (msg.notice === "files_not_saved")
+        return <FilesNotSavedNote data={msg.noticeData} />;
       // Typed system lines (restart, busy, setup) render by kind.
       if (msg.notice) return <SystemNote text={t(NOTICE_COPY[msg.notice])} />;
       return undefined;

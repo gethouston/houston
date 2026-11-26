@@ -14,6 +14,8 @@ import { useDictationHotkeys } from "./use-dictation-hotkeys.ts";
 import { useControllable } from "./use-file-drop-zone";
 import { useMentionCombobox } from "./use-mention-combobox.ts";
 
+const DEFAULT_QUEUED_MESSAGES: never[] = [];
+
 export type { ChatInputProps } from "./chat-input-types";
 export type { ChatComposerLabels } from "./chat-panel-types";
 
@@ -32,7 +34,7 @@ export function ChatInput({
   footer,
   header,
   attachMenu,
-  queuedMessages = [],
+  queuedMessages = DEFAULT_QUEUED_MESSAGES,
   onRemoveQueuedMessage,
   queuedLabels,
   canSendEmpty = false,
@@ -79,18 +81,19 @@ export function ChatInput({
     onTextChange: setText,
   });
 
+  const mentionsRefresh = mentions.refresh;
   const handleTextChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       setText(e.target.value);
-      mentions.refresh(e.target);
+      mentionsRefresh(e.target);
     },
-    [setText, mentions.refresh],
+    [setText, mentionsRefresh],
   );
 
   const handleCaretMove = useCallback(
     (e: React.SyntheticEvent<HTMLTextAreaElement>) =>
-      mentions.refresh(e.currentTarget),
-    [mentions.refresh],
+      mentionsRefresh(e.currentTarget),
+    [mentionsRefresh],
   );
 
   const handleKeyDown = useComposerKeyDown({
@@ -100,6 +103,8 @@ export function ChatInput({
     onStop,
   });
 
+  const mentionsMentionsFor = mentions.mentionsFor;
+  const mentionsCommitSent = mentions.commitSent;
   const handleSubmit = useCallback(
     async (message: PromptInputMessage) => {
       if (disabled) return;
@@ -109,8 +114,8 @@ export function ChatInput({
       // Snapshot, never consume: a rejected `onSend` keeps the text in the
       // composer, so it has to keep the mentions that text refers to. Text and
       // mentions clear together, once the send actually landed.
-      await onSend(sent, files, mentions.mentionsFor(sent));
-      mentions.commitSent();
+      await onSend(sent, files, mentionsMentionsFor(sent));
+      mentionsCommitSent();
       // In uncontrolled mode, clear our own state. In controlled mode the
       // parent is responsible for clearing.
       if (!isTextControlled) setText("");
@@ -125,8 +130,8 @@ export function ChatInput({
       isFilesControlled,
       setText,
       setFiles,
-      mentions.mentionsFor,
-      mentions.commitSent,
+      mentionsMentionsFor,
+      mentionsCommitSent,
     ],
   );
 

@@ -37,15 +37,15 @@ interface WorkerFixtures {
 export const test = base.extend<Fixtures, WorkerFixtures>({
   teamBoard: [false, { option: true }],
   fakeHost: [
-    // biome-ignore lint/correctness/noEmptyPattern: Playwright requires the destructuring pattern on a fixture's first parameter
-    async ({}, use) => {
+    // Playwright requires the destructuring pattern on a fixture's first parameter
+    async ({}, provide) => {
       const host = await startFakeHost(FAKE_HOST_PORT);
-      await use(host);
+      await provide(host);
       await host.stop();
     },
     { scope: "worker", auto: true },
   ],
-  page: async ({ page, request, fakeHost, teamBoard }, use) => {
+  page: async ({ page, request, fakeHost, teamBoard }, provide) => {
     // Server-to-server (no CORS): restore the seed before each test.
     await request.post(`${fakeHost.url}/__test__/reset`);
     if (teamBoard) {
@@ -62,10 +62,10 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
       });
     }
     await seedPage(page);
-    await use(page);
+    await provide(page);
   },
-  emitHostEvent: async ({ request, fakeHost }, use) => {
-    await use(async (type, agentPath) => {
+  emitHostEvent: async ({ request, fakeHost }, provide) => {
+    await provide(async (type, agentPath) => {
       await request.post(`${fakeHost.url}/__test__/emit`, {
         data: { type, agentPath },
       });

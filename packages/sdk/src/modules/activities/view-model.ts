@@ -59,5 +59,6 @@ export function toActivityItem(a: Activity): ActivityItem {
     ...(a.worktree_path !== undefined ? { worktreePath: a.worktree_path } : {}),
     ...(a.provider !== undefined ? { provider: a.provider } : {}),
     ...(a.model !== undefined ? { model: a.model } : {}),
+    ...(a.mode !== undefined ? { mode: a.mode } : {}),
   };
 }

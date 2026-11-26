@@ -145,11 +145,9 @@ test.each([
     buildPath(route("deleteRoutine"), { agentId: "Work/Ada", id }).ok,
   ).toBe(false);
 });
-test.each([
-  "../..",
-  "Work/..",
-  "Work/%252e%252e",
-  "Work%252f..",
-])("rejects traversing agent identity %s", (agentId) => {
-  expect(buildPath(route("listActivities"), { agentId }).ok).toBe(false);
-});
+test.each(["../..", "Work/..", "Work/%252e%252e", "Work%252f.."])(
+  "rejects traversing agent identity %s",
+  (agentId) => {
+    expect(buildPath(route("listActivities"), { agentId }).ok).toBe(false);
+  },
+);

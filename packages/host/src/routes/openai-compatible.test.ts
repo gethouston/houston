@@ -408,13 +408,16 @@ test.each([
   ["a private IPv4", "https://192.168.1.10/v1", "endpoint_private_host"],
   ["the metadata IP", "https://169.254.169.254/v1", "endpoint_private_host"],
   ["an IPv6 loopback", "https://[::1]/v1", "endpoint_private_host"],
-])("managed cloud rejects %s (400 with a typed code, never forwarded)", async (_label, baseUrl, expectedCode) => {
-  const { base, agentId, channel } = await setup(MANAGED_CLOUD_CAPS, true);
-  const res = await connect(base, agentId, { baseUrl, model: "m" });
-  expect(res.status).toBe(400);
-  expect(((await res.json()) as { code: string }).code).toBe(expectedCode);
-  expect(channel.saved).toHaveLength(0);
-});
+])(
+  "managed cloud rejects %s (400 with a typed code, never forwarded)",
+  async (_label, baseUrl, expectedCode) => {
+    const { base, agentId, channel } = await setup(MANAGED_CLOUD_CAPS, true);
+    const res = await connect(base, agentId, { baseUrl, model: "m" });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { code: string }).code).toBe(expectedCode);
+    expect(channel.saved).toHaveLength(0);
+  },
+);
 
 test("dev launcher (gatewayFronted + loopbackEgress) accepts localhost — its pods run on the dev machine", async () => {
   const { base, agentId, channel } = await setup(

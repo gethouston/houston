@@ -62,12 +62,10 @@ vi.mock("../store/conversations", () => ({
 const { execTurn } = await import("./exec-turn");
 const { subscribe } = await import("./bus");
 const { compactWithFactHarvest } = await import("./durable-facts-harvest");
-const { ASSISTANT_CONVERSATION_ID } = await import(
-  "@houston/host/src/routes/assistant"
-);
-const { resetAutocompactCooldownsForTest } = await import(
-  "./autocompact-guard"
-);
+const { ASSISTANT_CONVERSATION_ID } =
+  await import("@houston/host/src/routes/assistant");
+const { resetAutocompactCooldownsForTest } =
+  await import("./autocompact-guard");
 
 type Conv = Parameters<typeof execTurn>[0];
 

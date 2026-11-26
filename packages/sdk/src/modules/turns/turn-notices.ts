@@ -1,5 +1,6 @@
+import type { TurnInterruption } from "@houston/protocol";
 import { parseTurnSetupFailure, TurnErrorCode } from "@houston/wire-types";
-import type { EngineNoticeKind } from "./turn-errors";
+import { ENGINE_RESTART_MESSAGE, type EngineNoticeKind } from "./turn-errors";
 import { finishErr, type TurnState } from "./turn-settle";
 
 /**
@@ -40,6 +41,18 @@ export const TURN_TIME_LIMIT_MESSAGE =
 /** The forced fallback cannot promise that the last steps were saved. */
 export const TURN_TIME_LIMIT_UNSAVED_MESSAGE =
   'Your agent reached the 4-hour limit for one reply and stopped before it could save its last steps. Say "continue" to pick up from the last saved point.';
+
+export const SANDBOX_LOST_MESSAGE =
+  "Your agent stopped unexpectedly before it could save its last steps. Everything saved before that is kept, so you can ask again to finish the rest.";
+
+export function interruptionNotice(interrupted: TurnInterruption): {
+  kind: Extract<EngineNoticeKind, "engine_restart" | "sandbox_lost">;
+  message: string;
+} {
+  return interrupted.cause === "sandbox_lost"
+    ? { kind: "sandbox_lost", message: SANDBOX_LOST_MESSAGE }
+    : { kind: "engine_restart", message: ENGINE_RESTART_MESSAGE };
+}
 
 export function timeLimitNotice(
   code: unknown,
@@ -88,6 +101,7 @@ const REPORTED: Partial<Record<EngineNoticeKind, string>> = {
   agent_too_large: "turn_setup_failed",
   agent_setup_failed: "turn_setup_failed",
   turn_unconfirmed: "turn_gone_after_accept",
+  files_not_saved: "turn_files_not_saved",
 };
 
 /**
@@ -105,19 +119,27 @@ export function turnFailureReport(
     notice?: EngineNoticeKind;
     cause?: unknown;
     turnId?: unknown;
+    noticeData?: { unsavedFiles?: { counts?: object; total?: unknown } };
   };
   if (it.feed_type !== "system_message" || it.notice === undefined) return null;
   const source = REPORTED[it.notice];
   if (!source) return null;
   const cause = typeof it.cause === "string" ? it.cause : it.notice;
+  const unsaved = it.noticeData?.unsavedFiles;
+  const reasons = Object.keys(unsaved?.counts ?? {}).sort();
   const error = new Error(
     source === "turn_gone_after_accept"
       ? "turn conversation still not found after its 202"
-      : `turn setup failed: ${cause}`,
+      : source === "turn_files_not_saved"
+        ? `turn files not saved: ${reasons.join(",")}`
+        : `turn setup failed: ${cause}`,
   );
   return {
     source,
     error: Object.assign(error, {
+      ...(unsaved
+        ? { unsavedCounts: unsaved.counts, unsavedTotal: unsaved.total }
+        : {}),
       ...(typeof it.turnId === "string" ? { turnId: it.turnId } : {}),
       ...(sessionKey ? { sessionKey } : {}),
     }),

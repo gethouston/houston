@@ -1,6 +1,6 @@
+import { cn } from "@houston-ai/core";
 import type { BillingInterval, SeatPrices } from "@houston/engine-adapter";
 import { checkoutTotal, formatPlanAmount, sellsYearly } from "@houston/sdk";
-import { cn } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { BILLING_CURRENCY } from "./billing-tab-model.ts";
 

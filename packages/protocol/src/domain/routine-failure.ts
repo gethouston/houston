@@ -32,7 +32,8 @@ export type RoutineAccountFailureCode =
 export type RoutineRunFailureCode =
   | RoutineAccountFailureCode
   | "no_model"
-  | "usage_limit";
+  | "usage_limit"
+  | "provider_error";
 
 export type RoutineRunFailure =
   | {
@@ -49,7 +50,8 @@ export type RoutineRunFailure =
       model: string | null;
       /** ISO 8601 instant the provider said the limit resets; null = unknown. */
       resets_at: string | null;
-    };
+    }
+  | { code: "provider_error"; provider: string };
 
 /**
  * An engine-written hold on a routine's fires that expires by the clock (see
@@ -111,7 +113,7 @@ export interface RoutineAutoPause {
    * do not know and the gateway serves this file to every client version; a
    * client that knows `cause` reads it first (PRODUCT-1982).
    */
-  cause?: "no_model";
+  cause?: "no_model" | "provider_error";
   /** How many runs in a row failed that way. */
   failures: number;
   /** ISO time the engine paused the routine. */

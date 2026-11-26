@@ -53,8 +53,8 @@ export interface TurnWirePin {
   model?: string;
   effort?: string;
   /** Per-turn execution mode ("plan" = read-only + planning overlay; "auto" =
-   *  Autopilot, acts without the blocking tools). Omitted runs the turn as
-   *  "execute", the runtime's default for an unpinned turn. */
+   *  Autopilot, acts without the blocking tools). Omitted runs the turn on the
+   *  mode its conversation keeps (the mission card's `mode`), else "execute". */
   mode?: "execute" | "plan" | "auto";
 }
 

@@ -1,5 +1,5 @@
-import type { EngineNoticeKind } from "@houston/sdk";
 import type { SystemNoticeKind } from "@houston-ai/chat";
+import type { EngineNoticeKind } from "@houston/sdk";
 
 /**
  * The chat's copy for every typed system line, by kind: the same centered
@@ -10,6 +10,7 @@ import type { SystemNoticeKind } from "@houston-ai/chat";
 export const NOTICE_COPY = {
   engine_restart: "chat:engineRestart.sayContinue",
   engine_resumed: "chat:engineRestart.resuming",
+  sandbox_lost: "chat:sandboxLost",
   turn_time_limit: "chat:replyTimeLimit",
   turn_time_limit_unsaved: "chat:replyTimeLimitUnsaved",
   send_busy: "chat:sendBusy",
@@ -17,6 +18,7 @@ export const NOTICE_COPY = {
   agent_too_large: "chat:agentSetup.tooLarge",
   agent_setup_failed: "chat:agentSetup.failed",
   turn_unconfirmed: "chat:agentSetup.unconfirmed",
+  files_not_saved: "chat:filesNotSaved.title",
 } as const satisfies Record<EngineNoticeKind & SystemNoticeKind, string>;
 
 // The chat's notice kinds and the SDK's must stay the same set.

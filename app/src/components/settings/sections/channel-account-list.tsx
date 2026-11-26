@@ -1,5 +1,5 @@
-import type { ChannelConnection } from "@houston/engine-adapter";
 import { cn } from "@houston-ai/core";
+import type { ChannelConnection } from "@houston/engine-adapter";
 import { Plus, Unplug } from "lucide-react";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";

@@ -71,7 +71,7 @@ const keychainStorage: KVStorage = {
         `keychain setItem(${key}) failed: ${String(e)}`,
         "identity/session-store",
       );
-      throw new Error(`Sign-in storage failed: ${String(e)}`);
+      throw new Error(`Sign-in storage failed: ${String(e)}`, { cause: e });
     }
   },
   async removeItem(key) {
@@ -83,7 +83,7 @@ const keychainStorage: KVStorage = {
         `keychain removeItem(${key}) failed: ${String(e)}`,
         "identity/session-store",
       );
-      throw new Error(`Sign-out storage failed: ${String(e)}`);
+      throw new Error(`Sign-out storage failed: ${String(e)}`, { cause: e });
     }
   },
 };
@@ -107,7 +107,7 @@ const browserStorage: KVStorage = {
         `localStorage setItem(${key}) failed: ${String(e)}`,
         "identity/session-store",
       );
-      throw new Error(`Sign-in storage failed: ${String(e)}`);
+      throw new Error(`Sign-in storage failed: ${String(e)}`, { cause: e });
     }
   },
   async removeItem(key) {
@@ -119,7 +119,7 @@ const browserStorage: KVStorage = {
         `localStorage removeItem(${key}) failed: ${String(e)}`,
         "identity/session-store",
       );
-      throw new Error(`Sign-out storage failed: ${String(e)}`);
+      throw new Error(`Sign-out storage failed: ${String(e)}`, { cause: e });
     }
   },
 };

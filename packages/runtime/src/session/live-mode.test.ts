@@ -35,12 +35,10 @@ await import("./conversation-cache");
 const { execTurn } = await import("./exec-turn");
 const { conversations } = await import("./conversation-cache");
 const { setLiveTurnMode } = await import("./chat");
-const { currentTurnMode, runWithTurnMode } = await import(
-  "./turn-mode-context"
-);
-const { assertNotAutoMode, assertNotPlanMode } = await import(
-  "./live-mode-gate"
-);
+const { currentTurnMode, runWithTurnMode } =
+  await import("./turn-mode-context");
+const { assertNotAutoMode, assertNotPlanMode } =
+  await import("./live-mode-gate");
 type Conversation = import("./conversation-cache").Conversation;
 
 class FakeSession implements HarnessSession {

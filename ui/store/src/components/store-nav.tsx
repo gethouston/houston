@@ -5,7 +5,11 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import type { StoreLinkComponent } from "../types";
 
-const PlainLink: StoreLinkComponent = (props) => <a {...props} />;
+const DEFAULT_LABELS = {};
+
+const PlainLink: StoreLinkComponent = ({ children, ...props }) => (
+  <a {...props}>{children}</a>
+);
 
 /** The signed-in identity the account control renders. */
 export interface StoreNavUser {
@@ -69,7 +73,7 @@ export function StoreNav({
   theme,
   account,
   accountSlot,
-  labels = {},
+  labels = DEFAULT_LABELS,
   LinkComponent = PlainLink,
 }: StoreNavProps) {
   const themeLabel = theme?.isDark

@@ -13,6 +13,7 @@ import type { HttpScope } from "../http";
 import { openUpload } from "./open-upload";
 import type { UploadOptions } from "./types";
 import { UploadTransferError } from "./upload-errors";
+import { UploadInterruptedError } from "./upload-interrupted";
 
 export type ResumableUploadOptions = UploadOptions &
   Pick<OpenUploadRequest, "name" | "purpose">;
@@ -53,6 +54,8 @@ export async function transferUpload(
   resume?: UploadSession,
 ): Promise<UploadSession> {
   throwIfAborted(opts.signal);
+  const clock = scope.ports.clock;
+  const startedAt = clock.monotonic?.() ?? clock.now();
   const request = { name: opts.name, size: blob.size, purpose: opts.purpose };
   let session =
     resume ?? (await openUpload(scope, agentId, request, opts.signal));
@@ -63,6 +66,10 @@ export async function transferUpload(
   let state: TransferState = { kind: resume ? "query" : "chunk", offset: 0 };
   let failures = 0;
   let restarts = 0;
+  // Whether the sink itself answered any failure since the last progress; a
+  // budget spent only on transport cuts is the connection, not a bug.
+  let sinkAnswered = false;
+  let cut = "";
   const report = (phase: "uploading" | "reconnecting") =>
     opts.onProgress?.({
       sentBytes: state.offset,
@@ -93,6 +100,7 @@ export async function transferUpload(
     } catch (error) {
       throwIfAborted(opts.signal);
       if (!isTransportFailure(error)) throw error;
+      cut = error.message;
       scope.ports.logger.warn("Upload connection interrupted", {
         agentId,
         error: error.message,
@@ -121,7 +129,10 @@ export async function transferUpload(
         offset < blob.size &&
         (state.kind === "query" || offset > state.offset)
       ) {
-        if (offset > state.offset) failures = 0;
+        if (offset > state.offset) {
+          failures = 0;
+          sinkAnswered = false;
+        }
         state = { kind: "chunk", offset };
         report("uploading");
         continue;
@@ -138,8 +149,18 @@ export async function transferUpload(
     } else if (res && res.status !== 429 && res.status < 500) {
       throw scope.fail(await res.text(), res.status);
     }
-    if (++failures > 24)
-      throw new UploadTransferError("Upload retry budget exhausted");
+    if (res) sinkAnswered = true;
+    if (++failures > 24) {
+      if (sinkAnswered)
+        throw new UploadTransferError("Upload retry budget exhausted");
+      const elapsed = (clock.monotonic?.() ?? clock.now()) - startedAt;
+      throw new UploadInterruptedError(
+        opts.purpose === "attachment" ? "attachments" : opts.purpose,
+        blob.size,
+        Math.max(0, elapsed),
+        cut,
+      );
+    }
     report("reconnecting");
     const ceiling = Math.min(30_000, 1_000 * 2 ** (failures - 1));
     await waitForRetry(scope.ports.clock, random() * ceiling, opts.signal);

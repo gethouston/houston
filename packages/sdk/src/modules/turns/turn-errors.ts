@@ -182,13 +182,15 @@ export const ENGINE_RESUMED_MESSAGE =
 export type EngineNoticeKind =
   | "engine_restart"
   | "engine_resumed"
+  | "sandbox_lost"
   | "turn_time_limit"
   | "turn_time_limit_unsaved"
   | "send_busy"
   | "compute_busy"
   | "agent_too_large"
   | "agent_setup_failed"
-  | "turn_unconfirmed";
+  | "turn_unconfirmed"
+  | "files_not_saved";
 
 /**
  * Whether a turn's terminal error is the user pressing Stop — the verbatim

@@ -3,6 +3,20 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v157 - 2026-11-22
+
+The system message has a files-not-saved state: after a reply, a centered note
+lists each file the reply could not save as usual and what happened to it,
+such as the agent's version kept beside the file under a conflict name. Same
+layout at both breakpoints.
+
+## v156 - 2026-11-18
+
+The interaction card's connect step has a reconnect state for an app whose
+login stopped working: it asks to reconnect the app and counts only a
+connection made after the refusal, from the card or the Integrations page.
+Same layout at both breakpoints.
+
 ## v155 - 2026-11-13
 
 Composer attachment chips show upload progress, reconnecting and saving from

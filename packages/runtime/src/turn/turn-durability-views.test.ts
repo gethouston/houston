@@ -1,6 +1,7 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
+import { landOp } from "./turn-views-op.test-support";
 import {
   type AgentStore,
   agentStore,
@@ -15,7 +16,6 @@ import {
   skillNames,
   writeSkill,
 } from "./turn-views.test-support";
-import { landOp } from "./turn-views-op.test-support";
 
 /**
  * A pooled turn changes what a sleeping agent's tabs read: the gateway serves

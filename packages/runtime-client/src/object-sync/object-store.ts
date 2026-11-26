@@ -4,6 +4,7 @@ export { LocalDirStore } from "./local-dir-store";
 export {
   ObjectNotFoundError,
   ObjectTooLargeError,
+  ObjectWriteRefusedError,
   StoreConflictError,
   StoreFencedError,
 } from "./object-store-errors";
@@ -14,6 +15,7 @@ export {
  * LocalDirStore keeps the synchronization contract testable against real files.
  */
 export interface ObjectStore extends Partial<UploadStore> {
+  readonly fileAttrs?: boolean;
   /** All keys under a directory prefix, recursively (`object-prefix.ts`). */
   list(prefix: string): Promise<string[]>;
   manifest?(
@@ -32,7 +34,7 @@ export interface ObjectStore extends Partial<UploadStore> {
     key: string,
     destFile: string,
     opts?: ReadOptions,
-    // biome-ignore lint/suspicious/noConfusingVoidType: additive port widening must accept existing void-returning stores.
+    // additive port widening must accept existing void-returning stores.
   ): Promise<ReadResult | void>;
   /** Download one object and return metadata from the same read response. */
   downloadVersioned?(
@@ -44,7 +46,7 @@ export interface ObjectStore extends Partial<UploadStore> {
     srcFile: string,
     key: string,
     opts?: WriteOptions,
-    // biome-ignore lint/suspicious/noConfusingVoidType: additive port widening must accept existing void-returning stores.
+    // additive port widening must accept existing void-returning stores.
   ): Promise<WriteResult | void>;
   delete(key: string, opts?: WriteOptions): Promise<void>;
   /** Read many objects in one round trip. Keys answered `fallback` were not

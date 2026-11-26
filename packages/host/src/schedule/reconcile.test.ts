@@ -426,31 +426,34 @@ test.each([
     "out_of_credits",
     "The MiniMax account is out of credits.",
   ],
-])("a run that failed because %s reports the typed failure and an honest summary", async (_case, providerError, code, summary) => {
-  const env = await setup(routine());
-  await seedReply(
-    env.vfs,
-    env.ws,
-    env.agent,
-    env.run.session_key,
-    "",
-    STARTED.getTime() + 1000,
-    providerError,
-  );
+])(
+  "a run that failed because %s reports the typed failure and an honest summary",
+  async (_case, providerError, code, summary) => {
+    const env = await setup(routine());
+    await seedReply(
+      env.vfs,
+      env.ws,
+      env.agent,
+      env.run.session_key,
+      "",
+      STARTED.getTime() + 1000,
+      providerError,
+    );
 
-  await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
-  const { items } = await loadRoutineRuns(
-    env.vfs,
-    workspaceRoot(env.ws, env.agent),
-  );
-  const run = items[0] as RoutineRun;
-  expect(run.status).toBe("error");
-  expect(run.failure).toEqual({
-    code,
-    provider: (providerError as { provider: string }).provider,
-  });
-  expect(run.summary).toBe(summary);
-});
+    await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
+    const { items } = await loadRoutineRuns(
+      env.vfs,
+      workspaceRoot(env.ws, env.agent),
+    );
+    const run = items[0] as RoutineRun;
+    expect(run.status).toBe("error");
+    expect(run.failure).toEqual({
+      code,
+      provider: (providerError as { provider: string }).provider,
+    });
+    expect(run.summary).toBe(summary);
+  },
+);
 
 test("a non-credential provider failure keeps the verbatim reason and stays untyped", async () => {
   const env = await setup(routine());

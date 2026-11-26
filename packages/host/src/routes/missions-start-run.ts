@@ -7,7 +7,11 @@ import {
   saveActivities,
   upsertById,
 } from "@houston/domain";
-import { type MissionStarter, normalizeTurnMode } from "@houston/protocol";
+import {
+  DEFAULT_TURN_MODE,
+  type MissionStarter,
+  parseTurnModePin,
+} from "@houston/protocol";
 import { assistantRuntimeRole } from "../launcher/assistant-role";
 import { retirePendingFirstDay } from "./agent-first-day-retire";
 import { withDocLock } from "./doc-lock";
@@ -58,6 +62,8 @@ export async function startMission(
     ? resolveMissionModel(provider, input.model)
     : undefined;
 
+  const mode = parseTurnModePin(input.mode);
+
   const channel = target.deps.channels[target.ws.runtime];
   if (!channel) {
     json(res, 503, {
@@ -88,6 +94,9 @@ export async function startMission(
           description: input.prompt,
           ...(provider ? { provider } : {}),
           ...(model ? { model } : {}),
+          // The mode the mission was started in is the one it keeps, so a
+          // later message to it runs the same way (HOU-205).
+          ...(mode ? { mode } : {}),
           origin_session_key: origin.session_key,
         },
         id,
@@ -133,7 +142,7 @@ export async function startMission(
       {
         ...(provider ? { provider } : {}),
         ...(model ? { model } : {}),
-        mode: normalizeTurnMode(input.mode),
+        mode: mode ?? DEFAULT_TURN_MODE,
       },
       // Integration calls in the child act as the human driving the parent
       // turn (gateway only) — the same acting hand-off a routine firing does.

@@ -25,27 +25,30 @@ function refusingTree(reason: LazyReadRefusedError["reason"]): TurnFilesystem {
 }
 
 describe("a refused lazy read is named for why it was refused", () => {
-  test.each([
-    "object",
-    "total",
-  ] as const)("a %s refusal stays 'too large'", async (reason) => {
-    const fs = refusingTree(reason);
-    const conversation = await applyConversationOp(
-      { kind: "conversation", action: "rename", conversationId: CID },
-      fs,
-    );
-    expect(conversation.status).toBe(503);
-    expect(JSON.parse(conversation.body)).toEqual({
-      error: "conversation too large to edit asleep",
-    });
-    expect(
-      await settleAbandonedChat(fs, CID, {
-        turnId: "t1",
-        startedAt: "2026-10-10T00:00:00Z",
-        routine: false,
-      }),
-    ).toEqual({ tooLarge: true });
-  });
+  test.each(["object", "total"] as const)(
+    "a %s refusal stays 'too large'",
+    async (reason) => {
+      const fs = refusingTree(reason);
+      const conversation = await applyConversationOp(
+        { kind: "conversation", action: "rename", conversationId: CID },
+        fs,
+      );
+      expect(conversation.status).toBe(503);
+      expect(conversation.decline).toBeUndefined();
+      expect(conversation.untouched).toBe(true);
+      expect(JSON.parse(conversation.body)).toEqual({
+        error: "conversation too large to edit asleep",
+        code: "conversation_too_large_asleep",
+      });
+      expect(
+        await settleAbandonedChat(fs, CID, {
+          turnId: "t1",
+          startedAt: "2026-10-10T00:00:00Z",
+          routine: false,
+        }),
+      ).toEqual({ tooLarge: true });
+    },
+  );
 
   test("a private refusal is never reported as too large", async () => {
     const fs = refusingTree("private");
@@ -54,10 +57,11 @@ describe("a refused lazy read is named for why it was refused", () => {
       fs,
     );
     expect(conversation.status).toBe(503);
-    expect(conversation).toMatchObject({ decline: true });
+    expect(conversation.decline).toBeUndefined();
+    expect(conversation.untouched).toBe(true);
     expect(JSON.parse(conversation.body)).toEqual({
       error: "conversation could not be read asleep",
-      code: "private_state_refused",
+      code: "conversation_op_refused",
     });
     expect(
       await settleAbandonedChat(fs, CID, {

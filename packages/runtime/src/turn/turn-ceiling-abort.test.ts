@@ -10,35 +10,35 @@ vi.mock("./turn-runtime", async (importOriginal) => ({
   }),
 }));
 
-test.each([
-  false,
-  true,
-])("real pi wind-down suppresses abort and held retry errors before live forwarding and persistence (retry=%s)", async (retry) => {
-  const { frames, pool } = await realCeiling({ retry });
-  try {
-    expect(frames.filter((f) => f.type === "provider_error")).toEqual([]);
-    expect(
-      frames.filter((f) => f.type === "error" || f.type === "done"),
-    ).toEqual([
-      expect.objectContaining({
-        type: "error",
-        data: expect.objectContaining({ code: "turn_time_limit" }),
-      }),
-    ]);
-    const row = pool.transcripts.find((call) =>
-      call.path.endsWith("/assistant"),
-    );
-    const message = JSON.parse(row?.body ?? "null").message;
-    expect(message).toMatchObject({
-      content: "Saved work",
-      stopReason: "turn_time_limit",
-    });
-    expect(message.providerError).toBeUndefined();
-    expect(message.pendingInteraction).toBeUndefined();
-  } finally {
-    rmSync(pool.root, { recursive: true, force: true });
-  }
-});
+test.each([false, true])(
+  "real pi wind-down suppresses abort and held retry errors before live forwarding and persistence (retry=%s)",
+  async (retry) => {
+    const { frames, pool } = await realCeiling({ retry });
+    try {
+      expect(frames.filter((f) => f.type === "provider_error")).toEqual([]);
+      expect(
+        frames.filter((f) => f.type === "error" || f.type === "done"),
+      ).toEqual([
+        expect.objectContaining({
+          type: "error",
+          data: expect.objectContaining({ code: "turn_time_limit" }),
+        }),
+      ]);
+      const row = pool.transcripts.find((call) =>
+        call.path.endsWith("/assistant"),
+      );
+      const message = JSON.parse(row?.body ?? "null").message;
+      expect(message).toMatchObject({
+        content: "Saved work",
+        stopReason: "turn_time_limit",
+      });
+      expect(message.providerError).toBeUndefined();
+      expect(message.pendingInteraction).toBeUndefined();
+    } finally {
+      rmSync(pool.root, { recursive: true, force: true });
+    }
+  },
+);
 
 test("the real turn's heartbeat abort reason can be rethrown as an AbortError", async () => {
   let reason: unknown;

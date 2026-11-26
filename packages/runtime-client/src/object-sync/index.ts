@@ -23,7 +23,9 @@ export {
   startHydrate,
   syncBack,
 } from "./hydrate";
+export { landedHash } from "./hydrate-attrs";
 export { landStream } from "./land-file";
+export { linkHash } from "./object-attrs";
 export type {
   DirListing,
   ManifestObjectStore,

@@ -29,10 +29,11 @@ export function partialSyncReply(
   const partial =
     synced.outOfScope > 0 ||
     synced.skipped.length > 0 ||
-    synced.conflicts.length > 0;
+    synced.conflicts.length > 0 ||
+    synced.deletesKept.length > 0;
   if (!partial) return null;
   console.error(
-    `[op] not durably synced: outOfScope=${synced.outOfScope} skipped=${synced.skipped.length} conflicts=${synced.conflicts.length} landed=${landed} ${context}`,
+    `[op] not durably synced: outOfScope=${synced.outOfScope} skipped=${synced.skipped.length} conflicts=${synced.conflicts.length} deletesKept=${synced.deletesKept.length} landed=${landed} ${context}`,
   );
   // OAuth tokens may already be in remote custody even if no tree file landed.
   if (durableElsewhere) return { ok: true, ambiguous: true };

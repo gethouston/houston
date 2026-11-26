@@ -2,12 +2,16 @@ import { join, posix } from "node:path";
 import { DEFAULT_EXCLUDES, excluded, type HydrateManifest } from "./hydrate";
 import type { ObjectStore } from "./object-store";
 import { privateDirGate } from "./private-dir-gate";
-import { privateDirOf } from "./private-paths";
-import { deleteOwnedObject, uploadChangedObject } from "./sync-back-conflicts";
+import { uploadChangedObject } from "./sync-back-conflicts";
+import { syncDeletes } from "./sync-back-deletes";
 import { keyedRefresh, listingRefresh } from "./sync-back-refresh";
 import { SOURCE_GONE, SOURCE_REFUSED, syncSource } from "./sync-back-source";
 import type { SyncBackOptions, SyncResult } from "./sync-back-types";
 import { walkFiles } from "./sync-back-walk";
+
+const isLink = (source: unknown) =>
+  typeof source === "object" && source !== null && "link" in source;
+const MAX_OUT_OF_SCOPE_KEYS = 100;
 
 export type {
   LocalWriteLock,
@@ -38,10 +42,18 @@ export async function syncBack(
     [...manifest.values()].some(({ generation }) => generation !== undefined);
   const uploaded: string[] = [];
   const skipped: SyncResult["skipped"] = [];
+  const refusedLinks: SyncResult["skipped"] = [];
   const conflicts: SyncResult["conflicts"] = [];
   const merges: SyncResult["merges"] = [];
   const nextManifest: HydrateManifest = new Map();
   let outOfScope = 0;
+  const outOfScopeKeys: string[] = [];
+  const scopeMiss = (rel: string) => {
+    outOfScope += 1;
+    if (outOfScopeKeys.length < MAX_OUT_OF_SCOPE_KEYS) outOfScopeKeys.push(rel);
+  };
+  const conflictCopies: SyncResult["conflictCopies"] = [];
+  const deletesKept: SyncResult["deletesKept"] = [];
   // The worker's tree is one turn's: it pays a read of the conflicting
   // object rather than a listing of the whole store. The standing sync keeps
   // its one listing per pass.
@@ -54,8 +66,9 @@ export async function syncBack(
   // neither uploaded nor deleted: its manifest entry stays as it was. A cheap
   // first check only: each file is checked again where it is read.
   const syncable = privateDirGate();
+  const links = store.fileAttrs === true;
 
-  for (const rel of await walkFiles(dir, dir)) {
+  for (const rel of await walkFiles(dir, dir, true)) {
     if (excluded(rel, excludes)) continue;
     const abs = join(dir, ...rel.split("/"));
     if (!(await syncable(abs))) {
@@ -69,9 +82,20 @@ export async function syncBack(
     // leave it out of the next manifest and let the delete pass reconcile the
     // store, instead of aborting the whole pass mid-upload. Sign-in state is
     // checked per file and uploaded from a checked copy (sync-back-source.ts).
-    const source = await syncSource(abs);
+    if (opts.include && !manifest.has(rel) && !opts.include(rel)) {
+      scopeMiss(rel);
+      continue;
+    }
+    const source = await syncSource(abs, rel);
     if (source === SOURCE_GONE) continue;
-    if (source === SOURCE_REFUSED) {
+    const refused = source !== SOURCE_REFUSED && "refusedLink" in source;
+    if (source === SOURCE_REFUSED || refused || (!links && isLink(source))) {
+      if (refused && links && opts.include?.(rel) !== false)
+        refusedLinks.push({
+          key: rel,
+          reason: source.refusedLink,
+          refused: true,
+        });
       const kept = manifest.get(rel);
       if (kept) nextManifest.set(rel, kept);
       continue;
@@ -83,7 +107,7 @@ export async function syncBack(
       if (opts.include && !opts.include(rel)) {
         // Out of the caller's write scope: never uploaded, but still counted
         // toward the next hydration and kept in the manifest as it was.
-        if (previous?.hash !== hash) outOfScope += 1;
+        if (previous?.hash !== hash) scopeMiss(rel);
         if (previous) nextManifest.set(rel, previous);
         continue;
       }
@@ -103,6 +127,9 @@ export async function syncBack(
         generationAware,
         refresh,
         ...(opts.workerMerge ? { workerMerge: true } : {}),
+        ...(opts.conflictCopies?.(rel)
+          ? { conflictCopy: true, keptCopy: opts.keptCopies?.get(rel) }
+          : {}),
         ...(opts.conflictBackoff ? { backoff: opts.conflictBackoff } : {}),
         ...(opts.localWriteLock ? { localWriteLock: opts.localWriteLock } : {}),
       });
@@ -122,57 +149,49 @@ export async function syncBack(
       }
       if (result.entry) nextManifest.set(rel, result.entry);
       if (result.uploaded) uploaded.push(rel);
-      if (result.skipped) skipped.push({ key: rel, reason: result.skipped });
+      if (result.skipped)
+        skipped.push({
+          key: rel,
+          reason: result.skipped,
+          ...(result.refused ? { refused: true as const } : {}),
+        });
       if (result.conflict)
         conflicts.push({ key: rel, reason: result.conflict });
+      if (result.conflictCopy) {
+        conflictCopies.push(result.conflictCopy);
+        opts.keptCopies?.set(rel, result.conflictCopy);
+      }
     } finally {
       await source.dispose();
     }
   }
 
-  const deleted: string[] = [];
-  const holdDeletes =
-    opts.holdDeletesOnFailure === true &&
-    (skipped.length > 0 || conflicts.length > 0);
-  for (const [rel, previous] of manifest) {
-    if (nextManifest.has(rel)) continue;
-    if (holdDeletes) {
-      // Keep the prior entry so the object stays owned and durable.
-      nextManifest.set(rel, previous);
-      continue;
-    }
-    if (opts.include && !opts.include(rel)) {
-      nextManifest.set(rel, previous);
-      outOfScope += 1;
-      continue;
-    }
-    // Sign-in state is never deleted by a sync pass: a missing or swapped
-    // `.houston/browser` (the tool user can rename one of the worker's own
-    // folders to it) would otherwise wipe the person's remote sign-ins.
-    // Forgetting them is an explicit store delete (private-dir-gate.ts).
-    if (privateDirOf(join(dir, ...rel.split("/")))) {
-      nextManifest.set(rel, previous);
-      continue;
-    }
-    const key = prefix ? posix.join(prefix, rel) : rel;
-    const result = await deleteOwnedObject({
-      store,
-      key,
-      previous,
-      generationAware,
-      refresh,
-    });
-    if (result.deleted) deleted.push(rel);
-    if (result.entry) nextManifest.set(rel, result.entry);
-    if (result.conflict) conflicts.push({ key: rel, reason: result.conflict });
-  }
+  const deleted = await syncDeletes({
+    store,
+    prefix,
+    dir,
+    manifest,
+    nextManifest,
+    generationAware,
+    refresh,
+    include: opts.include,
+    hold:
+      opts.holdDeletesOnFailure === true &&
+      (skipped.length > 0 || conflicts.length > 0),
+    scopeMiss,
+    conflicts,
+    deletesKept,
+  });
   return {
     uploaded,
     deleted,
-    skipped,
+    skipped: [...skipped, ...refusedLinks],
     conflicts,
     merges,
     outOfScope,
+    outOfScopeKeys,
+    conflictCopies,
+    deletesKept,
     manifest: nextManifest,
     totalBytes,
   };

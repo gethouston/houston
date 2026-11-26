@@ -6,6 +6,8 @@
  * grafana.gethouston.ai) plus a PostHog mirror for per-user drill-down. Only
  * the mirror carries the hosted org slug and the send's outcome: the gateway
  * ingest rejects unknown fields, and its histograms stay without org labels.
+ * Which `app_to_board` spans are load times, and how much of one was a hidden
+ * page: `perf-span-board.ts`.
  *
  * The send spans are not paired here: the SDK reports each sent turn's first
  * response (`FirstResponse`, from that turn's own frames), and this module
@@ -17,62 +19,60 @@
  * the web T0; the Tauri shell upgrades T0 to its process start).
  */
 
-import type { FirstResponse, FirstResponseOutcome } from "@houston/sdk";
+import type { FirstResponse } from "@houston/sdk";
+import { BoardLoad } from "./perf-span-board";
 import { turnSpans } from "./perf-span-marks";
 import { OrgHistory } from "./perf-span-org-history";
+import { SpanQueue } from "./perf-span-queue";
+import type {
+  PerfSpanName,
+  PerfSpanTags,
+  PerfSpanTransport,
+} from "./perf-span-types";
+import {
+  HiddenTime,
+  type VisibilityDoc,
+  type VisibilityTimeline,
+} from "./perf-span-visibility";
 
-export type PerfSpanName =
-  | "app_to_board"
-  | "card_click_to_chat"
-  | "send_to_first_response"
-  | "send_to_first_activity";
-
-export interface PerfSpanObservation {
-  span: PerfSpanName;
-  ms: number;
-}
-
-/** What a mirrored span carries beyond its duration. */
-export interface PerfSpanTags {
-  /** The hosted org a send ran in; null on spans no send pairs and off the gateway. */
-  orgSlug: string | null;
-  /** How the turn behind a send span ended up; absent on the other spans. */
-  outcome?: FirstResponseOutcome;
-}
-
-export interface PerfSpanTransport {
-  /**
-   * POST a batch to the gateway; absent session → don't call configure yet.
-   * Omitted entirely when the build bakes no ingest URL (there is no default
-   * host to fall back to): spans are still measured and mirrored, just never
-   * shipped, and the queue is dropped instead of growing forever.
-   */
-  send?(spans: PerfSpanObservation[]): Promise<void>;
-  /** Per-span mirror (PostHog). Fire-and-forget. */
-  mirror?(span: PerfSpanName, ms: number, tags: PerfSpanTags): void;
-}
+export type {
+  PerfSpanName,
+  PerfSpanObservation,
+  PerfSpanTags,
+  PerfSpanTransport,
+} from "./perf-span-types";
 
 /** A card click older than this is stale (user wandered off) — never completed. */
 const PENDING_TTL_MS = 60_000;
-const FLUSH_DELAY_MS = 5_000;
 
 export class PerfSpans {
   private t0Ms: number;
-  private readonly onceDone = new Set<PerfSpanName>();
+  private boardDone = false;
   private pendingChatOpenAt: number | null = null;
   private readonly orgs = new OrgHistory();
-  private queue: PerfSpanObservation[] = [];
+  private readonly queue = new SpanQueue();
   private transport: PerfSpanTransport | null = null;
-  private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly now: () => number;
+  private readonly boardLoad: BoardLoad;
 
-  constructor(opts?: { t0Ms?: number; now?: () => number }) {
+  constructor(opts?: {
+    t0Ms?: number;
+    now?: () => number;
+    doc?: VisibilityDoc;
+    timeline?: VisibilityTimeline;
+  }) {
     this.now = opts?.now ?? Date.now;
-    this.t0Ms =
-      opts?.t0Ms ??
-      (typeof performance !== "undefined"
-        ? performance.timeOrigin
-        : this.now());
+    const timeline =
+      opts?.timeline ??
+      (typeof performance !== "undefined" ? performance : undefined);
+    this.boardLoad = new BoardLoad(
+      new HiddenTime(
+        opts?.doc ?? (typeof document !== "undefined" ? document : undefined),
+        timeline,
+        this.now,
+      ),
+    );
+    this.t0Ms = opts?.t0Ms ?? timeline?.timeOrigin ?? this.now();
   }
 
   /** The Tauri shell's process-start stamp — earlier than the webview's. */
@@ -83,12 +83,37 @@ export class PerfSpans {
 
   configure(transport: PerfSpanTransport): void {
     this.transport = transport;
-    if (this.queue.length > 0) this.scheduleFlush();
+    this.queue.configure(transport);
   }
 
-  /** Mission cards painted with resolved data. Once per app session. */
+  /** The sign-in screen showed this session. */
+  signInShown(): void {
+    this.boardLoad.signInShown();
+  }
+
+  /** The first-run onboarding showed this session. */
+  onboardingShown(): void {
+    this.boardLoad.onboardingShown();
+  }
+
+  /** The screen the shell first painted after launch; later calls are ignored. */
+  landedOn(screen: string): void {
+    this.boardLoad.landedOn(screen);
+  }
+
+  /**
+   * Mission cards painted with resolved data. Once per app session: PostHog
+   * gets the whole span, the gateway its active part, and only for a load.
+   */
   boardRendered(): void {
-    this.observeOnce("app_to_board", this.now() - this.t0Ms);
+    if (this.boardDone) return;
+    this.boardDone = true;
+    const at = this.now();
+    const totalMs = at - this.t0Ms;
+    const board = this.boardLoad.finish(totalMs, at);
+    const tags = { orgSlug: null, board: board.tags };
+    this.observe("app_to_board", totalMs, tags, false);
+    if (board.ship) this.queue.push("app_to_board", board.activeMs);
   }
 
   /** The user opened a mission card (chat panel about to load). */
@@ -128,39 +153,13 @@ export class PerfSpans {
   }
 
   /** Ship anything queued now (page-hide, tests). */
-  async flush(): Promise<void> {
-    if (this.flushTimer) {
-      clearTimeout(this.flushTimer);
-      this.flushTimer = null;
-    }
-    if (!this.transport || this.queue.length === 0) return;
-    const batch = this.queue;
-    this.queue = [];
-    // Mirror-only build (no ingest URL baked): drop the batch rather than let
-    // it accumulate for a transport that will never exist.
-    if (!this.transport.send) return;
-    try {
-      await this.transport.send(batch);
-    } catch {
-      // Re-queue once so a transient network blip isn't a lost sample; a
-      // second failure drops the batch (metrics are best-effort, never noise).
-      if (batch.length + this.queue.length <= 40) this.queue.unshift(...batch);
-    }
+  flush(): Promise<void> {
+    return this.queue.flush();
   }
 
   private take(at: number | null): number | null {
     if (at === null) return null;
     return this.now() - at <= PENDING_TTL_MS ? at : null;
-  }
-
-  private observeOnce(
-    span: PerfSpanName,
-    ms: number,
-    tags: PerfSpanTags = { orgSlug: null },
-  ): void {
-    if (this.onceDone.has(span)) return;
-    this.onceDone.add(span);
-    this.observe(span, ms, tags);
   }
 
   /** `ship: false` mirrors the span to PostHog only (never the gateway histogram). */
@@ -172,19 +171,7 @@ export class PerfSpans {
   ): void {
     if (!Number.isFinite(ms) || ms < 0) return;
     this.transport?.mirror?.(span, Math.round(ms), tags);
-    if (!ship) return;
-    this.queue.push({ span, ms: Math.round(ms) });
-    this.scheduleFlush();
-  }
-
-  private scheduleFlush(): void {
-    if (!this.transport || this.flushTimer) return;
-    this.flushTimer = setTimeout(() => {
-      this.flushTimer = null;
-      void this.flush();
-    }, FLUSH_DELAY_MS);
-    // Never keep the process alive for a metrics flush (tests, shutdown).
-    (this.flushTimer as { unref?: () => void }).unref?.();
+    if (ship) this.queue.push(span, ms);
   }
 }
 
