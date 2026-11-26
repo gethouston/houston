@@ -1,4 +1,4 @@
-import { canonicalModelId } from "@houston/domain";
+import { canonicalModelId } from "@houston/domain/canonical-model-id";
 import { modelAliasesFor } from "@houston/domain/model-aliases";
 import type { CatalogProvider } from "@houston/protocol";
 

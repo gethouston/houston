@@ -7,7 +7,7 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 // accepts — narrower than `KnownProvider`, which since pi 0.82 also names
 // purely dynamic providers (radius) with no static catalog entry.
 import { type BuiltinProvider, getModel } from "@earendil-works/pi-ai/compat";
-import { canonicalModelId } from "@houston/domain";
+import { canonicalModelId } from "@houston/domain/canonical-model-id";
 import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 import { toCanonicalProviderId } from "@houston/domain/provider-dialect";
 import type { ProviderHealth } from "@houston/protocol";

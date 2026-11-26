@@ -83,6 +83,10 @@
       "types": "./src/model-aliases-gateways.ts",
       "import": "./src/model-aliases-gateways.ts"
     },
+    "./canonical-model-id": {
+      "types": "./src/canonical-model-id.ts",
+      "import": "./src/canonical-model-id.ts"
+    },
     "./agent-color-ids": {
       "types": "./src/agent-color-ids.ts",
       "import": "./src/agent-color-ids.ts"
