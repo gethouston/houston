@@ -1,5 +1,4 @@
 import type { CustomEndpoint } from "@houston/engine-adapter";
-import { isBridgeCancellation } from "@houston/sdk";
 import { peekSession } from "./identity/session-store";
 import {
   localBridgeController,
@@ -7,16 +6,15 @@ import {
 } from "./local-bridge-binding";
 import { reportLocalBridgeError } from "./local-bridge-ports";
 import { buildDirectEndpoint, type DetectedServer } from "./local-model";
+import {
+  connectManualEndpointWith,
+  reported,
+} from "./local-model-connect-core";
 import { osDetectLocalModels, osIsTauri } from "./os-bridge";
 import { tauriProvider } from "./tauri";
 
 export const LOCAL_PROVIDER_ID = "openai-compatible";
-export class ConnectAborted extends Error {
-  constructor() {
-    super("Local model connection cancelled");
-    this.name = "ConnectAborted";
-  }
-}
+export { ConnectAborted } from "./local-model-connect-core";
 
 async function controller() {
   const session = await peekSession();
@@ -33,21 +31,8 @@ async function ownedController() {
     : null;
 }
 
-async function reported<T>(
-  action: () => Promise<T>,
-  surfaced: (error: unknown) => boolean = () => false,
-): Promise<T> {
-  try {
-    return await action();
-  } catch (error) {
-    if (isBridgeCancellation(error)) throw new ConnectAborted();
-    if (!surfaced(error)) reportLocalBridgeError(error);
-    throw error;
-  }
-}
-
 export function detectLocalModels(): Promise<DetectedServer[]> {
-  return reported(osDetectLocalModels);
+  return reported(osDetectLocalModels, reportLocalBridgeError);
 }
 
 export async function connectDetectedModel(opts: {
@@ -78,7 +63,7 @@ export async function connectDetectedModel(opts: {
       },
       opts.signal,
     );
-  });
+  }, reportLocalBridgeError);
 }
 
 export async function reconnectLocalModel(): Promise<void> {
@@ -87,28 +72,15 @@ export async function reconnectLocalModel(): Promise<void> {
     if (!bridge)
       throw new Error("This model does not use a managed connection");
     await bridge.reconnect();
-  });
+  }, reportLocalBridgeError);
 }
 
-export async function connectManualEndpoint(
-  endpoint: CustomEndpoint,
-): Promise<void> {
-  const bridge = await ownedController();
-  // The save goes through `call()`, which already reports its own failure (or
-  // silences an expected one) and leaves the copy to the inline form. Only the
-  // bridge retirement after it is this funnel's to report (HOUSTON-APP-5N5).
-  let saveFailure: { error: unknown } | null = null;
-  const save = () =>
-    tauriProvider.setCustomEndpoint(endpoint, "inline").catch((error) => {
-      saveFailure = { error };
-      throw error;
-    });
-  if (bridge)
-    await reported(
-      () => bridge.replaceEndpoint(save),
-      (error) => saveFailure?.error === error,
-    );
-  else await save();
+export function connectManualEndpoint(endpoint: CustomEndpoint): Promise<void> {
+  return connectManualEndpointWith(endpoint, {
+    bridge: ownedController,
+    save: (manual) => tauriProvider.setCustomEndpoint(manual, "inline"),
+    report: reportLocalBridgeError,
+  });
 }
 
 export async function disconnectLocalModel(): Promise<void> {
@@ -116,5 +88,5 @@ export async function disconnectLocalModel(): Promise<void> {
     const bridge = await ownedController();
     if (bridge) await bridge.disconnect();
     else await tauriProvider.launchLogout(LOCAL_PROVIDER_ID);
-  });
+  }, reportLocalBridgeError);
 }
