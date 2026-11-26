@@ -11,6 +11,7 @@ tests/academy-store.test.ts
 tests/account-link-cross-tab.test.ts
 tests/account-link-panel.test.ts
 tests/account-link-port.test.ts
+tests/agent-data-busy.test.ts
 tests/agent-mission-time.test.ts
 tests/agent-model-overrides.test.ts
 tests/anthropic-model-catalog.test.ts

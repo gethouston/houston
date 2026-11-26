@@ -28,6 +28,29 @@ describe("transientRetryFetch", () => {
     }
   });
 
+  // HOUSTON-APP-5HP: a sleeping agent's store read the gateway could not serve
+  // yet. Under the ~2 s handoff budget it surfaced as a failure of the read.
+  test("an asleep agent's busy data read earns the wake schedule", async () => {
+    vi.useFakeTimers();
+    try {
+      const inner = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: "agent data temporarily unavailable; retrying",
+            }),
+            { status: 503, headers: { "Content-Type": "application/json" } },
+          ),
+      );
+      const promise = transientRetryFetch(inner)("http://gw/v1/agents/a/x");
+      await vi.runAllTimersAsync();
+      expect((await promise).status).toBe(503);
+      expect(inner).toHaveBeenCalledTimes(5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test("asks ONCE for a read whose caller owns the retries", async () => {
     const inner = vi.fn(async () => waking());
     const res = await transientRetryFetch(inner)("http://gw/v1/assistant");

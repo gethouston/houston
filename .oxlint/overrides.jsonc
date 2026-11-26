@@ -22,6 +22,7 @@
         "app/tests/api-key-reason-copy.test.ts",
         "app/tests/stale-attachment.test.ts",
         "app/tests/open-agent.test.ts",
+        "app/tests/agent-data-busy.test.ts",
       ],
       "rules": {
         // These values are source-text substrings, not arrays; converting them to character sets breaks substring checks.

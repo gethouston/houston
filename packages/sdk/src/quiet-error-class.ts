@@ -68,10 +68,15 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  them means agents keep linking such paths.
  *  `codex_port_taken` is another process on the person's machine holding
  *  the fixed port OpenAI's desktop sign-in redirects to (HOUSTON-APP-5EV):
- *  the sign-in falls back to a device code, so it is one counted warning. */
+ *  the sign-in falls back to a device code, so it is one counted warning.
+ *  `agent_data_busy` is the gateway's read-only "agent data temporarily
+ *  unavailable" 503 outliving the read's retries: nothing is waking (reads
+ *  never wake the agent), so the person sees nothing and it is one counted
+ *  warning per burst (HOUSTON-APP-5HP). */
 export type QuietErrorClass =
   | "office_preview_capacity"
   | "engine_waking"
+  | "agent_data_busy"
   | "offline"
   | BridgeQuietClass
   | "release_host_unavailable"
