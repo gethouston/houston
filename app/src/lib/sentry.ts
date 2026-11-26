@@ -102,11 +102,15 @@ export function initSentry(): void {
     },
     // Rust tracks release-health sessions, and main.tsx reports uncaught errors.
     // Keep browser auto-capture off to avoid duplicate sessions and events.
+    // BrowserApiErrors rethrows what it captures from timer, rAF, listener and
+    // XHR callbacks, and only GlobalHandlers honors its "already captured" mark,
+    // so window.onerror (global-error-handlers.ts) would capture each one twice.
     integrations: (defaultIntegrations) =>
       defaultIntegrations.filter(
         (integration) =>
           integration.name !== "BrowserSession" &&
-          integration.name !== "GlobalHandlers",
+          integration.name !== "GlobalHandlers" &&
+          integration.name !== "BrowserApiErrors",
       ),
     // Session Replay is deliberately OFF (no replayIntegration). Keep the
     // explicit zero rates so an SDK default can never silently re-enable it.

@@ -473,6 +473,44 @@ class ReadOnlyVfs extends MemoryVfs {
   }
 }
 
+test("a read of a path outside the agent's files is a 400 outside_workspace body", async () => {
+  const objects = new MemoryVfs();
+  const read = async (rest: string, path: string) => {
+    const { res, state } = fakeRes();
+    await handleFiles(
+      objects,
+      PATHS,
+      CTX,
+      "GET",
+      rest,
+      { url: "/x" } as never,
+      res,
+      new URLSearchParams({ path }),
+    );
+    return { status: state.status, body: JSON.parse(String(state.body)) };
+  };
+  for (const path of [
+    "/work/houston-turn-0123456789abcdef/store/custom-integrations.json",
+    ".houston/activity.json",
+    "../other/notes.md",
+  ]) {
+    for (const rest of ["files/read", "files/download"]) {
+      expect(await read(rest, path)).toEqual({
+        status: 400,
+        body: {
+          error: `invalid workspace path: ${path}`,
+          code: "outside_workspace",
+        },
+      });
+    }
+  }
+  // An empty path names nothing outside: still a 400, with no code.
+  expect(await read("files/read", "")).toEqual({
+    status: 400,
+    body: { error: "invalid workspace path: " },
+  });
+});
+
 test("DELETE on a workspace that refuses writes is a 403 read_only body", async () => {
   const objects = new ReadOnlyVfs();
   const { res, state } = fakeRes();

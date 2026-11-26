@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { SdkConfig, SdkPorts } from "../../ports";
 import { HoustonSdk } from "../../sdk";
 import { memoryKv } from "../../test-ports";
-import { FilesCommand, FilesHttpError } from "./index";
+import {
+  FilesCommand,
+  FilesHttpError,
+  isOutsideWorkspaceRefusal,
+} from "./index";
 
 const BASE = "http://127.0.0.1:4317";
 
@@ -92,6 +96,27 @@ describe("files module — reading an agent's workspace", () => {
     await expect(sdk.files.readProjectFile("a1", "logo.png")).resolves.toBe(
       "Hello",
     );
+  });
+
+  it("a read the host refuses as outside the workspace keeps its code", async () => {
+    const { sdk } = makeSdk(() =>
+      json(
+        {
+          error: "invalid workspace path: .houston/activity.json",
+          code: "outside_workspace",
+        },
+        400,
+      ),
+    );
+
+    const err = await sdk.files
+      .readProjectFile("a1", ".houston/activity.json")
+      .then(
+        () => null,
+        (e: unknown) => e,
+      );
+    expect(err).toBeInstanceOf(FilesHttpError);
+    expect(isOutsideWorkspaceRefusal(err)).toBe(true);
   });
 
   it("surfaces a non-2xx as a FilesHttpError carrying the status", async () => {
@@ -222,6 +247,27 @@ describe("upload-ID commits", () => {
     expect(calls[0].body).toBe(JSON.stringify({ scopeId: "conv", files }));
     await sdk.files.uploadProjectFiles("a1", files, "docs");
     expect(calls[1].body).toBe(JSON.stringify({ dir: "docs", files }));
+  });
+
+  it("sends a file whose macOS name holds a backslash under a name the host accepts", async () => {
+    const { sdk, calls } = makeSdk(() =>
+      json({ paths: ["uploads/### 1_. package.txt"] }),
+    );
+    await sdk.files.saveAttachments("a1", "conv", [
+      { name: "### 1\\. package.txt", blob: new Blob(["x"]) },
+      {
+        name: "b\\c.txt",
+        blob: new Blob(["y"]),
+        relPath: "notes\\old/b\\c.txt",
+      },
+    ]);
+    const sent = JSON.parse(calls[0].body ?? "{}") as {
+      files: { name: string; relPath?: string }[];
+    };
+    expect(sent.files.map((f) => [f.name, f.relPath])).toEqual([
+      ["### 1_. package.txt", undefined],
+      ["b_c.txt", "notes_old/b_c.txt"],
+    ]);
   });
 
   it("dispatch accepts a parsed upload-ID entry and refuses an invalid ID", async () => {
