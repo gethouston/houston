@@ -122,6 +122,22 @@ test("a Copilot row GitHub retired maps to the successor GitHub names", () => {
   expect(copilot["claude-haiku-4.5"]).toBeUndefined();
 });
 
+test("a dropped Mistral or Groq pin moves only to a row that costs no more", () => {
+  expect(MODEL_ALIASES.mistral).toEqual({
+    "mistral-large-4-0-8": "mistral-large-4",
+    "mistral-medium-3.5": "mistral-medium-2604",
+    "open-mistral-nemo": "ministral-8b-latest",
+    "pixtral-12b": "ministral-8b-latest",
+  });
+  expect(MODEL_ALIASES.groq).toEqual({
+    "llama-3.3-70b-versatile": "openai/gpt-oss-120b",
+  });
+});
+
+test("a free OpenCode Go pin is never moved onto plan usage", () => {
+  expect(MODEL_ALIASES["opencode-go"]?.["longcat-2.5-free"]).toBeUndefined();
+});
+
 test("a dropped MiMo V2.5 pin lands on a V2.6 row that costs no more", () => {
   expect(MODEL_ALIASES.xiaomi).toEqual({
     "mimo-v2.5": "mimo-v2.6-flash",
@@ -172,7 +188,6 @@ test("an open-catalog gateway carries only its renames", () => {
     "minimax-m3.1-flash-free": "minimax-m3.1-flash",
     "gemini-4-argon-contributor": "gemini-4-argon",
     "longcat-2.0": "longcat-2.5",
-    "longcat-2.5-free": "longcat-2.5",
     "mimo-v2.5": "mimo-v2.6-flash",
     "mimo-v2.5-pro": "mimo-v2.6-pro",
   });

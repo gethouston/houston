@@ -28,7 +28,10 @@ test("a stored pin on a dropped row with a successor runs on it", () => {
     ["github-copilot", "claude-opus-5", "claude-opus-5.5"],
     ["mistral", "mistral-large-4-0-8", "mistral-large-4"],
     ["mistral", "mistral-medium-3.5", "mistral-medium-2604"],
+    ["mistral", "open-mistral-nemo", "ministral-8b-latest"],
+    ["mistral", "pixtral-12b", "ministral-8b-latest"],
     ["google", "gemini-3.1-flash-lite-preview", "gemini-3.1-flash-lite"],
+    ["groq", "llama-3.3-70b-versatile", "openai/gpt-oss-120b"],
   ] as const) {
     expect(piModelIds(provider), stale).not.toContain(stale);
     const pinned = canonicalModelId(provider, stale);
@@ -49,6 +52,11 @@ test("a stored pin on a dropped row with no successor gets a runnable switch tar
     ["qwen-token-plan", "deepseek-v3.2"],
     // Retired by Mistral; Medium 3.5 costs 3.75x more.
     ["mistral", "devstral-medium-latest"],
+    // Small 4 costs 2x more per output token.
+    ["mistral", "mistral-small-2506"],
+    // Free previews; no free Mistral row is left.
+    ["mistral", "labs-devstral-small-2512"],
+    ["mistral", "labs-leanstral-1-5-1"],
     // Groq's old first row; every Groq row left costs more.
     ["groq", "llama-3.1-8b-instant"],
   ] as const) {
@@ -67,6 +75,11 @@ test("a stored pin on a dropped row with no successor gets a runnable switch tar
         : null;
     expect(safeModelIds(provider), stale).toContain(fallback);
   }
+});
+
+test("Groq's default is its cheapest row pi still lists", () => {
+  expect(piModelIds("groq")).toContain(DEFAULT_MODEL.groq);
+  expect(DEFAULT_MODEL.groq).toBe("openai/gpt-oss-20b");
 });
 
 test("every NVIDIA model Houston falls back to is in pi's NVIDIA catalog", () => {

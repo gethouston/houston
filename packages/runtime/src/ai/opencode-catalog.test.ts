@@ -52,7 +52,6 @@ test("a stored OpenCode pin on a row pi dropped still resolves to a runnable mod
     ["opencode-go", "gemini-4-argon-contributor", "gemini-4-argon"],
     ["opencode", "kimi-k2.6", "kimi-k2.7-code"],
     ["opencode-go", "longcat-2.0", "longcat-2.5"],
-    ["opencode-go", "longcat-2.5-free", "longcat-2.5"],
     ["opencode-go", "mimo-v2.5", "mimo-v2.6-flash"],
     ["opencode-go", "mimo-v2.5-pro", "mimo-v2.6-pro"],
   ] as const) {
@@ -87,6 +86,8 @@ test("a pin on a dropped row with no successor gets a runnable switch target", (
     ["opencode", "gemini-3.1-pro"],
     ["opencode", "kimi-k2.5"],
     ["opencode", "longcat-2.5-free"],
+    // Free; LongCat 2.5 draws plan usage, so the user picks the move.
+    ["opencode-go", "longcat-2.5-free"],
   ] as const) {
     expect(canonicalModelId(provider, stale), stale).toBe(stale);
     let thrown: unknown;

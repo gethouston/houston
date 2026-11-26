@@ -40,8 +40,10 @@ export const GATEWAY_MODEL_ALIASES = {
   // Flash (now plan usage, like Space Bunny) and Gemini 4 Argon (half price).
   // 1.6.0 dropped GLM-5.2 for GLM-5.3 at the same price and window, so the
   // older GLM-5.1 pin moves on to it too.
-  // 1.6.1 dropped LongCat 2.0 and the free LongCat 2.5 for LongCat 2.5 at
-  // LongCat 2.0's price, and MiMo V2.5 for the same-price V2.6 rows.
+  // 1.6.1 dropped LongCat 2.0 for the paid LongCat 2.5 at LongCat 2.0's price,
+  // and MiMo V2.5 for the same-price V2.6 rows. The free `longcat-2.5-free`
+  // gets no row: moving a free pin onto plan usage is a choice for the user,
+  // so its turn shows the switch-model card instead.
   "opencode-go": {
     "glm-5.1": "glm-5.3",
     "glm-5.2": "glm-5.3",
@@ -56,7 +58,6 @@ export const GATEWAY_MODEL_ALIASES = {
     "minimax-m3.1-flash-free": "minimax-m3.1-flash",
     "gemini-4-argon-contributor": "gemini-4-argon",
     "longcat-2.0": "longcat-2.5",
-    "longcat-2.5-free": "longcat-2.5",
     "mimo-v2.5": "mimo-v2.6-flash",
     "mimo-v2.5-pro": "mimo-v2.6-pro",
   },

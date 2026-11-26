@@ -59,7 +59,7 @@ test("api-key providers are registered as api-key providers", () => {
  * a curated entry — additively, and without changing the curated providers. groq
  * is an uncurated, api-key (non-OAuth) pi provider used as the representative.
  */
-test("an uncurated pi provider (groq) is accepted, api-key, and defaults to its first pi model", () => {
+test("an uncurated pi provider (groq) is accepted, api-key, and defaults to its domain pick", () => {
   // Not hand-curated in PROVIDERS...
   expect(PROVIDERS.map((p) => p.id)).not.toContain("groq");
   // ...but pi knows it, so the runtime accepts it (isProvider widen).
@@ -67,15 +67,20 @@ test("an uncurated pi provider (groq) is accepted, api-key, and defaults to its 
   // pi lists it as an api-key (non-OAuth) provider, so a pasted key is accepted
   // (login.ts's setApiKey gate) rather than routed to an OAuth flow.
   expect(providerAuthMethod("groq")).toBe("apiKey");
-  // No configured default → the first model pi lists for groq (never throws).
-  expect(providerDefaultModel("groq")).toBe("openai/gpt-oss-120b");
+  // Not curated, but the domain names its default (never throws).
+  expect(providerDefaultModel("groq")).toBe("openai/gpt-oss-20b");
   // And that model actually resolves through the turn path (safeGetModel).
   const m = safeGetModel("groq", providerDefaultModel("groq"), false) as {
     provider?: string;
     id?: string;
   };
   expect(m.provider).toBe("groq");
-  expect(m.id).toBe("openai/gpt-oss-120b");
+  expect(m.id).toBe("openai/gpt-oss-20b");
+});
+
+test("an uncurated pi provider with no domain default starts on its first pi model", () => {
+  expect(DEFAULT_MODEL.cerebras).toBeUndefined();
+  expect(providerDefaultModel("cerebras")).toBe("gpt-oss-120b");
 });
 
 test("an OAuth pi provider stays OAuth, and a non-pi id is rejected", () => {

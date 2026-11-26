@@ -137,12 +137,21 @@ export const MODEL_ALIASES: Partial<
   "qwen-token-plan": { "deepseek-v4-flash": "deepseek-v4-flash-0731" },
   "qwen-token-plan-cn": { "deepseek-v4-flash": "deepseek-v4-flash-0731" },
   // pi 1.6.1 dropped a dated Large 4 snapshot and the undated Medium 3.5 id;
-  // each successor is the same model at the same price. Devstral, Medium 3 and
-  // 3.1 get no row: Mistral retired them and Medium 3.5 costs 3.75x more.
+  // each successor is the same model at the same price. Nemo and Pixtral 12B
+  // land on Ministral 8B: the same price, and it takes images like Pixtral.
+  // No row for Devstral, Medium 3 and 3.1 (Medium 3.5 costs 3.75x more), Small
+  // 3.2 (Small 4 costs 2x more per output token) or the free Labs previews
+  // (no free Mistral row is left).
   mistral: {
     "mistral-large-4-0-8": "mistral-large-4",
     "mistral-medium-3.5": "mistral-medium-2604",
+    "open-mistral-nemo": "ministral-8b-latest",
+    "pixtral-12b": "ministral-8b-latest",
   },
+  // pi 1.6.1 dropped Groq's Llama rows. gpt-oss-120b costs less than Llama
+  // 3.3 70B per input and output token. Llama 3.1 8B gets no row: every Groq
+  // row left costs more.
+  groq: { "llama-3.3-70b-versatile": "openai/gpt-oss-120b" },
   // The GA row of the same model at the same price.
   google: { "gemini-3.1-flash-lite-preview": "gemini-3.1-flash-lite" },
   ...GATEWAY_MODEL_ALIASES,
