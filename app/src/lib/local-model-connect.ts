@@ -33,12 +33,15 @@ async function ownedController() {
     : null;
 }
 
-async function reported<T>(action: () => Promise<T>): Promise<T> {
+async function reported<T>(
+  action: () => Promise<T>,
+  surfaced: (error: unknown) => boolean = () => false,
+): Promise<T> {
   try {
     return await action();
   } catch (error) {
     if (isBridgeCancellation(error)) throw new ConnectAborted();
-    reportLocalBridgeError(error);
+    if (!surfaced(error)) reportLocalBridgeError(error);
     throw error;
   }
 }
@@ -91,8 +94,20 @@ export async function connectManualEndpoint(
   endpoint: CustomEndpoint,
 ): Promise<void> {
   const bridge = await ownedController();
-  const save = () => tauriProvider.setCustomEndpoint(endpoint, "inline");
-  if (bridge) await reported(() => bridge.replaceEndpoint(save));
+  // The save goes through `call()`, which already reports its own failure (or
+  // silences an expected one) and leaves the copy to the inline form. Only the
+  // bridge retirement after it is this funnel's to report (HOUSTON-APP-5N5).
+  let saveFailure: { error: unknown } | null = null;
+  const save = () =>
+    tauriProvider.setCustomEndpoint(endpoint, "inline").catch((error) => {
+      saveFailure = { error };
+      throw error;
+    });
+  if (bridge)
+    await reported(
+      () => bridge.replaceEndpoint(save),
+      (error) => saveFailure?.error === error,
+    );
   else await save();
 }
 
