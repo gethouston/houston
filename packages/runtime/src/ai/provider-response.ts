@@ -20,6 +20,13 @@ import type { ExtensionFactory } from "@earendil-works/pi-coding-agent";
  * Accepted: it still names a request the provider saw in that prompt, which
  * is enough to trace it, and a per-request record would need pi to hand the
  * failure its request.
+ *
+ * pi fires the hook once per HTTP attempt, error statuses included (OpenAI,
+ * Azure, Anthropic and Google since pi 1.6.1), so pi-ai's in-request retries
+ * overwrite the record and the latest attempt wins. A retried attempt that got
+ * no HTTP response at all (a dropped connection) fires nothing, so the record
+ * keeps the attempt before it: it is a log and unknown-card fact only, never a
+ * classifier input (turn-failure.ts).
  */
 export interface ProviderResponseFacts {
   status: number;

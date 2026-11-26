@@ -30,7 +30,8 @@ test("a stored OpenCode pin on a row pi dropped still resolves to a runnable mod
   // 1.1.0 OpenCode Go's `space-bunny-free` preview, pi 1.3.0 four more
   // OpenCode Go rows, pi 1.4.0 `space-bunny` and opencode's `claude-sonnet-4`,
   // pi 1.5.0 opencode's `nemotron-3-ultra-free` and two OpenCode Go previews,
-  // pi 1.6.0 GLM-5.2 from both gateways and GLM-5.1 from opencode.
+  // pi 1.6.0 GLM-5.2 from both gateways and GLM-5.1 from opencode, pi 1.6.1
+  // opencode's Kimi K2.6 and OpenCode Go's LongCat and MiMo V2.5 rows.
   for (const [provider, stale, successor] of [
     ["opencode", "mimo-v2.5-free", "mimo-v2.6-flash-free"],
     ["opencode", "claude-sonnet-4", "claude-sonnet-4-6"],
@@ -49,6 +50,10 @@ test("a stored OpenCode pin on a row pi dropped still resolves to a runnable mod
     ["opencode-go", "grok-4.6", "grok-4.7"],
     ["opencode-go", "minimax-m3.1-flash-free", "minimax-m3.1-flash"],
     ["opencode-go", "gemini-4-argon-contributor", "gemini-4-argon"],
+    ["opencode", "kimi-k2.6", "kimi-k2.7-code"],
+    ["opencode-go", "longcat-2.0", "longcat-2.5"],
+    ["opencode-go", "mimo-v2.5", "mimo-v2.6-flash"],
+    ["opencode-go", "mimo-v2.5-pro", "mimo-v2.6-pro"],
   ] as const) {
     expect(piModelIds(provider), stale).not.toContain(stale);
     const pinned = canonicalModelId(provider, stale);
@@ -63,7 +68,7 @@ test("a stored OpenCode pin on a row pi dropped still resolves to a runnable mod
 });
 
 test("a pin on a dropped row with no successor gets a runnable switch target", () => {
-  // pi 1.4.0, 1.5.0 and 1.6.0 dropped rows with no same-price successor. A
+  // pi 1.4.0 to 1.6.1 dropped rows with no same-price successor. A
   // pinned turn on one fails as model_unavailable, never a crash, and the card
   // offers the provider default.
   for (const [provider, stale] of [
@@ -79,6 +84,10 @@ test("a pin on a dropped row with no successor gets a runnable switch target", (
     ["opencode", "minimax-m3.1-flash-free"],
     ["opencode", "gemini-3-flash"],
     ["opencode", "gemini-3.1-pro"],
+    ["opencode", "kimi-k2.5"],
+    ["opencode", "longcat-2.5-free"],
+    // Free; LongCat 2.5 draws plan usage, so the user picks the move.
+    ["opencode-go", "longcat-2.5-free"],
   ] as const) {
     expect(canonicalModelId(provider, stale), stale).toBe(stale);
     let thrown: unknown;

@@ -64,6 +64,31 @@ test("a new request clears the previous request's failure", () => {
   expect(seen).toBeUndefined();
 });
 
+test("retried attempts inside one request: the latest attempt wins", () => {
+  const on = installRecorder();
+  const respond = (status: number, id: string) =>
+    on.after_provider_response?.({
+      type: "after_provider_response",
+      status,
+      headers: { "request-id": id },
+    });
+  const failedTwice = runWithProviderResponseCapture(() => {
+    on.before_provider_request?.({ type: "before_provider_request" });
+    respond(429, "req-first");
+    respond(503, "req-second");
+    return takeFailedResponse();
+  });
+  expect(failedTwice).toEqual({ status: 503, requestId: "req-second" });
+  const recovered = runWithProviderResponseCapture(() => {
+    on.before_provider_request?.({ type: "before_provider_request" });
+    respond(429, "req-limited");
+    respond(200, "req-ok");
+    // The stream then fails mid-way, with no HTTP status of its own.
+    return takeFailedResponse();
+  });
+  expect(recovered).toBeUndefined();
+});
+
 test("cf-ray stands in when the provider names no request id of its own", () => {
   const on = installRecorder();
   const seen = runWithProviderResponseCapture(() => {

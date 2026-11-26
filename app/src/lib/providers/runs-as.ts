@@ -9,7 +9,7 @@ import { toCanonicalProviderId } from "@houston/sdk/provider-catalog";
  * allowed-models ceiling written with the retired id admits the model it runs
  * as, on that provider only (`../ceiling-match.ts`).
  *
- * Indexed from the RAW host catalog, before `isModelVisible` hides the retired
+ * Indexed from the RAW host catalog, before `isCatalogEntryVisible` hides the retired
  * rows from every picker: the rows the picker never shows are exactly the ones
  * that carry the field. Keyed by pi's canonical provider id with lower-cased
  * model ids, the casing rule the gateway's clamp applies.

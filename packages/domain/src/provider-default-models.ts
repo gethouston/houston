@@ -71,6 +71,10 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   // default was pi's first Mistral row, a Codestral code-completion model
   // capped at 4K output (8K on the dated snapshot pi 1.1.0 put first).
   mistral: "mistral-large-4",
+  // pi 1.6.1 dropped Llama 3.1 8B, Groq's old default and first row. Of the
+  // rows left, gpt-oss-20b costs the least; pi's new first row, gpt-oss-120b,
+  // costs twice as much.
+  groq: "openai/gpt-oss-20b",
   "qwen-token-plan": "qwen3.7-max",
   "qwen-token-plan-individual": "qwen3.7-max",
   // Moonshot's own migration target for the retired kimi-k2 previews. Unlocked

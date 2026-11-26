@@ -20,6 +20,7 @@ import {
   validEffortOrDefault,
   validModelOrNull,
 } from "../src/lib/providers.ts";
+import { defaultModelFor } from "../src/lib/providers/build-provider.ts";
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
 // Hydrate once from the sample pi catalog; every case reads the in-place cache.
@@ -182,9 +183,20 @@ describe("normalizeEffort (legacy `max` tolerance)", () => {
 });
 
 describe("helpers read the hydrated cache", () => {
-  it("getDefaultModel: override pick for curated, first model for new providers", () => {
+  it("getDefaultModel: override pick for curated, domain pick for an uncurated provider", () => {
     strictEqual(getDefaultModel("anthropic"), "claude-sonnet-5-5");
-    strictEqual(getDefaultModel("groq"), "llama-4-scout");
+    strictEqual(getDefaultModel("groq"), DEFAULT_MODEL.groq);
+  });
+
+  it("a provider with no domain default starts on its first model", () => {
+    strictEqual(DEFAULT_MODEL.cerebras, undefined);
+    strictEqual(
+      defaultModelFor("cerebras", [
+        { id: "gpt-oss-120b", label: "", description: "" },
+        { id: "qwen-3.8-27b", label: "", description: "" },
+      ]),
+      "gpt-oss-120b",
+    );
   });
 
   it("validModelOrNull: authoritative for curated, pass-through for open catalogs", () => {

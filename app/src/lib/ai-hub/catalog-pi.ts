@@ -19,7 +19,7 @@ import {
 } from "@houston/sdk/provider-catalog";
 import {
   DROP_PI_PROVIDERS,
-  isModelVisible,
+  isCatalogEntryVisible,
   PROVIDER_ID_RENAME,
 } from "../provider-overrides.ts";
 import { normalizeKey } from "./catalog-key.ts";
@@ -72,7 +72,7 @@ function entryToRaw(providerId: string, entry: CatalogModelEntry): RawModel {
  * provider in the raw catalog never becomes a hub model the picker can't offer).
  *
  * Model curation: the hub, the provider modal, and the chat model picker must
- * offer the SAME set, so both apply the ONE shared gate — `isModelVisible`
+ * offer the SAME set, so both apply the ONE shared gate — `isCatalogEntryVisible`
  * (`VISIBLE_MODELS` in `provider-overrides.ts`), the same table `buildProvider`
  * filters the hydrated `PROVIDERS` with. A provider without a `VISIBLE_MODELS`
  * entry carries its full pi model list. Hidden ids stay runnable on the wire;
@@ -89,7 +89,7 @@ export function piCatalogToCandidates(
     if (visibleIds && !visibleIds.has(providerId)) continue;
     const subscription = provider.auth === "oauth";
     for (const entry of provider.models) {
-      if (!isModelVisible(providerId, entry.id)) continue;
+      if (!isCatalogEntryVisible(providerId, entry)) continue;
       const raw = entryToRaw(providerId, entry);
       candidates.push({
         providerId,

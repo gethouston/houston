@@ -311,6 +311,13 @@
         "gemini-4-neon": "O Gemini 4 equilibrado do Google, bom para agentes e programação. Precisa de uma chave de API paga."
       },
       "github-copilot": {
+        "gpt-6-luna": "Rápido e leve. O mais barato em todos os planos pagos do Copilot.",
+        "claude-sonnet-5": "O melhor equilíbrio entre velocidade e qualidade. Precisa do Copilot Pro.",
+        "claude-opus-5_5": "O modelo principal da Anthropic. O mais capaz, porém mais lento. Precisa do Copilot Pro+.",
+        "claude-opus-4_8": "Opus anterior. Só nos planos anuais do Copilot Pro+.",
+        "claude-haiku-4_5": "O mais rápido da Anthropic, para tarefas rápidas. Precisa do Copilot Pro.",
+        "gpt-6_1-terra": "O modelo intermediário equilibrado da OpenAI. Precisa do Copilot Pro.",
+        "gemini-3_8-flash": "O modelo rápido do Google. Precisa do Copilot Pro.",
         "gemini-4-neon": "O Gemini 4 equilibrado do Google, bom para agentes e programação. Precisa do Copilot Pro+."
       }
     },
