@@ -1,3 +1,4 @@
+import { modelAliasesFor } from "@houston/domain/model-aliases";
 import type { CatalogModelEntry, CatalogProvider } from "@houston/protocol";
 import { expect, test } from "vitest";
 import {
@@ -71,14 +72,18 @@ test("GET /v1/catalog shapes anthropic's rows and no other provider's Claude row
   expect(byId.get("claude-opus-5-5")?.runsAs).toBeUndefined();
   expect(byId.get("claude-haiku-4-5")?.runsAs).toBe("claude-haiku-5-5");
   expect(byId.get("claude-haiku-5-5")?.runsAs).toBeUndefined();
-  // MiniMax's retired rows carry `runsAs` too (./pi-catalog.test.ts).
+  // MiniMax's retired rows carry `runsAs` too (./pi-catalog.test.ts), and so
+  // does every other provider's renamed id (./alias-catalog.test.ts), but
+  // never by the Claude lineup rule.
   for (const provider of catalog) {
     if (provider.id === ANTHROPIC_PROVIDER_ID || provider.id === "minimax")
       continue;
-    expect(
-      provider.models.some((m) => m.runsAs !== undefined),
-      provider.id,
-    ).toBe(false);
+    const aliases = modelAliasesFor(provider.id);
+    for (const m of provider.models)
+      if (m.runsAs !== undefined)
+        expect(Object.hasOwn(aliases, m.id), `${provider.id}/${m.id}`).toBe(
+          true,
+        );
   }
   // Other providers keep their own Claude Haiku rows, unmapped.
   expect(

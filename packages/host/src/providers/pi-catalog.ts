@@ -18,6 +18,7 @@ import type {
   CatalogProvider,
   ProviderCatalog,
 } from "@houston/protocol";
+import { withModelAliases } from "./alias-catalog";
 import {
   ANTHROPIC_PROVIDER_ID,
   withAnthropicLineup,
@@ -120,6 +121,7 @@ function providerDisplayName(
  * never reach a picker. Anthropic runs one model per Claude family, so its
  * retired rows name the lineup model they run as (see ./anthropic-catalog),
  * and MiniMax's retired ids name the MiniMax default (see ./minimax-catalog).
+ * Every provider's renamed ids name their successor (see ./alias-catalog).
  */
 export function buildProviderCatalog(): ProviderCatalog {
   const oauthProviders = piOAuthProviders();
@@ -145,7 +147,7 @@ export function buildProviderCatalog(): ProviderCatalog {
         ? withAnthropicLineup(provider)
         : id === MINIMAX_PROVIDER
           ? withMinimaxRetired(provider)
-          : provider,
+          : withModelAliases(provider),
     );
   }
   // Houston's qwen extension provider (DashScope international pay-as-you-go)

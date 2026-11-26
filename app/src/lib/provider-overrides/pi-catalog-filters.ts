@@ -138,3 +138,15 @@ export function isModelVisible(providerId: string, modelId: string): boolean {
   const visible = VISIBLE_MODELS[providerId];
   return !visible || visible.has(modelId);
 }
+
+/**
+ * Whether a host catalog row may surface: never a row carrying `runsAs` (an id
+ * a turn runs as another model, kept only so a ceiling naming it still admits
+ * that model), else `isModelVisible`.
+ */
+export function isCatalogEntryVisible(
+  providerId: string,
+  entry: { id: string; runsAs?: string },
+): boolean {
+  return entry.runsAs === undefined && isModelVisible(providerId, entry.id);
+}

@@ -12,7 +12,7 @@ import {
   VALID_MODELS,
 } from "@houston/sdk/provider-catalog";
 import { normalizeKey } from "../ai-hub/catalog-key.ts";
-import { isModelVisible } from "../provider-overrides/pi-catalog-filters.ts";
+import { isCatalogEntryVisible } from "../provider-overrides/pi-catalog-filters.ts";
 import type { ProviderOverride } from "../provider-overrides/types.ts";
 import type { EffortLevel, ModelOption, ProviderInfo } from "./types.ts";
 
@@ -131,7 +131,7 @@ export function buildProvider(
   // AI-hub directory applies the same gate (`piCatalogToCandidates`), so the
   // picker and the hub always show the identical set.
   const visibleEntries = piProvider.models.filter((entry) =>
-    isModelVisible(finalId, entry.id),
+    isCatalogEntryVisible(finalId, entry),
   );
   const toOption = (entry: CatalogModelEntry): ModelOption => {
     const mo = override?.models?.[entry.id];
@@ -168,7 +168,7 @@ export function buildProvider(
     canonicalId
   ];
   const hiddenModels = piProvider.models
-    .filter((e) => !isModelVisible(finalId, e.id) && runnable?.has(e.id))
+    .filter((e) => !isCatalogEntryVisible(finalId, e) && runnable?.has(e.id))
     .map(toOption);
   return {
     id: finalId,
