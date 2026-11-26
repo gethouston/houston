@@ -48,6 +48,7 @@ tests/last-sign-in.test.ts
 tests/learnings-refusal-restore.test.ts
 tests/linkedin-post-run.test.ts
 tests/linkedin-post-store.test.ts
+tests/local-model-manual-connect-report.test.ts
 tests/mission-chat-back.test.ts
 tests/mission-control-send.test.ts
 tests/mission-row.test.ts

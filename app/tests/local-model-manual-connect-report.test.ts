@@ -75,9 +75,8 @@ mock.module(lib("quiet-error-report.ts").href, {
   },
 });
 
-const { connectManualEndpoint } = await import(
-  "../src/lib/local-model-connect.ts"
-);
+const { connectManualEndpoint } =
+  await import("../src/lib/local-model-connect.ts");
 
 const endpoint = { baseUrl: "localhost:11434", model: "llama3" };
 
