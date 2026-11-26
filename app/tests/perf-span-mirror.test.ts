@@ -147,11 +147,61 @@ describe("perfSpanEventProps", () => {
     ok(!("outcome" in props), "outcome must be absent, not empty");
   });
 
-  it("only sends properties the analytics allow-list keeps", () => {
-    const props = perfSpanEventProps("send_to_first_response", 5, {
-      orgSlug: "5f2b225f316c6079",
-      outcome: "timeout",
+  it("carries every board tag on app_to_board, false and zero ones included", () => {
+    deepStrictEqual(
+      perfSpanEventProps("app_to_board", 800, {
+        orgSlug: null,
+        board: {
+          signInShown: false,
+          onboardingShown: false,
+          hiddenMs: 0,
+          openedHidden: false,
+          landing: "board",
+        },
+      }),
+      {
+        span: "app_to_board",
+        duration_ms: 800,
+        sign_in_shown: false,
+        onboarding_shown: false,
+        hidden_ms: 0,
+        opened_hidden: false,
+        landing: "board",
+      },
+    );
+  });
+
+  it("leaves landing out when no screen reported one", () => {
+    const props = perfSpanEventProps("app_to_board", 800, {
+      orgSlug: null,
+      board: {
+        signInShown: true,
+        onboardingShown: true,
+        hiddenMs: 12,
+        openedHidden: true,
+        landing: null,
+      },
     });
+    ok(!("landing" in props), "landing must be absent, not null");
+  });
+
+  it("only sends properties the analytics allow-list keeps", () => {
+    const props = {
+      ...perfSpanEventProps("send_to_first_response", 5, {
+        orgSlug: "5f2b225f316c6079",
+        outcome: "timeout",
+      }),
+      ...perfSpanEventProps("app_to_board", 5, {
+        orgSlug: null,
+        board: {
+          signInShown: true,
+          onboardingShown: true,
+          hiddenMs: 5,
+          openedHidden: true,
+          landing: "agents-home",
+        },
+      }),
+    };
     for (const key of Object.keys(props)) {
       ok(TRACKED_ALLOWED_PROPS.has(key), `cleanProps would drop "${key}"`);
     }

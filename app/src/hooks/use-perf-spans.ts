@@ -3,16 +3,13 @@ import { useEffect, useRef } from "react";
 import { analytics } from "../lib/analytics";
 import { bakedUrl } from "../lib/baked-url";
 import { osIsTauri, osLaunchT0Ms } from "../lib/os-bridge";
+import { createPerfSpanSend, liveIngestGateway } from "../lib/perf-span-ingest";
 import {
   perfSpanEventProps,
   perfSpanNeedsMemberships,
   perfSpanOrgSlug,
 } from "../lib/perf-span-mirror";
-import {
-  type PerfSpanObservation,
-  type PerfSpanTransport,
-  perfSpans,
-} from "../lib/perf-spans";
+import { type PerfSpanTransport, perfSpans } from "../lib/perf-spans";
 import { currentPlatformOs, metricsPlatform } from "../lib/platform";
 import { useWorkspaceStore } from "../stores/workspaces";
 import { useOrgs } from "./queries/use-spaces";
@@ -59,36 +56,15 @@ export function usePerfSpans(): void {
         analytics.track("perf_span", perfSpanEventProps(span, ms, tags));
       },
     };
-    const ingest = CLIENT_METRICS_URL;
-    const platform = metricsPlatform(osIsTauri(), currentPlatformOs);
-    if (ingest) {
-      transport.send = async (spans: PerfSpanObservation[]) => {
-        const token = tokenRef.current;
-        // No session yet → throw so PerfSpans RE-QUEUES the batch (bounded)
-        // instead of counting it delivered. The earliest span of a session
-        // (app_to_board) routinely beats the async session load — dropping
-        // here silently under-counted exactly the journey we care most about.
-        // The token-arrival effect below re-flushes the queue.
-        if (!token) throw new Error("session not ready");
-        const res = await fetch(`${ingest}/v1/client-metrics`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            spans: spans.map((s) => ({
-              ...s,
-              platform,
-              appVersion: APP_VERSION,
-            })),
-          }),
-        });
-        // 404 = older gateway without the ingest; treat as delivered.
-        if (!res.ok && res.status !== 404)
-          throw new Error(`client-metrics rejected: ${res.status}`);
-      };
-    }
+    if (CLIENT_METRICS_URL)
+      transport.send = createPerfSpanSend({
+        gateway: liveIngestGateway(
+          CLIENT_METRICS_URL,
+          () => tokenRef.current ?? undefined,
+        ),
+        platform: metricsPlatform(osIsTauri(), currentPlatformOs),
+        appVersion: APP_VERSION,
+      });
     perfSpans.configure(transport);
     // Every turn the client sends reports its first response (paired to that
     // turn by the SDK), whichever surface sent it.
