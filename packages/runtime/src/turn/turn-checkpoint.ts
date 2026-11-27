@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join, posix } from "node:path";
 import type { WireFrame } from "@houston/runtime-client";
 import {
+  type HydrateManifest,
   type ObjectStore,
   StoreFencedError,
 } from "@houston/runtime-client/object-sync";
@@ -61,7 +62,16 @@ export function startTurnCheckpoints(input: {
   const checkpoint = async () => {
     const started = Date.now();
     const snapshot = new Map(filesystem.manifest);
+    const landed: HydrateManifest = new Map();
     interrupted = false;
+    // An entry the turn's own writes moved on during the pass stays theirs.
+    const keep = (entries: HydrateManifest, uploaded: string[]) => {
+      for (const [rel, entry] of entries)
+        if (filesystem.manifest.get(rel) === snapshot.get(rel))
+          filesystem.manifest.set(rel, entry);
+      for (const rel of uploaded) filesystem.immediateWrites.add(rel);
+      input.landed.add(uploaded);
+    };
     try {
       const synced = await syncTurnFilesystem({
         store: input.store,
@@ -70,24 +80,25 @@ export function startTurnCheckpoints(input: {
         conversationId: input.conversationId,
         claimed: true,
         narrow,
+        landed,
       });
       if (interrupted) dirty = true;
       const unsettled = new Set(
         [...synced.skipped, ...synced.conflicts].map(({ key }) => key),
       );
-      for (const [rel, entry] of synced.manifest)
-        if (
-          !unsettled.has(rel) &&
-          filesystem.manifest.get(rel) === snapshot.get(rel)
-        )
-          filesystem.manifest.set(rel, entry);
-      for (const rel of synced.uploaded) filesystem.immediateWrites.add(rel);
-      input.landed.add(synced.uploaded);
+      keep(
+        new Map([...synced.manifest].filter(([rel]) => !unsettled.has(rel))),
+        synced.uploaded,
+      );
     } catch (error) {
       if (error instanceof StoreFencedError) {
         stopped = true;
         return;
       }
+      // What landed before the throw is in the store: without its new
+      // generation the next pass would skip a revert, keep a delete, or
+      // meet its own write as a conflict.
+      if (landed.size > 0) keep(landed, [...landed.keys()]);
       dirty = true;
       console.warn(
         `[turn] checkpoint failed conversation=${input.conversationId}`,

@@ -1,5 +1,9 @@
 import type { TurnInterruption } from "@houston/protocol";
-import { parseTurnSetupFailure, TurnErrorCode } from "@houston/wire-types";
+import {
+  parseTurnSetupFailure,
+  TurnErrorCode,
+  UNSAVED_FILE_REASONS,
+} from "@houston/wire-types";
 import { ENGINE_RESTART_MESSAGE, type EngineNoticeKind } from "./turn-errors";
 import { finishErr, type TurnState } from "./turn-settle";
 
@@ -142,8 +146,10 @@ export function turnFailureReport(
     typeof it.turnId === "string" ? { turn_id: it.turnId } : {};
   if (typeof unsaved?.total === "number")
     tags.unsaved_total = String(unsaved.total);
-  for (const [reason, count] of Object.entries(unsaved?.counts ?? {}))
+  for (const reason of UNSAVED_FILE_REASONS) {
+    const count = unsaved?.counts?.[reason];
     if (typeof count === "number") tags[`unsaved_${reason}`] = String(count);
+  }
   return {
     source,
     tags,

@@ -2,7 +2,7 @@ import { join, posix } from "node:path";
 import { DEFAULT_EXCLUDES, excluded, type HydrateManifest } from "./hydrate";
 import type { ObjectStore } from "./object-store";
 import { privateDirGate } from "./private-dir-gate";
-import { uploadChangedObject } from "./sync-back-conflicts";
+import { syncMergeOf, uploadChangedObject } from "./sync-back-conflicts";
 import { syncDeletes } from "./sync-back-deletes";
 import { keyedRefresh, listingRefresh } from "./sync-back-refresh";
 import { SOURCE_GONE, SOURCE_REFUSED, syncSource } from "./sync-back-source";
@@ -134,13 +134,8 @@ export async function syncBack(
         ...(opts.conflictBackoff ? { backoff: opts.conflictBackoff } : {}),
         ...(opts.localWriteLock ? { localWriteLock: opts.localWriteLock } : {}),
       });
-      if (result.mergeAttempts)
-        merges.push({
-          key: rel,
-          attempts: result.mergeAttempts,
-          ...(result.removedCards ? { removedCards: result.removedCards } : {}),
-          ...(result.unmergeable ? { unmergeable: result.unmergeable } : {}),
-        });
+      const merge = syncMergeOf(rel, result);
+      if (merge) merges.push(merge);
       // Second half of the vanish window: the file outlived the hash above
       // but was unlinked before the upload re-read it. Same reconciliation as
       // the walk-stage skip: out of the next manifest, delete pass settles it.
@@ -150,6 +145,7 @@ export async function syncBack(
       }
       if (result.entry) nextManifest.set(rel, result.entry);
       if (result.uploaded) uploaded.push(rel);
+      if (result.uploaded && result.entry) opts.landed?.set(rel, result.entry);
       if (result.skipped)
         skipped.push({
           key: rel,

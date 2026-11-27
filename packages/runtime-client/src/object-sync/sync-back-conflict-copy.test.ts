@@ -286,3 +286,46 @@ test("a 412 whose remote holds this turn's own earlier bytes overwrites at the r
   });
   expect(result.manifest.get(NOTES)?.generation).toBe(mem.generation(NOTES));
 });
+
+test("the turn's own earlier bytes another writer restored later get a copy", async () => {
+  const mem = memoryStore({ [NOTES]: "hydrated" });
+  const root = await tree({ [NOTES]: "turn first" });
+  const abs = join(root, ...NOTES.split("/"));
+  const hydrated: HydrateManifest = new Map([
+    [NOTES, { hash: "hydrated", generation: mem.generation(NOTES) }],
+  ]);
+  const opts = { ...workerOpts, sentHashes: new Map() };
+  const first = await syncBack(mem.store, "", root, hydrated, opts);
+  await writeFile(abs, "turn second");
+  const second = await syncBack(mem.store, "", root, first.manifest, opts);
+  mem.put(NOTES, "turn first");
+  await writeFile(abs, "turn third");
+  const result = await syncBack(mem.store, "", root, second.manifest, opts);
+
+  expect(mem.body(NOTES)).toBe("turn first");
+  expect(mem.body(COPY)).toBe("turn third");
+  expect(result.conflictCopies).toEqual([
+    { key: NOTES, copy: COPY, generation: mem.generation(COPY) },
+  ]);
+});
+
+test("the turn's own earlier bytes read back with no generation get a copy", async () => {
+  const mem = memoryStore({ [NOTES]: "hydrated" });
+  const root = await tree({ [NOTES]: "turn first" });
+  const hydrated: HydrateManifest = new Map([
+    [NOTES, { hash: "hydrated", generation: mem.generation(NOTES) }],
+  ]);
+  const opts = { ...workerOpts, sentHashes: new Map() };
+  await syncBack(mem.store, "", root, hydrated, opts);
+  const versioned = mem.store.downloadVersioned;
+  mem.store.downloadVersioned = async (key, dest) => {
+    await versioned?.(key, dest);
+    return {};
+  };
+  await writeFile(join(root, ...NOTES.split("/")), "turn second");
+  const result = await syncBack(mem.store, "", root, hydrated, opts);
+
+  expect(mem.body(NOTES)).toBe("turn first");
+  expect(mem.body(COPY)).toBe("turn second");
+  expect(result.conflictCopies).toHaveLength(1);
+});

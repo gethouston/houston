@@ -200,6 +200,18 @@ test("the notice's turn and counts ride as report tags, never file names", () =>
   });
 });
 
+test("an unknown reason in the counts rides as no tag", () => {
+  const reported = turnFailureReport({
+    feed_type: "system_message",
+    notice: "files_not_saved",
+    data: "x",
+    noticeData: {
+      unsavedFiles: { counts: { conflict: 1, "notes.md": 1 }, total: 2 },
+    },
+  });
+  expect(reported?.tags).toEqual({ unsaved_total: "2", unsaved_conflict: "1" });
+});
+
 test("a malformed saved report replays nothing instead of throwing", () => {
   const broken = [
     messages[0],

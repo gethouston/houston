@@ -20,6 +20,7 @@ import type {
   ConflictCopy,
   LocalWriteLock,
   SentHashes,
+  SyncMerge,
 } from "./sync-back-types";
 
 export type { RefreshManifest } from "./sync-back-merge-retry";
@@ -53,13 +54,7 @@ function initialWriteOptions(
   return previous ? undefined : { ifGenerationMatch: "0" };
 }
 
-/**
- * Upload once. On a generation conflict a worker store (`workerMerge`) lands a
- * merged document through bounded merge rounds; everything else, and every
- * file of the standing store sync, retries once at the refreshed generation
- * (`sync-back-single-retry.ts`).
- */
-export async function uploadChangedObject(opts: {
+export interface UploadChangeOptions {
   store: ObjectStore;
   abs: string;
   key: string;
@@ -75,13 +70,47 @@ export async function uploadChangedObject(opts: {
   sentHashes?: SentHashes;
   backoff?: ConflictBackoff;
   localWriteLock?: LocalWriteLock;
-}): Promise<UploadChangeResult> {
-  // Before the PUT: a write can land while its response is lost.
-  if (opts.conflictCopy && opts.sentHashes) {
-    const sent = opts.sentHashes.get(opts.relativePath) ?? new Set<string>();
-    sent.add(opts.hash.replace(/:x$/, ""));
-    opts.sentHashes.set(opts.relativePath, sent);
-  }
+}
+
+/**
+ * Upload once. On a generation conflict a worker store (`workerMerge`) lands a
+ * merged document through bounded merge rounds; everything else, and every
+ * file of the standing store sync, retries once at the refreshed generation
+ * (`sync-back-single-retry.ts`).
+ */
+export async function uploadChangedObject(
+  opts: UploadChangeOptions,
+): Promise<UploadChangeResult> {
+  // Recorded before the PUT: a write can land while its response is lost,
+  // and then its generation stays unknown.
+  const sent = opts.conflictCopy ? opts.sentHashes : undefined;
+  const hash = opts.hash.replace(/:x$/, "");
+  const sentAt =
+    sent?.get(opts.relativePath) ?? new Map<string, string | undefined>();
+  sent?.set(opts.relativePath, sentAt.set(hash, undefined));
+  const result = await uploadOnce(opts);
+  if (result.uploaded && result.entry?.hash === opts.hash)
+    sentAt.set(hash, result.entry.generation);
+  return result;
+}
+
+/** The merge rounds an upload took, as its pass reports them. */
+export function syncMergeOf(
+  key: string,
+  result: UploadChangeResult,
+): SyncMerge | undefined {
+  if (!result.mergeAttempts) return undefined;
+  return {
+    key,
+    attempts: result.mergeAttempts,
+    ...(result.removedCards ? { removedCards: result.removedCards } : {}),
+    ...(result.unmergeable ? { unmergeable: result.unmergeable } : {}),
+  };
+}
+
+async function uploadOnce(
+  opts: UploadChangeOptions,
+): Promise<UploadChangeResult> {
   try {
     const result = await opts.store.upload(
       opts.abs,

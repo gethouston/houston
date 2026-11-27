@@ -103,11 +103,15 @@ export async function keepRemoteBesideLocal(opts: {
         opts.hash,
       );
       if (remote.kind === "refused") return lost;
-      // Bytes this turn uploaded itself (a pass whose result was lost) are
-      // the turn's own earlier write, not another writer's change.
+      // Bytes this turn uploaded itself are its own earlier write when that
+      // PUT's answer was lost or the remote is still at its generation. The
+      // same bytes at a later generation are another writer's restore.
+      const sentAt = opts.sentHashes?.get(opts.relativePath);
       const ownEarlier =
         remote.kind === "different" &&
-        opts.sentHashes?.get(opts.relativePath)?.has(remote.hash) === true;
+        remote.generation !== undefined &&
+        sentAt?.has(remote.hash) === true &&
+        (sentAt.get(remote.hash) ?? remote.generation) === remote.generation;
       if (ownEarlier || (remote.kind === "same" && opts.hash.endsWith(":x"))) {
         if (remote.generation === undefined) return lost;
         const generation = await writeAt(
