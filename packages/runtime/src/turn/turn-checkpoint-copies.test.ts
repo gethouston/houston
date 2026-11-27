@@ -1,4 +1,5 @@
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { startTurnCheckpoints } from "./turn-checkpoint";
@@ -133,4 +134,114 @@ test("a copy from a checkpoint that failed later is the one the final pass repor
   expect(
     settled.sync?.unsavedFiles?.files.map(({ copyPath }) => copyPath).sort(),
   ).toEqual(copies.map(({ name }) => name));
+});
+
+async function freshTurn(names: string[]) {
+  const agent = await agentStore();
+  for (const name of names)
+    await seed(agent.prefixRoot, `${WORKSPACE_REL}/${name}`, "original");
+  return { agent, turn: await claimedTurn(agent, podDocs({}), "c2") };
+}
+
+const storedPath = (agent: AgentStore, name: string) =>
+  join(agent.prefixRoot, ...WORKSPACE_REL.split("/"), name);
+
+const storedBody = (agent: AgentStore, name: string) =>
+  readFile(storedPath(agent, name), "utf8");
+
+/**
+ * One checkpoint pass that lands one workspace file and then throws. The
+ * walk order is the directory's, so whichever file goes second fails.
+ */
+async function failedPass(agent: AgentStore, turn: Turn) {
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  let uploads = 0;
+  agent.hooks.beforeUpload = (key) =>
+    key.endsWith(".md") && ++uploads === 2
+      ? Promise.reject(new Error("connection reset"))
+      : undefined;
+  const running = checkpoints(agent, turn);
+  running.kick();
+  await until(() => uploads >= 2);
+  await running.stop();
+  agent.hooks.beforeUpload = undefined;
+}
+
+test("a checkpoint that fails after landing a file makes no conflict copy when the turn edits it again", async () => {
+  const { agent, turn } = await freshTurn(["notes.md", "plan.md"]);
+  await edit(turn, "notes.md", "turn notes");
+  await edit(turn, "plan.md", "turn plan");
+  await failedPass(agent, turn);
+  await edit(turn, "notes.md", "turn notes 2");
+  await edit(turn, "plan.md", "turn plan 2");
+  const settled = await turn.settle();
+
+  expect(await storedCopies(agent)).toEqual([]);
+  expect(await storedBody(agent, "notes.md")).toBe("turn notes 2");
+  expect(await storedBody(agent, "plan.md")).toBe("turn plan 2");
+  expect(settled.sync?.unsavedFiles).toBeUndefined();
+});
+
+test("a checkpoint upload that landed but lost its response makes no conflict copy", async () => {
+  const { agent, turn } = await freshTurn(["notes.md"]);
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  let lost = false;
+  agent.hooks.afterUpload = (key) => {
+    if (!key.endsWith("notes.md") || lost) return;
+    lost = true;
+    throw new Error("socket hang up");
+  };
+  const running = checkpoints(agent, turn);
+  await edit(turn, "notes.md", "turn notes");
+  running.kick();
+  await until(() => lost);
+  await running.stop();
+  await edit(turn, "notes.md", "turn notes 2");
+  const settled = await turn.settle();
+
+  expect(await storedCopies(agent)).toEqual([]);
+  expect(await storedBody(agent, "notes.md")).toBe("turn notes 2");
+  expect(settled.sync?.unsavedFiles).toBeUndefined();
+});
+
+test("a file a failed checkpoint landed and the turn then reverted is saved as reverted", async () => {
+  const { agent, turn } = await freshTurn(["notes.md", "plan.md"]);
+  await edit(turn, "notes.md", "turn notes");
+  await edit(turn, "plan.md", "turn plan");
+  await failedPass(agent, turn);
+  await edit(turn, "notes.md", "original");
+  await edit(turn, "plan.md", "original");
+  const settled = await turn.settle();
+
+  expect(await storedBody(agent, "notes.md")).toBe("original");
+  expect(await storedBody(agent, "plan.md")).toBe("original");
+  expect(settled.sync?.unsavedFiles).toBeUndefined();
+});
+
+test("a new file a failed checkpoint landed and the turn then deleted leaves the store", async () => {
+  const { agent, turn } = await freshTurn([]);
+  await edit(turn, "draft-a.md", "a");
+  await edit(turn, "draft-b.md", "b");
+  await failedPass(agent, turn);
+  await rm(join(turn.filesystem.workspaceDir, "draft-a.md"));
+  await rm(join(turn.filesystem.workspaceDir, "draft-b.md"));
+  const settled = await turn.settle();
+
+  expect(existsSync(storedPath(agent, "draft-a.md"))).toBe(false);
+  expect(existsSync(storedPath(agent, "draft-b.md"))).toBe(false);
+  expect(settled.sync?.unsavedFiles).toBeUndefined();
+});
+
+test("an edit a failed checkpoint landed and the turn then deleted is deleted, not kept", async () => {
+  const { agent, turn } = await freshTurn(["notes.md", "plan.md"]);
+  await edit(turn, "notes.md", "turn notes");
+  await edit(turn, "plan.md", "turn plan");
+  await failedPass(agent, turn);
+  await rm(join(turn.filesystem.workspaceDir, "notes.md"));
+  await rm(join(turn.filesystem.workspaceDir, "plan.md"));
+  const settled = await turn.settle();
+
+  expect(existsSync(storedPath(agent, "notes.md"))).toBe(false);
+  expect(existsSync(storedPath(agent, "plan.md"))).toBe(false);
+  expect(settled.sync?.unsavedFiles).toBeUndefined();
 });

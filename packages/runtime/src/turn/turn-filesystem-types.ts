@@ -4,6 +4,7 @@ import type {
   HydrateManifest,
   HydrateOptions,
   ObjectStore,
+  SyncBackOptions,
   SyncResult,
 } from "@houston/runtime-client/object-sync";
 import type { ArchiveLoader } from "./turn-archive-fetch";
@@ -30,6 +31,10 @@ export interface TurnFilesystem extends TurnLayout {
    *  writes and workspace checkpoints (turn-checkpoint.ts). */
   immediateWrites: Set<string>;
   conflictCopies?: Map<string, SyncResult["conflictCopies"][number]>;
+  /** Content hashes each pass tried to upload, per path, with the
+   *  generation each PUT answered: a later pass that meets one of them on a
+   *  412 is meeting this turn's own write. */
+  sentHashes?: SyncBackOptions["sentHashes"];
   landed?: {
     add(landed: readonly string[], deleted?: readonly string[]): void;
   };

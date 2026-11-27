@@ -1,5 +1,9 @@
 import type { TurnInterruption } from "@houston/protocol";
-import { parseTurnSetupFailure, TurnErrorCode } from "@houston/wire-types";
+import {
+  parseTurnSetupFailure,
+  TurnErrorCode,
+  UNSAVED_FILE_REASONS,
+} from "@houston/wire-types";
 import { ENGINE_RESTART_MESSAGE, type EngineNoticeKind } from "./turn-errors";
 import { finishErr, type TurnState } from "./turn-settle";
 
@@ -109,17 +113,21 @@ const REPORTED: Partial<Record<EngineNoticeKind, string>> = {
  * lost terminal are unexpected: the chat line is the person's whole surface
  * (no toast), and this report is ours. The message names only the cause, so
  * reports group by it; the turn and conversation ride as error fields.
+ * Sentry drops fields set on an Error, so the turn and the unsaved counts
+ * also ride as `tags` (counts only: a file path can be customer data).
  */
 export function turnFailureReport(
   item: unknown,
   sessionKey?: string,
-): { source: string; error: Error } | null {
+): { source: string; error: Error; tags: Record<string, string> } | null {
   const it = item as {
     feed_type?: unknown;
     notice?: EngineNoticeKind;
     cause?: unknown;
     turnId?: unknown;
-    noticeData?: { unsavedFiles?: { counts?: object; total?: unknown } };
+    noticeData?: {
+      unsavedFiles?: { counts?: Record<string, unknown>; total?: unknown };
+    };
   };
   if (it.feed_type !== "system_message" || it.notice === undefined) return null;
   const source = REPORTED[it.notice];
@@ -134,8 +142,17 @@ export function turnFailureReport(
         ? `turn files not saved: ${reasons.join(",")}`
         : `turn setup failed: ${cause}`,
   );
+  const tags: Record<string, string> =
+    typeof it.turnId === "string" ? { turn_id: it.turnId } : {};
+  if (typeof unsaved?.total === "number")
+    tags.unsaved_total = String(unsaved.total);
+  for (const reason of UNSAVED_FILE_REASONS) {
+    const count = unsaved?.counts?.[reason];
+    if (typeof count === "number") tags[`unsaved_${reason}`] = String(count);
+  }
   return {
     source,
+    tags,
     error: Object.assign(error, {
       ...(unsaved
         ? { unsavedCounts: unsaved.counts, unsavedTotal: unsaved.total }

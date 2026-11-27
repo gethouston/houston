@@ -1,6 +1,14 @@
-import { readFile, rm } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { lstat, readFile, readlink, rm } from "node:fs/promises";
+import { atomicTempPath } from "@houston/protocol";
+import { fileSha256 } from "./file-hash";
+import { linkHash } from "./object-attrs";
 import type { ObjectMetadata } from "./object-manifest";
-import { ObjectNotFoundError, type ObjectStore } from "./object-store";
+import {
+  ObjectNotFoundError,
+  type ObjectStore,
+  type ReadResult,
+} from "./object-store";
 
 /** The object at `key` as the store holds it now: null when absent,
  *  undefined when the store cannot say. `fresh` re-reads instead of reusing
@@ -46,6 +54,43 @@ export async function readRemoteDocument(
     return { body: await readFile(temp, "utf8"), generation };
   } catch (error) {
     if (error instanceof ObjectNotFoundError) return CREATE_ONLY;
+    throw error;
+  } finally {
+    await rm(temp, { force: true });
+  }
+}
+
+type RemoteState =
+  | { kind: "gone" }
+  | { kind: "refused" }
+  | { kind: "same" | "different"; generation?: string; hash: string };
+
+/** The object at `key` beside `abs`, compared with the local `hash`; `hash`
+ *  on the result is the remote's own content hash. */
+export async function readRemoteObject(
+  store: ObjectStore,
+  key: string,
+  abs: string,
+  hash: string,
+): Promise<RemoteState> {
+  const temp = atomicTempPath(abs, `${randomUUID()}.remote`);
+  try {
+    const read: ReadResult = store.downloadVersioned
+      ? await store.downloadVersioned(key, temp)
+      : ((await store.download(key, temp)) ?? {});
+    if (read.refused) return { kind: "refused" };
+    const info = await lstat(temp);
+    const remoteHash = info.isSymbolicLink()
+      ? linkHash(await readlink(temp))
+      : await fileSha256(temp, info.size);
+    const same = remoteHash === hash.replace(/:x$/, "");
+    return {
+      kind: same ? "same" : "different",
+      generation: read.generation,
+      hash: remoteHash,
+    };
+  } catch (error) {
+    if (error instanceof ObjectNotFoundError) return { kind: "gone" };
     throw error;
   } finally {
     await rm(temp, { force: true });

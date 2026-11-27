@@ -1,4 +1,5 @@
 import {
+  type HydrateManifest,
   type ObjectStore,
   type SyncResult,
   syncBack,
@@ -36,6 +37,8 @@ export async function syncTurnFilesystem(opts: {
   conversationId: string;
   claimed: boolean;
   narrow?: (rel: string) => boolean;
+  /** Filled as each upload lands (see `SyncBackOptions.landed`). */
+  landed?: HydrateManifest;
 }): Promise<{
   uploaded: string[];
   deleted: string[];
@@ -85,6 +88,10 @@ export async function syncTurnFilesystem(opts: {
       ...(opts.filesystem.conflictCopies
         ? { keptCopies: opts.filesystem.conflictCopies }
         : {}),
+      ...(opts.filesystem.sentHashes
+        ? { sentHashes: opts.filesystem.sentHashes }
+        : {}),
+      ...(opts.landed ? { landed: opts.landed } : {}),
       ...(scope
         ? {
             include: narrowed(

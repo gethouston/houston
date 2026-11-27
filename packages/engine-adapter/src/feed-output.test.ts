@@ -10,12 +10,14 @@ import { createBusFeedOutput } from "./feed-output";
  * the app's error path and never shown.
  */
 
-const reported: { source: string; error: unknown }[] = [];
+const reported: { source: string; error: unknown; detail?: unknown }[] = [];
 const feedItems: unknown[] = [];
 const off = bus.on((event) => {
   if ((event as { type?: string }).type === "FeedItem") feedItems.push(event);
 });
-setAdapterErrorSink((source, error) => reported.push({ source, error }));
+setAdapterErrorSink((source, error, detail) =>
+  reported.push({ source, error, ...(detail ? { detail } : {}) }),
+);
 
 afterEach(() => {
   reported.length = 0;
@@ -71,5 +73,27 @@ test("the bus output carries the explicit stamp and leaves reconciliation unstam
   expect(persist.mock.calls).toEqual([
     ["a1", "sk", "running", null, { stamp: "last_message" }],
     ["a1", "sk", "needs_you", null, undefined],
+  ]);
+});
+
+test("a turn failure report hands its tags to the app's reporting path", () => {
+  createBusFeedOutput(async () => {}).pushFeedItem("a1", "sk", {
+    feed_type: "system_message",
+    notice: "files_not_saved",
+    data: "x",
+    noticeData: { unsavedFiles: { counts: { conflict_copy: 2 }, total: 2 } },
+    turnId: "t1",
+  });
+  expect(reported).toMatchObject([
+    {
+      source: "turn_files_not_saved",
+      detail: {
+        tags: {
+          turn_id: "t1",
+          unsaved_total: "2",
+          unsaved_conflict_copy: "2",
+        },
+      },
+    },
   ]);
 });

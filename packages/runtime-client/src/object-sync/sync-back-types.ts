@@ -17,6 +17,11 @@ export interface ConflictCopy {
   generation?: string;
 }
 
+/** Per relative path, the content hashes (without the executable marker) a
+ *  turn's passes have attempted to upload, each with the generation its PUT
+ *  answered, or undefined while unknown (a lost response). */
+export type SentHashes = Map<string, Map<string, string | undefined>>;
+
 export interface SyncResult {
   uploaded: string[];
   deleted: string[];
@@ -81,6 +86,13 @@ export interface SyncBackOptions {
   workerMerge?: boolean;
   conflictCopies?: (relativePath: string) => boolean;
   keptCopies?: Map<string, ConflictCopy>;
+  /** Filled around every conflict-copy-scoped upload, so a later 412 whose
+   *  remote is one of them, still at its generation, overwrites instead of
+   *  copying. */
+  sentHashes?: SentHashes;
+  /** Filled as each upload lands, so a caller whose pass throws later still
+   *  learns the generations it now owns. */
+  landed?: HydrateManifest;
   /** Delay between merge rounds of a contended document (tests pass 0). */
   conflictBackoff?: ConflictBackoff;
   /** The standing daemon's hold on the host's writers of a merged document. */

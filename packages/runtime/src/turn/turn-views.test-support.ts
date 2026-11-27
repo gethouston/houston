@@ -148,6 +148,8 @@ export function holdFirstGet(family: string, conversation: string) {
 export interface StoreHooks {
   /** Runs before an upload of `key` lands: another writer can land first. */
   beforeUpload?: (key: string) => Promise<void> | undefined;
+  /** Runs once an upload of `key` has landed; a throw loses the response. */
+  afterUpload?: (key: string) => void;
 }
 
 /**
@@ -214,6 +216,7 @@ export function generationalStore(
         const generation = check(key, opts?.ifGenerationMatch) + 1;
         await inner.upload(source, key);
         generations.set(key, generation);
+        hooks.afterUpload?.(key);
         return { generation: String(generation) };
       });
     },
