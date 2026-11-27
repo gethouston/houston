@@ -1,20 +1,14 @@
-import { randomUUID } from "node:crypto";
-import { lstat, readlink, rm } from "node:fs/promises";
 import { posix } from "node:path";
-import { atomicTempPath } from "@houston/protocol";
-import { fileSha256 } from "./file-hash";
 import type { HydrateManifestEntry } from "./hydrate";
-import { linkHash } from "./object-attrs";
 import {
-  ObjectNotFoundError,
   type ObjectStore,
   ObjectTooLargeError,
   ObjectWriteRefusedError,
-  type ReadResult,
   StoreConflictError,
 } from "./object-store";
 import { sourceVanished } from "./sync-back-merge-retry";
-import type { ConflictCopy } from "./sync-back-types";
+import { readRemoteObject } from "./sync-back-remote-read";
+import type { ConflictCopy, SentHashes } from "./sync-back-types";
 
 const ROUNDS = 3;
 const COPY_NAMES = 5;
@@ -56,37 +50,6 @@ export function conflictCopyName(
   return dir === "." ? name : posix.join(dir, name);
 }
 
-type RemoteState =
-  | { kind: "gone" }
-  | { kind: "refused" }
-  | { kind: "same" | "different"; generation?: string };
-
-async function readRemote(
-  store: ObjectStore,
-  key: string,
-  abs: string,
-  hash: string,
-): Promise<RemoteState> {
-  const temp = atomicTempPath(abs, `${randomUUID()}.remote`);
-  try {
-    const read: ReadResult = store.downloadVersioned
-      ? await store.downloadVersioned(key, temp)
-      : ((await store.download(key, temp)) ?? {});
-    if (read.refused) return { kind: "refused" };
-    const info = await lstat(temp);
-    const remoteHash = info.isSymbolicLink()
-      ? linkHash(await readlink(temp))
-      : await fileSha256(temp, info.size);
-    const same = remoteHash === hash.replace(/:x$/, "");
-    return { kind: same ? "same" : "different", generation: read.generation };
-  } catch (error) {
-    if (error instanceof ObjectNotFoundError) return { kind: "gone" };
-    throw error;
-  } finally {
-    await rm(temp, { force: true });
-  }
-}
-
 const TAKEN = Symbol("taken");
 
 async function writeAt(
@@ -114,6 +77,7 @@ export async function keepRemoteBesideLocal(opts: {
   hash: string;
   previous?: HydrateManifestEntry;
   keptCopy?: ConflictCopy;
+  sentHashes?: SentHashes;
   conflict: string;
 }): Promise<ConflictCopyResult> {
   const keyOf = (copy: string) =>
@@ -132,14 +96,19 @@ export async function keepRemoteBesideLocal(opts: {
   };
   try {
     for (let round = 0; round < ROUNDS; round += 1) {
-      const remote = await readRemote(
+      const remote = await readRemoteObject(
         opts.store,
         opts.key,
         opts.abs,
         opts.hash,
       );
       if (remote.kind === "refused") return lost;
-      if (remote.kind === "same" && opts.hash.endsWith(":x")) {
+      // Bytes this turn uploaded itself (a pass whose result was lost) are
+      // the turn's own earlier write, not another writer's change.
+      const ownEarlier =
+        remote.kind === "different" &&
+        opts.sentHashes?.get(opts.relativePath)?.has(remote.hash) === true;
+      if (ownEarlier || (remote.kind === "same" && opts.hash.endsWith(":x"))) {
         if (remote.generation === undefined) return lost;
         const generation = await writeAt(
           opts.store,

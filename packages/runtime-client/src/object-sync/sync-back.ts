@@ -130,6 +130,7 @@ export async function syncBack(
         ...(opts.conflictCopies?.(rel)
           ? { conflictCopy: true, keptCopy: opts.keptCopies?.get(rel) }
           : {}),
+        ...(opts.sentHashes ? { sentHashes: opts.sentHashes } : {}),
         ...(opts.conflictBackoff ? { backoff: opts.conflictBackoff } : {}),
         ...(opts.localWriteLock ? { localWriteLock: opts.localWriteLock } : {}),
       });

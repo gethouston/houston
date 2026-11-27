@@ -16,7 +16,11 @@ import {
   uploadMergedDocument,
 } from "./sync-back-merge-retry";
 import { retryAtRefreshedGeneration } from "./sync-back-single-retry";
-import type { ConflictCopy, LocalWriteLock } from "./sync-back-types";
+import type {
+  ConflictCopy,
+  LocalWriteLock,
+  SentHashes,
+} from "./sync-back-types";
 
 export type { RefreshManifest } from "./sync-back-merge-retry";
 
@@ -68,9 +72,16 @@ export async function uploadChangedObject(opts: {
   workerMerge?: boolean;
   conflictCopy?: boolean;
   keptCopy?: ConflictCopy;
+  sentHashes?: SentHashes;
   backoff?: ConflictBackoff;
   localWriteLock?: LocalWriteLock;
 }): Promise<UploadChangeResult> {
+  // Before the PUT: a write can land while its response is lost.
+  if (opts.conflictCopy && opts.sentHashes) {
+    const sent = opts.sentHashes.get(opts.relativePath) ?? new Set<string>();
+    sent.add(opts.hash.replace(/:x$/, ""));
+    opts.sentHashes.set(opts.relativePath, sent);
+  }
   try {
     const result = await opts.store.upload(
       opts.abs,

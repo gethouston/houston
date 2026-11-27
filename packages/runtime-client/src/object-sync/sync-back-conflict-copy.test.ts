@@ -259,3 +259,30 @@ test("a kept copy another writer changed moves on to a new name", async () => {
   expect(keptCopies.get(NOTES)?.copy).toBe(second);
   expect(result.conflictCopies.map(({ copy }) => copy)).toEqual([second]);
 });
+
+test("a 412 whose remote holds this turn's own earlier bytes overwrites at the remote generation, no copy", async () => {
+  const mem = memoryStore({ [NOTES]: "hydrated" });
+  const root = await tree({ [NOTES]: "turn first" });
+  const hydrated: HydrateManifest = new Map([
+    [NOTES, { hash: "hydrated", generation: mem.generation(NOTES) }],
+  ]);
+  const opts = { ...workerOpts, sentHashes: new Map() };
+  // The pass lands the file but its result is lost, so the manifest the next
+  // pass sends from still names the hydrated generation.
+  await syncBack(mem.store, "", root, hydrated, opts);
+  await writeFile(join(root, ...NOTES.split("/")), "turn second");
+  const remoteAt = mem.generation(NOTES);
+  const result = await syncBack(mem.store, "", root, hydrated, opts);
+
+  expect(mem.body(NOTES)).toBe("turn second");
+  expect(mem.body(COPY)).toBeUndefined();
+  expect(result.conflictCopies).toEqual([]);
+  expect(result.conflicts).toEqual([]);
+  expect(result.uploaded).toEqual([NOTES]);
+  expect(mem.writes.at(-1)).toEqual({
+    op: "put",
+    key: NOTES,
+    ifGenerationMatch: remoteAt,
+  });
+  expect(result.manifest.get(NOTES)?.generation).toBe(mem.generation(NOTES));
+});

@@ -134,3 +134,64 @@ test("a copy from a checkpoint that failed later is the one the final pass repor
     settled.sync?.unsavedFiles?.files.map(({ copyPath }) => copyPath).sort(),
   ).toEqual(copies.map(({ name }) => name));
 });
+
+async function freshTurn(names: string[]) {
+  const agent = await agentStore();
+  for (const name of names)
+    await seed(agent.prefixRoot, `${WORKSPACE_REL}/${name}`, "original");
+  return { agent, turn: await claimedTurn(agent, podDocs({}), "c2") };
+}
+
+async function storedBody(agent: AgentStore, name: string) {
+  const dir = join(agent.prefixRoot, ...WORKSPACE_REL.split("/"));
+  return readFile(join(dir, name), "utf8");
+}
+
+test("a checkpoint that fails after landing a file makes no conflict copy when the turn edits it again", async () => {
+  const { agent, turn } = await freshTurn(["notes.md", "plan.md"]);
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  // The walk order is the directory's: whichever file goes second fails, so
+  // the first one lands without its new generation reaching the manifest.
+  let workspaceUploads = 0;
+  agent.hooks.beforeUpload = (key) =>
+    key.endsWith(".md") && ++workspaceUploads === 2
+      ? Promise.reject(new Error("connection reset"))
+      : undefined;
+  const running = checkpoints(agent, turn);
+  await edit(turn, "notes.md", "turn notes");
+  await edit(turn, "plan.md", "turn plan");
+  running.kick();
+  await until(() => workspaceUploads >= 2);
+  await running.stop();
+  agent.hooks.beforeUpload = undefined;
+  await edit(turn, "notes.md", "turn notes 2");
+  await edit(turn, "plan.md", "turn plan 2");
+  const settled = await turn.settle();
+
+  expect(await storedCopies(agent)).toEqual([]);
+  expect(await storedBody(agent, "notes.md")).toBe("turn notes 2");
+  expect(await storedBody(agent, "plan.md")).toBe("turn plan 2");
+  expect(settled.sync?.unsavedFiles).toBeUndefined();
+});
+
+test("a checkpoint upload that landed but lost its response makes no conflict copy", async () => {
+  const { agent, turn } = await freshTurn(["notes.md"]);
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  let lost = false;
+  agent.hooks.afterUpload = (key) => {
+    if (!key.endsWith("notes.md") || lost) return;
+    lost = true;
+    throw new Error("socket hang up");
+  };
+  const running = checkpoints(agent, turn);
+  await edit(turn, "notes.md", "turn notes");
+  running.kick();
+  await until(() => lost);
+  await running.stop();
+  await edit(turn, "notes.md", "turn notes 2");
+  const settled = await turn.settle();
+
+  expect(await storedCopies(agent)).toEqual([]);
+  expect(await storedBody(agent, "notes.md")).toBe("turn notes 2");
+  expect(settled.sync?.unsavedFiles).toBeUndefined();
+});

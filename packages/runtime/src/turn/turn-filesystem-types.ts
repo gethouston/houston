@@ -30,6 +30,9 @@ export interface TurnFilesystem extends TurnLayout {
    *  writes and workspace checkpoints (turn-checkpoint.ts). */
   immediateWrites: Set<string>;
   conflictCopies?: Map<string, SyncResult["conflictCopies"][number]>;
+  /** Content hashes each pass tried to upload, per path: a later pass that
+   *  meets one of them on a 412 is meeting this turn's own lost write. */
+  sentHashes?: Map<string, Set<string>>;
   landed?: {
     add(landed: readonly string[], deleted?: readonly string[]): void;
   };

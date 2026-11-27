@@ -85,6 +85,9 @@ export async function syncTurnFilesystem(opts: {
       ...(opts.filesystem.conflictCopies
         ? { keptCopies: opts.filesystem.conflictCopies }
         : {}),
+      ...(opts.filesystem.sentHashes
+        ? { sentHashes: opts.filesystem.sentHashes }
+        : {}),
       ...(scope
         ? {
             include: narrowed(

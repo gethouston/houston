@@ -63,6 +63,7 @@ describe("writeAgentFile settings mirror", () => {
     expect(sink).toHaveBeenCalledWith(
       "engine-adapter.config-settings-sync",
       refused,
+      undefined,
     );
   });
 

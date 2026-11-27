@@ -180,6 +180,26 @@ test("the notice reports reasons and counts, never file names", () => {
   expect(JSON.stringify(reported?.error)).not.toContain("notes");
 });
 
+test("the notice's turn and counts ride as report tags, never file names", () => {
+  const reported = turnFailureReport(
+    {
+      feed_type: "system_message",
+      notice: "files_not_saved",
+      data: "x",
+      noticeData: visible,
+      turnId: "t",
+    },
+    "c",
+  );
+  expect(reported?.tags).toEqual({
+    turn_id: "t",
+    unsaved_total: "3",
+    unsaved_conflict: "1",
+    unsaved_conflict_copy: "1",
+    unsaved_too_large: "1",
+  });
+});
+
 test("a malformed saved report replays nothing instead of throwing", () => {
   const broken = [
     messages[0],
