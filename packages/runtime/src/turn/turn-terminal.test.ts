@@ -72,9 +72,19 @@ test("the done frame reports hydrated and skipped object counts", () => {
     undefined,
     [],
     undefined,
-    { hydratedObjects: 7, skippedObjects: 88 },
+    {
+      hydratedObjects: 7,
+      skippedObjects: 88,
+      startupObjects: 5,
+      startupBytes: 4096,
+    },
   ) as unknown as { data: Record<string, number> };
-  expect(frame.data).toMatchObject({ hydratedObjects: 7, skippedObjects: 88 });
+  expect(frame.data).toMatchObject({
+    hydratedObjects: 7,
+    skippedObjects: 88,
+    startupObjects: 5,
+    startupBytes: 4096,
+  });
 });
 
 test("the done frame names the board cards a sync-back merge removed", () => {

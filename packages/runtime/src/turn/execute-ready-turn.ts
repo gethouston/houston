@@ -148,6 +148,8 @@ export async function executeReadyTurn(input: ReadyTurnInput): Promise<void> {
         {
           hydratedObjects: input.filesystem.manifest.size,
           skippedObjects: input.filesystem.skippedObjects,
+          startupObjects: input.filesystem.startupLoad.objects,
+          startupBytes: input.filesystem.startupLoad.bytes,
         },
         input.turn.missionTitle
           ? landedMissionTitle(outcome.missionTitle, durable.sync)

@@ -15,11 +15,20 @@ export interface HydrateListedObject {
   updated?: string;
 }
 
+/** What the startup download (priority and eager objects, never deferred
+ *  ones) fetched: files landed and their bytes on disk. */
+export interface HydrateStartupLoad {
+  objects: number;
+  bytes: number;
+}
+
 export interface StartedHydration {
   manifest: HydrateManifest;
   listed: { rels: string[]; generationAware: boolean };
   /** Listed objects rejected by the caller's filter. */
   skippedObjects: number;
+  /** What the startup download fetched so far; final once `done` resolves. */
+  startupLoad: () => HydrateStartupLoad;
   /** Resolves only after every non-priority, non-deferred object has landed. */
   done: Promise<void>;
   /** Resolves after `done` and every `opts.defer` object has landed. */

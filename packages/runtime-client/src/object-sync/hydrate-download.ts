@@ -45,8 +45,16 @@ export interface HydrateDownloadState {
  *  the critical set and one for the deferred files (hydrate.ts). */
 export interface HydrateBudget {
   landed: number;
+  /** Files landed (links carry no bytes and are not counted). */
+  objects: number;
   readonly maxBytes: number;
 }
+
+export const hydrateBudget = (maxBytes: number): HydrateBudget => ({
+  landed: 0,
+  objects: 0,
+  maxBytes,
+});
 
 export function hydrateDownloadState(
   controller: AbortController,
@@ -134,6 +142,7 @@ export async function downloadHydrationEntries(opts: {
         }
         const { size } = await stat(dest);
         opts.budget.landed += size;
+        opts.budget.objects += 1;
         if (opts.budget.landed > opts.budget.maxBytes) {
           throw opts.limitError(opts.budget.landed);
         }

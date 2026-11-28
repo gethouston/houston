@@ -36,6 +36,7 @@ async function fixture(
     vfs: new FsVfs(root),
     listedObjects: 0,
     skippedObjects: 0,
+    startupLoad: { objects: 0, bytes: 0 },
     generationAware: true,
     immediateWrites: new Set(),
   } satisfies TurnFilesystem;

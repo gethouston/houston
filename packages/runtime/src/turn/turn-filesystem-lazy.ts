@@ -60,6 +60,7 @@ export async function startLazyTurnFilesystem(opts: {
     vfs,
     listedObjects: objects.length,
     skippedObjects: 0,
+    startupLoad: { objects: 0, bytes: 0 },
     generationAware: vfs.generationAware,
     immediateWrites: new Set<string>(),
   };

@@ -2,9 +2,9 @@ import { hydrateCandidates, listWhole } from "./hydrate-candidates";
 import { startDeferredPhase } from "./hydrate-deferred";
 import {
   downloadHydrationEntries,
-  type HydrateBudget,
   type HydrateClaims,
   type HydrateEntry,
+  hydrateBudget,
   hydrateConcurrency,
   hydrateDownloadState,
 } from "./hydrate-download";
@@ -40,6 +40,7 @@ export type {
   HydrateManifest,
   HydrateManifestEntry,
   HydrateOptions,
+  HydrateStartupLoad,
   StartedHydration,
 } from "./hydrate-options";
 
@@ -84,11 +85,8 @@ export async function startHydrate(
     : [];
   const priorityRels = new Set(priorityCandidates.map(({ rel }) => rel));
   const state = hydrateDownloadState(controller);
-  const critical: HydrateBudget = { landed: 0, maxBytes };
-  const deferredBudget: HydrateBudget = {
-    landed: 0,
-    maxBytes: opts.deferredMaxBytes ?? maxBytes,
-  };
+  const critical = hydrateBudget(maxBytes);
+  const deferredBudget = hydrateBudget(opts.deferredMaxBytes ?? maxBytes);
   const download = (
     batch: HydrateEntry[],
     later = false,
@@ -169,6 +167,8 @@ export async function startHydrate(
     manifest,
     listed,
     skippedObjects: candidates.length - priority.length - remaining.length,
+    // Deferred and promoted reads spend their own budget, never `critical`.
+    startupLoad: () => ({ objects: critical.objects, bytes: critical.landed }),
     done,
     // After `done`, so a deferred object never takes bandwidth from the set
     // the caller is blocked on.

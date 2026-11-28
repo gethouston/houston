@@ -210,6 +210,8 @@ test("an unclaimed turn retains full sync-back", async () => {
     cred_written: expect.any(Number),
     hydrated: expect.any(Number),
   });
+  // What the startup hydrate fetched: the one seeded file, two bytes.
+  expect(done.data).toMatchObject({ startupObjects: 1, startupBytes: 2 });
 });
 
 test("shadow resolves a standing layout and reports hydrated objects", async () => {
@@ -227,7 +229,11 @@ test("shadow resolves a standing layout and reports hydrated objects", async () 
 
   const emitted = await post(base, request({ shadow: true }));
   expect(emitted.map(({ type }) => type)).toEqual(["shadow", "done"]);
-  expect(emitted[0]?.data).toMatchObject({ hydratedObjects: 1 });
+  expect(emitted[0]?.data).toMatchObject({
+    hydratedObjects: 1,
+    startupObjects: 1,
+    startupBytes: 2,
+  });
   expect(runTurn).not.toHaveBeenCalled();
 });
 
