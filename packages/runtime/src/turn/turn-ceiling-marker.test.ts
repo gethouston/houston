@@ -68,7 +68,12 @@ test.each(["missing", "corrupt"])(
           durable,
           "t",
           {},
-          { hydratedObjects: 0, skippedObjects: 0 },
+          {
+            hydratedObjects: 0,
+            skippedObjects: 0,
+            startupObjects: 0,
+            startupBytes: 0,
+          },
         ),
       ).toMatchObject({
         type: "error",

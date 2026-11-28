@@ -80,7 +80,12 @@ test("the durable terminal frame carries the report beside the timings, and noth
     poolWritesOutOfScope: 0,
     changed: [],
   });
-  const hydration = { hydratedObjects: 1, skippedObjects: 0 };
+  const hydration = {
+    hydratedObjects: 1,
+    skippedObjects: 0,
+    startupObjects: 1,
+    startupBytes: 0,
+  };
   const failed = durableTerminalFrame(
     durable(err),
     "t1",

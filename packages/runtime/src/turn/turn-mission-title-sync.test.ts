@@ -113,7 +113,12 @@ async function titledTurn(races: number) {
     durable,
     "turn-1",
     {},
-    { hydratedObjects: 1, skippedObjects: 0 },
+    {
+      hydratedObjects: 1,
+      skippedObjects: 0,
+      startupObjects: 1,
+      startupBytes: 0,
+    },
     landedMissionTitle(
       {
         outcome: "written",

@@ -111,6 +111,7 @@ async function landChunk(
     }
     const { size } = await stat(dest(entry.rel));
     opts.budget.landed += size;
+    opts.budget.objects += 1;
     if (opts.budget.landed > opts.budget.maxBytes) {
       throw opts.limitError(opts.budget.landed);
     }

@@ -159,6 +159,7 @@ export async function startTurnFilesystem(
       vfs: new FsVfs(storeRoot),
       listedObjects: started.listed.rels.length,
       skippedObjects: started.skippedObjects,
+      startupLoad: { objects: 0, bytes: 0 },
       generationAware: started.listed.generationAware,
       immediateWrites: new Set(),
       ...(watched ? watched : {}),
@@ -172,7 +173,7 @@ export async function startTurnFilesystem(
       }),
     };
     const hydrated = started.done.then(
-      () => filesystem,
+      () => Object.assign(filesystem, { startupLoad: started.startupLoad() }),
       (error: unknown) => {
         throw turnHydrationError(error);
       },

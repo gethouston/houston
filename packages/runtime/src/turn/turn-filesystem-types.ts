@@ -3,6 +3,7 @@ import type {
   HydrateListing,
   HydrateManifest,
   HydrateOptions,
+  HydrateStartupLoad,
   ObjectStore,
   SyncResult,
 } from "@houston/runtime-client/object-sync";
@@ -23,6 +24,11 @@ export interface TurnFilesystem extends TurnLayout {
   /** Remote objects the lazy listing knows about (diagnostics). */
   listedObjects: number;
   skippedObjects: number;
+  /** What the startup hydrate fetched; the deferred files that load behind
+   *  the prompt are not in it. Set on the preparation's own object when
+   *  `hydrated` resolves: a copy spread earlier (the session start in
+   *  execute-turn.ts) keeps 0/0, so read it from that object. */
+  startupLoad: HydrateStartupLoad;
   /** The store's generation capability as the LISTING showed it. A filtered
    *  or lazy manifest may be empty and cannot answer this on its own. */
   generationAware: boolean;
@@ -41,6 +47,21 @@ export interface TurnFilesystem extends TurnLayout {
   /** Eager trees only: fetch the archive segments the hot set left remote
    *  before a reader reaches them (turn-archive-fetch.ts). */
   loadArchive?: ArchiveLoader;
+}
+
+/**
+ * The hydration counts a turn's terminal frame carries beside its timings
+ * (turn-terminal.ts). Counts only, never paths. `hydratedObjects`: owned
+ * objects on disk at the turn's end, deferred ones included.
+ * `skippedObjects`: listed objects the turn's filter left out.
+ * `startupObjects` / `startupBytes`: what the startup hydrate fetched
+ * (`startupLoad`), which the prompt waited on.
+ */
+export interface TurnHydrationCounts {
+  hydratedObjects: number;
+  skippedObjects: number;
+  startupObjects: number;
+  startupBytes: number;
 }
 
 export interface TurnFilesystemPreparation {

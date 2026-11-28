@@ -8,6 +8,7 @@ export type {
   HydrateListing,
   HydrateManifest,
   HydrateOptions,
+  HydrateStartupLoad,
   LocalWriteLock,
   StartedHydration,
   SyncBackOptions,

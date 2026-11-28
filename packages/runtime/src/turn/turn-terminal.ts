@@ -2,6 +2,7 @@ import { type ModelCallReport, TurnErrorCode } from "@houston/protocol";
 import type { WireFrame } from "@houston/runtime-client";
 import { takeClaudeStartupProfile } from "./turn-claude-startup";
 import type { TurnDurabilityResult } from "./turn-durability";
+import type { TurnHydrationCounts } from "./turn-filesystem-types";
 import type { TurnSetupCode, TurnSetupError } from "./turn-layout";
 import type { MissionTitleReport } from "./turn-mission-title-outcome";
 import { providerFailureReport } from "./turn-provider-failure";
@@ -43,7 +44,7 @@ export function turnTerminalFrame(
   activityDocSkipped?: "route_absent",
   changed: readonly string[] = [],
   timings?: Record<string, number>,
-  hydration?: { hydratedObjects: number; skippedObjects: number },
+  hydration?: TurnHydrationCounts,
   extra: TurnTerminalDiagnostics = {},
 ): WireFrame {
   const timingsMs = timingDeltas(timings);
@@ -136,7 +137,7 @@ export function durableTerminalFrame(
   durable: TurnDurabilityResult,
   turnId: string,
   timings: Record<string, number>,
-  hydration: { hydratedObjects: number; skippedObjects: number },
+  hydration: TurnHydrationCounts,
   missionTitle?: MissionTitleReport,
   modelCalls?: ModelCallReport,
 ): WireFrame {
