@@ -24,8 +24,10 @@ export interface TurnFilesystem extends TurnLayout {
   /** Remote objects the lazy listing knows about (diagnostics). */
   listedObjects: number;
   skippedObjects: number;
-  /** What the startup hydrate fetched, set once `hydrated` resolves; the
-   *  deferred files that load behind the prompt are not in it. */
+  /** What the startup hydrate fetched; the deferred files that load behind
+   *  the prompt are not in it. Set on the preparation's own object when
+   *  `hydrated` resolves: a copy spread earlier (the session start in
+   *  execute-turn.ts) keeps 0/0, so read it from that object. */
   startupLoad: HydrateStartupLoad;
   /** The store's generation capability as the LISTING showed it. A filtered
    *  or lazy manifest may be empty and cannot answer this on its own. */
